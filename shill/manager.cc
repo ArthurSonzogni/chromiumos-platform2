@@ -256,7 +256,6 @@ Manager::Manager(ControlInterface* control_interface,
   HelpRegisterDerivedString(kProhibitedTechnologiesProperty,
                             &Manager::GetProhibitedTechnologies,
                             &Manager::SetProhibitedTechnologies);
-  HelpRegisterDerivedString(kStateProperty, &Manager::CalculateState, nullptr);
   HelpRegisterConstDerivedRpcIdentifiers(kServicesProperty,
                                          &Manager::EnumerateAvailableServices);
   HelpRegisterConstDerivedRpcIdentifiers(kServiceCompleteListProperty,
@@ -2283,10 +2282,6 @@ bool Manager::IsConnected() const {
 bool Manager::IsOnline() const {
   // |services_| is sorted such that online services are first.
   return !services_.empty() && services_.front()->IsOnline();
-}
-
-std::string Manager::CalculateState(Error* /*error*/) {
-  return IsConnected() ? kStateOnline : kStateOffline;
 }
 
 void Manager::RefreshConnectionState() {

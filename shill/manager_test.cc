@@ -551,11 +551,6 @@ void ReturnSuccess(ResultCallback callback) {
   std::move(callback).Run(Error(Error::kSuccess));
 }
 
-TEST_F(ManagerTest, Contains) {
-  EXPECT_TRUE(manager()->store().Contains(kStateProperty));
-  EXPECT_FALSE(manager()->store().Contains(""));
-}
-
 TEST_F(ManagerTest, DeviceRegistration) {
   SetMockDevices(
       {Technology::kEthernet, Technology::kWiFi, Technology::kCellular});
@@ -3052,7 +3047,6 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
 
 TEST_F(ManagerTest, CalculateStateOffline) {
   EXPECT_FALSE(manager()->IsConnected());
-  EXPECT_EQ("offline", manager()->CalculateState(nullptr));
 
   MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
@@ -3066,7 +3060,6 @@ TEST_F(ManagerTest, CalculateStateOffline) {
   manager()->RegisterService(mock_service1);
 
   EXPECT_FALSE(manager()->IsConnected());
-  EXPECT_EQ("offline", manager()->CalculateState(nullptr));
 
   manager()->DeregisterService(mock_service0);
   manager()->DeregisterService(mock_service1);
@@ -3090,7 +3083,6 @@ TEST_F(ManagerTest, CalculateStateOnline) {
   CompleteServiceSort();
 
   EXPECT_TRUE(manager()->IsConnected());
-  EXPECT_EQ("online", manager()->CalculateState(nullptr));
 
   manager()->DeregisterService(mock_service0);
   manager()->DeregisterService(mock_service1);

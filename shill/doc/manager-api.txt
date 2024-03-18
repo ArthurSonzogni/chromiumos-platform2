@@ -22,8 +22,7 @@ Methods		dict GetProperties()
 
 		string GetState()
 
-			Return the connection state of a system. The
-			same value is return via the State property.
+			Deprecated: Use Service.State property instead.
 
 		object CreateProfile(string name)
 
@@ -1054,9 +1053,7 @@ Properties	object ActiveProfile [readonly]
 
 		string State [readonly]
 
-			The global connection state of a system. Possible values are
-			"online" if at least one connection exists and "offline" if no
-			device is connected.
+			Deprecated: Use Service.State property instead.
 
 		boolean TetheringAllowed [readwrite]
 

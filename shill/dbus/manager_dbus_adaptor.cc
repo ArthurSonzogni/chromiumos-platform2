@@ -113,11 +113,11 @@ bool ManagerDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
                                   error);
 }
 
-bool ManagerDBusAdaptor::GetState(brillo::ErrorPtr* /*error*/,
-                                  std::string* state) {
-  SLOG(this, 2) << __func__;
-  *state = manager_->CalculateState(nullptr);
-  return true;
+bool ManagerDBusAdaptor::GetState(brillo::ErrorPtr* error, std::string* state) {
+  Error e;
+  e.Populate(Error::kOperationFailed);
+  e.ToChromeosError(error);
+  return false;
 }
 
 bool ManagerDBusAdaptor::CreateProfile(brillo::ErrorPtr* error,

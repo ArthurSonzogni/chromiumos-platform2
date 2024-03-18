@@ -373,7 +373,6 @@ class Manager {
   // Returns true if at least one connection exists that have Internet
   // connectivity, and false if there's no such service.
   virtual bool IsOnline() const;
-  std::string CalculateState(Error* error);
 
   // Recalculate the |connected_state_| string and emit a singal if it has
   // changed.
