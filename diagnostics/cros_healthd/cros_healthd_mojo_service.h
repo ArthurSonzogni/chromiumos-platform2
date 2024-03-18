@@ -10,11 +10,11 @@
 
 #include <base/memory/weak_ptr.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
+#include <mojo_service_manager/lib/simple_mojo_service_provider.h>
 
 #include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
-#include "diagnostics/cros_healthd/utils/mojo_service_provider.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
@@ -84,11 +84,14 @@ class CrosHealthdMojoService final
 
  private:
   // Mojo service providers to provide services to mojo service manager.
-  MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdProbeService>
+  chromeos::mojo_service_manager::SimpleMojoServiceProvider<
+      ash::cros_healthd::mojom::CrosHealthdProbeService>
       probe_provider_{this};
-  MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdEventService>
+  chromeos::mojo_service_manager::SimpleMojoServiceProvider<
+      ash::cros_healthd::mojom::CrosHealthdEventService>
       event_provider_{this};
-  MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
+  chromeos::mojo_service_manager::SimpleMojoServiceProvider<
+      ash::cros_healthd::mojom::CrosHealthdRoutinesService>
       routine_provider_{this};
 
   // Unowned. The following instances should outlive this instance.

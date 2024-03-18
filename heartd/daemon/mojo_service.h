@@ -8,10 +8,10 @@
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
+#include <mojo_service_manager/lib/simple_mojo_service_provider.h>
 
 #include "heartd/daemon/action_runner.h"
 #include "heartd/daemon/heartbeat_manager.h"
-#include "heartd/daemon/utils/mojo_service_provider.h"
 #include "heartd/mojom/heartd.mojom.h"
 
 namespace heartd {
@@ -45,11 +45,13 @@ class HeartdMojoService final : public ash::heartd::mojom::HeartbeatService,
       service_manager_;
   // Mojo service providers to provide heartbeat services interface to mojo
   // service manager.
-  MojoServiceProvider<ash::heartd::mojom::HeartbeatService>
+  chromeos::mojo_service_manager::SimpleMojoServiceProvider<
+      ash::heartd::mojom::HeartbeatService>
       heartbeat_service_provider_{this};
   // Mojo service providers to provide heartd control interface to mojo service
   // manager.
-  MojoServiceProvider<ash::heartd::mojom::HeartdControl>
+  chromeos::mojo_service_manager::SimpleMojoServiceProvider<
+      ash::heartd::mojom::HeartdControl>
       heartd_control_provider_{this};
   // Unowned pointer. Should outlive this instance.
   // It is used to register new heartbeat tracker.

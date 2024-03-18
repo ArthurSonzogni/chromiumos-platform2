@@ -15,10 +15,10 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/errors/error.h>
+#include <mojo_service_manager/lib/simple_mojo_service_provider.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
-#include "diagnostics/cros_healthd/utils/mojo_service_provider.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -223,7 +223,8 @@ class CrosHealthdDiagnosticsService final
   // this instance.
   CrosHealthdRoutineFactory* const routine_factory_ = nullptr;
   // Mojo service provider to provide service to mojo service manager.
-  MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
+  chromeos::mojo_service_manager::SimpleMojoServiceProvider<
+      ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       provider_{this};
   ash::cros_healthd::mojom::CrosHealthdRoutinesService* const routine_service_;
 

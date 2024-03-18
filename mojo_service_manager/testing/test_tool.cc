@@ -21,6 +21,7 @@
 
 #include "mojo_service_manager/lib/connect.h"
 #include "mojo_service_manager/lib/mojom/service_manager.mojom.h"
+#include "mojo_service_manager/lib/simple_mojo_service_provider.h"
 #include "mojo_service_manager/testing/test.mojom.h"
 
 namespace chromeos {
@@ -38,41 +39,26 @@ constexpr char kTestServiceName[] = "MojoServiceManagerTest";
 // The buffer size to test the shared buffer creation.
 constexpr uint64_t kTestSharedBufferSize = 1024;
 
-class TestService : public mojom::Foo, public mojom::ServiceProvider {
+class FooImpl : public mojom::Foo {
  public:
-  TestService();
-  TestService(const TestService&) = delete;
-  TestService& operator=(const TestService&) = delete;
-  ~TestService();
-
-  void Register(mojom::ServiceManager* service_manager) {
-    service_manager->Register(kTestServiceName,
-                              provider_.BindNewPipeAndPassRemote());
+  explicit FooImpl(mojom::ServiceManager* service_manager) {
+    provider_.Register(service_manager, kTestServiceName);
   }
+  ~FooImpl() override = default;
 
- private:
   // mojom::Foo overrides.
-  void Ping(PingCallback callback) override { std::move(callback).Run(); }
-
-  // mojom::ServiceProvider overrides.
-  void Request(mojom::ProcessIdentityPtr client_identity,
-               mojo::ScopedMessagePipeHandle receiver) override {
-    receiver_set_.Add(this,
-                      mojo::PendingReceiver<mojom::Foo>(std::move(receiver)));
+  void Ping(PingCallback callback) override {
+    LOG(INFO) << "Foo::Ping() is called";
+    std::move(callback).Run();
   }
 
  private:
-  mojo::Receiver<mojom::ServiceProvider> provider_{this};
-  mojo::ReceiverSet<mojom::Foo> receiver_set_;
+  SimpleMojoServiceProvider<mojom::Foo> provider_{this};
 };
-
-TestService::TestService() = default;
-TestService ::~TestService() = default;
 
 int CreateTestService(brillo::Daemon& daemon,
                       mojom::ServiceManager* service_manager) {
-  TestService test_service;
-  test_service.Register(service_manager);
+  FooImpl foo{service_manager};
   LOG(INFO) << "Registered test service.";
 
   return daemon.Run();

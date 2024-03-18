@@ -7,8 +7,8 @@
 
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
+#include <mojo_service_manager/lib/simple_mojo_service_provider.h>
 
-#include "diagnostics/cros_healthd/utils/mojo_service_provider.h"
 #include "diagnostics/mojom/public/cros_healthd_event_reporters.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -36,8 +36,9 @@ class EventReporter : public ash::cros_healthd::mojom::AshEventReporter {
   // The observer set.
   mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> observers_;
   // The service provider for the AshEventReporter.
-  MojoServiceProvider<ash::cros_healthd::mojom::AshEventReporter> ash_provider_{
-      this};
+  chromeos::mojo_service_manager::SimpleMojoServiceProvider<
+      ash::cros_healthd::mojom::AshEventReporter>
+      ash_provider_{this};
 };
 
 }  // namespace diagnostics

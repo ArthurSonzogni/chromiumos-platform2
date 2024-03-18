@@ -212,6 +212,20 @@ class ServiceProviderImpl:
 };
 ```
 
+Or use the template class `SimpleMojoServiceProvider` directly.
+
+```cpp
+mojo::Remote<
+  chromeos::mojo_service_manager::mojom::ServiceManager> service_manager;
+
+// Bootstrap the service manager...
+
+FooImpl foo;
+chromeos::mojo_service_manager::SimpleMojoServiceProvider<mojom::Foo>
+  foo_service(&foo);
+foo_service.Register(service_manager.get(), /*service_name=*/"Foo");
+```
+
 To request the Foo interface:
 
 ```cpp

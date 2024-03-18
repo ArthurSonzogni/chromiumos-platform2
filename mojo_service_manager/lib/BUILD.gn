@@ -52,6 +52,9 @@ generate_pkg_config("mojo_service_manager") {
 }
 
 install_config("headers") {
-  sources = [ "connect.h" ]
+  sources = [
+    "connect.h",
+    "simple_mojo_service_provider.h",
+  ]
   install_path = "/usr/include/mojo_service_manager/mojo_service_manager/lib"
 }
