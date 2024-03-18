@@ -8,7 +8,6 @@
 use std::{collections::HashMap, io};
 
 use dbus::{
-    self,
     arg::{ArgType, RefArg, Variant},
     blocking::Connection,
 };

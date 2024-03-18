@@ -6,7 +6,7 @@
 // Provides the command "insert_coin" for crosh, which enables Borealis.
 
 use dbus::blocking::Connection;
-use getopts::{self, Options};
+use getopts::Options;
 use std::borrow::Cow;
 use std::io::Write;
 

@@ -14,7 +14,7 @@ use std::time::Duration;
 
 use dbus::arg::{self, Variant};
 use dbus::blocking::Connection;
-use getopts::{self, Options};
+use getopts::Options;
 use libc::c_int;
 use libchromeos::pipe;
 use log::error;
