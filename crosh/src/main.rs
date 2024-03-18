@@ -375,10 +375,7 @@ fn main() -> Result<(), ()> {
     let dispatcher = setup_dispatcher();
 
     if args_as_command {
-        dispatch_cmd(
-            &dispatcher,
-            command_args.iter().map(|a| a.to_string()).collect(),
-        );
+        dispatch_cmd(&dispatcher, command_args);
         Ok(())
     } else {
         register_signal_handlers();
