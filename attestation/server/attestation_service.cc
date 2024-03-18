@@ -635,12 +635,10 @@ std::optional<std::string> AttestationService::GetEndorsementCertificate()
   }
 
   // Try to read the certificate directly.
-  std::string certificate;
-  if (!tpm_utility_->GetEndorsementCertificate(GetEndorsementKeyType(),
-                                               &certificate)) {
-    return std::nullopt;
-  }
-  return certificate;
+  ASSIGN_OR_RETURN(const brillo::Blob& cert_blob,
+                   hwsec_->GetEndorsementCert(GetEndorsementKeyType()),
+                   _.LogError().As(std::nullopt));
+  return BlobToString(cert_blob);
 }
 
 void AttestationService::GetEndorsementInfoTask(
@@ -1614,14 +1612,17 @@ void AttestationService::PrepareForEnrollment(
             << (base::TimeTicks::Now() - start).InMilliseconds() << "ms.)";
 
   std::string ek_certificate;
-  if (!tpm_utility_->GetEndorsementCertificate(key_type, &ek_certificate)) {
+  if (auto result = hwsec_->GetEndorsementCert(GetEndorsementKeyType());
+      !result.ok()) {
     LOG(ERROR) << __func__ << ": Failed to get " << GetKeyTypeName(key_type)
-               << " EK certificate.";
+               << " EK certificate: " << result.status();
     metrics_.ReportAttestationOpsStatus(
         kAttestationPrepareForEnrollment,
         AttestationOpsStatus::kEndorsementFailure);
     std::move(callback).Run(false);
     return;
+  } else {
+    ek_certificate = BlobToString(std::move(result).value());
   }
   LOG(INFO) << "GetEndorsementCertificate done. (from start: "
             << (base::TimeTicks::Now() - start).InMilliseconds() << "ms.)";

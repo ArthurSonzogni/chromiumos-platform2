@@ -298,6 +298,9 @@ class AttestationServiceBaseTest : public testing::Test {
     EXPECT_CALL(mock_hwsec_, ActivateIdentity)
         .WillRepeatedly(
             ReturnValue(brillo::SecureBlob("fake_activate_certificate")));
+    EXPECT_CALL(mock_hwsec_, GetEndorsementCert)
+        .WillRepeatedly(
+            ReturnValue(BlobFromString("fake_endorsement_certificate")));
   }
 
  protected:
@@ -527,8 +530,8 @@ TEST_F(AttestationServiceBaseTest, GetEndorsementInfoNoInfo) {
 }
 
 TEST_F(AttestationServiceBaseTest, GetEndorsementInfoNoCert) {
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementCertificate(_, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, GetEndorsementCert(_))
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   // Set expectations on the outputs.
   auto callback = [](base::OnceClosure quit_closure,
                      const GetEndorsementInfoReply& reply) {
@@ -2227,8 +2230,8 @@ TEST_P(AttestationServiceTest, PrepareForEnrollmentNoPublicKey) {
 TEST_P(AttestationServiceTest, PrepareForEnrollmentNoCert) {
   // Start with an empty database.
   mock_database_.GetMutableProtobuf()->Clear();
-  EXPECT_CALL(mock_tpm_utility_, GetEndorsementCertificate(_, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_hwsec_, GetEndorsementCert(_))
+      .WillRepeatedly(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   // Schedule initialization again to make sure it runs after this point.
   CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
                                    base::Unretained(service_.get()))));
