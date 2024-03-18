@@ -10,9 +10,6 @@
 			<arg type="s" direction="in"/>
 			<arg type="v" direction="in"/>
 		</method>
-		<method name="GetState">
-			<arg type="s" direction="out"/>
-		</method>
 		<method name="CreateProfile">
 			<arg type="s" direction="in"/>
 			<arg type="o" direction="out"/>
@@ -85,9 +82,6 @@
 		<signal name="PropertyChanged">
 			<arg type="s"/>
 			<arg type="v"/>
-		</signal>
-		<signal name="StateChanged">
-			<arg type="s"/>
 		</signal>
 		<method name="GetDebugTags">
 			<arg type="s" direction="out"/>

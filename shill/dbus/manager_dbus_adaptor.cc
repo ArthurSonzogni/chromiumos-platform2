@@ -113,13 +113,6 @@ bool ManagerDBusAdaptor::SetProperty(brillo::ErrorPtr* error,
                                   error);
 }
 
-bool ManagerDBusAdaptor::GetState(brillo::ErrorPtr* error, std::string* state) {
-  Error e;
-  e.Populate(Error::kOperationFailed);
-  e.ToChromeosError(error);
-  return false;
-}
-
 bool ManagerDBusAdaptor::CreateProfile(brillo::ErrorPtr* error,
                                        const std::string& name,
                                        dbus::ObjectPath* profile_path) {

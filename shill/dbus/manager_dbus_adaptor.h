@@ -62,7 +62,6 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
   bool SetProperty(brillo::ErrorPtr* error,
                    const std::string& name,
                    const brillo::Any& value) override;
-  bool GetState(brillo::ErrorPtr* error, std::string* state) override;
   bool CreateProfile(brillo::ErrorPtr* error,
                      const std::string& name,
                      dbus::ObjectPath* profile_path) override;
