@@ -275,29 +275,19 @@ void ProxyConnectJob::OnAuthCredentialsProvided(
     return;
   }
   credentials_ = credentials;
-  // Covers the case for which `curl_auth_schemes_` was initialized with policy
-  // set schemes which are not supported by the remote remote server.
-  curl_auth_schemes_ = CURLAUTH_ANY;
   VLOG(1) << "Connecting to the remote server with provided credentials";
   DoCurlServerConnection();
 }
 
 bool ProxyConnectJob::AreAuthCredentialsRequired(CURL* easyhandle) {
-  if (http_response_code_ != kHttpCodeProxyAuthRequired) {
-    return false;
-  }
-
-  CURLcode res;
-  int64_t server_proxy_auth_scheme = 0;
-  res = curl_easy_getinfo(easyhandle, CURLINFO_PROXYAUTH_AVAIL,
-                          &server_proxy_auth_scheme);
-  if (res != CURLE_OK || !server_proxy_auth_scheme) {
+  if (http_response_code_ != kHttpCodeProxyAuthRequired ||
+      !curl_auth_schemes_) {
     return false;
   }
 
   // If kerberos is enabled, then we need to wait for the user to request a
   // kerberos ticket from Chrome.
-  return !(server_proxy_auth_scheme & CURLAUTH_NEGOTIATE);
+  return !(curl_auth_schemes_ & CURLAUTH_NEGOTIATE);
 }
 
 void ProxyConnectJob::DoCurlServerConnection() {
@@ -348,7 +338,13 @@ void ProxyConnectJob::DoCurlServerConnection() {
   if (res != CURLE_OK) {
     LOG(ERROR) << *this << " curl_easy_perform() failed with error: "
                << curl_easy_strerror(res);
-    if (AreAuthCredentialsRequired(easyhandle)) {
+    // Get the proxy authentication methods supported by the proxy server (if
+    // any).
+    curl_auth_schemes_ = 0;
+    res = curl_easy_getinfo(easyhandle, CURLINFO_PROXYAUTH_AVAIL,
+                            &curl_auth_schemes_);
+
+    if (res == CURLE_OK && AreAuthCredentialsRequired(easyhandle)) {
       AuthenticationRequired(http_response_headers);
       return;
     }
