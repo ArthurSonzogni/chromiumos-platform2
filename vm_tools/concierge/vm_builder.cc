@@ -333,6 +333,11 @@ VmBuilder& VmBuilder::EnablePerVmCoreScheduling(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnablePvClock(bool enable) {
+  enable_pvclock_ = enable;
+  return *this;
+}
+
 VmBuilder& VmBuilder::EnableODirectN(int n, bool enable) {
   disks_.at(n).o_direct = enable;
   return *this;
@@ -616,6 +621,9 @@ base::StringPairs VmBuilder::BuildRunParams() const {
 
   if (enable_battery_)
     args.emplace_back("--battery", "type=goldfish");
+
+  if (enable_pvclock_)
+    args.emplace_back("--pvclock", "");
 
   for (const auto& shared_dir : shared_dirs_)
     args.emplace_back("--shared-dir", shared_dir.to_string());

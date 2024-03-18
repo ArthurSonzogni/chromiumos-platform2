@@ -111,6 +111,10 @@ static_library("libconcierge") {
     # TODO(b/293801301): Add PCI hotplug support for aarch64.
     # PCI hotplug is only enabled on x86_64 architecture.
     "USE_PCI_HOTPLUG_SLOTS=${use.amd64}",
+
+    # TODO(b/295256641): Add PvClock support for aarch64.
+    # Currently PvClock is only enabled on x86_64 architecture.
+    "USE_VIRTIO_PVCLOCK=${use.amd64}",
   ]
 
   cflags_cc = [

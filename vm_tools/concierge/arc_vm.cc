@@ -459,6 +459,10 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableCrossDomainContext(true);
   }
 
+  if (USE_VIRTIO_PVCLOCK) {
+    vm_builder.EnablePvClock(true);
+  }
+
   std::unique_ptr<CustomParametersForDev> custom_parameters =
       MaybeLoadCustomParametersForDev(apps::ARCVM, use_dev_conf());
 

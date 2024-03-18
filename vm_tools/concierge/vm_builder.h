@@ -133,6 +133,7 @@ class VmBuilder {
   VmBuilder& EnableSmt(bool enable);
   VmBuilder& EnableDelayRt(bool enable);
   VmBuilder& EnablePerVmCoreScheduling(bool enable);
+  VmBuilder& EnablePvClock(bool enable);
 
   // Override flags for O_DIRECT for already appended Nth disk.
   VmBuilder& EnableODirectN(int n, bool enable);
@@ -196,6 +197,7 @@ class VmBuilder {
   bool enable_video_decoder_ = false;
   bool enable_video_encoder_ = false;
   bool enable_battery_ = false;
+  bool enable_pvclock_ = false;
   std::optional<bool> enable_smt_ = false;
   bool enable_delay_rt_ = false;
   bool enable_per_vm_core_scheduling_ = false;
