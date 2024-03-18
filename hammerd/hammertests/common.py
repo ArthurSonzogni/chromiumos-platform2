@@ -103,12 +103,13 @@ elif BASE_NAME == "don":
 else:
     BASE_VENDOR_ID = int(cros_config("/detachable-base", "vendor-id"))
     BASE_PRODUCT_ID = int(cros_config("/detachable-base", "product-id"))
-    BASE_USB_PATH = cros_config("/detachable-base", "usb-path")
-    BASE_I2C_PATH = cros_config("/detachable-base", "i2c-path")
+    BASE_USB_PATH = cros_config("/detachable-base", "usb-path", check=False)
+    BASE_I2C_PATH = cros_config("/detachable-base", "i2c-path", check=False)
     BASE_CONN_GPIO = None
     TP = os.path.join(
         "/lib/firmware/", cros_config("/detachable-base", "touch-image-name")
     )
+    assert (BASE_USB_PATH is not None) ^ (BASE_I2C_PATH is not None)
 
 # Status of flash protect.
 EC_FLASH_PROTECT_RO_AT_BOOT = 1 << 0
