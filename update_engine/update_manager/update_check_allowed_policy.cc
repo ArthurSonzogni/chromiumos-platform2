@@ -21,7 +21,6 @@
 #include "update_engine/update_manager/recovery_policy.h"
 #include "update_engine/update_manager/shill_provider.h"
 #include "update_engine/update_manager/update_check_allowed_policy.h"
-#include "update_engine/update_manager/update_in_hibernate_resume_policy_impl.h"
 
 using chromeos_update_engine::SystemState;
 using std::string;
@@ -60,12 +59,8 @@ EvalStatus UpdateCheckAllowedPolicy::Evaluate(EvaluationContext* ec,
   InteractiveUpdateCheckAllowedPolicyImpl interactive_update_policy;
   OobePolicyImpl oobe_policy;
   NextUpdateCheckTimePolicyImpl next_update_check_time_policy;
-  UpdateInHibernateResumePolicyImpl hibernate_resume_policy;
 
   vector<PolicyInterface* const> policies_to_consult = {
-      // Don't update when resuming from hibernate.
-      &hibernate_resume_policy,
-
       // If this is an installation, allow performing.
       &installation_policy,
 

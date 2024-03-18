@@ -228,7 +228,6 @@ if (!use.cros_host) {
       "update_manager/update_can_be_applied_policy.cc",
       "update_manager/update_can_start_policy.cc",
       "update_manager/update_check_allowed_policy.cc",
-      "update_manager/update_in_hibernate_resume_policy_impl.cc",
       "update_manager/update_manager.cc",
       "update_manager/update_time_restrictions_monitor.cc",
       "update_manager/update_time_restrictions_policy_impl.cc",
@@ -289,13 +288,6 @@ if (!use.cros_host) {
         "libdlcservice-client",
         "libdlcservice-utils",
       ]
-    }
-
-    if (use.hibernate) {
-      sources += [ "cros/hibernate_chromeos.cc" ]
-      all_dependent_pkg_deps += [ "libhibernate-client" ]
-    } else {
-      sources += [ "common/hibernate_stub.cc" ]
     }
 
     if (use.chrome_network_proxy) {
@@ -580,7 +572,6 @@ if (use.test) {
       "update_manager/staging_utils_unittest.cc",
       "update_manager/update_can_start_policy_unittest.cc",
       "update_manager/update_check_allowed_policy_unittest.cc",
-      "update_manager/update_in_hibernate_resume_policy_impl_unittest.cc",
       "update_manager/update_manager_unittest.cc",
       "update_manager/update_time_restrictions_monitor_unittest.cc",
       "update_manager/update_time_restrictions_policy_impl_unittest.cc",

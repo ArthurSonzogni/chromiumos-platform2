@@ -47,14 +47,6 @@ class SystemProvider : public Provider {
   // indicates an installation.
   virtual Variable<bool>* var_is_updating() = 0;
 
-  // Returns a variable indicating if the system is presently resuming from
-  // hibernate.
-  virtual Variable<bool>* var_is_resuming_from_hibernate() = 0;
-
-  // Aborts a resume from hibernation, and returns a boolean indicating if the
-  // request completed successfully.
-  virtual Variable<bool>* var_abort_resume_from_hibernate() = 0;
-
  protected:
   SystemProvider() {}
 };

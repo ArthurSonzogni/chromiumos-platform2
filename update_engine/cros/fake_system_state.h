@@ -69,8 +69,6 @@ class FakeSystemState : public SystemState {
 
   inline HardwareInterface* hardware() override { return hardware_; }
 
-  inline HibernateInterface* hibernate() override { return hibernate_; }
-
   inline MetricsReporterInterface* metrics_reporter() override {
     CHECK(metrics_reporter_ != nullptr);
     return metrics_reporter_;
@@ -134,10 +132,6 @@ class FakeSystemState : public SystemState {
 
   inline void set_hardware(HardwareInterface* hardware) {
     hardware_ = hardware ? hardware : &fake_hardware_;
-  }
-
-  inline void set_hibernate(HibernateInterface* hibernate) {
-    hibernate_ = hibernate;
   }
 
   inline void set_metrics_reporter(MetricsReporterInterface* metrics_reporter) {
@@ -313,7 +307,6 @@ class FakeSystemState : public SystemState {
   ClockInterface* clock_;
   ConnectionManagerInterface* connection_manager_;
   HardwareInterface* hardware_;
-  HibernateInterface* hibernate_;
   MetricsReporterInterface* metrics_reporter_;
   PrefsInterface* prefs_;
   PrefsInterface* powerwash_safe_prefs_;

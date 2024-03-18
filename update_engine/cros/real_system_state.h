@@ -21,7 +21,6 @@
 #include "update_engine/common/daemon_state_interface.h"
 #include "update_engine/common/dlcservice_interface.h"
 #include "update_engine/common/hardware_interface.h"
-#include "update_engine/common/hibernate_interface.h"
 #include "update_engine/common/metrics_reporter_interface.h"
 #include "update_engine/common/prefs.h"
 #include "update_engine/cros/connection_manager_interface.h"
@@ -70,8 +69,6 @@ class RealSystemState : public SystemState {
   }
 
   HardwareInterface* hardware() override { return hardware_.get(); }
-
-  HibernateInterface* hibernate() override { return hibernate_.get(); }
 
   MetricsReporterInterface* metrics_reporter() override {
     return &metrics_reporter_;
@@ -147,9 +144,6 @@ class RealSystemState : public SystemState {
 
   // Interface for the hardware functions.
   std::unique_ptr<HardwareInterface> hardware_;
-
-  // Interface for hibernate functionality.
-  std::unique_ptr<HibernateInterface> hibernate_;
 
   // The Metrics reporter for reporting UMA stats.
   MetricsReporterOmaha metrics_reporter_;

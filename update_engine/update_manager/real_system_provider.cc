@@ -12,7 +12,6 @@
 
 #include "update_engine/common/boot_control_interface.h"
 #include "update_engine/common/hardware_interface.h"
-#include "update_engine/common/hibernate_interface.h"
 #include "update_engine/common/system_state.h"
 #include "update_engine/common/utils.h"
 #include "update_engine/cros/omaha_request_params.h"
@@ -119,19 +118,6 @@ bool RealSystemProvider::Init() {
       base::BindRepeating(
           &chromeos_update_engine::UpdateAttempter::IsUpdating,
           base::Unretained(SystemState::Get()->update_attempter()))));
-
-  var_is_resuming_from_hibernate_.reset(new CallCopyVariable<bool>(
-      "is_resuming_from_hibernate",
-      base::BindRepeating(
-          &chromeos_update_engine::HibernateInterface::IsResuming,
-          base::Unretained(SystemState::Get()->hibernate()))));
-
-  var_abort_resume_from_hibernate_.reset(new CallCopyVariable<bool>(
-      "abort_resume_from_hibernate",
-      base::BindRepeating(
-          &chromeos_update_engine::HibernateInterface::AbortResume,
-          base::Unretained(SystemState::Get()->hibernate()),
-          "System update pending for too long")));
 
   return true;
 }

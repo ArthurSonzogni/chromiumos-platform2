@@ -88,12 +88,6 @@ bool RealSystemState::Initialize() {
     return false;
   }
 
-  hibernate_ = CreateHibernateService();
-  if (!hibernate_) {
-    LOG(ERROR) << "Error initializing the HibernateInterface";
-    return false;
-  }
-
   // Initialize standard and powerwash-safe prefs.
   base::FilePath non_volatile_path;
   // TODO(deymo): Fall back to in-memory prefs if there's no physical directory
