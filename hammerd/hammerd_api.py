@@ -81,7 +81,10 @@ class FirstResponsePdu(ctypes.Structure):
     def __str__(self):
         ret = ""
         for field_name, unused_field_type in self._fields_:
-            ret += "%s: %s\n" % (field_name, getattr(self, field_name))
+            value = getattr(self, field_name)
+            if field_name == "version":
+                value = "".join(chr(x) for x in value)
+            ret += f"{field_name}: {value}\n"
         return ret
 
 
