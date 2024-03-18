@@ -538,7 +538,7 @@ result_code Tpm::TakeOwnership() {
 result_code Tpm::SetSystemKeyInitializedFlag() {
   bool flag_value = false;
   result_code rc = HasSystemKeyInitializedFlag(&flag_value);
-  if (rc != TPM_SUCCESS) {
+  if (rc != RESULT_SUCCESS) {
     return RESULT_FAIL_FATAL;
   }
 
