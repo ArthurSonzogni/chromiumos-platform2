@@ -302,5 +302,29 @@ TEST_F(MinijailProcessRunnerTest, IptablesBatchModeAcquireTwice) {
   ASSERT_EQ(runner_->AcquireIptablesBatchMode(), nullptr);
 }
 
+TEST_F(MinijailProcessRunnerTest, IptablesBatchModeInvalidInput) {
+  auto batch_mode = runner_->AcquireIptablesBatchMode();
+
+  constexpr auto kTable = Iptables::Table::kMangle;
+  constexpr auto kCmd = Iptables::Command::kN;
+
+  EXPECT_EQ(-1, runner_->iptables(kTable, kCmd, "invalid_chain\n", {}));
+  EXPECT_EQ(-1, runner_->iptables(kTable, kCmd, "chain", {"abc\n"}));
+  EXPECT_EQ(-1, runner_->iptables(kTable, kCmd, "chain", {"a bc"}));
+  EXPECT_EQ(-1, runner_->iptables(kTable, kCmd, "chain", {"\tabc"}));
+  EXPECT_EQ(-1, runner_->iptables(kTable, kCmd, "chain", {"\""}));
+  EXPECT_EQ(-1, runner_->iptables(kTable, kCmd, "chain", {"\'"}));
+
+  EXPECT_EQ(-1, runner_->ip6tables(kTable, kCmd, "chain", {"abc\n"}));
+  EXPECT_EQ(-1, runner_->ip6tables(kTable, kCmd, "chain", {"a bc"}));
+  EXPECT_EQ(-1, runner_->ip6tables(kTable, kCmd, "chain", {"\tabc"}));
+  EXPECT_EQ(-1, runner_->ip6tables(kTable, kCmd, "chain", {"\""}));
+  EXPECT_EQ(-1, runner_->ip6tables(kTable, kCmd, "chain", {"\'"}));
+
+  // No rule was added.
+  EXPECT_CALL(mj_, RunAndDestroy).Times(0);
+  batch_mode = nullptr;
+}
+
 }  // namespace
 }  // namespace patchpanel

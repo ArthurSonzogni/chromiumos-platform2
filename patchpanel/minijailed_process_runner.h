@@ -75,7 +75,8 @@ class MinijailedProcessRunner {
   //   issued immediately after called, and the rule will be cached instead.
   //   |log_failures| in the function param won't have effect in this mode, and
   //   the returning success only indicates that the input argument passes the
-  //   basic check instead of the rule is executed successfully.
+  //   basic check instead of the rule is executed successfully (return 0 on
+  //   success or -1 otherwise).
   // - When the returned object of this function is destructed, all the cached
   //   iptables commands will be executed using iptables-restore. If |success|
   //   is not nullptr, the execution result will be written into it so that the
@@ -165,7 +166,7 @@ class MinijailedProcessRunner {
 
   using TableToRules = std::map<Iptables::Table, std::vector<std::string>>;
 
-  void AppendPendingIptablesRule(Iptables::Table table,
+  bool AppendPendingIptablesRule(Iptables::Table table,
                                  Iptables::Command command,
                                  std::string_view chain,
                                  const std::vector<std::string>& argv,
