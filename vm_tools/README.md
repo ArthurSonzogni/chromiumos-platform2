@@ -64,7 +64,7 @@ out as pid 1.
 
 `garcon` is a daemon that runs inside of a container within a VM. gRPC is used
 to communicate between `vm_cicerone` and `garcon`. It is used to control/query
-things inside the contaienr such as application launching, accessibility,
+things inside the container such as application launching, accessibility,
 handling intents, opening files, etc. The communication is bi-directional. It
 uses TCP/IP for the transport and firewall rules ensure that only the container
 IPs are allowed to connect to the corresponding port for `garcon` that is open
