@@ -53,8 +53,6 @@ constexpr char kDumpe2fsStr[] =
 constexpr char kReservedBlocksGID[] = "Reserved blocks gid:      20119";
 constexpr char kStatefulPartition[] = "mnt/stateful_partition";
 
-constexpr char kHiberResumeInitLog[] = "run/hibernate/hiber-resume-init.log";
-
 // Helper function to create directory and write to file.
 bool CreateDirAndWriteFile(const base::FilePath& path,
                            const std::string& contents) {
@@ -238,61 +236,6 @@ TEST_F(Ext4FeaturesTest, MissingFeatures) {
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
   EXPECT_EQ(features_str, "-g 20119");
-}
-
-class HibernateResumeBootTest : public ::testing::Test {
- protected:
-  HibernateResumeBootTest() {}
-
-  void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
-    mock_startup_dep_ = std::make_unique<StrictMock<startup::MockStartupDep>>();
-    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        mock_startup_dep_.get(), flags_, base_dir_, base_dir_, true);
-    stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir_, base_dir_, mock_startup_dep_.get(),
-        std::unique_ptr<brillo::MockLogicalVolumeManager>(),
-        mount_helper_.get());
-    state_dev_ = base::FilePath("test");
-    hiber_init_log_ = base_dir_.Append(kHiberResumeInitLog);
-  }
-
-  startup::Flags flags_;
-  std::unique_ptr<startup::MockStartupDep> mock_startup_dep_;
-  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
-  std::unique_ptr<startup::StatefulMount> stateful_mount_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
-  base::FilePath state_dev_;
-  base::FilePath hiber_init_log_;
-};
-
-TEST_F(HibernateResumeBootTest, NoHibermanFile) {
-  stateful_mount_->SetStateDevForTest(state_dev_);
-  EXPECT_FALSE(stateful_mount_->HibernateResumeBoot());
-}
-
-TEST_F(HibernateResumeBootTest, HibermanFail) {
-  stateful_mount_->SetStateDevForTest(state_dev_);
-  base::FilePath hiberman = base_dir_.Append("usr/sbin/hiberman");
-  ASSERT_TRUE(CreateDirAndWriteFile(hiberman, "1"));
-
-  EXPECT_CALL(*mock_startup_dep_, RunHiberman(hiber_init_log_))
-      .WillOnce(Return(false));
-
-  EXPECT_FALSE(stateful_mount_->HibernateResumeBoot());
-}
-
-TEST_F(HibernateResumeBootTest, HibermanSuccess) {
-  stateful_mount_->SetStateDevForTest(state_dev_);
-  base::FilePath hiberman = base_dir_.Append("usr/sbin/hiberman");
-  ASSERT_TRUE(CreateDirAndWriteFile(hiberman, "1"));
-
-  EXPECT_CALL(*mock_startup_dep_, RunHiberman(hiber_init_log_))
-      .WillOnce(Return(true));
-
-  EXPECT_TRUE(stateful_mount_->HibernateResumeBoot());
 }
 
 class DevUpdateStatefulTest : public ::testing::Test {

@@ -37,8 +37,6 @@ constexpr char kFactoryDir[] = "mnt/stateful_partition/dev_image/factory";
 
 const size_t kMaxReadSize = 4 * 1024;
 
-const int kNoResumeFromHibernatePending = 0x23;
-
 }  // namespace
 
 namespace startup {
@@ -175,27 +173,6 @@ void StartupDep::RunProcess(const base::FilePath& cmd_path) {
     LOG(WARNING) << "Process " << cmd_path.value()
                  << " returned non zero exit code: " << res;
   }
-}
-
-bool StartupDep::RunHiberman(const base::FilePath& output_file) {
-  brillo::ProcessImpl hiberman;
-  hiberman.AddArg("/sbin/minijail0");
-  hiberman.AddArg("-v");
-  hiberman.AddArg("--");
-  hiberman.AddArg("/usr/sbin/hiberman");
-  hiberman.AddArg("resume-init");
-  hiberman.AddArg("-v");
-  hiberman.RedirectOutput(output_file);
-  int ret = hiberman.Run();
-  if (ret == 0) {
-    return true;
-  } else if (ret < 0) {
-    PLOG(ERROR) << "Failed to run hiberman";
-    return false;
-  }
-  if (ret != kNoResumeFromHibernatePending)
-    LOG(WARNING) << "hiberman returned non zero exit code: " << ret;
-  return false;
 }
 
 void StartupDep::AddClobberCrashReport(const std::vector<std::string> args) {

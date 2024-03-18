@@ -51,12 +51,6 @@ constexpr char kQuotaProjectOpt[] = "project";
 constexpr char kDumpe2fsStatefulLog[] = "run/dumpe2fs_stateful.log";
 constexpr char kDirtyExpireCentisecs[] = "proc/sys/vm/dirty_expire_centisecs";
 
-constexpr char kHiberman[] = "usr/sbin/hiberman";
-constexpr char kHiberResumeInitLog[] = "run/hibernate/hiber-resume-init.log";
-constexpr char kDevMapper[] = "dev/mapper";
-constexpr char kUnencryptedRW[] = "unencrypted-rw";
-constexpr char kDevImageRW[] = "dev-image-rw";
-
 constexpr char kUpdateAvailable[] = ".update_available";
 constexpr char kLabMachine[] = ".labmachine";
 
@@ -332,14 +326,6 @@ std::vector<std::string> StatefulMount::GenerateExt4Features(
   return sb_features;
 }
 
-// Check to see if this a hibernate resume boot.
-bool StatefulMount::HibernateResumeBoot() {
-  base::FilePath hiberman_cmd = root_.Append(kHiberman);
-  base::FilePath hiber_init_log = root_.Append(kHiberResumeInitLog);
-  return (base::PathExists(hiberman_cmd) &&
-          startup_dep_->RunHiberman(hiber_init_log));
-}
-
 void StatefulMount::ClobberStateful(
     const std::vector<std::string>& clobber_args,
     const std::string& clobber_message) {
@@ -443,48 +429,36 @@ void StatefulMount::MountStateful() {
       if (pv && pv->IsValid()) {
         volume_group_ = lvm_->GetVolumeGroup(*pv);
         if (volume_group_ && volume_group_->IsValid()) {
-          // Check to see if this a hibernate resume boot. If so,
-          // the image that will soon be resumed has active mounts
-          // on the stateful LVs that must not be modified out from underneath
-          // the hibernated kernel. Ask hiberman to activate the necessary
-          // logical volumes and set up dm-snapshots on top of them to make a RW
-          // system while leaving those LVs physically intact.
-          if (HibernateResumeBoot()) {
-            base::FilePath dev_mapper = root_.Append(kDevMapper);
-            state_dev_ = dev_mapper.Append(kUnencryptedRW);
-            dev_image_ = dev_mapper.Append(kDevImageRW);
-          } else {
-            // First attempt to activate the thinpool. If the activation of the
-            // thinpool fails, run thin_check to check all mappings.
-            std::optional<brillo::Thinpool> thinpool =
-                lvm_->GetThinpool(*volume_group_, "thinpool");
+          // First attempt to activate the thinpool. If the activation of the
+          // thinpool fails, run thin_check to check all mappings.
+          std::optional<brillo::Thinpool> thinpool =
+              lvm_->GetThinpool(*volume_group_, "thinpool");
 
-            if (!thinpool) {
-              LOG(ERROR) << "Thinpool does not exist";
-              ClobberStateful({"fast", "keepimg"}, "'Invalid thinpool'");
-            }
-
-            if (!thinpool->Activate()) {
-              LOG(WARNING) << "Failed to activate thinpool, attempting repair";
-              if (!thinpool->Activate(/*check=*/true)) {
-                LOG(ERROR) << "Failed to repair and activate thinpool";
-                ClobberStateful({"fast", "keepimg"}, "'Corrupt thinpool'");
-              }
-            }
-
-            // Attempt to now activate the unencrypted stateful logical volume.
-            std::optional<brillo::LogicalVolume> unencrypted_lv =
-                lvm_->GetLogicalVolume(*volume_group_, "unencrypted");
-
-            if (!unencrypted_lv || !unencrypted_lv->Activate()) {
-              LOG(ERROR) << "Failed to activate unencrypted stateful logical "
-                         << "volume.";
-
-              ClobberStateful({"fast", "keepimg", "preserve_lvs"},
-                              "'Invalid unencrypted logical volume'");
-            }
-            should_mount_lvm = true;
+          if (!thinpool) {
+            LOG(ERROR) << "Thinpool does not exist";
+            ClobberStateful({"fast", "keepimg"}, "'Invalid thinpool'");
           }
+
+          if (!thinpool->Activate()) {
+            LOG(WARNING) << "Failed to activate thinpool, attempting repair";
+            if (!thinpool->Activate(/*check=*/true)) {
+              LOG(ERROR) << "Failed to repair and activate thinpool";
+              ClobberStateful({"fast", "keepimg"}, "'Corrupt thinpool'");
+            }
+          }
+
+          // Attempt to now activate the unencrypted stateful logical volume.
+          std::optional<brillo::LogicalVolume> unencrypted_lv =
+              lvm_->GetLogicalVolume(*volume_group_, "unencrypted");
+
+          if (!unencrypted_lv || !unencrypted_lv->Activate()) {
+            LOG(ERROR) << "Failed to activate unencrypted stateful logical "
+                       << "volume.";
+
+            ClobberStateful({"fast", "keepimg", "preserve_lvs"},
+                            "'Invalid unencrypted logical volume'");
+          }
+          should_mount_lvm = true;
         }
       }
       bootstat_.LogEvent("lvm-activation-complete");

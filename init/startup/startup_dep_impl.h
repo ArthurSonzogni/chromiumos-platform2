@@ -84,9 +84,6 @@ class StartupDep {
   // Runs clobber-state with the given args.
   [[noreturn]] virtual void Clobber(const std::vector<std::string> args);
 
-  // Runs hiberman resume-init with the given output file.
-  virtual bool RunHiberman(const base::FilePath& output_file);
-
   // Run clobber-log with the given message.
   virtual void ClobberLog(const std::string& msg);
 

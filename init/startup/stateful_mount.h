@@ -38,8 +38,6 @@ class StatefulMount {
 
   virtual ~StatefulMount() = default;
 
-  bool HibernateResumeBoot();
-
   static bool GetImageVars(base::FilePath json_file,
                            std::string key,
                            base::Value* vars);
