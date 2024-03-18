@@ -5185,6 +5185,29 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return reply_future.Get();
   }
 
+  std::optional<user_data_auth::AuthenticateAuthFactorReply>
+  AuthenticatePasswordAuthFactor(const std::string& auth_session_id,
+                                 const std::string& label,
+                                 const std::string& password) {
+    user_data_auth::AuthenticateAuthFactorRequest auth_request;
+    auth_request.set_auth_session_id(auth_session_id);
+    auth_request.set_auth_factor_label(label);
+    auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
+        password);
+    return AuthenticateAuthFactorSync(auth_request);
+  }
+
+  std::optional<user_data_auth::AuthenticateAuthFactorReply>
+  AuthenticatePinAuthFactor(const std::string& auth_session_id,
+                            const std::string& label,
+                            const std::string& pin) {
+    user_data_auth::AuthenticateAuthFactorRequest auth_request;
+    auth_request.set_auth_session_id(auth_session_id);
+    auth_request.set_auth_factor_label(label);
+    auth_request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
+    return AuthenticateAuthFactorSync(auth_request);
+  }
+
  protected:
   // Mock mount factory for mocking Mount objects.
   MockMountFactory mount_factory_;
@@ -5934,6 +5957,58 @@ TEST_F(UserDataAuthApiTest, MigrateLegacyFingerprintsNoActiveUserSession) {
       MigrateLegacyFingerprintsSync(req);
   ASSERT_TRUE(reply.has_value());
   ASSERT_EQ(reply->error(), user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+}
+
+TEST_F(UserDataAuthApiTest, ResetLECredentialsSuccess) {
+  constexpr char kPinLabel[] = "pin-label";
+  constexpr char kPin[] = "123456";
+  constexpr char kWrongPin[] = "111111";
+  // Prepare an account.
+  ASSERT_TRUE(CreateTestUser());
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
+  ASSERT_TRUE(session_id.has_value());
+
+  // Add the PIN auth factor.
+  user_data_auth::AddAuthFactorRequest add_factor_request;
+  add_factor_request.set_auth_session_id(session_id.value());
+  add_factor_request.mutable_auth_factor()->set_type(
+      user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PIN);
+  add_factor_request.mutable_auth_factor()->set_label(kPinLabel);
+  add_factor_request.mutable_auth_factor()->mutable_pin_metadata();
+  add_factor_request.mutable_auth_input()->mutable_pin_input()->set_secret(
+      kPin);
+  std::optional<user_data_auth::AddAuthFactorReply> add_factor_reply =
+      AddAuthFactorSync(add_factor_request);
+  ASSERT_TRUE(add_factor_reply.has_value());
+  ASSERT_EQ(add_factor_reply->error(),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Lock out PIN factor.
+  for (int i = 0; i < 5; i++) {
+    std::optional<user_data_auth::AuthenticateAuthFactorReply> auth_reply =
+        AuthenticatePinAuthFactor(session_id.value(), kPinLabel, kWrongPin);
+    ASSERT_TRUE(auth_reply.has_value());
+    ASSERT_NE(auth_reply->error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  }
+
+  // Correct PIN failed due to lockout.
+  std::optional<user_data_auth::AuthenticateAuthFactorReply> auth_reply =
+      AuthenticatePinAuthFactor(session_id.value(), kPinLabel, kPin);
+  ASSERT_TRUE(auth_reply.has_value());
+  ASSERT_EQ(auth_reply->error_info().primary_action(),
+            user_data_auth::PRIMARY_FACTOR_LOCKED_OUT);
+
+  // Reset PIN by password auth.
+  auth_reply = AuthenticatePasswordAuthFactor(session_id.value(),
+                                              kPasswordLabel, kPassword1);
+  ASSERT_TRUE(auth_reply.has_value());
+  ASSERT_EQ(auth_reply->error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Correct PIN should succeed now.
+  auth_reply = AuthenticatePinAuthFactor(session_id.value(), kPinLabel, kPin);
+  ASSERT_TRUE(auth_reply.has_value());
+  ASSERT_EQ(auth_reply->error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 
 }  // namespace cryptohome
