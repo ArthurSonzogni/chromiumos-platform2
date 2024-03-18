@@ -50,6 +50,16 @@ std::map<BuiltinModelId, BuiltinModelMetadata> GetBuiltinModelMetadata() {
               "PonchoPalmRejectionModel",
           },
       },
+      {
+          BuiltinModelId::PONCHO_PALM_REJECTION_20240313,
+          {
+              BuiltinModelId::PONCHO_PALM_REJECTION_20240313,
+              "mlservice-model-poncho-palm_rejection_g-20240313-v0.tflite",
+              {{"input", 0}},
+              {{"output", 21}},
+              "PonchoPalmRejectionModel",
+          },
+      },
   };
 }
 
