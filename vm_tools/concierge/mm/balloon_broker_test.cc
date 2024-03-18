@@ -487,8 +487,8 @@ TEST_F(BalloonBrokerTest, HandleDecisionLatencyMetrics) {
                                          ResizePriority::kPerceptibleTab, _))
         .Times(1);
     FakeBalloonBlocker::fake_balloon_blockers_[vm_cid]
-        ->try_resize_results_.emplace_back(MiB(512));
-    kill_request_handler_.Run(host_client, MiB(512),
+        ->try_resize_results_.emplace_back(MiB(-512));
+    kill_request_handler_.Run(host_client, MiB(-512),
                               ResizePriority::kPerceptibleTab);
     decision_latency_handler_.Run(host_client, result);
   }

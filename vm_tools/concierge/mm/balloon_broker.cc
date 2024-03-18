@@ -420,7 +420,7 @@ void BalloonBroker::HandleDecisionLatency(Client client,
     metrics_->SendEnumToUMA(GetMetricName(client.cid, kDecisionTimeoutMetric),
                             static_cast<int>(bb_client->kill_request_priority),
                             LowestResizePriority() + 1);
-    if (bb_client->kill_request_result > 0) {
+    if (bb_client->kill_request_result != 0) {
       // If the client timed out waiting for the response but the kill request
       // was successful, this means that something was killed when it shouldn't
       // have been.
