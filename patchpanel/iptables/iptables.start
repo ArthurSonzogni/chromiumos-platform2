@@ -24,7 +24,7 @@
 -A OUTPUT -m mark --mark 0x0/0xffff0000 -j CONNMARK --restore-mark --nfmask 0xffff0000 --ctmask 0xffff0000
 # All local outgoing DNS traffic eligible to VPN routing should skip the VPN
 # routing chain and instead go through DNS proxy.
--A OUTPUT -m owner ! --uid-owner 1000 -j skip_apply_vpn_mark
+-A OUTPUT -j skip_apply_vpn_mark
 # All local outgoing traffic eligible to VPN routing should traverse the VPN
 # marking chain.
 -A OUTPUT -m mark --mark 0x8000/0xc000 -j apply_vpn_mark
@@ -97,8 +97,6 @@ COMMIT
 :POSTROUTING ACCEPT [0:0]
 :redirect_default_dns - [0:0]
 :redirect_user_dns - [0:0]
-:redirect_chrome_dns - [0:0]
-:snat_chrome_dns - [0:0]
 :redirect_dns - [0:0]
 :ingress_port_forwarding - [0:0]
 :apply_auto_dnat_to_arc - [0:0]
@@ -113,7 +111,6 @@ COMMIT
 -A PREROUTING -j apply_auto_dnat_to_arc
 -A PREROUTING -j apply_auto_dnat_to_crostini
 -A PREROUTING -j apply_auto_dnat_to_parallels
--A OUTPUT -j redirect_chrome_dns
 -A OUTPUT -m mark --mark 0x8000/0xc000 -j redirect_user_dns
 
 # Set static SNAT rules for any traffic originated from a guest (ARC,
@@ -122,7 +119,6 @@ COMMIT
 # is used (without SLAAC). See AddDownstreamInterfaceRules for the method
 # that sets up the SNAT mark.
 -A POSTROUTING -m mark --mark 0x1/0x1 -j MASQUERADE
--A POSTROUTING -m mark --mark 0x100/0x3f00 -j snat_chrome_dns
 COMMIT
 
 *filter

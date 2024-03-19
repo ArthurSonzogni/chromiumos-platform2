@@ -53,7 +53,6 @@ constexpr char kDefaultIfname[] = "vmtap%d";
 constexpr net_base::IPv4Address kArcAddr(100, 115, 92, 2);
 constexpr net_base::IPv4Address kLocalhostAddr(127, 0, 0, 1);
 constexpr char kDefaultDnsPort[] = "53";
-constexpr char kChronosUid[] = "chronos";
 constexpr uint16_t kAdbServerPort = 5555;
 
 constexpr std::string_view kIptablesStartScriptPath =
@@ -113,11 +112,9 @@ constexpr char kApplyAutoDNATToParallelsChain[] =
     "apply_auto_dnat_to_parallels";
 // nat PREROUTING chain for egress traffic from downstream guests.
 constexpr char kRedirectDefaultDnsChain[] = "redirect_default_dns";
-// nat OUTPUT chains for egress traffic from processes running on the host.
-constexpr char kRedirectChromeDnsChain[] = "redirect_chrome_dns";
+// nat OUTPUT chain for egress traffic from processes running on the host.
 constexpr char kRedirectUserDnsChain[] = "redirect_user_dns";
-// nat POSTROUTING chains for egress traffic from processes running on the host.
-constexpr char kSNATChromeDnsChain[] = "snat_chrome_dns";
+// nat POSTROUTING chain for egress traffic from processes running on the host.
 constexpr char kSNATUserDnsChain[] = "snat_user_dns";
 
 // Chains for QoS.
@@ -699,63 +696,6 @@ void Datapath::StopRoutingNamespace(const ConnectedNamespace& nsinfo) {
   NetnsDeleteName(nsinfo.netns_name);
 }
 
-bool Datapath::ModifyChromeDnsRedirect(IpFamily family,
-                                       const DnsRedirectionRule& rule,
-                                       Iptables::Command op) {
-  // Validate nameservers.
-  for (const auto& nameserver : rule.nameservers) {
-    if (ConvertIpFamily(nameserver.GetFamily()) != family) {
-      LOG(ERROR) << "Invalid nameserver address: " << nameserver
-                 << ", the expected family is "
-                 << (family == IpFamily::kIPv4 ? "IPv4" : "IPv6");
-      return false;
-    }
-  }
-
-  bool success = true;
-  for (const auto& protocol : {"udp", "tcp"}) {
-    for (size_t i = 0; i < rule.nameservers.size(); i++) {
-      std::vector<std::string> args{
-          "-p",
-          protocol,
-          "--dport",  // input destination port
-          kDefaultDnsPort,
-          "-m",
-          "owner",
-          "--uid-owner",
-          kChronosUid,
-      };
-
-      // If there are multiple destination IPs, forward to them in a round robin
-      // fashion with statistics module.
-      if (rule.nameservers.size() > 1) {
-        std::initializer_list<std::string> statistic_args = {
-            "-m",       "statistic",
-            "--mode",   "nth",
-            "--every",  std::to_string(rule.nameservers.size() - i),
-            "--packet", "0",
-        };
-        args.insert(args.end(), statistic_args);
-      }
-      args.insert(args.end(), {
-                                  "-j",
-                                  "DNAT",
-                                  "--to-destination",
-                                  rule.nameservers[i].ToString(),
-                                  "-w",
-                              });
-      if (!ModifyIptables(family, Iptables::Table::kNat, op,
-                          kRedirectChromeDnsChain, args)) {
-        success = false;
-      }
-    }
-  }
-  if (!ModifyDnsProxyMasquerade(family, op, kSNATChromeDnsChain)) {
-    success = false;
-  }
-  return success;
-}
-
 bool Datapath::ModifyDnsProxyDNAT(IpFamily family,
                                   const DnsRedirectionRule& rule,
                                   Iptables::Command op,
@@ -815,20 +755,14 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
         return false;
       }
 
-      // Add DNS redirect rules for chrome traffic.
-      if (!ModifyChromeDnsRedirect(family, rule, Iptables::Command::kA)) {
-        LOG(ERROR) << "Failed to add chrome DNS DNAT rule";
-        return false;
-      }
-
-      // Add DNS redirect rule for user traffic.
+      // Add DNS redirect rule for user (including Chrome) traffic.
       if (!ModifyDnsProxyDNAT(family, rule, Iptables::Command::kA,
                               /*ifname=*/"", kRedirectUserDnsChain)) {
         LOG(ERROR) << "Failed to add user DNS DNAT rule";
         return false;
       }
 
-      // Add MASQUERADE rule for user traffic.
+      // Add MASQUERADE rule for user (including Chrome) traffic.
       if (family == IpFamily::kIPv6 &&
           !ModifyDnsProxyMasquerade(family, Iptables::Command::kA,
                                     kSNATUserDnsChain)) {
@@ -836,7 +770,8 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
         return false;
       }
 
-      // Allows user traffic to go to user DNS proxy's address.
+      // Allows user (including Chrome) traffic to go to user DNS proxy's
+      // address.
       if (!ModifyDnsProxyAcceptRule(family, rule, Iptables::Command::kA)) {
         LOG(ERROR) << "Failed to add DNS proxy accept rule for "
                    << rule.host_ifname;
@@ -845,11 +780,6 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION: {
-      if (!ModifyDnsExcludeDestinationRule(family, rule, Iptables::Command::kI,
-                                           kRedirectChromeDnsChain)) {
-        LOG(ERROR) << "Failed to add Chrome DNS exclude rule";
-        return false;
-      }
       if (!ModifyDnsExcludeDestinationRule(family, rule, Iptables::Command::kI,
                                            kRedirectUserDnsChain)) {
         LOG(ERROR) << "Failed to add user DNS exclude rule";
@@ -889,7 +819,6 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::USER: {
-      ModifyChromeDnsRedirect(family, rule, Iptables::Command::kD);
       ModifyDnsProxyDNAT(family, rule, Iptables::Command::kD, /*ifname=*/"",
                          kRedirectUserDnsChain);
       ModifyDnsRedirectionSkipVpnRule(family, Iptables::Command::kD);
@@ -901,8 +830,6 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION: {
-      ModifyDnsExcludeDestinationRule(family, rule, Iptables::Command::kD,
-                                      kRedirectChromeDnsChain);
       ModifyDnsExcludeDestinationRule(family, rule, Iptables::Command::kD,
                                       kRedirectUserDnsChain);
       ModifyDnsProxyAcceptRule(family, rule, Iptables::Command::kD);

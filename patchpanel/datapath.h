@@ -495,9 +495,6 @@ class Datapath {
       TrafficSource source,
       bool static_ipv6 = false);
 
-  bool ModifyChromeDnsRedirect(IpFamily family,
-                               const DnsRedirectionRule& rule,
-                               Iptables::Command command);
   bool ModifyRedirectDnsDNATRule(Iptables::Command command,
                                  const std::string& protocol,
                                  const std::string& ifname,

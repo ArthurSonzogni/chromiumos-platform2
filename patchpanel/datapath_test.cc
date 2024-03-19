@@ -118,27 +118,16 @@ class MockProcessRunnerForIptablesTest : public MockProcessRunner {
 
   void AddIptablesExpectation(IpFamily family,
                               std::string_view args,
-                              int call_count = 1,
-                              bool in_sequence = false) {
+                              int call_count = 1) {
     if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
       expected_iptables_calls_ipv4_.insert(expected_iptables_calls_ipv4_.end(),
                                            static_cast<size_t>(call_count),
                                            std::string(args));
-      if (in_sequence) {
-        expected_iptables_calls_ipv4_sequenced_.insert(
-            expected_iptables_calls_ipv4_sequenced_.end(),
-            static_cast<size_t>(call_count), std::string(args));
-      }
     }
     if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
       expected_iptables_calls_ipv6_.insert(expected_iptables_calls_ipv6_.end(),
                                            static_cast<size_t>(call_count),
                                            std::string(args));
-      if (in_sequence) {
-        expected_iptables_calls_ipv6_sequenced_.insert(
-            expected_iptables_calls_ipv6_sequenced_.end(),
-            static_cast<size_t>(call_count), std::string(args));
-      }
     }
   }
 
@@ -243,13 +232,6 @@ void Verify_iptables(MockProcessRunnerForIptablesTest& runner,
                      const std::string& args,
                      int call_count = 1) {
   runner.AddIptablesExpectation(family, args, call_count);
-}
-
-void Verify_iptables_in_sequence(MockProcessRunnerForIptablesTest& runner,
-                                 IpFamily family,
-                                 const std::string& args) {
-  runner.AddIptablesExpectation(family, args, /*call_count=*/1,
-                                /*in_sequence=*/true);
 }
 
 void Verify_ip_netns_add(MockProcessRunner& runner,
@@ -1406,36 +1388,6 @@ TEST_F(DatapathTest, StartDnsRedirection_Default) {
 }
 
 TEST_F(DatapathTest, StartDnsRedirection_User) {
-  Verify_iptables_in_sequence(
-      runner_, IpFamily::kIPv4,
-      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
-      "0 -j DNAT --to-destination 8.8.8.8 -w");
-  Verify_iptables_in_sequence(
-      runner_, IpFamily::kIPv4,
-      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 8.4.8.4 -w");
-  Verify_iptables_in_sequence(
-      runner_, IpFamily::kIPv4,
-      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 1.1.1.1 -w");
-  Verify_iptables_in_sequence(
-      runner_, IpFamily::kIPv4,
-      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
-      "0 -j DNAT --to-destination 8.8.8.8 -w");
-  Verify_iptables_in_sequence(
-      runner_, IpFamily::kIPv4,
-      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 8.4.8.4 -w");
-  Verify_iptables_in_sequence(
-      runner_, IpFamily::kIPv4,
-      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
@@ -1445,27 +1397,6 @@ TEST_F(DatapathTest, StartDnsRedirection_User) {
   Verify_iptables(runner_, IpFamily::kIPv4,
                   "filter -A accept_egress_to_dns_proxy -d 100.115.92.130 -j "
                   "ACCEPT -w");
-
-  Verify_iptables_in_sequence(
-      runner_, IpFamily::kIPv6,
-      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
-  Verify_iptables_in_sequence(
-      runner_, IpFamily::kIPv6,
-      "nat -A redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
-  Verify_iptables_in_sequence(
-      runner_, IpFamily::kIPv6,
-      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
-  Verify_iptables_in_sequence(
-      runner_, IpFamily::kIPv6,
-      "nat -A redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
   Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -A snat_user_dns -p udp --dport 53 -j "
                   "MASQUERADE -w");
@@ -1481,12 +1412,6 @@ TEST_F(DatapathTest, StartDnsRedirection_User) {
   Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -A accept_egress_to_dns_proxy -d ::1 -j ACCEPT -w");
 
-  Verify_iptables(runner_, IpFamily::kDual,
-                  "nat -A snat_chrome_dns -p udp --dport 53 -j "
-                  "MASQUERADE -w");
-  Verify_iptables(runner_, IpFamily::kDual,
-                  "nat -A snat_chrome_dns -p tcp --dport 53 -j "
-                  "MASQUERADE -w");
   Verify_iptables(
       runner_, IpFamily::kDual,
       "mangle -A skip_apply_vpn_mark -p udp --dport 53 -j ACCEPT -w");
@@ -1517,12 +1442,6 @@ TEST_F(DatapathTest, StartDnsRedirection_User) {
 
 TEST_F(DatapathTest, StartDnsRedirection_ExcludeDestination) {
   Verify_iptables(runner_, IpFamily::kIPv4,
-                  "nat -I redirect_chrome_dns -p udp ! -d 100.115.92.130 "
-                  "--dport 53 -j RETURN -w");
-  Verify_iptables(runner_, IpFamily::kIPv4,
-                  "nat -I redirect_chrome_dns -p tcp ! -d 100.115.92.130 "
-                  "--dport 53 -j RETURN -w");
-  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_user_dns -p udp ! -d 100.115.92.130 --dport "
                   "53 -j RETURN -w");
   Verify_iptables(runner_, IpFamily::kIPv4,
@@ -1531,12 +1450,6 @@ TEST_F(DatapathTest, StartDnsRedirection_ExcludeDestination) {
   Verify_iptables(runner_, IpFamily::kIPv4,
                   "filter -A accept_egress_to_dns_proxy -d 100.115.92.130 -j "
                   "ACCEPT -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv6,
-      "nat -I redirect_chrome_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv6,
-      "nat -I redirect_chrome_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
   Verify_iptables(
       runner_, IpFamily::kIPv6,
       "nat -I redirect_user_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
@@ -1591,36 +1504,6 @@ TEST_F(DatapathTest, StopDnsRedirection_Default) {
 }
 
 TEST_F(DatapathTest, StopDnsRedirection_User) {
-  Verify_iptables(
-      runner_, IpFamily::kIPv4,
-      "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
-      "0 -j DNAT --to-destination 8.8.8.8 -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv4,
-      "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 8.4.8.4 -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv4,
-      "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 1.1.1.1 -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv4,
-      "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 3 --packet "
-      "0 -j DNAT --to-destination 8.8.8.8 -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv4,
-      "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 8.4.8.4 -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv4,
-      "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 1.1.1.1 -w");
   Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_user_dns -p udp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
@@ -1631,26 +1514,6 @@ TEST_F(DatapathTest, StopDnsRedirection_User) {
                   "filter -D accept_egress_to_dns_proxy -d 100.115.92.130 -j "
                   "ACCEPT -w");
 
-  Verify_iptables(
-      runner_, IpFamily::kIPv6,
-      "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv6,
-      "nat -D redirect_chrome_dns -p udp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv6,
-      "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 2 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8888 -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv6,
-      "nat -D redirect_chrome_dns -p tcp --dport 53 -m owner "
-      "--uid-owner chronos -m statistic --mode nth --every 1 --packet "
-      "0 -j DNAT --to-destination 2001:4860:4860::8844 -w");
   Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -D snat_user_dns -p udp --dport 53 -j "
                   "MASQUERADE -w");
@@ -1666,12 +1529,6 @@ TEST_F(DatapathTest, StopDnsRedirection_User) {
   Verify_iptables(runner_, IpFamily::kIPv6,
                   "filter -D accept_egress_to_dns_proxy -d ::1 -j ACCEPT -w");
 
-  Verify_iptables(runner_, IpFamily::kDual,
-                  "nat -D snat_chrome_dns -p udp --dport 53 -j "
-                  "MASQUERADE -w");
-  Verify_iptables(runner_, IpFamily::kDual,
-                  "nat -D snat_chrome_dns -p tcp --dport 53 -j "
-                  "MASQUERADE -w");
   Verify_iptables(
       runner_, IpFamily::kDual,
       "mangle -D skip_apply_vpn_mark -p udp --dport 53 -j ACCEPT -w");
@@ -1702,12 +1559,6 @@ TEST_F(DatapathTest, StopDnsRedirection_User) {
 
 TEST_F(DatapathTest, StopDnsRedirection_ExcludeDestination) {
   Verify_iptables(runner_, IpFamily::kIPv4,
-                  "nat -D redirect_chrome_dns -p udp ! -d 100.115.92.130 "
-                  "--dport 53 -j RETURN -w");
-  Verify_iptables(runner_, IpFamily::kIPv4,
-                  "nat -D redirect_chrome_dns -p tcp ! -d 100.115.92.130 "
-                  "--dport 53 -j RETURN -w");
-  Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_user_dns -p udp ! -d 100.115.92.130 --dport "
                   "53 -j RETURN -w");
   Verify_iptables(runner_, IpFamily::kIPv4,
@@ -1716,12 +1567,6 @@ TEST_F(DatapathTest, StopDnsRedirection_ExcludeDestination) {
   Verify_iptables(runner_, IpFamily::kIPv4,
                   "filter -D accept_egress_to_dns_proxy -d 100.115.92.130 -j "
                   "ACCEPT -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv6,
-      "nat -D redirect_chrome_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
-  Verify_iptables(
-      runner_, IpFamily::kIPv6,
-      "nat -D redirect_chrome_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
   Verify_iptables(
       runner_, IpFamily::kIPv6,
       "nat -D redirect_user_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
