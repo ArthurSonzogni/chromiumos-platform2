@@ -105,7 +105,6 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
   base::FilePath config_path_;
 
   ScopedBufferHandle output_buffer_;
-  std::vector<Camera3StreamBuffer> output_buffers_;
 
   void InitialiseStreamManipulator();
   void ProcessFileThroughStreamManipulator(base::FilePath infile,
@@ -162,11 +161,10 @@ void EffectsStreamManipulatorTest::InitialiseStreamManipulator() {
 void EffectsStreamManipulatorTest::ProcessFileThroughStreamManipulator(
     base::FilePath infile, base::FilePath outfile, int num_repeats) {
   for (uint32_t i = 0; i < num_repeats; ++i) {
-    // read input file into buffer
-    ReadFileIntoBuffer(*output_buffer_, infile);
-    Camera3CaptureDescriptor result(
-        camera3_capture_result_t{.frame_number = i});
-    output_buffers_.emplace_back(
+    Camera3CaptureDescriptor request(
+        camera3_capture_request_t{.frame_number = i});
+    std::vector<Camera3StreamBuffer> request_buffers;
+    request_buffers.push_back(
         Camera3StreamBuffer::MakeRequestOutput(camera3_stream_buffer_t{
             .stream = &yuv_720_stream,
             .buffer = output_buffer_.get(),
@@ -174,7 +172,27 @@ void EffectsStreamManipulatorTest::ProcessFileThroughStreamManipulator(
             .acquire_fence = -1,
             .release_fence = -1,
         }));
-    result.SetOutputBuffers(std::move(output_buffers_));
+    request.SetOutputBuffers(std::move(request_buffers));
+    ASSERT_TRUE(stream_manipulator_->ProcessCaptureRequest(&request));
+    // Assume stream manipulator uses the same stream to request the result.
+    ASSERT_EQ(request.num_output_buffers(), 1);
+    ASSERT_EQ(request.GetOutputBuffers()[0].stream(), &yuv_720_stream);
+
+    // Read input file into buffer.
+    ReadFileIntoBuffer(*output_buffer_, infile);
+
+    Camera3CaptureDescriptor result(
+        camera3_capture_result_t{.frame_number = i});
+    std::vector<Camera3StreamBuffer> result_buffers;
+    result_buffers.push_back(
+        Camera3StreamBuffer::MakeResultOutput(camera3_stream_buffer_t{
+            .stream = &yuv_720_stream,
+            .buffer = output_buffer_.get(),
+            .status = CAMERA3_BUFFER_STATUS_OK,
+            .acquire_fence = -1,
+            .release_fence = -1,
+        }));
+    result.SetOutputBuffers(std::move(result_buffers));
     stream_manipulator_->GetTaskRunner()->PostTask(
         FROM_HERE, base::BindOnce(
                        [](StreamManipulator* stream_manipulator,

@@ -39,6 +39,7 @@ group("all") {
       ":camera_buffer_pool_test",
       ":camera_face_detection_test",
       ":camera_hal3_helpers_test",
+      ":capture_result_sequencer_test",
       ":cbm_test",
       ":embed_file_toc_test",
       ":future_test",
@@ -320,6 +321,7 @@ source_set("stream_manipulator") {
   ]
 
   deps = [
+    ":capture_result_sequencer",
     ":jpeg",
     "//camera/gpu:gpu_resources",
   ]
@@ -344,6 +346,15 @@ source_set("stream_manipulator") {
   if (use.camera_feature_super_res) {
     deps += [ "//camera/features/super_resolution" ]
   }
+}
+
+source_set("capture_result_sequencer") {
+  sources = [ "//camera/common/capture_result_sequencer.cc" ]
+  public_configs = [ ":target_defaults" ]
+  public_deps = [
+    ":base",
+    ":mojo_base",
+  ]
 }
 
 shared_library("libcros_camera") {
@@ -444,6 +455,14 @@ if (use.test) {
     ]
     configs += [ ":target_defaults_test" ]
     deps = [ ":tracing" ]
+    run_test = true
+  }
+
+  executable("capture_result_sequencer_test") {
+    sources = [ "//camera/common/capture_result_sequencer_test.cc" ]
+    configs += [ ":target_defaults_test" ]
+    defines = [ "EGL_NO_X11" ]
+    deps = [ ":capture_result_sequencer" ]
     run_test = true
   }
 

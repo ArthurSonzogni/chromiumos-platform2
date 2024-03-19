@@ -44,6 +44,7 @@
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "common/camera_buffer_pool.h"
 #include "common/camera_hal3_helpers.h"
+#include "common/capture_result_sequencer.h"
 #include "common/reloadable_config_file.h"
 #include "common/still_capture_processor.h"
 #include "common/stream_manipulator.h"
@@ -403,7 +404,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   RuntimeOptions* runtime_options_;
   SegmentationModelType default_segmentation_model_type_
       GUARDED_BY_CONTEXT(gl_thread_checker_) = SegmentationModelType::kHd;
-  StreamManipulator::Callbacks callbacks_;
+
+  std::optional<CaptureResultSequencer> result_sequencer_;
 
   // Maximum number of frames that can be queued into effects pipeline.
   // Use the default value to setup the pipeline early.
@@ -629,7 +631,7 @@ void EffectsStreamManipulatorImpl::CaptureContext::CheckForCompletion() && {
 bool EffectsStreamManipulatorImpl::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
-  callbacks_ = std::move(callbacks);
+  result_sequencer_.emplace(std::move(callbacks));
   return true;
 }
 
@@ -775,6 +777,7 @@ void EffectsStreamManipulatorImpl::ResetState() {
   effects_pipeline_tracker_.Reset();
   process_contexts_.clear();
   still_capture_processor_->Reset();
+  result_sequencer_.reset();
   base::AutoLock lock(stream_contexts_lock_);
   for (auto& stream_context : stream_contexts_) {
     for (auto it = stream_context->capture_contexts.begin();
@@ -861,6 +864,12 @@ bool EffectsStreamManipulatorImpl::ConstructDefaultRequestSettings(
 bool EffectsStreamManipulatorImpl::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
   TRACE_EFFECTS("frame_number", request->frame_number());
+
+  gl_thread_.PostTaskSync(
+      FROM_HERE, base::BindOnce(&CaptureResultSequencer::AddRequest,
+                                base::Unretained(&result_sequencer_.value()),
+                                std::ref(*request)));
+
   if (request->has_input_buffer()) {
     // Skip reprocessing requests. We can't touch the output buffers of a
     // reprocessing request since they have to be produced from the given input
@@ -1068,7 +1077,9 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
 
     auto [it, inserted] =
         process_contexts.emplace(size, std::make_unique<ProcessContext>());
-    it->second->result_callback = callbacks_.result_callback;
+    it->second->result_callback =
+        base::BindRepeating(&CaptureResultSequencer::AddResult,
+                            base::Unretained(&result_sequencer_.value()));
     it->second->frame_number = result.frame_number();
     it->second->result_buffer_appended =
         result_buffer.stream() == yuv_stream_for_blob && yuv_stream_appended;
@@ -1112,15 +1123,6 @@ void EffectsStreamManipulatorImpl::RenderEffect(
   last_timestamp_ = timestamp;
 
   if (process_context->skip_effects_processing) {
-    if (!process_contexts_.empty()) {
-      // Delay returning this frame until the previous frames under processing
-      // are done to keep them in order.
-      DCHECK_GT(timestamp, process_contexts_.rbegin()->first);
-      DVLOGF(1) << "Frame " << process_context->frame_number << " (timestamp "
-                << timestamp << ") pending on previous effects processing";
-      process_contexts_.emplace(timestamp, std::move(process_context));
-      return;
-    }
     if (!ProcessStillCapture(process_context->frame_number,
                              process_context->result_buffer, nullptr)) {
       LOGF(ERROR) << "Failed to process YUV for still capture on frame "
@@ -1202,7 +1204,10 @@ void EffectsStreamManipulatorImpl::RenderEffect(
 }
 
 void EffectsStreamManipulatorImpl::Notify(camera3_notify_msg_t msg) {
-  callbacks_.notify_callback.Run(std::move(msg));
+  gl_thread_.PostTaskAsync(
+      FROM_HERE,
+      base::BindOnce(&CaptureResultSequencer::Notify,
+                     base::Unretained(&result_sequencer_.value()), msg));
 }
 
 bool EffectsStreamManipulatorImpl::Flush() {
@@ -1247,22 +1252,6 @@ void EffectsStreamManipulatorImpl::PostProcess(int64_t timestamp,
   process_contexts_.erase(timestamp);
   camera3_stream_buffer_t& result_buffer =
       process_context->result_buffer.mutable_raw_buffer();
-  // After processing this frame, we can return the pending no-effect frames
-  // in order.
-  pending_contexts_cleaner.ReplaceClosure(base::BindOnce(
-      [](base::flat_map<int64_t, std::unique_ptr<ProcessContext>>&
-             process_contexts) {
-        while (!process_contexts.empty()) {
-          auto it = process_contexts.begin();
-          if (!it->second->skip_effects_processing) {
-            break;
-          }
-          DVLOGF(1) << "Frame " << it->second->frame_number << " (timestamp "
-                    << it->first << ") returned to client";
-          process_contexts.erase(it);
-        }
-      },
-      std::ref(process_contexts_)));
 
   // The pipeline produces a GL texture, which needs to be synchronously
   // converted to YUV on this thread (because that's where the GL context
@@ -1350,7 +1339,10 @@ void EffectsStreamManipulatorImpl::ReturnStillCaptureResult(
     }
     metrics_.RecordStillShotTaken();
   }
-  callbacks_.result_callback.Run(std::move(result));
+  gl_thread_.PostTaskAsync(
+      FROM_HERE, base::BindOnce(&CaptureResultSequencer::AddResult,
+                                base::Unretained(&result_sequencer_.value()),
+                                std::move(result)));
 }
 
 void EffectsStreamManipulatorImpl::OnOptionsUpdated(
@@ -1716,33 +1708,38 @@ void EffectsStreamManipulatorImpl::ReturnCaptureResult(
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   TRACE_EFFECTS("frame_number", result.frame_number());
 
-  base::AutoLock lock(stream_contexts_lock_);
+  {
+    base::AutoLock lock(stream_contexts_lock_);
 
-  // Remove the appended output stream buffer from |result|.
-  const camera3_stream_t* appended_yuv_stream = nullptr;
-  StreamContext* blob_stream_context = nullptr;
-  for (auto& s : stream_contexts_) {
-    if (s->yuv_stream_for_blob) {
-      blob_stream_context = s.get();
-      break;
-    }
-  }
-  if (blob_stream_context) {
-    if (CaptureContext* capture_context =
-            blob_stream_context->GetCaptureContext(result.frame_number())) {
-      if (capture_context->yuv_stream_appended) {
-        appended_yuv_stream = blob_stream_context->yuv_stream_for_blob;
+    // Remove the appended output stream buffer from |result|.
+    const camera3_stream_t* appended_yuv_stream = nullptr;
+    StreamContext* blob_stream_context = nullptr;
+    for (auto& s : stream_contexts_) {
+      if (s->yuv_stream_for_blob) {
+        blob_stream_context = s.get();
+        break;
       }
-      std::move(*capture_context).CheckForCompletion();
     }
-  }
-  for (auto& buffer : result.AcquireOutputBuffers()) {
-    if (buffer.stream() != appended_yuv_stream) {
-      result.AppendOutputBuffer(std::move(buffer));
+    if (blob_stream_context) {
+      if (CaptureContext* capture_context =
+              blob_stream_context->GetCaptureContext(result.frame_number())) {
+        if (capture_context->yuv_stream_appended) {
+          appended_yuv_stream = blob_stream_context->yuv_stream_for_blob;
+        }
+        std::move(*capture_context).CheckForCompletion();
+      }
+    }
+    for (auto& buffer : result.AcquireOutputBuffers()) {
+      if (buffer.stream() != appended_yuv_stream) {
+        result.AppendOutputBuffer(std::move(buffer));
+      }
     }
   }
 
-  callbacks_.result_callback.Run(std::move(result));
+  gl_thread_.PostTaskAsync(
+      FROM_HERE, base::BindOnce(&CaptureResultSequencer::AddResult,
+                                base::Unretained(&result_sequencer_.value()),
+                                std::move(result)));
 }
 
 }  // namespace cros
