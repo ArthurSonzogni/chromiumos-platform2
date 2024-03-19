@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_NONINTERACTIVE_ROUTINE_CONTROL_H_
 
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
 
@@ -18,6 +19,15 @@ class NoninteractiveRoutineControl : public BaseRoutineControl {
   NoninteractiveRoutineControl& operator=(const NoninteractiveRoutineControl&) =
       delete;
   ~NoninteractiveRoutineControl() override;
+
+  // ash::cros_healthd::mojom::RoutineControl overrides
+  void ReplyInquiry(
+      ash::cros_healthd::mojom::RoutineInquiryReplyPtr reply) final;
+
+ private:
+  // Declared as private to prevent usages in derived classes.
+  ash::cros_healthd::mojom::RoutineStatePtr& mutable_state();
+  void NotifyObserver();
 };
 
 }  // namespace diagnostics

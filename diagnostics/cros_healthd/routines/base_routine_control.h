@@ -24,6 +24,10 @@ namespace diagnostics {
 // operate on state_ only through the protected methods. These methods will take
 // care of state transition checking and notifying the observer.
 //
+// Routines that request inquiries in the waiting state should inherit
+// `InteractiveRoutineControl`. Otherwise, inherit
+// `NoninteractiveRoutineControl`.
+//
 // RaiseException should be called for runtime error, where the inherited
 // routine will provide the reason for the exception. on_exception_ is to
 // be provided in the |SetOnExceptionCallback| function. The holder of
@@ -40,7 +44,7 @@ namespace diagnostics {
 //   ExampleRoutineControl(const ExampleRoutineControl&) = delete;
 //   ExampleRoutineControl& operator=(const ExampleRoutineControl&) = delete;
 //   ~ExampleRoutineControl() override = default;
-
+//
 //   void OnStart() override {
 //     SetWaitingState(kWaitingReason, "reason");
 //     ...
@@ -92,6 +96,10 @@ class BaseRoutineControl : public ash::cros_healthd::mojom::RoutineControl {
 
   // Set the state to waiting, this can only be called if the state is currently
   // running.
+  //
+  // NOTE: To wait for an interaction, inherit `InteractiveRoutineControl`.
+  // TODO(b/309781398): refactor to expose a dedicated method for
+  // `RoutineStateWaiting::Reason::kWaitingToBeScheduled`.
   void SetWaitingState(
       ash::cros_healthd::mojom::RoutineStateWaiting::Reason reason,
       const std::string& message);
@@ -101,10 +109,16 @@ class BaseRoutineControl : public ash::cros_healthd::mojom::RoutineControl {
   void SetFinishedState(bool has_passed,
                         ash::cros_healthd::mojom::RoutineDetailPtr detail);
 
- private:
+  // This is for derived template classes to access the `state_`.
+  ash::cros_healthd::mojom::RoutineStatePtr& mutable_state();
+
   // Notify the observer of the state change.
+  //
+  // Declared as protected for derived template classes to notify observer after
+  // modifying state with `mutable_state()`.
   void NotifyObserver();
 
+ private:
   // The derived classes implements this to perform the actions to start the
   // routine.
   virtual void OnStart() = 0;

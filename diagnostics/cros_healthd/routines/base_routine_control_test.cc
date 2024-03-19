@@ -54,6 +54,8 @@ class RoutineControlImplPeer final : public BaseRoutineControl {
 
   void OnStart() override { return; }
 
+  void ReplyInquiry(mojom::RoutineInquiryReplyPtr reply) override {}
+
   void FlushObserverForTesting() {
     if (observer_.is_bound()) {
       observer_.FlushForTesting();
@@ -287,6 +289,7 @@ TEST_F(BaseRoutineControlTest, EnterWaitingStateFromRunning) {
   EXPECT_EQ(state->state_union->get_waiting()->reason,
             mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled);
   EXPECT_EQ(state->state_union->get_waiting()->message, "Waiting Reason");
+  EXPECT_TRUE(state->state_union->get_waiting()->interaction.is_null());
 }
 
 // Test that state cannot enter waiting from initialized.

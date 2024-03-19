@@ -7,6 +7,8 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/check_op.h>
+#include <base/logging.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
@@ -16,7 +18,7 @@ namespace {
 
 namespace mojom = ash::cros_healthd::mojom;
 
-}
+}  // namespace
 
 namespace diagnostics {
 
@@ -35,7 +37,7 @@ void BaseRoutineControl::Start() {
          "exception can only be raised once";
   // The routine should only be started once.
   if (!state_->state_union->is_initialized()) {
-    LOG(ERROR) << "Routine Control is started more than once";
+    DLOG(INFO) << "Routine Control is started more than once";
     return;
   }
   state_->state_union =
@@ -61,6 +63,10 @@ void BaseRoutineControl::SetObserver(
 }
 
 const mojom::RoutineStatePtr& BaseRoutineControl::state() {
+  return state_;
+}
+
+mojom::RoutineStatePtr& BaseRoutineControl::mutable_state() {
   return state_;
 }
 
@@ -98,10 +104,12 @@ void BaseRoutineControl::SetRunningState() {
 
 void BaseRoutineControl::SetWaitingState(
     mojom::RoutineStateWaiting::Reason reason, const std::string& message) {
+  CHECK_NE(reason, mojom::RoutineStateWaiting::Reason::kWaitingInteraction);
   CHECK(state_->state_union->is_running())
       << "Can only set waiting state from running state";
-  state_->state_union = mojom::RoutineStateUnion::NewWaiting(
-      mojom::RoutineStateWaiting::New(reason, message));
+  state_->state_union =
+      mojom::RoutineStateUnion::NewWaiting(mojom::RoutineStateWaiting::New(
+          reason, message, /*interaction=*/nullptr));
   NotifyObserver();
 }
 
@@ -114,4 +122,5 @@ void BaseRoutineControl::SetFinishedState(bool has_passed,
       mojom::RoutineStateFinished::New(has_passed, std::move(detail)));
   NotifyObserver();
 }
+
 }  // namespace diagnostics

@@ -13,14 +13,14 @@
 #include <base/types/expected.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/interactive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
 class Context;
 
-class LedLitUpRoutine final : public BaseRoutineControl {
+class LedLitUpRoutine final : public InteractiveRoutineControl {
  public:
   static base::expected<std::unique_ptr<BaseRoutineControl>,
                         ash::cros_healthd::mojom::SupportStatusPtr>
@@ -32,6 +32,10 @@ class LedLitUpRoutine final : public BaseRoutineControl {
 
   // BaseRoutineControl overrides:
   void OnStart() override;
+
+  // InteractiveRoutineControl overrides:
+  void OnReplyInquiry(
+      ash::cros_healthd::mojom::RoutineInquiryReplyPtr reply) override;
 
  protected:
   LedLitUpRoutine(Context* context,

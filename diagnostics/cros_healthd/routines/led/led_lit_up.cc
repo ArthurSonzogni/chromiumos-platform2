@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/notimplemented.h>
 #include <base/types/expected.h>
 
 #include "diagnostics/cros_healthd/system/context.h"
@@ -81,6 +82,11 @@ void LedLitUpRoutine::OnStart() {
   RunNextStep();
 }
 
+void LedLitUpRoutine::OnReplyInquiry(mojom::RoutineInquiryReplyPtr reply) {
+  // TODO(b/309781398): Implement the function.
+  NOTIMPLEMENTED();
+}
+
 void LedLitUpRoutine::ReplierDisconnectHandler() {
   CHECK_EQ(step_, TestStep::kGetColorMatched);
   context_->executor()->ResetLedColor(name_,
@@ -146,7 +152,8 @@ void LedLitUpRoutine::RunNextStep() {
         ReplierDisconnectHandler();
       } else {
         SetPercentage(50);
-        SetWaitingState(mojom::RoutineStateWaiting::Reason::kWaitingUserInput,
+        // TODO(b/309781398): Use `SetWaitingInquiryState`.
+        SetWaitingState(mojom::RoutineStateWaiting::Reason::kWaitingInteraction,
                         "Waiting for user to check the LED color.");
         // Handle the disconnection during calling the remote function.
         replier_.set_disconnect_handler(

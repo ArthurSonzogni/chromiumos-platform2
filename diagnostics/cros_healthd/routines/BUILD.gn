@@ -36,6 +36,7 @@ source_set("utils") {
   sources = [
     "base_routine_control.cc",
     "diag_routine_with_status.cc",
+    "interactive_routine_control.cc",
     "noninteractive_routine_control.cc",
     "routine_adapter.cc",
     "routine_service.cc",
@@ -67,6 +68,8 @@ if (use.test) {
     sources = [
       "base_routine_control_test.cc",
       "diag_routine_with_status_test.cc",
+      "interactive_routine_control_test.cc",
+      "noninteractive_routine_control_test.cc",
       "routine_service_test.cc",
       "routine_v2_test_utils_test.cc",
       "simple_routine_test.cc",
