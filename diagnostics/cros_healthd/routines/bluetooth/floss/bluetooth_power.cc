@@ -13,7 +13,6 @@
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/cros_healthd/system/floss_event_hub.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics::floss {
@@ -45,11 +44,6 @@ void BluetoothPowerRoutine::OnStart() {
       base::BindOnce(&BluetoothPowerRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),
       kPowerRoutineTimeout);
-
-  event_subscriptions_.push_back(
-      context_->floss_event_hub()->SubscribeAdapterPoweredChanged(
-          base::BindRepeating(&BluetoothPowerRoutine::OnAdapterPoweredChanged,
-                              weak_ptr_factory_.GetWeakPtr())));
 
   Initialize(base::BindOnce(&BluetoothPowerRoutine::HandleInitializeResult,
                             weak_ptr_factory_.GetWeakPtr()));
@@ -89,18 +83,16 @@ void BluetoothPowerRoutine::RunNextStep() {
         return;
       }
 
-      // Wait for the property changed event in |OnAdapterPoweredChanged|.
-      ChangeAdapterPoweredState(
+      SetAdapterPoweredState(
           /*powered=*/false,
-          base::BindOnce(&BluetoothPowerRoutine::HandleChangePoweredResponse,
+          base::BindOnce(&BluetoothPowerRoutine::HandleSetPoweredResponse,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     }
     case TestStep::kCheckPoweredStatusOn:
-      // Wait for the property changed event in |OnAdapterPoweredChanged|.
-      ChangeAdapterPoweredState(
+      SetAdapterPoweredState(
           /*powered=*/true,
-          base::BindOnce(&BluetoothPowerRoutine::HandleChangePoweredResponse,
+          base::BindOnce(&BluetoothPowerRoutine::HandleSetPoweredResponse,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kComplete:
@@ -118,25 +110,19 @@ void BluetoothPowerRoutine::HandlePreCheckResponse(
   RunNextStep();
 }
 
-void BluetoothPowerRoutine::HandleChangePoweredResponse(
-    const base::expected<bool, std::string>& result) {
-  if (!result.has_value() || !result.value()) {
-    SetResultAndStop(result);
-  }
-}
-
-void BluetoothPowerRoutine::OnAdapterPoweredChanged(int32_t hci_interface,
-                                                    bool powered) {
-  if (hci_interface != default_adapter_hci_ ||
-      (step_ != TestStep::kCheckPoweredStatusOff &&
-       step_ != TestStep::kCheckPoweredStatusOn))
+void BluetoothPowerRoutine::HandleSetPoweredResponse(
+    std::optional<bool> dbus_powered) {
+  if (!dbus_powered.has_value()) {
+    SetResultAndStop(
+        base::unexpected("Got unexpected error when setting adapter powered"));
     return;
+  }
 
   // Validate the powered status in HCI level.
   context_->executor()->GetHciDeviceConfig(
       /*hci_interface=*/default_adapter_hci_,
       base::BindOnce(&BluetoothPowerRoutine::HandleHciConfigResponse,
-                     weak_ptr_factory_.GetWeakPtr(), /*dbus_powered=*/powered));
+                     weak_ptr_factory_.GetWeakPtr(), dbus_powered.value()));
 }
 
 void BluetoothPowerRoutine::HandleHciConfigResponse(

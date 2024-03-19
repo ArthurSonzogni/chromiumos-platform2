@@ -47,6 +47,9 @@ inline constexpr char kBluetoothRoutineFailedCreateBasebandConnection[] =
 inline constexpr char kBluetoothRoutineFailedFinishPairing[] =
     "Bluetooth routine failed to finish pairing.";
 
+// Timeout of waiting for the adapter powered changed event.
+constexpr base::TimeDelta kAdapterPoweredChangedTimeout = base::Seconds(2);
+
 // Bluetooth power routine timeout.
 constexpr base::TimeDelta kPowerRoutineTimeout = base::Seconds(15);
 

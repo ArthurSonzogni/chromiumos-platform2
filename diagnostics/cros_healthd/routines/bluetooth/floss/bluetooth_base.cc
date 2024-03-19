@@ -4,11 +4,16 @@
 
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
 
+#include <cstdint>
+#include <optional>
+#include <string>
 #include <utility>
 
+#include <base/cancelable_callback.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/types/expected.h>
 #include <dbus/object_path.h>
 
@@ -156,6 +161,7 @@ void BluetoothRoutineBase::CheckAdapterEnabledState(
   }
 
   initial_powered_state_ = powered;
+  current_powered_ = powered;
   // Set up scoped closure runner for resetting adapter powered back to initial
   // powered state.
   reset_bluetooth_powered_ = base::ScopedClosureRunner(
@@ -222,16 +228,21 @@ void BluetoothRoutineBase::HandleDiscoveringResponse(
   std::move(on_finish).Run(std::nullopt);
 }
 
-void BluetoothRoutineBase::ChangeAdapterPoweredState(bool powered,
-                                                     ResultCallback on_finish) {
+void BluetoothRoutineBase::SetAdapterPoweredState(bool powered,
+                                                  ResultCallback on_finish) {
   if (!manager_) {
-    std::move(on_finish).Run(
-        base::unexpected("Failed to access Bluetooth manager proxy."));
+    LOG(ERROR) << "Failed to access Bluetooth manager proxy.";
+    std::move(on_finish).Run(std::nullopt);
+    return;
+  }
+
+  if (powered == current_powered_) {
+    std::move(on_finish).Run(current_powered_);
     return;
   }
 
   auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
-      &BluetoothRoutineBase::HandleChangePoweredResponse,
+      &BluetoothRoutineBase::HandleSetPoweredResponse,
       weak_ptr_factory_.GetWeakPtr(), powered, std::move(on_finish)));
   if (powered) {
     manager_->StartAsync(default_adapter_hci_, std::move(on_success),
@@ -242,28 +253,29 @@ void BluetoothRoutineBase::ChangeAdapterPoweredState(bool powered,
   }
 }
 
-void BluetoothRoutineBase::HandleChangePoweredResponse(bool powered,
-                                                       ResultCallback on_finish,
-                                                       brillo::Error* error) {
+void BluetoothRoutineBase::HandleSetPoweredResponse(bool powered,
+                                                    ResultCallback on_finish,
+                                                    brillo::Error* error) {
   if (error) {
-    // Changing powered errors are considered as failed status.
-    std::move(on_finish).Run(base::ok(false));
+    std::move(on_finish).Run(std::nullopt);
     return;
   }
 
-  // Ensure the adapter is enabled after powering on. The adapter will be
-  // enabled after added.
-  if (powered && !default_adapter_) {
-    LOG(INFO) << "Waiting for adapter enabled event";
-    on_adapter_enabled_cbs_.push_back(base::BindOnce(
-        [](ResultCallback cb, bool is_success) {
-          std::move(cb).Run(base::ok(is_success));
-        },
-        std::move(on_finish)));
-    return;
-  }
+  // The successful D-Bus call doesn't mean that the enabling or disabling is
+  // successful. We should check the powered changed events.
+  LOG(INFO) << "Waiting for adapter powered changed event.";
+  on_adapter_powered_changed_cb_ = std::move(on_finish);
+  timeout_cb_.Reset(
+      base::BindOnce(&BluetoothRoutineBase::OnAdapterEnabledEventTimeout,
+                     weak_ptr_factory_.GetWeakPtr()));
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE, timeout_cb_.callback(), kAdapterPoweredChangedTimeout);
+}
 
-  std::move(on_finish).Run(base::ok(true));
+void BluetoothRoutineBase::OnAdapterEnabledEventTimeout() {
+  if (!on_adapter_powered_changed_cb_.is_null()) {
+    std::move(on_adapter_powered_changed_cb_).Run(current_powered_);
+  }
 }
 
 void BluetoothRoutineBase::OnAdapterAdded(
@@ -287,19 +299,24 @@ void BluetoothRoutineBase::OnAdapterPoweredChanged(int32_t hci_interface,
                                                    bool powered) {
   LOG(INFO) << "Get adapter powered change event for hci" << hci_interface
             << ", powered: " << powered;
-  if (hci_interface != default_adapter_hci_ || !powered) {
+  if (hci_interface != default_adapter_hci_) {
     return;
   }
+  current_powered_ = powered;
 
-  bool is_success = true;
-  if (default_adapter_ == nullptr) {
-    LOG(ERROR) << "Failed to get non-null default adapter when powering on";
-    is_success = false;
+  // Bluetooth routines should be able to access adapter instance directly after
+  // powering on successfully. Add a safeguard to ensure that `default_adapter_`
+  // is not null . If so, report null as error.
+  std::optional<bool> got_powered = powered;
+  if (powered && default_adapter_ == nullptr) {
+    LOG(ERROR) << "Failed to get non-null default adapter after powering on";
+    got_powered = std::nullopt;
   }
-  for (auto& cb : on_adapter_enabled_cbs_) {
-    std::move(cb).Run(is_success);
+
+  timeout_cb_.Cancel();
+  if (!on_adapter_powered_changed_cb_.is_null()) {
+    std::move(on_adapter_powered_changed_cb_).Run(got_powered);
   }
-  on_adapter_enabled_cbs_.clear();
 }
 
 void BluetoothRoutineBase::OnManagerRemoved(

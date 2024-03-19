@@ -9,10 +9,10 @@
 #include <string>
 #include <vector>
 
+#include <base/cancelable_callback.h>
 #include <base/callback_list.h>
 #include <base/functional/callback_forward.h>
 #include <base/time/tick_clock.h>
-#include <base/types/expected.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/errors/error.h>
 #include <dbus/object_path.h>
@@ -32,8 +32,9 @@ class BluetoothRoutineBase {
   BluetoothRoutineBase& operator=(const BluetoothRoutineBase&) = delete;
   ~BluetoothRoutineBase();
 
-  using ResultCallback =
-      base::OnceCallback<void(const base::expected<bool, std::string>&)>;
+  // Used for reporting powered state when receiving powered changed events.
+  // Reports null for unexpected error.
+  using ResultCallback = base::OnceCallback<void(std::optional<bool>)>;
 
   // This function should be run when the routine starts. The callback will
   // return a bool state to report whether the initialization is successful.
@@ -51,33 +52,34 @@ class BluetoothRoutineBase {
   void RunPreCheck(
       base::OnceCallback<void(std::optional<std::string>)> on_finish);
 
-  // Change adapter powered state to |powered|. The callback will return a bool
-  // state to report whether the changing is succeeded on completion, or a
-  // string when unexpected error occurs.
-  void ChangeAdapterPoweredState(bool powered, ResultCallback on_finish);
+  // Set adapter powered state to `powered`. The callback will return the
+  // powered state in D-Bus level after finishing this function. The callback
+  // will return null if there is any error or the adapter powered changed event
+  // is not received.
+  void SetAdapterPoweredState(bool powered, ResultCallback on_finish);
 
-  // Set |adapter_stop_discovery_| callback to stop discovery at the end of the
+  // Set `adapter_stop_discovery_` callback to stop discovery at the end of the
   // routine.
   void SetupStopDiscoveryJob();
 
  protected:
   // Unowned pointer that should outlive this instance.
   Context* const context_;
-  // The HCI interface number of default adapter, will be set in |Initialize|.
+  // The HCI interface number of default adapter, will be set in `Initialize`.
   int32_t default_adapter_hci_ = -1;
   // The callback will be unregistered when the subscription is destructured.
   std::vector<base::CallbackListSubscription> event_subscriptions_;
   // Routine start time, used to calculate the progress percentage and timeout.
   base::TimeTicks start_ticks_;
   // A callback that should be run regardless of the execution status. This
-  // callback will reset the adapter powered to |initial_powered_state_|.
+  // callback will reset the adapter powered to `initial_powered_state_`.
   base::ScopedClosureRunner reset_bluetooth_powered_;
   // A callback that should be run regardless of the execution status. This
   // callback will ask the adapter to stop discovery.
   base::ScopedClosureRunner adapter_stop_discovery_;
 
  private:
-  // Inner functions of |Initialize|.
+  // Inner functions of `Initialize`.
   void CheckFlossEnabledState(base::OnceCallback<void(bool)> on_finish,
                               brillo::Error* error,
                               bool floss_enabled);
@@ -88,16 +90,19 @@ class BluetoothRoutineBase {
                                 brillo::Error* error,
                                 bool powered);
 
-  // Inner functions of |RunPreCheck|.
+  // Inner functions of `RunPreCheck`.
   void HandleDiscoveringResponse(
       base::OnceCallback<void(std::optional<std::string>)> on_finish,
       brillo::Error* error,
       bool discovering);
 
-  // Inner functions of |ChangeAdapterPoweredState|.
-  void HandleChangePoweredResponse(bool powered,
-                                   ResultCallback on_finish,
-                                   brillo::Error* error);
+  // Inner functions of `SetAdapterPoweredState`.
+  void HandleSetPoweredResponse(bool powered,
+                                ResultCallback on_finish,
+                                brillo::Error* error);
+
+  // Invoked when timeout of waiting for the adapter enabled event.
+  void OnAdapterEnabledEventTimeout();
 
   void OnAdapterAdded(
       org::chromium::bluetooth::BluetoothProxyInterface* adapter);
@@ -108,15 +113,25 @@ class BluetoothRoutineBase {
   // The initial powered state of the adapter.
   std::optional<bool> initial_powered_state_;
 
+  // Current powered state, which will be initialized in `Initialize` and be
+  // updated when `OnAdapterPoweredChanged` is invoked.
+  bool current_powered_;
+
   // The Bluetooth manager from Floss.
   org::chromium::bluetooth::ManagerProxyInterface* manager_;
 
   // The default adapter from Floss, which is null when adapter is not enabled.
+  // It will be initialized in `Initialize` and be updated when `OnAdapterAdded`
+  // or `OnAdapterRemoved` is invoked.
   org::chromium::bluetooth::BluetoothProxyInterface* default_adapter_ = nullptr;
 
-  // The callbacks waiting for adapter enabled event. The callbacks will return
-  // a bool state to report whether the adapter is enabled successfully.
-  std::vector<base::OnceCallback<void(bool)>> on_adapter_enabled_cbs_;
+  // The callback waiting for adapter powered changed event and return the
+  // powered state. The callback will return null if the routine doesn't receive
+  // event before timeout.
+  base::OnceCallback<void(std::optional<bool>)> on_adapter_powered_changed_cb_;
+
+  // The timeout callback of adapter powered changed event.
+  base::CancelableOnceClosure timeout_cb_;
 
   // Must be the last class member.
   base::WeakPtrFactory<BluetoothRoutineBase> weak_ptr_factory_{this};

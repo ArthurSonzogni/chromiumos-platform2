@@ -77,10 +77,9 @@ class BluetoothRoutineBaseTest : public testing::Test {
     return future.Get();
   }
 
-  base::expected<bool, std::string> ChangeAdapterPoweredStateSync(
-      bool powered) {
-    base::test::TestFuture<const base::expected<bool, std::string>&> future;
-    routine_base_.ChangeAdapterPoweredState(powered, future.GetCallback());
+  std::optional<bool> SetAdapterPoweredStateSync(bool powered) {
+    base::test::TestFuture<std::optional<bool>> future;
+    routine_base_.SetAdapterPoweredState(powered, future.GetCallback());
     return future.Get();
   }
 
@@ -136,14 +135,13 @@ class BluetoothRoutineBaseTest : public testing::Test {
     SetupGetAdapterEnabledCall(/*powered=*/initial_powered);
   }
 
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
   BluetoothRoutineBase routine_base_{&mock_context_};
   StrictMock<org::chromium::bluetooth::BluetoothProxyMock> mock_adapter_proxy_;
   StrictMock<org::chromium::bluetooth::ManagerProxyMock> mock_manager_proxy_;
   brillo::ErrorPtr error_;
-
- private:
-  base::test::TaskEnvironment task_environment_;
 };
 
 // Test that the BluetoothRoutineBase can get adapter successfully.
@@ -376,10 +374,7 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredAlreadyOn) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/true);
   EXPECT_EQ(InitializeSync(), true);
-
-  EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>());
-  EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/true), base::ok(true));
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/true), true);
 }
 
 // Test that the BluetoothRoutineBase can ensure the adapter is powered on
@@ -405,7 +400,7 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOnSuccess) {
 
   EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
       .WillOnce(ReturnRef(kDefaultAdapterPath));
-  EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/true), base::ok(true));
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/true), true);
 }
 
 // Test that the BluetoothRoutineBase can handle the error when powering on
@@ -418,7 +413,21 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOnError) {
   error_ = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _))
       .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
-  EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/true), base::ok(false));
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/true), std::nullopt);
+}
+
+// Test that the BluetoothRoutineBase can handle the error of missing events
+// when powering on the adapter.
+TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOnMissingEnabledEvent) {
+  InSequence s;
+  SetupInitializeSuccessCall(/*initial_powered=*/false);
+  EXPECT_EQ(InitializeSync(), true);
+
+  EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>());
+
+  task_environment_.FastForwardBy(kAdapterPoweredChangedTimeout);
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/true), false);
 }
 
 // Test that the BluetoothRoutineBase can ensure the adapter is powered off
@@ -427,10 +436,7 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredAlreadyOff) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   EXPECT_EQ(InitializeSync(), true);
-
-  EXPECT_CALL(mock_manager_proxy_, StopAsync(kDefaultHciInterface, _, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>());
-  EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/false), base::ok(true));
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/false), false);
 }
 
 // Test that the BluetoothRoutineBase can ensure the adapter is powered off
@@ -444,8 +450,10 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOffSuccess) {
       .WillOnce(WithArg<1>([&](base::OnceCallback<void()> on_success) {
         std::move(on_success).Run();
         fake_floss_event_hub()->SendAdapterRemoved(kDefaultAdapterPath);
+        fake_floss_event_hub()->SendAdapterPoweredChanged(kDefaultHciInterface,
+                                                          /*powered=*/false);
       }));
-  EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/false), base::ok(true));
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/false), false);
 }
 
 // Test that the BluetoothRoutineBase can handle the error when powering off
@@ -458,7 +466,21 @@ TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOffError) {
   error_ = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, StopAsync(kDefaultHciInterface, _, _, _))
       .WillOnce(base::test::RunOnceCallback<2>(error_.get()));
-  EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/false), base::ok(false));
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/false), std::nullopt);
+}
+
+// Test that the BluetoothRoutineBase can handle the error of missing events
+// when powering off the adapter.
+TEST_F(BluetoothRoutineBaseTest, EnsureAdapterPoweredOffMissingEnabledEvent) {
+  InSequence s;
+  SetupInitializeSuccessCall(/*initial_powered=*/true);
+  EXPECT_EQ(InitializeSync(), true);
+
+  EXPECT_CALL(mock_manager_proxy_, StopAsync(kDefaultHciInterface, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>());
+
+  task_environment_.FastForwardBy(kAdapterPoweredChangedTimeout);
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/false), true);
 }
 
 // Test that the BluetoothRoutineBase can handle the missing manager proxy
@@ -469,8 +491,7 @@ TEST_F(BluetoothRoutineBaseTest, ChangePoweredErrorMissingManagerProxy) {
   EXPECT_EQ(InitializeSync(), true);
 
   fake_floss_event_hub()->SendManagerRemoved();
-  EXPECT_EQ(ChangeAdapterPoweredStateSync(/*powered=*/false),
-            base::unexpected("Failed to access Bluetooth manager proxy."));
+  EXPECT_EQ(SetAdapterPoweredStateSync(/*powered=*/false), std::nullopt);
 }
 
 // Test that the BluetoothRoutineBase can reset powered state to on when

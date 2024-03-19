@@ -291,7 +291,7 @@ TEST_F(BluetoothPowerRoutineTest, PreCheckErrorGetDiscoveringState) {
 
 // Test that the Bluetooth power routine can handle the error when changing
 // powered state.
-TEST_F(BluetoothPowerRoutineTest, FailedChangePoweredState) {
+TEST_F(BluetoothPowerRoutineTest, ChangePoweredStateError) {
   InSequence s;
   SetupInitializeSuccessCall(/*initial_powered=*/false);
   SetupHciConfigCall(/*hci_result_powered=*/false);
@@ -300,6 +300,25 @@ TEST_F(BluetoothPowerRoutineTest, FailedChangePoweredState) {
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _))
       .WillOnce(base::test::RunOnceCallback<2>(error.get()));
+
+  // Reset Powered.
+  SetupResetPoweredCall(/*initial_powered=*/false);
+
+  RunRoutineAndWaitForException(
+      "Got unexpected error when setting adapter powered");
+}
+
+// Test that the Bluetooth power routine can handle the missing powered changed
+// event when changing powered state.
+TEST_F(BluetoothPowerRoutineTest, FailedChangePoweredState) {
+  InSequence s;
+  SetupInitializeSuccessCall(/*initial_powered=*/false);
+  SetupHciConfigCall(/*hci_result_powered=*/false);
+
+  // Power on, but don't get the powered changed event.
+  EXPECT_CALL(mock_manager_proxy_, StartAsync(kDefaultHciInterface, _, _, _))
+      .WillOnce(base::test::RunOnceCallback<1>());
+  SetupHciConfigCall(/*hci_result_powered=*/false);
 
   // Reset Powered.
   SetupResetPoweredCall(/*initial_powered=*/false);
@@ -316,7 +335,9 @@ TEST_F(BluetoothPowerRoutineTest, FailedChangePoweredState) {
   EXPECT_EQ(
       detail->power_off_result,
       ConstructPoweredDetail(/*hci_powered=*/false, /*dbus_powered=*/false));
-  EXPECT_FALSE(detail->power_on_result);
+  EXPECT_EQ(
+      detail->power_on_result,
+      ConstructPoweredDetail(/*hci_powered=*/false, /*dbus_powered=*/false));
 }
 
 // Test that the Bluetooth power routine can handle unexpected powered status in
@@ -450,16 +471,13 @@ TEST_F(BluetoothPowerRoutineTest, HciconfigUnexpectedOutput) {
 // occurred.
 TEST_F(BluetoothPowerRoutineTest, RoutineTimeoutOccurred) {
   InSequence s;
-  SetupInitializeSuccessCall(/*initial_powered=*/true);
-  EXPECT_CALL(mock_adapter_proxy_, IsDiscoveringAsync(_, _, _))
-      .WillOnce(base::test::RunOnceCallback<0>(/*discovering=*/false));
+  SetupInitializeSuccessCall(/*initial_powered=*/false);
 
-  // Power off but not send adapter powered change events.
-  EXPECT_CALL(mock_manager_proxy_, StopAsync(kDefaultHciInterface, _, _, _))
-      .WillOnce(base::test::RunOnceCallback<1>());
+  // The response from executor is missing.
+  EXPECT_CALL(*mock_executor(), GetHciDeviceConfig(kDefaultHciInterface, _));
 
   // Reset Powered.
-  SetupResetPoweredCall(/*initial_powered=*/true);
+  SetupResetPoweredCall(/*initial_powered=*/false);
 
   // Trigger timeout.
   task_environment_.FastForwardBy(kPowerRoutineTimeout);

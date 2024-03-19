@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -70,8 +71,7 @@ class BluetoothScanningRoutine final : public BaseRoutineControl,
   void HandlePreCheckResponse(std::optional<std::string> error);
 
   // Handle the response of changing powered state.
-  void HandleEnsurePoweredOnResponse(
-      const base::expected<bool, std::string>& result);
+  void HandleEnsurePoweredOnResponse(std::optional<bool> dbus_powered);
 
   // Update the adapter to start or stop discovery mode.
   void UpdateAdapterDiscoveryMode();

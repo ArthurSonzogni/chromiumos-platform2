@@ -53,8 +53,7 @@ class BluetoothPairingRoutine final : public BaseRoutineControl,
   void HandlePreCheckResponse(std::optional<std::string> error);
 
   // Handle the response of changing powered state.
-  void HandleEnsurePoweredOnResponse(
-      const base::expected<bool, std::string>& result);
+  void HandleEnsurePoweredOnResponse(std::optional<bool> dbus_powered);
 
   // Check if the target peripheral is bonded.
   void CheckTargetPeripheralBonded(

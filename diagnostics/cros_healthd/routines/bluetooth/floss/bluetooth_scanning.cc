@@ -148,11 +148,10 @@ void BluetoothScanningRoutine::RunNextStep() {
         RunNextStep();
         return;
       }
-      ChangeAdapterPoweredState(
-          /*powered=*/true,
-          base::BindOnce(
-              &BluetoothScanningRoutine::HandleEnsurePoweredOnResponse,
-              weak_ptr_factory_.GetWeakPtr()));
+      SetAdapterPoweredState(
+          true, base::BindOnce(
+                    &BluetoothScanningRoutine::HandleEnsurePoweredOnResponse,
+                    weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kStartDiscovery:
       UpdateAdapterDiscoveryMode();
@@ -183,8 +182,8 @@ void BluetoothScanningRoutine::HandlePreCheckResponse(
 }
 
 void BluetoothScanningRoutine::HandleEnsurePoweredOnResponse(
-    const base::expected<bool, std::string>& result) {
-  if (!result.has_value() || !result.value()) {
+    std::optional<bool> dbus_powered) {
+  if (!dbus_powered.has_value() || !dbus_powered.value()) {
     SetResultAndStop(
         base::unexpected("Failed to ensure default adapter is powered on."));
     return;

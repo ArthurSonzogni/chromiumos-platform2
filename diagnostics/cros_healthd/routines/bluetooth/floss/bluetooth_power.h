@@ -46,13 +46,8 @@ class BluetoothPowerRoutine final : public BaseRoutineControl,
   // Handle the response of pre-check.
   void HandlePreCheckResponse(std::optional<std::string> error);
 
-  // Handle the response of changing powered state.
-  void HandleChangePoweredResponse(
-      const base::expected<bool, std::string>& result);
-
-  // Observe adapter powered changed events to check the adapter powered in
-  // D-Bus level.
-  void OnAdapterPoweredChanged(int32_t hci_interface, bool powered);
+  // Handle the response of setting powered state.
+  void HandleSetPoweredResponse(std::optional<bool> dbus_powered);
 
   // Handle the response of hciconfig to check the adapter powered in HCI level.
   void HandleHciConfigResponse(
