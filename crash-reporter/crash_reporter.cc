@@ -37,6 +37,7 @@
 #include "crash-reporter/chrome_collector.h"
 #include "crash-reporter/clobber_state_collector.h"
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_reporter_failure_collector.h"
 #include "crash-reporter/ec_collector.h"
 #include "crash-reporter/ephemeral_crash_collector.h"
@@ -258,6 +259,53 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
   minijail_enter(j);
   minijail_destroy(j);
 }
+
+// Visitor for InvocationInfo::cb. The std::visit will return true if there was
+// a callback to handle the event, false if crash reporter should keep looking
+// for a callback. If std::visit return true, use GetExitValue to get the
+// program's exit value.
+class CallbackVisitor {
+ public:
+  explicit CallbackVisitor(bool consent) : consent_(consent) {}
+
+  bool operator()(const base::RepeatingCallback<bool()>& cb) {
+    if (cb) {
+      // Accumulate logs to a string to help in diagnosing failures during
+      // collection.
+      brillo::LogToString(true);
+
+      if (consent_) {
+        handled_ = cb.Run();
+      }
+
+      brillo::LogToString(false);
+      return true;
+    }
+    return false;
+  }
+  bool operator()(const base::RepeatingCallback<CrashCollectionStatus()>& cb) {
+    if (cb) {
+      // Accumulate logs to a string to help in diagnosing failures during
+      // collection.
+      brillo::LogToString(true);
+
+      if (consent_) {
+        handled_ = IsSuccessCode(cb.Run());
+      }
+
+      brillo::LogToString(false);
+      return true;
+    }
+    return false;
+  }
+
+  int GetExitValue() const { return handled_ ? 0 : 1; }
+
+ private:
+  const bool consent_;
+  // Default to successful exit status if there's no consent.
+  bool handled_ = true;
+};
 
 }  // namespace
 
@@ -723,29 +771,21 @@ int main(int argc, char* argv[]) {
           }
           ran_init = true;
         }
-        if (info.cb) {
-          // Accumulate logs to a string to help in diagnosing failures during
-          // collection.
-          brillo::LogToString(true);
+        // For early boot crash collectors, the consent file will not be
+        // accessible.  Instead, check consent during boot collection.
+        // Also, due to the specific circumstances in which the ephemeral
+        // collector runs, it might need to skip consent checks (e.g. if
+        // it's running just after a disk clobber, the clobber may have
+        // wiped out a user's preferences). Other collectors should not skip
+        // consent checks.
+        bool consent = FLAGS_early || always_allow_feedback ||
+                       util::IsFeedbackAllowed(metrics_lib) ||
+                       (collector.collector == ephemeral_crash_collector &&
+                        ephemeral_crash_collector->SkipConsent());
 
-          // Default to successful exit status if there's no consent.
-          bool handled = true;
-          // For early boot crash collectors, the consent file will not be
-          // accessible.  Instead, check consent during boot collection.
-          if (FLAGS_early || always_allow_feedback ||
-              util::IsFeedbackAllowed(metrics_lib)) {
-            handled = info.cb.Run();
-          } else if (collector.collector == ephemeral_crash_collector &&
-                     ephemeral_crash_collector->SkipConsent()) {
-            // Due to the specific circumstances in which the ephemeral
-            // collector runs, it might need to skip consent checks (e.g. if
-            // it's running just after a disk clobber, the clobber may have
-            // wiped out a user's preferences). Other collectors should not skip
-            // consent checks.
-            handled = info.cb.Run();
-          }
-          brillo::LogToString(false);
-          return handled ? 0 : 1;
+        CallbackVisitor vistor(consent);
+        if (std::visit(vistor, info.cb)) {
+          return vistor.GetExitValue();
         }
       }
     }

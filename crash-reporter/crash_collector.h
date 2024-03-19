@@ -756,7 +756,13 @@ struct InvocationInfo {
   // before any collectors are run. Defaults to false.
   bool should_check_appsync = false;
   // Callback to invoke if |should_handle| is true. (can be null).
-  base::RepeatingCallback<bool()> cb;
+  // TEMPORARY: During the switch from "collector callbacks return boolean"
+  // to "collector callbacks return CrashCollectionStatus", this is a
+  // variant. Once all the callbacks have been changed to return
+  // CrashCollectionStatus, the variant can be removed.
+  std::variant<base::RepeatingCallback<bool()>,
+               base::RepeatingCallback<CrashCollectionStatus()>>
+      cb;
 };
 
 // Information required to initialize and invoke a collector.
