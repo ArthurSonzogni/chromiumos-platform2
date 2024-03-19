@@ -870,7 +870,19 @@ bool DlcBase::DeleteInternal(ErrorPtr* err) {
   vector<string> undeleted_paths;
   auto paths = GetPathsToDelete(id_);
   if (IsUserTied()) {
-    paths.push_back(JoinPaths(GetDaemonStorePath(), kDlcImagesDir, id_));
+    const auto& daemon_store = GetDaemonStorePath();
+    if (!daemon_store.empty()) {
+      paths.push_back(JoinPaths(daemon_store, kDlcImagesDir, id_));
+      paths.push_back(JoinPaths(daemon_store, kUserPrefsDir, id_));
+    } else {
+      // TODO(b/330399259): Obfuscate user-tied DLC ID in logs.
+      state_.set_last_error_code(kErrorInternal);
+      *err = Error::Create(
+          FROM_HERE, state_.last_error_code(),
+          base::StringPrintf("Unable to get the daemon-store path for DLC=%s",
+                             id_.c_str()));
+      return false;
+    }
   }
   for (const auto& path : paths) {
     if (base::PathExists(path)) {
