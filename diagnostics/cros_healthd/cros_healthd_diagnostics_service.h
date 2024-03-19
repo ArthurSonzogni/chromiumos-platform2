@@ -229,8 +229,7 @@ class CrosHealthdDiagnosticsService final
   // Used for performing the routine support status check.
   std::unique_ptr<GroundTruth> ground_truth_ = nullptr;
 
-  [[maybe_unused]] ash::cros_healthd::mojom::CrosHealthdRoutinesService* const
-      routine_service_;
+  ash::cros_healthd::mojom::CrosHealthdRoutinesService* const routine_service_;
 
   // Must be the last class member.
   base::WeakPtrFactory<CrosHealthdDiagnosticsService> weak_ptr_factory_{this};
