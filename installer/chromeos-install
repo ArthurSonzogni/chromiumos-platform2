@@ -712,19 +712,15 @@ install_stateful() {
   # When adding to the whitelist, consider the need for related changes in
   # src/platform/init/chromeos_startup, and in src/platform/dev/stateful_update.
   #
-  local dirlist="
-    unencrypted/cros-components/offline-demo-mode-resources
+  local dirlist="unencrypted/cros-components/offline-demo-mode-resources
     unencrypted/import_extensions
-    unencrypted/dlc-factory-images
-  "
+    unencrypted/dlc-factory-images"
 
   if crossystem 'cros_debug?1'; then
-    dirlist="
-      ${dirlist}
+    dirlist="${dirlist}
       var_overlay/db/pkg
       var_overlay/lib/portage
-      dev_image
-    "
+      dev_image"
 
     local metadata_cmd="dlc_metadata_util --metadata_dir=${ROOT}/opt/google/dlc"
     local dlc_list
@@ -738,10 +734,8 @@ install_stateful() {
             dlc_pkg="package"
           fi
           printf 'Preloading DLC=%s\n' "${dlc_id}"
-          dirlist="
-          ${dirlist}
-          var_overlay/cache/dlc-images/${dlc_id}/${dlc_pkg}
-          "
+          dirlist="${dirlist}
+          var_overlay/cache/dlc-images/${dlc_id}/${dlc_pkg}"
         fi
       done
     fi
