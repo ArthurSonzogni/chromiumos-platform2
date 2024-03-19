@@ -14,6 +14,14 @@ struct DiagnosticsAppInfo {
   string crx_path@1;
 };
 
+// Information of flash chip.
+[Stable]
+struct FlashInfo {
+  string flash_name@0;
+  uint64 wpsr_start@1;
+  uint64 wpsr_length@2;
+};
+
 // Root-level executor interface exposed to the rmad daemon. In production,
 // this is implemented by the Executor daemon.
 interface Executor {
@@ -79,4 +87,14 @@ interface Executor {
   // Response:
   // * |success| - true if successfully requested a battery cutoff
   RequestBatteryCutoff() => (bool success);
+
+  // Check flash chip name.
+  //
+  // Input: None
+  //
+  // Response:
+  // * |info| - a FlashInfo struct containing the information of the a flash
+  //            chip reported by futility, or null if failed to extract the
+  //            information.
+  GetFlashInfo() => (FlashInfo? info);
 };

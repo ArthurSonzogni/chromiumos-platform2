@@ -14,6 +14,7 @@
 #include "rmad/executor/mojom/executor.mojom.h"
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/ec_utils.h"
+#include "rmad/utils/futility_utils.h"
 
 namespace rmad {
 
@@ -41,6 +42,7 @@ class Executor final : public chromeos::rmad::mojom::Executor {
   void RebootEc(RebootEcCallback callback) override;
   void RequestRmaPowerwash(RequestRmaPowerwashCallback callback) override;
   void RequestBatteryCutoff(RequestBatteryCutoffCallback callback) override;
+  void GetFlashInfo(GetFlashInfoCallback callback) override;
 
  private:
   // Provides a Mojo endpoint that rmad can call to access the executor's Mojo
@@ -49,6 +51,7 @@ class Executor final : public chromeos::rmad::mojom::Executor {
 
   std::unique_ptr<EcUtils> ec_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<FutilityUtils> futility_utils_;
 };
 
 }  // namespace rmad

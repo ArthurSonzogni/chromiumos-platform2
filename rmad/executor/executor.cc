@@ -28,6 +28,7 @@
 #include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/ec_utils_impl.h"
+#include "rmad/utils/futility_utils_impl.h"
 
 namespace {
 
@@ -133,6 +134,7 @@ Executor::Executor(
       base::BindOnce([]() { std::exit(EXIT_SUCCESS); }));
   ec_utils_ = std::make_unique<EcUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  futility_utils_ = std::make_unique<FutilityUtilsImpl>();
 }
 
 void Executor::MountAndWriteLog(uint8_t device_id,
@@ -304,6 +306,18 @@ void Executor::RequestBatteryCutoff(RequestBatteryCutoffCallback callback) {
     return;
   }
   std::move(callback).Run(true);
+}
+
+void Executor::GetFlashInfo(GetFlashInfoCallback callback) {
+  auto info = futility_utils_->GetFlashInfo();
+  if (!info.has_value()) {
+    std::move(callback).Run(nullptr);
+  }
+
+  auto result = chromeos::rmad::mojom::FlashInfo::New(info.value().flash_name,
+                                                      info.value().wpsr_start,
+                                                      info.value().wpsr_length);
+  std::move(callback).Run(std::move(result));
 }
 
 }  // namespace rmad
