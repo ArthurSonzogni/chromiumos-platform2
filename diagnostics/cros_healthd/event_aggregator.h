@@ -21,7 +21,6 @@
 #include "diagnostics/cros_healthd/events/touchpad_events.h"
 #include "diagnostics/cros_healthd/events/touchscreen_events.h"
 #include "diagnostics/cros_healthd/events/udev_events.h"
-#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
@@ -80,7 +79,6 @@ class EventAggregator final {
   std::unique_ptr<StylusEvents> stylus_events_;
   std::unique_ptr<CrashEvents> crash_events_;
   EventReporter event_reporter_{context_};
-  GroundTruth ground_truth_{context_};
 };
 
 }  // namespace diagnostics

@@ -18,7 +18,6 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
-#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/utils/mojo_service_provider.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -226,9 +225,6 @@ class CrosHealthdDiagnosticsService final
   // Mojo service provider to provide service to mojo service manager.
   MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       provider_{this};
-  // Used for performing the routine support status check.
-  std::unique_ptr<GroundTruth> ground_truth_ = nullptr;
-
   ash::cros_healthd::mojom::CrosHealthdRoutinesService* const routine_service_;
 
   // Must be the last class member.

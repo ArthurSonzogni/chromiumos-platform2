@@ -105,7 +105,6 @@ CrosHealthdDiagnosticsService::CrosHealthdDiagnosticsService(
   CHECK(context_);
   CHECK(routine_factory_);
   CHECK(routine_service_);
-  ground_truth_ = std::make_unique<GroundTruth>(context_);
 
   // Service is ready after available routines are populated.
   PopulateAvailableRoutines(
@@ -785,11 +784,11 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
     available_routines_.insert(mojom::DiagnosticRoutineEnum::kPrivacyScreen);
   }
 
-  if (ground_truth_->PrepareRoutineEmmcLifetime()->is_supported()) {
+  if (context_->ground_truth()->PrepareRoutineEmmcLifetime()->is_supported()) {
     available_routines_.insert(mojom::DiagnosticRoutineEnum::kEmmcLifetime);
   }
 
-  if (ground_truth_->PrepareRoutineUfsLifetime()->is_supported()) {
+  if (context_->ground_truth()->PrepareRoutineUfsLifetime()->is_supported()) {
     available_routines_.insert(mojom::DiagnosticRoutineEnum::kUfsLifetime);
   }
 }
