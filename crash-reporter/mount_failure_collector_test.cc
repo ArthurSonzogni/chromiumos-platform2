@@ -38,7 +38,6 @@ const char kLogConfigFileContents[] =
     "shutdown_umount_failure_state=echo umount_failure_state\n"
     "umount-encrypted=echo umount-encrypted-logs\n"
     "cryptohome=echo cryptohome\n"
-    "hiberman=echo dmesg\n"
     "dm_snapshot_status=echo dm_snapshot_status\n";
 
 class MountFailureCollectorMock : public MountFailureCollector {
@@ -112,7 +111,7 @@ TEST(MountFailureCollectorTest, TestEncryptedStatefulMountFailure) {
   // Check report contents.
   EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
   EXPECT_EQ(
-      "encstateful\nramoops\nmount-encrypted\ndmesg\ndm_snapshot_status\n",
+      "encstateful\nramoops\ndmesg\nmount-encrypted\ndm_snapshot_status\n",
       report_contents);
   // Check meta contents do *not* include weight
   std::string meta_contents;
