@@ -23,7 +23,6 @@ class ShutdownFromSuspendStub : public ShutdownFromSuspendInterface {
   Action PrepareForSuspendAttempt() override { return action_; };
   void HandleDarkResume() override{};
   void HandleFullResume() override{};
-  void HandlePolicyChange(const PowerManagementPolicy& policy) override{};
 
  private:
   Action action_ = Action::SUSPEND;

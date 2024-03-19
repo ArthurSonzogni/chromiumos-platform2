@@ -79,8 +79,6 @@ int main(int argc, char* argv[]) {
               "Should --suspend_wakeup_count be honored?");
   DEFINE_bool(suspend_to_idle, false,
               "Should the system suspend to idle (freeze)?");
-  DEFINE_bool(suspend_to_disk, false,
-              "Should the system suspend to disk (hibernate)?");
   DEFINE_bool(wifi_transmit_power_tablet, false,
               "Set wifi transmit power mode to tablet mode");
   DEFINE_string(wifi_transmit_power_domain, "",
@@ -137,11 +135,9 @@ int main(int argc, char* argv[]) {
     RunCommand("set_wifi_transmit_power", tablet.c_str(), domain.c_str(),
                source.c_str(), nullptr);
   } else if (FLAGS_action == "suspend") {
-    std::string suspend_flavor = FLAGS_suspend_to_disk
-                                     ? std::string("--suspend_to_disk")
-                                     : FLAGS_suspend_to_idle
-                                           ? std::string("--suspend_to_idle")
-                                           : std::string("--nosuspend_to_idle");
+    std::string suspend_flavor = FLAGS_suspend_to_idle
+                                     ? std::string("--suspend_to_idle")
+                                     : std::string("--nosuspend_to_idle");
     std::string wakeup_flag;
     if (FLAGS_suspend_wakeup_count_valid) {
       wakeup_flag =

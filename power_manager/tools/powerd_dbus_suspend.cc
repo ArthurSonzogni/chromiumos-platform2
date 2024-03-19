@@ -73,12 +73,6 @@ void OnSuspendDone(base::RunLoop* run_loop,
   run_loop->Quit();
 }
 
-// Exits when powerd announces that the hibernate resume preparation is
-// complete.
-void OnHibernateResumeReady(base::RunLoop* run_loop, dbus::Signal* signal) {
-  run_loop->Quit();
-}
-
 // Handles the result of an attempt to connect to a D-Bus signal.
 void OnDBusSignalConnected(const std::string& interface,
                            const std::string& signal,
@@ -210,12 +204,6 @@ int main(int argc, char* argv[]) {
   powerd_proxy->ConnectToSignal(
       power_manager::kPowerManagerInterface, power_manager::kSuspendDoneSignal,
       base::BindRepeating(&OnSuspendDone, &run_loop, FLAGS_print_wakeup_type),
-      base::BindOnce(&OnDBusSignalConnected));
-
-  powerd_proxy->ConnectToSignal(
-      power_manager::kPowerManagerInterface,
-      power_manager::kHibernateResumeReadySignal,
-      base::BindRepeating(&OnHibernateResumeReady, &run_loop),
       base::BindOnce(&OnDBusSignalConnected));
 
   // Send a suspend request.

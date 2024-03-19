@@ -5,18 +5,15 @@
 #ifndef POWER_MANAGER_POWERD_POLICY_SHUTDOWN_FROM_SUSPEND_INTERFACE_H_
 #define POWER_MANAGER_POWERD_POLICY_SHUTDOWN_FROM_SUSPEND_INTERFACE_H_
 
-#include "power_manager/proto_bindings/policy.pb.h"
-
 namespace power_manager::policy {
 
-// Holds the logic to shut down or hibernate the device after prolonged non
-// use.
+// Holds the logic to shut down the device after prolonged non use.
 //
-// Responsible for setting an alarm for |kLowerPowerFromSuspendSecPref| before
+// Responsible for setting an alarm for |kShutdownFromSuspendSecPref| before
 // every suspend if one is not already running.
-// On dark resume this code will shut down or hibernate the device instead
-// of re-suspending if all of the following conditions hold true:
-//   1. Device has spent |kLowerPowerFromSuspendSecPref| in suspend or in
+// On dark resume this code will shut down the device instead of re-suspending
+// if all of the following conditions hold true:
+//   1. Device has spent |kShutdownFromSuspendSecPref| in suspend or in
 //      dark resume without a full resume, OR the battery is below
 //      |kLowBatteryShutdownPercentPref|.
 //   2. Device is not connected to line power.
@@ -26,8 +23,6 @@ class ShutdownFromSuspendInterface {
   enum class Action {
     // Suspend the system.
     SUSPEND = 0,
-    // Hibernate the system.
-    HIBERNATE,
     // Shut the system down immediately.
     SHUT_DOWN,
   };
@@ -42,8 +37,6 @@ class ShutdownFromSuspendInterface {
   // Called when device does a full resume or on transitions from dark resume to
   // full resume.
   virtual void HandleFullResume() = 0;
-  // Called when a new PowerManagementPolicy is sent over DBus.
-  virtual void HandlePolicyChange(const PowerManagementPolicy& policy) = 0;
 };
 
 }  // namespace power_manager::policy

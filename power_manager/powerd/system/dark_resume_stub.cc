@@ -6,7 +6,7 @@
 
 namespace power_manager::system {
 
-void DarkResumeStub::HandleSuccessfulResume(bool from_hibernate) {}
+void DarkResumeStub::HandleSuccessfulResume() {}
 
 bool DarkResumeStub::InDarkResume() {
   return in_dark_resume_;

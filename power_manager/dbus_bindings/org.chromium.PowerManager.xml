@@ -376,13 +376,6 @@
       </tp:docstring>
       <arg name="serialized_proto" type="ay" />
     </signal>
-    <signal name="HibernateResumeReady">
-      <tp:docstring>
-        The |serialized_proto| arg is a serialized
-        power_manager::HibernateResumeReady protobuf.
-      </tp:docstring>
-      <arg name="serialized_proto" type="ay" />
-    </signal>
 
     <signal name="InputEvent">
       <tp:docstring>

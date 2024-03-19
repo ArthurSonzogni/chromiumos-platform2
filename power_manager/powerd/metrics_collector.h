@@ -202,13 +202,12 @@ class MetricsCollector {
 
   // Called at the end of a successful suspend request. |num_suspend_attempts|
   // contains the number of attempts up to and including the one in which the
-  // system successfully suspended. |hibernated| indicates whether or not the
-  // system suspended to disk (true) or RAM (false).
-  void HandleResume(int num_suspend_attempts, bool hibernated);
+  // system successfully suspended..
+  void HandleResume(int num_suspend_attempts);
 
   // Called after a suspend request (that is, a series of one or more suspend
   // attempts performed in response to e.g. the lid being closed) is canceled.
-  void HandleCanceledSuspendRequest(int num_suspend_attempts, bool hibernate);
+  void HandleCanceledSuspendRequest(int num_suspend_attempts);
 
   // Called after a suspend request has completed (successfully or not).
   // Generates UMA metrics for dark resume.  The size of |wake_durations| is the
@@ -302,11 +301,6 @@ class MetricsCollector {
   // GenerateMetricsOnPowerEvent().  Returns true if the sample was sent.
   void GenerateBatteryDischargeRateWhileSuspendedMetric();
 
-  // Generates a UMA metric sample with the battery percentage at the time
-  // the system was suspended if the system was on battery power before
-  // suspending and the last suspend was a hibernate.
-  void GenerateBatteryPercentageAtHibernateSuspendMetric();
-
   // Increments the number of user sessions that have been active on the
   // current battery charge.
   void IncrementNumOfSessionsPerChargeMetric();
@@ -321,8 +315,8 @@ class MetricsCollector {
   // busy, draining the battery.
   // This function processes residency values recorded by |residency_trackers_|
   // and generates an UMA metric for S0ix residency rate (%) in comparison to
-  // suspend time. Called only post-resume from non-hibernate sleep when
-  // |suspend_to_idle_| is enabled.
+  // suspend time. Called only post-resume from sleep when |suspend_to_idle_|
+  // is enabled.
   void GenerateS2IdleS0ixMetrics();
 
   // Devices capable of low-power idle (S0ix) can utilize it in runtime. If the
@@ -387,9 +381,6 @@ class MetricsCollector {
 
   // Idle duration as of the last idle event.
   base::TimeDelta last_idle_timedelta_;
-
-  // Notes if the most recent suspend attempt was a hibernation or not.
-  bool last_suspend_was_hibernate_ = false;
 
   // Timestamps of the last idle-triggered power state transitions.
   base::TimeTicks screen_dim_timestamp_;

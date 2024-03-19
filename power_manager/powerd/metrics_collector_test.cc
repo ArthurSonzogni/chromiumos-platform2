@@ -113,9 +113,7 @@ class MetricsCollectorTest : public TestEnvironment {
     IgnoreMetric(std::string(kBatteryCapacityName) +
                  kBatteryCapacityDesignSuffix);
     IgnoreMetric(kBatteryDischargeRateName);
-    IgnoreMetric(kBatteryDischargeRateWhileHibernatedName);
     IgnoreMetric(kBatteryDischargeRateWhileSuspendedName);
-    IgnoreEnumMetric(kBatteryPercentageAtHibernateSuspendName);
     IgnoreMetric(std::string(kBatteryLifeName) + kBatteryCapacityActualSuffix);
     IgnoreMetric(std::string(kBatteryLifeName) + kBatteryLifeDetailSuffix +
                  kBatteryCapacityActualSuffix);
@@ -500,7 +498,7 @@ TEST_F(MetricsCollectorTest, BatteryLifeRollingAverageResets) {
   AdvanceTime(kSuspendDuration);
   ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
                kSuspendAttemptsMax, kSuspendAttemptsBuckets);
-  collector_.HandleResume(1, false);
+  collector_.HandleResume(1);
 
   // Advance 9 intervals.
   power_status_.battery_energy_rate = 0.3;
@@ -808,7 +806,6 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   const base::TimeDelta kSuspendDuration = base::Hours(1);
 
   metrics_to_test_.insert(kBatteryDischargeRateWhileSuspendedName);
-  metrics_to_test_.insert(kBatteryDischargeRateWhileHibernatedName);
   metrics_to_test_.insert(std::string(kBatteryLifeWhileSuspendedName) +
                           kBatteryCapacityActualSuffix);
   metrics_to_test_.insert(std::string(kBatteryLifeWhileSuspendedName) +
@@ -834,7 +831,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   AdvanceTime(kSuspendDuration);
   ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
                kSuspendAttemptsMax, kSuspendAttemptsBuckets);
-  collector_.HandleResume(1, false);
+  collector_.HandleResume(1);
   power_status_.line_power_on = false;
   power_status_.battery_energy = kEnergyAfterResume;
   collector_.HandlePowerStatusUpdate(power_status_);
@@ -849,7 +846,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   AdvanceTime(kSuspendDuration);
   ExpectMetric(kSuspendAttemptsBeforeSuccessName, 2, kSuspendAttemptsMin,
                kSuspendAttemptsMax, kSuspendAttemptsBuckets);
-  collector_.HandleResume(2, false);
+  collector_.HandleResume(2);
   power_status_.line_power_on = true;
   power_status_.battery_energy = kEnergyAfterResume;
   collector_.HandlePowerStatusUpdate(power_status_);
@@ -865,7 +862,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   AdvanceTime(kSuspendDuration);
   ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
                kSuspendAttemptsMax, kSuspendAttemptsBuckets);
-  collector_.HandleResume(1, false);
+  collector_.HandleResume(1);
   power_status_.battery_energy = kEnergyBeforeSuspend + 5.0;
   collector_.HandlePowerStatusUpdate(power_status_);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
@@ -879,7 +876,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   AdvanceTime(kBatteryDischargeRateWhileSuspendedMinSuspend - base::Seconds(1));
   ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
                kSuspendAttemptsMax, kSuspendAttemptsBuckets);
-  collector_.HandleResume(1, false);
+  collector_.HandleResume(1);
   power_status_.battery_energy = kEnergyAfterResume;
   collector_.HandlePowerStatusUpdate(power_status_);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
@@ -893,7 +890,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   AdvanceTime(kSuspendDuration);
   ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
                kSuspendAttemptsMax, kSuspendAttemptsBuckets);
-  collector_.HandleResume(1, false);
+  collector_.HandleResume(1);
   power_status_.battery_energy = kEnergyAfterResume;
   const int rate_mw = static_cast<int>(
       round(1000 * (kEnergyBeforeSuspend - kEnergyAfterResume) /
@@ -911,78 +908,6 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
                round(1000.0 * 60.0 / rate_mw), kBatteryLifeWhileSuspendedMin,
                kBatteryLifeWhileSuspendedMax, kDefaultDischargeBuckets);
   collector_.HandlePowerStatusUpdate(power_status_);
-
-  // The name of the metric should change to hibernate if this was a resume from
-  // hibernation.
-  // We also shouldn't report Power.BatteryLifeWhileSuspended metrics.
-  power_status_.battery_energy = kEnergyBeforeSuspend;
-  IgnoreHandlePowerStatusUpdateMetrics();
-  collector_.HandlePowerStatusUpdate(power_status_);
-  collector_.PrepareForSuspend();
-  AdvanceTime(kSuspendDuration);
-  ExpectMetric(kHibernateAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
-               kSuspendAttemptsMax, kSuspendAttemptsBuckets);
-  collector_.HandleResume(1, true);
-  power_status_.battery_energy = kEnergyAfterResume;
-  ExpectMetric(kBatteryDischargeRateWhileHibernatedName, rate_mw,
-               kBatteryDischargeRateWhileSuspendedMin,
-               kBatteryDischargeRateWhileSuspendedMax,
-               kDefaultDischargeBuckets);
-  IgnoreEnumMetric(kBatteryPercentageAtHibernateSuspendName);
-  collector_.HandlePowerStatusUpdate(power_status_);
-}
-
-TEST_F(MetricsCollectorTest, BatteryPercentageAtHibernateSuspend) {
-  const int kPercentageBeforeSuspend = 30;
-
-  metrics_to_test_.insert(kBatteryPercentageAtHibernateSuspendName);
-
-  power_status_.line_power_on = false;
-  power_status_.battery_percentage = kPercentageBeforeSuspend;
-  Init();
-
-  // We shouldn't send a sample if we haven't suspended.
-  IgnoreHandlePowerStatusUpdateMetrics();
-  collector_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
-
-  // Ditto if the system is on AC before suspending...
-  power_status_.line_power_on = true;
-  power_status_.battery_percentage = kPercentageBeforeSuspend;
-  IgnoreHandlePowerStatusUpdateMetrics();
-  collector_.HandlePowerStatusUpdate(power_status_);
-  collector_.PrepareForSuspend();
-  ExpectMetric(kHibernateAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
-               kSuspendAttemptsMax, kSuspendAttemptsBuckets);
-  IgnoreMetric(kBatteryDischargeRateWhileHibernatedName);
-  collector_.HandleResume(1, true);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
-
-  // Ditto if the suspend wasn't a hibernate...
-  power_status_.line_power_on = false;
-  power_status_.battery_percentage = kPercentageBeforeSuspend;
-  IgnoreHandlePowerStatusUpdateMetrics();
-  collector_.HandlePowerStatusUpdate(power_status_);
-  collector_.PrepareForSuspend();
-  ExpectMetric(kSuspendAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
-               kSuspendAttemptsMax, kSuspendAttemptsBuckets);
-  collector_.HandleResume(1, false);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
-
-  // The sample should be reported if the suspend was a hibernate and
-  // the system was on battery.
-  power_status_.line_power_on = false;
-  power_status_.battery_percentage = kPercentageBeforeSuspend;
-  IgnoreHandlePowerStatusUpdateMetrics();
-  collector_.HandlePowerStatusUpdate(power_status_);
-  collector_.PrepareForSuspend();
-  ExpectMetric(kHibernateAttemptsBeforeSuccessName, 1, kSuspendAttemptsMin,
-               kSuspendAttemptsMax, kSuspendAttemptsBuckets);
-  ExpectEnumMetric(kBatteryPercentageAtHibernateSuspendName,
-                   kPercentageBeforeSuspend, kMaxPercent);
-  IgnoreMetric(kBatteryDischargeRateWhileHibernatedName);
-  collector_.HandleResume(1, true);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 TEST_F(MetricsCollectorTest, PowerSupplyMaxVoltageAndPower) {
@@ -1606,7 +1531,7 @@ class IdleStateResidencyMetricsTest : public MetricsCollectorTest {
         WriteResidency(residency, residency.before_resume_);
     }
 
-    collector_.HandleResume(1, false);
+    collector_.HandleResume(1);
   }
 
   // Expect |kS0ixResidencyRateName| enum metric will be generated.

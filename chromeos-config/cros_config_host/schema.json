@@ -1549,11 +1549,6 @@
                     "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
                     "type": "string"
                   },
-                  "lower-power-from-suspend-sec": {
-                    "default": "259200",
-                    "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
-                    "type": "string"
-                  },
                   "manual-eventlog-add": {
                     "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
                     "type": "string"
@@ -1680,6 +1675,11 @@
                     "type": "string"
                   },
                   "set-wifi-transmit-power-for-tablet-mode": {
+                    "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
+                    "type": "string"
+                  },
+                  "shutdown-from-suspend-sec": {
+                    "default": "259200",
                     "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
                     "type": "string"
                   },

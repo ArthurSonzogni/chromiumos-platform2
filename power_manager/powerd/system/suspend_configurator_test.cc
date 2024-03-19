@@ -237,15 +237,7 @@ void CreateFileInTempRootDir(const base::FilePath& temp_root_dir,
   ASSERT_TRUE(base::CreateDirectory(path.DirName()));
   CHECK_EQ(base::WriteFile(path, "", 0), 0);
 }
-// Deletes a file rooted in |temp_root_dir|.
-void DeleteFileInTempRootDir(const base::FilePath& temp_root_dir,
-                             const std::string& file_path) {
-  CHECK(!file_path.empty());
-  CHECK(base::StartsWith(file_path, "/"));
-  base::FilePath path = temp_root_dir.Append(file_path.substr(1));
-  ASSERT_TRUE(base::DirectoryExists(path.DirName()));
-  CHECK(base::DeleteFile(path));
-}
+
 }  // namespace
 
 class SuspendConfiguratorTest : public TestEnvironment {
@@ -405,22 +397,6 @@ TEST_F(SuspendConfiguratorTest, TestkECLastResumeResultPathExist) {
                             last_resume_result_string.length()),
             last_resume_result_string.length());
   EXPECT_TRUE(suspend_configurator_.UndoPrepareForSuspend());
-}
-
-TEST_F(SuspendConfiguratorTest, TestIsHibernateAvailable) {
-  const std::string hiberimage_filename = "/dev/mapper/foobarbaz-hiberimage";
-  EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
-  CreateFileInTempRootDir(temp_root_dir_.GetPath(), kSnapshotDevicePath);
-  EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
-  CreateFileInTempRootDir(temp_root_dir_.GetPath(), kHibermanExecutablePath);
-  EXPECT_FALSE(suspend_configurator_.IsHibernateAvailable());
-  // Next we need to create a fake "hiberimage" device this is the LVM.
-  CreateFileInTempRootDir(temp_root_dir_.GetPath(), hiberimage_filename);
-  EXPECT_TRUE(suspend_configurator_.IsHibernateAvailable());
-
-  DeleteFileInTempRootDir(temp_root_dir_.GetPath(), kSnapshotDevicePath);
-  DeleteFileInTempRootDir(temp_root_dir_.GetPath(), kHibermanExecutablePath);
-  DeleteFileInTempRootDir(temp_root_dir_.GetPath(), hiberimage_filename);
 }
 
 }  // namespace power_manager::system

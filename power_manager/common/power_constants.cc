@@ -87,7 +87,7 @@ const char kSlowAdaptiveChargingEnabledPref[] =
 const char kChargeLimitEnabledPref[] = "charge_limit_enabled";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
 const char kDisableDarkResumePref[] = "disable_dark_resume";
-const char kLowerPowerFromSuspendSecPref[] = "lower_power_from_suspend_sec";
+const char kShutdownFromSuspendSecPref[] = "shutdown_from_suspend_sec";
 const char kIgnoreExternalPolicyPref[] = "ignore_external_policy";
 const char kNumSessionsOnCurrentChargePref[] = "num_sessions_on_current_charge";
 const char kHasAmbientLightSensorPref[] = "has_ambient_light_sensor";
@@ -311,12 +311,6 @@ std::string ShutdownReasonToString(ShutdownReason reason) {
       return "system-update";
     case ShutdownReason::OTHER_REQUEST_TO_POWERD:
       return "other-request-to-powerd";
-    case ShutdownReason::HIBERNATE_FAILED:
-      return "hibernate-failed";
-    case ShutdownReason::HIBERNATE:
-      return "hibernate";
-    case ShutdownReason::HIBERNATE_LOW_BATTERY:
-      return "low-battery-hibernate";
     case ShutdownReason::HEARTD_REQUEST:
       return "heartd-request";
     case ShutdownReason::MAX: {

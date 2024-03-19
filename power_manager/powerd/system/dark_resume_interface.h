@@ -19,7 +19,7 @@ class DarkResumeInterface {
   virtual ~DarkResumeInterface() = default;
 
   // Reads the system state to see if it's in a dark resume.
-  virtual void HandleSuccessfulResume(bool from_hibernate) = 0;
+  virtual void HandleSuccessfulResume() = 0;
 
   // Returns true if the system is currently in dark resume.
   virtual bool InDarkResume() = 0;

@@ -485,14 +485,9 @@ void MetricsCollector::PrepareForSuspend() {
   GenerateRuntimeS0ixMetrics();
 }
 
-void MetricsCollector::HandleResume(int num_suspend_attempts, bool hibernated) {
-  last_suspend_was_hibernate_ = hibernated;
-  SendMetric(hibernated ? kHibernateAttemptsBeforeSuccessName
-                        : kSuspendAttemptsBeforeSuccessName,
-             num_suspend_attempts, kSuspendAttemptsMin, kSuspendAttemptsMax,
-             kSuspendAttemptsBuckets);
-
-  GenerateBatteryPercentageAtHibernateSuspendMetric();
+void MetricsCollector::HandleResume(int num_suspend_attempts) {
+  SendMetric(kSuspendAttemptsBeforeSuccessName, num_suspend_attempts,
+             kSuspendAttemptsMin, kSuspendAttemptsMax, kSuspendAttemptsBuckets);
 
   // Report the discharge rate in response to the next
   // OnPowerStatusUpdate() call.
@@ -500,16 +495,13 @@ void MetricsCollector::HandleResume(int num_suspend_attempts, bool hibernated) {
   time_after_resume_ = clock_.GetCurrentBootTime();
   for (auto& tracker : residency_trackers_)
     tracker.UpdatePostResume();
-  if (suspend_to_idle_ && !hibernated)
+  if (suspend_to_idle_)
     GenerateS2IdleS0ixMetrics();
 }
 
-void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts,
-                                                    bool hibernate) {
-  SendMetric(hibernate ? kHibernateAttemptsBeforeCancelName
-                       : kSuspendAttemptsBeforeCancelName,
-             num_suspend_attempts, kSuspendAttemptsMin, kSuspendAttemptsMax,
-             kSuspendAttemptsBuckets);
+void MetricsCollector::HandleCanceledSuspendRequest(int num_suspend_attempts) {
+  SendMetric(kSuspendAttemptsBeforeCancelName, num_suspend_attempts,
+             kSuspendAttemptsMin, kSuspendAttemptsMax, kSuspendAttemptsBuckets);
 }
 
 void MetricsCollector::GenerateDarkResumeMetrics(
@@ -788,16 +780,10 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
   if (discharge_rate_watts < 0.0)
     return;
 
-  SendMetric(last_suspend_was_hibernate_
-                 ? kBatteryDischargeRateWhileHibernatedName
-                 : kBatteryDischargeRateWhileSuspendedName,
+  SendMetric(kBatteryDischargeRateWhileSuspendedName,
              static_cast<int>(round(discharge_rate_watts * 1000)),
              kBatteryDischargeRateWhileSuspendedMin,
              kBatteryDischargeRateWhileSuspendedMax, kDefaultDischargeBuckets);
-
-  // We don't care about battery life while hibernate.
-  if (last_suspend_was_hibernate_)
-    return;
 
   if (discharge_rate_watts <= 0.0)
     return;
@@ -814,14 +800,6 @@ void MetricsCollector::GenerateBatteryDischargeRateWhileSuspendedMetric() {
                              discharge_rate_watts)),
       kBatteryLifeWhileSuspendedMin, kBatteryLifeWhileSuspendedMax,
       kDefaultDischargeBuckets);
-}
-
-void MetricsCollector::GenerateBatteryPercentageAtHibernateSuspendMetric() {
-  if (!last_suspend_was_hibernate_ || on_line_power_before_suspend_)
-    return;
-
-  SendEnumMetric(kBatteryPercentageAtHibernateSuspendName,
-                 battery_percent_before_suspend_, kMaxPercent);
 }
 
 void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(

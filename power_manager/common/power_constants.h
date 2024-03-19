@@ -203,9 +203,9 @@ extern const char kTurnOffScreenTimeoutMsPref[];
 extern const char kDisableDarkResumePref[];
 
 // Seconds in suspend without full resume after which the device should
-// hibernate or shut down proactively. Should be a positive integer for
-// the feature to be enabled.
-extern const char kLowerPowerFromSuspendSecPref[];
+// shut down proactively. Should be a positive integer for the feature to be
+// enabled.
+extern const char kShutdownFromSuspendSecPref[];
 
 // If true, policies sent by Chrome will be ignored.
 extern const char kIgnoreExternalPolicyPref[];
@@ -348,7 +348,7 @@ extern const char kSmartDischargeToZeroHrPref[];
 // device should enter battery cutoff state.
 extern const char kCutoffPowerUaPref[];
 
-// Current in microamps that the device is expected to consume in hibernate
+// Current in microamps that the device isa expected to consume in hibernate
 // state. This field allows EC to calculate the battery level at which the
 // device should enter S5 or hibernate if EC can wake up by timer.
 extern const char kHibernatePowerUaPref[];
@@ -508,13 +508,6 @@ enum class ShutdownReason {
   SYSTEM_UPDATE = 5,
   // Unclassified external request sent to powerd by another process.
   OTHER_REQUEST_TO_POWERD = 7,
-  // Multiple hibernate attempts failed.
-  HIBERNATE_FAILED = 8,
-  // Hibernate after device spent |kShutdownFromSuspendAfterSecPref| in suspend
-  // without full resume.
-  HIBERNATE = 9,
-  // Battery level dropped below hibernate threshold.
-  HIBERNATE_LOW_BATTERY = 10,
   // Request from heartd.
   HEARTD_REQUEST = 11,
   // Maximum value for ShutdownReason (exclusive).

@@ -119,7 +119,7 @@ void Suspender::Init(
   if (delegate_->GetSuspendAnnounced()) {
     LOG(INFO) << "Previous run exited mid-suspend; emitting SuspendDone";
     EmitSuspendDoneSignal(0, base::TimeDelta(),
-                          SuspendDone_WakeupType_NOT_APPLICABLE, false);
+                          SuspendDone_WakeupType_NOT_APPLICABLE);
     delegate_->SetSuspendAnnounced(false);
   }
 }
@@ -139,10 +139,6 @@ void Suspender::RequestSuspend(SuspendImminent::Reason reason,
   suspend_duration_ = duration;
   suspend_request_flavor_ = flavor;
   HandleEvent(Event::SUSPEND_REQUESTED);
-}
-
-void Suspender::AbortResumeFromHibernate() {
-  HandleEvent(Event::ABORT_RESUME_FROM_HIBERNATE);
 }
 
 void Suspender::HandleLidOpened() {
@@ -257,8 +253,6 @@ std::string Suspender::EventToString(Event event) {
       return "DisplayModeChange";
     case Event::NEW_DISPLAY:
       return "NewDisplay";
-    case Event::ABORT_RESUME_FROM_HIBERNATE:
-      return "AbortResumeFromHibernate";
   }
 }
 
@@ -434,9 +428,6 @@ void Suspender::HandleEvent(Event event) {
         case Event::SHUTDOWN_STARTED:
           state_ = State::SHUTTING_DOWN;
           break;
-        case Event::ABORT_RESUME_FROM_HIBERNATE:
-          LOG(WARNING) << "Ignoring hibernate abort request in idle state";
-          break;
         default:
           break;
       }
@@ -450,9 +441,6 @@ void Suspender::HandleEvent(Event event) {
       HandleEventInDarkResumeOrRetrySuspend(event);
       break;
     case State::SHUTTING_DOWN:
-      break;
-    case State::RESUMING_FROM_HIBERNATE:
-      HandleEventInResumingFromHibernate(event);
       break;
   }
 
@@ -476,13 +464,7 @@ void Suspender::HandleEventInWaitingForNormalSuspendDelays(Event event) {
   DCHECK_EQ(state_, State::WAITING_FOR_NORMAL_SUSPEND_DELAYS);
   switch (event) {
     case Event::SUSPEND_DELAYS_READY:
-      if (suspend_request_flavor_ == SuspendFlavor::RESUME_FROM_DISK_PREPARE) {
-        EmitHibernateResumeReadySignal(suspend_request_id_);
-        state_ = State::RESUMING_FROM_HIBERNATE;
-
-      } else {
-        state_ = Suspend();
-      }
+      state_ = Suspend();
 
       break;
     case Event::WAKE_NOTIFICATION:
@@ -495,7 +477,7 @@ void Suspender::HandleEventInWaitingForNormalSuspendDelays(Event event) {
       state_ = HandleWakeEventInSuspend(event);
       break;
     case Event::SHUTDOWN_STARTED:
-      FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE, false);
+      FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE);
       state_ = State::SHUTTING_DOWN;
       break;
     default:
@@ -520,7 +502,7 @@ void Suspender::HandleEventInDarkResumeOrRetrySuspend(Event event) {
       state_ = HandleWakeEventInSuspend(event);
       break;
     case Event::SHUTDOWN_STARTED:
-      FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE, false);
+      FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE);
       state_ = State::SHUTTING_DOWN;
       break;
     default:
@@ -542,54 +524,9 @@ Suspender::State Suspender::HandleWakeEventInSuspend(Event event) {
       delegate_->IsLidClosedForSuspend())
     return state_;
 
-  // Avoid cancelling if we are preparing for a resume from hibernation, as we
-  // still intend to resume even if there's user activity.
-  if (suspend_request_flavor_ == SuspendFlavor::RESUME_FROM_DISK_PREPARE) {
-    LOG(INFO) << "Ignoring " << EventToString(event)
-              << " when resuming from disk";
-    return state_;
-  }
-
   LOG(INFO) << "Aborting request in response to event " << EventToString(event);
-  FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE, false);
+  FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE);
   return State::IDLE;
-}
-
-void Suspender::HandleEventInResumingFromHibernate(Event event) {
-  CHECK_EQ(state_, State::RESUMING_FROM_HIBERNATE);
-  switch (event) {
-    // The success case out of this state stops executing this entire world, so
-    // there's no "event" out of it. The failure case aborts the resume from
-    // hibernate so that this world can idle out and continue normally.
-    case Event::ABORT_RESUME_FROM_HIBERNATE:
-      FinishRequest(false, SuspendDone_WakeupType_NOT_APPLICABLE, false);
-      state_ = State::IDLE;
-      break;
-
-    // Certain events may float in but don't change the fact that we're still
-    // braced for an imminent resume. Quietly ignore them.
-    case Event::USER_ACTIVITY:
-    case Event::SHUTDOWN_STARTED:
-    case Event::WAKE_NOTIFICATION:
-    case Event::DISPLAY_MODE_CHANGE:
-    case Event::NEW_DISPLAY:
-      break;
-
-    // Requests to suspend are ignored given the whole world is about to be
-    // blown away by an imminent resume.
-    case Event::SUSPEND_REQUESTED:
-      LOG(INFO)
-          << "Ignoring suspend request due to imminent resume from hibernation";
-      break;
-
-    // Certain events are just not expected in this state.
-    case Event::SUSPEND_DELAYS_READY:
-    case Event::READY_TO_RESUSPEND:
-    default:
-      LOG(ERROR) << "Unexpected event " << EventToString(event)
-                 << " received during imminent resume from hibernation";
-      break;
-  }
 }
 
 void Suspender::StartRequest() {
@@ -629,17 +566,13 @@ void Suspender::StartRequest() {
   SuspendImminent proto;
   proto.set_suspend_id(suspend_request_id_);
   proto.set_reason(suspend_request_reason_);
-  if (suspend_request_flavor_ == SuspendFlavor::RESUME_FROM_DISK_PREPARE) {
-    proto.set_action(SuspendImminent_Action_HIBERNATE_RESUME);
-  } else {
-    proto.set_action(SuspendImminent_Action_SUSPEND);
-  }
+  proto.set_action(SuspendImminent_Action_SUSPEND);
+
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendImminentSignal, proto);
 }
 
 void Suspender::FinishRequest(bool success,
-                              SuspendDone::WakeupType wakeup_type,
-                              bool hibernated) {
+                              SuspendDone::WakeupType wakeup_type) {
   const base::TimeTicks end_time = clock_->GetCurrentBootTime();
   base::TimeDelta suspend_duration = end_time - suspend_request_start_time_;
   if (suspend_duration < base::TimeDelta()) {
@@ -665,14 +598,12 @@ void Suspender::FinishRequest(bool success,
   // suspend request is completed (during resume).
   delegate_->ResumeAudio();
 
-  EmitSuspendDoneSignal(suspend_request_id_, suspend_duration, wakeup_type,
-                        hibernated);
+  EmitSuspendDoneSignal(suspend_request_id_, suspend_duration, wakeup_type);
   delegate_->SetSuspendAnnounced(false);
   dark_resume_->ExitDarkResume();
-  delegate_->UndoPrepareToSuspend(
-      success,
-      initial_num_attempts_ ? initial_num_attempts_ : current_num_attempts_,
-      hibernated);
+  delegate_->UndoPrepareToSuspend(success, initial_num_attempts_
+                                               ? initial_num_attempts_
+                                               : current_num_attempts_);
   delegate_->UnapplyQuirksAfterSuspend();
 
   // Re-enable device event. If everything ran expectedly, EC should have
@@ -691,15 +622,8 @@ Suspender::State Suspender::Suspend() {
   policy::ShutdownFromSuspendInterface::Action action =
       shutdown_from_suspend_->PrepareForSuspendAttempt();
 
-  bool hibernate = false;
-  bool hibernate_available = suspend_configurator_->IsHibernateAvailable();
-
   switch (suspend_request_flavor_) {
     case SuspendFlavor::SUSPEND_TO_RAM:
-      break;
-
-    case SuspendFlavor::SUSPEND_TO_DISK:
-      hibernate = true;
       break;
 
     // If the caller has no preference for suspend flavor, determine the
@@ -711,10 +635,6 @@ Suspender::State Suspender::Suspend() {
           // Don't call FinishRequest(); we want the backlight to stay off.
           delegate_->ShutDownFromSuspend();
           return State::SHUTTING_DOWN;
-
-        case policy::ShutdownFromSuspendInterface::Action::HIBERNATE:
-          hibernate = true;
-          break;
 
         case policy::ShutdownFromSuspendInterface::Action::SUSPEND:
           break;
@@ -733,36 +653,18 @@ Suspender::State Suspender::Suspend() {
   // active Audio to properly suspend themselves.
   delegate_->SuspendAudio();
 
-  if (hibernate && !hibernate_available) {
-    // A hibernate was explicitly requested. We do not have to consider the
-    // hibernate delay, so just go ahead and hibernate if available.
-    LOG(WARNING) << "Cannot hibernate because hibernation is unavailable";
-    hibernate = false;
-  }
-
   if (adaptive_charging_controller_) {
-    if (hibernate) {
-      // Since wake from RTC isn't available from hibernate, we treat this as a
-      // shutdown for AdaptiveCharging.
-      adaptive_charging_controller_->HandleShutdown();
-    } else {
-      adaptive_charging_controller_->PrepareForSuspendAttempt();
-    }
+    adaptive_charging_controller_->PrepareForSuspendAttempt();
   }
 
   if (suspend_duration_ != base::TimeDelta()) {
-    LOG(INFO) << (hibernate ? "Hibernating" : "Suspending") << " for "
-              << suspend_duration_.InSeconds() << " seconds"
-              << (hibernate ? " (duration likely ignored for hibernate)" : "");
+    LOG(INFO) << "Suspending for " << suspend_duration_.InSeconds()
+              << " seconds";
   }
 
-  if (hibernate) {
-    LOG(INFO) << "Starting hibernate";
-  } else {
-    // Note: If this log message is changed, the platform_SuspendResumeTiming
-    // and bluetooth suspend tests must be updated.
-    LOG(INFO) << "Starting suspend";
-  }
+  // Note: If this log message is changed, the platform_SuspendResumeTiming
+  // and bluetooth suspend tests must be updated.
+  LOG(INFO) << "Starting suspend";
 
   if (!dark_resume_wake_durations_.empty()) {
     dark_resume_wake_durations_.back().first = last_dark_resume_wake_reason_;
@@ -774,7 +676,7 @@ Suspender::State Suspender::Suspend() {
   current_num_attempts_++;
   Delegate::SuspendResult result =
       delegate_->DoSuspend(wakeup_count_, wakeup_count_valid_,
-                           suspend_duration_, suspend_request_id_, hibernate);
+                           suspend_duration_, suspend_request_id_);
 
   wakeup_source_identifier_->HandleResume();
 
@@ -789,17 +691,16 @@ Suspender::State Suspender::Suspend() {
     // Reset this immediately right after a successful suspend, leave it
     // for retry attempts
     suspend_duration_ = base::TimeDelta();
-    dark_resume_->HandleSuccessfulResume(hibernate);
+    dark_resume_->HandleSuccessfulResume();
   }
 
   // TODO(crbug.com/790898): Identify attempts that are canceled due to wakeup
   // events from dark resume sources and call HandleDarkResume instead.
-  return dark_resume_->InDarkResume() ? HandleDarkResume(result, hibernate)
-                                      : HandleNormalResume(result, hibernate);
+  return dark_resume_->InDarkResume() ? HandleDarkResume(result)
+                                      : HandleNormalResume(result);
 }
 
-Suspender::State Suspender::HandleNormalResume(Delegate::SuspendResult result,
-                                               bool from_hibernate) {
+Suspender::State Suspender::HandleNormalResume(Delegate::SuspendResult result) {
   SuspendDone::WakeupType wakeup_type = SuspendDone_WakeupType_NOT_APPLICABLE;
 
   if (result == Delegate::SuspendResult::SUCCESS) {
@@ -814,22 +715,20 @@ Suspender::State Suspender::HandleNormalResume(Delegate::SuspendResult result,
   // UndoPrepareForSuspend() should result in failure.
   if ((result == Delegate::SuspendResult::SUCCESS) ||
       suspend_request_supplied_wakeup_count_) {
-    FinishRequest(result == Delegate::SuspendResult::SUCCESS, wakeup_type,
-                  from_hibernate);
+    FinishRequest(result == Delegate::SuspendResult::SUCCESS, wakeup_type);
     return State::IDLE;
   }
 
-  return HandleUnsuccessfulSuspend(result, from_hibernate);
+  return HandleUnsuccessfulSuspend(result);
 }
 
-Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result,
-                                             bool from_hibernate) {
+Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result) {
   // Go through the normal unsuccessful-suspend path if the suspend failed in
   // the kernel or if we've exceeded the maximum number of retries.
   if (result == Delegate::SuspendResult::FAILURE ||
       (result == Delegate::SuspendResult::CANCELED &&
        current_num_attempts_ > max_retries_))
-    return HandleUnsuccessfulSuspend(result, from_hibernate);
+    return HandleUnsuccessfulSuspend(result);
 
   // Save the first run's number of attempts so it can be reported later.
   if (!initial_num_attempts_)
@@ -863,15 +762,14 @@ Suspender::State Suspender::HandleDarkResume(Delegate::SuspendResult result,
 }
 
 Suspender::State Suspender::HandleUnsuccessfulSuspend(
-    Delegate::SuspendResult result, bool hibernate) {
+    Delegate::SuspendResult result) {
   DCHECK_NE(result, Delegate::SuspendResult::SUCCESS);
 
   if (current_num_attempts_ > max_retries_) {
-    LOG(ERROR) << "Unsuccessfully attempted to "
-               << (hibernate ? "hibernate " : "suspend ")
+    LOG(ERROR) << "Unsuccessfully attempted to suspend "
                << current_num_attempts_ << " times; shutting down";
     // Don't call FinishRequest(); we want the backlight to stay off.
-    delegate_->ShutDownForFailedSuspend(hibernate);
+    delegate_->ShutDownForFailedSuspend();
     return State::SHUTTING_DOWN;
   }
 
@@ -901,14 +799,12 @@ void Suspender::ScheduleResuspend(const base::TimeDelta& delay) {
 
 void Suspender::EmitSuspendDoneSignal(int suspend_request_id,
                                       const base::TimeDelta& suspend_duration,
-                                      SuspendDone::WakeupType wakeup_type,
-                                      bool hibernated) {
+                                      SuspendDone::WakeupType wakeup_type) {
   SuspendDone proto;
   proto.set_suspend_id(suspend_request_id);
   proto.set_suspend_duration(suspend_duration.InMicroseconds());
   proto.set_wakeup_type(wakeup_type);
-  proto.set_deepest_state(hibernated ? SuspendDone_SuspendState_TO_DISK
-                                     : SuspendDone_SuspendState_TO_RAM);
+  proto.set_deepest_state(SuspendDone_SuspendState_TO_RAM);
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kSuspendDoneSignal, proto);
 }
 
@@ -916,13 +812,6 @@ void Suspender::EmitDarkSuspendImminentSignal() {
   SuspendImminent proto;
   proto.set_suspend_id(dark_suspend_id_);
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kDarkSuspendImminentSignal,
-                                              proto);
-}
-
-void Suspender::EmitHibernateResumeReadySignal(int suspend_request_id) {
-  HibernateResumeReady proto;
-  proto.set_suspend_id(suspend_request_id);
-  dbus_wrapper_->EmitSignalWithProtocolBuffer(kHibernateResumeReadySignal,
                                               proto);
 }
 

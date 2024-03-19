@@ -23,8 +23,6 @@ is available:
     in powerd.
 -   [Battery Notifications](docs/battery_notifications.md) describes when
     low-battery notifications are shown by the UI.
--   [Hibernation](docs/hibernation.md) describes how powerd handles the
-    hibernation process.
 -   [Inactivity Delays](docs/inactivity_delays.md) describes powerd's logic for
     taking action (e.g. dimming the backlight or suspending) when the user is
     inactive.

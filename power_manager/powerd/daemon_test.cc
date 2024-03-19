@@ -182,7 +182,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     oobe_completed_path_ = temp_dir_.GetPath().Append("oobe_completed");
     cros_ec_path_ = temp_dir_.GetPath().Append("cros_ec");
     suspended_state_path_ = temp_dir_.GetPath().Append("suspended_state");
-    hibernated_state_path_ = temp_dir_.GetPath().Append("hibernated_state");
     flashrom_lock_path_ = temp_dir_.GetPath().Append("flashrom_lock");
     battery_tool_lock_path_ = temp_dir_.GetPath().Append("battery_tool_lock");
     proc_path_ = temp_dir_.GetPath().Append("proc");
@@ -223,7 +222,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     daemon_->set_oobe_completed_path_for_testing(oobe_completed_path_);
     daemon_->set_cros_ec_path_for_testing(cros_ec_path_);
     daemon_->set_suspended_state_path_for_testing(suspended_state_path_);
-    daemon_->set_hibernated_state_path_for_testing(hibernated_state_path_);
     daemon_->disable_mojo_for_testing();
     daemon_->Init();
   }
@@ -571,7 +569,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     std::string suspend_arg = "--suspend_to_idle";
     async_commands_.clear();
     sync_commands_.clear();
-    daemon_->DoSuspend(1, true, base::Milliseconds(0), kFakeSuspendID, false);
+    daemon_->DoSuspend(1, true, base::Milliseconds(0), kFakeSuspendID);
     return sync_commands_[0].find(suspend_arg) != std::string::npos;
   }
 
@@ -670,7 +668,6 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   base::FilePath oobe_completed_path_;
   base::FilePath cros_ec_path_;
   base::FilePath suspended_state_path_;
-  base::FilePath hibernated_state_path_;
   base::FilePath flashrom_lock_path_;
   base::FilePath battery_tool_lock_path_;
   base::FilePath proc_path_;
@@ -1296,10 +1293,10 @@ TEST_F(DaemonTest, PrepareToSuspendAndResume) {
                           base::Unretained(this)));
 #endif  // USE_KEY_EVICTION
 
-  daemon_->DoSuspend(1, true, base::Milliseconds(0), kFakeSuspendID, false);
+  daemon_->DoSuspend(1, true, base::Milliseconds(0), kFakeSuspendID);
 
   input_watcher_->set_lid_state(LidState::OPEN);
-  daemon_->UndoPrepareToSuspend(true, 0, false);
+  daemon_->UndoPrepareToSuspend(true, 0);
   EXPECT_FALSE(power_supply_->suspended());
 }
 

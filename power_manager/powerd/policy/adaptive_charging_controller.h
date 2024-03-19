@@ -121,7 +121,7 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
   // Enables Charge Limit if it was deferred before suspend.
   virtual void HandleDarkResume() = 0;
 
-  // Disables Adaptive Charging for shutdown (and hibernate).
+  // Disables Adaptive Charging for shutdown.
   virtual void HandleShutdown() = 0;
 
   // Function to pass in the results from the Adaptive Charging ml-service.

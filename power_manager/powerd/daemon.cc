@@ -93,8 +93,6 @@ namespace {
 // Default values for |*_path_| members (which can be overridden for tests).
 const char kDefaultSuspendedStatePath[] =
     "/var/lib/power_manager/powerd_suspended";
-const char kDefaultHibernatedStatePath[] =
-    "/var/lib/power_manager/powerd_hibernated";
 const char kDefaultWakeupCountPath[] = "/sys/power/wakeup_count";
 const char kDefaultSyncOnSuspendPath[] = "/sys/power/sync_on_suspend";
 const char kDefaultOobeCompletedPath[] = "/home/chronos/.oobe_completed";
@@ -361,7 +359,6 @@ Daemon::Daemon(DaemonDelegate* delegate, const base::FilePath& run_dir)
       cros_ec_path_(ec::kCrosEcPath),
       run_dir_(run_dir),
       suspended_state_path_(kDefaultSuspendedStatePath),
-      hibernated_state_path_(kDefaultHibernatedStatePath),
       shutdown_announced_path_(run_dir.Append(kShutdownAnnouncedFile)),
       suspend_announced_path_(run_dir.Append(kSuspendAnnouncedFile)),
       already_ran_path_(run_dir.Append(Daemon::kAlreadyRanFileName)),
@@ -901,8 +898,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
     uint64_t wakeup_count,
     bool wakeup_count_valid,
     base::TimeDelta duration,
-    int suspend_request_id,
-    bool to_hibernate) {
+    int suspend_request_id) {
   // If power management is overridden by a lockfile, spin for a bit to wait for
   // the process to finish: http://crosbug.com/p/38947
   base::TimeDelta elapsed;
@@ -917,17 +913,12 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   }
 
   const system::PowerStatus status = power_supply_->GetPowerStatus();
-  bool battery_was_below_shutdown_threshold =
-      status.battery_below_shutdown_threshold;
 
   // Touch a file that crash-reporter can inspect later to determine
-  // whether the system was suspended or hibernated while an unclean
-  // shutdown occurred. If the file already exists, assume that
-  // crash-reporter hasn't seen it yet and avoid unlinking it after
-  // resume.
+  // whether the system was suspended while an unclean shutdown
+  // occurred. If the file already exists, assume that crash-reporter
+  // hasn't seen it yet and avoid unlinking it after resume.
   base::FilePath suspended_state_path = suspended_state_path_;
-  if (to_hibernate)
-    suspended_state_path = hibernated_state_path_;
 
   created_suspended_state_file_ = false;
   if (!base::PathExists(suspended_state_path)) {
@@ -939,7 +930,6 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 
   // This command is run synchronously to ensure that it finishes before the
   // system is suspended.
-  // TODO(b/192353448): Create a eventlog code for hibernate.
   if (log_suspend_manually_) {
     RunSetuidHelper("eventlog_add", "--eventlog_code=0xa7", true);
   }
@@ -951,10 +941,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
         base::StringPrintf("--suspend_wakeup_count=%" PRIu64, wakeup_count));
   }
 
-  if (to_hibernate) {
-    args.push_back("--suspend_to_disk");
-
-  } else if (suspend_to_idle_) {
+  if (suspend_to_idle_) {
     args.push_back("--suspend_to_idle");
   }
 
@@ -993,7 +980,6 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
       RunSetuidHelper("suspend", base::JoinString(args, " "), true);
   LOG(INFO) << "powerd_suspend returned " << exit_code;
 
-  // TODO(b/192353448): Create a eventlog code for hibernate.
   if (log_suspend_manually_)
     RunSetuidHelper("eventlog_add", "--eventlog_code=0xa8", false);
 
@@ -1009,15 +995,6 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   bool undo_prep_suspend_succ = suspend_configurator_->UndoPrepareForSuspend();
   if (!(thaw_userspace_succ && undo_prep_suspend_succ))
     return policy::Suspender::Delegate::SuspendResult::FAILURE;
-
-  if (to_hibernate && !exit_code) {
-    // Resumed from hibernate. Report the shutdown from the hibernation,
-    // which was handled by hiberman, not powerd.
-    if (battery_was_below_shutdown_threshold)
-      metrics_collector_->HandleShutdown(ShutdownReason::HIBERNATE_LOW_BATTERY);
-    else
-      metrics_collector_->HandleShutdown(ShutdownReason::HIBERNATE);
-  }
 
   // These exit codes are defined in powerd/powerd_suspend.
   switch (exit_code) {
@@ -1035,9 +1012,7 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   }
 }
 
-void Daemon::UndoPrepareToSuspend(bool success,
-                                  int num_suspend_attempts,
-                                  bool hibernated) {
+void Daemon::UndoPrepareToSuspend(bool success, int num_suspend_attempts) {
   LidState lid_state = input_watcher_->QueryLidState();
 
   // Update the lid state first so that resume does not turn the internal
@@ -1057,10 +1032,9 @@ void Daemon::UndoPrepareToSuspend(bool success,
   power_supply_->SetSuspended(false);
 
   if (success)
-    metrics_collector_->HandleResume(num_suspend_attempts, hibernated);
+    metrics_collector_->HandleResume(num_suspend_attempts);
   else if (num_suspend_attempts > 0)
-    metrics_collector_->HandleCanceledSuspendRequest(num_suspend_attempts,
-                                                     hibernated);
+    metrics_collector_->HandleCanceledSuspendRequest(num_suspend_attempts);
 }
 
 void Daemon::ApplyQuirksBeforeSuspend() {
@@ -1079,9 +1053,8 @@ void Daemon::GenerateDarkResumeMetrics(
                                                 suspend_duration);
 }
 
-void Daemon::ShutDownForFailedSuspend(bool hibernate) {
-  ShutDown(ShutdownMode::POWER_OFF, hibernate ? ShutdownReason::HIBERNATE_FAILED
-                                              : ShutdownReason::SUSPEND_FAILED);
+void Daemon::ShutDownForFailedSuspend() {
+  ShutDown(ShutdownMode::POWER_OFF, ShutdownReason::SUSPEND_FAILED);
 }
 
 void Daemon::ShutDownFromSuspend() {
@@ -1789,8 +1762,6 @@ std::unique_ptr<dbus::Response> Daemon::HandleSetPolicyMethod(
     adaptive_charging_controller_->HandlePolicyChange(policy);
   }
 
-  shutdown_from_suspend_->HandlePolicyChange(policy);
-
   for (auto controller : all_backlight_controllers_)
     controller->HandlePolicyChange(policy);
   return nullptr;
@@ -1988,11 +1959,7 @@ void Daemon::Suspend(SuspendImminent::Reason reason,
     return;
   }
 
-  if (flavor == SuspendFlavor::RESUME_FROM_DISK_ABORT) {
-    suspender_->AbortResumeFromHibernate();
-  } else {
-    suspender_->RequestSuspend(reason, external_wakeup_count, duration, flavor);
-  }
+  suspender_->RequestSuspend(reason, external_wakeup_count, duration, flavor);
 }
 
 void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {

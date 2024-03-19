@@ -952,7 +952,6 @@ In the tables below,
 | legacy-power-button | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | low-battery-shutdown-percent | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | low-battery-shutdown-time-s | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
-| lower-power-from-suspend-sec | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | manual-eventlog-add | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | max-charge-samples | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | max-current-samples | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
@@ -982,6 +981,7 @@ In the tables below,
 | set-wifi-transmit-power-for-activity-proximity | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | set-wifi-transmit-power-for-proximity | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | set-wifi-transmit-power-for-tablet-mode | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
+| shutdown-from-suspend-sec | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | slow-adaptive-charging-enabled | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | smart-discharge-to-zero-hr | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | suspend-mode | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |

@@ -79,7 +79,6 @@ const char kBatteryStatePollSignal[] = "BatteryStatePoll";
 const char kSuspendImminentSignal[] = "SuspendImminent";
 const char kDarkSuspendImminentSignal[] = "DarkSuspendImminent";
 const char kSuspendDoneSignal[] = "SuspendDone";
-const char kHibernateResumeReadySignal[] = "HibernateResumeReady";
 const char kInputEventSignal[] = "InputEvent";
 const char kIdleActionImminentSignal[] = "IdleActionImminent";
 const char kIdleActionDeferredSignal[] = "IdleActionDeferred";

@@ -27,7 +27,7 @@ class DarkResumeStub : public DarkResumeInterface {
   void set_enabled(bool enabled) { enabled_ = enabled; }
 
   // DarkResumeInterface implementation:
-  void HandleSuccessfulResume(bool from_hibernate) override;
+  void HandleSuccessfulResume() override;
   bool InDarkResume() override;
   bool IsEnabled() override;
   void ExitDarkResume() override{};

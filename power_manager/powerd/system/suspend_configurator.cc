@@ -21,17 +21,6 @@
 
 namespace power_manager::system {
 
-// Path to read to figure out the hibernation resume device.
-// This file is absent on kernels without hibernation support.
-constexpr char kSnapshotDevicePath[] = "/dev/snapshot";
-
-// Path to the hiberman executable responsible for coordinating hibernate/resume
-// activities.
-constexpr char kHibermanExecutablePath[] = "/usr/sbin/hiberman";
-
-// Device mapper base path.
-constexpr char kDeviceMapperBasePath[] = "/dev/mapper";
-
 namespace {
 // Path to write to configure system suspend mode.
 static constexpr char kSuspendModePath[] = "/sys/power/mem_sleep";
@@ -137,40 +126,6 @@ bool SuspendConfigurator::UndoPrepareForSuspend() {
     return false;
   }
   return true;
-}
-
-bool SuspendConfigurator::IsHibernateAvailable() {
-  base::FilePath snapshot_device_path =
-      GetPrefixedFilePath(base::FilePath(kSnapshotDevicePath));
-  base::FilePath hiberman_executable_path =
-      GetPrefixedFilePath(base::FilePath(kHibermanExecutablePath));
-
-  if (!base::PathExists(snapshot_device_path) ||
-      !base::PathExists(hiberman_executable_path)) {
-    return false;
-  }
-
-  if (!HiberimageExists()) {
-    LOG(INFO) << "Hibernate would be available but 'hiberimage' does not exist";
-    return false;
-  }
-
-  return true;
-}
-
-bool SuspendConfigurator::HiberimageExists() {
-  // Because hiberimage is created at user login and removed
-  // at logout we must always check if a hiberimage exists.
-  base::FileEnumerator file_enum(
-      GetPrefixedFilePath(base::FilePath(kDeviceMapperBasePath)),
-      /*recursive=*/false, base::FileEnumerator::FileType::FILES);
-  for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
-    // The format is always /dev/mapper/${LVM_VG}-hiberimage
-    if (base::EndsWith(path.value(), "hiberimage")) {
-      return true;
-    }
-  }
-  return false;
 }
 
 void SuspendConfigurator::ConfigureConsoleForSuspend() {

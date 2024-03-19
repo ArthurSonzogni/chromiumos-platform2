@@ -81,7 +81,6 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     return suspend_wakeup_count_valid_;
   }
   const base::TimeDelta& suspend_duration() const { return suspend_duration_; }
-  bool to_hibernate() const { return to_hibernate_; }
 
   bool suspend_was_successful() const { return suspend_was_successful_; }
   int num_suspend_attempts() const { return num_suspend_attempts_; }
@@ -92,9 +91,6 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   }
   base::TimeDelta last_suspend_duration() const {
     return last_suspend_duration_;
-  }
-  bool shutdown_failed_suspend_due_to_hibernate() const {
-    return shutdown_failed_suspend_hibernate_;
   }
   bool quirks_applied() const { return quirks_applied_; }
 
@@ -126,13 +122,11 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   SuspendResult DoSuspend(uint64_t wakeup_count,
                           bool wakeup_count_valid,
                           base::TimeDelta duration,
-                          int suspend_request_id,
-                          bool to_hibernate) override {
+                          int suspend_request_id) override {
     AppendAction(kSuspend);
     suspend_wakeup_count_ = wakeup_count;
     suspend_wakeup_count_valid_ = wakeup_count_valid;
     suspend_duration_ = duration;
-    to_hibernate_ = to_hibernate;
     if (clock_)
       clock_->advance_current_boot_time_for_testing(suspend_advance_time_);
 
@@ -142,9 +136,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     return suspend_result_;
   }
 
-  void UndoPrepareToSuspend(bool success,
-                            int num_suspend_attempts,
-                            bool hibernated) override {
+  void UndoPrepareToSuspend(bool success, int num_suspend_attempts) override {
     AppendAction(kUnprepare);
     suspend_was_successful_ = success;
     num_suspend_attempts_ = num_suspend_attempts;
@@ -164,8 +156,7 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
     last_suspend_duration_ = suspend_duration;
   }
 
-  void ShutDownForFailedSuspend(bool hibernate) override {
-    shutdown_failed_suspend_hibernate_ = hibernate;
+  void ShutDownForFailedSuspend() override {
     AppendAction(kShutDown);
     if (!shutdown_callback_.is_null())
       shutdown_callback_.Run();
@@ -209,14 +200,10 @@ class TestDelegate : public Suspender::Delegate, public ActionRecorder {
   uint64_t suspend_wakeup_count_ = 0;
   bool suspend_wakeup_count_valid_ = false;
   base::TimeDelta suspend_duration_;
-  bool to_hibernate_ = false;
 
   // Arguments passed to last invocation of UndoPrepareToSuspend().
   bool suspend_was_successful_ = false;
   int num_suspend_attempts_ = 0;
-
-  // Arguments passed to the last invocation of ShutdownForFailedSuspend.
-  bool shutdown_failed_suspend_hibernate_ = false;
 
   // Quirks state
   bool quirks_applied_ = false;
@@ -551,68 +538,7 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
   EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
   EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, kShutDown, nullptr),
             delegate_.GetActions());
-  EXPECT_FALSE(delegate_.shutdown_failed_suspend_due_to_hibernate());
   EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
-}
-
-// Tests that the system is shut down after repeated hibernate failures.
-TEST_F(SuspenderTest, ShutDownAfterRepeatedHibernateFailures) {
-  pref_num_retries_ = 5;
-  Init();
-
-  delegate_.set_suspend_result(Suspender::Delegate::SuspendResult::FAILURE);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
-                            base::TimeDelta(), SuspendFlavor::SUSPEND_TO_DISK);
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
-            delegate_.GetActions());
-
-  // Proceed through all retries, reporting failure each time.
-  for (int i = 1; i <= pref_num_retries_ - 1; ++i) {
-    EXPECT_TRUE(test_api_.TriggerResuspendTimeout()) << "Retry #" << i;
-    EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, nullptr),
-              delegate_.GetActions())
-        << "Retry #" << i;
-  }
-
-  // After the last failed attempt, the system should shut down immediately,
-  // and indicate hibernate as the action.
-  EXPECT_TRUE(test_api_.TriggerResuspendTimeout());
-  EXPECT_EQ(JoinActions(kSuspendAudio, kSuspend, kShutDown, nullptr),
-            delegate_.GetActions());
-  EXPECT_TRUE(delegate_.shutdown_failed_suspend_due_to_hibernate());
-  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
-}
-
-// Tests that an explicit hibernate request doesn't require a minimum time
-// suspended.
-TEST_F(SuspenderTest, ExplicitHibernateDoesntRequireMinSuspendTime) {
-  Init();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
-                            base::TimeDelta(), SuspendFlavor::SUSPEND_TO_DISK);
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(
-      JoinActions(kSuspendAudio, kSuspend, kResumeAudio, kUnprepare, nullptr),
-      delegate_.GetActions());
-  EXPECT_TRUE(delegate_.suspend_was_successful());
-  EXPECT_TRUE(delegate_.to_hibernate());
-}
-
-// Tests that hibernate will not happen if it's disabled via finch.
-TEST_F(SuspenderTest, HibernateFeatureUnavailableDisablesExplicitRequest) {
-  Init();
-  configurator_stub_.force_hibernate_unavailable_for_testing();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
-                            base::TimeDelta(), SuspendFlavor::SUSPEND_TO_DISK);
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(
-      JoinActions(kSuspendAudio, kSuspend, kResumeAudio, kUnprepare, nullptr),
-      delegate_.GetActions());
-  EXPECT_TRUE(delegate_.suspend_was_successful());
-  EXPECT_FALSE(delegate_.to_hibernate());
 }
 
 // Tests that announcing suspend readiness doesn't trigger a call to Suspend()
@@ -1456,184 +1382,6 @@ TEST_F(SuspenderTest, SuspendWakeupTimoutRetryOnFailure) {
                             base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
   AnnounceReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(base::TimeDelta(), delegate_.suspend_duration());
-}
-
-// Test that an explicit request for hibernate requests hibernation.
-TEST_F(SuspenderTest, ExplicitHibernate) {
-  Init();
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
-                            base::TimeDelta(), SuspendFlavor::SUSPEND_TO_DISK);
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(
-      JoinActions(kSuspendAudio, kSuspend, kResumeAudio, kUnprepare, nullptr),
-      delegate_.GetActions());
-  EXPECT_EQ(true, delegate_.suspend_was_successful());
-  EXPECT_EQ(true, delegate_.to_hibernate());
-}
-
-// Test that an explicit request for suspend to RAM does so, even if
-// ShutdownFromSuspend from suspend wants to hibernate.
-TEST_F(SuspenderTest, ExplicitRamSuspendWithDarkHibernate) {
-  Init();
-  shutdown_from_suspend_.set_action(
-      policy::ShutdownFromSuspendInterface::Action::HIBERNATE);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
-                            base::TimeDelta(), SuspendFlavor::SUSPEND_TO_RAM);
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(
-      JoinActions(kSuspendAudio, kSuspend, kResumeAudio, kUnprepare, nullptr),
-      delegate_.GetActions());
-  EXPECT_EQ(true, delegate_.suspend_was_successful());
-  EXPECT_EQ(false, delegate_.to_hibernate());
-}
-
-// Test that a shutdown from suspend can hibernate in the default flavor.
-TEST_F(SuspenderTest, ShutdownFromSuspendHibernate) {
-  Init();
-  shutdown_from_suspend_.set_action(
-      policy::ShutdownFromSuspendInterface::Action::HIBERNATE);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
-                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-
-  // Make sure that HandleShutdown is called for hibernate, which is what
-  // Adaptive Charging expects, since we don't want to leave charge limited
-  // when there's no way to reenable it until the system boots again.
-  EXPECT_CALL(adaptive_charging_controller_, HandleShutdown()).Times(1);
-  AnnounceReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(
-      JoinActions(kSuspendAudio, kSuspend, kResumeAudio, kUnprepare, nullptr),
-      delegate_.GetActions());
-  EXPECT_EQ(true, delegate_.suspend_was_successful());
-  EXPECT_EQ(true, delegate_.to_hibernate());
-}
-
-// Tests a normal hiberman resume and abort cycle.
-TEST_F(SuspenderTest, HibernateResumeAndAbort) {
-  Init();
-
-  // Suspender shouldn't run powerd_suspend until it receives notice that
-  // SuspendDelayController is ready.
-  const uint64_t kWakeupCount = 452;
-  delegate_.set_wakeup_count(kWakeupCount);
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
-                            base::TimeDelta(),
-                            SuspendFlavor::RESUME_FROM_DISK_PREPARE);
-  const int suspend_id = test_api_.suspend_id();
-  EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
-  EXPECT_EQ(SuspendImminent_Reason_OTHER, GetSuspendImminentReason(0));
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  EXPECT_TRUE(delegate_.suspend_announced());
-
-  // When Suspender receives notice that the system is ready to be suspended, it
-  // should transition to the RESUMING_FROM_HIBERNATE state.
-  AnnounceReadyForSuspend(suspend_id);
-  // Nothing should have happened to the delegate.
-  EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
-  dbus_wrapper_.ClearSentSignals();
-
-  // Now abort the resume.
-  suspender_.AbortResumeFromHibernate();
-  EXPECT_EQ(JoinActions(kResumeAudio, kUnprepare, nullptr),
-            delegate_.GetActions());
-  EXPECT_FALSE(delegate_.suspend_was_successful());
-  // We don't actually try to do any suspends here, callbacks only.
-  EXPECT_EQ(0, delegate_.num_suspend_attempts());
-
-  // A SuspendDone signal should be emitted (but only the after abort request)
-  // to announce that the attempt is complete.
-  SuspendDone done_proto;
-  EXPECT_TRUE(
-      dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
-  EXPECT_EQ(suspend_id, done_proto.suspend_id());
-  EXPECT_EQ(test_api_.suspend_id(), suspend_id);
-  EXPECT_EQ(done_proto.wakeup_type(), SuspendDone_WakeupType_NOT_APPLICABLE);
-  EXPECT_FALSE(delegate_.suspend_announced());
-
-  // A resuspend timeout shouldn't be set.
-  EXPECT_FALSE(test_api_.TriggerResuspendTimeout());
-}
-
-// Tests a suspend request while in a resume state is ignored. Suspend requests
-// are not expected to be coming in during this transition, this tests that the
-// state machine does not go off the rails if an unexpected event occurs.
-TEST_F(SuspenderTest, HibernateResumeThenSuspendIsIgnored) {
-  Init();
-
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
-                            base::TimeDelta(),
-                            SuspendFlavor::RESUME_FROM_DISK_PREPARE);
-  const int suspend_id = test_api_.suspend_id();
-  EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  EXPECT_TRUE(delegate_.suspend_announced());
-  AnnounceReadyForSuspend(suspend_id);
-  EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
-  dbus_wrapper_.ClearSentSignals();
-
-  // Now attempt a wild suspend request, which should get ignored.
-  suspender_.RequestSuspend(SuspendImminent_Reason_LID_CLOSED, std::nullopt,
-                            base::TimeDelta(), SuspendFlavor::SUSPEND_DEFAULT);
-
-  EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
-  EXPECT_EQ(suspend_id, test_api_.suspend_id());
-  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
-
-  // Now abort the resume.
-  suspender_.AbortResumeFromHibernate();
-  EXPECT_EQ(JoinActions(kResumeAudio, kUnprepare, nullptr),
-            delegate_.GetActions());
-  EXPECT_FALSE(delegate_.suspend_was_successful());
-  EXPECT_EQ(0, delegate_.num_suspend_attempts());
-
-  // A (single!) SuspendDone signal should be emitted after the abort request
-  // to announce that the attempt is complete.
-  EXPECT_EQ(1, dbus_wrapper_.num_sent_signals());
-  SuspendDone done_proto;
-  EXPECT_TRUE(
-      dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
-  EXPECT_EQ(suspend_id, done_proto.suspend_id());
-  EXPECT_EQ(done_proto.wakeup_type(), SuspendDone_WakeupType_NOT_APPLICABLE);
-  EXPECT_FALSE(delegate_.suspend_announced());
-}
-
-// Test that user activity and other events that come in while the callbacks are
-// being run don't abort a RESUME_FROM_DISK_PREPARE.
-TEST_F(SuspenderTest, HibernateResumeIgnoresActivityEvents) {
-  Init();
-
-  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, std::nullopt,
-                            base::TimeDelta(),
-                            SuspendFlavor::RESUME_FROM_DISK_PREPARE);
-  const int suspend_id = test_api_.suspend_id();
-  EXPECT_EQ(suspend_id, GetSuspendImminentId(0));
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
-  EXPECT_TRUE(delegate_.suspend_announced());
-  // Send in some user activity. None of this should cause the suspender to
-  // abort.
-  suspender_.HandleUserActivity();
-  suspender_.HandleWakeNotification();
-  suspender_.HandleDisplayModeChange(DisplayMode::PRESENTATION);
-  // Should not have unprepared.
-  EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
-  // Shutdown, however, should cause the request to abort.
-  suspender_.HandleShutdown();
-  EXPECT_EQ(JoinActions(kResumeAudio, kUnprepare, nullptr),
-            delegate_.GetActions());
-}
-
-// Tests that a hibernate resume abort not prefaced by a prepare is properly
-// ignored.
-TEST_F(SuspenderTest, SpuriousResumeAbortIsIgnored) {
-  Init();
-
-  suspender_.AbortResumeFromHibernate();
-  EXPECT_EQ(JoinActions(nullptr), delegate_.GetActions());
-  EXPECT_FALSE(delegate_.suspend_announced());
-  EXPECT_EQ(0, delegate_.num_suspend_attempts());
-  EXPECT_EQ(0, dbus_wrapper_.num_sent_signals());
 }
 
 // Quirks should be applied in StartRequest and FinishRequest.

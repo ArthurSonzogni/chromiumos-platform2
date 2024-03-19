@@ -22,10 +22,6 @@ namespace system {
 
 class DBusWrapperInterface;
 
-extern const char kSuspendToHibernateFeatureName[];
-extern const char kSnapshotDevicePath[];
-extern const char kHibermanExecutablePath[];
-
 // Interface to configure suspend-related kernel parameters on startup or
 // before suspend as needed.
 class SuspendConfiguratorInterface {
@@ -44,8 +40,6 @@ class SuspendConfiguratorInterface {
   // Do post-suspend work just after resuming from suspend. Returns false if the
   // last suspend was a failure. Returns true otherwise.
   virtual bool UndoPrepareForSuspend() = 0;
-  // Check the system to see if hibernate is set up and enabled.
-  virtual bool IsHibernateAvailable() = 0;
 };
 
 class SuspendConfigurator : public SuspendConfiguratorInterface {
@@ -65,7 +59,6 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
   // SuspendConfiguratorInterface implementation.
   uint64_t PrepareForSuspend(const base::TimeDelta& suspend_duration) override;
   bool UndoPrepareForSuspend() override;
-  bool IsHibernateAvailable() override;
 
   // Sets a prefix path which is used as file system root when testing.
   // Setting to an empty path removes the prefix.
@@ -86,11 +79,6 @@ class SuspendConfigurator : public SuspendConfiguratorInterface {
 
   // Returns true if running on an Intel CPU.
   bool HasIntelCpu();
-
-  // Returns true if a hiberimage exists.
-  // hiberimage is an LVM volume which will only be active after hiberman has
-  // configured hiberimage.
-  bool HiberimageExists();
 
   // Reads preferences and sets |suspend_mode_|.
   void ReadSuspendMode();

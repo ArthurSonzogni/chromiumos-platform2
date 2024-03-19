@@ -160,14 +160,12 @@ class Suspender : public SuspendDelayObserver,
     virtual SuspendResult DoSuspend(uint64_t wakeup_count,
                                     bool wakeup_count_valid,
                                     base::TimeDelta duration,
-                                    int suspend_request_id,
-                                    bool to_hibernate) = 0;
+                                    int suspend_request_id) = 0;
 
     // Undoes the preparations performed by PrepareToSuspend(). Called by
     // FinishRequest().
     virtual void UndoPrepareToSuspend(bool success,
-                                      int num_suspend_attempts,
-                                      bool hibernated) = 0;
+                                      int num_suspend_attempts) = 0;
 
     // Generates and reports metrics for wakeups in dark resume.
     virtual void GenerateDarkResumeMetrics(
@@ -175,7 +173,7 @@ class Suspender : public SuspendDelayObserver,
         base::TimeDelta suspend_duration_) = 0;
 
     // Shuts the system down in response to repeated failed suspend attempts.
-    virtual void ShutDownForFailedSuspend(bool hibernate) = 0;
+    virtual void ShutDownForFailedSuspend() = 0;
 
     // Shuts the system down in response to the ShutdownFromSuspend determining
     // the system should shut down.
@@ -246,9 +244,6 @@ class Suspender : public SuspendDelayObserver,
                       base::TimeDelta duration,
                       SuspendFlavor flavor);
 
-  // Aborts an imminent resume from hibernation.
-  void AbortResumeFromHibernate();
-
   // Handles events that may abort in-progress suspend attempts.
   void HandleLidOpened();
   void HandleUserActivity();
@@ -299,9 +294,6 @@ class Suspender : public SuspendDelayObserver,
     WAITING_TO_RETRY_SUSPEND,
     // The system is shutting down. Suspend requests are ignored.
     SHUTTING_DOWN,
-    // The system is braced for an imminent hibernate resume, which if
-    // successful transfers execution to an entirely new world.
-    RESUMING_FROM_HIBERNATE,
   };
 
   enum class Event {
@@ -323,8 +315,6 @@ class Suspender : public SuspendDelayObserver,
     DISPLAY_MODE_CHANGE,
     // New display observed by powerd.
     NEW_DISPLAY,
-    // A request aborting resume from hibernation was received.
-    ABORT_RESUME_FROM_HIBERNATE,
   };
 
   // Converts |event| to a string.
@@ -366,32 +356,25 @@ class Suspender : public SuspendDelayObserver,
   // Event::WAKE_NOTIFICATION. Returns new value for |state_|.
   State HandleWakeEventInSuspend(Event event);
 
-  // Helper method called by HandleEvent when in
-  // State::RESUMING_FROM_HIBERNATE.
-  void HandleEventInResumingFromHibernate(Event event);
-
   // Starts a new suspend request, notifying clients that have registered delays
   // that the system is about to suspend.
   void StartRequest();
 
   // Completes the current suspend request, undoing any work performed by
   // StartRequest().
-  void FinishRequest(bool success,
-                     SuspendDone::WakeupType wakeup_type,
-                     bool hibernated);
+  void FinishRequest(bool success, SuspendDone::WakeupType wakeup_type);
 
   // Actually performs a suspend attempt and waits for the system to resume,
   // returning a new value for |state_|.
   State Suspend();
 
   // Helper methods called by Suspend() to handle various suspend results.
-  State HandleNormalResume(Delegate::SuspendResult result, bool from_hibernate);
-  State HandleDarkResume(Delegate::SuspendResult result, bool from_hibernate);
+  State HandleNormalResume(Delegate::SuspendResult result);
+  State HandleDarkResume(Delegate::SuspendResult result);
 
   // Helper method called by HandleNormalResume() or HandleDarkResume() in
-  // response to a failed or canceled suspend or hibernation attempt.
-  State HandleUnsuccessfulSuspend(Delegate::SuspendResult result,
-                                  bool hibernate);
+  // response to a failed or canceled suspend attempt.
+  State HandleUnsuccessfulSuspend(Delegate::SuspendResult result);
 
   // Starts |resuspend_timer_| to send EVENT_READY_TO_RESUSPEND after |delay|.
   void ScheduleResuspend(const base::TimeDelta& delay);
@@ -399,16 +382,11 @@ class Suspender : public SuspendDelayObserver,
   // Emits D-Bus signal announcing the end of a suspend request.
   void EmitSuspendDoneSignal(int suspend_request_id,
                              const base::TimeDelta& suspend_duration,
-                             SuspendDone::WakeupType wakeup_type,
-                             bool hibernated);
+                             SuspendDone::WakeupType wakeup_type);
 
   // Emits a D-Bus signal announcing that the system will soon resuspend from
   // dark resume. |dark_resume_id_| is used as the request ID.
   void EmitDarkSuspendImminentSignal();
-
-  // Emits a D-Bus signal indicating that suspend callbacks have been processed
-  // and the system is fully ready to resume from hibernation.
-  void EmitHibernateResumeReadySignal(int suspend_request_id);
 
   Delegate* delegate_ = nullptr;                          // weak
   system::DBusWrapperInterface* dbus_wrapper_ = nullptr;  // weak
