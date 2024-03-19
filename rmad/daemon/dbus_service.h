@@ -28,6 +28,7 @@
 #include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/futility_utils.h"
 
 namespace rmad {
 
@@ -75,6 +76,8 @@ class DBusService : public brillo::DBusServiceDaemon {
   void ExecuteRebootEc(base::OnceCallback<void(bool)> callback);
   void ExecuteRequestRmaPowerwash(base::OnceCallback<void(bool)> callback);
   void ExecuteRequestBatteryCutoff(base::OnceCallback<void(bool)> callback);
+  void ExecuteGetFlashInfo(
+      base::OnceCallback<void(const std::optional<FlashInfo>&)> callback);
 
  protected:
   // brillo::DBusServiceDaemon overrides.

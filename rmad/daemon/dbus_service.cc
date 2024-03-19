@@ -31,6 +31,7 @@
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/futility_utils.h"
 
 namespace {
 
@@ -42,6 +43,16 @@ std::optional<rmad::DiagnosticsAppInfo> ConvertFromMojomDiagnosticsAppInfo(
   if (ptr) {
     return rmad::DiagnosticsAppInfo{.swbn_path = ptr->swbn_path,
                                     .crx_path = ptr->crx_path};
+  }
+  return std::nullopt;
+}
+
+std::optional<rmad::FlashInfo> ConvertFromMojomFlashInfo(
+    chromeos::rmad::mojom::FlashInfoPtr ptr) {
+  if (ptr) {
+    return rmad::FlashInfo{.flash_name = ptr->flash_name,
+                           .wpsr_start = ptr->wpsr_start,
+                           .wpsr_length = ptr->wpsr_length};
   }
   return std::nullopt;
 }
@@ -318,6 +329,9 @@ scoped_refptr<DaemonCallback> DBusService::CreateDaemonCallback() const {
   daemon_callback->SetExecuteRequestBatteryCutoffCallback(
       base::BindRepeating(&DBusService::ExecuteRequestBatteryCutoff,
                           weak_ptr_factory_.GetMutableWeakPtr()));
+  daemon_callback->SetExecuteGetFlashInfoCallback(
+      base::BindRepeating(&DBusService::ExecuteGetFlashInfo,
+                          weak_ptr_factory_.GetMutableWeakPtr()));
   return daemon_callback;
 }
 
@@ -445,6 +459,12 @@ void DBusService::ExecuteRequestRmaPowerwash(
 void DBusService::ExecuteRequestBatteryCutoff(
     base::OnceCallback<void(bool)> callback) {
   executor_->RequestBatteryCutoff(std::move(callback));
+}
+
+void DBusService::ExecuteGetFlashInfo(
+    base::OnceCallback<void(const std::optional<FlashInfo>&)> callback) {
+  executor_->GetFlashInfo(
+      base::BindOnce(&ConvertFromMojomFlashInfo).Then(std::move(callback)));
 }
 
 void DBusService::OnExecutorDisconnected() {

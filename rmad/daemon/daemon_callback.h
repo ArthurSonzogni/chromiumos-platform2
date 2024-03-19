@@ -13,6 +13,7 @@
 #include <base/memory/scoped_refptr.h>
 
 #include "rmad/proto_bindings/rmad.pb.h"
+#include "rmad/utils/futility_utils.h"
 
 namespace rmad {
 
@@ -54,13 +55,19 @@ using ExecuteRequestRmaPowerwashCallback =
     base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
 using ExecuteRequestBatteryCutoffCallback =
     base::RepeatingCallback<void(base::OnceCallback<void(bool)>)>;
+using ExecuteGetFlashInfoCallback = base::RepeatingCallback<void(
+    base::OnceCallback<void(const std::optional<FlashInfo>&)>)>;
 
-#define DECLARE_CALLBACK(type, var)                 \
- public:                                            \
-  type Get##type() const { return var; }            \
-  void Set##type(type callback) { var = callback; } \
-                                                    \
- private:                                           \
+#define DECLARE_CALLBACK(type, var) \
+ public:                            \
+  type Get##type() const {          \
+    return var;                     \
+  }                                 \
+  void Set##type(type callback) {   \
+    var = callback;                 \
+  }                                 \
+                                    \
+ private:                           \
   type var = base::DoNothing()
 
 // A collection of callbacks for state handlers to use.
@@ -97,6 +104,8 @@ class DaemonCallback : public base::RefCounted<DaemonCallback> {
                    execute_request_rma_powerwash_callback_);
   DECLARE_CALLBACK(ExecuteRequestBatteryCutoffCallback,
                    execute_request_battery_cutoff_callback_);
+  DECLARE_CALLBACK(ExecuteGetFlashInfoCallback,
+                   execute_get_flash_name_callback_);
 };
 
 }  // namespace rmad
