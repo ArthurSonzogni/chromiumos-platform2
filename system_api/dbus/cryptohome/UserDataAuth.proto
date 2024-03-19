@@ -167,17 +167,23 @@ enum PrimaryAction {
   PRIMARY_INCORRECT_AUTH = 8;
 
   // PRIMARY_FACTOR_LOCKED_OUT indicates that authentication is attempted
-  // towards a locked out credential, or that its auth is incorrect and made a
-  // credential locked. For LE credentials the caller should try another
-  // authentication method that resets the LE credential, or wait until the LE
-  // credential is available. For CryptohomeRecovery the system needs to be
-  // rebooted, the caller may inform the user of the needed action.
+  // towards a locked out credential. Different types of credentials could
+  // be locked out by different reasons (some factor types might even have
+  // multiple lockout reasons), and the detailed information of lockout can
+  // be checked in AuthFactorWithStatus's StatusInfo field. For example:
+  // - CryptohomeRecovery locked out: system is accessed remotely. Needs to
+  //   be rebooted to unlock.
+  // - PIN locked out: too many wrong attempts. StatusInfo will show how long
+  //   the user has to wait until unlock. Can be unlocked by another full auth
+  //   as well.
+  // - Fingerprint locked out: too many wrong attempts or the user hasn't
+  //   performed any auth for a while. StatusInfo will show how long the user
+  //   has to wait (for too many wrong attempts) and how much time left until
+  //   lockout (if user doesn't perform any auth). Can be unlocked by another
+  //   full auth as well.
   PRIMARY_FACTOR_LOCKED_OUT = 9;
 
-  // PRIMARY_LE_EXPIRED indicates that authentication is attempted towards an
-  // expired LE credential. Therefore, the caller should try another
-  // authentication method that resets the LE credential.
-  PRIMARY_LE_EXPIRED = 10;
+  reserved 10;  // PRIMARY_LE_EXPIRED
 }
 
 // PossibleAction is used to indicate that cryptohomed believies some actions

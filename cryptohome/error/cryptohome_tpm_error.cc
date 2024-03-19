@@ -37,7 +37,6 @@ ErrorActionSet PopulateActionFromRetry(const hwsec::TPMRetryAction retry) {
     case hwsec::TPMRetryAction::kDefend:
       return ErrorActionSet(PrimaryAction::kTpmLockout);
     case hwsec::TPMRetryAction::kPinWeaverExpired:
-      return ErrorActionSet(PrimaryAction::kLeExpired);
     case hwsec::TPMRetryAction::kPinWeaverLockedOut:
       return ErrorActionSet(PrimaryAction::kFactorLockedOut);
     case hwsec::TPMRetryAction::kUserAuth:

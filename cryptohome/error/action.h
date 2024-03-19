@@ -24,8 +24,7 @@ enum class PrimaryAction {
   kTpmLockout,
   kIncorrectAuth,
   kFactorLockedOut,
-  kLeExpired,
-  kMaxValue = kLeExpired,
+  kMaxValue = kFactorLockedOut,
 };
 
 constexpr size_t kPrimaryActionEnumSize =
