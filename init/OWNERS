@@ -1,7 +1,7 @@
 include chromiumos/owners:v1:/platform/OWNERS.au
 
 vapier@chromium.org
-sarthakkukreti@chromium.org
+sarthakkukreti@google.com
 briannorris@chromium.org
 gwendal@chromium.org
 
