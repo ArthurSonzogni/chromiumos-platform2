@@ -19,7 +19,7 @@
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
@@ -29,7 +29,7 @@ class Context;
 inline constexpr base::TimeDelta kMemoryRoutineUpdatePeriod = base::Seconds(1);
 
 // The memory routine checks that the device's memory is working correctly.
-class MemoryRoutine final : public BaseRoutineControl {
+class MemoryRoutine final : public NoninteractiveRoutineControl {
  public:
   explicit MemoryRoutine(
       Context* context,

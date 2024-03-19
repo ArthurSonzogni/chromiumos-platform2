@@ -11,8 +11,8 @@
 #include <base/types/expected.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom-forward.h"
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
@@ -24,7 +24,7 @@ namespace floss {
 // The Bluetooth power routine checks that the Bluetooth adapter's power
 // functionality is working correctly by checking the off and on powered status
 // in D-Bus level and in HCI level.
-class BluetoothPowerRoutine final : public BaseRoutineControl,
+class BluetoothPowerRoutine final : public NoninteractiveRoutineControl,
                                     public BluetoothRoutineBase {
  public:
   explicit BluetoothPowerRoutine(

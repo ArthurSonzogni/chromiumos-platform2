@@ -11,7 +11,7 @@
 #include <base/memory/weak_ptr.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -19,7 +19,7 @@ class Context;
 
 // The camera availability routine checks the availability of services related
 // to cameras.
-class CameraAvailabilityRoutine final : public BaseRoutineControl {
+class CameraAvailabilityRoutine final : public NoninteractiveRoutineControl {
  public:
   explicit CameraAvailabilityRoutine(
       Context* context,

@@ -13,8 +13,8 @@
 #include <base/types/expected.h>
 #include <brillo/variant_dictionary.h>
 
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
@@ -27,7 +27,7 @@ enum class BondState : uint32_t;
 //
 // The Bluetooth scanning routine checks that the Bluetooth adapter can scan
 // nearby Bluetooth peripherals and collect nearby peripherals' information.
-class BluetoothPairingRoutine final : public BaseRoutineControl,
+class BluetoothPairingRoutine final : public NoninteractiveRoutineControl,
                                       public BluetoothRoutineBase {
  public:
   explicit BluetoothPairingRoutine(

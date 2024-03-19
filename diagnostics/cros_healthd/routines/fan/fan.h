@@ -16,14 +16,14 @@
 #include <base/memory/weak_ptr.h>
 #include <base/types/expected.h>
 
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 class Context;
 
-class FanRoutine final : public BaseRoutineControl {
+class FanRoutine final : public NoninteractiveRoutineControl {
  public:
   static base::expected<std::unique_ptr<BaseRoutineControl>,
                         ash::cros_healthd::mojom::SupportStatusPtr>

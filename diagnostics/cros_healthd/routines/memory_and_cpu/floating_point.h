@@ -13,14 +13,14 @@
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 
 namespace diagnostics {
 class Context;
 
 // The floating point routine checks that the device's CPU can calculate
 // correctly.
-class FloatingPointRoutine final : public BaseRoutineControl {
+class FloatingPointRoutine final : public NoninteractiveRoutineControl {
  public:
   explicit FloatingPointRoutine(
       Context* context,

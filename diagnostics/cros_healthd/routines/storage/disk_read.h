@@ -18,7 +18,7 @@
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -27,7 +27,7 @@ class Context;
 
 // The disk read routine create a test file with md5 checksum and read the test
 // file either randomly or linearly for a dedicated duration.
-class DiskReadRoutine final : public BaseRoutineControl {
+class DiskReadRoutine final : public NoninteractiveRoutineControl {
  public:
   static base::expected<std::unique_ptr<BaseRoutineControl>,
                         ash::cros_healthd::mojom::SupportStatusPtr>

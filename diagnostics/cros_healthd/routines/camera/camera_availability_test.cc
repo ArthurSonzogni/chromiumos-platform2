@@ -13,7 +13,6 @@
 #include <gtest/gtest.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"

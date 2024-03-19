@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_UFS_LIFETIME_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_STORAGE_UFS_LIFETIME_H_
 
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -18,7 +18,7 @@ inline constexpr char kUfsHealthDescDeviceLifeTimeEstB[] =
     "life_time_estimation_b";
 
 // The UFS lifetime routine checks the UFS drive's lifetime.
-class UfsLifetimeRoutine final : public BaseRoutineControl {
+class UfsLifetimeRoutine final : public NoninteractiveRoutineControl {
  public:
   explicit UfsLifetimeRoutine(
       Context* context,

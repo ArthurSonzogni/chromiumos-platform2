@@ -13,7 +13,7 @@
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
@@ -21,7 +21,7 @@ class Context;
 
 // The prime search routine checks that the device's CPU can calculate
 // correctly.
-class PrimeSearchRoutine final : public BaseRoutineControl {
+class PrimeSearchRoutine final : public NoninteractiveRoutineControl {
  public:
   explicit PrimeSearchRoutine(
       Context* context,

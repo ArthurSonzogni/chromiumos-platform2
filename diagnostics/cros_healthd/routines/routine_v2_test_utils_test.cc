@@ -8,14 +8,14 @@
 #include <base/test/test_future.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 
 namespace diagnostics {
 namespace {
 
 // A routine that raises an exception when started.
-class FakeExceptionRoutine final : public BaseRoutineControl {
+class FakeExceptionRoutine final : public NoninteractiveRoutineControl {
  public:
   FakeExceptionRoutine() = default;
   FakeExceptionRoutine(const FakeExceptionRoutine&) = delete;

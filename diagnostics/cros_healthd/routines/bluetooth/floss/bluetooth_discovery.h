@@ -13,8 +13,8 @@
 #include <dbus/object_path.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
@@ -26,7 +26,7 @@ namespace floss {
 // The Bluetooth discovery routine checks that the Bluetooth adapter can start
 // and stop discovery mode correctly by checking the on and off discovering
 // status in D-Bus level and in HCI level.
-class BluetoothDiscoveryRoutine final : public BaseRoutineControl,
+class BluetoothDiscoveryRoutine final : public NoninteractiveRoutineControl,
                                         public BluetoothRoutineBase {
  public:
   explicit BluetoothDiscoveryRoutine(

@@ -15,14 +15,14 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 class Context;
 
 class VolumeButtonRoutine final
-    : public BaseRoutineControl,
+    : public NoninteractiveRoutineControl,
       public ash::cros_healthd::mojom::VolumeButtonObserver {
  public:
   explicit VolumeButtonRoutine(

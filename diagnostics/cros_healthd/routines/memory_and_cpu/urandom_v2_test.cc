@@ -18,7 +18,6 @@
 
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"

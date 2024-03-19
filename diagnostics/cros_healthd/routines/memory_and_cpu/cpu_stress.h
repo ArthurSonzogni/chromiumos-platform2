@@ -11,7 +11,7 @@
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -20,7 +20,7 @@ class Context;
 
 // The cpu stress routine checks that the device's cpu system is working
 // correctly.
-class CpuStressRoutine final : public BaseRoutineControl {
+class CpuStressRoutine final : public NoninteractiveRoutineControl {
  public:
   explicit CpuStressRoutine(
       Context* context,

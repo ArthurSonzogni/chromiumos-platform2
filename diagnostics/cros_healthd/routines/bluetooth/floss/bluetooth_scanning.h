@@ -17,8 +17,8 @@
 #include <base/uuid.h>
 #include <brillo/variant_dictionary.h>
 
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_base.h"
+#include "diagnostics/cros_healthd/routines/noninteractive_routine_control.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom-forward.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
@@ -36,7 +36,7 @@ constexpr base::TimeDelta kScanningRoutineRssiPollingPeriod =
 //
 // The Bluetooth scanning routine checks that the Bluetooth adapter can scan
 // nearby Bluetooth peripherals and collect nearby peripherals' information.
-class BluetoothScanningRoutine final : public BaseRoutineControl,
+class BluetoothScanningRoutine final : public NoninteractiveRoutineControl,
                                        public BluetoothRoutineBase {
  public:
   using CreateResult =
