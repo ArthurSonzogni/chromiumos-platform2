@@ -60,6 +60,8 @@ unshare: 1
 sendmsg: 1
 socketpair: 1
 chdir: 1
+tgkill: 1
+getppid: 1
 fchdir: 1
 capget: 1
 capset: 1

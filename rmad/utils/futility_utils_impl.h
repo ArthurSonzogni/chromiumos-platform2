@@ -9,6 +9,9 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+
+#include <base/files/file_path.h>
 
 #include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/hwid_utils.h"
@@ -19,9 +22,11 @@ class FutilityUtilsImpl : public FutilityUtils {
  public:
   FutilityUtilsImpl();
 
-  // Used to inject mock |cmd_utils_| and |hwid_utils_| for testing.
+  // Used to inject mock |cmd_utils_|, |hwid_utils_|, and |mtd_path_| for
+  // testing.
   explicit FutilityUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils,
-                             std::unique_ptr<HwidUtils> hwid_utils);
+                             std::unique_ptr<HwidUtils> hwid_utils,
+                             base::FilePath mtd_path);
   ~FutilityUtilsImpl() override = default;
 
   std::optional<bool> GetApWriteProtectionStatus() override;
@@ -29,10 +34,17 @@ class FutilityUtilsImpl : public FutilityUtils {
   bool DisableApSoftwareWriteProtection() override;
   bool SetHwid(const std::string& hwid) override;
   std::optional<uint64_t> GetFlashSize() override;
+  std::optional<FlashInfo> GetFlashInfo() override;
 
  private:
+  std::optional<std::string> ParseFlashName(
+      const std::string& flash_info_string);
+  std::optional<std::pair<uint64_t, uint64_t>> ParseFlashWpsrRange(
+      const std::string& flash_info_string);
+
   std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<HwidUtils> hwid_utils_;
+  base::FilePath mtd_path_;
 };
 
 }  // namespace rmad

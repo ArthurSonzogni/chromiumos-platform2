@@ -16,6 +16,7 @@ dup2: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 getrandom: arg2 in ~GRND_RANDOM
 readlinkat: 1
+getppid: 1
 gettid: 1
 access: 1
 lseek: 1
@@ -33,6 +34,7 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == TCGETS || arg1 == BLKSSZGET || \
        arg1 == FDGETFDCSTAT ||  arg1 == 0x5331 || arg1 == 0x5395 || \
        arg1 == 0xc014ec00
 iopl: 1
+ioperm: 1
 getdents64: 1
 recvmsg: 1
 sendto: 1

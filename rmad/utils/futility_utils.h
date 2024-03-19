@@ -10,6 +10,12 @@
 
 namespace rmad {
 
+struct FlashInfo {
+  std::string flash_name;
+  uint64_t wpsr_start;
+  uint64_t wpsr_length;
+};
+
 class FutilityUtils {
  public:
   FutilityUtils() = default;
@@ -20,6 +26,7 @@ class FutilityUtils {
   virtual bool DisableApSoftwareWriteProtection() = 0;
   virtual bool SetHwid(const std::string& hwid) = 0;
   virtual std::optional<uint64_t> GetFlashSize() = 0;
+  virtual std::optional<FlashInfo> GetFlashInfo() = 0;
 };
 
 }  // namespace rmad

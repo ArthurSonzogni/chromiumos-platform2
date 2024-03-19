@@ -25,6 +25,7 @@ class MockFutilityUtils : public FutilityUtils {
   MOCK_METHOD(bool, DisableApSoftwareWriteProtection, (), (override));
   MOCK_METHOD(bool, SetHwid, (const std::string&), (override));
   MOCK_METHOD(std::optional<uint64_t>, GetFlashSize, (), (override));
+  MOCK_METHOD(std::optional<FlashInfo>, GetFlashInfo, (), (override));
 };
 
 }  // namespace rmad
