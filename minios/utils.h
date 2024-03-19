@@ -33,7 +33,7 @@ extern const char kLogFilePath[];
 
 extern const base::FilePath kDefaultArchivePath;
 extern const int kLogStoreKeySizeBytes;
-extern const brillo::SecureBlob kZeroKey;
+extern const brillo::SecureBlob kNullKey;
 
 extern const base::FilePath kStatefulPath;
 extern const base::FilePath kUnencryptedMiniosPath;

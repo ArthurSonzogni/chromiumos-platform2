@@ -167,7 +167,7 @@ std::optional<bool> LogStoreManager::FetchLogs(
 
   // If the key is zero'd out then the log store is presumed to be cleared,
   // return without decrypting.
-  if (key == brillo::SecureBlob{kZeroKey}) {
+  if (key == kNullKey) {
     LOG(INFO) << "No key found.";
     return false;
   }

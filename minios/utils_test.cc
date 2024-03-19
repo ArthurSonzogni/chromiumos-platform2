@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -447,13 +448,16 @@ TEST(UtilsTest, SaveLogKeyTest) {
 }
 
 TEST(UtilsTest, ClearLogStoreKeyTest) {
+  // Zero string of hex key size.
+  const brillo::SecureBlob kExpectedNullKey{
+      std::string(kLogStoreKeySizeBytes, '\0')};
   auto mock_process_manager_ =
       std::make_shared<StrictMock<MockProcessManager>>();
 
   const std::vector<std::string> expected_args = {
       "/usr/sbin/vpd", "-i", "RW_VPD", "-s",
       "minios_log_store_key=" +
-          brillo::SecureBlobToSecureHex(kZeroKey).to_string()};
+          brillo::SecureBlobToSecureHex(kExpectedNullKey).to_string()};
 
   EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
       .WillOnce(::testing::Return(0));

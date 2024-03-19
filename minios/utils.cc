@@ -81,7 +81,7 @@ const char kLogFilePath[] = "/var/log/minios.log";
 
 const base::FilePath kDefaultArchivePath{"/tmp/logs.tar"};
 const int kLogStoreKeySizeBytes = 32;
-const brillo::SecureBlob kZeroKey{std::string(kLogStoreKeySizeBytes, '0')};
+const brillo::SecureBlob kNullKey{std::string(kLogStoreKeySizeBytes, '\0')};
 
 const base::FilePath kStatefulPath{"/stateful"};
 const base::FilePath kUnencryptedMiniosPath{"unencrypted/minios/"};
@@ -489,7 +489,7 @@ bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
 
 bool ClearLogStoreKey(
     std::shared_ptr<ProcessManagerInterface> process_manager) {
-  return SaveLogStoreKey(process_manager, kZeroKey);
+  return SaveLogStoreKey(process_manager, kNullKey);
 }
 
 std::optional<brillo::SecureBlob> ReadFileToSecureBlob(
