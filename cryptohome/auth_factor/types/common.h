@@ -165,9 +165,9 @@ class AfDriverNoPrepare : public virtual AuthFactorDriver {
       AuthFactorPreparePurpose purpose) const final {
     return PrepareRequirement::kNone;
   }
-  void PrepareForAdd(const AuthInput& auth_input,
+  void PrepareForAdd(const PrepareInput& prepare_input,
                      PreparedAuthFactorToken::Consumer callback) final;
-  void PrepareForAuthenticate(const AuthInput& auth_input,
+  void PrepareForAuthenticate(const PrepareInput& prepare_input,
                               PreparedAuthFactorToken::Consumer callback) final;
 };
 

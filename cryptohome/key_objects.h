@@ -75,6 +75,15 @@ struct FingerprintAuthInput {
   std::optional<std::string> legacy_record_id;
 };
 
+struct PrepareInput {
+  // The obfuscated username.
+  ObfuscatedUsername username;
+  // A generated reset secret to unlock a rate limited credential.
+  std::optional<brillo::SecureBlob> reset_secret;
+  // The PinWeaver leaf label of the rate-limiter.
+  std::optional<uint64_t> rate_limiter_label;
+};
+
 struct AuthInput {
   // The user input, such as password.
   std::optional<brillo::SecureBlob> user_input;

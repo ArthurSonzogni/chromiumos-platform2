@@ -4,6 +4,9 @@
 
 #include "cryptohome/auth_factor/types/cryptohome_recovery.h"
 
+#include <memory>
+#include <string>
+
 #include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -171,8 +174,8 @@ TEST_F(CryptohomeRecoveryDriverTest, PrepareForAddFails) {
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  AuthInput auth_input{.obfuscated_username = kObfuscatedUser};
-  driver.PrepareForAdd(auth_input, prepare_result.GetCallback());
+  PrepareInput prepare_input{.username = kObfuscatedUser};
+  driver.PrepareForAdd(prepare_input, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
@@ -183,8 +186,8 @@ TEST_F(CryptohomeRecoveryDriverTest, PrepareForAuthFails) {
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  AuthInput auth_input{.obfuscated_username = kObfuscatedUser};
-  driver.PrepareForAuthenticate(auth_input, prepare_result.GetCallback());
+  PrepareInput prepare_input{.username = kObfuscatedUser};
+  driver.PrepareForAuthenticate(prepare_input, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }

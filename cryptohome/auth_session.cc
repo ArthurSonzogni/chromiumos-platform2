@@ -2712,18 +2712,22 @@ void AuthSession::AuthForDecrypt::MigrateFromTheBack(
   // the auth factor label, which must be unique for each factor.
   const auto& legacy_record = legacy_records.back();
 
-  auto auth_input =
-      CreateAuthInputForPrepareForAdd(AuthFactorType::kFingerprint);
-  if (!auth_input.ok()) {
-    std::move(on_done).Run(std::move(auth_input).err_status());
+  auto prepare_input =
+      CreatePrepareInputForPrepareForAdd(AuthFactorType::kFingerprint);
+  if (!prepare_input.ok()) {
+    std::move(on_done).Run(std::move(prepare_input).err_status());
     return;
   }
+  AuthInput auth_input;
+  auth_input.obfuscated_username = prepare_input->username;
+  auth_input.reset_secret = prepare_input->reset_secret;
+  auth_input.rate_limiter_label = prepare_input->rate_limiter_label;
   FingerprintAuthInput fp_auth_input;
   fp_auth_input.legacy_record_id = legacy_record.legacy_record_id;
-  auth_input->fingerprint_auth_input = fp_auth_input;
+  auth_input.fingerprint_auth_input = fp_auth_input;
 
   session_->fp_migration_utility_->PrepareLegacyTemplate(
-      *auth_input,
+      std::move(auth_input),
       base::BindOnce(
           &AuthSession::AuthForDecrypt::ContinueAddMigratedFpAuthFactor,
           weak_factory_.GetWeakPtr(), legacy_records, std::move(on_done)));
@@ -2805,13 +2809,14 @@ void AuthSession::PrepareAuthFactor(
       AuthFactorDriver::PrepareRequirement::kNone) {
     switch (*purpose) {
       case AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor: {
-        auto auth_input = CreateAuthInputForPrepareForAuth(*auth_factor_type);
-        if (!auth_input.ok()) {
-          std::move(on_done).Run(std::move(auth_input).err_status());
+        auto prepare_input =
+            CreatePrepareInputForPrepareForAuth(*auth_factor_type);
+        if (!prepare_input.ok()) {
+          std::move(on_done).Run(std::move(prepare_input).err_status());
           return;
         }
         factor_driver.PrepareForAuthenticate(
-            *auth_input,
+            *prepare_input,
             base::BindOnce(&AuthSession::OnPrepareAuthFactorDone,
                            weak_factory_.GetWeakPtr(), std::move(on_done)));
         break;
@@ -2871,13 +2876,13 @@ void AuthSession::AuthForDecrypt::PrepareAuthFactorForAdd(
       return;
     }
   }
-  auto auth_input = CreateAuthInputForPrepareForAdd(auth_factor_type);
-  if (!auth_input.ok()) {
-    std::move(on_done).Run(std::move(auth_input).err_status());
+  auto prepare_input = CreatePrepareInputForPrepareForAdd(auth_factor_type);
+  if (!prepare_input.ok()) {
+    std::move(on_done).Run(std::move(prepare_input).err_status());
     return;
   }
   factor_driver.PrepareForAdd(
-      *auth_input,
+      *prepare_input,
       base::BindOnce(&AuthSession::OnPrepareAuthFactorDone,
                      session_->weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
@@ -3264,11 +3269,11 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
   return auth_input;
 }
 
-CryptohomeStatusOr<AuthInput>
-AuthSession::AuthForDecrypt::CreateAuthInputForPrepareForAdd(
+CryptohomeStatusOr<PrepareInput>
+AuthSession::AuthForDecrypt::CreatePrepareInputForPrepareForAdd(
     AuthFactorType auth_factor_type) {
-  AuthInput auth_input{};
-  auth_input.obfuscated_username = session_->obfuscated_username_;
+  PrepareInput prepare_input;
+  prepare_input.username = session_->obfuscated_username_;
 
   const AuthFactorDriver& factor_driver =
       session_->auth_factor_driver_manager_->GetDriver(auth_factor_type);
@@ -3295,18 +3300,19 @@ AuthSession::AuthForDecrypt::CreateAuthInputForPrepareForAdd(
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
-    auth_input.rate_limiter_label = rate_limiter_label;
-    auth_input.reset_secret = reset_secret;
-    return std::move(auth_input);
+    prepare_input.rate_limiter_label = rate_limiter_label;
+    prepare_input.reset_secret = reset_secret;
+    return std::move(prepare_input);
   }
 
-  return std::move(auth_input);
+  return std::move(prepare_input);
 }
 
-CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForPrepareForAuth(
+CryptohomeStatusOr<PrepareInput>
+AuthSession::CreatePrepareInputForPrepareForAuth(
     AuthFactorType auth_factor_type) {
-  AuthInput auth_input{};
-  auth_input.obfuscated_username = obfuscated_username_;
+  PrepareInput prepare_input;
+  prepare_input.username = obfuscated_username_;
 
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);
@@ -3332,11 +3338,11 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForPrepareForAuth(
           user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
     }
 
-    auth_input.rate_limiter_label =
+    prepare_input.rate_limiter_label =
         *encrypted_uss->fingerprint_rate_limiter_id();
   }
 
-  return auth_input;
+  return prepare_input;
 }
 
 CredentialVerifier* AuthSession::AddCredentialVerifier(

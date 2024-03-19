@@ -2007,7 +2007,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionGetMetadataFailedInAuthInputPrepareAuth = 3415,
   /* ./auth_session.cc */
   kLocAuthSessionNoRateLimiterInAuthInputPrepareAuth = 3416,
-  /* ./auth_factor/types/legacy_fingerprint.cc */
+  /* =Obsolete= */
   kLocAuthFactorLegacyFpPrepareForAuthNoUsername = 3417,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFpNoResetSecretInPrepareAdd = 3418,
@@ -2015,7 +2015,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorFpPrepareAddGetNonceFailed = 3419,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFpPrepareAddStartBioAuthFailed = 3420,
-  /* ./auth_factor/types/fingerprint.cc */
+  /* =Obsolete= */
   kLocAuthFactorFpNoUsernameInPrepareAuth = 3421,
   /* ./auth_factor/types/fingerprint.cc */
   kLocAuthFactorFpNoResetSecretInPrepareAuth = 3422,

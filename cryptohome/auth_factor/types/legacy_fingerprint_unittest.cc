@@ -119,8 +119,8 @@ TEST_F(LegacyFingerprintDriverTest, PrepareForAddFails) {
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  AuthInput auth_input{.obfuscated_username = kObfuscatedUser};
-  driver.PrepareForAdd(auth_input, prepare_result.GetCallback());
+  PrepareInput prepare_input{.username = kObfuscatedUser};
+  driver.PrepareForAdd(prepare_input, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
 }
@@ -137,8 +137,8 @@ TEST_F(LegacyFingerprintDriverTest, PrepareForAuthCannotStart) {
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  AuthInput auth_input{.obfuscated_username = kObfuscatedUser};
-  driver.PrepareForAuthenticate(auth_input, prepare_result.GetCallback());
+  PrepareInput prepare_input{.username = kObfuscatedUser};
+  driver.PrepareForAuthenticate(prepare_input, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get(), NotOk());
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
@@ -161,8 +161,8 @@ TEST_F(LegacyFingerprintDriverTest, PrepareForAuthFailure) {
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  AuthInput auth_input{.obfuscated_username = kObfuscatedUser};
-  driver.PrepareForAuthenticate(auth_input, prepare_result.GetCallback());
+  PrepareInput prepare_input{.username = kObfuscatedUser};
+  driver.PrepareForAuthenticate(prepare_input, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get(), IsOk());
   EXPECT_THAT(signal_results_,
               ElementsAre(user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT));
@@ -185,8 +185,8 @@ TEST_F(LegacyFingerprintDriverTest, PrepareForAuthSuccess) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
 
-  AuthInput auth_input{.obfuscated_username = kObfuscatedUser};
-  driver.PrepareForAuthenticate(auth_input, prepare_result.GetCallback());
+  PrepareInput prepare_input{.username = kObfuscatedUser};
+  driver.PrepareForAuthenticate(prepare_input, prepare_result.GetCallback());
   EXPECT_THAT(prepare_result.Get(), IsOk());
   EXPECT_THAT(signal_results_,
               ElementsAre(user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS));

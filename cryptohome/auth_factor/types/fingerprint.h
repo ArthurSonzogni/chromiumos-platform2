@@ -52,10 +52,10 @@ class FingerprintAuthFactorDriver final
   bool IsSupportedByHardware() const override;
   PrepareRequirement GetPrepareRequirement(
       AuthFactorPreparePurpose purpose) const override;
-  void PrepareForAdd(const AuthInput& auth_input,
+  void PrepareForAdd(const PrepareInput& prepare_input,
                      PreparedAuthFactorToken::Consumer callback) override;
   void PrepareForAuthenticate(
-      const AuthInput& auth_input,
+      const PrepareInput& prepare_input,
       PreparedAuthFactorToken::Consumer callback) override;
   bool NeedsResetSecret() const override;
   bool NeedsRateLimiter() const override;
@@ -78,13 +78,13 @@ class FingerprintAuthFactorDriver final
   // Starts a fp enroll session through biod, with obtained |nonce|.
   // Intended as a callback for BiometricsAuthBlockService::GetNonce.
   void PrepareForAddOnGetNonce(PreparedAuthFactorToken::Consumer callback,
-                               const AuthInput& auth_input,
+                               const PrepareInput& prepare_input,
                                std::optional<brillo::Blob> nonce);
 
   // Starts a fp auth session through biod, with obtained |nonce|.
   // Intended as a callback for BiometricsAuthBlockService::GetNonce.
   void PrepareForAuthOnGetNonce(PreparedAuthFactorToken::Consumer callback,
-                                const AuthInput& auth_input,
+                                const PrepareInput& prepare_input,
                                 std::optional<brillo::Blob> nonce);
 
   Crypto* crypto_;

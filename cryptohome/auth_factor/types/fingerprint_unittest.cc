@@ -6,6 +6,7 @@
 
 #include <limits>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
@@ -228,12 +229,12 @@ TEST_F(FingerprintDriverTest, PrepareForAddFailure) {
   // Test.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  AuthInput auth_input{
-      .obfuscated_username = kObfuscatedUser,
+  PrepareInput prepare_input{
+      .username = kObfuscatedUser,
       .reset_secret = kResetSecret,
       .rate_limiter_label = kLeLabel,
   };
-  driver.PrepareForAdd(auth_input, prepare_result.GetCallback());
+  driver.PrepareForAdd(prepare_input, prepare_result.GetCallback());
 
   // Verify.
   EXPECT_THAT(prepare_result.Get(), NotOk());
@@ -262,12 +263,12 @@ TEST_F(FingerprintDriverTest, PrepareForAddSuccess) {
   // Test.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  AuthInput auth_input{
-      .obfuscated_username = kObfuscatedUser,
+  PrepareInput prepare_input{
+      .username = kObfuscatedUser,
       .reset_secret = kResetSecret,
       .rate_limiter_label = kLeLabel,
   };
-  driver.PrepareForAdd(auth_input, prepare_result.GetCallback());
+  driver.PrepareForAdd(prepare_input, prepare_result.GetCallback());
 
   // Verify.
   EXPECT_THAT(prepare_result.Get(), IsOk());
@@ -295,11 +296,11 @@ TEST_F(FingerprintDriverTest, PrepareForAuthenticateFailure) {
   // Test.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  AuthInput auth_input{
-      .obfuscated_username = kObfuscatedUser,
+  PrepareInput prepare_input{
+      .username = kObfuscatedUser,
       .rate_limiter_label = kLeLabel,
   };
-  driver.PrepareForAuthenticate(auth_input, prepare_result.GetCallback());
+  driver.PrepareForAuthenticate(prepare_input, prepare_result.GetCallback());
 
   // Verify.
   EXPECT_THAT(prepare_result.Get(), NotOk());
@@ -329,11 +330,11 @@ TEST_F(FingerprintDriverTest, PrepareForAuthenticateSuccess) {
   // Test.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
-  AuthInput auth_input{
-      .obfuscated_username = kObfuscatedUser,
+  PrepareInput prepare_input{
+      .username = kObfuscatedUser,
       .rate_limiter_label = kLeLabel,
   };
-  driver.PrepareForAuthenticate(auth_input, prepare_result.GetCallback());
+  driver.PrepareForAuthenticate(prepare_input, prepare_result.GetCallback());
 
   // Verify.
   EXPECT_THAT(prepare_result.Get(), IsOk());
