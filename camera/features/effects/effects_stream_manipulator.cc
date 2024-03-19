@@ -73,8 +73,12 @@ const int kGraphMaxFramesInflightDefault = 7;
 
 constexpr char kEffectKey[] = "effect";
 constexpr char kBlurLevelKey[] = "blur_level";
+constexpr char kDelegateKey[] = "delegate";
+constexpr char kRelightingDelegateKey[] = "relighting_delegate";
 constexpr char kGpuApiKey[] = "gpu_api";
 constexpr char kRelightingGpuApiKey[] = "relighting_gpu_api";
+constexpr char kStableDelegateSettingsFileKey[] =
+    "stable_delegate_settings_file";
 constexpr char kBlurEnabled[] = "blur_enabled";
 constexpr char kReplaceEnabled[] = "replace_enabled";
 constexpr char kRelightEnabled[] = "relight_enabled";
@@ -1420,42 +1424,97 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     LOGF(INFO) << "Blur Level: " << blur_level;
   }
 
-  std::string gpu_api;
-  if (GetStringFromKey(json_values, kGpuApiKey, &gpu_api)) {
-    if (gpu_api == "opengl") {
-      new_config.segmentation_gpu_api = GpuApi::kOpenGL;
-      new_config.relighting_gpu_api = GpuApi::kOpenGL;
-    } else if (gpu_api == "opencl") {
-      new_config.segmentation_gpu_api = GpuApi::kOpenCL;
-      new_config.relighting_gpu_api = GpuApi::kOpenCL;
-    } else if (gpu_api == "vulkan") {
-      new_config.segmentation_gpu_api = GpuApi::kVulkan;
-      // Relighting stays as OpenCL in the Vulkan case
-      new_config.relighting_gpu_api = GpuApi::kOpenCL;
-    } else if (gpu_api == "any") {
-      new_config.segmentation_gpu_api = GpuApi::kAny;
-      new_config.relighting_gpu_api = GpuApi::kAny;
+  std::string delegate;
+  if (GetStringFromKey(json_values, kDelegateKey, &delegate)) {
+    if (delegate == "gpu") {
+      new_config.segmentation_delegate = Delegate::kGpu;
+      new_config.relighting_delegate = Delegate::kGpu;
+    } else if (delegate == "stable") {
+      new_config.segmentation_delegate = Delegate::kStable;
+      new_config.relighting_delegate = Delegate::kStable;
     } else {
-      LOGF(WARNING) << "Unknown GPU API: " << gpu_api;
+      LOGF(WARNING) << "Unknown Delegate: " << delegate;
       return;
     }
-    LOGF(INFO) << "GPU API: " << gpu_api;
+    LOG(INFO) << "Delegate: " << delegate;
   }
 
-  std::string relighting_gpu_api;
-  if (GetStringFromKey(json_values, kRelightingGpuApiKey,
-                       &relighting_gpu_api)) {
-    if (relighting_gpu_api == "opengl") {
-      new_config.relighting_gpu_api = GpuApi::kOpenGL;
-    } else if (relighting_gpu_api == "opencl") {
-      new_config.relighting_gpu_api = GpuApi::kOpenCL;
-    } else if (relighting_gpu_api == "any") {
-      new_config.relighting_gpu_api = GpuApi::kAny;
+  std::string relighting_delegate;
+  if (GetStringFromKey(json_values, kRelightingDelegateKey,
+                       &relighting_delegate)) {
+    if (delegate == "gpu") {
+      new_config.relighting_delegate = Delegate::kGpu;
+    } else if (delegate == "stable") {
+      new_config.relighting_delegate = Delegate::kStable;
     } else {
-      LOGF(WARNING) << "Unknown Relighting GPU API: " << gpu_api;
+      LOGF(WARNING) << "Unknown Delegate: " << delegate;
       return;
     }
-    LOGF(INFO) << "Relighting GPU API: " << relighting_gpu_api;
+    LOGF(INFO) << "Delegate: " << delegate;
+  }
+
+  if (new_config.segmentation_delegate == Delegate::kGpu ||
+      new_config.relighting_delegate == Delegate::kGpu) {
+    std::string gpu_api;
+    if (GetStringFromKey(json_values, kGpuApiKey, &gpu_api)) {
+      if (gpu_api == "opengl") {
+        new_config.segmentation_gpu_api = GpuApi::kOpenGL;
+        new_config.relighting_gpu_api = GpuApi::kOpenGL;
+      } else if (gpu_api == "opencl") {
+        new_config.segmentation_gpu_api = GpuApi::kOpenCL;
+        new_config.relighting_gpu_api = GpuApi::kOpenCL;
+      } else if (gpu_api == "vulkan") {
+        new_config.segmentation_gpu_api = GpuApi::kVulkan;
+        // Relighting stays as OpenCL in the Vulkan case
+        new_config.relighting_gpu_api = GpuApi::kOpenCL;
+      } else if (gpu_api == "any") {
+        new_config.segmentation_gpu_api = GpuApi::kAny;
+        new_config.relighting_gpu_api = GpuApi::kAny;
+      } else {
+        LOGF(WARNING) << "Unknown GPU API: " << gpu_api;
+        return;
+      }
+      LOGF(INFO) << "GPU API: " << gpu_api;
+    }
+  }
+
+  if (new_config.relighting_delegate == Delegate::kGpu) {
+    std::string relighting_gpu_api;
+    if (GetStringFromKey(json_values, kRelightingGpuApiKey,
+                         &relighting_gpu_api)) {
+      if (relighting_gpu_api == "opengl") {
+        new_config.relighting_gpu_api = GpuApi::kOpenGL;
+      } else if (relighting_gpu_api == "opencl") {
+        new_config.relighting_gpu_api = GpuApi::kOpenCL;
+      } else if (relighting_gpu_api == "any") {
+        new_config.relighting_gpu_api = GpuApi::kAny;
+      } else {
+        LOGF(WARNING) << "Unknown Relighting GPU API: " << relighting_gpu_api;
+        return;
+      }
+      LOGF(INFO) << "Relighting GPU API: " << relighting_gpu_api;
+    }
+  }
+
+  if (new_config.segmentation_delegate == Delegate::kStable ||
+      new_config.relighting_delegate == Delegate::kStable) {
+    std::string stable_delegate_settings_file;
+    if (GetStringFromKey(json_values, kStableDelegateSettingsFileKey,
+                         &stable_delegate_settings_file)) {
+      if (stable_delegate_settings_file.size() >=
+          sizeof(new_config.stable_delegate_settings_file)) {
+        LOGF(WARNING) << "Stable Delegate Settings File Path too long.";
+        return;
+      }
+      stable_delegate_settings_file.copy(
+          new_config.stable_delegate_settings_file,
+          stable_delegate_settings_file.size());
+      new_config
+          .stable_delegate_settings_file[stable_delegate_settings_file.size()] =
+          '\0';
+      LOGF(INFO) << "Stable Delegate Settings File: "
+                 << stable_delegate_settings_file;
+    }
   }
 
   std::string segmentation_model_type;
