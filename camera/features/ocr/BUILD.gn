@@ -1,0 +1,20 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [ ":screen_ai_ocr_test" ]
+}
+
+executable("screen_ai_ocr_test") {
+  sources = [ "screen_ai_ocr_test.cc" ]
+  configs += [ "//common-mk:test" ]
+  install_path = "bin"
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "skia",
+  ]
+}
