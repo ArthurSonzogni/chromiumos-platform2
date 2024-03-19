@@ -19,5 +19,7 @@ genfscon proc /sys/kernel/timer_highres u:object_r:proc_timer:s0
 
 genfscon proc /sys/kernel/sched_use_eevdf u:object_r:proc_sched:s0
 
-genfscon tracefs /trace_marker u:object_r:debugfs_trace_marker:s0
-genfscon tracefs /instances    u:object_r:debugfs_tracing_instances:s0
+genfscon tracefs /trace_marker            u:object_r:debugfs_trace_marker:s0
+genfscon tracefs /instances               u:object_r:debugfs_tracing_instances:s0
+genfscon tracefs /options/pid-in-ns       u:object_r:debugfs_tracing:s0
+genfscon tracefs /set_trace_pidns         u:object_r:debugfs_tracing:s0
