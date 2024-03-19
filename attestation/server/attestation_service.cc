@@ -916,7 +916,7 @@ void AttestationService::RegisterKeyWithChapsTokenTask(
 }
 
 bool AttestationService::IsPreparedForEnrollment() {
-  if (!tpm_utility_->IsTpmReady()) {
+  if (!IsHwsecReady()) {
     return false;
   }
   const auto& database_pb = database_->GetProtobuf();
@@ -1083,7 +1083,7 @@ bool AttestationService::FinishEnrollInternal(
     const std::string& enroll_response,
     std::string* server_error) {
   const int identity = kFirstIdentity;
-  if (!tpm_utility_->IsTpmReady()) {
+  if (!IsHwsecReady()) {
     LOG(ERROR) << __func__
                << ": Cannot finish enrollment as the TPM is not ready.";
     return false;
@@ -1127,7 +1127,7 @@ bool AttestationService::CreateCertificateRequestInternal(
     std::string* message_id,
     std::optional<DeviceSetupCertificateRequestMetadata>
         device_setup_certificate_request_metadata) {
-  if (!tpm_utility_->IsTpmReady()) {
+  if (!IsHwsecReady()) {
     return false;
   }
   if (!IsEnrolledWithACA(aca_type)) {
@@ -1572,7 +1572,7 @@ void AttestationService::PrepareForEnrollment(
     std::move(callback).Run(true);
     return;
   }
-  if (!tpm_utility_->IsTpmReady()) {
+  if (!IsHwsecReady()) {
     // Try again later.
     worker_thread_->task_runner()->PostDelayedTask(
         FROM_HERE,
@@ -3392,6 +3392,11 @@ bool AttestationService::ShallQuoteRsaEkCertificate() const {
     return false;
   }
   return endorsement_key_type_for_enrollment_id_ == KEY_TYPE_RSA;
+}
+
+bool AttestationService::IsHwsecReady() const {
+  ASSIGN_OR_RETURN(bool is_ready, hwsec_->IsReady(), _.LogError().As(false));
+  return is_ready;
 }
 
 }  // namespace attestation

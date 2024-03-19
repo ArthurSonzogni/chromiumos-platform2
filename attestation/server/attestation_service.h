@@ -743,6 +743,10 @@ class AttestationService : public AttestationInterface {
   // data.
   bool ShallQuoteRsaEkCertificate() const;
 
+  // Returns `true` if the hardware security chip is ready to use, `false` if
+  // either it is not ready or it failed to query the readiness.
+  bool IsHwsecReady() const;
+
   base::WeakPtr<AttestationService> GetWeakPtr();
 
   FRIEND_TEST(AttestationServiceBaseTest,

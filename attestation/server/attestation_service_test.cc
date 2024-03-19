@@ -286,11 +286,16 @@ class AttestationServiceBaseTest : public testing::Test {
     EXPECT_CALL(mock_hwsec_, GetEndorsementPublicKey)
         .WillRepeatedly(
             ReturnValue(BlobFromString("fake_endorsement_public_key")));
-    // Run out initialize task(s) to avoid any race conditions with tests that
-    // need to change the default setup.
-    CHECK(
-        CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
-                                   base::Unretained(service_.get()))));
+    EXPECT_CALL(mock_hwsec_, GetVersion).WillRepeatedly(Invoke([]() {
+      TPM_SELECT_BEGIN;
+      TPM1_SECTION({ return TPM_1_2; });
+      TPM2_SECTION({ return TPM_2_0; });
+      OTHER_TPM_SECTION({
+        CHECK(false) << "Needs to specify the TPM version in test environment.";
+        return TPM_2_0;
+      });
+      TPM_SELECT_END;
+    }));
     EXPECT_CALL(mock_hwsec_, Sign(_, _))
         .WillRepeatedly(WithArg<1>(Invoke([](const brillo::Blob& in) {
           return BlobFromString(Transform("Sign", BlobToString(in)));
@@ -301,6 +306,12 @@ class AttestationServiceBaseTest : public testing::Test {
     EXPECT_CALL(mock_hwsec_, GetEndorsementCert)
         .WillRepeatedly(
             ReturnValue(BlobFromString("fake_endorsement_certificate")));
+    EXPECT_CALL(mock_hwsec_, IsReady).WillRepeatedly(ReturnValue(true));
+    // Run out initialize task(s) to avoid any race conditions with tests that
+    // need to change the default setup.
+    CHECK(
+        CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
+                                   base::Unretained(service_.get()))));
   }
 
  protected:
