@@ -1495,11 +1495,17 @@ message PrepareAuthFactorRequest {
   // Specify the purpose such as adding/enrolling a new auth factor
   // or authentication an existing factor.
   AuthFactorPreparePurpose purpose = 3;
+  // In some cases, such as recovery, additional input is required to prepare
+  // for the authentication operation.
+  PrepareInput prepare_input = 4;
 }
 
 message PrepareAuthFactorReply {
   CryptohomeErrorCode error = 1;
   CryptohomeErrorInfo error_info = 2;
+  // In some cases, such as recovery, the prepare process produces output which
+  // the caller will need to use to assemble the actual authentication request.
+  PrepareOutput prepare_output = 3;
 }
 
 message TerminateAuthFactorRequest {
