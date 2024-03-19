@@ -97,6 +97,9 @@ class AttestationFrontend : public Frontend {
   // Gets the endorsement certificate of key type |key_type|.
   virtual StatusOr<brillo::Blob> GetEndorsementCert(
       attestation::KeyType key_type) const = 0;
+
+  // Is the security module ready to use.
+  virtual StatusOr<bool> IsReady() const = 0;
 };
 
 }  // namespace hwsec

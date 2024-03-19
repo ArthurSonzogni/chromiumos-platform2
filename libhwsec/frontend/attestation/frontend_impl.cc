@@ -196,4 +196,8 @@ StatusOr<brillo::Blob> AttestationFrontendImpl::GetEndorsementCert(
   return middleware_.CallSync<&Backend::RoData::Read>(space);
 }
 
+StatusOr<bool> AttestationFrontendImpl::IsReady() const {
+  return middleware_.CallSync<&Backend::State::IsReady>();
+}
+
 }  // namespace hwsec
