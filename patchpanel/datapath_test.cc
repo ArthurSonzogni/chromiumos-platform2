@@ -1442,6 +1442,9 @@ TEST_F(DatapathTest, StartDnsRedirection_User) {
   Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -A redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
+  Verify_iptables(runner_, IpFamily::kIPv4,
+                  "filter -A accept_egress_to_dns_proxy -d 100.115.92.130 -j "
+                  "ACCEPT -w");
 
   Verify_iptables_in_sequence(
       runner_, IpFamily::kIPv6,
@@ -1475,6 +1478,8 @@ TEST_F(DatapathTest, StartDnsRedirection_User) {
   Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -A redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination ::1 -w");
+  Verify_iptables(runner_, IpFamily::kIPv6,
+                  "filter -A accept_egress_to_dns_proxy -d ::1 -j ACCEPT -w");
 
   Verify_iptables(runner_, IpFamily::kDual,
                   "nat -A snat_chrome_dns -p udp --dport 53 -j "
@@ -1523,6 +1528,9 @@ TEST_F(DatapathTest, StartDnsRedirection_ExcludeDestination) {
   Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -I redirect_user_dns -p tcp ! -d 100.115.92.130 --dport "
                   "53 -j RETURN -w");
+  Verify_iptables(runner_, IpFamily::kIPv4,
+                  "filter -A accept_egress_to_dns_proxy -d 100.115.92.130 -j "
+                  "ACCEPT -w");
   Verify_iptables(
       runner_, IpFamily::kIPv6,
       "nat -I redirect_chrome_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
@@ -1535,6 +1543,8 @@ TEST_F(DatapathTest, StartDnsRedirection_ExcludeDestination) {
   Verify_iptables(
       runner_, IpFamily::kIPv6,
       "nat -I redirect_user_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
+  Verify_iptables(runner_, IpFamily::kIPv6,
+                  "filter -A accept_egress_to_dns_proxy -d ::1 -j ACCEPT -w");
 
   DnsRedirectionRule rule4 = {
       .type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,
@@ -1617,6 +1627,9 @@ TEST_F(DatapathTest, StopDnsRedirection_User) {
   Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination 100.115.92.130 -w");
+  Verify_iptables(runner_, IpFamily::kIPv4,
+                  "filter -D accept_egress_to_dns_proxy -d 100.115.92.130 -j "
+                  "ACCEPT -w");
 
   Verify_iptables(
       runner_, IpFamily::kIPv6,
@@ -1650,6 +1663,8 @@ TEST_F(DatapathTest, StopDnsRedirection_User) {
   Verify_iptables(runner_, IpFamily::kIPv6,
                   "nat -D redirect_user_dns -p tcp --dport 53 -j DNAT "
                   "--to-destination ::1 -w");
+  Verify_iptables(runner_, IpFamily::kIPv6,
+                  "filter -D accept_egress_to_dns_proxy -d ::1 -j ACCEPT -w");
 
   Verify_iptables(runner_, IpFamily::kDual,
                   "nat -D snat_chrome_dns -p udp --dport 53 -j "
@@ -1698,6 +1713,9 @@ TEST_F(DatapathTest, StopDnsRedirection_ExcludeDestination) {
   Verify_iptables(runner_, IpFamily::kIPv4,
                   "nat -D redirect_user_dns -p tcp ! -d 100.115.92.130 --dport "
                   "53 -j RETURN -w");
+  Verify_iptables(runner_, IpFamily::kIPv4,
+                  "filter -D accept_egress_to_dns_proxy -d 100.115.92.130 -j "
+                  "ACCEPT -w");
   Verify_iptables(
       runner_, IpFamily::kIPv6,
       "nat -D redirect_chrome_dns -p udp ! -d ::1 --dport 53 -j RETURN -w");
@@ -1710,6 +1728,8 @@ TEST_F(DatapathTest, StopDnsRedirection_ExcludeDestination) {
   Verify_iptables(
       runner_, IpFamily::kIPv6,
       "nat -D redirect_user_dns -p tcp ! -d ::1 --dport 53 -j RETURN -w");
+  Verify_iptables(runner_, IpFamily::kIPv6,
+                  "filter -D accept_egress_to_dns_proxy -d ::1 -j ACCEPT -w");
 
   DnsRedirectionRule rule4 = {
       .type = patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION,

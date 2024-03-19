@@ -516,6 +516,11 @@ class Datapath {
   bool ModifyDnsRedirectionSkipVpnRule(IpFamily family,
                                        Iptables::Command command);
 
+  // Allows traffic to go to DNS proxy's addresses.
+  bool ModifyDnsProxyAcceptRule(IpFamily family,
+                                const DnsRedirectionRule& rule,
+                                Iptables::Command op);
+
   // Create (or delete) rules to exclude DNS traffic with destination not equal
   // to the proxy's IP in |rule|.
   bool ModifyDnsExcludeDestinationRule(IpFamily family,

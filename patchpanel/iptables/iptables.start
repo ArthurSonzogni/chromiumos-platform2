@@ -142,6 +142,7 @@ COMMIT
 :ingress_tethering - [0:0]
 :drop_output_to_bruschetta - [0:0]
 :drop_forward_to_bruschetta - [0:0]
+:accept_egress_to_dns_proxy - [0:0]
 
 -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 -A INPUT -i lo -j ACCEPT
@@ -156,6 +157,10 @@ COMMIT
 # vpn_lockdown, they are inserted last in front of the OUTPUT chain and
 # FORWARD chains respectively.
 -A FORWARD -j drop_guest_invalid_ipv4
+
+# Always ACCEPT traffic to DNS proxy's addresses. The rule is inserted before
+# VPN filters and after drop guest IPv4 prefix rules.
+-A FORWARD -j accept_egress_to_dns_proxy
 
 # When VPN lockdown is enabled, a REJECT rule must stop
 # any egress traffic tagged with the |kFwmarkRouteOnVpn| intent mark.
@@ -186,6 +191,11 @@ COMMIT
 # vpn_lockdown, they are inserted last in front of the OUTPUT chain and
 # FORWARD chains respectively.
 -A OUTPUT -j drop_guest_ipv4_prefix
+
+# Always ACCEPT traffic to DNS proxy's addresses. The rule is inserted before
+# VPN filters and after drop guest IPv4 prefix rules.
+-A OUTPUT -j accept_egress_to_dns_proxy
+
 -A OUTPUT -j vpn_egress_filters
 -A OUTPUT -j drop_output_to_bruschetta
 -A OUTPUT -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT

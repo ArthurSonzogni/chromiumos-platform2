@@ -67,6 +67,9 @@ constexpr std::string_view kIp6tablesStartScriptPath =
 constexpr char kSkipApplyVpnMarkChain[] = "skip_apply_vpn_mark";
 constexpr char kApplyVpnMarkChain[] = "apply_vpn_mark";
 
+// Egress filter chain to allow traffic to DNS proxy.
+constexpr char kAcceptEgressToDnsProxyChain[] = "accept_egress_to_dns_proxy";
+
 // Egress filter chain for dropping in the OUTPUT chain any local traffic
 // incorrectly bound to a static IPv4 address used for ARC or Crostini.
 constexpr char kDropGuestIpv4PrefixChain[] = "drop_guest_ipv4_prefix";
@@ -833,6 +836,12 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
         return false;
       }
 
+      // Allows user traffic to go to user DNS proxy's address.
+      if (!ModifyDnsProxyAcceptRule(family, rule, Iptables::Command::kA)) {
+        LOG(ERROR) << "Failed to add DNS proxy accept rule for "
+                   << rule.host_ifname;
+        return false;
+      }
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION: {
@@ -844,6 +853,11 @@ bool Datapath::StartDnsRedirection(const DnsRedirectionRule& rule) {
       if (!ModifyDnsExcludeDestinationRule(family, rule, Iptables::Command::kI,
                                            kRedirectUserDnsChain)) {
         LOG(ERROR) << "Failed to add user DNS exclude rule";
+        return false;
+      }
+      if (!ModifyDnsProxyAcceptRule(family, rule, Iptables::Command::kA)) {
+        LOG(ERROR) << "Failed to add DNS proxy accept rule for "
+                   << rule.host_ifname;
         return false;
       }
       break;
@@ -883,6 +897,7 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
         ModifyDnsProxyMasquerade(family, Iptables::Command::kD,
                                  kSNATUserDnsChain);
       }
+      ModifyDnsProxyAcceptRule(family, rule, Iptables::Command::kD);
       break;
     }
     case patchpanel::SetDnsRedirectionRuleRequest::EXCLUDE_DESTINATION: {
@@ -890,6 +905,7 @@ void Datapath::StopDnsRedirection(const DnsRedirectionRule& rule) {
                                       kRedirectChromeDnsChain);
       ModifyDnsExcludeDestinationRule(family, rule, Iptables::Command::kD,
                                       kRedirectUserDnsChain);
+      ModifyDnsProxyAcceptRule(family, rule, Iptables::Command::kD);
       break;
     }
     default:
@@ -1246,6 +1262,15 @@ bool Datapath::ModifyRedirectDnsJumpRule(IpFamily family,
   }
   args.insert(args.end(), {"-j", target_chain, "-w"});
   return ModifyIptables(family, Iptables::Table::kNat, op, chain, args);
+}
+
+bool Datapath::ModifyDnsProxyAcceptRule(IpFamily family,
+                                        const DnsRedirectionRule& rule,
+                                        Iptables::Command op) {
+  std::vector<std::string> args = {"-d", rule.proxy_address.ToString(), "-j",
+                                   "ACCEPT", "-w"};
+  return ModifyIptables(family, Iptables::Table::kFilter, op,
+                        kAcceptEgressToDnsProxyChain, args);
 }
 
 bool Datapath::ModifyDnsRedirectionSkipVpnRule(IpFamily family,
