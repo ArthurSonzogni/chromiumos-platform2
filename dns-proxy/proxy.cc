@@ -732,15 +732,6 @@ void Proxy::UpdateNameServers() {
 }
 
 void Proxy::OnDoHProvidersChanged(const brillo::Any& value) {
-  // When VPN is enabled, DoH must be disabled on default proxy to ensure that
-  // the behavior between different types of VPNs are the same.
-  // When the VPN is turned off, the resolver will be re-created and the DoH
-  // config will be re-populated.
-  if (opts_.type == Type::kDefault && device_ &&
-      device_->type == shill::Client::Device::Type::kVPN) {
-    doh_config_.set_providers(brillo::VariantDictionary());
-    return;
-  }
   doh_config_.set_providers(value.Get<brillo::VariantDictionary>());
 }
 

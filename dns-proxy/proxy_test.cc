@@ -838,18 +838,6 @@ TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
   SetNameServers({"8.8.8.8", "10.10.10.10"}, {"2620:fe::9", "2620:119:53::53"});
 }
 
-TEST_F(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN) {
-  SetUpProxy(Proxy::Options{.type = Proxy::Type::kDefault});
-  proxy_->device_ = ShillDevice(shill::Client::Device::ConnectionState::kOnline,
-                                shill::Client::Device::Type::kVPN);
-
-  EXPECT_CALL(*resolver_, SetDoHProviders(IsEmpty(), false));
-  brillo::VariantDictionary props;
-  props["https://dns.google.com"] = std::string("");
-  props["https://doh.opendns.com"] = std::string("");
-  proxy_->OnDoHProvidersChanged(props);
-}
-
 TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
   SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem});
   SetNamespaceAddresses(kNetnsPeerIPv4Addr, kNetnsPeerIPv6Addr);
