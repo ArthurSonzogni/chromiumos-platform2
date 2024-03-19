@@ -785,6 +785,9 @@ install_stateful() {
   case ${STATEFUL_FORMAT} in
   ubi) ;;
   *)
+    # Need to synchronize before releasing loop device, otherwise calling
+    # loop_offset_cleanup may return "device busy" error.
+    sync
     if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
       vgchange -an "${vg_name}"
     else
