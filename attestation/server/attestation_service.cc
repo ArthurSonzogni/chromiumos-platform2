@@ -44,7 +44,6 @@ extern "C" {
 }
 
 #include "attestation/common/nvram_quoter_factory.h"
-#include "attestation/common/tpm_utility_factory.h"
 #include "attestation/server/attestation_flow.h"
 #include "attestation/server/database_impl.h"
 #include "attestation/server/google_keys.h"
@@ -469,11 +468,6 @@ bool AttestationService::InitializeWithCallback(
 }
 
 void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
-  if (!tpm_utility_) {
-    default_tpm_utility_.reset(TpmUtilityFactory::New());
-    CHECK(default_tpm_utility_->Initialize());
-    tpm_utility_ = default_tpm_utility_.get();
-  }
   if (!hwsec_factory_) {
     default_hwsec_factory_ = std::make_unique<hwsec::FactoryImpl>();
     hwsec_factory_ = default_hwsec_factory_.get();
@@ -487,7 +481,7 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
     nvram_quoter_ = default_nvram_quoter_.get();
   }
   if (!crypto_utility_) {
-    default_crypto_utility_.reset(new CryptoUtilityImpl(tpm_utility_, hwsec_));
+    default_crypto_utility_.reset(new CryptoUtilityImpl(hwsec_));
     crypto_utility_ = default_crypto_utility_.get();
   }
   if (!database_) {
@@ -524,8 +518,6 @@ void AttestationService::ShutdownTask() {
   default_database_.reset(nullptr);
   crypto_utility_ = nullptr;
   default_crypto_utility_.reset(nullptr);
-  tpm_utility_ = nullptr;
-  default_tpm_utility_.reset(nullptr);
   if (bus_) {
     bus_->ShutdownAndBlock();
   }

@@ -14,16 +14,13 @@
 #include <openssl/rsa.h>
 #include <openssl/ec.h>
 
-#include "attestation/common/tpm_utility.h"
-
 namespace attestation {
 
 // An implementation of CryptoUtility.
 class CryptoUtilityImpl : public CryptoUtility {
  public:
   // Does not take ownership of pointers.
-  CryptoUtilityImpl(TpmUtility* tpm_utility,
-                    const hwsec::AttestationFrontend* hwsec);
+  explicit CryptoUtilityImpl(const hwsec::AttestationFrontend* hwsec);
   ~CryptoUtilityImpl() override;
 
   // CryptoUtility methods.
@@ -202,7 +199,6 @@ class CryptoUtilityImpl : public CryptoUtility {
                            const crypto::ScopedEVP_PKEY& public_key,
                            std::string* spkac);
 
-  TpmUtility* tpm_utility_;
   const hwsec::AttestationFrontend* hwsec_;
 };
 

@@ -837,7 +837,7 @@ class ClientLoop : public ClientLoopBase {
     }
     hwsec::FactoryImpl factory(hwsec::ThreadingMode::kCurrentThread);
     auto hwsec = factory.GetAttestationFrontend();
-    CryptoUtilityImpl crypto(nullptr, hwsec.get());
+    CryptoUtilityImpl crypto(hwsec.get());
     EncryptedIdentityCredential encrypted;
 
     TpmVersion tpm_version;
@@ -908,7 +908,7 @@ class ClientLoop : public ClientLoopBase {
   void Encrypt2(const std::string& input, const GetKeyInfoReply& key_info) {
     hwsec::FactoryImpl factory(hwsec::ThreadingMode::kCurrentThread);
     auto hwsec = factory.GetAttestationFrontend();
-    CryptoUtilityImpl crypto(nullptr, hwsec.get());
+    CryptoUtilityImpl crypto(hwsec.get());
     std::string output;
     if (!crypto.EncryptForUnbind(key_info.public_key(), input, &output)) {
       QuitWithExitCode(EX_SOFTWARE);
@@ -977,7 +977,7 @@ class ClientLoop : public ClientLoopBase {
                         const GetKeyInfoReply& key_info) {
     hwsec::FactoryImpl factory(hwsec::ThreadingMode::kCurrentThread);
     auto hwsec = factory.GetAttestationFrontend();
-    CryptoUtilityImpl crypto(nullptr, hwsec.get());
+    CryptoUtilityImpl crypto(hwsec.get());
     if (crypto.VerifySignature(crypto.DefaultDigestAlgoForSignature(),
                                key_info.public_key(), input, signature)) {
       printf("Signature is OK!\n");

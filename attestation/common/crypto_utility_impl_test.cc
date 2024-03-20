@@ -16,7 +16,6 @@
 #include <openssl/objects.h>
 
 #include "attestation/common/crypto_utility_impl.h"
-#include "attestation/common/mock_tpm_utility.h"
 
 using ::hwsec::TPMError;
 using ::hwsec::TPMRetryAction;
@@ -105,8 +104,7 @@ class CryptoUtilityImplTest : public testing::Test {
  public:
   ~CryptoUtilityImplTest() override = default;
   void SetUp() override {
-    crypto_utility_.reset(
-        new CryptoUtilityImpl(&mock_tpm_utility_, &mock_hwsec_));
+    crypto_utility_.reset(new CryptoUtilityImpl(&mock_hwsec_));
     EXPECT_CALL(mock_hwsec_, Seal).WillRepeatedly(Invoke(SealBlob));
     EXPECT_CALL(mock_hwsec_, Unseal).WillRepeatedly(Invoke(UnsealBlob));
   }
@@ -127,7 +125,6 @@ class CryptoUtilityImplTest : public testing::Test {
   }
 
  protected:
-  NiceMock<MockTpmUtility> mock_tpm_utility_;
   NiceMock<hwsec::MockAttestationFrontend> mock_hwsec_;
   std::unique_ptr<CryptoUtilityImpl> crypto_utility_;
 };

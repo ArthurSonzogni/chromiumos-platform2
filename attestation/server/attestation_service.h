@@ -32,7 +32,6 @@
 #include "attestation/common/crypto_utility.h"
 #include "attestation/common/crypto_utility_impl.h"
 #include "attestation/common/nvram_quoter.h"
-#include "attestation/common/tpm_utility.h"
 #include "attestation/pca_agent/dbus-proxies.h"
 #include "attestation/server/attestation_flow.h"
 #include "attestation/server/attestation_service_metrics.h"
@@ -180,8 +179,6 @@ class AttestationService : public AttestationInterface {
   void set_database(Database* database) { database_ = database; }
 
   void set_key_store(KeyStore* key_store) { key_store_ = key_store; }
-
-  void set_tpm_utility(TpmUtility* tpm_utility) { tpm_utility_ = tpm_utility; }
 
   void set_hwsec_factory(hwsec::Factory* hwsec_factory) {
     hwsec_factory_ = hwsec_factory;
@@ -497,11 +494,11 @@ class AttestationService : public AttestationInterface {
                                std::string* public_key_info) const;
 
   // Get endorsement public key. Get it from proto database if exists, otherwise
-  // get it from tpm_utility.
+  // get it from hardware security module.
   std::optional<std::string> GetEndorsementPublicKey() const;
 
   // Get endorsement certificate. Get it from proto database if exists,
-  // otherwise get it from tpm_utility.
+  // otherwise get it from hardware security module.
   std::optional<std::string> GetEndorsementCertificate() const;
 
   // Prepares the attestation system for enrollment with an ACA.
@@ -763,10 +760,6 @@ class AttestationService : public AttestationInterface {
   CryptoUtility* crypto_utility_{nullptr};
   Database* database_{nullptr};
   KeyStore* key_store_{nullptr};
-  // |tpm_utility_| typically points to |default_tpm_utility_| created/destroyed
-  // on the |worker_thread_|. As such, should not be accessed after that thread
-  // is stopped/destroyed.
-  TpmUtility* tpm_utility_{nullptr};
   hwsec::Factory* hwsec_factory_{nullptr};
   const hwsec::AttestationFrontend* hwsec_{nullptr};
   NvramQuoter* nvram_quoter_{nullptr};
@@ -795,16 +788,13 @@ class AttestationService : public AttestationInterface {
   // mutator.
 
   // As |default_database_| has a reference of |default_crypto_utility_| and
-  // |default_crypto_utility_| has a reference of |default_tpm_utility|,
+  // |default_crypto_utility_| has a reference of |default_hwsec_|,
   // the availabilities of these 2 variable follow the rule applied to
-  // |default_tpm_utility_|. See the comment for |default_tpm_utility_| below.
+  // |default_hwsec_|.
   std::unique_ptr<CryptoUtilityImpl> default_crypto_utility_;
   std::unique_ptr<DatabaseImpl> default_database_;
   std::unique_ptr<Pkcs11KeyStore> default_key_store_;
   std::unique_ptr<chaps::TokenManagerClient> pkcs11_token_manager_;
-  // |default_tpm_utility_| is created and destroyed on the |worker_thread_|,
-  // and is not available after the thread is stopped/destroyed.
-  std::unique_ptr<TpmUtility> default_tpm_utility_;
   std::unique_ptr<hwsec::Factory> default_hwsec_factory_;
   std::unique_ptr<const hwsec::AttestationFrontend> default_hwsec_;
   std::unique_ptr<NvramQuoter> default_nvram_quoter_;

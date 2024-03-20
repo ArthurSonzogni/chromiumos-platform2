@@ -95,9 +95,8 @@ crypto::ScopedOpenSSL<X509, X509_free> CreateX509FromCertificate(
 
 namespace attestation {
 
-CryptoUtilityImpl::CryptoUtilityImpl(TpmUtility* tpm_utility,
-                                     const hwsec::AttestationFrontend* hwsec)
-    : tpm_utility_(tpm_utility), hwsec_(hwsec) {
+CryptoUtilityImpl::CryptoUtilityImpl(const hwsec::AttestationFrontend* hwsec)
+    : hwsec_(hwsec) {
   CHECK(hwsec_);
   OpenSSL_add_all_algorithms();
   EVP_PKEY_asn1_add_alias(EVP_PKEY_RSA, NID_rsaesOaep);
