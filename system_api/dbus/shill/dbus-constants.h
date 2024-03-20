@@ -1189,6 +1189,7 @@ constexpr char kCreateP2PGroupResultTimeout[] = "timeout";
 constexpr char kCreateP2PGroupResultFrequencyNotSupported[] =
     "frequency_not_supported";
 constexpr char kCreateP2PGroupResultBadSSID[] = "bad_ssid";
+constexpr char kCreateP2PGroupResultInvalidArguments[] = "invalid_arguments";
 constexpr char kCreateP2PGroupResultOperationInProgress[] =
     "operation_in_progress";
 constexpr char kCreateP2PGroupResultOperationFailed[] = "operation_failed";

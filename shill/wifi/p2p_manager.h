@@ -92,7 +92,9 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   FRIEND_TEST(P2PManagerTest, DestroyWithoutCreate);
   FRIEND_TEST(P2PManagerTest, ShillIDs);
   FRIEND_TEST(P2PManagerTest, MissingArgs_CreateGroup);
+  FRIEND_TEST(P2PManagerTest, MissingArgs_CreateGroup_PriorityMissing);
   FRIEND_TEST(P2PManagerTest, MissingArgs_ConnectClient);
+  FRIEND_TEST(P2PManagerTest, BadPriority);
   FRIEND_TEST(P2PManagerTest, GroupStarted);
   FRIEND_TEST(P2PManagerTest, GroupStarted_IgnoreDuplicates);
   FRIEND_TEST(P2PManagerTest, GroupStarted_IgnoreMissingDevice);

@@ -153,11 +153,22 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
     freq = args.Get<uint32_t>(kP2PDeviceFrequency);
   }
 
-  std::optional<WiFiPhy::Priority> priority;
-  if (args.Contains<uint32_t>(kP2PDevicePriority)) {
-    priority = WiFiPhy::Priority(args.Get<uint32_t>(kP2PDevicePriority));
-    LOG(INFO) << "Priority argument value: " << *priority;
+  if (!args.Contains<uint32_t>(kP2PDevicePriority)) {
+    LOG(ERROR) << std::string(kP2PDevicePriority) + " argument is mandatory";
+    PostResult(kConnectToP2PGroupResultInvalidArguments, std::nullopt,
+               std::move(result_callback_));
+    return;
   }
+  WiFiPhy::Priority priority =
+      WiFiPhy::Priority(args.Get<uint32_t>(kP2PDevicePriority));
+  if (!priority.IsValid()) {
+    LOG(ERROR) << "invalid " << std::string(kP2PDevicePriority) + " argument "
+               << priority;
+    PostResult(kConnectToP2PGroupResultInvalidArguments, std::nullopt,
+               std::move(result_callback_));
+    return;
+  }
+  LOG(INFO) << "Priority argument value: " << priority;
 
   if (!ConnectToSupplicantPrimaryP2PDeviceProxy()) {
     LOG(ERROR) << "Failed to create P2P group, primary P2PDevice proxy "
@@ -237,11 +248,22 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
     freq = args.Get<uint32_t>(kP2PDeviceFrequency);
   }
 
-  std::optional<WiFiPhy::Priority> priority;
-  if (args.Contains<uint32_t>(kP2PDevicePriority)) {
-    priority = WiFiPhy::Priority(args.Get<uint32_t>(kP2PDevicePriority));
-    LOG(INFO) << "Prioirty argument value: " << *priority;
+  if (!args.Contains<uint32_t>(kP2PDevicePriority)) {
+    LOG(ERROR) << std::string(kP2PDevicePriority) + " argument is mandatory";
+    PostResult(kConnectToP2PGroupResultInvalidArguments, std::nullopt,
+               std::move(result_callback_));
+    return;
   }
+  WiFiPhy::Priority priority =
+      WiFiPhy::Priority(args.Get<uint32_t>(kP2PDevicePriority));
+  if (!priority.IsValid()) {
+    LOG(ERROR) << "invalid " << std::string(kP2PDevicePriority) + " argument "
+               << priority;
+    PostResult(kConnectToP2PGroupResultInvalidArguments, std::nullopt,
+               std::move(result_callback_));
+    return;
+  }
+  LOG(INFO) << "Priority argument value: " << priority;
 
   if (!ConnectToSupplicantPrimaryP2PDeviceProxy()) {
     LOG(ERROR) << "Failed to connect to P2P group, primary P2PDevice proxy "

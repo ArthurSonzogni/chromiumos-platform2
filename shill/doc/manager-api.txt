@@ -513,17 +513,17 @@ Methods		dict GetProperties()
 
 			Creates a P2P group with the specified config with this device as
 			the group owner. Possible arguments are "ssid" (string),
-			"passphrase" (string), and "frequency" (uint32). All arguments are
-			optional and all omitted args will be chosen by the platform.
-			Argument "priority" (uint32) exists as a non-functional stub.
+			"passphrase" (string), "frequency" (uint32), and "priority"
+			(uint32). "priority" is mandatory. All other arguments are optional
+			and all omitted args will be chosen by the platform.
 
 			Returns a dictionary with the following entries:
 
 			"result_code" (string): A string indicating the result of the
 			operation. This could be any one of "success", "not_allowed",
 			"not_supported", "concurrency_not_supported", "timeout",
-			"frequency_not_supported", "bad_ssid", "operation_in_progress",
-			"operation_failed".
+			"frequency_not_supported", "bad_ssid", "invalid_arguments",
+			"operation_in_progress", "operation_failed".
 
 			"shill_id" (uint32): Only included when result_code == "success".
 			Unique ID for the newly formed P2P group.
@@ -534,10 +534,9 @@ Methods		dict GetProperties()
 
 			Starts a P2P connection with a P2P group with the specified
 			config. Possible arguments are "ssid" (string), "passphrase"
-			(string), and "frequency" (uint32). "ssid" and "passphrase" are
-			mandatory. If "frequency" is omitted then the platform will scan
-			all available channels. Argument "priority" (uint32) exists as a
-			non-functional stub.
+			(string), "frequency" (uint32), and "priority" (uint32). "ssid",
+			"passphrase", and "priority" are mandatory. If "frequency" is
+			omitted then the platform will scan all available channels.
 
 			Returns a dictionary with the following entries:
 
