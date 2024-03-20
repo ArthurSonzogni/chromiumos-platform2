@@ -202,7 +202,7 @@ void InternalBacklightController::Init(
     ambient_light_handler_->Init(pref_value, initial_percent,
                                  als_smoothing_constant);
   } else {
-    use_ambient_light_ = false;
+    SetUseAmbientLight(false);
   }
 
   int64_t turn_off_screen_timeout_ms = 0;
@@ -733,7 +733,7 @@ void InternalBacklightController::SetExplicitBrightnessPercent(
     double battery_percent,
     Transition transition,
     BacklightBrightnessChange_Cause cause) {
-  use_ambient_light_ = false;
+  SetUseAmbientLight(false);
   ac_explicit_brightness_percent_ =
       ac_percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(ac_percent);
   if (battery_saver_) {
@@ -758,7 +758,7 @@ void InternalBacklightController::UpdateState(
     LOG(ERROR) << "Giving up on ambient light sensor after getting no reading "
                << "within " << kAmbientLightSensorTimeout.InSeconds()
                << " seconds";
-    use_ambient_light_ = false;
+    SetUseAmbientLight(false);
   }
 
   // Hold off on changing the brightness at startup until all the required
@@ -855,6 +855,10 @@ void InternalBacklightController::UpdateState(
   }
 
   already_set_initial_state_ = true;
+}
+
+void InternalBacklightController::SetUseAmbientLight(bool use_ambient_light) {
+  use_ambient_light_ = use_ambient_light;
 }
 
 }  // namespace power_manager::policy
