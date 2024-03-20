@@ -80,9 +80,11 @@ void BiometricsAuthBlockService::StartEnrollSession(
 }
 
 void BiometricsAuthBlockService::CreateCredential(OperationCallback on_done) {
-  if (!active_token_ || active_token_->type() != Token::TokenType::kEnroll) {
+  // Fingerprint migration calls CreateCredential outside an enroll session, so
+  // active enroll session & no session are both accepted.
+  if (active_token_ && active_token_->type() != Token::TokenType::kEnroll) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocBiometricsServiceCreateCredentialNoSession),
+        CRYPTOHOME_ERR_LOC(kLocBiometricsServiceCreateCredentialWrongSession),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::
             CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));

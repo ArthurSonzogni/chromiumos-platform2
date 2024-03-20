@@ -419,42 +419,21 @@ TEST_F(BiometricsAuthBlockServiceTest, CreateCredentialSuccess) {
   EXPECT_CALL(*mock_processor_, EndEnrollSession);
 }
 
-TEST_F(BiometricsAuthBlockServiceTest, CreateCredentialNoSessionFailure) {
-  EXPECT_CALL(*mock_processor_, CreateCredential).Times(0);
+// CreateCredential can be called outside enroll session, during migration.
+TEST_F(BiometricsAuthBlockServiceTest, CreateCredentialNoSessionSuccess) {
+  BiometricsCommandProcessor::OperationCallback create_credential_callback;
+  EXPECT_CALL(*mock_processor_, CreateCredential(_))
+      .WillOnce(SaveCreateCredentialCallback{&create_credential_callback});
 
-  RepeatingTestFuture<
-      CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
+  TestFuture<CryptohomeStatusOr<BiometricsCommandProcessor::OperationOutput>>
       create_credential_result;
   service_->CreateCredential(create_credential_result.GetCallback());
 
-  ASSERT_FALSE(create_credential_result.IsEmpty());
-  EXPECT_EQ(create_credential_result.Take().status()->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
-
-  // After a session is terminated, CreateCredential should fail too.
-
-  EXPECT_CALL(*mock_processor_, StartEnrollSession(_, _))
-      .WillOnce(
-          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
-
-  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
-      start_result;
-  service_->StartEnrollSession(AuthFactorType::kFingerprint, GetFakeInput(),
-                               start_result.GetCallback());
-  ASSERT_TRUE(start_result.IsReady());
-  EXPECT_THAT(start_result.Get(), IsOk());
-
-  // Destruction of the token shouldn't result in a call to mock_processor_
-  // again.
-  EXPECT_CALL(*mock_processor_, EndEnrollSession).Times(1);
-  service_->EndEnrollSession();
-
-  // Test that CreateCredential fails after a terminated session.
-  service_->CreateCredential(create_credential_result.GetCallback());
-
-  ASSERT_FALSE(create_credential_result.IsEmpty());
-  EXPECT_EQ(create_credential_result.Take().status()->local_legacy_error(),
-            user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
+  ASSERT_FALSE(create_credential_result.IsReady());
+  std::move(create_credential_callback).Run(GetFakeOutput());
+  ASSERT_TRUE(create_credential_result.IsReady());
+  EXPECT_THAT(create_credential_result.Get(),
+              IsOkAnd(OperationOutputEq(GetFakeOutput())));
 }
 
 TEST_F(BiometricsAuthBlockServiceTest, StartAuthenticateSuccess) {

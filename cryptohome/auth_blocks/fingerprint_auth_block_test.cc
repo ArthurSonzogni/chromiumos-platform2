@@ -230,23 +230,6 @@ TEST_F(FingerprintAuthBlockTest, CreateNoUsername) {
   EXPECT_EQ(auth_state, nullptr);
 }
 
-TEST_F(FingerprintAuthBlockTest, CreateNoSession) {
-  const brillo::SecureBlob kFakeResetSecret(32, 1);
-  const AuthInput kFakeAuthInput{.obfuscated_username = kFakeAccountId,
-                                 .reset_secret = kFakeResetSecret,
-                                 .rate_limiter_label = kFakeRateLimiterLabel};
-
-  CreateTestFuture result;
-  auth_block_->Create(kFakeAuthInput, {}, result.GetCallback());
-
-  ASSERT_TRUE(result.IsReady());
-  auto [status, key_blobs, auth_state] = result.Take();
-  EXPECT_TRUE(
-      PossibleActionsInclude(status, PossibleAction::kDevCheckUnexpectedState));
-  EXPECT_EQ(key_blobs, nullptr);
-  EXPECT_EQ(auth_state, nullptr);
-}
-
 TEST_F(FingerprintAuthBlockTest, CreateCreateCredentialFailed) {
   const brillo::SecureBlob kFakeResetSecret(32, 1);
   const AuthInput kFakeAuthInput{.obfuscated_username = kFakeAccountId,

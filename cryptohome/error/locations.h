@@ -1775,7 +1775,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //////////////////////////////////////////////////
   /* ./auth_blocks/biometrics_auth_block_service.cc */
   kLocBiometricsServiceStartEnrollConcurrentSession = 3300,
-  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  /* =Obsolete= */
   kLocBiometricsServiceCreateCredentialNoSession = 3301,
   /* ./auth_blocks/biometrics_auth_block_service.cc */
   kLocBiometricsServiceStartSessionFailure = 3302,
@@ -2083,6 +2083,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthGetPinWeaverInfoCheckFailed = 3453,
   /* ./auth_blocks/biometrics_command_processor_impl.cc */
   kLocBiometricsProcessorListLegacyRecordsFailed = 3454,
+  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  kLocBiometricsServiceCreateCredentialWrongSession = 3455,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
