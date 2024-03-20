@@ -61,6 +61,7 @@ group("all") {
 }
 
 pkg_config("target_defaults") {
+  defines = [ "USE_LIBCAMERA=${use.libcamera}" ]
   configs = [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
     "libcros_camera_android_deps",
@@ -401,6 +402,7 @@ generate_pkg_config("libcros_camera_pkg_config") {
 executable("cros_camera_algo") {
   sources = [
     "//camera/common/camera_algorithm_adapter.cc",
+    "//camera/common/camera_algorithm_adapter_libcamera.cc",
     "//camera/common/camera_algorithm_main.cc",
     "//camera/common/camera_algorithm_ops_impl.cc",
     "//camera/common/ipc_util.cc",

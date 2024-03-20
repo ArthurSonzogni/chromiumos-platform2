@@ -24,6 +24,7 @@
 #include <mojo/public/cpp/platform/socket_utils_posix.h>
 
 #include "common/camera_algorithm_adapter.h"
+#include "common/camera_algorithm_adapter_libcamera.h"
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
 #include "cros-camera/ipc_util.h"
@@ -56,7 +57,11 @@ int main(int argc, char** argv) {
 
   base::FilePath socket_file_path(
       (FLAGS_type == "vendor")
+#if USE_LIBCAMERA
+          ? cros::constants::kCrosCameraAlgoLibcameraSocketPathString
+#else
           ? cros::constants::kCrosCameraAlgoSocketPathString
+#endif
           : cros::constants::kCrosCameraGPUAlgoSocketPathString);
   // Create unix socket to receive the adapter token and connection handle
   int fd = -1;
@@ -88,6 +93,7 @@ int main(int argc, char** argv) {
       LOGF(ERROR) << "Failed to accept client connect request";
       return EXIT_FAILURE;
     }
+#if !USE_LIBCAMERA
     constexpr size_t kMaxMessageLength = 33;
     char recv_buf[kMaxMessageLength] = {0};
     std::vector<base::ScopedFD> platform_handles;
@@ -105,10 +111,16 @@ int main(int argc, char** argv) {
     if (pid > 0) {
       kill(pid, SIGTERM);
     }
+#endif
     pid = fork();
     if (pid == 0) {
+#if USE_LIBCAMERA
+      cros::CameraAlgorithmAdapterLibcamera adapter;
+      adapter.Run(std::move(connection_fd));
+#else
       cros::CameraAlgorithmAdapter adapter;
       adapter.Run(std::string(recv_buf), std::move(platform_handles[0]));
+#endif
       exit(0);
     } else if (pid < 0) {
       LOGF(ERROR) << "Fork failed";
