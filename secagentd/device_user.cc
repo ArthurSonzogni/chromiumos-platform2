@@ -149,7 +149,7 @@ void DeviceUser::RegisterSessionChangeListener(
 void DeviceUser::OnSessionManagerNameChange(const std::string& old_owner,
                                             const std::string& new_owner) {
   // When session manager crashes it logs user out.
-  device_user_ = "";
+  device_user_ = device_user::kEmpty;
 }
 
 void DeviceUser::GetDeviceUserAsync(
@@ -171,7 +171,7 @@ void DeviceUser::OnRegistrationResult(const std::string& interface,
   if (!success) {
     LOG(ERROR) << "Callback registration failed for dbus signal: " << signal
                << " on interface: " << interface;
-    device_user_ = "Unknown";
+    device_user_ = device_user::kUnknown;
   } else {
     OnSessionStateChange(kInit);
   }
@@ -200,9 +200,9 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
       return;
     }
   } else if (state == kStopping) {
-    device_user_ = "";
+    device_user_ = device_user::kEmpty;
   } else if (state == kStopped) {
-    device_user_ = "";
+    device_user_ = device_user::kEmpty;
   }
 
   device_user_ready_ = true;
@@ -216,7 +216,7 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
 }
 
 void DeviceUser::UpdateDeviceId() {
-  if (device_id_ != "") {
+  if (device_id_ != device_user::kEmpty) {
     return;
   }
 
@@ -243,12 +243,12 @@ bool DeviceUser::UpdateDeviceUser() {
   brillo::ErrorPtr error;
   if (!session_manager_->IsGuestSessionActive(&is_guest, &error) ||
       error.get()) {
-    device_user_ = "Unknown";
+    device_user_ = device_user::kUnknown;
     // Do not exit method because possible that it is user session.
     LOG(ERROR) << "Failed to deterimine if guest session "
                << error->GetMessage();
   } else if (is_guest) {
-    device_user_ = "GuestUser";
+    device_user_ = device_user::kGuest;
     return true;
   }
 
@@ -258,15 +258,15 @@ bool DeviceUser::UpdateDeviceUser() {
   if (!session_manager_->RetrievePrimarySession(&username, &sanitized,
                                                 &error) ||
       error.get()) {
-    device_user_ = "Unknown";
+    device_user_ = device_user::kUnknown;
     LOG(ERROR) << "Failed to retrieve primary session " << error->GetMessage();
     return true;
   } else {
     // No active session.
     if (username.empty()) {
       // Only set as empty when Guest session retrieval succeeds.
-      if (device_user_ != "Unknown") {
-        device_user_ = "";
+      if (device_user_ != device_user::kUnknown) {
+        device_user_ = device_user::kEmpty;
       }
       return true;
     }
@@ -383,7 +383,7 @@ bool DeviceUser::SetDeviceUserIfLocalAccount(std::string& username) {
   auto it = local_account_map_.find(account_type.value());
   if (it == local_account_map_.end()) {
     LOG(ERROR) << "Unrecognized local account " << account_type.value();
-    device_user_ = "Unknown";
+    device_user_ = device_user::kUnknown;
   } else {
     device_user_ = it->second;
   }
@@ -405,7 +405,7 @@ void DeviceUser::HandleUserPolicyAndNotifyListeners(
   // Retrieve user policy information.
   auto response = RetrievePolicy(login_manager::ACCOUNT_TYPE_USER, username);
   if (!response.ok()) {
-    device_user_ = "Unknown";
+    device_user_ = device_user::kUnknown;
     LOG(ERROR) << response.status();
   } else {
     auto policy_data = response.value();
@@ -420,7 +420,7 @@ void DeviceUser::HandleUserPolicyAndNotifyListeners(
         LOG(ERROR) << "Failed to write username to file";
       }
     } else {
-      device_user_ = kUnaffiliatedPrefix +
+      device_user_ = device_user::kUnaffiliatedPrefix +
                      base::Uuid::GenerateRandomV4().AsLowercaseString();
       user_directory = user_directory.Append("unaffiliated");
       if (directory_exists && !base::ImportantFileWriter::WriteFileAtomically(
@@ -446,7 +446,8 @@ bool DeviceUser::GetIsUnaffiliated() {
   // If there is no device user or it is one of the managed local accounts then
   // it is considered affiliated.
   const std::unordered_set<std::string> reporting_values = {
-      "", "ManagedGuest", "KioskApp", "KioskAndroidApp"};
+      device_user::kEmpty, device_user::kManagedGuest, device_user::kKioskApp,
+      device_user::kKioskAndroidApp};
   // If the user is unaffiliated their name will be a UUID. If they are
   // affiliated it will be their email which contains the @ symbol.
   return (!reporting_values.contains(device_user_) &&
@@ -467,18 +468,18 @@ std::string DeviceUser::GetUsernameBasedOnAffiliation(
                                   &file_size) ||
                file_size == 0) {
       LOG(ERROR) << "Failed to get username file size.";
-      return "Unknown";
+      return device_user::kUnknown;
     } else if (!base::ReadFileToString(directory_path.Append("unaffiliated"),
                                        &uuid) ||
                username.empty()) {
       LOG(ERROR) << "Failed to read uuid.";
-      return "Unknown";
+      return device_user::kUnknown;
     } else {
       return uuid;
     }
   }
 
-  return "Unknown";
+  return device_user::kUnknown;
 }
 
 void DeviceUser::SetFlushCallback(base::RepeatingCallback<void()> cb) {

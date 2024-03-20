@@ -94,7 +94,9 @@ message CommonEventVariantDataFields {
   // User’s email (affiliated)
   // "UnaffiliatedUser-" prepended to Random UUID (unaffiliated)
   // "" (empty string when no user signed in)
-  // "Unknown" (The user is unknown because of internal error)
+  // "Unknown" (The user is unknown because of internal error) or
+  //     the user's affiliation cannot be determined because they have
+  //     never previously signed into the device or removed account from device.
   // "GuestUser" (logged in as guest user)
   // "ManagedGuest" (logged in as managed guest set by organization)
   // "KioskApp" (Any kiosk app being used)

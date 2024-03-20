@@ -208,7 +208,7 @@ TEST_F(AuthenticationPluginTestFixture, TestScreenLoginToLogout) {
           })))
       .WillOnce(WithArg<0>(Invoke(
           [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run("");
+            std::move(cb).Run(device_user::kEmpty);
           })));
 
   user_data_auth::AuthenticateAuthFactorCompleted completed;
@@ -796,7 +796,7 @@ TEST_F(AuthenticationPluginTestFixture, TestSecagentdRestart) {
       .Times(3)
       .WillOnce(WithArg<0>(Invoke(
           [](base::OnceCallback<void(const std::string& device_user)> cb) {
-            std::move(cb).Run("");
+            std::move(cb).Run(device_user::kEmpty);
           })))
       .WillRepeatedly(WithArg<0>(Invoke(
           [](base::OnceCallback<void(const std::string& device_user)> cb) {

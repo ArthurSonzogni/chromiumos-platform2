@@ -28,6 +28,21 @@
 
 namespace secagentd {
 
+// https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/platform2/secagentd/proto/security_xdr_events.proto
+// For full device user descriptions.
+namespace device_user {
+static constexpr char kUnaffiliatedPrefix[] = "UnaffiliatedUser-";
+static constexpr char kEmpty[] = "";
+static constexpr char kUnknown[] = "Unknown";
+static constexpr char kGuest[] = "GuestUser";
+// Local accounts.
+static constexpr char kManagedGuest[] = "ManagedGuest";
+static constexpr char kKioskApp[] = "KioskApp";
+static constexpr char kWebKioskApp[] = "KioskApp";
+static constexpr char kKioskAndroidApp[] = "KioskAndroidApp";
+static constexpr char kSAML[] = "SAML-PublicSession";
+}  // namespace device_user
+
 using DeviceAccountType =
     enterprise_management::DeviceLocalAccountInfoProto_AccountType;
 
@@ -36,7 +51,6 @@ static constexpr char kStarted[] = "started";
 static constexpr char kStopping[] = "stopping";
 static constexpr char kStopped[] = "stopped";
 static constexpr char kInit[] = "init";
-static constexpr char kUnaffiliatedPrefix[] = "UnaffiliatedUser-";
 static constexpr char kSecagentdDirectory[] = "var/lib/secagentd";
 
 namespace testing {
@@ -153,7 +167,7 @@ class DeviceUser : public DeviceUserInterface {
   // guest, etc.) and updates the device user.
   bool SetDeviceUserIfLocalAccount(std::string& username);
   // Handles setting the device user after affiliation is checked and writing
-  // the username to daemon-store.
+  // the username to disk.
   // Also notifies listeners that the user should have been updated.
   void HandleUserPolicyAndNotifyListeners(std::string username,
                                           base::FilePath username_file);
@@ -169,26 +183,26 @@ class DeviceUser : public DeviceUserInterface {
       session_change_listeners_;
   std::vector<base::OnceCallback<void(const std::string&)>>
       on_device_user_ready_cbs_;
-  std::string device_user_ = "";
+  std::string device_user_ = device_user::kEmpty;
   std::list<std::string> redacted_usernames_;
   std::string device_id_ = "";
   const base::FilePath root_path_;
   const std::unordered_map<DeviceAccountType, std::string> local_account_map_ =
       {{enterprise_management::DeviceLocalAccountInfoProto::
             ACCOUNT_TYPE_PUBLIC_SESSION,
-        "ManagedGuest"},
+        device_user::kManagedGuest},
        {enterprise_management::DeviceLocalAccountInfoProto::
             ACCOUNT_TYPE_KIOSK_APP,
-        "KioskApp"},
+        device_user::kKioskApp},
        {enterprise_management::DeviceLocalAccountInfoProto::
             ACCOUNT_TYPE_KIOSK_ANDROID_APP,
-        "KioskAndroidApp"},
+        device_user::kKioskAndroidApp},
        {enterprise_management::DeviceLocalAccountInfoProto::
             ACCOUNT_TYPE_SAML_PUBLIC_SESSION,
-        "SAML-PublicSession"},
+        device_user::kSAML},
        {enterprise_management::DeviceLocalAccountInfoProto::
             ACCOUNT_TYPE_WEB_KIOSK_APP,
-        "KioskApp"}};
+        device_user::kWebKioskApp}};
   bool device_user_ready_ = false;
 };
 

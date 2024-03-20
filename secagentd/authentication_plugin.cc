@@ -231,10 +231,10 @@ void AuthenticationPlugin::OnSessionStateChange(const std::string& state) {
         AuthFactorType::Authentication_AuthenticationType_AUTH_TYPE_UNKNOWN;
   } else if (state == kStopped) {
     log_event->mutable_logoff();
-    if (signed_in_user_ != "") {
+    if (signed_in_user_ != device_user::kEmpty) {
       log_event->mutable_common()->set_device_user(signed_in_user_);
     } else {
-      log_event->mutable_common()->set_device_user("Unknown");
+      log_event->mutable_common()->set_device_user(device_user::kUnknown);
     }
   } else if (state == kInit) {
     device_user_->GetDeviceUserAsync(
@@ -365,9 +365,9 @@ void AuthenticationPlugin::OnDeviceUserRetrieved(
   }
 
   if (atomic_event->has_logon()) {
-    if (device_user == "") {
+    if (device_user == device_user::kEmpty) {
       LOG(ERROR) << "Logon does NOT contain a device user";
-      signed_in_user_ = "Unknown";
+      signed_in_user_ = device_user::kUnknown;
     } else {
       signed_in_user_ = device_user;
     }
@@ -381,11 +381,10 @@ void AuthenticationPlugin::OnDeviceUserRetrieved(
         static_cast<metrics::AuthFactor>(pair.value().second));
   }
 
-  // TODO(b/322290467): 3P needs the device_user to always be filled for
-  // authentication events. If there is no device user fill it with "Unknown" as
-  // a temporary solution until the actual user can be filled.
+  // 3P needs the device_user to always be filled for authentication events. If
+  // there is no device user fill it with kUnknown.
   if (atomic_event->common().device_user().empty()) {
-    atomic_event->mutable_common()->set_device_user("Unknown");
+    atomic_event->mutable_common()->set_device_user(device_user::kUnknown);
   }
   batch_sender_->Enqueue(std::move(atomic_event));
 }

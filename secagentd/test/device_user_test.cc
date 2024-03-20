@@ -37,8 +37,6 @@ using ::testing::WithArgs;
 
 constexpr char kDeviceUser[] = "deviceUser@email.com";
 constexpr char kSanitized[] = "943cebc444e3e19da9a2dbf9c8a473bc7cc16d9d";
-constexpr char kGuest[] = "GuestUser";
-constexpr char kUnknown[] = "Unknown";
 constexpr char kAffiliationID[] = "C02gxaaci";
 
 class DeviceUserTestFixture : public ::testing::Test {
@@ -304,7 +302,7 @@ TEST_F(DeviceUserTestFixture, TestStoredUserAffiliated) {
   ASSERT_TRUE(base::PathExists(affiliated_file));
 
   // Trigger callback again to verify the file is read from.
-  SetDeviceUser("");
+  SetDeviceUser(device_user::kEmpty);
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
   EXPECT_EQ(kDeviceUser, GetUser());
@@ -348,27 +346,27 @@ TEST_F(DeviceUserTestFixture, TestStoredUserUnaffiliated) {
 
   // Just verify that the username is a valid uuid because it
   // is random each time.
-  EXPECT_TRUE(GetUser().starts_with(kUnaffiliatedPrefix) &&
+  EXPECT_TRUE(GetUser().starts_with(device_user::kUnaffiliatedPrefix) &&
               base::Uuid::ParseCaseInsensitive(
-                  GetUser().substr(strlen(kUnaffiliatedPrefix)))
+                  GetUser().substr(strlen(device_user::kUnaffiliatedPrefix)))
                   .is_valid());
   base::FilePath unaffiliated_file =
       secagentd_directory_.Append(kSanitized).Append("unaffiliated");
   ASSERT_TRUE(base::PathExists(unaffiliated_file));
   std::string username;
   ASSERT_TRUE(base::ReadFileToString(unaffiliated_file, &username));
-  EXPECT_TRUE(username.starts_with(kUnaffiliatedPrefix) &&
+  EXPECT_TRUE(username.starts_with(device_user::kUnaffiliatedPrefix) &&
               base::Uuid::ParseCaseInsensitive(
-                  username.substr(strlen(kUnaffiliatedPrefix)))
+                  username.substr(strlen(device_user::kUnaffiliatedPrefix)))
                   .is_valid());
 
   // Trigger callback again to verify the file is read from.
-  SetDeviceUser("");
+  SetDeviceUser(device_user::kEmpty);
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
-  EXPECT_TRUE(GetUser().starts_with(kUnaffiliatedPrefix) &&
+  EXPECT_TRUE(GetUser().starts_with(device_user::kUnaffiliatedPrefix) &&
               base::Uuid::ParseCaseInsensitive(
-                  GetUser().substr(strlen(kUnaffiliatedPrefix)))
+                  GetUser().substr(strlen(device_user::kUnaffiliatedPrefix)))
                   .is_valid());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
@@ -379,13 +377,13 @@ TEST_F(DeviceUserTestFixture, TestLogout) {
   SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
   registration_cb_.Run(kStopping);
-  EXPECT_EQ("", GetUser());
+  EXPECT_EQ(device_user::kEmpty, GetUser());
 
   SetDeviceUser(kDeviceUser);
   SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
   registration_cb_.Run(kStopped);
-  EXPECT_EQ("", GetUser());
+  EXPECT_EQ(device_user::kEmpty, GetUser());
 }
 
 TEST_F(DeviceUserTestFixture, TestUnaffiliatedUser) {
@@ -419,9 +417,9 @@ TEST_F(DeviceUserTestFixture, TestUnaffiliatedUser) {
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
-  EXPECT_TRUE(GetUser().starts_with(kUnaffiliatedPrefix) &&
+  EXPECT_TRUE(GetUser().starts_with(device_user::kUnaffiliatedPrefix) &&
               base::Uuid::ParseCaseInsensitive(
-                  GetUser().substr(strlen(kUnaffiliatedPrefix)))
+                  GetUser().substr(strlen(device_user::kUnaffiliatedPrefix)))
                   .is_valid());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
@@ -444,7 +442,7 @@ TEST_F(DeviceUserTestFixture, TestGuestUser) {
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
-  EXPECT_EQ(kGuest, GetUser());
+  EXPECT_EQ(device_user::kGuest, GetUser());
   ASSERT_EQ(0, device_user_->GetUsernamesForRedaction().size());
 }
 
@@ -469,7 +467,7 @@ TEST_F(DeviceUserTestFixture, TestFailedRegistration) {
 
   device_user_->RegisterSessionChangeHandler();
 
-  EXPECT_EQ(kUnknown, GetUser());
+  EXPECT_EQ(device_user::kUnknown, GetUser());
 }
 
 TEST_F(DeviceUserTestFixture, TestFailedGuestSessionRetrieval) {
@@ -486,7 +484,7 @@ TEST_F(DeviceUserTestFixture, TestFailedGuestSessionRetrieval) {
       })));
   EXPECT_CALL(*session_manager_ref_, RetrievePrimarySession)
       .WillOnce(WithArg<0>(Invoke([](std::string* username) {
-        *username = "";
+        *username = device_user::kEmpty;
         return true;
       })));
 
@@ -495,7 +493,7 @@ TEST_F(DeviceUserTestFixture, TestFailedGuestSessionRetrieval) {
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
-  EXPECT_EQ(kUnknown, GetUser());
+  EXPECT_EQ(device_user::kUnknown, GetUser());
 }
 
 TEST_F(DeviceUserTestFixture, TestFailedPrimarySessionRetrieval) {
@@ -521,7 +519,7 @@ TEST_F(DeviceUserTestFixture, TestFailedPrimarySessionRetrieval) {
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
-  EXPECT_EQ(kUnknown, GetUser());
+  EXPECT_EQ(device_user::kUnknown, GetUser());
 }
 
 TEST_F(DeviceUserTestFixture, TestFailedRetrievePolicyEx) {
@@ -548,7 +546,7 @@ TEST_F(DeviceUserTestFixture, TestFailedRetrievePolicyEx) {
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
-  EXPECT_EQ(kUnknown, GetUser());
+  EXPECT_EQ(device_user::kUnknown, GetUser());
 }
 
 TEST_F(DeviceUserTestFixture, TestFailedParsingResponse) {
@@ -584,7 +582,7 @@ TEST_F(DeviceUserTestFixture, TestFailedParsingResponse) {
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
-  EXPECT_EQ(kUnknown, GetUser());
+  EXPECT_EQ(device_user::kUnknown, GetUser());
 }
 
 TEST_F(DeviceUserTestFixture, TestFailedParsingPolicy) {
@@ -620,7 +618,7 @@ TEST_F(DeviceUserTestFixture, TestFailedParsingPolicy) {
   registration_cb_.Run(kStarted);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
-  EXPECT_EQ(kUnknown, GetUser());
+  EXPECT_EQ(device_user::kUnknown, GetUser());
 }
 
 TEST_F(DeviceUserTestFixture, TestSessionManagerCrash) {
@@ -632,7 +630,7 @@ TEST_F(DeviceUserTestFixture, TestSessionManagerCrash) {
   name_change_cb_.Run("old_name", "");
   name_change_cb_.Run("", "new_name");
 
-  EXPECT_EQ("", GetUser());
+  EXPECT_EQ(device_user::kEmpty, GetUser());
 }
 
 TEST_F(DeviceUserTestFixture, TestLoginLogoutMultipleTimesForRedaction) {
@@ -702,7 +700,7 @@ TEST_F(DeviceUserTestFixture, TestLoginLogoutMultipleTimesForRedaction) {
               device_user_->GetUsernamesForRedaction().front());
 
     registration_cb_.Run(kStopped);
-    EXPECT_EQ("", GetUser());
+    EXPECT_EQ(device_user::kEmpty, GetUser());
     ASSERT_EQ(i + 1, device_user_->GetUsernamesForRedaction().size());
     EXPECT_EQ(device_users[i],
               device_user_->GetUsernamesForRedaction().front());
@@ -750,7 +748,7 @@ TEST_F(DeviceUserTestFixture, TestLoginLogoutSameUsernameAffiliated) {
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 
   registration_cb_.Run(kStopped);
-  EXPECT_EQ("", GetUser());
+  EXPECT_EQ(device_user::kEmpty, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 
@@ -760,7 +758,7 @@ TEST_F(DeviceUserTestFixture, TestLoginLogoutSameUsernameAffiliated) {
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 
   registration_cb_.Run(kStopped);
-  EXPECT_EQ("", GetUser());
+  EXPECT_EQ(device_user::kEmpty, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
@@ -802,15 +800,16 @@ TEST_F(DeviceUserTestFixture, TestLoginLogoutSameUsernameUnaffiliated) {
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
 
   std::string unaffiliated_user = GetUser();
-  EXPECT_TRUE(unaffiliated_user.starts_with(kUnaffiliatedPrefix) &&
-              base::Uuid::ParseCaseInsensitive(
-                  unaffiliated_user.substr(strlen(kUnaffiliatedPrefix)))
-                  .is_valid());
+  EXPECT_TRUE(
+      unaffiliated_user.starts_with(device_user::kUnaffiliatedPrefix) &&
+      base::Uuid::ParseCaseInsensitive(
+          unaffiliated_user.substr(strlen(device_user::kUnaffiliatedPrefix)))
+          .is_valid());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 
   registration_cb_.Run(kStopped);
-  EXPECT_EQ("", GetUser());
+  EXPECT_EQ(device_user::kEmpty, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 
@@ -820,7 +819,7 @@ TEST_F(DeviceUserTestFixture, TestLoginLogoutSameUsernameUnaffiliated) {
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 
   registration_cb_.Run(kStopped);
-  EXPECT_EQ("", GetUser());
+  EXPECT_EQ(device_user::kEmpty, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
 }
@@ -828,13 +827,15 @@ TEST_F(DeviceUserTestFixture, TestLoginLogoutSameUsernameUnaffiliated) {
 TEST_F(DeviceUserTestFixture, TestLocalAccount) {
   const std::unordered_map<std::string, std::string> local_account_map = {
       {"6b696f736b5f617070@public-accounts.device-local.localhost",
-       "ManagedGuest"},
-      {"6b696f736b5f617070@web-kiosk-apps.device-local.localhost", "KioskApp"},
+       device_user::kManagedGuest},
+      {"6b696f736b5f617070@web-kiosk-apps.device-local.localhost",
+       device_user::kKioskApp},
       {"6b696f736b5f617070@arc-kiosk-apps.device-local.localhost",
-       "KioskAndroidApp"},
+       device_user::kKioskAndroidApp},
       {"6b696f736b5f617070@saml-public-accounts.device-local.localhost",
-       "SAML-PublicSession"},
-      {"6b696f736b5f617070@web-kiosk-apps.device-local.localhost", "KioskApp"}};
+       device_user::kSAML},
+      {"6b696f736b5f617070@web-kiosk-apps.device-local.localhost",
+       device_user::kWebKioskApp}};
 
   EXPECT_CALL(
       *session_manager_ref_,
@@ -995,9 +996,9 @@ TEST_F(DeviceUserTestFixture, TestGetUsernameBasedOnAffiliation) {
   ASSERT_TRUE(base::PathExists(unaffiliated_file));
   username = device_user_->GetUsernameBasedOnAffiliation(kDeviceUser,
                                                          "different_sanitized");
-  EXPECT_TRUE(username.starts_with(kUnaffiliatedPrefix) &&
+  EXPECT_TRUE(username.starts_with(device_user::kUnaffiliatedPrefix) &&
               base::Uuid::ParseCaseInsensitive(
-                  username.substr(strlen(kUnaffiliatedPrefix)))
+                  username.substr(strlen(device_user::kUnaffiliatedPrefix)))
                   .is_valid());
 }
 
