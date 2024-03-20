@@ -472,16 +472,16 @@ struct Sampler<'a> {
     always_poll_fast: bool, // When true, program stays in fast poll mode.
     paths: &'a Paths,       // Paths of files used by the program.
     dbus_receiver: crossbeam_channel::Receiver<DbusEvent>,
-    low_mem_margin: u32, // Low-memory notification margin, assumed to remain constant in a boot session.
-    sample_header: String, // The text at the beginning of each clip file.
-    files: Files,        // Files kept open by the program.
-    clip_counter: usize, // Index of next clip file (also part of file name).
+    low_mem_margin_mb: u32, // Low-memory margin, assumed to remain constant in a boot session.
+    sample_header: String,  // The text at the beginning of each clip file.
+    files: Files,           // Files kept open by the program.
+    clip_counter: usize,    // Index of next clip file (also part of file name).
     sample_queue: SampleQueue, // A running queue of samples of vm quantities.
     current_available: u32, // Amount of "available" memory (in MB) at last reading.
-    current_time: i64,   // Wall clock in ms at last reading.
-    collecting: bool,    // True if we're in the middle of collecting a clip.
-    timer: Box<dyn Timer>, // Real or mock timer.
-    quit_request: bool,  // Signals a quit-and-restart request when testing.
+    current_time: i64,      // Wall clock in ms at last reading.
+    collecting: bool,       // True if we're in the middle of collecting a clip.
+    timer: Box<dyn Timer>,  // Real or mock timer.
+    quit_request: bool,     // Signals a quit-and-restart request when testing.
 }
 
 impl<'a> Sampler<'a> {
@@ -490,6 +490,7 @@ impl<'a> Sampler<'a> {
         paths: &'a Paths,
         timer: Box<dyn Timer>,
         dbus_receiver: crossbeam_channel::Receiver<DbusEvent>,
+        low_mem_margin_mb: u32,
     ) -> Result<Sampler> {
         let mut low_mem_file_flags = OpenOptions::new();
         low_mem_file_flags.custom_flags(libc::O_NONBLOCK);
@@ -505,7 +506,7 @@ impl<'a> Sampler<'a> {
         let mut sampler = Sampler {
             always_poll_fast,
             dbus_receiver,
-            low_mem_margin: read_int(&paths.low_mem_margin).unwrap_or(0),
+            low_mem_margin_mb,
             paths,
             sample_header,
             files,
@@ -521,7 +522,7 @@ impl<'a> Sampler<'a> {
             .find_starting_clip_counter()
             .map_err(Error::StartingClipCounterMissingError)?;
         sampler
-            .log_static_parameters()
+            .log_static_parameters(low_mem_margin_mb)
             .map_err(Error::LogStaticParametersError)?;
         Ok(sampler)
     }
@@ -568,15 +569,14 @@ impl<'a> Sampler<'a> {
 
     // Creates or overwrites a file in the memd log directory containing
     // quantities of interest.
-    fn log_static_parameters(&self) -> Result<()> {
+    fn log_static_parameters(&self, low_mem_margin_mb: u32) -> Result<()> {
         let out = &mut OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
             .open(&self.paths.static_parameters)?;
         fprint_datetime(out)?;
-        let low_mem_margin = read_int(&self.paths.low_mem_margin).unwrap_or(0);
-        writeln!(out, "margin {}", low_mem_margin)?;
+        writeln!(out, "margin {}", low_mem_margin_mb)?;
 
         let psv = &self.paths.procsysvm;
         log_from_procfs(out, psv, "min_filelist_kbytes")?;
@@ -601,8 +601,8 @@ impl<'a> Sampler<'a> {
     fn should_poll_slowly(&self) -> bool {
         !self.collecting
             && !self.always_poll_fast
-            && self.low_mem_margin > 0
-            && self.current_available > self.low_mem_margin + LOW_MEM_DANGER_THRESHOLD_MB
+            && self.low_mem_margin_mb > 0
+            && self.current_available > self.low_mem_margin_mb + LOW_MEM_DANGER_THRESHOLD_MB
     }
 
     // Sits mostly idle and checks available RAM at low frequency.  Returns
@@ -682,7 +682,7 @@ impl<'a> Sampler<'a> {
             if let Some(available_file) = self.files.available_file_option.as_ref() {
                 self.current_available = pread_u32(available_file)?;
             }
-            let in_low_mem = self.current_available < self.low_mem_margin;
+            let in_low_mem = self.current_available < self.low_mem_margin_mb;
             self.refresh_time();
 
             // Record a sample when we sleep too long.  Such samples are
@@ -922,7 +922,6 @@ impl SampleType {
 #[derive(Clone)]
 pub struct Paths {
     available: PathBuf,
-    low_mem_margin: PathBuf,
     log_directory: PathBuf,
     static_parameters: PathBuf,
     zoneinfo: PathBuf,
@@ -1024,7 +1023,6 @@ fn get_paths(root: Option<TempDir>) -> Paths {
         cfg!(test),
         &testing_root,
         available:         LOW_MEM_SYSFS.to_string() + "/available",
-        low_mem_margin:    LOW_MEM_SYSFS.to_string() + "/margin",
         log_directory:     LOG_DIRECTORY,
         static_parameters: LOG_DIRECTORY.to_string() + "/" + STATIC_PARAMETERS_LOG,
         zoneinfo:          "/proc/zoneinfo",
@@ -1109,6 +1107,24 @@ fn receive_dbus_events(sender: crossbeam_channel::Sender<DbusEvent>) -> Result<(
     }
 }
 
+// Get the memory margin by calling resource manager D-Bus method.
+#[cfg(not(test))]
+fn get_memory_margin_mb() -> Result<u32> {
+    const RESOURCED_SERVICE_NAME: &str = "org.chromium.ResourceManager";
+    const RESOURCED_PATH_NAME: &str = "/org/chromium/ResourceManager";
+    const RESOURCED_INTERFACE_NAME: &str = RESOURCED_SERVICE_NAME;
+
+    let conn = dbus::blocking::Connection::new_system()?;
+    let proxy = conn.with_proxy(
+        RESOURCED_INTERFACE_NAME,
+        RESOURCED_PATH_NAME,
+        Duration::from_millis(5000),
+    );
+    let (critical, _moderate): (u64, u64) =
+        proxy.method_call(RESOURCED_SERVICE_NAME, "GetMemoryMarginsKB", ())?;
+    Ok((critical / 1024) as u32)
+}
+
 fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
     let test_dir_option = make_testing_dir();
     let paths = get_paths(test_dir_option);
@@ -1141,7 +1157,13 @@ fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
         let _sender_thread = std::thread::spawn(move || {
             let _ = receive_dbus_events(send);
         });
-        let mut sampler = Sampler::new(always_poll_fast, &paths, timer, recv)?;
+        let mut sampler = Sampler::new(
+            always_poll_fast,
+            &paths,
+            timer,
+            recv,
+            get_memory_margin_mb()?,
+        )?;
         loop {
             // Run forever, alternating between slow and fast poll.
             sampler.slow_poll()?;

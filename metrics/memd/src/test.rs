@@ -29,7 +29,7 @@ use crate::SAMPLE_QUEUE_LENGTH;
 const LOW_MEM_LOW_AVAILABLE: usize = 150;
 const LOW_MEM_MEDIUM_AVAILABLE: usize = 300;
 const LOW_MEM_HIGH_AVAILABLE: usize = 1000;
-const LOW_MEM_MARGIN: usize = 200;
+const LOW_MEM_MARGIN: u32 = 200;
 const MOCK_DBUS_FIFO_NAME: &str = "mock-dbus-fifo";
 
 macro_rules! print_to_path {
@@ -225,7 +225,8 @@ pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
         let events = events_from_test_descriptor(test_desc);
         let (send, recv) = crossbeam_channel::unbounded();
         let timer = Box::new(MockTimer::new(events, paths.clone(), send));
-        let mut sampler = Sampler::new(false, paths, timer, recv).expect("sampler creation error");
+        let mut sampler = Sampler::new(false, paths, timer, recv, LOW_MEM_MARGIN)
+            .expect("sampler creation error");
         loop {
             // Alternate between slow and fast poll.
             sampler.slow_poll().expect("slow poll error");
@@ -601,13 +602,6 @@ pub fn setup_test_environment(paths: &Paths) {
     print_to_path!(&paths.zoneinfo, "{}", zoneinfo_content).expect("cannot initialize zoneinfo");
     print_to_path!(&paths.available, "{}\n", LOW_MEM_HIGH_AVAILABLE)
         .expect("cannot initialize available");
-    print_to_path!(
-        &paths.low_mem_margin,
-        "{} {}",
-        LOW_MEM_MARGIN,
-        LOW_MEM_MARGIN * 2
-    )
-    .expect("cannot initialize low_mem_margin");
 
     print_to_path!(sys_vm.join("min_filelist_kbytes"), "100000\n")
         .expect("cannot initialize min_filelist_kbytes");
