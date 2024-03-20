@@ -42,6 +42,7 @@ class MockDlc : public DlcInterface {
   MOCK_METHOD(uint64_t, GetUsedBytesOnDisk, (), (const, override));
   MOCK_METHOD(bool, IsPreloadAllowed, (), (const, override));
   MOCK_METHOD(bool, IsFactoryInstall, (), (const, override));
+  MOCK_METHOD(const DlcId&, GetSanitizedId, (), (const, override));
   MOCK_METHOD(bool, Install, (brillo::ErrorPtr * err), (override));
   MOCK_METHOD(bool,
               FinishInstall,

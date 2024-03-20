@@ -203,10 +203,13 @@ class DlcService : public DlcServiceInterface,
   void OnReadyInstaller(bool available);
 
   // Perform an action on mounted DLCs, optionally only on selected ones.
-  // Returns a list of DLCs that failed to perform the action.
-  DlcIdList MountedDlcsAction(const base::FilePath& mount_base,
-                              std::optional<SelectDlc> select,
-                              const std::function<bool(DlcInterface*)>& action);
+  // Returns the number of DLCs that failed to perform the action.
+  int MountedDlcsAction(const base::FilePath& mount_base,
+                        std::optional<SelectDlc> select,
+                        const std::function<bool(DlcInterface*)>& action);
+
+  // Get the sanitized ID from DLC if it exists, otherwise return unchanged ID.
+  std::string SanitizeId(DlcId id);
 
   // Removes all unsupported/deprecated DLCs.
   void CleanupUnsupported();

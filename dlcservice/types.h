@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
+
 namespace dlcservice {
 
 class DlcInterface;
@@ -17,6 +19,7 @@ using DlcId = std::string;
 using DlcType = std::unique_ptr<DlcInterface>;
 using DlcMap = std::map<DlcId, DlcType>;
 using DlcIdList = std::vector<DlcId>;
+using DlcSanitizedPath = base::FilePath;
 
 }  // namespace dlcservice
 

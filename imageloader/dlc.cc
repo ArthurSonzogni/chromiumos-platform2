@@ -26,6 +26,7 @@ constexpr char kSlotAName[] = "dlc_a";
 constexpr char kSlotBName[] = "dlc_b";
 constexpr char kManifestFileName[] = "imageloader.json";
 constexpr char kTableFileName[] = "table";
+constexpr char kRedactedImagePath[] = "<REDACTED_IMAGE_PATH>";
 
 AOrB GetImageAOrB(const std::string& a_or_b) {
   if (a_or_b == imageloader::kSlotNameA) {
@@ -146,7 +147,9 @@ bool Dlc::MountInternal(HelperProcessProxy* proxy,
                         const std::string& table) {
   base::File image(image_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!image.IsValid()) {
-    LOG(ERROR) << "Could not open image file '" << image_path.value()
+    LOG(ERROR) << "Could not open image file '"
+               << (manifest.user_tied() ? kRedactedImagePath
+                                        : image_path.value())
                << "': " << base::File::ErrorToString(image.error_details());
     return false;
   }

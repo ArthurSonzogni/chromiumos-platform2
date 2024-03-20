@@ -149,6 +149,13 @@ TEST_F(DlcBaseTest, InitializationReservedSpaceDoesNotSparsifyAgain) {
   EXPECT_EQ(expected_hash_b, actual_hash_b);
 }
 
+TEST_F(DlcBaseTest, InitializationSanitizeId) {
+  // User-tied DLC has `user-tied` set to `true` so its ID need to be sanitized.
+  DlcBase dlc(kUserTiedDlc);
+  dlc.Initialize();
+  EXPECT_EQ(dlc.GetSanitizedId(), kDlcRedactedId);
+}
+
 TEST_F(DlcBaseTest, ReinstallingNonReservedSpaceDoesNotSparsifyAgain) {
   DlcBase dlc(kSecondDlc);
   dlc.Initialize();

@@ -38,6 +38,8 @@ const char kPackage[] = "package";
 const char kManifestName[] = "imageloader.json";
 
 constexpr char kDlcDaemonStorePath[] = "/run/daemon-store-cache/dlcservice";
+constexpr char kDlcRedactedId[] = "<REDACTED_ID>";
+constexpr char kDlcRedactedPackage[] = "<REDACTED_PKG>";
 
 std::string Utils::LogicalVolumeName(const std::string& id,
                                      PartitionSlot slot) {

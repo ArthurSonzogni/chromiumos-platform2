@@ -205,53 +205,44 @@ void DlcService::Install(
   // DLC in sequence.
   auto ret_func =
       [install_request](
+          const DlcId& dlc_id,
           std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
           brillo::ErrorPtr* err) -> void {
     // Only send error metrics in here. Install success metrics is sent in
     // |DlcBase|.
     LOG(ERROR) << AlertLogTag(kCategoryInstall)
-               << "Failed to install DLC=" << install_request.id();
+               << "Failed to install DLC=" << dlc_id;
     SystemState::Get()->metrics()->SendInstallResultFailure(err);
     Error::ConvertToDbusError(err);
     std::move(response)->ReplyWithError(err->get());
   };
 
   brillo::ErrorPtr err;
+  auto* dlc = GetDlc(install_request.id(), &err);
+  if (dlc == nullptr) {
+    LOG(ERROR) << "Requested to install unsupported DLC="
+               << install_request.id();
+    return ret_func(install_request.id(), std::move(response), &err);
+  }
+
+  const auto& sanitized_id = dlc->GetSanitizedId();
+  dlc->SetReserve(install_request.reserve());
+
   // Try to install and figure out if install through installer is needed.
   bool external_install_needed = false;
-  auto manager_install = [this](const InstallRequest& install_request,
-                                bool* external_install_needed, ErrorPtr* err) {
-    DCHECK(err);
-    const auto id = install_request.id();
-    auto* dlc = GetDlc(id, err);
-    if (dlc == nullptr) {
-      return false;
-    }
-
-    dlc->SetReserve(install_request.reserve());
-
-    // If the DLC is being installed, nothing can be done anymore.
-    if (dlc->IsInstalling()) {
-      return true;
-    }
-
+  // If the DLC is being installed, nothing can be done anymore.
+  if (!dlc->IsInstalling()) {
     // Otherwise proceed to install the DLC.
-    if (!dlc->Install(err)) {
+    if (!dlc->Install(&err)) {
       Error::AddInternalTo(
-          err, FROM_HERE, error::kFailedInternal,
+          &err, FROM_HERE, error::kFailedInternal,
           base::StringPrintf("Failed to initialize installation for DLC=%s",
-                             id.c_str()));
-      return false;
+                             sanitized_id.c_str()));
+      return ret_func(sanitized_id, std::move(response), &err);
     }
-
     // If the DLC is now in installing state, it means it now needs
     // installer installation.
-    *external_install_needed = dlc->IsInstalling();
-    return true;
-  };
-  if (!manager_install(install_request, &external_install_needed, &err)) {
-    LOG(ERROR) << "Failed to install DLC=" << install_request.id();
-    return ret_func(std::move(response), &err);
+    external_install_needed = dlc->IsInstalling();
   }
 
   // Install through installer only if needed.
@@ -260,24 +251,18 @@ void DlcService::Install(
     return;
   }
 
-  const auto& id = install_request.id();
-  if (installing_dlc_id_ && installing_dlc_id_ != id) {
+  if (installing_dlc_id_ && installing_dlc_id_ != install_request.id()) {
     auto err_str = base::StringPrintf(
         "Installation already in progress for (%s), can't install %s right "
         "now.",
-        installing_dlc_id_.value().c_str(), id.c_str());
+        SanitizeId(*installing_dlc_id_).c_str(), sanitized_id.c_str());
     LOG(ERROR) << err_str;
     err = Error::Create(FROM_HERE, kErrorBusy, err_str);
     ErrorPtr tmp_err;
-    auto manager_cancel = [this](const DlcId& id, const ErrorPtr& err_in,
-                                 ErrorPtr* err) -> bool {
-      DCHECK(err);
-      auto* dlc = GetDlc(id, err);
-      return dlc && (!dlc->IsInstalling() || dlc->CancelInstall(err_in, err));
-    };
-    if (!manager_cancel(id, err, &tmp_err))
-      LOG(ERROR) << "Failed to cancel install for DLC=" << id;
-    return ret_func(std::move(response), &err);
+    if (dlc->IsInstalling() && !dlc->CancelInstall(err, &tmp_err))
+      LOG(ERROR) << "Failed to cancel install for DLC=" << sanitized_id;
+
+    return ret_func(sanitized_id, std::move(response), &err);
   }
 
   InstallViaInstaller(install_request, std::move(response));
@@ -288,10 +273,11 @@ void DlcService::InstallViaInstaller(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response) {
   auto ret_func =
       [this, install_request](
+          const DlcId& dlc_id,
           std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
           brillo::ErrorPtr err) -> void {
     LOG(ERROR) << AlertLogTag(kCategoryInstall)
-               << "Failed to install DLC=" << install_request.id();
+               << "Failed to install DLC=" << dlc_id;
     SystemState::Get()->metrics()->SendInstallResultFailure(&err);
     Error::ConvertToDbusError(&err);
     // dlcservice must cancel the install as installer won't be able to
@@ -300,16 +286,22 @@ void DlcService::InstallViaInstaller(
     std::move(response)->ReplyWithError(err.get());
   };
 
-  const auto id = install_request.id();
   // Need to set in order for the cancellation of DLC setup.
-  installing_dlc_id_ = id;
+  installing_dlc_id_ = install_request.id();
+
+  brillo::ErrorPtr err;
+  auto* dlc = GetDlc(install_request.id(), &err);
+  if (dlc == nullptr) {
+    return ret_func(install_request.id(), std::move(response), err->Clone());
+  }
+  const auto& sanitized_id = dlc->GetSanitizedId();
 
   // If installer needs to handle the installation, wait for the service to
   // be up and DBus object exported. Returning busy error will allow Chrome
   // client to retry the installation.
   if (!SystemState::Get()->installer()->IsReady()) {
     string err_str = "Installation called before installer is available.";
-    return ret_func(std::move(response),
+    return ret_func(sanitized_id, std::move(response),
                     Error::Create(FROM_HERE, kErrorBusy, err_str));
   }
 
@@ -317,17 +309,11 @@ void DlcService::InstallViaInstaller(
   if (SystemState::Get()->installer_status().state ==
       InstallerInterface::Status::State::BLOCKED) {
     return ret_func(
-        std::move(response),
+        sanitized_id, std::move(response),
         Error::Create(FROM_HERE, kErrorNeedReboot,
                       "Installer is blocked, device needs a reboot."));
   }
 
-  LOG(INFO) << "Sending request to install DLC=" << id;
-  brillo::ErrorPtr err;
-  auto* dlc = GetDlc(id, &err);
-  if (dlc == nullptr) {
-    return ret_func(std::move(response), err->Clone());
-  }
   // TODO(kimjae): need update engine to propagate correct error message by
   // passing in |ErrorPtr| and being set within update engine, current default
   // is to indicate that update engine is updating because there is no way an
@@ -336,6 +322,7 @@ void DlcService::InstallViaInstaller(
   // above, but just return |kErrorBusy| because the next time around if an
   // update has been applied and is in a reboot needed state, it will indicate
   // correctly then).
+  LOG(INFO) << "Sending request to install DLC=" << sanitized_id;
   auto [response_bind1, response_bind2] =
       base::SplitOnceCallback(base::BindOnce(
           [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
@@ -350,7 +337,7 @@ void DlcService::InstallViaInstaller(
 
   SystemState::Get()->installer()->Install(
       Installer::InstallArgs{
-          .id = id,
+          .id = install_request.id(),
           .url = install_request.omaha_url(),
           .scaled = dlc->IsScaled(),
           .force_ota = dlc->IsForceOTA() || install_request.force_ota(),
@@ -381,7 +368,7 @@ void DlcService::OnInstallFailure(
              << (err ? Error::ToString(err->Clone())
                      : "Missing error from installer.");
   LOG(ERROR) << AlertLogTag(kCategoryInstall)
-             << "Failed to install DLC=" << installing_dlc_id_.value();
+             << "Failed to install DLC=" << SanitizeId(*installing_dlc_id_);
   auto ret_err =
       Error::Create(FROM_HERE, kErrorBusy,
                     "Installer failed to schedule install operations.");
@@ -394,17 +381,14 @@ void DlcService::OnInstallFailure(
 }
 
 bool DlcService::Uninstall(const string& id, brillo::ErrorPtr* err) {
-  auto manager_uninstall = [this](const DlcId& id, ErrorPtr* err) -> bool {
-    DCHECK(err);
-    // `GetDlc(...)` should set the error when `nullptr` is returned.
-    auto* dlc = GetDlc(id, err);
-    return dlc && dlc->Uninstall(err);
-  };
-  bool result = manager_uninstall(id, err);
+  DCHECK(err);
+  // `GetDlc(...)` should set the error when `nullptr` is returned.
+  auto* dlc = GetDlc(id, err);
+  bool result = dlc && dlc->Uninstall(err);
   SystemState::Get()->metrics()->SendUninstallResult(err);
   if (!result) {
-    LOG(ERROR) << AlertLogTag(kCategoryUninstall)
-               << "Failed to uninstall DLC=" << id;
+    LOG(ERROR) << AlertLogTag(kCategoryUninstall) << "Failed to uninstall DLC="
+               << (dlc ? dlc->GetSanitizedId() : id);
     Error::ConvertToDbusError(err);
   }
   return result;
@@ -434,11 +418,13 @@ DlcIdList DlcService::GetInstalled(const ListRequest& list_request) {
   }
 
   if (list_request.check_mount()) {
-    return MountedDlcsAction(base::FilePath(imageloader::kImageloaderMountBase),
-                             select, [](DlcInterface* dlc) -> bool {
-                               // Return false for adding DLC to the list.
-                               return false;
-                             });
+    DlcIdList installed;
+    MountedDlcsAction(base::FilePath(imageloader::kImageloaderMountBase),
+                      select, [&installed](DlcInterface* dlc) -> bool {
+                        installed.push_back(dlc->GetId());
+                        return true;
+                      });
+    return installed;
   } else {
     return ToDlcIdList(supported_, [&select](const DlcType& dlc) {
       return dlc->IsInstalled() &&
@@ -563,17 +549,14 @@ void DlcService::CancelInstall(const ErrorPtr& err_in) {
     return;
   }
 
-  auto manager_cancel = [this](const DlcId& id, const ErrorPtr& err_in,
-                               ErrorPtr* err) -> bool {
-    DCHECK(err);
-    auto* dlc = GetDlc(id, err);
-    return dlc && (!dlc->IsInstalling() || dlc->CancelInstall(err_in, err));
-  };
   auto id = installing_dlc_id_.value();
   installing_dlc_id_.reset();
+
   ErrorPtr tmp_err;
-  if (!manager_cancel(id, err_in, &tmp_err))
-    LOG(ERROR) << "Failed to cancel install for DLC=" << id;
+  auto* dlc = GetDlc(id, &tmp_err);
+  if (!dlc || (dlc->IsInstalling() && !dlc->CancelInstall(err_in, &tmp_err)))
+    LOG(ERROR) << "Failed to cancel install for DLC="
+               << (dlc ? dlc->GetSanitizedId() : id);
 }
 
 void DlcService::PeriodicInstallCheck() {
@@ -693,7 +676,7 @@ bool DlcService::Unload(const std::string& id, brillo::ErrorPtr* err) {
   return dlc && dlc->Unload(err);
 }
 
-DlcIdList DlcService::MountedDlcsAction(
+int DlcService::MountedDlcsAction(
     const base::FilePath& mount_base,
     std::optional<SelectDlc> select,
     const std::function<bool(DlcInterface*)>& action) {
@@ -702,7 +685,7 @@ DlcIdList DlcService::MountedDlcsAction(
     return {};
   }
 
-  DlcIdList failed_ids;
+  int failed_count = 0;
   const auto& mounted = ScanDirectory(base::FilePath(mount_base));
   for (const auto& id : mounted) {
     ErrorPtr tmp_err;
@@ -715,29 +698,43 @@ DlcIdList DlcService::MountedDlcsAction(
     if (!base::PathExists(JoinPaths(mount_base, id, kPackage)))
       continue;
 
-    if (!action(dlc)) {
-      failed_ids.push_back(id);
-    }
+    if (!action(dlc))
+      ++failed_count;
   }
-  return failed_ids;
+  return failed_count;
 }
 
 bool DlcService::Unload(const SelectDlc& select,
                         const base::FilePath& mount_base,
                         brillo::ErrorPtr* err) {
-  const auto& failed_ids =
-      MountedDlcsAction(mount_base, select, [](DlcInterface* dlc) -> bool {
+  DlcIdList sanitized_failed_ids;
+  int failed_count = MountedDlcsAction(
+      mount_base, select, [&sanitized_failed_ids](DlcInterface* dlc) -> bool {
         ErrorPtr tmp_err;
-        return dlc->Unload(&tmp_err);
+        if (!dlc->Unload(&tmp_err)) {
+          sanitized_failed_ids.push_back(dlc->GetSanitizedId());
+          return false;
+        }
+        return true;
       });
 
-  if (failed_ids.size()) {
-    *err = Error::Create(
-        FROM_HERE, kErrorInternal,
-        base::StringPrintf("Failed to unload DLCs: %s",
-                           base::JoinString(failed_ids, ",").c_str()));
+  if (failed_count > 0) {
+    *err =
+        Error::Create(FROM_HERE, kErrorInternal,
+                      base::StringPrintf(
+                          "Failed to unload (%d) DLCs: %s", failed_count,
+                          base::JoinString(sanitized_failed_ids, ",").c_str()));
+    return false;
   }
-  return failed_ids.empty();
+  return true;
+}
+
+std::string DlcService::SanitizeId(DlcId id) {
+  brillo::ErrorPtr tmp_err;
+  auto* dlc = GetDlc(id, &tmp_err);
+  if (dlc)
+    return dlc->GetSanitizedId();
+  return id;
 }
 
 }  // namespace dlcservice

@@ -37,6 +37,11 @@ using std::vector;
 
 namespace dlcservice {
 
+namespace {
+constexpr char kPathNameDaemonStore[] = "<REDACTED_DAEMON_STORE_PATH>";
+constexpr char kPathNameImage[] = "<REDACTED_IMAGE_PATH>";
+}  // namespace
+
 // TODO(ahassani): Instead of initialize function, create a factory method so
 // we can develop different types of DLC classes.
 bool DlcBase::Initialize() {
@@ -61,6 +66,8 @@ bool DlcBase::Initialize() {
                                           id_, package_, kDlcImageFileName);
   deployed_image_path_ = JoinPaths(system_state->deployed_content_dir(), id_,
                                    package_, kDlcImageFileName);
+
+  sanitized_id_ = IsUserTied() ? kDlcRedactedId : id_;
 
   state_.set_state(DlcState::NOT_INSTALLED);
   state_.set_id(id_);
@@ -182,7 +189,8 @@ uint64_t DlcBase::GetUsedBytesOnDisk() const {
       continue;
     int64_t size = 0;
     if (!base::GetFileSize(path, &size)) {
-      LOG(WARNING) << "Failed to get file size for path: " << path.value();
+      LOG(WARNING) << "Failed to get file size for path: "
+                   << (IsUserTied() ? kPathNameImage : path.value());
     }
     total_size += size;
   }
@@ -210,7 +218,7 @@ bool DlcBase::InstallCompleted(ErrorPtr* err) {
     *err = Error::Create(
         FROM_HERE, state_.last_error_code(),
         base::StringPrintf("Failed to mark active DLC=%s as verified.",
-                           id_.c_str()));
+                           sanitized_id_.c_str()));
     return false;
   }
   return true;
@@ -223,7 +231,7 @@ bool DlcBase::UpdateCompleted(ErrorPtr* err) {
     *err = Error::Create(
         FROM_HERE, kErrorInternal,
         base::StringPrintf("Failed to mark inactive DLC=%s as verified.",
-                           id_.c_str()));
+                           sanitized_id_.c_str()));
     return false;
   }
   return true;
@@ -243,31 +251,57 @@ FilePath DlcBase::GetImagePath(BootSlot::Slot slot) const {
   }
 }
 
+const DlcId& DlcBase::GetSanitizedId() const {
+  return sanitized_id_;
+}
+
 bool DlcBase::CreateDlc(ErrorPtr* err) {
-  // Create content directories.
-  vector<FilePath> paths;
+  // Get directories and its sanitized name.
+  vector<std::pair<FilePath, DlcSanitizedPath>> path_pairs;
   if (IsUserTied()) {
     const auto& daemon_store = GetDaemonStorePath();
     if (daemon_store.empty())
       return false;
 
     const auto& content_path = JoinPaths(daemon_store, kDlcImagesDir);
+    const auto& content_path_sanitized =
+        JoinPaths(kPathNameDaemonStore, kDlcImagesDir);
+
     const auto& content_id_path = JoinPaths(content_path, id_);
+    const auto& content_id_path_sanitized =
+        JoinPaths(content_path_sanitized, kDlcRedactedId);
+
     const auto& content_package_path = JoinPaths(content_id_path, package_);
+    const auto& content_package_path_sanitized =
+        JoinPaths(content_id_path_sanitized, kDlcRedactedPackage);
+
     const auto& prefs_path = JoinPaths(daemon_store, kUserPrefsDir);
+    const auto& prefs_path_sanitized =
+        JoinPaths(kPathNameDaemonStore, kUserPrefsDir);
+
     const auto& prefs_id_path = JoinPaths(prefs_path, id_);
+    const auto& prefs_id_path_sanitized =
+        JoinPaths(prefs_path_sanitized, kDlcRedactedId);
     // File permissions needs to be set along the path.
-    paths = {daemon_store,         content_path, content_id_path,
-             content_package_path, prefs_path,   prefs_id_path};
+    path_pairs = {{daemon_store, FilePath(kPathNameDaemonStore)},
+                  {content_path, content_path_sanitized},
+                  {content_id_path, content_id_path_sanitized},
+                  {content_package_path, content_package_path_sanitized},
+                  {prefs_path, prefs_path_sanitized},
+                  {prefs_id_path, prefs_id_path_sanitized}};
   } else {
-    paths = {content_id_path_, content_package_path_, prefs_path_};
+    path_pairs = {{content_id_path_, content_id_path_},
+                  {content_package_path_, content_package_path_},
+                  {prefs_path_, prefs_path_}};
   }
-  for (const auto& path : paths) {
+  // Create content directories.
+  for (const auto& [path, sanitized_path] : path_pairs) {
     if (!CreateDir(path)) {
       *err = Error::CreateInternal(
           FROM_HERE, error::kFailedToCreateDirectory,
           base::StringPrintf("Failed to create directory %s for DLC=%s",
-                             path.value().c_str(), id_.c_str()));
+                             sanitized_path.value().c_str(),
+                             sanitized_id_.c_str()));
       state_.set_last_error_code(Error::GetErrorCode(*err));
       return false;
     }
@@ -293,7 +327,7 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
             FROM_HERE, error::kFailedCreationDuringHibernateResume,
             base::StringPrintf(
                 "Not creating file while resuming from hibernate, DLC=%s",
-                id_.c_str()));
+                sanitized_id_.c_str()));
         state_.set_last_error_code(Error::GetErrorCode(*err));
         return false;
       }
@@ -310,20 +344,24 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
         state_.set_last_error_code(kErrorAllocation);
         *err = Error::Create(
             FROM_HERE, state_.last_error_code(),
-            base::StringPrintf("Failed to create image file %s for DLC=%s",
-                               image_path.value().c_str(), id_.c_str()));
+            base::StringPrintf(
+                "Failed to create image file %s for DLC=%s",
+                IsUserTied() ? kPathNameImage : image_path.value().c_str(),
+                sanitized_id_.c_str()));
         return false;
       }
       if (!CreateFile(image_path, manifest_->size())) {
         state_.set_last_error_code(kErrorAllocation);
         *err = Error::Create(
             FROM_HERE, state_.last_error_code(),
-            base::StringPrintf("Failed to create image file %s for DLC=%s",
-                               image_path.value().c_str(), id_.c_str()));
+            base::StringPrintf(
+                "Failed to create image file %s for DLC=%s",
+                IsUserTied() ? kPathNameImage : image_path.value().c_str(),
+                sanitized_id_.c_str()));
         return false;
       } else if (!ResizeFile(image_path, dlc_size)) {
         LOG(WARNING) << "Unable to allocate up to preallocated size: "
-                     << dlc_size << " for DLC=" << id_;
+                     << dlc_size << " for DLC=" << sanitized_id_;
       }
     }
   }
@@ -338,7 +376,8 @@ bool DlcBase::MakeReadyForUpdate() const {
   auto prefs =
       Prefs::CreatePrefs(this, SystemState::Get()->inactive_boot_slot());
   if (prefs && !prefs->Delete(kDlcPrefVerified)) {
-    PLOG(ERROR) << "Failed to mark inactive DLC=" << id_ << " as not-verified.";
+    PLOG(ERROR) << "Failed to mark inactive DLC=" << sanitized_id_
+                << " as not-verified.";
     return false;
   }
 
@@ -348,18 +387,20 @@ bool DlcBase::MakeReadyForUpdate() const {
 
   // Scaled DLCs will not A/B update with the OS until deltas are supported.
   if (manifest_->scaled()) {
-    LOG(WARNING) << "Scaled DLC=" << id_ << " will not update with the OS.";
+    LOG(WARNING) << "Scaled DLC=" << sanitized_id_
+                 << " will not update with the OS.";
     return false;
   }
 
   if (manifest_->preallocated_size() == kMagicDevSize) {
-    LOG(WARNING) << "Under development DLC=" << id_
+    LOG(WARNING) << "Under development DLC=" << sanitized_id_
                  << " will not update with the OS.";
     return false;
   }
 
   if (IsUserTied()) {
-    LOG(WARNING) << "User-tied DLC=" << id_ << " will not update with the OS.";
+    LOG(WARNING) << "User-tied DLC=" << sanitized_id_
+                 << " will not update with the OS.";
     return false;
   }
 
@@ -371,12 +412,13 @@ bool DlcBase::MakeReadyForUpdateInternal() const {
       GetImagePath(SystemState::Get()->inactive_boot_slot());
   if (!CreateFile(inactive_image_path, manifest_->size())) {
     LOG(ERROR) << "Failed to create inactive image "
-               << inactive_image_path.value() << " when making DLC=" << id_
-               << " ready for update.";
+               << inactive_image_path.value()
+               << " when making DLC=" << sanitized_id_ << " ready for update.";
     return false;
   } else if (!ResizeFile(inactive_image_path, manifest_->preallocated_size())) {
     LOG(WARNING) << "Unable to allocate up to preallocated size: "
-                 << manifest_->preallocated_size() << " when making DLC=" << id_
+                 << manifest_->preallocated_size()
+                 << " when making DLC=" << sanitized_id_
                  << " ready for update.";
   }
 
@@ -400,13 +442,14 @@ bool DlcBase::Verify() {
 
   vector<uint8_t> image_sha256;
   if (image_path.empty() || !VerifyInternal(image_path, &image_sha256)) {
-    LOG(ERROR) << "Failed to verify DLC=" << id_;
+    LOG(ERROR) << "Failed to verify DLC=" << sanitized_id_;
     return false;
   }
 
   const auto& manifest_image_sha256 = manifest_->image_sha256();
   if (image_sha256 != manifest_image_sha256) {
-    LOG(WARNING) << "Verification failed for image file: " << image_path.value()
+    LOG(WARNING) << "Verification failed for image file: "
+                 << (IsUserTied() ? kPathNameImage : image_path.value())
                  << ". Expected: "
                  << base::HexEncode(manifest_image_sha256.data(),
                                     manifest_image_sha256.size())
@@ -426,7 +469,8 @@ bool DlcBase::Verify() {
 bool DlcBase::VerifyInternal(const base::FilePath& image_path,
                              vector<uint8_t>* image_sha256) {
   if (!utils_->HashFile(image_path, manifest_->size(), image_sha256)) {
-    LOG(ERROR) << "Failed to hash image file: " << image_path.value();
+    LOG(ERROR) << "Failed to hash image file: "
+               << (IsUserTied() ? kPathNameImage : image_path.value());
     return false;
   }
 
@@ -488,11 +532,12 @@ bool DlcBase::FactoryInstallCopier() {
   int64_t factory_install_image_size;
   if (!base::GetFileSize(factory_install_image_path_,
                          &factory_install_image_size)) {
-    LOG(ERROR) << "Failed to get factory installed DLC (" << id_ << ") size.";
+    LOG(ERROR) << "Failed to get factory installed DLC (" << sanitized_id_
+               << ") size.";
     return false;
   }
   if (factory_install_image_size != manifest_->size()) {
-    LOG(WARNING) << "Factory installed DLC (" << id_ << ") is ("
+    LOG(WARNING) << "Factory installed DLC (" << sanitized_id_ << ") is ("
                  << factory_install_image_size << ") different than the "
                  << "size (" << manifest_->size() << ") in the manifest.";
     brillo::DeletePathRecursively(
@@ -508,15 +553,16 @@ bool DlcBase::FactoryInstallCopier() {
   if (image_path.empty() ||
       !CopyAndHashFile(factory_install_image_path_, image_path,
                        manifest_->size(), &image_sha256)) {
-    LOG(WARNING) << "Failed to copy factory installed DLC (" << id_
-                 << ") into path " << image_path;
+    LOG(WARNING) << "Failed to copy factory installed DLC (" << sanitized_id_
+                 << ") into path "
+                 << (IsUserTied() ? kPathNameImage : image_path.value());
     return false;
   }
 
   auto manifest_image_sha256 = manifest_->image_sha256();
   if (image_sha256 != manifest_image_sha256) {
     LOG(WARNING) << "Factory installed image is corrupt or modified for DLC ("
-                 << id_ << "). Expected="
+                 << sanitized_id_ << "). Expected="
                  << base::HexEncode(manifest_image_sha256.data(),
                                     manifest_image_sha256.size())
                  << " Found="
@@ -527,12 +573,14 @@ bool DlcBase::FactoryInstallCopier() {
   }
 
   if (!MarkVerified()) {
-    LOG(WARNING) << "Failed to mark the image verified for DLC=" << id_;
+    LOG(WARNING) << "Failed to mark the image verified for DLC="
+                 << sanitized_id_;
   }
 
   if (!brillo::DeletePathRecursively(
           JoinPaths(SystemState::Get()->factory_install_dir(), id_))) {
-    LOG(WARNING) << "Failed to delete the factory installed DLC=" << id_;
+    LOG(WARNING) << "Failed to delete the factory installed DLC="
+                 << sanitized_id_;
   }
 
   return true;
@@ -613,7 +661,7 @@ bool DlcBase::Install(ErrorPtr* err) {
 
       // Finish the installation for verified images so they can be mounted.
       if (IsVerified()) {
-        LOG(INFO) << "Installing already verified DLC=" << id_;
+        LOG(INFO) << "Installing already verified DLC=" << sanitized_id_;
         break;
       }
 
@@ -621,7 +669,7 @@ bool DlcBase::Install(ErrorPtr* err) {
       // finish the installation so they can be mounted.
       if (active_image_existed && Verify()) {
         LOG(INFO) << "Verified existing, but previously not verified DLC="
-                  << id_;
+                  << sanitized_id_;
         break;
       }
 
@@ -630,7 +678,7 @@ bool DlcBase::Install(ErrorPtr* err) {
       // metadata for LVM DLCs.
       if (SystemState::Get()->resuming_from_hibernate()) {
         LOG(ERROR) << "Not writing while resuming from hibernate for DLC="
-                   << id_;
+                   << sanitized_id_;
         return false;
       }
 
@@ -638,11 +686,11 @@ bool DlcBase::Install(ErrorPtr* err) {
       if (IsFactoryInstall() && base::PathExists(factory_install_image_path_)) {
         if (FactoryInstallCopier()) {
           // Continue to mount the DLC image.
-          LOG(INFO) << "Factory installing DLC=" << id_;
+          LOG(INFO) << "Factory installing DLC=" << sanitized_id_;
           break;
         } else {
           LOG(WARNING) << "Failed to copy factory installed image for DLC="
-                       << id_;
+                       << sanitized_id_;
         }
       }
 
@@ -701,7 +749,7 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
         // update_engine failing to call into |InstallCompleted()| even after a
         // successful DLC installation.
         if (Verify()) {
-          LOG(WARNING) << "Missing verification mark for DLC=" << id_
+          LOG(WARNING) << "Missing verification mark for DLC=" << sanitized_id_
                        << ", but verified to be a valid image.";
         }
       }
@@ -714,7 +762,7 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
         MarkUnverified();
         SystemState::Get()->metrics()->SendInstallResultFailure(err);
         LOG(ERROR) << "Mount failed during install finalization for DLC="
-                   << id_;
+                   << sanitized_id_;
         return false;
       } else {
         // Check if the failure was because update_engine finished the
@@ -727,19 +775,20 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
               base::StringPrintf(
                   "Update engine could not install DLC=%s, since "
                   "Omaha could not provide the image.",
-                  id_.c_str()));
+                  sanitized_id_.c_str()));
         } else {
           // The error is empty since verification was not successful.
           *err = Error::CreateInternal(
               FROM_HERE, error::kFailedToVerifyImage,
               base::StringPrintf("Cannot verify image for DLC=%s",
-                                 id_.c_str()));
+                                 sanitized_id_.c_str()));
         }
 
         SystemState::Get()->metrics()->SendInstallResultFailure(err);
         ErrorPtr tmp_err;
         if (!CancelInstall(*err, &tmp_err))
-          LOG(ERROR) << "Failed during install finalization for DLC=" << id_;
+          LOG(ERROR) << "Failed during install finalization for DLC="
+                     << sanitized_id_;
         return false;
       }
     case DlcState::NOT_INSTALLED:
@@ -764,7 +813,8 @@ bool DlcBase::CancelInstall(const ErrorPtr& err_in, ErrorPtr* err) {
   // Consider as not installed even if delete fails below, correct errors
   // will be propagated later and should not block on further installs.
   if (!Delete(err)) {
-    LOG(ERROR) << "Failed during install cancellation for DLC=" << id_;
+    LOG(ERROR) << "Failed during install cancellation for DLC="
+               << sanitized_id_;
     return false;
   }
   return true;
@@ -782,7 +832,7 @@ bool DlcBase::Mount(ErrorPtr* err) {
   if (manifest_->mount_file_required()) {
     if (IsUserTied()) {
       LOG(WARNING) << "Root mount file creation is skipped for user-tied DLC="
-                   << id_;
+                   << sanitized_id_;
     } else if (!Prefs(prefs_package_path_)
                     .SetKey(kDlcRootMount, GetRoot().value())) {
       // TODO(kimjae): Test this by injecting |Prefs| class.
@@ -859,7 +909,7 @@ bool DlcBase::Delete(brillo::ErrorPtr* err) {
   MarkUnverified();
 
   if (reserve_) {
-    LOG(INFO) << "Skipping delete for reserved DLC=" << id_;
+    LOG(INFO) << "Skipping delete for reserved DLC=" << sanitized_id_;
     return true;
   }
 
@@ -868,29 +918,38 @@ bool DlcBase::Delete(brillo::ErrorPtr* err) {
 
 bool DlcBase::DeleteInternal(ErrorPtr* err) {
   vector<string> undeleted_paths;
-  auto paths = GetPathsToDelete(id_);
+  // Paths to delete and their sanitized name.
+  vector<std::pair<FilePath, DlcSanitizedPath>> path_pairs;
   if (IsUserTied()) {
     const auto& daemon_store = GetDaemonStorePath();
     if (!daemon_store.empty()) {
-      paths.push_back(JoinPaths(daemon_store, kDlcImagesDir, id_));
-      paths.push_back(JoinPaths(daemon_store, kUserPrefsDir, id_));
+      path_pairs.emplace_back(
+          JoinPaths(daemon_store, kDlcImagesDir, id_),
+          JoinPaths(kPathNameDaemonStore, kDlcImagesDir, kDlcRedactedId));
+      path_pairs.emplace_back(
+          JoinPaths(daemon_store, kUserPrefsDir, id_),
+          JoinPaths(kPathNameDaemonStore, kUserPrefsDir, kDlcRedactedId));
     } else {
-      // TODO(b/330399259): Obfuscate user-tied DLC ID in logs.
       state_.set_last_error_code(kErrorInternal);
       *err = Error::Create(
           FROM_HERE, state_.last_error_code(),
           base::StringPrintf("Unable to get the daemon-store path for DLC=%s",
-                             id_.c_str()));
+                             sanitized_id_.c_str()));
       return false;
     }
   }
-  for (const auto& path : paths) {
+  for (const auto& path : GetPathsToDelete(id_)) {
+    path_pairs.emplace_back(path,
+                            JoinPaths(path.DirName(), sanitized_id_).value());
+  }
+
+  for (const auto& [path, sanitized_path] : path_pairs) {
     if (base::PathExists(path)) {
       if (!brillo::DeletePathRecursively(path)) {
-        PLOG(ERROR) << "Failed to delete path=" << path;
-        undeleted_paths.push_back(path.value());
+        PLOG(ERROR) << "Failed to delete path=" << sanitized_path;
+        undeleted_paths.push_back(sanitized_path.value());
       } else {
-        LOG(INFO) << "Deleted path=" << path;
+        LOG(INFO) << "Deleted path=" << sanitized_path;
       }
     }
   }
@@ -924,7 +983,7 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
     case DlcState::NOT_INSTALLED:
       // We still have to uninstall the DLC, in case we never mounted in this
       // session.
-      LOG(WARNING) << "Trying to uninstall not installed DLC=" << id_;
+      LOG(WARNING) << "Trying to uninstall not installed DLC=" << sanitized_id_;
       [[fallthrough]];
     case DlcState::INSTALLED: {
       ErrorPtr tmp_err;
@@ -940,7 +999,7 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
       *err = Error::Create(
           FROM_HERE, state_.last_error_code(),
           base::StringPrintf("Trying to uninstall an installing DLC=%s",
-                             id_.c_str()));
+                             sanitized_id_.c_str()));
       return false;
     default:
       NOTREACHED();
@@ -952,7 +1011,7 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
 }
 
 void DlcBase::SetActiveValue(bool active) {
-  LOG(INFO) << "Setting active value for DLC=" << id_ << " to "
+  LOG(INFO) << "Setting active value for DLC=" << sanitized_id_ << " to "
             << (active ? "true" : "false");
   SystemState::Get()->update_engine()->SetDlcActiveValueAsync(
       active, id_,
@@ -963,12 +1022,12 @@ void DlcBase::SetActiveValue(bool active) {
 }
 
 void DlcBase::OnSetActiveValueSuccess() {
-  LOG(INFO) << "Successfully set active value for DLC=" << id_;
+  LOG(INFO) << "Successfully set active value for DLC=" << sanitized_id_;
 }
 
 void DlcBase::OnSetActiveValueError(brillo::Error* err) {
   if (err)
-    LOG(ERROR) << "Failed to set active value for DLC=" << id_
+    LOG(ERROR) << "Failed to set active value for DLC=" << sanitized_id_
                << ", err=" << Error::ToString(err->Clone());
 }
 
@@ -996,7 +1055,7 @@ void DlcBase::ChangeState(DlcState::State state) {
       NOTREACHED();
   }
 
-  LOG(INFO) << "Changing DLC=" << id_ << " state to "
+  LOG(INFO) << "Changing DLC=" << sanitized_id_ << " state to "
             << DlcState::State_Name(state_.state());
   SystemState::Get()->state_change_reporter()->DlcStateChanged(state_);
 }
@@ -1017,9 +1076,9 @@ void DlcBase::ChangeProgress(double progress) {
 bool DlcBase::SetReserve(std::optional<bool> reserve) {
   if (reserve.has_value()) {
     if ((reserve_ = reserve.value())) {
-      LOG(INFO) << "Enabling DLC=" << id_ << " reserve.";
+      LOG(INFO) << "Enabling DLC=" << sanitized_id_ << " reserve.";
     } else {
-      LOG(INFO) << "Disabling DLC=" << id_ << " reserve.";
+      LOG(INFO) << "Disabling DLC=" << sanitized_id_ << " reserve.";
     }
   }
   return reserve_;
@@ -1078,7 +1137,7 @@ bool DlcBase::Unload(ErrorPtr* err) {
     *err = Error::Create(
         FROM_HERE, state_.last_error_code(),
         base::StringPrintf("Trying to unload an installing DLC=%s",
-                           id_.c_str()));
+                           sanitized_id_.c_str()));
     return false;
   }
 

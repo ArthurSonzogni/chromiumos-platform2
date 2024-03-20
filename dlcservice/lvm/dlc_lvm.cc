@@ -26,7 +26,8 @@ DlcLvm::DlcLvm(DlcId id, std::shared_ptr<UtilsInterface> utils)
 
 bool DlcLvm::CreateDlc(brillo::ErrorPtr* err) {
   if (!UseLogicalVolume()) {
-    LOG(INFO) << "Skipping creation of logical volumes for DLC=" << id_;
+    LOG(INFO) << "Skipping creation of logical volumes for DLC="
+              << sanitized_id_;
     return DlcBase::CreateDlc(err);
   }
 
@@ -74,7 +75,8 @@ bool DlcLvm::CreateDlcLogicalVolumes() {
 
 bool DlcLvm::DeleteInternal(brillo::ErrorPtr* err) {
   if (!UseLogicalVolume()) {
-    LOG(INFO) << "Skipping deletion of logical volumes for DLC=" << id_;
+    LOG(INFO) << "Skipping deletion of logical volumes for DLC="
+              << sanitized_id_;
     return DlcBase::DeleteInternal(err);
   }
 
@@ -129,7 +131,7 @@ bool DlcLvm::MountInternal(std::string* mount_point, brillo::ErrorPtr* err) {
 bool DlcLvm::MakeReadyForUpdateInternal() const {
   if (!UseLogicalVolume()) {
     LOG(INFO) << "Skipping update ready marking of logical volume for DLC="
-              << id_;
+              << sanitized_id_;
     return DlcBase::MakeReadyForUpdateInternal();
   }
 
@@ -146,7 +148,8 @@ bool DlcLvm::MakeReadyForUpdateInternal() const {
 bool DlcLvm::VerifyInternal(const base::FilePath& image_path,
                             std::vector<uint8_t>* image_sha256) {
   if (!UseLogicalVolume()) {
-    LOG(INFO) << "Skipping verification of logical voluems for DLC=" << id_;
+    LOG(INFO) << "Skipping verification of logical voluems for DLC="
+              << sanitized_id_;
     return DlcBase::VerifyInternal(image_path, image_sha256);
   }
 

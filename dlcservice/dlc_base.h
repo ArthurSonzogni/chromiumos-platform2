@@ -92,6 +92,9 @@ class DlcInterface {
   // attribute in the manifest for the given `id` and `package`.
   virtual bool IsFactoryInstall() const = 0;
 
+  // Returns the sanitized ID of the DLC.
+  virtual const DlcId& GetSanitizedId() const = 0;
+
   // Creates the DLC image based on the fields from the manifest if the DLC is
   // not installed. If the DLC image exists or is installed already, some
   // verifications are passed to validate that the DLC is mounted.
@@ -168,6 +171,7 @@ class DlcBase : public DlcInterface {
   uint64_t GetUsedBytesOnDisk() const override;
   bool IsPreloadAllowed() const override;
   bool IsFactoryInstall() const override;
+  const DlcId& GetSanitizedId() const override;
   bool Install(brillo::ErrorPtr* err) override;
   bool FinishInstall(bool installed_by_ue, brillo::ErrorPtr* err) override;
   bool CancelInstall(const brillo::ErrorPtr& err_in,
@@ -298,6 +302,9 @@ class DlcBase : public DlcInterface {
   base::FilePath preloaded_image_path_;
   base::FilePath factory_install_image_path_;
   base::FilePath deployed_image_path_;
+
+  // Sanitized DLC ID.
+  DlcId sanitized_id_;
 
   base::WeakPtrFactory<DlcBase> weak_ptr_factory_;
 };

@@ -56,6 +56,7 @@ using testing::Invoke;
 using testing::InvokeWithoutArgs;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
 using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::WithArg;
@@ -64,6 +65,10 @@ using update_engine::Operation;
 using update_engine::StatusResult;
 
 namespace dlcservice {
+
+namespace {
+const DlcId kFooDlc = "foo-dlc";
+}  // namespace
 
 class DlcServiceTest : public BaseTest {
  public:
@@ -79,6 +84,9 @@ class DlcServiceTest : public BaseTest {
 
     dlc_service_ =
         std::make_unique<DlcService>(std::move(mock_dlc_creator), mock_utils_);
+
+    mock_dlc_ = std::make_unique<MockDlc>();
+    ON_CALL(*mock_dlc_, GetSanitizedId).WillByDefault(ReturnRef(kFooDlc));
   }
 
   void CheckDlcState(const DlcId& id,
@@ -94,6 +102,7 @@ class DlcServiceTest : public BaseTest {
   std::unique_ptr<DlcService> dlc_service_;
   MockDlcCreator* mock_dlc_creator_ptr_ = nullptr;
   std::shared_ptr<MockUtils> mock_utils_;
+  std::unique_ptr<MockDlc> mock_dlc_;
 
  private:
   DlcServiceTest(const DlcServiceTest&) = delete;
@@ -149,74 +158,70 @@ TEST_F(DlcServiceTest, InstallTestUnsupported) {
 
   auto mr = std::make_unique<MockDBusMethodResponse<>>();
   EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
-  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  dlc_service_->Install(CreateInstallRequest(kFooDlc), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestAlreadyInstalling) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, IsInstalling()).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   auto mr = std::make_unique<MockDBusMethodResponse<>>();
   bool called = false;
   mr->set_return_callback(
       base::BindOnce([](bool* called) { *called = true; }, &called));
-  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  dlc_service_->Install(CreateInstallRequest(kFooDlc), std::move(mr));
   EXPECT_TRUE(called);
 }
 
 TEST_F(DlcServiceTest, InstallTestDlcInstallFailure) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(false));
-  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_, IsInstalling()).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_, Install(_)).WillOnce(Return(false));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   EXPECT_CALL(*mock_metrics_, SendInstallResult(InstallResult::kUnknownError));
 
   auto mr = std::make_unique<MockDBusMethodResponse<>>();
   EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
-  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  dlc_service_->Install(CreateInstallRequest(kFooDlc), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestNoExternalRequirement) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+  EXPECT_CALL(*mock_dlc_, IsInstalling())
       .WillOnce(Return(false))
       // No external requirement.
       .WillOnce(Return(false));
-  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, Install(_)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   auto mr = std::make_unique<MockDBusMethodResponse<>>();
   bool called = false;
   mr->set_return_callback(
       base::BindOnce([](bool* called) { *called = true; }, &called));
-  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  dlc_service_->Install(CreateInstallRequest(kFooDlc), std::move(mr));
   EXPECT_TRUE(called);
 }
 
 TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDown) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+  EXPECT_CALL(*mock_dlc_, IsInstalling())
       .WillOnce(Return(false))
       // External requirement.
       .WillOnce(Return(true))
       // For cancelling.
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, CancelInstall(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, Install(_)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   ON_CALL(*mock_installer_ptr_, IsReady()).WillByDefault(Return(false));
@@ -225,22 +230,21 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDown) {
 
   auto mr = std::make_unique<MockDBusMethodResponse<>>();
   EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
-  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  dlc_service_->Install(CreateInstallRequest(kFooDlc), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDownCancelFailure) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+  EXPECT_CALL(*mock_dlc_, IsInstalling())
       .WillOnce(Return(false))
       // External requirement.
       .WillOnce(Return(true))
       // For cancelling (fail).
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, CancelInstall(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_, Install(_)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   ON_CALL(*mock_installer_ptr_, IsReady()).WillByDefault(Return(false));
@@ -249,22 +253,21 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementUpdaterDownCancelFailure) {
 
   auto mr = std::make_unique<MockDBusMethodResponse<>>();
   EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
-  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  dlc_service_->Install(CreateInstallRequest(kFooDlc), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestExternalRequirementPendingUpdate) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+  EXPECT_CALL(*mock_dlc_, IsInstalling())
       .WillOnce(Return(false))
       // External requirement.
       .WillOnce(Return(true))
       // For cancelling.
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, CancelInstall(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, Install(_)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   InstallerInterface::Status status;
@@ -276,23 +279,22 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementPendingUpdate) {
 
   auto mr = std::make_unique<MockDBusMethodResponse<>>();
   EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
-  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  dlc_service_->Install(CreateInstallRequest(kFooDlc), std::move(mr));
 }
 
 TEST_F(DlcServiceTest,
        InstallTestExternalRequirementPendingUpdateCancelFailure) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+  EXPECT_CALL(*mock_dlc_, IsInstalling())
       .WillOnce(Return(false))
       // External requirement.
       .WillOnce(Return(true))
       // For cancelling (fail).
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, CancelInstall(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_, Install(_)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   InstallerInterface::Status status;
@@ -304,22 +306,21 @@ TEST_F(DlcServiceTest,
 
   auto mr = std::make_unique<MockDBusMethodResponse<>>();
   EXPECT_CALL(*mr, ReplyWithError(_)).Times(1);
-  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  dlc_service_->Install(CreateInstallRequest(kFooDlc), std::move(mr));
 }
 
 TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallFailure) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+  EXPECT_CALL(*mock_dlc_, IsInstalling())
       .WillOnce(Return(false))
       // External requirement.
       .WillOnce(Return(true))
       // For cancelling.
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, CancelInstall(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, Install(_)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   EXPECT_CALL(*mock_metrics_,
@@ -332,21 +333,20 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallFailure) {
   EXPECT_CALL(*mr, ReplyWithError(_)).WillOnce([this](auto&& arg) {
     err_ = arg->Clone();
   });
-  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  dlc_service_->Install(CreateInstallRequest(kFooDlc), std::move(mr));
   ASSERT_TRUE(err_.get());
   EXPECT_EQ(err_->GetCode(), kErrorBusy);
 }
 
 TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallSuccess) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling())
+  EXPECT_CALL(*mock_dlc_, IsInstalling())
       .WillOnce(Return(false))
       // External requirement.
       .WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, Install(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, Install(_)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   EXPECT_CALL(*mock_installer_ptr_, Install(_, _, _))
@@ -356,7 +356,7 @@ TEST_F(DlcServiceTest, InstallTestExternalRequirementInstallSuccess) {
   bool called = false;
   mr->set_return_callback(
       base::BindOnce([](bool* called) { *called = true; }, &called));
-  dlc_service_->Install(CreateInstallRequest("foo-dlc"), std::move(mr));
+  dlc_service_->Install(CreateInstallRequest(kFooDlc), std::move(mr));
   EXPECT_TRUE(called);
 }
 
@@ -370,12 +370,11 @@ TEST_F(DlcServiceTest, UninstallTestUnsupported) {
               SendUninstallResult(UninstallResult::kFailedInvalidDlc));
 
   brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->Uninstall("foo-dlc", &err));
+  EXPECT_FALSE(dlc_service_->Uninstall(kFooDlc, &err));
 }
 
 TEST_F(DlcServiceTest, UninstallTestDlcUninstallFailure) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, Uninstall(_))
+  EXPECT_CALL(*mock_dlc_, Uninstall(_))
       .WillOnce(DoAll(WithArg<0>(Invoke([](brillo::ErrorPtr* err) {
                         *err =
                             Error::Create(FROM_HERE, kErrorBusy,
@@ -384,28 +383,27 @@ TEST_F(DlcServiceTest, UninstallTestDlcUninstallFailure) {
                       Return(false)));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   EXPECT_CALL(*mock_metrics_,
               SendUninstallResult(UninstallResult::kFailedUpdateEngineBusy));
 
   brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->Uninstall("foo-dlc", &err));
+  EXPECT_FALSE(dlc_service_->Uninstall(kFooDlc, &err));
 }
 
 TEST_F(DlcServiceTest, UninstallTestDlcUninstallSuccess) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, Uninstall(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, Uninstall(_)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   EXPECT_CALL(*mock_metrics_, SendUninstallResult(UninstallResult::kSuccess));
 
   brillo::ErrorPtr err;
-  EXPECT_TRUE(dlc_service_->Uninstall("foo-dlc", &err));
+  EXPECT_TRUE(dlc_service_->Uninstall(kFooDlc, &err));
 }
 
 // Tests related to `GetDlc`.
@@ -414,38 +412,36 @@ TEST_F(DlcServiceTest, GetDlcTestUnsupported) {
   dlc_service_->SetSupportedForTesting({});
 
   brillo::ErrorPtr err;
-  EXPECT_EQ(dlc_service_->GetDlc("foo-dlc", &err), nullptr);
+  EXPECT_EQ(dlc_service_->GetDlc(kFooDlc, &err), nullptr);
   EXPECT_EQ(err->GetCode(), kErrorInvalidDlc);
 }
 
 TEST_F(DlcServiceTest, GetDlcTest) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  auto* mock_dlc_foo_ptr = mock_dlc_foo.get();
+  auto* mock_dlc__ptr = mock_dlc_.get();
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   brillo::ErrorPtr err;
-  EXPECT_EQ(dlc_service_->GetDlc("foo-dlc", &err), mock_dlc_foo_ptr);
+  EXPECT_EQ(dlc_service_->GetDlc(kFooDlc, &err), mock_dlc__ptr);
 }
 
 // Tests related to `GetInstalled`.
 
 TEST_F(DlcServiceTest, GetInstalledTest) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalled()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, IsInstalled()).WillOnce(Return(true));
 
   auto mock_dlc_bar = std::make_unique<MockDlc>();
   EXPECT_CALL(*mock_dlc_bar, IsInstalled()).WillOnce(Return(false));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   supported.emplace("bar-dlc", std::move(mock_dlc_bar));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   const auto& dlcs = dlc_service_->GetInstalled(ListRequest());
-  EXPECT_THAT(dlcs, ElementsAre("foo-dlc"));
+  EXPECT_THAT(dlcs, ElementsAre(kFooDlc));
 }
 
 // Tests related to `GetExistingDlcs`.
@@ -541,19 +537,18 @@ TEST_F(DlcServiceTest, GetExistingDlcsWithLogicalVolumes) {
 // Tests related to `GetDlcsToUpdate`.
 
 TEST_F(DlcServiceTest, GetDlcsToUpdateTest) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, MakeReadyForUpdate()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, MakeReadyForUpdate()).WillOnce(Return(true));
 
   auto mock_dlc_bar = std::make_unique<MockDlc>();
   EXPECT_CALL(*mock_dlc_bar, MakeReadyForUpdate()).WillOnce(Return(false));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   supported.emplace("bar-dlc", std::move(mock_dlc_bar));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   const auto& dlcs = dlc_service_->GetDlcsToUpdate();
-  EXPECT_THAT(dlcs, ElementsAre("foo-dlc"));
+  EXPECT_THAT(dlcs, ElementsAre(kFooDlc));
 }
 
 // Tests related to `InstallCompleted`.
@@ -562,31 +557,29 @@ TEST_F(DlcServiceTest, InstallCompletedTestForUnsupported) {
   dlc_service_->SetSupportedForTesting({});
 
   brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->InstallCompleted({"foo-dlc"}, &err));
+  EXPECT_FALSE(dlc_service_->InstallCompleted({kFooDlc}, &err));
 }
 
 TEST_F(DlcServiceTest, InstallCompletedTestForDlcFailure) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, InstallCompleted(_)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_, InstallCompleted(_)).WillOnce(Return(false));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->InstallCompleted({"foo-dlc"}, &err));
+  EXPECT_FALSE(dlc_service_->InstallCompleted({kFooDlc}, &err));
 }
 
 TEST_F(DlcServiceTest, InstallCompletedTestForDlcSuccess) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, InstallCompleted(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, InstallCompleted(_)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   brillo::ErrorPtr err;
-  EXPECT_TRUE(dlc_service_->InstallCompleted({"foo-dlc"}, &err));
+  EXPECT_TRUE(dlc_service_->InstallCompleted({kFooDlc}, &err));
 }
 
 // Tests related to `UpdateCompleted`.
@@ -595,31 +588,29 @@ TEST_F(DlcServiceTest, UpdateCompletedTestForUnsupported) {
   dlc_service_->SetSupportedForTesting({});
 
   brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->UpdateCompleted({"foo-dlc"}, &err));
+  EXPECT_FALSE(dlc_service_->UpdateCompleted({kFooDlc}, &err));
 }
 
 TEST_F(DlcServiceTest, UpdateCompletedTestForDlcFailure) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, UpdateCompleted(_)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_, UpdateCompleted(_)).WillOnce(Return(false));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   brillo::ErrorPtr err;
-  EXPECT_FALSE(dlc_service_->UpdateCompleted({"foo-dlc"}, &err));
+  EXPECT_FALSE(dlc_service_->UpdateCompleted({kFooDlc}, &err));
 }
 
 TEST_F(DlcServiceTest, UpdateCompletedTestForDlcSuccess) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, UpdateCompleted(_)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, UpdateCompleted(_)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
   brillo::ErrorPtr err;
-  EXPECT_TRUE(dlc_service_->UpdateCompleted({"foo-dlc"}, &err));
+  EXPECT_TRUE(dlc_service_->UpdateCompleted({kFooDlc}, &err));
 }
 
 // Tests related to `FinishInstall`.
@@ -632,39 +623,35 @@ TEST_F(DlcServiceTest, FinishInstallTestNothingInstalling) {
 }
 
 TEST_F(DlcServiceTest, FinishInstallTestUnsupported) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-
   dlc_service_->SetSupportedForTesting({});
 
-  dlc_service_->installing_dlc_id_ = "foo-dlc";
+  dlc_service_->installing_dlc_id_ = kFooDlc;
   brillo::ErrorPtr err;
   EXPECT_FALSE(dlc_service_->FinishInstall(&err));
   EXPECT_EQ(err->GetCode(), kErrorInvalidDlc);
 }
 
 TEST_F(DlcServiceTest, FinishInstallTestNotInstalling) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_, IsInstalling()).WillOnce(Return(false));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  dlc_service_->installing_dlc_id_ = "foo-dlc";
+  dlc_service_->installing_dlc_id_ = kFooDlc;
   brillo::ErrorPtr err;
   EXPECT_FALSE(dlc_service_->FinishInstall(&err));
   EXPECT_EQ(err->GetCode(), kErrorInternal);
 }
 
 TEST_F(DlcServiceTest, FinishInstallTestSuccess) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, IsInstalling()).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
 
-  dlc_service_->installing_dlc_id_ = "foo-dlc";
+  dlc_service_->installing_dlc_id_ = kFooDlc;
   brillo::ErrorPtr err;
   EXPECT_FALSE(dlc_service_->FinishInstall(&err));
 }
@@ -679,13 +666,12 @@ TEST_F(DlcServiceTest, CancelInstallNoOpTest) {
 }
 
 TEST_F(DlcServiceTest, CancelInstallNotInstallingResetsTest) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_, IsInstalling()).WillOnce(Return(false));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
-  dlc_service_->installing_dlc_id_ = "foo-dlc";
+  dlc_service_->installing_dlc_id_ = kFooDlc;
 
   brillo::ErrorPtr err;
   dlc_service_->CancelInstall(err);
@@ -694,14 +680,13 @@ TEST_F(DlcServiceTest, CancelInstallNotInstallingResetsTest) {
 }
 
 TEST_F(DlcServiceTest, CancelInstallDlcCancelFailureResetsTest) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*mock_dlc_, IsInstalling()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, CancelInstall(_, _)).WillOnce(Return(false));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
-  dlc_service_->installing_dlc_id_ = "foo-dlc";
+  dlc_service_->installing_dlc_id_ = kFooDlc;
 
   brillo::ErrorPtr err;
   dlc_service_->CancelInstall(err);
@@ -710,14 +695,13 @@ TEST_F(DlcServiceTest, CancelInstallDlcCancelFailureResetsTest) {
 }
 
 TEST_F(DlcServiceTest, CancelInstallResetsTest) {
-  auto mock_dlc_foo = std::make_unique<MockDlc>();
-  EXPECT_CALL(*mock_dlc_foo, IsInstalling()).WillOnce(Return(true));
-  EXPECT_CALL(*mock_dlc_foo, CancelInstall(_, _)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, IsInstalling()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_dlc_, CancelInstall(_, _)).WillOnce(Return(true));
 
   DlcMap supported;
-  supported.emplace("foo-dlc", std::move(mock_dlc_foo));
+  supported.emplace(kFooDlc, std::move(mock_dlc_));
   dlc_service_->SetSupportedForTesting(std::move(supported));
-  dlc_service_->installing_dlc_id_ = "foo-dlc";
+  dlc_service_->installing_dlc_id_ = kFooDlc;
 
   brillo::ErrorPtr err;
   dlc_service_->CancelInstall(err);
