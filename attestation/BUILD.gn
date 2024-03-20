@@ -115,8 +115,6 @@ source_set("common_library") {
   sources = [
     "common/crypto_utility_impl.cc",
     "common/nvram_quoter_factory.cc",
-    "common/tpm_utility_common.cc",
-    "common/tpm_utility_factory.cc",
   ]
   all_dependent_configs = [ ":common_library_config" ]
   configs += [
@@ -125,11 +123,9 @@ source_set("common_library") {
   ]
   deps = [ ":proto_library" ]
   if (use.tpm2) {
-    sources += [ "common/tpm_utility_v2.cc" ]
     all_dependent_configs += [ ":common_library_with_tpm2_config" ]
   }
   if (use.tpm) {
-    sources += [ "common/tpm_utility_v1.cc" ]
     all_dependent_configs += [ ":common_library_without_tpm2_config" ]
   }
   if (use.cr50_onboard || use.ti50_onboard) {
@@ -361,7 +357,6 @@ if (use.test) {
       "attestation_testrunner.cc",
       "common/crypto_utility_impl_test.cc",
       "common/mock_crypto_utility.cc",
-      "common/mock_tpm_utility.cc",
       "pca_agent/server/pca_request_test.cc",
       "pca_agent/server/rks_cert_fetcher_test.cc",
       "server/certificate_queue_test.cc",
@@ -379,7 +374,6 @@ if (use.test) {
     ]
 
     if (use.tpm2) {
-      sources += [ "common/tpm_utility_v2_test.cc" ]
       libs += [ "trunks_test" ]
     }
 
@@ -388,10 +382,7 @@ if (use.test) {
     }
 
     if (use.tpm || use.tpm2) {
-      sources += [
-        "common/tpm_utility_common_test.cc",
-        "server/attestation_service_test.cc",
-      ]
+      sources += [ "server/attestation_service_test.cc" ]
     }
 
     configs += [
