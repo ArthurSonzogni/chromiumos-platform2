@@ -1477,7 +1477,7 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEndorsementKeyWrongPermissionType) {
   EXPECT_THAT(result, NotOk());
 }
 
-TEST_F(BackendKeyManagementTpm2Test, GetEndorsementPublicKey) {
+TEST_F(BackendKeyManagementTpm2Test, GetEndorsementPublicKeyDer) {
   const std::string kFakeOwnerPass = "fake_owner_pass";
   const std::string kFakeEndorsementPass = "fake_endorsement_pass";
   const uint32_t kFakeKeyHandle = 0x1337;
@@ -1490,31 +1490,38 @@ TEST_F(BackendKeyManagementTpm2Test, GetEndorsementPublicKey) {
   EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetTpmStatus(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  for (auto [hwsec_algo, trunks_algo] :
-       {std::pair(KeyAlgoType::kRsa, trunks::TPM_ALG_RSA)}) {
-    for (auto encoding : {KeyManagement::PublicKeyEncoding::kRaw,
-                          KeyManagement::PublicKeyEncoding::kDer}) {
-      const trunks::TPMT_PUBLIC kFakePublicArea{
-          .type = trunks_algo,
-      };
-      EXPECT_CALL(proxy_->GetMockTpmUtility(),
-                  GetEndorsementKey(trunks_algo, _, _, _))
-          .WillOnce(DoAll(SetArgPointee<3>(kFakeKeyHandle),
-                          Return(trunks::TPM_RC_SUCCESS)));
+  auto hwsec_algo = KeyAlgoType::kRsa;
+  auto trunks_algo = trunks::TPM_ALG_RSA;
+  auto encoding = KeyManagement::PublicKeyEncoding::kDer;
+  const trunks::TPMT_PUBLIC kFakePublicArea{
+      .type = trunks_algo,
+  };
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
+              GetEndorsementKey(trunks_algo, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<3>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
 
-      EXPECT_CALL(proxy_->GetMockTpmUtility(),
-                  GetKeyPublicArea(kFakeKeyHandle, _))
-          .WillOnce(DoAll(SetArgPointee<1>(kFakePublicArea),
-                          Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kFakePublicArea),
+                      Return(trunks::TPM_RC_SUCCESS)));
 
-      auto result = backend_->GetKeyManagementTpm2().GetEndorsementPublicKey(
-          hwsec_algo, encoding);
-      ASSERT_OK(result);
-    }
-  }
+  auto result = backend_->GetKeyManagementTpm2().GetEndorsementPublicKey(
+      hwsec_algo, encoding);
+  ASSERT_OK(result);
   EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
-      .WillOnce(Return(trunks::TPM_RC_SUCCESS))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
+}
+
+TEST_F(BackendKeyManagementTpm2Test, GetEndorsementPublicKeyRaw) {
+  auto hwsec_algo = KeyAlgoType::kRsa;
+  auto encoding = KeyManagement::PublicKeyEncoding::kRaw;
+  const std::string kFakeModulus = "fake_modulus";
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetPublicRSAEndorsementKeyModulus(_))
+      .WillOnce(DoAll(SetArgPointee<0>(kFakeModulus),
+                      Return(trunks::TPM_RC_SUCCESS)));
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetEndorsementPublicKey(
+                  hwsec_algo, encoding),
+              IsOkAndHolds(BlobFromString(kFakeModulus)));
 }
 
 }  // namespace hwsec

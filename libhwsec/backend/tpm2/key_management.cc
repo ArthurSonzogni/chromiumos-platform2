@@ -801,19 +801,25 @@ StatusOr<ScopedKey> KeyManagementTpm2::GetEndorsementKey(KeyAlgoType key_algo) {
 
 StatusOr<brillo::Blob> KeyManagementTpm2::GetEndorsementPublicKey(
     KeyAlgoType key_algo, PublicKeyEncoding encoding) {
-  ASSIGN_OR_RETURN(ScopedKey key, GetEndorsementKey(key_algo),
-                   _.WithStatus<TPMError>("Failed to get endorsement key"));
   if (encoding == PublicKeyEncoding::kDer) {
+    // TODO(b/330475918): avoid getting the entire EK for RSA public key.
+    ASSIGN_OR_RETURN(ScopedKey key, GetEndorsementKey(key_algo),
+                     _.WithStatus<TPMError>("Failed to get endorsement key"));
     return GetPublicKeyDer(key.GetKey(), /*use_rsa_subject_key_info=*/true);
   }
   switch (key_algo) {
     case KeyAlgoType::kRsa: {
-      ASSIGN_OR_RETURN(const RSAPublicInfo& info,
-                       GetRSAPublicInfo(key.GetKey()),
-                       _.WithStatus<TPMError>("Failed to get RSA public info"));
-      return info.modulus;
+      std::string modulus;
+      RETURN_IF_ERROR(
+          MakeStatus<TPM2Error>(
+              context_.GetTpmUtility().GetPublicRSAEndorsementKeyModulus(
+                  &modulus)))
+          .WithStatus<TPMError>("Failed to get key modulus");
+      return BlobFromString(modulus);
     }
     case KeyAlgoType::kEcc: {
+      ASSIGN_OR_RETURN(ScopedKey key, GetEndorsementKey(key_algo),
+                       _.WithStatus<TPMError>("Failed to get endorsement key"));
       ASSIGN_OR_RETURN(const ECCPublicInfo& info,
                        GetECCPublicInfo(key.GetKey()),
                        _.WithStatus<TPMError>("Failed to get RSA public info"));
