@@ -72,6 +72,16 @@ const char* sl_context_atom_name(int atom_enum) {
       return "_NET_WM_STATE_MAXIMIZED_HORZ";
     case ATOM_NET_WM_STATE_FOCUSED:
       return "_NET_WM_STATE_FOCUSED";
+    case ATOM_NET_WM_WINDOW_TYPE:
+      return "_NET_WM_WINDOW_TYPE";
+    case ATOM_NET_WM_WINDOW_TYPE_NORMAL:
+      return "_NET_WM_WINDOW_TYPE_NORMAL";
+    case ATOM_NET_WM_WINDOW_TYPE_DIALOG:
+      return "_NET_WM_WINDOW_TYPE_DIALOG";
+    case ATOM_NET_WM_WINDOW_TYPE_SPLASH:
+      return "_NET_WM_WINDOW_TYPE_SPLASH";
+    case ATOM_NET_WM_WINDOW_TYPE_UTILITY:
+      return "_NET_WM_WINDOW_TYPE_UTILITY";
     case ATOM_CLIPBOARD:
       return "CLIPBOARD";
     case ATOM_CLIPBOARD_MANAGER:

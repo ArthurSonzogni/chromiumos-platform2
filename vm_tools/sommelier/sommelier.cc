@@ -1186,6 +1186,7 @@ void sl_handle_map_request(struct sl_context* ctx,
        ctx->atoms[ATOM_XWAYLAND_RANDR_EMU_MONITOR_RECTS].value},
       {PROPERTY_STEAM_GAME, ctx->atoms[ATOM_STEAM_GAME].value},
       {PROPERTY_SPECIFIED_FOR_APP_ID, ctx->application_id_property_atom},
+      {PROPERTY_NET_WM_WINDOW_TYPE, ctx->atoms[ATOM_NET_WM_WINDOW_TYPE].value},
   };
   xcb_get_geometry_cookie_t geometry_cookie;
   xcb_get_property_cookie_t property_cookies[ARRAY_SIZE(properties)];
@@ -1249,7 +1250,7 @@ void sl_handle_map_request(struct sl_context* ctx,
 
     const char* value = nullptr;
     int value_int = std::numeric_limits<int>::max();
-    xcb_atom_t* reply_atoms = nullptr;
+    xcb_atom_t* property_values = nullptr;
 
     switch (properties[i].type) {
       case PROPERTY_WM_NAME:
@@ -1301,12 +1302,12 @@ void sl_handle_map_request(struct sl_context* ctx,
         }
         break;
       case PROPERTY_WM_PROTOCOLS:
-        reply_atoms =
+        property_values =
             static_cast<xcb_atom_t*>(xcb()->get_property_value(reply));
         for (unsigned j = 0;
              j < xcb()->get_property_value_length(reply) / sizeof(xcb_atom_t);
              ++j) {
-          if (reply_atoms[j] == ctx->atoms[ATOM_WM_TAKE_FOCUS].value) {
+          if (property_values[j] == ctx->atoms[ATOM_WM_TAKE_FOCUS].value) {
             window->focus_model_take_focus = 1;
             value = "ATOM_WM_TAKE_FOCUS";
           }
@@ -1325,18 +1326,18 @@ void sl_handle_map_request(struct sl_context* ctx,
         value = window->startup_id;
         break;
       case PROPERTY_NET_WM_STATE:
-        reply_atoms =
+        property_values =
             static_cast<xcb_atom_t*>(xcb()->get_property_value(reply));
         for (unsigned j = 0;
              j < xcb()->get_property_value_length(reply) / sizeof(xcb_atom_t);
              ++j) {
-          if (reply_atoms[j] ==
+          if (property_values[j] ==
               ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value) {
             maximize_h = true;
-          } else if (reply_atoms[j] ==
+          } else if (property_values[j] ==
                      ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value) {
             maximize_v = true;
-          } else if (reply_atoms[j] ==
+          } else if (property_values[j] ==
                      ctx->atoms[ATOM_NET_WM_STATE_FULLSCREEN].value) {
             fullscreen = true;
           }
@@ -1369,6 +1370,13 @@ void sl_handle_map_request(struct sl_context* ctx,
       case PROPERTY_SPECIFIED_FOR_APP_ID:
         sl_set_application_id_from_atom(ctx, window, reply);
         value = window->app_id_property.c_str();
+        break;
+      case PROPERTY_NET_WM_WINDOW_TYPE:
+        property_values =
+            static_cast<xcb_atom_t*>(xcb()->get_property_value(reply));
+        if (xcb()->get_property_value_length(reply) == sizeof(xcb_atom_t)) {
+          window->type = property_values[0];
+        }
         break;
       default:
         break;

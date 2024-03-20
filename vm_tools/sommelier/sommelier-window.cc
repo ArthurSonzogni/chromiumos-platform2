@@ -262,8 +262,21 @@ static const int32_t kUnspecifiedCoord = INT32_MIN;
 bool sl_window_is_containerized(struct sl_window* window) {
   bool window_containerized = false;
 #ifdef QUIRKS_SUPPORT
-  window_containerized = window->ctx->quirks.IsEnabled(
-      window, quirks::FEATURE_CONTAINERIZE_WINDOWS);
+  // TODO(b/330639704): Figure out better ways to determine game windows
+  // heuristically.
+  bool probably_game_window =
+      // Steam game ID property is set
+      window->steam_game_id &&
+      // Window type is normal
+      window->type ==
+          window->ctx->atoms[ATOM_NET_WM_WINDOW_TYPE_NORMAL].value &&
+      // Window max dimensions are either not set or if set, bigger (in
+      // perimeter) than specified value.
+      ((window->max_width + window->max_height == 0) ||
+       (window->max_width + window->max_height >= 400));
+  window_containerized =
+      probably_game_window && window->ctx->quirks.IsEnabled(
+                                  window, quirks::FEATURE_CONTAINERIZE_WINDOWS);
 #endif
   return window_containerized;
 }

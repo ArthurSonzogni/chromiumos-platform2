@@ -122,6 +122,9 @@ struct sl_window {
   // not set.
   bool maybe_promote_to_fullscreen = true;
 
+  // Value of _NET_WM_WINDOW_TYPE for the window set in x11.
+  uint32_t type = 0;
+
 #ifdef QUIRKS_SUPPORT
   // Quirk feature flags previously applied to this window, for which log
   // messages have already been written.
@@ -167,6 +170,7 @@ enum {
   PROPERTY_MOTIF_WM_HINTS,
   PROPERTY_NET_STARTUP_ID,
   PROPERTY_NET_WM_STATE,
+  PROPERTY_NET_WM_WINDOW_TYPE,
   PROPERTY_GTK_THEME_VARIANT,
   PROPERTY_XWAYLAND_RANDR_EMU_MONITOR_RECTS,
   PROPERTY_STEAM_GAME,
