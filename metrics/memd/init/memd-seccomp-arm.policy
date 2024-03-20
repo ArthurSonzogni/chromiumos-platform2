@@ -41,7 +41,6 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 getuid32: 1
-ioctl: arg1 == TCGETS || arg1 == FIOCLEX
 _llseek: 1
 memfd_create: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
@@ -70,6 +69,7 @@ setsid: 1
 set_tid_address: 1
 sched_yield: 1
 sigaltstack: 1
+# For D-Bus and syslog.
 socket: arg0 == AF_UNIX
 stat64: 1
 statx: 1

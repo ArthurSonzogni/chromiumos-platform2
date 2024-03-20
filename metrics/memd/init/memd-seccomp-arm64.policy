@@ -15,7 +15,6 @@ clock_nanosleep: 1
 clone: 1
 close: 1
 connect: 1
-execve: 1
 exit_group: 1
 faccessat: 1
 faccessat2: 1
@@ -36,7 +35,6 @@ getsockname: 1
 gettid: 1
 gettimeofday: 1
 getuid: 1
-ioctl: arg1 == TCGETS || arg1 == FIOCLEX
 lseek: 1
 memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
@@ -64,6 +62,7 @@ setpgid: 1
 setsid: 1
 sched_yield: 1
 sigaltstack: 1
+# For D-Bus and syslog.
 socket: arg0 == AF_UNIX
 statx: 1
 sysinfo: 1
