@@ -19,6 +19,7 @@
 #include <brillo/udev/udev_device.h>
 
 #include "diagnostics/cros_healthd/fetchers/storage/device_info.h"
+#include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 

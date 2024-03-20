@@ -6,10 +6,13 @@
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BUS_FETCHER_H_
 
 #include <base/containers/flat_map.h>
-#include <base/files/file_path.h>
 #include <base/functional/callback_forward.h>
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
+
+namespace base {
+class FilePath;
+}  // namespace base
 
 namespace diagnostics {
 class Context;

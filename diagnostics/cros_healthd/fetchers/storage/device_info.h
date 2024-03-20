@@ -9,12 +9,13 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/types/expected.h>
 #include <brillo/blkdev_utils/disk_iostat.h>
 
-#include "diagnostics/cros_healthd/fetchers/storage/platform.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
+class Platform;
 
 // StorageDeviceInfo encapsulates the logic for retrieving info about an
 // individual storage device. Should not leave longer than its parent

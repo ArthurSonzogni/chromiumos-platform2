@@ -9,9 +9,11 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_path.h>
-
 #include "diagnostics/cros_healthd/fetchers/storage/platform.h"
+
+namespace base {
+class FilePath;
+}  // namespace base
 
 namespace diagnostics {
 

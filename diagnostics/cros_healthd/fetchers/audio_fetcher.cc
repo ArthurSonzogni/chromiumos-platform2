@@ -8,11 +8,13 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/callback.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cras/dbus-proxies.h>
 
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

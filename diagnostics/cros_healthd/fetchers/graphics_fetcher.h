@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "diagnostics/cros_healthd/fetchers/graphics_header.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
 

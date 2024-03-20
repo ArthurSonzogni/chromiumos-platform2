@@ -26,6 +26,7 @@
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_info_constants.h"
+#include "diagnostics/cros_healthd/fetchers/storage/platform.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 

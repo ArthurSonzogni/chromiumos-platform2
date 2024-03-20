@@ -15,6 +15,7 @@
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_manager.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

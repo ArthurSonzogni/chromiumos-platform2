@@ -10,6 +10,8 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <dbus/object_path.h>
 
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher_floss.h"
@@ -20,6 +22,7 @@
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 #include "diagnostics/dbus_bindings/bluez/dbus-proxies.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

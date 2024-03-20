@@ -11,13 +11,17 @@
 
 #include <base/files/file_path.h>
 #include <base/synchronization/lock.h>
-#include <brillo/udev/udev.h>
-#include <brillo/udev/udev_device.h>
 
 #include "diagnostics/cros_healthd/fetchers/storage/device_info.h"
-#include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+
+namespace brillo {
+class Udev;
+}  // namespace brillo
 
 namespace diagnostics {
+class Platform;
+class StorageDeviceLister;
 
 // Manages StorageDeviceInfo structures for present block devices.
 class StorageDeviceManager final {

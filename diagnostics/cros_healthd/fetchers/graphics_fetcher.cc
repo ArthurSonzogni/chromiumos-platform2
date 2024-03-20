@@ -13,6 +13,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/graphics_header.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

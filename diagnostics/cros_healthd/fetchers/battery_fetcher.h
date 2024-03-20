@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BATTERY_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_BATTERY_FETCHER_H_
 
-#include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 

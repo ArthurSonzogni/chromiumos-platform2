@@ -8,10 +8,13 @@
 #include <string>
 #include <vector>
 
-#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 
 #include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
+
+namespace base {
+class FilePath;
+}  // namespace base
 
 namespace diagnostics {
 

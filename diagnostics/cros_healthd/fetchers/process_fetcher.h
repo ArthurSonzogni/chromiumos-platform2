@@ -5,8 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_PROCESS_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_PROCESS_FETCHER_H_
 
-#include <sys/types.h>
-
 #include <cstdint>
 #include <optional>
 #include <vector>

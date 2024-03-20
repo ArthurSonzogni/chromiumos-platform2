@@ -7,10 +7,10 @@
 
 #include <memory>
 
-#include "diagnostics/cros_healthd/fetchers/storage/device_manager.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
+class StorageDeviceManager;
 
 // The DiskFetcher class is responsible for gathering disk info reported by
 // cros_healthd.

@@ -8,10 +8,13 @@
 #include <cstdint>
 #include <string>
 
-#include <base/files/file_path.h>
 #include <base/types/expected.h>
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+
+namespace base {
+class FilePath;
+}  // namespace base
 
 namespace diagnostics {
 

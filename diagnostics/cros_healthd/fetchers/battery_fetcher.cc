@@ -12,6 +12,7 @@
 
 #include <base/containers/fixed_flat_map.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/expected.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>

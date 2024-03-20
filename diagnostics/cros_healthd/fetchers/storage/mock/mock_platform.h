@@ -8,11 +8,15 @@
 #include <cstdint>
 #include <string>
 
-#include <base/files/file_path.h>
 #include <base/types/expected.h>
 #include <gmock/gmock.h>
 
 #include "diagnostics/cros_healthd/fetchers/storage/platform.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+
+namespace base {
+class FilePath;
+}  // namespace base
 
 namespace diagnostics {
 
