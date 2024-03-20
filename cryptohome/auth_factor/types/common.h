@@ -146,6 +146,8 @@ class AfDriverWithMetadata : public virtual AuthFactorDriver {
         metadata.common.chromeos_version_last_updated);
     proto_factor->mutable_common_metadata()->set_chrome_version_last_updated(
         metadata.common.chrome_version_last_updated);
+    proto_factor->mutable_common_metadata()->set_user_specified_name(
+        metadata.common.user_specified_name);
     return proto_factor;
   }
 

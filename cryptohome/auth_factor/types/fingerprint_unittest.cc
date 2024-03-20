@@ -61,6 +61,7 @@ class FingerprintDriverTest : public AuthFactorDriverGenericTest {
           static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(1),
           "Testing1");
   static constexpr uint64_t kLeLabel = 0xdeadbeefbaadf00d;
+  static constexpr char kUserSpecifiedName[] = "Finger 1";
 
   FingerprintDriverTest() {
     auto processor = std::make_unique<MockBiometricsCommandProcessor>();
@@ -104,6 +105,7 @@ TEST_F(FingerprintDriverTest, ConvertToProto) {
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
   AuthFactorMetadata metadata = CreateMetadataWithType<FingerprintMetadata>();
+  metadata.common.user_specified_name = std::string(kUserSpecifiedName);
 
   // Test
   std::optional<user_data_auth::AuthFactor> proto =
@@ -120,6 +122,8 @@ TEST_F(FingerprintDriverTest, ConvertToProto) {
               Eq(kChromeVersion));
   EXPECT_THAT(proto->common_metadata().lockout_policy(),
               Eq(user_data_auth::LOCKOUT_POLICY_NONE));
+  EXPECT_THAT(proto->common_metadata().user_specified_name(),
+              Eq(kUserSpecifiedName));
   EXPECT_THAT(proto.value().has_fingerprint_metadata(), IsTrue());
 }
 
