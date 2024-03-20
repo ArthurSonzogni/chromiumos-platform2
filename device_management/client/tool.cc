@@ -117,6 +117,10 @@ int main(int argc, char** argv) {
   std::unique_ptr<device_management::DeviceManagementClient>
       device_management_client = device_management::DeviceManagementClient::
           CreateDeviceManagementClient();
+  if (!device_management_client) {
+    LOG(ERROR) << __func__ << ": failed to create DeviceManagementClient";
+    return EXIT_FAILURE;
+  }
 
   if (!device_management_client->InitializePrinter(cl)) {
     LOG(ERROR) << __func__ << ": failed to initialize the printer";
