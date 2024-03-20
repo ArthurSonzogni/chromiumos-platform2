@@ -16,6 +16,9 @@
 #include <metrics/metrics_library_mock.h>
 
 #include "diagnostics/cros_healthd/utils/metrics_utils_constants.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 using ::testing::_;
 using ::testing::Return;

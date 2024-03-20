@@ -8,11 +8,17 @@
 #include <set>
 
 #include <base/functional/callback_forward.h>
-#include <metrics/metrics_library.h>
 
-#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
+
+class MetricsLibraryInterface;
+
+namespace ash::cros_healthd::mojom {
+enum class DiagnosticRoutineEnum;
+enum class DiagnosticRoutineStatusEnum;
+enum class EventCategoryEnum;
+enum class ProbeCategoryEnum;
+}  // namespace ash::cros_healthd::mojom
 
 namespace diagnostics {
 

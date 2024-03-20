@@ -8,6 +8,8 @@
 
 #include <base/files/platform_file.h>
 #include <base/logging.h>
+#include <mojo/public/cpp/system/handle.h>
+#include <mojo/public/cpp/system/platform_handle.h>
 
 namespace diagnostics::mojo_utils {
 

@@ -11,6 +11,8 @@
 #include <gtest/gtest.h>
 #include <libfwupd/fwupd-enums.h>
 
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+
 namespace diagnostics {
 namespace fwupd_utils {
 namespace {

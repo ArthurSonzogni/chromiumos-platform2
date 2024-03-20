@@ -5,11 +5,12 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_MEMORY_INFO_H_
 #define DIAGNOSTICS_CROS_HEALTHD_UTILS_MEMORY_INFO_H_
 
-#include <stdint.h>
-
+#include <cstdint>
 #include <optional>
 
-#include <base/files/file_path.h>
+namespace base {
+class FilePath;
+}  // namespace base
 
 namespace diagnostics {
 

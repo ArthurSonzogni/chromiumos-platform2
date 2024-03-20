@@ -9,6 +9,7 @@
 #include <utility>
 
 #include <base/functional/bind.h>
+#include <base/logging.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>

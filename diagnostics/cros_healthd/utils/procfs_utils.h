@@ -7,7 +7,9 @@
 
 #include <sys/types.h>
 
-#include <base/files/file_path.h>
+namespace base {
+class FilePath;
+}  // namespace base
 
 namespace diagnostics {
 

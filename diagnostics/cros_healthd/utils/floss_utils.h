@@ -5,12 +5,16 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_FLOSS_UTILS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_UTILS_FLOSS_UTILS_H_
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include <base/uuid.h>
 #include <brillo/variant_dictionary.h>
+
+namespace base {
+class Uuid;
+}  // namespace base
 
 namespace diagnostics::floss_utils {
 

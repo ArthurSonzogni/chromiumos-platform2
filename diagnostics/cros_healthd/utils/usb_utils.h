@@ -5,14 +5,23 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_USB_UTILS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_UTILS_USB_UTILS_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
 
-#include <base/files/file_path.h>
-#include <brillo/udev/udev_device.h>
+namespace ash::cros_healthd::mojom {
+enum class UsbSpecSpeed;
+enum class UsbVersion;
+}  // namespace ash::cros_healthd::mojom
 
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+namespace base {
+class FilePath;
+}  // namespace base
+
+namespace brillo {
+class UdevDevice;
+}  // namespace brillo
 
 namespace diagnostics {
 

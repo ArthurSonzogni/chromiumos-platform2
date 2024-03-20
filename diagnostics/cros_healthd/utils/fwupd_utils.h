@@ -12,7 +12,7 @@
 
 #include <brillo/variant_dictionary.h>
 
-#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
 namespace fwupd_utils {

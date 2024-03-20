@@ -11,9 +11,13 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/struct_ptr.h>
 
 #include "diagnostics/cros_healthd/utils/metrics_utils_constants.h"
+#include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 

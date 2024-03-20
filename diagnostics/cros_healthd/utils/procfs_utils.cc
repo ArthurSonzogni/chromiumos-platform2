@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/utils/procfs_utils.h"
 
+#include <base/files/file_path.h>
 #include <base/strings/string_number_conversions.h>
 
 namespace diagnostics {

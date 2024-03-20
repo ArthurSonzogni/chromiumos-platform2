@@ -13,6 +13,7 @@
 #include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/uuid.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/object_path.h>
 
