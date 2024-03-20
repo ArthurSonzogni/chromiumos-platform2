@@ -46,6 +46,7 @@ using hwsec::KeyRestriction;
 using hwsec::TPMError;
 using hwsec::TPMRetryAction;
 using hwsec_foundation::error::testing::ReturnError;
+using hwsec_foundation::error::testing::ReturnOk;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
 using testing::AtMost;
@@ -307,6 +308,8 @@ class AttestationServiceBaseTest : public testing::Test {
         .WillRepeatedly(
             ReturnValue(BlobFromString("fake_endorsement_certificate")));
     EXPECT_CALL(mock_hwsec_, IsReady).WillRepeatedly(ReturnValue(true));
+    EXPECT_CALL(mock_hwsec_, FinalizeEnrollmentPreparation)
+        .WillRepeatedly(ReturnOk<hwsec::TPMError>());
     // Run out initialize task(s) to avoid any race conditions with tests that
     // need to change the default setup.
     CHECK(

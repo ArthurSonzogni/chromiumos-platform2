@@ -32,6 +32,7 @@
 #include <crypto/sha2.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/frontend/attestation/frontend.h>
+#include <libhwsec/status.h>
 #include <libhwsec/structures/key.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
@@ -507,8 +508,13 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
         FROM_HERE, base::BindOnce(&AttestationService::PrepareForEnrollment,
                                   base::Unretained(this), std::move(callback)));
   } else {
-    // Ignore errors. If failed this time, will be re-attempted on next boot.
-    tpm_utility_->RemoveOwnerDependency();
+    // Ignore errors when finalizing. If failed this time, will be re-attempted
+    // on next boot.
+    if (hwsec::Status status = hwsec_->FinalizeEnrollmentPreparation();
+        !status.ok()) {
+      LOG(WARNING) << "Attestation: Failed to finalize enrollment preparation."
+                   << status;
+    }
     std::move(callback).Run(true);
   }
 }
@@ -1657,9 +1663,13 @@ void AttestationService::PrepareForEnrollment(
     return;
   }
 
-  // Ignore errors when removing dependency. If failed this time, will be
-  // re-attempted on next boot.
-  tpm_utility_->RemoveOwnerDependency();
+  // Ignore errors when finalizing. If failed this time, will be re-attempted
+  // on next boot.
+  if (hwsec::Status status = hwsec_->FinalizeEnrollmentPreparation();
+      !status.ok()) {
+    LOG(WARNING) << "Attestation: Failed to finalize enrollment preparation."
+                 << status;
+  }
 
   base::TimeDelta delta = (base::TimeTicks::Now() - start);
   LOG(INFO) << "Attestation: Prepared successfully (" << delta.InMilliseconds()
