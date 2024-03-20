@@ -213,60 +213,6 @@ std::optional<uint64_t> ParseUint64Node(xmlXPathContextPtr ctx,
   return ret;
 }
 
-struct SignatureXmlParseResult {
-  std::vector<brillo::Blob> intermediate_certs;
-  brillo::Blob signing_cert;
-  brillo::Blob signature;
-};
-
-// Check example xml format from
-// https://www.gstatic.com/cryptauthvault/v0/cert.sig.xml.
-std::optional<SignatureXmlParseResult> ParseSignatureXml(
-    const std::string& signature_xml) {
-  ScopedXmlDoc doc(xmlParseMemory(signature_xml.data(), signature_xml.size()));
-  if (!doc) {
-    LOG(ERROR) << "Failed to parse xml.";
-    return std::nullopt;
-  }
-
-  ScopedXmlXPathContext xpath_ctx(xmlXPathNewContext(doc.get()));
-  if (!xpath_ctx) {
-    LOG(ERROR) << "Failed to create XPath context.";
-    return std::nullopt;
-  }
-
-  // Parse the intermediate certs.
-  std::optional<std::vector<brillo::Blob>> intermediate_certs =
-      ParseMultipleBase64Nodes(xpath_ctx.get(),
-                               kSignatureXmlIntermediateCertsXPath);
-  if (!intermediate_certs.has_value()) {
-    LOG(ERROR) << "Failed to parse the intermediate certs.";
-    return std::nullopt;
-  }
-
-  // Parse the signing cert.
-  std::optional<brillo::Blob> signing_cert =
-      ParseSingleBase64Node(xpath_ctx.get(), kSignatureXmlSigningCertXPath);
-  if (!signing_cert.has_value()) {
-    LOG(ERROR) << "Failed to parse the signing cert.";
-    return std::nullopt;
-  }
-
-  // Parse the signature.
-  std::optional<brillo::Blob> signature =
-      ParseSingleBase64Node(xpath_ctx.get(), kSignatureXmlSignatureXPath);
-  if (!signature.has_value()) {
-    LOG(ERROR) << "Failed to parse the signature.";
-    return std::nullopt;
-  }
-
-  return SignatureXmlParseResult{
-      .intermediate_certs = std::move(*intermediate_certs),
-      .signing_cert = std::move(*signing_cert),
-      .signature = std::move(*signature),
-  };
-}
-
 ScopedX509 X509FromDer(const brillo::Blob& cert_der) {
   const uint8_t* cert_data = cert_der.data();
   return ScopedX509(d2i_X509(nullptr, &cert_data, cert_der.size()));
@@ -444,58 +390,6 @@ bool VerifyCertificateXmlSignature(const std::string& cert_xml,
       reinterpret_cast<const unsigned char*>(cert_xml.data()), cert_xml.size());
 }
 
-struct CertificateXmlParseResult {
-  uint64_t version;
-  std::vector<brillo::Blob> intermediate_certs;
-  std::vector<brillo::Blob> endpoint_certs;
-};
-
-// Check example xml format from
-// https://www.gstatic.com/cryptauthvault/v0/cert.xml.
-std::optional<CertificateXmlParseResult> ParseCertificateXml(
-    const std::string& cert_xml) {
-  ScopedXmlDoc doc(xmlParseMemory(cert_xml.data(), cert_xml.size()));
-  if (!doc) {
-    LOG(ERROR) << "Failed to parse xml.";
-    return std::nullopt;
-  }
-
-  ScopedXmlXPathContext xpath_ctx(xmlXPathNewContext(doc.get()));
-  if (!xpath_ctx) {
-    LOG(ERROR) << "Failed to create XPath context.";
-    return std::nullopt;
-  }
-
-  std::optional<uint64_t> version =
-      ParseUint64Node(xpath_ctx.get(), kCertXmlVersionXPath);
-  if (!version.has_value()) {
-    LOG(ERROR) << "Failed to parse version field.";
-    return std::nullopt;
-  }
-
-  // Parse the intermediate certs.
-  std::optional<std::vector<brillo::Blob>> intermediate_certs =
-      ParseMultipleBase64Nodes(xpath_ctx.get(), kCertXmlIntermediateCertsXPath);
-  if (!intermediate_certs.has_value()) {
-    LOG(ERROR) << "Failed to parse the intermediate certs.";
-    return std::nullopt;
-  }
-
-  // Parse the endpoint certs.
-  std::optional<std::vector<brillo::Blob>> endpoint_certs =
-      ParseMultipleBase64Nodes(xpath_ctx.get(), kCertXmlEndpointCertsXPath);
-  if (!endpoint_certs.has_value()) {
-    LOG(ERROR) << "Failed to parse the endpoint certs.";
-    return std::nullopt;
-  }
-
-  return CertificateXmlParseResult{
-      .version = *version,
-      .intermediate_certs = std::move(*intermediate_certs),
-      .endpoint_certs = std::move(*endpoint_certs),
-  };
-}
-
 // Returns the endpoint cert x509s after verifying.
 std::vector<crypto::ScopedX509> VerifyCertificateXmlCertificateChain(
     const CertificateXmlParseResult& certificate) {
@@ -658,6 +552,100 @@ VerifyAndParseRecoverableKeyStoreBackendCertXmls(
   return RecoverableKeyStoreCertList{
       .version = cert_result->version,
       .certs = std::move(key_store_certs),
+  };
+}
+
+// Check example xml format from
+// https://www.gstatic.com/cryptauthvault/v0/cert.sig.xml.
+std::optional<SignatureXmlParseResult> ParseSignatureXml(
+    const std::string& signature_xml) {
+  ScopedXmlDoc doc(xmlParseMemory(signature_xml.data(), signature_xml.size()));
+  if (!doc) {
+    LOG(ERROR) << "Failed to parse xml.";
+    return std::nullopt;
+  }
+
+  ScopedXmlXPathContext xpath_ctx(xmlXPathNewContext(doc.get()));
+  if (!xpath_ctx) {
+    LOG(ERROR) << "Failed to create XPath context.";
+    return std::nullopt;
+  }
+
+  // Parse the intermediate certs.
+  std::optional<std::vector<brillo::Blob>> intermediate_certs =
+      ParseMultipleBase64Nodes(xpath_ctx.get(),
+                               kSignatureXmlIntermediateCertsXPath);
+  if (!intermediate_certs.has_value()) {
+    LOG(ERROR) << "Failed to parse the intermediate certs.";
+    return std::nullopt;
+  }
+
+  // Parse the signing cert.
+  std::optional<brillo::Blob> signing_cert =
+      ParseSingleBase64Node(xpath_ctx.get(), kSignatureXmlSigningCertXPath);
+  if (!signing_cert.has_value()) {
+    LOG(ERROR) << "Failed to parse the signing cert.";
+    return std::nullopt;
+  }
+
+  // Parse the signature.
+  std::optional<brillo::Blob> signature =
+      ParseSingleBase64Node(xpath_ctx.get(), kSignatureXmlSignatureXPath);
+  if (!signature.has_value()) {
+    LOG(ERROR) << "Failed to parse the signature.";
+    return std::nullopt;
+  }
+
+  return SignatureXmlParseResult{
+      .intermediate_certs = std::move(*intermediate_certs),
+      .signing_cert = std::move(*signing_cert),
+      .signature = std::move(*signature),
+  };
+}
+
+// Check example xml format from
+// https://www.gstatic.com/cryptauthvault/v0/cert.xml.
+std::optional<CertificateXmlParseResult> ParseCertificateXml(
+    const std::string& cert_xml) {
+  ScopedXmlDoc doc(xmlParseMemory(cert_xml.data(), cert_xml.size()));
+  if (!doc) {
+    LOG(ERROR) << "Failed to parse xml.";
+    return std::nullopt;
+  }
+
+  ScopedXmlXPathContext xpath_ctx(xmlXPathNewContext(doc.get()));
+  if (!xpath_ctx) {
+    LOG(ERROR) << "Failed to create XPath context.";
+    return std::nullopt;
+  }
+
+  std::optional<uint64_t> version =
+      ParseUint64Node(xpath_ctx.get(), kCertXmlVersionXPath);
+  if (!version.has_value()) {
+    LOG(ERROR) << "Failed to parse version field.";
+    return std::nullopt;
+  }
+
+  // Parse the intermediate certs.
+  std::optional<std::vector<brillo::Blob>> intermediate_certs =
+      ParseMultipleBase64Nodes(xpath_ctx.get(), kCertXmlIntermediateCertsXPath);
+  if (!intermediate_certs.has_value()) {
+    LOG(ERROR) << "Failed to parse the intermediate certs.";
+    return std::nullopt;
+  }
+
+  // Parse the endpoint certs.
+  std::optional<std::vector<brillo::Blob>> endpoint_certs =
+      ParseMultipleBase64Nodes(xpath_ctx.get(), kCertXmlEndpointCertsXPath);
+  if (!endpoint_certs.has_value()) {
+    LOG(ERROR) << "Failed to parse the endpoint certs.";
+    return std::nullopt;
+  }
+
+  return CertificateXmlParseResult{
+      .version = *version,
+      .intermediate_certs = std::move(*intermediate_certs),
+      .endpoint_certs = std::move(*endpoint_certs),
   };
 }
 

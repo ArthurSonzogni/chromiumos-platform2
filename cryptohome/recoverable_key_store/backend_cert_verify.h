@@ -28,8 +28,8 @@ struct RecoverableKeyStoreCertList {
   std::vector<RecoverableKeyStoreCert> certs;
 };
 
-// Get the version of the certificate xml. This doesn't attempt to verify the
-// certificate.
+// Get the version of the certificate xml. This doesn't attempt to verify
+// the certificate.
 std::optional<uint64_t> GetCertXmlVersion(const std::string& cert_xml);
 
 // Verify that the given certificate and certificate signature xml files are
@@ -38,6 +38,26 @@ std::optional<uint64_t> GetCertXmlVersion(const std::string& cert_xml);
 std::optional<RecoverableKeyStoreCertList>
 VerifyAndParseRecoverableKeyStoreBackendCertXmls(
     const std::string& cert_xml, const std::string& signature_xml);
+
+// Parse the signature xml. This is not intended to be called by others. Exposed
+// only for fuzzing purposes.
+struct SignatureXmlParseResult {
+  std::vector<brillo::Blob> intermediate_certs;
+  brillo::Blob signing_cert;
+  brillo::Blob signature;
+};
+std::optional<SignatureXmlParseResult> ParseSignatureXml(
+    const std::string& signature_xml);
+
+// Parse the certificate xml. This is not intended to be called by others.
+// Exposed only for fuzzing purposes.
+struct CertificateXmlParseResult {
+  uint64_t version;
+  std::vector<brillo::Blob> intermediate_certs;
+  std::vector<brillo::Blob> endpoint_certs;
+};
+std::optional<CertificateXmlParseResult> ParseCertificateXml(
+    const std::string& cert_xml);
 
 }  // namespace cryptohome
 

@@ -39,6 +39,7 @@ group("all") {
   }
   if (use.fuzzer) {
     deps += [
+      ":cryptohome_backend_cert_parser_fuzzer",
       ":cryptohome_cryptolib_blob_to_hex_fuzzer",
       ":cryptohome_recovery_id_fuzzer",
       ":cryptohome_user_secret_stash_parser_fuzzer",
@@ -524,6 +525,16 @@ if (use.test) {
 }
 
 if (use.fuzzer) {
+  executable("cryptohome_backend_cert_parser_fuzzer") {
+    sources = [ "fuzzers/backend_cert_parser_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      "//common-mk:test",
+    ]
+    deps = [ "libs:libcryptohome" ]
+    pkg_deps = [ "libchrome-test" ]
+  }
+
   executable("cryptohome_cryptolib_blob_to_hex_fuzzer") {
     sources = [ "fuzzers/cryptolib_blob_to_hex_fuzzer.cc" ]
     libs = [ "hwsec-foundation" ]
