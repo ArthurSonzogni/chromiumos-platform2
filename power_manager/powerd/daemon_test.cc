@@ -43,7 +43,6 @@
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/charge_controller_helper_stub.h"
 #include "power_manager/powerd/system/cros_ec_helper_stub.h"
-#include "power_manager/powerd/system/cryptohome_client.h"
 #include "power_manager/powerd/system/dark_resume_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_power_setter_stub.h"
@@ -52,8 +51,8 @@
 #include "power_manager/powerd/system/input_watcher_stub.h"
 #include "power_manager/powerd/system/lockfile_checker_stub.h"
 #include "power_manager/powerd/system/machine_quirks_stub.h"
-#include "power_manager/powerd/system/mock_cryptohome_client.h"
 #include "power_manager/powerd/system/mock_power_supply.h"
+#include "power_manager/powerd/system/mock_user_data_auth_client.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
@@ -61,6 +60,7 @@
 #include "power_manager/powerd/system/suspend_freezer_stub.h"
 #include "power_manager/powerd/system/thermal/thermal_device.h"
 #include "power_manager/powerd/system/udev_stub.h"
+#include "power_manager/powerd/system/user_data_auth_client.h"
 #include "power_manager/powerd/system/user_proximity_watcher_stub.h"
 #include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
@@ -125,7 +125,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         passed_user_proximity_watcher_(new system::UserProximityWatcherStub()),
         passed_dark_resume_(new system::DarkResumeStub()),
         passed_audio_client_(new system::AudioClientStub()),
-        passed_cryptohome_client_(new system::MockCryptohomeClient()),
+        passed_user_data_auth_client_(new system::MockUserDataAuthClient()),
         passed_lockfile_checker_(new system::LockfileCheckerStub()),
         passed_machine_quirks_(new system::MachineQuirksStub()),
         passed_metrics_sender_(new MetricsSenderStub()),
@@ -165,13 +165,14 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
         user_proximity_watcher_(passed_user_proximity_watcher_.get()),
         dark_resume_(passed_dark_resume_.get()),
         audio_client_(passed_audio_client_.get()),
-        cryptohome_client_(passed_cryptohome_client_.get()),
+        user_data_auth_client_(passed_user_data_auth_client_.get()),
         lockfile_checker_(passed_lockfile_checker_.get()),
         machine_quirks_(passed_machine_quirks_.get()),
         metrics_sender_(passed_metrics_sender_.get()),
         adaptive_charging_controller_(
             passed_adaptive_charging_controller_.get()),
-        adaptive_charging_proxy_(passed_adaptive_charging_proxy_.get()) {
+        adaptive_charging_proxy_(passed_adaptive_charging_proxy_.get()),
+        suspend_freezer_(passed_suspend_freezer_.get()) {
     CHECK(run_dir_.CreateUniqueTempDir());
     CHECK(run_dir_.IsValid());
 
@@ -417,10 +418,20 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
     return std::move(passed_audio_client_);
   }
-  std::unique_ptr<system::CryptohomeClient> CreateCryptohomeClient(
-      system::DBusWrapperInterface* dbus_wrapper) override {
+  std::unique_ptr<system::UserDataAuthClient> CreateUserDataAuthClient(
+      system::DBusWrapperInterface* dbus_wrapper,
+      system::SuspendFreezerInterface* suspend_freezer) override {
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
-    return std::move(passed_cryptohome_client_);
+    EXPECT_EQ(suspend_freezer_, suspend_freezer);
+    // This is needed to mock what user_data_auth_client_->Init does.
+    dbus_wrapper_->RegisterForSignal(
+        dbus_wrapper_->GetObjectProxy(user_data_auth::kUserDataAuthServiceName,
+                                      user_data_auth::kUserDataAuthServicePath),
+        user_data_auth::kUserDataAuthInterface,
+        user_data_auth::kEvictedKeyRestoredSignal,
+        base::BindRepeating(&DaemonTest::HandleKeyRestoredSignal,
+                            base::Unretained(this)));
+    return std::move(passed_user_data_auth_client_);
   }
   std::unique_ptr<system::LockfileCheckerInterface> CreateLockfileChecker(
       const base::FilePath& dir,
@@ -527,6 +538,16 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     return response;
   }
 
+  void HandleKeyRestoredSignal(dbus::Signal* signal) {
+    dbus::MessageReader reader(signal);
+    user_data_auth::EvictedKeyRestored key_restored;
+    if (!reader.PopArrayOfBytesAsProto(&key_restored)) {
+      LOG(ERROR) << "Unable to read "
+                 << user_data_auth::kEvictedKeyRestoredSignal << " args";
+      return;
+    }
+  }
+
  protected:
   // Send the appropriate events to put StateController into docked mode.
   void EnterDockedMode() {
@@ -592,7 +613,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
       passed_user_proximity_watcher_;
   std::unique_ptr<system::DarkResumeStub> passed_dark_resume_;
   std::unique_ptr<system::AudioClientStub> passed_audio_client_;
-  std::unique_ptr<system::MockCryptohomeClient> passed_cryptohome_client_;
+  std::unique_ptr<system::MockUserDataAuthClient> passed_user_data_auth_client_;
   std::unique_ptr<system::LockfileCheckerStub> passed_lockfile_checker_;
   std::unique_ptr<system::MachineQuirksStub> passed_machine_quirks_;
   std::unique_ptr<MetricsSenderStub> passed_metrics_sender_;
@@ -632,14 +653,14 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   system::UserProximityWatcherStub* user_proximity_watcher_;
   system::DarkResumeStub* dark_resume_;
   system::AudioClientStub* audio_client_;
-  system::MockCryptohomeClient* cryptohome_client_;
+  system::MockUserDataAuthClient* user_data_auth_client_;
   system::LockfileCheckerStub* lockfile_checker_;
   system::MachineQuirksStub* machine_quirks_;
   MetricsSenderStub* metrics_sender_;
   policy::MockAdaptiveChargingController* adaptive_charging_controller_;
   org::chromium::MachineLearning::AdaptiveChargingProxyMock*
       adaptive_charging_proxy_;
-
+  system::SuspendFreezerInterface* suspend_freezer_;
   // Run directory passed to |daemon_|.
   base::ScopedTempDir run_dir_;
 
@@ -1241,7 +1262,7 @@ TEST_F(DaemonTest, PrepareToSuspendAndResume) {
 #if USE_KEY_EVICTION
   // TODO(b:311232193, thomascedeno): This should be gated by a finch feature
   // flag and controlled by chrome://settings ideally.
-  EXPECT_CALL(*cryptohome_client_, EvictDeviceKey(_));
+  EXPECT_CALL(*user_data_auth_client_, EvictDeviceKey(_));
   dbus_wrapper_->SetMethodCallback(
       base::BindRepeating(&DaemonTest::HandleEvictCryptohomeDeviceResponse,
                           base::Unretained(this)));

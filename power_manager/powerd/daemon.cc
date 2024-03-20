@@ -576,7 +576,8 @@ void Daemon::Init() {
     audio_client_->AddObserver(this);
   }
 
-  cryptohome_client_ = delegate_->CreateCryptohomeClient(dbus_wrapper_.get());
+  user_data_auth_client_ = delegate_->CreateUserDataAuthClient(
+      dbus_wrapper_.get(), suspend_freezer_.get());
 
   bluetooth_controller_->Init(udev_.get(), platform_features_,
                               dbus_wrapper_.get(), tablet_mode);
@@ -982,8 +983,8 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 #if USE_KEY_EVICTION
   // TODO(b:311232193, thomascedeno): This should be gated by a finch feature
   // flag and controlled by chrome://settings ideally.
-  if (DisableSyncOnSuspend(sync_on_suspend_path_) && cryptohome_client_)
-    cryptohome_client_->EvictDeviceKey(suspend_request_id);
+  if (DisableSyncOnSuspend(sync_on_suspend_path_) && user_data_auth_client_)
+    user_data_auth_client_->EvictDeviceKey(suspend_request_id);
 #endif  // USE_KEY_EVICTION
 
   wakealarm_time_ = suspend_configurator_->PrepareForSuspend(duration);
@@ -1363,10 +1364,6 @@ void Daemon::InitDBus() {
       dbus_wrapper_->GetObjectProxy(privacy_screen::kPrivacyScreenServiceName,
                                     privacy_screen::kPrivacyScreenServicePath);
 
-  user_data_auth_dbus_proxy_ =
-      dbus_wrapper_->GetObjectProxy(user_data_auth::kUserDataAuthServiceName,
-                                    user_data_auth::kUserDataAuthServicePath);
-
   dbus_wrapper_->RegisterForServiceAvailability(
       privacy_screen_service_dbus_proxy_,
       base::BindRepeating(
@@ -1377,11 +1374,6 @@ void Daemon::InitDBus() {
       privacy_screen::kPrivacyScreenServiceInterface,
       privacy_screen::kPrivacyScreenServicePrivacyScreenSettingChangedSignal,
       base::BindRepeating(&Daemon::HandlePrivacyScreenSettingChangedSignal,
-                          weak_ptr_factory_.GetWeakPtr()));
-  dbus_wrapper_->RegisterForSignal(
-      user_data_auth_dbus_proxy_, user_data_auth::kUserDataAuthInterface,
-      user_data_auth::kEvictedKeyRestoredSignal,
-      base::BindRepeating(&Daemon::HandleKeyRestoredSignal,
                           weak_ptr_factory_.GetWeakPtr()));
 
   // Export Daemon's D-Bus method calls.
@@ -1533,18 +1525,6 @@ void Daemon::HandlePrivacyScreenSettingChangedSignal(dbus::Signal* signal) {
                       kPrivacyScreenServicePrivacyScreenSettingChangedSignal
                << " args";
   }
-}
-
-void Daemon::HandleKeyRestoredSignal(dbus::Signal* signal) {
-  dbus::MessageReader reader(signal);
-  user_data_auth::EvictedKeyRestored key_restored;
-  if (!reader.PopArrayOfBytesAsProto(&key_restored)) {
-    LOG(ERROR) << "Unable to read " << user_data_auth::kEvictedKeyRestoredSignal
-               << " args";
-    return;
-  }
-
-  suspend_freezer_->ThawProcesses();
 }
 
 void Daemon::HandleGetPrivacyScreenSettingResponse(dbus::Response* response) {

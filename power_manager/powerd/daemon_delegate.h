@@ -39,7 +39,7 @@ class AmbientLightSensorWatcherMojo;
 class AudioClientInterface;
 class BacklightInterface;
 class ChargeControllerHelperInterface;
-class CryptohomeClient;
+class UserDataAuthClient;
 class DarkResumeInterface;
 class DBusWrapperInterface;
 class DisplayPowerSetterInterface;
@@ -181,8 +181,9 @@ class DaemonDelegate {
       system::DBusWrapperInterface* dbus_wrapper,
       const base::FilePath& run_dir) = 0;
 
-  virtual std::unique_ptr<system::CryptohomeClient> CreateCryptohomeClient(
-      system::DBusWrapperInterface* dbus_wrapper) = 0;
+  virtual std::unique_ptr<system::UserDataAuthClient> CreateUserDataAuthClient(
+      system::DBusWrapperInterface* dbus_wrapper,
+      system::SuspendFreezerInterface* suspend_freezer) = 0;
 
   virtual std::unique_ptr<system::LockfileCheckerInterface>
   CreateLockfileChecker(const base::FilePath& dir,

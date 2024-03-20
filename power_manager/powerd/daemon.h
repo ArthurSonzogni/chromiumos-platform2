@@ -38,11 +38,11 @@
 #include "power_manager/powerd/policy/user_proximity_handler.h"
 #include "power_manager/powerd/policy/wifi_controller.h"
 #include "power_manager/powerd/system/audio_observer.h"
-#include "power_manager/powerd/system/cryptohome_client.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/machine_quirks.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/sensor_service_handler.h"
+#include "power_manager/powerd/system/user_data_auth_client.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 #include "privacy_screen/proto_bindings/privacy_screen.pb.h"
 
@@ -283,7 +283,6 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // Callbacks for handling D-Bus signals and method calls.
   void HandleSessionStateChangedSignal(dbus::Signal* signal);
   void HandlePrivacyScreenSettingChangedSignal(dbus::Signal* signal);
-  void HandleKeyRestoredSignal(dbus::Signal* signal);
   void HandleGetPrivacyScreenSettingResponse(dbus::Response* response);
   void HandleGetDictionaryAttackInfoSuccess(
       const tpm_manager::GetDictionaryAttackInfoReply& da_reply);
@@ -363,8 +362,6 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   dbus::ObjectProxy* resource_manager_dbus_proxy_ = nullptr;
   // The |privacy_screen_service_dbus_proxy_| is owned by |dbus_wrapper_|
   dbus::ObjectProxy* privacy_screen_service_dbus_proxy_ = nullptr;
-  // The |user_data_auth_dbus_proxy_| is owned by |dbus_wrapper_|
-  dbus::ObjectProxy* user_data_auth_dbus_proxy_ = nullptr;
   // DBus proxy for contacting tpm_managerd. May be null if the TPM status is
   // not needed.
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
@@ -402,7 +399,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   std::unique_ptr<system::CrosEcHelperInterface> ec_helper_;
   std::unique_ptr<policy::InputDeviceController> input_device_controller_;
   std::unique_ptr<system::AudioClientInterface> audio_client_;  // May be null.
-  std::unique_ptr<system::CryptohomeClient> cryptohome_client_;
+  std::unique_ptr<system::UserDataAuthClient> user_data_auth_client_;
   std::unique_ptr<system::PeripheralBatteryWatcher>
       peripheral_battery_watcher_;  // May be null.
   std::unique_ptr<system::PowerSupplyInterface> power_supply_;

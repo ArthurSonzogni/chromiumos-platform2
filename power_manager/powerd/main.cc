@@ -294,9 +294,12 @@ class DaemonDelegateImpl : public DaemonDelegate {
     return client;
   }
 
-  std::unique_ptr<system::CryptohomeClient> CreateCryptohomeClient(
-      system::DBusWrapperInterface* dbus_wrapper) override {
-    return std::make_unique<system::CryptohomeClient>(dbus_wrapper);
+  std::unique_ptr<system::UserDataAuthClient> CreateUserDataAuthClient(
+      system::DBusWrapperInterface* dbus_wrapper,
+      system::SuspendFreezerInterface* suspend_freezer) override {
+    auto client = std::make_unique<system::UserDataAuthClient>();
+    client->Init(dbus_wrapper, suspend_freezer);
+    return client;
   }
 
   std::unique_ptr<system::LockfileCheckerInterface> CreateLockfileChecker(

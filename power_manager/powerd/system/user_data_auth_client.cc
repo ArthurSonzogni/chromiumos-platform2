@@ -1,8 +1,8 @@
-// Copyright 2023 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/cryptohome_client.h"
+#include "power_manager/powerd/system/user_data_auth_client.h"
 
 #include <algorithm>
 #include <map>
@@ -29,18 +29,27 @@ constexpr base::TimeDelta kCryptohomeDBusTimeout = base::Seconds(3);
 
 }  // namespace
 
-CryptohomeClient::CryptohomeClient() {}
+UserDataAuthClient::UserDataAuthClient() : weak_ptr_factory_(this) {}
 
-CryptohomeClient::CryptohomeClient(DBusWrapperInterface* dbus_wrapper) {
+void UserDataAuthClient::Init(DBusWrapperInterface* dbus_wrapper,
+                              SuspendFreezerInterface* suspend_freezer) {
   DCHECK(dbus_wrapper);
+  DCHECK(suspend_freezer);
 
   dbus_wrapper_ = dbus_wrapper;
-  cryptohome_proxy_ =
+  suspend_freezer_ = suspend_freezer;
+  user_data_auth_dbus_proxy_ =
       dbus_wrapper_->GetObjectProxy(user_data_auth::kUserDataAuthServiceName,
                                     user_data_auth::kUserDataAuthServicePath);
+
+  dbus_wrapper_->RegisterForSignal(
+      user_data_auth_dbus_proxy_, user_data_auth::kUserDataAuthInterface,
+      user_data_auth::kEvictedKeyRestoredSignal,
+      base::BindRepeating(&UserDataAuthClient::HandleKeyRestoredSignal,
+                          weak_ptr_factory_.GetWeakPtr()));
 }
 
-void CryptohomeClient::EvictDeviceKey(int suspend_request_id) {
+void UserDataAuthClient::EvictDeviceKey(int suspend_request_id) {
   user_data_auth::EvictDeviceKeyRequest request;
   request.set_eviction_id(suspend_request_id);
   dbus::MethodCall method_call(user_data_auth::kUserDataAuthInterface,
@@ -48,7 +57,7 @@ void CryptohomeClient::EvictDeviceKey(int suspend_request_id) {
   dbus::MessageWriter writer(&method_call);
   brillo::dbus_utils::WriteDBusArgs(&writer, request);
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
-      cryptohome_proxy_, &method_call, kCryptohomeDBusTimeout);
+      user_data_auth_dbus_proxy_, &method_call, kCryptohomeDBusTimeout);
   if (!response)
     return;
 
@@ -61,6 +70,18 @@ void CryptohomeClient::EvictDeviceKey(int suspend_request_id) {
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(ERROR) << "EvictDeviceKey() failed: " << reply.error();
   }
+}
+
+void UserDataAuthClient::HandleKeyRestoredSignal(dbus::Signal* signal) {
+  dbus::MessageReader reader(signal);
+  user_data_auth::EvictedKeyRestored key_restored;
+  if (!reader.PopArrayOfBytesAsProto(&key_restored)) {
+    LOG(ERROR) << "Unable to read " << user_data_auth::kEvictedKeyRestoredSignal
+               << " args";
+    return;
+  }
+
+  suspend_freezer_->ThawProcesses();
 }
 
 }  // namespace power_manager::system
