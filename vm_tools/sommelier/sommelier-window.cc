@@ -383,6 +383,9 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
       window->min_height <= width_in_pixels &&
       window->max_width >= height_in_pixels &&
       window->max_height <= height_in_pixels) {
+    // TODO(b/330639760): Consider unset aspect ratio every frame in
+    // surface_commit.
+    zaura_surface_set_aspect_ratio(window->aura_surface, -1, -1);
     sl_window_reset_viewport(window);
     window->next_config.mask |= XCB_CONFIG_WINDOW_WIDTH |
                                 XCB_CONFIG_WINDOW_HEIGHT |
@@ -428,6 +431,11 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
   sl_transform_guest_to_host(window->ctx, window->paired_surface,
                              &safe_window_width_in_wl,
                              &safe_window_height_in_wl);
+  // TODO(b/330639760): For some reason, set_aspect_ratio includes the title
+  // bar in the surface ratio. Figure out a way to mitigate this.
+  // Also consider setting aspect ratio every frame in surface_commit.
+  zaura_surface_set_aspect_ratio(window->aura_surface, safe_window_width_in_wl,
+                                 safe_window_height_in_wl + 50);
 
   // TODO(endlesspring): consider ignoring aspect ratio and filling the entire
   // screen if Exo wants the window to be fullscreen. This wills require having
@@ -440,6 +448,8 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
   //   return;
   // }
 
+  // TODO(b/330639760): Once aspect ratio is working correctly, we can entirely
+  // get rid of this ratio calculation, in theory.
   // Adjust viewport while maintaining aspect ratio
   float width_ratio = static_cast<float>(safe_window_width) / width_in_pixels;
   float height_ratio =
