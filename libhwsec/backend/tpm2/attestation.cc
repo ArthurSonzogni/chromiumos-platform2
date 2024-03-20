@@ -16,6 +16,7 @@
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_util.h>
 #include <crypto/sha2.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/multiple_authorization_delegate.h>
 #include <libhwsec-foundation/crypto/aes.h>
@@ -25,6 +26,7 @@
 
 #include "libhwsec/backend/tpm2/static_utils.h"
 #include "libhwsec/error/tpm2_error.h"
+#include "libhwsec/error/tpm_manager_error.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
@@ -76,6 +78,22 @@ StatusOr<brillo::SecureBlob> DecryptIdentityCertificate(
                                 TPMRetryAction::kNoRetry);
   }
   return decrypted;
+}
+
+Status RemoveOwnerDependencyForAttestation(
+    org::chromium::TpmManagerProxyInterface& tpm_manager) {
+  tpm_manager::RemoveOwnerDependencyRequest request;
+  request.set_owner_dependency(tpm_manager::kTpmOwnerDependency_Attestation);
+  tpm_manager::RemoveOwnerDependencyReply reply;
+
+  if (brillo::ErrorPtr err; !tpm_manager.RemoveOwnerDependency(
+          request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
+    return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
+        .Wrap(std::move(err));
+  }
+
+  RETURN_IF_ERROR(MakeStatus<TPMManagerError>(reply.status()));
+  return OkStatus();
 }
 
 }  // namespace
@@ -522,6 +540,10 @@ StatusOr<brillo::SecureBlob> AttestationTpm2::ActivateIdentity(
   std::string credential = trunks::StringFrom_TPM2B_DIGEST(encoded_credential);
   return DecryptIdentityCertificate(
       credential, encrypted_certificate.wrapped_certificate());
+}
+
+Status AttestationTpm2::FinalizeEnrollmentPreparation() {
+  return RemoveOwnerDependencyForAttestation(tpm_manager_);
 }
 
 }  // namespace hwsec

@@ -10,6 +10,7 @@
 #include <base/sys_byteorder.h>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/database.pb.h>
@@ -18,9 +19,13 @@
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <libhwsec-foundation/crypto/rsa.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-constants.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "libhwsec/backend/tpm1/static_utils.h"
 #include "libhwsec/error/tpm1_error.h"
+#include "libhwsec/error/tpm_manager_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
@@ -141,6 +146,22 @@ std::string GetDescriptionForMode(const Mode& mode) {
       "(Developer Mode: %s, Recovery Mode: %s, Firmware Type: %s)",
       mode.developer_mode ? "On" : "Off", mode.recovery_mode ? "On" : "Off",
       mode.verified_firmware ? "Verified" : "Developer");
+}
+
+Status RemoveOwnerDependencyForAttestation(
+    org::chromium::TpmManagerProxyInterface& tpm_manager) {
+  tpm_manager::RemoveOwnerDependencyRequest request;
+  request.set_owner_dependency(tpm_manager::kTpmOwnerDependency_Attestation);
+  tpm_manager::RemoveOwnerDependencyReply reply;
+
+  if (brillo::ErrorPtr err; !tpm_manager.RemoveOwnerDependency(
+          request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
+    return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
+        .Wrap(std::move(err));
+  }
+
+  RETURN_IF_ERROR(MakeStatus<TPMManagerError>(reply.status()));
+  return OkStatus();
 }
 
 }  // namespace
@@ -526,6 +547,10 @@ StatusOr<brillo::SecureBlob> AttestationTpm1::ActivateIdentity(
       .WithStatus<TPMError>("Failed to activate identity");
   return brillo::SecureBlob(credential_buffer.value(),
                             credential_buffer.value() + credential_length);
+}
+
+Status AttestationTpm1::FinalizeEnrollmentPreparation() {
+  return RemoveOwnerDependencyForAttestation(tpm_manager_);
 }
 
 }  // namespace hwsec

@@ -7,6 +7,8 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/sha.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <trunks/mock_blob_parser.h>
 #include <trunks/mock_tpm.h>
 #include <trunks/mock_tpm_utility.h>
@@ -502,6 +504,15 @@ TEST_F(BackendAttestationTpm2Test, CreateIdentity) {
   EXPECT_EQ(identity_key.identity_key_blob(), kFakeKeyBlob);
   EXPECT_EQ(identity_binding.identity_public_key_tpm_format(),
             serialized_public_key);
+}
+
+TEST_F(BackendAttestationTpm2Test, FinalizeEnrollmentPreparation) {
+  tpm_manager::RemoveOwnerDependencyReply remove_reply;
+  remove_reply.set_status(tpm_manager::TpmManagerStatus::STATUS_SUCCESS);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
+              RemoveOwnerDependency(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(remove_reply), Return(true)));
+  ASSERT_OK(backend_->GetAttestationTpm2().FinalizeEnrollmentPreparation());
 }
 
 }  // namespace hwsec

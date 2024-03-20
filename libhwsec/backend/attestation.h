@@ -62,6 +62,10 @@ class Attestation {
       const attestation::EncryptedIdentityCredential&
           encrypted_certificate) = 0;
 
+  // Finalizes the enrollment preparation. For example, in case of TPM, this
+  // would remove the owner dependency of attestation.
+  virtual Status FinalizeEnrollmentPreparation() = 0;
+
  protected:
   Attestation() = default;
   ~Attestation() = default;

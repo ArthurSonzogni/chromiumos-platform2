@@ -100,6 +100,10 @@ class AttestationFrontend : public Frontend {
 
   // Is the security module ready to use.
   virtual StatusOr<bool> IsReady() const = 0;
+
+  // Finalizes the enrollment preparation. For example, in case of TPM, this
+  // would remove the owner dependency of attestation.
+  virtual Status FinalizeEnrollmentPreparation() const = 0;
 };
 
 }  // namespace hwsec

@@ -87,6 +87,7 @@ class MockAttestationFrontend : public MockFrontend,
               (attestation::KeyType key_type),
               (const override));
   MOCK_METHOD(StatusOr<bool>, IsReady, (), (const override));
+  MOCK_METHOD(Status, FinalizeEnrollmentPreparation, (), (const override));
 };
 
 }  // namespace hwsec

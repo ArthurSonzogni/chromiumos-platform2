@@ -16,6 +16,7 @@
 #include "libhwsec/backend/tpm2/random.h"
 #include "libhwsec/backend/tpm2/signing.h"
 #include "libhwsec/backend/tpm2/trunks_context.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
@@ -57,6 +58,7 @@ class AttestationTpm2 : public Attestation {
       Key identity_key,
       const attestation::EncryptedIdentityCredential& encrypted_certificate)
       override;
+  Status FinalizeEnrollmentPreparation() override;
 
  private:
   // Certifies the |key| by the |identity_key| with |external_data|.

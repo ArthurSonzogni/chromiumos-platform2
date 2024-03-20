@@ -14,6 +14,7 @@
 #include "libhwsec/backend/tpm1/config.h"
 #include "libhwsec/backend/tpm1/key_management.h"
 #include "libhwsec/backend/tpm1/tss_helper.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
@@ -25,11 +26,13 @@ class AttestationTpm1 : public Attestation {
   AttestationTpm1(overalls::Overalls& overalls,
                   TssHelper& tss_helper,
                   ConfigTpm1& config,
-                  KeyManagementTpm1& key_management)
+                  KeyManagementTpm1& key_management,
+                  org::chromium::TpmManagerProxyInterface& tpm_manager)
       : overalls_(overalls),
         tss_helper_(tss_helper),
         config_(config),
-        key_management_(key_management) {}
+        key_management_(key_management),
+        tpm_manager_(tpm_manager) {}
 
   StatusOr<attestation::Quote> Quote(DeviceConfigs device_configs,
                                      Key key) override;
@@ -51,6 +54,7 @@ class AttestationTpm1 : public Attestation {
       Key identity_key,
       const attestation::EncryptedIdentityCredential& encrypted_certificate)
       override;
+  Status FinalizeEnrollmentPreparation() override;
 
  private:
   // Certifies the |key| by the |identity_key| with |external_data|.
@@ -62,6 +66,7 @@ class AttestationTpm1 : public Attestation {
   TssHelper& tss_helper_;
   ConfigTpm1& config_;
   KeyManagementTpm1& key_management_;
+  org::chromium::TpmManagerProxyInterface& tpm_manager_;
 };
 
 }  // namespace hwsec

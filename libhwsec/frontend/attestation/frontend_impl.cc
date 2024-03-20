@@ -200,4 +200,9 @@ StatusOr<bool> AttestationFrontendImpl::IsReady() const {
   return middleware_.CallSync<&Backend::State::IsReady>();
 }
 
+Status AttestationFrontendImpl::FinalizeEnrollmentPreparation() const {
+  return middleware_
+      .CallSync<&Backend::Attestation::FinalizeEnrollmentPreparation>();
+}
+
 }  // namespace hwsec

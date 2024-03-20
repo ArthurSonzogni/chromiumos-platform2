@@ -49,7 +49,8 @@ BackendTpm1::BackendTpm1(Proxy& proxy,
       vendor_(overalls_, tss_helper_, proxy_.GetTpmManager(), key_management_),
       recovery_crypto_(overalls_, config_, key_management_, sealing_, signing_),
       u2f_(),
-      attestation_(overalls_, tss_helper_, config_, key_management_),
+      attestation_(
+          overalls_, tss_helper_, config_, key_management_, tpm_manager_),
       version_attestation_(),
       ro_data_(tpm_nvram_) {}
 

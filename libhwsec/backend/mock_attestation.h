@@ -36,6 +36,9 @@ class MockAttestation : public Attestation {
         .WillByDefault(Invoke(default_, &Attestation::CreateIdentity));
     ON_CALL(*this, ActivateIdentity)
         .WillByDefault(Invoke(default_, &Attestation::ActivateIdentity));
+    ON_CALL(*this, FinalizeEnrollmentPreparation)
+        .WillByDefault(
+            Invoke(default_, &Attestation::FinalizeEnrollmentPreparation));
   }
 
   MOCK_METHOD(StatusOr<attestation::Quote>,
@@ -66,6 +69,7 @@ class MockAttestation : public Attestation {
        Key identity_key,
        const attestation::EncryptedIdentityCredential& encrypted_certificate),
       (override));
+  MOCK_METHOD(Status, FinalizeEnrollmentPreparation, (), (override));
 
  private:
   Attestation* default_;
