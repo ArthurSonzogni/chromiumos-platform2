@@ -64,7 +64,6 @@ class BRILLO_EXPORT LoopbackDevice : public BackingDevice {
 
   const std::string name_;
   const int64_t size_;
-  const bool fixed_backing_;
 
   Platform* platform_;
 };

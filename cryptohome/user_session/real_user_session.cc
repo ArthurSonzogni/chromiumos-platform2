@@ -46,9 +46,6 @@ using ::hwsec_foundation::status::StatusChain;
 // Message to use when generating a secret for WebAuthn.
 constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
 
-// Message to use when generating a secret for hibernate.
-constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
-
 }  // namespace
 
 RealUserSession::RealUserSession(
@@ -89,7 +86,6 @@ MountStatus RealUserSession::MountVault(
   // u2fd only needs to fetch the secret hash and not the secret itself when
   // mounting.
   PrepareWebAuthnSecretHash(fs_keyset.Key().fek, fs_keyset.Key().fnek);
-  PrepareHibernateSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
   PrepareChapsKey(fs_keyset.chaps_key());
 
   return OkStatus<CryptohomeMountError>();
@@ -226,30 +222,6 @@ void RealUserSession::PrepareChapsKey(const brillo::SecureBlob& chaps_key) {
   } else if (pkcs11_token_->NeedRestore()) {
     pkcs11_token_->RestoreAuthData(chaps_key);
   }
-}
-
-void RealUserSession::PrepareHibernateSecret(const brillo::SecureBlob& fek,
-                                             const brillo::SecureBlob& fnek) {
-  // This hibernate secret can be rederived upon in-session user auth success
-  // since they will unlock the vault keyset.
-  const std::string message(kHibernateSecretHmacMessage);
-
-  hibernate_secret_ = std::make_unique<brillo::SecureBlob>(
-      HmacSha256(brillo::SecureBlob::Combine(fnek, fek),
-                 brillo::Blob(message.cbegin(), message.cend())));
-
-  clear_hibernate_secret_timer_.Start(
-      FROM_HERE, base::Seconds(600),
-      base::BindOnce(&RealUserSession::ClearHibernateSecret,
-                     weak_factory_.GetWeakPtr()));
-}
-
-void RealUserSession::ClearHibernateSecret() {
-  hibernate_secret_.reset();
-}
-
-std::unique_ptr<brillo::SecureBlob> RealUserSession::GetHibernateSecret() {
-  return std::move(hibernate_secret_);
 }
 
 bool RealUserSession::VerifyUser(

@@ -322,17 +322,6 @@ class UserDataAuth {
       base::OnceCallback<
           void(const user_data_auth::GetRecoverableKeyStoresReply&)> on_done);
 
-  // =============  Hibernate Secret Public Methods ==============
-  void GetHibernateSecret(
-      user_data_auth::GetHibernateSecretRequest request,
-      OnDoneCallback<user_data_auth::GetHibernateSecretReply> on_done);
-
-  // Retrieves information on what encryption features are in use in cryptohome,
-  // such as Intel Keylocker. This allows other services such as hiberate
-  // manager to determine treatments needed for when these features are enabled.
-  user_data_auth::GetEncryptionInfoReply GetEncryptionInfo(
-      const user_data_auth::GetEncryptionInfoRequest& request);
-
   // ========= Firmware Management Parameters Related Public Methods =========
 
   // Retrieve the firmware management parameters. Returns

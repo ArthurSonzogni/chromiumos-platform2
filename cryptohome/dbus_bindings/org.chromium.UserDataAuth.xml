@@ -111,36 +111,6 @@ do.
       </arg>
     </method>
 
-    <method name="GetHibernateSecret">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetHibernateSecretRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetHibernateSecretReply" />
-      </arg>
-    </method>
-    <!-- This API provides information regarding encryption features
-         (such as Keylocker) currently in use in cryptohomed.
-         At the moment it is used by hibernate manager to determine
-         special treatments for hardware encryption features.
-    -->
-    <method name="GetEncryptionInfo">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetEncryptionInfoRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetEncryptionInfoReply" />
-      </arg>
-    </method>
-
     <method name="StartMigrateToDircrypto">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

@@ -70,8 +70,6 @@ class RealUserSession : public UserSession {
 
   const brillo::SecureBlob& GetWebAuthnSecretHash() const override;
 
-  std::unique_ptr<brillo::SecureBlob> GetHibernateSecret() override;
-
   bool VerifyUser(const ObfuscatedUsername& obfuscated_username) const override;
 
   Pkcs11Token* GetPkcs11Token() const override { return pkcs11_token_.get(); }
@@ -94,13 +92,6 @@ class RealUserSession : public UserSession {
   // Clears the WebAuthn secret if it's not read yet.
   void ClearWebAuthnSecret();
 
-  // Computes a public derivative from |fek| and |fnek| for hiberman to fetch.
-  void PrepareHibernateSecret(const brillo::SecureBlob& fek,
-                              const brillo::SecureBlob& fnek);
-
-  // Clears the WebAuthn secret if it's not read yet.
-  void ClearHibernateSecret();
-
   const Username username_;
   const ObfuscatedUsername obfuscated_username_;
 
@@ -114,11 +105,6 @@ class RealUserSession : public UserSession {
   brillo::SecureBlob webauthn_secret_hash_;
   // Timer for clearing the WebAuthn secret.
   base::OneShotTimer clear_webauthn_secret_timer_;
-
-  // Secret for securing hibernate images.
-  std::unique_ptr<brillo::SecureBlob> hibernate_secret_;
-  // Timer for clearing the hibernate secret.
-  base::OneShotTimer clear_hibernate_secret_timer_;
 
   scoped_refptr<Mount> mount_;
   std::unique_ptr<Pkcs11Token> pkcs11_token_;

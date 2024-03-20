@@ -107,35 +107,16 @@ CryptohomeVaultFactory::GenerateStorageContainer(
       LOG_IF(INFO, dm_options.keylocker_enabled)
           << "Using Keylocker for encryption";
 
-      int64_t backing_size = static_cast<int64_t>(
-          (stateful_size * kLogicalVolumeSizePercent) / (100 * 1024 * 1024));
-      std::string backing_name =
-          LogicalVolumePrefix(obfuscated_username) + container_identifier;
-
-      // Set up the backing device config. Use a snapshot of the logical volume
-      // if it exists, or set up the logical volume directly.
-      base::FilePath snapshot_path =
-          LogicalVolumeSnapshotPath(obfuscated_username, container_identifier);
-
-      libstorage::BackingDeviceConfig backing_config;
-
-      if (platform_->FileExists(snapshot_path)) {
-        backing_config = {
-            .type = libstorage::BackingDeviceType::kLoopbackDevice,
-            .name = backing_name,
-            .size = backing_size,
-            .loopback = {.backing_file_path = snapshot_path,
-                         .fixed_backing = true}};
-
-      } else {
-        backing_config = {
-            .type = libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
-            .name = backing_name,
-            .size = backing_size,
-            .logical_volume = {.vg = vg_, .thinpool = thinpool_}};
-      }
       config.dmcrypt_config = {
-          .backing_device_config = backing_config,
+          .backing_device_config =
+              {.type =
+                   libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
+               .name = LogicalVolumePrefix(obfuscated_username) +
+                       container_identifier,
+               .size = static_cast<int64_t>(
+                   (stateful_size * kLogicalVolumeSizePercent) /
+                   (100 * 1024 * 1024)),
+               .logical_volume = {.vg = vg_, .thinpool = thinpool_}},
           .dmcrypt_device_name =
               DmcryptVolumePrefix(obfuscated_username) + container_identifier,
           .dmcrypt_cipher = dm_options.keylocker_enabled

@@ -496,9 +496,6 @@ class AuthSession final {
   static std::optional<base::UnguessableToken> GetTokenFromSerializedString(
       const std::string& serialized_token);
 
-  // Get the hibernate secret, derived from the file system keyset.
-  std::unique_ptr<brillo::SecureBlob> GetHibernateSecret();
-
   // Add a callback to call when the AuthSession is authenticated. This callback
   // is triggered immediately if the session is already authenticated.
   void AddOnAuthCallback(base::OnceClosure on_auth);

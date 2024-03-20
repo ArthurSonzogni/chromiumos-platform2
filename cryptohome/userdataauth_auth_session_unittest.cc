@@ -722,31 +722,6 @@ TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
   }
 }
 
-TEST_F(AuthSessionInterfaceTest, GetHibernateSecretUnauthenticatedTest) {
-  std::string serialized_token;
-  {
-    base::UnguessableToken token = auth_session_manager_->CreateAuthSession(
-        kUsername,
-        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
-    TestFuture<InUseAuthSession> future;
-    auth_session_manager_->RunWhenAvailable(token, future.GetCallback());
-    InUseAuthSession auth_session = future.Take();
-    serialized_token = auth_session->serialized_token();
-  }
-  // Verify an unauthenticated session fails in producing a hibernate secret.
-  user_data_auth::GetHibernateSecretRequest request;
-  request.set_auth_session_id(serialized_token);
-  TestFuture<user_data_auth::GetHibernateSecretReply> reply_future;
-  userdataauth_.GetHibernateSecret(
-      request,
-      reply_future
-          .GetCallback<const user_data_auth::GetHibernateSecretReply&>());
-  user_data_auth::GetHibernateSecretReply hs_reply = reply_future.Take();
-
-  ASSERT_NE(hs_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_FALSE(hs_reply.hibernate_secret().length());
-}
-
 TEST_F(AuthSessionInterfaceTest, ExtendAuthSessionDefaultValue) {
   // Setup.
   std::string serialized_token;
@@ -1624,59 +1599,6 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoLabel) {
   // Verify
   ASSERT_NE(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   ASSERT_THAT(reply.auth_properties().authorized_for(), IsEmpty());
-}
-
-TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretTest) {
-  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
-
-  // Arrange.
-  std::string serialized_token =
-      StartAuthenticatedAuthSession(kUsernameString, AUTH_INTENT_DECRYPT);
-  EXPECT_CALL(system_apis_.platform,
-              DirectoryExists(UserPath(obfuscated_username)))
-      .WillRepeatedly(Return(true));
-
-  user_data_auth::GetHibernateSecretRequest hs_request;
-  hs_request.set_auth_session_id(serialized_token);
-  TestFuture<user_data_auth::GetHibernateSecretReply> reply_future;
-  userdataauth_.GetHibernateSecret(
-      hs_request,
-      reply_future
-          .GetCallback<const user_data_auth::GetHibernateSecretReply&>());
-  user_data_auth::GetHibernateSecretReply hs_reply = reply_future.Take();
-
-  // Assert.
-  EXPECT_EQ(hs_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_TRUE(hs_reply.hibernate_secret().length());
-}
-
-TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretWithBroadcastId) {
-  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
-
-  // Arrange.
-  std::string serialized_token =
-      StartAuthenticatedAuthSession(kUsernameString, AUTH_INTENT_DECRYPT);
-  std::string serialized_public_token;
-  {
-    TestFuture<InUseAuthSession> future;
-    auth_session_manager_->RunWhenAvailable(serialized_token,
-                                            future.GetCallback());
-    serialized_public_token = future.Get()->serialized_public_token();
-  }
-
-  // Act.
-  user_data_auth::GetHibernateSecretRequest hs_request;
-  hs_request.set_auth_session_id(serialized_public_token);
-  TestFuture<user_data_auth::GetHibernateSecretReply> reply_future;
-  userdataauth_.GetHibernateSecret(
-      hs_request,
-      reply_future
-          .GetCallback<const user_data_auth::GetHibernateSecretReply&>());
-  user_data_auth::GetHibernateSecretReply hs_reply = reply_future.Take();
-
-  // Assert.
-  EXPECT_EQ(hs_reply.error(),
-            user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
 }
 
 // Test that AuthenticateAuthFactor succeeds using credential verifier based

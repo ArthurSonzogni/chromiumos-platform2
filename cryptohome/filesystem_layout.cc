@@ -41,7 +41,6 @@ constexpr char kRecoverableKeyStoreDir[] = "key_store_certs";
 constexpr char kSkelPath[] = "/etc/skel";
 constexpr char kLogicalVolumePrefix[] = "cryptohome";
 constexpr char kDmcryptVolumePrefix[] = "dmcrypt";
-constexpr char kLogicalVolumeSnapshotSuffix[] = "-rw";
 
 // Storage for serialized RecoveryId.
 constexpr char kRecoveryIdFile[] = "recovery_id";
@@ -258,15 +257,6 @@ base::FilePath GetDmcryptCacheVolume(
   return base::FilePath(kDeviceMapperDir)
       .Append(DmcryptVolumePrefix(obfuscated_username)
                   .append(kDmcryptCacheContainerSuffix));
-}
-
-base::FilePath LogicalVolumeSnapshotPath(
-    const ObfuscatedUsername& obfuscated_username,
-    const std::string& container_name) {
-  std::string name = LogicalVolumePrefix(obfuscated_username) + container_name +
-                     kLogicalVolumeSnapshotSuffix;
-
-  return base::FilePath(kDeviceMapperDir).Append(name);
 }
 
 bool GetSystemSalt(libstorage::Platform* platform, brillo::SecureBlob* salt) {

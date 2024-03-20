@@ -391,36 +391,6 @@ message GetWebAuthnSecretHashReply {
   bytes webauthn_secret_hash = 2;
 }
 
-// Input parameters to GetHibernateSecret()
-message GetHibernateSecretRequest {
-  // This represents the "single user" that the secret belongs to.
-  // This mechanism is deprecated in favor of the auth_session_id below.
-  cryptohome.AccountIdentifier account_id = 1;
-  // Serialized form of token that is used to identify Auth Session in
-  // progress.
-  bytes auth_session_id = 2;
-}
-
-// Output parameters for GetHibernateSecret()
-message GetHibernateSecretReply {
-  CryptohomeErrorCode error = 1;
-  CryptohomeErrorInfo error_info = 3;
-
-  // The hibernate secret.
-  bytes hibernate_secret = 2;
-}
-
-// Input parameters to GetEncryptionInfo()
-message GetEncryptionInfoRequest {}
-
-// Output parameters for GetEncryptionInfo()
-message GetEncryptionInfoReply {
-  CryptohomeErrorCode error = 1;
-
-  // Set to true if keylocker is supported.
-  bool keylocker_supported = 2;
-}
-
 // TODO(b/126307305): For the messages, below, we'll need to add the
 // documentations for them.
 

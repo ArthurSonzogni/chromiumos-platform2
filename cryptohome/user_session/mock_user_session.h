@@ -53,10 +53,6 @@ class MockUserSession : public UserSession {
               GetWebAuthnSecretHash,
               (),
               (const, override));
-  MOCK_METHOD(std::unique_ptr<brillo::SecureBlob>,
-              GetHibernateSecret,
-              (),
-              (override));
   MOCK_METHOD(bool, VerifyUser, (const ObfuscatedUsername&), (const, override));
   MOCK_METHOD(Pkcs11Token*, GetPkcs11Token, (), (const, override));
   MOCK_METHOD(Username, GetUsername, (), (const, override));

@@ -79,9 +79,6 @@ class UserSession {
   // Returns the WebAuthn secret hash.
   virtual const brillo::SecureBlob& GetWebAuthnSecretHash() const = 0;
 
-  // Returns the hibernate secret.
-  virtual std::unique_ptr<brillo::SecureBlob> GetHibernateSecret() = 0;
-
   // Checks that the session belongs to the obfuscated_user.
   virtual bool VerifyUser(
       const ObfuscatedUsername& obfuscated_username) const = 0;

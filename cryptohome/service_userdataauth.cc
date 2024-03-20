@@ -821,54 +821,6 @@ void UserDataAuthAdaptor::DoGetRecoverableKeyStores(
           std::move(response)));
 }
 
-void UserDataAuthAdaptor::GetHibernateSecret(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::GetHibernateSecretReply>> response,
-    const user_data_auth::GetHibernateSecretRequest& in_request) {
-  service_->PostTaskToMountThread(
-      FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoGetHibernateSecret,
-                                weak_factory_.GetWeakPtr(),
-                                ThreadSafeDBusMethodResponse<
-                                    user_data_auth::GetHibernateSecretReply>::
-                                    MakeThreadSafe(std::move(response)),
-                                in_request));
-}
-
-void UserDataAuthAdaptor::DoGetHibernateSecret(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::GetHibernateSecretReply>> response,
-    const user_data_auth::GetHibernateSecretRequest& in_request) {
-  service_->GetHibernateSecret(
-      in_request,
-      base::BindOnce(
-          [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                 user_data_auth::GetHibernateSecretReply>> local_response,
-             const user_data_auth::GetHibernateSecretReply& reply) {
-            local_response->Return(reply);
-          },
-          std::move(response)));
-}
-
-void UserDataAuthAdaptor::GetEncryptionInfo(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::GetEncryptionInfoReply>> response,
-    const user_data_auth::GetEncryptionInfoRequest& in_request) {
-  service_->PostTaskToMountThread(
-      FROM_HERE,
-      base::BindOnce(
-          &UserDataAuthAdaptor::DoGetEncryptionInfo, weak_factory_.GetWeakPtr(),
-          ThreadSafeDBusMethodResponse<user_data_auth::GetEncryptionInfoReply>::
-              MakeThreadSafe(std::move(response)),
-          in_request));
-}
-
-void UserDataAuthAdaptor::DoGetEncryptionInfo(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::GetEncryptionInfoReply>> response,
-    const user_data_auth::GetEncryptionInfoRequest& in_request) {
-  response->Return(service_->GetEncryptionInfo(in_request));
-}
-
 void UserDataAuthAdaptor::StartMigrateToDircrypto(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::StartMigrateToDircryptoReply>> response,

@@ -23,15 +23,9 @@ LoopbackDevice::LoopbackDevice(const BackingDeviceConfig& config,
     : backing_file_path_(config.loopback.backing_file_path),
       name_(config.name),
       size_(config.size),
-      fixed_backing_(config.loopback.fixed_backing),
       platform_(platform) {}
 
 bool LoopbackDevice::Create() {
-  if (fixed_backing_) {
-    LOG(ERROR) << "Backing of loop device " << backing_file_path_
-               << " cannot be created, as it is fixed.";
-    return false;
-  }
   if (!platform_->CreateSparseFile(backing_file_path_, size_) ||
       !platform_->SetPermissions(backing_file_path_, S_IRUSR | S_IWUSR)) {
     LOG(ERROR) << "Failed to create sparse file.";
@@ -41,13 +35,6 @@ bool LoopbackDevice::Create() {
 }
 
 bool LoopbackDevice::Purge() {
-  if (fixed_backing_) {
-    LOG(ERROR) << "Fixed backing storage cannot be purged: "
-               << backing_file_path_;
-
-    return false;
-  }
-
   return platform_->DeleteFile(backing_file_path_);
 }
 

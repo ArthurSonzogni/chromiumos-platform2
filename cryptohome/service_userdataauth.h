@@ -92,26 +92,6 @@ class UserDataAuthAdaptor
           user_data_auth::GetRecoverableKeyStoresReply>> response,
       const user_data_auth::GetRecoverableKeyStoresRequest& in_request);
 
-  void GetHibernateSecret(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetHibernateSecretReply>> response,
-      const user_data_auth::GetHibernateSecretRequest& in_request) override;
-
-  void DoGetHibernateSecret(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetHibernateSecretReply>> response,
-      const user_data_auth::GetHibernateSecretRequest& in_request);
-
-  void GetEncryptionInfo(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetEncryptionInfoReply>> response,
-      const user_data_auth::GetEncryptionInfoRequest& in_request) override;
-
-  void DoGetEncryptionInfo(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetEncryptionInfoReply>> response,
-      const user_data_auth::GetEncryptionInfoRequest& in_request);
-
   void StartMigrateToDircrypto(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::StartMigrateToDircryptoReply>> response,

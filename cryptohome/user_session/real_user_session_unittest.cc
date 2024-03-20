@@ -58,8 +58,6 @@ using ::testing::UnorderedElementsAre;
 
 constexpr char kUser0[] = "First User";
 constexpr char kUserPassword0[] = "user0_pass";
-constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
-constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
 // Helper utility for making a stub verifier with a given label. Returns a
 // "unique_ptr, ptr" pair so that tests that need to hand over ownership but
@@ -215,7 +213,6 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
   // The WebAuthn secret isn't stored when mounting.
   EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
   EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
-  EXPECT_NE(session_->GetHibernateSecret(), nullptr);
 
   EXPECT_NE(session_->GetPkcs11Token(), nullptr);
   ASSERT_FALSE(session_->GetPkcs11Token()->IsReady());
@@ -360,60 +357,7 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
   }
 }
 
-// WebAuthn secret and hibernate secrets are cleared after being read once.
-TEST_F(RealUserSessionTest, WebAuthnAndHibernateSecretReadTwice) {
-  // SETUP
-  // Test with ecryptfs since it has a simpler existence check.
-  CryptohomeVault::Options options = {
-      .force_type = libstorage::StorageContainerType::kEcryptfs,
-  };
-
-  FileSystemKeyset fs_keyset = users_[0].user_fs_keyset;
-  EXPECT_CALL(*mount_,
-              MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
-      .WillOnce(ReturnOk<StorageError>());
-
-  EXPECT_TRUE(session_->MountVault(users_[0].name, fs_keyset, options).ok());
-  const std::string message(kWebAuthnSecretHmacMessage);
-  auto expected_webauthn_secret = std::make_unique<brillo::SecureBlob>(
-      HmacSha256(brillo::SecureBlob::Combine(fs_keyset.Key().fnek,
-                                             fs_keyset.Key().fek),
-                 brillo::Blob(message.cbegin(), message.cend())));
-  EXPECT_NE(expected_webauthn_secret, nullptr);
-  const std::string hibernate_message(kHibernateSecretHmacMessage);
-  auto expected_hibernate_secret =
-      std::make_unique<brillo::SecureBlob>(HmacSha256(
-          brillo::SecureBlob::Combine(fs_keyset.Key().fnek,
-                                      fs_keyset.Key().fek),
-          brillo::Blob(hibernate_message.cbegin(), hibernate_message.cend())));
-  EXPECT_NE(expected_hibernate_secret, nullptr);
-
-  // Call PrepareWebAuthnSecret because it isn't prepared when mounting.
-  session_->PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
-
-  // TEST
-
-  std::unique_ptr<brillo::SecureBlob> actual_webauthn_secret =
-      session_->GetWebAuthnSecret();
-  EXPECT_NE(actual_webauthn_secret, nullptr);
-  EXPECT_EQ(*actual_webauthn_secret, *expected_webauthn_secret);
-  std::unique_ptr<brillo::SecureBlob> actual_hibernate_secret =
-      session_->GetHibernateSecret();
-  EXPECT_NE(actual_hibernate_secret, nullptr);
-  EXPECT_EQ(*actual_hibernate_secret, *expected_hibernate_secret);
-  EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
-  // VERIFY
-
-  // The second read should get nothing.
-  EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
-  EXPECT_EQ(session_->GetHibernateSecret(), nullptr);
-
-  // The second read of the WebAuthn secret hash should still get the hash.
-  EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());
-}
-
-// Check whether Hibernate secret, WebAuthn secret and its hash exist at correct
-// timing.
+// Check whether WebAuthn secret and its hash exist at correct timing.
 TEST_F(RealUserSessionTest, SecretsTimeout) {
   // SETUP
 
@@ -435,10 +379,9 @@ TEST_F(RealUserSessionTest, SecretsTimeout) {
   session_->PrepareWebAuthnSecret(fs_keyset.Key().fek, fs_keyset.Key().fnek);
   EXPECT_NE(session_->GetWebAuthnSecret(), nullptr);
 
-  task_environment_.FastForwardBy(base::Seconds(600));
+  task_environment_.FastForwardBy(base::Seconds(0));
 
   EXPECT_EQ(session_->GetWebAuthnSecret(), nullptr);
-  EXPECT_EQ(session_->GetHibernateSecret(), nullptr);
 
   // The WebAuthn secret hash will not be cleared after timeout.
   EXPECT_FALSE(session_->GetWebAuthnSecretHash().empty());

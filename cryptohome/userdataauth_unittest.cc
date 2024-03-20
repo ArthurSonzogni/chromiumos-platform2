@@ -1392,18 +1392,6 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootExtendFail) {
             user_data_auth::CRYPTOHOME_ERROR_FAILED_TO_EXTEND_PCR);
 }
 
-TEST_F(UserDataAuthTest, GetEncryptionInfoEnabledTest) {
-  EXPECT_CALL(homedirs_, KeylockerForStorageEncryptionEnabled())
-      .WillRepeatedly(Return(true));
-
-  // Verify that a request produces encryption info.
-  user_data_auth::GetEncryptionInfoRequest request;
-  user_data_auth::GetEncryptionInfoReply reply =
-      userdataauth_->GetEncryptionInfo(request);
-  ASSERT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  ASSERT_TRUE(reply.keylocker_supported());
-}
-
 // ================== Firmware Management Parameters tests ==================
 
 TEST_F(UserDataAuthTest, GetFirmwareManagementParametersSuccess) {

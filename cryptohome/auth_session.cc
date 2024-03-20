@@ -101,7 +101,6 @@ using cryptohome::error::PrimaryActionIs;
 using cryptohome::error::ReportCryptohomeOk;
 using hwsec_foundation::CreateRandomBlob;
 using hwsec_foundation::CreateSecureRandomBlob;
-using hwsec_foundation::HmacSha256;
 using hwsec_foundation::HmacSha256Kdf;
 using hwsec_foundation::kAesBlockSize;
 using hwsec_foundation::status::MakeStatus;
@@ -118,8 +117,6 @@ constexpr int kHighTokenOffset = 0;
 constexpr int kLowTokenOffset = kSizeOfSerializedValueInToken;
 // Upper limit of the Size of user specified name.
 constexpr int kUserSpecifiedNameSizeLimit = 256;
-// Message to use when generating a secret for hibernate.
-constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 // This is the frequency with which a signal is sent for a locked out user,
 // unless the lockout time is less than this.
 const base::TimeDelta kAuthFactorStatusUpdateDelay = base::Seconds(30);
@@ -4357,15 +4354,6 @@ bool AuthSession::NeedsFullAuthForReset() {
                    uss_manager_->LoadEncrypted(obfuscated_username_),
                    _.As(false));
   return encrypted_uss->fingerprint_rate_limiter_id().has_value();
-}
-
-std::unique_ptr<brillo::SecureBlob> AuthSession::GetHibernateSecret() {
-  const FileSystemKeyset& fs_keyset = file_system_keyset();
-  const std::string message(kHibernateSecretHmacMessage);
-
-  return std::make_unique<brillo::SecureBlob>(HmacSha256(
-      brillo::SecureBlob::Combine(fs_keyset.Key().fnek, fs_keyset.Key().fek),
-      brillo::Blob(message.cbegin(), message.cend())));
 }
 
 void AuthSession::AddOnAuthCallback(base::OnceClosure on_auth) {

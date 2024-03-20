@@ -36,7 +36,6 @@ namespace {
 
 constexpr char kEncryptedFSType[] = "ext4";
 constexpr char kCryptDevName[] = "encstateful";
-constexpr char kBackingDevSnapshotName[] = "encstateful-rw";
 constexpr char kDevMapperPath[] = "/dev/mapper";
 constexpr char kDumpe2fsLogPath[] = "/run/mount_encrypted/dumpe2fs.log";
 constexpr char kProcDirtyExpirePath[] = "/proc/sys/vm/dirty_expire_centisecs";
@@ -160,32 +159,23 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
       rootdir.Append(STATEFUL_MNT "/encrypted.block");
 
   base::FilePath stateful_device = platform->GetStatefulDevice();
-  base::FilePath stateful_snapshot =
-      base::FilePath(kDevMapperPath).Append(kBackingDevSnapshotName);
 
   // Use the loopback sparse file in 2 cases:
   // 1. If the device is set up using an ext4 stateful partition.
   // 2. If the device already has an existing sparse loopback file: this
   //    situation can occur during migration of a device to an LVM stateful
   //    stateful partition.
-  // 3. During a hibernate resume boot, when encstateful is a dm-snapshot.
   // TODO(sarthakkukreti@): Loopback backing devices use size in bytes whereas
   // logical volume backing devices use size in megabytes. Fix this
   // inconsistency.
   if (!platform->IsStatefulLogicalVolumeSupported() ||
-      base::PathExists(sparse_backing_file) ||
-      base::PathExists(stateful_snapshot)) {
-    bool snapshot_exists = base::PathExists(stateful_snapshot);
-    base::FilePath backing_file =
-        snapshot_exists ? stateful_snapshot
-                        : rootdir.Append(STATEFUL_MNT "/encrypted.block");
-
+      base::PathExists(sparse_backing_file)) {
     backing_device_config = {
         .type = libstorage::BackingDeviceType::kLoopbackDevice,
         .name = dmcrypt_name,
         .size = fs_bytes_max,
-        .loopback = {.backing_file_path = backing_file,
-                     .fixed_backing = snapshot_exists}};
+        .loopback = {.backing_file_path =
+                         rootdir.Append(STATEFUL_MNT "/encrypted.block")}};
 
   } else {
     brillo::LogicalVolumeManager* lvm = platform->GetLogicalVolumeManager();
