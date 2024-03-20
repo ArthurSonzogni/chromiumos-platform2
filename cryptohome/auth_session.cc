@@ -631,7 +631,7 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
                         : delay->InMilliseconds());
 
     // Set |time_expiring_in| field.
-    base::TimeDelta time_expiring_in;
+    base::TimeDelta time_expiring_in = base::TimeDelta::Max();
     if (driver.IsExpirationSupported()) {
       auto expiration_delay =
           driver.GetTimeUntilExpiration(obfuscated_username_, auth_factor);
@@ -657,7 +657,7 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
     // If expiration is not supported by the factor delay is the determining
     // parameter in sending another signal.
     if (delay->is_zero() &&
-        (time_expiring_in.is_zero() || !driver.IsExpirationSupported())) {
+        (time_expiring_in.is_zero() || time_expiring_in.is_max())) {
       continue;
     }
     // Schedule another update after the smallest of |delay|,
@@ -670,8 +670,16 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
       if (d.is_zero()) {
         continue;
       }
+      base::Time next_signal_time = base::Time::Now() + d;
+      // Signal is going to fire before the next signal time we want to
+      // schedule. Skip the scheduling.
+      if (auth_factor_status_update_timer_->IsRunning() &&
+          auth_factor_status_update_timer_->desired_run_time() <
+              next_signal_time) {
+        break;
+      }
       auth_factor_status_update_timer_->Start(
-          FROM_HERE, base::Time::Now() + d,
+          FROM_HERE, next_signal_time,
           base::BindOnce(&AuthSession::SendAuthFactorStatusUpdateSignal,
                          weak_factory_for_timed_tasks_.GetWeakPtr()));
       break;
