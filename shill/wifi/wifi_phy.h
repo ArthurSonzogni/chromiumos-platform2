@@ -53,6 +53,23 @@ class WiFiPhy {
     DBS,
   };
 
+  // A Priority object represents the priority of a WiFi interface, to be used
+  // in concurrency conflict resolution.
+  class Priority {
+   public:
+    static constexpr uint32_t kMinimumPriority = 0;
+    static constexpr uint32_t kMaximumPriority = 5;
+    explicit constexpr Priority(uint32_t priority) : priority_(priority) {}
+    ~Priority() = default;
+    operator uint32_t() const { return priority_; }
+    bool IsValid() {
+      return kMinimumPriority <= priority_ && priority_ <= kMaximumPriority;
+    }
+
+   private:
+    uint32_t priority_;
+  };
+
   explicit WiFiPhy(uint32_t phy_index);
 
   virtual ~WiFiPhy();

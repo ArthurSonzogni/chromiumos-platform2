@@ -153,9 +153,9 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
     freq = args.Get<uint32_t>(kP2PDeviceFrequency);
   }
 
-  std::optional<uint32_t> priority;
+  std::optional<WiFiPhy::Priority> priority;
   if (args.Contains<uint32_t>(kP2PDevicePriority)) {
-    priority = args.Get<uint32_t>(kP2PDevicePriority);
+    priority = WiFiPhy::Priority(args.Get<uint32_t>(kP2PDevicePriority));
     LOG(INFO) << "Priority argument value: " << *priority;
   }
 
@@ -237,9 +237,9 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
     freq = args.Get<uint32_t>(kP2PDeviceFrequency);
   }
 
-  std::optional<uint32_t> priority;
+  std::optional<WiFiPhy::Priority> priority;
   if (args.Contains<uint32_t>(kP2PDevicePriority)) {
-    priority = args.Get<uint32_t>(kP2PDevicePriority);
+    priority = WiFiPhy::Priority(args.Get<uint32_t>(kP2PDevicePriority));
     LOG(INFO) << "Prioirty argument value: " << *priority;
   }
 

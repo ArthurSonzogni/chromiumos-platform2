@@ -1229,4 +1229,15 @@ TEST_F(WiFiPhyTest, SelectFrequency_DualBandsAvailable) {
                              [](auto& f) { return f.value; }));
 }
 
+TEST_F(WiFiPhyTest, ValidPriority) {
+  EXPECT_TRUE(WiFiPhy::Priority(0).IsValid());
+  EXPECT_TRUE(WiFiPhy::Priority(1).IsValid());
+  EXPECT_TRUE(WiFiPhy::Priority(2).IsValid());
+  EXPECT_TRUE(WiFiPhy::Priority(3).IsValid());
+  EXPECT_TRUE(WiFiPhy::Priority(4).IsValid());
+  EXPECT_TRUE(WiFiPhy::Priority(5).IsValid());
+  EXPECT_FALSE(WiFiPhy::Priority(6).IsValid());
+  EXPECT_FALSE(WiFiPhy::Priority(-1).IsValid());
+}
+
 }  // namespace shill
