@@ -105,6 +105,7 @@ void PseudonymizationManager::OnUserLoggedIn(const std::string& user_dir) {
   user_root_dir_ = base_dir_.Append(user_dir);
   ResetRateLimiter();
 }
+
 void PseudonymizationManager::OnUserLoggedOut() {
   LOG(INFO) << "User logged out.";
   user_root_dir_.clear();
