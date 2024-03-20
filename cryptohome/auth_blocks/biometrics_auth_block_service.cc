@@ -196,7 +196,7 @@ void BiometricsAuthBlockService::ListLegacyRecords(
 
 BiometricsAuthBlockService::Token::Token(AuthFactorType auth_factor_type,
                                          TokenType token_type)
-    : PreparedAuthFactorToken(auth_factor_type),
+    : PreparedAuthFactorToken(auth_factor_type, {}),
       token_type_(token_type),
       terminate_(*this) {}
 

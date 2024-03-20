@@ -6,12 +6,14 @@
 #define CRYPTOHOME_AUTH_BLOCKS_PREPARE_TOKEN_H_
 
 #include <memory>
+#include <utility>
 
 #include <base/functional/callback.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/key_objects.h"
 
 namespace cryptohome {
 
@@ -30,14 +32,17 @@ class PreparedAuthFactorToken {
   // Tokens cannot be copied, since they represent a unique active factor. When
   // they are destroyed they will automatically terminate the factor, although
   // the Status of this termination is lost in that case.
-  explicit PreparedAuthFactorToken(AuthFactorType auth_factor_type)
-      : auth_factor_type_(auth_factor_type) {}
+  PreparedAuthFactorToken(AuthFactorType auth_factor_type, PrepareOutput output)
+      : auth_factor_type_(auth_factor_type), output_(std::move(output)) {}
   PreparedAuthFactorToken(const PreparedAuthFactorToken&) = delete;
   PreparedAuthFactorToken& operator=(const PreparedAuthFactorToken&) = delete;
   virtual ~PreparedAuthFactorToken() = default;
 
   // The type of the auth factor that this token is used for.
   AuthFactorType auth_factor_type() const { return auth_factor_type_; }
+
+  // The output of the prepare operation.
+  const PrepareOutput& prepare_output() const { return output_; }
 
   // Terminate the factor. Returns a status reporting any errors with the
   // termination process, but note that the factor is considered terminated
@@ -76,6 +81,7 @@ class PreparedAuthFactorToken {
 
   bool terminated_ = false;
   const AuthFactorType auth_factor_type_;
+  const PrepareOutput output_;
 };
 
 }  // namespace cryptohome

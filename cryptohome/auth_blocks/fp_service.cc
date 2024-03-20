@@ -31,7 +31,7 @@ using hwsec_foundation::status::OkStatus;
 }  // namespace
 
 FingerprintAuthBlockService::Token::Token()
-    : PreparedAuthFactorToken(AuthFactorType::kLegacyFingerprint),
+    : PreparedAuthFactorToken(AuthFactorType::kLegacyFingerprint, {}),
       terminate_(*this) {}
 
 void FingerprintAuthBlockService::Token::AttachToService(

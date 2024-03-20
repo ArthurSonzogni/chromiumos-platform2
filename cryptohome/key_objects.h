@@ -84,6 +84,12 @@ struct PrepareInput {
   std::optional<uint64_t> rate_limiter_label;
 };
 
+struct PrepareOutput {
+  // The prepared recovery RPC request, to be sent to the recovery service.
+  // Produced when preparing for recovery.
+  std::optional<cryptorecovery::CryptoRecoveryRpcRequest> recovery_rpc_request;
+};
+
 struct AuthInput {
   // The user input, such as password.
   std::optional<brillo::SecureBlob> user_input;
