@@ -179,8 +179,7 @@ const CrostiniService::CrostiniDevice* CrostiniService::Start(
     StartAutoDNAT(dev.get());
   }
 
-  LOG(INFO) << __func__ << " " << vm_info
-            << ": Crostini network service started on "
+  LOG(INFO) << __func__ << " " << vm_info << ": VM network service started on "
             << dev->tap_device_ifname();
   auto signal_device = std::make_unique<NetworkDevice>();
   dev->ConvertToProto(signal_device.get());
@@ -219,8 +218,8 @@ void CrostiniService::Stop(uint64_t vm_id) {
   datapath_->RemoveInterface(tap_ifname);
   devices_.erase(vm_id);
 
-  LOG(INFO) << __func__ << " " << vm_info
-            << ": Crostini network service stopped on " << tap_ifname;
+  LOG(INFO) << __func__ << " " << vm_info << ": VM network service stopped on "
+            << tap_ifname;
 }
 
 const CrostiniService::CrostiniDevice* const CrostiniService::GetDevice(
@@ -246,18 +245,20 @@ std::unique_ptr<CrostiniService::CrostiniDevice> CrostiniService::AddTAP(
   auto address_type = AddressManagingTypeFromVMType(vm_type);
   auto ipv4_subnet = addr_mgr_->AllocateIPv4Subnet(address_type, subnet_index);
   if (!ipv4_subnet) {
-    LOG(ERROR) << "Subnet already in use or unavailable.";
+    LOG(ERROR) << __func__ << ": Subnet " << subnet_index
+               << " already in use or unavailable.";
     return nullptr;
   }
   // Verify addresses can be allocated in the VM IPv4 subnet.
   auto gateway_ipv4_cidr = ipv4_subnet->CIDRAtOffset(1);
   if (!gateway_ipv4_cidr) {
-    LOG(ERROR) << "Gateway address already in use or unavailable.";
+    LOG(ERROR) << __func__
+               << ": Gateway address already in use or unavailable.";
     return nullptr;
   }
   auto vm_ipv4_cidr = ipv4_subnet->CIDRAtOffset(2);
   if (!vm_ipv4_cidr) {
-    LOG(ERROR) << "VM address already in use or unavailable.";
+    LOG(ERROR) << __func__ << ": VM address already in use or unavailable.";
     return nullptr;
   }
   std::unique_ptr<Subnet> lxd_subnet;
@@ -265,12 +266,12 @@ std::unique_ptr<CrostiniService::CrostiniDevice> CrostiniService::AddTAP(
     lxd_subnet =
         addr_mgr_->AllocateIPv4Subnet(AddressManager::GuestType::kLXDContainer);
     if (!lxd_subnet) {
-      LOG(ERROR) << "LXD subnet already in use or unavailable.";
+      LOG(ERROR) << __func__ << ": LXD subnet already in use or unavailable.";
       return nullptr;
     }
     // Verify the LXD address can be allocated in the VM IPv4 subnet.
     if (!lxd_subnet->CIDRAtOffset(kTerminaContainerAddressOffset)) {
-      LOG(ERROR) << "LXD address already in use or unavailable.";
+      LOG(ERROR) << __func__ << ": LXD address already in use or unavailable.";
       return nullptr;
     }
   }
@@ -280,7 +281,7 @@ std::unique_ptr<CrostiniService::CrostiniDevice> CrostiniService::AddTAP(
       net_base::MacAddress(addr_mgr_->GenerateMacAddress(subnet_index)),
       gateway_ipv4_cidr, vm_tools::kCrosVmUser, DeviceMode::kTap);
   if (tap.empty()) {
-    LOG(ERROR) << "Failed to create TAP device.";
+    LOG(ERROR) << __func__ << ": Failed to create TAP device.";
     return nullptr;
   }
   if (lxd_subnet) {
@@ -289,7 +290,8 @@ std::unique_ptr<CrostiniService::CrostiniDevice> CrostiniService::AddTAP(
     const auto lxd_cidr =
         lxd_subnet->CIDRAtOffset(kTerminaContainerAddressOffset);
     if (!datapath_->AddIPv4Route(vm_ipv4_cidr->address(), *lxd_cidr)) {
-      LOG(ERROR) << "Failed to setup route to the Termina LXD container";
+      LOG(ERROR) << __func__
+                 << ": Failed to setup route to the Termina LXD container";
       return nullptr;
     }
   }
@@ -409,7 +411,8 @@ void CrostiniService::StartAutoDNAT(
   }
   auto dnat_target = GetAutoDNATTarget(virtual_device->type());
   if (!dnat_target) {
-    LOG(ERROR) << virtual_device->type() << "is not a valid auto DNAT target.";
+    LOG(ERROR) << __func__ << ": " << virtual_device->type()
+               << " is not a valid auto DNAT target.";
     return;
   }
   datapath_->AddInboundIPv4DNAT(*dnat_target, *default_logical_device_,
@@ -423,7 +426,8 @@ void CrostiniService::StopAutoDNAT(
   }
   auto dnat_target = GetAutoDNATTarget(virtual_device->type());
   if (!dnat_target) {
-    LOG(ERROR) << virtual_device->type() << "is not an valid auto DNAT target.";
+    LOG(ERROR) << __func__ << ": " << virtual_device->type()
+               << " is not a valid auto DNAT target.";
     return;
   }
   datapath_->RemoveInboundIPv4DNAT(*dnat_target, *default_logical_device_,
