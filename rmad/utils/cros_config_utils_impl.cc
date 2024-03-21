@@ -139,6 +139,20 @@ bool CrosConfigUtilsImpl::GetFirmwareConfig(uint32_t* firmware_config) const {
   return base::StringToUint(firmware_config_str, firmware_config);
 }
 
+std::optional<std::string> CrosConfigUtilsImpl::GetSpiFlashTransform(
+    const std::string& flash_name) const {
+  std::string mapped_flash_name;
+  const base::FilePath spi_flash_transform_path =
+      base::FilePath(kCrosRootPath).Append(kCrosSpiFlashTransformPath);
+
+  if (!cros_config_->GetString(spi_flash_transform_path.value(), flash_name,
+                               &mapped_flash_name)) {
+    return std::nullopt;
+  }
+
+  return mapped_flash_name;
+}
+
 bool CrosConfigUtilsImpl::GetDesignConfigList(
     std::vector<DesignConfig>* design_config_list) const {
   DCHECK(design_config_list);

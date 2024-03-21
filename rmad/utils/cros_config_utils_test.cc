@@ -43,6 +43,9 @@ constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
 
 constexpr uint32_t kFirmwareConfig = 55688;
 
+constexpr char kSpiFlashTranformFrom[] = "TestFlashNameFrom";
+constexpr char kSpiFlashTranformTo[] = "TestFlashNameTo";
+
 constexpr char kUndefinedComponentType[] = "undefined_component_type";
 constexpr uint32_t kSsfcMask = 0x8;
 constexpr char kSsfcComponentType[] = "TestComponentType";
@@ -109,6 +112,8 @@ class CrosConfigUtilsImplTest : public testing::Test {
     const base::FilePath root_path = base::FilePath(kCrosRootPath);
     const base::FilePath identity_path = root_path.Append(kCrosIdentityPath);
     const base::FilePath firmware_path = root_path.Append(kCrosFirmwarePath);
+    const base::FilePath spi_flash_transform_path =
+        root_path.Append(kCrosSpiFlashTransformPath);
     const base::FilePath rmad_path = root_path.Append(kCrosRmadPath);
     const base::FilePath ssfc_path = rmad_path.Append(kCrosSsfcPath);
     const base::FilePath component_type_configs_path =
@@ -127,6 +132,8 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                 args.model_name);
     fake_cros_config->SetString(root_path.value(), kCrosBrandCodeKey,
                                 kBrandCode);
+    fake_cros_config->SetString(spi_flash_transform_path.value(),
+                                kSpiFlashTranformFrom, kSpiFlashTranformTo);
     fake_cros_config->SetString(identity_path.value(), kCrosIdentitySkuKey,
                                 base::NumberToString(args.sku_id));
     fake_cros_config->SetString(firmware_path.value(),
@@ -310,6 +317,23 @@ TEST_F(CrosConfigUtilsImplTest, GetFirmwareConfig_Success) {
   uint32_t firmware_config;
   EXPECT_TRUE(cros_config_utils->GetFirmwareConfig(&firmware_config));
   EXPECT_EQ(firmware_config, kFirmwareConfig);
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetSpiFlashTransform_Success) {
+  auto cros_config_utils = CreateCrosConfigUtils({});
+
+  auto mapped_flash_name =
+      cros_config_utils->GetSpiFlashTransform(kSpiFlashTranformFrom);
+  EXPECT_TRUE(mapped_flash_name.has_value());
+  EXPECT_EQ(kSpiFlashTranformTo, mapped_flash_name.value());
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetSpiFlashTransform_No_Matched_Fail) {
+  auto cros_config_utils = CreateCrosConfigUtils({});
+
+  auto mapped_flash_name =
+      cros_config_utils->GetSpiFlashTransform("NoMatchedFlashName");
+  EXPECT_FALSE(mapped_flash_name.has_value());
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetSkuIdList_Success) {

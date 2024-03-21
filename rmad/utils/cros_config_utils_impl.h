@@ -33,6 +33,8 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
   bool GetSkuId(uint32_t* sku) const override;
   bool GetCustomLabelTag(std::string* custom_label_tag) const override;
   bool GetFirmwareConfig(uint32_t* firmware_config) const override;
+  std::optional<std::string> GetSpiFlashTransform(
+      const std::string& flash_name) const override;
 
   // Get cros_config attributes of all supported designs from the database.
   bool GetDesignConfigList(

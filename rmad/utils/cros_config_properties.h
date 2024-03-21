@@ -150,6 +150,9 @@ constexpr char kCrosProbeableComponentsIdentifierKey[] = "identifier";
 // /rmad/ssfc/component-type-configs/*/probeable-components/*/value.
 constexpr char kCrosProbeableComponentsValueKey[] = "value";
 
+// cros_config path /spi-flash-transform.
+constexpr char kCrosSpiFlashTransformPath[] = "spi-flash-transform";
+
 }  // namespace rmad
 
 #endif  // RMAD_UTILS_CROS_CONFIG_PROPERTIES_H_

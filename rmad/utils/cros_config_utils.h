@@ -52,6 +52,8 @@ class CrosConfigUtils {
   virtual bool GetSkuId(uint32_t* sku_id) const = 0;
   virtual bool GetCustomLabelTag(std::string* custom_label_tag) const = 0;
   virtual bool GetFirmwareConfig(uint32_t* firmware_config) const = 0;
+  virtual std::optional<std::string> GetSpiFlashTransform(
+      const std::string& flash_name) const = 0;
 
   // Get cros_config attributes of all supported designs from the database.
   virtual bool GetDesignConfigList(
