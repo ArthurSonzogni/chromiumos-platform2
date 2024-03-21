@@ -12,8 +12,6 @@ group("all") {
     ":file_attrs_cleaner_tool",
     ":install_lvm_config",
     ":install_setuid_restriction",
-    ":mount-encrypted",
-    ":mount_encrypted_lib",
     ":net_poll_tool",
     ":periodic_scheduler",
     ":process_killer",
@@ -22,6 +20,12 @@ group("all") {
     ":usermode-helper",
     ":usr_share_cros_init_scripts",
   ]
+  if (use.encrypted_stateful) {
+    deps += [
+      ":mount-encrypted",
+      ":mount_encrypted_lib",
+    ]
+  }
   if (use.syslog) {
     deps += [
       ":install_chromeos-cleanup-logs",
@@ -33,12 +37,14 @@ group("all") {
       ":chromeos_startup_test",
       ":clobber_state_test",
       ":file_attrs_cleaner_test",
-      ":mount_encrypted_tests",
       ":periodic_scheduler_test",
       ":process_killer_test",
       ":usermode-helper_test",
       ":utils_test",
     ]
+    if (use.encrypted_stateful) {
+      deps += [ ":mount_encrypted_tests" ]
+    }
   }
 }
 
