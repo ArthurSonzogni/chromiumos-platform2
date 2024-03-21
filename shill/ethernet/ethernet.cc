@@ -125,11 +125,11 @@ static bool IsExternalPciDev(const std::string& ifname) {
 
 Ethernet::Ethernet(Manager* manager,
                    const std::string& link_name,
-                   const std::string& mac_address,
+                   std::optional<net_base::MacAddress> mac_address,
                    int interface_index)
     : Device(manager,
              link_name,
-             mac_address,
+             (mac_address.has_value() ? mac_address->ToHexString() : ""),
              interface_index,
              Technology::kEthernet),
       link_up_(false),

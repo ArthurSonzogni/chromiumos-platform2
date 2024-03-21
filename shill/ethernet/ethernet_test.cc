@@ -43,7 +43,6 @@
 #include "shill/mock_service.h"
 #include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
-#include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
@@ -80,7 +79,7 @@ class TestEthernet : public Ethernet {
  public:
   TestEthernet(Manager* manager,
                const std::string& link_name,
-               const std::string& mac_address,
+               net_base::MacAddress mac_address,
                int interface_index)
       : Ethernet(manager, link_name, mac_address, interface_index) {}
 
@@ -152,7 +151,7 @@ class EthernetTest : public testing::Test {
  protected:
   int ifindex_ = 123;
   std::string ifname_ = "eth0";
-  std::string hwaddr_ = "000102030405";
+  net_base::MacAddress hwaddr_{0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
   RpcIdentifier dbus_path_ = RpcIdentifier("/interface/path");
 
   bool GetLinkUp() { return ethernet_->link_up_; }
@@ -606,7 +605,7 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
       kUsbEthernetMacAddressSourceBuiltinAdapterMac,
       base::BindOnce(&EthernetTest::ErrorCallback, base::Unretained(this)));
 
-  EXPECT_EQ(hwaddr_, ethernet_->mac_address());
+  EXPECT_EQ(hwaddr_.ToHexString(), ethernet_->mac_address());
 }
 
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {

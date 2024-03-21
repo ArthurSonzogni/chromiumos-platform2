@@ -5,14 +5,16 @@
 #include "shill/ethernet/virtio_ethernet.h"
 
 #include <unistd.h>
+
+#include <optional>
 #include <utility>
 
+#include <base/logging.h>
+#include <net-base/mac_address.h>
+
 #include "shill/control_interface.h"
-#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-
-#include <base/logging.h>
 
 namespace shill {
 
@@ -25,14 +27,10 @@ static std::string ObjectID(const VirtioEthernet* v) {
 
 VirtioEthernet::VirtioEthernet(Manager* manager,
                                const std::string& link_name,
-                               const std::string& address,
+                               std::optional<net_base::MacAddress> mac_address,
                                int interface_index)
-    : Ethernet(manager, link_name, address, interface_index) {
+    : Ethernet(manager, link_name, mac_address, interface_index) {
   SLOG(this, 2) << "VirtioEthernet device " << link_name << " initialized.";
-}
-
-VirtioEthernet::~VirtioEthernet() {
-  // Nothing to be done beyond what Ethernet dtor does.
 }
 
 void VirtioEthernet::Start(EnabledStateChangedCallback callback) {

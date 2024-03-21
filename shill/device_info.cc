@@ -646,12 +646,11 @@ DeviceRefPtr DeviceInfo::CreateDevice(
       manager_->modem_info()->OnDeviceInfoAvailable(link_name);
       break;
     case Technology::kEthernet:
-      device =
-          new Ethernet(manager_, link_name, mac_address_str, interface_index);
+      device = new Ethernet(manager_, link_name, mac_address, interface_index);
       break;
     case Technology::kVirtioEthernet:
-      device = new VirtioEthernet(manager_, link_name, mac_address_str,
-                                  interface_index);
+      device =
+          new VirtioEthernet(manager_, link_name, mac_address, interface_index);
       break;
     case Technology::kWiFi:
       // Defer creating this device until we get information about the

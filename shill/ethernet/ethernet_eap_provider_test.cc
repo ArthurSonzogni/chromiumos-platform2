@@ -7,6 +7,7 @@
 #include <base/functional/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 
 #include "shill/ethernet/mock_ethernet.h"
 #include "shill/mock_control.h"
@@ -65,12 +66,17 @@ TEST_F(EthernetEapProviderTest, StartAndStop) {
 }
 
 TEST_F(EthernetEapProviderTest, CredentialChangeCallback) {
+  constexpr net_base::MacAddress kMacAddress1(0x12, 0x34, 0x56, 0x78, 0x9a,
+                                              0xbc);
+  constexpr net_base::MacAddress kMacAddress2(0x12, 0x34, 0x56, 0x78, 0x9a,
+                                              0xbc);
+
   EXPECT_CALL(*this, Callback0()).Times(0);
   EXPECT_CALL(*this, Callback1()).Times(0);
   provider_.OnCredentialsChanged();
 
   scoped_refptr<MockEthernet> device0 =
-      new MockEthernet(&manager_, "eth0", "addr0", 0);
+      new MockEthernet(&manager_, "eth0", kMacAddress1, 0);
   EthernetEapProvider::CredentialChangeCallback callback0 = base::BindRepeating(
       &EthernetEapProviderTest::Callback0, base::Unretained(this));
 
@@ -80,7 +86,7 @@ TEST_F(EthernetEapProviderTest, CredentialChangeCallback) {
   provider_.OnCredentialsChanged();
 
   scoped_refptr<MockEthernet> device1 =
-      new MockEthernet(&manager_, "eth1", "addr1", 1);
+      new MockEthernet(&manager_, "eth1", kMacAddress2, 1);
   EthernetEapProvider::CredentialChangeCallback callback1 = base::BindRepeating(
       &EthernetEapProviderTest::Callback1, base::Unretained(this));
 

@@ -16,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ip_address.h>
+#include <net-base/mac_address.h>
 #include <net-base/socket.h>
 
 #include "shill/certificate_file.h"
@@ -40,7 +41,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
  public:
   Ethernet(Manager* manager,
            const std::string& link_name,
-           const std::string& mac_address,
+           std::optional<net_base::MacAddress> mac_address,
            int interface_index);
   Ethernet(const Ethernet&) = delete;
   Ethernet& operator=(const Ethernet&) = delete;
@@ -65,7 +66,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
   void ANQPQueryDone(const std::string& addr,
-                     const std::string& result) override{};
+                     const std::string& result) override {}
   void BSSAdded(const RpcIdentifier& BSS,
                 const KeyValueStore& properties) override;
   void BSSRemoved(const RpcIdentifier& BSS) override;
@@ -79,10 +80,10 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   void PropertiesChanged(const KeyValueStore& properties) override;
   void ScanDone(const bool& /*success*/) override;
   void StationAdded(const RpcIdentifier& Station,
-                    const KeyValueStore& properties) override{};
-  void StationRemoved(const RpcIdentifier& Station) override{};
-  void PskMismatch() override{};
-  void TermsAndConditions(const std::string& url) override{};
+                    const KeyValueStore& properties) override {}
+  void StationRemoved(const RpcIdentifier& Station) override {}
+  void PskMismatch() override {}
+  void TermsAndConditions(const std::string& url) override {}
 
   // Inherited from Device and responds to a neighbor reachability event from
   // patchpanel. Restarts network validation if the event type contradicts the

@@ -8,6 +8,7 @@
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 
 #include "shill/ethernet/mock_ethernet.h"
 #include "shill/mock_control.h"
@@ -26,6 +27,10 @@ using testing::ReturnRef;
 using testing::SaveArg;
 
 namespace shill {
+namespace {
+constexpr net_base::MacAddress kFakeMac0(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
+constexpr net_base::MacAddress kFakeMac1(0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa);
+}  // namespace
 
 class EthernetProviderTest : public testing::Test {
  public:
@@ -33,16 +38,13 @@ class EthernetProviderTest : public testing::Test {
       : manager_(&control_, &dispatcher_, &metrics_),
         profile_(new MockProfile(&manager_, "")),
         provider_(&manager_),
-        eth0_(new NiceMock<MockEthernet>(&manager_, "ethernet", fake_mac0, 0)),
-        eth1_(new NiceMock<MockEthernet>(&manager_, "ethernet", fake_mac1, 0)) {
+        eth0_(new NiceMock<MockEthernet>(&manager_, "ethernet", kFakeMac0, 0)),
+        eth1_(new NiceMock<MockEthernet>(&manager_, "ethernet", kFakeMac1, 0)) {
   }
   ~EthernetProviderTest() override = default;
 
  protected:
   using MockProfileRefPtr = scoped_refptr<MockProfile>;
-
-  static const char fake_mac0[];
-  static const char fake_mac1[];
 
   MockControl control_;
   EventDispatcherForTest dispatcher_;
@@ -53,10 +55,6 @@ class EthernetProviderTest : public testing::Test {
   scoped_refptr<MockEthernet> eth0_;
   scoped_refptr<MockEthernet> eth1_;
 };
-
-// static
-const char EthernetProviderTest::fake_mac0[] = "AaBBcCDDeeFF";
-const char EthernetProviderTest::fake_mac1[] = "FfEEDdccBbaA";
 
 TEST_F(EthernetProviderTest, Construct) {
   EXPECT_EQ(ServiceRefPtr(), provider_.service());

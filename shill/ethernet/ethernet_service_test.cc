@@ -7,6 +7,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 
 #include "shill/ethernet/mock_ethernet.h"
 #include "shill/mock_adaptors.h"
@@ -25,6 +26,9 @@ using ::testing::Return;
 using ::testing::ReturnRef;
 
 namespace shill {
+namespace {
+constexpr net_base::MacAddress kFakeMac(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
+}  // namespace
 
 class EthernetServiceTest : public PropertyStoreTest {
  public:
@@ -32,16 +36,13 @@ class EthernetServiceTest : public PropertyStoreTest {
       : mock_manager_(control_interface(), dispatcher(), metrics()) {
     Service::SetNextSerialNumberForTesting(0);
     ethernet_ =
-        new NiceMock<MockEthernet>(&mock_manager_, "ethernet", fake_mac, 0);
+        new NiceMock<MockEthernet>(&mock_manager_, "ethernet", kFakeMac, 0);
     service_ = new EthernetService(
         &mock_manager_,
         EthernetService::Properties(ethernet_->weak_ptr_factory_.GetWeakPtr()));
   }
-  ~EthernetServiceTest() override {}
 
  protected:
-  static const char fake_mac[];
-
   bool GetAutoConnect() { return service_->GetAutoConnect(nullptr); }
 
   bool SetAutoConnect(const bool connect, Error* error) {
@@ -56,9 +57,6 @@ class EthernetServiceTest : public PropertyStoreTest {
   scoped_refptr<MockEthernet> ethernet_;
   EthernetServiceRefPtr service_;
 };
-
-// static
-const char EthernetServiceTest::fake_mac[] = "AaBBcCDDeeFF";
 
 TEST_F(EthernetServiceTest, LogName) {
   EXPECT_EQ("ethernet_0", service_->log_name());

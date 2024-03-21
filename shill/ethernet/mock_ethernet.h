@@ -8,6 +8,7 @@
 #include <string>
 
 #include <gmock/gmock.h>
+#include <net-base/mac_address.h>
 
 #include "shill/ethernet/ethernet.h"
 #include "shill/refptr_types.h"
@@ -20,7 +21,7 @@ class MockEthernet : public Ethernet {
  public:
   MockEthernet(Manager* manager,
                const std::string& link_name,
-               const std::string& address,
+               net_base::MacAddress mac_address,
                int interface_index);
   MockEthernet(const MockEthernet&) = delete;
   MockEthernet& operator=(const MockEthernet&) = delete;
