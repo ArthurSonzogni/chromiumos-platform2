@@ -48,6 +48,7 @@
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/byte_utils.h>
+#include <net-base/mac_address.h>
 #include <net-base/netlink_manager.h>
 #include <re2/re2.h>
 
@@ -619,12 +620,16 @@ bool DeviceInfo::HasSubdir(const base::FilePath& base_dir,
   return false;
 }
 
-DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
-                                      const std::string& address,
-                                      int interface_index,
-                                      Technology technology) {
-  SLOG(1) << __func__ << ": " << link_name << " Address: " << address
+DeviceRefPtr DeviceInfo::CreateDevice(
+    const std::string& link_name,
+    std::optional<net_base::MacAddress> mac_address,
+    int interface_index,
+    Technology technology) {
+  SLOG(1) << __func__ << ": " << link_name << " MAC Address: "
+          << (mac_address.has_value() ? mac_address->ToString() : "(null)")
           << " Index: " << interface_index;
+
+  const std::string mac_address_str = HexEncode(mac_address);
   DeviceRefPtr device;
   delayed_devices_.erase(interface_index);
   infos_[interface_index].technology = technology;
@@ -641,11 +646,12 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
       manager_->modem_info()->OnDeviceInfoAvailable(link_name);
       break;
     case Technology::kEthernet:
-      device = new Ethernet(manager_, link_name, address, interface_index);
+      device =
+          new Ethernet(manager_, link_name, mac_address_str, interface_index);
       break;
     case Technology::kVirtioEthernet:
-      device =
-          new VirtioEthernet(manager_, link_name, address, interface_index);
+      device = new VirtioEthernet(manager_, link_name, mac_address_str,
+                                  interface_index);
       break;
     case Technology::kWiFi:
       // Defer creating this device until we get information about the
@@ -701,8 +707,8 @@ DeviceRefPtr DeviceInfo::CreateDevice(const std::string& link_name,
       // We will not manage this device in shill.  Do not create a device
       // object or do anything to change its state.  We create a stub object
       // which is useful for testing.
-      return new DeviceStub(manager_, link_name, address, interface_index,
-                            technology);
+      return new DeviceStub(manager_, link_name, mac_address_str,
+                            interface_index, technology);
   }
 
   manager_->UpdateUninitializedTechnologies();
@@ -808,8 +814,7 @@ void DeviceInfo::AddLinkMsgHandler(const net_base::RTNLMessage& msg) {
     }
 
     metrics_->RegisterDevice(dev_index, technology);
-    device =
-        CreateDevice(link_name, HexEncode(mac_address), dev_index, technology);
+    device = CreateDevice(link_name, mac_address, dev_index, technology);
     if (device) {
       RegisterDevice(device);
     }
@@ -1266,17 +1271,18 @@ void DeviceInfo::DelayedDeviceCreationTask() {
                    << " is unexpected technology " << technology;
     }
 
-    const std::string address = HexEncode(infos_[dev_index].mac_address);
+    const std::optional<net_base::MacAddress> mac_address =
+        infos_[dev_index].mac_address;
     int arp_type = GetDeviceArpType(link_name);
 
     // NB: ARHRD_RAWIP was introduced in kernel 4.14.
     if (technology != Technology::kTunnel &&
         technology != Technology::kUnknown && arp_type != ARPHRD_RAWIP) {
-      DCHECK(!address.empty());
+      DCHECK(mac_address.has_value());
     }
 
     DeviceRefPtr device =
-        CreateDevice(link_name, address, dev_index, technology);
+        CreateDevice(link_name, mac_address, dev_index, technology);
     if (device) {
       RegisterDevice(device);
     }

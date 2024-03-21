@@ -189,13 +189,14 @@ class DeviceInfo {
     Technology technology;
   };
 
-  // Create a Device object for the interface named |linkname|, with a
-  // string-form MAC address |address|, whose kernel interface index
-  // is |interface_index| and detected technology is |technology|.
-  virtual DeviceRefPtr CreateDevice(const std::string& link_name,
-                                    const std::string& address,
-                                    int interface_index,
-                                    Technology technology);
+  // Create a Device object for the interface named |linkname|, with a MAC
+  // address |mac_address|, whose kernel interface index is |interface_index|
+  // and detected technology is |technology|.
+  virtual DeviceRefPtr CreateDevice(
+      const std::string& link_name,
+      std::optional<net_base::MacAddress> mac_address,
+      int interface_index,
+      Technology technology);
 
   // Return the ARP type (ARPHRD_* from <net/if_arp.h>) of interface
   // |iface_name|.
