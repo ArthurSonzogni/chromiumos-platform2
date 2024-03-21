@@ -133,6 +133,9 @@ void MaybeEnableFramingStreamManipulator(
     StreamManipulator::RuntimeOptions* runtime_options,
     GpuResources* gpu_resources,
     std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
+  if (!gpu_resources) {
+    return;
+  }
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
   bool auto_framing_supported =
       feature_profile.IsEnabled(FeatureProfile::FeatureType::kAutoFraming);
