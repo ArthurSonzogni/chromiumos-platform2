@@ -136,8 +136,10 @@ const size_t kOwnerSecretSize = sizeof(kWellKnownSecret);
 // space. We prefer the former if it is available.
 class Tpm1SystemKeyLoader : public SystemKeyLoader {
  public:
-  Tpm1SystemKeyLoader(Tpm* tpm, const base::FilePath& rootdir)
-      : tpm_(tpm), rootdir_(rootdir) {}
+  Tpm1SystemKeyLoader(libstorage::Platform* platform,
+                      Tpm* tpm,
+                      const base::FilePath& rootdir)
+      : platform_(platform), tpm_(tpm), rootdir_(rootdir) {}
   Tpm1SystemKeyLoader(const Tpm1SystemKeyLoader&) = delete;
   Tpm1SystemKeyLoader& operator=(const Tpm1SystemKeyLoader&) = delete;
 
@@ -191,6 +193,7 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
   // update, false if no pending update and on errors.
   bool IsTPMFirmwareUpdatePending();
 
+  libstorage::Platform* platform_;
   Tpm* tpm_ = nullptr;
   base::FilePath rootdir_;
 
@@ -373,7 +376,7 @@ bool Tpm1SystemKeyLoader::PrepareEncStatefulSpace() {
   } else {
     const base::FilePath tpm_owned_path =
         rootdir_.Append(paths::cryptohome::kTpmOwned);
-    if (base::PathExists(tpm_owned_path)) {
+    if (platform_->FileExists(tpm_owned_path)) {
       LOG(ERROR)
           << "Unable to define space because TPM is already fully initialized.";
       return false;
@@ -412,13 +415,12 @@ bool Tpm1SystemKeyLoader::PruneOwnershipStateFilesIfNotOwned() {
       rootdir_.Append(paths::cryptohome::kShallInitialize);
   base::FilePath attestation_database_path =
       rootdir_.Append(paths::cryptohome::kAttestationDatabase);
-  if (!brillo::DeleteFile(tpm_status_path) ||
-      !brillo::DeleteFile(tpm_owned_path) ||
-      !brillo::SyncFileOrDirectory(tpm_status_path.DirName(), true, false) ||
-      !brillo::WriteToFileAtomic(shall_initialize_path, nullptr, 0, 0644) ||
-      !brillo::SyncFileOrDirectory(shall_initialize_path.DirName(), true,
-                                   false) ||
-      !brillo::DeleteFile(attestation_database_path)) {
+  if ((platform_->FileExists(tpm_status_path) &&
+       !platform_->DeleteFileDurable(tpm_status_path)) ||
+      !platform_->DeleteFile(tpm_owned_path) ||
+      (platform_->FileExists(shall_initialize_path) &&
+       !platform_->DeleteFileDurable(shall_initialize_path)) ||
+      !platform_->DeleteFile(attestation_database_path)) {
     PLOG(ERROR) << "Failed to update ownership state files.";
     return false;
   }
@@ -642,7 +644,7 @@ std::string Tpm1SystemKeyLoader::FormatIFXFieldUpgradeInfo() {
 
 bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
   // Make sure a TPM firmware upgrade has been requested.
-  if (!base::PathExists(rootdir_.Append(paths::kFirmwareUpdateRequest))) {
+  if (!platform_->FileExists(rootdir_.Append(paths::kFirmwareUpdateRequest))) {
     LOG(ERROR) << "TPM firmware update wasn't requested.";
     return false;
   }
@@ -687,7 +689,7 @@ bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
     LOG(INFO) << "Checking whether " << rootdir_.Append(paths::kFirmwareDir)
               << " is a parent of " << update_path;
     if (!rootdir_.Append(paths::kFirmwareDir).IsParent(update_path) ||
-        !base::PathExists(update_path)) {
+        !platform_->FileExists(update_path)) {
       LOG(ERROR) << "Failure locating TPM firmware update file.";
       return false;
     }
@@ -752,7 +754,7 @@ bool Tpm1SystemKeyLoader::CheckLockbox(bool* valid) {
   // In case there is no encstateful space, the lockbox space is only valid once
   // tpm manager has initialized TPM with random password and recreated the
   // space.
-  *valid = base::PathExists(rootdir_.Append(paths::cryptohome::kTpmOwned));
+  *valid = platform_->FileExists(rootdir_.Append(paths::cryptohome::kTpmOwned));
   return true;
 }
 
@@ -761,8 +763,8 @@ bool Tpm1SystemKeyLoader::UsingLockboxKey() {
 }
 
 std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(
-    Tpm* tpm, const base::FilePath& rootdir) {
-  return std::make_unique<Tpm1SystemKeyLoader>(tpm, rootdir);
+    libstorage::Platform* platform, Tpm* tpm, const base::FilePath& rootdir) {
+  return std::make_unique<Tpm1SystemKeyLoader>(platform, tpm, rootdir);
 }
 
 }  // namespace encryption

@@ -169,7 +169,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
   // logical volume backing devices use size in megabytes. Fix this
   // inconsistency.
   if (!platform->IsStatefulLogicalVolumeSupported() ||
-      base::PathExists(sparse_backing_file)) {
+      platform->FileExists(sparse_backing_file)) {
     backing_device_config = {
         .type = libstorage::BackingDeviceType::kLoopbackDevice,
         .name = dmcrypt_name,

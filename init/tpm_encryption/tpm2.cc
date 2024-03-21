@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libstorage/platform/platform.h>
 #include <vboot/tlcl.h>
 
 #include "init/tpm_encryption/tpm.h"
@@ -241,7 +242,7 @@ bool Tpm2SystemKeyLoader::UsingLockboxKey() {
 }
 
 std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(
-    Tpm* tpm, const base::FilePath& rootdir) {
+    libstorage::Platform* platform, Tpm* tpm, const base::FilePath& rootdir) {
   return std::make_unique<Tpm2SystemKeyLoader>(tpm);
 }
 

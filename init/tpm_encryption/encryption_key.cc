@@ -21,6 +21,7 @@
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libstorage/platform/platform.h>
 #include <openssl/sha.h>
 
 #include "init/tpm_encryption/tpm.h"
@@ -44,18 +45,32 @@ const char kStaticKeyFinalizationNeeded[] = "needs finalization";
 
 const size_t kMaxReadSize = 4 * 1024;
 
-bool ReadKeyFile(const base::FilePath& path,
+bool ReadKeyFile(libstorage::Platform* platform,
+                 const base::FilePath& path,
                  brillo::SecureBlob* plaintext,
                  const brillo::SecureBlob& encryption_key) {
-  std::string ciphertext;
-  if (!base::ReadFileToStringWithMaxSize(path, &ciphertext, kMaxReadSize)) {
+  brillo::Blob ciphertext;
+
+  // Check the file size: we expect to be really small. In case of filesystem
+  // corruption ignore files that are way too big.
+  int64_t size;
+  if (!platform->GetFileSize(path, &size)) {
+    LOG(ERROR) << "Unable to get file size for " << path;
+    return false;
+  }
+  if (size > kMaxReadSize) {
+    LOG(ERROR) << "File " << path << " too large: " << size;
+    return false;
+  }
+
+  if (!platform->ReadFile(path, &ciphertext)) {
     LOG(ERROR) << "Data read failed from " << path;
     return false;
   }
 
   if (!hwsec_foundation::AesDecryptSpecifyBlockMode(
-          brillo::BlobFromString(ciphertext), 0, ciphertext.size(),
-          encryption_key, brillo::Blob(hwsec_foundation::kAesBlockSize),
+          ciphertext, 0, ciphertext.size(), encryption_key,
+          brillo::Blob(hwsec_foundation::kAesBlockSize),
           hwsec_foundation::PaddingScheme::kPaddingStandard,
           hwsec_foundation::BlockMode::kCbc, plaintext)) {
     LOG(ERROR) << "Decryption failed for data from " << path;
@@ -72,10 +87,11 @@ bool ReadKeyFile(const base::FilePath& path,
   return true;
 }
 
-bool WriteKeyFile(const base::FilePath& path,
+bool WriteKeyFile(libstorage::Platform* platform,
+                  const base::FilePath& path,
                   const brillo::SecureBlob& plaintext,
                   const brillo::SecureBlob& encryption_key) {
-  if (base::PathExists(path)) {
+  if (platform->FileExists(path)) {
     LOG(ERROR) << path << " already exists.";
     return false;
   }
@@ -100,60 +116,12 @@ bool WriteKeyFile(const base::FilePath& path,
     return false;
   }
 
-  if (!brillo::WriteBlobToFileAtomic(path, ciphertext, 0600) ||
-      !brillo::SyncFileOrDirectory(path.DirName(), true, false)) {
+  if (!platform->WriteFileAtomicDurable(path, ciphertext, 0600)) {
     PLOG(ERROR) << "Unable to write " << path;
     return false;
   }
 
   return true;
-}
-
-// ShredFile - Overwrite file contents. Useless on SSD. :(
-// Currently, if the TPM is not ready, we encrypt the encryption key data
-// with a static key and write it to disk. This function is a best-attempt to
-// clear the contents of the key file.
-// We'd ideally never write an insufficiently protected key to disk. This
-// is already the case for TPM 2.0 devices as they can create system keys as
-// needed, and we can improve the situation for TPM 1.2 devices as well by (1)
-// using an NVRAM space that doesn't get lost on TPM clear and (2) allowing
-// mount-encrypted to take ownership and create the NVRAM space if necessary.
-void ShredFile(const base::FilePath& file) {
-  uint8_t patterns[] = {0xA5, 0x5A, 0xFF, 0x00};
-  FILE* target;
-  struct stat info;
-  uint8_t* pattern;
-  int i;
-
-  // Give up if we can't safely open or stat the target.
-  base::ScopedFD fd(HANDLE_EINTR(
-      open(file.value().c_str(), O_WRONLY | O_NOFOLLOW | O_CLOEXEC)));
-  if (!fd.is_valid()) {
-    PLOG(ERROR) << file;
-    return;
-  }
-  if (fstat(fd.get(), &info)) {
-    PLOG(ERROR) << file;
-    return;
-  }
-  if (!(target = fdopen(fd.get(), "w"))) {
-    PLOG(ERROR) << file;
-    return;
-  }
-
-  // Ignore errors here, since there's nothing we can really do.
-  pattern = static_cast<uint8_t*>(malloc(info.st_size));
-  for (i = 0; i < sizeof(patterns); ++i) {
-    memset(pattern, patterns[i], info.st_size);
-    if (fseek(target, 0, SEEK_SET))
-      PLOG(ERROR) << file;
-    if (fwrite(pattern, info.st_size, 1, target) != 1)
-      PLOG(ERROR) << file;
-    if (fflush(target))
-      PLOG(ERROR) << file;
-    if (fdatasync(fd.get()))
-      PLOG(ERROR) << file;
-  }
 }
 
 brillo::SecureBlob Sha256(const std::string& str) {
@@ -166,10 +134,10 @@ brillo::SecureBlob GetUselessKey() {
 }
 
 // Extract the desired system key from the kernel's boot command line.
-brillo::SecureBlob GetKeyFromKernelCmdline() {
+brillo::SecureBlob GetKeyFromKernelCmdline(libstorage::Platform* platform) {
   std::string cmdline;
-  if (!base::ReadFileToStringWithMaxSize(base::FilePath(paths::kKernelCmdline),
-                                         &cmdline, kMaxReadSize)) {
+  if (!platform->ReadFileToString(base::FilePath(paths::kKernelCmdline),
+                                  &cmdline)) {
     PLOG(ERROR) << "Failed to read kernel command line";
     return brillo::SecureBlob();
   }
@@ -189,9 +157,10 @@ brillo::SecureBlob GetKeyFromKernelCmdline() {
 
 }  // namespace
 
-EncryptionKey::EncryptionKey(SystemKeyLoader* loader,
+EncryptionKey::EncryptionKey(libstorage::Platform* platform,
+                             SystemKeyLoader* loader,
                              const base::FilePath& rootdir)
-    : loader_(loader) {
+    : platform_(platform), loader_(loader) {
   base::FilePath stateful_mount = rootdir.Append(paths::kStatefulMount);
   key_path_ = stateful_mount.Append(paths::kEncryptedKey);
   needs_finalization_path_ = stateful_mount.Append(paths::kNeedsFinalization);
@@ -213,7 +182,7 @@ bool EncryptionKey::SetTpmSystemKey() {
 }
 
 bool EncryptionKey::SetInsecureFallbackSystemKey() {
-  system_key_ = GetKeyFromKernelCmdline();
+  system_key_ = GetKeyFromKernelCmdline(platform_);
   if (!system_key_.empty()) {
     LOG(INFO) << "Using kernel command line argument as system key.";
     system_key_status_ = SystemKeyStatus::kKernelCommandLine;
@@ -221,8 +190,8 @@ bool EncryptionKey::SetInsecureFallbackSystemKey() {
   }
 
   std::string product_uuid;
-  if (base::ReadFileToStringWithMaxSize(base::FilePath(paths::kProductUUID),
-                                        &product_uuid, kMaxReadSize)) {
+  if (platform_->ReadFileToString(base::FilePath(paths::kProductUUID),
+                                  &product_uuid)) {
     system_key_ = Sha256(base::ToUpperASCII(product_uuid));
     LOG(INFO) << "Using UUID as system key.";
     system_key_status_ = SystemKeyStatus::kProductUUID;
@@ -240,17 +209,18 @@ bool EncryptionKey::LoadChromeOSSystemKey() {
 
   // Check and handle potential requests to preserve an already existing
   // encryption key in order to retain the existing stateful file system.
-  if (system_key_.empty() && base::PathExists(preservation_request_path_)) {
+  if (system_key_.empty() &&
+      platform_->FileExists(preservation_request_path_)) {
     // Move the previous key file to a different path and clear the request
     // before changing TPM state. This makes sure that we're not putting the
     // system into a state where the old key might get picked up accidentally
     // (even by previous versions of mount-encrypted on rollback) if we reboot
     // while the preservation process is not completed yet (for example due to
     // power loss).
-    if (!base::Move(key_path_, preserved_previous_key_path_)) {
-      brillo::DeleteFile(key_path_);
+    if (!platform_->Rename(key_path_, preserved_previous_key_path_)) {
+      platform_->DeleteFile(key_path_);
     }
-    brillo::DeleteFile(preservation_request_path_);
+    platform_->DeleteFile(preservation_request_path_);
   }
 
   // Note that we must check for presence of a to-be-preserved key
@@ -258,12 +228,12 @@ bool EncryptionKey::LoadChromeOSSystemKey() {
   // attempt (e.g. due to crash or power loss) but already took TPM ownership,
   // we might see a situation where there appears to be a valid system key but
   // we still must retry preservation to salvage the previous key.
-  if (base::PathExists(preserved_previous_key_path_)) {
+  if (platform_->FileExists(preserved_previous_key_path_)) {
     RewrapPreviousEncryptionKey();
 
     // Preservation is done at this point even though it might have bailed or
     // failed. The code below will handle the potentially absent system key.
-    brillo::DeleteFile(preserved_previous_key_path_);
+    platform_->DeleteFile(preserved_previous_key_path_);
   }
 
   // Attempt to generate a fresh system key if we haven't found one.
@@ -300,7 +270,7 @@ bool EncryptionKey::LoadChromeOSSystemKey() {
 
 bool EncryptionKey::LoadEncryptionKey() {
   if (!system_key_.empty()) {
-    if (ReadKeyFile(key_path_, &encryption_key_, system_key_)) {
+    if (ReadKeyFile(platform_, key_path_, &encryption_key_, system_key_)) {
       encryption_key_status_ = EncryptionKeyStatus::kKeyFile;
       return true;
     }
@@ -312,11 +282,11 @@ bool EncryptionKey::LoadEncryptionKey() {
   // Delete any stale encryption key files from disk. This is important because
   // presence of the key file determines whether finalization requests from
   // cryptohome do need to write a key file.
-  brillo::DeleteFile(key_path_);
+  platform_->DeleteFile(key_path_);
   encryption_key_.clear();
 
   // Check if there's a to-be-finalized key on disk.
-  if (!ReadKeyFile(needs_finalization_path_, &encryption_key_,
+  if (!ReadKeyFile(platform_, needs_finalization_path_, &encryption_key_,
                    GetUselessKey())) {
     // This is a brand new system with no keys, so generate a fresh one.
     LOG(INFO) << "Generating new encryption key.";
@@ -343,7 +313,7 @@ bool EncryptionKey::LoadEncryptionKey() {
   if (system_key_.empty()) {
     if (is_fresh()) {
       LOG(INFO) << "Writing finalization intent " << needs_finalization_path_;
-      if (!WriteKeyFile(needs_finalization_path_, encryption_key_,
+      if (!WriteKeyFile(platform_, needs_finalization_path_, encryption_key_,
                         GetUselessKey())) {
         LOG(ERROR) << "Failed to write " << needs_finalization_path_;
       }
@@ -372,7 +342,7 @@ void EncryptionKey::Finalize() {
   CHECK(!encryption_key_.empty());
 
   LOG(INFO) << "Writing keyfile " << key_path_;
-  if (!WriteKeyFile(key_path_, encryption_key_, system_key_)) {
+  if (!WriteKeyFile(platform_, key_path_, encryption_key_, system_key_)) {
     LOG(ERROR) << "Failed to write " << key_path_;
     return;
   }
@@ -380,15 +350,14 @@ void EncryptionKey::Finalize() {
   // Finalization is complete at this point.
   did_finalize_ = true;
 
-  // Make a best effort attempt to wipe the obfuscated key file from disk. This
-  // is unreliable on many levels, in particular ext4 doesn't support secure
-  // delete so the data may end up sticking around in the journal. Furthermore,
-  // SSDs may remap flash blocks on write, so the data may physically remain in
-  // the old block. See comment above regarding options to get rid of the
-  // finalization intent file in the long run.
-  if (base::PathExists(needs_finalization_path_)) {
-    ShredFile(needs_finalization_path_);
-    brillo::DeleteFile(needs_finalization_path_);
+  // Make a best effort attempt to wipe the obfuscated key file from disk.
+  if (platform_->FileExists(needs_finalization_path_)) {
+    if (!platform_->DeleteFileSecurely(needs_finalization_path_)) {
+      // We are unebale to erase the file properly, just do the minimum.
+      LOG(ERROR) << "Failed to secure erase " << needs_finalization_path_
+                 << ". Trying simple deletion.";
+      platform_->DeleteFileDurable(needs_finalization_path_);
+    }
   }
 }
 
@@ -408,16 +377,17 @@ bool EncryptionKey::RewrapPreviousEncryptionKey() {
   }
 
   brillo::SecureBlob previous_encryption_key;
-  if (!ReadKeyFile(preserved_previous_key_path_, &previous_encryption_key,
-                   previous_system_key)) {
+  if (!ReadKeyFile(platform_, preserved_previous_key_path_,
+                   &previous_encryption_key, previous_system_key)) {
     LOG(WARNING) << "Failed to decrypt preserved previous key, aborting.";
     return false;
   }
 
   // We have the previous encryption key at this point, so we're in business.
   // Re-wrap the encryption key under the new system key and store it to disk.
-  brillo::DeleteFile(key_path_);
-  if (!WriteKeyFile(key_path_, previous_encryption_key, fresh_system_key)) {
+  platform_->DeleteFile(key_path_);
+  if (!WriteKeyFile(platform_, key_path_, previous_encryption_key,
+                    fresh_system_key)) {
     return false;
   }
 

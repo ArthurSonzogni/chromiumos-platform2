@@ -4,8 +4,8 @@
 //
 // Interface used by "mount-encrypted" to interface with the TPM.
 
-#ifndef INIT_ENCRYPTION_TPM_H_
-#define INIT_ENCRYPTION_TPM_H_
+#ifndef INIT_TPM_ENCRYPTION_TPM_H_
+#define INIT_TPM_ENCRYPTION_TPM_H_
 
 #include <stdint.h>
 
@@ -15,6 +15,7 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 #include <openssl/sha.h>
 #include <vboot/tlcl.h>
 
@@ -216,7 +217,8 @@ class SystemKeyLoader {
   virtual ~SystemKeyLoader() = default;
 
   // Create a system key loader suitable for the system.
-  static std::unique_ptr<SystemKeyLoader> Create(Tpm* tpm,
+  static std::unique_ptr<SystemKeyLoader> Create(libstorage::Platform* platform,
+                                                 Tpm* tpm,
                                                  const base::FilePath& rootdir);
 
   // Load the encryption key from TPM NVRAM. Returns true if successful and
@@ -289,4 +291,4 @@ class FixedSystemKeyLoader : public SystemKeyLoader {
 };
 
 }  // namespace encryption
-#endif  // INIT_ENCRYPTION_TPM_H_
+#endif  // INIT_TPM_ENCRYPTION_TPM_H_

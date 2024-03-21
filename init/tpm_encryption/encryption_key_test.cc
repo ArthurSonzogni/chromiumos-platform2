@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
+#include <libstorage/platform/fake_platform.h>
 #include <openssl/sha.h>
 #include <vboot/tlcl.h>
 
@@ -184,10 +185,11 @@ using EncryptionKeyStatus = EncryptionKey::EncryptionKeyStatus;
 class EncryptionKeyTest : public testing::Test {
  public:
   void SetUp() override {
+    platform_ = std::make_unique<libstorage::FakePlatform>();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    ASSERT_TRUE(base::CreateDirectory(
+    ASSERT_TRUE(platform_->CreateDirectory(
         tmpdir_.GetPath().Append("mnt/stateful_partition")));
-    ASSERT_TRUE(base::CreateDirectory(
+    ASSERT_TRUE(platform_->CreateDirectory(
         tmpdir_.GetPath().Append(paths::cryptohome::kTpmOwned).DirName()));
 
     ClearTPM();
@@ -198,8 +200,10 @@ class EncryptionKeyTest : public testing::Test {
 
   void ResetLoader() {
     tpm_ = std::make_unique<Tpm>();
-    loader_ = SystemKeyLoader::Create(tpm_.get(), tmpdir_.GetPath());
-    key_ = std::make_unique<EncryptionKey>(loader_.get(), tmpdir_.GetPath());
+    loader_ =
+        SystemKeyLoader::Create(platform_.get(), tpm_.get(), tmpdir_.GetPath());
+    key_ = std::make_unique<EncryptionKey>(platform_.get(), loader_.get(),
+                                           tmpdir_.GetPath());
   }
 
   void ResetTPM() {
@@ -215,7 +219,7 @@ class EncryptionKeyTest : public testing::Test {
   void SetOwned() {
     tlcl_.SetOwned({0x5e, 0xc2, 0xe7});
     if (!USE_TPM2) {
-      ASSERT_TRUE(base::WriteFile(
+      ASSERT_TRUE(platform_->WriteStringToFile(
           tmpdir_.GetPath().Append(paths::cryptohome::kTpmOwned), ""));
     }
   }
@@ -241,27 +245,20 @@ class EncryptionKeyTest : public testing::Test {
   }
 
   void WriteWrappedKey(const base::FilePath& path, const uint8_t* key) {
-    ASSERT_TRUE(base::CreateDirectory(path.DirName()));
-    ASSERT_TRUE(base::WriteFile(path, reinterpret_cast<const char*>(key),
-                                kWrappedKeySize));
+    ASSERT_TRUE(platform_->CreateDirectory(path.DirName()));
+    ASSERT_TRUE(platform_->WriteArrayToFile(
+        path, reinterpret_cast<const char*>(key), kWrappedKeySize));
   }
 
   void RequestPreservation() {
-    ASSERT_TRUE(
-        base::File(key_->preservation_request_path(),
-                   base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE)
-            .IsValid());
+    ASSERT_TRUE(platform_->TouchFileDurable(key_->preservation_request_path()));
   }
 
   void SetupPendingFirmwareUpdate(bool available, int exit_status) {
     // Put the firmware update request into place.
     base::FilePath update_request_path(
         tmpdir_.GetPath().Append(paths::kFirmwareUpdateRequest));
-    ASSERT_TRUE(base::CreateDirectory(update_request_path.DirName()));
-    base::File update_request_file(
-        update_request_path,
-        base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
-    ASSERT_TRUE(update_request_file.IsValid());
+    ASSERT_TRUE(platform_->TouchFileDurable(update_request_path));
 
     // Create a placeholder firmware update image file.
     base::FilePath firmware_update_image_path;
@@ -269,14 +266,11 @@ class EncryptionKeyTest : public testing::Test {
       firmware_update_image_path = tmpdir_.GetPath()
                                        .Append(paths::kFirmwareDir)
                                        .Append("placeholder_fw.bin");
-      ASSERT_TRUE(base::CreateDirectory(firmware_update_image_path.DirName()));
-      base::File firmware_update_image_file(
-          firmware_update_image_path,
-          base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
-      ASSERT_TRUE(firmware_update_image_file.IsValid());
+      ASSERT_TRUE(platform_->TouchFileDurable(firmware_update_image_path));
     }
 
     // Set up a shell script to simulate the update locator tool.
+    // Do not use platform-> since we are using brillo::ProcessImpl directly.
     std::string script = base::StringPrintf(
         "#!/bin/sh\necho \"%s\"\nexit %d",
         firmware_update_image_path.value().c_str(), exit_status);
@@ -291,17 +285,15 @@ class EncryptionKeyTest : public testing::Test {
 
   void ExpectNeedsFinalization() {
     EXPECT_FALSE(key_->did_finalize());
-    EXPECT_TRUE(base::PathExists(key_->needs_finalization_path()));
-    EXPECT_FALSE(base::PathExists(key_->key_path()));
+    EXPECT_TRUE(platform_->FileExists(key_->needs_finalization_path()));
+    EXPECT_FALSE(platform_->FileExists(key_->key_path()));
   }
 
   void ExpectFinalized(bool did_finalize_expectation) {
     EXPECT_EQ(did_finalize_expectation, key_->did_finalize());
-    EXPECT_FALSE(base::PathExists(key_->needs_finalization_path()));
-    EXPECT_TRUE(base::PathExists(key_->key_path()));
+    EXPECT_FALSE(platform_->FileExists(key_->needs_finalization_path()));
+    EXPECT_TRUE(platform_->FileExists(key_->key_path()));
   }
-
-  void ExpectSystemKeyFailed() { EXPECT_FALSE(key_->LoadChromeOSSystemKey()); }
 
   void ExpectFreshKey() {
     EXPECT_TRUE(key_->LoadChromeOSSystemKey());
@@ -352,7 +344,7 @@ class EncryptionKeyTest : public testing::Test {
   }
 
   void SetStaleOwnershipFlag() {
-    ASSERT_TRUE(base::WriteFile(
+    ASSERT_TRUE(platform_->WriteStringToFile(
         tmpdir_.GetPath().Append(paths::cryptohome::kTpmOwned), ""));
   }
 
@@ -361,6 +353,7 @@ class EncryptionKeyTest : public testing::Test {
   base::ScopedTempDir tmpdir_;
   TlclStub tlcl_;
 
+  std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<Tpm> tpm_;
   std::unique_ptr<SystemKeyLoader> loader_;
   std::unique_ptr<EncryptionKey> key_;
@@ -804,7 +797,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationErrorNotEligible) {
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
-  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+  EXPECT_FALSE(platform_->FileExists(key_->preservation_request_path()));
   ExpectLockboxValid(false);
 }
 
@@ -819,7 +812,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationErrorUpdateLocatorFailure) {
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
-  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+  EXPECT_FALSE(platform_->FileExists(key_->preservation_request_path()));
   ExpectLockboxValid(false);
 }
 
@@ -833,7 +826,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationNoPreviousKey) {
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
   ExpectFinalized(true);
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
-  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+  EXPECT_FALSE(platform_->FileExists(key_->preservation_request_path()));
 }
 
 TEST_F(EncryptionKeyTest, StatefulPreservationRetryKeyfileMove) {
@@ -849,7 +842,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryKeyfileMove) {
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
-  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+  EXPECT_FALSE(platform_->FileExists(key_->preservation_request_path()));
 }
 
 TEST_F(EncryptionKeyTest, StatefulPreservationRetryEncryptionKeyWrapping) {
@@ -865,7 +858,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryEncryptionKeyWrapping) {
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
-  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+  EXPECT_FALSE(platform_->FileExists(key_->preservation_request_path()));
 }
 
 TEST_F(EncryptionKeyTest, StatefulPreservationRetryTpmOwnership) {
@@ -882,7 +875,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryTpmOwnership) {
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   EXPECT_TRUE(tlcl_.IsOwned());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
-  EXPECT_FALSE(base::PathExists(key_->preservation_request_path()));
+  EXPECT_FALSE(platform_->FileExists(key_->preservation_request_path()));
 }
 
 #endif  // !USE_TPM2

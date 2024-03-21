@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_ENCRYPTION_ENCRYPTION_KEY_H_
-#define INIT_ENCRYPTION_ENCRYPTION_KEY_H_
+#ifndef INIT_TPM_ENCRYPTION_ENCRYPTION_KEY_H_
+#define INIT_TPM_ENCRYPTION_ENCRYPTION_KEY_H_
 
 #include <stdint.h>
 
@@ -12,6 +12,7 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <libstorage/platform/platform.h>
 
 namespace encryption {
 
@@ -48,7 +49,9 @@ class EncryptionKey {
     kCount,              // Must be last (and may be re-assigned).
   };
 
-  EncryptionKey(SystemKeyLoader* loader, const base::FilePath& rootdir);
+  EncryptionKey(libstorage::Platform* platform,
+                SystemKeyLoader* loader,
+                const base::FilePath& rootdir);
 
   // Loads the system key from TPM NVRAM via |loader_|.
   bool SetTpmSystemKey();
@@ -104,6 +107,8 @@ class EncryptionKey {
   // thus the encrypted) file system across a TPM clear.
   bool RewrapPreviousEncryptionKey();
 
+  libstorage::Platform* platform_;
+
   SystemKeyLoader* loader_ = nullptr;
 
   // Paths.
@@ -132,4 +137,4 @@ class EncryptionKey {
 
 }  // namespace encryption
 
-#endif  // INIT_ENCRYPTION_ENCRYPTION_KEY_H_
+#endif  // INIT_TPM_ENCRYPTION_ENCRYPTION_KEY_H_

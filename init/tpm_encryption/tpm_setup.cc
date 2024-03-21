@@ -101,7 +101,7 @@ bool SendSecretToTmpFile(const encryption::EncryptionKey& key,
     PLOG(ERROR) << "Failed to change ownership/perms of tmpfs file "
                 << filename;
     // Remove the file as it contains the tpm seed with incorrect owner.
-    PLOG_IF(ERROR, !brillo::DeleteFile(file)) << "Unable to remove file!";
+    PLOG_IF(ERROR, !platform->DeleteFile(file)) << "Unable to remove file!";
     return false;
   }
 
@@ -114,7 +114,7 @@ bool SendSecretToTmpFile(const encryption::EncryptionKey& key,
 bool SendSecretToBiodTmpFile(const encryption::EncryptionKey& key,
                              libstorage::Platform* platform) {
   // If there isn't a bio-sensor, don't bother.
-  if (!base::PathExists(base::FilePath(kBioCryptoInitPath))) {
+  if (!platform->FileExists(base::FilePath(kBioCryptoInitPath))) {
     LOG(INFO)
         << "There is no bio_crypto_init binary, so skip sending TPM seed.";
     return true;
@@ -130,7 +130,7 @@ bool SendSecretToBiodTmpFile(const encryption::EncryptionKey& key,
 // created if it doesn't exist.
 bool SendSecretToHibermanTmpFile(const encryption::EncryptionKey& key,
                                  libstorage::Platform* platform) {
-  if (!base::PathExists(base::FilePath(kHibermanPath))) {
+  if (!platform->FileExists(base::FilePath(kHibermanPath))) {
     LOG(INFO) << "There is no hiberman binary, so skip sending TPM seed.";
     return true;
   }
@@ -183,7 +183,7 @@ TpmSystemKey::TpmSystemKey(libstorage::Platform* platform,
       metrics_(metrics),
       rootdir_(rootdir),
       tpm_(),
-      loader_(encryption::SystemKeyLoader::Create(&tpm_, rootdir_)),
+      loader_(encryption::SystemKeyLoader::Create(platform_, &tpm_, rootdir_)),
       has_chromefw_(HasChromeFw()) {}
 
 bool TpmSystemKey::Set(base::FilePath key_material_file) {
@@ -221,7 +221,7 @@ std::optional<encryption::EncryptionKey> TpmSystemKey::Load(bool safe_mount) {
     LOG(ERROR) << "Failed to migrate tpm owership state file to" << kTpmOwned;
   }
 
-  encryption::EncryptionKey key(loader_.get(), rootdir_);
+  encryption::EncryptionKey key(platform_, loader_.get(), rootdir_);
   if (ShallUseTpmForSystemKey() && safe_mount) {
     if (!tpm_.available()) {
       // The TPM should be available before we load the system_key.
