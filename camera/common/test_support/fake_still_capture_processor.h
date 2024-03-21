@@ -11,7 +11,6 @@
 
 #include <gtest/gtest.h>
 
-#include "common/camera_buffer_handle.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/still_capture_processor.h"
 
@@ -42,13 +41,12 @@ class FakeStillCaptureProcessor : public StillCaptureProcessor {
   void MaybeProduceCaptureResult(int frame_number);
 
   const camera3_stream_t* stream_ = nullptr;
-  camera_buffer_handle_t fake_buffer_;
   CaptureResultCallback result_callback_;
 
   struct ResultDescriptor {
     bool has_apps_segments = false;
     bool has_yuv_buffer = false;
-    bool has_output_buffer = true;
+    std::optional<camera3_stream_buffer_t> output_buffer;
   };
   std::map<int, ResultDescriptor> result_descriptor_;
 };

@@ -536,8 +536,20 @@ bool Camera3CaptureDescriptor::SetMetadata(const camera_metadata_t* metadata) {
   return !metadata_.isEmpty();
 }
 
+android::CameraMetadata Camera3CaptureDescriptor::ReleaseMetadata() {
+  CHECK(!IsLocked());
+  android::CameraMetadata ret;
+  ret.acquire(metadata_.release());
+  return ret;
+}
+
 bool Camera3CaptureDescriptor::HasMetadata(uint32_t tag) const {
   return metadata_.exists(tag);
+}
+
+void Camera3CaptureDescriptor::SetPartialResult(uint32_t partial_result) {
+  CHECK(!IsLocked());
+  partial_result_ = partial_result;
 }
 
 const Camera3StreamBuffer* Camera3CaptureDescriptor::GetInputBuffer() const {
