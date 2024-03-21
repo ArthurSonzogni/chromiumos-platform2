@@ -5,16 +5,17 @@
 #ifndef SHILL_WIFI_MOCK_WIFI_H_
 #define SHILL_WIFI_MOCK_WIFI_H_
 
+#include <optional>
 #include <string>
 
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
+#include <net-base/mac_address.h>
 
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi.h"
-#include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
 
 namespace shill {
@@ -28,7 +29,7 @@ class MockWiFi : public WiFi {
   // provide the ability to forward arguments that aren't const &...
   MockWiFi(Manager* manager,
            const std::string& link_name,
-           const std::string& address,
+           std::optional<net_base::MacAddress> mac_address,
            int interface_index,
            uint32_t phy_index,
            WakeOnWiFiInterface* wake_on_wifi);

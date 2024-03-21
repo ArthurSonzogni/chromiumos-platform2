@@ -95,6 +95,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/attribute_list.h>
 #include <net-base/ip_address.h>
+#include <net-base/mac_address.h>
 #include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 
@@ -133,7 +134,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   WiFi(Manager* manager,
        const std::string& link,
-       const std::string& address,
+       std::optional<net_base::MacAddress> mac_address,
        int interface_index,
        uint32_t phy_index,
        std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi);
@@ -184,8 +185,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void PropertiesChanged(const KeyValueStore& properties) override;
   void ScanDone(const bool& success) override;
   void StationAdded(const RpcIdentifier& Station,
-                    const KeyValueStore& properties) override{};
-  void StationRemoved(const RpcIdentifier& Station) override{};
+                    const KeyValueStore& properties) override {}
+  void StationRemoved(const RpcIdentifier& Station) override {}
   void PskMismatch() override;
   void TermsAndConditions(const std::string& url) override;
 

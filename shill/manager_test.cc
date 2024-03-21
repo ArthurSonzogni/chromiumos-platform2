@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -3375,8 +3376,8 @@ TEST_F(ManagerTest, EnumerateServices) {
 }
 
 TEST_F(ManagerTest, ConnectToMostSecureWiFi) {
-  auto* wifi_device =
-      new NiceMock<MockWiFi>(manager(), "wifi", "", 0, 0, new MockWakeOnWiFi());
+  auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
+                                             0, new MockWakeOnWiFi());
   wifi_device->enabled_ = true;
   manager()->RegisterDevice(wifi_device);
 

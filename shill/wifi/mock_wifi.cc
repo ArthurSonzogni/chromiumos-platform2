@@ -5,19 +5,22 @@
 #include "shill/wifi/mock_wifi.h"
 
 #include <memory>
+#include <optional>
 #include <string>
+
+#include <net-base/mac_address.h>
 
 namespace shill {
 
 MockWiFi::MockWiFi(Manager* manager,
                    const std::string& link_name,
-                   const std::string& address,
+                   std::optional<net_base::MacAddress> mac_address,
                    int interface_index,
                    uint32_t phy_index,
                    WakeOnWiFiInterface* wake_on_wifi)
     : WiFi(manager,
            link_name,
-           address,
+           mac_address,
            interface_index,
            phy_index,
            std::unique_ptr<WakeOnWiFiInterface>(wake_on_wifi)) {}

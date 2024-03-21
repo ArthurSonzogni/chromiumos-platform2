@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <metrics/timer_mock.h>
+#include <net-base/mac_address.h>
 #include <net-base/mock_netlink_manager.h>
 
 #include "shill/manager.h"
@@ -63,6 +64,9 @@ using ::testing::StrictMock;
 using ::testing::StrNe;
 
 namespace shill {
+namespace {
+constexpr net_base::MacAddress kFakeMac(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
+}  // namespace
 
 class WiFiServiceTest : public testing::Test {
  public:
@@ -77,13 +81,11 @@ class WiFiServiceTest : public testing::Test {
     // manager with our mock and this one instance to be used everywhere (so
     // WiFi should be initialized at the end since it takes it from Manager).
     wifi_ = base::MakeRefCounted<NiceMock<MockWiFi>>(
-        manager(), "wifi", fake_mac, 0, 0, new MockWakeOnWiFi());
+        manager(), "wifi", kFakeMac, 0, 0, new MockWakeOnWiFi());
   }
   ~WiFiServiceTest() override = default;
 
  protected:
-  static const char fake_mac[];
-
   MockEapCredentials* SetMockEap(const WiFiServiceRefPtr& service) {
     MockEapCredentials* eap = new MockEapCredentials();
     service->eap_.reset(eap);  // Passes ownership.
@@ -196,7 +198,7 @@ class WiFiServiceTest : public testing::Test {
   }
 
   scoped_refptr<MockWiFi> MakeSimpleWiFi(const std::string& link_name) {
-    return new NiceMock<MockWiFi>(manager(), link_name, fake_mac, 0, 0,
+    return new NiceMock<MockWiFi>(manager(), link_name, kFakeMac, 0, 0,
                                   new MockWakeOnWiFi());
   }
 
@@ -271,9 +273,6 @@ class WiFiServiceTest : public testing::Test {
   const std::vector<uint8_t> simple_ssid_;
   const std::string simple_ssid_string_;
 };
-
-// static
-const char WiFiServiceTest::fake_mac[] = "AaBBcCDDeeFF";
 
 void SetWiFiProperties(FakeStore* store,
                        const std::string& id,
@@ -3506,8 +3505,8 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDLB) {
   service->bssid_ = kBSSID;
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
-  auto* wifi_device =
-      new NiceMock<MockWiFi>(manager(), "wifi", "", 0, 0, new MockWakeOnWiFi());
+  auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
+                                             0, new MockWakeOnWiFi());
   service->wifi_ = wifi_device;
   wifi_device->current_service_ = service;
 
@@ -3554,8 +3553,8 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDHB) {
   service->bssid_ = kBSSID;
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
-  auto* wifi_device =
-      new NiceMock<MockWiFi>(manager(), "wifi", "", 0, 0, new MockWakeOnWiFi());
+  auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
+                                             0, new MockWakeOnWiFi());
   service->wifi_ = wifi_device;
   wifi_device->current_service_ = service;
 
@@ -3602,8 +3601,8 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUHB) {
   service->bssid_ = kBSSID;
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
-  auto* wifi_device =
-      new NiceMock<MockWiFi>(manager(), "wifi", "", 0, 0, new MockWakeOnWiFi());
+  auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
+                                             0, new MockWakeOnWiFi());
   service->wifi_ = wifi_device;
   wifi_device->current_service_ = service;
 
@@ -3650,8 +3649,8 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUndef) {
   service->bssid_ = kBSSID;
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
-  auto* wifi_device =
-      new NiceMock<MockWiFi>(manager(), "wifi", "", 0, 0, new MockWakeOnWiFi());
+  auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
+                                             0, new MockWakeOnWiFi());
   service->wifi_ = wifi_device;
   wifi_device->current_service_ = service;
 

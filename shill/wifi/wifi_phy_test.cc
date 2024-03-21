@@ -9,6 +9,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/attribute_list.h>
+#include <net-base/mac_address.h>
 #include <net-base/netlink_attribute.h>
 #include <net-base/netlink_packet.h>
 
@@ -535,6 +536,8 @@ constexpr uint32_t kChan11Freq = 2462;
 constexpr uint32_t kHBStartFreq = 5160;
 constexpr uint32_t kHBEndFreq = 5980;
 
+constexpr net_base::MacAddress kMacAddress0(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
+constexpr net_base::MacAddress kMacAddress1(0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa);
 }  // namespace
 
 class WiFiPhyTest : public ::testing::Test {
@@ -631,12 +634,10 @@ class WiFiPhyTest : public ::testing::Test {
 };
 
 TEST_F(WiFiPhyTest, AddAndDeleteDevices) {
-  scoped_refptr<MockWiFi> device0 =
-      new NiceMock<MockWiFi>(&manager_, "null0", "aabbccddeeff", 0,
-                             kWiFiPhyIndex, new MockWakeOnWiFi());
-  scoped_refptr<MockWiFi> device1 =
-      new NiceMock<MockWiFi>(&manager_, "null1", "ffeeddccbbaa", 0,
-                             kWiFiPhyIndex, new MockWakeOnWiFi());
+  scoped_refptr<MockWiFi> device0 = new NiceMock<MockWiFi>(
+      &manager_, "null0", kMacAddress0, 0, kWiFiPhyIndex, new MockWakeOnWiFi());
+  scoped_refptr<MockWiFi> device1 = new NiceMock<MockWiFi>(
+      &manager_, "null1", kMacAddress1, 0, kWiFiPhyIndex, new MockWakeOnWiFi());
 
   EXPECT_FALSE(HasWiFiDevice(device0));
   EXPECT_FALSE(HasWiFiDevice(device1));
@@ -659,9 +660,8 @@ TEST_F(WiFiPhyTest, AddAndDeleteDevices) {
 }
 
 TEST_F(WiFiPhyTest, AddDeviceTwice) {
-  scoped_refptr<MockWiFi> device =
-      new NiceMock<MockWiFi>(&manager_, "null0", "aabbccddeeff", 0,
-                             kWiFiPhyIndex, new MockWakeOnWiFi());
+  scoped_refptr<MockWiFi> device = new NiceMock<MockWiFi>(
+      &manager_, "null0", kMacAddress0, 0, kWiFiPhyIndex, new MockWakeOnWiFi());
 
   AddWiFiDevice(device);
   EXPECT_TRUE(HasWiFiDevice(device));
@@ -676,9 +676,8 @@ TEST_F(WiFiPhyTest, AddDeviceTwice) {
 }
 
 TEST_F(WiFiPhyTest, DeleteDeviceTwice) {
-  scoped_refptr<MockWiFi> device =
-      new NiceMock<MockWiFi>(&manager_, "null0", "aabbccddeeff", 0,
-                             kWiFiPhyIndex, new MockWakeOnWiFi());
+  scoped_refptr<MockWiFi> device = new NiceMock<MockWiFi>(
+      &manager_, "null0", kMacAddress0, 0, kWiFiPhyIndex, new MockWakeOnWiFi());
 
   AddWiFiDevice(device);
   EXPECT_TRUE(HasWiFiDevice(device));

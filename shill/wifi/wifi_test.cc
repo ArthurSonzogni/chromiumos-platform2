@@ -30,6 +30,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <crypto/random.h>
 #include <net-base/http_url.h>
+#include <net-base/mac_address.h>
 #include <net-base/mock_netlink_manager.h>
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/netlink_packet.h>
@@ -46,7 +47,6 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_ipconfig.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -483,7 +483,7 @@ class WiFiPropertyTest : public PropertyStoreTest {
   WiFiPropertyTest()
       : device_(new WiFi(manager(),
                          "wifi",
-                         "",
+                         std::nullopt,
                          kInterfaceIndex,
                          kPhyIndex,
                          std::make_unique<MockWakeOnWiFi>())) {}
@@ -1409,7 +1409,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   // initialization order
  protected:
   static const char kDeviceName[];
-  static const char kDeviceAddress[];
+  static const net_base::MacAddress kDeviceAddress;
   static const char kNetworkModeAdHoc[];
   static const char kNetworkModeInfrastructure[];
   static const RpcIdentifier kBSSName;
@@ -1448,7 +1448,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 };
 
 const char WiFiObjectTest::kDeviceName[] = "wlan0";
-const char WiFiObjectTest::kDeviceAddress[] = "000102030405";
+const net_base::MacAddress WiFiObjectTest::kDeviceAddress(
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
 const char WiFiObjectTest::kNetworkModeAdHoc[] = "ad-hoc";
 const char WiFiObjectTest::kNetworkModeInfrastructure[] = "infrastructure";
 const RpcIdentifier WiFiObjectTest::kBSSName("bss0");

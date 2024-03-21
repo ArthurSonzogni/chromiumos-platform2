@@ -35,6 +35,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/attribute_list.h>
 #include <net-base/http_url.h>
+#include <net-base/mac_address.h>
 #include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 #include <net-base/rtnl_handler.h>
@@ -164,11 +165,15 @@ bool IsWPAStateConnectionInProgress(const std::string& state) {
 
 WiFi::WiFi(Manager* manager,
            const std::string& link,
-           const std::string& address,
+           std::optional<net_base::MacAddress> mac_address,
            int interface_index,
            uint32_t phy_index,
            std::unique_ptr<WakeOnWiFiInterface> wake_on_wifi)
-    : Device(manager, link, address, interface_index, Technology::kWiFi),
+    : Device(manager,
+             link,
+             mac_address.has_value() ? mac_address->ToHexString() : "",
+             interface_index,
+             Technology::kWiFi),
       provider_(manager->wifi_provider()),
       time_(Time::GetInstance()),
       supplicant_connect_attempts_(0),

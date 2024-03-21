@@ -11,6 +11,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 #include <net-base/netlink_packet.h>
 
 #include "shill/metrics.h"
@@ -18,11 +19,9 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/refptr_types.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
-#include "shill/wifi/nl80211_attribute.h"
 #include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/wifi.h"
 
@@ -38,7 +37,8 @@ namespace shill {
 namespace {
 
 // Fake MAC address.
-constexpr char kDeviceAddress[] = "aabbccddeeff";
+constexpr net_base::MacAddress kDeviceAddress(
+    0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
 const uint16_t kNl80211FamilyId = 0x13;
 
 // Bytes representing NL80211 CQM message to pass to unit tests.

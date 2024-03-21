@@ -18,6 +18,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 #include <net-base/mock_netlink_manager.h>
 
 #include "shill/mac_address.h"
@@ -40,7 +41,8 @@ using ::testing::NiceMock;
 namespace shill {
 
 // Fake MAC address.
-constexpr char kDeviceAddress[] = "aabbccddeeff";
+constexpr net_base::MacAddress kDeviceAddress(
+    0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
 
 class WiFiEndpointTest : public PropertyStoreTest {
  public:

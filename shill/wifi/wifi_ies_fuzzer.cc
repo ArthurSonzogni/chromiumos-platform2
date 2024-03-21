@@ -8,6 +8,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <net-base/mac_address.h>
 
 #include "shill/metrics.h"
 #include "shill/mock_control.h"
@@ -34,7 +35,9 @@ class WiFiIEsFuzz {
     MockMetrics metrics;
     NiceMock<MockManager> manager(&ctrl_iface, &dispatcher, &metrics);
     WiFiRefPtr wifi = base::MakeRefCounted<MockWiFi>(
-        &manager, "wlan0", "0123456789AB", 1, 2, nullptr);
+        &manager, "wlan0",
+        net_base::MacAddress(0x01, 0x23, 0x45, 0x67, 0x89, 0xAB), 1, 2,
+        nullptr);
 
     Metrics::WiFiNetworkPhyMode phy_mode;
 

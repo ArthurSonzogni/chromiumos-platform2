@@ -19,6 +19,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 #include <net-base/mock_netlink_manager.h>
 #include <net-base/netlink_message.h>
 #include <net-base/netlink_packet.h>
@@ -376,6 +377,7 @@ const char kUS_Alpha2[] = "US";
 
 constexpr base::TimeDelta kPhyUpdateTimeout = base::Milliseconds(500);
 constexpr uint32_t kAllPhys = UINT32_MAX;
+constexpr net_base::MacAddress kMacAddress(0x4c, 0x77, 0xcb, 0x54, 0x9c, 0xdc);
 }  // namespace
 
 class WiFiProviderTest : public testing::Test {
@@ -2377,7 +2379,7 @@ TEST_F(WiFiProviderTest, AbandonService) {
 TEST_F(WiFiProviderTest, GetPrimaryLinkName) {
   EXPECT_CALL(manager_, device_info()).Times(1);
   WiFiRefPtr wifi_device = new MockWiFi(
-      &manager_, /*link_name=*/"wlan0", /*address=*/"4c77cb549cdc",
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
       /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
   EXPECT_CALL(manager_, FilterByTechnology(Technology::kWiFi))
       .WillOnce(Return(std::vector<DeviceRefPtr>{wifi_device}));
@@ -2395,7 +2397,7 @@ TEST_F(WiFiProviderTest, RegisterAndDeregisterWiFiDevice) {
 
   EXPECT_CALL(manager_, device_info()).Times(1);
   scoped_refptr<MockWiFi> device = new NiceMock<MockWiFi>(
-      &manager_, "null0", "addr0", 0, phy_index, new MockWakeOnWiFi());
+      &manager_, "null0", kMacAddress, 0, phy_index, new MockWakeOnWiFi());
 
   // Registering a device to a non-existent phy should result in a failed CHECK.
   EXPECT_DEATH(RegisterDeviceToPhy(device, phy_index),
@@ -2590,7 +2592,7 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
   EXPECT_CALL(manager_, device_info()).Times(1);
 
   WiFiRefPtr wifi_device = new MockWiFi(
-      &manager_, /*link_name=*/"wlan0", /*address=*/"4c77cb549cdc",
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
       /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
   EXPECT_CALL(manager_, FilterByTechnology(Technology::kWiFi))
       .WillRepeatedly(Return(std::vector<DeviceRefPtr>{wifi_device}));
@@ -2624,7 +2626,8 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
   AddMockPhy(0);
   MockWiFiPhy* phy1 = AddMockPhy(1);
   phy1->AddWiFiDevice(new MockWiFi(
-      &manager_, link_name, /*address=*/"020000000000",
+      &manager_, link_name,
+      net_base::MacAddress(0x02, 0x00, 0x00, 0x00, 0x00, 0x00),
       /*interface_index=*/7, /*phy_index=*/1, new MockWakeOnWiFi()));
 
   provider_->hotspot_device_factory_ = base::BindRepeating(

@@ -1400,8 +1400,8 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
   auto wake_on_wifi = std::unique_ptr<WakeOnWiFi>(nullptr);
 #endif  // DISABLE_WAKE_ON_WIFI
   DeviceRefPtr device =
-      new WiFi(manager_, info->name, HexEncode(info->mac_address),
-               interface_index, phy_index, std::move(wake_on_wifi));
+      new WiFi(manager_, info->name, info->mac_address, interface_index,
+               phy_index, std::move(wake_on_wifi));
   RegisterDevice(device);
 }
 
