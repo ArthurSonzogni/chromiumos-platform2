@@ -4,8 +4,12 @@
 
 #include "vm_tools/concierge/service.h"
 
+#include <unistd.h>
+#include <vector>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
@@ -132,6 +136,33 @@ TEST_F(ServiceTest, InitializationFailureToOwnInterface) {
         loop.Quit();
       }));
   loop.Run();
+}
+
+TEST(ServiceInternalTest, TestGetVmStartImageFds2) {
+  google::protobuf::RepeatedField<int> fds;
+  fds.Add(StartVmRequest_FdType_KERNEL);
+  fds.Add(StartVmRequest_FdType_ROOTFS);
+  int kernel_pipe[2], rootfs_pipe[2];
+  ASSERT_EQ(0, pipe(kernel_pipe));
+  ASSERT_EQ(0, pipe(rootfs_pipe));
+  std::vector<base::ScopedFD> file_handles;
+  file_handles.push_back(base::ScopedFD(kernel_pipe[0]));
+  file_handles.push_back(base::ScopedFD(rootfs_pipe[0]));
+  base::ScopedFD deleter1(kernel_pipe[1]);
+  base::ScopedFD deleter2(rootfs_pipe[1]);
+
+  std::optional<internal::VmStartImageFds> vm_start_image_fds =
+      internal::GetVmStartImageFds2(fds, file_handles);
+  ASSERT_EQ(7, write(kernel_pipe[1], "kernel", 7));
+  ASSERT_EQ(7, write(rootfs_pipe[1], "rootfs", 7));
+  char buf[7];
+  ASSERT_TRUE(vm_start_image_fds.has_value());
+  ASSERT_TRUE(vm_start_image_fds->kernel_fd.has_value());
+  ASSERT_TRUE(vm_start_image_fds->rootfs_fd.has_value());
+  ASSERT_EQ(7, read(vm_start_image_fds->kernel_fd->get(), buf, 7));
+  EXPECT_STREQ(buf, "kernel");
+  ASSERT_EQ(7, read(vm_start_image_fds->rootfs_fd->get(), buf, 7));
+  EXPECT_STREQ(buf, "rootfs");
 }
 
 }  // namespace vm_tools::concierge

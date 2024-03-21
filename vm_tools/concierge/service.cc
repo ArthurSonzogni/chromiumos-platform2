@@ -320,47 +320,6 @@ std::optional<internal::VmStartImageFds> GetVmStartImageFds(
   return result;
 }
 
-std::optional<internal::VmStartImageFds> GetVmStartImageFds2(
-    const google::protobuf::RepeatedField<int>& fds,
-    const std::vector<base::ScopedFD>& file_handles) {
-  if (file_handles.size() != fds.size()) {
-    return std::nullopt;
-  }
-  struct internal::VmStartImageFds result;
-  size_t count = 0;
-  for (const auto& fdType : fds) {
-    std::optional<base::ScopedFD> fd(dup(file_handles[count].get()));
-    if (!fd) {
-      LOG(ERROR) << "Failed to get VM start image file descriptor";
-      return std::nullopt;
-    }
-    switch (fdType) {
-      case StartVmRequest_FdType_KERNEL:
-        result.kernel_fd = std::move(*fd);
-        break;
-      case StartVmRequest_FdType_ROOTFS:
-        result.rootfs_fd = std::move(*fd);
-        break;
-      case StartVmRequest_FdType_INITRD:
-        result.initrd_fd = std::move(*fd);
-        break;
-      case StartVmRequest_FdType_STORAGE:
-        result.storage_fd = std::move(*fd);
-        break;
-      case StartVmRequest_FdType_BIOS:
-        result.bios_fd = std::move(*fd);
-        break;
-      case StartVmRequest_FdType_PFLASH:
-        result.pflash_fd = std::move(*fd);
-        break;
-      default:
-        LOG(WARNING) << "received request with unknown FD type " << fdType
-                     << ". Ignoring.";
-    }
-  }
-  return result;
-}
-
 std::string ConvertToFdBasedPaths(brillo::SafeFD& root_fd,
                                   bool is_rootfs_writable,
                                   VMImageSpec& image_spec,
@@ -766,6 +725,49 @@ bool ShutdownVm(VmBaseImpl* vm,
 }
 
 }  // namespace
+
+namespace internal {
+std::optional<internal::VmStartImageFds> GetVmStartImageFds2(
+    const google::protobuf::RepeatedField<int>& fds,
+    const std::vector<base::ScopedFD>& file_handles) {
+  if (file_handles.size() != fds.size()) {
+    return std::nullopt;
+  }
+  struct internal::VmStartImageFds result;
+  size_t count = 0;
+  for (const auto& fdType : fds) {
+    std::optional<base::ScopedFD> fd(dup(file_handles[count++].get()));
+    if (!fd) {
+      LOG(ERROR) << "Failed to get VM start image file descriptor";
+      return std::nullopt;
+    }
+    switch (fdType) {
+      case StartVmRequest_FdType_KERNEL:
+        result.kernel_fd = std::move(*fd);
+        break;
+      case StartVmRequest_FdType_ROOTFS:
+        result.rootfs_fd = std::move(*fd);
+        break;
+      case StartVmRequest_FdType_INITRD:
+        result.initrd_fd = std::move(*fd);
+        break;
+      case StartVmRequest_FdType_STORAGE:
+        result.storage_fd = std::move(*fd);
+        break;
+      case StartVmRequest_FdType_BIOS:
+        result.bios_fd = std::move(*fd);
+        break;
+      case StartVmRequest_FdType_PFLASH:
+        result.pflash_fd = std::move(*fd);
+        break;
+      default:
+        LOG(WARNING) << "received request with unknown FD type " << fdType
+                     << ". Ignoring.";
+    }
+  }
+  return result;
+}
+}  // namespace internal
 
 base::FilePath Service::GetVmGpuCachePathInternal(const VmId& vm_id) {
   std::string vm_dir;
@@ -1556,7 +1558,7 @@ void Service::StartVm2(
   }
 
   std::optional<internal::VmStartImageFds> vm_start_image_fds =
-      GetVmStartImageFds2(request.fds(), file_handles);
+      internal::GetVmStartImageFds2(request.fds(), file_handles);
   if (!vm_start_image_fds) {
     response.set_failure_reason("failed to get a VmStartImage fd");
     response_cb->Return(response);

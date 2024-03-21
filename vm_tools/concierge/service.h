@@ -72,6 +72,10 @@ struct VmStartImageFds {
   std::optional<base::ScopedFD> bios_fd;
   std::optional<base::ScopedFD> pflash_fd;
 };
+
+std::optional<internal::VmStartImageFds> GetVmStartImageFds2(
+    const google::protobuf::RepeatedField<int>& fds,
+    const std::vector<base::ScopedFD>& file_handles);
 }  // namespace internal
 
 // VM Launcher Service responsible for responding to DBus method calls for
