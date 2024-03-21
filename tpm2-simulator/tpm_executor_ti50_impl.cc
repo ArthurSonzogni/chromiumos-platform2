@@ -21,6 +21,7 @@
 #include <base/posix/unix_domain_socket.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <linux/vtpm_proxy.h>
 
@@ -103,7 +104,7 @@ void RemoveSocketFiles() {
       continue;
     }
     if (S_ISSOCK(statbuf.st_mode)) {
-      if (!base::DeleteFile(path)) {
+      if (!brillo::DeleteFile(path)) {
         LOG(ERROR) << "Failed to delete " << path.value();
       }
     }
@@ -145,6 +146,10 @@ void TpmExecutorTi50Impl::InitializeVTPM() {
 
   // Set GPIO socket path.
   process_.AddArg("--gpio_path");
+  process_.AddArg(kGpioSocketPath);
+
+  // Set timer control path.
+  process_.AddArg("--timer_control_path");
   process_.AddArg(kGpioSocketPath);
 
   for (const char* app : kTi50EmulatorApps) {
