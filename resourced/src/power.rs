@@ -382,6 +382,32 @@ impl<P: PowerSourceProvider> DirectoryPowerPreferencesManager<P> {
 
         Ok(())
     }
+
+    fn apply_cpufreq_boost(&self, preferences: PowerPreferences) -> Result<()> {
+        let boost_value = if preferences.cpufreq_disable_boost {
+            // Disable boost by writing '0'.
+            "0"
+        } else {
+            // Enable boost by writing '1'.
+            "1"
+        };
+
+        const CPUFREQ_BOOST_PATH: &str = "sys/devices/system/cpu/cpufreq/boost";
+        let cpufreq_boost_path = self.root.join(CPUFREQ_BOOST_PATH);
+        if cpufreq_boost_path.exists() {
+            let boost = std::fs::read_to_string(&cpufreq_boost_path)?;
+
+            if boost.trim() != boost_value {
+                std::fs::write(&cpufreq_boost_path, boost_value).with_context(|| {
+                    format!("Error writing {} to {}", boost_value, cpufreq_boost_path.display())
+                })?;
+
+                info!("Updating cpufreq boost {}", boost_value);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferencesManager<P> {
@@ -439,7 +465,8 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
 
         if let Some(preferences) = preferences {
             self.apply_cpu_hotplug(preferences)?;
-            self.apply_power_preferences(preferences)?
+            self.apply_power_preferences(preferences)?;
+            self.apply_cpufreq_boost(preferences)?;
         }
 
         if power_source == PowerSourceType::DC
@@ -629,6 +656,25 @@ mod tests {
         }
 
         Ok(sampling_rate)
+    }
+
+    fn read_global_cpufreq_boost(root: &Path) -> Result<String> {
+        let cpufreq_boost_path = root
+            .join("sys/devices/system/cpu/cpufreq/boost");
+
+        let mut boost = std::fs::read_to_string(cpufreq_boost_path)?;
+        boost = boost.trim().to_string();
+
+        Ok(boost)
+    }
+
+    fn write_global_cpufreq_boost(root: &Path, value: u32) -> Result<()> {
+        let cpufreq_boost_path = root.join("sys/devices/system/cpu/cpufreq");
+        fs::create_dir_all(&cpufreq_boost_path)?;
+
+        std::fs::write(cpufreq_boost_path.join("boost"), value.to_string())?;
+
+        Ok(())
     }
 
     // In the following per policy access functions, there are 2 cpufreq policies: policy0 and
@@ -823,6 +869,7 @@ mod tests {
 
         write_global_powersave_bias(root.path(), 0).unwrap();
         write_global_sampling_rate(root.path(), 2000).unwrap();
+        write_global_cpufreq_boost(root.path(), 1).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
@@ -840,6 +887,7 @@ mod tests {
                 }),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: false,
             },
         );
         let config_provider = fake_config.provider();
@@ -865,6 +913,9 @@ mod tests {
 
         let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
         assert_eq!(sampling_rate, "16000");
+
+        let cpufreq_boost = read_global_cpufreq_boost(root.path()).unwrap();
+        assert_eq!(cpufreq_boost, "1");
     }
 
     #[test]
@@ -873,6 +924,7 @@ mod tests {
 
         write_global_powersave_bias(root.path(), 0).unwrap();
         write_global_sampling_rate(root.path(), 2000).unwrap();
+        write_global_cpufreq_boost(root.path(), 1).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let power_source_provider = FakePowerSourceProvider {
@@ -890,6 +942,7 @@ mod tests {
                 }),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: true,
             },
         );
         let config_provider = fake_config.provider();
@@ -915,6 +968,9 @@ mod tests {
 
         let sampling_rate = read_global_sampling_rate(root.path()).unwrap();
         assert_eq!(sampling_rate, "2000");
+
+        let cpufreq_boost = read_global_cpufreq_boost(root.path()).unwrap();
+        assert_eq!(cpufreq_boost, "0");
     }
 
     #[test]
@@ -940,6 +996,7 @@ mod tests {
                 }),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: false,
             },
         );
         let config_provider = fake_config.provider();
@@ -990,6 +1047,7 @@ mod tests {
                 }),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: false,
             },
         );
         let config_provider = fake_config.provider();
@@ -1037,6 +1095,7 @@ mod tests {
                 governor: Some(Governor::Schedutil),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: false,
             },
         );
         fake_config.write_power_preference(
@@ -1046,6 +1105,7 @@ mod tests {
                 governor: Some(Governor::Conservative),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: false,
             },
         );
         fake_config.write_power_preference(
@@ -1055,6 +1115,7 @@ mod tests {
                 governor: Some(Governor::Schedutil),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: false,
             },
         );
         let config_provider = fake_config.provider();
@@ -1176,6 +1237,7 @@ mod tests {
                     cpu_offline: Some(CpuOfflinePreference::SmallCore {
                         min_active_threads: 2,
                     }),
+                    cpufreq_disable_boost: false,
                 },
                 smt_offlined: false,
                 smt_orig_state: "on",
@@ -1197,6 +1259,7 @@ mod tests {
                     cpu_offline: Some(CpuOfflinePreference::Smt {
                         min_active_threads: 2,
                     }),
+                    cpufreq_disable_boost: false,
                 },
                 smt_offlined: true,
                 smt_orig_state: "on",
@@ -1218,6 +1281,7 @@ mod tests {
                     cpu_offline: Some(CpuOfflinePreference::Half {
                         min_active_threads: 2,
                     }),
+                    cpufreq_disable_boost: false,
                 },
                 smt_offlined: false,
                 smt_orig_state: "on",
@@ -1237,6 +1301,7 @@ mod tests {
                     governor: None,
                     epp: None,
                     cpu_offline: None,
+                    cpufreq_disable_boost: false,
                 },
                 smt_offlined: false,
                 smt_orig_state: "on",
@@ -1388,6 +1453,7 @@ mod tests {
                     governor: Some(Governor::Schedutil),
                     epp: None,
                     cpu_offline: None,
+                    cpufreq_disable_boost: false,
                 },
             );
             let config_provider = fake_config.provider();
@@ -1437,6 +1503,7 @@ mod tests {
                 }),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: false,
             },
         );
         let config_provider = fake_config.provider();
@@ -1487,6 +1554,7 @@ mod tests {
                 }),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: false,
             },
         );
         let config_provider = fake_config.provider();
@@ -1537,6 +1605,7 @@ mod tests {
                 }),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: false,
             },
         );
         let config_provider = fake_config.provider();
@@ -1608,6 +1677,7 @@ mod tests {
                 }),
                 epp: None,
                 cpu_offline: None,
+                cpufreq_disable_boost: false,
             },
         );
         let config_provider = fake_config.provider();
@@ -1677,6 +1747,7 @@ mod tests {
                     governor: Some(governor),
                     epp: None,
                     cpu_offline: None,
+                    cpufreq_disable_boost: false,
                 },
             );
             let config_provider = fake_config.provider();

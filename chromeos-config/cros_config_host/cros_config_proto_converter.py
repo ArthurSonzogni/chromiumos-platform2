@@ -850,6 +850,8 @@ def _build_resource(config: Config) -> dict:
             )
         if config.HasField("governor"):
             result["governor"] = _build_governor(config.governor)
+        if config.cpufreq_disable_boost:
+            result["cpufreq-disable-boost"] = config.cpufreq_disable_boost
         return result
 
     def _build_power_preference(config):

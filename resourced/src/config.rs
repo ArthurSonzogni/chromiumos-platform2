@@ -167,6 +167,7 @@ pub struct PowerPreferences {
     pub governor: Option<Governor>,
     pub epp: Option<EnergyPerformancePreference>,
     pub cpu_offline: Option<CpuOfflinePreference>,
+    pub cpufreq_disable_boost: bool,
 }
 
 #[derive(Copy, Clone)]
@@ -485,6 +486,7 @@ impl ConfigProvider {
             governor: None,
             epp: None,
             cpu_offline: None,
+            cpufreq_disable_boost: false,
         };
 
         let governor_path = path.join("governor");
@@ -501,6 +503,18 @@ impl ConfigProvider {
         if cpu_offline_path.exists() {
             preferences.cpu_offline =
                 parse_config_from_path::<CpuOfflinePreference>(&cpu_offline_path)?;
+        }
+
+        let cpufreq_disable_boost_path = path.join("cpufreq-disable-boost");
+        if cpufreq_disable_boost_path.exists() {
+            let cpufreq_disable_boost = fs::read_to_string(cpufreq_disable_boost_path)
+                .context("failed to read cpufreq-disable-boost")?;
+            let cpufreq_disable_boost = match cpufreq_disable_boost.as_str() {
+                "true" => true,
+                "false" => false,
+                other => bail!("invalid cpufreq-disable-boost: {}", other),
+            };
+            preferences.cpufreq_disable_boost = cpufreq_disable_boost;
         }
 
         Ok(Some(preferences))
@@ -603,6 +617,11 @@ impl FakeConfig {
             )
             .unwrap();
         }
+
+        if preference.cpufreq_disable_boost {
+            let cpufreq_boost_path = preference_path.join("cpufreq-disable-boost");
+            fs::write(cpufreq_boost_path, "true").unwrap();
+        }
     }
 
     pub fn provider(&self) -> ConfigProvider {
@@ -672,6 +691,7 @@ mod tests {
             governor: None,
             epp: Some(EnergyPerformancePreference::BalancePerformance),
             cpu_offline: None,
+            cpufreq_disable_boost: false,
         };
 
         assert_eq!(actual, Some(expected));
@@ -728,6 +748,7 @@ mod tests {
                     }),
                     epp: None,
                     cpu_offline: None,
+                    cpufreq_disable_boost: false,
                 };
 
                 assert_eq!(actual, Some(expected));
@@ -748,6 +769,7 @@ mod tests {
                     }),
                     epp: None,
                     cpu_offline: None,
+                    cpufreq_disable_boost: false,
                 };
 
                 assert_eq!(actual, Some(expected));
@@ -767,6 +789,7 @@ mod tests {
                     }),
                     epp: None,
                     cpu_offline: None,
+                    cpufreq_disable_boost: false,
                 };
 
                 assert_eq!(actual, Some(expected));
@@ -1090,6 +1113,7 @@ mod tests {
                         cpu_offline: Some(CpuOfflinePreference::SmallCore {
                             min_active_threads: 3,
                         }),
+                        cpufreq_disable_boost: false,
                     },
                     PowerPreferences {
                         governor: Some(Governor::Ondemand {
@@ -1100,6 +1124,7 @@ mod tests {
                         cpu_offline: Some(CpuOfflinePreference::Smt {
                             min_active_threads: 6,
                         }),
+                        cpufreq_disable_boost: false,
                     },
                     PowerPreferences {
                         governor: Some(Governor::Ondemand {
@@ -1110,31 +1135,37 @@ mod tests {
                         cpu_offline: Some(CpuOfflinePreference::Half {
                             min_active_threads: 8,
                         }),
+                        cpufreq_disable_boost: false,
                     },
                     PowerPreferences {
                         governor: Some(Governor::Performance),
                         epp: Some(EnergyPerformancePreference::BalancePower),
                         cpu_offline: None,
+                        cpufreq_disable_boost: false,
                     },
                     PowerPreferences {
                         governor: Some(Governor::Powersave),
                         epp: Some(EnergyPerformancePreference::Power),
                         cpu_offline: None,
+                        cpufreq_disable_boost: false,
                     },
                     PowerPreferences {
                         governor: Some(Governor::Schedutil),
                         epp: None,
                         cpu_offline: None,
+                        cpufreq_disable_boost: false,
                     },
                     PowerPreferences {
                         governor: Some(Governor::Userspace),
                         epp: None,
                         cpu_offline: None,
+                        cpufreq_disable_boost: false,
                     },
                     PowerPreferences {
                         governor: None,
                         epp: None,
                         cpu_offline: None,
+                        cpufreq_disable_boost: false,
                     },
                 ] {
                     let mut fake = FakeConfig::new();
