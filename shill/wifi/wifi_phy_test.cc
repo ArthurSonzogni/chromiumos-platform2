@@ -4,6 +4,8 @@
 
 #include "shill/wifi/wifi_phy.h"
 
+#include <algorithm>
+#include <iterator>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -590,6 +592,19 @@ class WiFiPhyTest : public ::testing::Test {
     wifi_phy_.ParseConcurrency(nl80211_message);
   }
 
+  void AssertConcurrencySorted() {
+    auto current_comb = wifi_phy_.concurrency_combs_.begin();
+    if (current_comb == wifi_phy_.concurrency_combs_.end()) {
+      return;
+    }
+    auto next_comb = ++wifi_phy_.concurrency_combs_.begin();
+    while (next_comb != wifi_phy_.concurrency_combs_.end()) {
+      ASSERT_TRUE(current_comb->num_channels >= next_comb->num_channels);
+      current_comb++;
+      next_comb++;
+    }
+  }
+
   void AssertConcurrencyCombinationsAreEqual(ConcurrencyCombination lhs,
                                              ConcurrencyCombination rhs) {
     ASSERT_EQ(lhs.max_num, rhs.max_num);
@@ -609,12 +624,14 @@ class WiFiPhyTest : public ::testing::Test {
     }
   }
 
-  void AssertPhyConcurrencyIsEqualTo(
-      std::vector<ConcurrencyCombination> combs) {
+  void AssertPhyConcurrencyIsEqualTo(ConcurrencyCombinationSet combs) {
     ASSERT_EQ(wifi_phy_.concurrency_combs_.size(), combs.size());
-    for (uint i = 0; i < wifi_phy_.concurrency_combs_.size(); i++) {
-      AssertConcurrencyCombinationsAreEqual(wifi_phy_.concurrency_combs_[i],
-                                            combs[i]);
+    auto lhs_iter = wifi_phy_.concurrency_combs_.begin();
+    auto rhs_iter = combs.begin();
+    while (lhs_iter != wifi_phy_.concurrency_combs_.end()) {
+      AssertConcurrencyCombinationsAreEqual(*lhs_iter, *rhs_iter);
+      lhs_iter++;
+      rhs_iter++;
     }
   }
 
@@ -787,9 +804,8 @@ TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
   // kNewSingleChannelNoAPSTAConcurrencyNlMsg. They must be declared inline
   // because the |nl80211_iftype|s are C values which can't be instantiated
   // outside a function context.
-  std::vector<ConcurrencyCombination>
-      SingleChannelNoAPSTAConcurrencyCombinations{(
-          struct ConcurrencyCombination){
+  ConcurrencyCombinationSet SingleChannelNoAPSTAConcurrencyCombinations{
+      (struct ConcurrencyCombination){
           .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_P2P_CLIENT},
                                          .max = 1},
                      (struct IfaceLimit){
@@ -814,7 +830,7 @@ TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
   // These values align with those from kNewSingleChannelConcurrencyNlMsg. They
   // must be declared inline because the |nl80211_iftype|s are C values
   // which can't be instantiated outside a function context.
-  std::vector<ConcurrencyCombination> SingleChannelConcurrencyCombinations{(
+  ConcurrencyCombinationSet SingleChannelConcurrencyCombinations{(
       struct ConcurrencyCombination){
       .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
                                      .max = 1},
@@ -836,11 +852,12 @@ TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
   net_base::NetlinkPacket packet(kNewMultiChannelConcurrencyNlMsg);
   msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
   ParseConcurrency(msg);
+  AssertConcurrencySorted();
 
   // These values align with those from kNewMultiChannelConcurrencyNlMsg. They
   // must be declared inline because the |nl80211_iftype|s are C values
   // which can't be instantiated outside a function context.
-  std::vector<ConcurrencyCombination> MultiChannelConcurrencyCombinations{
+  ConcurrencyCombinationSet MultiChannelConcurrencyCombinations{
       (struct ConcurrencyCombination){
           .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
                                          .max = 2},

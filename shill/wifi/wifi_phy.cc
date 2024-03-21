@@ -140,7 +140,7 @@ void WiFiPhy::ParseConcurrency(const Nl80211Message& nl80211_message) {
       }
       comb.limits.push_back(limit);
     }
-    concurrency_combs_.push_back(comb);
+    concurrency_combs_.insert(comb);
   }
 }
 

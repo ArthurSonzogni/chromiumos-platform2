@@ -30,6 +30,19 @@ struct ConcurrencyCombination {
   uint32_t num_channels;
 };
 
+// Compare two ConcurrencyCombinations by number of channels.
+struct ConcurrencyCombinationComparator {
+  bool operator()(ConcurrencyCombination lhs,
+                  ConcurrencyCombination rhs) const {
+    return lhs.num_channels > rhs.num_channels;
+  }
+};
+
+// A set of ConcurrencyCombination structs, sorted by number of channels, with
+// higher channel counts coming first.
+typedef std::multiset<ConcurrencyCombination, ConcurrencyCombinationComparator>
+    ConcurrencyCombinationSet;
+
 // A WiFiPhy object represents a wireless physical layer device. Objects of this
 // class map 1:1 with an NL80211 "wiphy". WiFiPhy objects are created and owned
 // by the WiFiProvider singleton. The lifecycle of a WiFiPhy object begins with
@@ -99,7 +112,7 @@ class WiFiPhy {
   // automatic changes of regulatory domains).
   mockable bool reg_self_managed() const { return reg_self_managed_; }
 
-  std::vector<ConcurrencyCombination> ConcurrencyCombinations() {
+  ConcurrencyCombinationSet ConcurrencyCombinations() {
     return concurrency_combs_;
   }
 
@@ -160,7 +173,7 @@ class WiFiPhy {
   std::set<WiFiConstRefPtr> wifi_devices_;
   std::set<LocalDeviceConstRefPtr> wifi_local_devices_;
   std::set<nl80211_iftype> supported_ifaces_;
-  std::vector<ConcurrencyCombination> concurrency_combs_;
+  ConcurrencyCombinationSet concurrency_combs_;
   Frequencies frequencies_;
   // This is temporarily used during parsing of WiFi PHY dumps.  At the end of
   // PHY dump this is transferred into |frequencies_| - see also
