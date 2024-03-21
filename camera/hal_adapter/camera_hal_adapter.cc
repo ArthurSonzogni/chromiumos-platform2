@@ -148,7 +148,9 @@ bool CameraHalAdapter::Start() {
     LOGF(INFO) << "Effects are not enabled, skipping DLC.";
   }
 
-  LOGF(INFO) << "Setting DLC root path for super resolution.";
+#if USE_CAMERA_FEATURE_SUPER_RES
+  LOGF(INFO)
+      << "Single frame super resolution is enabled. Setting DLC root path.";
   super_res_dlc_client_ = DlcClient::Create(
       dlc_client::kSuperResDlcId,
       base::BindOnce(
@@ -165,6 +167,9 @@ bool CameraHalAdapter::Start() {
   } else {
     super_res_dlc_client_->InstallDlc();
   }
+#else
+  LOGF(INFO) << "Single frame super resolution is disabled, skipping DLC.";
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
   auto future = cros::Future<bool>::Create(nullptr);
   camera_module_thread_.task_runner()->PostTask(

@@ -341,7 +341,7 @@ source_set("stream_manipulator") {
   if (use.camera_feature_portrait_mode) {
     deps += [ "//camera/features/portrait_mode" ]
   }
-  if (use.dlc) {
+  if (use.camera_feature_super_res) {
     deps += [ "//camera/features/super_resolution" ]
   }
 }

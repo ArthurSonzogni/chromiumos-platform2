@@ -66,7 +66,7 @@ constexpr uint32_t kStillYuvBufferUsage =
 #endif  // USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
 constexpr int kSyncWaitTimeoutMs = 300;
 
-#if USE_DLC
+#if USE_CAMERA_FEATURE_SUPER_RES
 inline int DivideRoundUp(int dividend, int divisor) {
   CHECK_GT(divisor, 0);
   return (dividend + divisor - 1) / divisor;
@@ -75,12 +75,6 @@ inline int DivideRoundUp(int dividend, int divisor) {
 // Return true if single frame super resolution is enabled.
 bool CanCreateUpsampler() {
   if (base::PathExists(base::FilePath(constants::kForceDisableSuperResPath))) {
-    return false;
-  }
-  // TODO(b/330079735): Temporarily disabled on ARM device. Remove it once
-  // b/330079735 is solved.
-  if (base::SysInfo::OperatingSystemArchitecture() != "x86_64" &&
-      base::SysInfo::OperatingSystemArchitecture() != "x86") {
     return false;
   }
   return base::PathExists(base::FilePath(constants::kForceEnableSuperResPath));
@@ -105,7 +99,7 @@ bool IsUpsampleRequestValid(uint32_t target_width,
       GetEvenInputDimensions(adjusted_crop_region, active_array_dimension);
   return target_width > crop_width && target_height > crop_height;
 }
-#endif  // USE_DLC
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
 // Find the largest (video, still) stream resolutions with full FOV.
 std::pair<Size, Size> GetFullFrameResolutions(
@@ -381,13 +375,13 @@ FramingStreamManipulator::FramingStreamManipulator(
         &FramingStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
   }
 
-#if USE_DLC
+#if USE_CAMERA_FEATURE_SUPER_RES
   const base::FilePath dlc_root_path =
       runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
   if (CanCreateUpsampler() && !dlc_root_path.empty()) {
     CreateUpsampler(dlc_root_path);
   }
-#endif  // USE_DLC
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
 }
 
 FramingStreamManipulator::~FramingStreamManipulator() {
@@ -532,7 +526,7 @@ bool FramingStreamManipulator::IsManualZoomSupported() {
   return true;
 }
 
-#if USE_DLC
+#if USE_CAMERA_FEATURE_SUPER_RES
 void FramingStreamManipulator::CreateUpsampler(
     const base::FilePath& dlc_root_path) {
   DCHECK(!single_frame_upsampler_);
@@ -544,7 +538,7 @@ void FramingStreamManipulator::CreateUpsampler(
     single_frame_upsampler_ = nullptr;
   }
 }
-#endif  // USE_DLC
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
 bool FramingStreamManipulator::InitializeOnThread(
     const camera_metadata_t* static_info,
@@ -1063,14 +1057,14 @@ bool FramingStreamManipulator::ProcessFullFrameOnThread(
       "frame_number", frame_number,
       perfetto::Flow::ProcessScoped(full_frame_buffer.flow_id()));
 
-#if USE_DLC
+#if USE_CAMERA_FEATURE_SUPER_RES
   const base::FilePath dlc_root_path =
       runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
   if (CanCreateUpsampler() && !single_frame_upsampler_ &&
       !dlc_root_path.empty()) {
     CreateUpsampler(dlc_root_path);
   }
-#endif  // USE_DLC
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
   if (full_frame_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received full frame buffer with error in result "
@@ -1169,14 +1163,14 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
   TRACE_AUTO_FRAMING("frame_number", frame_number,
                      perfetto::Flow::ProcessScoped(still_yuv_buffer.flow_id()));
 
-#if USE_DLC
+#if USE_CAMERA_FEATURE_SUPER_RES
   const base::FilePath dlc_root_path =
       runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
   if (CanCreateUpsampler() && !single_frame_upsampler_ &&
       !dlc_root_path.empty()) {
     CreateUpsampler(dlc_root_path);
   }
-#endif  // USE_DLC
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
   if (still_yuv_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received still YUV buffer with error in result "
@@ -1711,7 +1705,7 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
   // Allocate a buffer to hold the cropped yuv for still capture upsampling.
   bool is_upsample_request = false;
   ScopedBufferHandle upsample_input_buffer;
-#if USE_DLC
+#if USE_CAMERA_FEATURE_SUPER_RES
   is_upsample_request =
       try_upsample && single_frame_upsampler_ &&
       IsUpsampleRequestValid(CameraBufferManager::GetWidth(output_yuv),
@@ -1725,7 +1719,7 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
         crop_width, crop_height, HAL_PIXEL_FORMAT_YCbCr_420_888,
         kStillYuvBufferUsage);
   }
-#endif  // USE_DLC
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
   SharedImage input_image = SharedImage::CreateFromBuffer(
       input_yuv, Texture2D::Target::kTarget2D, true);
@@ -1746,7 +1740,7 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
       output_image.y_texture(), output_image.uv_texture(),
       options_.output_filter_mode);
 
-#if USE_DLC
+#if USE_CAMERA_FEATURE_SUPER_RES
   // Perform upsampling on the cropped yuv buffer for still capture.
   if (is_upsample_request) {
     std::optional<base::ScopedFD> upsample_fence =
@@ -1758,7 +1752,7 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
     }
     return upsample_fence;
   }
-#endif  // USE_DLC
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
   EglFence fence;
   return fence.GetNativeFd();
