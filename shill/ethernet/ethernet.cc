@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string_view>
 #include <utility>
@@ -150,9 +151,10 @@ Ethernet::Ethernet(Manager* manager,
       StringAccessor(std::make_unique<CustomAccessor<Ethernet, std::string>>(
           this, &Ethernet::GetUsbEthernetMacAddressSource, nullptr)));
 
-  auto perm_mac = manager->device_info()->GetPermAddress(interface_index);
-  if (perm_mac) {
-    permanent_mac_address_ = perm_mac->ToHexString();
+  const std::optional<net_base::MacAddress> perm_mac =
+      manager->device_info()->GetPermAddress(interface_index);
+  if (perm_mac.has_value()) {
+    permanent_mac_address_ = *perm_mac;
   } else {
     LOG(WARNING) << "Ethernet device with missing perm MAC: " << link_name;
   }
@@ -280,8 +282,9 @@ void Ethernet::ConnectTo(EthernetService* service) {
 }
 
 std::string Ethernet::DeviceStorageSuffix() const {
-  return permanent_mac_address().empty() ? Device::DeviceStorageSuffix()
-                                         : permanent_mac_address();
+  return permanent_mac_address_.has_value()
+             ? permanent_mac_address_->ToHexString()
+             : Device::DeviceStorageSuffix();
 }
 
 void Ethernet::DisconnectFrom(EthernetService* service) {
@@ -719,7 +722,9 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
     new_mac_address =
         ReadMacAddressFromFile(base::FilePath(kVpdEthernetMacFilePath));
   } else if (source == kUsbEthernetMacAddressSourceUsbAdapterMac) {
-    new_mac_address = permanent_mac_address_;
+    new_mac_address = (permanent_mac_address_.has_value()
+                           ? permanent_mac_address_->ToHexString()
+                           : "");
   } else {
     Error error;
     Error::PopulateAndLog(FROM_HERE, &error, Error::kInvalidArguments,
@@ -820,7 +825,7 @@ void Ethernet::set_mac_address(const std::string& new_mac_address) {
   }
   // Abandon and adopt service if service storage identifier will change after
   // changing ethernet MAC address.
-  if (permanent_mac_address_.empty() && profile &&
+  if (!permanent_mac_address_.has_value() && profile &&
       !service_->HasStorageIdentifier()) {
     profile->AbandonService(service_);
     Device::set_mac_address(new_mac_address);

@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <linux/if.h>
@@ -97,7 +98,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
 
   virtual bool link_up() const { return link_up_; }
 
-  const std::string& permanent_mac_address() const {
+  std::optional<net_base::MacAddress> permanent_mac_address() const {
     return permanent_mac_address_;
   }
 
@@ -109,6 +110,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(EthernetTest, RunEthtoolCmdSuccess);
   FRIEND_TEST(EthernetTest, RunEthtoolCmdFail);
 
+  // Note that the returned string contains PII in the form of the MAC address
+  // in raw hex format.
   std::string DeviceStorageSuffix() const override;
 
   // Return a pointer to the EthernetProvider for Ethernet devices.
@@ -223,7 +226,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   std::unique_ptr<net_base::SocketFactory> socket_factory_ =
       std::make_unique<net_base::SocketFactory>();
 
-  std::string permanent_mac_address_;
+  std::optional<net_base::MacAddress> permanent_mac_address_;
 
   base::WeakPtrFactory<Ethernet> weak_ptr_factory_;
 };
