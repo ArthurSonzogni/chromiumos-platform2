@@ -78,7 +78,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
                                   const AuthBlockState& auth_block_state,
                                   CryptohomeStatusCallback callback) override;
 
-  CryptoStatus GenerateRecoveryRequest(
+  CryptohomeStatus GenerateRecoveryRequest(
       const ObfuscatedUsername& obfuscated_username,
       const cryptorecovery::RequestMetadata& request_metadata,
       const brillo::Blob& epoch_response,

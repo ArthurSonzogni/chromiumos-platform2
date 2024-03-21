@@ -741,15 +741,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserSessionMountFailedInMountEphemeral = 457,
   /* ./auth_session.cc */
   kLocAuthSessionAddResetSecretFailedInAddSecretToUSS = 458,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* ./auth_blocks/cryptohome_recovery_service.cc */
   kLocAuthBlockStateInvalidInGenerateRecoveryRequest = 459,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* ./auth_blocks/cryptohome_recovery_service.cc */
   kLocFailedDeserializeHsmPayloadInGenerateRecoveryRequest = 460,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* ./auth_blocks/cryptohome_recovery_service.cc */
   kLocFailedParseEpochResponseInGenerateRecoveryRequest = 461,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* ./auth_blocks/cryptohome_recovery_service.cc */
   kLocFailedToGetRecoveryCryptoBackendInGenerateRecoveryRequest = 462,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* ./auth_blocks/cryptohome_recovery_service.cc */
   kLocFailedGenerateRecoveryRequest = 463,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInGetRecoveryRequest = 464,

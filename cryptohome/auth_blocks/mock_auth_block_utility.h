@@ -60,7 +60,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const AuthBlockState& auth_block_state,
                StatusCallback callback),
               (override));
-  MOCK_METHOD(CryptoStatus,
+  MOCK_METHOD(CryptohomeStatus,
               GenerateRecoveryRequest,
               (const ObfuscatedUsername& obfuscated_username,
                const cryptorecovery::RequestMetadata& request_metadata,

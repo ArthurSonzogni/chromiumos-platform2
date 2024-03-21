@@ -483,6 +483,7 @@ static_library("libcrostpm") {
     "../auth_blocks/biometrics_command_processor_impl.cc",
     "../auth_blocks/challenge_credential_auth_block.cc",
     "../auth_blocks/cryptohome_recovery_auth_block.cc",
+    "../auth_blocks/cryptohome_recovery_service.cc",
     "../auth_blocks/double_wrapped_compat_auth_block.cc",
     "../auth_blocks/fingerprint_auth_block.cc",
     "../auth_blocks/fp_service.cc",

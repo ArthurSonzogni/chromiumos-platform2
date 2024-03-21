@@ -19,6 +19,29 @@
 
 namespace cryptohome {
 
+struct PrepareInput {
+  // The obfuscated username.
+  ObfuscatedUsername username;
+  // A generated reset secret to unlock a rate limited credential.
+  std::optional<brillo::SecureBlob> reset_secret;
+  // The PinWeaver leaf label of the rate-limiter.
+  std::optional<uint64_t> rate_limiter_label;
+};
+
+struct CryptohomeRecoveryPrepareOutput {
+  // The prepared recovery RPC request, to be sent to the recovery service.
+  // Produced when preparing for recovery.
+  cryptorecovery::CryptoRecoveryRpcRequest recovery_rpc_request;
+  // The ephemeral public key associated with the request.
+  brillo::Blob ephemeral_pub_key;
+};
+
+struct PrepareOutput {
+  // Output of preparing for a cryptohome recovery flow.
+  std::optional<CryptohomeRecoveryPrepareOutput>
+      cryptohome_recovery_prepare_output;
+};
+
 // Data required for Cryptohome Recovery flow.
 // - For creation of the recovery key, `mediator_pub_key` and
 // `ensure_fresh_recovery_id` fields should be set.
@@ -73,21 +96,6 @@ struct FingerprintAuthInput {
   std::optional<brillo::SecureBlob> auth_secret;
   // Data required for legacy fingerprint migration flow.
   std::optional<std::string> legacy_record_id;
-};
-
-struct PrepareInput {
-  // The obfuscated username.
-  ObfuscatedUsername username;
-  // A generated reset secret to unlock a rate limited credential.
-  std::optional<brillo::SecureBlob> reset_secret;
-  // The PinWeaver leaf label of the rate-limiter.
-  std::optional<uint64_t> rate_limiter_label;
-};
-
-struct PrepareOutput {
-  // The prepared recovery RPC request, to be sent to the recovery service.
-  // Produced when preparing for recovery.
-  std::optional<cryptorecovery::CryptoRecoveryRpcRequest> recovery_rpc_request;
 };
 
 struct AuthInput {

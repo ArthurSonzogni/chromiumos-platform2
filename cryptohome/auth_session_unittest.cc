@@ -2622,7 +2622,7 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
                    brillo::Blob* out_recovery_request,
                    brillo::Blob* out_ephemeral_pub_key) {
         *out_ephemeral_pub_key = brillo::BlobFromString("test");
-        return OkStatus<CryptohomeCryptoError>();
+        return OkStatus<CryptohomeError>();
       });
   EXPECT_FALSE(auth_session.has_user_secret_stash());
 
@@ -2754,7 +2754,7 @@ TEST_F(AuthSessionWithUssTest,
                    brillo::Blob* out_recovery_request,
                    brillo::Blob* out_ephemeral_pub_key) {
         *out_ephemeral_pub_key = brillo::BlobFromString("test");
-        return OkStatus<CryptohomeCryptoError>();
+        return OkStatus<CryptohomeError>();
       });
   EXPECT_FALSE(auth_session.has_user_secret_stash());
 

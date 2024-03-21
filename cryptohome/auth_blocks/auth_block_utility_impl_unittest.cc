@@ -1567,7 +1567,7 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
 
 TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestSuccess) {
   brillo::Blob ephemeral_pub_key, recovery_request;
-  CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
+  CryptohomeStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
       ObfuscatedUsername("obfuscated_username"),
       cryptorecovery::RequestMetadata{}, epoch_response_blob_,
       GetAuthBlockState(), crypto_.GetRecoveryCrypto(), &recovery_request,
@@ -1581,7 +1581,7 @@ TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestNoHsmPayload) {
   brillo::Blob ephemeral_pub_key, recovery_request;
   auto state = GetAuthBlockState();
   state.hsm_payload = brillo::Blob();
-  CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
+  CryptohomeStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
       ObfuscatedUsername("obfuscated_username"),
       cryptorecovery::RequestMetadata{}, epoch_response_blob_, state,
       crypto_.GetRecoveryCrypto(), &recovery_request, &ephemeral_pub_key);
@@ -1593,7 +1593,7 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
   brillo::Blob ephemeral_pub_key, recovery_request;
   auto state = GetAuthBlockState();
   state.channel_pub_key = brillo::Blob();
-  CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
+  CryptohomeStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
       ObfuscatedUsername("obfuscated_username"),
       cryptorecovery::RequestMetadata{}, epoch_response_blob_, state,
       crypto_.GetRecoveryCrypto(), &recovery_request, &ephemeral_pub_key);
@@ -1605,7 +1605,7 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
   brillo::Blob ephemeral_pub_key, recovery_request;
   auto state = GetAuthBlockState();
   state.encrypted_channel_priv_key = brillo::Blob();
-  CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
+  CryptohomeStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
       ObfuscatedUsername("obfuscated_username"),
       cryptorecovery::RequestMetadata{}, epoch_response_blob_, state,
       crypto_.GetRecoveryCrypto(), &recovery_request, &ephemeral_pub_key);
@@ -1615,7 +1615,7 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
 TEST_F(AuthBlockUtilityImplRecoveryTest,
        GenerateRecoveryRequestNoEpochResponse) {
   brillo::Blob ephemeral_pub_key, recovery_request;
-  CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
+  CryptohomeStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
       ObfuscatedUsername("obfuscated_username"),
       cryptorecovery::RequestMetadata{},
       /*epoch_response=*/brillo::Blob(), GetAuthBlockState(),
