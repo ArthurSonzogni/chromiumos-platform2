@@ -116,13 +116,13 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
         v->vek_cert_.get(), v->vek_cert_cache_.get());
 
     v->vek_cert_manager_ = std::make_unique<VekCertManager>(
-        kVekCertIndex, v->cacheable_vek_cert_.get());
+        kVekCertIndex, v->vek_cert_.get());
 
     v->real_tpm_handle_manager_ = std::make_unique<RealTpmHandleManager>(
         &v->trunks_factory_, v->vek_cert_manager_.get(),
         std::map<trunks::TPM_HANDLE, Blob*>{
             {kSrkHandle, v->cacheable_vsrk_.get()},
-            {kEkHandle, v->cacheable_vek_.get()},
+            {kEkHandle, v->vek_.get()},
         });
 
     // add `GetCapabilityCommand`.
