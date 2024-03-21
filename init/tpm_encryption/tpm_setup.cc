@@ -152,28 +152,6 @@ bool SendSecretToFeaturedTmpFile(const encryption::EncryptionKey& key,
                              libstorage::kRootGid, platform);
 }
 
-// Originally .tpm_owned file is located in /mnt/stateful_partition. Since the
-// directory can only be written by root, .tpm_owned won't be able to get
-// touched by tpm_managerd if we run it in minijail. Therefore, we need to
-// migrate the files from /mnt/stateful_partition to the files into
-// /mnt/stateful_partition/unencrypted/tpm_manager. The migration is written
-// here since mount-encrypted is started before tpm_managerd.
-bool MigrateTpmOwnerShipStateFile() {
-  auto dirname = base::FilePath(kTpmOwned).DirName();
-  if (!base::CreateDirectory(dirname)) {
-    LOG(ERROR) << "Failed to create dir for TPM pwnership state file.";
-    return false;
-  }
-
-  if (base::PathExists(base::FilePath(kOldTpmOwnershipStateFile))) {
-    LOG(INFO) << kOldTpmOwnershipStateFile << " exists. " << "Moving it to "
-              << kTpmOwned;
-    return base::Move(base::FilePath(kOldTpmOwnershipStateFile),
-                      base::FilePath((kTpmOwned)));
-  }
-  return true;
-}
-
 }  // namespace
 
 TpmSystemKey::TpmSystemKey(libstorage::Platform* platform,
@@ -334,6 +312,23 @@ bool TpmSystemKey::ShallUseTpmForSystemKey() {
 
   /* Assume we have tpm for system_key when we are using vtpm tpm2 simulator. */
   return USE_TPM2_SIMULATOR && USE_VTPM_PROXY;
+}
+
+bool TpmSystemKey::MigrateTpmOwnerShipStateFile() {
+  base::FilePath tpm_owned = rootdir_.Append(kTpmOwned);
+  base::FilePath old_tpm_state = rootdir_.Append(kOldTpmOwnershipStateFile);
+
+  if (!platform_->CreateDirectory(tpm_owned.DirName())) {
+    LOG(ERROR) << "Failed to create dir for TPM pwnership state file.";
+    return false;
+  }
+
+  if (platform_->FileExists(old_tpm_state)) {
+    LOG(INFO) << kOldTpmOwnershipStateFile << " exists. " << "Moving it to "
+              << kTpmOwned;
+    return platform_->Rename(old_tpm_state, tpm_owned);
+  }
+  return true;
 }
 
 }  // namespace encryption

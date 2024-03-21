@@ -379,6 +379,7 @@ if (use.test) {
     sources = [
       "tpm_encryption/encryption_key_test.cc",
       "tpm_encryption/tlcl_stub.cc",
+      "tpm_encryption/tpm_setup_test.cc",
     ]
     configs += [
       "//common-mk:test",

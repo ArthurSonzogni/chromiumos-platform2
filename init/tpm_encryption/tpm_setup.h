@@ -60,6 +60,14 @@ class TpmSystemKey {
 
   // Return true when a TPM is required to store the system key.
   bool ShallUseTpmForSystemKey();
+
+  // Originally .tpm_owned file is located in /mnt/stateful_partition. Since the
+  // directory can only be written by root, .tpm_owned won't be able to get
+  // touched by tpm_managerd if we run it in minijail. Therefore, we need to
+  // migrate the files from /mnt/stateful_partition to the files into
+  // /mnt/stateful_partition/unencrypted/tpm_manager. The migration is written
+  // here since mount-encrypted is started before tpm_managerd.
+  bool MigrateTpmOwnerShipStateFile();
 };
 
 }  // namespace encryption
