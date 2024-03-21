@@ -65,7 +65,7 @@ CHROME_TIME=$(awk -v boot_complete_time="${BOOT_COMPLETE_TIME}" \
                   -v chrome_exec_time="${CHROME_EXEC_TIME}"     \
                   'BEGIN {print boot_complete_time - chrome_exec_time }')
 
-THINPOOL_MIGRATION_METRICS_FILE="/run/thinpool_migration/metrics"
+THINPOOL_MIGRATION_METRICS_FILE="/run/thinpool_migrator/metrics"
 
 # Some devices don't have CrOS firmware and therefore won't have these
 # metrics.
