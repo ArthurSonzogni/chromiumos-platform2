@@ -283,43 +283,6 @@ constexpr int kVmMemoryManagementHostKillDecisionMsTimeoutDefault = 300;
 const VariationsFeature kVmMemoryManagementServiceFeature{
     kVmMemoryManagementServiceFeatureName, FEATURE_ENABLED_BY_DEFAULT};
 
-std::optional<internal::VmStartImageFds> GetVmStartImageFds(
-    const std::unique_ptr<dbus::MessageReader>& reader,
-    const google::protobuf::RepeatedField<int>& fds) {
-  struct internal::VmStartImageFds result;
-  for (const auto& fdType : fds) {
-    base::ScopedFD fd;
-    if (!reader->PopFileDescriptor(&fd)) {
-      LOG(ERROR) << "Failed to pop VM start image file descriptor";
-      return std::nullopt;
-    }
-    switch (fdType) {
-      case StartVmRequest_FdType_KERNEL:
-        result.kernel_fd = std::move(fd);
-        break;
-      case StartVmRequest_FdType_ROOTFS:
-        result.rootfs_fd = std::move(fd);
-        break;
-      case StartVmRequest_FdType_INITRD:
-        result.initrd_fd = std::move(fd);
-        break;
-      case StartVmRequest_FdType_STORAGE:
-        result.storage_fd = std::move(fd);
-        break;
-      case StartVmRequest_FdType_BIOS:
-        result.bios_fd = std::move(fd);
-        break;
-      case StartVmRequest_FdType_PFLASH:
-        result.pflash_fd = std::move(fd);
-        break;
-      default:
-        LOG(WARNING) << "received request with unknown FD type " << fdType
-                     << ". Ignoring.";
-    }
-  }
-  return result;
-}
-
 std::string ConvertToFdBasedPaths(brillo::SafeFD& root_fd,
                                   bool is_rootfs_writable,
                                   VMImageSpec& image_spec,
@@ -727,7 +690,7 @@ bool ShutdownVm(VmBaseImpl* vm,
 }  // namespace
 
 namespace internal {
-std::optional<internal::VmStartImageFds> GetVmStartImageFds2(
+std::optional<internal::VmStartImageFds> GetVmStartImageFds(
     const google::protobuf::RepeatedField<int>& fds,
     const std::vector<base::ScopedFD>& file_handles) {
   if (file_handles.size() != fds.size()) {
@@ -1504,44 +1467,15 @@ void Service::Stop(base::OnceClosure on_stopped) {
       FROM_HERE, std::move(on_stopped));
 }
 
-void Service::StartVm(dbus::MethodCall* method_call,
-                      dbus::ExportedObject::ResponseSender response_sender) {
-  RAW_SERVICE_METHOD();
-
-  auto reader = std::make_unique<dbus::MessageReader>(method_call);
-
-  StartVmRequest request;
-  StartVmResponse response;
-  // We change to a success status later if necessary.
-  response.set_status(VM_STATUS_FAILURE);
-
-  if (!reader->PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse StartVmRequest from message";
-    response.set_failure_reason("Unable to parse protobuf");
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
-  }
-
-  if (!CheckStartVmPreconditions(request, &response)) {
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
-  }
-
-  std::optional<internal::VmStartImageFds> vm_start_image_fds =
-      GetVmStartImageFds(reader, request.fds());
-  if (!vm_start_image_fds) {
-    response.set_failure_reason("failed to get a VmStartImage fd");
-    SendDbusResponse(std::move(response_sender), method_call, response);
-    return;
-  }
-
-  response =
-      StartVmInternal(std::move(request), std::move(*vm_start_image_fds));
-  SendDbusResponse(std::move(response_sender), method_call, response);
-  return;
+void Service::StartVm2(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
+        response_cb,
+    const StartVmRequest& request,
+    const std::vector<base::ScopedFD>& file_handles) {
+  StartVm(std::move(response_cb), request, file_handles);
 }
 
-void Service::StartVm2(
+void Service::StartVm(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<StartVmResponse>>
         response_cb,
     const StartVmRequest& request,
@@ -1558,7 +1492,7 @@ void Service::StartVm2(
   }
 
   std::optional<internal::VmStartImageFds> vm_start_image_fds =
-      internal::GetVmStartImageFds2(request.fds(), file_handles);
+      internal::GetVmStartImageFds(request.fds(), file_handles);
   if (!vm_start_image_fds) {
     response.set_failure_reason("failed to get a VmStartImage fd");
     response_cb->Return(response);

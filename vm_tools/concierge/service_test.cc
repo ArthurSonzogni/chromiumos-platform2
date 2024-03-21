@@ -152,7 +152,7 @@ TEST(ServiceInternalTest, TestGetVmStartImageFds2) {
   base::ScopedFD deleter2(rootfs_pipe[1]);
 
   std::optional<internal::VmStartImageFds> vm_start_image_fds =
-      internal::GetVmStartImageFds2(fds, file_handles);
+      internal::GetVmStartImageFds(fds, file_handles);
   ASSERT_EQ(7, write(kernel_pipe[1], "kernel", 7));
   ASSERT_EQ(7, write(rootfs_pipe[1], "rootfs", 7));
   char buf[7];
