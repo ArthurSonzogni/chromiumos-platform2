@@ -64,7 +64,6 @@ LEGACYLIST = {
     "glib-bridge",
     "goldfishd",
     "hardware_verifier",
-    "hiberman",
     "image-burner",
     "imageloader",
     "installer",
