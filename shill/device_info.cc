@@ -202,15 +202,26 @@ constexpr base::TimeDelta kRequestLinkStatisticsInterval = base::Seconds(20);
 constexpr int kIflaXfrmLink = 1;
 constexpr int kIflaXfrmIfId = 2;
 
+std::string HexEncode(const std::optional<net_base::MacAddress>& mac_address) {
+  if (!mac_address) {
+    return "";
+  }
+  return base::HexEncode(mac_address->ToBytes());
+}
+
 // Non-functional Device subclass used for non-operable or blocked devices
 class DeviceStub : public Device {
  public:
   DeviceStub(Manager* manager,
              const std::string& link_name,
-             const std::string& address,
+             std::optional<net_base::MacAddress> mac_address,
              int interface_index,
              Technology technology)
-      : Device(manager, link_name, address, interface_index, technology) {}
+      : Device(manager,
+               link_name,
+               HexEncode(mac_address),
+               interface_index,
+               technology) {}
   DeviceStub(const DeviceStub&) = delete;
   DeviceStub& operator=(const DeviceStub&) = delete;
 
@@ -222,13 +233,6 @@ class DeviceStub : public Device {
   }
   void Initialize() override {}
 };
-
-std::string HexEncode(const std::optional<net_base::MacAddress>& mac_address) {
-  if (!mac_address) {
-    return "";
-  }
-  return base::HexEncode(mac_address->ToBytes());
-}
 
 }  // namespace
 
@@ -629,7 +633,6 @@ DeviceRefPtr DeviceInfo::CreateDevice(
           << (mac_address.has_value() ? mac_address->ToString() : "(null)")
           << " Index: " << interface_index;
 
-  const std::string mac_address_str = HexEncode(mac_address);
   DeviceRefPtr device;
   delayed_devices_.erase(interface_index);
   infos_[interface_index].technology = technology;
@@ -706,8 +709,8 @@ DeviceRefPtr DeviceInfo::CreateDevice(
       // We will not manage this device in shill.  Do not create a device
       // object or do anything to change its state.  We create a stub object
       // which is useful for testing.
-      return new DeviceStub(manager_, link_name, mac_address_str,
-                            interface_index, technology);
+      return new DeviceStub(manager_, link_name, mac_address, interface_index,
+                            technology);
   }
 
   manager_->UpdateUninitializedTechnologies();
