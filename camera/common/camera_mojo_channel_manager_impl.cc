@@ -147,6 +147,7 @@ CameraMojoChannelManagerImpl* CameraMojoChannelManagerImpl::instance_ = nullptr;
 
 CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl()
     : ipc_thread_("MojoIpcThread") {
+  CHECK(!instance_);
   instance_ = this;
   if (!ipc_thread_.StartWithOptions(
           base::Thread::Options(base::MessagePumpType::IO, 0))) {
@@ -156,6 +157,11 @@ CameraMojoChannelManagerImpl::CameraMojoChannelManagerImpl()
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       GetIpcTaskRunner(), mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
+  GetIpcTaskRunner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &CameraMojoChannelManagerImpl::ConnectToMojoServiceManagerOnIpcThread,
+          base::Unretained(this)));
 }
 
 CameraMojoChannelManagerImpl::~CameraMojoChannelManagerImpl() {
@@ -228,17 +234,16 @@ void CameraMojoChannelManagerImpl::RequestServiceFromMojoServiceManager(
 
 void CameraMojoChannelManagerImpl::TearDownMojoEnvOnIpcThread() {
   DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
+  service_manager_.reset();
   ipc_support_.reset();
 }
 
 chromeos::mojo_service_manager::mojom::ServiceManager*
 CameraMojoChannelManagerImpl::GetServiceManagerProxy() {
   DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
-  static const base::NoDestructor<
-      mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>>
-      remote(chromeos::mojo_service_manager::ConnectToMojoServiceManager());
-  CHECK(remote->is_bound()) << "Failed to connect to mojo service manager.";
-  return remote->get();
+  CHECK(service_manager_.is_bound())
+      << "Failed to connect to mojo service manager.";
+  return service_manager_.get();
 }
 
 void CameraMojoChannelManagerImpl::RegisterServiceToMojoServiceManager(
@@ -277,6 +282,12 @@ void CameraMojoChannelManagerImpl::QueryCallback(
     return;
   }
   std::move(callback).Run(false);
+}
+
+void CameraMojoChannelManagerImpl::ConnectToMojoServiceManagerOnIpcThread() {
+  DCHECK(GetIpcTaskRunner()->BelongsToCurrentThread());
+  service_manager_.Bind(
+      chromeos::mojo_service_manager::ConnectToMojoServiceManager());
 }
 
 }  // namespace cros

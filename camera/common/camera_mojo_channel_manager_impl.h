@@ -76,6 +76,8 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
  private:
   class MojoServiceManagerObserverImpl;
 
+  void ConnectToMojoServiceManagerOnIpcThread();
+
   void TearDownMojoEnvOnIpcThread();
 
   void QueryCallback(
@@ -83,6 +85,9 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
       chromeos::mojo_service_manager::mojom::ErrorOrServiceStatePtr result);
 
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
+
+  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>
+      service_manager_;
 
   // TODO(b/151270948): Remove this static variable once we implemnet CrOS
   // specific interface on all camera HALs.
