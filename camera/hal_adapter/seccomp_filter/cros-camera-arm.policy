@@ -8,8 +8,10 @@ _llseek: 1
 _newselect: 1
 accept4: 1
 access: 1
+ARM_set_tls: 1
 bind: 1
 brk: 1
+clock_getres_time64: 1
 clock_gettime: 1
 clock_gettime64: 1
 clock_nanosleep: 1
@@ -47,8 +49,8 @@ getgid32: 1
 getpid: 1
 getpriority: 1
 getrandom: arg2 in ~GRND_RANDOM
-getresgid: 1
-getresuid: 1
+getresgid32: 1
+getresuid32: 1
 getsockname: 1
 getsockopt: 1
 gettid: 1
@@ -117,6 +119,7 @@ statfs: 1
 statx: 1
 sysinfo: 1
 tgkill: 1
+ugetrlimit: 1
 uname: 1
 unlink: 1
 wait4: 1
