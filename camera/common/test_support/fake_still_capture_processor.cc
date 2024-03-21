@@ -34,7 +34,7 @@ void FakeStillCaptureProcessor::QueuePendingRequest(
 void FakeStillCaptureProcessor::QueuePendingOutputBuffer(
     int frame_number, camera3_stream_buffer_t output_buffer) {
   ASSERT_EQ(result_descriptor_.count(frame_number), 1);
-  result_descriptor_[frame_number].has_output_buffer = true;
+  result_descriptor_[frame_number].output_buffer.emplace(output_buffer);
   MaybeProduceCaptureResult(frame_number);
 }
 
@@ -63,39 +63,32 @@ void FakeStillCaptureProcessor::QueuePendingYuvImage(
 }
 
 bool FakeStillCaptureProcessor::IsPendingOutputBufferQueued(int frame_number) {
-  return result_descriptor_[frame_number].has_output_buffer;
+  return result_descriptor_[frame_number].output_buffer.has_value();
 }
 
 void FakeStillCaptureProcessor::CancelPendingRequest(int frame_number) {
   ASSERT_EQ(result_descriptor_.count(frame_number), 1);
-  ASSERT_TRUE(result_descriptor_[frame_number].has_output_buffer);
-  camera3_stream_buffer_t stream_buffer = {
-      .stream = const_cast<camera3_stream_t*>(stream_),
-      .buffer = &fake_buffer_.self,
-      .status = CAMERA3_BUFFER_STATUS_ERROR,
-      .acquire_fence = -1,
-      .release_fence = -1};
-  result_callback_.Run(Camera3CaptureDescriptor(camera3_capture_result_t{
-      .frame_number = static_cast<uint32_t>(frame_number),
-      .num_output_buffers = 1,
-      .output_buffers = &stream_buffer}));
+  if (result_descriptor_[frame_number].output_buffer.has_value()) {
+    camera3_stream_buffer_t& stream_buffer =
+        result_descriptor_[frame_number].output_buffer.value();
+    stream_buffer.status = CAMERA3_BUFFER_STATUS_ERROR;
+    result_callback_.Run(Camera3CaptureDescriptor(camera3_capture_result_t{
+        .frame_number = static_cast<uint32_t>(frame_number),
+        .num_output_buffers = 1,
+        .output_buffers = &stream_buffer}));
+  }
   result_descriptor_.erase(frame_number);
 }
 
 void FakeStillCaptureProcessor::MaybeProduceCaptureResult(int frame_number) {
   if (result_descriptor_[frame_number].has_apps_segments &&
       result_descriptor_[frame_number].has_yuv_buffer &&
-      result_descriptor_[frame_number].has_output_buffer) {
-    camera3_stream_buffer_t stream_buffer = {
-        .stream = const_cast<camera3_stream_t*>(stream_),
-        .buffer = &fake_buffer_.self,
-        .status = CAMERA3_BUFFER_STATUS_OK,
-        .acquire_fence = -1,
-        .release_fence = -1};
+      result_descriptor_[frame_number].output_buffer.has_value()) {
     result_callback_.Run(Camera3CaptureDescriptor(camera3_capture_result_t{
         .frame_number = static_cast<uint32_t>(frame_number),
         .num_output_buffers = 1,
-        .output_buffers = &stream_buffer}));
+        .output_buffers =
+            &result_descriptor_[frame_number].output_buffer.value()}));
   }
 }
 

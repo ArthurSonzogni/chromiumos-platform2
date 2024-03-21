@@ -24,6 +24,7 @@
 #include "common/camera_hal3_helpers.h"
 #include "common/reloadable_config_file.h"
 #include "common/still_capture_processor.h"
+#include "common/stream_manipulator_helper.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/common_types.h"
@@ -48,14 +49,6 @@ constexpr uint32_t kCrosDigitalZoomRequestedVendorKey =
     kCrosDigitalZoomVendorTagStart + 1;
 constexpr char kCrosDigitalZoomRequestedVendorTagName[] =
     "com.google.crosDigitalZoomRequested";
-
-struct StreamFormat {
-  uint32_t width = 0;
-  uint32_t height = 0;
-  uint32_t format = 0;
-  float max_fps = 0.0f;
-  RelativeFov fov;
-};
 
 class FramingStreamManipulator : public StreamManipulator {
  public:
