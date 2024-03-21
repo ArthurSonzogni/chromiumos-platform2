@@ -62,6 +62,7 @@ class BRILLO_EXPORT FakePlatform : public Platform {
   bool DeleteFile(const base::FilePath& path) override;
   bool DeletePathRecursively(const base::FilePath& path) override;
   bool DeleteFileDurable(const base::FilePath& path) override;
+  bool DeleteFileSecurely(const base::FilePath& path) override;
   bool FileExists(const base::FilePath& path) const override;
   bool DirectoryExists(const base::FilePath& path) override;
   int Access(const base::FilePath& path, uint32_t flag) override;

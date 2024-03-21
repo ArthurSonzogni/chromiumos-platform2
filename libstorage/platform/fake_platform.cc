@@ -24,6 +24,7 @@
 #include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/secure_blob.h>
 #include <libcrossystem/crossystem_fake.h>
+#include <secure_erase_file/secure_erase_file.h>
 
 #include "libstorage/platform/util/get_random_suffix.h"
 
@@ -230,6 +231,13 @@ bool FakePlatform::DeletePathRecursively(const base::FilePath& path) {
 bool FakePlatform::DeleteFileDurable(const base::FilePath& path) {
   RemoveFakeEntries(path);
   return real_platform_.DeleteFileDurable(TestFilePath(path));
+}
+
+bool FakePlatform::DeleteFileSecurely(const base::FilePath& path) {
+  RemoveFakeEntries(path);
+  // To fasten test, don't check if the underlying device is eMMC,
+  // don't drop cache.
+  return secure_erase_file::ZeroFile(TestFilePath(path));
 }
 
 bool FakePlatform::FileExists(const base::FilePath& path) const {
