@@ -90,7 +90,10 @@ std::unique_ptr<FakeStream> FakeStream::Create(Size size,
           [&size](const FramesTestPatternSpec& spec)
               -> std::unique_ptr<FakeStream> {
             auto input_buffer = GenerateTestPattern(
-                size, ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY);
+                size,
+                spec.use_solid_color_bar
+                    ? ANDROID_SENSOR_TEST_PATTERN_MODE_SOLID_COLOR
+                    : ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY);
             return base::WrapUnique(
                 new StaticFakeStream(std::move(input_buffer)));
           },

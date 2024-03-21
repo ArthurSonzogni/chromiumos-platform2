@@ -68,6 +68,8 @@ struct FramesFileSpec {
 };
 
 struct FramesTestPatternSpec {
+  bool use_solid_color_bar = false;
+
   bool operator==(const FramesTestPatternSpec& rhs) const { return true; }
   bool operator!=(const FramesTestPatternSpec& rhs) const {
     return !(*this == rhs);
@@ -81,6 +83,8 @@ struct CameraSpec {
   bool connected = false;
   std::vector<SupportedFormatSpec> supported_formats;
   FramesSpec frames = FramesTestPatternSpec();
+  // When set, BLOB will be of a solid color (black), |frames| will be ignored.
+  bool solid_color_blob = false;
 };
 
 struct HalSpec {

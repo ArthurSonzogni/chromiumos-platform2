@@ -96,6 +96,11 @@ Each `CameraSpec` is a dictionary, containing the following keys:
       If the video frames are labeled with 1 to N, then the played frames
       will be 1,2,...,N-1,N,N-1,...,2,1,2,...
 
+* `solid_color_blob` (boolean, default false):
+  Whether to use a solid color (black) for still captures (BLOB or YUV with
+  usage bit `GRALLOC_USAGE_PRIVATE_1` set). When set, BLOB streams will ignore
+  `frames`.
+
 A sample config file is as follows:
 ```json
 {
@@ -118,7 +123,8 @@ A sample config file is as follows:
       "frames": {
         "path": "/var/cache/camera/xxx.y4m",
         "scale_mode": "contain"
-      }
+      },
+      "solid_color_blob": false
     },
     { "id": 2, "connected": false }
   ]

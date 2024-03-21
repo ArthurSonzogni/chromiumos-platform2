@@ -37,6 +37,8 @@ constexpr char kLoopModeKey[] = "loop_mode";
 constexpr char kLoopModeLoop[] = "loop";
 constexpr char kLoopModePingPong[] = "ping_pong";
 
+constexpr char kSolidColorBlob[] = "solid_color_blob";
+
 // Default fps ranges, this conform to the minimal required fps ranges as in
 // https://developer.android.com/reference/android/hardware/camera2/CameraCharacteristics#CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES
 const std::vector<std::pair<int, int>> kDefaultFpsRanges = {{15, 60}, {60, 60}};
@@ -253,6 +255,9 @@ std::vector<CameraSpec> ParseCameraSpecs(const ListWithPath& cameras_value) {
           },
       };
     }
+
+    camera_spec.solid_color_blob =
+        GetValue<bool>(*spec_value, kSolidColorBlob).value_or(false);
 
     camera_specs.push_back(camera_spec);
   }

@@ -3,12 +3,16 @@
  * found in the LICENSE file.
  */
 
+#include <hardware/gralloc.h>
 #include <sync/sync.h>
+
+#include <memory>
 #include <utility>
 
 #include <base/threading/platform_thread.h>
 
 #include "cros-camera/common.h"
+#include "hal/fake/fake_stream.h"
 #include "hal/fake/metadata_handler.h"
 #include "hal/fake/request_handler.h"
 
@@ -179,7 +183,16 @@ bool RequestHandler::StreamOnImpl(
   for (auto stream : streams) {
     Size size(stream->width, stream->height);
 
-    auto fake_stream = FakeStream::Create(size, spec_.frames);
+    std::unique_ptr<FakeStream> fake_stream;
+
+    if (spec_.solid_color_blob && (stream->usage & GRALLOC_USAGE_PRIVATE_1 ||
+                                   stream->format == HAL_PIXEL_FORMAT_BLOB)) {
+      fake_stream = FakeStream::Create(
+          size, FramesTestPatternSpec{.use_solid_color_bar = true});
+    } else {
+      fake_stream = FakeStream::Create(size, spec_.frames);
+    }
+
     if (fake_stream == nullptr) {
       return false;
     }
