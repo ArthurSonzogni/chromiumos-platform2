@@ -723,44 +723,5 @@ TEST_F(FanRoutineTest, RoutineUnsupportedWithNoCrosEc) {
   ASSERT_TRUE(routine_create.error()->is_unsupported());
 }
 
-// TODO(b/319044476): Remove this test once we set cros config to disable fan
-// test in affected models.
-class FanRoutineUnsupportedModelsTest
-    : public FanRoutineTest,
-      public testing::WithParamInterface<std::string> {
- protected:
-  void SetUp() override {
-    SetFakeCrosConfig(paths::cros_config::kCodeName, GetParam());
-  }
-};
-
-INSTANTIATE_TEST_SUITE_P(,
-                         FanRoutineUnsupportedModelsTest,
-                         testing::Values("jax",
-                                         "craask",
-                                         "craaskbowl",
-                                         "craaskino",
-                                         "craaskvin",
-                                         "craasneto",
-                                         "joxer",
-                                         "pujjo",
-                                         "pujjoteen",
-                                         "yavijo",
-                                         "yavilla",
-                                         "yavilly",
-                                         "yaviks",
-                                         "pujjo1e",
-                                         "faffy",
-                                         "skyrim6w"));
-
-// Test that the routine is unsupported with denylisted models.
-TEST_P(FanRoutineUnsupportedModelsTest,
-       RoutineUnsupportedWithUnsupportedModels) {
-  auto routine_create =
-      FanRoutine::Create(&mock_context_, mojom::FanRoutineArgument::New());
-  ASSERT_FALSE(routine_create.has_value());
-  ASSERT_TRUE(routine_create.error()->is_unsupported());
-}
-
 }  // namespace
 }  // namespace diagnostics

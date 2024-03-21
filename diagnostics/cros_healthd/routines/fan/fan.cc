@@ -7,12 +7,10 @@
 #include <algorithm>
 #include <cstdint>
 #include <optional>
-#include <string_view>
 #include <utility>
 #include <vector>
 
 #include <base/containers/flat_map.h>
-#include <base/containers/fixed_flat_set.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/notreached.h>
@@ -21,9 +19,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
-#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/system/context.h"
-#include "diagnostics/cros_healthd/system/cros_config.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
@@ -34,41 +30,11 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-constexpr auto kUnsupportedModels = base::MakeFixedFlatSet<std::string_view>({
-    "jax",
-    "craask",
-    "craaskbowl",
-    "craaskino",
-    "craaskvin",
-    "craasneto",
-    "joxer",
-    "pujjo",
-    "pujjoteen",
-    "yavijo",
-    "yavilla",
-    "yavilly",
-    "yaviks",
-    "pujjo1e",
-    "faffy",
-    "skyrim6w",
-});
-
 }  // namespace
 
 base::expected<std::unique_ptr<BaseRoutineControl>, mojom::SupportStatusPtr>
 FanRoutine::Create(Context* context, const mojom::FanRoutineArgumentPtr& arg) {
   CHECK(!arg.is_null());
-
-  auto model_name = context->cros_config()->Get(paths::cros_config::kCodeName);
-  // TODO(b/319044476): Remove this workaround once cros config is correctly set
-  // in these affected devices.
-  if (model_name.has_value() &&
-      kUnsupportedModels.contains(model_name.value())) {
-    return base::unexpected(
-        mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-            /*debug_message=*/"Fan routine is not supported on this model",
-            /*reason=*/nullptr)));
-  }
 
   uint8_t expected_fan_count;
   auto status = context->ground_truth()->PrepareRoutineFan(expected_fan_count);
