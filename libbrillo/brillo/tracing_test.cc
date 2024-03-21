@@ -34,7 +34,9 @@ TEST_F(TracingTest, Init) {
   EXPECT_TRUE(perfetto::Tracing::IsInitialized());
 }
 
-TEST_F(TracingTest, RunLoopTracing) {
+// TODO(b/298303538): the test is flaky and is disabled. Reenable after the
+// flake is fixed.
+TEST_F(TracingTest, DISABLED_RunLoopTracing) {
   // Use an in-process tracing backend for testing, since the system tracing
   // service won't necessarily be running.
   perfetto::TracingInitArgs init_args;
