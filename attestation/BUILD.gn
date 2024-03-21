@@ -38,6 +38,7 @@ pkg_config("target_defaults") {
     # This is a list of pkg-config dependencies
     "libbrillo",
     "libchrome",
+    "libcrossystem",
   ]
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]
@@ -92,10 +93,7 @@ source_set("proto_library") {
 
 # A library for common code.
 pkg_config("common_library_config") {
-  pkg_deps = [
-    "openssl",
-    "vboot_host",
-  ]
+  pkg_deps = [ "openssl" ]
   libs = [
     "hwsec",
     "hwsec-foundation",

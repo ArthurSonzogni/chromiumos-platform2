@@ -30,6 +30,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
 #include <crypto/sha2.h>
+#include <libcrossystem/crossystem.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/frontend/attestation/frontend.h>
 #include <libhwsec/status.h>
@@ -39,9 +40,6 @@
 #include <openssl/objects.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
-extern "C" {
-#include <vboot/crossystem.h>
-}
 
 #include "attestation/common/nvram_quoter_factory.h"
 #include "attestation/server/attestation_flow.h"
@@ -282,16 +280,6 @@ const CertificateAuthority kKnownCrosCoreEndorsementCA[] = {
 // Default D-Bus call timeout.
 constexpr base::TimeDelta kPcaAgentDBusTimeout = base::Minutes(2);
 
-std::string GetHardwareID() {
-  char buffer[VB_MAX_STRING_PROPERTY];
-
-  if (VbGetSystemPropertyString("hwid", buffer, std::size(buffer)) == 0) {
-    return std::string(buffer);
-  }
-  LOG(WARNING) << "Could not read hwid property.";
-  return std::string();
-}
-
 // Finds CA by |issuer_name| and |is_cros_core| flag. On success returns true
 // and fills |public_key_hex| with CA public key hex modulus.
 bool GetAuthorityPublicKey(const std::string& issuer_name,
@@ -495,7 +483,11 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
     key_store_ = default_key_store_.get();
   }
   if (hwid_.empty()) {
-    hwid_ = GetHardwareID();
+    crossystem::Crossystem crossystem;
+    hwid_ = crossystem.VbGetSystemPropertyString("hwid").value_or("");
+    if (hwid_.empty()) {
+      LOG(WARNING) << "Could not read hwid property.";
+    }
   }
   if (!IsPreparedForEnrollment()) {
     worker_thread_->task_runner()->PostTask(
