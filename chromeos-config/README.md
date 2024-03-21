@@ -1062,6 +1062,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -1156,6 +1157,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -1250,6 +1252,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -1344,6 +1347,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -1438,6 +1442,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -1532,6 +1537,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -1626,6 +1632,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -1731,6 +1738,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -1825,6 +1833,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -1919,6 +1928,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -2013,6 +2023,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -2107,6 +2118,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -2201,6 +2213,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 
@@ -2295,6 +2308,7 @@ In the tables below,
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpu-offline | [cpu-offline](#cpu_offline) |  | False |  | False | The policy to offline CPUs to reduce power consumption. Mainly used by battery-saver mode (battery-saver-power-preferences). Empty by default and CPU won't be offlined. |
+| cpufreq-disable-boost | boolean |  | False |  | False | (Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq. |
 | epp | [epp](#epp) |  | False |  | False |  |
 | governor | [governor](#governor) |  | False |  | False |  |
 

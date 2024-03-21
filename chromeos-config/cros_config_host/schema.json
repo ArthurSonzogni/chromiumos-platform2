@@ -1905,6 +1905,10 @@
                             ],
                             "type": "object"
                           },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
+                          },
                           "epp": {
                             "oneOf": [
                               {
@@ -2009,6 +2013,10 @@
                               }
                             ],
                             "type": "object"
+                          },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
                           },
                           "epp": {
                             "oneOf": [
@@ -2115,6 +2123,10 @@
                             ],
                             "type": "object"
                           },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
+                          },
                           "epp": {
                             "oneOf": [
                               {
@@ -2219,6 +2231,10 @@
                               }
                             ],
                             "type": "object"
+                          },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
                           },
                           "epp": {
                             "oneOf": [
@@ -2325,6 +2341,10 @@
                             ],
                             "type": "object"
                           },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
+                          },
                           "epp": {
                             "oneOf": [
                               {
@@ -2430,6 +2450,10 @@
                             ],
                             "type": "object"
                           },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
+                          },
                           "epp": {
                             "oneOf": [
                               {
@@ -2534,6 +2558,10 @@
                               }
                             ],
                             "type": "object"
+                          },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
                           },
                           "epp": {
                             "oneOf": [
@@ -2646,6 +2674,10 @@
                             ],
                             "type": "object"
                           },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
+                          },
                           "epp": {
                             "oneOf": [
                               {
@@ -2750,6 +2782,10 @@
                               }
                             ],
                             "type": "object"
+                          },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
                           },
                           "epp": {
                             "oneOf": [
@@ -2856,6 +2892,10 @@
                             ],
                             "type": "object"
                           },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
+                          },
                           "epp": {
                             "oneOf": [
                               {
@@ -2960,6 +3000,10 @@
                               }
                             ],
                             "type": "object"
+                          },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
                           },
                           "epp": {
                             "oneOf": [
@@ -3066,6 +3110,10 @@
                             ],
                             "type": "object"
                           },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
+                          },
                           "epp": {
                             "oneOf": [
                               {
@@ -3171,6 +3219,10 @@
                             ],
                             "type": "object"
                           },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
+                          },
                           "epp": {
                             "oneOf": [
                               {
@@ -3275,6 +3327,10 @@
                               }
                             ],
                             "type": "object"
+                          },
+                          "cpufreq-disable-boost": {
+                            "description": "(Optional) Whether cpufreq boost mode will be disabled or not. Mainly used by WebRTC (video calls) and battery-saver mode (battery-saver-power-preferences) to reduce power consumption. Defaults to false, enabling cpufreq.",
+                            "type": "boolean"
                           },
                           "epp": {
                             "oneOf": [

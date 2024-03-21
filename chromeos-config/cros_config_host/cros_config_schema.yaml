@@ -410,6 +410,12 @@ typeDefs:
                     type: integer
                     description: The minimum number of active threads required. If not set,
                       resourced sets default to 2.
+      cpufreq-disable-boost:
+        type: boolean
+        description: (Optional) Whether cpufreq boost mode will be disabled or not.
+          Mainly used by WebRTC (video calls) and battery-saver mode
+          (battery-saver-power-preferences) to reduce power consumption.
+          Defaults to false, enabling cpufreq.
   resourced_power_source_preferences: &resourced_power_source_preferences
     description: Defines settings that configure resourced based on power source.
       https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/resource_config.proto
