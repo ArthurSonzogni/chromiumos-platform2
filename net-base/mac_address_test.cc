@@ -29,8 +29,24 @@ TEST(MacAddress, constructor) {
 }
 
 TEST(MacAddress, CreateFromString) {
-  const auto addr = *MacAddress::CreateFromString("12:34:56:78:9a:bc");
-  EXPECT_EQ(addr, MacAddress(0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc));
+  EXPECT_EQ(MacAddress::CreateFromString("12:34:56:78:9a:bc"),
+            MacAddress(0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc));
+  EXPECT_EQ(MacAddress::CreateFromString("AA:BB:CC:DD:EE:FF"),
+            MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff));
+
+  EXPECT_FALSE(MacAddress::CreateFromString("123456789abc").has_value());
+}
+
+TEST(MacAddress, CreateFromHexString) {
+  EXPECT_EQ(MacAddress::CreateFromHexString("123456789abc"),
+            MacAddress(0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc));
+  EXPECT_EQ(MacAddress::CreateFromHexString("AABBCCDDEEFF"),
+            MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff));
+
+  EXPECT_FALSE(
+      MacAddress::CreateFromHexString("12:34:56:78:9a:bC").has_value());
+  EXPECT_FALSE(MacAddress::CreateFromHexString("asdf12345678").has_value());
+  EXPECT_FALSE(MacAddress::CreateFromHexString("123456789abcef").has_value());
 }
 
 TEST(MacAddress, CreateFromBytes) {

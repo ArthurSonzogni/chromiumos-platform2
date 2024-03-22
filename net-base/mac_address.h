@@ -41,6 +41,11 @@ class BRILLO_EXPORT MacAddress {
   static std::optional<MacAddress> CreateFromString(
       std::string_view address_string);
 
+  // Creates the MacAddress from hex format string.
+  // e.g. "aabbccddeeff" => MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff)
+  static std::optional<MacAddress> CreateFromHexString(
+      std::string_view hex_string);
+
   // Creates the MacAddress from the raw byte buffer |bytes|.
   // Returns std::nullopt if |bytes|'s size is not the same as kAddressLength.
   static std::optional<MacAddress> CreateFromBytes(

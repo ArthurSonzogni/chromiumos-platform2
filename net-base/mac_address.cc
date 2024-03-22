@@ -40,6 +40,16 @@ std::optional<MacAddress> MacAddress::CreateFromString(
 }
 
 // static
+std::optional<MacAddress> MacAddress::CreateFromHexString(
+    std::string_view hex_string) {
+  std::vector<uint8_t> mac_addr_bytes;
+  if (!base::HexStringToBytes(hex_string, &mac_addr_bytes)) {
+    return std::nullopt;
+  }
+  return CreateFromBytes(mac_addr_bytes);
+}
+
+// static
 std::optional<MacAddress> MacAddress::CreateFromBytes(
     base::span<const char> bytes) {
   return CreateFromBytes(base::span<const uint8_t>(
