@@ -14,6 +14,8 @@ namespace {
 // LINT.IfChange(status_list)
 constexpr std::pair<CrashCollectionStatus, std::string_view> kStatusNames[] = {
     {CrashCollectionStatus::kSuccess, "Success"},
+    {CrashCollectionStatus::kFinishedEphermeralCollection,
+     "Finished ephermeral collection"},
     {CrashCollectionStatus::kUnknownStatus, "Unknown Status"},
     {CrashCollectionStatus::kOutOfCapacity, "Out of capacity"},
     {CrashCollectionStatus::kFailedMetaWrite, "Failed to write .meta"},
@@ -129,12 +131,17 @@ constexpr bool ValuesAreAllInRange() {
         status_name.first > CrashCollectionStatus::kMaxValue) {
       return false;
     }
+    if (status_name.first > CrashCollectionStatus::kLastSuccessCode &&
+        status_name.first < CrashCollectionStatus::kFirstErrorValue &&
+        status_name.first != CrashCollectionStatus::kUnknownStatus) {
+      return false;
+    }
   }
   return true;
 }
 
-// Mostly to catch cases when someone forgot to update kMaxValue when adding a
-// new value.
+// Mostly to catch cases when someone forgot to update kMaxValue or
+// kLastSuccessCode when adding a new value.
 static_assert(ValuesAreAllInRange(), "kStatusNames has invalid values");
 }  // namespace
 

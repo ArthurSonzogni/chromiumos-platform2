@@ -16,6 +16,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
@@ -60,7 +61,7 @@ class EphemeralCrashCollectorTest : public testing::Test {
   void ExpectCrashReportsParsed() {
     ASSERT_TRUE(test_util::CreateFile(src_dir_.Append(kTestCrashFileName),
                                       kTestCrashFileContents));
-    EXPECT_TRUE(collector_.Collect());
+    EXPECT_TRUE(IsSuccessCode(collector_.Collect()));
     EXPECT_FALSE(base::PathExists(src_dir_));
   }
 

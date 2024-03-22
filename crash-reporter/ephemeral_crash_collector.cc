@@ -60,7 +60,7 @@ void EphemeralCrashCollector::Initialize(bool preserve_across_clobber) {
   CrashCollector::Initialize(false /* early */);
 }
 
-bool EphemeralCrashCollector::Collect() {
+CrashCollectionStatus EphemeralCrashCollector::Collect() {
 #if USE_DIRENCRYPTION
   // Join the session keyring, if one exists.
   util::JoinSessionKeyring();
@@ -79,6 +79,8 @@ bool EphemeralCrashCollector::Collect() {
       base::FilePath destination_directory;
 
       // If the crash reporter directory is already fully occupied, then exit.
+      // TODO(b/177552411) Count the number of discarded reports as a separate
+      // metric.
       if (!IsSuccessCode(GetCreatedCrashDirectoryByEuid(
               0, &destination_directory, nullptr))) {
         break;
@@ -99,5 +101,6 @@ bool EphemeralCrashCollector::Collect() {
   for (auto& dir : source_directories_)
     base::DeletePathRecursively(dir);
 
-  return true;
+  // Not kSuccess because we didn't actually create any new crash reports.
+  return CrashCollectionStatus::kFinishedEphermeralCollection;
 }

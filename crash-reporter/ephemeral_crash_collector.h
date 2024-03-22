@@ -20,6 +20,8 @@
 
 #include "crash-reporter/crash_collector.h"
 
+enum class CrashCollectionStatus;
+
 // The ephemeral crash collector persists already collected crashes into the
 // either the encrypted stateful partition or (in its absence) the encrypted
 // reboot vault.
@@ -43,7 +45,7 @@ class EphemeralCrashCollector : public CrashCollector {
   bool SkipConsent() { return skip_consent_; }
 
   // Collect early crashes collected into /run/crash_reporter/crash
-  bool Collect();
+  CrashCollectionStatus Collect();
 
  private:
   bool early_;

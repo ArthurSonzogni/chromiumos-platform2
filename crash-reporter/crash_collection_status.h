@@ -23,8 +23,8 @@ enum class CrashCollectionStatus {
 
   // Other success types. Things were "successful" but no report generated or
   // the report isn't going into the normal crash pipeline.
-  // (will be filled in by children CLs)
-  kLastSuccessCode = kSuccess,
+  kFinishedEphermeralCollection = 1,
+  kLastSuccessCode = kFinishedEphermeralCollection,
 
   // We should never see this status. It exists just to initialize variables
   // before they get a real value.
