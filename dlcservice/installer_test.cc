@@ -104,6 +104,7 @@ TEST_F(UpdateEngineInstallerTest, InitTest) {
   EXPECT_EQ(status.state, InstallerInterface::Status::State::OK);
   EXPECT_FALSE(status.is_install);
   EXPECT_EQ(status.progress, 0.);
+  EXPECT_EQ(status.last_attempt_error, update_engine::ErrorCode::kSuccess);
 }
 
 TEST_F(UpdateEngineInstallerTest, InstallTest) {
@@ -158,7 +159,8 @@ TEST_P(UpdateEngineInstallerWithBoolParamsTest, OnReadyTest) {
   EXPECT_TRUE(called);
 }
 
-using PseudoStatusResult = std::tuple<update_engine::Operation, bool, double>;
+using PseudoStatusResult =
+    std::tuple<update_engine::Operation, bool, double, int32_t>;
 using ExpectedResult = std::tuple<InstallerInterface::Status>;
 using UpdateEngineInstallerWithStatusParamsTest =
     UpdateEngineInstallerWithParamsTest<
@@ -175,12 +177,15 @@ INSTANTIATE_TEST_SUITE_P(
                     update_engine::Operation::IDLE,
                     false,
                     0.,
+                    static_cast<int32_t>(update_engine::ErrorCode::kNoUpdate),
                 },
                 {
                     InstallerInterface::Status{
                         .state = InstallerInterface::Status::State::OK,
                         .is_install = false,
                         .progress = 0.,
+                        .last_attempt_error =
+                            update_engine::ErrorCode::kNoUpdate,
                     },
                 },
             },
@@ -189,12 +194,15 @@ INSTANTIATE_TEST_SUITE_P(
                     update_engine::Operation::CHECKING_FOR_UPDATE,
                     false,
                     0.,
+                    static_cast<int32_t>(update_engine::ErrorCode::kSuccess),
                 },
                 {
                     InstallerInterface::Status{
                         .state = InstallerInterface::Status::State::CHECKING,
                         .is_install = false,
                         .progress = 0.,
+                        .last_attempt_error =
+                            update_engine::ErrorCode::kSuccess,
                     },
                 },
             },
@@ -203,12 +211,15 @@ INSTANTIATE_TEST_SUITE_P(
                     update_engine::Operation::DOWNLOADING,
                     false,
                     0.,
+                    static_cast<int32_t>(update_engine::ErrorCode::kSuccess),
                 },
                 {
                     InstallerInterface::Status{
                         .state = InstallerInterface::Status::State::DOWNLOADING,
                         .is_install = false,
                         .progress = 0.,
+                        .last_attempt_error =
+                            update_engine::ErrorCode::kSuccess,
                     },
                 },
             },
@@ -217,12 +228,15 @@ INSTANTIATE_TEST_SUITE_P(
                     update_engine::Operation::DOWNLOADING,
                     true,
                     0.8,
+                    static_cast<int32_t>(update_engine::ErrorCode::kSuccess),
                 },
                 {
                     InstallerInterface::Status{
                         .state = InstallerInterface::Status::State::DOWNLOADING,
                         .is_install = true,
                         .progress = 0.8,
+                        .last_attempt_error =
+                            update_engine::ErrorCode::kSuccess,
                     },
                 },
             },
@@ -231,12 +245,15 @@ INSTANTIATE_TEST_SUITE_P(
                     update_engine::Operation::VERIFYING,
                     false,
                     0.,
+                    static_cast<int32_t>(update_engine::ErrorCode::kSuccess),
                 },
                 {
                     InstallerInterface::Status{
                         .state = InstallerInterface::Status::State::VERIFYING,
                         .is_install = false,
                         .progress = 0.,
+                        .last_attempt_error =
+                            update_engine::ErrorCode::kSuccess,
                     },
                 },
             },
@@ -245,12 +262,15 @@ INSTANTIATE_TEST_SUITE_P(
                     update_engine::Operation::REPORTING_ERROR_EVENT,
                     false,
                     0.,
+                    static_cast<int32_t>(update_engine::ErrorCode::kSuccess),
                 },
                 {
                     InstallerInterface::Status{
                         .state = InstallerInterface::Status::State::ERROR,
                         .is_install = false,
                         .progress = 0.,
+                        .last_attempt_error =
+                            update_engine::ErrorCode::kSuccess,
                     },
                 },
             },
@@ -259,12 +279,15 @@ INSTANTIATE_TEST_SUITE_P(
                     update_engine::Operation::UPDATED_NEED_REBOOT,
                     false,
                     0.,
+                    static_cast<int32_t>(update_engine::ErrorCode::kSuccess),
                 },
                 {
                     InstallerInterface::Status{
                         .state = InstallerInterface::Status::State::BLOCKED,
                         .is_install = false,
                         .progress = 0.,
+                        .last_attempt_error =
+                            update_engine::ErrorCode::kSuccess,
                     },
                 },
             },
@@ -284,10 +307,12 @@ TEST_P(UpdateEngineInstallerWithStatusParamsTest, StatusSyncTest) {
   ue_installer_.AddObserver(&instance);
 
   update_engine::StatusResult status_result;
-  const auto& [op, is_install, progress] = pseudo_status_result;
+  const auto& [op, is_install, progress, last_attempt_error] =
+      pseudo_status_result;
   status_result.set_current_operation(op);
   status_result.set_is_install(is_install);
   status_result.set_progress(progress);
+  status_result.set_last_attempt_error(last_attempt_error);
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, GetStatusAdvancedAsync(_, _, _))
       .WillOnce(WithArg<0>([&status_result](auto&& success_callback) {
         std::move(success_callback).Run(status_result);
@@ -297,6 +322,8 @@ TEST_P(UpdateEngineInstallerWithStatusParamsTest, StatusSyncTest) {
   EXPECT_EQ(instance.status_.state, expected_status.state);
   EXPECT_EQ(instance.status_.is_install, expected_status.is_install);
   EXPECT_EQ(instance.status_.progress, expected_status.progress);
+  EXPECT_EQ(instance.status_.last_attempt_error,
+            expected_status.last_attempt_error);
 }
 
 }  // namespace dlcservice

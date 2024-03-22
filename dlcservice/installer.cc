@@ -155,6 +155,8 @@ void UpdateEngineInstaller::OnStatusUpdateAdvancedSignal(
   }
   status.is_install = status_result.is_install();
   status.progress = status_result.progress();
+  status.last_attempt_error =
+      static_cast<update_engine::ErrorCode>(status_result.last_attempt_error());
 
   Installer::NotifyStatusSync(status);
 }
