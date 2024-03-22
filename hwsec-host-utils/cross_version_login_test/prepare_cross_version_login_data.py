@@ -58,14 +58,23 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
     parser = argparse.ArgumentParser(
         description="Generate cross-version test login data"
     )
-    parser.add_argument(
-        "--board", help="ChromiumOS board, e.g., betty", required=True
-    )
-    parser.add_argument(
+    version_group = parser.add_argument_group(
+        "ChromiumOS version"
+    ).add_mutually_exclusive_group(required=True)
+    version_group.add_argument(
         "--version",
         help="ChromiumOS version, e.g., R100-14526.89.0 or "
         "R100-14526.89.0-custombuild20220130",
-        required=True,
+    )
+    version_group.add_argument(
+        "--milestone",
+        help="ChromiumOS milstone, e.g., 100. The latest version of the "
+        "specified milestone is used.",
+        type=int,
+    )
+
+    parser.add_argument(
+        "--board", help="ChromiumOS board, e.g., betty", required=True
     )
     parser.add_argument(
         "--output-dir",
@@ -79,16 +88,16 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
         type=Path,
     )
     opts = parser.parse_args(argv)
-    run(opts.board, opts.version, opts.output_dir, opts.ssh_identity_file)
+    version = get_version(opts.board, opts.version, opts.milestone)
+    run(opts.board, version, opts.output_dir, opts.ssh_identity_file)
 
 
 def run(
     board: str,
-    version_str: str,
+    version: Version,
     output_dir: Path,
     ssh_identity_file: Optional[Path],
 ) -> None:
-    version = parse_version(version_str)
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         ssh_identity = setup_ssh_identity(ssh_identity_file, temp_path)
@@ -121,6 +130,32 @@ def parse_version(version: str) -> Version:
     )
 
 
+def board_gs_dir(board: str) -> str:
+    # Folder of *-generic VM board builds from builders, which are not
+    # built by chromeos release builders.
+    if board.endswith("-generic"):
+        return f"gs://chromiumos-image-archive/{board}-vm-public"
+    # Folder of standard builds from chromeos release builders.
+    return f"gs://chromeos-image-archive/{board}-release"
+
+
+def get_latest_version(board: str, milestone: int) -> Version:
+    gs_dir = board_gs_dir(board)
+    gs_url = f"{gs_dir}/LATEST-release-R{milestone}*"
+    version_str = check_run("gsutil", "cat", gs_url).decode("utf-8")
+    return parse_version(version_str)
+
+
+def get_version(
+    board: str, version_str: Optional[str], milestone: Optional[int]
+) -> Version:
+    if version_str:
+        return parse_version(version_str)
+    if milestone:
+        return get_latest_version(board, milestone)
+    raise RuntimeError(f"Neither version nor milestone is specified.")
+
+
 def setup_ssh_identity(
     ssh_identity_file: Optional[Path], temp_path: Path
 ) -> Path:
@@ -149,21 +184,12 @@ def download_vm_image(board: str, version: Version, temp_path: Path) -> Path:
             f"gs://chromeos-test-assets-private/tast/cros/hwsec/"
             f"cross_version_login/custombuilds/{version}_{board}.tar.xz"
         )
-    elif board.endswith("-generic"):
+    else:
         # No "custombuild" in the specified version, hence use the standard GS
         # folder (it's populated by build bots).
-        # Folder of *-generic VM board builds from builders, which are not
-        # built by chromeos release builders.
-        image_url = (
-            f"gs://chromiumos-image-archive/{board}-vm-public/{version}/"
-            f"chromiumos_test_image.tar.xz"
-        )
-    else:
-        # Folder of standard builds from chromeos release builders.
-        image_url = (
-            f"gs://chromeos-image-archive/{board}-release/{version}/"
-            f"chromiumos_test_image.tar.xz"
-        )
+        gs_dir = board_gs_dir(board)
+        image_url = f"{gs_dir}/{version}/chromiumos_test_image.tar.xz"
+
     archive_path = Path(f"{temp_path}/chromiumos_test_image.tar.xz")
     check_run("gsutil", "cp", image_url, archive_path)
     # Unpack the .tar.xz archive.
@@ -299,12 +325,13 @@ def generate_external_data(gs_url: str, data_path: Path) -> str:
 """
 
 
-def check_run(*args: str) -> None:
-    """Runs the given command; throws on failure."""
+def check_run(*args: str) -> str:
+    """Runs the given command and returns the stdout; throws on failure."""
     try:
-        subprocess.run(
+        result = subprocess.run(
             args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True
         )
+        return result.stdout
     except subprocess.CalledProcessError as exc:
         # Print the output to aid debugging (the exception message doesn't
         # include the output).
