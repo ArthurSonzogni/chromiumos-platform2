@@ -1913,23 +1913,6 @@ void sl_handle_client_message(struct sl_context* ctx,
         sl_window_set_wm_state(window, WM_STATE_ICONIC);
         sl_send_configure_notify(window);
 
-        xcb_map_notify_event_t map_event = {.response_type = XCB_MAP_NOTIFY,
-                                            .pad0 = 0,
-                                            .event = window->id,
-                                            .window = window->id,
-                                            .override_redirect = 0};
-
-        xcb_send_event(ctx->connection, 0, window->id,
-                       XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-                       reinterpret_cast<char*>(&map_event));
-        sl_send_configure_notify(window);
-
-        sl_window_set_wm_state(window, WM_STATE_NORMAL);
-        sl_send_configure_notify(window);
-
-        sl_set_input_focus(ctx, nullptr);
-        xcb_flush(ctx->connection);
-
         // When we are iconified we want to suppress any calls that deiconify
         // the window as it should in theory be unmapped.
         window->iconified = 1;
@@ -1966,7 +1949,26 @@ void sl_handle_focus_in(struct sl_context* ctx, xcb_focus_in_event_t* event) {
       }
       window->pending_maximized_change = false;
     }
-    window->iconified = 0;
+    if (window->iconified) {
+      // Remap the window that was iconified upon gaining focus.
+      xcb_map_notify_event_t map_event = {.response_type = XCB_MAP_NOTIFY,
+                                          .pad0 = 0,
+                                          .event = window->id,
+                                          .window = window->id,
+                                          .override_redirect = 0};
+
+      xcb_send_event(window->ctx->connection, 0, window->id,
+                     XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+                     reinterpret_cast<char*>(&map_event));
+      sl_send_configure_notify(window);
+
+      sl_window_set_wm_state(window, WM_STATE_NORMAL);
+      sl_send_configure_notify(window);
+
+      xcb_flush(window->ctx->connection);
+
+      window->iconified = 0;
+    }
   }
 }
 
