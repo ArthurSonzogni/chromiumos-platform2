@@ -848,7 +848,8 @@ int ChromeosStartup::Run() {
     return 0;
   }
 
-  brillo::DeleteFile(encrypted_failed);
+  if (base::PathExists(encrypted_failed))
+    brillo::DeleteFile(encrypted_failed);
 
   base::FilePath pcr_extend_failed =
       stateful_.Append(kVersionPCRExtendFailedFile);
@@ -857,7 +858,7 @@ int ChromeosStartup::Run() {
     // TODO(b/278071784): Monitor if the failure occurs frequently and later
     // change this to reboot/send to recovery when it failed.
     base::WriteFile(pcr_extend_failed, "");
-  } else {
+  } else if (base::PathExists(pcr_extend_failed)) {
     brillo::DeleteFile(pcr_extend_failed);
   }
 
