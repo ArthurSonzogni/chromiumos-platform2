@@ -101,7 +101,9 @@ int main(int argc, char** argv) {
                 "Gets total disk space available on the given path");
   DEFINE_bool(get_root_device_size, false, "Gets the size of the root device");
   DEFINE_bool(monitor, false,
-              "Monitors the space available on the stateful partition");
+              "Monitors the space available on the stateful partition,"
+              " updates if the delta is greater than 100MB or the total"
+              " disk space is less than 1GB");
   DEFINE_bool(human, false, "Print human-readable numbers");
 
   brillo::FlagHelper::Init(argc, argv,
@@ -148,6 +150,10 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_monitor) {
+    std::cout << "Time: " << base::Time::Now() << ", Available space: "
+              << Size(disk_usage_proxy->GetFreeDiskSpace(
+                     base::FilePath("/mnt/stateful_partition")))
+              << std::endl;
     EchoSpacedObserver observer;
     disk_usage_proxy->AddObserver(&observer);
     disk_usage_proxy->StartMonitoring();
