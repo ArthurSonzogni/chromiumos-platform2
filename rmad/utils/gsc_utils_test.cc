@@ -518,4 +518,20 @@ TEST_F(GscUtilsTest, GetAddressingModeByFlashSize) {
             SpiAddressingMode::k4Byte);
 }
 
+TEST_F(GscUtilsTest, SetWpsr_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).WillOnce(Return(true));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_TRUE(gsc_utils->SetWpsr("0xA2 0x01 0x00 0x4A 0x00 0x01"));
+}
+
+TEST_F(GscUtilsTest, SetWpsr_Failed) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).WillOnce(Return(false));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  EXPECT_FALSE(gsc_utils->SetWpsr("0xA2 0x01 0x00 0x4A 0x00 0x01"));
+}
+
 }  // namespace rmad

@@ -76,6 +76,9 @@ class GscUtils {
   // Decide the addressing mode by the given flash size.
   virtual SpiAddressingMode GetAddressingModeByFlashSize(
       uint64_t flash_size) = 0;
+
+  // Set wpsr for ap ro verification on Ti50.
+  virtual bool SetWpsr(std::string_view wpsr) = 0;
 };
 
 }  // namespace rmad

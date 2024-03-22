@@ -64,6 +64,9 @@ constexpr char kChassisOpenRegexp[] = R"(Chassis Open: ((true)|(false)))";
 constexpr std::array<std::string_view, 3> kAddressingMode = {kGsctoolCmd, "-a",
                                                              "-C"};
 
+// Constants for wpsr.
+constexpr std::array<std::string_view, 3> kWpsr = {kGsctoolCmd, "-a", "-E"};
+
 // SPI addressing mode mappings from enum to string.
 constexpr char kSpiAddressingMode3Byte[] = "3byte";
 constexpr char kSpiAddressingMode4Byte[] = "4byte";
@@ -341,6 +344,20 @@ SpiAddressingMode GscUtilsImpl::GetAddressingModeByFlashSize(
     return SpiAddressingMode::k3Byte;
   }
   return SpiAddressingMode::k4Byte;
+}
+
+bool GscUtilsImpl::SetWpsr(std::string_view wpsr) {
+  std::string output;
+  std::vector<std::string> argv{kWpsr.begin(), kWpsr.end()};
+  argv.emplace_back(wpsr);
+
+  if (!cmd_utils_->GetOutputAndError(argv, &output)) {
+    LOG(ERROR) << "Failed to set wpsr: " << wpsr;
+    LOG(ERROR) << output;
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace rmad

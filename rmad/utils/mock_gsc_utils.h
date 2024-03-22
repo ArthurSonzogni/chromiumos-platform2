@@ -44,6 +44,7 @@ class MockGscUtils : public GscUtils {
               GetAddressingModeByFlashSize,
               (uint64_t flash_size),
               (override));
+  MOCK_METHOD(bool, SetWpsr, (std::string_view), (override));
 };
 
 }  // namespace rmad
