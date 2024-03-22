@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
 
   brillo::FlagHelper::Init(argc, argv,
                            "ChromiumOS Space Daemon CLI\n\n"
-                           "Usage: space_cli [options] [path]\n");
+                           "Usage: spaced_cli [options] [path]\n");
 
   std::string nl;
   if (FLAGS_human) {
