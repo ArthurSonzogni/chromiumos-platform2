@@ -176,7 +176,7 @@ bool SetupLoadPinVerityDigests(const base::FilePath& root,
     }
     // TODO(kimjae): Need to somehow handle this failure, as this still means
     // later a digest can get fed into LoadPin.
-    PLOG(WARNING) << "Failed to open LoadPin verity file.";
+    PLOG(ERROR) << "Failed to open LoadPin verity file.";
     return false;
   }
 
@@ -184,16 +184,22 @@ bool SetupLoadPinVerityDigests(const base::FilePath& root,
   constexpr auto kReadFlags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC;
   auto digests_fd = startup_dep->Open(trusted_dlc_digests, kReadFlags);
   if (!digests_fd.is_valid()) {
-    if (errno != ENOENT) {
-      PLOG(WARNING) << "Failed to open trusted DLC verity digests file.";
-      // NOTE: Do not return here, so invalid digests get fed into LoadPin.
+    switch (errno) {
+      case ENOENT:
+        PLOG(WARNING) << "Missing trusted DLC verity digests file.";
+        // NOTE: Do not return here, so invalid digests get fed into LoadPin.
+        break;
+      default:
+        PLOG(WARNING) << "Failed to open trusted DLC verity digests file.";
+        // NOTE: Do not return here, so invalid digests get fed into LoadPin.
     }
     // Any failure in loading/parsing will block subsequent feeds into LoadPin.
     digests_fd = startup_dep->Open(dev_null, kReadFlags);
     if (!digests_fd.is_valid()) {
-      PLOG(WARNING) << "Failed to open " << dev_null.value() << ".";
+      PLOG(ERROR) << "Failed to open " << dev_null.value() << ".";
       return false;
     }
+    LOG(WARNING) << "Forcing LoadPin to ingest /dev/null.";
   }
 
   // Write trusted digests or /dev/null into LoadPin.
