@@ -763,7 +763,7 @@ std::string CellularCapability3gpp::GetMdnForOLP(
   // TODO(benchan): This is ugly. Remove carrier specific code once we move
   // mobile activation logic to carrier-specific extensions (crbug.com/260073).
   const std::string& mdn = cellular()->mdn();
-  if (!operator_info->IsMobileNetworkOperatorKnown()) {
+  if (!operator_info->IsHomeOperatorKnown()) {
     // Can't make any carrier specific modifications.
     return mdn;
   }
@@ -1138,7 +1138,7 @@ void CellularCapability3gpp::UpdateServiceOLP() {
   SLOG(this, 3) << __func__;
 
   // OLP is based off of the Home Provider.
-  if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown()) {
+  if (!cellular()->mobile_operator_info()->IsHomeOperatorKnown()) {
     SLOG(this, 3) << "Mobile Network Operator Unknown";
     return;
   }
@@ -1251,7 +1251,7 @@ bool CellularCapability3gpp::IsServiceActivationRequired() const {
 
   // If there is no online payment portal information, it's safer to assume
   // the service does not require activation.
-  if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown() ||
+  if (!cellular()->mobile_operator_info()->IsHomeOperatorKnown() ||
       cellular()->mobile_operator_info()->olp_list().empty()) {
     return false;
   }
@@ -1474,7 +1474,7 @@ Stringmap CellularCapability3gpp::ParseScanResult(const ScanResult& result) {
       base::Contains(parsed, kNetworkIdProperty)) {
     parsed_scan_result_operator_info_->Reset();
     parsed_scan_result_operator_info_->UpdateMCCMNC(parsed[kNetworkIdProperty]);
-    if (parsed_scan_result_operator_info_->IsMobileNetworkOperatorKnown() &&
+    if (parsed_scan_result_operator_info_->IsHomeOperatorKnown() &&
         !parsed_scan_result_operator_info_->operator_name().empty()) {
       parsed[kLongNameProperty] =
           parsed_scan_result_operator_info_->operator_name();
@@ -2251,7 +2251,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   // The cellular object may need to update the APN list now.
   cellular()->OnProfilesChanged();
 
-  if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown() &&
+  if (!cellular()->mobile_operator_info()->IsHomeOperatorKnown() &&
       !cellular()->mobile_operator_info()->IsPrivateNetwork() &&
       deferred_fallback_attach_needed_) {
     deferred_fallback_attach_needed_ = false;

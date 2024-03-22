@@ -61,27 +61,27 @@ int main(int argc, char* argv[]) {
   if (!FLAGS_mccmnc.empty())
     mobile_operator_info->UpdateMCCMNC(FLAGS_mccmnc);
 
-  mobile_operator_info->IsMobileNetworkOperatorKnown();
+  mobile_operator_info->IsHomeOperatorKnown();
 
   if (!FLAGS_name.empty())
     mobile_operator_info->UpdateOperatorName(FLAGS_name);
 
-  mobile_operator_info->IsMobileNetworkOperatorKnown();
+  mobile_operator_info->IsHomeOperatorKnown();
 
   if (!FLAGS_iccid.empty())
     mobile_operator_info->UpdateICCID(FLAGS_iccid);
 
-  mobile_operator_info->IsMobileNetworkOperatorKnown();
+  mobile_operator_info->IsHomeOperatorKnown();
 
   if (!FLAGS_imsi.empty())
     mobile_operator_info->UpdateIMSI(FLAGS_imsi);
 
-  mobile_operator_info->IsMobileNetworkOperatorKnown();
+  mobile_operator_info->IsHomeOperatorKnown();
 
   if (!FLAGS_gid1.empty())
     mobile_operator_info->UpdateGID1(FLAGS_gid1);
 
-  mobile_operator_info->IsMobileNetworkOperatorKnown();
+  mobile_operator_info->IsHomeOperatorKnown();
 
   if (!FLAGS_serving_mccmnc.empty())
     mobile_operator_info->UpdateServingMCCMNC(FLAGS_serving_mccmnc);
@@ -108,8 +108,12 @@ int main(int argc, char* argv[]) {
          << mobile_operator_info->serving_operator_name() << "\n";
   report << "requires_roaming: " << std::boolalpha
          << mobile_operator_info->requires_roaming() << "\n";
+  report << "IsHomeOperatorKnown: " << std::boolalpha
+         << mobile_operator_info->IsHomeOperatorKnown() << "\n";
   report << "IsMobileNetworkOperatorKnown: " << std::boolalpha
          << mobile_operator_info->IsMobileNetworkOperatorKnown() << "\n";
+  report << "IsMobileVirtualNetworkOperatorKnown: " << std::boolalpha
+         << mobile_operator_info->IsMobileVirtualNetworkOperatorKnown() << "\n";
   report << "IsServingMobileNetworkOperatorKnown: " << std::boolalpha
          << mobile_operator_info->IsServingMobileNetworkOperatorKnown() << "\n";
   report << "friendly_operator_name when roaming: "

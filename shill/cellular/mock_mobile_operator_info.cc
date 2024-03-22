@@ -14,6 +14,7 @@ namespace shill {
 MockMobileOperatorInfo::MockMobileOperatorInfo(EventDispatcher* dispatcher,
                                                const std::string& info_owner)
     : MobileOperatorInfo(dispatcher, info_owner) {
+  ON_CALL(*this, IsHomeOperatorKnown()).WillByDefault(Return(false));
   ON_CALL(*this, IsMobileNetworkOperatorKnown()).WillByDefault(Return(false));
   ON_CALL(*this, mccmnc()).WillByDefault(ReturnRef(empty_mccmnc_));
   ON_CALL(*this, mcc_alpha2()).WillByDefault(ReturnRef(empty_mcc_alpha2_));

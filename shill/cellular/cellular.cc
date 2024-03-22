@@ -4083,7 +4083,7 @@ void Cellular::UpdateHomeProvider() {
       home_provider[key] = value;
   };
 
-  if (mobile_operator_info_->IsMobileNetworkOperatorKnown()) {
+  if (mobile_operator_info_->IsHomeOperatorKnown()) {
     AssignIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->mccmnc());
     AssignIfNotEmpty(kOperatorNameKey, mobile_operator_info_->operator_name());
     AssignIfNotEmpty(kOperatorCountryKey, mobile_operator_info_->country());
@@ -4185,7 +4185,7 @@ void Cellular::OnOperatorChanged() {
 
   UpdateHomeProvider();
   UpdateServingOperator();
-  if (mobile_operator_info_->IsMobileNetworkOperatorKnown() ||
+  if (mobile_operator_info_->IsHomeOperatorKnown() ||
       mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
     ResetCarrierEntitlement();
   }
@@ -4243,7 +4243,7 @@ void Cellular::EntitlementCheck(EntitlementCheckResultCallback callback,
     return;
   }
   // TODO(b/270210498): remove this check when tethering is allowed by default.
-  if (!mobile_operator_info_->IsMobileNetworkOperatorKnown() &&
+  if (!mobile_operator_info_->IsHomeOperatorKnown() &&
       !mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
     LOG(ERROR) << kEntitlementCheckAnomalyDetectorPrefix
                << "carrier is not known.";

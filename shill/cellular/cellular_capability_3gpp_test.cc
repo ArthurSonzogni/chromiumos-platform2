@@ -1488,7 +1488,7 @@ TEST_F(CellularCapability3gppTest, UpdateActiveBearers) {
 TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   // Start with an empty list of profiles. The first time we process
   // the list of profiles we must not ignore it.
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .Times(AtLeast(1));
   capability_->OnProfilesChanged(CellularCapability3gpp::Profiles());
   EXPECT_EQ(0, capability_->profiles_->size());
@@ -1496,8 +1496,7 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
 
   // Same empty list again. This time the stored list and the new one
   // are both empty, so we expect to ignore the event.
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
-      .Times(0);
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown()).Times(0);
   capability_->OnProfilesChanged(CellularCapability3gpp::Profiles());
   EXPECT_EQ(0, capability_->profiles_->size());
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
@@ -1510,7 +1509,7 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   profile1[CellularBearer::kMMApnProperty] = std::string(kApn1);
   MobileAPN expected_profile1 = {.apn = kApn1, .apn_types = {kApnTypeDefault}};
 
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .Times(AtLeast(1));
   capability_->OnProfilesChanged({profile1});
   EXPECT_EQ(1, capability_->profiles_->size());
@@ -1518,8 +1517,7 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
   // Same list again.
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
-      .Times(0);
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown()).Times(0);
   capability_->OnProfilesChanged({profile1});
   EXPECT_EQ(1, capability_->profiles_->size());
   EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile1));
@@ -1533,7 +1531,7 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   profile2[CellularBearer::kMMApnProperty] = std::string(kApn2);
   MobileAPN expected_profile2 = {.apn = kApn2, .apn_types = {kApnTypeDefault}};
 
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .Times(AtLeast(1));
   capability_->OnProfilesChanged({profile2});
   EXPECT_EQ(1, capability_->profiles_->size());
@@ -1541,8 +1539,7 @@ TEST_F(CellularCapability3gppTest, ProfilesChanged) {
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
   // Same list as before plus an extra duplicated item.
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
-      .Times(0);
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown()).Times(0);
   capability_->OnProfilesChanged({profile2, profile2});
   EXPECT_EQ(1, capability_->profiles_->size());
   EXPECT_EQ(1, std::ranges::count(*capability_->profiles_, expected_profile2));
@@ -1974,7 +1971,7 @@ TEST_F(CellularCapability3gppTest, GetMdnForOLP) {
   const std::string kFooUUID = "foo";
   MockMobileOperatorInfo mock_operator_info(&dispatcher_, "MobileOperatorInfo");
 
-  EXPECT_CALL(mock_operator_info, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(mock_operator_info, IsHomeOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_operator_info, uuid()).WillRepeatedly(ReturnRef(kVzwUUID));
   capability_->subscription_state_ = SubscriptionState::kUnknown;
@@ -1991,7 +1988,7 @@ TEST_F(CellularCapability3gppTest, GetMdnForOLP) {
   EXPECT_EQ("0000000000", capability_->GetMdnForOLP(&mock_operator_info));
   Mock::VerifyAndClearExpectations(&mock_operator_info);
 
-  EXPECT_CALL(mock_operator_info, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(mock_operator_info, IsHomeOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(mock_operator_info, uuid()).WillRepeatedly(ReturnRef(kFooUUID));
 
@@ -2019,7 +2016,7 @@ TEST_F(CellularCapability3gppTest, UpdateServiceOLP) {
   cellular_->SetMdn("10123456789");
   cellular_->SetMin("5");
 
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_mobile_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
@@ -2035,7 +2032,7 @@ TEST_F(CellularCapability3gppTest, UpdateServiceOLP) {
             vzw_olp[kPaymentPortalPostData]);
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_mobile_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
@@ -2092,7 +2089,7 @@ TEST_F(CellularCapability3gppTest, UpdateServiceActivationState) {
   capability_->subscription_state_ = SubscriptionState::kUnprovisioned;
   ClearCellularSimProperties();
   cellular_->SetMdn("0000000000");
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_mobile_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(olp_list));
@@ -2284,12 +2281,12 @@ TEST_F(CellularCapability3gppTest, IsServiceActivationRequired) {
   cellular_->SetMdn("0000000000");
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_mobile_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(empty_list));
@@ -2297,7 +2294,7 @@ TEST_F(CellularCapability3gppTest, IsServiceActivationRequired) {
   Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
   // Set expectations for all subsequent cases.
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_mobile_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(olp_list));

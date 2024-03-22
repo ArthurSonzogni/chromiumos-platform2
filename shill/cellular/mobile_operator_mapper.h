@@ -85,12 +85,12 @@ class MobileOperatorMapper {
   // not available. Use |IsMobileNetworkOperatorKnown| and
   // |IsMobileVirtualNetworkOperatorKnown| to determine if a fix on the operator
   // has been made. Note that the information returned by the other accessors is
-  // only valid when at least |IsMobileNetworkOperatorKnown| returns true. Their
+  // only valid when at least one of these functions returns true. Their
   // values are undefined otherwise.
 
   // Query whether a mobile network operator has been successfully determined.
   virtual bool IsMobileNetworkOperatorKnown() const;
-  // Query whether a mobile network operator has been successfully
+  // Query whether a mobile virtual network operator has been successfully
   // determined.
   bool IsMobileVirtualNetworkOperatorKnown() const;
 

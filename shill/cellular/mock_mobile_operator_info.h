@@ -23,6 +23,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
                          const std::string& info_owner);
   ~MockMobileOperatorInfo() override;
 
+  MOCK_METHOD(bool, IsHomeOperatorKnown, (), (const, override));
   MOCK_METHOD(bool, IsMobileNetworkOperatorKnown, (), (const, override));
   MOCK_METHOD(bool, IsServingMobileNetworkOperatorKnown, (), (const, override));
 

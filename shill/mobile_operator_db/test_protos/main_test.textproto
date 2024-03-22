@@ -532,6 +532,18 @@ mvno {
     uuid: "uuid127001-mvno"
   }
 }
+mvno {
+  mvno_filter {
+    type: ICCID
+    regex: "1270025432154322"
+  }
+  data {
+    localized_name {
+      name: "name127002-mvno"
+    }
+    uuid: "uuid127002-mvno"
+  }
+}
 
 # Test[128] MVNOIMSIMatchByRange
 mno {

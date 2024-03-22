@@ -94,14 +94,17 @@ class MobileOperatorInfo {
   // ///////////////////////////////////////////////////////////////////////////
   // Functions to obtain information about the current mobile operator.
   // Any of these accessors can return an empty response if the information is
-  // not available. Use |IsMobileNetworkOperatorKnown| and
-  // |IsMobileVirtualNetworkOperatorKnown| to determine if a fix on the operator
-  // has been made. Note that the information returned by the other accessors is
-  // only valid when at least |IsMobileNetworkOperatorKnown| returns true. Their
-  // values are undefined otherwise.
+  // not available. Use |IsHomeOperatorKnown| to check if home MNO or MVNO is
+  // known. Note that the information returned by the other accessors is only
+  // valid when the function returns true. Their values are undefined otherwise.
 
+  // Determine if a fix on the home operator (MNO or MVNO) was made.
+  virtual bool IsHomeOperatorKnown() const;
   // Query whether a mobile network operator has been successfully determined.
   virtual bool IsMobileNetworkOperatorKnown() const;
+  // Query whether a mobile virtual network operator has been successfully
+  // determined.
+  bool IsMobileVirtualNetworkOperatorKnown() const;
   // Query whether the serving network operator has been successfully
   // determined.
   virtual bool IsServingMobileNetworkOperatorKnown() const;
@@ -194,10 +197,6 @@ class MobileOperatorInfo {
   // Callbacks for MobileOperatorMapper:
   void OnHomeOperatorChanged();
   void OnServingOperatorChanged();
-
-  // Query whether a mobile network operator has been successfully
-  // determined.
-  bool IsMobileVirtualNetworkOperatorKnown() const;
 
   void AddDefaultDatabasePaths();
 

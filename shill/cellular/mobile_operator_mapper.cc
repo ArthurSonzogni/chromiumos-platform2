@@ -801,14 +801,12 @@ bool MobileOperatorMapper::FilterMatches(
 void MobileOperatorMapper::RefreshDBInformation() {
   ClearDBInformation();
 
-  if (current_mno_ == nullptr) {
-    return;
-  }
-
   // |data| is a required field.
-  DCHECK(current_mno_->has_data());
-  SLOG(2) << GetLogPrefix(__func__) << "Reloading MNO data.";
-  ReloadData(current_mno_->data());
+  if (current_mno_ != nullptr) {
+    DCHECK(current_mno_->has_data());
+    SLOG(2) << GetLogPrefix(__func__) << "Reloading MNO data.";
+    ReloadData(current_mno_->data());
+  }
 
   if (current_mvno_ != nullptr) {
     // |data| is a required field.

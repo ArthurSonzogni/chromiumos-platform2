@@ -102,6 +102,13 @@ void MobileOperatorInfo::OnServingOperatorChanged() {
     observer.OnOperatorChanged();
 }
 
+bool MobileOperatorInfo::IsHomeOperatorKnown() const {
+  auto result = home_->IsMobileNetworkOperatorKnown() ||
+                home_->IsMobileVirtualNetworkOperatorKnown();
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  return result;
+}
+
 bool MobileOperatorInfo::IsMobileNetworkOperatorKnown() const {
   auto result = home_->IsMobileNetworkOperatorKnown();
   SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";

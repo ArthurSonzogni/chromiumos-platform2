@@ -619,7 +619,7 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   InitCapability3gppProxies();
 
   // (1) Neither home provider nor serving operator known.
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*mock_mobile_operator_info_,
               IsServingMobileNetworkOperatorKnown())
@@ -636,7 +636,7 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
 
   // (2) serving operator known.
   // When home provider is not known, serving operator proxies in.
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*mock_mobile_operator_info_,
               IsServingMobileNetworkOperatorKnown())
@@ -664,7 +664,7 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   EXPECT_CALL(*mock_mobile_operator_info_,
               IsServingMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_mobile_operator_info_, mccmnc())
       .WillRepeatedly(ReturnRef(kHomeProviderCode));
@@ -685,7 +685,7 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   device_->DestroyAllServices();
 
   // (4) Serving operator known, home provider known.
-  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsHomeOperatorKnown())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*mock_mobile_operator_info_, mccmnc())
       .WillRepeatedly(ReturnRef(kHomeProviderCode));

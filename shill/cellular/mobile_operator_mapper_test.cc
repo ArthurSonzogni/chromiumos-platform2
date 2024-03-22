@@ -182,6 +182,12 @@ class MobileOperatorMapperMainTest
     EXPECT_EQ(uuid, operator_info_->uuid());
   }
 
+  void VerifyOnlyMVNOWithUUID(const std::string& uuid) {
+    EXPECT_FALSE(operator_info_->IsMobileNetworkOperatorKnown());
+    EXPECT_TRUE(operator_info_->IsMobileVirtualNetworkOperatorKnown());
+    EXPECT_EQ(uuid, operator_info_->uuid());
+  }
+
   void VerifyNoMatch() {
     EXPECT_FALSE(operator_info_->IsMobileNetworkOperatorKnown());
     EXPECT_FALSE(operator_info_->IsMobileVirtualNetworkOperatorKnown());
@@ -606,6 +612,17 @@ TEST_P(MobileOperatorMapperMainTest, MVNODefaultMatch) {
   UpdateICCID("112002");
   VerifyEventCount();
   VerifyMVNOWithUUID("uuid112002");
+}
+
+TEST_P(MobileOperatorMapperMainTest, MVNOOnlyICCIDMatch) {
+  // message: MVNO without MNO (iccid filter).
+  // match by: MNO does not match.
+  //           MVNO matches by ICCID.
+  // verify: Callback event for MVNO match.
+  ExpectEventCount(1);
+  UpdateICCID("1270025432154322");
+  VerifyEventCount();
+  VerifyOnlyMVNOWithUUID("uuid127002-mvno");
 }
 
 TEST_P(MobileOperatorMapperMainTest, MVNONameMatch) {
