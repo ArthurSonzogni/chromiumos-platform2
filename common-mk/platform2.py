@@ -270,6 +270,8 @@ class Platform2:
 
         if use_flags is not None:
             self.use_flags = use_flags
+        elif self.board is None:
+            self.use_flags = []
         else:
             self.use_flags = portage_util.GetBoardUseFlags(self.board)
 
