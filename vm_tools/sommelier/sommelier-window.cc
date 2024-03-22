@@ -4,9 +4,11 @@
 
 #include "sommelier-window.h"  // NOLINT(build/include_directory)
 
+#include <algorithm>
+#include <fstream>
 #include <assert.h>
-#include <wayland-client-protocol.h>
 #include <cstdint>
+#include <wayland-client-protocol.h>
 
 #include "sommelier.h"            // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
@@ -259,19 +261,59 @@ static void sl_internal_xdg_surface_configure_barrier_done(
 
 static const int32_t kUnspecifiedCoord = INT32_MIN;
 
+void sl_window_update_should_be_containerized_from_pid(
+    struct sl_window* window) {
+  bool quirk_enabled = false;
+#ifdef QUIRKS_SUPPORT
+  quirk_enabled = window->ctx->quirks.IsEnabled(
+      window, quirks::FEATURE_CONTAINERIZE_WINDOWS);
+#endif
+  if (!quirk_enabled) {
+    return;
+  }
+
+  if (!window->pid) {
+    return;
+  }
+
+  // If the binary name contains certain keywords, it is probably not actually a
+  // game.
+  char comm_file_path[50];
+  snprintf(comm_file_path, sizeof(comm_file_path), "/proc/%d/comm",
+           window->pid);
+  std::ifstream proc_comm_file(comm_file_path);
+  if (proc_comm_file.is_open()) {
+    std::string process_name;
+    if (getline(proc_comm_file, process_name)) {
+      std::transform(process_name.begin(), process_name.end(),
+                     process_name.begin(), tolower);
+      window->should_be_containerized_from_pid =
+          (process_name.find("launcher") == std::string::npos &&
+           process_name.find("easyanticheat") == std::string::npos &&
+           process_name.find("battleeye") == std::string::npos &&
+           process_name.find("nprotect") == std::string::npos);
+    }
+    proc_comm_file.close();
+  }
+
+  // TODO(endlesspring): Consider other aspects of the process - memory
+  // usage, library usage, etc to determine.
+}
+
 bool sl_window_is_containerized(struct sl_window* window) {
   bool window_containerized = false;
 #ifdef QUIRKS_SUPPORT
-  // TODO(b/330639704): Figure out better ways to determine game windows
-  // heuristically.
   bool probably_game_window =
       // Steam game ID property is set
       window->steam_game_id &&
       // Window type is normal
       window->type ==
           window->ctx->atoms[ATOM_NET_WM_WINDOW_TYPE_NORMAL].value &&
+      // Based on the PID and derived information, the window is probably a game
+      // window.
+      window->should_be_containerized_from_pid &&
       // Window max dimensions are either not set or if set, bigger (in
-      // perimeter) than specified value.
+      // half-perimeter) than specified value.
       ((window->max_width + window->max_height == 0) ||
        (window->max_width + window->max_height >= 400));
   window_containerized =

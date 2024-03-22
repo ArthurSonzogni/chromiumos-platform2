@@ -125,6 +125,12 @@ struct sl_window {
   // Value of _NET_WM_WINDOW_TYPE for the window set in x11.
   uint32_t type = 0;
 
+  // PID of the window.
+  uint32_t pid = 0;
+  // If true, this window is probably a real game window based on derived
+  // information from PID.
+  bool should_be_containerized_from_pid = true;
+
 #ifdef QUIRKS_SUPPORT
   // Quirk feature flags previously applied to this window, for which log
   // messages have already been written.
@@ -169,6 +175,7 @@ enum {
   PROPERTY_WM_PROTOCOLS,
   PROPERTY_MOTIF_WM_HINTS,
   PROPERTY_NET_STARTUP_ID,
+  PROPERTY_NET_WM_PID,
   PROPERTY_NET_WM_STATE,
   PROPERTY_NET_WM_WINDOW_TYPE,
   PROPERTY_GTK_THEME_VARIANT,
@@ -321,6 +328,8 @@ void sl_window_get_width_height(struct sl_window* window,
                                 uint32_t* w,
                                 uint32_t* h);
 
+void sl_window_update_should_be_containerized_from_pid(
+    struct sl_window* window);
 bool sl_window_is_containerized(struct sl_window* window);
 void sl_window_reset_viewport(struct sl_window* window);
 

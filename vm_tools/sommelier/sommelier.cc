@@ -1187,6 +1187,7 @@ void sl_handle_map_request(struct sl_context* ctx,
       {PROPERTY_STEAM_GAME, ctx->atoms[ATOM_STEAM_GAME].value},
       {PROPERTY_SPECIFIED_FOR_APP_ID, ctx->application_id_property_atom},
       {PROPERTY_NET_WM_WINDOW_TYPE, ctx->atoms[ATOM_NET_WM_WINDOW_TYPE].value},
+      {PROPERTY_NET_WM_PID, ctx->atoms[ATOM_NET_WM_PID].value},
   };
   xcb_get_geometry_cookie_t geometry_cookie;
   xcb_get_property_cookie_t property_cookies[ARRAY_SIZE(properties)];
@@ -1376,6 +1377,15 @@ void sl_handle_map_request(struct sl_context* ctx,
             static_cast<xcb_atom_t*>(xcb()->get_property_value(reply));
         if (xcb()->get_property_value_length(reply) == sizeof(xcb_atom_t)) {
           window->type = property_values[0];
+        }
+        break;
+      case PROPERTY_NET_WM_PID:
+        property_values =
+            static_cast<xcb_atom_t*>(xcb()->get_property_value(reply));
+        if (xcb()->get_property_value_length(reply) == sizeof(xcb_atom_t)) {
+          window->pid = property_values[0];
+          // Double check if the window should be containerized
+          sl_window_update_should_be_containerized_from_pid(window);
         }
         break;
       default:
