@@ -33,6 +33,7 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mac_address.h>
 #include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 #include <net-base/rtnl_handler.h>
@@ -287,12 +288,15 @@ Stringmap Cellular::BuildFallbackEmptyApn(ApnList::ApnType apn_type) {
 
 Cellular::Cellular(Manager* manager,
                    const std::string& link_name,
-                   const std::string& address,
+                   std::optional<net_base::MacAddress> mac_address,
                    int interface_index,
                    const std::string& service,
                    const RpcIdentifier& path)
-    : Device(
-          manager, link_name, address, interface_index, Technology::kCellular),
+    : Device(manager,
+             link_name,
+             (mac_address.has_value() ? mac_address->ToHexString() : ""),
+             interface_index,
+             Technology::kCellular),
       mobile_operator_info_(
           new MobileOperatorInfo(manager->dispatcher(), "cellular")),
       dbus_service_(service),
@@ -3384,8 +3388,9 @@ void Cellular::RegisterProperties() {
           this, &Cellular::GetSimLockStatus, /*error=*/nullptr)));
 }
 
-void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
-                                     const std::string& mac_address) {
+void Cellular::UpdateModemProperties(
+    const RpcIdentifier& dbus_path,
+    std::optional<net_base::MacAddress> mac_address) {
   if (dbus_path_ == dbus_path) {
     SLOG(1) << LoggingTag() << ": " << __func__
             << ": Skipping update. Same dbus_path provided: "
@@ -3396,7 +3401,7 @@ void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
             << ": Modem Path: " << dbus_path.value();
   SetDbusPath(dbus_path);
   SetModemState(kModemStateUnknown);
-  set_mac_address(mac_address);
+  set_mac_address(mac_address.has_value() ? mac_address->ToHexString() : "");
   CreateCapability();
 }
 

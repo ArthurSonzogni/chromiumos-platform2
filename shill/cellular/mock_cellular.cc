@@ -4,19 +4,21 @@
 
 #include "shill/cellular/mock_cellular.h"
 
-#include <gmock/gmock.h>
+#include <string>
 
-#include "shill/error.h"
+#include <gmock/gmock.h>
+#include <net-base/mac_address.h>
 
 namespace shill {
 
 MockCellular::MockCellular(Manager* manager,
                            const std::string& link_name,
-                           const std::string& address,
+                           net_base::MacAddress mac_address,
                            int interface_index,
                            const std::string& service,
                            const RpcIdentifier& path)
-    : Cellular(manager, link_name, address, interface_index, service, path) {}
+    : Cellular(
+          manager, link_name, mac_address, interface_index, service, path) {}
 
 MockCellular::~MockCellular() = default;
 

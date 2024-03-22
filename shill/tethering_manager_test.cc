@@ -24,6 +24,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/http_url.h>
+#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mock_cellular.h"
@@ -229,9 +230,9 @@ class TetheringManagerTest : public testing::Test {
   ~TetheringManagerTest() override = default;
 
   scoped_refptr<MockCellular> MakeCellular(const std::string& link_name,
-                                           const std::string& address,
+                                           net_base::MacAddress mac_address,
                                            int interface_index) {
-    return new NiceMock<MockCellular>(&manager_, link_name, address,
+    return new NiceMock<MockCellular>(&manager_, link_name, mac_address,
                                       interface_index, "", RpcIdentifier(""));
   }
 
@@ -884,7 +885,8 @@ TEST_F(TetheringManagerTest, CheckReadinessCellularUpstream) {
   eth->set_selected_service_for_testing(eth_service);
 
   // Set one fake cellular Device.
-  auto cell = MakeCellular("wwan0", "000102030405", 2);
+  auto cell = MakeCellular(
+      "wwan0", net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05), 2);
   const std::vector<DeviceRefPtr> cell_devices = {cell};
   ON_CALL(manager_, FilterByTechnology(Technology::kCellular))
       .WillByDefault(Return(cell_devices));
@@ -961,7 +963,8 @@ TEST_F(TetheringManagerTest, CheckReadinessEthernetUpstream) {
   eth->set_selected_service_for_testing(eth_service);
 
   // Set one fake cellular Device.
-  auto cell = MakeCellular("wwan0", "000102030405", 2);
+  auto cell = MakeCellular(
+      "wwan0", net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05), 2);
   const std::vector<DeviceRefPtr> cell_devices = {cell};
   ON_CALL(manager_, FilterByTechnology(Technology::kCellular))
       .WillByDefault(Return(cell_devices));

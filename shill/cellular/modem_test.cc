@@ -4,8 +4,10 @@
 
 #include "shill/cellular/modem.h"
 
+#include <memory>
 #include <optional>
 #include <tuple>
+#include <vector>
 
 #include <ModemManager/ModemManager.h>
 #include <net/if.h>
@@ -45,8 +47,7 @@ const char kTtyName[] = "ttyUSB0";
 const char kLinkName[] = "usb0";
 const char kService[] = "org.freedesktop.ModemManager1";
 const RpcIdentifier kPath("/org/freedesktop/ModemManager1/Modem/0");
-const std::array<uint8_t, 6> kAddress = {0xa0, 0xb1, 0xc2, 0xd3, 0xe4, 0xf5};
-const char kAddressAsString[] = "A0B1C2D3E4F5";
+constexpr net_base::MacAddress kMacAddress(0xa0, 0xb1, 0xc2, 0xd3, 0xe4, 0xf5);
 
 enum ModemTestLayout {
   kModemTestLayoutControlOnly,     // TTY-only serial device that requires PPP
@@ -85,8 +86,6 @@ class ModemTest : public Test {
         modem_(new Modem(kService, kPath, &device_info_)) {}
 
   void SetUp() override {
-    expected_address_ = net_base::MacAddress(kAddress);
-
     EXPECT_CALL(device_info_, GetIndex(kLinkName))
         .WillRepeatedly(Return(kTestInterfaceIndex));
 
@@ -130,8 +129,9 @@ class ModemTest : public Test {
     modem_->CreateDevice(properties);
   }
 
-  std::optional<int> GetLinkDetailsFromDeviceInfo(std::string* mac_address) {
-    return modem_->GetLinkDetailsFromDeviceInfo(mac_address);
+  std::optional<std::pair<int, net_base::MacAddress>>
+  GetLinkDetailsFromDeviceInfo() {
+    return modem_->GetLinkDetailsFromDeviceInfo();
   }
 
   EventDispatcherForTest dispatcher_;
@@ -141,7 +141,6 @@ class ModemTest : public Test {
   MockModemInfo modem_info_;
   TestDeviceInfo device_info_;
   std::unique_ptr<Modem> modem_;
-  net_base::MacAddress expected_address_;
 };
 
 MATCHER_P2(HasPropertyWithValueU32, key, value, "") {
@@ -164,14 +163,14 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   // will get called. GetMacAddress is now expected to succeed, so a device will
   // get created.
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex))
-      .WillOnce(Return(expected_address_));
+      .WillOnce(Return(kMacAddress));
   modem_->OnDeviceInfoAvailable(kLinkName);
   EXPECT_FALSE(modem_->has_pending_device_info_for_testing());
   ASSERT_TRUE(modem_->interface_index_for_testing().has_value());
   int interface_index = modem_->interface_index_for_testing().value();
   DeviceRefPtr device = device_info_.GetDevice(interface_index);
   ASSERT_TRUE(device);
-  EXPECT_EQ(base::ToLowerASCII(kAddressAsString), device->mac_address());
+  EXPECT_EQ(kMacAddress.ToHexString(), device->mac_address());
 }
 
 TEST_F(ModemTest, EarlyDeviceProperties) {
@@ -199,7 +198,7 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
   EXPECT_CALL(device_info_, GetIndex(StrEq(kLinkName)))
       .WillOnce(Return(kTestInterfaceIndex));
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex))
-      .WillOnce(Return(expected_address_));
+      .WillOnce(Return(kMacAddress));
   EXPECT_CALL(device_info_, IsDeviceBlocked(kLinkName))
       .WillRepeatedly(Return(true));
   CreateDevice(properties);
@@ -222,39 +221,33 @@ TEST_F(ModemTest, CreateDevicePPP) {
   EXPECT_EQ(interface_index, Modem::kFakeDevInterfaceIndex);
   DeviceRefPtr device = device_info_.GetDevice(interface_index);
   ASSERT_TRUE(device);
-  EXPECT_EQ(device->mac_address(), Modem::kFakeDevAddress);
+  EXPECT_EQ(device->mac_address(), Modem::kFakeDevAddress.ToHexString());
 }
 
 TEST_F(ModemTest, GetLinkDetailsFromDeviceInfo) {
-  std::string mac_address;
   EXPECT_CALL(device_info_, GetMacAddress(_))
       .Times(AnyNumber())
       .WillRepeatedly(Return(std::nullopt));
 
   EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(-1));
-  EXPECT_FALSE(GetLinkDetailsFromDeviceInfo(&mac_address).has_value());
+  EXPECT_FALSE(GetLinkDetailsFromDeviceInfo().has_value());
 
   EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(-2));
-  EXPECT_FALSE(GetLinkDetailsFromDeviceInfo(&mac_address).has_value());
+  EXPECT_FALSE(GetLinkDetailsFromDeviceInfo().has_value());
 
   EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(1));
   EXPECT_CALL(device_info_, GetMacAddress(1)).WillOnce(Return(std::nullopt));
-  EXPECT_FALSE(GetLinkDetailsFromDeviceInfo(&mac_address).has_value());
+  EXPECT_FALSE(GetLinkDetailsFromDeviceInfo().has_value());
 
   EXPECT_CALL(device_info_, GetIndex(_)).WillOnce(Return(2));
-  EXPECT_CALL(device_info_, GetMacAddress(2))
-      .WillOnce(Return(expected_address_));
-  std::optional<int> interface_index =
-      GetLinkDetailsFromDeviceInfo(&mac_address);
-  EXPECT_TRUE(interface_index.has_value());
-  EXPECT_EQ(2, interface_index.value());
-  EXPECT_EQ(kAddressAsString, mac_address);
+  EXPECT_CALL(device_info_, GetMacAddress(2)).WillOnce(Return(kMacAddress));
+  EXPECT_EQ(*GetLinkDetailsFromDeviceInfo(), std::make_pair(2, kMacAddress));
 }
 
 TEST_F(ModemTest, Create3gppDevice) {
   SetDeviceInfoExpectations();
   EXPECT_CALL(device_info_, GetMacAddress(kTestInterfaceIndex))
-      .WillOnce(Return(expected_address_));
+      .WillOnce(Return(kMacAddress));
 
   InterfaceToProperties properties =
       GetInterfaceProperties(kModemTestLayoutControlAndData);

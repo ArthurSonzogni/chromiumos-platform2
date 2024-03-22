@@ -5,14 +5,14 @@
 #ifndef SHILL_CELLULAR_MODEM_H_
 #define SHILL_CELLULAR_MODEM_H_
 
-#include <memory>
 #include <optional>
 #include <string>
-#include <vector>
+#include <utility>
 
 #include <base/files/file_util.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "net-base/mac_address.h"
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/refptr_types.h"
@@ -54,8 +54,9 @@ class Modem {
   // Constants associated with fake network devices for PPP dongles.
   // See |fake_dev_serial_|, below, for more info.
   static constexpr char kFakeDevNameFormat[] = "no_netdev_%zu";
-  static const char kFakeDevAddress[];
-  static const int kFakeDevInterfaceIndex;
+  static constexpr net_base::MacAddress kFakeDevAddress{0x00, 0x00, 0x00,
+                                                        0x00, 0x00, 0x00};
+  static constexpr int kFakeDevInterfaceIndex = -1;
 
  private:
   friend class ModemTest;
@@ -70,11 +71,12 @@ class Modem {
 
   // Finds the interface index and MAC address for the kernel network device
   // with name |link_name_|. If no interface index exists, returns nullopt.
-  // Otherwise sets |mac_address| if available and returns the interface index.
-  std::optional<int> GetLinkDetailsFromDeviceInfo(std::string* mac_address);
+  // Otherwise returns the pair of the interface index and the MAC address.
+  std::optional<std::pair<int, net_base::MacAddress>>
+  GetLinkDetailsFromDeviceInfo();
 
-  CellularRefPtr GetOrCreateCellularDevice(int interface_index,
-                                           const std::string& mac_address);
+  CellularRefPtr GetOrCreateCellularDevice(
+      int interface_index, std::optional<net_base::MacAddress> mac_address);
   CellularRefPtr GetExistingCellularDevice(int interface_index) const;
 
   InterfaceToProperties initial_properties_;

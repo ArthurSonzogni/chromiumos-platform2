@@ -6,13 +6,15 @@
 
 #include <optional>
 #include <tuple>
+#include <utility>
+#include <vector>
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
-
 #include <ModemManager/ModemManager.h>
+#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/control_interface.h"
@@ -29,9 +31,6 @@ static std::string ObjectID(const Modem* m) {
 }  // namespace Logging
 
 // statics
-constexpr char Modem::kFakeDevNameFormat[];
-const char Modem::kFakeDevAddress[] = "000000000000";
-const int Modem::kFakeDevInterfaceIndex = -1;
 size_t Modem::fake_dev_serial_ = 0;
 
 Modem::Modem(const std::string& service,
@@ -132,10 +131,11 @@ void Modem::CreateDeviceFromModemProperties(
   }
   const KeyValueStore& modem_props = iter->second;
 
-  std::string mac_address;
+  std::optional<net_base::MacAddress> mac_address;
   if (GetLinkName(modem_props, &link_name_)) {
-    interface_index_ = GetLinkDetailsFromDeviceInfo(&mac_address);
-    if (!interface_index_.has_value()) {
+    const std::optional<std::pair<int, net_base::MacAddress>> link_details =
+        GetLinkDetailsFromDeviceInfo();
+    if (!link_details.has_value()) {
       // Save our properties, wait for OnDeviceInfoAvailable to be called.
       LOG(WARNING) << "Delaying cellular device creation for interface "
                    << link_name_ << ".";
@@ -143,6 +143,7 @@ void Modem::CreateDeviceFromModemProperties(
       has_pending_device_info_ = true;
       return;
     }
+    std::tie(interface_index_, mac_address) = *link_details;
     // Got the interface index and MAC address. Fall-through to actually
     // creating the Cellular object.
   } else {
@@ -167,24 +168,24 @@ void Modem::CreateDeviceFromModemProperties(
                 << " Enabled: " << device->enabled();
 }
 
-std::optional<int> Modem::GetLinkDetailsFromDeviceInfo(
-    std::string* mac_address) {
+std::optional<std::pair<int, net_base::MacAddress>>
+Modem::GetLinkDetailsFromDeviceInfo() {
   int interface_index = device_info_->GetIndex(link_name_);
   if (interface_index < 0) {
     return std::nullopt;
   }
 
-  const auto addr = device_info_->GetMacAddress(interface_index);
-  if (!addr) {
+  const std::optional<net_base::MacAddress> mac_address =
+      device_info_->GetMacAddress(interface_index);
+  if (!mac_address.has_value()) {
     return std::nullopt;
   }
 
-  *mac_address = base::HexEncode(addr->ToBytes());
-  return interface_index;
+  return std::make_pair(interface_index, *mac_address);
 }
 
 CellularRefPtr Modem::GetOrCreateCellularDevice(
-    int interface_index, const std::string& mac_address) {
+    int interface_index, std::optional<net_base::MacAddress> mac_address) {
   LOG(INFO) << __func__ << " Index: " << interface_index;
   CellularRefPtr cellular = GetExistingCellularDevice(interface_index);
   if (cellular && cellular->link_name() != link_name_) {

@@ -4,15 +4,15 @@
 
 #include "shill/cellular/cellular_service.h"
 
+#include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/shill/dbus-constants.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 
-#include "base/containers/contains.h"
-#include "dbus/shill/dbus-constants.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mock_cellular.h"
-#include "shill/cellular/mock_mobile_operator_info.h"
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
@@ -31,8 +31,9 @@ using testing::Return;
 namespace shill {
 
 namespace {
-const char kImsi[] = "111222123456789";
-const char kIccid[] = "1234567890000";
+constexpr char kImsi[] = "111222123456789";
+constexpr char kIccid[] = "1234567890000";
+constexpr net_base::MacAddress kMacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
 }  // namespace
 
 class CellularServiceTest : public testing::Test {
@@ -53,8 +54,8 @@ class CellularServiceTest : public testing::Test {
     EXPECT_CALL(manager_, cellular_service_provider())
         .WillRepeatedly(Return(&cellular_service_provider_));
 
-    device_ =
-        new MockCellular(&manager_, "usb0", kAddress, 3, "", RpcIdentifier(""));
+    device_ = new MockCellular(&manager_, "usb0", kMacAddress, 3, "",
+                               RpcIdentifier(""));
 
     // CellularService expects an IMSI and SIM ID be set in the Device.
     Cellular::SimProperties sim_properties;
@@ -74,8 +75,6 @@ class CellularServiceTest : public testing::Test {
   }
 
  protected:
-  static const char kAddress[];
-
   std::string GetFriendlyName() const { return service_->friendly_name(); }
   bool IsAutoConnectable(const char** reason) const {
     return service_->IsAutoConnectable(reason);
@@ -97,8 +96,6 @@ class CellularServiceTest : public testing::Test {
   FakeStore storage_;
   scoped_refptr<NiceMock<MockProfile>> profile_;
 };
-
-const char CellularServiceTest::kAddress[] = "000102030405";
 
 TEST_F(CellularServiceTest, Constructor) {
   EXPECT_TRUE(service_->connectable());

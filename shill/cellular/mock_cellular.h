@@ -6,13 +6,12 @@
 #define SHILL_CELLULAR_MOCK_CELLULAR_H_
 
 #include <string>
-#include <vector>
 
 #include <gmock/gmock.h>
-
-#include "shill/tethering_manager.h"
+#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular.h"
+#include "shill/tethering_manager.h"
 
 namespace shill {
 
@@ -20,7 +19,7 @@ class MockCellular : public Cellular {
  public:
   MockCellular(Manager* manager,
                const std::string& link_name,
-               const std::string& address,
+               net_base::MacAddress mac_address,
                int interface_index,
                const std::string& service,
                const RpcIdentifier& path);

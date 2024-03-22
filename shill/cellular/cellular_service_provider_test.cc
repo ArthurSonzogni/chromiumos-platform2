@@ -14,6 +14,7 @@
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
@@ -22,7 +23,6 @@
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/fake_properties_proxy.h"
 #include "shill/mock_control.h"
-#include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
@@ -45,14 +45,15 @@ namespace shill {
 
 namespace {
 
-const char kTestDeviceName[] = "usb0";
-const char kTestDeviceAddress[] = "000102030405";
-const int kTestInterfaceIndex = 1;
-const char kDBusService[] = "org.freedesktop.ModemManager1";
+constexpr char kTestDeviceName[] = "usb0";
+constexpr net_base::MacAddress kTestDeviceAddress(
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+constexpr int kTestInterfaceIndex = 1;
+constexpr char kDBusService[] = "org.freedesktop.ModemManager1";
 const RpcIdentifier kDBusPath("/org/freedesktop/ModemManager1/Modem/0");
 // EID must be 32 chars
-const char kEid1[] = "eid1_678901234567890123456789012";
-const char kEid2[] = "eid2_678901234567890123456789012";
+constexpr char kEid1[] = "eid1_678901234567890123456789012";
+constexpr char kEid2[] = "eid2_678901234567890123456789012";
 
 CellularService* AsCellularService(ServiceRefPtr service) {
   if (service->technology() != Technology::kCellular) {

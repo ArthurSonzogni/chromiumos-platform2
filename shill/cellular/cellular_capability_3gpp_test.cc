@@ -19,12 +19,12 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <ModemManager/ModemManager.h>
+#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/cellular_service_provider.h"
-#include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_cellular_service.h"
 #include "shill/cellular/mock_mm1_modem_location_proxy.h"
 #include "shill/cellular/mock_mm1_modem_modem3gpp_profile_manager_proxy.h"
@@ -165,8 +165,9 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
         .Times(AnyNumber());
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
 
-    cellular_ = new Cellular(&manager_, "", "00:01:02:03:04:05", 0, "",
-                             RpcIdentifier(""));
+    cellular_ = new Cellular(
+        &manager_, "", net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05),
+        0, "", RpcIdentifier(""));
     service_ = new MockCellularService(&manager_, cellular_);
     device_adaptor_ = static_cast<DeviceMockAdaptor*>(cellular_->adaptor());
     capability_ = static_cast<CellularCapability3gpp*>(

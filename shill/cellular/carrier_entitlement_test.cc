@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 #include <base/files/scoped_temp_dir.h>
-#include "base/functional/bind.h"
 #include <base/strings/string_number_conversions.h>
 #include <base/test/mock_callback.h>
 #include <base/test/task_environment.h>
@@ -24,11 +23,11 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mac_address.h>
 
 #include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_modem_info.h"
-#include "shill/logging.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -62,7 +61,7 @@ constexpr net_base::IPAddress kDNS1(net_base::IPv4Address(8, 8, 8, 8));
 constexpr net_base::IPAddress kDNS2(net_base::IPv4Address(1, 1, 1, 1));
 constexpr net_base::IPAddress kDNS3(net_base::IPv6Address(
     0x20, 0x01, 0x48, 0x60, 0x48, 0x60, 0, 0, 0, 0, 0, 0, 0, 0, 0x88, 0x88));
-constexpr net_base::IPAddress kSrcIp(net_base::IPv4Address(192, 168, 88, 5));
+constexpr net_base::MacAddress kMacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
 constexpr char kImsi[] = "001010000000004";
 constexpr char kInterfaceName[] = "wwan8";
 constexpr char kUrl[] = "testurl.com";
@@ -97,9 +96,8 @@ class CarrierEntitlementTest : public testing::Test {
         .Times(AtLeast(0))
         .WillRepeatedly(Return(&modem_info_));
 
-    cellular_ = scoped_refptr<MockCellular>(
-        new MockCellular(&manager_, kInterfaceName, kSrcIp.ToString(), 1, "",
-                         RpcIdentifier("")));
+    cellular_ = scoped_refptr<MockCellular>(new MockCellular(
+        &manager_, kInterfaceName, kMacAddress, 1, "", RpcIdentifier("")));
     auto mock_network = std::make_unique<MockNetwork>(
         cellular_->interface_index(), cellular_->link_name(),
         cellular_->technology());

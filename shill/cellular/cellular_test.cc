@@ -105,7 +105,8 @@ MATCHER_P(KeyValueStoreHasApn, expected_apn, "") {
 }
 constexpr int kTestInterfaceIndex = 3;
 constexpr char kTestInterfaceName[] = "wwan0";
-constexpr char kTestInterfaceAddress[] = "00:01:02:03:04:05";
+constexpr net_base::MacAddress kTestInterfaceAddress(
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
 constexpr int kTestMultiplexedInterfaceIndex = 4;
 constexpr int kTestMultiplexedInterfaceIndex2 = 5;
 constexpr char kTestMultiplexedInterfaceName[] = "wwan0mux0";
@@ -895,7 +896,7 @@ TEST_F(CellularTest, SimSlotSwitch) {
 
   // Simulate MM changes that occur when a new MM DBus object appears after a
   // slot switch
-  device_->UpdateModemProperties(kTestModemDBusPath, "");
+  device_->UpdateModemProperties(kTestModemDBusPath, std::nullopt);
   device_->OnModemStateChanged(Cellular::kModemStateDisabled);
   slot_properties[1].iccid = "8900000000000000000",
   GetCapability3gpp()->set_sim_properties_for_testing(sim_properties);
