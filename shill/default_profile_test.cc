@@ -13,13 +13,12 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 
 #include "shill/manager.h"
-#include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_service.h"
 #include "shill/portal_detector.h"
-#include "shill/resolver.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store_test.h"
 
@@ -37,7 +36,11 @@ class DefaultProfileTest : public PropertyStoreTest {
                                     base::FilePath(storage_path()),
                                     DefaultProfile::kDefaultId,
                                     properties_)),
-        device_(new MockDevice(manager(), "null0", "addr0", 0)) {}
+        device_(new MockDevice(
+            manager(),
+            "null0",
+            net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05),
+            0)) {}
 
   ~DefaultProfileTest() override = default;
 

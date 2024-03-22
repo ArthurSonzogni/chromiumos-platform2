@@ -129,7 +129,7 @@ Ethernet::Ethernet(Manager* manager,
                    int interface_index)
     : Device(manager,
              link_name,
-             (mac_address.has_value() ? mac_address->ToHexString() : ""),
+             mac_address,
              interface_index,
              Technology::kEthernet),
       link_up_(false),
@@ -739,7 +739,7 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
     return;
   }
 
-  if (new_mac_address->ToHexString() == mac_address()) {
+  if (new_mac_address == mac_address()) {
     SLOG(this, 4) << __func__ << " new MAC address is equal to the old one";
     if (usb_ethernet_mac_address_source_ != source) {
       usb_ethernet_mac_address_source_ = source;
@@ -751,8 +751,10 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
   }
 
   SLOG(this, 2) << "Send netlink request to change MAC address for "
-                << link_name() << " device from " << mac_address() << " to "
-                << new_mac_address->ToString();
+                << link_name() << " device from "
+                << (mac_address().has_value() ? mac_address()->ToString()
+                                              : "(null)")
+                << " to " << new_mac_address->ToString();
 
   rtnl_handler()->SetInterfaceMac(
       interface_index(), *new_mac_address,
@@ -796,14 +798,14 @@ void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
   adaptor()->EmitStringChanged(kUsbEthernetMacAddressSourceProperty,
                                usb_ethernet_mac_address_source_);
 
-  set_mac_address(new_mac_address.ToHexString());
+  set_mac_address(new_mac_address);
   if (!callback.is_null()) {
     std::move(callback).Run(Error(Error::kSuccess));
   }
 }
 
-void Ethernet::set_mac_address(const std::string& new_mac_address) {
-  SLOG(this, 2) << __func__ << " " << new_mac_address;
+void Ethernet::set_mac_address(net_base::MacAddress new_mac_address) {
+  SLOG(this, 2) << __func__ << " " << new_mac_address.ToString();
 
   ProfileRefPtr profile;
   if (service_) {

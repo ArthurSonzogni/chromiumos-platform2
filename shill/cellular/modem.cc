@@ -131,7 +131,7 @@ void Modem::CreateDeviceFromModemProperties(
   }
   const KeyValueStore& modem_props = iter->second;
 
-  std::optional<net_base::MacAddress> mac_address;
+  net_base::MacAddress mac_address;
   if (GetLinkName(modem_props, &link_name_)) {
     const std::optional<std::pair<int, net_base::MacAddress>> link_details =
         GetLinkDetailsFromDeviceInfo();
@@ -185,7 +185,7 @@ Modem::GetLinkDetailsFromDeviceInfo() {
 }
 
 CellularRefPtr Modem::GetOrCreateCellularDevice(
-    int interface_index, std::optional<net_base::MacAddress> mac_address) {
+    int interface_index, net_base::MacAddress mac_address) {
   LOG(INFO) << __func__ << " Index: " << interface_index;
   CellularRefPtr cellular = GetExistingCellularDevice(interface_index);
   if (cellular && cellular->link_name() != link_name_) {

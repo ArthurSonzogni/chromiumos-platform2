@@ -7,11 +7,11 @@
 #include <netinet/ether.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 #include <stdio.h>
-#include <time.h>
 
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/mac_address.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/device.h"
@@ -20,7 +20,6 @@
 #include "shill/ethernet/ethernet_provider.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
-#include "shill/store/store_interface.h"
 
 namespace shill {
 
@@ -36,7 +35,7 @@ EthernetService::EthernetService(Manager* manager,
                                  const Properties& props)
     : Service(manager, technology), props_(props) {}
 
-EthernetService::~EthernetService() {}
+EthernetService::~EthernetService() = default;
 
 void EthernetService::SetUp() {
   log_name_ = "ethernet_" + base::NumberToString(serial_number());
@@ -78,12 +77,13 @@ std::string EthernetService::GetStorageIdentifier() const {
     return props_.storage_id_;
   }
 
-  const std::string mac_address =
+  const std::optional<net_base::MacAddress> mac_address =
       props_.ethernet_->permanent_mac_address().has_value()
-          ? props_.ethernet_->permanent_mac_address()->ToHexString()
+          ? props_.ethernet_->permanent_mac_address()
           : props_.ethernet_->mac_address();
-  return base::StringPrintf("%s_%s", GetTechnologyName().c_str(),
-                            mac_address.c_str());
+  return base::StringPrintf(
+      "%s_%s", GetTechnologyName().c_str(),
+      (mac_address.has_value() ? mac_address->ToHexString() : "").c_str());
 }
 
 bool EthernetService::IsAutoConnectByDefault() const {

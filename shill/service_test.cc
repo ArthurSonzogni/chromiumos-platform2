@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <net-base/http_url.h>
+#include <net-base/mac_address.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"
@@ -2674,8 +2675,9 @@ TEST_F(ServiceTest, RequestTrafficCounters) {
 
   patchpanel_client->set_stored_traffic_counters(counters);
 
-  scoped_refptr<MockDevice> mock_device =
-      new MockDevice(&mock_manager_, kIfName, "addr0", 0);
+  scoped_refptr<MockDevice> mock_device = new MockDevice(
+      &mock_manager_, kIfName,
+      net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05), 0);
   mock_device->set_selected_service_for_testing(service_);
   ON_CALL(mock_manager_, FindDeviceFromService(_))
       .WillByDefault(Return(mock_device));

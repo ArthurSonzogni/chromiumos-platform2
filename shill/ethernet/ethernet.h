@@ -174,7 +174,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
                                  int32_t error);
   // Sets new MAC address and reconnects to the |service_| to renew IP address
   // if needed.
-  void set_mac_address(const std::string& mac_address) override;
+  void set_mac_address(net_base::MacAddress mac_address) override;
 
   // Returns device bus type on success. Otherwise, returns empty string.
   std::string GetDeviceBusType() const;

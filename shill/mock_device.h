@@ -11,6 +11,7 @@
 #include <base/memory/ref_counted.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
+#include <net-base/mac_address.h>
 
 #include "shill/device.h"
 #include "shill/geolocation_info.h"
@@ -22,7 +23,7 @@ class MockDevice : public Device {
  public:
   MockDevice(Manager* manager,
              const std::string& link_name,
-             const std::string& address,
+             net_base::MacAddress mac_address,
              int interface_index);
   MockDevice(const MockDevice&) = delete;
   MockDevice& operator=(const MockDevice&) = delete;

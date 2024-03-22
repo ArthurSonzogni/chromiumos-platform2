@@ -75,8 +75,8 @@ class Modem {
   std::optional<std::pair<int, net_base::MacAddress>>
   GetLinkDetailsFromDeviceInfo();
 
-  CellularRefPtr GetOrCreateCellularDevice(
-      int interface_index, std::optional<net_base::MacAddress> mac_address);
+  CellularRefPtr GetOrCreateCellularDevice(int interface_index,
+                                           net_base::MacAddress mac_address);
   CellularRefPtr GetExistingCellularDevice(int interface_index) const;
 
   InterfaceToProperties initial_properties_;

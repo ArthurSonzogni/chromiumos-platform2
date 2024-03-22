@@ -198,7 +198,7 @@ class EthernetTest : public testing::Test {
     return ethernet_->GetUsbEthernetMacAddressSource(error);
   }
 
-  void SetMacAddress(const std::string& mac_address) {
+  void SetMacAddress(net_base::MacAddress mac_address) {
     ethernet_->set_mac_address(mac_address);
   }
 
@@ -587,10 +587,9 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
 
   constexpr net_base::MacAddress kBuiltinAdapterMacAddress(0xab, 0xcd, 0xef,
                                                            0x12, 0x34, 0x56);
-  constexpr char kBuiltinAdapterMacAddressHexString[] = "abcdef123456";
 
   EXPECT_CALL(*ethernet_.get(), ReadMacAddressFromFile(_))
-      .WillOnce(Return(kBuiltinAdapterMacAddressHexString));
+      .WillOnce(Return(kBuiltinAdapterMacAddress.ToHexString()));
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceMac(ethernet_->interface_index(),
                                              kBuiltinAdapterMacAddress, _))
@@ -605,7 +604,7 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
       kUsbEthernetMacAddressSourceBuiltinAdapterMac,
       base::BindOnce(&EthernetTest::ErrorCallback, base::Unretained(this)));
 
-  EXPECT_EQ(hwaddr_.ToHexString(), ethernet_->mac_address());
+  EXPECT_EQ(hwaddr_, ethernet_->mac_address());
 }
 
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {
@@ -613,10 +612,9 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {
 
   constexpr net_base::MacAddress kBuiltinAdapterMacAddress(0xab, 0xcd, 0xef,
                                                            0x12, 0x34, 0x56);
-  constexpr char kBuiltinAdapterMacAddressHexString[] = "abcdef123456";
 
   EXPECT_CALL(*ethernet_.get(), ReadMacAddressFromFile(_))
-      .WillOnce(Return(kBuiltinAdapterMacAddressHexString));
+      .WillOnce(Return(kBuiltinAdapterMacAddress.ToHexString()));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMac(ethernet_->interface_index(),
                                              kBuiltinAdapterMacAddress, _))
       .WillOnce(WithArg<2>(
@@ -630,13 +628,14 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {
       kUsbEthernetMacAddressSourceBuiltinAdapterMac,
       base::BindOnce(&EthernetTest::ErrorCallback, base::Unretained(this)));
 
-  EXPECT_EQ(kBuiltinAdapterMacAddressHexString, ethernet_->mac_address());
+  EXPECT_EQ(kBuiltinAdapterMacAddress, ethernet_->mac_address());
   EXPECT_EQ(GetUsbEthernetMacAddressSource(nullptr),
             kUsbEthernetMacAddressSourceBuiltinAdapterMac);
 }
 
 TEST_F(EthernetTest, SetMacAddressNoServiceStorageIdentifierChange) {
-  constexpr char kMacAddress[] = "123456abcdef";
+  constexpr net_base::MacAddress kMacAddress(0x12, 0x34, 0x56, 0xab, 0xcd,
+                                             0xef);
 
   scoped_refptr<StrictMock<MockProfile>> mock_profile(
       new StrictMock<MockProfile>(&manager_));
@@ -654,7 +653,8 @@ TEST_F(EthernetTest, SetMacAddressNoServiceStorageIdentifierChange) {
 
 TEST_F(EthernetTest, SetMacAddressServiceStorageIdentifierChange) {
   StartEthernet();
-  constexpr char kMacAddress[] = "123456abcdef";
+  constexpr net_base::MacAddress kMacAddress(0x12, 0x34, 0x56, 0xab, 0xcd,
+                                             0xef);
 
   scoped_refptr<StrictMock<MockProfile>> mock_profile(
       new StrictMock<MockProfile>(&manager_));

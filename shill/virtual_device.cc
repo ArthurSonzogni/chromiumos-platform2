@@ -18,10 +18,6 @@
 
 namespace shill {
 
-namespace {
-const char kHardwareAddressEmpty[] = "";
-}  // namespace
-
 VirtualDevice::VirtualDevice(Manager* manager,
                              const std::string& link_name,
                              int interface_index,
@@ -29,7 +25,7 @@ VirtualDevice::VirtualDevice(Manager* manager,
                              bool fixed_ip_params)
     : Device(manager,
              link_name,
-             kHardwareAddressEmpty,
+             std::nullopt,
              interface_index,
              technology,
              fixed_ip_params) {}

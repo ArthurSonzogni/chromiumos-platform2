@@ -21,6 +21,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/http_url.h>
+#include <net-base/mac_address.h>
 #include <net-base/mock_rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
@@ -59,21 +60,28 @@ using ::testing::StrEq;
 using ::testing::StrictMock;
 
 namespace shill {
-
 namespace {
+
+constexpr char kDeviceName[] = "testdevice";
+constexpr net_base::MacAddress kDeviceAddress(
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+constexpr int kDeviceInterfaceIndex = 0;
+constexpr int kOtherInterfaceIndex = 255;
+
 MATCHER_P(IsWeakPtrTo, address, "") {
   return arg.get() == address;
 }
+
 }  // namespace
 
 class TestDevice : public Device {
  public:
   TestDevice(Manager* manager,
              const std::string& link_name,
-             const std::string& address,
+             net_base::MacAddress mac_address,
              int interface_index,
              Technology technology)
-      : Device(manager, link_name, address, interface_index, technology),
+      : Device(manager, link_name, mac_address, interface_index, technology),
         start_stop_error_(Error::kSuccess) {
     ON_CALL(*this, ShouldBringNetworkInterfaceDownAfterDisabled())
         .WillByDefault(Invoke(
@@ -108,7 +116,7 @@ class TestDevice : public Device {
     return Device::ShouldBringNetworkInterfaceDownAfterDisabled();
   }
 
-  void device_set_mac_address(const std::string& mac_address) {
+  void device_set_mac_address(net_base::MacAddress mac_address) {
     Device::set_mac_address(mac_address);
   }
 
@@ -141,11 +149,6 @@ class DeviceTest : public testing::Test {
   void SetUp() override { device_->rtnl_handler_ = &rtnl_handler_; }
 
  protected:
-  static const char kDeviceName[];
-  static const char kDeviceAddress[];
-  static const int kDeviceInterfaceIndex;
-  static const int kOtherInterfaceIndex;
-
   void OnIPv4ConfigUpdated() {
     device_->GetPrimaryNetwork()->OnIPv4ConfigUpdated();
   }
@@ -193,11 +196,6 @@ class DeviceTest : public testing::Test {
   MockNetwork* network_;  // owned by |device_|
   scoped_refptr<MockService> service_;
 };
-
-const char DeviceTest::kDeviceName[] = "testdevice";
-const char DeviceTest::kDeviceAddress[] = "address";
-const int DeviceTest::kDeviceInterfaceIndex = 0;
-const int DeviceTest::kOtherInterfaceIndex = 255;
 
 TEST_F(DeviceTest, Contains) {
   EXPECT_TRUE(device_->store().Contains(kNameProperty));
@@ -613,12 +611,13 @@ TEST_F(DeviceTest, AvailableIPConfigs) {
 }
 
 TEST_F(DeviceTest, SetMacAddress) {
-  constexpr char mac_address[] = "abcdefabcdef";
+  constexpr net_base::MacAddress kNewAddress(0xab, 0xcd, 0xef, 0xab, 0xcd,
+                                             0xef);
   EXPECT_CALL(*GetDeviceMockAdaptor(),
-              EmitStringChanged(kAddressProperty, mac_address));
-  EXPECT_NE(mac_address, device_->mac_address());
-  device_->device_set_mac_address(mac_address);
-  EXPECT_EQ(mac_address, device_->mac_address());
+              EmitStringChanged(kAddressProperty, kNewAddress.ToHexString()));
+  EXPECT_NE(kNewAddress, device_->mac_address());
+  device_->device_set_mac_address(kNewAddress);
+  EXPECT_EQ(kNewAddress, device_->mac_address());
 }
 
 TEST_F(DeviceTest, FetchTrafficCounters) {

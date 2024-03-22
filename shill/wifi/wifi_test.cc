@@ -1384,7 +1384,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   }
 
   std::string perm_address() const { return wifi_->perm_address_; }
-  void SetMacAddress(const std::string& addr) { wifi_->set_mac_address(addr); }
+  void SetMacAddress(net_base::MacAddress addr) {
+    wifi_->set_mac_address(addr);
+  }
   std::string GetStorageIdentifier() const {
     return wifi_->GetStorageIdentifier();
   }
@@ -1604,10 +1606,9 @@ TEST_F(WiFiMainTest, GetStorageIdentifier) {
   // Now check the expected storage ID and that it does no change when MAC
   // address changes.
   EXPECT_EQ(storage_id, std::string("device_") + perm_address());
-  std::array<uint8_t, ETH_ALEN> bytes;
+  net_base::MacAddress::DataType bytes;
   crypto::RandBytes(bytes.data(), bytes.size());
-  SetMacAddress(
-      base::ToLowerASCII(base::HexEncode(bytes.data(), bytes.size())));
+  SetMacAddress(net_base::MacAddress(bytes));
   EXPECT_EQ(storage_id, GetStorageIdentifier());
 }
 

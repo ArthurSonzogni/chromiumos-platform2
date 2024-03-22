@@ -288,13 +288,13 @@ Stringmap Cellular::BuildFallbackEmptyApn(ApnList::ApnType apn_type) {
 
 Cellular::Cellular(Manager* manager,
                    const std::string& link_name,
-                   std::optional<net_base::MacAddress> mac_address,
+                   net_base::MacAddress mac_address,
                    int interface_index,
                    const std::string& service,
                    const RpcIdentifier& path)
     : Device(manager,
              link_name,
-             (mac_address.has_value() ? mac_address->ToHexString() : ""),
+             mac_address,
              interface_index,
              Technology::kCellular),
       mobile_operator_info_(
@@ -363,7 +363,7 @@ std::string Cellular::GetLegacyEquipmentIdentifier() const {
 
   // If none of IMEI, MEID, and equipment ID is available, fall back to MAC
   // address.
-  return mac_address();
+  return GetMacAddressHexString();
 }
 
 std::string Cellular::DeviceStorageSuffix() const {
@@ -3388,9 +3388,8 @@ void Cellular::RegisterProperties() {
           this, &Cellular::GetSimLockStatus, /*error=*/nullptr)));
 }
 
-void Cellular::UpdateModemProperties(
-    const RpcIdentifier& dbus_path,
-    std::optional<net_base::MacAddress> mac_address) {
+void Cellular::UpdateModemProperties(const RpcIdentifier& dbus_path,
+                                     net_base::MacAddress mac_address) {
   if (dbus_path_ == dbus_path) {
     SLOG(1) << LoggingTag() << ": " << __func__
             << ": Skipping update. Same dbus_path provided: "
@@ -3401,7 +3400,7 @@ void Cellular::UpdateModemProperties(
             << ": Modem Path: " << dbus_path.value();
   SetDbusPath(dbus_path);
   SetModemState(kModemStateUnknown);
-  set_mac_address(mac_address.has_value() ? mac_address->ToHexString() : "");
+  set_mac_address(mac_address);
   CreateCapability();
 }
 

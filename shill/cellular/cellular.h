@@ -122,7 +122,7 @@ class Cellular : public Device,
   // mananager service name (e.g., /org/freedesktop/ModemManager1).
   Cellular(Manager* manager,
            const std::string& link_name,
-           std::optional<net_base::MacAddress> mac_address,
+           net_base::MacAddress mac_address,
            int interface_index,
            const std::string& service,
            const RpcIdentifier& path);
@@ -263,7 +263,7 @@ class Cellular : public Device,
 
   // |dbus_path| and |mac_address| may change if the associated Modem restarts.
   void UpdateModemProperties(const RpcIdentifier& dbus_path,
-                             std::optional<net_base::MacAddress> mac_address);
+                             net_base::MacAddress mac_address);
 
   // Returns a unique identifier for a SIM Card. For physical cards this will be
   // the ICCID and there should only be one matching service. For eSIM cards,

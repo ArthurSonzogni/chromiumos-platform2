@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include <ModemManager/ModemManager.h>
@@ -170,7 +171,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
   int interface_index = modem_->interface_index_for_testing().value();
   DeviceRefPtr device = device_info_.GetDevice(interface_index);
   ASSERT_TRUE(device);
-  EXPECT_EQ(kMacAddress.ToHexString(), device->mac_address());
+  EXPECT_EQ(kMacAddress, device->mac_address());
 }
 
 TEST_F(ModemTest, EarlyDeviceProperties) {
@@ -221,7 +222,7 @@ TEST_F(ModemTest, CreateDevicePPP) {
   EXPECT_EQ(interface_index, Modem::kFakeDevInterfaceIndex);
   DeviceRefPtr device = device_info_.GetDevice(interface_index);
   ASSERT_TRUE(device);
-  EXPECT_EQ(device->mac_address(), Modem::kFakeDevAddress.ToHexString());
+  EXPECT_EQ(device->mac_address(), Modem::kFakeDevAddress);
 }
 
 TEST_F(ModemTest, GetLinkDetailsFromDeviceInfo) {

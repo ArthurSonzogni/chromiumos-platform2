@@ -875,8 +875,9 @@ TEST_F(TetheringManagerTest, CheckReadinessCellularUpstream) {
   Mock::VerifyAndClearExpectations(&cb);
 
   // Set one fake ethernet Device.
-  auto eth =
-      new NiceMock<MockDevice>(&manager_, "eth0", "0a:0b:0c:0d:0e:0f", 1);
+  auto eth = new NiceMock<MockDevice>(
+      &manager_, "eth0",
+      net_base::MacAddress(0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f), 1);
   ON_CALL(*eth, technology()).WillByDefault(Return(Technology::kEthernet));
   const std::vector<DeviceRefPtr> eth_devices = {eth};
   ON_CALL(manager_, FilterByTechnology(Technology::kEthernet))
@@ -953,8 +954,9 @@ TEST_F(TetheringManagerTest, CheckReadinessEthernetUpstream) {
   Mock::VerifyAndClearExpectations(&cb);
 
   // Set one fake ethernet Device.
-  auto eth =
-      new NiceMock<MockDevice>(&manager_, "eth0", "0a:0b:0c:0d:0e:0f", 1);
+  auto eth = new NiceMock<MockDevice>(
+      &manager_, "eth0",
+      net_base::MacAddress(0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f), 1);
   ON_CALL(*eth, technology()).WillByDefault(Return(Technology::kEthernet));
   const std::vector<DeviceRefPtr> eth_devices = {eth};
   ON_CALL(manager_, FilterByTechnology(Technology::kEthernet))

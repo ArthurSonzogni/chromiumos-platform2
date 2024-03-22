@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -18,6 +19,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
+#include <net-base/mac_address.h>
 #include <net-base/rtnl_handler.h>
 
 #include "shill/adaptor_interfaces.h"
@@ -52,7 +54,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // A constructor for the Device object
   Device(Manager* manager,
          const std::string& link_name,
-         const std::string& mac_address,
+         std::optional<net_base::MacAddress> mac_address,
          int interface_index,
          Technology technology,
          bool fixed_ip_params = false);
@@ -160,13 +162,18 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   virtual void UpdateGeolocationObjects(
       std::vector<GeolocationInfo>* geolocation_infos) const;
 
-  const std::string& mac_address() const { return mac_address_; }
+  std::optional<net_base::MacAddress> mac_address() const {
+    return mac_address_;
+  }
   const std::string& link_name() const { return link_name_; }
   int interface_index() const { return interface_index_; }
   bool enabled() const { return enabled_; }
   bool enabled_persistent() const { return enabled_persistent_; }
   mockable Technology technology() const { return technology_; }
   std::string GetTechnologyName() const;
+  // Returns the raw hex string of |mac_address_| if it contains value.
+  // Otherwise returns an empty string.
+  std::string GetMacAddressHexString() const;
 
   // In WiFi, Ethernet and all other device types except for Cellular, this
   // method is guaranteed to return always a valid Network, so it is safe to
@@ -383,9 +390,11 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
                                       uint64_t (Device::*get)(Error*));
 
   // By default StorageId is equal to: "device_" + DeviceStorageSuffix()
-  // where the latter returns MAC address.  This can be overridden in
-  // subclasses.
-  virtual std::string DeviceStorageSuffix() const { return mac_address(); }
+  // where the latter returns the raw hex string of the MAC address.
+  // This can be overridden in subclasses.
+  virtual std::string DeviceStorageSuffix() const {
+    return GetMacAddressHexString();
+  }
 
   // Property getters reserved for subclasses
   ControlInterface* control_interface() const;
@@ -393,7 +402,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   Metrics* metrics() const;
   Manager* manager() const { return manager_; }
 
-  virtual void set_mac_address(const std::string& mac_address);
+  virtual void set_mac_address(net_base::MacAddress mac_address);
 
   // Emit a given MAC Address via dbus. If empty or bad string is provided,
   // emit the hardware MAC address of the device.
@@ -440,6 +449,8 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // Necessary getter signature for kTypeProperty. Cannot be const.
   std::string GetTechnologyString(Error* error);
+  // Necessary getter signature for kAddressProperty. Cannot be const.
+  std::string GetMacAddressString(Error* error);
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
@@ -468,7 +479,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   bool enabled_persistent_;
   bool enabled_pending_;
 
-  std::string mac_address_;
+  std::optional<net_base::MacAddress> mac_address_;
 
   PropertyStore store_;
 

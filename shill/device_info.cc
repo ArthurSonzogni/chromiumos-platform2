@@ -202,13 +202,6 @@ constexpr base::TimeDelta kRequestLinkStatisticsInterval = base::Seconds(20);
 constexpr int kIflaXfrmLink = 1;
 constexpr int kIflaXfrmIfId = 2;
 
-std::string HexEncode(const std::optional<net_base::MacAddress>& mac_address) {
-  if (!mac_address) {
-    return "";
-  }
-  return base::HexEncode(mac_address->ToBytes());
-}
-
 // Non-functional Device subclass used for non-operable or blocked devices
 class DeviceStub : public Device {
  public:
@@ -217,11 +210,7 @@ class DeviceStub : public Device {
              std::optional<net_base::MacAddress> mac_address,
              int interface_index,
              Technology technology)
-      : Device(manager,
-               link_name,
-               HexEncode(mac_address),
-               interface_index,
-               technology) {}
+      : Device(manager, link_name, mac_address, interface_index, technology) {}
   DeviceStub(const DeviceStub&) = delete;
   DeviceStub& operator=(const DeviceStub&) = delete;
 

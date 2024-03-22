@@ -4,7 +4,6 @@
 
 #include "shill/device.h"
 
-#include <errno.h>
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 #include <stdio.h>
@@ -13,8 +12,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <algorithm>
 #include <iostream>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -34,6 +33,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/mac_address.h>
 #include <net-base/rtnl_handler.h>
 
 #include "shill/control_interface.h"
@@ -69,14 +69,14 @@ const char Device::kStoragePowered[] = "Powered";
 
 Device::Device(Manager* manager,
                const std::string& link_name,
-               const std::string& mac_address,
+               std::optional<net_base::MacAddress> mac_address,
                int interface_index,
                Technology technology,
                bool fixed_ip_params)
     : enabled_(false),
       enabled_persistent_(true),
       enabled_pending_(enabled_),
-      mac_address_(base::ToLowerASCII(mac_address)),
+      mac_address_(mac_address),
       interface_index_(interface_index),
       link_name_(link_name),
       manager_(manager),
@@ -85,7 +85,8 @@ Device::Device(Manager* manager,
       rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       traffic_counter_callback_id_(0),
       weak_ptr_factory_(this) {
-  store_.RegisterConstString(kAddressProperty, &mac_address_);
+  HelpRegisterConstDerivedString(kAddressProperty,
+                                 &Device::GetMacAddressString);
 
   // kBgscanMethodProperty: Registered in WiFi
   // kBgscanShortIntervalProperty: Registered in WiFi
@@ -244,6 +245,14 @@ std::string Device::GetTechnologyName() const {
 
 std::string Device::GetTechnologyString(Error* /*error*/) {
   return GetTechnologyName();
+}
+
+std::string Device::GetMacAddressHexString() const {
+  return mac_address_.has_value() ? mac_address_->ToHexString() : "";
+}
+
+std::string Device::GetMacAddressString(Error* /*error*/) {
+  return GetMacAddressHexString();
 }
 
 const std::string& Device::UniqueName() const {
@@ -579,13 +588,13 @@ void Device::EmitMACAddress(const std::string& mac_address) {
   // TODO(b/245984500): What about MAC changed by the supplicant?
   if (mac_address.empty() ||
       MakeHardwareAddressFromString(mac_address).empty()) {
-    adaptor_->EmitStringChanged(kAddressProperty, mac_address_);
+    adaptor_->EmitStringChanged(kAddressProperty, GetMacAddressHexString());
   } else {
     adaptor_->EmitStringChanged(kAddressProperty, mac_address);
   }
 }
 
-void Device::set_mac_address(const std::string& mac_address) {
+void Device::set_mac_address(net_base::MacAddress mac_address) {
   mac_address_ = mac_address;
   EmitMACAddress();
 }

@@ -8,8 +8,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
-
-#include "shill/network/network.h"
+#include <net-base/mac_address.h>
 
 namespace shill {
 
@@ -20,10 +19,13 @@ using ::testing::DefaultValue;
 
 MockDevice::MockDevice(Manager* manager,
                        const std::string& link_name,
-                       const std::string& address,
+                       net_base::MacAddress mac_address,
                        int interface_index)
-    : Device(
-          manager, link_name, address, interface_index, Technology::kUnknown) {
+    : Device(manager,
+             link_name,
+             mac_address,
+             interface_index,
+             Technology::kUnknown) {
   DefaultValue<Technology>::Set(Technology::kUnknown);
 }
 

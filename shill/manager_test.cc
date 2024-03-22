@@ -22,8 +22,9 @@
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/network_priority.h>
 #include <metrics/timer_mock.h>
+#include <net-base/mac_address.h>
+#include <net-base/network_priority.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/default_service_observer.h"
@@ -89,6 +90,14 @@ using ::testing::WithArg;
 using ::testing::WithParamInterface;
 
 namespace {
+
+constexpr net_base::MacAddress kMacAddress0(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x00);
+constexpr net_base::MacAddress kMacAddress1(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x01);
+constexpr net_base::MacAddress kMacAddress2(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x02);
+constexpr net_base::MacAddress kMacAddress3(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x03);
+constexpr net_base::MacAddress kMacAddress4(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x04);
+constexpr net_base::MacAddress kMacAddress5(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0x05);
+
 class MockPatchpanelClient : public patchpanel::FakeClient {
  public:
   MockPatchpanelClient() = default;
@@ -165,13 +174,13 @@ class ManagerTest : public PropertyStoreTest {
 
   void SetUp() override {
     mock_devices_.push_back(
-        new NiceMock<MockDevice>(manager(), "null0", "addr0", 0));
+        new NiceMock<MockDevice>(manager(), "null0", kMacAddress0, 0));
     mock_devices_.push_back(
-        new NiceMock<MockDevice>(manager(), "null1", "addr1", 1));
+        new NiceMock<MockDevice>(manager(), "null1", kMacAddress1, 1));
     mock_devices_.push_back(
-        new NiceMock<MockDevice>(manager(), "null2", "addr2", 2));
+        new NiceMock<MockDevice>(manager(), "null2", kMacAddress2, 2));
     mock_devices_.push_back(
-        new NiceMock<MockDevice>(manager(), "null3", "addr3", 3));
+        new NiceMock<MockDevice>(manager(), "null3", kMacAddress3, 3));
 
     auto client = std::make_unique<MockPatchpanelClient>();
     patchpanel_client_ = client.get();
@@ -2594,7 +2603,7 @@ TEST_F(ManagerTest, UpdateDefaultServicesDNSProxy) {
 
 TEST_F(ManagerTest, AvailableTechnologies) {
   mock_devices_.push_back(
-      new NiceMock<MockDevice>(manager(), "null4", "addr4", 0));
+      new NiceMock<MockDevice>(manager(), "null4", kMacAddress4, 0));
   SetMockDevices({Technology::kEthernet, Technology::kWiFi,
                   Technology::kCellular, Technology::kWiFi});
   manager()->RegisterDevice(mock_devices_[0]);
@@ -3649,19 +3658,19 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   manager()->props_.portal_https_url = PortalDetector::kDefaultHttpsUrl;
 
   // Add devices
-  auto wifi_device =
-      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "wifi0", "addr", 0);
+  auto wifi_device = base::MakeRefCounted<NiceMock<MockDevice>>(
+      manager(), "wifi0", kMacAddress0, 0);
   manager()->RegisterDevice(wifi_device);
   CreateMockNetwork(wifi_device.get());
 
-  auto cell_device =
-      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "cell0", "addr", 1);
+  auto cell_device = base::MakeRefCounted<NiceMock<MockDevice>>(
+      manager(), "cell0", kMacAddress1, 1);
   manager()->RegisterDevice(cell_device);
   CreateMockNetwork(cell_device.get());
 
   // Ethernet does not have a connection so no connectivity report will be run.
-  auto eth_device =
-      base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "eth0", "addr", 3);
+  auto eth_device = base::MakeRefCounted<NiceMock<MockDevice>>(
+      manager(), "eth0", kMacAddress2, 3);
   manager()->RegisterDevice(eth_device);
 
   // Add services
@@ -3952,7 +3961,7 @@ TEST_F(ManagerTest, GeoLocation) {
   EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
 
   auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
-                                                           "addr_1", 0);
+                                                           kMacAddress1, 0);
 
   // Manager should ignore gelocation info from technologies it does not know.
   EXPECT_CALL(*device, technology())
@@ -3984,7 +3993,7 @@ TEST_F(ManagerTest, GeoLocation) {
   EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
 
   auto cellular_device = base::MakeRefCounted<NiceMock<MockDevice>>(
-      manager(), "modem", "addr_2", 1);
+      manager(), "modem", kMacAddress2, 1);
   GeolocationInfo info_2;
   info_2["location"] = "def";
   // Manager should inclusively add cellular info.
@@ -4011,12 +4020,12 @@ TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
   EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
 
   auto device_1 = base::MakeRefCounted<NiceMock<MockDevice>>(
-      manager(), "device_1", "addr_1", 0);
+      manager(), "device_1", kMacAddress1, 0);
   GeolocationInfo info_1;
   info_1["location"] = "abc";
 
   auto device_2 = base::MakeRefCounted<NiceMock<MockDevice>>(
-      manager(), "device_2", "addr_2", 1);
+      manager(), "device_2", kMacAddress2, 1);
   GeolocationInfo info_2;
   info_2["location"] = "def";
 
@@ -4051,7 +4060,7 @@ TEST_F(ManagerTest, GeoLocation_DeregisterDevice) {
   EXPECT_TRUE(location_infos[kGeoCellTowersProperty].empty());
 
   auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
-                                                           "addr_1", 0);
+                                                           kMacAddress1, 0);
   GeolocationInfo info;
   info["location"] = "abc";
   manager()->RegisterDevice(device);
@@ -4082,7 +4091,7 @@ TEST_F(ManagerTest, WiFiGeoLocation) {
   EXPECT_TRUE(manager()->GetWiFiNetworksForGeolocation().empty());
 
   auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
-                                                           "addr_1", 0);
+                                                           kMacAddress1, 0);
   GeolocationInfo info;
   info["location"] = "abc";
 
@@ -4113,12 +4122,12 @@ TEST_F(ManagerTest, WiFiGeoLocation_MultipleDevices) {
   EXPECT_TRUE(manager()->GetWiFiNetworksForGeolocation().empty());
 
   auto device_1 = base::MakeRefCounted<NiceMock<MockDevice>>(
-      manager(), "device_1", "addr_1", 0);
+      manager(), "device_1", kMacAddress1, 0);
   GeolocationInfo info_1;
   info_1["location"] = "abc";
 
   auto device_2 = base::MakeRefCounted<NiceMock<MockDevice>>(
-      manager(), "device_2", "addr_2", 1);
+      manager(), "device_2", kMacAddress2, 1);
   GeolocationInfo info_2;
   info_2["location"] = "def";
 
@@ -4143,7 +4152,7 @@ TEST_F(ManagerTest, WiFiGeoLocation_DeregisterDevice) {
   EXPECT_TRUE(manager()->GetWiFiNetworksForGeolocation().empty());
 
   auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
-                                                           "addr_1", 0);
+                                                           kMacAddress1, 0);
   GeolocationInfo info;
   info["location"] = "abc";
   manager()->RegisterDevice(device);
@@ -4166,7 +4175,7 @@ TEST_F(ManagerTest, CellularGeoLocation) {
   EXPECT_TRUE(manager()->GetCellularNetworksForGeolocation().empty());
 
   auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
-                                                           "addr_1", 0);
+                                                           kMacAddress1, 0);
   GeolocationInfo info;
   info["location"] = "abc";
 
@@ -4197,12 +4206,12 @@ TEST_F(ManagerTest, CellularGeoLocation_MultipleDevices) {
   EXPECT_TRUE(manager()->GetCellularNetworksForGeolocation().empty());
 
   auto device_1 = base::MakeRefCounted<NiceMock<MockDevice>>(
-      manager(), "device_1", "addr_1", 0);
+      manager(), "device_1", kMacAddress1, 0);
   GeolocationInfo info_1;
   info_1["location"] = "abc";
 
   auto device_2 = base::MakeRefCounted<NiceMock<MockDevice>>(
-      manager(), "device_2", "addr_2", 1);
+      manager(), "device_2", kMacAddress2, 1);
   GeolocationInfo info_2;
   info_2["location"] = "def";
 
@@ -4227,7 +4236,7 @@ TEST_F(ManagerTest, CellularGeoLocation_DeregisterDevice) {
   EXPECT_TRUE(manager()->GetCellularNetworksForGeolocation().empty());
 
   auto device = base::MakeRefCounted<NiceMock<MockDevice>>(manager(), "device",
-                                                           "addr_1", 0);
+                                                           kMacAddress1, 0);
   GeolocationInfo info;
   info["location"] = "abc";
   manager()->RegisterDevice(device);
@@ -4330,9 +4339,9 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
 
   // Newly registered devices should be disabled.
   mock_devices_.push_back(
-      new NiceMock<MockDevice>(manager(), "null4", "addr4", 0));
+      new NiceMock<MockDevice>(manager(), "null4", kMacAddress4, 0));
   mock_devices_.push_back(
-      new NiceMock<MockDevice>(manager(), "null5", "addr5", 0));
+      new NiceMock<MockDevice>(manager(), "null5", kMacAddress5, 0));
   ON_CALL(*mock_devices_[3], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[4], technology())

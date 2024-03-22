@@ -85,8 +85,10 @@ const net_base::IPAddress kTestIPAddress2 =
     *net_base::IPAddress::CreateFromString("fe80::1aa9:5ff:abcd:1235");
 constexpr int kTestDeviceIndex = 123456;
 constexpr char kTestDeviceName[] = "test-device";
-constexpr net_base::MacAddress kTestMacAddress(
+constexpr net_base::MacAddress kTestMacAddress0(
     0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
+constexpr net_base::MacAddress kTestMacAddress1(
+    0x11, 0x22, 0x33, 0x44, 0x55, 0x66);
 constexpr net_base::MacAddress kTestPermMacAddress(
     0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc);
 constexpr int kReceiveByteCount = 1234;
@@ -203,7 +205,7 @@ DeviceInfoTest::BuildLinkMessageWithInterfaceName(
   message->SetAttribute(
       static_cast<uint16_t>(IFLA_IFNAME),
       net_base::byte_utils::StringToCStringBytes(interface_name));
-  message->SetAttribute(IFLA_ADDRESS, kTestMacAddress.ToBytes());
+  message->SetAttribute(IFLA_ADDRESS, kTestMacAddress0.ToBytes());
   message->SetAttribute(IFLA_PERM_ADDRESS, kTestPermMacAddress.ToBytes());
   return message;
 }
@@ -225,7 +227,7 @@ void DeviceInfoTest::SendMessageToDeviceInfo(
 void DeviceInfoTest::CreateWiFiDevice() {
   // Mock a WiFi adapter.
   CreateInfoFile("uevent", "DEVTYPE=wlan");
-  DeviceRefPtr device = CreateDevice(kTestDeviceName, kTestMacAddress,
+  DeviceRefPtr device = CreateDevice(kTestDeviceName, kTestMacAddress0,
                                      kTestDeviceIndex, Technology::kWiFi);
   if (device) {
     RegisterDevice(device);
@@ -270,7 +272,7 @@ TEST_F(DeviceInfoTest, StartStop) {
 
 TEST_F(DeviceInfoTest, RegisterDevice) {
   scoped_refptr<MockDevice> device0(
-      new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
+      new MockDevice(&manager_, "null0", kTestMacAddress0, kTestDeviceIndex));
 
   EXPECT_CALL(*device0, Initialize());
   device_info_.RegisterDevice(device0);
@@ -288,7 +290,7 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   EXPECT_TRUE(device_info_.GetFlags(kTestDeviceIndex, &flags));
   EXPECT_EQ(IFF_LOWER_UP, flags);
   const auto address = device_info_.GetMacAddress(kTestDeviceIndex);
-  EXPECT_EQ(address, kTestMacAddress);
+  EXPECT_EQ(address, kTestMacAddress0);
   EXPECT_EQ(kTestDeviceIndex, device_info_.GetIndex(kTestDeviceName));
 
   message = BuildLinkMessage(net_base::RTNLMessage::kModeAdd);
@@ -309,7 +311,7 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
 TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
   // Remove a Wifi device.
   scoped_refptr<MockDevice> device0(
-      new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
+      new MockDevice(&manager_, "null0", kTestMacAddress0, kTestDeviceIndex));
   device_info_.infos_[kTestDeviceIndex].device = device0;
   auto message = BuildLinkMessage(net_base::RTNLMessage::kModeDelete);
   EXPECT_CALL(*device0, technology()).WillRepeatedly(Return(Technology::kWiFi));
@@ -320,7 +322,7 @@ TEST_F(DeviceInfoTest, DeviceRemovedEvent) {
 
   // Remove a Cellular device.
   scoped_refptr<MockDevice> device1(
-      new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
+      new MockDevice(&manager_, "null0", kTestMacAddress0, kTestDeviceIndex));
   device_info_.infos_[kTestDeviceIndex].device = device1;
   EXPECT_CALL(*device1, technology())
       .WillRepeatedly(Return(Technology::kCellular));
@@ -355,7 +357,7 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
               ContainerEq(expected_technologies));
 
   scoped_refptr<MockDevice> device(
-      new MockDevice(&manager_, "null0", "addr0", 1));
+      new MockDevice(&manager_, "null0", kTestMacAddress0, 1));
   device_info_.infos_[1].device = device;
   technologies = device_info_.GetUninitializedTechnologies();
   expected_technologies.erase(TechnologyName(Technology::kCellular));
@@ -417,12 +419,12 @@ TEST_F(DeviceInfoTest, CreateDeviceCellular) {
   StrictMock<MockModemInfo> modem_info(nullptr, nullptr);
   EXPECT_CALL(manager_, modem_info()).WillOnce(Return(&modem_info));
   EXPECT_CALL(modem_info, OnDeviceInfoAvailable(kTestDeviceName)).Times(1);
-  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress, kTestDeviceIndex,
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress0, kTestDeviceIndex,
                             Technology::kCellular));
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
-  DeviceRefPtr device = CreateDevice(kTestDeviceName, kTestMacAddress,
+  DeviceRefPtr device = CreateDevice(kTestDeviceName, kTestMacAddress0,
                                      kTestDeviceIndex, Technology::kEthernet);
   EXPECT_NE(nullptr, device);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
@@ -437,7 +439,7 @@ TEST_F(DeviceInfoTest, CreateDeviceEthernet) {
 TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
   // VirtioEthernet is identical to Ethernet from the perspective of this test.
   DeviceRefPtr device =
-      CreateDevice(kTestDeviceName, kTestMacAddress, kTestDeviceIndex,
+      CreateDevice(kTestDeviceName, kTestMacAddress0, kTestDeviceIndex,
                    Technology::kVirtioEthernet);
   EXPECT_NE(nullptr, device);
   Mock::VerifyAndClearExpectations(&rtnl_handler_);
@@ -468,7 +470,7 @@ TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
 
   EXPECT_CALL(netlink_manager_,
               SendOrPostMessage(IsGetInterfaceMessage(kTestDeviceIndex), _));
-  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress, kTestDeviceIndex,
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress0, kTestDeviceIndex,
                             Technology::kWiFi));
 }
 
@@ -494,14 +496,14 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnel) {
   EXPECT_CALL(listener, LinkReadyCallback(kTestDeviceName, kTestDeviceIndex))
       .Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterface(_)).Times(0);
-  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress, kTestDeviceIndex,
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress0, kTestDeviceIndex,
                             Technology::kTunnel));
 }
 
 TEST_F(DeviceInfoTest, CreateDevicePPP) {
   // We do not remove PPP interfaces even if the provider does not accept it.
   EXPECT_CALL(rtnl_handler_, RemoveInterface(_)).Times(0);
-  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress, kTestDeviceIndex,
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress0, kTestDeviceIndex,
                             Technology::kPPP));
 }
 
@@ -511,7 +513,7 @@ TEST_F(DeviceInfoTest, CreateDeviceLoopback) {
   EXPECT_CALL(rtnl_handler_,
               SetInterfaceFlags(kTestDeviceIndex, IFF_UP, IFF_UP))
       .Times(1);
-  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress, kTestDeviceIndex,
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress0, kTestDeviceIndex,
                             Technology::kLoopback));
 }
 
@@ -520,7 +522,7 @@ TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
   EXPECT_CALL(manager_, modem_info()).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
   EXPECT_TRUE(GetDelayedDevices().empty());
-  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress, kTestDeviceIndex,
+  EXPECT_FALSE(CreateDevice(kTestDeviceName, kTestMacAddress0, kTestDeviceIndex,
                             Technology::kCDCEthernet));
   EXPECT_FALSE(GetDelayedDevices().empty());
   EXPECT_EQ(1, GetDelayedDevices().size());
@@ -532,7 +534,7 @@ TEST_F(DeviceInfoTest, CreateDeviceUnknown) {
   // An unknown (blocked, unhandled, etc) device won't be flushed or
   // registered.
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
-  EXPECT_TRUE(CreateDevice(kTestDeviceName, kTestMacAddress, kTestDeviceIndex,
+  EXPECT_TRUE(CreateDevice(kTestDeviceName, kTestMacAddress0, kTestDeviceIndex,
                            Technology::kUnknown)
                   .get());
 }
@@ -795,7 +797,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   device_info_.OnPatchpanelClientReady();
 
   scoped_refptr<MockDevice> device0(
-      new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
+      new MockDevice(&manager_, "null0", kTestMacAddress0, kTestDeviceIndex));
   device_info_.RegisterDevice(device0);
   device0->set_network_for_testing(std::make_unique<Network>(
       kTestDeviceIndex, "null0", Technology::kEthernet,
@@ -817,8 +819,8 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   device0->GetPrimaryNetwork()->set_link_protocol_network_config(
       std::move(config0));
 
-  scoped_refptr<MockDevice> device1(
-      new MockDevice(&manager_, "null1", "addr1", kTestDeviceIndex + 1));
+  scoped_refptr<MockDevice> device1(new MockDevice(
+      &manager_, "null1", kTestMacAddress1, kTestDeviceIndex + 1));
   MockNetworkEventHandler event_handler1;
   device1->set_network_for_testing(std::make_unique<Network>(
       kTestDeviceIndex + 1, "null1", Technology::kWiFi,
@@ -932,7 +934,7 @@ TEST_F(DeviceInfoTest, CreateWireGuardInterface) {
   EXPECT_EQ(on_failure_calls_num, 1);
 
   // Link is ready.
-  CreateDevice(kIfName, kTestMacAddress, 123, Technology::kTunnel);
+  CreateDevice(kIfName, kTestMacAddress0, 123, Technology::kTunnel);
   EXPECT_EQ(link_ready_calls_num, 1);
   EXPECT_EQ(on_failure_calls_num, 1);
 }
@@ -994,7 +996,7 @@ TEST_F(DeviceInfoTest, CreateXFRMInterface) {
   EXPECT_EQ(on_failure_calls_num, 1);
 
   // Link is ready.
-  CreateDevice(kIfName, kTestMacAddress, 123, Technology::kTunnel);
+  CreateDevice(kIfName, kTestMacAddress0, 123, Technology::kTunnel);
   EXPECT_EQ(link_ready_calls_num, 1);
   EXPECT_EQ(on_failure_calls_num, 1);
 }
@@ -1031,8 +1033,8 @@ TEST_F(DeviceInfoTest, GetWiFiHardwareIdsNotWiFi) {
   // Adapter is NOT a WiFi adapter, expect failure.
   CreateInfoFile("uevent", "DEVTYPE=NOTwlan");
 
-  auto device = CreateDevice(kTestDeviceName, kTestMacAddress, kTestDeviceIndex,
-                             Technology::kWiFi);
+  auto device = CreateDevice(kTestDeviceName, kTestMacAddress0,
+                             kTestDeviceIndex, Technology::kWiFi);
   if (device) {
     RegisterDevice(device);
   }
