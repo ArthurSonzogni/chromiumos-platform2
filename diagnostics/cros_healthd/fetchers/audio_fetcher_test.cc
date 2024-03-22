@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/errors/error.h>
@@ -63,13 +64,15 @@ class AudioFetcherTest : public ::testing::Test {
   void SetUp() override {
     // Set a default behavior for these methods. These may be overridden in
     // tests.
-    ON_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
-        .WillByDefault(Return(true));
-    EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
+    ON_CALL(*mock_cras_proxy(), GetVolumeStateAsync(_, _, _))
+        .WillByDefault(base::test::RunOnceCallback<0>(0, true, true, true));
+    EXPECT_CALL(*mock_cras_proxy(), GetVolumeStateAsync(_, _, _))
         .Times(AnyNumber());
-    ON_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
-        .WillByDefault(Return(true));
-    EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _)).Times(AnyNumber());
+    ON_CALL(*mock_cras_proxy(), GetNodeInfosAsync(_, _, _))
+        .WillByDefault(base::test::RunOnceCallback<0>(
+            std::vector<brillo::VariantDictionary>{}));
+    EXPECT_CALL(*mock_cras_proxy(), GetNodeInfosAsync(_, _, _))
+        .Times(AnyNumber());
   }
 
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() {
@@ -79,32 +82,27 @@ class AudioFetcherTest : public ::testing::Test {
   void SetExpectedVolumeState(bool output_mute,
                               bool input_mute,
                               bool output_user_mute) {
-    EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
-        .WillOnce(DoAll(SetArgPointee<1>(output_mute),
-                        SetArgPointee<2>(input_mute),
-                        SetArgPointee<3>(output_user_mute), Return(true)));
+    EXPECT_CALL(*mock_cras_proxy(), GetVolumeStateAsync(_, _, _))
+        .WillOnce(base::test::RunOnceCallback<0>(0, output_mute, input_mute,
+                                                 output_user_mute));
   }
 
   void SetExpectedNodeInfos(
       const std::vector<brillo::VariantDictionary>& node_info) {
-    EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
-        .WillOnce(DoAll(SetArgPointee<0>(node_info), Return(true)));
+    EXPECT_CALL(*mock_cras_proxy(), GetNodeInfosAsync(_, _, _))
+        .WillOnce(base::test::RunOnceCallback<0>(node_info));
   }
 
   void SetExpectedVolumeStateError() {
-    EXPECT_CALL(*mock_cras_proxy(), GetVolumeState(_, _, _, _, _, _))
-        .WillOnce(DoAll(WithArg<4>([](brillo::ErrorPtr* error) {
-                          *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                        }),
-                        Return(false)));
+    EXPECT_CALL(*mock_cras_proxy(), GetVolumeStateAsync(_, _, _))
+        .WillOnce(base::test::RunOnceCallback<1>(
+            brillo::Error::Create(FROM_HERE, "", "", "").get()));
   }
 
   void SetExpectedNodeInfosError() {
-    EXPECT_CALL(*mock_cras_proxy(), GetNodeInfos(_, _, _))
-        .WillOnce(DoAll(WithArg<1>([](brillo::ErrorPtr* error) {
-                          *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                        }),
-                        Return(false)));
+    EXPECT_CALL(*mock_cras_proxy(), GetNodeInfosAsync(_, _, _))
+        .WillOnce(base::test::RunOnceCallback<1>(
+            brillo::Error::Create(FROM_HERE, "", "", "").get()));
   }
 
   mojom::AudioResultPtr FetchAudioInfoSync() {
@@ -129,7 +127,7 @@ class AudioFetcherGetVolumeStateTest
 // Test that we can fetch all audio metrics correctly.
 //
 // This is a parameterized test, we test all possible combination of
-// GetVolumeState() output.
+// GetVolumeStateAsync() output.
 TEST_P(AudioFetcherGetVolumeStateTest, FetchAudioInfo) {
   const bool output_mute = params().output_mute;
   const bool input_mute = params().input_mute;
