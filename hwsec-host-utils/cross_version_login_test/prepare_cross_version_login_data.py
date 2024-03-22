@@ -177,7 +177,8 @@ def download_vm_image(board: str, version: Version, temp_path: Path) -> Path:
 def start_vm(image_path: Path, board: str) -> None:
     """Runs the VM emulator."""
     check_run(
-        "cros_vm",
+        "cros",
+        "vm",
         "--log-level=warning",
         "--start",
         "--image-path",
@@ -189,7 +190,7 @@ def start_vm(image_path: Path, board: str) -> None:
 
 def stop_vm() -> None:
     """Stops the VM emulator."""
-    check_run("cros_vm", "--stop")
+    check_run("cros", "vm", "--stop")
 
 
 def init_vm(version: Version, ssh_identity: Path) -> None:
@@ -206,6 +207,7 @@ def generate_data() -> None:
     # "tpm2_simulator" is added by crrev.com/c/3312977, so this test cannot run
     # on older version. Therefore, adds -extrauseflags "tpm2_simulator" here.
     check_run(
+        "cros_sdk",
         "tast",
         "run",
         "-failfortests",
