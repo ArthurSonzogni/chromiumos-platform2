@@ -169,7 +169,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // It runs |callback| with on success or failure. Updates Ethernet MAC address
   // if |error == 0|;
   void OnSetInterfaceMacResponse(const std::string& mac_address_source,
-                                 const std::string& new_mac_address,
+                                 net_base::MacAddress new_mac_address,
                                  ResultCallback callback,
                                  int32_t error);
   // Sets new MAC address and reconnects to the |service_| to renew IP address

@@ -13,7 +13,6 @@
 #include <set>
 #include <string_view>
 #include <utility>
-#include <vector>
 
 #include <base/check.h>
 #include <base/containers/fixed_flat_map.h>
@@ -714,17 +713,15 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
     return;
   }
 
-  std::string new_mac_address;
+  std::optional<net_base::MacAddress> new_mac_address;
   if (source == kUsbEthernetMacAddressSourceDesignatedDockMac) {
-    new_mac_address =
-        ReadMacAddressFromFile(base::FilePath(kVpdDockMacFilePath));
+    new_mac_address = net_base::MacAddress::CreateFromHexString(
+        ReadMacAddressFromFile(base::FilePath(kVpdDockMacFilePath)));
   } else if (source == kUsbEthernetMacAddressSourceBuiltinAdapterMac) {
-    new_mac_address =
-        ReadMacAddressFromFile(base::FilePath(kVpdEthernetMacFilePath));
+    new_mac_address = net_base::MacAddress::CreateFromHexString(
+        ReadMacAddressFromFile(base::FilePath(kVpdEthernetMacFilePath)));
   } else if (source == kUsbEthernetMacAddressSourceUsbAdapterMac) {
-    new_mac_address = (permanent_mac_address_.has_value()
-                           ? permanent_mac_address_->ToHexString()
-                           : "");
+    new_mac_address = permanent_mac_address_;
   } else {
     Error error;
     Error::PopulateAndLog(FROM_HERE, &error, Error::kInvalidArguments,
@@ -733,7 +730,7 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
     return;
   }
 
-  if (new_mac_address.empty()) {
+  if (!new_mac_address.has_value()) {
     Error error;
     Error::PopulateAndLog(
         FROM_HERE, &error, Error::kNotFound,
@@ -742,18 +739,7 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
     return;
   }
 
-  std::vector<uint8_t> mac_addr_bytes;
-  if (!base::HexStringToBytes(new_mac_address, &mac_addr_bytes) ||
-      mac_addr_bytes.size() != net_base::MacAddress::kAddressLength) {
-    Error error;
-    Error::PopulateAndLog(
-        FROM_HERE, &error, Error::kInvalidArguments,
-        "Failed to convert the hex string to MAC address: " + new_mac_address);
-    std::move(callback).Run(error);
-    return;
-  }
-
-  if (new_mac_address == mac_address()) {
+  if (new_mac_address->ToHexString() == mac_address()) {
     SLOG(this, 4) << __func__ << " new MAC address is equal to the old one";
     if (usb_ethernet_mac_address_source_ != source) {
       usb_ethernet_mac_address_source_ = source;
@@ -766,12 +752,12 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
 
   SLOG(this, 2) << "Send netlink request to change MAC address for "
                 << link_name() << " device from " << mac_address() << " to "
-                << new_mac_address;
+                << new_mac_address->ToString();
 
   rtnl_handler()->SetInterfaceMac(
-      interface_index(), *net_base::MacAddress::CreateFromBytes(mac_addr_bytes),
+      interface_index(), *new_mac_address,
       base::BindOnce(&Ethernet::OnSetInterfaceMacResponse,
-                     weak_ptr_factory_.GetWeakPtr(), source, new_mac_address,
+                     weak_ptr_factory_.GetWeakPtr(), source, *new_mac_address,
                      std::move(callback)));
 }
 
@@ -792,7 +778,7 @@ std::string Ethernet::ReadMacAddressFromFile(const base::FilePath& file_path) {
 }
 
 void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
-                                         const std::string& new_mac_address,
+                                         net_base::MacAddress new_mac_address,
                                          ResultCallback callback,
                                          int32_t error) {
   if (error) {
@@ -810,7 +796,7 @@ void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
   adaptor()->EmitStringChanged(kUsbEthernetMacAddressSourceProperty,
                                usb_ethernet_mac_address_source_);
 
-  set_mac_address(new_mac_address);
+  set_mac_address(new_mac_address.ToHexString());
   if (!callback.is_null()) {
     std::move(callback).Run(Error(Error::kSuccess));
   }
