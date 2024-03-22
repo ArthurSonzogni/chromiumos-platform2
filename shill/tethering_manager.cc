@@ -70,6 +70,11 @@ static constexpr base::TimeDelta kAutoDisableDelay = base::Minutes(5);
 static constexpr base::TimeDelta kUpstreamNetworkValidationTimeout =
     base::Minutes(1);
 
+// Default priority for tethering. Used for legacy API and for cases where
+// tethering is restarted and we can't determine the previous priority.
+static constexpr WiFiPhy::Priority kDefaultPriority =
+    WiFiPhy::Priority(WiFiPhy::Priority::kMaximumPriority);
+
 // Prefix used by tethering logging messages when the tethering session is
 // stopped due to unexpected errors. This prefix is used by the anomaly detector
 // to identify these events.
@@ -1131,16 +1136,14 @@ void TetheringManager::OnUpstreamNetworkReleased(bool is_success) {
 void TetheringManager::SetEnabled(bool enabled,
                                   SetEnabledResultCallback callback) {
   if (!enabled) {
-    if (state_ == TetheringState::kTetheringStarting) {
-      // Abort tethering start, send result for the start method call first.
-      CHECK(result_callback_);
-      std::move(result_callback_).Run(SetEnabledResult::kAbort);
-    }
-    result_callback_ = std::move(callback);
-    StopTetheringSession(StopReason::kClientStop);
+    Disable(std::move(callback));
     return;
   }
+  Enable(kDefaultPriority, std::move(callback));
+}
 
+void TetheringManager::Enable(uint32_t priority,
+                              SetEnabledResultCallback callback) {
   if (state_ == TetheringState::kTetheringStarting ||
       state_ == TetheringState::kTetheringStopping) {
     // Reject a new action immediately if the previous one is ongoing.
@@ -1172,6 +1175,16 @@ void TetheringManager::SetEnabled(bool enabled,
   }
 
   StartTetheringSession();
+}
+
+void TetheringManager::Disable(SetEnabledResultCallback callback) {
+  if (state_ == TetheringState::kTetheringStarting) {
+    // Abort tethering start, send result for the start method call first.
+    CHECK(result_callback_);
+    std::move(result_callback_).Run(SetEnabledResult::kAbort);
+  }
+  result_callback_ = std::move(callback);
+  StopTetheringSession(StopReason::kClientStop);
 }
 
 // static

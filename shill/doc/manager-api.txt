@@ -484,6 +484,8 @@ Methods		dict GetProperties()
 
 		void SetTetheringEnabled(boolean enabled)
 
+			DEPRECATED - Use EnableTethering and DisableTethering instead.
+
 			Enables or disables tethering with the corresponding properties in
 			Manager.TetheringConfig. Only supports cellular and ethernet as the
 			upstream technologies. Only supports WiFi as the downstream technology.
@@ -492,6 +494,28 @@ Methods		dict GetProperties()
 			"upstream_not_available", "downstream_wifi_failure", "wrong_state"
 			"network_setup_failure", "upstream_failure", "busy".
 
+		void EnableTethering(uint32_t priority)
+
+			Enables tethering with the corresponding properties in
+			Manager.TetheringConfig. Only supports cellular and ethernet as the
+			upstream technologies. Only supports WiFi as the downstream technology.
+			Returns a string indicating the result. This could be any one of,
+			"success", "failure", "not_allowed", "invalid_properties", "abort",
+			"upstream_not_available", "downstream_wifi_failure", "wrong_state"
+			"network_setup_failure", "upstream_failure", "busy".
+
+			"priority" arg designates the priority of the underlying SoftAP
+			interface. It is currently stubbed and non-functional.
+
+		void DisableTethering()
+
+			Disables tethering with the corresponding properties in
+			Manager.TetheringConfig. Only supports cellular and ethernet as the
+			upstream technologies. Only supports WiFi as the downstream technology.
+			Returns a string indicating the result. This could be any one of,
+			"success", "failure", "not_allowed", "invalid_properties", "abort",
+			"upstream_not_available", "downstream_wifi_failure", "wrong_state"
+			"network_setup_failure", "upstream_failure", "busy".
 
 		string CheckTetheringReadiness()
 

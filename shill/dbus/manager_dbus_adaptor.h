@@ -140,6 +140,9 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::ManagerAdaptor,
       const brillo::VariantDictionary& args) override;
   void SetTetheringEnabled(DBusMethodResponsePtr<std::string> response,
                            bool enabled) override;
+  void EnableTethering(DBusMethodResponsePtr<std::string> response,
+                       uint32_t priority) override;
+  void DisableTethering(DBusMethodResponsePtr<std::string> response) override;
   void CheckTetheringReadiness(
       DBusMethodResponsePtr<std::string> response) override;
   void SetLOHSEnabled(DBusMethodResponsePtr<std::string> response,

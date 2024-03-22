@@ -121,9 +121,18 @@ class TetheringManager : public Network::EventHandler {
   void Start();
   // Stop TetheringManager.
   void Stop();
+
+  // DEPRECATED. Clients should use Enable/Disable instead.
   // Enable or disable a tethering session with existing tethering config.
+  // TODO(b/331632285): Delete this API once clients have transition over to
+  // using Enable/Disable.
   void SetEnabled(bool enabled,
                   base::OnceCallback<void(SetEnabledResult result)> callback);
+  // Enable a tethering session with existing tethering config and |priority|.
+  void Enable(uint32_t priority,
+              base::OnceCallback<void(SetEnabledResult result)> callback);
+  // Disable the active tethering session.
+  void Disable(base::OnceCallback<void(SetEnabledResult result)> callback);
   // Check if upstream network is ready for tethering.
   void CheckReadiness(
       base::OnceCallback<void(EntitlementStatus result)> callback);

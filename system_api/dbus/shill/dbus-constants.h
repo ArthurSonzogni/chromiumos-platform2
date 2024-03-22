@@ -47,6 +47,8 @@ constexpr char kAddPasspointCredentialsFunction[] = "AddPasspointCredentials";
 constexpr char kRemovePasspointCredentialsFunction[] =
     "RemovePasspointCredentials";
 constexpr char kSetTetheringEnabledFunction[] = "SetTetheringEnabled";
+constexpr char kEnableTetheringFunction[] = "EnableTethering";
+constexpr char kDisableTetheringFunction[] = "DisableTethering";
 constexpr char kCheckTetheringReadinessFunction[] = "CheckTetheringReadiness";
 constexpr char kConnectToP2PGroupFunction[] = "ConnectToP2PGroup";
 constexpr char kDisconnectFromP2PGroupFunction[] = "DisconnectFromP2PGroup";
@@ -1048,7 +1050,7 @@ constexpr char kTetheringStateRestarting[] = "restarting";
 constexpr char kTetheringStateStarting[] = "starting";
 constexpr char kTetheringStateStopping[] = "stopping";
 
-// SetTetheringEnabled result values
+// SetTetheringEnabled and {Enable,Disable}Tethering result values
 constexpr char kTetheringEnableResultAbort[] = "abort";
 constexpr char kTetheringEnableResultBusy[] = "busy";
 constexpr char kTetheringEnableResultDownstreamWiFiFailure[] =

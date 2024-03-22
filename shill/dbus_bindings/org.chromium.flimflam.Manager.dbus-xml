@@ -138,6 +138,15 @@
 			<arg type="s" direction="out"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
 		</method>
+		<method name="EnableTethering">
+			<arg type="u" direction="in"/>
+			<arg type="s" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
+		<method name="DisableTethering">
+			<arg type="s" direction="out"/>
+			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>
+		</method>
 		<method name="CheckTetheringReadiness">
 			<arg type="s" direction="out"/>
 			<annotation name="org.chromium.DBus.Method.Kind" value="async"/>

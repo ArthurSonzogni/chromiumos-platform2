@@ -490,6 +490,27 @@ void ManagerDBusAdaptor::SetTetheringEnabled(
       enabled, base::BindOnce(on_result_fn, std::move(response)));
 }
 
+void ManagerDBusAdaptor::EnableTethering(
+    DBusMethodResponsePtr<std::string> response, uint32_t priority) {
+  auto on_result_fn = [](shill::DBusMethodResponsePtr<std::string> response,
+                         TetheringManager::SetEnabledResult result) {
+    std::move(response)->Return(TetheringManager::SetEnabledResultName(result));
+  };
+
+  manager_->tethering_manager()->Enable(
+      priority, base::BindOnce(on_result_fn, std::move(response)));
+}
+void ManagerDBusAdaptor::DisableTethering(
+    DBusMethodResponsePtr<std::string> response) {
+  auto on_result_fn = [](shill::DBusMethodResponsePtr<std::string> response,
+                         TetheringManager::SetEnabledResult result) {
+    std::move(response)->Return(TetheringManager::SetEnabledResultName(result));
+  };
+
+  manager_->tethering_manager()->Disable(
+      base::BindOnce(on_result_fn, std::move(response)));
+}
+
 void ManagerDBusAdaptor::CheckTetheringReadiness(
     DBusMethodResponsePtr<std::string> response) {
   auto on_result_fn = [](shill::DBusMethodResponsePtr<std::string> response,
