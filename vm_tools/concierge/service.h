@@ -67,10 +67,7 @@ namespace internal {
 struct VmStartImageFds {
   std::optional<base::ScopedFD> kernel_fd;
   std::optional<base::ScopedFD> rootfs_fd;
-  std::optional<base::ScopedFD> initrd_fd;
   std::optional<base::ScopedFD> storage_fd;
-  std::optional<base::ScopedFD> bios_fd;
-  std::optional<base::ScopedFD> pflash_fd;
 };
 
 std::optional<internal::VmStartImageFds> GetVmStartImageFds(

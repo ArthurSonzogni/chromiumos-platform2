@@ -711,17 +711,8 @@ std::optional<internal::VmStartImageFds> GetVmStartImageFds(
       case StartVmRequest_FdType_ROOTFS:
         result.rootfs_fd = std::move(*fd);
         break;
-      case StartVmRequest_FdType_INITRD:
-        result.initrd_fd = std::move(*fd);
-        break;
       case StartVmRequest_FdType_STORAGE:
         result.storage_fd = std::move(*fd);
-        break;
-      case StartVmRequest_FdType_BIOS:
-        result.bios_fd = std::move(*fd);
-        break;
-      case StartVmRequest_FdType_PFLASH:
-        result.pflash_fd = std::move(*fd);
         break;
       default:
         LOG(WARNING) << "received request with unknown FD type " << fdType
@@ -1529,8 +1520,7 @@ StartVmResponse Service::StartVmInternal(
     return response;
   }
 
-  if (!vm_start_image_fds.bios_fd.has_value() &&
-      !request.vm().bios_dlc_id().empty() &&
+  if (!request.vm().bios_dlc_id().empty() &&
       request.vm().bios_dlc_id() == kBruschettaBiosDlcId) {
     biosDlcPath = GetVmImagePath(kBruschettaBiosDlcId, failure_reason);
     if (!failure_reason.empty() || !biosDlcPath.has_value()) {
@@ -1583,10 +1573,8 @@ StartVmResponse Service::StartVmInternal(
   auto root_fd = std::move(root_fd_result.first);
 
   VMImageSpec image_spec = internal::GetImageSpec(
-      vm_start_image_fds.kernel_fd, vm_start_image_fds.rootfs_fd,
-      vm_start_image_fds.initrd_fd, vm_start_image_fds.bios_fd,
-      vm_start_image_fds.pflash_fd, biosDlcPath, vmDlcPath, toolsDlcPath,
-      failure_reason);
+      vm_start_image_fds.kernel_fd, vm_start_image_fds.rootfs_fd, biosDlcPath,
+      vmDlcPath, toolsDlcPath, failure_reason);
   if (!failure_reason.empty()) {
     LOG(ERROR) << "Failed to get image paths: " << failure_reason;
     response.set_failure_reason("Failed to get image paths: " + failure_reason);

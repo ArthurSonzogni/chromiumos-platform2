@@ -193,18 +193,18 @@ message StartVmRequest {
   bool writable_rootfs = 15;
 
   enum FdType {
-    // Kernel image.
+    // Kernel image. Only used from tast test.
     KERNEL = 0;
-    // RootFS image.
+    // RootFS image. Only used from tast test.
     ROOTFS = 1;
     // File to be used for storage.
     STORAGE = 2;
     // Initrd image.
-    INITRD = 3;
+    INITRD = 3 [deprecated = true];
     // BIOS image.
-    BIOS = 4;
+    BIOS = 4 [deprecated = true];
     // BIOS pflash image.
-    PFLASH = 5;
+    PFLASH = 5 [deprecated = true];
   }
   // For each FdType in fds a file descriptor must be passed along with the
   // message and that file descriptor will be used for the type's purpose.

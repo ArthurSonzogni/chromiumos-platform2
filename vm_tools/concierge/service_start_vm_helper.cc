@@ -103,9 +103,6 @@ VmBuilder::VmCpuArgs GetVmCpuArgs(int32_t cpus,
 
 VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
                          const std::optional<base::ScopedFD>& rootfs_fd,
-                         const std::optional<base::ScopedFD>& initrd_fd,
-                         const std::optional<base::ScopedFD>& bios_fd,
-                         const std::optional<base::ScopedFD>& pflash_fd,
                          const std::optional<base::FilePath>& biosDlcPath,
                          const std::optional<base::FilePath>& vmDlcPath,
                          const std::optional<base::FilePath>& toolsDlcPath,
@@ -136,34 +133,9 @@ VMImageSpec GetImageSpec(const std::optional<base::ScopedFD>& kernel_fd,
     rootfs = vmDlcPath.value().Append(kVmRootfsName);
   }
 
-  if (initrd_fd.has_value()) {
-    int raw_fd = initrd_fd.value().get();
-    failure_reason = internal::RemoveCloseOnExec(raw_fd);
-    if (!failure_reason.empty())
-      return {};
-    initrd = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(raw_fd));
-  }
-
-  if (bios_fd.has_value()) {
-    int raw_fd = bios_fd.value().get();
-    failure_reason = internal::RemoveCloseOnExec(raw_fd);
-    if (!failure_reason.empty())
-      return {};
-    bios = base::FilePath(kProcFileDescriptorsPath)
-               .Append(base::NumberToString(raw_fd));
-  } else if (biosDlcPath.has_value() && !biosDlcPath->empty()) {
+  if (biosDlcPath.has_value() && !biosDlcPath->empty()) {
     bios = biosDlcPath.value();
     bios = bios.Append(kBruschettaBiosDlcPath);
-  }
-
-  if (pflash_fd.has_value()) {
-    int raw_fd = pflash_fd.value().get();
-    failure_reason = internal::RemoveCloseOnExec(raw_fd);
-    if (!failure_reason.empty())
-      return {};
-    pflash = base::FilePath(kProcFileDescriptorsPath)
-                 .Append(base::NumberToString(raw_fd));
   }
 
   base::FilePath tools_disk;
