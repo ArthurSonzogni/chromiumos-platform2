@@ -177,7 +177,8 @@ bool FeatureProfile::ShouldEnableFeature(
       .sensor_id = enable_on_dict.FindString(kKeySensorId),
   };
 
-  if (!HasMatchingCameraModule(m, device_metadata_.value())) {
+  if (device_metadata_.has_value() &&
+      !HasMatchingCameraModule(m, device_metadata_.value())) {
     return false;
   }
 
