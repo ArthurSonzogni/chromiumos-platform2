@@ -269,17 +269,17 @@ bool ParseProcessor(const std::string& processor,
   std::string processor_id_str;
   std::string physical_id_str;
   bool flags_found = false;
-  for (const auto& key_value : pairs) {
-    std::string key;
-    std::string value;
-    base::TrimWhitespaceASCII(key_value.first, base::TRIM_ALL, &key);
-    base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
-    if (key == kProcessorIdKey) {
-      processor_id_str = value;
-    } else if (key == kModelNameKey) {
-      model_name = value;
-    } else if (key == kX86CpuFlagsKey || key == kArmCpuFlagsKey) {
-      cpu_flags = base::SplitString(value, " ", base::TRIM_WHITESPACE,
+  for (const auto& [key, value] : pairs) {
+    std::string key_str;
+    std::string value_str;
+    base::TrimWhitespaceASCII(key, base::TRIM_ALL, &key_str);
+    base::TrimWhitespaceASCII(value, base::TRIM_ALL, &value_str);
+    if (key_str == kProcessorIdKey) {
+      processor_id_str = value_str;
+    } else if (key_str == kModelNameKey) {
+      model_name = value_str;
+    } else if (key_str == kX86CpuFlagsKey || key_str == kArmCpuFlagsKey) {
+      cpu_flags = base::SplitString(value_str, " ", base::TRIM_WHITESPACE,
                                     base::SPLIT_WANT_NONEMPTY);
       flags_found = true;
     }

@@ -41,21 +41,21 @@ std::tuple<mojom::HDAudioCodecPtr, mojom::ProbeErrorPtr> FetchCodec(
   base::SplitStringIntoKeyValuePairs(codec_str, ':', '\n', &pairs);
   bool flag_codec = false;
   bool flag_address = false;
-  for (const auto& key_value : pairs) {
-    std::string key;
-    base::TrimWhitespaceASCII(key_value.first, base::TRIM_ALL, &key);
-    std::string value;
-    base::TrimWhitespaceASCII(key_value.second, base::TRIM_ALL, &value);
-    if (key == "Codec") {
-      codec->name = value;
+  for (const auto& [key, value] : pairs) {
+    std::string key_str;
+    base::TrimWhitespaceASCII(key, base::TRIM_ALL, &key_str);
+    std::string value_str;
+    base::TrimWhitespaceASCII(value, base::TRIM_ALL, &value_str);
+    if (key_str == "Codec") {
+      codec->name = value_str;
       flag_codec = true;
     }
-    if (key == "Address") {
+    if (key_str == "Address") {
       unsigned num;
-      if (!base::StringToUint(value, &num) || num >= 1u << 8) {
+      if (!base::StringToUint(value_str, &num) || num >= 1u << 8) {
         return {nullptr, mojom::ProbeError::New(
                              mojom::ErrorType::kParseError,
-                             "Failed to parse value to uint8_t: " + value)};
+                             "Failed to parse value to uint8_t: " + value_str)};
       }
       codec->address = static_cast<uint8_t>(num);
       flag_address = true;

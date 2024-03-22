@@ -56,8 +56,8 @@ bool DelegateProcess::Start() {
 
   AddArg(std::string("--") + kDelegateMojoChannelHandle + "=" + value);
 
-  for (const auto& pii : options.fds_to_remap) {
-    BindFd(pii.first, pii.second);
+  for (const auto& [parent_fd, child_fd] : options.fds_to_remap) {
+    BindFd(parent_fd, child_fd);
   }
 
   bool res = SandboxedProcess::Start();

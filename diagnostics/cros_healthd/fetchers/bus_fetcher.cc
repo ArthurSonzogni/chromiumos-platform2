@@ -410,8 +410,8 @@ void FetchBusDevicesWithFwupdInfo(
 mojom::BusResultPtr ConvertBusDeviceMapToBusResult(
     base::flat_map<base::FilePath, mojom::BusDevicePtr> bus_device_map) {
   std::vector<mojom::BusDevicePtr> res;
-  for (auto& item : bus_device_map) {
-    res.push_back(std::move(item.second));
+  for (auto& [unused, device] : bus_device_map) {
+    res.push_back(std::move(device));
   }
   return mojom::BusResult::NewBusDevices(std::move(res));
 }

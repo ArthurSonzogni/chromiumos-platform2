@@ -126,8 +126,8 @@ void BluetoothScanningRoutine::PopulateStatusUpdate(
 
   if (include_output) {
     base::Value::List peripherals;
-    for (const auto& device : scanned_devices_)
-      peripherals.Append(ConstructPeripheralDict(device.second));
+    for (const auto& [unused, device] : scanned_devices_)
+      peripherals.Append(ConstructPeripheralDict(device));
     base::Value::Dict output_dict;
     output_dict.Set("peripherals", std::move(peripherals));
     std::string json;

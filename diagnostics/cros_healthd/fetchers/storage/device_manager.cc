@@ -126,8 +126,7 @@ StorageDeviceManager::FetchDevicesInfo(const base::FilePath& root) {
     return base::unexpected(std::move(error));
   }
 
-  for (auto& dev_info_pair : devices_) {
-    auto& dev_info = dev_info_pair.second;
+  for (auto& [unused, dev_info] : devices_) {
     if (auto info_result = dev_info->FetchDeviceInfo();
         info_result.has_value()) {
       devices.push_back(info_result.value().Clone());
