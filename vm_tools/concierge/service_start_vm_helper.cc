@@ -51,13 +51,9 @@ apps::VmType ClassifyVm(const StartVmRequest& request) {
     return apps::VmType::BOREALIS;
   if (request.vm_type() == VmInfo::TERMINA || request.start_termina())
     return apps::VmType::TERMINA;
-  // Bruschetta VMs are distinguished by having a separate bios, either as an FD
-  // or a dlc.
-  bool has_bios_fd =
-      std::any_of(request.fds().begin(), request.fds().end(),
-                  [](int type) { return type == StartVmRequest::BIOS; });
-  if (request.vm_type() == VmInfo::BRUSCHETTA || has_bios_fd ||
-      request.vm().dlc_id() == "edk2-ovmf-dlc" || request.name() == "bru")
+  // Bruschetta VMs are distinguished by having a separate bios as a dlc.
+  if (request.vm_type() == VmInfo::BRUSCHETTA ||
+      request.vm().dlc_id() == kBruschettaBiosDlcId || request.name() == "bru")
     return apps::VmType::BRUSCHETTA;
   return apps::VmType::UNKNOWN;
 }

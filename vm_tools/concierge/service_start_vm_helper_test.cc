@@ -58,11 +58,6 @@ TEST(StartVMHelperTest, TestClassifyVmVariants) {
   fake_request_vm_type.set_start_termina(true);
   EXPECT_EQ(internal::ClassifyVm(fake_request_vm_type), apps::VmType::TERMINA);
   fake_request_vm_type.set_start_termina(false);
-
-  // VM has bios FD can be specified as BRUSCHETTA
-  fake_request_vm_type.add_fds(StartVmRequest::BIOS);
-  EXPECT_EQ(internal::ClassifyVm(fake_request_vm_type),
-            apps::VmType::BRUSCHETTA);
 }
 
 TEST(StartVMHelperTest, TestGetVmCpuArgs) {
