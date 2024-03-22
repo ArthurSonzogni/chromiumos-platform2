@@ -155,8 +155,9 @@ const CrostiniService::CrostiniDevice* CrostiniService::Start(
   }
 
   if (devices_.find(vm_id) != devices_.end()) {
-    LOG(WARNING) << __func__ << " " << vm_info << ": Datapath already started";
-    return nullptr;
+    LOG(INFO) << __func__ << " " << vm_info
+              << ": Datapath was already started. Restarting...";
+    Stop(vm_id);
   }
 
   auto dev = AddTAP(vm_type, subnet_index);
