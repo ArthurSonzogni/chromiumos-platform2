@@ -548,6 +548,21 @@ class Platform2Test:
             "size=10M,mode=0755",
         )
 
+        # Mount a fresh devpts instance. We can't trust the host environment's
+        # /dev/pts/ptmx permissions, and we don't really want to expose
+        # existing PTYs to the test instance. This could potentially cause
+        # problems for interactive tools that can no longer find their tty, but
+        # this tool is generally used in non-interactive modes.
+        dest = os.path.join(path, "pts")
+        osutils.SafeMakedirs(dest, mode=0o755)
+        osutils.Mount(
+            "devpts",
+            dest,
+            "devpts",
+            osutils.MS_NOSUID | osutils.MS_NOEXEC,
+            "ptmxmode=0666,newinstance",
+        )
+
         # Disable umask while we create paths.
         with osutils.UmaskContext(0):
             # Populate the few nodes we care about.
@@ -569,7 +584,7 @@ class Platform2Test:
                 os.symlink(target, os.path.join(path, source))
 
             # Bind-mount a few subpaths from the host.
-            for name in ("shm", "pts"):
+            for name in ("shm",):
                 subpath = os.path.join(path, name)
                 self._bind_mount_dir(os.path.join("/dev", name), subpath)
 
