@@ -36,7 +36,6 @@ use std::fs::{create_dir, File, OpenOptions};
 use std::io::Read;
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
-use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use std::{io, str};
@@ -55,7 +54,6 @@ mod test;
 
 const LOG_DIRECTORY: &str = "/var/log/memd";
 const STATIC_PARAMETERS_LOG: &str = "memd.parameters";
-const LOW_MEM_SYSFS: &str = "/sys/kernel/mm/chromeos-low_mem";
 const MAX_CLIP_COUNT: usize = 20;
 
 const COLLECTION_DELAY_MS: i64 = 5_000; // Wait after event of interest.
@@ -104,6 +102,14 @@ const VMSTATS: [(&str, bool, bool); VMSTAT_VALUES_COUNT] = [
 ];
 // The only difference from x86_64 is pgalloc_dma vs. pgalloc_dma32.
 
+// For resource manager D-Bus interface
+#[cfg(not(test))]
+const RESOURCED_SERVICE_NAME: &str = "org.chromium.ResourceManager";
+#[cfg(not(test))]
+const RESOURCED_PATH_NAME: &str = "/org/chromium/ResourceManager";
+#[cfg(not(test))]
+const RESOURCED_INTERFACE_NAME: &str = RESOURCED_SERVICE_NAME;
+
 #[derive(Debug)]
 pub enum Error {
     LowMemFileError(Box<dyn std::error::Error>),
@@ -151,15 +157,6 @@ impl fmt::Display for Error {
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
-// Opens a file if it exists, otherwise returns none.
-fn open_maybe(path: &Path) -> Result<Option<File>> {
-    if !path.exists() {
-        Ok(None)
-    } else {
-        Ok(Some(File::open(path)?))
-    }
-}
-
 // Converts the result of an integer expression |e| to modulo |n|. |e| may be
 // negative. This differs from plain "%" in that the result of this function
 // is always be between 0 and n-1.
@@ -193,10 +190,14 @@ trait Timer {
     ) -> Result<bool>;
     fn now(&self) -> i64;
     fn quit_request(&self) -> bool;
+    // For mocking available in test.
+    fn get_available_mb(&self) -> Result<u32>;
 }
 
 #[cfg(not(test))]
-struct GenuineTimer {}
+struct GenuineTimer {
+    dbus_connection: dbus::blocking::Connection,
+}
 
 #[cfg(not(test))]
 impl Timer for GenuineTimer {
@@ -223,6 +224,17 @@ impl Timer for GenuineTimer {
             Ok(_) => Ok(true),
             Err(_) => Ok(false),
         }
+    }
+
+    fn get_available_mb(&self) -> Result<u32> {
+        let proxy = self.dbus_connection.with_proxy(
+            RESOURCED_INTERFACE_NAME,
+            RESOURCED_PATH_NAME,
+            Duration::from_millis(5000),
+        );
+        let (available,): (u64,) =
+            proxy.method_call(RESOURCED_SERVICE_NAME, "GetAvailableMemoryKB", ())?;
+        Ok((available / 1024) as u32)
     }
 }
 
@@ -420,17 +432,6 @@ fn parse_vmstats(vmstats: &HashMap<String, i64>) -> Result<[i64; VMSTAT_VALUES_C
     Ok(result)
 }
 
-fn pread_u32(f: &File) -> Result<u32> {
-    let mut buffer: [u8; 20] = [0; 20];
-    let length = nix::sys::uio::pread(f.as_raw_fd(), &mut buffer, 0)?;
-    if length == 0 {
-        return Err("empty pread_u32".into());
-    }
-    Ok(String::from_utf8_lossy(&buffer[..length as usize])
-        .trim()
-        .parse::<u32>()?)
-}
-
 struct Watermarks {
     min: u32,
     low: u32,
@@ -474,7 +475,6 @@ struct Sampler<'a> {
     dbus_receiver: crossbeam_channel::Receiver<DbusEvent>,
     low_mem_margin_mb: u32, // Low-memory margin, assumed to remain constant in a boot session.
     sample_header: String,  // The text at the beginning of each clip file.
-    files: Files,           // Files kept open by the program.
     clip_counter: usize,    // Index of next clip file (also part of file name).
     sample_queue: SampleQueue, // A running queue of samples of vm quantities.
     current_available: u32, // Amount of "available" memory (in MB) at last reading.
@@ -496,11 +496,6 @@ impl<'a> Sampler<'a> {
         low_mem_file_flags.custom_flags(libc::O_NONBLOCK);
         low_mem_file_flags.read(true);
 
-        let files = Files {
-            available_file_option: open_maybe(&paths.available)
-                .map_err(Error::AvailableFileError)?,
-        };
-
         let sample_header = build_sample_header();
 
         let mut sampler = Sampler {
@@ -509,7 +504,6 @@ impl<'a> Sampler<'a> {
             low_mem_margin_mb,
             paths,
             sample_header,
-            files,
             sample_queue: SampleQueue::new(),
             clip_counter: 0,
             collecting: false,
@@ -593,11 +587,7 @@ impl<'a> Sampler<'a> {
 
     // Returns true if the program should go back to slow-polling mode (or stay
     // in that mode).  Returns false otherwise.  Relies on |self.collecting|
-    // and |self.current_available| being up-to-date.  If the kernel does not
-    // have the cros low-mem notifier, "margin" and "available" are both 0, and
-    // this always returns false. (XXX should use a different way of detecting
-    // medium pressure, but it's not critical since all cros devices have a
-    // low-mem device.)
+    // and |self.current_available| being up-to-date.
     fn should_poll_slowly(&self) -> bool {
         !self.collecting
             && !self.always_poll_fast
@@ -616,9 +606,7 @@ impl<'a> Sampler<'a> {
                 .select(&self.dbus_receiver, SLOW_POLL_PERIOD_DURATION)?;
             debug!("event_ready: {} at {}", event_ready, self.timer.now());
             self.quit_request = self.timer.quit_request();
-            if let Some(available_file) = self.files.available_file_option.as_ref() {
-                self.current_available = pread_u32(available_file)?;
-            }
+            self.current_available = self.timer.get_available_mb()?;
             self.refresh_time();
             self.should_poll_slowly() && !self.quit_request && !event_ready
         } {}
@@ -679,9 +667,7 @@ impl<'a> Sampler<'a> {
                 event_is_interesting = true;
             }
             self.quit_request = self.timer.quit_request();
-            if let Some(available_file) = self.files.available_file_option.as_ref() {
-                self.current_available = pread_u32(available_file)?;
-            }
+            self.current_available = self.timer.get_available_mb()?;
             let in_low_mem = self.current_available < self.low_mem_margin_mb;
             self.refresh_time();
 
@@ -921,7 +907,6 @@ impl SampleType {
 // are collected into this struct because they get special values when testing.
 #[derive(Clone)]
 pub struct Paths {
-    available: PathBuf,
     log_directory: PathBuf,
     static_parameters: PathBuf,
     zoneinfo: PathBuf,
@@ -950,13 +935,6 @@ macro_rules! make_paths {
             $($name: PathBuf::from(test_filename($testing, $root, &($e).to_string()))),*
         }
     )
-}
-
-// All files that are to be left open go here.  We keep them open to reduce the
-// number of syscalls.  They are mostly files in /proc and /sys.
-struct Files {
-    // These files might not exist.
-    available_file_option: Option<File>,
 }
 
 fn build_sample_header() -> String {
@@ -1022,7 +1000,6 @@ fn get_paths(root: Option<TempDir>) -> Paths {
     make_paths!(
         cfg!(test),
         &testing_root,
-        available:         LOW_MEM_SYSFS.to_string() + "/available",
         log_directory:     LOG_DIRECTORY,
         static_parameters: LOG_DIRECTORY.to_string() + "/" + STATIC_PARAMETERS_LOG,
         zoneinfo:          "/proc/zoneinfo",
@@ -1110,10 +1087,6 @@ fn receive_dbus_events(sender: crossbeam_channel::Sender<DbusEvent>) -> Result<(
 // Get the memory margin by calling resource manager D-Bus method.
 #[cfg(not(test))]
 fn get_memory_margin_mb() -> Result<u32> {
-    const RESOURCED_SERVICE_NAME: &str = "org.chromium.ResourceManager";
-    const RESOURCED_PATH_NAME: &str = "/org/chromium/ResourceManager";
-    const RESOURCED_INTERFACE_NAME: &str = RESOURCED_SERVICE_NAME;
-
     let conn = dbus::blocking::Connection::new_system()?;
     let proxy = conn.with_proxy(
         RESOURCED_INTERFACE_NAME,
@@ -1152,7 +1125,9 @@ fn run_memory_daemon(always_poll_fast: bool) -> Result<()> {
 
     #[cfg(not(test))]
     {
-        let timer = Box::new(GenuineTimer {});
+        let timer = Box::new(GenuineTimer {
+            dbus_connection: dbus::blocking::Connection::new_system()?,
+        });
         let (send, recv) = crossbeam_channel::unbounded();
         let _sender_thread = std::thread::spawn(move || {
             let _ = receive_dbus_events(send);

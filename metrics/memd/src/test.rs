@@ -26,9 +26,9 @@ use crate::Timer;
 use crate::SAMPLE_QUEUE_LENGTH;
 
 // Different levels of emulated available RAM in MB.
-const LOW_MEM_LOW_AVAILABLE: usize = 150;
-const LOW_MEM_MEDIUM_AVAILABLE: usize = 300;
-const LOW_MEM_HIGH_AVAILABLE: usize = 1000;
+const LOW_MEM_LOW_AVAILABLE: u32 = 150;
+const LOW_MEM_MEDIUM_AVAILABLE: u32 = 300;
+const LOW_MEM_HIGH_AVAILABLE: u32 = 1000;
 const LOW_MEM_MARGIN: u32 = 200;
 const MOCK_DBUS_FIFO_NAME: &str = "mock-dbus-fifo";
 
@@ -40,17 +40,6 @@ macro_rules! print_to_path {
             Ok(mut f) => f.write_all(format!($format $(, $arg)*).as_bytes())
         }
     }}
-}
-
-// Writes |string| to file |path|.  If |append| is true, seeks to end first.
-// If |append| is false, truncates the file first.
-fn write_string(string: &str, path: &Path, append: bool) -> Result<()> {
-    let mut f = OpenOptions::new().write(true).append(append).open(path)?;
-    if !append {
-        f.set_len(0)?;
-    }
-    f.write_all(string.as_bytes())?;
-    Ok(())
 }
 
 // The types of events which are generated internally for testing.  They
@@ -66,54 +55,10 @@ enum TestEventType {
 }
 
 // Internally generated event for testing.
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 struct TestEvent {
     time: i64,
     event_type: TestEventType,
-}
-
-impl TestEvent {
-    // Returns true if the event is delivered to the D-Bus channel.
-    fn deliver(
-        &self,
-        paths: &Paths,
-        dbus_event_sender: &mut crossbeam_channel::Sender<DbusEvent>,
-        time: i64,
-    ) -> bool {
-        debug!("delivering {:?}", self);
-        match self.event_type {
-            TestEventType::EnterLowPressure => {
-                self.set_available(LOW_MEM_HIGH_AVAILABLE, paths);
-                false
-            }
-            TestEventType::EnterMediumPressure => {
-                self.set_available(LOW_MEM_MEDIUM_AVAILABLE, paths);
-                false
-            }
-            TestEventType::EnterHighPressure => {
-                self.set_available(LOW_MEM_LOW_AVAILABLE, paths);
-                dbus_event_sender
-                    .send(DbusEvent::CriticalMemoryPressure)
-                    .unwrap();
-                true
-            }
-            TestEventType::OomKillBrowser => {
-                dbus_event_sender.send(DbusEvent::OomKill { time }).unwrap();
-                true
-            }
-            TestEventType::TabDiscard => {
-                dbus_event_sender
-                    .send(DbusEvent::TabDiscard { time })
-                    .unwrap();
-                true
-            }
-        }
-    }
-
-    fn set_available(&self, amount: usize, paths: &Paths) {
-        write_string(&amount.to_string(), &paths.available, false)
-            .expect("available file: write failed");
-    }
 }
 
 // Real time mock, for testing only.  It removes time races (for better or
@@ -128,24 +73,61 @@ struct MockTimer {
     current_time: i64,                                       // the current time
     test_events: Vec<TestEvent>,                             // list events to be delivered
     event_index: usize,                                      // index of next event to be delivered
-    paths: Paths,                                            // for event delivery
     dbus_event_sender: crossbeam_channel::Sender<DbusEvent>, // for sending D-Bus events
     quit_request: bool,                                      // for termination
+    current_available_mb: u32,                               // the current available memory in MiB
 }
 
 impl MockTimer {
     fn new(
         test_events: Vec<TestEvent>,
-        paths: Paths,
         dbus_event_sender: crossbeam_channel::Sender<DbusEvent>,
     ) -> MockTimer {
         MockTimer {
             current_time: 0,
             test_events,
             event_index: 0,
-            paths,
             dbus_event_sender,
             quit_request: false,
+            current_available_mb: LOW_MEM_HIGH_AVAILABLE,
+        }
+    }
+
+    fn set_available_mb(&mut self, amount: u32) {
+        self.current_available_mb = amount;
+    }
+
+    // Returns true if the event is delivered to the D-Bus channel.
+    fn deliver_test_event(&mut self, time: i64, test_event: TestEvent) -> bool {
+        debug!("delivering {:?}", test_event);
+        match test_event.event_type {
+            TestEventType::EnterLowPressure => {
+                self.set_available_mb(LOW_MEM_HIGH_AVAILABLE);
+                false
+            }
+            TestEventType::EnterMediumPressure => {
+                self.set_available_mb(LOW_MEM_MEDIUM_AVAILABLE);
+                false
+            }
+            TestEventType::EnterHighPressure => {
+                self.set_available_mb(LOW_MEM_LOW_AVAILABLE);
+                self.dbus_event_sender
+                    .send(DbusEvent::CriticalMemoryPressure)
+                    .unwrap();
+                true
+            }
+            TestEventType::OomKillBrowser => {
+                self.dbus_event_sender
+                    .send(DbusEvent::OomKill { time })
+                    .unwrap();
+                true
+            }
+            TestEventType::TabDiscard => {
+                self.dbus_event_sender
+                    .send(DbusEvent::TabDiscard { time })
+                    .unwrap();
+                true
+            }
         }
     }
 }
@@ -190,11 +172,7 @@ impl Timer for MockTimer {
             // is at least one.)
             let mut channel_sent = 0;
             while {
-                if self.test_events[self.event_index].deliver(
-                    &self.paths,
-                    &mut self.dbus_event_sender,
-                    first_event_time,
-                ) {
+                if self.deliver_test_event(first_event_time, self.test_events[self.event_index]) {
                     channel_sent += 1;
                 }
                 self.event_index += 1;
@@ -212,6 +190,10 @@ impl Timer for MockTimer {
             }
         }
     }
+
+    fn get_available_mb(&self) -> Result<u32> {
+        Ok(self.current_available_mb)
+    }
 }
 
 pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
@@ -224,7 +206,7 @@ pub fn test_loop(_always_poll_fast: bool, paths: &Paths) {
 
         let events = events_from_test_descriptor(test_desc);
         let (send, recv) = crossbeam_channel::unbounded();
-        let timer = Box::new(MockTimer::new(events, paths.clone(), send));
+        let timer = Box::new(MockTimer::new(events, send));
         let mut sampler = Sampler::new(false, paths, timer, recv, LOW_MEM_MARGIN)
             .expect("sampler creation error");
         loop {
@@ -594,14 +576,11 @@ pub fn setup_test_environment(paths: &Paths) {
         stat::Mode::S_IRWXU,
     )
     .expect("failed to make mock dbus fifo");
-    create_dir_all(paths.available.parent().unwrap()).expect("cannot create ../chromeos-low-mem");
     let sys_vm = paths.testing_root.join("proc/sys/vm");
     create_dir_all(&sys_vm).expect("cannot create /proc/sys/vm");
 
     let zoneinfo_content = include_str!("zoneinfo_content");
     print_to_path!(&paths.zoneinfo, "{}", zoneinfo_content).expect("cannot initialize zoneinfo");
-    print_to_path!(&paths.available, "{}\n", LOW_MEM_HIGH_AVAILABLE)
-        .expect("cannot initialize available");
 
     print_to_path!(sys_vm.join("min_filelist_kbytes"), "100000\n")
         .expect("cannot initialize min_filelist_kbytes");
