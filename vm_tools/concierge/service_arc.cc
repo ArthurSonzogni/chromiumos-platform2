@@ -72,9 +72,6 @@ constexpr uint32_t kHotplugSlotCount = 5;
 constexpr char kArcVmLowMemJemallocArenasFeatureName[] =
     "CrOSLateBootArcVmLowMemJemallocArenas";
 
-// A feature name for enabling AAudio MMAP support in audio HAL
-constexpr char kArcVmAAudioMMAPFeatureName[] = "CrOSLateBootArcVmAAudioMMAP";
-
 // A feature name for using low latency (5ms) AAudio MMAP
 constexpr char kArcVmAAudioMMAPLowLatencyFeatureName[] =
     "CrOSLateBootArcVmAAudioMMAPLowLatency";
@@ -88,9 +85,6 @@ constexpr uint32_t kLmkdVsockTimeoutMs = 100;
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kArcVmLowMemJemallocArenasFeature{
     kArcVmLowMemJemallocArenasFeatureName, FEATURE_DISABLED_BY_DEFAULT};
-
-const VariationsFeature kArcVmAAudioMMAPFeature{kArcVmAAudioMMAPFeatureName,
-                                                FEATURE_ENABLED_BY_DEFAULT};
 
 const VariationsFeature kArcVmAAudioMMAPLowLatencyFeature{
     kArcVmAAudioMMAPLowLatencyFeatureName, FEATURE_DISABLED_BY_DEFAULT};
@@ -212,12 +206,6 @@ bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
     LOG(INFO) << "Android /data disk path: " << disk_path;
   }
   return true;
-}
-
-// Returns whether AAudio MMAP feature should be enabled based on the flag.
-// In dev mode, it is always enabled.
-bool ShouldEnableAAudioMMAP(bool is_feature_enabled, bool is_dev_mode) {
-  return is_dev_mode || is_feature_enabled;
 }
 
 // Returns the period size to use for AAudio MMAP.
@@ -452,18 +440,13 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
                                            kLmkdVsockTimeoutMs));
   }
 
-  if (ShouldEnableAAudioMMAP(
-          feature::PlatformFeatures::Get()->IsEnabledBlocking(
-              kArcVmAAudioMMAPFeature),
-          is_dev_mode)) {
-    params.emplace_back("androidboot.audio.aaudio_mmap_enabled=1");
-    bool low_latency_enabled =
-        feature::PlatformFeatures::Get()->IsEnabledBlocking(
-            kArcVmAAudioMMAPLowLatencyFeature);
-    params.emplace_back(
-        base::StringPrintf("androidboot.audio.aaudio_mmap_period_size=%d",
-                           GetAAudioMMAPPeriodSize(low_latency_enabled)));
-  }
+  params.emplace_back("androidboot.audio.aaudio_mmap_enabled=1");
+  bool aaudio_low_latency_enabled =
+      feature::PlatformFeatures::Get()->IsEnabledBlocking(
+          kArcVmAAudioMMAPLowLatencyFeature);
+  params.emplace_back(
+      base::StringPrintf("androidboot.audio.aaudio_mmap_period_size=%d",
+                         GetAAudioMMAPPeriodSize(aaudio_low_latency_enabled)));
 
   // Workaround for slow vm-host IPC when recording video.
   params.emplace_back("androidboot.camera.async_process_capture_request=true");
