@@ -578,6 +578,10 @@ bool Platform::CloseFile(FILE* fp) {
   return base::CloseFile(fp);
 }
 
+int Platform::Ioctl(FILE* fd, unsigned long request, void* query) {
+  return ioctl(fileno(fd), request, query);
+}
+
 void Platform::InitializeFile(base::File* file,
                               const base::FilePath& path,
                               uint32_t flags) {

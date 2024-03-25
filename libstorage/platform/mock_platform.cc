@@ -124,6 +124,8 @@ MockPlatform::MockPlatform(std::unique_ptr<FakePlatform> fake_platform)
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::OpenFile));
   ON_CALL(*this, CloseFile(_))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::CloseFile));
+  ON_CALL(*this, Ioctl(_, _, _))
+      .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Ioctl));
 
   ON_CALL(*this, GetFileSize(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::GetFileSize));

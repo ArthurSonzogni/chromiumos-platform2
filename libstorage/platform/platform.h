@@ -440,6 +440,10 @@ class BRILLO_EXPORT Platform {
   //  fp - FILE* to close
   virtual bool CloseFile(FILE* fp);
 
+  // System call for device input/output operations.
+  // fd must have already been opened with OpenFile.
+  virtual int Ioctl(FILE* fd, unsigned long request, void* query);
+
   // Initializes a base::File.  The caller is responsible for verifying that
   // the file was successfully opened by calling base::File::IsValid().
   //
