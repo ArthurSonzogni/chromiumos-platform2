@@ -193,6 +193,7 @@ class TetheringManagerTest : public testing::Test {
             "ap0",
             net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05),
             0,
+            WiFiPhy::Priority(0),
             event_cb_.Get())),
         network_(new MockNetwork(
             kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular)),

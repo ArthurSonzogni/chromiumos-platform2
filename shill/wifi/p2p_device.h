@@ -25,6 +25,7 @@
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/p2p_peer.h"
 #include "shill/wifi/p2p_service.h"
+#include "shill/wifi/wifi_phy.h"
 
 namespace shill {
 
@@ -69,6 +70,7 @@ class P2PDevice : public LocalDevice,
             const std::string& primary_link_name,
             uint32_t phy_index,
             int32_t shill_id,
+            WiFiPhy::Priority priority,
             LocalDevice::EventCallback callback);
 
   P2PDevice(const P2PDevice&) = delete;

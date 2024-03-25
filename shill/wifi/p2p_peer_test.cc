@@ -38,6 +38,7 @@ const char kInterfaceName[] = "p2p-wlan0-0";
 const uint32_t kPhyIndex = 5678;
 const uint32_t kShillId = 0;
 const uint32_t kPeerId = 0;
+WiFiPhy::Priority kPriority = WiFiPhy::Priority(0);
 }  // namespace
 
 class P2PPeerTest : public testing::Test {
@@ -49,6 +50,7 @@ class P2PPeerTest : public testing::Test {
                                                 kPrimaryInterfaceName,
                                                 kPhyIndex,
                                                 kShillId,
+                                                kPriority,
                                                 event_cb_.Get())),
         peer_proxy_(new NiceMock<MockSupplicantPeerProxy>()) {
     std::unique_ptr<MockSupplicantPeerProxy> peer_proxy(peer_proxy_);

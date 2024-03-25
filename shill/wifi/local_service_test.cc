@@ -41,8 +41,12 @@ class LocalServiceTest : public testing::Test {
  public:
   LocalServiceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        device_(new NiceMock<MockLocalDevice>(
-            &manager_, LocalDevice::IfaceType::kAP, "ap0", 0, cb.Get())),
+        device_(new NiceMock<MockLocalDevice>(&manager_,
+                                              LocalDevice::IfaceType::kAP,
+                                              "ap0",
+                                              0,
+                                              WiFiPhy::Priority(0),
+                                              cb.Get())),
         service_(new NiceMock<TestLocalService>(device_)) {}
   ~LocalServiceTest() override = default;
 

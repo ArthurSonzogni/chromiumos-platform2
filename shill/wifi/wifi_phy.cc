@@ -13,6 +13,7 @@
 
 #include "shill/logging.h"
 
+#include "shill/wifi/local_device.h"
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_phy.h"
 

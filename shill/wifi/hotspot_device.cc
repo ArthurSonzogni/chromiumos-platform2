@@ -35,8 +35,10 @@ HotspotDevice::HotspotDevice(Manager* manager,
                              const std::string& link_name,
                              net_base::MacAddress mac_address,
                              uint32_t phy_index,
+                             WiFiPhy::Priority priority,
                              LocalDevice::EventCallback callback)
-    : LocalDevice(manager, IfaceType::kAP, link_name, phy_index, callback),
+    : LocalDevice(
+          manager, IfaceType::kAP, link_name, phy_index, priority, callback),
       primary_link_name_(primary_link_name),
       prev_primary_iface_control_state_(false),
       pending_phy_info_(false),

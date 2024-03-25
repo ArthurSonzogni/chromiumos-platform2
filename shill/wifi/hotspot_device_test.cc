@@ -56,6 +56,7 @@ constexpr net_base::MacAddress kStationAddress1(
 constexpr net_base::MacAddress kStationAddress2(
     0x00, 0x11, 0x22, 0x33, 0x44, 0x66);
 constexpr uint32_t kPhyIndex = 5678;
+constexpr WiFiPhy::Priority kPriority = WiFiPhy::Priority(0);
 const RpcIdentifier kPrimaryIfacePath = RpcIdentifier("/interface/wlan0");
 const RpcIdentifier kIfacePath = RpcIdentifier("/interface/ap0");
 const RpcIdentifier kNetworkPath = RpcIdentifier("/network/path");
@@ -74,6 +75,7 @@ class HotspotDeviceTest : public testing::Test {
                                   kInterfaceName,
                                   kDeviceAddress,
                                   kPhyIndex,
+                                  kPriority,
                                   cb.Get())),
         wifi_phy_(kPhyIndex),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),

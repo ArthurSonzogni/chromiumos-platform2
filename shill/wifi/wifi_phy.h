@@ -10,11 +10,12 @@
 #include <vector>
 
 #include "shill/mockable.h"
-#include "shill/wifi/local_device.h"
+#include "shill/refptr_types.h"
 #include "shill/wifi/nl80211_message.h"
 #include "shill/wifi/wifi_rf.h"
 
 namespace shill {
+class LocalDevice;
 class WiFi;
 class WiFiProvider;
 

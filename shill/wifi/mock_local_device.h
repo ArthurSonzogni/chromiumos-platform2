@@ -19,6 +19,7 @@ class MockLocalDevice : public LocalDevice {
                   IfaceType type,
                   const std::string& link_name,
                   uint32_t phy_index,
+                  WiFiPhy::Priority priority,
                   const EventCallback& callback);
   ~MockLocalDevice() override;
 

@@ -402,6 +402,7 @@ class WiFiProvider : public ProviderInterface {
                                     const std::string& primary_link_name,
                                     const std::string& link_name,
                                     uint32_t phy_index,
+                                    WiFiPhy::Priority priority,
                                     LocalDevice::EventCallback callback);
 
   // Construct a new P2PDevice of type |iface_type|, which must be kP2PGO or
@@ -410,6 +411,7 @@ class WiFiProvider : public ProviderInterface {
       LocalDevice::IfaceType iface_type,
       LocalDevice::EventCallback callback,
       int32_t shill_id,
+      WiFiPhy::Priority priority,
       base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
       base::OnceCallback<void()> fail_cb);
 
@@ -441,6 +443,7 @@ class WiFiProvider : public ProviderInterface {
       const std::string& link_name,
       net_base::MacAddress mac_address,
       uint32_t phy_index,
+      WiFiPhy::Priority priority,
       LocalDevice::EventCallback callback)>
       hotspot_device_factory_;
 

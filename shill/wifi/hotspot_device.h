@@ -19,6 +19,7 @@
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/wifi/hotspot_service.h"
 #include "shill/wifi/local_device.h"
+#include "shill/wifi/wifi_phy.h"
 
 namespace shill {
 
@@ -33,6 +34,7 @@ class HotspotDevice : public LocalDevice,
                 const std::string& link_name,
                 net_base::MacAddress mac_address,
                 uint32_t phy_index,
+                WiFiPhy::Priority priority,
                 LocalDevice::EventCallback callback);
 
   HotspotDevice(const HotspotDevice&) = delete;

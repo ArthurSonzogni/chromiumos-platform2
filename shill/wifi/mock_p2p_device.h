@@ -21,12 +21,14 @@ class MockP2PDevice : public P2PDevice {
                 const std::string& primary_link_name,
                 uint32_t phy_index,
                 int32_t shill_id,
+                WiFiPhy::Priority priority,
                 const EventCallback& callback)
       : P2PDevice(manager,
                   iface_type,
                   primary_link_name,
                   phy_index,
                   shill_id,
+                  priority,
                   callback) {}
 
   ~MockP2PDevice() = default;

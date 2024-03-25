@@ -94,8 +94,10 @@ P2PDevice::P2PDevice(Manager* manager,
                      const std::string& primary_link_name,
                      uint32_t phy_index,
                      int32_t shill_id,
+                     WiFiPhy::Priority priority,
                      LocalDevice::EventCallback callback)
-    : LocalDevice(manager, iface_type, std::nullopt, phy_index, callback),
+    : LocalDevice(
+          manager, iface_type, std::nullopt, phy_index, priority, callback),
       primary_link_name_(primary_link_name),
       shill_id_(shill_id),
       state_(P2PDeviceState::kUninitialized) {

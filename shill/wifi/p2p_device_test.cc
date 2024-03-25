@@ -62,6 +62,7 @@ const char kP2PPassphrase[] = "test0000";
 const int32_t kP2PFrequency = 2437;
 const int kClientNetworkID = 10;
 const int kLocalOnlyNetworkId = 733;
+const WiFiPhy::Priority kPriority = WiFiPhy::Priority(0);
 
 static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
 static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
@@ -95,12 +96,14 @@ class P2PDeviceTest : public testing::Test {
                                  kPrimaryInterfaceName,
                                  kPhyIndex,
                                  kShillId,
+                                 kPriority,
                                  cb.Get())),
         client_device_(new P2PDevice(&manager_,
                                      LocalDevice::IfaceType::kP2PClient,
                                      kPrimaryInterfaceName,
                                      kPhyIndex,
                                      kShillId,
+                                     kPriority,
                                      cb.Get())),
         supplicant_primary_p2pdevice_proxy_(
             new NiceMock<MockSupplicantP2PDeviceProxy>()),

@@ -46,6 +46,7 @@
 #include "shill/wifi/nl80211_message_matchers.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_endpoint.h"
+#include "shill/wifi/wifi_phy.h"
 
 using ::testing::_;
 using ::testing::AnyNumber;
@@ -698,8 +699,8 @@ class WiFiProviderTest : public testing::Test {
 
   scoped_refptr<MockLocalDevice> CreateLocalDevice(
       LocalDevice::IfaceType type, const std::string& link_name) {
-    scoped_refptr<MockLocalDevice> dev =
-        new NiceMock<MockLocalDevice>(&manager_, type, link_name, 0, cb.Get());
+    scoped_refptr<MockLocalDevice> dev = new NiceMock<MockLocalDevice>(
+        &manager_, type, link_name, 0, WiFiPhy::Priority(0), cb.Get());
     return dev;
   }
 
@@ -2612,10 +2613,11 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
   provider_->hotspot_device_factory_ = base::BindRepeating(
       [](Manager* manager, const std::string& primary_link_name,
          const std::string& link_name, net_base::MacAddress mac_address,
-         uint32_t phy_index, LocalDevice::EventCallback callback) {
-        return HotspotDeviceRefPtr(
-            new MockHotspotDevice(manager, primary_link_name, link_name,
-                                  mac_address, phy_index, std::move(callback)));
+         uint32_t phy_index, WiFiPhy::Priority priority,
+         LocalDevice::EventCallback callback) {
+        return HotspotDeviceRefPtr(new MockHotspotDevice(
+            manager, primary_link_name, link_name, mac_address, phy_index,
+            priority, std::move(callback)));
       });
   // The hotspot device should be created and registered at |local_devices_|.
   HotspotDeviceRefPtr device;
@@ -2645,11 +2647,12 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
 
   provider_->hotspot_device_factory_ = base::BindRepeating(
       [](Manager* manager, const std::string& primary_link_name,
-         const std::string& link_name, net_base::MacAddress mac_address,
-         uint32_t phy_index, LocalDevice::EventCallback callback) {
-        return HotspotDeviceRefPtr(
-            new MockHotspotDevice(manager, primary_link_name, link_name,
-                                  mac_address, phy_index, std::move(callback)));
+         const std::string& link_name, const net_base::MacAddress mac_address,
+         uint32_t phy_index, WiFiPhy::Priority priority,
+         LocalDevice::EventCallback callback) {
+        return HotspotDeviceRefPtr(new MockHotspotDevice(
+            manager, primary_link_name, link_name, mac_address, phy_index,
+            priority, std::move(callback)));
       });
 
   // The hotspot device should be created and registered at |local_devices_|.

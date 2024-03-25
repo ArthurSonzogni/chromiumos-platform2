@@ -38,7 +38,7 @@ class P2PServiceTest : public testing::Test {
 
   LocalDeviceConstRefPtr CreateP2PDevice(LocalDevice::IfaceType type) {
     scoped_refptr<MockLocalDevice> device = new NiceMock<MockLocalDevice>(
-        &manager_, type, "p2p-wlan0-0", 0, cb.Get());
+        &manager_, type, "p2p-wlan0-0", 0, WiFiPhy::Priority(0), cb.Get());
     return device;
   }
 

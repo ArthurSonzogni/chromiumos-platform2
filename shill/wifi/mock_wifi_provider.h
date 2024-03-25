@@ -122,6 +122,7 @@ class MockWiFiProvider : public WiFiProvider {
                const std::string&,
                const std::string&,
                uint32_t phy_index,
+               WiFiPhy::Priority priority,
                LocalDevice::EventCallback callback),
               (override));
   MOCK_METHOD(bool,
@@ -138,6 +139,7 @@ class MockWiFiProvider : public WiFiProvider {
               (LocalDevice::IfaceType,
                LocalDevice::EventCallback,
                int32_t shill_id,
+               WiFiPhy::Priority priority,
                base::OnceCallback<void(P2PDeviceRefPtr)>,
                base::OnceCallback<void()>),
               (override));

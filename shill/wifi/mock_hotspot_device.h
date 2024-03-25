@@ -23,6 +23,7 @@ class MockHotspotDevice : public HotspotDevice {
                     const std::string& link_name,
                     net_base::MacAddress mac_address,
                     uint32_t phy_index,
+                    WiFiPhy::Priority priority,
                     const EventCallback& callback);
   ~MockHotspotDevice() override;
 

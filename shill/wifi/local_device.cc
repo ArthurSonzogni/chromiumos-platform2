@@ -24,12 +24,14 @@ LocalDevice::LocalDevice(Manager* manager,
                          IfaceType type,
                          std::optional<std::string> link_name,
                          uint32_t phy_index,
+                         WiFiPhy::Priority priority,
                          const EventCallback& callback)
     : link_name_(link_name),
       enabled_(false),
       manager_(manager),
       iface_type_(type),
       phy_index_(phy_index),
+      priority_(priority),
       callback_(std::move(callback)) {
   SLOG(1) << "LocalDevice(): " << link_name_.value_or("(no link_name)")
           << " type: " << iface_type_ << " Phy index: " << phy_index_;

@@ -12,8 +12,9 @@ MockLocalDevice::MockLocalDevice(Manager* manager,
                                  IfaceType type,
                                  const std::string& link_name,
                                  uint32_t phy_index,
+                                 WiFiPhy::Priority priority,
                                  const EventCallback& callback)
-    : LocalDevice(manager, type, link_name, phy_index, callback) {}
+    : LocalDevice(manager, type, link_name, phy_index, priority, callback) {}
 
 MockLocalDevice::~MockLocalDevice() = default;
 

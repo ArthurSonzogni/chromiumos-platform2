@@ -16,6 +16,7 @@
 #include "shill/mockable.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/local_service.h"
+#include "shill/wifi/wifi_phy.h"
 
 namespace shill {
 
@@ -64,6 +65,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
               IfaceType type,
               std::optional<std::string> link_name,
               uint32_t phy_index,
+              WiFiPhy::Priority priority,
               const EventCallback& callback);
   LocalDevice(const LocalDevice&) = delete;
   LocalDevice& operator=(const LocalDevice&) = delete;
@@ -83,6 +85,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   std::optional<std::string> link_name() const { return link_name_; }
   uint32_t phy_index() const { return phy_index_; }
   IfaceType iface_type() const { return iface_type_; }
+  WiFiPhy::Priority priority() const { return priority_; }
 
  protected:
   FRIEND_TEST(LocalDeviceTest, PostDeviceEvent);
@@ -115,6 +118,7 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   Manager* manager_;
   IfaceType iface_type_;
   uint32_t phy_index_;
+  WiFiPhy::Priority priority_;
   EventCallback callback_;
   base::WeakPtrFactory<LocalDevice> weak_factory_{this};
 };
