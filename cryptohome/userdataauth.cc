@@ -3451,6 +3451,7 @@ void UserDataAuth::EvictDeviceKey(
     ReplyWithError(std::move(on_done), reply, std::move(status));
     return;
   }
+  LOG(INFO) << "Filesystem key is successfully evicted from RAM disk device.";
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
