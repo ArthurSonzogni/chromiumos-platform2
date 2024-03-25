@@ -3569,13 +3569,15 @@ static void sl_print_usage() {
       "  --glamor\t\t\tUse glamor to accelerate X11 clients\n"
       "  --timing-filename=PATH\tPath to timing output log\n"
       "  --direct-scale\t\tEnable direct scaling mode\n"
-      "  --viewport-resize\t\tUse viewport to resize unresizable windows."
+      "  --viewport-resize\t\tUse viewport to resize unresizable windows.\n"
 #ifdef PERFETTO_TRACING
       "  --trace-filename=PATH\t\tPath to Perfetto trace filename\n"
       "  --trace-system\t\tPerfetto trace to system daemon\n"
 #endif
 #ifdef QUIRKS_SUPPORT
       "  --quirks-config=PATH[,PATH...]\tOne or more 'quirks' config files.\n"
+      "  --print-enabled-features=STEAM_GAME_ID\tPrint features enabled via "
+      "quirks for the game specified, then exit.\n"
 #endif
       "  --stats-summary=PATH\t\tPath for recent frame timing stats "
       "(rewrites)\n"
@@ -3982,6 +3984,27 @@ int real_main(int argc, char** argv) {
       printf("Version: %s\n", SOMMELIER_VERSION);
       return EXIT_SUCCESS;
     }
+#ifdef QUIRKS_SUPPORT
+    if (strstr(arg, "--print-enabled-features") == arg) {
+      if (!quirks_paths) {
+        fprintf(stderr,
+                "Env var SOMMELIER_QUIRKS_CONFIG must be set to quirks "
+                "textproto path!\n");
+        return EXIT_FAILURE;
+      }
+      Quirks quirks;
+      quirks.LoadFromCommaSeparatedFiles(quirks_paths);
+      uint32_t steam_game_id = 0;
+      if (i + 1 < argc) {
+        steam_game_id = std::stoi(argv[i + 1]);
+      } else {
+        steam_game_id = std::stoi(sl_arg_value(arg));
+      }
+      quirks.PrintFeaturesEnabled(steam_game_id);
+      return EXIT_SUCCESS;
+    }
+#endif
+
     if (strstr(arg, "--parent") == arg) {
       parent = 1;
     } else if (strstr(arg, "--socket") == arg) {

@@ -27,6 +27,13 @@ class Quirks {
   // `window`, according to the active config.
   bool IsEnabled(struct sl_window* window, int feature);
 
+  // Whether the given Feature (from quirks.proto) is enabled for the given
+  // game, according to the active config.
+  bool IsEnabled(uint32_t steam_game_id, int feature);
+
+  // Print all the features enabled for the game.
+  void PrintFeaturesEnabled(uint32_t steam_game_id);
+
  private:
   // Repopulate `enabled_features_` from the rules in `active_config_`.
   void Update();

@@ -49,7 +49,19 @@ void Quirks::LoadFromFile(std::string path) {
   close(fd);
 }
 
-bool Quirks::IsEnabled(struct sl_window* window, int feature) {
+void Quirks::PrintFeaturesEnabled(uint32_t steam_game_id) {
+  // Very inefficient but straight-forward function to
+  // print features enabled for the steam_game_id.
+  fprintf(stderr, "Enabled features for %d:\n", steam_game_id);
+  for (int i = quirks::Feature_MIN; i <= quirks::Feature_MAX; i++) {
+    if (!quirks::Feature_IsValid(i) || !IsEnabled(steam_game_id, i)) {
+      continue;
+    }
+    printf("%s\n", quirks::Feature_Name(i).c_str());
+  }
+}
+
+bool Quirks::IsEnabled(uint32_t steam_game_id, int feature) {
   bool is_enabled = false;
 
   // Check if feature is enabled while minimizing map looks ups as much as
@@ -60,7 +72,7 @@ bool Quirks::IsEnabled(struct sl_window* window, int feature) {
   bool steam_id_override = false;
   auto steam_id_iter = feature_to_steam_id_.find(feature);
   if (steam_id_iter != feature_to_steam_id_.end()) {
-    auto enabled_iter = steam_id_iter->second.find(window->steam_game_id);
+    auto enabled_iter = steam_id_iter->second.find(steam_game_id);
     if (enabled_iter != steam_id_iter->second.end()) {
       steam_id_override = true;
       is_enabled = enabled_iter->second;
@@ -73,7 +85,12 @@ bool Quirks::IsEnabled(struct sl_window* window, int feature) {
     }
   }
 
-  // Log enabled quirks once per quirk, per window.
+  return is_enabled;
+}
+
+bool Quirks::IsEnabled(struct sl_window* window, int feature) {
+  bool is_enabled = IsEnabled(window->steam_game_id, feature);
+
   if (is_enabled && sl_window_should_log_quirk(window, feature)) {
     fprintf(stderr,
             "Quirk %s applied to window 0x%x due to rule `steam_game_id: %d`\n",
