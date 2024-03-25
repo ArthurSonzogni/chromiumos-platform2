@@ -112,6 +112,10 @@ class MultiRangeHttpFetcher : public HttpFetcher, public HttpFetcherDelegate {
     base_fetcher_->set_max_retry_count(max_retry_count);
   }
 
+  void set_payload_info_visible(bool visible) override {
+    base_fetcher_->set_payload_info_visible(visible);
+  }
+
  private:
   // A range object defining the offset and length of a download chunk.  Zero
   // length indicates an unspecified end offset (note that it is impossible to

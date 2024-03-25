@@ -33,8 +33,16 @@ constexpr char kLorryUrl[] = "https://dl.google.com/dlc";
 constexpr char kBandaidArtifactsMetaUrl[] = "https://edgedl.me.gvt1.com/edgedl";
 constexpr char kLorryArtifactsMetaUrl[] = "https://dl.google.com";
 
+constexpr char kUrlNameBandaid[] = "<BANDAID>";
+constexpr char kUrlNameLorry[] = "<LORRY>";
+
+constexpr char kUrlNameBandaidArtifactsMeta[] = "<BANDAID_ARTIFACTS_META>";
+constexpr char kUrlNameLorryArtifactsMeta[] = "<LORRY_ARTIFACTS_META>";
+
 constexpr char kDefaultArtifact[] = "dlc.img";
 constexpr char kDefaultPackage[] = "package";
+
+constexpr char kRedactedDlcPartition[] = "<REDACTED_PARTITION>";
 }  // namespace
 
 const char kDefaultSlotting[] = "dlc-scaled";
@@ -64,6 +72,9 @@ void InstallAction::PerformAction() {
   }
   image_props_ = LoadImageProperties();
   http_fetcher_->set_delegate(this);
+  bool user_tied = manifest_->user_tied();
+  if (user_tied)
+    http_fetcher_->set_payload_info_visible(false);
 
   // Get the DLC device partition.
   auto partition_name =
@@ -71,25 +82,29 @@ void InstallAction::PerformAction() {
   auto* boot_control = SystemState::Get()->boot_control();
 
   std::string partition;
+  const auto& sanitized_id = manifest_->sanitized_id();
   if (!boot_control->GetPartitionDevice(
           partition_name, boot_control->GetCurrentSlot(), &partition)) {
-    LOG(ERROR) << "Could not retrieve device partition for " << id_;
+    LOG(ERROR) << "Could not retrieve device partition for " << sanitized_id;
     processor_->ActionComplete(this, ErrorCode::kScaledInstallationError);
     return;
   }
+  const auto& sanitized_partition =
+      user_tied ? kRedactedDlcPartition : partition;
 
   f_.Initialize(base::FilePath(partition), base::File::Flags::FLAG_OPEN |
                                                base::File::Flags::FLAG_READ |
                                                base::File::Flags::FLAG_WRITE);
   if (!f_.IsValid()) {
-    LOG(ERROR) << "Could not open device partition for " << id_ << " at "
-               << partition;
+    LOG(ERROR) << "Could not open device partition for " << sanitized_id
+               << " at " << sanitized_partition;
     processor_->ActionComplete(this, ErrorCode::kScaledInstallationError);
     return;
   }
-  LOG(INFO) << "Installing to " << partition;
+  LOG(INFO) << "Installing to " << sanitized_partition;
 
   std::string url_to_fetch;
+  std::string sanitized_url;
   const auto& artifacts_meta = manifest_->artifacts_meta();
   if (artifacts_meta.valid) {
     auto UrlToFetch = [artifacts_meta](const std::string& url) -> std::string {
@@ -99,7 +114,11 @@ void InstallAction::PerformAction() {
           .value();
     };
     url_to_fetch = UrlToFetch(kBandaidArtifactsMetaUrl);
+    sanitized_url = user_tied ? kUrlNameBandaidArtifactsMeta : url_to_fetch;
     backup_urls_ = {UrlToFetch(kLorryArtifactsMetaUrl)};
+    backup_urls_sanitized_ =
+        user_tied ? std::vector<std::string>({kUrlNameLorryArtifactsMeta})
+                  : backup_urls_;
   } else {
     auto UrlToFetch = [this](const std::string& url) -> std::string {
       return base::FilePath(url)
@@ -111,9 +130,12 @@ void InstallAction::PerformAction() {
           .value();
     };
     url_to_fetch = UrlToFetch(kBandaidUrl);
+    sanitized_url = user_tied ? kUrlNameBandaid : url_to_fetch;
     backup_urls_ = {UrlToFetch(kLorryUrl)};
+    backup_urls_sanitized_ =
+        user_tied ? std::vector<std::string>({kUrlNameLorry}) : backup_urls_;
   }
-  StartInstallation(url_to_fetch);
+  StartInstallation(url_to_fetch, sanitized_url);
 }
 
 void InstallAction::TerminateProcessing() {
@@ -160,7 +182,10 @@ void InstallAction::TransferComplete(HttpFetcher* fetcher, bool successful) {
     // Continue to use backup URLs.
     if (backup_url_index_ < backup_urls_.size()) {
       LOG(INFO) << "Using backup url at index=" << backup_url_index_;
-      StartInstallation(backup_urls_[backup_url_index_++]);
+      const auto& url = backup_urls_[backup_url_index_];
+      const auto& url_sanitized = backup_urls_sanitized_[backup_url_index_];
+      ++backup_url_index_;
+      StartInstallation(url, url_sanitized);
       return;
     }
     LOG(ERROR) << "Transfer failed.";
@@ -171,12 +196,13 @@ void InstallAction::TransferComplete(HttpFetcher* fetcher, bool successful) {
   auto expected_offset = manifest_->size();
   if (offset_ != expected_offset) {
     LOG(ERROR) << "Transferred bytes offset (" << offset_
-               << ") don't match the expected offset (" << expected_offset
-               << ").";
+               << ") don't match the expected offset ("
+               << manifest_->sanitized_size() << ").";
     TerminateInstallation();
     return;
   }
-  LOG(INFO) << "Transferred bytes offset (" << expected_offset << ") is valid.";
+  LOG(INFO) << "Transferred bytes offset (" << manifest_->sanitized_size()
+            << ") is valid.";
 
   std::vector<uint8_t> sha256(crypto::kSHA256Length);
   hash_->Finish(sha256.data(), sha256.size());
@@ -186,12 +212,12 @@ void InstallAction::TransferComplete(HttpFetcher* fetcher, bool successful) {
   if (sha256 != expected_sha256) {
     LOG(ERROR) << "Transferred bytes hash ("
                << base::HexEncode(sha256.data(), sha256.size())
-               << ") don't match the expected hash (" << expected_sha256_str
-               << ").";
+               << ") don't match the expected hash ("
+               << manifest_->sanitized_image_sha256() << ").";
     TerminateInstallation();
     return;
   }
-  LOG(INFO) << "Transferred bytes hash (" << expected_sha256_str
+  LOG(INFO) << "Transferred bytes hash (" << manifest_->sanitized_image_sha256()
             << ") is valid.";
 
   processor_->ActionComplete(this, ErrorCode::kSuccess);
@@ -202,8 +228,9 @@ void InstallAction::TransferTerminated(HttpFetcher* fetcher) {
   TerminateInstallation();
 }
 
-void InstallAction::StartInstallation(const std::string& url_to_fetch) {
-  LOG(INFO) << "Starting installation using URL=" << url_to_fetch;
+void InstallAction::StartInstallation(const std::string& url_to_fetch,
+                                      const std::string& sanitized_url) {
+  LOG(INFO) << "Starting installation using URL=" << sanitized_url;
   offset_ = 0;
   hash_.reset(crypto::SecureHash::Create(crypto::SecureHash::SHA256));
   http_fetcher_->SetOffset(0);

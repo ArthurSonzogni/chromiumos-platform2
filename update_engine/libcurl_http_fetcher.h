@@ -150,6 +150,10 @@ class LibcurlHttpFetcher : public HttpFetcher {
     max_retry_count_ = max_retry_count;
   }
 
+  void set_payload_info_visible(bool visible) override {
+    payload_info_visible_ = visible;
+  }
+
   void set_is_update_check(bool is_update_check) {
     is_update_check_ = is_update_check;
   }
@@ -338,6 +342,9 @@ class LibcurlHttpFetcher : public HttpFetcher {
   int low_speed_limit_bps_{kDownloadLowSpeedLimitBps};
   int low_speed_time_seconds_{kDownloadLowSpeedTimeSeconds};
   int connect_timeout_seconds_{kDownloadConnectTimeoutSeconds};
+
+  // If true, payload size info will be logged, otherwise redact it.
+  bool payload_info_visible_{true};
 };
 
 }  // namespace chromeos_update_engine

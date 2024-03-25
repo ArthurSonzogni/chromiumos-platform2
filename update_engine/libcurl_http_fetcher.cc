@@ -25,6 +25,7 @@
 #if BASE_VER >= 822064
 #include <base/notreached.h>
 #endif
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -46,6 +47,7 @@ namespace chromeos_update_engine {
 namespace {
 
 constexpr base::TimeDelta kNoNetworkRetryTime = base::Seconds(10);
+constexpr char kRedactedSize[] = "<REDACTED_SIZE>";
 
 // libcurl's CURLOPT_SOCKOPTFUNCTION callback function. Called after the socket
 // is created but before it is connected. This callback tags the created socket
@@ -489,6 +491,10 @@ void LibcurlHttpFetcher::CurlPerformOnce() {
     auxiliary_error_code_ = ErrorCode::kUnresolvedHostRecovered;
   }
 
+  auto sanitize_size = [this](off_t size) {
+    return payload_info_visible_ ? base::NumberToString(size) : kRedactedSize;
+  };
+
   // TODO(petkov): This temporary code tries to deal with the case where the
   // update engine performs an update check while the network is not ready
   // (e.g., right after resume). Longer term, we should check if the network
@@ -542,14 +548,16 @@ void LibcurlHttpFetcher::CurlPerformOnce() {
     auto bytes_left = transfer_size_ - bytes_downloaded_;
     if (partial_content) {
       LOG(INFO) << "Transfer partial content after downloading "
-                << bytes_downloaded_ << " of " << transfer_size_ << " bytes. "
-                << bytes_left << " bytes remaining as partial content returned "
+                << bytes_downloaded_ << " of " << sanitize_size(transfer_size_)
+                << " bytes. " << sanitize_size(bytes_left)
+                << " bytes remaining as partial content returned "
                 << "by server. Not incrementing retry count, still at "
                 << retry_count_ << " attempt(s)";
     } else {
       LOG(INFO) << "Transfer interrupted after downloading "
-                << bytes_downloaded_ << " of " << transfer_size_ << " bytes. "
-                << bytes_left << " bytes remaining " << "after " << retry_count_
+                << bytes_downloaded_ << " of " << sanitize_size(transfer_size_)
+                << " bytes. " << sanitize_size(bytes_left)
+                << " bytes remaining " << "after " << retry_count_
                 << " attempt(s)";
     }
 
@@ -568,7 +576,7 @@ void LibcurlHttpFetcher::CurlPerformOnce() {
         retry_time_);
   } else {
     LOG(INFO) << "Transfer completed (" << http_response_code_ << "), "
-              << bytes_downloaded_ << " bytes downloaded";
+              << sanitize_size(bytes_downloaded_) << " bytes downloaded";
     if (delegate_) {
       bool success = IsHttpResponseSuccess();
       delegate_->TransferComplete(this, success);

@@ -130,6 +130,9 @@ class HttpFetcher {
   // Sets the number of allowed retries.
   virtual void set_max_retry_count(int max_retry_count) = 0;
 
+  // Sets whether to show payload info in output or logs.
+  virtual void set_payload_info_visible(bool visible) = 0;
+
   // Get the total number of bytes downloaded by fetcher.
   virtual size_t GetBytesDownloaded() = 0;
 

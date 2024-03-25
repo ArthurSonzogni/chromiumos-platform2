@@ -65,6 +65,7 @@ class MockHttpFetcher : public HttpFetcher {
   void set_low_speed_limit(int low_speed_bps, int low_speed_sec) override {}
   void set_connect_timeout(int connect_timeout_seconds) override {}
   void set_max_retry_count(int max_retry_count) override {}
+  void set_payload_info_visible(bool visible) override {}
 
   // No bytes were downloaded in the mock class.
   size_t GetBytesDownloaded() override { return bytes_sent_; }

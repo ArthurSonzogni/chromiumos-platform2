@@ -89,7 +89,8 @@ class InstallAction : public Action<InstallAction>, public HttpFetcherDelegate {
  private:
   FRIEND_TEST(InstallActionTestSuite, TransferFailureFetchesFromBackup);
 
-  void StartInstallation(const std::string& url_to_fetch);
+  void StartInstallation(const std::string& url_to_fetch,
+                         const std::string& sanitized_url);
 
   void TerminateInstallation();
 
@@ -116,6 +117,7 @@ class InstallAction : public Action<InstallAction>, public HttpFetcherDelegate {
 
   // The list of backup URLs.
   std::vector<std::string> backup_urls_;
+  std::vector<std::string> backup_urls_sanitized_;
   int backup_url_index_{0};
 
   // The DLC manifest accessor.
