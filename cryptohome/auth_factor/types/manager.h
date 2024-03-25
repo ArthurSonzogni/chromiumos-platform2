@@ -11,6 +11,7 @@
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
@@ -34,6 +35,7 @@ class AuthFactorDriverManager {
       UssManager* uss_manager,
       AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
       KeyChallengeServiceFactory* key_challenge_service_factory,
+      CryptohomeRecoveryAuthBlockService* cr_service,
       FingerprintAuthBlockService* fp_service,
       AsyncInitPtr<BiometricsAuthBlockService> bio_service);
 

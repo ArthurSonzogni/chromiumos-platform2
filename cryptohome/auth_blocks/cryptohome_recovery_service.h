@@ -29,9 +29,11 @@ class CryptohomeRecoveryAuthBlockService {
       libstorage::Platform* platform,
       const hwsec::RecoveryCryptoFrontend* recovery_hwsec);
 
+  virtual ~CryptohomeRecoveryAuthBlockService() = default;
+
   // Initiate a recovery operation, generating the requests needed to execute
   // the actual authentication operation.
-  void GenerateRecoveryRequest(
+  virtual void GenerateRecoveryRequest(
       const ObfuscatedUsername& obfuscated_username,
       const cryptorecovery::RequestMetadata& request_metadata,
       const brillo::Blob& epoch_response,

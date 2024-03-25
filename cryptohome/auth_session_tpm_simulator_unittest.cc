@@ -31,6 +31,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/manager.h"
@@ -313,6 +314,8 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   KeysetManagement keyset_management_{&platform_, &crypto_,
                                       std::make_unique<VaultKeysetFactory>()};
   FakeFeaturesForTesting features_;
+  CryptohomeRecoveryAuthBlockService cr_service_{
+      &platform_, hwsec_recovery_crypto_frontend_.get()};
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
 
@@ -325,13 +328,10 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
       nullptr,
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorDriverManager auth_factor_driver_manager_{
-      &platform_,
-      &crypto_,
-      &uss_manager_,
-      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
-      nullptr,
-      fp_service_.get(),
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &platform_,        &crypto_,
+      &uss_manager_,     AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
+      nullptr,           &cr_service_,
+      fp_service_.get(), AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
                                          &uss_manager_};
   FpMigrationUtility fp_migration_utility_{

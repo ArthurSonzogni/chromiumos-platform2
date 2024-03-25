@@ -13,15 +13,30 @@
 #include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/recoverable_key_store/type.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
 
+struct CryptohomeRecoveryPrepareInput {
+  // The recovery request metadata.
+  cryptorecovery::RequestMetadata request_metadata;
+  // The epoch response from the recovery mediator service.
+  brillo::Blob epoch_response;
+  // The auth block state for the specified factor.
+  CryptohomeRecoveryAuthBlockState auth_block_state;
+};
+
 struct PrepareInput {
   // The obfuscated username.
   ObfuscatedUsername username;
+  // If this is preparing for a recovery operation, this should contain the
+  // necessary inputs to produce the recovery request.
+  std::optional<CryptohomeRecoveryPrepareInput>
+      cryptohome_recovery_prepare_input;
   // A generated reset secret to unlock a rate limited credential.
   std::optional<brillo::SecureBlob> reset_secret;
   // The PinWeaver leaf label of the rate-limiter.

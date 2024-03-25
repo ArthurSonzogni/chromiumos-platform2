@@ -24,9 +24,11 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
+#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libstorage/platform/mock_platform.h>
 
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/fake_features.h"
@@ -103,24 +105,24 @@ class AuthSessionManagerTest : public ::testing::Test {
   NiceMock<libstorage::MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
+  NiceMock<hwsec::MockRecoveryCryptoFrontend> hwsec_recovery_crypto_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
-                 nullptr};
+                 &hwsec_recovery_crypto_};
   UssStorage uss_storage_{&platform_};
   UssManager uss_manager_{uss_storage_};
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
+  CryptohomeRecoveryAuthBlockService cr_service_{&platform_,
+                                                 &hwsec_recovery_crypto_};
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
   AuthFactorDriverManager auth_factor_driver_manager_{
-      &platform_,
-      &crypto_,
-      &uss_manager_,
-      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
-      nullptr,
-      fp_service_.get(),
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &platform_,        &crypto_,
+      &uss_manager_,     AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
+      nullptr,           &cr_service_,
+      fp_service_.get(), AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
                                          &uss_manager_};
   FpMigrationUtility fp_migration_utility_{

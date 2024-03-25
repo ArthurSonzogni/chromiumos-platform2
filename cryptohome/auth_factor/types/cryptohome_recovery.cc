@@ -4,12 +4,15 @@
 
 #include "cryptohome/auth_factor/types/cryptohome_recovery.h"
 
+#include <utility>
+
 #include <base/time/time.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/label_arity.h"
+#include "cryptohome/auth_factor/prepare_purpose.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
@@ -28,6 +31,47 @@ using ::hwsec_foundation::status::MakeStatus;
 
 bool CryptohomeRecoveryAuthFactorDriver::IsSupportedByHardware() const {
   return CryptohomeRecoveryAuthBlock::IsSupported(*crypto_).ok();
+}
+
+AuthFactorDriver::PrepareRequirement
+CryptohomeRecoveryAuthFactorDriver::GetPrepareRequirement(
+    AuthFactorPreparePurpose purpose) const {
+  switch (purpose) {
+    case AuthFactorPreparePurpose::kPrepareAddAuthFactor:
+      return PrepareRequirement::kNone;
+    case AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor:
+      return PrepareRequirement::kEach;
+  }
+}
+
+void CryptohomeRecoveryAuthFactorDriver::PrepareForAdd(
+    const PrepareInput& prepare_input,
+    PreparedAuthFactorToken::Consumer callback) {
+  std::move(callback).Run(MakeStatus<CryptohomeError>(
+      CRYPTOHOME_ERR_LOC(kLocAuthFactorRecoveryPrepareForAddUnsupported),
+      ErrorActionSet(
+          {PossibleAction::kDevCheckUnexpectedState, PossibleAction::kAuth}),
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+}
+
+void CryptohomeRecoveryAuthFactorDriver::PrepareForAuthenticate(
+    const PrepareInput& prepare_input,
+    PreparedAuthFactorToken::Consumer callback) {
+  // Make sure we have valid input.
+  if (!prepare_input.cryptohome_recovery_prepare_input) {
+    std::move(callback).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthFactorRecoveryPrepareForAuthNoInput),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+    return;
+  }
+  // Delegate the actual preparation to the auth block service.
+  const auto& recovery_input = *prepare_input.cryptohome_recovery_prepare_input;
+  service_->GenerateRecoveryRequest(
+      prepare_input.username, recovery_input.request_metadata,
+      recovery_input.epoch_response, recovery_input.auth_block_state,
+      std::move(callback));
 }
 
 bool CryptohomeRecoveryAuthFactorDriver::NeedsResetSecret() const {

@@ -17,6 +17,7 @@
 #include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libstorage/platform/mock_platform.h>
 
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/cleanup/mock_user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"
@@ -44,6 +45,8 @@ struct BaseMockSystemApis {
   Crypto crypto{&hwsec, &hwsec_pw_manager, &cryptohome_keys_manager,
                 &recovery_crypto};
   ::testing::NiceMock<MockFirmwareManagementParameters> fwmp;
+  CryptohomeRecoveryAuthBlockService recovery_ab_service{&platform,
+                                                         &recovery_crypto};
   ::testing::NiceMock<MockInstallAttributes> install_attrs;
   ::testing::NiceMock<MockUserOldestActivityTimestampManager>
       user_activity_timestamp_manager;
@@ -87,6 +90,7 @@ struct MockSystemApis : public KeysetManagementOption {
         .cryptohome_keys_manager = &this->cryptohome_keys_manager,
         .crypto = &this->crypto,
         .firmware_management_parameters = &this->fwmp,
+        .recovery_ab_service = &this->recovery_ab_service,
         .install_attrs = &this->install_attrs,
         .user_activity_timestamp_manager =
             &this->user_activity_timestamp_manager,

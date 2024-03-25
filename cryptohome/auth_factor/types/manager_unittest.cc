@@ -10,8 +10,10 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
+#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libstorage/platform/mock_platform.h>
 
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
@@ -39,26 +41,26 @@ class AuthFactorDriverManagerTest : public ::testing::Test {
   libstorage::MockPlatform platform_;
   hwsec::MockCryptohomeFrontend hwsec_;
   hwsec::MockPinWeaverManagerFrontend hwsec_pw_manager_;
+  hwsec::MockRecoveryCryptoFrontend hwsec_recovery_crypto_;
   MockCryptohomeKeysManager cryptohome_keys_manager_;
   Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
-                 /*recovery_hwsec=*/nullptr};
+                 &hwsec_recovery_crypto_};
   MockFingerprintManager fp_manager_;
   MockSignalling signalling_;
   UssStorage uss_storage_{&platform_};
   UssManager uss_manager_{uss_storage_};
+  CryptohomeRecoveryAuthBlockService cr_service_{&platform_,
+                                                 &hwsec_recovery_crypto_};
   FingerprintAuthBlockService fp_service_{
       AsyncInitPtr<FingerprintManager>(&fp_manager_),
       AsyncInitPtr<SignallingInterface>(&signalling_)};
 
   // A real version of the manager, using mock inputs.
   AuthFactorDriverManager manager_{
-      &platform_,
-      &crypto_,
-      &uss_manager_,
-      AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
-      nullptr,
-      &fp_service_,
-      AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &platform_,    &crypto_,
+      &uss_manager_, AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
+      nullptr,       &cr_service_,
+      &fp_service_,  AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
 };
 
 TEST_F(AuthFactorDriverManagerTest, GetDriverIsSameForConstAndNonconst) {
@@ -129,7 +131,7 @@ TEST_F(AuthFactorDriverManagerTest, PrepareRequirement) {
   EXPECT_EQ(
       prepare_req(AuthFactorType::kCryptohomeRecovery,
                   AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor),
-      AuthFactorDriver::PrepareRequirement::kNone);
+      AuthFactorDriver::PrepareRequirement::kEach);
   EXPECT_EQ(
       prepare_req(AuthFactorType::kKiosk,
                   AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor),

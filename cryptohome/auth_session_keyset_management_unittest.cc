@@ -557,6 +557,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       &system_apis_.uss_manager,
       AsyncInitPtr<ChallengeCredentialsHelper>(nullptr),
       nullptr,
+      &system_apis_.recovery_ab_service,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   FpMigrationUtility fp_migration_utility_{

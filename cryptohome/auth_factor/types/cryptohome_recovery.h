@@ -10,6 +10,7 @@
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/common.h"
@@ -25,7 +26,6 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverSupportedByStorage<AfDriverStorageConfig::kUsingUss,
                                         AfDriverKioskConfig::kNoKiosk>,
       public AfDriverWithMetadata<CryptohomeRecoveryMetadata>,
-      public AfDriverNoPrepare,
       public AfDriverFullAuthForensics,
       public AfDriverFullAuthIsRepeatable<false>,
       public AfDriverWithConfigurableIntents<AuthIntentSequence<>,
@@ -35,12 +35,21 @@ class CryptohomeRecoveryAuthFactorDriver final
       public AfDriverNoRateLimiter,
       public AfDriverNoKnowledgeFactor {
  public:
-  explicit CryptohomeRecoveryAuthFactorDriver(Crypto* crypto,
-                                              libstorage::Platform* platform)
-      : crypto_(crypto), platform_(platform) {}
+  explicit CryptohomeRecoveryAuthFactorDriver(
+      libstorage::Platform* platform,
+      Crypto* crypto,
+      CryptohomeRecoveryAuthBlockService* service)
+      : platform_(platform), crypto_(crypto), service_(service) {}
 
  private:
   bool IsSupportedByHardware() const override;
+  PrepareRequirement GetPrepareRequirement(
+      AuthFactorPreparePurpose purpose) const override;
+  void PrepareForAdd(const PrepareInput& prepare_input,
+                     PreparedAuthFactorToken::Consumer callback) override;
+  void PrepareForAuthenticate(
+      const PrepareInput& prepare_input,
+      PreparedAuthFactorToken::Consumer callback) override;
   bool NeedsResetSecret() const override;
   bool IsDelaySupported() const override;
   CryptohomeStatusOr<base::TimeDelta> GetFactorDelay(
@@ -52,8 +61,9 @@ class CryptohomeRecoveryAuthFactorDriver final
       const CommonMetadata& common,
       const CryptohomeRecoveryMetadata& typed_metadata) const override;
 
-  Crypto* crypto_;
   libstorage::Platform* platform_;
+  Crypto* crypto_;
+  CryptohomeRecoveryAuthBlockService* service_;
 };
 
 }  // namespace cryptohome

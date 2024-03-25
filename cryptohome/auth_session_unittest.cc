@@ -32,6 +32,7 @@
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
 #include <libhwsec/frontend/pinweaver_manager/mock_frontend.h>
+#include <libhwsec/frontend/recovery_crypto/mock_frontend.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/secure_box.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -39,6 +40,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
@@ -330,9 +332,10 @@ class AuthSessionTest : public ::testing::Test {
   NiceMock<libstorage::MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
+  NiceMock<hwsec::MockRecoveryCryptoFrontend> hwsec_recovery_crypto_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
   Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
-                 nullptr};
+                 &hwsec_recovery_crypto_};
   UssStorage uss_storage_{&platform_};
   UssManager uss_manager_{uss_storage_};
   UserUssStorage user_uss_storage_{uss_storage_,
@@ -340,6 +343,8 @@ class AuthSessionTest : public ::testing::Test {
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
+  CryptohomeRecoveryAuthBlockService cr_service_{&platform_,
+                                                 &hwsec_recovery_crypto_};
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
@@ -353,6 +358,7 @@ class AuthSessionTest : public ::testing::Test {
       &uss_manager_,
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
       &key_challenge_service_factory_,
+      &cr_service_,
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           [](AuthSessionTest* test) { return test->bio_service_.get(); },

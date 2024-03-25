@@ -31,6 +31,7 @@
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/types/manager.h"
@@ -110,6 +111,7 @@ class UserDataAuth {
     CryptohomeKeysManager* cryptohome_keys_manager;
     Crypto* crypto;
     FirmwareManagementParametersInterface* firmware_management_parameters;
+    CryptohomeRecoveryAuthBlockService* recovery_ab_service;
     InstallAttributesInterface* install_attrs;
     UserOldestActivityTimestampManager* user_activity_timestamp_manager;
     KeysetManagement* keyset_management;
@@ -973,6 +975,8 @@ class UserDataAuth {
   Crypto* crypto_;
   // The Firmware Management Parameters object.
   FirmwareManagementParametersInterface* firmware_management_parameters_;
+  // The Recovery auth block service.
+  CryptohomeRecoveryAuthBlockService* recovery_ab_service_;
 
   // The default token manager client for accessing chapsd's PKCS#11 interface
   std::unique_ptr<chaps::TokenManagerClient> default_chaps_client_;

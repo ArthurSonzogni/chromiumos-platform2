@@ -2718,7 +2718,7 @@ void AuthSession::AuthForDecrypt::MigrateFromTheBack(
   const auto& legacy_record = legacy_records.back();
 
   auto prepare_input =
-      CreatePrepareInputForPrepareForAdd(AuthFactorType::kFingerprint);
+      CreatePrepareInputForAdding(AuthFactorType::kFingerprint);
   if (!prepare_input.ok()) {
     std::move(on_done).Run(std::move(prepare_input).err_status());
     return;
@@ -2814,8 +2814,8 @@ void AuthSession::PrepareAuthFactor(
       AuthFactorDriver::PrepareRequirement::kNone) {
     switch (*purpose) {
       case AuthFactorPreparePurpose::kPrepareAuthenticateAuthFactor: {
-        auto prepare_input =
-            CreatePrepareInputForPrepareForAuth(*auth_factor_type);
+        auto prepare_input = CreatePrepareInputForAuthentication(
+            request.prepare_input(), *auth_factor_type);
         if (!prepare_input.ok()) {
           std::move(on_done).Run(std::move(prepare_input).err_status());
           return;
@@ -2881,7 +2881,7 @@ void AuthSession::AuthForDecrypt::PrepareAuthFactorForAdd(
       return;
     }
   }
-  auto prepare_input = CreatePrepareInputForPrepareForAdd(auth_factor_type);
+  auto prepare_input = CreatePrepareInputForAdding(auth_factor_type);
   if (!prepare_input.ok()) {
     std::move(on_done).Run(std::move(prepare_input).err_status());
     return;
@@ -3275,7 +3275,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
 }
 
 CryptohomeStatusOr<PrepareInput>
-AuthSession::AuthForDecrypt::CreatePrepareInputForPrepareForAdd(
+AuthSession::AuthForDecrypt::CreatePrepareInputForAdding(
     AuthFactorType auth_factor_type) {
   PrepareInput prepare_input;
   prepare_input.username = session_->obfuscated_username_;
@@ -3314,10 +3314,21 @@ AuthSession::AuthForDecrypt::CreatePrepareInputForPrepareForAdd(
 }
 
 CryptohomeStatusOr<PrepareInput>
-AuthSession::CreatePrepareInputForPrepareForAuth(
+AuthSession::CreatePrepareInputForAuthentication(
+    const user_data_auth::PrepareInput& prepare_input_proto,
     AuthFactorType auth_factor_type) {
   PrepareInput prepare_input;
   prepare_input.username = obfuscated_username_;
+
+  switch (prepare_input_proto.input_case()) {
+    case user_data_auth::PrepareInput::kCryptohomeRecoveryInput: {
+      // TODO(b/269619280): Implement construction of the request.
+      break;
+    }
+    default:
+      // No known input data type to convert.
+      break;
+  }
 
   const AuthFactorDriver& factor_driver =
       auth_factor_driver_manager_->GetDriver(auth_factor_type);

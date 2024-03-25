@@ -15,6 +15,7 @@
 #include <libhwsec/frontend/recovery_crypto/frontend.h>
 #include <libstorage/platform/platform.h>
 
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/crypto.h"
@@ -43,6 +44,8 @@ struct SystemApis final {
   Crypto crypto{hwsec.get(), hwsec_pw_manager.get(), &cryptohome_keys_manager,
                 recovery_crypto.get()};
   FirmwareManagementParametersProxy firmware_management_parameters;
+  CryptohomeRecoveryAuthBlockService recovery_ab_service{&platform,
+                                                         recovery_crypto.get()};
   InstallAttributesProxy install_attrs;
   UserOldestActivityTimestampManager user_activity_timestamp_manager{&platform};
   KeysetManagement keyset_management{&platform, &crypto,
@@ -62,6 +65,7 @@ struct SystemApis final {
         .cryptohome_keys_manager = &this->cryptohome_keys_manager,
         .crypto = &this->crypto,
         .firmware_management_parameters = &this->firmware_management_parameters,
+        .recovery_ab_service = &this->recovery_ab_service,
         .install_attrs = &this->install_attrs,
         .user_activity_timestamp_manager =
             &this->user_activity_timestamp_manager,

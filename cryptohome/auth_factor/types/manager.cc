@@ -10,6 +10,7 @@
 #include <base/check_op.h>
 #include <libstorage/platform/platform.h>
 
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/cryptohome_recovery.h"
 #include "cryptohome/auth_factor/types/fingerprint.h"
@@ -32,6 +33,7 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
     UssManager* uss_manager,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
+    CryptohomeRecoveryAuthBlockService* cr_service,
     FingerprintAuthBlockService* fp_service,
     AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
   // This is written using a switch to force full enum coverage.
@@ -41,8 +43,8 @@ std::unique_ptr<AuthFactorDriver> CreateDriver(
     case AuthFactorType::kPin:
       return std::make_unique<PinAuthFactorDriver>(crypto);
     case AuthFactorType::kCryptohomeRecovery:
-      return std::make_unique<CryptohomeRecoveryAuthFactorDriver>(crypto,
-                                                                  platform);
+      return std::make_unique<CryptohomeRecoveryAuthFactorDriver>(
+          platform, crypto, cr_service);
     case AuthFactorType::kKiosk:
       return std::make_unique<KioskAuthFactorDriver>();
     case AuthFactorType::kSmartCard:
@@ -66,6 +68,7 @@ CreateDriverMap(
     UssManager* uss_manager,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
+    CryptohomeRecoveryAuthBlockService* cr_service,
     FingerprintAuthBlockService* fp_service,
     AsyncInitPtr<BiometricsAuthBlockService> bio_service) {
   std::unordered_map<AuthFactorType, std::unique_ptr<AuthFactorDriver>>
@@ -79,10 +82,10 @@ CreateDriverMap(
            AuthFactorType::kLegacyFingerprint,
            AuthFactorType::kFingerprint,
        }) {
-    auto driver =
-        CreateDriver(auth_factor_type, platform, crypto, uss_manager,
-                     challenge_credentials_helper,
-                     key_challenge_service_factory, fp_service, bio_service);
+    auto driver = CreateDriver(auth_factor_type, platform, crypto, uss_manager,
+                               challenge_credentials_helper,
+                               key_challenge_service_factory, cr_service,
+                               fp_service, bio_service);
     CHECK_NE(driver.get(), nullptr);
     driver_map[auth_factor_type] = std::move(driver);
   }
@@ -97,6 +100,7 @@ AuthFactorDriverManager::AuthFactorDriverManager(
     UssManager* uss_manager,
     AsyncInitPtr<ChallengeCredentialsHelper> challenge_credentials_helper,
     KeyChallengeServiceFactory* key_challenge_service_factory,
+    CryptohomeRecoveryAuthBlockService* cr_service,
     FingerprintAuthBlockService* fp_service,
     AsyncInitPtr<BiometricsAuthBlockService> bio_service)
     : null_driver_(std::make_unique<NullAuthFactorDriver>()),
@@ -105,6 +109,7 @@ AuthFactorDriverManager::AuthFactorDriverManager(
                                   uss_manager,
                                   challenge_credentials_helper,
                                   key_challenge_service_factory,
+                                  cr_service,
                                   fp_service,
                                   bio_service)) {}
 

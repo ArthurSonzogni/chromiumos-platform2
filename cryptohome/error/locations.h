@@ -1579,6 +1579,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUssManagerDiscardAllEncryptedCannotDiscardBusy = 2194,
   /* ./userdataauth.cc */
   kLocUserDataAuthUnauthedInUpdateAuthFactorMetadata = 2195,
+  /* ./auth_factor/types/cryptohome_recovery.cc */
+  kLocAuthFactorRecoveryPrepareForAuthNoInput = 2196,
+  /* ./auth_factor/types/cryptohome_recovery.cc */
+  kLocAuthFactorRecoveryPrepareForAddUnsupported = 2197,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.

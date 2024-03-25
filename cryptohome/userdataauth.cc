@@ -722,6 +722,7 @@ UserDataAuth::UserDataAuth(BackingApis apis)
       cryptohome_keys_manager_(apis.cryptohome_keys_manager),
       crypto_(apis.crypto),
       firmware_management_parameters_(apis.firmware_management_parameters),
+      recovery_ab_service_(apis.recovery_ab_service),
       default_chaps_client_(new chaps::TokenManagerClient()),
       chaps_client_(default_chaps_client_.get()),
       default_pkcs11_init_(new Pkcs11Init()),
@@ -829,8 +830,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
     default_auth_factor_driver_manager_ =
         std::make_unique<AuthFactorDriverManager>(
             platform_, crypto_, uss_manager_, async_cc_helper,
-            key_challenge_service_factory_, fingerprint_service_.get(),
-            async_biometrics_service);
+            key_challenge_service_factory_, recovery_ab_service_,
+            fingerprint_service_.get(), async_biometrics_service);
     auth_factor_driver_manager_ = default_auth_factor_driver_manager_.get();
   }
 

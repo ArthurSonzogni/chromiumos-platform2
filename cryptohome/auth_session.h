@@ -373,7 +373,7 @@ class AuthSession final {
         std::unique_ptr<AuthBlockState> auth_block_state);
 
     // Creates PrepareInput for preparing an auth factor type for adding.
-    CryptohomeStatusOr<PrepareInput> CreatePrepareInputForPrepareForAdd(
+    CryptohomeStatusOr<PrepareInput> CreatePrepareInputForAdding(
         AuthFactorType auth_factor_type);
 
     // Migrates legacy fp records into fingerprint auth factors. It is used as a
@@ -564,7 +564,8 @@ class AuthSession final {
       AuthFactorType auth_factor_type);
 
   // Creates PrepareInput for preparing an auth factor type for authentication.
-  CryptohomeStatusOr<PrepareInput> CreatePrepareInputForPrepareForAuth(
+  CryptohomeStatusOr<PrepareInput> CreatePrepareInputForAuthentication(
+      const user_data_auth::PrepareInput& prepare_input_proto,
       AuthFactorType auth_factor_type);
 
   // This function attempts to add verifier for the given label based on the

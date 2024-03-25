@@ -36,6 +36,7 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
+#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/auth_factor/type.h"
@@ -96,19 +97,6 @@ constexpr int kParallelFactor = 1;
 
 class AuthBlockUtilityImplTest : public ::testing::Test {
  public:
-  AuthBlockUtilityImplTest()
-      : platform_(std::make_unique<FakePlatform>()),
-        recovery_crypto_fake_backend_(
-            hwsec_factory_.GetRecoveryCryptoFrontend()),
-        crypto_(&hwsec_,
-                &hwsec_pw_manager_,
-                &cryptohome_keys_manager_,
-                recovery_crypto_fake_backend_.get()),
-        fp_service_(AsyncInitPtr<FingerprintManager>(&fp_manager_),
-                    AsyncInitPtr<SignallingInterface>(&signalling_)) {}
-  AuthBlockUtilityImplTest(const AuthBlockUtilityImplTest&) = delete;
-  AuthBlockUtilityImplTest& operator=(const AuthBlockUtilityImplTest&) = delete;
-
   void SetUp() override {
     // Setup salt for brillo functions.
     keyset_management_ = std::make_unique<KeysetManagement>(
@@ -161,7 +149,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
       base::SequencedTaskRunner::GetCurrentDefault();
 
-  libstorage::MockPlatform platform_;
+  libstorage::MockPlatform platform_{std::make_unique<FakePlatform>()};
   MockFingerprintManager fp_manager_;
   brillo::Blob system_salt_;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_;
@@ -169,15 +157,20 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   NiceMock<hwsec::MockPinWeaverManagerFrontend> hwsec_pw_manager_;
   hwsec::Tpm2SimulatorFactoryForTest hwsec_factory_;
   std::unique_ptr<const hwsec::RecoveryCryptoFrontend>
-      recovery_crypto_fake_backend_;
-  Crypto crypto_;
+      recovery_crypto_fake_backend_{hwsec_factory_.GetRecoveryCryptoFrontend()};
+  Crypto crypto_{&hwsec_, &hwsec_pw_manager_, &cryptohome_keys_manager_,
+                 recovery_crypto_fake_backend_.get()};
   UssStorage uss_storage_{&platform_};
   UssManager uss_manager_{uss_storage_};
   std::unique_ptr<KeysetManagement> keyset_management_;
   NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
   NiceMock<MockSignalling> signalling_;
-  FingerprintAuthBlockService fp_service_;
+  CryptohomeRecoveryAuthBlockService cr_service_{
+      &platform_, recovery_crypto_fake_backend_.get()};
+  FingerprintAuthBlockService fp_service_{
+      AsyncInitPtr<FingerprintManager>(&fp_manager_),
+      AsyncInitPtr<SignallingInterface>(&signalling_)};
   std::unique_ptr<BiometricsAuthBlockService> bio_service_;
   NiceMock<MockBiometricsCommandProcessor>* bio_processor_;
 
@@ -187,6 +180,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
       &uss_manager_,
       AsyncInitPtr<ChallengeCredentialsHelper>(&challenge_credentials_helper_),
       &key_challenge_service_factory_,
+      &cr_service_,
       &fp_service_,
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           &AuthBlockUtilityImplTest::GetBioService, base::Unretained(this)))};
