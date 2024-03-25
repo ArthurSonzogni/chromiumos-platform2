@@ -13,6 +13,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -74,8 +75,7 @@ void NvmeSelfTestSupportedByDebugd(
   debugd_proxy->NvmeAsync(
       kNvmeIdentityOption,
       base::BindOnce(&NvmeSelfTestSupportedFromIdentity).Then(std::move(cb1)),
-      base::BindOnce([](brillo::Error* error) {
-      }).Then(base::BindOnce(std::move(cb2), false)));
+      base::IgnoreArgs<brillo::Error*>(base::BindOnce(std::move(cb2), false)));
 }
 
 PathLiteral GetSensorPropertyPath(SensorType sensor) {
