@@ -248,9 +248,10 @@ WiFi::WiFi(Manager* manager,
   HelpRegisterConstDerivedBool(store, kWakeOnWiFiSupportedProperty,
                                &WiFi::GetWakeOnWiFiSupported);
 
-  auto perm_mac = manager->device_info()->GetPermAddress(interface_index);
+  const std::optional<net_base::MacAddress> perm_mac =
+      manager->device_info()->GetPermAddress(interface_index);
   if (perm_mac) {
-    perm_address_ = perm_mac->ToHexString();
+    perm_address_ = perm_mac;
   } else {
     LOG(WARNING) << "WiFi device with missing perm MAC: " << link_name();
   }
@@ -363,7 +364,8 @@ void WiFi::Stop(EnabledStateChangedCallback callback) {
 }
 
 std::string WiFi::DeviceStorageSuffix() const {
-  return perm_address_.empty() ? Device::DeviceStorageSuffix() : perm_address_;
+  return perm_address_.has_value() ? perm_address_->ToHexString()
+                                   : Device::DeviceStorageSuffix();
 }
 
 void WiFi::Scan(Error* /*error*/,

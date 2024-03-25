@@ -972,7 +972,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   uint32_t phy_index_;
 
   // Permanent MAC address of this WiFi device.
-  std::string perm_address_;
+  // TODO(b/329776834): The permanent MAC address should always exist. We should
+  // be able to unwrap the optional.
+  std::optional<net_base::MacAddress> perm_address_;
 
   // Used to access connection quality monitor features.
   std::unique_ptr<WiFiCQM> wifi_cqm_;

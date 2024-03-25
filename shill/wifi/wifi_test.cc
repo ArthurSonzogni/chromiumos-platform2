@@ -111,11 +111,11 @@ namespace shill {
 
 namespace {
 
-const uint16_t kNl80211FamilyId = 0x13;
-const int kInterfaceIndex = 1234;
-const uint32_t kPhyIndex = 5678;
-const std::array<uint8_t, ETH_ALEN> kPermDeviceAddress{0x01, 0x23, 0x45,
-                                                       0x67, 0x89, 0xab};
+constexpr uint16_t kNl80211FamilyId = 0x13;
+constexpr int kInterfaceIndex = 1234;
+constexpr uint32_t kPhyIndex = 5678;
+constexpr net_base::MacAddress kPermDeviceAddress{0x01, 0x23, 0x45,
+                                                  0x67, 0x89, 0xab};
 
 // Bytes representing a NL80211_CMD_NEW_WIPHY message reporting the WiFi
 // capabilities of a NIC with wiphy index |kNewWiphyNlMsg_PhyIndex| which
@@ -596,8 +596,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
             new NiceMock<MockSupplicantInterfaceProxy>()),
         supplicant_network_proxy_(new NiceMock<MockSupplicantNetworkProxy>()) {
     ON_CALL(*device_info(), GetPermAddress(kInterfaceIndex))
-        .WillByDefault(
-            Return(net_base::MacAddress::CreateFromBytes(kPermDeviceAddress)));
+        .WillByDefault(Return(kPermDeviceAddress));
     wifi_ = new WiFi(&manager_, kDeviceName, kDeviceAddress, kInterfaceIndex,
                      kPhyIndex, std::make_unique<MockWakeOnWiFi>());
     manager_.supplicant_manager()->set_proxy(supplicant_process_proxy_);
@@ -1383,7 +1382,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->supported_cipher_suites_.erase(WiFi::kWEP104CipherCode);
   }
 
-  std::string perm_address() const { return wifi_->perm_address_; }
+  std::optional<net_base::MacAddress> perm_address() const {
+    return wifi_->perm_address_;
+  }
   void SetMacAddress(net_base::MacAddress addr) {
     wifi_->set_mac_address(addr);
   }
@@ -1599,13 +1600,11 @@ class WiFiMainTest : public WiFiObjectTest {
 
 TEST_F(WiFiMainTest, GetStorageIdentifier) {
   // First test the base line - that the stored hardware MAC is what we expect.
-  EXPECT_EQ(perm_address(),
-            base::ToLowerASCII(base::HexEncode(kPermDeviceAddress.data(),
-                                               kPermDeviceAddress.size())));
+  EXPECT_EQ(perm_address(), kPermDeviceAddress);
   auto storage_id = GetStorageIdentifier();
   // Now check the expected storage ID and that it does no change when MAC
   // address changes.
-  EXPECT_EQ(storage_id, std::string("device_") + perm_address());
+  EXPECT_EQ(storage_id, std::string("device_") + perm_address()->ToHexString());
   net_base::MacAddress::DataType bytes;
   crypto::RandBytes(bytes.data(), bytes.size());
   SetMacAddress(net_base::MacAddress(bytes));
