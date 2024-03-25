@@ -133,6 +133,9 @@ class DeviceTracker {
   // previously started by StartPreparedScan.
   virtual ReadScanDataResponse ReadScanData(const ReadScanDataRequest& request);
 
+  // Set the smallest accepted PreparedScanRequest.max_read_size.
+  void SetSmallestMaxReadSizeForTesting(size_t size);
+
  private:
   struct DiscoverySessionState {
     std::string client_id;
@@ -183,6 +186,13 @@ class DeviceTracker {
 
     // Minimum time when the next check for readable data is allowed.
     base::Time next_read;
+
+    // Max size of chunks client is willing to receive.
+    size_t max_read_size;
+
+    // The scanner has returned EOF.  Tracked separately from last_result
+    // because max_read_size might prevent returning all of the data.
+    bool eof_reached;
   };
 
   std::optional<DiscoverySessionState*> GetSession(
@@ -282,6 +292,9 @@ class DeviceTracker {
   // Mapping from scan job handles to the associated job state.
   base::flat_map<std::string, ActiveJobState> active_jobs_
       GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Smallest max_read_size the client can request.
+  size_t smallest_max_read_size_;
 
   // Keep as the last member variable.
   base::WeakPtrFactory<DeviceTracker> weak_factory_

@@ -2031,6 +2031,35 @@ TEST_F(DeviceTrackerTest, StartPreparedScanMissingImageFormatFails) {
   EXPECT_FALSE(sps_response.has_job_handle());
 }
 
+TEST_F(DeviceTrackerTest, StartPreparedScanInsufficientMaxReadFails) {
+  SaneDeviceFake* scanner = CreateFakeScanner("Test");
+  scanner->SetScanParameters(MakeScanParameters(10, 10));
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker_->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  // Zero-size buffer explicitly not allowed.
+  StartPreparedScanRequest sps_request;
+  *sps_request.mutable_scanner() = open_response.config().scanner();
+  sps_request.set_image_format("image/jpeg");
+  sps_request.set_max_read_size(0);
+  StartPreparedScanResponse sps_response =
+      tracker_->StartPreparedScan(sps_request);
+  EXPECT_THAT(sps_response.scanner(), EqualsProto(sps_request.scanner()));
+  EXPECT_EQ(sps_response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_FALSE(sps_response.has_job_handle());
+
+  // Anything smaller than 32KB not allowed.
+  sps_request.set_max_read_size(32 * 1024 - 1);
+  sps_response = tracker_->StartPreparedScan(sps_request);
+  EXPECT_THAT(sps_response.scanner(), EqualsProto(sps_request.scanner()));
+  EXPECT_EQ(sps_response.result(), OPERATION_RESULT_INVALID);
+  EXPECT_FALSE(sps_response.has_job_handle());
+}
+
 TEST_F(DeviceTrackerTest, StartPreparedScanDeviceStartFails) {
   SaneDeviceFake* scanner = CreateFakeScanner("Test");
   scanner->SetScanParameters(MakeScanParameters(10, 10));
@@ -2404,6 +2433,8 @@ TEST_F(DeviceTrackerTest, ReadScanDataFailsForBadRead) {
 }
 
 TEST_F(DeviceTrackerTest, ReadScanDataSuccess) {
+  const size_t kExpectedImageSize = 130;
+
   SaneDeviceFake* scanner = CreateFakeScanner("Test");
   scanner->SetScanParameters(MakeScanParameters(100, 100));
   std::vector<uint8_t> page1(3 * 100 * 100, 0);
@@ -2424,6 +2455,8 @@ TEST_F(DeviceTrackerTest, ReadScanDataSuccess) {
       tracker_->StartPreparedScan(sps_request);
   ASSERT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
 
+  size_t total_read = 0;
+
   // First request will read nothing, but header data is available.
   ReadScanDataRequest rsd_request;
   *rsd_request.mutable_job_handle() = sps_response.job_handle();
@@ -2432,6 +2465,7 @@ TEST_F(DeviceTrackerTest, ReadScanDataSuccess) {
   EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
   EXPECT_EQ(rsd_response.data().length(), 54);  // Magic + header chunks.
   EXPECT_EQ(rsd_response.estimated_completion(), 0);
+  total_read += rsd_response.data().size();
 
   // Second request will read nothing.
   rsd_response = tracker_->ReadScanData(rsd_request);
@@ -2439,6 +2473,7 @@ TEST_F(DeviceTrackerTest, ReadScanDataSuccess) {
   EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
   EXPECT_EQ(rsd_response.data().size(), 0);
   EXPECT_EQ(rsd_response.estimated_completion(), 0);
+  total_read += rsd_response.data().size();
 
   // Next request will read 60 full lines, but the encoder might not write them
   // yet.
@@ -2447,6 +2482,7 @@ TEST_F(DeviceTrackerTest, ReadScanDataSuccess) {
   EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
   EXPECT_TRUE(rsd_response.has_data());
   EXPECT_EQ(rsd_response.estimated_completion(), 60);
+  total_read += rsd_response.data().size();
 
   // Next request will read the remaining data.
   rsd_response = tracker_->ReadScanData(rsd_request);
@@ -2454,6 +2490,7 @@ TEST_F(DeviceTrackerTest, ReadScanDataSuccess) {
   EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
   EXPECT_GT(rsd_response.data().length(), 9);  // IDAT + data.
   EXPECT_EQ(rsd_response.estimated_completion(), 100);
+  total_read += rsd_response.data().size();
 
   // Last request will get EOF plus the IEND chunk.
   rsd_response = tracker_->ReadScanData(rsd_request);
@@ -2461,6 +2498,118 @@ TEST_F(DeviceTrackerTest, ReadScanDataSuccess) {
   EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
   EXPECT_EQ(rsd_response.data().length(), 12);  // IEND.
   EXPECT_EQ(rsd_response.estimated_completion(), 100);
+  total_read += rsd_response.data().size();
+  EXPECT_EQ(total_read, kExpectedImageSize);
+}
+
+TEST_F(DeviceTrackerTest, ReadScanDataSmallReadsSuccess) {
+  const size_t kExpectedImageSize = 130;
+
+  SaneDeviceFake* scanner = CreateFakeScanner("Test");
+  scanner->SetScanParameters(MakeScanParameters(100, 100));
+  std::vector<uint8_t> page1(3 * 100 * 100, 0);
+  scanner->SetScanData({page1});
+  scanner->SetMaxReadSize(3 * 100 * 60 + 5);  // 60 lines plus leftover.
+  scanner->SetInitialEmptyReads(2);
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker_->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  StartPreparedScanRequest sps_request;
+  *sps_request.mutable_scanner() = open_response.config().scanner();
+  sps_request.set_image_format("image/png");
+  sps_request.set_max_read_size(1);
+  tracker_->SetSmallestMaxReadSizeForTesting(1);
+  StartPreparedScanResponse sps_response =
+      tracker_->StartPreparedScan(sps_request);
+  ASSERT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
+
+  // Read one byte at a time until reaching the expected last byte.
+  size_t completion = 0;
+  size_t total_read = 0;
+  while (total_read < kExpectedImageSize - 1) {
+    ReadScanDataRequest rsd_request;
+    *rsd_request.mutable_job_handle() = sps_response.job_handle();
+    ReadScanDataResponse rsd_response = tracker_->ReadScanData(rsd_request);
+    ASSERT_EQ(rsd_response.result(), OPERATION_RESULT_SUCCESS);
+    EXPECT_THAT(rsd_response.job_handle(),
+                EqualsProto(rsd_request.job_handle()));
+    EXPECT_LE(rsd_response.data().length(), 1);
+    EXPECT_GE(rsd_response.estimated_completion(), completion);
+    total_read += rsd_response.data().size();
+    completion = rsd_response.estimated_completion();
+  }
+
+  // Last request will get EOF plus the final byte.
+  ReadScanDataRequest rsd_request;
+  *rsd_request.mutable_job_handle() = sps_response.job_handle();
+  ReadScanDataResponse rsd_response = tracker_->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_EOF);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_EQ(rsd_response.data().length(), 1);
+  EXPECT_EQ(rsd_response.estimated_completion(), 100);
+  total_read += rsd_response.data().size();
+  EXPECT_EQ(total_read, kExpectedImageSize);
+}
+
+TEST_F(DeviceTrackerTest, ReadScanDataSmallReadsCancel) {
+  SaneDeviceFake* scanner = CreateFakeScanner("Test");
+  scanner->SetScanParameters(MakeScanParameters(1000, 100));
+  std::vector<uint8_t> page1(3 * 1000 * 100, 0);
+  scanner->SetScanData({page1});
+  scanner->SetMaxReadSize(3 * 1000 * 30 + 5);  // 30 lines plus leftover.
+  scanner->SetInitialEmptyReads(2);
+
+  OpenScannerRequest open_request;
+  open_request.mutable_scanner_id()->set_connection_string("Test");
+  open_request.set_client_id("DeviceTrackerTest");
+  OpenScannerResponse open_response = tracker_->OpenScanner(open_request);
+  ASSERT_EQ(open_response.result(), OPERATION_RESULT_SUCCESS);
+
+  StartPreparedScanRequest sps_request;
+  *sps_request.mutable_scanner() = open_response.config().scanner();
+  sps_request.set_image_format("image/png");
+  sps_request.set_max_read_size(7);
+  tracker_->SetSmallestMaxReadSizeForTesting(1);
+  StartPreparedScanResponse sps_response =
+      tracker_->StartPreparedScan(sps_request);
+  ASSERT_EQ(sps_response.result(), OPERATION_RESULT_SUCCESS);
+
+  // Read some of the data a few bytes at a time.
+  size_t completion = 0;
+  size_t total_read = 0;
+  while (total_read < 100) {
+    ReadScanDataRequest rsd_request;
+    *rsd_request.mutable_job_handle() = sps_response.job_handle();
+    ReadScanDataResponse rsd_response = tracker_->ReadScanData(rsd_request);
+    ASSERT_EQ(rsd_response.result(), OPERATION_RESULT_SUCCESS);
+    EXPECT_THAT(rsd_response.job_handle(),
+                EqualsProto(rsd_request.job_handle()));
+    EXPECT_LE(rsd_response.data().length(), 7);
+    EXPECT_GE(rsd_response.estimated_completion(), completion);
+    total_read += rsd_response.data().size();
+    completion = rsd_response.estimated_completion();
+  }
+
+  // CancelScan internally discards the remaining data.
+  CancelScanRequest cancel_request;
+  *cancel_request.mutable_job_handle() = sps_response.job_handle();
+  CancelScanResponse cancel_response = tracker_->CancelScan(cancel_request);
+  EXPECT_TRUE(cancel_response.success());
+  EXPECT_EQ(cancel_response.result(), OPERATION_RESULT_SUCCESS);
+
+  // Last request will get EOF with no payload because the cancel discarded it.
+  ReadScanDataRequest rsd_request;
+  *rsd_request.mutable_job_handle() = sps_response.job_handle();
+  ReadScanDataResponse rsd_response = tracker_->ReadScanData(rsd_request);
+  EXPECT_EQ(rsd_response.result(), OPERATION_RESULT_CANCELLED);
+  EXPECT_THAT(rsd_response.job_handle(), EqualsProto(rsd_request.job_handle()));
+  EXPECT_FALSE(rsd_response.has_data());
+  EXPECT_FALSE(rsd_response.has_estimated_completion());
+  EXPECT_LE(total_read, 106);  // Up to one read past the loop ending at 100.
 }
 
 TEST_F(DeviceTrackerTest, ReadScanDataAfterCancel) {

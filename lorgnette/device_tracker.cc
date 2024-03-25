@@ -4,10 +4,12 @@
 
 #include "lorgnette/device_tracker.h"
 
-#include <fcntl.h>
+#include <algorithm>
 #include <memory>
 #include <optional>
 #include <utility>
+
+#include <fcntl.h>
 
 #include <base/containers/contains.h>
 #include <base/files/file_path.h>
@@ -42,6 +44,11 @@ constexpr char kKnownDevicesFileName[] = "known_devices";
 constexpr base::TimeDelta kMaxCancelWaitTime = base::Seconds(3);
 constexpr base::TimeDelta kReadPollInterval = base::Milliseconds(50);
 constexpr base::TimeDelta kInitialPollInterval = base::Milliseconds(250);
+
+// 4MB max to stay under d-bus limits.
+constexpr size_t kLargestMaxReadSize = 4 * 1024 * 1024;
+// 32KB min to avoid excessive IPC overhead.
+constexpr size_t kSmallestMaxReadSize = 32 * 1024;
 
 lorgnette::OperationResult ToOperationResult(SANE_Status status) {
   switch (status) {
@@ -96,7 +103,8 @@ DeviceTracker::DeviceTracker(SaneClient* sane_client, LibusbWrapper* libusb)
       libusb_(libusb),
       dlc_client_(nullptr),
       dlc_started_(false),
-      dlc_completed_successfully_(false) {
+      dlc_completed_successfully_(false),
+      smallest_max_read_size_(kSmallestMaxReadSize) {
   DCHECK(sane_client_);
   DCHECK(libusb_);
 }
@@ -108,6 +116,10 @@ DeviceTracker::~DeviceTracker() {
 void DeviceTracker::SetScannerListChangedSignalSender(
     ScannerListChangedSignalSender sender) {
   signal_sender_ = sender;
+}
+
+void DeviceTracker::SetSmallestMaxReadSizeForTesting(size_t size) {
+  smallest_max_read_size_ = size;
 }
 
 void DeviceTracker::SetFirewallManager(FirewallManager* firewall_manager) {
@@ -959,6 +971,23 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
     return response;
   }
 
+  // Figure out how large the max read size should be.  If the client doesn't
+  // request at all, use the largest size.  If the client requests something too
+  // small, this is an error.  If the client requests something too large,
+  // silently clamp it to the largest size because returning less than the max
+  // data is always allowed.
+  size_t max_read_size = kLargestMaxReadSize;
+  if (request.has_max_read_size()) {
+    if (request.max_read_size() < smallest_max_read_size_) {
+      LOG(ERROR) << __func__
+                 << ": max_read_size too small: " << request.max_read_size();
+      response.set_result(OPERATION_RESULT_INVALID);
+      return response;
+    }
+    max_read_size = std::min(static_cast<size_t>(request.max_read_size()),
+                             kLargestMaxReadSize);
+  }
+
   // Cancel the active job if one is running, then ensure that no other active
   // jobs still point to this scanner.
   std::optional<std::string> job_id = state.device->GetCurrentJob();
@@ -1052,6 +1081,8 @@ StartPreparedScanResponse DeviceTracker::StartPreparedScan(
       .cancel_requested = false,
       .cancel_needed = false,
       .next_read = base::Time::Now(),
+      .max_read_size = max_read_size,
+      .eof_reached = false,
   };
   state.buffer = std::move(buffer);
   state.expected_lines = expected_lines;
@@ -1301,6 +1332,29 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
     base::PlatformThread::Sleep(job_state.next_read - now);
   }
 
+  // If the buffer already contains unread data, return that first.
+  size_t available = state.buffer->len - state.buffer->pos;
+  if (available) {
+    VLOG(1) << __func__
+            << ": Previously read encoded bytes available: " << available;
+    if (available <= job_state.max_read_size && job_state.eof_reached) {
+      // Previous EOF can be returned because pending data fits in the buffer.
+      response.set_result(OPERATION_RESULT_EOF);
+    } else {
+      response.set_result(OPERATION_RESULT_SUCCESS);
+    }
+    if (available > job_state.max_read_size) {
+      available = job_state.max_read_size;
+    }
+    response.set_data(
+        std::string(state.buffer->data + state.buffer->pos, available));
+    response.set_estimated_completion(state.completed_lines * 100 /
+                                      state.expected_lines);
+    state.buffer->pos += available;
+    VLOG(1) << __func__ << ": Returning previously read bytes: " << available;
+    return response;
+  }
+
   brillo::ErrorPtr error;
   size_t read;
   size_t rows;
@@ -1308,8 +1362,11 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
   response.set_result(ToOperationResult(status));
   state.completed_lines += rows;
   job_state.last_result = ToOperationResult(status);
+  fflush(state.buffer->writer);
+  available = state.buffer->len - state.buffer->pos;
   switch (status) {
     case SANE_STATUS_EOF:
+      job_state.eof_reached = true;
       if (job_state.cancel_needed) {
         // Cancellation was deferred earlier.  This doesn't matter for the page
         // that was just finished, but request it now in case the ADF needs to
@@ -1318,19 +1375,26 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
         state.device->CancelScan(nullptr);
         job_state.cancel_needed = false;
       }
+      if (available > job_state.max_read_size) {
+        // The hardware returned EOF, but there's too much data to return it all
+        // in this response.  Change to SUCCESS so the client will keep
+        // requesting more.
+        response.set_result(OPERATION_RESULT_SUCCESS);
+      }
       // EOF needs the same data handling as GOOD because there may be image
       // footers that haven't been transmitted yet.
       [[fallthrough]];
     case SANE_STATUS_GOOD: {
-      fflush(state.buffer->writer);
-      size_t encoded_len = state.buffer->len - state.buffer->pos;
-      VLOG(1) << __func__ << ": Encoded bytes available: " << encoded_len;
+      VLOG(1) << __func__ << ": Encoded bytes available: " << available;
+      if (available > job_state.max_read_size) {
+        available = job_state.max_read_size;
+      }
       response.set_data(
-          std::string(state.buffer->data + state.buffer->pos, encoded_len));
+          std::string(state.buffer->data + state.buffer->pos, available));
       response.set_estimated_completion(state.completed_lines * 100 /
                                         state.expected_lines);
-      state.buffer->pos = state.buffer->len;
-      if (encoded_len == 0) {
+      state.buffer->pos += available;
+      if (available == 0) {
         // Rate-limit polling from the client if no data was available yet.
         // If no lines have been read yet, use a longer delay because it's
         // likely that we're still waiting for physical hardware to move.
