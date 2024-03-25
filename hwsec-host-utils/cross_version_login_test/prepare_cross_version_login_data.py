@@ -54,6 +54,30 @@ class Version(NamedTuple):
         )
 
 
+class ImageInfo(NamedTuple):
+    """Represents the information of ChromiumOS image"""
+
+    board: str
+    version: Version
+
+    def gs_url(self) -> str:
+        """Fetches the ChromiumOS image from Google Cloud Storage."""
+        if self.version.custombuild:
+            # Download the custom-built VM image from a special GS folder (which
+            # is populated manually by developers).
+            image_url = (
+                f"gs://chromeos-test-assets-private/tast/cros/hwsec/"
+                f"cross_version_login/custombuilds/"
+                f"{self.version}_{self.board}.tar.xz"
+            )
+        else:
+            # No "custombuild" in the specified version, hence use the standard
+            # GS folder (it's populated by build bots).
+            gs_dir = board_gs_dir(self.board)
+            image_url = f"{gs_dir}/{self.version}/chromiumos_test_image.tar.xz"
+        return image_url
+
+
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
     parser = argparse.ArgumentParser(
         description="Generate cross-version test login data"
@@ -88,25 +112,32 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
         type=Path,
     )
     opts = parser.parse_args(argv)
-    version = get_version(opts.board, opts.version, opts.milestone)
-    run(opts.board, version, opts.output_dir, opts.ssh_identity_file)
+    image_info = get_image_info(opts.board, opts.version, opts.milestone)
+    # First, ensure the existence of image(s) to use.
+    ensure_vm_image(image_info)
+    run(image_info, opts.output_dir, opts.ssh_identity_file)
 
 
 def run(
-    board: str,
-    version: Version,
+    image_info: ImageInfo,
     output_dir: Path,
     ssh_identity_file: Optional[Path],
 ) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
         ssh_identity = setup_ssh_identity(ssh_identity_file, temp_path)
-        image_path = download_vm_image(board, version, temp_path)
-        start_vm(image_path, board)
+        image_path = download_vm_image(image_info, temp_path)
+        start_vm(image_path, image_info.board)
         try:
-            init_vm(version, ssh_identity)
+            init_vm(image_info.version, ssh_identity)
             generate_data()
-            upload_data(board, version, output_dir, temp_path, ssh_identity)
+            upload_data(
+                image_info.board,
+                image_info.version,
+                output_dir,
+                temp_path,
+                ssh_identity,
+            )
         finally:
             stop_vm()
 
@@ -139,21 +170,22 @@ def board_gs_dir(board: str) -> str:
     return f"gs://chromeos-image-archive/{board}-release"
 
 
-def get_latest_version(board: str, milestone: int) -> Version:
+def get_latest_version(board: str, milestone: int) -> str:
     gs_dir = board_gs_dir(board)
     gs_url = f"{gs_dir}/LATEST-release-R{milestone}*"
     version_str = check_run("gsutil", "cat", gs_url).decode("utf-8")
-    return parse_version(version_str)
+    return version_str
 
 
-def get_version(
+def get_image_info(
     board: str, version_str: Optional[str], milestone: Optional[int]
-) -> Version:
-    if version_str:
-        return parse_version(version_str)
+) -> ImageInfo:
     if milestone:
-        return get_latest_version(board, milestone)
-    raise RuntimeError(f"Neither version nor milestone is specified.")
+        version_str = get_latest_version(board, milestone)
+    if not version_str:
+        raise RuntimeError(f"Neither version nor milestone is specified.")
+    version = parse_version(version_str)
+    return ImageInfo(board, version)
 
 
 def setup_ssh_identity(
@@ -175,21 +207,19 @@ def default_ssh_identity_file() -> Path:
     return Path(f"{home}/chromiumos/chromite/ssh_keys/testing_rsa")
 
 
-def download_vm_image(board: str, version: Version, temp_path: Path) -> Path:
-    """Fetches the ChromiumOS image from Google Cloud Storage."""
-    if version.custombuild:
-        # Download the custom-built VM image from a special GS folder (which is
-        # populated manually by developers).
-        image_url = (
-            f"gs://chromeos-test-assets-private/tast/cros/hwsec/"
-            f"cross_version_login/custombuilds/{version}_{board}.tar.xz"
+def ensure_vm_image(image_info: ImageInfo):
+    image_url = image_info.gs_url()
+    try:
+        check_run("gsutil", "ls", image_url)
+    except subprocess.CalledProcessError:
+        raise RuntimeError(
+            "Failed to find the VM image. Please check the validity of the"
+            "given version and board"
         )
-    else:
-        # No "custombuild" in the specified version, hence use the standard GS
-        # folder (it's populated by build bots).
-        gs_dir = board_gs_dir(board)
-        image_url = f"{gs_dir}/{version}/chromiumos_test_image.tar.xz"
 
+
+def download_vm_image(image_info: ImageInfo, temp_path: Path) -> Path:
+    image_url = image_info.gs_url()
     archive_path = Path(f"{temp_path}/chromiumos_test_image.tar.xz")
     check_run("gsutil", "cp", image_url, archive_path)
     # Unpack the .tar.xz archive.
