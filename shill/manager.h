@@ -34,7 +34,7 @@
 #include "shill/hook_table.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/power_manager.h"
 #include "shill/profile.h"
 #include "shill/provider_interface.h"

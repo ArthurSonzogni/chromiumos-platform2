@@ -32,7 +32,7 @@
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/store/property_store.h"

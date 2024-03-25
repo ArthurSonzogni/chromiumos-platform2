@@ -35,8 +35,8 @@
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_monitor.h"
+#include "shill/network/portal_detector.h"
 #include "shill/network/slaac_controller.h"
-#include "shill/portal_detector.h"
 #include "shill/resolver.h"
 #include "shill/technology.h"
 

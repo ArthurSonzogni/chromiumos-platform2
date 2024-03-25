@@ -20,7 +20,7 @@
 #include "shill/ipconfig.h"
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/technology.h"
 
 namespace shill {

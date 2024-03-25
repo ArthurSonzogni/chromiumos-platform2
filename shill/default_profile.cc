@@ -14,7 +14,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/manager.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/resolver.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"

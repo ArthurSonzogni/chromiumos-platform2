@@ -22,8 +22,8 @@
 #include "shill/mockable.h"
 #include "shill/network/capport_proxy.h"
 #include "shill/network/connection_diagnostics.h"
+#include "shill/network/portal_detector.h"
 #include "shill/network/trial_scheduler.h"
-#include "shill/portal_detector.h"
 #include "shill/technology.h"
 
 namespace shill {

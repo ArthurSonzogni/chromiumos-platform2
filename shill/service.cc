@@ -45,7 +45,7 @@
 #include "shill/metrics.h"
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
 #include "shill/store/pkcs11_slot_getter.h"

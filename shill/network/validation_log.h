@@ -13,7 +13,7 @@
 #include "shill/mockable.h"
 #include "shill/network/capport_proxy.h"
 #include "shill/network/network_monitor.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/technology.h"
 
 namespace shill {

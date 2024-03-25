@@ -15,7 +15,7 @@
 #include "shill/metrics.h"
 #include "shill/mock_metrics.h"
 #include "shill/network/capport_proxy.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 

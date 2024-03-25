@@ -29,7 +29,7 @@
 #include "shill/mac_address.h"
 #include "shill/manager.h"
 #include "shill/network/network_monitor.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/profile.h"
 #include "shill/store/property_accessor.h"
 #include "shill/technology.h"

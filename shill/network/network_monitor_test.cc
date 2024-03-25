@@ -20,11 +20,11 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_portal_detector.h"
 #include "shill/network/mock_capport_proxy.h"
 #include "shill/network/mock_connection_diagnostics.h"
+#include "shill/network/mock_portal_detector.h"
 #include "shill/network/mock_validation_log.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/technology.h"
 
 namespace shill {

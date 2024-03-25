@@ -36,7 +36,7 @@
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/service.h"
 #include "shill/store/fake_store.h"
 #include "shill/technology.h"

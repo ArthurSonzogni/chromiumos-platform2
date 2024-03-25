@@ -20,9 +20,9 @@
 #include "shill/event_dispatcher.h"
 #include "shill/network/capport_proxy.h"
 #include "shill/network/connection_diagnostics.h"
+#include "shill/network/portal_detector.h"
 #include "shill/network/trial_scheduler.h"
 #include "shill/network/validation_log.h"
-#include "shill/portal_detector.h"
 
 namespace shill {
 namespace {

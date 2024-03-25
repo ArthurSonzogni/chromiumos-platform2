@@ -46,7 +46,7 @@
 #include "shill/mock_time.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network_monitor.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/service_property_change_test.h"
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"

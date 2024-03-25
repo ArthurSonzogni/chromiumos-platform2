@@ -44,7 +44,7 @@
 #include "shill/mock_virtual_device.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_throttler.h"
-#include "shill/portal_detector.h"
+#include "shill/network/portal_detector.h"
 #include "shill/service_under_test.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/key_file_store.h"
