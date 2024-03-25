@@ -30,6 +30,7 @@
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/logging.h"
+#include "shill/mac_address.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/store/property_accessor.h"
@@ -1192,7 +1193,7 @@ WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
 
   const auto now = clock_->Now();
   // If we get here then we need to have MAC set - make sure it is.
-  bool change = ret.policy_change || !mac_address_.is_set();
+  bool change = ret.policy_change || !mac_address_.address().has_value();
   // For rotating MAC check its expiration and lease/disconnect times.
   if (!change && rotating) {
     change = mac_address_.IsExpired(now) ||
@@ -1201,7 +1202,7 @@ WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
   }
 
   if (change) {
-    mac_address_.Randomize();
+    mac_address_ = MACAddress::CreateRandom();
     if (rotating) {
       mac_address_.set_expiration_time(now +
                                        MACAddress::kDefaultExpirationTime);

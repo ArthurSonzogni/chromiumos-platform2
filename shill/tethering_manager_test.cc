@@ -34,6 +34,7 @@
 #include "shill/error.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/http_request.h"
+#include "shill/mac_address.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
@@ -336,7 +337,7 @@ class TetheringManagerTest : public testing::Test {
       TetheringManager* tethering_manager) {
     KeyValueStore caps = GetConfig(tethering_manager);
     EXPECT_TRUE(GetConfigMAR(caps));
-    EXPECT_TRUE(tethering_manager->stable_mac_addr_.is_set());
+    EXPECT_TRUE(tethering_manager->stable_mac_addr_.address().has_value());
     EXPECT_TRUE(GetConfigAutoDisable(caps));
     EXPECT_FALSE(tethering_manager_->experimental_tethering_functionality_);
     std::string ssid = GetConfigSSID(caps);
@@ -726,8 +727,7 @@ TEST_F(TetheringManagerTest, TetheringConfigLoadAndUnload) {
   store.SetBool(TetheringManager::kStorageId, kTetheringConfAutoDisableProperty,
                 true);
   store.SetBool(TetheringManager::kStorageId, kTetheringConfMARProperty, true);
-  MACAddress mac;
-  mac.Randomize();
+  const MACAddress mac = MACAddress::CreateRandom();
   mac.Save(&store, TetheringManager::kStorageId);
   store.SetString(TetheringManager::kStorageId, kTetheringConfSSIDProperty,
                   kTestAPHexSSID);

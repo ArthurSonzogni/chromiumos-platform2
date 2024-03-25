@@ -819,12 +819,11 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     EXPECT_TRUE(ep->supported_features_.mbo_support);
   }
   {
-    std::vector<uint8_t> data;
-    MACAddress bss;
-    bss.Randomize();
-    data.insert(data.end(), bss.address().begin(), bss.address().end());
-    std::string ssid{"SSID_OWE_"};
-    ssid += bss.ToString();
+    const MACAddress bss = MACAddress::CreateRandom();
+    const std::vector<uint8_t> mac_addr_data = bss.address()->ToBytes();
+    const std::string ssid = "SSID_OWE_" + bss.ToString();
+
+    std::vector<uint8_t> data = mac_addr_data;
     data.push_back(ssid.size());
     data.insert(data.end(), ssid.begin(), ssid.end());
     EXPECT_EQ(data.size(), 33);
@@ -835,9 +834,8 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
     EXPECT_FALSE(ep->ParseIEs(MakeBSSPropertiesWithIEs(ies), &phy_mode));
     EXPECT_TRUE(ep->security_flags_.trans_owe);
-    EXPECT_EQ(ep->owe_bssid().size(), bss.address().size());
-    EXPECT_EQ(0, std::memcmp(ep->owe_bssid().data(), bss.address().data(),
-                             bss.address().size()));
+    EXPECT_EQ(*net_base::MacAddress::CreateFromBytes(ep->owe_bssid()),
+              *bss.address());
     EXPECT_EQ(ep->owe_ssid().size(), ssid.size());
     EXPECT_EQ(0, std::memcmp(ep->owe_ssid().data(), ssid.data(), ssid.size()));
   }

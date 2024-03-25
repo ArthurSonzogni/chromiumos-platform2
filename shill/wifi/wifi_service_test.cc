@@ -916,11 +916,11 @@ TEST_F(WiFiServiceTest, LoadMACPolicy) {
   SetWiFiProperties(&store, storage_id, simple_ssid(), kSecurityClassNone);
   store.SetString(storage_id, WiFiService::kStorageMACPolicy,
                   kWifiRandomMacPolicyPersistentRandom);
-  service->mac_address_.Randomize();
+  service->mac_address_ = MACAddress::CreateRandom();
   auto mac_value = service->mac_address_.ToString();
   service->mac_address_.Save(&store, storage_id);
   // Re-randomize to check if previous value is restored.
-  service->mac_address_.Randomize();
+  service->mac_address_ = MACAddress::CreateRandom();
   EXPECT_TRUE(service->Load(&store));
   // After loading of the service from profile policy should reflect stored
   // value and subsequent call to UpdateMACAddress() should indicate no change.
@@ -2399,13 +2399,14 @@ TEST_F(WiFiServiceTest, SetMACPolicy) {
 bool verifyAddressCorrect(const MACAddress& addr) {
   static constexpr auto kMulticastBit = 1 << 0;
   static constexpr auto kLocallyAdministeredBit = 1 << 1;
-  EXPECT_TRUE(addr.is_set());
+  EXPECT_TRUE(addr.address().has_value());
   uint8_t msb;
   EXPECT_EQ(sscanf(addr.ToString().substr(0, 2).c_str(), "%02hhx", &msb), 1);
   EXPECT_EQ((msb & (kMulticastBit | kLocallyAdministeredBit)),
             kLocallyAdministeredBit);
-  return addr.is_set() && ((msb & (kMulticastBit | kLocallyAdministeredBit)) ==
-                           kLocallyAdministeredBit);
+  return addr.address().has_value() &&
+         ((msb & (kMulticastBit | kLocallyAdministeredBit)) ==
+          kLocallyAdministeredBit);
 }
 
 TEST_F(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy) {
@@ -2438,7 +2439,8 @@ TEST_F(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy) {
 
   // Make sure local admin bit is cleared.
   addr[1] = 'd';
-  wifi_service->mac_address_.Set(addr);
+  wifi_service->mac_address_.set_address_for_test(
+      *net_base::MacAddress::CreateFromString(addr));
   // Cross the MAC expiry
   clock->Advance(base::Seconds(1));
   mac = wifi_service->UpdateMACAddress();
@@ -2464,7 +2466,8 @@ TEST_F(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy) {
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
   // Now cross the rotation deadline - address should change.
   addr[1] = 'd';
-  wifi_service->mac_address_.Set(addr);
+  wifi_service->mac_address_.set_address_for_test(
+      *net_base::MacAddress::CreateFromString(addr));
   clock->Advance(base::Hours(2));
   mac = wifi_service->UpdateMACAddress();
   EXPECT_FALSE(mac.mac.empty());
@@ -2523,7 +2526,8 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPersistentPolicy) {
   addr = wifi_service->mac_address_.ToString();
   // Make sure local admin bit is cleared.
   addr[1] = 'd';
-  wifi_service->mac_address_.Set(addr);
+  wifi_service->mac_address_.set_address_for_test(
+      *net_base::MacAddress::CreateFromString(addr));
   clock->Advance(MACAddress::kDefaultExpirationTime + base::Seconds(1));
   mac = wifi_service->UpdateMACAddress();
   EXPECT_FALSE(mac.mac.empty());
@@ -2548,7 +2552,8 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   auto addr = wifi_service->mac_address_.ToString();
   // Make sure local admin bit is cleared.
   addr[1] = 'd';
-  wifi_service->mac_address_.Set(addr);
+  wifi_service->mac_address_.set_address_for_test(
+      *net_base::MacAddress::CreateFromString(addr));
   // Simulate changing policy.
   EXPECT_TRUE(wifi_service->SetMACPolicy(
       kWifiRandomMacPolicyNonPersistentRandom, &ret));
@@ -2565,7 +2570,8 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
 
   addr = wifi_service->mac_address_.ToString();
   addr[1] = 'd';
-  wifi_service->mac_address_.Set(addr);
+  wifi_service->mac_address_.set_address_for_test(
+      *net_base::MacAddress::CreateFromString(addr));
   EXPECT_TRUE(
       wifi_service->SetMACPolicy(kWifiRandomMacPolicyPersistentRandom, &ret));
   EXPECT_EQ(wifi_service->random_mac_policy_,
@@ -2578,7 +2584,8 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
 
   addr = wifi_service->mac_address_.ToString();
   addr[1] = 'd';
-  wifi_service->mac_address_.Set(addr);
+  wifi_service->mac_address_.set_address_for_test(
+      *net_base::MacAddress::CreateFromString(addr));
   EXPECT_TRUE(wifi_service->SetMACPolicy(
       kWifiRandomMacPolicyNonPersistentRandom, &ret));
   EXPECT_EQ(wifi_service->random_mac_policy_,
@@ -2641,7 +2648,8 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
 
   addr = wifi_service->mac_address_.ToString();
   addr[1] = 'd';
-  wifi_service->mac_address_.Set(addr);
+  wifi_service->mac_address_.set_address_for_test(
+      *net_base::MacAddress::CreateFromString(addr));
   EXPECT_TRUE(
       wifi_service->SetMACPolicy(kWifiRandomMacPolicyPersistentRandom, &ret));
   EXPECT_EQ(wifi_service->random_mac_policy_,

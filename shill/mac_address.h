@@ -4,11 +4,9 @@
 #ifndef SHILL_MAC_ADDRESS_H_
 #define SHILL_MAC_ADDRESS_H_
 
-#include <array>
 #include <string>
 #include <base/time/time.h>
-
-#include "linux/if_ether.h"
+#include <net-base/mac_address.h>
 
 namespace shill {
 
@@ -27,12 +25,16 @@ class MACAddress {
   // Set expiration time to this constant to disable expiration.
   static constexpr base::Time kNotExpiring = base::Time();
 
-  // It does not clear the address itself, but clears is_set flag.
+  // Creates a MACAddress instance with a randomized address.
+  static MACAddress CreateRandom();
+
+  MACAddress();
+  MACAddress(net_base::MacAddress address, base::Time expiration_time);
+
+  // Clears the address and resets expiration time.
   void Clear();
 
-  bool is_set() const { return is_set_; }
-
-  const std::array<uint8_t, ETH_ALEN>& address() const { return address_; }
+  std::optional<net_base::MacAddress> address() const { return address_; }
 
   // Returns is true if address has expired.
   bool IsExpired(base::Time now) const;
@@ -43,15 +45,13 @@ class MACAddress {
   // Loads MACAddress-related data from store.
   bool Load(const StoreInterface* storage, const std::string& id);
 
-  // Randomize address stored.
-  void Randomize();
-
   // Saves MACAddress-related data to store.
   bool Save(StoreInterface* storage, const std::string& id) const;
 
-  // Set stored address to match particular string in aa:bb:cc:dd:ee:ff
-  // notation. Returns false if given string was incorrect.
-  bool Set(const std::string& str);
+  // Set the address, it's only used for testing.
+  void set_address_for_test(net_base::MacAddress address) {
+    address_ = address;
+  }
 
   // Sets expiration time of the address.
   void set_expiration_time(base::Time when) { expiration_time_ = when; }
@@ -62,27 +62,15 @@ class MACAddress {
   // Convenient operator for logging.
   friend std::ostream& operator<<(std::ostream& os, const MACAddress& addr);
 
-  MACAddress() = default;
+  friend bool operator==(const MACAddress& a1, const MACAddress& a2) = default;
 
  private:
   static constexpr char kStorageMACAddress[] = "WiFi.MACAddress";
   static constexpr char kStorageMACAddressExpiry[] = "WiFi.MACAddress.Expiry";
-  friend bool operator==(const MACAddress& a1, const MACAddress& a2);
 
-  std::array<uint8_t, ETH_ALEN> address_;
-  bool is_set_ = false;
+  std::optional<net_base::MacAddress> address_;
   base::Time expiration_time_ = kNotExpiring;
-
-  MACAddress(const MACAddress&) = delete;
-  MACAddress(const MACAddress&&) = delete;
-  MACAddress& operator=(const MACAddress&) = delete;
-  MACAddress&& operator=(const MACAddress&&) = delete;
 };
-
-inline bool operator==(const MACAddress& a1, const MACAddress& a2) {
-  return a1.is_set_ == a2.is_set_ && a1.address_ == a2.address_ &&
-         a1.expiration_time_ == a2.expiration_time_;
-}
 
 }  // namespace shill
 

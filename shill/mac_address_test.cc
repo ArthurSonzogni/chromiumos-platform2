@@ -5,10 +5,11 @@
 
 #include <cstdio>
 
+#include <base/rand_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/mac_address.h>
 
-#include "base/rand_util.h"
 #include "shill/store/fake_store.h"
 
 using testing::Test;
@@ -25,38 +26,36 @@ class MACAddressTest : public Test {
 };
 
 TEST_F(MACAddressTest, SetClear) {
+  constexpr net_base::MacAddress kAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff);
+
   MACAddress addr;
-  EXPECT_FALSE(addr.is_set());
+  EXPECT_FALSE(addr.address().has_value());
   EXPECT_EQ(addr.ToString(), "<UNSET>");
-  addr.Set("abcd");
-  EXPECT_FALSE(addr.is_set());
-  addr.Set("aa:bb:cc:dd:ee:ff");
-  EXPECT_TRUE(addr.is_set());
+
+  addr.set_address_for_test(kAddress);
+  EXPECT_EQ(addr.address(), kAddress);
   EXPECT_EQ(addr.ToString(), "aa:bb:cc:dd:ee:ff");
+
   addr.Clear();
-  EXPECT_FALSE(addr.is_set());
+  EXPECT_FALSE(addr.address().has_value());
 }
 
-TEST_F(MACAddressTest, Randomize) {
-  static constexpr auto kMulticastBit = 1 << 0;
-  static constexpr auto kLocallyAdministeredBit = 1 << 1;
-  MACAddress addr;
-  EXPECT_FALSE(addr.is_set());
-  EXPECT_EQ(addr.ToString(), "<UNSET>");
-  addr.Randomize();
-  EXPECT_TRUE(addr.is_set());
+TEST_F(MACAddressTest, CreateRandom) {
+  constexpr auto kMulticastBit = 1 << 0;
+  constexpr auto kLocallyAdministeredBit = 1 << 1;
+
+  const MACAddress addr = MACAddress::CreateRandom();
+  EXPECT_TRUE(addr.address().has_value());
+
   uint8_t msb;
   EXPECT_EQ(sscanf(addr.ToString().substr(0, 2).c_str(), "%02hhx", &msb), 1);
   EXPECT_EQ(msb & (kMulticastBit | kLocallyAdministeredBit),
             kLocallyAdministeredBit);
-  addr.Clear();
-  EXPECT_FALSE(addr.is_set());
 }
 
 TEST_F(MACAddressTest, AddressExpire) {
-  MACAddress addr;
-  addr.Randomize();
-  EXPECT_TRUE(addr.is_set());
+  MACAddress addr = MACAddress::CreateRandom();
+  EXPECT_TRUE(addr.address().has_value());
   auto start_time = base::Time::FromDeltaSinceWindowsEpoch(base::Seconds(1));
   EXPECT_FALSE(addr.IsExpired(start_time));
   addr.set_expiration_time(start_time + base::Seconds(10));
@@ -73,32 +72,32 @@ TEST_F(MACAddressTest, LoadSave_Unset) {
   // Verify behaviour for an unset value.
   EXPECT_FALSE(mac_addr.Save(&storage, storage_id_));
   EXPECT_FALSE(mac_addr.Load(&storage, storage_id_));
-  EXPECT_FALSE(mac_addr.is_set());
+  EXPECT_FALSE(mac_addr.address().has_value());
 }
 
 TEST_F(MACAddressTest, LoadSave_Valid) {
   FakeStore storage;
-  MACAddress mac_addr, addr;
+  MACAddress addr;
 
   // Verification for a valid value.
-  mac_addr.Randomize();
+  const MACAddress mac_addr = MACAddress::CreateRandom();
   EXPECT_TRUE(mac_addr.Save(&storage, storage_id_));
   EXPECT_TRUE(addr.Load(&storage, storage_id_));
-  EXPECT_TRUE(addr.is_set());
+  EXPECT_TRUE(addr.address().has_value());
   EXPECT_EQ(addr, mac_addr);
 }
 
 TEST_F(MACAddressTest, LoadSave_Expiring) {
   FakeStore storage;
-  MACAddress mac_addr, addr;
+  MACAddress addr;
 
   // Verification for an expiring value.
-  mac_addr.Randomize();
+  MACAddress mac_addr = MACAddress::CreateRandom();
   mac_addr.set_expiration_time(base::Time::Now() +
                                base::Seconds(base::RandInt(0, 1000)));
   EXPECT_TRUE(mac_addr.Save(&storage, storage_id_));
   EXPECT_TRUE(addr.Load(&storage, storage_id_));
-  EXPECT_TRUE(addr.is_set());
+  EXPECT_TRUE(addr.address().has_value());
   EXPECT_EQ(addr, mac_addr);
 }
 

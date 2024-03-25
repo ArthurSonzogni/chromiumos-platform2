@@ -198,7 +198,7 @@ void TetheringManager::ResetConfiguration() {
 
   security_ = WiFiSecurity(WiFiSecurity::kWpa2);
   mar_ = true;
-  stable_mac_addr_.Randomize();
+  stable_mac_addr_ = MACAddress::CreateRandom();
   band_ = WiFiBand::kAllBands;
   downstream_device_for_test_ = std::nullopt;
   downstream_phy_index_for_test_ = std::nullopt;
@@ -417,7 +417,7 @@ bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
   }
   // If the SSID changes then re-randomize the stable MAC.
   if (hex_ssid_ != old_ssid) {
-    stable_mac_addr_.Randomize();
+    stable_mac_addr_ = MACAddress::CreateRandom();
   }
 
   if (!Save(profile->GetStorage())) {
@@ -767,11 +767,9 @@ void TetheringManager::StartTetheringSession() {
   hotspot_service_up_ = false;
   std::string mac_address;
   if (mar_) {
-    MACAddress mac;
-    mac.Randomize();
-    mac_address = mac.ToString();
+    mac_address = MACAddress::CreateRandom().ToString();
   } else {
-    CHECK(stable_mac_addr_.is_set());
+    CHECK(stable_mac_addr_.address().has_value());
     mac_address = stable_mac_addr_.ToString();
   }
 

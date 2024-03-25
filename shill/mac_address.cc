@@ -1,19 +1,35 @@
 // Copyright 2021 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#include <string>
-#include <vector>
 
-#include "crypto/random.h"
-#include "shill/device.h"
 #include "shill/mac_address.h"
+
+#include <optional>
+#include <string>
+
+#include <crypto/random.h>
+#include <net-base/mac_address.h>
+
 #include "shill/store/store_interface.h"
 
 namespace shill {
 
+// static
+MACAddress MACAddress::CreateRandom() {
+  net_base::MacAddress::DataType data;
+  crypto::RandBytes(data.data(), data.size());
+  data[0] &= ~kMulicastMacBit;  // Set unicast address.
+  data[0] |= kLocallyAdministratedMacBit;
+
+  return MACAddress(net_base::MacAddress(data), kNotExpiring);
+}
+
+MACAddress::MACAddress() = default;
+MACAddress::MACAddress(net_base::MacAddress address, base::Time expiration_time)
+    : address_(address), expiration_time_(expiration_time) {}
+
 void MACAddress::Clear() {
-  is_set_ = false;
-  // Reset expiration time.
+  address_ = std::nullopt;
   expiration_time_ = kNotExpiring;
 }
 
@@ -24,9 +40,17 @@ bool MACAddress::IsExpired(base::Time now) const {
 
 bool MACAddress::Load(const StoreInterface* storage, const std::string& id) {
   std::string mac_str;
-  if (!storage->GetString(id, kStorageMACAddress, &mac_str) || !Set(mac_str)) {
+  if (!storage->GetString(id, kStorageMACAddress, &mac_str)) {
     return false;
   }
+
+  const std::optional<net_base::MacAddress> address =
+      net_base::MacAddress::CreateFromString(mac_str);
+  if (!address.has_value()) {
+    return false;
+  }
+  address_ = *address;
+
   uint64_t expiration_time;
   if (storage->GetUint64(id, kStorageMACAddressExpiry, &expiration_time)) {
     expiration_time_ = base::Time::FromDeltaSinceWindowsEpoch(
@@ -35,28 +59,8 @@ bool MACAddress::Load(const StoreInterface* storage, const std::string& id) {
   return true;
 }
 
-void MACAddress::Randomize() {
-  crypto::RandBytes(address_.data(), address_.size());
-
-  address_[0] &= ~kMulicastMacBit;  // Set unicast address.
-  address_[0] |= kLocallyAdministratedMacBit;
-  is_set_ = true;
-  // Reset expiration time.
-  expiration_time_ = kNotExpiring;
-}
-
-bool MACAddress::Set(const std::string& str) {
-  const auto addr = Device::MakeHardwareAddressFromString(str);
-  if (addr.size() != address_.size()) {
-    return false;
-  }
-  std::copy_n(addr.begin(), address_.size(), address_.begin());
-  is_set_ = true;
-  return true;
-}
-
 bool MACAddress::Save(StoreInterface* storage, const std::string& id) const {
-  if (!is_set_) {
+  if (!address_.has_value()) {
     return false;
   }
   storage->SetString(id, kStorageMACAddress, ToString());
@@ -67,11 +71,10 @@ bool MACAddress::Save(StoreInterface* storage, const std::string& id) const {
 }
 
 std::string MACAddress::ToString() const {
-  if (!is_set_) {
+  if (!address_.has_value()) {
     return "<UNSET>";
   }
-  const std::vector<uint8_t> addr(address_.begin(), address_.end());
-  return Device::MakeStringFromHardwareAddress(addr);
+  return address_->ToString();
 }
 
 std::ostream& operator<<(std::ostream& os, const MACAddress& addr) {
