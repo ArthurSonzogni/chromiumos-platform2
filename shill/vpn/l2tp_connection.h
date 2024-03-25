@@ -97,6 +97,7 @@ class L2TPConnection : public VPNConnection, public RpcTaskDelegate {
   base::FilePath l2tpd_config_path_;
   base::FilePath l2tpd_control_path_;
   base::FilePath pppd_config_path_;
+  base::FilePath pppd_log_path_;
 
   std::unique_ptr<ExternalTask> external_task_;
 

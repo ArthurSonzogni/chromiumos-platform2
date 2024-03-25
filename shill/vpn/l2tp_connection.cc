@@ -16,6 +16,7 @@
 #include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -37,6 +38,7 @@ constexpr char kXl2tpdControlPath[] = "/usr/sbin/xl2tpd-control";
 constexpr char kL2TPDConfigFileName[] = "l2tpd.conf";
 constexpr char kL2TPDControlFileName[] = "l2tpd.control";
 constexpr char kPPPDConfigFileName[] = "pppd.conf";
+constexpr char kPPPDLogFileName[] = "pppd.log";
 
 // Environment variable available to ppp plugin to know the resolved address
 // of the L2TP server.
@@ -53,6 +55,37 @@ constexpr char kMaxRedialsParameter[] = "30";
 // didn't contain the comment delimiter ';', it could be used to populate
 // multiple configuration options.
 constexpr size_t kXl2tpdMaxConfigurationLength = 1023;
+
+// Reads the pppd log at |log_path|, and returns true if the log indicates that
+// there is an authentication failure.
+bool IsAuthErrorFromPPPDLog(const base::FilePath& log_path) {
+  // The max size that this function reads from the log, the connect failure
+  // should happen at the very early stage so it shouldn't be long.
+  constexpr int kMaxLogSize = 4096;
+  constexpr char kAuthFailureLine[] = "authentication failed";
+
+  std::string log;
+  if (!base::ReadFileToStringWithMaxSize(log_path, &log, kMaxLogSize)) {
+    if (log.size() == kMaxLogSize) {
+      LOG(INFO) << "Skip parsing pppd log since the log size is too long";
+      return false;
+    }
+    PLOG(ERROR) << "Failed to read pppd log at " << log_path;
+    return false;
+  }
+
+  // Split the lines and do the match with `ends_with()` to be more efficient
+  // (compared with `std::string::find()`). The correctness will be verified by
+  // the network.VPNIncorrectCreds test. See b/329328608.
+  std::vector<std::string_view> lines = base::SplitStringPiece(
+      log, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  for (const auto line : lines) {
+    if (line.ends_with(kAuthFailureLine)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 }  // namespace
 
@@ -141,7 +174,18 @@ void L2TPConnection::Notify(const std::string& reason,
                 << state();
       return;
     }
-    NotifyFailure(PPPDaemon::ParseExitFailure(dict), "pppd disconnected");
+
+    Service::ConnectFailure failure = PPPDaemon::ParseExitFailure(dict);
+
+    // The exit code may be unknown even if the failure is actually auth error,
+    // so let's parse the logs in this case. See b/329328608.
+    if (failure == Service::kFailureUnknown &&
+        IsAuthErrorFromPPPDLog(pppd_log_path_)) {
+      LOG(INFO) << "Found pattern of auth failure in pppd log";
+      failure = Service::kFailurePPPAuth;
+    }
+
+    NotifyFailure(failure, "pppd disconnected");
     return;
   }
 
@@ -205,8 +249,9 @@ void L2TPConnection::OnDisconnect() {
 
 bool L2TPConnection::WritePPPDConfig() {
   pppd_config_path_ = temp_dir_.GetPath().Append(kPPPDConfigFileName);
+  pppd_log_path_ = temp_dir_.GetPath().Append(kPPPDLogFileName);
 
-  // Note that since StringPiece is used here, all the strings in this vector
+  // Note that since string_view is used here, all the strings in this vector
   // MUST be alive until the end of this function. Unit tests are supposed to
   // catch the issue if this condition is not met.
   // TODO(b/200636771): Use proper mtu and mru.
@@ -230,13 +275,14 @@ bool L2TPConnection::WritePPPDConfig() {
     lines.push_back("lcp-echo-interval 30");
   }
 
-  // This option avoids pppd logging to the fd of stdout (which is 1) (note that
-  // pppd will still log to syslog). We need to put this option before the
-  // plugin option below, since pppd will try to log when process that option,
-  // and fd of 1 may point to the actual data channel, which in turn causes that
-  // pppd sends the log string to the peer (see b/218437737 for an issue caused
-  // by this).
-  lines.push_back("logfd -1");
+  // pppd logs to stdout by default. Change it to a file so that we can read it
+  // for checking connection failures later. Note that:
+  // - pppd will log to this file and syslog at the same time.
+  // - Even without doing this, we still need to disable the behavior of logging
+  //   to stdout of pppd. See b/218437737 and https://crrev.com/c/3569930.
+  const std::string logfile_line =
+      base::StrCat({"logfile ", pppd_log_path_.value()});
+  lines.push_back(logfile_line);
 
   const std::string plugin_line =
       base::StrCat({"plugin ", PPPDaemon::kShimPluginPath});

@@ -91,6 +91,8 @@ class L2TPConnectionUnderTest : public L2TPConnection {
   }
 
   void set_state(State state) { state_ = state; }
+
+  void set_pppd_log_path(base::FilePath path) { pppd_log_path_ = path; }
 };
 
 namespace {
@@ -102,7 +104,8 @@ using testing::Return;
 using testing::SaveArg;
 using testing::WithArg;
 
-// Expected contents in WritePPPDConfig test, missing the last line for plugin.
+// Expected contents in WritePPPDConfig test, missing the last lines for log
+// file and plugin.
 constexpr char kExpectedPPPDConf[] = R"(ipcp-accept-local
 ipcp-accept-remote
 refuse-eap
@@ -118,7 +121,6 @@ nosystemconfig
 usepeerdns
 lcp-echo-failure 4
 lcp-echo-interval 30
-logfd -1
 )";
 
 // The expected contents of l2tpd.conf excluding the line for "pppoptfile" which
@@ -136,6 +138,9 @@ bps = 1000000
 redial timeout = 2
 max redials = 30
 )";
+
+constexpr char kPPPDExitAuthFailure[] = "19";
+constexpr char kPPPDExitHangUp[] = "16";
 
 class MockCallbacks {
  public:
@@ -192,8 +197,10 @@ TEST_F(L2TPConnectionTest, WritePPPDConfig) {
   ASSERT_TRUE(base::PathExists(expected_path));
   std::string actual_content;
   ASSERT_TRUE(base::ReadFileToString(expected_path, &actual_content));
-  EXPECT_EQ(actual_content, base::StrCat({kExpectedPPPDConf, "plugin ",
-                                          PPPDaemon::kShimPluginPath}));
+  std::string expected_content = base::StrCat(
+      {kExpectedPPPDConf, "logfile ", temp_dir.Append("pppd.log").value(),
+       "\nplugin ", PPPDaemon::kShimPluginPath});
+  EXPECT_EQ(actual_content, expected_content);
 
   // The file should be deleted after destroying the L2TPConnection object.
   l2tp_connection_ = nullptr;
@@ -387,12 +394,47 @@ TEST_F(L2TPConnectionTest, PPPNotifyDisconnect) {
 TEST_F(L2TPConnectionTest, PPPNotifyExit) {
   l2tp_connection_->set_state(VPNConnection::State::kConnected);
   std::map<std::string, std::string> dict;
-  dict[kPPPExitStatus] = "19";
+  dict[kPPPExitStatus] = kPPPDExitAuthFailure;
   EXPECT_CALL(callbacks_, OnFailure(Service::kFailurePPPAuth));
   l2tp_connection_->InvokeNotify(kPPPReasonExit, dict);
   dispatcher_.task_environment().RunUntilIdle();
 
   // The signal shouldn't be sent out twice if the event comes again.
+  l2tp_connection_->InvokeNotify(kPPPReasonExit, dict);
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(L2TPConnectionTest, PPPNotifyExitCheckLogForAuthPositive) {
+  l2tp_connection_->set_state(VPNConnection::State::kConnected);
+
+  // Create a log file which contains the auth failure pattern.
+  base::FilePath temp_dir = l2tp_connection_->SetTempDir();
+  base::FilePath log_file_path;
+  CHECK(base::CreateTemporaryFileInDir(temp_dir, &log_file_path));
+  CHECK(base::WriteFile(log_file_path,
+                        "a\nb\nc\nCHAP authentication failed\nd\n"));
+  l2tp_connection_->set_pppd_log_path(log_file_path);
+
+  std::map<std::string, std::string> dict;
+  dict[kPPPExitStatus] = kPPPDExitHangUp;
+  EXPECT_CALL(callbacks_, OnFailure(Service::kFailurePPPAuth));
+  l2tp_connection_->InvokeNotify(kPPPReasonExit, dict);
+  dispatcher_.task_environment().RunUntilIdle();
+}
+
+TEST_F(L2TPConnectionTest, PPPNotifyExitCheckLogForAuthNegative) {
+  l2tp_connection_->set_state(VPNConnection::State::kConnected);
+
+  // Create a log file which does not contain the auth failure pattern.
+  base::FilePath temp_dir = l2tp_connection_->SetTempDir();
+  base::FilePath log_file_path;
+  CHECK(base::CreateTemporaryFileInDir(temp_dir, &log_file_path));
+  CHECK(base::WriteFile(log_file_path, "a\nb\nc\nd\n"));
+  l2tp_connection_->set_pppd_log_path(log_file_path);
+
+  std::map<std::string, std::string> dict;
+  dict[kPPPExitStatus] = kPPPDExitHangUp;
+  EXPECT_CALL(callbacks_, OnFailure(Service::kFailureUnknown));
   l2tp_connection_->InvokeNotify(kPPPReasonExit, dict);
   dispatcher_.task_environment().RunUntilIdle();
 }
