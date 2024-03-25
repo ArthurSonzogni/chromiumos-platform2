@@ -20,6 +20,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <bindings/cloud_policy.pb.h>
@@ -395,7 +396,8 @@ bool SessionStateManager::CreateUserDirectories() const {
                << base::File::ErrorToString(error);
     success = false;
   }
-  if (chmod(root_dir.Append(kInputDirectory).value().c_str(), kInputDirMode)) {
+  if (HANDLE_EINTR(chmod(root_dir.Append(kInputDirectory).value().c_str(),
+                         kInputDirMode))) {
     LOG(ERROR) << "chmod of input directory failed.";
     success = false;
   }
@@ -406,8 +408,8 @@ bool SessionStateManager::CreateUserDirectories() const {
                << base::File::ErrorToString(error);
     success = false;
   }
-  if (chmod(root_dir.Append(kProcessedDirectory).value().c_str(),
-            kOutputDirMode)) {
+  if (HANDLE_EINTR(chmod(root_dir.Append(kProcessedDirectory).value().c_str(),
+                         kOutputDirMode))) {
     LOG(ERROR) << "chmod of output directory failed.";
     success = false;
   }
