@@ -316,19 +316,6 @@ bool DiagActions::ActionRunNvmeSelfTestRoutine(
   return ProcessRoutineResponse(waiter.WaitForResponse());
 }
 
-bool DiagActions::ActionRunNvmeWearLevelRoutine(
-    const std::optional<uint32_t>& wear_level_threshold) {
-  MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;
-  mojom::NullableUint32Ptr wear_level_threshold_parameter;
-  if (wear_level_threshold.has_value()) {
-    wear_level_threshold_parameter =
-        mojom::NullableUint32::New(wear_level_threshold.value());
-  }
-  cros_healthd_diagnostics_service_->RunNvmeWearLevelRoutine(
-      std::move(wear_level_threshold_parameter), waiter.CreateCallback());
-  return ProcessRoutineResponse(waiter.WaitForResponse());
-}
-
 bool DiagActions::ActionRunPrimeSearchRoutine(
     const std::optional<uint32_t>& length_seconds) {
   MojoResponseWaiter<mojom::RunRoutineResponsePtr> waiter;

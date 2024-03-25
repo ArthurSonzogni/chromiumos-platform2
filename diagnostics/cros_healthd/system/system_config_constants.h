@@ -5,9 +5,6 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_SYSTEM_CONFIG_CONSTANTS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_SYSTEM_CONFIG_CONSTANTS_H_
 
-#include <list>
-#include <string>
-
 namespace diagnostics {
 
 // NVME utility program path.
@@ -16,11 +13,6 @@ inline constexpr char kNvmeToolPath[] = "/usr/sbin/nvme";
 inline constexpr char kDevicePath[] = "/dev";
 // Smartctl utility program path.
 inline constexpr char kSmartctlToolPath[] = "/usr/sbin/smartctl";
-
-// Returns a list of wilco board names.
-inline const std::list<std::string> GetWilcoBoardNames() {
-  return {"sarien", "drallion"};
-}
 
 }  // namespace diagnostics
 

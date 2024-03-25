@@ -42,7 +42,6 @@
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h"
 #include "diagnostics/cros_healthd/routines/storage/emmc_lifetime.h"
 #include "diagnostics/cros_healthd/routines/storage/nvme_self_test.h"
-#include "diagnostics/cros_healthd/routines/storage/nvme_wear_level.h"
 #include "diagnostics/cros_healthd/routines/storage/smartctl_check.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
@@ -97,19 +96,6 @@ CrosHealthdRoutineFactoryImpl::MakeAcPowerRoutine(
     mojom::AcPowerStatusEnum expected_status,
     const std::optional<std::string>& expected_power_type) {
   return std::make_unique<AcPowerRoutine>(expected_status, expected_power_type);
-}
-
-std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakeNvmeWearLevelRoutine(
-    org::chromium::debugdProxyInterface* debugd_proxy,
-    mojom::NullableUint32Ptr wear_level_threshold) {
-  CHECK(debugd_proxy);
-  std::optional<uint32_t> threshold;
-  context_->ground_truth()->PrepareRoutineNvmeWearLevel(threshold);
-  if (!wear_level_threshold.is_null()) {
-    threshold = wear_level_threshold->value;
-  }
-  return std::make_unique<NvmeWearLevelRoutine>(debugd_proxy, threshold);
 }
 
 std::unique_ptr<DiagnosticRoutine>

@@ -29,8 +29,6 @@ constexpr struct {
     {"cpu_stress", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kCpuStress},
     {"floating_point_accuracy",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kFloatingPointAccuracy},
-    {"nvme_wear_level",
-     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kNvmeWearLevel},
     {"nvme_self_test",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kNvmeSelfTest},
     {"disk_read", ash::cros_healthd::mojom::DiagnosticRoutineEnum::kDiskRead},

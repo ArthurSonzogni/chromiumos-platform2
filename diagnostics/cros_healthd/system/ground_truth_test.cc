@@ -349,15 +349,6 @@ TEST_F(GroundTruthTest, PrepareRoutinePrimeSearch) {
   EXPECT_EQ(max_num, 123);
 }
 
-TEST_F(GroundTruthTest, PrepareRoutineNvmeWearLevel) {
-  SetFakeCrosConfig(cros_config_property::kNvmeWearLevelThreshold, "123");
-
-  std::optional<uint32_t> threshold;
-  EXPECT_EQ(ground_truth()->PrepareRoutineNvmeWearLevel(threshold),
-            mojom::SupportStatus::NewSupported(mojom::Supported::New()));
-  EXPECT_EQ(threshold, 123);
-}
-
 TEST_F(GroundTruthTest, PrepareRoutineFingerprint) {
   SetFakeCrosConfig(fingerprint::kMaxDeadPixels, "0");
   SetFakeCrosConfig(fingerprint::kMaxDeadPixelsInDetectZone, "1");

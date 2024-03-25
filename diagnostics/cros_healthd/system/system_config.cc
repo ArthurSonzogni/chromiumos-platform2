@@ -18,7 +18,6 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <base/system/sys_info.h>
 #include <brillo/errors/error.h>
 #include <debugd/dbus-proxies.h>
 
@@ -188,17 +187,6 @@ bool SystemConfig::FingerprintDiagnosticSupported() {
   auto enable =
       cros_config_->Get(paths::cros_config::fingerprint::kRoutineEnable);
   return enable && enable == "true";
-}
-
-bool SystemConfig::IsWilcoDevice() {
-  const auto wilco_devices = GetWilcoBoardNames();
-  return std::any_of(wilco_devices.begin(), wilco_devices.end(),
-                     [](const std::string& s) -> bool {
-                       // Check if the given wilco device name is a
-                       // prefix for the actual board name.
-                       return base::SysInfo::GetLsbReleaseBoard().rfind(s, 0) ==
-                              0;
-                     });
 }
 
 std::optional<std::string> SystemConfig::GetMarketingName() {

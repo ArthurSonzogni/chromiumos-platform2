@@ -34,10 +34,6 @@ class CrosHealthdRoutineFactoryImpl final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
       ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type) override;
-  std::unique_ptr<DiagnosticRoutine> MakeNvmeWearLevelRoutine(
-      org::chromium::debugdProxyInterface* debugd_proxy,
-      ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold)
-      override;
   std::unique_ptr<DiagnosticRoutine> MakeNvmeSelfTestRoutine(
       org::chromium::debugdProxyInterface* debugd_proxy,
       ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type)

@@ -49,10 +49,6 @@ bool FakeSystemConfig::FingerprintDiagnosticSupported() {
   return fingerprint_diagnostic_supported_;
 }
 
-bool FakeSystemConfig::IsWilcoDevice() {
-  return wilco_device_;
-}
-
 std::optional<std::string> FakeSystemConfig::GetMarketingName() {
   return marketing_name_;
 }
@@ -103,10 +99,6 @@ void FakeSystemConfig::SetSmartCtrlSupported(bool value) {
 
 void FakeSystemConfig::SetFingerprintDiagnosticSupported(bool value) {
   fingerprint_diagnostic_supported_ = value;
-}
-
-void FakeSystemConfig::SetIsWilcoDevice(bool value) {
-  wilco_device_ = value;
 }
 
 void FakeSystemConfig::SetMarketingName(

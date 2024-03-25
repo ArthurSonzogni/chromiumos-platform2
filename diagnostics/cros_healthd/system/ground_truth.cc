@@ -211,14 +211,6 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutinePrimeSearch(
   return MakeSupported();
 }
 
-mojom::SupportStatusPtr GroundTruth::PrepareRoutineNvmeWearLevel(
-    std::optional<uint32_t>& threshold) const {
-  AssignAndDropError(cros_config()->GetU32CrosConfig(
-                         cros_config_property::kNvmeWearLevelThreshold),
-                     threshold);
-  return MakeSupported();
-}
-
 mojom::SupportStatusPtr GroundTruth::PrepareRoutineFingerprint(
     FingerprintParameter& param) const {
   AssignWithDefaultAndDropError(

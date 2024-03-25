@@ -17,7 +17,6 @@ source_set("storage") {
     "disk_read.cc",
     "emmc_lifetime.cc",
     "nvme_self_test.cc",
-    "nvme_wear_level.cc",
     "smartctl_check.cc",
     "ufs_lifetime.cc",
   ]
@@ -36,7 +35,6 @@ if (use.test) {
       "disk_read_test.cc",
       "emmc_lifetime_test.cc",
       "nvme_self_test_test.cc",
-      "nvme_wear_level_test.cc",
       "smartctl_check_test.cc",
       "ufs_lifetime_test.cc",
     ]

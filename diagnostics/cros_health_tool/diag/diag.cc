@@ -507,26 +507,6 @@ int FloatingPointAccuracyMain(int argc, char** argv) {
   return result ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
-int NvmeWearLevelMain(int argc, char** argv) {
-  COMMON_LEGACY_ROUTINE_FLAGS
-  DEFINE_uint32(wear_level_threshold, 0,
-                "Threshold number in percentage which routine examines "
-                "wear level of NVMe against. If not specified, device "
-                "threshold set in cros-config will be used instead.");
-  brillo::FlagHelper::Init(argc, argv, "Nvme wear level routine");
-  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-
-  DiagActions actions;
-  if (command_line->HasSwitch("force_cancel_at_percent"))
-    actions.ForceCancelAtPercent(FLAGS_force_cancel_at_percent);
-
-  auto result = actions.ActionRunNvmeWearLevelRoutine(
-      command_line->HasSwitch("wear_level_threshold")
-          ? std::optional<std::uint32_t>{FLAGS_wear_level_threshold}
-          : std::nullopt);
-  return result ? EXIT_SUCCESS : EXIT_FAILURE;
-}
-
 int NvmeSelfTestMain(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE_FLAGS
   DEFINE_bool(nvme_self_test_long, false,
@@ -872,7 +852,6 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"cpu_cache", CpuCacheMain},
     {"cpu_stress", CpuStressMain},
     {"floating_point_accuracy", FloatingPointAccuracyMain},
-    {"nvme_wear_level", NvmeWearLevelMain},
     {"nvme_self_test", NvmeSelfTestMain},
     {"disk_read", DiskReadMain},
     {"prime_search", PrimeSearchMain},

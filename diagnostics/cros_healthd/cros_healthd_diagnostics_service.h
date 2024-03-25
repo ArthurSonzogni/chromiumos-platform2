@@ -98,12 +98,13 @@ class CrosHealthdDiagnosticsService final
   void RunNvmeSelfTestRoutine(
       ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type,
       RunNvmeSelfTestRoutineCallback callback) override;
-  void DEPRECATED_RunNvmeWearLevelRoutine(
+  void DEPRECATED_RunNvmeWearLevelRoutineWithThreshold(
       uint32_t wear_level_threshold,
-      RunNvmeWearLevelRoutineCallback callback) override;
-  void RunNvmeWearLevelRoutine(
+      DEPRECATED_RunNvmeWearLevelRoutineWithThresholdCallback callback)
+      override;
+  void DEPRECATED_RunNvmeWearLevelRoutine(
       ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold,
-      RunNvmeWearLevelRoutineCallback callback) override;
+      DEPRECATED_RunNvmeWearLevelRoutineCallback callback) override;
   void RunPrimeSearchRoutine(
       ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
       RunPrimeSearchRoutineCallback callback) override;

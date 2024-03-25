@@ -65,7 +65,6 @@ std::set<mojom::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojom::DiagnosticRoutineEnum::kCpuCache,
       mojom::DiagnosticRoutineEnum::kCpuStress,
       mojom::DiagnosticRoutineEnum::kFloatingPointAccuracy,
-      mojom::DiagnosticRoutineEnum::kNvmeWearLevel,
       mojom::DiagnosticRoutineEnum::kNvmeSelfTest,
       mojom::DiagnosticRoutineEnum::kDiskRead,
       mojom::DiagnosticRoutineEnum::kPrimeSearch,
@@ -110,15 +109,9 @@ std::set<mojom::DiagnosticRoutineEnum> GetBatteryRoutines() {
 
 std::set<mojom::DiagnosticRoutineEnum> GetNvmeRoutines() {
   return std::set<mojom::DiagnosticRoutineEnum>{
-      mojom::DiagnosticRoutineEnum::kNvmeWearLevel,
       mojom::DiagnosticRoutineEnum::kNvmeSelfTest,
       mojom::DiagnosticRoutineEnum::kSmartctlCheck,
       mojom::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed};
-}
-
-std::set<mojom::DiagnosticRoutineEnum> GetWilcoRoutines() {
-  return std::set<mojom::DiagnosticRoutineEnum>{
-      mojom::DiagnosticRoutineEnum::kNvmeWearLevel};
 }
 
 std::set<mojom::DiagnosticRoutineEnum> GetSmartCtlRoutines() {
@@ -147,7 +140,6 @@ class CrosHealthdDiagnosticsServiceTest : public BaseFileTest {
     mock_context_.fake_system_config()->SetNvmeSupported(true);
     mock_context_.fake_system_config()->SetNvmeSupported(true);
     mock_context_.fake_system_config()->SetSmartCtrlSupported(true);
-    mock_context_.fake_system_config()->SetIsWilcoDevice(true);
     SetFakeCrosConfig(paths::cros_config::kStorageType, std::nullopt);
 
     CreateService();
@@ -303,21 +295,6 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesWithUfs) {
   auto expected_routines = GetAllAvailableRoutines();
   for (const auto r : GetUfsRoutines())
     expected_routines.insert(r);
-
-  EXPECT_EQ(reply_set, expected_routines);
-}
-
-// Test that GetAvailableRoutines returns the expected list of routines when
-// wilco routines are not supported.
-TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutinesNotWilcoDevice) {
-  mock_context()->fake_system_config()->SetIsWilcoDevice(false);
-  CreateService();
-  auto reply = ExecuteGetAvailableRoutines();
-  std::set<mojom::DiagnosticRoutineEnum> reply_set(reply.begin(), reply.end());
-
-  auto expected_routines = GetAllAvailableRoutines();
-  for (const auto r : GetWilcoRoutines())
-    expected_routines.erase(r);
 
   EXPECT_EQ(reply_set, expected_routines);
 }
@@ -537,39 +514,28 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunFloatingPointAccuracyRoutine) {
   EXPECT_EQ(response->status, kExpectedStatus);
 }
 
-// Test that the deprecated NVMe wear level routine can be run.
-TEST_F(CrosHealthdDiagnosticsServiceTest, RunDEPRECATEDNvmeWearLevelRoutine) {
-  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
-      mojom::DiagnosticRoutineStatusEnum::kRunning;
-  routine_factory()->SetNonInteractiveStatus(
-      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
-      /*output=*/"");
-
+// Test that the NVMe wear level routine with threshold is unsupported.
+TEST_F(CrosHealthdDiagnosticsServiceTest,
+       DeprecatedRunNvmeWearLevelRoutineWithThreshold) {
   base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
-  service()->DEPRECATED_RunNvmeWearLevelRoutine(
+  service()->DEPRECATED_RunNvmeWearLevelRoutineWithThreshold(
       /*wear_level_threshold=*/30, future.GetCallback());
 
   auto response = future.Take();
-  EXPECT_EQ(response->id, 1);
-  EXPECT_EQ(response->status, kExpectedStatus);
+  EXPECT_EQ(response->id, 0);
+  EXPECT_EQ(response->status, mojom::DiagnosticRoutineStatusEnum::kUnsupported);
 }
 
-// Test that the NVMe wear level routine can be run.
-TEST_F(CrosHealthdDiagnosticsServiceTest, RunNvmeWearLevelRoutine) {
-  constexpr mojom::DiagnosticRoutineStatusEnum kExpectedStatus =
-      mojom::DiagnosticRoutineStatusEnum::kRunning;
-  routine_factory()->SetNonInteractiveStatus(
-      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
-      /*output=*/"");
-
+// Test that the NVMe wear level routine is unsupported.
+TEST_F(CrosHealthdDiagnosticsServiceTest, DeprecatedRunNvmeWearLevelRoutine) {
   base::test::TestFuture<mojom::RunRoutineResponsePtr> future;
-  service()->RunNvmeWearLevelRoutine(
+  service()->DEPRECATED_RunNvmeWearLevelRoutine(
       /*wear_level_threshold=*/mojom::NullableUint32::New(30),
       future.GetCallback());
 
   auto response = future.Take();
-  EXPECT_EQ(response->id, 1);
-  EXPECT_EQ(response->status, kExpectedStatus);
+  EXPECT_EQ(response->id, 0);
+  EXPECT_EQ(response->status, mojom::DiagnosticRoutineStatusEnum::kUnsupported);
 }
 
 // Test that the NVMe self-test routine can be run.

@@ -80,9 +80,6 @@ VAR_(PATH_("cros-healthd",
      kBatteryHealthPercentBatteryWearAllowed);
 VAR_(PATH_("cros-healthd", "routines", "prime-search", "max-num"),
      kPrimeSearchMaxNum);
-VAR_(PATH_(
-         "cros-healthd", "routines", "nvme-wear-level", "wear-level-threshold"),
-     kNvmeWearLevelThreshold);
 
 namespace fingerprint {
 

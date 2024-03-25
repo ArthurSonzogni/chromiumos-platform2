@@ -47,12 +47,6 @@ class CrosHealthdRoutineFactory {
   virtual std::unique_ptr<DiagnosticRoutine> MakeAcPowerRoutine(
       ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type) = 0;
-  // Constructs a new instance of the nvme_wear_level routine. See
-  // diagnostics/cros_healthd/routines/storage/nvme_wear_level.h for details on
-  // the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeNvmeWearLevelRoutine(
-      org::chromium::debugdProxyInterface* debugd_proxy,
-      ash::cros_healthd::mojom::NullableUint32Ptr wear_level_threshold) = 0;
   // Constructs a new instance of the NvmeSelfTest routine. See
   // diagnostics/cros_healthd/routines/storage/nvme_self_test.h for details on
   // the routine itself.

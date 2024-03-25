@@ -30,7 +30,6 @@ class FakeSystemConfig final : public SystemConfigInterface {
   void NvmeSelfTestSupported(NvmeSelfTestSupportedCallback callback) override;
   bool SmartCtlSupported() override;
   bool FingerprintDiagnosticSupported() override;
-  bool IsWilcoDevice() override;
   std::optional<std::string> GetMarketingName() override;
   std::optional<std::string> GetOemName() override;
   std::string GetCodeName() override;
@@ -46,7 +45,6 @@ class FakeSystemConfig final : public SystemConfigInterface {
   void SetNvmeSelfTestSupported(bool value);
   void SetSmartCtrlSupported(bool value);
   void SetFingerprintDiagnosticSupported(bool value);
-  void SetIsWilcoDevice(bool value);
   void SetMarketingName(const std::optional<std::string>& value);
   void SetOemName(const std::optional<std::string>& value);
   void SetCodeName(const std::string& value);
@@ -62,7 +60,6 @@ class FakeSystemConfig final : public SystemConfigInterface {
   bool nvme_self_test_supported_ = true;
   bool smart_ctrl_supported_ = true;
   bool fingerprint_diagnostic_supported_ = true;
-  bool wilco_device_ = true;
   std::optional<std::string> marketing_name_;
   std::optional<std::string> oem_name_;
   std::string code_name_;

@@ -353,20 +353,23 @@ void CrosHealthdDiagnosticsService::RunNvmeSelfTestRoutine(
              mojom::DiagnosticRoutineEnum::kNvmeSelfTest, std::move(callback));
 }
 
-void CrosHealthdDiagnosticsService::DEPRECATED_RunNvmeWearLevelRoutine(
-    uint32_t wear_level_threshold, RunNvmeWearLevelRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeNvmeWearLevelRoutine(
-                 context_->debugd_proxy(),
-                 mojom::NullableUint32::New(wear_level_threshold)),
-             mojom::DiagnosticRoutineEnum::kNvmeWearLevel, std::move(callback));
+void CrosHealthdDiagnosticsService::
+    DEPRECATED_RunNvmeWearLevelRoutineWithThreshold(
+        uint32_t wear_level_threshold,
+        DEPRECATED_RunNvmeWearLevelRoutineWithThresholdCallback callback) {
+  // Always unsupported. The routine is deprecated.
+  ReportUnsupportedRoutine(
+      mojom::DiagnosticRoutineEnum::DEPRECATED_kNvmeWearLevel,
+      std::move(callback));
 }
 
-void CrosHealthdDiagnosticsService::RunNvmeWearLevelRoutine(
+void CrosHealthdDiagnosticsService::DEPRECATED_RunNvmeWearLevelRoutine(
     mojom::NullableUint32Ptr wear_level_threshold,
-    RunNvmeWearLevelRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeNvmeWearLevelRoutine(
-                 context_->debugd_proxy(), std::move(wear_level_threshold)),
-             mojom::DiagnosticRoutineEnum::kNvmeWearLevel, std::move(callback));
+    DEPRECATED_RunNvmeWearLevelRoutineCallback callback) {
+  // Always unsupported. The routine is deprecated.
+  ReportUnsupportedRoutine(
+      mojom::DiagnosticRoutineEnum::DEPRECATED_kNvmeWearLevel,
+      std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunPrimeSearchRoutine(
@@ -760,9 +763,6 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
   }
 
   if (context_->system_config()->NvmeSupported()) {
-    if (context_->system_config()->IsWilcoDevice()) {
-      available_routines_.insert(mojom::DiagnosticRoutineEnum::kNvmeWearLevel);
-    }
     if (context_->system_config()->SmartCtlSupported()) {
       available_routines_.insert(mojom::DiagnosticRoutineEnum::kSmartctlCheck);
       available_routines_.insert(

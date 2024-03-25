@@ -98,7 +98,7 @@ std::optional<std::string> GetMetricName(mojom::DiagnosticRoutineEnum routine) {
       return metrics_name::kDiagnosticResultCpuStress;
     case mojom::DiagnosticRoutineEnum::kFloatingPointAccuracy:
       return metrics_name::kDiagnosticResultFloatingPointAccuracy;
-    case mojom::DiagnosticRoutineEnum::kNvmeWearLevel:
+    case mojom::DiagnosticRoutineEnum::DEPRECATED_kNvmeWearLevel:
       return metrics_name::kDiagnosticResultNvmeWearLevel;
     case mojom::DiagnosticRoutineEnum::kNvmeSelfTest:
       return metrics_name::kDiagnosticResultNvmeSelfTest;

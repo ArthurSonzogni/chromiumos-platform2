@@ -632,45 +632,6 @@ Errors:
 - `SelfTest status: Operation completed with one or more failed segments and the first segment that failed is indicated in the Segment Number field.`
 - `SelfTest status: Operation was aborted for an unknown reason.`
 
-### NVMe Wear Level
-
-Compares the device's NVMe storage's wear level against the input threshold.
-
-Parameters:
--   `--wear_level_threshold` - (Optional) Acceptable wear level for the device's
-    NVMe storage. If not specified, device threshold set in cros-config will be
-    used instead. Type: `uint32_t`. Allowable values: `(0,99)`
-
-To ensure the device's NVMe storage has a wear level no more than 20:
-
-From crosh:
-```bash
-crosh> diag nvme_wear_level --wear_level_threshold=20
-```
-
-From cros-health-tool:
-```bash
-$ cros-health-tool diag nvme_wear_level --wear_level_threshold=20
-```
-
-Sample output:
-```bash
-Progress: 100
-Output: {
-    "resultDetails": {
-        "rawData": "AAAAAAAAAADxBAAAAAAAAA=="
-    }
-}
-
-Status: Passed
-Status message: Wear-level status: PASS.
-```
-
-Errors:
-- `Wear-level status: ERROR, threshold in percentage should be non-empty and under 100.`
-- `Wear-level status: ERROR, cannot get wear level info.`
-- `Wear-level status: FAILED, exceed the limitation value.`
-
 ### Smartctl Check
 
 Examine the device's NVMe storage's health information by examining:
