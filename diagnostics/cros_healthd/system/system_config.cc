@@ -210,11 +210,10 @@ std::optional<std::string> SystemConfig::GetOemName() {
 }
 
 std::string SystemConfig::GetCodeName() {
-  auto code_name = cros_config_->Get(paths::cros_config::kCodeName);
   // "/name" is a required field in cros config. This should not be reached in
   // normal situation. However, if in a device which is in the early development
   // stage or in a vm environment, this could still happen.
-  return code_name ? code_name.value() : "";
+  return cros_config_->Get(paths::cros_config::kCodeName).value_or("");
 }
 
 std::optional<bool> SystemConfig::HasSensor(SensorType sensor) {
