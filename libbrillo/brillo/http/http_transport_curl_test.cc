@@ -554,6 +554,29 @@ TEST_F(HttpCurlTransportTest, SetLocalIpAddress) {
   connection.reset();
 }
 
+TEST_F(HttpCurlTransportTest, SetSockOptCallback) {
+  EXPECT_CALL(*curl_api_,
+              EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptInt(handle_, CURLOPT_HTTPGET, 1))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_, EasySetOptPtr(handle_, CURLOPT_SOCKOPTDATA, _))
+      .WillOnce(Return(CURLE_OK));
+  EXPECT_CALL(*curl_api_,
+              EasySetOptCallback(handle_, CURLOPT_SOCKOPTFUNCTION, _))
+      .WillOnce(Return(CURLE_OK));
+
+  transport_->SetSockOptCallback(base::BindRepeating([](int) { return true; }));
+  auto connection = transport_->CreateConnection(
+      "http://foo.bar/get", request_type::kGet, {}, "", "", nullptr);
+
+  testing::Mock::VerifyAndClearExpectations(curl_api_.get());
+  EXPECT_NE(nullptr, connection.get());
+
+  EXPECT_CALL(*curl_api_, EasyCleanup(handle_)).Times(1);
+  connection.reset();
+}
+
 TEST_F(HttpCurlTransportTest, SetInterfaceAndLocalIpAddress) {
   EXPECT_CALL(*curl_api_,
               EasySetOptStr(handle_, CURLOPT_URL, "http://foo.bar/get"))

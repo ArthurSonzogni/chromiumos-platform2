@@ -124,6 +124,18 @@ struct Transport::AsyncRequestData {
   RequestID request_id;
 };
 
+int OnCurlSocketCallback(void* clientp,
+                         curl_socket_t fd,
+                         curlsocktype purpose) {
+  CHECK(clientp);
+
+  auto cb = *reinterpret_cast<base::RepeatingCallback<bool(int)>*>(clientp);
+  if (!cb.Run(fd)) {
+    return CURL_SOCKOPT_ERROR;
+  }
+  return CURL_SOCKOPT_OK;
+}
+
 Transport::Transport(const std::shared_ptr<CurlInterface>& curl_interface)
     : curl_interface_{curl_interface} {
   VLOG(2) << "curl::Transport created";
@@ -256,6 +268,15 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
         code = curl_interface_->EasySetOptStr(curl_handle,
                                               CURLOPT_CUSTOMREQUEST, method);
       }
+    }
+  }
+
+  if (code == CURLE_OK && !sockopt_cb_.is_null()) {
+    code = curl_interface_->EasySetOptPtr(curl_handle, CURLOPT_SOCKOPTDATA,
+                                          &sockopt_cb_);
+    if (code == CURLE_OK) {
+      code = curl_interface_->EasySetOptCallback(
+          curl_handle, CURLOPT_SOCKOPTFUNCTION, OnCurlSocketCallback);
     }
   }
 
@@ -395,6 +416,10 @@ void Transport::SetBufferSize(std::optional<int> buffer_size) {
 
 void Transport::SetUploadBufferSize(std::optional<int> buffer_size) {
   upload_buffer_size_ = buffer_size;
+}
+
+void Transport::SetSockOptCallback(base::RepeatingCallback<bool(int)> cb) {
+  sockopt_cb_ = std::move(cb);
 }
 
 void Transport::ClearHost() {

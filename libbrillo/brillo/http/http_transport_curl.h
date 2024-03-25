@@ -89,6 +89,8 @@ class BRILLO_EXPORT Transport : public http::Transport {
   void SetBufferSize(std::optional<int> buffer_size) override;
   void SetUploadBufferSize(std::optional<int> buffer_size) override;
 
+  void SetSockOptCallback(base::RepeatingCallback<bool(int)> cb) override;
+
   // Helper methods to convert CURL error codes (CURLcode and CURLMcode)
   // into brillo::Error object.
   static void AddEasyCurlError(brillo::ErrorPtr* error,
@@ -166,6 +168,7 @@ class BRILLO_EXPORT Transport : public http::Transport {
   curl_slist* host_list_{nullptr};
   std::optional<int> buffer_size_;
   std::optional<int> upload_buffer_size_;
+  base::RepeatingCallback<bool(int)> sockopt_cb_;
 
   base::WeakPtrFactory<Transport> weak_ptr_factory_for_timer_{this};
   base::WeakPtrFactory<Transport> weak_ptr_factory_{this};
