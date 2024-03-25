@@ -177,7 +177,7 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
   const NetworkMonitor::ValidationReason reasons[] = {
       NetworkMonitor::ValidationReason::kDBusRequest,
       NetworkMonitor::ValidationReason::kEthernetGatewayReachable,
-      NetworkMonitor::ValidationReason::kNetworkConnectionUpdate,
+      NetworkMonitor::ValidationReason::kCapportTimeOver,
       NetworkMonitor::ValidationReason::kServiceReorder,
   };
 
@@ -206,23 +206,6 @@ TEST_F(NetworkMonitorTest, StartWithoutDNS) {
   EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(0);
 
   StartAndExpectResult(NetworkMonitor::ValidationReason::kDBusRequest, false);
-}
-
-TEST_F(NetworkMonitorTest, StartWithResetPortalDetector) {
-  // These reasons reset the running portal detector.
-  const NetworkMonitor::ValidationReason reasons[] = {
-      NetworkMonitor::ValidationReason::kNetworkConnectionUpdate};
-
-  MockCapportProxy* mock_capport_proxy = SetCapportProxy();
-  for (const auto reason : reasons) {
-    EXPECT_CALL(*mock_portal_detector_, Reset).Times(1);
-    EXPECT_CALL(*mock_portal_detector_,
-                Start(net_base::IPFamily::kIPv4, kDnsList, _))
-        .Times(1);
-    EXPECT_CALL(*mock_capport_proxy, Stop).Times(1);
-    EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(1);
-    StartAndExpectResult(reason, true);
-  }
 }
 
 TEST_F(NetworkMonitorTest, StartWithResultReturned) {

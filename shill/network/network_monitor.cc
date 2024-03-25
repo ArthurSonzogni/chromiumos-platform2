@@ -27,13 +27,6 @@
 namespace shill {
 namespace {
 
-// Returns true if |reason| requires that network validation be entirely
-// restarted with the latest IP configuration settings.
-bool ShouldResetNetworkValidation(NetworkMonitor::ValidationReason reason) {
-  // Only reset PortalDetector if there was an IP provisioning event.
-  return reason == NetworkMonitor::ValidationReason::kNetworkConnectionUpdate;
-}
-
 // Returns true if |reason| requires that the next network validation attempt
 // be scheduled immediately.
 bool ShouldScheduleNetworkValidationImmediately(
@@ -41,14 +34,14 @@ bool ShouldScheduleNetworkValidationImmediately(
   switch (reason) {
     case NetworkMonitor::ValidationReason::kDBusRequest:
     case NetworkMonitor::ValidationReason::kEthernetGatewayReachable:
-    case NetworkMonitor::ValidationReason::kNetworkConnectionUpdate:
     case NetworkMonitor::ValidationReason::kServiceReorder:
     case NetworkMonitor::ValidationReason::kCapportTimeOver:
       return true;
     case NetworkMonitor::ValidationReason::kEthernetGatewayUnreachable:
     case NetworkMonitor::ValidationReason::kManagerPropertyUpdate:
-    case NetworkMonitor::ValidationReason::kServicePropertyUpdate:
+    case NetworkMonitor::ValidationReason::kNetworkConnectionUpdate:
     case NetworkMonitor::ValidationReason::kRetryValidation:
+    case NetworkMonitor::ValidationReason::kServicePropertyUpdate:
       return false;
   }
 }
@@ -148,13 +141,6 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
     LOG(ERROR) << logging_tag_ << " " << __func__ << "(" << reason
                << "): Cannot start portal detection: No DNS servers";
     return false;
-  }
-
-  if (ShouldResetNetworkValidation(reason)) {
-    portal_detector_->Reset();
-    if (capport_proxy_) {
-      capport_proxy_->Stop();
-    }
   }
 
   result_from_portal_detector_.reset();
