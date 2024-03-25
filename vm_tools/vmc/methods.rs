@@ -101,6 +101,7 @@ enum ChromeOSError {
         reason: String,
     },
     FailedUpdateContainerDevices(String),
+    FakeConnectionProxy,
     InvalidDiskSize(u64),
     InvalidEmail,
     InvalidPath(String),
@@ -212,6 +213,9 @@ impl fmt::Display for ChromeOSError {
             }
             FailedUpdateContainerDevices(reason) => {
                 write!(f, "Failed to update container devices: {}", reason)
+            }
+            FakeConnectionProxy => {
+                write!(f, "fake connection proxy for test")
             }
             InvalidDiskSize(n) => write!(f, "invalid disk size {}", n),
             InvalidEmail => write!(f, "the active session has an invalid email address"),
@@ -416,6 +420,7 @@ impl From<Connection> for ConnectionProxy {
 }
 
 impl ConnectionProxy {
+    #[cfg(test)]
     pub fn dummy() -> ConnectionProxy {
         Default::default()
     }
@@ -443,6 +448,14 @@ impl ConnectionProxy {
                 filtered_msg.set_serial(1);
                 Ok(Message::new_method_return(&filtered_msg).unwrap())
             }
+        }
+    }
+
+    fn get_real_connection_or_fail(&self) -> Result<&Connection, Box<dyn Error>> {
+        if let Some(conn) = &self.connection {
+            Ok(conn)
+        } else {
+            Err(FakeConnectionProxy.into())
         }
     }
 }
@@ -599,6 +612,18 @@ impl Methods {
             crostini_enabled: None,
             plugin_vm_enabled: None,
         })
+    }
+
+    fn concierge_client(
+        &self,
+    ) -> Result<blocking::Proxy<&dbus::blocking::Connection>, Box<dyn Error>> {
+        let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
+            self.connection.get_real_connection_or_fail()?,
+            VM_CONCIERGE_SERVICE_NAME,
+            VM_CONCIERGE_SERVICE_PATH,
+            DEFAULT_TIMEOUT,
+        );
+        Ok(proxy)
     }
 
     #[cfg(test)]
@@ -1294,14 +1319,10 @@ impl Methods {
             request.vm_name = vm_name.to_string();
         }
 
-        let response: ListVmDisksResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                LIST_VM_DISKS_METHOD,
-            )?,
-            &request,
+        let response: ListVmDisksResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .list_vm_disks(request.write_to_bytes()?)?,
         )?;
 
         if response.success {
@@ -2730,17 +2751,11 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.name = vm_name.to_owned();
 
-        let conn = Connection::new_system()?;
-
-        let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
-            &conn,
-            VM_CONCIERGE_SERVICE_NAME,
-            VM_CONCIERGE_SERVICE_PATH,
-            DEFAULT_TIMEOUT,
-        );
-
-        let response: GetVmLogsResponse =
-            ProtoMessage::parse_from_bytes(&proxy.get_vm_logs(request.write_to_bytes()?)?)?;
+        let response: GetVmLogsResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .get_vm_logs(request.write_to_bytes()?)?,
+        )?;
 
         Ok(response.log)
     }
