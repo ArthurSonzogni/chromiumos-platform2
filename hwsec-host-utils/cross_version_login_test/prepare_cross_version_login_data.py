@@ -86,19 +86,24 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
         "ChromiumOS version"
     ).add_mutually_exclusive_group(required=True)
     version_group.add_argument(
-        "--version",
-        help="ChromiumOS version, e.g., R100-14526.89.0 or "
+        "--versions",
+        help="ChromiumOS version(s), e.g., R100-14526.89.0 or "
         "R100-14526.89.0-custombuild20220130",
+        nargs="+",
     )
     version_group.add_argument(
-        "--milestone",
-        help="ChromiumOS milstone, e.g., 100. The latest version of the "
+        "--milestones",
+        help="ChromiumOS milstone(s), e.g., 100. The latest version of the "
         "specified milestone is used.",
+        nargs="+",
         type=int,
     )
 
     parser.add_argument(
-        "--board", help="ChromiumOS board, e.g., betty", required=True
+        "--boards",
+        help="ChromiumOS board(s), e.g., betty",
+        nargs="+",
+        required=True,
     )
     parser.add_argument(
         "--output-dir",
@@ -112,10 +117,22 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
         type=Path,
     )
     opts = parser.parse_args(argv)
-    image_info = get_image_info(opts.board, opts.version, opts.milestone)
     # First, ensure the existence of image(s) to use.
-    ensure_vm_image(image_info)
-    run(image_info, opts.output_dir, opts.ssh_identity_file)
+    image_info_list = []
+    for board in opts.boards:
+        versions = opts.versions
+        if not versions:
+            versions = [
+                get_latest_version(board, milestone)
+                for milestone in opts.milestones
+            ]
+        for version_str in versions:
+            image_info = ImageInfo(board, parse_version(version_str))
+            ensure_vm_image(image_info)
+            image_info_list.append(image_info)
+
+    for image_info in image_info_list:
+        run(image_info, opts.output_dir, opts.ssh_identity_file)
 
 
 def run(
@@ -175,17 +192,6 @@ def get_latest_version(board: str, milestone: int) -> str:
     gs_url = f"{gs_dir}/LATEST-release-R{milestone}*"
     version_str = check_run("gsutil", "cat", gs_url).decode("utf-8")
     return version_str
-
-
-def get_image_info(
-    board: str, version_str: Optional[str], milestone: Optional[int]
-) -> ImageInfo:
-    if milestone:
-        version_str = get_latest_version(board, milestone)
-    if not version_str:
-        raise RuntimeError(f"Neither version nor milestone is specified.")
-    version = parse_version(version_str)
-    return ImageInfo(board, version)
 
 
 def setup_ssh_identity(
