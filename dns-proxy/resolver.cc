@@ -47,6 +47,14 @@ constexpr base::TimeDelta kProbeInitialDelay = base::Seconds(1);
 constexpr base::TimeDelta kProbeMaximumDelay = base::Hours(1);
 constexpr float kProbeRetryMultiplier = 1.5;
 
+// For TCP, DNS has an additional 2-bytes header representing the length
+// of the query. A 2-bytes padding length is added to the receiving buffer,
+// so it is 4-bytes aligned.
+constexpr int kTCPBufferPaddingLength = 2;
+
+// The size of TCP header representing the length of the DNS query.
+constexpr int kDNSTCPHeaderLength = 2;
+
 // DNS query for resolving "www.gstatic.com" in wire-format data used for
 // probing. Transaction ID for the query is empty. This is safe because we
 // don't care about the resolving result of the query.
@@ -146,12 +154,33 @@ std::ostream& operator<<(std::ostream& stream, const Resolver& resolver) {
 }
 
 Resolver::SocketFd::SocketFd(int type, int fd)
-    : type(type), fd(fd), num_retries(0), num_active_queries(0), id(NextId()) {
+    : type(type),
+      fd(fd),
+      len(0),
+      num_retries(0),
+      num_active_queries(0),
+      id(NextId()) {
+  msg = buf;
   if (type == SOCK_STREAM) {
+    msg += kTCPBufferPaddingLength;
     socklen = 0;
     return;
   }
   socklen = sizeof(src);
+}
+
+const char* Resolver::SocketFd::get_message() const {
+  if (type == SOCK_STREAM) {
+    return msg + kDNSTCPHeaderLength;
+  }
+  return msg;
+}
+
+const ssize_t Resolver::SocketFd::get_length() const {
+  if (type == SOCK_STREAM) {
+    return len - kDNSTCPHeaderLength;
+  }
+  return len;
 }
 
 Resolver::TCPConnection::TCPConnection(
@@ -604,58 +633,98 @@ void Resolver::SetServers(const std::vector<std::string>& new_servers,
   }
 }
 
-void Resolver::OnDNSQuery(int fd, int type) {
-  // Initialize SocketFd to carry necessary data.
-  auto sock_fd = std::make_unique<SocketFd>(type, fd);
-  // Metrics will be recorded automatically when this object is deleted.
-  sock_fd->timer.set_metrics(metrics_.get());
-
-  size_t buf_size;
-  struct sockaddr* src;
-  switch (type) {
-    case SOCK_DGRAM:
-      sock_fd->msg = sock_fd->buf;
-      buf_size = kDNSBufSize;
-      src = reinterpret_cast<struct sockaddr*>(&sock_fd->src);
-      break;
-    case SOCK_STREAM:
-      // For TCP, DNS has an additional 2-bytes header representing the length
-      // of the query. Move the receiving buffer, so it is 4-bytes aligned.
-      sock_fd->msg = sock_fd->buf + 2;
-      buf_size = kDNSBufSize - 2;
-      src = nullptr;
-      break;
-    default:
-      LOG(DFATAL) << *this << " Unexpected socket type: " << type;
-      return;
+std::unique_ptr<Resolver::SocketFd> Resolver::PopPendingSocketFd(int fd) {
+  auto it = pending_sock_fds_.find(fd);
+  if (it != pending_sock_fds_.end()) {
+    auto sock_fd = std::move(it->second);
+    pending_sock_fds_.erase(it);
+    return sock_fd;
   }
+  return {};
+}
+
+void Resolver::OnDNSQuery(int fd, int type) {
+  auto sock_fd = PopPendingSocketFd(fd);
+  if (!sock_fd) {
+    // Initialize SocketFd to carry necessary data.
+    sock_fd = std::make_unique<SocketFd>(type, fd);
+    // Metrics will be recorded automatically when this object is deleted.
+    sock_fd->timer.set_metrics(metrics_.get());
+  }
+
+  // For TCP, it is possible for the packets to be chunked. Move the buffer
+  // to the last empty position and adjust the size.
+  char* buf = sock_fd->msg + sock_fd->len;
+  ssize_t buf_size = kDNSBufSize - sock_fd->len;
+
+  // Only the last recvfrom call is considered for receive metrics.
   sock_fd->timer.StartReceive();
-  sock_fd->len =
-      recvfrom(fd, sock_fd->msg, buf_size, 0, src, &sock_fd->socklen);
+  ssize_t len = recvfrom(fd, buf, buf_size, 0,
+                         reinterpret_cast<struct sockaddr*>(&sock_fd->src),
+                         &sock_fd->socklen);
   // Assume success - on failure, the correct value will be recorded.
   sock_fd->timer.StopReceive(true);
-  if (sock_fd->len < 0) {
+  if (len < 0) {
     sock_fd->timer.StopReceive(false);
     PLOG(WARNING) << *this << " recvfrom failed";
     return;
   }
   // Handle TCP connection closed.
-  if (sock_fd->len == 0) {
+  if (len == 0) {
     sock_fd->timer.StopReceive(false);
     tcp_connections_.erase(fd);
     return;
   }
+  sock_fd->len += len;
 
-  // For TCP, DNS have an additional 2-bytes header representing the length of
-  // the query. Trim the additional header to be used by CURL or Ares.
-  if (type == SOCK_STREAM && sock_fd->len > 2) {
-    sock_fd->msg += 2;
-    sock_fd->len -= 2;
+  HandleDNSQuery(std::move(sock_fd));
+}
+
+void Resolver::HandleDNSQuery(std::unique_ptr<SocketFd> sock_fd) {
+  // Handle DNS query over UDP.
+  if (sock_fd->type == SOCK_DGRAM) {
+    const auto& sock_fd_it =
+        sock_fds_.emplace(sock_fd->id, std::move(sock_fd)).first;
+    Resolve(sock_fd_it->second->weak_factory.GetWeakPtr());
+    return;
   }
 
-  const auto& sock_fd_it =
-      sock_fds_.emplace(sock_fd->id, std::move(sock_fd)).first;
-  Resolve(sock_fd_it->second->weak_factory.GetWeakPtr());
+  // Handle DNS query over TCP.
+  while (sock_fd) {
+    if (sock_fd->len < kDNSTCPHeaderLength) {
+      pending_sock_fds_.emplace(sock_fd->fd, std::move(sock_fd));
+      return;
+    }
+
+    // Check if the current buffer contains a complete DNS query noted by the
+    // length taken from the TCP header.
+    uint16_t dns_len = ntohs(*reinterpret_cast<uint16_t*>(sock_fd->msg));
+    if (sock_fd->len < kDNSTCPHeaderLength + dns_len) {
+      pending_sock_fds_.emplace(sock_fd->fd, std::move(sock_fd));
+      return;
+    }
+
+    // Check if the current buffer contains extra data.
+    // Move any remaining data to a new SocketFd.
+    std::unique_ptr<SocketFd> tmp_sock_fd = {};
+    ssize_t tcp_dns_len = kDNSTCPHeaderLength + dns_len;
+    if (sock_fd->len > tcp_dns_len) {
+      tmp_sock_fd = std::make_unique<SocketFd>(sock_fd->type, sock_fd->fd);
+      tmp_sock_fd->len = sock_fd->len - tcp_dns_len;
+      // This copy is safe because the buffer size of |tmp_sock_fd| and
+      // |sock_fd| is equal and only partial data of |sock_fd| is copied.
+      memcpy(tmp_sock_fd->msg, sock_fd->msg + tcp_dns_len, tmp_sock_fd->len);
+      sock_fd->len = tcp_dns_len;
+    }
+
+    // Start the DNS query for a complete DNS query data.
+    const auto& sock_fd_it =
+        sock_fds_.emplace(sock_fd->id, std::move(sock_fd)).first;
+    Resolve(sock_fd_it->second->weak_factory.GetWeakPtr());
+
+    // Process additional query data.
+    sock_fd = std::move(tmp_sock_fd);
+  }
 }
 
 bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
@@ -696,7 +765,7 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
   for (const auto& target : targets) {
     if (doh) {
       if (!curl_client_->Resolve(
-              sock_fd->msg, sock_fd->len,
+              sock_fd->get_message(), sock_fd->get_length(),
               base::BindRepeating(
                   &Resolver::HandleCurlResult, weak_factory_.GetWeakPtr(),
                   sock_fd, doh_providers_[target]->weak_factory.GetWeakPtr()),
@@ -705,8 +774,8 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
       }
     } else {
       if (!ares_client_->Resolve(
-              reinterpret_cast<const unsigned char*>(sock_fd->msg),
-              sock_fd->len,
+              reinterpret_cast<const unsigned char*>(sock_fd->get_message()),
+              sock_fd->get_length(),
               base::BindRepeating(
                   &Resolver::HandleAresResult, weak_factory_.GetWeakPtr(),
                   sock_fd, name_servers_[target]->weak_factory.GetWeakPtr()),
@@ -831,7 +900,7 @@ void Resolver::Resolve(base::WeakPtr<SocketFd> sock_fd, bool fallback) {
 
   // Construct and send a response indicating that there is a failure.
   patchpanel::DnsResponse response =
-      ConstructServFailResponse(sock_fd->msg, sock_fd->len);
+      ConstructServFailResponse(sock_fd->get_message(), sock_fd->get_length());
   ReplyDNS(sock_fd,
            reinterpret_cast<unsigned char*>(response.io_buffer()->data()),
            response.io_buffer_size());

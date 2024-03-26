@@ -50,6 +50,11 @@ class Resolver {
   struct SocketFd {
     SocketFd(int type, int fd);
 
+    // Getter for |msg| and |len| that excludes the additional 2-bytes TCP
+    // header data containing the DNS query length.
+    const char* get_message() const;
+    const ssize_t get_length() const;
+
     // |type| is either SOCK_STREAM or SOCK_DGRAM.
     const int type;
     const int fd;
@@ -65,7 +70,7 @@ class Resolver {
     // At initialization, |socklen| value will be the size of |src|. Upon
     // receiving, |socklen| should be updated to be the size of the address
     // of |src|.
-    // For TCP connections, |src| and |len| are not used.
+    // For TCP connections, |src| and |socklen| are not used.
     struct sockaddr_storage src;
     socklen_t socklen;
 
@@ -196,6 +201,14 @@ class Resolver {
                              unsigned char* msg,
                              size_t len);
 
+  // Handle DNS query data from clients read through |OnDNSQuery|. Added for
+  // unit testing.
+  void HandleDNSQuery(std::unique_ptr<SocketFd> sock_fd);
+
+  // Get a SocketFd from |pending_sock_fds_| using the key |fd| and remove it
+  // from the map. Added for unit testing.
+  std::unique_ptr<SocketFd> PopPendingSocketFd(int fd);
+
   // Create a SERVFAIL response from a DNS query |msg| of length |len|.
   patchpanel::DnsResponse ConstructServFailResponse(const char* msg, int len);
 
@@ -300,6 +313,11 @@ class Resolver {
 
   // Map of SocketFds keyed by its SocketFd ID.
   std::map<int, std::unique_ptr<SocketFd>> sock_fds_;
+
+  // Map of incomplete DNS transaction's SocketFds keyed by its fd. This is
+  // necessary because for TCP, it is possible for the DNS query to be sent
+  // over multiple TCP segments.
+  std::map<int, std::unique_ptr<SocketFd>> pending_sock_fds_;
 
   // Ares client to resolve DNS through standard plain-text DNS.
   std::unique_ptr<AresClient> ares_client_;

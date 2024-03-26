@@ -32,6 +32,35 @@ const std::vector<std::string> kTestDoHProviders{
     "https://dns.google/dns-query", "https://dns2.google/dns-query"};
 constexpr base::TimeDelta kTimeout = base::Seconds(3);
 
+// Example of a valid DNS TCP fragment:
+// - first 2 bytes are a TCP header containing the size of the DNS query
+//   (0x0102 == 258).
+// - next bytes are the DNS query with the length equals to the TCP
+//   header.
+constexpr uint8_t kDNSTCPFragment[] = {
+    0x01, 0x02, 0xbe, 0x64, 0x4b, 0xdd, 0x74, 0xd6, 0x7d, 0x4c, 0x45, 0xe4,
+    0x25, 0x25, 0x48, 0x53, 0x5a, 0x42, 0xc2, 0x32, 0xd7, 0xf5, 0x63, 0xcf,
+    0x60, 0xd5, 0x51, 0x78, 0x18, 0x82, 0x39, 0xed, 0x81, 0x92, 0xaf, 0x4b,
+    0x7c, 0xc2, 0x5a, 0x61, 0xd6, 0xf0, 0x0b, 0x5a, 0xbe, 0xb8, 0xc5, 0x80,
+    0xeb, 0x36, 0x7f, 0xe4, 0x75, 0xa2, 0xdc, 0xc1, 0x34, 0x65, 0xb3, 0x52,
+    0x34, 0x34, 0xe7, 0x60, 0x6b, 0x95, 0xeb, 0xa2, 0x69, 0x29, 0xd5, 0xd2,
+    0x5d, 0x81, 0xa9, 0x42, 0x65, 0x40, 0xee, 0xd8, 0x78, 0xf5, 0xdc, 0xd4,
+    0xa9, 0x62, 0xe9, 0x27, 0x1d, 0xb4, 0x22, 0xad, 0x59, 0xd6, 0x75, 0xb7,
+    0x9a, 0x4c, 0x6e, 0x82, 0x44, 0x1c, 0x2e, 0xbc, 0xd8, 0x6c, 0xa5, 0x5b,
+    0xa4, 0xa2, 0x9e, 0x41, 0x8e, 0x95, 0x4d, 0x75, 0x07, 0xef, 0x99, 0x10,
+    0x4d, 0x64, 0x77, 0x0c, 0x1d, 0x84, 0x8d, 0xad, 0x39, 0xef, 0x86, 0x15,
+    0x44, 0x3f, 0xf8, 0x7a, 0x7e, 0xc8, 0xc6, 0x96, 0x5c, 0x5c, 0x29, 0xc7,
+    0xab, 0xfd, 0xff, 0x25, 0xb3, 0x4a, 0xec, 0x0d, 0x5d, 0x3a, 0x97, 0x1b,
+    0x98, 0x5f, 0x9d, 0x4b, 0x99, 0x11, 0x6a, 0x21, 0x11, 0x11, 0xb7, 0x69,
+    0xd2, 0x03, 0x6c, 0x22, 0x59, 0x11, 0xf1, 0x4e, 0xa5, 0xdd, 0x60, 0x24,
+    0xa6, 0xf2, 0x55, 0xf1, 0xa7, 0x58, 0x16, 0x21, 0xac, 0xc5, 0x3f, 0xb9,
+    0x77, 0xf7, 0x20, 0x08, 0xa1, 0x99, 0x3f, 0x96, 0x76, 0xae, 0x63, 0xb6,
+    0xce, 0xac, 0x36, 0xda, 0x23, 0xa8, 0x13, 0xd3, 0x4e, 0x25, 0xa5, 0x85,
+    0xd1, 0x28, 0x77, 0xdc, 0xd1, 0xb9, 0x09, 0x55, 0x78, 0x81, 0x61, 0x9b,
+    0x67, 0x64, 0xe8, 0xb6, 0x6f, 0xfc, 0x0c, 0xd6, 0xf3, 0x33, 0xcf, 0xea,
+    0x9d, 0x05, 0x62, 0x14, 0x21, 0xaf, 0xf7, 0xfd, 0x92, 0xd6, 0xac, 0x06,
+    0x7d, 0x2d, 0xe2, 0x9b, 0x19, 0xaa, 0xfc, 0x79};
+
 class MockDoHCurlClient : public DoHCurlClient {
  public:
   MockDoHCurlClient() : DoHCurlClient(kTimeout) {}
@@ -690,5 +719,93 @@ TEST_F(ResolverTest, Probe_DoHProbeRestarted) {
 
   // Invalidate a DoH provider.
   InvalidateDoHProvider(invalidated_doh_provider);
+}
+
+TEST_F(ResolverTest, Resolve_HandleUDPQuery) {
+  SetNameServers(kTestNameServers);
+  for (const auto& name_server : kTestNameServers) {
+    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, SOCK_DGRAM))
+        .WillOnce(Return(true));
+  }
+  auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_DGRAM, /*fd=*/0);
+  resolver_->HandleDNSQuery(std::move(sock_fd));
+}
+
+TEST_F(ResolverTest, Resolve_HandleTCPQuery) {
+  SetNameServers(kTestNameServers);
+  auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, /*fd=*/0);
+  memcpy(sock_fd->msg, kDNSTCPFragment, sizeof(kDNSTCPFragment));
+  sock_fd->len = sizeof(kDNSTCPFragment);
+
+  for (const auto& name_server : kTestNameServers) {
+    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, SOCK_STREAM))
+        .WillOnce(Return(true));
+  }
+  resolver_->HandleDNSQuery(std::move(sock_fd));
+}
+
+TEST_F(ResolverTest, Resolve_HandleChunkedTCPQuery) {
+  SetNameServers(kTestNameServers);
+
+  int partial_len = 15;
+  ASSERT_LT(partial_len, sizeof(kDNSTCPFragment));
+
+  // Send partial TCP data.
+  auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, /*fd=*/0);
+  memcpy(sock_fd->msg, kDNSTCPFragment, partial_len);
+  sock_fd->len = partial_len;
+
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
+  resolver_->HandleDNSQuery(std::move(sock_fd));
+
+  // Send remaining TCP data.
+  sock_fd = resolver_->PopPendingSocketFd(/*fd=*/0);
+  memcpy(sock_fd->msg + partial_len, kDNSTCPFragment + partial_len,
+         sizeof(kDNSTCPFragment) - partial_len);
+  sock_fd->len += sizeof(kDNSTCPFragment) - partial_len;
+
+  for (const auto& name_server : kTestNameServers) {
+    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, SOCK_STREAM))
+        .WillOnce(Return(true));
+  }
+  resolver_->HandleDNSQuery(std::move(sock_fd));
+}
+
+TEST_F(ResolverTest, Resolve_HandleMultipleTCPQueries) {
+  SetNameServers(kTestNameServers);
+
+  // Send 2 TCP DNS queries.
+  auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, /*fd=*/0);
+  memcpy(sock_fd->msg, kDNSTCPFragment, sizeof(kDNSTCPFragment));
+  memcpy(sock_fd->msg + sizeof(kDNSTCPFragment), kDNSTCPFragment,
+         sizeof(kDNSTCPFragment));
+  sock_fd->len = 2 * sizeof(kDNSTCPFragment);
+
+  for (const auto& name_server : kTestNameServers) {
+    EXPECT_CALL(*ares_client_, Resolve(_, _, _, name_server, SOCK_STREAM))
+        .Times(2)
+        .WillRepeatedly(Return(true));
+  }
+  resolver_->HandleDNSQuery(std::move(sock_fd));
+}
+
+TEST_F(ResolverTest, Resolve_ChunkedTCPQueryNotResolved) {
+  SetNameServers(kTestNameServers);
+
+  // Expect no resolving.
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
+
+  // Receive 1-byte at a time.
+  auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, /*fd=*/0);
+  memcpy(sock_fd->msg, kDNSTCPFragment, 1);
+  sock_fd->len += 1;
+
+  // Receive all data except for the last byte.
+  while (sock_fd->len < sizeof(kDNSTCPFragment)) {
+    resolver_->HandleDNSQuery(std::move(sock_fd));
+    sock_fd = resolver_->PopPendingSocketFd(/*fd=*/0);
+    memcpy(sock_fd->msg + sock_fd->len, kDNSTCPFragment + sock_fd->len, 1);
+    sock_fd->len += 1;
+  }
 }
 }  // namespace dns_proxy
