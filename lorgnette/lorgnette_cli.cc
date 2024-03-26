@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -56,6 +57,20 @@ std::vector<T> MapKeys(const M& map) {
     keys.push_back(k);
   }
   return keys;
+}
+
+template <class It>
+std::optional<lorgnette::DocumentSource> FindMatchingSource(
+    It begin, It end, lorgnette::SourceType source) {
+  auto it =
+      std::find_if(begin, end, [source](const lorgnette::DocumentSource& s) {
+        return s.type() == source;
+      });
+  if (it != end) {
+    return *it;
+  }
+
+  return std::nullopt;
 }
 
 std::optional<std::vector<std::string>> ReadLines(base::File* file) {
@@ -288,12 +303,28 @@ bool ScanRunner::RunScanner(const std::string& scanner,
                     "Attempting to request it anyways.";
   }
 
+  // If the user hasn't requested a specific scan source, choose the platen if
+  // it's available or the ADF if it isn't.  Otherwise, require exactly what the
+  // user has requested.
   std::optional<lorgnette::DocumentSource> scan_source;
-  for (const lorgnette::DocumentSource& source : capabilities->sources()) {
-    if (source.type() == source_) {
-      scan_source = source;
-      break;
+  if (source_ == lorgnette::SOURCE_UNSPECIFIED) {
+    scan_source = FindMatchingSource(capabilities->sources().begin(),
+                                     capabilities->sources().end(),
+                                     lorgnette::SOURCE_PLATEN);
+    if (!scan_source.has_value()) {
+      scan_source = FindMatchingSource(capabilities->sources().begin(),
+                                       capabilities->sources().end(),
+                                       lorgnette::SOURCE_ADF_SIMPLEX);
     }
+    if (!scan_source.has_value()) {
+      LOG(ERROR) << "No automatic source found.  Specify scan_source manually.";
+      return false;
+    }
+    std::cout << "Selected source: "
+              << lorgnette::SourceType_Name(scan_source->type()) << std::endl;
+  } else {
+    scan_source = FindMatchingSource(capabilities->sources().begin(),
+                                     capabilities->sources().end(), source_);
   }
 
   if (!scan_source.has_value()) {
@@ -497,7 +528,7 @@ int main(int argc, char** argv) {
   // Scan options.
   DEFINE_uint32(scan_resolution, 100,
                 "The scan resolution to request from the scanner");
-  DEFINE_string(scan_source, "Platen",
+  DEFINE_string(scan_source, "Auto",
                 "The scan source to use for the scanner, (e.g. Platen, ADF "
                 "Simplex, ADF Duplex)");
   DEFINE_string(color_mode, "Color",
@@ -608,10 +639,12 @@ int main(int argc, char** argv) {
       std::optional<lorgnette::SourceType> source_type =
           GuessSourceType(FLAGS_scan_source);
 
-      if (!source_type.has_value()) {
+      if (!source_type.has_value() ||
+          (source_type.value() == lorgnette::SOURCE_UNSPECIFIED &&
+           !base::EqualsCaseInsensitiveASCII(FLAGS_scan_source, "auto"))) {
         LOG(ERROR)
             << "Unknown source type: \"" << FLAGS_scan_source
-            << "\". Supported values are \"Platen\",\"ADF\", \"ADF Simplex\""
+            << "\". Supported values are \"Platen\", \"ADF\", \"ADF Simplex\""
                ", and \"ADF Duplex\"";
         return 1;
       }
