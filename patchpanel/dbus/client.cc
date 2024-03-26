@@ -739,6 +739,7 @@ void OnConfigureNetworkResponse(
   if (!response.success()) {
     LOG(ERROR) << __func__ << ": Failed to configure Network on " << ifname;
     std::move(callback).Run(false);
+    return;
   }
   std::move(callback).Run(true);
 }
