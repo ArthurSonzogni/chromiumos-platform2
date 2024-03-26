@@ -108,6 +108,14 @@ void RoutineV2Client::PrintOutput(const base::Value::Dict& output) {
   OutputJson(output);
 }
 
+void RoutineV2Client::OnUnexpectedError(const std::string& message) {
+  std::cout << "Status: Error" << std::endl;
+  base::Value::Dict output;
+  SetJsonDictValue("message", message, &output);
+  PrintOutput(output);
+  run_loop_.Quit();
+}
+
 void RoutineV2Client::OnInitializedState() {
   std::cout << "Initialized" << std::endl;
 }
@@ -118,7 +126,36 @@ void RoutineV2Client::OnRunningState(uint8_t percentage) {
 
 void RoutineV2Client::OnWaitingState(
     const mojom::RoutineStateWaitingPtr& waiting) {
-  std::cout << '\r' << "Waiting: " << waiting->reason << std::endl;
+  std::cout << '\r' << "Waiting: " << waiting->reason << "; "
+            << waiting->message << std::endl;
+  if (waiting->reason ==
+      mojom::RoutineStateWaiting::Reason::kWaitingInteraction) {
+    if (waiting->interaction.is_null()) {
+      OnUnexpectedError("Waiting for null interaction");
+      return;
+    }
+
+    switch (waiting->interaction->which()) {
+      case mojom::RoutineInteraction::Tag::kUnrecognizedInteraction: {
+        OnUnexpectedError("Unrecognized interaction");
+        return;
+      }
+      case mojom::RoutineInteraction::Tag::kInquiry: {
+        const auto& inquiry = waiting->interaction->get_inquiry();
+        switch (inquiry->which()) {
+          case mojom::RoutineInquiry::Tag::kUnrecognizedInquiry: {
+            OnUnexpectedError("Unrecognized inquiry");
+            return;
+          }
+          case mojom::RoutineInquiry::Tag::kCheckLedLitUpState: {
+            HandleCheckLedLitUpStateInquiry(
+                inquiry->get_check_led_lit_up_state());
+            return;
+          }
+        }
+      }
+    }
+  }
 }
 
 void RoutineV2Client::OnFinishedState(
@@ -163,6 +200,35 @@ void RoutineV2Client::OnFinishedState(
     }
   }
   run_loop_.Quit();
+}
+
+void RoutineV2Client::HandleCheckLedLitUpStateInquiry(
+    const mojom::CheckLedLitUpStateInquiryPtr& inquiry) {
+  // Print a newline so we don't overwrite the progress percent.
+  std::cout << '\n';
+
+  std::optional<bool> answer;
+  do {
+    std::cout << "Is the LED lit up in the specified color? "
+                 "Input y/n then press ENTER to continue."
+              << std::endl;
+    std::string input;
+    std::getline(std::cin, input);
+
+    if (!input.empty() && input[0] == 'y') {
+      answer = true;
+    } else if (!input.empty() && input[0] == 'n') {
+      answer = false;
+    }
+  } while (!answer.has_value());
+
+  CHECK(answer.has_value());
+  routine_control_->ReplyInquiry(
+      mojom::RoutineInquiryReply::NewCheckLedLitUpState(
+          mojom::CheckLedLitUpStateReply::New(
+              answer.value()
+                  ? mojom::CheckLedLitUpStateReply::State::kCorrectColor
+                  : mojom::CheckLedLitUpStateReply::State::kNotLitUp)));
 }
 
 }  // namespace diagnostics

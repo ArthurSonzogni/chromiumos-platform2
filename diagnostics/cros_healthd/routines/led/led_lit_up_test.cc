@@ -38,45 +38,29 @@ constexpr auto kArbitraryLedColor = mojom::LedColor::kRed;
 // Returns the exception info.
 std::tuple<uint32_t, std::string> RunRoutineAndWaitForException(
     BaseRoutineControl& routine) {
-  base::test::TestFuture<uint32_t, const std::string&> future;
-  routine.SetOnExceptionCallback(future.GetCallback());
+  base::test::TestFuture<uint32_t, const std::string&> exception_future;
+  routine.SetOnExceptionCallback(exception_future.GetCallback());
   routine.Start();
-  return future.Take();
+  return exception_future.Take();
 }
 
 mojom::RoutineStatePtr GetRoutineState(BaseRoutineControl& routine) {
-  base::test::TestFuture<mojom::RoutineStatePtr> future;
-  routine.GetState(future.GetCallback());
-  return future.Take();
+  base::test::TestFuture<mojom::RoutineStatePtr> state_future;
+  routine.GetState(state_future.GetCallback());
+  return state_future.Take();
 }
 
-mojom::RoutineStatePtr StartRoutineAndWaitForResult(
-    BaseRoutineControl& routine) {
-  routine.SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
-  RoutineObserverForTesting observer;
-  routine.SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
-  routine.Start();
-  observer.WaitUntilRoutineFinished();
-  return std::move(observer.state_);
+mojom::RoutineInquiryReplyPtr CreateInquiryReply(
+    mojom::CheckLedLitUpStateReply::State state) {
+  return mojom::RoutineInquiryReply::NewCheckLedLitUpState(
+      mojom::CheckLedLitUpStateReply::New(state));
 }
-
-class MockLedLitUpRoutineReplier : public mojom::LedLitUpRoutineReplier {
- public:
-  // mojom::LedLitUpRoutineReplier overrides:
-  MOCK_METHOD(void, GetColorMatched, (GetColorMatchedCallback), (override));
-
-  void Disconnect() { receiver.reset(); }
-
-  mojo::Receiver<mojom::LedLitUpRoutineReplier> receiver{this};
-};
 
 struct CreateRoutineOption {
   // The target LED name.
   mojom::LedName led_name = kArbitraryLedName;
   // The target LED color.
   mojom::LedColor led_color = kArbitraryLedColor;
-  // Whether to create routine argument without the replier.
-  bool without_replier = false;
 };
 
 class LedLitUpRoutineV2Test : public BaseFileTest {
@@ -88,9 +72,6 @@ class LedLitUpRoutineV2Test : public BaseFileTest {
     auto arg = mojom::LedLitUpRoutineArgument::New();
     arg->name = option.led_name;
     arg->color = option.led_color;
-    if (!option.without_replier) {
-      arg->replier = mock_replier_.receiver.BindNewPipeAndPassRemote();
-    }
     return LedLitUpRoutine::Create(&mock_context_, std::move(arg));
   }
 
@@ -104,13 +85,7 @@ class LedLitUpRoutineV2Test : public BaseFileTest {
         .WillOnce(base::test::RunOnceCallback<1>(err));
   }
 
-  void SetReplierGetColorMatchedResponse(bool matched) {
-    EXPECT_CALL(mock_replier_, GetColorMatched)
-        .WillOnce(base::test::RunOnceCallback<0>(matched));
-  }
-
   base::test::SingleThreadTaskEnvironment task_environment_;
-  MockLedLitUpRoutineReplier mock_replier_;
   MockContext mock_context_;
 };
 
@@ -147,15 +122,6 @@ TEST_F(LedLitUpRoutineV2Test, InitializedStateBeforeStart) {
   EXPECT_TRUE(result->state_union->is_initialized());
 }
 
-TEST_F(LedLitUpRoutineV2Test, ErrorWhenCreatedWithInvalidReplier) {
-  auto routine_create = CreateRoutine({.without_replier = true});
-  ASSERT_TRUE(routine_create.has_value());
-  auto routine = std::move(routine_create.value());
-
-  auto [error_unused, reason] = RunRoutineAndWaitForException(*routine);
-  EXPECT_EQ(reason, "Invalid replier.");
-}
-
 TEST_F(LedLitUpRoutineV2Test, SetLedColorError) {
   auto routine_create = CreateRoutine();
   ASSERT_TRUE(routine_create.has_value());
@@ -167,46 +133,25 @@ TEST_F(LedLitUpRoutineV2Test, SetLedColorError) {
   EXPECT_EQ(reason, "Failed to set LED color.");
 }
 
-TEST_F(LedLitUpRoutineV2Test,
-       ErrorWhenReplierDisconnectedBeforeCallingReplier) {
-  auto routine_create = CreateRoutine();
-  ASSERT_TRUE(routine_create.has_value());
-  auto routine = std::move(routine_create.value());
-
-  SetExecutorSetLedColorResponse(/*err*/ std::nullopt);
-  SetExecutorResetLedColorResponse(/*err*/ std::nullopt);
-  mock_replier_.Disconnect();
-
-  auto [error_unused, reason] = RunRoutineAndWaitForException(*routine);
-  EXPECT_EQ(reason, "Replier disconnected.");
-}
-
-TEST_F(LedLitUpRoutineV2Test, ErrorWhenReplierDisconnectedAfterCallingReplier) {
-  auto routine_create = CreateRoutine();
-  ASSERT_TRUE(routine_create.has_value());
-  auto routine = std::move(routine_create.value());
-
-  SetExecutorSetLedColorResponse(/*err*/ std::nullopt);
-  // Disconnect the replier when waiting for the response of |GetColorMatched|.
-  EXPECT_CALL(mock_replier_, GetColorMatched)
-      .WillOnce(InvokeWithoutArgs(&mock_replier_,
-                                  &MockLedLitUpRoutineReplier::Disconnect));
-  SetExecutorResetLedColorResponse(/*err*/ std::nullopt);
-
-  auto [error_unused, reason] = RunRoutineAndWaitForException(*routine);
-  EXPECT_EQ(reason, "Replier disconnected.");
-}
-
 TEST_F(LedLitUpRoutineV2Test, ErrorWhenResetLedColorFailed) {
   auto routine_create = CreateRoutine();
   ASSERT_TRUE(routine_create.has_value());
   auto routine = std::move(routine_create.value());
 
   SetExecutorSetLedColorResponse(/*err*/ std::nullopt);
-  SetReplierGetColorMatchedResponse(true);
   SetExecutorResetLedColorResponse("Error");
 
-  auto [error_unused, reason] = RunRoutineAndWaitForException(*routine);
+  base::test::TestFuture<uint32_t, const std::string&> exception_future;
+  routine->SetOnExceptionCallback(exception_future.GetCallback());
+
+  RoutineObserverForTesting observer;
+  routine->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
+  routine->Start();
+  observer.WaitUntilRoutineWaiting();
+  routine->ReplyInquiry(
+      CreateInquiryReply(mojom::CheckLedLitUpStateReply::State::kCorrectColor));
+
+  auto [error_unused, reason] = exception_future.Take();
   EXPECT_EQ(reason, "Failed to reset LED color.");
 }
 
@@ -216,10 +161,18 @@ TEST_F(LedLitUpRoutineV2Test, FailedWhenColorNotMatched) {
   auto routine = std::move(routine_create.value());
 
   SetExecutorSetLedColorResponse(/*err*/ std::nullopt);
-  SetReplierGetColorMatchedResponse(false);
   SetExecutorResetLedColorResponse(/*err*/ std::nullopt);
+  routine->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
 
-  auto result = StartRoutineAndWaitForResult(*routine);
+  RoutineObserverForTesting observer;
+  routine->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
+  routine->Start();
+  observer.WaitUntilRoutineWaiting();
+  routine->ReplyInquiry(
+      CreateInquiryReply(mojom::CheckLedLitUpStateReply::State::kNotLitUp));
+  observer.WaitUntilRoutineFinished();
+
+  const auto& result = observer.state_;
   EXPECT_EQ(result->percentage, 100);
   ASSERT_TRUE(result->state_union->is_finished());
   EXPECT_FALSE(result->state_union->get_finished()->has_passed);
@@ -231,32 +184,21 @@ TEST_F(LedLitUpRoutineV2Test, PassedWhenColorMatched) {
   auto routine = std::move(routine_create.value());
 
   SetExecutorSetLedColorResponse(/*err*/ std::nullopt);
-  SetReplierGetColorMatchedResponse(true);
   SetExecutorResetLedColorResponse(/*err*/ std::nullopt);
+  routine->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
 
-  auto result = StartRoutineAndWaitForResult(*routine);
+  RoutineObserverForTesting observer;
+  routine->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
+  routine->Start();
+  observer.WaitUntilRoutineWaiting();
+  routine->ReplyInquiry(
+      CreateInquiryReply(mojom::CheckLedLitUpStateReply::State::kCorrectColor));
+  observer.WaitUntilRoutineFinished();
+
+  const auto& result = observer.state_;
   EXPECT_EQ(result->percentage, 100);
   ASSERT_TRUE(result->state_union->is_finished());
   EXPECT_TRUE(result->state_union->get_finished()->has_passed);
-}
-
-TEST_F(LedLitUpRoutineV2Test,
-       NoCrashWhenReplierDisconnectAfterRoutineFinished) {
-  auto routine_create = CreateRoutine();
-  ASSERT_TRUE(routine_create.has_value());
-  auto routine = std::move(routine_create.value());
-
-  SetExecutorSetLedColorResponse(/*err*/ std::nullopt);
-  SetReplierGetColorMatchedResponse(true);
-  SetExecutorResetLedColorResponse(/*err*/ std::nullopt);
-
-  auto result = StartRoutineAndWaitForResult(*routine);
-  EXPECT_TRUE(result->state_union->is_finished());
-
-  mock_replier_.Disconnect();
-  // Wait until the disconnection takes effect.
-  task_environment_.RunUntilIdle();
-  // Expect no crash.
 }
 
 }  // namespace

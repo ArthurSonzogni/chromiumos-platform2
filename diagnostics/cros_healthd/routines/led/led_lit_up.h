@@ -45,16 +45,14 @@ class LedLitUpRoutine final : public InteractiveRoutineControl {
   enum class TestStep {
     kInitialize = 0,
     kSetColor = 1,
-    kGetColorMatched = 2,
+    kWaitingForLedState = 2,
     kResetColor = 3,
     kComplete = 4,  // Should be the last one. New step should be added before
                     // it.
   };
 
   void RunNextStep();
-  void ReplierDisconnectHandler();
   void SetLedColorCallback(const std::optional<std::string>& err);
-  void GetColorMatchedCallback(bool matched);
   void ResetLedColorCallback(const std::optional<std::string>& err);
 
   // Context object used to communicate with the executor.
@@ -63,13 +61,10 @@ class LedLitUpRoutine final : public InteractiveRoutineControl {
   const ash::cros_healthd::mojom::LedName name_;
   // The target color.
   const ash::cros_healthd::mojom::LedColor color_;
-  // A replier that can answer whether the actual LED color matches the
-  // expected color.
-  mojo::Remote<ash::cros_healthd::mojom::LedLitUpRoutineReplier> replier_;
   // The current step of the routine.
   TestStep step_ = TestStep::kInitialize;
-  // The response of |GetColorMatched| from |replier_|.
-  bool color_matched_response_ = false;
+  // Whether the LED lights up in the correct color, replied from the client.
+  bool led_color_correct_ = false;
   // Whether to reset the color in the cleanup.
   bool need_reset_color_in_cleanup_ = false;
   // Must be the last class member.

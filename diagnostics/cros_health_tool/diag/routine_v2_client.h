@@ -45,6 +45,7 @@ class RoutineV2Client : public ash::cros_healthd::mojom::RoutineObserver {
  private:
   void OnRoutineDisconnection(uint32_t error, const std::string& message);
   void PrintOutput(const base::Value::Dict& output);
+  void OnUnexpectedError(const std::string& message);
 
   // Handle state transition.
   void OnInitializedState();
@@ -54,6 +55,10 @@ class RoutineV2Client : public ash::cros_healthd::mojom::RoutineObserver {
   void OnFinishedState(
       uint8_t percentage,
       const ash::cros_healthd::mojom::RoutineStateFinishedPtr& finished);
+
+  // Handle inquiries.
+  void HandleCheckLedLitUpStateInquiry(
+      const ash::cros_healthd::mojom::CheckLedLitUpStateInquiryPtr& inquiry);
 
   // The remote for CrosHealthdRoutinesService.
   mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>

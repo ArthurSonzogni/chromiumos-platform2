@@ -30,6 +30,9 @@ class RoutineObserverForTesting
   // Wait for the routine to be in the finished state.
   void WaitUntilRoutineFinished();
 
+  // Wait for the routine to be in the waiting state.
+  void WaitUntilRoutineWaiting();
+
   ash::cros_healthd::mojom::RoutineStatePtr state_;
   mojo::Receiver<ash::cros_healthd::mojom::RoutineObserver> receiver_{this};
 

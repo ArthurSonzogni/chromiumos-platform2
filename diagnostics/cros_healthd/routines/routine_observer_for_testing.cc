@@ -24,6 +24,10 @@ bool IsFinishedState(const mojom::RoutineStatePtr& state) {
   return state->state_union->is_finished();
 }
 
+bool IsWaitingState(const mojom::RoutineStatePtr& state) {
+  return state->state_union->is_waiting();
+}
+
 }  // namespace
 
 RoutineObserverForTesting::RoutineObserverForTesting() = default;
@@ -51,6 +55,18 @@ void RoutineObserverForTesting::WaitUntilRoutineFinished() {
   base::test::TestFuture<void> signal;
   state_action_ = {
       .is_condition_satisfied = base::BindRepeating(&IsFinishedState),
+      .on_condition_satisfied = signal.GetCallback()};
+  EXPECT_TRUE(signal.Wait());
+}
+
+void RoutineObserverForTesting::WaitUntilRoutineWaiting() {
+  if (!state_.is_null() && IsWaitingState(state_)) {
+    return;
+  }
+  CHECK(!state_action_) << "Can set only one state action";
+  base::test::TestFuture<void> signal;
+  state_action_ = {
+      .is_condition_satisfied = base::BindRepeating(&IsWaitingState),
       .on_condition_satisfied = signal.GetCallback()};
   EXPECT_TRUE(signal.Wait());
 }

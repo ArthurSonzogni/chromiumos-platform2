@@ -13,7 +13,6 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <base/notimplemented.h>
 #include <base/types/expected.h>
 
 #include "diagnostics/cros_healthd/system/context.h"
@@ -59,11 +58,6 @@ LedLitUpRoutine::LedLitUpRoutine(Context* context,
                                  mojom::LedLitUpRoutineArgumentPtr arg)
     : context_(context), name_(arg->name), color_(arg->color) {
   CHECK(context_);
-  if (arg->replier.is_valid()) {
-    // The disconnection of |replier_| is handled in |RunNextStep| to avoid
-    // resetting the LED before the specified color is set.
-    replier_.Bind(std::move(arg->replier));
-  }
 }
 
 LedLitUpRoutine::~LedLitUpRoutine() {
@@ -75,24 +69,33 @@ LedLitUpRoutine::~LedLitUpRoutine() {
 
 void LedLitUpRoutine::OnStart() {
   CHECK_EQ(step_, TestStep::kInitialize);
-  if (!replier_.is_bound()) {
-    RaiseException("Invalid replier.");
-    return;
-  }
   RunNextStep();
 }
 
 void LedLitUpRoutine::OnReplyInquiry(mojom::RoutineInquiryReplyPtr reply) {
-  // TODO(b/309781398): Implement the function.
-  NOTIMPLEMENTED();
-}
-
-void LedLitUpRoutine::ReplierDisconnectHandler() {
-  CHECK_EQ(step_, TestStep::kGetColorMatched);
-  context_->executor()->ResetLedColor(name_,
-                                      base::BindOnce(&LogResetColorError));
-  need_reset_color_in_cleanup_ = false;
-  RaiseException("Replier disconnected.");
+  if (step_ != TestStep::kWaitingForLedState) {
+    RaiseException("Unexpected diagnostic flow.");
+    return;
+  }
+  if (!reply->is_check_led_lit_up_state()) {
+    RaiseException("Reply type is not check-led-lit-up-state.");
+    return;
+  }
+  const auto& led_reply = reply->get_check_led_lit_up_state();
+  CHECK(!led_reply.is_null());
+  switch (led_reply->state) {
+    case mojom::CheckLedLitUpStateReply::State::kCorrectColor:
+      led_color_correct_ = true;
+      RunNextStep();
+      return;
+    case mojom::CheckLedLitUpStateReply::State::kNotLitUp:
+      led_color_correct_ = false;
+      RunNextStep();
+      return;
+    case mojom::CheckLedLitUpStateReply::State::kUnmappedEnumField:
+      RaiseException("Unrecognized LED state value.");
+      return;
+  }
 }
 
 void LedLitUpRoutine::SetLedColorCallback(
@@ -107,14 +110,6 @@ void LedLitUpRoutine::SetLedColorCallback(
     return;
   }
   need_reset_color_in_cleanup_ = true;
-  RunNextStep();
-}
-
-void LedLitUpRoutine::GetColorMatchedCallback(bool matched) {
-  CHECK_EQ(step_, TestStep::kGetColorMatched);
-  // No need to handle the disconnection after receiving the response.
-  replier_.set_disconnect_handler(base::DoNothing());
-  color_matched_response_ = matched;
   RunNextStep();
 }
 
@@ -146,23 +141,11 @@ void LedLitUpRoutine::RunNextStep() {
           base::BindOnce(&LedLitUpRoutine::SetLedColorCallback,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
-    case TestStep::kGetColorMatched:
-      if (!replier_.is_connected()) {
-        // Handle the disconnection before calling the remote function.
-        ReplierDisconnectHandler();
-      } else {
-        SetPercentage(50);
-        // TODO(b/309781398): Use `SetWaitingInquiryState`.
-        SetWaitingState(mojom::RoutineStateWaiting::Reason::kWaitingInteraction,
-                        "Waiting for user to check the LED color.");
-        // Handle the disconnection during calling the remote function.
-        replier_.set_disconnect_handler(
-            base::BindOnce(&LedLitUpRoutine::ReplierDisconnectHandler,
-                           weak_ptr_factory_.GetWeakPtr()));
-        replier_->GetColorMatched(
-            base::BindOnce(&LedLitUpRoutine::GetColorMatchedCallback,
-                           weak_ptr_factory_.GetWeakPtr()));
-      }
+    case TestStep::kWaitingForLedState:
+      SetPercentage(50);
+      SetWaitingInquiryState("Waiting for user to check the LED color.",
+                             mojom::RoutineInquiry::NewCheckLedLitUpState(
+                                 mojom::CheckLedLitUpStateInquiry::New()));
       break;
     case TestStep::kResetColor:
       SetRunningState();
@@ -172,7 +155,7 @@ void LedLitUpRoutine::RunNextStep() {
                                 weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kComplete:
-      SetFinishedState(/*has_passed=*/color_matched_response_,
+      SetFinishedState(/*has_passed=*/led_color_correct_,
                        /*detail=*/nullptr);
       break;
   }

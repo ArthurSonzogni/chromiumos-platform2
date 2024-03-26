@@ -1422,7 +1422,6 @@ Status message: Routine passed.
 
 Errors:
 - `Not lit up in the specified color.`
-- `Replier disconnected.`
 - `Failed to set the LED color`
 
 ## Bluetooth Routines
