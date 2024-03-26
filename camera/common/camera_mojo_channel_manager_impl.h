@@ -64,6 +64,9 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   void IsServiceRegistered(const std::string& service_name,
                            base::OnceCallback<void(bool)> callback) override;
 
+  chromeos::mojo_service_manager::mojom::ServiceManager*
+  GetServiceManagerProxy() override;
+
  protected:
   friend class CameraMojoChannelManager;
 
@@ -78,9 +81,6 @@ class CameraMojoChannelManagerImpl : public CameraMojoChannelManager {
   void QueryCallback(
       base::OnceCallback<void(bool)> callback,
       chromeos::mojo_service_manager::mojom::ErrorOrServiceStatePtr result);
-
-  chromeos::mojo_service_manager::mojom::ServiceManager*
-  GetServiceManagerProxy();
 
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
 
