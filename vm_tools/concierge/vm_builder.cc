@@ -332,6 +332,11 @@ VmBuilder& VmBuilder::EnableVideoDecoder(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::SetVideoDecoder(std::string video_decoder) {
+  video_decoder_ = video_decoder;
+  return *this;
+}
+
 VmBuilder& VmBuilder::EnableVideoEncoder(bool enable) {
   enable_video_encoder_ = enable;
   return *this;
@@ -645,8 +650,9 @@ base::StringPairs VmBuilder::BuildRunParams() const {
   if (enable_vtpm_proxy_)
     args.emplace_back("--vtpm-proxy", "");
 
-  if (enable_video_decoder_)
-    args.emplace_back("--video-decoder", "libvda");
+  if (enable_video_decoder_) {
+    args.emplace_back("--video-decoder", video_decoder_);
+  }
 
   if (enable_video_encoder_)
     args.emplace_back("--video-encoder", "libvda");

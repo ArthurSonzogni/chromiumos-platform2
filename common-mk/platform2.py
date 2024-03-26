@@ -86,6 +86,7 @@ _IUSE = [
     "cross_domain_context_borealis",
     "crosvm_fixed_blob_mapping",
     "crosvm_virtio_video",
+    "crosvm_virtio_video_vd",
     "crosvm_wl_dmabuf",
     "crypto",
     "dbus",

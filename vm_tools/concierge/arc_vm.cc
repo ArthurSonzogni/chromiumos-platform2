@@ -281,8 +281,11 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   }
 
   if (USE_CROSVM_VIRTIO_VIDEO) {
-    vm_builder.EnableVideoDecoder(true /* enable */);
-    vm_builder.EnableVideoEncoder(true /* enable */);
+    vm_builder.EnableVideoDecoder(true /* enable */)
+        .EnableVideoEncoder(true /* enable */);
+    if (USE_CROSVM_VIRTIO_VIDEO_VD) {
+      vm_builder.SetVideoDecoder("libvda-vd");
+    }
   }
 
   const base::FilePath jemalloc_config_file(kJemallocConfigFile);

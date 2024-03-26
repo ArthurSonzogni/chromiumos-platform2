@@ -158,6 +158,9 @@ class VmBuilder {
 
   VmBuilder& EnableVtpmProxy(bool enable);
   VmBuilder& EnableVideoDecoder(bool enable);
+  // Sets the video decoder to use. This is only used if
+  // EnableVideoDecoder(true) is called.
+  VmBuilder& SetVideoDecoder(std::string video_decoder);
   VmBuilder& EnableVideoEncoder(bool enable);
   VmBuilder& EnableBattery(bool enable);
   VmBuilder& EnableSmt(bool enable);
@@ -236,6 +239,7 @@ class VmBuilder {
 
   bool enable_vtpm_proxy_ = false;
   bool enable_video_decoder_ = false;
+  std::string video_decoder_ = "libvda";
   bool enable_video_encoder_ = false;
   bool enable_battery_ = false;
   bool enable_pvclock_ = false;
