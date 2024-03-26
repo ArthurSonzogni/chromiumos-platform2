@@ -46,6 +46,7 @@ generate_dbus_adaptors("lvmd_dbus_adaptors") {
 static_library("liblvmd") {
   sources = [ "lvmd.cc" ]
   configs += [ ":target_defaults" ]
+  deps = [ ":lvmd_dbus_adaptors" ]
 }
 
 executable("lvmd") {
