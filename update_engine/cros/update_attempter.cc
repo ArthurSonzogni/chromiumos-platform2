@@ -441,6 +441,10 @@ void UpdateAttempter::Install() {
   // Simply go into CHECKING status.
   SetStatusAndNotify(UpdateStatus::CHECKING_FOR_UPDATE);
 
+  // Start limiting the cpu now as the next action to run should be
+  // installations per scheduling.
+  cpu_limiter_.StartLimiter();
+
   ScheduleProcessingStart();
 }
 
