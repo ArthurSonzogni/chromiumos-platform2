@@ -14,11 +14,32 @@ GET_FIRMWARE_TIME='
   }
 '
 
-FIRMWARE_LOG="/sys/firmware/log"
+FIRMWARE_DIR="/sys/firmware"
+FIRMWARE_LOG="${FIRMWARE_DIR}/log"
+
+# ChromeOS Flex (a.k.a. reven) devices run third party UEFI firmware and boot
+# metrics must be retrieved from the ACPI FPDT:
+#
+# https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-firmware-acpi
+get_firmware_time_fpdt() {
+  local acpi_fpdt_dir firmware_start_ns exitbootservice_end_ns
+  acpi_fpdt_dir="${FIRMWARE_DIR}/acpi/fpdt/boot"
+  firmware_start_ns="$(cat "${acpi_fpdt_dir}/firmware_start_ns")"
+  exitbootservice_end_ns="$(cat "${acpi_fpdt_dir}/exitbootservice_end_ns")"
+  awk -v firmware_start_ns="${firmware_start_ns}" \
+      -v exitbootservice_end_ns="${exitbootservice_end_ns}" \
+      '
+    BEGIN {
+      printf "%.2f", (exitbootservice_end_ns - firmware_start_ns) / 1000000000
+    }'
+}
+
 get_firmware_time() {
   local ftime
   if [ -e "${FIRMWARE_LOG}"  ]; then
     ftime="$(awk "${GET_FIRMWARE_TIME}" "${FIRMWARE_LOG}")"
+  else
+    ftime=$(get_firmware_time_fpdt)
   fi
   if [ -z "${ftime}" ]; then
     # shellcheck disable=SC2154
