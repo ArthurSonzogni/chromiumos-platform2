@@ -255,6 +255,9 @@ class FramingStreamManipulator : public StreamManipulator {
   // Flagged if manual zoom can be done in this stream manipulator. It is false
   // if the camera already has zoom capability.
   bool manual_zoom_supported_ = false;
+  // Flagged if manual zoom is requested when configuring streams and the device
+  // supports manual zoom.
+  bool manual_zoom_requested_ = false;
 
   Metrics metrics_;
 };

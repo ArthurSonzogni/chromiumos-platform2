@@ -342,6 +342,9 @@ struct FramingStreamManipulator::CaptureContext {
   std::optional<CameraBufferPool::Buffer> cropped_still_yuv_buffer;
   std::optional<int64_t> timestamp;
   std::optional<Rect<float>> crop_region;
+  // Crop region from capture request. This value is needed to fill back in the
+  // capture result after we temporarily delete it in the capture request.
+  std::optional<Rect<uint32_t>> requested_crop_region;
 };
 
 FramingStreamManipulator::FramingStreamManipulator(
@@ -419,15 +422,6 @@ bool FramingStreamManipulator::UpdateStaticMetadata(
                      facing_entry.data.u8[0] == ANDROID_LENS_FACING_EXTERNAL;
   if (is_external) {
     VLOGF(1) << "Manual zoom is not supported on external cameras";
-    return true;
-  }
-
-  camera_metadata_entry_t zoom_entry =
-      static_info->find(ANDROID_SCALER_AVAILABLE_MAX_DIGITAL_ZOOM);
-  bool has_internal_zoom = zoom_entry.count > 0 && zoom_entry.data.f[0] > 1.0;
-  if (has_internal_zoom) {
-    VLOGF(1) << "Manual zoom is not supported since the device has built-in "
-                "digital zoom";
     return true;
   }
 
@@ -607,12 +601,12 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
       clone_camera_metadata(stream_config->session_parameters()));
   auto request_entry =
       session_parameters.find(kCrosDigitalZoomRequestedVendorKey);
-  bool manual_zoom_requested =
-      request_entry.count > 0 && request_entry.data.i32[0] == 1;
+  manual_zoom_requested_ = manual_zoom_supported_ && request_entry.count > 0 &&
+                           request_entry.data.i32[0] == 1;
 
   // Skip stream configuration if neither auto framing nor manual zoom will be
   // performed throughout the session.
-  stream_config_skipped_ = !auto_framing_supported_ && !manual_zoom_requested;
+  stream_config_skipped_ = !auto_framing_supported_ && !manual_zoom_requested_;
   if (stream_config_skipped_) {
     VLOGF(1) << "Skip configuring streams as there is no usage";
     return true;
@@ -843,11 +837,16 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
 
   ++metrics_.num_captures;
 
-  auto requested_crop_region = GetManualZoomRequest(
-      request->GetMetadata<int32_t>(ANDROID_SCALER_CROP_REGION),
-      active_array_dimension_);
+  const base::span<const int32_t>& requested_crop_region =
+      request->GetMetadata<int32_t>(ANDROID_SCALER_CROP_REGION);
+  auto normalized_crop_region =
+      GetManualZoomRequest(requested_crop_region, active_array_dimension_);
+  // Manual zoom is considered enabled when:
+  // 1. The device and camera support.
+  // 2. Manual zoom is requested when configuring streams.
+  // 3. Valid crop region is sent with the capture request.
   bool manual_zoom_enabled =
-      manual_zoom_supported_ && requested_crop_region.has_value();
+      manual_zoom_requested_ && normalized_crop_region.has_value();
 
   const std::pair<State, State> state_transition =
       StateTransitionOnThread(manual_zoom_enabled);
@@ -865,7 +864,13 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
   ctx->state_transition = state_transition;
 
   if (state_transition.second == State::kManualZoom) {
-    ctx->crop_region = requested_crop_region;
+    ctx->crop_region = normalized_crop_region;
+    ctx->requested_crop_region =
+        Rect<uint32_t>(requested_crop_region[0], requested_crop_region[1],
+                       requested_crop_region[2], requested_crop_region[3]);
+    // Remove crop region from the capture request to avoid cropping twice in
+    // the devices with HAL-level zoom support.
+    request->DeleteMetadata(ANDROID_SCALER_CROP_REGION);
   }
 
   // Separate the buffers that will be done by us into |ctx->client_buffers|
@@ -959,6 +964,26 @@ bool FramingStreamManipulator::ProcessCaptureResultOnThread(
     // This capture is bypassed.
     return true;
   }
+  if (ctx->state_transition.second == State::kManualZoom &&
+      result->partial_result() != 0) {
+    if (ctx->requested_crop_region.has_value()) {
+      // Fill the crop region, which is temporarily deleted, back to the capture
+      // result. This is done to conform the API as it expects the capture
+      // result to contain the crop region that aligns with the request.
+      result->UpdateMetadata(
+          ANDROID_SCALER_CROP_REGION,
+          base::span<const int32_t>(
+              {static_cast<const int32_t>(ctx->requested_crop_region->left),
+               static_cast<const int32_t>(ctx->requested_crop_region->top),
+               static_cast<const int32_t>(ctx->requested_crop_region->width),
+               static_cast<const int32_t>(
+                   ctx->requested_crop_region->height)}));
+      ctx->requested_crop_region.reset();
+    } else {
+      result->DeleteMetadata(ANDROID_SCALER_CROP_REGION);
+    }
+  }
+
   CHECK_GE(ctx->num_pending_buffers, result->num_output_buffers());
   ctx->num_pending_buffers -= result->num_output_buffers();
   ctx->metadata_received |= result->partial_result() == partial_result_count_;
