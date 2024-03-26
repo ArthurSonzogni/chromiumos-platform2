@@ -13,6 +13,8 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 #include <mojo_service_manager/lib/connect.h>
 
+#include "cros-camera/common.h"
+
 namespace cros::internal {
 
 template <typename MojoInterfaceType>
@@ -25,8 +27,14 @@ class CameraMojoServiceProvider
   void Register(
       chromeos::mojo_service_manager::mojom::ServiceManager* service_manager,
       const std::string& service_name) {
+    LOGF(INFO) << "Register mojo service " << service_name;
     service_manager->Register(service_name,
                               receiver_.BindNewPipeAndPassRemote());
+  }
+
+  void Reset() {
+    service_receiver_set_.Clear();
+    receiver_.reset();
   }
 
  private:

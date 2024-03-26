@@ -1,54 +1,109 @@
-// Copyright 2023 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 // Next min version: 1
 
-module cros.mojom;
+module cros.camera_diag.mojom;
 
-// Available diagnostics result type. This is a bitmask,
-// so multiple results can be combined.
-[Extensible]
-enum DiagnosticsResult {
-  [Default] UNKNOWN = 0,
-  MANUFACTURER_ISSUE = 1,
-  TOO_DARK = 2,
-  PRIVACY_SHUTTER_ON = 4,
-  DIRTY_LENS = 8,
+enum AnalyzerStatus {
+  kNotRun = 0,
+  kPassed = 1,
+  kFailed = 2,
 };
 
-struct CameraDiagnosticsFrame {
-  handle<data_pipe_consumer> data_handle;
-  uint32 data_size;
+[Extensible]
+enum AnalyzerType {
+  [Default] kUnknown = 0,
+  kPrivacyShutterSwTest = 1,
+};
+
+[Extensible]
+enum CameraIssue {
+  [Default] kNone = 0,
+  kManufacturerIssue = 1,
+  kPrivacyShutterOn = 2,
+  kDirtyLens = 3,
+  kCameraServiceDown = 4,
+};
+
+[Extensible]
+enum ClientType {
+  [Default] kUnknown = 0,
+  kHealthd = 1,
+  kCca = 2,
+};
+
+// Data source of frames and errors.
+[Extensible]
+enum DataSource {
+  [Default] kChrome = 0,
+  kCameraService = 1,
+  kClientApp = 2,
+  kCameraDiagnostics = 3,
+};
+
+// All status and errors of various camera diagnostics operations.
+[Extensible]
+enum ErrorCode {
+  [Default] kUnknown = 0,
+  kCameraClosed = 1,
+  kMultipleOpenCameras = 2,
+  kAlreadyRunningAnalysis = 3,
+  kNotEnoughFrames = 4,
+  kInvalidDuration = 5,
+};
+
+[Extensible]
+enum PixelFormat {
+  [Default] kYuv420 = 0,
+  kJpeg = 1,
+};
+
+struct AnalyzerResult {
+  AnalyzerType type;
+  AnalyzerStatus status;
+};
+
+struct DiagnosticsResult {
+  uint32 numeber_of_analyzed_frames;
+  array<AnalyzerResult> analyzer_results;
+  CameraIssue suggested_issue;
+};
+
+union FrameAnalysisResult {
+  ErrorCode error;
+  DiagnosticsResult res;
+};
+
+struct FrameAnalysisConfig {
+  const uint32 kMinDurationMs = 5000;
+  const uint32 kMaxDurationMs = 60000;
+
+  ClientType client_type;
+  uint32 duration_ms; // In range [kMinDurationMs, kMaxDurationMs]
+};
+
+struct CameraFrameBuffer {
+  uint32 size;
+  handle<shared_buffer> shm_handle;
+};
+
+struct CameraFrame {
   uint32 width;
   uint32 height;
+  PixelFormat pixel_format;
+  uint32? frame_number;
+  DataSource source;
+  CameraFrameBuffer buffer;
 };
 
-// Response to be sent to the user of the service.
-enum Response {
-  ANALYSIS_NOT_STARTED = 0,
-  FRAME_PROCESS_SUCCESSFUL = 1,
-  ANALYSIS_FAILED = 2,
-};
-
-// Camera Diagnostics service implements this interface.
+// Consumer facing interface.
 interface CameraDiagnostics {
-  // Invoke by diagnostics frontend to decide whether the YUV frames analysis
-  // should be enabled. Once it is on, the YUV frame will be continuously fed
-  // to the diagnostics service for frame analysis. Once it is disabled, the
-  // stored frame issue(s) will be cleared.
-  SetYuvAnalysisEnabled@0(bool state);
+  RunFrameAnalysis@0(FrameAnalysisConfig config) => (FrameAnalysisResult res);
+};
 
-  // Getter method to fetch current YUV frame analysis state of camera
-  // diagnostics service.
-  GetYuvAnalysisEnabled@1() => (bool state);
-
-  // Invoke by camera service to pass YUV frame to diagnostics service for
-  // frame analysis. A result callback is provided whether the buffer transport
-  // was successful or not.
-  AnalyzeYuvFrame@2(CameraDiagnosticsFrame  buffer) => (Response response);
-
-  // Invoke by diagnostics frontend to get results which can be mapped to
-  // actionable suggestions.
-  GetDiagnosticsResult@3() => (uint32 result);
+// For internal data source services.
+interface CrosCameraDiagnosticsService {
+  SendFrame@0(CameraFrame frame);
 };

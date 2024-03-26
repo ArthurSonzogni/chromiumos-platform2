@@ -8,8 +8,8 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "cros-camera/common.h"
-#include "diagnostics/camera_diagnostics.h"
+#include "diagnostics/camera_diagnostics_mojo_manager.h"
+#include "diagnostics/camera_diagnostics_server.h"
 
 static void SetLogItems() {
   constexpr bool kOptionPID = true;
@@ -35,9 +35,11 @@ int main(int argc, char* argv[]) {
   // AtExitManager.
   brillo::Daemon daemon;
 
-  cros::CameraDiagnostics camera_diagnostics;
-  // Setup camera diagnostics mojo IPC.
-  camera_diagnostics.Start();
+  // This current thread will be considered as IPC thread. Creation and
+  // destruction of the IPC objects are safe in this scope.
+  cros::CameraDiagnosticsMojoManager mojo_manager;
+
+  cros::CameraDiagnosticsServer camera_diagnostics_server(&mojo_manager);
 
   LOGF(INFO) << "Starting DAEMON cros-camera-diagnostics service";
   daemon.Run();

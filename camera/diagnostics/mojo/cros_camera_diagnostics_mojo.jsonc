@@ -1,34 +1,27 @@
 // Copyright 2023 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
 // Start with an array of policies.
 // Validate this file in CrOS device: mojo_service_manager --check_policy
 [
-  // A policy must contain an identity and at least one of "own" or "request".
   {
-    // Identity is a string represent a selinux security context.
-    // Identity for running the binary directly: u:r:cros_ssh_session:s0
-      "identity": "u:r:cros_camera_diagnostics_service:s0",
-
-    // "own" is an array of the service name which can be registered by this
-    // identity.
-    "own": [ "CrosCameraDiagnostics" ]
+    "identity": "u:r:cros_camera_diagnostics_service:s0",
+    "own": [
+      "CrosCameraDiagnostics",
+      "CrosCameraDiagnosticsService"
+    ]
   },
   {
-    // Chrome can request this service.
-    "identity": "u:r:cros_browser:s0",
-
-    // "request" is an array of the service name which can be requested by this
-    // identity.
-    "request": [ "CrosCameraDiagnostics" ]
-  },
-  {
-    // Camera service can request this service.
     "identity": "u:r:cros_camera_service:s0",
-
-    // "request" is an array of the service name which can be requested by this
-    // identity.
-    "request": [ "CrosCameraDiagnostics" ]
+    "request": [
+      "CrosCameraDiagnosticsService"
+    ]
+  },
+  {
+    "identity": "u:r:cros_ssh_session:s0",
+    "request": [
+      "CrosCameraDiagnostics",
+      "CrosCameraDiagnosticsService"
+    ]
   }
 ]
