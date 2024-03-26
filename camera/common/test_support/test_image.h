@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_AUTO_FRAMING_TESTS_TEST_IMAGE_H_
-#define CAMERA_FEATURES_AUTO_FRAMING_TESTS_TEST_IMAGE_H_
+#ifndef CAMERA_COMMON_TEST_SUPPORT_TEST_IMAGE_H_
+#define CAMERA_COMMON_TEST_SUPPORT_TEST_IMAGE_H_
 
 #include <cutils/native_handle.h>
 
@@ -74,4 +74,4 @@ bool WriteTestImageToBuffer(const TestImage& image,
 
 }  // namespace cros::tests
 
-#endif  // CAMERA_FEATURES_AUTO_FRAMING_TESTS_TEST_IMAGE_H_
+#endif  // CAMERA_COMMON_TEST_SUPPORT_TEST_IMAGE_H_

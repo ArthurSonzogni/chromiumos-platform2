@@ -16,7 +16,7 @@
 #include "common/framing_stream_manipulator.h"
 #include "common/still_capture_processor.h"
 #include "common/stream_manipulator.h"
-#include "features/auto_framing/tests/test_image.h"
+#include "common/test_support/test_image.h"
 
 namespace cros::tests {
 

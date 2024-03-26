@@ -15,6 +15,9 @@ pkg_config("target_defaults") {
 }
 
 source_set("test_support") {
-  sources = [ "fake_still_capture_processor.cc" ]
+  sources = [
+    "fake_still_capture_processor.cc",
+    "test_image.cc",
+  ]
   configs += [ ":target_defaults" ]
 }

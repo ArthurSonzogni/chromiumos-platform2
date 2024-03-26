@@ -19,10 +19,8 @@ pkg_config("target_defaults") {
 }
 
 source_set("base") {
-  sources = [
-    "//camera/features/auto_framing/tests/auto_framing_test_fixture.cc",
-    "//camera/features/auto_framing/tests/test_image.cc",
-  ]
+  sources =
+      [ "//camera/features/auto_framing/tests/auto_framing_test_fixture.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
     "//camera/common:stream_manipulator",

@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "features/auto_framing/tests/test_image.h"
+#include "common/test_support/test_image.h"
 
 #include <drm_fourcc.h>
 #include <libyuv.h>
