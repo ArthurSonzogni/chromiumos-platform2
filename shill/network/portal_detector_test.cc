@@ -760,17 +760,17 @@ TEST_F(PortalDetectorTest, PickProbeURLs) {
   EXPECT_EQ(url1, portal_detector_->PickProbeUrl(url1, {}));
   EXPECT_EQ(url1, portal_detector_->PickProbeUrl(url1, {url2, url3}));
 
-  // The loop index starts at 1 to force a non-zero |attempt_count_| and to
-  // force using the fallback list.
-  for (int i = 1; i < 100; i++) {
+  // The loop index starts at 2 to force |attempt_count_| > 1 and simulate
+  // attempts after the first attempts and force using the fallback list.
+  for (int i = 2; i < 100; i++) {
     portal_detector_->attempt_count_ = i;
     EXPECT_EQ(portal_detector_->PickProbeUrl(url1, {}), url1);
 
     const auto& found =
         portal_detector_->PickProbeUrl(url1, {url2, url3}).ToString();
-    if (i == 1) {
+    if (i == 2) {
       EXPECT_EQ(url2.ToString(), found);
-    } else if (i == 2) {
+    } else if (i == 3) {
       EXPECT_EQ(url3.ToString(), found);
     } else {
       all_found_urls.insert(found);

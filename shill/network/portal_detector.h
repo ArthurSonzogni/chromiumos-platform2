@@ -291,6 +291,14 @@ class PortalDetector {
       const net_base::HttpUrl& default_url,
       const std::vector<net_base::HttpUrl>& fallback_urls) const;
 
+  // Create and start the HTTP probe.
+  void StartHttpProbe(base::TimeTicks start_time,
+                      const std::vector<net_base::IPAddress>& dns_list);
+
+  // Create and start the HTTPS probe.
+  void StartHttpsProbe(base::TimeTicks start_time,
+                       const std::vector<net_base::IPAddress>& dns_list);
+
   // Process the HttpRequest Result of the HTTP probe.
   void ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
                               base::TimeTicks start_time,

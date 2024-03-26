@@ -84,21 +84,38 @@ PortalDetector::~PortalDetector() = default;
 const net_base::HttpUrl& PortalDetector::PickProbeUrl(
     const net_base::HttpUrl& default_url,
     const std::vector<net_base::HttpUrl>& fallback_urls) const {
-  // Always start with the default URL.
-  if (attempt_count_ == 0 || fallback_urls.empty()) {
+  // We expect |attempt_count_| to be strictly positive. A value of 1
+  // indicates the first attempt. If |attempt_count_| is invalid, use the
+  // default URL.
+  if (attempt_count_ < 1) {
     return default_url;
   }
-  // Once the default URL has been used, always visit all fallback URLs in
-  // order. |attempt_count_| is guaranteed superior or equal to 1.
-  if (static_cast<uint32_t>(attempt_count_ - 1) < fallback_urls.size()) {
-    return fallback_urls[attempt_count_ - 1];
+
+  // Always start with the default URL for the first attempt.
+  if (attempt_count_ == 1) {
+    return default_url;
   }
+
+  // Use the default URL if there is no fallback URLs.
+  if (fallback_urls.empty()) {
+    return default_url;
+  }
+
+  // Once the default URL has been used, always visit all fallback URLs in
+  // order. |attempt_count_| is guaranteed superior or equal to 2.
+  int fallback_url_index = attempt_count_ - 2;
+  if (static_cast<size_t>(fallback_url_index) < fallback_urls.size()) {
+    return fallback_urls[fallback_url_index];
+  }
+
   // Otherwise, pick a URL at random with equal probability. Picking URLs at
   // random makes it harder for evasive portals to count probes.
   // TODO(b/309175584): Reavaluate if this behavior is really needed after m121
   // with the Network.Shill.PortalDetector.AttemptsToRedirectFound metric.
-  uint32_t index = base::RandInt(0, fallback_urls.size());
-  return index < fallback_urls.size() ? fallback_urls[index] : default_url;
+  int index = base::RandInt(0, fallback_urls.size());
+  return static_cast<size_t>(index) < fallback_urls.size()
+             ? fallback_urls[index]
+             : default_url;
 }
 
 void PortalDetector::Start(net_base::IPFamily ip_family,
@@ -108,10 +125,21 @@ void PortalDetector::Start(net_base::IPFamily ip_family,
     LOG(INFO) << LoggingTag() << ": Attempt is already running";
     return;
   }
-
   ip_family_ = ip_family;
-  SLOG(this, 3) << "In " << __func__;
+  attempt_count_++;
+  result_ = Result();
+  result_->num_attempts = attempt_count_;
+  result_callback_ = std::move(callback);
+  const base::TimeTicks start_time = base::TimeTicks::Now();
+  StartHttpProbe(start_time, dns_list);
+  StartHttpsProbe(start_time, dns_list);
+}
 
+void PortalDetector::StartHttpProbe(
+    base::TimeTicks start_time,
+    const std::vector<net_base::IPAddress>& dns_list) {
+  http_request_ = CreateHTTPRequest(ifname_, *ip_family_, dns_list,
+                                    /*allow_non_google_https=*/false);
   net_base::HttpUrl http_url;
   if (portal_found_http_url_.has_value()) {
     http_url = *portal_found_http_url_;
@@ -119,30 +147,25 @@ void PortalDetector::Start(net_base::IPFamily ip_family,
     http_url = PickProbeUrl(probing_configuration_.portal_http_url,
                             probing_configuration_.portal_fallback_http_urls);
   }
-  const net_base::HttpUrl https_url =
-      PickProbeUrl(probing_configuration_.portal_https_url,
-                   probing_configuration_.portal_fallback_https_urls);
-
-  http_request_ = CreateHTTPRequest(ifname_, ip_family, dns_list,
-                                    /*allow_non_google_https=*/false);
-  // For non-default URLs, allow for secure communication with both Google and
-  // non-Google servers.
-  bool allow_non_google_https = https_url.ToString() != kDefaultHttpsUrl;
-  https_request_ =
-      CreateHTTPRequest(ifname_, ip_family, dns_list, allow_non_google_https);
-
-  attempt_count_++;
-  result_ = Result();
-  result_->num_attempts = attempt_count_;
-  const base::TimeTicks start_time = base::TimeTicks::Now();
-  result_callback_ = std::move(callback);
-  LOG(INFO) << LoggingTag()
-            << ": Starting trial. HTTP probe: " << http_url.host()
-            << ". HTTPS probe: " << https_url.host();
+  LOG(INFO) << LoggingTag() << ": Starting HTTP probe: " << http_url.host();
   http_request_->Start(
       LoggingTag() + " HTTP probe", http_url, kHeaders,
       base::BindOnce(&PortalDetector::ProcessHTTPProbeResult,
                      weak_ptr_factory_.GetWeakPtr(), http_url, start_time));
+}
+
+void PortalDetector::StartHttpsProbe(
+    base::TimeTicks start_time,
+    const std::vector<net_base::IPAddress>& dns_list) {
+  const net_base::HttpUrl https_url =
+      PickProbeUrl(probing_configuration_.portal_https_url,
+                   probing_configuration_.portal_fallback_https_urls);
+  // For non-default URLs, allow for secure communication with both Google and
+  // non-Google servers.
+  bool allow_non_google_https = https_url.ToString() != kDefaultHttpsUrl;
+  https_request_ =
+      CreateHTTPRequest(ifname_, *ip_family_, dns_list, allow_non_google_https);
+  LOG(INFO) << LoggingTag() << ": Starting HTTPS probe: " << https_url.host();
   https_request_->Start(
       LoggingTag() + " HTTPS probe", https_url, kHeaders,
       base::BindOnce(&PortalDetector::ProcessHTTPSProbeResult,
