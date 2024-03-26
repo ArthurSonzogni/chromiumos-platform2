@@ -27,9 +27,24 @@ class BinaryLogTool {
       const std::string& username,
       const std::map<FeedbackBinaryLogType, base::ScopedFD>& outfds);
 
+  // Test-only.
+  explicit BinaryLogTool(
+      std::unique_ptr<org::chromium::FbPreprocessorProxyInterface>
+          fbpreprocessor_proxy);
+
+  org::chromium::FbPreprocessorProxyInterface*
+  GetFbPreprocessorProxyForTesting();
+
+  void DisableMinijailForTesting();
+
  private:
   std::unique_ptr<org::chromium::FbPreprocessorProxyInterface>
       fbpreprocessor_proxy_;
+
+  // Test-only.
+  // Set to true by default. If set to false, the "tar" subprocess will not be
+  // sanboxed with minijail when binary logs are compressed.
+  bool use_minijail_ = true;
 };
 
 }  // namespace debugd

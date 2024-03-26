@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/containers/span.h>
@@ -53,7 +54,8 @@ bool ValidateDirectoryNames(const std::set<base::FilePath>& files,
 
 bool CompressFiles(const base::FilePath& outfile,
                    const std::set<base::FilePath>& files,
-                   const base::FilePath& base_dir) {
+                   const base::FilePath& base_dir,
+                   bool use_minijail) {
   if (files.empty()) {
     LOG(ERROR) << "No input files";
     return false;
@@ -63,15 +65,17 @@ bool CompressFiles(const base::FilePath& outfile,
   p.InheritUsergroups();
   p.AllowAccessRootMountNamespace();
 
-  std::string args(base_dir.value());
-  args.append(",");
-  args.append(base_dir.value());
-  args.append(",none,MS_BIND|MS_REC");
+  if (use_minijail) {
+    std::string args(base_dir.value());
+    args.append(",");
+    args.append(base_dir.value());
+    args.append(",none,MS_BIND|MS_REC");
 
-  std::vector<std::string> minijail_args;
-  minijail_args.push_back("-k");
-  minijail_args.push_back(args);
-  p.Init(minijail_args);
+    std::vector<std::string> minijail_args;
+    minijail_args.push_back("-k");
+    minijail_args.push_back(args);
+    p.Init(minijail_args);
+  }
 
   p.AddArg("/bin/tar");
   p.AddArg("-I zstd");
@@ -98,6 +102,7 @@ bool CompressFiles(const base::FilePath& outfile,
 bool CompressAndSendFilesToFD(const base::FilePath& tarball_name,
                               const std::set<base::FilePath>& files,
                               const base::FilePath& daemon_store_path,
+                              bool use_minijail,
                               const int out_fd) {
   if (files.empty()) {
     LOG(ERROR) << "No input files";
@@ -118,7 +123,7 @@ bool CompressAndSendFilesToFD(const base::FilePath& tarball_name,
 
   base::FilePath tarball_path = output_dir.Append(tarball_name);
 
-  if (!CompressFiles(tarball_path, files, daemon_store_path)) {
+  if (!CompressFiles(tarball_path, files, daemon_store_path, use_minijail)) {
     LOG(ERROR) << "Failed to compress binary logs";
     return false;
   }
@@ -156,9 +161,23 @@ bool CompressAndSendFilesToFD(const base::FilePath& tarball_name,
 
 namespace debugd {
 
+BinaryLogTool::BinaryLogTool(
+    std::unique_ptr<org::chromium::FbPreprocessorProxyInterface>
+        fbpreprocessor_proxy)
+    : fbpreprocessor_proxy_(std::move(fbpreprocessor_proxy)) {}
+
 BinaryLogTool::BinaryLogTool(scoped_refptr<dbus::Bus> bus)
-    : fbpreprocessor_proxy_(
-          std::make_unique<org::chromium::FbPreprocessorProxy>(bus)) {}
+    : BinaryLogTool(std::make_unique<org::chromium::FbPreprocessorProxy>(bus)) {
+}
+
+org::chromium::FbPreprocessorProxyInterface*
+BinaryLogTool::GetFbPreprocessorProxyForTesting() {
+  return fbpreprocessor_proxy_.get();
+}
+
+void BinaryLogTool::DisableMinijailForTesting() {
+  use_minijail_ = false;
+}
 
 void BinaryLogTool::GetBinaryLogs(
     const std::string& username,
@@ -210,7 +229,7 @@ void BinaryLogTool::GetBinaryLogs(
   int out_fd = outfds.at(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP).get();
   base::FilePath tarball_name(kWiFiTarballName);
   if (!CompressAndSendFilesToFD(tarball_name, files, daemon_store_path,
-                                out_fd)) {
+                                use_minijail_, out_fd)) {
     LOG(ERROR) << "Failed to send binary logs";
     return;
   }
