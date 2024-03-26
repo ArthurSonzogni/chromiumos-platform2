@@ -118,7 +118,8 @@ const net_base::HttpUrl& PortalDetector::PickProbeUrl(
              : default_url;
 }
 
-void PortalDetector::Start(net_base::IPFamily ip_family,
+void PortalDetector::Start(bool http_only,
+                           net_base::IPFamily ip_family,
                            const std::vector<net_base::IPAddress>& dns_list,
                            ResultCallback callback) {
   if (IsRunning()) {
@@ -128,11 +129,14 @@ void PortalDetector::Start(net_base::IPFamily ip_family,
   ip_family_ = ip_family;
   attempt_count_++;
   result_ = Result();
+  result_->http_only = http_only;
   result_->num_attempts = attempt_count_;
   result_callback_ = std::move(callback);
   const base::TimeTicks start_time = base::TimeTicks::Now();
   StartHttpProbe(start_time, dns_list);
-  StartHttpsProbe(start_time, dns_list);
+  if (!http_only) {
+    StartHttpsProbe(start_time, dns_list);
+  }
 }
 
 void PortalDetector::StartHttpProbe(
@@ -364,6 +368,13 @@ PortalDetector::ValidationState PortalDetector::Result::GetValidationState()
   if (IsHTTPProbeRedirectionSuspected()) {
     return ValidationState::kPortalSuspected;
   }
+  // If PortalDetector is running in HTTP portal detection only mode without
+  // HTTPS Internet validation, the result is always "Internet connectivity"
+  // unless a captive portal was found. The result "no connectivity" is never
+  // reported to preserve the same behavior as not running network validation.
+  if (http_only) {
+    return ValidationState::kInternetConnectivity;
+  }
   // Any other result is considered as "no connectivity".
   return ValidationState::kNoConnectivity;
 }
@@ -423,9 +434,20 @@ bool PortalDetector::Result::IsComplete() const {
   // trial immediately. When the captive portal is silently dropping HTTPS
   // traffic, this allows to avoid waiting the full duration of the HTTPS probe
   // timeout and terminating the socket connection of the HTTPS probe early by
-  // triggering CleanupTrial. Otherwise, the results of both probes is needed.
-  return IsHTTPProbeRedirected() || IsHTTPProbeRedirectionSuspected() ||
-         (IsHTTPProbeComplete() && IsHTTPSProbeComplete());
+  // triggering CleanupTrial.
+  if (IsHTTPProbeRedirected() || IsHTTPProbeRedirectionSuspected()) {
+    return true;
+  }
+
+  // If the HTTP probe is complete and PortalDetector is running in HTTP portal
+  // detection only mode without HTTPS Internet validation, the Result is
+  // complete.
+  if (IsHTTPProbeComplete() && http_only) {
+    return true;
+  }
+
+  // Otherwise, the results of both probes is needed.
+  return IsHTTPProbeComplete() && IsHTTPSProbeComplete();
 }
 
 bool PortalDetector::Result::IsHTTPSProbeSuccessful() const {
@@ -462,13 +484,15 @@ Metrics::PortalDetectorResult PortalDetector::Result::GetResultMetric() const {
     case ProbeResult::kHTTPTimeout:
       return Metrics::kPortalDetectorResultHTTPTimeout;
     case ProbeResult::kSuccess:
-      if (IsHTTPSProbeSuccessful()) {
+      if (http_only || IsHTTPSProbeSuccessful()) {
         return Metrics::kPortalDetectorResultOnline;
       } else {
         return Metrics::kPortalDetectorResultHTTPSFailure;
       }
     case ProbeResult::kPortalSuspected:
-      if (IsHTTPSProbeSuccessful()) {
+      if (http_only) {
+        return Metrics::kPortalDetectorResultRedirectFound;
+      } else if (IsHTTPSProbeSuccessful()) {
         return Metrics::kPortalDetectorResultNoConnectivity;
       } else {
         return Metrics::kPortalDetectorResultHTTPSFailure;
@@ -519,7 +543,9 @@ std::ostream& operator<<(std::ostream& stream,
     stream << " duration=" << result.http_duration;
   }
   stream << ", HTTPS probe";
-  if (!result.IsHTTPSProbeComplete()) {
+  if (result.http_only) {
+    stream << " disabled";
+  } else if (!result.IsHTTPSProbeComplete()) {
     stream << " in-flight";
   } else {
     stream << " result=" << result.https_result

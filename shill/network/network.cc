@@ -925,7 +925,7 @@ void Network::StartConnectivityTest(
   connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
       dispatcher_, interface_name_, probe_config, logging_tag_);
   connectivity_test_portal_detector_->Start(
-      *family, dns_list,
+      /*http_only=*/false, *family, dns_list,
       base::BindOnce(&Network::ConnectivityTestCallback,
                      weak_factory_.GetWeakPtr(), logging_tag_));
 }

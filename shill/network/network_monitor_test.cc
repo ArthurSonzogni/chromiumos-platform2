@@ -138,9 +138,10 @@ class NetworkMonitorTest : public ::testing::Test {
   // Starts NetworkMonitor and waits until PortalDetector returns |result|.
   void StartWithPortalDetectorResultReturned(
       const PortalDetector::Result& result) {
-    EXPECT_CALL(*mock_portal_detector_,
-                Start(net_base::IPFamily::kIPv4, kDnsList, _))
-        .WillOnce(testing::WithArg<2>(
+    EXPECT_CALL(
+        *mock_portal_detector_,
+        Start(/*http_only=*/false, net_base::IPFamily::kIPv4, kDnsList, _))
+        .WillOnce(testing::WithArg<3>(
             [result](PortalDetector::ResultCallback callback) {
               std::move(callback).Run(result);
             }));
@@ -183,8 +184,9 @@ TEST_F(NetworkMonitorTest, StartWithImmediatelyTrigger) {
 
   MockCapportProxy* mock_capport_proxy = SetCapportProxy();
   for (const auto reason : reasons) {
-    EXPECT_CALL(*mock_portal_detector_,
-                Start(net_base::IPFamily::kIPv4, kDnsList, _))
+    EXPECT_CALL(
+        *mock_portal_detector_,
+        Start(/*http_only=*/false, net_base::IPFamily::kIPv4, kDnsList, _))
         .Times(1);
     EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(1);
     EXPECT_CALL(client_, OnValidationStarted(true)).Times(1);

@@ -145,7 +145,7 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
 
   result_from_portal_detector_.reset();
   portal_detector_->Start(
-      *ip_family, dns_list,
+      /*http_only=*/false, *ip_family, dns_list,
       base::BindOnce(&NetworkMonitor::OnPortalDetectorResult,
                      base::Unretained(this)));
   LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason

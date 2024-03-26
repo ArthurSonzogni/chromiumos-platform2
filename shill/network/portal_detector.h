@@ -165,6 +165,9 @@ class PortalDetector {
   // Represents the detailed result of a complete portal detection attempt (DNS
   // resolution, HTTP probe, HTTPS probe).
   struct Result {
+    // True only if PortalDetector::Start was called with |http_only| set to
+    // true.
+    bool http_only = false;
     // The total number of trial attempts so far.
     int num_attempts = 0;
     // The result of the HTTP probe.
@@ -236,9 +239,12 @@ class PortalDetector {
 
   // Starts a new portal detection attempt. |callback| will be executed when the
   // attempt has been finished. Nothing happens and |callback| will be dropped
-  // if an attempt is already running.
-  // Note: |callback| won't be executed after the PortalDetector is destroyed.
-  mockable void Start(net_base::IPFamily ip_family,
+  // if an attempt is already running. |callback| won't be executed after the
+  // PortalDetector is destroyed. If |http_only| is true, only a single HTTP
+  // probe is sent and PortalDetector will not report kNoConnectivity results
+  // and instead only report kInternetConnectivity or a portal discovery result.
+  mockable void Start(bool http_only,
+                      net_base::IPFamily ip_family,
                       const std::vector<net_base::IPAddress>& dns_list,
                       ResultCallback callback);
 

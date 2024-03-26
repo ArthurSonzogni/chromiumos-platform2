@@ -161,7 +161,23 @@ class PortalDetectorTest : public Test {
           return https_request;
         });
     portal_detector_->Start(
-        net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+        /*http_only=*/false, net_base::IPFamily::kIPv4,
+        {kDNSServer0, kDNSServer1},
+        base::BindOnce(&CallbackTarget::ResultCallback,
+                       base::Unretained(&callback_target_)));
+  }
+
+  void StartHTTPOnlyPortalRequest() {
+    // Expect that PortalDetector will create the request of the HTTP probe
+    // first.
+    EXPECT_CALL(*portal_detector_, CreateHTTPRequest).WillOnce([]() {
+      auto http_request = std::make_unique<MockHttpRequest>();
+      EXPECT_CALL(*http_request, StartWithUrl);
+      return http_request;
+    });
+    portal_detector_->Start(
+        /*http_only=*/true, net_base::IPFamily::kIPv4,
+        {kDNSServer0, kDNSServer1},
         base::BindOnce(&CallbackTarget::ResultCallback,
                        base::Unretained(&callback_target_)));
   }
@@ -191,6 +207,11 @@ class PortalDetectorTest : public Test {
         std::make_unique<brillo::http::Response>(https_probe_connection_);
     portal_detector_->ProcessHTTPSProbeResult(base::TimeTicks(),
                                               std::move(response));
+  }
+
+  void HTTPRequestFailure(HttpRequest::Error error) {
+    portal_detector_->ProcessHTTPProbeResult(kHttpUrl, base::TimeTicks(),
+                                             base::unexpected(error));
   }
 
   void HTTPSRequestFailure(HttpRequest::Error error) {
@@ -228,8 +249,8 @@ TEST_F(PortalDetectorTest, NoCustomCertificates) {
       .WillOnce(Return(std::make_unique<MockHttpRequest>()))
       .WillOnce(Return(std::make_unique<MockHttpRequest>()));
 
-  portal_detector->Start(net_base::IPFamily::kIPv4, dns_list,
-                         base::DoNothing());
+  portal_detector->Start(/*http_only=*/false, net_base::IPFamily::kIPv4,
+                         dns_list, base::DoNothing());
   portal_detector->Reset();
 }
 
@@ -256,8 +277,8 @@ TEST_F(PortalDetectorTest, UseCustomCertificates) {
                         /*allow_non_google_https=*/true))
       .WillOnce(Return(std::make_unique<MockHttpRequest>()));
 
-  portal_detector->Start(net_base::IPFamily::kIPv4, dns_list,
-                         base::DoNothing());
+  portal_detector->Start(/*http_only=*/false, net_base::IPFamily::kIPv4,
+                         dns_list, base::DoNothing());
   portal_detector->Reset();
 }
 
@@ -303,8 +324,8 @@ TEST_F(PortalDetectorTest, RestartAfterRedirect) {
         EXPECT_CALL(*https_request, StartWithUrl(kHttpsUrl));
         return https_request;
       });
-  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
-                          base::DoNothing());
+  portal_detector_->Start(/*http_only=*/false, net_base::IPFamily::kIPv4,
+                          {kDNSServer0, kDNSServer1}, base::DoNothing());
   EXPECT_EQ(1, portal_detector_->attempt_count());
 
   // Receive the kPortalRedirect result.
@@ -324,8 +345,8 @@ TEST_F(PortalDetectorTest, RestartAfterRedirect) {
         EXPECT_CALL(*https_request, StartWithUrl);
         return https_request;
       });
-  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
-                          base::DoNothing());
+  portal_detector_->Start(/*http_only=*/false, net_base::IPFamily::kIPv4,
+                          {kDNSServer0, kDNSServer1}, base::DoNothing());
   EXPECT_EQ(2, portal_detector_->attempt_count());
 
   portal_detector_->Reset();
@@ -345,8 +366,8 @@ TEST_F(PortalDetectorTest, RestartAfterSuspectedRedirect) {
         EXPECT_CALL(*https_request, StartWithUrl(kHttpsUrl));
         return https_request;
       });
-  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
-                          base::DoNothing());
+  portal_detector_->Start(/*http_only=*/false, net_base::IPFamily::kIPv4,
+                          {kDNSServer0, kDNSServer1}, base::DoNothing());
 
   // Receive the kPortalSuspected result.
   const PortalDetector::Result result = {
@@ -376,8 +397,8 @@ TEST_F(PortalDetectorTest, RestartAfterSuspectedRedirect) {
         EXPECT_CALL(*https_request, StartWithUrl);
         return https_request;
       });
-  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
-                          base::DoNothing());
+  portal_detector_->Start(/*http_only=*/false, net_base::IPFamily::kIPv4,
+                          {kDNSServer0, kDNSServer1}, base::DoNothing());
 }
 
 TEST_F(PortalDetectorTest, RestartWhileAlreadyInProgress) {
@@ -390,8 +411,8 @@ TEST_F(PortalDetectorTest, RestartWhileAlreadyInProgress) {
   Mock::VerifyAndClearExpectations(portal_detector_.get());
 
   EXPECT_CALL(*portal_detector_, CreateHTTPRequest).Times(0);
-  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
-                          base::DoNothing());
+  portal_detector_->Start(/*http_only=*/false, net_base::IPFamily::kIPv4,
+                          {kDNSServer0, kDNSServer1}, base::DoNothing());
   EXPECT_EQ(1, portal_detector_->attempt_count());
   EXPECT_TRUE(portal_detector_->IsRunning());
   Mock::VerifyAndClearExpectations(portal_detector_.get());
@@ -422,7 +443,8 @@ TEST_F(PortalDetectorTest, AttemptCount) {
         EXPECT_CALL(*https_request, StartWithUrl(kHttpsUrl));
         return https_request;
       });
-  portal_detector_->Start(net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+  portal_detector_->Start(/*http_only=*/false, net_base::IPFamily::kIPv4,
+                          {kDNSServer0, kDNSServer1},
                           base::BindOnce(&CallbackTarget::ResultCallback,
                                          base::Unretained(&callback_target_)));
 
@@ -457,7 +479,8 @@ TEST_F(PortalDetectorTest, AttemptCount) {
         });
 
     portal_detector_->Start(
-        net_base::IPFamily::kIPv4, {kDNSServer0, kDNSServer1},
+        /*http_only=*/false, net_base::IPFamily::kIPv4,
+        {kDNSServer0, kDNSServer1},
         base::BindOnce(&CallbackTarget::ResultCallback,
                        base::Unretained(&callback_target_)));
     EXPECT_EQ(i, portal_detector_->attempt_count());
@@ -749,6 +772,118 @@ TEST_F(PortalDetectorTest, RequestInvalidRedirect) {
   ExpectCleanupTrial();
 }
 
+TEST_F(PortalDetectorTest, HTTPOnlyRequestSuccess) {
+  StartHTTPOnlyPortalRequest();
+
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .num_attempts = 1,
+      .http_result = PortalDetector::ProbeResult::kSuccess,
+      .http_status_code = 204,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+  };
+  ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
+            result.GetValidationState());
+
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
+      .WillOnce(Return("0"));
+  ExpectHttpRequestSuccessWithStatus(204);
+  ExpectCleanupTrial();
+}
+
+TEST_F(PortalDetectorTest, HTTPOnlyRequestRedirect) {
+  StartHTTPOnlyPortalRequest();
+
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .num_attempts = 1,
+      .http_result = PortalDetector::ProbeResult::kPortalRedirect,
+      .http_status_code = 302,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+      .redirect_url =
+          net_base::HttpUrl::CreateFromString("https://portal.com/login"),
+      .probe_url = kHttpUrl,
+  };
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalRedirect,
+            result.GetValidationState());
+
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Location"))
+      .WillOnce(Return(std::string("https://portal.com/login")));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
+      .WillOnce(Return("0"));
+  ExpectHttpRequestSuccessWithStatus(302);
+  ExpectCleanupTrial();
+}
+
+TEST_F(PortalDetectorTest, HTTPOnlyRequestPortalSuspected) {
+  StartHTTPOnlyPortalRequest();
+
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .num_attempts = 1,
+      .http_result = PortalDetector::ProbeResult::kPortalSuspected,
+      .http_status_code = 200,
+      .http_content_length = 456,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+      .redirect_url = std::nullopt,
+      .probe_url = kHttpUrl,
+  };
+  ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
+            result.GetValidationState());
+
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
+      .WillOnce(Return("456"));
+  ExpectHttpRequestSuccessWithStatus(200);
+  ExpectCleanupTrial();
+}
+
+TEST_F(PortalDetectorTest, HTTPOnlyRequestInvalidRedirect) {
+  StartHTTPOnlyPortalRequest();
+
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .num_attempts = 1,
+      .http_result = PortalDetector::ProbeResult::kPortalInvalidRedirect,
+      .http_status_code = 302,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+      .redirect_url = std::nullopt,
+      .probe_url = kHttpUrl,
+  };
+  ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
+            result.GetValidationState());
+
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Location"))
+      .WillOnce(Return(""));
+  EXPECT_CALL(*http_probe_connection_, GetResponseHeader("Content-Length"))
+      .WillOnce(Return("0"));
+  ExpectHttpRequestSuccessWithStatus(302);
+  ExpectCleanupTrial();
+}
+
+TEST_F(PortalDetectorTest, HTTPOnlyRequestFailure) {
+  StartHTTPOnlyPortalRequest();
+
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .num_attempts = 1,
+      .http_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+  };
+  ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
+            result.GetValidationState());
+
+  EXPECT_CALL(callback_target_, ResultCallback(Eq(result)));
+  HTTPRequestFailure(HttpRequest::Error::kConnectionFailure);
+  ExpectCleanupTrial();
+}
+
 TEST_F(PortalDetectorTest, PickProbeURLs) {
   const auto url1 = *net_base::HttpUrl::CreateFromString("http://www.url1.com");
   const auto url2 = *net_base::HttpUrl::CreateFromString("http://www.url2.com");
@@ -893,6 +1028,100 @@ TEST(PortalDetectorResultTest, PortalSuspected200) {
             PortalDetector::ValidationState::kPortalSuspected);
   EXPECT_EQ(result.GetResultMetric(),
             Metrics::kPortalDetectorResultHTTPSFailure);
+}
+
+TEST(PortalDetectorResultTest, HTTPOnlySuccessfulProbe) {
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .http_result = PortalDetector::ProbeResult::kSuccess,
+      .http_status_code = 204,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kInternetConnectivity);
+  EXPECT_EQ(result.GetResultMetric(), Metrics::kPortalDetectorResultOnline);
+}
+
+TEST(PortalDetectorResultTest, HTTPOnlyDNSFailure) {
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .http_result = PortalDetector::ProbeResult::kDNSFailure,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kInternetConnectivity);
+  EXPECT_EQ(result.GetResultMetric(), Metrics::kPortalDetectorResultDNSFailure);
+}
+
+TEST(PortalDetectorResultTest, HTTPOnlyConnectionFailure) {
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .http_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kInternetConnectivity);
+  EXPECT_EQ(result.GetResultMetric(),
+            Metrics::kPortalDetectorResultConnectionFailure);
+}
+
+TEST(PortalDetectorResultTest, HTTPOnlyPortalRedirect) {
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .http_result = PortalDetector::ProbeResult::kPortalRedirect,
+      .http_status_code = 302,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+      .redirect_url =
+          net_base::HttpUrl::CreateFromString("https://portal.com/login"),
+      .probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kPortalRedirect);
+  EXPECT_EQ(result.GetResultMetric(),
+            Metrics::kPortalDetectorResultRedirectFound);
+}
+
+TEST(PortalDetectorResultTest, HTTPOnlyPortalInvalidRedirect) {
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .http_result = PortalDetector::ProbeResult::kPortalInvalidRedirect,
+      .http_status_code = 302,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+      .redirect_url = std::nullopt,
+      .probe_url = std::nullopt,
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kInternetConnectivity);
+  EXPECT_EQ(result.GetResultMetric(),
+            Metrics::kPortalDetectorResultRedirectNoUrl);
+}
+
+TEST(PortalDetectorResultTest, HTTPOnlyPortalSuspected) {
+  const PortalDetector::Result result = {
+      .http_only = true,
+      .http_result = PortalDetector::ProbeResult::kPortalSuspected,
+      .http_status_code = 200,
+      .http_content_length = 346,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+      .redirect_url =
+          net_base::HttpUrl::CreateFromString("https://portal.com/login"),
+      .probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
+  };
+
+  EXPECT_EQ(result.GetValidationState(),
+            PortalDetector::ValidationState::kPortalSuspected);
+  EXPECT_EQ(result.GetResultMetric(),
+            Metrics::kPortalDetectorResultRedirectFound);
 }
 
 }  // namespace shill
