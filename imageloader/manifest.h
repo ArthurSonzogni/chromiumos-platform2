@@ -14,6 +14,10 @@
 
 namespace imageloader {
 
+BRILLO_EXPORT extern const char kDlcRedactedId[];
+BRILLO_EXPORT extern const char kDlcRedactedSize[];
+BRILLO_EXPORT extern const char kDlcRedactedHash[];
+
 // The supported file systems for images.
 enum class BRILLO_EXPORT FileSystem { kExt4, kSquashFS };
 
@@ -79,6 +83,15 @@ class BRILLO_EXPORT Manifest {
   const ArtifactsMeta& artifacts_meta() const { return artifacts_meta_; }
   bool force_ota() const { return force_ota_; }
 
+  const std::string& sanitized_id() const { return sanitized_id_; }
+  const std::string& sanitized_size() const { return sanitized_size_; }
+  const std::string& sanitized_preallocated_size() const {
+    return sanitized_preallocated_size_;
+  }
+  const std::string& sanitized_image_sha256() const {
+    return sanitized_image_sha256_;
+  }
+
  private:
   // Required manifest fields:
   int manifest_version_ = 0;
@@ -110,6 +123,12 @@ class BRILLO_EXPORT Manifest {
       .valid = false,
   };
   bool force_ota_ = false;
+
+  // Sanitized fields:
+  std::string sanitized_id_;
+  std::string sanitized_size_;
+  std::string sanitized_preallocated_size_;
+  std::string sanitized_image_sha256_;
 };
 
 }  // namespace imageloader

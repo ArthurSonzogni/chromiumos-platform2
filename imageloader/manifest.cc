@@ -15,6 +15,10 @@
 
 namespace imageloader {
 
+constexpr char kDlcRedactedId[] = "<REDACTED_ID>";
+constexpr char kDlcRedactedSize[] = "<REDACTED_SIZE>";
+constexpr char kDlcRedactedHash[] = "<REDACTED_HASH>";
+
 namespace {
 // The current version of the manifest file.
 constexpr int kCurrentManifestVersion = 1;
@@ -173,6 +177,9 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
   }
   manifest_version_ = *manifest_version;
 
+  // If `user-tied` field does not exist, by default it is false.
+  user_tied_ = manifest_dict.FindBool(kUserTied).value_or(false);
+
   const std::string* image_hash_str = manifest_dict.FindString(kImageHashField);
   if (!image_hash_str) {
     LOG(ERROR) << "Could not parse image hash from manifest.";
@@ -183,6 +190,7 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
     LOG(ERROR) << "Could not convert image hash to bytes.";
     return false;
   }
+  sanitized_image_sha256_ = user_tied_ ? kDlcRedactedHash : *image_hash_str;
 
   const std::string* table_hash_str = manifest_dict.FindString(kTableHashField);
   if (table_hash_str == nullptr) {
@@ -253,13 +261,12 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
   // If `force-ota` field does not exist, by default it is false.
   force_ota_ = manifest_dict.FindBool(kForceOTA).value_or(false);
 
-  // If `user-tied` field does not exist, by default it is false.
-  user_tied_ = manifest_dict.FindBool(kUserTied).value_or(false);
-
   // All of these fields are optional.
   const std::string* id = manifest_dict.FindString(kId);
-  if (id)
+  if (id) {
     id_ = *id;
+    sanitized_id_ = user_tied_ ? kDlcRedactedId : *id;
+  }
   const std::string* package = manifest_dict.FindString(kPackage);
   if (package)
     package_ = *package;
@@ -281,6 +288,8 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
                  << *preallocated_size_str;
       return false;
     }
+    sanitized_preallocated_size_ =
+        user_tied_ ? kDlcRedactedSize : *preallocated_size_str;
   }
 
   const std::string* size_str = manifest_dict.FindString(kSize);
@@ -289,6 +298,7 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
       LOG(ERROR) << "Manifest size was malformed: " << *size_str;
       return false;
     }
+    sanitized_size_ = user_tied_ ? kDlcRedactedSize : *size_str;
   }
 
   // Copy out the metadata, if it's there.

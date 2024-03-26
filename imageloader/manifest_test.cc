@@ -448,4 +448,30 @@ TEST(ManifestTest, ManifestComparesNotEqual) {
   EXPECT_FALSE(manifest_from_str == manifest_from_val);
 }
 
+TEST(ManifestTest, ManifestSanitized) {
+  const base::Value::Dict manifest_dict =
+      base::Value::Dict()
+          .Set("id", "foo")
+          .Set("pre-allocated-size", "600613")
+          .Set("size", "42")
+          .Set("user-tied", true)
+          .Set("image-sha256-hash",
+               "4CF41BD11362CCB4707FB93939DBB5AC"
+               "48745EDFC9DC8D7702852FFAA81B3B3F")
+          .Set("table-sha256-hash",
+               "0E11DA3D7140C6B95496787F50D15152"
+               "434EBA22B60443BFA7E054FF4C799276")
+          .Set("version", "9824.0.4")
+          .Set("manifest-version", 1);
+
+  Manifest manifest_from_val;
+  // Parse the manifest dict.
+  ASSERT_TRUE(manifest_from_val.ParseManifest(manifest_dict));
+
+  EXPECT_EQ(manifest_from_val.sanitized_id(), kDlcRedactedId);
+  EXPECT_EQ(manifest_from_val.sanitized_size(), kDlcRedactedSize);
+  EXPECT_EQ(manifest_from_val.sanitized_preallocated_size(), kDlcRedactedSize);
+  EXPECT_EQ(manifest_from_val.sanitized_image_sha256(), kDlcRedactedHash);
+}
+
 }  // namespace imageloader

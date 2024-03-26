@@ -67,7 +67,7 @@ bool DlcBase::Initialize() {
   deployed_image_path_ = JoinPaths(system_state->deployed_content_dir(), id_,
                                    package_, kDlcImageFileName);
 
-  sanitized_id_ = IsUserTied() ? kDlcRedactedId : id_;
+  sanitized_id_ = manifest_->sanitized_id();
 
   state_.set_state(DlcState::NOT_INSTALLED);
   state_.set_id(id_);
@@ -269,7 +269,7 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
 
     const auto& content_id_path = JoinPaths(content_path, id_);
     const auto& content_id_path_sanitized =
-        JoinPaths(content_path_sanitized, kDlcRedactedId);
+        JoinPaths(content_path_sanitized, sanitized_id_);
 
     const auto& content_package_path = JoinPaths(content_id_path, package_);
     const auto& content_package_path_sanitized =
@@ -281,7 +281,7 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
 
     const auto& prefs_id_path = JoinPaths(prefs_path, id_);
     const auto& prefs_id_path_sanitized =
-        JoinPaths(prefs_path_sanitized, kDlcRedactedId);
+        JoinPaths(prefs_path_sanitized, sanitized_id_);
     // File permissions needs to be set along the path.
     path_pairs = {{daemon_store, FilePath(kPathNameDaemonStore)},
                   {content_path, content_path_sanitized},
@@ -361,7 +361,8 @@ bool DlcBase::CreateDlc(ErrorPtr* err) {
         return false;
       } else if (!ResizeFile(image_path, dlc_size)) {
         LOG(WARNING) << "Unable to allocate up to preallocated size: "
-                     << dlc_size << " for DLC=" << sanitized_id_;
+                     << manifest_->sanitized_preallocated_size()
+                     << " for DLC=" << sanitized_id_;
       }
     }
   }
@@ -417,7 +418,7 @@ bool DlcBase::MakeReadyForUpdateInternal() const {
     return false;
   } else if (!ResizeFile(inactive_image_path, manifest_->preallocated_size())) {
     LOG(WARNING) << "Unable to allocate up to preallocated size: "
-                 << manifest_->preallocated_size()
+                 << manifest_->sanitized_preallocated_size()
                  << " when making DLC=" << sanitized_id_
                  << " ready for update.";
   }
@@ -450,9 +451,7 @@ bool DlcBase::Verify() {
   if (image_sha256 != manifest_image_sha256) {
     LOG(WARNING) << "Verification failed for image file: "
                  << (IsUserTied() ? kPathNameImage : image_path.value())
-                 << ". Expected: "
-                 << base::HexEncode(manifest_image_sha256.data(),
-                                    manifest_image_sha256.size())
+                 << ". Expected: " << manifest_->sanitized_image_sha256()
                  << " Found: "
                  << base::HexEncode(image_sha256.data(), image_sha256.size());
     return false;
@@ -539,7 +538,8 @@ bool DlcBase::FactoryInstallCopier() {
   if (factory_install_image_size != manifest_->size()) {
     LOG(WARNING) << "Factory installed DLC (" << sanitized_id_ << ") is ("
                  << factory_install_image_size << ") different than the "
-                 << "size (" << manifest_->size() << ") in the manifest.";
+                 << "size (" << manifest_->sanitized_size()
+                 << ") in the manifest.";
     brillo::DeletePathRecursively(
         JoinPaths(SystemState::Get()->factory_install_dir(), id_));
     return false;
@@ -562,9 +562,8 @@ bool DlcBase::FactoryInstallCopier() {
   auto manifest_image_sha256 = manifest_->image_sha256();
   if (image_sha256 != manifest_image_sha256) {
     LOG(WARNING) << "Factory installed image is corrupt or modified for DLC ("
-                 << sanitized_id_ << "). Expected="
-                 << base::HexEncode(manifest_image_sha256.data(),
-                                    manifest_image_sha256.size())
+                 << sanitized_id_
+                 << "). Expected=" << manifest_->sanitized_image_sha256()
                  << " Found="
                  << base::HexEncode(image_sha256.data(), image_sha256.size());
     brillo::DeletePathRecursively(
@@ -800,7 +799,8 @@ bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
 
   // Now that we are sure the image is installed, we can go ahead and set it as
   // active. Failure to set the metadata flags should not fail the install.
-  SetActiveValue(true);
+  if (!IsUserTied())
+    SetActiveValue(true);
   SystemState::Get()->metrics()->SendInstallResultSuccess(installed_by_ue);
 
   return true;
@@ -925,10 +925,10 @@ bool DlcBase::DeleteInternal(ErrorPtr* err) {
     if (!daemon_store.empty()) {
       path_pairs.emplace_back(
           JoinPaths(daemon_store, kDlcImagesDir, id_),
-          JoinPaths(kPathNameDaemonStore, kDlcImagesDir, kDlcRedactedId));
+          JoinPaths(kPathNameDaemonStore, kDlcImagesDir, sanitized_id_));
       path_pairs.emplace_back(
           JoinPaths(daemon_store, kUserPrefsDir, id_),
-          JoinPaths(kPathNameDaemonStore, kUserPrefsDir, kDlcRedactedId));
+          JoinPaths(kPathNameDaemonStore, kUserPrefsDir, sanitized_id_));
     } else {
       state_.set_last_error_code(kErrorInternal);
       *err = Error::Create(
@@ -1006,7 +1006,8 @@ bool DlcBase::Uninstall(ErrorPtr* err) {
       return false;
   }
 
-  SetActiveValue(false);
+  if (!IsUserTied())
+    SetActiveValue(false);
   return Delete(err);
 }
 
@@ -1141,7 +1142,6 @@ bool DlcBase::Unload(ErrorPtr* err) {
     return false;
   }
 
-  SetActiveValue(false);
   state_.set_is_verified(false);
   state_.clear_image_path();
   ChangeState(DlcState::NOT_INSTALLED);
