@@ -66,8 +66,8 @@ void CameraHalServerImpl::Start() {
   }
 
 #if USE_CAMERA_FEATURE_DIAGNOSTICS
-  camera_diagnostics_client_ = std::make_unique<CameraDiagnosticsClient>(
-      mojo_manager_.get(), camera_hal_adapter_.get());
+  camera_diagnostics_client_ =
+      std::make_unique<CameraDiagnosticsClient>(camera_hal_adapter_.get());
 #endif
 
   // We assume that |camera_hal_adapter_| will only be set once. If the
@@ -170,7 +170,8 @@ void CameraHalServerImpl::IPCBridge::SetCameraEffect(
       camera_hal_adapter_->SetCameraEffect(config->Clone());
   std::move(callback).Run(result);
   if (result == mojom::SetEffectResult::kOk) {
-    mojom::EffectsConfigPtr currentConfig = camera_hal_adapter_->GetCameraEffect();
+    mojom::EffectsConfigPtr currentConfig =
+        camera_hal_adapter_->GetCameraEffect();
     for (auto& observer : observers_) {
       observer->CameraEffectChange(currentConfig->Clone());
     }

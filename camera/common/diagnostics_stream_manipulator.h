@@ -33,9 +33,6 @@ class DiagnosticsStreamManipulator : public StreamManipulator {
   bool Flush() override;
 
  private:
-  CameraDiagnosticsConfig::ProcessDiagnosticsFrameCallback
-      process_diagnostics_frame_cb_;
-
   // Used to copy a buffer and downsample it before dispatching it to
   // diagnostics service.
   void ProcessBuffer(ScopedMapping& mapping_src);
