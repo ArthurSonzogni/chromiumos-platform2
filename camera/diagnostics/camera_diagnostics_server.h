@@ -8,6 +8,7 @@
 #include "camera/common/utils/camera_mojo_service_provider.h"
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "diagnostics/camera_diagnostics_mojo_manager.h"
+#include "diagnostics/camera_diagnostics_processor.h"
 
 namespace cros {
 
@@ -19,19 +20,22 @@ class CameraDiagnosticsServer final
   explicit CameraDiagnosticsServer(CameraDiagnosticsMojoManager* mojo_manager);
   CameraDiagnosticsServer(CameraDiagnosticsServer&) = delete;
   CameraDiagnosticsServer& operator=(const CameraDiagnosticsServer&) = delete;
-  ~CameraDiagnosticsServer() = default;
 
-  // Implementation of camera_diag::mojom::CameraDiagnostics.
+  // Starts frame analysis.
+  // Returns error if analysis already running or failure.
+  // Params: Callbacks for result.
   void RunFrameAnalysis(camera_diag::mojom::FrameAnalysisConfigPtr config,
                         RunFrameAnalysisCallback callback) final;
 
-  // Implementation of camera_diag::mojom::CrosCameraDiagnosticsService.
   void SendFrame(camera_diag::mojom::CameraFramePtr frame) final;
 
  private:
+  CameraDiagnosticsMojoManager* mojo_manager_;
+
+  CameraDiagnosticsProcessor processor_;
+
   internal::CameraMojoServiceProvider<camera_diag::mojom::CameraDiagnostics>
       diag_provider_{this};
-
   internal::CameraMojoServiceProvider<
       camera_diag::mojom::CrosCameraDiagnosticsService>
       diag_service_provider_{this};
