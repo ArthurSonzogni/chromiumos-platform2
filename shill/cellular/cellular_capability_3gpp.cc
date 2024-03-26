@@ -467,8 +467,8 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
                                  weak_ptr_factory_.GetWeakPtr()));
   }
 
-  // TODO(b/274882743): Revert after the proper fix lands in FM101 modem.
-  if (cellular()->IsModemFM101()) {
+  if (cellular()->IsModemFM101() &&
+      (cellular()->GetModemFWRevision() == Cellular::ModemMR::kModemMR1)) {
     ResultCallback setup_signal_callback =
         base::BindOnce(&CellularCapability3gpp::OnSetupSignalReply,
                        weak_ptr_factory_.GetWeakPtr());
@@ -2580,8 +2580,9 @@ void CellularCapability3gpp::OnModemSignalPropertiesChanged(
       } else if (tech_props.Contains<double>(kRssiProperty) &&
                  (signal_property == MM_MODEM_SIGNAL_PROPERTY_UMTS ||
                   signal_property == MM_MODEM_SIGNAL_PROPERTY_GSM ||
-                  cellular()->IsModemFM101())) {  // TODO(b/274882743): Revert
-                                                  // for FM101 MR2
+                  (cellular()->IsModemFM101() &&
+                   (cellular()->GetModemFWRevision() ==
+                    Cellular::ModemMR::kModemMR1)))) {
         signal_measurement = kRssiProperty;
         signal_quality = tech_props.Get<double>(kRssiProperty);
         scaled_quality = kRssiBounds.GetAsPercentage(signal_quality);
