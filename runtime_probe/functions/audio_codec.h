@@ -25,6 +25,7 @@ class AudioCodecFunction final : public PrivilegedProbeFunction {
 
  public:
   NAME_PROBE_FUNCTION("audio_codec");
+  void PostHelperEvalImpl(DataType* results) const final;
 
  private:
   DataType EvalImpl() const override;
