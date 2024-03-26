@@ -21,3 +21,10 @@ source_set("face_detection") {
   configs += [ "//common-mk:pic" ]
   deps = [ "//camera/common:libcros_camera_mojom" ]
 }
+
+source_set("face_detection_benchmark") {
+  sources = [ "//camera/features/face_detection/face_detection_benchmark.cc" ]
+  public_configs = [ ":target_defaults" ]
+  defines = [ "FACE_DETECTION" ]
+  deps = [ "//camera/common:face_detection" ]
+}

@@ -1,0 +1,32 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [ ":cros_camera_feature_benchmark" ]
+}
+
+pkg_config("target_defaults") {
+  configs = [
+    "//camera/build:cros_camera_common",
+    "//common-mk:test",
+  ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome-test",
+    "libcros_camera_android_deps",
+  ]
+}
+
+executable("cros_camera_feature_benchmark") {
+  sources = [
+    "//camera/feature_benchmark/benchmark_runner.cc",
+    "//camera/feature_benchmark/benchmark_runner_main.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  install_path = "bin"
+  deps = [
+    "//camera/common/test_support",
+    "//camera/features/face_detection:face_detection_benchmark",
+  ]
+}
