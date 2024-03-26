@@ -206,6 +206,8 @@ class Port {
   FRIEND_TEST(PortTest, DPAltModeEntryCheckTrue);
   FRIEND_TEST(PortTest, DPAltModeEntryCheckFalseWithDPSID);
   FRIEND_TEST(PortTest, DPAltModeEntryCheckFalse);
+  FRIEND_TEST(PortTest, DPAltModeEntryCheckTrueOneAltModeIsNullptr);
+  FRIEND_TEST(PortTest, DPAltModeEntryCheckPartnerIsReceptacle);
   FRIEND_TEST(PortTest, DPAltModeEntryCalDigitTBT4ToDisplay);
   FRIEND_TEST(PortTest, DPAltModeEntryAnkerUsb3Gen2ToDisplay);
   FRIEND_TEST(PortTest, DPAltModeEntryHPUsb3Gen1ToDisplay);

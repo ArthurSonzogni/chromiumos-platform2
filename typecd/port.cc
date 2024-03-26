@@ -237,6 +237,9 @@ bool Port::CanEnterDPAltMode(bool* invalid_dpalt_cable_ptr) {
   bool partner_is_receptacle = false;
   for (int i = 0; i < partner_->GetNumAltModes(); i++) {
     auto alt_mode = partner_->GetAltMode(i);
+    if (!alt_mode || alt_mode->GetSVID() != kDPAltModeSID)
+      continue;
+
     if (alt_mode->GetVDO() & kDPModeReceptacle)
       partner_is_receptacle = true;
   }

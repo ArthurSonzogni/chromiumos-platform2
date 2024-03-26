@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "typecd/pd_vdo_constants.h"
 #include "typecd/test_constants.h"
 #include "typecd/test_utils.h"
 
@@ -187,6 +188,59 @@ TEST_F(PortTest, DPAltModeEntryCheckFalse) {
   port->AddRemovePartnerAltMode(mode_path, true);
 
   EXPECT_FALSE(port->CanEnterDPAltMode(nullptr));
+}
+
+// Check that DP Alt Mode work as expected when one alt mode is a nullptr.
+TEST_F(PortTest, DPAltModeEntryCheckTrueOneAltModeIsNullptr) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set number of alt modes to 2
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+  port->partner_->SetNumAltModes(2);
+
+  // Set up fake sysfs paths for DP alt mode, the other mode is left empty
+  std::string mode0_dirname =
+      base::StringPrintf("port%d-partner.%d", 0, kDPAltModeIndex);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, kDPVDO_WD19TB,
+                                kDPVDOIndex_WD19TB));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  AddAnkerUSB3p2Gen2Cable(*port);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
+}
+
+// Check that DP Alt Mode entry checks don't mistake the partner for
+// a receptacle based on other alt mode VDOs
+TEST_F(PortTest, DPAltModeEntryCheckPartnerIsReceptacle) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Set number of alt modes to 2
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+  port->partner_->SetNumAltModes(2);
+
+  // Add the DP alt mode.
+  std::string mode0_dirname =
+      base::StringPrintf("port%d-partner.%d", 0, kDPAltModeIndex);
+  auto mode0_path = temp_dir_.Append(mode0_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode0_path, kDPAltModeSID, kDPVDO_WD19TB,
+                                kDPVDOIndex_WD19TB));
+  port->AddRemovePartnerAltMode(mode0_path, true);
+
+  // Add non DP alt mode with bit corresponding to kDPModeReceptacle set to 1
+  std::string mode1_dirname =
+      base::StringPrintf("port%d-partner.%d", 0, kTBTAltModeIndex);
+  auto mode1_path = temp_dir_.Append(mode1_dirname);
+  ASSERT_TRUE(CreateFakeAltMode(mode1_path, kTBTAltModeVID,
+                                kTBTVDO | kDPModeReceptacle, kTBTVDOIndex));
+  port->AddRemovePartnerAltMode(mode1_path, true);
+
+  bool invalid_dpalt_cable = false;
+  EXPECT_TRUE(port->CanEnterDPAltMode(&invalid_dpalt_cable));
+  EXPECT_FALSE(invalid_dpalt_cable);
 }
 
 // Check that DP Alt Mode Entry works with cable check for a passing case.
