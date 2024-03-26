@@ -4,6 +4,10 @@
 
 #include "shill/wifi/p2p_peer.h"
 
+#include <memory>
+#include <string>
+#include <utility>
+
 #include <base/test/mock_callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
