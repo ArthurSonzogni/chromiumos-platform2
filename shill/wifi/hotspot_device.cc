@@ -9,11 +9,11 @@
 
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
+#include <net-base/mac_address.h>
 
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
-#include "shill/mac_address.h"
 #include "shill/manager.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant/supplicant_process_proxy_interface.h"
@@ -31,7 +31,7 @@ const char kInterfaceStateUnknown[] = "unknown";
 HotspotDevice::HotspotDevice(Manager* manager,
                              const std::string& primary_link_name,
                              const std::string& link_name,
-                             const std::string& mac_address,
+                             net_base::MacAddress mac_address,
                              uint32_t phy_index,
                              LocalDevice::EventCallback callback)
     : LocalDevice(manager, IfaceType::kAP, link_name, phy_index, callback),
@@ -47,7 +47,7 @@ HotspotDevice::HotspotDevice(Manager* manager,
   supplicant_network_path_ = RpcIdentifier("");
 }
 
-HotspotDevice::~HotspotDevice() {}
+HotspotDevice::~HotspotDevice() = default;
 
 bool HotspotDevice::Start() {
   auto wifi_phy = manager()->wifi_provider()->GetPhyAtIndex(phy_index());
@@ -83,9 +83,8 @@ bool HotspotDevice::Start() {
   if (!wifi_phy->reg_self_managed()) {
     // For non-self-managed solution, update the region domain and refresh Phy
     // info.
-    manager()->wifi_provider()->UpdateRegAndPhyInfo(
-        base::BindOnce(&HotspotDevice::OnPhyInfoReady,
-                       weak_ptr_factory_.GetWeakPtr()));
+    manager()->wifi_provider()->UpdateRegAndPhyInfo(base::BindOnce(
+        &HotspotDevice::OnPhyInfoReady, weak_ptr_factory_.GetWeakPtr()));
   } else {
     // For self-managed solution, region information is lost when the STA
     // interface is tore down. Schedule a scan to fetch the region domain and
@@ -187,9 +186,9 @@ bool HotspotDevice::CreateInterface() {
   create_interface_args.Set<std::string>(
       WPASupplicant::kInterfacePropertyType,
       WPASupplicant::kInterfacePropertyTypeAP);
-  if (!mac_address().empty()) {
+  if (!mac_address().IsZero()) {
     create_interface_args.Set<std::string>(
-        WPASupplicant::kInterfacePropertyAddress, mac_address());
+        WPASupplicant::kInterfacePropertyAddress, mac_address().ToString());
   }
 
   if (!SupplicantProcessProxy()->CreateInterface(create_interface_args,
@@ -347,9 +346,8 @@ void HotspotDevice::ScanDone(const bool& success) {
   if (pending_phy_info_) {
     // No matter success or not, require a PHY info update to be in sync with
     // the PHY.
-    manager()->wifi_provider()->UpdatePhyInfo(
-        base::BindOnce(&HotspotDevice::OnPhyInfoReady,
-                       weak_ptr_factory_.GetWeakPtr()));
+    manager()->wifi_provider()->UpdatePhyInfo(base::BindOnce(
+        &HotspotDevice::OnPhyInfoReady, weak_ptr_factory_.GetWeakPtr()));
   }
 }
 

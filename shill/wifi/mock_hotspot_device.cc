@@ -6,12 +6,14 @@
 
 #include <string>
 
+#include <net-base/mac_address.h>
+
 namespace shill {
 
 MockHotspotDevice::MockHotspotDevice(Manager* manager,
                                      const std::string& primary_link_name,
                                      const std::string& link_name,
-                                     const std::string& mac_address,
+                                     net_base::MacAddress mac_address,
                                      uint32_t phy_index,
                                      const EventCallback& callback)
     : HotspotDevice(manager,

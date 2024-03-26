@@ -12,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/test/mock_callback.h>
 #include <gmock/gmock.h>
+#include <net-base/mac_address.h>
 
 #include "shill/error.h"
 #include "shill/mock_control.h"
@@ -46,15 +47,16 @@ using ::testing::WithArg;
 namespace shill {
 
 namespace {
-const char kPrimaryInterfaceName[] = "wlan0";
-const char kInterfaceName[] = "ap0";
-const char kDeviceAddress[] = "00:01:02:03:04:05";
-const char kHotspotSSID[] = "chromeOS-1234";
-const char kHotspotPassphrase[] = "test0000";
-const int kHotspotFrequency = 2437;
+constexpr char kPrimaryInterfaceName[] = "wlan0";
+constexpr char kInterfaceName[] = "ap0";
+constexpr net_base::MacAddress kDeviceAddress(
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+constexpr char kHotspotSSID[] = "chromeOS-1234";
+constexpr char kHotspotPassphrase[] = "test0000";
+constexpr int kHotspotFrequency = 2437;
 const std::vector<uint8_t> kStationAddress1 = {00, 11, 22, 33, 44, 55};
 const std::vector<uint8_t> kStationAddress2 = {00, 11, 22, 33, 44, 66};
-const uint32_t kPhyIndex = 5678;
+constexpr uint32_t kPhyIndex = 5678;
 const RpcIdentifier kPrimaryIfacePath = RpcIdentifier("/interface/wlan0");
 const RpcIdentifier kIfacePath = RpcIdentifier("/interface/ap0");
 const RpcIdentifier kNetworkPath = RpcIdentifier("/network/path");

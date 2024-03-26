@@ -185,7 +185,12 @@ class TetheringManagerTest : public testing::Test {
             new NiceMock<MockCellularServiceProvider>(&manager_)),
         upstart_(new NiceMock<MockUpstart>(&control_interface_)),
         hotspot_device_(new NiceMock<MockHotspotDevice>(
-            &manager_, "wlan0", "ap0", "", 0, event_cb_.Get())),
+            &manager_,
+            "wlan0",
+            "ap0",
+            net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05),
+            0,
+            event_cb_.Get())),
         network_(new MockNetwork(
             kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular)),
         service_(new MockService(&manager_)),

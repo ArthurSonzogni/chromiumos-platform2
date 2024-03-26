@@ -2604,9 +2604,9 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
       [](Manager* manager, const std::string& primary_link_name,
          const std::string& link_name, net_base::MacAddress mac_address,
          uint32_t phy_index, LocalDevice::EventCallback callback) {
-        return HotspotDeviceRefPtr(new MockHotspotDevice(
-            manager, primary_link_name, link_name, mac_address.ToString(),
-            phy_index, std::move(callback)));
+        return HotspotDeviceRefPtr(
+            new MockHotspotDevice(manager, primary_link_name, link_name,
+                                  mac_address, phy_index, std::move(callback)));
       });
 
   // The hotspot device should be created and registered at |local_devices_|.
@@ -2634,9 +2634,9 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
       [](Manager* manager, const std::string& primary_link_name,
          const std::string& link_name, net_base::MacAddress mac_address,
          uint32_t phy_index, LocalDevice::EventCallback callback) {
-        return HotspotDeviceRefPtr(new MockHotspotDevice(
-            manager, primary_link_name, link_name, mac_address.ToString(),
-            phy_index, std::move(callback)));
+        return HotspotDeviceRefPtr(
+            new MockHotspotDevice(manager, primary_link_name, link_name,
+                                  mac_address, phy_index, std::move(callback)));
       });
 
   // The hotspot device should be created and registered at |local_devices_|.

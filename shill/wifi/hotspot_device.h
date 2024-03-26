@@ -12,8 +12,8 @@
 
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
+#include <net-base/mac_address.h>
 
-#include "shill/mac_address.h"
 #include "shill/mockable.h"
 #include "shill/store/key_value_store.h"
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
@@ -31,7 +31,7 @@ class HotspotDevice : public LocalDevice,
   HotspotDevice(Manager* manager,
                 const std::string& primary_link_name,
                 const std::string& link_name,
-                const std::string& mac_address,
+                net_base::MacAddress mac_address,
                 uint32_t phy_index,
                 LocalDevice::EventCallback callback);
 
@@ -64,30 +64,30 @@ class HotspotDevice : public LocalDevice,
   mockable std::vector<std::vector<uint8_t>> GetStations();
 
   // Get mac_address_.
-  const std::string& mac_address() const { return mac_address_; }
+  net_base::MacAddress mac_address() const { return mac_address_; }
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
   void PropertiesChanged(const KeyValueStore& properties) override;
   void BSSAdded(const RpcIdentifier& BSS,
-                const KeyValueStore& properties) override{};
-  void BSSRemoved(const RpcIdentifier& BSS) override{};
-  void Certification(const KeyValueStore& properties) override{};
+                const KeyValueStore& properties) override {}
+  void BSSRemoved(const RpcIdentifier& BSS) override {}
+  void Certification(const KeyValueStore& properties) override {}
   void EAPEvent(const std::string& status,
-                const std::string& parameter) override{};
+                const std::string& parameter) override {}
   void InterworkingAPAdded(const RpcIdentifier& BSS,
                            const RpcIdentifier& cred,
-                           const KeyValueStore& properties) override{};
-  void InterworkingSelectDone() override{};
+                           const KeyValueStore& properties) override {}
+  void InterworkingSelectDone() override {}
   void ANQPQueryDone(const std::string& addr,
-                     const std::string& result) override{};
+                     const std::string& result) override {}
   void ScanDone(const bool& success) override;
   void StationAdded(const RpcIdentifier& Station,
                     const KeyValueStore& properties) override;
   void StationRemoved(const RpcIdentifier& Station) override;
-  void PskMismatch() override{};
-  void TermsAndConditions(const std::string& url) override{};
+  void PskMismatch() override {}
+  void TermsAndConditions(const std::string& url) override {}
 
  private:
   friend class HotspotDeviceTest;
@@ -128,9 +128,10 @@ class HotspotDevice : public LocalDevice,
   // wpa_supplicant's RPC paths and properties for the connected stations.
   std::map<RpcIdentifier, KeyValueStore> stations_;
   std::string supplicant_state_;
-  base::WeakPtrFactory<HotspotDevice> weak_ptr_factory_{this};
   // MAC address to be configured on the device.
-  std::string mac_address_;
+  net_base::MacAddress mac_address_;
+
+  base::WeakPtrFactory<HotspotDevice> weak_ptr_factory_{this};
 };
 
 }  // namespace shill

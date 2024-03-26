@@ -257,9 +257,9 @@ WiFiProvider::WiFiProvider(Manager* manager)
                                  net_base::MacAddress mac_address,
                                  uint32_t phy_index,
                                  LocalDevice::EventCallback callback) {
-            return HotspotDeviceRefPtr(new HotspotDevice(
-                manager, primary_link_name, link_name, mac_address.ToString(),
-                phy_index, std::move(callback)));
+            return HotspotDeviceRefPtr(
+                new HotspotDevice(manager, primary_link_name, link_name,
+                                  mac_address, phy_index, std::move(callback)));
           })),
       running_(false),
       disable_vht_(false) {}
