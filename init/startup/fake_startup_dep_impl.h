@@ -27,11 +27,6 @@ class FakeStartupDep : public StartupDep {
  public:
   explicit FakeStartupDep(libstorage::Platform* platform);
 
-  void SetStatResultForPath(const base::FilePath& path, const struct stat& st);
-
-  void SetStatvfsResultForPath(const base::FilePath& path,
-                               const struct statvfs& st);
-
   void SetMountEncOutputForArg(const std::string& arg,
                                const std::string& output);
 
@@ -40,18 +35,6 @@ class FakeStartupDep : public StartupDep {
   void SetClobberLogFile(const base::FilePath& path);
 
   std::set<std::string> GetClobberArgs();
-
-  // `startup::StartupDep` overrides.
-  bool Stat(const base::FilePath& path, struct stat* st) override;
-  bool Statvfs(const base::FilePath& path, struct statvfs* st) override;
-  bool Mount(const base::FilePath& src,
-             const base::FilePath& dst,
-             const std::string& type,
-             unsigned long flags,  // NOLINT(runtime/int)
-             const std::string& data) override;
-  base::ScopedFD Open(const base::FilePath& pathname, int flags) override;
-  // NOLINTNEXTLINE(runtime/int)
-  int Ioctl(int fd, unsigned long request, int* arg1) override;
 
   int MountEncrypted(const std::vector<std::string>& args,
                      std::string* const output) override;
@@ -68,10 +51,6 @@ class FakeStartupDep : public StartupDep {
 
  private:
   libstorage::Platform* platform_;
-  std::unordered_map<std::string, struct stat> result_map_;
-  std::unordered_map<std::string, struct statvfs> result_statvfs_map_;
-  int open_ret_ = -1;
-  int ioctl_ret_ = 0;
   std::unordered_map<std::string, std::string> mount_enc_result_map_;
   std::unordered_map<std::string, int> alert_result_map_;
   base::FilePath clobber_log_;

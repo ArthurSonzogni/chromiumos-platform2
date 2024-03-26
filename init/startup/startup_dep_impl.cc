@@ -6,7 +6,6 @@
 #include <sys/ioctl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
-#include <sys/statvfs.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -37,37 +36,6 @@ constexpr char kFactoryDir[] = "mnt/stateful_partition/dev_image/factory";
 }  // namespace
 
 namespace startup {
-
-bool StartupDep::Stat(const base::FilePath& path, struct stat* st) {
-  return stat(path.value().c_str(), st) == 0;
-}
-
-bool StartupDep::Statvfs(const base::FilePath& path, struct statvfs* st) {
-  return statvfs(path.value().c_str(), st) == 0;
-}
-
-bool StartupDep::Mount(const base::FilePath& src,
-                       const base::FilePath& dst,
-                       const std::string& type,
-                       const unsigned long flags,  // NOLINT(runtime/int)
-                       const std::string& data) {
-  std::string src_path = !src.value().empty() ? src.value() : type;
-  return mount(src_path.c_str(), dst.value().c_str(), type.c_str(), flags,
-               data.c_str()) == 0;
-}
-
-base::ScopedFD StartupDep::Open(const base::FilePath& pathname, int flags) {
-  return base::ScopedFD(HANDLE_EINTR(open(pathname.value().c_str(), flags)));
-}
-
-// NOLINTNEXTLINE(runtime/int)
-int StartupDep::Ioctl(int fd, unsigned long request, int* arg1) {
-  return ioctl(fd, request, arg1);
-}
-
-bool StartupDep::Fchown(int fd, uid_t owner, gid_t group) {
-  return fchown(fd, owner, group) == 0;
-}
 
 int StartupDep::MountEncrypted(const std::vector<std::string>& args,
                                std::string* output) {

@@ -20,16 +20,6 @@ namespace startup {
 FakeStartupDep::FakeStartupDep(libstorage::Platform* platform)
     : StartupDep(), platform_(platform) {}
 
-void FakeStartupDep::SetStatResultForPath(const base::FilePath& path,
-                                          const struct stat& st) {
-  result_map_[path.value()] = st;
-}
-
-void FakeStartupDep::SetStatvfsResultForPath(const base::FilePath& path,
-                                             const struct statvfs& st) {
-  result_statvfs_map_[path.value()] = st;
-}
-
 void FakeStartupDep::SetMountEncOutputForArg(const std::string& arg,
                                              const std::string& output) {
   mount_enc_result_map_[arg] = output;
@@ -45,45 +35,6 @@ void FakeStartupDep::SetClobberLogFile(const base::FilePath& path) {
 
 std::set<std::string> FakeStartupDep::GetClobberArgs() {
   return clobber_args_;
-}
-
-bool FakeStartupDep::Stat(const base::FilePath& path, struct stat* st) {
-  std::unordered_map<std::string, struct stat>::iterator it;
-  it = result_map_.find(path.value());
-  if (st == nullptr || it == result_map_.end()) {
-    return false;
-  }
-
-  *st = it->second;
-  return true;
-}
-
-bool FakeStartupDep::Statvfs(const base::FilePath& path, struct statvfs* st) {
-  std::unordered_map<std::string, struct statvfs>::iterator it;
-  it = result_statvfs_map_.find(path.value());
-  if (st == nullptr || it == result_statvfs_map_.end()) {
-    return false;
-  }
-
-  *st = it->second;
-  return true;
-}
-
-bool FakeStartupDep::Mount(const base::FilePath& src,
-                           const base::FilePath& dst,
-                           const std::string& type,
-                           unsigned long flags,  // NOLINT(runtime/int)
-                           const std::string& data) {
-  return true;
-}
-
-base::ScopedFD FakeStartupDep::Open(const base::FilePath& pathname, int flags) {
-  return base::ScopedFD(open_ret_);
-}
-
-// NOLINTNEXTLINE(runtime/int)
-int FakeStartupDep::Ioctl(int fd, unsigned long request, int* arg1) {
-  return ioctl_ret_;
 }
 
 int FakeStartupDep::MountEncrypted(const std::vector<std::string>& args,

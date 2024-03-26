@@ -5,7 +5,6 @@
 #ifndef INIT_STARTUP_STARTUP_DEP_IMPL_H_
 #define INIT_STARTUP_STARTUP_DEP_IMPL_H_
 
-#include <sys/statvfs.h>
 #include <sys/types.h>
 
 #include <optional>
@@ -45,32 +44,6 @@ class StartupDep {
  public:
   StartupDep() {}
   virtual ~StartupDep() = default;
-
-  // Wrapper around stat(2).
-  virtual bool Stat(const base::FilePath& path, struct stat* st);
-
-  // Wrapper around statvfs.
-  virtual bool Statvfs(const base::FilePath& path, struct statvfs* st);
-
-  // Wrapper around mount(2).
-  virtual bool Mount(const base::FilePath& src,
-                     const base::FilePath& dst,
-                     const std::string& type,
-                     unsigned long flags,  // NOLINT(runtime/int)
-                     const std::string& data);
-
-  // Wrapper around open(2).
-  virtual base::ScopedFD Open(const base::FilePath& pathname, int flags);
-
-  // Wrapper around ioctl(2).
-  // Can't create virtual templated methods, so define per use case.
-  // NOLINTNEXTLINE(runtime/int)
-  virtual int Ioctl(int fd, unsigned long request, int* arg1);
-
-  // Change ownership of a file. Wrapper around fchown(2).
-  //
-  // Returns true on success.
-  virtual bool Fchown(int fd, uid_t owner, gid_t group);
 
   // Runs mount-encrypted with the given arg.
   virtual int MountEncrypted(const std::vector<std::string>& args,
