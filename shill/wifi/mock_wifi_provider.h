@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <gmock/gmock.h>
+#include <net-base/mac_address.h>
 
 #include "shill/manager.h"
 #include "shill/wifi/hotspot_device.h"
@@ -106,11 +107,13 @@ class MockWiFiProvider : public WiFiProvider {
               DeregisterDeviceFromPhy,
               (WiFiConstRefPtr, uint32_t),
               (override));
-  MOCK_METHOD(
-      HotspotDeviceRefPtr,
-      CreateHotspotDevice,
-      (const std::string&, WiFiBand, WiFiSecurity, LocalDevice::EventCallback),
-      (override));
+  MOCK_METHOD(HotspotDeviceRefPtr,
+              CreateHotspotDevice,
+              (net_base::MacAddress,
+               WiFiBand,
+               WiFiSecurity,
+               LocalDevice::EventCallback),
+              (override));
   MOCK_METHOD(P2PDeviceRefPtr,
               CreateP2PDevice,
               (LocalDevice::IfaceType,

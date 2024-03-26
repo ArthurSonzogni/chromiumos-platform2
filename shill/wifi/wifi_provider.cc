@@ -20,6 +20,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <net-base/mac_address.h>
 #include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 
@@ -253,12 +254,12 @@ WiFiProvider::WiFiProvider(Manager* manager)
           base::BindRepeating([](Manager* manager,
                                  const std::string& primary_link_name,
                                  const std::string& link_name,
-                                 const std::string& mac_address,
+                                 net_base::MacAddress mac_address,
                                  uint32_t phy_index,
                                  LocalDevice::EventCallback callback) {
-            return HotspotDeviceRefPtr(
-                new HotspotDevice(manager, primary_link_name, link_name,
-                                  mac_address, phy_index, std::move(callback)));
+            return HotspotDeviceRefPtr(new HotspotDevice(
+                manager, primary_link_name, link_name, mac_address.ToString(),
+                phy_index, std::move(callback)));
           })),
       running_(false),
       disable_vht_(false) {}
@@ -1325,7 +1326,7 @@ void WiFiProvider::DeregisterLocalDevice(LocalDeviceConstRefPtr device) {
 }
 
 HotspotDeviceRefPtr WiFiProvider::CreateHotspotDevice(
-    const std::string& mac_address,
+    net_base::MacAddress mac_address,
     WiFiBand band,
     WiFiSecurity security,
     LocalDevice::EventCallback callback) {
@@ -1358,7 +1359,7 @@ HotspotDeviceRefPtr WiFiProvider::CreateHotspotDevice(
 }
 
 HotspotDeviceRefPtr WiFiProvider::CreateHotspotDeviceForTest(
-    const std::string& mac_address,
+    net_base::MacAddress mac_address,
     const std::string& device_name_for_test,
     uint32_t device_phy_index_for_test,
     LocalDevice::EventCallback callback) {

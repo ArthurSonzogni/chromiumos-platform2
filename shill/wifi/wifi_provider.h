@@ -14,6 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
+#include <net-base/mac_address.h>
 #include <net-base/netlink_manager.h>
 #include <net-base/netlink_message.h>
 
@@ -251,7 +252,7 @@ class WiFiProvider : public ProviderInterface {
   // security |security| are used in the WiFiPhy search to find the first
   // WiFiPhy which meets all the criteria.
   mockable HotspotDeviceRefPtr
-  CreateHotspotDevice(const std::string& mac_address,
+  CreateHotspotDevice(net_base::MacAddress mac_address,
                       WiFiBand band,
                       WiFiSecurity security,
                       LocalDevice::EventCallback callback);
@@ -261,7 +262,7 @@ class WiFiProvider : public ProviderInterface {
   // event happens.
   // Note that this method is only used for testing.
   HotspotDeviceRefPtr CreateHotspotDeviceForTest(
-      const std::string& mac_address,
+      net_base::MacAddress mac_address,
       const std::string& device_name_for_test,
       uint32_t device_phy_index_for_test,
       LocalDevice::EventCallback callback);
@@ -414,7 +415,7 @@ class WiFiProvider : public ProviderInterface {
       Manager* manager,
       const std::string& primary_link_name,
       const std::string& link_name,
-      const std::string& mac_address,
+      net_base::MacAddress mac_address,
       uint32_t phy_index,
       LocalDevice::EventCallback callback)>
       hotspot_device_factory_;

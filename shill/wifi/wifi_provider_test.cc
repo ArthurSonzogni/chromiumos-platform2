@@ -2583,8 +2583,8 @@ TEST_F(WiFiProviderTest, GetUniqueLocalDeviceName) {
 TEST_F(WiFiProviderTest, CreateHotspotDeviceWithoutWiFiDevice) {
   // Failed to create hotspot device when there is no WiFi device.
   EXPECT_EQ(provider_->CreateHotspotDevice(
-                /*mac_address=*/"b6:13:c9:d7:32:0c", WiFiBand::kLowBand,
-                WiFiSecurity::kWpa2, base::DoNothing()),
+                net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c),
+                WiFiBand::kLowBand, WiFiSecurity::kWpa2, base::DoNothing()),
             nullptr);
 }
 
@@ -2602,17 +2602,17 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
 
   provider_->hotspot_device_factory_ = base::BindRepeating(
       [](Manager* manager, const std::string& primary_link_name,
-         const std::string& link_name, const std::string& mac_address,
+         const std::string& link_name, net_base::MacAddress mac_address,
          uint32_t phy_index, LocalDevice::EventCallback callback) {
-        return HotspotDeviceRefPtr(
-            new MockHotspotDevice(manager, primary_link_name, link_name,
-                                  mac_address, phy_index, std::move(callback)));
+        return HotspotDeviceRefPtr(new MockHotspotDevice(
+            manager, primary_link_name, link_name, mac_address.ToString(),
+            phy_index, std::move(callback)));
       });
 
   // The hotspot device should be created and registered at |local_devices_|.
   const HotspotDeviceRefPtr device = provider_->CreateHotspotDevice(
-      /*mac_address=*/"b6:13:c9:d7:32:0c", WiFiBand::kLowBand,
-      WiFiSecurity::kWpa2, base::DoNothing());
+      net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c),
+      WiFiBand::kLowBand, WiFiSecurity::kWpa2, base::DoNothing());
   ASSERT_NE(device, nullptr);
   EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);
 }
@@ -2632,17 +2632,17 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
 
   provider_->hotspot_device_factory_ = base::BindRepeating(
       [](Manager* manager, const std::string& primary_link_name,
-         const std::string& link_name, const std::string& mac_address,
+         const std::string& link_name, net_base::MacAddress mac_address,
          uint32_t phy_index, LocalDevice::EventCallback callback) {
-        return HotspotDeviceRefPtr(
-            new MockHotspotDevice(manager, primary_link_name, link_name,
-                                  mac_address, phy_index, std::move(callback)));
+        return HotspotDeviceRefPtr(new MockHotspotDevice(
+            manager, primary_link_name, link_name, mac_address.ToString(),
+            phy_index, std::move(callback)));
       });
 
   // The hotspot device should be created and registered at |local_devices_|.
   const HotspotDeviceRefPtr device = provider_->CreateHotspotDeviceForTest(
-      /*mac_address=*/"b6:13:c9:d7:32:0c", link_name, phy_index,
-      base::DoNothing());
+      net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c), link_name,
+      phy_index, base::DoNothing());
   ASSERT_NE(device, nullptr);
   EXPECT_EQ(device->phy_index(), phy_index);
   EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);

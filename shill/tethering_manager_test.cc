@@ -1760,15 +1760,17 @@ TEST_F(TetheringManagerTest, MARWithSSIDChange) {
 
   // Upon initialization TetheringManager generates some config.  Let's take
   // a snapshot of the SSID/MAC (to test if MAC changes upon SSID change).
-  std::string ini_ssid = tethering_manager_->hex_ssid_;
-  std::string ini_mac = tethering_manager_->stable_mac_addr_.ToString();
+  const std::string ini_ssid = tethering_manager_->hex_ssid_;
+  const net_base::MacAddress ini_mac =
+      tethering_manager_->stable_mac_addr_.address().value();
 
   // Change SSID to cause regeneration of MAC address.
   KeyValueStore args = GenerateFakeConfig(kTestAPHexSSID, kTestPassword);
   // Turn off randomization.
   SetConfigMAR(args, false);
   EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, args));
-  std::string mac = tethering_manager_->stable_mac_addr_.ToString();
+  const net_base::MacAddress mac =
+      tethering_manager_->stable_mac_addr_.address().value();
   ASSERT_NE(ini_ssid, kTestAPHexSSID);
   EXPECT_NE(ini_mac, mac);
 
@@ -1784,8 +1786,8 @@ MATCHER_P(IsContained, container, "") {
 
 TEST_F(TetheringManagerTest, MARWithTetheringRestart) {
   TetheringPrerequisite(tethering_manager_);
-  std::set<std::string> known_macs;
-  known_macs.insert(tethering_manager_->stable_mac_addr_.ToString());
+  std::set<net_base::MacAddress> known_macs;
+  known_macs.insert(tethering_manager_->stable_mac_addr_.address().value());
 
   auto tether_onoff = [&]() {
     EXPECT_CALL(*wifi_provider_,
@@ -1817,15 +1819,16 @@ TEST_F(TetheringManagerTest, CheckMACStored) {
   SetConfigMAR(args, false);
   EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, args));
 
-  std::string ini_mac = tethering_manager_->stable_mac_addr_.ToString();
+  const net_base::MacAddress ini_mac =
+      tethering_manager_->stable_mac_addr_.address().value();
 
   // Now PopProfile and check that MAC is different.
   EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager_, kUserProfile));
-  EXPECT_NE(ini_mac, tethering_manager_->stable_mac_addr_.ToString());
+  EXPECT_NE(ini_mac, tethering_manager_->stable_mac_addr_.address());
 
   // Repush the profile and check that MAC returns to its original value.
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
-  EXPECT_EQ(ini_mac, tethering_manager_->stable_mac_addr_.ToString());
+  EXPECT_EQ(ini_mac, tethering_manager_->stable_mac_addr_.address());
 
   // And test that it is actually used.
   EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(Eq(ini_mac), _, _, _))

@@ -21,6 +21,7 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/device.h"
@@ -765,13 +766,9 @@ void TetheringManager::StartTetheringSession() {
 
   // Prepare the downlink hotspot device.
   hotspot_service_up_ = false;
-  std::string mac_address;
-  if (mar_) {
-    mac_address = MACAddress::CreateRandom().ToString();
-  } else {
-    CHECK(stable_mac_addr_.address().has_value());
-    mac_address = stable_mac_addr_.ToString();
-  }
+  const net_base::MacAddress mac_address =
+      mar_ ? MACAddress::CreateRandom().address().value()
+           : stable_mac_addr_.address().value();
 
   if (downstream_device_for_test_ && downstream_phy_index_for_test_) {
     hotspot_dev_ = manager_->wifi_provider()->CreateHotspotDeviceForTest(
