@@ -39,6 +39,10 @@ Status PinWeaverManagerFrontendImpl::Initialize() const {
   return middleware_.CallSync<&Backend::PinWeaverManager::StateIsReady>();
 }
 
+Status PinWeaverManagerFrontendImpl::SyncHashTree() const {
+  return middleware_.CallSync<&Backend::PinWeaverManager::SyncHashTree>();
+}
+
 StatusOr<bool> PinWeaverManagerFrontendImpl::HasAnyCredential() const {
   return middleware_.CallSync<&Backend::PinWeaverManager::HasAnyCredential>();
 }

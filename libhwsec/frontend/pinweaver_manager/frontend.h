@@ -54,6 +54,8 @@ class PinWeaverManagerFrontend : public Frontend {
   // initialized, not locked out, and hash tree is valid.
   virtual Status Initialize() const = 0;
 
+  virtual Status SyncHashTree() const = 0;
+
   // Checks whether there is any credential in the PinWeaver tree.
   virtual StatusOr<bool> HasAnyCredential() const = 0;
 

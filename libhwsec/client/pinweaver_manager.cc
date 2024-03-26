@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "libhwsec/backend/pinweaver_manager/pinweaver_manager.h"
 #include <cinttypes>
 #include <cstdint>
 #include <cstdio>
@@ -76,7 +77,30 @@ struct Initialize {
         hwsec::FactoryImpl().GetPinWeaverManagerFrontend()->Initialize())
         .LogError()
         .As(EXIT_FAILURE);
-    printf("PinWeaver Manager is in good state.");
+    printf("PinWeaver Manager is in good state.\n");
+    return EXIT_SUCCESS;
+  }
+};
+
+struct SyncHashTree {
+  static constexpr char kName[] = "sync";
+  static constexpr char kArgs[] = "";
+  static constexpr char kDesc[] = R"(
+      Sync the PinWeaver hash tree between OS and GSC.
+      Returning success indicates that the hash tree is synced.
+)";
+
+  static int Run(const ClientArgs& args) {
+    if (args.size() != 0) {
+      hwsec::PrintCommandUsage<Initialize>();
+      return EX_USAGE;
+    }
+
+    RETURN_IF_ERROR(
+        hwsec::FactoryImpl().GetPinWeaverManagerFrontend()->SyncHashTree())
+        .LogError()
+        .As(EXIT_FAILURE);
+    printf("PinWeaver Manager is synced.\n");
     return EXIT_SUCCESS;
   }
 };
@@ -219,9 +243,9 @@ struct RemoveCredential {
   }
 };
 
-#define COMMAND_LIST                                              \
-  Initialize, InsertCredential, CheckCredential, ResetCredential, \
-      RemoveCredential
+#define COMMAND_LIST                                           \
+  Initialize, SyncHashTree, InsertCredential, CheckCredential, \
+      ResetCredential, RemoveCredential
 
 using Usage = Help<Help<>, COMMAND_LIST>;
 
