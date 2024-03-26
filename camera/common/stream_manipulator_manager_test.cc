@@ -121,7 +121,7 @@ StreamManipulator::CaptureResultCallback CreateCaptureResultCallback(
       returned_result, capture_result_returned);
 }
 
-StreamManipulator::NofifyCallback CreateNotifyCallback(
+StreamManipulator::NotifyCallback CreateNotifyCallback(
     camera3_notify_msg_t* returned_msg, base::WaitableEvent* notify_returned) {
   return base::BindRepeating(
       [](camera3_notify_msg_t* returned_msg,

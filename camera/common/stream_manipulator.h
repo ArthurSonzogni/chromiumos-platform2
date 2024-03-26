@@ -54,7 +54,7 @@ class CROS_CAMERA_EXPORT StreamManipulator {
 
   // Callback for the StreamManipulator to pass on messages to upstream
   // StreamManipulators or the framework.
-  using NofifyCallback =
+  using NotifyCallback =
       base::RepeatingCallback<void(camera3_notify_msg_t msg)>;
 
   class RuntimeOptions {
@@ -96,7 +96,7 @@ class CROS_CAMERA_EXPORT StreamManipulator {
 
   struct Callbacks {
     CaptureResultCallback result_callback;
-    NofifyCallback notify_callback;
+    NotifyCallback notify_callback;
   };
 
   // Helper for creating a scoped closure that automatically calls
