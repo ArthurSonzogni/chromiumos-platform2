@@ -78,3 +78,5 @@ fstatfs64: 1
 rt_sigaction: 1
 dup: 1
 unlinkat: 1
+uname: 1
+getrandom: arg2 in ~GRND_RANDOM

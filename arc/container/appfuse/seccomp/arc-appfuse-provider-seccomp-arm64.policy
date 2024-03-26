@@ -67,3 +67,5 @@ sched_setattr: 1
 fstatfs: 1
 rt_sigaction: 1
 dup: 1
+uname: 1
+getrandom: arg2 in ~GRND_RANDOM
