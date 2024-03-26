@@ -21,6 +21,7 @@
 #include "shill/cellular/mobile_apn.h"
 #include "shill/data_types.h"
 #include "shill/event_dispatcher.h"
+#include "shill/ipconfig.h"
 #include "shill/mobile_operator_db/mobile_operator_db.pb.h"
 
 namespace shill {
@@ -68,6 +69,14 @@ class MobileOperatorMapper {
     std::string method;
     // Parameters to be included in the entitlement check message body.
     Stringmap params;
+
+   private:
+    auto tuple() const { return std::make_tuple(url, method, params); }
+
+   public:
+    bool operator==(const EntitlementConfig& rhs) const {
+      return tuple() == rhs.tuple();
+    }
   };
 
   // These functions can be called before Init to read non default database
@@ -154,6 +163,7 @@ class MobileOperatorMapper {
 
  private:
   friend class MobileOperatorMapperInitTest;
+  friend class MobileOperatorMapperMainTest;
 
   // ///////////////////////////////////////////////////////////////////////////
   // Static variables.
@@ -252,31 +262,35 @@ class MobileOperatorMapper {
   const mobile_operator_db::MobileNetworkOperator* current_mno_;
   const mobile_operator_db::MobileVirtualNetworkOperator* current_mvno_;
 
-  // These fields are the information expected to be populated by this object
-  // after successfully determining the MVNO.
-  std::string uuid_;
-  std::string operator_name_;
-  std::string country_;
-  std::string mccmnc_;
-  // Two-letter country code defined in ISO 3166-1 converted from MCC.
-  std::string mcc_alpha2_;
-  std::string gid1_;
-  std::vector<std::string> mccmnc_list_;
-  EntitlementConfig entitlement_config_;
-  std::set<shill::mobile_operator_db::Data_EntitlementParam>
-      mhs_entitlement_params_;
-  std::vector<LocalizedName> operator_name_list_;
-  bool prioritizes_db_operator_name_;
-  std::vector<mobile_operator_db::MobileAPN> raw_apn_list_;
-  std::set<mobile_operator_db::Filter_Type> raw_apn_filters_types_;
-  std::vector<MobileAPN> apn_list_;
-  std::vector<MobileOperatorMapper::OnlinePortal> olp_list_;
-  std::vector<mobile_operator_db::OnlinePortal> raw_olp_list_;
-  bool requires_roaming_;
-  std::optional<bool> tethering_allowed_;
-  bool use_dun_apn_as_default_;
-  std::vector<mobile_operator_db::Filter> roaming_filter_list_;
-  int32_t mtu_;
+  // These struct fields are the information expected to be populated by this
+  // object after successfully determining the MNO/MVNO.
+  struct DBInfo {
+    std::string uuid;
+    std::string operator_name;
+    std::string country;
+    std::string mccmnc;
+    // Two-letter country code defined in ISO 3166-1 converted from MCC.
+    std::string mcc_alpha2;
+    std::string gid1;
+    std::vector<std::string> mccmnc_list;
+    EntitlementConfig entitlement_config;
+    std::set<shill::mobile_operator_db::Data_EntitlementParam>
+        mhs_entitlement_params;
+    std::vector<LocalizedName> operator_name_list;
+    bool prioritizes_db_operator_name = false;
+    std::vector<mobile_operator_db::MobileAPN> raw_apn_list;
+    std::set<mobile_operator_db::Filter_Type> raw_apn_filters_types;
+    std::vector<MobileAPN> apn_list;
+    std::vector<MobileOperatorMapper::OnlinePortal> olp_list;
+    std::vector<mobile_operator_db::OnlinePortal> raw_olp_list;
+    bool requires_roaming = false;
+    std::optional<bool> tethering_allowed;
+    bool use_dun_apn_as_default = false;
+    std::vector<mobile_operator_db::Filter> roaming_filter_list;
+    int32_t mtu = IPConfig::kUndefinedMTU;
+  };
+
+  DBInfo db_info_;
   // These fields store the data obtained from the Update* methods.
   // The database information is kept separate from the information gathered
   // through the Update* methods, because one or the other may be given

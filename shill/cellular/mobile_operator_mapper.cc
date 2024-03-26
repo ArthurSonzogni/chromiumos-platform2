@@ -113,9 +113,6 @@ MobileOperatorMapper::MobileOperatorMapper(EventDispatcher* dispatcher,
       operator_code_type_(OperatorCodeType::kUnknown),
       current_mno_(nullptr),
       current_mvno_(nullptr),
-      requires_roaming_(false),
-      use_dun_apn_as_default_(false),
-      mtu_(IPConfig::kUndefinedMTU),
       user_olp_empty_(true),
       weak_ptr_factory_(this) {}
 
@@ -172,126 +169,130 @@ bool MobileOperatorMapper::IsMobileVirtualNetworkOperatorKnown() const {
 // ///////////////////////////////////////////////////////////////////////////
 // Getters.
 const std::string& MobileOperatorMapper::uuid() const {
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << uuid_ << "]";
-  return uuid_;
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << db_info_.uuid << "]";
+  return db_info_.uuid;
 }
 
 const std::string& MobileOperatorMapper::operator_name() const {
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << operator_name_ << "]";
-  return operator_name_;
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << db_info_.operator_name
+          << "]";
+  return db_info_.operator_name;
 }
 
 const std::string& MobileOperatorMapper::country() const {
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << country_ << "]";
-  return country_;
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << db_info_.country << "]";
+  return db_info_.country;
 }
 
 const std::string& MobileOperatorMapper::mccmnc() const {
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << mccmnc_ << "]";
-  return mccmnc_;
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << db_info_.mccmnc << "]";
+  return db_info_.mccmnc;
 }
 
 const std::string& MobileOperatorMapper::mcc_alpha2() const {
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << mcc_alpha2_ << "]";
-  return mcc_alpha2_;
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << db_info_.mcc_alpha2
+          << "]";
+  return db_info_.mcc_alpha2;
 }
 
 const std::string& MobileOperatorMapper::gid1() const {
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << gid1_ << "]";
-  return gid1_;
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << db_info_.gid1 << "]";
+  return db_info_.gid1;
 }
 
 const std::vector<std::string>& MobileOperatorMapper::mccmnc_list() const {
   if (SLOG_IS_ON(Cellular, 3)) {
     std::stringstream pp_result;
-    for (const auto& mccmnc : mccmnc_list_) {
+    for (const auto& mccmnc : db_info_.mccmnc_list) {
       pp_result << mccmnc << " ";
     }
     SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
   }
-  return mccmnc_list_;
+  return db_info_.mccmnc_list;
 }
 
 const MobileOperatorMapper::EntitlementConfig&
 MobileOperatorMapper::entitlement_config() {
   SLOG(3) << GetLogPrefix(__func__) << ": url Result["
-          << entitlement_config_.url << "]";
+          << db_info_.entitlement_config.url << "]";
   SLOG(3) << GetLogPrefix(__func__) << ": method Result["
-          << entitlement_config_.method << "]";
+          << db_info_.entitlement_config.method << "]";
 
-  entitlement_config_.params.clear();
-  for (const auto& param : mhs_entitlement_params_) {
+  db_info_.entitlement_config.params.clear();
+  for (const auto& param : db_info_.mhs_entitlement_params) {
     switch (param) {
       case shill::mobile_operator_db::Data_EntitlementParam::
           Data_EntitlementParam_IMSI:
-        entitlement_config_.params[CarrierEntitlement::kImsiProperty] =
+        db_info_.entitlement_config.params[CarrierEntitlement::kImsiProperty] =
             user_imsi_;
         break;
     }
   }
   if (SLOG_IS_ON(Cellular, 3)) {
     std::stringstream pp_result;
-    for (const auto& entry : entitlement_config_.params) {
+    for (const auto& entry : db_info_.entitlement_config.params) {
       pp_result << entry.first << " ";
     }
     SLOG(3) << GetLogPrefix(__func__) << ": params Result[" << pp_result.str()
             << "]";
   }
 
-  return entitlement_config_;
+  return db_info_.entitlement_config;
 }
 
 const std::vector<LocalizedName>& MobileOperatorMapper::operator_name_list()
     const {
   if (SLOG_IS_ON(Cellular, 3)) {
     std::stringstream pp_result;
-    for (const auto& operator_name : operator_name_list_) {
+    for (const auto& operator_name : db_info_.operator_name_list) {
       pp_result << "(" << operator_name.name << ", " << operator_name.language
                 << ") ";
     }
     SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
   }
-  return operator_name_list_;
+  return db_info_.operator_name_list;
 }
 
 const std::vector<MobileAPN>& MobileOperatorMapper::apn_list() const {
-  return apn_list_;
+  return db_info_.apn_list;
 }
 
 const std::vector<MobileOperatorMapper::OnlinePortal>&
 MobileOperatorMapper::olp_list() const {
   if (SLOG_IS_ON(Cellular, 3)) {
     std::stringstream pp_result;
-    for (const auto& olp : olp_list_) {
+    for (const auto& olp : db_info_.olp_list) {
       pp_result << "(url: " << olp.url << ", method: " << olp.method
                 << ", post_data: " << olp.post_data << ") ";
     }
     SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
   }
-  return olp_list_;
+  return db_info_.olp_list;
 }
 
 bool MobileOperatorMapper::requires_roaming() const {
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << requires_roaming_ << "]";
-  return requires_roaming_;
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << db_info_.requires_roaming
+          << "]";
+  return db_info_.requires_roaming;
 }
 
 bool MobileOperatorMapper::tethering_allowed(
     bool allow_untested_carriers) const {
   SLOG(3) << GetLogPrefix(__func__) << ": Result["
-          << tethering_allowed_.value_or(allow_untested_carriers) << "]";
-  return tethering_allowed_.value_or(allow_untested_carriers);
+          << db_info_.tethering_allowed.value_or(allow_untested_carriers)
+          << "]";
+  return db_info_.tethering_allowed.value_or(allow_untested_carriers);
 }
 
 bool MobileOperatorMapper::use_dun_apn_as_default() const {
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << use_dun_apn_as_default_
-          << "]";
-  return use_dun_apn_as_default_;
+  SLOG(3) << GetLogPrefix(__func__) << ": Result["
+          << db_info_.use_dun_apn_as_default << "]";
+  return db_info_.use_dun_apn_as_default;
 }
 
 int32_t MobileOperatorMapper::mtu() const {
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << mtu_ << "]";
-  return mtu_;
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << db_info_.mtu << "]";
+  return db_info_.mtu;
 }
 
 // ///////////////////////////////////////////////////////////////////////////
@@ -327,7 +328,7 @@ void MobileOperatorMapper::UpdateIMSI(const std::string& imsi) {
     }
   }
   operator_changed |= UpdateMVNO();
-  if (raw_apn_filters_types_.count(
+  if (db_info_.raw_apn_filters_types.count(
           mobile_operator_db::Filter_Type::Filter_Type_IMSI))
     HandleAPNListUpdate();
 
@@ -346,7 +347,7 @@ void MobileOperatorMapper::UpdateICCID(const std::string& iccid) {
 
   SLOG(1) << GetLogPrefix(__func__) << ": " << iccid;
   user_iccid_ = iccid;
-  if (raw_apn_filters_types_.count(
+  if (db_info_.raw_apn_filters_types.count(
           mobile_operator_db::Filter_Type::Filter_Type_ICCID))
     HandleAPNListUpdate();
 
@@ -371,7 +372,7 @@ void MobileOperatorMapper::UpdateMCCMNC(const std::string& mccmnc) {
     LOG(WARNING) << GetLogPrefix(__func__) << "Unknown MCCMNC value [" << mccmnc
                  << "].";
 
-  if (raw_apn_filters_types_.count(
+  if (db_info_.raw_apn_filters_types.count(
           mobile_operator_db::Filter_Type::Filter_Type_MCCMNC))
     HandleAPNListUpdate();
 
@@ -414,7 +415,7 @@ void MobileOperatorMapper::UpdateOperatorName(
   } else {
     SLOG(2) << GetLogPrefix(__func__) << ": operator name is empty.";
   }
-  if (raw_apn_filters_types_.count(
+  if (db_info_.raw_apn_filters_types.count(
           mobile_operator_db::Filter_Type::Filter_Type_OPERATOR_NAME)) {
     HandleAPNListUpdate();
   }
@@ -434,7 +435,7 @@ void MobileOperatorMapper::UpdateGID1(const std::string& gid1) {
   SLOG(1) << GetLogPrefix(__func__) << ": " << gid1;
   user_gid1_ = gid1;
   HandleGID1Update();
-  if (raw_apn_filters_types_.count(
+  if (db_info_.raw_apn_filters_types.count(
           mobile_operator_db::Filter_Type::Filter_Type_GID1)) {
     HandleAPNListUpdate();
   }
@@ -816,119 +817,103 @@ void MobileOperatorMapper::RefreshDBInformation() {
 }
 
 void MobileOperatorMapper::ClearDBInformation() {
-  uuid_.clear();
-  country_.clear();
-  mccmnc_list_.clear();
+  db_info_ = {};
   HandleMCCMNCUpdate();
-  operator_name_list_.clear();
-  prioritizes_db_operator_name_ = false;
   HandleOperatorNameUpdate();
-  apn_list_.clear();
-  raw_apn_list_.clear();
-  raw_apn_filters_types_.clear();
   HandleAPNListUpdate();
-  olp_list_.clear();
-  raw_olp_list_.clear();
   HandleOnlinePortalUpdate();
-  requires_roaming_ = false;
-  tethering_allowed_.reset();
-  use_dun_apn_as_default_ = false;
-  roaming_filter_list_.clear();
-  mtu_ = IPConfig::kUndefinedMTU;
-  entitlement_config_ = {};
-  mhs_entitlement_params_.clear();
 }
 
 void MobileOperatorMapper::ReloadData(
     const shill::mobile_operator_db::Data& data) {
   SLOG(3) << GetLogPrefix(__func__);
-  // |uuid_| is *always* overwritten. An MNO and MVNO should not share the
-  // |uuid_|.
+  // |db_info_.uuid| is *always* overwritten. An MNO and MVNO should not share
+  // the |db_info_.uuid|.
   CHECK(data.has_uuid());
-  uuid_ = data.uuid();
+  db_info_.uuid = data.uuid();
 
   if (data.has_country()) {
-    country_ = data.country();
+    db_info_.country = data.country();
   }
 
   if (data.has_prioritizes_name()) {
-    prioritizes_db_operator_name_ = data.prioritizes_name();
+    db_info_.prioritizes_db_operator_name = data.prioritizes_name();
   }
 
   if (data.localized_name_size() > 0) {
-    operator_name_list_.clear();
+    db_info_.operator_name_list.clear();
     for (const auto& localized_name : data.localized_name()) {
-      operator_name_list_.push_back(
+      db_info_.operator_name_list.push_back(
           {localized_name.name(), localized_name.language()});
     }
     HandleOperatorNameUpdate();
   }
 
   if (data.has_requires_roaming()) {
-    requires_roaming_ = data.requires_roaming();
+    db_info_.requires_roaming = data.requires_roaming();
   }
 
   // The following tethering properties are always overwritten because each
   // MNO/MVNO decides how tethering works on their network.
-  tethering_allowed_.reset();
+  db_info_.tethering_allowed.reset();
   if (data.has_tethering_allowed()) {
-    tethering_allowed_ = data.tethering_allowed();
+    db_info_.tethering_allowed = data.tethering_allowed();
   }
-  use_dun_apn_as_default_ = data.use_dun_apn_as_default();
-  entitlement_config_.url = data.mhs_entitlement_url();
+  db_info_.use_dun_apn_as_default = data.use_dun_apn_as_default();
+  db_info_.entitlement_config.url = data.mhs_entitlement_url();
   switch (data.mhs_entitlement_method()) {
     case shill::mobile_operator_db::GET:
-      entitlement_config_.method = brillo::http::request_type::kGet;
+      db_info_.entitlement_config.method = brillo::http::request_type::kGet;
       break;
     case shill::mobile_operator_db::POST:
-      entitlement_config_.method = brillo::http::request_type::kPost;
+      db_info_.entitlement_config.method = brillo::http::request_type::kPost;
       break;
   }
   // mhs_entitlement_url_ = data.mhs_entitlement_url();
-  mhs_entitlement_params_.clear();
+  db_info_.mhs_entitlement_params.clear();
   if (data.mhs_entitlement_param_size() > 0) {
     for (const auto& param : data.mhs_entitlement_param()) {
-      mhs_entitlement_params_.insert(
+      db_info_.mhs_entitlement_params.insert(
           static_cast<shill::mobile_operator_db::Data_EntitlementParam>(param));
     }
   }
 
   if (data.roaming_filter_size() > 0) {
-    roaming_filter_list_.clear();
+    db_info_.roaming_filter_list.clear();
     for (const auto& filter : data.roaming_filter()) {
-      roaming_filter_list_.push_back(filter);
+      db_info_.roaming_filter_list.push_back(filter);
     }
   }
 
   if (data.mtu()) {
-    mtu_ = data.mtu();
+    db_info_.mtu = data.mtu();
   }
 
   if (data.olp_size() > 0) {
-    raw_olp_list_.clear();
+    db_info_.raw_olp_list.clear();
     // Copy the olp list so we can mutate it.
     for (const auto& olp : data.olp()) {
-      raw_olp_list_.push_back(olp);
+      db_info_.raw_olp_list.push_back(olp);
     }
     HandleOnlinePortalUpdate();
   }
 
   if (data.mccmnc_size() > 0) {
-    mccmnc_list_.clear();
+    db_info_.mccmnc_list.clear();
     for (const auto& mccmnc : data.mccmnc()) {
-      mccmnc_list_.push_back(mccmnc);
+      db_info_.mccmnc_list.push_back(mccmnc);
     }
     HandleMCCMNCUpdate();
   }
 
   if (data.mobile_apn_size() > 0) {
-    raw_apn_list_.clear();
-    raw_apn_filters_types_.clear();
+    db_info_.raw_apn_list.clear();
+    db_info_.raw_apn_filters_types.clear();
     // Copy the olp list so we can mutate it.
     for (const auto& mobile_apn : data.mobile_apn()) {
-      raw_apn_list_.push_back(mobile_apn);
+      db_info_.raw_apn_list.push_back(mobile_apn);
       for (const auto& filter : mobile_apn.apn_filter()) {
-        raw_apn_filters_types_.insert(filter.type());
+        db_info_.raw_apn_filters_types.insert(filter.type());
       }
     }
     HandleAPNListUpdate();
@@ -938,24 +923,24 @@ void MobileOperatorMapper::ReloadData(
 void MobileOperatorMapper::HandleMCCMNCUpdate() {
   if (!user_mccmnc_.empty()) {
     bool append_to_list = true;
-    for (const auto& mccmnc : mccmnc_list_) {
+    for (const auto& mccmnc : db_info_.mccmnc_list) {
       append_to_list &= (user_mccmnc_ != mccmnc);
     }
     if (append_to_list) {
-      mccmnc_list_.push_back(user_mccmnc_);
+      db_info_.mccmnc_list.push_back(user_mccmnc_);
     }
   }
 
   if (!user_mccmnc_.empty()) {
-    mccmnc_ = user_mccmnc_;
-  } else if (!mccmnc_list_.empty()) {
-    mccmnc_ = mccmnc_list_[0];
+    db_info_.mccmnc = user_mccmnc_;
+  } else if (!db_info_.mccmnc_list.empty()) {
+    db_info_.mccmnc = db_info_.mccmnc_list[0];
   } else {
-    mccmnc_.clear();
+    db_info_.mccmnc.clear();
   }
 
   // Chain the GID1 update processing in case it needs to be cleared
-  // after the mccmnc_ update
+  // after the db_info_.mccmnc update
   HandleGID1Update();
   HandleMCCAlpha2Update();
 }
@@ -965,52 +950,54 @@ void MobileOperatorMapper::HandleOperatorNameUpdate() {
     std::vector<LocalizedName> localized_names;
     LocalizedName localized_name{user_operator_name_, ""};
     localized_names.emplace_back(localized_name);
-    for (auto it = operator_name_list_.begin();
-         it != operator_name_list_.end();) {
+    for (auto it = db_info_.operator_name_list.begin();
+         it != db_info_.operator_name_list.end();) {
       if (it->name == user_operator_name_) {
         localized_name = {user_operator_name_, it->language};
         localized_names.push_back(localized_name);
-        operator_name_list_.erase(it);
+        db_info_.operator_name_list.erase(it);
       } else {
         it++;
       }
     }
     // When the modem reports the mccmnc as the operator name, prioritize the
     // modb name if we have one.
-    bool prioritize_db_name =
-        prioritizes_db_operator_name_ || (user_operator_name_ == user_mccmnc_);
-    operator_name_list_.insert(
-        (prioritize_db_name ? operator_name_list_.end()
-                            : operator_name_list_.begin()),
+    bool prioritize_db_name = db_info_.prioritizes_db_operator_name ||
+                              (user_operator_name_ == user_mccmnc_);
+    db_info_.operator_name_list.insert(
+        (prioritize_db_name ? db_info_.operator_name_list.end()
+                            : db_info_.operator_name_list.begin()),
         localized_names.begin(), localized_names.end());
   }
 
-  operator_name_ =
-      operator_name_list_.empty() ? "" : operator_name_list_[0].name;
+  db_info_.operator_name = db_info_.operator_name_list.empty()
+                               ? ""
+                               : db_info_.operator_name_list[0].name;
 }
 
 // The user-specified GID1 will be used exclusively if the user-specified
 // MCCMNC is in use, otherwise unused.
 void MobileOperatorMapper::HandleGID1Update() {
-  if (!mccmnc_.empty() && (mccmnc_ == user_mccmnc_) && !user_gid1_.empty())
-    gid1_ = user_gid1_;
+  if (!db_info_.mccmnc.empty() && (db_info_.mccmnc == user_mccmnc_) &&
+      !user_gid1_.empty())
+    db_info_.gid1 = user_gid1_;
   else
-    gid1_.clear();
+    db_info_.gid1.clear();
 }
 
 // Warning: Currently, an MCCMNC update by itself does not result in
-// recomputation of the |olp_list_|. This means that if the new MCCMNC
+// recomputation of the |db_info_.olp_list|. This means that if the new MCCMNC
 // causes an online portal filter to match, we'll miss that.
 // This won't be a problem if either the MNO or the MVNO changes, since data is
 // reloaded then.
 // This is a corner case that we don't expect to hit, since MCCMNC doesn't
 // really change in a running system.
 void MobileOperatorMapper::HandleOnlinePortalUpdate() {
-  // Always recompute |olp_list_|. We don't expect this list to be big.
-  olp_list_.clear();
-  for (const auto& raw_olp : raw_olp_list_) {
+  // Always recompute |db_info_.olp_list|. We don't expect this list to be big.
+  db_info_.olp_list.clear();
+  for (const auto& raw_olp : db_info_.raw_olp_list) {
     if (!raw_olp.has_olp_filter() || FilterMatches(raw_olp.olp_filter())) {
-      olp_list_.push_back(MobileOperatorMapper::OnlinePortal{
+      db_info_.olp_list.push_back(MobileOperatorMapper::OnlinePortal{
           raw_olp.url(),
           (raw_olp.method() == shill::mobile_operator_db::GET) ? "GET" : "POST",
           raw_olp.post_data()});
@@ -1018,22 +1005,22 @@ void MobileOperatorMapper::HandleOnlinePortalUpdate() {
   }
   if (!user_olp_empty_) {
     bool append_user_olp = true;
-    for (const auto& olp : olp_list_) {
+    for (const auto& olp : db_info_.olp_list) {
       append_user_olp &=
           (olp.url != user_olp_.url || olp.method != user_olp_.method ||
            olp.post_data != user_olp_.post_data);
     }
     if (append_user_olp) {
-      olp_list_.push_back(user_olp_);
+      db_info_.olp_list.push_back(user_olp_);
     }
   }
 }
 
 void MobileOperatorMapper::HandleAPNListUpdate() {
   SLOG(3) << GetLogPrefix(__func__);
-  // Always recompute |apn_list_|. We don't expect this list to be big.
-  apn_list_.clear();
-  for (const auto& apn_data : raw_apn_list_) {
+  // Always recompute |db_info_.apn_list|. We don't expect this list to be big.
+  db_info_.apn_list.clear();
+  for (const auto& apn_data : db_info_.raw_apn_list) {
     bool passed_all_filters = true;
     for (const auto& filter : apn_data.apn_filter()) {
       if (!FilterMatches(filter)) {
@@ -1063,13 +1050,13 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
     apn.ip_type = ip_type.value();
     apn.is_required_by_carrier_spec = apn_data.is_required_by_carrier_spec();
 
-    apn_list_.push_back(std::move(apn));
+    db_info_.apn_list.push_back(std::move(apn));
   }
 }
 
 void MobileOperatorMapper::HandleMCCAlpha2Update() {
-  if (mccmnc_.empty()) {
-    mcc_alpha2_.clear();
+  if (db_info_.mccmnc.empty()) {
+    db_info_.mcc_alpha2.clear();
     return;
   }
 
@@ -1124,11 +1111,11 @@ void MobileOperatorMapper::HandleMCCAlpha2Update() {
       {"742", "GF"}, {"744", "PY"}, {"746", "SR"}, {"748", "UY"}, {"750", "FK"},
   };
 
-  auto el = mcc_alpha2_map.find(mccmnc_.substr(0, 3));
+  auto el = mcc_alpha2_map.find(db_info_.mccmnc.substr(0, 3));
   if (el != mcc_alpha2_map.end()) {
-    mcc_alpha2_ = el->second;
+    db_info_.mcc_alpha2 = el->second;
   } else {
-    mcc_alpha2_.clear();
+    db_info_.mcc_alpha2.clear();
   }
 }
 
@@ -1164,7 +1151,7 @@ bool MobileOperatorMapper::RequiresRoamingOnOperator(
   if (!serving_operator || serving_operator->mccmnc().empty())
     return false;
 
-  for (const auto& filter : roaming_filter_list_) {
+  for (const auto& filter : db_info_.roaming_filter_list) {
     if (filter.type() != mobile_operator_db::Filter_Type_MCCMNC ||
         (!filter.has_regex() && !filter.has_exclude_regex())) {
       continue;

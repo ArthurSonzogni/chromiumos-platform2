@@ -214,6 +214,7 @@ class MobileOperatorMapperMainTest
 
   void ResetOperatorInfo() {
     operator_info_->Reset();
+    VerifyDBInfoIsCleared();
     // Eat up any events caused by |Reset|.
     dispatcher_.DispatchPendingEvents();
     VerifyNoMatch();
@@ -260,6 +261,47 @@ class MobileOperatorMapperMainTest
     }
   }
 
+  void VerifyDBInfoIsCleared() {
+    MobileOperatorMapper::DBInfo db_info;
+    EXPECT_EQ(operator_info_->db_info_.uuid, db_info.uuid);
+    EXPECT_EQ(operator_info_->db_info_.operator_name, db_info.operator_name);
+    EXPECT_EQ(operator_info_->db_info_.country, db_info.country);
+    EXPECT_EQ(operator_info_->db_info_.mccmnc, db_info.mccmnc);
+    EXPECT_EQ(operator_info_->db_info_.mcc_alpha2, db_info.mcc_alpha2);
+    EXPECT_EQ(operator_info_->db_info_.gid1, db_info.gid1);
+    EXPECT_EQ(operator_info_->db_info_.mccmnc_list, db_info.mccmnc_list);
+    EXPECT_EQ(operator_info_->db_info_.entitlement_config,
+              db_info.entitlement_config);
+    EXPECT_EQ(operator_info_->db_info_.mhs_entitlement_params,
+              db_info.mhs_entitlement_params);
+    EXPECT_EQ(operator_info_->db_info_.operator_name_list,
+              db_info.operator_name_list);
+    EXPECT_EQ(operator_info_->db_info_.prioritizes_db_operator_name,
+              db_info.prioritizes_db_operator_name);
+    EXPECT_EQ(operator_info_->db_info_.raw_apn_filters_types,
+              db_info.raw_apn_filters_types);
+    EXPECT_EQ(operator_info_->db_info_.apn_list, db_info.apn_list);
+    EXPECT_EQ(operator_info_->db_info_.olp_list, db_info.olp_list);
+    EXPECT_EQ(operator_info_->db_info_.requires_roaming,
+              db_info.requires_roaming);
+    EXPECT_EQ(operator_info_->db_info_.tethering_allowed,
+              db_info.tethering_allowed);
+    EXPECT_EQ(operator_info_->db_info_.use_dun_apn_as_default,
+              db_info.use_dun_apn_as_default);
+    EXPECT_EQ(operator_info_->db_info_.mtu, db_info.mtu);
+
+    // For proto messages, there is no way to easily compare them when the proto
+    // is built with the LITE_RUNTIME option, but since in this function we are
+    // specifically checking that the values are reset, checking the size is
+    // enough.
+    ASSERT_EQ(operator_info_->db_info_.raw_apn_list.size(),
+              db_info.raw_apn_list.size());
+    ASSERT_EQ(operator_info_->db_info_.raw_olp_list.size(),
+              db_info.raw_olp_list.size());
+    ASSERT_EQ(operator_info_->db_info_.roaming_filter_list.size(),
+              db_info.roaming_filter_list.size());
+  }
+
   // ///////////////////////////////////////////////////////////////////////////
   // Data.
   const EventCheckingPolicy event_checking_policy_;
@@ -285,6 +327,7 @@ TEST_P(MobileOperatorMapperMainTest, InitialConditions) {
   EXPECT_TRUE(operator_info_->entitlement_config().url.empty());
   EXPECT_TRUE(operator_info_->entitlement_config().method.empty());
   EXPECT_TRUE(operator_info_->entitlement_config().params.empty());
+  VerifyDBInfoIsCleared();
 }
 
 TEST_P(MobileOperatorMapperMainTest, MNOByMCCMNC) {
@@ -1000,6 +1043,7 @@ TEST_P(MobileOperatorMapperMainTest, MVNOMatchAndReset) {
 
   ExpectEventCount(1);
   operator_info_->Reset();
+  VerifyDBInfoIsCleared();
   VerifyEventCount();
   VerifyNoMatch();
 
@@ -1389,6 +1433,7 @@ TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
 
   ExpectEventCount(1);
   operator_info_->Reset();
+  VerifyDBInfoIsCleared();
   VerifyEventCount();
   VerifyNoMatch();
 
@@ -1403,6 +1448,7 @@ TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
 
   ExpectEventCount(1);
   operator_info_->Reset();
+  VerifyDBInfoIsCleared();
   VerifyEventCount();
   VerifyNoMatch();
 
@@ -1433,6 +1479,7 @@ TEST_P(MobileOperatorMapperDataTest, FilteredOLP) {
   // (2) MCCMNC filter matches.
   ExpectEventCount(1);
   operator_info_->Reset();
+  VerifyDBInfoIsCleared();
   VerifyEventCount();
   VerifyNoMatch();
 
@@ -1473,6 +1520,7 @@ TEST_P(MobileOperatorMapperObserverTest, OnOperatorChangedCallback) {
 
   EXPECT_CALL(on_operator_changed_cb_, Run()).Times(1);
   operator_info_->Reset();
+  VerifyDBInfoIsCleared();
   VerifyNoMatch();
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&on_operator_changed_cb_);
