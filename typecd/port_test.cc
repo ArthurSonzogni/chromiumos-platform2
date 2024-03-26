@@ -790,4 +790,65 @@ TEST_F(PortTest, GetPhysicalLocationNoValue) {
   EXPECT_EQ(VerticalPosition::kUnknown, port->GetVerticalPosition());
 }
 
+// Check that captive cable is not detected when connected
+// cable is not a captive cable.
+TEST_F(PortTest, CaptiveCableFalse) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  AddWimaxitDisplay(*port);
+  AddAnkerUSB3p2Gen2Cable(*port);
+
+  ASSERT_FALSE(port->IsCaptiveCableConnected());
+}
+
+// Check that captive cable is detected when connected cable is
+// a captive cable.
+TEST_F(PortTest, CaptiveCableTrueCableVDO) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // DellWD19TB Dock has a cable that reports itself as captive.
+  // It's not reporting plug type in id header (PD 3.0).
+  AddDellWD19TBDock(*port);
+
+  ASSERT_TRUE(port->IsCaptiveCableConnected());
+}
+
+// Check that captive cable is detected when partner device
+// reports cable plug in id header VDO.
+TEST_F(PortTest, CaptiveCableTrueIdHeaderVDO) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  base::ScopedTempDir scoped_temp_dir_;
+  if (!scoped_temp_dir_.CreateUniqueTempDir())
+    return;
+  base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
+
+  port->AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs wth the plug type set to plug in ID Header.
+  constexpr uint32_t id_header_vdo =
+      0xd4008087 |
+      (kIDHeaderVDOConnectorTypePlug << kIDHeaderVDOConnectorTypeBitOffset);
+  port->partner_->SetPDRevision(PDRevision::k31);
+  port->partner_->SetIdHeaderVDO(id_header_vdo);
+  port->partner_->SetCertStatVDO(0x0);
+  port->partner_->SetProductVDO(0x0);
+  port->partner_->SetProductTypeVDO1(0);
+  port->partner_->SetProductTypeVDO2(0);
+  port->partner_->SetProductTypeVDO3(0);
+
+  ASSERT_TRUE(port->IsCaptiveCableConnected());
+}
+
+// Check that captive cable is detected when partner device
+// reports cable plug in DP Alt Mode.
+TEST_F(PortTest, CaptiveCableTrueDPAltModeVDO) {
+  auto port = std::make_unique<Port>(base::FilePath(kFakePort0SysPath), 0);
+
+  // Cable Matters Dock reports cable plug only in DP Alt mode VDO.
+  AddCableMattersDock(*port);
+
+  ASSERT_TRUE(port->IsCaptiveCableConnected());
+}
+
 }  // namespace typecd

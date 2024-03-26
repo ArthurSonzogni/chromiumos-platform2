@@ -198,6 +198,10 @@ class Port {
     is_display_connected_ = is_display_connected;
   }
 
+  // Return true if there's any indication that
+  // connected device uses a captive cable or a plug.
+  bool IsCaptiveCableConnected();
+
  private:
   friend class MetricsTest;
   friend class PortTest;
@@ -241,6 +245,10 @@ class Port {
   FRIEND_TEST(PortTest, TBTCableLimitingSpeedTBT3DockFalse);
   FRIEND_TEST(PortTest, TBTCableLimitingSpeedTBT3DockTrue);
   FRIEND_TEST(PortTest, TBTCableLimitingSpeedTBT3DockFalseTBT3Cable);
+  FRIEND_TEST(PortTest, CaptiveCableFalse);
+  FRIEND_TEST(PortTest, CaptiveCableTrueCableVDO);
+  FRIEND_TEST(PortTest, CaptiveCableTrueIdHeaderVDO);
+  FRIEND_TEST(PortTest, CaptiveCableTrueDPAltModeVDO);
 
   // Helper functions from test_util for defining devices used in unit tests.
   friend void AddUnbrandedUSB2Cable(Port& port);

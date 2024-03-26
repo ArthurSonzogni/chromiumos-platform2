@@ -25,6 +25,14 @@ constexpr uint8_t kIDHeaderVDOProductTypeUFPAMA = 0x5;
 constexpr uint8_t kIDHeaderVDOProductTypePowerBrick = 0x3;
 constexpr uint32_t kIdHeaderVDOVidMask = 0x0000ffff;
 
+// USB PD spec rev 3.1, v 1.8.
+// Table 6-29 ID Header VDO.
+// Bit Masks for Connector type.
+constexpr uint8_t kIDHeaderVDOConnectorTypeBitOffset = 21;
+constexpr uint8_t kIDHeaderVDOConnectorTypeMask = 0x3;
+constexpr uint8_t kIDHeaderVDOConnectorTypeReceptacle = 0x2;
+constexpr uint8_t kIDHeaderVDOConnectorTypePlug = 0x3;
+
 // Bit Masks for Product VDO
 // USB PD spec rev 3.0, v 2.0.
 // Table 6-34 Product VDO

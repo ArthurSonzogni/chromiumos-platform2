@@ -520,10 +520,7 @@ bool Port::CableLimitingUSBSpeed(bool tbt3_alt_mode) {
     return false;
 
   // Check for captive cable.
-  auto cable_plug_type =
-      (cable_->GetProductTypeVDO1() >> kCableVDO1VDOPlugTypeOffset) &
-      kCableVDO1VDOPlugTypeBitMask;
-  if (cable_plug_type == kCableVDO1VDOPlugTypeCaptive)
+  if (IsCaptiveCableConnected())
     return false;
 
   // In Thunderbolt 3 alternate mode, the partner will support 40 Gbps.
@@ -715,6 +712,41 @@ void Port::EnqueueMetricsTask(Metrics* metrics, bool mode_entry_supported) {
 
 void Port::CancelMetricsTask() {
   report_metrics_callback_.Cancel();
+}
+
+bool Port::IsCaptiveCableConnected() {
+  if (!partner_)
+    return false;
+
+  // If cable enumerated, check cable plug type.
+  if (cable_) {
+    auto cable_plug_type =
+        (cable_->GetProductTypeVDO1() >> kCableVDO1VDOPlugTypeOffset) &
+        kCableVDO1VDOPlugTypeBitMask;
+    if (cable_plug_type == kCableVDO1VDOPlugTypeCaptive)
+      return true;
+  }
+
+  // Check partner ID Header VDO connector type.
+  auto partner_connector_type =
+      (partner_->GetIdHeaderVDO() >> kIDHeaderVDOConnectorTypeBitOffset) &
+      kIDHeaderVDOConnectorTypeMask;
+  if (partner_connector_type == kIDHeaderVDOConnectorTypePlug)
+    return true;
+
+  // Check partners DP alt mode connector type.
+  if (partner_->SupportsDp()) {
+    for (int i = 0; i < partner_->GetNumAltModes(); i++) {
+      auto alt_mode = partner_->GetAltMode(i);
+      if (!alt_mode || alt_mode->GetSVID() != kDPAltModeSID)
+        continue;
+
+      if (!(alt_mode->GetVDO() & kDPModeReceptacle))
+        return true;
+    }
+  }
+
+  return false;
 }
 
 }  // namespace typecd
