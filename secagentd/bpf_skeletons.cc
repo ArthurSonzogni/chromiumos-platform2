@@ -128,14 +128,14 @@ void NetworkBpfSkeleton::OnShillDeviceRemoved(
 }
 
 std::unordered_set<uint64_t> NetworkBpfSkeleton::GetActiveSocketsSet() {
-  uint64_t* cur_key = nullptr;
-  uint64_t next_key;
-  int bpf_rv;
+  uint64_t* cur_key{nullptr};
+  uint64_t next_key{0};
+  int bpf_rv{0};
   std::unordered_set<uint64_t> rv;
+  auto& socket_map = default_bpf_skeleton_->skel_->maps.active_socket_map;
   do {
-    bpf_rv = platform_->BpfMapGetNextKey(
-        default_bpf_skeleton_->skel_->maps.active_socket_map, cur_key,
-        &next_key, sizeof(next_key));
+    bpf_rv = platform_->BpfMapGetNextKey(socket_map, cur_key, &next_key,
+                                         sizeof(next_key));
     cur_key = &next_key;
     if (bpf_rv == 0 || bpf_rv == -ENOENT) {  // ENOENT means last key
       rv.insert(next_key);
@@ -167,7 +167,10 @@ void NetworkBpfSkeleton::ScanFlowMap() {
   auto& event_flow_map_value = event_flow.flow_map_value;
   network_event.type = bpf::kSyntheticNetworkFlow;
   cros_event.type = bpf::kNetworkEvent;
+  uint64_t loop_count = 0;
+  constexpr uint64_t max_loop{CROS_MAX_SOCKET * CROS_AVG_CONN_PER_SOCKET * 2};
   do {
+    loop_count++;
     rv = platform_->BpfMapGetNextKey(
         default_bpf_skeleton_->skel_->maps.cros_network_flow_map, cur_key,
         next_key, sizeof(*next_key));
@@ -180,13 +183,17 @@ void NetworkBpfSkeleton::ScanFlowMap() {
         // TODO(b:277815178): Add a UMA metric to log errors.
         continue;
       }
-      if (active_sockets.find(next_key->sock_id) == active_sockets.end()) {
+      if (active_sockets.find(event_flow_map_value.sock_id) ==
+          active_sockets.end()) {
         // Delay the deletion of flow map events. It may not be safe to
         // delete elements while we're iterating through the map.
-        flow_map_entries_to_delete.push_back(*next_key);
+        flow_map_entries_to_delete.push_back(*cur_key);
       }
       default_bpf_skeleton_->callbacks_.ring_buffer_event_callback.Run(
           cros_event);
+    }
+    if (loop_count > max_loop) {
+      break;
     }
   } while (rv == 0);
   // Garbage collect entries in the flow map.

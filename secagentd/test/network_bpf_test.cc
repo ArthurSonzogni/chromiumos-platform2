@@ -22,10 +22,56 @@ namespace secagentd::testing {
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::Eq;
+using ::testing::InSequence;
+using ::testing::Invoke;
+using ::testing::NotNull;
 using ::testing::Pointee;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
+using ::testing::WithArgs;
+
+bool operator==(const union bpf::cros_ip_addr& lhs,
+                const union bpf::cros_ip_addr& rhs) {
+  return memcmp(lhs.addr6, rhs.addr6,
+                sizeof(lhs.addr6) / sizeof(lhs.addr6[0])) == 0;
+}
+
+bool operator==(const bpf::cros_flow_map_key& lhs,
+                const bpf::cros_flow_map_key& rhs) {
+  const auto& ltuple = lhs.five_tuple;
+  const auto& rtuple = rhs.five_tuple;
+  return ltuple.family == rtuple.family && ltuple.protocol == rtuple.protocol &&
+         ltuple.local_addr == rtuple.local_addr &&
+         ltuple.local_port == rtuple.local_port &&
+         ltuple.remote_addr == rtuple.remote_addr;
+}
+
+bool operator==(const bpf::cros_flow_map_value& lhs,
+                const bpf::cros_flow_map_value& rhs) {
+  return lhs.direction == rhs.direction && lhs.rx_bytes == rhs.rx_bytes &&
+         lhs.tx_bytes == rhs.tx_bytes && lhs.sock_id == rhs.sock_id;
+}
+
+bool operator==(const bpf::cros_synthetic_network_flow& lhs,
+                const bpf::cros_synthetic_network_flow& rhs) {
+  return lhs.flow_map_key == rhs.flow_map_key &&
+         lhs.flow_map_value == rhs.flow_map_value;
+}
+MATCHER_P(SynthFlowEquals, value, "Match by value a synthetic network flow.") {
+  return arg == value;
+}
+
+MATCHER_P(PointeeUint64, value, "Match the pointee of a void * to a uint64.") {
+  return (arg != nullptr && *(static_cast<const uint64_t*>(arg)) == value);
+}
+
+MATCHER_P(PointeeFlowKey,
+          value,
+          "Match the pointee of a void* to a flow map key") {
+  return arg != nullptr &&
+         *(static_cast<const bpf::cros_flow_map_key*>(arg)) == value;
+}
 
 class NetworkBpfTestFixture : public ::testing::Test {
  protected:
@@ -85,7 +131,7 @@ class NetworkBpfTestFixture : public ::testing::Test {
   }
   MOCK_METHOD(void,
               MockConsumeFlowEvent,
-              (const bpf::cros_synthetic_network_flow& flow));
+              (bpf::cros_synthetic_network_flow flow));
   MOCK_METHOD(void,
               MockConsumeListen,
               (const bpf::cros_network_socket_listen& listen));
@@ -102,6 +148,9 @@ class NetworkBpfTestFixture : public ::testing::Test {
   std::pair<absl::Status, metrics::BpfAttachResult> LoadAndAttach() {
     return network_bpf_->LoadAndAttach();
   }
+
+  void ScanFlowMap() { network_bpf_->ScanFlowMap(); }
+
   void RegisterCallbacks(const BpfCallbacks& bpf_cb) {
     network_bpf_->RegisterCallbacks(bpf_cbs_);
   }
@@ -191,5 +240,159 @@ TEST_F(NetworkBpfTestFixture, ExternalDeviceList) {
   device_added.Run(&devices.at("dev0").first);
   device_added.Run(&devices.at("dev1").first);
   EXPECT_CALL(*platform_, RingBufferFree(bpf_rb_));
+}
+
+TEST_F(NetworkBpfTestFixture, FlowCleanUp) {
+  struct bpf::cros_synthetic_network_flow f0 = {
+      .flow_map_key = {.five_tuple = {.family = bpf::CROS_FAMILY_AF_INET,
+                                      .protocol = bpf::CROS_PROTOCOL_TCP,
+                                      .local_addr.addr4 = 1234,
+                                      .local_port = 95,
+                                      .remote_addr.addr4 = 4321,
+                                      .remote_port = 123},
+                       .sock_id = 0},
+      .flow_map_value = {.direction = bpf::CROS_SOCKET_DIRECTION_OUT,
+                         .tx_bytes = 512,
+                         .rx_bytes = 254,
+                         .sock_id = 10}};
+  struct bpf::cros_synthetic_network_flow f1 = {
+      .flow_map_key = {.five_tuple = {.family = bpf::CROS_FAMILY_AF_INET,
+                                      .protocol = bpf::CROS_PROTOCOL_UDP,
+                                      .local_addr.addr4 = 1234 * 2,
+                                      .local_port = 95 * 2,
+                                      .remote_addr.addr4 = 4321 * 2,
+                                      .remote_port = 123 * 2},
+                       .sock_id = 0},
+      .flow_map_value = {.direction = bpf::CROS_SOCKET_DIRECTION_OUT,
+                         .tx_bytes = 512 * 2,
+                         .rx_bytes = 254 * 2,
+                         .sock_id = 10 * 2}};
+  struct bpf::cros_synthetic_network_flow f2 = {
+      .flow_map_key = {.five_tuple = {.family = bpf::CROS_FAMILY_AF_INET,
+                                      .protocol = bpf::CROS_PROTOCOL_ICMP,
+                                      .local_addr.addr4 = 1234 * 2,
+                                      .local_port = 0,
+                                      .remote_addr.addr4 = 4321 * 2,
+                                      .remote_port = 0},
+                       .sock_id = 10 * 3},
+      .flow_map_value = {.direction = bpf::CROS_SOCKET_DIRECTION_OUT,
+                         .tx_bytes = 512 * 3,
+                         .rx_bytes = 254 * 3,
+                         .sock_id = 10 * 3}};
+
+  /* Expect the retrieval of active sockets, make it so that the socket
+    associated with f2 is considered inactive.
+  */
+  {
+    InSequence s1;
+    EXPECT_CALL(*platform_,
+                BpfMapGetNextKey(fake_network_bpf_.maps.active_socket_map,
+                                 nullptr, _, _))
+        .WillOnce(WithArgs<2>(Invoke([&f0](void* ptr) {
+          *static_cast<uint64_t*>(ptr) = f0.flow_map_value.sock_id;
+          return 0;
+        })));
+    EXPECT_CALL(*platform_,
+                BpfMapGetNextKey(fake_network_bpf_.maps.active_socket_map,
+                                 PointeeUint64(f0.flow_map_value.sock_id), _,
+                                 sizeof(f0.flow_map_value.sock_id)))
+        .WillOnce(WithArgs<2>(Invoke([&f2](void* ptr) {
+          *static_cast<uint64_t*>(ptr) = f2.flow_map_value.sock_id;
+          return -ENOENT;  // last value in the map.
+        })));
+  }
+  // Expect retrieval of all flow keys from the map.
+  {
+    InSequence s2;
+    EXPECT_CALL(*platform_,
+                BpfMapGetNextKey(fake_network_bpf_.maps.cros_network_flow_map,
+                                 nullptr, _, sizeof(f0.flow_map_key)))
+        .WillOnce(WithArgs<2>(Invoke([&f0](void* ptr) {
+          *static_cast<bpf::cros_flow_map_key*>(ptr) = f0.flow_map_key;
+          return 0;
+        })));
+    EXPECT_CALL(*platform_,
+                BpfMapGetNextKey(fake_network_bpf_.maps.cros_network_flow_map,
+                                 PointeeFlowKey(f0.flow_map_key), _,
+                                 sizeof(f0.flow_map_key)))
+        .WillOnce(WithArgs<2>(Invoke([&f1](void* ptr) {
+          *static_cast<bpf::cros_flow_map_key*>(ptr) = f1.flow_map_key;
+          return 0;
+        })));
+    EXPECT_CALL(*platform_,
+                BpfMapGetNextKey(fake_network_bpf_.maps.cros_network_flow_map,
+                                 PointeeFlowKey(f1.flow_map_key), _,
+                                 sizeof(f1.flow_map_key)))
+        .WillOnce(WithArgs<2>(Invoke([&f2](void* ptr) {
+          *static_cast<bpf::cros_flow_map_key*>(ptr) = f2.flow_map_key;
+          return -ENOENT;  // last value in the map.
+        })));
+  }
+
+  /* Expect that flow values are retrieved at least once.*/
+  EXPECT_CALL(
+      *platform_,
+      BpfMapLookupElem(fake_network_bpf_.maps.cros_network_flow_map,
+                       PointeeFlowKey(f0.flow_map_key), sizeof(f0.flow_map_key),
+                       NotNull(), sizeof(f0.flow_map_value), _))
+      .WillRepeatedly(WithArgs<3>(Invoke([&f0](void* ptr) {
+        *static_cast<bpf::cros_flow_map_value*>(ptr) = f0.flow_map_value;
+        return 0;
+      })));
+
+  EXPECT_CALL(
+      *platform_,
+      BpfMapLookupElem(fake_network_bpf_.maps.cros_network_flow_map,
+                       PointeeFlowKey(f1.flow_map_key), sizeof(f1.flow_map_key),
+                       NotNull(), sizeof(f1.flow_map_value), _))
+      .WillRepeatedly(WithArgs<3>(Invoke([&f1](void* ptr) {
+        *static_cast<bpf::cros_flow_map_value*>(ptr) = f1.flow_map_value;
+        return 0;
+      })));
+  EXPECT_CALL(
+      *platform_,
+      BpfMapLookupElem(fake_network_bpf_.maps.cros_network_flow_map,
+                       PointeeFlowKey(f2.flow_map_key), sizeof(f2.flow_map_key),
+                       NotNull(), sizeof(f2.flow_map_value), _))
+      .WillRepeatedly(WithArgs<3>(Invoke([&f2](void* ptr) {
+        *static_cast<bpf::cros_flow_map_value*>(ptr) = f2.flow_map_value;
+        return 0;
+      })));
+
+  /* the active sock map keys we returned earlier indicate that the f1 socket is
+  not active. Expect a deletion for flows associated with this socket, flows
+  associated with the other sockets should not be deleted.
+  */
+  EXPECT_CALL(*platform_,
+              BpfMapDeleteElem(fake_network_bpf_.maps.cros_network_flow_map,
+                               PointeeFlowKey(f1.flow_map_key),
+                               sizeof(f1.flow_map_key), _))
+      .WillOnce(Return(0));
+  EXPECT_CALL(*platform_,
+              BpfMapDeleteElem(fake_network_bpf_.maps.cros_network_flow_map,
+                               PointeeFlowKey(f0.flow_map_key),
+                               sizeof(f0.flow_map_key), _))
+      .Times(0);
+  EXPECT_CALL(*platform_,
+              BpfMapDeleteElem(fake_network_bpf_.maps.cros_network_flow_map,
+                               PointeeFlowKey(f2.flow_map_key),
+                               sizeof(f2.flow_map_key), _))
+      .Times(0);
+
+  EXPECT_CALL(*platform_, RingBufferFree(bpf_rb_)).Times(1);
+  EXPECT_CALL(*this, MockConsumeFlowEvent(SynthFlowEquals(f0))).Times(1);
+  EXPECT_CALL(*this, MockConsumeFlowEvent(SynthFlowEquals(f1))).Times(1);
+  EXPECT_CALL(*this, MockConsumeFlowEvent(SynthFlowEquals(f2))).Times(1);
+
+  base::OnceCallback<void(bool)> on_avail;
+  EXPECT_CALL(*shill_, RegisterOnAvailableCallback)
+      .WillOnce([&on_avail](base::OnceCallback<void(bool)> handler) {
+        on_avail = std::move(handler);
+      });
+  InstallSuccessfulLoadExpectations();
+  // Activate the Network BPF.
+  RegisterCallbacks(bpf_cbs_);
+  ASSERT_TRUE(LoadAndAttach().first.ok());
+  ScanFlowMap();
 }
 }  // namespace secagentd::testing

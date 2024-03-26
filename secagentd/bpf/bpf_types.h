@@ -210,7 +210,7 @@ struct cros_network_5_tuple {
 
 struct cros_flow_map_key {
   struct cros_network_5_tuple five_tuple;
-  uint64_t sock_id;
+  uint64_t sock_id;  // Differentiates portless protocols (ICMP, RAW).
 } __attribute__((aligned(8)));
 
 struct cros_flow_map_value {
@@ -220,6 +220,7 @@ struct cros_flow_map_value {
   struct cros_process_start process_info;
   bool has_full_process_info;
   bool garbage_collect_me;
+  uint64_t sock_id;
   // TODO(b/264550183): add remote_hostname
   // TODO(b/264550183): add application protocol
   // TODO(b/264550183): add http_host

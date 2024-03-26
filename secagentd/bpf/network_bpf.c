@@ -168,6 +168,9 @@ struct {
 #define CROS_FAILED_HEAP_ALLOC (4)
 #define CROS_NO_SOCK_TO_PROCESS (5)
 #define CROS_NO_SK_STORAGE_ALLOCATED (6)
+#define CROS_UNSUPPORTED_IP_VERSION (7)
+#define CROS_NO_NEW_FLOW_ON_RX (8)
+#define CROS_OTHER_ERROR (9)
 
 /* A recording of sockets that have at least one
  * flow map entry associated with it.
@@ -455,11 +458,6 @@ static inline __attribute__((always_inline)) void cros_fill_5_tuple_from_sock(
   five_tuple->local_port = sk_common.skc_num;
 }
 
-static inline __attribute__((always_inline)) bool cros_socket_is_monitored(
-    struct sock* sk) {
-  uint64_t sock_key = (uint64_t)(BPF_PROBE_READ(sk, sk_socket));
-  return bpf_map_lookup_elem(&active_socket_map, &sock_key) != NULL;
-}
 static inline __attribute__((always_inline)) bool fill_process_start(
     struct cros_process_start* process_start) {
   struct task_struct* t = (struct task_struct*)bpf_get_current_task();
@@ -497,15 +495,24 @@ create_process_map_entry(struct socket* sock, const char* ctx) {
   sk_info->family = sock->sk->__sk_common.skc_family;
   sk_info->protocol =
       determine_protocol(sk_info->family, sock->type, sock->sk->sk_protocol);
-  sk_info->sock_id = cros_get_socket_id(sock->sk);
+
+  if (sk_info->protocol != CROS_PROTOCOL_TCP &&
+      sk_info->protocol != CROS_PROTOCOL_UDP) {
+    // In order to uniquely identify a socket (processes) that a network flow
+    // belongs to a 5-tuple is required.
+    // 5-tuples cannot be generated from ICMP/RAW flows due to the lack of port
+    // numbers so add a sock_id to differentiate these flows between different
+    // sockets(processes).
+    sk_info->sock_id = cros_get_socket_id(sock->sk);
+  }
   sk_info->has_full_process_info = fill_process_start(&sk_info->process_start);
   cros_sk_storage_set(sk_info, sock->sk);
   return sk_info;
 }
 
 static inline __attribute__((always_inline)) int cros_maybe_new_socket(
-    uint64_t sock_id) {
-  uint64_t sock_key = sock_id;
+    struct socket* sock) {
+  uint64_t sock_key = cros_get_socket_id(sock->sk);
   if (bpf_map_update_elem(&active_socket_map, &sock_key, &sock_key,
                           BPF_NOEXIST) != 0) {
     return -1;
@@ -514,13 +521,14 @@ static inline __attribute__((always_inline)) int cros_maybe_new_socket(
 }
 
 static inline __attribute__((always_inline)) int cros_new_flow_entry(
-    struct cros_sk_info* sk_info,
+    const struct cros_sk_info* sk_info,
     struct cros_flow_map_key* map_key,
     enum cros_network_socket_direction direction,
     uint32_t tx_bytes,
     uint32_t rx_bytes) {
   struct cros_flow_map_value* value = &sk_info->flow_map_value_scratchpad;
   value->garbage_collect_me = false;
+  value->sock_id = sk_info->sock_id;
   value->direction = direction;
   value->rx_bytes = rx_bytes;
   value->tx_bytes = tx_bytes;
@@ -547,35 +555,53 @@ static inline __attribute__((always_inline)) int cros_new_flow_entry(
   return 0;
 }
 static inline __attribute__((always_inline)) int cros_handle_tx_rx(
-    const struct sk_buff* skb,
-    bool is_ipv6,
-    bool is_tx,
-    const char* calling_func_name) {
-  struct net_device* dev = cros_get_net_dev(skb);
+    const struct sk_buff* skb, bool is_tx, const char* calling_func_name) {
   if (!cros_is_ifindex_external(skb)) {
     return -CROS_IF_NOT_EXTERNAL;
   }
-  struct cros_sk_info* sk_info = cros_sk_storage_get_mutable(skb->sk);
-  if (sk_info == NULL) {
-    return -CROS_NO_SK_STORAGE_ALLOCATED;
-  }
-  cros_maybe_new_socket(sk_info->sock_id);
   struct cros_flow_map_value* flow_map_value;
   struct cros_flow_map_key flow_map_key;
   // Fun fact: BPF verifier will complain if the key contains
   // any uninitialized values.
   __builtin_memset(&flow_map_key, 0, sizeof(flow_map_key));
-  flow_map_key.sock_id = sk_info->sock_id;
-  flow_map_key.five_tuple.family = sk_info->family;
-  flow_map_key.five_tuple.protocol = sk_info->protocol;
   int bytes = 0;
 
+  bool is_ipv6 = false;
+  const struct iphdr* hdr = (const struct iphdr*)(cros_skb_network_header(skb));
+  uint8_t version = BPF_CORE_READ_BITFIELD_PROBED(hdr, version);
+  if (version == 6) {
+    is_ipv6 = true;
+  } else if (version != 4) {
+    return -CROS_UNSUPPORTED_IP_VERSION;
+  }
   if (is_ipv6) {
     bytes = cros_fill_ipv6_5_tuple(&flow_map_key.five_tuple, skb, is_tx);
   } else {
     bytes = cros_fill_ipv4_5_tuple(&flow_map_key.five_tuple, skb, is_tx);
   }
-
+  struct cros_sk_info* sk_info = NULL;
+  if (is_tx) {
+    /* skb->sk is only non-null on the transmit path.*/
+    struct sock* sk = skb->sk;
+    sk_info = NULL;
+    if (sk) {
+      sk_info = cros_sk_storage_get_mutable(skb->sk);
+    }
+    if (!sk_info) {
+      return -CROS_NO_SK_STORAGE_ALLOCATED;
+    }
+    flow_map_key.sock_id = sk_info->sock_id;
+  } else {
+    switch (flow_map_key.five_tuple.protocol) {
+      case CROS_PROTOCOL_ICMP:
+      case CROS_PROTOCOL_ICMP6:
+      case CROS_PROTOCOL_RAW:
+        /* TODO(b331290994):Fix rx byte counting for ICMP, ICMPV6 and raw
+         * sockets.*/
+        return -CROS_OTHER_ERROR;
+        break;
+    }
+  }
   flow_map_value = bpf_map_lookup_elem(&cros_network_flow_map, &flow_map_key);
   if (flow_map_value) {  // entry already exists.
     if (is_tx) {
@@ -587,18 +613,17 @@ static inline __attribute__((always_inline)) int cros_handle_tx_rx(
     // The socket was likely in operation before this BPF program was loaded
     // so we can't be sure of the direction.
     enum cros_network_socket_direction dir = CROS_SOCKET_DIRECTION_UNKNOWN;
-
     if (is_tx) {
+      if (!sk_info) {
+        return -CROS_NO_SK_STORAGE_ALLOCATED;
+      }
       return cros_new_flow_entry(/*sk_info=*/sk_info,
                                  /*map_key=*/&flow_map_key,
                                  /*direction=*/dir,
                                  /*tx_bytes*/ bytes, /*rx_bytes*/ 0);
-
     } else {
-      return cros_new_flow_entry(/*sk_info=*/sk_info,
-                                 /*map_key=*/&flow_map_key,
-                                 /*direction=*/dir,
-                                 /*tx_bytes=*/0, /*rx_bytes=*/bytes);
+      /* socket storage is unavailable on the receive path.*/
+      return -CROS_NO_NEW_FLOW_ON_RX;
     }
   }
   return 0;
@@ -643,67 +668,19 @@ int BPF_PROG(cros_handle_inet_listen,
   return 0;
 }
 
-// ipv4 receive path. Right before userspace receives the packet.
-CROS_IF_FUNCTION_HOOK("fentry/ip_protocol_deliver_rcu",
-                      "tp_btf/cros_ip_protocol_deliver_rcu_enter")
-int BPF_PROG(cros_handle_ip_protocol_deliver_rcu_enter,
-             struct net* net,
-             struct sk_buff* skb,
-             int protocol) {
+SEC("tp_btf/netif_receive_skb")
+int BPF_PROG(cros_handle_netif_receive_skb, struct sk_buff* skb) {
   cros_handle_tx_rx(/* skb */ skb,
-                    /* is_ipv6 */ false,
-                    /* is_tx */ false, "ip_protocol_deliver_rcu");
+                    /* is_tx */ false, "netif_receive_skb");
   return 0;
 }
 
-#if CROS_FENTRY_FEXIT_SUPPORTED
-SEC("fentry/ip_output")
-int BPF_PROG(cros_handle_ip_output,
-             struct net* net,
-             struct sock* sk,
-             struct sk_buff* skb)
-#else
-SEC("tp_btf/cros__ip_local_out_exit")
-int BPF_PROG(cros_handle__ip_local_out_exit,
-             struct net* net,
-             struct sock* sk,
-             struct sk_buff* skb,
-             int rv)
-#endif
-{
-  // IPv4 transmit path.
+SEC("tp_btf/net_dev_queue")
+int BPF_PROG(cros_handle_trace_net_dev_queue, struct sk_buff* skb) {
   cros_handle_tx_rx(/* skb */ skb,
-                    /* is_ipv6 */ false,
-                    /* is_tx */ true, "ip_output");
+                    /* is_tx */ true, "cros_handle_trace_net_dev_queue");
   return 0;
 }
-
-// IPv6 transmit path. Fairly close to where a packet gets handed off
-// to the device layer.
-CROS_IF_FUNCTION_HOOK("fentry/ip6_finish_output2",
-                      "tp_btf/cros_ip6_finish_output2_enter")
-int BPF_PROG(cros_handle_ip6_finish_output2_enter,
-             struct net* net,
-             struct sock* sk,
-             struct sk_buff* skb) {
-  cros_handle_tx_rx(/* skb */ skb,
-                    /* is_ipv6 */ true,
-                    /* is_tx */ true, "ip6_finish_output2");
-  return 0;
-}
-
-CROS_IF_FUNCTION_HOOK("fentry/ip6_input_finish",
-                      "tp_btf/cros_ip6_input_finish_enter")
-int BPF_PROG(cros_handle_ip6_input_exit,
-             struct net* net,
-             struct sock* sk,
-             struct sk_buff* skb) {
-  cros_handle_tx_rx(/* skb */ skb,
-                    /* is_ipv6 */ true,
-                    /* is_tx */ false, "ip6_input_exit");
-  return 0;
-}
-
 CROS_IF_FUNCTION_HOOK("fexit/inet_accept", "tp_btf/cros_inet_accept_exit")
 int BPF_PROG(cros_handle_inet_accept_exit,
              struct socket* sock,
@@ -728,7 +705,7 @@ int BPF_PROG(cros_handle_inet_accept_exit,
     return 0;
   }
   key.sock_id = sk_info->sock_id;
-  cros_maybe_new_socket(sk_info->sock_id);
+  cros_maybe_new_socket(newsock);
   cros_fill_5_tuple_from_sock(&key.five_tuple, newsock);
   // new socket, new process entry.
   value_ref = bpf_map_lookup_elem(&cros_network_flow_map, &key);
@@ -768,7 +745,7 @@ int BPF_PROG(cros_handle___inet_stream_connect_exit,
     return 0;
   }
   key.sock_id = sk_info->sock_id;
-  cros_maybe_new_socket(sk_info->sock_id);
+  cros_maybe_new_socket(sock);
   cros_fill_5_tuple_from_sock(&key.five_tuple, sock);
   value_ref = bpf_map_lookup_elem(&cros_network_flow_map, &key);
   if (value_ref) {
@@ -783,7 +760,7 @@ int BPF_PROG(cros_handle___inet_stream_connect_exit,
 
 CROS_IF_FUNCTION_HOOK("fentry/inet_release", "tp_btf/cros_inet_release_enter")
 int BPF_PROG(cros_handle_inet_release_enter, struct socket* sock) {
-  uint64_t key = (uint64_t)sock;
+  uint64_t key = cros_get_socket_id(sock->sk);
   if (bpf_map_delete_elem(&active_socket_map, &key) == -1) {
     bpf_printk("inet_release: active socket deletion failed for %d.", key);
   }
@@ -802,7 +779,7 @@ int BPF_PROG(cros_handle_inet_sendmsg_enter,
     bpf_printk("inet_sendmsg was unable to allocate and populate sk_info");
     return 0;
   }
-  cros_maybe_new_socket(sk_info->sock_id);
+  cros_maybe_new_socket(sock);
   return 0;
 }
 
@@ -820,6 +797,6 @@ int BPF_PROG(cros_handle_inet_recvmsg_exit,
     bpf_printk("inet_recvmsg was unable to allocate and populate sk_info");
     return 0;
   }
-  cros_maybe_new_socket(sk_info->sock_id);
+  cros_maybe_new_socket(sock);
   return 0;
 }
