@@ -479,8 +479,6 @@ void MobileOperatorMapper::Reset() {
   candidates_by_operator_code_.clear();
   candidates_by_name_.clear();
 
-  ClearDBInformation();
-
   user_imsi_.clear();
   user_iccid_.clear();
   user_mccmnc_.clear();
@@ -489,6 +487,8 @@ void MobileOperatorMapper::Reset() {
   user_olp_.url.clear();
   user_olp_.method.clear();
   user_olp_.post_data.clear();
+
+  ClearDBInformation();
 
   if (should_notify) {
     PostNotifyOperatorChanged();
