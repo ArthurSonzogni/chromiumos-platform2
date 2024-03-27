@@ -1871,7 +1871,18 @@ CrashCollectionStatus CrashCollector::FinishCrash(
 
   AddDetailedHardwareData();
 
-  ComputedCrashSeverity computed_crash_severity = ComputeSeverity(exec_name);
+  ComputedCrashSeverity computed_crash_severity;
+  if (is_crash_collector_failure_) {
+    // Label crash reporting failures with INFO severity and
+    // kPlatform product group when reporting to crash server.
+    computed_crash_severity = ComputedCrashSeverity{
+        .crash_severity = CrashSeverity::kInfo,
+        .product_group = Product::kPlatform,
+    };
+  } else {
+    computed_crash_severity = ComputeSeverity(exec_name);
+  }
+
   std::string crash_severity =
       CrashSeverityEnumToString(computed_crash_severity.crash_severity);
   std::string product_group =
@@ -2219,6 +2230,7 @@ void CrashCollector::EnqueueCollectionErrorLog(CrashCollectionStatus error_type,
   LOG(INFO) << "Writing conversion problems (" << type
             << ") as separate crash report.";
 
+  is_crash_collector_failure_ = true;
   const std::string exec = "crash_reporter_failure";
   // We use a distinct basename to avoid having to deal with any possible files
   // that the collector may have started to write before failing.

@@ -2268,8 +2268,8 @@ TEST_F(CrashCollectorTest, ErrorCollectionMetaData) {
       "error_type=32 bit core files not supported on 64-bit systems\n"
       "upload_file_pslog=%s\n"
       "upload_var_channel=beta\n"
-      "upload_var_client_computed_severity=UNSPECIFIED\n"
-      "upload_var_client_computed_product=Unspecified\n"
+      "upload_var_client_computed_severity=INFO\n"
+      "upload_var_client_computed_product=Platform\n"
       "upload_var_arc_status=%s\n"
       "upload_var_reportTimeMillis=%" PRId64
       "\n"

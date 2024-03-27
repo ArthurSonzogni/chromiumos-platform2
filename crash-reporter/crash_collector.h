@@ -744,6 +744,9 @@ class CrashCollector {
 
   // Prefer the lsb-release saved in crash_reporter_state_path_?
   bool use_saved_lsb_ = false;
+
+  // Is the crash report for a crash collector failure?
+  bool is_crash_collector_failure_ = false;
 };
 
 // Information to invoke a specific call on a collector.
