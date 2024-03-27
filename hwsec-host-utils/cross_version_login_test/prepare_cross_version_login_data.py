@@ -23,6 +23,8 @@ import tempfile
 import time
 from typing import List, NamedTuple, Optional
 
+import util
+
 
 VM_HOST = "127.0.0.1"
 VM_PORT = "9222"
@@ -99,7 +101,7 @@ class DUT:
 
     def copy(self, remote_path: Path, local_path: Path) -> None:
         """Fetches a file from the DUT."""
-        check_run(
+        util.check_run(
             "scp",
             *SSH_COMMON_ARGS,
             "-i",
@@ -112,7 +114,7 @@ class DUT:
 
     def run(self, command: str) -> None:
         """Runs the command on the DUT remotely."""
-        check_run(
+        util.check_run(
             "ssh",
             *SSH_COMMON_ARGS,
             "-i",
@@ -194,7 +196,7 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
     )
     opts = parser.parse_args(argv)
 
-    init_logging(opts.debug)
+    util.init_logging(opts.debug)
 
     boards = []
     if opts.boards:
@@ -223,20 +225,13 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
     if opts.output_dir:
         output_dir = opts.output_dir
     elif opts.output_tast:
-        output_dir = chromiumos_src() / Path(
+        output_dir = util.chromiumos_src() / Path(
             "platform/tast-tests/src/go.chromium.org/tast-tests/cros/"
             "local/bundles/cros/hwsec/fixture/data/cross_version_login"
         )
 
     for image_info in image_info_list:
         run(image_info, output_dir, opts.ssh_identity_file)
-
-
-def init_logging(debug: bool):
-    log_level = logging.DEBUG if debug else logging.INFO
-    logging.basicConfig(
-        level=log_level, format="%(asctime)s %(levelname)s: %(message)s"
-    )
 
 
 def run(
@@ -299,7 +294,7 @@ def board_gs_dir(board: str) -> str:
 def get_latest_version(board: str, milestone: int) -> str:
     gs_dir = board_gs_dir(board)
     gs_url = f"{gs_dir}/LATEST-release-R{milestone}*"
-    version_str = check_run("gsutil", "cat", gs_url).decode("utf-8")
+    version_str = util.check_run("gsutil", "cat", gs_url).decode("utf-8")
     return version_str
 
 
@@ -325,7 +320,7 @@ def default_ssh_identity_file() -> Path:
 def ensure_vm_image(image_info: ImageInfo):
     image_url = image_info.gs_url()
     try:
-        check_run("gsutil", "ls", image_url)
+        util.check_run("gsutil", "ls", image_url)
     except subprocess.CalledProcessError:
         raise RuntimeError(
             "Failed to find the VM image. Please check the validity of the"
@@ -336,9 +331,9 @@ def ensure_vm_image(image_info: ImageInfo):
 def download_vm_image(image_info: ImageInfo, temp_path: Path) -> Path:
     image_url = image_info.gs_url()
     archive_path = Path(f"{temp_path}/chromiumos_test_image.tar.xz")
-    check_run("gsutil", "cp", image_url, archive_path)
+    util.check_run("gsutil", "cp", image_url, archive_path)
     # Unpack the .tar.xz archive.
-    check_run("tar", "Jxf", archive_path, "-C", temp_path)
+    util.check_run("tar", "Jxf", archive_path, "-C", temp_path)
     target_path = Path(f"{temp_path}/chromiumos_test_image.bin")
     if not target_path.exists():
         raise RuntimeError(f"No {target_path} in VM archive")
@@ -347,7 +342,7 @@ def download_vm_image(image_info: ImageInfo, temp_path: Path) -> Path:
 
 def start_vm(image_path: Path, board: str) -> None:
     """Runs the VM emulator."""
-    check_run(
+    util.check_run(
         "cros",
         "vm",
         "--log-level=warning",
@@ -361,7 +356,7 @@ def start_vm(image_path: Path, board: str) -> None:
 
 def stop_vm() -> None:
     """Stops the VM emulator."""
-    check_run("cros", "vm", "--stop")
+    util.check_run("cros", "vm", "--stop")
 
 
 def init_vm(version: Version, dut: DUT) -> None:
@@ -377,7 +372,7 @@ def generate_data() -> None:
     """Generates a data snapshot by running the Tast test."""
     # "tpm2_simulator" is added by crrev.com/c/3312977, so this test cannot run
     # on older version. Therefore, adds -extrauseflags "tpm2_simulator" here.
-    check_run(
+    util.check_run(
         "cros_sdk",
         "tast",
         "run",
@@ -421,7 +416,7 @@ def upload_data(
         f.write(external_data)
     logging.info('External data file is created at "%s".', external_data_path)
     # Upload the data file to Google Cloud Storage.
-    check_run("gsutil", "cp", data_path, gs_url)
+    util.check_run("gsutil", "cp", data_path, gs_url)
     logging.info("Testing data is uploaded to %s.", gs_url)
 
 
@@ -437,26 +432,6 @@ def generate_external_data(gs_url: str, data_path: Path) -> str:
 """
 
 
-def check_run(*args: str, **kwargs) -> str:
-    """Runs the given command and returns the stdout; throws on failure."""
-    try:
-        logging.debug("Running command: %s", args)
-        result = subprocess.run(
-            args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            check=True,
-            **kwargs,
-        )
-        return result.stdout
-    except subprocess.CalledProcessError as exc:
-        # Print the output to aid debugging (the exception message doesn't
-        # include the output).
-        output = exc.output.decode("utf-8")
-        logging.error("Command %s printed:\n%s", args, output)
-        raise
-
-
 def calculate_file_sha256(path: Path) -> str:
     READ_SIZE = 4096
     sha256 = hashlib.sha256()
@@ -467,15 +442,6 @@ def calculate_file_sha256(path: Path) -> str:
                 break
             sha256.update(block)
     return sha256.hexdigest()
-
-
-def chromiumos_src() -> Path:
-    # This assume that __file__ resides in
-    # src/platform2/hwsec-host-utils/cross_version_loging_test
-    src_path = Path(__file__).resolve().parents[3]
-    if src_path.name != "src":
-        raise RuntimeError("Failed to find ChromiumOS src directory.")
-    return src_path
 
 
 if __name__ == "__main__":
