@@ -128,10 +128,11 @@ class WiFiPhy {
   // Return true if the phy supports P2P interface type, false otherwise.
   mockable bool SupportP2PMode() const;
 
-  // Return number of channels the phy supports |iface_type1|/|iface_type2|
-  // concurrency, 0 for no concurrency.
-  uint32_t SupportConcurrency(nl80211_iftype iface_type1,
-                              nl80211_iftype iface_type2) const;
+  // Return the number of channels on which all ifaces in |iface_types| can be
+  // operated concurrently. A return value of 0 indicates that the
+  // concurrency isn't supported at all.
+  uint32_t SupportsConcurrency(
+      const std::multiset<nl80211_iftype>& iface_types) const;
 
   // Return true if the phy supports AP/STA concurrency, false otherwise.
   mockable bool SupportAPSTAConcurrency() const;
@@ -162,6 +163,7 @@ class WiFiPhy {
 
   FRIEND_TEST(WiFiPhyTest, IfaceSorted);
   FRIEND_TEST(WiFiPhyTest, RemovalCandidateSet);
+  FRIEND_TEST(WiFiPhyTest, SupportsConcurrency);
 
   // Represents an interface under consideration for concurrent operation.
   // Contains the relevant bits of information about a WiFi interface which are
@@ -233,6 +235,11 @@ class WiFiPhy {
   void ParseFrequencies(const Nl80211Message& nl80211_message);
 
   void DumpFrequencies() const;
+
+  // Helper for interface concurrency checking.
+  static bool CombSupportsConcurrency(
+      ConcurrencyCombination comb,
+      std::multiset<nl80211_iftype> desired_iftypes);
 
   uint32_t phy_index_;
   bool reg_self_managed_;

@@ -598,6 +598,10 @@ class WiFiPhyTest : public ::testing::Test {
     wifi_phy_.ParseConcurrency(nl80211_message);
   }
 
+  uint32_t SupportsConcurrency(std::multiset<nl80211_iftype> iface_types) {
+    return wifi_phy_.SupportsConcurrency(iface_types);
+  }
+
   void AssertConcurrencySorted() {
     auto current_comb = wifi_phy_.concurrency_combs_.begin();
     if (current_comb == wifi_phy_.concurrency_combs_.end()) {
@@ -1111,6 +1115,82 @@ TEST_F(WiFiPhyTest, RemovalCandidateSet) {
   arbitrary_candidates.insert(b);
   arbitrary_candidates.insert(e);
   AssertRemovalCandidateSetOrder(arbitrary_candidates, expected_order);
+}
+
+TEST_F(WiFiPhyTest, SupportsConcurrency) {
+  // These values align with those from kNewMultiChannelConcurrencyNlMsg. They
+  // must be declared inline because the |nl80211_iftype|s are C values
+  // which can't be instantiated outside a function context.
+  wifi_phy_.concurrency_combs_ = {
+      (struct ConcurrencyCombination){
+          .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
+                                         .max = 2},
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_AP,
+                                     NL80211_IFTYPE_P2P_CLIENT,
+                                     NL80211_IFTYPE_P2P_GO},
+                         .max = 2,
+                     },
+                     (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_P2P_DEVICE},
+                                         .max = 1}},
+          .max_num = 4,
+          .num_channels = 1},
+      (struct ConcurrencyCombination){
+          .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
+                                         .max = 1},
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_P2P_CLIENT},
+                         .max = 2,
+                     },
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_AP, NL80211_IFTYPE_P2P_GO},
+                         .max = 1,
+                     },
+                     (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_P2P_DEVICE},
+                                         .max = 1}},
+          .max_num = 4,
+          .num_channels = 2},
+      (struct ConcurrencyCombination){
+          .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
+                                         .max = 1},
+                     (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_ADHOC},
+                                         .max = 1}},
+          .max_num = 2,
+          .num_channels = 3},
+  };
+  // Supported by all combs, so we should pick the comb with the most channels.
+  EXPECT_EQ(3, SupportsConcurrency({NL80211_IFTYPE_STATION}));
+
+  // Supported by two combs, so we should pick the remaining comb with the most
+  // channels.
+  EXPECT_EQ(2, SupportsConcurrency({NL80211_IFTYPE_AP}));
+  EXPECT_EQ(2,
+            SupportsConcurrency({NL80211_IFTYPE_STATION, NL80211_IFTYPE_AP}));
+  EXPECT_EQ(
+      2, SupportsConcurrency({NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_CLIENT,
+                              NL80211_IFTYPE_P2P_CLIENT}));
+
+  // Supported by only the comb with fewest channels.
+  EXPECT_EQ(
+      1, SupportsConcurrency({NL80211_IFTYPE_STATION, NL80211_IFTYPE_STATION}));
+  EXPECT_EQ(1, SupportsConcurrency({NL80211_IFTYPE_AP, NL80211_IFTYPE_AP}));
+  EXPECT_EQ(
+      1, SupportsConcurrency({NL80211_IFTYPE_AP, NL80211_IFTYPE_AP,
+                              NL80211_IFTYPE_STATION, NL80211_IFTYPE_STATION}));
+
+  // Too many interfaces of a given type to be supported by any comb.
+  EXPECT_EQ(0,
+            SupportsConcurrency({NL80211_IFTYPE_STATION, NL80211_IFTYPE_STATION,
+                                 NL80211_IFTYPE_STATION}));
+  EXPECT_EQ(0, SupportsConcurrency({NL80211_IFTYPE_AP, NL80211_IFTYPE_AP,
+                                    NL80211_IFTYPE_P2P_CLIENT}));
+
+  // All the interfaces are supported by individual limits, but too may total
+  // interfaces to fit inside max_num of any comb.
+  EXPECT_EQ(0,
+            SupportsConcurrency({NL80211_IFTYPE_AP, NL80211_IFTYPE_AP,
+                                 NL80211_IFTYPE_STATION, NL80211_IFTYPE_STATION,
+                                 NL80211_IFTYPE_P2P_DEVICE}));
 }
 
 }  // namespace shill

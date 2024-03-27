@@ -245,46 +245,52 @@ bool WiFiPhy::SupportP2PMode() const {
          SupportsIftype(NL80211_IFTYPE_P2P_CLIENT);
 }
 
-uint32_t WiFiPhy::SupportConcurrency(nl80211_iftype iface_type1,
-                                     nl80211_iftype iface_type2) const {
-  uint32_t max_channels = 0;
-  for (auto comb : concurrency_combs_) {
-    if (comb.max_num < 2) {
-      // Support less than 2 interfaces combination, skip this combination.
-      continue;
-    }
-
-    bool support_type1 = false;
-    bool support_type2 = false;
-
-    for (auto limit : comb.limits) {
-      std::set<nl80211_iftype> iftypes(limit.iftypes.begin(),
-                                       limit.iftypes.end());
-
-      if (limit.max == 1 && base::Contains(iftypes, iface_type1) &&
-          base::Contains(iftypes, iface_type2)) {
-        // Case #{ iface_type1, iface_type2 } <= 1 does not meet concurrency
-        // requirement, skip and check next combination.
+bool WiFiPhy::CombSupportsConcurrency(
+    ConcurrencyCombination comb,
+    std::multiset<nl80211_iftype> desired_iftypes) {
+  if (comb.max_num < desired_iftypes.size()) {
+    return false;
+  }
+  // Keep a count of the number of interfaces that will be used from each limit.
+  std::vector<uint32_t> iface_counts(comb.limits.size(), 0);
+  // Step through each desired interface.
+  for (auto desired_iface : desired_iftypes) {
+    bool iface_found = false;
+    // Step through each limit of |comb|.
+    for (uint32_t i = 0; i < comb.limits.size(); i++) {
+      auto limit = comb.limits[i];
+      if (base::Contains(limit.iftypes, desired_iface)) {
+        iface_found = true;
+        // If we find desired iftype within |comb|, increment the count for this
+        // limit.
+        iface_counts[i]++;
+        if (iface_counts[i] > limit.max) {
+          return false;
+        }
         break;
       }
-      if (base::Contains(iftypes, iface_type1)) {
-        support_type1 = true;
-      } else if (base::Contains(iftypes, iface_type2)) {
-        support_type2 = true;
-      }
     }
-
-    if (support_type1 && support_type2) {
-      // This combination already satisfies concurrency, skip checking the rest
-      // combinations.
-      max_channels = std::max(max_channels, comb.num_channels);
+    if (!iface_found) {
+      return false;
     }
   }
-  return max_channels;
+  return true;
+}
+
+uint32_t WiFiPhy::SupportsConcurrency(
+    const std::multiset<nl80211_iftype>& desired_iftypes) const {
+  for (auto comb : concurrency_combs_) {
+    if (CombSupportsConcurrency(comb, desired_iftypes)) {
+      return comb.num_channels;
+    }
+  }
+  return 0;
 }
 
 bool WiFiPhy::SupportAPSTAConcurrency() const {
-  return SupportConcurrency(NL80211_IFTYPE_AP, NL80211_IFTYPE_STATION) > 0;
+  uint32_t num_channels =
+      SupportsConcurrency({NL80211_IFTYPE_AP, NL80211_IFTYPE_STATION});
+  return (num_channels > 0);
 }
 
 void WiFiPhy::DumpFrequencies() const {
