@@ -2734,7 +2734,6 @@ void ArcSetup::OnRemoveStaleData() {
 }
 
 void ArcSetup::OnPrepareHostGeneratedDir() {
-  const bool is_arcvm = config_.GetBoolOrDie("IS_ARCVM");
 #if USE_ARC_HW_OEMCRYPTO
   const bool hw_oemcrypto_support = true;
 #else
@@ -2744,11 +2743,11 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
   LOG(INFO) << "Debuggable is " << debuggable;
 
   const base::FilePath property_files_source_dir(
-      base::FilePath(is_arcvm ? kPropertyFilesPathVm : kPropertyFilesPath));
+      base::FilePath(USE_ARCVM ? kPropertyFilesPathVm : kPropertyFilesPath));
   const base::FilePath property_files_dest_path(
-      is_arcvm ? base::FilePath(kGeneratedPropertyFilesPathVm)
-                     .Append("combined.prop")
-               : base::FilePath(kGeneratedPropertyFilesPath));
+      USE_ARCVM ? base::FilePath(kGeneratedPropertyFilesPathVm)
+                      .Append("combined.prop")
+                : base::FilePath(kGeneratedPropertyFilesPath));
 
   brillo::DBusConnection dbus_connection;
   scoped_refptr<::dbus::Bus> bus = nullptr;
@@ -2759,11 +2758,12 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
 
   EXIT_IF(!ExpandPropertyFiles(property_files_source_dir,
                                property_files_dest_path,
-                               /*single_file=*/is_arcvm, hw_oemcrypto_support,
+                               /*single_file=*/USE_ARCVM, hw_oemcrypto_support,
                                /*include_soc_props=*/true, debuggable, bus));
 
-  if (!is_arcvm)
+  if (!USE_ARCVM) {
     return;
+  }
 
   // CACHE_PARTITION is set when a dedicated cache partition is used
   // (b/182953041). The set value is the device number to be used.
