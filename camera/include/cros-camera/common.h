@@ -52,6 +52,8 @@ inline bool IsLogThrottled(timespec* last_ts, int interval_seconds) {
 
 #define ERRNO_OR_RET(ret) (errno ? -errno : (ret))
 
+#define DLOGF(level) DLOG(level) << __FUNCTION__ << "(): "
+
 // To keep compatibility with the existing code paths enabled by NDEBUG or
 // DCHECK_ALWAYS_ON, we still enable the DVLOGF*() macros when DCHECK_IS_ON().
 // The ENABLE_VERBOSE_DEBUG_LOGS is for when the image is built without NDEBUG

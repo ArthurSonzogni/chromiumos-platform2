@@ -624,7 +624,7 @@ std::string CountryCodeForCurrentTimezone() {
   }
   std::string olson_code = timezone_path.value();
   olson_code.replace(0, strlen(kZoneInfoFilePath), "");
-  LOGF(INFO) << "Timezone: " << olson_code;
+  DLOGF(INFO) << "Timezone: " << olson_code;
   return TimezoneMap::GetInstance()->CountryCodeForTimezone(olson_code);
 }
 
@@ -632,7 +632,7 @@ std::optional<v4l2_power_line_frequency> GetPowerLineFrequencyForLocation() {
   const std::string current_country = CountryCodeForCurrentTimezone();
   if (current_country.empty())
     return std::nullopt;
-  LOGF(INFO) << "Country: " << current_country;
+  DLOGF(INFO) << "Country: " << current_country;
   // Sorted out list of countries with 60Hz power line frequency, from
   // http://en.wikipedia.org/wiki/Mains_electricity_by_country
   const char* countries_using_60Hz[] = {

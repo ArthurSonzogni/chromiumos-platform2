@@ -190,8 +190,9 @@ void V4L2EventMonitor::SubscribeEvent(int camera_id,
                                           .id = V4L2_CID_PRIVACY};
     if (HANDLE_EINTR(ioctl(device_fd.get(), VIDIOC_SUBSCRIBE_EVENT, &sub)) <
         0) {
-      PLOGF(ERROR) << "Failed to subscribe for privacy status change";
       has_privacy_switch = false;
+    } else {
+      LOGF(INFO) << "Subscribed for privacy status change event";
     }
   }
 
@@ -203,8 +204,9 @@ void V4L2EventMonitor::SubscribeEvent(int camera_id,
                                           .id = 0};
     if (HANDLE_EINTR(ioctl(device_fd.get(), VIDIOC_SUBSCRIBE_EVENT, &sub)) <
         0) {
-      PLOGF(ERROR) << "Failed to subscribe for frame sync event";
       is_frame_sync_subscribed = false;
+    } else {
+      LOGF(INFO) << "Subscribed for frame sync event";
     }
   }
 
