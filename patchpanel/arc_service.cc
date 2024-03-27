@@ -516,7 +516,8 @@ void ArcService::ReleaseConfig(std::unique_ptr<ArcConfig> config) {
   available_configs_.emplace_back(std::move(config));
 }
 
-bool ArcService::Start(uint32_t id) {
+bool ArcService::StartInternal(
+    uint32_t id, std::unique_ptr<GuestIfManager> mock_guest_if_manager) {
   RecordEvent(metrics_, ArcServiceUmaEvent::kStart);
 
   if (IsStarted()) {
@@ -526,6 +527,9 @@ bool ArcService::Start(uint32_t id) {
     Stop(id_);
   }
 
+  if (mock_guest_if_manager) {
+    guest_if_manager_ = std::move(mock_guest_if_manager);
+  }
   std::string arc0_device_ifname;
   if (!arc0_config_) {
     LOG(ERROR) << "arc0 config not allocated";
@@ -567,9 +571,11 @@ bool ArcService::Start(uint32_t id) {
       }
       arc0_config_->set_tap_ifname(tap);
       arc0_device_ifname = tap;
-      guest_if_manager_ = std::make_unique<HotplugGuestIfManager>(
-          VmConciergeClientImpl::CreateClientWithNewBus(), arc0_device_ifname,
-          id);
+      if (!guest_if_manager_) {
+        guest_if_manager_ = std::make_unique<HotplugGuestIfManager>(
+            VmConciergeClientImpl::CreateClientWithNewBus(), arc0_device_ifname,
+            id);
+      }
       break;
     }
     case ArcType::kVMStatic: {
@@ -589,7 +595,9 @@ bool ArcService::Start(uint32_t id) {
         config->set_tap_ifname(tap);
         tap_ifnames.push_back(std::move(tap));
       }
-      guest_if_manager_ = std::make_unique<StaticGuestIfManager>(tap_ifnames);
+      if (!guest_if_manager_) {
+        guest_if_manager_ = std::make_unique<StaticGuestIfManager>(tap_ifnames);
+      }
       arc0_device_ifname = arc0_config_->tap_ifname();
     }
   }
@@ -622,17 +630,16 @@ bool ArcService::Start(uint32_t id) {
   return true;
 }
 
+bool ArcService::Start(uint32_t id) {
+  return StartInternal(id, nullptr);
+}
+
 bool ArcService::StartWithMockGuestIfManager(
     uint32_t id, std::unique_ptr<GuestIfManager> mock_guest_if_manager) {
   if (!IsVM(arc_type_)) {
     return false;
   }
-  if (Start(id)) {
-    guest_if_manager_ = std::move(mock_guest_if_manager);
-    return true;
-  } else {
-    return false;
-  }
+  return StartInternal(id, std::move(mock_guest_if_manager));
 }
 
 void ArcService::Stop(uint32_t id) {

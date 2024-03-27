@@ -306,9 +306,10 @@ class ArcService {
 
   ~ArcService();
 
+  // Starts ArcService.
   bool Start(uint32_t id);
 
-  // Starts ArcService with a mock GuestIfManager for test.
+  // Starts ArcService with a mock GuestIfManager for unit test.
   bool StartWithMockGuestIfManager(
       uint32_t id, std::unique_ptr<GuestIfManager> mock_guest_if_manager);
   void Stop(uint32_t id);
@@ -390,6 +391,10 @@ class ArcService {
 
   // Returns a configuration to the pool.
   void ReleaseConfig(std::unique_ptr<ArcConfig> config);
+
+  // Starts ArcService. Use mock_guest_if_manager if not null.
+  bool StartInternal(uint32_t id,
+                     std::unique_ptr<GuestIfManager> mock_guest_if_manager);
 
   FRIEND_TEST(ArcServiceTest, NotStarted_AddDevice);
   FRIEND_TEST(ArcServiceTest, NotStarted_AddRemoveDevice);
