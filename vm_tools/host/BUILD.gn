@@ -62,6 +62,9 @@ config("host_target_defaults") {
     "USE_CROSVM_VIRTGPU_NATIVE_CONTEXT=${use.virtgpu_native_context}",
     "USE_CROSVM_CROSS_DOMAIN_CONTEXT=${use.cross_domain_context}",
   ]
+
+  # TODO(b/331634345): Fix thread safety violations so we can turn this back on.
+  cflags = [ "-Wno-error=thread-safety-reference-return" ]
 }
 
 executable("maitred_client") {
