@@ -105,7 +105,7 @@ void Metrics::StartCollectingProcessMetrics() {
   }
 
   // Baseline the CPU usage counter in `process_metrics_` to be zero as of now.
-  const std::optional<double> initial_cpu_usage =
+  const auto initial_cpu_usage =
       process_metrics_->GetPlatformIndependentCPUUsage();
   DCHECK_EQ(initial_cpu_usage.value_or(0), 0);
 
