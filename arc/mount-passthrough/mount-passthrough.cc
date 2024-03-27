@@ -25,6 +25,7 @@
 #include <signal.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -222,6 +223,14 @@ int passthrough_getxattr(const char* path,
       lgetxattr(GetAbsolutePath(path).value().c_str(), name, value, size));
 }
 
+void* passthrough_init(struct fuse_conn_info* fci) {
+  fuse_context* context = fuse_get_context();
+#ifdef FUSE_CAP_PARALLEL_DIROPS
+  fci->want |= FUSE_CAP_PARALLEL_DIROPS;
+#endif
+  return context->private_data;
+}
+
 int passthrough_ioctl(const char*,
                       int cmd,
                       void* arg,
@@ -316,6 +325,13 @@ int passthrough_readdir(const char*,
   // TODO(b/202085840): This implementation returns all files at once and thus
   // inefficient. Make use of offset and be better to memory.
   DIR* dirp = reinterpret_cast<DIR*>(fi->fh);
+  // Parallel dir operation is enabled, lock the directory to prevent dir rewind
+  // during the parallel readdir for the same directory.
+  int fd = dirfd(dirp);
+  if (flock(fd, LOCK_EX)) {
+    PLOG(ERROR) << "flock failed";
+    return -errno;
+  }
   // Call rewinddir so that all entries are added by filler every time this
   // function is called.
   rewinddir(dirp);
@@ -330,6 +346,7 @@ int passthrough_readdir(const char*,
     stbuf.st_mode = DTTOIF(entry->d_type);
     filler(buf, entry->d_name, &stbuf, 0);
   }
+  flock(fd, LOCK_UN);
   return -errno;
 }
 
@@ -429,6 +446,7 @@ void setup_passthrough_ops(struct fuse_operations* passthrough_ops) {
   FILL_OP(ftruncate);
   FILL_OP(getattr);
   FILL_OP(getxattr);
+  FILL_OP(init);
   FILL_OP(ioctl);
   FILL_OP(mkdir);
   FILL_OP(open);
@@ -555,9 +573,8 @@ int main(int argc, char** argv) {
   const std::string fuse_uid_opt("uid=" + std::to_string(fuse_uid));
   const std::string fuse_gid_opt("gid=" + std::to_string(fuse_gid));
   const std::string fuse_umask_opt("umask=" + FLAGS_fuse_umask);
-  LOG(INFO) << "uid_opt(" << fuse_uid_opt << ") "
-            << "gid_opt(" << fuse_gid_opt << ") "
-            << "umask_opt(" << fuse_umask_opt << ")";
+  LOG(INFO) << "uid_opt(" << fuse_uid_opt << ") " << "gid_opt(" << fuse_gid_opt
+            << ") " << "umask_opt(" << fuse_umask_opt << ")";
 
   std::vector<std::string> fuse_args({
       argv[0],
