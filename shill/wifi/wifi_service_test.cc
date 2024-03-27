@@ -928,7 +928,7 @@ TEST_F(WiFiServiceTest, LoadMACPolicy) {
             WiFiService::RandomizationPolicy::PersistentRandom);
   EXPECT_EQ(mac_value, service->mac_address_.ToString());
   auto [mac, policy_change] = service->UpdateMACAddress();
-  EXPECT_TRUE(mac.empty());
+  EXPECT_FALSE(mac.has_value());
   EXPECT_FALSE(policy_change);
 }
 
@@ -2422,7 +2422,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy) {
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::NonPersistentRandom);
   auto mac = wifi_service->UpdateMACAddress();
-  EXPECT_FALSE(mac.mac.empty());
+  EXPECT_TRUE(mac.mac.has_value());
   // We have switched from default Hardware policy so this should be qualified
   // as a "policy related update".
   EXPECT_TRUE(mac.policy_change);
@@ -2433,7 +2433,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy) {
   wifi_service->disconnect_time_ = clock->Now();
   wifi_service->dhcp4_lease_expiry_ = clock->Now() + base::Hours(1);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
 
@@ -2444,7 +2444,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy) {
   // Cross the MAC expiry
   clock->Advance(base::Seconds(1));
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_FALSE(mac.mac.empty());
+  EXPECT_TRUE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   EXPECT_TRUE(verifyAddressCorrect(wifi_service->mac_address_));
   EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
@@ -2454,14 +2454,14 @@ TEST_F(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy) {
   // Let's test some point from (disconnect, lease_expiry) period.
   clock->Advance(base::Minutes(30));
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
   // Now [lease_expiry, disconnect + 4h) period - should still be no
   // change.
   clock->Advance(base::Hours(2));
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
   // Now cross the rotation deadline - address should change.
@@ -2470,7 +2470,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressNonPersistentPolicy) {
       *net_base::MacAddress::CreateFromString(addr));
   clock->Advance(base::Hours(2));
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_FALSE(mac.mac.empty());
+  EXPECT_TRUE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
 }
@@ -2491,7 +2491,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPersistentPolicy) {
             WiFiService::RandomizationPolicy::PersistentRandom);
 
   auto mac = wifi_service->UpdateMACAddress();
-  EXPECT_FALSE(mac.mac.empty());
+  EXPECT_TRUE(mac.mac.has_value());
   // We have switched from default Hardware policy so this should be qualified
   // as a "policy related update".
   EXPECT_TRUE(mac.policy_change);
@@ -2501,19 +2501,19 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPersistentPolicy) {
   wifi_service->disconnect_time_ = clock->Now() - base::Hours(5);
   wifi_service->dhcp4_lease_expiry_ = clock->Now() - base::Hours(1);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
 
   clock->Advance(MACAddress::kDefaultExpirationTime + base::Seconds(1));
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
   wifi_service->security_ = WiFiSecurity::kNone;
   clock->Advance(MACAddress::kDefaultExpirationTime + base::Seconds(1));
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
   wifi_service->was_portal_detected_ = 0;
@@ -2521,7 +2521,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPersistentPolicy) {
   wifi_service->mac_address_.Clear();
   clock->Advance(MACAddress::kDefaultExpirationTime + base::Seconds(1));
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_FALSE(mac.mac.empty());
+  EXPECT_TRUE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   addr = wifi_service->mac_address_.ToString();
   // Make sure local admin bit is cleared.
@@ -2530,7 +2530,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPersistentPolicy) {
       *net_base::MacAddress::CreateFromString(addr));
   clock->Advance(MACAddress::kDefaultExpirationTime + base::Seconds(1));
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_FALSE(mac.mac.empty());
+  EXPECT_TRUE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   EXPECT_TRUE(verifyAddressCorrect(wifi_service->mac_address_));
   EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
@@ -2560,7 +2560,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::NonPersistentRandom);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_FALSE(mac.mac.empty());
+  EXPECT_TRUE(mac.mac.has_value());
   // We have switched from PersistentRandom policy so this should be qualified
   // as a "policy related update".
   EXPECT_TRUE(mac.policy_change);
@@ -2577,7 +2577,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::PersistentRandom);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_FALSE(mac.mac.empty());
+  EXPECT_TRUE(mac.mac.has_value());
   EXPECT_TRUE(mac.policy_change);
   EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
   EXPECT_FALSE(wifi_service->mac_address_.will_expire());
@@ -2591,7 +2591,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::NonPersistentRandom);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_FALSE(mac.mac.empty());
+  EXPECT_TRUE(mac.mac.has_value());
   EXPECT_TRUE(mac.policy_change);
   EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
   EXPECT_TRUE(verifyAddressCorrect(wifi_service->mac_address_));
@@ -2606,14 +2606,14 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::Hardware);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_TRUE(mac.policy_change);
 
   EXPECT_TRUE(wifi_service->SetMACPolicy(kWifiRandomMacPolicyFullRandom, &ret));
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::FullRandom);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_TRUE(mac.policy_change);
 
   // We don't change policy but with FullRandom call UpdateMACAddress() again
@@ -2625,14 +2625,14 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::FullRandom);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
 
   EXPECT_TRUE(wifi_service->SetMACPolicy(kWifiRandomMacPolicyOUIRandom, &ret));
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::OUIRandom);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_TRUE(mac.policy_change);
 
   // The same case as for FullRandom above - subsequent connection (which would
@@ -2643,7 +2643,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::OUIRandom);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_TRUE(mac.mac.empty());
+  EXPECT_FALSE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
 
   addr = wifi_service->mac_address_.ToString();
@@ -2655,7 +2655,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   EXPECT_EQ(wifi_service->random_mac_policy_,
             WiFiService::RandomizationPolicy::PersistentRandom);
   mac = wifi_service->UpdateMACAddress();
-  EXPECT_FALSE(mac.mac.empty());
+  EXPECT_TRUE(mac.mac.has_value());
   EXPECT_TRUE(mac.policy_change);
   EXPECT_NE(wifi_service->mac_address_.ToString(), addr);
   EXPECT_FALSE(wifi_service->mac_address_.will_expire());

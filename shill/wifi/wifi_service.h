@@ -7,6 +7,7 @@
 
 #include <limits>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <string_view>
@@ -15,6 +16,7 @@
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <base/time/default_clock.h>
+#include <net-base/mac_address.h>
 
 #include "shill/mac_address.h"
 #include "shill/metrics.h"
@@ -97,7 +99,7 @@ class WiFiService : public Service {
   WiFiService(const WiFiService&) = delete;
   WiFiService& operator=(const WiFiService&) = delete;
 
-  ~WiFiService();
+  ~WiFiService() override;
 
   // Inherited from Service.
   bool Is8021x() const override;
@@ -257,7 +259,7 @@ class WiFiService : public Service {
 
   // UpdateMACAddress return type.
   struct UpdateMACAddressRet {
-    std::string mac;
+    std::optional<net_base::MacAddress> mac;
     bool policy_change;
   };
   // Update MAC address when necessary e.g. when it needs to be re-rolled.

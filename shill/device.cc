@@ -584,13 +584,12 @@ bool Device::UpdatePortalDetector(NetworkMonitor::ValidationReason reason) {
   return GetPrimaryNetwork()->StartPortalDetection(reason);
 }
 
-void Device::EmitMACAddress(const std::string& mac_address) {
+void Device::EmitMACAddress(std::optional<net_base::MacAddress> mac_address) {
   // TODO(b/245984500): What about MAC changed by the supplicant?
-  if (mac_address.empty() ||
-      MakeHardwareAddressFromString(mac_address).empty()) {
-    adaptor_->EmitStringChanged(kAddressProperty, GetMacAddressHexString());
+  if (mac_address.has_value()) {
+    adaptor_->EmitStringChanged(kAddressProperty, mac_address->ToString());
   } else {
-    adaptor_->EmitStringChanged(kAddressProperty, mac_address);
+    adaptor_->EmitStringChanged(kAddressProperty, GetMacAddressHexString());
   }
 }
 

@@ -404,9 +404,10 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   virtual void set_mac_address(net_base::MacAddress mac_address);
 
-  // Emit a given MAC Address via dbus. If empty or bad string is provided,
-  // emit the hardware MAC address of the device.
-  void EmitMACAddress(const std::string& mac_address = std::string());
+  // Emit a given MAC Address via dbus. If std::nullopt is provided, emit the
+  // hardware MAC address of the device.
+  void EmitMACAddress(
+      std::optional<net_base::MacAddress> mac_address = std::nullopt);
 
  private:
   friend class CellularTest;

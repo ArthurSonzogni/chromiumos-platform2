@@ -756,15 +756,15 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     CHECK(!network_rpcid.value().empty());  // No DBus path should be empty.
     service->set_bgscan_string(bgscan_string);
     rpcid_by_service_[service] = network_rpcid;
-  } else if (mac_policy_change || !new_mac.empty()) {
+  } else if (mac_policy_change || new_mac.has_value()) {
     // During AddNetwork() (above) MAC and policy are being configured, but here
     // we need to send an explicit update.
     KeyValueStore kv;
     if (mac_policy_change) {
       service->SetSupplicantMACPolicy(kv);
     }
-    if (!new_mac.empty()) {
-      kv.Set(WPASupplicant::kNetworkPropertyMACAddrValue, new_mac);
+    if (new_mac.has_value()) {
+      kv.Set(WPASupplicant::kNetworkPropertyMACAddrValue, new_mac->ToString());
     }
     if (!UpdateSupplicantProperties(service, kv, error)) {
       // Error is already logged

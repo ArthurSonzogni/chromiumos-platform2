@@ -1170,7 +1170,7 @@ void WiFiService::EmitLinkQualityReportEvent(
 }
 
 WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
-  UpdateMACAddressRet ret{std::string(),
+  UpdateMACAddressRet ret{std::nullopt,
                           current_mac_policy_ != random_mac_policy_};
   bool rotating = false;
 
@@ -1209,7 +1209,7 @@ WiFiService::UpdateMACAddressRet WiFiService::UpdateMACAddress() {
     } else {
       mac_address_.set_expiration_time(MACAddress::kNotExpiring);
     }
-    ret.mac = mac_address_.ToString();
+    ret.mac = mac_address_.address();
   }
 
   return ret;
