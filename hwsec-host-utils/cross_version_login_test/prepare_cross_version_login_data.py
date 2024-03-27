@@ -36,6 +36,11 @@ SSH_COMMON_ARGS = (
     "-o",
     "LogLevel=quiet",
 )
+HSM_BOARD_MAPPING = {
+    "tpm2": "amd64-generic",
+    "ti50": "betty",
+    "tpm_dynamic": "reven-vmtest",
+}
 
 
 class Version(NamedTuple):
@@ -55,10 +60,17 @@ class Version(NamedTuple):
         )
 
 
+class Board(NamedTuple):
+    """Represents the information of a ChromiumOS board."""
+
+    name: str
+    hsm: Optional[str] = None
+
+
 class ImageInfo(NamedTuple):
     """Represents the information of ChromiumOS image"""
 
-    board: str
+    board: Board
     version: Version
 
     def gs_url(self) -> str:
@@ -69,12 +81,12 @@ class ImageInfo(NamedTuple):
             image_url = (
                 f"gs://chromeos-test-assets-private/tast/cros/hwsec/"
                 f"cross_version_login/custombuilds/"
-                f"{self.version}_{self.board}.tar.xz"
+                f"{self.version}_{self.board.name}.tar.xz"
             )
         else:
             # No "custombuild" in the specified version, hence use the standard
             # GS folder (it's populated by build bots).
-            gs_dir = board_gs_dir(self.board)
+            gs_dir = board_gs_dir(self.board.name)
             image_url = f"{gs_dir}/{self.version}/chromiumos_test_image.tar.xz"
         return image_url
 
@@ -139,15 +151,25 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
         type=int,
     )
 
-    parser.add_argument(
+    board_group = parser.add_argument_group(
+        "ChromiumOS board"
+    ).add_mutually_exclusive_group(required=True)
+    board_group.add_argument(
         "--boards",
         help="ChromiumOS board(s), e.g., betty",
         nargs="+",
-        required=True,
     )
+    board_group.add_argument(
+        "--hsms",
+        help="chooses board(s) by hardware security module(s). Available "
+        "options are 'tpm2', 'ti50', 'tpm_dynamic'",
+        nargs="+",
+    )
+
     parser.add_argument(
         "--output-dir",
-        help="path to the directory to place output files in",
+        help="path to the directory to place output files in. If --hsms is "
+        "specified, the file is put in corresponding subdirectory.",
         required=True,
         type=Path,
     )
@@ -160,13 +182,22 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
 
     init_logging(opts.debug)
 
+    boards = []
+    if opts.boards:
+        boards = [Board(name=board) for board in opts.boards]
+    else:
+        for hsm in opts.hsms:
+            if hsm not in HSM_BOARD_MAPPING:
+                raise ValueError(f"Invalid hardware security module: '{hsm}'")
+            boards.append(Board(hsm=hsm, name=HSM_BOARD_MAPPING[hsm]))
+
     # First, ensure the existence of image(s) to use.
     image_info_list = []
-    for board in opts.boards:
+    for board in boards:
         versions = opts.versions
         if not versions:
             versions = [
-                get_latest_version(board, milestone)
+                get_latest_version(board.name, milestone)
                 for milestone in opts.milestones
             ]
         for version_str in versions:
@@ -191,16 +222,19 @@ def run(
     ssh_identity_file: Optional[Path],
 ) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
+        if image_info.board.hsm:
+            output_dir /= image_info.board.hsm
+            output_dir.mkdir(exist_ok=True)
         temp_path = Path(temp_dir)
         ssh_identity = setup_ssh_identity(ssh_identity_file, temp_path)
         dut = DUT(ssh_identity)
         image_path = download_vm_image(image_info, temp_path)
-        start_vm(image_path, image_info.board)
+        start_vm(image_path, image_info.board.name)
         try:
             init_vm(image_info.version, dut)
             generate_data()
             upload_data(
-                image_info.board,
+                image_info.board.name,
                 image_info.version,
                 output_dir,
                 temp_path,
@@ -379,12 +413,16 @@ def generate_external_data(gs_url: str, data_path: Path) -> str:
 """
 
 
-def check_run(*args: str) -> str:
+def check_run(*args: str, **kwargs) -> str:
     """Runs the given command and returns the stdout; throws on failure."""
     try:
         logging.debug("Running command: %s", args)
         result = subprocess.run(
-            args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True
+            args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+            **kwargs,
         )
         return result.stdout
     except subprocess.CalledProcessError as exc:
