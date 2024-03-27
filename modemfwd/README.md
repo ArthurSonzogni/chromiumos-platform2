@@ -20,12 +20,14 @@ flags are declared in the [system API] repo.
 * `--reboot`
 * `--clear_attach_apn=<carrier_id>`: clear the attach APN in the modem NVM if
   the carrier ID is matching the one provided
+* `--get_heartbeat_config`: retrieve the preferred heartbeat configuration for
+  ths modem type
 * `--fw_version`: can be optionally passed along with `--flash_fw` to signify
   the firmware version(s) of the passed file(s), it using the same key/value
   syntax.
 
-`--get_fw_info` should return a list of key/value one per line. The key is the
-type of the firmware/version and the value is the actual version number
+`--get_fw_info` should return a list of key/value pairs, one per line. The key
+is the type of the firmware/version and the value is the actual version number
 (not specific format defined). The separator between the key and the value is
 a colon (`:`). The example below has the main firmware on the first line, the
 carrier firmware version on the next line and the carrier UUIDn on the one after
@@ -50,6 +52,12 @@ currently defined for the type:
 `--flash_mode_check` should return the string "true" if the modem is present
 in flash mode, and something else otherwise (preferably "false" for
 readability).
+
+`--get_heartbeat_config` should return a list of key/value pairs, one per line.
+Valid pairs are:
+* `max_failures`: the number of failures before `modemfwd` should reset this
+  modem
+* `interval`: the interval between heartbeat checks, in seconds
 
 All commands should return 0 on success and something non-zero on failure.
 `modemfwd` will look for these binaries in the directory passed as the
