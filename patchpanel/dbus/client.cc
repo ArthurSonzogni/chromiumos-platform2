@@ -23,6 +23,7 @@
 #include <dbus/object_path.h>
 #include <net-base/technology.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
+#include <patchpanel/proto_bindings/traffic_annotation.pb.h>
 
 #include "patchpanel/dbus-proxies.h"
 
@@ -473,6 +474,26 @@ patchpanel::NetworkTechnology ConvertNetworkTechnology(
   }
 }
 
+TagSocketRequest::VpnRoutingPolicy ConvertVpnRoutingPolicy(
+    Client::VpnRoutingPolicy policy) {
+  switch (policy) {
+    case Client::VpnRoutingPolicy::kDefaultRouting:
+      return TagSocketRequest::DEFAULT_ROUTING;
+    case Client::VpnRoutingPolicy::kBypassVpn:
+      return TagSocketRequest::BYPASS_VPN;
+    case Client::VpnRoutingPolicy::kRouteOnVpn:
+      return TagSocketRequest::ROUTE_ON_VPN;
+  }
+}
+
+traffic_annotation::TrafficAnnotation::Id ConvertTrafficAnnotationId(
+    Client::TrafficAnnotationId id) {
+  switch (id) {
+    case Client::TrafficAnnotationId::kUnspecified:
+      return traffic_annotation::TrafficAnnotation::UNSPECIFIED;
+  }
+}
+
 std::optional<Client::NeighborReachabilityEvent>
 ConvertNeighborReachabilityEvent(const NeighborReachabilityEventSignal& in) {
   auto out = std::make_optional<Client::NeighborReachabilityEvent>();
@@ -766,6 +787,22 @@ void OnConfigureNetworkError(Client::ConfigureNetworkCallback callback,
   std::move(callback).Run(false);
 }
 
+void OnTagSocketResponse(Client::TagSocketCallback callback,
+                         const patchpanel::TagSocketResponse& response) {
+  if (!response.success()) {
+    LOG(ERROR) << __func__ << "(): failed to tag socket";
+    std::move(callback).Run(false);
+    return;
+  }
+  std::move(callback).Run(true);
+}
+
+void OnTagSocketError(Client::TagSocketCallback callback,
+                      brillo::Error* error) {
+  LOG(ERROR) << __func__ << "(): " << error->GetMessage();
+  std::move(callback).Run(false);
+}
+
 class ClientImpl : public Client {
  public:
   ClientImpl(scoped_refptr<dbus::Bus> bus,
@@ -867,6 +904,12 @@ class ClientImpl : public Client {
                         ConfigureNetworkCallback callback) override;
 
   bool SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) override;
+
+  bool TagSocket(base::ScopedFD fd,
+                 std::optional<int> network_id,
+                 std::optional<VpnRoutingPolicy> vpn_policy,
+                 std::optional<TrafficAnnotation> traffic_annotation,
+                 TagSocketCallback callback) override;
 
  private:
   // Runs the |task| on the DBus thread synchronously.
@@ -1664,6 +1707,43 @@ bool ClientImpl::SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) {
                << error->GetMessage();
     return false;
   }
+
+  return true;
+}
+
+bool ClientImpl::TagSocket(base::ScopedFD fd,
+                           std::optional<int> network_id,
+                           std::optional<VpnRoutingPolicy> vpn_policy,
+                           std::optional<TrafficAnnotation> traffic_annotation,
+                           TagSocketCallback callback) {
+  TagSocketRequest request;
+  if (network_id.has_value()) {
+    request.set_network_id(network_id.value());
+  }
+  if (vpn_policy.has_value()) {
+    request.set_vpn_policy(ConvertVpnRoutingPolicy(vpn_policy.value()));
+  }
+  if (traffic_annotation.has_value()) {
+    auto annotation = request.mutable_traffic_annotation();
+    annotation->set_host_id(
+        ConvertTrafficAnnotationId(traffic_annotation.value().id));
+  }
+
+  TagSocketResponse response;
+  brillo::ErrorPtr error;
+
+  RunOnDBusThreadAsync(base::BindOnce(
+      [](PatchPanelProxyInterface* proxy, const TagSocketRequest& request,
+         base::ScopedFD fd, TagSocketCallback callback) {
+        auto split_callback = SplitOnceCallback(std::move(callback));
+        proxy->TagSocketAsync(request, fd,
+                              base::BindOnce(&OnTagSocketResponse,
+                                             std::move(split_callback.first)),
+                              base::BindOnce(&OnTagSocketError,
+                                             std::move(split_callback.second)));
+      },
+      proxy_.get(), request, std::move(fd),
+      base::BindPostTaskToCurrentDefault(std::move(callback))));
 
   return true;
 }

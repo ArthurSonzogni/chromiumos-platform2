@@ -307,6 +307,23 @@ class BRILLO_EXPORT Client {
     kWiFi,
   };
 
+  enum class VpnRoutingPolicy {
+    kDefaultRouting,
+    kRouteOnVpn,
+    kBypassVpn,
+  };
+
+  enum class TrafficAnnotationId {
+    kUnspecified,
+  };
+
+  // Describes the semantic of the traffic going through a socket. See
+  // traffic_annotation/traffic_annotation.proto.
+  struct TrafficAnnotation {
+    // Identifier of the source of the traffic.
+    TrafficAnnotationId id;
+  };
+
   using GetTrafficCountersCallback =
       base::OnceCallback<void(const std::vector<TrafficCounter>&)>;
   using NeighborReachabilityEventHandler =
@@ -322,6 +339,7 @@ class BRILLO_EXPORT Client {
                               const DownstreamNetwork& downstream_network,
                               const std::vector<NetworkClientInfo>& clients)>;
   using ConfigureNetworkCallback = base::OnceCallback<void(bool success)>;
+  using TagSocketCallback = base::OnceCallback<void(bool)>;
 
   // Creates the instance with the system dbus object which is created
   // internally. The dbus object will shutdown at destruction.
@@ -498,6 +516,24 @@ class BRILLO_EXPORT Client {
                                 net_base::NetworkPriority priority,
                                 NetworkTechnology technology,
                                 ConfigureNetworkCallback callback) = 0;
+
+  // Sends a request to tag the socket pointed by |fd| for routing and other
+  // purposes. Returns true if the request was successfully sent, false
+  // otherwise. |callback| is ran after the request has completed.
+  // - |network_id|: if specified, binds the traffic of this socket to the
+  //   corresponding network.
+  // - |vpn_policy|: if specified, overrides the default VPN routing policy
+  //   applied to the current process owning the socket.
+  // - |traffic_annotation|: if specified, applies a usage annotation to the
+  //   traffic of this socket.
+  // As |fd| is a base::ScopedFD, the underlying file descriptor will be closed
+  // once the request is sent. To avoid losing the effect of the call, the
+  // caller needs to dup() the underlying file descriptor before the call.
+  virtual bool TagSocket(base::ScopedFD fd,
+                         std::optional<int> network_id,
+                         std::optional<VpnRoutingPolicy> vpn_policy,
+                         std::optional<TrafficAnnotation> traffic_annotation,
+                         TagSocketCallback callback) = 0;
 
  protected:
   Client() = default;

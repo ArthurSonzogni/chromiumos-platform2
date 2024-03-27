@@ -18,6 +18,7 @@
 #include <net-base/mac_address.h>
 #include <net-base/process_manager.h>
 #include <net-base/technology.h>
+#include <patchpanel/proto_bindings/traffic_annotation.pb.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/crostini_service.h"
@@ -684,7 +685,21 @@ bool Manager::TagSocket(const patchpanel::TagSocketRequest& request,
       return false;
   }
 
-  return routing_svc_->TagSocket(socket_fd.get(), network_id, policy);
+  std::optional<TrafficAnnotationId> annotation_id;
+  if (request.has_traffic_annotation()) {
+    switch (request.traffic_annotation().host_id()) {
+      case traffic_annotation::TrafficAnnotation::UNSPECIFIED:
+        annotation_id = TrafficAnnotationId::kUnspecified;
+        break;
+      default:
+        LOG(ERROR) << __func__ << ": Invalid traffic annotation id "
+                   << request.traffic_annotation().host_id();
+        return false;
+    }
+  }
+
+  return routing_svc_->TagSocket(socket_fd.get(), network_id, policy,
+                                 annotation_id);
 }
 
 std::pair<DownstreamNetworkResult, DownstreamNetworkInfo>

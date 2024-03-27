@@ -115,6 +115,12 @@ class BRILLO_EXPORT FakeClient : public Client {
   bool SendSetFeatureFlagRequest(Client::FeatureFlag flag,
                                  bool enable) override;
 
+  bool TagSocket(base::ScopedFD fd,
+                 std::optional<int> network_id,
+                 std::optional<VpnRoutingPolicy> vpn_policy,
+                 std::optional<TrafficAnnotation> traffic_annotation,
+                 TagSocketCallback callback) override;
+
   // Triggers registered handlers for NeighborReachabilityEvent.
   void TriggerNeighborReachabilityEvent(
       const Client::NeighborReachabilityEvent& signal);

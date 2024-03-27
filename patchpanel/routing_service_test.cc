@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <sstream>
 
 #include <base/strings/stringprintf.h>
@@ -202,26 +203,27 @@ TEST_F(RoutingServiceTest, TagSocket) {
     // TODO(b/322083502): This is interface index now.
     std::optional<int> network_id;
     Policy policy;
+    std::optional<TrafficAnnotationId> annotation_id;
     uint32_t initial_fwmark;
     uint32_t expected_fwmark;
   } testcases[] = {
-      {std::nullopt, Policy::kRouteOnVPN, 0x0, 0x00008000},
-      {std::nullopt, Policy::kBypassVPN, 0x0, 0x00004000},
-      {std::nullopt, Policy::kRouteOnVPN, 0x1, 0x00008001},
-      {1, Policy::kBypassVPN, 0xabcd00ef, 0x03e940ef},
-      {std::nullopt, Policy::kRouteOnVPN, 0x11223344, 0x0000b344},
-      {34567, Policy::kBypassVPN, 0x11223344, 0x8aef7344},
-      {std::nullopt, Policy::kRouteOnVPN, 0x00008000, 0x00008000},
-      {std::nullopt, Policy::kBypassVPN, 0x00004000, 0x00004000},
-      {std::nullopt, Policy::kBypassVPN, 0x00008000, 0x00004000},
-      {std::nullopt, Policy::kRouteOnVPN, 0x00004000, 0x00008000},
-      {1, Policy::kDefault, 0x00008000, 0x03e90000},
-      {12, Policy::kDefault, 0x00004000, 0x03f40000},
+      {std::nullopt, Policy::kRouteOnVPN, std::nullopt, 0x0, 0x00008000},
+      {std::nullopt, Policy::kBypassVPN, std::nullopt, 0x0, 0x00004000},
+      {std::nullopt, Policy::kRouteOnVPN, std::nullopt, 0x1, 0x00008001},
+      {1, Policy::kBypassVPN, std::nullopt, 0xabcd00ef, 0x03e940ef},
+      {std::nullopt, Policy::kRouteOnVPN, std::nullopt, 0x11223344, 0x0000b344},
+      {34567, Policy::kBypassVPN, std::nullopt, 0x11223344, 0x8aef7344},
+      {std::nullopt, Policy::kRouteOnVPN, std::nullopt, 0x00008000, 0x00008000},
+      {std::nullopt, Policy::kBypassVPN, std::nullopt, 0x00004000, 0x00004000},
+      {std::nullopt, Policy::kBypassVPN, std::nullopt, 0x00008000, 0x00004000},
+      {std::nullopt, Policy::kRouteOnVPN, std::nullopt, 0x00004000, 0x00008000},
+      {1, Policy::kDefault, std::nullopt, 0x00008000, 0x03e90000},
+      {12, Policy::kDefault, std::nullopt, 0x00004000, 0x03f40000},
   };
 
   for (const auto& tt : testcases) {
     SetOptval(&svc->sockopt, tt.initial_fwmark);
-    EXPECT_TRUE(svc->TagSocket(4, tt.network_id, tt.policy));
+    EXPECT_TRUE(svc->TagSocket(4, tt.network_id, tt.policy, tt.annotation_id));
     EXPECT_EQ(4, svc->sockopt.sockfd);
     EXPECT_EQ(SOL_SOCKET, svc->sockopt.level);
     EXPECT_EQ(SO_MARK, svc->sockopt.optname);
@@ -229,17 +231,20 @@ TEST_F(RoutingServiceTest, TagSocket) {
   }
 
   // ROUTE_ON_VPN should not be set with network_id at the same time.
-  EXPECT_FALSE(svc->TagSocket(4, /*network_id=*/123, Policy::kRouteOnVPN));
+  EXPECT_FALSE(
+      svc->TagSocket(4, /*network_id=*/123, Policy::kRouteOnVPN, std::nullopt));
 
   // getsockopt() returns failure.
   svc->getsockopt_ret = -1;
   svc->setsockopt_ret = 0;
-  EXPECT_FALSE(svc->TagSocket(4, std::nullopt, Policy::kRouteOnVPN));
+  EXPECT_FALSE(
+      svc->TagSocket(4, std::nullopt, Policy::kRouteOnVPN, std::nullopt));
 
   // setsockopt() returns failure.
   svc->getsockopt_ret = 0;
   svc->setsockopt_ret = -1;
-  EXPECT_FALSE(svc->TagSocket(4, std::nullopt, Policy::kRouteOnVPN));
+  EXPECT_FALSE(
+      svc->TagSocket(4, std::nullopt, Policy::kRouteOnVPN, std::nullopt));
 }
 
 TEST_F(RoutingServiceTest, SetFwmark) {

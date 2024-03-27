@@ -90,6 +90,13 @@ enum class VPNRoutingPolicy : uint8_t {
   kBypassVPN = 2,
 };
 
+// The list of all possible socket traffic annotations. The source of truth is
+// defined in system_api/traffic_annotation/traffic_annotation.proto.
+enum class TrafficAnnotationId : uint8_t {
+  // The traffic comes from an unspecified source.
+  kUnspecified = 0,
+};
+
 // QoSCategory in fwmark indicates the inferred result from each QoS detector
 // (e.g., WebRTC detector, ARC connection monitor). The final QoS decision
 // (e.g., the DSCP value used in WiFi QoS) will be decided by QoSService.
@@ -329,9 +336,11 @@ class RoutingService {
   // Sets the routing tag and VPN bits of the fwmark for the given socket
   // according to the input parameters. Preserves any other bits of the fwmark
   // already set.
+  // TODO(b/331744250): |annotation_id| is ignored for now.
   bool TagSocket(int sockfd,
                  std::optional<int> network_id,
-                 VPNRoutingPolicy vpn_policy);
+                 VPNRoutingPolicy vpn_policy,
+                 std::optional<TrafficAnnotationId> annotation_id);
 
   // Sets the fwmark on the given socket with the given mask.
   // Preserves any other bits of the fwmark already set.

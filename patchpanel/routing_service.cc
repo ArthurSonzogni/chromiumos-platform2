@@ -5,6 +5,7 @@
 #include "patchpanel/routing_service.h"
 
 #include <iostream>
+#include <optional>
 #include <string_view>
 
 #include <base/containers/fixed_flat_map.h>
@@ -51,14 +52,21 @@ bool RoutingService::SetFwmark(int sockfd, Fwmark mark, Fwmark mask) {
   return true;
 }
 
-bool RoutingService::TagSocket(int sockfd,
-                               std::optional<int> network_id,
-                               VPNRoutingPolicy vpn_policy) {
+bool RoutingService::TagSocket(
+    int sockfd,
+    std::optional<int> network_id,
+    VPNRoutingPolicy vpn_policy,
+    std::optional<TrafficAnnotationId> annotation_id) {
   if (vpn_policy == VPNRoutingPolicy::kRouteOnVPN && network_id.has_value()) {
     LOG(ERROR) << __func__
                << ": route_on_vpn policy and network_id should not be set at "
                   "the same time";
     return false;
+  }
+
+  if (annotation_id.has_value()) {
+    // TODO(b/331744250): add fwmark to mark the socket as audited.
+    return true;
   }
 
   // TODO(b/322083502): Do some basic verification that this socket is not

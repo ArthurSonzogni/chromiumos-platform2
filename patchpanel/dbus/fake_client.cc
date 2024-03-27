@@ -172,6 +172,14 @@ bool FakeClient::SendSetFeatureFlagRequest(Client::FeatureFlag flag,
   return true;
 }
 
+bool FakeClient::TagSocket(base::ScopedFD fd,
+                           std::optional<int> network_id,
+                           std::optional<VpnRoutingPolicy> vpn_policy,
+                           std::optional<TrafficAnnotation> traffic_annotation,
+                           TagSocketCallback callback) {
+  return true;
+}
+
 void FakeClient::TriggerNeighborReachabilityEvent(
     const NeighborReachabilityEvent& signal) {
   for (const auto& handler : neighbor_event_handlers_)
