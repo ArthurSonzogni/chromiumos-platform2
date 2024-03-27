@@ -96,6 +96,7 @@ void ConciergeDaemon::Stop() {
   // called). Proceed as though the stop has completed.
   if (!service_) {
     OnStopped();
+    return;
   }
 
   service_->Stop(
