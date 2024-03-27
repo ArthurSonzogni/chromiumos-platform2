@@ -29,6 +29,7 @@
 #include "vm_tools/concierge/metrics/duration_recorder.h"
 #include "vm_tools/concierge/network/arc_network.h"
 #include "vm_tools/concierge/service.h"
+#include "vm_tools/concierge/service_arc_utils.h"
 #include "vm_tools/concierge/service_common.h"
 #include "vm_tools/concierge/service_start_vm_helper.h"
 #include "vm_tools/concierge/vm_util.h"
@@ -56,12 +57,6 @@ constexpr char kRamdiskPath[] = "/opt/google/vms/android/ramdisk.img";
 
 // Path to the VM fstab file.
 constexpr char kFstabPath[] = "/run/arcvm/host_generated/fstab";
-
-// /home/root/<hash>/crosvm is bind-mounted to /run/daemon-store/crosvm on
-// sign-in.
-constexpr char kCryptohomeRoot[] = "/run/daemon-store/crosvm";
-constexpr char kPstoreExtension[] = ".pstore";
-constexpr char kVmmSwapUsageHistoryExtension[] = ".vmm_swap_history";
 
 // Number of PCI slots available for hotplug. 5 for network interfaces except
 // the arc0 device.
@@ -112,100 +107,6 @@ base::FilePath GetImagePath(const base::FilePath& image_path,
   if (errno != ENOENT)
     PLOG(WARNING) << "Failed to resolve " << image_path.value();
   return image_path;
-}
-
-base::FilePath GetCryptohomePath(const std::string& owner_id) {
-  return base::FilePath(kCryptohomeRoot).Append(owner_id);
-}
-
-base::FilePath GetPstoreDest(const std::string& owner_id) {
-  return GetCryptohomePath(owner_id)
-      .Append(vm_tools::GetEncodedName(kArcVmName))
-      .AddExtension(kPstoreExtension);
-}
-
-base::FilePath GetVmmSwapUsageHistoryPath(const std::string& owner_id) {
-  return GetCryptohomePath(owner_id)
-      .Append(kArcVmName)
-      .AddExtension(kVmmSwapUsageHistoryExtension);
-}
-
-// Returns true if the path is a valid demo image path.
-bool IsValidDemoImagePath(const base::FilePath& path) {
-  // A valid demo image path looks like:
-  //   /run/imageloader/demo-mode-resources/<version>/android_demo_apps.squash
-  //   <version> part looks like 0.12.34.56 ("[0-9]+(.[0-9]+){0,3}" in regex).
-  std::vector<std::string> components = path.GetComponents();
-  return components.size() == 6 && components[0] == "/" &&
-         components[1] == "run" && components[2] == "imageloader" &&
-         components[3] == "demo-mode-resources" &&
-         base::ContainsOnlyChars(components[4], "0123456789.") &&
-         !base::StartsWith(components[4], ".") &&
-         components[5] == "android_demo_apps.squash";
-}
-
-// Returns true if the path is a valid data image path.
-bool IsValidDataImagePath(const base::FilePath& path) {
-  std::vector<std::string> components = path.GetComponents();
-  // A disk image created by concierge:
-  // /run/daemon-store/crosvm/<hash>/YXJjdm0=.img
-  if (components.size() == 6 && components[0] == "/" &&
-      components[1] == "run" && components[2] == "daemon-store" &&
-      components[3] == "crosvm" &&
-      base::ContainsOnlyChars(components[4], "0123456789abcdef") &&
-      components[5] == vm_tools::GetEncodedName(kArcVmName) + ".img")
-    return true;
-  // An LVM block device:
-  // /dev/mapper/vm/dmcrypt-<hash>-arcvm
-  if (components.size() == 5 && components[0] == "/" &&
-      components[1] == "dev" && components[2] == "mapper" &&
-      components[3] == "vm" && base::StartsWith(components[4], "dmcrypt-") &&
-      base::EndsWith(components[4], "-arcvm"))
-    return true;
-  return false;
-}
-
-// TODO(hashimoto): Move VM configuration logic from chrome to concierge and
-// remove this function. b/219677829
-// Returns true if the StartArcVmRequest contains valid ARCVM config values.
-bool ValidateStartArcVmRequest(StartArcVmRequest* request) {
-  // Validate disks.
-  static constexpr char kEmptyDiskPath[] = "/dev/null";
-  if (request->disks().size() < 1 || request->disks().size() > 4) {
-    LOG(ERROR) << "Invalid number of disks: " << request->disks().size();
-    return false;
-  }
-  // Disk #0 must be /opt/google/vms/android/vendor.raw.img.
-  if (request->disks()[0].path() != "/opt/google/vms/android/vendor.raw.img") {
-    LOG(ERROR) << "Disk #0 has invalid path: " << request->disks()[0].path();
-    return false;
-  }
-  // Disk #1 must be a valid demo image path or /dev/null.
-  if (request->disks().size() >= 2 &&
-      !IsValidDemoImagePath(base::FilePath(request->disks()[1].path())) &&
-      request->disks()[1].path() != kEmptyDiskPath) {
-    LOG(ERROR) << "Disk #1 has invalid path: " << request->disks()[1].path();
-    return false;
-  }
-  // Disk #2 must be /opt/google/vms/android/apex/payload.img or /dev/null.
-  if (request->disks().size() >= 3 &&
-      request->disks()[2].path() !=
-          "/opt/google/vms/android/apex/payload.img" &&
-      request->disks()[2].path() != kEmptyDiskPath) {
-    LOG(ERROR) << "Disk #2 has invalid path: " << request->disks()[2].path();
-    return false;
-  }
-  // Disk #3 must be a valid data image path or /dev/null.
-  if (request->disks().size() >= kDataDiskIndex + 1) {
-    const std::string& disk_path = request->disks()[kDataDiskIndex].path();
-    if (!IsValidDataImagePath(base::FilePath(disk_path)) &&
-        disk_path != kEmptyDiskPath) {
-      LOG(ERROR) << "Disk #3 has invalid path: " << disk_path;
-      return false;
-    }
-    LOG(INFO) << "Android /data disk path: " << disk_path;
-  }
-  return true;
 }
 
 // Returns the period size to use for AAudio MMAP.
@@ -287,9 +188,9 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     return response;
   }
 
-  // TODO(hashimoto): Move VM configuration logic from chrome to concierge and
-  // remove this check. b/219677829
-  if (!ValidateStartArcVmRequest(&request)) {
+  // TODO(b/219677829): Move VM configuration logic from chrome to concierge and
+  // remove this check.
+  if (!ValidateStartArcVmRequest(request)) {
     response.set_failure_reason("Invalid request");
     return response;
   }

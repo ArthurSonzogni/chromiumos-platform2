@@ -30,6 +30,7 @@
 #include "vm_tools/concierge/crosvm_control.h"
 #include "vm_tools/concierge/mm/balloon_metrics.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
+#include "vm_tools/concierge/service_arc_utils.h"
 #include "vm_tools/concierge/virtio_blk_metrics.h"
 #include "vm_tools/concierge/vm_base_impl.h"
 #include "vm_tools/concierge/vm_builder.h"
@@ -43,9 +44,6 @@
 namespace vm_tools::concierge {
 
 class ArcNetwork;
-
-// Disk index of the /data disk. It is the 4th disk in request.disks().
-constexpr unsigned int kDataDiskIndex = 3;
 
 // The CPU cgroup where all the ARCVM's main crosvm process and its vCPU threads
 // should belong to.
