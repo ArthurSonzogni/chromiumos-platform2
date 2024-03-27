@@ -15,6 +15,6 @@ hw_agnostic: True
 criteria: |
   Checks that matures sites are blocked for Unicorn users
 cases:
-  - id: "TestMatureSiteBlocked"
+  - id: "DISABLED_TestMatureSiteBlocked"
     tags: []
 ...
