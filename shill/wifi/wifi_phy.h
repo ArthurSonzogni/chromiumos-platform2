@@ -137,6 +137,14 @@ class WiFiPhy {
   // Return true if the phy supports AP/STA concurrency, false otherwise.
   mockable bool SupportAPSTAConcurrency() const;
 
+  // Returns the set of interfaces which must be destroyed before enabling an
+  // interface with |priority| and |desired_type|. An empty return set
+  // indicates the interface can be created without destroying any existing
+  // interfaces. An std::nullopt indicates that the interface cannot be started
+  // at all.
+  std::optional<std::multiset<nl80211_iftype>> RequestNewIface(
+      nl80211_iftype desired_type, Priority priority) const;
+
   // This structure keeps information about frequency reported in PHY dump.
   // |flags| is a bitmap with bits corresponding to NL80211_FREQUENCY_ATTR_*
   // flags reported, |value| is the actual frequency in MHz and |attributes|
@@ -164,6 +172,9 @@ class WiFiPhy {
   FRIEND_TEST(WiFiPhyTest, IfaceSorted);
   FRIEND_TEST(WiFiPhyTest, RemovalCandidateSet);
   FRIEND_TEST(WiFiPhyTest, SupportsConcurrency);
+  FRIEND_TEST(WiFiPhyTest, RemovalCandidateSet2);
+  FRIEND_TEST(WiFiPhyTest, GetAllCandidates);
+  FRIEND_TEST(WiFiPhyTest, GetAllCandidates_empty);
 
   // Represents an interface under consideration for concurrent operation.
   // Contains the relevant bits of information about a WiFi interface which are
@@ -240,6 +251,9 @@ class WiFiPhy {
   static bool CombSupportsConcurrency(
       ConcurrencyCombination comb,
       std::multiset<nl80211_iftype> desired_iftypes);
+
+  static RemovalCandidateSet GetAllCandidates(
+      std::vector<ConcurrentIface> ifaces);
 
   uint32_t phy_index_;
   bool reg_self_managed_;

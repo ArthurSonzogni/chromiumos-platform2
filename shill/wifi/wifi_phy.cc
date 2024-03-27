@@ -293,6 +293,99 @@ bool WiFiPhy::SupportAPSTAConcurrency() const {
   return (num_channels > 0);
 }
 
+// Get all possible RemovalCandidates from a given vector of interfaces. The
+// possible removal candidates are every possible subset of |ifaces|.
+WiFiPhy::RemovalCandidateSet WiFiPhy::GetAllCandidates(
+    std::vector<ConcurrentIface> ifaces) {
+  RemovalCandidateSet candidates;
+  // Seed candidates with the empty set.
+  candidates.insert({{}});
+  // Create a RemovalCandidate for every possible subset of interfaces.
+  for (auto iface : ifaces) {
+    std::vector<RemovalCandidate> new_candidates;
+    // For each existing candidate, and add a copy of it with |iface| appended.
+    for (auto candidate : candidates) {
+      auto new_candidate = candidate;
+      new_candidate.insert(iface);
+      new_candidates.push_back(new_candidate);
+    }
+    for (auto new_candidate : new_candidates) {
+      candidates.insert(new_candidate);
+    }
+  }
+  return candidates;
+}
+
+std::optional<std::multiset<nl80211_iftype>> WiFiPhy::RequestNewIface(
+    nl80211_iftype desired_type, Priority priority) const {
+  // The set of ifaces which we may consider removing to create the desired
+  // iface.
+  std::vector<WiFiPhy::ConcurrentIface> removable_ifaces;
+
+  std::multiset<nl80211_iftype> active_iftypes;
+
+  for (auto dev : wifi_devices_) {
+    if (dev->supplicant_state() ==
+        WPASupplicant::kInterfaceStateInterfaceDisabled) {
+      continue;
+    }
+    if (dev->priority() <= priority) {
+      removable_ifaces.push_back({NL80211_IFTYPE_STATION, dev->priority()});
+    }
+    active_iftypes.insert(NL80211_IFTYPE_STATION);
+  }
+  for (auto dev : wifi_local_devices_) {
+    nl80211_iftype iftype;
+    switch (dev->iface_type()) {
+      case LocalDevice::IfaceType::kAP:
+        iftype = NL80211_IFTYPE_AP;
+        break;
+      case LocalDevice::IfaceType::kP2PGO:
+        iftype = NL80211_IFTYPE_P2P_GO;
+        break;
+      case LocalDevice::IfaceType::kP2PClient:
+        iftype = NL80211_IFTYPE_P2P_CLIENT;
+        break;
+      case LocalDevice::IfaceType::kUnknown:
+        NOTREACHED() << "unknown iface type in local device "
+                     << dev->link_name().value_or("(no_link_name)");
+    }
+    if (dev->priority() <= priority) {
+      removable_ifaces.push_back({iftype, dev->priority()});
+    }
+    active_iftypes.insert(iftype);
+  }
+
+  RemovalCandidateSet removal_candidates = GetAllCandidates(removable_ifaces);
+  // RemovalCandidateSets are sorted by preferability, so we can exit early when
+  // we find a valid candidate.
+  for (auto removal_candidate : removal_candidates) {
+    std::multiset<nl80211_iftype> concurrency_attempt = active_iftypes;
+
+    // Determine whether we can operate the interfaces with removal candidates
+    // removed and the desired iface added.
+    for (auto iface : removal_candidate) {
+      concurrency_attempt.erase(concurrency_attempt.find(iface.iftype));
+    }
+    concurrency_attempt.insert(desired_type);
+
+    // Require at least one supported channel per interface type.
+    // TODO(b/337055427): Optimize this by allowing fewer required channels if
+    // some of the interfaces can share a channel.
+    uint32_t num_required_channels = concurrency_attempt.size();
+    uint32_t num_supported_channels = SupportsConcurrency(concurrency_attempt);
+    if (num_supported_channels < num_required_channels) {
+      continue;
+    }
+    std::multiset<nl80211_iftype> ret;
+    for (auto iface : removal_candidate) {
+      ret.insert(iface.iftype);
+    }
+    return ret;
+  }
+  return std::nullopt;
+}
+
 void WiFiPhy::DumpFrequencies() const {
   SLOG(3) << "Available frequencies:";
   for (auto band : frequencies_) {

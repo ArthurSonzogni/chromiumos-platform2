@@ -8,6 +8,7 @@
 #include <iterator>
 #include <vector>
 
+#include <base/test/mock_callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/attribute_list.h>
@@ -20,12 +21,15 @@
 #include "shill/mock_metrics.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/wifi/mock_hotspot_device.h"
+#include "shill/wifi/mock_p2p_device.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
 
 using testing::_;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::StrictMock;
 using ::testing::Test;
 
 namespace shill {
@@ -557,6 +561,9 @@ class WiFiPhyTest : public ::testing::Test {
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
   WiFiPhy wifi_phy_;
+  StrictMock<base::MockRepeatingCallback<void(LocalDevice::DeviceEvent,
+                                              const LocalDevice*)>>
+      event_cb_;
 
   MockManager* manager() { return &manager_; }
 
@@ -600,6 +607,52 @@ class WiFiPhyTest : public ::testing::Test {
 
   uint32_t SupportsConcurrency(std::multiset<nl80211_iftype> iface_types) {
     return wifi_phy_.SupportsConcurrency(iface_types);
+  }
+
+  WiFiPhy::RemovalCandidateSet GetAllCandidates(
+      std::vector<WiFiPhy::ConcurrentIface> ifaces) {
+    return WiFiPhy::GetAllCandidates(ifaces);
+  }
+
+  std::optional<std::multiset<nl80211_iftype>> RequestNewIface(
+      nl80211_iftype desired_type, WiFiPhy::Priority priority) {
+    return wifi_phy_.RequestNewIface(desired_type, priority);
+  }
+
+  void AddActiveIfaces(std::vector<WiFiPhy::ConcurrentIface> ifaces) {
+    for (auto iface : ifaces) {
+      switch (iface.iftype) {
+        case NL80211_IFTYPE_STATION:
+          MockWiFi* wifi_device;
+          wifi_device = new MockWiFi(&manager_, "wlan0", kMacAddress1, 0,
+                                     kWiFiPhyIndex, new MockWakeOnWiFi());
+          wifi_device->SetPriority(iface.priority);
+          wifi_phy_.wifi_devices_.insert(wifi_device);
+          break;
+        case NL80211_IFTYPE_P2P_CLIENT:
+          wifi_phy_.wifi_local_devices_.insert(new MockP2PDevice(
+              &manager_, LocalDevice::IfaceType::kP2PClient, "wlan0", 0, 0,
+              iface.priority, event_cb_.Get()));
+          break;
+        case NL80211_IFTYPE_P2P_GO:
+          wifi_phy_.wifi_local_devices_.insert(new MockP2PDevice(
+              &manager_, LocalDevice::IfaceType::kP2PGO, "wlan0", 0, 0,
+              iface.priority, event_cb_.Get()));
+          break;
+        case NL80211_IFTYPE_AP:
+          wifi_phy_.wifi_local_devices_.insert(
+              new MockHotspotDevice(&manager_, "wlan0", "ap0", kMacAddress1, 0,
+                                    iface.priority, event_cb_.Get()));
+          break;
+        default:
+          FAIL() << "Tried to create unsupported device type: " << iface.iftype;
+      }
+    }
+  }
+
+  void ClearActiveIfaces() {
+    wifi_phy_.wifi_devices_.clear();
+    wifi_phy_.wifi_local_devices_.clear();
   }
 
   void AssertConcurrencySorted() {
@@ -658,6 +711,38 @@ class WiFiPhyTest : public ::testing::Test {
 
   void AssertApStaConcurrency(bool support) {
     ASSERT_EQ(wifi_phy_.SupportAPSTAConcurrency(), support);
+  }
+
+  struct ConcurrencyTestCase {
+    std::vector<WiFiPhy::ConcurrentIface>
+        present_ifaces;                  // Types already reserved.
+    WiFiPhy::ConcurrentIface new_iface;  // Type to check.
+    std::optional<std::multiset<nl80211_iftype>>
+        expected_response;  // Expected response from RequestNewIface.
+  };
+
+  void TestInterfaceCombinations(std::vector<ConcurrencyTestCase> test_cases,
+                                 ConcurrencyCombinationSet combs) {
+    wifi_phy_.concurrency_combs_ = combs;
+    for (auto tc : test_cases) {
+      AddActiveIfaces(tc.present_ifaces);
+      std::optional<std::multiset<nl80211_iftype>> response =
+          RequestNewIface(tc.new_iface.iftype, tc.new_iface.priority);
+      if (response != tc.expected_response) {
+        LOG(INFO) << "Present ifaces: ";
+        for (auto iface : tc.present_ifaces) {
+          LOG(INFO) << "\tType: " << iface.iftype
+                    << ", Priority: " << iface.priority;
+        }
+        LOG(INFO) << "Requested iface: ";
+        LOG(INFO) << "\tType: " << tc.new_iface.iftype
+                  << ", Priority: " << tc.new_iface.priority;
+        // Technically redundant with the above "if" statement, but the macro
+        // is useful for neat logging of a failed equality check.
+        EXPECT_EQ(response, tc.expected_response);
+      }
+      ClearActiveIfaces();
+    }
   }
 
   const WiFiPhy::Frequencies& frequencies() { return wifi_phy_.frequencies_; }
@@ -1121,6 +1206,7 @@ TEST_F(WiFiPhyTest, SupportsConcurrency) {
   // These values align with those from kNewMultiChannelConcurrencyNlMsg. They
   // must be declared inline because the |nl80211_iftype|s are C values
   // which can't be instantiated outside a function context.
+
   wifi_phy_.concurrency_combs_ = {
       (struct ConcurrencyCombination){
           .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
@@ -1158,6 +1244,7 @@ TEST_F(WiFiPhyTest, SupportsConcurrency) {
           .max_num = 2,
           .num_channels = 3},
   };
+
   // Supported by all combs, so we should pick the comb with the most channels.
   EXPECT_EQ(3, SupportsConcurrency({NL80211_IFTYPE_STATION}));
 
@@ -1191,6 +1278,458 @@ TEST_F(WiFiPhyTest, SupportsConcurrency) {
             SupportsConcurrency({NL80211_IFTYPE_AP, NL80211_IFTYPE_AP,
                                  NL80211_IFTYPE_STATION, NL80211_IFTYPE_STATION,
                                  NL80211_IFTYPE_P2P_DEVICE}));
+}
+
+TEST_F(WiFiPhyTest, InterfaceCombinations_LowPriorityRequest) {
+  ConcurrencyCombinationSet combs = {
+      (struct ConcurrencyCombination){
+          .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
+                                         .max = 2},
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_P2P_CLIENT},
+                         .max = 2,
+                     },
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_AP, NL80211_IFTYPE_P2P_GO},
+                         .max = 1,
+                     },
+                     (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_P2P_DEVICE},
+                                         .max = 1}},
+          .max_num = 4,
+          .num_channels = 3},
+  };
+
+  std::vector<ConcurrencyTestCase> test_cases = {
+      // 1 + 1 combinations.
+
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+
+      // 2 + 1 combinations.
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+       std::nullopt},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+  };
+
+  TestInterfaceCombinations(test_cases, combs);
+}
+
+TEST_F(WiFiPhyTest, InterfaceCombinations_HighPriorityRequest) {
+  ConcurrencyCombinationSet combs = {
+      (struct ConcurrencyCombination){
+          .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
+                                         .max = 2},
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_P2P_CLIENT},
+                         .max = 2,
+                     },
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_AP, NL80211_IFTYPE_P2P_GO},
+                         .max = 1,
+                     },
+                     (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_P2P_DEVICE},
+                                         .max = 1}},
+          .max_num = 4,
+          .num_channels = 3},
+  };
+
+  std::vector<ConcurrencyTestCase> test_cases = {
+      // 1 + 1 combinations.
+
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_AP}},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_AP}},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_P2P_GO}},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_P2P_GO}},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+
+      // 2 + 1 combinations.
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_AP}},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_AP}},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_P2P_GO}},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_P2P_GO}},
+      {{{NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_AP}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_AP}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_P2P_GO}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_P2P_GO}},
+      {{{NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_P2P_GO, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+  };
+
+  TestInterfaceCombinations(test_cases, combs);
+}
+
+TEST_F(WiFiPhyTest, InterfaceCombinations_MultipleCombs) {
+  ConcurrencyCombinationSet combs = {
+      (struct ConcurrencyCombination){
+          .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
+                                         .max = 1},
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_AP,
+                                     NL80211_IFTYPE_P2P_CLIENT,
+                                     NL80211_IFTYPE_P2P_GO},
+                         .max = 2,
+                     },
+                     (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_P2P_DEVICE},
+                                         .max = 1}},
+          .max_num = 3,
+          .num_channels = 3},
+      (struct ConcurrencyCombination){
+          .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_STATION},
+                                         .max = 2},
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_P2P_CLIENT},
+                         .max = 2,
+                     },
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_AP, NL80211_IFTYPE_P2P_GO},
+                         .max = 1,
+                     },
+                     (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_P2P_DEVICE},
+                                         .max = 1}},
+          .max_num = 2,
+          .num_channels = 2},
+  };
+
+  std::vector<ConcurrencyTestCase> test_cases = {
+      // Only possible using the first comb.
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(1)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(5)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+
+      // Only possible using the second comb.
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)},
+       std::multiset<nl80211_iftype>{}},
+      {{{NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{}},
+
+      // The current configuration is only supported by the first comb, but the
+      // desired configuration is only supported by the second comb.
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(2)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(2)},
+        {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_AP, NL80211_IFTYPE_AP}},
+
+      // AP interface has higher priority, but we take it down because taking
+      // down the STA doesn't work.
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(2)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(2)},
+        {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)}},
+       {NL80211_IFTYPE_P2P_CLIENT, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_AP}},
+
+      // Take down 2 lower priority interfaces instead of 1 with higher
+      // priority.
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(2)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(2)},
+        {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_AP, NL80211_IFTYPE_AP}},
+
+      // Take down 1 interface instead of 2 with the same priority.
+      {{{NL80211_IFTYPE_AP, WiFiPhy::Priority(2)},
+        {NL80211_IFTYPE_AP, WiFiPhy::Priority(2)},
+        {NL80211_IFTYPE_STATION, WiFiPhy::Priority(2)}},
+       {NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)},
+       std::multiset<nl80211_iftype>{NL80211_IFTYPE_STATION}},
+  };
+
+  TestInterfaceCombinations(test_cases, combs);
+}
+
+TEST_F(WiFiPhyTest, GetAllCandidates) {
+  WiFiPhy::ConcurrentIface a = {NL80211_IFTYPE_STATION, WiFiPhy::Priority(2)};
+  WiFiPhy::ConcurrentIface b = {NL80211_IFTYPE_STATION, WiFiPhy::Priority(3)};
+  WiFiPhy::ConcurrentIface c = {NL80211_IFTYPE_STATION, WiFiPhy::Priority(2)};
+  WiFiPhy::ConcurrentIface d = {NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)};
+
+  std::vector<WiFiPhy::ConcurrentIface> ifaces = {a, b, c, d};
+
+  WiFiPhy::RemovalCandidateSet candidates = GetAllCandidates(ifaces);
+
+  std::vector<WiFiPhy::RemovalCandidate> expected_order;
+  expected_order.push_back({{}});
+  expected_order.push_back({{d}});
+  expected_order.push_back({{c}});
+  expected_order.push_back({{a}});
+  expected_order.push_back({{c}, {d}});
+  expected_order.push_back({{a}, {d}});
+  expected_order.push_back({{c}, {a}});
+  expected_order.push_back({{c}, {a}, {d}});
+  expected_order.push_back({{b}});
+  expected_order.push_back({{d}, {b}});
+  expected_order.push_back({{c}, {b}});
+  expected_order.push_back({{a}, {b}});
+  expected_order.push_back({{c}, {d}, {b}});
+  expected_order.push_back({{a}, {d}, {b}});
+  expected_order.push_back({{c}, {a}, {b}});
+  expected_order.push_back({{c}, {a}, {d}, {b}});
+
+  AssertRemovalCandidateSetOrder(candidates, expected_order);
+}
+TEST_F(WiFiPhyTest, GetAllCandidates_empty) {
+  std::vector<WiFiPhy::ConcurrentIface> ifaces = {};
+  WiFiPhy::RemovalCandidateSet candidates = GetAllCandidates(ifaces);
+  std::vector<WiFiPhy::RemovalCandidate> expected_order;
+  expected_order.push_back({{}});
+  AssertRemovalCandidateSetOrder(candidates, expected_order);
 }
 
 }  // namespace shill
