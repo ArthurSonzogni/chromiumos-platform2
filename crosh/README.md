@@ -9,11 +9,8 @@ do anything useful :).
 
 # For Users
 
-Just run `help` to get info about available commands and discover more.
-
-You can also use tab completion to quickly find existing commands.
-
-It's an adventure!
+For using crosh, please see the
+[public documentation](https://www.chromium.org/chromium-os/developer-library/reference/device/crosh/).
 
 # For ChromiumOS Developers
 
