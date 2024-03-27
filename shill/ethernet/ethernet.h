@@ -161,9 +161,9 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   void SetUsbEthernetMacAddressSource(const std::string& source,
                                       ResultCallback callback) override;
 
-  // Returns hex coded MAC address in lower case and without colons on success.
-  // Otherwise returns an empty string.
-  virtual std::string ReadMacAddressFromFile(const base::FilePath& file_path);
+  // Returns the MAC address on success. Otherwise returns std::nullopt.
+  virtual std::optional<net_base::MacAddress> ReadMacAddressFromFile(
+      const base::FilePath& file_path);
 
   // Callback for when netlink sends response on SetInterfaceMac.
   // It runs |callback| with on success or failure. Updates Ethernet MAC address

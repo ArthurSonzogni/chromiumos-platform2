@@ -85,7 +85,7 @@ class TestEthernet : public Ethernet {
 
   ~TestEthernet() override = default;
 
-  MOCK_METHOD(std::string,
+  MOCK_METHOD(std::optional<net_base::MacAddress>,
               ReadMacAddressFromFile,
               (const base::FilePath& file_path),
               (override));
@@ -588,8 +588,8 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
   constexpr net_base::MacAddress kBuiltinAdapterMacAddress(0xab, 0xcd, 0xef,
                                                            0x12, 0x34, 0x56);
 
-  EXPECT_CALL(*ethernet_.get(), ReadMacAddressFromFile(_))
-      .WillOnce(Return(kBuiltinAdapterMacAddress.ToHexString()));
+  EXPECT_CALL(*ethernet_.get(), ReadMacAddressFromFile)
+      .WillOnce(Return(kBuiltinAdapterMacAddress));
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceMac(ethernet_->interface_index(),
                                              kBuiltinAdapterMacAddress, _))
@@ -613,8 +613,8 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {
   constexpr net_base::MacAddress kBuiltinAdapterMacAddress(0xab, 0xcd, 0xef,
                                                            0x12, 0x34, 0x56);
 
-  EXPECT_CALL(*ethernet_.get(), ReadMacAddressFromFile(_))
-      .WillOnce(Return(kBuiltinAdapterMacAddress.ToHexString()));
+  EXPECT_CALL(*ethernet_.get(), ReadMacAddressFromFile)
+      .WillOnce(Return(kBuiltinAdapterMacAddress));
   EXPECT_CALL(rtnl_handler_, SetInterfaceMac(ethernet_->interface_index(),
                                              kBuiltinAdapterMacAddress, _))
       .WillOnce(WithArg<2>(

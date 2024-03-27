@@ -78,13 +78,6 @@ constexpr int kDriverNameSize = 32;
 // Factor used to convert mbps to kbps.
 constexpr uint32_t kMbpsToKbpsFactor = 1e3;
 
-bool IsValidMac(const std::string& mac_address) {
-  if (mac_address.length() != 12) {
-    return false;
-  }
-  return base::ContainsOnlyChars(mac_address, "0123456789abcdef");
-}
-
 // NETDEV_FEATURE_COUNT in kernel is < 60 in 5.10 kernel, and has 64 as upper
 // bound (since netdev_features_t is typedef'ed to u64 in kernel).
 #define MAX_FEATURE_COUNT 64
@@ -715,11 +708,11 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
 
   std::optional<net_base::MacAddress> new_mac_address;
   if (source == kUsbEthernetMacAddressSourceDesignatedDockMac) {
-    new_mac_address = net_base::MacAddress::CreateFromHexString(
-        ReadMacAddressFromFile(base::FilePath(kVpdDockMacFilePath)));
+    new_mac_address =
+        ReadMacAddressFromFile(base::FilePath(kVpdDockMacFilePath));
   } else if (source == kUsbEthernetMacAddressSourceBuiltinAdapterMac) {
-    new_mac_address = net_base::MacAddress::CreateFromHexString(
-        ReadMacAddressFromFile(base::FilePath(kVpdEthernetMacFilePath)));
+    new_mac_address =
+        ReadMacAddressFromFile(base::FilePath(kVpdEthernetMacFilePath));
   } else if (source == kUsbEthernetMacAddressSourceUsbAdapterMac) {
     new_mac_address = permanent_mac_address_;
   } else {
@@ -763,20 +756,22 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
                      std::move(callback)));
 }
 
-std::string Ethernet::ReadMacAddressFromFile(const base::FilePath& file_path) {
-  std::string mac_address;
-  if (!base::ReadFileToString(file_path, &mac_address)) {
+std::optional<net_base::MacAddress> Ethernet::ReadMacAddressFromFile(
+    const base::FilePath& file_path) {
+  std::string mac_address_str;
+  if (!base::ReadFileToString(file_path, &mac_address_str)) {
     PLOG(ERROR) << "Unable to read MAC address from file: "
                 << file_path.value();
-    return std::string();
+    return std::nullopt;
   }
-  base::RemoveChars(base::ToLowerASCII(mac_address), ":", &mac_address);
-  if (!IsValidMac(mac_address)) {
-    LOG(ERROR) << "MAC address from file " << file_path.value()
-               << " is invalid: " << mac_address;
-    return std::string();
+
+  const std::optional<net_base::MacAddress> ret =
+      net_base::MacAddress::CreateFromString(mac_address_str);
+  if (!ret.has_value()) {
+    LOG(ERROR) << "Unable to parse MAC address from file: " << file_path.value()
+               << ", content: " << mac_address_str;
   }
-  return mac_address;
+  return ret;
 }
 
 void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
