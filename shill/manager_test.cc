@@ -4823,36 +4823,4 @@ TEST_F(ManagerTest, TetheringLoadAndUnloadConfiguration) {
   Mock::VerifyAndClearExpectations(tethering);
 }
 
-TEST_F(ManagerTest, ServiceMetricTimeOnlineTimeToDrop) {
-  auto time_online_timer = std::make_unique<chromeos_metrics::TimerMock>();
-  auto time_to_drop_timer = std::make_unique<chromeos_metrics::TimerMock>();
-  auto* mock_time_online_timer = time_online_timer.get();
-  auto* mock_time_to_drop_timer = time_to_drop_timer.get();
-  manager()->set_time_online_timer_for_testing(std::move(time_online_timer));
-  manager()->set_time_to_drop_timer_for_testing(std::move(time_to_drop_timer));
-
-  scoped_refptr<MockService> eth_service = new MockService(manager());
-  scoped_refptr<MockService> wifi_service = new MockService(manager());
-  EXPECT_CALL(*eth_service, technology())
-      .WillOnce(Return(Technology::kEthernet));
-  EXPECT_CALL(*wifi_service, technology()).WillOnce(Return(Technology::kWiFi));
-
-  EXPECT_CALL(*metrics(), SendToUMA(Metrics::kMetricTimeOnlineSeconds,
-                                    Technology::kEthernet, Ge(0)));
-  EXPECT_CALL(*metrics(), SendToUMA(Metrics::kMetricTimeToDropSeconds, Ge(0)))
-      .Times(0);
-
-  EXPECT_CALL(*mock_time_online_timer, Start()).Times(2);
-  EXPECT_CALL(*mock_time_to_drop_timer, Start());
-  manager()->NotifyDefaultLogicalServiceChanged(eth_service);
-  manager()->NotifyDefaultLogicalServiceChanged(wifi_service);
-
-  EXPECT_CALL(*mock_time_online_timer, Start());
-  EXPECT_CALL(*mock_time_to_drop_timer, Start()).Times(0);
-  EXPECT_CALL(*metrics(), SendToUMA(Metrics::kMetricTimeOnlineSeconds,
-                                    Technology::kWiFi, Ge(0)));
-  EXPECT_CALL(*metrics(), SendToUMA(Metrics::kMetricTimeToDropSeconds, Ge(0)));
-  manager()->NotifyDefaultLogicalServiceChanged(nullptr);
-}
-
 }  // namespace shill

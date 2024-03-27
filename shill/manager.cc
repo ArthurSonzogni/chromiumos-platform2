@@ -204,11 +204,7 @@ Manager::Manager(ControlInterface* control_interface,
       network_throttling_enabled_(false),
       download_rate_kbits_(0),
       upload_rate_kbits_(0),
-      tethering_manager_(new TetheringManager(this)),
-      was_last_online_(false),
-      last_default_technology_(Technology::kUnknown),
-      time_online_timer_(new chromeos_metrics::Timer),
-      time_to_drop_timer_(new chromeos_metrics::Timer) {
+      tethering_manager_(new TetheringManager(this)) {
   HelpRegisterConstDerivedRpcIdentifier(
       kActiveProfileProperty, &Manager::GetActiveProfileRpcIdentifier);
   HelpRegisterDerivedString(kAlwaysOnVpnPackageProperty,
@@ -1661,9 +1657,6 @@ void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
     if (physical_service_changed) {
       observer.OnDefaultPhysicalServiceChanged(physical_service);
     }
-  }
-  if (logical_service_changed) {
-    NotifyDefaultLogicalServiceChanged(logical_service);
   }
 }
 
@@ -3299,41 +3292,6 @@ Manager::GetPortalDetectorProbingConfiguration() const {
 
 std::optional<std::string> Manager::GetCellularOperatorCountryCode() {
   return cellular_service_provider()->GetOperatorCountryCode();
-}
-
-void Manager::NotifyDefaultLogicalServiceChanged(
-    const ServiceRefPtr& logical_service) {
-  base::TimeDelta elapsed_seconds;
-  Technology technology = logical_service ? logical_service->technology()
-                                          : Technology(Technology::kUnknown);
-  if (technology != last_default_technology_) {
-    if (last_default_technology_ != Technology::kUnknown) {
-      metrics_->SendToUMA(Metrics::kMetricTimeOnlineSeconds,
-                          last_default_technology_,
-                          elapsed_seconds.InSeconds());
-    }
-    last_default_technology_ = technology;
-    time_online_timer_->Start();
-  }
-
-  // Only consider transitions from online to offline and vice-versa; i.e.
-  // ignore switching between wired and wireless or wireless and cellular.
-  // TimeToDrop measures time online regardless of how we are connected.
-  bool staying_online = ((logical_service != nullptr) && was_last_online_);
-  bool staying_offline = ((logical_service == nullptr) && !was_last_online_);
-  if (staying_online || staying_offline) {
-    return;
-  }
-
-  if (logical_service == nullptr) {
-    time_to_drop_timer_->GetElapsedTime(&elapsed_seconds);
-    metrics_->SendToUMA(Metrics::kMetricTimeToDropSeconds,
-                        elapsed_seconds.InSeconds());
-  } else {
-    time_to_drop_timer_->Start();
-  }
-
-  was_last_online_ = (logical_service != nullptr);
 }
 
 bool Manager::SetWiFiRequestScanType(const std::string& type, Error* error) {

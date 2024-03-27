@@ -1076,21 +1076,6 @@ class Metrics {
   static constexpr int kTimerHistogramNumBuckets = 50;
   static constexpr int kTimerHistogramNumBucketsLarge = 150;
 
-  static constexpr HistogramMetric<NameByTechnology> kMetricTimeOnlineSeconds =
-      {
-          .n = NameByTechnology{"TimeOnline"},
-          .min = 1,
-          .max = 8 * 60 * 60,  // 8 hours
-          .num_buckets = kTimerHistogramNumBuckets,
-  };
-
-  static constexpr HistogramMetric<FixedName> kMetricTimeToDropSeconds = {
-      .n = FixedName{"Network.Shill.TimeToDrop"},
-      .min = 1,
-      .max = 8 * 60 * 60,  // 8 hours
-      .num_buckets = kTimerHistogramNumBuckets,
-  };
-
   static constexpr HistogramMetric<NameByTechnology>
       kMetricDHCPv4ProvisionDurationMillis = {
           .n = NameByTechnology{"DHCPv4ProvisionDurationMillis"},
@@ -1511,8 +1496,6 @@ class Metrics {
   static constexpr int kMetricTimeToConnectMillisecondsNumBuckets = 60;
   static constexpr char kMetricTimeToScanAndConnectMillisecondsSuffix[] =
       "TimeToScanAndConnect";
-  static constexpr int kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
-  static constexpr int kMetricTimeToDropSecondsMin = 1;
   static constexpr char kMetricTimeToDisableMillisecondsSuffix[] =
       "TimeToDisable";
   static constexpr int kMetricTimeToDisableMillisecondsMax =

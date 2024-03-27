@@ -547,16 +547,6 @@ class Manager {
   // ISO 3166-1.
   mockable std::optional<std::string> GetCellularOperatorCountryCode();
 
-  void set_time_online_timer_for_testing(
-      std::unique_ptr<chromeos_metrics::Timer> timer) {
-    time_online_timer_ = std::move(timer);
-  }
-
-  void set_time_to_drop_timer_for_testing(
-      std::unique_ptr<chromeos_metrics::Timer> timer) {
-    time_to_drop_timer_ = std::move(timer);
-  }
-
  private:
   friend class ArcVpnDriverTest;
   friend class CellularTest;
@@ -808,9 +798,6 @@ class Manager {
   // command line switch.
   std::vector<std::string> BlockedDevices(Error* error);
 
-  // Notifies Metrics when the default logical Service has changed.
-  void NotifyDefaultLogicalServiceChanged(const ServiceRefPtr& logical_service);
-
   // Iterate through all Ethernet services to check if any of them matches the
   // current disconnect-wifi-on-ethernet criteria.
   bool HasEthernetMatchingDisconnectWiFiCriteria();
@@ -958,11 +945,6 @@ class Manager {
   // Tethering manager to manage tethering related state machine, properties
   // and session.
   std::unique_ptr<TetheringManager> tethering_manager_;
-
-  bool was_last_online_;
-  Technology last_default_technology_;
-  std::unique_ptr<chromeos_metrics::Timer> time_online_timer_;
-  std::unique_ptr<chromeos_metrics::Timer> time_to_drop_timer_;
 
   base::WeakPtrFactory<Manager> weak_factory_{this};
 };
