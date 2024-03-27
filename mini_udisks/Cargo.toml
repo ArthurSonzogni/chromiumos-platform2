@@ -10,3 +10,6 @@ dbus = "0.9"
 dbus-crossroads = "0.5"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 log = "0.4"
+
+[dev-dependencies]
+tempfile = "3.0.0"
