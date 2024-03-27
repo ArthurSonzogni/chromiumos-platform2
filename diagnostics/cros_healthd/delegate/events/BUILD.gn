@@ -25,6 +25,7 @@ if (use.test) {
     sources = [
       "audio_jack_evdev_delegate_test.cc",
       "power_button_evdev_delegate_test.cc",
+      "volume_button_evdev_delegate_test.cc",
     ]
     pkg_deps = [
       "libchrome-test",
