@@ -103,6 +103,24 @@ void OnToggleKeyboardBacklight(
   std::move(response_sender).Run(std::move(response));
 }
 
+void OnSetAmbientLightSensorEnabled(
+    const std::string& method_name,
+    const BacklightController::SetAmbientLightSensorEnabledCallback& callback,
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  bool ambient_light_sensor_enabled = true;
+
+  // Attempt to pop the boolean argument from the method call. If it's not
+  // present, set the argument to the default value.
+  if (!dbus::MessageReader(method_call)
+           .PopBool(&ambient_light_sensor_enabled)) {
+    ambient_light_sensor_enabled = true;
+  }
+
+  callback.Run(ambient_light_sensor_enabled);
+  std::move(response_sender).Run(dbus::Response::FromMethodCall(method_call));
+}
+
 }  // namespace
 
 // static
@@ -171,6 +189,17 @@ void BacklightController::EmitBrightnessChangedSignal(
   proto.set_cause(cause);
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   dbus_wrapper->EmitSignal(&signal);
+}
+
+// static
+void BacklightController::RegisterSetAmbientLightSensorEnabledHandler(
+    system::DBusWrapperInterface* dbus_wrapper,
+    const std::string& method_name,
+    const SetAmbientLightSensorEnabledCallback& callback) {
+  DCHECK(dbus_wrapper);
+  dbus_wrapper->ExportMethod(
+      method_name, base::BindRepeating(&OnSetAmbientLightSensorEnabled,
+                                       method_name, callback));
 }
 
 }  // namespace power_manager::policy

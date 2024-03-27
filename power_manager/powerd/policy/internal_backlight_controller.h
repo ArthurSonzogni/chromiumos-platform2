@@ -147,6 +147,7 @@ class InternalBacklightController : public BacklightController,
                                   Transition transition,
                                   SetBacklightBrightnessRequest_Cause cause);
   void HandleGetBrightnessRequest(double* percent_out, bool* success_out);
+  void HandleSetAmbientLightSensorEnabled(bool enabled);
 
   // Increases the explicitly-set brightness to the minimum visible level if
   // it's currently set to zero. Note that the brightness is left unchanged if

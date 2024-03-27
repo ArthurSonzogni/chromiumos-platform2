@@ -50,6 +50,15 @@ void CallSetScreenBrightness(
   ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
 }
 
+void CallSetAmbientLightSensorEnabled(system::DBusWrapperStub* wrapper,
+                                      bool enabled) {
+  DCHECK(wrapper);
+  dbus::MethodCall method_call(kPowerManagerInterface,
+                               kSetAmbientLightSensorEnabledMethod);
+  dbus::MessageWriter(&method_call).AppendBool(enabled);
+  ASSERT_TRUE(wrapper->CallExportedMethodSync(&method_call));
+}
+
 BacklightBrightnessChange GetLastBrightnessChangedSignal(
     system::DBusWrapperStub* wrapper) {
   // Ensure at least one signal has been sent.

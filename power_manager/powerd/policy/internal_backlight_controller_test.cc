@@ -1109,4 +1109,60 @@ TEST_F(InternalBacklightControllerTest, SetAndGetBrightness) {
   EXPECT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));
 }
 
+TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
+  default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
+  Init(PowerSource::AC);
+  EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
+  EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
+  EXPECT_EQ(0, controller_->GetNumUserAdjustments());
+
+  // After the user manually changes the brightness, the ambient light sensor
+  // should be disabled.
+  const double kUserPercent = 80.0;
+  test::CallSetScreenBrightness(
+      dbus_wrapper_.get(), kUserPercent,
+      SetBacklightBrightnessRequest_Transition_INSTANT,
+      SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+  EXPECT_EQ(PercentToLevel(kUserPercent), backlight_.current_level());
+  EXPECT_EQ(1, controller_->GetNumUserAdjustments());
+
+  // Changes to the ambient light level shouldn't affect the backlight
+  // brightness after the user has manually set it.
+  light_sensor_.set_lux(400);
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    light_sensor_.NotifyObservers();
+  EXPECT_EQ(PercentToLevel(kUserPercent), backlight_.current_level());
+  EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
+
+  // Re-enable the ambient light sensor.
+  test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), true);
+
+  // Confirm that the ambient light sensor is functioning again by changing the
+  // light level to trigger a brightness change.
+  light_sensor_.set_lux(40);
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    light_sensor_.NotifyObservers();
+  EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
+  EXPECT_EQ(1, controller_->GetNumAmbientLightSensorAdjustments());
+
+  // Update the light level again and confirm that the ambient light sensor is
+  // adjusting the brightness.
+  light_sensor_.set_lux(400);
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    light_sensor_.NotifyObservers();
+  EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
+  EXPECT_EQ(2, controller_->GetNumAmbientLightSensorAdjustments());
+
+  // Disable the ambient light sensor.
+  test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), false);
+
+  // Changing the light level should not change the current brightness level,
+  // nor should it record an ambient light sensor adjustment.
+  light_sensor_.set_lux(40);
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    light_sensor_.NotifyObservers();
+  EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
+  EXPECT_EQ(2, controller_->GetNumAmbientLightSensorAdjustments());
+}
+
 }  // namespace power_manager::policy

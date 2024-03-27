@@ -263,6 +263,11 @@ void InternalBacklightController::Init(
       base::BindRepeating(
           &InternalBacklightController::HandleGetBrightnessRequest,
           weak_ptr_factory_.GetWeakPtr()));
+  RegisterSetAmbientLightSensorEnabledHandler(
+      dbus_wrapper_, kSetAmbientLightSensorEnabledMethod,
+      base::BindRepeating(
+          &InternalBacklightController::HandleSetAmbientLightSensorEnabled,
+          weak_ptr_factory_.GetWeakPtr()));
 
   init_time_ = clock_->GetCurrentTime();
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "
@@ -712,6 +717,11 @@ void InternalBacklightController::HandleGetBrightnessRequest(
   DCHECK(success_out);
   *percent_out = LevelToPercent(current_level_);
   *success_out = true;
+}
+
+void InternalBacklightController::HandleSetAmbientLightSensorEnabled(
+    bool enabled) {
+  SetUseAmbientLight(enabled);
 }
 
 void InternalBacklightController::EnsureUserBrightnessIsNonzero(

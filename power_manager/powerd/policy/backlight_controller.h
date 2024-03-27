@@ -140,6 +140,8 @@ class BacklightController {
   using GetBrightnessCallback =
       base::RepeatingCallback<void(double* percent_out, bool* success_out)>;
   using ToggleKeyboardBacklightCallback = base::RepeatingClosure;
+  using SetAmbientLightSensorEnabledCallback =
+      base::RepeatingCallback<void(bool enabled)>;
 
   using AmbientLightOnResumeMetricsCallback =
       base::RepeatingCallback<void(int lux)>;
@@ -171,6 +173,10 @@ class BacklightController {
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,
       const ToggleKeyboardBacklightCallback& callback);
+  static void RegisterSetAmbientLightSensorEnabledHandler(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& method_name,
+      const SetAmbientLightSensorEnabledCallback& callback);
 
   // Emits a D-Bus signal announcing a brightness change.
   static void EmitBrightnessChangedSignal(

@@ -286,6 +286,14 @@
       </tp:docstring>
       <arg name="has_sensor" direction="out" type="b" />
     </method>
+    <method name="SetAmbientLightSensorEnabled">
+      <tp:docstring>
+        If |enabled| is true, the ambient light sensor will be used in
+        brightness calculations. If the device has no ambient light sensor, this
+        method is a no-op.
+      </tp:docstring>
+      <arg name="enabled" direction="in" type="b" />
+    </method>
 
     <!-- Signals -->
     <signal name="ScreenBrightnessChanged">
