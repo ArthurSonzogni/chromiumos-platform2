@@ -1395,6 +1395,8 @@ void Daemon::InitDBus() {
        &Daemon::HandleGetBacklightsForcedOffMethod},
       {kChangeWifiRegDomainMethod, &Daemon::HandleChangeWifiRegDomainMethod},
       {kGetTabletModeMethod, &Daemon::HandleGetTabletModeMethod},
+      {kHasAmbientLightSensorMethod,
+       &Daemon::HandleHasAmbientLightSensorMethod},
   };
   for (const auto& it : kDaemonMethods) {
     dbus_wrapper_->ExportMethod(
@@ -1858,6 +1860,17 @@ std::unique_ptr<dbus::Response> Daemon::HandleGetTabletModeMethod(
 
   const TabletMode tablet_mode = input_watcher_->GetTabletMode();
   dbus::MessageWriter(response.get()).AppendBool(tablet_mode == TabletMode::ON);
+  return response;
+}
+
+std::unique_ptr<dbus::Response> Daemon::HandleHasAmbientLightSensorMethod(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+
+  int64_t num_sensors;
+  prefs_->GetInt64(kHasAmbientLightSensorPref, &num_sensors);
+  dbus::MessageWriter(response.get()).AppendBool(num_sensors > 0);
   return response;
 }
 

@@ -1275,6 +1275,45 @@ TEST_F(DaemonTest, PrepareToSuspendAndResume) {
   EXPECT_FALSE(power_supply_->suspended());
 }
 
+TEST_F(DaemonTest, HasAmbientLightSensor_NoSensors) {
+  prefs_->SetInt64(kHasAmbientLightSensorPref, 0);
+
+  Init();
+  dbus::MethodCall call(kPowerManagerInterface, kHasAmbientLightSensorMethod);
+  auto response = dbus_wrapper_->CallExportedMethodSync(&call);
+  ASSERT_TRUE(response.get());
+
+  bool has_light_sensor = false;
+  ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&has_light_sensor));
+  EXPECT_FALSE(has_light_sensor);
+}
+
+TEST_F(DaemonTest, HasAmbientLightSensor_OneSensor) {
+  prefs_->SetInt64(kHasAmbientLightSensorPref, 1);
+
+  Init();
+  dbus::MethodCall call(kPowerManagerInterface, kHasAmbientLightSensorMethod);
+  auto response = dbus_wrapper_->CallExportedMethodSync(&call);
+  ASSERT_TRUE(response.get());
+
+  bool has_light_sensor = false;
+  ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&has_light_sensor));
+  EXPECT_TRUE(has_light_sensor);
+}
+
+TEST_F(DaemonTest, HasAmbientLightSensor_TwoSensors) {
+  prefs_->SetInt64(kHasAmbientLightSensorPref, 2);
+
+  Init();
+  dbus::MethodCall call(kPowerManagerInterface, kHasAmbientLightSensorMethod);
+  auto response = dbus_wrapper_->CallExportedMethodSync(&call);
+  ASSERT_TRUE(response.get());
+
+  bool has_light_sensor = false;
+  ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&has_light_sensor));
+  EXPECT_TRUE(has_light_sensor);
+}
+
 // TODO(chromeos-power): Add more tests. Namely:
 // - PrepareToSuspend / UndoPrepareToSuspend
 // - Creating and deleting suspend_announced file

@@ -65,6 +65,7 @@ const char kGetExternalDisplayALSBrightnessMethod[] =
     "GetExternalDisplayALSBrightness";
 const char kGetBatterySaverModeState[] = "GetBatterySaverModeState";
 const char kSetBatterySaverModeState[] = "SetBatterySaverModeState";
+const char kHasAmbientLightSensorMethod[] = "HasAmbientLightSensor";
 
 // Signals emitted by powerd.
 const char kScreenBrightnessChangedSignal[] = "ScreenBrightnessChanged";
