@@ -26,6 +26,7 @@ static std::string ObjectID(const dbus::ObjectPath* p) {
 const char SupplicantInterfaceProxy::kInterfaceName[] =
     "fi.w1.wpa_supplicant1.Interface";
 const char SupplicantInterfaceProxy::kPropertyIfname[] = "Ifname";
+const char SupplicantInterfaceProxy::kPropertyMACAddress[] = "MACAddress";
 const char SupplicantInterfaceProxy::kPropertyFastReauth[] = "FastReauth";
 const char SupplicantInterfaceProxy::kPropertyScan[] = "Scan";
 const char SupplicantInterfaceProxy::kPropertyScanInterval[] = "ScanInterval";
@@ -40,6 +41,7 @@ SupplicantInterfaceProxy::PropertySet::PropertySet(
     const PropertyChangedCallback& callback)
     : dbus::PropertySet(object_proxy, interface_name, callback) {
   RegisterProperty(kPropertyIfname, &ifname);
+  RegisterProperty(kPropertyMACAddress, &mac_address);
   RegisterProperty(kPropertyFastReauth, &fast_reauth);
   RegisterProperty(kPropertyScan, &scan);
   RegisterProperty(kPropertyScanInterval, &scan_interval);
@@ -394,6 +396,21 @@ bool SupplicantInterfaceProxy::GetIfname(std::string* ifname) const {
 
   *ifname = properties_->ifname.value();
 
+  return true;
+}
+
+bool SupplicantInterfaceProxy::GetMACAddress(
+    std::vector<uint8_t>* mac_address) const {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  CHECK(mac_address);
+
+  if (!properties_->mac_address.GetAndBlock() ||
+      !properties_->mac_address.is_valid()) {
+    LOG(ERROR) << "Failed to obtain MAC address";
+    return false;
+  }
+
+  *mac_address = properties_->mac_address.value();
   return true;
 }
 

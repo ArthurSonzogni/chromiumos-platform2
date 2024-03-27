@@ -35,6 +35,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
 
   // Implementation of SupplicantInterfaceProxyInterface.
   bool GetIfname(std::string* ifname) const override;
+  bool GetMACAddress(std::vector<uint8_t>* mac_address) const override;
   bool AddNetwork(const KeyValueStore& args, RpcIdentifier* network) override;
   bool EAPLogon() override;
   bool EAPLogoff() override;
@@ -76,6 +77,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
     PropertySet& operator=(const PropertySet&) = delete;
 
     brillo::dbus_utils::Property<std::string> ifname;
+    brillo::dbus_utils::Property<std::vector<uint8_t>> mac_address;
     brillo::dbus_utils::Property<bool> fast_reauth;
     brillo::dbus_utils::Property<bool> scan;
     brillo::dbus_utils::Property<int32_t> scan_interval;
@@ -89,6 +91,7 @@ class SupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
 
   static const char kInterfaceName[];
   static const char kPropertyIfname[];
+  static const char kPropertyMACAddress[];
   static const char kPropertyFastReauth[];
   static const char kPropertyScan[];
   static const char kPropertyScanInterval[];

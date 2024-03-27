@@ -25,6 +25,7 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   ~MockSupplicantInterfaceProxy() override;
 
   MOCK_METHOD(bool, GetIfname, (std::string*), (const override));
+  MOCK_METHOD(bool, GetMACAddress, (std::vector<uint8_t>*), (const override));
   MOCK_METHOD(bool,
               AddNetwork,
               (const KeyValueStore&, RpcIdentifier*),

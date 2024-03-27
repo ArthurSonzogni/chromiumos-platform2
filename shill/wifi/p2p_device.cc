@@ -12,6 +12,10 @@
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <net-base/byte_utils.h>
 #include <net-base/mac_address.h>
+#include <net-base/network_config.h>
+#include <net-base/ip_address.h>
+#include <net-base/ipv4_address.h>
+#include <net-base/ipv6_address.h>
 #include <net-base/rtnl_handler.h>
 
 #include "shill/control_interface.h"
@@ -107,6 +111,7 @@ P2PDevice::P2PDevice(Manager* manager,
   group_bssid_ = "";
   group_frequency_ = 0;
   group_passphrase_ = "";
+  interface_address_ = std::nullopt;
   LOG(INFO) << log_name() << ": P2PDevice created";
 }
 
@@ -196,26 +201,44 @@ KeyValueStore P2PDevice::GetClientInfo() const {
   client_info.Set<uint32_t>(kP2PClientInfoShillIDProperty, shill_id());
   client_info.Set<String>(kP2PClientInfoStateProperty, ClientInfoState(state_));
 
-  if (!group_ssid_.empty())
+  if (IsLinkLayerConnected()) {
+    Stringmap go_info;
     client_info.Set<String>(kP2PClientInfoSSIDProperty, group_ssid_);
-
-  if (!group_bssid_.empty())
     client_info.Set<String>(kP2PClientInfoGroupBSSIDProperty, group_bssid_);
-
-  if (group_frequency_)
     client_info.Set<Integer>(kP2PClientInfoFrequencyProperty, group_frequency_);
-
-  if (!group_passphrase_.empty()) {
     client_info.Set<String>(kP2PClientInfoPassphraseProperty,
                             group_passphrase_);
+    client_info.Set<String>(kP2PClientInfoInterfaceProperty, *link_name());
+    client_info.Set<String>(kP2PClientInfoMACAddressProperty,
+                            interface_address_.value().ToString());
+    go_info.insert({kP2PClientInfoGroupOwnerMACAddressProperty, group_bssid_});
+    if (IsNetworkLayerConnected()) {
+      const auto network_config = client_network_->GetNetworkConfig();
+      if (network_config.ipv4_address != std::nullopt) {
+        client_info.Set<String>(
+            kP2PClientInfoIPv4AddressProperty,
+            network_config.ipv4_address->address().ToString());
+      }
+      if (!network_config.ipv6_addresses.empty()) {
+        Strings ipv6_addresses;
+        for (auto ipv6_address : network_config.ipv6_addresses) {
+          ipv6_addresses.push_back(ipv6_address.address().ToString());
+        }
+        client_info.Set<Strings>(kP2PClientInfoIPv6AddressProperty,
+                                 ipv6_addresses);
+      }
+      if (network_config.ipv4_gateway != std::nullopt) {
+        go_info.insert({kP2PClientInfoGroupOwnerIPv4AddressProperty,
+                        network_config.ipv4_gateway->ToString()});
+      }
+      if (network_config.ipv6_gateway != std::nullopt) {
+        go_info.insert({kP2PClientInfoGroupOwnerIPv6AddressProperty,
+                        network_config.ipv6_gateway->ToString()});
+      }
+    }
+    client_info.Set<Stringmap>(kP2PClientInfoGroupOwnerProperty, go_info);
   }
 
-  if (link_name().has_value())
-    client_info.Set<String>(kP2PClientInfoInterfaceProperty, *link_name());
-
-  // TODO(b/299915001): retrieve IPv4/IPv6Address from Shill::Network class
-  // TODO(b/301049348): retrieve MacAddress from wpa_supplicant
-  // TODO(b/301049348): retrieve GO properties from wpa_supplicant
   return client_info;
 }
 
@@ -438,6 +461,28 @@ void P2PDevice::SetState(P2PDeviceState state) {
   state_ = state;
 }
 
+bool P2PDevice::IsLinkLayerConnected() const {
+  if (iface_type() == LocalDevice::IfaceType::kP2PClient) {
+    return (state_ == P2PDeviceState::kClientConfiguring ||
+            state_ == P2PDeviceState::kClientConnected);
+  } else if (iface_type() == LocalDevice::IfaceType::kP2PGO) {
+    return (state_ == P2PDeviceState::kGOConfiguring ||
+            state_ == P2PDeviceState::kGOActive);
+  } else {
+    return false;
+  }
+}
+
+bool P2PDevice::IsNetworkLayerConnected() const {
+  if (iface_type() == LocalDevice::IfaceType::kP2PClient) {
+    return (state_ == P2PDeviceState::kClientConnected);
+  } else if (iface_type() == LocalDevice::IfaceType::kP2PGO) {
+    return (state_ == P2PDeviceState::kGOActive);
+  } else {
+    return false;
+  }
+}
+
 bool P2PDevice::ConnectToSupplicantInterfaceProxy(
     const RpcIdentifier& object_path) {
   if (supplicant_interface_proxy_) {
@@ -476,6 +521,16 @@ String P2PDevice::GetInterfaceName() const {
     return "";
   }
   return ifname;
+}
+
+std::optional<net_base::MacAddress> P2PDevice::GetInterfaceAddress() const {
+  ByteArray mac_address;
+  if (!supplicant_interface_proxy_->GetMACAddress(&mac_address)) {
+    LOG(ERROR) << log_name()
+               << ": Failed to Get MAC address via Interface proxy";
+    return std::nullopt;
+  }
+  return net_base::MacAddress::CreateFromBytes(mac_address);
 }
 
 bool P2PDevice::ConnectToSupplicantP2PDeviceProxy(
@@ -623,6 +678,15 @@ bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
   group_passphrase_ = GetGroupPassphrase();
   if (!group_passphrase_.empty())
     LOG(INFO) << log_name() << ": Passphrase configured: " << group_passphrase_;
+
+  interface_address_ = GetInterfaceAddress();
+  if (interface_address_ == std::nullopt) {
+    LOG(ERROR) << log_name() << ": Failed to get interface address";
+    return false;
+  } else {
+    LOG(INFO) << log_name() << ": Interface address configured: "
+              << interface_address_.value().ToString();
+  }
 
   // TODO(b/308081318): This requires HotspotDevice to be fully responsible
   // for states and events handling. Currently DeviceEvent::kLinkUp/Down events

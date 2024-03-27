@@ -55,6 +55,7 @@ const uint32_t kPhyIndex = 5678;
 const uint32_t kShillId = 0;
 const char kP2PSSID[] = "chromeOS-1234";
 const char kP2PBSSID[] = "de:ad:be:ef:00:00";
+const std::vector<uint8_t> kP2PMACAddress{0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a};
 const char kP2PPassphrase[] = "test0000";
 const uint32_t kP2PFrequency = 2437;
 
@@ -139,6 +140,8 @@ class P2PDeviceTest : public testing::Test {
         .WillByDefault(DoAll(SetArgPointee<0>(kP2PPassphrase), Return(true)));
     ON_CALL(*supplicant_interface_proxy_, GetIfname(_))
         .WillByDefault(DoAll(SetArgPointee<0>(kInterfaceName), Return(true)));
+    ON_CALL(*supplicant_interface_proxy_, GetMACAddress(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(kP2PMACAddress), Return(true)));
     ON_CALL(*p2p_manager_, SupplicantPrimaryP2PDeviceProxy())
         .WillByDefault(Return(supplicant_primary_p2pdevice_proxy_.get()));
     std::unique_ptr<SupplicantP2PDeviceProxyInterface> p2pdevice_proxy(
@@ -422,7 +425,7 @@ TEST_F(P2PDeviceTest, GroupInfo_EmptyOnClient) {
 }
 
 TEST_F(P2PDeviceTest, ClientInfo) {
-  // Start device
+  // kReady
   EXPECT_TRUE(client_device_->Start());
   EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kReady);
 
@@ -434,12 +437,17 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_FALSE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoMACAddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv4AddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv6AddressProperty));
+  EXPECT_FALSE(
+      client_info.Contains<Stringmap>(kP2PClientInfoGroupOwnerProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
             kP2PClientInfoStateIdle);
 
-  // Initiate group connection.
+  // kClientAssociating
   auto service = std::make_unique<MockP2PService>(
       client_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
   EXPECT_TRUE(client_device_->Connect(std::move(service)));
@@ -454,19 +462,65 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_FALSE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoMACAddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv4AddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv6AddressProperty));
+  EXPECT_FALSE(
+      client_info.Contains<Stringmap>(kP2PClientInfoGroupOwnerProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
             kP2PClientInfoStateAssociating);
 
-  // Emulate GroupStarted signal from wpa_supplicant.
+  // kClientConfiguring
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
   client_device_->GroupStarted(DefaultGroupStartedProperties());
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientConfiguring);
-  // Emulate IP address received event.
+
+  client_info = client_device_->GetClientInfo();
+  EXPECT_TRUE(client_info.Contains<uint32_t>(kP2PClientInfoShillIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoStateProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoSSIDProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
+  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoMACAddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv4AddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv6AddressProperty));
+  EXPECT_TRUE(
+      client_info.Contains<Stringmap>(kP2PClientInfoGroupOwnerProperty));
+
+  EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoSSIDProperty), kP2PSSID);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoGroupBSSIDProperty),
+            kP2PBSSID);
+  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoFrequencyProperty),
+            kP2PFrequency);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
+            kP2PPassphrase);
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoInterfaceProperty),
+            kInterfaceName);
+  EXPECT_EQ(
+      client_info.Get<String>(kP2PClientInfoMACAddressProperty),
+      net_base::MacAddress::CreateFromBytes(kP2PMACAddress).value().ToString());
+  auto GOInfo = client_info.Get<Stringmap>(kP2PClientInfoGroupOwnerProperty);
+  EXPECT_EQ(GOInfo.at(kP2PClientInfoGroupOwnerMACAddressProperty), kP2PBSSID);
+  EXPECT_EQ(GOInfo.count(kP2PClientInfoGroupOwnerIPv4AddressProperty), 0);
+  EXPECT_EQ(GOInfo.count(kP2PClientInfoGroupOwnerIPv6AddressProperty), 0);
+
+  // kClientConnected
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
   client_device_->OnConnectionUpdated(kInterfaceIdx);
+  EXPECT_EQ(client_device_->state_,
+            P2PDevice::P2PDeviceState::kClientConnected);
+
+  net_base::NetworkConfig config;
+  config.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.100/24");
+  config.ipv4_gateway = *net_base::IPv4Address::CreateFromString("192.168.1.1");
+  network_->set_dhcp_network_config_for_testing(config);
 
   client_info = client_device_->GetClientInfo();
   EXPECT_TRUE(client_info.Contains<uint32_t>(kP2PClientInfoShillIDProperty));
@@ -476,10 +530,13 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
   EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
   EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoMACAddressProperty));
+  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoIPv4AddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv6AddressProperty));
+  EXPECT_TRUE(
+      client_info.Contains<Stringmap>(kP2PClientInfoGroupOwnerProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
-  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
-            kP2PClientInfoStateConnected);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoSSIDProperty), kP2PSSID);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoGroupBSSIDProperty),
             kP2PBSSID);
@@ -489,28 +546,16 @@ TEST_F(P2PDeviceTest, ClientInfo) {
             kP2PPassphrase);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoInterfaceProperty),
             kInterfaceName);
-
-  client_info = client_device_->GetClientInfo();
-  EXPECT_TRUE(client_info.Contains<uint32_t>(kP2PClientInfoShillIDProperty));
-  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoStateProperty));
-  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoSSIDProperty));
-  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
-  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
-  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
-  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
-
-  EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
-  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
-            kP2PClientInfoStateConnected);
-  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoSSIDProperty), kP2PSSID);
-  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoGroupBSSIDProperty),
-            kP2PBSSID);
-  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoFrequencyProperty),
-            kP2PFrequency);
-  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
-            kP2PPassphrase);
-  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoInterfaceProperty),
-            kInterfaceName);
+  EXPECT_EQ(
+      client_info.Get<String>(kP2PClientInfoMACAddressProperty),
+      net_base::MacAddress::CreateFromBytes(kP2PMACAddress).value().ToString());
+  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoIPv4AddressProperty),
+            "192.168.1.100");
+  GOInfo = client_info.Get<Stringmap>(kP2PClientInfoGroupOwnerProperty);
+  EXPECT_EQ(GOInfo.at(kP2PClientInfoGroupOwnerMACAddressProperty), kP2PBSSID);
+  EXPECT_EQ(GOInfo.at(kP2PClientInfoGroupOwnerIPv4AddressProperty),
+            "192.168.1.1");
+  EXPECT_EQ(GOInfo.count(kP2PClientInfoGroupOwnerIPv6AddressProperty), 0);
 
   // Disconnect group.
   EXPECT_TRUE(client_device_->Disconnect());
@@ -520,24 +565,20 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   client_info = client_device_->GetClientInfo();
   EXPECT_TRUE(client_info.Contains<uint32_t>(kP2PClientInfoShillIDProperty));
   EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoStateProperty));
-  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoSSIDProperty));
-  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
-  EXPECT_TRUE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
-  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
-  EXPECT_TRUE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoSSIDProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoGroupBSSIDProperty));
+  EXPECT_FALSE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoMACAddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv4AddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv6AddressProperty));
+  EXPECT_FALSE(
+      client_info.Contains<Stringmap>(kP2PClientInfoGroupOwnerProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),
             kP2PClientInfoStateDisconnecting);
-  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoSSIDProperty), kP2PSSID);
-  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoGroupBSSIDProperty),
-            kP2PBSSID);
-  EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoFrequencyProperty),
-            kP2PFrequency);
-  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
-            kP2PPassphrase);
-  EXPECT_EQ(client_info.Get<String>(kP2PClientInfoInterfaceProperty),
-            kInterfaceName);
 
   // Emulate GroupFinished signal from wpa_supplicant
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
@@ -553,6 +594,11 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_FALSE(client_info.Contains<Integer>(kP2PClientInfoFrequencyProperty));
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoPassphraseProperty));
   EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoInterfaceProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoMACAddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv4AddressProperty));
+  EXPECT_FALSE(client_info.Contains<String>(kP2PClientInfoIPv6AddressProperty));
+  EXPECT_FALSE(
+      client_info.Contains<Stringmap>(kP2PClientInfoGroupOwnerProperty));
 
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoStateProperty),

@@ -12,6 +12,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
+#include <net-base/mac_address.h>
 
 #include "shill/network/network.h"
 #include "shill/store/key_value_store.h"
@@ -210,6 +211,12 @@ class P2PDevice : public LocalDevice,
   // Set P2PDeviceState.
   void SetState(P2PDeviceState state);
 
+  // Return true if link layer has connected.
+  bool IsLinkLayerConnected() const;
+
+  // Return true if network layer has connected.
+  bool IsNetworkLayerConnected() const;
+
   // Returns true if the device is in an active GO state.
   bool InGOState() const;
 
@@ -226,6 +233,10 @@ class P2PDevice : public LocalDevice,
   // This helper method retrieves P2PDevice link name via wpa_supplicant
   // interface proxy.
   String GetInterfaceName() const;
+
+  // This helper method retrieves P2PDevice MAC address via wpa_supplicant
+  // interface proxy.
+  std::optional<net_base::MacAddress> GetInterfaceAddress() const;
 
   // Connect to wpa_supplicant p2p device proxy of interface object received
   // on GroupStarted signal.
@@ -353,6 +364,9 @@ class P2PDevice : public LocalDevice,
   // This member is only valid when |this| is in the client role.
   std::unique_ptr<Network> client_network_;
   std::unique_ptr<Network> client_network_for_test_;
+
+  // P2P interface address, only available after link layer is connected.
+  std::optional<net_base::MacAddress> interface_address_;
 };
 
 }  // namespace shill

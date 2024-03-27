@@ -19,6 +19,7 @@ class SupplicantInterfaceProxyInterface {
   virtual ~SupplicantInterfaceProxyInterface() = default;
 
   virtual bool GetIfname(std::string* ifname) const = 0;
+  virtual bool GetMACAddress(std::vector<uint8_t>* mac_address) const = 0;
   virtual bool AddNetwork(const KeyValueStore& args,
                           RpcIdentifier* network) = 0;
   virtual bool EAPLogoff() = 0;
