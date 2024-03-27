@@ -4282,18 +4282,37 @@ void UserDataAuth::PrepareAuthFactor(
       auth_session_manager_,
       CRYPTOHOME_ERR_LOC(kLocUserDataAuthPrepareAuthFactorAuthSessionNotFound),
       std::move(request), std::move(on_done),
+      base::BindOnce(&UserDataAuth::PrepareAuthFactorWithSession,
+                     base::Unretained(this)));
+}
+
+void UserDataAuth::PrepareAuthFactorWithSession(
+    user_data_auth::PrepareAuthFactorRequest request,
+    OnDoneCallback<user_data_auth::PrepareAuthFactorReply> on_done,
+    InUseAuthSession auth_session) {
+  AuthSession* auth_session_ptr = auth_session.Get();
+  auth_session_ptr->PrepareAuthFactor(
+      request,
       base::BindOnce(
-          [](user_data_auth::PrepareAuthFactorRequest request,
+          [](InUseAuthSession auth_session, std::optional<AuthFactorType> type,
              OnDoneCallback<user_data_auth::PrepareAuthFactorReply> on_done,
-             InUseAuthSession auth_session) {
-            AuthSession* auth_session_ptr = auth_session.Get();
-            auth_session_ptr->PrepareAuthFactor(
-                request,
-                base::BindOnce(
-                    &ReplyWithStatus<user_data_auth::PrepareAuthFactorReply>,
-                    std::move(auth_session).BindForCallback(),
-                    std::move(on_done)));
-          }));
+             CryptohomeStatus status) {
+            user_data_auth::PrepareAuthFactorReply reply;
+            if (type) {
+              if (AuthSession* auth_session_ptr = auth_session.Get()) {
+                if (const PrepareOutput* prepare_output =
+                        auth_session_ptr->GetFactorTypePrepareOutput(*type)) {
+                  *reply.mutable_prepare_output() =
+                      PrepareOutputToProto(*prepare_output);
+                }
+              }
+            }
+            ReplyWithError<user_data_auth::PrepareAuthFactorReply>(
+                std::move(on_done), std::move(reply), std::move(status));
+          },
+          std::move(auth_session).BindForCallback(),
+          AuthFactorTypeFromProto(request.auth_factor_type()),
+          std::move(on_done)));
 }
 
 void UserDataAuth::TerminateAuthFactor(

@@ -15,7 +15,6 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_factor/auth_factor.h"
-#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -89,16 +88,6 @@ class AuthBlockUtility {
       const ObfuscatedUsername& obfuscated_username,
       const AuthBlockState& auth_block_state,
       CryptohomeStatusCallback callback) = 0;
-
-  // Generates a payload for cryptohome recovery AuthFactor authentication.
-  virtual CryptohomeStatus GenerateRecoveryRequest(
-      const ObfuscatedUsername& obfuscated_username,
-      const cryptorecovery::RequestMetadata& request_metadata,
-      const brillo::Blob& epoch_response,
-      const CryptohomeRecoveryAuthBlockState& state,
-      const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
-      brillo::Blob* out_recovery_request,
-      brillo::Blob* out_ephemeral_pub_key) const = 0;
 };
 
 }  // namespace cryptohome

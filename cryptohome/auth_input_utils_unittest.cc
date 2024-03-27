@@ -13,15 +13,21 @@
 #include <gtest/gtest.h>
 #include <libstorage/platform/mock_platform.h>
 
+#include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 
-using brillo::SecureBlob;
-
 namespace cryptohome {
+namespace {
+
+using ::brillo::SecureBlob;
+using ::testing::IsEmpty;
+using ::testing::IsFalse;
+using ::testing::IsTrue;
+
+}  // namespace
 
 class AuthInputUtilsPlatformTest : public ::testing::Test {
  protected:
@@ -43,7 +49,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPassword) {
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,
                       /*locked_to_single_user=*/false,
-                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
+                      /*cryptohome_recovery_ephemeral_pub_key=*/nullptr);
   ASSERT_TRUE(auth_input.has_value());
   EXPECT_EQ(auth_input.value().user_input, SecureBlob(kPassword));
   EXPECT_EQ(auth_input.value().obfuscated_username, kObfuscatedUsername);
@@ -62,7 +68,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPasswordLocked) {
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,
                       /*locked_to_single_user=*/true,
-                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
+                      /*cryptohome_recovery_ephemeral_pub_key=*/nullptr);
   ASSERT_TRUE(auth_input.has_value());
   EXPECT_EQ(auth_input.value().user_input, SecureBlob(kPassword));
   EXPECT_EQ(auth_input.value().obfuscated_username, kObfuscatedUsername);
@@ -81,7 +87,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPin) {
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,
                       /*locked_to_single_user=*/false,
-                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
+                      /*cryptohome_recovery_ephemeral_pub_key=*/nullptr);
   ASSERT_TRUE(auth_input.has_value());
   EXPECT_EQ(auth_input.value().user_input, SecureBlob(kPin));
   EXPECT_EQ(auth_input.value().obfuscated_username, kObfuscatedUsername);
@@ -98,7 +104,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputSmartCard) {
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,
                       /*locked_to_single_user=*/false,
-                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
+                      /*cryptohome_recovery_ephemeral_pub_key=*/nullptr);
   ASSERT_TRUE(auth_input.has_value());
   EXPECT_EQ(auth_input.value().obfuscated_username, kObfuscatedUsername);
   EXPECT_EQ(auth_input.value().locked_to_single_user, false);
@@ -113,7 +119,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputErrorEmpty) {
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,
                       /*locked_to_single_user=*/false,
-                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
+                      /*cryptohome_recovery_ephemeral_pub_key=*/nullptr);
   EXPECT_FALSE(auth_input.has_value());
 }
 
@@ -128,7 +134,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputRecoveryCreate) {
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,
                       /*locked_to_single_user=*/true,
-                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
+                      /*cryptohome_recovery_ephemeral_pub_key=*/nullptr);
   ASSERT_TRUE(auth_input.has_value());
   ASSERT_TRUE(auth_input.value().cryptohome_recovery_auth_input.has_value());
   EXPECT_EQ(auth_input.value()
@@ -151,7 +157,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputRecoveryDerive) {
   AuthFactorMetadata auth_factor_metadata;
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,
-                      /*locked_to_single_user=*/true, ephemeral_pub_key);
+                      /*locked_to_single_user=*/true, &ephemeral_pub_key);
   ASSERT_TRUE(auth_input.has_value());
   ASSERT_TRUE(auth_input.value().cryptohome_recovery_auth_input.has_value());
   EXPECT_EQ(
@@ -183,7 +189,7 @@ TEST_F(AuthInputUtilsPlatformTest, FromKioskAuthInput) {
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform, proto, kUserName, kObfuscatedUsername,
                       /*locked_to_single_user=*/true,
-                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
+                      /*cryptohome_recovery_ephemeral_pub_key=*/nullptr);
   ASSERT_TRUE(auth_input.has_value());
 
   // TEST
@@ -202,7 +208,7 @@ TEST_F(AuthInputUtilsPlatformTest, FromKioskAuthInputFail) {
   std::optional<AuthInput> auth_input =
       CreateAuthInput(&platform_, proto, kUserName, kObfuscatedUsername,
                       /*locked_to_single_user=*/true,
-                      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
+                      /*cryptohome_recovery_ephemeral_pub_key=*/nullptr);
   ASSERT_FALSE(auth_input.has_value());
 }
 
@@ -243,6 +249,33 @@ TEST(AuthInputUtilsTest, DetermineFactorTypeSmartCard) {
 TEST(AuthInputUtilsTest, DetermineFactorTypeErrorUnset) {
   user_data_auth::AuthInput auth_input;
   EXPECT_EQ(DetermineFactorTypeFromAuthInput(auth_input), std::nullopt);
+}
+
+TEST(AuthInputUtilsTest, PrepareOutputToProtoEmpty) {
+  PrepareOutput prepare_output;
+  user_data_auth::PrepareOutput proto = PrepareOutputToProto(prepare_output);
+  EXPECT_THAT(proto.has_cryptohome_recovery_output(), IsFalse());
+}
+
+TEST(AuthInputUtilsTest, PrepareOutputToProtoMinimalRecovery) {
+  PrepareOutput prepare_output;
+  prepare_output.cryptohome_recovery_prepare_output.emplace();
+  user_data_auth::PrepareOutput proto = PrepareOutputToProto(prepare_output);
+  EXPECT_THAT(proto.has_cryptohome_recovery_output(), IsTrue());
+  EXPECT_THAT(proto.cryptohome_recovery_output().recovery_request(), IsEmpty());
+}
+
+TEST(AuthInputUtilsTest, PrepareOutputToProtoPopulatedRecovery) {
+  PrepareOutput prepare_output;
+  prepare_output.cryptohome_recovery_prepare_output.emplace();
+  prepare_output.cryptohome_recovery_prepare_output->recovery_rpc_request
+      .set_protocol_version(1);
+  prepare_output.cryptohome_recovery_prepare_output->ephemeral_pub_key =
+      brillo::BlobFromString("something");
+  user_data_auth::PrepareOutput proto = PrepareOutputToProto(prepare_output);
+  EXPECT_THAT(proto.has_cryptohome_recovery_output(), IsTrue());
+  EXPECT_THAT(proto.cryptohome_recovery_output().recovery_request(),
+              Not(IsEmpty()));
 }
 
 }  // namespace cryptohome

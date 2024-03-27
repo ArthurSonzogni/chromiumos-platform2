@@ -43,6 +43,8 @@
 #include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
+#include "cryptohome/auth_blocks/mock_cryptohome_recovery_service.h"
+#include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/flatbuffer.h"
@@ -265,6 +267,17 @@ class AfMapBuilder {
   AuthFactorMap map_;
 };
 
+// Minimal prepare token class. Does nothing for termination.
+class TestToken : public PreparedAuthFactorToken {
+ public:
+  using PreparedAuthFactorToken::PreparedAuthFactorToken;
+
+ private:
+  CryptohomeStatus TerminateAuthFactor() override {
+    return OkStatus<CryptohomeError>();
+  }
+};
+
 }  // namespace
 
 class AuthSessionTest : public ::testing::Test {
@@ -343,8 +356,8 @@ class AuthSessionTest : public ::testing::Test {
   UserSessionMap user_session_map_;
   NiceMock<MockKeysetManagement> keyset_management_;
   NiceMock<MockAuthBlockUtility> auth_block_utility_;
-  CryptohomeRecoveryAuthBlockService cr_service_{&platform_,
-                                                 &hwsec_recovery_crypto_};
+  NiceMock<MockCryptohomeRecoveryAuthBlockService> cr_service_{
+      &platform_, &hwsec_recovery_crypto_};
   std::unique_ptr<FingerprintAuthBlockService> fp_service_{
       FingerprintAuthBlockService::MakeNullService()};
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
@@ -2571,6 +2584,85 @@ TEST_F(AuthSessionWithUssTest, AddCryptohomeRecoveryAuthFactor) {
   EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
 }
 
+TEST_F(AuthSessionWithUssTest,
+       PrepareAndTerminateCryptohomeRecoveryAuthFactor) {
+  // Setup.
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
+  const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
+  // Setting the expectation that the user exists.
+  EXPECT_CALL(platform_, DirectoryExists(_)).WillRepeatedly(Return(true));
+  // Generating the USS.
+  CryptohomeStatusOr<DecryptedUss> uss = DecryptedUss::CreateWithRandomMainKey(
+      user_uss_storage_, FileSystemKeyset::CreateRandom());
+  ASSERT_THAT(uss, IsOk());
+  // Creating the auth factor.
+  AuthFactor auth_factor(
+      AuthFactorType::kCryptohomeRecovery, kFakeLabel,
+      AuthFactorMetadata{.metadata = CryptohomeRecoveryMetadata()},
+      AuthBlockState{.state = CryptohomeRecoveryAuthBlockState()});
+  EXPECT_TRUE(
+      auth_factor_manager_.SaveAuthFactorFile(obfuscated_username, auth_factor)
+          .ok());
+  AuthFactorMap auth_factor_map;
+  auth_factor_map.Add(std::move(auth_factor),
+                      AuthFactorStorageType::kUserSecretStash);
+  // Adding the auth factor into the USS.
+  const KeyBlobs key_blobs = {.vkk_key = kFakePerCredentialSecret};
+  std::optional<brillo::SecureBlob> wrapping_key =
+      key_blobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(wrapping_key.has_value());
+  {
+    auto transaction = uss->StartTransaction();
+    ASSERT_THAT(transaction.InsertWrappedMainKey(kFakeLabel, *wrapping_key),
+                IsOk());
+    ASSERT_THAT(std::move(transaction).Commit(), IsOk());
+  }
+
+  // Set up expectations that the request will succeed.
+  EXPECT_CALL(cr_service_, GenerateRecoveryRequest(_, _, _, _, _))
+      .WillOnce([](const ObfuscatedUsername&,
+                   const cryptorecovery::RequestMetadata&, const brillo::Blob&,
+                   const CryptohomeRecoveryAuthBlockState&,
+                   PreparedAuthFactorToken::Consumer on_done) {
+        PrepareOutput prepare_output = {
+            .cryptohome_recovery_prepare_output =
+                CryptohomeRecoveryPrepareOutput{},
+        };
+        std::move(on_done).Run(std::make_unique<TestToken>(
+            AuthFactorType::kCryptohomeRecovery, std::move(prepare_output)));
+      });
+
+  // Prepare the recovery factor.
+  AuthSession auth_session({.username = kFakeUsername,
+                            .is_ephemeral_user = false,
+                            .intent = AuthIntent::kDecrypt,
+                            .auth_factor_status_update_timer =
+                                std::make_unique<base::WallClockTimer>(),
+                            .user_exists = true},
+                           backing_apis_);
+  TestFuture<CryptohomeStatus> prepare_future;
+  user_data_auth::PrepareAuthFactorRequest prepare_request;
+  prepare_request.set_auth_session_id(auth_session.serialized_token());
+  prepare_request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  prepare_request.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  auto* recovery_input = prepare_request.mutable_prepare_input()
+                             ->mutable_cryptohome_recovery_input();
+  recovery_input->set_auth_factor_label(kFakeLabel);
+  auth_session.PrepareAuthFactor(prepare_request, prepare_future.GetCallback());
+  ASSERT_THAT(prepare_future.Get(), IsOk());
+
+  // Terminate the recovery factor.
+  user_data_auth::TerminateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  TestFuture<CryptohomeStatus> terminate_future;
+  auth_session.TerminateAuthFactor(request, terminate_future.GetCallback());
+  ASSERT_THAT(terminate_future.Get(), IsOk());
+}
+
 TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
   // Setup.
   const ObfuscatedUsername obfuscated_username =
@@ -2617,18 +2709,19 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
-  // Setting the expectation that the auth block utility will generate
-  // recovery request.
-  EXPECT_CALL(auth_block_utility_, GenerateRecoveryRequest(_, _, _, _, _, _, _))
-      .WillOnce([](const ObfuscatedUsername& obfuscated_username,
-                   const cryptorecovery::RequestMetadata& request_metadata,
-                   const brillo::Blob& epoch_response,
-                   const CryptohomeRecoveryAuthBlockState& state,
-                   const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
-                   brillo::Blob* out_recovery_request,
-                   brillo::Blob* out_ephemeral_pub_key) {
-        *out_ephemeral_pub_key = brillo::BlobFromString("test");
-        return OkStatus<CryptohomeError>();
+  // Set up expectations that the request will succeed.
+  EXPECT_CALL(cr_service_, GenerateRecoveryRequest(_, _, _, _, _))
+      .WillOnce([](const ObfuscatedUsername&,
+                   const cryptorecovery::RequestMetadata&, const brillo::Blob&,
+                   const CryptohomeRecoveryAuthBlockState&,
+                   PreparedAuthFactorToken::Consumer on_done) {
+        PrepareOutput prepare_output = {
+            .cryptohome_recovery_prepare_output =
+                CryptohomeRecoveryPrepareOutput{
+                    .ephemeral_pub_key = brillo::BlobFromString("test")},
+        };
+        std::move(on_done).Run(std::make_unique<TestToken>(
+            AuthFactorType::kCryptohomeRecovery, std::move(prepare_output)));
       });
   EXPECT_FALSE(auth_session.has_user_secret_stash());
 
@@ -2749,18 +2842,19 @@ TEST_F(AuthSessionWithUssTest,
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test.
-  // Setting the expectation that the auth block utility will generate
-  // recovery request.
-  EXPECT_CALL(auth_block_utility_, GenerateRecoveryRequest(_, _, _, _, _, _, _))
-      .WillOnce([](const ObfuscatedUsername& obfuscated_username,
-                   const cryptorecovery::RequestMetadata& request_metadata,
-                   const brillo::Blob& epoch_response,
-                   const CryptohomeRecoveryAuthBlockState& state,
-                   const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
-                   brillo::Blob* out_recovery_request,
-                   brillo::Blob* out_ephemeral_pub_key) {
-        *out_ephemeral_pub_key = brillo::BlobFromString("test");
-        return OkStatus<CryptohomeError>();
+  // Set up expectations that the request will succeed.
+  EXPECT_CALL(cr_service_, GenerateRecoveryRequest(_, _, _, _, _))
+      .WillOnce([](const ObfuscatedUsername&,
+                   const cryptorecovery::RequestMetadata&, const brillo::Blob&,
+                   const CryptohomeRecoveryAuthBlockState&,
+                   PreparedAuthFactorToken::Consumer on_done) {
+        PrepareOutput prepare_output = {
+            .cryptohome_recovery_prepare_output =
+                CryptohomeRecoveryPrepareOutput{
+                    .ephemeral_pub_key = brillo::BlobFromString("test")},
+        };
+        std::move(on_done).Run(std::make_unique<TestToken>(
+            AuthFactorType::kCryptohomeRecovery, std::move(prepare_output)));
       });
   EXPECT_FALSE(auth_session.has_user_secret_stash());
 

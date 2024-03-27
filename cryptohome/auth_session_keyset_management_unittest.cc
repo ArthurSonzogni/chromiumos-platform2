@@ -879,7 +879,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthenticatePasswordVkToKioskUss) {
   std::optional<AuthInput> auth_input = CreateAuthInput(
       &system_apis_.platform, proto, users_[0].username, users_[0].obfuscated,
       /*locked_to_single_user=*/true,
-      /*cryptohome_recovery_ephemeral_pub_key=*/std::nullopt);
+      /*cryptohome_recovery_ephemeral_pub_key=*/nullptr);
   auth_block_utility_.CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmEcc, auth_input.value(), {},
       base::BindLambdaForTesting(

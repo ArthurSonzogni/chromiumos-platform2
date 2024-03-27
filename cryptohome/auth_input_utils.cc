@@ -17,7 +17,6 @@
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 
@@ -42,7 +41,7 @@ AuthInput FromPinAuthInput(const user_data_auth::PinAuthInput& proto) {
 
 AuthInput FromCryptohomeRecoveryAuthInput(
     const user_data_auth::CryptohomeRecoveryAuthInput& proto,
-    const std::optional<brillo::Blob>& cryptohome_recovery_ephemeral_pub_key) {
+    const brillo::Blob* cryptohome_recovery_ephemeral_pub_key) {
   CryptohomeRecoveryAuthInput recovery_auth_input{
       // These fields are used for `Create`:
       .mediator_pub_key = brillo::BlobFromString(proto.mediator_pub_key()),
@@ -50,8 +49,9 @@ AuthInput FromCryptohomeRecoveryAuthInput(
       .device_user_id = proto.device_user_id(),
       // These fields are used for `Derive`:
       .epoch_response = brillo::BlobFromString(proto.epoch_response()),
-      .ephemeral_pub_key =
-          cryptohome_recovery_ephemeral_pub_key.value_or(brillo::Blob()),
+      .ephemeral_pub_key = cryptohome_recovery_ephemeral_pub_key
+                               ? *cryptohome_recovery_ephemeral_pub_key
+                               : brillo::Blob(),
       .recovery_response = brillo::BlobFromString(proto.recovery_response()),
       .ledger_name = proto.ledger_info().name(),
       .ledger_key_hash = proto.ledger_info().key_hash(),
@@ -131,7 +131,7 @@ std::optional<AuthInput> CreateAuthInput(
     const Username& username,
     const ObfuscatedUsername& obfuscated_username,
     bool locked_to_single_user,
-    const std::optional<brillo::Blob>& cryptohome_recovery_ephemeral_pub_key) {
+    const brillo::Blob* cryptohome_recovery_ephemeral_pub_key) {
   std::optional<AuthInput> auth_input;
   switch (auth_input_proto.input_case()) {
     case user_data_auth::AuthInput::kPasswordInput:
@@ -198,6 +198,17 @@ std::optional<AuthFactorType> DetermineFactorTypeFromAuthInput(
     case user_data_auth::AuthInput::INPUT_NOT_SET:
       return std::nullopt;
   }
+}
+
+user_data_auth::PrepareOutput PrepareOutputToProto(
+    const PrepareOutput& prepare_output) {
+  user_data_auth::PrepareOutput proto;
+  if (prepare_output.cryptohome_recovery_prepare_output) {
+    proto.mutable_cryptohome_recovery_output()->set_recovery_request(
+        prepare_output.cryptohome_recovery_prepare_output->recovery_rpc_request
+            .SerializeAsString());
+  }
+  return proto;
 }
 
 }  // namespace cryptohome

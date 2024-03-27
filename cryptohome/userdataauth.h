@@ -908,6 +908,10 @@ class UserDataAuth {
       user_data_auth::ModifyAuthFactorIntentsRequest request,
       OnDoneCallback<user_data_auth::ModifyAuthFactorIntentsReply> on_done,
       InUseAuthSession auth_session);
+  void PrepareAuthFactorWithSession(
+      user_data_auth::PrepareAuthFactorRequest request,
+      OnDoneCallback<user_data_auth::PrepareAuthFactorReply> on_done,
+      InUseAuthSession auth_session);
   void RestoreDeviceKeyWithSession(
       user_data_auth::RestoreDeviceKeyRequest request,
       OnDoneCallback<user_data_auth::RestoreDeviceKeyReply> on_done,

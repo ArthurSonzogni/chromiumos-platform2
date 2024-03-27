@@ -754,9 +754,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInGetRecoveryRequest = 464,
   /* ./auth_session.cc */
-  kLocAuthSessionFactorNotFoundInGetRecoveryRequest = 465,
+  kLocAuthSessionFactorNotFoundInCreatePrepareInput = 465,
   /* ./auth_session.cc */
-  kLocNoRecoveryAuthBlockStateInGetRecoveryRequest = 466,
+  kLocNoRecoveryAuthBlockStateInCreatePrepareInput = 466,
   /* ./auth_session.cc */
   kLocCryptoFailedInGenerateRecoveryRequest = 467,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
@@ -894,7 +894,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_blocks/cryptohome_recovery_auth_block.cc */
   kLocRecoveryAuthBlockCantParseResponseInDerive = 534,
   /* ./auth_session.cc */
-  kLocWrongAuthFactorInGetRecoveryRequest = 535,
+  kLocWrongAuthFactorInCreatePrepareInput = 535,
   /* =Obsolete= */
   kLocAuthSessionEmptyKeyLabelInAuth = 536,
   /* =Obsolete= */
@@ -1998,9 +1998,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_session.cc */
   kLocAuthSessionNoRateLimiterInAuthInputPrepareAdd = 3414,
   /* ./auth_session.cc */
-  kLocAuthSessionGetMetadataFailedInAuthInputPrepareAuth = 3415,
+  kLocAuthSessionGetMetadataFailedInCreatePrepareInput = 3415,
   /* ./auth_session.cc */
-  kLocAuthSessionNoRateLimiterInAuthInputPrepareAuth = 3416,
+  kLocAuthSessionNoRateLimiterInCreatePrepareInput = 3416,
   /* =Obsolete= */
   kLocAuthFactorLegacyFpPrepareForAuthNoUsername = 3417,
   /* ./auth_factor/types/fingerprint.cc */

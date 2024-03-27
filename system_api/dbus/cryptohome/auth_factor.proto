@@ -165,16 +165,13 @@ message AuthInput {
 // Recovery requires input to generate the initial request to be sent to the
 // recovery server.
 message CryptohomeRecoveryPrepareInput {
+  // Label to identify the existing cryptohome recovery AuthFactor.
+  string auth_factor_label = 2;
+  // The type of user being requested.
   enum UserType {
     UNKNOWN = 0;
     GAIA_ID = 1;
   }
-
-  // This id would be used to associate the AuthFactor to an AuthSession.
-  bytes auth_session_id = 1;
-  // Label to identify the existing cryptohome recovery AuthFactor.
-  string auth_factor_label = 2;
-
   UserType requestor_user_id_type = 3;
   // Format of `requestor_user_id` is determined by `requestor_user_id_type`
   // enum. For GAIA_ID it's number string obfuscated Gaia id.
@@ -188,6 +185,8 @@ message CryptohomeRecoveryPrepareInput {
   // An epoch response received from Recovery Mediator service containing epoch
   // beacon value for Cryptohome recovery flow.
   bytes epoch_response = 7;
+
+  reserved 1;
 }
 
 // PrepareInput is a wrapper around any secret or input data that is required to

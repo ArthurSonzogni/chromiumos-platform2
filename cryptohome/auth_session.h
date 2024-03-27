@@ -208,10 +208,16 @@ class AuthSession final {
 
   // Indicates if there is a reset_secret in session's User Secret Stash for
   // the given label.
-  inline bool HasResetSecretInUssForTesting(const std::string& label) const {
+  bool HasResetSecretInUssForTesting(const std::string& label) const {
     return decrypt_token_ &&
            uss_manager_->GetDecrypted(*decrypt_token_).GetResetSecret(label);
   }
+
+  // Looks up the prepare output for a given factor type. Will return null if
+  // the factor type is not currently active (i.e. it has not been prepared, or
+  // its prior preparation was terminated).
+  const PrepareOutput* GetFactorTypePrepareOutput(
+      AuthFactorType auth_factor_type) const;
 
   // OnUserCreated is called when the user and their homedir are newly created.
   // Must be called no more than once.
@@ -965,10 +971,6 @@ class AuthSession final {
   std::optional<FileSystemKeyset> file_system_keyset_;
   // Whether the user existed at the time this object was constructed.
   bool user_exists_;
-  // Key used by AuthenticateAuthFactor for cryptohome recovery AuthFactor.
-  // It's set only after GetRecoveryRequest() call, and is std::nullopt in other
-  // cases.
-  std::optional<brillo::Blob> cryptohome_recovery_ephemeral_pub_key_;
   // Tokens from active auth factors, keyed off of the token's auth factor type.
   std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
       active_auth_factor_tokens_;

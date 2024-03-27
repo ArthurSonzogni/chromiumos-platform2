@@ -19,13 +19,10 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
-#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_blocks/generic.h"
-#include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
@@ -284,45 +281,6 @@ void AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
 
   auth_block_ptr->PrepareForRemoval(obfuscated_username, auth_block_state,
                                     std::move(managed_callback));
-}
-
-CryptohomeStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
-    const ObfuscatedUsername& obfuscated_username,
-    const cryptorecovery::RequestMetadata& request_metadata,
-    const brillo::Blob& epoch_response,
-    const CryptohomeRecoveryAuthBlockState& state,
-    const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
-    brillo::Blob* out_recovery_request,
-    brillo::Blob* out_ephemeral_pub_key) const {
-  // Implement GenerateRecoveryRequest by constructing a recovery service
-  // instance and calling it. This isn't really a proper way to implement this,
-  // because we are constructing a new instance on every call, and because we're
-  // assuming the call is synchronous (it is, but we shouldn't assume that).
-  // However, this is just transitional code while we convert GetRecoveryRequest
-  // over to PrepareAuthFactor.
-  CryptohomeRecoveryAuthBlockService service(platform_, recovery_hwsec);
-  CryptohomeStatus status;
-  service.GenerateRecoveryRequest(
-      obfuscated_username, request_metadata, epoch_response, state,
-      base::BindOnce(
-          [](CryptohomeStatus* out_status, brillo::Blob* out_recovery_request,
-             brillo::Blob* out_ephemeral_pub_key,
-             CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>
-                 token) {
-            if (token.ok()) {
-              *out_status = OkStatus<CryptohomeError>();
-              auto& prepare_output =
-                  (*token)->prepare_output().cryptohome_recovery_prepare_output;
-              *out_recovery_request = brillo::BlobFromString(
-                  prepare_output->recovery_rpc_request.SerializeAsString());
-              *out_ephemeral_pub_key =
-                  std::move(prepare_output->ephemeral_pub_key);
-            } else {
-              *out_status = std::move(token).err_status();
-            }
-          },
-          &status, out_recovery_request, out_ephemeral_pub_key));
-  return status;
 }
 
 }  // namespace cryptohome

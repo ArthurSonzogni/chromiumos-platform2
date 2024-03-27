@@ -78,15 +78,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
                                   const AuthBlockState& auth_block_state,
                                   CryptohomeStatusCallback callback) override;
 
-  CryptohomeStatus GenerateRecoveryRequest(
-      const ObfuscatedUsername& obfuscated_username,
-      const cryptorecovery::RequestMetadata& request_metadata,
-      const brillo::Blob& epoch_response,
-      const CryptohomeRecoveryAuthBlockState& state,
-      const hwsec::RecoveryCryptoFrontend* recovery_hwsec,
-      brillo::Blob* out_recovery_request,
-      brillo::Blob* out_ephemeral_pub_key) const override;
-
   // Factory function to construct an auth block of the given type.
   CryptoStatusOr<std::unique_ptr<AuthBlock>> GetAuthBlockWithType(
       AuthBlockType auth_block_type, const AuthInput& auth_input);

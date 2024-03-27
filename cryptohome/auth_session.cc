@@ -8,7 +8,6 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -25,6 +24,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/memory/weak_ptr.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -156,29 +156,6 @@ std::string IntentSetToDebugString(const base::flat_set<AuthIntent>& intents) {
     strings.push_back(IntentToDebugString(intent));
   }
   return base::JoinString(strings, ",");
-}
-
-cryptorecovery::RequestMetadata RequestMetadataFromProto(
-    const user_data_auth::GetRecoveryRequestRequest& request) {
-  cryptorecovery::RequestMetadata result;
-
-  result.requestor_user_id = request.requestor_user_id();
-  switch (request.requestor_user_id_type()) {
-    case user_data_auth::GetRecoveryRequestRequest_UserType_GAIA_ID:
-      result.requestor_user_id_type = cryptorecovery::UserType::kGaiaId;
-      break;
-    case user_data_auth::GetRecoveryRequestRequest_UserType_UNKNOWN:
-    default:
-      result.requestor_user_id_type = cryptorecovery::UserType::kUnknown;
-      break;
-  }
-
-  result.auth_claim = cryptorecovery::AuthClaim{
-      .gaia_access_token = request.gaia_access_token(),
-      .gaia_reauth_proof_token = request.gaia_reauth_proof_token(),
-  };
-
-  return result;
 }
 
 // Generates a PIN reset secret from the |reset_seed| of the passed password
@@ -682,6 +659,15 @@ void AuthSession::SendAuthFactorStatusUpdateSignal() {
       break;
     }
   }
+}
+
+const PrepareOutput* AuthSession::GetFactorTypePrepareOutput(
+    AuthFactorType auth_factor_type) const {
+  auto iter = active_auth_factor_tokens_.find(auth_factor_type);
+  if (iter != active_auth_factor_tokens_.end()) {
+    return &iter->second->prepare_output();
+  }
+  return nullptr;
 }
 
 CryptohomeStatus AuthSession::OnUserCreated() {
@@ -2958,81 +2944,63 @@ void AuthSession::GetRecoveryRequest(
     user_data_auth::GetRecoveryRequestRequest request,
     base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
         on_done) {
-  user_data_auth::GetRecoveryRequestReply reply;
+  // Convert the recovery request into an equivalent PrepareAuthFactor request.
+  user_data_auth::PrepareAuthFactorRequest prepare_request;
+  prepare_request.set_auth_session_id(
+      std::move(*request.mutable_auth_session_id()));
+  prepare_request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  prepare_request.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  auto* recovery_input = prepare_request.mutable_prepare_input()
+                             ->mutable_cryptohome_recovery_input();
+  recovery_input->set_auth_factor_label(
+      std::move(*request.mutable_auth_factor_label()));
+  recovery_input->set_requestor_user_id_type(
+      static_cast<user_data_auth::CryptohomeRecoveryPrepareInput::UserType>(
+          request.requestor_user_id_type()));
+  recovery_input->set_gaia_access_token(
+      std::move(*request.mutable_gaia_access_token()));
+  recovery_input->set_gaia_reauth_proof_token(
+      std::move(*request.mutable_gaia_reauth_proof_token()));
+  recovery_input->set_epoch_response(
+      std::move(*request.mutable_epoch_response()));
 
-  // Check the factor exists.
-  std::optional<AuthFactorMap::ValueView> stored_auth_factor =
-      GetAuthFactorMap().Find(request.auth_factor_label());
-  if (!stored_auth_factor) {
-    LOG(ERROR) << "Authentication key not found: "
-               << request.auth_factor_label();
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionFactorNotFoundInGetRecoveryRequest),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_KEY_NOT_FOUND));
-    return;
-  }
-
-  // Read CryptohomeRecoveryAuthBlockState.
-  if (stored_auth_factor->auth_factor().type() !=
-      AuthFactorType::kCryptohomeRecovery) {
-    LOG(ERROR) << "GetRecoveryRequest can be called only for "
-                  "kCryptohomeRecovery auth factor";
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocWrongAuthFactorInGetRecoveryRequest),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_KEY_NOT_FOUND));
-    return;
-  }
-
-  auto* state = std::get_if<::cryptohome::CryptohomeRecoveryAuthBlockState>(
-      &(stored_auth_factor->auth_factor().auth_block_state().state));
-  if (!state) {
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocNoRecoveryAuthBlockStateInGetRecoveryRequest),
-            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_KEY_NOT_FOUND));
-    return;
-  }
-
-  brillo::Blob ephemeral_pub_key, recovery_request;
-  // GenerateRecoveryRequest will set:
-  // - `recovery_request` on the `reply` object
-  // - `ephemeral_pub_key` which is saved in AuthSession and retrieved during
-  // the `AuthenticateAuthFactor` call.
-  CryptohomeStatus status = auth_block_utility_->GenerateRecoveryRequest(
-      obfuscated_username_, RequestMetadataFromProto(request),
-      brillo::BlobFromString(request.epoch_response()), *state,
-      crypto_->GetRecoveryCrypto(), &recovery_request, &ephemeral_pub_key);
-  if (!status.ok()) {
-    if (status->local_legacy_error().has_value()) {
-      // Note: the error format should match `cryptohome_recovery_failure` in
-      // crash-reporter/anomaly_detector.cc
-      LOG(ERROR) << "Cryptohome Recovery GetRecoveryRequest failure, error = "
-                 << status->local_legacy_error().value();
-    }
-    ReplyWithError(
-        std::move(on_done), reply,
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocCryptoFailedInGenerateRecoveryRequest))
-            .Wrap(std::move(status)));
-    return;
-  }
-
-  cryptohome_recovery_ephemeral_pub_key_ = ephemeral_pub_key;
-  reply.set_recovery_request(brillo::BlobToString(recovery_request));
-  std::move(on_done).Run(reply);
+  // Delegate the recovery request lookup to a PrepareAuthFactor call. This
+  // requires wrapping the on_done callback with one that can translate the
+  // result of the Prepare operation into a GetRecoveryRequestReply.
+  PrepareAuthFactor(
+      std::move(prepare_request),
+      base::BindOnce(
+          [](base::WeakPtr<AuthSession> auth_session,
+             base::OnceCallback<void(
+                 const user_data_auth::GetRecoveryRequestReply&)> on_done,
+             CryptohomeStatus status) {
+            user_data_auth::GetRecoveryRequestReply reply;
+            // If the prepare failed, then return an error.
+            if (!status.ok()) {
+              ReplyWithError(std::move(on_done), reply,
+                             MakeStatus<CryptohomeError>(
+                                 CRYPTOHOME_ERR_LOC(
+                                     kLocCryptoFailedInGenerateRecoveryRequest))
+                                 .Wrap(std::move(status)));
+              return;
+            }
+            // On success, extract the recovery RPC request and add it into the
+            // RPC response.
+            if (auth_session) {
+              if (const PrepareOutput* prepare_output =
+                      auth_session->GetFactorTypePrepareOutput(
+                          AuthFactorType::kCryptohomeRecovery)) {
+                if (prepare_output->cryptohome_recovery_prepare_output) {
+                  reply.set_recovery_request(
+                      prepare_output->cryptohome_recovery_prepare_output
+                          ->recovery_rpc_request.SerializeAsString());
+                }
+              }
+            }
+            std::move(on_done).Run(reply);
+          },
+          weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
 AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
@@ -3121,10 +3089,22 @@ void AuthSession::ResaveKeysetOnKeyBlobsGenerated(
 
 CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAuthentication(
     const user_data_auth::AuthInput& auth_input_proto) {
+  // Look up the ephemeral public key. If a recovery operation has been prepared
+  // then it should be available.
+  const brillo::Blob* cryptohome_recovery_ephemeral_pub_key = nullptr;
+  if (const PrepareOutput* prepare_output =
+          GetFactorTypePrepareOutput(AuthFactorType::kCryptohomeRecovery)) {
+    if (prepare_output->cryptohome_recovery_prepare_output) {
+      cryptohome_recovery_ephemeral_pub_key =
+          &prepare_output->cryptohome_recovery_prepare_output
+               ->ephemeral_pub_key;
+    }
+  }
+
   std::optional<AuthInput> auth_input = CreateAuthInput(
       platform_, auth_input_proto, username_, obfuscated_username_,
       auth_block_utility_->GetLockedToSingleUser(),
-      cryptohome_recovery_ephemeral_pub_key_);
+      cryptohome_recovery_ephemeral_pub_key);
   if (!auth_input.has_value()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocCreateFailedInAuthInputForAuth),
@@ -3175,8 +3155,7 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
   // Convert the proto to a basic AuthInput.
   std::optional<AuthInput> auth_input = CreateAuthInput(
       platform_, auth_input_proto, username_, obfuscated_username_,
-      auth_block_utility_->GetLockedToSingleUser(),
-      cryptohome_recovery_ephemeral_pub_key_);
+      auth_block_utility_->GetLockedToSingleUser(), nullptr);
   if (!auth_input.has_value()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocCreateFailedInAuthInputForAdd),
@@ -3322,7 +3301,75 @@ AuthSession::CreatePrepareInputForAuthentication(
 
   switch (prepare_input_proto.input_case()) {
     case user_data_auth::PrepareInput::kCryptohomeRecoveryInput: {
-      // TODO(b/269619280): Implement construction of the request.
+      // Set up references to the recovery-specific proto input as well as the
+      // recovery-specific non-proto input to be filled in.
+      const auto& recovery_input_proto =
+          prepare_input_proto.cryptohome_recovery_input();
+      prepare_input.cryptohome_recovery_prepare_input.emplace();
+      CryptohomeRecoveryPrepareInput& recovery_input =
+          *prepare_input.cryptohome_recovery_prepare_input;
+
+      // Populate the request metadata from the prepare input.
+      {
+        auto& metadata = recovery_input.request_metadata;
+        metadata.requestor_user_id = recovery_input_proto.requestor_user_id();
+        switch (recovery_input_proto.requestor_user_id_type()) {
+          case user_data_auth::CryptohomeRecoveryPrepareInput::GAIA_ID:
+            metadata.requestor_user_id_type = cryptorecovery::UserType::kGaiaId;
+            break;
+          case user_data_auth::CryptohomeRecoveryPrepareInput::UNKNOWN:
+          default:
+            metadata.requestor_user_id_type =
+                cryptorecovery::UserType::kUnknown;
+            break;
+        }
+        metadata.auth_claim = cryptorecovery::AuthClaim{
+            .gaia_access_token = recovery_input_proto.gaia_access_token(),
+            .gaia_reauth_proof_token =
+                recovery_input_proto.gaia_reauth_proof_token(),
+        };
+      }
+
+      // Extract the epoch response directly from the input.
+      recovery_input.epoch_response =
+          brillo::BlobFromString(recovery_input_proto.epoch_response());
+
+      // Load the auth factor specified by the input and use it to load the
+      // recovery-specific auth block state.
+      std::optional<AuthFactorMap::ValueView> stored_auth_factor =
+          GetAuthFactorMap().Find(recovery_input_proto.auth_factor_label());
+      if (!stored_auth_factor) {
+        LOG(ERROR) << "Authentication key not found: "
+                   << recovery_input_proto.auth_factor_label();
+        return MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionFactorNotFoundInCreatePrepareInput),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+      }
+      if (stored_auth_factor->auth_factor().type() !=
+          AuthFactorType::kCryptohomeRecovery) {
+        LOG(ERROR) << "GetRecoveryRequest can be called only for "
+                      "kCryptohomeRecovery auth factor";
+        return MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocWrongAuthFactorInCreatePrepareInput),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+      }
+      auto* state = std::get_if<::cryptohome::CryptohomeRecoveryAuthBlockState>(
+          &(stored_auth_factor->auth_factor().auth_block_state().state));
+      if (!state) {
+        return MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocNoRecoveryAuthBlockStateInCreatePrepareInput),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+      }
+      recovery_input.auth_block_state = *state;
+
       break;
     }
     default:
@@ -3339,7 +3386,7 @@ AuthSession::CreatePrepareInputForAuthentication(
         uss_manager_->LoadEncrypted(obfuscated_username_),
         _.WithStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionGetMetadataFailedInAuthInputPrepareAuth),
+                kLocAuthSessionGetMetadataFailedInCreatePrepareInput),
             user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
 
     // Currently fingerprint is the only auth factor type using rate
@@ -3347,8 +3394,7 @@ AuthSession::CreatePrepareInputForAuthentication(
     // auth factor types in the future.
     if (!encrypted_uss->fingerprint_rate_limiter_id().has_value()) {
       return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthSessionNoRateLimiterInAuthInputPrepareAuth),
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoRateLimiterInCreatePrepareInput),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
                           PossibleAction::kAuth}),
           user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
