@@ -22,7 +22,7 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/mojom/mojo_service_provider.h"
+#include "shill/mojom/shill_mojo_service_manager.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/shill_config.h"
 #include "shill/wifi/nl80211_message.h"
@@ -68,21 +68,20 @@ bool DaemonTask::Quit(base::OnceClosure completion_callback) {
 }
 
 void DaemonTask::Init() {
-  dispatcher_.reset(new EventDispatcher());
-  control_.reset(new DBusControl(dispatcher_.get()));
-  metrics_.reset(new Metrics());
+  dispatcher_ = std::make_unique<EventDispatcher>();
+  control_ = std::make_unique<DBusControl>(dispatcher_.get());
+  metrics_ = std::make_unique<Metrics>();
   rtnl_handler_ = net_base::RTNLHandler::GetInstance();
   dhcp_provider_ = DHCPProvider::GetInstance();
   process_manager_ = net_base::ProcessManager::GetInstance();
   netlink_manager_ = net_base::NetlinkManager::GetInstance();
-  manager_.reset(new Manager(control_.get(), dispatcher_.get(), metrics_.get(),
-                             config_->GetRunDirectory(),
-                             config_->GetStorageDirectory(),
-                             config_->GetUserStorageDirectory()));
+  manager_ = std::make_unique<Manager>(
+      control_.get(), dispatcher_.get(), metrics_.get(),
+      config_->GetRunDirectory(), config_->GetStorageDirectory(),
+      config_->GetUserStorageDirectory());
   control_->RegisterManagerObject(
       manager_.get(),
       base::BindOnce(&DaemonTask::Start, base::Unretained(this)));
-  mojo_provider_ = std::make_unique<MojoServiceProvider>(manager_.get());
   ApplySettings();
 }
 
@@ -142,12 +141,11 @@ void DaemonTask::Start() {
     netlink_manager_->Start();
   }
   manager_->Start();
-  mojo_provider_->Start();
+  mojo_service_manager_ = mojo_service_manager_factory_->Create(manager_.get());
 }
 
 void DaemonTask::Stop() {
-  mojo_provider_->Stop();
-  mojo_provider_ = nullptr;
+  mojo_service_manager_ = nullptr;
   manager_->Stop();
   manager_ = nullptr;  // Release manager resources, including DBus adaptor.
   dhcp_provider_->Stop();

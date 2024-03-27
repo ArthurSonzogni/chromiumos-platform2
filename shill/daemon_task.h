@@ -16,6 +16,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
+#include "shill/mojom/shill_mojo_service_manager.h"
 
 namespace shill {
 
@@ -24,7 +25,6 @@ class ControlInterface;
 class DHCPProvider;
 class Error;
 class Manager;
-class MojoServiceProvider;
 class RoutingPolicyService;
 class RoutingTable;
 
@@ -90,7 +90,10 @@ class DaemonTask {
   net_base::NetlinkManager* netlink_manager_;
   net_base::ProcessManager* process_manager_;
   std::unique_ptr<Manager> manager_;
-  std::unique_ptr<MojoServiceProvider> mojo_provider_;
+  std::unique_ptr<ShillMojoServiceManagerFactory>
+      mojo_service_manager_factory_ =
+          std::make_unique<ShillMojoServiceManagerFactory>();
+  std::unique_ptr<ShillMojoServiceManager> mojo_service_manager_;
   base::OnceClosure termination_completed_callback_;
 };
 

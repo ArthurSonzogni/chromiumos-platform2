@@ -5,6 +5,7 @@
 #include <linux/rtnetlink.h>
 #include <stdint.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,7 +23,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mojom/mock_mojo_service_provider.h"
+#include "shill/mojom/mock_shill_mojo_service_manager.h"
 #include "shill/network/mock_dhcp_provider.h"
 #include "shill/shill_test_config.h"
 #include "shill/supplicant/supplicant_manager.h"
@@ -31,6 +32,7 @@
 
 using ::testing::_;
 using ::testing::Expectation;
+using ::testing::InSequence;
 using ::testing::Mock;
 using ::testing::Return;
 using ::testing::Test;
@@ -71,8 +73,7 @@ class DaemonTaskTest : public Test {
         dispatcher_(new EventDispatcherForTest()),
         control_(new MockControl()),
         metrics_(new MockMetrics()),
-        manager_(new MockManager(control_, dispatcher_, metrics_)),
-        mojo_provider_(new MockMojoServiceProvider(manager_)) {}
+        manager_(new MockManager(control_, dispatcher_, metrics_)) {}
   ~DaemonTaskTest() override = default;
   void SetUp() override {
     // Tests initialization done by the daemon's constructor
@@ -84,7 +85,12 @@ class DaemonTaskTest : public Test {
     daemon_.control_.reset(control_);        // Passes ownership
     daemon_.dispatcher_.reset(dispatcher_);  // Passes ownership
     daemon_.netlink_manager_ = &netlink_manager_;
-    daemon_.mojo_provider_.reset(mojo_provider_);
+
+    auto mojo_service_manager_factory =
+        std::make_unique<MockShillMojoServiceManagerFactory>();
+    mojo_service_manager_factory_ = mojo_service_manager_factory.get();
+    daemon_.mojo_service_manager_factory_ =
+        std::move(mojo_service_manager_factory);
   }
   void StartDaemon() { daemon_.Start(); }
 
@@ -97,6 +103,7 @@ class DaemonTaskTest : public Test {
     daemon_.ApplySettings();
   }
 
+  MOCK_METHOD(void, OnMojoServiceDestroyed, ());
   MOCK_METHOD(void, TerminationAction, ());
   MOCK_METHOD(void, BreakTerminationLoop, ());
 
@@ -110,11 +117,12 @@ class DaemonTaskTest : public Test {
   MockControl* control_;
   MockMetrics* metrics_;
   MockManager* manager_;
+  MockShillMojoServiceManagerFactory* mojo_service_manager_factory_;
   net_base::MockNetlinkManager netlink_manager_;
-  MockMojoServiceProvider* mojo_provider_;
 };
 
 TEST_F(DaemonTaskTest, StartStop) {
+  const uint16_t kNl80211MessageType = 42;  // Arbitrary.
   // To ensure we do not have any stale routes, we flush a device's routes
   // when it is started.  This requires that the routing table is fully
   // populated before we create and start devices.  So test to make sure that
@@ -123,27 +131,37 @@ TEST_F(DaemonTaskTest, StartStop) {
   // The result is that we request the dump of the routing table and when that
   // completes, we request the dump of the links.  For each link found, we
   // create and start the device.
-  EXPECT_CALL(rtnl_handler_, Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR |
-                                   RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_IFADDR |
-                                   RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
-  EXPECT_CALL(dhcp_provider_, Init(_, _, _));
-  EXPECT_CALL(process_manager_, Init());
-  EXPECT_CALL(netlink_manager_, Init());
-  const uint16_t kNl80211MessageType = 42;  // Arbitrary.
-  EXPECT_CALL(netlink_manager_,
-              GetFamily(Nl80211Message::kMessageTypeString, _))
-      .WillOnce(Return(kNl80211MessageType));
-  EXPECT_CALL(netlink_manager_, Start());
-  EXPECT_CALL(*manager_, Start());
-  EXPECT_CALL(*mojo_provider_, Start());
+  {
+    InSequence s;
+    EXPECT_CALL(rtnl_handler_, Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR |
+                                     RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_IFADDR |
+                                     RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
+    EXPECT_CALL(dhcp_provider_, Init(_, _, _));
+    EXPECT_CALL(process_manager_, Init());
+    EXPECT_CALL(netlink_manager_, Init());
+    EXPECT_CALL(netlink_manager_,
+                GetFamily(Nl80211Message::kMessageTypeString, _))
+        .WillOnce(Return(kNl80211MessageType));
+    EXPECT_CALL(netlink_manager_, Start());
+    EXPECT_CALL(*manager_, Start());
+    EXPECT_CALL(*mojo_service_manager_factory_, Create(manager_))
+        .WillOnce([this]() {
+          return std::make_unique<MockShillMojoServiceManager>(base::BindOnce(
+              &DaemonTaskTest::OnMojoServiceDestroyed, base::Unretained(this)));
+        });
+  }
   StartDaemon();
   Mock::VerifyAndClearExpectations(manager_);
+  Mock::VerifyAndClearExpectations(mojo_service_manager_factory_);
 
-  EXPECT_CALL(*mojo_provider_, Stop());
-  EXPECT_CALL(*manager_, Stop());
-  EXPECT_CALL(process_manager_, Stop());
-
+  {
+    InSequence s;
+    EXPECT_CALL(*this, OnMojoServiceDestroyed());
+    EXPECT_CALL(*manager_, Stop());
+    EXPECT_CALL(process_manager_, Stop());
+  }
   StopDaemon();
+  Mock::VerifyAndClearExpectations(this);
 }
 
 TEST_F(DaemonTaskTest, SupplicantAppearsAfterStop) {
