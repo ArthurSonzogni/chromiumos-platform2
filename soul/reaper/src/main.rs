@@ -9,15 +9,23 @@
 //! values.
 
 mod config;
+mod intake_queue;
+mod message;
 mod syslog;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
-fn main() -> Result<()> {
+use crate::intake_queue::IntakeQueue;
+
+const INTAKE_QUEUE_CAPACITY: usize = 3;
+
+#[tokio::main]
+async fn main() -> Result<()> {
     env_logger::init();
-    let config = config::read()?;
+    let _config = config::read().context("Failed to read config from disk")?;
 
-    println!("{config:#?}");
+    let mut _intake_queue =
+        IntakeQueue::new(INTAKE_QUEUE_CAPACITY).context("Couldn't create intake queue")?;
 
     Ok(())
 }

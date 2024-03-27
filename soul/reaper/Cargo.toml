@@ -9,7 +9,9 @@ chromeos = []
 
 [dependencies]
 anyhow = "1.0"
+chrono = "0.4"
 env_logger = "0.9"
 log = "0.4"
 serde = { version = "1.0", features = [ "derive" ] }
+tokio = { version = "1.0", features = [ "macros", "rt-multi-thread", "sync", "time" ] }
 toml = "0.5"
