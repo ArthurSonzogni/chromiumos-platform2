@@ -6,8 +6,18 @@
 
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <crypto/random.h>
 
 namespace net_base {
+
+MacAddress MacAddress::CreateRandom() {
+  net_base::MacAddress::DataType data;
+  crypto::RandBytes(data.data(), data.size());
+  data[0] &= ~kMulicastMacBit;
+  data[0] |= kLocallyAdministratedMacBit;
+
+  return MacAddress(data);
+}
 
 // static
 std::optional<MacAddress> MacAddress::CreateFromString(

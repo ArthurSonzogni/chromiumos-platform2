@@ -12,15 +12,7 @@ namespace patchpanel {
 net_base::MacAddress MacAddressGenerator::Generate() {
   net_base::MacAddress addr;
   do {
-    net_base::MacAddress::DataType addr_data;
-    base::RandBytes(addr_data.data(), addr_data.size());
-
-    // Set the locally administered flag.
-    addr_data[0] |= static_cast<uint8_t>(0x02);
-    // Unset the multicast flag.
-    addr_data[0] &= static_cast<uint8_t>(0xfe);
-
-    addr = net_base::MacAddress(addr_data);
+    addr = net_base::MacAddress::CreateRandom();
   } while (addrs_.find(addr) != addrs_.end() ||
            memcmp(addr.data(), kStableBaseAddr.data(), 5) == 0);
 

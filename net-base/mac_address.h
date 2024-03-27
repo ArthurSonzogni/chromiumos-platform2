@@ -36,6 +36,14 @@ class BRILLO_EXPORT MacAddress {
   // The type of the internal address data.
   using DataType = std::array<uint8_t, kAddressLength>;
 
+  // Multicast address bit.
+  static constexpr uint8_t kMulicastMacBit = 0x01;
+  // Locally administered bit.
+  static constexpr uint8_t kLocallyAdministratedMacBit = 0x02;
+
+  // Create a random unicast locally administered MAC address.
+  static MacAddress CreateRandom();
+
   // Creates the MacAddress from colon-separated format.
   // e.g. "aa:bb:cc:dd:ee:ff" => MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff)
   static std::optional<MacAddress> CreateFromString(

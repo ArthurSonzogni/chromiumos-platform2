@@ -16,12 +16,7 @@ namespace shill {
 
 // static
 MACAddress MACAddress::CreateRandom() {
-  net_base::MacAddress::DataType data;
-  crypto::RandBytes(data.data(), data.size());
-  data[0] &= ~kMulicastMacBit;  // Set unicast address.
-  data[0] |= kLocallyAdministratedMacBit;
-
-  return MACAddress(net_base::MacAddress(data), kNotExpiring);
+  return MACAddress(net_base::MacAddress::CreateRandom(), kNotExpiring);
 }
 
 MACAddress::MACAddress() = default;

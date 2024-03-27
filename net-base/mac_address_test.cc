@@ -28,6 +28,12 @@ TEST(MacAddress, constructor) {
   EXPECT_EQ(addr2, addr1);
 }
 
+TEST(MacAddress, CreateRandom) {
+  const std::vector<uint8_t> addr = MacAddress::CreateRandom().ToBytes();
+  EXPECT_TRUE(addr[0] & MacAddress::kLocallyAdministratedMacBit);
+  EXPECT_FALSE(addr[0] & MacAddress::kMulicastMacBit);
+}
+
 TEST(MacAddress, CreateFromString) {
   EXPECT_EQ(MacAddress::CreateFromString("12:34:56:78:9a:bc"),
             MacAddress(0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc));
