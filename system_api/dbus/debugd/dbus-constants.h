@@ -36,6 +36,7 @@ const char kGetLog[] = "GetLog";
 const char kGetAllLogs[] = "GetAllLogs";
 const char kGetFeedbackLogs[] = "GetFeedbackLogs";
 const char kGetFeedbackLogsV3[] = "GetFeedbackLogsV3";
+const char kGetFeedbackBinaryLogs[] = "GetFeedbackBinaryLogs";
 const char kKstaledSetRatio[] = "KstaledSetRatio";
 const char kTestICMP[] = "TestICMP";
 const char kTestICMPWithOptions[] = "TestICMPWithOptions";
