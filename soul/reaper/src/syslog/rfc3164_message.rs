@@ -11,6 +11,8 @@ use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use itertools::Itertools;
 
 use crate::message;
+use crate::syslog::message as syslog_message;
+use crate::syslog::message::Pri;
 use crate::syslog::{Facility, Severity, SyslogMessage};
 
 /// Represents the reaper specific version of a message received in RFC 3164 format.
@@ -122,28 +124,6 @@ impl SyslogMessage for Rfc3164Message {
     }
 }
 
-#[derive(Debug)]
-struct Pri(u8);
-
-impl TryFrom<u8> for Pri {
-    type Error = anyhow::Error;
-    fn try_from(v: u8) -> Result<Self> {
-        ensure!(v <= 191, "{v} is too large for valid PRI. Max value is 191");
-        Ok(Self(v))
-    }
-}
-
-impl Pri {
-    pub fn facility(&self) -> Facility {
-        Facility::try_from(self.0 / 8).expect("Valid PRI should be divisible by 8 into a Facility")
-    }
-
-    pub fn severity(&self) -> Severity {
-        Severity::try_from(self.0 % 8)
-            .expect("Valid PRI should have a valid remainder identifying a Severity")
-    }
-}
-
 impl Rfc3164Message {
     /// Parse any string input into a RFC 3164 message.
     ///
@@ -172,7 +152,8 @@ impl Rfc3164Message {
             }
         }
 
-        let (pri, remaining) = parse_pri(&self.message).context("Didn't find valid PRI")?;
+        let (pri, remaining) =
+            syslog_message::parse_pri(&self.message).context("Didn't find valid PRI")?;
 
         self.facility = pri.facility();
         self.severity = pri.severity();
@@ -231,19 +212,6 @@ impl Rfc3164Message {
 
 fn is_print_us_ascii(data: &str) -> bool {
     data.as_bytes().iter().all(|b| (32..=126).contains(b))
-}
-
-fn parse_pri(text: &str) -> Result<(Pri, &str)> {
-    let (num_str, message) = text
-        .strip_prefix('<')
-        .context("missing <")?
-        .split_once('>')
-        .context("missing >")?;
-    let pri_num: u8 = num_str.parse().context("invalid PRI number")?;
-    if num_str.len() > 1 && num_str.starts_with('0') {
-        bail!("invalid leading zero in PRI number");
-    }
-    Ok((Pri::try_from(pri_num)?, message))
 }
 
 /// Attempts to parse a string as a timestamp.

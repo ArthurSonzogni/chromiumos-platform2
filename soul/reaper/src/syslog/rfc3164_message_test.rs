@@ -7,6 +7,7 @@ use std::str::FromStr;
 use chrono::{Datelike, NaiveDate, TimeDelta, Utc};
 
 use super::*;
+use crate::syslog::message::*;
 
 #[test]
 fn rfc_examples() {
@@ -104,61 +105,6 @@ fn rfc_examples() {
 
     for (input, expected) in examples {
         assert_eq!(Rfc3164Message::from_str(input).unwrap(), expected);
-    }
-}
-
-#[test]
-fn invalid_pri() {
-    let cases = [
-        (
-            "Pri with too large number",
-            "<192>Apr  1 12:34:56 localhost foo: Bar",
-            "192 is too large for valid PRI. Max value is 191",
-        ),
-        (
-            "Pri with negative num",
-            "<-1>Apr  1 12:34:56 localhost foo: Bar",
-            "invalid PRI number",
-        ),
-        (
-            "Pri with leading zero",
-            "<01>Apr  1 12:34:56 localhost foo: Bar",
-            "invalid leading zero in PRI number",
-        ),
-        (
-            "Leading space",
-            " <1>Apr  1 12:34:56 localhost foo: Bar",
-            "missing <",
-        ),
-        (
-            "Pri with wrong brackets",
-            "[1]Apr  1 12:34:56 localhost foo: Bar",
-            "missing <",
-        ),
-        (
-            "Pri with wrong closing brackets",
-            "<1]Apr  1 12:34:56 localhost foo: Bar",
-            "missing >",
-        ),
-    ];
-
-    for (context, input, output) in cases {
-        assert_eq!(
-            format!("{}", parse_pri(input).unwrap_err()),
-            output,
-            "{context}"
-        );
-    }
-}
-
-#[test]
-fn valid_pri() {
-    for num in 0..=191 {
-        let input = format!("<{num}>");
-        let (pri, remaining) = parse_pri(&input).unwrap();
-        assert!(remaining.is_empty());
-        assert_eq!(pri.facility(), Facility::try_from(num / 8).unwrap());
-        assert_eq!(pri.severity(), Severity::try_from(num % 8).unwrap());
     }
 }
 

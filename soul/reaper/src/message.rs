@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use core::fmt::{Error, Formatter};
+use std::fmt::{Debug, Error, Formatter};
 
 use chrono::{DateTime, Utc};
 
-use crate::syslog::{Facility, Severity, SyslogMessage};
+use crate::syslog::SyslogMessage;
+pub use crate::syslog::{Facility, Severity};
 
 #[derive(PartialEq)]
 pub struct Message {
@@ -18,7 +19,7 @@ pub struct Message {
     pub timestamp: DateTime<Utc>,
 }
 
-impl std::fmt::Debug for Message {
+impl Debug for Message {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         f.debug_struct("Message")
             .field("application_name", &self.application_name)
