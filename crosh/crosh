@@ -1424,24 +1424,6 @@ cmd_meminfo() (
 )
 
 # shellcheck disable=SC2034
-USAGE_uptime=''
-# shellcheck disable=SC2034
-HELP_uptime='
-  Display uptime/load info.
-
-  https://en.wikipedia.org/wiki/Uptime
-  https://en.wikipedia.org/wiki/Load_(computing)
-'
-cmd_uptime() (
-  if [ $# -eq 0 ]; then
-    uptime
-  else
-    help "unknown option: $*"
-    return 1
-  fi
-)
-
-# shellcheck disable=SC2034
 USAGE_uname='[-a|-s|-n|-r|-v|-m|-p|-i|-o]'
 # shellcheck disable=SC2034
 HELP_uname='
