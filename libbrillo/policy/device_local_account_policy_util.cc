@@ -19,20 +19,19 @@ namespace policy {
 
 namespace {
 
-// TODO(b/319370736): Make this consteval & convert to MakeFixedFlatMap().
-const auto kDomainPrefixMap = base::MakeFixedFlatMapNonConsteval<
-    em::DeviceLocalAccountInfoProto::AccountType,
-    std::string>({
-    {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_PUBLIC_SESSION,
-     "public-accounts"},
-    {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_APP, "kiosk-apps"},
-    {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_ANDROID_APP,
-     "arc-kiosk-apps"},
-    {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_SAML_PUBLIC_SESSION,
-     "saml-public-accounts"},
-    {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_WEB_KIOSK_APP,
-     "web-kiosk-apps"},
-});
+const auto kDomainPrefixMap =
+    base::MakeFixedFlatMap<em::DeviceLocalAccountInfoProto::AccountType,
+                           const char*>({
+        {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_PUBLIC_SESSION,
+         "public-accounts"},
+        {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_APP, "kiosk-apps"},
+        {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_ANDROID_APP,
+         "arc-kiosk-apps"},
+        {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_SAML_PUBLIC_SESSION,
+         "saml-public-accounts"},
+        {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_WEB_KIOSK_APP,
+         "web-kiosk-apps"},
+    });
 
 constexpr char kDeviceLocalAccountDomainSuffix[] = ".device-local.localhost";
 
