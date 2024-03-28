@@ -84,6 +84,13 @@ class CaptureResultSequencerTest : public testing::Test {
     });
   }
 
+  void Reset() {
+    sequencer_.Reset();
+
+    returned_results_.clear();
+    notified_messages_.clear();
+  }
+
   void ValidateReturnedResults(
       const std::map<uint32_t /*frame_number*/,
                      std::set<size_t> /*stream_indices*/>& expected_results)
@@ -273,6 +280,34 @@ TEST_F(CaptureResultSequencerTest, UnexpectedResult) {
 
   AddResult(MakeResult(1, {0}));
   EXPECT_DEATH(AddResult(MakeResult(2, {1})), "");
+}
+
+TEST_F(CaptureResultSequencerTest, Reset) {
+  AddRequest(MakeRequest(1, {0, 1}));
+  AddRequest(MakeRequest(2, {0}));
+  AddRequest(MakeRequest(3, {0}));
+
+  AddResult(MakeResult(1, {0}));
+  AddResult(MakeResult(2, {0}));
+  AddResult(MakeResult(1, {1}));
+
+  ValidateReturnedResults({
+      {1, {0, 1}},
+      {2, {0}},
+  });
+
+  Reset();
+
+  AddRequest(MakeRequest(1, {0}));
+  AddRequest(MakeRequest(2, {0, 1}));
+
+  AddResult(MakeResult(1, {0}));
+  AddResult(MakeResult(2, {0}));
+
+  ValidateReturnedResults({
+      {1, {0}},
+      {2, {0}},
+  });
 }
 
 }  // namespace

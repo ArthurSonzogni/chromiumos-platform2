@@ -568,6 +568,7 @@ void EffectsStreamManipulatorImpl::ShutdownOnGlThread() {
     pipeline_.reset();
   }
   ResetState();
+  result_sequencer_.reset();
 }
 
 EffectsStreamManipulatorImpl::StreamContext*
@@ -777,7 +778,7 @@ void EffectsStreamManipulatorImpl::ResetState() {
   effects_pipeline_tracker_.Reset();
   process_contexts_.clear();
   still_capture_processor_->Reset();
-  result_sequencer_.reset();
+  result_sequencer_->Reset();
   base::AutoLock lock(stream_contexts_lock_);
   for (auto& stream_context : stream_contexts_) {
     for (auto it = stream_context->capture_contexts.begin();

@@ -42,6 +42,7 @@ class CaptureResultSequencer {
 
   void Notify(camera3_notify_msg_t msg);
 
+  // Drop all the pending requests and buffers.
   void Reset();
 
  private:
