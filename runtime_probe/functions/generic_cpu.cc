@@ -4,6 +4,7 @@
 
 #include "runtime_probe/functions/generic_cpu.h"
 
+#include <string>
 #include <unordered_set>
 #include <utility>
 
@@ -23,17 +24,6 @@ namespace {
 
 constexpr char kUnknownModel[] = "unknown";
 
-// Count the number of distinct |core_id| in |PhysicalCpuInfo| to get the
-// number of cores.
-int CountLogicalCores(
-    const cros_healthd_mojom::PhysicalCpuInfoPtr& physical_cpu_info) {
-  std::unordered_set<uint32_t> core_ids;
-  for (const auto& logical_cpu : physical_cpu_info->logical_cpus) {
-    core_ids.insert(logical_cpu->core_id);
-  }
-  return core_ids.size();
-}
-
 // Callback function to convert the telemetry info to |probe_result|.
 void ProbeCpuTelemetryInfoCallback(
     base::OnceCallback<void(GenericCpuFunction::DataType)> callback,
@@ -51,13 +41,20 @@ void ProbeCpuTelemetryInfoCallback(
                << "::" << error->msg;
   } else {
     const auto& cpu_info = cpu_result->get_cpu_info();
+    std::unordered_set<std::string> probed_model;
     for (const auto& physical_cpu_info : cpu_info->physical_cpus) {
+      const auto& model = physical_cpu_info->model_name.value_or(kUnknownModel);
+      // There'll be 2 physical CPUs with the same model name for small/big core
+      // CPUs. Skip physical CPU if the model name is already probed because
+      // there're acuatlly the same CPU.
+      if (probed_model.contains(model)) {
+        continue;
+      }
+      probed_model.insert(model);
       probe_result.Append(
           base::Value::Dict()
-              .Set("cores",
-                   std::to_string(CountLogicalCores(physical_cpu_info)))
-              .Set("model",
-                   physical_cpu_info->model_name.value_or(kUnknownModel)));
+              .Set("cores", std::to_string(cpu_info->num_total_threads))
+              .Set("model", model));
     }
   }
   std::move(callback).Run(std::move(probe_result));

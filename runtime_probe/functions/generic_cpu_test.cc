@@ -24,26 +24,6 @@ namespace {
 
 constexpr char kFakeModelName[] = "fake model name";
 
-// Create |PhysicalCpuInfo| with only core_ids.
-cros_healthd_mojom::PhysicalCpuInfoPtr CreatePhysicalCpuInfo(
-    const std::vector<uint32_t>& core_ids) {
-  auto physical_cpu_info = cros_healthd_mojom::PhysicalCpuInfo::New();
-  for (const auto& core_id : core_ids) {
-    auto logical_cpu_info = cros_healthd_mojom::LogicalCpuInfo::New();
-    logical_cpu_info->core_id = core_id;
-    physical_cpu_info->logical_cpus.push_back(std::move(logical_cpu_info));
-  }
-  return physical_cpu_info;
-}
-
-// Create |PhysicalCpuInfo| with only model_name and core_ids.
-cros_healthd_mojom::PhysicalCpuInfoPtr CreatePhysicalCpuInfo(
-    const std::string& model_name, const std::vector<uint32_t>& core_ids) {
-  auto physical_cpu_info = CreatePhysicalCpuInfo(core_ids);
-  physical_cpu_info->model_name = model_name;
-  return physical_cpu_info;
-}
-
 }  // namespace
 
 class GenericCpuTest : public BaseFunctionTest {
@@ -59,8 +39,10 @@ class GenericCpuTest : public BaseFunctionTest {
 TEST_F(GenericCpuTest, Suceed) {
   auto probe_function = CreateProbeFunction<GenericCpuFunction>();
   auto cpu_info = cros_healthd_mojom::CpuInfo::New();
-  cpu_info->physical_cpus.push_back(
-      CreatePhysicalCpuInfo(kFakeModelName, {1, 2, 3, 4}));
+  cpu_info->num_total_threads = 4;
+  cpu_info->physical_cpus.push_back(cros_healthd_mojom::PhysicalCpuInfo::New());
+  cpu_info->physical_cpus[0]->model_name = kFakeModelName;
+
   auto cpu_result =
       cros_healthd_mojom::CpuResult::NewCpuInfo(std::move(cpu_info));
   fake_service_.SetCpuResult(std::move(cpu_result));
@@ -76,11 +58,17 @@ TEST_F(GenericCpuTest, Suceed) {
   EXPECT_EQ(EvalProbeFunction(probe_function.get()), ans);
 }
 
-TEST_F(GenericCpuTest, SingleCoreMultiThreads) {
+TEST_F(GenericCpuTest, BigAndSmallCores) {
   auto probe_function = CreateProbeFunction<GenericCpuFunction>();
   auto cpu_info = cros_healthd_mojom::CpuInfo::New();
-  cpu_info->physical_cpus.push_back(
-      CreatePhysicalCpuInfo(kFakeModelName, {1, 1, 2, 2}));
+  cpu_info->num_total_threads = 4;
+  cpu_info->physical_cpus.push_back(cros_healthd_mojom::PhysicalCpuInfo::New());
+  cpu_info->physical_cpus.push_back(cros_healthd_mojom::PhysicalCpuInfo::New());
+  cpu_info->physical_cpus.push_back(cros_healthd_mojom::PhysicalCpuInfo::New());
+  cpu_info->physical_cpus[0]->model_name = kFakeModelName;
+  cpu_info->physical_cpus[1]->model_name = "Big/Small core CPU";
+  cpu_info->physical_cpus[2]->model_name = "Big/Small core CPU";
+
   auto cpu_result =
       cros_healthd_mojom::CpuResult::NewCpuInfo(std::move(cpu_info));
   fake_service_.SetCpuResult(std::move(cpu_result));
@@ -88,8 +76,12 @@ TEST_F(GenericCpuTest, SingleCoreMultiThreads) {
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {
-        "cores": "2",
+        "cores": "4",
         "model": "fake model name"
+      },
+      {
+        "cores": "4",
+        "model": "Big/Small core CPU"
       }
     ]
   )JSON");
@@ -99,7 +91,7 @@ TEST_F(GenericCpuTest, SingleCoreMultiThreads) {
 TEST_F(GenericCpuTest, NoModelName) {
   auto probe_function = CreateProbeFunction<GenericCpuFunction>();
   auto cpu_info = cros_healthd_mojom::CpuInfo::New();
-  cpu_info->physical_cpus.push_back(CreatePhysicalCpuInfo({1, 2, 3, 4}));
+  cpu_info->physical_cpus.push_back(cros_healthd_mojom::PhysicalCpuInfo::New());
   auto cpu_result =
       cros_healthd_mojom::CpuResult::NewCpuInfo(std::move(cpu_info));
   fake_service_.SetCpuResult(std::move(cpu_result));
@@ -107,7 +99,7 @@ TEST_F(GenericCpuTest, NoModelName) {
   auto ans = CreateProbeResultFromJson(R"JSON(
     [
       {
-        "cores": "4",
+        "cores": "0",
         "model": "unknown"
       }
     ]
