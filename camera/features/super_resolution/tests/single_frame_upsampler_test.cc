@@ -201,7 +201,10 @@ TEST_F(SingleFrameUpsamplerTest, TestUpsamplerLibrary) {
 }  // namespace cros::tests
 
 int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
   base::CommandLine::Init(argc, argv);
+  TestTimeouts::Initialize();
+
   cros::DlcLoader client(cros::dlc_client::kSuperResDlcId);
   client.Run();
   if (!client.DlcLoaded()) {
@@ -209,9 +212,6 @@ int main(int argc, char** argv) {
     return -1;
   }
   cros::tests::g_dlc_path = client.GetDlcRootPath();
-
-  ::testing::InitGoogleTest(&argc, argv);
-  TestTimeouts::Initialize();
 
   DEFINE_string(input_image_path, "", "Input image file path");
   DEFINE_string(golden_image_path, "", "Golden image file path");
