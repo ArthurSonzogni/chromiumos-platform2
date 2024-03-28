@@ -9,6 +9,9 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":install_minijail_conf",
+    ":install_minios_logs_config",
+    ":install_seccomp_policy",
+    ":install_tmpfiles_config",
     ":minios",
     ":minios_adaptors",
     ":minios_client",
@@ -54,7 +57,10 @@ generate_dbus_proxies("minios_proxies") {
 }
 
 install_config("install_minijail_conf") {
-  sources = [ "minijail/syslog.conf" ]
+  sources = [
+    "minijail/minios_util.conf",
+    "minijail/syslog.conf",
+  ]
   install_path = "minijail_conf"
 }
 
@@ -115,6 +121,22 @@ executable("minios_client") {
   sources = [ "client/minios_client.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":minios_proxies" ]
+}
+
+install_config("install_minios_logs_config") {
+  sources = [ "init/minios_util_logs.conf" ]
+  install_path = "upstart"
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "init/tmpfiles.d/minios_util.conf" ]
+  install_path = "tmpfiled_ondemand"
+}
+
+install_config("install_seccomp_policy") {
+  sources = [ "seccomp/minios-util-" + getenv("ARCH") + ".policy" ]
+  outputs = [ "minios-util.policy" ]
+  install_path = "seccomp_policy"
 }
 
 if (use.test) {
