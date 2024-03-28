@@ -198,6 +198,15 @@ HELP_help_advanced='
 '
 cmd_help_advanced() (:)
 
+# NB: Stubs are left behind for `help exit` support.
+# shellcheck disable=SC2034
+USAGE_exit=''
+# shellcheck disable=SC2034
+HELP_exit='
+  Exit crosh.
+'
+cmd_exit() (:)
+
 # Check if a particular Chrome feature is enabled.
 # Use the DBus method name as the parameter.
 is_chrome_feature_enabled() {
