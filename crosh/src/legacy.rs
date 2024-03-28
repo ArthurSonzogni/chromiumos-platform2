@@ -60,6 +60,8 @@ const DEV_COMMANDS: &[&str] = &["systrace"];
 
 const USB_COMMANDS: &[&str] = &["update_firmware", "install", "upgrade"];
 
+const BIN_DIR_SHELL: &str = "/usr/bin/crosh.sh";
+
 pub fn register(dispatcher: &mut Dispatcher) {
     register_legacy_commands(BASE_COMMANDS, dispatcher)
 }
@@ -85,7 +87,7 @@ fn legacy_command(name: &str) -> dispatcher::Command {
 }
 
 fn legacy_crosh() -> process::Command {
-    let mut sub = process::Command::new("crosh.sh");
+    let mut sub = process::Command::new(BIN_DIR_SHELL);
     if util::dev_commands_included() {
         sub.arg("--dev");
     }
@@ -142,7 +144,6 @@ mod tests {
     use crate::dev;
 
     const SOURCE_PATH_VAR: &str = "S";
-    const BIN_DIR_SHELL: &str = "/usr/bin/crosh.sh";
     const DEFAULT_ROOT: &str = "/usr/share/crosh";
 
     const BASE_SHELL: &str = "crosh";
