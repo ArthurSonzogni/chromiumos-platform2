@@ -13,6 +13,7 @@ mod dmesg;
 mod force_fips;
 mod free;
 mod insert_coin;
+mod meminfo;
 mod packet_capture;
 mod printscan_debug;
 mod rollback;
@@ -37,6 +38,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     force_fips::register(dispatcher);
     free::register(dispatcher);
     insert_coin::register(dispatcher);
+    meminfo::register(dispatcher);
     packet_capture::register(dispatcher);
     printscan_debug::register(dispatcher);
     rollback::register(dispatcher);

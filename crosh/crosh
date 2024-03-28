@@ -1385,21 +1385,6 @@ check_enterprise_mode() {
 }
 
 # shellcheck disable=SC2034
-USAGE_meminfo=''
-# shellcheck disable=SC2034
-HELP_meminfo='
-  Display detailed memory statistics
-'
-cmd_meminfo() (
-  if [ $# -eq 0 ]; then
-    cat /proc/meminfo
-  else
-    help "unknown option: $*"
-    return 1
-  fi
-)
-
-# shellcheck disable=SC2034
 USAGE_evtest=''
 # shellcheck disable=SC2034
 EXEC_evtest='/usr/bin/evtest'

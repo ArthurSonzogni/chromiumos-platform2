@@ -26,7 +26,6 @@ const BASE_COMMANDS: &[&str] = &[
     "help",          // Included for the "help" help entry.
     "help_advanced", // Included for the "help_advanced" help entry.
     "ipaddrs",
-    "meminfo",
     "memory_test",
     "modem",
     "p2p_update",
