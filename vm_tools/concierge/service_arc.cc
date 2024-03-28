@@ -123,6 +123,24 @@ int GetAAudioMMAPPeriodSize(bool is_low_latency_enabled) {
   return is_low_latency_enabled && supported_cpu ? 256 : 480;
 }
 
+bool CreateMetadataImageIfNotExist(const base::FilePath& disk_path) {
+  if (disk_path.value() == kEmptyDiskPath || base::PathExists(disk_path)) {
+    return true;
+  }
+  base::ScopedFD fd(open(disk_path.value().c_str(), O_CREAT | O_WRONLY, 0600));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "Failed to open /metadata disk at " << disk_path.value();
+    return false;
+  }
+  if (fallocate(fd.get(), 0, 0, kMetadataDiskSize) != 0) {
+    PLOG(ERROR) << "Failed to create /metadata disk at " << disk_path.value();
+    unlink(disk_path.value().c_str());
+    return false;
+  }
+  LOG(INFO) << "Successfully created /metadata disk at " << disk_path.value();
+  return true;
+}
+
 // This function boosts the arcvm and arcvm-vcpus cgroups, by applying the
 // cpu.uclamp.min boost for all the vcpus and crosvm services and enabling the
 // latency_sensitive attribute.
@@ -193,6 +211,16 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   if (!ValidateStartArcVmRequest(request)) {
     response.set_failure_reason("Invalid request");
     return response;
+  }
+
+  // Create the /metadata disk if it is requested but does not yet exist.
+  // (go/arcvm-metadata)
+  if (request.disks().size() >= kMetadataDiskIndex + 1) {
+    const base::FilePath disk_path(request.disks()[kMetadataDiskIndex].path());
+    if (!CreateMetadataImageIfNotExist(disk_path)) {
+      response.set_failure_reason("Failed to create /metadata disk");
+      return response;
+    }
   }
 
   VmBuilder vm_builder;

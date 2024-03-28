@@ -46,7 +46,7 @@ bool IsValidDemoImagePath(const base::FilePath& path) {
   // A valid demo image path looks like:
   //   /run/imageloader/demo-mode-resources/<version>/android_demo_apps.squash
   //   <version> part looks like 0.12.34.56 ("[0-9]+(.[0-9]+){0,3}" in regex).
-  std::vector<std::string> c = path.GetComponents();
+  const std::vector<std::string> c = path.GetComponents();
   return c.size() == 6 && c[0] == "/" && c[1] == "run" &&
          c[2] == "imageloader" && c[3] == "demo-mode-resources" &&
          base::ContainsOnlyChars(c[4], "0123456789.") &&
@@ -54,7 +54,7 @@ bool IsValidDemoImagePath(const base::FilePath& path) {
 }
 
 bool IsValidDataImagePath(const base::FilePath& path) {
-  std::vector<std::string> c = path.GetComponents();
+  const std::vector<std::string> c = path.GetComponents();
   // A disk image created by concierge:
   // /run/daemon-store/crosvm/<hash>/YXJjdm0=.img
   if (c.size() == 6 && c[0] == "/" && c[1] == "run" && c[2] == "daemon-store" &&
@@ -70,9 +70,19 @@ bool IsValidDataImagePath(const base::FilePath& path) {
   return false;
 }
 
+bool IsValidMetadataImagePath(const base::FilePath& path) {
+  // A valid metadata image path looks like:
+  //   /run/daemon-store/crosvm/<hash>/YXJjdm0=.metadata.img
+  const std::vector<std::string> c = path.GetComponents();
+  return c.size() == 6 && c[0] == "/" && c[1] == "run" &&
+         c[2] == "daemon-store" && c[3] == "crosvm" &&
+         base::ContainsOnlyChars(c[4], "0123456789abcdef") &&
+         c[5] == vm_tools::GetEncodedName(kArcVmName) + ".metadata.img";
+}
+
 bool ValidateStartArcVmRequest(const StartArcVmRequest& request) {
   const auto& disks = request.disks();
-  if (disks.size() < 1 || disks.size() > 4) {
+  if (disks.size() < 1 || disks.size() > 5) {
     LOG(ERROR) << "Invalid number of disks: " << disks.size();
     return false;
   }
@@ -103,6 +113,16 @@ bool ValidateStartArcVmRequest(const StartArcVmRequest& request) {
       return false;
     }
     LOG(INFO) << "Android /data disk path: " << disk_path;
+  }
+  // Disk #4 must be a valid metadata image path or /dev/null.
+  if (disks.size() >= kMetadataDiskIndex + 1) {
+    const std::string& disk_path = disks[kMetadataDiskIndex].path();
+    if (!IsValidMetadataImagePath(base::FilePath(disk_path)) &&
+        disk_path != kEmptyDiskPath) {
+      LOG(ERROR) << "Disk #4 has invalid path: " << disk_path;
+      return false;
+    }
+    LOG(INFO) << "Android /metadata disk path: " << disk_path;
   }
   return true;
 }

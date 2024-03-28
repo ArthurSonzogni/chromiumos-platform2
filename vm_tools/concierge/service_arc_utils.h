@@ -15,6 +15,12 @@ namespace vm_tools::concierge {
 // Disk index of the /data disk. It is the 4th disk in request.disks().
 constexpr unsigned int kDataDiskIndex = 3;
 
+// Disk index of the /metadata disk. It is the 5th disk in request.disks().
+constexpr unsigned int kMetadataDiskIndex = 4;
+
+// Size of the /metadata disk, used when creating the disk at first boot.
+constexpr size_t kMetadataDiskSize = 64 * 1024 * 1024;  // 64 MB
+
 // Placeholder disk path value used to indicate that there is no disk.
 constexpr char kEmptyDiskPath[] = "/dev/null";
 
@@ -39,6 +45,9 @@ bool IsValidDemoImagePath(const base::FilePath& path);
 
 // Returns true if the path is a valid data image path.
 bool IsValidDataImagePath(const base::FilePath& path);
+
+// Returns true if the path is a valid metadata image path.
+bool IsValidMetadataImagePath(const base::FilePath& path);
 
 // Returns true if the StartArcVmRequest contains valid ARCVM config values.
 bool ValidateStartArcVmRequest(const StartArcVmRequest& request);
