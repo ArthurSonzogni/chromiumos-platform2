@@ -10,7 +10,8 @@ use anyhow::{bail, ensure, Context, Result};
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
 use itertools::Itertools;
 
-use crate::syslog::{message, Facility, Severity, SyslogMessage};
+use crate::message;
+use crate::syslog::{Facility, Severity, SyslogMessage};
 
 /// Represents the reaper specific version of a message received in RFC 3164 format.
 ///

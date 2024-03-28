@@ -10,6 +10,7 @@
 
 mod config;
 mod intake_queue;
+mod intakes;
 mod message;
 mod syslog;
 
@@ -24,8 +25,15 @@ async fn main() -> Result<()> {
     env_logger::init();
     let _config = config::read().context("Failed to read config from disk")?;
 
-    let mut _intake_queue =
+    let intake_queue =
         IntakeQueue::new(INTAKE_QUEUE_CAPACITY).context("Couldn't create intake queue")?;
+
+    let unix_socket = intakes::UnixSocket::new(intake_queue.clone_writer())?;
+
+    unix_socket
+        .listen()
+        .await
+        .context("Failed to listen on UNIX socket for new messages")?;
 
     Ok(())
 }

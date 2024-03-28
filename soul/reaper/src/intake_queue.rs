@@ -3,9 +3,25 @@
 // found in the LICENSE file.
 
 use anyhow::{ensure, Result};
+use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
 use crate::message::Message;
+
+/// The writer interface for the intake queue.
+///
+/// This is supposed to be the sole input method for the queue, except for
+/// modifying the queue directly.
+/// The structure hides away any non-supported mechanisms of writing to the
+/// queue that may otherwise be exposed by the underlying mechanism.
+#[derive(Clone, Debug)]
+pub struct Writer(Sender<Message>);
+
+impl Writer {
+    pub async fn send(&self, message: Message) -> core::result::Result<(), SendError<Message>> {
+        self.0.send(message).await
+    }
+}
 
 /// A FIFO queue for all messages received by `reaper`.
 ///
@@ -26,7 +42,7 @@ use crate::message::Message;
 #[derive(Debug)]
 pub struct IntakeQueue {
     reader: Receiver<Message>,
-    writer: Sender<Message>,
+    writer: Writer,
 }
 
 impl IntakeQueue {
@@ -40,7 +56,10 @@ impl IntakeQueue {
         ensure!(size > 0, "Queue size must be larger than 0");
         let (writer, reader) = channel(size);
 
-        Ok(IntakeQueue { reader, writer })
+        Ok(IntakeQueue {
+            reader,
+            writer: Writer(writer),
+        })
     }
 
     /// Get a clone of the writer for this queue.
@@ -51,22 +70,8 @@ impl IntakeQueue {
     /// Cloned writers are useful in contexts where moving is required, e.g.
     /// into other async/thread contexts to write into a single queue from
     /// multiple places.
-    pub fn clone_writer(&self) -> Sender<Message> {
+    pub fn clone_writer(&self) -> Writer {
         self.writer.clone()
-    }
-
-    /// Synchronously add a message to the queue.
-    pub fn push(&self, message: Message) -> Result<()> {
-        Ok(self.writer.blocking_send(message)?)
-    }
-
-    /// Synchronously remove a message from the queue.
-    ///
-    /// This will always return `Some(Message)` unless the last writer
-    /// (including this queue) has/is being shutdown in which case this will
-    /// return `None`.
-    pub fn pop(&mut self) -> Option<Message> {
-        self.reader.blocking_recv()
     }
 
     /// Receive the next message from the queue.
@@ -82,7 +87,6 @@ impl IntakeQueue {
 mod tests {
     use super::*;
 
-    use std::thread;
     use std::time::Duration;
 
     use tokio::time::timeout;
@@ -112,19 +116,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn sync_read_one_message() {
-        let mut queue = IntakeQueue::new(1).unwrap();
-
-        let handle = thread::spawn(move || {
-            queue.push(new_test_message()).unwrap();
-
-            assert_ne!(queue.pop(), None);
-        });
-
-        handle.join().unwrap();
-    }
-
     #[tokio::test]
     async fn async_read_one_message() {
         let mut queue = IntakeQueue::new(1).unwrap();
@@ -150,9 +141,9 @@ mod tests {
 
         let writer = queue.clone_writer();
 
-        writer.try_send(new_test_message()).unwrap();
-        assert!(writer.try_send(new_test_message()).is_err());
+        writer.0.try_send(new_test_message()).unwrap();
+        assert!(writer.0.try_send(new_test_message()).is_err());
         assert_ne!(queue.next().await, None);
-        writer.try_send(new_test_message()).unwrap();
+        writer.0.try_send(new_test_message()).unwrap();
     }
 }
