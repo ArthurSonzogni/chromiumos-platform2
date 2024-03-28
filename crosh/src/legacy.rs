@@ -22,7 +22,6 @@ const BASE_COMMANDS: &[&str] = &[
     "evtest",
     "exit", // Included for the "exit" help entry.
     "ff_debug",
-    "free",
     "gesture_prop",
     "help",          // Included for the "help" help entry.
     "help_advanced", // Included for the "help_advanced" help entry.

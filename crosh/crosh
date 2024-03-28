@@ -1398,17 +1398,6 @@ check_enterprise_mode() {
 }
 
 # shellcheck disable=SC2034
-USAGE_free='[options]'
-# shellcheck disable=SC2034
-HELP_free='
-  Display free/used memory info
-'
-cmd_free() (
-  # All options are harmless, so pass them through.
-  free "$@"
-)
-
-# shellcheck disable=SC2034
 USAGE_meminfo=''
 # shellcheck disable=SC2034
 HELP_meminfo='

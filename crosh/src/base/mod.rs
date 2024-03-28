@@ -11,6 +11,7 @@ mod display_debug;
 mod dlc_install;
 mod dmesg;
 mod force_fips;
+mod free;
 mod insert_coin;
 mod packet_capture;
 mod printscan_debug;
@@ -33,6 +34,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     display_debug::register(dispatcher);
     dmesg::register(dispatcher);
     force_fips::register(dispatcher);
+    free::register(dispatcher);
     insert_coin::register(dispatcher);
     packet_capture::register(dispatcher);
     printscan_debug::register(dispatcher);
