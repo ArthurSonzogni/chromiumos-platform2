@@ -268,11 +268,7 @@ void sl_window_update_should_be_containerized_from_pid(
   quirk_enabled = window->ctx->quirks.IsEnabled(
       window, quirks::FEATURE_CONTAINERIZE_WINDOWS);
 #endif
-  if (!quirk_enabled) {
-    return;
-  }
-
-  if (!window->pid) {
+  if (!quirk_enabled || !window->pid) {
     return;
   }
 
@@ -417,13 +413,16 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
                                                        int32_t width_in_pixels,
                                                        int32_t height_in_pixels,
                                                        int& mut_config_idx) {
+  // TODO(b/328699937): Re-visit the correctness of this function when XWayland
+  // is emulating screen size for the window.
+
   // Forward resizes to the client if requested size fits within the min&max
   // dimensions. Note that min&max dimensions are strictly set by the X11 client
   // only (and forwarded to Exo immediately). If min&max dimensions are not set,
   // we will set the size of the window to screen size (see below).
-  if (window->max_height >= width_in_pixels &&
-      window->min_height <= width_in_pixels &&
-      window->max_width >= height_in_pixels &&
+  if (window->max_width >= width_in_pixels &&
+      window->min_width <= width_in_pixels &&
+      window->max_height >= height_in_pixels &&
       window->max_height <= height_in_pixels) {
     // TODO(b/330639760): Consider unset aspect ratio every frame in
     // surface_commit.
@@ -442,7 +441,8 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
 
   // Set the window size to be either max or min window size, set by the X11
   // client. If width/height min and max are 0, set the window size to the size
-  // of the screen.
+  // of the screen. If the window is fullscreen (by the client), ignore size
+  // hints and set it to the size of the screen.
   // We are effectively maximizing the window as much as we can within the
   // specified range, then down-scaling. This is to have consistent window
   // rendering experience with the most-expected use-case (fullscreen game,
@@ -453,7 +453,7 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
       window->max_width ? window->max_width : window->min_width;
   int safe_window_height =
       window->max_height ? window->max_height : window->min_height;
-  if (!safe_window_width || !safe_window_height) {
+  if (!safe_window_width || !safe_window_height || window->fullscreen) {
     safe_window_width = output->width;
     safe_window_height = output->height;
   }

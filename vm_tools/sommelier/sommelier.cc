@@ -2284,17 +2284,8 @@ void sl_handle_property_notify(struct sl_context* ctx,
     if (!window)
       return;
 
-    // TODO(b/331114878): It is probably more correct and safer to leave
-    // size_flags as-is and report min/max size explicitly.
-    if (sl_window_is_containerized(window)) {
-      // Always report min/max size if window is containerized. We want Exo to
-      // adjust window size (if appropriate) based on every window property
-      // change.
-      window->size_flags |= P_MIN_SIZE | P_MAX_SIZE;
-    } else {
-      // Don't report min/max size by default.
-      window->size_flags &= ~(P_MIN_SIZE | P_MAX_SIZE);
-    }
+    // Don't report min/max size by default.
+    window->size_flags &= ~(P_MIN_SIZE | P_MAX_SIZE);
 
     if (event->state != XCB_PROPERTY_DELETE) {
       struct sl_wm_size_hints size_hints = {0};
