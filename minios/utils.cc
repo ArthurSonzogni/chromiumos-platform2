@@ -573,12 +573,15 @@ bool ExtractArchive(std::shared_ptr<ProcessManagerInterface> process_manager,
       dest_path.value()};
   extract_command.insert(extract_command.end(), args.begin(), args.end());
 
-  base::FilePath console = GetLogConsole();
-  return process_manager->RunCommand(extract_command,
-                                     ProcessManager::IORedirection{
-                                         .input = console,
-                                         .output = console,
-                                     }) == 0;
+  ProcessManager::IORedirection io_redirect;
+  if (const auto is_minios_opt = IsRunningFromMiniOs();
+      is_minios_opt && is_minios_opt.value()) {
+    base::FilePath console = GetLogConsole();
+    io_redirect.input = console;
+    io_redirect.output = console;
+  }
+
+  return process_manager->RunCommand(extract_command, io_redirect) == 0;
 }
 
 }  // namespace minios

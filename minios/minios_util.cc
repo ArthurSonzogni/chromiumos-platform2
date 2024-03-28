@@ -24,7 +24,6 @@
 namespace minios {
 
 namespace {
-constexpr char kMiniOsLogsPath[] = "minios_logs";
 constexpr int kMiniOsAPartition = 9;
 constexpr int kMiniOsBPartition = 10;
 const base::FilePath kChromeOsStateful{"/mnt/stateful_partition/"};
@@ -79,8 +78,6 @@ std::optional<bool> RetrieveLogs(
         log_store_managers,
     const std::shared_ptr<minios::LogStoreManager>& stateful_manager,
     const base::FilePath& dest_dir) {
-  const auto minios_logs_dir = dest_dir.Append(minios::kMiniOsLogsPath);
-
   const auto key = GetLogStoreKey(std::make_shared<vpd::Vpd>());
 
   if (!key) {
@@ -115,12 +112,11 @@ std::optional<bool> RetrieveLogs(
       }
       ScopedUnmounter unmounter(running_from_minios_opt.value());
       result = manager->FetchLogs(LogStoreManager::LogDirection::Stateful,
-                                  minios_logs_dir, key.value(),
-                                  stateful_source_path);
+                                  dest_dir, key.value(), stateful_source_path);
 
     } else {
       result = manager->FetchLogs(LogStoreManagerInterface::LogDirection::Disk,
-                                  minios_logs_dir, key.value());
+                                  dest_dir, key.value());
     }
 
     if (result && !result.value()) {
@@ -141,7 +137,12 @@ std::optional<bool> RetrieveLogs(
 
 bool ClearKey() {
   const auto vpd = std::make_shared<vpd::Vpd>();
-  return ClearLogStoreKey(vpd);
+  const auto stored_key = GetLogStoreKey(vpd);
+
+  if (stored_key && stored_key.value() != kNullKey) {
+    return ClearLogStoreKey(vpd);
+  }
+  return true;
 }
 
 }  // namespace minios
@@ -152,10 +153,8 @@ int main(int argc, char** argv) {
       erase, false,
       "Erase logs at source after retrieving logs. If specified without "
       "`retrieve`, will erase any unfetched logs on device.");
-  DEFINE_bool(
-      clear_key, false,
-      "Clear logs store key from device if logs were retrieved. If specified "
-      "without `retrieve`, will erase log store keys on device.");
+  DEFINE_bool(clear_key, false,
+              "Clear logs store key from device if non-null key is stored.");
 
   brillo::FlagHelper::Init(argc, argv, "MiniOS Log Retrieval Tool");
 
@@ -189,14 +188,8 @@ int main(int argc, char** argv) {
     if (FLAGS_erase && !minios::EraseLogs({slot_a_manager, slot_b_manager})) {
       exit_code = EXIT_FAILURE;
     }
-    // Erase key if logs were fetched and clearing is requested.
-    bool should_clear = retrieve_result && retrieve_result.value();
-    if (FLAGS_clear_key && should_clear && !minios::ClearKey()) {
-      exit_code = EXIT_FAILURE;
-    }
-    return exit_code;
-  }
-  if (FLAGS_erase) {
+
+  } else if (FLAGS_erase) {
     const auto slot_a_manager = log_store_factory(minios::kMiniOsAPartition),
                slot_b_manager = log_store_factory(minios::kMiniOsBPartition);
     if (!minios::EraseLogs({slot_a_manager, slot_b_manager}))
