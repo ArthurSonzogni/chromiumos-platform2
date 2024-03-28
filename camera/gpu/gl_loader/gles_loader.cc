@@ -19,7 +19,7 @@ class LoadLibrary {
  public:
   LoadLibrary() {
     m_gles_lib = std::make_unique<GlLibraryWrapper>(
-        cros::AngleEnabled() ? "/opt/google/chrome/libGLESv2.so"
+        cros::AngleEnabled() ? "/usr/lib64/angle/libGLESv2.so"
                              : "/usr/lib64/libGLESv2.so.2");
 
 #define MACRO(ret_ty, fct, ...) LOAD_SYMBOL(m_gles_lib, fct)
