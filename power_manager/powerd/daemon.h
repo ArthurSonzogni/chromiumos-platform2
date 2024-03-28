@@ -350,6 +350,9 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   // Set fullscreen video with a timeout.
   void SetFullscreenVideoWithTimeout(bool active, int timeout_seconds);
 
+  // Performs necessary actions after the restoration of the device key.
+  void OnDeviceKeyRestored();
+
   DaemonDelegate* delegate_;  // owned elsewhere
 
   std::unique_ptr<PrefsInterface> prefs_;

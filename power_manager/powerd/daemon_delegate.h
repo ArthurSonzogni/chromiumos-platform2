@@ -183,7 +183,8 @@ class DaemonDelegate {
 
   virtual std::unique_ptr<system::UserDataAuthClient> CreateUserDataAuthClient(
       system::DBusWrapperInterface* dbus_wrapper,
-      system::SuspendFreezerInterface* suspend_freezer) = 0;
+      const system::UserDataAuthClient::DeviceKeyRestoredCallback&
+          device_key_restored_callback) = 0;
 
   virtual std::unique_ptr<system::LockfileCheckerInterface>
   CreateLockfileChecker(const base::FilePath& dir,

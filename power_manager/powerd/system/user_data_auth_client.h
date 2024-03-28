@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 
@@ -25,16 +26,19 @@ namespace power_manager::system {
 // Implementation that allows power_manager to communicated with cryptohomed.
 class UserDataAuthClient {
  public:
+  // This callback is called after the device key has been restored.
+  using DeviceKeyRestoredCallback = base::RepeatingClosure;
+
   UserDataAuthClient();
   UserDataAuthClient(const UserDataAuthClient&) = delete;
   UserDataAuthClient& operator=(const UserDataAuthClient&) = delete;
 
   virtual ~UserDataAuthClient() = default;
 
-  // Initializes the object. Ownership of |dbus_wrapper| and |suspend_freezer|
-  // remain with the caller.
+  // Initializes the object. Ownership of |dbus_wrapper| remains with the
+  // caller.
   void Init(DBusWrapperInterface* dbus_wrapper,
-            SuspendFreezerInterface* suspend_freezer);
+            const DeviceKeyRestoredCallback& device_key_restored_callback);
 
   // Evicts the device key from the logged in user's cryptphome. All the user's
   // encrypted home directory will not be accessible after this action.
@@ -47,8 +51,8 @@ class UserDataAuthClient {
   // The |user_data_auth_dbus_proxy_| is owned by |dbus_wrapper_|
   dbus::ObjectProxy* user_data_auth_dbus_proxy_ = nullptr;  // weak
 
-  // Interface for resuming essential processes after the key is restored.
-  SuspendFreezerInterface* suspend_freezer_ = nullptr;
+  // The callback that is called after the device key has been restored.
+  DeviceKeyRestoredCallback device_key_restored_callback_;
 
   // This member should be last.
   base::WeakPtrFactory<UserDataAuthClient> weak_ptr_factory_;

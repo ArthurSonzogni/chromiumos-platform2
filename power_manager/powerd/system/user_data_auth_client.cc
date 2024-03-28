@@ -31,16 +31,17 @@ constexpr base::TimeDelta kCryptohomeDBusTimeout = base::Seconds(3);
 
 UserDataAuthClient::UserDataAuthClient() : weak_ptr_factory_(this) {}
 
-void UserDataAuthClient::Init(DBusWrapperInterface* dbus_wrapper,
-                              SuspendFreezerInterface* suspend_freezer) {
+void UserDataAuthClient::Init(
+    DBusWrapperInterface* dbus_wrapper,
+    const DeviceKeyRestoredCallback& device_key_restored_callback) {
   DCHECK(dbus_wrapper);
-  DCHECK(suspend_freezer);
 
   dbus_wrapper_ = dbus_wrapper;
-  suspend_freezer_ = suspend_freezer;
   user_data_auth_dbus_proxy_ =
       dbus_wrapper_->GetObjectProxy(user_data_auth::kUserDataAuthServiceName,
                                     user_data_auth::kUserDataAuthServicePath);
+
+  device_key_restored_callback_ = device_key_restored_callback;
 
   dbus_wrapper_->RegisterForSignal(
       user_data_auth_dbus_proxy_, user_data_auth::kUserDataAuthInterface,
@@ -81,7 +82,7 @@ void UserDataAuthClient::HandleKeyRestoredSignal(dbus::Signal* signal) {
     return;
   }
 
-  suspend_freezer_->ThawProcesses();
+  device_key_restored_callback_.Run();
 }
 
 }  // namespace power_manager::system

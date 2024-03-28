@@ -420,9 +420,9 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   }
   std::unique_ptr<system::UserDataAuthClient> CreateUserDataAuthClient(
       system::DBusWrapperInterface* dbus_wrapper,
-      system::SuspendFreezerInterface* suspend_freezer) override {
+      const system::UserDataAuthClient::DeviceKeyRestoredCallback&
+          device_key_restored_callback) override {
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);
-    EXPECT_EQ(suspend_freezer_, suspend_freezer);
     // This is needed to mock what user_data_auth_client_->Init does.
     dbus_wrapper_->RegisterForSignal(
         dbus_wrapper_->GetObjectProxy(user_data_auth::kUserDataAuthServiceName,

@@ -574,7 +574,8 @@ void Daemon::Init() {
   }
 
   user_data_auth_client_ = delegate_->CreateUserDataAuthClient(
-      dbus_wrapper_.get(), suspend_freezer_.get());
+      dbus_wrapper_.get(), base::BindRepeating(&Daemon::OnDeviceKeyRestored,
+                                               base::Unretained(this)));
 
   bluetooth_controller_->Init(udev_.get(), platform_features_,
                               dbus_wrapper_.get(), tablet_mode);
@@ -970,8 +971,9 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
 #if USE_KEY_EVICTION
   // TODO(b:311232193, thomascedeno): This should be gated by a finch feature
   // flag and controlled by chrome://settings ideally.
-  if (DisableSyncOnSuspend(sync_on_suspend_path_) && user_data_auth_client_)
+  if (DisableSyncOnSuspend(sync_on_suspend_path_) && user_data_auth_client_) {
     user_data_auth_client_->EvictDeviceKey(suspend_request_id);
+  }
 #endif  // USE_KEY_EVICTION
 
   wakealarm_time_ = suspend_configurator_->PrepareForSuspend(duration);
@@ -1879,6 +1881,12 @@ void Daemon::OnPrivacyScreenStateChange(
           << PrivacyScreenStateToString(state);
   privacy_screen_state_ = state;
   metrics_collector_->HandlePrivacyScreenStateChange(privacy_screen_state_);
+}
+
+void Daemon::OnDeviceKeyRestored() {
+  LOG(INFO) << "The device key has been restored";
+
+  suspend_freezer_->ThawProcesses();
 }
 
 void Daemon::RequestTpmStatus() {
