@@ -58,7 +58,7 @@ const BASE_COMMANDS: &[&str] = &[
 
 const DEV_COMMANDS: &[&str] = &["systrace"];
 
-const USB_COMMANDS: &[&str] = &["update_firmware", "install", "upgrade"];
+const USB_COMMANDS: &[&str] = &["install", "upgrade"];
 
 const BIN_DIR_SHELL: &str = "/usr/bin/crosh.sh";
 
