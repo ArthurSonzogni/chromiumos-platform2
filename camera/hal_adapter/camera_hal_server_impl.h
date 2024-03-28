@@ -30,7 +30,7 @@
 #include "hal_adapter/camera_hal_adapter.h"
 
 #if USE_CAMERA_FEATURE_DIAGNOSTICS
-#include "hal_adapter/camera_diagnostics_client.h"
+#include "hal_adapter/camera_diagnostics_client_impl.h"
 #endif
 
 namespace cros {
@@ -133,6 +133,10 @@ class CameraHalServerImpl {
 
     mojo::ReceiverSet<mojom::CrosCameraService> camera_service_receiver_set_;
 
+#if USE_CAMERA_FEATURE_DIAGNOSTICS
+    std::unique_ptr<CameraDiagnosticsClient> camera_diagnostics_client_;
+#endif
+
     // Receiver for mojo service manager service provider.
     mojo::Receiver<chromeos::mojo_service_manager::mojom::ServiceProvider>
         provider_receiver_{this};
@@ -150,10 +154,6 @@ class CameraHalServerImpl {
                               int32_t camera_id,
                               bool opened,
                               mojom::CameraClientType type);
-
-#if USE_CAMERA_FEATURE_DIAGNOSTICS
-  std::unique_ptr<CameraDiagnosticsClient> camera_diagnostics_client_;
-#endif
 
   std::unique_ptr<CameraMojoChannelManager> mojo_manager_;
 

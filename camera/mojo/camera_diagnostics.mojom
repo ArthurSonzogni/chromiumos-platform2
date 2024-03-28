@@ -89,13 +89,26 @@ struct CameraFrameBuffer {
   handle<shared_buffer> shm_handle;
 };
 
-struct CameraFrame {
+struct CameraStream {
   uint32 width;
   uint32 height;
   PixelFormat pixel_format;
+};
+
+struct CameraFrame {
+  CameraStream stream;
   uint32? frame_number;
   DataSource source;
   CameraFrameBuffer buffer;
+};
+
+struct StreamingConfig {
+  uint32 frame_interval;
+};
+
+union StartStreamingResult {
+  ErrorCode error;
+  CameraStream stream;
 };
 
 // Consumer facing interface.
@@ -106,4 +119,18 @@ interface CameraDiagnostics {
 // For internal data source services.
 interface CrosCameraDiagnosticsService {
   SendFrame@0(CameraFrame frame);
+};
+
+// Camera service implements this interface.
+interface CrosCameraController {
+  // TODO(imranziad): Add a callback to notify when selected stream
+  // resolution changes during diagnosis. Diagnostics will need to reconfigure
+  // the buffers.
+  // Overrides a running session when called again. Drops the requested frames.
+  StartStreaming@0(StreamingConfig config) => (StartStreamingResult res);
+
+  StopStreaming@1();
+
+  // Camera diagnostics sends an empty frame for camera service to fill in.
+  RequestFrame@2(CameraFrame frame);
 };

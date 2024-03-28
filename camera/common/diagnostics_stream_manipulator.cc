@@ -4,10 +4,9 @@
 
 #include "common/diagnostics_stream_manipulator.h"
 
-#include <cstdint>
-#include <memory>
 #include <utility>
 
+#include <base/check.h>
 #include <drm_fourcc.h>
 #include <libyuv/scale.h>
 
@@ -15,12 +14,15 @@
 
 namespace cros {
 
-constexpr uint32_t kFrameCopyInterval = 27;
-
 DiagnosticsStreamManipulator::DiagnosticsStreamManipulator(
-    CameraDiagnosticsConfig* diagnostics_config)
+    CameraDiagnosticsClient* diagnostics_client)
     : camera_buffer_manager_(cros::CameraBufferManager::GetInstance()),
-      diagnostics_config_(diagnostics_config) {}
+      diagnostics_client_(diagnostics_client) {}
+
+DiagnosticsStreamManipulator::~DiagnosticsStreamManipulator() {
+  DCHECK(diagnostics_client_);
+  diagnostics_client_->RemoveCameraSession();
+}
 
 bool DiagnosticsStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
@@ -31,6 +33,7 @@ bool DiagnosticsStreamManipulator::Initialize(
 
 bool DiagnosticsStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
+  // TODO(imranziad): Select a stream and add session to diagnostics client.
   return true;
 }
 
@@ -51,34 +54,12 @@ bool DiagnosticsStreamManipulator::ProcessCaptureRequest(
 
 bool DiagnosticsStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  DCHECK(diagnostics_config_);
-  if (!diagnostics_config_->IsFrameInterceptorEnabled() ||
-      result.frame_number() % kFrameCopyInterval != 0) {
+  DCHECK(diagnostics_client_);
+  if (!diagnostics_client_->IsFrameAnalysisEnabled()) {
     callbacks_.result_callback.Run(std::move(result));
     return true;
   }
-
-  buffer_handle_t handle = nullptr;
-
-  for (auto& stream_buffer : result.GetMutableOutputBuffers()) {
-    constexpr int kSyncWaitTimeoutMs = 300;
-    if (!stream_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
-      LOGF(ERROR) << "Timed out waiting for acquiring output buffer";
-      stream_buffer.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_ERROR;
-      continue;
-    }
-    handle = *stream_buffer.buffer();
-    auto mapping_src = ScopedMapping(handle);
-    if (mapping_src.is_valid() && mapping_src.drm_format() == DRM_FORMAT_NV12) {
-      ProcessBuffer(mapping_src);
-      break;
-    }
-  }
-  if (!handle) {
-    LOGF(WARNING) << "Valid output buffer not found for frame number:"
-                  << result.frame_number();
-  }
-
+  // TODO(imranziad): Select and copy an output buffer.
   callbacks_.result_callback.Run(std::move(result));
   return true;
 }
@@ -89,10 +70,6 @@ void DiagnosticsStreamManipulator::Notify(camera3_notify_msg_t msg) {
 
 bool DiagnosticsStreamManipulator::Flush() {
   return true;
-}
-
-void DiagnosticsStreamManipulator::ProcessBuffer(ScopedMapping& mapping_src) {
-  // TODO(imranziad): Add new implementation in follow up CL.
 }
 
 }  // namespace cros

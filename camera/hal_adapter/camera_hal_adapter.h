@@ -27,7 +27,7 @@
 
 #include "camera/mojo/camera3.mojom.h"
 #include "camera/mojo/camera_common.mojom.h"
-#include "common/camera_diagnostics_config.h"
+#include "common/camera_diagnostics_client.h"
 #include "common/reloadable_config_file.h"
 #include "common/stream_manipulator.h"
 #include "common/vendor_tag_manager.h"
@@ -121,7 +121,7 @@ class CameraHalAdapter {
 
   mojom::EffectsConfigPtr GetCameraEffect();
 
-  void SetCameraDiagnosticsConfig(CameraDiagnosticsConfig* config);
+  void SetCameraDiagnosticsClient(CameraDiagnosticsClient* client);
 
  protected:
   // Convert the unified public |camera_id| into the corresponding camera
@@ -320,7 +320,7 @@ class CameraHalAdapter {
 
   std::unique_ptr<DlcClient> super_res_dlc_client_;
 
-  CameraDiagnosticsConfig* camera_diagnostics_config_;
+  CameraDiagnosticsClient* camera_diagnostics_client_;
 };
 
 }  // namespace cros

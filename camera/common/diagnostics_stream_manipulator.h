@@ -5,12 +5,10 @@
 #ifndef CAMERA_COMMON_DIAGNOSTICS_STREAM_MANIPULATOR_H_
 #define CAMERA_COMMON_DIAGNOSTICS_STREAM_MANIPULATOR_H_
 
-#include <memory>
-
 #include <cutils/native_handle.h>
 #include <drm_fourcc.h>
 
-#include "common/camera_diagnostics_config.h"
+#include "common/camera_diagnostics_client.h"
 #include "common/stream_manipulator.h"
 
 namespace cros {
@@ -18,7 +16,9 @@ namespace cros {
 class DiagnosticsStreamManipulator : public StreamManipulator {
  public:
   explicit DiagnosticsStreamManipulator(
-      CameraDiagnosticsConfig* diagnostics_config);
+      CameraDiagnosticsClient* diagnostics_client);
+
+  ~DiagnosticsStreamManipulator() override;
 
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
@@ -33,12 +33,9 @@ class DiagnosticsStreamManipulator : public StreamManipulator {
   bool Flush() override;
 
  private:
-  // Used to copy a buffer and downsample it before dispatching it to
-  // diagnostics service.
-  void ProcessBuffer(ScopedMapping& mapping_src);
   CameraBufferManager* camera_buffer_manager_;
   StreamManipulator::Callbacks callbacks_;
-  CameraDiagnosticsConfig* diagnostics_config_;
+  CameraDiagnosticsClient* diagnostics_client_;
 };
 
 }  // namespace cros

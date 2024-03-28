@@ -65,11 +65,6 @@ void CameraHalServerImpl::Start() {
     ExitOnMainThread(result);
   }
 
-#if USE_CAMERA_FEATURE_DIAGNOSTICS
-  camera_diagnostics_client_ =
-      std::make_unique<CameraDiagnosticsClient>(camera_hal_adapter_.get());
-#endif
-
   // We assume that |camera_hal_adapter_| will only be set once. If the
   // assumption changed, we should consider another way to provide
   // CameraHalAdapter.
@@ -99,6 +94,9 @@ CameraHalServerImpl::IPCBridge::~IPCBridge() {
   camera_service_receiver_set_.Clear();
   observers_.Clear();
   provider_receiver_.reset();
+#if USE_CAMERA_FEATURE_DIAGNOSTICS
+  camera_diagnostics_client_.reset();
+#endif
 }
 
 void CameraHalServerImpl::IPCBridge::Start(
@@ -111,6 +109,13 @@ void CameraHalServerImpl::IPCBridge::Start(
   }
 
   camera_hal_adapter_ = camera_hal_adapter;
+
+#if USE_CAMERA_FEATURE_DIAGNOSTICS
+  camera_diagnostics_client_ =
+      std::make_unique<CameraDiagnosticsClientImpl>(mojo_manager_);
+  camera_hal_adapter_->SetCameraDiagnosticsClient(
+      camera_diagnostics_client_.get());
+#endif
 
   auto privacy_switch_callback = base::BindPostTask(
       ipc_task_runner_,

@@ -301,7 +301,6 @@ source_set("camera_gpu_algorithm") {
 
 source_set("stream_manipulator") {
   sources = [
-    "//camera/common/camera_diagnostics_config.cc",
     "//camera/common/framing_stream_manipulator.cc",
     "//camera/common/still_capture_processor_impl.cc",
     "//camera/common/stream_manipulator.cc",

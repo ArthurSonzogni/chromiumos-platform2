@@ -8,7 +8,9 @@
     {
       "identity": "u:r:cros_camera_service:s0",
       "own": [
-        "CrosCameraService"
+        "CrosCameraService",
+        // Used by camera diagnostics service for start/stop streaming.
+        "CrosCameraController"
       ]
     },
     {
@@ -20,7 +22,8 @@
     {
       "identity": "u:r:cros_ssh_session:s0",
       "request": [
-        "CrosCameraService"
+        "CrosCameraService",
+        "CrosCameraController"
       ]
     },
     {
@@ -29,6 +32,12 @@
       "identity": "u:r:cros_healthd:s0",
       "request": [
         "CrosCameraService"
+      ]
+    },
+    {
+      "identity": "u:r:cros_camera_diagnostics_service:s0",
+      "request": [
+        "CrosCameraController"
       ]
     }
 ]

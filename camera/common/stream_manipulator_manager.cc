@@ -247,10 +247,10 @@ StreamManipulatorManager::StreamManipulatorManager(
 #endif
 
 #if USE_CAMERA_FEATURE_DIAGNOSTICS
-  if (create_options.diagnostics_config != nullptr) {
+  if (create_options.diagnostics_client != nullptr) {
     stream_manipulators_.emplace_back(
         std::make_unique<DiagnosticsStreamManipulator>(
-            create_options.diagnostics_config));
+            create_options.diagnostics_client));
     LOGF(INFO) << "DiagnosticsStreamManipulator enabled";
   } else {
     LOGF(INFO) << "DiagnosticsStreamManipulator not enabled";

@@ -19,7 +19,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/thread_annotations.h>
 
-#include "common/camera_diagnostics_config.h"
+#include "common/camera_diagnostics_client.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/camera_metadata_inspector.h"
 #include "common/stream_manipulator.h"
@@ -49,7 +49,7 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
     // cros_camera_hal_t.set_privacy_switch_state.
     bool sw_privacy_switch_stream_manipulator_enabled = true;
 
-    CameraDiagnosticsConfig* diagnostics_config;
+    CameraDiagnosticsClient* diagnostics_client;
   };
 
   StreamManipulatorManager(CreateOptions create_options,
