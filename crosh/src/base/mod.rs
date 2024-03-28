@@ -22,6 +22,7 @@ mod uname;
 mod uptime;
 mod verify_ro;
 mod vmc;
+mod vmstat;
 mod wireguard;
 
 use crate::dispatcher::Dispatcher;
@@ -45,5 +46,6 @@ pub fn register(dispatcher: &mut Dispatcher) {
     uname::register(dispatcher);
     verify_ro::register(dispatcher);
     vmc::register(dispatcher);
+    vmstat::register(dispatcher);
     wireguard::register(dispatcher);
 }

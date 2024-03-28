@@ -1400,24 +1400,6 @@ cmd_meminfo() (
 )
 
 # shellcheck disable=SC2034
-USAGE_vmstat='[-a|-d|-f|-m|-n|-s|-w] [delay [count]]'
-# shellcheck disable=SC2034
-HELP_vmstat='
-  Report virtual memory statistics
-'
-cmd_vmstat() (
-  # We allow only a few options.
-  local opt
-  for opt in "$@"; do
-    if ! printf '%s' "${opt}" | grep -sqE '^(-[adfmnsw]+|[0-9]+)$'; then
-      help "unknown option: ${opt}"
-      return 1
-    fi
-  done
-  vmstat "$@"
-)
-
-# shellcheck disable=SC2034
 USAGE_evtest=''
 # shellcheck disable=SC2034
 EXEC_evtest='/usr/bin/evtest'

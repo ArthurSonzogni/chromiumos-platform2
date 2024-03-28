@@ -46,7 +46,6 @@ const BASE_COMMANDS: &[&str] = &[
     "u2f_flags",
     "upload_crashes",
     "upload_devcoredumps",
-    "vmstat",
     "vsh",
     "wifi_power_save",
 ];
