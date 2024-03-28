@@ -654,8 +654,16 @@ void Resolver::OnDNSQuery(int fd, int type) {
 
   // For TCP, it is possible for the packets to be chunked. Move the buffer
   // to the last empty position and adjust the size.
-  char* buf = sock_fd->msg + sock_fd->len;
+  // For UDP, |sock_fd->len| is always initialized to 0.
+  char* buf = sock_fd->buf + sock_fd->len;
   ssize_t buf_size = kDNSBufSize - sock_fd->len;
+
+  // For TCP, DNS has an additional 2-bytes header representing the length
+  // of the query. Move the receiving buffer, so it is 4-bytes aligned.
+  if (type == SOCK_STREAM) {
+    buf += kTCPBufferPaddingLength;
+    buf_size -= kTCPBufferPaddingLength;
+  }
 
   // Only the last recvfrom call is considered for receive metrics.
   sock_fd->timer.StartReceive();
