@@ -66,7 +66,14 @@ pub fn register(dispatcher: &mut Dispatcher) {
             "set_time".to_string(),
             "<time string>".to_string(),
             r#"Sets the system time if the the system has been unable to get it from the
-  network. The <time string> uses the format of the GNU coreutils date command."#
+  network.  The time may be initialized only once per-boot.
+
+  The <time string> uses the format of the GNU coreutils date command.
+  https://www.gnu.org/software/coreutils/manual/html_node/Date-input-formats.html
+  https://www.gnu.org/software/coreutils/faq/coreutils-faq.html#The-date-command-is-not-working-right_002e
+
+  Please see the timekeeping documentation for more information in general:
+  https://www.chromium.org/chromium-os/chromiumos-design-docs/timekeeping/"#
                 .to_string(),
         )
         .set_command_callback(Some(execute_set_time)),

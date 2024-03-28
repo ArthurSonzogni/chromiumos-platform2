@@ -542,6 +542,8 @@ USAGE_set_arpgw='<true | false>'
 HELP_set_arpgw='
   Turn on extra network state checking to make sure the default gateway
   is reachable.
+
+  https://en.wikipedia.org/wiki/Default_gateway
 '
 cmd_set_arpgw() (
   debugd_shill set_arpgw "$@"
@@ -693,6 +695,8 @@ HELP_ping='
   Send ICMP ECHO_REQUEST packets to a network host.  If <destination> is "gw"
   then the next hop gateway for the default route is used.
   Default is to use IPv4 [-4] rather than IPv6 [-6] addresses.
+
+  https://en.wikipedia.org/wiki/Ping_(networking_utility)
 '
 cmd_ping() (
   local option="dict:string:variant:"
@@ -823,7 +827,9 @@ cmd_ipaddrs() (
 USAGE_route='[-4] [-6] [--all]'
 # shellcheck disable=SC2034
 HELP_route='
-  Display the routing tables.
+  Display the network routing tables.
+  https://en.wikipedia.org/wiki/Routing_table
+
   -4: Only show IPv4 routes.
   -6: Only show IPv6 routes.
   --all: Show all routing tables.
@@ -863,6 +869,8 @@ USAGE_tracepath='[-4] [-6] [-n] <destination>[/port]'
 HELP_tracepath='
   Trace the path/route to a network host.
   Default is to trace IPv4 [-4] rather than IPv6 [-6] targets.
+
+  https://en.wikipedia.org/wiki/Traceroute
 '
 cmd_tracepath() (
   local option="dict:string:variant:"
@@ -904,7 +912,13 @@ cmd_tracepath() (
 USAGE_top=''
 # shellcheck disable=SC2034
 HELP_top='
-  Run top.
+  Run top.  This will tell you what resources are currently being used and low
+  level system processes.
+
+  Users should use the Chrome Task Monitor: press Search+Escape to open it.
+
+  https://man7.org/linux/man-pages/man1/top.1.html
+  https://gitlab.com/procps-ng/procps
 '
 cmd_top() (
   # -s is "secure" mode, which disables kill, renice, and change display/sleep
@@ -1050,6 +1064,8 @@ USAGE_upload_crashes=''
 # shellcheck disable=SC2034
 HELP_upload_crashes='
   Uploads available crash reports to the crash server.
+
+  Check chrome://crashes for processed crashes.
 '
 cmd_upload_crashes() (
   debugd UploadCrashes
@@ -1135,6 +1151,9 @@ USAGE_syslog='<message>'
 # shellcheck disable=SC2034
 HELP_syslog='
   Logs a message to syslog (the system log daemon).
+
+  This can help mark/flag/label the logs just before & after running a different
+  operation so you can locate the relevant errors faster.
 '
 cmd_syslog() (
   logger -t crosh -- "$*"
@@ -1449,7 +1468,10 @@ cmd_sync() (
 USAGE_uptime=''
 # shellcheck disable=SC2034
 HELP_uptime='
-  Display uptime/load info
+  Display uptime/load info.
+
+  https://en.wikipedia.org/wiki/Uptime
+  https://en.wikipedia.org/wiki/Load_(computing)
 '
 cmd_uptime() (
   if [ $# -eq 0 ]; then
