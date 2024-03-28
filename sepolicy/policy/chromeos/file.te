@@ -141,6 +141,7 @@ type cros_metrics_daemon_exec, exec_type, file_type, cros_file_type, cros_system
 type cros_midis_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mimo_monitor_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_minijail_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_minios_util_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_missived_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mke2fs_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_ml_service_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
@@ -499,6 +500,7 @@ type cros_var_log_gsclog, file_type, cros_log_type, cros_file_type, cros_var_fil
 type cros_var_log_hypervisor, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_lorgnette, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
 type cros_var_log_metrics, file_type, cros_log_type, cros_file_type, cros_var_file_type;
+type cros_var_log_minios_util, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_var_log_modemfwd, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_modemloggerd, file_type, cros_log_type, cros_file_type, cros_var_file_type;
 type cros_var_log_node_exporter, file_type, cros_log_type, cros_file_type, cros_var_file_type, cros_rotate_by_cleanup_logs_file_type;
@@ -659,6 +661,7 @@ type cros_tcsd_socket, file_type, cros_file_type, cros_run_file_type;
 type cros_stateful_partition, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_cache, file_type, cros_file_type, cros_uncategorized_file_type;
+type cros_stateful_partition_unencrypted_minios_util, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_preserve, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_profraws, file_type, cros_file_type, cros_uncategorized_file_type;
 type cros_stateful_partition_unencrypted_rma, file_type, cros_file_type, cros_uncategorized_file_type;
