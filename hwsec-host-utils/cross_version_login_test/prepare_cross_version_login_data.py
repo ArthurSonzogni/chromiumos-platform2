@@ -166,13 +166,27 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
         nargs="+",
     )
 
-    parser.add_argument(
+    output_group = parser.add_argument_group(
+        "Output options"
+    ).add_mutually_exclusive_group(required=True)
+    output_group.add_argument(
         "--output-dir",
         help="path to the directory to place output files in. If --hsms is "
         "specified, the file is put in corresponding subdirectory.",
-        required=True,
         type=Path,
     )
+    output_group.add_argument(
+        "--no-output",
+        help="don't output or upload anything",
+        action="store_true",
+    )
+    output_group.add_argument(
+        "--output-tast",
+        help="Same as `--output-dir` but writes output to the directory "
+        "containing the current x-ver data in tast-tests",
+        action="store_true",
+    )
+
     parser.add_argument(
         "--ssh-identity-file",
         help="path to the SSH private key file",
@@ -205,8 +219,17 @@ def main(argv: Optional[List[str]] = None) -> Optional[int]:
             ensure_vm_image(image_info)
             image_info_list.append(image_info)
 
+    output_dir = None
+    if opts.output_dir:
+        output_dir = opts.output_dir
+    elif opts.output_tast:
+        output_dir = chromiumos_src() / Path(
+            "platform/tast-tests/src/go.chromium.org/tast-tests/cros/"
+            "local/bundles/cros/hwsec/fixture/data/cross_version_login"
+        )
+
     for image_info in image_info_list:
-        run(image_info, opts.output_dir, opts.ssh_identity_file)
+        run(image_info, output_dir, opts.ssh_identity_file)
 
 
 def init_logging(debug: bool):
@@ -218,11 +241,11 @@ def init_logging(debug: bool):
 
 def run(
     image_info: ImageInfo,
-    output_dir: Path,
+    output_dir: Optional[Path],
     ssh_identity_file: Optional[Path],
 ) -> None:
     with tempfile.TemporaryDirectory() as temp_dir:
-        if image_info.board.hsm:
+        if image_info.board.hsm and output_dir:
             output_dir /= image_info.board.hsm
             output_dir.mkdir(exist_ok=True)
         temp_path = Path(temp_dir)
@@ -233,13 +256,14 @@ def run(
         try:
             init_vm(image_info.version, dut)
             generate_data()
-            upload_data(
-                image_info.board.name,
-                image_info.version,
-                output_dir,
-                temp_path,
-                dut,
-            )
+            if output_dir:
+                upload_data(
+                    image_info.board.name,
+                    image_info.version,
+                    output_dir,
+                    temp_path,
+                    dut,
+                )
         finally:
             stop_vm()
 
@@ -443,6 +467,15 @@ def calculate_file_sha256(path: Path) -> str:
                 break
             sha256.update(block)
     return sha256.hexdigest()
+
+
+def chromiumos_src() -> Path:
+    # This assume that __file__ resides in
+    # src/platform2/hwsec-host-utils/cross_version_loging_test
+    src_path = Path(__file__).resolve().parents[3]
+    if src_path.name != "src":
+        raise RuntimeError("Failed to find ChromiumOS src directory.")
+    return src_path
 
 
 if __name__ == "__main__":
