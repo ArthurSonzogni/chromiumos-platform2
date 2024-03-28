@@ -90,10 +90,14 @@ fn legacy_crosh() -> process::Command {
     let mut sub = process::Command::new(BIN_DIR_SHELL);
     if util::dev_commands_included() {
         sub.arg("--dev");
+    } else {
+        sub.arg("--no-dev");
     }
     if util::usb_commands_included() {
         // This includes '--removable'.
         sub.arg("--usb");
+    } else {
+        sub.arg("--no-usb");
     }
     sub
 }

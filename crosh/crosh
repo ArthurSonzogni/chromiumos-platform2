@@ -67,38 +67,15 @@ load_extra_crosh() {
 
   # Load the removable modules, if the rootfs is on removable
   # media.  e.g. It's a USB stick.
-  if [ -z "${CROSH_REMOVABLE}" ]; then
-    local src removable
-    if [ -e /usr/share/misc/chromeos-common.sh ]; then
-      # shellcheck source=../chromeos-common-script/share/chromeos-common.sh
-      . "/usr/share/misc/chromeos-common.sh" || exit 1
-
-      src="$(get_block_dev_from_partition_dev "$(rootdev -s)")"
-      removable="$(cat "/sys/block/${src#/dev/}/removable" 2>/dev/null)"
-      if [ "${removable}" = "1" ]; then
-        CROSH_REMOVABLE="1"
-      fi
-    fi
-  fi
   if [ "${CROSH_REMOVABLE}" = "1" ]; then
     load_modules "removable.d"
   fi
 
   # Load the dev-mode modules, if in dev mode, or if forced.
   # This comes last so it can override any release modules.
-  if [ -z "${CROSH_DEVMODE}" ]; then
-    if type crossystem >/dev/null 2>&1; then
-      crossystem "cros_debug?1"
-      # shellcheck disable=SC2181
-      CROSH_DEVMODE="$((!$?))"
-    else
-      echo "Could not locate 'crossystem'; assuming devmode is off."
-    fi
-  fi
   if [ "${CROSH_DEVMODE}" = "1" ]; then
     load_modules "dev.d"
   fi
-
 }
 
 # Returns status 0 if the argument is a valid positive integer
@@ -1747,8 +1724,14 @@ main() {
     --dev)
       CROSH_DEVMODE="1"
       ;;
+    --no-dev)
+      CROSH_DEVMODE="0"
+      ;;
     --removable|--usb)
       CROSH_REMOVABLE="1"
+      ;;
+    --no-usb)
+      CROSH_REMOVABLE="0"
       ;;
     --)
       CROSH_SINGLE_COMMAND=1
@@ -1764,6 +1747,12 @@ main() {
 
   load_extra_crosh
 
+  if [ -z "${CROSH_DEVMODE}" ]; then
+    usage "--dev or --no-dev is required."
+  fi
+  if [ -z "${CROSH_REMOVABLE}" ]; then
+    usage "--usb or --no-usb is required."
+  fi
   if [ "${CROSH_SINGLE_COMMAND}" != "1" ]; then
     usage "Interactive mode no longer supported."
   fi
