@@ -137,10 +137,8 @@ cmd_help() (
 
   case $# in
   0)
-    local cmds="help help_advanced ping top"
-    for cmd in ${cmds}; do
-      cmd_help "${cmd}"
-    done
+    help "missing parameter: command"
+    return 1
     ;;
   1)
     # The ordering and relationship of variables here is subtle.
@@ -191,26 +189,14 @@ help() {
   fi
 }
 
+# NB: Stubs are left behind for `help help_advanced` support.
 # shellcheck disable=SC2034
 USAGE_help_advanced=''
 # shellcheck disable=SC2034
 HELP_help_advanced='
   Display the help for more advanced commands, mainly used for debugging.
 '
-cmd_help_advanced() (
-  local cmd
-
-  if [ $# -ne 0 ]; then
-    help "too many arguments"
-    return 1
-  fi
-
-  for cmd in $(registered_visible_commands); do
-    if check_command_available "${cmd}"; then
-      cmd_help "${cmd}"
-    fi
-  done
-)
+cmd_help_advanced() (:)
 
 # Check if a particular Chrome feature is enabled.
 # Use the DBus method name as the parameter.
@@ -1661,16 +1647,6 @@ substr() {
 is_shell_function() {
   local func="$1"
   type "${func}" 2>/dev/null | head -1 | grep -q 'function'
-}
-
-# Return all registered crosh commands intended for users.
-# This will not include "hidden" commands that lack help as those are not yet
-# meant for wider consumption, or they've been deprecated.
-registered_visible_commands() {
-  # Remember: Use a form that works under POSIX shell.  Since that does not
-  # offer any way of doing introspection on registered functions, we have to
-  # stick to probing the environment.
-  set | grep -o '^HELP_[^=]*' | sed -e 's:^HELP_::' -e 's:=$::' | sort
 }
 
 # Return true if the first arg is a valid crosh command.
