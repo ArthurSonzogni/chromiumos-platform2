@@ -560,19 +560,6 @@ cmd_wifi_power_save() (
   esac
 )
 
-# Set the help string so crosh can discover us automatically.
-# shellcheck disable=SC2034
-HELP_network_diag=''
-# shellcheck disable=SC2034
-EXEC_network_diag='/usr/bin/network_diag'
-cmd_network_diag() (
-  help_network_diag
-)
-help_network_diag() (
-  echo "This command is disabled pending removal."
-  echo "Please see https://issuetracker.google.com/267537630"
-)
-
 u2f_warning='
   ### IMPORTANT: The U2F feature is experimental and not suitable for
   ### general production use in its current form. The current

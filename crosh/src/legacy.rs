@@ -29,7 +29,6 @@ const BASE_COMMANDS: &[&str] = &[
     "meminfo",
     "memory_test",
     "modem",
-    "network_diag",
     "p2p_update",
     "ping",
     "rlz",
