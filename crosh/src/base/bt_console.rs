@@ -7,7 +7,6 @@
 use dbus::blocking::Connection;
 use log::error;
 use std::fmt::{self, Display};
-use std::io::Write;
 use std::process::{self};
 use std::time::Duration;
 
@@ -18,10 +17,6 @@ const BLUEZ_DEFAULT_ARG: &str = "--restricted";
 
 const FLOSS_EXECUTABLE: &str = "/usr/bin/btclient";
 const FLOSS_DEFAULT_ARG: &str = "--restricted";
-
-const HELP: &str = r#"
-  Enters a Bluetooth debugging console.
-"#;
 
 #[derive(Debug)]
 pub enum Error {
@@ -44,9 +39,12 @@ impl Display for Error {
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new("bt_console".to_string(), "".to_string(), "".to_string())
-            .set_command_callback(Some(execute_btclient))
-            .set_help_callback(btclient_help),
+        Command::new(
+            "bt_console".to_string(),
+            "".to_string(),
+            r#"Enters a Bluetooth debugging console."#.to_string(),
+        )
+        .set_command_callback(Some(execute_btclient)),
     );
 }
 
@@ -67,11 +65,6 @@ fn is_floss_enabled() -> Result<bool, Error> {
         })?;
 
     Ok(reply)
-}
-
-fn btclient_help(_cmd: &Command, w: &mut dyn Write, _level: usize) {
-    w.write_all(HELP.as_bytes()).unwrap();
-    w.flush().unwrap();
 }
 
 fn execute_btclient(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> {
