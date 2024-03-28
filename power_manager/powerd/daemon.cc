@@ -1393,6 +1393,7 @@ void Daemon::InitDBus() {
        &Daemon::HandleSetBacklightsForcedOffMethod},
       {kGetBacklightsForcedOffMethod,
        &Daemon::HandleGetBacklightsForcedOffMethod},
+      {kHasKeyboardBacklightMethod, &Daemon::HandleHasKeyboardBacklightMethod},
       {kChangeWifiRegDomainMethod, &Daemon::HandleChangeWifiRegDomainMethod},
       {kGetTabletModeMethod, &Daemon::HandleGetTabletModeMethod},
       {kHasAmbientLightSensorMethod,
@@ -1819,6 +1820,16 @@ std::unique_ptr<dbus::Response> Daemon::HandleGetBacklightsForcedOffMethod(
                         ? false
                         : all_backlight_controllers_.front()->GetForcedOff();
   dbus::MessageWriter(response.get()).AppendBool(forced_off);
+  return response;
+}
+
+std::unique_ptr<dbus::Response> Daemon::HandleHasKeyboardBacklightMethod(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> response(
+      dbus::Response::FromMethodCall(method_call));
+
+  bool has_keyboard_backlight = BoolPrefIsTrue(kHasKeyboardBacklightPref);
+  dbus::MessageWriter(response.get()).AppendBool(has_keyboard_backlight);
   return response;
 }
 

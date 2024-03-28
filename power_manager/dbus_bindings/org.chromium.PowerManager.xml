@@ -66,6 +66,12 @@
     </method>
 
     <!-- Keyboard backlight control -->
+    <method name="HasKeyboardBacklight">
+      <tp:docstring>
+        Returns true if the device has a keyboard backlight.
+      </tp:docstring>
+      <arg name="has_backlight" direction="out" type="b" />
+    </method>
     <method name="DecreaseKeyboardBrightness" />
     <method name="IncreaseKeyboardBrightness" />
     <method name="ToggleKeyboardBacklight">

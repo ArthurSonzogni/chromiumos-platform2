@@ -309,6 +309,8 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleGetBacklightsForcedOffMethod(
       dbus::MethodCall* method_call);
+  std::unique_ptr<dbus::Response> HandleHasKeyboardBacklightMethod(
+      dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleChangeWifiRegDomainMethod(
       dbus::MethodCall* method_call);
   std::unique_ptr<dbus::Response> HandleChargeNowForAdaptiveChargingMethod(

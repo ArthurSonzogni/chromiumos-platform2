@@ -933,6 +933,34 @@ TEST_F(DaemonTest, ForceBacklightsOff) {
   EXPECT_FALSE(forced_off);
 }
 
+TEST_F(DaemonTest, HasKeyboardBacklight_NoBacklight) {
+  prefs_->SetInt64(kHasKeyboardBacklightPref, 0);
+  Init();
+
+  dbus::MethodCall get_call(kPowerManagerInterface,
+                            kHasKeyboardBacklightMethod);
+  auto response = dbus_wrapper_->CallExportedMethodSync(&get_call);
+  ASSERT_TRUE(response.get());
+  bool has_keyboard_backlight = false;
+  ASSERT_TRUE(
+      dbus::MessageReader(response.get()).PopBool(&has_keyboard_backlight));
+  EXPECT_FALSE(has_keyboard_backlight);
+}
+
+TEST_F(DaemonTest, HasKeyboardBacklight_HasBacklight) {
+  prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
+  Init();
+
+  dbus::MethodCall get_call(kPowerManagerInterface,
+                            kHasKeyboardBacklightMethod);
+  auto response = dbus_wrapper_->CallExportedMethodSync(&get_call);
+  ASSERT_TRUE(response.get());
+  bool has_keyboard_backlight = false;
+  ASSERT_TRUE(
+      dbus::MessageReader(response.get()).PopBool(&has_keyboard_backlight));
+  EXPECT_TRUE(has_keyboard_backlight);
+}
+
 TEST_F(DaemonTest, RequestShutdown) {
   prefs_->SetInt64(kHasKeyboardBacklightPref, 1);
   Init();

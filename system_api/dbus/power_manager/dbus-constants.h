@@ -17,6 +17,7 @@ const char kSetScreenBrightnessMethod[] = "SetScreenBrightness";
 const char kDecreaseScreenBrightnessMethod[] = "DecreaseScreenBrightness";
 const char kIncreaseScreenBrightnessMethod[] = "IncreaseScreenBrightness";
 const char kGetScreenBrightnessPercentMethod[] = "GetScreenBrightnessPercent";
+const char kHasKeyboardBacklightMethod[] = "HasKeyboardBacklight";
 const char kGetKeyboardBrightnessPercentMethod[] =
     "GetKeyboardBrightnessPercent";
 const char kSetKeyboardBrightnessMethod[] = "SetKeyboardBrightness";
