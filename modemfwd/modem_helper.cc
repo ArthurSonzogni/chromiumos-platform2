@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -136,9 +137,7 @@ class FlashMode {
   explicit FlashMode(const HelperInfo& helper_info)
       : helper_info_(helper_info) {}
 
-  ~FlashMode() {
-    RunHelperProcess(helper_info_, {kReboot}, nullptr);
-  }
+  ~FlashMode() { RunHelperProcess(helper_info_, {kReboot}, nullptr); }
 
  private:
   FlashMode(const FlashMode&) = delete;
@@ -167,8 +166,9 @@ class ModemHelperImpl : public ModemHelper {
                           {kGetFirmwareInfo,
                            base::StringPrintf("%s=%s", kShillFirmwareRevision,
                                               firmware_revision.c_str())},
-                          &helper_output))
+                          &helper_output)) {
       return false;
+    }
 
     base::StringPairs parsed_versions;
     bool result = base::SplitStringIntoKeyValuePairs(helper_output, ':', '\n',
@@ -259,6 +259,46 @@ class ModemHelperImpl : public ModemHelper {
         helper_info_,
         {base::StringPrintf("%s=%s", kClearAttachAPN, carrier_uuid.c_str())},
         nullptr);
+  }
+
+  std::optional<HeartbeatConfig> GetHeartbeatConfig() override {
+    std::string output;
+    if (!RunHelperProcess(helper_info_, {kGetHeartbeatConfig}, &output))
+      return std::nullopt;
+
+    base::StringPairs parsed_config;
+    bool result =
+        base::SplitStringIntoKeyValuePairs(output, ':', '\n', &parsed_config);
+    if (!result) {
+      LOG(WARNING) << "Modem helper returned malformed heartbeat config";
+      return std::nullopt;
+    }
+
+    std::optional<int> max_failures;
+    std::optional<int> interval_sec;
+    for (const auto& pair : parsed_config) {
+      if (pair.first == kHeartbeatMaxFailures) {
+        int value;
+        if (!base::StringToInt(pair.second, &value))
+          return std::nullopt;
+
+        max_failures = value;
+      }
+      if (pair.first == kHeartbeatInterval) {
+        int value;
+        if (!base::StringToInt(pair.second, &value))
+          return std::nullopt;
+
+        interval_sec = value;
+      }
+    }
+
+    if (!max_failures.has_value() || !interval_sec.has_value()) {
+      LOG(WARNING) << "Modem helper returned incomplete heartbeat config";
+      return std::nullopt;
+    }
+
+    return HeartbeatConfig{*max_failures, base::Seconds(*interval_sec)};
   }
 
  private:

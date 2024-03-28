@@ -7,12 +7,14 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/time/time.h>
 #include <dbus/bus.h>
 
 namespace modemfwd {
@@ -59,6 +61,11 @@ struct FirmwareConfig {
   }
 };
 
+struct HeartbeatConfig {
+  int max_failures;
+  base::TimeDelta interval;
+};
+
 class ModemHelper {
  public:
   virtual ~ModemHelper() = default;
@@ -71,6 +78,8 @@ class ModemHelper {
   virtual bool Reboot() = 0;
   virtual bool FlashModeCheck() = 0;
   virtual bool ClearAttachAPN(const std::string& carrier_uuid) = 0;
+
+  virtual std::optional<HeartbeatConfig> GetHeartbeatConfig() = 0;
 };
 
 std::unique_ptr<ModemHelper> CreateModemHelper(const HelperInfo& helper_info,

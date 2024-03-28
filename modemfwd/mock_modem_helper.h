@@ -34,6 +34,11 @@ class MockModemHelper : public ModemHelper {
               ClearAttachAPN,
               (const std::string& carrier_uuid),
               (override));
+
+  MOCK_METHOD(std::optional<HeartbeatConfig>,
+              GetHeartbeatConfig,
+              (),
+              (override));
 };
 
 }  // namespace modemfwd

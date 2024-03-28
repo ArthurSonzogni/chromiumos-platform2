@@ -23,10 +23,6 @@ class MockModem : public Modem {
   MOCK_METHOD(std::string, GetDeviceId, (), (const, override));
   MOCK_METHOD(std::string, GetEquipmentId, (), (const, override));
   MOCK_METHOD(std::string, GetCarrierId, (), (const, override));
-  MOCK_METHOD(std::string, GetPrimaryPort, (), (const, override));
-  MOCK_METHOD(int, GetHeartbeatFailures, (), (const, override));
-  MOCK_METHOD(void, ResetHeartbeatFailures, (), (override));
-  MOCK_METHOD(void, IncrementHeartbeatFailures, (), (override));
   MOCK_METHOD(std::string, GetMainFirmwareVersion, (), (const, override));
   MOCK_METHOD(std::string, GetOemFirmwareVersion, (), (const, override));
   MOCK_METHOD(std::string, GetCarrierFirmwareId, (), (const, override));
@@ -46,6 +42,9 @@ class MockModem : public Modem {
               ClearAttachAPN,
               (const std::string& carrier_uuid),
               (override));
+
+  MOCK_METHOD(bool, SupportsHealthCheck, (), (const, override));
+  MOCK_METHOD(bool, CheckHealth, (), (override));
 };
 
 }  // namespace modemfwd

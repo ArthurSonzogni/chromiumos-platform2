@@ -17,8 +17,10 @@
 #include <brillo/process/process.h>
 #include <dbus/bus.h>
 
+#include "modemfwd/daemon_delegate.h"
 #include "modemfwd/dbus_adaptors/org.chromium.Modemfwd.h"
 #include "modemfwd/dlc_manager.h"
+#include "modemfwd/heartbeat_task.h"
 #include "modemfwd/journal.h"
 #include "modemfwd/metrics.h"
 #include "modemfwd/modem.h"
@@ -31,12 +33,10 @@
 
 namespace modemfwd {
 
-class Daemon;
-
 class DBusAdaptor : public org::chromium::ModemfwdInterface,
                     public org::chromium::ModemfwdAdaptor {
  public:
-  explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus, Daemon* daemon);
+  explicit DBusAdaptor(scoped_refptr<dbus::Bus> bus, Delegate* delegate);
   DBusAdaptor(const DBusAdaptor&) = delete;
   DBusAdaptor& operator=(const DBusAdaptor&) = delete;
 
@@ -50,10 +50,10 @@ class DBusAdaptor : public org::chromium::ModemfwdInterface,
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
-  Daemon* daemon_;  // weak
+  Delegate* delegate_;  // weak
 };
 
-class Daemon : public brillo::DBusServiceDaemon {
+class Daemon : public brillo::DBusServiceDaemon, public Delegate {
  public:
   // Constructor for Daemon which loads from already set-up
   // directories.
@@ -65,11 +65,12 @@ class Daemon : public brillo::DBusServiceDaemon {
 
   ~Daemon() override = default;
 
-  bool ForceFlash(const std::string& device_id);
+  // Delegate overrides.
   bool ForceFlashForTesting(const std::string& device_id,
                             const std::string& carrier_uuid,
                             const std::string& variant,
-                            bool use_modems_fw_info);
+                            bool use_modems_fw_info) override;
+  bool ResetModem(const std::string& device_id) override;
 
  protected:
   // brillo::Daemon overrides.
@@ -78,6 +79,9 @@ class Daemon : public brillo::DBusServiceDaemon {
   // brillo::DBusServiceDaemon overrides.
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
+
+  // Force-flash the modem (with generic firmware).
+  bool ForceFlash(const std::string& device_id);
 
  private:
   // Once we have a path for the firmware directory we can parse
@@ -112,14 +116,9 @@ class Daemon : public brillo::DBusServiceDaemon {
                           ModemHelper* modem_helper);
   void ForceFlashIfNeverAppeared(const std::string& device_id);
 
-  // Modem health polling
-  void StartHeartbeatTimer();
-  void StopHeartbeatTimer();
-  void CheckModemIsResponsive();
-  void HandleModemCheckResult(const std::string& device_id, bool check_result);
-  void ResetModemWithHelper(const std::string& device_id, ModemHelper* helper);
-
-  base::RepeatingTimer heartbeat_timer_;
+  void SetupHeartbeatTask(const std::string& device_id);
+  void StartHeartbeatTask(const std::string& device_id);
+  void StopHeartbeatTask(const std::string& device_id);
 
   base::FilePath journal_file_path_;
   base::FilePath helper_dir_path_;
@@ -133,6 +132,8 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<Metrics> metrics_;
 
   std::map<std::string, std::unique_ptr<Modem>> modems_;
+  std::map<std::string, std::unique_ptr<HeartbeatTask>> heartbeat_tasks_;
+
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
   std::unique_ptr<NotificationManager> notification_mgr_;

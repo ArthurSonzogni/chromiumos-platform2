@@ -52,36 +52,10 @@ constexpr base::TimeDelta kDlcRemovalDelay = base::Minutes(2);
 constexpr char kDisableAutoUpdatePref[] =
     "/var/lib/modemfwd/disable_auto_update";
 
-// 3 failures 20 seconds apart gives a strong signal that the modem is in a bad
-// state. These values were chosen to try and maximize the time between polls
-// to minimize power impact, without relying on too few datapoints. Furthermore
-// 60 seconds of detection + 25 seconds of modem reset (targeting FM350 stalls)
-// Will allow recovery well before the 120 second suspend timeout and shutdown.
-constexpr base::TimeDelta kHeartbeatDelay = base::Seconds(20);
-constexpr base::TimeDelta kCmdKillDelay = base::Seconds(1);
-constexpr uint8_t kDefaultFailedHeartbeatsBeforeRecovery = 3;
-constexpr uint8_t kFM101FailedHeartbeatsBeforeRecovery = 6;
-constexpr char kEM060DeviceID[] = "usb:2c7c:0128";
-constexpr char kFM101DeviceID[] = "usb:2cb7:01a2";
-constexpr char kFM350DeviceID[] = "pci:14c3:4d75 (External)";
-constexpr char kL850DeviceID[] = "usb:2cb7:0007";
-constexpr char kNL668DeviceID[] = "usb:2cb7:01a0";
-
-// Mapping between device_ids and the maximum number of
-// missed heartbeats before modem reboot.
-constexpr auto kDevicesSupportingRecoveryMap =
-    base::MakeFixedFlatMap<std::string_view, uint8_t>({
-        {kFM350DeviceID, kDefaultFailedHeartbeatsBeforeRecovery},  // FM350
-        {kFM101DeviceID, kFM101FailedHeartbeatsBeforeRecovery},    // FM101
-        {kEM060DeviceID, kDefaultFailedHeartbeatsBeforeRecovery},  // EM060
-        {kNL668DeviceID, kDefaultFailedHeartbeatsBeforeRecovery},  // NL668
-        {kL850DeviceID, kDefaultFailedHeartbeatsBeforeRecovery},   // L850
-    });
-
 constexpr char const* kDevicesSupportingFlashModeCheck[] = {
-    kL850DeviceID,   // L850
-    kFM101DeviceID,  // FM101
-    kNL668DeviceID   // NL668
+    "usb:2cb7:0007",  // L850
+    "usb:2cb7:01a2",  // FM101
+    "usb:2cb7:01a0",  // NL668
 };
 
 // Returns the modem firmware variant for the current model of the device by
@@ -142,14 +116,6 @@ bool IsAutoUpdateDisabledByPref() {
   return (pref_value == 1);
 }
 
-bool IsRecoveryEnabledForDeviceId(const std::string& device_id) {
-  const auto it = kDevicesSupportingRecoveryMap.find(device_id);
-  if (it != kDevicesSupportingRecoveryMap.end()) {
-    return true;
-  }
-  return false;
-}
-
 bool IsFlashModeCheckEnabledForDeviceId(const std::string& device_id) {
   for (auto const& device : kDevicesSupportingFlashModeCheck) {
     if (base::Contains(device_id, device)) {
@@ -159,23 +125,15 @@ bool IsFlashModeCheckEnabledForDeviceId(const std::string& device_id) {
   return false;
 }
 
-uint8_t GetMaxFailedHeartbeatsBeforeRecovery(const std::string& device_id) {
-  const auto it = kDevicesSupportingRecoveryMap.find(device_id);
-  if (it != kDevicesSupportingRecoveryMap.end()) {
-    return it->second;
-  }
-  return kDefaultFailedHeartbeatsBeforeRecovery;
-}
-
 }  // namespace
 
 namespace modemfwd {
 
-DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus, Daemon* daemon)
+DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus, Delegate* delegate)
     : org::chromium::ModemfwdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kModemfwdServicePath)),
-      daemon_(daemon) {
-  DCHECK(daemon);
+      delegate_(delegate) {
+  DCHECK(delegate);
 }
 
 void DBusAdaptor::RegisterAsync(
@@ -197,8 +155,8 @@ bool DBusAdaptor::ForceFlash(const std::string& device_id,
       brillo::GetVariantValueOrDefault<std::string>(args, "variant");
   bool use_modems_fw_info =
       brillo::GetVariantValueOrDefault<bool>(args, "use_modems_fw_info");
-  return daemon_->ForceFlashForTesting(device_id, carrier_uuid, variant,
-                                       use_modems_fw_info);
+  return delegate_->ForceFlashForTesting(device_id, carrier_uuid, variant,
+                                         use_modems_fw_info);
 }
 
 Daemon::Daemon(const std::string& journal_file,
@@ -406,8 +364,9 @@ void Daemon::OnModemCarrierIdReady(
   std::string device_id = modem->GetDeviceId();
   std::string equipment_id = modem->GetEquipmentId();
 
-  // Store the modem object to track its health state during its lifetime
+  // Store the modem object in case our flash gets delayed.
   modems_[device_id] = std::move(modem);
+  SetupHeartbeatTask(device_id);
 
   ELOG(INFO) << "Modem with equipment ID \"" << equipment_id << "\""
              << " and device ID [" << device_id << "] ready to flash";
@@ -425,11 +384,12 @@ void Daemon::OnModemCarrierIdReady(
 
 void Daemon::DoFlash(const std::string& device_id,
                      const std::string& equipment_id) {
+  StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  StopHeartbeatTimer();
   base::OnceClosure cb =
       modem_flasher_->TryFlash(modems_[device_id].get(), &err);
-  StartHeartbeatTimer();
+  StartHeartbeatTask(device_id);
+
   if (!cb.is_null())
     modem_reappear_callbacks_[equipment_id] = std::move(cb);
 
@@ -452,10 +412,11 @@ bool Daemon::ForceFlash(const std::string& device_id) {
     return false;
 
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
+  StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  StopHeartbeatTimer();
   base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get(), &err);
-  StartHeartbeatTimer();
+  StartHeartbeatTask(device_id);
+
   // We don't know the equipment ID of this modem, and if we're force-flashing
   // then we probably already have a problem with the modem coming up, so
   // cleaning up at this point is not a problem. Run the callback now if we
@@ -482,11 +443,13 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "], "
              << "variant [" << variant << "], carrier_uuid [" << carrier_uuid
              << "], use_modems_fw_info [" << use_modems_fw_info << "]";
+
+  StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  StopHeartbeatTimer();
   base::OnceClosure cb =
       modem_flasher_->TryFlashForTesting(stub_modem.get(), variant, &err);
-  StartHeartbeatTimer();
+  StartHeartbeatTask(device_id);
+
   // We don't know the equipment ID of this modem, and if we're force-flashing
   // then we probably already have a problem with the modem coming up, so
   // cleaning up at this point is not a problem. Run the callback now if we
@@ -494,6 +457,14 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
   if (!cb.is_null())
     std::move(cb).Run();
   return !err;
+}
+
+bool Daemon::ResetModem(const std::string& device_id) {
+  auto helper = helper_directory_->GetHelperForDeviceId(device_id);
+  if (!helper)
+    return false;
+
+  return helper->Reboot();
 }
 
 void Daemon::ForceFlashIfInFlashMode(const std::string& device_id,
@@ -516,9 +487,6 @@ void Daemon::CheckForWedgedModems() {
 
   helper_directory_->ForEachHelper(
       base::BindRepeating(&Daemon::ForceFlashIfWedged, base::Unretained(this)));
-
-  // Start long-running monitoring task
-  StartHeartbeatTimer();
 }
 
 void Daemon::ForceFlashIfWedged(const std::string& device_id,
@@ -572,94 +540,43 @@ void Daemon::ForceFlashIfNeverAppeared(const std::string& device_id) {
   ForceFlash(device_id);
 }
 
-void Daemon::StartHeartbeatTimer() {
-  EVLOG(1) << __func__;
+void Daemon::SetupHeartbeatTask(const std::string& device_id) {
+  heartbeat_tasks_.erase(device_id);
 
-  if (heartbeat_timer_.IsRunning())
+  if (!modems_[device_id]->SupportsHealthCheck())
     return;
 
-  // Start periodic monitoring task
-  for (auto const& modem_info : modems_)
-    modem_info.second->ResetHeartbeatFailures();
-  heartbeat_timer_.Start(FROM_HERE, kHeartbeatDelay, this,
-                         &Daemon::CheckModemIsResponsive);
-}
-
-void Daemon::StopHeartbeatTimer() {
-  EVLOG(1) << __func__;
-
-  if (!heartbeat_timer_.IsRunning())
+  // This modem has a port we can run health checks on. See if we need to
+  // set it up.
+  auto helper = helper_directory_->GetHelperForDeviceId(device_id);
+  if (!helper)
     return;
 
-  // Stop periodic monitoring task
-  for (auto const& modem_info : modems_)
-    modem_info.second->ResetHeartbeatFailures();
-  heartbeat_timer_.Stop();
-}
-
-void Daemon::CheckModemIsResponsive() {
-  for (auto const& modem_info : modems_) {
-    // We ignore any modems for which we haven't identified a primary port.
-    // We either don't have an ability to ping them, or an ability to recover
-    // them, so they are ignored.
-    if (modem_info.second->GetPrimaryPort().empty())
-      continue;
-
-    std::vector<std::string> cmd_args;
-
-    cmd_args.push_back("/usr/bin/mbimcli");
-    cmd_args.push_back("-d");
-    cmd_args.push_back("/dev/" + modem_info.second->GetPrimaryPort());
-    cmd_args.push_back("-p");
-    cmd_args.push_back("--query-device-caps");
-
-    const base::FilePath mbimcli_seccomp_policy_file(base::StringPrintf(
-        "%s/modemfwd-mbimcli-seccomp.policy", kSeccompPolicyDirectory));
-    int ret =
-        RunProcessInSandboxWithTimeout(cmd_args, mbimcli_seccomp_policy_file,
-                                       true, nullptr, nullptr, kCmdKillDelay);
-
-    HandleModemCheckResult(modem_info.second->GetDeviceId(), ret == 0);
-  }
-}
-
-void Daemon::ResetModemWithHelper(const std::string& device_id,
-                                  ModemHelper* helper) {
-  if (!IsRecoveryEnabledForDeviceId(device_id)) {
-    LOG(WARNING) << "Not rebooting unresponsive modem, feature not enabled for "
-                    "this module";
-    metrics_->SendModemRecoveryState(
-        metrics::ModemRecoveryState::kRecoveryStateSkipped);
-    return;
-  }
-  // Attempt recovery
-  if (helper->Reboot()) {
-    LOG(INFO) << "Reboot succeeded";
-    modems_[device_id]->ResetHeartbeatFailures();
-    metrics_->SendModemRecoveryState(
-        metrics::ModemRecoveryState::kRecoveryStateSuccess);
-  } else {
-    LOG(ERROR) << "Reboot failed";
-    metrics_->SendModemRecoveryState(
-        metrics::ModemRecoveryState::kRecoveryStateFailure);
-  }
-}
-
-void Daemon::HandleModemCheckResult(const std::string& device_id,
-                                    bool check_result) {
-  if (check_result) {
-    modems_[device_id]->ResetHeartbeatFailures();
-    return;  // All good
-  }
-  LOG(WARNING) << "Modem ping failed";
-
-  modems_[device_id]->IncrementHeartbeatFailures();
-  if (modems_[device_id]->GetHeartbeatFailures() <
-      GetMaxFailedHeartbeatsBeforeRecovery(device_id))
+  auto heartbeat_config = helper->GetHeartbeatConfig();
+  if (!heartbeat_config.has_value())
     return;
 
-  ResetModemWithHelper(device_id,
-                       helper_directory_->GetHelperForDeviceId(device_id));
+  // We support heartbeat checks on this modem. Create a task to do these
+  // on a recurring basis.
+  auto heartbeat_task = std::make_unique<HeartbeatTask>(
+      this, modems_[device_id].get(), metrics_.get(), *heartbeat_config);
+  heartbeat_tasks_[device_id] = std::move(heartbeat_task);
+}
+
+void Daemon::StartHeartbeatTask(const std::string& device_id) {
+  auto it = heartbeat_tasks_.find(device_id);
+  if (it == heartbeat_tasks_.end())
+    return;
+
+  it->second->Start();
+}
+
+void Daemon::StopHeartbeatTask(const std::string& device_id) {
+  auto it = heartbeat_tasks_.find(device_id);
+  if (it == heartbeat_tasks_.end())
+    return;
+
+  it->second->Stop();
 }
 
 }  // namespace modemfwd

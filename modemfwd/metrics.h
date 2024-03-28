@@ -145,7 +145,7 @@ class Metrics {
   void SendFwInstallResultSuccess();
 
   // Sends the |ModemRecoveryState| value.
-  void SendModemRecoveryState(metrics::ModemRecoveryState result);
+  virtual void SendModemRecoveryState(metrics::ModemRecoveryState result);
 
   // Sends the |FwInstallResult| value that corresponds to |err|.
   void SendFwInstallResultFailure(const brillo::Error* err);

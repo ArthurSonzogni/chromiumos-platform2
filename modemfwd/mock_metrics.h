@@ -35,6 +35,11 @@ class MockMetrics : public Metrics {
               (metrics::FwUpdateLocation location),
               (override));
 
+  MOCK_METHOD(void,
+              SendModemRecoveryState,
+              (metrics::ModemRecoveryState),
+              (override));
+
   MOCK_METHOD(void, StartFwFlashTimer, (), (override));
 
   MOCK_METHOD(void, StopFwFlashTimer, (), (override));

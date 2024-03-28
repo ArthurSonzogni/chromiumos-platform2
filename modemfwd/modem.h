@@ -33,9 +33,6 @@ class Modem {
   // necessarily a readable name or e.g. MCC/MNC pair.
   virtual std::string GetCarrierId() const = 0;
 
-  // Get the primary communication port to the modem.
-  virtual std::string GetPrimaryPort() const = 0;
-
   // Information about this modem's installed firmware.
   virtual std::string GetMainFirmwareVersion() const = 0;
   virtual std::string GetOemFirmwareVersion() const = 0;
@@ -49,10 +46,9 @@ class Modem {
   virtual bool FlashFirmwares(const std::vector<FirmwareConfig>& configs) = 0;
   virtual bool ClearAttachAPN(const std::string& carrier_uuid) = 0;
 
-  // Tracking health of this modem
-  virtual int GetHeartbeatFailures() const = 0;
-  virtual void ResetHeartbeatFailures() = 0;
-  virtual void IncrementHeartbeatFailures() = 0;
+  // Run health checks on this modem
+  virtual bool SupportsHealthCheck() const = 0;
+  virtual bool CheckHealth() = 0;
 };
 
 std::unique_ptr<Modem> CreateModem(

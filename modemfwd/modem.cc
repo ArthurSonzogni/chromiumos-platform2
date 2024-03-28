@@ -15,6 +15,8 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <base/unguessable_token.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/strings/string_utils.h>
@@ -22,14 +24,16 @@
 #include <chromeos/switches/modemfwd_switches.h>
 #include <dbus/modemfwd/dbus-constants.h>
 #include <ModemManager/ModemManager.h>
-#include <re2/re2.h>
 
 #include "base/containers/contains.h"
 #include "modemfwd/logging.h"
 #include "modemfwd/modem_helper.h"
+#include "modemfwd/modem_sandbox.h"
 #include "modemmanager/dbus-proxies.h"
 
 namespace {
+
+constexpr base::TimeDelta kCmdKillDelay = base::Seconds(1);
 
 class Inhibitor {
  public:
@@ -82,48 +86,69 @@ std::unique_ptr<Inhibitor> GetInhibitor(
   return std::make_unique<Inhibitor>(std::move(mm_proxy), mm_physdev_uid);
 }
 
-std::string GetModemPrimaryPort(scoped_refptr<dbus::Bus> bus,
-                                const dbus::ObjectPath& mm_object_path) {
-  const std::vector<char const*> port_re_patterns{
-      "wwan\\dmbim\\d",  // Catch wwan0mbim0
-      "cdc-wdm\\d"       // Catch cdc-wdm0
-  };
+class HealthChecker {
+ public:
+  virtual ~HealthChecker() = default;
 
-  // Get the MM object backing this modem, and retrieve its Device property.
-  // This is the mm_physdev_uid we use for inhibition during updates.
-  if (!mm_object_path.IsValid()) {
-    LOG(WARNING) << __func__ << " " << mm_object_path.value() << " is invalid";
-    return "";
+  virtual bool Check() = 0;
+};
+
+class MbimHealthChecker : public HealthChecker {
+ public:
+  explicit MbimHealthChecker(std::string port) : port_(port) {}
+  ~MbimHealthChecker() override = default;
+
+  bool Check() override {
+    std::vector<std::string> cmd_args;
+
+    cmd_args.push_back("/usr/bin/mbimcli");
+    cmd_args.push_back("-d");
+    cmd_args.push_back("/dev/" + port_);
+    cmd_args.push_back("-p");
+    cmd_args.push_back("--query-device-caps");
+
+    const base::FilePath mbimcli_seccomp_policy_file(
+        base::StringPrintf("%s/modemfwd-mbimcli-seccomp.policy",
+                           modemfwd::kSeccompPolicyDirectory));
+    return modemfwd::RunProcessInSandboxWithTimeout(
+               cmd_args, mbimcli_seccomp_policy_file, true, nullptr, nullptr,
+               kCmdKillDelay) == 0;
   }
 
-  auto mm_device = bus->GetObjectProxy(modemmanager::kModemManager1ServiceName,
-                                       mm_object_path);
-  if (!mm_device)
-    return "";
+ private:
+  std::string port_;
+};
 
-  brillo::ErrorPtr error;
-  auto resp = brillo::dbus_utils::CallMethodAndBlock(
-      mm_device, dbus::kDBusPropertiesInterface, dbus::kDBusPropertiesGet,
-      &error, std::string(modemmanager::kModemManager1ModemInterface),
-      std::string(MM_MODEM_PROPERTY_PRIMARYPORT));
-  if (!resp)
-    return "";
+std::unique_ptr<HealthChecker> GetHealthChecker(
+    std::unique_ptr<org::freedesktop::ModemManager1::ModemProxy> modem_object) {
+  modem_object->InitializeProperties(base::DoNothing());
+  if (!modem_object->GetProperties()->primary_port.GetAndBlock()) {
+    LOG(ERROR) << "Could not fetch primary port property";
+    return nullptr;
+  }
+  std::string primary_port_name = modem_object->primary_port();
 
-  std::string primary_port;
-  dbus::MessageReader reader(resp.get());
-  if (!reader.PopVariantOfString(&primary_port)) {
-    LOG(WARNING) << "Error popping string entry from D-Bus message";
-    return "";
+  if (!modem_object->GetProperties()->ports.GetAndBlock()) {
+    LOG(ERROR) << "Could not fetch ports property";
+    return nullptr;
+  }
+  for (const auto& [name, type] : modem_object->ports()) {
+    if (name != primary_port_name)
+      continue;
+
+    switch (type) {
+      case MM_MODEM_PORT_TYPE_MBIM:
+        ELOG(INFO) << "Found MBIM port " << primary_port_name
+                   << " for health checks";
+        return std::unique_ptr<HealthChecker>(
+            new MbimHealthChecker(primary_port_name));
+      default:
+        continue;
+    }
   }
 
-  // Confirm the primary_port takes a format we're expecting
-  const std::string combined_port_re_pattern =
-      "^(" + brillo::string_utils::Join("|", port_re_patterns) + ")";
-  LazyRE2 modem_matcher = {combined_port_re_pattern.c_str()};
-  if (!RE2::FullMatch(primary_port, *modem_matcher))
-    return "";
-
-  return primary_port;
+  ELOG(INFO) << "No suitable primary port found for health checks";
+  return nullptr;
 }
 
 }  // namespace
@@ -135,14 +160,14 @@ class ModemImpl : public Modem {
   ModemImpl(const std::string& device_id,
             const std::string& equipment_id,
             const std::string& carrier_id,
-            const std::string& primary_port,
+            std::unique_ptr<HealthChecker> health_checker,
             std::unique_ptr<Inhibitor> inhibitor,
             ModemHelper* helper,
             FirmwareInfo installed_firmware)
       : device_id_(device_id),
         equipment_id_(equipment_id),
         carrier_id_(carrier_id),
-        primary_port_(primary_port),
+        health_checker_(std::move(health_checker)),
         inhibitor_(std::move(inhibitor)),
         installed_firmware_(installed_firmware),
         helper_(helper) {}
@@ -158,14 +183,6 @@ class ModemImpl : public Modem {
   std::string GetEquipmentId() const override { return equipment_id_; }
 
   std::string GetCarrierId() const override { return carrier_id_; }
-
-  std::string GetPrimaryPort() const override { return primary_port_; }
-
-  int GetHeartbeatFailures() const override { return heartbeat_failures_; }
-
-  void ResetHeartbeatFailures() override { heartbeat_failures_ = 0; }
-
-  void IncrementHeartbeatFailures() override { heartbeat_failures_++; }
 
   std::string GetMainFirmwareVersion() const override {
     return installed_firmware_.main_version;
@@ -213,13 +230,19 @@ class ModemImpl : public Modem {
     return true;
   }
 
+  bool SupportsHealthCheck() const override { return !!health_checker_; }
+
+  bool CheckHealth() override {
+    return health_checker_ && health_checker_->Check();
+  }
+
  private:
   int heartbeat_failures_;
   std::string heartbeat_port_;
   std::string device_id_;
   std::string equipment_id_;
   std::string carrier_id_;
-  std::string primary_port_;
+  std::unique_ptr<HealthChecker> health_checker_;
   std::unique_ptr<Inhibitor> inhibitor_;
   FirmwareInfo installed_firmware_;
   ModemHelper* helper_;
@@ -290,12 +313,19 @@ std::unique_ptr<Modem> CreateModem(
     return nullptr;
   }
 
-  std::string primary_port =
-      GetModemPrimaryPort(bus, dbus::ObjectPath(mm_object_path));
+  std::unique_ptr<HealthChecker> health_checker;
+  auto mm_object =
+      std::make_unique<org::freedesktop::ModemManager1::ModemProxy>(
+          bus, MM_DBUS_SERVICE, dbus::ObjectPath(mm_object_path));
+  if (!mm_object) {
+    LOG(WARNING) << "Could not fetch primary port information";
+  } else {
+    health_checker = GetHealthChecker(std::move(mm_object));
+  }
 
-  return std::make_unique<ModemImpl>(device_id, equipment_id, carrier_id,
-                                     primary_port, std::move(inhibitor), helper,
-                                     installed_firmware);
+  return std::make_unique<ModemImpl>(
+      device_id, equipment_id, carrier_id, std::move(health_checker),
+      std::move(inhibitor), helper, installed_firmware);
 }
 
 // StubModem acts like a modem with a particular device ID but does not
@@ -323,14 +353,6 @@ class StubModem : public Modem {
   std::string GetEquipmentId() const override { return equipment_id_; }
 
   std::string GetCarrierId() const override { return carrier_id_; }
-
-  std::string GetPrimaryPort() const override { return primary_port_; }
-
-  int GetHeartbeatFailures() const override { return heartbeat_failures_; }
-
-  void ResetHeartbeatFailures() override { heartbeat_failures_ = 0; }
-
-  void IncrementHeartbeatFailures() override { heartbeat_failures_++; }
 
   std::string GetMainFirmwareVersion() const override {
     return installed_firmware_.main_version;
@@ -365,11 +387,14 @@ class StubModem : public Modem {
     return true;
   }
 
+  bool SupportsHealthCheck() const override { return false; }
+
+  bool CheckHealth() override { return false; }
+
  private:
   int heartbeat_failures_;
   std::string heartbeat_port_;
   std::string carrier_id_;
-  std::string primary_port_;
   std::string device_id_;
   std::string equipment_id_;
   ModemHelper* helper_;
