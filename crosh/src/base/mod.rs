@@ -16,6 +16,7 @@ mod packet_capture;
 mod printscan_debug;
 mod rollback;
 mod set_time;
+mod sync;
 mod verify_ro;
 mod vmc;
 mod wireguard;
@@ -35,6 +36,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     printscan_debug::register(dispatcher);
     rollback::register(dispatcher);
     set_time::register(dispatcher);
+    sync::register(dispatcher);
     verify_ro::register(dispatcher);
     vmc::register(dispatcher);
     wireguard::register(dispatcher);
