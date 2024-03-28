@@ -528,6 +528,9 @@ class DlcServiceUtil : public brillo::Daemon {
         dlc_info.Set("size", base::NumberToString(manifest->size()));
         dlc_info.Set("image_type", manifest->image_type());
         switch (manifest->fs_type()) {
+          case imageloader::FileSystem::kExt2:
+            dlc_info.Set("fs-type", "ext2");
+            break;
           case imageloader::FileSystem::kExt4:
             dlc_info.Set("fs-type", "ext4");
             break;

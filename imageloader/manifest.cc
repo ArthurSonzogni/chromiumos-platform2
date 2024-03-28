@@ -213,7 +213,9 @@ bool Manifest::ParseManifest(const base::Value::Dict& manifest_dict) {
   // The fs_type field is optional, and squashfs by default.
   const std::string* fs_type = manifest_dict.FindString(kFSType);
   if (fs_type) {
-    if (*fs_type == "ext4") {
+    if (*fs_type == "ext2") {
+      fs_type_ = FileSystem::kExt2;
+    } else if (*fs_type == "ext4") {
       fs_type_ = FileSystem::kExt4;
     } else if (*fs_type == "squashfs") {
       fs_type_ = FileSystem::kSquashFS;

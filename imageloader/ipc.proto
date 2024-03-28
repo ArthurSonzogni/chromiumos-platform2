@@ -19,6 +19,7 @@ message MountCommand {
   enum FileSystem {
     SQUASH = 1;
     EXT4 = 2;
+    EXT2 = 3;
   }
   required string mount_path = 2;
   required string table = 3;

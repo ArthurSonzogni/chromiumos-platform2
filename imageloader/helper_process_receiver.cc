@@ -120,6 +120,9 @@ CommandResponse HelperProcessReceiver::HandleCommand(
     // Convert the fs type to a string.
     std::string fs_type;
     switch (command.fs_type()) {
+      case MountCommand::EXT2:
+        fs_type = "ext2";
+        break;
       case MountCommand::EXT4:
         fs_type = "ext4";
         break;

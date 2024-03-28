@@ -19,7 +19,7 @@ BRILLO_EXPORT extern const char kDlcRedactedSize[];
 BRILLO_EXPORT extern const char kDlcRedactedHash[];
 
 // The supported file systems for images.
-enum class BRILLO_EXPORT FileSystem { kExt4, kSquashFS };
+enum class BRILLO_EXPORT FileSystem { kExt2, kExt4, kSquashFS };
 
 // The artifacts meta(data) for DLC images.
 struct BRILLO_EXPORT ArtifactsMeta {

@@ -306,7 +306,7 @@ TEST(ManifestTest, ParseManifestBadSize) {
 TEST(ManifestTest, ParseManifestValueDict) {
   const base::Value::Dict manifest_dict =
       base::Value::Dict()
-          .Set("fs-type", "ext4")
+          .Set("fs-type", "ext2")
           .Set("is-removable", true)
           .Set("image-sha256-hash",
                "4CF41BD11362CCB4707FB93939DBB5AC"
@@ -335,7 +335,7 @@ TEST(ManifestTest, ParseManifestValueDict) {
   Manifest manifest;
   // Parse the manifest dict.
   ASSERT_TRUE(manifest.ParseManifest(manifest_dict));
-  EXPECT_EQ(manifest.fs_type(), FileSystem::kExt4);
+  EXPECT_EQ(manifest.fs_type(), FileSystem::kExt2);
   EXPECT_EQ(manifest.is_removable(), true);
   EXPECT_NE(manifest.image_sha256().size(), 0);
   EXPECT_NE(manifest.table_sha256().size(), 0);

@@ -93,6 +93,9 @@ bool HelperProcessProxy::SendMountCommand(int fd,
 
   // Convert the internal enum to the protobuf enum.
   switch (fs_type) {
+    case FileSystem::kExt2:
+      image_command.mutable_mount_command()->set_fs_type(MountCommand::EXT2);
+      break;
     case FileSystem::kExt4:
       image_command.mutable_mount_command()->set_fs_type(MountCommand::EXT4);
       break;
