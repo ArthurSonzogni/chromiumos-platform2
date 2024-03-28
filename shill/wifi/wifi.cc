@@ -207,6 +207,7 @@ WiFi::WiFi(Manager* manager,
       phy_index_(phy_index),
       wifi_cqm_(new WiFiCQM(metrics(), this)),
       wake_on_wifi_(std::move(wake_on_wifi)),
+      priority_(kDefaultPriority),
       weak_ptr_factory_while_started_(this),
       weak_ptr_factory_(this) {
   scoped_supplicant_listener_.reset(

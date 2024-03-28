@@ -740,6 +740,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->NotifyANQPInformationChanged(endpoint);
   }
 
+  WiFiPhy::Priority GetPriority() { return wifi_->priority(); }
+
+  bool SetPriority(WiFiPhy::Priority priority) {
+    return wifi_->SetPriority(priority);
+  }
+
  protected:
   using MockWiFiServiceRefPtr = scoped_refptr<MockWiFiService>;
   using MockPasspointCredentialsRefPtr =
@@ -6441,6 +6447,14 @@ TEST_F(WiFiMainTest, NotifyANQPInformationChanged) {
               SendBoolToUMA(Metrics::kMetricANQPVenueURLSupport, true))
       .Times(1);
   endpoint->PropertiesChanged(properties);
+}
+
+TEST_F(WiFiMainTest, Priority) {
+  EXPECT_EQ(GetPriority(), WiFi::kDefaultPriority);
+  EXPECT_FALSE(SetPriority(WiFiPhy::Priority(6)));
+  EXPECT_EQ(GetPriority(), WiFi::kDefaultPriority);
+  EXPECT_TRUE(SetPriority(WiFiPhy::Priority(2)));
+  EXPECT_EQ(GetPriority(), WiFiPhy::Priority(2));
 }
 
 }  // namespace shill

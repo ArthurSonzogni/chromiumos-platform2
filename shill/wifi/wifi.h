@@ -112,6 +112,7 @@
 #include "shill/time.h"
 #include "shill/wifi/ieee80211.h"
 #include "shill/wifi/wifi_link_statistics.h"
+#include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_state.h"
 
 namespace shill {
@@ -123,7 +124,6 @@ class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class WakeOnWiFiInterface;
 class WiFiCQM;
-class WiFiPhy;
 class WiFiProvider;
 class WiFiService;
 
@@ -131,6 +131,9 @@ class WiFiService;
 class WiFi : public Device, public SupplicantEventDelegateInterface {
  public:
   using FreqSet = std::set<uint32_t>;
+
+  // The default priority for a WiFi interface.
+  static constexpr WiFiPhy::Priority kDefaultPriority = WiFiPhy::Priority(4);
 
   WiFi(Manager* manager,
        const std::string& link,
@@ -296,6 +299,18 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   mockable bool UpdateSupplicantProperties(const WiFiService* service,
                                            const KeyValueStore& kv,
                                            Error* error);
+
+  WiFiPhy::Priority priority() const { return priority_; }
+
+  // Sets priority and returns true if |priority| is valid. Returns false
+  // otherwise.
+  bool SetPriority(WiFiPhy::Priority priority) {
+    if (!priority.IsValid()) {
+      return false;
+    }
+    priority_ = priority;
+    return true;
+  }
 
  private:
   std::string DeviceStorageSuffix() const override;
@@ -997,6 +1012,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // The BSSID of the connected AP right before a system suspend.
   std::optional<net_base::MacAddress> pre_suspend_bssid_;
+
+  // The priority of the WiFi interface. Used for concurrency conflict
+  // resolution.
+  WiFiPhy::Priority priority_;
 
   // For weak pointers that will be invalidated in Stop().
   base::WeakPtrFactory<WiFi> weak_ptr_factory_while_started_;
