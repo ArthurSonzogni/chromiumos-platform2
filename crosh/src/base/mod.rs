@@ -17,6 +17,7 @@ mod printscan_debug;
 mod rollback;
 mod set_time;
 mod sync;
+mod uname;
 mod uptime;
 mod verify_ro;
 mod vmc;
@@ -39,6 +40,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     set_time::register(dispatcher);
     sync::register(dispatcher);
     uptime::register(dispatcher);
+    uname::register(dispatcher);
     verify_ro::register(dispatcher);
     vmc::register(dispatcher);
     wireguard::register(dispatcher);

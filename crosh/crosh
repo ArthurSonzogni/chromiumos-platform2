@@ -1424,24 +1424,6 @@ cmd_meminfo() (
 )
 
 # shellcheck disable=SC2034
-USAGE_uname='[-a|-s|-n|-r|-v|-m|-p|-i|-o]'
-# shellcheck disable=SC2034
-HELP_uname='
-  Display system info
-'
-cmd_uname() (
-  # We allow only a few options.
-  local opt
-  for opt in "$@"; do
-    if ! printf '%s' "${opt}" | grep -sqE '^-[asnrvmpio]+$'; then
-      help "unknown option: $*"
-      return 1
-    fi
-  done
-  uname "$@"
-)
-
-# shellcheck disable=SC2034
 USAGE_vmstat='[-a|-d|-f|-m|-n|-s|-w] [delay [count]]'
 # shellcheck disable=SC2034
 HELP_vmstat='

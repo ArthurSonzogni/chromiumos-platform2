@@ -46,7 +46,6 @@ const BASE_COMMANDS: &[&str] = &[
     "top",
     "tracepath",
     "u2f_flags",
-    "uname",
     "upload_crashes",
     "upload_devcoredumps",
     "vmstat",
