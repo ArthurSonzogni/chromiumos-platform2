@@ -74,5 +74,10 @@ TEST_F(NdtClientTest, TestFailed) {
   EXPECT_FALSE(result.has_value());
 }
 
+TEST(NdtClientVersionTest, ClientVersion) {
+  libndt7::Settings settings;
+  EXPECT_EQ(settings.metadata["client_library_version"], kNdtClientVersion);
+}
+
 }  // namespace
 }  // namespace diagnostics

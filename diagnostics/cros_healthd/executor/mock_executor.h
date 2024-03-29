@@ -219,6 +219,7 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
       void,
       RunNetworkBandwidthTest,
       (ash::cros_healthd::mojom::NetworkBandwidthTestType type,
+       const std::string& oem_name,
        mojo::PendingRemote<ash::cros_healthd::mojom::NetworkBandwidthObserver>
            observer,
        mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>

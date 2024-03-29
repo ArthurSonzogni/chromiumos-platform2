@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
@@ -16,6 +17,9 @@ namespace measurementlab::libndt7 {
 class Client;
 }  // namespace measurementlab::libndt7
 
+// The NDT client version for healthd.
+constexpr char kNdtClientVersion[] = "v0.1.0";
+
 namespace diagnostics {
 
 // Runs bandwidth test and returns the average speed in Kbps or null if the test
@@ -23,6 +27,7 @@ namespace diagnostics {
 // synchronous call.
 std::optional<double> RunNdtTest(
     ash::cros_healthd::mojom::NetworkBandwidthTestType type,
+    const std::string& oem_name,
     mojo::PendingRemote<ash::cros_healthd::mojom::NetworkBandwidthObserver>
         observer);
 

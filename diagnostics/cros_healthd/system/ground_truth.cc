@@ -350,6 +350,16 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineEmmcLifetime() const {
                    "utility");
 }
 
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineNetworkBandwidth(
+    std::string& oem_name) const {
+  auto oem_name_out = cros_config()->Get(cros_config_property::kOemName);
+  if (!oem_name_out.has_value() || oem_name_out.value().empty()) {
+    return MakeUnsupported("Doesn't support device with no OEM name config.");
+  }
+  oem_name = oem_name_out.value();
+  return MakeSupported();
+}
+
 void GroundTruth::PrepareRoutineBluetoothFloss(
     PrepareRoutineBluetoothFlossCallback callback) const {
   auto manager = context_->floss_controller()->GetManager();

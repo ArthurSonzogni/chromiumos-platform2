@@ -71,6 +71,9 @@ class GroundTruth final {
 
   ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineEmmcLifetime() const;
 
+  ash::cros_healthd::mojom::SupportStatusPtr PrepareRoutineNetworkBandwidth(
+      std::string& oem_name) const;
+
   using PrepareRoutineBluetoothFlossCallback =
       base::OnceCallback<void(ash::cros_healthd::mojom::SupportStatusPtr)>;
   void PrepareRoutineBluetoothFloss(

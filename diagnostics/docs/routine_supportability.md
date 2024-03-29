@@ -208,6 +208,17 @@ To configure `count` in Boxster, you can use `create_camera` function defined in
 
 Always supported.
 
+### Network bandwidth
+
+Supported only when `oem-name` is set and not empty string. The external service
+for the routine is not available for the unrecognized devices.
+
+You can run the following commands on your DUT:
+1. `cros_config /branding oem-name` This is helpful to understand
+   what the value of `oem-name` is.
+2. `cros-health-tool diag network_bandwidth --check_supported` Use this to see if
+   healthd reports the correct support status.
+
 [team-contact]: mailto:cros-tdm-tpe-eng@google.com
 [cros_healthd_routines.mojom]: /diagnostics/mojom/public/cros_healthd_routines.mojom
 [hw_topology.star]: https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star

@@ -5,12 +5,14 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_NETWORK_NETWORK_BANDWIDTH_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_NETWORK_NETWORK_BANDWIDTH_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
@@ -31,9 +33,9 @@ class NetworkBandwidthRoutine final
     : public NoninteractiveRoutineControl,
       ash::cros_healthd::mojom::NetworkBandwidthObserver {
  public:
-  explicit NetworkBandwidthRoutine(
-      Context* context,
-      const ash::cros_healthd::mojom::NetworkBandwidthRoutineArgumentPtr& arg);
+  static base::expected<std::unique_ptr<BaseRoutineControl>,
+                        ash::cros_healthd::mojom::SupportStatusPtr>
+  Create(Context* context);
 
   NetworkBandwidthRoutine(const NetworkBandwidthRoutine&) = delete;
   NetworkBandwidthRoutine& operator=(const NetworkBandwidthRoutine&) = delete;
@@ -46,6 +48,9 @@ class NetworkBandwidthRoutine final
   void OnProgress(double speed_kbps, double percentage) override;
 
  private:
+  explicit NetworkBandwidthRoutine(Context* context,
+                                   const std::string& oem_name);
+
   void RunNextStep();
 
   // Handle the response of running bandwidth test.
@@ -71,6 +76,8 @@ class NetworkBandwidthRoutine final
 
   // Unowned pointer that should outlive this instance.
   Context* const context_;
+
+  const std::string oem_name_;
 
   // The scoped version of process controls that manages the lifetime of the
   // delegate process that runs network bandwidth tests.

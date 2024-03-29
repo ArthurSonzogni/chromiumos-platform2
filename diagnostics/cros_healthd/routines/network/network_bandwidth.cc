@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/routines/network/network_bandwidth.h"
 
 #include <algorithm>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -12,10 +13,12 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/types/expected.h>
 
 #include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -26,9 +29,21 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
-NetworkBandwidthRoutine::NetworkBandwidthRoutine(
-    Context* context, const mojom::NetworkBandwidthRoutineArgumentPtr& arg)
-    : context_(context) {
+base::expected<std::unique_ptr<BaseRoutineControl>, mojom::SupportStatusPtr>
+NetworkBandwidthRoutine::Create(Context* context) {
+  std::string oem_name;
+  auto status =
+      context->ground_truth()->PrepareRoutineNetworkBandwidth(oem_name);
+  if (!status->is_supported()) {
+    return base::unexpected(std::move(status));
+  }
+  return base::ok(
+      base::WrapUnique(new NetworkBandwidthRoutine(context, oem_name)));
+}
+
+NetworkBandwidthRoutine::NetworkBandwidthRoutine(Context* context,
+                                                 const std::string& oem_name)
+    : context_(context), oem_name_(oem_name) {
   CHECK(context_);
 
   routine_output_ = mojom::NetworkBandwidthRoutineDetail::New();
@@ -54,7 +69,7 @@ void NetworkBandwidthRoutine::RunNextStep() {
     case TestStep::kDownload:
       SetupTimeoutCallback();
       context_->executor()->RunNetworkBandwidthTest(
-          mojom::NetworkBandwidthTestType::kDownload,
+          mojom::NetworkBandwidthTestType::kDownload, oem_name_,
           receiver_.BindNewPipeAndPassRemote(),
           scoped_process_control_download_.BindNewPipeAndPassReceiver(),
           base::BindOnce(&NetworkBandwidthRoutine::HandleBandwidthTestResponse,
@@ -63,7 +78,7 @@ void NetworkBandwidthRoutine::RunNextStep() {
     case TestStep::kUpload:
       SetupTimeoutCallback();
       context_->executor()->RunNetworkBandwidthTest(
-          mojom::NetworkBandwidthTestType::kUpload,
+          mojom::NetworkBandwidthTestType::kUpload, oem_name_,
           receiver_.BindNewPipeAndPassRemote(),
           scoped_process_control_upload_.BindNewPipeAndPassReceiver(),
           base::BindOnce(&NetworkBandwidthRoutine::HandleBandwidthTestResponse,

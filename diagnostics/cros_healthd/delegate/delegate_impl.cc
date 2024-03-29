@@ -819,6 +819,7 @@ void DelegateImpl::RunUrandom(base::TimeDelta exec_duration,
 
 void DelegateImpl::RunNetworkBandwidthTest(
     mojom::NetworkBandwidthTestType type,
+    const std::string& oem_name,
     mojo::PendingRemote<mojom::NetworkBandwidthObserver> observer,
     RunNetworkBandwidthTestCallback callback) {
   // There is no issue with leaking the thread pointer because the process will
@@ -826,7 +827,8 @@ void DelegateImpl::RunNetworkBandwidthTest(
   auto ndt_thread = new base::Thread("healthd_delegate_ndt_thread");
   CHECK(ndt_thread->Start()) << "Failed to start ndt thread.";
   ndt_thread->task_runner()->PostTaskAndReplyWithResult(
-      FROM_HERE, base::BindOnce(&RunNdtTest, type, std::move(observer)),
+      FROM_HERE,
+      base::BindOnce(&RunNdtTest, type, oem_name, std::move(observer)),
       std::move(callback));
 }
 

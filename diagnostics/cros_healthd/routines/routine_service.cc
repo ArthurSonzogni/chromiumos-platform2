@@ -99,6 +99,11 @@ CreateRoutineResult CreateRoutineHelperSync(
       std::move(arg));
 }
 
+CreateRoutineResult CreateRoutineHelperSync(
+    Context* context, mojom::NetworkBandwidthRoutineArgumentPtr arg) {
+  return NetworkBandwidthRoutine::Create(context);
+}
+
 void CreateRoutineHelper(Context* context,
                          mojom::BluetoothPowerRoutineArgumentPtr arg,
                          CreateRoutineCallback callback) {
@@ -262,9 +267,9 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kNetworkBandwidth: {
-      auto routine = std::make_unique<NetworkBandwidthRoutine>(
-          context_, routine_arg->get_network_bandwidth());
-      std::move(callback).Run(base::ok(std::move(routine)));
+      CreateRoutineHelper(context_,
+                          std::move(routine_arg->get_network_bandwidth()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {

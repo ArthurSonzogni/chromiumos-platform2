@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_DELEGATE_IMPL_H_
 
+#include <string>
 #include <vector>
 
 #include <base/time/time.h>
@@ -84,6 +85,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
                   RunUrandomCallback callback) override;
   void RunNetworkBandwidthTest(
       ash::cros_healthd::mojom::NetworkBandwidthTestType type,
+      const std::string& oem_name,
       mojo::PendingRemote<ash::cros_healthd::mojom::NetworkBandwidthObserver>
           observer,
       RunNetworkBandwidthTestCallback callback) override;

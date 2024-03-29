@@ -1129,6 +1129,7 @@ void Executor::RunUrandom(
 
 void Executor::RunNetworkBandwidthTest(
     ash::cros_healthd::mojom::NetworkBandwidthTestType type,
+    const std::string& oem_name,
     mojo::PendingRemote<ash::cros_healthd::mojom::NetworkBandwidthObserver>
         observer,
     mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
@@ -1141,7 +1142,7 @@ void Executor::RunNetworkBandwidthTest(
           .enter_network_namespace = false,
       });
   delegate->remote()->RunNetworkBandwidthTest(
-      type, std::move(observer),
+      type, oem_name, std::move(observer),
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback),
                                                   std::nullopt));
   auto controller =

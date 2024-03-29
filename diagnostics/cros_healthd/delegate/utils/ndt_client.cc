@@ -13,6 +13,7 @@
 #include <libndt7/libndt7.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
+#include <vboot/crossystem.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
@@ -81,15 +82,29 @@ libndt7::NettestFlags Convert(mojom::NetworkBandwidthTestType type) {
   }
 }
 
+// Gets the user agent by OEM name for M-Lab. The user agent is used for
+// capacity limiting of M-Lab services. To better understand traffic from
+// production devices, normal and dev tags are included.
+std::string ConstructUserAgent(const std::string& oem_name) {
+  // If device is not in dev mode and not in debug build, add the normal tag.
+  if (::VbGetSystemPropertyInt("devsw_boot") == 0 &&
+      ::VbGetSystemPropertyInt("cros_debug") == 0) {
+    return "cros_healthd-" + oem_name + "-normal/" + kNdtClientVersion;
+  }
+  return "cros_healthd-" + oem_name + "-dev/" + kNdtClientVersion;
+}
+
 }  // namespace
 
 std::optional<double> RunNdtTest(
     ash::cros_healthd::mojom::NetworkBandwidthTestType type,
+    const std::string& oem_name,
     mojo::PendingRemote<ash::cros_healthd::mojom::NetworkBandwidthObserver>
         observer) {
   libndt7::Settings settings;
   settings.metadata["client_name"] = "cros_healthd";
-  settings.metadata["client_version"] = "v0.1.0";
+  settings.metadata["client_version"] = kNdtClientVersion;
+  settings.user_agent = ConstructUserAgent(oem_name);
   settings.verbosity = libndt7::verbosity_info;
   settings.nettest_flags = Convert(type);
   auto client = std::make_unique<NdtClient>(settings, std::move(observer));

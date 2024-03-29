@@ -226,11 +226,13 @@ interface Delegate {
   //
   // The request:
   // * |type| - The test type. Either upload or download.
+  // * |oem_name| - The OEM name from CrOS config.
   // * |observer| - The observer to notify client of the current speed.
   //
   // The response:
   // * |average_speed| - Returns the speed in Kbps or null if failed.
   RunNetworkBandwidthTest(NetworkBandwidthTestType type,
+                          string oem_name,
                           pending_remote<NetworkBandwidthObserver> observer)
       => (double? average_speed);
 };

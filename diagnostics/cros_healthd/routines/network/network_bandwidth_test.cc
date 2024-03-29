@@ -18,10 +18,14 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
+#include "diagnostics/base/file_test_utils.h"
+#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
+#include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/routine_observer_for_testing.h"
 #include "diagnostics/cros_healthd/routines/routine_v2_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -31,7 +35,9 @@ namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::WithArgs;
 
-class NetworkBandwidthRoutineTest : public ::testing::Test {
+constexpr char kTestOemName[] = "TEST_OEM_NAME";
+
+class NetworkBandwidthRoutineTest : public BaseFileTest {
  public:
   NetworkBandwidthRoutineTest(const NetworkBandwidthRoutineTest&) = delete;
   NetworkBandwidthRoutineTest& operator=(const NetworkBandwidthRoutineTest&) =
@@ -40,27 +46,35 @@ class NetworkBandwidthRoutineTest : public ::testing::Test {
  protected:
   NetworkBandwidthRoutineTest() = default;
 
+  void SetUp() override {
+    SetFakeCrosConfig(paths::cros_config::kOemName, kTestOemName);
+    auto routine_create = NetworkBandwidthRoutine::Create(&mock_context_);
+    ASSERT_TRUE(routine_create.has_value());
+    routine_ = std::move(routine_create.value());
+  }
+
   // Setup the RunNetworkBandwidthTest call with the argument `type` to return
   // `average_speed`.
   void SetupRunBandwidthTest(mojom::NetworkBandwidthTestType type,
                              std::optional<double> average_speed) {
-    EXPECT_CALL(*mock_executor(), RunNetworkBandwidthTest(type, _, _, _))
-        .WillOnce(base::test::RunOnceCallback<3>(average_speed));
+    EXPECT_CALL(*mock_executor(),
+                RunNetworkBandwidthTest(type, kTestOemName, _, _, _))
+        .WillOnce(base::test::RunOnceCallback<4>(average_speed));
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
-    routine_.SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
+    routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
     RoutineObserverForTesting observer;
-    routine_.SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
-    routine_.Start();
+    routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
+    routine_->Start();
     observer.WaitUntilRoutineFinished();
     return std::move(observer.state_);
   }
 
   void RunRoutineAndWaitForException(const std::string& expected_reason) {
     base::test::TestFuture<uint32_t, const std::string&> future;
-    routine_.SetOnExceptionCallback(future.GetCallback());
-    routine_.Start();
+    routine_->SetOnExceptionCallback(future.GetCallback());
+    routine_->Start();
     EXPECT_EQ(future.Get<std::string>(), expected_reason)
         << "Unexpected reason in exception.";
   }
@@ -84,8 +98,7 @@ class NetworkBandwidthRoutineTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
-  NetworkBandwidthRoutine routine_ = NetworkBandwidthRoutine(
-      &mock_context_, mojom::NetworkBandwidthRoutineArgument::New());
+  std::unique_ptr<BaseRoutineControl> routine_;
 };
 
 // Test that the network bandwidth routine can run successfully.
@@ -113,10 +126,10 @@ TEST_F(NetworkBandwidthRoutineTest, RoutineSuccess) {
 TEST_F(NetworkBandwidthRoutineTest, RoutineProgressUpdate) {
   mojo::Remote<mojom::NetworkBandwidthObserver> download_remote, upload_remote;
   mojom::Executor::RunNetworkBandwidthTestCallback download_cb, upload_cb;
-  EXPECT_CALL(*mock_executor(),
-              RunNetworkBandwidthTest(
-                  mojom::NetworkBandwidthTestType::kDownload, _, _, _))
-      .WillOnce(WithArgs<1, 3>(
+  EXPECT_CALL(*mock_executor(), RunNetworkBandwidthTest(
+                                    mojom::NetworkBandwidthTestType::kDownload,
+                                    kTestOemName, _, _, _))
+      .WillOnce(WithArgs<2, 4>(
           [&](mojo::PendingRemote<mojom::NetworkBandwidthObserver> observer,
               mojom::Executor::RunNetworkBandwidthTestCallback callback) {
             download_remote.Bind(std::move(observer));
@@ -126,8 +139,8 @@ TEST_F(NetworkBandwidthRoutineTest, RoutineProgressUpdate) {
           }));
   EXPECT_CALL(*mock_executor(),
               RunNetworkBandwidthTest(mojom::NetworkBandwidthTestType::kUpload,
-                                      _, _, _))
-      .WillOnce(WithArgs<1, 3>(
+                                      kTestOemName, _, _, _))
+      .WillOnce(WithArgs<2, 4>(
           [&](mojo::PendingRemote<mojom::NetworkBandwidthObserver> observer,
               mojom::Executor::RunNetworkBandwidthTestCallback callback) {
             upload_remote.Bind(std::move(observer));
@@ -136,10 +149,10 @@ TEST_F(NetworkBandwidthRoutineTest, RoutineProgressUpdate) {
             upload_cb = std::move(callback);
           }));
 
-  routine_.SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
+  routine_->SetOnExceptionCallback(UnexpectedRoutineExceptionCallback());
   RoutineObserverForTesting observer;
-  routine_.SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
-  routine_.Start();
+  routine_->SetObserver(observer.receiver_.BindNewPipeAndPassRemote());
+  routine_->Start();
 
   observer.WaitRoutineRunningInfoUpdate();
   VerifyRunningState(
@@ -179,9 +192,19 @@ TEST_F(NetworkBandwidthRoutineTest, RoutineRunNetworkBandwidthTestError) {
 // Test that the network bandwidth routine can handle the error when timeout
 // occurred.
 TEST_F(NetworkBandwidthRoutineTest, RoutineTimeoutOccurred) {
-  EXPECT_CALL(*mock_executor(), RunNetworkBandwidthTest(_, _, _, _));
+  EXPECT_CALL(*mock_executor(), RunNetworkBandwidthTest(_, _, _, _, _));
 
   RunRoutineAndWaitForException("Routine timeout");
+}
+
+// Test that the routine cannot be run if the device doesn't have the OEM name
+// config.
+TEST_F(NetworkBandwidthRoutineTest, RoutineUnsupportedWithoutOemName) {
+  SetFakeCrosConfig(paths::cros_config::kOemName, std::nullopt);
+
+  auto routine_create = NetworkBandwidthRoutine::Create(&mock_context_);
+  ASSERT_FALSE(routine_create.has_value());
+  EXPECT_TRUE(routine_create.error()->is_unsupported());
 }
 
 }  // namespace

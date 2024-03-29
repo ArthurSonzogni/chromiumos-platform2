@@ -552,10 +552,24 @@ TEST_F(RoutineServiceTest, CameraAvailabilityNoCamera) {
 }
 
 TEST_F(RoutineServiceTest, NetworkBandwidth) {
+  SetFakeCrosConfig(paths::cros_config::kOemName, "TEST_OEM_NAME");
   CheckIsRoutineArgumentSupported(
       MakeSupported(), mojom::RoutineArgument::NewNetworkBandwidth(
                            mojom::NetworkBandwidthRoutineArgument::New()));
   CheckCreateRoutine(MakeSupported(),
+                     mojom::RoutineArgument::NewNetworkBandwidth(
+                         mojom::NetworkBandwidthRoutineArgument::New()));
+}
+
+TEST_F(RoutineServiceTest, NetworkBandwidthNoOemName) {
+  SetFakeCrosConfig(paths::cros_config::kOemName, std::nullopt);
+
+  auto status =
+      MakeUnsupported("Doesn't support device with no OEM name config.");
+  CheckIsRoutineArgumentSupported(
+      status, mojom::RoutineArgument::NewNetworkBandwidth(
+                  mojom::NetworkBandwidthRoutineArgument::New()));
+  CheckCreateRoutine(status,
                      mojom::RoutineArgument::NewNetworkBandwidth(
                          mojom::NetworkBandwidthRoutineArgument::New()));
 }

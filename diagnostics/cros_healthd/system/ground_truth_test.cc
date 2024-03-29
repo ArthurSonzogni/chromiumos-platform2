@@ -436,6 +436,31 @@ TEST_F(GroundTruthTest, PrepareRoutineEmmcLifetimeUnsupportedOtherStorageType) {
                 "Not supported on a device without eMMC drive or mmc utility"));
 }
 
+TEST_F(GroundTruthTest, PrepareRoutineNetworkBandwidth) {
+  SetFakeCrosConfig(cros_config_property::kOemName, "TEST_OEM_NAME");
+
+  std::string oem_name;
+  EXPECT_EQ(ground_truth()->PrepareRoutineNetworkBandwidth(oem_name),
+            MakeSupported());
+  EXPECT_EQ(oem_name, "TEST_OEM_NAME");
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineNetworkBandwidthNoOemName) {
+  SetFakeCrosConfig(cros_config_property::kOemName, std::nullopt);
+
+  std::string oem_name;
+  EXPECT_EQ(ground_truth()->PrepareRoutineNetworkBandwidth(oem_name),
+            MakeUnsupported("Doesn't support device with no OEM name config."));
+}
+
+TEST_F(GroundTruthTest, PrepareRoutineNetworkBandwidthEmptyOemName) {
+  SetFakeCrosConfig(cros_config_property::kOemName, "");
+
+  std::string oem_name;
+  EXPECT_EQ(ground_truth()->PrepareRoutineNetworkBandwidth(oem_name),
+            MakeUnsupported("Doesn't support device with no OEM name config."));
+}
+
 TEST_F(GroundTruthTest, BluetoothRoutineFlossEnabled) {
   EXPECT_CALL(*mock_floss_controller(), GetManager())
       .WillRepeatedly(Return(&mock_manager_proxy_));

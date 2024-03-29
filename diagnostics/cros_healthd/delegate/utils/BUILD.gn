@@ -16,6 +16,7 @@ source_set("utils") {
     "libdrm",
     "libevdev",
     "libmojo",
+    "vboot_host",
   ]
   pkg_deps = [ "libndt7" ]
   public_deps = [
