@@ -90,6 +90,36 @@ static bool is_stateless_av1(int fd, uint32_t bpp) {
   return false;
 }
 
+static bool is_stateless_vp9(int fd, uint32_t bpp) {
+  struct v4l2_ctrl_vp9_frame params;
+  memset(&params, 0, sizeof(params));
+  params.bit_depth = bpp;
+  params.profile = bpp == 8 ? 0 : 2;
+  params.flags =
+      V4L2_VP9_FRAME_FLAG_X_SUBSAMPLING | V4L2_VP9_FRAME_FLAG_Y_SUBSAMPLING;
+
+  struct v4l2_ext_control ext_ctrl;
+  memset(&ext_ctrl, 0, sizeof(ext_ctrl));
+
+  ext_ctrl.id = V4L2_CID_STATELESS_VP9_FRAME;
+  ext_ctrl.size = sizeof(params);
+  ext_ctrl.ptr = &params;
+
+  struct v4l2_ext_controls ext_ctrls;
+  memset(&ext_ctrls, 0, sizeof(ext_ctrls));
+
+  ext_ctrls.which = V4L2_CTRL_WHICH_CUR_VAL;
+  ext_ctrls.request_fd = -1;
+  ext_ctrls.count = 1;
+  ext_ctrls.controls = &ext_ctrl;
+
+  if (do_ioctl(fd, VIDIOC_S_EXT_CTRLS, &ext_ctrls) == 0) {
+    return true;
+  }
+
+  return false;
+}
+
 static bool is_stateless_decoder_format_supported(int fd,
                                                   uint32_t fourcc,
                                                   uint32_t bpp) {
@@ -109,6 +139,9 @@ static bool is_stateless_decoder_format_supported(int fd,
     switch (fourcc) {
       case V4L2_PIX_FMT_AV1_FRAME:
         found = is_stateless_av1(fd, bpp);
+        break;
+      case V4L2_PIX_FMT_VP9_FRAME:
+        found = is_stateless_vp9(fd, bpp);
         break;
       default:
         found = (bpp == 8);

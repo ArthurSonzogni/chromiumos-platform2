@@ -78,7 +78,7 @@ static bool is_v4l2_dec_vp8_device(int fd) {
                                  V4L2_PIX_FMT_VP8_FRAME, 8));
 }
 
-/* Helper function for detect_video_acc_vp9.
+/* Helper function for detect_video_acc_vp9/_2.
  * A V4L2 device supports VP9 decoding, if it's a mem-to-mem V4L2 device,
  * i.e. it provides V4L2_CAP_VIDEO_CAPTURE_*, V4L2_CAP_VIDEO_OUTPUT_* and
  * V4L2_CAP_STREAMING capabilities and it supports V4L2_PIX_FMT_VP9 as it's
@@ -90,6 +90,14 @@ static bool is_v4l2_dec_vp9_device(int fd) {
                                  V4L2_PIX_FMT_VP9, 8) ||
           is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
                                  V4L2_PIX_FMT_VP9_FRAME, 8));
+}
+
+static bool is_v4l2_dec_vp9_2_device(int fd) {
+  return is_hw_video_acc_device(fd) &&
+         (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                                 V4L2_PIX_FMT_VP9, 10) ||
+          is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                                 V4L2_PIX_FMT_VP9_FRAME, 10));
 }
 
 /* Helper function for detect_video_acc_av1/_10bpp.
@@ -570,6 +578,11 @@ bool detect_video_acc_vp9_2(void) {
 #if defined(USE_VAAPI)
   return is_any_device(kDRMDevicePattern, is_vaapi_dec_vp9_2_device);
 #endif  // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_dec_vp9_2_device))
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
 
   return false;
 }
