@@ -14,7 +14,6 @@
 #include "fbpreprocessor/firmware_dump.h"
 
 namespace fbpreprocessor {
-
 namespace {
 
 class FirmwareDumpTest : public ::testing::Test {
@@ -71,5 +70,4 @@ TEST_F(FirmwareDumpTest, PrintToOStream) {
 }
 
 }  // namespace
-
 }  // namespace fbpreprocessor

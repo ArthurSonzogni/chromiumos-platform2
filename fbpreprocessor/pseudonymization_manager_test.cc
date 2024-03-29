@@ -16,11 +16,10 @@
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/pseudonymization_manager.h"
 
-namespace {
-constexpr std::string_view kTestFirmwareContent{"TEST CONTENT TEST CONTENT"};
-}  // namespace
-
 namespace fbpreprocessor {
+namespace {
+
+constexpr std::string_view kTestFirmwareContent{"TEST CONTENT TEST CONTENT"};
 
 class PseudonymizationManagerTest : public testing::Test {
  protected:
@@ -232,4 +231,5 @@ TEST_F(PseudonymizationManagerTest, RejectedRequestDeletesDump) {
   EXPECT_FALSE(base::PathExists(fw_dump.DumpFile()));
 }
 
+}  // namespace
 }  // namespace fbpreprocessor

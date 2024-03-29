@@ -13,11 +13,10 @@
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/input_manager.h"
 
-namespace {
-constexpr std::string_view kTestFirmwareContent{"TEST CONTENT TEST CONTENT"};
-}  // namespace
-
 namespace fbpreprocessor {
+namespace {
+
+constexpr std::string_view kTestFirmwareContent{"TEST CONTENT TEST CONTENT"};
 
 class InputManagerTest : public testing::Test {
  protected:
@@ -103,4 +102,5 @@ TEST_F(InputManagerTest, OnNewFirmwareDumpRejectsNonExistingFiles) {
   EXPECT_FALSE(input_manager()->OnNewFirmwareDump(fw_dump));
 }
 
+}  // namespace
 }  // namespace fbpreprocessor

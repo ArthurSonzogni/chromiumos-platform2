@@ -21,11 +21,10 @@
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/output_manager.h"
 
-namespace {
-constexpr std::string_view kTestFirmwareContent{"TEST CONTENT TEST CONTENT"};
-}  // namespace
-
 namespace fbpreprocessor {
+namespace {
+
+constexpr std::string_view kTestFirmwareContent{"TEST CONTENT TEST CONTENT"};
 
 class OutputManagerTest : public testing::Test {
  protected:
@@ -247,4 +246,5 @@ TEST_F(OutputManagerTest, UserLogoutDoesNotDeleteFiles) {
   EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
 }
 
+}  // namespace
 }  // namespace fbpreprocessor
