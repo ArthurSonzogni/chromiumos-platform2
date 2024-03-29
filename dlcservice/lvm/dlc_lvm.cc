@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/strings/stringprintf.h>
 #include <lvmd/proto_bindings/lvmd.pb.h>
@@ -180,6 +181,24 @@ bool DlcLvm::IsActiveImagePresent() const {
 }
 
 bool DlcLvm::UseLogicalVolume() const {
+  // Special handle for LVM migrating devices.
+  // If any file based images exist..
+  for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
+    const auto& image_path = DlcBase::GetImagePath(slot);
+    if (image_path.empty())
+      continue;
+    if (!base::PathExists(image_path))
+      continue;
+    // .. prioritize file based images iff no logical volumes exist.
+    base::FilePath lv_path(
+        SystemState::Get()->lvmd_wrapper()->GetLogicalVolumePath(
+            utils_->LogicalVolumeName(id_, ToPartitionSlot(slot))));
+    if (!lv_path.empty() && base::PathExists(lv_path))
+      break;
+    // .. sticking with file based images.
+    return false;
+  }
+
   return !IsUserTied() && manifest_->use_logical_volume() &&
          SystemState::Get()->IsLvmStackEnabled();
 }

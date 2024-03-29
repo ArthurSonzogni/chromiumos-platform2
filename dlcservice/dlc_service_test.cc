@@ -849,6 +849,8 @@ class DlcServiceTestLegacy : public BaseTest {
         std::make_unique<DlcLvmCreator>();
     EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, ListLogicalVolumes(_))
         .WillOnce(Return(false));
+    EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, GetLogicalVolumePath(_))
+        .WillRepeatedly(Return(""));
 #else
         std::make_unique<DlcBaseCreator>();
 #endif  // USE_LVM_STATEFUL_PARTITION

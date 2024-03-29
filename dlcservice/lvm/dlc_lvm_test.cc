@@ -138,4 +138,35 @@ TEST_F(DlcLvmTest, IsActiveImagePresent) {
   EXPECT_TRUE(dlc.IsActiveImagePresent());
 }
 
+TEST_F(DlcLvmTest, LvmMigrationCheckNoFileBasedImages) {
+  DlcLvm dlc(kFourthDlc);
+  dlc.Initialize();
+
+  EXPECT_TRUE(dlc.UseLogicalVolume());
+}
+
+TEST_F(DlcLvmTest, LvmMigrationCheckLogicalVolumesExist) {
+  DlcLvm dlc(kFourthDlc);
+  dlc.Initialize();
+
+  // If any file based images in cache exists..
+  SetUpDlcWithSlots(kFourthDlc);
+  // .. prioritize file based images iff no logical volumes exist.
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, GetLogicalVolumePath(_))
+      .WillOnce(Return(scoped_temp_dir_.GetPath().value()));
+  EXPECT_TRUE(dlc.UseLogicalVolume());
+}
+
+TEST_F(DlcLvmTest, LvmMigrationCheckFileBasedPriority) {
+  DlcLvm dlc(kFourthDlc);
+  dlc.Initialize();
+
+  // If any file based images in cache exists..
+  SetUpDlcWithSlots(kFourthDlc);
+  // .. sticking with file based images.
+  EXPECT_CALL(*mock_lvmd_proxy_wrapper_ptr_, GetLogicalVolumePath(_))
+      .WillOnce(Return(""));
+  EXPECT_FALSE(dlc.UseLogicalVolume());
+}
+
 }  // namespace dlcservice

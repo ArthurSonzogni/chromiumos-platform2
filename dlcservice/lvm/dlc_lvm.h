@@ -40,6 +40,9 @@ class DlcLvm : public DlcBase {
   FRIEND_TEST(DlcLvmTest, MountDlcImageLoaderFailed);
   FRIEND_TEST(DlcLvmTest, MountDlcEmptyMountPoint);
   FRIEND_TEST(DlcLvmTest, IsActiveImagePresent);
+  FRIEND_TEST(DlcLvmTest, LvmMigrationCheckNoFileBasedImages);
+  FRIEND_TEST(DlcLvmTest, LvmMigrationCheckLogicalVolumesExist);
+  FRIEND_TEST(DlcLvmTest, LvmMigrationCheckFileBasedPriority);
 
   // `DlcBase` overrides.
   bool CreateDlc(brillo::ErrorPtr* err) override;
