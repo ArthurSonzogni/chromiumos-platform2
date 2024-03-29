@@ -25,11 +25,13 @@
 #include <base/synchronization/lock.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
+#include <re2/re2.h>
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/ssfc/ssfc_prober.h"
 #include "rmad/system/power_manager_client_impl.h"
+#include "rmad/system/tpm_manager_client_impl.h"
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cmd_utils_impl.h"
@@ -63,6 +65,7 @@ constexpr double kProgressUpdateStableDeviceSecret = 0.7;
 constexpr double kProgressFlushOutVpdCache = 0.8;
 constexpr double kProgressResetGbbFlags = 0.9;
 constexpr double kProgressResetFps = 0.95;
+constexpr double kProgressProvisionTi50 = kProgressComplete;
 constexpr double kProgressSetBoardId = kProgressComplete;
 
 constexpr char kEmptyBoardIdType[] = "ffffffff";
@@ -71,6 +74,9 @@ constexpr char kTwoStagePvtBoardIdFlags[] = "00003f80";
 
 const std::vector<std::string> kResetGbbFlagsArgv = {
     "/usr/bin/futility", "gbb", "--set", "--flash", "--flags=0"};
+
+constexpr char kApWpsrCmd[] = "/usr/sbin/ap_wpsr";
+constexpr char kApWpsrValueMaskRegexp[] = R"(SR Value\/Mask = (.+))";
 
 constexpr char kDefaultBioWashPath[] = "/usr/bin/bio_wash";
 
@@ -99,6 +105,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
   hwid_utils_ = std::make_unique<HwidUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   futility_utils_ = std::make_unique<FutilityUtilsImpl>();
+  tpm_manager_client_ = std::make_unique<TpmManagerClientImpl>(GetSystemBus());
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   status_.set_progress(kProgressInit);
   status_.set_error(ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
@@ -120,7 +127,8 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<VpdUtils> vpd_utils,
     std::unique_ptr<HwidUtils> hwid_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
-    std::unique_ptr<FutilityUtils> futility_utils)
+    std::unique_ptr<FutilityUtils> futility_utils,
+    std::unique_ptr<TpmManagerClient> tpm_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       bio_wash_path_(bio_wash_path),
@@ -136,6 +144,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       hwid_utils_(std::move(hwid_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       futility_utils_(std::move(futility_utils)),
+      tpm_manager_client_(std::move(tpm_manager_client)),
       should_calibrate_(false),
       sensor_integrity_(false) {
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
@@ -146,11 +155,6 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
 RmadErrorCode ProvisionDeviceStateHandler::InitializeState() {
   if (!state_.has_provision_device() && !RetrieveState()) {
     state_.set_allocated_provision_device(new ProvisionDeviceState);
-  }
-
-  if (!task_runner_) {
-    task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
-        {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   }
 
   if (!cros_config_utils_->GetRmadConfig(&rmad_config_)) {
@@ -399,9 +403,7 @@ void ProvisionDeviceStateHandler::StartProvision() {
     return;
   }
 
-  task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&ProvisionDeviceStateHandler::RunProvision,
-                                base::Unretained(this), ssfc));
+  RunProvision(ssfc);
 }
 
 void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
@@ -586,6 +588,13 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
       return;
     }
   }
+
+  if (GscVersion version; tpm_manager_client_->GetGscVersion(&version) &&
+                          version == GscVersion::GSC_VERSION_TI50) {
+    ProvisionTi50();
+    return;
+  }
+
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
                kProgressSetBoardId);
 }
@@ -711,6 +720,97 @@ ProvisionStatus::Error ProvisionDeviceStateHandler::UpdateHwidBrandCode() {
   DLOG(INFO) << "Set HWID as " << new_hwid << ".";
 
   return ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN;
+}
+
+void ProvisionDeviceStateHandler::ProvisionTi50() {
+  // Set addressing mode.
+  if (gsc_utils_->GetAddressingMode() == SpiAddressingMode::kNotProvisioned) {
+    auto flash_size = futility_utils_->GetFlashSize();
+    if (!flash_size.has_value()) {
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+      return;
+    }
+
+    if (!gsc_utils_->SetAddressingMode(
+            gsc_utils_->GetAddressingModeByFlashSize(flash_size.value()))) {
+      LOG(ERROR) << "Failed to set addressing mode. Flash size: "
+                 << flash_size.value();
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+      return;
+    }
+  }
+
+  // Set WPSR.
+  if (std::optional<bool> provision_status = gsc_utils_->IsApWpsrProvisioned();
+      provision_status.has_value() && !provision_status.value()) {
+    daemon_callback_->GetExecuteGetFlashInfoCallback().Run(base::BindOnce(
+        &ProvisionDeviceStateHandler::ProvisionWpsr, base::Unretained(this)));
+    return;
+  }
+
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
+               kProgressProvisionTi50);
+}
+
+void ProvisionDeviceStateHandler::ProvisionWpsr(
+    const std::optional<FlashInfo>& flash_info) {
+  if (!flash_info.has_value()) {
+    LOG(ERROR) << "Failed to get flash informaion.";
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+    return;
+  }
+
+  std::string output;
+  const std::string start =
+      base::StringPrintf("%#lx", flash_info.value().wpsr_start);
+  const std::string length =
+      base::StringPrintf("%#lx", flash_info.value().wpsr_length);
+
+  // Try to map the flash name to one recognized by |ap_wpsr|. Some flash chips
+  // do not need this transform so we are not blocking the process here.
+  auto mapped_flash_name =
+      cros_config_utils_->GetSpiFlashTransform(flash_info.value().flash_name);
+
+  std::string name = (mapped_flash_name.has_value())
+                         ? mapped_flash_name.value()
+                         : flash_info.value().flash_name;
+
+  // TODO(jeffulin): Make the step of provisioning WPSR a blocking step after we
+  // have long-term solutions of b/327527364.
+  if (!cmd_utils_->GetOutputAndError(
+          {kApWpsrCmd, "--name", name, "--start", start, "--length", length},
+          &output)) {
+    LOG(ERROR) << "Failed to get WPSR values and masks: " << output;
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
+                 kProgressComplete);
+    return;
+  }
+
+  std::string value_mask;
+  if (!RE2::PartialMatch(output, kApWpsrValueMaskRegexp, &value_mask)) {
+    LOG(ERROR) << "Failed to parse WPSR values and masks.";
+    LOG(ERROR) << "ap_wpsr output: " << output;
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
+    return;
+  }
+
+  if (!gsc_utils_->SetWpsr(value_mask)) {
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+    return;
+  }
+
+  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE,
+               kProgressComplete);
 }
 
 }  // namespace rmad

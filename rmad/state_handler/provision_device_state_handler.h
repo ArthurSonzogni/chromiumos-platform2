@@ -20,6 +20,7 @@
 
 #include "rmad/ssfc/ssfc_prober.h"
 #include "rmad/system/power_manager_client.h"
+#include "rmad/system/tpm_manager_client.h"
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cmd_utils.h"
@@ -49,8 +50,9 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   // Used to inject |working_dir_path_|, |bio_wash_path_|, mock |ssfc_prober_|,
   // |power_manager_client_|, |cbi_utils_|, |cmd_utils_|, |gsc_utils_|,
   // |cros_config_utils_|, |write_protect_utils_|, |iio_sensor_probe_utils_|,
-  // |vpd_utils_|, |hwid_utils_|, |crossystem_utils_|, and |futility_utils_| for
-  // testing.
+  // |vpd_utils_|, |hwid_utils_|, |crossystem_utils_|, and |futility_utils_|,
+  // |tpm_manager_client_| for testing.
+
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
@@ -67,7 +69,8 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
       std::unique_ptr<VpdUtils> vpd_utils,
       std::unique_ptr<HwidUtils> hwid_utils,
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
-      std::unique_ptr<FutilityUtils> futility_utils);
+      std::unique_ptr<FutilityUtils> futility_utils,
+      std::unique_ptr<TpmManagerClient> tpm_manager_client);
 
   ASSIGN_STATE(RmadState::StateCase::kProvisionDevice);
   SET_REPEATABLE;
@@ -95,6 +98,8 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   bool GetSsfcFromCrosConfig(std::optional<uint32_t>* ssfc) const;
   void StartProvision();
   void RunProvision(std::optional<uint32_t> ssfc);
+  void ProvisionTi50();
+  void ProvisionWpsr(const std::optional<FlashInfo>& flash_info);
   void UpdateStatus(ProvisionStatus::Status status,
                     double progress,
                     ProvisionStatus::Error error =
@@ -123,10 +128,10 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   std::unique_ptr<HwidUtils> hwid_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<FutilityUtils> futility_utils_;
+  std::unique_ptr<TpmManagerClient> tpm_manager_client_;
 
   RmadConfig rmad_config_;
 
-  scoped_refptr<base::SequencedTaskRunner> task_runner_;
   base::RepeatingTimer status_timer_;
   base::OneShotTimer reboot_timer_;
   mutable base::Lock lock_;

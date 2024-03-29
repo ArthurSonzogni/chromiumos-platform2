@@ -12,7 +12,9 @@
 #include <vector>
 
 #include <base/memory/scoped_refptr.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <base/test/bind.h>
 #include <brillo/file_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -22,6 +24,7 @@
 #include "rmad/ssfc/mock_ssfc_prober.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_power_manager_client.h"
+#include "rmad/system/mock_tpm_manager_client.h"
 #include "rmad/utils/hwid_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cbi_utils.h"
@@ -38,6 +41,7 @@
 using testing::_;
 using testing::Assign;
 using testing::DoAll;
+using testing::ElementsAre;
 using testing::Eq;
 using testing::Invoke;
 using testing::NiceMock;
@@ -59,6 +63,12 @@ constexpr char kInvalidBoardIdType[] = "5a5a4352";  // ZZCR.
 constexpr char kPvtBoardIdFlags[] = "00007f80";
 constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";
 constexpr char kValidHwid[] = "MODEL-CODE A1B-C2D-E2J";
+constexpr char kMappedFlashName[] = "Mapped flash name";
+constexpr char kValidApWpsrOutput[] =
+    "> Native 4BA byte program (0x12) is supported.\n"
+    "* SR = {0x01, 0x02, 0x03}.\n"
+    "* SR mask = {0x01, 0x0b, 0x0c}.\n"
+    "* SR Value/Mask = 0x01 0x0a 0x02 0x0b 0x03 0x0c\n";
 const rmad::HwidElements kHwidElements = {.model_name = "MODEL",
                                           .brand_code = "CODE",
                                           .encoded_components = "A1B-C2D-E",
@@ -113,10 +123,18 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     bool get_hwid_success = true;
     bool set_hwid_success = true;
     bool get_brand_code_success = true;
+    bool ap_wpsr_provisioned = false;
+    bool get_ap_wpsr_success = true;
+    bool set_ap_wpsr_success = true;
+    bool set_addressing_success = true;
+    std::optional<uint64_t> flash_size = 0x1000;
+    std::string ap_wpsr_output = kValidApWpsrOutput;
     std::string board_id_type = kValidBoardIdType;
     std::string board_id_flags = kPvtBoardIdFlags;
     std::string hwid = kValidHwid;
     std::string brand_code = kHwidElements.brand_code.value();
+    GscVersion gsc_version = GscVersion::GSC_VERSION_CR50;
+    std::optional<FlashInfo> flash_info = std::nullopt;
     std::optional<HwidElements> hwid_elements = kHwidElements;
     std::optional<std::string> checksum = kHwidElements.checksum.value();
     std::set<rmad::RmadComponent> probed_components = {};
@@ -175,6 +193,21 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
                 Eq(std::vector<std::string>{GetBioWashPath().value()}), _))
         .WillByDefault(Return(args.reset_fps_success));
 
+    if (args.flash_info.has_value()) {
+      const std::string start =
+          base::StringPrintf("%#lx", args.flash_info.value().wpsr_start);
+      const std::string length =
+          base::StringPrintf("%#lx", args.flash_info.value().wpsr_length);
+
+      ON_CALL(*mock_cmd_utils,
+              GetOutputAndError(
+                  ElementsAre("/usr/sbin/ap_wpsr", "--name", kMappedFlashName,
+                              "--start", start, "--length", length),
+                  _))
+          .WillByDefault(DoAll(SetArgPointee<1>(args.ap_wpsr_output),
+                               Return(args.get_ap_wpsr_success)));
+    }
+
     // Mock |GscUtils|.
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     if (args.read_board_id_success) {
@@ -198,6 +231,14 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
           }
           return (args.board_id_flags == kPvtBoardIdFlags);
         }));
+    ON_CALL(*mock_gsc_utils, IsApWpsrProvisioned())
+        .WillByDefault(Return(args.ap_wpsr_provisioned));
+    ON_CALL(*mock_gsc_utils, GetAddressingMode())
+        .WillByDefault(Return(SpiAddressingMode::kNotProvisioned));
+    ON_CALL(*mock_gsc_utils, SetAddressingMode(_))
+        .WillByDefault(Return(args.set_addressing_success));
+    ON_CALL(*mock_gsc_utils, SetWpsr(_))
+        .WillByDefault(Return(args.set_ap_wpsr_success));
 
     // Mock |CrosConfigUtils|.
     auto mock_cros_config_utils =
@@ -220,6 +261,11 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_cros_config_utils, GetBrandCode(_))
         .WillByDefault(DoAll(SetArgPointee<0>(args.brand_code),
                              Return(args.get_brand_code_success)));
+    if (args.flash_info.has_value()) {
+      ON_CALL(*mock_cros_config_utils,
+              GetSpiFlashTransform(args.flash_info.value().flash_name))
+          .WillByDefault(Return(kMappedFlashName));
+    }
 
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
@@ -259,11 +305,24 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     auto mock_futility_utils = std::make_unique<NiceMock<MockFutilityUtils>>();
     ON_CALL(*mock_futility_utils, SetHwid(_))
         .WillByDefault(Return(args.set_hwid_success));
+    ON_CALL(*mock_futility_utils, GetFlashSize())
+        .WillByDefault(Return(args.flash_size));
 
     // Register signal callback.
     daemon_callback_->SetProvisionSignalCallback(
         base::BindRepeating(&SignalSender::SendProvisionProgressSignal,
                             base::Unretained(&signal_sender_)));
+
+    // Register GetFlashInfo callback.
+    daemon_callback_->SetExecuteGetFlashInfoCallback(base::BindLambdaForTesting(
+        [&args](base::OnceCallback<void(const std::optional<FlashInfo>&)>
+                    callback) { std::move(callback).Run(args.flash_info); }));
+
+    // Mock |TpmManagerClient|.
+    auto mock_tpm_manager_client =
+        std::make_unique<NiceMock<MockTpmManagerClient>>();
+    ON_CALL(*mock_tpm_manager_client, GetGscVersion(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(args.gsc_version), Return(true)));
 
     auto handler = base::MakeRefCounted<ProvisionDeviceStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(), GetBioWashPath(),
@@ -273,7 +332,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         std::move(mock_write_protect_utils),
         std::move(mock_iio_sensor_probe_utils), std::move(mock_vpd_utils),
         std::move(mock_hwid_utils), std::move(mock_crossystem_utils),
-        std::move(mock_futility_utils));
+        std::move(mock_futility_utils), std::move(mock_tpm_manager_client));
     EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
     return handler;
   }
@@ -328,7 +387,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
   std::vector<ProvisionStatus> status_history_;
   bool reboot_called_;
 
-  // Variables for TaskRunner.
+  // Variables for Timers.
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadPoolExecutionMode::ASYNC,
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -1138,6 +1197,191 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
   // Successfully transition to Finalize state.
   ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50_Succeeded) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  FlashInfo flash_info = {
+      .flash_name = "fake flash name", .wpsr_start = 0x0, .wpsr_length = 0x40};
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .flash_info = flash_info,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50_FlashSizeNull_Failed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .flash_size = std::nullopt,
+      .gsc_version = GscVersion::GSC_VERSION_TI50,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50_SetAddressing_Failed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .set_addressing_success = false,
+      .gsc_version = GscVersion::GSC_VERSION_TI50,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50_ApWpsrProvisioned_Successed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .ap_wpsr_provisioned = true,
+      .gsc_version = GscVersion::GSC_VERSION_TI50,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_GetFlashInfo_Failed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler(
+      {.gsc_version = GscVersion::GSC_VERSION_TI50});
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50_GetApWpsr_NonBlocking) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  FlashInfo flash_info = {
+      .flash_name = "fake flash name", .wpsr_start = 0x0, .wpsr_length = 0x40};
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .get_ap_wpsr_success = false,
+      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .flash_info = flash_info,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50_InvalidApWpsrOutput_Failed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  FlashInfo flash_info = {
+      .flash_name = "fake flash name", .wpsr_start = 0x0, .wpsr_length = 0x40};
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .ap_wpsr_output = "INVALID\nOUTPUT\n",
+      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .flash_info = flash_info,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       GetNextStateCase_ProvisionTi50_SetWpsr_Failed) {
+  // Set up environment for different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+
+  FlashInfo flash_info = {
+      .flash_name = "fake flash name", .wpsr_start = 0x0, .wpsr_length = 0x40};
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler({
+      .set_ap_wpsr_success = false,
+      .gsc_version = GscVersion::GSC_VERSION_TI50,
+      .flash_info = flash_info,
+  });
+  handler->RunState();
+  task_environment_.RunUntilIdle();
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingState) {
