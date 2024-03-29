@@ -34,7 +34,6 @@ bool DlcLvm::CreateDlc(brillo::ErrorPtr* err) {
   LOG(INFO) << "Creating logical volumes for DLC=" << id_;
   if (!CreateDlcLogicalVolumes()) {
     LOG(ERROR) << "Failed to create logical volumes for DLC=" << id_;
-    // TODO(b/236007986): Report metrics.
     *err = Error::Create(
         FROM_HERE, kErrorInternal,
         base::StringPrintf("Failed to create DLC=%s logical volumes.",
@@ -42,8 +41,6 @@ bool DlcLvm::CreateDlc(brillo::ErrorPtr* err) {
     return false;
   }
 
-  // TODO(b/236007986): Fix cros deploy'ing by migrating existing DLCs
-  // pre-logical volume here.
   return true;
 }
 
