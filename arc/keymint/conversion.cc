@@ -397,6 +397,30 @@ std::vector<arc::mojom::keymint::KeyParameterPtr> ConvertFromKeymasterMessage(
   return out;
 }
 
+arc::mojom::keymint::KeyMintKeyBlobPtr ConvertFromKeyMintKeyBlob(
+    const ::keymaster::KeymasterKeyBlob& key_blob) {
+  arc::mojom::keymint::KeyMintKeyBlobPtr out;
+  if (key_blob.key_material == nullptr || key_blob.key_material_size == 0) {
+    return out;
+  }
+
+  out = arc::mojom::keymint::KeyMintKeyBlob::New(ConvertFromKeymasterMessage(
+      key_blob.key_material, key_blob.key_material_size));
+  return out;
+}
+
+arc::mojom::keymint::KeyMintBlobPtr ConvertFromKeyMintBlob(
+    const ::keymaster::KeymasterBlob& blob) {
+  arc::mojom::keymint::KeyMintBlobPtr out;
+  if (blob.data == nullptr || blob.data_length == 0) {
+    return out;
+  }
+
+  out = arc::mojom::keymint::KeyMintBlob::New(
+      ConvertFromKeymasterMessage(blob.data, blob.data_length));
+  return out;
+}
+
 void ConvertToKeymasterMessage(const std::vector<uint8_t>& data,
                                ::keymaster::Buffer* out) {
   out->Reinitialize(data.data(), data.size());
@@ -934,6 +958,25 @@ arc::mojom::keymint::TimeStampTokenOrErrorPtr MakeGenerateTimeStampTokenResult(
 
   return arc::mojom::keymint::TimeStampTokenOrError::NewTimestampToken(
       std::move(time_stamp_token));
+}
+
+arc::mojom::keymint::GenerateEcdsaP256KeyPairResultOrErrorPtr
+MakeGenerateEcdsaP256KeyPairResult(
+    const ::keymaster::GenerateRkpKeyResponse& km_response) {
+  if (km_response.error != KM_ERROR_OK) {
+    return arc::mojom::keymint::GenerateEcdsaP256KeyPairResultOrError::NewError(
+        km_response.error);
+  }
+
+  arc::mojom::keymint::KeyMintBlobPtr maced_public_key =
+      ConvertFromKeyMintBlob(km_response.maced_public_key);
+  arc::mojom::keymint::KeyMintKeyBlobPtr handle_to_private_key =
+      ConvertFromKeyMintKeyBlob(km_response.key_blob);
+  auto result = arc::mojom::keymint::GenerateEcdsaP256KeyPairResult::New(
+      std::move(maced_public_key), std::move(handle_to_private_key));
+
+  return arc::mojom::keymint::GenerateEcdsaP256KeyPairResultOrError::
+      NewKeyPairResult(std::move(result));
 }
 
 }  // namespace arc::keymint

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <keymaster/android_keymaster_utils.h>
 
 namespace arc::keymint {
 
@@ -385,6 +386,29 @@ TEST(ConvertFromKeymasterMessage, KeyParameterVector) {
   EXPECT_TRUE(VerifyKeyParametersWithStrictInputs(input, output));
 }
 
+TEST(ConvertFromKeyMintKeyBlob, KeyMintKeyBlob) {
+  // Prepare.
+  ::keymaster::KeymasterKeyBlob blob(kBlob1.data(), kBlob1.size());
+
+  // Convert.
+  auto mojo = ConvertFromKeyMintKeyBlob(blob);
+
+  // Verify.
+  EXPECT_TRUE(
+      VerifyVectorUint8(kBlob1.data(), kBlob1.size(), mojo->key_material));
+}
+
+TEST(ConvertFromKeyMintBlob, KeyMintBlob) {
+  // Prepare.
+  ::keymaster::KeymasterBlob blob(kBlob2.data(), kBlob2.size());
+
+  // Convert.
+  auto mojo = ConvertFromKeyMintBlob(blob);
+
+  // Verify.
+  EXPECT_TRUE(VerifyVectorUint8(blob.data, blob.data_length, mojo->data));
+}
+
 TEST(ConvertToKeymasterMessage, Buffer) {
   // Prepare.
   std::vector<uint8_t> input(kBlob1.begin(), kBlob1.end());
@@ -643,6 +667,29 @@ TEST(ConvertToMessage, FinishOperationRequest) {
                                 input->signature.value()));
   EXPECT_TRUE(
       VerifyHardwareAuthToken(output->additional_params, *input->auth_token));
+}
+
+TEST(PrepareResult, GenerateEcdsaP256KeyPairResultOrErrorPtr) {
+  // Prepare.
+  ::keymaster::GenerateRkpKeyResponse input(kKeyMintMessageVersion);
+  input.error = KM_ERROR_OK;
+  ::keymaster::KeymasterBlob maced_public_key(kBlob1.data(), kBlob1.size());
+  input.maced_public_key = maced_public_key;
+  ::keymaster::KeymasterKeyBlob key_blob(kBlob2.data(), kBlob2.size());
+  input.key_blob = key_blob;
+
+  // Convert.
+  auto mojo = MakeGenerateEcdsaP256KeyPairResult(input);
+
+  // Verify.
+  EXPECT_TRUE(mojo->is_key_pair_result());
+  EXPECT_TRUE(
+      VerifyVectorUint8(maced_public_key.data, maced_public_key.data_length,
+                        mojo->get_key_pair_result()->maced_public_key->data));
+  // Verify.
+  EXPECT_TRUE(VerifyVectorUint8(
+      key_blob.key_material, key_blob.key_material_size,
+      mojo->get_key_pair_result()->handle_to_private_key->key_material));
 }
 
 }  // namespace arc::keymint

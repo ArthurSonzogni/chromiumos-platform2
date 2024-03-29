@@ -665,4 +665,28 @@ void KeyMintServer::GenerateTimeStamp(const uint64 challenge,
                     std::move(km_request), std::move(task_lambda));
 }
 
+void KeyMintServer::GenerateEcdsaP256KeyPair(
+    bool test_mode, GenerateEcdsaP256KeyPairCallback callback) {
+  // Prepare keymint request.
+  auto km_request = std::make_unique<::keymaster::GenerateRkpKeyRequest>(
+      backend_.keymint()->message_version());
+  km_request->test_mode = test_mode;
+
+  auto task_lambda = base::BindOnce(
+      [](GenerateEcdsaP256KeyPairCallback callback,
+         std::unique_ptr<::keymaster::GenerateRkpKeyResponse> km_response) {
+        CHECK(km_response);
+        arc::mojom::keymint::GenerateEcdsaP256KeyPairResultOrErrorPtr response =
+            MakeGenerateEcdsaP256KeyPairResult(*km_response);
+
+        // Run callback.
+        std::move(callback).Run(std::move(response));
+      },
+      std::move(callback));
+
+  // Call keymint.
+  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::GenerateRkpKey,
+                    std::move(km_request), std::move(task_lambda));
+}
+
 }  // namespace arc::keymint

@@ -112,6 +112,9 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
   void GenerateTimeStamp(const uint64 challenge,
                          GenerateTimeStampCallback callback) override;
 
+  void GenerateEcdsaP256KeyPair(
+      bool test_mode, GenerateEcdsaP256KeyPairCallback callback) override;
+
  private:
   class Backend {
    public:

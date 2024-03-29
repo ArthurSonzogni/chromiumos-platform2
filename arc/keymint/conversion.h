@@ -45,6 +45,12 @@ std::vector<::arc::mojom::keymint::KeyParameterPtr> ConvertFromKeymasterMessage(
 ::arc::mojom::keymint::KeyParameterValuePtr
 ConvertEnumParamFromKeymasterMessage(const keymaster_key_param_t& param);
 
+arc::mojom::keymint::KeyMintKeyBlobPtr ConvertFromKeyMintKeyBlob(
+    const ::keymaster::KeymasterKeyBlob& key_blob);
+
+arc::mojom::keymint::KeyMintBlobPtr ConvertFromKeyMintBlob(
+    const ::keymaster::KeymasterBlob& blob);
+
 void ConvertToKeymasterMessage(const std::vector<uint8_t>& data,
                                ::keymaster::Buffer* out);
 
@@ -141,6 +147,11 @@ arc::mojom::keymint::ByteArrayOrErrorPtr MakeComputeSharedSecretResult(
 
 arc::mojom::keymint::TimeStampTokenOrErrorPtr MakeGenerateTimeStampTokenResult(
     const ::keymaster::GenerateTimestampTokenResponse& km_response);
+
+arc::mojom::keymint::GenerateEcdsaP256KeyPairResultOrErrorPtr
+MakeGenerateEcdsaP256KeyPairResult(
+    const ::keymaster::GenerateRkpKeyResponse& km_response);
+
 }  // namespace arc::keymint
 
 #endif  // ARC_KEYMINT_CONVERSION_H_
