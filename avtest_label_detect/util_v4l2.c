@@ -7,10 +7,127 @@
 
 #include "label_detect.h"
 
-/* Returns whether the device fd supports given format of buffer type.
- * Example of buf_type: V4L2_BUF_TYPE_VIDEO_OUTPUT,
- * V4L2_BUF_TYPE_VIDEO_CAPTURE.
- * */
+#ifndef V4L2_PIX_FMT_MT2T
+#define V4L2_PIX_FMT_MT2T v4l2_fourcc('M', 'T', '2', 'T')
+#endif
+
+static bool is_matching_bpp_format(uint32_t fourcc, uint32_t bpp) {
+  const uint32_t formats_10bpp[] = {V4L2_PIX_FMT_MT2T};
+  const uint32_t formats_8bpp[] = {V4L2_PIX_FMT_MM21};
+  bool found = false;
+  char fourcc_str[5];
+  convert_fourcc_to_str(fourcc, fourcc_str);
+
+  if (bpp == 10) {
+    const size_t n = sizeof(formats_10bpp) / sizeof(formats_10bpp[0]);
+    for (uint32_t i = 0; i < n; ++i) {
+      if (fourcc == formats_10bpp[i]) {
+        found = true;
+        break;
+      }
+    }
+  } else if (bpp == 8) {
+    const size_t n = sizeof(formats_8bpp) / sizeof(formats_8bpp[0]);
+    for (uint32_t i = 0; i < n; ++i) {
+      if (fourcc == formats_8bpp[i]) {
+        found = true;
+        break;
+      }
+    }
+  }
+
+  TRACE("is_matching_bpp_format(%s, %dbpp): %s\n", fourcc_str, bpp,
+        found ? "true" : "false");
+
+  return found;
+}
+
+static bool is_stateless(uint32_t fourcc) {
+  const uint32_t stateless_fourcc[] = {
+      V4L2_PIX_FMT_AV1_FRAME, V4L2_PIX_FMT_HEVC_SLICE, V4L2_PIX_FMT_H264_SLICE,
+      V4L2_PIX_FMT_VP8_FRAME, V4L2_PIX_FMT_VP9_FRAME};
+  bool found = false;
+  char fourcc_str[5];
+  convert_fourcc_to_str(fourcc, fourcc_str);
+  TRACE("is_stateless(%s)\n", fourcc_str);
+
+  const size_t n = sizeof(stateless_fourcc) / sizeof(stateless_fourcc[0]);
+  for (uint32_t i = 0; i < n; ++i) {
+    if (fourcc == stateless_fourcc[i]) {
+      found = true;
+      break;
+    }
+  }
+
+  TRACE("is_stateless: %s\n", found ? "true" : "false");
+  return found;
+}
+
+static bool is_stateless_av1(int fd, uint32_t bpp) {
+  struct v4l2_ctrl_av1_sequence params;
+  memset(&params, 0, sizeof(params));
+  params.bit_depth = bpp;
+
+  struct v4l2_ext_control ext_ctrl;
+  memset(&ext_ctrl, 0, sizeof(ext_ctrl));
+
+  ext_ctrl.id = V4L2_CID_STATELESS_AV1_SEQUENCE;
+  ext_ctrl.size = sizeof(params);
+  ext_ctrl.ptr = &params;
+
+  struct v4l2_ext_controls ext_ctrls;
+  memset(&ext_ctrls, 0, sizeof(ext_ctrls));
+
+  ext_ctrls.which = V4L2_CTRL_WHICH_CUR_VAL;
+  ext_ctrls.request_fd = -1;
+  ext_ctrls.count = 1;
+  ext_ctrls.controls = &ext_ctrl;
+
+  if (do_ioctl(fd, VIDIOC_S_EXT_CTRLS, &ext_ctrls) == 0) {
+    return true;
+  }
+
+  return false;
+}
+
+static bool is_stateless_decoder_format_supported(int fd,
+                                                  uint32_t fourcc,
+                                                  uint32_t bpp) {
+  bool found = false;
+
+  struct v4l2_format format;
+  memset(&format, 0, sizeof(format));
+  format.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+  format.fmt.pix_mp.pixelformat = fourcc;
+  format.fmt.pix_mp.width = 1920;
+  format.fmt.pix_mp.height = 1080;
+  format.fmt.pix_mp.num_planes = 1;
+  format.fmt.pix_mp.plane_fmt[0].sizeimage = 1024 * 1024;
+
+  const int ret = do_ioctl(fd, VIDIOC_S_FMT, &format);
+  if ((ret == 0) && (format.fmt.pix_mp.pixelformat == fourcc)) {
+    switch (fourcc) {
+      case V4L2_PIX_FMT_AV1_FRAME:
+        found = is_stateless_av1(fd, bpp);
+        break;
+      default:
+        found = (bpp == 8);
+        break;
+    }
+  }
+
+  if (found) {
+    memset(&format, 0, sizeof(format));
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+
+    if (do_ioctl(fd, VIDIOC_G_FMT, &format) == 0) {
+      found = is_matching_bpp_format(format.fmt.pix_mp.pixelformat, bpp);
+    }
+  }
+
+  return found;
+}
+
 bool is_v4l2_support_format(int fd,
                             enum v4l2_buf_type buf_type,
                             uint32_t fourcc,
@@ -37,7 +154,9 @@ bool is_v4l2_support_format(int fd,
     }
   }
 
-  if (bpp != 8) {
+  if (found && is_stateless(fourcc)) {
+    found = is_stateless_decoder_format_supported(fd, fourcc, bpp);
+  } else if (bpp != 8) {
     found = false;
   }
 
