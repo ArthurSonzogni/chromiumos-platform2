@@ -41,7 +41,8 @@ extern void convert_fourcc_to_str(uint32_t fourcc, char* str);
 #if defined(USE_V4L2_CODEC)
 extern bool is_v4l2_support_format(int fd,
                                    enum v4l2_buf_type buf_type,
-                                   uint32_t fourcc);
+                                   uint32_t fourcc,
+                                   uint32_t bpp);
 extern bool is_hw_video_acc_device(int fd);
 extern bool is_hw_jpeg_acc_device(int fd);
 bool get_v4l2_max_resolution(int fd,

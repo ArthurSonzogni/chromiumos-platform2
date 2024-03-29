@@ -186,7 +186,7 @@ static bool is_v4l2_4k_device(int fd,
   if (!is_hw_video_acc_device(fd)) {
     return false;
   }
-  if (is_v4l2_support_format(fd, buf_type, pix_fmt)) {
+  if (is_v4l2_support_format(fd, buf_type, pix_fmt, 8)) {
     if (get_v4l2_max_resolution(fd, pix_fmt, &resolution_width,
                                 &resolution_height)) {
       return resolution_width >= width_4k && resolution_height >= height_4k;

@@ -13,7 +13,8 @@
  * */
 bool is_v4l2_support_format(int fd,
                             enum v4l2_buf_type buf_type,
-                            uint32_t fourcc) {
+                            uint32_t fourcc,
+                            uint32_t bpp) {
   int i;
   bool found = false;
   char fourcc_str[5];
@@ -35,7 +36,12 @@ bool is_v4l2_support_format(int fd,
       /* continue the loop in order to output all supported formats */
     }
   }
-  TRACE("is_v4l2_support_format: %s\n", found ? "true" : "false");
+
+  if (bpp != 8) {
+    found = false;
+  }
+
+  TRACE("is_v4l2_support_format: %s, %dbpp\n", found ? "true" : "false", bpp);
   return found;
 }
 

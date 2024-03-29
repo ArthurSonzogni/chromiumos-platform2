@@ -45,9 +45,9 @@ static const char* kVideoDevicePattern = "/dev/video*";
 static bool is_v4l2_dec_h264_device(int fd) {
   return is_hw_video_acc_device(fd) &&
          (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_H264) ||
+                                 V4L2_PIX_FMT_H264, 8) ||
           is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_H264_SLICE));
+                                 V4L2_PIX_FMT_H264_SLICE, 8));
 }
 
 /* Helper function for detect_video_acc_hevc.
@@ -59,9 +59,9 @@ static bool is_v4l2_dec_h264_device(int fd) {
 static bool is_v4l2_dec_hevc_device(int fd) {
   return is_hw_video_acc_device(fd) &&
          (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_HEVC) ||
+                                 V4L2_PIX_FMT_HEVC, 8) ||
           is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_HEVC_SLICE));
+                                 V4L2_PIX_FMT_HEVC_SLICE, 8));
 }
 
 /* Helper function for detect_video_acc_vp8.
@@ -73,9 +73,9 @@ static bool is_v4l2_dec_hevc_device(int fd) {
 static bool is_v4l2_dec_vp8_device(int fd) {
   return is_hw_video_acc_device(fd) &&
          (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_VP8) ||
+                                 V4L2_PIX_FMT_VP8, 8) ||
           is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_VP8_FRAME));
+                                 V4L2_PIX_FMT_VP8_FRAME, 8));
 }
 
 /* Helper function for detect_video_acc_vp9.
@@ -87,9 +87,9 @@ static bool is_v4l2_dec_vp8_device(int fd) {
 static bool is_v4l2_dec_vp9_device(int fd) {
   return is_hw_video_acc_device(fd) &&
          (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_VP9) ||
+                                 V4L2_PIX_FMT_VP9, 8) ||
           is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_VP9_FRAME));
+                                 V4L2_PIX_FMT_VP9_FRAME, 8));
 }
 
 /* Helper function for detect_video_acc_av1.
@@ -101,9 +101,9 @@ static bool is_v4l2_dec_vp9_device(int fd) {
 static bool is_v4l2_dec_av1_device(int fd) {
   return is_hw_video_acc_device(fd) &&
          (is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_AV1) ||
+                                 V4L2_PIX_FMT_AV1, 8) ||
           is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                 V4L2_PIX_FMT_AV1_FRAME));
+                                 V4L2_PIX_FMT_AV1_FRAME, 8));
 }
 
 /* Helper function for detect_video_acc_enc_h264.
@@ -115,7 +115,7 @@ static bool is_v4l2_dec_av1_device(int fd) {
 static bool is_v4l2_enc_h264_device(int fd) {
   return is_hw_video_acc_device(fd) &&
          is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-                                V4L2_PIX_FMT_H264);
+                                V4L2_PIX_FMT_H264, 8);
 }
 
 /* Helper function for detect_video_acc_enc_h264_vbr.
@@ -135,7 +135,7 @@ static bool is_v4l2_enc_h264_vbr_device(int fd) {
 static bool is_v4l2_enc_vp8_device(int fd) {
   return is_hw_video_acc_device(fd) &&
          is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-                                V4L2_PIX_FMT_VP8);
+                                V4L2_PIX_FMT_VP8, 8);
 }
 
 /* Helper function for detect_video_acc_enc_vp8_vbr.
@@ -155,7 +155,7 @@ static bool is_v4l2_enc_vp8_vbr_device(int fd) {
 static bool is_v4l2_dec_jpeg_device(int fd) {
   return is_hw_jpeg_acc_device(fd) &&
          is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                                V4L2_PIX_FMT_JPEG);
+                                V4L2_PIX_FMT_JPEG, 8);
 }
 
 /* Helper function for detect_jpeg_acc_enc.
@@ -167,7 +167,7 @@ static bool is_v4l2_dec_jpeg_device(int fd) {
 static bool is_v4l2_enc_jpeg_device(int fd) {
   return is_hw_jpeg_acc_device(fd) &&
          is_v4l2_support_format(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-                                V4L2_PIX_FMT_JPEG);
+                                V4L2_PIX_FMT_JPEG, 8);
 }
 
 #endif  // defined(USE_V4L2_CODEC)
