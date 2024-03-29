@@ -585,4 +585,10 @@ interface Executor {
                           pending_remote<NetworkBandwidthObserver> observer,
                           pending_receiver<ProcessControl> process_control)
       => (double? average_speed);
+
+  // Fetch graphics info.
+  //
+  // The response:
+  // * |result| - Struct containing graphics info.
+  FetchGraphicsInfo() => (GraphicsResult result);
 };

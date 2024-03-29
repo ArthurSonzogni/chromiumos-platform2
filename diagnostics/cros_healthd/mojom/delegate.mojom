@@ -235,4 +235,10 @@ interface Delegate {
                           string oem_name,
                           pending_remote<NetworkBandwidthObserver> observer)
       => (double? average_speed);
+
+  // Fetch graphics info.
+  //
+  // The response:
+  // * |result| - Struct containing graphics info.
+  FetchGraphicsInfo() => (GraphicsResult result);
 };

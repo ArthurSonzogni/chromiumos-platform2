@@ -226,6 +226,7 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
            process_control,
        RunNetworkBandwidthTestCallback callback),
       (override));
+  MOCK_METHOD(void, FetchGraphicsInfo, (FetchGraphicsInfoCallback), (override));
 };
 
 }  // namespace diagnostics

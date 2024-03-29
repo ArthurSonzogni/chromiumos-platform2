@@ -89,6 +89,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
       mojo::PendingRemote<ash::cros_healthd::mojom::NetworkBandwidthObserver>
           observer,
       RunNetworkBandwidthTestCallback callback) override;
+  void FetchGraphicsInfo(FetchGraphicsInfoCallback callback) override;
 
  private:
   void GetConnectedExternalDisplayConnectorsHelper(

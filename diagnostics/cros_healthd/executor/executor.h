@@ -171,6 +171,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control,
       RunNetworkBandwidthTestCallback callback) override;
+  void FetchGraphicsInfo(FetchGraphicsInfoCallback callback) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

@@ -56,6 +56,7 @@
 #include "diagnostics/cros_healthd/delegate/events/volume_button_evdev_delegate.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/display_fetcher.h"
+#include "diagnostics/cros_healthd/delegate/fetchers/graphics_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/psr_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"
 #include "diagnostics/cros_healthd/delegate/routines/floating_point_accuracy.h"
@@ -831,6 +832,10 @@ void DelegateImpl::RunNetworkBandwidthTest(
       FROM_HERE,
       base::BindOnce(&RunNdtTest, type, oem_name, std::move(observer)),
       std::move(callback));
+}
+
+void DelegateImpl::FetchGraphicsInfo(FetchGraphicsInfoCallback callback) {
+  std::move(callback).Run(GetGraphicsInfo());
 }
 
 }  // namespace diagnostics

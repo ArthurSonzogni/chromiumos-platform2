@@ -65,6 +65,7 @@ constexpr char kStressAppTestBinary[] = "/usr/bin/stressapptest";
 constexpr char kDrmDevice[] = "/dev/dri";
 constexpr char kCrashSenderBinary[] = "/sbin/crash_sender";
 constexpr char kInputDevice[] = "/dev/input";
+constexpr char kArmGraphicsDevice[] = "/dev/mali0";
 constexpr char kBtmonBinary[] = "/usr/bin/btmon";
 
 }  // namespace
@@ -120,6 +121,8 @@ constexpr char kI2CRead[] = "ec_i2cread-seccomp.policy";
 constexpr char kUrandom[] = "urandom-seccomp.policy";
 // SECCOMP policy for running ndt.
 constexpr char kNdt[] = "ndt-seccomp.policy";
+// SECCOMP policy for egl graphics library.
+constexpr char kEgl[] = "egl-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -1153,6 +1156,25 @@ void Executor::RunNetworkBandwidthTest(
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
                      std::move(process_control)));
+}
+
+void Executor::FetchGraphicsInfo(FetchGraphicsInfoCallback callback) {
+  auto delegate = CreateDelegateProcess(
+      seccomp_file::kEgl, SandboxedProcess::Options{
+                              .readonly_mount_points =
+                                  {
+                                      base::FilePath{path::kDrmDevice},
+                                      base::FilePath{path::kArmGraphicsDevice},
+                                      base::FilePath{"/sys/dev"},
+                                      base::FilePath{"/sys/devices"},
+                                  },
+                          });
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->FetchGraphicsInfo(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback),
+      mojom::GraphicsResult::NewError(mojom::ProbeError::New(
+          mojom::ErrorType::kSystemUtilityError, kFailToLaunchDelegate))));
+  delegate_ptr->StartAsync();
 }
 
 }  // namespace diagnostics
