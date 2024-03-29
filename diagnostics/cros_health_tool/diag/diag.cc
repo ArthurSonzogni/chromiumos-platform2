@@ -23,7 +23,6 @@
 #include <mojo/service_constants.h>
 
 #include "diagnostics/cros_health_tool/diag/diag_actions.h"
-#include "diagnostics/cros_health_tool/diag/repliers/led_lit_up_routine_replier.h"
 #include "diagnostics/cros_health_tool/diag/routine_v2_client.h"
 #include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/cros_health_tool/output_util.h"
@@ -279,9 +278,6 @@ int LedLitUpMain(int argc, char** argv) {
     std::cout << "Unknown led_color: " << FLAGS_led_color << std::endl;
     return EXIT_FAILURE;
   }
-
-  LedLitUpRoutineReplier replier;
-  argument->replier = replier.BindNewPipdAndPassRemote();
 
   COMMON_V2_ROUTINE_MAIN(LedLitUp);
 }
