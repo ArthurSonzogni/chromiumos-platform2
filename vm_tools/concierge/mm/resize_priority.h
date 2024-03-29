@@ -40,7 +40,9 @@ enum ResizePriority {
   kCachedTab = 8,
   kAggressiveBalloon = 9,
   kCachedApp = 10,
-  kMglruReclaim = 11,
+  kStaleCachedTab = 11,
+  kStaleCachedApp = 12,
+  kMglruReclaim = 13,
 };
 
 // Contains the valid resize priorities for UMA metrics. This enum is append
@@ -60,7 +62,9 @@ enum UmaResizePriority {
   kUmaAggressiveBalloon = 9,
   kUmaCachedApp = 10,
   kUmaMglruReclaim = 11,
-  kMax = kUmaMglruReclaim,
+  kUmaStaleCachedTab = 12,
+  kUmaStaleCachedApp = 13,
+  kMax = kStaleCachedApp,
 };
 static_assert(kUmaMglruReclaim == 11,
               "UmaResizePriority is append only. Do not change values of "
@@ -88,6 +92,8 @@ constexpr const char* kResizePriorityNames[] = {
     "CachedTab",
     "AggressiveBalloon",
     "CachedApp",
+    "StaleCachedTab",
+    "StaleCachedApp",
     "MglruReclaim",
 };
 static_assert(
@@ -98,6 +104,8 @@ static_assert(
 // Allows for iteration of resize priorities in increasing priority order.
 constexpr ResizePriority kAllResizePrioritiesIncreasing[] = {
     ResizePriority::kMglruReclaim,
+    ResizePriority::kStaleCachedApp,
+    ResizePriority::kStaleCachedTab,
     ResizePriority::kCachedApp,
     ResizePriority::kAggressiveBalloon,
     ResizePriority::kCachedTab,
@@ -138,6 +146,12 @@ constexpr ResizePriority FromProtoResizePriority(
     case vm_tools::vm_memory_management::ResizePriority::
         RESIZE_PRIORITY_CACHED_APP:
       return ResizePriority::kCachedApp;
+    case vm_tools::vm_memory_management::ResizePriority::
+        RESIZE_PRIORITY_STALE_CACHED_TAB:
+      return ResizePriority::kStaleCachedTab;
+    case vm_tools::vm_memory_management::ResizePriority::
+        RESIZE_PRIORITY_STALE_CACHED_APP:
+      return ResizePriority::kStaleCachedApp;
     default:
       return ResizePriority::kInvalid;
   }
@@ -164,6 +178,8 @@ constexpr auto kResizePriorityToUmaResizePriority =
         UMA_RESIZE_PRIORITY_PAIR(CachedTab),
         UMA_RESIZE_PRIORITY_PAIR(AggressiveBalloon),
         UMA_RESIZE_PRIORITY_PAIR(CachedApp),
+        UMA_RESIZE_PRIORITY_PAIR(StaleCachedTab),
+        UMA_RESIZE_PRIORITY_PAIR(StaleCachedApp),
         UMA_RESIZE_PRIORITY_PAIR(MglruReclaim),
     });
 #undef UMA_RESIZE_PRIORITY_PAIR
