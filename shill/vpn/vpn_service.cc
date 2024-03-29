@@ -85,13 +85,9 @@ VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)
     : Service(manager, Technology::kVPN),
       driver_(std::move(driver)),
       last_default_physical_service_online_(manager->IsOnline()) {
-  if (driver_) {
-    log_name_ = "vpn_" + VPNTypeEnumToString(driver_->vpn_type()) + "_" +
-                base::NumberToString(serial_number());
-  } else {
-    // |driver| may be null in tests.
-    log_name_ = "vpn_" + base::NumberToString(serial_number());
-  }
+  DCHECK(driver_);
+  log_name_ = base::StrCat({"vpn_", VPNTypeEnumToString(driver_->vpn_type()),
+                            "_", base::NumberToString(serial_number())});
   SetConnectable(true);
   set_save_credentials(false);
   mutable_store()->RegisterDerivedString(
