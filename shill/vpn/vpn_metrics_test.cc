@@ -7,10 +7,13 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_metrics.h"
+#include "shill/vpn/vpn_metrics_internal.h"
 #include "shill/vpn/vpn_types.h"
 
 namespace shill {
 namespace {
+
+namespace vpn_metrics = vpn_metrics_internal;
 
 using testing::_;
 
@@ -31,20 +34,20 @@ TEST_F(VPNDriverMetricsTest, ReportIPType) {
 
   NetworkConfig config_ipv4_only;
   config_ipv4_only.ipv4_address = ipv4_address;
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
+  EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPType, _,
                                       Metrics::kIPTypeIPv4Only));
   driver_metrics_.ReportIPType(config_ipv4_only);
 
   NetworkConfig config_ipv6_only;
   config_ipv6_only.ipv6_addresses = {ipv6_address};
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
+  EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPType, _,
                                       Metrics::kIPTypeIPv6Only));
   driver_metrics_.ReportIPType(config_ipv6_only);
 
   NetworkConfig config_dual_stack;
   config_dual_stack.ipv4_address = ipv4_address;
   config_dual_stack.ipv6_addresses = {ipv6_address};
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
+  EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPType, _,
                                       Metrics::kIPTypeDualStack));
   driver_metrics_.ReportIPType(config_dual_stack);
 }

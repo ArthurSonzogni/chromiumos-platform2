@@ -784,15 +784,6 @@ class Metrics {
       .n = NameByTechnology{"IPType"},
       .max = kIPTypeMax,
   };
-  // IPType for VPN is a separate metric because:
-  // 1) IP provisioning for VPN always happens before VPN is connected, while
-  //    it's not the case for other technologies, and thus the reporting timings
-  //    are different;
-  // 2) We need per-VPN-type metrics for VPN.
-  static constexpr EnumMetric<NameByVPNType> kMetricVpnIPType = {
-      .n = NameByVPNType{"IPType"},
-      .max = kIPTypeMax,
-  };
 
   // This enum contains the encryption algorithms we are using for IPsec now,
   // but not the complete list of algorithms which are supported by strongswan.

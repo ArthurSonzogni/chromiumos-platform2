@@ -6,8 +6,11 @@
 
 #include "shill/metrics.h"
 #include "shill/vpn/vpn_metrics.h"
+#include "shill/vpn/vpn_metrics_internal.h"
 
 namespace shill {
+
+namespace vpn_metrics = vpn_metrics_internal;
 
 void VPNDriverMetrics::ReportIPType(
     const net_base::NetworkConfig& network_config) const {
@@ -23,7 +26,7 @@ void VPNDriverMetrics::ReportIPType(
   } else if (has_ipv6) {
     ip_type = Metrics::kIPTypeIPv6Only;
   }
-  metrics_->SendEnumToUMA(Metrics::kMetricVpnIPType, vpn_type_, ip_type);
+  metrics_->SendEnumToUMA(vpn_metrics::kMetricIPType, vpn_type_, ip_type);
 }
 
 }  // namespace shill
