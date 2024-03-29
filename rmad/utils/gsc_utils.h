@@ -5,6 +5,7 @@
 #ifndef RMAD_UTILS_GSC_UTILS_H_
 #define RMAD_UTILS_GSC_UTILS_H_
 
+#include <optional>
 #include <string>
 
 namespace rmad {
@@ -79,6 +80,9 @@ class GscUtils {
 
   // Set wpsr for ap ro verification on Ti50.
   virtual bool SetWpsr(std::string_view wpsr) = 0;
+
+  // Check if wpsr is already provisioned.
+  virtual std::optional<bool> IsApWpsrProvisioned() = 0;
 };
 
 }  // namespace rmad

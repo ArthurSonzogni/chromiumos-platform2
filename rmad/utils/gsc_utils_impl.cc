@@ -6,6 +6,7 @@
 
 #include <iomanip>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -358,6 +359,20 @@ bool GscUtilsImpl::SetWpsr(std::string_view wpsr) {
   }
 
   return true;
+}
+
+std::optional<bool> GscUtilsImpl::IsApWpsrProvisioned() {
+  std::string output;
+  std::vector<std::string> argv{kWpsr.begin(), kWpsr.end()};
+
+  if (!cmd_utils_->GetOutputAndError(argv, &output)) {
+    LOG(ERROR) << "Failed to get wpsr";
+    LOG(ERROR) << output;
+    return std::nullopt;
+  }
+
+  return base::TrimWhitespaceASCII(output, base::TRIM_TRAILING) !=
+         "not provisioned";
 }
 
 }  // namespace rmad

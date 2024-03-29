@@ -39,6 +39,7 @@ class GscUtilsImpl : public GscUtils {
   bool SetAddressingMode(SpiAddressingMode mode) override;
   SpiAddressingMode GetAddressingModeByFlashSize(uint64_t flash_size) override;
   bool SetWpsr(std::string_view wpsr) override;
+  std::optional<bool> IsApWpsrProvisioned() override;
 
  private:
   std::unique_ptr<CmdUtils> cmd_utils_;

@@ -534,4 +534,43 @@ TEST_F(GscUtilsTest, SetWpsr_Failed) {
   EXPECT_FALSE(gsc_utils->SetWpsr("0xA2 0x01 0x00 0x4A 0x00 0x01"));
 }
 
+TEST_F(GscUtilsTest, IsApWpsrProvisioned_Success) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>("expected values: 1: 99 & aa, 2: 00 & bb"),
+                Return(true)));
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  auto result = gsc_utils->IsApWpsrProvisioned();
+  EXPECT_TRUE(result.has_value());
+  EXPECT_TRUE(result.value());
+}
+
+TEST_F(GscUtilsTest, IsApWpsrProvisioned_Unprovisioned) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>("not provisioned"), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<1>("not provisioned\n"), Return(true)));
+
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  auto result = gsc_utils->IsApWpsrProvisioned();
+  EXPECT_TRUE(result.has_value());
+  EXPECT_FALSE(result.value());
+
+  result = gsc_utils->IsApWpsrProvisioned();
+  EXPECT_TRUE(result.has_value());
+  EXPECT_FALSE(result.value());
+}
+
+TEST_F(GscUtilsTest, IsApWpsrProvisioned_Failed) {
+  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
+  EXPECT_CALL(*mock_cmd_utils, GetOutputAndError(_, _)).WillOnce(Return(false));
+
+  auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
+
+  auto result = gsc_utils->IsApWpsrProvisioned();
+  EXPECT_FALSE(result.has_value());
+}
 }  // namespace rmad

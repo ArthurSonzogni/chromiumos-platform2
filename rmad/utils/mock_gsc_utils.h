@@ -8,6 +8,7 @@
 #include "rmad/utils/gsc_utils.h"
 
 #include <cstdint>
+#include <optional>
 #include <string>
 
 #include <gmock/gmock.h>
@@ -45,6 +46,7 @@ class MockGscUtils : public GscUtils {
               (uint64_t flash_size),
               (override));
   MOCK_METHOD(bool, SetWpsr, (std::string_view), (override));
+  MOCK_METHOD(std::optional<bool>, IsApWpsrProvisioned, (), (override));
 };
 
 }  // namespace rmad
