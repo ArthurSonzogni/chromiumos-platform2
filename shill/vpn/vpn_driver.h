@@ -22,6 +22,7 @@
 #include "shill/mockable.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
+#include "shill/vpn/vpn_metrics.h"
 #include "shill/vpn/vpn_types.h"
 
 namespace shill {
@@ -131,6 +132,8 @@ class VPNDriver {
     return eap_credentials_.get();
   }
 
+  VPNDriverMetrics* driver_metrics() { return &driver_metrics_; }
+
  protected:
   // Represents a property in |args_|, which can be read and/or written over
   // RPC, and loaded from and/or saved to storage (the accessibility is
@@ -194,6 +197,8 @@ class VPNDriver {
   const VPNType vpn_type_;
   const Property* const properties_;
   const size_t property_count_;
+
+  VPNDriverMetrics driver_metrics_;
   KeyValueStore args_;
 
   std::unique_ptr<EapCredentials> eap_credentials_;

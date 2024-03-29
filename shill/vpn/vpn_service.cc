@@ -29,6 +29,7 @@
 #include "shill/store/store_interface.h"
 #include "shill/technology.h"
 #include "shill/vpn/vpn_driver.h"
+#include "shill/vpn/vpn_metrics.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_types.h"
 
@@ -145,20 +146,7 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
   // when it becomes connected, so we can report the metrics here, but this is
   // not the case for other technologies (v4 and v6 configurations can come at
   // different time).
-  Metrics::IPType ip_type = Metrics::kIPTypeUnknown;
-  bool has_ipv4 = network_config->ipv4_address.has_value();
-  bool has_ipv6 = !network_config->ipv6_addresses.empty();
-  // Note that ARC VPN will be reported as kIPTypeUnknown here, as its
-  // GetNetworkConfig will not have any address.
-  if (has_ipv4 && has_ipv6) {
-    ip_type = Metrics::kIPTypeDualStack;
-  } else if (has_ipv4) {
-    ip_type = Metrics::kIPTypeIPv4Only;
-  } else if (has_ipv6) {
-    ip_type = Metrics::kIPTypeIPv6Only;
-  }
-  metrics()->SendEnumToUMA(Metrics::kMetricVpnIPType, driver_->vpn_type(),
-                           ip_type);
+  driver_->driver_metrics()->ReportIPType(*network_config);
 
   SetState(ConnectState::kStateConfiguring);
   ConfigureDevice(std::move(network_config));

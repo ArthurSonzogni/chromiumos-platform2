@@ -1,0 +1,29 @@
+// Copyright 2024 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include <net-base/network_config.h>
+
+#include "shill/metrics.h"
+#include "shill/vpn/vpn_metrics.h"
+
+namespace shill {
+
+void VPNDriverMetrics::ReportIPType(
+    const net_base::NetworkConfig& network_config) const {
+  Metrics::IPType ip_type = Metrics::kIPTypeUnknown;
+  bool has_ipv4 = network_config.ipv4_address.has_value();
+  bool has_ipv6 = !network_config.ipv6_addresses.empty();
+  // Note that ARC VPN will be reported as kIPTypeUnknown here, as its
+  // GetNetworkConfig will not have any address.
+  if (has_ipv4 && has_ipv6) {
+    ip_type = Metrics::kIPTypeDualStack;
+  } else if (has_ipv4) {
+    ip_type = Metrics::kIPTypeIPv4Only;
+  } else if (has_ipv6) {
+    ip_type = Metrics::kIPTypeIPv6Only;
+  }
+  metrics_->SendEnumToUMA(Metrics::kMetricVpnIPType, vpn_type_, ip_type);
+}
+
+}  // namespace shill
