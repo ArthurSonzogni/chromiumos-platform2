@@ -201,6 +201,10 @@ class Resolver {
                              unsigned char* msg,
                              size_t len);
 
+  // Handle DNS query from clients. |type| values will be either SOCK_DGRAM
+  // or SOCK STREAM, for UDP and TCP respectively.
+  void OnDNSQuery(int fd, int type);
+
   // Handle DNS query data from clients read through |OnDNSQuery|. Added for
   // unit testing.
   void HandleDNSQuery(std::unique_ptr<SocketFd> sock_fd);
@@ -218,6 +222,14 @@ class Resolver {
   friend std::ostream& operator<<(std::ostream& stream,
                                   const Resolver& resolver);
 
+ protected:
+  // Wrapper around libc recvfrom, allowing override in fuzzer tests.
+  virtual ssize_t Receive(int fd,
+                          char* buffer,
+                          size_t buffer_size,
+                          struct sockaddr* src_addr,
+                          socklen_t* addrlen);
+
  private:
   // |TCPConnection| is used to track and terminate TCP connections.
   struct TCPConnection {
@@ -230,10 +242,6 @@ class Resolver {
 
   // Callback to handle newly opened connections on TCP sockets.
   void OnTCPConnection();
-
-  // Handle DNS query from clients. |type| values will be either SOCK_DGRAM
-  // or SOCK STREAM, for UDP and TCP respectively.
-  void OnDNSQuery(int fd, int type);
 
   // Send back data taken from CURL or Ares to the client.
   void ReplyDNS(base::WeakPtr<SocketFd> sock_fd,

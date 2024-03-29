@@ -56,6 +56,46 @@ class FakeCurlClient : public DoHCurlClientInterface {
   FuzzedDataProvider* provider_;
 };
 
+// Test class that overrides Resolver's receive function with stubs.
+class TestResolver : public Resolver {
+ public:
+  TestResolver(std::unique_ptr<AresClient> ares_client,
+               std::unique_ptr<DoHCurlClientInterface> curl_client,
+               std::unique_ptr<net_base::SocketFactory> socket_factory)
+      : Resolver(std::move(ares_client),
+                 std::move(curl_client),
+                 std::move(socket_factory)) {}
+
+  TestResolver(const TestResolver&) = delete;
+  TestResolver& operator=(const TestResolver&) = delete;
+  ~TestResolver() override = default;
+
+  ssize_t Receive(int fd,
+                  char* buffer,
+                  size_t buffer_size,
+                  struct sockaddr* src_addr,
+                  socklen_t* addrlen) override {
+    buffer_size = std::min(payload.size(), buffer_size);
+    if (buffer_size > 0) {
+      memcpy(buffer, payload.data(), buffer_size);
+      payload.erase(payload.begin(), payload.begin() + buffer_size);
+    }
+    if (addrlen == 0) {
+      return buffer_size;
+    }
+
+    // Handle UDP sockets.
+    *addrlen = std::min(static_cast<uint32_t>(src_sockaddr.size()), *addrlen);
+    if (*addrlen > 0) {
+      memcpy(src_addr, src_sockaddr.data(), *addrlen);
+    }
+    return buffer_size;
+  }
+
+  std::vector<uint8_t> src_sockaddr;
+  std::vector<uint8_t> payload;
+};
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
@@ -63,8 +103,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   auto ares_client = std::make_unique<FakeAresClient>(&provider);
   auto curl_client = std::make_unique<FakeCurlClient>(&provider);
   auto socket_factory = std::make_unique<net_base::SocketFactory>();
-  Resolver resolver(std::move(ares_client), std::move(curl_client),
-                    std::move(socket_factory));
+  TestResolver resolver(std::move(ares_client), std::move(curl_client),
+                        std::move(socket_factory));
 
   while (provider.remaining_bytes() > 0) {
     size_t n = provider.ConsumeIntegralInRange<size_t>(0, 99);
@@ -80,6 +120,23 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     auto msg = provider.ConsumeRandomLengthString(
         std::numeric_limits<uint16_t>::max());
     resolver.ConstructServFailResponse(msg.c_str(), msg.size());
+
+    int type = SOCK_STREAM;
+    if (provider.ConsumeBool()) {
+      type = SOCK_DGRAM;
+      if (provider.ConsumeBool()) {
+        resolver.src_sockaddr =
+            provider.ConsumeBytes<uint8_t>(sizeof(struct sockaddr_in));
+      } else {
+        resolver.src_sockaddr =
+            provider.ConsumeBytes<uint8_t>(sizeof(struct sockaddr_in6));
+      }
+    }
+    resolver.payload = provider.ConsumeBytes<uint8_t>(
+        provider.ConsumeIntegralInRange(0, 2 * static_cast<int>(kDNSBufSize)));
+    while (resolver.payload.size() > 0) {
+      resolver.OnDNSQuery(/*fd=*/type == SOCK_STREAM ? 0 : 1, type);
+    }
   }
 
   return 0;

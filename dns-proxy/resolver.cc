@@ -667,9 +667,9 @@ void Resolver::OnDNSQuery(int fd, int type) {
 
   // Only the last recvfrom call is considered for receive metrics.
   sock_fd->timer.StartReceive();
-  ssize_t len = recvfrom(fd, buf, buf_size, 0,
-                         reinterpret_cast<struct sockaddr*>(&sock_fd->src),
-                         &sock_fd->socklen);
+  ssize_t len = Receive(fd, buf, buf_size,
+                        reinterpret_cast<struct sockaddr*>(&sock_fd->src),
+                        &sock_fd->socklen);
   // Assume success - on failure, the correct value will be recorded.
   sock_fd->timer.StopReceive(true);
   if (len < 0) {
@@ -946,5 +946,13 @@ patchpanel::DnsResponse Resolver::ConstructServFailResponse(const char* msg,
 
 void Resolver::SetProbingEnabled(bool enable_probe) {
   disable_probe_ = !enable_probe;
+}
+
+ssize_t Resolver::Receive(int fd,
+                          char* buffer,
+                          size_t buffer_size,
+                          struct sockaddr* src_addr,
+                          socklen_t* addrlen) {
+  return recvfrom(fd, buffer, buffer_size, 0, src_addr, addrlen);
 }
 }  // namespace dns_proxy
