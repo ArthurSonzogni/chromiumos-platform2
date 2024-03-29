@@ -18,6 +18,7 @@
 #include <base/task/bind_post_task.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
+#include <brillo/http/http_transport.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
@@ -911,6 +912,12 @@ class ClientImpl : public Client {
                  std::optional<TrafficAnnotation> traffic_annotation,
                  TagSocketCallback callback) override;
 
+  void PrepareTagSocket(
+      const TrafficAnnotation& annotation,
+      std::shared_ptr<brillo::http::Transport> transport) override;
+
+  bool OnSocketAnnotation(const TrafficAnnotationId& id, int fd);
+
  private:
   // Runs the |task| on the DBus thread synchronously.
   // The generated proxy uses brillo::dbus_utils::CallMethod*(), which asserts
@@ -1746,6 +1753,33 @@ bool ClientImpl::TagSocket(base::ScopedFD fd,
       base::BindPostTaskToCurrentDefault(std::move(callback))));
 
   return true;
+}
+
+void ClientImpl::PrepareTagSocket(
+    const TrafficAnnotation& annotation,
+    std::shared_ptr<brillo::http::Transport> transport) {
+  // Bind OnSocketAnnotation as a RepeatingCallback with the annotation id as a
+  // bound parameter. |this| is bound with Unretained as it is not supported to
+  // bind a weak ref to a callback with a return value. It is considered as safe
+  // since we expect Patchpanel Client to outlive brillo::Transport.
+  transport->SetSockOptCallback(base::BindRepeating(
+      &ClientImpl::OnSocketAnnotation, base::Unretained(this), annotation.id));
+}
+
+bool ClientImpl::OnSocketAnnotation(const TrafficAnnotationId& id, int fd) {
+  // The socket fd has to be duplicated to prevent the DBus proxy base::ScopedFD
+  // to close the fd owned by curl.
+  int tag_fd = dup(fd);
+  if (tag_fd < 0) {
+    LOG(ERROR) << __func__ << ": failed to dup socket descriptor";
+    return false;
+  }
+
+  TrafficAnnotation annotation(id);
+  // TODO(b/331620358) use a synchronous call to a dedicated TagSocket service
+  // to guarantee the socket is tagged when the call returns.
+  return TagSocket(base::ScopedFD(tag_fd), std::nullopt, std::nullopt,
+                   std::move(annotation), base::DoNothing());
 }
 
 }  // namespace

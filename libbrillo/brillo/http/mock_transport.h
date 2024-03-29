@@ -60,6 +60,10 @@ class MockTransport : public Transport {
 
   MOCK_METHOD(void, SetBufferSize, (std::optional<int>), (override));
   MOCK_METHOD(void, SetUploadBufferSize, (std::optional<int>), (override));
+  MOCK_METHOD(void,
+              SetSockOptCallback,
+              (base::RepeatingCallback<bool(int)>),
+              (override));
 
  protected:
   MOCK_METHOD(void, ClearHost, (), (override));

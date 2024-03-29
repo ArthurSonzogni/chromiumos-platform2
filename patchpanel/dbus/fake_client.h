@@ -115,6 +115,10 @@ class BRILLO_EXPORT FakeClient : public Client {
   bool SendSetFeatureFlagRequest(Client::FeatureFlag flag,
                                  bool enable) override;
 
+  void PrepareTagSocket(
+      const TrafficAnnotation& annotation,
+      std::shared_ptr<brillo::http::Transport> transport) override;
+
   bool TagSocket(base::ScopedFD fd,
                  std::optional<int> network_id,
                  std::optional<VpnRoutingPolicy> vpn_policy,

@@ -605,6 +605,16 @@ class MockPatchPanelProxy : public StubPatchPanelProxy {
                    const NeighborReachabilityEventSignal&)>& signal_callback,
                dbus::ObjectProxy::OnConnectedCallback on_connected_callback),
               (override));
+
+  MOCK_METHOD(void,
+              TagSocketAsync,
+              (const patchpanel::TagSocketRequest&,
+               const base::ScopedFD&,
+               base::OnceCallback<
+                   void(const patchpanel::TagSocketResponse& /*response*/)>,
+               base::OnceCallback<void(brillo::Error*)>,
+               int),
+              (override));
 };
 
 }  // namespace patchpanel

@@ -172,6 +172,10 @@ bool FakeClient::SendSetFeatureFlagRequest(Client::FeatureFlag flag,
   return true;
 }
 
+void FakeClient::PrepareTagSocket(
+    const TrafficAnnotation& annotation,
+    std::shared_ptr<brillo::http::Transport> transport) {}
+
 bool FakeClient::TagSocket(base::ScopedFD fd,
                            std::optional<int> network_id,
                            std::optional<VpnRoutingPolicy> vpn_policy,

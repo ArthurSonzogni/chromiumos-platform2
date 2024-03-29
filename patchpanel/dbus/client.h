@@ -16,6 +16,7 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <brillo/brillo_export.h>
+#include <brillo/http/http_transport.h>
 // Ignore Wconversion warnings in dbus headers.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"
@@ -534,6 +535,17 @@ class BRILLO_EXPORT Client {
                          std::optional<VpnRoutingPolicy> vpn_policy,
                          std::optional<TrafficAnnotation> traffic_annotation,
                          TagSocketCallback callback) = 0;
+
+  // Prepares a socket tag with annotation |annotation| and attaches a callback
+  // to |transport| to apply that socket tag annotation at connection
+  // establishment. It is considered as safe since we expect patchpanel Client
+  // to outlive brillo::HttpTransport.
+  //
+  // Note: contrary to TagSocket it does not directly annotate a socket but only
+  // attaches a callback that will apply the annotation to the socket later.
+  virtual void PrepareTagSocket(
+      const TrafficAnnotation& annotation,
+      std::shared_ptr<brillo::http::Transport> transport) = 0;
 
  protected:
   Client() = default;

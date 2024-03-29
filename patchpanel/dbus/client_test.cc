@@ -9,10 +9,14 @@
 #include <string>
 #include <vector>
 
+#include <base/test/task_environment.h>
+#include <base/run_loop.h>
+#include <brillo/http/mock_transport.h>
 #include <dbus/mock_bus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
+#include <patchpanel/proto_bindings/traffic_annotation.pb.h>
 
 #include "patchpanel/dbus/mock_patchpanel_proxy.h"
 
@@ -32,6 +36,7 @@ class ClientTest : public testing::Test {
   void SetUp() override {
     dbus_ = new dbus::MockBus{dbus::Bus::Options{}};
     proxy_ = new MockPatchPanelProxy();
+    http_transport_ = std::make_shared<brillo::http::MockTransport>();
     client_ = Client::NewForTesting(
         dbus_,
         std::unique_ptr<org::chromium::PatchPanelProxyInterface>(proxy_));
@@ -40,6 +45,7 @@ class ClientTest : public testing::Test {
   scoped_refptr<dbus::MockBus> dbus_;
   std::unique_ptr<Client> client_;
   MockPatchPanelProxy* proxy_;  // It's owned by |client_|.
+  std::shared_ptr<brillo::http::MockTransport> http_transport_;
 };
 
 TEST_F(ClientTest, NotifyArcStartup) {
@@ -575,6 +581,26 @@ TEST_F(ClientTest, SerializeNetworkConfig) {
   EXPECT_EQ(output.dns_search_domains(0), "google.com");
   EXPECT_EQ(output.mtu(), 1200);
   EXPECT_EQ(output.captive_portal_uri(), "https://portal.net");
+}
+
+TEST_F(ClientTest, PrepareTagSocket) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  patchpanel::TagSocketRequest request;
+
+  base::RepeatingCallback<bool(int)> tag_socket_callback;
+  EXPECT_CALL(*http_transport_, SetSockOptCallback)
+      .WillOnce(SaveArg<0>(&tag_socket_callback));
+  EXPECT_CALL(*proxy_, TagSocketAsync).WillOnce(SaveArg<0>(&request));
+
+  patchpanel::Client::TrafficAnnotation annotation;
+  annotation.id = Client::TrafficAnnotationId::kUnspecified;
+  client_->PrepareTagSocket(annotation, http_transport_);
+  EXPECT_TRUE(tag_socket_callback.Run(0));
+
+  EXPECT_TRUE(request.has_traffic_annotation());
+  EXPECT_EQ(request.traffic_annotation().host_id(),
+            traffic_annotation::TrafficAnnotation_Id::
+                TrafficAnnotation_Id_UNSPECIFIED);
 }
 
 }  // namespace
