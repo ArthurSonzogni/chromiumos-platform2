@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/sys_byteorder.h>
+#include <base/numerics/byte_conversions.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <trunks/tpm_utility.h>
 
@@ -107,6 +107,16 @@ std::optional<brillo::Blob> BlobOrNullopt(const std::string& str) {
   if (str.empty())
     return std::nullopt;
   return brillo::BlobFromString(str);
+}
+
+uint32_t ByteSwapToLE32(uint32_t n) {
+  return base::numerics::U32FromLittleEndian(
+      base::numerics::U32ToNativeEndian(n));
+}
+
+uint32_t ByteSwapToLE64(uint64_t n) {
+  return base::numerics::U64FromLittleEndian(
+      base::numerics::U64ToNativeEndian(n));
 }
 
 }  // namespace
@@ -398,7 +408,7 @@ StatusOr<uint32_t> PinWeaverTpm2::GetWrongAuthAttempts(
 
   memcpy(&count, ptr, sizeof(count));
 
-  return base::ByteSwapToLE32(count);
+  return ByteSwapToLE32(count);
 }
 
 StatusOr<PinWeaverTpm2::DelaySchedule> PinWeaverTpm2::GetDelaySchedule(
@@ -446,14 +456,14 @@ StatusOr<PinWeaverTpm2::DelaySchedule> PinWeaverTpm2::GetDelaySchedule(
         offsetof(attempt_count_t, v);
 
     memcpy(&attempt_count, attempt_count_ptr, sizeof(attempt_count));
-    attempt_count = base::ByteSwapToLE32(attempt_count);
+    attempt_count = ByteSwapToLE32(attempt_count);
 
     const uint8_t* time_diff_ptr = entry_ptr +
                                    offsetof(delay_schedule_entry_t, time_diff) +
                                    offsetof(time_diff_t, v);
 
     memcpy(&time_diff, time_diff_ptr, sizeof(time_diff));
-    time_diff = base::ByteSwapToLE32(time_diff);
+    time_diff = ByteSwapToLE32(time_diff);
 
     if (attempt_count == 0 && time_diff == 0) {
       break;
@@ -728,8 +738,8 @@ PinWeaverTpm2::GetLastAccessTimestamp(const brillo::Blob& cred_metadata) {
 
   memcpy(&timestamp.timer_value, ptr, sizeof(timestamp.timer_value));
 
-  timestamp.boot_count = base::ByteSwapToLE32(timestamp.boot_count);
-  timestamp.timer_value = base::ByteSwapToLE64(timestamp.timer_value);
+  timestamp.boot_count = ByteSwapToLE32(timestamp.boot_count);
+  timestamp.timer_value = ByteSwapToLE64(timestamp.timer_value);
 
   return timestamp;
 }
@@ -790,7 +800,7 @@ StatusOr<uint32_t> PinWeaverTpm2::GetExpirationDelay(
 
   memcpy(&expiration_delay, ptr, sizeof(expiration_delay));
 
-  expiration_delay = base::ByteSwapToLE32(expiration_delay);
+  expiration_delay = ByteSwapToLE32(expiration_delay);
 
   return expiration_delay;
 }
@@ -837,8 +847,8 @@ PinWeaverTpm2::GetExpirationTimestamp(const brillo::Blob& cred_metadata) {
 
   memcpy(&timestamp.timer_value, ptr, sizeof(timestamp.timer_value));
 
-  timestamp.boot_count = base::ByteSwapToLE32(timestamp.boot_count);
-  timestamp.timer_value = base::ByteSwapToLE64(timestamp.timer_value);
+  timestamp.boot_count = ByteSwapToLE32(timestamp.boot_count);
+  timestamp.timer_value = ByteSwapToLE64(timestamp.timer_value);
 
   return timestamp;
 }

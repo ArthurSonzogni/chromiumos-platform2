@@ -10,7 +10,7 @@
 #include <optional>
 #include <utility>
 
-#include <base/sys_byteorder.h>
+#include <base/numerics/byte_conversions.h>
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/recoverable_key_store.pb.h>
@@ -42,8 +42,7 @@ constexpr size_t kCrOSRecoverableKeyStoreHandleBodySize = 16;
 constexpr uint32_t kRecoveryMaxFailedAttempts = 10;
 // The max attempts should be serialized in little-endian byte representation.
 constexpr auto kRecoveryMaxFailedAttemptsLeBytes =
-    std::bit_cast<std::array<uint8_t, 4>>(
-        base::ByteSwapToLE32(kRecoveryMaxFailedAttempts));
+    base::numerics::U32ToLittleEndian(kRecoveryMaxFailedAttempts);
 
 constexpr char kSecurityDomainKeyName[] =
     "security_domain_member_key_encrypted_locally";

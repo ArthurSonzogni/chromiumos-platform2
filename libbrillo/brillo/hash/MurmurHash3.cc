@@ -18,7 +18,7 @@
 
 #include <string.h>
 
-#include <base/sys_byteorder.h>
+#include <base/numerics/byte_conversions.h>
 
 #include "libbrillo/brillo/hash/MurmurHash3.h"
 
@@ -74,13 +74,15 @@ FORCE_INLINE uint32_t getblock32(const uint8_t* p, int i) {
   // is expected to run on any endian and therefore we need to do byte swap.
   uint32_t res;
   memcpy(&res, &p[i * sizeof(res)], sizeof(res));
-  return base::ByteSwapToLE32(res);
+  return base::numerics::U32FromLittleEndian(
+      base::numerics::U32ToNativeEndian(res));
 }
 
 FORCE_INLINE uint64_t getblock64(const uint8_t* p, int i) {
   uint64_t res;
   memcpy(&res, &p[i * sizeof(res)], sizeof(res));
-  return base::ByteSwapToLE32(res);
+  return base::numerics::U32FromLittleEndian(
+      base::numerics::U32ToNativeEndian(res));
 }
 
 //-----------------------------------------------------------------------------

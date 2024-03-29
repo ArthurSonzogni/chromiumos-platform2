@@ -8,8 +8,9 @@
 
 #include <algorithm>
 
+#include <base/containers/span.h>
 #include <base/logging.h>
-#include <base/sys_byteorder.h>
+#include <base/numerics/byte_conversions.h>
 #include <pinweaver/pinweaver_types.h>
 
 namespace trunks {
@@ -704,13 +705,11 @@ TPM_RC Parse_pw_sys_info_t(const std::string& buffer,
   if (response_length < sizeof(struct pw_response_sys_info02_t))
     return SAPI_RC_BAD_SIZE;
 
-  auto itr = buffer.begin() + sizeof(struct pw_response_header_t);
-
-  memcpy(boot_count, &*itr, 4);
-  itr += 4;
-  *boot_count = base::ByteSwapToLE32(*boot_count);
-  memcpy(seconds_since_boot, &*itr, 8);
-  *seconds_since_boot = base::ByteSwapToLE64(*seconds_since_boot);
+  auto payload =
+      base::as_byte_span(buffer).subspan(sizeof(struct pw_response_header_t));
+  *boot_count = base::numerics::U32FromLittleEndian(payload.subspan<0, 4>());
+  *seconds_since_boot =
+      base::numerics::U64FromLittleEndian(payload.subspan<4, 8>());
 
   return TPM_RC_SUCCESS;
 }
