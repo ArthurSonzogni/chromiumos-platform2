@@ -10,6 +10,8 @@
 namespace vm_tools::concierge::mm {
 
 // An exhaustive list of resize priorities ordered in decreasing priority order.
+// When updating this list, a corresponding change must be made to
+// tools/metrics/histograms/metadata/memory/enums.xml in the Chromium repo.
 enum ResizePriority {
   kInvalid = 0,
   kBalloonStall = 1,
