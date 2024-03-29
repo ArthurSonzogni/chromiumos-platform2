@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include <getopt.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "label_detect.h"
 
@@ -66,19 +67,28 @@ struct detector detectors[] = {
 int main(int argc, char* argv[]) {
   int i;
   int opt;
+  char* single = NULL;
 
-  while ((opt = getopt(argc, argv, "vh")) != -1) {
+  while ((opt = getopt(argc, argv, "vhs:")) != -1) {
     switch (opt) {
       case 'v':
         verbose = 1;
         break;
       case 'h':
-        printf("Usage: %s [-vh]\n", argv[0]);
+        printf("Usage: %s [-vh][-s <label>]\n", argv[0]);
         return 0;
+      case 's':
+        single = optarg;
+        printf("Only trying to detect label [%s]\n", single);
+        break;
     }
   }
 
   for (i = 0; detectors[i].name; i++) {
+    if (single && !!strcmp(single, detectors[i].name)) {
+      continue;
+    }
+
     TRACE("Detecting [%s]\n", detectors[i].name);
     if (detectors[i].detect_func()) {
       printf("Detected label: %s\n", detectors[i].name);
