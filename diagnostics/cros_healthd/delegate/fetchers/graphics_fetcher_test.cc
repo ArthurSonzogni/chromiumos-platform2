@@ -1,8 +1,6 @@
-// Copyright 2021 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
 
 #include <memory>
 #include <utility>
@@ -11,9 +9,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "diagnostics/cros_healthd/delegate/fetchers/graphics_fetcher.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
-namespace diagnostics::deprecated {
+namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
@@ -45,7 +44,7 @@ class MockEglManager final : public EglManager {
   MOCK_METHOD(mojom::EGLInfoPtr, FetchEGLInfo, (), ());
 };
 
-TEST(GraphicsFetcherTest, FetchGraphicsInfo) {
+TEST(GraphicsFetcherTest, GetFetchGraphicsInfo) {
   auto gles_info = mojom::GLESInfo::New();
   gles_info->version = kFakeOpenGLESVersion;
   gles_info->shading_version = kFakeOpenGLESShadingVersion;
@@ -73,7 +72,7 @@ TEST(GraphicsFetcherTest, FetchGraphicsInfo) {
   EXPECT_CALL(*mock_egl_manager, FetchEGLInfo())
       .WillOnce(Return(ByMove(std::move(egl_info))));
 
-  auto result = FetchGraphicsInfo(std::move(mock_egl_manager));
+  auto result = GetGraphicsInfo(std::move(mock_egl_manager));
   ASSERT_TRUE(result->is_graphics_info());
 
   const auto& info = result->get_graphics_info();
@@ -90,4 +89,4 @@ TEST(GraphicsFetcherTest, FetchGraphicsInfo) {
 }
 
 }  // namespace
-}  // namespace diagnostics::deprecated
+}  // namespace diagnostics

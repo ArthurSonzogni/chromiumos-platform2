@@ -180,7 +180,7 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kGraphics: {
-        info->graphics_result = FetchGraphicsInfo();
+        info->graphics_result = deprecated::FetchGraphicsInfo();
         break;
       }
       case mojom::ProbeCategoryEnum::kDisplay: {

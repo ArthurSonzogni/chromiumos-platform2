@@ -6,6 +6,7 @@ source_set("fetchers") {
   sources = [
     "boot_performance.cc",
     "display_fetcher.cc",
+    "graphics_fetcher.cc",
     "psr_fetcher.cc",
     "touchpad_fetcher.cc",
   ]
@@ -14,7 +15,10 @@ source_set("fetchers") {
     "libbrillo",
     "libchrome",
   ]
+  defines = [ "USE_MESA_REVEN=${use.mesa_reven}" ]
   pkg_deps = [
+    "egl",
+    "glesv2",
     "libmetrics",
     "re2",
   ]
@@ -32,6 +36,7 @@ if (use.test) {
   source_set("test") {
     sources = [
       "boot_performance_test.cc",
+      "graphics_fetcher_test.cc",
       "touchpad_fetcher_test.cc",
     ]
     pkg_deps = [

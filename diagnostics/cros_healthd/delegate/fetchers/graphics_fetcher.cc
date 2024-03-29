@@ -1,8 +1,8 @@
-// Copyright 2021 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
+#include "diagnostics/cros_healthd/delegate/fetchers/graphics_fetcher.h"
 
 #include <string>
 #include <utility>
@@ -11,13 +11,17 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_split.h>
 
-#include "diagnostics/cros_healthd/fetchers/graphics_header.h"
+#include "diagnostics/cros_healthd/delegate/fetchers/graphics_header.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
-namespace diagnostics::deprecated {
+namespace diagnostics {
+
+namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
+}  // namespace
 
 std::unique_ptr<EglManager> EglManager::Create() {
   auto egl_manager = base::WrapUnique(new EglManager());
@@ -93,7 +97,7 @@ mojom::EGLInfoPtr EglManager::FetchEGLInfo() {
   return egl_info;
 }
 
-mojom::GraphicsResultPtr FetchGraphicsInfo(
+mojom::GraphicsResultPtr GetGraphicsInfo(
     std::unique_ptr<EglManager> egl_manager) {
   if (!egl_manager) {
     egl_manager = EglManager::Create();
@@ -110,4 +114,4 @@ mojom::GraphicsResultPtr FetchGraphicsInfo(
   return mojom::GraphicsResult::NewGraphicsInfo(std::move(graphics_info));
 }
 
-}  // namespace diagnostics::deprecated
+}  // namespace diagnostics

@@ -1,16 +1,16 @@
-// Copyright 2021 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_GRAPHICS_FETCHER_H_
-#define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_GRAPHICS_FETCHER_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_DELEGATE_FETCHERS_GRAPHICS_FETCHER_H_
+#define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_FETCHERS_GRAPHICS_FETCHER_H_
 
 #include <memory>
 
-#include "diagnostics/cros_healthd/fetchers/graphics_header.h"
+#include "diagnostics/cros_healthd/delegate/fetchers/graphics_header.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
-namespace diagnostics::deprecated {
+namespace diagnostics {
 
 class EglManager {
  public:
@@ -32,9 +32,9 @@ class EglManager {
 
 // Returns a structure with either the device's graphics data or the error
 // that occurred fetching the information.
-ash::cros_healthd::mojom::GraphicsResultPtr FetchGraphicsInfo(
+ash::cros_healthd::mojom::GraphicsResultPtr GetGraphicsInfo(
     std::unique_ptr<EglManager> egl_manager = nullptr);
 
-}  // namespace diagnostics::deprecated
+}  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_FETCHERS_GRAPHICS_FETCHER_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_FETCHERS_GRAPHICS_FETCHER_H_
