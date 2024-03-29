@@ -247,18 +247,18 @@ bool AuthorizeAllImpl(SafeFD* dir,
 
   bool success = true;
   if (subsystem == Subsystem::kUsb) {
-    if (!WriteWithTimeoutIfExists(dir, base::FilePath(kSysFSAuthorizedDefault),
-                                  kSysFSEnabled)) {
-      if (!IsSkippableFailure(errno)) {
-        success = false;
-      }
-    }
-
     if (!WriteWithTimeoutIfExists(dir, base::FilePath(kSysFSAuthorized),
                                   kSysFSEnabled)) {
       if (!IsSkippableFailure(errno)) {
         PLOG(ERROR) << "Failed to authorize USB device: '"
                     << GetFDPath(dir->get()).value() << "'";
+        success = false;
+      }
+    }
+
+    if (!WriteWithTimeoutIfExists(dir, base::FilePath(kSysFSAuthorizedDefault),
+                                  kSysFSEnabled)) {
+      if (!IsSkippableFailure(errno)) {
         success = false;
       }
     }
