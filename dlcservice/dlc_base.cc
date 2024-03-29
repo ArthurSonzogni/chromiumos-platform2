@@ -739,7 +739,7 @@ bool DlcBase::Install(ErrorPtr* err) {
 
 bool DlcBase::FinishInstall(bool installed_by_ue, ErrorPtr* err) {
   DCHECK(err);
-  DCHECK(err->get() == NULL);  // Check there is no error set.
+  DCHECK(err->get() == nullptr);  // Check there is no error set.
   switch (state_.state()) {
     case DlcState::INSTALLED:
     case DlcState::INSTALLING:
