@@ -8,11 +8,8 @@
 
 namespace shill {
 
-MockVPNDriver::MockVPNDriver()
-    : VPNDriver(nullptr, nullptr, VPNType::kOpenVPN, nullptr, 0) {}
-
-MockVPNDriver::MockVPNDriver(VPNType vpn_type)
-    : VPNDriver(nullptr, nullptr, vpn_type, nullptr, 0) {}
+MockVPNDriver::MockVPNDriver(Manager* manager, VPNType vpn_type)
+    : VPNDriver(manager, nullptr, vpn_type, nullptr, 0) {}
 
 MockVPNDriver::~MockVPNDriver() = default;
 

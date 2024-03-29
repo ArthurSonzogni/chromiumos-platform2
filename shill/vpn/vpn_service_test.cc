@@ -70,7 +70,7 @@ class VPNServiceTest : public testing::Test {
       : interface_name_("test-interface"),
         manager_(&control_, &dispatcher_, &metrics_) {
     Service::SetNextSerialNumberForTesting(0);
-    driver_ = new MockVPNDriver();
+    driver_ = new MockVPNDriver(&manager_, VPNType::kOpenVPN);
     // There is at least one online service when the test service is created.
     EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
     service_ = new VPNServiceInTest(&manager_, driver_);
@@ -595,7 +595,7 @@ TEST_F(VPNServiceTest, MigrateWireGuardIPv4Address) {
 
   const auto setup_wg_and_static_addr = [&](const std::string* wg_prop_addr,
                                             const std::string* static_addr) {
-    driver_ = new MockVPNDriver(VPNType::kWireGuard);
+    driver_ = new MockVPNDriver(&manager_, VPNType::kWireGuard);
     service_ = new VPNService(&manager_, base::WrapUnique(driver_));
     service_->set_storage_id(kStorageID);
     if (wg_prop_addr) {

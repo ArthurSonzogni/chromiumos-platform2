@@ -15,10 +15,11 @@
 
 namespace shill {
 
+class Manager;
+
 class MockVPNDriver : public VPNDriver {
  public:
-  MockVPNDriver();
-  explicit MockVPNDriver(VPNType vpn_type);
+  MockVPNDriver(Manager* manager, VPNType vpn_type);
   MockVPNDriver(const MockVPNDriver&) = delete;
   MockVPNDriver& operator=(const MockVPNDriver&) = delete;
 
