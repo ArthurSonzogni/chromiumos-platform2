@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -132,7 +133,11 @@ class VPNDriver {
     return eap_credentials_.get();
   }
 
-  VPNDriverMetrics* driver_metrics() { return &driver_metrics_; }
+  VPNDriverMetrics* driver_metrics() { return driver_metrics_.get(); }
+  void set_driver_metrics_for_testing(
+      std::unique_ptr<VPNDriverMetrics> driver_metrics) {
+    driver_metrics_ = std::move(driver_metrics);
+  }
 
  protected:
   // Represents a property in |args_|, which can be read and/or written over
@@ -198,7 +203,7 @@ class VPNDriver {
   const Property* const properties_;
   const size_t property_count_;
 
-  VPNDriverMetrics driver_metrics_;
+  std::unique_ptr<VPNDriverMetrics> driver_metrics_;
   KeyValueStore args_;
 
   std::unique_ptr<EapCredentials> eap_credentials_;

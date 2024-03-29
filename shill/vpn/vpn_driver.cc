@@ -45,7 +45,7 @@ VPNDriver::VPNDriver(Manager* manager,
       vpn_type_(vpn_type),
       properties_(properties),
       property_count_(property_count),
-      driver_metrics_(manager->metrics(), vpn_type) {
+      driver_metrics_(new VPNDriverMetrics(manager->metrics(), vpn_type)) {
   for (size_t i = 0; i < property_count_; i++) {
     const auto flags = properties_[i].flags;
     const bool isReadOnly = flags & Property::kReadOnly;

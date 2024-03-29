@@ -29,6 +29,7 @@
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_driver.h"
+#include "shill/vpn/mock_vpn_metrics.h"
 #include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_types.h"
@@ -71,6 +72,8 @@ class VPNServiceTest : public testing::Test {
         manager_(&control_, &dispatcher_, &metrics_) {
     Service::SetNextSerialNumberForTesting(0);
     driver_ = new MockVPNDriver(&manager_, VPNType::kOpenVPN);
+    driver_metrics_ = new MockVPNDriverMetrics();
+    driver_->set_driver_metrics_for_testing(base::WrapUnique(driver_metrics_));
     // There is at least one online service when the test service is created.
     EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
     service_ = new VPNServiceInTest(&manager_, driver_);
@@ -125,7 +128,8 @@ class VPNServiceTest : public testing::Test {
 
   std::string interface_name_;
   RpcIdentifier ipconfig_rpc_identifier_;
-  MockVPNDriver* driver_;  // Owned by |service_|.
+  MockVPNDriverMetrics* driver_metrics_;  // Owned by |driver_|.
+  MockVPNDriver* driver_;                 // Owned by |service_|.
   MockControl control_;
   MockMetrics metrics_;
   EventDispatcherForTest dispatcher_;
@@ -399,34 +403,9 @@ TEST_F(VPNServiceTest, ReportIPTypeMetrics) {
       &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN);
   service_->device_ = device;
 
-  const net_base::IPv4CIDR ipv4_address =
-      *net_base::IPv4CIDR::CreateFromCIDRString("0.0.0.0/16");
-  const net_base::IPv6CIDR ipv6_address =
-      *net_base::IPv6CIDR::CreateFromCIDRString("::/64");
-
-  auto config_ipv4_only = std::make_unique<net_base::NetworkConfig>();
-  config_ipv4_only->ipv4_address = ipv4_address;
-  EXPECT_CALL(*driver_, GetNetworkConfig)
-      .WillOnce(Return(std::move(config_ipv4_only)));
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
-                                      Metrics::kIPTypeIPv4Only));
-  service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
-
-  auto config_ipv6_only = std::make_unique<net_base::NetworkConfig>();
-  config_ipv6_only->ipv6_addresses.push_back(ipv6_address);
-  EXPECT_CALL(*driver_, GetNetworkConfig)
-      .WillOnce(Return(std::move(config_ipv6_only)));
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
-                                      Metrics::kIPTypeIPv6Only));
-  service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
-
-  auto config_dual_stack = std::make_unique<net_base::NetworkConfig>();
-  config_dual_stack->ipv4_address = ipv4_address;
-  config_dual_stack->ipv6_addresses.push_back(ipv6_address);
-  EXPECT_CALL(*driver_, GetNetworkConfig)
-      .WillOnce(Return(std::move(config_dual_stack)));
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
-                                      Metrics::kIPTypeDualStack));
+  auto config = std::make_unique<net_base::NetworkConfig>();
+  EXPECT_CALL(*driver_, GetNetworkConfig).WillOnce(Return(std::move(config)));
+  EXPECT_CALL(*driver_metrics_, ReportIPType(_));
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 }
 

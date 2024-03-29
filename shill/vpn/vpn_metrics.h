@@ -7,6 +7,7 @@
 
 #include <net-base/network_config.h>
 
+#include "shill/mockable.h"
 #include "shill/vpn/vpn_types.h"
 
 namespace shill {
@@ -22,14 +23,15 @@ class VPNDriverMetrics {
   // Define ctor and dtor directly in the header file since they are trivial.
   explicit VPNDriverMetrics(Metrics* metrics, VPNType vpn_type)
       : metrics_(metrics), vpn_type_(vpn_type) {}
-  ~VPNDriverMetrics() = default;
+  virtual ~VPNDriverMetrics() = default;
 
   VPNDriverMetrics(const VPNDriverMetrics&) = delete;
   VPNDriverMetrics& operator=(const VPNDriverMetrics&) = delete;
 
   // TODO(b/331743444): Change the name and implementation to report all metrics
   // can be inferred from network_config.
-  void ReportIPType(const net_base::NetworkConfig& network_config) const;
+  mockable void ReportIPType(
+      const net_base::NetworkConfig& network_config) const;
 
  private:
   Metrics* metrics_;
