@@ -31,6 +31,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector.h"
 #include "crash-reporter/test_util.h"
 
@@ -84,41 +85,62 @@ const char kCrashFormatEmbeddedNewline[] =
     "value1:10:abcd\r\nghijvalue2:5:12\n34"
     "upload_file_minidump\"; filename=\"dump\":3:a\nc";
 // Inputs that should fail ParseCrashLog regardless of crash_type.
-const char* const kCrashFormatBadValuesCommon[] = {
-    // Last length too long
-    "value1:10:abcdefghijvalue2:6:12345",
-    // Length is followed by something other than a colon.
-    "value1:10:abcdefghijvalue2:5f:12345",
-    // Length not terminated
-    "value1:10:abcdefghijvalue2:5",
-    // No last length.
-    "value1:10:abcdefghijvalue2:",
-    // Length value missing
-    "value1:10:abcdefghijvalue2::12345",
-    // Length not a number
-    "value1:10:abcdefghijvalue2:five:12345",
-    // Last length too short
-    "value1:10:abcdefghijvalue2:4:12345",
-    // Missing length
-    "value1::abcdefghijvalue2:5:12345",
-    // Missing initial key
-    ":5:abcdefghijvalue2:5:12345",
-    // Missing later key
-    "value1:10:abcdefghij:5:12345",
-    // Multiple minidumps
-    "upload_file_minidump\"; filename=\"dump\":7:easy as"
-    "upload_file_minidump\"; filename=\"dump\":3:123",
-    // Multiple js stacks
-    "upload_file_js_stack\"; filename=\"stack\":3:abc"
-    "upload_file_js_stack\"; filename=\"stack\":3:123"};
+// Format is {input crash log string, expected result}
+const std::pair<const char*, CrashCollectionStatus>
+    kCrashFormatBadValuesCommon[] = {
+        // Last length too long
+        {"value1:10:abcdefghijvalue2:6:12345",
+         CrashCollectionStatus::kTruncatedChromeDump},
+        // Length is followed by something other than a colon.
+        {"value1:10:abcdefghijvalue2:5f:12345",
+         CrashCollectionStatus::kInvalidSizeNaN},
+        // Length not terminated
+        {"value1:10:abcdefghijvalue2:5",
+         CrashCollectionStatus::kInvalidChromeDumpNoDelimitedSizeString},
+        // No last length.
+        {"value1:10:abcdefghijvalue2:",
+         CrashCollectionStatus::kInvalidChromeDumpNoDelimitedNameString},
+        // Length value missing
+        {"value1:10:abcdefghijvalue2::12345",
+         CrashCollectionStatus::kInvalidChromeDumpNoDelimitedSizeString},
+        // Length not a number
+        {"value1:10:abcdefghijvalue2:five:12345",
+         CrashCollectionStatus::kInvalidSizeNaN},
+        // Last length too short
+        {"value1:10:abcdefghijvalue2:4:12345",
+         CrashCollectionStatus::kInvalidChromeDumpNoDelimitedNameString},
+        // Missing length
+        {"value1::abcdefghijvalue2:5:12345",
+         CrashCollectionStatus::kInvalidChromeDumpNoDelimitedSizeString},
+        // Missing initial key
+        {":5:abcdefghijvalue2:5:12345",
+         CrashCollectionStatus::kInvalidChromeDumpNoDelimitedNameString},
+        // Missing later key
+        {"value1:10:abcdefghij:5:12345",
+         CrashCollectionStatus::kInvalidChromeDumpNoDelimitedNameString},
+};
 // Inputs that should fail ParseCrashLog if crash_type is kExecutableCrash.
-const char* const kCrashFormatBadValuesExecutable[] = {
-    // A JavaScript stack when we expect a minidump
-    "upload_file_js_stack\"; filename=\"stack\":20:0123456789abcdefghij"};
+const std::pair<const char*, CrashCollectionStatus>
+    kCrashFormatBadValuesExecutable[] = {
+        // A JavaScript stack when we expect a minidump
+        {"upload_file_js_stack\"; filename=\"stack\":20:0123456789abcdefghij",
+         CrashCollectionStatus::kUnexpectedJavaScriptStackInExecutableCrash},
+        // Multiple minidumps
+        {"upload_file_minidump\"; filename=\"dump\":7:easy as"
+         "upload_file_minidump\"; filename=\"dump\":3:123",
+         CrashCollectionStatus::kMultipleMinidumps},
+};
 // Inputs that should fail ParseCrashLog if crash_type is kJavaScriptError.
-const char* const kCrashFormatBadValuesJavaScript[] = {
-    // A minidump when we expect a JavaScript stack
-    "upload_file_minidump\"; filename=\"dump\":3:abc"};
+const std::pair<const char*, CrashCollectionStatus>
+    kCrashFormatBadValuesJavaScript[] = {
+        // A minidump when we expect a JavaScript stack
+        {"upload_file_minidump\"; filename=\"dump\":3:abc",
+         CrashCollectionStatus::kUnexpectedMinidumpInJavaScriptError},
+        // Multiple js stacks
+        {"upload_file_js_stack\"; filename=\"stack\":3:abc"
+         "upload_file_js_stack\"; filename=\"stack\":3:123",
+         CrashCollectionStatus::kMultipleJavaScriptStacks},
+};
 
 const char kCrashFormatWithFile[] =
     "value1:10:abcdefghijvalue2:5:12345"
@@ -427,9 +449,10 @@ TEST_F(ChromeCollectorTest, GoodValues) {
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
   bool is_lacros_crash;
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatGood, dir, "base",
-                                       ChromeCollector::kExecutableCrash,
-                                       &payload, &is_lacros_crash));
+  EXPECT_EQ(collector_.ParseCrashLog(kCrashFormatGood, dir, "base",
+                                     ChromeCollector::kExecutableCrash,
+                                     &payload, &is_lacros_crash),
+            CrashCollectionStatus::kSuccess);
   EXPECT_FALSE(is_lacros_crash);
   EXPECT_FALSE(collector_.is_shutdown_crash());
   EXPECT_EQ(payload, dir.Append("base.dmp"));
@@ -447,9 +470,10 @@ TEST_F(ChromeCollectorTest, GoodLacros) {
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
   bool is_lacros_crash;
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatGoodLacros, dir, "base",
-                                       ChromeCollector::kExecutableCrash,
-                                       &payload, &is_lacros_crash));
+  EXPECT_EQ(collector_.ParseCrashLog(kCrashFormatGoodLacros, dir, "base",
+                                     ChromeCollector::kExecutableCrash,
+                                     &payload, &is_lacros_crash),
+            CrashCollectionStatus::kSuccess);
   EXPECT_TRUE(is_lacros_crash);
   EXPECT_FALSE(collector_.is_shutdown_crash());
   EXPECT_EQ(payload, dir.Append("base.dmp"));
@@ -466,9 +490,10 @@ TEST_F(ChromeCollectorTest, GoodShutdown) {
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
   bool is_lacros_crash;
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatGoodShutdown, dir, "base",
-                                       ChromeCollector::kExecutableCrash,
-                                       &payload, &is_lacros_crash));
+  EXPECT_EQ(collector_.ParseCrashLog(kCrashFormatGoodShutdown, dir, "base",
+                                     ChromeCollector::kExecutableCrash,
+                                     &payload, &is_lacros_crash),
+            CrashCollectionStatus::kSuccess);
   EXPECT_FALSE(is_lacros_crash);
   EXPECT_TRUE(collector_.is_shutdown_crash());
   EXPECT_EQ(payload, dir.Append("base.dmp"));
@@ -486,9 +511,10 @@ TEST_F(ChromeCollectorTest, ProcessTypeCheck) {
   FilePath payload;
   bool is_lacros_crash;
 
-  EXPECT_TRUE(collector_.ParseCrashLog(
-      kCrashFormatProcessTypeBrowser, dir, "base",
-      ChromeCollector::kExecutableCrash, &payload, &is_lacros_crash));
+  EXPECT_EQ(collector_.ParseCrashLog(kCrashFormatProcessTypeBrowser, dir,
+                                     "base", ChromeCollector::kExecutableCrash,
+                                     &payload, &is_lacros_crash),
+            CrashCollectionStatus::kSuccess);
   EXPECT_FALSE(is_lacros_crash);
   EXPECT_FALSE(collector_.is_shutdown_crash());
 
@@ -498,14 +524,17 @@ TEST_F(ChromeCollectorTest, ProcessTypeCheck) {
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_JavaScriptError) {
-  EXPECT_TRUE(collector_.HandleCrashWithDumpData("", 1, 1, "", "test_key", "",
-                                                 "", "", 1));
+  // Success because JavaScript errors are allowed to have no stack.
+  EXPECT_EQ(collector_.HandleCrashWithDumpData("", 1, 1, "", "test_key", "", "",
+                                               "", 1),
+            CrashCollectionStatus::kSuccess);
   EXPECT_TRUE(collector_.IsJavaScriptError());
 }
 
 TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_ExecutableCrash) {
-  EXPECT_FALSE(collector_.HandleCrashWithDumpData("", 1, 1, "sample_executable",
-                                                  "", "", "", "", 1));
+  EXPECT_EQ(collector_.HandleCrashWithDumpData("", 1, 1, "sample_executable",
+                                               "", "", "", "", 1),
+            CrashCollectionStatus::kNoPayload);
   EXPECT_FALSE(collector_.IsJavaScriptError());
 }
 
@@ -515,9 +544,10 @@ TEST_F(ChromeCollectorTest, ParseCrashLogNoDump) {
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
   bool is_lacros_crash;
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatNoDump, dir, "base",
-                                       ChromeCollector::kExecutableCrash,
-                                       &payload, &is_lacros_crash));
+  EXPECT_EQ(collector_.ParseCrashLog(kCrashFormatNoDump, dir, "base",
+                                     ChromeCollector::kExecutableCrash,
+                                     &payload, &is_lacros_crash),
+            CrashCollectionStatus::kSuccess);
   EXPECT_EQ(payload.value(), "");
   EXPECT_FALSE(base::PathExists(dir.Append("base.dmp")));
 
@@ -533,9 +563,10 @@ TEST_F(ChromeCollectorTest, ParseCrashLogJSStack) {
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
   bool is_lacros_crash;
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatWithJSStack, dir, "base",
-                                       ChromeCollector::kJavaScriptError,
-                                       &payload, &is_lacros_crash));
+  EXPECT_EQ(collector_.ParseCrashLog(kCrashFormatWithJSStack, dir, "base",
+                                     ChromeCollector::kJavaScriptError,
+                                     &payload, &is_lacros_crash),
+            CrashCollectionStatus::kSuccess);
   EXPECT_EQ(payload, dir.Append("base.js_stack"));
   ExpectFileEquals("0123456789abcdefghij", payload);
 
@@ -551,9 +582,10 @@ TEST_F(ChromeCollectorTest, Newlines) {
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
   bool is_lacros_crash;
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatEmbeddedNewline, dir, "base",
-                                       ChromeCollector::kExecutableCrash,
-                                       &payload, &is_lacros_crash));
+  EXPECT_EQ(collector_.ParseCrashLog(kCrashFormatEmbeddedNewline, dir, "base",
+                                     ChromeCollector::kExecutableCrash,
+                                     &payload, &is_lacros_crash),
+            CrashCollectionStatus::kSuccess);
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("a\nc", payload);
 
@@ -568,37 +600,49 @@ TEST_F(ChromeCollectorTest, BadValues) {
   ASSERT_TRUE(scoped_temp_dir.CreateUniqueTempDir());
   const FilePath& dir = scoped_temp_dir.GetPath();
   int test_number = 0;
-  for (const char* data : kCrashFormatBadValuesCommon) {
+  for (const auto& data_result_pair : kCrashFormatBadValuesCommon) {
+    const char* data = data_result_pair.first;
+    CrashCollectionStatus expected_result = data_result_pair.second;
     for (auto crash_type : {ChromeCollector::kExecutableCrash,
                             ChromeCollector::kJavaScriptError}) {
       FilePath payload;
       bool is_lacros_crash;
-      EXPECT_FALSE(collector_.ParseCrashLog(
-          data, dir,
-          base::StrCat({"base_", base::NumberToString(test_number), "_test"}),
-          crash_type, &payload, &is_lacros_crash))
+      EXPECT_EQ(collector_.ParseCrashLog(
+                    data, dir,
+                    base::StrCat(
+                        {"base_", base::NumberToString(test_number), "_test"}),
+                    crash_type, &payload, &is_lacros_crash),
+                expected_result)
           << data << " did not fail (for crash_type "
           << static_cast<int>(crash_type) << ")";
       test_number++;
     }
   }
-  for (const char* data : kCrashFormatBadValuesExecutable) {
+  for (const auto& data_result_pair : kCrashFormatBadValuesExecutable) {
+    const char* data = data_result_pair.first;
+    CrashCollectionStatus expected_result = data_result_pair.second;
     FilePath payload;
     bool is_lacros_crash;
-    EXPECT_FALSE(collector_.ParseCrashLog(
-        data, dir,
-        base::StrCat({"base_", base::NumberToString(test_number), "_test"}),
-        ChromeCollector::kExecutableCrash, &payload, &is_lacros_crash))
+    EXPECT_EQ(
+        collector_.ParseCrashLog(
+            data, dir,
+            base::StrCat({"base_", base::NumberToString(test_number), "_test"}),
+            ChromeCollector::kExecutableCrash, &payload, &is_lacros_crash),
+        expected_result)
         << data << " did not fail";
     test_number++;
   }
-  for (const char* data : kCrashFormatBadValuesJavaScript) {
+  for (const auto& data_result_pair : kCrashFormatBadValuesJavaScript) {
+    const char* data = data_result_pair.first;
+    CrashCollectionStatus expected_result = data_result_pair.second;
     FilePath payload;
     bool is_lacros_crash;
-    EXPECT_FALSE(collector_.ParseCrashLog(
-        data, dir,
-        base::StrCat({"base_", base::NumberToString(test_number), "_test"}),
-        ChromeCollector::kJavaScriptError, &payload, &is_lacros_crash))
+    EXPECT_EQ(
+        collector_.ParseCrashLog(
+            data, dir,
+            base::StrCat({"base_", base::NumberToString(test_number), "_test"}),
+            ChromeCollector::kJavaScriptError, &payload, &is_lacros_crash),
+        expected_result)
         << data << " did not fail";
     test_number++;
   }
@@ -610,9 +654,10 @@ TEST_F(ChromeCollectorTest, File) {
   const FilePath& dir = scoped_temp_dir.GetPath();
   FilePath payload;
   bool is_lacros_crash;
-  EXPECT_TRUE(collector_.ParseCrashLog(kCrashFormatWithFile, dir, "base",
-                                       ChromeCollector::kExecutableCrash,
-                                       &payload, &is_lacros_crash));
+  EXPECT_EQ(collector_.ParseCrashLog(kCrashFormatWithFile, dir, "base",
+                                     ChromeCollector::kExecutableCrash,
+                                     &payload, &is_lacros_crash),
+            CrashCollectionStatus::kSuccess);
   EXPECT_EQ(payload, dir.Append("base.dmp"));
   ExpectFileEquals("abc", payload);
 
@@ -640,8 +685,9 @@ TEST_F(ChromeCollectorTest, HandleCrash) {
     ASSERT_TRUE(output.get());
     base::AutoReset<FILE*> auto_reset_file_ptr(&collector_.output_file_ptr_,
                                                output.get());
-    EXPECT_TRUE(
-        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+    EXPECT_EQ(
+        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+        CrashCollectionStatus::kSuccess);
   }
   ExpectFileEquals(ChromeCollector::kSuccessMagic, log_file);
 
@@ -695,8 +741,9 @@ TEST_F(ChromeCollectorTest, HandleCrashWithEmbeddedNuls) {
     ASSERT_TRUE(output.get());
     base::AutoReset<FILE*> auto_reset_file_ptr(&collector_.output_file_ptr_,
                                                output.get());
-    EXPECT_TRUE(
-        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+    EXPECT_EQ(
+        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+        CrashCollectionStatus::kSuccess);
   }
   ExpectFileEquals(ChromeCollector::kSuccessMagic, log_file);
 
@@ -752,8 +799,9 @@ TEST_F(ChromeCollectorTest, HandleCrashWithWeirdFilename) {
     ASSERT_TRUE(output.get());
     base::AutoReset<FILE*> auto_reset_file_ptr(&collector_.output_file_ptr_,
                                                output.get());
-    EXPECT_TRUE(
-        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+    EXPECT_EQ(
+        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+        CrashCollectionStatus::kSuccess);
   }
   ExpectFileEquals(ChromeCollector::kSuccessMagic, log_file);
 
@@ -798,8 +846,9 @@ TEST_F(ChromeCollectorTest, HandleCrashWithLogsAndDriErrorStateAndDmesg) {
   SetUpCallDmesgToReturn(kSampleDmesg);
   SetUpLogsShort();
 
-  EXPECT_TRUE(
-      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+  EXPECT_EQ(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+      CrashCollectionStatus::kSuccess);
 
   base::FilePath output_dri_error_file;
   ExpectSampleDriErrorState(output_dri_error_file);
@@ -864,8 +913,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsSupplementalFilesIfDumpFileLarge) {
   SetUpLogsShort();
   // Make dmp file "too large"
   collector_.set_max_upload_bytes_for_test(1);
-  EXPECT_TRUE(
-      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+  EXPECT_EQ(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+      CrashCollectionStatus::kSuccess);
 
   // Supplemental files not written.
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -914,8 +964,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeLogFiles) {
   SetUpCallDmesgToReturn(kSampleDmesg);
   SetUpLogsLong();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(
-      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+  EXPECT_EQ(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+      CrashCollectionStatus::kSuccess);
 
   // Log file not written.
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -971,8 +1022,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDriErrorFiles) {
   SetUpCallDmesgToReturn(kSampleDmesg);
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(
-      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+  EXPECT_EQ(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+      CrashCollectionStatus::kSuccess);
 
   // Dri Error State file not written.
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -1030,8 +1082,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDmesgFiles) {
   SetUpCallDmesgToReturn(GetDmesgLong());
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(
-      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+  EXPECT_EQ(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+      CrashCollectionStatus::kSuccess);
 
   // dmesg file not written.
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -1086,8 +1139,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeSupplementalFiles) {
   SetUpCallDmesgToReturn(GetDmesgLong());
   SetUpLogsLong();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(
-      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+  EXPECT_EQ(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+      CrashCollectionStatus::kSuccess);
 
   // Dri Error State file not written.
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -1141,9 +1195,11 @@ TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_ShutdownHang) {
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
-  EXPECT_TRUE(collector_.HandleCrashWithDumpData(
-      kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
-      aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), -1));
+  EXPECT_EQ(collector_.HandleCrashWithDumpData(
+                kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
+                aborted_browser_pid_file.value(),
+                shutdown_browser_pid_file.value(), -1),
+            CrashCollectionStatus::kSuccess);
   EXPECT_TRUE(collector_.is_browser_shutdown_hang());
   EXPECT_FALSE(collector_.is_signal_fatal());
 }
@@ -1157,9 +1213,11 @@ TEST_F(ChromeCollectorTest,
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
-  EXPECT_TRUE(collector_.HandleCrashWithDumpData(
-      kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
-      aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), -1));
+  EXPECT_EQ(collector_.HandleCrashWithDumpData(
+                kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
+                aborted_browser_pid_file.value(),
+                shutdown_browser_pid_file.value(), -1),
+            CrashCollectionStatus::kSuccess);
   EXPECT_FALSE(collector_.is_browser_shutdown_hang());
   EXPECT_FALSE(collector_.is_signal_fatal());
 }
@@ -1174,9 +1232,11 @@ TEST_F(ChromeCollectorTest,
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
-  EXPECT_TRUE(collector_.HandleCrashWithDumpData(
-      kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
-      aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), -1));
+  EXPECT_EQ(collector_.HandleCrashWithDumpData(
+                kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
+                aborted_browser_pid_file.value(),
+                shutdown_browser_pid_file.value(), -1),
+            CrashCollectionStatus::kSuccess);
   EXPECT_FALSE(collector_.is_browser_shutdown_hang());
   EXPECT_FALSE(collector_.is_signal_fatal());
 }
@@ -1189,9 +1249,11 @@ TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_Signal_Fatal) {
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
-  EXPECT_TRUE(collector_.HandleCrashWithDumpData(
-      kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
-      aborted_browser_pid_file.value(), shutdown_browser_pid_file.value(), 11));
+  EXPECT_EQ(collector_.HandleCrashWithDumpData(
+                kCrashFormatWithDumpFile, 123, 456, "chrome_test", "", "",
+                aborted_browser_pid_file.value(),
+                shutdown_browser_pid_file.value(), 11),
+            CrashCollectionStatus::kSuccess);
   EXPECT_TRUE(collector_.is_signal_fatal());
 }
 
@@ -1203,8 +1265,9 @@ TEST_F(ChromeCollectorTest, HandleDbusTimeouts) {
   SetUpCallDmesgToErrorOut(nullptr);
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(
-      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+  EXPECT_EQ(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+      CrashCollectionStatus::kSuccess);
 
   EXPECT_TRUE(brillo::FindLog(
       "Error retrieving DriErrorState from debugd: Call did not return"));
@@ -1270,8 +1333,9 @@ TEST_F(ChromeCollectorTest, HandleDbusErrors) {
   SetUpCallDmesgToErrorOut(dmesg_error.get());
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(
-      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
+  EXPECT_EQ(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+      CrashCollectionStatus::kSuccess);
 
   EXPECT_TRUE(
       brillo::FindLog("Error retrieving DriErrorState from debugd: "
@@ -1334,8 +1398,9 @@ TEST_F(ChromeCollectorTest, HandleCrashForJavaScript) {
   ASSERT_NE(input_fd, -1) << "open " << input_file.value() << " failed: "
                           << logging::SystemErrorCodeToString(errno);
   // HandleCrashThroughMemfd will close input_fd.
-  EXPECT_TRUE(collector_.HandleCrashThroughMemfd(input_fd, 123, 456, "",
-                                                 "jserror", "", -1));
+  EXPECT_EQ(collector_.HandleCrashThroughMemfd(input_fd, 123, 456, "",
+                                               "jserror", "", -1),
+            CrashCollectionStatus::kSuccess);
 
   base::FilePath output_dri_error_file;
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -1402,8 +1467,9 @@ TEST_F(ChromeCollectorTest, HandleCrashForJavaScriptLacros) {
   ASSERT_NE(input_fd, -1) << "open " << input_file.value() << " failed: "
                           << logging::SystemErrorCodeToString(errno);
   // HandleCrashThroughMemfd will close input_fd.
-  EXPECT_TRUE(collector_.HandleCrashThroughMemfd(input_fd, 123, 456, "",
-                                                 "jserror", "", -1));
+  EXPECT_EQ(collector_.HandleCrashThroughMemfd(input_fd, 123, 456, "",
+                                               "jserror", "", -1),
+            CrashCollectionStatus::kSuccess);
 
   base::FilePath output_dri_error_file;
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -1456,14 +1522,15 @@ TEST_P(ComputeChromeCollectorCrashSeverityParameterizedTest,
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
-  collector_.HandleCrashWithDumpData(
-      test_case.data, test_case.pid, test_case.uid, test_case.exec_name,
-      test_case.non_exe_error_key,
-      /* dump_dir= */ "", /* aborted_browser_pid_path= */ "",
-      (test_case.uses_shutdown_browser_pid_path)
-          ? shutdown_browser_pid_file.value()
-          : "",
-      test_case.signal);
+  EXPECT_EQ(collector_.HandleCrashWithDumpData(
+                test_case.data, test_case.pid, test_case.uid,
+                test_case.exec_name, test_case.non_exe_error_key,
+                /* dump_dir= */ "", /* aborted_browser_pid_path= */ "",
+                (test_case.uses_shutdown_browser_pid_path)
+                    ? shutdown_browser_pid_file.value()
+                    : "",
+                test_case.signal),
+            CrashCollectionStatus::kSuccess);
 
   CrashCollector::ComputedCrashSeverity computed_severity =
       collector_.ComputeSeverity("test_exec_name");

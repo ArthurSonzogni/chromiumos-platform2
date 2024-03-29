@@ -23,6 +23,8 @@
 
 #include "crash-reporter/crash_collector.h"
 
+enum class CrashCollectionStatus;
+
 // Chrome crash collector.
 class ChromeCollector : public CrashCollector {
  public:
@@ -39,22 +41,22 @@ class ChromeCollector : public CrashCollector {
   // Magic string to let Chrome know the crash report succeeded.
   static const char kSuccessMagic[];
 
-  // Handle a specific chrome crash.  Returns true on success.
-  bool HandleCrash(const base::FilePath& dump_file_path,
-                   pid_t pid,
-                   uid_t uid,
-                   const std::string& exe_name,
-                   int signal);
+  // Handle a specific chrome crash.
+  CrashCollectionStatus HandleCrash(const base::FilePath& dump_file_path,
+                                    pid_t pid,
+                                    uid_t uid,
+                                    const std::string& exe_name,
+                                    int signal);
 
   // Handle a specific chrome crash through a memfd instead of a file.
-  // Returns true on success.
-  bool HandleCrashThroughMemfd(int memfd,
-                               pid_t pid,
-                               uid_t uid,
-                               const std::string& executable_name,
-                               const std::string& non_exe_error_key,
-                               const std::string& dump_dir,
-                               int signal);
+  CrashCollectionStatus HandleCrashThroughMemfd(
+      int memfd,
+      pid_t pid,
+      uid_t uid,
+      const std::string& executable_name,
+      const std::string& non_exe_error_key,
+      const std::string& dump_dir,
+      int signal);
 
   static CollectorInfo GetHandlerInfo(
       CrashSendingMode mode,
@@ -121,16 +123,16 @@ class ChromeCollector : public CrashCollector {
   };
 
   // Handle a specific chrome crash with dump data.
-  // Returns true on success.
-  bool HandleCrashWithDumpData(const std::string& data,
-                               pid_t pid,
-                               uid_t uid,
-                               const std::string& executable_name,
-                               const std::string& non_exe_error_key,
-                               const std::string& dump_dir,
-                               const std::string& aborted_browser_pid_path,
-                               const std::string& shutdown_browser_pid_path,
-                               int signal);
+  CrashCollectionStatus HandleCrashWithDumpData(
+      const std::string& data,
+      pid_t pid,
+      uid_t uid,
+      const std::string& executable_name,
+      const std::string& non_exe_error_key,
+      const std::string& dump_dir,
+      const std::string& aborted_browser_pid_path,
+      const std::string& shutdown_browser_pid_path,
+      int signal);
 
   // Crashes are expected to be in a TLV-style format of:
   // <name>:<length>:<value>
@@ -140,12 +142,12 @@ class ChromeCollector : public CrashCollector {
   // in a fixed format of: <description>"; filename="<filename>".
   // The path to the payload (minidump or JS Exception) will be written to
   // |payload|.
-  bool ParseCrashLog(const std::string& data,
-                     const base::FilePath& dir,
-                     const std::string& basename,
-                     CrashType crash_type,
-                     base::FilePath* payload,
-                     bool* is_lacros_crash);
+  CrashCollectionStatus ParseCrashLog(const std::string& data,
+                                      const base::FilePath& dir,
+                                      const std::string& basename,
+                                      CrashType crash_type,
+                                      base::FilePath* payload,
+                                      bool* is_lacros_crash);
 
   // Some classes of JavaScript errors do not have stacks. Since crash_sender
   // cannot send error reports without a payload, create a simple payload that

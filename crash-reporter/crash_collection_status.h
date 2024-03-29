@@ -69,8 +69,23 @@ enum class CrashCollectionStatus {
   kCoreCollectorReturnedCantCreat = 434,
   kCoreCollectorReturnedOSErr = 435,
   kCoreCollectorReturnedUnknownValue = 436,
-
-  kMaxValue = kCoreCollectorReturnedUnknownValue,
+  kFailureReadingChromeDumpFile = 437,
+  kFailureReadingChromeDumpFd = 438,
+  kIllegalBaseName = 439,
+  kNoPayload = 440,
+  kFailureCreatingNoStackPayload = 441,
+  kInvalidChromeDumpNoDelimitedNameString = 442,
+  kInvalidChromeDumpNoDelimitedSizeString = 443,
+  kInvalidSizeNaN = 444,
+  kInvalidSizeOverflow = 445,
+  kTruncatedChromeDump = 446,
+  kUnexpectedMinidumpInJavaScriptError = 447,
+  kMultipleMinidumps = 448,
+  kFailedMinidumpWrite = 449,
+  kUnexpectedJavaScriptStackInExecutableCrash = 450,
+  kMultipleJavaScriptStacks = 451,
+  kFailedJavaScriptStackWrite = 452,
+  kMaxValue = kFailedJavaScriptStackWrite,
 };
 // LINT.ThenChange(crash_collection_status.cc:status_list)
 

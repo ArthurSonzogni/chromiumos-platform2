@@ -94,7 +94,7 @@ ChromeCollector::ChromeCollector(
 
 ChromeCollector::~ChromeCollector() {}
 
-bool ChromeCollector::HandleCrashWithDumpData(
+CrashCollectionStatus ChromeCollector::HandleCrashWithDumpData(
     const std::string& data,
     pid_t pid,
     uid_t uid,
@@ -125,7 +125,7 @@ bool ChromeCollector::HandleCrashWithDumpData(
   if (key_for_basename.find('/') != std::string::npos) {
     LOG(ERROR) << "--exe or --error_key contains illegal characters: "
                << key_for_basename;
-    return false;
+    return CrashCollectionStatus::kIllegalBaseName;
   }
 
   FilePath dir;
@@ -137,7 +137,7 @@ bool ChromeCollector::HandleCrashWithDumpData(
     if (!IsSuccessCode(status)) {
       LOG(ERROR) << "Can't create crash directory for uid " << uid << ": "
                  << status;
-      return false;
+      return status;
     }
   }
 
@@ -146,10 +146,11 @@ bool ChromeCollector::HandleCrashWithDumpData(
   bool is_lacros_crash = false;
   FilePath meta_path = GetCrashPath(dir, dump_basename, "meta");
   FilePath payload_path;
-  if (!ParseCrashLog(data, dir, dump_basename, crash_type, &payload_path,
-                     &is_lacros_crash)) {
-    LOG(ERROR) << "Failed to parse Chrome's crash log";
-    return false;
+  CrashCollectionStatus status = ParseCrashLog(
+      data, dir, dump_basename, crash_type, &payload_path, &is_lacros_crash);
+  if (!IsSuccessCode(status)) {
+    LOG(ERROR) << "Failed to parse Chrome's crash log" << status;
+    return status;
   }
 
   signal_ = signal;
@@ -164,11 +165,11 @@ bool ChromeCollector::HandleCrashWithDumpData(
       // (specifically unhandled promise rejections). Since crash_sender will
       // not send without a payload, make a "No stack" payload.
       if (!CreateNoStackJSPayload(dir, dump_basename, &payload_path)) {
-        return false;
+        return CrashCollectionStatus::kFailureCreatingNoStackPayload;
       }
     } else {
       LOG(ERROR) << "Did not get a payload";
-      return false;
+      return CrashCollectionStatus::kNoPayload;
     }
   }
 
@@ -223,14 +224,15 @@ bool ChromeCollector::HandleCrashWithDumpData(
 
   // We're done. Note that if we got --error_key, we don't upload an exec_name
   // field to the server.
-  FinishCrash(meta_path, executable_name, payload_path.BaseName().value());
+  status =
+      FinishCrash(meta_path, executable_name, payload_path.BaseName().value());
 
   // In production |output_file_ptr_| must be stdout because chrome expects to
   // read the magic string there.
   fprintf(output_file_ptr_, "%s", kSuccessMagic);
   fflush(output_file_ptr_);
 
-  return true;
+  return status;
 }
 
 bool ChromeCollector::CreateNoStackJSPayload(const base::FilePath& dir,
@@ -248,15 +250,16 @@ bool ChromeCollector::CreateNoStackJSPayload(const base::FilePath& dir,
   return true;
 }
 
-bool ChromeCollector::HandleCrash(const FilePath& dump_file_path,
-                                  pid_t pid,
-                                  uid_t uid,
-                                  const std::string& exe_name,
-                                  int signal) {
+CrashCollectionStatus ChromeCollector::HandleCrash(
+    const FilePath& dump_file_path,
+    pid_t pid,
+    uid_t uid,
+    const std::string& exe_name,
+    int signal) {
   std::string data;
   if (!base::ReadFileToString(base::FilePath(dump_file_path), &data)) {
     PLOG(ERROR) << "Can't read crash log: " << dump_file_path.value();
-    return false;
+    return CrashCollectionStatus::kFailureReadingChromeDumpFile;
   }
 
   return HandleCrashWithDumpData(
@@ -264,7 +267,7 @@ bool ChromeCollector::HandleCrash(const FilePath& dump_file_path,
       kAbortedBrowserPidPath, kShutdownBrowserPidPath, signal);
 }
 
-bool ChromeCollector::HandleCrashThroughMemfd(
+CrashCollectionStatus ChromeCollector::HandleCrashThroughMemfd(
     int memfd,
     pid_t pid,
     uid_t uid,
@@ -275,7 +278,7 @@ bool ChromeCollector::HandleCrashThroughMemfd(
   std::string data;
   if (!util::ReadMemfdToString(memfd, &data)) {
     PLOG(ERROR) << "Can't read crash log from memfd: " << memfd;
-    return false;
+    return CrashCollectionStatus::kFailureReadingChromeDumpFd;
   }
 
   return HandleCrashWithDumpData(
@@ -283,12 +286,13 @@ bool ChromeCollector::HandleCrashThroughMemfd(
       kAbortedBrowserPidPath, kShutdownBrowserPidPath, signal);
 }
 
-bool ChromeCollector::ParseCrashLog(const std::string& data,
-                                    const base::FilePath& dir,
-                                    const std::string& basename,
-                                    CrashType crash_type,
-                                    base::FilePath* payload,
-                                    bool* is_lacros_crash) {
+CrashCollectionStatus ChromeCollector::ParseCrashLog(
+    const std::string& data,
+    const base::FilePath& dir,
+    const std::string& basename,
+    CrashType crash_type,
+    base::FilePath* payload,
+    bool* is_lacros_crash) {
   // Initialize value
   *is_lacros_crash = false;
   size_t at = 0;
@@ -298,34 +302,34 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
     std::string name, size_string;
     if (!GetDelimitedString(data, ':', at, &name)) {
       LOG(ERROR) << "Can't find : after name @ offset " << at;
-      break;
+      return CrashCollectionStatus::kInvalidChromeDumpNoDelimitedNameString;
     }
     at += name.size() + 1;  // Skip the name & : delimiter.
 
     if (!GetDelimitedString(data, ':', at, &size_string)) {
       LOG(ERROR) << "Can't find : after size @ offset " << at;
-      break;
+      return CrashCollectionStatus::kInvalidChromeDumpNoDelimitedSizeString;
     }
     at += size_string.size() + 1;  // Skip the size & : delimiter.
 
     size_t size;
     if (!base::StringToSizeT(size_string, &size)) {
       LOG(ERROR) << "String not convertible to integer: " << size_string;
-      break;
+      return CrashCollectionStatus::kInvalidSizeNaN;
     }
 
     // Avoid overflow errors that would allow size to be very large but still
     // pass the at + size > data.size() check below.
     if (size >= std::numeric_limits<size_t>::max() - at) {
       LOG(ERROR) << "Bad size " << size << "; too large";
-      break;
+      return CrashCollectionStatus::kInvalidSizeOverflow;
     }
 
     // Data would run past the end, did we get a truncated file?
     if (at + size > data.size()) {
       LOG(ERROR) << "Overrun, expected " << size << " bytes of data, got "
                  << (data.size() - at);
-      break;
+      return CrashCollectionStatus::kTruncatedChromeDump;
     }
 
     if (name.find("filename") != std::string::npos) {
@@ -345,32 +349,33 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
         // The minidump.
         if (crash_type != kExecutableCrash) {
           LOG(ERROR) << "Only expect minidumps for executable crashes";
-          return false;
+          return CrashCollectionStatus::kUnexpectedMinidumpInJavaScriptError;
         }
         if (!payload->empty()) {
           LOG(ERROR) << "Cannot have multiple payload sections; got minidump "
                         "but already wrote "
                      << payload->value();
-          return false;
+          return CrashCollectionStatus::kMultipleMinidumps;
         }
         *payload = GetCrashPath(dir, basename, constants::kMinidumpExtension);
         if (WriteNewFile(*payload, std::string_view(data.c_str() + at, size)) !=
             size) {
           // Can't send a crash report without a payload, so just fail.
           LOG(ERROR) << "Failed to write minidump to " << payload->value();
-          return false;
+          return CrashCollectionStatus::kFailedMinidumpWrite;
         }
       } else if (desc.compare(kDefaultJavaScriptStackName) == 0) {
         // A JavaScript stack trace, from a JavaScript exception
         if (crash_type != kJavaScriptError) {
           LOG(ERROR) << "Only expect JS stacks for JavaScript errors";
-          return false;
+          return CrashCollectionStatus::
+              kUnexpectedJavaScriptStackInExecutableCrash;
         }
         if (!payload->empty()) {
           LOG(ERROR) << "Cannot have multiple payload sections; got JS stack "
                         "but already wrote "
                      << payload->value();
-          return false;
+          return CrashCollectionStatus::kMultipleJavaScriptStacks;
         }
         *payload =
             GetCrashPath(dir, basename, constants::kJavaScriptStackExtension);
@@ -378,7 +383,7 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
             size) {
           // Can't send a crash report without a payload, so just fail.
           LOG(ERROR) << "Failed to write js stack to " << payload->value();
-          return false;
+          return CrashCollectionStatus::kFailedJavaScriptStackWrite;
         }
       } else {
         // Some other file.
@@ -439,7 +444,7 @@ bool ChromeCollector::ParseCrashLog(const std::string& data,
     at += size;
   }
 
-  return at == data.size();
+  return CrashCollectionStatus::kSuccess;
 }
 
 bool ChromeCollector::IsJavaScriptError() const {
