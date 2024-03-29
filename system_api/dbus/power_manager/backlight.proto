@@ -40,6 +40,8 @@ message SetBacklightBrightnessRequest {
     USER_REQUEST = 0;
     // Automated request based on a prediction of the desired brightness.
     MODEL = 1;
+    // User request via the Settings app.
+    USER_REQUEST_FROM_SETTINGS_APP = 2;
   }
   optional Cause cause = 3;
 

@@ -684,12 +684,20 @@ void InternalBacklightController::HandleSetBrightnessRequest(
       cause_str = "model-triggered";
       change_cause = BacklightBrightnessChange_Cause_MODEL;
       break;
+    case SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP:
+      cause_str = "user-triggered-from-settings-app";
+      change_cause =
+          BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP;
+      break;
   }
 
   LOG(INFO) << "Got " << cause_str << " request to set brightness to "
             << percent << "%";
-  if (cause == SetBacklightBrightnessRequest_Cause_USER_REQUEST)
+  bool user_triggered_change =
+      cause != SetBacklightBrightnessRequest_Cause_MODEL;
+  if (user_triggered_change) {
     user_adjustment_count_++;
+  }
   using_policy_brightness_ = false;
 
   // When the user explicitly requests a specific brightness level, use it for
@@ -698,8 +706,7 @@ void InternalBacklightController::HandleSetBrightnessRequest(
 
   // Log a metric if the user increased brightness above what Battery Saver
   // dimmed the display to.
-  if (battery_saver_ &&
-      cause == SetBacklightBrightnessRequest_Cause_USER_REQUEST &&
+  if (battery_saver_ && user_triggered_change &&
       percent > ClampPercentToVisibleRange(battery_saver_brightness_percent_) &&
       !battery_saver_user_brightened_logged_) {
     const int battery_saver_active_time =

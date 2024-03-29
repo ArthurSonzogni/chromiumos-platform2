@@ -1109,6 +1109,58 @@ TEST_F(InternalBacklightControllerTest, SetAndGetBrightness) {
   EXPECT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));
 }
 
+TEST_F(InternalBacklightControllerTest, SetBrightnessCause) {
+  Init(PowerSource::AC);
+
+  // Set the brightness with MODEL cause.
+  dbus_wrapper_->ClearSentSignals();
+  const double kBrightnessPercent = 55.0;
+  test::CallSetScreenBrightness(dbus_wrapper_.get(), kBrightnessPercent,
+                                SetBacklightBrightnessRequest_Transition_FAST,
+                                SetBacklightBrightnessRequest_Cause_MODEL);
+  double percent = 0.0;
+  ASSERT_TRUE(controller_->GetBrightnessPercent(&percent));
+  ASSERT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));
+
+  // A signal should've been emitted with the appropriate cause.
+  test::CheckBrightnessChangedSignal(
+      dbus_wrapper_.get(), 0, kScreenBrightnessChangedSignal,
+      kBrightnessPercent, BacklightBrightnessChange_Cause_MODEL);
+
+  // Set the brightness with USER_REQUEST cause.
+  dbus_wrapper_->ClearSentSignals();
+  const double kBrightnessPercentUser = 22.0;
+  test::CallSetScreenBrightness(
+      dbus_wrapper_.get(), kBrightnessPercentUser,
+      SetBacklightBrightnessRequest_Transition_FAST,
+      SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+  percent = 0.0;
+  ASSERT_TRUE(controller_->GetBrightnessPercent(&percent));
+  ASSERT_DOUBLE_EQ(round(kBrightnessPercentUser), round(percent));
+
+  // A signal should've been emitted with the appropriate cause.
+  test::CheckBrightnessChangedSignal(
+      dbus_wrapper_.get(), 0, kScreenBrightnessChangedSignal,
+      kBrightnessPercentUser, BacklightBrightnessChange_Cause_USER_REQUEST);
+
+  // Set the brightness with USER_REQUEST_FROM_SETTINGS_APP cause.
+  const double kBrightnessPercentUserSettingsApp = 33.0;
+  dbus_wrapper_->ClearSentSignals();
+  test::CallSetScreenBrightness(
+      dbus_wrapper_.get(), kBrightnessPercentUserSettingsApp,
+      SetBacklightBrightnessRequest_Transition_FAST,
+      SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+  percent = 0.0;
+  ASSERT_TRUE(controller_->GetBrightnessPercent(&percent));
+  ASSERT_DOUBLE_EQ(round(kBrightnessPercentUserSettingsApp), round(percent));
+
+  // A signal should've been emitted with the appropriate cause.
+  test::CheckBrightnessChangedSignal(
+      dbus_wrapper_.get(), 0, kScreenBrightnessChangedSignal,
+      kBrightnessPercentUserSettingsApp,
+      BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+}
+
 TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
   Init(PowerSource::AC);
