@@ -42,6 +42,7 @@ class MockNetworkMonitorFactory : public NetworkMonitorFactory {
               (EventDispatcher*,
                Metrics*,
                NetworkMonitor::ClientNetwork*,
+               patchpanel::Client*,
                Technology,
                int,
                std::string_view,

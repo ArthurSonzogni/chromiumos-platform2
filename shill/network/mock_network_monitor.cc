@@ -13,6 +13,7 @@ MockNetworkMonitor::MockNetworkMonitor()
     : NetworkMonitor(nullptr,
                      nullptr,
                      nullptr,
+                     nullptr,
                      Technology::kUnknown,
                      1,
                      "",

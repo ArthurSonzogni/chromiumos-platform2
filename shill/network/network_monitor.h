@@ -14,6 +14,7 @@
 #include <base/functional/callback.h>
 #include <base/time/time.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/http_url.h>
 #include <net-base/network_config.h>
 #include <net-base/ip_address.h>
@@ -142,6 +143,7 @@ class NetworkMonitor {
   NetworkMonitor(EventDispatcher* dispatcher,
                  Metrics* metrics,
                  ClientNetwork* client,
+                 patchpanel::Client* patchpanel_client,
                  Technology technology,
                  int interface_index,
                  std::string_view interface,
@@ -296,6 +298,7 @@ class NetworkMonitorFactory {
       EventDispatcher* dispatcher,
       Metrics* metrics,
       NetworkMonitor::ClientNetwork* client,
+      patchpanel::Client* patchpanel_client,
       Technology technology,
       int interface_index,
       std::string_view interface,

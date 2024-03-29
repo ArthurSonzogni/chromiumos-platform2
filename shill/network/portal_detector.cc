@@ -21,7 +21,9 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
+#include <brillo/http/http_transport.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -71,10 +73,12 @@ PortalDetector::DefaultProbingConfiguration() {
 
 PortalDetector::PortalDetector(
     EventDispatcher* dispatcher,
+    patchpanel::Client* patchpanel_client,
     std::string_view ifname,
     const ProbingConfiguration& probing_configuration,
     std::string_view logging_tag)
     : dispatcher_(dispatcher),
+      patchpanel_client_(patchpanel_client),
       ifname_(ifname),
       probing_configuration_(probing_configuration),
       logging_tag_(logging_tag) {}
@@ -416,8 +420,12 @@ std::unique_ptr<HttpRequest> PortalDetector::CreateHTTPRequest(
     net_base::IPFamily ip_family,
     const std::vector<net_base::IPAddress>& dns_list,
     bool allow_non_google_https) const {
+  auto transport = brillo::http::Transport::CreateDefault();
+  patchpanel::Client::TrafficAnnotation annotation;
+  annotation.id = patchpanel::Client::TrafficAnnotationId::kShillPortalDetector;
+  patchpanel_client_->PrepareTagSocket(std::move(annotation), transport);
   return std::make_unique<HttpRequest>(dispatcher_, ifname, ip_family, dns_list,
-                                       allow_non_google_https);
+                                       allow_non_google_https, transport);
 }
 
 bool PortalDetector::Result::IsHTTPProbeComplete() const {

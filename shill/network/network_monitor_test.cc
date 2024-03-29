@@ -11,6 +11,7 @@
 #include <base/functional/bind.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/http_url.h>
@@ -86,9 +87,9 @@ class NetworkMonitorTest : public ::testing::Test {
         mock_connection_diagnostics_factory.get();
 
     network_monitor_ = std::make_unique<NetworkMonitor>(
-        &dispatcher_, &metrics_, &client_, kTechnology, kInterfaceIndex,
-        kInterface, probing_configuration_, kDefaultValidationMode,
-        std::move(mock_validation_log), kLoggingTag,
+        &dispatcher_, &metrics_, &client_, &patchpanel_client_, kTechnology,
+        kInterfaceIndex, kInterface, probing_configuration_,
+        kDefaultValidationMode, std::move(mock_validation_log), kLoggingTag,
         std::move(mock_capport_proxy_factory),
         std::move(mock_connection_diagnostics_factory));
     network_monitor_->set_portal_detector_for_testing(
@@ -165,6 +166,7 @@ class NetworkMonitorTest : public ::testing::Test {
 
   net_base::NetworkConfig config_;
   MockClient client_;
+  patchpanel::FakeClient patchpanel_client_;
   std::unique_ptr<NetworkMonitor> network_monitor_;
 
   // These instance are owned by |network_monitor_|.

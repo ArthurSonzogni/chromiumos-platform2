@@ -7,7 +7,7 @@
 namespace shill {
 
 MockPortalDetector::MockPortalDetector()
-    : PortalDetector(nullptr, "wlan1", {}, "tag") {}
+    : PortalDetector(nullptr, nullptr, "wlan1", {}, "tag") {}
 
 MockPortalDetector::~MockPortalDetector() = default;
 

@@ -95,6 +95,8 @@ enum class VPNRoutingPolicy : uint8_t {
 enum class TrafficAnnotationId : uint8_t {
   // The traffic comes from an unspecified source.
   kUnspecified = 0,
+  // The traffic comes from Shill's portal detector.
+  kShillPortalDetector = 1,
 };
 
 // QoSCategory in fwmark indicates the inferred result from each QoS detector

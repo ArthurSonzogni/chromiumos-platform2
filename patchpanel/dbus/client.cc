@@ -492,6 +492,8 @@ traffic_annotation::TrafficAnnotation::Id ConvertTrafficAnnotationId(
   switch (id) {
     case Client::TrafficAnnotationId::kUnspecified:
       return traffic_annotation::TrafficAnnotation::UNSPECIFIED;
+    case Client::TrafficAnnotationId::kShillPortalDetector:
+      return traffic_annotation::TrafficAnnotation::SHILL_PORTAL_DETECTOR;
   }
 }
 

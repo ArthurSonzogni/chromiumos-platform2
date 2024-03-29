@@ -18,6 +18,8 @@
 #include <brillo/http/http_request.h>
 #include <brillo/http/mock_connection.h>
 #include <brillo/http/mock_transport.h>
+#include <chromeos/patchpanel/dbus/client.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/http_url.h>
@@ -28,6 +30,7 @@
 using testing::_;
 using testing::AnyOfArray;
 using testing::Eq;
+using testing::Field;
 using testing::Mock;
 using testing::Return;
 using testing::Test;
@@ -80,12 +83,28 @@ class MockHttpRequest : public HttpRequest {
 
 }  // namespace
 
+class MockPatchpanelClient : public patchpanel::FakeClient {
+ public:
+  MockPatchpanelClient() = default;
+  ~MockPatchpanelClient() = default;
+
+  MOCK_METHOD(void,
+              PrepareTagSocket,
+              (const TrafficAnnotation&,
+               std::shared_ptr<brillo::http::Transport>),
+              (override));
+};
+
 class TestablePortalDetector : public PortalDetector {
  public:
   TestablePortalDetector(EventDispatcher* dispatcher,
+                         patchpanel::Client* patchpanel_client,
                          const ProbingConfiguration& probing_configuration)
-      : PortalDetector(
-            dispatcher, kInterfaceName, probing_configuration, "tag") {}
+      : PortalDetector(dispatcher,
+                       patchpanel_client,
+                       kInterfaceName,
+                       probing_configuration,
+                       "tag") {}
   TestablePortalDetector(const TestablePortalDetector&) = delete;
   TestablePortalDetector& operator=(const TestablePortalDetector&) = delete;
   ~TestablePortalDetector() override = default;
@@ -111,7 +130,7 @@ class PortalDetectorTest : public Test {
         interface_name_(kInterfaceName),
         dns_servers_({kDNSServer0, kDNSServer1}),
         portal_detector_(new TestablePortalDetector(
-            &dispatcher_, MakeProbingConfiguration())) {}
+            &dispatcher_, &patchpanel_client_, MakeProbingConfiguration())) {}
 
  protected:
   class CallbackTarget {
@@ -229,6 +248,7 @@ class PortalDetectorTest : public Test {
   const std::string interface_name_;
   std::vector<net_base::IPAddress> dns_servers_;
   std::unique_ptr<TestablePortalDetector> portal_detector_;
+  MockPatchpanelClient patchpanel_client_;
 };
 
 TEST_F(PortalDetectorTest, NoCustomCertificates) {
@@ -236,8 +256,8 @@ TEST_F(PortalDetectorTest, NoCustomCertificates) {
   auto config = MakeProbingConfiguration();
   config.portal_https_url =
       *net_base::HttpUrl::CreateFromString(PortalDetector::kDefaultHttpsUrl);
-  auto portal_detector =
-      std::make_unique<TestablePortalDetector>(&dispatcher_, config);
+  auto portal_detector = std::make_unique<TestablePortalDetector>(
+      &dispatcher_, &patchpanel_client_, config);
 
   // First request for the HTTP probe: always set |allow_non_google_https| to
   // false. Second request for the HTTPS probe with the default URL: set
@@ -259,8 +279,8 @@ TEST_F(PortalDetectorTest, UseCustomCertificates) {
   auto config = MakeProbingConfiguration();
   ASSERT_NE(config.portal_https_url, *net_base::HttpUrl::CreateFromString(
                                          PortalDetector::kDefaultHttpsUrl));
-  auto portal_detector =
-      std::make_unique<TestablePortalDetector>(&dispatcher_, config);
+  auto portal_detector = std::make_unique<TestablePortalDetector>(
+      &dispatcher_, &patchpanel_client_, config);
 
   // First request for the HTTP probe: always set |allow_non_google_https| to
   // false.
@@ -889,6 +909,23 @@ TEST_F(PortalDetectorTest, PickProbeURLs) {
   }
   // Probability this assert fails = 3 * 1/3 ^ 97 + 3 * 2/3 ^ 97
   EXPECT_EQ(all_urls, all_found_urls);
+}
+
+TEST_F(PortalDetectorTest, CreateHTTPRequest) {
+  PortalDetector detector(&dispatcher_, &patchpanel_client_, kInterfaceName,
+                          MakeProbingConfiguration(), "tag");
+
+  EXPECT_CALL(
+      patchpanel_client_,
+      PrepareTagSocket(
+          Field(&patchpanel::Client::TrafficAnnotation::id,
+                patchpanel::Client::TrafficAnnotationId::kShillPortalDetector),
+          _));
+
+  auto req =
+      detector.CreateHTTPRequest(kInterfaceName, net_base::IPFamily::kIPv4,
+                                 {kDNSServer0, kDNSServer1}, true);
+  EXPECT_TRUE(req != nullptr);
 }
 
 TEST(PortalDetectorResultTest, HTTPSTimeout) {

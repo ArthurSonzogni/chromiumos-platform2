@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/network_config.h>
 #include <net-base/ip_address.h>
 
@@ -75,6 +76,7 @@ NetworkMonitor::NetworkMonitor(
     EventDispatcher* dispatcher,
     Metrics* metrics,
     ClientNetwork* client,
+    patchpanel::Client* patchpanel_client,
     Technology technology,
     int interface_index,
     std::string_view interface,
@@ -100,7 +102,8 @@ NetworkMonitor::NetworkMonitor(
       connection_diagnostics_factory_(
           std::move(connection_diagnostics_factory)) {
   portal_detector_ = std::make_unique<PortalDetector>(
-      dispatcher_, interface_, probing_configuration_, logging_tag_);
+      dispatcher_, patchpanel_client, interface_, probing_configuration_,
+      logging_tag_);
 }
 
 NetworkMonitor::~NetworkMonitor() {
@@ -413,6 +416,7 @@ std::unique_ptr<NetworkMonitor> NetworkMonitorFactory::Create(
     EventDispatcher* dispatcher,
     Metrics* metrics,
     NetworkMonitor::ClientNetwork* client,
+    patchpanel::Client* patchpanel_client,
     Technology technology,
     int interface_index,
     std::string_view interface,
@@ -421,9 +425,9 @@ std::unique_ptr<NetworkMonitor> NetworkMonitorFactory::Create(
     std::unique_ptr<ValidationLog> network_validation_log,
     std::string_view logging_tag) {
   return std::make_unique<NetworkMonitor>(
-      dispatcher, metrics, client, technology, interface_index, interface,
-      probing_configuration, validation_mode, std::move(network_validation_log),
-      logging_tag);
+      dispatcher, metrics, client, patchpanel_client, technology,
+      interface_index, interface, probing_configuration, validation_mode,
+      std::move(network_validation_log), logging_tag);
 }
 
 std::ostream& operator<<(std::ostream& stream,

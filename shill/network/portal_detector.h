@@ -19,6 +19,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/http_url.h>
 #include <net-base/ip_address.h>
@@ -229,6 +230,7 @@ class PortalDetector {
   using ResultCallback = base::OnceCallback<void(const Result&)>;
 
   PortalDetector(EventDispatcher* dispatcher,
+                 patchpanel::Client* patchpanel_client,
                  std::string_view ifname,
                  const ProbingConfiguration& probing_configuration,
                  std::string_view logging_tag);
@@ -278,6 +280,7 @@ class PortalDetector {
  private:
   friend class PortalDetectorTest;
   FRIEND_TEST(PortalDetectorTest, AttemptCount);
+  FRIEND_TEST(PortalDetectorTest, CreateHTTPRequest);
   FRIEND_TEST(PortalDetectorTest, IsInProgress);
   FRIEND_TEST(PortalDetectorTest, PickProbeURLs);
   FRIEND_TEST(PortalDetectorTest, Request200WithContent);
@@ -328,6 +331,7 @@ class PortalDetector {
 
   // These instances are not changed during the whole lifetime.
   EventDispatcher* dispatcher_;
+  patchpanel::Client* patchpanel_client_;
   std::string ifname_;
   ProbingConfiguration probing_configuration_;
   std::string logging_tag_;

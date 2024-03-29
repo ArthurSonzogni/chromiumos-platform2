@@ -156,8 +156,9 @@ void Network::Start(const Network::StartOptions& opts) {
 
   probing_configuration_ = opts.probing_configuration;
   network_monitor_ = network_monitor_factory_->Create(
-      dispatcher_, metrics_, this, technology_, interface_index_,
-      interface_name_, probing_configuration_, opts.validation_mode,
+      dispatcher_, metrics_, this, patchpanel_client_, technology_,
+      interface_index_, interface_name_, probing_configuration_,
+      opts.validation_mode,
       std::make_unique<ValidationLog>(technology_, metrics_), logging_tag_);
   network_monitor_->SetCapportEnabled(capport_enabled_);
 
@@ -953,7 +954,8 @@ void Network::StartConnectivityTest(
   }
   LOG(INFO) << *this << ": Starting Internet connectivity test";
   connectivity_test_portal_detector_ = std::make_unique<PortalDetector>(
-      dispatcher_, interface_name_, probe_config, logging_tag_);
+      dispatcher_, patchpanel_client_, interface_name_, probe_config,
+      logging_tag_);
   connectivity_test_portal_detector_->Start(
       /*http_only=*/false, *family, dns_list,
       base::BindOnce(&Network::ConnectivityTestCallback,
