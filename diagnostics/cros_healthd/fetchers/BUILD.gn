@@ -6,12 +6,8 @@ import("//common-mk/pkg_config.gni")
 
 # Library that provides fetchers used by cros_healthd.
 pkg_config("libcros_healthd_fetchers_pkg_deps") {
-  defines = [ "USE_MESA_REVEN=${use.mesa_reven}" ]
-
   pkg_deps = [
     "dbus-1",
-    "egl",
-    "glesv2",
     "iioservice_ipc",
     "libattestation-client",
     "libbrillo",
@@ -46,7 +42,6 @@ source_set("libcros_healthd_fetchers") {
     "cpu_fetcher.cc",
     "disk_fetcher.cc",
     "fan_fetcher.cc",
-    "graphics_fetcher.cc",
     "input_fetcher.cc",
     "memory_fetcher.cc",
     "network_fetcher.cc",
@@ -93,7 +88,6 @@ if (use.test) {
       "bus_fetcher_test.cc",
       "cpu_fetcher_test.cc",
       "fan_fetcher_test.cc",
-      "graphics_fetcher_test.cc",
       "input_fetcher_test.cc",
       "memory_fetcher_test.cc",
       "network_fetcher_test.cc",

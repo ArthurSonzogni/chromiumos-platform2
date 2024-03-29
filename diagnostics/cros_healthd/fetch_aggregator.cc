@@ -23,7 +23,6 @@
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/fan_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/graphics_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
@@ -180,7 +179,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kGraphics: {
-        info->graphics_result = deprecated::FetchGraphicsInfo();
+        context_->executor()->FetchGraphicsInfo(
+            CreateFetchCallback(&barrier, &info->graphics_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kDisplay: {
