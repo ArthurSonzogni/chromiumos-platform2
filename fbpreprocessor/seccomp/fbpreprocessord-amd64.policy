@@ -5,6 +5,7 @@
 access: 1
 brk: 1
 chmod: 1
+clock_gettime: 1
 close: 1
 connect: 1
 creat: 1
@@ -24,9 +25,11 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 mkdir: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mremap: 1
 munmap: 1
 newfstatat: 1
