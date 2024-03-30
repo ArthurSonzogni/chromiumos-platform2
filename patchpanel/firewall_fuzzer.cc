@@ -93,8 +93,8 @@ void FuzzLoopbackLockdownRules(patchpanel::Firewall* firewall,
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   static Environment env;
 
-  auto process_runner = new patchpanel::FakeProcessRunner();
-  patchpanel::Firewall firewall(process_runner);
+  patchpanel::FakeProcessRunner process_runner;
+  patchpanel::Firewall firewall(&process_runner);
 
   FuzzAcceptRules(&firewall, data, size);
   FuzzForwardRules(&firewall, data, size);

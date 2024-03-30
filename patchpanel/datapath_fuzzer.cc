@@ -98,10 +98,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   shill_device.service_path = provider.ConsumeRandomLengthString(10);
   shill_device.ifindex = provider.ConsumeIntegral<int32_t>();
 
-  auto runner = new FakeProcessRunner();
+  FakeProcessRunner runner;
   auto firewall = new Firewall();
   NoopSystem system;
-  Datapath datapath(runner, firewall, &system);
+  Datapath datapath(&runner, firewall, &system);
   datapath.Start();
   datapath.Stop();
   datapath.NetnsAttachName(netns_name, pid);

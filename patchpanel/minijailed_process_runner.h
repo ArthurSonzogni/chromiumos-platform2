@@ -155,8 +155,14 @@ class MinijailedProcessRunner {
                           bool log_failures,
                           std::string* output);
 
+  virtual int RunIptablesRestore(std::string_view iptables_restore_path,
+                                 std::string_view script_file,
+                                 bool log_failures);
+
   virtual int RunIpNetns(const std::vector<std::string>& argv,
                          bool log_failures);
+
+  virtual bool RunPendingIptablesInBatch();
 
  private:
   friend base::LazyInstanceTraitsBase<MinijailedProcessRunner>;
@@ -174,7 +180,6 @@ class MinijailedProcessRunner {
                                  std::string_view chain,
                                  const std::vector<std::string>& argv,
                                  TableToRules* cached_rules);
-  bool RunPendingIptablesInBatch();
   bool RunPendingIptablesInBatchImpl(std::string_view iptables_restore_path,
                                      const TableToRules& table_to_rules);
 

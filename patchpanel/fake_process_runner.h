@@ -9,6 +9,8 @@
 #include <string_view>
 #include <vector>
 
+#include <brillo/minijail/minijail.h>
+
 #include "patchpanel/minijailed_process_runner.h"
 
 namespace patchpanel {
@@ -16,7 +18,8 @@ namespace patchpanel {
 // All commands always succeed.
 class FakeProcessRunner : public MinijailedProcessRunner {
  public:
-  FakeProcessRunner() = default;
+  FakeProcessRunner()
+      : MinijailedProcessRunner(/*minijail=*/nullptr, /*system=*/nullptr) {}
   FakeProcessRunner(const FakeProcessRunner&) = delete;
   FakeProcessRunner& operator=(const FakeProcessRunner&) = delete;
 
@@ -38,10 +41,18 @@ class FakeProcessRunner : public MinijailedProcessRunner {
     return 0;
   }
 
+  int RunIptablesRestore(std::string_view iptables_restore_path,
+                         std::string_view script_file,
+                         bool log_failures) override {
+    return 0;
+  }
+
   int RunIpNetns(const std::vector<std::string>& argv,
                  bool log_failures) override {
     return 0;
   }
+
+  bool RunPendingIptablesInBatch() override { return true; }
 };
 
 }  // namespace patchpanel
