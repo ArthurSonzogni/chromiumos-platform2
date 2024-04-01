@@ -45,6 +45,9 @@ constexpr uid_t kRootUid = 0;
 
 constexpr int kDefaultWaitTimeoutInSeconds = 5;
 
+constexpr size_t kMaxWriteAttempts = 10;
+constexpr uint32_t kAttemptDelayMicroseconds = 10000;
+
 enum class UMADeviceRecognized {
   kRecognized,
   kUnrecognized,
@@ -90,6 +93,13 @@ struct UsbSessionMetric {
 
 // Returns true if the process has CAP_CHOWN.
 bool CanChown();
+
+// Returns true if the write succeeds.
+bool WriteWithTimeout(
+    brillo::SafeFD* fd,
+    const std::string& value,
+    size_t max_tries = kMaxWriteAttempts,
+    base::TimeDelta delay = base::Microseconds(kAttemptDelayMicroseconds));
 
 std::string Hash(const std::string& content);
 std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules);
@@ -193,6 +203,7 @@ std::unordered_set<std::string> UniqueRules(const EntryMap& entries);
 brillo::SafeFD OpenStateFile(const base::FilePath& base_path,
                              const std::string& parent_dir,
                              const std::string& state_file_name,
+                             const std::string& username,
                              bool lock);
 
 // Forks (exiting the parent), calls setsid, and returns the result of a second

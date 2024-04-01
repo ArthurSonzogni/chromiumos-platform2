@@ -47,7 +47,7 @@ EntryManager* EntryManager::GetInstance(
 bool EntryManager::CreateDefaultGlobalDB() {
   base::FilePath db_path = base::FilePath("/").Append(kDefaultGlobalDir);
   return OpenStateFile(db_path.DirName(), db_path.BaseName().value(),
-                       kDefaultDbName, false)
+                       kDefaultDbName, kUsbBouncerUser, false)
       .is_valid();
 }
 

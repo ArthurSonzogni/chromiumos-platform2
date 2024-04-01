@@ -25,7 +25,7 @@ constexpr size_t kMaxFileSize = 64 * 1024 * 1024;
 
 RuleDBStorage::RuleDBStorage(const base::FilePath& db_dir) {
   fd_ = OpenStateFile(db_dir.DirName(), db_dir.BaseName().value(),
-                      kDefaultDbName, true /* lock */);
+                      kDefaultDbName, kUsbBouncerUser, true /* lock */);
   if (fd_.is_valid()) {
     path_ = db_dir.Append(kDefaultDbName);
   }

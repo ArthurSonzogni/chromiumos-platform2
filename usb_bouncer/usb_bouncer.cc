@@ -12,14 +12,18 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/files/file_util.h>
+#include <brillo/files/safe_fd.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <brillo/userdb_utils.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
 #include "usb_bouncer/entry_manager.h"
 #include "usb_bouncer/util.h"
 
+using brillo::SafeFD;
 using usb_bouncer::CanChown;
 using usb_bouncer::Daemonize;
 using usb_bouncer::DevpathToRuleCallback;
@@ -31,7 +35,8 @@ namespace {
 
 static constexpr char kUsageMessage[] = R"(Usage:
   cleanup - removes stale allow-list entries.
-  genrules - writes the generated rules configuration and to stdout.
+  genrules [/run/usbguard/rules.conf] - writes the generated rules configuration
+    to either /run/usbguard/rules.conf or stdout.
   report_error - handles kernel errors reported with uevents.
   udev (add|remove) <devpath> - handles a udev device event.
   userlogin - add current entries to user allow-list.
@@ -64,6 +69,9 @@ static constexpr char kNoLoginPath[] = "/run/nologin";
 static constexpr char kStructuredMetricsPath[] = "/var/lib/metrics/structured";
 static constexpr char kStructuredMetricsEventsPath[] =
     "/var/lib/metrics/structured/events";
+static constexpr char kRulesDir[] = "run/usbguard";
+static constexpr char kRulesName[] = "rules.conf";
+static constexpr char kUsbguardUser[] = "usbguard";
 
 void DropPrivileges(const Configuration& config, PrivilegeLevel privileges) {
   if (!CanChown()) {
@@ -216,9 +224,22 @@ int HandleCleanup(const Configuration& config,
 
 int HandleGenRules(const Configuration& config,
                    const std::vector<std::string>& argv) {
+  SafeFD rules_file;
   if (!argv.empty()) {
-    LOG(ERROR) << "Invalid options!";
-    return EXIT_FAILURE;
+    base::FilePath rules_path = base::FilePath("/").Append(kRulesDir);
+    auto full_path = rules_path.Append(kRulesName);
+    if (argv.size() > 1 || argv[0] != full_path.value()) {
+      LOG(ERROR) << "Invalid options!";
+      return EXIT_FAILURE;
+    }
+
+    rules_file = usb_bouncer::OpenStateFile(
+        rules_path.DirName(), rules_path.BaseName().value(), kRulesName,
+        kUsbguardUser, true /* lock */);
+    if (!rules_file.is_valid()) {
+      LOG(ERROR) << "Failed to open '" << full_path.value() << "'";
+      return EXIT_FAILURE;
+    }
   }
 
   EntryManager* entry_manager = GetEntryManagerOrDie(config);
@@ -228,7 +249,13 @@ int HandleGenRules(const Configuration& config,
     return EXIT_FAILURE;
   }
 
-  printf("%s", rules.c_str());
+  if (argv.empty()) {
+    printf("%s", rules.c_str());
+  } else {
+    if (!usb_bouncer::WriteWithTimeout(&rules_file, rules)) {
+      return EXIT_FAILURE;
+    }
+  }
   return EXIT_SUCCESS;
 }
 

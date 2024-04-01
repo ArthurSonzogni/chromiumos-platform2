@@ -65,9 +65,6 @@ constexpr char kUmaDeviceAttachedHistogram[] = "ChromeOS.USB.DeviceAttached";
 constexpr char kUmaExternalDeviceAttachedHistogram[] =
     "ChromeOS.USB.ExternalDeviceAttached";
 
-constexpr int kMaxWriteAttempts = 10;
-constexpr int kAttemptDelayMicroseconds = 10000;
-
 enum class Subsystem {
   kNone,
   kUsb,
@@ -124,47 +121,6 @@ class UsbguardDeviceManagerHooksImpl : public usbguard::DeviceManagerHooks {
  private:
   usbguard::Rule lastRule_;
 };
-
-// |fd| is assumed to be non-blocking.
-bool WriteWithTimeout(
-    SafeFD* fd,
-    const std::string value,
-    size_t max_tries = kMaxWriteAttempts,
-    base::TimeDelta delay = base::Microseconds(kAttemptDelayMicroseconds)) {
-  size_t tries = 0;
-  size_t total = 0;
-  int written = 0;
-  while (tries < max_tries) {
-    ++tries;
-
-    written = write(fd->get(), value.c_str() + total, value.size() - total);
-    if (written < 0) {
-      if (errno == EAGAIN) {
-        // Writing would block. Wait and try again.
-        HANDLE_EINTR(usleep(delay.InMicroseconds()));
-        continue;
-      } else if (errno == EINTR) {
-        // Count EINTR against the tries.
-        continue;
-      } else {
-        PLOG(ERROR) << "Failed to write '" << GetFDPath(fd->get()).value()
-                    << "'";
-        return false;
-      }
-    }
-
-    total += written;
-    if (total == value.size()) {
-      if (HANDLE_EINTR(ftruncate(fd->get(), value.size())) != 0) {
-        PLOG(ERROR) << "Failed to truncate '" << GetFDPath(fd->get()).value()
-                    << "'";
-        return false;
-      }
-      return true;
-    }
-  }
-  return false;
-}
 
 constexpr bool IsSkippableFailure(int err) {
   // EPIPE: wireless USB device that fails in usb_get_device_descriptor().
@@ -390,6 +346,46 @@ bool CanChown() {
   }
 
   return value == CAP_SET;
+}
+
+// |fd| is assumed to be non-blocking.
+bool WriteWithTimeout(SafeFD* fd,
+                      const std::string& value,
+                      size_t max_tries,
+                      base::TimeDelta delay) {
+  size_t tries = 0;
+  size_t total = 0;
+  int written = 0;
+  while (tries < max_tries) {
+    ++tries;
+
+    written = write(fd->get(), value.c_str() + total, value.size() - total);
+    if (written < 0) {
+      if (errno == EAGAIN) {
+        // Writing would block. Wait and try again.
+        HANDLE_EINTR(usleep(delay.InMicroseconds()));
+        continue;
+      } else if (errno == EINTR) {
+        // Count EINTR against the tries.
+        continue;
+      } else {
+        PLOG(ERROR) << "Failed to write '" << GetFDPath(fd->get()).value()
+                    << "'";
+        return false;
+      }
+    }
+
+    total += written;
+    if (total == value.size()) {
+      if (HANDLE_EINTR(ftruncate(fd->get(), value.size())) != 0) {
+        PLOG(ERROR) << "Failed to truncate '" << GetFDPath(fd->get()).value()
+                    << "'";
+        return false;
+      }
+      return true;
+    }
+  }
+  return false;
 }
 
 std::string Hash(const std::string& content) {
@@ -713,12 +709,13 @@ std::unordered_set<std::string> UniqueRules(const EntryMap& entries) {
 SafeFD OpenStateFile(const base::FilePath& base_path,
                      const std::string& parent_dir,
                      const std::string& state_file_name,
+                     const std::string& username,
                      bool lock) {
   uid_t proc_uid = getuid();
   uid_t uid = proc_uid;
   gid_t gid = getgid();
-  if (CanChown() && !brillo::userdb::GetUserInfo(kUsbBouncerUser, &uid, &gid)) {
-    LOG(ERROR) << "Failed to get uid & gid for \"" << kUsbBouncerUser << "\"";
+  if (CanChown() && !brillo::userdb::GetUserInfo(username, &uid, &gid)) {
+    LOG(ERROR) << "Failed to get uid & gid for \"" << username << "\"";
     return SafeFD();
   }
 
