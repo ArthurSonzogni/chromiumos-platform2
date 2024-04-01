@@ -1160,13 +1160,12 @@ std::optional<std::string> FilterMediaProfile(
 
   auto result = [&doc, &content, enable_front_camera,
                  enable_back_camera]() -> std::optional<std::string> {
+    // XML_PARSE_NOBLANKS is not set to keep indent.
     doc = xmlReadMemory(content.c_str(), content.size(), nullptr, nullptr, 0);
     if (doc == nullptr) {
       LOG(ERROR) << "Failed to parse media profile content:\n" << content;
       return std::nullopt;
     }
-    // For keeping indent.
-    xmlKeepBlanksDefault(0);
 
     xmlNodePtr settings = xmlDocGetRootElement(doc);
     if (settings == nullptr) {
@@ -1300,13 +1299,12 @@ std::optional<std::string> AppendFeatureManagement(
   xmlDocPtr doc;
 
   auto result = [&doc, &content, &features]() -> std::optional<std::string> {
+    // XML_PARSE_NOBLANKS is not set to keep indent.
     doc = xmlReadMemory(content.c_str(), content.size(), nullptr, nullptr, 0);
     if (doc == nullptr) {
       LOG(ERROR) << "Failed to parse hardware profile content:\n" << content;
       return std::nullopt;
     }
-    // For keeping indent.
-    xmlKeepBlanksDefault(0);
 
     xmlNodePtr permissions = xmlDocGetRootElement(doc);
     if (permissions == nullptr) {
