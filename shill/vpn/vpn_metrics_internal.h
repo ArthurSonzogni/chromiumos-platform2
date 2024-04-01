@@ -16,11 +16,27 @@ namespace shill {
 namespace vpn_metrics_internal {
 
 using NameByVPNType = Metrics::NameByVPNType;
+using FixedName = Metrics::FixedName;
 
 // Enum defined in shill/metrics.h (Metrics::IPType).
 constexpr Metrics::EnumMetric<NameByVPNType> kMetricIPType = {
     .n = NameByVPNType{"IPType"},
     .max = Metrics::kIPTypeMax,
+};
+
+enum VpnDriver {
+  kVpnDriverOpenVpn = 0,
+  kVpnDriverL2tpIpsec = 1,
+  kVpnDriverThirdParty = 2,
+  kVpnDriverArc = 3,
+  // 4 is occupied by PPTP in chrome.
+  kVpnDriverWireGuard = 5,
+  kVpnDriverIKEv2 = 6,
+  kVpnDriverMax
+};
+static constexpr Metrics::EnumMetric<FixedName> kMetricVpnDriver = {
+    .n = FixedName{"Network.Shill.Vpn.Driver"},
+    .max = kVpnDriverMax,
 };
 
 }  // namespace vpn_metrics_internal

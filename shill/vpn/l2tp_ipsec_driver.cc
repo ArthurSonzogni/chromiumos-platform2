@@ -387,9 +387,6 @@ KeyValueStore L2TPIPsecDriver::GetProvider(Error* error) {
 }
 
 void L2TPIPsecDriver::ReportConnectionMetrics() {
-  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
-                           Metrics::kVpnDriverL2tpIpsec);
-
   // We output an enum for each of the authentication types specified,
   // even if more than one is set at the same time.
   bool has_remote_authentication = false;

@@ -345,8 +345,6 @@ TEST_P(OpenVPNDriverTest, NotifyUMA) {
   SetEventHandler(&event_handler_);
 
   // Check that UMA metrics are emitted on Notify.
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
-                                      Metrics::kVpnDriverOpenVpn));
   EXPECT_CALL(metrics_,
               SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
                             GetParam().remote_authentication_type));

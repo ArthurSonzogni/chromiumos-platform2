@@ -148,6 +148,8 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
   // different time).
   driver_->driver_metrics()->ReportIPType(*network_config);
 
+  driver_->driver_metrics()->ReportConnected();
+
   SetState(ConnectState::kStateConfiguring);
   ConfigureDevice(std::move(network_config));
 }

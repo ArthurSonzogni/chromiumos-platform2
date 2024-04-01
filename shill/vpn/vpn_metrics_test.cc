@@ -16,6 +16,7 @@ namespace {
 namespace vpn_metrics = vpn_metrics_internal;
 
 using testing::_;
+using testing::Mock;
 
 class VPNDriverMetricsTest : public ::testing::Test {
  protected:
@@ -50,6 +51,28 @@ TEST_F(VPNDriverMetricsTest, ReportIPType) {
   EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPType, _,
                                       Metrics::kIPTypeDualStack));
   driver_metrics_.ReportIPType(config_dual_stack);
+}
+
+TEST_F(VPNDriverMetricsTest, ReportConnected) {
+  struct {
+    VPNType type;
+    vpn_metrics::VpnDriver metric_val;
+  } tcs[] = {
+      {VPNType::kARC, vpn_metrics::kVpnDriverArc},
+      {VPNType::kIKEv2, vpn_metrics::kVpnDriverIKEv2},
+      {VPNType::kL2TPIPsec, vpn_metrics::kVpnDriverL2tpIpsec},
+      {VPNType::kOpenVPN, vpn_metrics::kVpnDriverOpenVpn},
+      {VPNType::kThirdParty, vpn_metrics::kVpnDriverThirdParty},
+      {VPNType::kWireGuard, vpn_metrics::kVpnDriverWireGuard},
+  };
+
+  for (const auto tc : tcs) {
+    EXPECT_CALL(metrics_,
+                SendEnumToUMA(vpn_metrics::kMetricVpnDriver, tc.metric_val));
+    VPNDriverMetrics driver_metrics(&metrics_, tc.type);
+    driver_metrics.ReportConnected();
+    Mock::VerifyAndClearExpectations(&metrics_);
+  }
 }
 
 }  // namespace

@@ -48,7 +48,6 @@ base::TimeDelta ArcVpnDriver::ConnectAsync(EventHandler* handler) {
   SLOG(2) << __func__;
   // Nothing to do here since ARC already finish connecting to VPN
   // before Chrome calls Service::OnConnect. Just return success.
-  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver, Metrics::kVpnDriverArc);
   dispatcher()->PostTask(FROM_HERE,
                          base::BindOnce(&ArcVpnDriver::InvokeEventHandler,
                                         weak_factory_.GetWeakPtr(), handler));

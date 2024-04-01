@@ -93,7 +93,7 @@ class VPNService : public Service,
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi);
   FRIEND_TEST(VPNServiceTest, ConfigureDeviceAndCleanupDevice);
-  FRIEND_TEST(VPNServiceTest, ReportIPTypeMetrics);
+  FRIEND_TEST(VPNServiceTest, ReportMetrics);
   FRIEND_TEST(VPNServiceTest, ConnectFlow);
 
   static constexpr char kAutoConnNeverConnected[] = "never connected";

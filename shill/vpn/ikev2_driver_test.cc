@@ -126,8 +126,6 @@ TEST_F(IKEv2DriverTest, ConnectAndDisconnect) {
   constexpr int kIfIndex = 123;
   driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, nullptr);
   EXPECT_CALL(event_handler_, OnDriverConnected(kIfName, kIfIndex));
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
-                                      Metrics::kVpnDriverIKEv2));
   EXPECT_CALL(metrics_,
               SendEnumToUMA(Metrics::kMetricVpnIkev2AuthenticationType,
                             Metrics::kVpnIpsecAuthenticationTypePsk));

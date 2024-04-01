@@ -409,8 +409,6 @@ void ThirdPartyVpnDriver::SetParameters(
   network_config_->ipv6_blackhole_route = true;
   if (!network_config_set_) {
     network_config_set_ = true;
-    metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
-                             Metrics::kVpnDriverThirdParty);
   }
 
   if (event_handler_) {

@@ -33,6 +33,8 @@ class VPNDriverMetrics {
   mockable void ReportIPType(
       const net_base::NetworkConfig& network_config) const;
 
+  mockable void ReportConnected() const;
+
  private:
   Metrics* metrics_;
 

@@ -298,8 +298,6 @@ KeyValueStore IKEv2Driver::GetProvider(Error* error) {
 }
 
 void IKEv2Driver::ReportConnectionMetrics() {
-  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver, Metrics::kVpnDriverIKEv2);
-
   Metrics::VpnIpsecAuthenticationType auth_type_metrics =
       Metrics::kVpnIpsecAuthenticationTypeUnknown;
   const std::string auth_type_str =

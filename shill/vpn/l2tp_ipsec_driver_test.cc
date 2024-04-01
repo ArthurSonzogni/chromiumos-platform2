@@ -142,8 +142,6 @@ TEST_F(L2TPIPsecDriverTest, ConnectAndDisconnect) {
   constexpr int kIfIndex = 123;
   driver_->ipsec_connection()->TriggerConnected(kIfName, kIfIndex, nullptr);
   EXPECT_CALL(event_handler_, OnDriverConnected(kIfName, kIfIndex));
-  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
-                                      Metrics::kVpnDriverL2tpIpsec));
   EXPECT_CALL(metrics_,
               SendEnumToUMA(Metrics::kMetricVpnRemoteAuthenticationType,
                             Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk));

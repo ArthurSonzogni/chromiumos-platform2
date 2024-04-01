@@ -29,4 +29,30 @@ void VPNDriverMetrics::ReportIPType(
   metrics_->SendEnumToUMA(vpn_metrics::kMetricIPType, vpn_type_, ip_type);
 }
 
+void VPNDriverMetrics::ReportConnected() const {
+  vpn_metrics::VpnDriver metrics_driver_type;
+  switch (vpn_type_) {
+    case VPNType::kARC:
+      metrics_driver_type = vpn_metrics::kVpnDriverArc;
+      break;
+    case VPNType::kIKEv2:
+      metrics_driver_type = vpn_metrics::kVpnDriverIKEv2;
+      break;
+    case VPNType::kL2TPIPsec:
+      metrics_driver_type = vpn_metrics::kVpnDriverL2tpIpsec;
+      break;
+    case VPNType::kOpenVPN:
+      metrics_driver_type = vpn_metrics::kVpnDriverOpenVpn;
+      break;
+    case VPNType::kThirdParty:
+      metrics_driver_type = vpn_metrics::kVpnDriverThirdParty;
+      break;
+    case VPNType::kWireGuard:
+      metrics_driver_type = vpn_metrics::kVpnDriverWireGuard;
+      break;
+  }
+
+  metrics_->SendEnumToUMA(vpn_metrics::kMetricVpnDriver, metrics_driver_type);
+}
+
 }  // namespace shill

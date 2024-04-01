@@ -661,21 +661,6 @@ class Metrics {
       .max = kConnectionDiagnosticsIssueMax,
   };
 
-  enum VpnDriver {
-    kVpnDriverOpenVpn = 0,
-    kVpnDriverL2tpIpsec = 1,
-    kVpnDriverThirdParty = 2,
-    kVpnDriverArc = 3,
-    // 4 is occupied by PPTP in chrome.
-    kVpnDriverWireGuard = 5,
-    kVpnDriverIKEv2 = 6,
-    kVpnDriverMax
-  };
-  static constexpr EnumMetric<FixedName> kMetricVpnDriver = {
-      .n = FixedName{"Network.Shill.Vpn.Driver"},
-      .max = kVpnDriverMax,
-  };
-
   enum EthernetDriver {
     kEthernetDriverUnknown = 0,
     kEthernetDriverAlx = 1,

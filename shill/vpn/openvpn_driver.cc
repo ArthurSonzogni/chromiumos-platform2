@@ -1271,9 +1271,6 @@ void OpenVPNDriver::OnDefaultPhysicalServiceEvent(
 }
 
 void OpenVPNDriver::ReportConnectionMetrics() {
-  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
-                           Metrics::kVpnDriverOpenVpn);
-
   if (args()->Contains<std::vector<std::string>>(kOpenVPNCaCertPemProperty) &&
       !args()
            ->Get<std::vector<std::string>>(kOpenVPNCaCertPemProperty)

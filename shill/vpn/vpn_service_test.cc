@@ -398,14 +398,15 @@ TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {
   EXPECT_FALSE(service_->device_);
 }
 
-TEST_F(VPNServiceTest, ReportIPTypeMetrics) {
+TEST_F(VPNServiceTest, ReportMetrics) {
   scoped_refptr<MockVirtualDevice> device = new MockVirtualDevice(
       &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN);
   service_->device_ = device;
 
   auto config = std::make_unique<net_base::NetworkConfig>();
   EXPECT_CALL(*driver_, GetNetworkConfig).WillOnce(Return(std::move(config)));
-  EXPECT_CALL(*driver_metrics_, ReportIPType(_));
+  EXPECT_CALL(*driver_metrics_, ReportIPType);
+  EXPECT_CALL(*driver_metrics_, ReportConnected);
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 }
 

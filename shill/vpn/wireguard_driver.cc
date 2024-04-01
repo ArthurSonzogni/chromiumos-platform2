@@ -666,10 +666,6 @@ void WireGuardDriver::ClearPeers(Error* error) {
 }
 
 void WireGuardDriver::ReportConnectionMetrics() {
-  // VPN type.
-  metrics()->SendEnumToUMA(Metrics::kMetricVpnDriver,
-                           Metrics::kVpnDriverWireGuard);
-
   // Key pair source.
   metrics()->SendEnumToUMA(Metrics::kMetricVpnWireGuardKeyPairSource,
                            key_pair_source_);

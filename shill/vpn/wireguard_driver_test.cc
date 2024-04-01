@@ -227,8 +227,6 @@ class WireGuardDriverTest : public testing::Test {
   void ExpectCallMetrics(Metrics::VpnWireGuardKeyPairSource key_pair_source,
                          int peers_num,
                          Metrics::VpnWireGuardAllowedIPsType allowed_ips_type) {
-    EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnDriver,
-                                        Metrics::kVpnDriverWireGuard));
     EXPECT_CALL(metrics_,
                 SendEnumToUMA(Metrics::kMetricVpnWireGuardKeyPairSource,
                               key_pair_source));

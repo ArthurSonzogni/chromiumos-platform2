@@ -20,6 +20,8 @@ class MockVPNDriverMetrics : public VPNDriverMetrics {
               ReportIPType,
               (const net_base::NetworkConfig& network_config),
               (const override));
+
+  MOCK_METHOD(void, ReportConnected, (), (const override));
 };
 
 }  // namespace shill
