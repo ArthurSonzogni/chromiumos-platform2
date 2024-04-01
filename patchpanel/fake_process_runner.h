@@ -25,7 +25,7 @@ class FakeProcessRunner : public MinijailedProcessRunner {
 
   ~FakeProcessRunner() = default;
 
-  int RunIp(const std::vector<std::string>& argv,
+  int RunIp(base::span<std::string_view> argv,
             bool as_patchpanel_user,
             bool log_failures) override {
     return 0;
@@ -35,7 +35,7 @@ class FakeProcessRunner : public MinijailedProcessRunner {
                   Iptables::Table table,
                   Iptables::Command command,
                   std::string_view chain,
-                  const std::vector<std::string>& argv,
+                  base::span<std::string_view> argv,
                   bool log_failures,
                   std::string* output) override {
     return 0;
@@ -47,7 +47,7 @@ class FakeProcessRunner : public MinijailedProcessRunner {
     return 0;
   }
 
-  int RunIpNetns(const std::vector<std::string>& argv,
+  int RunIpNetns(base::span<std::string_view> argv,
                  bool log_failures) override {
     return 0;
   }

@@ -14,6 +14,7 @@
 #include <string_view>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/time/time.h>
 #include <brillo/minijail/minijail.h>
 
@@ -54,6 +55,8 @@ class MinijailedProcessRunner {
   // Runs ip. If |as_patchpanel_user|, runs as user 'patchpaneld' and under the
   // group 'patchpaneld', as well as inherits supplemntary groups (i.e. group
   // 'tun') of user 'patchpaneld'. If not, runs as 'nobody'.
+  // TODO(b/325359902): Change argument type of |obj| and |cmd| from std::string
+  // to std::string_view for ip() and ip6().
   virtual int ip(const std::string& obj,
                  const std::string& cmd,
                  const std::vector<std::string>& args,
@@ -109,16 +112,22 @@ class MinijailedProcessRunner {
                            bool log_failures = true);
 
   // Creates a new named network namespace with name |netns_name|.
+  // TODO(b/325359902): Change argument type of |netns_name| from std::string
+  // to std::string_view.
   virtual int ip_netns_add(const std::string& netns_name,
                            bool log_failures = true);
 
   // Attaches a name to the network namespace of the given pid
   // TODO(hugobenichi) How can patchpanel create a |netns_name| file in
   // /run/netns without running ip as root ?
+  // TODO(b/325359902): Change argument type of |netns_name| from std::string
+  // to std::string_view.
   virtual int ip_netns_attach(const std::string& netns_name,
                               pid_t netns_pid,
                               bool log_failures = true);
 
+  // TODO(b/325359902): Change argument type of |netns_name| from std::string
+  // to std::string_view.
   virtual int ip_netns_delete(const std::string& netns_name,
                               bool log_failures = true);
 
@@ -143,7 +152,7 @@ class MinijailedProcessRunner {
   // in a minijail as user |patchpaneld| and user the group |patchpaneld| with
   // CAP_NET_ADMIN and CAP_NET_RAW capabilities. Inherits supplementary groups
   // of |patchpaneld|.
-  virtual int RunIp(const std::vector<std::string>& argv,
+  virtual int RunIp(base::span<std::string_view> argv,
                     bool as_patchpanel_user,
                     bool log_failures = true);
 
@@ -151,7 +160,7 @@ class MinijailedProcessRunner {
                           Iptables::Table table,
                           Iptables::Command command,
                           std::string_view chain,
-                          const std::vector<std::string>& argv,
+                          base::span<std::string_view> argv,
                           bool log_failures,
                           std::string* output);
 
@@ -159,15 +168,21 @@ class MinijailedProcessRunner {
                                  std::string_view script_file,
                                  bool log_failures);
 
-  virtual int RunIpNetns(const std::vector<std::string>& argv,
-                         bool log_failures);
+  virtual int RunIpNetns(base::span<std::string_view> argv, bool log_failures);
 
   virtual bool RunPendingIptablesInBatch();
+
+  // Converts string_view elements in |argv| to cstrings and returns a vector
+  // of these cstrings. |buffer| is a view for underneath buffer used for
+  // storing data of string_view. User is responsible to allocate and manage
+  // the life cycle of underlying buffer.
+  static std::vector<char*> StringViewToCstrings(
+      base::span<std::string_view> argv, base::span<char> buffer);
 
  private:
   friend base::LazyInstanceTraitsBase<MinijailedProcessRunner>;
 
-  int RunSyncDestroy(const std::vector<std::string>& argv,
+  int RunSyncDestroy(base::span<std::string_view> argv,
                      brillo::Minijail* mj,
                      minijail* jail,
                      bool log_failures,

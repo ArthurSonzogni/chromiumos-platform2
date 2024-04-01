@@ -45,6 +45,11 @@ class ProcessRunnerForTesting : public MinijailedProcessRunner {
   ProcessRunnerForTesting(brillo::Minijail* mj, std::unique_ptr<System> system)
       : MinijailedProcessRunner(mj, std::move(system)) {}
 
+  static std::vector<char*> CallStringViewToCstrings(
+      base::span<std::string_view> argv, base::span<char> memory) {
+    return MinijailedProcessRunner::StringViewToCstrings(argv, memory);
+  }
+
  private:
   void UseIptablesSeccompFilter(minijail* jail) override{};
 };
@@ -336,6 +341,36 @@ TEST_F(MinijailProcessRunnerTest, IptablesBatchModeInvalidInput) {
   // No rule was added.
   EXPECT_CALL(mj_, RunAndDestroy).Times(0);
   batch_mode = nullptr;
+}
+
+TEST_F(MinijailProcessRunnerTest, StringViewToCstrings) {
+  std::vector<std::string_view> argv1 = {"arg1", "arg2", "arg3"};
+
+  char buffer[32];
+  base::span<char> memory(buffer);
+  std::vector<char*> args =
+      ProcessRunnerForTesting::CallStringViewToCstrings(argv1, memory);
+
+  EXPECT_EQ(4, args.size());
+  EXPECT_STREQ("arg1", args[0]);
+  EXPECT_STREQ("arg2", args[1]);
+  EXPECT_STREQ("arg3", args[2]);
+  EXPECT_EQ(nullptr, args[3]);
+
+  // Test that StringViewToCstrings() can be reused.
+  std::vector<std::string_view> argv2 = {"arg4", "arg5"};
+  args = ProcessRunnerForTesting::CallStringViewToCstrings(argv2, memory);
+  EXPECT_EQ(3, args.size());
+  EXPECT_STREQ("arg4", args[0]);
+  EXPECT_STREQ("arg5", args[1]);
+  EXPECT_EQ(nullptr, args[2]);
+
+  // Test that when args size is larger than buffer size, empty vector is
+  // returned.
+  char small_buf[1];
+  base::span<char> small_memory(small_buf);
+  args = ProcessRunnerForTesting::CallStringViewToCstrings(argv1, small_memory);
+  EXPECT_EQ(0, args.size());
 }
 
 }  // namespace

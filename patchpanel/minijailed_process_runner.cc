@@ -52,6 +52,9 @@ constexpr uint64_t kBPFCapMask = 1ull << 39;
 constexpr uint64_t kIpNetnsCapMask =
     CAP_TO_MASK(CAP_SYS_PTRACE) | CAP_TO_MASK(CAP_SYS_ADMIN);
 
+// Size for buffer used for args type conversion.
+constexpr uint16_t kArgsBufferSize = 4096;
+
 // These match what is used in iptables.cc in firewalld.
 constexpr char kIpPath[] = "/bin/ip";
 constexpr char kIptablesPath[] = "/sbin/iptables";
@@ -121,22 +124,48 @@ bool LoadSeccompFilter(const base::FilePath& policy_bpf_file,
 
 }  // namespace
 
-int MinijailedProcessRunner::RunSyncDestroy(
-    const std::vector<std::string>& argv,
-    brillo::Minijail* mj,
-    minijail* jail,
-    bool log_failures,
-    std::string* output) {
-  const base::TimeTicks started_at = base::TimeTicks::Now();
-
-  std::vector<char*> args;
-  for (const auto& arg : argv) {
-    args.push_back(const_cast<char*>(arg.c_str()));
+std::vector<char*> MinijailedProcessRunner::StringViewToCstrings(
+    base::span<std::string_view> argv, base::span<char> buffer) {
+  std::vector<char*> results;
+  results.reserve(argv.size() + 1);
+  for (auto arg : argv) {
+    // Check if argument size exceeds remaining buffer size.
+    if (arg.size() + 1 > buffer.size()) {
+      LOG(ERROR) << "Buffer size is not enough";
+      return {};
+    }
+    char* cur = buffer.data();
+    std::memcpy(cur, arg.data(), arg.size());
+    // Copied string_view data is not null terminated, add null-terminator
+    // manually.
+    cur[arg.size()] = '\0';
+    results.push_back(cur);
+    // Advance span by number of bytes of argument and null-terminator.
+    buffer = buffer.subspan(arg.size() + 1);
   }
-  args.push_back(nullptr);
+  results.push_back(nullptr);
+  return results;
+}
+
+int MinijailedProcessRunner::RunSyncDestroy(base::span<std::string_view> argv,
+                                            brillo::Minijail* mj,
+                                            minijail* jail,
+                                            bool log_failures,
+                                            std::string* output) {
+  const base::TimeTicks started_at = base::TimeTicks::Now();
 
   const std::string logging_tag =
       base::StrCat({"'", base::JoinString(argv, " "), "'"});
+
+  // Assign a buffer large enough to store all the arguments passed in.
+  static char buffer[kArgsBufferSize];
+  base::span<char> memory(buffer, kArgsBufferSize);
+  std::vector<char*> args = StringViewToCstrings(argv, memory);
+  if (args.empty()) {
+    LOG(DFATAL) << "Failed to convert arguments to Cstrings for "
+                << logging_tag;
+    return -1;
+  }
 
   // Helper function to redirect a child fd to an anonymous file in memory.
   // `name` will only be used for logging and debugging purposes, and can be
@@ -245,7 +274,7 @@ MinijailedProcessRunner::MinijailedProcessRunner(brillo::Minijail* mj,
                                                  std::unique_ptr<System> system)
     : mj_(mj), system_(std::move(system)) {}
 
-int MinijailedProcessRunner::RunIp(const std::vector<std::string>& argv,
+int MinijailedProcessRunner::RunIp(base::span<std::string_view> argv,
                                    bool as_patchpanel_user,
                                    bool log_failures) {
   minijail* jail = mj_->New();
@@ -264,7 +293,7 @@ int MinijailedProcessRunner::ip(const std::string& obj,
                                 const std::vector<std::string>& argv,
                                 bool as_patchpanel_user,
                                 bool log_failures) {
-  std::vector<std::string> args = {kIpPath, obj, cmd};
+  std::vector<std::string_view> args = {kIpPath, obj, cmd};
   args.insert(args.end(), argv.begin(), argv.end());
   return RunIp(args, as_patchpanel_user, log_failures);
 }
@@ -274,7 +303,7 @@ int MinijailedProcessRunner::ip6(const std::string& obj,
                                  const std::vector<std::string>& argv,
                                  bool as_patchpanel_user,
                                  bool log_failures) {
-  std::vector<std::string> args = {kIpPath, "-6", obj, cmd};
+  std::vector<std::string_view> args = {kIpPath, "-6", obj, cmd};
   args.insert(args.end(), argv.begin(), argv.end());
   return RunIp(args, as_patchpanel_user, log_failures);
 }
@@ -292,7 +321,11 @@ int MinijailedProcessRunner::iptables(Iptables::Table table,
     return success ? 0 : -1;
   }
 
-  return RunIptables(kIptablesPath, table, command, chain, argv, log_failures,
+  // TODO(b/325359902): Changes argument type in iptables() and removes
+  // conversion here.
+  std::vector<std::string_view> args;
+  args.insert(args.end(), argv.begin(), argv.end());
+  return RunIptables(kIptablesPath, table, command, chain, args, log_failures,
                      output);
 }
 
@@ -309,7 +342,14 @@ int MinijailedProcessRunner::ip6tables(Iptables::Table table,
     return success ? 0 : -1;
   }
 
-  return RunIptables(kIp6tablesPath, table, command, chain, argv, log_failures,
+  // TODO(b/325359902): Changes argument type in ip6tables() and removes
+  // conversion here.
+  std::vector<std::string_view> args;
+  args.reserve(argv.size());
+  for (const auto& arg : argv) {
+    args.push_back(arg);
+  }
+  return RunIptables(kIp6tablesPath, table, command, chain, args, log_failures,
                      output);
 }
 
@@ -317,18 +357,19 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
                                          Iptables::Table table,
                                          Iptables::Command command,
                                          std::string_view chain,
-                                         const std::vector<std::string>& argv,
+                                         base::span<std::string_view> argv,
                                          bool log_failures,
                                          std::string* output) {
-  std::vector<std::string> args = {std::string(iptables_path), "-t",
-                                   Iptables::TableName(table),
-                                   Iptables::CommandName(command)};
+  auto table_name = Iptables::TableName(table);
+  auto command_name = Iptables::CommandName(command);
+  std::vector<std::string_view> args = {iptables_path, "-t", table_name,
+                                        command_name};
   // TODO(b/278486416): Datapath::DumpIptables() needs support for passing an
   // empty chain. However, we cannot pass an empty argument to iptables
   // directly, so |chain| must be skipped in that case. Remove this temporary
   // work-around once chains are passed with an enum or a better data type.
   if (!chain.empty()) {
-    args.push_back(std::string(chain));
+    args.push_back(chain);
   }
   args.insert(args.end(), argv.begin(), argv.end());
 
@@ -348,32 +389,33 @@ int MinijailedProcessRunner::modprobe_all(
   minijail* jail = mj_->New();
   CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
   mj_->UseCapabilities(jail, kModprobeCapMask);
-  std::vector<std::string> args = {kModprobePath, "-a"};
+  std::vector<std::string_view> args = {kModprobePath, "-a"};
   args.insert(args.end(), modules.begin(), modules.end());
   return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 
 int MinijailedProcessRunner::ip_netns_add(const std::string& netns_name,
                                           bool log_failures) {
-  std::vector<std::string> args = {kIpPath, "netns", "add", netns_name};
+  std::vector<std::string_view> args = {kIpPath, "netns", "add", netns_name};
   return RunIpNetns(args, log_failures);
 }
 
 int MinijailedProcessRunner::ip_netns_attach(const std::string& netns_name,
                                              pid_t netns_pid,
                                              bool log_failures) {
-  std::vector<std::string> args = {kIpPath, "netns", "attach", netns_name,
-                                   std::to_string(netns_pid)};
+  auto pid = std::to_string(netns_pid);
+  std::vector<std::string_view> args = {kIpPath, "netns", "attach", netns_name,
+                                        pid};
   return RunIpNetns(args, log_failures);
 }
 
 int MinijailedProcessRunner::ip_netns_delete(const std::string& netns_name,
                                              bool log_failures) {
-  std::vector<std::string> args = {kIpPath, "netns", "delete", netns_name};
+  std::vector<std::string_view> args = {kIpPath, "netns", "delete", netns_name};
   return RunIpNetns(args, log_failures);
 }
 
-int MinijailedProcessRunner::RunIpNetns(const std::vector<std::string>& argv,
+int MinijailedProcessRunner::RunIpNetns(base::span<std::string_view> argv,
                                         bool log_failures) {
   minijail* jail = mj_->New();
   CHECK(mj_->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup));
@@ -384,8 +426,7 @@ int MinijailedProcessRunner::RunIpNetns(const std::vector<std::string>& argv,
 int MinijailedProcessRunner::conntrack(std::string_view command,
                                        const std::vector<std::string>& argv,
                                        bool log_failures) {
-  std::vector<std::string> args = {std::string(kConntrackPath),
-                                   std::string(command)};
+  std::vector<std::string_view> args = {kConntrackPath, command};
   args.insert(args.end(), argv.begin(), argv.end());
 
   // TODO(b/178980202): insert a seccomp filter right from the start for
@@ -410,8 +451,8 @@ int MinijailedProcessRunner::RunIptablesRestore(
     std::string_view iptables_restore_path,
     std::string_view script_file,
     bool log_failures) {
-  std::vector<std::string> args = {std::string(iptables_restore_path),
-                                   std::string(script_file), "-w"};
+  std::vector<std::string_view> args = {iptables_restore_path, script_file,
+                                        "-w"};
 
   minijail* jail = mj_->New();
   mj_->UseCapabilities(jail, kNetRawAdminCapMask);
@@ -554,9 +595,9 @@ bool MinijailedProcessRunner::RunPendingIptablesInBatchImpl(
   mj_->UseCapabilities(jail, kNetRawAdminCapMask | kBPFCapMask);
   UseIptablesSeccompFilter(jail);
 
-  int ret = RunSyncDestroy(
-      {std::string(iptables_restore_path), "-n", script_path, "-w"}, mj_, jail,
-      /*log_failures=*/true, nullptr);
+  std::vector<std::string_view> args = {iptables_restore_path, "-n",
+                                        script_path, "-w"};
+  int ret = RunSyncDestroy(args, mj_, jail, /*log_failures=*/true, nullptr);
 
   // TODO(b/328151873): Parse stderr so we can also log which line contains an
   // error.
