@@ -75,6 +75,11 @@ class FirmwareDirectoryImpl : public FirmwareDirectory {
     return result;
   }
 
+  bool DeviceIdMatch(const std::string& device_id) override {
+    DeviceType type{device_id, variant_};
+    return index_->contains(type);
+  };
+
   const base::FilePath& GetFirmwarePath() override {
     return fw_manifest_directory_;
   };

@@ -83,6 +83,7 @@ enum class FwInstallResult {
   kFailureReturnedByHelper = 6,
   kInitJournalFailure = 7,
   kInitFailureNonLteSku = 8,
+  kFailureReturnedByHelperModemNeverSeen = 9,
   kNumConstants
 };
 

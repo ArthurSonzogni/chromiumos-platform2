@@ -128,6 +128,8 @@ Metrics::FwInstallResultMap Metrics::fw_install_result_ = {
     {kErrorResultFlashFailure, FwInstallResult::kFlashFailure},  // dbus error
     {kErrorResultFailureReturnedByHelper,
      FwInstallResult::kFailureReturnedByHelper},  // dbus error
+    {kErrorResultFailureReturnedByHelperModemNeverSeen,
+     FwInstallResult::kFailureReturnedByHelperModemNeverSeen},  // dbus error
     {kErrorResultInitJournalFailure,
      FwInstallResult::kInitJournalFailure},  // dbus error
     {kErrorResultInitFailureNonLteSku,

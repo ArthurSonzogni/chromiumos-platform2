@@ -39,6 +39,10 @@ class FirmwareDirectory {
   virtual Files FindFirmware(const std::string& device_id,
                              std::string* carrier_id) = 0;
 
+  // Returns weather the device variant is associated with a modem with ID
+  // |device_id|.
+  virtual bool DeviceIdMatch(const std::string& device_id) = 0;
+
   // Returns the path where the firmware files are stored. For DLCs, the path
   // is retrieved from dlcservice during runtime.
   virtual const base::FilePath& GetFirmwarePath() = 0;

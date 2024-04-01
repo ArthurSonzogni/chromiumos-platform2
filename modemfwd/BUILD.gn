@@ -81,6 +81,7 @@ static_library("libmodemfw") {
     "modem_sandbox.cc",
     "modem_tracker.cc",
     "notification_manager.cc",
+    "prefs.cc",
     "scoped_temp_file.cc",
     "suspend_checker.cc",
     "upstart_job_controller.cc",
@@ -135,6 +136,7 @@ if (use.test) {
       "journal_test.cc",
       "metrics_test.cc",
       "modem_flasher_test.cc",
+      "prefs_test.cc",
     ]
     configs += [
       ":target_defaults",

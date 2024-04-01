@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "modemfwd/daemon.h"
+#include "base/files/file_path.h"
 #include "modemfwd/modem_sandbox.h"
 
 #include <signal.h>
@@ -39,6 +40,7 @@
 #include "modemfwd/modem_helper_directory.h"
 #include "modemfwd/modem_tracker.h"
 #include "modemfwd/notification_manager.h"
+#include "modemfwd/prefs.h"
 
 #include "modemfwd/proto_bindings/firmware_manifest_v2.pb.h"
 
@@ -51,6 +53,11 @@ constexpr base::TimeDelta kRebootCheckDelay = base::Minutes(1);
 constexpr base::TimeDelta kDlcRemovalDelay = base::Minutes(2);
 constexpr char kDisableAutoUpdatePref[] =
     "/var/lib/modemfwd/disable_auto_update";
+
+constexpr char kPrefsDir[] = "/var/lib/modemfwd/";
+// The existence of a device id in |kModemsSeenSinceOobeKey| is used to
+// indicate if a modem that belongs to that variant was ever seen.
+constexpr char kModemsSeenSinceOobeKey[] = "modems_seen_since_oobe";
 
 constexpr char const* kDevicesSupportingFlashModeCheck[] = {
     "usb:2cb7:0007",  // L850
@@ -187,6 +194,22 @@ int Daemon::OnInit() {
         base::StringPrintf(
             "Supplied modem-specific helper directory %s does not exist",
             helper_dir_path_.value().c_str()));
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+    return EX_UNAVAILABLE;
+  }
+
+  prefs_ = Prefs::CreatePrefs(base::FilePath(kPrefsDir));
+  if (!prefs_) {
+    auto err = Error::Create(FROM_HERE, kErrorResultInitFailure,
+                             "Prefs could not be created");
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
+    return EX_UNAVAILABLE;
+  }
+  modems_seen_since_oobe_prefs_ =
+      Prefs::CreatePrefs(*prefs_, kModemsSeenSinceOobeKey);
+  if (!modems_seen_since_oobe_prefs_) {
+    auto err = Error::Create(FROM_HERE, kErrorResultInitFailure,
+                             "ModemsSeenSinceOobe prefs could not be created");
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
     return EX_UNAVAILABLE;
   }
@@ -349,6 +372,13 @@ void Daemon::OnModemDeviceSeen(std::string device_id,
   // Record that we've seen this modem so we don't reboot/auto-force-flash it.
   device_ids_seen_.insert(device_id);
 
+  // The modem that matches the variant has been seen.
+  if (fw_manifest_directory_->DeviceIdMatch(device_id) &&
+      !modems_seen_since_oobe_prefs_->Exists(device_id)) {
+    if (!modems_seen_since_oobe_prefs_->Create(device_id))
+      LOG(ERROR) << "Failed to create modem seen pref for modem: " << device_id;
+  }
+
   if (modem_reappear_callbacks_.count(equipment_id) > 0) {
     std::move(modem_reappear_callbacks_[equipment_id]).Run();
     modem_reappear_callbacks_.erase(equipment_id);
@@ -386,8 +416,9 @@ void Daemon::DoFlash(const std::string& device_id,
                      const std::string& equipment_id) {
   StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  base::OnceClosure cb =
-      modem_flasher_->TryFlash(modems_[device_id].get(), &err);
+  base::OnceClosure cb = modem_flasher_->TryFlash(
+      modems_[device_id].get(),
+      modems_seen_since_oobe_prefs_->Exists(device_id), &err);
   StartHeartbeatTask(device_id);
 
   if (!cb.is_null())
@@ -414,7 +445,8 @@ bool Daemon::ForceFlash(const std::string& device_id) {
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
   StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get(), &err);
+  base::OnceClosure cb = modem_flasher_->TryFlash(
+      stub_modem.get(), modems_seen_since_oobe_prefs_->Exists(device_id), &err);
   StartHeartbeatTask(device_id);
 
   // We don't know the equipment ID of this modem, and if we're force-flashing
@@ -446,8 +478,9 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
 
   StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  base::OnceClosure cb =
-      modem_flasher_->TryFlashForTesting(stub_modem.get(), variant, &err);
+  base::OnceClosure cb = modem_flasher_->TryFlashForTesting(
+      stub_modem.get(), variant,
+      modems_seen_since_oobe_prefs_->Exists(device_id), &err);
   StartHeartbeatTask(device_id);
 
   // We don't know the equipment ID of this modem, and if we're force-flashing

@@ -531,7 +531,17 @@ TEST_F(MetricsTest, SendFwInstallResult_Failures) {
   metrics_->SendFwInstallResultFailure(err.get());
   testing::Mock::VerifyAndClearExpectations(&metrics_library_);
 
+  EXPECT_CALL(
+      *metrics_library_,
+      SendEnumToUMA(metrics::kMetricFwInstallResult,
+                    9 /*kFailureReturnedByHelperModemNeverSeen*/, num_consts));
+  err = brillo::Error::Create(FROM_HERE, "dbus",
+                              kErrorResultFailureReturnedByHelperModemNeverSeen,
+                              "msg");
+  metrics_->SendFwInstallResultFailure(err.get());
+  testing::Mock::VerifyAndClearExpectations(&metrics_library_);
+
   // Check that all values were tested.
-  EXPECT_EQ(9, static_cast<int>(FwInstallResult::kNumConstants));
+  EXPECT_EQ(10, static_cast<int>(FwInstallResult::kNumConstants));
 }
 }  // namespace modemfwd

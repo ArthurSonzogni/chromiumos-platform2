@@ -6,6 +6,7 @@
 
 #include <map>
 #include <utility>
+#include "base/containers/contains.h"
 
 #include <base/check.h>
 
@@ -107,6 +108,14 @@ FirmwareDirectory::Files FirmwareDirectoryStub::FindFirmware(
     it++;
   }
   return res;
+}
+
+bool FirmwareDirectoryStub::DeviceIdMatch(const std::string& device_id) {
+  for (auto& info : main_fw_info_for_carrier_) {
+    if (info.first.first == device_id)
+      return true;
+  }
+  return false;
 }
 
 bool FirmwareDirectoryStub::FindCarrierFirmware(const std::string& device_id,

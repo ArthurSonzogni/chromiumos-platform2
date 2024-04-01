@@ -29,6 +29,7 @@
 #include "modemfwd/modem_sandbox.h"
 #include "modemfwd/modem_tracker.h"
 #include "modemfwd/notification_manager.h"
+#include "modemfwd/prefs.h"
 #include "modemfwd/suspend_checker.h"
 
 namespace modemfwd {
@@ -130,6 +131,8 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   std::unique_ptr<FirmwareIndex> fw_index_;
   std::unique_ptr<ModemHelperDirectory> helper_directory_;
   std::unique_ptr<Metrics> metrics_;
+  std::unique_ptr<Prefs> prefs_;
+  std::unique_ptr<Prefs> modems_seen_since_oobe_prefs_;
 
   std::map<std::string, std::unique_ptr<Modem>> modems_;
   std::map<std::string, std::unique_ptr<HeartbeatTask>> heartbeat_tasks_;

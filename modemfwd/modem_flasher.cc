@@ -79,9 +79,10 @@ void ModemFlasher::ProcessFailedToPrepareFirmwareFile(
 
 base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,
                                                    const std::string& variant,
+                                                   bool modem_seen_since_oobe,
                                                    brillo::ErrorPtr* err) {
   firmware_directory_->OverrideVariantForTesting(variant);
-  return TryFlash(modem, err);
+  return TryFlash(modem, modem_seen_since_oobe, err);
 }
 
 uint32_t ModemFlasher::GetFirmwareTypesForMetrics(
@@ -116,7 +117,9 @@ uint32_t ModemFlasher::GetFirmwareTypesForMetrics(
   return fw_types;
 }
 
-base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
+base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
+                                         bool modem_seen_since_oobe,
+                                         brillo::ErrorPtr* err) {
   std::string equipment_id = modem->GetEquipmentId();
   FlashState* flash_state = &modem_info_[equipment_id];
   if (!flash_state->ShouldFlash()) {
@@ -259,7 +262,10 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem, brillo::ErrorPtr* err) {
   if (!modem->FlashFirmwares(flash_cfg)) {
     flash_state->OnFlashFailed();
     journal_->MarkEndOfFlashingFirmware(device_id, current_carrier);
-    Error::AddTo(err, FROM_HERE, kErrorResultFailureReturnedByHelper,
+    Error::AddTo(err, FROM_HERE,
+                 (modem_seen_since_oobe
+                      ? kErrorResultFailureReturnedByHelper
+                      : kErrorResultFailureReturnedByHelperModemNeverSeen),
                  "Helper failed to flash firmware files");
     notification_mgr_->NotifyUpdateFirmwareCompletedFlashFailure(
         err->get(), GetFirmwareTypesForMetrics(flash_cfg));
