@@ -1033,6 +1033,10 @@ void AddMlFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("CameraEffectsSupportedByHardware");
   }
 
+  if (builder->UseFlagIsSet("camera_feature_super_res")) {
+    builder->AddFeatureEnableOverride("CameraSuperResSupported");
+  }
+
   if (builder->UseFlagIsSet("ondevice_image_content_annotation")) {
     builder->AddFeatureEnableOverride("ICASupportedByHardware");
   }
