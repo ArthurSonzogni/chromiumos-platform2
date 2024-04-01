@@ -501,12 +501,15 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 
 		string CheckPortal [readwrite]
 
-			Control captive portal checking.  Possible values
-			are "true", "false", and "auto" (default).
+			Control captive portal checking. Possible values
+			are "true", "false", "http-only", and "auto" (default).
 			When set to "auto" captive portal checking is
 			controlled by Manager.CheckPortalList (which
 			is a per-technology mask/list of which services
-			should do captive portal checking).
+			should do captive portal checking). When set to
+			"http-only" captive portal checking only performs HTTP
+			probes and does not report "no-connectivity" for the
+			connected Service.
 
 		boolean Connectable [readonly]
 

@@ -144,8 +144,9 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
   }
 
   result_from_portal_detector_.reset();
+  bool http_only = validation_mode_ == ValidationMode::kHTTPOnly;
   portal_detector_->Start(
-      /*http_only=*/false, *ip_family, dns_list,
+      http_only, *ip_family, dns_list,
       base::BindOnce(&NetworkMonitor::OnPortalDetectorResult,
                      base::Unretained(this)));
   LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
@@ -412,6 +413,8 @@ std::ostream& operator<<(std::ostream& stream,
       return stream << "Disabled";
     case NetworkMonitor::ValidationMode::kFullValidation:
       return stream << "FullValidation";
+    case NetworkMonitor::ValidationMode::kHTTPOnly:
+      return stream << "HTTPOnly";
   }
 }
 

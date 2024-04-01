@@ -137,10 +137,9 @@ class NetworkMonitorTest : public ::testing::Test {
 
   // Starts NetworkMonitor and waits until PortalDetector returns |result|.
   void StartWithPortalDetectorResultReturned(
-      const PortalDetector::Result& result) {
-    EXPECT_CALL(
-        *mock_portal_detector_,
-        Start(/*http_only=*/false, net_base::IPFamily::kIPv4, kDnsList, _))
+      bool expect_http_only, const PortalDetector::Result& result) {
+    EXPECT_CALL(*mock_portal_detector_,
+                Start(expect_http_only, net_base::IPFamily::kIPv4, kDnsList, _))
         .WillOnce(testing::WithArg<3>(
             [result](PortalDetector::ResultCallback callback) {
               std::move(callback).Run(result);
@@ -151,7 +150,8 @@ class NetworkMonitorTest : public ::testing::Test {
                     NetworkMonitor::Result::FromPortalDetectorResult(result)))
         .Times(1);
 
-    StartAndExpectResult(NetworkMonitor::ValidationReason::kDBusRequest, true);
+    StartAndExpectResult(NetworkMonitor::ValidationReason::kDBusRequest,
+                         /*is_success=*/true);
   }
 
  protected:
@@ -231,7 +231,35 @@ TEST_F(NetworkMonitorTest, StartWithResultReturned) {
               SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
                               kTechnology, 204));
 
-  StartWithPortalDetectorResultReturned(result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
+}
+
+TEST_F(NetworkMonitorTest, StartWithHTTPOnly) {
+  const PortalDetector::Result result{
+      .http_only = true,
+      .http_result = PortalDetector::ProbeResult::kSuccess,
+      .http_status_code = 204,
+      .http_content_length = 0,
+      .https_result = PortalDetector::ProbeResult::kNoResult,
+      .http_duration = base::Milliseconds(100),
+      .https_duration = base::Milliseconds(0),
+  };
+
+  EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPProbeDuration,
+                                  kTechnology, 100));
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration, _, _))
+      .Times(0);
+  EXPECT_CALL(metrics_,
+              SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
+                        kTechnology, 100));
+  EXPECT_CALL(metrics_,
+              SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
+                              kTechnology, 204));
+
+  network_monitor_->SetValidationMode(
+      NetworkMonitor::ValidationMode::kHTTPOnly);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/true, result);
 }
 
 TEST_F(NetworkMonitorTest, Stop) {
@@ -315,7 +343,7 @@ TEST_F(NetworkMonitorTest, MetricsWithPartialConnectivity) {
     return mock_connection_diagnostics;
   });
 
-  StartWithPortalDetectorResultReturned(result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
 }
 
 TEST_F(NetworkMonitorTest, MetricsWithNoConnectivity) {
@@ -339,7 +367,7 @@ TEST_F(NetworkMonitorTest, MetricsWithNoConnectivity) {
     return mock_connection_diagnostics;
   });
 
-  StartWithPortalDetectorResultReturned(result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
 }
 
 TEST_F(NetworkMonitorTest, MetricsWithInternetConnectivity) {
@@ -369,7 +397,7 @@ TEST_F(NetworkMonitorTest, MetricsWithInternetConnectivity) {
       SendToUMA(Metrics::kPortalDetectorHTTPResponseContentLength, _, _))
       .Times(0);
 
-  StartWithPortalDetectorResultReturned(result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
 }
 
 TEST_F(NetworkMonitorTest, MetricsWithPortalRedirect) {
@@ -402,7 +430,7 @@ TEST_F(NetworkMonitorTest, MetricsWithPortalRedirect) {
       SendToUMA(Metrics::kPortalDetectorHTTPResponseContentLength, _, _))
       .Times(0);
 
-  StartWithPortalDetectorResultReturned(result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
 }
 
 TEST_F(NetworkMonitorTest, MetricsWithPortalInvalidRedirect) {
@@ -435,7 +463,7 @@ TEST_F(NetworkMonitorTest, MetricsWithPortalInvalidRedirect) {
     return mock_connection_diagnostics;
   });
 
-  StartWithPortalDetectorResultReturned(result);
+  StartWithPortalDetectorResultReturned(/*expect_http_only=*/false, result);
 }
 
 TEST(NetworkMonitorResultTest, FromCapportStatusIsCaptive) {

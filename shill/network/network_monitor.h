@@ -50,6 +50,10 @@ class NetworkMonitor {
     // Network validation with web probes is enabled. Both HTTPS validation and
     // HTTP captive portal detection are performed.
     kFullValidation,
+    // Only HTTP captive portal detection is performend. Network validation with
+    // HTTPS probes is not performed. The result of network validation is never
+    // kNoConnectivity.
+    kHTTPOnly,
   };
 
   // Reasons for starting portal validation on a Network.

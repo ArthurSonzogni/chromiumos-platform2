@@ -218,6 +218,10 @@ class Service : public base::RefCounted<Service> {
     // connection state of the Service automatically transitions to "online"
     // when the Service becomes connected.
     kFalse,
+    // Network validation with HTTPS probe is disabled and only portal detection
+    // with HTTP probes is performed. If a portal is not detected, the Service
+    // automatically transitions to "online".
+    kHTTPOnly,
     // Full network validation and portal detection with HTTP and HTTPS probes
     // is enabled only if portal detection is enabled for the link technology
     // of this Service in the Manager's CheckPortalList property (equivalent to
@@ -434,15 +438,6 @@ class Service : public base::RefCounted<Service> {
   // value in this service object's store.  Returns false if one or more
   // keys in |args| do not exist or have different values, true otherwise.
   mockable bool DoPropertiesMatch(const KeyValueStore& args) const;
-
-  // Returns whether portal detection is disabled by configuration on this
-  // service. This is the case if any of the following conditions is met:
-  //   - The Service is a managed Service.
-  //   - Property "CheckPortal" is set to "false".
-  //   - Property "CheckPortal" is set to "auto" and portal detection is
-  //     disabled for the link technology of this Service.
-  //   - The Service has a proxy configuration defined.
-  mockable bool IsPortalDetectionDisabled() const;
 
   // Returns true if the service is persisted to a non-ephemeral profile.
   mockable bool IsRemembered() const;
@@ -724,13 +719,15 @@ class Service : public base::RefCounted<Service> {
   mockable void UpdateNetworkValidationMode();
 
   // Returns the network validation mode for the given Service configuration.
-  // This returns kDisabled if any of the following conditions is true:
+  // When the CheckPortal property is set to "false" or "http-only", this
+  // returns the appropriate network validation mode. When the CheckPortal
+  // property is set to "true", the network validation mode is full validation
+  // unless any of the following conditions is true:
   //  - The Service is a managed Service.
   //  - There is a PAC URl or Manual proxy configuration.
-  //  - The Service's "CheckPortal" property is disabled for the Service
-  //  - The Service's "CheckPortal" property is set to "auto" and the Manager's
-  //    "CheckPortalList" property does not contains the link technology of this
-  //    Service.
+  //  - Manager's "CheckPortalList" property does not contains the link
+  // technology of this Service.
+  // For any of these cases, network validation is disabled.
   mockable NetworkMonitor::ValidationMode GetNetworkValidationMode();
 
   void set_unreliable(bool unreliable) { unreliable_ = unreliable; }
@@ -948,14 +945,15 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularServiceTest, IsMeteredByDefault);
   FRIEND_TEST(DeviceTest, FetchTrafficCounters);
+  FRIEND_TEST(EthernetEapServiceTest, OnEapCredentialsChanged);
   FRIEND_TEST(ManagerTest, ConnectToBestServices);
   FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ServiceTest, CalculateState);
   FRIEND_TEST(ServiceTest, CalculateTechnology);
   FRIEND_TEST(ServiceTest, Certification);
   FRIEND_TEST(ServiceTest, Compare);
-  FRIEND_TEST(ServiceTest, CompareSources);
   FRIEND_TEST(ServiceTest, ComparePreferEthernetOverWifi);
+  FRIEND_TEST(ServiceTest, CompareSources);
   FRIEND_TEST(ServiceTest, ConfigureEapStringProperty);
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
   FRIEND_TEST(ServiceTest, Constructor);
@@ -963,10 +961,10 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, IsNotMeteredByDefault);
-  FRIEND_TEST(ServiceTest, IsPortalDetectionDisabled);
   FRIEND_TEST(ServiceTest, Load);
   FRIEND_TEST(ServiceTest, LoadTrafficCounters);
   FRIEND_TEST(ServiceTest, MeteredOverride);
+  FRIEND_TEST(ServiceTest, NetworkValidationMode);
   FRIEND_TEST(ServiceTest, Save);
   FRIEND_TEST(ServiceTest, SaveAndLoadConnectionTimestamps);
   FRIEND_TEST(ServiceTest, SaveMeteredOverride);
@@ -975,24 +973,25 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SetCheckPortal);
   FRIEND_TEST(ServiceTest, SetConnectableFull);
   FRIEND_TEST(ServiceTest, SetFriendlyName);
-  FRIEND_TEST(ServiceTest, SetProxyConfig);
   FRIEND_TEST(ServiceTest, SetProperty);
+  FRIEND_TEST(ServiceTest, SetProxyConfig);
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, StateResetAfterFailure);
   FRIEND_TEST(ServiceTest, TrafficCounters);
   FRIEND_TEST(ServiceTest, UniqueAttributes);
   FRIEND_TEST(ServiceTest, Unload);
-  FRIEND_TEST(ServiceTest, GetNetworkValidationModeWhenDisabledByCheckPortal);
-  FRIEND_TEST(ServiceTest, GetNetworkValidationModeWhenDisabledByProxy);
+  FRIEND_TEST(ServiceTest,
+              UpdateNetworkValidationModeWhenDisabledByCheckPortal);
+  FRIEND_TEST(ServiceTest, UpdateNetworkValidationModeWhenDisabledByProxy);
+  FRIEND_TEST(ServiceTest, UpdateNetworkValidationModeWhenSetToHTTPOnly);
   FRIEND_TEST(ServiceTest, UserInitiatedConnectionResult);
+  FRIEND_TEST(WiFiMainTest, EAPEvent);  // For eap_.
   FRIEND_TEST(WiFiProviderTest, GetHiddenSSIDList);
+  FRIEND_TEST(WiFiServiceTest, LoadPassphraseClearCredentials);
+  FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseResetHasEverConnected);
   FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
-  FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
-  FRIEND_TEST(WiFiServiceTest, LoadPassphraseClearCredentials);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
-  FRIEND_TEST(WiFiMainTest, EAPEvent);  // For eap_.
-  FRIEND_TEST(EthernetEapServiceTest, OnEapCredentialsChanged);
 
   static const size_t kEAPMaxCertificationElements;
   static const base::TimeDelta kMinAutoConnectCooldownTime;
@@ -1090,6 +1089,13 @@ class Service : public base::RefCounted<Service> {
 
   void InitializeServiceStateTransitionMetrics();
   void UpdateServiceStateTransitionMetrics(Service::ConnectState new_state);
+
+  // Returns whether portal detection is disabled by configuration on this
+  // service. This is the case if any of the following conditions is met:
+  //   - The Service is a managed Service.
+  //   - The Service has a proxy configuration defined.
+  //   - Portal detection is disabled for the link technology of this Service.
+  bool IsPortalDetectionDisabled() const;
 
   // WeakPtrFactory comes first, so that other fields can use it.
   base::WeakPtrFactory<Service> weak_ptr_factory_;

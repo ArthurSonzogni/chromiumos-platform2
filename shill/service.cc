@@ -190,6 +190,8 @@ std::string Service::CheckPortalStateToString(CheckPortalState state) {
       return kCheckPortalTrue;
     case CheckPortalState::kFalse:
       return kCheckPortalFalse;
+    case CheckPortalState::kHTTPOnly:
+      return kCheckPortalHTTPOnly;
     case CheckPortalState::kAutomatic:
       return kCheckPortalAuto;
   }
@@ -202,6 +204,8 @@ std::optional<Service::CheckPortalState> Service::CheckPortalStateFromString(
     return CheckPortalState::kTrue;
   } else if (state_name == kCheckPortalFalse) {
     return CheckPortalState::kFalse;
+  } else if (state_name == kCheckPortalHTTPOnly) {
+    return CheckPortalState::kHTTPOnly;
   } else if (state_name == kCheckPortalAuto) {
     return CheckPortalState::kAutomatic;
   }
@@ -2085,20 +2089,23 @@ bool Service::IsPortalDetectionDisabled() const {
     return true;
   }
 
-  switch (check_portal_) {
-    case CheckPortalState::kTrue:
-      return false;
-    case CheckPortalState::kFalse:
-      return true;
-    case CheckPortalState::kAutomatic:
-      return !manager_->IsPortalDetectionEnabled(technology());
-  }
+  return !manager_->IsPortalDetectionEnabled(technology());
 }
 
 NetworkMonitor::ValidationMode Service::GetNetworkValidationMode() {
-  return IsPortalDetectionDisabled()
-             ? NetworkMonitor::ValidationMode::kDisabled
-             : NetworkMonitor::ValidationMode::kFullValidation;
+  switch (check_portal_) {
+    case CheckPortalState::kTrue:
+      return NetworkMonitor::ValidationMode::kFullValidation;
+    case CheckPortalState::kFalse:
+      return NetworkMonitor::ValidationMode::kDisabled;
+    case CheckPortalState::kHTTPOnly:
+      return NetworkMonitor::ValidationMode::kHTTPOnly;
+    case CheckPortalState::kAutomatic:
+      if (IsPortalDetectionDisabled()) {
+        return NetworkMonitor::ValidationMode::kDisabled;
+      }
+      return NetworkMonitor::ValidationMode::kFullValidation;
+  }
 }
 
 void Service::HelpRegisterDerivedBool(std::string_view name,

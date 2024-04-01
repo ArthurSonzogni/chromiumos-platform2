@@ -62,7 +62,6 @@ class MockService : public Service {
               (const KeyValueStore&),
               (const, override));
   MOCK_METHOD(bool, Is8021xConnectable, (), (const, override));
-  MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
   MOCK_METHOD(bool, IsRemembered, (), (const, override));
   MOCK_METHOD(void, AttachNetwork, (base::WeakPtr<Network>), (override));
   MOCK_METHOD(void, DetachNetwork, (), (override));
