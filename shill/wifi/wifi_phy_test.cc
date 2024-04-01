@@ -641,6 +641,17 @@ class WiFiPhyTest : public ::testing::Test {
     }
   }
 
+  void AssertRemovalCandidateSetOrder(
+      WiFiPhy::RemovalCandidateSet candidates,
+      std::vector<WiFiPhy::RemovalCandidate> expected_order) {
+    ASSERT_EQ(candidates.size(), expected_order.size());
+    uint32_t idx = 0;
+    for (auto candidate : candidates) {
+      ASSERT_EQ(candidate, expected_order[idx]);
+      idx++;
+    }
+  }
+
   void AssertApStaConcurrency(bool support) {
     ASSERT_EQ(wifi_phy_.SupportAPSTAConcurrency(), support);
   }
@@ -1012,6 +1023,94 @@ TEST_F(WiFiPhyTest, ValidPriority) {
   EXPECT_TRUE(WiFiPhy::Priority(5).IsValid());
   EXPECT_FALSE(WiFiPhy::Priority(6).IsValid());
   EXPECT_FALSE(WiFiPhy::Priority(-1).IsValid());
+}
+
+TEST_F(WiFiPhyTest, IfaceSorted) {
+  WiFiPhy::RemovalCandidate c = {};
+  c.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(0)});
+  c.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(4)});
+  c.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(3)});
+  c.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(2)});
+  c.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)});
+  c.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(5)});
+
+  auto iface = c.begin();
+  auto iface_next = c.begin();
+  iface_next++;
+  while (iface_next != c.end()) {
+    ASSERT_TRUE(iface->priority >= iface_next->priority);
+    iface++;
+    iface_next++;
+  }
+}
+
+TEST_F(WiFiPhyTest, RemovalCandidateSet) {
+  // Empty candidate is most preferable.
+  std::vector<WiFiPhy::RemovalCandidate> expected_order = {};
+  WiFiPhy::RemovalCandidate a = {};
+  expected_order.push_back(a);
+
+  // Less preferable than a because we have a additional interface.
+  WiFiPhy::RemovalCandidate b = {};
+  b.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)});
+  expected_order.push_back(b);
+
+  // Less preferable than a because we have a additional interface at the same
+  // priority.
+  WiFiPhy::RemovalCandidate c = {};
+  c.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)});
+  c.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)});
+  expected_order.push_back(c);
+
+  // Less preferable than c because despite having fewer interfaces, the
+  // existing interface is higher priority.
+  WiFiPhy::RemovalCandidate d = {};
+  d.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(2)});
+  expected_order.push_back(d);
+
+  // Less preferable than d because we have an extra entry at a lower
+  // priority than the maximum.
+  WiFiPhy::RemovalCandidate e = {};
+  e.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(1)});
+  e.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(2)});
+  expected_order.push_back(e);
+
+  // Less preferable than f because we have an extra entry at the highest
+  // priority.
+  WiFiPhy::RemovalCandidate f = {};
+  f.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(2)});
+  f.insert({NL80211_IFTYPE_STATION, WiFiPhy::Priority(2)});
+  expected_order.push_back(f);
+
+  // Try inserting the candidates in the reverse of the expected order.
+  WiFiPhy::RemovalCandidateSet reverse_candidates = {};
+  reverse_candidates.insert(f);
+  reverse_candidates.insert(e);
+  reverse_candidates.insert(d);
+  reverse_candidates.insert(c);
+  reverse_candidates.insert(b);
+  reverse_candidates.insert(a);
+  AssertRemovalCandidateSetOrder(reverse_candidates, expected_order);
+
+  // Try inserting the candidates in the expected order.
+  WiFiPhy::RemovalCandidateSet ordered_candidates = {};
+  ordered_candidates.insert(a);
+  ordered_candidates.insert(b);
+  ordered_candidates.insert(c);
+  ordered_candidates.insert(d);
+  ordered_candidates.insert(e);
+  ordered_candidates.insert(f);
+  AssertRemovalCandidateSetOrder(ordered_candidates, expected_order);
+
+  // Try inserting the candidates in an arbitrary order.
+  WiFiPhy::RemovalCandidateSet arbitrary_candidates = {};
+  arbitrary_candidates.insert(c);
+  arbitrary_candidates.insert(a);
+  arbitrary_candidates.insert(f);
+  arbitrary_candidates.insert(d);
+  arbitrary_candidates.insert(b);
+  arbitrary_candidates.insert(e);
+  AssertRemovalCandidateSetOrder(arbitrary_candidates, expected_order);
 }
 
 }  // namespace shill

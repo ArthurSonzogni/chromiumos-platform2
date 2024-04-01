@@ -160,6 +160,68 @@ class WiFiPhy {
   friend class WiFiPhyTest;
   friend class MockWiFiPhy;
 
+  FRIEND_TEST(WiFiPhyTest, IfaceSorted);
+  FRIEND_TEST(WiFiPhyTest, RemovalCandidateSet);
+
+  // Represents an interface under consideration for concurrent operation.
+  // Contains the relevant bits of information about a WiFi interface which are
+  // required for making concurrency decisions. Used to allow common comparison
+  // of interfaces which may have different object types.
+  struct ConcurrentIface {
+    nl80211_iftype iftype;
+    Priority priority;
+    bool operator==(const ConcurrentIface&) const = default;
+  };
+
+  // Compares ConcurrentIface structs by their priority values, with higher
+  // priorities coming first.
+  struct CompareConcurrentIface {
+    bool operator()(ConcurrentIface lhs, ConcurrentIface rhs) const {
+      return lhs.priority > rhs.priority;
+    }
+  };
+
+  // A set of interfaces which are candidates to be removed in concurrency
+  // conflict resolution. Interfaces are sorted by their priority.
+  typedef std::multiset<ConcurrentIface, CompareConcurrentIface>
+      RemovalCandidate;
+
+  // Compares removal candidates by their preferability. A candidate is
+  // preferable if it includes fewer interfaces at a given priority level than
+  // another candidate, with higher priorities taking precedence.
+  // TODO(b/328075705): Add a reference to the documentation which fully details
+  // this comparison.
+  struct RemovalCandidateComparator {
+    bool operator()(const RemovalCandidate& lhs,
+                    const RemovalCandidate& rhs) const {
+      auto lhs_iter = lhs.begin();
+      auto rhs_iter = rhs.begin();
+      // RemovalCandidates are always sorted by priority, so we can step through
+      // them and compare elements one-by-one.
+      while (true) {
+        // If we've reached the end of either candidate, that must be the
+        // preferable candidate. (If we've reached the end of both, that's a tie
+        // and it's fine to prefer the lhs).
+        if (lhs_iter == lhs.end()) {
+          return true;
+        }
+        if (rhs_iter == rhs.end()) {
+          return false;
+        }
+        if (lhs_iter->priority == rhs_iter->priority) {
+          lhs_iter++;
+          rhs_iter++;
+          continue;
+        }
+        return lhs_iter->priority < rhs_iter->priority;
+      }
+    }
+  };
+
+  // A set of RemovalCandidates sorted by their preferability.
+  typedef std::multiset<RemovalCandidate, RemovalCandidateComparator>
+      RemovalCandidateSet;
+
   // Helper functions used to parse NL80211_CMD_NEW_WIPHY message.  They take
   // relevant portion (attribute), parse it and store the information in member
   // variables.  Respectively these are:
