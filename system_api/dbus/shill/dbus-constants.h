@@ -517,9 +517,6 @@ constexpr char kStatePortalSuspected[] = "portal-suspected";
 constexpr char kStateOnline[] = "online";
 constexpr char kStateDisconnecting[] = "disconnecting";
 constexpr char kStateFailure[] = "failure";
-// TODO(b/260792466): Remove deprecated states once Chrome stops referring to
-// them in system_api/dbus/shill/dbus-constants.h
-constexpr char kStateDisconnect[] = "disconnecting";
 
 // Shill CheckPortal property values.
 constexpr char kCheckPortalTrue[] = "true";
