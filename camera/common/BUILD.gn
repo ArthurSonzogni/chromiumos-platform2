@@ -43,6 +43,7 @@ group("all") {
       ":cbm_test",
       ":embed_file_toc_test",
       ":future_test",
+      ":relative_fov_test",
       ":stream_manipulator_manager_test",
 
       # TODO(b/262337896): Change back to use
@@ -138,6 +139,7 @@ source_set("base") {
     "//camera/common/future.cc",
     "//camera/common/ipc_util.cc",
     "//camera/common/metadata_logger.cc",
+    "//camera/common/relative_fov.cc",
     "//camera/common/reloadable_config_file.cc",
     "//camera/common/timezone.cc",
     "//camera/common/udev_watcher.cc",
@@ -498,6 +500,13 @@ if (use.test) {
     configs += [ ":target_defaults_test" ]
     run_test = true
     deps = [ ":embed_file_toc_test_files" ]
+  }
+
+  executable("relative_fov_test") {
+    sources = [ "//camera/common/relative_fov_test.cc" ]
+    configs += [ ":target_defaults_test" ]
+    run_test = true
+    deps = [ ":base" ]
   }
 
   executable("stream_manipulator_manager_test") {

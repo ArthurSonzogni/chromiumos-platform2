@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -39,15 +40,30 @@ struct Rect {
     return top + height - (std::is_integral<T>::value ? 1 : 0);
   }
   bool is_valid() const { return width > 0 && height > 0; }
+
+  template <typename E = T,
+            std::enable_if_t<std::is_integral_v<E>, bool> = true>
   bool operator==(const Rect& rhs) const {
     return left == rhs.left && top == rhs.top && width == rhs.width &&
            height == rhs.height;
   }
+
+  template <typename E = T,
+            std::enable_if_t<std::is_floating_point_v<E>, bool> = true>
+  bool operator==(const Rect& rhs) const {
+    constexpr E kEpsilon = 1e-3;
+    return std::abs(left - rhs.left) <= kEpsilon &&
+           std::abs(top - rhs.top) <= kEpsilon &&
+           std::abs(width - rhs.width) <= kEpsilon &&
+           std::abs(height - rhs.height) <= kEpsilon;
+  }
+
   template <typename U>
   Rect<U> AsRect() const {
     return Rect<U>(base::checked_cast<U>(left), base::checked_cast<U>(top),
                    base::checked_cast<U>(width), base::checked_cast<U>(height));
   }
+
   std::string ToString() const {
     std::stringstream ss;
     ss << left << "," << top << "+" << width << "x" << height;
@@ -109,6 +125,29 @@ template <typename T>
 std::ostream& operator<<(std::ostream& stream, const Range<T>& r) {
   return stream << "[" << r.lower_bound << ", " << r.upper_bound << "]";
 }
+
+// Relative FoV (field of view) are ratios of (width, height) of the visible
+// region to the active array region.
+class RelativeFov {
+ public:
+  RelativeFov(float x, float y);
+  // Calculates FoV from image size and sensor active array size in Android spec
+  // (either image dimension has full FoV of the sensor active array).
+  // For example, the RelativeFov of 640x360 (16:9) images generated from
+  // 1600x1200 (4:3) active sensor array is (1, 0.75).
+  RelativeFov(const Size& image_size, const Size& active_array_size);
+
+  bool operator==(const RelativeFov& other) const;
+  bool IsValid() const;
+  bool Covers(const RelativeFov& other) const;
+  Rect<float> GetCropWindowInto(const RelativeFov& other) const;
+
+ private:
+  static constexpr float kEpsilon = 1e-3f;
+
+  float x_ = 0.0f;
+  float y_ = 0.0f;
+};
 
 }  // namespace cros
 
