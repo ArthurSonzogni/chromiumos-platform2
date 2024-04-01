@@ -520,6 +520,7 @@ constexpr char kStateFailure[] = "failure";
 
 // Shill CheckPortal property values.
 constexpr char kCheckPortalTrue[] = "true";
+constexpr char kCheckPortalAuto[] = "auto";
 constexpr char kCheckPortalFalse[] = "false";
 constexpr char kCheckPortalHTTPOnly[] = "http-only";
 

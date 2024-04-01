@@ -131,7 +131,8 @@ void TestCustomSetterNoopChange(ServiceRefPtr service,
   // SetCheckPortal
   {
     Error error;
-    EXPECT_FALSE(service->SetCheckPortal(service->check_portal_, &error));
+    EXPECT_FALSE(
+        service->SetCheckPortal(service->GetCheckPortal(&error), &error));
     EXPECT_TRUE(error.IsSuccess());
   }
 

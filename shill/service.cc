@@ -137,10 +137,6 @@ const char Service::kAutoConnRecentBadPassphraseFailure[] =
 
 const size_t Service::kEAPMaxCertificationElements = 10;
 
-const char Service::kCheckPortalAuto[] = "auto";
-const char Service::kCheckPortalFalse[] = "false";
-const char Service::kCheckPortalTrue[] = "true";
-
 const int Service::kPriorityNone = 0;
 
 const char Service::kStorageAutoConnect[] = "AutoConnect";
@@ -187,6 +183,31 @@ const int Service::kMaxMisconnectEventHistory = 20;
 // static
 unsigned int Service::next_serial_number_ = 0;
 
+// static
+std::string Service::CheckPortalStateToString(CheckPortalState state) {
+  switch (state) {
+    case CheckPortalState::kTrue:
+      return kCheckPortalTrue;
+    case CheckPortalState::kFalse:
+      return kCheckPortalFalse;
+    case CheckPortalState::kAutomatic:
+      return kCheckPortalAuto;
+  }
+}
+
+// static
+std::optional<Service::CheckPortalState> Service::CheckPortalStateFromString(
+    std::string_view state_name) {
+  if (state_name == kCheckPortalTrue) {
+    return CheckPortalState::kTrue;
+  } else if (state_name == kCheckPortalFalse) {
+    return CheckPortalState::kFalse;
+  } else if (state_name == kCheckPortalAuto) {
+    return CheckPortalState::kAutomatic;
+  }
+  return std::nullopt;
+}
+
 Service::Service(Manager* manager, Technology technology)
     : weak_ptr_factory_(this),
       state_(kStateIdle),
@@ -195,7 +216,7 @@ Service::Service(Manager* manager, Technology technology)
       auto_connect_(false),
       retain_auto_connect_(false),
       was_visible_(false),
-      check_portal_(kCheckPortalAuto),
+      check_portal_(CheckPortalState::kAutomatic),
       connectable_(false),
       error_(ConnectFailureToString(failure_)),
       error_details_(kErrorDetailsNone),
@@ -756,8 +777,11 @@ bool Service::Load(const StoreInterface* storage) {
   retain_auto_connect_ =
       storage->GetBool(id, kStorageAutoConnect, &auto_connect_);
 
-  LoadString(storage, id, kStorageCheckPortal, kCheckPortalAuto,
-             &check_portal_);
+  std::string check_portal_name;
+  storage->GetString(id, kStorageCheckPortal, &check_portal_name);
+  check_portal_ = CheckPortalStateFromString(check_portal_name)
+                      .value_or(CheckPortalState::kAutomatic);
+
   LoadString(storage, id, kStorageGUID, "", &guid_);
   if (!storage->GetInt(id, kStoragePriority, &priority_)) {
     priority_ = kPriorityNone;
@@ -877,7 +901,7 @@ void Service::MigrateDeprecatedStorage(StoreInterface* storage) {
 bool Service::Unload() {
   auto_connect_ = IsAutoConnectByDefault();
   retain_auto_connect_ = false;
-  check_portal_ = kCheckPortalAuto;
+  check_portal_ = CheckPortalState::kAutomatic;
   ClearExplicitlyDisconnected();
   guid_ = "";
   has_ever_connected_ = false;
@@ -919,12 +943,8 @@ bool Service::Save(StoreInterface* storage) {
     storage->DeleteKey(id, kStorageAutoConnect);
   }
 
-  if (check_portal_ == kCheckPortalAuto) {
-    storage->DeleteKey(id, kStorageCheckPortal);
-  } else {
-    storage->SetString(id, kStorageCheckPortal, check_portal_);
-  }
-
+  storage->SetString(id, kStorageCheckPortal,
+                     CheckPortalStateToString(check_portal_));
   SaveStringOrClear(storage, id, kStorageGUID, guid_);
   storage->SetBool(id, kStorageHasEverConnected, has_ever_connected_);
   storage->SetString(id, kStorageName, friendly_name_);
@@ -2065,9 +2085,14 @@ bool Service::IsPortalDetectionDisabled() const {
     return true;
   }
 
-  return (check_portal_ == kCheckPortalFalse) ||
-         (check_portal_ == kCheckPortalAuto &&
-          !manager_->IsPortalDetectionEnabled(technology()));
+  switch (check_portal_) {
+    case CheckPortalState::kTrue:
+      return false;
+    case CheckPortalState::kFalse:
+      return true;
+    case CheckPortalState::kAutomatic:
+      return !manager_->IsPortalDetectionEnabled(technology());
+  }
 }
 
 NetworkMonitor::ValidationMode Service::GetNetworkValidationMode() {
@@ -2224,24 +2249,27 @@ void Service::ClearAutoConnect(Error* /*error*/) {
 }
 
 std::string Service::GetCheckPortal(Error* error) {
-  return check_portal_;
+  return CheckPortalStateToString(check_portal_);
 }
 
-bool Service::SetCheckPortal(const std::string& check_portal, Error* error) {
-  if (check_portal != kCheckPortalFalse && check_portal != kCheckPortalTrue &&
-      check_portal != kCheckPortalAuto) {
+bool Service::SetCheckPortal(const std::string& check_portal_name,
+                             Error* error) {
+  const std::optional<CheckPortalState> check_portal =
+      CheckPortalStateFromString(check_portal_name);
+  if (!check_portal) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kInvalidArguments,
-        base::StringPrintf("Invalid Service CheckPortal property value: %s",
-                           check_portal.c_str()));
+        "Invalid Service CheckPortal property value: " + check_portal_name);
     return false;
   }
-  if (check_portal == check_portal_) {
+
+  if (*check_portal == check_portal_) {
     return false;
   }
-  LOG(INFO) << log_name() << ": " << __func__ << ": " << check_portal_ << " -> "
-            << check_portal;
-  check_portal_ = check_portal;
+  LOG(INFO) << log_name() << ": " << __func__ << ": "
+            << CheckPortalStateToString(check_portal_) << " -> "
+            << CheckPortalStateToString(*check_portal);
+  check_portal_ = *check_portal;
   UpdateNetworkValidationMode();
   return true;
 }

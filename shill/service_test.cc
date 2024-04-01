@@ -269,7 +269,8 @@ class AllMockServiceTest : public testing::Test {
 
 TEST_F(ServiceTest, Constructor) {
   EXPECT_TRUE(service_->save_credentials_);
-  EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+  EXPECT_EQ(Service::CheckPortalState::kAutomatic, service_->check_portal());
+  EXPECT_EQ("auto", service_->GetCheckPortal(nullptr));
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_FALSE(service_->has_ever_connected());
   EXPECT_EQ(0, service_->previous_error_serial_number_);
@@ -472,11 +473,10 @@ TEST_F(ServiceTest, LoadTrafficCounters) {
 
 TEST_F(ServiceTest, Load) {
   FakeStore storage;
-  const std::string kCheckPortal("check-portal");
   const int kPriority = 20;
   const std::string kProxyConfig("proxy-config");
   const std::string kUIData("ui-data");
-  storage.SetString(storage_id_, Service::kStorageCheckPortal, kCheckPortal);
+  storage.SetString(storage_id_, Service::kStorageCheckPortal, "false");
   storage.SetString(storage_id_, Service::kStorageGUID, kGUID);
   storage.SetBool(storage_id_, Service::kStorageHasEverConnected, true);
   storage.SetInt(storage_id_, Service::kStoragePriority, kPriority);
@@ -484,7 +484,8 @@ TEST_F(ServiceTest, Load) {
   storage.SetString(storage_id_, Service::kStorageUIData, kUIData);
 
   EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_EQ(kCheckPortal, service_->check_portal_);
+  EXPECT_EQ(Service::CheckPortalState::kFalse, service_->check_portal());
+  EXPECT_EQ("false", service_->GetCheckPortal(nullptr));
   EXPECT_EQ(kGUID, service_->guid_);
   EXPECT_TRUE(service_->has_ever_connected_);
   EXPECT_EQ(kProxyConfig, service_->proxy_config_);
@@ -499,7 +500,8 @@ TEST_F(ServiceTest, Load) {
 
   // Assure that parameters are set to default if not available in the profile.
   EXPECT_TRUE(service_->Load(&storage));
-  EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+  EXPECT_EQ(Service::CheckPortalState::kAutomatic, service_->check_portal());
+  EXPECT_EQ("auto", service_->GetCheckPortal(nullptr));
   EXPECT_EQ("", service_->guid_);
   EXPECT_EQ("", service_->proxy_config_);
   EXPECT_EQ("", service_->ui_data_);
@@ -1422,7 +1424,8 @@ TEST_F(ServiceTest, SetCheckPortal) {
     Error error;
     service_->SetCheckPortal("false", &error);
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(Service::kCheckPortalFalse, service_->check_portal_);
+    EXPECT_EQ(Service::CheckPortalState::kFalse, service_->check_portal());
+    EXPECT_EQ("false", service_->GetCheckPortal(nullptr));
     EXPECT_TRUE(service_->IsPortalDetectionDisabled());
     EXPECT_EQ(NetworkMonitor::ValidationMode::kDisabled,
               service_->GetNetworkValidationMode());
@@ -1432,9 +1435,10 @@ TEST_F(ServiceTest, SetCheckPortal) {
     EXPECT_CALL(*network, UpdateNetworkValidationMode(
                               NetworkMonitor::ValidationMode::kFullValidation));
     Error error;
-    service_->SetCheckPortal("true", &error);
+    service_->SetCheckPortal("auto", &error);
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(Service::kCheckPortalTrue, service_->check_portal_);
+    EXPECT_EQ(Service::CheckPortalState::kAutomatic, service_->check_portal());
+    EXPECT_EQ("auto", service_->GetCheckPortal(nullptr));
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
     EXPECT_EQ(NetworkMonitor::ValidationMode::kFullValidation,
               service_->GetNetworkValidationMode());
@@ -1444,9 +1448,10 @@ TEST_F(ServiceTest, SetCheckPortal) {
     EXPECT_CALL(*network, UpdateNetworkValidationMode(
                               NetworkMonitor::ValidationMode::kFullValidation));
     Error error;
-    service_->SetCheckPortal("auto", &error);
+    service_->SetCheckPortal("true", &error);
     EXPECT_TRUE(error.IsSuccess());
-    EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+    EXPECT_EQ(Service::CheckPortalState::kTrue, service_->check_portal());
+    EXPECT_EQ("true", service_->GetCheckPortal(nullptr));
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
     EXPECT_EQ(NetworkMonitor::ValidationMode::kFullValidation,
               service_->GetNetworkValidationMode());
@@ -1458,7 +1463,8 @@ TEST_F(ServiceTest, SetCheckPortal) {
     service_->SetCheckPortal("xxx", &error);
     EXPECT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
-    EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+    EXPECT_EQ(Service::CheckPortalState::kTrue, service_->check_portal());
+    EXPECT_EQ("true", service_->GetCheckPortal(nullptr));
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
     EXPECT_EQ(NetworkMonitor::ValidationMode::kFullValidation,
               service_->GetNetworkValidationMode());
@@ -3188,6 +3194,15 @@ TEST_F(ServiceTest, UpdateNetworkValidationFails) {
   service_->network_event_handler()->OnNetworkValidationStart(
       1, /*is_failure=*/true);
   EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
+}
+
+TEST_F(ServiceTest, CheckPortalStateNames) {
+  EXPECT_EQ("true", Service::CheckPortalStateToString(
+                        Service::CheckPortalState::kTrue));
+  EXPECT_EQ("false", Service::CheckPortalStateToString(
+                         Service::CheckPortalState::kFalse));
+  EXPECT_EQ("auto", Service::CheckPortalStateToString(
+                        Service::CheckPortalState::kAutomatic));
 }
 
 }  // namespace shill

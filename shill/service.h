@@ -64,10 +64,6 @@ class Service : public base::RefCounted<Service> {
   using TrafficCounterMap = std::map<patchpanel::Client::TrafficSource,
                                      patchpanel::Client::TrafficVector>;
 
-  static const char kCheckPortalAuto[];
-  static const char kCheckPortalFalse[];
-  static const char kCheckPortalTrue[];
-
   static constexpr std::string_view kErrorDetailsNone = "";
 
   // TODO(pstew): Storage constants shouldn't need to be public
@@ -211,6 +207,31 @@ class Service : public base::RefCounted<Service> {
     kSuspected,
     kConfirmed,
   };
+
+  // Possible states of the "CheckPortal" service property.
+  enum class CheckPortalState {
+    // Full network validation and portal detection with HTTP and HTTPS probes
+    // is enabled.
+    kTrue,
+    // Network validation is disabled, HTTP or HTTPS probes are never sent on
+    // connection establishement or when RequestPortalDetection is called. The
+    // connection state of the Service automatically transitions to "online"
+    // when the Service becomes connected.
+    kFalse,
+    // Full network validation and portal detection with HTTP and HTTPS probes
+    // is enabled only if portal detection is enabled for the link technology
+    // of this Service in the Manager's CheckPortalList property (equivalent to
+    // kTrue). Otherwise, network validation with probes is disabled (equivalent
+    // to kFalse).
+    kAutomatic,
+  };
+
+  // Converts a CheckPortalState to and from a string. The values are defined
+  // in chromeos-base/system_api's shill dbus-constants.h header and used in
+  // storage. Service::Load() and Service::Save() must handle any miration.
+  static std::string CheckPortalStateToString(CheckPortalState state);
+  static std::optional<CheckPortalState> CheckPortalStateFromString(
+      std::string_view state_name);
 
   // Delegate class for Network::EventHandler. The NetworkEventHandler of a
   // Service is only registered to a Network when the Service is attached to
@@ -743,6 +764,8 @@ class Service : public base::RefCounted<Service> {
   // tests.
   void UpdateStateTransitionMetrics(Service::ConnectState new_state);
 
+  CheckPortalState check_portal() const { return check_portal_; }
+
   // Gets a weak ptr to this object.
   base::WeakPtr<Service> AsWeakPtr() { return weak_ptr_factory_.GetWeakPtr(); }
 
@@ -986,7 +1009,7 @@ class Service : public base::RefCounted<Service> {
   bool GetAutoConnect(Error* error);
 
   std::string GetCheckPortal(Error* error);
-  bool SetCheckPortal(const std::string& check_portal, Error* error);
+  bool SetCheckPortal(const std::string& check_portal_name, Error* error);
 
   std::string GetGuid(Error* error);
 
@@ -1091,7 +1114,7 @@ class Service : public base::RefCounted<Service> {
   // task, this will be canceled to avoid spurious Connect errors.
   base::CancelableOnceClosure pending_connect_task_;
 
-  std::string check_portal_;
+  CheckPortalState check_portal_;
   bool connectable_;
   std::string error_;
   std::string error_details_;
