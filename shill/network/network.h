@@ -369,7 +369,7 @@ class Network : public NetworkMonitor::ClientNetwork {
   // a reachable neighbor for the current active connection. Reachability can
   // only be obsrved on WiFi and Ethernet networks.
   mockable bool ipv4_gateway_found() const { return ipv4_gateway_found_; }
-  mockable bool ipv6_gateway_found() const { return ipv6_gateway_found_; }
+  bool ipv6_gateway_found() const { return ipv6_gateway_found_; }
 
   // Returns true if the DHCP parameters provided indicate that the Chromebook
   // is tetherd to an Android mobile device or another Chromebook over a WiFi

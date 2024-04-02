@@ -48,7 +48,7 @@ class EapCredentials {
 
   // Returns true if a connection can be made with |this| credentials using
   // only passphrase properties.
-  virtual bool IsConnectableUsingPassphrase() const;
+  bool IsConnectableUsingPassphrase() const;
 
   // Loads EAP properties from |storage| in group |id|.
   virtual void Load(const StoreInterface* store, const std::string& id);
@@ -121,14 +121,12 @@ class EapCredentials {
 
   // Getters and setters.
   virtual const std::string& cert_id() const { return cert_id_; }
-  virtual const std::string& identity() const { return identity_; }
+  const std::string& identity() const { return identity_; }
   void set_identity(const std::string& identity) { identity_ = identity; }
   virtual const std::string& key_id() const { return key_id_; }
   virtual const std::string& key_management() const { return key_management_; }
   virtual const std::string& password() const { return password_; }
-  virtual void set_password(const std::string& password) {
-    password_ = password;
-  }
+  void set_password(const std::string& password) { password_ = password; }
   virtual bool use_system_cas() const { return use_system_cas_; }
   virtual void set_use_system_cas(bool use_system_cas) {
     use_system_cas_ = use_system_cas;

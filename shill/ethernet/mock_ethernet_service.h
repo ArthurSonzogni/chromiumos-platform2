@@ -25,7 +25,6 @@ class MockEthernetService : public EthernetService {
 
   MOCK_METHOD(void, Configure, (const KeyValueStore&, Error*), (override));
   MOCK_METHOD(void, Disconnect, (Error*, const char*), (override));
-  MOCK_METHOD(RpcIdentifier, GetDeviceRpcId, (Error*), (const, override));
   MOCK_METHOD(std::string, GetStorageIdentifier, (), (const, override));
   MOCK_METHOD(bool, IsConnected, (Error*), (const, override));
   MOCK_METHOD(bool, IsConnecting, (), (const, override));

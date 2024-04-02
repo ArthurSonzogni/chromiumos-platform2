@@ -81,7 +81,6 @@ class MockNetwork : public Network {
               OnNeighborReachabilityEvent,
               (const patchpanel::Client::NeighborReachabilityEvent&));
   MOCK_METHOD(bool, ipv4_gateway_found, (), (const, override));
-  MOCK_METHOD(bool, ipv6_gateway_found, (), (const, override));
   MOCK_METHOD(void,
               UpdateNetworkValidationMode,
               (NetworkMonitor::ValidationMode mode),

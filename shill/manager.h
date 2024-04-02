@@ -285,9 +285,9 @@ class Manager {
   // Called by a profile when its properties change.
   void OnProfileChanged(const ProfileRefPtr& profile);
   // Let shill stop managing |interface_name|.
-  virtual void ClaimDevice(const std::string& interface_name, Error* error);
+  void ClaimDevice(const std::string& interface_name, Error* error);
   // Let shill manage |interface_name| again.
-  virtual void ReleaseDevice(const std::string& interface_name, Error* error);
+  void ReleaseDevice(const std::string& interface_name, Error* error);
 
   // Called by a service to remove its associated configuration.  If |service|
   // is associated with a non-ephemeral profile, this configuration entry
@@ -328,7 +328,7 @@ class Manager {
       Error* error);
   // Return a reference to the Service associated with the default connection.
   // If there is no such connection, this function returns a reference to NULL.
-  virtual ServiceRefPtr GetDefaultService() const;
+  ServiceRefPtr GetDefaultService() const;
   RpcIdentifier GetDefaultServiceRpcIdentifier(Error* error);
 
   // Set enabled state of all |technology_name| devices to |enabled_state|.
@@ -394,7 +394,7 @@ class Manager {
   WiFiProvider* wifi_provider() const { return wifi_provider_.get(); }
   PropertyStore* mutable_store() { return &store_; }
   virtual const PropertyStore& store() const { return store_; }
-  virtual const base::FilePath& run_path() const { return run_path_; }
+  const base::FilePath& run_path() const { return run_path_; }
   const base::FilePath& storage_path() const { return storage_path_; }
 
   const base::ObserverList<DefaultServiceObserver>& default_service_observers()

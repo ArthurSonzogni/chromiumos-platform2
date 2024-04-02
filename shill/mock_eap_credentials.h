@@ -22,7 +22,6 @@ class MockEapCredentials : public EapCredentials {
   ~MockEapCredentials() override;
 
   MOCK_METHOD(bool, IsConnectable, (), (const, override));
-  MOCK_METHOD(bool, IsConnectableUsingPassphrase, (), (const, override));
   MOCK_METHOD(void,
               Load,
               (const StoreInterface*, const std::string&),
@@ -41,9 +40,7 @@ class MockEapCredentials : public EapCredentials {
               (const, override));
   MOCK_METHOD(void, Reset, (), (override));
   MOCK_METHOD(bool, SetKeyManagement, (const std::string&, Error*), (override));
-  MOCK_METHOD(const std::string&, identity, (), (const, override));
   MOCK_METHOD(const std::string&, key_management, (), (const, override));
-  MOCK_METHOD(void, set_password, (const std::string&), (override));
   MOCK_METHOD(const std::string&, pin, (), (const, override));
 
  private:

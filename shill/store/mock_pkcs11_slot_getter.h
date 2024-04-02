@@ -28,7 +28,6 @@ class MockPkcs11SlotGetter : public Pkcs11SlotGetter {
                base::OnceCallback<void(CK_SLOT_ID)>,
                base::TimeDelta),
               (override));
-  MOCK_METHOD(CK_SLOT_ID, GetPkcs11DefaultSlotId, (), (override));
 };
 
 }  // namespace shill

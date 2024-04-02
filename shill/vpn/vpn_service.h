@@ -52,7 +52,7 @@ class VPNService : public Service,
   void OnDefaultPhysicalServiceChanged(
       const ServiceRefPtr& physical_service) override;
 
-  virtual void InitDriverPropertyStore();
+  void InitDriverPropertyStore();
 
   VPNDriver* driver() const { return driver_.get(); }
 

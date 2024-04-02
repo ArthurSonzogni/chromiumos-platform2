@@ -22,7 +22,6 @@ class MockFileIO : public FileIO {
   MOCK_METHOD(ssize_t, Write, (int, const void*, size_t), (override));
   MOCK_METHOD(ssize_t, Read, (int, void*, size_t), (override));
   MOCK_METHOD(int, Close, (int), (override));
-  MOCK_METHOD(int, SetFdNonBlocking, (int), (override));
 };
 
 }  // namespace shill

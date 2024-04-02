@@ -122,7 +122,7 @@ class VPNDriver {
   virtual void OnAfterResume();
   virtual void OnDefaultPhysicalServiceEvent(DefaultPhysicalServiceEvent event);
 
-  mockable std::string GetHost() const;
+  std::string GetHost() const;
 
   VPNType vpn_type() const { return vpn_type_; }
   KeyValueStore* args() { return &args_; }

@@ -47,7 +47,6 @@ class MockManager : public Manager {
               (),
               (const, override));
   MOCK_METHOD(const PropertyStore&, store, (), (const, override));
-  MOCK_METHOD(const base::FilePath&, run_path, (), (const, override));
   MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(void,
@@ -79,7 +78,6 @@ class MockManager : public Manager {
               HandleProfileEntryDeletion,
               (const ProfileRefPtr&, const std::string&),
               (override));
-  MOCK_METHOD(ServiceRefPtr, GetDefaultService, (), (const, override));
   MOCK_METHOD(ServiceRefPtr,
               GetServiceWithStorageIdentifierFromProfile,
               (const ProfileRefPtr&, const std::string&, Error*),
@@ -121,9 +119,6 @@ class MockManager : public Manager {
               (override));
   MOCK_METHOD(void, SetIgnoreUnknownEthernet, (bool), (override));
   MOCK_METHOD(bool, ignore_unknown_ethernet, (), (const, override));
-  MOCK_METHOD(int64_t, GetSuspendDurationUsecs, (), (const, override));
-  MOCK_METHOD(void, ClaimDevice, (const std::string&, Error*), (override));
-  MOCK_METHOD(void, ReleaseDevice, (const std::string&, Error*), (override));
   MOCK_METHOD(std::vector<std::string>,
               GetDeviceInterfaceNames,
               (),
@@ -157,6 +152,8 @@ class MockManager : public Manager {
               GetCellularOperatorCountryCode,
               (),
               ());
+
+  int64_t GetSuspendDurationUsecs() const override { return 1000000; }
 
   // Getter and setter for a mocked device info instance.
   MockDeviceInfo* mock_device_info() { return mock_device_info_.get(); }

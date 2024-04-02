@@ -21,8 +21,6 @@ class MockEventDispatcher : public EventDispatcher {
 
   ~MockEventDispatcher() override;
 
-  MOCK_METHOD(void, DispatchForever, (), (override));
-  MOCK_METHOD(void, DispatchPendingEvents, (), (override));
   MOCK_METHOD(void,
               PostDelayedTask,
               (const base::Location&, base::OnceClosure, base::TimeDelta),

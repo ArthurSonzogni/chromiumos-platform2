@@ -31,8 +31,6 @@ class MockResolver : public Resolver {
               SetDNSProxyAddresses,
               (const std::vector<std::string>&),
               (override));
-  MOCK_METHOD(bool, ClearDNS, (), (override));
-  MOCK_METHOD(void, set_path, (const base::FilePath&), (override));
 };
 
 }  // namespace shill

@@ -283,7 +283,7 @@ class Service : public base::RefCounted<Service> {
   mockable void UserInitiatedConnect(const char* reason, Error* error);
   // Disconnect this service via Disconnect(). The service will not be eligible
   // for auto-connect until a subsequent call to Connect, or Load.
-  mockable void UserInitiatedDisconnect(const char* reason, Error* error);
+  void UserInitiatedDisconnect(const char* reason, Error* error);
 
   // The default implementation returns the error kNotSupported.
   virtual void CompleteCellularActivation(Error* error);
@@ -308,7 +308,7 @@ class Service : public base::RefCounted<Service> {
 
   // Set probe URL hint. This function is called when a redirect URL is found
   // during portal detection.
-  mockable void SetProbeUrl(const std::string& probe_url_string);
+  void SetProbeUrl(const std::string& probe_url_string);
 
   // Whether or not the most recent failure should be ignored. This will return
   // true if the failure was the result of a user-initiated disconnect, a
@@ -432,7 +432,7 @@ class Service : public base::RefCounted<Service> {
 
   // Returns true if there is a proxy configuration (excluding proxy setting
   // "direct") set on this service.
-  mockable bool HasProxyConfig() const;
+  bool HasProxyConfig() const;
 
   // Returns whether this service has had recent connection issues.
   mockable bool HasRecentConnectionIssues();
@@ -666,7 +666,7 @@ class Service : public base::RefCounted<Service> {
   // this service.
   std::map<RpcIdentifier, std::string> GetLoadableProfileEntries();
 
-  mockable std::string CalculateState(Error* error);
+  std::string CalculateState(Error* error);
 
   std::string CalculateTechnology(Error* error);
 

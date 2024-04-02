@@ -36,7 +36,6 @@ class MockExternalTask : public ExternalTask {
                Error*),
               (override));
   MOCK_METHOD(void, Stop, (), (override));
-  MOCK_METHOD(void, OnDelete, ());
 };
 
 }  // namespace shill

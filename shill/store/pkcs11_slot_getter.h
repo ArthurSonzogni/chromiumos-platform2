@@ -59,7 +59,7 @@ class Pkcs11SlotGetter {
 
   // Returns the user slot ID if |user_hash_| is valid, otherwise it returns the
   // system slot ID. Upon failure, pkcs11::kInvalidSlot is returned.
-  virtual CK_SLOT_ID GetPkcs11DefaultSlotId();
+  CK_SLOT_ID GetPkcs11DefaultSlotId();
 
   // Get the slot type (user or system) of |slot_id|.
   virtual pkcs11::Slot GetSlotType(CK_SLOT_ID slot_id);

@@ -45,7 +45,6 @@ class MockDeviceInfo : public DeviceInfo {
               GetByteCounts,
               (int, uint64_t*, uint64_t*),
               (const, override));
-  MOCK_METHOD(bool, GetFlags, (int, unsigned int*), (const, override));
   MOCK_METHOD(bool, CreateTunnelInterface, (LinkReadyCallback), (override));
 
   MOCK_METHOD(bool,

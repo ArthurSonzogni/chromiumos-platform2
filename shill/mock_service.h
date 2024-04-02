@@ -36,11 +36,8 @@ class MockService : public Service {
               DisconnectWithFailure,
               (Service::ConnectFailure, Error*, const char*),
               (override));
-  MOCK_METHOD(void, UserInitiatedDisconnect, (const char*, Error*), (override));
-  MOCK_METHOD(std::string, CalculateState, (Error*), (override));
   MOCK_METHOD(ConnectState, state, (), (const, override));
   MOCK_METHOD(void, SetState, (ConnectState), (override));
-  MOCK_METHOD(void, SetProbeUrl, (const std::string&), (override));
   MOCK_METHOD(bool, IsConnected, (Error*), (const, override));
   MOCK_METHOD(bool, IsConnecting, (), (const, override));
   MOCK_METHOD(bool, IsDisconnecting, (), (const, override));
@@ -49,7 +46,7 @@ class MockService : public Service {
   MOCK_METHOD(bool, IsVisible, (), (const, override));
   MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
   MOCK_METHOD(ConnectFailure, failure, (), (const, override));
-  MOCK_METHOD(RpcIdentifier, GetDeviceRpcId, (Error*), (const, override));
+  RpcIdentifier GetDeviceRpcId(Error*) const override { return {}; }
   MOCK_METHOD(const RpcIdentifier&, GetRpcIdentifier, (), (const, override));
   MOCK_METHOD(std::string, GetStorageIdentifier, (), (const, override));
   MOCK_METHOD(std::string,
@@ -67,7 +64,6 @@ class MockService : public Service {
   MOCK_METHOD(bool, Is8021xConnectable, (), (const, override));
   MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
   MOCK_METHOD(bool, IsRemembered, (), (const, override));
-  MOCK_METHOD(bool, HasProxyConfig, (), (const, override));
   MOCK_METHOD(void, AttachNetwork, (base::WeakPtr<Network>), (override));
   MOCK_METHOD(void, DetachNetwork, (), (override));
   MOCK_METHOD(bool, explicitly_disconnected, (), (const, override));
@@ -75,7 +71,6 @@ class MockService : public Service {
   MOCK_METHOD(Technology, technology, (), (const, override));
   MOCK_METHOD(void, OnPropertyChanged, (std::string_view), (override));
   MOCK_METHOD(void, ClearExplicitlyDisconnected, (), (override));
-  MOCK_METHOD(bool, link_monitor_disabled, (), (const, override));
   MOCK_METHOD(void, EnableAndRetainAutoConnect, (), (override));
   MOCK_METHOD(void, OnBeforeSuspend, (ResultCallback), (override));
   MOCK_METHOD(void, OnAfterResume, (), (override));

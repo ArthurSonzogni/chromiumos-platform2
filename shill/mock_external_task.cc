@@ -18,8 +18,6 @@ MockExternalTask::MockExternalTask(
     : ExternalTask(
           control, process_manager, task_delegate, std::move(death_callback)) {}
 
-MockExternalTask::~MockExternalTask() {
-  OnDelete();
-}
+MockExternalTask::~MockExternalTask() = default;
 
 }  // namespace shill

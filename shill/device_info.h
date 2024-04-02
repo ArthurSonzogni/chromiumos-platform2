@@ -97,7 +97,7 @@ class DeviceInfo {
                           int* product_id,
                           int* subsystem_id) const;
 
-  virtual bool GetFlags(int interface_index, unsigned int* flags) const;
+  bool GetFlags(int interface_index, unsigned int* flags) const;
   virtual bool GetByteCounts(int interface_index,
                              uint64_t* rx_bytes,
                              uint64_t* tx_bytes) const;

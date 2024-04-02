@@ -23,15 +23,11 @@ MockManager::MockManager(ControlInterface* control_interface,
                          Metrics* metrics)
     : Manager(control_interface, dispatcher, metrics, "", "", ""),
       mock_ethernet_provider_(new MockEthernetProvider()) {
-  const int64_t kSuspendDurationUsecs = 1000000;
-
   mock_device_info_ = std::make_unique<NiceMock<MockDeviceInfo>>(this);
 
   ON_CALL(*this, ethernet_provider())
       .WillByDefault(Return(mock_ethernet_provider_.get()));
   ON_CALL(*this, device_info()).WillByDefault(Return(mock_device_info_.get()));
-  ON_CALL(*this, GetSuspendDurationUsecs())
-      .WillByDefault(Return(kSuspendDurationUsecs));
 }
 
 MockManager::MockManager(ControlInterface* control_interface,
