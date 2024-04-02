@@ -206,8 +206,16 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
     group_info.Set<Integer>(kP2PGroupInfoFrequencyProperty, group_frequency_);
     group_info.Set<String>(kP2PGroupInfoPassphraseProperty, group_passphrase_);
     group_info.Set<String>(kP2PGroupInfoInterfaceProperty, *link_name());
+    group_info.Set<String>(kP2PClientInfoMACAddressProperty,
+                           interface_address_.value().ToString());
     group_info.Set<Stringmaps>(kP2PGroupInfoClientsProperty,
                                GroupInfoClients());
+    if (IsNetworkLayerConnected()) {
+      if (ipv4_address_ != std::nullopt) {
+        group_info.Set<String>(kP2PGroupInfoIPv4AddressProperty,
+                               ipv4_address_.value().ToString());
+      }
+    }
   }
 
   return group_info;
