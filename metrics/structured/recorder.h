@@ -5,18 +5,18 @@
 #ifndef METRICS_STRUCTURED_RECORDER_H_
 #define METRICS_STRUCTURED_RECORDER_H_
 
-namespace metrics {
-namespace structured {
+namespace metrics::structured {
 
 class EventBase;
 
+// Base class for clients to interact with Structured metrics.
 class Recorder {
  public:
   virtual ~Recorder() {}
   virtual bool Record(const EventBase& event) = 0;
+  virtual void Flush() = 0;
 };
 
-}  // namespace structured
-}  // namespace metrics
+}  // namespace metrics::structured
 
 #endif  // METRICS_STRUCTURED_RECORDER_H_

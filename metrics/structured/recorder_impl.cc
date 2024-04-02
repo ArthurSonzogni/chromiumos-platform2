@@ -10,6 +10,7 @@
 #include <sys/sysinfo.h>
 #include <sys/types.h>
 
+#include <memory>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -33,6 +34,18 @@ namespace {
 // in reset_counter_updater.cc.
 const char kResetCounterPath[] = "/var/lib/metrics/structured/reset-counter";
 
+// Max bytes size for event proto in-memory before a flush is triggered.
+constexpr int kMaxEventBytesSize = 10000;  // 10KB
+
+// Max time elapsed since last write before a flush of events is triggered. This
+// is currently set to 0 while users of Structured metrics are migrated to
+// explicitly call Flush() at the end of their programs. Otherwise, events
+// in-memory at the end of a process will not be flushed to disk and lost.
+//
+// TODO(b/333781135): Change this to an actual value once all users have been
+// migrated.
+constexpr base::TimeDelta kFlushTimeLimitSeconds = base::Seconds(0);
+
 }  // namespace
 
 RecorderImpl::RecorderImpl(const std::string& events_directory,
@@ -50,7 +63,11 @@ RecorderImpl::RecorderImpl(
     : events_directory_(events_directory),
       key_data_(keys_path),
       reset_counter_file_(reset_counter_file),
-      metrics_library_(std::move(metrics_library)) {}
+      metrics_library_(std::move(metrics_library)),
+      event_storage_(base::FilePath(events_directory_),
+                     BatchEventStorage::StorageParams{
+                         .flush_time_limit = kFlushTimeLimitSeconds,
+                         .max_event_bytes_size = kMaxEventBytesSize}) {}
 
 RecorderImpl::~RecorderImpl() = default;
 
@@ -94,36 +111,23 @@ bool RecorderImpl::Record(const EventBase& event) {
     return false;
   }
 
-  EventsProto events_proto;
-  StructuredEventProto* event_proto;
-  if (event.id_type() == EventBase::IdType::kUmaId) {
-    // TODO(crbug.com/1148168): Unimplemented.
-    NOTREACHED();
-    return false;
-  } else {
-    event_proto = events_proto.add_non_uma_events();
-  }
+  StructuredEventProto event_proto;
 
   // Set the ID for this event, if any.
   switch (event.id_type()) {
     case EventBase::IdType::kProjectId:
-      event_proto->set_profile_event_id(
-          key_data_.Id(event.project_name_hash()));
-      break;
-    case EventBase::IdType::kUmaId:
-      // TODO(crbug.com/1148168): Unimplemented.
-      NOTREACHED();
+      event_proto.set_profile_event_id(key_data_.Id(event.project_name_hash()));
       break;
     case EventBase::IdType::kUnidentified:
-      // Do nothing.
+      // Do nothing since there should be no ID attached to the event.
       break;
+    case EventBase::IdType::kUmaId:
     default:
-      // In case id_type is uninitialized.
-      NOTREACHED();
-      break;
+      LOG(ERROR) << "Attempting to record event of unsupported id type.";
+      return false;
   }
 
-  event_proto->set_project_name_hash(event.project_name_hash());
+  event_proto.set_project_name_hash(event.project_name_hash());
 
   // Set the event type. Do this with a switch statement to catch when the event
   // type is UNKNOWN or uninitialized.
@@ -131,31 +135,31 @@ bool RecorderImpl::Record(const EventBase& event) {
     case StructuredEventProto_EventType_REGULAR:
     case StructuredEventProto_EventType_RAW_STRING:
     case StructuredEventProto_EventType_SEQUENCE:
-      event_proto->set_event_type(event.event_type());
+      event_proto.set_event_type(event.event_type());
       break;
     default:
-      NOTREACHED();
-      break;
+      LOG(ERROR) << "Attempting to record event of unsupported event type";
+      return false;
   }
 
-  if (event_proto->event_type() == StructuredEventProto_EventType_SEQUENCE) {
+  if (event_proto.event_type() == StructuredEventProto_EventType_SEQUENCE) {
     int reset_counter = GetResetCounter();
-    auto uptime = GetUptime();
+    std::optional<base::TimeDelta> uptime = GetUptime();
 
     // Only populate the fields if both are valid.
     if (reset_counter != kCounterFileUnread && uptime.has_value()) {
-      event_proto->mutable_event_sequence_metadata()->set_reset_counter(
+      event_proto.mutable_event_sequence_metadata()->set_reset_counter(
           reset_counter);
-      event_proto->mutable_event_sequence_metadata()->set_system_uptime(
+      event_proto.mutable_event_sequence_metadata()->set_system_uptime(
           uptime.value().InMilliseconds());
     }
   }
 
-  event_proto->set_event_name_hash(event.name_hash());
+  event_proto.set_event_name_hash(event.name_hash());
 
   // Set each metric's name hash and value.
   for (const auto& metric : event.metrics()) {
-    auto* metric_proto = event_proto->add_metrics();
+    auto* metric_proto = event_proto.add_metrics();
     metric_proto->set_name_hash(metric.name_hash);
 
     switch (metric.type) {
@@ -181,7 +185,12 @@ bool RecorderImpl::Record(const EventBase& event) {
     }
   }
 
-  return WriteEventsProtoToDir(events_directory_, events_proto);
+  event_storage_.AddEvent(std::move(event_proto));
+  return true;
+}
+
+void RecorderImpl::Flush() {
+  event_storage_.Flush();
 }
 
 int RecorderImpl::GetResetCounter() {

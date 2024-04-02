@@ -9,15 +9,14 @@
 
 #include <gmock/gmock.h>
 
-namespace metrics {
-namespace structured {
+namespace metrics::structured {
 
 class MockRecorder : public Recorder {
  public:
   MOCK_METHOD(bool, Record, (const EventBase&), (override));
+  MOCK_METHOD(void, Flush, (), (override));
 };
 
-}  // namespace structured
-}  // namespace metrics
+}  // namespace metrics::structured
 
 #endif  // METRICS_STRUCTURED_MOCK_RECORDER_H_

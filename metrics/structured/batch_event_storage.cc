@@ -21,8 +21,8 @@ namespace {
 
 constexpr mode_t kFilePermissions = 0660;
 
-}
-
+// Writes |events| to a file within |directory|. Fails if |directory| doesn't
+// exist. Returns whether the write was successful.
 bool WriteEventsProtoToDir(const std::string& directory,
                            const EventsProto& events) {
   const std::string guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
@@ -93,6 +93,8 @@ bool WriteEventsProtoToDir(const std::string& directory,
 
   return true;
 }
+
+}  // namespace
 
 BatchEventStorage::BatchEventStorage(const base::FilePath& events_directory,
                                      BatchEventStorage::StorageParams params)

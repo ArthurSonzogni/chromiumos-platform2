@@ -15,13 +15,14 @@
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
-#include <metrics/structured/key_data.h>
-#include <metrics/metrics_library.h>
+
+#include "metrics/metrics_library.h"
+#include "metrics/structured/batch_event_storage.h"
+#include "metrics/structured/key_data.h"
 
 namespace metrics::structured {
 
 class EventBase;
-class EventsProto;
 
 // State to represent when the counter file has not been read.
 constexpr int kCounterFileUnread = -1;
@@ -30,6 +31,10 @@ constexpr int kCounterFileUnread = -1;
 // returned by GetInstance should be used for this purpose, and can be passed an
 // event via Record. Record processes the event, including adding identifiers
 // and computing HMAC metrics.
+//
+// Note that a call to Flush() is made on the destructor. If this object will
+// not be destroyed during exit, then an explicit call to Flush() should be
+// added to the shutdown sequence to ensure events are properly saved onto disk.
 class RecorderImpl : public Recorder {
  public:
   RecorderImpl(const std::string& events_directory,
@@ -40,12 +45,17 @@ class RecorderImpl : public Recorder {
                const base::FilePath& reset_counter_file,
                std::unique_ptr<MetricsLibraryInterface> metrics_library);
 
+  // Calls Flush() to write any remaining events to disk.
   ~RecorderImpl() override;
 
   // Returns false if the event will definitely not be recorded, eg. due to
   // consent. Returns true if the event will likely be reported, though this
   // may fail if, for example, chrome fails to upload the log after collection.
   bool Record(const EventBase& event) override;
+
+  // Explicit call to flush to be made before the process is torn down to save
+  // events.
+  void Flush() override;
 
  private:
   RecorderImpl(const RecorderImpl&) = delete;
@@ -69,6 +79,9 @@ class RecorderImpl : public Recorder {
 
   // Used for checking the UMA consent.
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
+
+  // Used to batch write events to disk.
+  BatchEventStorage event_storage_;
 };
 
 }  // namespace metrics::structured

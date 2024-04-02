@@ -26,10 +26,10 @@ namespace metrics::structured::platform {
 //  - a hash of a given value for an event with KeyData::HmacMetric.
 //
 // KeyData performs key rotation. Every project is associated with a rotation
-// period, which is 90 days unless specified in structured.xml. Keys are rotated
-// with a resolution of one day. They are guaranteed not to be used for
-// HmacMetric or UserProjectId for longer than their rotation period, except in
-// cases of local clock changes.
+// period, which is 90 days unless specified in structured.xml. Keys are
+// rotated with a resolution of one day. They are guaranteed not to be used
+// for HmacMetric or UserProjectId for longer than their rotation period,
+// except in cases of local clock changes.
 //
 // When first created, every project's key rotation date is selected uniformly
 // so that there is an even distribution of rotations across users. This means
@@ -50,8 +50,8 @@ class KeyData {
   KeyData& operator=(const KeyData&) = delete;
 
   // Returns a digest of |value| for |metric| in the context of
-  // |project_name_hash|. Terminology: a metric is a (name, value) pair, and an
-  // event is a bundle of metrics. Each event is associated with a project.
+  // |project_name_hash|. Terminology: a metric is a (name, value) pair, and
+  // an event is a bundle of metrics. Each event is associated with a project.
   //
   //  - |project_name_hash| is the uint64 name hash of a project.
   //  - |metric_name_hash| is the uint64 name hash of a metric.
@@ -77,19 +77,20 @@ class KeyData {
   //
   // This ID is intended as the only ID for the events of a particular
   // structured metrics project. However, events are uploaded from the device
-  // alongside the UMA client ID, which is only removed after the event reaches
-  // the server. This means events are associated with the client ID when
-  // uploaded from the device. See the class comment of
+  // alongside the UMA client ID, which is only removed after the event
+  // reaches the server. This means events are associated with the client ID
+  // when uploaded from the device. See the class comment of
   // StructuredMetricsProvider for more details.
   uint64_t Id(uint64_t project_name_hash);
 
  private:
-  // Ensure that a valid key exists for |project|, and return it. Either returns
-  // a string of size |kKeySize| or std::nullopt, which indicates an error.
+  // Ensure that a valid key exists for |project|, and return it. Either
+  // returns a string of size |kKeySize| or std::nullopt, which indicates an
+  // error.
   std::optional<std::string> ValidateAndGetKey(uint64_t project_name_hash);
 
-  // Regenerate |key|, also updating the |last_rotation| and |rotation_period|.
-  // This triggers a save.
+  // Regenerate |key|, also updating the |last_rotation| and
+  // |rotation_period|. This triggers a save.
   void UpdateKey(KeyProto* key, int last_rotation, int rotation_period);
 
   // Storage for keys.

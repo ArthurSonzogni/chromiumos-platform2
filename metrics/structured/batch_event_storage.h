@@ -19,11 +19,6 @@ namespace metrics::structured {
 
 class EventsProto;
 
-// Writes |events| to a file within |directory|. Fails if |directory| doesn't
-// exist. Returns whether the write was successful.
-bool WriteEventsProtoToDir(const std::string& directory,
-                           const EventsProto& events);
-
 // Event storage that periodically flushes events to disk based on certain
 // conditions. Currently implemented conditions are:
 //
