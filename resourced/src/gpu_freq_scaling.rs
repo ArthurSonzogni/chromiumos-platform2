@@ -75,7 +75,7 @@ pub mod intel_device {
             .map(BufReader::new)
             .context("Couldn't read cpuinfo")
         {
-            for line in reader.lines().flatten() {
+            for line in reader.lines().map_while(Result::ok) {
                 // Only check CPU0 and fail early.
                 // TODO: integrate with `crgoup_x86_64.rs`
                 if line.starts_with("vendor_id") {
@@ -227,7 +227,7 @@ pub mod intel_device {
                 .map(BufReader::new)
                 .context("Couldn't read cpuinfo")
             {
-                for line in reader.lines().flatten() {
+                for line in reader.lines().map_while(Result::ok) {
                     // Only check CPU0 and fail early.
                     if line.starts_with(r"model name") {
                         // Regex will only match 10th gen intel i3, i5, i7
