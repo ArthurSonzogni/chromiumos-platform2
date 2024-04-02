@@ -48,6 +48,7 @@
 #include "shill/callbacks.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/modem_info.h"
+#include "shill/cellular/power_opt.h"
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/default_profile.h"

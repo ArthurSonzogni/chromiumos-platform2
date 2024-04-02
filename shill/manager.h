@@ -24,7 +24,6 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>
 
-#include "shill/cellular/power_opt.h"
 #include "shill/debugd_proxy_interface.h"
 #include "shill/default_service_observer.h"
 #include "shill/device.h"
