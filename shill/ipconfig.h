@@ -15,7 +15,6 @@
 #include <net-base/ip_address.h>
 #include <net-base/network_config.h>
 
-#include "shill/mockable.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/store/property_store.h"
 
@@ -115,7 +114,7 @@ class IPConfig {
     DHCPv4Config::Data dhcp_data;
   };
 
-  mockable const Properties& properties() const { return properties_; }
+  const Properties& properties() const { return properties_; }
 
  private:
   friend class IPConfigTest;
@@ -128,7 +127,7 @@ class IPConfig {
 
   // Inform RPC listeners of changes to our properties. MAY emit
   // changes even on unchanged properties.
-  mockable void EmitChanges();
+  void EmitChanges();
 
   static uint32_t global_serial_;
   PropertyStore store_;

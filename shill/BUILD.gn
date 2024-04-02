@@ -789,7 +789,6 @@ if (use.test) {
       "mock_event_dispatcher.cc",
       "mock_external_task.cc",
       "mock_file_io.cc",
-      "mock_ipconfig.cc",
       "mock_log.cc",
       "mock_log_test.cc",
       "mock_manager.cc",

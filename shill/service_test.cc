@@ -37,7 +37,6 @@
 #include "shill/mock_device.h"
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_ipconfig.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_power_manager.h"
@@ -1672,8 +1671,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     auto network =
         std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
     service_->AttachNetwork(network->AsWeakPtr());
-    auto ipconfig =
-        std::make_unique<MockIPConfig>(control_interface(), kIfName);
+    auto ipconfig = std::make_unique<IPConfig>(control_interface(), kIfName);
     EXPECT_CALL(*network, GetCurrentIPConfig())
         .WillOnce(Return(ipconfig.get()));
     EXPECT_EQ(ipconfig->GetRpcIdentifier(),

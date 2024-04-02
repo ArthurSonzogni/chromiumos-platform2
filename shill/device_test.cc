@@ -29,7 +29,6 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_ipconfig.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_service.h"
@@ -180,7 +179,7 @@ class DeviceTest : public testing::Test {
   void TriggerConnectionUpdate() {
     EXPECT_CALL(*network_, IsConnected()).WillRepeatedly(Return(true));
     network_->set_ipconfig(
-        std::make_unique<MockIPConfig>(control_interface(), kDeviceName));
+        std::make_unique<IPConfig>(control_interface(), kDeviceName));
     device_->OnConnectionUpdated(device_->interface_index());
     device_->OnIPConfigsPropertyUpdated(device_->interface_index());
   }
