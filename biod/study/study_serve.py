@@ -8,8 +8,7 @@
 from __future__ import print_function
 
 import argparse
-from datetime import datetime
-from distutils import util
+import datetime
 import json
 import logging
 import logging.handlers
@@ -337,6 +336,14 @@ def environment_parameters(default_params: dict) -> dict:
     "LOG_DIR".
     """
 
+    def parse_bool(bool_str: str) -> bool:
+        if bool_str.lower() in {"true", "yes"}:
+            return True
+        elif bool_str.lower() in {"false", "no"}:
+            return False
+        else:
+            raise ValueError(f"String '{bool_str}' can't be parsed to bool.")
+
     env_params = default_params.copy()
     for param in default_params:
         env_var = param.upper().replace("-", "_")
@@ -345,7 +352,7 @@ def environment_parameters(default_params: dict) -> dict:
         if value is not None:
             try:
                 if arg_type is bool:
-                    value = bool(util.strtobool(value))
+                    value = parse_bool(value)
                 elif arg_type is type(None):
                     raise Exception("Cannot handle type None in default list.")
                 else:
@@ -462,7 +469,7 @@ def main(argv: list):
     loggers.append(l)
 
     if args.log_dir:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         log_name = f"server-{timestamp}.log"
         h = logging.handlers.RotatingFileHandler(
             filename=os.path.join(args.log_dir, log_name)

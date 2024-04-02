@@ -81,6 +81,35 @@ class TestStudyServeEnvironmentVariableParsing(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "PORT"):
                 _ = study_serve.environment_parameters(default_params)
 
+    def test_environment_parameters_bools(self):
+        """Test the parsing of bools from environment variable."""
+
+        # Parse "True" from env.
+        with unittest.mock.patch.dict(
+            os.environ, {"SYSLOG": "True"}, clear=True
+        ):
+            env = study_serve.environment_parameters({"syslog": False})
+        self.assertEqual(env["syslog"], True)
+
+        # Parse "False" from env.
+        with unittest.mock.patch.dict(
+            os.environ, {"SYSLOG": "False"}, clear=True
+        ):
+            env = study_serve.environment_parameters({"syslog": True})
+        self.assertEqual(env["syslog"], False)
+
+        # Parse "yes" from env.
+        with unittest.mock.patch.dict(
+            os.environ, {"SYSLOG": "yes"}, clear=True
+        ):
+            env = study_serve.environment_parameters({"syslog": False})
+        self.assertEqual(env["syslog"], True)
+
+        # Parse "no" from env.
+        with unittest.mock.patch.dict(os.environ, {"SYSLOG": "no"}, clear=True):
+            env = study_serve.environment_parameters({"syslog": True})
+        self.assertEqual(env["syslog"], False)
+
 
 if __name__ == "__main__":
     unittest.main()
