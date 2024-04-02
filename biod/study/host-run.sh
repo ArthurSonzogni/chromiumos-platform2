@@ -46,6 +46,9 @@ if [[ -n "${LOG_DIR}" ]]; then
   mkdir -p "${LOG_DIR}"
 fi
 
+mkdir -p "${PICTURE_DIR}"
+echo -e "# This directory is for testing only.\n*" >"${PICTURE_DIR}/.gitignore"
+
 PATH="${study_dir}/mock-bin:${PATH}" "${study_dir}/study_serve.py"             \
   --finger-count="${FINGER_COUNT}"                                             \
   --enrollment-count="${ENROLLMENT_COUNT}"                                     \
