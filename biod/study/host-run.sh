@@ -19,19 +19,12 @@ LOG_DIR=
 
 FPSTUDY_VIRTENV=/tmp/virtualenv-study
 
-# Check for required commands.
-CMDS_REQUIRED=( virtualenv )
-if ! which "${CMDS_REQUIRED[@]}" >/dev/null 2>&1; then
-  echo "Error - Missing one or more required commands: ${CMDS_REQUIRED[*]}" >&2
-  exit 1
-fi
-
 # Find the fingerprint study base directory.
 study_dir="$(dirname "${BASH_SOURCE[0]}")"
 
 # Setup New Virtualenv
 rm -rf "${FPSTUDY_VIRTENV}"
-if ! virtualenv -p python3 "${FPSTUDY_VIRTENV}"; then
+if ! python3 -m venv "${FPSTUDY_VIRTENV}"; then
   echo "Error - Failed to setup a python virtualenv." >&2
   exit 1
 fi
