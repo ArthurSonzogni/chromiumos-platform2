@@ -23,6 +23,7 @@
 #include <base/strings/string_util.h>
 #include <base/task/bind_post_task.h>
 #include <brillo/key_value_store.h>
+#include <base/system/sys_info.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "common/vendor_tag_manager.h"
@@ -79,6 +80,14 @@ bool IsArcTBoard() {
   return DeviceConfig::GetArcApiLevel() == 33;
 }
 
+bool IsExclusiveBoard() {
+  if (base::SysInfo::GetLsbReleaseBoard().rfind("strongbad", 0) !=
+      std::string::npos)
+    return true;
+  else
+    return false;
+}
+
 // Find the best YUV resolution for cropping and rotation into the target BLOB
 // resolution. If the same resolution is available, return it. Otherwise return
 // the largest resolution smaller than the BLOB with the same aspect ratio.
@@ -118,7 +127,7 @@ RotateAndCropStreamManipulator::~RotateAndCropStreamManipulator() {
 // static
 bool RotateAndCropStreamManipulator::UpdateVendorTags(
     VendorTagManager& vendor_tag_manager) {
-  if (!IsArcTBoard()) {
+  if (!IsArcTBoard() || IsExclusiveBoard()) {
     return true;
   }
   if (!vendor_tag_manager.Add(RotateAndCropVendorTag::kHalAvailableModes,
@@ -134,7 +143,7 @@ bool RotateAndCropStreamManipulator::UpdateVendorTags(
 // static
 bool RotateAndCropStreamManipulator::UpdateStaticMetadata(
     android::CameraMetadata* static_info) {
-  if (!IsArcTBoard()) {
+  if (!IsArcTBoard() || IsExclusiveBoard()) {
     return true;
   }
   camera_metadata_entry_t entry =
@@ -198,7 +207,7 @@ bool RotateAndCropStreamManipulator::Initialize(
 
 bool RotateAndCropStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
-  if (!IsArcTBoard()) {
+  if (!IsArcTBoard() || IsExclusiveBoard()) {
     return true;
   }
   bool ret = false;
@@ -212,7 +221,7 @@ bool RotateAndCropStreamManipulator::ConfigureStreams(
 
 bool RotateAndCropStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
-  if (!IsArcTBoard()) {
+  if (!IsArcTBoard() || IsExclusiveBoard()) {
     return true;
   }
   bool ret = false;
@@ -227,7 +236,8 @@ bool RotateAndCropStreamManipulator::OnConfiguredStreams(
 
 bool RotateAndCropStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
-  if (default_request_settings->isEmpty() || !IsArcTBoard()) {
+  if (default_request_settings->isEmpty() || !IsArcTBoard() ||
+      IsExclusiveBoard()) {
     return true;
   }
   const uint8_t rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_AUTO;
@@ -242,7 +252,7 @@ bool RotateAndCropStreamManipulator::ConstructDefaultRequestSettings(
 
 bool RotateAndCropStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
-  if (!IsArcTBoard()) {
+  if (!IsArcTBoard() || IsExclusiveBoard()) {
     return true;
   }
   bool ret = false;
@@ -257,7 +267,7 @@ bool RotateAndCropStreamManipulator::ProcessCaptureRequest(
 
 bool RotateAndCropStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  if (!IsArcTBoard()) {
+  if (!IsArcTBoard() || IsExclusiveBoard()) {
     callbacks_.result_callback.Run(std::move(result));
     return true;
   }
@@ -285,7 +295,7 @@ bool RotateAndCropStreamManipulator::InitializeOnThread(
 
   callbacks_ = callbacks;
 
-  if (!IsArcTBoard()) {
+  if (!IsArcTBoard() || IsExclusiveBoard()) {
     LOGF(INFO) << "Disabled on non-ARC-T board";
     return true;
   }
