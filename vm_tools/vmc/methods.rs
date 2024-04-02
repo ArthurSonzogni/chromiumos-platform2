@@ -617,11 +617,18 @@ impl Methods {
     fn concierge_client(
         &self,
     ) -> Result<blocking::Proxy<&dbus::blocking::Connection>, Box<dyn Error>> {
+        self.concierge_client_with_timeout(DEFAULT_TIMEOUT)
+    }
+
+    fn concierge_client_with_timeout(
+        &self,
+        timeout: Duration,
+    ) -> Result<blocking::Proxy<&dbus::blocking::Connection>, Box<dyn Error>> {
         let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
             self.connection.get_real_connection_or_fail()?,
             VM_CONCIERGE_SERVICE_NAME,
             VM_CONCIERGE_SERVICE_PATH,
-            DEFAULT_TIMEOUT,
+            timeout,
         );
         Ok(proxy)
     }
@@ -1538,16 +1545,10 @@ impl Methods {
         };
 
         // Send a protobuf request with the FDs.
-        let response: StartVmResponse = self.sync_protobus_timeout_with_vector_of_fd(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                START_VM_METHOD,
-            )?,
-            &request,
-            owned_fds,
-            tremplin_timeout,
+        let response: StartVmResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client_with_timeout(tremplin_timeout)?
+                .start_vm(request.write_to_bytes()?, owned_fds)?,
         )?;
 
         match response.status.enum_value() {
