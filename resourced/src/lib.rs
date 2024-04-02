@@ -4,6 +4,7 @@
 
 mod common;
 mod config;
+pub mod cpu_config;
 mod cpu_utils;
 pub mod dbus;
 mod dbus_ownership_listener;
