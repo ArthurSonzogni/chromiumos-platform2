@@ -16,11 +16,14 @@ use anyhow::Context;
 use anyhow::Result;
 use glob::glob;
 use log::info;
+use once_cell::sync::Lazy;
+use regex::Regex;
 
 use crate::common::read_from_file;
 
 pub const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
 const ROOT_CPUSET_CPUS_PATH: &str = "sys/fs/cgroup/cpuset/cpus";
+const ISOLATED_CPUSET_PATH: &str = "sys/devices/system/cpu/isolated";
 const UI_USE_FLAGS_PATH: &str = "etc/ui_use_flags.txt";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -42,24 +45,82 @@ pub enum HotplugCpuAction {
 pub struct Cpuset(Vec<usize>);
 
 impl Cpuset {
+    // Parses a cpuset string: that is, a comma-separated list of ranges, where
+    // each range is either in the form "l-u" or "c", where l, u, and c are
+    // positive integers.  Example: 0-3,9,11-12.
+    fn parse(cpuset_str: &str) -> Result<Self> {
+        static CPUSET_RANGE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d+)-(\d+)$")
+                                                        .expect("bad cpuset range RE"));
+        let mut cores: Vec<usize> = vec![];
+        if cpuset_str.is_empty() {
+            return Ok(Cpuset(cores));
+        }
+        let ranges = cpuset_str.split(',');
+        for range in ranges {
+            if let Some(m) = CPUSET_RANGE_RE.captures(range) {
+                // No errors expected here.
+                let lower = m[1].parse::<usize>().expect("parse/RE mismatch 1");
+                let upper = m[2].parse::<usize>().expect("parse/RE mismatch 2");
+                if lower > upper {
+                    bail!("bad range '{}' in cpuset '{}'", range, cpuset_str);
+                }
+                for x in lower..=upper {
+                    cores.push(x);
+                }
+            } else {
+                cores.push(
+                    range
+                        .parse::<usize>()
+                        .with_context(|| format!("malformed cpuset: '{}'", cpuset_str))?,
+                )
+            }
+        }
+        // Sanity check.
+        for i in 0..cores.len() - 1 {
+            if cores[i] >= cores[i + 1] {
+                bail!("cpuset '{}' has overlapping or out-of-order CPUs", cpuset_str);
+            }
+        }
+        Ok(Cpuset(cores))
+    }
+
+    fn difference(&self, other: &Self) -> Self {
+        let mut result: Vec<usize> = vec![];
+        if other.len() == 0 {
+            self.clone()
+        } else {
+            // Quadratic but short.
+            for cpu in self.iter() {
+                if !other.iter().any(|other| cpu == other) {
+                    result.push(*cpu);
+                }
+            }
+            Cpuset(result)
+        }
+    }
+
+    // Returns the cpuset of cores isolated by the "isolcpus" kernel command
+    // line option.  See
+    // https://docs.kernel.org/admin-guide/kernel-parameters.html#cpu-lists.
+    // Note that the "isolcpus" feature is deprecated and may go away.
+    // However, it is still more convenient than cpusets for some use cases.
+    fn isolated_cores(root: &Path) -> Result<Self> {
+        let path = root.join(ISOLATED_CPUSET_PATH);
+        // Tolerate missing sysfs entry.
+        if !path.exists() {
+            Ok(Cpuset(vec![]))
+        } else {
+            let isolated_str = read_to_string(path).context("failed to get isolated cores")?;
+            Self::parse(&isolated_str).context("failed to parse isolated cores")
+        }
+    }
+
     pub fn all_cores(root: &Path) -> Result<Self> {
         let cpuset_str = read_to_string(root.join(ROOT_CPUSET_CPUS_PATH))
-            .context("Failed to get root cpuset cpus")?;
-        let range_parts: Vec<&str> = cpuset_str.split('-').collect();
-        if range_parts.len() == 2 {
-            let start: usize = range_parts[0].trim().parse()?;
-            let end: usize = range_parts[1].trim().parse()?;
-            if start > end {
-                bail!("Invalid CPU range: {}-{}", start, end);
-            }
-            Ok((start..=end).collect())
-        } else {
-            let cores = cpuset_str
-                .split(',')
-                .map(|value| value.trim().parse::<usize>().context("parse core number"))
-                .collect::<Result<Self>>()?;
-            Ok(cores)
-        }
+            .context("Failed to get root cpuset")?;
+        Ok(Self::parse(&cpuset_str)
+            .context("failed to parse root cpuset")?
+            .difference(&Self::isolated_cores(root).context("failed to compute all cores")?))
     }
 
     pub fn little_cores(root: &Path) -> Result<Self> {
@@ -70,7 +131,9 @@ impl Cpuset {
                 "acpi_cppc/highest_perf",
             ] {
                 if let Some(cpuset) = get_cpus_with_min_property(root, property)? {
-                    return Ok(cpuset);
+                    return Ok(cpuset.difference(
+                        &Self::isolated_cores(root).context("failed to compute little cores")?,
+                    ));
                 }
             }
             info!("not able to determine the little cores while big/little is supported.");
@@ -99,29 +162,28 @@ impl FromIterator<usize> for Cpuset {
 }
 
 impl Display for Cpuset {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut iter = self.iter();
-        if let Some(first_cpu) = iter.next() {
-            let mut c = *first_cpu;
-            let mut is_consecutive = true;
-            for cpu in iter {
-                c += 1;
-                if c != *cpu {
-                    is_consecutive = false;
-                    break;
-                }
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let vector = &self.0;
+        let length = vector.len();
+        // "lower" tracks the index of the lower bound in a range.
+        let mut lower = 0;
+        for upper in 0..length {
+            if upper + 1 < length && vector[upper + 1] == vector[upper] + 1 {
+                // When there is a next value, and it is consecutive, continue
+                // advancing the range upper bound.
+                continue;
             }
-            if is_consecutive && *first_cpu != c {
-                return write!(f, "{}-{}", first_cpu, c);
+            if lower > 0 {
+                // At least one range was already output.
+                write!(formatter, ",")?;
             }
-        }
-
-        let mut iter = self.iter();
-        if let Some(cpu) = iter.next() {
-            write!(f, "{}", cpu)?;
-        }
-        for cpu in iter {
-            write!(f, ",{}", cpu)?;
+            if upper > lower {
+                write!(formatter, "{}-{}", vector[lower], vector[upper])?;
+            } else {
+                write!(formatter, "{}", vector[upper])?;
+            }
+            // Advance lower to the next array index.
+            lower = upper + 1;
         }
         Ok(())
     }
@@ -399,48 +461,86 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use std::fs::create_dir_all;
+    use std::path::PathBuf;
 
     use tempfile::TempDir;
 
     use super::*;
     use crate::test_utils::*;
 
+    fn setup_sysfs(root_dir: &TempDir) -> (PathBuf, PathBuf, PathBuf) {
+        let root_path = root_dir.path().to_path_buf();
+        let root_cpus_path = root_path.join(ROOT_CPUSET_CPUS_PATH).to_path_buf();
+        let root_cpus_name = &root_cpus_path.display().to_string();
+        let isolated_cpus_path = root_path.join(ISOLATED_CPUSET_PATH).to_path_buf();
+        let isolated_cpus_name = &isolated_cpus_path.display().to_string();
+        create_dir_all(root_cpus_path.parent().unwrap()).expect(root_cpus_name);
+        create_dir_all(isolated_cpus_path.parent().unwrap()).expect(isolated_cpus_name);
+        std::fs::write(&isolated_cpus_path, "").expect(isolated_cpus_name);
+        (root_path, root_cpus_path, isolated_cpus_path)
+    }
+
     #[test]
     fn test_cpuset_all_cores() {
-        let root_dir = tempfile::tempdir().unwrap();
-        let root_path = root_dir.path();
-        let root_cpus_path = root_path.join(ROOT_CPUSET_CPUS_PATH);
-        create_dir_all(root_cpus_path.parent().unwrap()).unwrap();
+        let root_dir = TempDir::new().unwrap();
+        let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
 
         // root cpuset cgroup is not found.
-        assert!(Cpuset::all_cores(root_path).is_err());
+        assert!(Cpuset::all_cores(&root_path).is_err());
 
-        std::fs::write(&root_cpus_path, "1,2,3,100").unwrap();
+        std::fs::write(&root_cpus_path, "1,2,3,100").expect(&root_cpus_path.display().to_string());
         assert_eq!(
-            Cpuset::all_cores(root_path).unwrap(),
+            Cpuset::all_cores(&root_path).unwrap(),
             Cpuset(vec![1, 2, 3, 100])
         );
-
         std::fs::write(&root_cpus_path, "100").unwrap();
-        assert_eq!(Cpuset::all_cores(root_path).unwrap(), Cpuset(vec![100]));
+        assert_eq!(Cpuset::all_cores(&root_path).unwrap(), Cpuset(vec![100]));
 
         std::fs::write(&root_cpus_path, "2-10").unwrap();
         assert_eq!(
-            Cpuset::all_cores(root_path).unwrap(),
+            Cpuset::all_cores(&root_path).unwrap(),
             Cpuset(vec![2, 3, 4, 5, 6, 7, 8, 9, 10])
         );
-
         std::fs::write(&root_cpus_path, "2-2").unwrap();
-        assert_eq!(Cpuset::all_cores(root_path).unwrap(), Cpuset(vec![2]));
+        assert_eq!(Cpuset::all_cores(&root_path).unwrap(), Cpuset(vec![2]));
+        std::fs::write(&root_cpus_path, "").unwrap();
+        assert_eq!(Cpuset::all_cores(&root_path).unwrap(), Cpuset(vec![]));
+    }
 
-        std::fs::write(&root_cpus_path, "3-2").unwrap();
-        assert!(Cpuset::all_cores(root_path).is_err());
+    #[test]
+    #[should_panic]
+    fn test_cpuset_bad() {
+        let root_dir = TempDir::new().unwrap();
+        let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
         std::fs::write(&root_cpus_path, "a").unwrap();
-        assert!(Cpuset::all_cores(root_path).is_err());
-        std::fs::write(&root_cpus_path, "a-1").unwrap();
-        assert!(Cpuset::all_cores(root_path).is_err());
-        std::fs::write(&root_cpus_path, "a,100").unwrap();
-        assert!(Cpuset::all_cores(root_path).is_err());
+        let _ = Cpuset::all_cores(&root_path).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_cpuset_bad2() {
+        let root_dir = TempDir::new().unwrap();
+        let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
+        std::fs::write(&root_cpus_path, ",").unwrap();
+        let _ = Cpuset::all_cores(&root_path).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_cpuset_bad3() {
+        let root_dir = TempDir::new().unwrap();
+        let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
+        std::fs::write(&root_cpus_path, "1,9-8").unwrap();
+        let _ = Cpuset::all_cores(&root_path).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_cpuset_bad4() {
+        let root_dir = TempDir::new().unwrap();
+        let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
+        std::fs::write(&root_cpus_path, "1,2,1").unwrap();
+        let _ = Cpuset::all_cores(&root_path).unwrap();
     }
 
     fn create_cpus_property(root: &Path, property: &str, values: &[u64]) {
@@ -464,50 +564,70 @@ mod tests {
 
     #[test]
     fn test_cpuset_little_cores() {
-        let root_dir = tempfile::tempdir().unwrap();
-        let root_path = root_dir.path();
-        let root_cpus_path = root_path.join(ROOT_CPUSET_CPUS_PATH);
-        create_dir_all(root_cpus_path.parent().unwrap()).unwrap();
+        let root_dir = TempDir::new().unwrap();
+        let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
+
         std::fs::write(&root_cpus_path, "0-3").unwrap();
-        update_big_little_support(root_path, true);
+        update_big_little_support(&root_path, true);
 
         // Even if property files are not found, fallbacks to little cores.
         assert_eq!(
-            Cpuset::little_cores(root_path).unwrap(),
+            Cpuset::little_cores(&root_path).unwrap(),
             Cpuset(vec![0, 1, 2, 3])
         );
 
-        create_cpus_property(root_path, "cpu_capacity", &[10, 10, 10, 10]);
-        create_cpus_property(root_path, "cpufreq/cpuinfo_max_freq", &[20, 20, 20, 20]);
-        create_cpus_property(root_path, "acpi_cppc/highest_perf", &[30, 30, 30, 30]);
+        create_cpus_property(&root_path, "cpu_capacity", &[10, 10, 10, 10]);
+        create_cpus_property(&root_path, "cpufreq/cpuinfo_max_freq", &[20, 20, 20, 20]);
+        create_cpus_property(&root_path, "acpi_cppc/highest_perf", &[30, 30, 30, 30]);
 
         // Fallback to all cores
         assert_eq!(
-            Cpuset::little_cores(root_path).unwrap(),
+            Cpuset::little_cores(&root_path).unwrap(),
             Cpuset(vec![0, 1, 2, 3])
         );
 
-        create_cpus_property(root_path, "acpi_cppc/highest_perf", &[10, 10, 30, 30]);
-        assert_eq!(Cpuset::little_cores(root_path).unwrap(), Cpuset(vec![0, 1]));
-
-        create_cpus_property(root_path, "cpufreq/cpuinfo_max_freq", &[20, 20, 10, 10]);
-        assert_eq!(Cpuset::little_cores(root_path).unwrap(), Cpuset(vec![2, 3]));
-
-        create_cpus_property(root_path, "cpu_capacity", &[1, 10, 1, 10]);
-        assert_eq!(Cpuset::little_cores(root_path).unwrap(), Cpuset(vec![0, 2]));
-
-        update_big_little_support(root_path, false);
+        create_cpus_property(&root_path, "acpi_cppc/highest_perf", &[10, 10, 30, 30]);
         assert_eq!(
-            Cpuset::little_cores(root_path).unwrap(),
+            Cpuset::little_cores(&root_path).unwrap(),
+            Cpuset(vec![0, 1])
+        );
+
+        create_cpus_property(&root_path, "cpufreq/cpuinfo_max_freq", &[20, 20, 10, 10]);
+        assert_eq!(
+            Cpuset::little_cores(&root_path).unwrap(),
+            Cpuset(vec![2, 3])
+        );
+
+        create_cpus_property(&root_path, "cpu_capacity", &[1, 10, 1, 10]);
+        assert_eq!(
+            Cpuset::little_cores(&root_path).unwrap(),
+            Cpuset(vec![0, 2])
+        );
+
+        update_big_little_support(&root_path, false);
+        assert_eq!(
+            Cpuset::little_cores(&root_path).unwrap(),
             Cpuset(vec![0, 1, 2, 3])
         );
     }
 
     #[test]
+    fn test_cpuset_isolated_cores() {
+        let root_dir = TempDir::new().unwrap();
+        let (root_path, root_cpus_path, isolated_path) = setup_sysfs(&root_dir);
+        std::fs::write(&root_cpus_path, "0-15").unwrap();
+        std::fs::write(&isolated_path, "2-4,9").unwrap();
+        let all_cores = Cpuset::all_cores(&root_path).unwrap();
+        assert_eq!(all_cores.to_string(), "0-1,5-8,10-15");
+    }
+
+    #[test]
     fn test_cpuset_to_string() {
+        assert_eq!(&Cpuset(vec![]).to_string(), "");
         assert_eq!(&Cpuset(vec![1, 2]).to_string(), "1-2");
         assert_eq!(&Cpuset(vec![1, 2, 3]).to_string(), "1-3");
-        assert_eq!(&Cpuset(vec![1, 2, 3, 100]).to_string(), "1,2,3,100");
+        assert_eq!(&Cpuset(vec![1, 2, 3, 100]).to_string(), "1-3,100");
+        assert_eq!(&Cpuset(vec![1, 2, 3, 5, 6, 7, 9, 99, 100]).to_string(), "1-3,5-7,9,99-100");
         assert_eq!(&Cpuset(vec![100]).to_string(), "100");
     }
 
