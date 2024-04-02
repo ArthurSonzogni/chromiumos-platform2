@@ -40,6 +40,7 @@ class TestUploaderInterface : public UploaderInterface {
   // Factory method.
   static void AsyncProvideUploader(
       UploaderInterface::UploadReason reason,
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       UploaderInterfaceResultCb start_uploader_cb) {
     std::move(start_uploader_cb).Run(std::make_unique<TestUploaderInterface>());
   }

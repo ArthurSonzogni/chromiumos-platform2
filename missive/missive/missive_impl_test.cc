@@ -207,9 +207,9 @@ TEST_F(MissiveImplTest, AsyncStartUploadTest) {
   test::TestEvent<StatusOr<std::unique_ptr<UploaderInterface>>> uploader_event;
   MissiveImpl::AsyncStartUpload(
       missive_->GetWeakPtr(), UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
-      uploader_event.cb());
+      base::DoNothing(), uploader_event.cb());
   auto response_result = uploader_event.result();
-  EXPECT_OK(response_result) << response_result.error();
+  ASSERT_OK(response_result) << response_result.error();
   response_result.value()->Completed(
       Status(error::INTERNAL, "Failing for tests"));
 }
@@ -220,7 +220,7 @@ TEST_F(MissiveImplTest, AsyncNoStartUploadTest) {
   missive_.reset();
   MissiveImpl::AsyncStartUpload(
       weak_ptr, UploaderInterface::UploadReason::IMMEDIATE_FLUSH,
-      uploader_event.cb());
+      base::DoNothing(), uploader_event.cb());
   auto response_result = uploader_event.result();
   EXPECT_THAT(response_result,
               Property(&StatusOr<std::unique_ptr<UploaderInterface>>::error,
@@ -443,7 +443,8 @@ TEST_F(MissiveImplTest, DisabledReportingTest) {
         uploader_event;
     MissiveImpl::AsyncStartUpload(
         missive_->GetWeakPtr(),
-        UploaderInterface::UploadReason::IMMEDIATE_FLUSH, uploader_event.cb());
+        UploaderInterface::UploadReason::IMMEDIATE_FLUSH, base::DoNothing(),
+        uploader_event.cb());
     const auto& response_result = uploader_event.result();
     EXPECT_THAT(response_result,
                 Property(&StatusOr<std::unique_ptr<UploaderInterface>>::error,

@@ -659,8 +659,8 @@ class StorageQueueTest
     ASSERT_OK(status) << status;
   }
 
-  // Tries to create a new storage queue by building the test encryption module
-  // and returns the corresponding result of the operation.
+  // Tries to create a new storage queue by building the test encryption
+  // module and returns the corresponding result of the operation.
   StatusOr<scoped_refptr<StorageQueue>> CreateTestStorageQueue(
       const QueueOptions& options,
       StorageQueue::InitRetryCb init_retry_cb = base::BindRepeating(
@@ -722,6 +722,15 @@ class StorageQueueTest
     EXPECT_THAT(options_.disk_space_resource()->GetUsed(), Eq(0u));
   }
 
+  // Informs the queue about cached events.
+  void InformAboutCachedUploads(std::list<int64_t> cached_events_seq_ids) {
+    test::TestCallbackAutoWaiter waiter;
+    storage_queue_->InformAboutCachedUploads(
+        std::move(cached_events_seq_ids),
+        base::BindOnce(&test::TestCallbackAutoWaiter::Signal,
+                       base::Unretained(&waiter)));
+  }
+
   std::unique_ptr<
       ::testing::MockFunction<Status(test::StorageQueueOperationKind, int64_t)>>
   InjectFailures() {
@@ -764,6 +773,7 @@ class StorageQueueTest
 
   void AsyncStartMockUploader(
       UploaderInterface::UploadReason reason,
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,  // unused
       UploaderInterface::UploaderInterfaceResultCb start_uploader_cb) {
     main_task_runner_->PostTask(
         FROM_HERE,
@@ -959,6 +969,76 @@ TEST_P(StorageQueueTest, WriteIntoStorageQueueAndUpload) {
 
   // Trigger upload.
   task_environment_.FastForwardBy(base::Seconds(1));
+}
+
+TEST_P(StorageQueueTest, WriteIntoStorageQueueAndUploadWithCache) {
+  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
+  WriteStringOrDie(kData[0]);
+  WriteStringOrDie(kData[1]);
+  WriteStringOrDie(kData[2]);
+
+  // Inform the queue about cached events.
+  InformAboutCachedUploads({});
+
+  {
+    // Set uploader expectations.
+    test::TestCallbackAutoWaiter waiter;
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+        .WillOnce(
+            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+              return TestUploader::SetUp(&waiter, this)
+                  .Required(0, kData[0])
+                  .Required(1, kData[1])
+                  .Required(2, kData[2])
+                  .Complete();
+            }))
+        .RetiresOnSaturation();
+
+    // Trigger upload.
+    task_environment_.FastForwardBy(base::Seconds(1));
+  }
+
+  // Inform the queue about cached events.
+  InformAboutCachedUploads({1, 2});
+
+  {
+    // Set uploader expectations.
+    test::TestCallbackAutoWaiter waiter;
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+        .WillOnce(
+            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+              return TestUploader::SetUp(&waiter, this)
+                  .Required(0, kData[0])
+                  .Complete();
+            }))
+        .RetiresOnSaturation();
+
+    // Trigger upload.
+    task_environment_.FastForwardBy(base::Seconds(1));
+  }
+
+  // Inform the queue about cached events.
+  InformAboutCachedUploads({1});
+
+  {
+    // Set uploader expectations.
+    test::TestCallbackAutoWaiter waiter;
+    EXPECT_CALL(set_mock_uploader_expectations_,
+                Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+        .WillOnce(
+            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+              return TestUploader::SetUp(&waiter, this)
+                  .Required(0, kData[0])
+                  .Required(2, kData[2])
+                  .Complete();
+            }))
+        .RetiresOnSaturation();
+
+    // Trigger upload.
+    task_environment_.FastForwardBy(base::Seconds(1));
+  }
 }
 
 TEST_P(StorageQueueTest, WriteIntoStorageQueueAndUploadWithFailures) {

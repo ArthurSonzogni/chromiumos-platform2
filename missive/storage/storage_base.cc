@@ -20,6 +20,7 @@
 #include <base/files/file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
@@ -69,6 +70,7 @@ void QueueUploaderInterface::AsyncProvideUploader(
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     UploaderInterface::UploadReason reason,
+    UploaderInterface::InformAboutCachedUploadsCb inform_cb,
     UploaderInterfaceResultCb start_uploader_cb) {
   const auto upload_reason =
       (/*need_encryption_key=*/encryption_module->is_enabled() &&
@@ -82,7 +84,7 @@ void QueueUploaderInterface::AsyncProvideUploader(
         std::string(UploaderInterface::ReasonToString(upload_reason)));
   }
   async_start_upload_cb.Run(
-      upload_reason,
+      upload_reason, std::move(inform_cb),
       base::BindOnce(&QueueUploaderInterface::WrapInstantiatedUploader,
                      priority, std::move(recorder),
                      std::move(start_uploader_cb)));
@@ -524,6 +526,7 @@ void KeyDelivery::EnqueueRequestAndPossiblyStart(
                      base::Unretained(this));
   async_start_upload_cb_.Run(
       UploaderInterface::UploadReason::KEY_DELIVERY,
+      /*inform_cb=*/base::DoNothing(),  // No records.
       base::BindOnce(&KeyDelivery::WrapInstantiatedKeyUploader,
                      /*priority=*/MANUAL_BATCH, std::move(recorder),
                      std::move(start_uploader_cb)));

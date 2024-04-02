@@ -223,6 +223,7 @@ class StorageQueueStressTest : public ::testing::TestWithParam<size_t> {
 
   void AsyncStartTestUploader(
       UploaderInterface::UploadReason reason,
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       UploaderInterface::UploaderInterfaceResultCb start_uploader_cb) {
     // Accept only MANUAL upload.
     if (reason != UploaderInterface::UploadReason::MANUAL) {

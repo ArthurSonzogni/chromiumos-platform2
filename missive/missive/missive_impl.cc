@@ -5,11 +5,13 @@
 #include "missive/missive/missive_impl.h"
 
 #include <cstdlib>
+#include <list>
 #include <tuple>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/task/bind_post_task.h>
@@ -323,6 +325,7 @@ void MissiveImpl::OnStorageModuleConfigured(
 void MissiveImpl::AsyncStartUpload(
     base::WeakPtr<MissiveImpl> missive,
     UploaderInterface::UploadReason reason,
+    UploaderInterface::InformAboutCachedUploadsCb inform_cb,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   if (!missive) {
     std::move(uploader_result_cb)
@@ -330,11 +333,13 @@ void MissiveImpl::AsyncStartUpload(
             Status(error::UNAVAILABLE, "Missive service has been shut down")));
     return;
   }
-  missive->AsyncStartUploadInternal(reason, std::move(uploader_result_cb));
+  missive->AsyncStartUploadInternal(reason, std::move(inform_cb),
+                                    std::move(uploader_result_cb));
 }
 
 void MissiveImpl::AsyncStartUploadInternal(
     UploaderInterface::UploadReason reason,
+    UploaderInterface::InformAboutCachedUploadsCb inform_cb,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(uploader_result_cb);
@@ -352,12 +357,14 @@ void MissiveImpl::AsyncStartUploadInternal(
                                      "Missive service not yet ready")));
     return;
   }
-  CreateUploadJob(health_module_, reason, std::move(uploader_result_cb));
+  CreateUploadJob(health_module_, reason, std::move(inform_cb),
+                  std::move(uploader_result_cb));
 }
 
 void MissiveImpl::CreateUploadJob(
     scoped_refptr<HealthModule> health_module,
     UploaderInterface::UploadReason reason,
+    UploaderInterface::InformAboutCachedUploadsCb inform_cb,
     UploaderInterface::UploaderInterfaceResultCb uploader_result_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   auto upload_job_result = UploadJob::Create(
@@ -371,7 +378,8 @@ void MissiveImpl::CreateUploadJob(
       /*new_events_rate=*/enqueuing_record_tallier_->GetAverage(),
       std::move(uploader_result_cb),
       base::BindPostTaskToCurrentDefault(
-          base::BindOnce(&MissiveImpl::HandleUploadResponse, GetWeakPtr())));
+          base::BindOnce(&MissiveImpl::HandleUploadResponse, GetWeakPtr(),
+                         std::move(inform_cb))));
   if (!upload_job_result.has_value()) {
     // In the event that UploadJob::Create fails, it will call
     // |uploader_result_cb| with a failure status.
@@ -529,6 +537,7 @@ void MissiveImpl::UpdateEncryptionKey(
 }
 
 void MissiveImpl::HandleUploadResponse(
+    UploaderInterface::InformAboutCachedUploadsCb inform_cb,
     StatusOr<UploadEncryptedRecordResponse> upload_response) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!upload_response.has_value()) {
@@ -555,6 +564,13 @@ void MissiveImpl::HandleUploadResponse(
     health_module_->set_debugging(
         upload_response_value.health_data_logging_enabled());
   }
+  // Inform storage about events cached by uploader.
+  std::list<int64_t> cached_events_seq_ids;
+  for (const auto& seq_id : upload_response_value.cached_events_seq_ids()) {
+    cached_events_seq_ids.emplace_back(seq_id);
+  }
+  std::move(inform_cb).Run(std::move(cached_events_seq_ids),
+                           base::DoNothing());  // Do not wait!
 }
 
 void MissiveImpl::SetEnabled(bool is_enabled) {

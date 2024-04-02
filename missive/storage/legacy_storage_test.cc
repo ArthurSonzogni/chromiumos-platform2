@@ -1019,6 +1019,7 @@ class LegacyStorageTest
 
   void AsyncStartMockUploader(
       UploaderInterface::UploadReason reason,
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       UploaderInterface::UploaderInterfaceResultCb start_uploader_cb) {
     main_task_runner_->PostTask(
         FROM_HERE,
@@ -1045,6 +1046,7 @@ class LegacyStorageTest
 
   void AsyncStartMockUploaderFailing(
       UploaderInterface::UploadReason reason,
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       UploaderInterface::UploaderInterfaceResultCb start_uploader_cb) {
     if (reason == UploaderInterface::UploadReason::KEY_DELIVERY &&
         key_delivery_failure_.load()) {
@@ -1053,7 +1055,8 @@ class LegacyStorageTest
               Status(kKeyDeliveryError, kKeyDeliveryErrorMessage)));
       return;
     }
-    AsyncStartMockUploader(reason, std::move(start_uploader_cb));
+    AsyncStartMockUploader(reason, std::move(inform_cb),
+                           std::move(start_uploader_cb));
   }
 
   Status WriteString(Priority priority, std::string_view data) {

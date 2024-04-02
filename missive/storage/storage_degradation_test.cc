@@ -766,6 +766,7 @@ class StorageDegradationTest
 
   void AsyncStartMockUploader(
       UploaderInterface::UploadReason reason,
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       UploaderInterface::UploaderInterfaceResultCb start_uploader_cb) {
     main_task_runner_->PostTask(
         FROM_HERE,

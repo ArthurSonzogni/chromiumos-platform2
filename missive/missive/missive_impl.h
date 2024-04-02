@@ -81,6 +81,7 @@ class MissiveImpl : public MissiveService {
   static void AsyncStartUpload(
       base::WeakPtr<MissiveImpl> missive,
       UploaderInterface::UploadReason reason,
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 
   void EnqueueRecord(const EnqueueRecordRequest& in_request,
@@ -147,14 +148,17 @@ class MissiveImpl : public MissiveService {
 
   void AsyncStartUploadInternal(
       UploaderInterface::UploadReason reason,
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 
   void CreateUploadJob(
       scoped_refptr<HealthModule> health_module,
       UploaderInterface::UploadReason reason,
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       UploaderInterface::UploaderInterfaceResultCb uploader_result_cb);
 
   void HandleUploadResponse(
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       StatusOr<UploadEncryptedRecordResponse> upload_response);
 
   void SetEnabled(bool is_enabled);

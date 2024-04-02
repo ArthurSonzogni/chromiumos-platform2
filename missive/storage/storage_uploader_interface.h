@@ -6,11 +6,13 @@
 #define MISSIVE_STORAGE_STORAGE_UPLOADER_INTERFACE_H_
 
 #include <cstdint>
+#include <list>
 #include <memory>
 #include <string_view>
 
 #include <base/functional/callback.h>
 
+#include "base/functional/callback_forward.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/util/status.h"
@@ -42,6 +44,12 @@ class UploaderInterface {
     MAX_REASON = 8,        // Anything beyond this is illegal
   };
 
+  // Callback that asynchronously accepts information about records already
+  // cached - they do not need to be uploaded anymore, unless the cache is
+  // purged.
+  using InformAboutCachedUploadsCb =
+      base::OnceCallback<void(std::list<int64_t>, base::OnceClosure)>;
+
   // Asynchronous callback that instantiates uploader.
   // To start upload, call |AsyncStartUploaderCb| on a thread pool. Once
   // uploader is instantiated, |AsyncStartUploaderCb| calls its parameter
@@ -50,8 +58,10 @@ class UploaderInterface {
   using UploaderInterfaceResultCb =
       base::OnceCallback<void(StatusOr<std::unique_ptr<UploaderInterface>>)>;
   // Callback type for asynchronous UploadInterface provider.
-  using AsyncStartUploaderCb = base::RepeatingCallback<void(
-      UploaderInterface::UploadReason reason, UploaderInterfaceResultCb)>;
+  using AsyncStartUploaderCb =
+      base::RepeatingCallback<void(UploaderInterface::UploadReason reason,
+                                   InformAboutCachedUploadsCb,
+                                   UploaderInterfaceResultCb)>;
 
   UploaderInterface(const UploaderInterface& other) = delete;
   const UploaderInterface& operator=(const UploaderInterface& other) = delete;

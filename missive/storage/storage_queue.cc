@@ -1178,7 +1178,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     if (sequence_info_.sequencing_id() < current_file_->first) {
       CallGapUpload(/*count=*/current_file_->first -
                     sequence_info_.sequencing_id());
-      // Resume at ScheduleNextRecord.
+      // Resume at `NextRecord`.
       return;
     }
 
@@ -1217,14 +1217,14 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
                 ? 1
                 : current_file_->first - sequence_info_.sequencing_id());
         CallGapUpload(count);
-        // Resume at ScheduleNextRecord.
+        // Resume at `NextRecord`.
         return;
       }
     }
 
     // Read and upload sequence_info_.sequencing_id().
     CallRecordOrGap(sequence_info_.sequencing_id());
-    // Resume at ScheduleNextRecord.
+    // Resume at `NextRecord`.
   }
 
   void UploadingCompleted(Status status) {
@@ -1298,6 +1298,14 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
+    if (storage_queue_->cached_events_seq_ids_.contains(
+            sequence_info_.sequencing_id())) {
+      // Record is known to have been cached by Ash. Skip it.
+      sequence_info_.set_sequencing_id(sequence_info_.sequencing_id() + 1);
+      NextRecord(/*more_records=*/true);
+      return;
+    }
+
     google::protobuf::io::ArrayInputStream blob_stream(  // Zero-copy stream.
         blob.data(), blob.size());
     EncryptedRecord encrypted_record;
@@ -1313,7 +1321,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       LOG(ERROR) << "Failed to parse record, seq="
                  << sequence_info_.sequencing_id();
       CallGapUpload(/*count=*/1);  // Do not reserve space for Gap record.
-      // Resume at ScheduleNextRecord.
+      // Resume at `NextRecord`.
       return;
     }
     CallRecordUpload(std::move(encrypted_record),
@@ -1338,18 +1346,18 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       LOG(ERROR) << "Sequence information already present, seq="
                  << sequence_info_.sequencing_id();
       CallGapUpload(/*count=*/1);
-      // Resume at ScheduleNextRecord.
+      // Resume at `NextRecord`.
       return;
     }
     // Fill in sequence information.
     // Priority is attached by the Storage layer.
     *encrypted_record.mutable_sequence_information() = sequence_info_;
     total_upload_size_ += encrypted_record.ByteSizeLong();
-    uploader_->ProcessRecord(std::move(encrypted_record),
-                             std::move(scoped_reservation),
-                             base::BindOnce(&ReadContext::ScheduleNextRecord,
-                                            base::Unretained(this)));
-    // Move sequencing id forward (ScheduleNextRecord will see this).
+    uploader_->ProcessRecord(
+        std::move(encrypted_record), std::move(scoped_reservation),
+        base::BindPostTaskToCurrentDefault(
+            base::BindOnce(&ReadContext::NextRecord, base::Unretained(this))));
+    // Move sequencing id forward (`NextRecord` will see this).
     sequence_info_.set_sequencing_id(sequence_info_.sequencing_id() + 1);
   }
 
@@ -1365,17 +1373,12 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       NextRecord(/*more_records=*/true);
       return;
     }
-    uploader_->ProcessGap(sequence_info_, count,
-                          base::BindOnce(&ReadContext::ScheduleNextRecord,
-                                         base::Unretained(this)));
-    // Move sequence id forward (ScheduleNextRecord will see this).
+    uploader_->ProcessGap(
+        sequence_info_, count,
+        base::BindPostTaskToCurrentDefault(
+            base::BindOnce(&ReadContext::NextRecord, base::Unretained(this))));
+    // Move sequence id forward (`NextRecord` will see this).
     sequence_info_.set_sequencing_id(sequence_info_.sequencing_id() + count);
-  }
-
-  // Schedules NextRecord to execute on the StorageQueue sequential task
-  // runner.
-  void ScheduleNextRecord(bool more_records) {
-    Schedule(&ReadContext::NextRecord, base::Unretained(this), more_records);
   }
 
   // If more records are expected, retrieves the next record (if present) and
@@ -1399,7 +1402,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     }
     // sequence_info_.sequencing_id() blob is ready.
     CallRecordOrGap(sequence_info_.sequencing_id());
-    // Resume at ScheduleNextRecord.
+    // Resume at `NextRecord`.
   }
 
   // Loads blob from the current file - reads header first, and then the body.
@@ -1524,11 +1527,11 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
               ? 1
               : current_file_->first - sequence_info_.sequencing_id());
       CallGapUpload(count);
-      // Resume at ScheduleNextRecord.
+      // Resume at `NextRecord`.
       return;
     }
     CallCurrentRecord(blob.value());
-    // Resume at ScheduleNextRecord.
+    // Resume at `NextRecord`.
   }
 
   void InstantiateUploader(base::OnceCallback<void()> continuation) {
@@ -1541,14 +1544,19 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     base::ThreadPool::PostTask(
         FROM_HERE, {base::TaskPriority::BEST_EFFORT},
         base::BindOnce(
-            [](base::OnceCallback<void()> continuation, ReadContext* self) {
+            [](base::OnceCallback<void()> continuation,
+               UploaderInterface::InformAboutCachedUploadsCb inform_cb,
+               ReadContext* self) {
               self->async_start_upload_cb_.Run(
-                  self->reason_,
+                  self->reason_, std::move(inform_cb),
                   base::BindOnce(&ReadContext::ScheduleOnUploaderInstantiated,
                                  base::Unretained(self),
                                  std::move(continuation)));
             },
-            std::move(continuation), base::Unretained(this)));
+            std::move(continuation),
+            base::BindPostTaskToCurrentDefault(base::BindOnce(
+                &StorageQueue::InformAboutCachedUploads, storage_queue_)),
+            base::Unretained(this)));
   }
 
   void ScheduleOnUploaderInstantiated(
@@ -2544,6 +2552,25 @@ void StorageQueue::PeriodicUpload() {
 void StorageQueue::Flush(base::OnceCallback<void(Status)> completion_cb) {
   Start<ReadContext>(UploaderInterface::UploadReason::MANUAL,
                      std::move(completion_cb), this);
+}
+
+void StorageQueue::InformAboutCachedUploads(
+    std::list<int64_t> cached_events_seq_ids, base::OnceClosure done_cb) {
+  sequenced_task_runner_->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](scoped_refptr<StorageQueue> self,
+                        std::list<int64_t> cached_events_seq_ids,
+                        base::OnceClosure done_cb) {
+                       DCHECK_CALLED_ON_VALID_SEQUENCE(
+                           self->storage_queue_sequence_checker_);
+                       self->cached_events_seq_ids_.clear();
+                       for (const auto& seq_id : cached_events_seq_ids) {
+                         self->cached_events_seq_ids_.emplace(seq_id);
+                       }
+                       std::move(done_cb).Run();
+                     },
+                     base::WrapRefCounted(this), cached_events_seq_ids,
+                     std::move(done_cb)));
 }
 
 void StorageQueue::ReleaseAllFileInstances() {

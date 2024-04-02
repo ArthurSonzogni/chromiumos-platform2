@@ -198,6 +198,7 @@ class QueueUploaderInterface : public UploaderInterface {
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       UploaderInterface::UploadReason reason,
+      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
       UploaderInterfaceResultCb start_uploader_cb);
 
   void ProcessRecord(EncryptedRecord encrypted_record,

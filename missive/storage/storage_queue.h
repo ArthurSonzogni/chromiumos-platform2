@@ -14,6 +14,7 @@
 #include <string_view>
 #include <unordered_set>
 
+#include <base/containers/flat_set.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -222,6 +223,11 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // locking StorageQueue. Helper methods: SwitchLastFileIfNotEmpty,
   // CollectFilesForUpload.
   void Flush(base::OnceCallback<void(Status)> completion_cb);
+
+  // Asynchronously informs queue about records that are already cached and can
+  // be omitted in the future uploads. Invoked if upload completed successfully.
+  void InformAboutCachedUploads(std::list<int64_t> cached_events_seq_ids,
+                                base::OnceClosure done_cb);
 
   // Registers completion notification callback. Thread-safe.
   // All registered callbacks are called when the queue destruction comes
@@ -615,6 +621,12 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // All accesses take place on sequenced_task_runner_.
   int32_t active_read_operations_
       GUARDED_BY_CONTEXT(storage_queue_sequence_checker_) = 0;
+
+  // Set of sequence ids that have been reported as already present in Ash.
+  // They do not need to be re-uploaded at this time (although Ash state could
+  // change in the future).
+  base::flat_set<int64_t> cached_events_seq_ids_
+      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
   // Upload timer (active only if options_.upload_period() is not 0 and not
   // infinity).
