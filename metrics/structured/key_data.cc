@@ -22,8 +22,7 @@
 
 #include "metrics/structured/structured_events.h"
 
-namespace metrics {
-namespace structured {
+namespace metrics::structured::platform {
 namespace {
 
 // The expected size of a key, in bytes.
@@ -133,5 +132,4 @@ uint64_t KeyData::HmacMetric(const uint64_t project_name_hash,
   return digest;
 }
 
-}  // namespace structured
-}  // namespace metrics
+}  // namespace metrics::structured::platform

@@ -7,8 +7,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 
-namespace metrics {
-namespace structured {
+namespace metrics::structured {
 namespace {
 
 constexpr char kEventsPathForTesting[] = "structuredMetricsEventsForTesting";
@@ -59,5 +58,4 @@ FakeRecorder::FakeRecorder(const std::string& events_directory,
 
 FakeRecorder::~FakeRecorder() = default;
 
-}  // namespace structured
-}  // namespace metrics
+}  // namespace metrics::structured

@@ -15,8 +15,7 @@
 #include <metrics/structured/recorder_impl.h>
 #include <metrics/metrics_library.h>
 
-namespace metrics {
-namespace structured {
+namespace metrics::structured {
 
 // FakeRecorder deletes keys and events on construction. It writes metrics to
 // disk by calling its superclass RecorderImpl's Record() method.
@@ -42,10 +41,9 @@ class BRILLO_EXPORT FakeRecorder : public RecorderImpl {
   // Used for checking the UMA consent.
   MetricsLibrary metrics_library_;
 
-  KeyData key_data_;
+  platform::KeyData key_data_;
 };
 
-}  // namespace structured
-}  // namespace metrics
+}  // namespace metrics::structured
 
 #endif  // METRICS_STRUCTURED_FAKE_RECORDER_H_

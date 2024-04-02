@@ -74,6 +74,7 @@ class ProjectInfo:
         self.name = Util.sanitize_name(project.name)
         self.namespace = Util.camel_to_snake(self.name)
         self.name_hash = Util.hash_name(self.name)
+        self.is_event_sequence = project.is_event_sequence_project
 
         # Set ID Type.
         if project.id == "uma":
@@ -83,16 +84,20 @@ class ProjectInfo:
         elif project.id == "none":
             self.id_type = "kUnidentified"
 
-        # Set event type. This is inferred by checking all metrics within the
-        # project. If any of a project's metrics is a raw string, then its
-        # events are considered raw string events, even if they also contain
-        # non-strings.
-        self.event_type = "REGULAR"
-        for event in project.events:
-            for metric in event.metrics:
-                if metric.type == "raw-string":
-                    self.event_type = "RAW_STRING"
-                    break
+        # Set the event type.
+        if self.is_event_sequence:
+            self.event_type = "SEQUENCE"
+        else:
+            # Set event type. This is inferred by checking all metrics within
+            # the project. If any of a project's metrics is a raw string, then
+            # it's events are considered raw string events, even if they also
+            # contain non-strings.
+            self.event_type = "REGULAR"
+            for event in project.events:
+                for metric in event.metrics:
+                    if metric.type == "raw-string":
+                        self.event_type = "RAW_STRING"
+                        break
 
 
 class EventInfo:

@@ -4,25 +4,35 @@
 
 #include "metrics/structured/recorder_impl.h"
 
-#include <memory>
+#include <errno.h>
 #include <sys/file.h>
+#include <sys/stat.h>
+#include <sys/sysinfo.h>
+#include <sys/types.h>
+
+#include <sstream>
+#include <string>
 #include <utility>
 
-#include <base/functional/bind.h>
-#include <base/logging.h>
-#include <base/uuid.h>
-#include <metrics/structured/structured_events.h>
-#include <metrics/structured/event_base.h>
-#include <metrics/structured/proto/storage.pb.h>
 #include <base/files/file_util.h>
-#include <base/strings/string_number_conversions.h>
+#include <base/logging.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/time/time.h>
+#include <base/uuid.h>
 
-namespace metrics {
-namespace structured {
+#include "metrics/structured/event_base.h"
+#include "metrics/structured/proto/storage.pb.h"
+#include "metrics/structured/structured_events.h"
+
+namespace metrics::structured {
 namespace {
 
 constexpr mode_t kFilePermissions = 0660;
+
+// Path to the reset counter path. This should be always be synced with the path
+// in reset_counter_updater.cc.
+const char kResetCounterPath[] = "/var/lib/metrics/structured/reset-counter";
 
 // Writes |events| to a file within |directory|. Fails if |directory| doesn't
 // exist. Returns whether the write was successful.
@@ -59,7 +69,20 @@ bool WriteEventsProtoToDir(const std::string& directory,
 
 RecorderImpl::RecorderImpl(const std::string& events_directory,
                            const std::string& keys_path)
-    : events_directory_(events_directory), key_data_(keys_path) {}
+    : RecorderImpl(events_directory,
+                   keys_path,
+                   base::FilePath(kResetCounterPath),
+                   std::make_unique<MetricsLibrary>()) {}
+
+RecorderImpl::RecorderImpl(
+    const std::string& events_directory,
+    const std::string& keys_path,
+    const base::FilePath& reset_counter_file,
+    std::unique_ptr<MetricsLibraryInterface> metrics_library)
+    : events_directory_(events_directory),
+      key_data_(keys_path),
+      reset_counter_file_(reset_counter_file),
+      metrics_library_(std::move(metrics_library)) {}
 
 RecorderImpl::~RecorderImpl() = default;
 
@@ -99,7 +122,7 @@ bool RecorderImpl::Record(const EventBase& event) {
           events::audio_peripheral::Close::kProjectNameHash &&
       event.project_name_hash() !=
           events::guest_usb_device::UsbDeviceInfo::kProjectNameHash &&
-      !metrics_library_.AreMetricsEnabled()) {
+      !metrics_library_->AreMetricsEnabled()) {
     return false;
   }
 
@@ -139,11 +162,25 @@ bool RecorderImpl::Record(const EventBase& event) {
   switch (event.event_type()) {
     case StructuredEventProto_EventType_REGULAR:
     case StructuredEventProto_EventType_RAW_STRING:
+    case StructuredEventProto_EventType_SEQUENCE:
       event_proto->set_event_type(event.event_type());
       break;
     default:
       NOTREACHED();
       break;
+  }
+
+  if (event_proto->event_type() == StructuredEventProto_EventType_SEQUENCE) {
+    int reset_counter = GetResetCounter();
+    auto uptime = GetUptime();
+
+    // Only populate the fields if both are valid.
+    if (reset_counter != kCounterFileUnread && uptime.has_value()) {
+      event_proto->mutable_event_sequence_metadata()->set_reset_counter(
+          reset_counter);
+      event_proto->mutable_event_sequence_metadata()->set_system_uptime(
+          uptime.value().InMilliseconds());
+    }
   }
 
   event_proto->set_event_name_hash(event.name_hash());
@@ -179,5 +216,29 @@ bool RecorderImpl::Record(const EventBase& event) {
   return WriteEventsProtoToDir(events_directory_, events_proto);
 }
 
-}  // namespace structured
-}  // namespace metrics
+int RecorderImpl::GetResetCounter() {
+  if (reset_counter_ == kCounterFileUnread) {
+    std::string content;
+    if (base::ReadFileToString(reset_counter_file_, &content)) {
+      std::stringstream ss(content);
+      ss >> reset_counter_;
+    } else {
+      PLOG(ERROR) << "Unable to read reset counter file at "
+                  << kResetCounterPath;
+    }
+  }
+
+  return reset_counter_;
+}
+
+std::optional<base::TimeDelta> RecorderImpl::GetUptime() {
+  timespec boot_time;
+  if (clock_gettime(CLOCK_BOOTTIME, &boot_time) != 0) {
+    PLOG(ERROR) << "Failed to get boot time.";
+    return std::nullopt;
+  }
+
+  return base::Seconds(boot_time.tv_sec) + base::Nanoseconds(boot_time.tv_nsec);
+}
+
+}  // namespace metrics::structured

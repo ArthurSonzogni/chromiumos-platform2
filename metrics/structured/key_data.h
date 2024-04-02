@@ -15,8 +15,7 @@
 #include "metrics/structured/persistent_proto.h"
 #include "metrics/structured/proto/storage.pb.h"
 
-namespace metrics {
-namespace structured {
+namespace metrics::structured::platform {
 
 // KeyData is the central class for managing keys and generating hashes for
 // structured metrics.
@@ -97,7 +96,6 @@ class KeyData {
   std::unique_ptr<PersistentProto<KeyDataProto>> proto_;
 };
 
-}  // namespace structured
-}  // namespace metrics
+}  // namespace metrics::structured::platform
 
 #endif  // METRICS_STRUCTURED_KEY_DATA_H_

@@ -7,7 +7,10 @@
 
 #include "metrics/structured/recorder.h"
 
+#include <stdint.h>
+
 #include <memory>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -15,11 +18,13 @@
 #include <metrics/structured/key_data.h>
 #include <metrics/metrics_library.h>
 
-namespace metrics {
-namespace structured {
+namespace metrics::structured {
 
 class EventBase;
 class EventsProto;
+
+// State to represent when the counter file has not been read.
+constexpr int kCounterFileUnread = -1;
 
 // Writes metrics to disk for collection and upload by chrome. A singleton
 // returned by GetInstance should be used for this purpose, and can be passed an
@@ -29,6 +34,12 @@ class RecorderImpl : public Recorder {
  public:
   RecorderImpl(const std::string& events_directory,
                const std::string& keys_path);
+
+  RecorderImpl(const std::string& events_directory,
+               const std::string& keys_path,
+               const base::FilePath& reset_counter_file,
+               std::unique_ptr<MetricsLibraryInterface> metrics_library);
+
   ~RecorderImpl() override;
 
   // Returns false if the event will definitely not be recorded, eg. due to
@@ -40,16 +51,26 @@ class RecorderImpl : public Recorder {
   RecorderImpl(const RecorderImpl&) = delete;
   RecorderImpl& operator=(const RecorderImpl&) = delete;
 
+  // Loads the reset counter if it hasn't been read yet.
+  int GetResetCounter();
+
+  // Get system uptime.
+  std::optional<base::TimeDelta> GetUptime();
+
   // Where to save event protos.
   const std::string events_directory_;
 
-  // Used for checking the UMA consent.
-  MetricsLibrary metrics_library_;
+  platform::KeyData key_data_;
 
-  KeyData key_data_;
+  const base::FilePath reset_counter_file_;
+
+  // -1 represents an uninitialized state.
+  int reset_counter_ = kCounterFileUnread;
+
+  // Used for checking the UMA consent.
+  std::unique_ptr<MetricsLibraryInterface> metrics_library_;
 };
 
-}  // namespace structured
-}  // namespace metrics
+}  // namespace metrics::structured
 
 #endif  // METRICS_STRUCTURED_RECORDER_IMPL_H_
