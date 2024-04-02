@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 #
 # Start the fingerprint study server, study_serve.py, on a host/non-Chromebook
-# machine. It uses the mocked ectool, in mock-bin, to simiulate finger presses.
+# machine. It uses the mocked ectool, in mock-bin, to simulate finger presses.
 #
 # This can be run or sourced, which is why we don't choose to exec the final
 # launch line.
