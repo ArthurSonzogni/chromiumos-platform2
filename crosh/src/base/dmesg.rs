@@ -9,13 +9,10 @@ use std::fmt::Write as _;
 use std::io::Write;
 
 use dbus::arg::{self, Variant};
-use dbus::blocking::Connection;
 use getopts::Options;
-use log::error;
-use system_api::client::OrgChromiumDebugd;
 
+use crate::debugd::Debugd;
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
-use crate::util::DEFAULT_DBUS_TIMEOUT;
 
 /* We keep a reduced set of options here for security */
 const FLAGS: [(&str, &str, &str); 10] = [
@@ -87,18 +84,9 @@ fn execute_dmesg(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Err
         }
     }
 
-    let connection = Connection::new_system().map_err(|err| {
-        error!("ERROR: Failed to get D-Bus connection: {}", err);
-        dispatcher::Error::CommandReturnedError
-    })?;
+    let connection = Debugd::new().map_err(|_| dispatcher::Error::CommandReturnedError)?;
 
-    let conn_path = connection.with_proxy(
-        "org.chromium.debugd",
-        "/org/chromium/debugd",
-        DEFAULT_DBUS_TIMEOUT,
-    );
-
-    let output = conn_path.call_dmesg(dbus_options).map_err(|err| {
+    let output = connection.call_dmesg(dbus_options).map_err(|err| {
         println!("ERROR: Got unexpected result: {}", err);
         dispatcher::Error::CommandReturnedError
     })?;

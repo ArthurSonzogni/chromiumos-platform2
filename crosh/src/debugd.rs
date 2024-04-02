@@ -7,7 +7,7 @@
 // remain in the various command modules.
 
 use bitflags::bitflags;
-use dbus::blocking::Connection;
+use dbus::{arg::PropMap, blocking::Connection};
 use log::error;
 use system_api::client::OrgChromiumDebugd;
 
@@ -58,6 +58,12 @@ impl Debugd {
                 Err(err)
             }
         }
+    }
+
+    pub fn call_dmesg(&self, options: PropMap) -> Result<String, dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .call_dmesg(options)
     }
 
     pub fn drmtrace_annotate_log(&self, log: String) -> Result<&Debugd, dbus::Error> {
