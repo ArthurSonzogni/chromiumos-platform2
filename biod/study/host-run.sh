@@ -17,23 +17,19 @@ PICTURE_DIR=./fpstudy-fingers
 # If LOG_DIR is left empty, log to console
 LOG_DIR=
 
-FPSTUDY_VIRTENV=/tmp/virtualenv-study
-
 # Find the fingerprint study base directory.
-study_dir="$(dirname "${BASH_SOURCE[0]}")"
+STUDY_DIR="$(dirname "${BASH_SOURCE[0]}")"
+FPSTUDY_VIRTENV="${STUDY_DIR}/.venv"
 
 # Setup New Virtualenv
 rm -rf "${FPSTUDY_VIRTENV}"
-if ! python3 -m venv "${FPSTUDY_VIRTENV}"; then
+if ! "${STUDY_DIR}/python-venv-setup.sh" "${FPSTUDY_VIRTENV}"; then
   echo "Error - Failed to setup a python virtualenv." >&2
   exit 1
 fi
+
 # shellcheck source=/dev/null
 . "${FPSTUDY_VIRTENV}/bin/activate"
-if ! pip3 install -r "${study_dir}/requirements.txt"; then
-  echo "Error - Failed to install python dependencies." >&2
-  exit 1
-fi
 
 if [[ -n "${LOG_DIR}" ]]; then
   mkdir -p "${LOG_DIR}"
@@ -42,7 +38,7 @@ fi
 mkdir -p "${PICTURE_DIR}"
 echo -e "# This directory is for testing only.\n*" >"${PICTURE_DIR}/.gitignore"
 
-PATH="${study_dir}/mock-bin:${PATH}" "${study_dir}/study_serve.py"             \
+PATH="${STUDY_DIR}/mock-bin:${PATH}" "${STUDY_DIR}/study_serve.py"             \
   --finger-count="${FINGER_COUNT}"                                             \
   --enrollment-count="${ENROLLMENT_COUNT}"                                     \
   --verification-count="${VERIFICATION_COUNT}"                                 \
