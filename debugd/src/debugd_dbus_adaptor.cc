@@ -56,6 +56,14 @@ std::optional<FirmwareDumpType> ConvertFirmwareDumpType(uint32_t type) {
   }
 }
 
+bool UseFbPreprocessord() {
+#if USE_FBPREPROCESSORD
+  return true;
+#else
+  return false;
+#endif
+}
+
 DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
                                      const bool perf_logging)
     : org::chromium::debugdAdaptor(this),
@@ -269,14 +277,16 @@ void DebugdDBusAdaptor::GetFeedbackBinaryLogs(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<>> response,
     const std::string& username,
     const std::map<int32_t, base::ScopedFD>& outfds) {
-  std::map<FeedbackBinaryLogType, base::ScopedFD> outfds_mapped;
+  if (UseFbPreprocessord()) {
+    std::map<FeedbackBinaryLogType, base::ScopedFD> outfds_mapped;
 
-  if (outfds.contains(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP)) {
-    outfds_mapped[FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP] = base::ScopedFD(
-        dup(outfds.at(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP).get()));
+    if (outfds.contains(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP)) {
+      outfds_mapped[FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP] = base::ScopedFD(
+          dup(outfds.at(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP).get()));
+    }
+
+    binary_log_tool_->GetBinaryLogs(username, outfds_mapped);
   }
-
-  binary_log_tool_->GetBinaryLogs(username, outfds_mapped);
 
   response->Return();
 }
