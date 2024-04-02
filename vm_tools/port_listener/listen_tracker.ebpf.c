@@ -9,6 +9,12 @@
 
 #include "vm_tools/port_listener/common.h"
 
+// For some reason 6.1 doesn't include these symbols in the debug build
+// so they don't get included in vmlinux.h. These features have existed since
+// well before 6.1.
+#define BPF_F_NO_PREALLOC (1U << 0)
+#define BPF_ANY 0
+
 struct {
   __uint(type, BPF_MAP_TYPE_RINGBUF);
   __uint(max_entries, 1 << 24);
