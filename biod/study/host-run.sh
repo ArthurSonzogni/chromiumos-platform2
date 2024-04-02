@@ -28,9 +28,6 @@ if ! "${STUDY_DIR}/python-venv-setup.sh" "${FPSTUDY_VIRTENV}"; then
   exit 1
 fi
 
-# shellcheck source=/dev/null
-. "${FPSTUDY_VIRTENV}/bin/activate"
-
 if [[ -n "${LOG_DIR}" ]]; then
   mkdir -p "${LOG_DIR}"
 fi
@@ -38,7 +35,8 @@ fi
 mkdir -p "${PICTURE_DIR}"
 echo -e "# This directory is for testing only.\n*" >"${PICTURE_DIR}/.gitignore"
 
-PATH="${STUDY_DIR}/mock-bin:${PATH}" "${STUDY_DIR}/study_serve.py"             \
+PATH="${STUDY_DIR}/mock-bin:${PATH}" "${FPSTUDY_VIRTENV}/bin/python3"          \
+  "${STUDY_DIR}/study_serve.py"                                                \
   --finger-count="${FINGER_COUNT}"                                             \
   --enrollment-count="${ENROLLMENT_COUNT}"                                     \
   --verification-count="${VERIFICATION_COUNT}"                                 \
