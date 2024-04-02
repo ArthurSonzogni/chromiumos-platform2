@@ -13,7 +13,479 @@
 
 namespace patchpanel {
 
-class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
+// This file contains the stub and mock implementation of
+// PatchPanelProxyInterface. The mock version only contains the methods required
+// in the unit tests.
+
+class StubPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
+ public:
+  bool ArcShutdown(const patchpanel::ArcShutdownRequest& in_request,
+                   patchpanel::ArcShutdownResponse* out_response,
+                   brillo::ErrorPtr* error,
+                   int timeout_ms) override {
+    return false;
+  }
+
+  void ArcShutdownAsync(
+      const patchpanel::ArcShutdownRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::ArcShutdownResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool ArcStartup(const patchpanel::ArcStartupRequest& in_request,
+                  patchpanel::ArcStartupResponse* out_response,
+                  brillo::ErrorPtr* error,
+                  int timeout_ms) override {
+    return false;
+  }
+
+  void ArcStartupAsync(
+      const patchpanel::ArcStartupRequest& in_request,
+      base::OnceCallback<void(
+          const patchpanel::ArcStartupResponse& /*response*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool ArcVmShutdown(const patchpanel::ArcVmShutdownRequest& in_request,
+                     patchpanel::ArcVmShutdownResponse* out_response,
+                     brillo::ErrorPtr* error,
+                     int timeout_ms) override {
+    return false;
+  }
+
+  void ArcVmShutdownAsync(
+      const patchpanel::ArcVmShutdownRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::ArcVmShutdownResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool ArcVmStartup(const patchpanel::ArcVmStartupRequest& in_request,
+                    patchpanel::ArcVmStartupResponse* out_response,
+                    brillo::ErrorPtr* error,
+                    int timeout_ms) override {
+    return false;
+  }
+
+  void ArcVmStartupAsync(
+      const patchpanel::ArcVmStartupRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::ArcVmStartupResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool ConnectNamespace(const patchpanel::ConnectNamespaceRequest& in_request,
+                        const base::ScopedFD& in_client_fd,
+                        patchpanel::ConnectNamespaceResponse* out_response,
+                        brillo::ErrorPtr* error,
+                        int timeout_ms) override {
+    return false;
+  }
+
+  void ConnectNamespaceAsync(
+      const patchpanel::ConnectNamespaceRequest& in_request,
+      const base::ScopedFD& in_client_fd,
+      base::OnceCallback<
+          void(const patchpanel::ConnectNamespaceResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool CreateLocalOnlyNetwork(
+      const patchpanel::LocalOnlyNetworkRequest& in_request,
+      const base::ScopedFD& in_client_fd,
+      patchpanel::LocalOnlyNetworkResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void CreateLocalOnlyNetworkAsync(
+      const patchpanel::LocalOnlyNetworkRequest& in_request,
+      const base::ScopedFD& in_client_fd,
+      base::OnceCallback<
+          void(const patchpanel::LocalOnlyNetworkResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool CreateTetheredNetwork(
+      const patchpanel::TetheredNetworkRequest& in_request,
+      const base::ScopedFD& in_client_fd,
+      patchpanel::TetheredNetworkResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void CreateTetheredNetworkAsync(
+      const patchpanel::TetheredNetworkRequest& in_request,
+      const base::ScopedFD& in_client_fd,
+      base::OnceCallback<
+          void(const patchpanel::TetheredNetworkResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool ConfigureNetwork(const patchpanel::ConfigureNetworkRequest& in_request,
+                        patchpanel::ConfigureNetworkResponse* out_response,
+                        brillo::ErrorPtr* error,
+                        int timeout_ms) override {
+    return false;
+  }
+
+  void ConfigureNetworkAsync(
+      const patchpanel::ConfigureNetworkRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::ConfigureNetworkResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool GetDevices(const patchpanel::GetDevicesRequest& in_request,
+                  patchpanel::GetDevicesResponse* out_response,
+                  brillo::ErrorPtr* error,
+                  int timeout_ms) override {
+    return false;
+  }
+
+  void GetDevicesAsync(
+      const patchpanel::GetDevicesRequest& in_request,
+      base::OnceCallback<void(
+          const patchpanel::GetDevicesResponse& /*response*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool GetDownstreamNetworkInfo(
+      const patchpanel::GetDownstreamNetworkInfoRequest& in_request,
+      patchpanel::GetDownstreamNetworkInfoResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void GetDownstreamNetworkInfoAsync(
+      const patchpanel::GetDownstreamNetworkInfoRequest& in_request,
+      base::OnceCallback<void(
+          const patchpanel::GetDownstreamNetworkInfoResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool GetTrafficCounters(const patchpanel::TrafficCountersRequest& in_request,
+                          patchpanel::TrafficCountersResponse* out_response,
+                          brillo::ErrorPtr* error,
+                          int timeout_ms) override {
+    return false;
+  }
+
+  void GetTrafficCountersAsync(
+      const patchpanel::TrafficCountersRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::TrafficCountersResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool ModifyPortRule(const patchpanel::ModifyPortRuleRequest& in_request,
+                      patchpanel::ModifyPortRuleResponse* out_response,
+                      brillo::ErrorPtr* error,
+                      int timeout_ms) override {
+    return false;
+  }
+
+  void ModifyPortRuleAsync(
+      const patchpanel::ModifyPortRuleRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::ModifyPortRuleResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool ParallelsVmShutdown(
+      const patchpanel::ParallelsVmShutdownRequest& in_request,
+      patchpanel::ParallelsVmShutdownResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void ParallelsVmShutdownAsync(
+      const patchpanel::ParallelsVmShutdownRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::ParallelsVmShutdownResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool ParallelsVmStartup(
+      const patchpanel::ParallelsVmStartupRequest& in_request,
+      patchpanel::ParallelsVmStartupResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void ParallelsVmStartupAsync(
+      const patchpanel::ParallelsVmStartupRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::ParallelsVmStartupResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool BruschettaVmShutdown(
+      const patchpanel::BruschettaVmShutdownRequest& in_request,
+      patchpanel::BruschettaVmShutdownResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void BruschettaVmShutdownAsync(
+      const patchpanel::BruschettaVmShutdownRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::BruschettaVmShutdownResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool BruschettaVmStartup(
+      const patchpanel::BruschettaVmStartupRequest& in_request,
+      patchpanel::BruschettaVmStartupResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void BruschettaVmStartupAsync(
+      const patchpanel::BruschettaVmStartupRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::BruschettaVmStartupResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool BorealisVmShutdown(
+      const patchpanel::BorealisVmShutdownRequest& in_request,
+      patchpanel::BorealisVmShutdownResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void BorealisVmShutdownAsync(
+      const patchpanel::BorealisVmShutdownRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::BorealisVmShutdownResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool BorealisVmStartup(const patchpanel::BorealisVmStartupRequest& in_request,
+                         patchpanel::BorealisVmStartupResponse* out_response,
+                         brillo::ErrorPtr* error,
+                         int timeout_ms) override {
+    return false;
+  }
+
+  void BorealisVmStartupAsync(
+      const patchpanel::BorealisVmStartupRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::BorealisVmStartupResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool SetDnsRedirectionRule(
+      const patchpanel::SetDnsRedirectionRuleRequest& in_request,
+      const base::ScopedFD& in_client_fd,
+      patchpanel::SetDnsRedirectionRuleResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void SetDnsRedirectionRuleAsync(
+      const patchpanel::SetDnsRedirectionRuleRequest& in_request,
+      const base::ScopedFD& in_client_fd,
+      base::OnceCallback<
+          void(const patchpanel::SetDnsRedirectionRuleResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool SetVpnLockdown(const patchpanel::SetVpnLockdownRequest& in_request,
+                      patchpanel::SetVpnLockdownResponse* out_response,
+                      brillo::ErrorPtr* error,
+                      int timeout_ms) override {
+    return false;
+  }
+
+  void SetVpnLockdownAsync(
+      const patchpanel::SetVpnLockdownRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::SetVpnLockdownResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool TagSocket(const patchpanel::TagSocketRequest& in_request,
+                 const base::ScopedFD& in_socket_fd,
+                 patchpanel::TagSocketResponse* out_response,
+                 brillo::ErrorPtr* error,
+                 int timeout_ms) override {
+    return false;
+  }
+
+  void TagSocketAsync(
+      const patchpanel::TagSocketRequest& in_request,
+      const base::ScopedFD& in_socket_fd,
+      base::OnceCallback<void(
+          const patchpanel::TagSocketResponse& /*response*/)> success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool TerminaVmShutdown(const patchpanel::TerminaVmShutdownRequest& in_request,
+                         patchpanel::TerminaVmShutdownResponse* out_response,
+                         brillo::ErrorPtr* error,
+                         int timeout_ms) override {
+    return false;
+  }
+
+  void TerminaVmShutdownAsync(
+      const patchpanel::TerminaVmShutdownRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::TerminaVmShutdownResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool TerminaVmStartup(const patchpanel::TerminaVmStartupRequest& in_request,
+                        patchpanel::TerminaVmStartupResponse* out_response,
+                        brillo::ErrorPtr* error,
+                        int timeout_ms) override {
+    return false;
+  }
+
+  void TerminaVmStartupAsync(
+      const patchpanel::TerminaVmStartupRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::TerminaVmStartupResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool NotifyAndroidWifiMulticastLockChange(
+      const patchpanel::NotifyAndroidWifiMulticastLockChangeRequest& in_request,
+      patchpanel::NotifyAndroidWifiMulticastLockChangeResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void NotifyAndroidWifiMulticastLockChangeAsync(
+      const patchpanel::NotifyAndroidWifiMulticastLockChangeRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::
+                   NotifyAndroidWifiMulticastLockChangeResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool NotifyAndroidInteractiveState(
+      const patchpanel::NotifyAndroidInteractiveStateRequest& in_request,
+      patchpanel::NotifyAndroidInteractiveStateResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void NotifyAndroidInteractiveStateAsync(
+      const patchpanel::NotifyAndroidInteractiveStateRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::
+                   NotifyAndroidInteractiveStateResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool NotifySocketConnectionEvent(
+      const patchpanel::NotifySocketConnectionEventRequest& in_request,
+      patchpanel::NotifySocketConnectionEventResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void NotifySocketConnectionEventAsync(
+      const patchpanel::NotifySocketConnectionEventRequest& in_request,
+      base::OnceCallback<void(
+          const patchpanel::NotifySocketConnectionEventResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool NotifyARCVPNSocketConnectionEvent(
+      const patchpanel::NotifyARCVPNSocketConnectionEventRequest& in_request,
+      patchpanel::NotifyARCVPNSocketConnectionEventResponse* out_response,
+      brillo::ErrorPtr* error,
+      int timeout_ms) override {
+    return false;
+  }
+
+  void NotifyARCVPNSocketConnectionEventAsync(
+      const patchpanel::NotifyARCVPNSocketConnectionEventRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::
+                   NotifyARCVPNSocketConnectionEventResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  bool SetFeatureFlag(const patchpanel::SetFeatureFlagRequest& in_request,
+                      patchpanel::SetFeatureFlagResponse* out_response,
+                      brillo::ErrorPtr* error,
+                      int timeout_ms) override {
+    return false;
+  }
+
+  void SetFeatureFlagAsync(
+      const patchpanel::SetFeatureFlagRequest& in_request,
+      base::OnceCallback<
+          void(const patchpanel::SetFeatureFlagResponse& /*response*/)>
+          success_callback,
+      base::OnceCallback<void(brillo::Error*)> error_callback,
+      int timeout_ms) override {}
+
+  void RegisterNetworkDeviceChangedSignalHandler(
+      const base::RepeatingCallback<
+          void(const patchpanel::NetworkDeviceChangedSignal&)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {}
+
+  void RegisterNetworkConfigurationChangedSignalHandler(
+      const base::RepeatingCallback<
+          void(const patchpanel::NetworkConfigurationChangedSignal&)>&
+          signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {}
+
+  void RegisterNeighborReachabilityEventSignalHandler(
+      const base::RepeatingCallback<void(
+          const patchpanel::NeighborReachabilityEventSignal&)>& signal_callback,
+      dbus::ObjectProxy::OnConnectedCallback on_connected_callback) override {}
+
+  const dbus::ObjectPath& GetObjectPath() const override { return path_; }
+  dbus::ObjectProxy* GetObjectProxy() const override { return nullptr; }
+
+ private:
+  dbus::ObjectPath path_;
+};
+
+class MockPatchPanelProxy : public StubPatchPanelProxy {
  public:
   MockPatchPanelProxy();
   ~MockPatchPanelProxy() override;
@@ -24,27 +496,11 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
       (const ArcShutdownRequest&, ArcShutdownResponse*, brillo::ErrorPtr*, int),
       (override));
 
-  MOCK_METHOD(void,
-              ArcShutdownAsync,
-              (const ArcShutdownRequest&,
-               base::OnceCallback<void(const ArcShutdownResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
   MOCK_METHOD(
       bool,
       ArcStartup,
       (const ArcStartupRequest&, ArcStartupResponse*, brillo::ErrorPtr*, int),
       (override));
-
-  MOCK_METHOD(void,
-              ArcStartupAsync,
-              (const ArcStartupRequest&,
-               base::OnceCallback<void(const ArcStartupResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
 
   MOCK_METHOD(bool,
               ArcVmShutdown,
@@ -54,27 +510,11 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
                int),
               (override));
 
-  MOCK_METHOD(void,
-              ArcVmShutdownAsync,
-              (const ArcVmShutdownRequest&,
-               base::OnceCallback<void(const ArcVmShutdownResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
   MOCK_METHOD(bool,
               ArcVmStartup,
               (const ArcVmStartupRequest&,
                ArcVmStartupResponse*,
                brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              ArcVmStartupAsync,
-              (const ArcVmStartupRequest&,
-               base::OnceCallback<void(const ArcVmStartupResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
                int),
               (override));
 
@@ -87,127 +527,11 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
                int),
               (override));
 
-  MOCK_METHOD(void,
-              ConnectNamespaceAsync,
-              (const ConnectNamespaceRequest&,
-               const base::ScopedFD&,
-               base::OnceCallback<void(const ConnectNamespaceResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              CreateLocalOnlyNetwork,
-              (const LocalOnlyNetworkRequest&,
-               const base::ScopedFD&,
-               LocalOnlyNetworkResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              CreateLocalOnlyNetworkAsync,
-              (const LocalOnlyNetworkRequest&,
-               const base::ScopedFD&,
-               base::OnceCallback<void(const LocalOnlyNetworkResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              CreateTetheredNetwork,
-              (const TetheredNetworkRequest&,
-               const base::ScopedFD&,
-               TetheredNetworkResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              CreateTetheredNetworkAsync,
-              (const TetheredNetworkRequest&,
-               const base::ScopedFD&,
-               base::OnceCallback<void(const TetheredNetworkResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(
-      bool,
-      GetDevices,
-      (const GetDevicesRequest&, GetDevicesResponse*, brillo::ErrorPtr*, int),
-      (override));
-
-  MOCK_METHOD(void,
-              GetDevicesAsync,
-              (const GetDevicesRequest&,
-               base::OnceCallback<void(const GetDevicesResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              GetDownstreamNetworkInfo,
-              (const GetDownstreamNetworkInfoRequest&,
-               GetDownstreamNetworkInfoResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(
-      void,
-      GetDownstreamNetworkInfoAsync,
-      (const GetDownstreamNetworkInfoRequest&,
-       base::OnceCallback<void(const GetDownstreamNetworkInfoResponse&)>,
-       base::OnceCallback<void(brillo::Error*)>,
-       int),
-      (override));
-
-  MOCK_METHOD(bool,
-              GetTrafficCounters,
-              (const TrafficCountersRequest&,
-               TrafficCountersResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              GetTrafficCountersAsync,
-              (const TrafficCountersRequest&,
-               base::OnceCallback<void(const TrafficCountersResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              ModifyPortRule,
-              (const ModifyPortRuleRequest&,
-               ModifyPortRuleResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              ModifyPortRuleAsync,
-              (const ModifyPortRuleRequest&,
-               base::OnceCallback<void(const ModifyPortRuleResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
   MOCK_METHOD(bool,
               ParallelsVmShutdown,
               (const ParallelsVmShutdownRequest&,
                ParallelsVmShutdownResponse*,
                brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              ParallelsVmShutdownAsync,
-              (const ParallelsVmShutdownRequest&,
-               base::OnceCallback<void(const ParallelsVmShutdownResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
                int),
               (override));
 
@@ -219,27 +543,11 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
                int),
               (override));
 
-  MOCK_METHOD(void,
-              ParallelsVmStartupAsync,
-              (const ParallelsVmStartupRequest&,
-               base::OnceCallback<void(const ParallelsVmStartupResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
   MOCK_METHOD(bool,
               BruschettaVmShutdown,
               (const BruschettaVmShutdownRequest&,
                BruschettaVmShutdownResponse*,
                brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              BruschettaVmShutdownAsync,
-              (const BruschettaVmShutdownRequest&,
-               base::OnceCallback<void(const BruschettaVmShutdownResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
                int),
               (override));
 
@@ -251,27 +559,11 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
                int),
               (override));
 
-  MOCK_METHOD(void,
-              BruschettaVmStartupAsync,
-              (const BruschettaVmStartupRequest&,
-               base::OnceCallback<void(const BruschettaVmStartupResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
   MOCK_METHOD(bool,
               BorealisVmShutdown,
               (const BorealisVmShutdownRequest&,
                BorealisVmShutdownResponse*,
                brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              BorealisVmShutdownAsync,
-              (const BorealisVmShutdownRequest&,
-               base::OnceCallback<void(const BorealisVmShutdownResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
                int),
               (override));
 
@@ -283,82 +575,6 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
                int),
               (override));
 
-  MOCK_METHOD(void,
-              BorealisVmStartupAsync,
-              (const BorealisVmStartupRequest&,
-               base::OnceCallback<void(const BorealisVmStartupResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              ConfigureNetwork,
-              (const ConfigureNetworkRequest&,
-               ConfigureNetworkResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              ConfigureNetworkAsync,
-              (const ConfigureNetworkRequest&,
-               base::OnceCallback<void(const ConfigureNetworkResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              SetDnsRedirectionRule,
-              (const SetDnsRedirectionRuleRequest&,
-               const base::ScopedFD&,
-               SetDnsRedirectionRuleResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              SetDnsRedirectionRuleAsync,
-              (const SetDnsRedirectionRuleRequest&,
-               const base::ScopedFD&,
-               base::OnceCallback<void(const SetDnsRedirectionRuleResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              SetVpnLockdown,
-              (const SetVpnLockdownRequest&,
-               SetVpnLockdownResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              SetVpnLockdownAsync,
-              (const SetVpnLockdownRequest&,
-               base::OnceCallback<void(const SetVpnLockdownResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              TagSocket,
-              (const TagSocketRequest&,
-               const base::ScopedFD& in_socket_fd,
-               TagSocketResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              TagSocketAsync,
-              (const TagSocketRequest&,
-               const base::ScopedFD& in_socket_fd,
-               base::OnceCallback<void(const TagSocketResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
   MOCK_METHOD(bool,
               TerminaVmShutdown,
               (const TerminaVmShutdownRequest&,
@@ -367,98 +583,11 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
                int),
               (override));
 
-  MOCK_METHOD(void,
-              TerminaVmShutdownAsync,
-              (const TerminaVmShutdownRequest&,
-               base::OnceCallback<void(const TerminaVmShutdownResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
   MOCK_METHOD(bool,
               TerminaVmStartup,
               (const TerminaVmStartupRequest&,
                TerminaVmStartupResponse*,
                brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              TerminaVmStartupAsync,
-              (const TerminaVmStartupRequest&,
-               base::OnceCallback<void(const TerminaVmStartupResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              NotifyAndroidWifiMulticastLockChange,
-              (const patchpanel::NotifyAndroidWifiMulticastLockChangeRequest&,
-               patchpanel::NotifyAndroidWifiMulticastLockChangeResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(
-      void,
-      NotifyAndroidWifiMulticastLockChangeAsync,
-      (const patchpanel::NotifyAndroidWifiMulticastLockChangeRequest&,
-       base::OnceCallback<void(
-           const patchpanel::
-               NotifyAndroidWifiMulticastLockChangeResponse& /*response*/)>,
-       base::OnceCallback<void(brillo::Error*)>,
-       int),
-      (override));
-
-  MOCK_METHOD(bool,
-              NotifyAndroidInteractiveState,
-              (const patchpanel::NotifyAndroidInteractiveStateRequest&,
-               patchpanel::NotifyAndroidInteractiveStateResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              NotifyAndroidInteractiveStateAsync,
-              (const patchpanel::NotifyAndroidInteractiveStateRequest&,
-               base::OnceCallback<void(
-                   const patchpanel::
-                       NotifyAndroidInteractiveStateResponse& /*response*/)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(bool,
-              NotifySocketConnectionEvent,
-              (const patchpanel::NotifySocketConnectionEventRequest&,
-               patchpanel::NotifySocketConnectionEventResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(
-      void,
-      NotifySocketConnectionEventAsync,
-      (const patchpanel::NotifySocketConnectionEventRequest&,
-       base::OnceCallback<void(const NotifySocketConnectionEventResponse&)>,
-       base::OnceCallback<void(brillo::Error*)>,
-       int),
-      (override));
-
-  MOCK_METHOD(bool,
-              NotifyARCVPNSocketConnectionEvent,
-              (const patchpanel::NotifyARCVPNSocketConnectionEventRequest&,
-               patchpanel::NotifyARCVPNSocketConnectionEventResponse*,
-               brillo::ErrorPtr*,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              NotifyARCVPNSocketConnectionEventAsync,
-              (const patchpanel::NotifyARCVPNSocketConnectionEventRequest&,
-               base::OnceCallback<
-                   void(const NotifyARCVPNSocketConnectionEventResponse&)>,
-               base::OnceCallback<void(brillo::Error*)>,
                int),
               (override));
 
@@ -471,37 +600,11 @@ class MockPatchPanelProxy : public org::chromium::PatchPanelProxyInterface {
               (override));
 
   MOCK_METHOD(void,
-              SetFeatureFlagAsync,
-              (const patchpanel::SetFeatureFlagRequest&,
-               base::OnceCallback<void(
-                   const patchpanel::SetFeatureFlagResponse& /*response*/)>,
-               base::OnceCallback<void(brillo::Error*)>,
-               int),
-              (override));
-
-  MOCK_METHOD(void,
-              RegisterNetworkDeviceChangedSignalHandler,
-              (const base::RepeatingCallback<
-                   void(const NetworkDeviceChangedSignal&)>& signal_callback,
-               dbus::ObjectProxy::OnConnectedCallback on_connected_callback),
-              (override));
-
-  MOCK_METHOD(void,
-              RegisterNetworkConfigurationChangedSignalHandler,
-              (const base::RepeatingCallback<void(
-                   const NetworkConfigurationChangedSignal&)>& signal_callback,
-               dbus::ObjectProxy::OnConnectedCallback on_connected_callback),
-              (override));
-
-  MOCK_METHOD(void,
               RegisterNeighborReachabilityEventSignalHandler,
               (const base::RepeatingCallback<void(
                    const NeighborReachabilityEventSignal&)>& signal_callback,
                dbus::ObjectProxy::OnConnectedCallback on_connected_callback),
               (override));
-
-  MOCK_METHOD(const dbus::ObjectPath&, GetObjectPath, (), (const override));
-  MOCK_METHOD(dbus::ObjectProxy*, GetObjectProxy, (), (const override));
 };
 
 }  // namespace patchpanel

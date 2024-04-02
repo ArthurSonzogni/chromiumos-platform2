@@ -47,7 +47,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
   auto client = Client::NewForTesting(
       bus, std::unique_ptr<org::chromium::PatchPanelProxyInterface>(
-               new testing::NiceMock<MockPatchPanelProxy>()));
+               new StubPatchPanelProxy()));
   FuzzedDataProvider provider(data, size);
 
   while (provider.remaining_bytes() > 0) {
