@@ -104,6 +104,7 @@ constexpr char kPathDumpe2fs[] = "/sbin/dumpe2fs";
 constexpr char kPathE2fsck[] = "/sbin/e2fsck";
 constexpr char kPathTune2fs[] = "/sbin/tune2fs";
 constexpr char kEcryptFS[] = "ecryptfs";
+constexpr char kTmpFS[] = "tmpfs";
 
 bool IsDirectory(const base::stat_wrapper_t& file_info) {
   return !!S_ISDIR(file_info.st_mode);
@@ -288,7 +289,8 @@ bool Platform::Mount(const FilePath& from,
                      const std::string& type,
                      uint32_t mount_flags,
                      const std::string& mount_options) {
-  DCHECK(from.IsAbsolute() || from.value().empty()) << "from=" << from;
+  DCHECK(from.IsAbsolute() || from.value().empty() || type == kTmpFS)
+      << "from=" << from;
   DCHECK(to.IsAbsolute()) << "to=" << to;
 
   std::string from_path = !from.value().empty() ? from.value() : type;
