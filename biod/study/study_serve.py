@@ -281,6 +281,12 @@ class FingerWebSocket(WebSocket):
             return (None, f"{msg}. Call operator.")
         return (img, None)
 
+    def finger_save_pattern1(self, req: dict[str, Any], img: bytes):
+        directory = os.path.join(self.pict_dir, self.DIR_FORMAT.format(**req))
+        self.make_dirs(directory)
+        base_file = directory + "/pattern1.raw"
+        self.save_to_file(img, base_file)
+
     def finger_save_image(self, req: dict[str, Any], img: bytes):
         directory = os.path.join(self.pict_dir, self.DIR_FORMAT.format(**req))
         self.make_dirs(directory)
@@ -308,10 +314,29 @@ class FingerWebSocket(WebSocket):
             The optional result string to send to the client page.
             None when no result should be sent to the client page.
         """
-        # Ensure the user has removed the finger between 2 captures.
+        # Ensure the user has removed the finger between 2 captures or
+        # before the calibration capture occurs.
         if not self.finger_wait_done(FP_MODE_FINGER_UP):
             # Aborted. Don't send a result to client.
             return None
+
+        if req["action"] == "setup":
+            t0 = time.time()
+            # The pattern1 capture is needed for Elan 80SG to do off-chip
+            # evaluation.
+            cherrypy.log(f"Capturing pattern1 for finger {req['finger']:02d}")
+            img, result = self.capture("pattern1")
+            t1 = time.time()
+            cherrypy.log(f"Captured pattern1 in {t1 - t0:.2f}s")
+            if not img:
+                return result
+            self.finger_save_pattern1(req, img)
+            return "ok"
+
+        if req["action"] != "sample":
+            raise Exception(
+                f"Received unexpected action '{req['action']}' from UI"
+            )
         t0 = time.time()
         # Capture the finger image when the finger is on the sensor.
         img, result = self.capture("vendor")

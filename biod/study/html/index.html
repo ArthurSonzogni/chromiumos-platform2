@@ -78,12 +78,15 @@
     </div>
 
     <!-- Screen 3 - User kicks off enrollment image capture for finger X -->
+    <!-- We block the user from clicking OK, until the server finishes setup
+          for the given finger. -->
     <div id="kickoff" hidden>
       <h1>Capture enrollment image for finger
         <span id="fingerid0">0</span> for participant <span id="pid0">000</span>
       </h1>
       <h1> Click OK to start the capture </h1>
       <button id="kickoff_finger">OK</button>
+      <div id="kickoff-server-state" class="text-footer-status text-danger"></div>
     </div>
 
     <!-- Screen 4 - User is asked to place finger on sensor to capture image.
@@ -151,6 +154,9 @@
   // The finger ID to capture, this is specified by the operator.
   var finger_id = 0;
 
+  // Indicates if the kickoff is waiting for server setup.
+  var is_kickoff_waiting = false;
+
   // Indicate which phase the UI is currently in. Backend is not aware of this
   // and will get the same request.
   var in_enroll_phase = true;
@@ -200,8 +206,29 @@
     socket.send(JSON.stringify(payload));
   }
 
+  // Send message to server that we are about to start capturing for the given
+  // finger. This is intended to be used for setup/initialization and
+  // capturing calibration samples while the participant isn't touching the
+  // sensor.
+  function sendFingerSetupInfo() {
+    var msg = {
+      'action': 'setup',
+      'participant': pid,
+      'group': group,
+      'finger': finger_id,
+    };
+    socket.send(JSON.stringify(msg));
+  }
+
+  // Send message to server to capture a sample.
   function sendNextFingerInfo() {
-    var msg = {'participant': pid, 'group': group, 'finger': finger_id, 'picture': picture_num};
+    var msg = {
+      'action': 'sample',
+      'participant': pid,
+      'group': group,
+      'finger': finger_id,
+      'picture': picture_num,
+    };
     socket.send(JSON.stringify(msg));
   }
 
@@ -257,9 +284,33 @@
 
     // Clean up the input field.
     document.getElementById("fid").value = "";
+    document.getElementById("kickoff_finger").disabled = true;
+
+    // Send finger setup request. We will block this step, by disabling the
+    // OK button, until we get a result back in onKickoffSetupResult.
+    is_kickoff_waiting = true;
+    document.getElementById("kickoff-server-state").textContent =
+      "Waiting for calibration patterns to be captured.";
+    document.getElementById("kickoff-server-state").hidden = false;
+    sendFingerSetupInfo();
 
     switchDiv('fingerid', 'kickoff');
     document.getElementById('kickoff_finger').focus();
+  }
+
+  // Called when we receive the result from the kickoff setup request.
+  // We will either unlock this step or show the error result to the user.
+  function onKickoffSetupResult(result)  {
+    is_kickoff_waiting = false;
+
+    if (result !== "ok") {
+      document.getElementById("kickoff-server-state").textContent = result;
+      return;
+    }
+
+    // Enable the Ok button to allow the study to proceed.
+    document.getElementById("kickoff-server-state").hidden = true;
+    document.getElementById("kickoff_finger").disabled = false;
   }
 
   function show_Progress(result) {
@@ -288,6 +339,11 @@
   }
 
   function do_FingerResult(result) {
+    if (is_kickoff_waiting) {
+      onKickoffSetupResult(result);
+      return;
+    }
+
     if (result === 'ok') {
       picture_num++;
     }
