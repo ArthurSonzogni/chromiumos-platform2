@@ -21,12 +21,14 @@ set_robust_list: 1
 rseq: 1
 prlimit64: 1
 munmap: 1
+# Required for Bluetooth tool.
 socket: arg0 == AF_BLUETOOTH
 getrandom: arg2 in ~GRND_RANDOM
 exit_group: 1
 restart_syscall: 1
 exit: 1
 rt_sigreturn: 1
+dup: 1
 clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
