@@ -1707,14 +1707,10 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.name = vm_name.to_owned();
 
-        let response: StopVmResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                STOP_VM_METHOD,
-            )?,
-            &request,
+        let response: StopVmResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .stop_vm(request.write_to_bytes()?)?,
         )?;
 
         if response.success {
@@ -1734,14 +1730,10 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.name = vm_name.to_owned();
 
-        let response: GetVmInfoResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                GET_VM_INFO_METHOD,
-            )?,
-            &request,
+        let response: GetVmInfoResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .get_vm_info(request.write_to_bytes()?)?,
         )?;
 
         if response.success {
