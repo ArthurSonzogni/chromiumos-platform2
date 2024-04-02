@@ -81,7 +81,7 @@ Example implementations:
 
 A sample workflow is included below for writing a new command.
 
-#### Module Setup
+### Module Setup
 
 Pick an appropriate module for the command to belong to. For dev mode commands
 this will be `dev`, most other commands will belong in `base`. This example will
@@ -131,14 +131,13 @@ fn execute_verify_ro(_cmd: &Command, _args: &Arguments) -> Result<(), dispatcher
 }
 ```
 
-#### Command Implementation
+### Command Implementation via debugd
 
-This assumes the above instructions are already complete.
+This assumes the [above instructions](#module-setup) are already complete.
 
-Since privileged operations cannot be executed by Crosh (but should be
-implemented in [debugd] or wherever else), the example below focuses on D-Bus
-in particular and assumes there is an existing D-Bus method that needs to be
-called from a new Crosh command.
+Since privileged operations cannot be executed by Crosh, one common method is
+to move the logic to [debugd], and communicate with it via D-Bus. We have a
+local module with bindings to simplify boilerplate across commands.
 
 Note that
 [debugd's D-Bus interface](/debugd/dbus_bindings/org.chromium.debugd.xml)
@@ -146,8 +145,7 @@ already has Rust bindings generated through dev-rust/system_api, so the
 bindings and D-Bus connection can be imported with:
 
 ```rust
-use dbus::blocking::Connection;
-use system_api::client::OrgChromiumDebugd;
+use crate::debugd::Debugd;
 ```
 
 If you want to browse the source code of the generated bindings, after running
@@ -155,6 +153,58 @@ build_packages, take a look at the following path:
 
 ```sh
 /build/${BOARD}/usr/lib/cros_rust_registry/registry/system_api-*/src/bindings/client/
+```
+
+Inside the [debugd.rs module](./src/debugd.rs), we have methods to wrap the
+D-Bus proxy call. Think of it as bindings on top of bindings. Every debugd
+method has to be defined here.
+
+The underlying method call uses the fact that the imported trait
+`system_api::client::OrgChromiumDebugd` is implemented for `self.connection` so the
+member functions that map to D-Bus methods can be called from it.
+
+```rust
+    pub fn call_dmesg(&self, options: PropMap) -> Result<String, dbus::Error> {
+        self.connection
+            .with_proxy(
+                BUS_NAME,
+                SERVICE_PATH,
+                DEFAULT_DBUS_TIMEOUT,
+            )
+            .call_dmesg(options)
+    }
+```
+
+Creating a new bus connection looks like the following. Note that bus connection
+errors are already logged via `Debugd`, so each command only has to convert it
+to `dispatcher::Error::CommandReturnedError` and return.
+
+```rust
+    let connection = Debugd::new().map_err(|_| dispatcher::Error::CommandReturnedError)?;
+```
+
+Finally, your command makes calls to the new method
+
+```rust
+    let output = connection.call_dmesg(dbus_options).map_err(|err| {
+        println!("ERROR: Got unexpected result: {}", err);
+        dispatcher::Error::CommandReturnedError
+    })?;
+```
+
+This covers the basics. If you look at the actual source code for
+[base::display_debug], it provides a more complicated example with a start
+method call, a watcher, and a stop method call.
+
+### Command Implementation via D-Bus
+
+This assumes the [above instructions](#module-setup) are already complete.
+
+Since privileged operations cannot be executed by Crosh, some commands talk
+directly to respective services via D-Bus.
+
+```rust
+use dbus::blocking::Connection;
 ```
 
 Inside the command implementation a D-Bus connection needs to be initialized.
@@ -172,30 +222,11 @@ which is debugd in this case:
 
 ```rust
 let conn_path = connection.with_proxy(
-    "org.chromium.debugd",
-    "/org/chromium/debugd",
+    "registered.bus.name",
+    "/registered/service/path",
     DEFAULT_DBUS_TIMEOUT,
 );
 ```
-
-The rest of the method call uses the fact that the imported trait
-`system_api::client::OrgChromiumDebugd` is implemented for `conn_path` so the
-member functions that map to D-Bus methods can be called from `conn_path`. For
-example:
-
-
-```rust
-conn_path
-    .update_and_verify_fwon_usb_stop(handle)
-    .map_err(|err| {
-        println!("ERROR: Got unexpected result: {}", err);
-        dispatcher::Error::CommandReturnedError
-    })?;
-```
-
-This covers the basics. If you look at the actual source code for
-[base::verify_ro], it provides a more complicated example with a start method
-call, a watcher, and a stop method call.
 
 ### Command Help
 
@@ -374,5 +405,6 @@ cmd_vmc() (
 
 [base::verify_ro]: src/base/verify_ro.rs
 [base::arc]: src/base/arc.rs
+[base::display_debug]: src/base/display_debug.rs
 [base::ccd_pass]: src/base/ccd_pass.rs
 [debugd]: /debugd/
