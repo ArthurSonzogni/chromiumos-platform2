@@ -33,7 +33,7 @@ class EapListener {
   virtual void Stop();
 
   // Setter for |request_received_callback_|.
-  virtual void set_request_received_callback(
+  void set_request_received_callback(
       const EapRequestReceivedCallback& callback) {
     request_received_callback_ = callback;
   }

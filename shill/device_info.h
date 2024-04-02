@@ -49,8 +49,8 @@ class DeviceInfo {
 
   virtual ~DeviceInfo();
 
-  virtual void BlockDevice(const std::string& device_name);
-  virtual void AllowDevice(const std::string& device_name);
+  void BlockDevice(const std::string& device_name);
+  void AllowDevice(const std::string& device_name);
   virtual bool IsDeviceBlocked(const std::string& device_name);
   void Start();
   void Stop();
@@ -73,7 +73,7 @@ class DeviceInfo {
 
   // Queries the kernel for a MAC address for |interface_index|.
   // Returns std::nullopt on failure.
-  virtual std::optional<net_base::MacAddress> GetMacAddressFromKernel(
+  std::optional<net_base::MacAddress> GetMacAddressFromKernel(
       int interface_index) const;
 
   // Returns hardware (permanent) MAC address for |interface_index|.  The

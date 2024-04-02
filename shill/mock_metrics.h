@@ -36,10 +36,8 @@ class MockMetrics : public Metrics {
               NotifyCellularConnectionResult,
               (Error::Type, DetailedCellularConnectionResult::APNType),
               (override));
-  MOCK_METHOD(void,
-              NotifyDetailedCellularConnectionResult,
-              (const Metrics::DetailedCellularConnectionResult& result),
-              (override));
+  void NotifyDetailedCellularConnectionResult(
+      const Metrics::DetailedCellularConnectionResult& result) override {}
   MOCK_METHOD(void,
               NotifyCellularEntitlementCheckResult,
               (Metrics::CellularEntitlementCheck result),

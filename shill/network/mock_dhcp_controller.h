@@ -35,10 +35,6 @@ class MockDHCPController : public DHCPController {
   MOCK_METHOD(bool, RequestIP, (), (override));
   MOCK_METHOD(bool, ReleaseIP, (ReleaseReason), (override));
   MOCK_METHOD(bool, RenewIP, (), (override));
-  MOCK_METHOD(std::optional<base::TimeDelta>,
-              TimeToLeaseExpiry,
-              (),
-              (override));
 
  private:
   UpdateCallback update_callback_;

@@ -27,7 +27,7 @@ class ValidationLog {
   virtual ~ValidationLog();
 
   mockable void AddPortalDetectorResult(const PortalDetector::Result& result);
-  mockable void AddCAPPORTStatus(const CapportStatus& status);
+  void AddCAPPORTStatus(const CapportStatus& status);
   mockable void SetCapportDHCPSupported();
   mockable void SetCapportRASupported();
   mockable void SetHasTermsAndConditions();

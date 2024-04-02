@@ -111,24 +111,22 @@ class MockControl : public ControlInterface {
               CreateSupplicantPeerProxy,
               (const RpcIdentifier&),
               (override));
-  MOCK_METHOD(std::unique_ptr<DHCPCDListenerInterface>,
-              CreateDHCPCDListener,
-              (DHCPProvider*),
-              (override));
+  std::unique_ptr<DHCPCDListenerInterface> CreateDHCPCDListener(
+      DHCPProvider*) override {
+    return nullptr;
+  }
   MOCK_METHOD(std::unique_ptr<DHCPProxyInterface>,
               CreateDHCPProxy,
               (const std::string&),
               (override));
 
-  MOCK_METHOD(std::unique_ptr<UpstartProxyInterface>,
-              CreateUpstartProxy,
-              (),
-              (override));
+  std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override {
+    return nullptr;
+  }
 
-  MOCK_METHOD(std::unique_ptr<DebugdProxyInterface>,
-              CreateDebugdProxy,
-              (),
-              (override));
+  std::unique_ptr<DebugdProxyInterface> CreateDebugdProxy() override {
+    return nullptr;
+  }
 
   MOCK_METHOD(std::unique_ptr<DBusPropertiesProxy>,
               CreateDBusPropertiesProxy,
@@ -142,48 +140,50 @@ class MockControl : public ControlInterface {
                const base::RepeatingClosure&,
                const base::RepeatingClosure&),
               (override));
-  MOCK_METHOD(std::unique_ptr<mm1::ModemLocationProxyInterface>,
-              CreateMM1ModemLocationProxy,
-              (const RpcIdentifier&, const std::string&),
-              (override));
-  MOCK_METHOD(std::unique_ptr<mm1::ModemModem3gppProxyInterface>,
-              CreateMM1ModemModem3gppProxy,
-              (const RpcIdentifier&, const std::string&),
-              (override));
-  MOCK_METHOD(std::unique_ptr<mm1::ModemModem3gppProfileManagerProxyInterface>,
-              CreateMM1ModemModem3gppProfileManagerProxy,
-              (const RpcIdentifier&, const std::string&),
-              (override));
-  MOCK_METHOD(std::unique_ptr<mm1::ModemProxyInterface>,
-              CreateMM1ModemProxy,
-              (const RpcIdentifier&, const std::string&),
-              (override));
-  MOCK_METHOD(std::unique_ptr<mm1::ModemSignalProxyInterface>,
-              CreateMM1ModemSignalProxy,
-              (const RpcIdentifier&, const std::string&),
-              (override));
-  MOCK_METHOD(std::unique_ptr<mm1::ModemSimpleProxyInterface>,
-              CreateMM1ModemSimpleProxy,
-              (const RpcIdentifier&, const std::string&),
-              (override));
-  MOCK_METHOD(std::unique_ptr<mm1::SimProxyInterface>,
-              CreateMM1SimProxy,
-              (const RpcIdentifier&, const std::string&),
-              (override));
+  std::unique_ptr<mm1::ModemLocationProxyInterface> CreateMM1ModemLocationProxy(
+      const RpcIdentifier&, const std::string&) override {
+    return nullptr;
+  }
+  std::unique_ptr<mm1::ModemModem3gppProxyInterface>
+  CreateMM1ModemModem3gppProxy(const RpcIdentifier&,
+                               const std::string&) override {
+    return nullptr;
+  }
+  std::unique_ptr<mm1::ModemModem3gppProfileManagerProxyInterface>
+  CreateMM1ModemModem3gppProfileManagerProxy(const RpcIdentifier&,
+                                             const std::string&) override {
+    return nullptr;
+  }
+  std::unique_ptr<mm1::ModemProxyInterface> CreateMM1ModemProxy(
+      const RpcIdentifier&, const std::string&) override {
+    return nullptr;
+  }
+  std::unique_ptr<mm1::ModemSignalProxyInterface> CreateMM1ModemSignalProxy(
+      const RpcIdentifier&, const std::string&) override {
+    return nullptr;
+  }
+  std::unique_ptr<mm1::ModemSimpleProxyInterface> CreateMM1ModemSimpleProxy(
+      const RpcIdentifier&, const std::string&) override {
+    return nullptr;
+  }
+  std::unique_ptr<mm1::SimProxyInterface> CreateMM1SimProxy(
+      const RpcIdentifier&, const std::string&) override {
+    return nullptr;
+  }
 #if !defined(DISABLE_FLOSS)
   std::unique_ptr<BluetoothManagerProxyInterface> CreateBluetoothManagerProxy(
       const base::RepeatingClosure& service_appeared_callback) override;
 
   const base::RepeatingClosure& bluetooth_manager_appear() const;
 
-  MOCK_METHOD(std::unique_ptr<BluetoothAdapterProxyInterface>,
-              CreateBluetoothAdapterProxy,
-              (int32_t),
-              (override));
-  MOCK_METHOD(std::unique_ptr<BluetoothBlueZProxyInterface>,
-              CreateBluetoothBlueZProxy,
-              (),
-              (override));
+  std::unique_ptr<BluetoothAdapterProxyInterface> CreateBluetoothAdapterProxy(
+      int32_t) override {
+    return nullptr;
+  }
+  std::unique_ptr<BluetoothBlueZProxyInterface> CreateBluetoothBlueZProxy()
+      override {
+    return nullptr;
+  }
 #endif  // DISABLE_FLOSS
 
  private:

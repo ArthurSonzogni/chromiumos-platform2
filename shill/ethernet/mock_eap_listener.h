@@ -21,10 +21,6 @@ class MockEapListener : public EapListener {
 
   MOCK_METHOD(bool, Start, (), (override));
   MOCK_METHOD(void, Stop, (), (override));
-  MOCK_METHOD(void,
-              set_request_received_callback,
-              (const EapListener::EapRequestReceivedCallback&),
-              (override));
 };
 
 }  // namespace shill

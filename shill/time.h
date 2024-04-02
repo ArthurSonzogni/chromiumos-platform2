@@ -51,7 +51,7 @@ class Time {
   virtual int GetTimeBoottime(struct timeval* tv);
 
   // gettimeofday
-  virtual int GetTimeOfDay(struct timeval* tv, struct timezone* tz);
+  int GetTimeOfDay(struct timeval* tv, struct timezone* tz);
 
   // Returns a snapshot of the current time.
   virtual Timestamp GetNow();

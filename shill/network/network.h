@@ -251,8 +251,7 @@ class Network : public NetworkMonitor::ClientNetwork {
   mockable void OnStaticIPConfigChanged(const net_base::NetworkConfig& config);
   // Register a callback that gets called when the |current_ipconfig_| changed.
   // This should only be used by Service.
-  mockable void RegisterCurrentIPConfigChangeHandler(
-      base::RepeatingClosure handler);
+  void RegisterCurrentIPConfigChangeHandler(base::RepeatingClosure handler);
   // Returns the IPConfig object which is used to setup the Connection of this
   // Network. Returns nullptr if there is no such IPConfig. This is only used by
   // Service to expose its IPConfig dbus API. Other user who would like to get
@@ -346,8 +345,7 @@ class Network : public NetworkMonitor::ClientNetwork {
 
   // Start a separate PortalDetector instance for the purpose of connectivity
   // test.
-  mockable void StartConnectivityTest(
-      PortalDetector::ProbingConfiguration probe_config);
+  void StartConnectivityTest(PortalDetector::ProbingConfiguration probe_config);
 
   // TODO(b/232177767): This group of getters and setters are only exposed for
   // the purpose of refactor. New code outside Device should not use these.

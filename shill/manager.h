@@ -255,7 +255,7 @@ class Manager {
 
   virtual void RequestScan(const std::string& technology, Error* error);
   std::string GetTechnologyOrder();
-  virtual void SetTechnologyOrder(const std::string& order, Error* error);
+  void SetTechnologyOrder(const std::string& order, Error* error);
   // Set up the profile list starting with a default profile along with
   // an (optional) list of startup profiles.
   void InitializeProfiles();
@@ -470,7 +470,7 @@ class Manager {
 
   // Returns the interface names associated with 'real' devices
   // on the system e.g. eth0, wlan0.
-  virtual std::vector<std::string> GetDeviceInterfaceNames();
+  std::vector<std::string> GetDeviceInterfaceNames();
 
   bool GetFTEnabled(Error* error);
   bool scan_allow_roam() const { return props_.scan_allow_roam; }

@@ -51,10 +51,6 @@ class MockNetwork : public Network {
               OnStaticIPConfigChanged,
               (const net_base::NetworkConfig&),
               (override));
-  MOCK_METHOD(void,
-              RegisterCurrentIPConfigChangeHandler,
-              (base::RepeatingClosure),
-              (override));
   MOCK_METHOD(IPConfig*, GetCurrentIPConfig, (), (const, override));
 
   MOCK_METHOD(std::vector<net_base::IPCIDR>,
@@ -91,10 +87,6 @@ class MockNetwork : public Network {
               (override));
   MOCK_METHOD(void, StopPortalDetection, (bool), (override));
   MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
-  MOCK_METHOD(void,
-              StartConnectivityTest,
-              (PortalDetector::ProbingConfiguration probe_config),
-              (override));
   MOCK_METHOD(void,
               OnTermsAndConditions,
               (const net_base::HttpUrl&),

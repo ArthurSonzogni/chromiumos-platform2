@@ -25,16 +25,10 @@ class MockDeviceInfo : public DeviceInfo {
   ~MockDeviceInfo() override;
 
   MOCK_METHOD(bool, IsDeviceBlocked, (const std::string&), (override));
-  MOCK_METHOD(void, BlockDevice, (const std::string&), (override));
-  MOCK_METHOD(void, AllowDevice, (const std::string&), (override));
   MOCK_METHOD(DeviceRefPtr, GetDevice, (int), (const, override));
   MOCK_METHOD(int, GetIndex, (const std::string&), (const, override));
   MOCK_METHOD(std::optional<net_base::MacAddress>,
               GetMacAddress,
-              (int),
-              (const, override));
-  MOCK_METHOD(std::optional<net_base::MacAddress>,
-              GetMacAddressFromKernel,
               (int),
               (const, override));
   MOCK_METHOD(std::optional<net_base::MacAddress>,

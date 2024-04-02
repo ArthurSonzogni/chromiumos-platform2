@@ -22,10 +22,6 @@ class MockValidationLog : public ValidationLog {
               AddPortalDetectorResult,
               (const PortalDetector::Result&),
               (override));
-  MOCK_METHOD(void,
-              AddCAPPORTStatus,
-              (const CapportStatus& status),
-              (override));
   MOCK_METHOD(void, SetCapportDHCPSupported, (), (override));
   MOCK_METHOD(void, SetCapportRASupported, (), (override));
   MOCK_METHOD(void, RecordMetrics, (), (const, override));

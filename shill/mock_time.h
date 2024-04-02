@@ -22,10 +22,6 @@ class MockTime : public Time {
   MOCK_METHOD(bool, GetSecondsBoottime, (time_t*), (override));
   MOCK_METHOD(int, GetTimeMonotonic, (struct timeval*), (override));
   MOCK_METHOD(int, GetTimeBoottime, (struct timeval*), (override));
-  MOCK_METHOD(int,
-              GetTimeOfDay,
-              (struct timeval*, struct timezone*),
-              (override));
   MOCK_METHOD(Timestamp, GetNow, (), (override));
 };
 

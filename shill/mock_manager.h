@@ -113,16 +113,8 @@ class MockManager : public Manager {
               SetBlockedDevices,
               (const std::vector<std::string>&),
               (override));
-  MOCK_METHOD(void,
-              SetTechnologyOrder,
-              (const std::string&, Error*),
-              (override));
   MOCK_METHOD(void, SetIgnoreUnknownEthernet, (bool), (override));
   MOCK_METHOD(bool, ignore_unknown_ethernet, (), (const, override));
-  MOCK_METHOD(std::vector<std::string>,
-              GetDeviceInterfaceNames,
-              (),
-              (override));
   MOCK_METHOD(ServiceRefPtr, GetFirstEthernetService, (), (override));
   MOCK_METHOD(DeviceRefPtr,
               FindDeviceFromService,
