@@ -4918,16 +4918,16 @@ mno {
     localized_name {
       name: "giffgaff"
     }
-    mccmnc: "23402"
     mccmnc: "23410"
-    mccmnc: "23411"
     mobile_apn {
       apn: "giffgaff.com"
       localized_name {
         name: "Mobile Broadband"
       }
-      username: "giffgaff"
-      password: "password"
+      username: "gg"
+      password: "p"
+      authentication: PAP
+      ip_type: IPV4V6
       type: DEFAULT
     }
   }
