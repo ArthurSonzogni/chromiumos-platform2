@@ -12,6 +12,8 @@
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
+#include <net-base/ipv4_address.h>
+#include "net-base/ipv6_address.h"
 #include <net-base/mac_address.h>
 
 #include "shill/network/network.h"
@@ -296,8 +298,12 @@ class P2PDevice : public LocalDevice,
   void StoppingTimerExpired();
   void ResetTimersOnStateChange(P2PDeviceState new_state);
 
-  // The weak pointer to P2PDevice object
-  base::WeakPtrFactory<P2PDevice> weak_ptr_factory_{this};
+  // Methods to fetch L3 information from patchpanel.
+  bool UpdateGroupNetworkInfo();
+  void OnGroupNetworkInfo(
+      bool success,
+      const patchpanel::Client::DownstreamNetwork& downstream_network,
+      const std::vector<patchpanel::Client::NetworkClientInfo>& clients);
 
   // Primary interface link name.
   std::string primary_link_name_;
@@ -365,8 +371,15 @@ class P2PDevice : public LocalDevice,
   std::unique_ptr<Network> client_network_;
   std::unique_ptr<Network> client_network_for_test_;
 
-  // P2P interface address, only available after link layer is connected.
+  // P2P interface address, only available after the link layer is connected.
   std::optional<net_base::MacAddress> interface_address_;
+  // TODO (b/331679921) Remove cached IP address.
+  // IPv4 address of current device, only available after the network layer has
+  // been setup.
+  std::optional<net_base::IPv4Address> ipv4_address_;
+
+  // The weak pointer to P2PDevice object
+  base::WeakPtrFactory<P2PDevice> weak_ptr_factory_{this};
 };
 
 }  // namespace shill
