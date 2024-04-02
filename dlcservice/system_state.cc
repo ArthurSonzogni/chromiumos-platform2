@@ -47,7 +47,6 @@ SystemState::SystemState(
     const base::FilePath& users_dir,
     const base::FilePath& daemon_store_dir,
     const base::FilePath& verification_file,
-    const base::FilePath& hibernate_resuming_file,
     base::Clock* clock)
     :
 #if USE_LVM_STATEFUL_PARTITION
@@ -70,7 +69,6 @@ SystemState::SystemState(
       users_dir_(users_dir),
       daemon_store_dir_(daemon_store_dir),
       verification_file_(verification_file),
-      hibernate_resuming_file_(hibernate_resuming_file),
       clock_(clock) {
 }
 
@@ -99,7 +97,6 @@ void SystemState::Initialize(
     const base::FilePath& users_dir,
     const base::FilePath& daemon_store_dir,
     const base::FilePath& verification_file,
-    const base::FilePath& hibernate_resuming_file,
     base::Clock* clock,
     bool for_test) {
   if (!for_test)
@@ -113,8 +110,7 @@ void SystemState::Initialize(
       state_change_reporter, std::move(boot_slot), std::move(metrics),
       std::move(system_properties), manifest_dir, preloaded_content_dir,
       factory_install_dir, deployed_content_dir, content_dir, prefs_dir,
-      users_dir, daemon_store_dir, verification_file, hibernate_resuming_file,
-      clock));
+      users_dir, daemon_store_dir, verification_file, clock));
 }
 
 // static
@@ -237,19 +233,6 @@ const InstallerInterface::Status& SystemState::installer_status() {
 
 const base::Time& SystemState::installer_status_timestamp() {
   return last_installer_status_timestamp_;
-}
-
-bool SystemState::resuming_from_hibernate() {
-  if (not_resuming_from_hibernate_)
-    return false;
-
-  if (base::PathExists(hibernate_resuming_file_))
-    return true;
-
-  // The system only ever starts as resuming from hibernate, it never
-  // transitions there. Cache a negative result.
-  not_resuming_from_hibernate_ = true;
-  return false;
 }
 
 #if USE_LVM_STATEFUL_PARTITION

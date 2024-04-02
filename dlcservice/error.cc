@@ -21,8 +21,6 @@ const char kFailedInstallInUpdateEngine[] = "failedInstallInUpdateEngine";
 const char kFailedInternal[] = "InternalError";
 const char kFailedToVerifyImage[] = "failedToVerifyImage";
 const char kFailedToMountImage[] = "failedToMountImage";
-const char kFailedCreationDuringHibernateResume[] =
-    "failedCreationDuringHibernateResume";
 }  // namespace error
 
 // static

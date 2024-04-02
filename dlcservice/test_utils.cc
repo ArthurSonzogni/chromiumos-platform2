@@ -112,8 +112,7 @@ void BaseTest::SetUp() {
       std::move(mock_metrics), std::move(mock_system_properties),
       manifest_path_, preloaded_content_path_, factory_install_path_,
       deployed_content_path_, content_path_, prefs_path_, users_path_,
-      daemon_store_path_, verification_file_path_, resume_in_progress_path_,
-      &clock_,
+      daemon_store_path_, verification_file_path_, &clock_,
       /*for_test=*/true);
   ON_CALL(*mock_installer_ptr_, IsReady()).WillByDefault(Return(true));
 #if USE_LVM_STATEFUL_PARTITION
@@ -142,8 +141,6 @@ void BaseTest::SetUpFilesAndDirectories() {
       JoinPaths(scoped_temp_dir_.GetPath(), "verification_file");
   mount_path_ = JoinPaths(scoped_temp_dir_.GetPath(), "mount");
   base::FilePath mount_root_path = JoinPaths(mount_path_, "root");
-  resume_in_progress_path_ =
-      JoinPaths(scoped_temp_dir_.GetPath(), "resume_in_progress");
   base::CreateDirectory(manifest_path_);
   base::CreateDirectory(preloaded_content_path_);
   base::CreateDirectory(factory_install_path_);

@@ -12,7 +12,6 @@
 #include <base/time/default_clock.h>
 #include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/dlcservice/dbus-constants.h>
-#include <chromeos/dbus/hiberman/dbus-constants.h>
 #include <sysexits.h>
 
 #include "dlcservice/boot/boot_device.h"
@@ -117,7 +116,6 @@ void Daemon::RegisterDBusObjectsAsync(
       base::FilePath(kDlcServicePrefsPath), base::FilePath(kUsersPath),
       base::FilePath(kDlcDaemonStorePath),
       base::FilePath(kDlcPrefVerifiedValueFile),
-      base::FilePath(hiberman::kHibernateResumeInProgressFile),
       base::DefaultClock::GetInstance());
   CHECK(SystemState::Get());
 

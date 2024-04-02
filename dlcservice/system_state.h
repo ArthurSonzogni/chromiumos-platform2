@@ -60,7 +60,6 @@ class SystemState {
       const base::FilePath& users_dir,
       const base::FilePath& daemon_store_dir,
       const base::FilePath& verification_file,
-      const base::FilePath& hibernate_resuming_file,
       base::Clock* clock,
       bool for_test = false);
 
@@ -110,9 +109,6 @@ class SystemState {
   const InstallerInterface::Status& installer_status();
   const base::Time& installer_status_timestamp();
 
-  // Returns true if the system is resuming from hibernation.
-  bool resuming_from_hibernate();
-
  protected:
   SystemState(
 #if USE_LVM_STATEFUL_PARTITION
@@ -138,7 +134,6 @@ class SystemState {
       const base::FilePath& users_dir,
       const base::FilePath& daemon_store_dir,
       const base::FilePath& verification_file,
-      const base::FilePath& hibernate_resuming_file,
       base::Clock* clock);
 
  private:
@@ -152,7 +147,6 @@ class SystemState {
   std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface>
       update_engine_proxy_;
   std::unique_ptr<InstallerInterface> installer_;
-  bool not_resuming_from_hibernate_ = false;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_proxy_;
   StateChangeReporterInterface* state_change_reporter_;
@@ -171,7 +165,6 @@ class SystemState {
   base::FilePath users_dir_;
   base::FilePath daemon_store_dir_;
   base::FilePath verification_file_;
-  base::FilePath hibernate_resuming_file_;
   base::Clock* clock_;
 
   // Keep the last status result we saw.

@@ -40,7 +40,7 @@ enum class InstallResult {
   kFailedToVerifyImage = 8,
   kFailedToMountImage = 9,
   kFailedNoImageFound = 10,
-  kFailedCreationDuringHibernateResume = 11,
+  // kFailedCreationDuringHibernateResume = 11,
   kNumConstants
 };
 

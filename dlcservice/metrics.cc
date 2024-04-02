@@ -33,8 +33,6 @@ Metrics::InstallResultMap Metrics::install_result_ = {
     {kErrorNoImageFound, InstallResult::kFailedNoImageFound},  // dbus error
     {error::kFailedToVerifyImage, InstallResult::kFailedToVerifyImage},
     {error::kFailedToMountImage, InstallResult::kFailedToMountImage},
-    {error::kFailedCreationDuringHibernateResume,
-     InstallResult::kFailedCreationDuringHibernateResume},
 };
 
 Metrics::UninstallResultMap Metrics::uninstall_result_ = {
