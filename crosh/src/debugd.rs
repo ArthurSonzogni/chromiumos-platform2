@@ -99,4 +99,16 @@ impl Debugd {
             .drmtrace_set_categories(categories.bits())
             .map(|_| self)
     }
+
+    pub fn get_u2f_flags(&self) -> Result<String, dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .get_u2f_flags()
+    }
+
+    pub fn set_u2f_flags(&self, flags: &str) -> Result<String, dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .set_u2f_flags(flags)
+    }
 }

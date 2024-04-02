@@ -5,12 +5,9 @@
 // Provides the command "force_activate_fips" for turning on the FIPS mode
 // for the built-in security key.
 
-use dbus::blocking::Connection;
-use system_api::client::OrgChromiumDebugd;
-
+use crate::debugd::Debugd;
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::prompt_for_yes;
-use crate::util::DEFAULT_DBUS_TIMEOUT;
 
 const ACTIVATE_FIPS: &str = "activate_fips";
 
@@ -26,17 +23,9 @@ pub fn register(dispatcher: &mut Dispatcher) {
 }
 
 fn execute_activate_fips(_cmd: &Command, _args: &Arguments) -> Result<(), dispatcher::Error> {
-    let connection = Connection::new_system().map_err(|err| {
-        eprintln!("ERROR: Failed to get D-Bus connection: {}", err);
-        dispatcher::Error::CommandReturnedError
-    })?;
-    let conn_path = connection.with_proxy(
-        "org.chromium.debugd",
-        "/org/chromium/debugd",
-        DEFAULT_DBUS_TIMEOUT,
-    );
+    let connection = Debugd::new().map_err(|_| dispatcher::Error::CommandReturnedError)?;
 
-    let flags = conn_path.get_u2f_flags().map_err(|err| {
+    let flags = connection.get_u2f_flags().map_err(|err| {
         eprintln!("ERROR: Got unexpected result: {}", err);
         dispatcher::Error::CommandReturnedError
     })?;
@@ -55,7 +44,7 @@ your built-in security key. Are you sure you want to continue?",
         println!("Not activating FIPS mode.");
         return Ok(());
     }
-    let response = conn_path.set_u2f_flags(&flags).map_err(|err| {
+    let response = connection.set_u2f_flags(&flags).map_err(|err| {
         eprintln!("ERROR: Got unexpected result: {}", err);
         dispatcher::Error::CommandReturnedError
     })?;
