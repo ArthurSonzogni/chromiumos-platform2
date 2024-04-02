@@ -148,6 +148,7 @@ _IUSE = [
     "key_eviction",
     "kvm_guest",
     "kvm_host",
+    "legacy_usb_passthrough",
     "libglvnd",
     "local_federated_server",
     "local_ml_core_internal",

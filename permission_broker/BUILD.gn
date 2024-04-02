@@ -44,6 +44,9 @@ pkg_config("target_defaults_deps") {
 config("target_defaults") {
   configs = [ ":target_defaults_deps" ]
   libs = [ "system_api" ]
+
+  # Feature USE flags, as declared in chromeos-base/permission_broker.
+  defines = [ "USE_LEGACY_USB_PASSTHROUGH=${use.legacy_usb_passthrough}" ]
 }
 
 generate_dbus_adaptors("permission_broker_adaptors") {

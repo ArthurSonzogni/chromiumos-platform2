@@ -346,14 +346,16 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessUsbDevice(
 
   auto cros_usb_location = GetCrosUsbLocationProperty(device);
 
+  constexpr bool legacy_usb_passthrough = USE_LEGACY_USB_PASSTHROUGH;
+
   if (!platform_features_) {
     LOG(ERROR) << "Unable to get PlatformFeatures library, will not enable "
                   "permissive features";
-  } else if (platform_features_->IsEnabledBlocking(
-                 RuleUtils::kEnablePermissiveUsbPassthrough) &&
-             // There are more UI/UX implications that must be considered for
-             // chromeboxes, disable for now.
-             !running_on_chromebox_) {
+    // There are more UI/UX implications that must be considered for
+    // chromeboxes, disable for now.
+  } else if (!running_on_chromebox_ && !legacy_usb_passthrough &&
+             platform_features_->IsEnabledBlocking(
+                 RuleUtils::kEnablePermissiveUsbPassthrough)) {
     // If permissive USB is enabled, but we have no tag information, fall back
     // to legacy behavior.
     if (cros_usb_location.has_value()) {
