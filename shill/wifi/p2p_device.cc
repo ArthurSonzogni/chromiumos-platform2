@@ -211,6 +211,8 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
     group_info.Set<Stringmaps>(kP2PGroupInfoClientsProperty,
                                GroupInfoClients());
     if (IsNetworkLayerConnected()) {
+      // TODO(b/325124473): use the network_id from patchpanel.
+      group_info.Set<uint32_t>(kP2PGroupInfoNetworkIDProperty, 0);
       if (ipv4_address_ != std::nullopt) {
         group_info.Set<String>(kP2PGroupInfoIPv4AddressProperty,
                                ipv4_address_.value().ToString());
@@ -265,6 +267,8 @@ KeyValueStore P2PDevice::GetClientInfo() const {
         go_info.insert({kP2PClientInfoGroupOwnerIPv6AddressProperty,
                         network_config.ipv6_gateway->ToString()});
       }
+      // TODO(b/325124667): use the network_id from Network class.
+      client_info.Set<uint32_t>(kP2PClientInfoNetworkIDProperty, 0);
     }
     client_info.Set<Stringmap>(kP2PClientInfoGroupOwnerProperty, go_info);
   }

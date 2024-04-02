@@ -783,7 +783,7 @@ Properties	object ActiveProfile [readonly]
 			List of all P2P Client interfaces that are active on the platform.
 			The format for representation of a local P2P Client interface:
 
-			int shill_id
+			uint32_t shill_id
 				Unique ID to represent the P2P Client, provided by Shill.
 				This is only used to disambiguate the group against other
 				P2P Clients on the platform and has no relation to any other
@@ -837,6 +837,9 @@ Properties	object ActiveProfile [readonly]
 				This represents the selected channel on which the network
 				is hosted.
 
+			uint32_t network_id
+				Unique ID to identify the network.
+
 			string interface
 				The client's interface name (for example "p2p-wlan0-0").
 
@@ -872,7 +875,7 @@ Properties	object ActiveProfile [readonly]
 			on the platform. The format for representation of a local
 			P2P Group Owner interface:
 
-			shill_id (type:int)
+			uint32_t shill_id
 				Unique ID to represent the Group, provided by Shill.
 				This is only used to disambiguate the group against other
 				P2P Groups on the platform and has no relation to any other
@@ -924,6 +927,9 @@ Properties	object ActiveProfile [readonly]
 			int frequency
 				This represents the selected channel on which the group
 				is hosted.
+
+			uint32_t network_id
+				Unique ID to identify the network in Patchpnel.
 
 			string interface
 				The group's interface name (for example "p2p-wlan0-0").

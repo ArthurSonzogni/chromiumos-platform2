@@ -1123,6 +1123,7 @@ constexpr char kP2PGroupInfoBSSIDProperty[] = "bssid";
 constexpr char kP2PGroupInfoIPv4AddressProperty[] = "ipv4_address";
 constexpr char kP2PGroupInfoIPv6AddressProperty[] = "ipv6_address";
 constexpr char kP2PGroupInfoMACAddressProperty[] = "mac_address";
+constexpr char kP2PGroupInfoNetworkIDProperty[] = "network_id";
 constexpr char kP2PGroupInfoFrequencyProperty[] = "frequency";
 constexpr char kP2PGroupInfoClientsProperty[] = "clients";
 
@@ -1150,6 +1151,7 @@ constexpr char kP2PClientInfoGroupBSSIDProperty[] = "group_bssid";
 constexpr char kP2PClientInfoIPv4AddressProperty[] = "ipv4_address";
 constexpr char kP2PClientInfoIPv6AddressProperty[] = "ipv6_address";
 constexpr char kP2PClientInfoMACAddressProperty[] = "mac_address";
+constexpr char kP2PClientInfoNetworkIDProperty[] = "network_id";
 constexpr char kP2PClientInfoFrequencyProperty[] = "frequency";
 constexpr char kP2PClientInfoGroupOwnerProperty[] = "group_owner";
 
