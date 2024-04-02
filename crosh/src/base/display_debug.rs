@@ -6,6 +6,7 @@
 
 use bitflags::bitflags;
 use dbus::blocking::Connection;
+use log::error;
 use std::{io, thread, time};
 use system_api::client::OrgChromiumDebugd;
 
@@ -124,11 +125,15 @@ impl Debugd {
     fn new() -> Result<Debugd, dbus::Error> {
         match Connection::new_system() {
             Ok(connection) => Ok(Debugd { connection }),
-            Err(err) => Err(err),
+            Err(err) => {
+                // Include output in syslog.
+                error!("ERROR: Failed to get D-Bus connection: {}", err);
+                Err(err)
+            }
         }
     }
 
-    fn drmtrace_annotate_log(self, log: String) -> Result<Debugd, dbus::Error> {
+    fn drmtrace_annotate_log(&self, log: String) -> Result<&Debugd, dbus::Error> {
         self.connection
             .with_proxy(
                 "org.chromium.debugd",
@@ -139,7 +144,10 @@ impl Debugd {
             .map(|_| self)
     }
 
-    fn drmtrace_snapshot(self, snapshot_type: DRMTraceSnapshotType) -> Result<Debugd, dbus::Error> {
+    fn drmtrace_snapshot(
+        &self,
+        snapshot_type: DRMTraceSnapshotType,
+    ) -> Result<&Debugd, dbus::Error> {
         self.connection
             .with_proxy(
                 "org.chromium.debugd",
@@ -150,7 +158,7 @@ impl Debugd {
             .map(|_| self)
     }
 
-    fn drmtrace_set_size(self, size: DRMTraceSize) -> Result<Debugd, dbus::Error> {
+    fn drmtrace_set_size(&self, size: DRMTraceSize) -> Result<&Debugd, dbus::Error> {
         self.connection
             .with_proxy(
                 "org.chromium.debugd",
@@ -162,9 +170,9 @@ impl Debugd {
     }
 
     fn drmtrace_set_categories(
-        self,
+        &self,
         categories: DRMTraceCategories,
-    ) -> Result<Debugd, dbus::Error> {
+    ) -> Result<&Debugd, dbus::Error> {
         self.connection
             .with_proxy(
                 "org.chromium.debugd",
@@ -235,15 +243,18 @@ fn execute_display_debug_trace_start(
     _args: &Arguments,
 ) -> Result<(), dispatcher::Error> {
     println!("Increasing size and verbosity of drm_trace log. Call `display_debug trace_stop` to restore to default.");
-    do_trace_start(TRACE_START_LOG).map_err(|err| {
+
+    let connection = Debugd::new().map_err(|_| dispatcher::Error::CommandReturnedError)?;
+
+    do_trace_start(&connection, TRACE_START_LOG).map_err(|err| {
         println!("ERROR: Got unexpected result: {}", err);
         dispatcher::Error::CommandReturnedError
     })
 }
 
-fn do_trace_start(log: &str) -> Result<(), dbus::Error> {
-    Debugd::new()
-        .and_then(|d| d.drmtrace_set_size(DRMTraceSize::Debug))
+fn do_trace_start(connection: &Debugd, log: &str) -> Result<(), dbus::Error> {
+    connection
+        .drmtrace_set_size(DRMTraceSize::Debug)
         .and_then(|d| d.drmtrace_set_categories(DRMTraceCategories::debug()))
         .and_then(|d| d.drmtrace_annotate_log(String::from(log)))
         .map(|_| ())
@@ -254,15 +265,18 @@ fn execute_display_debug_trace_stop(
     _args: &Arguments,
 ) -> Result<(), dispatcher::Error> {
     println!("Saving drm_trace log to /var/log/display_debug/. Restoring size and verbosity of drm_trace log to default.");
-    do_trace_stop(TRACE_STOP_LOG).map_err(|err| {
+
+    let connection = Debugd::new().map_err(|_| dispatcher::Error::CommandReturnedError)?;
+
+    do_trace_stop(&connection, TRACE_STOP_LOG).map_err(|err| {
         println!("ERROR: Got unexpected result: {}", err);
         dispatcher::Error::CommandReturnedError
     })
 }
 
-fn do_trace_stop(log: &str) -> Result<(), dbus::Error> {
-    Debugd::new()
-        .and_then(|d| d.drmtrace_annotate_log(String::from(log)))
+fn do_trace_stop(connection: &Debugd, log: &str) -> Result<(), dbus::Error> {
+    connection
+        .drmtrace_annotate_log(String::from(log))
         .and_then(|d| d.drmtrace_snapshot(DRMTraceSnapshotType::Trace))
         .and_then(|d| d.drmtrace_set_categories(DRMTraceCategories::default()))
         .and_then(|d| d.drmtrace_set_size(DRMTraceSize::Default))
@@ -281,7 +295,9 @@ fn execute_display_debug_annotate(
     }
     let log = tokens.join(" ");
 
-    match Debugd::new().and_then(|d| d.drmtrace_annotate_log(log)) {
+    let connection = Debugd::new().map_err(|_| dispatcher::Error::CommandReturnedError)?;
+
+    match connection.drmtrace_annotate_log(log) {
         Ok(_) => Ok(()),
         Err(err) => {
             println!("ERROR: Got unexpected result: {}", err);
@@ -305,8 +321,10 @@ fn execute_display_debug_diagnose(
         }
     }
 
+    let connection = Debugd::new().map_err(|_| dispatcher::Error::CommandReturnedError)?;
+
     // Annotate the log, expand logging categories.
-    do_trace_start(DIAGNOSE_START_LOG).map_err(|err| {
+    do_trace_start(&connection, DIAGNOSE_START_LOG).map_err(|err| {
         println!("ERROR: Got unexpected result: {}", err);
         dispatcher::Error::CommandReturnedError
     })?;
@@ -322,8 +340,8 @@ fn execute_display_debug_diagnose(
 
     // Annotate the log to annotate that the displays are disconnected and take a snapshot
     // of modetest.
-    if let Err(err) = Debugd::new()
-        .and_then(|d| d.drmtrace_annotate_log(String::from(DIAGNOSE_DISPLAYS_DISCONNECTED_LOG)))
+    if let Err(err) = connection
+        .drmtrace_annotate_log(String::from(DIAGNOSE_DISPLAYS_DISCONNECTED_LOG))
         .and_then(|d| d.drmtrace_snapshot(DRMTraceSnapshotType::Modetest))
     {
         eprintln!(
@@ -340,8 +358,8 @@ fn execute_display_debug_diagnose(
         thread::sleep(time::Duration::from_secs(5));
 
         // Annotate the log that a display has been reconnected and take a snapshot of modetest.
-        if let Err(err) = Debugd::new()
-            .and_then(|d| d.drmtrace_annotate_log(String::from(DIAGNOSE_DISPLAY_RECONNECTED_LOG)))
+        if let Err(err) = connection
+            .drmtrace_annotate_log(String::from(DIAGNOSE_DISPLAY_RECONNECTED_LOG))
             .and_then(|d| d.drmtrace_snapshot(DRMTraceSnapshotType::Modetest))
         {
             eprintln!(
@@ -369,12 +387,12 @@ fn execute_display_debug_diagnose(
         }
     };
 
-    if let Err(err) = Debugd::new().and_then(|d| d.drmtrace_annotate_log(String::from(log))) {
+    if let Err(err) = connection.drmtrace_annotate_log(String::from(log)) {
         eprintln!("Error annotating drm_trace log: {}", err)
     }
 
     // Annotate the log, restore default logging categories.
-    do_trace_stop(DIAGNOSE_STOP_LOG).map_err(|err| {
+    do_trace_stop(&connection, DIAGNOSE_STOP_LOG).map_err(|err| {
         println!("ERROR: Got unexpected result: {}", err);
         dispatcher::Error::CommandReturnedError
     })?;
