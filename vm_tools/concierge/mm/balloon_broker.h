@@ -196,6 +196,10 @@ class BalloonBroker {
                                           bool,
                                           const char*);
 
+  // Used to report a metric that is bucketed by ResizePriority.
+  void ReportResizePriorityMetric(std::string metric_name,
+                                  ResizePriority priority);
+
   // Constants for determining how fast ReclaimUntilBlocked() operates.
   static constexpr int64_t kReclaimTargetPerSecond = MiB(200);
   static constexpr int64_t kReclaimStepsPerSecond = 5;

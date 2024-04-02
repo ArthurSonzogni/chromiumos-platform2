@@ -417,9 +417,9 @@ void BalloonBroker::HandleDecisionLatency(Client client,
         kDecisionLatencyMetricMax, kDecisionLatencyMetricBuckets);
   } else {
     // Timeout, log the priority of the failed request.
-    metrics_->SendEnumToUMA(GetMetricName(client.cid, kDecisionTimeoutMetric),
-                            static_cast<int>(bb_client->kill_request_priority),
-                            LowestResizePriority() + 1);
+    ReportResizePriorityMetric(
+        GetMetricName(client.cid, kDecisionTimeoutMetric),
+        bb_client->kill_request_priority);
     if (bb_client->kill_request_result != 0) {
       // If the client timed out waiting for the response but the kill request
       // was successful, this means that something was killed when it shouldn't
@@ -427,10 +427,9 @@ void BalloonBroker::HandleDecisionLatency(Client client,
       LOG(WARNING) << "Unnecessary kill occurred for CID: " << client.cid
                    << " Priority: " << bb_client->kill_request_priority
                    << " Reason: Response timed out.";
-      metrics_->SendEnumToUMA(
+      ReportResizePriorityMetric(
           GetMetricName(client.cid, kUnnecessaryKillMetric),
-          static_cast<int>(bb_client->kill_request_priority),
-          LowestResizePriority() + 1);
+          bb_client->kill_request_priority);
     }
   }
 }
@@ -546,6 +545,15 @@ void BalloonBroker::SetShouldLogBalloonTraceAsCallback(int cid,
                                                        const char*) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   return SetShouldLogBalloonTrace(cid, do_log);
+}
+
+void BalloonBroker::ReportResizePriorityMetric(std::string metric_name,
+                                               ResizePriority priority) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  metrics_->SendEnumToUMA(
+      metric_name,
+      static_cast<int>(kResizePriorityToUmaResizePriority.at(priority)),
+      kNumUmaResizePriorityBuckets);
 }
 
 }  // namespace vm_tools::concierge::mm
