@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-ioctl: 1
+ioctl: arg1 == TCGETS || arg1 == SIOCGIFFLAGS
 openat: 1
 # Required for DBus connection
 socket: arg0 == AF_UNIX
@@ -35,3 +35,6 @@ exit: 1
 exit_group: 1
 rt_sigreturn: 1
 newfstatat: 1
+uname: 1
+getrandom: arg2 in ~GRND_RANDOM
+flock: 1

@@ -7,6 +7,9 @@
 
 #include <memory>
 
+#include <metrics/metrics_library.h>
+
+#include "regmon/metrics/metrics_reporter_impl.h"
 #include "regmon/proto/policy_violation.pb.h"
 #include "regmon/regmon/regmon_service.h"
 
@@ -24,6 +27,10 @@ class RegmonImpl : public RegmonService {
       std::unique_ptr<
           brillo::dbus_utils::DBusMethodResponse<RecordPolicyViolationResponse>>
           out_response) override;
+
+ private:
+  MetricsLibrary metrics_lib_;
+  std::unique_ptr<metrics::MetricsReporterImpl> metrics_reporter_;
 };
 
 }  // namespace regmon
