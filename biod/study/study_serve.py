@@ -5,6 +5,7 @@
 
 """Standalone local webserver to acquire fingerprints for user studies."""
 
+from __future__ import annotations
 from __future__ import print_function
 
 import argparse
@@ -18,6 +19,7 @@ import subprocess
 import sys
 import threading
 import time
+from typing import Any
 
 # The following imports will be available on the test image, but will usually
 # be missing in the SDK.
@@ -94,7 +96,7 @@ class FingerWebSocket(WebSocket):
     # Force terminating the current processing in the worker thread.
     abort_request = False
 
-    def set_config(self, arg):
+    def set_config(self, arg: argparse.Namespace):
         self.config = {
             "fingerCount": arg.finger_count,
             "enrollmentCount": arg.enrollment_count,
@@ -185,7 +187,7 @@ class FingerWebSocket(WebSocket):
         if "config" in j:
             self.config_request(j)
 
-    def make_dirs(self, path):
+    def make_dirs(self, path: str):
         if not os.path.exists(path):
             os.makedirs(path)
 
@@ -210,7 +212,7 @@ class FingerWebSocket(WebSocket):
         with open(file_path, "wb") as f:
             f.write(data)
 
-    def ectool(self, command: str, *args) -> bytes:
+    def ectool(self, command: str, *args: str) -> bytes:
         """Run the ectool command and return its stdout as bytes."""
 
         cmdline = [ECTOOL, "--name=cros_fp", command] + list(args)
@@ -224,12 +226,12 @@ class FingerWebSocket(WebSocket):
                 stdout = b""
         return stdout
 
-    def ectool_fpmode(self, *args) -> int:
+    def ectool_fpmode(self, *args: str) -> int:
         mode = self.ectool("fpmode", *args).decode("utf-8")
         match_mode = self.FP_MODE_RE.search(mode)
         return int(match_mode.group(1), 16) if match_mode else -1
 
-    def finger_wait_done(self, mode):
+    def finger_wait_done(self, mode: int) -> bool:
         # Poll until the mode bit has disappeared.
         while not self.abort_request and self.ectool_fpmode() & mode:
             time.sleep(0.050)
@@ -309,7 +311,7 @@ class FingerWebSocket(WebSocket):
 class Root:
     """Serve the static HTML/CSS and connect the websocket."""
 
-    def __init__(self, cmdline_args):
+    def __init__(self, cmdline_args: argparse.Namespace):
         self.args = cmdline_args
 
     @cherrypy.expose
@@ -323,7 +325,7 @@ class Root:
         cherrypy.request.ws_handler.set_config(self.args)
 
 
-def environment_parameters(default_params: dict) -> dict:
+def environment_parameters(default_params: dict[str, Any]) -> dict[str, Any]:
     """Return |default_params| after overriding with environment vars.
 
     Given a dictionary of default runtime parameters, return the same
@@ -363,7 +365,7 @@ def environment_parameters(default_params: dict) -> dict:
     return env_params
 
 
-def main(argv: list):
+def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
 
     # Read environment variables as the arg default values.
@@ -505,6 +507,8 @@ def main(argv: list):
             },
         },
     )
+
+    return 0
 
 
 if __name__ == "__main__":
