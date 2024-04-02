@@ -8,8 +8,10 @@
 #include "swap_management/utils.h"
 
 #include <iostream>
+#include <list>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
@@ -101,6 +103,8 @@ class ZramWriteback {
     base::TimeDelta backoff_time = base::Seconds(30);
     uint64_t min_pages = ((2 << 20) / kPageSize);   /* 2MiB worth of pages */
     uint64_t max_pages = ((128 << 20) / kPageSize); /* 128MiB worth of pages */
+    uint64_t max_pages_per_day =
+        ((1 << 30) / kPageSize); /* 1GiB worth of pages */
     bool writeback_huge_idle = true;
     bool writeback_idle = true;
     bool writeback_huge = false;
@@ -115,6 +119,7 @@ class ZramWriteback {
       out << "backoff_time=" << p.backoff_time << " ";
       out << "min_pages=" << p.min_pages << " ";
       out << "max_pages=" << p.max_pages << " ";
+      out << "max_pages_per_day=" << p.max_pages_per_day << " ";
       out << "writeback_huge_idle=" << p.writeback_huge_idle << " ";
       out << "writeback_idle=" << p.writeback_idle << " ";
       out << "writeback_huge=" << p.writeback_huge << " ";
@@ -125,6 +130,11 @@ class ZramWriteback {
       return out;
     }
   } params_;
+
+  // For tracking writeback daily limit.
+  std::list<std::pair<base::TimeTicks, uint64_t>> history_;
+  uint64_t GetWritebackDailyLimit();
+  void AddRecord(uint64_t wb_pages);
 
   uint64_t wb_size_bytes_ = 0;
   uint64_t wb_nr_blocks_ = 0;

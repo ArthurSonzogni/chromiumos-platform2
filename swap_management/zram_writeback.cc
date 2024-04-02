@@ -462,6 +462,11 @@ absl::Status ZramWriteback::SetZramWritebackConfigIfOverriden(
     if (!buf.ok())
       return buf.status();
     params_.idle_max_time = base::Seconds(*buf);
+  } else if (key == "max_pages_per_day") {
+    auto buf = Utils::Get()->SimpleAtoi<uint32_t>(value);
+    if (!buf.ok())
+      return buf.status();
+    params_.max_pages_per_day = *buf;
   } else {
     return absl::InvalidArgumentError("Unknown key " + key);
   }
@@ -503,9 +508,12 @@ absl::StatusOr<uint64_t> ZramWriteback::GetAllowedWritebackLimit() {
   // cannot writeback at least the min, and we will cap to the max if it's
   // greater.
   num_pages = std::min(num_pages, params_.max_pages);
-  if (num_pages < params_.min_pages)
-    // Configured to not writeback fewer than configured min_pages.
-    return 0;
+
+  // Configured to not writeback fewer than configured min_pages.
+  num_pages = num_pages < params_.min_pages ? 0 : num_pages;
+
+  // Check writeback daily limit.
+  num_pages = std::min(GetWritebackDailyLimit(), num_pages);
 
   return num_pages;
 }
@@ -602,6 +610,7 @@ void ZramWriteback::PeriodicWriteback() {
         if (mode.ok())
           LOG(INFO) << "zram writeback " << num_wb_pages << " " << *mode
                     << " pages.";
+        AddRecord(num_wb_pages);
       }
 
       // Update writeback_limit for next mode, or exit if no more quota.
@@ -667,6 +676,26 @@ absl::Status ZramWriteback::Start() {
 
 void ZramWriteback::Stop() {
   writeback_timer_.Stop();
+}
+
+void ZramWriteback::AddRecord(uint64_t wb_pages) {
+  history_.push_front(
+      std::pair<base::TimeTicks, uint64_t>(base::TimeTicks::Now(), wb_pages));
+}
+
+uint64_t ZramWriteback::GetWritebackDailyLimit() {
+  // Evict expired records first.
+  while (!history_.empty() &&
+         base::TimeTicks::Now() - history_.back().first >= base::Days(1))
+    history_.pop_back();
+
+  uint64_t sum_history_wb_pages = 0;
+  for (auto& e : history_)
+    sum_history_wb_pages += e.second;
+
+  // Return 0 if exceed period limit.
+  return std::max(params_.max_pages_per_day - sum_history_wb_pages,
+                  (uint64_t)0);
 }
 
 }  // namespace swap_management

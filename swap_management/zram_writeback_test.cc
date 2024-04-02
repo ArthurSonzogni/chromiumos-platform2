@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <absl/status/status.h>
+#include <base/test/task_environment.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <gtest/gtest.h>
 
@@ -26,14 +27,23 @@ class MockZramWriteback : public swap_management::ZramWriteback {
   MockZramWriteback& operator=(const MockZramWriteback&) = delete;
   MockZramWriteback(const MockZramWriteback&) = delete;
 
-  absl::Status EnableWriteback(uint32_t size_mb) {
-    return ZramWriteback::Get()->EnableWriteback(size_mb);
+  void MockPeriodicWriteback() {
+    wb_size_bytes_ = 644874240;
+    zram_nr_pages_ = 4072148;
+    PeriodicWriteback();
   }
 
-  void PeriodicWriteback() {
-    ZramWriteback::Get()->wb_size_bytes_ = 644874240;
-    ZramWriteback::Get()->zram_nr_pages_ = 4072148;
-    ZramWriteback::Get()->PeriodicWriteback();
+  absl::Status SetZramWritebackConfigIfOverriden(const std::string& key,
+                                                 const std::string& value) {
+    return ZramWriteback::Get()->SetZramWritebackConfigIfOverriden(key, value);
+  }
+
+  uint64_t GetWritebackDailyLimit() {
+    return ZramWriteback::Get()->GetWritebackDailyLimit();
+  }
+
+  void AddRecord(uint64_t wb_pages) {
+    return ZramWriteback::Get()->AddRecord(wb_pages);
   }
 };
 
@@ -48,6 +58,8 @@ class ZramWritebackTest : public ::testing::Test {
  protected:
   std::unique_ptr<MockZramWriteback> mock_zram_writeback_;
   MockUtils mock_util_;
+  base::test::TaskEnvironment task_environment{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 TEST_F(ZramWritebackTest, EnableWriteback) {
@@ -235,7 +247,86 @@ TEST_F(ZramWritebackTest, PeriodicWriteback) {
       ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
       .WillOnce(DoAll(SetArgPointee<1>("0\n"), Return(absl::OkStatus())));
 
-  mock_zram_writeback_->PeriodicWriteback();
+  mock_zram_writeback_->MockPeriodicWriteback();
+}
+
+TEST_F(ZramWritebackTest, DailyLimit) {
+  InSequence s;
+
+  // Set daily limit to 128MiB.
+  EXPECT_THAT(mock_zram_writeback_->SetZramWritebackConfigIfOverriden(
+                  "max_pages_per_day", "32768"),
+              absl::OkStatus());
+
+  // 1st writeback (0s), history: {}, return 32768 pages.
+  EXPECT_THAT(mock_zram_writeback_->GetWritebackDailyLimit(), 32768);
+  // 10000 huge and 20000 idle pages were written back.
+  mock_zram_writeback_->AddRecord(10000);
+  mock_zram_writeback_->AddRecord(20000);
+
+  // Mocked writeback runs every 6 hours.
+  task_environment.AdvanceClock(base::Hours(6));
+
+  // 2nd writeback (21600s), history: {(0, 10000), (0, 20000)}, return 2768
+  // pages.
+  EXPECT_THAT(mock_zram_writeback_->GetWritebackDailyLimit(), 2768);
+
+  // 2000 pages were written back.
+  mock_zram_writeback_->AddRecord(2000);
+
+  task_environment.FastForwardBy(base::Hours(6));
+
+  // 3rd writeback (43200s), history: {(0, 10000), (0, 20000), (21600, 2000)},
+  // return 768 pages.
+  EXPECT_THAT(mock_zram_writeback_->GetWritebackDailyLimit(), 768);
+  // 500 pages were written back.
+  mock_zram_writeback_->AddRecord(500);
+
+  task_environment.FastForwardBy(base::Hours(6));
+
+  // 4th writeback (64800s), history: {(0, 10000), (0, 20000), (21600, 2000),
+  // (43200, 500)}, return 268 pages.
+  EXPECT_THAT(mock_zram_writeback_->GetWritebackDailyLimit(), 268);
+  // 0 pages were written back.
+  mock_zram_writeback_->AddRecord(0);
+
+  task_environment.FastForwardBy(base::Hours(6));
+
+  // 5th writeback (86400s), history: {(21600, 2000), (43200, 500)}, return
+  // 30268 pages.
+  EXPECT_THAT(mock_zram_writeback_->GetWritebackDailyLimit(), 30268);
+  // 30268 pages were written back.
+  mock_zram_writeback_->AddRecord(30268);
+
+  task_environment.FastForwardBy(base::Hours(6));
+
+  // 6th writeback (108000s), history: {(43200, 500), (86400, 30268)}, return
+  // 2000 pages.
+  EXPECT_THAT(mock_zram_writeback_->GetWritebackDailyLimit(), 2000);
+  // 2000 were written back.
+  mock_zram_writeback_->AddRecord(2000);
+
+  task_environment.FastForwardBy(base::Hours(6));
+
+  // 7th writeback (129600s), history: {(43200, 500), (86400, 30268), (108000,
+  // 2000)}, return 500 pages.
+  EXPECT_THAT(mock_zram_writeback_->GetWritebackDailyLimit(), 500);
+  // 500 pages were written back.
+  mock_zram_writeback_->AddRecord(500);
+
+  task_environment.FastForwardBy(base::Hours(6));
+
+  // 7th writeback (151200s), history: {(86400, 30268), (108000, 2000), (129600,
+  // 500)}, return 0 pages.
+  EXPECT_THAT(mock_zram_writeback_->GetWritebackDailyLimit(), 0);
+  // 0 page was written back.
+  mock_zram_writeback_->AddRecord(0);
+
+  task_environment.FastForwardBy(base::Hours(6));
+
+  // 8th writeback (172800), history: {(108000, 2000), (129600, 500)}, return
+  // 30268 pages.
+  EXPECT_THAT(mock_zram_writeback_->GetWritebackDailyLimit(), 30268);
 }
 
 }  // namespace swap_management
