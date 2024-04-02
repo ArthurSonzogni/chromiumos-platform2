@@ -4,34 +4,14 @@
 
 // Provides the `display_debug` command which can be used to assist with log collection for feedback reports.
 
-use bitflags::bitflags;
-use dbus::blocking::Connection;
-use log::error;
 use std::{io, thread, time};
-use system_api::client::OrgChromiumDebugd;
 
+use crate::debugd::{DRMTraceCategories, DRMTraceSize, DRMTraceSnapshotType, Debugd};
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
-use crate::util::DEFAULT_DBUS_TIMEOUT;
-
-// These bitflag values must match those in org.chromium.debugd.xml.
-bitflags! {
-    struct DRMTraceCategories: u32 {
-        const CORE =    0x001;
-        const DRIVER =  0x002;
-        const KMS =     0x004;
-        const PRIME =   0x008;
-        const ATOMIC =  0x010;
-        const VBL =     0x020;
-        const STATE =   0x040;
-        const LEASE =   0x080;
-        const DP =      0x100;
-        const DRMRES =  0x200;
-    }
-}
 
 impl DRMTraceCategories {
     fn default() -> DRMTraceCategories {
-        DRMTraceCategories { bits: 0 }
+        DRMTraceCategories::empty()
     }
 
     fn debug() -> DRMTraceCategories {
@@ -43,18 +23,6 @@ impl DRMTraceCategories {
             | DRMTraceCategories::LEASE
             | DRMTraceCategories::DP
     }
-}
-
-// These enum values must match those in org.chromium.debugd.xml.
-enum DRMTraceSize {
-    Default = 0,
-    Debug = 1,
-}
-
-// These enum values must match those in org.chromium.debugd.xml.
-enum DRMTraceSnapshotType {
-    Trace = 0,
-    Modetest = 1,
 }
 
 const TRACE_START_LOG: &str = "DISPLAY-DEBUG-START-TRACE";
@@ -115,73 +83,6 @@ fn prompt_enter(prompt: &str) {
     // Read a line of input from stdin. This requires the user to have
     // pressed enter. Ignore the contents.
     let _ = read_input();
-}
-
-struct Debugd {
-    connection: dbus::blocking::Connection,
-}
-
-impl Debugd {
-    fn new() -> Result<Debugd, dbus::Error> {
-        match Connection::new_system() {
-            Ok(connection) => Ok(Debugd { connection }),
-            Err(err) => {
-                // Include output in syslog.
-                error!("ERROR: Failed to get D-Bus connection: {}", err);
-                Err(err)
-            }
-        }
-    }
-
-    fn drmtrace_annotate_log(&self, log: String) -> Result<&Debugd, dbus::Error> {
-        self.connection
-            .with_proxy(
-                "org.chromium.debugd",
-                "/org/chromium/debugd",
-                DEFAULT_DBUS_TIMEOUT,
-            )
-            .drmtrace_annotate_log(&log)
-            .map(|_| self)
-    }
-
-    fn drmtrace_snapshot(
-        &self,
-        snapshot_type: DRMTraceSnapshotType,
-    ) -> Result<&Debugd, dbus::Error> {
-        self.connection
-            .with_proxy(
-                "org.chromium.debugd",
-                "/org/chromium/debugd",
-                DEFAULT_DBUS_TIMEOUT,
-            )
-            .drmtrace_snapshot(snapshot_type as u32)
-            .map(|_| self)
-    }
-
-    fn drmtrace_set_size(&self, size: DRMTraceSize) -> Result<&Debugd, dbus::Error> {
-        self.connection
-            .with_proxy(
-                "org.chromium.debugd",
-                "/org/chromium/debugd",
-                DEFAULT_DBUS_TIMEOUT,
-            )
-            .drmtrace_set_size(size as u32)
-            .map(|_| self)
-    }
-
-    fn drmtrace_set_categories(
-        &self,
-        categories: DRMTraceCategories,
-    ) -> Result<&Debugd, dbus::Error> {
-        self.connection
-            .with_proxy(
-                "org.chromium.debugd",
-                "/org/chromium/debugd",
-                DEFAULT_DBUS_TIMEOUT,
-            )
-            .drmtrace_set_categories(categories.bits())
-            .map(|_| self)
-    }
 }
 
 pub fn register(dispatcher: &mut Dispatcher) {
