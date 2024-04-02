@@ -133,10 +133,8 @@ TEST_F(ExternalTaskTest, Start) {
   const std::map<std::string, std::string> kCommandEnv{{"env1", "val1"},
                                                        {"env2", "val2"}};
   std::map<std::string, std::string> expected_env;
-  expected_env.emplace(kRpcTaskServiceVariable,
-                       RpcTaskMockAdaptor::kRpcConnId.value());
-  expected_env.emplace(kRpcTaskPathVariable,
-                       RpcTaskMockAdaptor::kRpcId.value());
+  expected_env.emplace(kRpcTaskServiceVariable, RpcTaskStubAdaptor::kRpcConnId);
+  expected_env.emplace(kRpcTaskPathVariable, RpcTaskStubAdaptor::kRpcId);
   expected_env.insert(kCommandEnv.begin(), kCommandEnv.end());
   const int kPID = 234678;
   EXPECT_CALL(process_manager_,

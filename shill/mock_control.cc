@@ -36,12 +36,12 @@ std::unique_ptr<ManagerAdaptorInterface> MockControl::CreateManagerAdaptor(
 
 std::unique_ptr<ProfileAdaptorInterface> MockControl::CreateProfileAdaptor(
     Profile* /*profile*/) {
-  return std::make_unique<NiceMock<ProfileMockAdaptor>>();
+  return std::make_unique<ProfileStubAdaptor>();
 }
 
 std::unique_ptr<RpcTaskAdaptorInterface> MockControl::CreateRpcTaskAdaptor(
     RpcTask* /*task*/) {
-  return std::make_unique<NiceMock<RpcTaskMockAdaptor>>();
+  return std::make_unique<RpcTaskStubAdaptor>();
 }
 
 std::unique_ptr<ServiceAdaptorInterface> MockControl::CreateServiceAdaptor(

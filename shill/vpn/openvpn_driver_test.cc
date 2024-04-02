@@ -714,8 +714,8 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(std::vector<std::string>{"client"}, options[0]);
   ExpectInFlags(options, {"remote", kHost});
-  ExpectInFlags(options, {"setenv", kRpcTaskPathVariable,
-                          RpcTaskMockAdaptor::kRpcId.value()});
+  ExpectInFlags(options,
+                {"setenv", kRpcTaskPathVariable, RpcTaskStubAdaptor::kRpcId});
   ExpectInFlags(options, {"dev", kInterfaceName});
   EXPECT_EQ(kInterfaceName, driver_->interface_name_);
   ASSERT_FALSE(driver_->tls_auth_file_.empty());

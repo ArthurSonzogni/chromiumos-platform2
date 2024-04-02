@@ -51,14 +51,14 @@ void RpcTaskTest::Notify(const std::string& reason,
 TEST_F(RpcTaskTest, GetEnvironment) {
   std::map<std::string, std::string> env = task_.GetEnvironment();
   ASSERT_EQ(2, env.size());
-  EXPECT_EQ(env[kRpcTaskServiceVariable],
-            RpcTaskMockAdaptor::kRpcConnId.value());
-  EXPECT_EQ(env[kRpcTaskPathVariable], RpcTaskMockAdaptor::kRpcId.value());
+  EXPECT_EQ(env[kRpcTaskServiceVariable], RpcTaskStubAdaptor::kRpcConnId);
+  EXPECT_EQ(env[kRpcTaskPathVariable], RpcTaskStubAdaptor::kRpcId);
 }
 
 TEST_F(RpcTaskTest, GetRpcIdentifiers) {
-  EXPECT_EQ(RpcTaskMockAdaptor::kRpcId, task_.GetRpcIdentifier());
-  EXPECT_EQ(RpcTaskMockAdaptor::kRpcConnId, task_.GetRpcConnectionIdentifier());
+  EXPECT_EQ(RpcTaskStubAdaptor::kRpcId, task_.GetRpcIdentifier().value());
+  EXPECT_EQ(RpcTaskStubAdaptor::kRpcConnId,
+            task_.GetRpcConnectionIdentifier().value());
 }
 
 TEST_F(RpcTaskTest, GetLogin) {

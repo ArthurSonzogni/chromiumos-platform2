@@ -304,9 +304,7 @@ TEST_F(DeviceTest, ConnectionUpdatedWithNetworkValidationDisabled) {
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
   EXPECT_CALL(*network_, StopPortalDetection).Times(0);
   EXPECT_CALL(*GetDeviceMockAdaptor(),
-              EmitRpcIdentifierArrayChanged(
-                  kIPConfigsProperty,
-                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+              EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _));
 
   TriggerConnectionUpdate();
 }
@@ -320,9 +318,7 @@ TEST_F(DeviceTest, ConnectionUpdatedWithNetworkValidationEnabled) {
       .WillRepeatedly(Return(NetworkMonitor::ValidationMode::kFullValidation));
   EXPECT_CALL(*service_, SetState(Service::kStateConnected));
   EXPECT_CALL(*GetDeviceMockAdaptor(),
-              EmitRpcIdentifierArrayChanged(
-                  kIPConfigsProperty,
-                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+              EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _));
 
   TriggerConnectionUpdate();
 }
@@ -338,9 +334,7 @@ TEST_F(DeviceTest, ConnectionUpdatedAlreadyConnected) {
       .WillRepeatedly(Return(NetworkMonitor::ValidationMode::kFullValidation));
   EXPECT_CALL(*service_, SetState).Times(0);
   EXPECT_CALL(*GetDeviceMockAdaptor(),
-              EmitRpcIdentifierArrayChanged(
-                  kIPConfigsProperty,
-                  std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId}));
+              EmitRpcIdentifierArrayChanged(kIPConfigsProperty, _));
 
   TriggerConnectionUpdate();
 }
@@ -602,8 +596,7 @@ TEST_F(DeviceTest, AvailableIPConfigs) {
   EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
   network_->set_ipconfig(
       std::make_unique<IPConfig>(control_interface(), kDeviceName));
-  EXPECT_EQ(std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId},
-            device_->AvailableIPConfigs(nullptr));
+  EXPECT_EQ(1, device_->AvailableIPConfigs(nullptr).size());
   network_->set_ip6config(
       std::make_unique<IPConfig>(control_interface(), kDeviceName));
 
@@ -613,8 +606,7 @@ TEST_F(DeviceTest, AvailableIPConfigs) {
   EXPECT_EQ(2, device_->AvailableIPConfigs(nullptr).size());
 
   network_->set_ipconfig(nullptr);
-  EXPECT_EQ(std::vector<RpcIdentifier>{IPConfigMockAdaptor::kRpcId},
-            device_->AvailableIPConfigs(nullptr));
+  EXPECT_EQ(1, device_->AvailableIPConfigs(nullptr).size());
 
   network_->set_ip6config(nullptr);
   EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));

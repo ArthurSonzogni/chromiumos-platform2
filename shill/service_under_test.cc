@@ -10,6 +10,9 @@
 #include "shill/store/property_accessor.h"
 
 namespace shill {
+namespace {
+const RpcIdentifier kServiceRpcId{"/service_under_test"};
+}
 
 // static
 const char ServiceUnderTest::kKeyValueStoreProperty[] = "key_value_store";
@@ -31,10 +34,6 @@ ServiceUnderTest::ServiceUnderTest(Manager* manager)
 }
 
 ServiceUnderTest::~ServiceUnderTest() = default;
-
-const RpcIdentifier& ServiceUnderTest::GetRpcIdentifier() const {
-  return ServiceMockAdaptor::kRpcId;
-}
 
 RpcIdentifier ServiceUnderTest::GetDeviceRpcId(Error* /*error*/) const {
   return kRpcId;
