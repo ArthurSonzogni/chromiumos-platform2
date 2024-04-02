@@ -674,7 +674,7 @@ void ChromeosStartup::CreateDaemonStore(base::FilePath run_ds,
       continue;
     }
     startup_dep_->Mount(rds, rds, "", MS_BIND, "");
-    startup_dep_->Mount(base::FilePath("none"), rds, "", MS_SHARED, "");
+    startup_dep_->Mount(base::FilePath(), rds, "", MS_SHARED, "");
   }
 }
 
