@@ -99,8 +99,11 @@ class CaptureResultSequencerTest : public testing::Test {
     std::map<uint32_t, std::set<size_t>> stream_indices;
     for (auto& result : returned_results_) {
       for (auto& b : result.GetOutputBuffers()) {
-        frame_numbers[b.stream()].push_back(result.frame_number());
-        stream_indices[result.frame_number()].insert(stream_index(b.stream()));
+        if (b.status() == CAMERA3_BUFFER_STATUS_OK) {
+          frame_numbers[b.stream()].push_back(result.frame_number());
+          stream_indices[result.frame_number()].insert(
+              stream_index(b.stream()));
+        }
       }
     }
     EXPECT_TRUE(
@@ -121,16 +124,19 @@ class CaptureResultSequencerTest : public testing::Test {
     return request;
   }
 
-  Camera3CaptureDescriptor MakeResult(uint32_t frame_number,
-                                      const std::vector<size_t> stream_indices,
-                                      uint32_t partial_result = 0) {
+  Camera3CaptureDescriptor MakeResult(
+      uint32_t frame_number,
+      const std::vector<size_t> stream_indices,
+      int buffer_status = CAMERA3_BUFFER_STATUS_OK,
+      uint32_t partial_result = 0) {
     Camera3CaptureDescriptor result(camera3_capture_result_t{
         .frame_number = frame_number,
         .partial_result = partial_result,
     });
     for (size_t i : stream_indices) {
-      result.AppendOutputBuffer(Camera3StreamBuffer::MakeResultOutput(
-          camera3_stream_buffer_t{.stream = stream(i)}));
+      result.AppendOutputBuffer(
+          Camera3StreamBuffer::MakeResultOutput(camera3_stream_buffer_t{
+              .stream = stream(i), .status = buffer_status}));
     }
     return result;
   }
@@ -190,6 +196,25 @@ TEST_F(CaptureResultSequencerTest, OutOfOrderBuffers) {
   });
 }
 
+TEST_F(CaptureResultSequencerTest, BufferErrors) {
+  AddRequest(MakeRequest(1, {0}));
+  AddRequest(MakeRequest(2, {0, 1}));
+  AddRequest(MakeRequest(3, {0}));
+  AddRequest(MakeRequest(4, {0, 1}));
+
+  AddResult(MakeResult(1, {0}));
+  AddResult(MakeResult(2, {0}));
+  AddResult(MakeResult(3, {0}, /*buffer_status=*/CAMERA3_BUFFER_STATUS_ERROR));
+  AddResult(MakeResult(4, {0, 1}));
+  AddResult(MakeResult(2, {1}, /*buffer_status=*/CAMERA3_BUFFER_STATUS_ERROR));
+
+  ValidateReturnedResults({
+      {1, {0}},
+      {2, {0}},
+      {4, {0, 1}},
+  });
+}
+
 TEST_F(CaptureResultSequencerTest, NotifyDeviceError) {
   AddRequest(MakeRequest(1, {0, 1}));
   AddRequest(MakeRequest(2, {0, 1}));
@@ -217,6 +242,8 @@ TEST_F(CaptureResultSequencerTest, NotifyRequestError) {
   AddResult(MakeResult(1, {0}));
   AddResult(MakeResult(3, {0}));
   NotifyRequestError(2);
+  AddResult(MakeResult(2, {0},
+                       /*buffer_status=*/CAMERA3_BUFFER_STATUS_ERROR));
   AddResult(MakeResult(3, {1}));
 
   ValidateReturnedResults({
@@ -260,7 +287,10 @@ TEST_F(CaptureResultSequencerTest, BypassMetadata) {
 
   AddResult(MakeResult(1, {0, 1}));
   {
-    Camera3CaptureDescriptor result = MakeResult(3, {0}, /*partial_result=*/1);
+    Camera3CaptureDescriptor result =
+        MakeResult(3, {0},
+                   /*buffer_status=*/CAMERA3_BUFFER_STATUS_OK,
+                   /*partial_result=*/1);
     result.UpdateMetadata<int64_t>(ANDROID_SENSOR_TIMESTAMP,
                                    std::array<int64_t, 1>{1'234'567});
     AddResult(std::move(result));

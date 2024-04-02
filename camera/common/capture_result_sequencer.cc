@@ -41,8 +41,13 @@ void CaptureResultSequencer::AddResult(Camera3CaptureDescriptor result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   for (auto& b : result.AcquireOutputBuffers()) {
-    CHECK_NE(pending_buffers_[b.stream()].count(result.frame_number()), 0);
-    pending_buffers_[b.stream()][result.frame_number()] = std::move(b);
+    if (b.status() == CAMERA3_BUFFER_STATUS_OK) {
+      CHECK_NE(pending_buffers_[b.stream()].count(result.frame_number()), 0);
+      pending_buffers_[b.stream()][result.frame_number()] = std::move(b);
+    } else {
+      pending_buffers_[b.stream()].erase(result.frame_number());
+      result.AppendOutputBuffer(std::move(b));
+    }
   }
   if (!result.is_empty()) {
     callbacks_.result_callback.Run(std::move(result));
@@ -81,22 +86,21 @@ void CaptureResultSequencer::Notify(camera3_notify_msg_t msg) {
 void CaptureResultSequencer::Reset() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (!pending_buffers_.empty()) {
-    int num_unsent_buffers = 0, num_unreceived_buffers = 0;
-    for (auto& [s, pending_buffers_on_stream] : pending_buffers_) {
-      for (auto& [f, b] : pending_buffers_on_stream) {
-        if (b.has_value()) {
-          ++num_unsent_buffers;
-        } else {
-          ++num_unreceived_buffers;
-        }
+  int num_unsent_buffers = 0, num_unreceived_buffers = 0;
+  for (auto& [s, pending_buffers_on_stream] : pending_buffers_) {
+    for (auto& [f, b] : pending_buffers_on_stream) {
+      if (b.has_value()) {
+        ++num_unsent_buffers;
+      } else {
+        ++num_unreceived_buffers;
       }
     }
+  }
+  if (num_unsent_buffers != 0 || num_unreceived_buffers != 0) {
     LOGF(WARNING) << "CaptureResultSequencer resetted when there are still "
                   << num_unsent_buffers << " unsent buffers and "
                   << num_unreceived_buffers << " unreceived buffers";
   }
-
   pending_buffers_.clear();
 }
 
