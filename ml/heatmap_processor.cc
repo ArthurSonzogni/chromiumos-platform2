@@ -113,7 +113,8 @@ void HeatmapProcessor::Process(const std::vector<double>& heatmap_data,
     }
   } else {
     request_metrics.RecordRequestEvent(result);
-    LOG(ERROR) << "Heatmap palm rejection model execution failed";
+    LOG(ERROR) << "Heatmap palm rejection model execution failed with error "
+               << result;
   }
 
   ReportResult(is_palm, timestamp);
