@@ -609,6 +609,8 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StartPPPAfterEthernetUp);
   FRIEND_TEST(CellularTest, StartPPPAlreadyStarted);
   FRIEND_TEST(CellularTest, UpdateGeolocationObjects);
+  // CellularCapability3gppTest
+  FRIEND_TEST(CellularCapability3gppTest, VerifyRetriableConnectError);
   // Names of properties in storage
   static const char kAllowRoaming[];
   static const char kPolicyAllowRoaming[];

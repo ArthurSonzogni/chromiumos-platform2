@@ -37,6 +37,8 @@ void CellularError::FromMM1ChromeosDBusError(brillo::Error* dbus_error,
       base::MakeFixedFlatMap<std::string_view, Error::Type>({
           {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".IncorrectPassword",
            Error::kIncorrectPin},
+          {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".PhoneFailure",
+           Error::kInternalError},
           {MM_MOBILE_EQUIPMENT_ERROR_DBUS_PREFIX ".Unknown",
            Error::kInternalError},
           {MM_CORE_ERROR_DBUS_PREFIX ".Throttled", Error::kThrottled},

@@ -59,6 +59,9 @@ const char kErrorServingNetworkNotAuthorized[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
     "ServingNetworkNotAuthorized";
 
+const char kErrorPhoneFailureMM1[] =
+    "org.freedesktop.ModemManager1.Error.MobileEquipment."
+    "PhoneFailure";
 const char kErrorUnknownMM1[] =
     "org.freedesktop.ModemManager1.Error.MobileEquipment."
     "Unknown";
@@ -121,6 +124,7 @@ INSTANTIATE_TEST_SUITE_P(
         TestParam(kErrorPlmnNotAllowed, Error::kNoCarrier),
         TestParam(kErrorServiceOptionNotAuthorizedInPlmn, Error::kNoCarrier),
         TestParam(kErrorServingNetworkNotAuthorized, Error::kNoCarrier),
+        TestParam(kErrorPhoneFailureMM1, Error::kInternalError),
         TestParam(kErrorUnknownMM1, Error::kInternalError),
         TestParam(kErrorWrongStateMM1, Error::kWrongState),
         TestParam(kErrorOperationNotAllowedMM1, Error::kOperationNotAllowed),

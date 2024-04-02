@@ -374,6 +374,7 @@ class CellularCapability3gpp {
               UpdateRegistrationStateModemNotConnected);
   FRIEND_TEST(CellularCapability3gppTest, UpdateServiceActivationState);
   FRIEND_TEST(CellularCapability3gppTest, UpdateServiceOLP);
+  FRIEND_TEST(CellularCapability3gppTest, VerifyRetriableConnectError);
   // CellularTest
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
 

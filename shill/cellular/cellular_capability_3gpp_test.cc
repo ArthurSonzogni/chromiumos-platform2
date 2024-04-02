@@ -2715,4 +2715,24 @@ TEST_F(CellularCapability3gppTest, UpdateLinkSpeedNoSelectedService) {
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_BEARER, props);
 }
 
+TEST_F(CellularCapability3gppTest, VerifyRetriableConnectError) {
+  SetDefaultCellularSimProperties();
+  EXPECT_EQ(kIccid, cellular_->iccid());
+  CreateService();
+
+  EXPECT_FALSE(capability_->RetriableConnectError(Error(Error::kNoCarrier)));
+  EXPECT_FALSE(
+      capability_->RetriableConnectError(Error(Error::kOperationFailed)));
+  EXPECT_TRUE(capability_->RetriableConnectError(Error(Error::kInvalidApn)));
+  EXPECT_TRUE(capability_->RetriableConnectError(Error(Error::kInternalError)));
+  EXPECT_TRUE(capability_->RetriableConnectError(Error(Error::kThrottled)));
+  EXPECT_FALSE(
+      capability_->RetriableConnectError(Error(Error::kOperationNotAllowed)));
+
+  EXPECT_TRUE(cellular_->sim_present());
+  capability_->cellular()->subscription_error_seen_[kIccid] = true;
+  EXPECT_TRUE(
+      capability_->RetriableConnectError(Error(Error::kOperationNotAllowed)));
+}
+
 }  // namespace shill
