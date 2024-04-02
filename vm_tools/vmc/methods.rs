@@ -2013,16 +2013,10 @@ impl Methods {
         request.bus_number = bus as u32;
         request.port_number = device as u32;
 
-        let response: AttachUsbDeviceResponse = self.sync_protobus_timeout(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                ATTACH_USB_DEVICE_METHOD,
-            )?,
-            &request,
-            &[usb_fd],
-            DEFAULT_TIMEOUT,
+        let response: AttachUsbDeviceResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .attach_usb_device(request.write_to_bytes()?, usb_fd)?,
         )?;
 
         if !response.success {
@@ -2069,16 +2063,10 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.vm_name = vm_name.to_owned();
 
-        let response: AttachKeyResponse = self.sync_protobus_timeout(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                ATTACH_KEY_METHOD,
-            )?,
-            &request,
-            &[hidraw_fd],
-            DEFAULT_TIMEOUT,
+        let response: AttachKeyResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .attach_key(request.write_to_bytes()?, hidraw_fd)?,
         )?;
 
         if !response.success {
@@ -2102,14 +2090,10 @@ impl Methods {
         request.vm_name = vm_name.to_owned();
         request.guest_port = port as u32;
 
-        let response: DetachUsbDeviceResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                DETACH_USB_DEVICE_METHOD,
-            )?,
-            &request,
+        let response: DetachUsbDeviceResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .detach_usb_device(request.write_to_bytes()?)?,
         )?;
 
         if response.success {
@@ -2128,14 +2112,10 @@ impl Methods {
         request.owner_id = user_id_hash.to_owned();
         request.vm_name = vm_name.to_owned();
 
-        let response: ListUsbDeviceResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                LIST_USB_DEVICE_METHOD,
-            )?,
-            &request,
+        let response: ListUsbDeviceResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .list_usb_devices(request.write_to_bytes()?)?,
         )?;
 
         if response.success {
