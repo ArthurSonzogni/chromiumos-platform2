@@ -531,6 +531,28 @@ TEST_F(DeltaPerformerTest, ReplaceXzOperationTest) {
   EXPECT_EQ(expected_data, ApplyPayload(payload_data, "/dev/null", true));
 }
 
+TEST_F(DeltaPerformerTest, ReplaceZstdOperationTest) {
+  const uint8_t kZstdCompressedData[] = {
+      0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x58, 0x4d, 0x00, 0x00, 0x10, 0x61,
+      0x00, 0x01, 0x00, 0xfb, 0xf7, 0x01, 0x16, 0xcf, 0x92, 0xe9, 0x1a,
+  };
+  brillo::Blob zstd_data(kZstdCompressedData,
+                         kZstdCompressedData + sizeof(kZstdCompressedData));
+  brillo::Blob expected_data = brillo::Blob(4096, 0);
+  expected_data[0] = 'a';
+
+  AnnotatedOperation aop;
+  *(aop.op.add_dst_extents()) = ExtentForRange(0, 1);
+  aop.op.set_data_offset(0);
+  aop.op.set_data_length(zstd_data.size());
+  aop.op.set_type(InstallOperation::REPLACE_ZSTD);
+  vector<AnnotatedOperation> aops = {aop};
+
+  brillo::Blob payload_data = GeneratePayload(zstd_data, aops, false);
+
+  EXPECT_EQ(expected_data, ApplyPayload(payload_data, "/dev/null", true));
+}
+
 TEST_F(DeltaPerformerTest, ZeroOperationTest) {
   brillo::Blob existing_data = brillo::Blob(4096 * 10, 'a');
   brillo::Blob expected_data = existing_data;

@@ -26,10 +26,11 @@ const uint32_t kBrotliBsdiffMinorPayloadVersion = 4;
 const uint32_t kPuffdiffMinorPayloadVersion = 5;
 const uint32_t kVerityMinorPayloadVersion = 6;
 const uint32_t kPartialUpdateMinorPayloadVersion = 7;
+const uint32_t kReplaceZstdMinorPayloadVersion = 8;
 
 const uint32_t kMinSupportedMinorPayloadVersion = kSourceMinorPayloadVersion;
 const uint32_t kMaxSupportedMinorPayloadVersion =
-    kPartialUpdateMinorPayloadVersion;
+    kReplaceZstdMinorPayloadVersion;
 
 const uint64_t kMaxPayloadHeaderSize = 24;
 
@@ -58,6 +59,8 @@ const char* InstallOperationTypeName(InstallOperation::Type op_type) {
       return "PUFFDIFF";
     case InstallOperation::BROTLI_BSDIFF:
       return "BROTLI_BSDIFF";
+    case InstallOperation::REPLACE_ZSTD:
+      return "REPLACE_ZSTD";
 #ifndef __CHROMEOS__
     case InstallOperation::BSDIFF:
     case InstallOperation::MOVE:

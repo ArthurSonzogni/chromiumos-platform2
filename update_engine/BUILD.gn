@@ -58,6 +58,7 @@ pkg_config("target_defaults") {
     "USE_HWID_OVERRIDE=${use.hwid_override}",
     "USE_HW_DETAILS=${use.hw_details}",
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
+    "ZSTD_STATIC_LINKING_ONLY",
   ]
   include_dirs = [
     # We need this include dir because we include all the local code as
@@ -142,11 +143,13 @@ static_library("libpayload_consumer") {
     "payload_consumer/postinstall_runner_action.cc",
     "payload_consumer/verity_writer_stub.cc",
     "payload_consumer/xz_extent_writer.cc",
+    "payload_consumer/zstd_extent_writer.cc",
   ]
   configs += [ ":target_defaults" ]
   libs = [
     "bz2",
     "rt",
+    "zstd",
   ]
 
   # TODO(deymo): Remove unused dependencies once we stop including files
@@ -372,6 +375,7 @@ static_library("libpayload_generator") {
     "payload_generator/raw_filesystem.cc",
     "payload_generator/squashfs_filesystem.cc",
     "payload_generator/xz_chromeos.cc",
+    "payload_generator/zstd.cc",
   ]
   configs += [ ":target_defaults" ]
   all_dependent_pkg_deps = [
@@ -379,6 +383,7 @@ static_library("libpayload_generator") {
     "libbsdiff",
     "liblzma",
     "libpuffdiff",
+    "libzstd",
   ]
   deps = [
     ":libpayload_consumer",
@@ -531,6 +536,7 @@ if (use.test) {
       "payload_consumer/install_plan_unittest.cc",
       "payload_consumer/postinstall_runner_action_unittest.cc",
       "payload_consumer/xz_extent_writer_unittest.cc",
+      "payload_consumer/zstd_extent_writer_unittest.cc",
       "payload_generator/ab_generator_unittest.cc",
       "payload_generator/blob_file_writer_unittest.cc",
       "payload_generator/block_mapping_unittest.cc",

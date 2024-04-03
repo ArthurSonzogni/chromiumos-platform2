@@ -46,6 +46,7 @@ class OpType(object):
     ZERO = _CLASS.ZERO
     DISCARD = _CLASS.DISCARD
     REPLACE_XZ = _CLASS.REPLACE_XZ
+    REPLACE_ZSTD = _CLASS.REPLACE_ZSTD
     PUFFDIFF = _CLASS.PUFFDIFF
     BROTLI_BSDIFF = _CLASS.BROTLI_BSDIFF
     ALL = (
@@ -56,6 +57,7 @@ class OpType(object):
         ZERO,
         DISCARD,
         REPLACE_XZ,
+        REPLACE_ZSTD,
         PUFFDIFF,
         BROTLI_BSDIFF,
     )
@@ -67,6 +69,7 @@ class OpType(object):
         ZERO: "ZERO",
         DISCARD: "DISCARD",
         REPLACE_XZ: "REPLACE_XZ",
+        REPLACE_ZSTD: "REPLACE_ZSTD",
         PUFFDIFF: "PUFFDIFF",
         BROTLI_BSDIFF: "BROTLI_BSDIFF",
     }

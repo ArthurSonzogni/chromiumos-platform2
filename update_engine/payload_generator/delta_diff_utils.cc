@@ -49,6 +49,7 @@
 #include "update_engine/payload_generator/extent_utils.h"
 #include "update_engine/payload_generator/squashfs_filesystem.h"
 #include "update_engine/payload_generator/xz.h"
+#include "update_engine/payload_generator/zstd.h"
 
 using std::list;
 using std::map;
@@ -625,6 +626,17 @@ bool GenerateBestFullOperation(const brillo::Blob& new_data,
     }
   }
 
+  // Try compressing it with zstd.
+  if (version.OperationAllowed(InstallOperation::REPLACE_ZSTD)) {
+    brillo::Blob new_data_zstd;
+    if (ZstdCompress(new_data, &new_data_zstd) && !new_data_zstd.empty() &&
+        (!out_blob_set || out_blob->size() > new_data_zstd.size())) {
+      *out_type = InstallOperation::REPLACE_ZSTD;
+      *out_blob = std::move(new_data_zstd);
+      out_blob_set = true;
+    }
+  }
+
   // If nothing else worked or it was badly compressed we try a REPLACE.
   if (!out_blob_set || out_blob->size() >= new_data.size()) {
     *out_type = InstallOperation::REPLACE;
@@ -806,7 +818,8 @@ bool ReadExtentsToDiff(const string& old_part,
 bool IsAReplaceOperation(InstallOperation::Type op_type) {
   return (op_type == InstallOperation::REPLACE ||
           op_type == InstallOperation::REPLACE_BZ ||
-          op_type == InstallOperation::REPLACE_XZ);
+          op_type == InstallOperation::REPLACE_XZ ||
+          op_type == InstallOperation::REPLACE_ZSTD);
 }
 
 bool IsNoSourceOperation(InstallOperation::Type op_type) {
