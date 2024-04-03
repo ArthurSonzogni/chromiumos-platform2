@@ -25,7 +25,7 @@ any protobuf/dbus message, you only need to `cros_workon` on the
 
 ```shell
 $ cros_sdk cros_workon --board=$BOARD start crostini_client
-$ FEATURES=test cros_sdk emerge-$BOARD crostini_client
+$ cros_sdk FEATURES=test emerge-$BOARD crostini_client
 ```
 
 However, if your change is more involved, like if you are adding a new command,
