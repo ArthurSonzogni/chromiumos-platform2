@@ -19,7 +19,7 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 # The following imports will be available on the test image, but will usually
 # be missing in the SDK.
@@ -54,11 +54,11 @@ DEFAULT_ARGS = {
 
 errors = [
     # FP_SENSOR_LOW_IMAGE_QUALITY 1
-    "retrying...",
+    "Please try again by retrying...",
     # FP_SENSOR_TOO_FAST 2
-    "keeping your finger still during capture",
+    "Please try again by keeping your finger still during capture",
     # FP_SENSOR_LOW_SENSOR_COVERAGE 3
-    "centering your finger on the sensor",
+    "Please try again by centering your finger on the sensor",
 ]
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -263,16 +263,18 @@ class FingerWebSocket(WebSocket):
             else:
                 cherrypy.log("FPC utils are unavailable")
 
-    def finger_process(self, req: dict[str, Any]):
+    def finger_process(self, req: dict[str, Any]) -> Optional[str]:
         # Ensure the user has removed the finger between 2 captures.
         if not self.finger_wait_done(FP_MODE_FINGER_UP):
-            return
+            # Aborted. Don't send a result to client.
+            return None
         # Capture the finger image when the finger is on the sensor.
         self.ectool_fpmode("capture", "vendor")
         t0 = time.time()
         # Wait for the image being available.
         if not self.finger_wait_done(FP_MODE_CAPTURE):
-            return
+            # Aborted. Don't send a result to client.
+            return None
         t1 = time.time()
         # Detect the finger removal before the next capture.
         self.ectool_fpmode("fingerup")
@@ -281,18 +283,35 @@ class FingerWebSocket(WebSocket):
             f'Captured finger {req["finger"]:02d}:{req["picture"]:02d}'
             f" in {t1 - t0:.2f}s"
         )
-        req["result"] = "ok"  # ODER req['result'] = errors[ERRNUM_TBD]
-        # Retrieve the finger image.
         self.finger_save_image(req)
-        # Tell the page about the acquisition result.
-        self.send(json.dumps(req), False)
+        return "ok"
 
     def finger_worker(self):
+        def send_result(result_msg: str = "ok"):
+            """Send the result of the capture back to the user page.
+
+            If the result is anything other than "ok", the page will show
+            an error message box with the result message and the capture will
+            be retried.
+
+            This result field seems to be designed to accommodate in study
+            feedback about the capture. The options were enumerated in the
+            "errors" string list at the top of this python script.
+
+            We will use it to surface general errors that should halt capturing,
+            too.
+            """
+            self.current_req["result"] = result_msg
+            # Tell the page about the acquisition result.
+            self.send(json.dumps(self.current_req), False)
+
         while not self.server_terminated and not self.client_terminated:
             self.available_req.acquire()
             while not self.current_req and not self.abort_request:
                 self.available_req.wait()
-            self.finger_process(self.current_req)
+            result = self.finger_process(self.current_req)
+            if result:
+                send_result(result)
             self.current_req = None
             self.available_req.release()
 
