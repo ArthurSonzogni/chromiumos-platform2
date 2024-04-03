@@ -542,30 +542,6 @@ cmd_wifi_power_save() (
   esac
 )
 
-u2f_warning='
-  ### IMPORTANT: The U2F feature is experimental and not suitable for
-  ### general production use in its current form. The current
-  ### implementation is still in flux and some features (including
-  ### security-relevant ones) are still missing. You are welcome to
-  ### play with this, but use at your own risk. You have been warned.
-'
-
-# shellcheck disable=SC2034
-USAGE_u2f_flags='<u2f | g2f>[, user_keys, verbose]'
-# shellcheck disable=SC2034
-HELP_u2f_flags="
-${u2f_warning}
-  Set flags to override the second-factor authentication daemon configuration.
-  u2f: Always enable the standard U2F mode even if not set in device policy.
-  g2f: Always enable the U2F mode plus some additional extensions.
-  user_keys: Enable user-specific keys.
-  verbose: Increase the daemon logging verbosity in /var/log/messages.
-"
-cmd_u2f_flags() (
-  echo "${u2f_warning}"
-  debugd SetU2fFlags "string:$*"
-)
-
 debugd() {
   # Default timeout 30 seconds.
   local timeout="--reply-timeout=30000"

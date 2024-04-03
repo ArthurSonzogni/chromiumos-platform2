@@ -38,7 +38,6 @@ const BASE_COMMANDS: &[&str] = &[
     "time_info",
     "top",
     "tracepath",
-    "u2f_flags",
     "vsh",
     "wifi_power_save",
 ];

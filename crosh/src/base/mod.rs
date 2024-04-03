@@ -23,6 +23,7 @@ mod printscan_debug;
 mod rollback;
 mod set_time;
 mod sync;
+mod u2f_flags;
 mod uname;
 mod upload_crashes;
 mod upload_devcoredumps;
@@ -54,6 +55,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     rollback::register(dispatcher);
     set_time::register(dispatcher);
     sync::register(dispatcher);
+    u2f_flags::register(dispatcher);
     upload_crashes::register(dispatcher);
     upload_devcoredumps::register(dispatcher);
     uptime::register(dispatcher);
