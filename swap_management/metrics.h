@@ -7,7 +7,9 @@
 
 #include "metrics/metrics_library.h"
 #include "swap_management/utils.h"
+#include "swap_management/zram_stats.h"
 
+#include <memory>
 #include <vector>
 
 #include <absl/status/status.h>
@@ -23,6 +25,7 @@ class Metrics {
   void ReportSwapStartStatus(absl::Status status);
   void ReportSwapStopStatus(absl::Status status);
   void PeriodicReportZramMetrics();
+  void EnableZramWritebackMetrics();
   void Stop();
 
   // Virtual for testing.
@@ -52,6 +55,11 @@ class Metrics {
   bool has_old_huge_pages_ = false;
   uint64_t old_huge_pages_ = 0;
   uint64_t old_huge_pages_since_ = 0;
+
+  // For zram writeback metrics.
+  base::RepeatingTimer writeback_metrics_timer_;
+  std::unique_ptr<ZramBdStat> last_zram_bd_stat_;
+  void PeriodicReportZramWritebackMetrics();
 };
 }  // namespace swap_management
 

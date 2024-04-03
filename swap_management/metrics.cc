@@ -3,12 +3,13 @@
 // found in the LICENSE file.
 
 #include "swap_management/metrics.h"
-#include "base/time/time.h"
 #include "swap_management/utils.h"
 #include "swap_management/zram_stats.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <absl/status/status.h>
 #include <base/metrics/histogram_functions.h>
@@ -256,6 +257,30 @@ absl::StatusOr<std::vector<uint32_t>> Metrics::PSIMemoryParser(
     return absl::InternalError("Failed to parse PSI memory metrics.");
 
   return res;
+}
+
+void Metrics::EnableZramWritebackMetrics() {
+  last_zram_bd_stat_ = std::make_unique<ZramBdStat>();
+
+  // Report writeback metrics every 24hr.
+  writeback_metrics_timer_.Start(
+      FROM_HERE, base::Days(1),
+      base::BindRepeating(&Metrics::PeriodicReportZramWritebackMetrics,
+                          weak_factory_.GetWeakPtr()));
+}
+
+void Metrics::PeriodicReportZramWritebackMetrics() {
+  absl::StatusOr<ZramBdStat> zram_bd_stat = GetZramBdStat();
+  LOG_IF(ERROR, !zram_bd_stat.ok())
+      << "Failed to read zram bd stat: " << zram_bd_stat.status();
+
+  uint64_t bd_write_delta =
+      (*zram_bd_stat).bd_writes - last_zram_bd_stat_->bd_writes;
+
+  metrics_.SendToUMA("ChromeOS.Zram.WritebackPagesPerDay", bd_write_delta, 0,
+                     (4 << 30) / kPageSize, 100);
+
+  last_zram_bd_stat_ = std::make_unique<ZramBdStat>(std::move(*zram_bd_stat));
 }
 
 }  // namespace swap_management

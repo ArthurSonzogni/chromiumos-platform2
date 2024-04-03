@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "swap_management/metrics.h"
 #include "swap_management/zram_idle.h"
 #include "swap_management/zram_stats.h"
 #include "swap_management/zram_writeback.h"
@@ -670,6 +671,7 @@ absl::Status ZramWriteback::Start() {
   writeback_timer_.Start(FROM_HERE, params_.periodic_time,
                          base::BindRepeating(&ZramWriteback::PeriodicWriteback,
                                              weak_factory_.GetWeakPtr()));
+  Metrics::Get()->EnableZramWritebackMetrics();
 
   return absl::OkStatus();
 }
@@ -679,8 +681,7 @@ void ZramWriteback::Stop() {
 }
 
 void ZramWriteback::AddRecord(uint64_t wb_pages) {
-  history_.push_front(
-      std::pair<base::TimeTicks, uint64_t>(base::TimeTicks::Now(), wb_pages));
+  history_.push_front({base::TimeTicks::Now(), wb_pages});
 }
 
 uint64_t ZramWriteback::GetWritebackDailyLimit() {
