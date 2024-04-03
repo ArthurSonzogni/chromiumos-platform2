@@ -175,7 +175,8 @@ class InternalBacklightController : public BacklightController,
                    Transition adjust_transition = Transition::FAST);
 
   // Sets the value of |use_ambient_light_|.
-  void SetUseAmbientLight(bool use_ambient_light);
+  void SetUseAmbientLight(bool use_ambient_light,
+                          AmbientLightSensorChange_Cause cause);
 
   // Not owned by this class.
   system::BacklightInterface* backlight_ = nullptr;

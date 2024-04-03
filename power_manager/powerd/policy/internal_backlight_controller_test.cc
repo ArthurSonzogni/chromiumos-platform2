@@ -143,8 +143,12 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   dbus_wrapper_->ClearSentSignals();
   test::CallIncreaseScreenBrightness(dbus_wrapper_.get());
   EXPECT_GT(backlight_.current_level(), kAlsLevel);
+  // The first signal emitted should be for the ambient light sensor change.
+  test::CheckAmbientLightSensorEnabledChangedSignalAtIndex(dbus_wrapper_.get(),
+                                                           /*index=*/0);
+  // The second signal emitted should be for the brightness change.
   test::CheckBrightnessChangedSignal(
-      dbus_wrapper_.get(), 0, kScreenBrightnessChangedSignal,
+      dbus_wrapper_.get(), /*index=*/1, kScreenBrightnessChangedSignal,
       GetBrightnessPercent(), BacklightBrightnessChange_Cause_USER_REQUEST);
   for (int i = 0; i < InternalBacklightController::kMaxBrightnessSteps; ++i) {
     int64_t old_level = backlight_.current_level();
@@ -157,7 +161,7 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   dbus_wrapper_->ClearSentSignals();
   test::CallIncreaseScreenBrightness(dbus_wrapper_.get());
   test::CheckBrightnessChangedSignal(
-      dbus_wrapper_.get(), 0, kScreenBrightnessChangedSignal, 100.0,
+      dbus_wrapper_.get(), /*index=*/0, kScreenBrightnessChangedSignal, 100.0,
       BacklightBrightnessChange_Cause_USER_REQUEST);
 
   // Now do the same checks in the opposite direction.  The controller
@@ -1093,9 +1097,12 @@ TEST_F(InternalBacklightControllerTest, SetAndGetBrightness) {
   ASSERT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));
   EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
+  // The first signal emitted should be for the ambient light sensor change.
+  test::CheckAmbientLightSensorEnabledChangedSignalAtIndex(dbus_wrapper_.get(),
+                                                           /*index=*/0);
   // A signal should've been emitted with the appropriate cause.
   test::CheckBrightnessChangedSignal(
-      dbus_wrapper_.get(), 0, kScreenBrightnessChangedSignal,
+      dbus_wrapper_.get(), /*index=*/1, kScreenBrightnessChangedSignal,
       kBrightnessPercent, BacklightBrightnessChange_Cause_MODEL);
 
   // Check that the same percent is returned.
@@ -1122,9 +1129,13 @@ TEST_F(InternalBacklightControllerTest, SetBrightnessCause) {
   ASSERT_TRUE(controller_->GetBrightnessPercent(&percent));
   ASSERT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));
 
-  // A signal should've been emitted with the appropriate cause.
+  // The first signal emitted should be for the ambient light sensor change.
+  test::CheckAmbientLightSensorEnabledChangedSignalAtIndex(dbus_wrapper_.get(),
+                                                           /*index=*/0);
+  // The second signal emitted should be for the brightness change, with the
+  // appropriate cause.
   test::CheckBrightnessChangedSignal(
-      dbus_wrapper_.get(), 0, kScreenBrightnessChangedSignal,
+      dbus_wrapper_.get(), /*index=*/1, kScreenBrightnessChangedSignal,
       kBrightnessPercent, BacklightBrightnessChange_Cause_MODEL);
 
   // Set the brightness with USER_REQUEST cause.
@@ -1140,7 +1151,7 @@ TEST_F(InternalBacklightControllerTest, SetBrightnessCause) {
 
   // A signal should've been emitted with the appropriate cause.
   test::CheckBrightnessChangedSignal(
-      dbus_wrapper_.get(), 0, kScreenBrightnessChangedSignal,
+      dbus_wrapper_.get(), /*index=*/0, kScreenBrightnessChangedSignal,
       kBrightnessPercentUser, BacklightBrightnessChange_Cause_USER_REQUEST);
 
   // Set the brightness with USER_REQUEST_FROM_SETTINGS_APP cause.
@@ -1156,7 +1167,7 @@ TEST_F(InternalBacklightControllerTest, SetBrightnessCause) {
 
   // A signal should've been emitted with the appropriate cause.
   test::CheckBrightnessChangedSignal(
-      dbus_wrapper_.get(), 0, kScreenBrightnessChangedSignal,
+      dbus_wrapper_.get(), /*index=*/0, kScreenBrightnessChangedSignal,
       kBrightnessPercentUserSettingsApp,
       BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP);
 }
@@ -1164,6 +1175,8 @@ TEST_F(InternalBacklightControllerTest, SetBrightnessCause) {
 TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
   Init(PowerSource::AC);
+  dbus_wrapper_->ClearSentSignals();
+
   EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
   EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
   EXPECT_EQ(0, controller_->GetNumUserAdjustments());
@@ -1178,6 +1191,15 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   EXPECT_EQ(PercentToLevel(kUserPercent), backlight_.current_level());
   EXPECT_EQ(1, controller_->GetNumUserAdjustments());
 
+  // Now that the user has manually adjusted the brightness, a signal for
+  // AmbientLightSensorEnabledChanged should have been emitted, indicating that
+  // the ambient light sensor is now disabled.
+  test::CheckAmbientLightSensorEnabledChangedSignal(
+      dbus_wrapper_.get(), /*index=*/0,
+      /*expected_ambient_light_sensor_enabled=*/false,
+      /*expected_cause=*/
+      AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST);
+
   // Changes to the ambient light level shouldn't affect the backlight
   // brightness after the user has manually set it.
   light_sensor_.set_lux(400);
@@ -1187,7 +1209,17 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   EXPECT_EQ(0, controller_->GetNumAmbientLightSensorAdjustments());
 
   // Re-enable the ambient light sensor.
+  dbus_wrapper_->ClearSentSignals();
   test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), true);
+
+  // Re-enabling the ambient light sensor should emit a signal for
+  // AmbientLightSensorEnabledChanged, indicating that the ambient light sensor
+  // is now enabled.
+  test::CheckAmbientLightSensorEnabledChangedSignal(
+      dbus_wrapper_.get(), /*index=*/0,
+      /*expected_ambient_light_sensor_enabled=*/true,
+      /*expected_cause=*/
+      AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP);
 
   // Confirm that the ambient light sensor is functioning again by changing the
   // light level to trigger a brightness change.
@@ -1206,7 +1238,17 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   EXPECT_EQ(2, controller_->GetNumAmbientLightSensorAdjustments());
 
   // Disable the ambient light sensor.
+  dbus_wrapper_->ClearSentSignals();
   test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), false);
+
+  // Disabling the ambient light sensor should emit a signal for
+  // AmbientLightSensorEnabledChanged, indicating that the ambient light sensor
+  // is now disabled.
+  test::CheckAmbientLightSensorEnabledChangedSignal(
+      dbus_wrapper_.get(), /*index=*/0,
+      /*expected_ambient_light_sensor_enabled=*/false,
+      /*expected_cause=*/
+      AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP);
 
   // Changing the light level should not change the current brightness level,
   // nor should it record an ambient light sensor adjustment.
@@ -1215,6 +1257,39 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
     light_sensor_.NotifyObservers();
   EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
   EXPECT_EQ(2, controller_->GetNumAmbientLightSensorAdjustments());
+
+  // Enable the ambient light sensor.
+  test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), true);
+  dbus_wrapper_->ClearSentSignals();
+
+  // Change the brightness from Settings, which should disable the ambient light
+  // sensor, then check that the correct signal was fired.
+  const double kUserPercentFromSettings = 30.0;
+  test::CallSetScreenBrightness(
+      dbus_wrapper_.get(), kUserPercentFromSettings,
+      SetBacklightBrightnessRequest_Transition_INSTANT,
+      SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+  test::CheckAmbientLightSensorEnabledChangedSignal(
+      dbus_wrapper_.get(), /*index=*/0,
+      /*expected_ambient_light_sensor_enabled=*/false,
+      /*expected_cause=*/
+      AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST_SETTINGS_APP);
+
+  // Re-enable the ambient light sensor.
+  test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), true);
+  dbus_wrapper_->ClearSentSignals();
+
+  // Change the brightness from the model, which should disable the ambient
+  // light sensor, then check that the correct signal was fired.
+  test::CallSetScreenBrightness(
+      dbus_wrapper_.get(), kUserPercentFromSettings,
+      SetBacklightBrightnessRequest_Transition_INSTANT,
+      SetBacklightBrightnessRequest_Cause_MODEL);
+  test::CheckAmbientLightSensorEnabledChangedSignal(
+      dbus_wrapper_.get(), /*index=*/0,
+      /*expected_ambient_light_sensor_enabled=*/false,
+      /*expected_cause=*/
+      AmbientLightSensorChange_Cause_BRIGHTNESS_OTHER);
 }
 
 }  // namespace power_manager::policy

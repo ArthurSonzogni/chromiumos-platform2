@@ -91,4 +91,30 @@ void CheckBrightnessChangedSignal(system::DBusWrapperStub* wrapper,
   EXPECT_EQ(cause, proto.cause());
 }
 
+void CheckAmbientLightSensorEnabledChangedSignalAtIndex(
+    system::DBusWrapperStub* wrapper, size_t index) {
+  std::unique_ptr<dbus::Signal> signal;
+  ASSERT_TRUE(wrapper->GetSentSignal(
+      /*index=*/index,
+      /*expected_signal_name=*/kAmbientLightSensorEnabledChangedSignal,
+      /*protobuf_out=*/nullptr, /*signal_out=*/&signal));
+}
+
+void CheckAmbientLightSensorEnabledChangedSignal(
+    system::DBusWrapperStub* wrapper,
+    size_t index,
+    bool expected_ambient_light_sensor_enabled,
+    AmbientLightSensorChange_Cause expected_cause) {
+  std::unique_ptr<dbus::Signal> signal;
+  ASSERT_TRUE(wrapper->GetSentSignal(
+      /*index=*/index,
+      /*expected_signal_name=*/kAmbientLightSensorEnabledChangedSignal,
+      /*protobuf_out=*/nullptr, /*signal_out=*/&signal));
+
+  AmbientLightSensorChange proto;
+  ASSERT_TRUE(dbus::MessageReader(signal.get()).PopArrayOfBytesAsProto(&proto));
+  EXPECT_EQ(expected_ambient_light_sensor_enabled, proto.sensor_enabled());
+  EXPECT_EQ(expected_cause, proto.cause());
+}
+
 }  // namespace power_manager::policy::test

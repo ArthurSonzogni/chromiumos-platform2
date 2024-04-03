@@ -90,6 +90,8 @@ const char kLidClosedSignal[] = "LidClosed";
 const char kLidOpenedSignal[] = "LidOpened";
 const char kThermalEventSignal[] = "ThermalEvent";
 const char kBatterySaverModeStateChanged[] = "BatterySaverModeStateChanged";
+const char kAmbientLightSensorEnabledChangedSignal[] =
+    "AmbientLightSensorEnabledChanged";
 
 // Values
 const int kBrightnessTransitionGradual = 1;

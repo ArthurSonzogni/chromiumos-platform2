@@ -202,7 +202,7 @@ void InternalBacklightController::Init(
     ambient_light_handler_->Init(pref_value, initial_percent,
                                  als_smoothing_constant);
   } else {
-    SetUseAmbientLight(false);
+    SetUseAmbientLight(false, AmbientLightSensorChange_Cause_NO_SENSOR_PRESENT);
   }
 
   int64_t turn_off_screen_timeout_ms = 0;
@@ -728,7 +728,12 @@ void InternalBacklightController::HandleGetBrightnessRequest(
 
 void InternalBacklightController::HandleSetAmbientLightSensorEnabled(
     bool enabled) {
-  SetUseAmbientLight(enabled);
+  // D-Bus requests to change the Ambient Light Sensor status are always
+  // user-initiated, and always come from the Settings app. Changes to the
+  // Ambient Light Sensor status that are caused by user-requested brightness
+  // changes don't go through this D-Bus handler function.
+  SetUseAmbientLight(enabled,
+                     AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP);
 }
 
 void InternalBacklightController::EnsureUserBrightnessIsNonzero(
@@ -750,7 +755,20 @@ void InternalBacklightController::SetExplicitBrightnessPercent(
     double battery_percent,
     Transition transition,
     BacklightBrightnessChange_Cause cause) {
-  SetUseAmbientLight(false);
+  AmbientLightSensorChange_Cause als_change_cause;
+  switch (cause) {
+    case BacklightBrightnessChange_Cause_USER_REQUEST:
+      als_change_cause = AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST;
+      break;
+    case BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP:
+      als_change_cause =
+          AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST_SETTINGS_APP;
+      break;
+    default:
+      als_change_cause = AmbientLightSensorChange_Cause_BRIGHTNESS_OTHER;
+      break;
+  }
+  SetUseAmbientLight(false, als_change_cause);
   ac_explicit_brightness_percent_ =
       ac_percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(ac_percent);
   if (battery_saver_) {
@@ -775,7 +793,8 @@ void InternalBacklightController::UpdateState(
     LOG(ERROR) << "Giving up on ambient light sensor after getting no reading "
                << "within " << kAmbientLightSensorTimeout.InSeconds()
                << " seconds";
-    SetUseAmbientLight(false);
+    SetUseAmbientLight(false,
+                       AmbientLightSensorChange_Cause_NO_READINGS_FROM_ALS);
   }
 
   // Hold off on changing the brightness at startup until all the required
@@ -874,7 +893,20 @@ void InternalBacklightController::UpdateState(
   already_set_initial_state_ = true;
 }
 
-void InternalBacklightController::SetUseAmbientLight(bool use_ambient_light) {
+void InternalBacklightController::SetUseAmbientLight(
+    bool use_ambient_light, AmbientLightSensorChange_Cause cause) {
+  // If the value changed, emit a signal.
+  if (use_ambient_light_ != use_ambient_light) {
+    DCHECK(dbus_wrapper_);
+    dbus::Signal signal(kPowerManagerInterface,
+                        kAmbientLightSensorEnabledChangedSignal);
+    AmbientLightSensorChange proto;
+    proto.set_sensor_enabled(use_ambient_light);
+    proto.set_cause(cause);
+    dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+    dbus_wrapper_->EmitSignal(&signal);
+  }
+
   use_ambient_light_ = use_ambient_light;
 }
 
