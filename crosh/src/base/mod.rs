@@ -23,6 +23,7 @@ mod rollback;
 mod set_time;
 mod sync;
 mod uname;
+mod upload_crashes;
 mod uptime;
 mod verify_ro;
 mod vmc;
@@ -50,6 +51,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     rollback::register(dispatcher);
     set_time::register(dispatcher);
     sync::register(dispatcher);
+    upload_crashes::register(dispatcher);
     uptime::register(dispatcher);
     uname::register(dispatcher);
     verify_ro::register(dispatcher);

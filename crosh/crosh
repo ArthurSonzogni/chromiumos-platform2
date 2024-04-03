@@ -1005,19 +1005,6 @@ p2p_check_enabled() {
 }
 
 # shellcheck disable=SC2034
-USAGE_upload_crashes=''
-# shellcheck disable=SC2034
-HELP_upload_crashes='
-  Uploads available crash reports to the crash server.
-
-  Check chrome://crashes for processed crashes.
-'
-cmd_upload_crashes() (
-  debugd UploadCrashes
-  echo "Check chrome://crashes for status updates"
-)
-
-# shellcheck disable=SC2034
 USAGE_upload_devcoredumps='[enable|disable]'
 # shellcheck disable=SC2034
 HELP_upload_devcoredumps='

@@ -111,4 +111,11 @@ impl Debugd {
             .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
             .set_u2f_flags(flags)
     }
+
+    pub fn upload_crashes(&self) -> Result<&Debugd, dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .upload_crashes()
+            .map(|_| self)
+    }
 }
