@@ -19,13 +19,14 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Any
+from typing import Any, Union
 
 # The following imports will be available on the test image, but will usually
 # be missing in the SDK.
 # pylint: disable=import-error
 import cherrypy
 import gnupg
+from ws4py import messaging
 from ws4py.server.cherrypyserver import WebSocketPlugin
 from ws4py.server.cherrypyserver import WebSocketTool
 from ws4py.websocket import WebSocket
@@ -176,10 +177,14 @@ class FingerWebSocket(WebSocket):
         else:
             cherrypy.log("Successfully stopped worker thread.")
 
-    def received_message(self, m):
-        if m.is_binary:
+    def received_message(
+        self,
+        message: Union[messaging.TextMessage, messaging.BinaryMessage],
+    ):
+        if message.is_binary:
             return  # Not supported
-        j = json.loads(m.data)
+        # The JSON payloads from index.html are string indexed dictionaries.
+        j: dict[str, Any] = json.loads(message.data)
         if "log" in j:
             cherrypy.log(j["log"])
         if "finger" in j:
@@ -237,7 +242,7 @@ class FingerWebSocket(WebSocket):
             time.sleep(0.050)
         return not self.abort_request
 
-    def finger_save_image(self, req):
+    def finger_save_image(self, req: dict[str, Any]):
         directory = os.path.join(self.pict_dir, self.DIR_FORMAT.format(**req))
         self.make_dirs(directory)
         file_base = os.path.join(directory, self.FILE_FORMAT.format(**req))
@@ -258,7 +263,7 @@ class FingerWebSocket(WebSocket):
             else:
                 cherrypy.log("FPC utils are unavailable")
 
-    def finger_process(self, req):
+    def finger_process(self, req: dict[str, Any]):
         # Ensure the user has removed the finger between 2 captures.
         if not self.finger_wait_done(FP_MODE_FINGER_UP):
             return
@@ -291,7 +296,7 @@ class FingerWebSocket(WebSocket):
             self.current_req = None
             self.available_req.release()
 
-    def finger_request(self, req):
+    def finger_request(self, req: dict[str, Any]):
         # Ask the thread to exit the waiting loops
         # it will wait on the acquire() below if needed.
         self.abort_request = True
@@ -302,7 +307,7 @@ class FingerWebSocket(WebSocket):
         self.available_req.notify()
         self.available_req.release()
 
-    def config_request(self, req):
+    def config_request(self, req: dict[str, Any]):
         # Populate the configuration.
         req["config"] = self.config
         self.send(json.dumps(req), False)
