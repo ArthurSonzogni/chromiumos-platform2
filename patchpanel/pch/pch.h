@@ -54,3 +54,12 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/time/time.h>
+
+// Headers include by <patchpanel/proto_bindings/patchpanel_service.pb.h>.
+// Ideally we want include that header directly here, but seems that the
+// precompiled headers cannot get recompiled correctly in some cases which
+// affects CQ.
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/arena.h>
+#include <google/protobuf/generated_message_util.h>
+#include <google/protobuf/extension_set.h>
