@@ -38,7 +38,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser_fpmode_subparsers = parser_fpmode.add_subparsers(dest='fpmode')
     parser_fpmode_subparsers.add_parser('capture').add_argument(
         'capture_type',
-        choices=['vendor'],
+        choices=['vendor', 'pattern0', 'pattern1'],
     )
     # fpmode fingerup
     parser_fpmode_subparsers.add_parser('fingerup')

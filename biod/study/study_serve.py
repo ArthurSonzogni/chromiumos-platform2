@@ -19,7 +19,7 @@ import subprocess
 import sys
 import threading
 import time
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 # The following imports will be available on the test image, but will usually
 # be missing in the SDK.
@@ -250,16 +250,43 @@ class FingerWebSocket(WebSocket):
             time.sleep(0.050)
         return not self.abort_request
 
-    def finger_save_image(self, req: dict[str, Any]):
+    def capture(
+        self, capture_mode: Literal["vendor", "pattern0", "pattern1"] = "vendor"
+    ) -> tuple[Optional[bytes], Optional[str]]:
+        """Capture one sample from the FPMCU.
+
+        This function will start the capture, wait for the capture to complete,
+        fetch + return the capture bytes.
+
+        Args:
+            capture_mode: "vendor", "pattern0", or "pattern1"
+
+        Returns:
+            The tuple of capture bytes and error result string.
+            If the capture bytes are None, then an error occurred. Iin this case
+            the optional error result string should be optionally passed to the
+            client page.
+        """
+        # Capture the finger image when the finger is on the sensor.
+        self.ectool_fpmode("capture", capture_mode)
+        # Wait for the image to become available.
+        if not self.finger_wait_done(FP_MODE_CAPTURE):
+            cherrypy.log("Finger wait aborted.")
+            return (None, None)
+        # Download the image.
+        img = self.ectool("fpframe", "raw")
+        if not img:
+            msg = f"Failed to download fpframe for {capture_mode} capture"
+            cherrypy.log(msg)
+            return (None, f"{msg}. Call operator.")
+        return (img, None)
+
+    def finger_save_image(self, req: dict[str, Any], img: bytes):
         directory = os.path.join(self.pict_dir, self.DIR_FORMAT.format(**req))
         self.make_dirs(directory)
         file_base = os.path.join(directory, self.FILE_FORMAT.format(**req))
         raw_file = file_base + ".raw"
         fmi_file = file_base + ".fmi"
-        img = self.ectool("fpframe", "raw")
-        if not img:
-            cherrypy.log("Failed to download fpframe")
-            return
         self.save_to_file(img, raw_file)
         if self.export_fmi:
             if self.fpcutils:
@@ -285,22 +312,21 @@ class FingerWebSocket(WebSocket):
         if not self.finger_wait_done(FP_MODE_FINGER_UP):
             # Aborted. Don't send a result to client.
             return None
-        # Capture the finger image when the finger is on the sensor.
-        self.ectool_fpmode("capture", "vendor")
         t0 = time.time()
-        # Wait for the image being available.
-        if not self.finger_wait_done(FP_MODE_CAPTURE):
-            # Aborted. Don't send a result to client.
-            return None
+        # Capture the finger image when the finger is on the sensor.
+        img, result = self.capture("vendor")
+        if not img:
+            return result
         t1 = time.time()
         # Detect the finger removal before the next capture.
+        # If the finger is already up, this mode will immediately be cleared.
         self.ectool_fpmode("fingerup")
         # Record the outcome of the capture.
         cherrypy.log(
             f'Captured finger {req["finger"]:02d}:{req["picture"]:02d}'
             f" in {t1 - t0:.2f}s"
         )
-        self.finger_save_image(req)
+        self.finger_save_image(req, img)
         return "ok"
 
     def finger_worker(self):
