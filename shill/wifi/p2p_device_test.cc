@@ -14,6 +14,7 @@
 #include <base/test/mock_callback.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <net-base/byte_utils.h>
+#include <net-base/ipv4_address.h>
 #include <net-base/mac_address.h>
 
 #include "shill/mock_control.h"
@@ -225,7 +226,7 @@ TEST_F(P2PDeviceTest, DeviceOnOff) {
 }
 
 TEST_F(P2PDeviceTest, GroupInfo) {
-  // Start device
+  // kReady
   EXPECT_TRUE(go_device_->Start());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kReady);
 
@@ -237,14 +238,13 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_FALSE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
-  EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
+  EXPECT_FALSE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
             kP2PGroupInfoStateIdle);
-  EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(), 0);
 
-  // Initiate group creation.
+  // kGOStarting
   auto service = std::make_unique<MockP2PService>(
       go_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
   EXPECT_TRUE(go_device_->CreateGroup(std::move(service)));
@@ -258,20 +258,17 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_FALSE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
-  EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
+  EXPECT_FALSE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
             kP2PGroupInfoStateStarting);
-  EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(), 0);
 
-  // Emulate GroupStarted signal from wpa_supplicant.
+  // kGOConfiguring
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
   go_device_->GroupStarted(DefaultGroupStartedProperties());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
-  // Emulate OnGroupNetworkStarted callback from patchpanel.
-  go_device_->OnGroupNetworkStarted(MakeFd());
+
   group_info = go_device_->GetGroupInfo();
   EXPECT_TRUE(group_info.Contains<uint32_t>(kP2PGroupInfoShillIDProperty));
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoStateProperty));
@@ -284,7 +281,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
-            kP2PGroupInfoStateActive);
+            kP2PGroupInfoStateConfiguring);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoSSIDProperty), kP2PSSID);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty), kP2PBSSID);
   EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoFrequencyProperty),
@@ -295,6 +292,9 @@ TEST_F(P2PDeviceTest, GroupInfo) {
             kInterfaceName);
   EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(), 0);
 
+  // kGOActive
+  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
+  go_device_->OnGroupNetworkStarted(MakeFd());
   group_info = go_device_->GetGroupInfo();
   EXPECT_TRUE(group_info.Contains<uint32_t>(kP2PGroupInfoShillIDProperty));
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoStateProperty));
@@ -360,40 +360,29 @@ TEST_F(P2PDeviceTest, GroupInfo) {
             kInterfaceName);
   EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(),
             num_of_peers);
-
   auto group_clients = group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty);
   for (auto const& client : group_clients)
     EXPECT_TRUE(base::Contains(client, kP2PGroupInfoClientMACAddressProperty));
 
-  // Remove group.
+  // kGOStopping
   EXPECT_TRUE(go_device_->RemoveGroup());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
 
   group_info = go_device_->GetGroupInfo();
   EXPECT_TRUE(group_info.Contains<uint32_t>(kP2PGroupInfoShillIDProperty));
   EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoStateProperty));
-  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoSSIDProperty));
-  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
-  EXPECT_TRUE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
-  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
-  EXPECT_TRUE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
-  EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoSSIDProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoBSSIDProperty));
+  EXPECT_FALSE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
+  EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
+  EXPECT_FALSE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
             kP2PGroupInfoStateStopping);
-  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoSSIDProperty), kP2PSSID);
-  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty), kP2PBSSID);
-  EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoFrequencyProperty),
-            kP2PFrequency);
-  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
-            kP2PPassphrase);
-  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoInterfaceProperty),
-            kInterfaceName);
-  EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(),
-            num_of_peers);
 
-  // Emulate GroupFinished signal from wpa_supplicant
+  // kReady
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
   go_device_->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kReady);
@@ -407,12 +396,11 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_FALSE(group_info.Contains<Integer>(kP2PGroupInfoFrequencyProperty));
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoPassphraseProperty));
   EXPECT_FALSE(group_info.Contains<String>(kP2PGroupInfoInterfaceProperty));
-  EXPECT_TRUE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
+  EXPECT_FALSE(group_info.Contains<Stringmaps>(kP2PGroupInfoClientsProperty));
 
   EXPECT_EQ(group_info.Get<uint32_t>(kP2PGroupInfoShillIDProperty), kShillId);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
             kP2PGroupInfoStateIdle);
-  EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(), 0);
 
   // Stop device
   EXPECT_TRUE(go_device_->Stop());

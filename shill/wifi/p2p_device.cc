@@ -200,25 +200,16 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
   group_info.Set<uint32_t>(kP2PGroupInfoShillIDProperty, shill_id());
   group_info.Set<String>(kP2PGroupInfoStateProperty, GroupInfoState(state_));
 
-  if (!group_ssid_.empty())
+  if (IsLinkLayerConnected()) {
     group_info.Set<String>(kP2PGroupInfoSSIDProperty, group_ssid_);
-
-  if (!group_bssid_.empty())
     group_info.Set<String>(kP2PGroupInfoBSSIDProperty, group_bssid_);
-
-  if (group_frequency_)
     group_info.Set<Integer>(kP2PGroupInfoFrequencyProperty, group_frequency_);
-
-  if (!group_passphrase_.empty())
     group_info.Set<String>(kP2PGroupInfoPassphraseProperty, group_passphrase_);
-
-  if (link_name().has_value())
     group_info.Set<String>(kP2PGroupInfoInterfaceProperty, *link_name());
+    group_info.Set<Stringmaps>(kP2PGroupInfoClientsProperty,
+                               GroupInfoClients());
+  }
 
-  group_info.Set<Stringmaps>(kP2PGroupInfoClientsProperty, GroupInfoClients());
-
-  // TODO(b/299915001): retrieve IPv4/IPv6Address from patchpanel
-  // TODO(b/301049348): retrieve MacAddress from wpa_supplicant
   return group_info;
 }
 
@@ -696,20 +687,36 @@ bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
   }
 
   group_ssid_ = GetGroupSSID();
-  if (!group_ssid_.empty())
+  if (group_ssid_.empty()) {
+    LOG(ERROR) << log_name() << ": Failed to get group SSID";
+    return false;
+  } else {
     LOG(INFO) << log_name() << ": SSID configured: " << group_ssid_;
+  }
 
   group_bssid_ = GetGroupBSSID();
-  if (!group_bssid_.empty())
+  if (group_bssid_.empty()) {
+    LOG(ERROR) << log_name() << ": Failed to get group BSSID";
+    return false;
+  } else {
     LOG(INFO) << log_name() << ": BSSID configured: " << group_bssid_;
+  }
 
   group_frequency_ = GetGroupFrequency();
-  if (group_frequency_)
+  if (group_frequency_) {
     LOG(INFO) << log_name() << ": Freqency configured: " << group_frequency_;
+  } else {
+    LOG(ERROR) << log_name() << ": Failed to get group frequency";
+    return false;
+  }
 
   group_passphrase_ = GetGroupPassphrase();
-  if (!group_passphrase_.empty())
+  if (group_passphrase_.empty()) {
+    LOG(ERROR) << log_name() << ": Failed to get group passphrase";
+    return false;
+  } else {
     LOG(INFO) << log_name() << ": Passphrase configured: " << group_passphrase_;
+  }
 
   interface_address_ = GetInterfaceAddress();
   if (interface_address_ == std::nullopt) {
