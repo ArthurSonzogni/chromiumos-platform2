@@ -571,6 +571,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
   if (UseFlagIsSet("vulkan_chrome")) {
     AddFeatureEnableOverride("Vulkan");
     AddFeatureEnableOverride("DefaultANGLEVulkan");
+    AddFeatureEnableOverride("VulkanFromANGLE");
   }
 
   brillo::CrosConfig cros_config;
