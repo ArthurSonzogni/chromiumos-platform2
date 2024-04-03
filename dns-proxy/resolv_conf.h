@@ -23,14 +23,13 @@ class ResolvConf {
 
   virtual ~ResolvConf();
 
-  virtual void set_path(const base::FilePath& path) { path_ = path; }
+  void set_path(const base::FilePath& path) { path_ = path; }
 
   // Install domain name service parameters, given a list of
   // DNS servers in |name_servers|, and a list of DNS search suffixes in
   // |domain_search_list|.
-  virtual bool SetDNSFromLists(
-      const std::vector<std::string>& name_servers,
-      const std::vector<std::string>& domain_search_list);
+  bool SetDNSFromLists(const std::vector<std::string>& name_servers,
+                       const std::vector<std::string>& domain_search_list);
 
   // Tells the resolver that DNS should go through the proxy address(es)
   // provided. If |proxy_addrs| is non-empty, this name server will be used
