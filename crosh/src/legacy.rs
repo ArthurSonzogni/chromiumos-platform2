@@ -19,7 +19,6 @@ const BASE_COMMANDS: &[&str] = &[
     "cras",
     "diag",
     "enroll_status",
-    "evtest",
     "ff_debug",
     "gesture_prop",
     "help", // Included for the "help" help entry.

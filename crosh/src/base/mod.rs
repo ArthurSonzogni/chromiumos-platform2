@@ -10,6 +10,7 @@ mod ccd_pass;
 mod display_debug;
 mod dlc_install;
 mod dmesg;
+mod evtest;
 mod exit;
 mod force_fips;
 mod free;
@@ -37,6 +38,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     dlc_install::register(dispatcher);
     display_debug::register(dispatcher);
     dmesg::register(dispatcher);
+    evtest::register(dispatcher);
     exit::register(dispatcher);
     force_fips::register(dispatcher);
     free::register(dispatcher);
