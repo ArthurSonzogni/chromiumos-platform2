@@ -17,7 +17,9 @@
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
+#include <dbus/bus.h>
 #include <net-base/ip_address.h>
+#include <shill/dbus-proxies.h>
 
 namespace patchpanel {
 
@@ -120,6 +122,8 @@ ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
                << shill::kDNSProxyDOHProvidersProperty;
   }
 }
+
+ShillClient::~ShillClient() = default;
 
 const ShillClient::Device* ShillClient::default_logical_device() const {
   if (!default_logical_device_) {

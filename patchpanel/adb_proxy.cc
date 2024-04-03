@@ -25,6 +25,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
+#include <dbus/object_proxy.h>
 #include <vboot/crossystem.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/byte_utils.h>

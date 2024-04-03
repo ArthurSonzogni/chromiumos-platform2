@@ -16,12 +16,20 @@
 
 #include <base/containers/flat_set.h>
 #include <base/memory/weak_ptr.h>
+#include <brillo/any.h>
+#include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
-#include <shill/dbus-proxies.h>
 
 #include "patchpanel/system.h"
+
+// Provided by <shill/dbus-proxies.h>. Use forward declaration here since that
+// header is expensive to compile, and thus we should avoid it being spread too
+// widely.
+namespace org::chromium::flimflam {
+class ManagerProxy;
+}
 
 namespace patchpanel {
 
@@ -158,7 +166,7 @@ class ShillClient {
   ShillClient(const ShillClient&) = delete;
   ShillClient& operator=(const ShillClient&) = delete;
 
-  virtual ~ShillClient() = default;
+  virtual ~ShillClient();
 
   // Registers the provided handler for changes in shill default logical or
   // physical network.

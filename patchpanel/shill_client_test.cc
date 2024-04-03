@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
