@@ -1,8 +1,8 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_input_utils.h"
+#include "cryptohome/auth_io/auth_input.h"
 
 #include <optional>
 #include <string>
@@ -20,11 +20,10 @@
 #include "cryptohome/key_objects.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 
-using brillo::SecureBlob;
-
 namespace cryptohome {
-
 namespace {
+
+using ::brillo::SecureBlob;
 
 AuthInput FromPasswordAuthInput(
     const user_data_auth::PasswordAuthInput& proto) {
@@ -198,17 +197,6 @@ std::optional<AuthFactorType> DetermineFactorTypeFromAuthInput(
     case user_data_auth::AuthInput::INPUT_NOT_SET:
       return std::nullopt;
   }
-}
-
-user_data_auth::PrepareOutput PrepareOutputToProto(
-    const PrepareOutput& prepare_output) {
-  user_data_auth::PrepareOutput proto;
-  if (prepare_output.cryptohome_recovery_prepare_output) {
-    proto.mutable_cryptohome_recovery_output()->set_recovery_request(
-        prepare_output.cryptohome_recovery_prepare_output->recovery_rpc_request
-            .SerializeAsString());
-  }
-  return proto;
 }
 
 }  // namespace cryptohome

@@ -1,9 +1,9 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_AUTH_INPUT_UTILS_H_
-#define CRYPTOHOME_AUTH_INPUT_UTILS_H_
+#ifndef CRYPTOHOME_AUTH_IO_AUTH_INPUT_H_
+#define CRYPTOHOME_AUTH_IO_AUTH_INPUT_H_
 
 #include <optional>
 
@@ -35,10 +35,6 @@ std::optional<AuthInput> CreateAuthInput(
 std::optional<AuthFactorType> DetermineFactorTypeFromAuthInput(
     const user_data_auth::AuthInput& auth_input_proto);
 
-// Convert a PrepareOutput struct into a PrepareOutput protobuf.
-user_data_auth::PrepareOutput PrepareOutputToProto(
-    const PrepareOutput& prepare_output);
-
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_AUTH_INPUT_UTILS_H_
+#endif  // CRYPTOHOME_AUTH_IO_AUTH_INPUT_H_

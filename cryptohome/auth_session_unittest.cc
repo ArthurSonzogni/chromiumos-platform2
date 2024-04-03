@@ -38,22 +38,19 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libstorage/platform/mock_platform.h>
 
-#include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
-#include "cryptohome/auth_blocks/cryptohome_recovery_service.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/auth_blocks/mock_cryptohome_recovery_service.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
-#include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/type.h"
-#include "cryptohome/auth_input_utils.h"
 #include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_io/auth_input.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/credential_verifier_test_utils.h"

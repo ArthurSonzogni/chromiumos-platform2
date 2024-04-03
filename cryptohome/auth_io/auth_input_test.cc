@@ -1,8 +1,8 @@
-// Copyright 2022 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_input_utils.h"
+#include "cryptohome/auth_io/auth_input.h"
 
 #include <optional>
 
@@ -29,7 +29,7 @@ using ::testing::IsTrue;
 
 }  // namespace
 
-class AuthInputUtilsPlatformTest : public ::testing::Test {
+class AuthInputPlatformTest : public ::testing::Test {
  protected:
   const Username kUserName{"someusername"};
   const ObfuscatedUsername kObfuscatedUsername{"fake-user@example.org"};
@@ -39,7 +39,7 @@ class AuthInputUtilsPlatformTest : public ::testing::Test {
 
 // Test the conversion from the password AuthInput proto into the cryptohome
 // struct.
-TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPassword) {
+TEST_F(AuthInputPlatformTest, CreateAuthInputPassword) {
   constexpr char kPassword[] = "fake-password";
 
   user_data_auth::AuthInput proto;
@@ -58,7 +58,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPassword) {
 
 // Test the conversion from the password AuthInput proto into the cryptohome
 // struct, with the locked_to_single_user flag set.
-TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPasswordLocked) {
+TEST_F(AuthInputPlatformTest, CreateAuthInputPasswordLocked) {
   constexpr char kPassword[] = "fake-password";
 
   user_data_auth::AuthInput proto;
@@ -77,7 +77,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPasswordLocked) {
 
 // Test the conversion from the PIN AuthInput proto into the cryptohome
 // struct.
-TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPin) {
+TEST_F(AuthInputPlatformTest, CreateAuthInputPin) {
   constexpr char kPin[] = "fake-pin";
 
   user_data_auth::AuthInput proto;
@@ -96,7 +96,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputPin) {
 
 // Test the conversion from the smart card AuthInput proto into the cryptohome
 // struct, with the public_key_spki_der from auth_factor_metadata set.
-TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputSmartCard) {
+TEST_F(AuthInputPlatformTest, CreateAuthInputSmartCard) {
   user_data_auth::AuthInput proto;
   proto.mutable_smart_card_input()->add_signature_algorithms(
       user_data_auth::CHALLENGE_RSASSA_PKCS1_V1_5_SHA1);
@@ -112,7 +112,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputSmartCard) {
 }
 
 // Test the conversion from an empty AuthInput proto fails.
-TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputErrorEmpty) {
+TEST_F(AuthInputPlatformTest, CreateAuthInputErrorEmpty) {
   user_data_auth::AuthInput proto;
 
   AuthFactorMetadata auth_factor_metadata;
@@ -123,7 +123,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputErrorEmpty) {
   EXPECT_FALSE(auth_input.has_value());
 }
 
-TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputRecoveryCreate) {
+TEST_F(AuthInputPlatformTest, CreateAuthInputRecoveryCreate) {
   constexpr char kMediatorPubKey[] = "fake_mediator_pub_key";
 
   user_data_auth::AuthInput proto;
@@ -143,7 +143,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputRecoveryCreate) {
             brillo::BlobFromString(kMediatorPubKey));
 }
 
-TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputRecoveryDerive) {
+TEST_F(AuthInputPlatformTest, CreateAuthInputRecoveryDerive) {
   constexpr char kEpochResponse[] = "fake_epoch_response";
   constexpr char kResponsePayload[] = "fake_recovery_response";
   brillo::Blob ephemeral_pub_key =
@@ -173,7 +173,7 @@ TEST_F(AuthInputUtilsPlatformTest, CreateAuthInputRecoveryDerive) {
             ephemeral_pub_key);
 }
 
-TEST_F(AuthInputUtilsPlatformTest, FromKioskAuthInput) {
+TEST_F(AuthInputPlatformTest, FromKioskAuthInput) {
   // SETUP
   testing::NiceMock<libstorage::MockPlatform> platform;
   // Generate a valid passkey from the users id and public salt.
@@ -196,7 +196,7 @@ TEST_F(AuthInputUtilsPlatformTest, FromKioskAuthInput) {
   EXPECT_EQ(auth_input->user_input, passkey);
 }
 
-TEST_F(AuthInputUtilsPlatformTest, FromKioskAuthInputFail) {
+TEST_F(AuthInputPlatformTest, FromKioskAuthInputFail) {
   // SETUP
   EXPECT_CALL(platform_,
               WriteSecureBlobToFileAtomicDurable(PublicMountSaltFile(), _, _))
@@ -212,70 +212,43 @@ TEST_F(AuthInputUtilsPlatformTest, FromKioskAuthInputFail) {
   ASSERT_FALSE(auth_input.has_value());
 }
 
-TEST(AuthInputUtilsTest, DetermineFactorTypePassword) {
+TEST(AuthInputTest, DetermineFactorTypePassword) {
   user_data_auth::AuthInput auth_input;
   auth_input.mutable_password_input();
   EXPECT_EQ(DetermineFactorTypeFromAuthInput(auth_input),
             AuthFactorType::kPassword);
 }
 
-TEST(AuthInputUtilsTest, DetermineFactorTypePin) {
+TEST(AuthInputTest, DetermineFactorTypePin) {
   user_data_auth::AuthInput auth_input;
   auth_input.mutable_pin_input();
   EXPECT_EQ(DetermineFactorTypeFromAuthInput(auth_input), AuthFactorType::kPin);
 }
 
-TEST(AuthInputUtilsTest, DetermineFactorTypeRecovery) {
+TEST(AuthInputTest, DetermineFactorTypeRecovery) {
   user_data_auth::AuthInput auth_input;
   auth_input.mutable_cryptohome_recovery_input();
   EXPECT_EQ(DetermineFactorTypeFromAuthInput(auth_input),
             AuthFactorType::kCryptohomeRecovery);
 }
 
-TEST(AuthInputUtilsTest, DetermineFactorTypeKiosk) {
+TEST(AuthInputTest, DetermineFactorTypeKiosk) {
   user_data_auth::AuthInput auth_input;
   auth_input.mutable_kiosk_input();
   EXPECT_EQ(DetermineFactorTypeFromAuthInput(auth_input),
             AuthFactorType::kKiosk);
 }
 
-TEST(AuthInputUtilsTest, DetermineFactorTypeSmartCard) {
+TEST(AuthInputTest, DetermineFactorTypeSmartCard) {
   user_data_auth::AuthInput auth_input;
   auth_input.mutable_smart_card_input();
   EXPECT_EQ(DetermineFactorTypeFromAuthInput(auth_input),
             AuthFactorType::kSmartCard);
 }
 
-TEST(AuthInputUtilsTest, DetermineFactorTypeErrorUnset) {
+TEST(AuthInputTest, DetermineFactorTypeErrorUnset) {
   user_data_auth::AuthInput auth_input;
   EXPECT_EQ(DetermineFactorTypeFromAuthInput(auth_input), std::nullopt);
-}
-
-TEST(AuthInputUtilsTest, PrepareOutputToProtoEmpty) {
-  PrepareOutput prepare_output;
-  user_data_auth::PrepareOutput proto = PrepareOutputToProto(prepare_output);
-  EXPECT_THAT(proto.has_cryptohome_recovery_output(), IsFalse());
-}
-
-TEST(AuthInputUtilsTest, PrepareOutputToProtoMinimalRecovery) {
-  PrepareOutput prepare_output;
-  prepare_output.cryptohome_recovery_prepare_output.emplace();
-  user_data_auth::PrepareOutput proto = PrepareOutputToProto(prepare_output);
-  EXPECT_THAT(proto.has_cryptohome_recovery_output(), IsTrue());
-  EXPECT_THAT(proto.cryptohome_recovery_output().recovery_request(), IsEmpty());
-}
-
-TEST(AuthInputUtilsTest, PrepareOutputToProtoPopulatedRecovery) {
-  PrepareOutput prepare_output;
-  prepare_output.cryptohome_recovery_prepare_output.emplace();
-  prepare_output.cryptohome_recovery_prepare_output->recovery_rpc_request
-      .set_protocol_version(1);
-  prepare_output.cryptohome_recovery_prepare_output->ephemeral_pub_key =
-      brillo::BlobFromString("something");
-  user_data_auth::PrepareOutput proto = PrepareOutputToProto(prepare_output);
-  EXPECT_THAT(proto.has_cryptohome_recovery_output(), IsTrue());
-  EXPECT_THAT(proto.cryptohome_recovery_output().recovery_request(),
-              Not(IsEmpty()));
 }
 
 }  // namespace cryptohome
