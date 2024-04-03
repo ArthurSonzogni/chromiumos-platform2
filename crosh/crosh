@@ -1021,19 +1021,6 @@ cmd_rlz() (
   fi
 )
 
-# shellcheck disable=SC2034
-USAGE_syslog='<message>'
-# shellcheck disable=SC2034
-HELP_syslog='
-  Logs a message to syslog (the system log daemon).
-
-  This can help mark/flag/label the logs just before & after running a different
-  operation so you can locate the relevant errors faster.
-'
-cmd_syslog() (
-  logger -t crosh -- "$*"
-)
-
 mk_fifo() {
   local dir fifo
 

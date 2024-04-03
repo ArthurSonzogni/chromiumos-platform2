@@ -34,7 +34,6 @@ const BASE_COMMANDS: &[&str] = &[
     "storage_test_1",
     "storage_test_2",
     "swap",
-    "syslog",
     "time_info",
     "top",
     "tracepath",
