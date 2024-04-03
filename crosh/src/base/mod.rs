@@ -7,6 +7,7 @@
 mod arc;
 mod bt_console;
 mod ccd_pass;
+mod connectivity;
 mod display_debug;
 mod dlc_install;
 mod dmesg;
@@ -36,6 +37,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     arc::register(dispatcher);
     bt_console::register(dispatcher);
     ccd_pass::register(dispatcher);
+    connectivity::register(dispatcher);
     dlc_install::register(dispatcher);
     display_debug::register(dispatcher);
     dmesg::register(dispatcher);

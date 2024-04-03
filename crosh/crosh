@@ -898,16 +898,6 @@ cmd_set_apn() (
 )
 
 # shellcheck disable=SC2034
-USAGE_connectivity=''
-# shellcheck disable=SC2034
-HELP_connectivity='
-  Shows connectivity status.  "connectivity help" for more details
-'
-cmd_connectivity() (
-  /usr/bin/connectivity "$@"
-)
-
-# shellcheck disable=SC2034
 USAGE_autest='[--scheduled]'
 # shellcheck disable=SC2034
 HELP_autest='
