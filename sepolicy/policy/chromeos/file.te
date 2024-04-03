@@ -157,6 +157,7 @@ type cros_mount_passthrough_jailed_exec, exec_type, file_type, cros_file_type, c
 type cros_mountpoint_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_mtpd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_newblued_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_odmld_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_oobe_config_restore_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_oobe_config_save_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_opencl_cacher_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
