@@ -13,18 +13,15 @@ use std::thread::{sleep, spawn};
 use std::time::Duration;
 
 use dbus::arg::{self, Variant};
-use dbus::blocking::Connection;
 use getopts::Options;
 use libc::c_int;
 use libchromeos::pipe;
-use log::error;
 use nix::sys::signal::Signal;
-use system_api::client::OrgChromiumDebugd;
 
+use crate::debugd::Debugd;
 use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 use crate::util::{
     clear_signal_handlers, dev_commands_included, generate_output_file_path, set_signal_handlers,
-    DEFAULT_DBUS_TIMEOUT,
 };
 
 const FLAGS: [(
@@ -86,18 +83,8 @@ fn create_help_string() -> String {
     help
 }
 
-fn stop_packet_capture(handle: &str) -> Result<(), dispatcher::Error> {
-    let connection = Connection::new_system().map_err(|err| {
-        error!("ERROR: Failed to get D-Bus connection: {}", err);
-        dispatcher::Error::CommandReturnedError
-    })?;
-    let conn_path = connection.with_proxy(
-        "org.chromium.debugd",
-        "/org/chromium/debugd",
-        DEFAULT_DBUS_TIMEOUT,
-    );
-
-    conn_path.packet_capture_stop(handle).map_err(|err| {
+fn stop_packet_capture(connection: &Debugd, handle: &str) -> Result<(), dispatcher::Error> {
+    connection.packet_capture_stop(handle).map_err(|err| {
         println!("ERROR: Got unexpected result: {}", err);
         dispatcher::Error::CommandReturnedError
     })?;
@@ -194,21 +181,13 @@ fn execute_packet_capture_helper(
         dispatcher::Error::CommandReturnedError
     })?;
 
-    let connection = Connection::new_system().map_err(|err| {
-        eprintln!("ERROR: Failed to get D-Bus connection: {}", err);
-        dispatcher::Error::CommandReturnedError
-    })?;
-    let conn_path = connection.with_proxy(
-        "org.chromium.debugd",
-        "/org/chromium/debugd",
-        DEFAULT_DBUS_TIMEOUT,
-    );
+    let connection = Debugd::new().map_err(|_| dispatcher::Error::CommandReturnedError)?;
 
     // Safe because sigint_handler is async signal safe.
     unsafe { set_signal_handlers(&[Signal::SIGINT], sigint_handler) };
     // Pass a pipe through D-Bus to collect the response.
     let (mut read_pipe, write_pipe) = pipe(true).unwrap();
-    let handle = conn_path
+    let handle = connection
         .packet_capture_start(write_pipe.into(), capture_file.into(), dbus_options)
         .map_err(|err| {
             eprintln!("ERROR: Got unexpected result: {}", err);
@@ -223,7 +202,7 @@ fn execute_packet_capture_helper(
     // Start a thread to send a stop on SIGINT, or stops when DONE_FLAG is set.
     let watcher = spawn(move || loop {
         if STOP_FLAG.load(Ordering::Acquire) {
-            stop_packet_capture(&handle).unwrap_or(());
+            stop_packet_capture(&connection, &handle).unwrap_or(());
             break;
         }
         if DONE_FLAG.load(Ordering::Acquire) {

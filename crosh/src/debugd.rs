@@ -152,4 +152,21 @@ impl Debugd {
             .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
             .update_and_verify_fwon_usb_stop(handle)
     }
+
+    pub fn packet_capture_start(
+        &self,
+        statfd: OwnedFd,
+        outfd: OwnedFd,
+        options: PropMap,
+    ) -> Result<String, dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .packet_capture_start(statfd, outfd, options)
+    }
+
+    pub fn packet_capture_stop(&self, handle: &str) -> Result<(), dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .packet_capture_stop(handle)
+    }
 }
