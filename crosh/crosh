@@ -659,6 +659,7 @@ HELP_ping='
 
   https://en.wikipedia.org/wiki/Ping_(networking_utility)
 '
+# shellcheck disable=SC2030,SC2031
 cmd_ping() (
   local option="dict:string:variant:"
   local ip_flag="-4"
@@ -833,6 +834,7 @@ HELP_tracepath='
 
   https://en.wikipedia.org/wiki/Traceroute
 '
+# shellcheck disable=SC2030,SC2031
 cmd_tracepath() (
   local option="dict:string:variant:"
   local dest
@@ -1495,7 +1497,7 @@ cmd_gesture_prop() (
   else
     local args_without_quote quote_2_pos
     args_without_quote="$(substr "${remaining_args}" "1")"
-    # shellcheck disable=SC2003
+    # shellcheck disable=SC2003,SC2308
     quote_2_pos="$(expr index "${args_without_quote}" "${first_char}")"
     property_name="$(substr "${args_without_quote}" "0" "${quote_2_pos}")"
     # $value will have the quote and a space at the front, so trim that.
