@@ -117,6 +117,7 @@ void VPNService::OnConnect(Error* error) {
   }
 
   SetState(ConnectState::kStateAssociating);
+  driver_->driver_metrics()->ReportConnecting();
   // driver_ is owned by VPNService, so this is safe.
   base::TimeDelta timeout = driver_->ConnectAsync(this);
   StartDriverConnectTimeout(timeout);
@@ -125,6 +126,7 @@ void VPNService::OnConnect(Error* error) {
 void VPNService::OnDisconnect(Error* error, const char* reason) {
   StopDriverConnectTimeout();
   SetState(ConnectState::kStateDisconnecting);
+  driver_->driver_metrics()->ReportDisconnected();
   driver_->Disconnect();
   CleanupDevice();
 
@@ -160,9 +162,11 @@ void VPNService::OnDriverFailure(ConnectFailure failure,
   CleanupDevice();
   SetErrorDetails(error_details);
   SetFailure(failure);
+  driver_->driver_metrics()->ReportDisconnected();
 }
 
 void VPNService::OnDriverReconnecting(base::TimeDelta timeout) {
+  driver_->driver_metrics()->ReportReconnecting();
   StartDriverConnectTimeout(timeout);
   SetState(Service::kStateAssociating);
   // If physical network changes before driver connection finished, this could

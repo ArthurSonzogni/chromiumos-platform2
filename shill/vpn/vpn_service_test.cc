@@ -418,39 +418,50 @@ TEST_F(VPNServiceTest, ConnectFlow) {
   EXPECT_CALL(*driver_, ConnectAsync(_))
       .WillOnce(DoAll(SaveArg<0>(&driver_event_handler),
                       Return(VPNDriver::kTimeoutNone)));
+  EXPECT_CALL(*driver_metrics_, ReportConnecting);
   service_->Connect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Service::kStateAssociating, service_->state());
+  Mock::VerifyAndClearExpectations(driver_metrics_);
 
   EXPECT_CALL(*driver_, GetNetworkConfig)
       .WillOnce(Return(std::make_unique<net_base::NetworkConfig>()));
+  EXPECT_CALL(*driver_metrics_, ReportConnected);
   driver_event_handler->OnDriverConnected(kInterfaceName, kInterfaceIndex);
   EXPECT_TRUE(service_->device_);
   EXPECT_EQ(Service::kStateConfiguring, service_->state());
+  Mock::VerifyAndClearExpectations(driver_metrics_);
 
   // Driver-originated reconnection
   EXPECT_CALL(*driver_, Disconnect()).Times(0);
+  EXPECT_CALL(*driver_metrics_, ReportReconnecting);
   driver_event_handler->OnDriverReconnecting(VPNDriver::kTimeoutNone);
   EXPECT_EQ(Service::kStateAssociating, service_->state());
   EXPECT_TRUE(service_->device_);
+  Mock::VerifyAndClearExpectations(driver_metrics_);
 
   // Driver-originated failure
   EXPECT_CALL(*driver_, Disconnect()).Times(0);
+  EXPECT_CALL(*driver_metrics_, ReportDisconnected);
   driver_event_handler->OnDriverFailure(Service::kFailureUnknown,
                                         Service::kErrorDetailsNone);
   EXPECT_EQ(Service::kStateFailure, service_->state());
   EXPECT_FALSE(service_->device_);
+  Mock::VerifyAndClearExpectations(driver_metrics_);
 
   // Connect again and disconnection
   EXPECT_CALL(*driver_, ConnectAsync(_));
+  EXPECT_CALL(*driver_metrics_, ReportConnecting);
   service_->Connect(&error, "in test");
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Service::kStateAssociating, service_->state());
   EXPECT_CALL(*driver_, Disconnect());
+  EXPECT_CALL(*driver_metrics_, ReportDisconnected);
   service_->Disconnect(&error, "in test");
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->device_);
+  Mock::VerifyAndClearExpectations(driver_metrics_);
 }
 
 TEST_F(VPNServiceTest, OnPhysicalDefaultServiceChanged) {

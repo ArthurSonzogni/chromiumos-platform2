@@ -53,7 +53,7 @@ TEST_F(VPNDriverMetricsTest, ReportIPType) {
   driver_metrics_.ReportIPType(config_dual_stack);
 }
 
-TEST_F(VPNDriverMetricsTest, ReportConnected) {
+TEST_F(VPNDriverMetricsTest, ReportDriverType) {
   struct {
     VPNType type;
     vpn_metrics::VpnDriver metric_val;
