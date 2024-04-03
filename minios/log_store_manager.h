@@ -16,6 +16,7 @@
 #include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <minios/proto_bindings/minios.pb.h>
+#include <vpd/vpd.h>
 
 #include "minios/cgpt_wrapper.h"
 #include "minios/disk_util.h"
@@ -71,10 +72,12 @@ class LogStoreManager : public LogStoreManagerInterface {
   LogStoreManager() : LogStoreManager(std::nullopt) {}
   explicit LogStoreManager(std::optional<uint64_t> partition_number)
       : process_manager_(std::make_shared<ProcessManager>()),
-        partition_number_(partition_number) {}
+        partition_number_(partition_number),
+        vpd_(std::make_shared<vpd::Vpd>()) {}
 
   LogStoreManager(std::unique_ptr<LogStoreManifestInterface> log_store_manifest,
                   std::shared_ptr<ProcessManagerInterface> process_manager,
+                  std::shared_ptr<vpd::Vpd> vpd,
                   const base::FilePath& disk_path,
                   uint64_t kernel_size,
                   uint64_t partition_size)
@@ -82,7 +85,8 @@ class LogStoreManager : public LogStoreManagerInterface {
         process_manager_(process_manager),
         disk_path_(disk_path),
         kernel_size_(kernel_size),
-        partition_size_(partition_size) {}
+        partition_size_(partition_size),
+        vpd_(vpd) {}
 
   ~LogStoreManager() override = default;
 
@@ -140,6 +144,8 @@ class LogStoreManager : public LogStoreManagerInterface {
   std::optional<uint64_t> partition_size_;
   // Partition target for saving and fetching logs.
   std::optional<uint64_t> partition_number_;
+
+  std::shared_ptr<vpd::Vpd> vpd_;
 
   std::optional<brillo::SecureBlob> encrypt_key_;
 };

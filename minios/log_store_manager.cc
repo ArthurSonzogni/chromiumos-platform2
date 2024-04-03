@@ -121,7 +121,7 @@ bool LogStoreManager::SaveLogs(LogDirection direction,
       LOG(ERROR) << "Couldn't encrypt logs";
       return false;
     }
-    if (!SaveLogStoreKey(process_manager_, encrypt_key_.value())) {
+    if (!SaveLogStoreKey(vpd_, encrypt_key_.value())) {
       LOG(ERROR) << "Failed to save key.";
       return false;
     }

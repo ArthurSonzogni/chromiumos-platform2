@@ -119,8 +119,8 @@ std::unique_ptr<ScreenInterface> ScreenController::CreateScreen(
     case ScreenType::kGeneralError:
       return std::make_unique<ScreenError>(screen_type, draw_utils_, this);
     case ScreenType::kDebugOptionsScreen:
-      return std::make_unique<ScreenDebugOptions>(
-          draw_utils_, log_store_manager_, process_manager_, this);
+      return std::make_unique<ScreenDebugOptions>(draw_utils_,
+                                                  log_store_manager_, this);
     case ScreenType::kLogScreen:
       return std::make_unique<ScreenLog>(draw_utils_, this);
     default:

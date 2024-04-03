@@ -18,6 +18,7 @@
 #include <brillo/udev/udev.h>
 #include <libcrossystem/crossystem.h>
 #include <minios/proto_bindings/minios.pb.h>
+#include <vpd/vpd.h>
 
 #include "minios/cgpt_util.h"
 #include "minios/process_manager.h"
@@ -126,22 +127,17 @@ bool GetRemovableDevices(
 // Check if the given log store key is valid.
 bool IsLogStoreKeyValid(const brillo::SecureBlob& key);
 
-// Trim the provided key for any trailing whitespace beyond
-// `kLogStoreHexKeySizeBytes`.
-void TrimLogStoreKey(std::string& key);
-
 // Get log encryption key from VPD. Returns `nullopt` if not found.
-std::optional<brillo::SecureBlob> GetLogStoreKey(
-    std::shared_ptr<ProcessManagerInterface> process_manager);
+std::optional<brillo::SecureBlob> GetLogStoreKey(std::shared_ptr<vpd::Vpd> vpd);
 
 // Save a given log encryption key to VPD. Returns true on success, false
 // otherwise.
-bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
+bool SaveLogStoreKey(std::shared_ptr<vpd::Vpd> vpd,
                      const brillo::SecureBlob& key);
 
 // Overwrite log store key in VPD with zeros. Returns true on success, false
 // otherwise.
-bool ClearLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager);
+bool ClearLogStoreKey(std::shared_ptr<vpd::Vpd> vpd);
 
 // Read contents of a given file into a secureblob. Returns file contents on
 // success and nullopt otherwise.

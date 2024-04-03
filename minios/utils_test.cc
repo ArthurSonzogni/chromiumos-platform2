@@ -24,6 +24,8 @@
 #include <libcrossystem/crossystem.h>
 #include <libcrossystem/crossystem_fake.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
+#include <vpd/fake_vpd.h>
+#include <vpd/vpd.h>
 
 #include "minios/log_store_manifest.h"
 #include "minios/mock_cgpt_util.h"
@@ -352,37 +354,23 @@ TEST(UtilsTest, GetRemovableDevices) {
 }
 
 TEST(UtilsTest, GetLogStoreKeyTest) {
-  auto mock_process_manager_ =
-      std::make_shared<StrictMock<MockProcessManager>>();
+  auto vpd = std::make_shared<vpd::Vpd>(std::make_unique<vpd::FakeVpd>());
+  const auto kValidHexKey =
+      brillo::SecureBlobToSecureHex(kValidKey).to_string();
+  ASSERT_TRUE(
+      vpd->WriteValues(vpd::VpdRw, {{"minios_log_store_key", kValidHexKey}}));
 
-  const std::vector<std::string>& kExpectedArgs = {
-      "/usr/sbin/vpd", "-i", "RW_VPD", "-g", "minios_log_store_key"};
-
-  EXPECT_CALL(*mock_process_manager_,
-              RunCommandWithOutput(kExpectedArgs, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(0),
-                      SetArgPointee<2>(
-                          brillo::SecureBlobToSecureHex(kValidKey).to_string()),
-                      ::testing::Return(true)));
-  const auto log_store_key = GetLogStoreKey(mock_process_manager_);
+  const auto log_store_key = GetLogStoreKey(vpd);
 
   ASSERT_TRUE(log_store_key.has_value());
   EXPECT_EQ(log_store_key.value(), kValidKey);
 }
 
 TEST(UtilsTest, GetLogStoreKeyFailureTest) {
-  auto mock_process_manager_ =
-      std::make_shared<StrictMock<MockProcessManager>>();
-  const std::string& kKey = "short_key";
-
-  const std::vector<std::string> kExpectedArgs = {
-      "/usr/sbin/vpd", "-i", "RW_VPD", "-g", "minios_log_store_key"};
-
-  EXPECT_CALL(*mock_process_manager_,
-              RunCommandWithOutput(kExpectedArgs, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(-1), SetArgPointee<2>(kKey),
-                      ::testing::Return(true)));
-  const auto log_store_key = GetLogStoreKey(mock_process_manager_);
+  auto vpd = std::make_shared<vpd::Vpd>(std::make_unique<vpd::FakeVpd>());
+  ASSERT_TRUE(
+      vpd->WriteValues(vpd::VpdRw, {{"minios_log_store_key", "short_key"}}));
+  const auto log_store_key = GetLogStoreKey(vpd);
 
   EXPECT_FALSE(log_store_key.has_value());
 }
@@ -399,69 +387,23 @@ TEST(UtilsTest, LogStoreKeyValidTest) {
   EXPECT_FALSE(IsLogStoreKeyValid(kEmptyKey));
 }
 
-TEST(UtilsTest, LogStoreKeyTrimTest) {
-  std::string simple_key =
-      "thisisa64bytestring1234567890abcthisisa64bytestring1234567890abc";
-  TrimLogStoreKey(simple_key);
-  EXPECT_EQ(simple_key,
-            "thisisa64bytestring1234567890abcthisisa64bytestring1234567890abc");
-
-  std::string short_key = "short_key";
-  TrimLogStoreKey(short_key);
-  EXPECT_EQ(short_key, "short_key");
-
-  std::string simple_key_with_trailing_space = simple_key + "  ";
-  TrimLogStoreKey(simple_key_with_trailing_space);
-  EXPECT_EQ(simple_key_with_trailing_space, simple_key);
-
-  std::string simple_key_with_whitespace = simple_key + "\n ";
-  TrimLogStoreKey(simple_key_with_whitespace);
-  EXPECT_EQ(simple_key_with_whitespace, simple_key);
-
-  std::string key_with_whitespace =
-      "thisisa64bytestring1234567890abcthisisa64bytestring1234567890\n  ";
-  TrimLogStoreKey(key_with_whitespace);
-  EXPECT_EQ(
-      key_with_whitespace,
-      "thisisa64bytestring1234567890abcthisisa64bytestring1234567890\n  ");
-
-  std::string key_with_trailing_whitespace =
-      "thisisa64bytestring1234567890abcthisisa64bytestring1234567890\n  \n\t ";
-  TrimLogStoreKey(key_with_trailing_whitespace);
-  EXPECT_EQ(
-      key_with_trailing_whitespace,
-      "thisisa64bytestring1234567890abcthisisa64bytestring1234567890\n  ");
-}
-
 TEST(UtilsTest, SaveLogKeyTest) {
-  auto mock_process_manager_ =
-      std::make_shared<StrictMock<MockProcessManager>>();
+  const auto kValidHexKey =
+      brillo::SecureBlobToSecureHex(kValidKey).to_string();
+  auto vpd = std::make_shared<vpd::Vpd>(std::make_unique<vpd::FakeVpd>());
 
-  const std::vector<std::string> expected_args = {
-      "/usr/sbin/vpd", "-i", "RW_VPD", "-s",
-      "minios_log_store_key=" +
-          brillo::SecureBlobToSecureHex(kValidKey).to_string()};
-
-  EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
-      .WillOnce(::testing::Return(0));
-  EXPECT_TRUE(SaveLogStoreKey(mock_process_manager_, kValidKey));
+  EXPECT_TRUE(SaveLogStoreKey(vpd, kValidKey));
+  EXPECT_THAT(vpd->GetValue(vpd::VpdRw, "minios_log_store_key"),
+              Optional(kValidHexKey));
 }
 
 TEST(UtilsTest, ClearLogStoreKeyTest) {
   // Zero string of hex key size.
-  const brillo::SecureBlob kExpectedNullKey{
-      std::string(kLogStoreKeySizeBytes, '\0')};
-  auto mock_process_manager_ =
-      std::make_shared<StrictMock<MockProcessManager>>();
-
-  const std::vector<std::string> expected_args = {
-      "/usr/sbin/vpd", "-i", "RW_VPD", "-s",
-      "minios_log_store_key=" +
-          brillo::SecureBlobToSecureHex(kExpectedNullKey).to_string()};
-
-  EXPECT_CALL(*mock_process_manager_, RunCommand(expected_args, _))
-      .WillOnce(::testing::Return(0));
-  EXPECT_TRUE(ClearLogStoreKey(mock_process_manager_));
+  const std::string kExpectedNullKey(kLogStoreKeySizeBytes * 2, '0');
+  auto vpd = std::make_shared<vpd::Vpd>(std::make_unique<vpd::FakeVpd>());
+  EXPECT_TRUE(ClearLogStoreKey(vpd));
+  EXPECT_THAT(vpd->GetValue(vpd::VpdRw, "minios_log_store_key"),
+              Optional(kExpectedNullKey));
 }
 
 TEST(UtilsTest, EncryptDecryptTest) {

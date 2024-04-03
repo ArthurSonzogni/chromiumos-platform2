@@ -14,6 +14,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/namespaces/platform.h>
 #include <brillo/udev/udev.h>
+#include <vpd/vpd.h>
 
 #include "minios/blkid_wrapper.h"
 #include "minios/log_store_manager.h"
@@ -38,12 +39,12 @@ class ScreenDebugOptions : public ScreenBase {
   ScreenDebugOptions(
       std::shared_ptr<DrawInterface> draw_utils,
       std::shared_ptr<LogStoreManagerInterface> log_store_manager,
-      std::shared_ptr<ProcessManagerInterface> process_manager,
       ScreenControllerInterface* screen_controller,
       std::shared_ptr<BlkIdWrapperInterface> blk_id_wrapper =
           std::make_shared<BlkIdWrapper>(),
       std::shared_ptr<brillo::Platform> platform =
-          std::make_shared<brillo::Platform>());
+          std::make_shared<brillo::Platform>(),
+      std::shared_ptr<vpd::Vpd> vpd = std::make_shared<vpd::Vpd>());
 
   ~ScreenDebugOptions() = default;
 
@@ -99,7 +100,6 @@ class ScreenDebugOptions : public ScreenBase {
                             const base::FilePath& device_path) const;
 
   std::shared_ptr<LogStoreManagerInterface> log_store_manager_;
-  std::shared_ptr<ProcessManagerInterface> process_manager_;
 
   DropDownState state_;
 
@@ -112,6 +112,7 @@ class ScreenDebugOptions : public ScreenBase {
 
   std::shared_ptr<BlkIdWrapperInterface> blk_id_wrapper_;
   std::shared_ptr<brillo::Platform> platform_;
+  std::shared_ptr<vpd::Vpd> vpd_;
 };
 
 }  // namespace minios

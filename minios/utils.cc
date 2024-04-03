@@ -25,6 +25,8 @@
 #include <brillo/udev/utils.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <minios/proto_bindings/minios.pb.h>
+#include <vpd/types.h>
+#include <vpd/vpd.h>
 
 #include "minios/log_store_manifest.h"
 #include "minios/process_manager.h"
@@ -43,11 +45,6 @@ const char kTarCompressFlags[] = "-czhf";
 const char kTarExtractFlags[] = "-xzf";
 const char kTarChangeDirFlag[] = "-C";
 
-const char kVpdCommand[] = "/usr/sbin/vpd";
-const char kVpdPartitionSelectFlag[] = "-i";
-const char kVpdRWPartitionValue[] = "RW_VPD";
-const char kVpdAddValueFlag[] = "-s";
-const char kVpdRetrieveValueFlag[] = "-g";
 const char kVpdLogStoreSecretKey[] = "minios_log_store_key";
 
 const std::vector<std::string> kFilesToCompress{"/var/log/update_engine.log",
@@ -64,9 +61,6 @@ const char kMiniOsVersionKey[] = "cros_minios_version";
 const char kBlockSubsystem[] = "block";
 const char kFileSystemProperty[] = "ID_FS_USAGE";
 const char kFilesystem[] = "filesystem";
-
-// Hex representations of keys would be twice the size.
-constexpr int kLogStoreHexKeySizeBytes = 64;
 
 constexpr char kMiniOsFlag[] = "cros_minios";
 }  // namespace
@@ -430,37 +424,15 @@ bool IsLogStoreKeyValid(const brillo::SecureBlob& key) {
   return true;
 }
 
-void TrimLogStoreKey(std::string& key) {
-  if (key.size() <= kLogStoreHexKeySizeBytes)
-    return;
-
-  key = key.substr(0, kLogStoreHexKeySizeBytes) +
-        std::string{base::TrimWhitespaceASCII(
-            key.substr(kLogStoreHexKeySizeBytes), base::TRIM_TRAILING)};
-}
-
 std::optional<brillo::SecureBlob> GetLogStoreKey(
-    std::shared_ptr<ProcessManagerInterface> process_manager) {
-  int return_code = 0;
-  std::string std_out, std_err;
+    std::shared_ptr<vpd::Vpd> vpd) {
+  const auto value = vpd->GetValue(vpd::VpdRw, kVpdLogStoreSecretKey);
 
-  if (!process_manager->RunCommandWithOutput(
-          {kVpdCommand, kVpdPartitionSelectFlag, kVpdRWPartitionValue,
-           kVpdRetrieveValueFlag, kVpdLogStoreSecretKey},
-          &return_code, &std_out, &std_err) ||
-      return_code != 0) {
-    LOG(ERROR) << "VPD get failed, code: " << return_code;
+  if (!value)
     return std::nullopt;
-  }
 
-  if (std_out.empty()) {
-    LOG(WARNING) << "No value found for key=" << kVpdLogStoreSecretKey;
-    return std::nullopt;
-  }
-
-  TrimLogStoreKey(std_out);
   brillo::SecureBlob key;
-  brillo::SecureBlob::HexStringToSecureBlob(std_out, &key);
+  brillo::SecureBlob::HexStringToSecureBlob(value.value(), &key);
   if (!IsLogStoreKeyValid(key)) {
     return std::nullopt;
   }
@@ -468,28 +440,20 @@ std::optional<brillo::SecureBlob> GetLogStoreKey(
   return key;
 }
 
-bool SaveLogStoreKey(std::shared_ptr<ProcessManagerInterface> process_manager,
+bool SaveLogStoreKey(std::shared_ptr<vpd::Vpd> vpd,
                      const brillo::SecureBlob& key) {
   if (!IsLogStoreKeyValid(key)) {
     return false;
   }
 
   const auto& hex_key = brillo::SecureBlobToSecureHex(key);
-  const auto& key_value_pair =
-      std::string{kVpdLogStoreSecretKey} + "=" + hex_key.to_string();
-  if (process_manager->RunCommand(
-          {kVpdCommand, kVpdPartitionSelectFlag, kVpdRWPartitionValue,
-           kVpdAddValueFlag, key_value_pair},
-          {}) != 0) {
-    LOG(ERROR) << "VPD save operation failed";
-    return false;
-  }
-  return true;
+
+  return vpd && vpd->WriteValue(vpd::VpdRw, kVpdLogStoreSecretKey,
+                                hex_key.to_string());
 }
 
-bool ClearLogStoreKey(
-    std::shared_ptr<ProcessManagerInterface> process_manager) {
-  return SaveLogStoreKey(process_manager, kNullKey);
+bool ClearLogStoreKey(std::shared_ptr<vpd::Vpd> vpd) {
+  return SaveLogStoreKey(vpd, kNullKey);
 }
 
 std::optional<brillo::SecureBlob> ReadFileToSecureBlob(

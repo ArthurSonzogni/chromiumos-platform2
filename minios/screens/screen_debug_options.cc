@@ -20,6 +20,7 @@
 #include <base/strings/to_string.h>
 #include <brillo/namespaces/platform.h>
 #include <minios/proto_bindings/minios.pb.h>
+#include <vpd/vpd.h>
 
 #include "base/command_line.h"
 #include "minios/blkid_wrapper.h"
@@ -61,10 +62,10 @@ const char kDiskStorageDevice[] = "Disk";
 ScreenDebugOptions::ScreenDebugOptions(
     std::shared_ptr<DrawInterface> draw_utils,
     std::shared_ptr<LogStoreManagerInterface> log_store_manager,
-    std::shared_ptr<ProcessManagerInterface> process_manager,
     ScreenControllerInterface* screen_controller,
     std::shared_ptr<BlkIdWrapperInterface> blk_id_wrapper,
-    std::shared_ptr<brillo::Platform> platform)
+    std::shared_ptr<brillo::Platform> platform,
+    std::shared_ptr<vpd::Vpd> vpd)
     : ScreenBase(
           /*button_count=*/kNumButtons,
           /*index_=*/static_cast<int>(ButtonIndex::kDeviceDropDown),
@@ -72,14 +73,14 @@ ScreenDebugOptions::ScreenDebugOptions(
           draw_utils,
           screen_controller),
       log_store_manager_(log_store_manager),
-      process_manager_(process_manager),
       state_(DropDownState::kDropdownClosed),
       max_dropdown_items_(
           (draw_utils_->GetFreconCanvasSize() / 2 - kBtnYStep * 2) /
               kItemHeight -
           1),
       blk_id_wrapper_(blk_id_wrapper),
-      platform_(platform) {}
+      platform_(platform),
+      vpd_(vpd) {}
 
 void ScreenDebugOptions::Show() {
   draw_utils_->MessageBaseScreen();
@@ -230,7 +231,7 @@ void ScreenDebugOptions::HandleButtonSelection() {
       Show();
       break;
     case ButtonIndex::kEraseLogs:
-      if (!ClearLogStoreKey(process_manager_)) {
+      if (!ClearLogStoreKey(vpd_)) {
         LOG(WARNING) << "Failed to clear log store key from VPD.";
       }
       if (log_store_manager_) {

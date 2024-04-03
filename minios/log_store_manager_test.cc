@@ -21,6 +21,8 @@
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem_fake.h>
 #include <minios/proto_bindings/minios.pb.h>
+#include <vpd/fake_vpd.h>
+#include <vpd/vpd.h>
 
 #include "minios/mock_cgpt_wrapper.h"
 #include "minios/mock_disk_util.h"
@@ -215,13 +217,13 @@ class LogStoreManagerTest : public ::testing::Test {
     ASSERT_TRUE(tmp_dir_.CreateUniqueTempDir());
 
     disk_path_ = tmp_dir_.GetPath().Append("disk");
-
+    auto vpd = std::make_shared<vpd::Vpd>(std::make_unique<vpd::FakeVpd>());
     base::File file{disk_path_,
                     base::File::FLAG_OPEN_ALWAYS | base::File::FLAG_WRITE};
     ASSERT_TRUE(file.IsValid());
     file.Close();
     log_store_manager_ = std::make_shared<LogStoreManager>(
-        std::move(log_store_manifest_), mock_process_manager_, disk_path_,
+        std::move(log_store_manifest_), mock_process_manager_, vpd, disk_path_,
         kernel_size_, partition_size_);
   }
 
@@ -257,8 +259,6 @@ TEST_F(LogStoreManagerTest, SaveLogsToDiskTest) {
   EXPECT_CALL(*log_store_manifest_ptr_, Write()).WillOnce(Return(true));
 
   WriteToArchive(mock_process_manager_);
-  EXPECT_CALL(*mock_process_manager_, RunCommand(Contains("/usr/sbin/vpd"), _))
-      .WillOnce(Return(0));
 
   EXPECT_TRUE(log_store_manager_->SaveLogs(
       LogStoreManagerInterface::LogDirection::Disk));
@@ -278,8 +278,6 @@ TEST_F(LogStoreManagerTest, SaveLogsToPathTest) {
   const auto& dest_path = tmp_dir_.GetPath().Append("encrypted_logs.tar");
 
   WriteToArchive(mock_process_manager_);
-  EXPECT_CALL(*mock_process_manager_, RunCommand(Contains("/usr/sbin/vpd"), _))
-      .WillOnce(Return(0));
 
   EXPECT_TRUE(log_store_manager_->SaveLogs(
       LogStoreManagerInterface::LogDirection::Stateful, dest_path));

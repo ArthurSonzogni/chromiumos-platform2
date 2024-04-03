@@ -15,6 +15,7 @@
 #include <brillo/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
+#include <vpd/vpd.h>
 
 #include "minios/log_store_manager.h"
 #include "minios/process_manager.h"
@@ -80,8 +81,7 @@ std::optional<bool> RetrieveLogs(
     const base::FilePath& dest_dir) {
   const auto minios_logs_dir = dest_dir.Append(minios::kMiniOsLogsPath);
 
-  auto process_manager = std::make_shared<ProcessManager>();
-  const auto key = GetLogStoreKey(process_manager);
+  const auto key = GetLogStoreKey(std::make_shared<vpd::Vpd>());
 
   if (!key) {
     LOG(WARNING) << "No key found, so no logs to fetch.";
@@ -140,8 +140,8 @@ std::optional<bool> RetrieveLogs(
 }
 
 bool ClearKey() {
-  auto process_manager = std::make_shared<ProcessManager>();
-  return ClearLogStoreKey(process_manager);
+  const auto vpd = std::make_shared<vpd::Vpd>();
+  return ClearLogStoreKey(vpd);
 }
 
 }  // namespace minios

@@ -22,6 +22,8 @@
 #include <brillo/udev/mock_udev_list_entry.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <vpd/fake_vpd.h>
+#include <vpd/vpd.h>
 
 #include "minios/mock_blkid_wrapper.h"
 #include "minios/mock_draw.h"
@@ -46,8 +48,8 @@ class ScreenDebugOptionsTest : public ::testing::Test {
   StrictMock<MockScreenControllerInterface> mock_screen_controller_;
   std::shared_ptr<MockLogStoreManager> mock_log_store_manager =
       std::make_shared<StrictMock<MockLogStoreManager>>();
-  std::shared_ptr<MockProcessManager> process_manager =
-      std::make_shared<MockProcessManager>();
+  std::shared_ptr<vpd::Vpd> vpd =
+      std::make_shared<vpd::Vpd>(std::make_unique<vpd::FakeVpd>());
 
   std::shared_ptr<MockBlkIdWrapper> mock_blkid_wrapper_ =
       std::make_shared<NiceMock<MockBlkIdWrapper>>();
@@ -56,9 +58,8 @@ class ScreenDebugOptionsTest : public ::testing::Test {
       std::make_shared<StrictMock<brillo::MockPlatform>>();
 
   ScreenDebugOptions screen_debug_options_{
-      mock_draw_,          mock_log_store_manager,
-      process_manager,     &mock_screen_controller_,
-      mock_blkid_wrapper_, mock_platform_};
+      mock_draw_,          mock_log_store_manager, &mock_screen_controller_,
+      mock_blkid_wrapper_, mock_platform_,         vpd};
 };
 
 TEST_F(ScreenDebugOptionsTest, GetState) {
@@ -68,7 +69,6 @@ TEST_F(ScreenDebugOptionsTest, GetState) {
 }
 
 TEST_F(ScreenDebugOptionsTest, ClearLogs) {
-  EXPECT_CALL(*process_manager, RunCommand(_, _)).WillOnce(testing::Return(0));
   EXPECT_CALL(*mock_log_store_manager, ClearLogs())
       .WillOnce(testing::Return(true));
   screen_debug_options_.index_ =
