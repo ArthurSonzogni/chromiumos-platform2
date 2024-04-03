@@ -8,11 +8,11 @@
 #include <string>
 #include <vector>
 
+#include <dbus/object_path.h>
 #include <gmock/gmock.h>
 
 #include "shill/refptr_types.h"
 #include "shill/supplicant/supplicant_group_proxy_interface.h"
-#include "supplicant/dbus-proxies.h"
 
 namespace shill {
 

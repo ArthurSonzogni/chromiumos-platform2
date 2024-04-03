@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include "supplicant/dbus-proxies.h"
+#include <dbus/object_path.h>
 
 namespace shill {
 
