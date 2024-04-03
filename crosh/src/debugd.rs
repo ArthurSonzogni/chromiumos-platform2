@@ -7,7 +7,10 @@
 // remain in the various command modules.
 
 use bitflags::bitflags;
-use dbus::{arg::PropMap, blocking::Connection};
+use dbus::{
+    arg::{OwnedFd, PropMap},
+    blocking::Connection,
+};
 use log::error;
 use system_api::client::OrgChromiumDebugd;
 
@@ -131,5 +134,22 @@ impl Debugd {
             .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
             .disable_dev_coredump_upload()
             .map(|_| self)
+    }
+
+    pub fn update_and_verify_fwon_usb_start(
+        &self,
+        outfd: OwnedFd,
+        image_file: &str,
+        ro_db_dir: &str,
+    ) -> Result<String, dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .update_and_verify_fwon_usb_start(outfd, image_file, ro_db_dir)
+    }
+
+    pub fn update_and_verify_fwon_usb_stop(&self, handle: &str) -> Result<(), dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .update_and_verify_fwon_usb_stop(handle)
     }
 }
