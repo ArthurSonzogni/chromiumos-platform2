@@ -81,12 +81,6 @@ class MockDatapath : public Datapath {
                bool static_ipv6),
               (override));
   MOCK_METHOD(void,
-              StartRoutingDeviceAsSystem,
-              (const std::string& int_ifname,
-               TrafficSource source,
-               bool static_ipv6),
-              (override));
-  MOCK_METHOD(void,
               StartRoutingDeviceAsUser,
               (const std::string& int_ifname,
                TrafficSource source,
@@ -158,14 +152,8 @@ class MockDatapath : public Datapath {
               (override));
   MOCK_METHOD(void, AddBorealisQoSRule, (std::string_view), (override));
   MOCK_METHOD(void, RemoveBorealisQoSRule, (std::string_view), (override));
-  MOCK_METHOD(bool,
-              AddAdbPortAccessRule,
-              (const std::string& ifname),
-              (override));
-  MOCK_METHOD(void,
-              DeleteAdbPortAccessRule,
-              (const std::string& ifname),
-              (override));
+  bool AddAdbPortAccessRule(const std::string& ifname) override { return true; }
+  void DeleteAdbPortAccessRule(const std::string& ifname) override {}
   MOCK_METHOD(bool,
               CheckChain,
               (IpFamily family,

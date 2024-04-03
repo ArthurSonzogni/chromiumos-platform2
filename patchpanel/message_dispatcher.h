@@ -53,11 +53,11 @@ class BRILLO_EXPORT MessageDispatcher {
 
   virtual ~MessageDispatcher() = default;
 
-  virtual void RegisterFailureHandler(base::RepeatingCallback<void()> handler) {
+  void RegisterFailureHandler(base::RepeatingCallback<void()> handler) {
     msg_dispatcher_internal_->RegisterFailureHandler(std::move(handler));
   }
 
-  virtual void RegisterMessageHandler(
+  void RegisterMessageHandler(
       base::RepeatingCallback<void(const ProtoMessage&)> handler) {
     message_handler_ = std::move(handler);
     msg_dispatcher_internal_->RegisterMessageHandler(

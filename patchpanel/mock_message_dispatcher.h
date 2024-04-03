@@ -21,14 +21,6 @@ class MockMessageDispatcher : public MessageDispatcher<ProtoMessage> {
 
   ~MockMessageDispatcher() override = default;
 
-  MOCK_METHOD(void,
-              RegisterFailureHandler,
-              (base::RepeatingCallback<void()>),
-              (override));
-  MOCK_METHOD(void,
-              RegisterMessageHandler,
-              (base::RepeatingCallback<void(const ProtoMessage&)>),
-              (override));
   MOCK_METHOD(bool, SendMessage, (const ProtoMessage&), (const, override));
 };
 

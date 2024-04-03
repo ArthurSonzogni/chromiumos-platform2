@@ -69,7 +69,7 @@ class MulticastCountersService {
   // device is seen.
   virtual void OnPhysicalDeviceAdded(const ShillClient::Device& device);
   // Deletes jump rules for a removed physical device.
-  virtual void OnPhysicalDeviceRemoved(const ShillClient::Device& device);
+  void OnPhysicalDeviceRemoved(const ShillClient::Device& device);
   // Collects and returns packet counters from all the existing iptables rules
   // for multicast, divided by technology (ethernet, wifi) and protocol (ssdp,
   // mdns) in CounterKey, and recorded by packet number.
@@ -80,9 +80,9 @@ class MulticastCountersService {
  private:
   // Installs jump rules for an interface to count ingress multicast traffic
   // of |ifname|.
-  virtual void SetupJumpRules(Iptables::Command command,
-                              std::string_view ifname,
-                              std::string_view technology);
+  void SetupJumpRules(Iptables::Command command,
+                      std::string_view ifname,
+                      std::string_view technology);
   // Parses the output of `iptables -L -x -v` (or `ip6tables`) and adds the
   // parsed values into the corresponding counters in |counters|.
   // This function will try to find the pattern of:
@@ -93,8 +93,8 @@ class MulticastCountersService {
   // values extracted from the counter line will be added into the counter
   // for that interface. Note that this function will not fully validate
   // if |output| is an output from iptables.
-  virtual bool ParseIptableOutput(std::string_view output,
-                                  std::map<CounterKey, uint64_t>* counter);
+  bool ParseIptableOutput(std::string_view output,
+                          std::map<CounterKey, uint64_t>* counter);
 
   Datapath* datapath_;
 };

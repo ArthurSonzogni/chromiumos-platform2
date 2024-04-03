@@ -243,9 +243,9 @@ class Datapath {
   // ignores VPN connections.
   // IPv6 SNAT and IPv6 forwarding is optionally set up depending on
   // |static_ipv6|.
-  virtual void StartRoutingDeviceAsSystem(const std::string& int_ifname,
-                                          TrafficSource source,
-                                          bool static_ipv6 = false);
+  void StartRoutingDeviceAsSystem(const std::string& int_ifname,
+                                  TrafficSource source,
+                                  bool static_ipv6 = false);
 
   // Sets up IPv4 SNAT, IPv4 forwarding, and traffic marking for the given
   // downstream network interface |int_ifname| associated to |source|.

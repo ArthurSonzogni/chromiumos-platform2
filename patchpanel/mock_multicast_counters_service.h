@@ -28,24 +28,9 @@ class MockMulticastCountersService : public MulticastCountersService {
               OnPhysicalDeviceAdded,
               (const ShillClient::Device& device),
               (override));
-  MOCK_METHOD(void,
-              OnPhysicalDeviceRemoved,
-              (const ShillClient::Device& device),
-              (override));
   MOCK_METHOD((std::optional<std::map<CounterKey, uint64_t>>),
               GetCounters,
               (),
-              (override));
-  MOCK_METHOD(void,
-              SetupJumpRules,
-              (Iptables::Command command,
-               std::string_view ifname,
-               std::string_view technology),
-              (override));
-  MOCK_METHOD(bool,
-              ParseIptableOutput,
-              (std::string_view output,
-               (std::map<CounterKey, uint64_t> * counter)),
               (override));
 };
 
