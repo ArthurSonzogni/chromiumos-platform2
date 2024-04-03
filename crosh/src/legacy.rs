@@ -39,7 +39,6 @@ const BASE_COMMANDS: &[&str] = &[
     "top",
     "tracepath",
     "u2f_flags",
-    "upload_devcoredumps",
     "vsh",
     "wifi_power_save",
 ];

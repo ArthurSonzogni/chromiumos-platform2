@@ -995,29 +995,6 @@ p2p_check_enabled() {
 }
 
 # shellcheck disable=SC2034
-USAGE_upload_devcoredumps='[enable|disable]'
-# shellcheck disable=SC2034
-HELP_upload_devcoredumps='
-  Enable or disable the upload of devcoredump reports.
-'
-cmd_upload_devcoredumps() (
-  case "$1" in
-    "enable")
-      debugd EnableDevCoredumpUpload
-      ;;
-
-    "disable")
-      debugd DisableDevCoredumpUpload
-      ;;
-
-    *)
-      help "unknown option: $1"
-      return 1
-      ;;
-  esac
-)
-
-# shellcheck disable=SC2034
 USAGE_rlz='< status | enable | disable >'
 # shellcheck disable=SC2034
 HELP_rlz="

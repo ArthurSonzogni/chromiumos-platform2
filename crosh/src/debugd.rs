@@ -118,4 +118,18 @@ impl Debugd {
             .upload_crashes()
             .map(|_| self)
     }
+
+    pub fn enable_dev_coredump_upload(&self) -> Result<&Debugd, dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .enable_dev_coredump_upload()
+            .map(|_| self)
+    }
+
+    pub fn disable_dev_coredump_upload(&self) -> Result<&Debugd, dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .disable_dev_coredump_upload()
+            .map(|_| self)
+    }
 }
