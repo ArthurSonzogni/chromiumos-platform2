@@ -237,6 +237,14 @@ class FingerWebSocket(WebSocket):
         return int(match_mode.group(1), 16) if match_mode else -1
 
     def finger_wait_done(self, mode: int) -> bool:
+        """Wait for the bits in mode to be cleared from fpmode.
+
+        Args:
+            mode: An fpmode that we will wait to be cleared.
+
+        Returns:
+            False only when the request has been aborted. True, otherwise.
+        """
         # Poll until the mode bit has disappeared.
         while not self.abort_request and self.ectool_fpmode() & mode:
             time.sleep(0.050)
@@ -264,6 +272,15 @@ class FingerWebSocket(WebSocket):
                 cherrypy.log("FPC utils are unavailable")
 
     def finger_process(self, req: dict[str, Any]) -> Optional[str]:
+        """Capture and save fingerprint samples.
+
+        Args:
+            req: The finger capture request from the client page.
+
+        Returns:
+            The optional result string to send to the client page.
+            None when no result should be sent to the client page.
+        """
         # Ensure the user has removed the finger between 2 captures.
         if not self.finger_wait_done(FP_MODE_FINGER_UP):
             # Aborted. Don't send a result to client.
