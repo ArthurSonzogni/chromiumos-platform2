@@ -43,8 +43,10 @@
 #include <chromeos/dbus/service_constants.h>
 #include <third_party/abseil-cpp/absl/types/variant.h>
 
+#include "base/functional/bind.h"
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_sender.pb.h"
+#include "crash-reporter/crash_sender_base.h"
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -389,17 +391,51 @@ void RecordSendAttempt(const base::FilePath& timestamps_dir, int bytes) {
   }
 }
 
+bool IsUserDisruptiveChromeCrash(const CrashDetails& details) {
+  std::string severity;
+  std::string product;
+  std::string process;
+  // We must know the severity (e.g. fatal, error, info), process
+  // name (e.g browser, renderer, utility), and product type (e.g.
+  // Chrome_ChromeOS, Chrome_Lacros, ChromeOS) of the crash.
+  const std::string kSeverityKey = std::string(constants::kUploadVarPrefix) +
+                                   constants::kClientComputedSeverityKey;
+  const std::string kProductKey = std::string(constants::kUploadVarPrefix) +
+                                  constants::kUploadDataKeyProductKey;
+  const std::string kProcessKey = std::string(constants::kUploadVarPrefix) +
+                                  constants::kChromeProcessTypeKey;
+
+  // We must at least know the severity and product to know if this is a fatal
+  // Chrome crash.
+  if (!details.metadata.GetString(kSeverityKey, &severity) ||
+      !details.metadata.GetString(kProductKey, &product)) {
+    return false;
+  }
+
+  base::IgnoreResult(details.metadata.GetString(kProcessKey, &process));
+
+  bool is_chrome_crash = (product == constants::kProductNameChromeLacros ||
+                          product == constants::kProductNameChromeAsh);
+  bool is_user_disruptive =
+      severity == constants::kClientComputedCrashSeverityFatal ||
+      (severity == constants::kClientComputedCrashSeverityError &&
+       (process == constants::kChromeProcessTypeRenderer ||
+        process == constants::kChromeProcessTypeUtility ||
+        process == constants::kChromeProcessTypeExtension));
+  return is_chrome_crash && is_user_disruptive;
+}
+
 std::optional<std::string> GetFatalCrashType(const CrashDetails& details) {
   std::string collector;
-  if (!details.metadata.GetString(kMetadataKeyCollector, &collector)) {
-    // no sufficient info
-    return std::nullopt;
-  }
+  base::IgnoreResult(
+      details.metadata.GetString(kMetadataKeyCollector, &collector));
 
   if (collector == kCollectorNameKernel) {
     return "kernel";
   } else if (collector == kCollectorNameEmbeddedController) {
     return "ec";
+  } else if (IsUserDisruptiveChromeCrash(details)) {
+    return "chrome";
   }
 
   // unknown type

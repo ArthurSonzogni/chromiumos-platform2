@@ -61,6 +61,21 @@ inline constexpr char kProductNameChromeAsh[] = "Chrome_ChromeOS";
 // ChromeCrashReporterClient::GetProductNameAndVersion() in the chromium repo.
 inline constexpr char kProductNameChromeLacros[] = "Chrome_Lacros";
 
+// Upload var in the metadata file which holds the severity of a crash as
+// determined by the crash collector that handles the crash.
+inline constexpr char kClientComputedSeverityKey[] = "client_computed_severity";
+
+// All values that `kClientComputedSeverityKey` can have.
+inline constexpr char kClientComputedCrashSeverityFatal[] = "FATAL";
+inline constexpr char kClientComputedCrashSeverityError[] = "ERROR";
+inline constexpr char kClientComputedCrashSeverityInfo[] = "INFO";
+inline constexpr char kClientComputedCrashSeverityWarning[] = "WARNING";
+inline constexpr char kClientComputedCrashSeverityUnspecified[] = "UNSPECIFIED";
+
+// Upload var in the metadata file which holds the name of the collector that
+// handled the crash.
+inline constexpr char kCollectorKey[] = "collector";
+
 inline constexpr char kJavaScriptStackExtension[] = "js_stack";
 inline constexpr char kJavaScriptStackExtensionWithDot[] = ".js_stack";
 // This *must match* the crash::FileStorage::kJsStacktraceFileName constant
@@ -78,6 +93,12 @@ inline constexpr char kKindForMinidump[] = "minidump";
 // InitializeCrashpadImpl() in
 // https://source.chromium.org/chromium/chromium/src/+/main:components/crash/core/app/crashpad.cc
 inline constexpr char kChromeProcessTypeKey[] = "ptype";
+
+// Some of the values that `kChromeProcessTypeKey` can have.
+constexpr char kChromeProcessTypeRenderer[] = "renderer";
+constexpr char kChromeProcessTypeUtility[] = "utility";
+constexpr char kChromeProcessTypeGpu[] = "gpu-process";
+constexpr char kChromeProcessTypeExtension[] = "extension";
 
 inline constexpr mode_t kSystemCrashFilesMode = 0660;
 

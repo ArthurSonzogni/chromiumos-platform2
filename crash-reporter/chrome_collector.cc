@@ -487,8 +487,10 @@ CrashCollector::ComputedCrashSeverity ChromeCollector::ComputeSeverity(
     return computed_severity;
   }
 
-  if ((process_type_ == "renderer") || (process_type_ == "extension") ||
-      (process_type_ == "utility") || (process_type_ == "gpu-process")) {
+  if ((process_type_ == constants::kChromeProcessTypeExtension) ||
+      (process_type_ == constants::kChromeProcessTypeRenderer) ||
+      (process_type_ == constants::kChromeProcessTypeUtility) ||
+      (process_type_ == constants::kChromeProcessTypeGpu)) {
     computed_severity.crash_severity = CrashSeverity::kError;
     return computed_severity;
   } else if (process_type_ != "browser") {

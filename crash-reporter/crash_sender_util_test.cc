@@ -49,6 +49,7 @@
 #include <metrics/metrics_library_mock.h>
 #include <shill/dbus-proxy-mocks.h>
 
+#include "crash-reporter/constants.h"
 #include "crash-reporter/crash_sender_base.h"
 #include "crash-reporter/crash_sender_paths.h"
 #include "crash-reporter/paths.h"
@@ -2675,26 +2676,49 @@ TEST_P(CrashSenderUtilDryRunParamDeathTest, SendCrashesCrash) {
 
 class CrashSenderGetFatalCrashTypeTest
     : public ::testing::TestWithParam<
-          std::tuple<std::optional<std::string>, std::optional<std::string>>> {
+          std::tuple</*collector=*/std::optional<std::string>,
+                     /*process=*/std::optional<std::string>,
+                     /*severity=*/std::optional<std::string>,
+                     /*product=*/std::optional<std::string>,
+                     /*fatal_crash_type=*/std::optional<std::string>>> {
  protected:
   void SetUp() override {
-    std::tie(collector_, fatal_crash_type_) = GetParam();
+    std::tie(collector_, process_, severity_, product_, fatal_crash_type_) =
+        GetParam();
   }
 
   std::optional<std::string> collector_;
+  std::optional<std::string> severity_;
+  std::optional<std::string> product_;
+  std::optional<std::string> process_;
   std::optional<std::string> fatal_crash_type_;
 };
 
 TEST_P(CrashSenderGetFatalCrashTypeTest, GetFatalCrashType) {
   brillo::KeyValueStore metadata;
+  const std::string upload_var_prefix =
+      std::string(constants::kUploadVarPrefix);
   if (collector_.has_value()) {
-    metadata.SetString("upload_var_collector", collector_.value());
+    const std::string collector_key =
+        upload_var_prefix + constants::kCollectorKey;
+    metadata.SetString(collector_key, collector_.value());
   }
-  // Add some random fields
-  metadata.SetString("exec_name", "fake_exec_name");
-  metadata.SetString("ver", "fake_chromeos_ver");
-  metadata.SetString("upload_var_prod", "fake_product");
-  metadata.SetString("upload_var_ver", "fake_version");
+  if (severity_.has_value()) {
+    const std::string severity_key =
+        upload_var_prefix + constants::kClientComputedSeverityKey;
+    metadata.SetString(severity_key, severity_.value());
+  }
+  if (product_.has_value()) {
+    const std::string product_key =
+        upload_var_prefix + constants::kUploadDataKeyProductKey;
+    metadata.SetString(product_key, product_.value());
+  }
+  if (process_.has_value()) {
+    const std::string process_key =
+        upload_var_prefix + constants::kChromeProcessTypeKey;
+    metadata.SetString(process_key, process_.value());
+  }
+
   CrashDetails details = {
       // Add some other random fields
       .payload_kind = "fake_payload",
@@ -2709,18 +2733,99 @@ INSTANTIATE_TEST_SUITE_P(
     CrashSenderGetFatalCrashTypeInstantiation,
     CrashSenderGetFatalCrashTypeTest,
     testing::Values(
-        CrashSenderGetFatalCrashTypeTest::ParamType(std::nullopt, std::nullopt),
-        CrashSenderGetFatalCrashTypeTest::ParamType("cool_collector",
-                                                    std::nullopt),
-        CrashSenderGetFatalCrashTypeTest::ParamType("kernel", "kernel"),
-        CrashSenderGetFatalCrashTypeTest::ParamType("ec", "ec")),
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/std::nullopt,
+            /*process=*/std::nullopt,
+            /*severity=*/std::nullopt,
+            /*product=*/std::nullopt,
+            /*fatal_crash_type=*/std::nullopt),
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/"cool_collector",
+            /*process=*/std::nullopt,
+            /*severity=*/std::nullopt,
+            /*product=*/std::nullopt,
+            /*fatal_crash_type=*/std::nullopt),
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/"kernel",
+            /*process=*/std::nullopt,
+            /*severity=*/std::nullopt,
+            /*product=*/std::nullopt,
+            /*fatal_crash_type=*/"kernel"),
+        CrashSenderGetFatalCrashTypeTest::ParamType(/*collector=*/"ec",
+                                                    /*process=*/std::nullopt,
+                                                    /*severity=*/std::nullopt,
+                                                    /*product=*/std::nullopt,
+                                                    /*fatal_crash_type=*/"ec"),
+        // Fatal Ash Chrome crash
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/std::nullopt,
+            /*process=*/std::nullopt,
+            /*severity=*/constants::kClientComputedCrashSeverityFatal,
+            /*product=*/constants::kProductNameChromeAsh,
+            /*fatal_crash_type=*/"chrome"),
+        // Error Ash Chrome crash in renderer process
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/std::nullopt,
+            /*process=*/constants::kChromeProcessTypeRenderer,
+            /*severity=*/constants::kClientComputedCrashSeverityError,
+            /*product=*/constants::kProductNameChromeAsh,
+            /*fatal_crash_type=*/"chrome"),
+        // Error Ash Chrome crash in extension process
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/std::nullopt,
+            /*process=*/constants::kChromeProcessTypeExtension,
+            /*severity=*/constants::kClientComputedCrashSeverityError,
+            /*product=*/constants::kProductNameChromeAsh,
+            /*fatal_crash_type=*/"chrome"),
+        // Error Ash Chrome crash in utility process
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/std::nullopt,
+            /*process=*/constants::kChromeProcessTypeUtility,
+            /*severity=*/constants::kClientComputedCrashSeverityError,
+            /*product=*/constants::kProductNameChromeAsh,
+            /*fatal_crash_type=*/"chrome"),
+        // Fatal Lacros Chrome crash
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/std::nullopt,
+            /*process=*/std::nullopt,
+            /*severity=*/constants::kClientComputedCrashSeverityFatal,
+            /*product=*/constants::kProductNameChromeLacros,
+            /*fatal_crash_type=*/"chrome"),
+        // Error Lacros Chrome crash in renderer process
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/std::nullopt,
+            /*process=*/constants::kChromeProcessTypeRenderer,
+            /*severity=*/constants::kClientComputedCrashSeverityError,
+            /*product=*/constants::kProductNameChromeLacros,
+            /*fatal_crash_type=*/"chrome"),
+        // Error Lacros Chrome crash in extension process
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/std::nullopt,
+            /*process=*/constants::kChromeProcessTypeExtension,
+            /*severity=*/constants::kClientComputedCrashSeverityError,
+            /*product=*/constants::kProductNameChromeLacros,
+            /*fatal_crash_type=*/"chrome"),
+        // Error Lacros Chrome crash in utility process
+        CrashSenderGetFatalCrashTypeTest::ParamType(
+            /*collector=*/std::nullopt,
+            /*process=*/constants::kChromeProcessTypeUtility,
+            /*severity=*/constants::kClientComputedCrashSeverityError,
+            /*product=*/constants::kProductNameChromeLacros,
+            /*fatal_crash_type=*/"chrome")),
     [](const ::testing::TestParamInfo<
         CrashSenderGetFatalCrashTypeTest::ParamType>& info) {
       std::ostringstream name;
       auto collector = std::get<0>(info.param);
-      auto fatal_crash_type = std::get<1>(info.param);
+      auto process = std::get<1>(info.param);
+      auto severity = std::get<2>(info.param);
+      auto product = std::get<3>(info.param);
+      auto fatal_crash_type = std::get<4>(info.param);
       name << "collector_"
            << (collector.has_value() ? collector.value() : "absent")
+           << "_process_" << (process.has_value() ? process.value() : "absent")
+           << "_severity_"
+           << (severity.has_value() ? severity.value() : "absent")
+           << "_product_" << (product.has_value() ? product.value() : "absent")
            << "_crash_type_"
            << (fatal_crash_type.has_value() ? fatal_crash_type.value()
                                             : "absent");

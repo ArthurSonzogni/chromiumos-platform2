@@ -72,7 +72,6 @@ const char kCollectChromeFile[] =
 const char kDefaultLogConfig[] = "/etc/crash_reporter_logs.conf";
 const char kDefaultUserName[] = "chronos";
 const char kShellPath[] = "/bin/sh";
-const char kCollectorNameKey[] = "collector";
 const char kDaemonStoreKey[] = "using_daemon_store";
 const char kEarlyCrashKey[] = "is_early_boot";
 const char kChannelKey[] = "channel";
@@ -575,7 +574,8 @@ CrashCollector::CrashCollector(
       bytes_written_(0),
       metrics_lib_(metrics_lib),
       tag_(tag) {
-  AddCrashMetaUploadData(kCollectorNameKey, GetNameForCollector(collector));
+  AddCrashMetaUploadData(constants::kCollectorKey,
+                         GetNameForCollector(collector));
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     AddCrashMetaUploadData(constants::kCrashLoopModeKey, "true");
   }
@@ -1898,7 +1898,7 @@ CrashCollectionStatus CrashCollector::FinishCrash(
       CrashSeverityEnumToString(computed_crash_severity.crash_severity);
   std::string product_group =
       ProductEnumToString(computed_crash_severity.product_group);
-  AddCrashMetaUploadData("client_computed_severity", crash_severity);
+  AddCrashMetaUploadData(constants::kClientComputedSeverityKey, crash_severity);
   AddCrashMetaUploadData("client_computed_product", product_group);
 
   std::string in_progress_test;
@@ -1982,15 +1982,15 @@ std::string CrashCollector::CrashSeverityEnumToString(
     CrashSeverity crash_severity) const {
   switch (crash_severity) {
     case CrashSeverity::kUnspecified:
-      return "UNSPECIFIED";
+      return constants::kClientComputedCrashSeverityUnspecified;
     case CrashSeverity::kFatal:
-      return "FATAL";
+      return constants::kClientComputedCrashSeverityFatal;
     case CrashSeverity::kError:
-      return "ERROR";
+      return constants::kClientComputedCrashSeverityError;
     case CrashSeverity::kWarning:
-      return "WARNING";
+      return constants::kClientComputedCrashSeverityWarning;
     case CrashSeverity::kInfo:
-      return "INFO";
+      return constants::kClientComputedCrashSeverityInfo;
     default:
       LOG(ERROR) << "Unexpected enum value for CrashSeverity: "
                  << static_cast<int>(crash_severity);
@@ -2251,7 +2251,7 @@ void CrashCollector::EnqueueCollectionErrorLog(CrashCollectionStatus error_type,
   // Get rid of the existing metadata, since we're now writing info about
   // errors *pertaining to collection* rather than the original program.
   extra_metadata_.clear();
-  AddCrashMetaUploadData(kCollectorNameKey, exec);
+  AddCrashMetaUploadData(constants::kCollectorKey, exec);
   // Record the original collector name for analytics purposes. (e.g. to see
   // if one collector fails more often than others.)
   AddCrashMetaUploadData("orig_collector", GetNameForCollector(collector_));
