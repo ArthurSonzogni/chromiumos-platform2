@@ -668,18 +668,6 @@ impl Methods {
         dbus_message_to_proto(&message)
     }
 
-    fn sync_protobus_timeout_with_vector_of_fd<I: ProtoMessage, O: ProtoMessage>(
-        &self,
-        message: Message,
-        request: &I,
-        fds: Vec<OwnedFd>,
-        timeout: Duration,
-    ) -> Result<O, Box<dyn Error>> {
-        let method = message.append2(request.write_to_bytes()?, fds);
-        let message = self.connection.send_with_reply_and_block(method, timeout)?;
-        dbus_message_to_proto(&message)
-    }
-
     fn protobus_wait_for_signal_timeout<O: ProtoMessage>(
         &mut self,
         interface: &str,
@@ -924,14 +912,10 @@ impl Methods {
             request.params.push(param.to_string());
         }
 
-        let response: AdjustVmResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                ADJUST_VM_METHOD,
-            )?,
-            &request,
+        let response: AdjustVmResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .adjust_vm(request.write_to_bytes()?)?,
         )?;
 
         if response.success {
@@ -953,16 +937,10 @@ impl Methods {
         request.image_type = DiskImageType::DISK_IMAGE_AUTO.into();
         request.storage_location = StorageLocation::STORAGE_CRYPTOHOME_ROOT.into();
 
-        let response: CreateDiskImageResponse = self.sync_protobus_timeout_with_vector_of_fd(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                CREATE_DISK_IMAGE_METHOD,
-            )?,
-            &request,
-            vec![],
-            DEFAULT_TIMEOUT,
+        let response: CreateDiskImageResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .create_disk_image(request.write_to_bytes()?, vec![])?,
         )?;
 
         match response.status.enum_value() {
@@ -1023,16 +1001,10 @@ impl Methods {
             vec![]
         };
 
-        let response: CreateDiskImageResponse = self.sync_protobus_timeout_with_vector_of_fd(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                CREATE_DISK_IMAGE_METHOD,
-            )?,
-            &request,
-            owned_fds,
-            DEFAULT_TIMEOUT,
+        let response: CreateDiskImageResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .create_disk_image(request.write_to_bytes()?, owned_fds)?,
         )?;
 
         match response.status.enum_value() {
@@ -1053,14 +1025,10 @@ impl Methods {
         request.vm_name = vm_name.to_owned();
         request.cryptohome_id = user_id_hash.to_owned();
 
-        let response: DestroyDiskImageResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                DESTROY_DISK_IMAGE_METHOD,
-            )?,
-            &request,
+        let response: DestroyDiskImageResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .destroy_disk_image(request.write_to_bytes()?)?,
         )?;
 
         match response.status.enum_value() {
@@ -1135,16 +1103,10 @@ impl Methods {
             None => None,
         };
 
-        let response: ExportDiskImageResponse = self.sync_protobus_timeout_with_vector_of_fd(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                EXPORT_DISK_IMAGE_METHOD,
-            )?,
-            &request,
-            owned_fds,
-            EXPORT_DISK_TIMEOUT,
+        let response: ExportDiskImageResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client_with_timeout(EXPORT_DISK_TIMEOUT)?
+                .export_disk_image(request.write_to_bytes()?, owned_fds)?,
         )?;
 
         match response.status.enum_value() {
@@ -1192,22 +1154,12 @@ impl Methods {
         .into();
         request.source_size = import_file.size;
 
-        // We can't use sync_protobus because we need to append the file descriptor out of band from
-        // the protobuf message.
-        let method = Message::new_method_call(
-            VM_CONCIERGE_SERVICE_NAME,
-            VM_CONCIERGE_SERVICE_PATH,
-            VM_CONCIERGE_INTERFACE,
-            IMPORT_DISK_IMAGE_METHOD,
-        )?
-        .append1(request.write_to_bytes()?)
-        .append1(import_file.fd);
+        let response: ImportDiskImageResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .import_disk_image(request.write_to_bytes()?, import_file.fd)?,
+        )?;
 
-        let message = self
-            .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
-
-        let response: ImportDiskImageResponse = dbus_message_to_proto(&message)?;
         match response.status.enum_value() {
             Ok(DiskImageStatus::DISK_STATUS_CREATED) => Ok(None),
             Ok(DiskImageStatus::DISK_STATUS_IN_PROGRESS) => Ok(Some(response.command_uuid)),
@@ -1228,14 +1180,10 @@ impl Methods {
         request.vm_name = vm_name.to_owned();
         request.disk_size = size;
 
-        let response: ResizeDiskImageResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                RESIZE_DISK_IMAGE_METHOD,
-            )?,
-            &request,
+        let response: ResizeDiskImageResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .resize_disk_image(request.write_to_bytes()?)?,
         )?;
 
         match response.status.enum_value() {
@@ -1277,14 +1225,10 @@ impl Methods {
         let mut request = DiskImageStatusRequest::new();
         request.command_uuid = uuid.to_owned();
 
-        let response: DiskImageStatusResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CONCIERGE_SERVICE_NAME,
-                VM_CONCIERGE_SERVICE_PATH,
-                VM_CONCIERGE_INTERFACE,
-                DISK_IMAGE_STATUS_METHOD,
-            )?,
-            &request,
+        let response: DiskImageStatusResponse = ProtoMessage::parse_from_bytes(
+            &self
+                .concierge_client()?
+                .disk_image_status(request.write_to_bytes()?)?,
         )?;
 
         self.parse_disk_op_status(response, op_type)

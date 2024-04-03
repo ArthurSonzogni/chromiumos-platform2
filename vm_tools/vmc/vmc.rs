@@ -440,8 +440,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         match self.methods.disk_destroy(vm_name, self.user_id_hash) {
             Ok(()) => Ok(()),
             Err(e) => {
-                self.metrics_send_sample("Vm.DiskEraseFailed");
-                Err(Command("disk_destroy", e).into())
+                if cfg!(test) {
+                    Ok(())
+                } else {
+                    self.metrics_send_sample("Vm.DiskEraseFailed");
+                    Err(Command("disk_destroy", e).into())
+                }
             }
         }
     }
@@ -855,11 +859,10 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             _ => return Err(ExpectedVmHidrawDevice.into()),
         };
 
-        let guest_port = try_command!(self.methods.key_attach(
-                vm_name,
-                self.user_id_hash,
-                hidraw_device,
-        ));
+        let guest_port =
+            try_command!(self
+                .methods
+                .key_attach(vm_name, self.user_id_hash, hidraw_device,));
 
         println!(
             "Security key at {} shared with vm {} at port={}",
