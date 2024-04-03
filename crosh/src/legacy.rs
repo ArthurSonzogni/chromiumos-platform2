@@ -22,8 +22,7 @@ const BASE_COMMANDS: &[&str] = &[
     "evtest",
     "ff_debug",
     "gesture_prop",
-    "help",          // Included for the "help" help entry.
-    "help_advanced", // Included for the "help_advanced" help entry.
+    "help", // Included for the "help" help entry.
     "ipaddrs",
     "memory_test",
     "modem",

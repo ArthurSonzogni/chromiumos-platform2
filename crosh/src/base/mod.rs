@@ -13,6 +13,7 @@ mod dmesg;
 mod exit;
 mod force_fips;
 mod free;
+mod help_advanced;
 mod insert_coin;
 mod meminfo;
 mod packet_capture;
@@ -39,6 +40,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     exit::register(dispatcher);
     force_fips::register(dispatcher);
     free::register(dispatcher);
+    help_advanced::register(dispatcher);
     insert_coin::register(dispatcher);
     meminfo::register(dispatcher);
     packet_capture::register(dispatcher);
