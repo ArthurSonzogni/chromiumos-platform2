@@ -15,11 +15,11 @@ pub fn register(dispatcher: &mut Dispatcher) {
             "[options]".to_string(),
             "Display free/used memory info.".to_string(),
         )
-        .set_command_callback(Some(execute_uptime)),
+        .set_command_callback(Some(execute_free)),
     );
 }
 
-fn execute_uptime(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> {
+fn execute_free(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher::Error> {
     wait_for_result(
         process::Command::new("free")
             .args(args.get_args())
