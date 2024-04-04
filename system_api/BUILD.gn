@@ -694,7 +694,10 @@ proto_library("system_api-chunneld-protos") {
 proto_library("system_api-patchpanel-protos") {
   proto_in_dir = "dbus/patchpanel"
   proto_out_dir = "include/patchpanel/proto_bindings"
-  sources = [ "${proto_in_dir}/patchpanel_service.proto" ]
+  sources = [
+    "${proto_in_dir}/patchpanel_service.proto",
+    "${proto_in_dir}/traffic_annotation.proto",
+  ]
   standalone = true
   install_package = true
   use_pic = true
@@ -703,7 +706,10 @@ proto_library("system_api-patchpanel-protos") {
 goproto_library("system_api-patchpanel-goprotos") {
   proto_in_dir = "dbus/patchpanel"
   proto_out_dir = "go/src/"
-  sources = [ "${proto_in_dir}/patchpanel_service.proto" ]
+  sources = [
+    "${proto_in_dir}/patchpanel_service.proto",
+    "${proto_in_dir}/traffic_annotation.proto",
+  ]
 }
 
 proto_library("system_api-anomaly_detector-protos") {
