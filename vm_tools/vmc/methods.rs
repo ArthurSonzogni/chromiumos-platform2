@@ -29,6 +29,7 @@ use protobuf::EnumOrUnknown;
 use protobuf::Message as ProtoMessage;
 
 use system_api::client::OrgChromiumDebugd;
+use system_api::client::OrgChromiumDlcServiceInterface;
 use system_api::client::OrgChromiumVmConcierge;
 use system_api::concierge_service::vm_info::VmType;
 use system_api::concierge_service::*;
@@ -680,22 +681,16 @@ impl Methods {
     }
 
     fn get_dlc_state(&mut self, name: &str) -> Result<DlcState, Box<dyn Error>> {
-        let method = Message::new_method_call(
+        let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
+            self.connection.get_real_connection_or_fail()?,
             DLC_SERVICE_SERVICE_NAME,
             DLC_SERVICE_SERVICE_PATH,
-            DLC_SERVICE_INTERFACE,
-            GET_DLC_STATE_METHOD,
-        )?
-        .append1(name);
-
-        let message = self
-            .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)
-            .map_err(|e| FailedDlcInstall(name.to_owned(), e.to_string()))?;
-
-        let response: DlcState = dbus_message_to_proto(&message)
-            .map_err(|e| FailedDlcInstall(name.to_owned(), e.to_string()))?;
-
+            DEFAULT_TIMEOUT,
+        );
+        let response: DlcState = ProtoMessage::parse_from_bytes(
+            &OrgChromiumDlcServiceInterface::get_dlc_state(&proxy, name)
+                .map_err(|e| FailedDlcInstall(name.to_owned(), e.to_string()))?,
+        )?;
         Ok(response)
     }
 
@@ -703,18 +698,14 @@ impl Methods {
         let mut install_request = dlcservice::InstallRequest::new();
         install_request.id = name.to_owned();
 
-        let method = Message::new_method_call(
+        let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
+            self.connection.get_real_connection_or_fail()?,
             DLC_SERVICE_SERVICE_NAME,
             DLC_SERVICE_SERVICE_PATH,
-            DLC_SERVICE_INTERFACE,
-            INSTALL_METHOD,
-        )?
-        .append1(install_request.write_to_bytes()?);
-
-        self.connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)
+            DEFAULT_TIMEOUT,
+        );
+        OrgChromiumDlcServiceInterface::install(&proxy, install_request.write_to_bytes()?)
             .map_err(|e| FailedDlcInstall(name.to_owned(), e.to_string()))?;
-
         Ok(())
     }
 
