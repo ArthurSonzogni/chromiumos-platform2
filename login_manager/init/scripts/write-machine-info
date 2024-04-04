@@ -52,19 +52,20 @@ serial_number() {
 # shellcheck disable=SC2154
 touch "${MACHINE_INFO}"
 chmod 0644 "${MACHINE_INFO}"
-MACHINE_INFO_ERR=$( {
-  echo "serial_number=\"$(serial_number)\""
 
-  # Dynamic information.
+# Output the Flex ID if this is a Reven device, and SN if not.
+if crossystem "hwid?REVEN-ANAE A6A-A7I"; then
+  (echo "flex_id=\"$(flex_id_tool)\"") >> "${MACHINE_INFO}"
+else
+  echo "serial_number=\"$(serial_number)\""
+fi
+
+MACHINE_INFO_ERR=$( {
+  # Dynamic information. Capture and log error messages from commands.
   echo "customization_id=\"$(cros_config /ui help-content-id)\""
   echo "rlz_brand_code=\"$(cros_config / brand-code)\""
   echo "wpsw_cur=\"$(crossystem wpsw_cur)\""
 } 2>&1 >> "${MACHINE_INFO}" )
 if [ -n "${MACHINE_INFO_ERR}" ]; then
   logger -t write-machine-info "${MACHINE_INFO_ERR}"
-fi
-
-# Add the flex_id if this is a Reven device
-if crossystem "hwid?REVEN-ANAE A6A-A7I"; then
-  (echo "flex_id=\"$(flex_id_tool)\"") >> "${MACHINE_INFO}"
 fi
