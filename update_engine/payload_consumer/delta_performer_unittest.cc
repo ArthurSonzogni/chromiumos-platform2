@@ -1111,11 +1111,11 @@ TEST_F(DeltaPerformerTest, UsePublicKeyFromResponse) {
 }
 
 TEST_F(DeltaPerformerTest, ConfVersionsMatch) {
-  // Test that the versions in update_engine.conf that is installed to the
-  // image match the maximum supported delta versions in the update engine.
+  // Test that the version that is installed to the image match the maximum
+  // supported delta versions in the update engine.
   uint32_t minor_version;
   brillo::KeyValueStore store;
-  EXPECT_TRUE(store.Load(GetBuildArtifactsPath().Append("update_engine.conf")));
+  ASSERT_TRUE(store.Load(GetBuildArtifactsPath().Append("update_engine.conf")));
   EXPECT_TRUE(utils::GetMinorVersion(store, &minor_version));
   EXPECT_EQ(kMaxSupportedMinorPayloadVersion, minor_version);
 
