@@ -2120,6 +2120,9 @@ void Manager::ConnectToBestServicesForTechnologies(bool is_wifi) {
       continue;
     }
     Technology technology = service->technology();
+    if (IsTechnologyAutoConnectDisabled(technology)) {
+      continue;
+    }
     if (is_wifi != (technology == Technology::kWiFi)) {
       continue;
     }
@@ -2140,6 +2143,13 @@ void Manager::ConnectToBestServicesForTechnologies(bool is_wifi) {
       // overridden implementations consider a host of conditions which
       // prevent it from attempting a connection which we'd like to ignore
       // for the purposes of this user-initiated action.
+      // TODO(b/333815353): The above comment is not 100% correct as this
+      // function is now effectively used in Chrome as a automatic action
+      // instead of a user-initiated one. It is true though that current
+      // Service::IsAutoConnectable contains conditions that does not apply
+      // here. Duplicating the relevant condition check here is not ideal though
+      // and we should try to consolidate it with Service::IsAutoConnectable
+      // instead.
       Error error;
       service->Connect(&error, __func__);
       if (error.IsFailure()) {
