@@ -28,6 +28,7 @@ use libchromeos::OpenSafelyOptions;
 use protobuf::EnumOrUnknown;
 use protobuf::Message as ProtoMessage;
 
+use system_api::client::OrgChromiumDebugd;
 use system_api::client::OrgChromiumVmConcierge;
 use system_api::concierge_service::vm_info::VmType;
 use system_api::concierge_service::*;
@@ -865,20 +866,14 @@ impl Methods {
         // the dispatcher service below.
         self.install_dlc("pita")?;
 
-        let method = Message::new_method_call(
+        let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
+            self.connection.get_real_connection_or_fail()?,
             DEBUGD_SERVICE_NAME,
             DEBUGD_SERVICE_PATH,
-            DEBUGD_INTERFACE,
-            START_VM_PLUGIN_DISPATCHER,
-        )?
-        .append1(user_id_hash)
-        .append1("en-US");
-
-        let message = self
-            .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
-        match message.get1() {
-            Some(true) => Ok(()),
+            DEFAULT_TIMEOUT,
+        );
+        match OrgChromiumDebugd::start_vm_plugin_dispatcher(&proxy, user_id_hash, "en-US") {
+            Ok(true) => Ok(()),
             _ => Err(BadVmPluginDispatcherStatus.into()),
         }
     }
