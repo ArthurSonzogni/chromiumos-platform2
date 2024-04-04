@@ -54,7 +54,7 @@
 #include "shill/testing.h"
 #include "shill/tethering_manager.h"
 #include "shill/upstart/mock_upstart.h"
-#include "shill/vpn/mock_vpn_service.h"
+#include "shill/vpn/fake_vpn_service.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
 #include "shill/wifi/mock_wifi_provider.h"
@@ -2509,8 +2509,7 @@ TEST_F(ManagerTest, DisconnectWiFiOnMultiEthernet) {
 TEST_F(ManagerTest, FindDeviceFromService) {
   MockServiceRefPtr not_selected_service(new MockService(manager()));
   MockServiceRefPtr selected_service(new MockService(manager()));
-  scoped_refptr<MockVPNService> vpn_service(
-      new MockVPNService(manager(), nullptr));
+  scoped_refptr<VPNService> vpn_service(new FakeVPNService(manager()));
   scoped_refptr<MockVirtualDevice> vpn_device(
       new MockVirtualDevice(manager(), "ppp0", 123, Technology::kVPN));
 

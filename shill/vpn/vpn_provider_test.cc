@@ -19,7 +19,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/store/fake_store.h"
-#include "shill/vpn/mock_vpn_service.h"
+#include "shill/vpn/fake_vpn_service.h"
 
 using testing::_;
 using testing::NiceMock;
@@ -160,12 +160,9 @@ TEST_F(VPNProviderTest, GetService) {
 }
 
 TEST_F(VPNProviderTest, RemoveService) {
-  scoped_refptr<MockVPNService> service0(
-      new MockVPNService(&manager_, nullptr));
-  scoped_refptr<MockVPNService> service1(
-      new MockVPNService(&manager_, nullptr));
-  scoped_refptr<MockVPNService> service2(
-      new MockVPNService(&manager_, nullptr));
+  scoped_refptr<VPNService> service0(new FakeVPNService(&manager_));
+  scoped_refptr<VPNService> service1(new FakeVPNService(&manager_));
+  scoped_refptr<VPNService> service2(new FakeVPNService(&manager_));
 
   provider_.services_.push_back(service0.get());
   provider_.services_.push_back(service1.get());
@@ -320,12 +317,9 @@ TEST_F(VPNProviderTest, CreateTemporaryServiceFromProfile) {
 TEST_F(VPNProviderTest, HasActiveService) {
   EXPECT_FALSE(provider_.HasActiveService());
 
-  scoped_refptr<MockVPNService> service0(
-      new MockVPNService(&manager_, nullptr));
-  scoped_refptr<MockVPNService> service1(
-      new MockVPNService(&manager_, nullptr));
-  scoped_refptr<MockVPNService> service2(
-      new MockVPNService(&manager_, nullptr));
+  scoped_refptr<VPNService> service0(new FakeVPNService(&manager_));
+  scoped_refptr<VPNService> service1(new FakeVPNService(&manager_));
+  scoped_refptr<VPNService> service2(new FakeVPNService(&manager_));
 
   AddService(service0);
   AddService(service1);
