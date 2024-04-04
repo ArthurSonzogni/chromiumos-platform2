@@ -25,7 +25,7 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 P2PService::P2PService(LocalDeviceConstRefPtr device,
                        std::optional<std::string> ssid,
                        std::optional<std::string> passphrase,
-                       std::optional<uint32_t> frequency)
+                       std::optional<int32_t> frequency)
     : LocalService(device),
       hex_ssid_(ssid),
       passphrase_(passphrase),

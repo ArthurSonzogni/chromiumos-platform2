@@ -85,7 +85,7 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   void OnDeviceCreated(LocalDevice::IfaceType iface_type,
                        std::optional<std::string> ssid,
                        std::optional<std::string> passphrase,
-                       std::optional<uint32_t> freq,
+                       std::optional<int32_t> freq,
                        P2PDeviceRefPtr device);
 
   // Indicates that P2PDevice creation has failed.

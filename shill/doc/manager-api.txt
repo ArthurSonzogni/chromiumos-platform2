@@ -537,8 +537,8 @@ Methods		dict GetProperties()
 
 			Creates a P2P group with the specified config with this device as
 			the group owner. Possible arguments are "ssid" (string),
-			"passphrase" (string), "frequency" (uint32), and "priority"
-			(uint32). "priority" is mandatory. All other arguments are optional
+			"passphrase" (string), "frequency" (int32), and "priority"
+			(int32). "priority" is mandatory. All other arguments are optional
 			and all omitted args will be chosen by the platform.
 
 			Returns a dictionary with the following entries:
@@ -558,7 +558,7 @@ Methods		dict GetProperties()
 
 			Starts a P2P connection with a P2P group with the specified
 			config. Possible arguments are "ssid" (string), "passphrase"
-			(string), "frequency" (uint32), and "priority" (uint32). "ssid",
+			(string), "frequency" (int32), and "priority" (int32). "ssid",
 			"passphrase", and "priority" are mandatory. If "frequency" is
 			omitted then the platform will scan all available channels.
 
@@ -837,7 +837,7 @@ Properties	object ActiveProfile [readonly]
 				This represents the selected channel on which the network
 				is hosted.
 
-			uint32_t network_id
+			int32_t network_id
 				Unique ID to identify the network.
 
 			string interface
@@ -928,7 +928,7 @@ Properties	object ActiveProfile [readonly]
 				This represents the selected channel on which the group
 				is hosted.
 
-			uint32_t network_id
+			int32_t network_id
 				Unique ID to identify the network in Patchpnel.
 
 			string interface

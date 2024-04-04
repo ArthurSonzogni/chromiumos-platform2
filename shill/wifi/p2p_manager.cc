@@ -148,19 +148,19 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
     passphrase = args.Get<std::string>(kP2PDevicePassphrase);
   }
 
-  std::optional<uint32_t> freq;
-  if (args.Contains<uint32_t>(kP2PDeviceFrequency)) {
-    freq = args.Get<uint32_t>(kP2PDeviceFrequency);
+  std::optional<int32_t> freq;
+  if (args.Contains<int32_t>(kP2PDeviceFrequency)) {
+    freq = args.Get<int32_t>(kP2PDeviceFrequency);
   }
 
-  if (!args.Contains<uint32_t>(kP2PDevicePriority)) {
+  if (!args.Contains<int32_t>(kP2PDevicePriority)) {
     LOG(ERROR) << std::string(kP2PDevicePriority) + " argument is mandatory";
     PostResult(kConnectToP2PGroupResultInvalidArguments, std::nullopt,
                std::move(result_callback_));
     return;
   }
   WiFiPhy::Priority priority =
-      WiFiPhy::Priority(args.Get<uint32_t>(kP2PDevicePriority));
+      WiFiPhy::Priority(args.Get<int32_t>(kP2PDevicePriority));
   if (!priority.IsValid()) {
     LOG(ERROR) << "invalid " << std::string(kP2PDevicePriority) + " argument "
                << priority;
@@ -226,19 +226,19 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
   }
   std::string passphrase = args.Get<std::string>(kP2PDevicePassphrase);
 
-  std::optional<uint32_t> freq;
-  if (args.Contains<uint32_t>(kP2PDeviceFrequency)) {
-    freq = args.Get<uint32_t>(kP2PDeviceFrequency);
+  std::optional<int32_t> freq;
+  if (args.Contains<int32_t>(kP2PDeviceFrequency)) {
+    freq = args.Get<int32_t>(kP2PDeviceFrequency);
   }
 
-  if (!args.Contains<uint32_t>(kP2PDevicePriority)) {
+  if (!args.Contains<int32_t>(kP2PDevicePriority)) {
     LOG(ERROR) << std::string(kP2PDevicePriority) + " argument is mandatory";
     PostResult(kConnectToP2PGroupResultInvalidArguments, std::nullopt,
                std::move(result_callback_));
     return;
   }
   WiFiPhy::Priority priority =
-      WiFiPhy::Priority(args.Get<uint32_t>(kP2PDevicePriority));
+      WiFiPhy::Priority(args.Get<int32_t>(kP2PDevicePriority));
   if (!priority.IsValid()) {
     LOG(ERROR) << "invalid " << std::string(kP2PDevicePriority) + " argument "
                << priority;
@@ -617,7 +617,7 @@ void P2PManager::OnP2PDeviceEvent(LocalDevice::DeviceEvent event,
 void P2PManager::OnDeviceCreated(LocalDevice::IfaceType iface_type,
                                  std::optional<std::string> ssid,
                                  std::optional<std::string> passphrase,
-                                 std::optional<uint32_t> freq,
+                                 std::optional<int32_t> freq,
                                  P2PDeviceRefPtr device) {
   if (!result_callback_) {
     LOG(ERROR) << "P2PDevice was created with no pending callback.";

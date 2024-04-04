@@ -119,19 +119,6 @@ class P2PManagerTest : public testing::Test {
                                              KeyValueStore properties) {
     KeyValueStore response_dict;
     base::MockOnceCallback<void(KeyValueStore)> cb;
-    std::optional<std::string> expected_ssid;
-    if (properties.Contains<std::string>(kP2PDeviceSSID)) {
-      expected_ssid = properties.Get<std::string>(kP2PDeviceSSID);
-    }
-    std::optional<std::string> expected_passphrase;
-    if (properties.Contains<std::string>(kP2PDevicePassphrase)) {
-      expected_passphrase = properties.Get<std::string>(kP2PDevicePassphrase);
-    }
-    std::optional<uint32_t> expected_freq;
-    if (properties.Contains<uint32_t>(kP2PDeviceFrequency)) {
-      expected_freq = properties.Get<uint32_t>(kP2PDeviceFrequency);
-    }
-
     SetDefaultDeviceLinkName(p2p_device);
 
     EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
@@ -156,8 +143,8 @@ class P2PManagerTest : public testing::Test {
     KeyValueStore properties;
     properties.Set<std::string>(kP2PDeviceSSID, "DIRECT-ab");
     properties.Set<std::string>(kP2PDevicePassphrase, "test0000");
-    properties.Set<uint32_t>(kP2PDeviceFrequency, 1234);
-    properties.Set<uint32_t>(kP2PDevicePriority, 1);
+    properties.Set<int32_t>(kP2PDeviceFrequency, 1234);
+    properties.Set<int32_t>(kP2PDevicePriority, 1);
     return CreateP2PGroupWithProperties(p2p_device, properties);
   }
 
@@ -165,18 +152,6 @@ class P2PManagerTest : public testing::Test {
                                                 KeyValueStore properties) {
     KeyValueStore response_dict;
     base::MockOnceCallback<void(KeyValueStore)> cb;
-    std::optional<std::string> expected_ssid;
-    if (properties.Contains<std::string>(kP2PDeviceSSID)) {
-      expected_ssid = properties.Get<std::string>(kP2PDeviceSSID);
-    }
-    std::optional<std::string> expected_passphrase;
-    if (properties.Contains<std::string>(kP2PDevicePassphrase)) {
-      expected_passphrase = properties.Get<std::string>(kP2PDevicePassphrase);
-    }
-    std::optional<uint32_t> expected_freq;
-    if (properties.Contains<uint32_t>(kP2PDeviceFrequency)) {
-      expected_freq = properties.Get<uint32_t>(kP2PDeviceFrequency);
-    }
     SetDefaultDeviceLinkName(p2p_device);
     EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
         .WillOnce(
@@ -199,8 +174,8 @@ class P2PManagerTest : public testing::Test {
     KeyValueStore properties;
     properties.Set<std::string>(kP2PDeviceSSID, "DIRECT-ab");
     properties.Set<std::string>(kP2PDevicePassphrase, "test0000");
-    properties.Set<uint32_t>(kP2PDeviceFrequency, 1234);
-    properties.Set<uint32_t>(kP2PDevicePriority, 1);
+    properties.Set<int32_t>(kP2PDeviceFrequency, 1234);
+    properties.Set<int32_t>(kP2PDevicePriority, 1);
     return ConnectToP2PGroupWithProperties(p2p_device, properties);
   }
 
@@ -497,8 +472,8 @@ TEST_F(P2PManagerTest, DestroyWithoutCreate) {
 TEST_F(P2PManagerTest, ShillIDs) {
   KeyValueStore properties;
   properties.Set<std::string>(kP2PDevicePassphrase, "test0000");
-  properties.Set<uint32_t>(kP2PDeviceFrequency, 1234);
-  properties.Set<uint32_t>(kP2PDevicePriority, 1);
+  properties.Set<int32_t>(kP2PDeviceFrequency, 1234);
+  properties.Set<int32_t>(kP2PDevicePriority, 1);
   uint32_t current_id = p2p_manager_->next_unique_id_;
   std::string ssid;
   base::MockOnceCallback<void(KeyValueStore)> cb;
@@ -532,7 +507,7 @@ TEST_F(P2PManagerTest, ShillIDs) {
 
 TEST_F(P2PManagerTest, MissingArgs_CreateGroup) {
   KeyValueStore properties;
-  properties.Set<uint32_t>(kP2PDevicePriority, 1);
+  properties.Set<int32_t>(kP2PDevicePriority, 1);
   MockP2PDevice* p2p_device =
       new NiceMock<MockP2PDevice>(&manager_, LocalDevice::IfaceType::kP2PGO,
                                   "wlan0", 0, 0, event_cb_.Get());
@@ -578,7 +553,7 @@ TEST_F(P2PManagerTest, MissingArgs_ConnectClient) {
 
 TEST_F(P2PManagerTest, BadPriority) {
   KeyValueStore properties;
-  properties.Set<uint32_t>(kP2PDevicePriority, 6);
+  properties.Set<int32_t>(kP2PDevicePriority, 6);
   base::MockOnceCallback<void(KeyValueStore)> cb;
   KeyValueStore response_dict;
   uint32_t expected_shill_id = p2p_manager_->next_unique_id_;
@@ -968,7 +943,7 @@ TEST_F(P2PManagerTest, GroupFormationFailure_IgnoreMissingDevice) {
 TEST_F(P2PManagerTest, CreateDeviceRejected_CreateGroup) {
   KeyValueStore response_dict;
   KeyValueStore properties;
-  properties.Set<uint32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
+  properties.Set<int32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
   base::MockOnceCallback<void(KeyValueStore)> cb;
   EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
       .WillOnce(Return(false));
@@ -982,10 +957,10 @@ TEST_F(P2PManagerTest, CreateDeviceRejected_CreateGroup) {
 TEST_F(P2PManagerTest, CreateDeviceRejected_Connect) {
   KeyValueStore response_dict;
   KeyValueStore properties;
-  properties.Set<uint32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
+  properties.Set<int32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
   properties.Set<std::string>(kP2PDeviceSSID, "DIRECT-ab");
   properties.Set<std::string>(kP2PDevicePassphrase, "test0000");
-  properties.Set<uint32_t>(kP2PDeviceFrequency, 1234);
+  properties.Set<int32_t>(kP2PDeviceFrequency, 1234);
   base::MockOnceCallback<void(KeyValueStore)> cb;
   EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
       .WillOnce(Return(false));
@@ -999,7 +974,7 @@ TEST_F(P2PManagerTest, CreateDeviceRejected_Connect) {
 TEST_F(P2PManagerTest, DeviceCreationFailed_CreateGroup) {
   KeyValueStore response_dict;
   KeyValueStore properties;
-  properties.Set<uint32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
+  properties.Set<int32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
   base::MockOnceCallback<void(KeyValueStore)> cb;
   EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
       .WillOnce([](Unused, Unused, Unused, Unused, Unused,
@@ -1019,8 +994,8 @@ TEST_F(P2PManagerTest, DeviceCreationFailed_Connect) {
   KeyValueStore properties;
   properties.Set<std::string>(kP2PDeviceSSID, "DIRECT-ab");
   properties.Set<std::string>(kP2PDevicePassphrase, "test0000");
-  properties.Set<uint32_t>(kP2PDeviceFrequency, 1234);
-  properties.Set<uint32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
+  properties.Set<int32_t>(kP2PDeviceFrequency, 1234);
+  properties.Set<int32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
   base::MockOnceCallback<void(KeyValueStore)> cb;
 
   EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))

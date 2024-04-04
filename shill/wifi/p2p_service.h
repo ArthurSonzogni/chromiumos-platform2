@@ -24,14 +24,14 @@ class P2PService : public LocalService {
   P2PService(LocalDeviceConstRefPtr device,
              std::optional<std::string> ssid,
              std::optional<std::string> passphrase,
-             std::optional<uint32_t> frequency);
+             std::optional<int32_t> frequency);
   P2PService(const P2PService&) = delete;
   P2PService& operator=(const P2PService&) = delete;
 
   // This method returns wpa_supplicant configuration parameters.
   KeyValueStore GetSupplicantConfigurationParameters() const override;
 
-  std::optional<uint32_t> frequency() { return frequency_; }
+  std::optional<int32_t> frequency() { return frequency_; }
 
  private:
   // These methods return wpa_supplicant configuration parameters
@@ -53,7 +53,7 @@ class P2PService : public LocalService {
 
   // The WiFi P2P frequency. No value indicates that frequency should be chosen
   // by supplicant.
-  std::optional<uint32_t> frequency_;
+  std::optional<int32_t> frequency_;
 };
 
 }  // namespace shill

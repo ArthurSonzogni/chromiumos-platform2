@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/containers/span.h>
+#include <base/rand_util.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/byte_utils.h>
@@ -212,7 +213,8 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
                                GroupInfoClients());
     if (IsNetworkLayerConnected()) {
       // TODO(b/325124473): use the network_id from patchpanel.
-      group_info.Set<uint32_t>(kP2PGroupInfoNetworkIDProperty, 0);
+      group_info.Set<int32_t>(kP2PGroupInfoNetworkIDProperty,
+                              base::RandInt(0, INT_MAX));
       if (ipv4_address_ != std::nullopt) {
         group_info.Set<String>(kP2PGroupInfoIPv4AddressProperty,
                                ipv4_address_.value().ToString());
@@ -268,7 +270,8 @@ KeyValueStore P2PDevice::GetClientInfo() const {
                         network_config.ipv6_gateway->ToString()});
       }
       // TODO(b/325124667): use the network_id from Network class.
-      client_info.Set<uint32_t>(kP2PClientInfoNetworkIDProperty, 0);
+      client_info.Set<int32_t>(kP2PClientInfoNetworkIDProperty,
+                               base::RandInt(0, INT_MAX));
     }
     client_info.Set<Stringmap>(kP2PClientInfoGroupOwnerProperty, go_info);
   }
