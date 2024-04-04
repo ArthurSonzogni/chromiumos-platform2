@@ -292,11 +292,31 @@ TEST_F(WifiControllerTest, MaintainStaticTabletOnRegDomainEvent) {
   EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
 }
 
-TEST_F(WifiControllerTest, InvalidModeConfiguration) {
-  // Both tablet mode and static mode should not be set.
+TEST_F(WifiControllerTest, StaticAndTabletModeSet_NoTabletOnInit) {
+  // Test behavior when static and tablet mode are set.
   set_transmit_power_tablet_pref_value_ = true;
   transmit_power_mode_for_static_device_pref_value_ = "tablet";
-  EXPECT_DEATH(Init(TabletMode::UNSUPPORTED), ".*");
+  // Static mode setting is used by default when tablet mode is unsupported.
+  Init(TabletMode::UNSUPPORTED);
+  controller_.HandleRegDomainChange(WifiRegDomain::FCC);
+  EXPECT_EQ(RadioTransmitPower::LOW, delegate_.last_transmit_power());
+  // A tablet mode change takes precedence.
+  controller_.HandleTabletModeChange(TabletMode::OFF);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+  // Furth regdomain changes continue to use tablet mode setting.
+  controller_.HandleRegDomainChange(WifiRegDomain::FCC);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
+}
+
+TEST_F(WifiControllerTest, StaticAndTabletModeSet_TabletOnInit) {
+  // Test behavior when static and tablet mode are set.
+  set_transmit_power_tablet_pref_value_ = true;
+  transmit_power_mode_for_static_device_pref_value_ = "tablet";
+  Init(TabletMode::OFF);
+  // Tablet mode setting is used by when tablet mode is specified, despite
+  // contradictory static mode.
+  controller_.HandleRegDomainChange(WifiRegDomain::FCC);
+  EXPECT_EQ(RadioTransmitPower::HIGH, delegate_.last_transmit_power());
 }
 
 TEST_F(WifiControllerTest, InvalidStaticDeviceModeConfiguration) {

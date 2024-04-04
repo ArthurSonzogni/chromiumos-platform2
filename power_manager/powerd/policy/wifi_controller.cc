@@ -53,9 +53,12 @@ void WifiController::Init(Delegate* delegate,
 
   if (set_transmit_power_for_tablet_mode_ &&
       !transmit_power_mode_for_static_device_.empty()) {
-    LOG(FATAL) << "Invalid configuration: both "
+    LOG(ERROR) << "Invalid configuration: both "
                << kSetWifiTransmitPowerForTabletModePref << " and "
                << kWifiTransmitPowerModeForStaticDevicePref << " pref set";
+    // This value will only actually be used in cases where all other mode
+    // sources are unspecified.
+    static_mode_ = StaticModeFromString(transmit_power_mode_for_static_device_);
   }
 
   if (!set_transmit_power_for_tablet_mode_ &&
@@ -163,11 +166,21 @@ RadioTransmitPower WifiController::DetermineTransmitPower() const {
     return RadioTransmitPower::UNSPECIFIED;
 
   if (proximity_power == RadioTransmitPower::LOW ||
-      tablet_mode_power == RadioTransmitPower::LOW ||
-      static_mode_ == StaticMode::LOW_TRANSMIT_POWER)
+      tablet_mode_power == RadioTransmitPower::LOW) {
     return RadioTransmitPower::LOW;
-
-  return RadioTransmitPower::HIGH;
+  }
+  if (proximity_power == RadioTransmitPower::HIGH ||
+      tablet_mode_power == RadioTransmitPower::HIGH) {
+    return RadioTransmitPower::HIGH;
+  }
+  // Other power sources take precedence over static mode. static_mode_ is
+  // supposed to be mutually exclusive with other power soureces, so if both are
+  // present we know there is an issue with device configs, and thus we should
+  // prioritize the other sources which represent actual device state, as
+  // opposed to static_mode, which only reflects device configs.
+  return static_mode_ == StaticMode::LOW_TRANSMIT_POWER
+             ? RadioTransmitPower::LOW
+             : RadioTransmitPower::HIGH;
 }
 
 void WifiController::UpdateTransmitPower(TriggerSource tr_source) {
