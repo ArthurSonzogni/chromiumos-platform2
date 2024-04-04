@@ -14,7 +14,6 @@
 #include <net-base/process_manager.h>
 #include <net-base/network_config.h>
 
-#include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/vpn/vpn_driver.h"
 #include "shill/vpn/vpn_util.h"

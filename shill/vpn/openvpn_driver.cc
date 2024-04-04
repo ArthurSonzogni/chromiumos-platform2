@@ -35,7 +35,6 @@
 #include "shill/certificate_file.h"
 #include "shill/device_info.h"
 #include "shill/error.h"
-#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/rpc_task.h"

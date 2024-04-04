@@ -27,7 +27,6 @@
 #include <net-base/network_config.h>
 
 #include "shill/error.h"
-#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_certificate_file.h"

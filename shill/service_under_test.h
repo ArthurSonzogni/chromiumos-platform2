@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "shill/ipconfig.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
 

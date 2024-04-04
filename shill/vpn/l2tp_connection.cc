@@ -24,7 +24,6 @@
 #include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
-#include "shill/ipconfig.h"
 #include "shill/ppp_daemon.h"
 #include "shill/vpn/vpn_util.h"
 

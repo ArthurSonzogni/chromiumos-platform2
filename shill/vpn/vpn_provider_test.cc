@@ -14,7 +14,6 @@
 #include <gtest/gtest.h>
 
 #include "shill/error.h"
-#include "shill/ipconfig.h"
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"

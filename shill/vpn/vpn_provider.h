@@ -11,7 +11,6 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/ipconfig.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"

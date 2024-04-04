@@ -15,7 +15,6 @@
 #include <net-base/network_config.h>
 
 #include "shill/cellular/apn_list.h"
-#include "shill/ipconfig.h"
 
 namespace shill {
 

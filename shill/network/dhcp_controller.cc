@@ -24,7 +24,6 @@
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
-#include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/network/dhcp_provider.h"

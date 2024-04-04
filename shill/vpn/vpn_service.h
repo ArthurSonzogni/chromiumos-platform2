@@ -14,7 +14,6 @@
 
 #include "shill/callbacks.h"
 #include "shill/default_service_observer.h"
-#include "shill/ipconfig.h"
 #include "shill/service.h"
 #include "shill/vpn/vpn_driver.h"
 

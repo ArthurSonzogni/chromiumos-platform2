@@ -19,9 +19,9 @@
 #include <net-base/network_config.h>
 #include <net-base/process_manager.h>
 
-#include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/network/dhcpv4_config.h"
 #include "shill/store/key_value_store.h"
 #include "shill/technology.h"
 #include "shill/time.h"

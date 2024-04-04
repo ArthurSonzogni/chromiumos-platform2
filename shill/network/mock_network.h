@@ -17,7 +17,6 @@
 #include <net-base/http_url.h>
 #include <net-base/network_priority.h>
 
-#include "shill/ipconfig.h"
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/portal_detector.h"

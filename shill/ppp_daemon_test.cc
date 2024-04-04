@@ -20,7 +20,6 @@
 
 #include "shill/error.h"
 #include "shill/external_task.h"
-#include "shill/ipconfig.h"
 #include "shill/mock_control.h"
 #include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"

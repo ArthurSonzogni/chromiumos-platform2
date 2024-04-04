@@ -18,7 +18,6 @@
 #include <net-base/process_manager.h>
 
 #include "shill/error.h"
-#include "shill/ipconfig.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/service.h"

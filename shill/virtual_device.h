@@ -12,7 +12,6 @@
 
 #include "shill/device.h"
 #include "shill/error.h"
-#include "shill/ipconfig.h"
 #include "shill/service.h"
 #include "shill/technology.h"
 
