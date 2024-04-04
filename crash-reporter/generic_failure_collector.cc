@@ -53,39 +53,43 @@ GenericFailureCollector::GenericFailureCollector(
 
 GenericFailureCollector::~GenericFailureCollector() {}
 
-bool GenericFailureCollector::LoadGenericFailure(std::string* content,
-                                                 std::string* signature) {
+CrashCollectionStatus GenericFailureCollector::LoadGenericFailure(
+    std::string* content, std::string* signature) {
   FilePath failure_report_path(failure_report_path_.c_str());
   if (!base::ReadFileToString(failure_report_path, content)) {
     LOG(ERROR) << "Could not open " << failure_report_path.value();
-    return false;
+    return CrashCollectionStatus::kFailureReadingGenericReport;
   }
 
   std::string::size_type end_position = content->find('\n');
   if (end_position == std::string::npos) {
     LOG(ERROR) << "unexpected generic failure format";
-    return false;
+    return CrashCollectionStatus::kBadGenericReportFormat;
   }
   *signature = content->substr(0, end_position);
-  return true;
+  return CrashCollectionStatus::kSuccess;
 }
 
-bool GenericFailureCollector::CollectFull(const std::string& exec_name,
-                                          const std::string& log_key_name,
-                                          std::optional<int> weight,
-                                          bool use_log_conf_file) {
+CrashCollectionStatus GenericFailureCollector::CollectFull(
+    const std::string& exec_name,
+    const std::string& log_key_name,
+    std::optional<int> weight,
+    bool use_log_conf_file) {
   LOG(INFO) << "Processing generic failure";
 
   std::string generic_failure;
   std::string failure_signature;
-  if (!LoadGenericFailure(&generic_failure, &failure_signature)) {
-    return true;
+  CrashCollectionStatus status =
+      LoadGenericFailure(&generic_failure, &failure_signature);
+  if (!IsSuccessCode(status)) {
+    return status;
   }
 
   FilePath crash_directory;
-  if (!IsSuccessCode(GetCreatedCrashDirectoryByEuid(
-          constants::kRootUid, &crash_directory, nullptr))) {
-    return true;
+  status = GetCreatedCrashDirectoryByEuid(constants::kRootUid, &crash_directory,
+                                          nullptr);
+  if (!IsSuccessCode(status)) {
+    return status;
   }
 
   std::string dump_basename = FormatDumpBasename(exec_name, time(nullptr), 0);
@@ -97,15 +101,18 @@ bool GenericFailureCollector::CollectFull(const std::string& exec_name,
 
   AddCrashMetaData(kSignatureKey, failure_signature);
 
-  bool result = use_log_conf_file
-                    ? GetLogContents(log_config_path_, log_key_name, log_path)
-                    : WriteLogContents(generic_failure, log_path);
+  status = use_log_conf_file
+               ? GetLogContents(log_config_path_, log_key_name, log_path)
+               : WriteLogContents(generic_failure, log_path);
 
-  if (result) {
-    FinishCrash(meta_path, exec_name, log_path.BaseName().value());
+  // Unlike most collectors, in here failure to gather log files is considered a
+  // crash report generation failure. The logs are the payload, so if we don't
+  // generate logs, we don't have a valid crash report.
+  if (!IsSuccessCode(status)) {
+    return status;
   }
 
-  return true;
+  return FinishCrash(meta_path, exec_name, log_path.BaseName().value());
 }
 
 CrashCollector::ComputedCrashSeverity GenericFailureCollector::ComputeSeverity(

@@ -511,23 +511,28 @@ class CrashCollector {
   // Write a log applicable to |exec_name| to |output_file| based on the
   // log configuration file at |config_path|. If |output_file| ends in .gz, it
   // will be compressed in gzip format, otherwise it will be plaintext.
-  bool GetLogContents(const base::FilePath& config_path,
-                      const std::string& exec_name,
-                      const base::FilePath& output_file);
+  CrashCollectionStatus GetLogContents(const base::FilePath& config_path,
+                                       const std::string& exec_name,
+                                       const base::FilePath& output_file);
   // Write a log to |output_file| based on the passed string |log_contents|. If
   // |output_file| ends in .gz, it will be compressed in gzip format, otherwise
   // it will be plaintext. The contents will also be redacted to avoid leaking
   // any sensitive contents.
-  bool WriteLogContents(std::string& log_contents,
-                        const base::FilePath& output_file);
+  CrashCollectionStatus WriteLogContents(std::string& log_contents,
+                                         const base::FilePath& output_file);
 
   // Write logs applicable to |exec_names| to |output_file| based on the
   // log configuration file at |config_path|. If |output_file| ends in .gz, it
   // will be compressed in gzip format, otherwise it will be plaintext.
-  // This function returns false only if all of the log commands fail to run.
-  bool GetMultipleLogContents(const base::FilePath& config_path,
-                              const std::vector<std::string>& exec_names,
-                              const base::FilePath& output_file);
+  // This function returns an error code only if all of the log commands fail to
+  // run or if the results cannot be written. Generally, if the commands fail,
+  // then the last error code will be returned; otherwise, if none of the
+  // |exec_names| have a configuration entry, then kExecNotConfiguredForLog will
+  // be returned.
+  CrashCollectionStatus GetMultipleLogContents(
+      const base::FilePath& config_path,
+      const std::vector<std::string>& exec_names,
+      const base::FilePath& output_file);
 
   // Write details about the process tree of |pid| to |output_file|.
   bool GetProcessTree(pid_t pid, const base::FilePath& output_file);

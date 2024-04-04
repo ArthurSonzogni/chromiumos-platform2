@@ -152,7 +152,7 @@ bool ECCollector::Collect(bool use_saved_lsb) {
 
   AddCrashMetaData("sig", signature);
   // Add EC info and AP version into log file.
-  if (GetLogContents(log_config_path_, kECExecName, log_path)) {
+  if (IsSuccessCode(GetLogContents(log_config_path_, kECExecName, log_path))) {
     AddCrashMetaUploadFile("log", log_path.BaseName().value());
   }
   FinishCrash(root_crash_directory.Append(

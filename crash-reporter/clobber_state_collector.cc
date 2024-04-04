@@ -107,12 +107,12 @@ bool ClobberStateCollector::Collect() {
   base::FilePath meta_path =
       GetCrashPath(crash_directory, dump_basename, "meta");
 
-  bool result = GetLogContents(log_config_path_, exec_name, log_path);
-  if (result) {
+  if (IsSuccessCode(GetLogContents(log_config_path_, exec_name, log_path))) {
     FinishCrash(meta_path, exec_name, log_path.BaseName().value());
+    return true;
   }
 
-  return result;
+  return false;
 }
 
 // static

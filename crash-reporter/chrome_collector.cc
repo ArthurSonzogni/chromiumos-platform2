@@ -527,7 +527,8 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
   // Run the command specified by the config file to gather logs.
   const FilePath chrome_log_path =
       GetCrashPath(dir, basename, kChromeLogFilename).AddExtension("gz");
-  if (GetLogContents(log_config_path_, key_for_logs, chrome_log_path)) {
+  if (IsSuccessCode(
+          GetLogContents(log_config_path_, key_for_logs, chrome_log_path))) {
     AddLogIfNotTooBig(kChromeLogFilename, chrome_log_path, &logs);
   }
 

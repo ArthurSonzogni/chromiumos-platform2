@@ -425,8 +425,7 @@ bool KernelWarningCollector::Collect(int weight, WarningType type) {
   AddCrashMetaData(kKernelWarningSignatureKey, warning_signature);
 
   // Get the log contents, compress, and attach to crash report.
-  bool result = GetLogContents(log_config_path_, exec_name, log_path);
-  if (result) {
+  if (IsSuccessCode(GetLogContents(log_config_path_, exec_name, log_path))) {
     AddCrashMetaUploadFile("log", log_path.BaseName().value());
   }
 

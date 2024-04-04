@@ -23,6 +23,8 @@
 
 #include "crash-reporter/crash_collector.h"
 
+enum class CrashCollectionStatus;
+
 // Generic failure collector.
 class GenericFailureCollector : public CrashCollector {
  public:
@@ -36,14 +38,14 @@ class GenericFailureCollector : public CrashCollector {
   ~GenericFailureCollector() override;
 
   // Collects generic failure.
-  bool Collect(const std::string& exec_name) {
+  CrashCollectionStatus Collect(const std::string& exec_name) {
     return CollectFull(exec_name, exec_name, std::nullopt,
                        /*use_log_conf_file=*/true);
   }
 
   // Collects generic failure with a weight specified.
-  bool CollectWithWeight(const std::string& exec_name,
-                         std::optional<int> weight) {
+  CrashCollectionStatus CollectWithWeight(const std::string& exec_name,
+                                          std::optional<int> weight) {
     return CollectFull(exec_name, exec_name, weight,
                        /*use_log_conf_file=*/true);
   }
@@ -53,10 +55,10 @@ class GenericFailureCollector : public CrashCollector {
   // log_key_name is a key used for the exec_name as passed to GetLogContents
   // if weight is not nullopt, the "weight" key is set to that value.
   // if use_collectors is false, log contents will be extracted from stdin.
-  bool CollectFull(const std::string& exec_name,
-                   const std::string& log_key_name,
-                   std::optional<int> weight,
-                   bool use_log_conf_file);
+  CrashCollectionStatus CollectFull(const std::string& exec_name,
+                                    const std::string& log_key_name,
+                                    std::optional<int> weight,
+                                    bool use_log_conf_file);
 
   struct HandlerInfoOptions {
     bool suspend_failure = false;
@@ -111,7 +113,8 @@ class GenericFailureCollector : public CrashCollector {
   static const char* const kBrowserHang;
 
   // Generic failure dump consists only of the signature.
-  bool LoadGenericFailure(std::string* content, std::string* signature);
+  CrashCollectionStatus LoadGenericFailure(std::string* content,
+                                           std::string* signature);
 };
 
 #endif  // CRASH_REPORTER_GENERIC_FAILURE_COLLECTOR_H_

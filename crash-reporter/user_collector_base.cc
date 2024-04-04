@@ -343,7 +343,8 @@ CrashCollectionStatus UserCollectorBase::ConvertAndEnqueueCrash(
   FilePath log_path = GetCrashPath(crash_path, dump_basename, "log");
   FilePath proc_log_path = GetCrashPath(crash_path, dump_basename, "proclog");
 
-  if (GetLogContents(FilePath(log_config_path_), exec, log_path)) {
+  if (IsSuccessCode(
+          GetLogContents(FilePath(log_config_path_), exec, log_path))) {
     AddCrashMetaUploadFile("log", log_path.BaseName().value());
   }
 

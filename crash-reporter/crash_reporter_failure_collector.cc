@@ -46,8 +46,7 @@ bool CrashReporterFailureCollector::Collect() {
   FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
   FilePath meta_path = GetCrashPath(crash_directory, dump_basename, "meta");
 
-  bool result = GetLogContents(log_config_path_, kExecName, log_path);
-  if (result) {
+  if (IsSuccessCode(GetLogContents(log_config_path_, kExecName, log_path))) {
     FinishCrash(meta_path, kExecName, log_path.BaseName().value());
   }
   return true;

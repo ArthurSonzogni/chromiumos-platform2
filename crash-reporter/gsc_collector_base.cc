@@ -276,7 +276,8 @@ bool GscCollectorBase::Collect(bool use_saved_lsb) {
   AddCrashMetaData(kSignatureKey, crash_signature);
 
   // Get the log contents, compress, and attach to crash report.
-  if (!GetLogContents(log_config_path_, kGscExecName, gsc_crash_path)) {
+  if (!IsSuccessCode(
+          GetLogContents(log_config_path_, kGscExecName, gsc_crash_path))) {
     // Don't return if we fail here. We still want upload whatever we were able
     // output to syslog, as well as give some indication to developers that the
     // GSC is crashing at all.

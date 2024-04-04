@@ -20,6 +20,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/test_util.h"
 
 using base::FilePath;
@@ -80,7 +81,8 @@ TEST_F(GenericFailureCollectorTest, CollectOKMain) {
   // Collector produces a crash report.
   const char kLogContents[] = "generic failure for testing purposes\n";
   ASSERT_TRUE(test_util::CreateFile(test_path_, kLogContents));
-  EXPECT_TRUE(collector_.Collect("generic-failure"));
+  EXPECT_EQ(collector_.Collect("generic-failure"),
+            CrashCollectionStatus::kSuccess);
   EXPECT_FALSE(IsDirectoryEmpty(test_failure_directory_));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_failure_directory_, "generic_failure.*.meta",
@@ -93,7 +95,8 @@ TEST_F(GenericFailureCollectorTest, SuspendExecName) {
   // Check that the suspend-failure exec name is used
   const char kLogContents[] = "suspend failure for testing purposes\n";
   ASSERT_TRUE(test_util::CreateFile(test_path_, kLogContents));
-  EXPECT_TRUE(collector_.Collect(GenericFailureCollector::kSuspendFailure));
+  EXPECT_EQ(collector_.Collect(GenericFailureCollector::kSuspendFailure),
+            CrashCollectionStatus::kSuccess);
   EXPECT_FALSE(IsDirectoryEmpty(test_failure_directory_));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_failure_directory_, "suspend_failure.*.meta",
@@ -104,14 +107,16 @@ TEST_F(GenericFailureCollectorTest, SuspendExecName) {
 
 TEST_F(GenericFailureCollectorTest, FailureReportDoesNotExist) {
   // Generic failure report file doesn't exist.
-  EXPECT_TRUE(collector_.Collect("generic-failure"));
+  EXPECT_EQ(collector_.Collect("generic-failure"),
+            CrashCollectionStatus::kFailureReadingGenericReport);
   EXPECT_TRUE(IsDirectoryEmpty(test_failure_directory_));
 }
 
 TEST_F(GenericFailureCollectorTest, EmptyFailureReport) {
   // Generic failure report file exists, but doesn't have the expected contents.
   ASSERT_TRUE(test_util::CreateFile(test_path_, ""));
-  EXPECT_TRUE(collector_.Collect("generic-failure"));
+  EXPECT_EQ(collector_.Collect("generic-failure"),
+            CrashCollectionStatus::kBadGenericReportFormat);
   EXPECT_TRUE(IsDirectoryEmpty(test_failure_directory_));
 }
 
@@ -120,9 +125,10 @@ TEST_F(GenericFailureCollectorTest, CollectOKMainServiceFailure) {
   ASSERT_TRUE(test_util::CreateFile(
       test_path_,
       "crash-crash main process (2563) terminated with status 2\n"));
-  EXPECT_TRUE(collector_.CollectFull(
-      "service-failure-crash-crash", GenericFailureCollector::kServiceFailure,
-      /*weight=*/50, /*use_log_conf_file=*/true));
+  EXPECT_EQ(collector_.CollectFull("service-failure-crash-crash",
+                                   GenericFailureCollector::kServiceFailure,
+                                   /*weight=*/50, /*use_log_conf_file=*/true),
+            CrashCollectionStatus::kSuccess);
   EXPECT_FALSE(IsDirectoryEmpty(test_failure_directory_));
 
   base::FilePath meta_path;
@@ -144,9 +150,10 @@ TEST_F(GenericFailureCollectorTest, CollectOKPreStart) {
   ASSERT_TRUE(test_util::CreateFile(
       test_path_,
       "crash-crash pre-start process (2563) terminated with status 2\n"));
-  EXPECT_TRUE(collector_.CollectFull(
-      "service-failure-crash-crash", GenericFailureCollector::kServiceFailure,
-      /*weight=*/50, /*use_log_conf_file=*/true));
+  EXPECT_EQ(collector_.CollectFull("service-failure-crash-crash",
+                                   GenericFailureCollector::kServiceFailure,
+                                   /*weight=*/50, /*use_log_conf_file=*/true),
+            CrashCollectionStatus::kSuccess);
   EXPECT_FALSE(IsDirectoryEmpty(test_failure_directory_));
 
   base::FilePath meta_path;
@@ -177,9 +184,10 @@ TEST_F(GenericFailureCollectorTest, CollectOK_UploadWeightedUMA) {
   ASSERT_TRUE(test_util::CreateFile(
       test_path_,
       "crash-crash pre-start process (2563) terminated with status 2\n"));
-  EXPECT_TRUE(collector_.CollectFull(
-      "service-failure-crash-crash", GenericFailureCollector::kServiceFailure,
-      /*weight=*/50, /*use_log_conf_file=*/true));
+  EXPECT_EQ(collector_.CollectFull("service-failure-crash-crash",
+                                   GenericFailureCollector::kServiceFailure,
+                                   /*weight=*/50, /*use_log_conf_file=*/true),
+            CrashCollectionStatus::kSuccess);
 }
 
 TEST_F(GenericFailureCollectorTest, CollectFullGuestOOM) {
@@ -187,8 +195,9 @@ TEST_F(GenericFailureCollectorTest, CollectFullGuestOOM) {
   std::string log = "killed process 1234 (0xdeadbeef)";
   // log from stdin
   ASSERT_TRUE(test_util::CreateFile(test_path_, sig + '\n' + log + '\n'));
-  EXPECT_TRUE(collector_.CollectFull("guest-oom-event", "", 0,
-                                     /*use_log_conf_file=*/false));
+  EXPECT_EQ(collector_.CollectFull("guest-oom-event", "", 0,
+                                   /*use_log_conf_file=*/false),
+            CrashCollectionStatus::kSuccess);
   EXPECT_FALSE(IsDirectoryEmpty(test_failure_directory_));
 
   base::FilePath meta_path;

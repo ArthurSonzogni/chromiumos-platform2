@@ -85,7 +85,16 @@ enum class CrashCollectionStatus {
   kUnexpectedJavaScriptStackInExecutableCrash = 450,
   kMultipleJavaScriptStacks = 451,
   kFailedJavaScriptStackWrite = 452,
-  kMaxValue = kFailedJavaScriptStackWrite,
+  kFailureReadingGenericReport = 453,
+  kBadGenericReportFormat = 454,
+  kFailedReadingLogConfigFile = 455,
+  kNoExecSpecifiedForGetMultipleLogContents = 456,
+  kExecNotConfiguredForLog = 457,
+  kFailureCreatingLogCollectionTmpFile = 458,
+  kFailureReadingLogCollectionTmpFile = 459,
+  kFailureWritingCompressedLogContents = 460,
+  kFailureWritingLogContents = 461,
+  kMaxValue = kFailureWritingLogContents,
 };
 // LINT.ThenChange(crash_collection_status.cc:status_list)
 

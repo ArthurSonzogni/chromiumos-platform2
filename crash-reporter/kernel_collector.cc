@@ -650,8 +650,8 @@ bool KernelCollector::HandleCrash(const std::string& kernel_dump,
   AddCrashMetaData(kKernelSignatureKey, signature);
 
   // Collect additional logs if one is specified in the config file.
-  if (GetLogContents(log_config_path_, kernel_util::kKernelExecName,
-                     log_path)) {
+  if (IsSuccessCode(GetLogContents(log_config_path_,
+                                   kernel_util::kKernelExecName, log_path))) {
     AddCrashMetaUploadFile("log", log_path.BaseName().value());
   }
 

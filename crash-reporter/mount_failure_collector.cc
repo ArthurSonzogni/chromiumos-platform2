@@ -133,9 +133,8 @@ bool MountFailureCollector::Collect(bool is_mount_failure) {
   base::FilePath meta_path =
       GetCrashPath(crash_directory, dump_basename, "meta");
 
-  bool result =
-      GetMultipleLogContents(log_config_path_, logging_cmds, log_path);
-  if (result) {
+  if (IsSuccessCode(
+          GetMultipleLogContents(log_config_path_, logging_cmds, log_path))) {
     FinishCrash(meta_path, exec_name, log_path.BaseName().value());
   }
 

@@ -1403,13 +1403,14 @@ bool CrashCollector::CheckHasCapacity(const FilePath& crash_directory) {
   return CheckHasCapacity(crash_directory, crash_directory.value());
 }
 
-bool CrashCollector::GetLogContents(const FilePath& config_path,
-                                    const std::string& exec_name,
-                                    const FilePath& output_file) {
+CrashCollectionStatus CrashCollector::GetLogContents(
+    const FilePath& config_path,
+    const std::string& exec_name,
+    const FilePath& output_file) {
   return GetMultipleLogContents(config_path, {exec_name}, output_file);
 }
 
-bool CrashCollector::GetMultipleLogContents(
+CrashCollectionStatus CrashCollector::GetMultipleLogContents(
     const FilePath& config_path,
     const std::vector<std::string>& exec_names,
     const FilePath& output_file) {
@@ -1417,20 +1418,29 @@ bool CrashCollector::GetMultipleLogContents(
   if (!store.Load(config_path)) {
     LOG(WARNING) << "Unable to read log configuration file "
                  << config_path.value();
-    return false;
+    return CrashCollectionStatus::kFailedReadingLogConfigFile;
   }
 
+  CrashCollectionStatus last_error =
+      CrashCollectionStatus::kNoExecSpecifiedForGetMultipleLogContents;
   std::string collated_log_contents;
   for (auto exec_name : exec_names) {
     std::string command;
     if (!store.GetString(exec_name, &command)) {
       LOG(WARNING) << "exec name '" << exec_name << "' not found in log file";
+      if (last_error ==
+          CrashCollectionStatus::kNoExecSpecifiedForGetMultipleLogContents) {
+        // This is a "normal" error, so keep other "real" errors (below) if they
+        // occurred on a previous loop.
+        last_error = CrashCollectionStatus::kExecNotConfiguredForLog;
+      }
       continue;
     }
 
     FilePath raw_output_file;
     if (!base::CreateTemporaryFile(&raw_output_file)) {
       PLOG(WARNING) << "Failed to create temporary file for raw log output.";
+      last_error = CrashCollectionStatus::kFailureCreatingLogCollectionTmpFile;
       continue;
     }
 
@@ -1449,6 +1459,7 @@ bool CrashCollector::GetMultipleLogContents(
     if (!fully_read) {
       if (log_contents.empty()) {
         LOG(WARNING) << "Failed to read raw log contents.";
+        last_error = CrashCollectionStatus::kFailureReadingLogCollectionTmpFile;
         continue;
       }
       // If ReadFileToStringWithMaxSize returned false and log_contents is
@@ -1472,14 +1483,14 @@ bool CrashCollector::GetMultipleLogContents(
   }
 
   if (collated_log_contents.empty()) {
-    return false;
+    return last_error;
   }
 
   return WriteLogContents(collated_log_contents, output_file);
 }
 
-bool CrashCollector::WriteLogContents(std::string& log_contents,
-                                      const base::FilePath& output_file) {
+CrashCollectionStatus CrashCollector::WriteLogContents(
+    std::string& log_contents, const base::FilePath& output_file) {
   // Don't accidentally leak sensitive data.
   StripSensitiveData(&log_contents);
 
@@ -1488,17 +1499,17 @@ bool CrashCollector::WriteLogContents(std::string& log_contents,
                                 log_contents.size())) {
       LOG(WARNING) << "Error writing compressed sanitized log to "
                    << output_file.value();
-      return false;
+      return CrashCollectionStatus::kFailureWritingCompressedLogContents;
     }
   } else {
     if (WriteNewFile(output_file, log_contents) !=
         static_cast<int>(log_contents.length())) {
       PLOG(WARNING) << "Error writing sanitized log to " << output_file.value();
-      return false;
+      return CrashCollectionStatus::kFailureWritingLogContents;
     }
   }
 
-  return true;
+  return CrashCollectionStatus::kSuccess;
 }
 
 bool CrashCollector::GetProcessTree(pid_t pid,
@@ -2270,8 +2281,8 @@ void CrashCollector::EnqueueCollectionErrorLog(CrashCollectionStatus error_type,
   // If we fail to get this log, still try to proceed (the other log could be
   // useful on its own).
   FilePath ps_log_path = GetCrashPath(crash_path, basename, "pslog");
-  if (GetLogContents(FilePath(log_config_path_), kCollectionErrorSignature,
-                     ps_log_path)) {
+  if (IsSuccessCode(GetLogContents(FilePath(log_config_path_),
+                                   kCollectionErrorSignature, ps_log_path))) {
     AddCrashMetaUploadFile("pslog", ps_log_path.BaseName().value());
   } else {
     LOG(ERROR) << "Failed getting collection error log contents for "

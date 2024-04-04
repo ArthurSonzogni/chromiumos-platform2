@@ -2530,11 +2530,13 @@ TEST_F(CrashCollectorTest, GetLogContents) {
       "foobar=echo hello there | \\\n  sed -e \"s/there/world/\"";
   ASSERT_TRUE(test_util::CreateFile(config_file, kConfigContents));
   base::DeleteFile(FilePath(output_file));
-  EXPECT_FALSE(collector_.GetLogContents(config_file, "barfoo", output_file));
+  EXPECT_EQ(collector_.GetLogContents(config_file, "barfoo", output_file),
+            CrashCollectionStatus::kExecNotConfiguredForLog);
   EXPECT_FALSE(base::PathExists(output_file));
   EXPECT_EQ(collector_.get_bytes_written(), 0);
   base::DeleteFile(FilePath(output_file));
-  EXPECT_TRUE(collector_.GetLogContents(config_file, "foobar", output_file));
+  EXPECT_EQ(collector_.GetLogContents(config_file, "foobar", output_file),
+            CrashCollectionStatus::kSuccess);
   ASSERT_TRUE(base::PathExists(output_file));
   EXPECT_GT(collector_.get_bytes_written(), 0);
 
@@ -2558,14 +2560,16 @@ TEST_F(CrashCollectorTest, GetMultipleLogContents) {
   base::DeleteFile(FilePath(output_file));
 
   // If both commands fail, expect no output.
-  EXPECT_FALSE(collector_.GetMultipleLogContents(
-      config_file, {"foobar", "barfoo"}, output_file));
+  EXPECT_EQ(collector_.GetMultipleLogContents(config_file, {"foobar", "barfoo"},
+                                              output_file),
+            CrashCollectionStatus::kExecNotConfiguredForLog);
   ASSERT_FALSE(base::PathExists(output_file));
   EXPECT_EQ(collector_.get_bytes_written(), 0);
 
   // If one command fails, expect output from the other command.
-  EXPECT_TRUE(collector_.GetMultipleLogContents(
-      config_file, {"foobar", "bazbar"}, output_file));
+  EXPECT_EQ(collector_.GetMultipleLogContents(config_file, {"foobar", "bazbar"},
+                                              output_file),
+            CrashCollectionStatus::kSuccess);
   ASSERT_TRUE(base::PathExists(output_file));
   EXPECT_GT(collector_.get_bytes_written(), 0);
   std::string contents;
@@ -2574,8 +2578,9 @@ TEST_F(CrashCollectorTest, GetMultipleLogContents) {
   base::DeleteFile(FilePath(output_file));
 
   // Expect output from both commands.
-  EXPECT_TRUE(collector_.GetMultipleLogContents(
-      config_file, {"foobaz", "bazbar"}, output_file));
+  EXPECT_EQ(collector_.GetMultipleLogContents(config_file, {"foobaz", "bazbar"},
+                                              output_file),
+            CrashCollectionStatus::kSuccess);
   ASSERT_TRUE(base::PathExists(output_file));
   EXPECT_GT(collector_.get_bytes_written(), 0);
   EXPECT_TRUE(base::ReadFileToString(output_file, &contents));
@@ -2618,7 +2623,8 @@ TEST_F(CrashCollectorTest, TruncatedLog) {
   ASSERT_TRUE(test_util::CreateFile(config_file, kConfigContents));
   base::DeleteFile(FilePath(output_file));
   collector_.max_log_size_ = 10;
-  EXPECT_TRUE(collector_.GetLogContents(config_file, "foobar", output_file));
+  EXPECT_EQ(collector_.GetLogContents(config_file, "foobar", output_file),
+            CrashCollectionStatus::kSuccess);
   ASSERT_TRUE(base::PathExists(output_file));
   int64_t file_size = -1;
   EXPECT_TRUE(base::GetFileSize(output_file, &file_size));

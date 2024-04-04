@@ -332,8 +332,8 @@ bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
   FilePath crash_path = GetCrashPath(crash_directory, log_file_name, "log.gz");
 
   // Handle the crash.
-  bool result = GetLogContents(log_config_path_, udev_log_name, crash_path);
-  if (!result) {
+  if (!IsSuccessCode(
+          GetLogContents(log_config_path_, udev_log_name, crash_path))) {
     LOG(ERROR) << "Error reading udev log info " << udev_log_name;
     return false;
   }
@@ -395,7 +395,8 @@ bool UdevCollector::AppendBluetoothCoredump(const FilePath& crash_directory,
     return false;
   }
 
-  if (GetLogContents(log_config_path_, coredump_prefix, log_path)) {
+  if (IsSuccessCode(
+          GetLogContents(log_config_path_, coredump_prefix, log_path))) {
     AddCrashMetaUploadFile("logs", log_path.BaseName().value());
   }
 
@@ -490,8 +491,8 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
     // Collect additional logs if one is specified in the config file.
     std::string udev_log_name = std::string(kCollectUdevSignature) + '-' +
                                 kUdevSubsystemDevCoredump + '-' + driver_name;
-    bool result = GetLogContents(log_config_path_, udev_log_name, log_path);
-    if (result) {
+    if (IsSuccessCode(
+            GetLogContents(log_config_path_, udev_log_name, log_path))) {
       AddCrashMetaUploadFile("logs", log_path.BaseName().value());
     }
 
