@@ -221,15 +221,15 @@ class FingerWebSocket(WebSocket):
         """Run the ectool command and return its stdout as bytes."""
 
         cmdline = [ECTOOL, "--name=cros_fp", command] + list(args)
-        stdout = b""
         while not self.abort_request:
-            try:
-                stdout = subprocess.check_output(cmdline)
-                break
-            except subprocess.CalledProcessError as e:
-                cherrypy.log(f"command '{e.cmd}' failed with {e.returncode}")
-                stdout = b""
-        return stdout
+            status = subprocess.run(cmdline, check=False, capture_output=True)
+            if status.returncode == 0:
+                return status.stdout
+            else:
+                cherrypy.log(
+                    f"command '{status.args}' failed with {status.returncode}"
+                )
+        return b""
 
     def ectool_fpmode(self, *args: str) -> int:
         mode = self.ectool("fpmode", *args).decode("utf-8")
