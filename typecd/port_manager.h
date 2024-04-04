@@ -116,6 +116,8 @@ class PortManager : public UdevMonitor::TypecObserver,
               ModeEntryDpAltModeNotifyInvalidDpCable);
   FRIEND_TEST(PortManagerNotificationTest, ECModeEntryNoCableNotification);
   FRIEND_TEST(PortManagerNotificationTest, ECModeEntryNotifyInvalidDpCable);
+  FRIEND_TEST(PortManagerNotificationTest,
+              ECModeEntryNotifyInvalidDpCableEmarked);
   FRIEND_TEST(MetricsTest, CheckPartnerLocationPreferRightSide);
   FRIEND_TEST(MetricsTest, CheckPartnerLocationPreferLeftSide);
   FRIEND_TEST(MetricsTest, CheckPartnerLocationNoPreference);

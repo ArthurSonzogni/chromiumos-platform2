@@ -435,4 +435,34 @@ TEST_F(PortManagerNotificationTest, ECModeEntryNotifyInvalidDpCable) {
   port_manager_->RunModeEntry(0);
 }
 
+// Test case for notifications during EC mode entry.
+// Port does not enter a mode, but sends CableWarningType::kInvalidDpCable.
+// - OWC TBT4 dock and emarked USB 2.0 cable.
+TEST_F(PortManagerNotificationTest, ECModeEntryNotifyInvalidDpCableEmarked) {
+  // Add OWC TBT4 dock and emarked USB 2.0 cable.
+  AddOWCTBT4Dock(*port_);
+  AddNekteckUSB2PassiveCable(*port_);
+
+  // Set AP mode entry to false for test case covering EC driven mode entry.
+  port_manager_->SetModeEntrySupported(false);
+
+  // Expect |port_manager| to check for cable notifications. This happens
+  // when GetModeEntrySupported returns false.
+  EXPECT_CALL(*port_, CanEnterDPAltMode(_))
+      .WillRepeatedly(DoAll(SetArgPointee<0>(true), Return(true)));
+
+  // Expect to send CableWarningType::kInvalidDpCable.
+  EXPECT_CALL(*dbus_manager_,
+              NotifyCableWarning(CableWarningType::kInvalidDpCable))
+      .Times(1);
+
+  // Configure |port_manager| and run mode entry.
+  port_manager_->SetUserActive(true);
+  port_manager_->SetDBusManager(dbus_manager_.get());
+  port_manager_->SetECUtil(ec_util_.get());
+  port_manager_->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port_)));
+  port_manager_->RunModeEntry(0);
+}
+
 }  // namespace typecd

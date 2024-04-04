@@ -367,8 +367,8 @@ void PortManager::RunModeEntry(int port_num) {
     // If mode entry is not attempted because the AP cannot enter modes, still
     // check for cable notifications.
     bool invalid_dpalt_cable = false;
-    bool can_enter_dp_alt_mode = port->CanEnterDPAltMode(&invalid_dpalt_cable);
-    if (can_enter_dp_alt_mode && invalid_dpalt_cable)
+    port->CanEnterDPAltMode(&invalid_dpalt_cable);
+    if (invalid_dpalt_cable)
       dbus_mgr_->NotifyCableWarning(CableWarningType::kInvalidDpCable);
 
     return;
