@@ -1028,7 +1028,7 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMtkLegacyMT8186) {
             "ro.soc.model=MT8186\n");
 
   dest = "notyetlaunched\n";
-  config()->SetString("/identity", "frid", "Google_Chinchou");
+  config()->SetString("/identity", "frid", "Google_Kyogre");
   AppendArmSocProperties(socinfo_devices_dir, config(), &dest);
   EXPECT_EQ(dest,
             "notyetlaunched\n"
@@ -1036,9 +1036,10 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMtkLegacyMT8186) {
             "ro.soc.model=Kompanio 520 MT8186\n");
 
   const std::vector<std::string> launched_devices = {
-      "Google_Magneton",   "Google_Ponyta",  "Google_Rusty",
-      "Google_Starmie",    "Google_Steelix", "Google_Tentacool",
-      "Google_Tentacruel", "Google_Voltorb"};
+      "Google_Chinchou", "Google_Chinchou360", "Google_Magneton",
+      "Google_Ponyta",   "Google_Rusty",       "Google_Starmie",
+      "Google_Steelix",  "Google_Tentacool",   "Google_Tentacruel",
+      "Google_Voltorb"};
 
   for (auto& device : launched_devices) {
     config()->SetString("/identity", "frid", device);

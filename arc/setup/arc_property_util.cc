@@ -20,6 +20,8 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/containers/contains.h>
+#include <base/containers/fixed_flat_set.h>
 #include <base/time/time.h>
 #include <brillo/cpuinfo.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -448,11 +450,11 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
       if (config && config->GetString("/identity", "frid", &frid)) {
         // Frid format is Google_XXXX
         std::string device = frid.substr(7);
-        const std::vector<std::string> launched_devices = {
-            "Magneton", "Ponyta",    "Rusty",      "Starmie",
-            "Steelix",  "Tentacool", "Tentacruel", "Voltorb"};
-        if (std::find(launched_devices.begin(), launched_devices.end(),
-                      device) != launched_devices.end()) {
+        constexpr auto kLaunchedDevices =
+            base::MakeFixedFlatSet<std::string_view>(
+                {"Chinchou", "Chinchou360", "Magneton", "Ponyta", "Rusty",
+                 "Starmie", "Steelix", "Tentacool", "Tentacruel", "Voltorb"});
+        if (base::Contains(kLaunchedDevices, device)) {
           machine = "MT8186\n";
         }
       } else {
