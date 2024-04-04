@@ -257,8 +257,7 @@ bool WiFiPhy::SupportAPMode() const {
 
 bool WiFiPhy::SupportP2PMode() const {
   return SupportsIftype(NL80211_IFTYPE_P2P_GO) &&
-         SupportsIftype(NL80211_IFTYPE_P2P_CLIENT) &&
-         SupportsIftype(NL80211_IFTYPE_P2P_DEVICE);
+         SupportsIftype(NL80211_IFTYPE_P2P_CLIENT);
 }
 
 uint32_t WiFiPhy::SupportConcurrency(nl80211_iftype iface_type1,
