@@ -51,13 +51,12 @@ const char kManifestNameLegacy[] = "firmware_manifest.prototxt";
 constexpr base::TimeDelta kWedgeCheckDelay = base::Minutes(2);
 constexpr base::TimeDelta kRebootCheckDelay = base::Minutes(1);
 constexpr base::TimeDelta kDlcRemovalDelay = base::Minutes(2);
-constexpr char kDisableAutoUpdatePref[] =
-    "/var/lib/modemfwd/disable_auto_update";
 
 constexpr char kPrefsDir[] = "/var/lib/modemfwd/";
 // The existence of a device id in |kModemsSeenSinceOobeKey| is used to
 // indicate if a modem that belongs to that variant was ever seen.
 constexpr char kModemsSeenSinceOobeKey[] = "modems_seen_since_oobe";
+constexpr char kDisableAutoUpdateKey[] = "disable_auto_update";
 
 constexpr char const* kDevicesSupportingFlashModeCheck[] = {
     "usb:2cb7:0007",  // L850
@@ -107,20 +106,6 @@ base::TimeDelta GetModemWedgeCheckDelay() {
   base::TimeDelta wedge_delay = base::Milliseconds(ms);
   LOG(INFO) << "Use customized wedge reboot delay: " << wedge_delay;
   return wedge_delay;
-}
-
-bool IsAutoUpdateDisabledByPref() {
-  const base::FilePath pref_path(kDisableAutoUpdatePref);
-  std::string contents;
-  if (!base::ReadFileToString(pref_path, &contents))
-    return false;
-
-  int pref_value;
-  if (!base::StringToInt(base::TrimWhitespaceASCII(contents, base::TRIM_ALL),
-                         &pref_value))
-    return false;
-
-  return (pref_value == 1);
 }
 
 bool IsFlashModeCheckEnabledForDeviceId(const std::string& device_id) {
@@ -401,7 +386,7 @@ void Daemon::OnModemCarrierIdReady(
   ELOG(INFO) << "Modem with equipment ID \"" << equipment_id << "\""
              << " and device ID [" << device_id << "] ready to flash";
 
-  if (IsAutoUpdateDisabledByPref()) {
+  if (prefs_->KeyValueMatches(kDisableAutoUpdateKey, "1")) {
     LOG(INFO) << "Update disabled by pref";
     notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false, 0);
     return;
