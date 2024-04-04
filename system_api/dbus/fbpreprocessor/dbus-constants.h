@@ -12,6 +12,8 @@ inline constexpr char kFbPreprocessorServiceName[] =
 inline constexpr char kFbPreprocessorServicePath[] =
     "/org/chromium/FbPreprocessor";
 
+inline constexpr char kDaemonName[] = "fbpreprocessord";
+
 // Daemon-store directories for fbpreprocessord
 inline constexpr char kDaemonStorageRoot[] =
     "/run/daemon-store/fbpreprocessord";
