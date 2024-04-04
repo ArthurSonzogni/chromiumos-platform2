@@ -85,15 +85,23 @@ void VPNDriverMetrics::ReportConnected() {
   // error log below won't be hit.
   ReportDriverType(metrics_, vpn_type_);
 
-  if (connection_state_ != ConnectionState::kConnecting &&
-      connection_state_ != ConnectionState::kReconnecting) {
-    LOG(ERROR) << __func__ << ": unexpected connection state "
-               << base::to_underlying(connection_state_);
-    return;
+  vpn_metrics::VPNHistogramMetric metric;
+  switch (connection_state_) {
+    case ConnectionState::kConnecting:
+      metric = vpn_metrics::kMetricTimeConnectToConnectedMillis;
+      break;
+    case ConnectionState::kReconnecting:
+      metric = vpn_metrics::kMetricTimeReconnectToConnectedMillis;
+      break;
+    case ConnectionState::kConnected:
+    case ConnectionState::kIdle:
+      LOG(ERROR) << __func__ << ": unexpected connection state "
+                 << base::to_underlying(connection_state_);
+      return;
   }
 
-  SetConnectionState(ConnectionState::kConnected);
-  // TODO(b/331743444): Report timer metrics.
+  base::TimeDelta duration = SetConnectionState(ConnectionState::kConnected);
+  metrics_->SendToUMA(metric, vpn_type_, duration.InMilliseconds());
 }
 
 void VPNDriverMetrics::ReportReconnecting() {
@@ -103,19 +111,35 @@ void VPNDriverMetrics::ReportReconnecting() {
     return;
   }
 
-  SetConnectionState(ConnectionState::kReconnecting);
-  // TODO(b/331743444): Report timer metrics.
+  base::TimeDelta duration = SetConnectionState(ConnectionState::kReconnecting);
+  metrics_->SendToUMA(vpn_metrics::kMetricTimeConnectedToDisconnectedSeconds,
+                      vpn_type_, duration.InSeconds());
 }
 
 void VPNDriverMetrics::ReportDisconnected() {
-  if (connection_state_ == ConnectionState::kIdle) {
-    LOG(ERROR) << __func__ << ": unexpected connection state "
-               << base::to_underlying(connection_state_);
-    return;
+  vpn_metrics::VPNHistogramMetric metric;
+  bool metric_is_in_seconds = false;
+  switch (connection_state_) {
+    case ConnectionState::kConnecting:
+      metric = vpn_metrics::kMetricTimeConnectToIdleMillis;
+      break;
+    case ConnectionState::kReconnecting:
+      metric = vpn_metrics::kMetricTimeReconnectToIdleMillis;
+      break;
+    case ConnectionState::kConnected:
+      metric = vpn_metrics::kMetricTimeConnectedToDisconnectedSeconds;
+      metric_is_in_seconds = true;
+      break;
+    case ConnectionState::kIdle:
+      LOG(ERROR) << __func__ << ": unexpected connection state "
+                 << base::to_underlying(connection_state_);
+      return;
   }
 
-  SetConnectionState(ConnectionState::kIdle);
-  // TODO(b/331743444): Report timer metrics.
+  base::TimeDelta duration = SetConnectionState(ConnectionState::kIdle);
+  int value =
+      metric_is_in_seconds ? duration.InSeconds() : duration.InMilliseconds();
+  metrics_->SendToUMA(metric, vpn_type_, value);
 }
 
 base::TimeDelta VPNDriverMetrics::SetConnectionState(

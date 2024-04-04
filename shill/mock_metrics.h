@@ -117,6 +117,12 @@ class MockMetrics : public Metrics {
                const std::string&,
                int),
               (override));
+  MOCK_METHOD(void,
+              SendToUMA,
+              (const Metrics::HistogramMetric<Metrics::NameByVPNType>& metric,
+               VPNType,
+               int),
+              (override));
   MOCK_METHOD(bool, SendBoolToUMA, (const std::string&, bool), (override));
   MOCK_METHOD(bool,
               SendToUMA,

@@ -2538,6 +2538,11 @@ class Metrics {
                          const std::string& suffix,
                          int sample);
 
+  // Sends logarithmic histogram data to UMA for a metric split by VPN type.
+  virtual void SendToUMA(const HistogramMetric<NameByVPNType>& metric,
+                         VPNType type,
+                         int sample);
+
   // Sends sparse histogram data to UMA for a metric with a fixed name.
   virtual void SendSparseToUMA(const SparseMetric<FixedName>& metric,
                                int sample);

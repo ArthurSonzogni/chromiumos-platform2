@@ -210,6 +210,15 @@ void Metrics::SendToUMA(const Metrics::HistogramMetric<PrefixName>& metric,
                       metric.min, metric.max, metric.num_buckets);
 }
 
+void Metrics::SendToUMA(const HistogramMetric<NameByVPNType>& metric,
+                        VPNType type,
+                        int sample) {
+  const std::string name =
+      base::StrCat({kMetricPrefix, ".Vpn.", VPNTypeToMetricString(type), ".",
+                    metric.n.name});
+  library_->SendToUMA(name, sample, metric.min, metric.max, metric.num_buckets);
+}
+
 void Metrics::SendSparseToUMA(const SparseMetric<FixedName>& metric,
                               int sample) {
   // The std::string conversion should be removed once MetricsLibraryInterface
