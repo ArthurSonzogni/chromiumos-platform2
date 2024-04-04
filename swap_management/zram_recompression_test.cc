@@ -26,7 +26,7 @@ class MockZramRecompression : public swap_management::ZramRecompression {
   MockZramRecompression& operator=(const MockZramRecompression&) = delete;
   MockZramRecompression(const MockZramRecompression&) = delete;
 
-  void PeriodicRecompress() { ZramRecompression::Get()->PeriodicRecompress(); }
+  void PeriodicRecompress() { ZramRecompression::PeriodicRecompress(); }
 };
 
 class ZramRecompressionTest : public ::testing::Test {

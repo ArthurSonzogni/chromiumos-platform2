@@ -27,24 +27,22 @@ class MockZramWriteback : public swap_management::ZramWriteback {
   MockZramWriteback& operator=(const MockZramWriteback&) = delete;
   MockZramWriteback(const MockZramWriteback&) = delete;
 
-  void MockPeriodicWriteback() {
+  void PeriodicWriteback() {
     wb_size_bytes_ = 644874240;
     zram_nr_pages_ = 4072148;
-    PeriodicWriteback();
+    ZramWriteback::PeriodicWriteback();
   }
 
   absl::Status SetZramWritebackConfigIfOverriden(const std::string& key,
                                                  const std::string& value) {
-    return ZramWriteback::Get()->SetZramWritebackConfigIfOverriden(key, value);
+    return ZramWriteback::SetZramWritebackConfigIfOverriden(key, value);
   }
 
   uint64_t GetWritebackDailyLimit() {
-    return ZramWriteback::Get()->GetWritebackDailyLimit();
+    return ZramWriteback::GetWritebackDailyLimit();
   }
 
-  void AddRecord(uint64_t wb_pages) {
-    return ZramWriteback::Get()->AddRecord(wb_pages);
-  }
+  void AddRecord(uint64_t wb_pages) { ZramWriteback::AddRecord(wb_pages); }
 };
 
 class ZramWritebackTest : public ::testing::Test {
@@ -247,7 +245,7 @@ TEST_F(ZramWritebackTest, PeriodicWriteback) {
       ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
       .WillOnce(DoAll(SetArgPointee<1>("0\n"), Return(absl::OkStatus())));
 
-  mock_zram_writeback_->MockPeriodicWriteback();
+  mock_zram_writeback_->PeriodicWriteback();
 }
 
 TEST_F(ZramWritebackTest, DailyLimit) {
