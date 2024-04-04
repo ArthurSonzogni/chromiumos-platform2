@@ -43,7 +43,15 @@ void RunCrashReporter(const std::vector<std::string>& flags,
   int stdin_fd = cmd.GetPipe(STDIN_FILENO);
   CHECK(base::WriteFileDescriptor(stdin_fd, input));
   CHECK_GE(close(stdin_fd), 0);
-  CHECK_EQ(0, cmd.Wait());
+  int wait_result = cmd.Wait();
+  // Fail if we couldn't exec crash reporter.
+  CHECK_NE(wait_result, brillo::Process::kErrorExitStatus);
+  // Otherwise, we exec'ed crash reporter. If it fails, it should record
+  // CrOSEvent metrics with details of the failure, so we don't need to crash
+  // just to generate a failure report.
+  if (wait_result != 0) {
+    LOG(ERROR) << "crash_reporter returned failure code " << wait_result;
+  }
 }
 
 std::unique_ptr<dbus::Signal> MakeOomSignal(const int64_t oom_timestamp_ms) {
