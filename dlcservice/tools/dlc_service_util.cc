@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <iostream>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -19,6 +20,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>
@@ -80,23 +82,22 @@ class DlcServiceUtil : public brillo::Daemon {
   ~DlcServiceUtil() override = default;
 
  private:
+  enum Action {
+    kInstall,
+    kUninstall,
+    kPurge,
+    kDeploy,
+    kList,
+    kDlcState,
+    kGetExisting,
+    kUnload
+  };
+
   int OnEventLoopStarted() override {
     int error = EX_OK;
     if (!Init(&error)) {
       LOG(ERROR) << "Failed to initialize client.";
       return error;
-    }
-    dlc_service_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
-        base::BindOnce(&DlcServiceUtil::Process,
-                       weak_ptr_factory_.GetWeakPtr()));
-    return EX_OK;
-  }
-
-  void Process(bool is_available) {
-    if (!is_available) {
-      LOG(ERROR) << "dlcservice is not available.";
-      QuitWithExitCode(EX_SOFTWARE);
-      return;
     }
 
     // "--install" related flags.
@@ -135,62 +136,121 @@ class DlcServiceUtil : public brillo::Daemon {
                 "Check mount points to confirm installed DLC(s).");
     DEFINE_string(dump, "",
                   "Path to dump to, by default will print to stdout.");
+    DEFINE_int32(timeout, 0,
+                 "Timeout seconds waiting for DLC service and the command. No "
+                 "timeout when setting to 0.");
+    DEFINE_bool(wait_for_service, true,
+                "Wait for the DLC service to be available.");
 
     brillo::FlagHelper::Init(argc_, argv_, "dlcservice_util");
 
     // Enforce mutually exclusive flags.
-    vector<bool> exclusive_flags = {
-        FLAGS_install, FLAGS_uninstall, FLAGS_purge,        FLAGS_deploy,
-        FLAGS_list,    FLAGS_dlc_state, FLAGS_get_existing, FLAGS_unload};
-    if (std::count(exclusive_flags.begin(), exclusive_flags.end(), true) != 1) {
+    vector<std::pair<bool, Action>> exclusive_action_flags = {
+        {FLAGS_install, kInstall},
+        {FLAGS_uninstall, kUninstall},
+        {FLAGS_purge, kPurge},
+        {FLAGS_deploy, kDeploy},
+        {FLAGS_list, kList},
+        {FLAGS_dlc_state, kDlcState},
+        {FLAGS_get_existing, kGetExisting},
+        {FLAGS_unload, kUnload}};
+    int flags_count = 0;
+    for (const auto& [flag, action] : exclusive_action_flags) {
+      if (flag) {
+        action_ = action;
+        ++flags_count;
+      }
+    }
+    if (flags_count != 1) {
       LOG(ERROR)
           << "Only one of --install, --uninstall, --purge, --list, --deploy, "
              "--get_existing, --dlc_state, --unload must be set.";
-      QuitWithExitCode(EX_SOFTWARE);
+      return EX_USAGE;
+    }
+
+    if (FLAGS_user_tied || FLAGS_scaled) {
+      select_ = std::make_optional<dlcservice::SelectDlc>();
+      select_->set_user_tied(FLAGS_user_tied);
+      select_->set_scaled(FLAGS_scaled);
+    }
+    check_mount_ = FLAGS_check_mount;
+    dump_ = FilePath(FLAGS_dump);
+
+    dlc_id_ = FLAGS_id;
+    omaha_url_ = FLAGS_omaha_url;
+    reserve_ = FLAGS_reserve;
+
+    if (FLAGS_timeout > 0) {
+      // Set the timeout before waiting for DLC service and process the command.
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&DlcServiceUtil::TimeoutQuit,
+                         weak_ptr_factory_.GetWeakPtr()),
+          base::Seconds(FLAGS_timeout));
+    } else if (FLAGS_timeout < 0) {
+      LOG(ERROR) << "Invalid timeout value=" << FLAGS_timeout;
+      return EX_USAGE;
+    }
+
+    if (FLAGS_wait_for_service) {
+      // Wait for the DLC service.
+      dlc_service_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(
+          base::BindOnce(&DlcServiceUtil::Process,
+                         weak_ptr_factory_.GetWeakPtr()));
+    } else {
+      Process(/*is_available=*/true);
+    }
+
+    return EX_OK;
+  }
+
+  void Process(bool is_available) {
+    if (!is_available) {
+      LOG(ERROR) << "dlcservice is not available.";
+      QuitWithExitCode(EX_UNAVAILABLE);
       return;
     }
 
     // Called with "--list".
-    if (FLAGS_list) {
+    if (action_ == kList) {
       dlcservice::ListRequest request;
-      request.set_check_mount(FLAGS_check_mount);
-      if (FLAGS_user_tied || FLAGS_scaled) {
-        auto* select = request.mutable_select();
-        select->set_user_tied(FLAGS_user_tied);
-        select->set_scaled(FLAGS_scaled);
-      }
+      request.set_check_mount(check_mount_);
+      if (select_)
+        *request.mutable_select() = *select_;
 
       dlcservice::DlcStateList installed_dlcs;
       if (!GetInstalled(request, &installed_dlcs)) {
         QuitWithExitCode(EX_SOFTWARE);
         return;
       }
-      PrintInstalled(FLAGS_dump, installed_dlcs);
+      PrintInstalled(dump_, installed_dlcs);
       Quit();
       return;
     }
 
     // Called with "--get_existing".
-    if (FLAGS_get_existing) {
+    if (action_ == kGetExisting) {
       DlcsWithContent dlcs_with_content;
       if (!GetExisting(&dlcs_with_content)) {
         QuitWithExitCode(EX_SOFTWARE);
         return;
       }
-      PrintDlcsWithContent(FLAGS_dump, dlcs_with_content);
+      PrintDlcsWithContent(dump_, dlcs_with_content);
       Quit();
       return;
     }
 
     // Called with "--unload".
-    if (FLAGS_unload) {
+    if (action_ == kUnload) {
       dlcservice::UnloadRequest request;
-      if (FLAGS_id.size()) {
-        request.set_id(FLAGS_id);
+      if (dlc_id_.size()) {
+        request.set_id(dlc_id_);
+      } else if (select_) {
+        *request.mutable_select() = *select_;
       } else {
-        auto* select = request.mutable_select();
-        select->set_user_tied(FLAGS_user_tied);
-        select->set_scaled(FLAGS_scaled);
+        LOG(ERROR) << "Please specify a DLC ID or DLC selections.";
+        QuitWithExitCode(EX_USAGE);
+        return;
       }
       if (!Unload(request)) {
         QuitWithExitCode(EX_SOFTWARE);
@@ -200,18 +260,14 @@ class DlcServiceUtil : public brillo::Daemon {
       return;
     }
 
-    if (FLAGS_id.empty()) {
+    if (dlc_id_.empty()) {
       LOG(ERROR) << "Please specify a single DLC ID.";
-      QuitWithExitCode(EX_SOFTWARE);
+      QuitWithExitCode(EX_USAGE);
       return;
     }
 
-    dlc_id_ = FLAGS_id;
-    omaha_url_ = FLAGS_omaha_url;
-    reserve_ = FLAGS_reserve;
-
     // Called with "--install".
-    if (FLAGS_install) {
+    if (action_ == kInstall) {
       // Set up callbacks
       dlc_service_proxy_->RegisterDlcStateChangedSignalHandler(
           base::BindRepeating(&DlcServiceUtil::OnDlcStateChanged,
@@ -222,7 +278,7 @@ class DlcServiceUtil : public brillo::Daemon {
     }
 
     // Called with "--uninstall".
-    if (FLAGS_uninstall) {
+    if (action_ == kUninstall) {
       if (Uninstall(false)) {
         Quit();
         return;
@@ -230,7 +286,7 @@ class DlcServiceUtil : public brillo::Daemon {
     }
 
     // Called with "--purge".
-    if (FLAGS_purge) {
+    if (action_ == kPurge) {
       if (Uninstall(true)) {
         Quit();
         return;
@@ -238,7 +294,7 @@ class DlcServiceUtil : public brillo::Daemon {
     }
 
     // Called with "--deploy".
-    if (FLAGS_deploy) {
+    if (action_ == kDeploy) {
       if (Deploy()) {
         Quit();
         return;
@@ -246,13 +302,13 @@ class DlcServiceUtil : public brillo::Daemon {
     }
 
     // Called with "--dlc_state".
-    if (FLAGS_dlc_state) {
+    if (action_ == kDlcState) {
       DlcState state;
       if (!GetDlcState(dlc_id_, &state)) {
         QuitWithExitCode(EX_SOFTWARE);
         return;
       }
-      PrintDlcState(FLAGS_dump, state);
+      PrintDlcState(dump_, state);
       Quit();
       return;
     }
@@ -274,6 +330,11 @@ class DlcServiceUtil : public brillo::Daemon {
     dlc_service_proxy_ = std::make_unique<DlcServiceInterfaceProxy>(bus);
 
     return true;
+  }
+
+  void TimeoutQuit() {
+    LOG(ERROR) << "dlcservice_util command timeout.";
+    QuitWithExitCode(EX_SOFTWARE);
   }
 
   // Callback invoked on receiving |OnDlcStateChanged| signal.
@@ -423,7 +484,7 @@ class DlcServiceUtil : public brillo::Daemon {
   }
 
   // Prints the DLC state.
-  void PrintDlcState(const string& dump, const DlcState& state) {
+  void PrintDlcState(const FilePath& dump, const DlcState& state) {
     Dict dict;
     dict.Set("id", state.id());
     dict.Set("last_error_code", state.last_error_code());
@@ -450,7 +511,7 @@ class DlcServiceUtil : public brillo::Daemon {
   }
 
   // Prints the information for DLCs with content.
-  void PrintDlcsWithContent(const string& dump,
+  void PrintDlcsWithContent(const FilePath& dump,
                             const dlcservice::DlcsWithContent& dlcs) {
     List list;
     for (const auto& dlc_info : dlcs.dlc_infos()) {
@@ -484,7 +545,7 @@ class DlcServiceUtil : public brillo::Daemon {
   }
 
   // Helper to print to file, or stdout if |path| is empty.
-  void PrintToFileOrStdout(const string& path, const Value& value) {
+  void PrintToFileOrStdout(const FilePath& path, const Value& value) {
     string json;
     if (!base::JSONWriter::WriteWithOptions(
             value, base::JSONWriter::OPTIONS_PRETTY_PRINT, &json)) {
@@ -499,7 +560,7 @@ class DlcServiceUtil : public brillo::Daemon {
     }
   }
 
-  void PrintInstalled(const string& dump,
+  void PrintInstalled(const FilePath& dump,
                       const dlcservice::DlcStateList& dlcs) {
     Dict dict;
     for (const auto& dlc_state : dlcs.states()) {
@@ -542,12 +603,20 @@ class DlcServiceUtil : public brillo::Daemon {
   int argc_;
   const char** argv_;
 
+  // The action to take.
+  Action action_;
   // The ID of the current DLC.
   string dlc_id_;
   // Customized Omaha server URL (empty being the default URL).
   string omaha_url_;
   // Reserve the DLC on install success/failure.
   bool reserve_ = false;
+  // Select DLCs based on manifest fields.
+  std::optional<dlcservice::SelectDlc> select_;
+  // Check mount points to confirm installed DLC(s).
+  bool check_mount_ = false;
+  // Path to dump to.
+  FilePath dump_;
 
   // Delayed install task ID, to not dupe installation calls.
   brillo::MessageLoop::TaskId delayed_install_id_ =
