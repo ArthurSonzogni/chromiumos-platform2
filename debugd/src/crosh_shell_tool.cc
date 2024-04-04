@@ -6,6 +6,7 @@
 
 #include "debugd/src/error_utils.h"
 
+#include <algorithm>
 #include <fcntl.h>
 #include <poll.h>
 #include <span>
@@ -61,39 +62,18 @@ void SetOwnerToChronos(const base::ScopedFD& fd) {
   }
 }
 
-// Sets up a separate process to listen for SIGWINCH on the provided eventfd.
-//
-// When an event is received, an ioctl() is triggered so that any foreground
-// processes the shell has launched can resize correctly.
-void SigwinchThread(int fd, int primary_fd, int eventfd) {
-  switch (fork()) {
-    case -1:
-      PLOG(ERROR) << "fork " << kCroshSyscallErrorString;
-      exit(1);
-    case 0:
-      // Child.
-
-      pollfd pfd = {eventfd, POLLIN, 0};
-      while (true) {
-        int poll_result = poll(&pfd, 1, -1);
-
-        if (poll_result > 0 && pfd.revents & POLLIN) {
-          winsize window_size;
-          // Get the window size with TIOCGWINSZ, then set it with TIOCSWINSZ
-          // ioctl() calls so that the shell can resize child programs.
-          if (ioctl(fd, TIOCGWINSZ, &window_size) != 0) {
-            PLOG(ERROR) << kCroshIoctlErrorString;
-            exit(1);
-          }
-          if (ioctl(primary_fd, TIOCSWINSZ, &window_size) != 0) {
-            PLOG(ERROR) << kCroshIoctlErrorString;
-            exit(1);
-          }
-        }
-      }
-
-      // For the default parent case, we just return because we don't need to
-      // use the child PID.
+void UpdateWindowSize(const base::ScopedFD& infd,
+                      const base::ScopedFD& primary_fd) {
+  // Get the window size with TIOCGWINSZ, then set it with TIOCSWINSZ
+  // ioctl() calls so that the shell can resize child programs.
+  winsize window_size;
+  if (ioctl(infd.get(), TIOCGWINSZ, &window_size) != 0) {
+    PLOG(ERROR) << kCroshIoctlErrorString;
+    exit(1);
+  }
+  if (ioctl(primary_fd.get(), TIOCSWINSZ, &window_size) != 0) {
+    PLOG(ERROR) << kCroshIoctlErrorString;
+    exit(1);
   }
 }
 
@@ -139,15 +119,8 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
     exit(1);
   }
 
-  winsize window_size;
-  if (ioctl(fd, TIOCGWINSZ, &window_size) != 0) {
-    PLOG(ERROR) << kCroshIoctlErrorString;
-    exit(1);
-  }
-  if (ioctl(primary_fd, TIOCSWINSZ, &window_size) != 0) {
-    PLOG(ERROR) << kCroshIoctlErrorString;
-    exit(1);
-  }
+  UpdateWindowSize(infd, scoped_primary_fd);
+
   const char* primary_name = ptsname(primary_fd);
   if (primary_name == nullptr) {
     PLOG(ERROR) << "ptsname " << kCroshSyscallErrorString;
@@ -211,11 +184,9 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
         exit(1);
       }
       break;
-    default:
-      // Parent.
-      SigwinchThread(fd, primary_fd, eventfd.get());
   }
 
+  // Parent.
   scoped_subordinate_fd.reset();
   // Handle pseudo terminal IO.
   // TODO(b/323557951): determine if there’s a better way to do this with
@@ -225,17 +196,11 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
   fd_set set;
   FD_ZERO(&set);
   while (true) {
-    if (ioctl(fd, TIOCGWINSZ, &window_size) != 0) {
-      PLOG(ERROR) << kCroshIoctlErrorString;
-      exit(1);
-    }
-    if (ioctl(primary_fd, TIOCSWINSZ, &window_size) != 0) {
-      PLOG(ERROR) << kCroshIoctlErrorString;
-      exit(1);
-    }
     FD_SET(fd, &set);
     FD_SET(primary_fd, &set);
-    if (select(primary_fd + 1, &set, nullptr, nullptr, nullptr) < 0)
+    FD_SET(eventfd.get(), &set);
+    int max_fd = std::max({fd, primary_fd, eventfd.get()});
+    if (select(max_fd + 1, &set, nullptr, nullptr, nullptr) < 0)
       break;
 
     if (FD_ISSET(fd, &set)) {
@@ -259,6 +224,14 @@ void SetUpPseudoTerminal(const base::ScopedFD& shell_lifeline_fd,
           exit(1);
         }
       }
+    }
+    if (FD_ISSET(eventfd.get(), &set)) {
+      // Read the eventfd to reset the counter.
+      uint64_t counter;
+      ret = read(eventfd.get(), &counter, sizeof(counter));
+      if (ret < 0)
+        break;
+      UpdateWindowSize(infd, scoped_primary_fd);
     }
   }
 
