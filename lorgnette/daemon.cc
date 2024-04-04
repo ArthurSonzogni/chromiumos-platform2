@@ -82,14 +82,22 @@ void Daemon::OnShutdown(int* return_code) {
 }
 
 void Daemon::OnTimeout() {
-  if (device_tracker_->NumActiveDiscoverySessions() > 0) {
-    base::TimeDelta idle_time =
-        base::Time::Now() - device_tracker_->LastDiscoverySessionActivity();
-    if (idle_time < kMaxDiscoverySessionTime) {
-      PostponeShutdown(kTimeoutCheckInterval);
-      return;
-    }
+  // While there are active discovery sessions, they get a long timeout.  Once
+  // there are no active sessions, the normal short timeout from the last
+  // discovery session activity applies.
+  base::TimeDelta idle_time =
+      base::Time::Now() - device_tracker_->LastDiscoverySessionActivity();
+  base::TimeDelta discovery_timeout =
+      device_tracker_->NumActiveDiscoverySessions() > 0
+          ? kMaxDiscoverySessionTime
+          : kTimeoutCheckInterval;
+  if (idle_time < discovery_timeout) {
+    PostponeShutdown(kTimeoutCheckInterval);
+    return;
   }
+
+  // TODO(b/276909624): Change this logic to match the discovery session logic
+  // above.
   if (device_tracker_->NumOpenScanners() > 0) {
     base::TimeDelta idle_time =
         base::Time::Now() - device_tracker_->LastOpenScannerActivity();

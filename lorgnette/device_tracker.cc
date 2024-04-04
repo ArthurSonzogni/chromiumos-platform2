@@ -104,7 +104,8 @@ DeviceTracker::DeviceTracker(SaneClient* sane_client, LibusbWrapper* libusb)
       dlc_client_(nullptr),
       dlc_started_(false),
       dlc_completed_successfully_(false),
-      smallest_max_read_size_(kSmallestMaxReadSize) {
+      smallest_max_read_size_(kSmallestMaxReadSize),
+      last_discovery_activity_(base::Time::UnixEpoch()) {
   DCHECK(sane_client_);
   DCHECK(libusb_);
 }
@@ -138,10 +139,10 @@ size_t DeviceTracker::NumActiveDiscoverySessions() const {
 }
 
 base::Time DeviceTracker::LastDiscoverySessionActivity() const {
-  base::Time activity = base::Time::UnixEpoch();
+  base::Time activity = last_discovery_activity_;
   for (const auto& session : discovery_sessions_) {
-    if (session.second.start_time > activity) {
-      activity = session.second.start_time;
+    if (session.second.last_activity > activity) {
+      activity = session.second.last_activity;
     }
   }
   return activity;
@@ -157,8 +158,8 @@ base::Time DeviceTracker::LastOpenScannerActivity() const {
     if (scanner.second.start_time > activity) {
       activity = scanner.second.start_time;
     }
-    // TODO(bmgordon): Include subsequent timestamps once more operations
-    // are implemented.
+    // TODO(b/276909624): Update to match the behavior of
+    // LastDiscoverySessionActivity.
   }
   return activity;
 }
@@ -191,14 +192,10 @@ StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
   }
   DiscoverySessionState& session = discovery_sessions_[session_id];
   session.client_id = client_id;
-  session.start_time = base::Time::Now();
+  session.last_activity = base::Time::Now();
   session.dlc_policy = request.download_policy();
   session.local_only = request.local_only();
   session.preferred_only = request.preferred_only();
-
-  // if (!dlc_client_) {
-  //   LOG(ERROR) << __func__ << ": DlcClient not set";
-  // }
 
   // Close any open scanner handles owned by the same client.  This needs to be
   // done whether the session is new or not because the client could have opened
@@ -221,6 +218,7 @@ StartScannerDiscoveryResponse DeviceTracker::StartScannerDiscovery(
       FROM_HERE, base::BindOnce(&DeviceTracker::StartDiscoverySessionInternal,
                                 weak_factory_.GetWeakPtr(), session_id));
 
+  last_discovery_activity_ = base::Time::Now();
   response.set_started(true);
   response.set_session_id(session_id);
   return response;
@@ -239,6 +237,7 @@ StopScannerDiscoveryResponse DeviceTracker::StopScannerDiscovery(
 
   discovery_sessions_.erase(session_id);
   SendSessionEndingSignal(session_id);
+  last_discovery_activity_ = base::Time::Now();
 
   response.set_stopped(true);
   return response;
@@ -261,6 +260,11 @@ std::optional<DeviceTracker::DiscoverySessionState*> DeviceTracker::GetSession(
 
 void DeviceTracker::SendScannerAddedSignal(std::string session_id,
                                            ScannerInfo scanner) {
+  auto maybe_session = GetSession(session_id);
+  if (maybe_session) {
+    maybe_session.value()->last_activity = base::Time::Now();
+  }
+
   ScannerListChangedSignal signal;
   signal.set_event_type(ScannerListChangedSignal::SCANNER_ADDED);
   signal.set_session_id(std::move(session_id));

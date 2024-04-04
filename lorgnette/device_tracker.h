@@ -139,7 +139,7 @@ class DeviceTracker {
  private:
   struct DiscoverySessionState {
     std::string client_id;
-    base::Time start_time;
+    base::Time last_activity;
     BackendDownloadPolicy dlc_policy;
     std::vector<std::unique_ptr<PortToken>> port_tokens;
     bool local_only;
@@ -295,6 +295,9 @@ class DeviceTracker {
 
   // Smallest max_read_size the client can request.
   size_t smallest_max_read_size_;
+
+  // Most recent activity in any discovery session, including termination.
+  base::Time last_discovery_activity_;
 
   // Keep as the last member variable.
   base::WeakPtrFactory<DeviceTracker> weak_factory_
