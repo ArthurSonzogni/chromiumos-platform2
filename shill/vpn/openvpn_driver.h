@@ -23,6 +23,7 @@
 #include "shill/network/network.h"
 #include "shill/rpc_task.h"
 #include "shill/vpn/vpn_driver.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {
@@ -63,7 +64,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // Service::kStateFailure, sets the failure reason to |failure|, sets its
   // ErrorDetails property to |error_details|, and disassociates from the
   // service.
-  virtual void FailService(Service::ConnectFailure failure,
+  virtual void FailService(VPNEndReason failure,
                            std::string_view error_details);
 
   // Append zero-valued, single-valued and double-valued options to the

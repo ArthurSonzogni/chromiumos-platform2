@@ -16,6 +16,7 @@
 
 #include "shill/metrics.h"
 #include "shill/vpn/vpn_driver.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {
@@ -86,8 +87,7 @@ class WireGuardDriver : public VPNDriver {
 
   // Calls Cleanup(), and if there is a service associated through
   // ConnectAsync(), notifies it of the failure.
-  void FailService(Service::ConnectFailure failure,
-                   std::string_view error_details);
+  void FailService(VPNEndReason failure, std::string_view error_details);
   // Resets states and deallocate all resources.
   void Cleanup();
 

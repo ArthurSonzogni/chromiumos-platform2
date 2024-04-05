@@ -40,6 +40,7 @@
 #include "shill/metrics.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_types.h"
 
 namespace shill {
@@ -245,7 +246,8 @@ void ThirdPartyVpnDriver::UpdateConnectionState(
     return;
   }
   if (event_handler_ && connection_state == Service::kStateFailure) {
-    FailService(Service::kFailureConnect, "Failure state set by D-Bus caller");
+    FailService(VPNEndReason::kFailureUnknown,
+                "Failure state set by D-Bus caller");
     return;
   }
   if (!event_handler_ || connection_state != Service::kStateOnline) {
@@ -479,10 +481,10 @@ base::TimeDelta ThirdPartyVpnDriver::ConnectAsync(EventHandler* handler) {
   if (!manager()->device_info()->CreateTunnelInterface(base::BindOnce(
           &ThirdPartyVpnDriver::OnLinkReady, weak_factory_.GetWeakPtr()))) {
     dispatcher()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&ThirdPartyVpnDriver::FailService,
-                       weak_factory_.GetWeakPtr(), Service::kFailureInternal,
-                       "Could not to create tunnel interface."));
+        FROM_HERE, base::BindOnce(&ThirdPartyVpnDriver::FailService,
+                                  weak_factory_.GetWeakPtr(),
+                                  VPNEndReason::kFailureInternal,
+                                  "Could not to create tunnel interface."));
     return kTimeoutNone;
   }
   return kConnectTimeout;
@@ -507,7 +509,7 @@ void ThirdPartyVpnDriver::OnLinkReady(const std::string& link_name,
 
   tun_fd_ = manager()->device_info()->OpenTunnelInterface(interface_name_);
   if (tun_fd_ < 0) {
-    FailService(Service::kFailureInternal, "Unable to open tun interface");
+    FailService(VPNEndReason::kFailureInternal, "Unable to open tun interface");
     return;
   }
 
@@ -534,12 +536,13 @@ std::unique_ptr<net_base::NetworkConfig> ThirdPartyVpnDriver::GetNetworkConfig()
   return std::make_unique<net_base::NetworkConfig>(*network_config_);
 }
 
-void ThirdPartyVpnDriver::FailService(Service::ConnectFailure failure,
+void ThirdPartyVpnDriver::FailService(VPNEndReason failure,
                                       std::string_view error_details) {
   SLOG(2) << __func__ << "(" << error_details << ")";
   Cleanup();
   if (event_handler_) {
-    event_handler_->OnDriverFailure(failure, error_details);
+    event_handler_->OnDriverFailure(VPNEndReasonToServiceFailure(failure),
+                                    error_details);
     event_handler_ = nullptr;
   }
 }
@@ -561,7 +564,7 @@ void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
   if (event == DefaultPhysicalServiceEvent::kDown ||
       event == DefaultPhysicalServiceEvent::kChanged) {
     if (!reconnect_supported_) {
-      FailService(Service::kFailureInternal,
+      FailService(VPNEndReason::kNetworkChange,
                   "Underlying network disconnected.");
       return;
     }
@@ -615,7 +618,7 @@ void ThirdPartyVpnDriver::OnConnectTimeout() {
   }
   adaptor_interface_->EmitPlatformMessage(
       static_cast<uint32_t>(PlatformMessage::kError));
-  FailService(Service::kFailureConnect, "Connection timed out");
+  FailService(VPNEndReason::kConnectTimeout, "Connection timed out");
 }
 
 }  // namespace shill

@@ -41,6 +41,7 @@
 #include "shill/vpn/mock_openvpn_management_server.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_service.h"
 #include "shill/vpn/vpn_types.h"
 
@@ -1096,7 +1097,7 @@ TEST_F(OpenVPNDriverTest, FailService) {
   SetEventHandler(&event_handler_);
   EXPECT_CALL(event_handler_,
               OnDriverFailure(Service::kFailureConnect, Eq(kErrorDetails)));
-  driver_->FailService(Service::kFailureConnect, kErrorDetails);
+  driver_->FailService(VPNEndReason::kFailureUnknown, kErrorDetails);
 }
 
 TEST_F(OpenVPNDriverTest, Cleanup) {

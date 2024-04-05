@@ -33,6 +33,7 @@
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/fake_vpn_util.h"
 #include "shill/vpn/mock_vpn_driver.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_provider.h"
 
 namespace shill {

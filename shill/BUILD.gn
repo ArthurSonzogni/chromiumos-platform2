@@ -384,6 +384,7 @@ static_library("libshill") {
     "upstart/upstart.cc",
     "virtual_device.cc",
     "vpn/vpn_driver.cc",
+    "vpn/vpn_end_reason.cc",
     "vpn/vpn_metrics.cc",
     "vpn/vpn_provider.cc",
     "vpn/vpn_service.cc",

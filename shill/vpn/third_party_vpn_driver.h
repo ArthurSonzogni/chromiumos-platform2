@@ -20,6 +20,7 @@
 #include <net-base/process_manager.h>
 
 #include "shill/vpn/vpn_driver.h"
+#include "shill/vpn/vpn_end_reason.h"
 
 namespace shill {
 
@@ -109,8 +110,7 @@ class ThirdPartyVpnDriver : public VPNDriver {
   // ConnectAsync, notify it to sets its state to Service::kStateFailure, sets
   // the failure reason to |failure|, sets its ErrorDetails property to
   // |error_details|, and disassociates from the service.
-  void FailService(Service::ConnectFailure failure,
-                   std::string_view error_details);
+  void FailService(VPNEndReason failure, std::string_view error_details);
 
   void OnLinkReady(const std::string& link_name, int interface_index);
 

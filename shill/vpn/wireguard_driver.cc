@@ -41,6 +41,7 @@
 #include "shill/metrics.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_types.h"
 #include "shill/vpn/vpn_util.h"
 
@@ -248,7 +249,7 @@ std::unique_ptr<net_base::NetworkConfig> WireGuardDriver::GetNetworkConfig()
 }
 
 void WireGuardDriver::OnConnectTimeout() {
-  FailService(Service::kFailureConnect, "Connect timeout");
+  FailService(VPNEndReason::kConnectTimeout, "Connect timeout");
 }
 
 void WireGuardDriver::InitPropertyStore(PropertyStore* store) {
@@ -420,11 +421,11 @@ void WireGuardDriver::CreateKernelWireGuardInterface() {
   constexpr std::string_view kErrMsg = "Failed to create wireguard interface";
   auto failure_callback =
       base::BindOnce(&WireGuardDriver::FailService, weak_factory_.GetWeakPtr(),
-                     Service::kFailureInternal, kErrMsg);
+                     VPNEndReason::kFailureInternal, kErrMsg);
   if (!manager()->device_info()->CreateWireGuardInterface(
           kDefaultInterfaceName, std::move(link_ready_callback),
           std::move(failure_callback))) {
-    FailService(Service::kFailureInternal, kErrMsg);
+    FailService(VPNEndReason::kFailureInternal, kErrMsg);
   }
 }
 
@@ -490,14 +491,14 @@ void WireGuardDriver::ConfigureInterface(const std::string& interface_name,
   // Writes config file.
   std::string config_contents = GenerateConfigFileContents();
   if (config_contents.empty()) {
-    FailService(Service::kFailureInternal,
+    FailService(VPNEndReason::kFailureInternal,
                 "Failed to generate config file contents");
     return;
   }
   auto [fd, path] = vpn_util_->WriteAnonymousConfigFile(config_contents);
   config_fd_ = std::move(fd);
   if (!config_fd_.is_valid()) {
-    FailService(Service::kFailureInternal, "Failed to write config file");
+    FailService(VPNEndReason::kFailureInternal, "Failed to write config file");
     return;
   }
 
@@ -513,7 +514,7 @@ void WireGuardDriver::ConfigureInterface(const std::string& interface_name,
       base::BindOnce(&WireGuardDriver::OnConfigurationDone,
                      weak_factory_.GetWeakPtr()));
   if (pid == -1) {
-    FailService(Service::kFailureInternal, "Failed to run `wg setconf`");
+    FailService(VPNEndReason::kFailureInternal, "Failed to run `wg setconf`");
     return;
   }
 }
@@ -526,13 +527,14 @@ void WireGuardDriver::OnConfigurationDone(int exit_code) {
 
   if (exit_code != 0) {
     FailService(
-        Service::kFailureInternal,
+        VPNEndReason::kFailureInternal,
         base::StringPrintf("Failed to run `wg setconf`, code=%d", exit_code));
     return;
   }
 
   if (!PopulateIPProperties()) {
-    FailService(Service::kFailureConnect, "Failed to populate ip properties");
+    FailService(VPNEndReason::kInvalidConfig,
+                "Failed to populate ip properties");
     return;
   }
 
@@ -609,12 +611,13 @@ bool WireGuardDriver::PopulateIPProperties() {
   return true;
 }
 
-void WireGuardDriver::FailService(Service::ConnectFailure failure,
+void WireGuardDriver::FailService(VPNEndReason failure,
                                   std::string_view error_details) {
   LOG(ERROR) << "Driver error: " << error_details;
   Cleanup();
   if (event_handler_) {
-    event_handler_->OnDriverFailure(failure, error_details);
+    event_handler_->OnDriverFailure(VPNEndReasonToServiceFailure(failure),
+                                    error_details);
     event_handler_ = nullptr;
   }
 }

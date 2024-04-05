@@ -27,7 +27,7 @@ class FakeOpenVPNDriver : public OpenVPNDriver {
   ~FakeOpenVPNDriver() override = default;
 
   void OnReconnecting(ReconnectReason) override {}
-  void FailService(Service::ConnectFailure, std::string_view) override {}
+  void FailService(VPNEndReason, std::string_view) override {}
   void ReportCipherMetrics(std::string_view) override {}
 };
 

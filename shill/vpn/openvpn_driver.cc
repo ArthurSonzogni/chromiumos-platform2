@@ -39,6 +39,7 @@
 #include "shill/manager.h"
 #include "shill/rpc_task.h"
 #include "shill/vpn/openvpn_management_server.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_service.h"
 #include "shill/vpn/vpn_types.h"
 
@@ -174,12 +175,13 @@ OpenVPNDriver::~OpenVPNDriver() {
   Cleanup();
 }
 
-void OpenVPNDriver::FailService(Service::ConnectFailure failure,
+void OpenVPNDriver::FailService(VPNEndReason failure,
                                 std::string_view error_details) {
   SLOG(2) << __func__ << "(" << error_details << ")";
   Cleanup();
   if (event_handler_) {
-    event_handler_->OnDriverFailure(failure, error_details);
+    event_handler_->OnDriverFailure(VPNEndReasonToServiceFailure(failure),
+                                    error_details);
     event_handler_ = nullptr;
   }
 }
@@ -314,7 +316,7 @@ bool OpenVPNDriver::SpawnOpenVPN() {
 void OpenVPNDriver::OnOpenVPNDied(int exit_status) {
   SLOG(2) << __func__ << "(" << pid_ << ", " << exit_status << ")";
   pid_ = 0;
-  FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+  FailService(VPNEndReason::kFailureInternal, Service::kErrorDetailsNone);
   // TODO(petkov): Figure if we need to restart the connection.
 }
 
@@ -341,7 +343,7 @@ void OpenVPNDriver::Notify(const std::string& reason,
       params_,
       const_args()->Contains<std::string>(kOpenVPNIgnoreDefaultRouteProperty));
   if (!network_config_.has_value()) {
-    FailService(Service::kFailureConnect, "No valid IP config");
+    FailService(VPNEndReason::kFailureInternal, "No valid IP config");
     return;
   }
   ReportConnectionMetrics();
@@ -779,7 +781,7 @@ base::TimeDelta OpenVPNDriver::ConnectAsync(EventHandler* handler) {
     dispatcher()->PostTask(
         FROM_HERE,
         base::BindOnce(&OpenVPNDriver::FailService, weak_factory_.GetWeakPtr(),
-                       Service::kFailureInternal,
+                       VPNEndReason::kFailureInternal,
                        "Could not create tunnel interface."));
     return kTimeoutNone;
   }
@@ -796,7 +798,7 @@ void OpenVPNDriver::OnLinkReady(const std::string& link_name,
   interface_index_ = interface_index;
   rpc_task_.reset(new RpcTask(control_interface(), this));
   if (!SpawnOpenVPN()) {
-    FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+    FailService(VPNEndReason::kFailureInternal, Service::kErrorDetailsNone);
   }
 }
 
@@ -1155,10 +1157,10 @@ void OpenVPNDriver::Disconnect() {
 }
 
 void OpenVPNDriver::OnConnectTimeout() {
-  Service::ConnectFailure failure =
+  VPNEndReason failure =
       management_server_->state() == OpenVPNManagementServer::kStateResolve
-          ? Service::kFailureDNSLookup
-          : Service::kFailureConnect;
+          ? VPNEndReason::kConnectFailureDNSLookup
+          : VPNEndReason::kConnectTimeout;
   FailService(failure, Service::kErrorDetailsNone);
 }
 

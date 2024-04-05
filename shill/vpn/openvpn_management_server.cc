@@ -145,7 +145,8 @@ void OpenVPNManagementServer::OnInputReady() {
   std::vector<uint8_t> buf;
   if (!connected_socket_->RecvMessage(&buf) || buf.size() == 0) {
     PLOG(ERROR) << "Failed to read from connected socket";
-    driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+    driver_->FailService(VPNEndReason::kFailureInternal,
+                         Service::kErrorDetailsNone);
     return;
   }
 
@@ -206,7 +207,8 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
     SupplyTPMToken(tag);
   } else {
     NOTIMPLEMENTED() << ": Unsupported need-password message: " << message;
-    driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+    driver_->FailService(VPNEndReason::kFailureInternal,
+                         Service::kErrorDetailsNone);
   }
   return true;
 }
@@ -255,7 +257,8 @@ void OpenVPNManagementServer::PerformStaticChallenge(std::string_view tag) {
                      << (token.empty() ? " no-token" : "")
                      << (password.empty() ? " no-password" : "")
                      << (otp.empty() ? " no-otp" : "");
-    driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+    driver_->FailService(VPNEndReason::kFailureInternal,
+                         Service::kErrorDetailsNone);
     return;
   }
 
@@ -286,7 +289,8 @@ void OpenVPNManagementServer::PerformAuthentication(std::string_view tag) {
     NOTIMPLEMENTED() << ": Missing credentials:"
                      << (user.empty() ? " no-user" : "")
                      << (password.empty() ? " no-password" : "");
-    driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+    driver_->FailService(VPNEndReason::kInvalidConfig,
+                         Service::kErrorDetailsNone);
     return;
   }
   SendUsername(tag, user);
@@ -299,7 +303,8 @@ void OpenVPNManagementServer::SupplyTPMToken(std::string_view tag) {
       driver_->args()->Lookup<std::string>(kOpenVPNPinProperty, "");
   if (pin.empty()) {
     NOTIMPLEMENTED() << ": Missing PIN.";
-    driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
+    driver_->FailService(VPNEndReason::kInvalidConfig,
+                         Service::kErrorDetailsNone);
     return;
   }
   SendPassword(tag, pin);
@@ -316,7 +321,7 @@ bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
   if (ParsePasswordTag(message) == kPasswordTagAuth) {
     reason = ParsePasswordFailedReason(message);
   }
-  driver_->FailService(Service::kFailureConnect, reason);
+  driver_->FailService(VPNEndReason::kConnectFailureAuthUserPassword, reason);
   return true;
 }
 
@@ -358,14 +363,14 @@ bool OpenVPNManagementServer::ProcessStateMessage(std::string_view message) {
     if (new_state == kStateReconnecting) {
       if (state_ == kStateResolve) {
         // RESOLVE -> RECONNECTING means DNS lookup failed.
-        driver_->FailService(Service::kFailureDNSLookup,
+        driver_->FailService(VPNEndReason::kConnectFailureDNSLookup,
                              Service::kErrorDetailsNone);
       } else if (state_ == kStateAuth && reason == "tls-error") {
         // AUTH -> RECONNECTING,tls_error means cert validation or auth
         // failed.  Unfortunately OpenVPN doesn't tell us whether it
         // was a local or remote failure.  The UI will say:
         // "Authentication certificate rejected by network"
-        driver_->FailService(Service::kFailureIPsecCertAuth,
+        driver_->FailService(VPNEndReason::kConnectFailureAuthCert,
                              Service::kErrorDetailsNone);
       } else {
         OpenVPNDriver::ReconnectReason reconnect_reason =
