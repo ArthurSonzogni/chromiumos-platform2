@@ -12,11 +12,19 @@ ACTION!="add", GOTO="arcinput_end"
 # Skip devices that are not part of CTS tests (b/277541769 and b/279539420)
 # Sony virtual devices added by CTS did not have a space before the opening
 # paren.
-ATTRS{name}!="com.google.android.init.test", \
-	ATTRS{name}!="*(Test)*", \
-	ATTRS{name}!="*(USB Test)*", \
-	ATTRS{name}!="*(Bluetooth Test)*", \
-	GOTO="arcinput_end"
+# This used to be a and'd set of ATTRS{name}!= checks, but in some racey cases
+# during boot they would all evaluate to false, presumably because ATTRS{name}
+# was unknown, which meant the test hack was activated. Hence this was changed
+# to or'd == checks. See b/319553374#comment42
+ATTRS{name}=="com.google.android.init.test", GOTO="arcinput_run"
+ATTRS{name}=="*(Test)*", GOTO="arcinput_run"
+ATTRS{name}=="*(USB Test)*", GOTO="arcinput_run"
+ATTRS{name}=="*(Bluetooth Test)*", GOTO="arcinput_run"
+
+# No matches? Do not run the input hack.
+GOTO="arcinput_end"
+
+LABEL="arcinput_run"
 
 # Prevent Chrome from seeing the device and forwarding it to ARC via Wayland.
 # That would cause ARC to see duplicated and (in the case of uhid tests) altered
