@@ -12,7 +12,6 @@ use std::path::Path;
 use std::sync::Mutex;
 use std::time::Duration;
 use std::time::Instant;
-use std::time::SystemTime;
 
 use anyhow::bail;
 use anyhow::Context;
@@ -43,9 +42,6 @@ const RAM_SWAP_WEIGHT_FILENAME: &str = "ram_swap_weight";
 
 // The available memory for background components is discounted by 300 MiB.
 const GAME_MODE_OFFSET_KB: u64 = 300 * 1024;
-
-// The process list is out-of-dated if it's not updated for the stall time.
-const BROWSER_PIDS_STALL_TIME: Duration = Duration::from_secs(300);
 
 /// calculate_reserved_free_kb() calculates the reserved free memory in KiB from
 /// /proc/zoneinfo.  Reserved pages are free pages reserved for emergent kernel
@@ -754,22 +750,8 @@ impl fmt::Display for ChromeProcessType {
     }
 }
 
-struct TabProcessList {
-    pids: Vec<i32>,
-    capture_time: SystemTime,
-}
-
-impl TabProcessList {
-    fn new(pids: Vec<i32>) -> Self {
-        Self {
-            pids,
-            capture_time: SystemTime::now(),
-        }
-    }
-}
-
 // Lists of the processes to estimate the host memory usage.
-static CHROME_PIDS: Mutex<BTreeMap<(BrowserType, ChromeProcessType), TabProcessList>> =
+static CHROME_PIDS: Mutex<BTreeMap<(BrowserType, ChromeProcessType), Vec<i32>>> =
     Mutex::new(BTreeMap::new());
 
 // Returns the process list for a given browser/process type pair
@@ -785,12 +767,7 @@ fn get_chrome_processes(
         return Ok(Vec::new());
     };
 
-    if tab_list.capture_time.elapsed().context("bad elapsed")? > BROWSER_PIDS_STALL_TIME {
-        // Returns empty list if the pid list is not updated.
-        return Ok(Vec::new());
-    }
-
-    Ok(tab_list.pids.clone())
+    Ok(tab_list.clone())
 }
 
 pub fn set_browser_processes(
@@ -801,11 +778,11 @@ pub fn set_browser_processes(
     let mut chrome_pids = CHROME_PIDS.lock().expect("Lock chrome_pids failed");
     chrome_pids.insert(
         (browser_type, ChromeProcessType::Background),
-        TabProcessList::new(background_pids),
+        background_pids,
     );
     chrome_pids.insert(
         (browser_type, ChromeProcessType::Protected),
-        TabProcessList::new(protected_pids),
+        protected_pids,
     );
 }
 
