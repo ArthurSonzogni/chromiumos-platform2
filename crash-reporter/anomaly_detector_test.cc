@@ -925,10 +925,12 @@ TEST(AnomalyDetectorTest, CellularFailureModemfwd) {
   ParserTest("TEST_MODEMFWD_FAILURE_ERROR", {modemfwd_failure}, &parser);
 }
 
-TEST(AnomalyDetectorTest, CellularFailureModemfwdNonCellularSku) {
+TEST(AnomalyDetectorTest, CellularFailureModemfwdSkipUpload) {
   ParserRun modemfwd_failure_non_cellular = {.expected_size = 0};
   ModemfwdParser parser(/*testonly_send_all=*/true);
-  ParserTest("TEST_MODEMFWD_FAILURE_SKIP_UPLOAD",
+  ParserTest("TEST_MODEMFWD_FAILURE_SKIP_UPLOAD_NON_LTE_SKU",
+             {modemfwd_failure_non_cellular}, &parser);
+  ParserTest("TEST_MODEMFWD_FAILURE_SKIP_UPLOAD_MODEM_NEVER_SEEN",
              {modemfwd_failure_non_cellular}, &parser);
 }
 

@@ -847,7 +847,9 @@ MaybeCrashReport ModemfwdParser::ParseLogEntry(const std::string& line) {
   if (RE2::PartialMatch(line, *modemfwd_failure, &error_code, &error_message)) {
     // Avoid creating crash reports for common errors that occur on non
     // cellular SKUs.
-    if (error_code == modemfwd::kErrorResultInitFailureNonLteSku)
+    if (error_code == modemfwd::kErrorResultInitFailureNonLteSku ||
+        error_code ==
+            modemfwd::kErrorResultFailureReturnedByHelperModemNeverSeen)
       return std::nullopt;
     weight = 50;
   } else {
