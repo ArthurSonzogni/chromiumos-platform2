@@ -99,7 +99,10 @@ bool WriteWithTimeout(
     brillo::SafeFD* fd,
     const std::string& value,
     size_t max_tries = kMaxWriteAttempts,
-    base::TimeDelta delay = base::Microseconds(kAttemptDelayMicroseconds));
+    base::TimeDelta delay = base::Microseconds(kAttemptDelayMicroseconds),
+    ssize_t (*write_func)(int, const void*, size_t) = &write,
+    int (*usleep_func)(useconds_t) = &usleep,
+    int (*ftruncate_func)(int, off_t) = &ftruncate);
 
 std::string Hash(const std::string& content);
 std::string Hash(const google::protobuf::RepeatedPtrField<std::string>& rules);

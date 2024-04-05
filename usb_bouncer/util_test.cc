@@ -11,6 +11,8 @@
 #include "usb_bouncer/util.h"
 #include "usb_bouncer/util_internal.h"
 
+using brillo::SafeFD;
+
 namespace usb_bouncer {
 
 namespace {
@@ -55,6 +57,163 @@ bool CheckDeviceNodeAuthorized(const base::FilePath& dir) {
 }
 
 }  // namespace
+
+constexpr size_t kTestMaxAttempts = 123;
+constexpr uint32_t kTestDelayMicroseconds = 789;
+
+// Do not actually sleep for tests.
+int mock_usleep(useconds_t delay) {
+  EXPECT_EQ(delay, kTestDelayMicroseconds);
+  return 0;
+}
+
+TEST(UtilTest, WriteWithTimeout_Success) {
+  SafeFD fd;
+  SafeFD::Error err;
+  std::tie(fd, err) = SafeFD::Root();
+  ASSERT_EQ(err, SafeFD::Error::kNoError);
+
+  base::TimeDelta delay = base::Microseconds(kTestDelayMicroseconds);
+  std::string value = "test value";
+
+  static size_t final_length = value.size();
+  static bool ftruncate_called;
+  ftruncate_called = false;
+  EXPECT_TRUE(WriteWithTimeout(
+      &fd, value, kTestMaxAttempts, delay,
+      /* write_func */
+      [](int fd, const void* data, size_t len) -> ssize_t {
+        EXPECT_EQ(len, final_length);
+        return len;
+      },
+      &mock_usleep,
+      /* ftruncate_func */
+      [](int fd, off_t len) -> int {
+        EXPECT_EQ(len, final_length);
+        ftruncate_called = true;
+        return 0;
+      }));
+  EXPECT_TRUE(ftruncate_called);
+}
+
+TEST(UtilTest, WriteWithTimeout_IncrementalSuccess) {
+  SafeFD fd;
+  SafeFD::Error err;
+  std::tie(fd, err) = SafeFD::Root();
+  ASSERT_EQ(err, SafeFD::Error::kNoError);
+
+  base::TimeDelta delay = base::Microseconds(kTestDelayMicroseconds);
+  std::string value = "test value";
+
+  static size_t final_length = value.size();
+  static size_t expected_length;
+  expected_length = value.size();
+  static bool ftruncate_called;
+  ftruncate_called = false;
+  EXPECT_TRUE(WriteWithTimeout(
+      &fd, value, kTestMaxAttempts, delay,
+      /* write_func */
+      [](int fd, const void* data, size_t len) -> ssize_t {
+        EXPECT_EQ(expected_length, len);
+        --expected_length;
+        return 1;
+      },
+      &mock_usleep,
+      /* ftruncate_func */
+      [](int fd, off_t len) -> int {
+        EXPECT_EQ(len, final_length);
+        ftruncate_called = true;
+        return 0;
+      }));
+  EXPECT_TRUE(ftruncate_called);
+}
+
+TEST(UtilTest, WriteWithTimeout_WriteError) {
+  SafeFD fd;
+  SafeFD::Error err;
+  std::tie(fd, err) = SafeFD::Root();
+  ASSERT_EQ(err, SafeFD::Error::kNoError);
+
+  base::TimeDelta delay = base::Microseconds(kTestDelayMicroseconds);
+  std::string value = "test value";
+
+  static bool ftruncate_called;
+  ftruncate_called = false;
+  EXPECT_FALSE(WriteWithTimeout(
+      &fd, value, kTestMaxAttempts, delay,
+      /* write_func */
+      [](int fd, const void* data, size_t len) -> ssize_t { return -1; },
+      &mock_usleep,
+      /* ftruncate_func */
+      [](int fd, off_t len) -> int {
+        ftruncate_called = true;
+        return 0;
+      }));
+  EXPECT_FALSE(ftruncate_called);
+}
+
+TEST(UtilTest, WriteWithTimeout_TruncateError) {
+  SafeFD fd;
+  SafeFD::Error err;
+  std::tie(fd, err) = SafeFD::Root();
+  ASSERT_EQ(err, SafeFD::Error::kNoError);
+
+  base::TimeDelta delay = base::Microseconds(kTestDelayMicroseconds);
+  std::string value = "test value";
+
+  static size_t final_length = value.size();
+  static bool ftruncate_called;
+  ftruncate_called = false;
+  EXPECT_FALSE(WriteWithTimeout(
+      &fd, value, kTestMaxAttempts, delay,
+      /* write_func */
+      [](int fd, const void* data, size_t len) -> ssize_t {
+        EXPECT_EQ(len, final_length);
+        return len;
+      },
+      &mock_usleep,
+      /* ftruncate_func */
+      [](int fd, off_t len) -> int {
+        EXPECT_EQ(len, final_length);
+        ftruncate_called = true;
+        return -1;
+      }));
+  EXPECT_TRUE(ftruncate_called);
+}
+
+TEST(UtilTest, WriteWithTimeout_Timeout) {
+  SafeFD fd;
+  SafeFD::Error err;
+  std::tie(fd, err) = SafeFD::Root();
+  ASSERT_EQ(err, SafeFD::Error::kNoError);
+
+  base::TimeDelta delay = base::Microseconds(kTestDelayMicroseconds);
+  std::string value = "test value";
+
+  static bool ftruncate_called;
+  ftruncate_called = false;
+  static size_t tries;
+  tries = 0;
+  ASSERT_FALSE(WriteWithTimeout(
+      &fd, value, kTestMaxAttempts, delay,
+      /* write_func */
+      [](int fd, const void* data, size_t len) -> ssize_t {
+        errno = EAGAIN;
+        return -1;
+      },
+      /* ftruncate_func */
+      [](useconds_t delay) -> int {
+        ++tries;
+        return 0;
+      },
+      /* ftruncate_func */
+      [](int fd, off_t len) -> int {
+        ftruncate_called = true;
+        return 0;
+      }));
+  EXPECT_EQ(tries, kTestMaxAttempts);
+  EXPECT_FALSE(ftruncate_called);
+}
 
 TEST(UtilTest, IncludeRuleAtLockscreen) {
   EXPECT_FALSE(IncludeRuleAtLockscreen(""));

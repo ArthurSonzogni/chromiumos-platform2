@@ -352,18 +352,23 @@ bool CanChown() {
 bool WriteWithTimeout(SafeFD* fd,
                       const std::string& value,
                       size_t max_tries,
-                      base::TimeDelta delay) {
+                      base::TimeDelta delay,
+                      ssize_t (*write_func)(int, const void*, size_t),
+                      int (*usleep_func)(useconds_t),
+                      int (*ftruncate_func)(int, off_t)) {
   size_t tries = 0;
   size_t total = 0;
   int written = 0;
   while (tries < max_tries) {
     ++tries;
 
-    written = write(fd->get(), value.c_str() + total, value.size() - total);
+    errno = 0;
+    written =
+        write_func(fd->get(), value.c_str() + total, value.size() - total);
     if (written < 0) {
       if (errno == EAGAIN) {
         // Writing would block. Wait and try again.
-        HANDLE_EINTR(usleep(delay.InMicroseconds()));
+        HANDLE_EINTR(usleep_func(delay.InMicroseconds()));
         continue;
       } else if (errno == EINTR) {
         // Count EINTR against the tries.
@@ -377,7 +382,7 @@ bool WriteWithTimeout(SafeFD* fd,
 
     total += written;
     if (total == value.size()) {
-      if (HANDLE_EINTR(ftruncate(fd->get(), value.size())) != 0) {
+      if (HANDLE_EINTR(ftruncate_func(fd->get(), value.size())) != 0) {
         PLOG(ERROR) << "Failed to truncate '" << GetFDPath(fd->get()).value()
                     << "'";
         return false;
