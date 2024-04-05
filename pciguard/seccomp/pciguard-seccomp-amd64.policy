@@ -65,5 +65,6 @@ signalfd4: 1
 socket: arg0 == AF_UNIX || arg0 == AF_NETLINK
 stat: 1
 tgkill: 1
+uname: 1
 write: 1
 fstatfs: 1
