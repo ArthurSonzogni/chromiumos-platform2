@@ -599,6 +599,8 @@ constexpr char kApnTypeDun[] = "DUN";
 // APN source property values.
 constexpr char kApnSourceAdmin[] = "admin";
 constexpr char kApnSourceUi[] = "ui";
+constexpr char kApnSourceMoDb[] = "modb";
+constexpr char kApnSourceModem[] = "modem";
 
 // APN IsRequiredByCarrierSpec values.
 constexpr char kApnIsRequiredByCarrierSpecTrue[] = "1";

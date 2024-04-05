@@ -16,8 +16,6 @@ const char kApnVersionProperty[] = "version";
 const int kCurrentApnCacheVersion = 2;
 
 // APN Source.
-const char kApnSourceMoDb[] = "modb";
-const char kApnSourceModem[] = "modem";
 const char kApnSourceFallback[] = "fallback";
 
 // Modem identifiers

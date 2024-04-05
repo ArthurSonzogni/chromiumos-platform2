@@ -749,8 +749,8 @@ void Metrics::NotifyCellularNetworkValidationResult(
 
   DCHECK(base::Contains(result.apn_info, kApnSourceProperty));
   if (base::Contains(result.apn_info, kApnSourceProperty)) {
-    if (result.apn_info.at(kApnSourceProperty) == cellular::kApnSourceMoDb ||
-        result.apn_info.at(kApnSourceProperty) == cellular::kApnSourceModem) {
+    if (result.apn_info.at(kApnSourceProperty) == kApnSourceMoDb ||
+        result.apn_info.at(kApnSourceProperty) == kApnSourceModem) {
       if (base::Contains(result.apn_info, kApnProperty))
         apn_name = result.apn_info.at(kApnProperty);
       if (base::Contains(result.apn_info, kApnUsernameProperty))
@@ -816,19 +816,18 @@ void Metrics::NotifyDetailedCellularConnectionResult(
 
   DCHECK(base::Contains(result.apn_info, kApnSourceProperty));
   if (base::Contains(result.apn_info, kApnSourceProperty)) {
-    if (result.apn_info.at(kApnSourceProperty) == cellular::kApnSourceMoDb)
+    if (result.apn_info.at(kApnSourceProperty) == kApnSourceMoDb)
       apn_source = kCellularApnSourceMoDb;
     else if (result.apn_info.at(kApnSourceProperty) == kApnSourceUi)
       apn_source = kCellularApnSourceUi;
-    else if (result.apn_info.at(kApnSourceProperty) ==
-             cellular::kApnSourceModem)
+    else if (result.apn_info.at(kApnSourceProperty) == kApnSourceModem)
       apn_source = kCellularApnSourceModem;
     else if (result.apn_info.at(kApnSourceProperty) ==
              cellular::kApnSourceFallback)
       apn_source = kCellularApnSourceFallback;
 
-    if (result.apn_info.at(kApnSourceProperty) == cellular::kApnSourceMoDb ||
-        result.apn_info.at(kApnSourceProperty) == cellular::kApnSourceModem) {
+    if (result.apn_info.at(kApnSourceProperty) == kApnSourceMoDb ||
+        result.apn_info.at(kApnSourceProperty) == kApnSourceModem) {
       if (base::Contains(result.apn_info, kApnProperty))
         apn_name = result.apn_info.at(kApnProperty);
       if (base::Contains(result.apn_info, kApnUsernameProperty))

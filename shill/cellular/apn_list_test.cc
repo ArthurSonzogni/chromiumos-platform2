@@ -52,7 +52,7 @@ TEST(ApnListTest, AddApnWithMerge) {
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user1");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass1");
   EXPECT_STREQ(apn->at(kApnAuthenticationProperty).c_str(), "PAP");
-  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), cellular::kApnSourceModem);
+  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), kApnSourceModem);
   EXPECT_STREQ(apn->at(kApnNameProperty).c_str(), "OPERATOR");
   EXPECT_STREQ(apn->at(kApnLocalizedNameProperty).c_str(), "OPERADORA");
 
@@ -66,7 +66,7 @@ TEST(ApnListTest, AddApnWithMerge) {
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user2");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass2");
   EXPECT_STREQ(apn->at(kApnAuthenticationProperty).c_str(), "CHAP");
-  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), cellular::kApnSourceModem);
+  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), kApnSourceModem);
   EXPECT_FALSE(base::Contains(*apn, kApnNameProperty));
   EXPECT_FALSE(base::Contains(*apn, kApnLocalizedNameProperty));
 
@@ -87,7 +87,7 @@ TEST(ApnListTest, AddApnWithMerge) {
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user1");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass1");
   EXPECT_STREQ(apn->at(kApnAuthenticationProperty).c_str(), "PAP");
-  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), cellular::kApnSourceMoDb);
+  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), kApnSourceMoDb);
   EXPECT_STREQ(apn->at(kApnNameProperty).c_str(), "OPERATOR3");
   EXPECT_STREQ(apn->at(kApnLocalizedNameProperty).c_str(), "OPERADORA");
 }
@@ -130,7 +130,7 @@ TEST(ApnListTest, AddApnWithoutMerge) {
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user1");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass1");
   EXPECT_STREQ(apn->at(kApnAuthenticationProperty).c_str(), "PAP");
-  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), cellular::kApnSourceModem);
+  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), kApnSourceModem);
   EXPECT_STREQ(apn->at(kApnNameProperty).c_str(), "OPERATOR");
   EXPECT_STREQ(apn->at(kApnLocalizedNameProperty).c_str(), "OPERADORA");
 
@@ -142,7 +142,7 @@ TEST(ApnListTest, AddApnWithoutMerge) {
   EXPECT_STREQ(apn->at(kApnUsernameProperty).c_str(), "user2");
   EXPECT_STREQ(apn->at(kApnPasswordProperty).c_str(), "pass2");
   EXPECT_STREQ(apn->at(kApnAuthenticationProperty).c_str(), "CHAP");
-  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), cellular::kApnSourceModem);
+  EXPECT_STREQ(apn->at(kApnSourceProperty).c_str(), kApnSourceModem);
   EXPECT_FALSE(base::Contains(*apn, kApnNameProperty));
   EXPECT_FALSE(base::Contains(*apn, kApnLocalizedNameProperty));
 

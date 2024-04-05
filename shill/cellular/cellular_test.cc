@@ -2280,12 +2280,12 @@ TEST_F(CellularTest, RequiredApnExists) {
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn1";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
   apn2[kApnProperty] = "apn2";
   apn2[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
   device_->SetApnList(apn_list);
@@ -2294,7 +2294,7 @@ TEST_F(CellularTest, RequiredApnExists) {
 
   // Required APNs are only meant for MODB APNs
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
-  apn1[kApnSourceProperty] = cellular::kApnSourceModem;
+  apn1[kApnSourceProperty] = kApnSourceModem;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn2[kApnSourceProperty] = kApnSourceUi;
   apn_list.clear();
@@ -2304,7 +2304,7 @@ TEST_F(CellularTest, RequiredApnExists) {
   EXPECT_FALSE(device_->RequiredApnExists(ApnList::ApnType::kAttach));
   EXPECT_FALSE(device_->RequiredApnExists(ApnList::ApnType::kDefault));
 
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn_list.clear();
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
@@ -2312,7 +2312,7 @@ TEST_F(CellularTest, RequiredApnExists) {
   EXPECT_FALSE(device_->RequiredApnExists(ApnList::ApnType::kAttach));
   EXPECT_TRUE(device_->RequiredApnExists(ApnList::ApnType::kDefault));
 
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn_list.clear();
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
@@ -2333,13 +2333,13 @@ TEST_F(CellularTest, BuildApnTryListSetApn) {
   Stringmap apn_modb, apn_modem;
   apn_modb[kApnProperty] = "apn_modb";
   apn_modb[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn_modb[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn_modb[kApnSourceProperty] = kApnSourceMoDb;
   apn_modb[kApnIsRequiredByCarrierSpecProperty] =
       kApnIsRequiredByCarrierSpecFalse;
   apn_modem[kApnProperty] = "apn_modem";
   apn_modem[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
-  apn_modem[kApnSourceProperty] = cellular::kApnSourceModem;
+  apn_modem[kApnSourceProperty] = kApnSourceModem;
   apn_list.push_back(apn_modb);
   apn_list.push_back(apn_modem);
   device_->SetApnList(apn_list);
@@ -2438,12 +2438,12 @@ TEST_F(CellularTest, BuildApnTryListSetApn) {
   Stringmap apn_required(
       {{kApnProperty, "apn_required"},
        {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
-       {kApnSourceProperty, cellular::kApnSourceMoDb},
+       {kApnSourceProperty, kApnSourceMoDb},
        {kApnIsRequiredByCarrierSpecProperty, kApnIsRequiredByCarrierSpecTrue}});
   Stringmap apn4({{kApnProperty, "apn4"},
                   {kApnTypesProperty,
                    ApnList::JoinApnTypes({kApnTypeIA, kApnTypeDefault})},
-                  {kApnSourceProperty, cellular::kApnSourceMoDb}});
+                  {kApnSourceProperty, kApnSourceMoDb}});
   apn_list.push_back(apn_required);
   apn_list.push_back(apn4);
   device_->SetApnList(apn_list);
@@ -2475,11 +2475,11 @@ TEST_F(CellularTest, BuildApnTryListSetCustomApnList) {
   Stringmap apn_modb, apn_modem;
   apn_modb[kApnProperty] = "apn_modb";
   apn_modb[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn_modb[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn_modb[kApnSourceProperty] = kApnSourceMoDb;
   apn_modem[kApnProperty] = "apn_modem";
   apn_modem[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
-  apn_modem[kApnSourceProperty] = cellular::kApnSourceModem;
+  apn_modem[kApnSourceProperty] = kApnSourceModem;
   apn_list.push_back(apn_modb);
   apn_list.push_back(apn_modem);
   device_->SetApnList(apn_list);
@@ -2545,7 +2545,7 @@ TEST_F(CellularTest, BuildApnTryListSetCustomApnList) {
   Stringmap apn_required(
       {{kApnProperty, "apn_required"},
        {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
-       {kApnSourceProperty, cellular::kApnSourceMoDb},
+       {kApnSourceProperty, kApnSourceMoDb},
        {kApnIsRequiredByCarrierSpecProperty, kApnIsRequiredByCarrierSpecTrue}});
   apn_list.push_back(apn_required);
   device_->SetApnList(apn_list);
@@ -2578,18 +2578,18 @@ TEST_F(CellularTest, BuildApnTryListWithInvalid) {
   // Valid default APN
   apn1[kApnProperty] = "apn1";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn_list.push_back(apn1);
   // Valid default+initial APN
   apn2[kApnProperty] = "apn2";
   apn2[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn_list.push_back(apn2);
   // Invalid APN entry without kApnProperty
   apn3[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
-  apn3[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn3[kApnSourceProperty] = kApnSourceMoDb;
   apn_list.push_back(apn3);
   device_->SetApnList(apn_list);
 
@@ -2613,13 +2613,13 @@ TEST_F(CellularTest, BuildTetheringApnTryList) {
   apn_modb[kApnProperty] = "apn_modb";
   apn_modb[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
-  apn_modb[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn_modb[kApnSourceProperty] = kApnSourceMoDb;
   apn_modb[kApnIsRequiredByCarrierSpecProperty] =
       kApnIsRequiredByCarrierSpecFalse;
   apn_modem[kApnProperty] = "apn_modem";
   apn_modem[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA, kApnTypeDun});
-  apn_modem[kApnSourceProperty] = cellular::kApnSourceModem;
+  apn_modem[kApnSourceProperty] = kApnSourceModem;
   apn_list.push_back(apn_modb);
   apn_list.push_back(apn_modem);
   device_->SetApnList(apn_list);
@@ -2886,7 +2886,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_OperationType_Reuse_DefaultNoDun) {
   Stringmap apn;
   apn[kApnProperty] = "apn";
   apn[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn[kApnSourceProperty] = kApnSourceMoDb;
   service->SetLastGoodApn(apn);
 
   Stringmaps apn_list;
@@ -2917,7 +2917,7 @@ TEST_F(CellularTest,
   apn[kApnProperty] = "apn";
   apn[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
-  apn[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn[kApnSourceProperty] = kApnSourceMoDb;
   apn_list.push_back(apn);
   device_->SetApnList(apn_list);
   service->SetLastGoodApn(apn);
@@ -2946,7 +2946,7 @@ TEST_F(CellularTest,
   apn[kApnProperty] = "apn";
   apn[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
-  apn[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn[kApnSourceProperty] = kApnSourceMoDb;
   apn[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn);
   device_->SetApnList(apn_list);
@@ -2983,7 +2983,7 @@ TEST_F(CellularTest,
   apn2[kApnProperty] = "apn2";
   apn2[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeDun});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn2);
   device_->SetApnList(apn_list);
@@ -3014,11 +3014,11 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn-default";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
   apn2[kApnProperty] = "apn-dun";
   apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
@@ -3164,11 +3164,11 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefaultFailedBearerConnect) {
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn-default";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
   apn2[kApnProperty] = "apn-dun";
   apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
@@ -3260,11 +3260,11 @@ TEST_F(CellularTest,
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn-default";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
   apn2[kApnProperty] = "apn-dun";
   apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
@@ -3305,11 +3305,11 @@ TEST_F(CellularTest,
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn-default";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
   apn2[kApnProperty] = "apn-dun";
   apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
@@ -3354,11 +3354,11 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunMultiplexed) {
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn-default";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
   apn2[kApnProperty] = "apn-dun";
   apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
@@ -3501,11 +3501,11 @@ TEST_F(CellularTest,
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn-default";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
   apn2[kApnProperty] = "apn-dun";
   apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
@@ -3568,11 +3568,11 @@ TEST_F(CellularTest, AcquireTetheringNetwork_OperationType_DunMultiplexed) {
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn-default";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
   apn2[kApnProperty] = "apn-dun";
   apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
@@ -3625,11 +3625,11 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn-default";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
   apn2[kApnProperty] = "apn-dun";
   apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);
@@ -3774,11 +3774,11 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefaultFailedConnect) {
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn-default";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
-  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn1[kApnSourceProperty] = kApnSourceMoDb;
   apn1[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecFalse;
   apn2[kApnProperty] = "apn-dun";
   apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDun});
-  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn2[kApnSourceProperty] = kApnSourceMoDb;
   apn2[kApnIsRequiredByCarrierSpecProperty] = kApnIsRequiredByCarrierSpecTrue;
   apn_list.push_back(apn1);
   apn_list.push_back(apn2);

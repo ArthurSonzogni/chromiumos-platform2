@@ -38,8 +38,8 @@ std::string GetPrintableApnValue(const Stringmap& apn_info,
   bool print_unmasked =
       SLOG_IS_ON(Cellular, 3) || !sensitive_info || value.empty() ||
       (base::Contains(apn_info, kApnSourceProperty) &&
-       (apn_info.at(kApnSourceProperty) == cellular::kApnSourceMoDb ||
-        apn_info.at(kApnSourceProperty) == cellular::kApnSourceModem ||
+       (apn_info.at(kApnSourceProperty) == kApnSourceMoDb ||
+        apn_info.at(kApnSourceProperty) == kApnSourceModem ||
         apn_info.at(kApnSourceProperty) == cellular::kApnSourceFallback));
   return print_unmasked ? value : "*****";
 }

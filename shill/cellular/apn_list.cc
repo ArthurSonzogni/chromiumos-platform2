@@ -87,11 +87,11 @@ void ApnList::AddApn(const MobileAPN& mobile_apn, ApnSource source) {
 
   switch (source) {
     case ApnSource::kModb:
-      (*props)[kApnSourceProperty] = cellular::kApnSourceMoDb;
+      (*props)[kApnSourceProperty] = kApnSourceMoDb;
       CHECK(!mobile_apn.profile_id.has_value());
       break;
     case ApnSource::kModem:
-      (*props)[kApnSourceProperty] = cellular::kApnSourceModem;
+      (*props)[kApnSourceProperty] = kApnSourceModem;
       if (mobile_apn.profile_id.has_value())
         (*props)[kApnProfileIdProperty] =
             base::NumberToString(mobile_apn.profile_id.value());
