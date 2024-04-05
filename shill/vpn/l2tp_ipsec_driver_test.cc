@@ -234,7 +234,7 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceDown) {
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));
   ExpectEndReasonMetricsReported(Service::kFailureDisconnect);
   driver_->OnDefaultPhysicalServiceEvent(
-      VPNDriver::kDefaultPhysicalServiceDown);
+      VPNDriver::DefaultPhysicalServiceEvent::kDown);
 }
 
 TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
@@ -247,7 +247,7 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDisconnect, _));
   ExpectEndReasonMetricsReported(Service::kFailureDisconnect);
   driver_->OnDefaultPhysicalServiceEvent(
-      VPNDriver::kDefaultPhysicalServiceChanged);
+      VPNDriver::DefaultPhysicalServiceEvent::kChanged);
 }
 
 TEST_F(L2TPIPsecDriverTest, PropertyStoreAndConfig) {

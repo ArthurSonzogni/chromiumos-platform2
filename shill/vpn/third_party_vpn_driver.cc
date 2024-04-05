@@ -558,8 +558,8 @@ void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
   if (!event_handler_)
     return;
 
-  if (event == kDefaultPhysicalServiceDown ||
-      event == kDefaultPhysicalServiceChanged) {
+  if (event == DefaultPhysicalServiceEvent::kDown ||
+      event == DefaultPhysicalServiceEvent::kChanged) {
     if (!reconnect_supported_) {
       FailService(Service::kFailureInternal,
                   "Underlying network disconnected.");
@@ -569,20 +569,18 @@ void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
 
   PlatformMessage message;
   switch (event) {
-    case kDefaultPhysicalServiceUp:
+    case DefaultPhysicalServiceEvent::kUp:
       message = PlatformMessage::kLinkUp;
       event_handler_->OnDriverReconnecting(kConnectTimeout);
       break;
-    case kDefaultPhysicalServiceDown:
+    case DefaultPhysicalServiceEvent::kDown:
       message = PlatformMessage::kLinkDown;
       event_handler_->OnDriverReconnecting(kTimeoutNone);
       break;
-    case kDefaultPhysicalServiceChanged:
+    case DefaultPhysicalServiceEvent::kChanged:
       message = PlatformMessage::kLinkChanged;
       event_handler_->OnDriverReconnecting(kConnectTimeout);
       break;
-    default:
-      NOTREACHED();
   }
 
   adaptor_interface_->EmitPlatformMessage(static_cast<uint32_t>(message));

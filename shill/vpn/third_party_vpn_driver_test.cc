@@ -119,19 +119,20 @@ TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kLinkChanged)));
   driver_->OnDefaultPhysicalServiceEvent(
-      VPNDriver::kDefaultPhysicalServiceChanged);
+      VPNDriver::DefaultPhysicalServiceEvent::kChanged);
 
   // Default physical service is not Online -> kLinkDown.
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kLinkDown)));
   driver_->OnDefaultPhysicalServiceEvent(
-      VPNDriver::kDefaultPhysicalServiceDown);
+      VPNDriver::DefaultPhysicalServiceEvent::kDown);
 
   // Default physical service comes Online -> kLinkUp.
   EXPECT_CALL(
       *adaptor_interface_,
       EmitPlatformMessage(static_cast<uint32_t>(ThirdPartyVpnDriver::kLinkUp)));
-  driver_->OnDefaultPhysicalServiceEvent(VPNDriver::kDefaultPhysicalServiceUp);
+  driver_->OnDefaultPhysicalServiceEvent(
+      VPNDriver::DefaultPhysicalServiceEvent::kUp);
 
   // Default physical service vanishes, but the app doesn't support
   // reconnecting -> kDisconnected.
@@ -139,7 +140,7 @@ TEST_F(ThirdPartyVpnDriverTest, ReconnectionEvents) {
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kDisconnected)));
   driver_->OnDefaultPhysicalServiceEvent(
-      VPNDriver::kDefaultPhysicalServiceDown);
+      VPNDriver::DefaultPhysicalServiceEvent::kDown);
 
   driver_->Disconnect();
 }

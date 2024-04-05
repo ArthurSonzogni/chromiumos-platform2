@@ -1259,13 +1259,14 @@ TEST_F(OpenVPNDriverTest, OnDefaultPhysicalServiceEvent) {
   EXPECT_CALL(*management_server_, IsStarted()).WillRepeatedly(Return(true));
   EXPECT_CALL(*management_server_, Hold());
   driver_->OnDefaultPhysicalServiceEvent(
-      VPNDriver::kDefaultPhysicalServiceDown);
+      VPNDriver::DefaultPhysicalServiceEvent::kDown);
   Mock::VerifyAndClearExpectations(management_server_);
 
   // Switch from no service -> Online.  VPN should release the hold.
   EXPECT_CALL(*management_server_, IsStarted()).WillRepeatedly(Return(true));
   EXPECT_CALL(*management_server_, ReleaseHold());
-  driver_->OnDefaultPhysicalServiceEvent(VPNDriver::kDefaultPhysicalServiceUp);
+  driver_->OnDefaultPhysicalServiceEvent(
+      VPNDriver::DefaultPhysicalServiceEvent::kUp);
   Mock::VerifyAndClearExpectations(management_server_);
 
   // Switch from Online service -> another Online service.  VPN should restart
@@ -1273,12 +1274,12 @@ TEST_F(OpenVPNDriverTest, OnDefaultPhysicalServiceEvent) {
   EXPECT_CALL(*management_server_, IsStarted()).WillRepeatedly(Return(true));
   EXPECT_CALL(*management_server_, Restart());
   driver_->OnDefaultPhysicalServiceEvent(
-      VPNDriver::kDefaultPhysicalServiceChanged);
+      VPNDriver::DefaultPhysicalServiceEvent::kChanged);
 
   // Do nothing when management server is not started.
   EXPECT_CALL(*management_server_, IsStarted()).WillRepeatedly(Return(false));
   driver_->OnDefaultPhysicalServiceEvent(
-      VPNDriver::kDefaultPhysicalServiceDown);
+      VPNDriver::DefaultPhysicalServiceEvent::kDown);
   Mock::VerifyAndClearExpectations(management_server_);
 }
 

@@ -457,7 +457,7 @@ TEST_F(VPNServiceTest, OnPhysicalDefaultServiceChanged) {
   // Online -> no service
   ServiceRefPtr null_service;
   EXPECT_CALL(*driver_, OnDefaultPhysicalServiceEvent(
-                            VPNDriver::kDefaultPhysicalServiceDown));
+                            VPNDriver::DefaultPhysicalServiceEvent::kDown));
   service_->OnDefaultPhysicalServiceChanged(null_service);
 
   scoped_refptr<MockService> mock_service(new MockService(&manager_));
@@ -466,25 +466,25 @@ TEST_F(VPNServiceTest, OnPhysicalDefaultServiceChanged) {
   // No service -> online
   EXPECT_CALL(*mock_service, IsOnline()).WillRepeatedly(Return(true));
   EXPECT_CALL(*driver_, OnDefaultPhysicalServiceEvent(
-                            VPNDriver::kDefaultPhysicalServiceUp));
+                            VPNDriver::DefaultPhysicalServiceEvent::kUp));
   service_->OnDefaultPhysicalServiceChanged(mock_service);
 
   // Online service -> another online service
   EXPECT_CALL(*mock_service2, IsOnline()).WillRepeatedly(Return(true));
   EXPECT_CALL(*driver_, OnDefaultPhysicalServiceEvent(
-                            VPNDriver::kDefaultPhysicalServiceChanged));
+                            VPNDriver::DefaultPhysicalServiceEvent::kChanged));
   service_->OnDefaultPhysicalServiceChanged(mock_service2);
 
   // Online -> connected
   EXPECT_CALL(*mock_service2, IsOnline()).WillRepeatedly(Return(false));
   EXPECT_CALL(*driver_, OnDefaultPhysicalServiceEvent(
-                            VPNDriver::kDefaultPhysicalServiceDown));
+                            VPNDriver::DefaultPhysicalServiceEvent::kDown));
   service_->OnDefaultPhysicalServiceChanged(mock_service2);
 
   // Connected -> another online service
   EXPECT_CALL(*mock_service, IsOnline()).WillRepeatedly(Return(true));
   EXPECT_CALL(*driver_, OnDefaultPhysicalServiceEvent(
-                            VPNDriver::kDefaultPhysicalServiceUp));
+                            VPNDriver::DefaultPhysicalServiceEvent::kUp));
   service_->OnDefaultPhysicalServiceChanged(mock_service);
 }
 

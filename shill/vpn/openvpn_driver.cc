@@ -1247,25 +1247,23 @@ void OpenVPNDriver::OnDefaultPhysicalServiceEvent(
   }
 
   switch (event) {
-    case kDefaultPhysicalServiceUp:
+    case DefaultPhysicalServiceEvent::kUp:
       management_server_->ReleaseHold();
       event_handler_->OnDriverReconnecting(
           GetReconnectTimeout(kReconnectReasonOffline));
       break;
-    case kDefaultPhysicalServiceDown:
+    case DefaultPhysicalServiceEvent::kDown:
       management_server_->Hold();
       management_server_->Restart();
       event_handler_->OnDriverReconnecting(kTimeoutNone);
       break;
-    case kDefaultPhysicalServiceChanged:
+    case DefaultPhysicalServiceEvent::kChanged:
       // Ask the management server to reconnect immediately.
       management_server_->ReleaseHold();
       management_server_->Restart();
       event_handler_->OnDriverReconnecting(
           GetReconnectTimeout(kReconnectReasonOffline));
       break;
-    default:
-      NOTREACHED();
   }
 }
 

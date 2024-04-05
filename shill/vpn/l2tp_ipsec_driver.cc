@@ -315,18 +315,16 @@ void L2TPIPsecDriver::OnDefaultPhysicalServiceEvent(
     return;
   }
   switch (event) {
-    case kDefaultPhysicalServiceUp:
+    case DefaultPhysicalServiceEvent::kUp:
       return;
-    case kDefaultPhysicalServiceDown:
+    case DefaultPhysicalServiceEvent::kDown:
       ipsec_connection_->Disconnect();
       NotifyServiceOfFailure(Service::kFailureDisconnect);
       return;
-    case kDefaultPhysicalServiceChanged:
+    case DefaultPhysicalServiceEvent::kChanged:
       ipsec_connection_->Disconnect();
       NotifyServiceOfFailure(Service::kFailureDisconnect);
       return;
-    default:
-      NOTREACHED();
   }
 }
 

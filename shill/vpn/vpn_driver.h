@@ -43,14 +43,14 @@ class VPNDriver {
   // online but only connected (e.g., the VPN server is in the same IP prefix on
   // the LAN), events based on the connected state is more meaningful in those
   // cases.
-  enum DefaultPhysicalServiceEvent {
+  enum class DefaultPhysicalServiceEvent {
     // The default physical service becomes online from any other state.
-    kDefaultPhysicalServiceUp,
+    kUp,
     // There is no online physical service any more.
-    kDefaultPhysicalServiceDown,
+    kDown,
     // The default physical service changed from an online service to another
     // online service.
-    kDefaultPhysicalServiceChanged,
+    kChanged,
   };
 
   // Passed in and registered in ConnectAsync(). Currently implemented by
