@@ -513,10 +513,12 @@ constexpr char kStateConfiguration[] = "configuration";
 constexpr char kStateReady[] = "ready";
 constexpr char kStateNoConnectivity[] = "no-connectivity";
 constexpr char kStateRedirectFound[] = "redirect-found";
-constexpr char kStatePortalSuspected[] = "portal-suspected";
 constexpr char kStateOnline[] = "online";
 constexpr char kStateDisconnecting[] = "disconnecting";
 constexpr char kStateFailure[] = "failure";
+// Deprecated. TODO(b/333634158): Remove after all usage in Chrome has been
+// removed.
+constexpr char kStatePortalSuspected[] = "portal-suspected";
 
 // Shill CheckPortal property values.
 constexpr char kCheckPortalTrue[] = "true";

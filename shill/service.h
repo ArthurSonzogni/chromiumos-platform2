@@ -160,10 +160,10 @@ class Service : public base::RefCounted<Service> {
     kStateConnected,
     // Connected but portal detection probes timed out.
     kStateNoConnectivity,
-    // HTTP probe returned a 302 with a redirect URL.
+    // The NetworkMonitor's HTTP probe received a 302 or 307 answer with a
+    // Location redirection URL, or the HTTP probe received a 200 answer with
+    // some content.
     kStateRedirectFound,
-    // HTTP probe returned without a 204 or redirect, or HTTPS probe failed.
-    kStatePortalSuspected,
     // Failed to connect.
     kStateFailure,
     // Connected to the Internet.

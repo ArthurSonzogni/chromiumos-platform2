@@ -3127,7 +3127,7 @@ TEST_F(ServiceTest, PortalDetectionResult_RedirectNoUrl) {
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(Service::kStatePortalSuspected, service_->state());
+  EXPECT_EQ(Service::kStateRedirectFound, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 
@@ -3143,7 +3143,7 @@ TEST_F(ServiceTest, PortalDetectionResult_PortalSuspected) {
   };
   service_->network_event_handler()->OnNetworkValidationResult(1, result);
 
-  EXPECT_EQ(Service::kStatePortalSuspected, service_->state());
+  EXPECT_EQ(Service::kStateRedirectFound, service_->state());
   EXPECT_EQ("", service_->probe_url_string());
 }
 

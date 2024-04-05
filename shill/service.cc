@@ -558,8 +558,7 @@ bool Service::IsConnectingState(ConnectState state) {
 
 // static
 bool Service::IsPortalledState(ConnectState state) {
-  return state == kStateNoConnectivity || state == kStateRedirectFound ||
-         state == kStatePortalSuspected;
+  return state == kStateNoConnectivity || state == kStateRedirectFound;
 }
 
 bool Service::IsConnected(Error* /*error*/) const {
@@ -1407,8 +1406,6 @@ const char* Service::ConnectStateToString(ConnectState state) {
       return "No connectivity";
     case kStateRedirectFound:
       return "Redirect found";
-    case kStatePortalSuspected:
-      return "Portal suspected";
     case kStateFailure:
       return "Failure";
     case kStateOnline:
@@ -1980,8 +1977,6 @@ std::string Service::GetStateString() const {
       return shill::kStateNoConnectivity;
     case kStateRedirectFound:
       return shill::kStateRedirectFound;
-    case kStatePortalSuspected:
-      return shill::kStatePortalSuspected;
     case kStateOnline:
       return shill::kStateOnline;
     case kStateDisconnecting:
@@ -2721,13 +2716,11 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
       service_->SetState(Service::kStateOnline);
       break;
     case PortalDetector::ValidationState::kPortalRedirect:
+    case PortalDetector::ValidationState::kPortalSuspected:
       service_->SetState(Service::kStateRedirectFound);
       break;
     case PortalDetector::ValidationState::kNoConnectivity:
       service_->SetState(Service::kStateNoConnectivity);
-      break;
-    case PortalDetector::ValidationState::kPortalSuspected:
-      service_->SetState(Service::kStatePortalSuspected);
       break;
   }
 }
