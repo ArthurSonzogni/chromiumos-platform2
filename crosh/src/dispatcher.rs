@@ -276,7 +276,7 @@ impl Command {
     }
 
     pub fn new_disabled_command(name: String, message: String) -> Command {
-        Command::new(name, message, "".to_string())
+        Command::new(name, message, "")
             .set_command_callback(Some(print_help_command_callback))
             .set_help_callback(disabled_command_help_callback)
     }

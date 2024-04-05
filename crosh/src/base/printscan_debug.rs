@@ -52,17 +52,17 @@ pub fn register(dispatcher: &mut Dispatcher) {
         .set_command_callback(Some(execute_printscan_debug))
         .register_subcommand(
             Command::new(
-                "start".to_string(),
-                "Usage: printscan_debug start [all|scanning|printing]".to_string(),
-                "Start collecting printscan debug logs.".to_string(),
+                "start",
+                "Usage: printscan_debug start [all|scanning|printing]",
+                "Start collecting printscan debug logs.",
             )
             .set_command_callback(Some(execute_printscan_debug_start)),
         )
         .register_subcommand(
             Command::new(
-                "stop".to_string(),
-                "Usage: printscan_debug stop".to_string(),
-                "Stop collecting printscan debug logs.".to_string(),
+                "stop",
+                "Usage: printscan_debug stop",
+                "Stop collecting printscan debug logs.",
             )
             .set_command_callback(Some(execute_printscan_debug_stop)),
         ),

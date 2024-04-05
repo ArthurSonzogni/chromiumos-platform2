@@ -10,9 +10,9 @@ use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "upload_devcoredumps".to_string(),
-            "<enable|disable>".to_string(),
-            "Enable or disable the upload of devcoredump reports.".to_string(),
+            "upload_devcoredumps",
+            "<enable|disable>",
+            "Enable or disable the upload of devcoredump reports.",
         )
         .set_command_callback(Some(execute_upload_devcoredumps)),
     );

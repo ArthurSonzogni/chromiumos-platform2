@@ -10,12 +10,11 @@ use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "upload_crashes".to_string(),
-            "".to_string(),
+            "upload_crashes",
+            "",
             r#"Uploads available crash reports to the crash server.
 
-  Check chrome://crashes for processed crashes."#
-                .to_string(),
+  Check chrome://crashes for processed crashes."#,
         )
         .set_command_callback(Some(execute_upload_crashes)),
     );

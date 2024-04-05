@@ -118,9 +118,9 @@ use crate::dispatcher::{self, Arguments, Command, Dispatcher};
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "verify_ro".to_string(),
-            "TODO put usage here".to_string(),
-            "TODO put description here".to_string(),
+            "verify_ro",
+            "TODO put usage here",
+            "TODO put description here",
         )
         .set_command_callback(Some(execute_verify_ro)),
     );
@@ -242,7 +242,7 @@ const EXECUTABLE: &str = "/usr/bin/vmc";
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new("vmc".to_string(), "".to_string(), "".to_string())
+        Command::new("vmc", "", "")
             .set_command_callback(Some(execute_vmc))
             .set_help_callback(vmc_help),
     );

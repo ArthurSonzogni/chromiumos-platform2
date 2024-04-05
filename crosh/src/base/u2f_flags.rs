@@ -16,14 +16,13 @@ const WARNING: &str = r#"### IMPORTANT: The U2F feature is experimental and not 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "u2f_flags".to_string(),
-            "<u2f | g2f>[, user_keys, verbose]".to_string(),
+            "u2f_flags",
+            "<u2f | g2f>[, user_keys, verbose]",
             r#"Set flags to override the second-factor authentication daemon configuration.
   u2f: Always enable the standard U2F mode even if not set in device policy.
   g2f: Always enable the U2F mode plus some additional extensions.
   user_keys: Enable user-specific keys.
-  verbose: Increase the daemon logging verbosity in /var/log/messages."#
-                .to_string(),
+  verbose: Increase the daemon logging verbosity in /var/log/messages."#,
         )
         .set_command_callback(Some(execute_u2f_flags)),
     );

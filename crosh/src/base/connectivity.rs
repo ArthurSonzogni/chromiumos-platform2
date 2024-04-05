@@ -11,9 +11,9 @@ use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "connectivity".to_string(),
-            "".to_string(),
-            "Shows connectivity status.  'connectivity help' for more details".to_string(),
+            "connectivity",
+            "",
+            "Shows connectivity status.  'connectivity help' for more details",
         )
         .set_command_callback(Some(execute_connectivity)),
     );
