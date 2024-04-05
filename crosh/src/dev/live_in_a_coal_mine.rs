@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,8 +20,8 @@ static SHOW_CHANNEL_ARGS: &[&str] = &["--show_channel"];
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "live_in_a_coal_mine".to_string(),
-            "".to_string(),
+            "live_in_a_coal_mine",
+            "",
             "Switch to the canary channel.
 
   WARNING: This is bleeding edge software and is often more buggy than the dev
@@ -31,8 +31,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
   This channel may not always boot reliably or have a functioning auto update
   mechanism. Do not do this unless you are prepared to recover your ChromeOS
   device, please be familiar with this article first:
-  https://support.google.com/chromebook/answer/1080595"
-                .to_string(),
+  https://support.google.com/chromebook/answer/1080595",
         )
         .set_command_callback(Some(execute_live_in_a_coal_mine)),
     );

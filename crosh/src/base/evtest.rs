@@ -10,12 +10,8 @@ use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new(
-            "evtest".to_string(),
-            "".to_string(),
-            "Run evtest in safe mode.".to_string(),
-        )
-        .set_command_callback(Some(execute_evtest)),
+        Command::new("evtest", "", "Run evtest in safe mode.")
+            .set_command_callback(Some(execute_evtest)),
     );
 }
 

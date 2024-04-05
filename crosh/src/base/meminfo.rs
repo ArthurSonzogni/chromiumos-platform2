@@ -12,12 +12,8 @@ const MEMINFO: &str = "/proc/meminfo";
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new(
-            "meminfo".to_string(),
-            "".to_string(),
-            "Display detailed memory statistics.".to_string(),
-        )
-        .set_command_callback(Some(execute_meminfo)),
+        Command::new("meminfo", "", "Display detailed memory statistics.")
+            .set_command_callback(Some(execute_meminfo)),
     );
 }
 

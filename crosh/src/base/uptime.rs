@@ -11,13 +11,12 @@ use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "uptime".to_string(),
-            "".to_string(),
+            "uptime",
+            "",
             r#"Display uptime/load info.
 
   https://en.wikipedia.org/wiki/Uptime
-  https://en.wikipedia.org/wiki/Load_(computing)"#
-                .to_string(),
+  https://en.wikipedia.org/wiki/Load_(computing)"#,
         )
         .set_command_callback(Some(execute_uptime)),
     );

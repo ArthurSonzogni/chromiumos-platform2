@@ -63,8 +63,8 @@ impl<T: error::Error> From<T> for Error {
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "set_time".to_string(),
-            "<time string>".to_string(),
+            "set_time",
+            "<time string>",
             r#"Sets the system time if the the system has been unable to get it from the
   network.  The time may be initialized only once per-boot.
 
@@ -73,8 +73,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
   https://www.gnu.org/software/coreutils/faq/coreutils-faq.html#The-date-command-is-not-working-right_002e
 
   Please see the timekeeping documentation for more information in general:
-  https://www.chromium.org/chromium-os/chromiumos-design-docs/timekeeping/"#
-                .to_string(),
+  https://www.chromium.org/chromium-os/chromiumos-design-docs/timekeeping/"#,
         )
         .set_command_callback(Some(execute_set_time)),
     );

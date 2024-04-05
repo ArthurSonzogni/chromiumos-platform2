@@ -1,4 +1,4 @@
-// Copyright 2022 The ChromiumOS Authors.
+// Copyright 2022 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -19,14 +19,13 @@ static ROLLBACK_ARGS: &[&str] = &["--rollback"];
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "rollback".to_string(),
-            "".to_string(),
+            "rollback",
+            "",
             "
   Attempt to rollback to the previous update cached on your system. Only
   available on non-stable channels and non-enterprise enrolled devices.
 
-  Please note that this will powerwash your device."
-                .to_string(),
+  Please note that this will powerwash your device.",
         )
         .set_command_callback(Some(execute_rollback)),
     );

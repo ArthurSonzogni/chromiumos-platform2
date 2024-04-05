@@ -18,11 +18,10 @@ pub fn register(dispatcher: &mut Dispatcher) {
     }
     dispatcher.register_command(
         Command::new(
-            "ccd_pass".to_string(),
-            "".to_string(),
+            "ccd_pass",
+            "",
             "When prompted, set or clear CCD password (use the word 'clear' to clear
-  the password)."
-                .to_string(),
+  the password).",
         )
         .set_command_callback(Some(execute_ccd_pass)),
     );

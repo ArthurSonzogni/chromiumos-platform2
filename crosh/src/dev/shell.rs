@@ -29,12 +29,8 @@ static RESIZE_MSG_VAL: u64 = 1u64;
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new(
-            "shell".to_string(),
-            "".to_string(),
-            "Open a command line shell.".to_string(),
-        )
-        .set_command_callback(Some(execute_shell)),
+        Command::new("shell", "", "Open a command line shell.")
+            .set_command_callback(Some(execute_shell)),
     );
 }
 

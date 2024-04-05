@@ -10,12 +10,8 @@ use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new(
-            "free".to_string(),
-            "[options]".to_string(),
-            "Display free/used memory info.".to_string(),
-        )
-        .set_command_callback(Some(execute_free)),
+        Command::new("free", "[options]", "Display free/used memory info.")
+            .set_command_callback(Some(execute_free)),
     );
 }
 

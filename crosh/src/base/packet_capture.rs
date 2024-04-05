@@ -62,9 +62,9 @@ Start packet capture.  Start a device-based capture on <device>,
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "packet_capture".to_string(),
-            "".to_string(),
-            "Run the packet_capture command via debugd.".to_string(),
+            "packet_capture",
+            "",
+            "Run the packet_capture command via debugd.",
         )
         .set_command_callback(Some(execute_packet_capture))
         .set_help_callback(packet_capture_help),

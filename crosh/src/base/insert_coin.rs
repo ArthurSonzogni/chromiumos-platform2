@@ -34,7 +34,7 @@ const AFTER_LINES: &str = r"
 // Register insert_coin command with dispatcher.
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new("insert_coin".to_string(), "".to_string(), "".to_string())
+        Command::new("insert_coin", "", "")
             .set_command_callback(Some(execute_insert_coin))
             .set_help_callback(insert_coin_help),
     );

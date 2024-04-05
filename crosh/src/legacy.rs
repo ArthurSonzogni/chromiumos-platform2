@@ -63,14 +63,14 @@ pub fn register_removable_commands(dispatcher: &mut Dispatcher) {
     register_legacy_commands(USB_COMMANDS, dispatcher)
 }
 
-fn register_legacy_commands(commands: &[&str], dispatcher: &mut Dispatcher) {
+fn register_legacy_commands(commands: &[&'static str], dispatcher: &mut Dispatcher) {
     for cmd in commands {
         dispatcher.register_command(legacy_command(cmd));
     }
 }
 
-fn legacy_command(name: &str) -> dispatcher::Command {
-    Command::new(name.to_string(), "".to_string(), "".to_string())
+fn legacy_command(name: &'static str) -> dispatcher::Command {
+    Command::new(name, "", "")
         .set_command_callback(Some(execute_legacy_command))
         .set_help_callback(legacy_help_callback)
 }

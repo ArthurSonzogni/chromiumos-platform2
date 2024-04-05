@@ -88,41 +88,40 @@ fn prompt_enter(prompt: &str) {
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "display_debug".to_string(),
-            "".to_string(),
-            "A tool to assist with collecting logs when reproducing display related issues."
-                .to_string(),
+            "display_debug",
+            "",
+            "A tool to assist with collecting logs when reproducing display related issues.",
         )
         .set_command_callback(Some(execute_display_debug))
         .register_subcommand(
             Command::new(
-                "trace_start".to_string(),
-                "Usage: display_debug trace_start".to_string(),
-                "Increase size and verbosity of logging through drm_trace.".to_string(),
+                "trace_start",
+                "Usage: display_debug trace_start",
+                "Increase size and verbosity of logging through drm_trace.",
             )
             .set_command_callback(Some(execute_display_debug_trace_start)),
         )
         .register_subcommand(
             Command::new(
-                "trace_stop".to_string(),
-                "Usage: display_debug trace_stop".to_string(),
-                "Reset size and verbosity of logging through drm_trace to defaults.".to_string(),
+                "trace_stop",
+                "Usage: display_debug trace_stop",
+                "Reset size and verbosity of logging through drm_trace to defaults.",
             )
             .set_command_callback(Some(execute_display_debug_trace_stop)),
         )
         .register_subcommand(
             Command::new(
-                "trace_annotate".to_string(),
-                "Usage: display_debug trace_annotate <message>".to_string(),
-                "Append |message| to the drm_trace log.".to_string(),
+                "trace_annotate",
+                "Usage: display_debug trace_annotate <message>",
+                "Append |message| to the drm_trace log.",
             )
             .set_command_callback(Some(execute_display_debug_annotate)),
         )
         .register_subcommand(
             Command::new(
-                "diagnose".to_string(),
-                "Usage: display_debug diagnose".to_string(),
-                "Give a sequence of steps to assist in debugging display issues.".to_string(),
+                "diagnose",
+                "Usage: display_debug diagnose",
+                "Give a sequence of steps to assist in debugging display issues.",
             )
             .set_command_callback(Some(execute_display_debug_diagnose)),
         ),

@@ -30,11 +30,10 @@ pub fn register(dispatcher: &mut Dispatcher) {
     }
     dispatcher.register_command(
         Command::new(
-            "verify_ro".to_string(),
-            "".to_string(),
+            "verify_ro",
+            "",
             "Verify AP and EC RO firmware on a ChromeOS device connected over SuzyQ
-  cable, if supported by the device."
-                .to_string(),
+  cable, if supported by the device.",
         )
         .set_command_callback(Some(execute_verify_ro)),
     );

@@ -11,9 +11,9 @@ use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "sync".to_string(),
-            "".to_string(),
-            "Synchronize cached writes to persistent storage.".to_string(),
+            "sync",
+            "",
+            "Synchronize cached writes to persistent storage.",
         )
         .set_command_callback(Some(execute_sync)),
     );

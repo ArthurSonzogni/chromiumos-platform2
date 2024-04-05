@@ -14,9 +14,9 @@ const ACTIVATE_FIPS: &str = "activate_fips";
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "force_activate_fips".to_string(),
-            "".to_string(),
-            "Force activate FIPS mode for the built-in security key.".to_string(),
+            "force_activate_fips",
+            "",
+            "Force activate FIPS mode for the built-in security key.",
         )
         .set_command_callback(Some(execute_activate_fips)),
     );

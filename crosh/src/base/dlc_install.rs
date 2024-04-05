@@ -34,8 +34,7 @@ intended for end users!";
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new(CMD.to_string(), USAGE.to_string(), HELP.to_string())
-            .set_command_callback(Some(dlc_install_callback)),
+        Command::new(CMD, USAGE, HELP).set_command_callback(Some(dlc_install_callback)),
     );
 }
 

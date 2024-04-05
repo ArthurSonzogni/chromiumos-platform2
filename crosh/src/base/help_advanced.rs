@@ -10,8 +10,8 @@ use crate::dispatcher::{Command, Dispatcher};
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(Command::new(
-        "help_advanced".to_string(),
-        "".to_string(),
-        "Display the help for more advanced commands, mainly used for debugging.".to_string(),
+        "help_advanced",
+        "",
+        "Display the help for more advanced commands, mainly used for debugging.",
     ));
 }

@@ -39,12 +39,8 @@ impl Display for Error {
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new(
-            "bt_console".to_string(),
-            "".to_string(),
-            r#"Enters a Bluetooth debugging console."#.to_string(),
-        )
-        .set_command_callback(Some(execute_btclient)),
+        Command::new("bt_console", "", "Enters a Bluetooth debugging console.")
+            .set_command_callback(Some(execute_btclient)),
     );
 }
 

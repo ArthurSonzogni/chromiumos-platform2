@@ -16,7 +16,7 @@ const EXECUTABLE: &str = "/usr/bin/vmc";
 pub fn register(dispatcher: &mut Dispatcher) {
     const NAME: &str = "vmc";
     dispatcher.register_command(if Path::new(EXECUTABLE).exists() {
-        Command::new(NAME.to_string(), "".to_string(), "".to_string())
+        Command::new(NAME, "", "")
             .set_command_callback(Some(execute_vmc))
             .set_help_callback(vmc_help)
     } else {

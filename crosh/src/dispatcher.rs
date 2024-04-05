@@ -5,6 +5,7 @@
 // Provides support for registering and handling commands as well as displaying the command line
 // help.
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::{self, Display};
 use std::io::{stdout, Write};
@@ -240,9 +241,9 @@ impl Default for Dispatcher {
 // * executing the command
 // * providing command completion suggestions.
 pub struct Command {
-    name: String,
-    usage: String,
-    description: String,
+    name: Cow<'static, str>,
+    usage: Cow<'static, str>,
+    description: Cow<'static, str>,
     sub_commands: Vec<Command>,
     flags: Vec<Flag>,
     flag_callback: Option<CommandCallback>,
@@ -252,11 +253,19 @@ pub struct Command {
 }
 
 impl Command {
-    pub fn new(name: String, usage: String, description: String) -> Command {
+    pub fn new<
+        N: Into<Cow<'static, str>>,
+        U: Into<Cow<'static, str>>,
+        D: Into<Cow<'static, str>>,
+    >(
+        name: N,
+        usage: U,
+        description: D,
+    ) -> Command {
         Command {
-            name,
-            usage,
-            description,
+            name: name.into(),
+            usage: usage.into(),
+            description: description.into(),
             sub_commands: Vec::new(),
             flags: Vec::new(),
             flag_callback: None,

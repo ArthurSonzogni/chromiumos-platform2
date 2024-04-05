@@ -12,12 +12,8 @@ use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new(
-            "vmstat".to_string(),
-            "[options]".to_string(),
-            "Report virtual memory statistics.".to_string(),
-        )
-        .set_command_callback(Some(execute_uptime)),
+        Command::new("vmstat", "[options]", "Report virtual memory statistics.")
+            .set_command_callback(Some(execute_uptime)),
     );
 }
 

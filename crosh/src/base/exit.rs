@@ -14,9 +14,5 @@
 use crate::dispatcher::{Command, Dispatcher};
 
 pub fn register(dispatcher: &mut Dispatcher) {
-    dispatcher.register_command(Command::new(
-        "exit".to_string(),
-        "".to_string(),
-        "Exit crosh.".to_string(),
-    ));
+    dispatcher.register_command(Command::new("exit", "", "Exit crosh."));
 }

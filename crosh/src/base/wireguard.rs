@@ -59,9 +59,9 @@ pub fn register(dispatcher: &mut Dispatcher) {
     if let Ok(true) = is_consumer_device() {
         dispatcher.register_command(
             Command::new(
-                "wireguard".to_string(),
-                USAGE.to_string(),
-                "Utility to configure and control a WireGuard VPN service".to_string(),
+                "wireguard",
+                USAGE,
+                "Utility to configure and control a WireGuard VPN service",
             )
             .set_command_callback(Some(execute_wireguard)),
         );

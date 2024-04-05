@@ -45,13 +45,9 @@ const FLAGS: [(&str, &str, &str); 10] = [
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new(
-            "dmesg".to_string(),
-            "".to_string(),
-            "Run the dmesg command via debugd.".to_string(),
-        )
-        .set_command_callback(Some(execute_dmesg))
-        .set_help_callback(dmesg_help),
+        Command::new("dmesg", "", "Run the dmesg command via debugd.")
+            .set_command_callback(Some(execute_dmesg))
+            .set_help_callback(dmesg_help),
     );
 }
 

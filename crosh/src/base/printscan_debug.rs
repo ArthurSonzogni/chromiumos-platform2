@@ -44,11 +44,10 @@ impl Printscanmgr {
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
-            "printscan_debug".to_string(),
-            "".to_string(),
+            "printscan_debug",
+            "",
             "A tool to assist with collecting logs when reproducing printing and \
-            scanning related issues."
-                .to_string(),
+            scanning related issues.",
         )
         .set_command_callback(Some(execute_printscan_debug))
         .register_subcommand(

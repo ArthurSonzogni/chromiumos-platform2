@@ -51,7 +51,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
         return;
     }
     dispatcher.register_command(
-        Command::new("arc".to_string(), "".to_string(), "".to_string())
+        Command::new("arc", "", "")
             .set_command_callback(Some(arc_command_callback))
             .set_help_callback(arc_help),
     );

@@ -12,12 +12,8 @@ use crate::dispatcher::{self, wait_for_result, Arguments, Command, Dispatcher};
 
 pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
-        Command::new(
-            "uname".to_string(),
-            "[options]".to_string(),
-            "Display system info.".to_string(),
-        )
-        .set_command_callback(Some(execute_uptime)),
+        Command::new("uname", "[options]", "Display system info.")
+            .set_command_callback(Some(execute_uptime)),
     );
 }
 
