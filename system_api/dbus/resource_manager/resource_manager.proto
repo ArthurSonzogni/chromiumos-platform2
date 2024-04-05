@@ -10,18 +10,6 @@ package resource_manager;
 
 option go_package = "go.chromium.org/chromiumos/system_api/resource_manager_proto";
 
-message ReportBackgroundProcesses {
-  // The component reporting the background processes.
-  enum Component {
-    ASH = 0;
-    LACROS = 1;
-  }
-  Component component = 1;
-
-  // The list of the background processes.
-  repeated int32 pids = 2;
-}
-
 // The browser types.
 enum BrowserType {
   ASH = 0;

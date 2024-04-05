@@ -509,44 +509,6 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             },
         );
         b.method(
-            "ReportBackgroundProcesses",
-            ("raw_bytes",),
-            (),
-            move |_, _, (raw_bytes,): (Vec<u8>,)| {
-                use system_api::resource_manager::report_background_processes::Component;
-
-                let report_bk_processes: system_api::resource_manager::ReportBackgroundProcesses =
-                    match protobuf::Message::parse_from_bytes(&raw_bytes) {
-                        Ok(result) => result,
-                        Err(e) => {
-                            error!(
-                                "Failed to parse ReportBackgroundProcesses protobuf: {:#}",
-                                e
-                            );
-                            return Err(MethodErr::failed(
-                                "Failed to parse ReportBackgroundProcesses protobuf",
-                            ));
-                        }
-                    };
-                let browser_type: memory::BrowserType =
-                    match report_bk_processes.component.enum_value() {
-                        Ok(Component::ASH) => memory::BrowserType::Ash,
-                        Ok(Component::LACROS) => memory::BrowserType::Lacros,
-                        Err(enum_raw) => {
-                            error!(
-                                "ReportBackgroundProcesses Component is unknown, enum_raw: {}",
-                                enum_raw
-                            );
-                            return Err(MethodErr::failed(
-                                "ReportBackgroundProcesses Component is unknown",
-                            ));
-                        }
-                    };
-                memory::set_background_processes(browser_type, report_bk_processes.pids);
-                Ok(())
-            },
-        );
-        b.method(
             "ReportBrowserProcesses",
             ("raw_bytes",),
             (),

@@ -772,15 +772,6 @@ impl TabProcessList {
 static CHROME_PIDS: Mutex<BTreeMap<(BrowserType, ChromeProcessType), TabProcessList>> =
     Mutex::new(BTreeMap::new());
 
-pub fn set_background_processes(browser_type: BrowserType, pids: Vec<i32>) {
-    // Panic on poisoned mutex.
-    let mut chrome_pids = CHROME_PIDS.lock().expect("Lock chrome_pids failed");
-    chrome_pids.insert(
-        (browser_type, ChromeProcessType::Background),
-        TabProcessList::new(pids),
-    );
-}
-
 // Returns the process list for a given browser/process type pair
 fn get_chrome_processes(
     browser_type: BrowserType,
