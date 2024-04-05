@@ -215,6 +215,9 @@ constexpr auto kStateKeysComputationErrorMessages = base::MakeFixedFlatMap<
     {DeviceIdentifierGenerator::StateKeysComputationError::
          kMissingDiskSerialNumber,
      "Missing disk serial number"},
+    {DeviceIdentifierGenerator::StateKeysComputationError::
+         kMalformedReEnrollmentKey,
+     "Malformed re-enrollment key"},
 });
 
 const char* ToSuccessSignal(bool success) {

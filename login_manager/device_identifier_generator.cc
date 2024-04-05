@@ -32,6 +32,7 @@ const char kGroupCodeKey[] = "gbind_attribute";
 const char kSerialNumberKey[] = "serial_number";
 const char kDiskSerialNumberKey[] = "root_disk_serial_number";
 const char kStableDeviceSecretKey[] = "stable_device_secret_DO_NOT_SHARE";
+const char kReEnrollmentKey[] = "re_enrollment_key";
 const size_t kHmacInitLength = 32;
 
 // These are the machine serial number keys that we check in order until we find
@@ -137,12 +138,14 @@ bool DeviceIdentifierGenerator::InitMachineInfo(
   group_code_key_ = GetMapValue(params, kGroupCodeKey);
   disk_serial_number_ = GetMapValue(params, kDiskSerialNumberKey);
   stable_device_secret_ = GetMapValue(params, kStableDeviceSecretKey);
+  re_enrollment_key_ = GetMapValue(params, kReEnrollmentKey);
 
-  LOG_IF(WARNING, machine_serial_number_.empty())
-      << "Machine serial number missing!";
-  LOG_IF(WARNING, disk_serial_number_.empty()) << "Disk serial number missing!";
+  LOG_IF(INFO, re_enrollment_key_.empty()) << "Re-enrollment key missing!";
   LOG_IF(INFO, stable_device_secret_.empty())
       << "Stable device secret missing!";
+  LOG_IF(INFO, machine_serial_number_.empty())
+      << "Machine serial number missing!";
+  LOG_IF(INFO, disk_serial_number_.empty()) << "Disk serial number missing!";
 
   // Fire all pending state_keys callbacks.
   const base::expected<StateKeysList, StateKeysComputationError> state_keys =
@@ -153,7 +156,7 @@ bool DeviceIdentifierGenerator::InitMachineInfo(
     std::move(callback).Run(state_keys);
   }
 
-  // Fire all pending psm device active secret callbacks.
+  // Fire all pending PSM device active secret callbacks.
   std::string derived_secret;
   DerivePsmDeviceActiveSecret(&derived_secret);
   std::vector<PsmDeviceActiveSecretCallback> psm_device_secret_callbacks;
@@ -162,7 +165,7 @@ bool DeviceIdentifierGenerator::InitMachineInfo(
     std::move(callback).Run(derived_secret);
   }
 
-  return !stable_device_secret_.empty() ||
+  return !re_enrollment_key_.empty() || !stable_device_secret_.empty() ||
          (!machine_serial_number_.empty() && !disk_serial_number_.empty());
 }
 
@@ -180,85 +183,109 @@ base::expected<DeviceIdentifierGenerator::StateKeysList,
 DeviceIdentifierGenerator::ComputeKeys() {
   StateKeysList state_keys;
 
-  // Get the current time in quantized form.
-  const int64_t quantum_size = 1 << kDeviceStateKeyTimeQuantumPower;
-  int64_t quantized_time = system_utils_->time(nullptr) & ~(quantum_size - 1);
-
-  // Compute the state keys.
-  if (!stable_device_secret_.empty()) {
-    crypto::HMAC hmac(crypto::HMAC::SHA256);
-    std::vector<uint8_t> secret_bytes;
-    if (!base::HexStringToBytes(stable_device_secret_, &secret_bytes) ||
-        secret_bytes.size() < 32) {
+  // If we use a re-enrollment key, return its value if it's valid, as is.
+  if (!re_enrollment_key_.empty()) {
+    std::vector<uint8_t> key_bytes;
+    if (!base::HexStringToBytes(re_enrollment_key_, &key_bytes) ||
+        key_bytes.size() < 32) {
       metrics_->SendStateKeyGenerationStatus(
-          LoginMetrics::STATE_KEY_STATUS_BAD_DEVICE_SECRET);
-      LOG(ERROR) << "Malformed device secret, no state keys generated.";
+          LoginMetrics::STATE_KEY_STATUS_BAD_RE_ENROLLMENT_KEY);
+      LOG(ERROR) << "Malformed re-enrollment key. Bytes found: "
+                 << key_bytes.size() << ".";
       return base::unexpected(
-          StateKeysComputationError::kMalformedDeviceSecret);
-    }
-    if (!hmac.Init(secret_bytes.data(), secret_bytes.size())) {
-      metrics_->SendStateKeyGenerationStatus(
-          LoginMetrics::STATE_KEY_STATUS_HMAC_INIT_FAILURE);
-      LOG(ERROR) << "Failed to init HMAC, no state keys generated.";
-      return base::unexpected(
-          StateKeysComputationError::kHmacInitializationError);
+          StateKeysComputationError::kMalformedReEnrollmentKey);
     }
 
-    for (int i = 0; i < kDeviceStateKeyFutureQuanta; ++i) {
-      state_keys.push_back(std::vector<uint8_t>(hmac.DigestLength()));
-      std::string data_to_sign;
-      data_to_sign.append(kDeviceSecretUsageContext);
-      data_to_sign.append(1, '\0');
-      data_to_sign.append(reinterpret_cast<char*>(&quantized_time),
-                          sizeof(quantized_time));
-      if (!hmac.Sign(data_to_sign, state_keys.back().data(),
-                     state_keys.back().size())) {
-        metrics_->SendStateKeyGenerationStatus(
-            LoginMetrics::STATE_KEY_STATUS_HMAC_SIGN_FAILURE);
-        LOG(ERROR) << "Failed to compute HMAC, no state keys generated.";
-        state_keys.clear();
-        return base::unexpected(
-            StateKeysComputationError::kHmacComputationError);
-      }
-      quantized_time += quantum_size;
-    }
+    state_keys.push_back(key_bytes);
     metrics_->SendStateKeyGenerationStatus(
-        LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET);
-  } else if (!machine_serial_number_.empty() && !disk_serial_number_.empty()) {
-    for (int i = 0; i < kDeviceStateKeyFutureQuanta; ++i) {
-      state_keys.push_back(StateKey(crypto::kSHA256Length));
-      crypto::SHA256HashString(
-          crypto::SHA256HashString(group_code_key_) +
-              crypto::SHA256HashString(disk_serial_number_) +
-              crypto::SHA256HashString(machine_serial_number_) +
-              crypto::SHA256HashString(base::NumberToString(quantized_time)),
-          state_keys.back().data(), state_keys.back().size());
-      quantized_time += quantum_size;
-    }
-    metrics_->SendStateKeyGenerationStatus(
-        LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_IDENTIFIER_HASH);
+        LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_RE_ENROLLMENT_KEY);
   } else {
-    LOG(WARNING) << "No device identifiers available, no state keys generated";
+    // Get the current time in quantized form.
+    const int64_t quantum_size = 1 << kDeviceStateKeyTimeQuantumPower;
+    int64_t quantized_time = system_utils_->time(nullptr) & ~(quantum_size - 1);
 
-    if (machine_serial_number_.empty() && disk_serial_number_.empty()) {
+    // Compute the state keys.
+    if (!stable_device_secret_.empty()) {
+      crypto::HMAC hmac(crypto::HMAC::SHA256);
+      std::vector<uint8_t> secret_bytes;
+      if (!base::HexStringToBytes(stable_device_secret_, &secret_bytes) ||
+          secret_bytes.size() < 32) {
+        metrics_->SendStateKeyGenerationStatus(
+            LoginMetrics::STATE_KEY_STATUS_BAD_DEVICE_SECRET);
+        LOG(ERROR) << "Malformed device secret, no state keys generated.";
+        return base::unexpected(
+            StateKeysComputationError::kMalformedDeviceSecret);
+      }
+      if (!hmac.Init(secret_bytes.data(), secret_bytes.size())) {
+        metrics_->SendStateKeyGenerationStatus(
+            LoginMetrics::STATE_KEY_STATUS_HMAC_INIT_FAILURE);
+        LOG(ERROR) << "Failed to init HMAC, no state keys generated.";
+        return base::unexpected(
+            StateKeysComputationError::kHmacInitializationError);
+      }
+
+      for (int i = 0; i < kDeviceStateKeyFutureQuanta; ++i) {
+        state_keys.push_back(std::vector<uint8_t>(hmac.DigestLength()));
+        std::string data_to_sign;
+        data_to_sign.append(kDeviceSecretUsageContext);
+        data_to_sign.append(1, '\0');
+        data_to_sign.append(reinterpret_cast<char*>(&quantized_time),
+                            sizeof(quantized_time));
+        if (!hmac.Sign(data_to_sign, state_keys.back().data(),
+                       state_keys.back().size())) {
+          metrics_->SendStateKeyGenerationStatus(
+              LoginMetrics::STATE_KEY_STATUS_HMAC_SIGN_FAILURE);
+          LOG(ERROR) << "Failed to compute HMAC, no state keys generated.";
+          state_keys.clear();
+          return base::unexpected(
+              StateKeysComputationError::kHmacComputationError);
+        }
+        quantized_time += quantum_size;
+      }
       metrics_->SendStateKeyGenerationStatus(
-          LoginMetrics::STATE_KEY_STATUS_MISSING_ALL_IDENTIFIERS);
+          LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_HMAC_DEVICE_SECRET);
+    } else if (!machine_serial_number_.empty() &&
+               !disk_serial_number_.empty()) {
+      for (int i = 0; i < kDeviceStateKeyFutureQuanta; ++i) {
+        state_keys.push_back(StateKey(crypto::kSHA256Length));
+        crypto::SHA256HashString(
+            crypto::SHA256HashString(group_code_key_) +
+                crypto::SHA256HashString(disk_serial_number_) +
+                crypto::SHA256HashString(machine_serial_number_) +
+                crypto::SHA256HashString(base::NumberToString(quantized_time)),
+            state_keys.back().data(), state_keys.back().size());
+        quantized_time += quantum_size;
+      }
+      metrics_->SendStateKeyGenerationStatus(
+          LoginMetrics::STATE_KEY_STATUS_GENERATION_METHOD_IDENTIFIER_HASH);
+    } else {
+      LOG(WARNING)
+          << "No device identifiers available, no state keys generated";
+
+      if (machine_serial_number_.empty() && disk_serial_number_.empty()) {
+        metrics_->SendStateKeyGenerationStatus(
+            LoginMetrics::STATE_KEY_STATUS_MISSING_ALL_IDENTIFIERS);
+        return base::unexpected(
+            StateKeysComputationError::kMissingAllDeviceIdentifiers);
+      }
+
+      if (machine_serial_number_.empty()) {
+        metrics_->SendStateKeyGenerationStatus(
+            LoginMetrics::STATE_KEY_STATUS_MISSING_MACHINE_SERIAL_NUMBER);
+        return base::unexpected(
+            StateKeysComputationError::kMissingSerialNumber);
+      }
+
+      DCHECK(disk_serial_number_.empty());
+      metrics_->SendStateKeyGenerationStatus(
+          LoginMetrics::STATE_KEY_STATUS_MISSING_DISK_SERIAL_NUMBER);
       return base::unexpected(
-          StateKeysComputationError::kMissingAllDeviceIdentifiers);
+          StateKeysComputationError::kMissingDiskSerialNumber);
     }
-
-    if (machine_serial_number_.empty()) {
-      metrics_->SendStateKeyGenerationStatus(
-          LoginMetrics::STATE_KEY_STATUS_MISSING_MACHINE_SERIAL_NUMBER);
-      return base::unexpected(StateKeysComputationError::kMissingSerialNumber);
-    }
-
-    DCHECK(disk_serial_number_.empty());
-    metrics_->SendStateKeyGenerationStatus(
-        LoginMetrics::STATE_KEY_STATUS_MISSING_DISK_SERIAL_NUMBER);
-    return base::unexpected(
-        StateKeysComputationError::kMissingDiskSerialNumber);
   }
+
+  LOG(WARNING) << "State keys successfully generated. Number of keys: "
+               << state_keys.size() << ".";
 
   return state_keys;
 }

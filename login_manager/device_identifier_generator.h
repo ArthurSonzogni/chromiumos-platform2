@@ -46,6 +46,8 @@ class DeviceIdentifierGenerator {
     kMissingSerialNumber,
     // Missing device secret and disk serial number.
     kMissingDiskSerialNumber,
+    // Re-enrollment key is not a valid hex string or is too short.
+    kMalformedReEnrollmentKey,
   };
 
   // Callback type for state key generation requests.
@@ -139,6 +141,7 @@ class DeviceIdentifierGenerator {
 
   // The data required to generate state keys.
   bool machine_info_available_ = false;
+  std::string re_enrollment_key_;
   std::string stable_device_secret_;
 
   // TODO(mnissler): Remove these and the corresponding code once the old way
