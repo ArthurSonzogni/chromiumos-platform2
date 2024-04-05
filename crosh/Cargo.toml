@@ -14,6 +14,10 @@ name = "crosh"
 [[bin]]
 name = "crosh"
 
+[features]
+default = ["metrics"]
+metrics = ["metrics_rs"]
+
 [dependencies]
 bitflags = "1.3.2"
 chrono = "0.4"
@@ -28,7 +32,7 @@ rand = "0.7"
 remain = "*"
 regex = "1.0.6"
 rustyline = "9.1.1"
-metrics_rs = { path = "../metrics/rust-client" } # provided by ebuild
+metrics_rs = { path = "../metrics/rust-client", optional = true } # provided by ebuild
 shell-words = "1.0.0"
 signal-hook-registry = "*"
 system_api = { path = "../system_api" } # provided by ebuild

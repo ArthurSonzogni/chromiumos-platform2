@@ -10,6 +10,7 @@ use std::fmt::{self, Display};
 use std::io::{stdout, Write};
 use std::process::Child;
 
+#[cfg(feature = "metrics")]
 use metrics_rs::MetricsLibrary;
 use remain::sorted;
 
@@ -142,12 +143,15 @@ impl Dispatcher {
             return Err(Error::CommandNotImplemented(entry.get_command().join(" ")));
         }
 
-        let metrics_mutex = MetricsLibrary::get().expect("MetricsLibrary::get() failed");
-        let mut metrics = metrics_mutex
-            .lock()
-            .expect("Lock MetricsLibrary object failed");
-        let metrics_name = format!("Crosh_Run_{}", command.get_name());
-        let _ = metrics.send_user_action_to_uma(&metrics_name);
+        #[cfg(feature = "metrics")]
+        {
+            let metrics_mutex = MetricsLibrary::get().expect("MetricsLibrary::get() failed");
+            let mut metrics = metrics_mutex
+                .lock()
+                .expect("Lock MetricsLibrary object failed");
+            let metrics_name = format!("Crosh_Run_{}", command.get_name());
+            let _ = metrics.send_user_action_to_uma(&metrics_name);
+        }
 
         for cb in flag_callbacks {
             (cb)(command, entry)?;
