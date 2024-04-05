@@ -1260,23 +1260,18 @@ TEST_F(DownloadsBindMountMigrationTest,
   ASSERT_FALSE(platform_.IsDirectoryMounted(downloads_in_my_files_));
 }
 
-TEST_F(
-    DownloadsBindMountMigrationTest,
-    IfANewDownloadsFolderIsCreatedAfterMigrationItShouldNotRetriggerMigration) {
+TEST_F(DownloadsBindMountMigrationTest,
+       IfANewDownloadsFolderIsCreatedAfterMigrationItShouldGetRemoved) {
   SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
 
-  // Create a test file in ~/Downloads and expect that neither get moved as the
-  // migration has stabilised already.
+  // Create a test file in ~/Downloads.
   ASSERT_TRUE(platform_.CreateDirectory(downloads_));
-  const FilePath test_downloads_file_path =
-      downloads_.Append("test_downloads_file");
-  ASSERT_TRUE(CreateTestFileAtPath(test_downloads_file_path));
+  const FilePath path1 = downloads_.Append("file1");
+  ASSERT_TRUE(CreateTestFileAtPath(path1));
 
-  // Create a test file in ~/MyFiles/Downloads and expect that neither get moved
-  // as the migration has stabilised already.
-  const FilePath test_downloads_in_my_files_file_path =
-      downloads_in_my_files_.Append("test_downloads_in_my_files_file");
-  ASSERT_TRUE(CreateTestFileAtPath(test_downloads_in_my_files_file_path));
+  // Create a test file in ~/MyFiles/Downloads.
+  const FilePath path2 = downloads_in_my_files_.Append("file2");
+  ASSERT_TRUE(CreateTestFileAtPath(path2));
 
   // Unmount and remount.
   mount_helper_->UnmountAll();
@@ -1285,11 +1280,15 @@ TEST_F(
                   SecureBlobToHex(keyset_.KeyReference().fek_sig),
                   SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
               IsOk());
+
   // Verify that ~/MyFiles/Downloads is not mounted and that all the files
-  // reside in the correct places, not having been migrated.
+  // reside in the correct places.
   ASSERT_FALSE(platform_.IsDirectoryMounted(downloads_in_my_files_));
-  ASSERT_TRUE(ExpectFileContentsCorrect(test_downloads_file_path));
-  ASSERT_TRUE(ExpectFileContentsCorrect(test_downloads_in_my_files_file_path));
+  ASSERT_FALSE(base::PathExists(path1));
+  ASSERT_FALSE(base::PathExists(downloads_));
+  ASSERT_TRUE(
+      ExpectFileContentsCorrect(downloads_in_my_files_.Append("file1")));
+  ASSERT_TRUE(ExpectFileContentsCorrect(path2));
 }
 
 }  // namespace

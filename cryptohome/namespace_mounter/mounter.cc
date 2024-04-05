@@ -638,19 +638,24 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   const MigrationStage stage =
       GetDownloadsMigrationXattr(platform_, downloads_in_my_files);
 
+  bool ok;
+
   if (stage == MigrationStage::kMigrated) {
     LOG(INFO) << "The 'Downloads' folder is already marked as 'migrated'";
     ReportDownloadsMigrationStatus(kAlreadyMigrated);
 
-    if (platform_->FileExists(downloads)) {
-      LOG(WARNING) << "The ~/Downloads folder has been re-created after it was "
-                      "migrated to ~/MyFiles/Downloads";
+    if (platform_->DirectoryExists(downloads)) {
+      LOG(WARNING) << "The ~/Downloads folder reappeared after it was migrated "
+                      "to ~/MyFiles/Downloads";
       ReportDownloadsMigrationStatus(kReappeared);
+
+      MigrateDirectory(downloads_in_my_files, downloads);
+      ok = platform_->DeletePathRecursively(downloads);
+      ReportDownloadsMigrationOperation("RemoveReappearedDownloads", ok);
+      PLOG_IF(ERROR, !ok) << "Cannot remove the reappeared ~/Downloads folder";
     }
     return true;
   }
-
-  bool ok;
 
   // Ensure that the filesystems will be sync'ed.
   const SyncGuard sync_guard(platform_);
