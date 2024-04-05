@@ -74,16 +74,6 @@ class UefiDelegate {
   //
   // Errors are logged but otherwise ignored.
   virtual void MakeEsrtReadableByFwupd(const UserAndGroup& fwupd) = 0;
-
-  // Mount the EFI System Partition (ESP).
-  //
-  // The ESP is mounted at /efi. This is a FAT filesystem, so it doesn't
-  // have unix permissions. The files need to be writable by fwupd, so
-  // mount options are used to set the user and group of all files to
-  // fwupd.
-  //
-  // Returns true on success.
-  virtual bool MountEfiSystemPartition(const UserAndGroup& fwupd) = 0;
 };
 
 // Initialize directories needed for UEFI platforms. Does nothing if not

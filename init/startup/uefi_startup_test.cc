@@ -58,10 +58,6 @@ class MockUefiDelegate : public UefiDelegate {
               MakeEsrtReadableByFwupd,
               (const UserAndGroup& fwupd),
               (override));
-  MOCK_METHOD(bool,
-              MountEfiSystemPartition,
-              (const UserAndGroup& fwupd),
-              (override));
 };
 
 // Test that the appropriate actions are taken if UEFI is enabled.
@@ -80,9 +76,6 @@ TEST(UefiStartup, UefiEnabled) {
               MakeUefiVarMutable(kEfiImageSecurityDatabaseGuid, "dbx"))
       .WillOnce(Return(true));
   EXPECT_CALL(mock_uefi_delegate, MakeEsrtReadableByFwupd(fwupd));
-  EXPECT_CALL(mock_uefi_delegate,
-              MountEfiSystemPartition(UefiDelegate::UserAndGroup{1, 2}))
-      .WillOnce(Return(true));
 
   MaybeRunUefiStartup(mock_uefi_delegate);
 }
@@ -200,24 +193,6 @@ TEST_F(UefiDelegateTest, MakeEsrtReadableByFwupd) {
       .WillRepeatedly(Return(true));
 
   uefi_delegate_->MakeEsrtReadableByFwupd(UefiDelegate::UserAndGroup{123, 456});
-}
-
-// Test mounting the ESP.
-TEST_F(UefiDelegateTest, MountEfiSystemPartition) {
-  ASSERT_TRUE(base::CreateDirectory(root_dir_.Append("run")));
-
-  const base::FilePath esp_dir = root_dir_.Append(kEspDir);
-  const base::FilePath root_dev = base::FilePath("/dev/sda12");
-
-  EXPECT_CALL(mock_startup_dep_, GetRootDevicePartitionPath(kEspLabel))
-      .WillOnce(Return(root_dev));
-  EXPECT_CALL(mock_startup_dep_,
-              Mount(root_dev, esp_dir, kFsTypeVfat, kCommonMountFlags,
-                    "uid=123,gid=456,umask=007"))
-      .WillOnce(Return(true));
-
-  EXPECT_TRUE(uefi_delegate_->MountEfiSystemPartition(
-      UefiDelegate::UserAndGroup{123, 456}));
 }
 
 }  // namespace startup
