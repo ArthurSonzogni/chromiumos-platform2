@@ -23,6 +23,9 @@ namespace swap_management {
 
 class LoopDev {
  public:
+  LoopDev() = delete;
+  LoopDev(const LoopDev&) = delete;
+  LoopDev& operator=(const LoopDev&) = delete;
   ~LoopDev();
 
   static absl::StatusOr<std::unique_ptr<LoopDev>> Create(
@@ -33,16 +36,16 @@ class LoopDev {
   std::string GetPath();
 
  private:
-  LoopDev() = delete;
   explicit LoopDev(std::string path) : path_(path) {}
-  LoopDev(const LoopDev&) = delete;
-  LoopDev& operator=(const LoopDev&) = delete;
 
   std::string path_;
 };
 
 class DmDev {
  public:
+  DmDev() = delete;
+  DmDev(const DmDev&) = delete;
+  DmDev& operator=(const DmDev&) = delete;
   ~DmDev();
 
   static absl::StatusOr<std::unique_ptr<DmDev>> Create(
@@ -51,10 +54,7 @@ class DmDev {
   std::string GetPath();
 
  private:
-  DmDev() = delete;
   explicit DmDev(std::string name) : name_(name) {}
-  DmDev(const DmDev&) = delete;
-  DmDev& operator=(const DmDev&) = delete;
 
   std::string name_;
 
@@ -63,6 +63,9 @@ class DmDev {
 
 class ZramWriteback {
  public:
+  ZramWriteback& operator=(const ZramWriteback&) = delete;
+  ZramWriteback(const ZramWriteback&) = delete;
+
   static ZramWriteback* Get();
 
   absl::Status SetZramWritebackConfigIfOverriden(const std::string& key,
@@ -78,8 +81,6 @@ class ZramWriteback {
 
  private:
   ZramWriteback() = default;
-  ZramWriteback& operator=(const ZramWriteback&) = delete;
-  ZramWriteback(const ZramWriteback&) = delete;
 
   ~ZramWriteback();
 

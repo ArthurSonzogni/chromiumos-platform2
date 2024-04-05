@@ -18,6 +18,9 @@ namespace swap_management {
 
 class ZramRecompression {
  public:
+  ZramRecompression& operator=(const ZramRecompression&) = delete;
+  ZramRecompression(const ZramRecompression&) = delete;
+
   static ZramRecompression* Get();
 
   absl::Status EnableRecompression();
@@ -28,8 +31,6 @@ class ZramRecompression {
 
  private:
   ZramRecompression() = default;
-  ZramRecompression& operator=(const ZramRecompression&) = delete;
-  ZramRecompression(const ZramRecompression&) = delete;
 
   ~ZramRecompression();
 

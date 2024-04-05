@@ -19,6 +19,9 @@ namespace swap_management {
 
 class Metrics {
  public:
+  Metrics& operator=(const Metrics&) = delete;
+  Metrics(const Metrics&) = delete;
+
   static Metrics* Get();
   static void OverrideForTesting(Metrics* metrics);
 
@@ -38,8 +41,6 @@ class Metrics {
 
  private:
   Metrics() = default;
-  Metrics& operator=(const Metrics&) = delete;
-  Metrics(const Metrics&) = delete;
 
   virtual ~Metrics();
 

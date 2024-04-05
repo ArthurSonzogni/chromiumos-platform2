@@ -29,6 +29,9 @@ T** GetSingleton() {
 
 class Utils {
  public:
+  Utils& operator=(const Utils&) = delete;
+  Utils(const Utils&) = delete;
+
   static Utils* Get();
   static void OverrideForTesting(Utils* util);
 
@@ -75,8 +78,6 @@ class Utils {
 
  private:
   Utils() = default;
-  Utils& operator=(const Utils&) = delete;
-  Utils(const Utils&) = delete;
 
   virtual ~Utils() = default;
 

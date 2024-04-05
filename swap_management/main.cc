@@ -32,7 +32,7 @@ class Daemon : public brillo::DBusServiceDaemon {
  protected:
   void RegisterDBusObjectsAsync(
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override {
-    adaptor_.reset(new swap_management::DBusAdaptor(bus_));
+    adaptor_ = std::make_unique<swap_management::DBusAdaptor>(bus_);
     adaptor_->RegisterAsync(
         sequencer->GetHandler("RegisterAsync() failed.", true));
   }
