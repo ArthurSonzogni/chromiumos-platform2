@@ -17,8 +17,8 @@ use getopts::Options;
 
 use crate::disk::{DiskOpType, VmState};
 use crate::methods::{ContainerSource, Methods, UserDisks, VmFeatures};
-use crate::proto::system_api::cicerone_service::start_lxd_container_request::PrivilegeLevel;
-use crate::proto::system_api::cicerone_service::VmDeviceAction;
+use system_api::cicerone_service::start_lxd_container_request::PrivilegeLevel;
+use system_api::cicerone_service::VmDeviceAction;
 
 /// A string to string mapping of environment variables to values.
 pub type EnvMap<'a> = BTreeMap<&'a str, &'a str>;

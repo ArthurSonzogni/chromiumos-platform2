@@ -28,17 +28,18 @@ use libchromeos::OpenSafelyOptions;
 use protobuf::EnumOrUnknown;
 use protobuf::Message as ProtoMessage;
 
+use system_api::cicerone_service::*;
 use system_api::client::OrgChromiumDebugd;
 use system_api::client::OrgChromiumDlcServiceInterface;
 use system_api::client::OrgChromiumPermissionBroker;
 use system_api::client::OrgChromiumSessionManagerInterface;
+use system_api::client::OrgChromiumVmCicerone;
 use system_api::client::OrgChromiumVmConcierge;
 use system_api::concierge_service::vm_info::VmType;
 use system_api::concierge_service::*;
 use system_api::dlcservice::*;
 
 use crate::disk::{DiskInfo, DiskOpType, VmDiskImageType, VmState};
-use crate::proto::system_api::cicerone_service::*;
 use crate::proto::system_api::launch::*;
 use crate::proto::system_api::seneschal_service::*;
 use crate::proto::system_api::vm_plugin_dispatcher;
@@ -593,6 +594,18 @@ pub enum VmTypeStatus {
     Disabled(Option<String>),
 }
 
+fn concierge<'a>(connection: &Connection, timeout: Duration) -> blocking::Proxy<'a, &Connection> {
+    connection.with_proxy(
+        VM_CONCIERGE_SERVICE_NAME,
+        VM_CONCIERGE_SERVICE_PATH,
+        timeout,
+    )
+}
+
+fn cicerone<'a>(connection: &Connection, timeout: Duration) -> blocking::Proxy<'a, &Connection> {
+    connection.with_proxy(VM_CICERONE_SERVICE_NAME, VM_CICERONE_SERVICE_PATH, timeout)
+}
+
 /// Uses the standard ChromeOS interfaces to implement the methods with the least possible
 /// privilege. Uses a combination of D-Bus, protobufs, and shell protocols.
 pub struct Methods {
@@ -622,12 +635,8 @@ impl Methods {
         &self,
         timeout: Duration,
     ) -> Result<blocking::Proxy<&dbus::blocking::Connection>, Box<dyn Error>> {
-        let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
-            self.connection.get_real_connection_or_fail()?,
-            VM_CONCIERGE_SERVICE_NAME,
-            VM_CONCIERGE_SERVICE_PATH,
-            timeout,
-        );
+        let proxy: blocking::Proxy<'_, _> =
+            concierge(self.connection.get_real_connection_or_fail()?, timeout);
         Ok(proxy)
     }
 
@@ -1510,14 +1519,13 @@ impl Methods {
             START_LXD_PROGRESS_SIGNAL,
         )?;
 
-        let response: StartLxdResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CICERONE_SERVICE_NAME,
-                VM_CICERONE_SERVICE_PATH,
-                VM_CICERONE_INTERFACE,
-                START_LXD_METHOD,
-            )?,
-            &request,
+        let proxy = cicerone(
+            self.connection.get_real_connection_or_fail()?,
+            DEFAULT_TIMEOUT,
+        );
+
+        let response: StartLxdResponse = ProtoMessage::parse_from_bytes(
+            &OrgChromiumVmCicerone::start_lxd(&proxy, request.write_to_bytes()?)?,
         )?;
 
         use self::start_lxd_response::Status::*;
@@ -1763,14 +1771,12 @@ impl Methods {
             }
         }
 
-        let response: CreateLxdContainerResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CICERONE_SERVICE_NAME,
-                VM_CICERONE_SERVICE_PATH,
-                VM_CICERONE_INTERFACE,
-                CREATE_LXD_CONTAINER_METHOD,
-            )?,
-            &request,
+        let proxy = cicerone(
+            self.connection.get_real_connection_or_fail()?,
+            DEFAULT_TIMEOUT,
+        );
+        let response: CreateLxdContainerResponse = ProtoMessage::parse_from_bytes(
+            &OrgChromiumVmCicerone::create_lxd_container(&proxy, request.write_to_bytes()?)?,
         )?;
 
         use self::create_lxd_container_response::Status::*;
@@ -1812,17 +1818,15 @@ impl Methods {
             .map(|x| Duration::from_secs(x.try_into().expect("timeout should not be negative")))
             .unwrap_or(DEFAULT_TIMEOUT);
 
-        let response: StartLxdContainerResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CICERONE_SERVICE_NAME,
-                VM_CICERONE_SERVICE_PATH,
-                VM_CICERONE_INTERFACE,
-                START_LXD_CONTAINER_METHOD,
-            )?,
-            &request,
+        let proxy = cicerone(
+            self.connection.get_real_connection_or_fail()?,
+            DEFAULT_TIMEOUT,
+        );
+        let response: StartLxdContainerResponse = ProtoMessage::parse_from_bytes(
+            &OrgChromiumVmCicerone::start_lxd_container(&proxy, request.write_to_bytes()?)?,
         )?;
 
-        use self::start_lxd_container_response::Status::*;
+        use system_api::cicerone_service::start_lxd_container_response::Status::*;
         match response.status.enum_value() {
             // |REMAPPING| happens when the privilege level of a container was changed before this
             // boot. It's a long running operation and when it happens it's returned in lieu of
@@ -1868,14 +1872,13 @@ impl Methods {
         request.container_name = container_name.to_owned();
         request.container_username = username.to_owned();
 
-        let response: SetUpLxdContainerUserResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CICERONE_SERVICE_NAME,
-                VM_CICERONE_SERVICE_PATH,
-                VM_CICERONE_INTERFACE,
-                SET_UP_LXD_CONTAINER_USER_METHOD,
-            )?,
-            &request,
+        let proxy = cicerone(
+            self.connection.get_real_connection_or_fail()?,
+            DEFAULT_TIMEOUT,
+        );
+
+        let response: SetUpLxdContainerUserResponse = ProtoMessage::parse_from_bytes(
+            &OrgChromiumVmCicerone::set_up_lxd_container_user(&proxy, request.write_to_bytes()?)?,
         )?;
 
         use self::set_up_lxd_container_user_response::Status::*;
@@ -1898,15 +1901,14 @@ impl Methods {
         request.container_name = container_name.to_owned();
         request.updates = HashMap::from_iter(updates.iter().map(|(k, v)| (k.clone(), (*v).into())));
 
-        let response: UpdateContainerDevicesResponse = self.sync_protobus(
-            Message::new_method_call(
-                VM_CICERONE_SERVICE_NAME,
-                VM_CICERONE_SERVICE_PATH,
-                VM_CICERONE_INTERFACE,
-                UPDATE_CONTAINER_DEVICES_METHOD,
-            )?,
-            &request,
+        let proxy = cicerone(
+            self.connection.get_real_connection_or_fail()?,
+            DEFAULT_TIMEOUT,
+        );
+        let response: UpdateContainerDevicesResponse = ProtoMessage::parse_from_bytes(
+            &OrgChromiumVmCicerone::update_container_devices(&proxy, request.write_to_bytes()?)?,
         )?;
+
         use self::update_container_devices_response::Status::*;
         match response.status.enum_value() {
             Ok(OK) => Ok(format!("Results: {:?}", response.results)),
@@ -1952,14 +1954,13 @@ impl Methods {
             request.vm_name = vm_name.to_owned();
             request.port_num = guest_port as i32;
 
-            let response: AttachUsbToContainerResponse = self.sync_protobus(
-                Message::new_method_call(
-                    VM_CICERONE_SERVICE_NAME,
-                    VM_CICERONE_SERVICE_PATH,
-                    VM_CICERONE_INTERFACE,
-                    ATTACH_USB_TO_CONTAINER_METHOD,
-                )?,
-                &request,
+            let proxy = cicerone(
+                self.connection.get_real_connection_or_fail()?,
+                DEFAULT_TIMEOUT,
+            );
+
+            let response: AttachUsbToContainerResponse = ProtoMessage::parse_from_bytes(
+                &OrgChromiumVmCicerone::attach_usb_to_container(&proxy, request.write_to_bytes()?)?,
             )?;
 
             match response.status.enum_value() {

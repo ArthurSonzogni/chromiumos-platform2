@@ -86,6 +86,11 @@ const BINDINGS_TO_GENERATE: &[(&str, &str, BindingsType)] = &[
         BindingsType::Client(OPTS),
     ),
     (
+        "org_chromium_vm_cicerone",
+        "vm_tools/dbus_bindings/org.chromium.VmCicerone.xml",
+        BindingsType::Client(OPTS),
+    ),
+    (
         "org_chromium_vtpm",
         "vtpm/dbus_bindings/org.chromium.Vtpm.xml",
         BindingsType::Client(OPTS),
