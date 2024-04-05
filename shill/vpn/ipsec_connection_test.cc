@@ -271,7 +271,7 @@ class MockCallbacks {
               (const std::string& link_name,
                int interface_index,
                std::unique_ptr<net_base::NetworkConfig> network_config));
-  MOCK_METHOD(void, OnFailure, (Service::ConnectFailure));
+  MOCK_METHOD(void, OnFailure, (VPNEndReason));
   MOCK_METHOD(void, OnStopped, ());
 };
 
@@ -433,7 +433,7 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithSocketNotListening) {
   base::ScopedFD vici_server_fd =
       CreateUnixSocketAt(kViciSocketPath, /*start_listen=*/false);
   base::RunLoop run_loop;
-  EXPECT_CALL(callbacks_, OnFailure(_)).WillOnce([&](Service::ConnectFailure) {
+  EXPECT_CALL(callbacks_, OnFailure(_)).WillOnce([&](VPNEndReason) {
     run_loop.Quit();
   });
   run_loop.Run();
@@ -717,7 +717,7 @@ TEST_F(IPsecConnectionTest, SwanctlListSAsIKEv2ParseVIPFailed) {
               ScheduleConnectTask(ConnectStep::kIPsecStatusRead))
       .Times(0);
   std::move(exit_cb).Run(0, "");  // Passes an empty string.
-  EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
+  EXPECT_CALL(callbacks_, OnFailure(VPNEndReason::kFailureInternal));
   dispatcher_.task_environment().RunUntilIdle();
 }
 
@@ -849,9 +849,9 @@ TEST_F(IPsecConnectionTest, StartL2TPLayerAndConnected) {
 TEST_F(IPsecConnectionTest, OnL2TPFailure) {
   ipsec_connection_->set_state(VPNConnection::State::kConnected);
   l2tp_connection_->set_state(VPNConnection::State::kConnecting);
-  l2tp_connection_->TriggerFailure(Service::kFailureInternal, "");
+  l2tp_connection_->TriggerFailure(VPNEndReason::kFailureInternal, "");
 
-  EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
+  EXPECT_CALL(callbacks_, OnFailure(VPNEndReason::kFailureInternal));
   dispatcher_.task_environment().RunUntilIdle();
 }
 
@@ -955,7 +955,7 @@ TEST_F(IPsecConnectionTest, CreateXFRMInterfaceFailed) {
   ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kIPsecStatusRead);
 
   std::move(registered_failure_cb).Run();
-  EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
+  EXPECT_CALL(callbacks_, OnFailure(VPNEndReason::kFailureInternal));
   dispatcher_.task_environment().RunUntilIdle();
 }
 

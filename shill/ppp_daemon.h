@@ -17,6 +17,7 @@
 
 #include "shill/external_task.h"
 #include "shill/service.h"
+#include "shill/vpn/vpn_end_reason.h"
 
 namespace shill {
 
@@ -112,7 +113,7 @@ class PPPDaemon {
 
   // Get the failure reason from the dictionary which is received from our PPP
   // plugin and contains the exit status.
-  static Service::ConnectFailure ParseExitFailure(
+  static VPNEndReason ParseExitFailureForVPN(
       const std::map<std::string, std::string>& dict);
 
   // Get the network device name (e.g. "ppp0") from the dictionary of

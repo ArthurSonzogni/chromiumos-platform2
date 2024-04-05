@@ -103,13 +103,13 @@ void VPNConnection::NotifyConnected(
                                 interface_index, std::move(network_config)));
 }
 
-void VPNConnection::NotifyFailure(Service::ConnectFailure reason,
+void VPNConnection::NotifyFailure(VPNEndReason reason,
                                   std::string_view detail) {
   CheckCallWithState(__func__, state_,
                      {State::kConnecting, State::kConnected,
                       State::kDisconnecting, State::kStopped});
   LOG(ERROR) << "VPN connection failed, current state: " << state_
-             << ", reason: " << Service::ConnectFailureToString(reason)
+             << ", reason: " << VPNEndReasonToString(reason)
              << ", detail: " << detail;
 
   if (state_ == State::kDisconnecting || state_ == State::kStopped) {

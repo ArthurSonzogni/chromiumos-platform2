@@ -162,7 +162,8 @@ TEST_F(IKEv2DriverTest, ConnectingFailure) {
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
   ExpectEndReasonMetricsReported(Service::kFailureInternal);
-  driver_->ipsec_connection()->TriggerFailure(Service::kFailureInternal, "");
+  driver_->ipsec_connection()->TriggerFailure(VPNEndReason::kFailureInternal,
+                                              "");
   dispatcher_.DispatchPendingEvents();
 
   driver_->ipsec_connection()->TriggerStopped();
@@ -179,7 +180,8 @@ TEST_F(IKEv2DriverTest, ConnectedFailure) {
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
   ExpectEndReasonMetricsReported(Service::kFailureInternal);
-  driver_->ipsec_connection()->TriggerFailure(Service::kFailureInternal, "");
+  driver_->ipsec_connection()->TriggerFailure(VPNEndReason::kFailureInternal,
+                                              "");
   dispatcher_.DispatchPendingEvents();
 
   driver_->ipsec_connection()->TriggerStopped();

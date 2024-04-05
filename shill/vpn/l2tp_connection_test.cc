@@ -149,7 +149,7 @@ class MockCallbacks {
               (const std::string& link_name,
                int interface_index,
                std::unique_ptr<net_base::NetworkConfig> network_config));
-  MOCK_METHOD(void, OnFailure, (Service::ConnectFailure));
+  MOCK_METHOD(void, OnFailure, (VPNEndReason));
   MOCK_METHOD(void, OnStopped, ());
 };
 
@@ -395,7 +395,7 @@ TEST_F(L2TPConnectionTest, PPPNotifyExit) {
   l2tp_connection_->set_state(VPNConnection::State::kConnected);
   std::map<std::string, std::string> dict;
   dict[kPPPExitStatus] = kPPPDExitAuthFailure;
-  EXPECT_CALL(callbacks_, OnFailure(Service::kFailurePPPAuth));
+  EXPECT_CALL(callbacks_, OnFailure(VPNEndReason::kConnectFailureAuthPPP));
   l2tp_connection_->InvokeNotify(kPPPReasonExit, dict);
   dispatcher_.task_environment().RunUntilIdle();
 
@@ -417,7 +417,7 @@ TEST_F(L2TPConnectionTest, PPPNotifyExitCheckLogForAuthPositive) {
 
   std::map<std::string, std::string> dict;
   dict[kPPPExitStatus] = kPPPDExitHangUp;
-  EXPECT_CALL(callbacks_, OnFailure(Service::kFailurePPPAuth));
+  EXPECT_CALL(callbacks_, OnFailure(VPNEndReason::kConnectFailureAuthPPP));
   l2tp_connection_->InvokeNotify(kPPPReasonExit, dict);
   dispatcher_.task_environment().RunUntilIdle();
 }
@@ -434,7 +434,7 @@ TEST_F(L2TPConnectionTest, PPPNotifyExitCheckLogForAuthNegative) {
 
   std::map<std::string, std::string> dict;
   dict[kPPPExitStatus] = kPPPDExitHangUp;
-  EXPECT_CALL(callbacks_, OnFailure(Service::kFailureUnknown));
+  EXPECT_CALL(callbacks_, OnFailure(VPNEndReason::kFailureUnknown));
   l2tp_connection_->InvokeNotify(kPPPReasonExit, dict);
   dispatcher_.task_environment().RunUntilIdle();
 }

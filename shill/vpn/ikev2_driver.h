@@ -17,6 +17,7 @@
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/vpn_connection.h"
 #include "shill/vpn/vpn_driver.h"
+#include "shill/vpn/vpn_end_reason.h"
 
 namespace shill {
 
@@ -48,7 +49,7 @@ class IKEv2Driver : public VPNDriver {
 
   static const VPNDriver::Property kProperties[];
 
-  void NotifyServiceOfFailure(Service::ConnectFailure failure);
+  void NotifyServiceOfFailure(VPNEndReason failure);
 
   void StartIPsecConnection();
 
@@ -67,7 +68,7 @@ class IKEv2Driver : public VPNDriver {
       const std::string& link_name,
       int interface_index,
       std::unique_ptr<net_base::NetworkConfig> network_config);
-  void OnIPsecFailure(Service::ConnectFailure failure);
+  void OnIPsecFailure(VPNEndReason failure);
   void OnIPsecStopped();
 
   // Inherit from VPNDriver to add custom properties.

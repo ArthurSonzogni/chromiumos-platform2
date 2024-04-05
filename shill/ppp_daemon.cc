@@ -198,20 +198,31 @@ Service::ConnectFailure PPPDaemon::ExitStatusToFailure(int exit) {
 }
 
 // static
-Service::ConnectFailure PPPDaemon::ParseExitFailure(
+VPNEndReason PPPDaemon::ParseExitFailureForVPN(
     const std::map<std::string, std::string>& dict) {
   const auto it = dict.find(kPPPExitStatus);
   if (it == dict.end()) {
     LOG(ERROR) << "Failed to find the failure status in the dict";
-    return Service::kFailureInternal;
+    return VPNEndReason::kFailureInternal;
   }
   int exit = 0;
   if (!base::StringToInt(it->second, &exit)) {
     LOG(ERROR) << "Failed to parse the failure status from the dict, value: "
                << it->second;
-    return Service::kFailureInternal;
+    return VPNEndReason::kFailureInternal;
   }
-  return ExitStatusToFailure(exit);
+
+  // This switch block is same with the ExitStatusToFailure() above, but returns
+  // VPNEndReason instead.
+  switch (exit) {
+    case EXIT_OK:
+      return VPNEndReason::kDisconnectRequest;
+    case EXIT_PEER_AUTH_FAILED:
+    case EXIT_AUTH_TOPEER_FAILED:
+      return VPNEndReason::kConnectFailureAuthPPP;
+    default:
+      return VPNEndReason::kFailureUnknown;
+  }
 }
 
 }  // namespace shill

@@ -205,7 +205,7 @@ base::TimeDelta L2TPIPsecDriver::ConnectAsync(EventHandler* handler) {
 void L2TPIPsecDriver::StartIPsecConnection() {
   if (ipsec_connection_) {
     LOG(ERROR) << "The previous IPsecConnection is still running.";
-    NotifyServiceOfFailure(Service::kFailureInternal);
+    NotifyServiceOfFailure(VPNEndReason::kFailureInternal);
     return;
   }
 
@@ -213,7 +213,7 @@ void L2TPIPsecDriver::StartIPsecConnection() {
       const_args()->Lookup<std::string>(kProviderHostProperty, ""));
   if (remote_ip.empty()) {
     LOG(ERROR) << "Failed to resolve host property to IP.";
-    NotifyServiceOfFailure(Service::kFailureDNSLookup);
+    NotifyServiceOfFailure(VPNEndReason::kConnectFailureDNSLookup);
     return;
   }
 
@@ -298,13 +298,13 @@ void L2TPIPsecDriver::OnConnectTimeout() {
     return;
   }
   ipsec_connection_->Disconnect();
-  NotifyServiceOfFailure(Service::kFailureConnect);
+  NotifyServiceOfFailure(VPNEndReason::kConnectTimeout);
 }
 
 void L2TPIPsecDriver::OnBeforeSuspend(ResultCallback callback) {
   if (ipsec_connection_ && ipsec_connection_->IsConnectingOrConnected()) {
     ipsec_connection_->Disconnect();
-    NotifyServiceOfFailure(Service::kFailureDisconnect);
+    NotifyServiceOfFailure(VPNEndReason::kNetworkChange);
   }
   std::move(callback).Run(Error(Error::kSuccess));
 }
@@ -319,23 +319,24 @@ void L2TPIPsecDriver::OnDefaultPhysicalServiceEvent(
       return;
     case DefaultPhysicalServiceEvent::kDown:
       ipsec_connection_->Disconnect();
-      NotifyServiceOfFailure(Service::kFailureDisconnect);
+      NotifyServiceOfFailure(VPNEndReason::kNetworkChange);
       return;
     case DefaultPhysicalServiceEvent::kChanged:
       ipsec_connection_->Disconnect();
-      NotifyServiceOfFailure(Service::kFailureDisconnect);
+      NotifyServiceOfFailure(VPNEndReason::kNetworkChange);
       return;
   }
 }
 
-void L2TPIPsecDriver::NotifyServiceOfFailure(Service::ConnectFailure failure) {
-  LOG(ERROR) << "Driver failure due to "
-             << Service::ConnectFailureToString(failure);
+void L2TPIPsecDriver::NotifyServiceOfFailure(VPNEndReason failure) {
+  LOG(ERROR) << "Driver failure due to " << VPNEndReasonToString(failure);
   if (event_handler_) {
     // Only reports metrics when |event_handler_| exists to ensure reporting
     // only once for each connection.
-    ReportConnectionEndReason(metrics(), failure);
-    event_handler_->OnDriverFailure(failure, Service::kErrorDetailsNone);
+    auto service_failure = VPNEndReasonToServiceFailure(failure);
+    ReportConnectionEndReason(metrics(), service_failure);
+    event_handler_->OnDriverFailure(service_failure,
+                                    Service::kErrorDetailsNone);
     event_handler_ = nullptr;
   }
 }
@@ -359,7 +360,7 @@ void L2TPIPsecDriver::OnIPsecConnected(
   event_handler_->OnDriverConnected(link_name, interface_index);
 }
 
-void L2TPIPsecDriver::OnIPsecFailure(Service::ConnectFailure failure) {
+void L2TPIPsecDriver::OnIPsecFailure(VPNEndReason failure) {
   NotifyServiceOfFailure(failure);
 }
 

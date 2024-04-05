@@ -5,6 +5,8 @@
 #ifndef SHILL_VPN_VPN_END_REASON_H_
 #define SHILL_VPN_VPN_END_REASON_H_
 
+#include <string_view>
+
 #include "shill/service.h"
 
 namespace shill {
@@ -47,6 +49,9 @@ enum class VPNEndReason {
 
 // Maps EndReasons to Service::ConnectFailures.
 Service::ConnectFailure VPNEndReasonToServiceFailure(VPNEndReason reason);
+
+// Maps EndReasons to strings.
+std::string_view VPNEndReasonToString(VPNEndReason);
 
 }  // namespace shill
 

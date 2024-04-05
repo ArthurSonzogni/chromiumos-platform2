@@ -15,7 +15,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/mockable.h"
-#include "shill/service.h"
+#include "shill/vpn/vpn_end_reason.h"
 
 namespace shill {
 
@@ -50,7 +50,7 @@ class VPNConnection {
         std::unique_ptr<net_base::NetworkConfig> network_config)>;
     // The state has been changed to kDisconnecting caused by a failure
     // unexpectedly (i.e., Disconnect() is not called).
-    using OnFailureCallback = base::OnceCallback<void(Service::ConnectFailure)>;
+    using OnFailureCallback = base::OnceCallback<void(VPNEndReason)>;
     // The state has been change to kStopped.
     using OnStoppedCallback = base::OnceClosure;
 
@@ -109,8 +109,7 @@ class VPNConnection {
   // Note that NotifyFailure() will also invoke OnDisconnect() on the derived
   // class (by a PostTask()), and thus the derived class don't need to do any
   // clean up other than calling this function on failures.
-  mockable void NotifyFailure(Service::ConnectFailure reason,
-                              std::string_view detail);
+  mockable void NotifyFailure(VPNEndReason reason, std::string_view detail);
   void NotifyStopped();
 
   EventDispatcher* dispatcher() { return dispatcher_; }

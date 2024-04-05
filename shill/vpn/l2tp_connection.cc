@@ -25,6 +25,7 @@
 #include <net-base/process_manager.h>
 
 #include "shill/ppp_daemon.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {
@@ -111,13 +112,13 @@ void L2TPConnection::OnConnect() {
   temp_dir_ = vpn_util_->CreateScopedTempDir(base::FilePath(kRunDir));
 
   if (!WritePPPDConfig()) {
-    NotifyFailure(Service::kFailureInternal,
+    NotifyFailure(VPNEndReason::kFailureInternal,
                   "Failed to write pppd config file");
     return;
   }
 
   if (!WriteL2TPDConfig()) {
-    NotifyFailure(Service::kFailureInternal,
+    NotifyFailure(VPNEndReason::kFailureInternal,
                   "Failed to write xl2tpd config file");
     return;
   }
@@ -174,14 +175,14 @@ void L2TPConnection::Notify(const std::string& reason,
       return;
     }
 
-    Service::ConnectFailure failure = PPPDaemon::ParseExitFailure(dict);
+    VPNEndReason failure = PPPDaemon::ParseExitFailureForVPN(dict);
 
     // The exit code may be unknown even if the failure is actually auth error,
     // so let's parse the logs in this case. See b/329328608.
-    if (failure == Service::kFailureUnknown &&
+    if (failure == VPNEndReason::kFailureUnknown &&
         IsAuthErrorFromPPPDLog(pppd_log_path_)) {
       LOG(INFO) << "Found pattern of auth failure in pppd log";
-      failure = Service::kFailurePPPAuth;
+      failure = VPNEndReason::kConnectFailureAuthPPP;
     }
 
     NotifyFailure(failure, "pppd disconnected");
@@ -373,7 +374,7 @@ void L2TPConnection::StartXl2tpd() {
   if (!external_task_local->StartInMinijail(
           base::FilePath(kXl2tpdPath), &args, env,
           VPNUtil::BuildMinijailOptions(kCapMask), &error)) {
-    NotifyFailure(Service::kFailureInternal,
+    NotifyFailure(VPNEndReason::kFailureInternal,
                   base::StrCat({"Failed to start xl2tpd: ", error.message()}));
     return;
   }
@@ -402,7 +403,7 @@ void L2TPConnection::OnXl2tpdExitedUnexpectedly(pid_t pid, int exit_code) {
     LOG(WARNING) << message;
     return;
   }
-  NotifyFailure(Service::kFailureInternal, message);
+  NotifyFailure(VPNEndReason::kFailureInternal, message);
 }
 
 void L2TPConnection::OnXl2tpdControlDisconnectDone(int exit_code) {

@@ -16,6 +16,7 @@
 #include "shill/service.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/vpn_connection_under_test.h"
+#include "shill/vpn/vpn_end_reason.h"
 
 namespace shill {
 namespace {
@@ -37,7 +38,7 @@ class MockCallbacks {
               (const std::string& link_name,
                int interface_index,
                std::unique_ptr<net_base::NetworkConfig> network_config));
-  MOCK_METHOD(void, OnFailure, (Service::ConnectFailure));
+  MOCK_METHOD(void, OnFailure, (VPNEndReason));
   MOCK_METHOD(void, OnStopped, ());
 };
 
@@ -96,10 +97,10 @@ TEST_F(VPNConnectionTest, ConnectingFailure) {
   vpn_connection_->Connect();
   dispatcher_.task_environment().RunUntilIdle();
 
-  vpn_connection_->TriggerFailure(Service::kFailureInternal, "");
+  vpn_connection_->TriggerFailure(VPNEndReason::kFailureInternal, "");
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kDisconnecting);
   EXPECT_CALL(*vpn_connection_, OnDisconnect());
-  EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
+  EXPECT_CALL(callbacks_, OnFailure(VPNEndReason::kFailureInternal));
   dispatcher_.task_environment().RunUntilIdle();
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kDisconnecting);
 }
@@ -113,10 +114,10 @@ TEST_F(VPNConnectionTest, ConnectedFailure) {
       std::make_unique<net_base::NetworkConfig>(test_network_config_));
   dispatcher_.task_environment().RunUntilIdle();
 
-  vpn_connection_->TriggerFailure(Service::kFailureInternal, "");
+  vpn_connection_->TriggerFailure(VPNEndReason::kFailureInternal, "");
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kDisconnecting);
   EXPECT_CALL(*vpn_connection_, OnDisconnect());
-  EXPECT_CALL(callbacks_, OnFailure(Service::kFailureInternal));
+  EXPECT_CALL(callbacks_, OnFailure(VPNEndReason::kFailureInternal));
   dispatcher_.task_environment().RunUntilIdle();
   EXPECT_EQ(vpn_connection_->state(), VPNConnection::State::kDisconnecting);
 }

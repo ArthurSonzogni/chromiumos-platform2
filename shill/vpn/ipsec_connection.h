@@ -24,8 +24,8 @@
 #include "shill/certificate_file.h"
 #include "shill/device_info.h"
 #include "shill/metrics.h"
-#include "shill/service.h"
 #include "shill/vpn/vpn_connection.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {
@@ -149,7 +149,7 @@ class IPsecConnection : public VPNConnection {
 
   // Tasks scheduled by ScheduleConnectTask(). Each function should call
   // ScheduleConnectTask() (either directly or using a callback) on the task
-  // done, or call NoitfyFailure() to indicate a failure.
+  // done, or call NotifyFailure() to indicate a failure.
 
   // Generates strongswan.conf. On success, this function will trigger
   // |kStrongSwanConfigWritten| step and set |strongswan_conf_path_|.
@@ -202,10 +202,10 @@ class IPsecConnection : public VPNConnection {
   // |message_on_failure|.
   void RunSwanctl(const std::vector<std::string>& args,
                   SwanctlCallback on_success,
-                  Service::ConnectFailure reason_on_failure,
+                  VPNEndReason reason_on_failure,
                   const std::string& message_on_failure);
   void OnSwanctlExited(SwanctlCallback on_success,
-                       Service::ConnectFailure reason_on_failure,
+                       VPNEndReason reason_on_failure,
                        const std::string& message_on_failure,
                        int exit_code,
                        const std::string& stdout_str);
@@ -231,7 +231,7 @@ class IPsecConnection : public VPNConnection {
   void OnL2TPConnected(const std::string& interface_name,
                        int interface_index,
                        std::unique_ptr<net_base::NetworkConfig> network_config);
-  void OnL2TPFailure(Service::ConnectFailure reason);
+  void OnL2TPFailure(VPNEndReason reason);
   void OnL2TPStopped();
 
   // Callback from DeviceInfo.

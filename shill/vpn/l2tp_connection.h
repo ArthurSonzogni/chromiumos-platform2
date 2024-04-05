@@ -20,7 +20,6 @@
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/external_task.h"
-#include "shill/service.h"
 #include "shill/vpn/vpn_connection.h"
 #include "shill/vpn/vpn_util.h"
 

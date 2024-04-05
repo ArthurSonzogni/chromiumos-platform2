@@ -16,6 +16,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/service.h"
 #include "shill/vpn/vpn_connection.h"
+#include "shill/vpn/vpn_end_reason.h"
 
 namespace shill {
 
@@ -36,7 +37,7 @@ class VPNConnectionUnderTest : public VPNConnection {
       const std::string& link_name,
       int interface_index,
       std::unique_ptr<net_base::NetworkConfig> network_config);
-  void TriggerFailure(Service::ConnectFailure reason, std::string_view detail);
+  void TriggerFailure(VPNEndReason reason, std::string_view detail);
   void TriggerStopped();
 
   void set_state(State state) { state_ = state; }

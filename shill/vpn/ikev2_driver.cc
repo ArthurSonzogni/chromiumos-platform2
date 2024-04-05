@@ -135,7 +135,7 @@ base::TimeDelta IKEv2Driver::ConnectAsync(EventHandler* handler) {
 void IKEv2Driver::StartIPsecConnection() {
   if (ipsec_connection_) {
     LOG(ERROR) << "The previous IPsecConnection is still running.";
-    NotifyServiceOfFailure(Service::kFailureInternal);
+    NotifyServiceOfFailure(VPNEndReason::kFailureInternal);
     return;
   }
 
@@ -147,7 +147,7 @@ void IKEv2Driver::StartIPsecConnection() {
   auto ipsec_config = MakeIPsecConfig(*const_args(), *eap_credentials());
   if (!ipsec_config) {
     LOG(ERROR) << "Failed to generate IPsec config";
-    NotifyServiceOfFailure(Service::kFailureInternal);
+    NotifyServiceOfFailure(VPNEndReason::kInvalidConfig);
     return;
   }
 
@@ -204,14 +204,14 @@ void IKEv2Driver::OnConnectTimeout() {
     return;
   }
   ipsec_connection_->Disconnect();
-  NotifyServiceOfFailure(Service::kFailureConnect);
+  NotifyServiceOfFailure(VPNEndReason::kConnectTimeout);
 }
 
 // TODO(b/210064468): Check if charon can handle these events.
 void IKEv2Driver::OnBeforeSuspend(ResultCallback callback) {
   if (ipsec_connection_ && ipsec_connection_->IsConnectingOrConnected()) {
     ipsec_connection_->Disconnect();
-    NotifyServiceOfFailure(Service::kFailureDisconnect);
+    NotifyServiceOfFailure(VPNEndReason::kNetworkChange);
   }
   std::move(callback).Run(Error(Error::kSuccess));
 }
@@ -227,23 +227,24 @@ void IKEv2Driver::OnDefaultPhysicalServiceEvent(
       return;
     case DefaultPhysicalServiceEvent::kDown:
       ipsec_connection_->Disconnect();
-      NotifyServiceOfFailure(Service::kFailureDisconnect);
+      NotifyServiceOfFailure(VPNEndReason::kNetworkChange);
       return;
     case DefaultPhysicalServiceEvent::kChanged:
       ipsec_connection_->Disconnect();
-      NotifyServiceOfFailure(Service::kFailureDisconnect);
+      NotifyServiceOfFailure(VPNEndReason::kNetworkChange);
       return;
   }
 }
 
-void IKEv2Driver::NotifyServiceOfFailure(Service::ConnectFailure failure) {
-  LOG(ERROR) << "Driver failure due to "
-             << Service::ConnectFailureToString(failure);
+void IKEv2Driver::NotifyServiceOfFailure(VPNEndReason failure) {
+  LOG(ERROR) << "Driver failure due to " << VPNEndReasonToString(failure);
   if (event_handler_) {
     // Only reports metrics when |event_handler_| exists to ensure reporting
     // only once for each connection.
-    ReportConnectionEndReason(metrics(), failure);
-    event_handler_->OnDriverFailure(failure, Service::kErrorDetailsNone);
+    auto service_failure = VPNEndReasonToServiceFailure(failure);
+    ReportConnectionEndReason(metrics(), service_failure);
+    event_handler_->OnDriverFailure(service_failure,
+                                    Service::kErrorDetailsNone);
     event_handler_ = nullptr;
   }
 }
@@ -266,7 +267,7 @@ void IKEv2Driver::OnIPsecConnected(
   event_handler_->OnDriverConnected(link_name, interface_index);
 }
 
-void IKEv2Driver::OnIPsecFailure(Service::ConnectFailure failure) {
+void IKEv2Driver::OnIPsecFailure(VPNEndReason failure) {
   NotifyServiceOfFailure(failure);
 }
 

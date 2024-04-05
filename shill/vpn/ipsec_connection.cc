@@ -36,6 +36,7 @@
 #include <re2/re2.h>
 
 #include "shill/metrics.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {
@@ -417,7 +418,7 @@ IPsecConnection::~IPsecConnection() {
 void IPsecConnection::OnConnect() {
   temp_dir_ = vpn_util_->CreateScopedTempDir(base::FilePath(kBaseRunDir));
   if (!temp_dir_.IsValid()) {
-    NotifyFailure(Service::kFailureInternal,
+    NotifyFailure(VPNEndReason::kFailureInternal,
                   "Failed to create temp dir for IPsec");
     return;
   }
@@ -510,7 +511,7 @@ void IPsecConnection::WriteStrongSwanConfig() {
       base::StringPrintf(kTemplate, kSmartcardModuleName,
                          StrongSwanResolvConfPath().value().c_str());
   if (!vpn_util_->WriteConfigFile(strongswan_conf_path_, contents)) {
-    NotifyFailure(Service::kFailureInternal,
+    NotifyFailure(VPNEndReason::kFailureInternal,
                   base::StrCat({"Failed to write ", kStrongSwanConfFileName}));
     return;
   }
@@ -599,7 +600,7 @@ void IPsecConnection::WriteSwanctlConfig() {
   if (config_->client_cert_id.has_value()) {
     if (!config_->ca_cert_pem_strings.has_value() ||
         !config_->client_cert_slot.has_value()) {
-      NotifyFailure(Service::kFailureInternal,
+      NotifyFailure(VPNEndReason::kInvalidConfig,
                     "Expect cert auth but some required fields are empty");
       return;
     }
@@ -641,11 +642,11 @@ void IPsecConnection::WriteSwanctlConfig() {
   // L2TP/IPsec VPN or the first round in IKEv2 VPN.
   if (config_->xauth_user.has_value() || config_->xauth_password.has_value()) {
     if (!config_->xauth_user.has_value()) {
-      NotifyFailure(Service::kFailureInternal, "Only Xauth password is set");
+      NotifyFailure(VPNEndReason::kInvalidConfig, "Only Xauth password is set");
       return;
     }
     if (!config_->xauth_password.has_value()) {
-      NotifyFailure(Service::kFailureInternal, "Only Xauth user is set");
+      NotifyFailure(VPNEndReason::kInvalidConfig, "Only Xauth user is set");
       return;
     }
 
@@ -703,7 +704,7 @@ void IPsecConnection::WriteSwanctlConfig() {
       {connections_section.Format(), "\n", secrets_section.Format()});
   if (!vpn_util_->WriteConfigFile(swanctl_conf_path_, contents)) {
     NotifyFailure(
-        Service::kFailureInternal,
+        VPNEndReason::kFailureInternal,
         base::StrCat({"Failed to write swanctl.conf", kSwanctlConfFileName}));
     return;
   }
@@ -724,7 +725,7 @@ void IPsecConnection::CheckPreviousCharonProcess(bool wait_if_alive) {
     return;
   }
   if (!wait_if_alive) {
-    NotifyFailure(Service::kFailureInternal, "Charon is still running");
+    NotifyFailure(VPNEndReason::kFailureInternal, "Charon is still running");
     return;
   }
   LOG(INFO) << "Old charon is alive. wait for 2 seconds.";
@@ -746,7 +747,7 @@ void IPsecConnection::StartCharon() {
     if (!base::DeleteFile(vici_socket_path_)) {
       const std::string reason = "Failed to delete vici socket file";
       PLOG(ERROR) << reason;
-      NotifyFailure(Service::kFailureInternal, reason);
+      NotifyFailure(VPNEndReason::kFailureInternal, reason);
       return;
     }
   }
@@ -780,7 +781,7 @@ void IPsecConnection::StartCharon() {
                      weak_factory_.GetWeakPtr()));
 
   if (charon_pid_ == -1) {
-    NotifyFailure(Service::kFailureInternal, "Failed to start charon");
+    NotifyFailure(VPNEndReason::kFailureInternal, "Failed to start charon");
     return;
   }
 
@@ -794,7 +795,7 @@ void IPsecConnection::StartCharon() {
     if (!vici_socket_watcher_->Watch(vici_socket_path_,
                                      base::FilePathWatcher::Type::kNonRecursive,
                                      callback)) {
-      NotifyFailure(Service::kFailureInternal,
+      NotifyFailure(VPNEndReason::kFailureInternal,
                     "Failed to set up FilePathWatcher for the vici socket");
       return;
     }
@@ -811,7 +812,7 @@ void IPsecConnection::SwanctlLoadConfig() {
              base::BindOnce(&IPsecConnection::SwanctlNextStep,
                             weak_factory_.GetWeakPtr(),
                             ConnectStep::kSwanctlConfigLoaded),
-             Service::kFailureInternal, "Failed to load swanctl.conf");
+             VPNEndReason::kFailureInternal, "Failed to load swanctl.conf");
 }
 
 void IPsecConnection::SwanctlInitiateConnection() {
@@ -825,7 +826,7 @@ void IPsecConnection::SwanctlInitiateConnection() {
       args,
       base::BindOnce(&IPsecConnection::SwanctlNextStep,
                      weak_factory_.GetWeakPtr(), ConnectStep::kIPsecConnected),
-      Service::kFailureConnect, "Failed to initiate IPsec connection");
+      VPNEndReason::kFailureUnknown, "Failed to initiate IPsec connection");
 }
 
 void IPsecConnection::SwanctlListSAs() {
@@ -833,7 +834,7 @@ void IPsecConnection::SwanctlListSAs() {
   RunSwanctl(args,
              base::BindOnce(&IPsecConnection::OnSwanctlListSAsDone,
                             weak_factory_.GetWeakPtr()),
-             Service::kFailureInternal, "Failed to get SA information");
+             VPNEndReason::kFailureInternal, "Failed to get SA information");
 }
 
 void IPsecConnection::CreateXFRMInterface() {
@@ -844,7 +845,7 @@ void IPsecConnection::CreateXFRMInterface() {
   // https://wiki.strongswan.org/projects/strongswan/wiki/RouteBasedVPN
   int lo_index = device_info_->GetIndex("lo");
   if (lo_index == -1) {
-    NotifyFailure(Service::kFailureInternal, "Failed to get index of lo");
+    NotifyFailure(VPNEndReason::kFailureInternal, "Failed to get index of lo");
     return;
   }
   const std::string err_msg = "Failed to create XFRM interface";
@@ -853,9 +854,9 @@ void IPsecConnection::CreateXFRMInterface() {
           base::BindOnce(&IPsecConnection::OnXFRMInterfaceReady,
                          weak_factory_.GetWeakPtr()),
           base::BindOnce(&IPsecConnection::NotifyFailure,
-                         weak_factory_.GetWeakPtr(), Service::kFailureInternal,
-                         err_msg))) {
-    NotifyFailure(Service::kFailureInternal, err_msg);
+                         weak_factory_.GetWeakPtr(),
+                         VPNEndReason::kFailureInternal, err_msg))) {
+    NotifyFailure(VPNEndReason::kFailureInternal, err_msg);
   }
   return;
 }
@@ -869,7 +870,7 @@ void IPsecConnection::OnViciSocketPathEvent(int remaining_attempts,
   }
 
   if (error) {
-    NotifyFailure(Service::kFailureInternal,
+    NotifyFailure(VPNEndReason::kFailureInternal,
                   "FilePathWatcher error for the vici socket");
     return;
   }
@@ -884,7 +885,7 @@ void IPsecConnection::OnViciSocketPathEvent(int remaining_attempts,
   vici_socket_watcher_ = nullptr;
 
   if (remaining_attempts <= 0) {
-    NotifyFailure(Service::kFailureInternal,
+    NotifyFailure(VPNEndReason::kFailureInternal,
                   "Failed to wait for vici socket ready.");
     return;
   }
@@ -907,7 +908,7 @@ void IPsecConnection::OnViciSocketPathEvent(int remaining_attempts,
 
 void IPsecConnection::OnCharonExitedUnexpectedly(int exit_code) {
   charon_pid_ = -1;
-  NotifyFailure(Service::kFailureInternal,
+  NotifyFailure(VPNEndReason::kFailureInternal,
                 base::StringPrintf(
                     "charon exited unexpectedly with exit code %d", exit_code));
   return;
@@ -922,7 +923,7 @@ void IPsecConnection::OnSwanctlListSAsDone(const std::string& stdout_str) {
   if (!l2tp_connection_) {
     ParseLocalVirtualIPs(lines);
     if (!local_virtual_ipv4_.has_value() && !local_virtual_ipv6_.has_value()) {
-      NotifyFailure(Service::kFailureInternal,
+      NotifyFailure(VPNEndReason::kFailureInternal,
                     "Failed to get local virtual IP");
       return;
     }
@@ -935,7 +936,7 @@ void IPsecConnection::OnSwanctlListSAsDone(const std::string& stdout_str) {
 
 void IPsecConnection::RunSwanctl(const std::vector<std::string>& args,
                                  SwanctlCallback on_success,
-                                 Service::ConnectFailure reason_on_failure,
+                                 VPNEndReason reason_on_failure,
                                  const std::string& message_on_failure) {
   std::map<std::string, std::string> env = {
       {"STRONGSWAN_CONF", strongswan_conf_path_.value()},
@@ -949,13 +950,13 @@ void IPsecConnection::RunSwanctl(const std::vector<std::string>& args,
                      weak_factory_.GetWeakPtr(), std::move(on_success),
                      reason_on_failure, message_on_failure));
   if (pid == -1) {
-    NotifyFailure(Service::kFailureInternal,
+    NotifyFailure(VPNEndReason::kFailureInternal,
                   message_on_failure + ": failed to run swanctl in minijail");
   }
 }
 
 void IPsecConnection::OnSwanctlExited(SwanctlCallback on_success,
-                                      Service::ConnectFailure reason_on_failure,
+                                      VPNEndReason reason_on_failure,
                                       const std::string& message_on_failure,
                                       int exit_code,
                                       const std::string& stdout_str) {
@@ -1201,7 +1202,7 @@ void IPsecConnection::OnDisconnect() {
   }
 }
 
-void IPsecConnection::OnL2TPFailure(Service::ConnectFailure reason) {
+void IPsecConnection::OnL2TPFailure(VPNEndReason reason) {
   switch (state()) {
     case State::kDisconnecting:
       // If the IPsec layer is disconnecting, it could mean the failure happens

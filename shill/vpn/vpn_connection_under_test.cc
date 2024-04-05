@@ -15,6 +15,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/service.h"
+#include "shill/vpn/vpn_end_reason.h"
 
 namespace shill {
 
@@ -29,7 +30,7 @@ void VPNConnectionUnderTest::TriggerConnected(
   NotifyConnected(link_name, interface_index, std::move(network_config));
 }
 
-void VPNConnectionUnderTest::TriggerFailure(Service::ConnectFailure reason,
+void VPNConnectionUnderTest::TriggerFailure(VPNEndReason reason,
                                             std::string_view detail) {
   NotifyFailure(reason, detail);
 }
