@@ -10,8 +10,6 @@
 
 #include <base/files/file_path.h>
 #include <base/time/time.h>
-#include <libminijail.h>
-#include <scoped_minijail.h>
 
 namespace modemfwd {
 

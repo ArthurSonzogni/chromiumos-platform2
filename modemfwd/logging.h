@@ -13,6 +13,8 @@
 
 namespace modemfwd {
 
+constexpr char kModemfwdLogDirectory[] = "/var/log/modemfwd";
+
 extern bool g_extra_logging;
 
 }  // namespace modemfwd

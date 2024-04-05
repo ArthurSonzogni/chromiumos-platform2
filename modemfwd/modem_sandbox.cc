@@ -2,19 +2,64 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "modemfwd/modem_sandbox.h"
+
 #include <string>
 #include <vector>
 
-#include "modemfwd/modem_sandbox.h"
-
 #include <linux/securebits.h>
 #include <signal.h>
+#include <stdio.h>
 
+#include <base/no_destructor.h>
+#include <base/files/file.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/platform_file.h>
 #include <base/logging.h>
 #include <base/process/process.h>
+#include <base/time/time.h>
+#include <libminijail.h>
+#include <scoped_minijail.h>
+
+#include "modemfwd/logging.h"
 
 namespace modemfwd {
+
+namespace {
+
+int GetLoggingFd() {
+  static base::NoDestructor<base::File> s_minijail_log_file([] {
+    base::FilePath log_dir(kModemfwdLogDirectory);
+    base::FilePath previous_path = log_dir.Append("minijail.previous");
+    base::FilePath current_path = log_dir.Append("minijail.current");
+    if (base::PathExists(current_path) &&
+        !base::Move(current_path, previous_path)) {
+      LOG(WARNING) << "Failed to rotate minijail log, logs from the previous"
+                      "boot will be lost";
+    }
+    return base::File(current_path,
+                      base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
+  }());
+  return s_minijail_log_file->GetPlatformFile();
+}
+
+int SetupLogging(void* payload) {
+  base::Time::Exploded now;
+  base::Time::Now().UTCExplode(&now);
+
+  intptr_t fd = reinterpret_cast<intptr_t>(payload);
+  dprintf(fd,
+          "%4d-%02d-%02dT%02d:%02d:%02d.%06dZ starting minijailed process %d\n",
+          now.year, now.month, now.day_of_month, now.hour, now.minute,
+          now.second, now.millisecond, getpid());
+  // LOG_INFO = 6. We can't include syslog.h here because it causes conflicts
+  // with base/logging.h.
+  minijail_log_to_fd(fd, 6);
+  return 0;
+}
+
+}  // namespace
 
 // For security reasons, we want to apply security restrictions to utilities:
 // 1. We want to provide net admin capabilities only when necessary.
@@ -43,6 +88,12 @@ ScopedMinijail ConfigureSandbox(const base::FilePath& seccomp_file_path,
   } else {
     LOG(WARNING) << "Minijail configured without seccomp filter";
   }
+
+  int logging_fd = GetLoggingFd();
+  minijail_preserve_fd(j.get(), logging_fd, logging_fd);
+  minijail_add_hook(j.get(), &SetupLogging,
+                    reinterpret_cast<void*>(static_cast<intptr_t>(logging_fd)),
+                    MINIJAIL_HOOK_EVENT_PRE_DROP_CAPS);
 
   return j;
 }

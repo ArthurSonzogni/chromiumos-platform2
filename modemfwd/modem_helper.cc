@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <utility>
-
 #include "modemfwd/modem_helper.h"
-#include "modemfwd/modem_sandbox.h"
-#include "modemfwd/upstart_job_controller.h"
+
+#include <utility>
 
 #include <base/containers/contains.h>
 #include <base/files/file.h>
@@ -19,11 +17,14 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/switches/modemfwd_switches.h>
 
+#include "modemfwd/logging.h"
+#include "modemfwd/modem_sandbox.h"
+#include "modemfwd/upstart_job_controller.h"
+
 namespace modemfwd {
 
 namespace {
 
-constexpr char kModemfwdLogDirectory[] = "/var/log/modemfwd";
 constexpr char kUpstartServiceName[] = "com.ubuntu.Upstart";
 constexpr char kHermesJobPath[] = "/com/ubuntu/Upstart/jobs/hermes";
 constexpr char kModemHelperJobPath[] =
