@@ -163,7 +163,10 @@ pub fn is_consumer_device() -> Result<bool> {
         .arg("--action=enterprise_owned_get_status")
         .output()?;
 
-    let stdout = std::str::from_utf8(&output.stdout).unwrap().trim().to_string();
+    let stdout = std::str::from_utf8(&output.stdout)
+        .unwrap()
+        .trim()
+        .to_string();
     match output.status.code() {
         Some(0) if stdout == "EnterpriseOwnedGetStatus(): 0" => Ok(true),
         Some(0) if stdout == "EnterpriseOwnedGetStatus(): 1" => Ok(false),
