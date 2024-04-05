@@ -126,6 +126,11 @@ void KeyboardBacklightController::Init(
       base::BindRepeating(
           &KeyboardBacklightController::HandleToggleKeyboardBacklightRequest,
           weak_ptr_factory_.GetWeakPtr()));
+  RegisterSetKeyboardAmbientLightSensorEnabledHandler(
+      dbus_wrapper_, kSetKeyboardAmbientLightSensorEnabledMethod,
+      base::BindRepeating(&KeyboardBacklightController::
+                              HandleSetKeyboardAmbientLightSensorEnabledRequest,
+                          weak_ptr_factory_.GetWeakPtr()));
 
   if (sensor) {
     ambient_light_handler_ =
@@ -676,6 +681,25 @@ void KeyboardBacklightController::HandleToggleKeyboardBacklightRequest() {
   }
 
   num_user_adjustments_++;
+}
+
+void KeyboardBacklightController::
+    HandleSetKeyboardAmbientLightSensorEnabledRequest(bool enabled) {
+  if (enabled) {
+    // Set manual control off.
+    user_brightness_percent_ = std::nullopt;
+    // Update to automated_percent_ slowly when enable keyboard
+    // auto brightness.
+    if (UpdateState(
+            Transition::SLOW,
+            BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP)) {
+      num_als_adjustments_++;
+    }
+  } else {
+    // Set manual control on, use the current backlight brightness as starting
+    // point.
+    UpdateUserBrightnessPercent(current_percent_);
+  }
 }
 
 bool KeyboardBacklightController::UpdateState(

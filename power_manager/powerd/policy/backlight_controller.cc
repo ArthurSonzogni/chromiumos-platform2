@@ -117,6 +117,23 @@ void OnGetAmbientLightSensorEnabled(
   std::move(response_sender).Run(std::move(response));
 }
 
+void OnSetKeyboardAmbientLightSensorEnabled(
+    const std::string& method_name,
+    const BacklightController::SetKeyboardAmbientLightSensorEnabledCallback&
+        callback,
+    dbus::MethodCall* method_call,
+    dbus::ExportedObject::ResponseSender response_sender) {
+  bool enabled = true;
+  if (!dbus::MessageReader(method_call).PopBool(&enabled)) {
+    enabled = true;
+  }
+
+  callback.Run(enabled);
+  std::unique_ptr<dbus::Response> response =
+      dbus::Response::FromMethodCall(method_call);
+  std::move(response_sender).Run(std::move(response));
+}
+
 void OnSetAmbientLightSensorEnabled(
     const std::string& method_name,
     const BacklightController::SetAmbientLightSensorEnabledCallback& callback,
@@ -188,6 +205,17 @@ void BacklightController::RegisterToggleKeyboardBacklightHandler(
   dbus_wrapper->ExportMethod(
       method_name,
       base::BindRepeating(&OnToggleKeyboardBacklight, method_name, callback));
+}
+
+// static
+void BacklightController::RegisterSetKeyboardAmbientLightSensorEnabledHandler(
+    system::DBusWrapperInterface* dbus_wrapper,
+    const std::string& method_name,
+    const SetKeyboardAmbientLightSensorEnabledCallback& callback) {
+  DCHECK(dbus_wrapper);
+  dbus_wrapper->ExportMethod(
+      method_name, base::BindRepeating(&OnSetKeyboardAmbientLightSensorEnabled,
+                                       method_name, callback));
 }
 
 // static

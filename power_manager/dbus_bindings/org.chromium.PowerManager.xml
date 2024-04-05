@@ -105,6 +105,15 @@
       <arg name="success" direction="out" type="b" />
     </method>
 
+    <method name="SetKeyboardAmbientLightSensorEnabled">
+      <tp:docstring>
+        If |enabled| is true, the ambient light sensor will be used in keyboard
+        brightness calculations. If the device has no ambient light sensor,
+        this method is a no-op.
+      </tp:docstring>
+      <arg name="enabled" direction="in" type="b" />
+    </method>
+
     <method name="GetPowerSupplyProperties">
       <tp:docstring>
         The |serialized_proto| arg is a serialized

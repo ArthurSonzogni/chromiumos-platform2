@@ -142,6 +142,8 @@ class BacklightController {
   using ToggleKeyboardBacklightCallback = base::RepeatingClosure;
   using GetAmbientLightSensorEnabledCallback =
       base::RepeatingCallback<void(bool* enabled_out)>;
+  using SetKeyboardAmbientLightSensorEnabledCallback =
+      base::RepeatingCallback<void(bool enabled)>;
   using SetAmbientLightSensorEnabledCallback =
       base::RepeatingCallback<void(bool enabled)>;
 
@@ -179,6 +181,10 @@ class BacklightController {
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,
       const GetAmbientLightSensorEnabledCallback& callback);
+  static void RegisterSetKeyboardAmbientLightSensorEnabledHandler(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& method_name,
+      const SetKeyboardAmbientLightSensorEnabledCallback& callback);
   static void RegisterSetAmbientLightSensorEnabledHandler(
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,
