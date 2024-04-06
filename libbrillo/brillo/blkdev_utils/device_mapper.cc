@@ -120,19 +120,17 @@ DeviceMapper::DeviceMapper(const DevmapperTaskFactory& factory)
 bool DeviceMapper::Setup(const std::string& name, const DevmapperTable& table) {
   auto task = dm_task_factory_.Run(DM_DEVICE_CREATE);
 
-  if (!task->SetName(name)) {
-    LOG(ERROR) << "Setup: SetName failed.";
+  if (!task->SetName(name))
     return false;
-  }
 
   if (!task->AddTarget(table.GetStart(), table.GetSize(), table.GetType(),
                        table.GetParameters())) {
-    LOG(ERROR) << "Setup: AddTarget failed";
+    LOG(ERROR) << "Setup: AddTarget to " << name << " failed";
     return false;
   }
 
   if (!task->Run(true /* udev sync */)) {
-    LOG(ERROR) << "Setup: Run failed.";
+    LOG(ERROR) << "Setup: RunTask " << name << " failed.";
     return false;
   }
 
@@ -142,13 +140,11 @@ bool DeviceMapper::Setup(const std::string& name, const DevmapperTable& table) {
 bool DeviceMapper::Remove(const std::string& name, bool deferred) {
   auto task = dm_task_factory_.Run(DM_DEVICE_REMOVE);
 
-  if (!task->SetName(name)) {
-    LOG(ERROR) << "Remove: SetName failed.";
+  if (!task->SetName(name))
     return false;
-  }
 
   if (deferred && !task->SetDeferredRemove()) {
-    LOG(ERROR) << "Remove: SetDeferredRemoval failed.";
+    LOG(ERROR) << "Remove: SetDeferredRemoval for " << name << " failed.";
     return false;
   }
 
@@ -166,13 +162,11 @@ DevmapperTable DeviceMapper::GetTable(const std::string& name) {
   std::string type;
   SecureBlob parameters;
 
-  if (!task->SetName(name)) {
-    LOG(ERROR) << "GetTable: SetName failed.";
+  if (!task->SetName(name))
     return DevmapperTable(0, 0, "", SecureBlob());
-  }
 
   if (!task->Run()) {
-    LOG(ERROR) << "GetTable: Run failed.";
+    LOG(ERROR) << "GetTable: Run for " << name << " failed.";
     return DevmapperTable(0, 0, "", SecureBlob());
   }
 
@@ -184,13 +178,11 @@ DevmapperTable DeviceMapper::GetTable(const std::string& name) {
 bool DeviceMapper::WipeTable(const std::string& name) {
   auto size_task = dm_task_factory_.Run(DM_DEVICE_TABLE);
 
-  if (!size_task->SetName(name)) {
-    LOG(ERROR) << "WipeTable: SetName failed.";
+  if (!size_task->SetName(name))
     return false;
-  }
 
   if (!size_task->Run()) {
-    LOG(ERROR) << "WipeTable: RunTask failed.";
+    LOG(ERROR) << "WipeTable: RunTask " << name << " failed.";
     return false;
   }
 
@@ -206,13 +198,11 @@ bool DeviceMapper::WipeTable(const std::string& name) {
     // Setup wipe task.
     auto wipe_task = dm_task_factory_.Run(DM_DEVICE_RELOAD);
 
-    if (!wipe_task->SetName(name)) {
-      LOG(ERROR) << "WipeTable: SetName failed.";
+    if (!wipe_task->SetName(name))
       return false;
-    }
 
     if (!wipe_task->SetReadOnly()) {
-      LOG(ERROR) << "WipeTable: SetReadOnly failed.";
+      LOG(ERROR) << "WipeTable: SetReadOnly for " << name << " failed.";
       return false;
     }
 
@@ -227,7 +217,7 @@ bool DeviceMapper::WipeTable(const std::string& name) {
     }
 
     if (!wipe_task->Run()) {
-      LOG(ERROR) << "WipeTable: RunTask failed.";
+      LOG(ERROR) << "WipeTable: RunTask " << name << " failed.";
       return false;
     }
   } while (ret);
@@ -238,13 +228,11 @@ bool DeviceMapper::WipeTable(const std::string& name) {
 DeviceMapperVersion DeviceMapper::GetTargetVersion(const std::string& target) {
   auto version_task = dm_task_factory_.Run(DM_DEVICE_GET_TARGET_VERSION);
 
-  if (!version_task->SetName(target)) {
-    LOG(ERROR) << "GetTargetVersion: SetName failed.";
+  if (!version_task->SetName(target))
     return {0, 0, 0};
-  }
 
   if (!version_task->Run()) {
-    LOG(ERROR) << "GetTargetVersion: RunTask failed.";
+    LOG(ERROR) << "GetTargetVersion: RunTask " << target << " failed.";
     return {0, 0, 0};
   }
 
@@ -255,18 +243,16 @@ bool DeviceMapper::Message(const std::string& name,
                            const std::string& message) {
   auto task = dm_task_factory_.Run(DM_DEVICE_TARGET_MSG);
 
-  if (!task->SetName(name)) {
-    LOG(ERROR) << "Message: SetName failed.";
+  if (!task->SetName(name))
     return false;
-  }
 
   if (!task->SetMessage(message)) {
-    LOG(ERROR) << "Message: SetMessage failed.";
+    LOG(ERROR) << "Message: SetMessage for " << name << " failed.";
     return false;
   }
 
   if (!task->Run()) {
-    LOG(ERROR) << "Message: RunTask failed.";
+    LOG(ERROR) << "Message: RunTask " << name << " failed.";
     return false;
   }
 
@@ -276,13 +262,11 @@ bool DeviceMapper::Message(const std::string& name,
 bool DeviceMapper::Suspend(const std::string& name) {
   auto task = dm_task_factory_.Run(DM_DEVICE_SUSPEND);
 
-  if (!task->SetName(name)) {
-    LOG(ERROR) << "Suspend: SetName failed.";
+  if (!task->SetName(name))
     return false;
-  }
 
   if (!task->Run()) {
-    LOG(ERROR) << "Suspend: Run failed.";
+    LOG(ERROR) << "Suspend: RunTask " << name << " failed.";
     return false;
   }
 
@@ -292,13 +276,11 @@ bool DeviceMapper::Suspend(const std::string& name) {
 bool DeviceMapper::Resume(const std::string& name) {
   auto task = dm_task_factory_.Run(DM_DEVICE_RESUME);
 
-  if (!task->SetName(name)) {
-    LOG(ERROR) << "Resume: SetName failed.";
+  if (!task->SetName(name))
     return false;
-  }
 
   if (!task->Run()) {
-    LOG(ERROR) << "Resume: Run failed.";
+    LOG(ERROR) << "Resume: RunTask " << name << " failed.";
     return false;
   }
 

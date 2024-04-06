@@ -18,7 +18,7 @@ DevmapperTaskImpl::DevmapperTaskImpl(int type)
 
 bool DevmapperTaskImpl::SetName(const std::string& name) {
   if (!task_ || !dm_task_set_name(task_.get(), name.c_str())) {
-    LOG(ERROR) << "SetName failed";
+    LOG(ERROR) << "SetName to " << name << " failed";
     return false;
   }
   return true;
@@ -42,7 +42,7 @@ bool DevmapperTaskImpl::NoOpenCount() {
 
 bool DevmapperTaskImpl::SetMessage(const std::string& msg) {
   if (!task_ || !dm_task_set_message(task_.get(), msg.c_str())) {
-    LOG(ERROR) << "SetMessage failed";
+    LOG(ERROR) << "SetMessage msg: " << msg << " failed";
     return false;
   }
   return true;
@@ -107,7 +107,8 @@ bool DevmapperTaskImpl::Run(bool udev_sync) {
   }
 
   if (!dm_task_run(task_.get())) {
-    LOG(ERROR) << "dm_task_run failed";
+    LOG(ERROR) << "dm_task_run failed : error "
+               << dm_task_get_errno(task_.get());
     return false;
   }
 
