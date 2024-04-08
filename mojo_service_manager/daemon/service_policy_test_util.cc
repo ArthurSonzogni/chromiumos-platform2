@@ -11,7 +11,8 @@
 namespace chromeos::mojo_service_manager {
 namespace {
 
-void PrintStringSet(const std::set<std::string>& set, std::ostream* out) {
+template <typename T>
+void PrintStringSet(const std::set<T>& set, std::ostream* out) {
   (*out) << "{";
   for (const auto& s : set) {
     (*out) << "\"" << s << "\", ";
@@ -40,11 +41,22 @@ ServicePolicy CreateServicePolicyForTest(
 }
 
 bool operator==(const ServicePolicy& a, const ServicePolicy& b) {
-  return a.owner() == b.owner() && a.requesters() == b.requesters();
+  return a.owner() == b.owner() && a.requesters() == b.requesters() &&
+         a.owner_uid() == b.owner_uid() &&
+         a.requesters_uid() == b.requesters_uid();
 }
 
 std::ostream& operator<<(std::ostream& out, const ServicePolicy& policy) {
-  out << "ServicePolicy{ owner: ";
+  out << "ServicePolicy{ owner_uid: ";
+  if (policy.owner_uid()) {
+    out << policy.owner_uid().value();
+  } else {
+    out << "[null]";
+  }
+  out << ", requesters_uid: ";
+  PrintStringSet(policy.requesters_uid(), &out);
+
+  out << ", owner: ";
   if (policy.owner().empty()) {
     out << "[null]";
   } else {

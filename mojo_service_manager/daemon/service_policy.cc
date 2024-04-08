@@ -21,9 +21,20 @@ ServicePolicy::ServicePolicy(ServicePolicy&&) = default;
 
 ServicePolicy& ServicePolicy::operator=(ServicePolicy&&) = default;
 
+void ServicePolicy::SetOwnerUid(uint32_t uid) {
+  CHECK(!owner_uid_);
+  CHECK(owner_.empty());
+  owner_uid_ = uid;
+}
+
 void ServicePolicy::SetOwner(const std::string& security_context) {
-  DCHECK(owner_.empty());
+  CHECK(!owner_uid_);
+  CHECK(owner_.empty());
   owner_ = security_context;
+}
+
+void ServicePolicy::AddRequesterUid(uint32_t uid) {
+  requesters_uid_.insert(uid);
 }
 
 void ServicePolicy::AddRequester(const std::string& security_context) {
@@ -32,6 +43,15 @@ void ServicePolicy::AddRequester(const std::string& security_context) {
 
 bool ServicePolicy::Merge(ServicePolicy another) {
   bool res = true;
+  if (owner_uid_ && another.owner_uid_) {
+    res = false;
+    LOG(ERROR)
+        << "Cannot merge ServicePolicy. Only allow one owner but got two ("
+        << owner_uid_.value() << " and " << another.owner_uid_.value() << ").";
+  } else if (another.owner_uid_) {
+    owner_uid_ = another.owner_uid_;
+  }
+
   if (!owner_.empty() && !another.owner_.empty()) {
     res = false;
     LOG(ERROR)
@@ -40,12 +60,27 @@ bool ServicePolicy::Merge(ServicePolicy another) {
   } else if (!another.owner_.empty()) {
     owner_ = another.owner_;
   }
+  if (owner_uid_ && !owner_.empty()) {
+    res = false;
+    LOG(ERROR) << "Cannot merge ServicePolicy. Both username owner and SeLinux "
+                  "owner are set.";
+  }
+
+  requesters_uid_.merge(another.requesters_uid_);
   requesters_.merge(another.requesters_);
   return res;
 }
 
+bool ServicePolicy::IsOwnerUid(uint32_t uid) const {
+  return owner_uid_ == uid;
+}
+
 bool ServicePolicy::IsOwner(const std::string& security_context) const {
   return owner_ == security_context;
+}
+
+bool ServicePolicy::IsRequesterUid(uint32_t uid) const {
+  return requesters_uid_.count(uid);
 }
 
 bool ServicePolicy::IsRequester(const std::string& security_context) const {

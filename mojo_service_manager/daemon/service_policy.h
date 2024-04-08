@@ -5,7 +5,10 @@
 #ifndef MOJO_SERVICE_MANAGER_DAEMON_SERVICE_POLICY_H_
 #define MOJO_SERVICE_MANAGER_DAEMON_SERVICE_POLICY_H_
 
+#include <stdint.h>
+
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -21,9 +24,15 @@ class ServicePolicy {
   ServicePolicy& operator=(ServicePolicy&&);
   ~ServicePolicy();
 
+  // TODO(b/333323875): Remove all SELinux related methods.
+
+  // Sets an `uid` as the owner of this service.
+  void SetOwnerUid(uint32_t uid);
   // Sets a |security_context| as the owner of this service.
   void SetOwner(const std::string& security_context);
 
+  // Adds an `uid` as a requester of this service.
+  void AddRequesterUid(uint32_t uid);
   // Adds a |security_context| as a requester of this service.
   void AddRequester(const std::string& security_context);
 
@@ -32,22 +41,33 @@ class ServicePolicy {
   // merged. The merge result of conflict fields are undefined.
   bool Merge(ServicePolicy another);
 
+  // Returns whether `uid` is an owner of this service.
+  bool IsOwnerUid(uint32_t uid) const;
   // Returns whether |security_context| is an owner of this service.
   bool IsOwner(const std::string& security_context) const;
 
+  // Returns whether `uid` is a requester of this service.
+  bool IsRequesterUid(uint32_t uid) const;
   // Returns whether |security_context| is a requester of this service.
   bool IsRequester(const std::string& security_context) const;
 
+  // Gets the owner uid. It could be nullopt if the owner is not set.
+  const std::optional<uint32_t>& owner_uid() const { return owner_uid_; }
   // Gets the owner. It could be an empty string if the owner is not set.
+  // This is the legacy SELinux owner. Can only be set if uid owner is not set.
   const std::string& owner() const { return owner_; }
 
-  // Gets the requester set.
+  // Gets the requester uid set.
+  const std::set<uint32_t>& requesters_uid() const { return requesters_uid_; }
+  // Gets the requester set. These are the legacy SELinux requesters.
   const std::set<std::string>& requesters() const { return requesters_; }
 
  private:
   // The owner of this service.
+  std::optional<uint32_t> owner_uid_;
   std::string owner_;
   // The requesters of this service.
+  std::set<uint32_t> requesters_uid_;
   std::set<std::string> requesters_;
 
   // This accesses private fields to create ServicePolicy for testing.
