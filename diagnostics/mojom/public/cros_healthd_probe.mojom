@@ -165,18 +165,18 @@ struct ProcessInfo {
   // Unused memory available to the process, in KiB. This will always be
   // |total_memory_kib| - |resident_memory_kib|.
   uint32 free_memory_kib@8;
-  // The sum of bytes passed to system read calls. This includes terminal
-  // I/O and is independent of whether the physical disk is accessed.
+  // The sum of bytes passed to system read calls. This includes terminal I/O
+  // and is independent of whether the physical disk is accessed.
   uint64 bytes_read@9;
-  // The sum of bytes passed to system write calls. This includes terminal
-  // I/O and is independent of whether the physical disk is accessed.
+  // The sum of bytes passed to system write calls. This includes terminal I/O
+  // and is independent of whether the physical disk is accessed.
   uint64 bytes_written@10;
   // Attempted count of read syscalls.
   uint64 read_system_calls@11;
   // Attempted count of write syscalls.
   uint64 write_system_calls@12;
-  // Attempt to count the number of bytes which this process really did cause
-  // to be fetched from the storage layer.
+  // Attempt to count the number of bytes which this process really did cause to
+  // be fetched from the storage layer.
   uint64 physical_bytes_read@13;
   // Attempt to count the number of bytes which this process caused to be sent
   // to the storage layer.
@@ -671,8 +671,8 @@ struct TimezoneInfo {
   string region@1;
 };
 
-// Memory probe result. Can either be populated with the MemoryInfo or an
-// error retrieving the information.
+// Memory probe result. Can either be populated with the MemoryInfo or an error
+// retrieving the information.
 [Stable]
 union MemoryResult {
   // Valid MemoryInfo.
@@ -2173,14 +2173,14 @@ struct TelemetryInfo {
   // Information about boot performance. Only present when kBootPerformance was
   // included in the categories input to ProbeTelemetryInfo.
   BootPerformanceResult? boot_performance_result@12;
-  // Information about the bus devices. Only present when kBus was included
-  // in the categories input to ProbeTelemetryInfo.
+  // Information about the bus devices. Only present when kBus was included in
+  // the categories input to ProbeTelemetryInfo.
   BusResult? bus_result@13;
   // Information about the system. Only present when kSystem was included in the
   // categories input to ProbeTelemetryInfo.
   SystemResult? system_result@14;
-  // Information about the tpm. Only present when kTpm was included in
-  // the categories input to ProbeTelemetryInfo.
+  // Information about the tpm. Only present when kTpm was included in the
+  // categories input to ProbeTelemetryInfo.
   TpmResult? tpm_result@15;
   // Information about the graphics. Only present when kGraphics was included in
   // the categories input to ProbeTelemetryInfo.
@@ -2194,8 +2194,8 @@ struct TelemetryInfo {
   // ProbeTelemetryInfo.
   [MinVersion=2]
   NetworkInterfaceResult? network_interface_result@18;
-  // Information about the input software and hardware. Only present when
-  // kInput was included in the categories input to ProbeTelemetryInfo.
+  // Information about the input software and hardware. Only present when kInput
+  // was included in the categories input to ProbeTelemetryInfo.
   [MinVersion=3]
   InputResult? input_result@19;
   // Information about audio hardware. Only present when kAudioHardware was
