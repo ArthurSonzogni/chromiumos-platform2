@@ -30,6 +30,7 @@
 #include <net-base/network_priority.h>
 #include <net-base/proc_fs_stub.h>
 
+#include "base/memory/ptr_util.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
@@ -77,8 +78,22 @@ ShillTechnologyToPatchpanelClientTechnology(Technology technology) {
 
 int Network::next_network_id_ = 0;
 
+std::unique_ptr<Network> Network::CreateForTesting(
+    int interface_index,
+    std::string_view interface_name,
+    Technology technology,
+    bool fixed_ip_params,
+    ControlInterface* control_interface,
+    EventDispatcher* dispatcher,
+    Metrics* metrics,
+    patchpanel::Client* patchpanel_client) {
+  return base::WrapUnique(new Network(
+      interface_index, std::string(interface_name), technology, fixed_ip_params,
+      control_interface, dispatcher, metrics, patchpanel_client));
+}
+
 Network::Network(int interface_index,
-                 const std::string& interface_name,
+                 std::string_view interface_name,
                  Technology technology,
                  bool fixed_ip_params,
                  ControlInterface* control_interface,

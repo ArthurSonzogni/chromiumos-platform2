@@ -65,6 +65,7 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/network/network.h"
+#include "shill/network/network_manager.h"
 #include "shill/network/throttler.h"
 #include "shill/profile.h"
 #include "shill/resolver.h"
@@ -168,6 +169,7 @@ Manager::Manager(ControlInterface* control_interface,
     : dispatcher_(dispatcher),
       control_interface_(control_interface),
       metrics_(metrics),
+      network_manager_(control_interface, dispatcher, metrics),
       run_path_(run_directory),
       storage_path_(storage_directory),
       user_storage_path_(user_storage_directory),

@@ -30,7 +30,6 @@
 #include "shill/network/connection_diagnostics.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/network.h"
-#include "shill/network/network_monitor.h"
 #include "shill/network/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -288,7 +287,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
   FRIEND_TEST(VirtualDeviceTest, ResetConnection);
 
-  virtual ~Device();
+  ~Device() override;
 
   // Each device must implement this method to do the work needed to
   // enable the device to operate for establishing network connections.

@@ -203,17 +203,17 @@ class Network : public NetworkMonitor::ClientNetwork {
     kConnected,
   };
 
-  Network(int interface_index,
-          const std::string& interface_name,
-          Technology technology,
-          bool fixed_ip_params,
-          ControlInterface* control_interface,
-          EventDispatcher* dispatcher,
-          Metrics* metrics,
-          patchpanel::Client* patchpanel_client,
-          Resolver* resolver = Resolver::GetInstance(),
-          std::unique_ptr<NetworkMonitorFactory> network_monitor_factory =
-              std::make_unique<NetworkMonitorFactory>());
+  // Creates a Network instance, only for testing.
+  static std::unique_ptr<Network> CreateForTesting(
+      int interface_index,
+      std::string_view interface_name,
+      Technology technology,
+      bool fixed_ip_params,
+      ControlInterface* control_interface,
+      EventDispatcher* dispatcher,
+      Metrics* metrics,
+      patchpanel::Client* patchpanel_client);
+
   Network(const Network&) = delete;
   Network& operator=(const Network&) = delete;
   virtual ~Network();
@@ -430,6 +430,25 @@ class Network : public NetworkMonitor::ClientNetwork {
   }
   void OnNetworkMonitorResult(const NetworkMonitor::Result& result) override;
   void OnValidationStarted(bool is_success) override;
+
+ protected:
+  // Only NetworkManager could construct Network instances.
+  friend class NetworkManager;
+
+  // The constructor is hidden to ensure all the Network instances are tracked
+  // by NetworkManager. Please use NetworkManager::Get()->CreateNetwork() to
+  // create a instance.
+  Network(int interface_index,
+          std::string_view interface_name,
+          Technology technology,
+          bool fixed_ip_params,
+          ControlInterface* control_interface,
+          EventDispatcher* dispatcher,
+          Metrics* metrics,
+          patchpanel::Client* patchpanel_client,
+          Resolver* resolver = Resolver::GetInstance(),
+          std::unique_ptr<NetworkMonitorFactory> network_monitor_factory =
+              std::make_unique<NetworkMonitorFactory>());
 
  private:
   // TODO(b/232177767): Refactor DeviceTest to remove this dependency.

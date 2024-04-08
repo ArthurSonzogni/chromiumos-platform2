@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 
 namespace shill {
 
@@ -27,9 +28,9 @@ std::unique_ptr<Network> NetworkManager::CreateNetwork(
     Technology technology,
     bool fixed_ip_params,
     patchpanel::Client* patchpanel_client) {
-  auto network = std::make_unique<Network>(
+  auto network = base::WrapUnique(new Network(
       interface_index, std::string(interface_name), technology, fixed_ip_params,
-      control_interface_, dispatcher_, metrics_, patchpanel_client);
+      control_interface_, dispatcher_, metrics_, patchpanel_client));
   network->RegisterEventHandler(this);
   alive_networks_.insert(std::make_pair(network->network_id(), network.get()));
   return network;

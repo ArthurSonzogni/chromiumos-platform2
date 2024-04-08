@@ -141,10 +141,9 @@ Device::~Device() {
 }
 
 void Device::CreateImplicitNetwork(bool fixed_ip_params) {
-  implicit_network_ = std::make_unique<Network>(
+  implicit_network_ = manager_->network_manager()->CreateNetwork(
       interface_index_, link_name_, technology_, fixed_ip_params,
-      manager_->control_interface(), manager_->dispatcher(),
-      manager_->metrics(), manager_->patchpanel_client());
+      manager_->patchpanel_client());
   implicit_network_->RegisterEventHandler(this);
 }
 

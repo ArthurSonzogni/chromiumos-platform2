@@ -33,6 +33,7 @@
 #include "shill/hook_table.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/network/network_manager.h"
 #include "shill/network/portal_detector.h"
 #include "shill/power_manager.h"
 #include "shill/profile.h"
@@ -377,6 +378,7 @@ class Manager {
   // changed.
   void RefreshConnectionState();
 
+  NetworkManager* network_manager() { return &network_manager_; }
   virtual DeviceInfo* device_info() { return &device_info_; }
   virtual ModemInfo* modem_info() { return modem_info_.get(); }
   virtual CellularServiceProvider* cellular_service_provider() {
@@ -802,6 +804,7 @@ class Manager {
   EventDispatcher* dispatcher_;
   ControlInterface* control_interface_;
   Metrics* metrics_;
+  NetworkManager network_manager_;
 
   const base::FilePath run_path_;
   const base::FilePath storage_path_;

@@ -74,7 +74,7 @@ class StaticIPParametersTest : public Test {
     service_ = new ServiceUnderTest(manager_.get());
 
     const std::string ifname = "eth1";
-    network_ = std::make_unique<Network>(
+    network_ = Network::CreateForTesting(
         1, ifname, Technology::kEthernet, false, &control_interface_,
         &dispatcher_, &metrics_, &patchpanel_client_);
     network_->set_ipconfig(
@@ -84,7 +84,7 @@ class StaticIPParametersTest : public Test {
     network_->set_state_for_testing(Network::State::kConnected);
   }
 
-  ~StaticIPParametersTest() {
+  ~StaticIPParametersTest() override {
     service_ = nullptr;
     network_ = nullptr;
     manager_ = nullptr;

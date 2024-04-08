@@ -799,7 +799,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   scoped_refptr<MockDevice> device0(
       new MockDevice(&manager_, "null0", kTestMacAddress0, kTestDeviceIndex));
   device_info_.RegisterDevice(device0);
-  device0->set_network_for_testing(std::make_unique<Network>(
+  device0->set_network_for_testing(Network::CreateForTesting(
       kTestDeviceIndex, "null0", Technology::kEthernet,
       /*fixed_ip_params=*/false,
       /*control_interface=*/&control_interface_,
@@ -822,7 +822,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   scoped_refptr<MockDevice> device1(new MockDevice(
       &manager_, "null1", kTestMacAddress1, kTestDeviceIndex + 1));
   MockNetworkEventHandler event_handler1;
-  device1->set_network_for_testing(std::make_unique<Network>(
+  device1->set_network_for_testing(Network::CreateForTesting(
       kTestDeviceIndex + 1, "null1", Technology::kWiFi,
       /*fixed_ip_params=*/false,
       /*control_interface=*/&control_interface_,

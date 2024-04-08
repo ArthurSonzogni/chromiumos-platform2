@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/containers/span.h>
 #include <base/rand_util.h>
@@ -25,6 +26,7 @@
 #include "shill/manager.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/network.h"
+#include "shill/network/network_manager.h"
 #include "shill/network/network_monitor.h"
 #include "shill/supplicant/supplicant_group_proxy_interface.h"
 #include "shill/supplicant/supplicant_interface_proxy_interface.h"
@@ -914,12 +916,11 @@ void P2PDevice::AcquireClientIP() {
   } else {
     // TODO(b/310584119): use new enum instead of Technology inside
     // shill::Network
-    client_network_ = std::make_unique<Network>(
+    client_network_ = manager()->network_manager()->CreateNetwork(
         net_base::RTNLHandler::GetInstance()->GetInterfaceIndex(
             link_name().value()),
         link_name().value(), Technology::kWiFi, false,
-        manager()->control_interface(), manager()->dispatcher(),
-        manager()->metrics(), manager()->patchpanel_client());
+        manager()->patchpanel_client());
     client_network_->RegisterEventHandler(this);
   }
 

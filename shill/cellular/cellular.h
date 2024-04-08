@@ -32,6 +32,7 @@
 #include "shill/cellular/power_opt.h"
 #include "shill/device.h"
 #include "shill/device_id.h"
+#include "shill/network/network_manager.h"
 #include "shill/network/network_monitor.h"
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
@@ -837,7 +838,8 @@ class Cellular : public Device,
   // device.
   class NetworkInfo {
    public:
-    explicit NetworkInfo(Cellular* cellular,
+    explicit NetworkInfo(NetworkManager* network_manager,
+                         Cellular* cellular,
                          const RpcIdentifier& bearer_path,
                          int interface_index,
                          const std::string& interface_name);

@@ -261,10 +261,10 @@ class NetworkTest : public ::testing::Test {
 };
 
 TEST_F(NetworkTest, NetworkID) {
-  auto network1 = std::make_unique<Network>(
+  auto network1 = Network::CreateForTesting(
       kTestIfindex, kTestIfname, kTestTechnology,
       /*fixed_ip_params=*/false, nullptr, nullptr, nullptr, nullptr);
-  auto network2 = std::make_unique<Network>(
+  auto network2 = Network::CreateForTesting(
       kTestIfindex, kTestIfname, kTestTechnology,
       /*fixed_ip_params=*/false, nullptr, nullptr, nullptr, nullptr);
   EXPECT_NE(network1->network_id(), network2->network_id());

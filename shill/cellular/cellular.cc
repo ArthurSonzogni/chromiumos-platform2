@@ -63,6 +63,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/network/network_manager.h"
 #include "shill/network/network_monitor.h"
 #include "shill/ppp_daemon.h"
 #include "shill/profile.h"
@@ -2446,7 +2447,7 @@ void Cellular::EstablishLink() {
 
   // Create default network
   default_pdn_ = std::make_unique<NetworkInfo>(
-      this, bearer->dbus_path(),
+      manager()->network_manager(), this, bearer->dbus_path(),
       rtnl_handler()->GetInterfaceIndex(bearer->data_interface()),
       bearer->data_interface());
 
@@ -2490,7 +2491,7 @@ void Cellular::EstablishMultiplexedTetheringLink() {
 
   // Create multiplexed tethering network
   multiplexed_tethering_pdn_ = std::make_unique<NetworkInfo>(
-      this, bearer->dbus_path(),
+      manager()->network_manager(), this, bearer->dbus_path(),
       rtnl_handler()->GetInterfaceIndex(bearer->data_interface()),
       bearer->data_interface());
 
@@ -4340,15 +4341,14 @@ void Cellular::SetMultiplexedTetheringPdnForTesting(
       this, dbus_path, std::move(network), link_state);
 }
 
-Cellular::NetworkInfo::NetworkInfo(Cellular* cellular,
+Cellular::NetworkInfo::NetworkInfo(NetworkManager* network_manager,
+                                   Cellular* cellular,
                                    const RpcIdentifier& bearer_path,
                                    int interface_index,
                                    const std::string& interface_name)
     : cellular_(cellular), bearer_path_(bearer_path) {
-  network_ = std::make_unique<Network>(
+  network_ = network_manager->CreateNetwork(
       interface_index, interface_name, Technology::kCellular, false,
-      cellular_->manager()->control_interface(),
-      cellular_->manager()->dispatcher(), cellular_->manager()->metrics(),
       cellular_->manager()->patchpanel_client());
   network_->RegisterEventHandler(cellular_);
 }
