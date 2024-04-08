@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 use std::collections::HashMap;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -14,16 +12,25 @@ use anyhow::Result;
 use dbus::nonblock::SyncConnection;
 #[cfg(feature = "chromeos")]
 use featured::CheckFeature;
-#[cfg(feature = "chromeos")]
 use log::error;
 use once_cell::sync::OnceCell; // Trait CheckFeature is for is_feature_enabled_blocking
 
 type FeatureChangeCallback = Box<dyn Fn(bool) + Send + Sync + 'static>;
 type FeatureRegisterInfo = (&'static str, bool, Option<FeatureChangeCallback>);
 
+// The state of a feature that can be changed.
+struct FeatureState {
+    // Whether the feature is enabled.
+    enabled: bool,
+
+    // The params of the feature. If the feature is disabled or has no params
+    // this map will be empty.
+    params: HashMap<String, String>,
+}
+
 struct Feature {
-    // The cached results of feature query.
-    enabled: AtomicBool,
+    // The state of the feature.
+    state: Arc<Mutex<FeatureState>>,
 
     // Callback invoked when the feature enable state changes.
     #[cfg(feature = "chromeos")]
@@ -52,18 +59,28 @@ impl FeatureManager {
                 cfg_if::cfg_if! {
                     if #[cfg(feature = "chromeos")] {
                         let raw = featured::Feature::new(name, default_enabled)?;
-                        let enabled =
-                            featured::PlatformFeatures::get()?.is_feature_enabled_blocking(&raw);
-                        if let Some(cb) = cb.as_ref() {
-                            if enabled != default_enabled {
-                                cb(enabled);
-                            }
-                        }
 
-                        let feature = Feature { enabled: AtomicBool::new(enabled), cb, raw };
+                        // Initialize to default values for now.
+                        // init() below immediately reloads the cache after creating
+                        // the FeatureManager instance which will set the correct actual values.
+                        let feature_state = FeatureState {
+                            enabled: default_enabled,
+                            params: HashMap::new(),
+                        };
+
+                        let feature = Feature {
+                            state: Arc::new(Mutex::new(feature_state)),
+                            cb,
+                            raw
+                        };
                         Ok((name.to_owned(), feature))
                     } else {
-                        Ok((name.to_owned(), Feature { enabled: AtomicBool::new(default_enabled) }))
+                        Ok((name.to_owned(), Feature {
+                            state: Arc::new(Mutex::new(FeatureState {
+                                enabled: default_enabled,
+                                params: HashMap::new(),
+                            })),
+                        }))
                     }
                 }
             })
@@ -78,27 +95,64 @@ impl FeatureManager {
     // Returns the cached feature query result.
     fn is_feature_enabled(&self, feature_name: &str) -> bool {
         match self.features.get(feature_name) {
-            Some(feature) => feature.enabled.load(Ordering::SeqCst),
+            Some(feature) => {
+                let state = feature.state.lock().expect("lock failed");
+                state.enabled
+            }
             None => false,
         }
     }
 
-    #[cfg(feature = "chromeos")]
+    fn get_feature_param(&self, feature_name: &str, param_name: &str) -> Option<String> {
+        match self.features.get(feature_name) {
+            Some(feature) => {
+                let state = feature.state.lock().expect("lock failed");
+                state.params.get(param_name).cloned()
+            }
+            None => None,
+        }
+    }
+
     fn reload_cache(&self) -> Result<()> {
-        let features: Vec<&featured::Feature> = self.features.values().map(|f| &f.raw).collect();
-        let resp = featured::PlatformFeatures::get()?
-            .get_params_and_enabled(&features)
-            .context("failed to query features")?;
-        for feature in self.features.values() {
-            let new_value = resp.is_enabled(&feature.raw);
-            let old_value = feature.enabled.swap(new_value, Ordering::SeqCst);
-            if new_value != old_value {
-                if let Some(cb) = feature.cb.as_ref() {
-                    cb(new_value);
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "chromeos")] {
+                let features: Vec<&featured::Feature> =
+                    self.features.values().map(|f| &f.raw).collect();
+                let resp = featured::PlatformFeatures::get()?
+                    .get_params_and_enabled(&features)
+                    .context("failed to query features")?;
+                for feature in self.features.values() {
+                    let (run_callback, new_enabled) = {
+                        let mut state = feature.state.lock().expect("lock failed");
+
+                        let old_enabled = state.enabled;
+
+                        let new_params = match resp.get_params(&feature.raw) {
+                            Some(params) => params.clone(),
+                            None => HashMap::new(),
+                        };
+
+                        let old_params = std::mem::replace(&mut state.params, new_params);
+
+                        state.enabled = resp.is_enabled(&feature.raw);
+
+                        (
+                            old_enabled != state.enabled || old_params != state.params,
+                            state.enabled
+                        )
+                    };
+
+                    if run_callback {
+                        if let Some(cb) = feature.cb.as_ref() {
+                            cb(new_enabled);
+                        }
+                    }
                 }
+                Ok(())
+            } else {
+                Ok(())
             }
         }
-        Ok(())
     }
 }
 
@@ -120,6 +174,11 @@ pub fn register_feature(
     enabled_by_default: bool,
     cb: Option<FeatureChangeCallback>,
 ) {
+    assert!(
+        FEATURE_MANAGER.get().is_none(),
+        "Features cannot be resgistered after FeatureManager initialization"
+    );
+
     let pending = PENDING_FEATURES.get_or_init(|| Mutex::new(Vec::new()));
     pending
         .lock()
@@ -134,6 +193,10 @@ pub async fn init(conn: &SyncConnection) -> Result<()> {
     };
     let pending = std::mem::take(&mut *pending.lock().expect("lock failed"));
     let feature_manager = FeatureManager::new(pending)?;
+
+    feature_manager
+        .reload_cache()
+        .context("failed to load initial feature state")?;
 
     if FEATURE_MANAGER.set(feature_manager).is_err() {
         bail!("Double initialization of FEATURE_MANAGER");
@@ -167,6 +230,19 @@ pub fn is_feature_enabled(_feature_name: &str) -> Result<bool> {
     Ok(false)
 }
 
+#[cfg(not(test))]
+pub fn get_feature_param(feature_name: &str, param_name: &str) -> Result<Option<String>> {
+    Ok(FEATURE_MANAGER
+        .get()
+        .context("FEATURE_MANAGER is not initialized")?
+        .get_feature_param(feature_name, param_name))
+}
+
+#[cfg(test)]
+pub fn get_feature_param(_feature_name: &str, _param_name: &str) -> Result<Option<String>> {
+    Ok(None)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -180,6 +256,13 @@ mod tests {
         .unwrap();
 
         assert!(!feature_manager.is_feature_enabled("FakeFeatureDisabled"));
+        assert!(feature_manager
+            .get_feature_param("FakeFeatureDisabled", "FakeFeatureParam")
+            .is_none());
+
         assert!(feature_manager.is_feature_enabled("FakeFeatureEnabled"));
+        assert!(feature_manager
+            .get_feature_param("FakeFeatureEnabled", "FakeFeatureParam")
+            .is_none());
     }
 }
