@@ -38,6 +38,25 @@ base::TimeTicks ToSeconds(const base::TimeTicks& time) {
           .ToInternalValue());
 }
 
+void ReadHeaderToMap(const std::string& line,
+                     std::unordered_map<std::string, std::string>* map) {
+  const auto end = line.find(':');
+
+  if (end != std::string::npos) {
+    const auto begin = line.find_first_not_of(' ', end + 1);
+
+    if (begin != std::string::npos) {
+      // TODO(domlaskowski): Use multimap to allow multiple "Package" headers.
+      if (!map->emplace(line.substr(0, end), line.substr(begin)).second)
+        LOG(WARNING) << "Duplicate header: " << line;
+      return;
+    }
+  }
+  // Ignore malformed headers. The report is still created, but the associated
+  // metadata fields are set to "unknown".
+  LOG(WARNING) << "Header has unexpected format: " << line;
+}
+
 }  // namespace
 
 using CrashLogHeaderMap = std::unordered_map<std::string, std::string>;
@@ -111,22 +130,7 @@ bool ParseCrashLog(const std::string& type,
   std::stringstream stream(contents);
   // The last header is followed by an empty line.
   while (std::getline(stream, line) && !line.empty()) {
-    const auto end = line.find(':');
-
-    if (end != std::string::npos) {
-      const auto begin = line.find_first_not_of(' ', end + 1);
-
-      if (begin != std::string::npos) {
-        // TODO(domlaskowski): Use multimap to allow multiple "Package" headers.
-        if (!map->emplace(line.substr(0, end), line.substr(begin)).second)
-          LOG(WARNING) << "Duplicate header: " << line;
-        continue;
-      }
-    }
-
-    // Ignore malformed headers. The report is still created, but the associated
-    // metadata fields are set to "unknown".
-    LOG(WARNING) << "Header has unexpected format: " << line;
+    ReadHeaderToMap(line, map);
   }
 
   if (stream.fail())
@@ -138,6 +142,19 @@ bool ParseCrashLog(const std::string& type,
     *exception_info = out.str();
   }
   *log = stream.str();
+
+  if (type == kDataAppAnr || type == kSystemAppAnr) {
+    // For ANR reports, the subject was moved under the data file, so we need
+    // to keep searching to try to find it.
+    auto subject = log->find(kSubjectKey);
+
+    while (subject != std::string::npos) {
+      const auto end = log->find('\n', subject);
+      const std::string line = log->substr(subject, end - subject);
+      ReadHeaderToMap(line, map);
+      subject = log->find(kSubjectKey, end + 1);
+    }
+  }
 
   return true;
 }

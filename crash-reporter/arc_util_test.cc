@@ -29,6 +29,7 @@ Build: fingerprint
 
 Line 1
 Line 2
+Subject: Input dispatching timed out
 Line 3
 )";
 
@@ -64,7 +65,8 @@ TEST(ArcUtilTest, ParseCrashLog) {
   EXPECT_EQ("com.arc.app", GetCrashLogHeader(map, "Process"));
   EXPECT_EQ("fingerprint", GetCrashLogHeader(map, "Build"));
   EXPECT_EQ("unknown", GetCrashLogHeader(map, "Activity"));
-  EXPECT_EQ("Line 1\nLine 2\nLine 3\n", exception_info);
+  EXPECT_EQ("Line 1\nLine 2\nSubject: Input dispatching timed out\nLine 3\n",
+            exception_info);
 
   // Parse a crash log without exception info.
   map.clear();
@@ -76,6 +78,7 @@ TEST(ArcUtilTest, ParseCrashLog) {
 
   EXPECT_EQ("0xcafebabe", GetCrashLogHeader(map, "Flags"));
   EXPECT_EQ("com.arc.app v1 (1.0)", GetCrashLogHeader(map, "Package"));
+  EXPECT_EQ("Input dispatching timed out", GetCrashLogHeader(map, "Subject"));
   EXPECT_TRUE(exception_info.empty());
 }
 
