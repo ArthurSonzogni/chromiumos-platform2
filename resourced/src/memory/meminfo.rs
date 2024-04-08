@@ -18,6 +18,7 @@ pub struct MemInfo {
     pub inactive_file: u64,
     pub dirty: u64,
     pub swap_free: u64,
+    pub swap_total: u64,
 }
 
 impl MemInfo {
@@ -45,6 +46,7 @@ impl MemInfo {
                 "Inactive(file):" => &mut result.inactive_file,
                 "Dirty:" => &mut result.dirty,
                 "SwapFree:" => &mut result.swap_free,
+                "SwapTotal:" => &mut result.swap_total,
                 _ => continue,
             };
             let Some(value) = tokens.next() else {
@@ -81,7 +83,7 @@ Inactive(file):  1527780 kB
 Unevictable:      151128 kB
 Mlocked:           41008 kB
 SwapTotal:      11756332 kB
-SwapFree:       11756332 kB
+SwapFree:       11756331 kB
 Dirty:              5712 kB
 Writeback:             0 kB
 AnonPages:        529800 kB
@@ -114,6 +116,7 @@ DirectMap1G:     3145728 kB"#;
         assert_eq!(meminfo.active_file, 940776);
         assert_eq!(meminfo.inactive_file, 1527780);
         assert_eq!(meminfo.dirty, 5712);
-        assert_eq!(meminfo.swap_free, 11756332);
+        assert_eq!(meminfo.swap_free, 11756331);
+        assert_eq!(meminfo.swap_total, 11756332);
     }
 }

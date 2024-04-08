@@ -3,6 +3,11 @@
 // found in the LICENSE file.
 
 mod meminfo;
+mod page_size;
+mod psi_memory_handler;
+mod psi_monitor;
+mod psi_policy;
+mod vmstat;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -24,6 +29,7 @@ use once_cell::sync::Lazy;
 use system_api::vm_memory_management::ResizePriority;
 
 pub use self::meminfo::MemInfo;
+pub use self::psi_memory_handler::PsiMemoryHandler;
 use crate::common;
 use crate::common::read_from_file;
 use crate::feature;
@@ -76,6 +82,8 @@ pub fn register_features() {
 
     feature::register_feature(PSI_ADJUST_AVAILABLE_FEATURE_NAME, false, None);
 }
+
+pub const PSI_MEMORY_POLICY_FEATURE_NAME: &str = "CrOSLateBootPSIMemoryPolicy";
 
 /// calculate_reserved_free_kb() calculates the reserved free memory in KiB from
 /// /proc/zoneinfo.  Reserved pages are free pages reserved for emergent kernel

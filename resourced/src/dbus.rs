@@ -28,17 +28,22 @@ use dbus_crossroads::IfaceToken;
 use dbus_crossroads::MethodErr;
 use dbus_tokio::connection;
 use log::error;
+use log::info;
 use log::LevelFilter;
 use system_api::battery_saver::BatterySaverModeState;
 use tokio::sync::Mutex;
+use tokio::sync::Notify;
 
 use crate::arch;
 use crate::common;
 use crate::common::read_from_file;
 use crate::config::ConfigProvider;
 use crate::feature;
+use crate::feature::is_feature_enabled;
+use crate::feature::register_feature;
 use crate::memory;
 use crate::memory::MemInfo;
+use crate::memory::PsiMemoryHandler;
 use crate::metrics;
 use crate::power;
 use crate::proc::load_euid;
@@ -722,6 +727,56 @@ fn get_monotonic_timestamp_ms() -> Result<i64> {
     Ok(current_timestamp_ms as i64)
 }
 
+async fn psi_memory_handler_loop(
+    root: &Path,
+    conn: &Arc<SyncConnection>,
+    vmms_client: &VmMemoryManagementClient,
+    feature_notify: &Arc<Notify>,
+    notification_count: &Arc<AtomicI32>,
+) -> anyhow::Result<()> {
+    let mut handler = PsiMemoryHandler::new(root)?;
+    loop {
+        if let Some(pressure_status) = handler
+            .monitor_memory_pressure(vmms_client, feature_notify)
+            .await?
+        {
+            send_pressure_signals(conn, &pressure_status);
+            notification_count.fetch_add(1, Ordering::Relaxed);
+        } else {
+            // reclaim_on_memory_pressure() returns `None` if the feature flag or params is changed.
+            if !is_feature_enabled(memory::PSI_MEMORY_POLICY_FEATURE_NAME).unwrap_or(false) {
+                return Ok(());
+            }
+            handler.reload_feature_params();
+        }
+    }
+}
+
+async fn margin_memory_handler_loop(
+    conn: &Arc<SyncConnection>,
+    vmms_client: &VmMemoryManagementClient,
+    notification_count: &Arc<AtomicI32>,
+) {
+    loop {
+        let pressure_result = memory::get_memory_pressure_status(vmms_client).await;
+
+        // Send memory pressure notification.
+        if let Ok(pressure_status) = pressure_result {
+            send_pressure_signals(conn, &pressure_status);
+        }
+
+        notification_count.fetch_add(1, Ordering::Relaxed);
+
+        memory_checker_wait(&pressure_result).await;
+
+        // The feature flag change is reflected in 10 seconds since memory_checker_wait() wakes
+        // within 10 seconds at least.
+        if is_feature_enabled(memory::PSI_MEMORY_POLICY_FEATURE_NAME).unwrap_or(false) {
+            return;
+        }
+    }
+}
+
 fn send_pressure_signals(conn: &Arc<SyncConnection>, pressure_status: &memory::PressureStatus) {
     send_pressure_signal(
         conn,
@@ -779,6 +834,16 @@ pub async fn service_main() -> Result<()> {
     arch::init();
 
     memory::register_features();
+
+    let psi_memory_policy_notify = Arc::new(Notify::new());
+    let notify_cloned = psi_memory_policy_notify.clone();
+    register_feature(
+        memory::PSI_MEMORY_POLICY_FEATURE_NAME,
+        false,
+        Some(Box::new(move |_| {
+            notify_cloned.notify_waiters();
+        })),
+    );
 
     feature::init(conn.as_ref())
         .await
@@ -928,17 +993,38 @@ pub async fn service_main() -> Result<()> {
         }
     });
 
-    // The memory checker loop.
     loop {
-        let pressure_result = memory::get_memory_pressure_status(&vmms_client).await;
+        let use_psi_policy = match is_feature_enabled(memory::PSI_MEMORY_POLICY_FEATURE_NAME) {
+            Ok(v) => v,
+            Err(e) => {
+                error!(
+                    "Failed to get feature {}: {}",
+                    memory::PSI_MEMORY_POLICY_FEATURE_NAME,
+                    e
+                );
+                false
+            }
+        };
+        if use_psi_policy {
+            info!("Using psi memory policy");
+            if let Err(e) = psi_memory_handler_loop(
+                root,
+                &conn,
+                &vmms_client,
+                &psi_memory_policy_notify,
+                &notification_count,
+            )
+            .await
+            {
+                error!("Failed to run psi memory checker loop: {}", e);
+                // TODO(kawasin): report the error.
 
-        // Send memory pressure notification.
-        if let Ok(pressure_status) = pressure_result {
-            send_pressure_signals(&conn, &pressure_status);
+                // wait 1 second to retry to avoid logging the error in a busy loop.
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        } else {
+            info!("Using margin memory policy");
+            margin_memory_handler_loop(&conn, &vmms_client, &notification_count).await;
         }
-
-        notification_count.fetch_add(1, Ordering::Relaxed);
-
-        memory_checker_wait(&pressure_result).await;
     }
 }
