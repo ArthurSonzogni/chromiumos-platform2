@@ -285,6 +285,7 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  FakeFeaturesForTesting fake_features_;
 
   // TPM simulator objects.
   hwsec::Tpm2SimulatorFactoryForTest hwsec_simulator_factory_;
@@ -331,7 +332,8 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
   AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
                                          &uss_manager_};
   FpMigrationUtility fp_migration_utility_{
-      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &crypto_, AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
+      &fake_features_.async};
 
   AuthSession::BackingApis backing_apis_{&crypto_,
                                          &platform_,

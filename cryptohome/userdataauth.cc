@@ -835,8 +835,8 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   }
 
   if (!fp_migration_utility_) {
-    default_fp_migration_utility_ =
-        std::make_unique<FpMigrationUtility>(crypto_, async_biometrics_service);
+    default_fp_migration_utility_ = std::make_unique<FpMigrationUtility>(
+        crypto_, async_biometrics_service, &async_init_features_);
     fp_migration_utility_ = default_fp_migration_utility_.get();
   }
 

@@ -375,6 +375,21 @@ CryptohomeStatus DecryptedUss::Transaction::InitializeFingerprintRateLimiterId(
   return OkStatus<CryptohomeError>();
 }
 
+CryptohomeStatus
+DecryptedUss::Transaction::IncreaseLegacyFingerprintMigrationRolloutTo(
+    uint64_t rollout) {
+  if (container_.user_metadata.legacy_fingerprint_migration_rollout &&
+      rollout <=
+          *container_.user_metadata.legacy_fingerprint_migration_rollout) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUssUpdateInvalidLegacyFpMigrationRollout),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+  container_.user_metadata.legacy_fingerprint_migration_rollout = rollout;
+  return OkStatus<CryptohomeError>();
+}
+
 CryptohomeStatus DecryptedUss::Transaction::Commit() && {
   // Build a new EncryptedUss with new ciphertext that reflects all of the
   // changes in the transaction.

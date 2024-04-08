@@ -419,6 +419,7 @@ if (use.test) {
       "filesystem_layout_unittest.cc",
       "fingerprint_manager_unittest.cc",
       "flatbuffer_file_unittest.cc",
+      "fp_migration/utility_unittest.cc",
       "key_objects_unittest.cc",
       "keyset_management_unittest.cc",
       "lockbox-cache-unittest.cc",

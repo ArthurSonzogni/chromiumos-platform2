@@ -36,6 +36,13 @@ inline constexpr struct VariationsFeature
         .default_state = FEATURE_DISABLED_BY_DEFAULT,
 };
 
+// Control switch value for legacy fingerprint migration.
+inline constexpr struct VariationsFeature
+    kCrOSMigrateLegacyFingerprintPostSignin = {
+        .name = "CrOSMigrateLegacyFingerprint",
+        .default_state = FEATURE_DISABLED_BY_DEFAULT,
+};
+
 // Features is a class which is a wrapper around PlatformFeatureInterface, which
 // can also be configured for testing.
 class Features {
@@ -46,6 +53,7 @@ class Features {
     kModernPin,
     kMigratePin,
     kGenerateRecoverableKeyStore,
+    kMigrateLegacyFingerprint,
   };
 
   // Platform feature library can only initialized with a bus instance.

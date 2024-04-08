@@ -360,6 +360,7 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   TaskEnvironment task_environment_{
       TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
+  FakeFeaturesForTesting features_;
   MockSystemApis<WithMockKeysetManagement> system_apis_;
   UserSessionMap user_session_map_;
   NiceMock<MockHomeDirs> homedirs_;
@@ -377,7 +378,8 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
       fp_service_.get(),
       AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
   FpMigrationUtility fp_migration_utility_{
-      &system_apis_.crypto, AsyncInitPtr<BiometricsAuthBlockService>(nullptr)};
+      &system_apis_.crypto, AsyncInitPtr<BiometricsAuthBlockService>(nullptr),
+      &features_.async};
   NiceMock<MockPkcs11TokenFactory> pkcs11_token_factory_;
   std::unique_ptr<AuthSessionManager> auth_session_manager_;
 
@@ -388,7 +390,6 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   UserDataAuth userdataauth_{system_apis_.ToBackingApis()};
 
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
-  FakeFeaturesForTesting features_;
   int signal_called_ = 0;
 };
 

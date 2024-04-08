@@ -77,6 +77,11 @@ class DecryptedUss {
     // the ID is already initialized.
     CryptohomeStatus InitializeFingerprintRateLimiterId(uint64_t id);
 
+    // Update the legacy fingerprint migration rollout number. The new value
+    // must be greater than the existing value, if there is one.
+    CryptohomeStatus IncreaseLegacyFingerprintMigrationRolloutTo(
+        uint64_t rollout);
+
     // Insert or assign a new reset secret for a given wrapping ID.
     //
     // The difference between insert and assign is that insert considers it an

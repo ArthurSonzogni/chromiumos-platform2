@@ -375,12 +375,13 @@ class AuthSessionTest : public ::testing::Test {
           base::Unretained(this)))};
   AuthFactorManager auth_factor_manager_{&platform_, &keyset_management_,
                                          &uss_manager_};
+  FakeFeaturesForTesting fake_features_;
   FpMigrationUtility fp_migration_utility_{
       &crypto_,
       AsyncInitPtr<BiometricsAuthBlockService>(base::BindRepeating(
           [](AuthSessionTest* test) { return test->bio_service_.get(); },
-          base::Unretained(this)))};
-  FakeFeaturesForTesting fake_features_;
+          base::Unretained(this))),
+      &fake_features_.async};
   NiceMock<MockSignalling> signalling_;
   AuthSession::BackingApis backing_apis_{
       &crypto_,
@@ -5526,6 +5527,10 @@ TEST_F(AuthSessionWithUssTest, AddPasswordCreatesRecoverableKeyStoreState) {
 
 // Test that MigrateLegacyFingerprints succeeds with multiple legacy records.
 TEST_F(AuthSessionWithUssTest, MigrateLegacyFingerprints) {
+  // set feature flags to allow fp migration.
+  fake_features_.SetDefaultForFeature(Features::kMigrateLegacyFingerprint,
+                                      true);
+
   // Create an AuthSession and add a mock for successful auth block creations.
   auto auth_session = std::make_unique<AuthSession>(
       AuthSession::Params{.username = kFakeUsername,
@@ -5611,11 +5616,19 @@ TEST_F(AuthSessionWithUssTest, MigrateLegacyFingerprints) {
     // auth factor.
     ASSERT_EQ(fp_auth_factor->metadata().common.user_specified_name,
               legacy_record.user_specified_name);
+    auto encrypted_uss =
+        uss_manager_.LoadEncrypted(auth_session->obfuscated_username());
+    ASSERT_OK(encrypted_uss);
+    ASSERT_EQ((*encrypted_uss)->legacy_fingerprint_migration_rollout(), 1);
   }
 }
 
 // Test that MigrateLegacyFingerprints properly returns error when it fails.
 TEST_F(AuthSessionWithUssTest, MigrateLegacyFingerprintsAddCredFailure) {
+  // set feature flags to allow fp migration.
+  fake_features_.SetDefaultForFeature(Features::kMigrateLegacyFingerprint,
+                                      true);
+
   // Create an AuthSession and add a mock for a successful auth block prepare.
   auto auth_session = std::make_unique<AuthSession>(
       AuthSession::Params{.username = kFakeUsername,

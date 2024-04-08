@@ -410,6 +410,10 @@ class AuthSession final {
         StatusCallback on_done,
         CryptohomeStatus status);
 
+    // Finalizes the legacy fp migration by persisting the current migration
+    // rollout number to USS.
+    void MarkFpMigrationCompletion(StatusCallback on_done);
+
     // The last member, to invalidate weak references first on destruction.
     base::WeakPtrFactory<AuthForDecrypt> weak_factory_{this};
   };

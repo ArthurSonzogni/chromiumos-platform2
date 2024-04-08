@@ -115,6 +115,11 @@ class EncryptedUss {
     return container_.user_metadata.fingerprint_rate_limiter_id;
   }
 
+  // The rollout number of legacy fingerprint migration, if it exists.
+  std::optional<uint64_t> legacy_fingerprint_migration_rollout() const {
+    return container_.user_metadata.legacy_fingerprint_migration_rollout;
+  }
+
   // Return the full user metadata.
   const UserMetadata& user_metadata() const { return container_.user_metadata; }
 

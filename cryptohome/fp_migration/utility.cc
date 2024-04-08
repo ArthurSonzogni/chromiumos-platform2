@@ -17,6 +17,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/error/locations.h"
+#include "cryptohome/features.h"
 
 namespace cryptohome {
 namespace {
@@ -31,11 +32,34 @@ using ::hwsec::PinWeaverManagerFrontend::AuthChannel::kFingerprintAuthChannel;
 using ::hwsec_foundation::status::MakeStatus;
 using ::hwsec_foundation::status::OkStatus;
 
+// The version number corresponding to the latest rollout attempt.
+// Every time the fp migration feature flag is rolled back globally,
+// increase this value by 1 for the next rollout attempt.
+constexpr uint64_t kMigrationRolloutVersion = 1;
 }  // namespace
 
 // static
 std::string FpMigrationUtility::MigratedLegacyFpLabel(size_t index) {
   return base::StringPrintf("legacy-fp-%zu", index);
+}
+
+// Returns the desired migration rollout version. The version is
+// determined by the latest feature flag for migration rollout.
+uint64_t FpMigrationUtility::GetLegacyFingerprintMigrationRollout() {
+  if (features_->IsFeatureEnabled(Features::kMigrateLegacyFingerprint)) {
+    return kMigrationRolloutVersion;
+  }
+  return 0;
+}
+
+bool FpMigrationUtility::NeedsMigration(std::optional<uint64_t> last_rollout) {
+  uint64_t desired_rollout = GetLegacyFingerprintMigrationRollout();
+  if (desired_rollout > 0) {
+    if (!last_rollout || *last_rollout < desired_rollout) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void FpMigrationUtility::PrepareLegacyTemplate(const AuthInput& auth_input,

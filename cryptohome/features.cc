@@ -53,6 +53,8 @@ const VariationsFeature& GetVariationFeatureFor(
       return kCrOSLateBootMigrateToModernPin;
     case Features::kGenerateRecoverableKeyStore:
       return kCrOSLateBootGenerateRecoverableKeyStore;
+    case Features::kMigrateLegacyFingerprint:
+      return kCrOSMigrateLegacyFingerprintPostSignin;
   }
 }
 

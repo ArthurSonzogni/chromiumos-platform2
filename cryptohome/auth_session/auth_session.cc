@@ -2644,9 +2644,29 @@ void AuthSession::AuthForDecrypt::ReplaceAuthFactorIntoUss(
 
 void AuthSession::AuthForDecrypt::MigrateLegacyFingerprints(
     StatusCallback on_done) {
-  session_->fp_migration_utility_->ListLegacyRecords(
-      base::BindOnce(&AuthSession::AuthForDecrypt::MigrateLegacyRecords,
-                     weak_factory_.GetWeakPtr(), std::move(on_done)));
+  // USS is required for fp migration.
+  auto encrypted_uss =
+      session_->uss_manager_->LoadEncrypted(session_->obfuscated_username());
+  if (!encrypted_uss.ok()) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoUSSInMigrateLegacyFps),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  if (session_->fp_migration_utility_->NeedsMigration(
+          (*encrypted_uss)->legacy_fingerprint_migration_rollout())) {
+    // TODO(b/327048355): Delete all previous migrated fingerprint auth factor
+    // to ensure no conflicts when there are more than one rollout attempt.
+    session_->fp_migration_utility_->ListLegacyRecords(
+        base::BindOnce(&AuthSession::AuthForDecrypt::MigrateLegacyRecords,
+                       weak_factory_.GetWeakPtr(), std::move(on_done)));
+  } else {
+    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    return;
+  }
 }
 
 void AuthSession::AuthForDecrypt::MigrateLegacyRecords(
@@ -2657,7 +2677,7 @@ void AuthSession::AuthForDecrypt::MigrateLegacyRecords(
     return;
   }
   if (legacy_records->empty()) {
-    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    MarkFpMigrationCompletion(std::move(on_done));
     return;
   }
 
@@ -2665,11 +2685,10 @@ void AuthSession::AuthForDecrypt::MigrateLegacyRecords(
       session_->auth_factor_driver_manager_->GetDriver(
           AuthFactorType::kFingerprint);
 
-  // Fp auth factor requires decrypted USS and a dedicated rate limiter.
+  // Fp auth factor requires a dedicated rate limiter in the USS.
   if (!session_->decrypt_token_) {
-    // Require a decrypted USS for fp migration.
     CryptohomeStatus status = MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoUSSInMigrateLegacyFps),
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoDecryptedUSSInMigrateLegacyFps),
         ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     std::move(on_done).Run(std::move(status));
@@ -2694,7 +2713,7 @@ void AuthSession::AuthForDecrypt::MigrateLegacyRecords(
 void AuthSession::AuthForDecrypt::MigrateFromTheBack(
     base::span<LegacyRecord> legacy_records, StatusCallback on_done) {
   if (legacy_records.empty()) {
-    std::move(on_done).Run(OkStatus<CryptohomeError>());
+    MarkFpMigrationCompletion(std::move(on_done));
     return;
   }
 
@@ -2755,12 +2774,47 @@ void AuthSession::AuthForDecrypt::MigrateRemainingLegacyFingerprints(
     base::span<LegacyRecord> remaining_records,
     StatusCallback on_done,
     CryptohomeStatus status) {
-  if (!status.ok() || remaining_records.empty()) {
+  if (!status.ok()) {
     std::move(on_done).Run(std::move(status));
     return;
   }
 
   MigrateFromTheBack(remaining_records, std::move(on_done));
+}
+
+void AuthSession::AuthForDecrypt::MarkFpMigrationCompletion(
+    StatusCallback on_done) {
+  DecryptedUss& decrypted_uss =
+      session_->uss_manager_->GetDecrypted(*session_->decrypt_token_);
+  auto transaction = decrypted_uss.StartTransaction();
+
+  if (auto status = transaction.IncreaseLegacyFingerprintMigrationRolloutTo(
+          session_->fp_migration_utility_
+              ->GetLegacyFingerprintMigrationRollout());
+      !status.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionAddToUssFailedInPersistFpMigrationRollout),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
+  }
+
+  // Persist the USS.
+  if (auto status = std::move(transaction).Commit(); !status.ok()) {
+    LOG(ERROR) << "Failed to persist user secret stash after updating fp "
+                  "migration rollout.";
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionPersistUSSFailedInPersistFpMigrationRollout),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
+  }
+
+  std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
 void AuthSession::PrepareAuthFactor(
