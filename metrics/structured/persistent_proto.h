@@ -14,8 +14,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
 
-namespace metrics {
-namespace structured {
+namespace metrics::structured {
 
 // PersistentProto wraps a proto class and persists it to disk. Usage summary:
 //  - pproto->Method() will call Method on the underlying proto.
@@ -66,7 +65,6 @@ class PersistentProto {
   std::unique_ptr<T> proto_;
 };
 
-}  // namespace structured
-}  // namespace metrics
+}  // namespace metrics::structured
 
 #endif  // METRICS_STRUCTURED_PERSISTENT_PROTO_H_

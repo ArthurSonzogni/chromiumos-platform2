@@ -21,6 +21,7 @@
 #include <base/time/time.h>
 #include <base/uuid.h>
 
+#include "metrics/structured/batch_event_storage.h"
 #include "metrics/structured/event_base.h"
 #include "metrics/structured/proto/storage.pb.h"
 #include "metrics/structured/structured_events.h"
@@ -28,42 +29,9 @@
 namespace metrics::structured {
 namespace {
 
-constexpr mode_t kFilePermissions = 0660;
-
 // Path to the reset counter path. This should be always be synced with the path
 // in reset_counter_updater.cc.
 const char kResetCounterPath[] = "/var/lib/metrics/structured/reset-counter";
-
-// Writes |events| to a file within |directory|. Fails if |directory| doesn't
-// exist. Returns whether the write was successful.
-bool WriteEventsProtoToDir(const std::string& directory,
-                           const EventsProto& events) {
-  const std::string guid = base::Uuid::GenerateRandomV4().AsLowercaseString();
-  if (guid.empty())
-    return false;
-  const std::string filepath = base::StrCat({directory, "/", guid});
-
-  base::ScopedFD file_descriptor(
-      open(filepath.c_str(), O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600));
-  if (file_descriptor.get() < 0) {
-    PLOG(ERROR) << filepath << " cannot open";
-    return false;
-  }
-
-  if (!events.SerializeToFileDescriptor(file_descriptor.get())) {
-    PLOG(ERROR) << filepath << " write error";
-    return false;
-  }
-
-  // Explicitly set permissions on the created event file. This is done
-  // separately to the open call to be independent of the umask.
-  if (fchmod(file_descriptor.get(), kFilePermissions) < 0) {
-    PLOG(ERROR) << filepath << " cannot chmod";
-    return false;
-  }
-
-  return true;
-}
 
 }  // namespace
 

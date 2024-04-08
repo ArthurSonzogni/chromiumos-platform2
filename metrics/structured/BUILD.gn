@@ -85,6 +85,8 @@ source_set("libsm") {
 
 source_set("structured_metrics") {
   sources = [
+    "batch_event_storage.cc",
+    "batch_event_storage.h",
     "c_structured_metrics.cc",
     "event_base.cc",
     "event_base.h",
@@ -133,6 +135,7 @@ if (use.test) {
   }
   executable("structured_metrics_test") {
     sources = [
+      "batch_event_storage_test.cc",
       "lib/key_data_file_delegate_test.cc",
       "lib/persistent_proto_test.cc",
       "recorder_impl_test.cc",
