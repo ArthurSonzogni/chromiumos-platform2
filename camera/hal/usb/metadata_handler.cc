@@ -19,6 +19,7 @@
 #include <base/check.h>
 #include <base/containers/fixed_flat_set.h>
 #include <base/no_destructor.h>
+#include <cros-camera/face_detector_client_cros_wrapper.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/utils/camera_config.h"
@@ -199,7 +200,8 @@ MetadataHandler::MetadataHandler(const camera_metadata_t& static_metadata,
     : device_info_(device_info),
       device_(device),
       af_trigger_(false),
-      focus_distance_normalize_factor_(0) {
+      focus_distance_normalize_factor_(0),
+      latest_roi_(0.0f, 0.0f, 0.0f, 0.0f) {
   // MetadataBase::operator= will make a copy of camera_metadata_t.
   static_metadata_ = &static_metadata;
   request_template_ = &request_template;
@@ -1377,11 +1379,14 @@ int MetadataHandler::PostHandleRequest(
                         face_rectangles[2] - face_rectangles[0] + 1,
                         face_rectangles[3] - face_rectangles[1] + 1);
       }
-      device_->SetRegionOfInterest(roi,
-                                   Rect<int>(active_array_size.data.i32[0],
-                                             active_array_size.data.i32[1],
-                                             active_array_size.data.i32[2],
-                                             active_array_size.data.i32[3]));
+      if (roi != latest_roi_) {
+        latest_roi_ = roi;
+        device_->SetRegionOfInterest(roi,
+                                     Rect<int>(active_array_size.data.i32[0],
+                                               active_array_size.data.i32[1],
+                                               active_array_size.data.i32[2],
+                                               active_array_size.data.i32[3]));
+      }
     }
   }
 

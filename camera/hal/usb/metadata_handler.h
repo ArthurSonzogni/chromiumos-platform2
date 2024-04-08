@@ -142,6 +142,8 @@ class MetadataHandler {
 
   uint32_t focus_distance_normalize_factor_;
   ControlRange focus_distance_range_;
+
+  Rect<int> latest_roi_;
 };
 
 }  // namespace cros
