@@ -610,42 +610,6 @@ TEST(DBusUtils, Tuple) {
   EXPECT_EQ(struct2, struct2_out);
 }
 
-TEST(DBusUtils, ReinterpretVariant) {
-  std::unique_ptr<Response> message = Response::CreateEmpty();
-  MessageWriter writer(message.get());
-  std::vector<std::string> str_array{"foo", "bar", "baz"};
-  std::map<std::string, std::string> dict_ss{{"k1", "v1"}, {"k2", "v2"}};
-  VariantDictionary dict_sv{{"k1", "v1"}, {"k2", "v2"}};
-  AppendValueToWriterAsVariant(&writer, 123);
-  AppendValueToWriterAsVariant(&writer, str_array);
-  AppendValueToWriterAsVariant(&writer, 1.7);
-  AppendValueToWriterAsVariant(&writer, dict_ss);
-  AppendValueToWriter(&writer, dict_sv);
-
-  EXPECT_EQ("vvvva{sv}", message->GetSignature());
-
-  int int_out = 0;
-  std::vector<std::string> str_array_out;
-  double dbl_out = 0.0;
-  std::map<std::string, std::string> dict_ss_out;
-  std::map<std::string, std::string> dict_ss_out2;
-
-  MessageReader reader(message.get());
-  EXPECT_TRUE(PopValueFromReader(&reader, &int_out));
-  EXPECT_TRUE(PopValueFromReader(&reader, &str_array_out));
-  EXPECT_TRUE(PopValueFromReader(&reader, &dbl_out));
-  EXPECT_TRUE(PopValueFromReader(&reader, &dict_ss_out));
-  EXPECT_TRUE(PopValueFromReader(&reader,
-                                 &dict_ss_out2));  // Read "a{sv}" as "a{ss}".
-  EXPECT_FALSE(reader.HasMoreData());
-
-  EXPECT_EQ(123, int_out);
-  EXPECT_EQ(str_array, str_array_out);
-  EXPECT_DOUBLE_EQ(1.7, dbl_out);
-  EXPECT_EQ(dict_ss, dict_ss_out);
-  EXPECT_EQ(dict_ss, dict_ss_out2);
-}
-
 TEST(DBusUtils, EmptyVariant) {
   std::unique_ptr<Response> message = Response::CreateEmpty();
   MessageWriter writer(message.get());
@@ -658,55 +622,6 @@ TEST(DBusUtils, IncompatibleVariant) {
   MessageWriter writer(message.get());
   EXPECT_DEATH(AppendValueToWriter(&writer, Any{2.2f}),
                "Type 'float' is not supported by D-Bus");
-}
-
-TEST(DBusUtils, AutoVariantUnwrapping) {
-  {
-    ScopedAutoVariantUnwrapState scoped_state(AutoVariantUnwrapState::kEnabled);
-    std::unique_ptr<Response> message = Response::CreateEmpty();
-    MessageWriter writer(message.get());
-    AppendValueToWriterAsVariant(&writer, 123);
-
-    int result = 0;
-    MessageReader reader(message.get());
-    ASSERT_TRUE(PopValueFromReader(&reader, &result));
-    EXPECT_EQ(result, 123);
-  }
-
-  {
-    // Child process dies, but otherwise behave as same as kEnabled.
-    ScopedAutoVariantUnwrapState scoped_state(
-        AutoVariantUnwrapState::kDumpWithoutCrash);
-    std::unique_ptr<Response> message = Response::CreateEmpty();
-    MessageWriter writer(message.get());
-    AppendValueToWriterAsVariant(&writer, 123);
-
-    int result = 0;
-    MessageReader reader(message.get());
-    ASSERT_TRUE(PopValueFromReader(&reader, &result));
-    EXPECT_EQ(result, 123);
-  }
-
-  {
-    // Now we cannot directly read the variant wrapped value.
-    // It is needed to read it as variant, then unwrap explicitly.
-    ScopedAutoVariantUnwrapState scoped_state(
-        AutoVariantUnwrapState::kDisabled);
-    std::unique_ptr<Response> message = Response::CreateEmpty();
-    MessageWriter writer(message.get());
-    AppendValueToWriterAsVariant(&writer, 123);
-
-    {
-      int result = 0;
-      MessageReader reader(message.get());
-      EXPECT_FALSE(PopValueFromReader(&reader, &result));
-    }
-    {
-      brillo::Any result;
-      MessageReader reader(message.get());
-      EXPECT_TRUE(PopValueFromReader(&reader, &result));
-    }
-  }
 }
 
 TEST(DBusUtils, Protobuf) {

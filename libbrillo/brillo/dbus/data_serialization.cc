@@ -144,75 +144,51 @@ void AppendValueToWriter(dbus::MessageWriter* writer,
 ///////////////////////////////////////////////////////////////////////////////
 
 bool PopValueFromReader(dbus::MessageReader* reader, bool* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopBool(value);
+  return reader->PopBool(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, uint8_t* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopByte(value);
+  return reader->PopByte(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, int16_t* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopInt16(value);
+  return reader->PopInt16(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, uint16_t* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopUint16(value);
+  return reader->PopUint16(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, int32_t* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopInt32(value);
+  return reader->PopInt32(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, uint32_t* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopUint32(value);
+  return reader->PopUint32(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, int64_t* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopInt64(value);
+  return reader->PopInt64(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, uint64_t* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopUint64(value);
+  return reader->PopUint64(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, double* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopDouble(value);
+  return reader->PopDouble(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, std::string* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopString(value);
+  return reader->PopString(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, dbus::ObjectPath* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopObjectPath(value);
+  return reader->PopObjectPath(value);
 }
 
 bool PopValueFromReader(dbus::MessageReader* reader, base::ScopedFD* value) {
-  dbus::MessageReader variant_reader(nullptr);
-  return details::DescendIntoVariantIfPresent(&reader, &variant_reader) &&
-         reader->PopFileDescriptor(value);
+  return reader->PopFileDescriptor(value);
 }
 
 namespace {

@@ -369,11 +369,10 @@ template <typename T, typename ALLOC>
 typename std::enable_if<IsTypeSupported<T>::value, bool>::type
 PopValueFromReader(::dbus::MessageReader* reader,
                    std::vector<T, ALLOC>* value) {
-  ::dbus::MessageReader variant_reader(nullptr);
   ::dbus::MessageReader array_reader(nullptr);
-  if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader) ||
-      !reader->PopArray(&array_reader))
+  if (!reader->PopArray(&array_reader)) {
     return false;
+  }
   value->clear();
   while (array_reader.HasMoreData()) {
     T data;
@@ -430,11 +429,10 @@ typename std::enable_if<IsTypeSupported<U, V>::value>::type AppendValueToWriter(
 template <typename U, typename V>
 typename std::enable_if<IsTypeSupported<U, V>::value, bool>::type
 PopValueFromReader(::dbus::MessageReader* reader, std::pair<U, V>* value) {
-  ::dbus::MessageReader variant_reader(nullptr);
   ::dbus::MessageReader struct_reader(nullptr);
-  if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader) ||
-      !reader->PopStruct(&struct_reader))
+  if (!reader->PopStruct(&struct_reader)) {
     return false;
+  }
   // Use DBusType<T>::Read() instead of PopValueFromReader() to delay
   // binding to PopValueFromReader() to the point of instantiation of this
   // template.
@@ -527,11 +525,10 @@ typename std::enable_if<IsTypeSupported<T...>::value>::type AppendValueToWriter(
 template <typename... T>
 typename std::enable_if<IsTypeSupported<T...>::value, bool>::type
 PopValueFromReader(::dbus::MessageReader* reader, std::tuple<T...>* value) {
-  ::dbus::MessageReader variant_reader(nullptr);
   ::dbus::MessageReader struct_reader(nullptr);
-  if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader) ||
-      !reader->PopStruct(&struct_reader))
+  if (!reader->PopStruct(&struct_reader)) {
     return false;
+  }
   return details::TupleIterator<0, sizeof...(T), T...>::Read(&struct_reader,
                                                              value);
 }
@@ -590,11 +587,10 @@ template <typename KEY, typename VALUE, typename PRED, typename ALLOC>
 typename std::enable_if<IsTypeSupported<KEY, VALUE>::value, bool>::type
 PopValueFromReader(::dbus::MessageReader* reader,
                    std::map<KEY, VALUE, PRED, ALLOC>* value) {
-  ::dbus::MessageReader variant_reader(nullptr);
   ::dbus::MessageReader array_reader(nullptr);
-  if (!details::DescendIntoVariantIfPresent(&reader, &variant_reader) ||
-      !reader->PopArray(&array_reader))
+  if (!reader->PopArray(&array_reader)) {
     return false;
+  }
   value->clear();
   while (array_reader.HasMoreData()) {
     ::dbus::MessageReader dict_entry_reader(nullptr);

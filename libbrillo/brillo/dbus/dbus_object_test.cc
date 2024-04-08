@@ -444,20 +444,6 @@ TEST_F(DBusObjectTest, ParamTypeMismatch) {
   ExpectError(response.get(), DBUS_ERROR_INVALID_ARGS);
 }
 
-TEST_F(DBusObjectTest, ParamAsVariant) {
-  dbus::MethodCall method_call(kTestInterface1, kTestMethod_Add);
-  method_call.SetSerial(123);
-  dbus::MessageWriter writer(&method_call);
-  writer.AppendVariantOfInt32(10);
-  writer.AppendVariantOfInt32(3);
-  auto response = testing::CallMethod(*dbus_object_, &method_call);
-  dbus::MessageReader reader(response.get());
-  int result;
-  ASSERT_TRUE(reader.PopInt32(&result));
-  ASSERT_FALSE(reader.HasMoreData());
-  ASSERT_EQ(13, result);
-}
-
 TEST_F(DBusObjectTest, UnknownMethod) {
   dbus::MethodCall method_call(kTestInterface2, kTestMethod_Add);
   method_call.SetSerial(123);
