@@ -70,12 +70,21 @@ class TpmFetcherTest : public BaseFileTest {
     return mock_context_.mock_attestation_proxy();
   }
 
+  void SetTpmOwnedStatus(bool value) {
+    auto tpm_status = tpm_manager::GetTpmNonsensitiveStatusReply();
+    tpm_status.set_is_owned(value);
+    EXPECT_CALL(*mock_tpm_manager_proxy(),
+                GetTpmNonsensitiveStatusAsync(_, _, _, _))
+        .WillRepeatedly(base::test::RunOnceCallback<1>(tpm_status));
+  }
+
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
 };
 
 TEST_F(TpmFetcherTest, Success) {
+  SetTpmOwnedStatus(true);
   const auto result = FetchTpmInfoSync();
   ASSERT_TRUE(result->is_tpm_info());
   EXPECT_TRUE(result->get_tpm_info()->version);
@@ -227,6 +236,7 @@ TEST_F(TpmFetcherTest, GetAttestationStatusSuccess) {
 
   EXPECT_CALL(*mock_attestation_proxy(), GetStatusAsync(_, _, _, _))
       .WillRepeatedly(base::test::RunOnceCallback<1>(status));
+  SetTpmOwnedStatus(true);
 
   const auto result = FetchTpmInfoSync();
   ASSERT_TRUE(result->is_tpm_info());
@@ -235,11 +245,23 @@ TEST_F(TpmFetcherTest, GetAttestationStatusSuccess) {
   EXPECT_FALSE(out_attestation->enrolled);
 }
 
+TEST_F(TpmFetcherTest, SkipAttestationIfTpmNotOwned) {
+  EXPECT_CALL(*mock_attestation_proxy(), GetStatusAsync(_, _, _, _)).Times(0);
+  SetTpmOwnedStatus(false);
+
+  const auto result = FetchTpmInfoSync();
+  ASSERT_TRUE(result->is_tpm_info());
+  const auto& out_attestation = result->get_tpm_info()->attestation;
+  EXPECT_FALSE(out_attestation->prepared_for_enrollment);
+  EXPECT_FALSE(out_attestation->enrolled);
+}
+
 TEST_F(TpmFetcherTest, GetAttestationStatusBadStatus) {
   auto status = attestation::GetStatusReply();
   status.set_status(attestation::STATUS_UNEXPECTED_DEVICE_ERROR);
   EXPECT_CALL(*mock_attestation_proxy(), GetStatusAsync(_, _, _, _))
       .WillRepeatedly(base::test::RunOnceCallback<1>(status));
+  SetTpmOwnedStatus(true);
 
   const auto result = FetchTpmInfoSync();
   ASSERT_TRUE(result->is_error());
@@ -251,6 +273,7 @@ TEST_F(TpmFetcherTest, GetAttestationStatusError) {
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
   EXPECT_CALL(*mock_attestation_proxy(), GetStatusAsync(_, _, _, _))
       .WillRepeatedly(base::test::RunOnceCallback<2>(error.get()));
+  SetTpmOwnedStatus(true);
 
   const auto result = FetchTpmInfoSync();
   ASSERT_TRUE(result->is_error());

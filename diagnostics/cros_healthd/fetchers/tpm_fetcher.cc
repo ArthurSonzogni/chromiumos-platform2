@@ -67,10 +67,6 @@ class State {
       brillo::Error* err,
       const tpm_manager::GetDictionaryAttackInfoReply& reply);
 
-  // Handle the response of status from attestation.
-  void HandleAttestation(brillo::Error* err,
-                         const attestation::GetStatusReply& reply);
-
   // Handle the response of supported features from tpm manager.
   void HandleSupportedFeatures(
       brillo::Error* err, const tpm_manager::GetSupportedFeaturesReply& reply);
@@ -161,24 +157,6 @@ void State::HandleDictionaryAttack(
   info_->dictionary_attack = std::move(da);
 }
 
-void State::HandleAttestation(brillo::Error* err,
-                              const attestation::GetStatusReply& reply) {
-  if (err) {
-    SetError("Failed to call Attestation::GetStatus(): " + err->GetMessage());
-    return;
-  }
-  if (reply.status() != attestation::STATUS_SUCCESS) {
-    SetError("Attestation::GetStatus() returned error status: " +
-             base::NumberToString(reply.status()));
-    return;
-  }
-
-  auto data = mojom::TpmAttestation::New();
-  data->prepared_for_enrollment = reply.prepared_for_enrollment();
-  data->enrolled = reply.enrolled();
-  info_->attestation = std::move(data);
-}
-
 void State::HandleSupportedFeatures(
     brillo::Error* err, const tpm_manager::GetSupportedFeaturesReply& reply) {
   if (err) {
@@ -217,6 +195,32 @@ void State::HandleResult(FetchTpmInfoCallback callback, bool is_finished) {
   std::move(callback).Run(mojom::TpmResult::NewTpmInfo(std::move(info_)));
 }
 
+void HandleAttestation(FetchTpmInfoCallback callback,
+                       mojom::TpmResultPtr tpm_result,
+                       brillo::Error* err,
+                       const attestation::GetStatusReply& reply) {
+  if (err) {
+    auto error = CreateAndLogProbeError(
+        mojom::ErrorType::kServiceUnavailable,
+        "Failed to call Attestation::GetStatus(): " + err->GetMessage());
+    std::move(callback).Run(mojom::TpmResult::NewError(std::move(error)));
+    return;
+  }
+  if (reply.status() != attestation::STATUS_SUCCESS) {
+    auto error = CreateAndLogProbeError(
+        mojom::ErrorType::kServiceUnavailable,
+        "Attestation::GetStatus() returned error status: " +
+            base::NumberToString(reply.status()));
+    std::move(callback).Run(mojom::TpmResult::NewError(std::move(error)));
+    return;
+  }
+  auto data = mojom::TpmAttestation::New();
+  data->prepared_for_enrollment = reply.prepared_for_enrollment();
+  data->enrolled = reply.enrolled();
+  tpm_result->get_tpm_info()->attestation = std::move(data);
+  std::move(callback).Run(std::move(tpm_result));
+}
+
 void FetchVersion(Context* context,
                   CallbackBarrier& barrier,
                   State* state_ptr) {
@@ -246,11 +250,20 @@ void FetchDictionaryAttack(Context* context,
 }
 
 void FetchAttestation(Context* context,
-                      CallbackBarrier& barrier,
-                      State* state_ptr) {
+                      FetchTpmInfoCallback callback,
+                      mojom::TpmResultPtr tpm_result) {
+  if (tpm_result->is_error()) {
+    std::move(callback).Run(std::move(tpm_result));
+    return;
+  }
+  if (!tpm_result->get_tpm_info()->status->owned) {
+    tpm_result->get_tpm_info()->attestation = mojom::TpmAttestation::New();
+    std::move(callback).Run(std::move(tpm_result));
+    return;
+  }
   attestation::GetStatusRequest request;
-  auto [on_success, on_error] = SplitDbusCallback(barrier.Depend(
-      base::BindOnce(&State::HandleAttestation, base::Unretained(state_ptr))));
+  auto [on_success, on_error] = SplitDbusCallback(base::BindOnce(
+      &HandleAttestation, std::move(callback), std::move(tpm_result)));
   context->attestation_proxy()->GetStatusAsync(
       request, std::move(on_success), std::move(on_error), kDBusTimeoutMs);
 }
@@ -270,12 +283,18 @@ void FetchSupportedFeatures(Context* context,
 void FetchTpmInfo(Context* context, FetchTpmInfoCallback callback) {
   auto state = std::make_unique<State>();
   State* state_ptr = state.get();
-  CallbackBarrier barrier{base::BindOnce(&State::HandleResult, std::move(state),
-                                         std::move(callback))};
+
+  // attestationd will block requests if TPM is not owned. So we need to
+  // 1. Fetch all TPM info from tpm_manager.
+  // 2. Check TPM owned status in `HandleResult`.
+  // 3. Fetch attestation status if tpm_manager responds that TPM is owned.
+  // 4. Invoke `callback`.
+  CallbackBarrier barrier{base::BindOnce(
+      &State::HandleResult, std::move(state),
+      base::BindOnce(&FetchAttestation, context, std::move(callback)))};
   FetchVersion(context, barrier, state_ptr);
   FetchStatus(context, barrier, state_ptr);
   FetchDictionaryAttack(context, barrier, state_ptr);
-  FetchAttestation(context, barrier, state_ptr);
   FetchSupportedFeatures(context, barrier, state_ptr);
 }
 
