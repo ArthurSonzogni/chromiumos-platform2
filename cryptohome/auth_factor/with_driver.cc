@@ -12,8 +12,8 @@
 #include "cryptohome/auth_factor/flatbuffer.h"
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/types/manager.h"
-#include "cryptohome/auth_intent.h"
-#include "cryptohome/auth_session_flatbuffer.h"
+#include "cryptohome/auth_session/flatbuffer.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/credential_verifier.h"
 
 namespace cryptohome {

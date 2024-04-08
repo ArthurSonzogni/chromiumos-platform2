@@ -17,7 +17,7 @@
 #include <base/containers/flat_set.h>
 
 #include "cryptohome/auth_factor/types/manager.h"
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/flatbuffer_schemas/user_policy.h"
 
 namespace cryptohome {

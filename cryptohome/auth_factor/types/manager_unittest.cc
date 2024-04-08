@@ -17,7 +17,7 @@
 #include "cryptohome/auth_factor/label_arity.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_fingerprint_manager.h"

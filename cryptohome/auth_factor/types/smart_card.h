@@ -14,7 +14,7 @@
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/common.h"
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"

@@ -16,7 +16,7 @@
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/common.h"
 #include "cryptohome/auth_factor/types/interface.h"
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"

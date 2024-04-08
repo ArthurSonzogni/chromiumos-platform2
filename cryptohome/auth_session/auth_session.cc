@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_session.h"
+#include "cryptohome/auth_session/auth_session.h"
 
 #include <algorithm>
 #include <limits>
@@ -57,9 +57,9 @@
 #include "cryptohome/auth_factor/types/interface.h"
 #include "cryptohome/auth_factor/with_driver.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
-#include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_io/auth_input.h"
-#include "cryptohome/auth_session_protobuf.h"
+#include "cryptohome/auth_session/intent.h"
+#include "cryptohome/auth_session/protobuf.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"

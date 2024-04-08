@@ -9,7 +9,7 @@
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
-#include "cryptohome/auth_session.h"
+#include "cryptohome/auth_session/auth_session.h"
 
 namespace cryptohome {
 

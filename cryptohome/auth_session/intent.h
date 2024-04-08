@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_AUTH_INTENT_H_
-#define CRYPTOHOME_AUTH_INTENT_H_
+#ifndef CRYPTOHOME_AUTH_SESSION_INTENT_H_
+#define CRYPTOHOME_AUTH_SESSION_INTENT_H_
 
 #include <array>
 
@@ -53,4 +53,4 @@ struct AuthIntentSequence {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_AUTH_INTENT_H_
+#endif  // CRYPTOHOME_AUTH_SESSION_INTENT_H_

@@ -10,7 +10,7 @@
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/protobuf.h"
 #include "cryptohome/auth_factor/verifiers/scrypt.h"
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
 
 namespace cryptohome {

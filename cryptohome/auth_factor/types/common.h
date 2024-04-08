@@ -38,7 +38,7 @@
 #include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/interface.h"
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/credential_verifier.h"
 
 namespace cryptohome {

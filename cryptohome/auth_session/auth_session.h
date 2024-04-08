@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_AUTH_SESSION_H_
-#define CRYPTOHOME_AUTH_SESSION_H_
+#ifndef CRYPTOHOME_AUTH_SESSION_AUTH_SESSION_H_
+#define CRYPTOHOME_AUTH_SESSION_AUTH_SESSION_H_
 
 #include <map>
 #include <memory>
@@ -38,7 +38,7 @@
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_error.h"
@@ -984,4 +984,4 @@ class AuthSession final {
 
 }  // namespace cryptohome
 
-#endif  // CRYPTOHOME_AUTH_SESSION_H_
+#endif  // CRYPTOHOME_AUTH_SESSION_AUTH_SESSION_H_

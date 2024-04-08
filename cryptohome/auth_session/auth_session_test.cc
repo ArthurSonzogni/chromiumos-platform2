@@ -4,7 +4,7 @@
 
 // Unit tests for AuthSession.
 
-#include "cryptohome/auth_session.h"
+#include "cryptohome/auth_session/auth_session.h"
 
 #include <cstdint>
 #include <map>
@@ -49,8 +49,8 @@
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/type.h"
-#include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_io/auth_input.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/credential_verifier_test_utils.h"

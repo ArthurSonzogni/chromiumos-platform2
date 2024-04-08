@@ -23,7 +23,7 @@
 #include "cryptohome/auth_factor/prepare_purpose.h"
 #include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/type.h"
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/key_objects.h"

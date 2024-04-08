@@ -10,7 +10,7 @@
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/prepare_token.h"
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/username.h"

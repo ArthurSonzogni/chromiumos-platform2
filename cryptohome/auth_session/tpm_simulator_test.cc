@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Unit tests for `AuthSession`. Unlike auth_session_unittest.cc, uses TPM
-// simulator and minimal mocking in order to be able to verify inter-class
-// interactions.
+// Unit tests for `AuthSession`. Unlike the base auth session unit tests, this
+// uses TPM simulator and minimal mocking in order to be able to verify
+// inter-class interactions.
 
 #include <memory>
 #include <string>
@@ -35,9 +35,9 @@
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/types/manager.h"
-#include "cryptohome/auth_intent.h"
 #include "cryptohome/auth_io/auth_input.h"
-#include "cryptohome/auth_session.h"
+#include "cryptohome/auth_session/auth_session.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"

@@ -11,7 +11,7 @@
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/manager.h"
 #include "cryptohome/auth_factor/types/manager.h"
-#include "cryptohome/auth_session.h"
+#include "cryptohome/auth_session/auth_session.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/vault_keyset.h"
 

@@ -22,7 +22,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libstorage/platform/platform.h>
 
-#include "cryptohome/auth_session.h"
+#include "cryptohome/auth_session/auth_session.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/username.h"
 

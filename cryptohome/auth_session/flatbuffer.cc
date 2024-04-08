@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_session_flatbuffer.h"
+#include "cryptohome/auth_session/flatbuffer.h"
 
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/flatbuffer_schemas/enumerations.h"
 
 namespace cryptohome {

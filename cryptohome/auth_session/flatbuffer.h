@@ -5,7 +5,7 @@
 #ifndef CRYPTOHOME_AUTH_SESSION_FLATBUFFER_H_
 #define CRYPTOHOME_AUTH_SESSION_FLATBUFFER_H_
 
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 #include "cryptohome/flatbuffer_schemas/enumerations.h"
 
 namespace cryptohome {

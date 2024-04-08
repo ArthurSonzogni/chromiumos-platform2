@@ -41,7 +41,7 @@
 #include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/types/manager.h"
 #include "cryptohome/auth_io/auth_input.h"
-#include "cryptohome/auth_session_manager.h"
+#include "cryptohome/auth_session/manager.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/fake_features.h"

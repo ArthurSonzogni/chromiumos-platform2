@@ -14,7 +14,7 @@
 #include "cryptohome/auth_factor/storage_type.h"
 #include "cryptohome/auth_factor/type.h"
 #include "cryptohome/auth_factor/types/common.h"
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 
 namespace cryptohome {
 

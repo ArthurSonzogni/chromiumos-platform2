@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/auth_session_protobuf.h"
+#include "cryptohome/auth_session/protobuf.h"
 
 #include <optional>
 
 #include <base/logging.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
-#include "cryptohome/auth_intent.h"
+#include "cryptohome/auth_session/intent.h"
 
 namespace cryptohome {
 
