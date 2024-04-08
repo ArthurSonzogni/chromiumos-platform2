@@ -2659,12 +2659,13 @@ void WiFi::StateChanged(const std::string& new_state) {
       // means the ANQP request was already done in the past (by
       // interworking_select for instance) which means we don't need to do it
       // again.
-      if (current->anqp_support() &&
+      // BUG(b/333308540): we can't guarantee GetCurrentEndpoint() will always
+      // return an endpoint, |current| need to be checked to prevent crashes.
+      if (current && current->anqp_support() &&
           !current->anqp_capabilities().capability_list) {
         // The endpoint supports ANQP requests, query the capability list to
         // know the fields supported by the access point.
-        ANQPGet(GetCurrentEndpoint()->bssid_string(),
-                {IEEE_80211::kANQPCapabilityList});
+        ANQPGet(current->bssid_string(), {IEEE_80211::kANQPCapabilityList});
       }
     }
     has_already_completed_ = true;
