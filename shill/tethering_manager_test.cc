@@ -499,7 +499,8 @@ class TetheringManagerTest : public testing::Test {
   }
 
   void OnUpstreamNetworkDestroyed(TetheringManager* tethering_manager) {
-    tethering_manager->OnNetworkDestroyed(kTestInterfaceIndex);
+    tethering_manager->OnNetworkDestroyed(network_->network_id(),
+                                          kTestInterfaceIndex);
   }
 
   void OnUpstreamNetworkValidationResult(TetheringManager* tethering_manager,

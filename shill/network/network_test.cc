@@ -336,8 +336,8 @@ TEST_F(NetworkTest, EventHandlerRegistration) {
   // Network destruction
   network_->RegisterEventHandler(&event_handler_);
   network_->RegisterEventHandler(&event_handler2_);
-  EXPECT_CALL(event_handler_, OnNetworkDestroyed(kTestIfindex));
-  EXPECT_CALL(event_handler2_, OnNetworkDestroyed(kTestIfindex));
+  EXPECT_CALL(event_handler_, OnNetworkDestroyed(_, kTestIfindex));
+  EXPECT_CALL(event_handler2_, OnNetworkDestroyed(_, kTestIfindex));
   EXPECT_CALL(event_handler3, OnNetworkDestroyed).Times(0);
   network_ = nullptr;
   for (auto* ev : all_event_handlers) {

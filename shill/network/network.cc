@@ -106,7 +106,7 @@ Network::Network(int interface_index,
 
 Network::~Network() {
   for (auto& ev : event_handlers_) {
-    ev.OnNetworkDestroyed(interface_index_);
+    ev.OnNetworkDestroyed(network_id_, interface_index_);
   }
 }
 

@@ -206,7 +206,7 @@ class TetheringManager : public Network::EventHandler {
   void OnNetworkValidationResult(int interface_index,
                                  const NetworkMonitor::Result& result) override;
   void OnNetworkStopped(int interface_index, bool is_failure) override;
-  void OnNetworkDestroyed(int interface_index) override;
+  void OnNetworkDestroyed(int network_id, int interface_index) override;
   void OnNetworkValidationStart(int interface_index, bool is_failure) override;
   void OnNetworkValidationStop(int interface_index, bool is_failure) override;
 

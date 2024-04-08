@@ -85,6 +85,8 @@ class Network : public NetworkMonitor::ClientNetwork {
   // owner of this Network object. All the callbacks provide the listener with
   // the interface index where the event happened, to allow listening for events
   // in multiple Network objects at the same time.
+  // TODO(b/333466169): Use |network_id| instead of |interface_index| as the
+  // identifier of the network in each callback.
   class EventHandler : public base::CheckedObserver {
    public:
     // Called every time when the network config on the connection is updated.
@@ -164,7 +166,7 @@ class Network : public NetworkMonitor::ClientNetwork {
     // Called when the Network object is about to be destroyed and become
     // invalid. Any EventHandler still registered should stop any reference
     // they hold for that Network object.
-    virtual void OnNetworkDestroyed(int interface_index) {}
+    virtual void OnNetworkDestroyed(int network_id, int interface_index) {}
   };
 
   // Options for starting a network.

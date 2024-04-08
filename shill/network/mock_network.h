@@ -119,7 +119,7 @@ class MockNetworkEventHandler : public Network::EventHandler {
               OnNetworkValidationResult,
               (int, const NetworkMonitor::Result& result),
               (override));
-  MOCK_METHOD(void, OnNetworkDestroyed, (int), (override));
+  MOCK_METHOD(void, OnNetworkDestroyed, (int, int), (override));
 };
 
 }  // namespace shill

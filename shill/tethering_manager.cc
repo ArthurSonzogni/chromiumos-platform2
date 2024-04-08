@@ -1478,7 +1478,7 @@ void TetheringManager::OnNetworkStopped(int interface_index, bool is_failure) {
   StopTetheringSession(StopReason::kUpstreamDisconnect);
 }
 
-void TetheringManager::OnNetworkDestroyed(int interface_index) {
+void TetheringManager::OnNetworkDestroyed(int network_id, int interface_index) {
   if (state_ == TetheringState::kTetheringIdle ||
       state_ == TetheringState::kTetheringRestarting) {
     return;
