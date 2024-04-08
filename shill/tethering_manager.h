@@ -166,13 +166,15 @@ class TetheringManager : public Network::EventHandler {
     kClientStop,                // Client explicitly stops tethering.
     kUserExit,                  // User logs out or shuts down device.
     kSuspend,                   // Device suspend.
+    kUpstreamNotAvailable,      // Upstream network not available.
     kUpstreamDisconnect,        // Upstream network disconnects.
     kUpstreamNoInternet,        // Upstream has no Internet connectivity.
     kInactive,                  // Inactive timer fires.
-    kError,                     // Internal error.
+    kError,                     // Unexpected internal error.
     kConfigChange,              // Config is changed.
     kDownstreamLinkDisconnect,  // Downstream link disconnects.
     kDownstreamNetDisconnect,   // Downstream network disconnects.
+    kStartTimeout,              // Failed to start tethering within given time.
   };
 
   // Convert stop reason enum to string.

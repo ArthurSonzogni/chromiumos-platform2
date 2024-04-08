@@ -618,8 +618,8 @@ void TetheringManager::CheckAndStartDownstreamTetheredNetwork() {
   if (!downstream_network_started_) {
     LOG(ERROR) << "Failed requesting downstream network " << downstream_ifname
                << " tethered to " << upstream_ifname;
-    PostSetEnabledResult(SetEnabledResult::kFailure);
-    StopTetheringSession(StopReason::kError);
+    PostSetEnabledResult(SetEnabledResult::kNetworkSetupFailure);
+    StopTetheringSession(StopReason::kDownstreamNetDisconnect);
     return;
   }
 
@@ -634,7 +634,7 @@ void TetheringManager::CheckAndPostTetheringStartResult() {
 
   if (!upstream_network_ || !upstream_network_->IsConnected()) {
     PostSetEnabledResult(SetEnabledResult::kUpstreamNetworkNotAvailable);
-    StopTetheringSession(StopReason::kError);
+    StopTetheringSession(StopReason::kUpstreamNotAvailable);
     return;
   }
 
@@ -682,9 +682,11 @@ void TetheringManager::OnStartingTetheringTimeout() {
     result = SetEnabledResult::kUpstreamNetworkNotAvailable;
   } else if (!upstream_network_->IsConnected()) {
     result = SetEnabledResult::kUpstreamFailure;
+  } else if (!downstream_network_fd_.is_valid()) {
+    result = SetEnabledResult::kNetworkSetupFailure;
   }
   PostSetEnabledResult(result);
-  StopTetheringSession(StopReason::kError);
+  StopTetheringSession(StopReason::kStartTimeout);
 }
 
 void TetheringManager::OnStartingTetheringUpdateTimeout(
@@ -744,6 +746,8 @@ void TetheringManager::OnStoppingTetheringTimeout() {
 }
 
 void TetheringManager::StartTetheringSession() {
+  // Reset stop reason.
+  stop_reason_ = StopReason::kInitial;
   if (state_ != TetheringState::kTetheringIdle &&
       state_ != TetheringState::kTetheringRestarting) {
     LOG(ERROR) << __func__ << ": unexpected tethering state " << state_;
@@ -790,7 +794,7 @@ void TetheringManager::StartTetheringSession() {
   if (!hotspot_dev_) {
     LOG(ERROR) << __func__ << ": failed to create a WiFi AP interface";
     PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
-    StopTetheringSession(StopReason::kError);
+    StopTetheringSession(StopReason::kDownstreamLinkDisconnect);
     return;
   }
 
@@ -824,7 +828,7 @@ void TetheringManager::StartTetheringSession() {
     // modes.
     LOG(ERROR) << __func__ << ": " << upstream_technology_
                << " not supported as an upstream technology";
-    PostSetEnabledResult(SetEnabledResult::kFailure);
+    PostSetEnabledResult(SetEnabledResult::kInvalidProperties);
     StopTetheringSession(StopReason::kError);
   }
 }
@@ -837,8 +841,8 @@ void TetheringManager::OnDownstreamDeviceEnabled() {
 
   if (!freq.has_value()) {
     LOG(ERROR) << __func__ << ": failed to select frequency";
-    PostSetEnabledResult(SetEnabledResult::kFailure);
-    StopTetheringSession(StopReason::kError);
+    PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
+    StopTetheringSession(StopReason::kDownstreamLinkDisconnect);
     return;
   }
 
@@ -847,7 +851,7 @@ void TetheringManager::OnDownstreamDeviceEnabled() {
   if (!hotspot_dev_->ConfigureService(std::move(service))) {
     LOG(ERROR) << __func__ << ": failed to configure the hotspot service";
     PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
-    StopTetheringSession(StopReason::kError);
+    StopTetheringSession(StopReason::kDownstreamLinkDisconnect);
     return;
   }
 }
@@ -1023,11 +1027,25 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
       StopTetheringSession(StopReason::kDownstreamLinkDisconnect);
       break;
     case LocalDevice::DeviceEvent::kInterfaceEnabled:
-      OnDownstreamDeviceEnabled();
+      if (state_ != TetheringState::kTetheringStarting &&
+          state_ != TetheringState::kTetheringRestarting) {
+        LOG(WARNING) << __func__
+                     << ": ignore downstream device event: " << event
+                     << " in state: " << state_;
+      } else {
+        OnDownstreamDeviceEnabled();
+      }
       break;
     case LocalDevice::DeviceEvent::kLinkUp:
       hotspot_service_up_ = true;
-      CheckAndStartDownstreamTetheredNetwork();
+      if (state_ != TetheringState::kTetheringStarting &&
+          state_ != TetheringState::kTetheringRestarting) {
+        LOG(WARNING) << __func__
+                     << ": ignore downstream device event: " << event
+                     << " in state: " << state_;
+      } else {
+        CheckAndStartDownstreamTetheredNetwork();
+      }
       break;
     case LocalDevice::DeviceEvent::kPeerConnected:
       OnPeerAssoc();
@@ -1049,22 +1067,22 @@ void TetheringManager::OnDownstreamNetworkReady(
   if (state_ != TetheringState::kTetheringStarting &&
       state_ != TetheringState::kTetheringRestarting) {
     LOG(WARNING) << __func__ << ": unexpected tethering state " << state_;
-    PostSetEnabledResult(SetEnabledResult::kFailure);
+    PostSetEnabledResult(SetEnabledResult::kWrongState);
     StopTetheringSession(StopReason::kError);
     return;
   }
 
   if (!upstream_network_) {
     LOG(WARNING) << __func__ << ": no upstream network defined";
-    PostSetEnabledResult(SetEnabledResult::kFailure);
-    StopTetheringSession(StopReason::kError);
+    PostSetEnabledResult(SetEnabledResult::kUpstreamNetworkNotAvailable);
+    StopTetheringSession(StopReason::kUpstreamDisconnect);
     return;
   }
 
   if (!hotspot_dev_) {
     LOG(WARNING) << __func__ << ": no downstream device defined";
-    PostSetEnabledResult(SetEnabledResult::kFailure);
-    StopTetheringSession(StopReason::kError);
+    PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
+    StopTetheringSession(StopReason::kDownstreamLinkDisconnect);
     return;
   }
 
@@ -1075,8 +1093,8 @@ void TetheringManager::OnDownstreamNetworkReady(
   if (!downstream_network_fd.is_valid()) {
     LOG(ERROR) << "Failed creating downstream network " << downstream_ifname
                << " tethered to " << upstream_ifname;
-    PostSetEnabledResult(SetEnabledResult::kFailure);
-    StopTetheringSession(StopReason::kError);
+    PostSetEnabledResult(SetEnabledResult::kNetworkSetupFailure);
+    StopTetheringSession(StopReason::kDownstreamNetDisconnect);
     return;
   }
 
@@ -1099,7 +1117,7 @@ void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
     LOG(ERROR) << __func__ << ": no upstream " << upstream_technology_
                << " Network available";
     PostSetEnabledResult(result);
-    StopTetheringSession(StopReason::kError);
+    StopTetheringSession(StopReason::kUpstreamNotAvailable);
     return;
   }
 
@@ -1108,7 +1126,7 @@ void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
   if (!network->IsConnected()) {
     LOG(ERROR) << __func__ << ": upstream Network was not connected";
     PostSetEnabledResult(SetEnabledResult::kFailure);
-    StopTetheringSession(StopReason::kError);
+    StopTetheringSession(StopReason::kUpstreamDisconnect);
     return;
   }
 
@@ -1410,6 +1428,8 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
       return kTetheringIdleReasonUserExit;
     case StopReason::kSuspend:
       return kTetheringIdleReasonSuspend;
+    case StopReason::kUpstreamNotAvailable:
+      return kTetheringIdleReasonUpstreamNotAvailable;
     case StopReason::kUpstreamDisconnect:
       return kTetheringIdleReasonUpstreamDisconnect;
     case StopReason::kUpstreamNoInternet:
@@ -1424,6 +1444,8 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
       return kTetheringIdleReasonDownstreamLinkDisconnect;
     case StopReason::kDownstreamNetDisconnect:
       return kTetheringIdleReasonDownstreamNetworkDisconnect;
+    case StopReason::kStartTimeout:
+      return kTetheringIdleReasonStartTimeout;
     default:
       NOTREACHED() << "Unhandled stop reason " << static_cast<int>(reason);
       return "Invalid";
