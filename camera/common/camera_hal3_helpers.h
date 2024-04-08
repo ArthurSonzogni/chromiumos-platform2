@@ -413,10 +413,10 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
 
   // Locks the internal data and get the raw camera3_capture_request_t /
   // camera3_capture_result_t that can be consumed by the Android HAL3 API.
-  camera3_capture_request_t* LockForRequest();
-  camera3_capture_result_t* LockForResult();
-  camera3_capture_request_t* GetLockedRequest();
-  camera3_capture_result_t* GetLockedResult();
+  const camera3_capture_request_t* LockForRequest();
+  const camera3_capture_result_t* LockForResult();
+  const camera3_capture_request_t* GetLockedRequest();
+  const camera3_capture_result_t* GetLockedResult();
 
   // Unlocks the descriptor for further modification.
   void Unlock();

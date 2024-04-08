@@ -706,7 +706,8 @@ int32_t CameraDeviceAdapter::ProcessCaptureRequest(
                               request_descriptor.PopulateEventAnnotation(ctx);
                             });
     int ret = camera_device_->ops->process_capture_request(
-        camera_device_, request_descriptor.LockForRequest());
+        camera_device_, const_cast<camera3_capture_request_t*>(
+                            request_descriptor.LockForRequest()));
     if (ret != 0) {
       base::AutoLock buffer_handles_lock(buffer_handles_lock_);
       std::move(error_task_locked).Run();

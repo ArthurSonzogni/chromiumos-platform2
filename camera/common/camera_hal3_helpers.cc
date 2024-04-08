@@ -6,9 +6,10 @@
 
 #include "common/camera_hal3_helpers.h"
 
+#include <camera/camera_metadata.h>
+
 #include <algorithm>
 #include <cstdint>
-#include <functional>
 #include <optional>
 #include <utility>
 
@@ -21,7 +22,6 @@
 #include "common/camera_buffer_handle.h"
 #include "common/common_tracing.h"
 #include "cros-camera/camera_metadata_utils.h"
-#include "cros-camera/tracing.h"
 
 namespace cros {
 
@@ -588,7 +588,7 @@ void Camera3CaptureDescriptor::AppendOutputBuffer(Camera3StreamBuffer buffer) {
   output_buffers_.push_back(std::move(buffer));
 }
 
-camera3_capture_request* Camera3CaptureDescriptor::LockForRequest() {
+const camera3_capture_request* Camera3CaptureDescriptor::LockForRequest() {
   if (type_ != Type::kCaptureRequest) {
     LOGF(ERROR) << "Cannot lock for capture request";
     return nullptr;
@@ -615,7 +615,7 @@ camera3_capture_request* Camera3CaptureDescriptor::LockForRequest() {
   return &raw_descriptor_->raw_request;
 }
 
-camera3_capture_result_t* Camera3CaptureDescriptor::LockForResult() {
+const camera3_capture_result_t* Camera3CaptureDescriptor::LockForResult() {
   if (type_ != Type::kCaptureResult) {
     LOGF(ERROR) << "Cannot lock for capture result";
     return nullptr;
@@ -643,7 +643,7 @@ camera3_capture_result_t* Camera3CaptureDescriptor::LockForResult() {
   return &raw_descriptor_->raw_result;
 }
 
-camera3_capture_request_t* Camera3CaptureDescriptor::GetLockedRequest() {
+const camera3_capture_request_t* Camera3CaptureDescriptor::GetLockedRequest() {
   if (type_ != Type::kCaptureRequest) {
     LOGF(ERROR) << "Cannot lock for capture request";
     return nullptr;
@@ -654,7 +654,7 @@ camera3_capture_request_t* Camera3CaptureDescriptor::GetLockedRequest() {
   return &raw_descriptor_->raw_request;
 }
 
-camera3_capture_result_t* Camera3CaptureDescriptor::GetLockedResult() {
+const camera3_capture_result_t* Camera3CaptureDescriptor::GetLockedResult() {
   if (type_ != Type::kCaptureResult) {
     LOGF(ERROR) << "Cannot lock for capture result";
     return nullptr;
