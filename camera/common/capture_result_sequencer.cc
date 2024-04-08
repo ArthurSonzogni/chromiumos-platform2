@@ -9,8 +9,10 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/sequence_checker.h>
 
+#include "common/camera_hal3_helpers.h"
 #include "common/stream_manipulator.h"
 #include "cros-camera/common.h"
 
@@ -20,6 +22,8 @@ CaptureResultSequencer::CaptureResultSequencer(
     StreamManipulator::Callbacks callbacks)
     : callbacks_(std::move(callbacks)) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
+  CHECK(!callbacks_.result_callback.is_null());
+  CHECK(!callbacks_.notify_callback.is_null());
 }
 
 CaptureResultSequencer::~CaptureResultSequencer() {
@@ -49,11 +53,8 @@ void CaptureResultSequencer::AddResult(Camera3CaptureDescriptor result) {
       result.AppendOutputBuffer(std::move(b));
     }
   }
-  if (!result.is_empty()) {
-    callbacks_.result_callback.Run(std::move(result));
-  }
 
-  SendPendingBuffers();
+  SendPendingBuffers(result.is_empty() ? nullptr : &result);
 }
 
 void CaptureResultSequencer::Notify(camera3_notify_msg_t msg) {
@@ -104,7 +105,8 @@ void CaptureResultSequencer::Reset() {
   pending_buffers_.clear();
 }
 
-void CaptureResultSequencer::SendPendingBuffers() {
+void CaptureResultSequencer::SendPendingBuffers(
+    Camera3CaptureDescriptor* pending_result) {
   base::flat_map<uint32_t /*frame_number*/, std::vector<Camera3StreamBuffer>>
       buffers_to_send;
   for (auto& [s, pending_buffers_on_stream] : pending_buffers_) {
@@ -118,8 +120,17 @@ void CaptureResultSequencer::SendPendingBuffers() {
   for (auto& [f, bs] : buffers_to_send) {
     Camera3CaptureDescriptor result(
         camera3_capture_result_t{.frame_number = f});
-    result.SetOutputBuffers(std::move(bs));
+    if (pending_result != nullptr && pending_result->frame_number() == f) {
+      result = std::move(*pending_result);
+      pending_result = nullptr;
+    }
+    for (auto& b : bs) {
+      result.AppendOutputBuffer(std::move(b));
+    }
     callbacks_.result_callback.Run(std::move(result));
+  }
+  if (pending_result != nullptr) {
+    callbacks_.result_callback.Run(std::move(*pending_result));
   }
 }
 

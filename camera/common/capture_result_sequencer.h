@@ -46,7 +46,8 @@ class CaptureResultSequencer {
   void Reset();
 
  private:
-  void SendPendingBuffers() VALID_CONTEXT_REQUIRED(sequence_checker_);
+  void SendPendingBuffers(Camera3CaptureDescriptor* pending_result = nullptr)
+      VALID_CONTEXT_REQUIRED(sequence_checker_);
 
   StreamManipulator::Callbacks callbacks_;
   base::flat_map<const camera3_stream_t*,
