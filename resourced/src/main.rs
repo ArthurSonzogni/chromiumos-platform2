@@ -8,7 +8,6 @@ use libchromeos::panic_handler::install_memfd_handler;
 use libchromeos::syslog;
 use log::error;
 use log::info;
-use resourced::cpu_config;
 use resourced::dbus;
 use resourced::memory;
 use tokio::runtime::Builder;
@@ -28,10 +27,6 @@ fn main() -> Result<()> {
 
     if let Err(err) = memory::init_memory_configs() {
         error!("Failed to initialize memory configs: {}", err);
-    }
-
-    if let Err(err) = cpu_config::init_cpu_config() {
-        error!("Failed to initialize cpu configs: {}", err);
     }
 
     let rt = Builder::new_current_thread().enable_all().build()?;
