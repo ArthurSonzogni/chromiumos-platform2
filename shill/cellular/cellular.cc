@@ -296,7 +296,9 @@ Cellular::Cellular(Manager* manager,
              link_name,
              mac_address,
              interface_index,
-             Technology::kCellular),
+             Technology::kCellular,
+             /*fixed_ip_params=*/false,
+             /*use_implicit_network=*/false),
       mobile_operator_info_(
           new MobileOperatorInfo(manager->dispatcher(), "cellular")),
       dbus_service_(service),
@@ -331,10 +333,6 @@ Cellular::~Cellular() {
   LOG(INFO) << LoggingTag() << ": ~Cellular()";
   if (capability_)
     DestroyCapability();
-}
-
-void Cellular::CreateImplicitNetwork(bool fixed_ip_params) {
-  // No implicit network in Cellular.
 }
 
 Network* Cellular::GetPrimaryNetwork() const {

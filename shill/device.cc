@@ -72,7 +72,8 @@ Device::Device(Manager* manager,
                std::optional<net_base::MacAddress> mac_address,
                int interface_index,
                Technology technology,
-               bool fixed_ip_params)
+               bool fixed_ip_params,
+               bool use_implicit_network)
     : enabled_(false),
       enabled_persistent_(true),
       enabled_pending_(enabled_),
@@ -121,7 +122,9 @@ Device::Device(Manager* manager,
   store_.RegisterConstBool(kPoweredProperty, &enabled_);
   HelpRegisterConstDerivedString(kTypeProperty, &Device::GetTechnologyString);
 
-  CreateImplicitNetwork(fixed_ip_params);
+  if (use_implicit_network) {
+    CreateImplicitNetwork(fixed_ip_params);
+  }
 
   // kScanningProperty: Registered in WiFi, Cellular
   // kScanIntervalProperty: Registered in WiFi, Cellular

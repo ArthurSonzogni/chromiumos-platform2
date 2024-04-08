@@ -145,7 +145,6 @@ class Cellular : public Device,
   bool GetMultiplexSupport();
 
   // Inherited from Device.
-  void CreateImplicitNetwork(bool fixed_ip_params) override;
   Network* GetPrimaryNetwork() const override;
   bool Load(const StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
