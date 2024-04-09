@@ -118,16 +118,12 @@ impl Dispatcher {
             .find_by_name(&tokens[0])
             .ok_or_else(|| Error::CommandNotFound(tokens[0].to_string()))?;
 
-        let mut flag_callbacks: Vec<CommandCallback> = Vec::new();
         let entry = &mut Arguments {
             tokens,
             position: 1,
             flags: HashMap::new(),
         };
 
-        if let Some(cb) = command.flag_callback {
-            flag_callbacks.push(cb);
-        }
         while entry.position < entry.tokens.len() {
             let sub: Option<&Command> = command.handle_tokens(entry);
 
@@ -136,9 +132,6 @@ impl Dispatcher {
             }
             entry.position += 1;
             command = sub.unwrap();
-            if let Some(cb) = command.flag_callback {
-                flag_callbacks.push(cb);
-            }
         }
         if command.command_callback.is_none() {
             return Err(Error::CommandNotImplemented(entry.get_command().join(" ")));
@@ -154,9 +147,6 @@ impl Dispatcher {
             let _ = metrics.send_user_action_to_uma(&metrics_name);
         }
 
-        for cb in flag_callbacks {
-            (cb)(command, entry)?;
-        }
         (command.command_callback.unwrap())(command, entry)
     }
 
@@ -245,8 +235,6 @@ pub struct Command {
     usage: Cow<'static, str>,
     description: Cow<'static, str>,
     sub_commands: Vec<Command>,
-    flags: Vec<Flag>,
-    flag_callback: Option<CommandCallback>,
     command_callback: Option<CommandCallback>,
     completion_callback: Option<CompletionCallback>,
     help_callback: HelpCallback,
@@ -267,8 +255,6 @@ impl Command {
             usage: usage.into(),
             description: description.into(),
             sub_commands: Vec::new(),
-            flags: Vec::new(),
-            flag_callback: None,
             command_callback: None,
             completion_callback: None,
             help_callback: default_help_callback,
@@ -282,13 +268,6 @@ impl Command {
         Command::new(name, message, "")
             .set_command_callback(Some(print_help_command_callback))
             .set_help_callback(disabled_command_help_callback)
-    }
-
-    // Set the callback that is executed when this command or a sub command is invoked primarily for
-    // the purpose of filtering or handling flags.
-    pub fn set_flag_callback(mut self, replacement: Option<CommandCallback>) -> Command {
-        self.flag_callback = replacement;
-        self
     }
 
     // Set the callback that is executed when this command invoked directly.
@@ -314,21 +293,12 @@ impl Command {
         self
     }
 
-    pub fn register_flag(mut self, flag: Flag) -> Command {
-        self.flags.push(flag);
-        self
-    }
-
     pub fn get_name(&self) -> &str {
         &self.name
     }
 
     pub fn append_help_string(&self, w: &mut dyn Write, level: usize) {
         (self.help_callback)(self, w, level);
-    }
-
-    fn find_flag(&self, flag: &str) -> Option<&Flag> {
-        self.flags.iter().find(|&f| f.name == flag)
     }
 
     fn find_subcommand(&self, name: &str) -> Option<&Command> {
@@ -343,16 +313,6 @@ impl Command {
             if result.is_some() {
                 return result;
             }
-
-            let mut parts = token.splitn(2, '=');
-            let name = parts.next().unwrap().to_string();
-            let flag = self.find_flag(&name)?;
-
-            let value = flag.get_default_value().parse(parts.next().unwrap_or(""));
-            if value.is_none() {
-                panic!();
-            }
-            entry.flags.insert(name, value.unwrap());
 
             entry.position += 1;
         }
@@ -373,19 +333,8 @@ pub fn default_help_callback(cmd: &Command, w: &mut dyn Write, level: usize) {
         writeln!(w, "{}{}", &prefix, &cmd.description).unwrap();
     }
 
-    if !cmd.flags.is_empty() {
-        if !cmd.description.is_empty() {
-            writeln!(w).unwrap();
-        }
-        write!(w, "{}Options:", &prefix).unwrap();
-        for flag in &cmd.flags {
-            writeln!(w).unwrap();
-            flag.append_help_string(w, level + 2);
-        }
-    }
-
     if !cmd.sub_commands.is_empty() {
-        if !cmd.description.is_empty() || !cmd.flags.is_empty() {
+        if !cmd.description.is_empty() {
             writeln!(w).unwrap();
         }
         writeln!(w, "{}Subcommands:", &prefix).unwrap();
@@ -575,18 +524,6 @@ mod tests {
     static PARENT_COMMAND_NAME: &str = "test";
     static CHILD_COMMAND_NAME: &str = "subtest";
 
-    fn flag_callback(_cmd: &Command, _args: &Arguments) -> Result<(), Error> {
-        Ok(())
-    }
-
-    fn false_flag_callback(_cmd: &Command, _args: &Arguments) -> Result<(), Error> {
-        Err(Error::FlagFilter)
-    }
-
-    fn panic_flag_callback(_cmd: &Command, _args: &Arguments) -> Result<(), Error> {
-        panic!()
-    }
-
     fn command_callback(_cmd: &Command, _args: &Arguments) -> Result<(), Error> {
         Ok(())
     }
@@ -615,7 +552,6 @@ mod tests {
         description: D,
     ) -> Command {
         Command::new(name, usage, description)
-            .set_flag_callback(Some(panic_flag_callback))
             .set_command_callback(Some(panic_command_callback))
             .set_completion_callback(Some(panic_completion_callback))
     }
@@ -643,8 +579,7 @@ mod tests {
     #[test]
     fn test_handle_command_parent() {
         let dispatcher = default_dispatcher(
-            default_parent_command(default_child_command().set_flag_callback(Some(flag_callback)))
-                .set_flag_callback(Some(flag_callback))
+            default_parent_command(default_child_command())
                 .set_command_callback(Some(command_callback)),
         );
 
@@ -655,14 +590,9 @@ mod tests {
 
     #[test]
     fn test_handle_command_child() {
-        let dispatcher = default_dispatcher(
-            default_parent_command(
-                default_child_command()
-                    .set_flag_callback(Some(flag_callback))
-                    .set_command_callback(Some(command_callback)),
-            )
-            .set_flag_callback(Some(flag_callback)),
-        );
+        let dispatcher = default_dispatcher(default_parent_command(
+            default_child_command().set_command_callback(Some(command_callback)),
+        ));
 
         let tokens: Vec<String> = vec![
             PARENT_COMMAND_NAME.to_string(),
@@ -670,21 +600,6 @@ mod tests {
         ];
 
         assert!(dispatcher.handle_command(tokens).is_ok());
-    }
-
-    #[test]
-    fn test_handle_command_false_flag_callback() {
-        let dispatcher = default_dispatcher(
-            default_parent_command(default_child_command())
-                .set_flag_callback(Some(false_flag_callback)),
-        );
-
-        let tokens: Vec<String> = vec![
-            PARENT_COMMAND_NAME.to_string(),
-            CHILD_COMMAND_NAME.to_string(),
-        ];
-
-        assert!(dispatcher.handle_command(tokens).is_err());
     }
 
     #[test]
@@ -698,14 +613,11 @@ mod tests {
                 ))
                 .register_subcommand(
                     default_command("7".to_string(), "".to_string(), "".to_string())
-                        .register_subcommand(
-                            default_command("8".to_string(), "9".to_string(), "10".to_string())
-                                .register_flag(Flag::new(
-                                    "11".to_string(),
-                                    "12".to_string(),
-                                    FlagType::Integer(0),
-                                )),
-                        ),
+                        .register_subcommand(default_command(
+                            "8".to_string(),
+                            "9".to_string(),
+                            "10".to_string(),
+                        )),
                 ),
         );
 
@@ -727,10 +639,6 @@ mod tests {
       Subcommands:
         8 9
           10
-
-          Options:
-            11=<int>  default: 0
-              12
 
 "#
         );
