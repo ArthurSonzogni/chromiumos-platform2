@@ -620,9 +620,9 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveGCaches(
 
   switch (GetFreeDiskSpaceState()) {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
-      LOG(WARNING) << "Spece freed up unexpectedly";
+      LOG(WARNING) << "Space freed up unexpectedly";
       result.success = false;
-      return result;
+      break;
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
       result.cleaned_over_minimum = true;
@@ -637,7 +637,7 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveGCaches(
     case DiskCleanup::FreeSpaceState::kError:
       LOG(ERROR) << "Failed to get the amount of free space";
       result.success = false;
-      return result;
+      break;
   }
 
   return result;
@@ -686,9 +686,9 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveDaemonStoreCache(
 
   switch (GetFreeDiskSpaceState(free_disk_space)) {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
-      LOG(WARNING) << "Spece freed up unexpectedly";
+      LOG(WARNING) << "Space freed up unexpectedly";
       result.success = false;
-      return result;
+      break;
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
       // Do not call ReportDiskCleanupProgress if cleaned_over_minimum was set
@@ -705,7 +705,7 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveDaemonStoreCache(
     case DiskCleanup::FreeSpaceState::kError:
       LOG(ERROR) << "Failed to get the amount of free space";
       result.success = false;
-      return result;
+      break;
   }
 
   return result;
