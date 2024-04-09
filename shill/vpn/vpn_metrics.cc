@@ -5,6 +5,7 @@
 #include "shill/vpn/vpn_metrics.h"
 
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/time/time.h>
 #include <base/types/cxx23_to_underlying.h>
 #include <net-base/network_config.h>
@@ -42,6 +43,53 @@ void ReportDriverType(Metrics* metrics, VPNType vpn_type) {
   }
 
   metrics->SendEnumToUMA(vpn_metrics::kMetricVpnDriver, metrics_driver_type);
+}
+
+vpn_metrics::ConnectFailureReason InterpretEndReasonAsConnectFailure(
+    VPNEndReason reason) {
+  switch (reason) {
+    case VPNEndReason::kDisconnectRequest:
+      return vpn_metrics::kConnectFailureReasonDisconnectRequest;
+    case VPNEndReason::kNetworkChange:
+      return vpn_metrics::kConnectFailureReasonNetworkChange;
+    case VPNEndReason::kConnectFailureAuthPPP:
+    case VPNEndReason::kConnectFailureAuthCert:
+    case VPNEndReason::kConnectFailureAuthUserPassword:
+      return vpn_metrics::kConnectFailureReasonAuth;
+    case VPNEndReason::kConnectFailureDNSLookup:
+      return vpn_metrics::kConnectFailureReasonDNSLookup;
+    case VPNEndReason::kConnectTimeout:
+      return vpn_metrics::kConnectFailureReasonConnectTimeout;
+    case VPNEndReason::kInvalidConfig:
+      return vpn_metrics::kConnectFailureReasonInvalidConfig;
+    case VPNEndReason::kFailureInternal:
+      return vpn_metrics::kConnectFailureReasonInternal;
+    case VPNEndReason::kFailureUnknown:
+      return vpn_metrics::kConnectFailureReasonUnknown;
+  }
+}
+
+vpn_metrics::ConnectionLostReason InterpretEndReasonAsConnectionLost(
+    VPNEndReason reason) {
+  switch (reason) {
+    case VPNEndReason::kDisconnectRequest:
+      return vpn_metrics::kConnectionLostReasonDisconnectRequest;
+    case VPNEndReason::kNetworkChange:
+      return vpn_metrics::kConnectionLostReasonNetworkChange;
+    case VPNEndReason::kConnectFailureAuthPPP:
+    case VPNEndReason::kConnectFailureAuthCert:
+    case VPNEndReason::kConnectFailureAuthUserPassword:
+    case VPNEndReason::kConnectFailureDNSLookup:
+    case VPNEndReason::kConnectTimeout:
+    case VPNEndReason::kInvalidConfig:
+      NOTREACHED() << __func__ << ": unexpected reason "
+                   << VPNEndReasonToString(reason);
+      return vpn_metrics::kConnectionLostReasonInternal;
+    case VPNEndReason::kFailureInternal:
+      return vpn_metrics::kConnectionLostReasonInternal;
+    case VPNEndReason::kFailureUnknown:
+      return vpn_metrics::kConnectionLostReasonUnknown;
+  }
 }
 
 }  // namespace
@@ -111,24 +159,27 @@ void VPNDriverMetrics::ReportReconnecting() {
     return;
   }
 
+  metrics_->SendEnumToUMA(vpn_metrics::kMetricConnectionLostReason, vpn_type_,
+                          vpn_metrics::kConnectionLostReasonReconnect);
+
   base::TimeDelta duration = SetConnectionState(ConnectionState::kReconnecting);
   metrics_->SendToUMA(vpn_metrics::kMetricTimeConnectedToDisconnectedSeconds,
                       vpn_type_, duration.InSeconds());
 }
 
-void VPNDriverMetrics::ReportDisconnected() {
-  vpn_metrics::VPNHistogramMetric metric;
-  bool metric_is_in_seconds = false;
+void VPNDriverMetrics::ReportDisconnected(VPNEndReason reason) {
+  // Report connection end reason metric.
   switch (connection_state_) {
     case ConnectionState::kConnecting:
-      metric = vpn_metrics::kMetricTimeConnectToIdleMillis;
-      break;
     case ConnectionState::kReconnecting:
-      metric = vpn_metrics::kMetricTimeReconnectToIdleMillis;
+      metrics_->SendEnumToUMA(vpn_metrics::kMetricConnectFailureReason,
+                              vpn_type_,
+                              InterpretEndReasonAsConnectFailure(reason));
       break;
     case ConnectionState::kConnected:
-      metric = vpn_metrics::kMetricTimeConnectedToDisconnectedSeconds;
-      metric_is_in_seconds = true;
+      metrics_->SendEnumToUMA(vpn_metrics::kMetricConnectionLostReason,
+                              vpn_type_,
+                              InterpretEndReasonAsConnectionLost(reason));
       break;
     case ConnectionState::kIdle:
       LOG(ERROR) << __func__ << ": unexpected connection state "
@@ -136,10 +187,29 @@ void VPNDriverMetrics::ReportDisconnected() {
       return;
   }
 
+  // Report timer metric.
+  vpn_metrics::VPNHistogramMetric timer_metric;
+  bool metric_is_in_seconds = false;
+  switch (connection_state_) {
+    case ConnectionState::kConnecting:
+      timer_metric = vpn_metrics::kMetricTimeConnectToIdleMillis;
+      break;
+    case ConnectionState::kReconnecting:
+      timer_metric = vpn_metrics::kMetricTimeReconnectToIdleMillis;
+      break;
+    case ConnectionState::kConnected:
+      timer_metric = vpn_metrics::kMetricTimeConnectedToDisconnectedSeconds;
+      metric_is_in_seconds = true;
+      break;
+    case ConnectionState::kIdle:
+      NOTREACHED();  // Already checked above.
+      return;
+  }
+
   base::TimeDelta duration = SetConnectionState(ConnectionState::kIdle);
   int value =
       metric_is_in_seconds ? duration.InSeconds() : duration.InMilliseconds();
-  metrics_->SendToUMA(metric, vpn_type_, value);
+  metrics_->SendToUMA(timer_metric, vpn_type_, value);
 }
 
 base::TimeDelta VPNDriverMetrics::SetConnectionState(

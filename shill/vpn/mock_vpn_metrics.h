@@ -24,7 +24,7 @@ class MockVPNDriverMetrics : public VPNDriverMetrics {
   MOCK_METHOD(void, ReportConnecting, (), (override));
   MOCK_METHOD(void, ReportConnected, (), (override));
   MOCK_METHOD(void, ReportReconnecting, (), (override));
-  MOCK_METHOD(void, ReportDisconnected, (), (override));
+  MOCK_METHOD(void, ReportDisconnected, (VPNEndReason), (override));
 };
 
 }  // namespace shill

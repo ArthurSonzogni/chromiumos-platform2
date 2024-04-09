@@ -9,6 +9,7 @@
 #include <net-base/network_config.h>
 
 #include "shill/mockable.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_types.h"
 
 namespace shill {
@@ -44,7 +45,7 @@ class VPNDriverMetrics {
   mockable void ReportConnecting();
   mockable void ReportConnected();
   mockable void ReportReconnecting();
-  mockable void ReportDisconnected();
+  mockable void ReportDisconnected(VPNEndReason reason);
 
  private:
   enum class ConnectionState {

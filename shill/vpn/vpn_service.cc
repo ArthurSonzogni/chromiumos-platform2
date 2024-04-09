@@ -126,7 +126,8 @@ void VPNService::OnConnect(Error* error) {
 void VPNService::OnDisconnect(Error* error, const char* reason) {
   StopDriverConnectTimeout();
   SetState(ConnectState::kStateDisconnecting);
-  driver_->driver_metrics()->ReportDisconnected();
+  driver_->driver_metrics()->ReportDisconnected(
+      VPNEndReason::kDisconnectRequest);
   driver_->Disconnect();
   CleanupDevice();
 
@@ -162,7 +163,7 @@ void VPNService::OnDriverFailure(VPNEndReason failure,
   CleanupDevice();
   SetErrorDetails(error_details);
   SetFailure(VPNEndReasonToServiceFailure(failure));
-  driver_->driver_metrics()->ReportDisconnected();
+  driver_->driver_metrics()->ReportDisconnected(failure);
 }
 
 void VPNService::OnDriverReconnecting(base::TimeDelta timeout) {

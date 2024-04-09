@@ -10,6 +10,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_metrics.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_metrics_internal.h"
 #include "shill/vpn/vpn_types.h"
 
@@ -85,9 +86,10 @@ TEST_F(VPNDriverMetricsTest, ReportDriverType) {
 }  // namespace
 
 namespace {
-class VPNDriverTimerMetricsTest : public ::testing::Test {
+class VPNMetricsStateMachineTest : public ::testing::Test {
  protected:
   static constexpr auto kVPNType = VPNType::kWireGuard;
+  static constexpr auto kEndReason = VPNEndReason::kFailureUnknown;
 
   // The following functions create a VPNDriverMetrics object, set the
   // connection state to a desired state for start testing, and then disallow
@@ -132,11 +134,14 @@ class VPNDriverTimerMetricsTest : public ::testing::Test {
     // SendToUMA has overloads, so we need to hint the type here.
     EXPECT_CALL(metrics_, SendToUMA(_, Matcher<VPNType>(_), _))
         .Times(AnyNumber());
+    EXPECT_CALL(metrics_, SendEnumToUMA(_, Matcher<VPNType>(_), _))
+        .Times(AnyNumber());
   }
 
   void ExpectNoSendUMACallFromNow() {
     // SendToUMA has overloads, so we need to hint the type here.
     EXPECT_CALL(metrics_, SendToUMA(_, Matcher<VPNType>(_), _)).Times(0);
+    EXPECT_CALL(metrics_, SendEnumToUMA(_, Matcher<VPNType>(_), _)).Times(0);
   }
 
   void ForwardTime(base::TimeDelta interval) {
@@ -151,7 +156,7 @@ class VPNDriverTimerMetricsTest : public ::testing::Test {
 
 // No metrics will be reported for all functions calls from the Idle state (or
 // invalid event on this state).
-TEST_F(VPNDriverTimerMetricsTest, Idle) {
+TEST_F(VPNMetricsStateMachineTest, Idle) {
   auto driver_metrics = CreateInIdleState();
   driver_metrics->ReportConnecting();
 
@@ -162,10 +167,10 @@ TEST_F(VPNDriverTimerMetricsTest, Idle) {
   driver_metrics->ReportReconnecting();
 
   driver_metrics = CreateInIdleState();
-  driver_metrics->ReportDisconnected();
+  driver_metrics->ReportDisconnected(kEndReason);
 }
 
-TEST_F(VPNDriverTimerMetricsTest, Connecting) {
+TEST_F(VPNMetricsStateMachineTest, Connecting) {
   // Invalid event.
   auto driver_metrics = CreateInConnectingState();
   driver_metrics->ReportConnecting();
@@ -187,10 +192,13 @@ TEST_F(VPNDriverTimerMetricsTest, Connecting) {
   ForwardTime(base::Seconds(4));
   EXPECT_CALL(metrics_, SendToUMA(vpn_metrics::kMetricTimeConnectToIdleMillis,
                                   kVPNType, 4000));
-  driver_metrics->ReportDisconnected();
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(vpn_metrics::kMetricConnectFailureReason, kVPNType,
+                            vpn_metrics::kConnectFailureReasonUnknown));
+  driver_metrics->ReportDisconnected(kEndReason);
 }
 
-TEST_F(VPNDriverTimerMetricsTest, Connected) {
+TEST_F(VPNMetricsStateMachineTest, Connected) {
   // Invalid event.
   auto driver_metrics = CreateInConnectedState();
   driver_metrics->ReportConnecting();
@@ -205,6 +213,9 @@ TEST_F(VPNDriverTimerMetricsTest, Connected) {
   EXPECT_CALL(metrics_,
               SendToUMA(vpn_metrics::kMetricTimeConnectedToDisconnectedSeconds,
                         kVPNType, 5));
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(vpn_metrics::kMetricConnectionLostReason, kVPNType,
+                            vpn_metrics::kConnectionLostReasonReconnect));
   driver_metrics->ReportReconnecting();
 
   // Report connected to disconnected.
@@ -213,10 +224,13 @@ TEST_F(VPNDriverTimerMetricsTest, Connected) {
   EXPECT_CALL(metrics_,
               SendToUMA(vpn_metrics::kMetricTimeConnectedToDisconnectedSeconds,
                         kVPNType, 6));
-  driver_metrics->ReportDisconnected();
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(vpn_metrics::kMetricConnectionLostReason, kVPNType,
+                            vpn_metrics::kConnectionLostReasonUnknown));
+  driver_metrics->ReportDisconnected(kEndReason);
 }
 
-TEST_F(VPNDriverTimerMetricsTest, Reconnecting) {
+TEST_F(VPNMetricsStateMachineTest, Reconnecting) {
   // Invalid event.
   auto driver_metrics = CreateInReconnectingState();
   driver_metrics->ReportConnecting();
@@ -229,7 +243,7 @@ TEST_F(VPNDriverTimerMetricsTest, Reconnecting) {
                         kVPNType, 7000));
   driver_metrics->ReportConnected();
 
-  // Report connected to disconnected.
+  // Invalid event.
   driver_metrics = CreateInReconnectingState();
   driver_metrics->ReportReconnecting();
 
@@ -238,7 +252,10 @@ TEST_F(VPNDriverTimerMetricsTest, Reconnecting) {
   ForwardTime(base::Seconds(8));
   EXPECT_CALL(metrics_, SendToUMA(vpn_metrics::kMetricTimeReconnectToIdleMillis,
                                   kVPNType, 8000));
-  driver_metrics->ReportDisconnected();
+  EXPECT_CALL(metrics_,
+              SendEnumToUMA(vpn_metrics::kMetricConnectFailureReason, kVPNType,
+                            vpn_metrics::kConnectFailureReasonUnknown));
+  driver_metrics->ReportDisconnected(kEndReason);
 }
 
 }  // namespace

@@ -443,7 +443,8 @@ TEST_F(VPNServiceTest, ConnectFlow) {
 
   // Driver-originated failure
   EXPECT_CALL(*driver_, Disconnect()).Times(0);
-  EXPECT_CALL(*driver_metrics_, ReportDisconnected);
+  EXPECT_CALL(*driver_metrics_,
+              ReportDisconnected(VPNEndReason::kFailureUnknown));
   driver_event_handler->OnDriverFailure(VPNEndReason::kFailureUnknown,
                                         Service::kErrorDetailsNone);
   EXPECT_EQ(Service::kStateFailure, service_->state());
@@ -457,7 +458,8 @@ TEST_F(VPNServiceTest, ConnectFlow) {
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(Service::kStateAssociating, service_->state());
   EXPECT_CALL(*driver_, Disconnect());
-  EXPECT_CALL(*driver_metrics_, ReportDisconnected);
+  EXPECT_CALL(*driver_metrics_,
+              ReportDisconnected(VPNEndReason::kDisconnectRequest));
   service_->Disconnect(&error, "in test");
   EXPECT_EQ(Service::kStateIdle, service_->state());
   EXPECT_TRUE(error.IsSuccess());

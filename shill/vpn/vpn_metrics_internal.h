@@ -19,11 +19,12 @@ namespace vpn_metrics_internal {
 
 using NameByVPNType = Metrics::NameByVPNType;
 using FixedName = Metrics::FixedName;
+using VPNEnumMetric = Metrics::EnumMetric<NameByVPNType>;
 using VPNHistogramMetric = Metrics::HistogramMetric<NameByVPNType>;
 constexpr int kTimerHistogramNumBuckets = Metrics::kTimerHistogramNumBuckets;
 
 // Enum defined in shill/metrics.h (Metrics::IPType).
-constexpr Metrics::EnumMetric<NameByVPNType> kMetricIPType = {
+constexpr VPNEnumMetric kMetricIPType = {
     .n = NameByVPNType{"IPType"},
     .max = Metrics::kIPTypeMax,
 };
@@ -90,6 +91,38 @@ static constexpr VPNHistogramMetric kMetricTimeConnectedToDisconnectedSeconds =
         .min = 1,
         .max = base::Hours(8).InSeconds(),
         .num_buckets = kTimerHistogramNumBuckets,
+};
+
+// Reports why a connection attempt failed (not able to establish the
+// connection).
+enum ConnectFailureReason {
+  kConnectFailureReasonDisconnectRequest = 0,
+  kConnectFailureReasonUnknown = 1,
+  kConnectFailureReasonInternal = 2,
+  kConnectFailureReasonNetworkChange = 3,
+  kConnectFailureReasonAuth = 4,
+  kConnectFailureReasonDNSLookup = 5,
+  kConnectFailureReasonConnectTimeout = 6,
+  kConnectFailureReasonInvalidConfig = 7,
+  kConnectFailureReasonEndReasonMax
+};
+static constexpr VPNEnumMetric kMetricConnectFailureReason = {
+    .n = NameByVPNType{"ConnectFailureReason"},
+    .max = kConnectFailureReasonEndReasonMax,
+};
+
+// Reports why a VPN connection lost (no longer connected).
+enum ConnectionLostReason {
+  kConnectionLostReasonDisconnectRequest = 0,
+  kConnectionLostReasonUnknown = 1,
+  kConnectionLostReasonInternal = 2,
+  kConnectionLostReasonNetworkChange = 3,
+  kConnectionLostReasonReconnect = 4,
+  kConnectionLostReasonEndReasonMax
+};
+static constexpr VPNEnumMetric kMetricConnectionLostReason = {
+    .n = NameByVPNType{"ConnectionLostReason"},
+    .max = kConnectionLostReasonEndReasonMax,
 };
 
 }  // namespace vpn_metrics_internal
