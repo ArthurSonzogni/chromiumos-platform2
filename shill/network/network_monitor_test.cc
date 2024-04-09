@@ -25,6 +25,7 @@
 #include "shill/network/mock_portal_detector.h"
 #include "shill/network/mock_validation_log.h"
 #include "shill/network/portal_detector.h"
+#include "shill/network/trial_scheduler.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -208,6 +209,37 @@ TEST_F(NetworkMonitorTest, StartWithoutDNS) {
   EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(0);
 
   StartAndExpectResult(NetworkMonitor::ValidationReason::kDBusRequest, false);
+}
+
+TEST_F(NetworkMonitorTest, SetCapportEnabled) {
+  SetCurrentNetworkConfig(net_base::IPFamily::kIPv4, kDnsList);
+  MockCapportProxy* mock_capport_proxy = SetCapportProxy();
+
+  // The capport_proxy should be called normally before CAPPORT is disabled.
+  EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(1);
+  network_monitor_->Start(NetworkMonitor::ValidationReason::kDBusRequest);
+  task_environment_.RunUntilIdle();
+  testing::Mock::VerifyAndClearExpectations(mock_capport_proxy);
+
+  // After CAPPORT is disabled, the capport_proxy should not be called.
+  EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(0);
+  network_monitor_->SetCapportEnabled(false);
+  network_monitor_->Start(NetworkMonitor::ValidationReason::kDBusRequest);
+  task_environment_.RunUntilIdle();
+  testing::Mock::VerifyAndClearExpectations(mock_capport_proxy);
+
+  // After enabling CAPPORT again, the validation should be scheduled
+  // automatically.
+  EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(1);
+  network_monitor_->SetCapportEnabled(true);
+  task_environment_.FastForwardBy(TrialScheduler::kBaseInterval);
+  testing::Mock::VerifyAndClearExpectations(mock_capport_proxy);
+
+  // The capport_proxy should be called normally after CAPPORT is enabled.
+  EXPECT_CALL(*mock_capport_proxy, SendRequest).Times(1);
+  network_monitor_->Start(NetworkMonitor::ValidationReason::kDBusRequest);
+  task_environment_.RunUntilIdle();
+  testing::Mock::VerifyAndClearExpectations(mock_capport_proxy);
 }
 
 TEST_F(NetworkMonitorTest, StartWithResultReturned) {

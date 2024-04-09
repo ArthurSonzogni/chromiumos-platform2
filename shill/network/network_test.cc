@@ -171,6 +171,9 @@ class NetworkTest : public ::testing::Test {
     auto network_monitor_factory =
         std::make_unique<MockNetworkMonitorFactory>();
     network_monitor_factory_ = network_monitor_factory.get();
+    ON_CALL(*network_monitor_factory, Create).WillByDefault([]() {
+      return std::make_unique<MockNetworkMonitor>();
+    });
 
     network_ = std::make_unique<NiceMock<NetworkInTest>>(
         kTestIfindex, kTestIfname, kTestTechnology,
@@ -790,6 +793,30 @@ TEST_F(NetworkTest, UpdateNetworkValidationModeWhenNotConnected) {
       NetworkMonitor::ValidationMode::kDisabled);
   network_->UpdateNetworkValidationMode(
       NetworkMonitor::ValidationMode::kFullValidation);
+}
+
+TEST_F(NetworkTest, SetCapportEnabledAfterStart) {
+  SetNetworkMonitor();
+
+  EXPECT_CALL(*network_monitor_, SetCapportEnabled(false)).Times(1);
+  network_->SetCapportEnabled(false);
+  EXPECT_FALSE(network_->GetCapportEnabled());
+
+  EXPECT_CALL(*network_monitor_, SetCapportEnabled(true)).Times(1);
+  network_->SetCapportEnabled(true);
+  EXPECT_TRUE(network_->GetCapportEnabled());
+}
+
+TEST_F(NetworkTest, SetCapportEnabledBeforeStart) {
+  network_->SetCapportEnabled(false);
+  EXPECT_FALSE(network_->GetCapportEnabled());
+
+  EXPECT_CALL(*network_monitor_factory_, Create).WillOnce([]() {
+    auto network_monitor = std::make_unique<MockNetworkMonitor>();
+    EXPECT_CALL(*network_monitor, SetCapportEnabled(false)).Times(1);
+    return network_monitor;
+  });
+  network_->Start({});
 }
 
 TEST_F(NetworkTest, UpdateNetworkValidationModeNoop) {

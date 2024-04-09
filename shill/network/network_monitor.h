@@ -81,6 +81,9 @@ class NetworkMonitor {
     // Retry the validation when the remaining time with external network access
     // from CAPPORT (is_captive==false) is over.
     kCapportTimeOver,
+    // Retry the validation when the CAPPORT server is detected and the CAPPORT
+    // functionality is turned on.
+    kCapportEnabled,
   };
 
   // Indicates the source of the CAPPORT API.
@@ -204,6 +207,10 @@ class NetworkMonitor {
   mockable void SetValidationMode(ValidationMode mode);
   mockable ValidationMode GetValidationMode() { return validation_mode_; }
 
+  // Setter/getter for enabling the CAPPORT functionality.
+  mockable void SetCapportEnabled(bool enabled);
+  bool GetCapportEnabled() const { return capport_enabled_; }
+
   // Sets the terms and conditions URL.
   mockable void SetTermsAndConditions(const net_base::HttpUrl& url);
 
@@ -254,7 +261,9 @@ class NetworkMonitor {
   std::string interface_;
   std::string logging_tag_;
   PortalDetector::ProbingConfiguration probing_configuration_;
+
   ValidationMode validation_mode_;
+  bool capport_enabled_ = true;
 
   // The lifetime of these instances are the same as the NetworkMonitor.
   TrialScheduler trial_scheduler_;

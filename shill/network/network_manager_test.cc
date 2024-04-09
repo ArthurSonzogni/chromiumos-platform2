@@ -36,5 +36,29 @@ TEST(NetworkManagerTest, CreateNetwork) {
   EXPECT_EQ(network_manager.GetNetwork(network_id), nullptr);
 }
 
+TEST(NetworkManagerTest, SetCapportEnabled) {
+  NetworkManager network_manager(nullptr, nullptr, nullptr);
+  std::unique_ptr<Network> network1 = network_manager.CreateNetwork(
+      kInterfaceIndex, std::string(kInterfaceName), kTechnology, kFixedIPParams,
+      nullptr);
+
+  // CAPPORT should be enabled for all the network instances.
+  network_manager.SetCapportEnabled(false);
+  std::unique_ptr<Network> network2 = network_manager.CreateNetwork(
+      kInterfaceIndex, std::string(kInterfaceName), kTechnology, kFixedIPParams,
+      nullptr);
+  EXPECT_FALSE(network1->GetCapportEnabled());
+  EXPECT_FALSE(network2->GetCapportEnabled());
+
+  // CAPPORT should be disabled for all the network instances.
+  network_manager.SetCapportEnabled(true);
+  std::unique_ptr<Network> network3 = network_manager.CreateNetwork(
+      kInterfaceIndex, std::string(kInterfaceName), kTechnology, kFixedIPParams,
+      nullptr);
+  EXPECT_TRUE(network1->GetCapportEnabled());
+  EXPECT_TRUE(network2->GetCapportEnabled());
+  EXPECT_TRUE(network3->GetCapportEnabled());
+}
+
 }  // namespace
 }  // namespace shill

@@ -31,6 +31,7 @@ std::unique_ptr<Network> NetworkManager::CreateNetwork(
   auto network = base::WrapUnique(new Network(
       interface_index, std::string(interface_name), technology, fixed_ip_params,
       control_interface_, dispatcher_, metrics_, patchpanel_client));
+  network->SetCapportEnabled(capport_enabled_);
   network->RegisterEventHandler(this);
   alive_networks_.insert(std::make_pair(network->network_id(), network.get()));
   return network;
@@ -42,6 +43,18 @@ Network* NetworkManager::GetNetwork(int network_id) const {
     return iter->second;
   }
   return nullptr;
+}
+
+void NetworkManager::SetCapportEnabled(bool enabled) {
+  if (capport_enabled_ == enabled) {
+    return;
+  }
+
+  LOG(INFO) << __func__ << ": Set to " << std::boolalpha << enabled;
+  capport_enabled_ = enabled;
+  for (const auto& [id, network] : alive_networks_) {
+    network->SetCapportEnabled(capport_enabled_);
+  }
 }
 
 void NetworkManager::OnNetworkDestroyed(int network_id, int interface_index) {

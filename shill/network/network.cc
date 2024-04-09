@@ -159,6 +159,7 @@ void Network::Start(const Network::StartOptions& opts) {
       dispatcher_, metrics_, this, technology_, interface_index_,
       interface_name_, probing_configuration_, opts.validation_mode,
       std::make_unique<ValidationLog>(technology_, metrics_), logging_tag_);
+  network_monitor_->SetCapportEnabled(capport_enabled_);
 
   EnableARPFiltering();
 
@@ -830,6 +831,17 @@ void Network::UpdateNetworkValidationMode(NetworkMonitor::ValidationMode mode) {
         NetworkMonitor::ValidationReason::kServicePropertyUpdate);
   } else if (mode == NetworkMonitor::ValidationMode::kDisabled) {
     StopPortalDetection(/*is_failure=*/false);
+  }
+}
+
+void Network::SetCapportEnabled(bool enabled) {
+  if (capport_enabled_ == enabled) {
+    return;
+  }
+
+  capport_enabled_ = enabled;
+  if (network_monitor_) {
+    network_monitor_->SetCapportEnabled(enabled);
   }
 }
 

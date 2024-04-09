@@ -26,6 +26,7 @@ class MockNetworkMonitor : public NetworkMonitor {
               GetValidationMode,
               (),
               (override));
+  MOCK_METHOD(void, SetCapportEnabled, (bool), (override));
   MOCK_METHOD(void, Start, (ValidationReason), (override));
   MOCK_METHOD(bool, Stop, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));

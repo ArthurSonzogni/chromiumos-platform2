@@ -42,6 +42,7 @@ bool ShouldScheduleNetworkValidationImmediately(
     case NetworkMonitor::ValidationReason::kNetworkConnectionUpdate:
     case NetworkMonitor::ValidationReason::kRetryValidation:
     case NetworkMonitor::ValidationReason::kServicePropertyUpdate:
+    case NetworkMonitor::ValidationReason::kCapportEnabled:
       return false;
   }
 }
@@ -151,15 +152,21 @@ bool NetworkMonitor::StartValidationTask(ValidationReason reason) {
                      base::Unretained(this)));
   LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
             << "): Portal detection started.";
+
   if (capport_proxy_) {
-    result_from_capport_proxy_.reset();
-    if (capport_proxy_->IsRunning()) {
-      capport_proxy_->Stop();
+    if (!capport_enabled_) {
+      LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
+                << "): CAPPORT is disabled, skip querying CAPPORT API.";
+    } else {
+      result_from_capport_proxy_.reset();
+      if (capport_proxy_->IsRunning()) {
+        capport_proxy_->Stop();
+      }
+      capport_proxy_->SendRequest(base::BindOnce(
+          &NetworkMonitor::OnCapportStatusReceived, base::Unretained(this)));
+      LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
+                << "): Query CAPPORT API.";
     }
-    capport_proxy_->SendRequest(base::BindOnce(
-        &NetworkMonitor::OnCapportStatusReceived, base::Unretained(this)));
-    LOG(INFO) << logging_tag_ << " " << __func__ << "(" << reason
-              << "): Query CAPPORT API.";
   }
   return true;
 }
@@ -369,6 +376,19 @@ void NetworkMonitor::SetValidationMode(
   validation_mode_ = validation_mode;
 }
 
+void NetworkMonitor::SetCapportEnabled(bool enabled) {
+  if (capport_enabled_ == enabled) {
+    return;
+  }
+
+  capport_enabled_ = enabled;
+  if (capport_enabled_ && capport_proxy_) {
+    LOG(INFO) << logging_tag_ << " " << __func__
+              << ": Restart validation for CAPPORT enabled";
+    Start(NetworkMonitor::ValidationReason::kCapportEnabled);
+  }
+}
+
 void NetworkMonitor::set_portal_detector_for_testing(
     std::unique_ptr<PortalDetector> portal_detector) {
   portal_detector_ = std::move(portal_detector);
@@ -439,6 +459,8 @@ std::ostream& operator<<(std::ostream& stream,
       return stream << "RetryValidation";
     case NetworkMonitor::ValidationReason::kCapportTimeOver:
       return stream << "CapportTimeOver";
+    case NetworkMonitor::ValidationReason::kCapportEnabled:
+      return stream << "CapportEnabled";
   }
 }
 

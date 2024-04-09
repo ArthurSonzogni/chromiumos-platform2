@@ -41,6 +41,10 @@ class NetworkManager : Network::EventHandler {
   // caller should not save the pointer and use it later.
   Network* GetNetwork(int network_id) const;
 
+  // Enables or disables the CAPPORT functionality to all the Network instances,
+  // including the instances created later.
+  void SetCapportEnabled(bool enabled);
+
  private:
   // Implements Network::EventHandler.
   void OnNetworkDestroyed(int network_id, int interface_index) override;
@@ -51,6 +55,8 @@ class NetworkManager : Network::EventHandler {
 
   // Tracks all the alive Network instances.
   std::map<int /* network_id */, Network*> alive_networks_;
+
+  bool capport_enabled_ = true;
 };
 
 }  // namespace shill

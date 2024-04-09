@@ -332,12 +332,19 @@ class Network : public NetworkMonitor::ClientNetwork {
   // to the next network connection.
   mockable void UpdateNetworkValidationMode(
       NetworkMonitor::ValidationMode mode);
+
+  // Setter/getter for enabling the CAPPORT functionality.
+  void SetCapportEnabled(bool enabled);
+  bool GetCapportEnabled() const { return capport_enabled_; }
+
   // Starts a new network validation attempt if network validation is enabled.
   // See the detail of NetworkMonitor::Start().
   mockable void RequestNetworkValidation(
       NetworkMonitor::ValidationReason reason);
+
   // Stops the current network validation cycle if it is still running.
   mockable void StopPortalDetection(bool is_failure = false);
+
   // Returns the PortalDetector::Result from the last network validation
   // attempt that completed, or nothing if no network validation attempt
   // has completed for this network connection yet.
@@ -594,6 +601,7 @@ class Network : public NetworkMonitor::ClientNetwork {
 
   std::unique_ptr<NetworkMonitorFactory> network_monitor_factory_;
   PortalDetector::ProbingConfiguration probing_configuration_;
+  bool capport_enabled_ = true;
   // Validates the network connectivity and detect the captive portal.
   // The instance exists when the state is not at kIdle.
   std::unique_ptr<NetworkMonitor> network_monitor_;
