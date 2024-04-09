@@ -14,6 +14,7 @@
 #include <base/check_op.h>
 #include <base/timer/elapsed_timer.h>
 #include <hardware/camera3.h>
+#include <base/files/file_util.h>
 
 #include "cros-camera/camera_face_detection.h"
 #include "cros-camera/common.h"
@@ -262,6 +263,35 @@ int CachedFrame::Convert(
                                           *nv12_frame, *out_frames[i]);
   }
   return 0;
+}
+
+void CachedFrame::DumpBuffer(FrameBuffer& frame, const std::string suffix) {
+  static uint32_t frame_buffer_idx = 0;
+  std::string w = std::to_string(frame.GetWidth());
+  std::string h = std::to_string(frame.GetHeight());
+  const std::string str = "/tmp/frame_";
+  std::string filepath =
+      str + w + "x" + h + "_" + std::to_string(frame_buffer_idx) + suffix;
+  base::FilePath file_path(filepath);
+  if (frame.Map()) {
+    LOGF(ERROR) << "Failed to map frame";
+    return;
+  }
+
+  VLOGF(2) << "DumpBuffer filepath " << file_path;
+  uint32_t write_size =
+      base::WriteFile(file_path, reinterpret_cast<const char*>(frame.GetData()),
+                      static_cast<uint64_t>(frame.GetBufferSize()));
+
+  if (write_size != frame.GetBufferSize()) {
+    LOGF(ERROR) << "Failed to write file " << filepath;
+    frame.Unmap();
+    frame_buffer_idx++;
+    return;
+  }
+  frame.Unmap();
+  frame_buffer_idx++;
+  return;
 }
 
 int CachedFrame::ConvertFromNV12(

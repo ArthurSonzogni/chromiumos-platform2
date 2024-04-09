@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <camera/camera_metadata.h>
+#include <string>
 
 #include "cros-camera/camera_face_detection.h"
 #include "cros-camera/camera_metrics.h"
@@ -43,6 +44,12 @@ class CachedFrame {
               std::vector<human_sensing::CrosFace>* faces);
 
  private:
+  // Dumps the contents of the frame buffer to a file.
+  // Appending the provided suffix to the filename.
+  // @param frame The FrameBuffer object to be dumped.
+  // @param suffix The suffix to indicate file extension.(e.q. .yuv .jpg)
+  void DumpBuffer(FrameBuffer& frame, std::string suffix);
+
   int ConvertFromNV12(const android::CameraMetadata& static_metadata,
                       const android::CameraMetadata& request_metadata,
                       FrameBuffer& in_frame,
