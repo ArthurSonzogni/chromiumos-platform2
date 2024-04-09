@@ -18,13 +18,23 @@
 namespace chromeos::mojo_service_manager {
 namespace {
 
+const uint32_t kOwnerUid = 1;
+const uint32_t kNotOwnerUid = 2;
+const uint32_t kRequesterUid = 3;
+
 class ServiceManagerTestBase : public ::testing::Test {
  public:
   explicit ServiceManagerTestBase(Configuration config)
-      : service_manager_(std::move(config),
-                         CreateServicePolicyMapForTest({
-                             {"FooService", {"owner", {"requester"}}},
-                         })) {}
+      : service_manager_(
+            std::move(config),
+            CreateServicePolicyMapForTest(
+                {
+                    {"FooUidService", {kOwnerUid, {kRequesterUid}}},
+                },
+                {
+                    {"FooService", {"owner", {"requester"}}},
+                    {"FooUidService", {"", {"requester"}}},
+                })) {}
 
  protected:
   mojo::Remote<mojom::ServiceManager> ConnectServiceManagerAs(
@@ -32,6 +42,16 @@ class ServiceManagerTestBase : public ::testing::Test {
     mojo::Remote<mojom::ServiceManager> remote;
     service_manager_.AddReceiver(
         mojom::ProcessIdentity::New(security_context, 0, 0, 0),
+        remote.BindNewPipeAndPassReceiver());
+    return remote;
+  }
+
+  mojo::Remote<mojom::ServiceManager> ConnectServiceManagerAs(uint32_t uid) {
+    mojo::Remote<mojom::ServiceManager> remote;
+    // TODO(b/333323875): Change security_context to empty string after remove
+    // the SELinux logic. Before that, security_context can't be empty.
+    service_manager_.AddReceiver(
+        mojom::ProcessIdentity::New("any_security_context", 0, uid, 0),
         remote.BindNewPipeAndPassReceiver());
     return remote;
   }
@@ -149,7 +169,27 @@ void ExpectFooServiceDisconnectWithError(mojo::Remote<mojom::Foo>* service,
   run_loop.Run();
 }
 
-TEST_F(ServiceManagerTest, RegisterAndUnregister) {
+TEST_F(ServiceManagerTest, RegisterAndUnregisterUid) {
+  FakeServcieProvider povider;
+  ConnectServiceManagerAs(kOwnerUid)->Register(
+      "FooUidService", povider.receiver_.BindNewPipeAndPassRemote());
+
+  EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "FooUidService"),
+            mojom::ErrorOrServiceState::NewState(
+                mojom::ServiceState::NewRegisteredState(
+                    mojom::RegisteredServiceState::New(
+                        /*owner=*/mojom::ProcessIdentity::New(
+                            "any_security_context", 0, kOwnerUid, 0)))));
+
+  // Reset the receiver to unregister from service manager.
+  povider.receiver_.reset();
+  EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "FooUidService"),
+            mojom::ErrorOrServiceState::NewState(
+                mojom::ServiceState::NewUnregisteredState(
+                    mojom::UnregisteredServiceState::New())));
+}
+
+TEST_F(ServiceManagerTest, RegisterAndUnregisterSELinux) {
   FakeServcieProvider povider;
   ConnectServiceManagerAs("owner")->Register(
       "FooService", povider.receiver_.BindNewPipeAndPassRemote());
@@ -169,7 +209,36 @@ TEST_F(ServiceManagerTest, RegisterAndUnregister) {
                     mojom::UnregisteredServiceState::New())));
 }
 
-TEST_F(ServiceManagerTest, RegisterError) {
+TEST_F(ServiceManagerTest, RegisterErrorUid) {
+  {
+    FakeServcieProvider povider;
+    ConnectServiceManagerAs(kOwnerUid)->Register(
+        "NotFoundService", povider.receiver_.BindNewPipeAndPassRemote());
+    ExpectServiceProviderDisconnectWithError(
+        &povider, mojom::ErrorCode::kServiceNotFound);
+  }
+  {
+    FakeServcieProvider povider;
+    ConnectServiceManagerAs(kNotOwnerUid)
+        ->Register("FooUidService",
+                   povider.receiver_.BindNewPipeAndPassRemote());
+    ExpectServiceProviderDisconnectWithError(
+        &povider, mojom::ErrorCode::kPermissionDenied);
+  }
+  {
+    auto remote = ConnectServiceManagerAs(kOwnerUid);
+    FakeServcieProvider povider1;
+    FakeServcieProvider povider2;
+    remote->Register("FooUidService",
+                     povider1.receiver_.BindNewPipeAndPassRemote());
+    remote->Register("FooUidService",
+                     povider2.receiver_.BindNewPipeAndPassRemote());
+    ExpectServiceProviderDisconnectWithError(
+        &povider2, mojom::ErrorCode::kServiceAlreadyRegistered);
+  }
+}
+
+TEST_F(ServiceManagerTest, RegisterErrorSELinux) {
   {
     FakeServcieProvider povider;
     ConnectServiceManagerAs("owner")->Register(
@@ -339,38 +408,39 @@ TEST_F(PermissiveServiceManagerTest, RegisterPermissive) {
   {
     // Test normal case.
     FakeServcieProvider povider;
-    ConnectServiceManagerAs("owner")->Register(
-        "FooService", povider.receiver_.BindNewPipeAndPassRemote());
-    EXPECT_EQ(
-        Query(ConnectServiceManagerAs("requester"), "FooService"),
-        mojom::ErrorOrServiceState::NewState(
-            mojom::ServiceState::NewRegisteredState(
-                mojom::RegisteredServiceState::New(
-                    /*owner=*/mojom::ProcessIdentity::New("owner", 0, 0, 0)))));
-  }
-  {
-    // Test service can be owned by "not_owner".
-    FakeServcieProvider povider;
-    ConnectServiceManagerAs("not_owner")
-        ->Register("FooService", povider.receiver_.BindNewPipeAndPassRemote());
-    EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "FooService"),
+    ConnectServiceManagerAs(kOwnerUid)->Register(
+        "FooUidService", povider.receiver_.BindNewPipeAndPassRemote());
+    EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "FooUidService"),
               mojom::ErrorOrServiceState::NewState(
                   mojom::ServiceState::NewRegisteredState(
                       mojom::RegisteredServiceState::New(
-                          /*owner=*/mojom::ProcessIdentity::New("not_owner", 0,
-                                                                0, 0)))));
+                          /*owner=*/mojom::ProcessIdentity::New(
+                              "any_security_context", 0, kOwnerUid, 0)))));
+  }
+  {
+    // Test service can be owned by kNotOwnerUid.
+    FakeServcieProvider povider;
+    ConnectServiceManagerAs(kNotOwnerUid)
+        ->Register("FooUidService",
+                   povider.receiver_.BindNewPipeAndPassRemote());
+    EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "FooUidService"),
+              mojom::ErrorOrServiceState::NewState(
+                  mojom::ServiceState::NewRegisteredState(
+                      mojom::RegisteredServiceState::New(
+                          /*owner=*/mojom::ProcessIdentity::New(
+                              "any_security_context", 0, kNotOwnerUid, 0)))));
   }
   {
     // Test "NotInPolicyService" can be owned.
     FakeServcieProvider povider;
-    ConnectServiceManagerAs("owner")->Register(
+    ConnectServiceManagerAs(kOwnerUid)->Register(
         "NotInPolicyService", povider.receiver_.BindNewPipeAndPassRemote());
-    EXPECT_EQ(
-        Query(ConnectServiceManagerAs("requester"), "NotInPolicyService"),
-        mojom::ErrorOrServiceState::NewState(
-            mojom::ServiceState::NewRegisteredState(
-                mojom::RegisteredServiceState::New(
-                    /*owner=*/mojom::ProcessIdentity::New("owner", 0, 0, 0)))));
+    EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "NotInPolicyService"),
+              mojom::ErrorOrServiceState::NewState(
+                  mojom::ServiceState::NewRegisteredState(
+                      mojom::RegisteredServiceState::New(
+                          /*owner=*/mojom::ProcessIdentity::New(
+                              "any_security_context", 0, kOwnerUid, 0)))));
   }
 }
 
@@ -378,12 +448,12 @@ TEST_F(PermissiveServiceManagerTest, RequestPermissive) {
   {
     // Test normal case.
     FakeServcieProvider provider;
-    ConnectServiceManagerAs("owner")->Register(
-        "FooService", provider.receiver_.BindNewPipeAndPassRemote());
+    ConnectServiceManagerAs(kOwnerUid)->Register(
+        "FooUidService", provider.receiver_.BindNewPipeAndPassRemote());
 
     mojo::Remote<mojom::Foo> foo;
     ConnectServiceManagerAs("requester")
-        ->Request("FooService", std::nullopt,
+        ->Request("FooUidService", std::nullopt,
                   foo.BindNewPipeAndPassReceiver().PassPipe());
     ExpectFooServiceConnected(&foo);
     EXPECT_EQ(provider.last_client_identity_->security_context, "requester");
@@ -391,12 +461,12 @@ TEST_F(PermissiveServiceManagerTest, RequestPermissive) {
   {
     // Test request by not_requester.
     FakeServcieProvider provider;
-    ConnectServiceManagerAs("owner")->Register(
-        "FooService", provider.receiver_.BindNewPipeAndPassRemote());
+    ConnectServiceManagerAs(kOwnerUid)->Register(
+        "FooUidService", provider.receiver_.BindNewPipeAndPassRemote());
 
     mojo::Remote<mojom::Foo> foo;
     ConnectServiceManagerAs("not_requester")
-        ->Request("FooService", std::nullopt,
+        ->Request("FooUidService", std::nullopt,
                   foo.BindNewPipeAndPassReceiver().PassPipe());
     ExpectFooServiceConnected(&foo);
     EXPECT_EQ(provider.last_client_identity_->security_context,
@@ -405,7 +475,7 @@ TEST_F(PermissiveServiceManagerTest, RequestPermissive) {
   {
     // Test request NotInPolicyService.
     FakeServcieProvider provider;
-    ConnectServiceManagerAs("owner")->Register(
+    ConnectServiceManagerAs(kOwnerUid)->Register(
         "NotInPolicyService", provider.receiver_.BindNewPipeAndPassRemote());
 
     mojo::Remote<mojom::Foo> foo;
@@ -422,7 +492,7 @@ TEST_F(PermissiveServiceManagerTest, RequestTimeoutPermissive) {
     // Test normal case.
     mojo::Remote<mojom::Foo> foo;
     ConnectServiceManagerAs("requester")
-        ->Request("FooService", base::Seconds(5),
+        ->Request("FooUidService", base::Seconds(5),
                   foo.BindNewPipeAndPassReceiver().PassPipe());
     ExpectFooServiceDisconnectWithError(&foo, mojom::ErrorCode::kTimeout);
   }
@@ -430,7 +500,7 @@ TEST_F(PermissiveServiceManagerTest, RequestTimeoutPermissive) {
     // Test request by not_requester.
     mojo::Remote<mojom::Foo> foo;
     ConnectServiceManagerAs("not_requester")
-        ->Request("FooService", base::Seconds(5),
+        ->Request("FooUidService", base::Seconds(5),
                   foo.BindNewPipeAndPassReceiver().PassPipe());
     ExpectFooServiceDisconnectWithError(&foo, mojom::ErrorCode::kTimeout);
   }
@@ -452,12 +522,12 @@ TEST_F(PermissiveServiceManagerTest, QueryPermissive) {
             mojom::ErrorCode::kServiceNotFound);
 
   // Test permission denied is not raised for not_requester.
-  EXPECT_FALSE(Query(ConnectServiceManagerAs("not_requester"), "FooService")
+  EXPECT_FALSE(Query(ConnectServiceManagerAs("not_requester"), "FooUidService")
                    ->is_error());
 
   // Test normal requester.
   EXPECT_FALSE(
-      Query(ConnectServiceManagerAs("requester"), "FooService")->is_error());
+      Query(ConnectServiceManagerAs("requester"), "FooUidService")->is_error());
 }
 
 TEST_F(PermissiveServiceManagerTest, ServiceObserverPermissive) {
@@ -468,8 +538,8 @@ TEST_F(PermissiveServiceManagerTest, ServiceObserverPermissive) {
       ->AddServiceObserver(observer.receiver_.BindNewPipeAndPassRemote());
 
   FakeServcieProvider povider;
-  ConnectServiceManagerAs("owner")->Register(
-      "FooService", povider.receiver_.BindNewPipeAndPassRemote());
+  ConnectServiceManagerAs(kOwnerUid)->Register(
+      "FooUidService", povider.receiver_.BindNewPipeAndPassRemote());
   ExpectServiceEvent(&observer);
 
   // Reset the receiver to unregister from service manager.
