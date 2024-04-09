@@ -1264,14 +1264,48 @@ TEST_F(DownloadsBindMountMigrationTest,
        IfANewDownloadsFolderIsCreatedAfterMigrationItShouldGetRemoved) {
   SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
 
-  // Create a test file in ~/Downloads.
+  // Create test files and folders.
   ASSERT_TRUE(platform_.CreateDirectory(downloads_));
-  const FilePath path1 = downloads_.Append("file1");
-  ASSERT_TRUE(CreateTestFileAtPath(path1));
 
-  // Create a test file in ~/MyFiles/Downloads.
-  const FilePath path2 = downloads_in_my_files_.Append("file2");
-  ASSERT_TRUE(CreateTestFileAtPath(path2));
+  using std::string_literals::operator""s;
+  for (const std::string_view s : {
+           "file"s,
+           "file (0)"s,
+           "file (1)"s,
+           "file ()"s,
+           "file(9)"s,
+           "file 8)"s,
+           "file..."s,
+           "file... (1)"s,
+           "file.ext"s,
+           ".file.ext"s,
+           ".file"s,
+           "file.ext.gz"s,
+           ".file.ext.gz"s,
+           ".file.gz"s,
+           std::string(NAME_MAX, 'a'),
+           std::string(NAME_MAX - 6, 'b') + "😊",
+           std::string(NAME_MAX - 10, 'c') + "😊.ext",
+       }) {
+    // Create a test file in ~/Downloads.
+    ASSERT_TRUE(CreateTestFileAtPath(downloads_.Append(s)));
+    // Create a colliding file in ~/MyFiles/Downloads.
+    ASSERT_TRUE(CreateTestFileAtPath(downloads_in_my_files_.Append(s)));
+  }
+
+  for (const std::string_view s : {
+           "folder",
+           "folder (1)",
+           "folder...",
+           "folder.ext",
+           ".folder",
+           ".folder.ext",
+       }) {
+    // Create a test folder in ~/Downloads.
+    ASSERT_TRUE(platform_.CreateDirectory(downloads_.Append(s)));
+    // Create a colliding folder in ~/MyFiles/Downloads.
+    ASSERT_TRUE(platform_.CreateDirectory(downloads_in_my_files_.Append(s)));
+  }
 
   // Unmount and remount.
   mount_helper_->UnmountAll();
@@ -1281,14 +1315,68 @@ TEST_F(DownloadsBindMountMigrationTest,
                   SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
               IsOk());
 
-  // Verify that ~/MyFiles/Downloads is not mounted and that all the files
-  // reside in the correct places.
+  // Verify that ~/MyFiles/Downloads is not mounted and that all the files and
+  // folders reside in the correct places.
   ASSERT_FALSE(platform_.IsDirectoryMounted(downloads_in_my_files_));
-  ASSERT_FALSE(base::PathExists(path1));
-  ASSERT_FALSE(base::PathExists(downloads_));
-  ASSERT_TRUE(
-      ExpectFileContentsCorrect(downloads_in_my_files_.Append("file1")));
-  ASSERT_TRUE(ExpectFileContentsCorrect(path2));
+  ASSERT_FALSE(platform_.DirectoryExists(downloads_));
+
+  for (const std::string_view s : {
+           "file"s,
+           "file (0)"s,
+           "file (1)"s,
+           "file (2)"s,
+           "file (3)"s,
+           "file (4)"s,
+           "file ()"s,
+           "file () (1)"s,
+           "file(9)"s,
+           "file(9) (1)"s,
+           "file 8)"s,
+           "file 8) (1)"s,
+           "file..."s,
+           "file... (1)"s,
+           "file... (2)"s,
+           "file... (3)"s,
+           "file.ext"s,
+           "file (1).ext"s,
+           ".file"s,
+           ".file (1)"s,
+           ".file.ext"s,
+           ".file (1).ext"s,
+           "file.ext.gz"s,
+           "file (1).ext.gz"s,
+           ".file.ext.gz"s,
+           ".file (1).ext.gz"s,
+           ".file.gz"s,
+           ".file (1).gz"s,
+           std::string(NAME_MAX, 'a'),
+           std::string(NAME_MAX - 4, 'a') + " (1)",
+           std::string(NAME_MAX - 6, 'b') + "😊",
+           std::string(NAME_MAX - 6, 'b') + " (1)",
+           std::string(NAME_MAX - 10, 'c') + "😊.ext",
+           std::string(NAME_MAX - 10, 'c') + " (1).ext",
+       }) {
+    ASSERT_TRUE(ExpectFileContentsCorrect(downloads_in_my_files_.Append(s)))
+        << " for '" << s << "'";
+  }
+
+  for (const std::string_view s : {
+           "folder",
+           "folder (1)",
+           "folder (2)",
+           "folder (3)",
+           "folder...",
+           "folder... (1)",
+           "folder.ext",
+           "folder.ext (1)",
+           ".folder",
+           ".folder (1)",
+           ".folder.ext",
+           ".folder.ext (1)",
+       }) {
+    ASSERT_TRUE(platform_.DirectoryExists(downloads_in_my_files_.Append(s)))
+        << " for '" << s << "'";
+  }
 }
 
 }  // namespace

@@ -7,6 +7,7 @@
 #include <sys/mount.h>
 #include <sys/stat.h>
 
+#include <climits>
 #include <memory>
 #include <ostream>
 #include <string_view>
@@ -27,6 +28,9 @@
 
 #include "base/check.h"
 #include "base/notreached.h"
+#include "base/strings/strcat.h"
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/filesystem_layout.h"
@@ -337,6 +341,61 @@ class SyncGuard {
   libstorage::Platform* const platform_;
 };
 
+// Truncates the given string `s` to the maximum length of `max_bytes`. Avoids
+// cutting a multibyte UTF-8 sequence. Avoids cutting after a zero-width joiner.
+std::string_view TruncateUtf8(std::string_view s, size_t max_bytes) {
+  if (s.size() <= max_bytes) {
+    // Nothing to truncate.
+    return s;
+  }
+
+  // Remove the trailing bytes at the truncation point.
+  while (max_bytes > 0 && (static_cast<std::uint8_t>(s[max_bytes]) &
+                           0b1100'0000u) == 0b1000'0000u) {
+    max_bytes--;
+  }
+
+  s = s.substr(0, max_bytes);
+
+  // Remove the zero-width joiner if the truncated string would end with one.
+  if (const std::string_view zwj = "\u200D"; s.ends_with(zwj)) {
+    s.remove_suffix(zwj.size());
+  }
+
+  return s;
+}
+
+// Removes the numeric suffix at the end of the given string `s`. Does nothing
+// if the string does not end with a numeric suffix. A numeric suffix is a
+// decimal number between parentheses and preceded by a space, like:
+// * " (1)" or
+// * " (142857)".
+void RemoveNumericSuffix(std::string& s) {
+  size_t i = s.size();
+
+  if (i == 0 || s[--i] != ')') {
+    return;
+  }
+
+  if (i == 0 || !base::IsAsciiDigit(s[--i])) {
+    return;
+  }
+
+  while (i > 0 && base::IsAsciiDigit(s[i - 1])) {
+    --i;
+  }
+
+  if (i == 0 || s[--i] != '(') {
+    return;
+  }
+
+  if (i == 0 || s[--i] != ' ') {
+    return;
+  }
+
+  s.resize(i);
+}
+
 }  // namespace
 
 const char kDefaultHomeDir[] = "/home/chronos/user";
@@ -604,12 +663,12 @@ bool Mounter::HandleMyFilesDownloads(const FilePath& user_home) {
   const FilePath downloads_in_my_files =
       user_home.Append(kMyFilesDir).Append(kDownloadsDir);
 
-  // User could have saved files in MyFiles/Downloads in case cryptohome crashed
-  // and bind mounts were removed by error. See crbug.com/1080730. Move the
-  // files back to Downloads unless a file already exists. In case the
-  // ~/Downloads folder had been moved to ~/MyFiles/Downloads previously, this
-  // acts as a "reverse" migration.
-  MigrateDirectory(downloads, downloads_in_my_files);
+  // See b/172341309. User could have saved files in ~/MyFiles/Downloads in case
+  // cryptohome crashed and bind-mounts were removed by error. Move the files
+  // from ~/MyFiles/Downloads to ~/Downloads. In case the ~/Downloads folder had
+  // been moved to ~/MyFiles/Downloads previously, this also acts as a "reverse"
+  // migration.
+  MoveDirectoryContents(downloads_in_my_files, downloads);
 
   // We also need to remove the xattr if it exists. This will allow the next
   // future migration of ~/Downloads to ~/MyFiles/Downloads to succeed again,
@@ -649,7 +708,7 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
                       "to ~/MyFiles/Downloads";
       ReportDownloadsMigrationStatus(kReappeared);
 
-      MigrateDirectory(downloads_in_my_files, downloads);
+      MoveDirectoryContents(downloads, downloads_in_my_files);
       ok = platform_->DeletePathRecursively(downloads);
       ReportDownloadsMigrationOperation("RemoveReappearedDownloads", ok);
       PLOG_IF(ERROR, !ok) << "Cannot remove the reappeared ~/Downloads folder";
@@ -691,10 +750,9 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
     return true;
   }
 
-  // In the case migration needs to occur, move all files from
-  // ~/MyFiles/Downloads to ~/Downloads to ensure there's none left in the
-  // directory before migration.
-  MigrateDirectory(downloads, downloads_in_my_files);
+  // Move all files from ~/MyFiles/Downloads to ~/Downloads to ensure there's
+  // none left in ~/MyFiles/Downloads before migration.
+  MoveDirectoryContents(downloads_in_my_files, downloads);
 
   // In the event ~/Downloads, ~/Downloads-backup and ~/MyFiles/Downloads exist
   // we want to remove the old ~/Downloads-backup to ensure the migration can
@@ -925,29 +983,103 @@ bool Mounter::InternalMountDaemonStoreDirectories(
   return true;
 }
 
-void Mounter::MigrateDirectory(const FilePath& dst, const FilePath& src) const {
-  VLOG(1) << "Migrating items from '" << src << "' to '" << dst << "'";
+bool Mounter::MoveWithConflictResolution(const FilePath& from,
+                                         const FilePath& to_dir,
+                                         ProbeCounts& probe_counts) const {
+  DCHECK(from.IsAbsolute()) << from;
+  DCHECK(to_dir.IsAbsolute()) << to_dir;
+
+  std::string name = from.BaseName().value();
+  DCHECK(!name.empty());
+  DCHECK(!name.starts_with('/')) << " for " << name;
+
+  // Try to move the item without renaming it.
+  {
+    const FilePath to = to_dir.Append(name);
+    if (platform_->RenameNoReplace(from, to)) {
+      // Successfully moved the item.
+      return true;
+    }
+
+    // Item cannot be moved. Check the reason.
+    if (errno != EEXIST) {
+      PLOG(ERROR) << "Cannot move '" << from << "' to '" << to << "'";
+      return false;
+    }
+  }
+
+  // There was a name collision in the destination directory. Get the filename
+  // extension if the source item is a file (and not a directory).
+  std::string ext;
+  if (base::stat_wrapper_t st; !name.ends_with('.') &&
+                               platform_->Stat(from, &st) &&
+                               S_ISREG(st.st_mode)) {
+    ext = FilePath(name).Extension();
+    // See b/333986056. Work around some of the limitations of FilePath.
+    if (ext.size() == name.size() || ext.size() > 12 ||
+        ext.find(' ') != std::string::npos) {
+      ext = FilePath(name).FinalExtension();
+      if (ext.size() == name.size() || ext.size() > 6 ||
+          ext.find(' ') != std::string::npos) {
+        ext.clear();
+      }
+    }
+
+    if (!ext.empty()) {
+      name.resize(name.size() - ext.size());
+      DCHECK(!name.empty());
+    }
+  }
+
+  RemoveNumericSuffix(name);
+
+  for (int& i = probe_counts[base::StrCat({name, ext})]; ++i < INT_MAX;) {
+    const std::string suffix =
+        base::StrCat({" (", base::NumberToString(i), ")", ext});
+
+    // Try to move and rename the item at the same time.
+    const FilePath to = to_dir.Append(
+        base::StrCat({TruncateUtf8(name, NAME_MAX - suffix.size()), suffix}));
+    if (platform_->RenameNoReplace(from, to)) {
+      // Successfully moved and renamed the item.
+      return true;
+    }
+
+    // Item cannot be moved. Check the reason.
+    if (errno != EEXIST) {
+      PLOG(ERROR) << "Cannot move '" << from << "' to '" << to << "'";
+      return false;
+    }
+  }
+
+  LOG(ERROR) << "Cannot move '" << from << "' to dir '" << to_dir
+             << "': Too many collisions";
+  return false;
+}
+
+void Mounter::MoveDirectoryContents(const FilePath& from_dir,
+                                    const FilePath& to_dir) const {
+  VLOG(1) << "Migrating items from '" << from_dir << "' to '" << to_dir << "'";
 
   const std::unique_ptr<libstorage::FileEnumerator> enumerator(
       platform_->GetFileEnumerator(
-          src, false /* recursive */,
+          from_dir, false /* recursive */,
           base::FileEnumerator::DIRECTORIES | base::FileEnumerator::FILES));
 
   DCHECK(enumerator);
   int num_items = 0;
   int num_moved = 0;
+  ProbeCounts probe_counts;
 
-  for (FilePath src_obj = enumerator->Next(); !src_obj.empty();
-       src_obj = enumerator->Next()) {
-    const FilePath dst_obj = dst.Append(src_obj.BaseName());
+  for (FilePath from = enumerator->Next(); !from.empty();
+       from = enumerator->Next()) {
     num_items++;
 
     // If the source item cannot be moved for whatever reason, then log an error
     // and delete this source item.
-    if (!platform_->Rename(src_obj, dst_obj)) {
-      PLOG(ERROR) << "Cannot move '" << src_obj << "' to '" << dst_obj << "'";
-      if (!platform_->DeletePathRecursively(src_obj)) {
-        PLOG(ERROR) << "Cannot delete '" << src_obj << "'";
+    if (!MoveWithConflictResolution(from, to_dir, probe_counts)) {
+      if (!platform_->DeletePathRecursively(from)) {
+        PLOG(ERROR) << "Cannot delete '" << from << "'";
       }
 
       continue;
@@ -957,7 +1089,7 @@ void Mounter::MigrateDirectory(const FilePath& dst, const FilePath& src) const {
   }
 
   LOG_IF(INFO, num_moved != 0) << "Moved " << num_moved << " items from '"
-                               << src << "' to '" << dst << "'";
+                               << from_dir << "' to '" << to_dir << "'";
 
   ReportMaskedDownloadsItems(num_items);
 }

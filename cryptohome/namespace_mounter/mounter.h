@@ -11,6 +11,7 @@
 #include <sys/types.h>
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -176,10 +177,23 @@ class Mounter {
   //   dest - Mount point to unmount
   void ForceUnmount(const base::FilePath& src, const base::FilePath& dest);
 
-  // Facilitates migration of files from one directory to another, removing the
-  // duplicates.
-  void MigrateDirectory(const base::FilePath& dst,
-                        const base::FilePath& src) const;
+  using ProbeCounts = std::unordered_map<std::string, int>;
+
+  // Moves the `from` item (file or directory) to the `to_dir` directory. The
+  // `to_dir` destination directory must already exist and be writable. In case
+  // of name collision in the destination directory, the item is also renamed
+  // while getting moved. No file content is actually copied by this operation.
+  // The item is just atomically moved and optionally renamed at the same time.
+  bool MoveWithConflictResolution(const base::FilePath& from,
+                                  const base::FilePath& to_dir,
+                                  ProbeCounts& probe_counts) const;
+
+  // Moves the contents of the `from_dir` directory to the `to_dir` directory.
+  // Renames the moved items as needed in case of name collision. The `from_dir`
+  // and `to_dir` directories must already exist and be writable. If everything
+  // works well, the `from_dir` directory should be left empty.
+  void MoveDirectoryContents(const base::FilePath& from_dir,
+                             const base::FilePath& to_dir) const;
 
   // Calls InternalMountDaemonStoreDirectories to bind-mount
   //   /home/.shadow/$hash/mount/root/$daemon (*)
