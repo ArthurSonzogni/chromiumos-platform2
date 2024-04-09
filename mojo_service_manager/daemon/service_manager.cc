@@ -167,6 +167,7 @@ void ServiceManager::Query(const std::string& service_name,
   const ServiceState& service_state = it->second;
   const mojom::ProcessIdentityPtr& identity = receiver_set_.current_context();
   if (!configuration_.is_permissive &&
+      !service_state.policy.IsRequesterUid(identity->uid) &&
       !service_state.policy.IsRequester(identity->security_context)) {
     std::move(callback).Run(
         mojom::ErrorOrServiceState::NewError(mojom::Error::New(

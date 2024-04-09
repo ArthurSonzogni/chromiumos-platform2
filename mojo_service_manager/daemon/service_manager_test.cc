@@ -175,7 +175,7 @@ TEST_F(ServiceManagerTest, RegisterAndUnregisterUid) {
   ConnectServiceManagerAs(kOwnerUid)->Register(
       "FooUidService", povider.receiver_.BindNewPipeAndPassRemote());
 
-  EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "FooUidService"),
+  EXPECT_EQ(Query(ConnectServiceManagerAs(kRequesterUid), "FooUidService"),
             mojom::ErrorOrServiceState::NewState(
                 mojom::ServiceState::NewRegisteredState(
                     mojom::RegisteredServiceState::New(
@@ -184,7 +184,7 @@ TEST_F(ServiceManagerTest, RegisterAndUnregisterUid) {
 
   // Reset the receiver to unregister from service manager.
   povider.receiver_.reset();
-  EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "FooUidService"),
+  EXPECT_EQ(Query(ConnectServiceManagerAs(kRequesterUid), "FooUidService"),
             mojom::ErrorOrServiceState::NewState(
                 mojom::ServiceState::NewUnregisteredState(
                     mojom::UnregisteredServiceState::New())));
@@ -387,14 +387,40 @@ TEST_F(ServiceManagerTest, RequestTimeout) {
   ExpectFooServiceConnected(&foo4);
 }
 
-TEST_F(ServiceManagerTest, Query) {
+TEST_F(ServiceManagerTest, QueryUid) {
+  EXPECT_EQ(Query(ConnectServiceManagerAs(kRequesterUid), "FooUidService"),
+            mojom::ErrorOrServiceState::NewState(
+                mojom::ServiceState::NewUnregisteredState(
+                    mojom::UnregisteredServiceState::New())));
+  // Also check legacy security context still work.
+  EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "FooUidService"),
+            mojom::ErrorOrServiceState::NewState(
+                mojom::ServiceState::NewUnregisteredState(
+                    mojom::UnregisteredServiceState::New())));
+}
+
+TEST_F(ServiceManagerTest, QuerySELinux) {
   EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "FooService"),
             mojom::ErrorOrServiceState::NewState(
                 mojom::ServiceState::NewUnregisteredState(
                     mojom::UnregisteredServiceState::New())));
 }
 
-TEST_F(ServiceManagerTest, QueryError) {
+TEST_F(ServiceManagerTest, QueryErrorUid) {
+  // Test service not found.
+  EXPECT_EQ(Query(ConnectServiceManagerAs(kRequesterUid), "NotFoundService")
+                ->get_error()
+                ->code,
+            mojom::ErrorCode::kServiceNotFound);
+
+  // Test permission denied.
+  EXPECT_EQ(Query(ConnectServiceManagerAs(kNotRequesterUid), "FooUidService")
+                ->get_error()
+                ->code,
+            mojom::ErrorCode::kPermissionDenied);
+}
+
+TEST_F(ServiceManagerTest, QueryErrorSELinux) {
   // Test service not found.
   EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "NotFoundService")
                 ->get_error()
@@ -558,18 +584,18 @@ TEST_F(PermissiveServiceManagerTest, RequestTimeoutPermissive) {
 
 TEST_F(PermissiveServiceManagerTest, QueryPermissive) {
   // Test service not found.
-  EXPECT_EQ(Query(ConnectServiceManagerAs("requester"), "NotFoundService")
+  EXPECT_EQ(Query(ConnectServiceManagerAs(kRequesterUid), "NotFoundService")
                 ->get_error()
                 ->code,
             mojom::ErrorCode::kServiceNotFound);
 
   // Test permission denied is not raised for not_requester.
-  EXPECT_FALSE(Query(ConnectServiceManagerAs("not_requester"), "FooUidService")
+  EXPECT_FALSE(Query(ConnectServiceManagerAs(kNotRequesterUid), "FooUidService")
                    ->is_error());
 
   // Test normal requester.
-  EXPECT_FALSE(
-      Query(ConnectServiceManagerAs("requester"), "FooUidService")->is_error());
+  EXPECT_FALSE(Query(ConnectServiceManagerAs(kRequesterUid), "FooUidService")
+                   ->is_error());
 }
 
 TEST_F(PermissiveServiceManagerTest, ServiceObserverPermissive) {
