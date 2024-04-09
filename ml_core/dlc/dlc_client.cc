@@ -153,12 +153,12 @@ class DlcClientImpl : public cros::DlcClient {
 
   void OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-    LOG(INFO) << "OnDlcStateChanged (" << dlc_state.id()
-              << "): " << dlcservice::DlcState::State_Name(dlc_state.state());
-
     if (dlc_state.id() != dlc_id_) {
       return;
     }
+
+    LOG(INFO) << "OnDlcStateChanged (" << dlc_state.id()
+              << "): " << dlcservice::DlcState::State_Name(dlc_state.state());
 
     switch (dlc_state.state()) {
       case dlcservice::DlcState::INSTALLED:
