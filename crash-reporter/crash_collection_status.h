@@ -24,7 +24,8 @@ enum class CrashCollectionStatus {
   // Other success types. Things were "successful" but no report generated or
   // the report isn't going into the normal crash pipeline.
   kFinishedEphermeralCollection = 1,
-  kLastSuccessCode = kFinishedEphermeralCollection,
+  kNoCrashFound = 2,
+  kLastSuccessCode = kNoCrashFound,
 
   // We should never see this status. It exists just to initialize variables
   // before they get a real value.
@@ -94,7 +95,17 @@ enum class CrashCollectionStatus {
   kFailureReadingLogCollectionTmpFile = 459,
   kFailureWritingCompressedLogContents = 460,
   kFailureWritingLogContents = 461,
-  kMaxValue = kFailureWritingLogContents,
+  kFailureLoadingEfiCrash = 462,
+  kEfiCrashEmpty = 463,
+  kFailureGettingEfiType = 464,
+  kFailedKernelDumpWrite = 465,
+  kUncollectedEfiCrashType = 466,
+  kCorruptWatchdogFile = 467,
+  kFailureReadingEventLog = 468,
+  kFailureReadingWatchdogFile = 469,
+  kFailureOpeningWatchdogFile = 470,
+  kRamoopsDumpEmpty = 471,
+  kMaxValue = kRamoopsDumpEmpty,
 };
 // LINT.ThenChange(crash_collection_status.cc:status_list)
 

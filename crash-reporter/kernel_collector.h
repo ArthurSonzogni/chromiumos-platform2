@@ -16,11 +16,14 @@
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/types/expected.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 #include "crash-reporter/kernel_util.h"
+
+enum class CrashCollectionStatus;
 
 // Kernel crash collector.
 class KernelCollector : public CrashCollector {
@@ -45,9 +48,18 @@ class KernelCollector : public CrashCollector {
   // Returns true if the kernel collection currently enabled.
   bool is_enabled() const { return is_enabled_; }
 
-  // Collect any preserved kernel crash dump. Returns true if there was
-  // a dump (even if there were problems storing the dump), false otherwise.
-  bool Collect(bool use_saved_lsb);
+  // Collects efi crashes. Returns 1 status per EFI crash found *or*
+  // a vector containing the single element kNoCrashFound.
+  std::vector<CrashCollectionStatus> CollectEfiCrashes(bool use_saved_lsb);
+
+  // Collects ramoops crash.
+  CrashCollectionStatus CollectRamoopsCrash(bool use_saved_lsb);
+
+  // Given the returned results of CollectEfiCrash and CollectRamoopsCrash,
+  // was there actually a kernel crash available to collect?
+  static bool WasKernelCrash(
+      const std::vector<CrashCollectionStatus>& efi_crash_statuses,
+      CrashCollectionStatus ramoops_crash_status);
 
   // Set the architecture of the crash dumps we are looking at.
   void set_arch(kernel_util::ArchKind arch) { arch_ = arch; }
@@ -149,7 +161,8 @@ class KernelCollector : public CrashCollector {
 
   bool LastRebootWasBiosCrash(const std::string& dump);
   bool LastRebootWasNoCError(const std::string& dump);
-  bool LastRebootWasWatchdog(std::string& signature);
+  base::expected<bool, CrashCollectionStatus> LastRebootWasWatchdog(
+      std::string& signature);
   bool LoadConsoleRamoops(std::string* contents);
 
   base::FilePath GetDumpRecordPath(const char* type,
@@ -174,16 +187,10 @@ class KernelCollector : public CrashCollector {
                   const std::string& log_data,
                   const base::FilePath& log_path);
 
-  bool HandleCrash(const std::string& kernel_dump,
-                   const std::string& bios_dump,
-                   const std::string& hypervisor_dump,
-                   const std::string& signature);
-
-  // Collects ramoops crash.
-  bool CollectRamoopsCrash();
-
-  // Collects efi crash.
-  bool CollectEfiCrash();
+  CrashCollectionStatus HandleCrash(const std::string& kernel_dump,
+                                    const std::string& bios_dump,
+                                    const std::string& hypervisor_dump,
+                                    const std::string& signature);
 
   std::vector<EfiCrash> FindEfiCrashes() const;
 
