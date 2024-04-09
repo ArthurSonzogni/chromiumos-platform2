@@ -38,6 +38,7 @@
 #if USE_LVM_STATEFUL_PARTITION
 #include "dlcservice/lvm/mock_lvmd_proxy_wrapper.h"
 #endif  // USE_LVM_STATEFUL_PARTITION
+#include "dlcservice/metadata/metadata.h"
 #include "dlcservice/utils/utils_interface.h"
 
 namespace dlcservice {
@@ -153,6 +154,11 @@ class BaseTest : public testing::Test {
 
  private:
   base::FilePath SetUpImage(const base::FilePath& root, const DlcId& id);
+
+  // Set up compressed metadata for testing.
+  void SetUpMetadata(const std::string id,
+                     const base::FilePath& manifest_path,
+                     metadata::Metadata& metadata);
 };
 
 }  // namespace dlcservice

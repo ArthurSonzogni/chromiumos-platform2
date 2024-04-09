@@ -10,6 +10,7 @@
   "manifest-version": 1,
   "mount-file-required": true,
   "name": "Force OTA DLC",
+  "package": "package",
   "pre-allocated-size": "8192",
   "preload-allowed": true,
   "scaled": false,

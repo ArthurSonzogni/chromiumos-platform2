@@ -46,12 +46,15 @@ constexpr char kPathNameImage[] = "<REDACTED_IMAGE_PATH>";
 // we can develop different types of DLC classes.
 bool DlcBase::Initialize() {
   const auto* system_state = SystemState::Get();
-  const auto& manifest_dir = system_state->manifest_dir();
-  package_ = *ScanDirectory(manifest_dir.Append(id_)).begin();
   manifest_ = utils_->GetDlcManifest(id_, system_state->manifest_dir());
   if (!manifest_) {
     // Failing to read the manifest will be considered a blocker.
     LOG(ERROR) << "Failed to read the manifest of DLC " << id_;
+    return false;
+  }
+  package_ = manifest_->package();
+  if (package_.empty()) {
+    LOG(ERROR) << "Failed to get the package name of DLC " << id_;
     return false;
   }
 

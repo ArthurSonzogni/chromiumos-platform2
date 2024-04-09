@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <gmock/gmock.h>
@@ -154,12 +155,13 @@ void BaseTest::SetUpFilesAndDirectories() {
 
   CHECK(base::WriteFile(verification_file_path_, "verification-value"));
 
-  // Create DLC manifest sub-directories.
+  // Create DLC metadata.
+  metadata::Metadata test_metadata(manifest_path_);
+  ASSERT_TRUE(test_metadata.Initialize());
   for (auto&& id : {kFirstDlc, kSecondDlc, kThirdDlc, kFourthDlc, kScaledDlc,
                     kForceOTADlc, kUserTiedDlc}) {
-    base::CreateDirectory(JoinPaths(manifest_path_, id, kPackage));
-    base::CopyFile(JoinPaths(testdata_path_, id, kPackage, kManifestName),
-                   JoinPaths(manifest_path_, id, kPackage, kManifestName));
+    SetUpMetadata(id, JoinPaths(testdata_path_, id, kPackage, kManifestName),
+                  test_metadata);
     supported_dlc_.emplace(id);
   }
 }
@@ -170,9 +172,21 @@ int64_t GetFileSize(const base::FilePath& path) {
   return file_size;
 }
 
+void BaseTest::SetUpMetadata(const std::string id,
+                             const base::FilePath& manifest_path,
+                             metadata::Metadata& metadata) {
+  std::string manifest_raw;
+  ASSERT_TRUE(base::ReadFileToString(manifest_path, &manifest_raw));
+  auto manifest_value = base::JSONReader::ReadAndReturnValueWithError(
+      manifest_raw, base::JSON_PARSE_RFC);
+  ASSERT_TRUE(manifest_value.has_value() && manifest_value->is_dict());
+  ASSERT_TRUE(metadata.Set(
+      id, metadata::Metadata::Entry{std::move(manifest_value->GetDict()), ""}));
+}
+
 base::FilePath BaseTest::SetUpImage(const base::FilePath& root,
                                     const DlcId& id) {
-  auto manifest = utils_->GetDlcManifest(manifest_path_, id, kPackage);
+  auto manifest = utils_->GetDlcManifest(id, manifest_path_);
   base::FilePath image_path = JoinPaths(root, id, kPackage, kDlcImageFileName);
   CreateFile(image_path, manifest->size());
   EXPECT_TRUE(base::PathExists(image_path));
@@ -197,7 +211,7 @@ base::FilePath BaseTest::SetUpDlcDeployedImage(const DlcId& id) {
 
 // Will create |path/|id|/|package|/dlc_[a|b]/dlc.img files.
 void BaseTest::SetUpDlcWithSlots(const DlcId& id) {
-  auto manifest = utils_->GetDlcManifest(manifest_path_, id, kPackage);
+  auto manifest = utils_->GetDlcManifest(id, manifest_path_);
   // Create DLC content sub-directories and empty images.
   for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
     base::FilePath image_path =
@@ -209,7 +223,7 @@ void BaseTest::SetUpDlcWithSlots(const DlcId& id) {
 
 void BaseTest::InstallViaInstaller(const vector<string>& ids) {
   for (const auto& id : ids) {
-    auto manifest = utils_->GetDlcManifest(manifest_path_, id, kPackage);
+    auto manifest = utils_->GetDlcManifest(id, manifest_path_);
     base::FilePath image_path = GetDlcImagePath(
         content_path_, id, kPackage, SystemState::Get()->active_boot_slot());
 

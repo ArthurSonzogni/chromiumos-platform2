@@ -8,6 +8,7 @@
   "manifest-version": 1,
   "mount-file-required": false,
   "name": "Second Dlc",
+  "package": "package",
   "pre-allocated-size": "8192",
   "size": "4096",
   "table-sha256-hash": "a963d36ec40e4af33bd4fe374247320123d5daad0fd93b06cd8fd6a4ce617971",

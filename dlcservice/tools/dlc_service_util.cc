@@ -478,15 +478,9 @@ class DlcServiceUtil : public brillo::Daemon {
     return true;
   }
 
-  decltype(auto) GetPackages(const string& id) {
-    return dlcservice::ScanDirectory(
-        dlcservice::JoinPaths(imageloader::kDlcManifestRootpath, id));
-  }
-
-  std::shared_ptr<imageloader::Manifest> GetManifest(const string& id,
-                                                     const string& package) {
+  std::shared_ptr<imageloader::Manifest> GetManifest(const string& id) {
     return dlcservice::GetDlcManifest(
-        FilePath(imageloader::kDlcManifestRootpath), id, package);
+        id, FilePath(imageloader::kDlcManifestRootpath));
   }
 
   // Helper to print to file, or stdout if |path| is empty.
@@ -510,42 +504,32 @@ class DlcServiceUtil : public brillo::Daemon {
     Dict dict;
     for (const auto& dlc_state : dlcs.states()) {
       const auto& id = dlc_state.id();
-      const auto& packages = GetPackages(id);
-      if (packages.empty())
-        continue;
       List dlc_info_list;
-      for (const auto& package : packages) {
-        auto manifest = GetManifest(id, package);
-        if (!manifest)
-          return;
-        Dict dlc_info;
-        dlc_info.Set("name", manifest->name());
-        dlc_info.Set("id", manifest->id());
-        dlc_info.Set("package", manifest->package());
-        dlc_info.Set("version", manifest->version());
-        dlc_info.Set("preallocated_size",
-                     base::NumberToString(manifest->preallocated_size()));
-        dlc_info.Set("size", base::NumberToString(manifest->size()));
-        dlc_info.Set("image_type", manifest->image_type());
-        switch (manifest->fs_type()) {
-          case imageloader::FileSystem::kExt2:
-            dlc_info.Set("fs-type", "ext2");
-            break;
-          case imageloader::FileSystem::kExt4:
-            dlc_info.Set("fs-type", "ext4");
-            break;
-          case imageloader::FileSystem::kSquashFS:
-            dlc_info.Set("fs-type", "squashfs");
-            break;
-        }
-        dlc_info.Set(
-            "manifest",
-            dlcservice::JoinPaths(FilePath(imageloader::kDlcManifestRootpath),
-                                  id, package, dlcservice::kManifestName)
-                .value());
-        dlc_info.Set("root_mount", dlc_state.root_path());
-        dlc_info_list.Append(std::move(dlc_info));
+      auto manifest = GetManifest(id);
+      if (!manifest)
+        return;
+      Dict dlc_info;
+      dlc_info.Set("name", manifest->name());
+      dlc_info.Set("id", manifest->id());
+      dlc_info.Set("package", manifest->package());
+      dlc_info.Set("version", manifest->version());
+      dlc_info.Set("preallocated_size",
+                   base::NumberToString(manifest->preallocated_size()));
+      dlc_info.Set("size", base::NumberToString(manifest->size()));
+      dlc_info.Set("image_type", manifest->image_type());
+      switch (manifest->fs_type()) {
+        case imageloader::FileSystem::kExt2:
+          dlc_info.Set("fs-type", "ext2");
+          break;
+        case imageloader::FileSystem::kExt4:
+          dlc_info.Set("fs-type", "ext4");
+          break;
+        case imageloader::FileSystem::kSquashFS:
+          dlc_info.Set("fs-type", "squashfs");
+          break;
       }
+      dlc_info.Set("root_mount", dlc_state.root_path());
+      dlc_info_list.Append(std::move(dlc_info));
       dict.Set(id, std::move(dlc_info_list));
     }
 

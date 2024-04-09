@@ -17,7 +17,6 @@ readonly DLC_METADATA_PATH="/opt/google/dlc"
 readonly DLC_PACKAGE="package"
 readonly DLC_PRELOAD_PATH="/var/cache/dlc-images"
 readonly DLC_TABLE_FILE="table"
-readonly IMAGELOADER_JSON_FILE="imageloader.json"
 readonly MOUNT_PATH="/run/imageloader"
 readonly STATEFUL_PATH="/mnt/stateful_partition"
 
@@ -212,34 +211,13 @@ replace_txt() {
 
 # Update the compressed DLC metadata.
 update_dlc_metadata() {
-  local manifest="$1"
-  local table="$2"
-
   # Get existing DLC metadata.
-  local json
-  json=$(dlc_metadata_util --get --id="${FLAGS_id}") || \
+  local metadata
+  metadata=$(dlc_metadata_util --get --id="${FLAGS_id}") || \
     die "Faild to get metadata."
   echo "The metadata before modifying:"
-  echo "${json}"
-
-  # Set DLC metadata.
-  metadata_new='{"manifest":'"${manifest}"',"table":"'"${table}"'"}'
-  echo "${metadata_new}" | dlc_metadata_util --set --id="${FLAGS_id}" || \
-    die "Failed to set metadata."
-
-  # Get new DLC metadata.
-  json=$(dlc_metadata_util --get --id="${FLAGS_id}") || \
-    die "Faild to get updated metadata."
-  echo "The DLC metadata is successfully updated to:"
-  echo "${json}"
-}
-
-# Generates the imageloader.json file read by imageloader + used by dlcservice.
-generate_imageloader_json() {
-  local metadata_path="${DLC_METADATA_PATH}/${FLAGS_id}/${DLC_PACKAGE}"
-  local json_path="${metadata_path}/${IMAGELOADER_JSON_FILE}"
-  [ -f "${json_path}" ] || die "${json_path} does not exist"
-  local json=$(cat "${json_path}")
+  echo "${metadata}"
+  local json=$(echo "${metadata}" | jq -r '.manifest')
 
   # Replace the image-sha256-hash.
   local image_hash=$(get_sha256sum "${DLC_IMG_FILE}")
@@ -265,18 +243,17 @@ generate_imageloader_json() {
   local prealloc_rplc="\"pre-allocated-size\":\"${new_size}\""
   local json=$(replace_txt "${json}" "${prealloc_regex}" "${prealloc_rplc}")
 
-  echo "${json}" > "${IMAGELOADER_JSON_FILE}"
-  cat "${IMAGELOADER_JSON_FILE}"
-
+  # Set DLC metadata.
   local table=$(cat "${DLC_TABLE_FILE}")
-  update_dlc_metadata "${json}" "${table}"
-}
+  local metadata_new="{\"manifest\":${json},\"table\":\"${table}\"}"
+  echo "${metadata_new}" | dlc_metadata_util --set --id="${FLAGS_id}" || \
+    die "Failed to set metadata."
 
-# Writes the metadata files into the rootfs.
-write_metadata_to_rootfs() {
-  local metadata_path="${DLC_METADATA_PATH}/${FLAGS_id}/${DLC_PACKAGE}"
-  mkdir -p "${metadata_path}"
-  cp "${IMAGELOADER_JSON_FILE}" "${DLC_TABLE_FILE}" "${metadata_path}/"
+  # Get new DLC metadata.
+  local json_new=$(dlc_metadata_util --get --id="${FLAGS_id}") || \
+    die "Faild to get updated metadata."
+  echo "The DLC metadata is successfully updated to:"
+  echo "${json_new}"
 }
 
 # Writes the DLC image to dlcservice cache.
@@ -306,11 +283,10 @@ deploy_dlc() {
   # Append the hashtree to the DLC image.
   append_merkle_tree
 
-  # Generate the imageloader.json from DLC image.
-  generate_imageloader_json
+  # Generate and update the metadata from DLC image.
+  update_dlc_metadata
 
-  # Copy metadata + DLC image.
-  write_metadata_to_rootfs
+  # Copy DLC image.
   write_dlc_image
 
   # Update cache ownership.

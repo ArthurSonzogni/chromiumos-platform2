@@ -9,6 +9,7 @@
   "manifest-version": 1,
   "mount-file-required": true,
   "name": "First Dlc",
+  "package": "package",
   "pre-allocated-size": "8192",
   "reserved": true,
   "size": "4096",

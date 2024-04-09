@@ -9,6 +9,7 @@
   "manifest-version": 1,
   "mount-file-required": false,
   "name": "Third Dlc",
+  "package": "package",
   "pre-allocated-size": "8192",
   "preload-allowed": true,
   "size": "4096",
