@@ -116,22 +116,32 @@ TEST(StartVMHelperTest, TestGetImageSpec) {
   std::string failure_reason;
   kernel_fd = base::ScopedFD(open("/dev/null", O_RDWR));
   rootfs_fd = base::ScopedFD(open("/dev/null", O_RDWR));
+  initrd_fd = base::ScopedFD(open("/dev/null", O_RDWR));
+  bios_fd = base::ScopedFD(open("/dev/null", O_RDWR));
+  pflash_fd = base::ScopedFD(open("/dev/null", O_RDWR));
 
   // Create a VM image spec with user defined kernel, rootfs, and initrd.
   VMImageSpec image_spec =
-      internal::GetImageSpec(kernel_fd, rootfs_fd, {}, {}, {}, failure_reason);
+      internal::GetImageSpec(kernel_fd, rootfs_fd, initrd_fd, bios_fd,
+                             pflash_fd, {}, {}, {}, failure_reason);
   EXPECT_EQ(image_spec.kernel, base::FilePath(base::StringPrintf(
                                    "/proc/self/fd/%d", kernel_fd->get())));
   EXPECT_EQ(image_spec.rootfs, base::FilePath(base::StringPrintf(
                                    "/proc/self/fd/%d", rootfs_fd->get())));
+  EXPECT_EQ(image_spec.initrd, base::FilePath(base::StringPrintf(
+                                   "/proc/self/fd/%d", initrd_fd->get())));
+  EXPECT_EQ(image_spec.bios, base::FilePath(base::StringPrintf(
+                                 "/proc/self/fd/%d", bios_fd->get())));
+  EXPECT_EQ(image_spec.pflash, base::FilePath(base::StringPrintf(
+                                   "/proc/self/fd/%d", pflash_fd->get())));
 
   std::optional<base::FilePath> biosDlcPath = base::FilePath("bios/");
   std::optional<base::FilePath> vmDlcPath = base::FilePath("vm/");
   std::optional<base::FilePath> toolsDlcPath = base::FilePath("tools/");
 
   // Create a fake pre-defined vm spec
-  image_spec = internal::GetImageSpec({}, {}, biosDlcPath, {}, toolsDlcPath,
-                                      failure_reason);
+  image_spec = internal::GetImageSpec({}, {}, {}, {}, {}, biosDlcPath, {},
+                                      toolsDlcPath, failure_reason);
 
   EXPECT_EQ(image_spec.kernel, base::FilePath());
   EXPECT_EQ(image_spec.rootfs, base::FilePath());
@@ -140,8 +150,8 @@ TEST(StartVMHelperTest, TestGetImageSpec) {
   EXPECT_EQ(image_spec.tools_disk, base::FilePath("tools/vm_tools.img"));
 
   // Create a fake pre-defined vm spec but using container
-  image_spec = internal::GetImageSpec({}, {}, biosDlcPath, vmDlcPath, {},
-                                      failure_reason);
+  image_spec = internal::GetImageSpec({}, {}, {}, {}, {}, biosDlcPath,
+                                      vmDlcPath, {}, failure_reason);
   EXPECT_EQ(image_spec.kernel, base::FilePath("vm/vm_kernel"));
   EXPECT_EQ(image_spec.rootfs, base::FilePath("vm/vm_rootfs.img"));
   EXPECT_EQ(image_spec.initrd, base::FilePath());
