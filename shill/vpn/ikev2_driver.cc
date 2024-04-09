@@ -22,7 +22,6 @@
 #include "shill/metrics.h"
 #include "shill/service.h"
 #include "shill/vpn/ipsec_connection.h"
-#include "shill/vpn/vpn_service.h"
 #include "shill/vpn/vpn_types.h"
 
 namespace shill {
@@ -243,8 +242,7 @@ void IKEv2Driver::NotifyServiceOfFailure(VPNEndReason failure) {
     // only once for each connection.
     auto service_failure = VPNEndReasonToServiceFailure(failure);
     ReportConnectionEndReason(metrics(), service_failure);
-    event_handler_->OnDriverFailure(service_failure,
-                                    Service::kErrorDetailsNone);
+    event_handler_->OnDriverFailure(failure, Service::kErrorDetailsNone);
     event_handler_ = nullptr;
   }
 }

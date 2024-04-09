@@ -48,6 +48,8 @@ enum class VPNEndReason {
 };
 
 // Maps EndReasons to Service::ConnectFailures.
+// TODO(b/231910338): Move this into vpn_service.cc after removing the metrics
+// reporting code in l2tp_ipsec_driver.cc and ikev2_driver.cc
 Service::ConnectFailure VPNEndReasonToServiceFailure(VPNEndReason reason);
 
 // Maps EndReasons to strings.

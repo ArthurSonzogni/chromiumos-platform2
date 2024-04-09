@@ -31,6 +31,7 @@
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_metrics.h"
 #include "shill/vpn/mock_vpn_provider.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_types.h"
 
@@ -443,7 +444,7 @@ TEST_F(VPNServiceTest, ConnectFlow) {
   // Driver-originated failure
   EXPECT_CALL(*driver_, Disconnect()).Times(0);
   EXPECT_CALL(*driver_metrics_, ReportDisconnected);
-  driver_event_handler->OnDriverFailure(Service::kFailureUnknown,
+  driver_event_handler->OnDriverFailure(VPNEndReason::kFailureUnknown,
                                         Service::kErrorDetailsNone);
   EXPECT_EQ(Service::kStateFailure, service_->state());
   EXPECT_FALSE(service_->device_);
@@ -527,7 +528,7 @@ TEST_F(VPNServiceTest, ConnectTimeout) {
   service_->Connect(&error, "in test");
   EXPECT_CALL(*driver_, OnConnectTimeout()).Times(0);
   dispatcher_.task_environment().FastForwardBy(kTestTimeout / 2);
-  driver_event_handler->OnDriverFailure(Service::kFailureUnknown,
+  driver_event_handler->OnDriverFailure(VPNEndReason::kFailureUnknown,
                                         Service::kErrorDetailsNone);
   dispatcher_.task_environment().FastForwardBy(kTestTimeout);
 

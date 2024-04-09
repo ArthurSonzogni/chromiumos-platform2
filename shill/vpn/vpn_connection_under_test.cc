@@ -14,7 +14,6 @@
 #include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/service.h"
 #include "shill/vpn/vpn_end_reason.h"
 
 namespace shill {

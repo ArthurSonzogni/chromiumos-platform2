@@ -21,8 +21,8 @@
 #include "shill/eap_credentials.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/service.h"
 #include "shill/store/key_value_store.h"
+#include "shill/vpn/vpn_end_reason.h"
 #include "shill/vpn/vpn_metrics.h"
 #include "shill/vpn/vpn_types.h"
 
@@ -66,7 +66,7 @@ class VPNDriver {
     // When a failure happens, the driver will clean up its internal state. This
     // event is supposed to be triggered only once before the next call of
     // ConnectAsync().
-    virtual void OnDriverFailure(Service::ConnectFailure failure,
+    virtual void OnDriverFailure(VPNEndReason failure,
                                  std::string_view error_details) = 0;
 
     // Indicates the driver is trying reconnecting now. Note that this event

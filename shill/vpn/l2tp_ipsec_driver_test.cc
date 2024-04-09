@@ -171,7 +171,8 @@ TEST_F(L2TPIPsecDriverTest, ConnectAndDisconnect) {
 TEST_F(L2TPIPsecDriverTest, ConnectTimeout) {
   InvokeAndVerifyConnectAsync();
 
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
+  EXPECT_CALL(event_handler_,
+              OnDriverFailure(VPNEndReason::kConnectTimeout, _));
   ExpectEndReasonMetricsReported(Service::kFailureConnect);
   EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect());
   driver_->OnConnectTimeout();
@@ -185,7 +186,8 @@ TEST_F(L2TPIPsecDriverTest, ConnectTimeout) {
 TEST_F(L2TPIPsecDriverTest, ConnectingFailure) {
   InvokeAndVerifyConnectAsync();
 
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
+  EXPECT_CALL(event_handler_,
+              OnDriverFailure(VPNEndReason::kFailureInternal, _));
   ExpectEndReasonMetricsReported(Service::kFailureInternal);
   driver_->ipsec_connection()->TriggerFailure(VPNEndReason::kFailureInternal,
                                               "");
@@ -203,7 +205,8 @@ TEST_F(L2TPIPsecDriverTest, ConnectedFailure) {
   driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
   dispatcher_.DispatchPendingEvents();
 
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
+  EXPECT_CALL(event_handler_,
+              OnDriverFailure(VPNEndReason::kFailureInternal, _));
   ExpectEndReasonMetricsReported(Service::kFailureInternal);
   driver_->ipsec_connection()->TriggerFailure(VPNEndReason::kFailureInternal,
                                               "");
@@ -221,7 +224,7 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnSuspend) {
   driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
   dispatcher_.DispatchPendingEvents();
 
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
+  EXPECT_CALL(event_handler_, OnDriverFailure(VPNEndReason::kNetworkChange, _));
   ExpectEndReasonMetricsReported(Service::kFailureConnect);
   driver_->OnBeforeSuspend(base::DoNothing());
 }
@@ -233,7 +236,7 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceDown) {
   driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
   dispatcher_.DispatchPendingEvents();
 
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
+  EXPECT_CALL(event_handler_, OnDriverFailure(VPNEndReason::kNetworkChange, _));
   ExpectEndReasonMetricsReported(Service::kFailureConnect);
   driver_->OnDefaultPhysicalServiceEvent(
       VPNDriver::DefaultPhysicalServiceEvent::kDown);
@@ -246,7 +249,7 @@ TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
   driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
   dispatcher_.DispatchPendingEvents();
 
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
+  EXPECT_CALL(event_handler_, OnDriverFailure(VPNEndReason::kNetworkChange, _));
   ExpectEndReasonMetricsReported(Service::kFailureConnect);
   driver_->OnDefaultPhysicalServiceEvent(
       VPNDriver::DefaultPhysicalServiceEvent::kChanged);

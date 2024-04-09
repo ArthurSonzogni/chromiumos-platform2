@@ -42,7 +42,6 @@
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
 #include "shill/vpn/vpn_end_reason.h"
-#include "shill/vpn/vpn_service.h"
 #include "shill/vpn/vpn_types.h"
 
 using testing::_;
@@ -1095,8 +1094,8 @@ TEST_F(OpenVPNDriverTest, AppendFlag) {
 TEST_F(OpenVPNDriverTest, FailService) {
   static constexpr char kErrorDetails[] = "Bad password.";
   SetEventHandler(&event_handler_);
-  EXPECT_CALL(event_handler_,
-              OnDriverFailure(Service::kFailureConnect, Eq(kErrorDetails)));
+  EXPECT_CALL(event_handler_, OnDriverFailure(VPNEndReason::kFailureUnknown,
+                                              Eq(kErrorDetails)));
   driver_->FailService(VPNEndReason::kFailureUnknown, kErrorDetails);
 }
 
@@ -1168,7 +1167,8 @@ TEST_F(OpenVPNDriverTest, Disconnect) {
 
 TEST_F(OpenVPNDriverTest, OnConnectTimeout) {
   SetEventHandler(&event_handler_);
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
+  EXPECT_CALL(event_handler_,
+              OnDriverFailure(VPNEndReason::kConnectTimeout, _));
   driver_->OnConnectTimeout();
   EXPECT_FALSE(driver_->event_handler_);
 }
@@ -1176,7 +1176,8 @@ TEST_F(OpenVPNDriverTest, OnConnectTimeout) {
 TEST_F(OpenVPNDriverTest, OnConnectTimeoutResolve) {
   SetEventHandler(&event_handler_);
   SetClientState(OpenVPNManagementServer::kStateResolve);
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureDNSLookup, _));
+  EXPECT_CALL(event_handler_,
+              OnDriverFailure(VPNEndReason::kConnectFailureDNSLookup, _));
   driver_->OnConnectTimeout();
   EXPECT_FALSE(driver_->event_handler_);
 }

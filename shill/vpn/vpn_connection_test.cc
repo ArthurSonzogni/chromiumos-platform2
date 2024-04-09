@@ -13,7 +13,6 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/network_config.h>
 
-#include "shill/service.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/vpn_connection_under_test.h"
 #include "shill/vpn/vpn_end_reason.h"

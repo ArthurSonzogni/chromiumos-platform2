@@ -541,8 +541,7 @@ void ThirdPartyVpnDriver::FailService(VPNEndReason failure,
   SLOG(2) << __func__ << "(" << error_details << ")";
   Cleanup();
   if (event_handler_) {
-    event_handler_->OnDriverFailure(VPNEndReasonToServiceFailure(failure),
-                                    error_details);
+    event_handler_->OnDriverFailure(failure, error_details);
     event_handler_ = nullptr;
   }
 }

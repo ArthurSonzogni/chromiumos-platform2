@@ -156,12 +156,12 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
   ConfigureDevice(std::move(network_config));
 }
 
-void VPNService::OnDriverFailure(ConnectFailure failure,
+void VPNService::OnDriverFailure(VPNEndReason failure,
                                  std::string_view error_details) {
   StopDriverConnectTimeout();
   CleanupDevice();
   SetErrorDetails(error_details);
-  SetFailure(failure);
+  SetFailure(VPNEndReasonToServiceFailure(failure));
   driver_->driver_metrics()->ReportDisconnected();
 }
 

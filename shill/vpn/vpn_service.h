@@ -16,6 +16,7 @@
 #include "shill/default_service_observer.h"
 #include "shill/service.h"
 #include "shill/vpn/vpn_driver.h"
+#include "shill/vpn/vpn_end_reason.h"
 
 namespace shill {
 
@@ -67,7 +68,7 @@ class VPNService : public Service,
 
   // Inherited from VPNDriver::EventHandler. Callbacks from VPNDriver.
   void OnDriverConnected(const std::string& if_name, int if_index) override;
-  void OnDriverFailure(ConnectFailure failure,
+  void OnDriverFailure(VPNEndReason failure,
                        std::string_view error_details) override;
   void OnDriverReconnecting(base::TimeDelta timeout) override;
 

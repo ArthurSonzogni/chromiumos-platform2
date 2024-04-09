@@ -22,7 +22,6 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/vpn/vpn_provider.h"
-#include "shill/vpn/vpn_service.h"
 #include "shill/vpn/vpn_types.h"
 
 namespace shill {
@@ -58,7 +57,7 @@ void ArcVpnDriver::InvokeEventHandler(EventHandler* handler) {
   std::string if_name(VPNProvider::kArcBridgeIfName);
   int if_index = manager()->device_info()->GetIndex(if_name);
   if (if_index == -1) {
-    handler->OnDriverFailure(Service::kFailureInternal,
+    handler->OnDriverFailure(VPNEndReason::kFailureInternal,
                              "Failed to get interface index for arc bridge");
     return;
   }

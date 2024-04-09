@@ -146,7 +146,8 @@ TEST_F(IKEv2DriverTest, ConnectAndDisconnect) {
 TEST_F(IKEv2DriverTest, ConnectTimeout) {
   InvokeAndVerifyConnectAsync();
 
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
+  EXPECT_CALL(event_handler_,
+              OnDriverFailure(VPNEndReason::kConnectTimeout, _));
   ExpectEndReasonMetricsReported(Service::kFailureConnect);
   EXPECT_CALL(*driver_->ipsec_connection(), OnDisconnect());
   driver_->OnConnectTimeout();
@@ -160,7 +161,8 @@ TEST_F(IKEv2DriverTest, ConnectTimeout) {
 TEST_F(IKEv2DriverTest, ConnectingFailure) {
   InvokeAndVerifyConnectAsync();
 
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
+  EXPECT_CALL(event_handler_,
+              OnDriverFailure(VPNEndReason::kFailureInternal, _));
   ExpectEndReasonMetricsReported(Service::kFailureInternal);
   driver_->ipsec_connection()->TriggerFailure(VPNEndReason::kFailureInternal,
                                               "");
@@ -178,7 +180,8 @@ TEST_F(IKEv2DriverTest, ConnectedFailure) {
   driver_->ipsec_connection()->TriggerConnected("ifname", 123, nullptr);
   dispatcher_.DispatchPendingEvents();
 
-  EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
+  EXPECT_CALL(event_handler_,
+              OnDriverFailure(VPNEndReason::kFailureInternal, _));
   ExpectEndReasonMetricsReported(Service::kFailureInternal);
   driver_->ipsec_connection()->TriggerFailure(VPNEndReason::kFailureInternal,
                                               "");
