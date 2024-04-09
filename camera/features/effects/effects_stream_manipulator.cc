@@ -731,7 +731,9 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
           if (stream->stream_type == CAMERA3_STREAM_OUTPUT &&
               (stream->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
                stream->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
-              stream->width == s->width && stream->height == s->height) {
+              (stream->usage & kStillCaptureUsageFlag)) {
+            CHECK_EQ(stream->width, s->width);
+            CHECK_EQ(stream->height, s->height);
             context->yuv_stream_for_blob = stream;
             break;
           }

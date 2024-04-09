@@ -232,7 +232,7 @@ class FramingStreamManipulator : public StreamManipulator {
   camera3_stream_t full_frame_stream_ = {};
   const camera3_stream_t* blob_stream_ = nullptr;
   std::unique_ptr<camera3_stream_t> still_yuv_stream_;
-  const camera3_stream_t* yuv_stream_for_blob_ = nullptr;
+  camera3_stream_t* yuv_stream_for_blob_ = nullptr;
   std::map<uint32_t, std::unique_ptr<CaptureContext>> capture_contexts_;
   int64_t last_timestamp_ = 0;
   int64_t timestamp_offset_ = 0;
