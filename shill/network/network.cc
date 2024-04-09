@@ -75,6 +75,8 @@ ShillTechnologyToPatchpanelClientTechnology(Technology technology) {
 
 }  // namespace
 
+int Network::next_network_id_ = 0;
+
 Network::Network(int interface_index,
                  const std::string& interface_name,
                  Technology technology,
@@ -85,7 +87,8 @@ Network::Network(int interface_index,
                  patchpanel::Client* patchpanel_client,
                  Resolver* resolver,
                  std::unique_ptr<NetworkMonitorFactory> network_monitor_factory)
-    : interface_index_(interface_index),
+    : network_id_(next_network_id_++),
+      interface_index_(interface_index),
       interface_name_(interface_name),
       technology_(technology),
       logging_tag_(interface_name),

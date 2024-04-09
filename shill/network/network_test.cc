@@ -174,7 +174,6 @@ class NetworkTest : public ::testing::Test {
 
     network_ = std::make_unique<NiceMock<NetworkInTest>>(
         kTestIfindex, kTestIfname, kTestTechnology,
-
         /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
         std::move(network_monitor_factory));
     network_->set_dhcp_provider_for_testing(&dhcp_provider_);
@@ -260,6 +259,16 @@ class NetworkTest : public ::testing::Test {
   MockNetworkMonitorFactory* network_monitor_factory_ = nullptr;
   MockNetworkMonitor* network_monitor_ = nullptr;
 };
+
+TEST_F(NetworkTest, NetworkID) {
+  auto network1 = std::make_unique<Network>(
+      kTestIfindex, kTestIfname, kTestTechnology,
+      /*fixed_ip_params=*/false, nullptr, nullptr, nullptr, nullptr);
+  auto network2 = std::make_unique<Network>(
+      kTestIfindex, kTestIfname, kTestTechnology,
+      /*fixed_ip_params=*/false, nullptr, nullptr, nullptr, nullptr);
+  EXPECT_NE(network1->network_id(), network2->network_id());
+}
 
 TEST_F(NetworkTest, EventHandlerRegistration) {
   MockNetworkEventHandler event_handler3;

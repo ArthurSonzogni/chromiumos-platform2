@@ -241,6 +241,7 @@ class Network : public NetworkMonitor::ClientNetwork {
     config_.SetFromLinkProtocol(std::move(config));
   }
 
+  int network_id() const { return network_id_; }
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
   Technology technology() const { return technology_; }
@@ -510,6 +511,13 @@ class Network : public NetworkMonitor::ClientNetwork {
   void ReportNeighborLinkMonitorFailure(Technology tech,
                                         net_base::IPFamily family,
                                         patchpanel::Client::NeighborRole role);
+
+  // The network_id of the next constructed Network instance.
+  // TODO(b/273743901): Centralize the the network id allocation at patchpanel.
+  static int next_network_id_;
+  // The identifier of the Network instance, which is unique during the lifetime
+  // of the shill process.
+  const int network_id_;
 
   const int interface_index_;
   const std::string interface_name_;
