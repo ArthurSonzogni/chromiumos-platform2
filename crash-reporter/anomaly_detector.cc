@@ -802,7 +802,7 @@ MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   } else if (RE2::PartialMatch(line, *tethering_failure)) {
     error_code = "TetheringFailure";
     flag = "--tethering_failure";
-    weight = 50;
+    weight = 2;
   }
   if (error_code.empty()) {
     return std::nullopt;
