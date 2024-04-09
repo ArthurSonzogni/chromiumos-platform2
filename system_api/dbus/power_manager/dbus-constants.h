@@ -67,6 +67,8 @@ const char kGetExternalDisplayALSBrightnessMethod[] =
 const char kGetBatterySaverModeState[] = "GetBatterySaverModeState";
 const char kSetBatterySaverModeState[] = "SetBatterySaverModeState";
 const char kHasAmbientLightSensorMethod[] = "HasAmbientLightSensor";
+const char kGetAmbientLightSensorEnabledMethod[] =
+    "GetAmbientLightSensorEnabled";
 const char kSetAmbientLightSensorEnabledMethod[] =
     "SetAmbientLightSensorEnabled";
 

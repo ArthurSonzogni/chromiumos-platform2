@@ -1172,6 +1172,52 @@ TEST_F(InternalBacklightControllerTest, SetBrightnessCause) {
       BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP);
 }
 
+TEST_F(InternalBacklightControllerTest, GetAmbientLightSensorEnabled) {
+  Init(PowerSource::AC);
+
+  {
+    // Disable the ambient light sensor.
+    const bool expected_ambient_light_sensor_enabled = false;
+    test::CallSetAmbientLightSensorEnabled(
+        dbus_wrapper_.get(), expected_ambient_light_sensor_enabled);
+    EXPECT_FALSE(controller_->IsUsingAmbientLight());
+
+    // Check that GetAmbientLightSensorEnabled returns that the ambient light
+    // sensor is disabled.
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kGetAmbientLightSensorEnabledMethod);
+    std::unique_ptr<dbus::Response> response =
+        dbus_wrapper_->CallExportedMethodSync(&method_call);
+    ASSERT_TRUE(response);
+    dbus::MessageReader reader(response.get());
+    bool actual_ambient_light_sensor_enabled = false;
+    ASSERT_TRUE(reader.PopBool(&actual_ambient_light_sensor_enabled));
+    EXPECT_EQ(expected_ambient_light_sensor_enabled,
+              actual_ambient_light_sensor_enabled);
+  }
+
+  {
+    // Re-enable the ambient light sensor.
+    const bool expected_ambient_light_sensor_enabled = true;
+    test::CallSetAmbientLightSensorEnabled(
+        dbus_wrapper_.get(), expected_ambient_light_sensor_enabled);
+    EXPECT_TRUE(controller_->IsUsingAmbientLight());
+
+    // Check that GetAmbientLightSensorEnabled returns that the ambient light
+    // sensor is enabled.
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kGetAmbientLightSensorEnabledMethod);
+    std::unique_ptr<dbus::Response> response =
+        dbus_wrapper_->CallExportedMethodSync(&method_call);
+    ASSERT_TRUE(response);
+    dbus::MessageReader reader(response.get());
+    bool actual_ambient_light_sensor_enabled = false;
+    ASSERT_TRUE(reader.PopBool(&actual_ambient_light_sensor_enabled));
+    EXPECT_EQ(expected_ambient_light_sensor_enabled,
+              actual_ambient_light_sensor_enabled);
+  }
+}
+
 TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
   Init(PowerSource::AC);

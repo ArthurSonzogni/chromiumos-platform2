@@ -263,6 +263,11 @@ void InternalBacklightController::Init(
       base::BindRepeating(
           &InternalBacklightController::HandleGetBrightnessRequest,
           weak_ptr_factory_.GetWeakPtr()));
+  RegisterGetAmbientLightSensorEnabledHandler(
+      dbus_wrapper_, kGetAmbientLightSensorEnabledMethod,
+      base::BindRepeating(&InternalBacklightController::
+                              HandleGetAmbientLightSensorEnabledRequest,
+                          weak_ptr_factory_.GetWeakPtr()));
   RegisterSetAmbientLightSensorEnabledHandler(
       dbus_wrapper_, kSetAmbientLightSensorEnabledMethod,
       base::BindRepeating(
@@ -724,6 +729,12 @@ void InternalBacklightController::HandleGetBrightnessRequest(
   DCHECK(success_out);
   *percent_out = LevelToPercent(current_level_);
   *success_out = true;
+}
+
+void InternalBacklightController::HandleGetAmbientLightSensorEnabledRequest(
+    bool* enabled_out) {
+  DCHECK(enabled_out);
+  *enabled_out = IsUsingAmbientLight();
 }
 
 void InternalBacklightController::HandleSetAmbientLightSensorEnabled(
