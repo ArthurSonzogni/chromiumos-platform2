@@ -101,7 +101,6 @@ _IUSE = [
     "flex_internal",
     "floss",
     "floss_rootcanal",
-    "force_breakpad",
     "fp_on_power_button",
     "fsverity",
     "ftdi_tpm",

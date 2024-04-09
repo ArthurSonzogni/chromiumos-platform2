@@ -1110,30 +1110,11 @@ class ShouldCaptureEarlyChromeCrashTest : public UserCollectorTest {
       "--enable-crashpad", "--login-manager"};
 };
 
-TEST_F(ShouldCaptureEarlyChromeCrashTest,
-#if USE_FORCE_BREAKPAD
-       DISABLED_BasicTrue
-#else
-       BasicTrue
-#endif
-) {
+TEST_F(ShouldCaptureEarlyChromeCrashTest, BasicTrue) {
   EXPECT_TRUE(collector_.ShouldCaptureEarlyChromeCrash("chrome",
                                                        kEarlyBrowserProcessID));
   EXPECT_TRUE(collector_.ShouldCaptureEarlyChromeCrash("supplied_chrome",
                                                        kEarlyBrowserProcessID));
-}
-
-TEST_F(ShouldCaptureEarlyChromeCrashTest,
-#if USE_FORCE_BREAKPAD
-       FalseIfBreakpad
-#else
-       DISABLED_FalseIfBreakpad
-#endif
-) {
-  EXPECT_FALSE(collector_.ShouldCaptureEarlyChromeCrash(
-      "chrome", kEarlyBrowserProcessID));
-  EXPECT_FALSE(collector_.ShouldCaptureEarlyChromeCrash(
-      "supplied_chrome", kEarlyBrowserProcessID));
 }
 
 TEST_F(ShouldCaptureEarlyChromeCrashTest, FalseIfCrashpadReady) {
@@ -1182,13 +1163,7 @@ class BeginHandlingCrashTest : public ShouldCaptureEarlyChromeCrashTest {
 #endif
 };
 
-TEST_F(BeginHandlingCrashTest,
-#if USE_FORCE_BREAKPAD
-       DISABLED_SetsUpForEarlyChromeCrashes
-#else
-       SetsUpForEarlyChromeCrashes
-#endif
-) {
+TEST_F(BeginHandlingCrashTest, SetsUpForEarlyChromeCrashes) {
   collector_.BeginHandlingCrash(kEarlyBrowserProcessID, "chrome",
                                 paths::Get("/opt/google/chrome"));
 
@@ -1241,14 +1216,7 @@ TEST_F(BeginHandlingCrashTest, NoEffectIfNotChrome) {
 }
 
 TEST_F(BeginHandlingCrashTest,
-#if USE_FORCE_BREAKPAD
-       // ShouldCaptureEarlyChromeCrash will always return false for breakpad,
-       // so BeginHandlingCrash will never activate early-crash mode.
-       DISABLED_ComputeSeverity_HandleEarlyChromeCrashes_Lacros
-#else
-       ComputeSeverity_HandleEarlyChromeCrashes_Lacros
-#endif
-) {
+       ComputeSeverity_HandleEarlyChromeCrashes_Lacros) {
   collector_.BeginHandlingCrash(kEarlyBrowserProcessID, "chrome",
                                 paths::Get("/run/lacros"));
 

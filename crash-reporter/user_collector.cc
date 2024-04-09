@@ -532,11 +532,6 @@ bool UserCollector::ShouldCaptureEarlyChromeCrash(const std::string& exec,
   //            For end-users, we'll never get here because IsFeedbackAllowed()
   //            will return false, so we don't need a separate check for guest
   //            mode.
-  //   3. Don't capture on boards with USE flag force_breakpad. We can't tell if
-  //      breakpad is initialized from the outside.
-#if USE_FORCE_BREAKPAD
-  return false;  // Doesn't meet rule #3.
-#else
   if (exec != kChromeExecName &&
       exec != ExecNameToSuppliedName(kChromeExecName)) {
     return false;  // Doesn't meet rule #1.
@@ -575,7 +570,6 @@ bool UserCollector::ShouldCaptureEarlyChromeCrash(const std::string& exec,
   }
 
   return true;
-#endif  // !USE_FORCE_BREAKPAD
 }
 
 // static

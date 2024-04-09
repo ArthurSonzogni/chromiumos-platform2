@@ -395,20 +395,4 @@ void InitWithUseFlag(std::optional<std::string> flag,
   CHECK(builder->Init());
 }
 
-TEST(TestAddCrashHandlerFlag, Crashpad) {
-  base::ScopedTempDir temp_dir;
-  ChromiumCommandBuilder builder;
-  InitWithUseFlag(std::nullopt, &temp_dir, &builder);
-  AddCrashHandlerFlag(&builder);
-  EXPECT_THAT(builder.arguments(), ElementsAre("--enable-crashpad"));
-}
-
-TEST(TestAddCrashHandlerFlag, Breakpad) {
-  base::ScopedTempDir temp_dir;
-  ChromiumCommandBuilder builder;
-  InitWithUseFlag(std::string("force_breakpad"), &temp_dir, &builder);
-  AddCrashHandlerFlag(&builder);
-  EXPECT_THAT(builder.arguments(), ElementsAre("--no-enable-crashpad"));
-}
-
 }  // namespace login_manager

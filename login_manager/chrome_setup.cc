@@ -99,9 +99,6 @@ constexpr std::array<const char*, 2> kPowerdPrefPaths = {
     kPowerdRoPrefPath,
 };
 
-constexpr char kEnableCrashpadFlag[] = "--enable-crashpad";
-constexpr char kEnableBreakpadFlag[] = "--no-enable-crashpad";
-
 const char kSchedulerTunePath[] = "/scheduler-tune";
 const char kBoostUrgentProperty[] = "boost-urgent";
 
@@ -978,12 +975,6 @@ void SetUpInstantTetheringFlag(ChromiumCommandBuilder* builder,
     builder->AddFeatureDisableOverride("InstantTethering");
 }
 
-void AddCrashHandlerFlag(ChromiumCommandBuilder* builder) {
-  builder->AddArg(builder->UseFlagIsSet("force_breakpad")
-                      ? kEnableBreakpadFlag
-                      : kEnableCrashpadFlag);
-}
-
 // Adds flags related to machine learning features that are enabled only on a
 // supported subset of devices.
 void AddMlFlags(ChromiumCommandBuilder* builder,
@@ -1097,7 +1088,6 @@ void PerformChromeSetup(brillo::CrosConfigInterface* cros_config,
   AddPluginVmFlags(&builder);
   AddBorealisFlags(&builder);
   AddEnterpriseFlags(&builder);
-  AddCrashHandlerFlag(&builder);
   AddMlFlags(&builder, cros_config);
   AddFeatureManagementFlags(&builder, feature_management);
 
