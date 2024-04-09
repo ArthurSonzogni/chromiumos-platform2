@@ -44,11 +44,11 @@ constexpr int kNumberActiveSessionsUnknown = -1;
 
 // crash-reporter will write the firmware dumps to the input directory, allow
 // members of the group to write to that directory.
-constexpr mode_t kInputDirMode = 03770;
+constexpr mode_t kWritableByAccessGroupMembers = 03770;
 // debugd will read the processed firmware dumps from the output directory,
 // allow members of the group to read from that directory. Only fbpreprocessor
 // is allowed to write.
-constexpr mode_t kOutputDirMode = 0750;
+constexpr mode_t kReadableByAccessGroupMembers = 0750;
 
 // Allowlist of domains whose users can add firmware dumps to feedback reports.
 constexpr int kDomainAllowlistSize = 2;
@@ -397,7 +397,7 @@ bool SessionStateManager::CreateUserDirectories() const {
     success = false;
   }
   if (HANDLE_EINTR(chmod(root_dir.Append(kInputDirectory).value().c_str(),
-                         kInputDirMode))) {
+                         kWritableByAccessGroupMembers))) {
     LOG(ERROR) << "chmod of input directory failed.";
     success = false;
   }
@@ -409,7 +409,7 @@ bool SessionStateManager::CreateUserDirectories() const {
     success = false;
   }
   if (HANDLE_EINTR(chmod(root_dir.Append(kProcessedDirectory).value().c_str(),
-                         kOutputDirMode))) {
+                         kReadableByAccessGroupMembers))) {
     LOG(ERROR) << "chmod of output directory failed.";
     success = false;
   }
@@ -421,7 +421,7 @@ bool SessionStateManager::CreateUserDirectories() const {
     success = false;
   }
   if (HANDLE_EINTR(chmod(root_dir.Append(kScratchDirectory).value().c_str(),
-                         kInputDirMode))) {
+                         kWritableByAccessGroupMembers))) {
     LOG(ERROR) << "chmod of scratch directory failed.";
     success = false;
   }
