@@ -274,6 +274,12 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
     return result.success;
   }
 
+  result |= RemoveDmCryptCacheVaults(normal_cleanup_homedirs,
+                                     result.cleaned_over_minimum);
+  if (result.should_stop) {
+    return result.success;
+  }
+
   // Normal cleanup processed all folders. Move the cutoff forward.
   last_normal_disk_cleanup_complete_ = platform_->GetCurrentTime();
 
@@ -299,7 +305,6 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
   }
 
   bool return_result = result.success;
-  bool cleaned_over_minimum = result.cleaned_over_minimum;
   bool early_stop = result.should_stop;
 
   // Purge up daemon store cache for the mounted (logged in) users.
@@ -322,64 +327,9 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
       return return_result;
     case DiskCleanup::FreeSpaceState::kAboveThreshold:
     case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
-      cleaned_over_minimum = true;
       ReportDiskCleanupProgress(
           DiskCleanupProgress::
               kDaemonStoreCacheMountedUsersCleanedAboveMinimum);
-      // Continue cleanup.
-      break;
-    case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
-    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
-      // Continue cleanup.
-      break;
-    case DiskCleanup::FreeSpaceState::kError:
-      LOG(ERROR) << "Failed to get the amount of free space";
-      return false;
-  }
-
-  // Purge Dmcrypt cache vaults.
-  for (const auto& normal_cleanup_homedir :
-       base::Reversed(normal_cleanup_homedirs)) {
-    if (!routines_->DeleteCacheVault(normal_cleanup_homedir.obfuscated))
-      return_result = false;
-
-    if (HasTargetFreeSpace()) {
-      early_stop = true;
-      break;
-    }
-  }
-
-  old_free_disk_space = free_disk_space;
-  free_disk_space = AmountOfFreeDiskSpace();
-  if (!free_disk_space) {
-    LOG(ERROR) << "Failed to get the amount of free space";
-    return false;
-  }
-
-  const int64_t freed_vault_cache_space =
-      free_disk_space.value() - old_free_disk_space.value();
-  // Report only if something was deleted.
-  if (freed_vault_cache_space > 0) {
-    ReportFreedCacheVaultDiskSpaceInMb(freed_vault_cache_space / 1024 / 1024);
-  }
-
-  if (!early_stop)
-    last_normal_disk_cleanup_complete_ = platform_->GetCurrentTime();
-
-  switch (GetFreeDiskSpaceState(free_disk_space)) {
-    case DiskCleanup::FreeSpaceState::kAboveTarget:
-      ReportDiskCleanupProgress(
-          DiskCleanupProgress::kCacheVaultsCleanedAboveTarget);
-      return return_result;
-    case DiskCleanup::FreeSpaceState::kAboveThreshold:
-    case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
-      // Do not call ReportDiskCleanupProgress if cleaned_over_minimum was set
-      // by previous clean up routine (i.e. daemon-store-cache cleanup for
-      // mounted users).
-      if (!cleaned_over_minimum) {
-        ReportDiskCleanupProgress(
-            DiskCleanupProgress::kCacheVaultsCleanedAboveMinimum);
-      }
       return return_result;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
     case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
@@ -697,6 +647,76 @@ DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveDaemonStoreCache(
         ReportDiskCleanupProgress(
             DiskCleanupProgress::kDaemonStoreCacheCleanedAboveMinimum);
       }
+      result.cleaned_over_minimum = true;
+      break;
+    case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
+    case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
+      // Continue cleanup.
+      break;
+    case DiskCleanup::FreeSpaceState::kError:
+      LOG(ERROR) << "Failed to get the amount of free space";
+      result.success = false;
+      break;
+  }
+
+  return result;
+}
+
+// Purge up cache dmcrypt volumes for every unmounted user that has logged out
+// after the last normal cleanup happened.
+DiskCleanup::DiskCleanupActionResult DiskCleanup::RemoveDmCryptCacheVaults(
+    const std::vector<HomeDirs::HomeDir>& homedirs, bool cleaned_over_minimum) {
+  DiskCleanupActionResult result;
+
+  auto free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    result.success = false;
+    return result;
+  }
+
+  auto old_free_disk_space = free_disk_space;
+  for (const auto& homedir : base::Reversed(homedirs)) {
+    if (!routines_->DeleteCacheVault(homedir.obfuscated))
+      result.success = false;
+
+    if (HasTargetFreeSpace()) {
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::kCacheVaultsCleanedAboveTarget);
+      result.should_stop = true;
+      break;
+    }
+  }
+
+  free_disk_space = AmountOfFreeDiskSpace();
+  if (!free_disk_space) {
+    LOG(ERROR) << "Failed to get the amount of free space";
+    result.success = false;
+    return result;
+  }
+
+  const int64_t freed_daemon_store_cache_space =
+      free_disk_space.value() - old_free_disk_space.value();
+  // Report only if something was deleted.
+  if (freed_daemon_store_cache_space > 0) {
+    ReportFreedCacheVaultDiskSpaceInMb(freed_daemon_store_cache_space / 1024 /
+                                       1024);
+  }
+
+  switch (GetFreeDiskSpaceState(free_disk_space)) {
+    case DiskCleanup::FreeSpaceState::kAboveTarget:
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::kCacheVaultsCleanedAboveTarget);
+      break;
+    case DiskCleanup::FreeSpaceState::kAboveThreshold:
+    case DiskCleanup::FreeSpaceState::kNeedNormalCleanup:
+      // Do not call ReportDiskCleanupProgress if cleaned_over_minimum was set
+      // by previous clean up routine (i.e. gcache cleanup).
+      if (!cleaned_over_minimum) {
+        ReportDiskCleanupProgress(
+            DiskCleanupProgress::kCacheVaultsCleanedAboveMinimum);
+      }
+      result.cleaned_over_minimum = true;
       break;
     case DiskCleanup::FreeSpaceState::kNeedAggressiveCleanup:
     case DiskCleanup::FreeSpaceState::kNeedCriticalCleanup:
