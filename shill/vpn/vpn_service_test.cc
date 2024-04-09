@@ -25,6 +25,7 @@
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_virtual_device.h"
+#include "shill/network/network.h"
 #include "shill/service_property_change_test.h"
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
@@ -60,10 +61,23 @@ class VPNServiceInTest : public VPNService {
       : VPNService(manager, base::WrapUnique(driver)) {}
 
   bool CreateDevice(const std::string& if_name, int if_index) override {
-    device_ = new MockVirtualDevice(this->manager(), if_name, if_index,
-                                    Technology::kVPN);
+    auto* mock_device = new MockVirtualDevice(this->manager(), if_name,
+                                              if_index, Technology::kVPN);
+    device_ = mock_device;
+
+    // Use the default implementation for SelectService(), so that the Network
+    // object will be attached to this service.
+    ON_CALL(*mock_device, SelectService)
+        .WillByDefault([mock_device](const ServiceRefPtr& service) {
+          mock_device->VirtualDevice::SelectService(service);
+        });
+
     return true;
   }
+
+  // There can be a reference cycle between Device and Service. Call this
+  // function to break it.
+  void DestroyDevice() { device_ = nullptr; }
 };
 
 class VPNServiceTest : public testing::Test {
@@ -80,7 +94,7 @@ class VPNServiceTest : public testing::Test {
     service_ = new VPNServiceInTest(&manager_, driver_);
   }
 
-  ~VPNServiceTest() override = default;
+  ~VPNServiceTest() override { service_->DestroyDevice(); }
 
  protected:
   void SetUp() override {
@@ -135,7 +149,7 @@ class VPNServiceTest : public testing::Test {
   MockMetrics metrics_;
   EventDispatcherForTest dispatcher_;
   MockManager manager_;
-  VPNServiceRefPtr service_;
+  scoped_refptr<VPNServiceInTest> service_;
 };
 
 TEST_F(VPNServiceTest, LogName) {
@@ -396,14 +410,10 @@ TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {
 }
 
 TEST_F(VPNServiceTest, ReportMetrics) {
-  scoped_refptr<MockVirtualDevice> device = new MockVirtualDevice(
-      &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN);
-  service_->device_ = device;
-
   auto config = std::make_unique<net_base::NetworkConfig>();
   EXPECT_CALL(*driver_, GetNetworkConfig).WillOnce(Return(std::move(config)));
-  EXPECT_CALL(*driver_metrics_, ReportIPType);
   EXPECT_CALL(*driver_metrics_, ReportConnected);
+  EXPECT_CALL(*driver_metrics_, ReportNetworkConfig);
   service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 }
 
@@ -586,7 +596,7 @@ TEST_F(VPNServiceTest, MigrateWireGuardIPv4Address) {
   const auto setup_wg_and_static_addr = [&](const std::string* wg_prop_addr,
                                             const std::string* static_addr) {
     driver_ = new MockVPNDriver(&manager_, VPNType::kWireGuard);
-    service_ = new VPNService(&manager_, base::WrapUnique(driver_));
+    service_ = new VPNServiceInTest(&manager_, driver_);
     service_->set_storage_id(kStorageID);
     if (wg_prop_addr) {
       driver_->args()->Set<Strings>(kWireGuardIPAddress, {*wg_prop_addr});

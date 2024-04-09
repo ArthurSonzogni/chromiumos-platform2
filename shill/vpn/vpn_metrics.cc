@@ -17,6 +17,8 @@ namespace shill {
 
 namespace vpn_metrics = vpn_metrics_internal;
 
+using net_base::NetworkConfig;
+
 namespace {
 
 void ReportDriverType(Metrics* metrics, VPNType vpn_type) {
@@ -43,6 +45,24 @@ void ReportDriverType(Metrics* metrics, VPNType vpn_type) {
   }
 
   metrics->SendEnumToUMA(vpn_metrics::kMetricVpnDriver, metrics_driver_type);
+}
+
+void ReportIPType(Metrics* metrics,
+                  VPNType vpn_type,
+                  const NetworkConfig& network_config) {
+  Metrics::IPType ip_type = Metrics::kIPTypeUnknown;
+  bool has_ipv4 = network_config.ipv4_address.has_value();
+  bool has_ipv6 = !network_config.ipv6_addresses.empty();
+  // Note that ARC VPN will be reported as kIPTypeUnknown here, as its
+  // GetNetworkConfig will not have any address.
+  if (has_ipv4 && has_ipv6) {
+    ip_type = Metrics::kIPTypeDualStack;
+  } else if (has_ipv4) {
+    ip_type = Metrics::kIPTypeIPv4Only;
+  } else if (has_ipv6) {
+    ip_type = Metrics::kIPTypeIPv6Only;
+  }
+  metrics->SendEnumToUMA(vpn_metrics::kMetricIPType, vpn_type, ip_type);
 }
 
 vpn_metrics::ConnectFailureReason InterpretEndReasonAsConnectFailure(
@@ -101,21 +121,9 @@ VPNDriverMetrics::VPNDriverMetrics(Metrics* metrics, VPNType vpn_type)
 
 VPNDriverMetrics::~VPNDriverMetrics() = default;
 
-void VPNDriverMetrics::ReportIPType(
-    const net_base::NetworkConfig& network_config) const {
-  Metrics::IPType ip_type = Metrics::kIPTypeUnknown;
-  bool has_ipv4 = network_config.ipv4_address.has_value();
-  bool has_ipv6 = !network_config.ipv6_addresses.empty();
-  // Note that ARC VPN will be reported as kIPTypeUnknown here, as its
-  // GetNetworkConfig will not have any address.
-  if (has_ipv4 && has_ipv6) {
-    ip_type = Metrics::kIPTypeDualStack;
-  } else if (has_ipv4) {
-    ip_type = Metrics::kIPTypeIPv4Only;
-  } else if (has_ipv6) {
-    ip_type = Metrics::kIPTypeIPv6Only;
-  }
-  metrics_->SendEnumToUMA(vpn_metrics::kMetricIPType, vpn_type_, ip_type);
+void VPNDriverMetrics::ReportNetworkConfig(
+    const NetworkConfig& network_config) const {
+  ReportIPType(metrics_, vpn_type_, network_config);
 }
 
 void VPNDriverMetrics::ReportConnecting() {

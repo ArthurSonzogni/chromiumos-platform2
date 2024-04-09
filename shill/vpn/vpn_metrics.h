@@ -26,9 +26,8 @@ class VPNDriverMetrics {
   VPNDriverMetrics(const VPNDriverMetrics&) = delete;
   VPNDriverMetrics& operator=(const VPNDriverMetrics&) = delete;
 
-  // TODO(b/331743444): Change the name and implementation to report all metrics
-  // can be inferred from network_config.
-  mockable void ReportIPType(
+  // Reports the datapath metrics according to `network_config`.
+  mockable void ReportNetworkConfig(
       const net_base::NetworkConfig& network_config) const;
 
   // The following functions changes the connection state kept by this metrics

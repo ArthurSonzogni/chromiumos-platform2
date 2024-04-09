@@ -143,18 +143,23 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
     return;
   }
 
-  auto network_config = driver_->GetNetworkConfig();
-
-  // Report IP type metrics. All a VPN connection, we have all IP configuration
-  // when it becomes connected, so we can report the metrics here, but this is
-  // not the case for other technologies (v4 and v6 configurations can come at
-  // different time).
-  driver_->driver_metrics()->ReportIPType(*network_config);
-
+  // Note that this is the "driver connected" event instead of "network
+  // connected", i.e., time to configure network locally won't be included.
   driver_->driver_metrics()->ReportConnected();
 
   SetState(ConnectState::kStateConfiguring);
-  ConfigureDevice(std::move(network_config));
+  ConfigureDevice(driver_->GetNetworkConfig());
+
+  // Report the final NetworkConfig from the Network object attached to this
+  // service. This NetworkConfig should contains all the network config
+  // information for this VPN connection (except for the config can be changed
+  // after the connection is established, currently this should only be name
+  // servers). The assumption here is ConfigureDevice() above will call
+  // Network::Start() directly (i.e., without a PostTask()) to finish the setup
+  // in Network.
+  DCHECK(attached_network());
+  driver_->driver_metrics()->ReportNetworkConfig(
+      attached_network()->GetNetworkConfig());
 }
 
 void VPNService::OnDriverFailure(VPNEndReason failure,

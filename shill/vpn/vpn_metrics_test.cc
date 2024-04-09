@@ -34,7 +34,7 @@ class VPNDriverMetricsTest : public ::testing::Test {
   VPNDriverMetrics driver_metrics_;
 };
 
-TEST_F(VPNDriverMetricsTest, ReportIPType) {
+TEST_F(VPNDriverMetricsTest, ReportNetworkConfig) {
   using net_base::NetworkConfig;
   const net_base::IPv4CIDR ipv4_address =
       *net_base::IPv4CIDR::CreateFromCIDRString("0.0.0.0/16");
@@ -45,20 +45,20 @@ TEST_F(VPNDriverMetricsTest, ReportIPType) {
   config_ipv4_only.ipv4_address = ipv4_address;
   EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPType, _,
                                       Metrics::kIPTypeIPv4Only));
-  driver_metrics_.ReportIPType(config_ipv4_only);
+  driver_metrics_.ReportNetworkConfig(config_ipv4_only);
 
   NetworkConfig config_ipv6_only;
   config_ipv6_only.ipv6_addresses = {ipv6_address};
   EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPType, _,
                                       Metrics::kIPTypeIPv6Only));
-  driver_metrics_.ReportIPType(config_ipv6_only);
+  driver_metrics_.ReportNetworkConfig(config_ipv6_only);
 
   NetworkConfig config_dual_stack;
   config_dual_stack.ipv4_address = ipv4_address;
   config_dual_stack.ipv6_addresses = {ipv6_address};
   EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPType, _,
                                       Metrics::kIPTypeDualStack));
-  driver_metrics_.ReportIPType(config_dual_stack);
+  driver_metrics_.ReportNetworkConfig(config_dual_stack);
 }
 
 TEST_F(VPNDriverMetricsTest, ReportDriverType) {

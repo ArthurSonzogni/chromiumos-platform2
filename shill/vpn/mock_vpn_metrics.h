@@ -17,7 +17,7 @@ class MockVPNDriverMetrics : public VPNDriverMetrics {
   ~MockVPNDriverMetrics();
 
   MOCK_METHOD(void,
-              ReportIPType,
+              ReportNetworkConfig,
               (const net_base::NetworkConfig& network_config),
               (const override));
 
