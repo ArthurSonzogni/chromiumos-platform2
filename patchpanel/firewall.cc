@@ -320,10 +320,16 @@ bool Firewall::RunIptables(IpFamily ip_family,
                            std::string_view chain,
                            const std::vector<std::string>& argv) {
   if (ip_family == IpFamily::kIPv4)
-    return process_runner_->iptables(table, command, chain, argv, false) == 0;
+    // TODO(b/325359902): Change |argv| to span type and delete conversion.
+    return process_runner_->iptables(
+               table, command, chain,
+               const_cast<std::vector<std::string>&>(argv), false) == 0;
 
   if (ip_family == IpFamily::kIPv6)
-    return process_runner_->ip6tables(table, command, chain, argv, false) == 0;
+    // TODO(b/325359902): Change |argv| to span type and delete conversion.
+    return process_runner_->ip6tables(
+               table, command, chain,
+               const_cast<std::vector<std::string>&>(argv), false) == 0;
 
   return false;
 }

@@ -1863,12 +1863,18 @@ bool Datapath::ModifyIptables(IpFamily family,
                               bool log_failures) {
   bool success = true;
   if (family == IpFamily::kIPv4 || family == IpFamily::kDual) {
-    success &= process_runner_->iptables(table, command, chain, argv,
-                                         log_failures) == 0;
+    // TODO(b/325359902): Change |argv| to span type and delete conversion.
+    success &=
+        process_runner_->iptables(table, command, chain,
+                                  const_cast<std::vector<std::string>&>(argv),
+                                  log_failures) == 0;
   }
   if (family == IpFamily::kIPv6 || family == IpFamily::kDual) {
-    success &= process_runner_->ip6tables(table, command, chain, argv,
-                                          log_failures) == 0;
+    // TODO(b/325359902): Change |argv| to span type and delete conversion.
+    success &=
+        process_runner_->ip6tables(table, command, chain,
+                                   const_cast<std::vector<std::string>&>(argv),
+                                   log_failures) == 0;
   }
   return success;
 }

@@ -81,7 +81,7 @@ class MinijailProcessRunnerTest : public ::testing::Test {
 
 TEST_F(MinijailProcessRunnerTest, modprobe_all) {
   uint64_t caps = CAP_TO_MASK(CAP_SYS_MODULE);
-  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_, New);
   EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
       .WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
@@ -99,7 +99,7 @@ TEST_F(MinijailProcessRunnerTest, modprobe_all) {
 TEST_F(MinijailProcessRunnerTest, ip) {
   auto set_expectations_for_ip = [this]() -> void {
     uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-    EXPECT_CALL(mj_, New());
+    EXPECT_CALL(mj_, New);
     EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
         .WillOnce(Return(true));
     EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
@@ -137,7 +137,7 @@ TEST_F(MinijailProcessRunnerTest, ip) {
 TEST_F(MinijailProcessRunnerTest, ip6) {
   auto set_expectations_for_ip6 = [this]() -> void {
     uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-    EXPECT_CALL(mj_, New());
+    EXPECT_CALL(mj_, New);
     EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
         .WillOnce(Return(true));
     EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
@@ -175,7 +175,7 @@ TEST_F(MinijailProcessRunnerTest, ip6) {
 
 TEST_F(MinijailProcessRunnerTest, RunIPAsPatchpanel) {
   uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_, New);
   EXPECT_CALL(mj_, DropRoot(_, StrEq("patchpaneld"), StrEq("patchpaneld")))
       .WillOnce(Return(true));
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
@@ -191,42 +191,91 @@ TEST_F(MinijailProcessRunnerTest, RunIPAsPatchpanel) {
 }
 
 TEST_F(MinijailProcessRunnerTest, iptables) {
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, UseCapabilities(_, _));
-  EXPECT_CALL(mj_, RunAndDestroy(
-                       _,
-                       ElementsAre(StrEq("/sbin/iptables"), StrEq("-t"),
-                                   StrEq("filter"), StrEq("-A"), StrEq("chain"),
-                                   StrEq("arg1"), StrEq("arg2"), nullptr),
-                       _));
-  EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
+  auto set_expectations_for_iptables = [this]() -> void {
+    EXPECT_CALL(mj_, New);
+    EXPECT_CALL(mj_, UseCapabilities);
+    EXPECT_CALL(
+        mj_,
+        RunAndDestroy(_,
+                      ElementsAre(StrEq("/sbin/iptables"), StrEq("-t"),
+                                  StrEq("filter"), StrEq("-A"), StrEq("chain"),
+                                  StrEq("arg1"), StrEq("arg2"), nullptr),
+                      _));
+    EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
+        .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
+  };
 
+  // Check iptables() can be called with initializer list only contains string
+  // literals.
+  set_expectations_for_iptables();
   EXPECT_TRUE(runner_->iptables(Iptables::Table::kFilter, Iptables::Command::kA,
                                 "chain", {"arg1", "arg2"}));
+  // Check iptables() can be called with string vector.
+  set_expectations_for_iptables();
+  std::vector<std::string> str_vec_args = {"arg1", "arg2"};
+  EXPECT_TRUE(runner_->iptables(Iptables::Table::kFilter, Iptables::Command::kA,
+                                "chain", str_vec_args));
+
+  // Check iptables() can be called with string_view vector.
+  std::vector<std::string_view> string_view_vector = {"arg1", "arg2"};
+  set_expectations_for_iptables();
+  EXPECT_TRUE(runner_->iptables(Iptables::Table::kFilter, Iptables::Command::kA,
+                                "chain", string_view_vector));
+
+  // Check iptables() can be called with initializer list that contains string
+  // literals and string_view objects.
+  set_expectations_for_iptables();
+  std::string_view arg = "arg1";
+  EXPECT_TRUE(runner_->iptables(Iptables::Table::kFilter, Iptables::Command::kA,
+                                "chain", {arg, "arg2"}));
 }
 
 TEST_F(MinijailProcessRunnerTest, ip6tables) {
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, UseCapabilities(_, _));
-  EXPECT_CALL(mj_, RunAndDestroy(
-                       _,
-                       ElementsAre(StrEq("/sbin/ip6tables"), StrEq("-t"),
-                                   StrEq("mangle"), StrEq("-I"), StrEq("chain"),
-                                   StrEq("arg1"), StrEq("arg2"), nullptr),
-                       _));
-  EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
+  auto set_expectations_for_ip6tables = [this]() -> void {
+    EXPECT_CALL(mj_, New);
+    EXPECT_CALL(mj_, UseCapabilities);
+    EXPECT_CALL(
+        mj_,
+        RunAndDestroy(_,
+                      ElementsAre(StrEq("/sbin/ip6tables"), StrEq("-t"),
+                                  StrEq("filter"), StrEq("-A"), StrEq("chain"),
+                                  StrEq("arg1"), StrEq("arg2"), nullptr),
+                      _));
+    EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
+        .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
+  };
 
-  EXPECT_TRUE(runner_->ip6tables(Iptables::Table::kMangle,
-                                 Iptables::Command::kI, "chain",
+  // Check ip6tables() can be called with initializer list only contains string
+  // literals.
+  set_expectations_for_ip6tables();
+  EXPECT_TRUE(runner_->ip6tables(Iptables::Table::kFilter,
+                                 Iptables::Command::kA, "chain",
                                  {"arg1", "arg2"}));
+  // Check ip6tables() can be called with string vector.
+  set_expectations_for_ip6tables();
+  std::vector<std::string> str_vec_args = {"arg1", "arg2"};
+  EXPECT_TRUE(runner_->ip6tables(Iptables::Table::kFilter,
+                                 Iptables::Command::kA, "chain", str_vec_args));
+
+  // Check ip6tables() can be called with string_view vector.
+  std::vector<std::string_view> string_view_vector = {"arg1", "arg2"};
+  set_expectations_for_ip6tables();
+  EXPECT_TRUE(runner_->ip6tables(Iptables::Table::kFilter,
+                                 Iptables::Command::kA, "chain",
+                                 string_view_vector));
+
+  // Check ip6tables() can be called with initializer list that contains string
+  // literals and string_view objects.
+  set_expectations_for_ip6tables();
+  std::string_view arg = "arg1";
+  EXPECT_TRUE(runner_->ip6tables(
+      Iptables::Table::kFilter, Iptables::Command::kA, "chain", {arg, "arg2"}));
 }
 
 TEST_F(MinijailProcessRunnerTest, conntrack) {
-  EXPECT_CALL(mj_, New());
+  EXPECT_CALL(mj_, New);
   EXPECT_CALL(mj_, DropRoot(_, _, _)).WillOnce(Return(true));
-  EXPECT_CALL(mj_, UseCapabilities(_, _));
+  EXPECT_CALL(mj_, UseCapabilities);
   EXPECT_CALL(
       mj_, RunAndDestroy(
                _,

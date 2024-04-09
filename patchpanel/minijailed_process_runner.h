@@ -105,7 +105,7 @@ class MinijailedProcessRunner {
   // - Due to the nature of iptables-restore, the cached rules can be partially
   //   submitted on failure (if the cached rules are for multiple tables). Thus
   //   all the rules in batch must be expected to succeed.
-  std::unique_ptr<ScopedIptablesBatchMode> AcquireIptablesBatchMode();
+  virtual std::unique_ptr<ScopedIptablesBatchMode> AcquireIptablesBatchMode();
 
   // Executes the pending rules started from |batch_mode| is acquired. This
   // function has same effect with dropping |batch_mode| directly, except that
@@ -117,14 +117,38 @@ class MinijailedProcessRunner {
   virtual int iptables(Iptables::Table table,
                        Iptables::Command command,
                        std::string_view chain,
-                       const std::vector<std::string>& argv,
+                       base::span<const std::string> argv,
+                       bool log_failures = true,
+                       std::string* output = nullptr);
+  virtual int iptables(Iptables::Table table,
+                       Iptables::Command command,
+                       std::string_view chain,
+                       base::span<std::string_view> argv,
+                       bool log_failures = true,
+                       std::string* output = nullptr);
+  virtual int iptables(Iptables::Table table,
+                       Iptables::Command command,
+                       std::string_view chain,
+                       std::initializer_list<std::string_view> argv,
                        bool log_failures = true,
                        std::string* output = nullptr);
 
   virtual int ip6tables(Iptables::Table table,
                         Iptables::Command command,
                         std::string_view chain,
-                        const std::vector<std::string>& argv,
+                        base::span<const std::string> argv,
+                        bool log_failures = true,
+                        std::string* output = nullptr);
+  virtual int ip6tables(Iptables::Table table,
+                        Iptables::Command command,
+                        std::string_view chain,
+                        base::span<std::string_view> argv,
+                        bool log_failures = true,
+                        std::string* output = nullptr);
+  virtual int ip6tables(Iptables::Table table,
+                        Iptables::Command command,
+                        std::string_view chain,
+                        std::initializer_list<std::string_view> argv,
                         bool log_failures = true,
                         std::string* output = nullptr);
 
@@ -214,7 +238,7 @@ class MinijailedProcessRunner {
   bool AppendPendingIptablesRule(Iptables::Table table,
                                  Iptables::Command command,
                                  std::string_view chain,
-                                 const std::vector<std::string>& argv,
+                                 base::span<std::string_view> argv,
                                  TableToRules* cached_rules);
   bool RunPendingIptablesInBatchImpl(std::string_view iptables_restore_path,
                                      const TableToRules& table_to_rules);
