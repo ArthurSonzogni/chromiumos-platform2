@@ -1032,7 +1032,7 @@ TEST_F(ArcPropertyUtilTest, AppendArmSocPropertiesMtkLegacyMT8186) {
   AppendArmSocProperties(socinfo_devices_dir, config(), &dest);
   EXPECT_EQ(dest,
             "notyetlaunched\n"
-            "ro.soc.manufacturer=Mediatek\n"
+            "ro.soc.manufacturer=MediaTek\n"
             "ro.soc.model=Kompanio 520 MT8186\n");
 
   const std::vector<std::string> launched_devices = {

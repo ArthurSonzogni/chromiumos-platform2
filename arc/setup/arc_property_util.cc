@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <memory>
+#include <string>
 #include <tuple>
 #include <vector>
 
@@ -381,6 +382,67 @@ StringPieceType SafelyReadFile(const base::FilePath& path,
 
 }  // namespace
 
+// This function fixes up the manufacturer and model names for MTK platforms by
+// utilizing the model name obtained from MTK’s socinfo driver and considering
+// the device launch status. Launched devices must retain their legacy names to
+// meet Android CDD requirements.
+// Here are the possible values:
+//   - Older platforms before MT8186
+//       manufacturer = Mediatek
+//       model        = MT8173/MT8183/MT8192/MT8195
+//   - Launched MT8186
+//       manufacturer = Mediatek
+//       model        = MT8186
+//   - Unlaunched MT8186
+//       manufacturer = MediaTek
+//       model        = Kompanio 520 MT8186/Kompanio 528 MT8186T
+//   - New platforms
+//       manufacturer = MediaTek
+//       model        = Kompanio xxx MTyyyy(T)
+static std::tuple<std::string, std::string> FixUpMediaTekInfo(
+    std::string_view machine, brillo::CrosConfigInterface* config) {
+  constexpr std::string kMtkManufacturerName = "MediaTek";
+  constexpr std::string kMtkManufacturerNameLegacy = "Mediatek";
+  constexpr int kFridPrefixLength = 7;  // Frid format is Google_XXXX
+
+  // Older platforms before MT8186
+  static constexpr const char* kMtkLegacyModel[] = {"MT8173", "MT8183",
+                                                    "MT8192", "MT8195"};
+  for (const auto& model : kMtkLegacyModel) {
+    if (machine.find(model) != std::string::npos) {
+      return {kMtkManufacturerNameLegacy, model};
+    }
+  }
+
+  // MT8186 has new devices in the pipeline and requires special attention.
+  if (machine.find("MT8186") != std::string::npos) {
+    std::string frid;
+
+    // Not able to read frid, assume it is legacy
+    if (!config || !config->GetString("/identity", "frid", &frid)) {
+      return {kMtkManufacturerNameLegacy, "MT8186"};
+    }
+
+    // Launched devices use the legacy info
+    std::string device = frid.substr(kFridPrefixLength);
+    static constexpr auto kLaunchedDevices =
+        base::MakeFixedFlatSet<std::string_view>(
+            {"Chinchou", "Chinchou360", "Magneton", "Ponyta", "Rusty",
+             "Starmie", "Steelix", "Tentacool", "Tentacruel", "Voltorb"});
+    if (base::Contains(kLaunchedDevices, device)) {
+      return {kMtkManufacturerNameLegacy, "MT8186"};
+    }
+  }
+
+  // New platforms uses the new names
+  // Remove brackets to align the SOC_MODEL requirement in Android CCD - "The
+  // value of this field MUST be encodable as 7-bit ASCII and match the
+  // regular expression “^([0-9A-Za-z ._/+-]+)$”"
+  std::string model;
+  base::RemoveChars(machine, "()\n", &model);
+  return {kMtkManufacturerName, model};
+}
+
 static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
                             std::string* dest,
                             brillo::CrosConfigInterface* config) {
@@ -424,7 +486,8 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
   // SoC.
   //
   // NOTES:
-  // - On ARM devices /proc/cpuinfo _doesn't_ have details about the CPU model.
+  // - On ARM devices /proc/cpuinfo _doesn't_ have details about the CPU
+  // model.
   // - The "socinfo" drivers in the Linux kernel are somewhat recent but is
   //   the official suggested way to get this info. A technique that used to
   //   be used was to assume that "/proc/device-tree/compatible" had an entry
@@ -435,41 +498,8 @@ static bool ParseOneSocinfo(const base::FilePath& soc_dir_path,
   if (family == "Snapdragon\n" && machine != "") {
     manufacturer = "Qualcomm";
   } else if (family == "MediaTek\n") {
-    manufacturer = "Mediatek";
-
-    // Remove brackets to align the SOC_MODEL requirement in Android CCD - "The
-    // value of this field MUST be encodable as 7-bit ASCII and match the
-    // regular expression “^([0-9A-Za-z ._/+-]+)$”"
-    base::RemoveChars(machine, "()", &machine);
-
-    // Leave the model name of the legacy platforms unchanged as the property is
-    // not allowed to be changed throughout the device lifetime. Note that
-    // MT8186 has new devices in the pipeline and requires special attention.
-    if (machine.find("MT8186") != std::string::npos) {
-      std::string frid;
-      if (config && config->GetString("/identity", "frid", &frid)) {
-        // Frid format is Google_XXXX
-        std::string device = frid.substr(7);
-        constexpr auto kLaunchedDevices =
-            base::MakeFixedFlatSet<std::string_view>(
-                {"Chinchou", "Chinchou360", "Magneton", "Ponyta", "Rusty",
-                 "Starmie", "Steelix", "Tentacool", "Tentacruel", "Voltorb"});
-        if (base::Contains(kLaunchedDevices, device)) {
-          machine = "MT8186\n";
-        }
-      } else {
-        machine = "MT8186\n";
-      }
-    } else {
-      const std::vector<std::string> mtk_legacy_model = {"MT8173", "MT8183",
-                                                         "MT8192", "MT8195"};
-      for (const auto& model : mtk_legacy_model) {
-        if (machine.find(model) != std::string::npos) {
-          machine = model + "\n";
-          break;
-        }
-      }
-    }
+    std::tie(manufacturer, machine) = FixUpMediaTekInfo(machine, config);
+    machine = machine + "\n";
   } else {
     return false;
   }
