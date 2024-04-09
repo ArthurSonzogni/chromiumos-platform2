@@ -133,13 +133,16 @@ void ServiceManager::Request(const std::string& service_name,
   ServiceState& service_state = it->second;
   const mojom::ProcessIdentityPtr& identity = receiver_set_.current_context();
   if (!configuration_.is_permissive &&
+      !service_state.policy.IsRequesterUid(identity->uid) &&
       !service_state.policy.IsRequester(identity->security_context)) {
-    LOG(ERROR) << "The security context " << identity->security_context
-               << " is not allowed to request the service " << service_name;
-    ResetMojoReceiverPipeWithReason(
-        std::move(receiver), mojom::ErrorCode::kPermissionDenied,
-        "The security context " + identity->security_context +
-            " is not allowed to request the service " + service_name);
+    auto error = base::StringPrintf(
+        "The user %d(%s) and the security context %s are not allowed to "
+        "request the service %s.",
+        identity->uid, identity->username.value_or("unknown user").c_str(),
+        identity->security_context.c_str(), service_name.c_str());
+    LOG(ERROR) << error;
+    ResetMojoReceiverPipeWithReason(std::move(receiver),
+                                    mojom::ErrorCode::kPermissionDenied, error);
     return;
   }
   if (service_state.service_provider.is_bound()) {
