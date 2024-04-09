@@ -20,10 +20,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
             .set_command_callback(Some(execute_vmc))
             .set_help_callback(vmc_help)
     } else {
-        Command::new_disabled_command(
-            NAME.to_string(),
-            "Sorry, but VMs are not supported on this device.".to_string(),
-        )
+        Command::new_disabled_command(NAME, "Sorry, but VMs are not supported on this device.")
     });
 }
 

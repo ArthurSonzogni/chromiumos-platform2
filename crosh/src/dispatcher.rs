@@ -275,7 +275,10 @@ impl Command {
         }
     }
 
-    pub fn new_disabled_command(name: String, message: String) -> Command {
+    pub fn new_disabled_command<N: Into<Cow<'static, str>>, U: Into<Cow<'static, str>>>(
+        name: N,
+        message: U,
+    ) -> Command {
         Command::new(name, message, "")
             .set_command_callback(Some(print_help_command_callback))
             .set_help_callback(disabled_command_help_callback)
@@ -602,7 +605,15 @@ mod tests {
         dispatcher
     }
 
-    fn default_command(name: String, usage: String, description: String) -> Command {
+    fn default_command<
+        N: Into<Cow<'static, str>>,
+        U: Into<Cow<'static, str>>,
+        D: Into<Cow<'static, str>>,
+    >(
+        name: N,
+        usage: U,
+        description: D,
+    ) -> Command {
         Command::new(name, usage, description)
             .set_flag_callback(Some(panic_flag_callback))
             .set_command_callback(Some(panic_command_callback))
@@ -611,19 +622,15 @@ mod tests {
 
     fn default_parent_command(child: Command) -> Command {
         default_command(
-            PARENT_COMMAND_NAME.to_string(),
+            PARENT_COMMAND_NAME,
             format!("[{}]", CHILD_COMMAND_NAME),
-            "parent test command.".to_string(),
+            "parent test command.",
         )
         .register_subcommand(child)
     }
 
     fn default_child_command() -> Command {
-        default_command(
-            CHILD_COMMAND_NAME.to_string(),
-            "".to_string(),
-            "parent test command.".to_string(),
-        )
+        default_command(CHILD_COMMAND_NAME, "", "parent test command.")
     }
 
     #[test]
