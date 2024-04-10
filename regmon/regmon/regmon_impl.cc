@@ -14,10 +14,6 @@
 
 namespace regmon {
 
-RegmonImpl::RegmonImpl()
-    : metrics_reporter_(
-          std::make_unique<metrics::MetricsReporterImpl>(metrics_lib_)) {}
-
 RegmonImpl::~RegmonImpl() {}
 
 void RegmonImpl::RecordPolicyViolation(

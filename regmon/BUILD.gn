@@ -70,7 +70,10 @@ install_config("install_seccomp_policy") {
 
 if (use.test) {
   pkg_config("target_test") {
-    pkg_deps = [ "libchrome-test" ]
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
   }
 
   executable("regmond_testrunner") {
@@ -84,6 +87,7 @@ if (use.test) {
       "//common-mk/testrunner",
       "//regmon/daemon:unit_tests",
       "//regmon/metrics:unit_tests",
+      "//regmon/regmon:unit_tests",
     ]
   }
 }

@@ -29,3 +29,12 @@ static_library("regmon_impl") {
     "//regmon/proto:libregmonprotopolicyviolation",
   ]
 }
+
+source_set("unit_tests") {
+  sources = [ "regmon_impl_test.cc" ]
+  deps = [
+    ":regmon_impl",
+    "//regmon/proto:libregmonprotopolicyviolation",
+  ]
+  configs += [ ":target_defaults" ]
+}

@@ -6,6 +6,7 @@
 #define REGMON_REGMON_REGMON_IMPL_H_
 
 #include <memory>
+#include <utility>
 
 #include <metrics/metrics_library.h>
 
@@ -17,7 +18,12 @@ namespace regmon {
 
 class RegmonImpl : public RegmonService {
  public:
-  RegmonImpl();
+  RegmonImpl()
+      : RegmonImpl(
+            std::make_unique<metrics::MetricsReporterImpl>(metrics_lib_)) {}
+  explicit RegmonImpl(
+      std::unique_ptr<metrics::MetricsReporter> metrics_reporter)
+      : metrics_reporter_(std::move(metrics_reporter)) {}
   RegmonImpl(const RegmonImpl&) = delete;
   RegmonImpl& operator=(const RegmonImpl&) = delete;
   ~RegmonImpl() override;
@@ -30,7 +36,7 @@ class RegmonImpl : public RegmonService {
 
  private:
   MetricsLibrary metrics_lib_;
-  std::unique_ptr<metrics::MetricsReporterImpl> metrics_reporter_;
+  std::unique_ptr<metrics::MetricsReporter> metrics_reporter_;
 };
 
 }  // namespace regmon
