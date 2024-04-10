@@ -22,11 +22,10 @@ echo "THAWED" > "${CHROME_FREEZER_CGROUP_DIR:-}/to_be_frozen/freezer.state"
 # Start the dlcservice if it is not running.
 status dlcservice | grep running || start dlcservice
 # Get the list of user-tied DLC mount points for passing to the process_killer.
-USER_TIED_DLC=""
-if status dlcservice | grep running; then
-  USER_TIED_DLC="$(dlcservice_util --list --user_tied --check_mount |
-    jq -c '[.[][].root_mount]')"
-fi
+# Wait for the dlcservice to return a result. If timeout, meaning the dlcserivce
+# is likely not availble, the DLC mount points list would be empty.
+USER_TIED_DLC="$(dlcservice_util --list --user_tied --check_mount --timeout=5 |
+  jq -c '[.[][].root_mount]')"
 
 # Terminate any processes with files open on the mount point
 # TODO(wad) parallelize with VFS/PID namespaces.
@@ -81,8 +80,10 @@ for container in /run/containers/* ; do
   fi
 done
 
-# Unload user-tied DLCs before cryptohome unmounting.
-dlcservice_util --unload --user_tied
+# Unload user-tied DLCs before cryptohome unmounting. Not waiting again for the
+# service here since an attempt already made earlier to ensure dlcservice being
+# available. Also set a short timeout for the command.
+dlcservice_util --unload --user_tied --timeout=5 --nowait_for_service
 
 cryptohome --action=unmount
 # Unmount the user session namespace mount point.
