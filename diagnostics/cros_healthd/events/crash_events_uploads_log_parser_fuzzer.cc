@@ -45,6 +45,8 @@ mojom::CrashEventInfo::CrashType GetCrashTypeFromString(std::string_view s) {
     return mojom::CrashEventInfo::CrashType::kKernel;
   } else if (s == "ec") {
     return mojom::CrashEventInfo::CrashType::kEmbeddedController;
+  } else if (s == "chrome") {
+    return mojom::CrashEventInfo::CrashType::kChrome;
   } else {
     return mojom::CrashEventInfo::CrashType::kUnknown;
   }

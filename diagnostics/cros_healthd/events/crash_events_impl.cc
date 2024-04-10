@@ -54,6 +54,8 @@ mojom::CrashEventInfoPtr ParseUploadsLogEntry(const std::string& line,
     } else if (*crash_type == "ec") {
       result->crash_type =
           mojom::CrashEventInfo::CrashType::kEmbeddedController;
+    } else if (*crash_type == "chrome") {
+      result->crash_type = mojom::CrashEventInfo::CrashType::kChrome;
     }
   }
 

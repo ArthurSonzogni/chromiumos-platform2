@@ -109,6 +109,9 @@ TEST_P(UploadsLogParserValidFieldTest, ParseCrashType) {
       R"TEXT("fatal_crash_type":"ec","upload_id":"abc"})TEXT"
       "\n"
       R"TEXT({"path_hash":"some_hash","capture_time":"2",)TEXT"
+      R"TEXT("fatal_crash_type":"chrome","upload_id":"abc"})TEXT"
+      "\n"
+      R"TEXT({"path_hash":"some_hash","capture_time":"2",)TEXT"
       R"TEXT("fatal_crash_type":"some_unknown_value","upload_id":"abc"})TEXT"
       "\n"
       // fatal_crash_type is missing
@@ -117,12 +120,13 @@ TEST_P(UploadsLogParserValidFieldTest, ParseCrashType) {
       /*is_uploaded=*/is_uploaded(),
       /*creation_time=*/base::Time(),
       /*init_offset=*/0u);
-  ASSERT_EQ(result.size(), 4u);
+  ASSERT_EQ(result.size(), 5u);
   EXPECT_EQ(result[0]->crash_type, mojom::CrashEventInfo::CrashType::kKernel);
   EXPECT_EQ(result[1]->crash_type,
             mojom::CrashEventInfo::CrashType::kEmbeddedController);
-  EXPECT_EQ(result[2]->crash_type, mojom::CrashEventInfo::CrashType::kUnknown);
+  EXPECT_EQ(result[2]->crash_type, mojom::CrashEventInfo::CrashType::kChrome);
   EXPECT_EQ(result[3]->crash_type, mojom::CrashEventInfo::CrashType::kUnknown);
+  EXPECT_EQ(result[4]->crash_type, mojom::CrashEventInfo::CrashType::kUnknown);
 }
 
 INSTANTIATE_TEST_SUITE_P(VaryingIsUploaded,
