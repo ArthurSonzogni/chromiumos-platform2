@@ -194,6 +194,11 @@ bool FakePlatform::Rename(const base::FilePath& from,
   return real_platform_.Rename(TestFilePath(from), TestFilePath(to), cros_fs);
 }
 
+bool FakePlatform::RenameNoReplace(const base::FilePath& from,
+                                   const base::FilePath& to) {
+  return real_platform_.RenameNoReplace(TestFilePath(from), TestFilePath(to));
+}
+
 base::FilePath FakePlatform::FindFilesystemDevice(
     const base::FilePath& filesystem) {
   return real_platform_.FindFilesystemDevice(TestFilePath(filesystem));

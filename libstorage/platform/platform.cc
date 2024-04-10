@@ -31,6 +31,7 @@
 #include <base/check_op.h>
 
 #include <algorithm>
+#include <cstdio>
 #include <limits>
 
 #if USE_SELINUX
@@ -1084,6 +1085,14 @@ bool Platform::Rename(const FilePath& from, const FilePath& to, bool cros_fs) {
     return true;
 
   return cros_fs && base::Move(from, to);
+}
+
+bool Platform::RenameNoReplace(const FilePath& from, const FilePath& to) {
+  DCHECK(from.IsAbsolute()) << "from=" << from;
+  DCHECK(to.IsAbsolute()) << "to=" << to;
+
+  return renameat2(AT_FDCWD, from.value().c_str(), AT_FDCWD, to.value().c_str(),
+                   RENAME_NOREPLACE) == 0;
 }
 
 bool Platform::Copy(const FilePath& from, const FilePath& to) {

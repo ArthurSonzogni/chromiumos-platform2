@@ -56,6 +56,8 @@ class BRILLO_EXPORT FakePlatform : public Platform {
   bool Rename(const base::FilePath& from,
               const base::FilePath& to,
               bool cros_fs) override;
+  bool RenameNoReplace(const base::FilePath& from,
+                       const base::FilePath& to) override;
   base::FilePath FindFilesystemDevice(
       const base::FilePath& filesystem) override;
   bool Copy(const base::FilePath& from, const base::FilePath& to) override;

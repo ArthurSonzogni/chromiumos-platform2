@@ -18,6 +18,9 @@ MockPlatform::MockPlatform(std::unique_ptr<FakePlatform> fake_platform)
       fake_platform_(std::move(fake_platform)) {
   ON_CALL(*this, Rename(_, _, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Rename));
+  ON_CALL(*this, RenameNoReplace(_, _))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::RenameNoReplace));
   ON_CALL(*this, Copy(_, _))
       .WillByDefault(Invoke(fake_platform_.get(), &FakePlatform::Copy));
   ON_CALL(*this, TouchFileDurable(_))
