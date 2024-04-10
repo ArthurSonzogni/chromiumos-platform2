@@ -70,6 +70,11 @@ class CachedFrame {
   // needs to rotate clockwise by |rotate_degree|.
   int CropRotateScale(int rotate_degree, FrameBuffer& frame);
 
+  // Set the |faces| if the face detector return successfully.
+  void OnFaceDetected(int frame_count,
+                      FaceDetectResult detect_result,
+                      std::vector<human_sensing::CrosFace> faces);
+
   // Cached temporary buffers for the capture pipeline. We use SHM buffer for
   // I420 format since it can be resized, and Gralloc buffer for NV12 format
   // since it will be fed to HW JDA/JEA.
@@ -101,8 +106,11 @@ class CachedFrame {
 
   // Face detection handler.
   std::unique_ptr<FaceDetector> face_detector_;
-  std::vector<human_sensing::CrosFace> faces_;
-  int frame_count_;
+
+  // Lock to protect |faces_| from asynchronous threads.
+  base::Lock faces_lock_;
+  std::vector<human_sensing::CrosFace> faces_ GUARDED_BY(faces_lock_);
+  int frame_count_ = 0;
   Size active_array_size_;
 };
 

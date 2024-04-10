@@ -9,11 +9,13 @@
 
 #include <limits>
 #include <string>
+#include <utility>
 
 #include <base/check_op.h>
 #include <base/timer/elapsed_timer.h>
 #include <hardware/camera3.h>
 
+#include "cros-camera/camera_face_detection.h"
 #include "cros-camera/common.h"
 #include "cros-camera/exif_utils.h"
 #include "cros-camera/utils/camera_config.h"
@@ -579,18 +581,36 @@ void CachedFrame::DetectFaces(const FrameBuffer& input_nv12_frame,
     return;
   }
 
-  frame_count_ = (frame_count_ + 1) % kFaceDetectFrameInterval;
-  if (frame_count_ != 1) {
-    *faces = faces_;
+  if (frame_count_ % kFaceDetectFrameInterval == 0) {
+    // We can use base::Unretained(this) since *this outlives |face_detector_|.
+    face_detector_->DetectAsync(
+        input_nv12_frame.GetBufferHandle(), active_array_size_,
+        base::BindOnce(&CachedFrame::OnFaceDetected, base::Unretained(this),
+                       frame_count_));
+  }
+  base::AutoLock lock(faces_lock_);
+  DVLOGF(2) << "Get face with frame_count: " << frame_count_;
+  *faces = faces_;
+  ++frame_count_;
+
+  return;
+}
+
+void CachedFrame::OnFaceDetected(int frame_count,
+                                 FaceDetectResult detect_result,
+                                 std::vector<human_sensing::CrosFace> faces) {
+  base::AutoLock lock(faces_lock_);
+  DVLOGF(2) << "Set face with frame_count: " << frame_count
+            << ", number of faces: " << faces.size();
+
+  if (detect_result != FaceDetectResult::kDetectOk) {
+    LOGF(WARNING) << "Failed to run face detection with result: "
+                  << FaceDetectResultToString(detect_result)
+                  << "; clearing cached face result";
+    faces_.clear();
     return;
   }
-
-  FaceDetectResult ret = face_detector_->Detect(
-      input_nv12_frame.GetBufferHandle(), &faces_, active_array_size_);
-  if (ret != FaceDetectResult::kDetectOk) {
-    faces_.clear();
-  }
-  *faces = faces_;
+  faces_ = std::move(faces);
 }
 
 static bool InsertJpegBlob(FrameBuffer& out_frame, uint32_t jpeg_data_size) {

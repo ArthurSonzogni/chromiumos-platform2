@@ -33,6 +33,9 @@ enum class FaceDetectResult {
   kTimeoutError,
 };
 
+CROS_CAMERA_EXPORT const char* FaceDetectResultToString(
+    FaceDetectResult detect_result);
+
 // This class encapsulates Google3 FaceSSD library.
 class CROS_CAMERA_EXPORT FaceDetector {
  public:

@@ -35,6 +35,21 @@ constexpr int kDetectTimeoutMs = 1000;
 
 }  // namespace
 
+const char* FaceDetectResultToString(FaceDetectResult detect_result) {
+  switch (detect_result) {
+    case FaceDetectResult::kDetectOk:
+      return "DetectOk";
+    case FaceDetectResult::kDetectError:
+      return "DetectError";
+    case FaceDetectResult::kBufferError:
+      return "BufferError";
+    case FaceDetectResult::kTransformError:
+      return "TransformError";
+    case FaceDetectResult::kTimeoutError:
+      return "TimeoutError";
+  }
+}
+
 // static
 std::unique_ptr<FaceDetector> FaceDetector::Create() {
   if (!base::PathExists(base::FilePath(kFaceModelPath)) ||
