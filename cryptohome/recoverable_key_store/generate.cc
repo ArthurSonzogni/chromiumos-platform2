@@ -50,6 +50,8 @@ constexpr char kLocallyEncryptedRecoveryKeyHeader[] =
     "V1 locally_encrypted_recovery_key";
 constexpr char kThmEncryptedRecoveryKeyHeader[] =
     "V1 THM_encrypted_recovery_key";
+constexpr char kEncryptedApplicationKeyHeader[] =
+    "V1 encrypted_application_key";
 constexpr char kThmKhHashPrefix[] = "THM_KF_hash";
 constexpr uint8_t kCrOSRecoverableKeyStoreHandleHeader[] = {0x02};
 
@@ -65,8 +67,10 @@ std::optional<WrappedSecurityDomainKey> GenerateWrappedSecurityDomainKey(
 
   // Wrap the security domain wrapping key by the recovery key.
   std::optional<brillo::Blob> wrapped_wrapping_key =
-      hwsec_foundation::secure_box::Encrypt(brillo::Blob(), recovery_key,
-                                            brillo::Blob(), keys.wrapping_key);
+      hwsec_foundation::secure_box::Encrypt(
+          brillo::Blob(), recovery_key,
+          brillo::BlobFromString(kEncryptedApplicationKeyHeader),
+          keys.wrapping_key);
   if (!wrapped_wrapping_key.has_value()) {
     LOG(ERROR) << "Failed to wrap security domain wrapping key.";
     return std::nullopt;
@@ -75,7 +79,10 @@ std::optional<WrappedSecurityDomainKey> GenerateWrappedSecurityDomainKey(
   WrappedSecurityDomainKey key_proto;
   key_proto.set_key_name(kSecurityDomainKeyName);
   key_proto.set_public_key(brillo::BlobToString(keys.key_pair.public_key));
-  key_proto.set_wrapped_private_key(brillo::BlobToString(wrapped_private_key));
+  // The wrapped private key format is 12-byte nonce + ciphertext + tag.
+  key_proto.set_wrapped_private_key(brillo::BlobToString(iv) +
+                                    brillo::BlobToString(wrapped_private_key) +
+                                    brillo::BlobToString(tag));
   key_proto.set_wrapped_wrapping_key(
       brillo::BlobToString(*wrapped_wrapping_key));
   return key_proto;
