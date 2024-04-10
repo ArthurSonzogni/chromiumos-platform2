@@ -81,7 +81,7 @@ bool UsbDriverTracker::DetachPathFromKernel(int fd,
 
   // Try to find our USB interface nodes, by iterating through all devices
   // and extracting our children devices.
-  bool detached = false;
+  bool detached = true;
   struct udev_list_entry* entry;
   udev_list_entry_foreach(entry,
                           udev_enumerate_get_list_entry(enumerate.get())) {
