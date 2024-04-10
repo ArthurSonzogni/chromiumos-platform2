@@ -983,10 +983,14 @@ class BRILLO_EXPORT Platform {
   // Creates a random unguessable token. The result is a non-null token.
   virtual base::UnguessableToken CreateUnguessableToken();
 
-  // Rename or move a file or a directory without overwriting the destination
+  // Renames or moves a file or a directory without overwriting the destination
   // item if an item with the `to` path already exists.
   virtual bool RenameNoReplace(const base::FilePath& from,
                                const base::FilePath& to);
+
+  // Atomically exchanges two items. Both items must exist but may be of
+  // different types.
+  virtual bool Exchange(const base::FilePath& from, const base::FilePath& to);
 
  private:
   // Calls fdatasync() on file if data_sync is true or fsync() on directory or

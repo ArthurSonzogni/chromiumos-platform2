@@ -1095,6 +1095,14 @@ bool Platform::RenameNoReplace(const FilePath& from, const FilePath& to) {
                    RENAME_NOREPLACE) == 0;
 }
 
+bool Platform::Exchange(const FilePath& from, const FilePath& to) {
+  DCHECK(from.IsAbsolute()) << "from=" << from;
+  DCHECK(to.IsAbsolute()) << "to=" << to;
+
+  return renameat2(AT_FDCWD, from.value().c_str(), AT_FDCWD, to.value().c_str(),
+                   RENAME_EXCHANGE) == 0;
+}
+
 bool Platform::Copy(const FilePath& from, const FilePath& to) {
   DCHECK(from.IsAbsolute()) << "from=" << from;
   DCHECK(to.IsAbsolute()) << "to=" << to;
