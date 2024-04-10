@@ -199,7 +199,7 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
   if (state == kStarted || state == kInit) {
     flush_cb_.Run();
     UpdateDeviceId();
-    if (!UpdateDeviceUser()) {
+    if (!UpdateDeviceUser(state)) {
       return;
     }
   } else if (state == kStopping) {
@@ -241,7 +241,7 @@ void DeviceUser::UpdateDeviceId() {
   }
 }
 
-bool DeviceUser::UpdateDeviceUser() {
+bool DeviceUser::UpdateDeviceUser(const std::string& state) {
   // Check if guest session is active.
   bool is_guest = false;
   brillo::ErrorPtr error;
@@ -314,7 +314,7 @@ bool DeviceUser::UpdateDeviceUser() {
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&DeviceUser::HandleUserPolicyAndNotifyListeners,
-                       weak_ptr_factory_.GetWeakPtr(), username,
+                       weak_ptr_factory_.GetWeakPtr(), state, username,
                        directory_path),
         base::Seconds(2));
   }
@@ -396,7 +396,9 @@ bool DeviceUser::SetDeviceUserIfLocalAccount(std::string& username) {
 }
 
 void DeviceUser::HandleUserPolicyAndNotifyListeners(
-    std::string username, base::FilePath user_directory) {
+    const std::string& state,
+    std::string username,
+    base::FilePath user_directory) {
   bool directory_exists = false;
   if (base::DirectoryExists(user_directory) ||
       base::CreateDirectory(user_directory)) {
@@ -442,7 +444,7 @@ void DeviceUser::HandleUserPolicyAndNotifyListeners(
 
   // Notify listeners.
   for (auto cb : session_change_listeners_) {
-    cb.Run(kStarted);
+    cb.Run(state);
   }
 }
 

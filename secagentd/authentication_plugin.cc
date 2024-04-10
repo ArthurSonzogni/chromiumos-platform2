@@ -213,6 +213,7 @@ void AuthenticationPlugin::OnSessionStateChange(const std::string& state) {
   log_event->mutable_common()->set_create_timestamp_us(
       base::Time::Now().InMillisecondsSinceUnixEpoch() *
       base::Time::kMicrosecondsPerMillisecond);
+
   if (state == kStarted) {
     latest_successful_login_timestamp_ =
         log_event->common().create_timestamp_us();

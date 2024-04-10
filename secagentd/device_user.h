@@ -157,7 +157,7 @@ class DeviceUser : public DeviceUserInterface {
   // Updates the device id after a session change.
   void UpdateDeviceId();
   // Updates the user after a session change.
-  bool UpdateDeviceUser();
+  bool UpdateDeviceUser(const std::string& state);
   // Retrieves the policy for the given account type and id.
   absl::StatusOr<enterprise_management::PolicyData> RetrievePolicy(
       login_manager::PolicyAccountType account_type,
@@ -170,7 +170,8 @@ class DeviceUser : public DeviceUserInterface {
   // Handles setting the device user after affiliation is checked and writing
   // the username to disk.
   // Also notifies listeners that the user should have been updated.
-  void HandleUserPolicyAndNotifyListeners(std::string username,
+  void HandleUserPolicyAndNotifyListeners(const std::string& state,
+                                          std::string username,
                                           base::FilePath username_file);
 
   base::WeakPtrFactory<DeviceUser> weak_ptr_factory_;
