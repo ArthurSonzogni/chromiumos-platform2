@@ -30,6 +30,7 @@ use protobuf::Message as ProtoMessage;
 
 use system_api::client::OrgChromiumDebugd;
 use system_api::client::OrgChromiumDlcServiceInterface;
+use system_api::client::OrgChromiumPermissionBroker;
 use system_api::client::OrgChromiumVmConcierge;
 use system_api::concierge_service::vm_info::VmType;
 use system_api::concierge_service::*;
@@ -83,7 +84,6 @@ enum ChromeOSError {
     FailedMetricsSend {
         exit_code: Option<i32>,
     },
-    FailedOpenPath(dbus::Error),
     FailedAttachUsbToContainer(
         EnumOrUnknown<attach_usb_to_container_response::Status>,
         String,
@@ -205,11 +205,6 @@ impl fmt::Display for ChromeOSError {
                 }
                 Ok(())
             }
-            FailedOpenPath(e) => write!(
-                f,
-                "failed permission_broker OpenPath: {}",
-                e.message().unwrap_or("")
-            ),
             FailedStopVm { vm_name, reason } => {
                 write!(f, "failed to stop vm `{}`: {}", vm_name, reason)
             }
@@ -2052,22 +2047,16 @@ impl Methods {
         let path_str = path
             .to_str()
             .ok_or_else(|| FailedGetOpenPath(path.into()))?;
-        let method = Message::new_method_call(
+
+        let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
+            self.connection.get_real_connection_or_fail()?,
             PERMISSION_BROKER_SERVICE_NAME,
             PERMISSION_BROKER_SERVICE_PATH,
-            PERMISSION_BROKER_INTERFACE,
-            OPEN_PATH,
-        )?
-        .append1(path_str);
+            DEFAULT_TIMEOUT,
+        );
 
-        let message = self
-            .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)
-            .map_err(FailedOpenPath)?;
-
-        message
-            .get1()
-            .ok_or_else(|| FailedGetOpenPath(path.into()).into())
+        OrgChromiumPermissionBroker::open_path(&proxy, path_str)
+            .map_err(|_| FailedGetOpenPath(path.into()).into())
     }
 
     fn send_problem_report_for_plugin_vm(
