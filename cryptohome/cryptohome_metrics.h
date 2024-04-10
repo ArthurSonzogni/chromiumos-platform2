@@ -235,15 +235,6 @@ enum class DownloadsMigrationStatus {
   // Cannot set the xattr to "migrating".
   kCannotSetXattrToMigrating = 2,
 
-  // Cannot clean up the old backup folder.
-  kCannotCleanUp = 3,
-
-  // Cannot back up the existing ~/MyFiles/Downloads folder.
-  kCannotBackUp = 4,
-
-  // Cannot restore the backup folder to ~/MyFiles/Downloads.
-  kCannotRestore = 5,
-
   // Cannot move ~/Downloads to ~/MyFiles/Downloads.
   kCannotMoveToMyFiles = 6,
 

@@ -1111,39 +1111,6 @@ TEST_F(DownloadsBindMountMigrationTest,
 }
 
 TEST_F(DownloadsBindMountMigrationTest,
-       FailingToCleanUpTheBackupFolderShouldFallbackToBindMount) {
-  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
-
-  // Create the backup directory.
-  ASSERT_TRUE(platform_.CreateDirectory(downloads_backup_));
-
-  // Unmount the helper with the file system still in tact, reset the helper to
-  // setup a new one with the downloads bind mount disabled.
-  mount_helper_->UnmountAll();
-
-  // Create a mounter that doesn't bind mount at all and mount it.
-  mount_helper_ = std::make_unique<Mounter>(
-      /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
-
-  // Ignore all other calls to DeletePathRecursively but when the
-  // ~/Downloads-backup call is made, return false to mock failing to remove the
-  // backup folder.
-  EXPECT_CALL(platform_, DeletePathRecursively(_)).Times(AnyNumber());
-  EXPECT_CALL(platform_, DeletePathRecursively(downloads_backup_))
-      .WillOnce(Return(false));
-  ASSERT_THAT(mount_helper_->PerformMount(
-                  MountType::DIR_CRYPTO, kUser,
-                  SecureBlobToHex(keyset_.KeyReference().fek_sig),
-                  SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
-              IsOk());
-
-  // Verify that the underlying filesystem has fallen back to bind mounting.
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/true);
-  ASSERT_TRUE(platform_.IsDirectoryMounted(downloads_in_my_files_));
-}
-
-TEST_F(DownloadsBindMountMigrationTest,
        FailingToSetTheXattrBeforeMigratingShouldFallback) {
   SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
 
@@ -1174,7 +1141,7 @@ TEST_F(DownloadsBindMountMigrationTest,
 }
 
 TEST_F(DownloadsBindMountMigrationTest,
-       IfRenamingMyFilesDownloadsToDownloadsBackupFailsFallbackToBindMount) {
+       IfExchangingDownloadsFoldersFailsNothingHappens) {
   SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
 
   // Unmount the helper with the file system still in tact, reset the helper to
@@ -1185,39 +1152,8 @@ TEST_F(DownloadsBindMountMigrationTest,
   mount_helper_ = std::make_unique<Mounter>(
       /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
 
-  // Ignore all other calls to Rename but when the ~/Downloads-backup rename
-  // call is made, return false to mock a failure.
-  EXPECT_CALL(platform_, Rename(_, _, false)).Times(AnyNumber());
-  EXPECT_CALL(platform_,
-              Rename(downloads_in_my_files_, downloads_backup_, false))
-      .WillOnce(Return(false));
-  ASSERT_THAT(mount_helper_->PerformMount(
-                  MountType::DIR_CRYPTO, kUser,
-                  SecureBlobToHex(keyset_.KeyReference().fek_sig),
-                  SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
-              IsOk());
-  // Verify that the underlying filesystem has fallen back to bind mounting.
-  VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/true,
-           /*downloads_bind_mount=*/true);
-  ASSERT_TRUE(platform_.IsDirectoryMounted(downloads_in_my_files_));
-}
-
-TEST_F(DownloadsBindMountMigrationTest,
-       IfRenamingDownloadsToMyFilesFailsTheBackupIsRestored) {
-  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ true);
-
-  // Unmount the helper with the file system still in tact, reset the helper to
-  // setup a new one with the downloads bind mount disabled.
-  mount_helper_->UnmountAll();
-
-  // Create a mounter that doesn't bind mount at all.
-  mount_helper_ = std::make_unique<Mounter>(
-      /*legacy_mount=*/true, /*bind_mount_downloads=*/false, &platform_);
-
-  // Ignore all other calls to Rename but when the ~/Downloads-backup rename
-  // call is made, return false to mock a failure.
-  EXPECT_CALL(platform_, Rename(_, _, false)).Times(AnyNumber());
-  EXPECT_CALL(platform_, Rename(downloads_, downloads_in_my_files_, false))
+  // When the Exchange call is made, return false to mock a failure.
+  EXPECT_CALL(platform_, Exchange(downloads_, downloads_in_my_files_))
       .WillOnce(Return(false));
   ASSERT_THAT(mount_helper_->PerformMount(
                   MountType::DIR_CRYPTO, kUser,

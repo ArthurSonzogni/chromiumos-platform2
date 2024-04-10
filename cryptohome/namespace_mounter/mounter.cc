@@ -691,7 +691,6 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   const FilePath downloads_in_my_files =
       user_home.Append(kMyFilesDir).Append(kDownloadsDir);
   const FilePath downloads = user_home.Append(kDownloadsDir);
-  const FilePath downloads_backup = user_home.Append(kDownloadsBackupDir);
 
   // Check if the migration has successfully completed on a prior run.
   const MigrationStage stage =
@@ -717,7 +716,8 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
     }
 
     // Clean up the old ~/Downloads-backup folder if it is still there.
-    if (platform_->DirectoryExists(downloads_backup)) {
+    if (const FilePath downloads_backup = user_home.Append(kDownloadsBackupDir);
+        platform_->DirectoryExists(downloads_backup)) {
       MoveDirectoryContents(downloads_backup, downloads_in_my_files);
       ok = platform_->DeleteFile(downloads_backup);
       ReportDownloadsMigrationOperation("CleanUp", ok);
@@ -766,24 +766,6 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
   // none left in ~/MyFiles/Downloads before migration.
   MoveDirectoryContents(downloads_in_my_files, downloads);
 
-  // In the event ~/Downloads, ~/Downloads-backup and ~/MyFiles/Downloads exist
-  // we want to remove the old ~/Downloads-backup to ensure the migration can
-  // continue cleanly.
-  if (platform_->FileExists(downloads) &&
-      platform_->FileExists(downloads_backup)) {
-    ok = platform_->DeletePathRecursively(downloads_backup);
-    ReportDownloadsMigrationOperation("CleanUp", ok);
-
-    // If we fail to remove ~/Downloads-backup this will not enable a clean
-    // backup of ~/MyFiles/Downloads to ~/Downloads-backup, so exit.
-    if (!ok) {
-      PLOG(ERROR) << "Cannot proceed with 'Downloads' folder migration: "
-                  << "Cannot delete old backup folder ~/Downloads-backup";
-      ReportDownloadsMigrationStatus(kCannotCleanUp);
-      return false;
-    }
-  }
-
   // Set the xattr for the ~/Downloads directory to be "migrating". If this
   // fails, don't continue as the filesystem is in a good state to continue with
   // the bind-mount and a migration can be done at a later stage.
@@ -795,60 +777,22 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
     return false;
   }
 
-  // The directory structure should now only have ~/Downloads and
-  // ~/MyFiles/Downloads so the migration can start from here.
-
-  // Back up ~/Downloads as ~/Downloads-backup.
-  ok = platform_->Rename(downloads_in_my_files, downloads_backup);
-  ReportDownloadsMigrationOperation("BackUp", ok);
+  // Exchange ~/Downloads to ~/MyFiles/Downloads.
+  ok = platform_->Exchange(downloads, downloads_in_my_files);
+  ReportDownloadsMigrationOperation("Exchange", ok);
   if (!ok) {
-    PLOG(ERROR) << "Cannot proceed with 'Downloads' folder migration: "
-                << "Cannot back up ~/MyFiles/Downloads as ~/Downloads-backup";
-    ReportDownloadsMigrationStatus(kCannotBackUp);
-    return false;
-  }
-
-  LOG(INFO) << "Backed up ~/MyFiles/Downloads as ~/Downloads-backup";
-
-  // Move ~/Downloads to ~/MyFiles/Downloads.
-  ok = platform_->Rename(downloads, downloads_in_my_files);
-  ReportDownloadsMigrationOperation("Move", ok);
-  if (!ok) {
-    PLOG(ERROR) << "Cannot proceed with 'Downloads' folder migration: "
-                << "Cannot move ~/Downloads to ~/MyFiles/Downloads";
+    PLOG(ERROR) << "Cannot exchange ~/Downloads and ~/MyFiles/Downloads";
     ReportDownloadsMigrationStatus(kCannotMoveToMyFiles);
-
-    // Restore the ~/Downloads-backup folder back to ~/MyFiles/Downloads to
-    // ensure the upcoming bind-mount has a destination.
-    ok = platform_->Rename(downloads_backup, downloads_in_my_files);
-    ReportDownloadsMigrationOperation("Restore", ok);
-    if (!ok) {
-      PLOG(ERROR)
-          << "Cannot restore ~/MyFiles/Downloads from ~/Downloads-backup";
-      // This is not a good state to be in. The bind-mount will fail as there
-      // will be no target because the user's directories are created prior to
-      // this stage.
-      // This will effectively leave ~/Downloads-backup and ~/Downloads
-      // both having failed to rename. This indicates some sort of file system
-      // corruption and may require the user to remove their profile to restore.
-      ReportDownloadsMigrationStatus(kCannotRestore);
-
-      // Return true to prevent the bind-mount from happening, since there is no
-      // ~/MyFiles/Downloads mount point for that to succeed. If we return false
-      // here, then the user cannot log in at all.
-      return true;
-    }
-
-    // Successfully restored ~/Downloads-backup to ~/MyFiles/Downloads. However
-    // the migration was unsuccessful. This leaves both ~/Downloads and
-    // ~/MyFiles/Downloads, so on next login the migration can be tried again.
-    LOG(ERROR) << "Failed moving ~/Downloads into ~/MyFiles but successfully "
-                  "restored the backup directory";
-
     return false;
   }
 
   LOG(INFO) << "Moved ~/Downloads into ~/MyFiles";
+
+  // Remove the old Downloads folder.
+  ok = platform_->DeleteFile(downloads);
+  ReportDownloadsMigrationOperation("CleanUp", ok);
+  PLOG_IF(ERROR, !ok) << "Cannot delete old ~/Downloads folder";
+  LOG_IF(INFO, ok) << "Deleted old ~/Downloads folder";
 
   // The migration has completed successfully, to ensure no further migrations
   // occur, set the xattr to "migrated". If this fails, the cryptohome is usable
