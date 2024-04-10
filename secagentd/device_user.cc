@@ -477,9 +477,14 @@ std::string DeviceUser::GetUsernameBasedOnAffiliation(
     } else {
       return uuid;
     }
+  } else {
+    // When a user has never signed into the device before their affiliation
+    // cannot be determined. User will be marked as unknown in that case.
+    LOG(INFO)
+        << "Directory does not exist for user that failed authentication. "
+           "Marking as Unknown";
+    return device_user::kUnknown;
   }
-
-  return device_user::kUnknown;
 }
 
 void DeviceUser::SetFlushCallback(base::RepeatingCallback<void()> cb) {

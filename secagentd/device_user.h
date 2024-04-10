@@ -119,6 +119,7 @@ class DeviceUser : public DeviceUserInterface {
   bool GetIsUnaffiliated() override;
   // Returns either the username when affiliated or the random UUID for
   // unaffiliated users.
+  // If affiliation cannot be determined mark as Unknown.
   std::string GetUsernameBasedOnAffiliation(
       const std::string& username,
       const std::string& sanitized_username) override;
