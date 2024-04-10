@@ -440,6 +440,9 @@ message StartArcVmRequest {
   // Whether to enable the multiple-workers feature for the root disk
   // (/dev/block/vda).
   bool rootfs_multiple_workers = 47;
+
+  // Whether to use the GKI kernel.
+  bool use_gki = 48;
 }
 
 enum VmStatus {
