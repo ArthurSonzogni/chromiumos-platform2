@@ -97,21 +97,8 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   // If there's an un-acked ping, the browser needs to be taken down.
   if (!last_ping_acked_) {
     LOG(WARNING) << "Browser hang detected!";
+
     metrics_->SendLivenessPingResult(/*success=*/false);
-
-    // TODO(https://crbug.com/883029): Remove.
-    std::string top_output;
-    base::GetAppOutput({"top", "-b", "-c", "-n1", "-w512"}, &top_output);
-
-    std::vector<std::string> top_output_lines = base::SplitString(
-        top_output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-    if (top_output_lines.size() > 20)
-      top_output_lines.resize(20);
-    top_output = base::JoinString(top_output_lines, "\n");
-
-    LOG(WARNING) << "Top output (trimmed):";
-    LOG(WARNING) << top_output;
-
     RecordStateForTimeout(/*verbose=*/true);
 
     if (enable_aborting_) {
@@ -380,6 +367,19 @@ void LivenessCheckerImpl::RequestKernelTraces() {
   }
 }
 
+void LivenessCheckerImpl::PrintTopCommand() {
+  std::string top_output;
+  base::GetAppOutput({"top", "-b", "-c", "-n1", "-w512", "-H"}, &top_output);
+
+  std::vector<std::string> top_output_lines = base::SplitString(
+      top_output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (top_output_lines.size() > 20)
+    top_output_lines.resize(20);
+  top_output = base::JoinString(top_output_lines, "\n");
+
+  LOG(WARNING) << "Top output (trimmed): " << top_output;
+}
+
 void LivenessCheckerImpl::RecordStateForTimeout(bool verbose) {
   RecordDBusStats();
 
@@ -392,6 +392,7 @@ void LivenessCheckerImpl::RecordStateForTimeout(bool verbose) {
     return;
   }
   if (verbose) {
+    PrintTopCommand();
     RecordWchanState(state);
     RequestKernelTraces();
   } else {

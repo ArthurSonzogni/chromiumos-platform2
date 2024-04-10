@@ -108,6 +108,9 @@ class LivenessCheckerImpl : public LivenessChecker {
   // logs, and not read by this process.
   void RequestKernelTraces();
 
+  // Print to stdout the relevant output from the "top" command.
+  void PrintTopCommand();
+
   // Record browser and system state on ping timeout. Output is passed directly
   // to the log with the warning severity. With the verbose option set full
   // system state dump is produced, without it we're focused more on the
