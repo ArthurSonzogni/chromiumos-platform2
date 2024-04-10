@@ -439,7 +439,7 @@ TEST_F(StatefulWipeTest, PowerwashForced) {
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("power_wash"), 1);
   std::string res;
   ASSERT_TRUE(base::ReadFileToString(clobber_test_log_, &res));
-  EXPECT_EQ(res, "");
+  EXPECT_EQ(res, "Powerwash initiated by Reset file presence, but invalid");
   std::set<std::string> expected = {"keepimg", "preserve_lvs"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
 }
@@ -455,7 +455,7 @@ TEST_F(StatefulWipeTest, PowerwashNormal) {
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("power_wash"), 1);
   std::string res;
   ASSERT_TRUE(base::ReadFileToString(clobber_test_log_, &res));
-  EXPECT_EQ(res, "");
+  EXPECT_EQ(res, "Powerwash initiated by Reset file presence");
   std::set<std::string> expected = {"keepimg", "slow", "test", "powerwash"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
 }

@@ -459,11 +459,16 @@ void ChromeosStartup::CheckForStatefulWipe() {
     if (uid != getuid() || platform_->IsLink(reset_file)) {
       clobber_args.push_back("keepimg");
       clobber_args.push_back("preserve_lvs");
+      clobber_log_msg =
+          "Powerwash initiated by Reset file presence, but invalid";
     } else {
       std::string str;
       if (!platform_->ReadFileToString(reset_file, &str)) {
         PLOG(WARNING) << "Failed to read reset file";
+        clobber_log_msg =
+            "Powerwash initiated by Reset file presence, but unreadable";
       } else {
+        clobber_log_msg = "Powerwash initiated by Reset file presence";
         std::vector<std::string> split_args = base::SplitString(
             str, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
         for (const std::string& arg : split_args) {
@@ -499,6 +504,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
       } else {
         // Only fast clobber the non-protected paths in debug build to preserve
         // the testing tools.
+        clobber_log_msg = "Leave developer mode on a debug build";
         DevUpdateStatefulPartition("clobber");
       }
     }
@@ -515,6 +521,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
       } else {
         // Only fast clobber the non-protected paths in debug build to preserve
         // the testing tools.
+        clobber_log_msg = "Enter developer mode on a debug build";
         DevUpdateStatefulPartition("clobber");
         if (!base::PathExists(dev_mode_allowed_file_)) {
           if (!base::WriteFile(dev_mode_allowed_file_, "")) {
