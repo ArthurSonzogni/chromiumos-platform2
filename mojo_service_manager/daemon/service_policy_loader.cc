@@ -41,7 +41,7 @@ bool ValidateDictKeys(const base::Value::Dict& value) {
 
 bool ParseOptionalStringListByKey(const base::Value::Dict& value,
                                   std::string_view key,
-                                  std::vector<std::string>* out) {
+                                  std::vector<std::string>& out) {
   const auto* list = value.Find(key);
   // Returns true if not found because this is an optional field.
   if (!list)
@@ -60,13 +60,13 @@ bool ParseOptionalStringListByKey(const base::Value::Dict& value,
     }
     result.push_back(item.GetString());
   }
-  *out = std::move(result);
+  out = std::move(result);
   return true;
 }
 
 bool GetStringByKey(const base::Value::Dict& value,
                     const std::string& key,
-                    std::string* out) {
+                    std::string& out) {
   const auto* str = value.Find(key);
   if (!str) {
     LOG(ERROR) << "Cannot find \"" << key << "\" in policy.";
@@ -77,7 +77,7 @@ bool GetStringByKey(const base::Value::Dict& value,
                << "\" to be a string, but got: " << *str;
     return false;
   }
-  *out = str->GetString();
+  out = str->GetString();
   return true;
 }
 
@@ -160,7 +160,7 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
       return std::nullopt;
 
     std::string identity;
-    if (!GetStringByKey(policy, kKeyIdentity, &identity))
+    if (!GetStringByKey(policy, kKeyIdentity, identity))
       return std::nullopt;
     if (!ValidateSecurityContext(identity)) {
       LOG(ERROR) << "\"" << identity
@@ -169,7 +169,7 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
     }
 
     std::vector<std::string> owns;
-    if (!ParseOptionalStringListByKey(policy, kKeyOwn, &owns)) {
+    if (!ParseOptionalStringListByKey(policy, kKeyOwn, owns)) {
       return std::nullopt;
     }
     for (const auto& service : owns) {
@@ -185,7 +185,7 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
     }
 
     std::vector<std::string> requests;
-    if (!ParseOptionalStringListByKey(policy, kKeyRequest, &requests)) {
+    if (!ParseOptionalStringListByKey(policy, kKeyRequest, requests)) {
       return std::nullopt;
     }
     for (const auto& service : requests) {
