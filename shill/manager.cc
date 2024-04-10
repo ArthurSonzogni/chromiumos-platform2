@@ -3211,15 +3211,6 @@ bool Manager::SetNetworkThrottlingStatus(ResultCallback callback,
   return result;
 }
 
-DeviceRefPtr Manager::GetDeviceConnectedToService(ServiceRefPtr service) {
-  for (DeviceRefPtr device : devices_) {
-    if (device->IsConnectedToService(service)) {
-      return device;
-    }
-  }
-  return nullptr;
-}
-
 void Manager::SetLOHSEnabled(
     base::OnceCallback<void(std::string result)> callback, bool enabled) {
   // TODO(b/257880335): Implement setting LOHS state.

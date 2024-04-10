@@ -225,10 +225,6 @@ bool Device::IsConnected() const {
   return false;
 }
 
-bool Device::IsConnectedToService(const ServiceRefPtr& service) const {
-  return service == selected_service_ && IsConnected();
-}
-
 void Device::OnSelectedServiceChanged(const ServiceRefPtr&) {}
 
 const RpcIdentifier& Device::GetRpcIdentifier() const {

@@ -774,8 +774,6 @@ class Manager {
     power_manager_.reset(power_manager);
   }
 
-  DeviceRefPtr GetDeviceConnectedToService(ServiceRefPtr service);
-
   void DeregisterDeviceByLinkName(const std::string& link_name);
 
   std::string GetAlwaysOnVpnPackage(Error* error);

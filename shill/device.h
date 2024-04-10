@@ -125,11 +125,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // getting an IP.  Subclasses should call up to the parent first.
   virtual void OnConnected();
 
-  // Returns true if the selected service on the device (if any) is connected
-  // and matches the passed-in argument |service|.  Returns false if there is
-  // no connected service, or if it does not match |service|.
-  mockable bool IsConnectedToService(const ServiceRefPtr& service) const;
-
   // Called by Device so that subclasses can run hooks on the selected service
   // changed. This function is called after the |selected_service_| changed so
   // the subclasses can call the getter to retrieve the new selected service.

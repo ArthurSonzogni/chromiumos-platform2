@@ -42,10 +42,6 @@ class MockDevice : public Device {
   MOCK_METHOD(void, Scan, (Error*, const std::string&, bool), (override));
   MOCK_METHOD(bool, Load, (const StoreInterface*), (override));
   MOCK_METHOD(bool, Save, (StoreInterface*), (override));
-  MOCK_METHOD(bool,
-              IsConnectedToService,
-              (const ServiceRefPtr&),
-              (const, override));
   MOCK_METHOD(Technology, technology, (), (const, override));
   MOCK_METHOD(void, OnBeforeSuspend, (ResultCallback), (override));
   MOCK_METHOD(void, OnDarkResume, (ResultCallback), (override));

@@ -3671,20 +3671,12 @@ TEST_F(ManagerTest, CreateConnectivityReport) {
   EXPECT_CALL(*wifi_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*wifi_service, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*wifi_device, IsConnectedToService(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*wifi_device, IsConnectedToService(IsRefPtrTo(wifi_service)))
-      .WillRepeatedly(Return(true));
 
   MockServiceRefPtr cell_service = new NiceMock<MockService>(manager());
   manager()->RegisterService(cell_service);
   EXPECT_CALL(*cell_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*cell_service, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*cell_device, IsConnectedToService(_))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*cell_device, IsConnectedToService(IsRefPtrTo(cell_service)))
-      .WillRepeatedly(Return(true));
 
   manager()->CreateConnectivityReport(nullptr);
   dispatcher()->DispatchPendingEvents();
