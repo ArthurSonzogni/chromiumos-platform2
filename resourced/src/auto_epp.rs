@@ -575,7 +575,7 @@ mod tests {
                 .ok_or_else(|| anyhow::anyhow!("Invalid file path"))?,
         )?;
         assert!(context.high_utilization_cores.len() >= 2);
-        assert!(context.moderate_utilization_cores.len() >= 1);
+        assert!(!context.moderate_utilization_cores.is_empty());
 
         Ok(())
     }
