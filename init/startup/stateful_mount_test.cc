@@ -316,8 +316,8 @@ TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
   EXPECT_TRUE(base::PathExists(var_target.Append("var_new_file")));
   EXPECT_TRUE(base::PathExists(developer_target.Append("dev_new_file")));
 
-  std::string message = "'Updating from " + developer_new.value() + " && " +
-                        var_new.value() + ".'";
+  std::string message =
+      "Updating from " + developer_new.value() + " && " + var_new.value() + ".";
   std::string res;
   ASSERT_TRUE(base::ReadFileToString(clobber_log_, &res));
   EXPECT_EQ(res, message);
@@ -361,9 +361,9 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
   EXPECT_TRUE(base::PathExists(preserve_test));
   EXPECT_FALSE(base::PathExists(empty));
 
-  std::string message = "'Stateful update did not find " +
+  std::string message = "Stateful update did not find " +
                         developer_new.value() + " & " + var_new.value() +
-                        ".'\n'Keeping old development tools.'";
+                        ".'\n'Keeping old development tools.";
   std::string res;
   ASSERT_TRUE(base::ReadFileToString(clobber_log_, &res));
   EXPECT_EQ(res, message);

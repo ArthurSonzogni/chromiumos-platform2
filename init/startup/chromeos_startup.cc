@@ -491,9 +491,9 @@ void ChromeosStartup::CheckForStatefulWipe() {
         clobber_args.push_back("keepimg");
         std::string msg;
         if (res && uid == getuid()) {
-          msg = "'Leave developer mode, dev_mode file present'";
+          msg = "Leave developer mode, dev_mode file present";
         } else {
-          msg = "'Leave developer mode, no dev_mode file'";
+          msg = "Leave developer mode, no dev_mode file";
         }
         clobber_log_msg = msg;
       } else {

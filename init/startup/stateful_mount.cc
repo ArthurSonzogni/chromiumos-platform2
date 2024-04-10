@@ -438,14 +438,14 @@ void StatefulMount::MountStateful() {
 
           if (!thinpool) {
             LOG(ERROR) << "Thinpool does not exist";
-            ClobberStateful({"fast", "keepimg"}, "'Invalid thinpool'");
+            ClobberStateful({"fast", "keepimg"}, "Invalid thinpool");
           }
 
           if (!thinpool->Activate()) {
             LOG(WARNING) << "Failed to activate thinpool, attempting repair";
             if (!thinpool->Activate(/*check=*/true)) {
               LOG(ERROR) << "Failed to repair and activate thinpool";
-              ClobberStateful({"fast", "keepimg"}, "'Corrupt thinpool'");
+              ClobberStateful({"fast", "keepimg"}, "Corrupt thinpool");
             }
           }
 
@@ -458,7 +458,7 @@ void StatefulMount::MountStateful() {
                        << "volume.";
 
             ClobberStateful({"fast", "keepimg", "preserve_lvs"},
-                            "'Invalid unencrypted logical volume'");
+                            "Invalid unencrypted logical volume");
           }
           should_mount_lvm = true;
         }
@@ -495,7 +495,7 @@ void StatefulMount::MountStateful() {
       }
 
       ClobberStateful({"keepimg", "preserve_lvs"},
-                      "'Self-repair corrupted stateful partition'");
+                      "Self-repair corrupted stateful partition");
     }
 
     // Mount the OEM partition.
@@ -557,8 +557,8 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
   // Only replace the developer and var_overlay directories if new replacements
   // are available.
   if (base::DirectoryExists(developer_new) && base::DirectoryExists(var_new)) {
-    std::string update = "'Updating from " + developer_new.value() + " && " +
-                         var_new.value() + ".'";
+    std::string update = "Updating from " + developer_new.value() + " && " +
+                         var_new.value() + ".";
     startup_dep_->ClobberLog(update);
 
     for (const std::string& path : {var, dev_image}) {
@@ -597,9 +597,9 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
     }
     startup_dep_->RemoveInBackground(paths_to_rm);
   } else {
-    std::string update = "'Stateful update did not find " +
+    std::string update = "Stateful update did not find " +
                          developer_new.value() + " & " + var_new.value() +
-                         ".'\n'Keeping old development tools.'";
+                         ".'\n'Keeping old development tools.";
     startup_dep_->ClobberLog(update);
   }
 

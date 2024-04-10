@@ -490,7 +490,7 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("leave_dev"), 1);
   std::string res;
   ASSERT_TRUE(base::ReadFileToString(clobber_test_log_, &res));
-  EXPECT_EQ(res, "'Leave developer mode, dev_mode file present'");
+  EXPECT_EQ(res, "Leave developer mode, dev_mode file present");
   std::set<std::string> expected = {"fast", "keepimg"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
 }
