@@ -29,6 +29,10 @@ namespace {
 // Path to the ARC bridge socket path.
 constexpr char kArcBridgeSocketPath[] = "/run/chrome/arc_bridge.sock";
 
+// Path to the Mojo service manager socket.
+constexpr char kMojoServiceManagerSocketPath[] =
+    "/run/mojo/service_manager.sock";
+
 std::unique_ptr<LocalFile> CreateFile(
     base::ScopedFD fd,
     arc_proxy::FileDescriptor::Type fd_type,
@@ -71,7 +75,8 @@ std::unique_ptr<LocalFile> CreateFile(
 
 MojoProxy::MojoProxy(Delegate* delegate)
     : delegate_(delegate),
-      expected_socket_paths_{base::FilePath(kArcBridgeSocketPath)},
+      expected_socket_paths_{base::FilePath(kArcBridgeSocketPath),
+                             base::FilePath(kMojoServiceManagerSocketPath)},
       next_handle_(delegate_->GetType() == Type::SERVER ? 1 : -1),
       next_cookie_(delegate_->GetType() == Type::SERVER ? 1 : -1) {
   // Note: this needs to be initialized after weak_factory_, which is
