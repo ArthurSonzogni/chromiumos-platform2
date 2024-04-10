@@ -97,7 +97,9 @@ NvmeSelfTestRoutine::NvmeSelfTestRoutine(
   CHECK(debugd_proxy_);
 }
 
-NvmeSelfTestRoutine::~NvmeSelfTestRoutine() = default;
+NvmeSelfTestRoutine::~NvmeSelfTestRoutine() {
+  StopDebugdNvmeSelfTest();
+}
 
 void NvmeSelfTestRoutine::Start() {
   UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
@@ -125,19 +127,7 @@ void NvmeSelfTestRoutine::Start() {
 
 void NvmeSelfTestRoutine::Resume() {}
 void NvmeSelfTestRoutine::Cancel() {
-  if (!UpdateStatusWithProgressPercent(
-          mojom::DiagnosticRoutineStatusEnum::kCancelling,
-          /*percent=*/0, "")) {
-    return;
-  }
-  auto result_callback =
-      base::BindOnce(&NvmeSelfTestRoutine::OnDebugdNvmeSelfTestCancelCallback,
-                     weak_ptr_routine_.GetWeakPtr());
-  auto error_callback =
-      base::BindOnce(&NvmeSelfTestRoutine::OnDebugdErrorCallback,
-                     weak_ptr_routine_.GetWeakPtr());
-  debugd_proxy_->NvmeAsync(kNvmeStopSelfTestOption, std::move(result_callback),
-                           std::move(error_callback));
+  StopDebugdNvmeSelfTest();
 }
 
 void NvmeSelfTestRoutine::PopulateStatusUpdate(bool include_output,
@@ -175,6 +165,22 @@ void NvmeSelfTestRoutine::PopulateStatusUpdate(bool include_output,
       response.output = CreateReadOnlySharedMemoryRegionMojoHandle(json);
     }
   }
+}
+
+void NvmeSelfTestRoutine::StopDebugdNvmeSelfTest() {
+  if (!UpdateStatusWithProgressPercent(
+          mojom::DiagnosticRoutineStatusEnum::kCancelling,
+          /*percent=*/0, "")) {
+    return;
+  }
+  auto result_callback =
+      base::BindOnce(&NvmeSelfTestRoutine::OnDebugdNvmeSelfTestCancelCallback,
+                     weak_ptr_routine_.GetWeakPtr());
+  auto error_callback =
+      base::BindOnce(&NvmeSelfTestRoutine::OnDebugdErrorCallback,
+                     weak_ptr_routine_.GetWeakPtr());
+  debugd_proxy_->NvmeAsync(kNvmeStopSelfTestOption, std::move(result_callback),
+                           std::move(error_callback));
 }
 
 void NvmeSelfTestRoutine::OnDebugdErrorCallback(brillo::Error* error) {
@@ -301,13 +307,15 @@ bool NvmeSelfTestRoutine::UpdateStatusWithProgressPercent(
     std::string msg) {
   auto old_status = GetStatus();
   // Final states (kPassed, kFailed, kError, kCancelled) cannot be updated.
-  // Override kCancelling with kRunning is prohibited.
+  // Override kCancelling with kRunning is prohibited. Avoid cancelling twice
+  // to prevent sending duplicate abortion requests.
   if (old_status == mojom::DiagnosticRoutineStatusEnum::kPassed ||
       old_status == mojom::DiagnosticRoutineStatusEnum::kFailed ||
       old_status == mojom::DiagnosticRoutineStatusEnum::kError ||
       old_status == mojom::DiagnosticRoutineStatusEnum::kCancelled ||
       (old_status == mojom::DiagnosticRoutineStatusEnum::kCancelling &&
-       status == mojom::DiagnosticRoutineStatusEnum::kRunning)) {
+       (status == mojom::DiagnosticRoutineStatusEnum::kRunning ||
+        status == mojom::DiagnosticRoutineStatusEnum::kCancelling))) {
     return false;
   }
 

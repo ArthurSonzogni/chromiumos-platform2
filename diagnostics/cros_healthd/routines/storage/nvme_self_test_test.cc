@@ -35,6 +35,7 @@ using ::testing::WithArg;
 // Success message from controller if launching is completed without errors.
 constexpr char kShortStartSuccess[] = "Short Device self-test started";
 constexpr char kLongStartSuccess[] = "Extended Device self-test started";
+constexpr char kAbortingMessage[] = "Aborting device self-test operation";
 constexpr char kNvmeError[] = "NVMe Status:Unknown";
 
 class NvmeSelfTestRoutineTest : public testing::Test {
@@ -502,21 +503,29 @@ TEST_F(NvmeSelfTestRoutineTest, RoutineStatusTransition) {
     const routine_status source_status;
     const routine_status target_status;
     const bool expected_return;
+    const bool expected_call_abort;
   };
 
-  constexpr std::array<TestCase, 12> testcases = {
-      TestCase{routine_status::kRunning, routine_status::kRunning, true},
-      TestCase{routine_status::kRunning, routine_status::kError, true},
-      TestCase{routine_status::kRunning, routine_status::kPassed, true},
-      TestCase{routine_status::kRunning, routine_status::kFailed, true},
-      TestCase{routine_status::kRunning, routine_status::kCancelling, true},
-      TestCase{routine_status::kCancelling, routine_status::kError, true},
-      TestCase{routine_status::kCancelling, routine_status::kCancelled, true},
-      TestCase{routine_status::kCancelling, routine_status::kRunning, false},
-      TestCase{routine_status::kPassed, routine_status::kRunning, false},
-      TestCase{routine_status::kFailed, routine_status::kRunning, false},
-      TestCase{routine_status::kError, routine_status::kRunning, false},
-      TestCase{routine_status::kCancelled, routine_status::kRunning, false},
+  constexpr std::array<TestCase, 13> testcases = {
+      TestCase{routine_status::kRunning, routine_status::kRunning, true, true},
+      TestCase{routine_status::kRunning, routine_status::kError, true, false},
+      TestCase{routine_status::kRunning, routine_status::kPassed, true, false},
+      TestCase{routine_status::kRunning, routine_status::kFailed, true, false},
+      TestCase{routine_status::kRunning, routine_status::kCancelling, true,
+               false},
+      TestCase{routine_status::kCancelling, routine_status::kError, true,
+               false},
+      TestCase{routine_status::kCancelling, routine_status::kCancelled, true,
+               false},
+      TestCase{routine_status::kCancelling, routine_status::kRunning, false,
+               false},
+      TestCase{routine_status::kPassed, routine_status::kRunning, false, false},
+      TestCase{routine_status::kFailed, routine_status::kRunning, false, false},
+      TestCase{routine_status::kError, routine_status::kRunning, false, false},
+      TestCase{routine_status::kCancelled, routine_status::kRunning, false,
+               false},
+      TestCase{routine_status::kCancelling, routine_status::kCancelling, false,
+               false},
   };
 
   for (const auto& testcase : testcases) {
@@ -525,6 +534,15 @@ TEST_F(NvmeSelfTestRoutineTest, RoutineStatusTransition) {
         .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
           std::move(callback).Run(kShortStartSuccess);
         }));
+    if (testcase.expected_call_abort) {
+      EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeStopSelfTestOption, _, _, _))
+          .WillOnce(WithArg<1>([&](OnceStringCallback callback) {
+            std::move(callback).Run(kAbortingMessage);
+          }));
+    } else {
+      EXPECT_CALL(debugd_proxy_, NvmeAsync(kNvmeStopSelfTestOption, _, _, _))
+          .Times(0);
+    }
     RunRoutineStart();
     EXPECT_EQ(routine()->GetStatus(),
               mojom::DiagnosticRoutineStatusEnum::kRunning);

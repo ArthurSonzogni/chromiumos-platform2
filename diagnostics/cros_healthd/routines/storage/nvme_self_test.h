@@ -71,6 +71,7 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutineWithStatus {
 
  private:
   bool CheckSelfTestCompleted(uint8_t progress, uint8_t status) const;
+  void StopDebugdNvmeSelfTest();
 
   void OnDebugdNvmeSelfTestCancelCallback(const std::string& result);
   void OnDebugdNvmeSelfTestStartCallback(const std::string& result);
