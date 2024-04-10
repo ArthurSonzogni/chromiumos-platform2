@@ -26,20 +26,20 @@ bool RecoveryInstaller::RepartitionDisk() {
   }
   base::FilePath console = GetLogConsole();
   const std::vector<std::string> cmd = {
-    "/bin/chromeos-install",
-    "--skip_rootfs",
-    "--skip_dst_removable",
-    "--yes",
+      "/bin/chromeos-install", "--skip_rootfs", "--skip_dst_removable", "--yes",
 #if defined(ARCH_x86) || defined(ARCH_amd64)
-    "--pmbr_code=/usr/share/syslinux/gptmbr.bin"
+      "--pmbr_code=/usr/share/syslinux/gptmbr.bin"
 #else
-    "--pmbr_code=/dev/zero"
+      "--pmbr_code=/dev/zero"
 #endif
   };
   if (!process_manager_->RunCommandWithOutput(cmd, &return_code, &stdout,
                                               &stderr)) {
     partiton_success = false;
     PLOG(WARNING) << "Repartitioning the disk failed";
+  } else if (return_code != 0) {
+    partiton_success = false;
+    LOG(ERROR) << "Repartitioning the disk failed, return_code=" << return_code;
   } else {
     repartition_completed_ = true;
     LOG(INFO) << "Successfully repartitioned disk.";
