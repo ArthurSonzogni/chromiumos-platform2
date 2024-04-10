@@ -31,6 +31,7 @@ use protobuf::Message as ProtoMessage;
 use system_api::client::OrgChromiumDebugd;
 use system_api::client::OrgChromiumDlcServiceInterface;
 use system_api::client::OrgChromiumPermissionBroker;
+use system_api::client::OrgChromiumSessionManagerInterface;
 use system_api::client::OrgChromiumVmConcierge;
 use system_api::concierge_service::vm_info::VmType;
 use system_api::concierge_service::*;
@@ -2132,18 +2133,16 @@ impl Methods {
     }
 
     pub fn sessions_list(&mut self) -> Result<Vec<(String, String)>, Box<dyn Error>> {
-        let method = Message::new_method_call(
-            "org.chromium.SessionManager",
-            "/org/chromium/SessionManager",
-            "org.chromium.SessionManagerInterface",
-            "RetrieveActiveSessions",
-        )?;
-        let message = self
-            .connection
-            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
-        match message.get1::<HashMap<String, String>>() {
-            Some(sessions) => Ok(sessions.into_iter().collect()),
-            _ => Err(RetrieveActiveSessions.into()),
+        let proxy: blocking::Proxy<'_, _> = Connection::with_proxy(
+            self.connection.get_real_connection_or_fail()?,
+            SESSION_MANAGER_SERVICE_NAME,
+            SESSION_MANAGER_SERVICE_PATH,
+            DEFAULT_TIMEOUT,
+        );
+
+        match OrgChromiumSessionManagerInterface::retrieve_active_sessions(&proxy) {
+            Ok(sessions) => Ok(sessions.into_iter().collect()),
+            Err(_) => Err(RetrieveActiveSessions.into()),
         }
     }
 

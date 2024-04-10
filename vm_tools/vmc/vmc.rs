@@ -182,6 +182,16 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         }
     }
 
+    fn user_id_hash_to_username(&mut self, user_id_hash: &str) -> Result<String, Box<dyn Error>> {
+        if cfg!(test) {
+            // Fake IPC result for the test environment.
+            assert_eq!(user_id_hash, "fake_hash");
+            Ok("fake_user".to_owned())
+        } else {
+            self.methods.user_id_hash_to_username(user_id_hash)
+        }
+    }
+
     fn start(&mut self) -> VmcResult {
         let mut opts = Options::new();
         opts.optflag("", "enable-gpu", "when starting the vm, enable gpu support");
@@ -264,7 +274,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         }
 
         let vm_name = &matches.free[0];
-        let username = self.methods.user_id_hash_to_username(self.user_id_hash)?;
+        let username = self.user_id_hash_to_username(self.user_id_hash)?;
 
         let big_gl = matches.opt_present("enable-big-gl");
         let virtgpu_native_context = matches.opt_present("enable-virtgpu-native-context");
@@ -744,7 +754,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             _ => return Err(ExpectedVmAndContainer.into()),
         };
 
-        let username = self.methods.user_id_hash_to_username(self.user_id_hash)?;
+        let username = self.user_id_hash_to_username(self.user_id_hash)?;
 
         try_command!(self.methods.container_create(
             vm_name,
