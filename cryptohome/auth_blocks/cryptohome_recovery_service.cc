@@ -44,6 +44,23 @@ void CryptohomeRecoveryAuthBlockService::GenerateRecoveryRequest(
     const brillo::Blob& epoch_response,
     const CryptohomeRecoveryAuthBlockState& state,
     PreparedAuthFactorToken::Consumer on_done) {
+  // Wrap the on_done callback with a lambda that will log an error message on
+  // failure. This will be captured by the crash reporter to generate a
+  // synthetic crash report.
+  on_done = base::BindOnce(
+      [](PreparedAuthFactorToken::Consumer wrapped_on_done,
+         CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>> token) {
+        if (!token.ok()) {
+          // Note: the error format should match `cryptohome_recovery_failure`
+          // in crash-reporter/anomaly_detector.cc
+          LOG(ERROR)
+              << "Cryptohome Recovery GetRecoveryRequest failure, error = "
+              << token.err_status()->local_legacy_error().value();
+        }
+        std::move(wrapped_on_done).Run(std::move(token));
+      },
+      std::move(on_done));
+
   // Check if the required fields are set on CryptohomeRecoveryAuthBlockState.
   if (state.hsm_payload.empty() || state.channel_pub_key.empty() ||
       state.encrypted_channel_priv_key.empty()) {
