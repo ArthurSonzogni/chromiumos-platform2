@@ -457,8 +457,6 @@ void ChromeosStartup::CheckForStatefulWipe() {
     platform_->GetOwnership(reset_file, &uid, NULL, false /* follow_links */);
     // If it's not a plain file owned by us, force a powerwash.
     if (uid != getuid() || platform_->IsLink(reset_file)) {
-      clobber_args.push_back("keepimg");
-      clobber_args.push_back("preserve_lvs");
       clobber_log_msg =
           "Powerwash initiated by Reset file presence, but invalid";
     } else {

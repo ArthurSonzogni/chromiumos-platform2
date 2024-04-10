@@ -440,7 +440,7 @@ TEST_F(StatefulWipeTest, PowerwashForced) {
   std::string res;
   ASSERT_TRUE(base::ReadFileToString(clobber_test_log_, &res));
   EXPECT_EQ(res, "Powerwash initiated by Reset file presence, but invalid");
-  std::set<std::string> expected = {"keepimg", "preserve_lvs"};
+  std::set<std::string> expected = {"keepimg"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
 }
 
