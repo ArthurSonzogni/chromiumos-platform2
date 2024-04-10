@@ -29,6 +29,7 @@
 //   SIGNATURE   |        g        |  (unsupported)
 
 #include <array>
+#include <concepts>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -49,84 +50,88 @@ namespace dbus {
 class ObjectPath;
 }  // namespace dbus
 
+namespace google::protobuf {
+class MessageLite;
+}  // namespace google::protobuf
+
 namespace brillo::dbus_utils {
 
 // Provides DBusSignature::kValue, which is typed std::array<char, N>,
 // holding the D-Bus signature.
-template <typename T, typename = void>
+template <typename T>
 struct DBusSignature {
   static_assert(false, "Unsupported type for D-Bus");
 };
 
 template <>
 struct DBusSignature<std::uint8_t> {
-  static constexpr auto kValue = internal::ToArray("y");
+  static constexpr auto kValue = std::to_array("y");
 };
 
 template <>
 struct DBusSignature<bool> {
-  static constexpr auto kValue = internal::ToArray("b");
+  static constexpr auto kValue = std::to_array("b");
 };
 
 template <>
 struct DBusSignature<std::int16_t> {
-  static constexpr auto kValue = internal::ToArray("n");
+  static constexpr auto kValue = std::to_array("n");
 };
 
 template <>
 struct DBusSignature<std::uint16_t> {
-  static constexpr auto kValue = internal::ToArray("q");
+  static constexpr auto kValue = std::to_array("q");
 };
 
 template <>
 struct DBusSignature<std::int32_t> {
-  static constexpr auto kValue = internal::ToArray("i");
+  static constexpr auto kValue = std::to_array("i");
 };
 
 template <>
 struct DBusSignature<std::uint32_t> {
-  static constexpr auto kValue = internal::ToArray("u");
+  static constexpr auto kValue = std::to_array("u");
 };
 
 template <>
 struct DBusSignature<std::int64_t> {
-  static constexpr auto kValue = internal::ToArray("x");
+  static constexpr auto kValue = std::to_array("x");
 };
 
 template <>
 struct DBusSignature<std::uint64_t> {
-  static constexpr auto kValue = internal::ToArray("t");
+  static constexpr auto kValue = std::to_array("t");
 };
 
 template <>
 struct DBusSignature<double> {
-  static constexpr auto kValue = internal::ToArray("d");
+  static constexpr auto kValue = std::to_array("d");
 };
 
 template <>
 struct DBusSignature<std::string> {
-  static constexpr auto kValue = internal::ToArray("s");
+  static constexpr auto kValue = std::to_array("s");
 };
 
 // Overloading for compatibility.
 template <>
 struct DBusSignature<const char*> {
-  static constexpr auto kValue = internal::ToArray("s");
+  static constexpr auto kValue = std::to_array("s");
 };
 
 template <>
 struct DBusSignature<::dbus::ObjectPath> {
-  static constexpr auto kValue = internal::ToArray("o");
+  static constexpr auto kValue = std::to_array("o");
 };
 
 template <>
 struct DBusSignature<brillo::Any> {
-  static constexpr auto kValue = internal::ToArray("v");
+  static constexpr auto kValue = std::to_array("v");
 };
 
 template <>
 struct DBusSignature<base::ScopedFD> {
-  static constexpr auto kValue = internal::ToArray("h");
+  static constexpr auto kValue = std::to_array("h");
 };
 
 template <typename T, typename Alloc>
@@ -155,9 +160,10 @@ struct DBusSignature<std::map<K, V, Comp, Alloc>> {
 
 // Support of protobuf.
 template <typename T>
-struct DBusSignature<T, std::enable_if_t<internal::IsProtobuf<T>::value>> {
+  requires std::derived_from<T, google::protobuf::MessageLite>
+struct DBusSignature<T> {
   // Use byte array for underlying storage.
-  static constexpr auto kValue = internal::ToArray("ay");
+  static constexpr auto kValue = std::to_array("ay");
 };
 
 //----------------------------------------------------------------------------
