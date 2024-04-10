@@ -14,12 +14,16 @@ namespace patchpanel {
 RoutingTableEntry::RoutingTableEntry(net_base::IPFamily family)
     : dst(net_base::IPCIDR(family)),
       src(net_base::IPCIDR(family)),
-      gateway(net_base::IPAddress(family)) {}
+      gateway(net_base::IPAddress(family)),
+      pref_src(net_base::IPAddress(family)) {}
 
 RoutingTableEntry::RoutingTableEntry(const net_base::IPCIDR& dst_in,
                                      const net_base::IPCIDR& src_in,
                                      const net_base::IPAddress& gateway_in)
-    : dst(dst_in), src(src_in), gateway(gateway_in) {}
+    : dst(dst_in),
+      src(src_in),
+      gateway(gateway_in),
+      pref_src(net_base::IPAddress(dst_in.GetFamily())) {}
 
 RoutingTableEntry& RoutingTableEntry::SetMetric(uint32_t metric_in) {
   metric = metric_in;
@@ -46,11 +50,18 @@ RoutingTableEntry& RoutingTableEntry::SetTag(int tag_in) {
   return *this;
 }
 
+RoutingTableEntry& RoutingTableEntry::SetPrefSrc(
+    const net_base::IPAddress& pref_src_in) {
+  pref_src = pref_src_in;
+  return *this;
+}
+
 // clang-format off
 bool RoutingTableEntry::operator==(const RoutingTableEntry& b) const {
   return (dst == b.dst &&
           src == b.src &&
           gateway == b.gateway &&
+          pref_src == b.pref_src &&
           metric == b.metric &&
           scope == b.scope &&
           table == b.table &&
@@ -82,20 +93,24 @@ std::ostream& operator<<(std::ostream& os, const RoutingTableEntry& entry) {
       dest_prefix = "";
       break;
   }
+  std::string src;
+  if (!entry.src.IsDefault()) {
+    src = " from " + entry.src.ToString();
+  }
   std::string gateway;
   if (!entry.gateway.IsZero()) {
     gateway = " via " + entry.gateway.ToString();
   }
-  std::string src;
-  if (!entry.src.IsDefault()) {
-    src = " src " + entry.src.ToString();
+  std::string pref_src;
+  if (!entry.pref_src.IsZero()) {
+    pref_src = " src " + entry.pref_src.ToString();
   }
 
-  os << base::StringPrintf("%s%s%s metric %d %s table %d tag %d%s", dest_prefix,
-                           dest_address.c_str(), gateway.c_str(), entry.metric,
+  os << base::StringPrintf("%s%s%s%s%s metric %d %s table %d tag %d",
+                           dest_prefix, dest_address.c_str(), src.c_str(),
+                           gateway.c_str(), pref_src.c_str(), entry.metric,
                            net_base::ToString(entry.dst.GetFamily()).c_str(),
-                           static_cast<int>(entry.table), entry.tag,
-                           src.c_str());
+                           static_cast<int>(entry.table), entry.tag);
   return os;
 }
 

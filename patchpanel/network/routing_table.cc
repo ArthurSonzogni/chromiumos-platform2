@@ -262,6 +262,9 @@ bool RoutingTable::ApplyRoute(int interface_index,
   if (!entry.gateway.IsZero()) {
     message->SetAttribute(RTA_GATEWAY, entry.gateway.ToBytes());
   }
+  if (!entry.pref_src.IsZero()) {
+    message->SetAttribute(RTA_PREFSRC, entry.pref_src.ToBytes());
+  }
   if (entry.type == RTN_UNICAST) {
     // Note that RouteMsgHandler will ignore anything without RTA_OIF,
     // because that is how it looks up the |tables_| vector.  But

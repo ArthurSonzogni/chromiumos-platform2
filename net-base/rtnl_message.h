@@ -261,6 +261,8 @@ class BRILLO_EXPORT RTNLMessage {
   std::optional<IPCIDR> GetRtaSrc() const;
   // Returns the RTA_GATEWAY attribute for RTNLMessages of type kTypeRoute.
   std::optional<IPAddress> GetRtaGateway() const;
+  // Returns the RTA_PREFSRC attribute for RTNLMessages of type kTypeRoute.
+  std::optional<IPAddress> GetRtaPrefSrc() const;
   // Returns the RTA_OIF output interface attribute as an interface index
   // name for RTNLMessages of type kTypeRoute.
   uint32_t GetRtaOif() const;

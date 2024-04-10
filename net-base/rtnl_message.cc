@@ -1091,6 +1091,11 @@ std::optional<IPAddress> RTNLMessage::GetRtaGateway() const {
                                     FromSAFamily(family_));
 }
 
+std::optional<IPAddress> RTNLMessage::GetRtaPrefSrc() const {
+  return IPAddress::CreateFromBytes(GetAttribute(RTA_PREFSRC),
+                                    FromSAFamily(family_));
+}
+
 uint32_t RTNLMessage::GetRtaOif() const {
   return GetUint32Attribute(RTA_OIF);
 }

@@ -27,13 +27,18 @@ struct RoutingTableEntry {
   RoutingTableEntry& SetTable(uint32_t table_in);
   RoutingTableEntry& SetType(unsigned char type_in);
   RoutingTableEntry& SetTag(int tag_in);
+  RoutingTableEntry& SetPrefSrc(const net_base::IPAddress& pref_src_in);
 
   bool operator==(const RoutingTableEntry& b) const;
 
   net_base::IPCIDR dst;
-  net_base::IPCIDR src;
-  net_base::IPAddress gateway;  // RoutingTableEntry uses all-zero gateway
-                                // address to represent no gateway.
+  net_base::IPCIDR src;          // Note this is not the "src" field in iproute2
+                                 // output format, but the "from" field.
+  net_base::IPAddress gateway;   // RoutingTableEntry uses all-zero gateway
+                                 // address to represent no gateway.
+  net_base::IPAddress pref_src;  // The source IP preferred when sending packet
+                                 // through this route. i.e. "src" in iproute2.
+                                 // All-zero means no specified source IP.
   uint32_t metric = 0;
   unsigned char scope = RT_SCOPE_UNIVERSE;
   uint32_t table = RT_TABLE_MAIN;
