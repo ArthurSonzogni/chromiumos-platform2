@@ -32,11 +32,17 @@ use system_api::battery_saver::BatterySaverModeState;
 use tokio::sync::Mutex;
 
 #[cfg(target_arch = "x86_64")]
+use crate::auto_epp;
+#[cfg(target_arch = "x86_64")]
 use crate::cgroup_x86_64;
 use crate::common;
 use crate::common::read_from_file;
 use crate::config::ConfigProvider;
 use crate::feature;
+#[cfg(target_arch = "x86_64")]
+use crate::globals::read_dynamic_epp_feature;
+#[cfg(target_arch = "x86_64")]
+use crate::globals::set_bsm_signal_state;
 use crate::memory;
 use crate::metrics;
 use crate::power;
@@ -48,12 +54,6 @@ use crate::qos::set_process_state;
 use crate::qos::set_thread_state;
 use crate::qos::SchedQosContext;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
-#[cfg(target_arch = "x86_64")]
-use crate::auto_epp;
-#[cfg(target_arch = "x86_64")]
-use crate::globals::read_dynamic_epp_feature;
-#[cfg(target_arch = "x86_64")]
-use crate::globals::set_bsm_signal_state;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
 const PATH_NAME: &str = "/org/chromium/ResourceManager";
@@ -742,9 +742,9 @@ pub async fn service_main() -> Result<()> {
     #[cfg(target_arch = "x86_64")]
     cgroup_x86_64::register_feature();
 
-     // Dynamic EPP
-     #[cfg(target_arch = "x86_64")]
-     auto_epp::init();
+    // Dynamic EPP
+    #[cfg(target_arch = "x86_64")]
+    auto_epp::init();
 
     feature::init(conn.as_ref())
         .await

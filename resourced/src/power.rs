@@ -29,13 +29,11 @@ use crate::config::PowerSourceType;
 use crate::cpu_utils::hotplug_cpus;
 use crate::cpu_utils::write_to_cpu_policy_patterns;
 use crate::cpu_utils::HotplugCpuAction;
-
+#[cfg(target_arch = "x86_64")]
+use crate::globals::read_dynamic_epp_feature;
 //globals
 #[cfg(target_arch = "x86_64")]
 use crate::globals::set_rtc_fs_signal_state;
-#[cfg(target_arch = "x86_64")]
-use crate::globals::read_dynamic_epp_feature;
-
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
 const POWER_SUPPLY_ONLINE: &str = "online";
@@ -369,7 +367,11 @@ impl<P: PowerSourceProvider> DirectoryPowerPreferencesManager<P> {
 
             if boost.trim() != boost_value {
                 std::fs::write(&cpufreq_boost_path, boost_value).with_context(|| {
-                    format!("Error writing {} to {}", boost_value, cpufreq_boost_path.display())
+                    format!(
+                        "Error writing {} to {}",
+                        boost_value,
+                        cpufreq_boost_path.display()
+                    )
                 })?;
 
                 info!("Updating cpufreq boost {}", boost_value);
@@ -444,30 +446,30 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
 
         let fullscreen_video_efficiency_mode = power_source == PowerSourceType::DC
             && (rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active);
-            #[cfg(not(target_arch = "x86_64"))]
-            {
-                if fullscreen_video_efficiency_mode {
-                    if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
-                        error!("Failed to set energy performance preference: {:#}", err);
-                    }
-                } else {
-                    self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
-                    // Default EPP
+        #[cfg(not(target_arch = "x86_64"))]
+        {
+            if fullscreen_video_efficiency_mode {
+                if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
+                    error!("Failed to set energy performance preference: {:#}", err);
                 }
+            } else {
+                self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
+                // Default EPP
             }
-            #[cfg(target_arch = "x86_64")]
-            {
-                if dynamic_epp {
-                    set_rtc_fs_signal_state(fullscreen_video_efficiency_mode);
-                } else if fullscreen_video_efficiency_mode {
-                    if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
-                        error!("Failed to set energy performance preference: {:#}", err);
-                    }
-                } else {
-                    // Default EPP
-                    self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
+        }
+        #[cfg(target_arch = "x86_64")]
+        {
+            if dynamic_epp {
+                set_rtc_fs_signal_state(fullscreen_video_efficiency_mode);
+            } else if fullscreen_video_efficiency_mode {
+                if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
+                    error!("Failed to set energy performance preference: {:#}", err);
                 }
+            } else {
+                // Default EPP
+                self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
             }
+        }
         Ok(())
     }
 
@@ -647,8 +649,7 @@ mod tests {
     }
 
     fn read_global_cpufreq_boost(root: &Path) -> Result<String> {
-        let cpufreq_boost_path = root
-            .join("sys/devices/system/cpu/cpufreq/boost");
+        let cpufreq_boost_path = root.join("sys/devices/system/cpu/cpufreq/boost");
 
         let mut boost = std::fs::read_to_string(cpufreq_boost_path)?;
         boost = boost.trim().to_string();
