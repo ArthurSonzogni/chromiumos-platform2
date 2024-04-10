@@ -16,8 +16,7 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 namespace {
 
 // Keys of the policy files.
@@ -204,5 +203,4 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
   return result;
 }
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

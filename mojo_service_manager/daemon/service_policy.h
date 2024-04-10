@@ -9,8 +9,7 @@
 #include <set>
 #include <string>
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 // Stores the access policies of a service.
 class ServicePolicy {
@@ -73,7 +72,6 @@ bool ValidateServiceName(const std::string& service_name);
 // is equal to |[a-z0-9_:]+|.
 bool ValidateSecurityContext(const std::string& security_context);
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
 
 #endif  // MOJO_SERVICE_MANAGER_DAEMON_SERVICE_POLICY_H_

@@ -14,8 +14,7 @@
 #include "mojo_service_manager/daemon/service_policy_loader.h"
 #include "mojo_service_manager/daemon/service_policy_test_util.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 namespace {
 
 class ServicePolicyLoaderTest : public ::testing::Test {
@@ -288,5 +287,4 @@ TEST_F(ServicePolicyLoaderTest, LoadDirectoriesKeepLoadingWhenFail) {
 }
 
 }  // namespace
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

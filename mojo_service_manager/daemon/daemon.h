@@ -20,8 +20,7 @@
 #include "mojo_service_manager/daemon/service_manager.h"
 #include "mojo_service_manager/daemon/service_policy.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 // Exported for testing.
 std::string GetSEContextStringFromChar(const char* buf, size_t len);
@@ -89,7 +88,6 @@ class Daemon : public brillo::Daemon {
   std::unique_ptr<ServiceManager> service_manager_;
 };
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
 
 #endif  // MOJO_SERVICE_MANAGER_DAEMON_DAEMON_H_

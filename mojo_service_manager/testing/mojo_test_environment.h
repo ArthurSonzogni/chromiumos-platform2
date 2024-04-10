@@ -9,8 +9,7 @@
 #include <base/test/task_environment.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 // Sets up test environment for mojo.
 class MojoTaskEnvironment : public base::test::SingleThreadTaskEnvironment {
@@ -26,7 +25,6 @@ class MojoTaskEnvironment : public base::test::SingleThreadTaskEnvironment {
   mojo::core::ScopedIPCSupport ipc_support_;
 };
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
 
 #endif  // MOJO_SERVICE_MANAGER_TESTING_MOJO_TEST_ENVIRONMENT_H_

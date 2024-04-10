@@ -15,8 +15,7 @@
 #include "mojo_service_manager/testing/mojo_test_environment.h"
 #include "mojo_service_manager/testing/test.mojom.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 namespace {
 
 class ServiceManagerTestBase : public ::testing::Test {
@@ -479,5 +478,4 @@ TEST_F(PermissiveServiceManagerTest, ServiceObserverPermissive) {
 }
 
 }  // namespace
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

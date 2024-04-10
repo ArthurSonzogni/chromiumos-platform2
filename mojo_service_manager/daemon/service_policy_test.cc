@@ -10,8 +10,7 @@
 #include "mojo_service_manager/daemon/service_policy.h"
 #include "mojo_service_manager/daemon/service_policy_test_util.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 namespace {
 
 TEST(ServicePolicyTest, Default) {
@@ -108,5 +107,4 @@ TEST(ServicePolicyTest, ValidateServiceName) {
 }
 
 }  // namespace
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

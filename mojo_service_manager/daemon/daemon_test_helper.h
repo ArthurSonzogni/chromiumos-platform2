@@ -7,8 +7,7 @@
 
 #include <sysexits.h>
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 // The exit code for daemon test helper.
 enum class DaemonTestHelperResult {
@@ -18,7 +17,6 @@ enum class DaemonTestHelperResult {
 
 inline constexpr char kSocketPathSwitch[] = "test-socket-path";
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
 
 #endif  // MOJO_SERVICE_MANAGER_DAEMON_DAEMON_TEST_HELPER_H_

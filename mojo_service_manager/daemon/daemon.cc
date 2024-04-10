@@ -27,8 +27,7 @@
 #include "mojo_service_manager/daemon/service_manager.h"
 #include "mojo_service_manager/daemon/service_policy_loader.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 namespace {
 
 // Allow others to write so others can connect to the socket. The ACLs are
@@ -224,5 +223,4 @@ mojom::ProcessIdentityPtr Daemon::GetProcessIdentityFromPeerSocket(
   return identity;
 }
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

@@ -11,8 +11,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 ServicePolicy::ServicePolicy() = default;
 
@@ -90,5 +89,4 @@ bool ValidateSecurityContext(const std::string& security_context) {
   return true;
 }
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

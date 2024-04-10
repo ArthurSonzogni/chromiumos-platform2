@@ -7,8 +7,7 @@
 #include <string>
 #include <utility>
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 class NullInterface {};
 
@@ -22,5 +21,4 @@ void ResetMojoReceiverPipeWithReason(
   receiver.ResetWithReason(static_cast<uint32_t>(error), message);
 }
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

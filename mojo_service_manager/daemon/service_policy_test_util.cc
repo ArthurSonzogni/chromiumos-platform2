@@ -8,8 +8,7 @@
 #include <set>
 #include <string>
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 namespace {
 
 void PrintStringSet(const std::set<std::string>& set, std::ostream* out) {
@@ -57,5 +56,4 @@ std::ostream& operator<<(std::ostream& out, const ServicePolicy& policy) {
   return out;
 }
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

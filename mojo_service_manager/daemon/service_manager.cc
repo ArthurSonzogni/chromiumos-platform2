@@ -13,8 +13,7 @@
 
 #include "mojo_service_manager/daemon/mojo_error_util.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 ServiceManager::ServiceState::ServiceState(const std::string& service_name,
                                            ServicePolicy policy)
@@ -226,5 +225,4 @@ void ServiceManager::HandleDisconnect() {
             << receiver_set_.current_context()->security_context;
 }
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

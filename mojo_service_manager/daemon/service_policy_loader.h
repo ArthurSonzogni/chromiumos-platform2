@@ -14,8 +14,7 @@
 
 #include "mojo_service_manager/daemon/service_policy.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 // Note that the functions here use |base::JSONReader| which is not guaranteed
 // to be memory-safe. In production environment, all the policy files must come
@@ -45,7 +44,6 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromString(
 std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
     const base::Value::List& value);
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
 
 #endif  // MOJO_SERVICE_MANAGER_DAEMON_SERVICE_POLICY_LOADER_H_

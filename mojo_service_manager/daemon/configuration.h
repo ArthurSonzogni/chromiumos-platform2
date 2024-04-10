@@ -5,8 +5,7 @@
 #ifndef MOJO_SERVICE_MANAGER_DAEMON_CONFIGURATION_H_
 #define MOJO_SERVICE_MANAGER_DAEMON_CONFIGURATION_H_
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 // Stores the configuration for the service manager daemon.
 struct Configuration {
@@ -17,7 +16,6 @@ struct Configuration {
   bool is_permissive = false;
 };
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
 
 #endif  // MOJO_SERVICE_MANAGER_DAEMON_CONFIGURATION_H_

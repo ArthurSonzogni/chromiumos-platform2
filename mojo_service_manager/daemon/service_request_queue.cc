@@ -12,8 +12,7 @@
 
 #include "mojo_service_manager/daemon/mojo_error_util.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 ServiceRequestQueue::ServiceRequestQueue(const std::string& service_name)
     : service_name_(service_name) {}
@@ -56,5 +55,4 @@ void ServiceRequestQueue::PopAndRejectTimeoutRequest(
   requests_.erase(it);
 }
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

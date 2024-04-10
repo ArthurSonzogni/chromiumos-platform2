@@ -13,8 +13,7 @@
 
 #include "mojo_service_manager/lib/mojom/service_manager.mojom.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 // Provides a queue to keep the service requests before the servcie is
 // available. Each request can have a timeout and the queue rejects the request
@@ -57,7 +56,6 @@ class ServiceRequestQueue {
   base::WeakPtrFactory<ServiceRequestQueue> weak_factory_{this};
 };
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
 
 #endif  // MOJO_SERVICE_MANAGER_DAEMON_SERVICE_REQUEST_QUEUE_H_

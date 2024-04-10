@@ -11,8 +11,7 @@
 #include "mojo_service_manager/daemon/service_request_queue.h"
 #include "mojo_service_manager/testing/mojo_test_environment.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 namespace {
 
 class ServiceRequestQueueTest : public ::testing::Test {
@@ -62,5 +61,4 @@ TEST_F(ServiceRequestQueueTest, MojoError) {
 }
 
 }  // namespace
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager

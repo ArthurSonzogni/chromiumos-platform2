@@ -24,8 +24,7 @@
 #include "mojo_service_manager/lib/simple_mojo_service_provider.h"
 #include "mojo_service_manager/testing/test.mojom.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 namespace {
 
 // The actions supported by test tool.
@@ -135,8 +134,7 @@ int TestToolMain(int argc, char* argv[]) {
   return 1;
 }
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
 
 int main(int argc, char* argv[]) {
   return chromeos::mojo_service_manager::TestToolMain(argc, argv);

@@ -19,8 +19,7 @@
 #include "mojo_service_manager/daemon/service_request_queue.h"
 #include "mojo_service_manager/lib/mojom/service_manager.mojom.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 // Implements mojom::ServiceManager.
 class ServiceManager : public mojom::ServiceManager {
@@ -93,7 +92,6 @@ class ServiceManager : public mojom::ServiceManager {
   base::WeakPtrFactory<ServiceManager> weak_factory_{this};
 };
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
 
 #endif  // MOJO_SERVICE_MANAGER_DAEMON_SERVICE_MANAGER_H_

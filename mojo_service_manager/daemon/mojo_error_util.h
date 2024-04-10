@@ -11,8 +11,7 @@
 
 #include "mojo_service_manager/lib/mojom/service_manager.mojom.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 
 // Resets a message pipe of a receiver with reason.
 void ResetMojoReceiverPipeWithReason(
@@ -20,7 +19,6 @@ void ResetMojoReceiverPipeWithReason(
     mojom::ErrorCode error,
     const std::string& message);
 
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
 
 #endif  // MOJO_SERVICE_MANAGER_DAEMON_MOJO_ERROR_UTIL_H_

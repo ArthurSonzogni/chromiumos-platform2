@@ -26,8 +26,7 @@
 #include "mojo_service_manager/daemon/daemon.h"
 #include "mojo_service_manager/daemon/daemon_test_helper.h"
 
-namespace chromeos {
-namespace mojo_service_manager {
+namespace chromeos::mojo_service_manager {
 namespace {
 
 constexpr char kFakeSecurityContext[] = "u:r:cros_fake:s0";
@@ -194,5 +193,4 @@ TEST(DaemonUtilTest, GetSEContextStringFromChar) {
 }
 
 }  // namespace
-}  // namespace mojo_service_manager
-}  // namespace chromeos
+}  // namespace chromeos::mojo_service_manager
