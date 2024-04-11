@@ -1237,6 +1237,9 @@ constexpr char kDisconnectFromP2PGroupResultOperationInProgress[] =
 constexpr char kDisconnectFromP2PGroupResultOperationFailed[] =
     "operation_failed";
 
+// Manager DNSProxyDOHProviders wildcard IP address value.
+constexpr char kDNSProxyDOHProvidersMatchAnyIPAddress[] = "*";
+
 }  // namespace shill
 
 #endif  // SYSTEM_API_DBUS_SHILL_DBUS_CONSTANTS_H_
