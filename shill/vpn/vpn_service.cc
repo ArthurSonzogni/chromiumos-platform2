@@ -236,13 +236,12 @@ std::string VPNService::CreateStorageIdentifier(const KeyValueStore& args,
 }
 
 std::string VPNService::GetPhysicalTechnologyProperty(Error* error) {
-  ServiceRefPtr underlying_service = manager()->GetPrimaryPhysicalService();
-  if (!underlying_service) {
+  if (!default_physical_service_) {
     error->Populate(Error::kOperationFailed);
     return "";
   }
 
-  return underlying_service->GetTechnologyName();
+  return default_physical_service_->GetTechnologyName();
 }
 
 RpcIdentifier VPNService::GetDeviceRpcId(Error* error) const {
@@ -328,11 +327,10 @@ Service::TetheringState VPNService::GetTethering() const {
   if (!IsConnected()) {
     return TetheringState::kUnknown;
   }
-  ServiceRefPtr underlying_service = manager()->GetPrimaryPhysicalService();
-  if (!underlying_service) {
+  if (!default_physical_service_) {
     return TetheringState::kUnknown;
   }
-  return underlying_service->GetTethering();
+  return default_physical_service_->GetTethering();
 }
 
 bool VPNService::SetNameProperty(const std::string& name, Error* error) {

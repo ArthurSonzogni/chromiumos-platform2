@@ -68,7 +68,6 @@ class MockManager : public Manager {
   MOCK_METHOD(void, UpdateService, (const ServiceRefPtr&), (override));
   MOCK_METHOD(void, DeregisterService, (const ServiceRefPtr&), (override));
   MOCK_METHOD(void, UpdateDevice, (const DeviceRefPtr&), (override));
-  MOCK_METHOD(ServiceRefPtr, GetPrimaryPhysicalService, (), (override));
   MOCK_METHOD(void,
               OnDeviceGeolocationInfoUpdated,
               (const DeviceRefPtr&),

@@ -214,9 +214,6 @@ class Manager {
   mockable Network* FindActiveNetworkFromService(
       const ServiceRefPtr& service) const;
 
-  // Return the highest priority service of a physical technology type (i.e. not
-  // VPN, ARC, etc), or nullptr if no such service is found.
-  virtual ServiceRefPtr GetPrimaryPhysicalService();
   // Return the first service of type |Technology::kEthernet| found in
   // |services_|, or nullptr if no such service is found.
   virtual ServiceRefPtr GetFirstEthernetService();

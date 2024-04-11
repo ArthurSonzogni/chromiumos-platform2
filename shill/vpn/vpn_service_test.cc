@@ -345,8 +345,7 @@ TEST_F(VPNServiceTest, CustomSetterNoopChange) {
 }
 
 TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
-  // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
-  EXPECT_CALL(manager_, GetPrimaryPhysicalService()).WillOnce(Return(nullptr));
+  service_->OnDefaultPhysicalServiceChanged(nullptr);
 
   Error error;
   EXPECT_EQ("", service_->GetPhysicalTechnologyProperty(&error));
@@ -354,11 +353,10 @@ TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier) {
 }
 
 TEST_F(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi) {
-  auto underlying_service = new MockService(&manager_);
-  EXPECT_CALL(manager_, GetPrimaryPhysicalService())
-      .WillOnce(Return(underlying_service));
+  scoped_refptr<MockService> underlying_service = new MockService(&manager_);
   EXPECT_CALL(*underlying_service, technology())
       .WillOnce(Return(Technology::kWiFi));
+  service_->OnDefaultPhysicalServiceChanged(underlying_service);
 
   Error error;
   EXPECT_EQ(kTypeWifi, service_->GetPhysicalTechnologyProperty(&error));
@@ -370,16 +368,14 @@ TEST_F(VPNServiceTest, GetTethering) {
   EXPECT_EQ(Service::TetheringState::kUnknown, service_->GetTethering());
 
   service_->SetState(Service::kStateConnected);
-  // Simulate an error by causing GetPrimaryPhysicalService() to return nullptr.
-  EXPECT_CALL(manager_, GetPrimaryPhysicalService()).WillOnce(Return(nullptr));
+  service_->OnDefaultPhysicalServiceChanged(nullptr);
   EXPECT_EQ(Service::TetheringState::kUnknown, service_->GetTethering());
 
-  auto underlying_service = new MockService(&manager_);
-  EXPECT_CALL(manager_, GetPrimaryPhysicalService())
-      .WillRepeatedly(Return(underlying_service));
+  scoped_refptr<MockService> underlying_service = new MockService(&manager_);
   EXPECT_CALL(*underlying_service, GetTethering())
       .WillOnce([]() { return Service::TetheringState::kNotDetected; })
       .WillOnce([]() { return Service::TetheringState::kUnknown; });
+  service_->OnDefaultPhysicalServiceChanged(underlying_service);
   EXPECT_EQ(Service::TetheringState::kNotDetected, service_->GetTethering());
   EXPECT_EQ(Service::TetheringState::kUnknown, service_->GetTethering());
 }
