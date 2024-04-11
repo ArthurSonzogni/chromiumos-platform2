@@ -138,6 +138,9 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
   void set_suspended_state_path_for_testing(const base::FilePath& path) {
     suspended_state_path_ = path;
   }
+  void set_sync_on_suspend_path_for_testing(const base::FilePath& path) {
+    sync_on_suspend_path_ = path;
+  }
 
   bool first_run_after_boot_for_testing() { return first_run_after_boot_; }
   void disable_mojo_for_testing() { disable_mojo_for_testing_ = true; }

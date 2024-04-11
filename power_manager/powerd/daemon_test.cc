@@ -184,6 +184,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     suspended_state_path_ = temp_dir_.GetPath().Append("suspended_state");
     flashrom_lock_path_ = temp_dir_.GetPath().Append("flashrom_lock");
     battery_tool_lock_path_ = temp_dir_.GetPath().Append("battery_tool_lock");
+    sync_on_suspend_path_ = temp_dir_.GetPath().Append("sync_on_suspend_");
     proc_path_ = temp_dir_.GetPath().Append("proc");
     dbus_wrapper_->SetMethodCallback(base::BindRepeating(
         &DaemonTest::HandleDBusMethodCall, base::Unretained(this)));
@@ -222,6 +223,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
     daemon_->set_oobe_completed_path_for_testing(oobe_completed_path_);
     daemon_->set_cros_ec_path_for_testing(cros_ec_path_);
     daemon_->set_suspended_state_path_for_testing(suspended_state_path_);
+    daemon_->set_sync_on_suspend_path_for_testing(sync_on_suspend_path_);
     daemon_->disable_mojo_for_testing();
     daemon_->Init();
   }
@@ -670,6 +672,7 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   base::FilePath suspended_state_path_;
   base::FilePath flashrom_lock_path_;
   base::FilePath battery_tool_lock_path_;
+  base::FilePath sync_on_suspend_path_;
   base::FilePath proc_path_;
 
   // Value to return from GetPid().
@@ -1287,6 +1290,9 @@ TEST_F(DaemonTest, PrepareToSuspendAndResume) {
 #if USE_KEY_EVICTION
   // TODO(b:311232193, thomascedeno): This should be gated by a finch feature
   // flag and controlled by chrome://settings ideally.
+
+  ASSERT_EQ(base::WriteFile(sync_on_suspend_path_, nullptr, 0), 0);
+
   EXPECT_CALL(*user_data_auth_client_, EvictDeviceKey(_));
   dbus_wrapper_->SetMethodCallback(
       base::BindRepeating(&DaemonTest::HandleEvictCryptohomeDeviceResponse,
