@@ -1090,13 +1090,6 @@ class Service : public base::RefCounted<Service> {
   void InitializeServiceStateTransitionMetrics();
   void UpdateServiceStateTransitionMetrics(Service::ConnectState new_state);
 
-  // Returns whether portal detection is disabled by configuration on this
-  // service. This is the case if any of the following conditions is met:
-  //   - The Service is a managed Service.
-  //   - The Service has a proxy configuration defined.
-  //   - Portal detection is disabled for the link technology of this Service.
-  bool IsPortalDetectionDisabled() const;
-
   // WeakPtrFactory comes first, so that other fields can use it.
   base::WeakPtrFactory<Service> weak_ptr_factory_;
 

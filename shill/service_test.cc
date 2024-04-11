@@ -1484,12 +1484,12 @@ TEST_F(ServiceTest, SetProxyConfig) {
 
   {
     EXPECT_CALL(*network, UpdateNetworkValidationMode(
-                              NetworkMonitor::ValidationMode::kDisabled));
+                              NetworkMonitor::ValidationMode::kHTTPOnly));
     Error error;
     service_->SetProxyConfig("{\"mode\":\"auto_detect\"}", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(service_->HasProxyConfig());
-    EXPECT_EQ(NetworkMonitor::ValidationMode::kDisabled,
+    EXPECT_EQ(NetworkMonitor::ValidationMode::kHTTPOnly,
               service_->GetNetworkValidationMode());
     Mock::VerifyAndClearExpectations(network.get());
   }
@@ -1622,6 +1622,30 @@ TEST_F(ServiceTest, NetworkValidationMode) {
     EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled)
         .WillRepeatedly(Return(true));
     EXPECT_EQ(NetworkMonitor::ValidationMode::kFullValidation,
+              service_->GetNetworkValidationMode());
+  }
+  {
+    // The service's "CheckPortal" property is set to "auto" and the service
+    // direct proxy configuration is ignored.
+    Error error;
+    service_->SetCheckPortal("auto", &error);
+    service_->SetProxyConfig("{\"mode\":\"direct\"}", &error);
+    service_->SetONCSource("None", &error);
+    EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled)
+        .WillRepeatedly(Return(true));
+    EXPECT_EQ(NetworkMonitor::ValidationMode::kFullValidation,
+              service_->GetNetworkValidationMode());
+  }
+  {
+    // The service's "CheckPortal" property is set to "auto" and the service
+    // has a per-network proxy configuration.
+    Error error;
+    service_->SetCheckPortal("auto", &error);
+    service_->SetProxyConfig("{\"mode\":\"auto_detect\"}", &error);
+    service_->SetONCSource("None", &error);
+    EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled)
+        .WillRepeatedly(Return(true));
+    EXPECT_EQ(NetworkMonitor::ValidationMode::kHTTPOnly,
               service_->GetNetworkValidationMode());
   }
   {
@@ -3200,12 +3224,12 @@ TEST_F(ServiceTest, UpdateNetworkValidationModeWhenDisabledByProxy) {
   ON_CALL(mock_manager_, IsPortalDetectionEnabled).WillByDefault(Return(true));
 
   EXPECT_CALL(*network, UpdateNetworkValidationMode(
-                            NetworkMonitor::ValidationMode::kDisabled));
-  EXPECT_EQ(NetworkMonitor::ValidationMode::kDisabled,
+                            NetworkMonitor::ValidationMode::kHTTPOnly));
+  EXPECT_EQ(NetworkMonitor::ValidationMode::kHTTPOnly,
             service_->GetNetworkValidationMode());
 
   service_->UpdateNetworkValidationMode();
-  EXPECT_EQ(Service::kStateOnline, service_->state());
+  EXPECT_NE(Service::kStateOnline, service_->state());
 }
 
 TEST_F(ServiceTest, UpdateNetworkValidationModeWhenDisabledByCheckPortal) {

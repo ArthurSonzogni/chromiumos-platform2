@@ -2065,28 +2065,6 @@ bool Service::IsDisconnectable(Error* error) const {
   return true;
 }
 
-bool Service::IsPortalDetectionDisabled() const {
-  // Services created through policy should not be checked by the connection
-  // manager, since we don't have the ability to evaluate arbitrary proxy
-  // configs and their possible credentials. One possible scenario for the case
-  // is an on-prem proxy server with a strict firewall that blocks portal
-  // detection probes. See b/279520395.
-  if (source_ == ONCSource::kONCSourceDevicePolicy ||
-      source_ == ONCSource::kONCSourceUserPolicy) {
-    return true;
-  }
-
-  // We need to disable network validation on networks with proxy config
-  // (excluding "direct"), even when the network is not managed, in order for
-  // on-prem proxy server with a strict firewall that blocks network validation
-  // to be seen as online. See b/302126338.
-  if (HasProxyConfig()) {
-    return true;
-  }
-
-  return !manager_->IsPortalDetectionEnabled(technology());
-}
-
 NetworkMonitor::ValidationMode Service::GetNetworkValidationMode() {
   switch (check_portal_) {
     case CheckPortalState::kTrue:
@@ -2096,10 +2074,39 @@ NetworkMonitor::ValidationMode Service::GetNetworkValidationMode() {
     case CheckPortalState::kHTTPOnly:
       return NetworkMonitor::ValidationMode::kHTTPOnly;
     case CheckPortalState::kAutomatic:
-      if (IsPortalDetectionDisabled()) {
+      // b/279520395: Network validation should not run by default on Services
+      // created through policies which most of the time represent on-prem
+      // networks:
+      //   - The firewall of the network may reject HTTPS validation probes.
+      //   - The platform is not aware of the global HTTP proxy configuration
+      //   that exists in Chrome to go through the firewall.
+      if (source_ == ONCSource::kONCSourceDevicePolicy ||
+          source_ == ONCSource::kONCSourceUserPolicy) {
         return NetworkMonitor::ValidationMode::kDisabled;
       }
-      return NetworkMonitor::ValidationMode::kFullValidation;
+
+      // When the Service itself has an explicit proxy configuration (manual
+      // configuration or PAC URL configuration), network validation is set by
+      // default to "http-only" to ensure that an on-prem strict firewalls do
+      // not block the HTTPS probes and prevent the Service from transitioning
+      // to the "online" state. Captive portal HTTP detection probes can still
+      // be sent because the firewall will be able to intercept them and reply
+      // to them explicitly. See b/302126338.
+      //
+      // In most cases, the proxy configuration is set by the user for accessing
+      // the Internet in the browser through a remote web proxy. In these cases,
+      // the "http-only" allows to detect captive portals.
+      if (HasProxyConfig()) {
+        return NetworkMonitor::ValidationMode::kHTTPOnly;
+      }
+
+      // Otherwise, check if network validation is enabled for the network
+      // technology of this Service.
+      if (manager_->IsPortalDetectionEnabled(technology())) {
+        return NetworkMonitor::ValidationMode::kFullValidation;
+      } else {
+        return NetworkMonitor::ValidationMode::kDisabled;
+      }
   }
 }
 
