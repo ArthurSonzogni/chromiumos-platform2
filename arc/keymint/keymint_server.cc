@@ -695,4 +695,46 @@ void KeyMintServer::GenerateEcdsaP256KeyPair(
                     std::move(km_request), std::move(task_lambda));
 }
 
+void KeyMintServer::GenerateCertificateRequest(
+    arc::mojom::keymint::CertificateRequestPtr request,
+    GenerateCertificateRequestCallback callback) {
+  // Validate the request.
+  if (request.is_null() || request->keys_to_sign.empty() ||
+      request->challenge.is_null() ||
+      request->encryption_cert_chain.is_null()) {
+    LOG(ERROR) << "KeyMint Error: Certificate Request or its fields are null";
+    return;
+  }
+
+  // Convert input |request| into |km_request|. All data is deep copied to avoid
+  // use-after-free.
+  auto km_request =
+      MakeGenerateCsrRequest(request, backend_.keymint()->message_version());
+
+  // Validate the |km_request| before passing to Reference impl.
+  if (!km_request) {
+    auto response =
+        arc::mojom::keymint::GenerateCertificateRequestResultOrError::NewError(
+            KM_ERROR_INVALID_ARGUMENT);
+    std::move(callback).Run(std::move(response));
+    return;
+  }
+
+  auto task_lambda = base::BindOnce(
+      [](GenerateCertificateRequestCallback callback,
+         std::unique_ptr<::keymaster::GenerateCsrResponse> km_response) {
+        CHECK(km_response);
+        arc::mojom::keymint::GenerateCertificateRequestResultOrErrorPtr
+            response = MakeGenerateCsrResult(*km_response);
+
+        // Run callback.
+        std::move(callback).Run(std::move(response));
+      },
+      std::move(callback));
+
+  // Call keymint.
+  RunKeyMintRequest(FROM_HERE, &::keymaster::AndroidKeymaster::GenerateCsr,
+                    std::move(km_request), std::move(task_lambda));
+}
+
 }  // namespace arc::keymint

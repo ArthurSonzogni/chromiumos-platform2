@@ -669,6 +669,83 @@ TEST(ConvertToMessage, FinishOperationRequest) {
       VerifyHardwareAuthToken(output->additional_params, *input->auth_token));
 }
 
+TEST(ConvertToMessage, GenerateCsrRequestSuccess) {
+  // Prepare.
+  std::vector<::arc::mojom::keymint::KeyMintBlobPtr> keys_to_sign;
+  keys_to_sign.push_back(::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end())));
+  keys_to_sign.push_back(::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob2.begin(), kBlob2.end())));
+  keys_to_sign.push_back(::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob3.begin(), kBlob3.end())));
+  keys_to_sign.push_back(::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end())));
+  auto total_keys = keys_to_sign.size();
+  auto encryption_chain = ::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob2.begin(), kBlob2.end()));
+  auto challenge = ::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob3.begin(), kBlob3.end()));
+  bool test_mode = false;
+  auto input = ::arc::mojom::keymint::CertificateRequest::New(
+      test_mode, std::move(keys_to_sign), std::move(encryption_chain),
+      std::move(challenge));
+
+  // Convert.
+  auto output = MakeGenerateCsrRequest(input, kKeyMintMessageVersion);
+
+  // Verify.
+  ASSERT_TRUE(output);
+  EXPECT_EQ(output->num_keys, total_keys);
+  EXPECT_EQ(output->test_mode, test_mode);
+  EXPECT_TRUE(
+      VerifyVectorUint8(output->endpoint_enc_cert_chain.data,
+                        output->endpoint_enc_cert_chain.data_length,
+                        std::vector<uint8_t>(kBlob2.begin(), kBlob2.end())));
+  EXPECT_TRUE(
+      VerifyVectorUint8(output->challenge.data, output->challenge.data_length,
+                        std::vector<uint8_t>(kBlob3.begin(), kBlob3.end())));
+  EXPECT_TRUE(
+      VerifyVectorUint8(output->keys_to_sign_array[0].data,
+                        output->keys_to_sign_array[0].data_length,
+                        std::vector<uint8_t>(kBlob1.begin(), kBlob1.end())));
+  EXPECT_TRUE(
+      VerifyVectorUint8(output->keys_to_sign_array[1].data,
+                        output->keys_to_sign_array[1].data_length,
+                        std::vector<uint8_t>(kBlob2.begin(), kBlob2.end())));
+  EXPECT_TRUE(
+      VerifyVectorUint8(output->keys_to_sign_array[2].data,
+                        output->keys_to_sign_array[2].data_length,
+                        std::vector<uint8_t>(kBlob3.begin(), kBlob3.end())));
+  EXPECT_TRUE(
+      VerifyVectorUint8(output->keys_to_sign_array[3].data,
+                        output->keys_to_sign_array[3].data_length,
+                        std::vector<uint8_t>(kBlob1.begin(), kBlob1.end())));
+}
+
+TEST(ConvertToMessage, GenerateCsrRequestFailure) {
+  // Prepare.
+  std::vector<::arc::mojom::keymint::KeyMintBlobPtr> keys_to_sign;
+  keys_to_sign.push_back(::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end())));
+  keys_to_sign.push_back(::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob2.begin(), kBlob2.end())));
+  keys_to_sign.push_back(::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob3.begin(), kBlob3.end())));
+  keys_to_sign.push_back(::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob1.begin(), kBlob1.end())));
+  auto encryption_chain = ::arc::mojom::keymint::KeyMintBlob::New(
+      std::vector<uint8_t>(kBlob2.begin(), kBlob2.end()));
+  bool test_mode = false;
+  auto input = ::arc::mojom::keymint::CertificateRequest::New(
+      test_mode, std::move(keys_to_sign), std::move(encryption_chain), nullptr);
+
+  // Convert.
+  auto output = MakeGenerateCsrRequest(input, kKeyMintMessageVersion);
+
+  // Verify.
+  EXPECT_FALSE(output);
+}
+
 TEST(PrepareResult, GenerateEcdsaP256KeyPairResultOrErrorPtr) {
   // Prepare.
   ::keymaster::GenerateRkpKeyResponse input(kKeyMintMessageVersion);
@@ -682,6 +759,7 @@ TEST(PrepareResult, GenerateEcdsaP256KeyPairResultOrErrorPtr) {
   auto mojo = MakeGenerateEcdsaP256KeyPairResult(input);
 
   // Verify.
+  ASSERT_TRUE(!mojo.is_null());
   EXPECT_TRUE(mojo->is_key_pair_result());
   EXPECT_TRUE(
       VerifyVectorUint8(maced_public_key.data, maced_public_key.data_length,
@@ -690,6 +768,47 @@ TEST(PrepareResult, GenerateEcdsaP256KeyPairResultOrErrorPtr) {
   EXPECT_TRUE(VerifyVectorUint8(
       key_blob.key_material, key_blob.key_material_size,
       mojo->get_key_pair_result()->handle_to_private_key->key_material));
+}
+
+TEST(PrepareResult, GenerateCsrResultSuccess) {
+  // Prepare.
+  ::keymaster::GenerateCsrResponse input(kKeyMintMessageVersion);
+  input.error = KM_ERROR_OK;
+  ::keymaster::KeymasterBlob device_info_blob(kBlob1.data(), kBlob1.size());
+  input.device_info_blob = device_info_blob;
+  ::keymaster::KeymasterBlob protected_data_blob(kBlob2.data(), kBlob2.size());
+  input.protected_data_blob = protected_data_blob;
+  ::keymaster::KeymasterBlob keys_to_sign_mac(kBlob3.data(), kBlob3.size());
+  input.keys_to_sign_mac = keys_to_sign_mac;
+
+  // Convert.
+  auto mojo = MakeGenerateCsrResult(input);
+
+  // Verify.
+  ASSERT_TRUE(!mojo.is_null());
+  EXPECT_TRUE(mojo->is_certificate_request_result());
+  EXPECT_TRUE(VerifyVectorUint8(
+      device_info_blob.data, device_info_blob.data_length,
+      mojo->get_certificate_request_result()->device_info->data));
+  EXPECT_TRUE(VerifyVectorUint8(
+      protected_data_blob.data, protected_data_blob.data_length,
+      mojo->get_certificate_request_result()->protected_data->data));
+  EXPECT_TRUE(VerifyVectorUint8(
+      keys_to_sign_mac.data, keys_to_sign_mac.data_length,
+      mojo->get_certificate_request_result()->mac_of_keys_to_sign->data));
+}
+
+TEST(PrepareResult, GenerateCsrResultFailure) {
+  // Prepare.
+  ::keymaster::GenerateCsrResponse input(kKeyMintMessageVersion);
+  input.error = KM_ERROR_INVALID_ARGUMENT;
+
+  // Convert.
+  auto mojo = MakeGenerateCsrResult(input);
+
+  // Verify.
+  ASSERT_TRUE(mojo->is_error());
+  EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT, mojo->get_error());
 }
 
 }  // namespace arc::keymint

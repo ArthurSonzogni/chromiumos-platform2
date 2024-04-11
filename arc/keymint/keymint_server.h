@@ -115,6 +115,10 @@ class KeyMintServer : public arc::mojom::keymint::KeyMintServer {
   void GenerateEcdsaP256KeyPair(
       bool test_mode, GenerateEcdsaP256KeyPairCallback callback) override;
 
+  void GenerateCertificateRequest(
+      arc::mojom::keymint::CertificateRequestPtr request,
+      GenerateCertificateRequestCallback callback) override;
+
  private:
   class Backend {
    public:

@@ -112,6 +112,10 @@ MakeComputeSharedSecretRequest(
     const std::vector<arc::mojom::keymint::SharedSecretParametersPtr>& request,
     const int32_t keymint_message_version);
 
+std::unique_ptr<::keymaster::GenerateCsrRequest> MakeGenerateCsrRequest(
+    const arc::mojom::keymint::CertificateRequestPtr& request,
+    const int32_t keymint_message_version);
+
 // Mojo Result Methods.
 arc::mojom::keymint::KeyCharacteristicsArrayOrErrorPtr
 MakeGetKeyCharacteristicsResult(
@@ -151,6 +155,9 @@ arc::mojom::keymint::TimeStampTokenOrErrorPtr MakeGenerateTimeStampTokenResult(
 arc::mojom::keymint::GenerateEcdsaP256KeyPairResultOrErrorPtr
 MakeGenerateEcdsaP256KeyPairResult(
     const ::keymaster::GenerateRkpKeyResponse& km_response);
+
+arc::mojom::keymint::GenerateCertificateRequestResultOrErrorPtr
+MakeGenerateCsrResult(const ::keymaster::GenerateCsrResponse& km_response);
 
 }  // namespace arc::keymint
 

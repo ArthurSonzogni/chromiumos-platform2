@@ -748,6 +748,55 @@ MakeComputeSharedSecretRequest(
   return out;
 }
 
+std::unique_ptr<::keymaster::GenerateCsrRequest> MakeGenerateCsrRequest(
+    const arc::mojom::keymint::CertificateRequestPtr& request,
+    const int32_t keymint_message_version) {
+  auto out = std::make_unique<::keymaster::GenerateCsrRequest>(
+      keymint_message_version);
+
+  if (request.is_null()) {
+    LOG(ERROR) << "KeyMint Error: Certificate Request is null";
+    return nullptr;
+  }
+  out->test_mode = request->test_mode;
+
+  // Set the Keys to sign array.
+  out->keys_to_sign_array = new (
+      std::nothrow)::keymaster::KeymasterBlob[request->keys_to_sign.size()];
+  if (out->keys_to_sign_array == nullptr) {
+    LOG(ERROR) << "KeyMint Error: Null Pointer received for GenerateCsrRequest";
+    return nullptr;
+  }
+  out->num_keys = request->keys_to_sign.size();
+  for (size_t i = 0; i < request->keys_to_sign.size(); i++) {
+    if (request->keys_to_sign[i].is_null()) {
+      LOG(ERROR)
+          << "KeyMint Error: GenerateCsrRequest Key to be signed is null";
+      return nullptr;
+    }
+    out->SetKeyToSign(i, request->keys_to_sign[i]->data.data(),
+                      request->keys_to_sign[i]->data.size());
+  }
+
+  // Set the Encryption Certificate Chain.
+  if (request->encryption_cert_chain.is_null()) {
+    LOG(ERROR)
+        << "KeyMint Error: GenerateCsrRequest Encryption Cert Chain is null";
+    return nullptr;
+  }
+  out->SetEndpointEncCertChain(request->encryption_cert_chain->data.data(),
+                               request->encryption_cert_chain->data.size());
+
+  // Set the Challenge.
+  if (request->challenge.is_null()) {
+    LOG(ERROR) << "KeyMint Error: GenerateCsrRequest Challenge is null";
+    return nullptr;
+  }
+  out->SetChallenge(request->challenge->data.data(),
+                    request->challenge->data.size());
+  return out;
+}
+
 // Mojo Result Methods.
 arc::mojom::keymint::KeyCharacteristicsArrayOrErrorPtr
 MakeGetKeyCharacteristicsResult(
@@ -977,6 +1026,30 @@ MakeGenerateEcdsaP256KeyPairResult(
 
   return arc::mojom::keymint::GenerateEcdsaP256KeyPairResultOrError::
       NewKeyPairResult(std::move(result));
+}
+
+arc::mojom::keymint::GenerateCertificateRequestResultOrErrorPtr
+MakeGenerateCsrResult(const ::keymaster::GenerateCsrResponse& km_response) {
+  if (km_response.error != KM_ERROR_OK) {
+    return arc::mojom::keymint::GenerateCertificateRequestResultOrError::
+        NewError(km_response.error);
+  }
+
+  arc::mojom::keymint::KeyMintBlobPtr device_info =
+      ConvertFromKeyMintBlob(km_response.device_info_blob);
+
+  arc::mojom::keymint::KeyMintBlobPtr protected_data =
+      ConvertFromKeyMintBlob(km_response.protected_data_blob);
+
+  arc::mojom::keymint::KeyMintBlobPtr mac_of_keys_to_sign =
+      ConvertFromKeyMintBlob(km_response.keys_to_sign_mac);
+
+  auto result = arc::mojom::keymint::GenerateCertificateRequestResult::New(
+      std::move(device_info), std::move(protected_data),
+      std::move(mac_of_keys_to_sign));
+
+  return arc::mojom::keymint::GenerateCertificateRequestResultOrError::
+      NewCertificateRequestResult(std::move(result));
 }
 
 }  // namespace arc::keymint
