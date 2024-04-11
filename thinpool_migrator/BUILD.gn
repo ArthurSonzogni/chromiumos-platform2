@@ -73,6 +73,11 @@ install_config("install_tmpfiles_config") {
   install_path = "tmpfilesd"
 }
 
+install_config("install_init") {
+  sources = [ "init/lvm-migration-trim.conf" ]
+  install_path = "upstart"
+}
+
 proto_library("migration_status_proto") {
   proto_in_dir = "./proto/"
   proto_out_dir = "include/thinpool_migrator"
