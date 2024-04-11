@@ -2,10 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <pwd.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sysexits.h>
 
 #include <cstring>
+#include <map>
 #include <optional>
 #include <string>
 #include <utility>
@@ -27,6 +30,12 @@
 #include "mojo_service_manager/daemon/daemon_test_helper.h"
 
 namespace chromeos::mojo_service_manager {
+
+mojom::ProcessIdentityPtr GetProcessIdentityFromPeerSocketForTest(
+    const Daemon& daemon, const base::ScopedFD& peer) {
+  return daemon.GetProcessIdentityFromPeerSocket(peer);
+}
+
 namespace {
 
 constexpr char kFakeSecurityContext[] = "u:r:cros_fake:s0";
@@ -77,8 +86,7 @@ class DaemonTest : public ::testing::Test {
 // field.
 class FakeDelegate : public Daemon::Delegate {
  public:
-  FakeDelegate(std::optional<struct ucred> ucred = std::nullopt,
-               std::optional<std::string> security_context = std::nullopt);
+  FakeDelegate();
   FakeDelegate(const FakeDelegate&) = delete;
   FakeDelegate& operator=(const FakeDelegate&) = delete;
   ~FakeDelegate() override;
@@ -89,19 +97,24 @@ class FakeDelegate : public Daemon::Delegate {
                  int optname,
                  void* optval,
                  socklen_t* optlen) const override;
+  const struct passwd* GetPWUid(uid_t uid) const override;
   ServicePolicyMap LoadPolicyFiles(
       const std::vector<base::FilePath>& policy_dir_paths) const override;
 
- private:
-  std::optional<struct ucred> ucred_;
-
-  std::optional<std::string> security_context_;
+  // Sets this to change `ucred` returned by `GetSockOpt`.
+  std::optional<struct ucred> ucred_ = std::nullopt;
+  // Sets this to change `security_context` returned by `GetSockOpt`.
+  std::optional<std::string> security_context_ = std::nullopt;
+  // Sets this to change `passwd` returned by `GetPWUid`.
+  std::map<uid_t, struct passwd> passwd_map_;
+  // Sets this to raise a EINTR for `GetPWUid`. Use static variable so it can be
+  // modified in a const method.
+  static bool raise_a_eintr_for_getpwuid_;
 };
 
-FakeDelegate::FakeDelegate(std::optional<struct ucred> ucred,
-                           std::optional<std::string> security_context)
-    : ucred_(std::move(ucred)),
-      security_context_(std::move(security_context)) {}
+bool FakeDelegate::raise_a_eintr_for_getpwuid_ = false;
+
+FakeDelegate::FakeDelegate() = default;
 
 FakeDelegate::~FakeDelegate() = default;
 
@@ -131,6 +144,21 @@ int FakeDelegate::GetSockOpt(const base::ScopedFD& socket,
   }
 }
 
+const struct passwd* FakeDelegate::GetPWUid(uid_t uid) const {
+  if (raise_a_eintr_for_getpwuid_) {
+    raise_a_eintr_for_getpwuid_ = false;
+    errno = EINTR;
+    return nullptr;
+  }
+  const auto it = passwd_map_.find(uid);
+  if (it != passwd_map_.end()) {
+    errno = 0;
+    return &(it->second);
+  }
+  errno = ESRCH;
+  return nullptr;
+}
+
 ServicePolicyMap FakeDelegate::LoadPolicyFiles(
     const std::vector<base::FilePath>& policy_dir_paths) const {
   return ServicePolicyMap{};
@@ -146,7 +174,9 @@ TEST_F(DaemonTest, FailToListenSocket) {
 
 TEST_F(DaemonTest, FailToGetSocketCred) {
   // Set ucred to nullopt to fail the test.
-  FakeDelegate delegate{std::nullopt, kFakeSecurityContext};
+  FakeDelegate delegate{};
+  delegate.ucred_ = std::nullopt;
+  delegate.security_context_ = kFakeSecurityContext;
   RunDaemonAndExpectTestSubprocessResult(
       &delegate, DaemonTestHelperResult::kResetWithOsError);
 }
@@ -154,7 +184,9 @@ TEST_F(DaemonTest, FailToGetSocketCred) {
 TEST_F(DaemonTest, FailToGetSocketSecurityContext) {
   // Set security context to nullopt to fail the test.
   struct ucred ucred = {};
-  FakeDelegate delegate{ucred, std::nullopt};
+  FakeDelegate delegate{};
+  delegate.ucred_ = ucred;
+  delegate.security_context_ = std::nullopt;
   RunDaemonAndExpectTestSubprocessResult(
       &delegate, DaemonTestHelperResult::kResetWithOsError);
 }
@@ -162,14 +194,18 @@ TEST_F(DaemonTest, FailToGetSocketSecurityContext) {
 TEST_F(DaemonTest, FailToGetSocketSecurityContextEmptyString) {
   // Set security context to empty string to fail the test.
   struct ucred ucred = {};
-  FakeDelegate delegate{ucred, std::string()};
+  FakeDelegate delegate{};
+  delegate.ucred_ = ucred;
+  delegate.security_context_ = std::string();
   RunDaemonAndExpectTestSubprocessResult(
       &delegate, DaemonTestHelperResult::kResetWithOsError);
 }
 
 TEST_F(DaemonTest, Connect) {
   struct ucred ucred = {};
-  FakeDelegate delegate{ucred, kFakeSecurityContext};
+  FakeDelegate delegate{};
+  delegate.ucred_ = ucred;
+  delegate.security_context_ = kFakeSecurityContext;
   RunDaemonAndExpectTestSubprocessResult(
       &delegate, DaemonTestHelperResult::kConnectSuccessfully);
 }
@@ -190,6 +226,63 @@ TEST(DaemonUtilTest, GetSEContextStringFromChar) {
   EXPECT_EQ(GetSEContextStringFromChar("a", 0), "");
   EXPECT_EQ(GetSEContextStringFromChar("aa", 1), "a");
   EXPECT_EQ(GetSEContextStringFromChar("aaa", 2), "aa");
+}
+
+class DaemonGetProcessIdentityTest : public ::testing::Test {
+ protected:
+  void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
+
+  base::FilePath GetSocketPath() {
+    return temp_dir_.GetPath().Append(kTestSocketName);
+  }
+
+  mojom::ProcessIdentityPtr GetProcessIdentityFromPeerSocket(
+      Daemon::Delegate* delegate) {
+    Daemon daemon{delegate, GetSocketPath(), {}, Configuration{}};
+    base::ScopedFD fake_fd;
+    return GetProcessIdentityFromPeerSocketForTest(daemon, fake_fd);
+  }
+
+ private:
+  base::ScopedTempDir temp_dir_;
+};
+
+TEST_F(DaemonGetProcessIdentityTest, NoUsername) {
+  struct ucred ucred = {.uid = 123};
+  FakeDelegate delegate{};
+  delegate.ucred_ = ucred;
+  delegate.security_context_ = kFakeSecurityContext;
+  auto process_identity = GetProcessIdentityFromPeerSocket(&delegate);
+  EXPECT_TRUE(process_identity);
+  EXPECT_EQ(process_identity->uid, 123);
+  EXPECT_EQ(process_identity->username, std::nullopt);
+}
+
+TEST_F(DaemonGetProcessIdentityTest, Username) {
+  struct ucred ucred = {.uid = 123};
+  FakeDelegate delegate{};
+  delegate.ucred_ = ucred;
+  delegate.security_context_ = kFakeSecurityContext;
+  char username[] = "fake_username";
+  delegate.passwd_map_[123].pw_name = username;
+  auto process_identity = GetProcessIdentityFromPeerSocket(&delegate);
+  EXPECT_TRUE(process_identity);
+  EXPECT_EQ(process_identity->uid, 123);
+  EXPECT_EQ(process_identity->username, username);
+}
+
+TEST_F(DaemonGetProcessIdentityTest, UsernameEINTR) {
+  struct ucred ucred = {.uid = 123};
+  FakeDelegate delegate{};
+  delegate.ucred_ = ucred;
+  delegate.security_context_ = kFakeSecurityContext;
+  char username[] = "fake_username";
+  delegate.passwd_map_[123].pw_name = username;
+  FakeDelegate::raise_a_eintr_for_getpwuid_ = true;
+  auto process_identity = GetProcessIdentityFromPeerSocket(&delegate);
+  EXPECT_TRUE(process_identity);
+  EXPECT_EQ(process_identity->uid, 123);
+  EXPECT_EQ(process_identity->username, username);
 }
 
 }  // namespace

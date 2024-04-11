@@ -5,12 +5,15 @@
 #include "mojo_service_manager/daemon/daemon.h"
 
 #include <linux/limits.h>
+#include <pwd.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <sys/un.h>
 #include <sysexits.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -109,6 +112,10 @@ int Daemon::Delegate::GetSockOpt(const base::ScopedFD& socket,
   return getsockopt(socket.get(), level, optname, optval, optlen);
 }
 
+const struct passwd* Daemon::Delegate::GetPWUid(uid_t uid) const {
+  return getpwuid(uid);
+}
+
 ServicePolicyMap Daemon::Delegate::LoadPolicyFiles(
     const std::vector<base::FilePath>& policy_dir_paths) const {
   ServicePolicyMap res;
@@ -187,9 +194,24 @@ void Daemon::SendMojoInvitationAndBindReceiver() {
     return;
   }
   // TODO(b/234569073): Remove this log after we fully enable service manager.
-  LOG(INFO) << "Receive connection from: " << identity->security_context;
-  DCHECK(service_manager_);
+  LOG(INFO) << "Receive connection from: " << identity->security_context << ", "
+            << identity->uid << "("
+            << identity->username.value_or("unknown user") << ")";
+  CHECK(service_manager_);
   service_manager_->AddReceiver(std::move(identity), std::move(receiver));
+}
+
+std::optional<std::string> Daemon::GetUsernameByUid(uint32_t uid) const {
+  const struct passwd* passwd = nullptr;
+  do {
+    static_assert(sizeof(uid_t) == sizeof(uint32_t));
+    passwd = delegate_->GetPWUid(static_cast<uid_t>(uid));
+  } while (passwd == nullptr && errno == EINTR);
+  if (passwd == nullptr) {
+    PLOG(ERROR) << "Failed to get username by uid " << uid;
+    return std::nullopt;
+  }
+  return std::string{passwd->pw_name};
 }
 
 mojom::ProcessIdentityPtr Daemon::GetProcessIdentityFromPeerSocket(
@@ -208,7 +230,9 @@ mojom::ProcessIdentityPtr Daemon::GetProcessIdentityFromPeerSocket(
   identity->pid = static_cast<uint32_t>(ucred_data.pid);
   identity->uid = static_cast<uint32_t>(ucred_data.uid);
   identity->gid = static_cast<uint32_t>(ucred_data.gid);
+  identity->username = GetUsernameByUid(identity->uid);
 
+  // TODO(b/333323875): Don't get `security_context` after migration.
   char buf[NAME_MAX] = {};
   len = NAME_MAX;
   if (delegate_->GetSockOpt(peer, SOL_SOCKET, SO_PEERSEC, &buf, &len) < 0) {

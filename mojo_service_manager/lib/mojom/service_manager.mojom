@@ -80,12 +80,16 @@ interface ServiceObserver {
 // Next Field ID: 4
 struct ProcessIdentity {
   // The SELinux security context.
+  // DEPRECATED: This field is no longer supported. Will always be empty.
   string security_context@0;
   // The process id.
   uint32 pid@1;
   // The user / group id.
   uint32 uid@2;
   uint32 gid@3;
+  // The username used for access control. It is what Service Manager got by the
+  // above uid.
+  [MinVersion=1] string? username@4;
 };
 
 // The result of ServiceManager::Query.

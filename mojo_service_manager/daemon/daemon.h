@@ -20,6 +20,8 @@
 #include "mojo_service_manager/daemon/service_manager.h"
 #include "mojo_service_manager/daemon/service_policy.h"
 
+struct passwd;
+
 namespace chromeos::mojo_service_manager {
 
 // Exported for testing.
@@ -36,12 +38,15 @@ class Daemon : public brillo::Daemon {
     Delegate& operator=(const Delegate&) = delete;
     virtual ~Delegate();
 
-    // Calls |getsockopt| system call.
+    // Calls `getsockopt` system call.
     virtual int GetSockOpt(const base::ScopedFD& socket,
                            int level,
                            int optname,
                            void* optval,
                            socklen_t* optlen) const;
+
+    // Calls |getpwuid|.
+    virtual const struct passwd* GetPWUid(uid_t uid) const;
 
     // Loads policy files.
     virtual ServicePolicyMap LoadPolicyFiles(
@@ -65,6 +70,9 @@ class Daemon : public brillo::Daemon {
   // mojom::ServiceManager.
   void SendMojoInvitationAndBindReceiver();
 
+  // Gets username by uid.
+  std::optional<std::string> GetUsernameByUid(uint32_t uid) const;
+
   // Gets the identity of the remote process of the peer socket.
   mojom::ProcessIdentityPtr GetProcessIdentityFromPeerSocket(
       const base::ScopedFD& peer) const;
@@ -86,6 +94,10 @@ class Daemon : public brillo::Daemon {
   // Implements mojom::ServiceManager. It will be initialized after policy files
   // are loaded.
   std::unique_ptr<ServiceManager> service_manager_;
+
+  // Exported for testing.
+  friend mojom::ProcessIdentityPtr GetProcessIdentityFromPeerSocketForTest(
+      const Daemon& daemon, const base::ScopedFD& peer);
 };
 
 }  // namespace chromeos::mojo_service_manager
