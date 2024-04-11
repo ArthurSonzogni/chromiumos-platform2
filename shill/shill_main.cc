@@ -36,8 +36,6 @@ const char kForeground[] = "foreground";
 const char kDevicesBlocked[] = "devices-blocked";
 // Manage only these devices.
 const char kDevicesAllowed[] = "devices-allowed";
-// Ignore Ethernet-like devices that don't have any driver information.
-const char kIgnoreUnknownEthernet[] = "ignore-unknown-ethernet";
 // Flag that causes shill to show the help message and exit.
 const char kHelp[] = "help";
 
@@ -51,8 +49,6 @@ const char kHelpMessage[] =
     "    Do not manage devices named device1 or device2\n"
     "  --devices-allowed=device1,device2\n"
     "    Manage only devices named device1 and device2\n"
-    "  --ignore-unknown-ethernet\n"
-    "    Ignore Ethernet-like devices that do not report a driver\n"
     "  --log-level=N\n"
     "    Logging level:\n"
     "      0 = LOG(INFO), 1 = LOG(WARNING), 2 = LOG(ERROR),\n"
@@ -131,9 +127,6 @@ int main(int argc, char** argv) {
         base::SplitString(cl->GetSwitchValueASCII(switches::kDevicesAllowed),
                           ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   }
-
-  settings.ignore_unknown_ethernet =
-      cl->HasSwitch(switches::kIgnoreUnknownEthernet);
 
   // Initialize Mojo for the whole process.
   mojo::core::Init();
