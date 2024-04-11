@@ -95,6 +95,9 @@ class BRILLO_EXPORT ThinpoolMigrator {
   // Helper to enable the migration.
   bool PersistStatus(MigrationStatus status);
 
+  // Cleanup migration VPD state.
+  bool CleanupState();
+
  protected:
   // Checks if the device supports Vpd.
   virtual bool IsVpdSupported();

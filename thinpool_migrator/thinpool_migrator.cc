@@ -436,6 +436,14 @@ bool ThinpoolMigrator::EnableMigration() {
   return PersistStatus(status);
 }
 
+bool ThinpoolMigrator::CleanupState() {
+  if (!IsVpdSupported()) {
+    return true;
+  }
+
+  return vpd_->DeleteKey(vpd::VpdRw, kMigrationStatusKey);
+}
+
 bool ThinpoolMigrator::PersistMigrationStatus() {
   return PersistStatus(status_);
 }
