@@ -51,6 +51,7 @@ config("cros_camera_common") {
     "USE_IPU6EP=${use.ipu6ep}",
     "USE_IPU6EPMTL=${use.ipu6epmtl}",
     "USE_CAMERA_ANGLE_BACKEND=${use.camera_angle_backend}",
+    "USE_QUALCOMM_CAMX=${use.qualcomm_camx}",
   ]
 
   # Uncomment to enable DVLOGF*() logs.

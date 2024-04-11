@@ -318,6 +318,18 @@ std::optional<Rect<float>> GetManualZoomRequest(
   return normalized_crop_region;
 }
 
+uint32_t GetFullFrameBufferUsage(uint32_t yuv_stream_usage) {
+#if USE_QUALCOMM_CAMX
+  // Some HALs expect all YUV streams to set the usage of
+  // GRALLOC_USAGE_HW_VIDEO_ENCODER consistently.
+  if ((yuv_stream_usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) ==
+      GRALLOC_USAGE_HW_VIDEO_ENCODER) {
+    return kFullFrameBufferUsage | GRALLOC_USAGE_HW_VIDEO_ENCODER;
+  }
+#endif
+  return kFullFrameBufferUsage;
+}
+
 }  // namespace
 
 //
@@ -627,6 +639,7 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
   std::vector<camera3_stream_t*> hal_streams = client_streams_;
   Size target_size;
   char* physical_camera_id;
+  uint32_t full_frame_buffer_usage = kFullFrameBufferUsage;
   for (auto* s : client_streams_) {
     if (IsStreamBypassed(s)) {
       continue;
@@ -646,6 +659,9 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
                (s->usage & kStillCaptureUsageFlag)) {
       CHECK_EQ(client_still_yuv_stream, nullptr);
       client_still_yuv_stream = s;
+    }
+    if (s->format == HAL_PIXEL_FORMAT_YCBCR_420_888) {
+      full_frame_buffer_usage = GetFullFrameBufferUsage(s->usage);
     }
     // Choose the output stream of the largest resolution for matching the crop
     // window aspect ratio. Prefer taller size since extending crop windows
@@ -699,7 +715,7 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
       .width = full_frame_size_.width,
       .height = full_frame_size_.height,
       .format = HAL_PIXEL_FORMAT_YCbCr_420_888,
-      .usage = kFullFrameBufferUsage,
+      .usage = full_frame_buffer_usage,
       .physical_camera_id = physical_camera_id,
   };
   hal_streams.push_back(&full_frame_stream_);
