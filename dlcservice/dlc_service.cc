@@ -340,7 +340,7 @@ void DlcService::InstallViaInstaller(
           .id = install_request.id(),
           .url = install_request.omaha_url(),
           .scaled = dlc->IsScaled(),
-          .force_ota = dlc->IsForceOTA() || install_request.force_ota(),
+          .force_ota = dlc->IsForceOTA(),
       },
       base::BindOnce(&DlcService::OnInstallSuccess,
                      weak_ptr_factory_.GetWeakPtr(), std::move(response_bind1)),
