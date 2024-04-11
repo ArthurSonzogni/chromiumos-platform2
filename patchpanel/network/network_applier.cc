@@ -441,17 +441,6 @@ void NetworkApplier::ApplyRoute(
   }
 }
 
-void NetworkApplier::ApplyAddress(
-    int interface_index,
-    const net_base::IPCIDR& local,
-    const std::optional<net_base::IPv4Address>& broadcast) {
-  if (address_service_->RemoveAddressOtherThan(interface_index, local)) {
-    // The address has changed for this interface.
-    LOG(INFO) << __func__ << ": Flushing old addresses.";
-  }
-  address_service_->AddAddress(interface_index, local, broadcast);
-}
-
 void NetworkApplier::ApplyNetworkConfig(
     int interface_index,
     const std::string& interface_name,
@@ -464,12 +453,11 @@ void NetworkApplier::ApplyNetworkConfig(
   }
   if (area & Area::kIPv4Address) {
     if (network_config.ipv4_address) {
-      ApplyAddress(interface_index,
-                   net_base::IPCIDR(*network_config.ipv4_address),
-                   network_config.ipv4_broadcast);
+      address_service_->SetIPv4Address(interface_index,
+                                       *network_config.ipv4_address,
+                                       network_config.ipv4_broadcast);
     } else {
-      address_service_->FlushAddress(interface_index,
-                                     net_base::IPFamily::kIPv4);
+      address_service_->ClearIPv4Address(interface_index);
     }
   }
   if (area & Area::kIPv4Route) {
@@ -505,21 +493,8 @@ void NetworkApplier::ApplyNetworkConfig(
                network_config.rfc3442_routes);
   }
   if (area & Area::kIPv6Address) {
-    // For 1 address case, use ApplyAddress() to avoid removing-and-readding the
-    // address.
-    // TODO(b/264963034): Extend ApplyAddress() to support multiple addresses.
-    if (network_config.ipv6_addresses.size() == 1) {
-      ApplyAddress(interface_index,
-                   net_base::IPCIDR(network_config.ipv6_addresses[0]),
-                   std::nullopt);
-    } else {
-      address_service_->FlushAddress(interface_index,
-                                     net_base::IPFamily::kIPv6);
-      for (const auto& address : network_config.ipv6_addresses) {
-        address_service_->AddAddress(interface_index, net_base::IPCIDR(address),
-                                     std::nullopt);
-      }
-    }
+    address_service_->SetIPv6Addresses(interface_index,
+                                       network_config.ipv6_addresses);
   }
   if (area & Area::kIPv6Route) {
     bool default_route = (area & Area::kIPv6DefaultRoute);

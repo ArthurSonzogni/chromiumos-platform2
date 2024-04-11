@@ -16,6 +16,7 @@
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/network_priority.h>
 
+#include "patchpanel/network/mock_address_service.h"
 #include "patchpanel/network/mock_network_applier.h"
 #include "patchpanel/network/mock_routing_policy_service.h"
 #include "patchpanel/network/mock_routing_table.h"
@@ -120,7 +121,7 @@ class NetworkApplierTest : public Test {
     auto temp_proc_fs_ptr = std::make_unique<net_base::MockProcFsStub>("");
     proc_fs_ = temp_proc_fs_ptr.get();
     auto temp_address_service_ptr =
-        AddressService::CreateForTesting(&address_rtnl_handler_);
+        std::make_unique<StrictMock<MockAddressService>>();
     address_service_ = temp_address_service_ptr.get();
     auto temp_routing_table_ptr =
         std::make_unique<StrictMock<MockRoutingTable>>();
@@ -140,8 +141,8 @@ class NetworkApplierTest : public Test {
   StrictMock<MockRoutingPolicyService>*
       rule_table_;  // owned by network_applier_
   StrictMock<net_base::MockRTNLHandler> address_rtnl_handler_;
-  AddressService* address_service_;  // mocked at net_base::RTNLHandler level,
-                                     // owned by network_applier_
+  StrictMock<MockAddressService>*
+      address_service_;  // owned by network_applier_
   net_base::MockRTNLHandler rtnl_handler_;
   net_base::MockProcFsStub* proc_fs_;  // owned by network_applier_;
   std::unique_ptr<NetworkApplier> network_applier_;
@@ -162,11 +163,6 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kNone, config, priority,
                              NetworkApplier::Technology::kEthernet);
-
-  EXPECT_CALL(applier, ApplyAddress(kInterfaceIndex, _, _)).Times(1);
-  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
-                             NetworkApplier::Area::kIPv4Address, config,
-                             priority, NetworkApplier::Technology::kEthernet);
 
   EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
                                   /*gateway=*/Eq(std::nullopt),
@@ -189,11 +185,6 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
                                  NetworkApplier::Area::kIPv4DefaultRoute,
                              config, priority,
                              NetworkApplier::Technology::kEthernet);
-
-  EXPECT_CALL(applier, ApplyAddress(kInterfaceIndex, _, _)).Times(1);
-  applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
-                             NetworkApplier::Area::kIPv6Address, config,
-                             priority, NetworkApplier::Technology::kEthernet);
 
   EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv6,
                                   /*gateway=*/Eq(std::nullopt),
@@ -234,6 +225,34 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfig) {
   applier.ApplyNetworkConfig(kInterfaceIndex, kInterfaceName,
                              NetworkApplier::Area::kMTU, config, priority,
                              NetworkApplier::Technology::kEthernet);
+}
+
+TEST_F(NetworkApplierTest, ApplyNetworkConfigAddress) {
+  // Test Area::kIPv4Address and Area::kIPv6Address behavior directly at
+  // MockAddressService level.
+  const int kInterfaceIndex = 3;
+  const std::string kInterfaceName = "placeholder";
+  net_base::NetworkPriority priority;
+  net_base::NetworkConfig config;
+  config.ipv4_address =
+      *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.100/24");
+  config.ipv6_addresses = {
+      *net_base::IPv6CIDR::CreateFromCIDRString("2001:db8:1::1000/64")};
+
+  network_applier_->ApplyNetworkConfig(
+      kInterfaceIndex, kInterfaceName, NetworkApplier::Area::kNone, config,
+      priority, NetworkApplier::Technology::kEthernet);
+
+  EXPECT_CALL(*address_service_, SetIPv4Address(kInterfaceIndex, _, _))
+      .Times(1);
+  network_applier_->ApplyNetworkConfig(
+      kInterfaceIndex, kInterfaceName, NetworkApplier::Area::kIPv4Address,
+      config, priority, NetworkApplier::Technology::kEthernet);
+
+  EXPECT_CALL(*address_service_, SetIPv6Addresses(kInterfaceIndex, _)).Times(1);
+  network_applier_->ApplyNetworkConfig(
+      kInterfaceIndex, kInterfaceName, NetworkApplier::Area::kIPv6Address,
+      config, priority, NetworkApplier::Technology::kEthernet);
 }
 
 TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
@@ -919,60 +938,4 @@ TEST_F(NetworkApplierRouteTest, IPv6) {
                                gateway, false, true, false, {*excluded_dst},
                                {*included_dst}, {});
 }
-
-using NetworkApplierAddressTest = NetworkApplierTest;
-
-TEST_F(NetworkApplierAddressTest, AddAddressFlow) {
-  const int kInterfaceIndex = 3;
-  const auto ipv4_addr_1 =
-      *net_base::IPCIDR::CreateFromCIDRString("192.168.1.2/24");
-  const auto ipv4_addr_2 =
-      *net_base::IPCIDR::CreateFromCIDRString("192.168.2.2/24");
-  const auto ipv6_addr_1 =
-      *net_base::IPCIDR::CreateFromCIDRString("2001:db8:0:100::abcd/64");
-
-  EXPECT_CALL(
-      address_rtnl_handler_,
-      AddInterfaceAddress(kInterfaceIndex, ipv4_addr_1, Eq(std::nullopt)))
-      .WillOnce(Return(true));
-  network_applier_->ApplyAddress(kInterfaceIndex, ipv4_addr_1, std::nullopt);
-
-  // Adding a second IPv4 address should remove the first one.
-  EXPECT_CALL(address_rtnl_handler_,
-              RemoveInterfaceAddress(kInterfaceIndex, ipv4_addr_1));
-  EXPECT_CALL(
-      address_rtnl_handler_,
-      AddInterfaceAddress(kInterfaceIndex, ipv4_addr_2, Eq(std::nullopt)))
-      .WillOnce(Return(true));
-  network_applier_->ApplyAddress(kInterfaceIndex, ipv4_addr_2, std::nullopt);
-
-  // Adding an IPv6 address will not remove the IPv4 one.
-  EXPECT_CALL(
-      address_rtnl_handler_,
-      AddInterfaceAddress(kInterfaceIndex, ipv6_addr_1, Eq(std::nullopt)))
-      .WillOnce(Return(true));
-  network_applier_->ApplyAddress(kInterfaceIndex, ipv6_addr_1, std::nullopt);
-
-  // Similarly adding an IPv4 address will not remove the IPv6 one.
-  EXPECT_CALL(address_rtnl_handler_,
-              RemoveInterfaceAddress(kInterfaceIndex, ipv4_addr_2));
-  EXPECT_CALL(
-      address_rtnl_handler_,
-      AddInterfaceAddress(kInterfaceIndex, ipv4_addr_1, Eq(std::nullopt)))
-      .WillOnce(Return(true));
-  network_applier_->ApplyAddress(kInterfaceIndex, ipv4_addr_1, std::nullopt);
-}
-
-TEST_F(NetworkApplierAddressTest, IPv4WithBroadcast) {
-  const int kInterfaceIndex = 3;
-  const auto local = *net_base::IPCIDR::CreateFromCIDRString("192.168.1.2/24");
-  const auto broadcast =
-      net_base::IPv4Address::CreateFromString("192.168.1.200");
-
-  EXPECT_CALL(address_rtnl_handler_,
-              AddInterfaceAddress(kInterfaceIndex, local, broadcast))
-      .WillOnce(Return(true));
-  network_applier_->ApplyAddress(kInterfaceIndex, local, broadcast);
-}
-
 }  // namespace patchpanel

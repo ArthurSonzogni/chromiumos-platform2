@@ -25,12 +25,6 @@ class MockNetworkApplier : public NetworkApplier {
   MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(void, ApplyMTU, (int, int), (override));
   MOCK_METHOD(void,
-              ApplyAddress,
-              (int,
-               const net_base::IPCIDR&,
-               const std::optional<net_base::IPv4Address>&),
-              (override));
-  MOCK_METHOD(void,
               ApplyRoute,
               (int,
                net_base::IPFamily,

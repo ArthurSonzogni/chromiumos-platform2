@@ -343,6 +343,8 @@ if (use.test) {
       "multicast_metrics_test.cc",
       "ndproxy_test.cc",
       "net_util_test.cc",
+      "network/address_service_test.cc",
+      "network/mock_address_service.cc",
       "network/mock_network_applier.cc",
       "network/mock_routing_policy_service.cc",
       "network/mock_routing_table.cc",

@@ -4,7 +4,9 @@
 
 #include "patchpanel/network/address_service.h"
 
-#include <memory>
+#include <map>
+#include <optional>
+#include <set>
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -27,75 +29,74 @@ std::unique_ptr<AddressService> AddressService::CreateForTesting(
 }
 
 void AddressService::FlushAddress(int interface_index) {
-  auto interface_addresses = added_addresses_.find(interface_index);
-  if (interface_addresses == added_addresses_.end()) {
+  ClearIPv4Address(interface_index);
+  SetIPv6Addresses(interface_index, {});
+}
+
+void AddressService::ClearIPv4Address(int interface_index) {
+  auto current = added_ipv4_address_.find(interface_index);
+  if (current == added_ipv4_address_.end()) {
     return;
   }
-  for (const auto& item : interface_addresses->second) {
-    rtnl_handler_->RemoveInterfaceAddress(interface_index, item);
-  }
-  added_addresses_.erase(interface_addresses);
+  rtnl_handler_->RemoveInterfaceAddress(interface_index,
+                                        net_base::IPCIDR(current->second));
+  added_ipv4_address_.erase(current);
 }
 
-void AddressService::FlushAddress(int interface_index,
-                                  net_base::IPFamily family) {
-  auto interface_addresses = added_addresses_.find(interface_index);
-  if (interface_addresses == added_addresses_.end()) {
-    return;
-  }
-  for (auto iter = interface_addresses->second.begin();
-       iter != interface_addresses->second.end();
-       /*no-op*/) {
-    if (iter->GetFamily() == family) {
-      rtnl_handler_->RemoveInterfaceAddress(interface_index, *iter);
-      iter = interface_addresses->second.erase(iter);
-    } else {
-      ++iter;
-    }
-  }
-  if (interface_addresses->second.empty()) {
-    added_addresses_.erase(interface_addresses);
-  }
-}
-
-bool AddressService::RemoveAddressOtherThan(int interface_index,
-                                            const net_base::IPCIDR& local) {
-  auto interface_addresses = added_addresses_.find(interface_index);
-  if (interface_addresses == added_addresses_.end()) {
-    return false;
-  }
-  bool removed = false;
-  for (auto iter = interface_addresses->second.begin();
-       iter != interface_addresses->second.end();
-       /*no-op*/) {
-    if (iter->GetFamily() == local.GetFamily() && *iter != local) {
-      removed = true;
-      rtnl_handler_->RemoveInterfaceAddress(interface_index, *iter);
-      iter = interface_addresses->second.erase(iter);
-    } else {
-      ++iter;
-    }
-  }
-  return removed;
-}
-
-void AddressService::AddAddress(
+void AddressService::SetIPv4Address(
     int interface_index,
-    const net_base::IPCIDR& local,
+    const net_base::IPv4CIDR& local,
     const std::optional<net_base::IPv4Address>& broadcast) {
-  bool has_broadcast = broadcast != std::nullopt;
-  if (local.GetFamily() == net_base::IPFamily::kIPv6 && has_broadcast) {
-    LOG(WARNING) << "IPv6 does not support customized broadcase address, "
-                    "using default instead.";
-    has_broadcast = false;
+  auto current = added_ipv4_address_.find(interface_index);
+  if (current != added_ipv4_address_.end()) {
+    if (current->second == local) {
+      return;
+    }
+    LOG(INFO) << __func__ << ": removing existing address " << current->second;
+    rtnl_handler_->RemoveInterfaceAddress(interface_index,
+                                          net_base::IPCIDR(current->second));
   }
-  if (!rtnl_handler_->AddInterfaceAddress(
-          interface_index, local, has_broadcast ? broadcast : std::nullopt)) {
+
+  if (!rtnl_handler_->AddInterfaceAddress(interface_index,
+                                          net_base::IPCIDR(local), broadcast)) {
     LOG(ERROR) << __func__ << ": fail to add " << local.ToString()
                << ", broadcast: "
-               << (has_broadcast ? broadcast->ToString() : "default");
+               << (broadcast.has_value() ? broadcast->ToString() : "default");
+  } else {
+    LOG(INFO) << __func__ << ": adding new address " << local;
   }
-  added_addresses_[interface_index].push_back(local);
+  added_ipv4_address_[interface_index] = local;
+}
+
+void AddressService::SetIPv6Addresses(
+    int interface_index, const std::vector<net_base::IPv6CIDR>& addresses) {
+  std::set<net_base::IPv6CIDR> to_add(addresses.begin(), addresses.end());
+  auto current_addresses = added_ipv6_addresses_.find(interface_index);
+  if (current_addresses != added_ipv6_addresses_.end()) {
+    for (auto iter = current_addresses->second.begin();
+         iter != current_addresses->second.end();
+         /*no-op*/) {
+      if (to_add.contains(*iter)) {
+        to_add.erase(*iter);
+        ++iter;
+      } else {
+        LOG(INFO) << __func__ << ": removing existing address " << *iter;
+        rtnl_handler_->RemoveInterfaceAddress(interface_index,
+                                              net_base::IPCIDR(*iter));
+        iter = current_addresses->second.erase(iter);
+      }
+    }
+  }
+  for (const auto& address : to_add) {
+    if (!rtnl_handler_->AddInterfaceAddress(interface_index,
+                                            net_base::IPCIDR(address),
+                                            /*broadcast=*/std::nullopt)) {
+      LOG(ERROR) << __func__ << ": fail to add " << address.ToString();
+    } else {
+      LOG(INFO) << __func__ << ": adding new address " << address;
+    }
+    added_ipv6_addresses_[interface_index].push_back(address);
+  }
 }
 
 }  // namespace patchpanel

@@ -5,7 +5,6 @@
 #ifndef PATCHPANEL_NETWORK_ADDRESS_SERVICE_H_
 #define PATCHPANEL_NETWORK_ADDRESS_SERVICE_H_
 
-#include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
@@ -34,27 +33,31 @@ class AddressService {
   // Removes all addresses previous configured onto |interface_index|.
   virtual void FlushAddress(int interface_index);
 
-  // Removes all addresses of |family| previous configured onto
-  // |interface_index|.
-  void FlushAddress(int interface_index, net_base::IPFamily family);
-
-  // Removes all configured addresses that shares a family with |local|, but not
-  // |local| itself. Return true if any address removed that way.
-  virtual bool RemoveAddressOtherThan(int interface_index,
-                                      const net_base::IPCIDR& local);
-
-  // Configures |local| onto |interface_index| through kernel RTNL. If |local|
-  // is IPv4, a customized |broadcast| address can be specified.
-  virtual void AddAddress(
+  // Configures |local| onto |interface_index| through kernel RTNL. A customized
+  // |broadcast| address can be specified. If an IPv4 address was already set
+  // through AddressService, the old address will be removed first.
+  virtual void SetIPv4Address(
       int interface_index,
-      const net_base::IPCIDR& local,
+      const net_base::IPv4CIDR& local,
       const std::optional<net_base::IPv4Address>& broadcast = std::nullopt);
+
+  // Removes the IPv4 address previously configured onto |interface_index|
+  // through AddressService.
+  virtual void ClearIPv4Address(int interface_index);
+
+  // Configure |addresses| onto |interface_index| through kernel RTNL. All
+  // previous IPv6 addresses set through AddressService but not in |addresses|
+  // will be removed. The addresses added by other parties (e.g. kernel) will
+  // not be affected.
+  virtual void SetIPv6Addresses(
+      int interface_index, const std::vector<net_base::IPv6CIDR>& addresses);
 
  private:
   friend class base::NoDestructor<AddressService>;
 
   // Cache for the addresses added earlier by us, keyed by the interface id.
-  std::map<int, std::vector<net_base::IPCIDR>> added_addresses_;
+  std::map<int, net_base::IPv4CIDR> added_ipv4_address_;
+  std::map<int, std::vector<net_base::IPv6CIDR>> added_ipv6_addresses_;
 
   // Cache singleton pointer for performance and test purposes.
   net_base::RTNLHandler* rtnl_handler_;

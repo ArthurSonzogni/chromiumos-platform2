@@ -82,15 +82,6 @@ class NetworkApplier {
                         const std::vector<net_base::IPAddress>& dns_servers,
                         const std::vector<std::string>& dns_search_domains);
 
-  // Apply the local address onto kernel netdevice with interface index
-  // |interface_index|. If IPv4, a customized |broadcast| address can be
-  // specified.
-  // TODO(b/264963034): Multiple IPv6 addresses is currently not supported.
-  virtual void ApplyAddress(
-      int interface_index,
-      const net_base::IPCIDR& local,
-      const std::optional<net_base::IPv4Address>& broadcast);
-
   // Apply the routes into per-device routing table. If |gateway| is nullopt,
   // the network is assumed to be point-to-point, and routes are added as
   // on-link.
