@@ -151,6 +151,34 @@ void ReportRoutingSetup(Metrics* metrics,
   }
 }
 
+void ReportNameServers(Metrics* metrics,
+                       VPNType vpn_type,
+                       const NetworkConfig& network_config) {
+  bool has_ipv4 = false;
+  bool has_ipv6 = false;
+  for (const auto& server : network_config.dns_servers) {
+    switch (server.GetFamily()) {
+      case net_base::IPFamily::kIPv4:
+        has_ipv4 = true;
+        break;
+      case net_base::IPFamily::kIPv6:
+        has_ipv6 = true;
+        break;
+    }
+  }
+  vpn_metrics::NameServerConfig metric_value =
+      vpn_metrics::kNameServerConfigNone;
+  if (has_ipv4 && has_ipv6) {
+    metric_value = vpn_metrics::kNameServerConfigDualStack;
+  } else if (has_ipv4) {
+    metric_value = vpn_metrics::kNameServerConfigIPv4Only;
+  } else if (has_ipv6) {
+    metric_value = vpn_metrics::kNameServerConfigIPv6Only;
+  }
+  metrics->SendEnumToUMA(vpn_metrics::kMetricNameServers, vpn_type,
+                         metric_value);
+}
+
 vpn_metrics::ConnectFailureReason InterpretEndReasonAsConnectFailure(
     VPNEndReason reason) {
   switch (reason) {
@@ -214,6 +242,9 @@ void VPNDriverMetrics::ReportNetworkConfig(
                      network_config);
   ReportRoutingSetup(metrics_, vpn_type_, net_base::IPFamily::kIPv6,
                      network_config);
+  ReportNameServers(metrics_, vpn_type_, network_config);
+  metrics_->SendToUMA(vpn_metrics::kMetricMTU, vpn_type_,
+                      network_config.mtu.has_value() ? *network_config.mtu : 0);
 }
 
 void VPNDriverMetrics::ReportConnecting() {

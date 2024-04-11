@@ -18,6 +18,7 @@ namespace shill {
 
 namespace vpn_metrics = vpn_metrics_internal;
 
+using net_base::IPAddress;
 using net_base::IPCIDR;
 using net_base::IPv4CIDR;
 using net_base::IPv6CIDR;
@@ -208,6 +209,52 @@ TEST_F(VPNDriverMetricsTest, ReportRoutingByPassAndBlocked) {
       SendToUMA(vpn_metrics::kMetricIPv6ExcludedRoutesLargestPrefix, _, _))
       .Times(0);
 
+  driver_metrics_.ReportNetworkConfig(config);
+}
+
+TEST_F(VPNDriverMetricsTest, ReportNameServers) {
+  // Don't care about other metrics in this test.
+  EXPECT_CALL(metrics_, SendEnumToUMA(_, Matcher<VPNType>(_), _))
+      .Times(AnyNumber());
+
+  const IPAddress kIPv4Addr = *IPAddress::CreateFromString("1.2.3.4");
+  const IPAddress kIPv6Addr = *IPAddress::CreateFromString("::1");
+
+  NetworkConfig config;
+
+  EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricNameServers, _,
+                                      vpn_metrics::kNameServerConfigNone));
+  driver_metrics_.ReportNetworkConfig(config);
+
+  config.dns_servers = {kIPv4Addr};
+  EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricNameServers, _,
+                                      vpn_metrics::kNameServerConfigIPv4Only));
+  driver_metrics_.ReportNetworkConfig(config);
+
+  config.dns_servers = {kIPv6Addr};
+  EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricNameServers, _,
+                                      vpn_metrics::kNameServerConfigIPv6Only));
+  driver_metrics_.ReportNetworkConfig(config);
+
+  config.dns_servers = {kIPv4Addr, kIPv6Addr};
+  EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricNameServers, _,
+                                      vpn_metrics::kNameServerConfigDualStack));
+  driver_metrics_.ReportNetworkConfig(config);
+}
+
+TEST_F(VPNDriverMetricsTest, ReportMTU) {
+  // Don't care about other metrics in this test.
+  EXPECT_CALL(metrics_, SendToUMA(_, Matcher<VPNType>(_), _))
+      .Times(AnyNumber());
+
+  NetworkConfig config;
+
+  // Report 0 if not set.
+  EXPECT_CALL(metrics_, SendToUMA(vpn_metrics::kMetricMTU, _, 0));
+  driver_metrics_.ReportNetworkConfig(config);
+
+  config.mtu = 1500;
+  EXPECT_CALL(metrics_, SendToUMA(vpn_metrics::kMetricMTU, _, 1500));
   driver_metrics_.ReportNetworkConfig(config);
 }
 

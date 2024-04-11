@@ -6,6 +6,7 @@
 #define SHILL_VPN_VPN_METRICS_INTERNAL_H_
 
 #include <base/time/time.h>
+#include <net-base/network_config.h>
 
 #include "shill/metrics.h"
 
@@ -213,6 +214,28 @@ constexpr VPNHistogramMetric kMetricIPv6ExcludedRoutesNumber = {
     .min = 1,
     .max = kPrefixNumberHistogramMax,
     .num_buckets = kPrefixNumberHistogramBucket,
+};
+
+// MTU value.
+constexpr VPNHistogramMetric kMetricMTU = {
+    .n = NameByVPNType{"MTU"},
+    .min = net_base::NetworkConfig::kMinIPv4MTU,
+    .max = net_base::NetworkConfig::kDefaultMTU + 1,
+    .num_buckets = 50,
+};
+
+// Name servers.
+enum NameServerConfig {
+  kNameServerConfigNone = 0,
+  kNameServerConfigIPv4Only = 1,
+  kNameServerConfigIPv6Only = 2,
+  kNameServerConfigDualStack = 3,
+
+  kNameServerConfigMax,
+};
+constexpr VPNEnumMetric kMetricNameServers = {
+    .n = NameByVPNType{"NameServers"},
+    .max = kNameServerConfigMax,
 };
 
 }  // namespace vpn_metrics_internal
