@@ -13761,12 +13761,12 @@ mno {
     mvno_filter {
       type: IMSI
       range {
-        start: 311882030000000
-        end: 311882039999999
-      }
-      range {
         start: 310240200000000
         end: 310240209999999
+      }
+      range {
+        start: 311882030000000
+        end: 311882039999999
       }
     }
     data {
@@ -14739,12 +14739,12 @@ mno {
     mvno_filter {
       type: IMSI
       range {
-        start: 901280063940122
-        end: 901280063945121
-      }
-      range {
         start: 901280004862763
         end: 901280004867762
+      }
+      range {
+        start: 901280063940122
+        end: 901280063945121
       }
       range {
         start: 901280064230570

@@ -155,14 +155,17 @@ TEST_F(ServiceProvidersTest, CheckIMSIMatchesMCCMNC) {
 
 TEST_F(ServiceProvidersTest, CheckIMSIRangesAreValid) {
   // Verify that different IMSI ranges don't overlap.
-  // Verify that the IMSI ranges are valid(start<end).
+  // Verify that the IMSI ranges are valid(start<end) and in ascending order.
   std::map<uint64_t, uint64_t> ranges;
   for (auto mvno_mno_pair : mvnos_) {
     auto mvno = mvno_mno_pair.first;
     for (const auto& filter : mvno->mvno_filter()) {
       if (filter.type() == mobile_operator_db::Filter_Type_IMSI) {
+        uint64_t last_value = 0;
         for (auto range : filter.range()) {
+          EXPECT_LT(last_value, range.start());
           EXPECT_LT(range.start(), range.end());
+          last_value = range.end();
           ASSERT_EQ(ranges.count(range.start()), 0);
           EXPECT_GT(range.start(), 0);
           EXPECT_GT(range.end(), 0);
