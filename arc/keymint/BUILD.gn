@@ -45,6 +45,7 @@ executable("arc-keymintd") {
     "keymint_server.cc",
     "main.cc",
   ]
+  libs = [ "arc-attestation" ]
   configs += [ ":boringssl_config" ]
   pkg_deps = [
     "libbrillo",

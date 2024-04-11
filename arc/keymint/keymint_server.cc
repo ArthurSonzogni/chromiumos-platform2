@@ -12,6 +12,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/threading/platform_thread.h>
 #include <keymaster/android_keymaster_messages.h>
+#include <libarc-attestation/lib/interface.h>
 #include <mojo/keymint.mojom.h>
 
 #include "arc/keymint/conversion.h"
@@ -436,6 +437,11 @@ void KeyMintServer::EarlyBootEnded(EarlyBootEndedCallback callback) {
   RunKeyMintRequest_EmptyInput(FROM_HERE,
                                &::keymaster::AndroidKeymaster::EarlyBootEnded,
                                std::move(task_lambda));
+
+  // Signal to libarc-attestation to start provisioning the certificate for
+  // attestation.
+  LOG(INFO) << "Provisioning the Lib Arc-Attestation DK Certificate";
+  arc_attestation::ProvisionDkCert(false /* blocking */);
 }
 
 void KeyMintServer::ConvertStorageKeyToEphemeral(
