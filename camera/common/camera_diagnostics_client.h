@@ -29,7 +29,8 @@ class CROS_CAMERA_EXPORT CameraDiagnosticsClient {
   virtual void SendFrame(camera_diag::mojom::CameraFramePtr frame) = 0;
 
   // Currently, only supports one open camera at a time.
-  // No-op when a session is already in progress.
+  // No-op when a session is already in progress. This means when multiple
+  // cameras are open, the first one will get preference.
   virtual void AddCameraSession(const Size& stream_size) = 0;
 
   // Removes the current session.

@@ -33,9 +33,15 @@ class DiagnosticsStreamManipulator : public StreamManipulator {
   bool Flush() override;
 
  private:
+  void Reset();
+
   CameraBufferManager* camera_buffer_manager_;
   StreamManipulator::Callbacks callbacks_;
   CameraDiagnosticsClient* diagnostics_client_;
+
+  const camera3_stream_t* selected_stream_ = nullptr;
+  // Target size for the downscaled buffer.
+  Size target_frame_size_{0, 0};
 };
 
 }  // namespace cros
