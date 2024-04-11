@@ -533,6 +533,11 @@ void ManagerDBusAdaptor::SetLOHSEnabled(
                            enabled);
 }
 
+void ManagerDBusAdaptor::SetCapportEnabled(bool enabled) {
+  SLOG(this, 2) << __func__ << ": " << enabled;
+  manager_->network_manager()->SetCapportEnabled(enabled);
+}
+
 void ManagerDBusAdaptor::CreateP2PGroup(
     DBusMethodResponsePtr<brillo::VariantDictionary> response,
     const brillo::VariantDictionary& args) {

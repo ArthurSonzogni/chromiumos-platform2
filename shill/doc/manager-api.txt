@@ -533,6 +533,13 @@ Methods		dict GetProperties()
 			Manager.LOHSConfig. Returns a string through an asynchronous callback
 			indicating the result. This currently only returns "NotImplemented".
 
+		void SetCapportEnabled(boolean enabled)
+
+			Enables or disables the CAPPORT functionality for all network instances.
+			After it's disabled, the network validation will skip CAPPORT query.
+			When it becomes enabled, the networks that have been detected the
+			CAPPORT server will schedule the validation automatically.
+
 		dict CreateP2PGroup(dict properties)
 
 			Creates a P2P group with the specified config with this device as
