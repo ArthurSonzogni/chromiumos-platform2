@@ -3700,12 +3700,18 @@ void Service::AttachKey(
   }
 
   uint8_t guest_port{};
+  // TODO(b/333838456): refactor virtualization metrics in a single module
+  std::string metric_name = base::StrCat(
+      {"Virtualization.", apps::VmType_Name(iter->second->GetInfo().type), ".",
+       "SecurityKeyAttach"});
   if (!iter->second->AttachKey(hidraw.get(), &guest_port)) {
     LOG(ERROR) << "Failed to attach security key.";
     response.set_reason("Error from crosvm");
     response_cb->Return(response);
+    metrics_->SendBoolToUMA(metric_name, false);
     return;
   }
+  metrics_->SendBoolToUMA(metric_name, true);
   response.set_success(true);
   response.set_guest_port(guest_port);
   response_cb->Return(response);
