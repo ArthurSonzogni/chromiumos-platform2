@@ -24,9 +24,7 @@ LogStoreManifest::LogStoreManifest(base::FilePath disk_path,
                                    uint64_t kernel_size,
                                    uint64_t partition_size)
     : disk_path_(disk_path),
-      disk_(disk_path,
-            base::File::FLAG_OPEN | base::File::FLAG_WRITE |
-                base::File::FLAG_READ),
+
       kernel_size_(kernel_size),
       partition_size_(partition_size),
       manifest_store_start_(partition_size_ -
@@ -55,11 +53,6 @@ LogStoreManifest::LogStoreManifest(base::FilePath disk_path,
     LOG(ERROR) << "Disabling manifest storage due to empty disk path";
     SetValid(false);
   }
-
-  if (!disk_.IsValid()) {
-    LOG(ERROR) << "Failed to open disk to write to: " << disk_path_;
-    SetValid(false);
-  }
 }
 
 bool LogStoreManifest::Generate(const LogManifest::Entry& entry) {
@@ -81,19 +74,25 @@ std::optional<LogManifest> LogStoreManifest::Retrieve() {
     return std::nullopt;
   }
 
-  disk_manifest_location_ = FindManifestMagic();
+  base::File disk(disk_path_, base::File::FLAG_OPEN | base::File::FLAG_READ);
+  if (!disk.IsValid()) {
+    PLOG(ERROR) << "Failed to open disk to retrieve from: " << disk_path_;
+    return std::nullopt;
+  }
+
+  disk_manifest_location_ = FindManifestMagic(disk);
 
   if (disk_manifest_location_) {
     // Skip ahead size of Magic to reach the serialized manifest.
-    disk_.Seek(base::File::FROM_BEGIN,
-               disk_manifest_location_.value() + sizeof(kLogStoreMagic));
+    disk.Seek(base::File::FROM_BEGIN,
+              disk_manifest_location_.value() + sizeof(kLogStoreMagic));
     LogManifest manifest;
     std::string serialized_manifest;
     auto max_manifest_size =
         partition_size_ -
         (disk_manifest_location_.value() + sizeof(kLogStoreMagic));
     serialized_manifest.resize(max_manifest_size);
-    disk_.ReadAtCurrentPos(serialized_manifest.data(), max_manifest_size);
+    disk.ReadAtCurrentPos(serialized_manifest.data(), max_manifest_size);
     manifest.ParseFromString(serialized_manifest);
     return manifest;
   }
@@ -110,19 +109,25 @@ bool LogStoreManifest::Write() {
     LOG(ERROR) << "Log store manifest has not been generated!";
     return false;
   }
+  base::File disk(disk_path_, base::File::FLAG_OPEN | base::File::FLAG_WRITE);
+  if (!disk.IsValid()) {
+    PLOG(ERROR) << "Failed to open disk to write to: " << disk_path_;
+    return false;
+  }
+
   // If manifest had been generated, write it to disk.
-  disk_.Seek(base::File::FROM_BEGIN, manifest_store_start_);
+  disk.Seek(base::File::FROM_BEGIN, manifest_store_start_);
   // Write magic block header.
-  disk_.WriteAtCurrentPos(reinterpret_cast<const char*>(&kLogStoreMagic),
-                          sizeof(kLogStoreMagic));
+  disk.WriteAtCurrentPos(reinterpret_cast<const char*>(&kLogStoreMagic),
+                         sizeof(kLogStoreMagic));
 
   auto serialized_manifest = manifest_->SerializeAsString();
-  disk_.WriteAtCurrentPos(serialized_manifest.c_str(),
-                          serialized_manifest.size());
+  disk.WriteAtCurrentPos(serialized_manifest.c_str(),
+                         serialized_manifest.size());
   // Flush and close disk stream.
-  if (!disk_.Flush()) {
+  if (!disk.Flush()) {
     LOG(ERROR) << "Failed to flush manifest to device: " << disk_path_
-               << " error: " << disk_.GetLastFileError();
+               << " error: " << disk.GetLastFileError();
     return false;
   }
 
@@ -135,9 +140,16 @@ void LogStoreManifest::Clear() {
     return;
   }
 
+  base::File disk(disk_path_, base::File::FLAG_OPEN | base::File::FLAG_WRITE |
+                                  base::File::FLAG_READ);
+  if (!disk.IsValid()) {
+    PLOG(ERROR) << "Failed to open disk to clear: " << disk_path_;
+    return;
+  }
+
   if (!disk_manifest_location_) {
     // If a manifest location isn't set, search the partition for a manifest.
-    disk_manifest_location_ = FindManifestMagic();
+    disk_manifest_location_ = FindManifestMagic(disk);
   }
 
   if (disk_manifest_location_) {
@@ -145,7 +157,7 @@ void LogStoreManifest::Clear() {
       LOG(ERROR) << "Manifest found in kernel data, skipping erase";
       return;
     }
-    disk_.Seek(base::File::FROM_BEGIN, disk_manifest_location_.value());
+    disk.Seek(base::File::FROM_BEGIN, disk_manifest_location_.value());
   } else {
     // No manifest on disk, return without doing anything.
     return;
@@ -154,24 +166,27 @@ void LogStoreManifest::Clear() {
   std::array<char, kBlockSize> zeros{0};
   auto bytes_to_write = partition_size_ - disk_manifest_location_.value();
   while (bytes_to_write > 0) {
-    disk_.WriteAtCurrentPos(zeros.data(), std::min(kBlockSize, bytes_to_write));
+    disk.WriteAtCurrentPos(zeros.data(), std::min(kBlockSize, bytes_to_write));
     if (bytes_to_write <= kBlockSize)
       break;
     bytes_to_write -= kBlockSize;
   }
 
   // Flush disk stream.
-  if (!disk_.Flush()) {
+  if (!disk.Flush()) {
     LOG(ERROR) << "Failed to clear manifest on device: " << disk_path_
-               << " error: " << disk_.GetLastFileError();
+               << " error: " << disk.GetLastFileError();
   }
   // Clear manifest location since now there's nothing on disk.
   disk_manifest_location_.reset();
 }
 
-std::optional<uint64_t> LogStoreManifest::FindManifestMagic() {
+std::optional<uint64_t> LogStoreManifest::FindManifestMagic(base::File& disk) {
   if (!IsValid()) {
     LOG(ERROR) << "Invalid disk to find manifest: " << disk_path_;
+  }
+  if (!disk.IsValid()) {
+    PLOG(ERROR) << "Invalid disk to find manifest: " << disk_path_;
     return std::nullopt;
   }
 
@@ -181,10 +196,10 @@ std::optional<uint64_t> LogStoreManifest::FindManifestMagic() {
   const auto last_kernel_block =
       ((kernel_size_ + kBlockSize - 1) / kBlockSize) + 1;
   for (uint64_t block = num_blocks - 1; block > last_kernel_block; --block) {
-    disk_.Seek(base::File::FROM_BEGIN, kBlockSize * block);
+    disk.Seek(base::File::FROM_BEGIN, kBlockSize * block);
     uint64_t block_magic = 0;
-    disk_.ReadAtCurrentPos(reinterpret_cast<char*>(&block_magic),
-                           sizeof(block_magic));
+    disk.ReadAtCurrentPos(reinterpret_cast<char*>(&block_magic),
+                          sizeof(block_magic));
     if (block_magic == kLogStoreMagic) {
       return kBlockSize * block;
     }

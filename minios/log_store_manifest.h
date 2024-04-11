@@ -67,7 +67,7 @@ class LogStoreManifest : public LogStoreManifestInterface {
 
   // Helper function to find manifest block. Returns the byte index of the magic
   // start.
-  std::optional<uint64_t> FindManifestMagic();
+  std::optional<uint64_t> FindManifestMagic(base::File& disk);
 
   // Returns true if construction parameters are valid and disk file was opened
   // successfully.
@@ -76,7 +76,6 @@ class LogStoreManifest : public LogStoreManifestInterface {
   void SetValid(bool valid) { valid_ = valid; }
 
   base::FilePath disk_path_;
-  base::File disk_;
   const uint64_t kernel_size_;
   const uint64_t partition_size_;
   const uint64_t manifest_store_start_;
