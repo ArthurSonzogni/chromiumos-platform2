@@ -454,7 +454,8 @@ void ChromeosStartup::CheckForStatefulWipe() {
   if (platform_->IsLink(reset_file) || platform_->FileExists(reset_file)) {
     boot_alert_msg = "power_wash";
     uid_t uid;
-    platform_->GetOwnership(reset_file, &uid, NULL, false /* follow_links */);
+    platform_->GetOwnership(reset_file, &uid, nullptr,
+                            false /* follow_links */);
     // If it's not a plain file owned by us, force a powerwash.
     if (uid != getuid() || platform_->IsLink(reset_file)) {
       clobber_log_msg =
@@ -482,7 +483,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
     // (recovery image, factory install shim or netboot). Do not wipe.
   } else if (IsDevToVerifiedModeTransition(0)) {
     uid_t uid;
-    bool res = platform_->GetOwnership(dev_mode_allowed_file_, &uid, NULL,
+    bool res = platform_->GetOwnership(dev_mode_allowed_file_, &uid, nullptr,
                                        false /* follow_links */);
     if ((res && uid == getuid()) || NeedsClobberWithoutDevModeFile()) {
       if (!DevIsDebugBuild()) {
@@ -508,7 +509,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
     }
   } else if (IsDevToVerifiedModeTransition(1)) {
     uid_t uid;
-    bool res = platform_->GetOwnership(dev_mode_allowed_file_, &uid, NULL,
+    bool res = platform_->GetOwnership(dev_mode_allowed_file_, &uid, nullptr,
                                        false /* follow_links */);
     if (!res || uid != getuid()) {
       if (!DevIsDebugBuild()) {
