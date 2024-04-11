@@ -124,6 +124,9 @@ class Proxy : public brillo::DBusDaemon {
     std::vector<net_base::IPv6Address> ipv6_nameservers_;
     // If non-empty, the secure providers to use for always-on DoH.
     std::set<std::string> secure_providers_;
+    // If non-empty, the secure providers to use for DoH with fallback to
+    // plain-text nameservers.
+    std::set<std::string> secure_providers_with_fallback_;
     // If non-empty, maps name server IP addresses to secure DNS provider URL
     // for automatic upgrade.
     std::map<net_base::IPAddress, std::string> auto_providers_;
@@ -260,12 +263,15 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, BasicDoHDisable);
   FRIEND_TEST(ProxyTest, BasicDoHAlwaysOn);
   FRIEND_TEST(ProxyTest, BasicDoHAutomatic);
+  FRIEND_TEST(ProxyTest, BasicDoHSecureWithFallback);
   FRIEND_TEST(ProxyTest, RemovesDNSQueryParameterTemplate_AlwaysOn);
   FRIEND_TEST(ProxyTest, RemovesDNSQueryParameterTemplate_Automatic);
+  FRIEND_TEST(ProxyTest, RemovesDNSQueryParameterTemplate_SecureWithFallback);
   FRIEND_TEST(ProxyTest, NewResolverConfiguredWhenSet);
   FRIEND_TEST(ProxyTest, DoHModeChangingFixedNameServers);
   FRIEND_TEST(ProxyTest, MultipleDoHProvidersForAlwaysOnMode);
   FRIEND_TEST(ProxyTest, MultipleDoHProvidersForAutomaticMode);
+  FRIEND_TEST(ProxyTest, MultipleDoHProvidersForSecureWithFallbackMode);
   FRIEND_TEST(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode);
   FRIEND_TEST(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN);
   FRIEND_TEST(ProxyTest, SystemProxy_SetsDnsRedirectionRule);

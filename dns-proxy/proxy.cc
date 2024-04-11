@@ -32,6 +32,7 @@ using patchpanel::operator<<;
 
 namespace dns_proxy {
 namespace {
+
 // The DoH provider URLs that come from Chrome may be URI templates instead.
 // Per https://datatracker.ietf.org/doc/html/rfc8484#section-4.1 these will
 // include the {?dns} parameter template for GET requests. These can be safely
@@ -874,6 +875,7 @@ void Proxy::DoHConfig::set_nameservers(
 void Proxy::DoHConfig::set_providers(
     const brillo::VariantDictionary& providers) {
   secure_providers_.clear();
+  secure_providers_with_fallback_.clear();
   auto_providers_.clear();
 
   if (providers.empty()) {
@@ -894,6 +896,13 @@ void Proxy::DoHConfig::set_providers(
       continue;
     }
 
+    // On secure DNS automatic mode with fallback, we expect a wildcard
+    // nameserver ("*"). See also b/333757554.
+    if (nameservers == shill::kDNSProxyDOHProvidersMatchAnyIPAddress) {
+      secure_providers_with_fallback_.insert(TrimParamTemplate(endpoint));
+      continue;
+    }
+
     // Remap nameserver -> secure endpoint so we can quickly determine if DoH
     // should be attempted when the name servers change.
     for (const auto& ns_str :
@@ -909,8 +918,8 @@ void Proxy::DoHConfig::set_providers(
   }
 
   // If for some reason, both collections are non-empty, prefer the automatic
-  // upgrade configuration.
-  if (!auto_providers_.empty()) {
+  // upgrade configuration or the secure DNS with fallback configuration.
+  if (!secure_providers_with_fallback_.empty() || !auto_providers_.empty()) {
     secure_providers_.clear();
     if (metrics_) {
       metrics_->RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode::kAutomatic);
@@ -944,6 +953,8 @@ void Proxy::DoHConfig::update() {
   if (!secure_providers_.empty()) {
     doh_providers = secure_providers_;
     doh_always_on = true;
+  } else if (!secure_providers_with_fallback_.empty()) {
+    doh_providers = secure_providers_with_fallback_;
   } else if (!auto_providers_.empty()) {
     for (const auto& ns : nameservers) {
       const auto it = auto_providers_.find(ns);
@@ -960,6 +971,7 @@ void Proxy::DoHConfig::update() {
 void Proxy::DoHConfig::clear() {
   resolver_ = nullptr;
   secure_providers_.clear();
+  secure_providers_with_fallback_.clear();
   auto_providers_.clear();
 }
 

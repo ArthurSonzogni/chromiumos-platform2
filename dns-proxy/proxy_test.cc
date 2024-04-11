@@ -656,6 +656,20 @@ TEST_F(ProxyTest, BasicDoHAutomatic) {
   proxy_->OnDoHProvidersChanged(props);
 }
 
+TEST_F(ProxyTest, BasicDoHSecureWithFallback) {
+  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice(shill::Client::Device::ConnectionState::kOnline));
+  SetNameServers({"8.8.4.4"}, /*ipv6_nameservers=*/{});
+
+  EXPECT_CALL(*resolver_,
+              SetDoHProviders(ElementsAre(StrEq("https://custom-provider.com")),
+                              false));
+  brillo::VariantDictionary props;
+  props["https://custom-provider.com"] =
+      std::string(shill::kDNSProxyDOHProvidersMatchAnyIPAddress);
+  proxy_->OnDoHProvidersChanged(props);
+}
+
 TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_AlwaysOn) {
   SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
@@ -678,6 +692,20 @@ TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_Automatic) {
       SetDoHProviders(ElementsAre(StrEq("https://dns.google.com")), false));
   brillo::VariantDictionary props;
   props["https://dns.google.com{?dns}"] = std::string("8.8.8.8, 8.8.4.4");
+  proxy_->OnDoHProvidersChanged(props);
+}
+
+TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_SecureWithFallback) {
+  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice(shill::Client::Device::ConnectionState::kOnline));
+  SetNameServers({"8.8.4.4"}, /*ipv6_nameservers=*/{});
+
+  EXPECT_CALL(*resolver_,
+              SetDoHProviders(ElementsAre(StrEq("https://custom-provider.com")),
+                              false));
+  brillo::VariantDictionary props;
+  props["https://custom-provider.com{?dns}"] =
+      std::string(shill::kDNSProxyDOHProvidersMatchAnyIPAddress);
   proxy_->OnDoHProvidersChanged(props);
 }
 
@@ -731,6 +759,15 @@ TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
       *resolver_,
       SetDoHProviders(ElementsAre(StrEq("https://dns.google.com")), false));
   SetNameServers({"8.8.4.4", "10.10.10.1", "8.8.8.8"}, /*ipv6_nameservers=*/{});
+
+  // Automatic mode - secure DNS with fallback.
+  EXPECT_CALL(
+      *resolver_,
+      SetDoHProviders(
+          ElementsAre(StrEq("https://custom-provider.com/dns-query")), false));
+  props["https://custom-provider.com/dns-query"] =
+      std::string(shill::kDNSProxyDOHProvidersMatchAnyIPAddress);
+  proxy_->OnDoHProvidersChanged(props);
 
   // Explicitly turned off.
   EXPECT_CALL(*resolver_, SetDoHProviders(IsEmpty(), false));
@@ -807,6 +844,27 @@ TEST_F(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
                                   StrEq("https://dns.quad9.net/dns-query")),
                               false));
   SetNameServers({"8.8.8.8", "10.10.10.10"}, {"2620:fe::9", "2620:119:53::53"});
+}
+
+TEST_F(ProxyTest, MultipleDoHProvidersForSecureWithFallbackMode) {
+  SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
+             ShillDevice(shill::Client::Device::ConnectionState::kOnline));
+
+  shill::Client::IPConfig ipconfig;
+  SetNameServers({"1.1.1.1", "10.10.10.10"}, /*ipv6_nameservers=*/{});
+
+  EXPECT_CALL(
+      *resolver_,
+      SetDoHProviders(UnorderedElementsAre(
+                          StrEq("https://custom-provider-1.com"),
+                          StrEq("https://custom-provider-2.com/dns-query")),
+                      false));
+  brillo::VariantDictionary props;
+  props["https://custom-provider-1.com"] =
+      std::string(shill::kDNSProxyDOHProvidersMatchAnyIPAddress);
+  props["https://custom-provider-2.com/dns-query"] =
+      std::string(shill::kDNSProxyDOHProvidersMatchAnyIPAddress);
+  proxy_->OnDoHProvidersChanged(props);
 }
 
 TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
