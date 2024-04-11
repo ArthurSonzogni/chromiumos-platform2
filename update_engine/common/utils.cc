@@ -38,6 +38,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/blkdev_utils/storage_utils.h>
 #include <brillo/data_encoding.h>
 
 #include "update_engine/common/constants.h"
@@ -453,17 +454,8 @@ string MakePartitionName(const string& disk_name, int partition_num) {
     return string();
   }
 
-  string partition_name = disk_name;
-  if (isdigit(partition_name.back())) {
-    // Special case for devices with names ending with a digit.
-    // Add "p" to separate the disk name from partition number,
-    // e.g. "/dev/loop0p2"
-    partition_name += 'p';
-  }
-
-  partition_name += std::to_string(partition_num);
-
-  return partition_name;
+  return brillo::AppendPartition(base::FilePath(disk_name), partition_num)
+      .value();
 }
 
 string ErrnoNumberAsString(int err) {
