@@ -3,9 +3,7 @@
 // found in the LICENSE file.
 
 #include <memory>
-#include <numeric>
 #include <string>
-#include <vector>
 
 #include <base/command_line.h>
 #include <base/files/file_path.h>
@@ -23,7 +21,8 @@ namespace cros::tests {
 
 void RunBenchmark(BenchmarkConfig& benchmark_config,
                   const base::FilePath& data_dir,
-                  int running_time_sec) {
+                  int running_time_sec,
+                  const base::FilePath& metrics_output_json_path) {
   std::unique_ptr<BenchmarkRunner> benchmark_runner;
   constexpr char kTestCaseFaceDetectionPrefix[] = "face_detection";
   const std::string& test_case_name = benchmark_config.test_case_name();
@@ -35,7 +34,7 @@ void RunBenchmark(BenchmarkConfig& benchmark_config,
   }
 
   base::ElapsedTimer initialize_timer;
-  CHECK(benchmark_runner->Initialize());
+  CHECK(benchmark_runner->InitializeWithLatencyMeasured());
   VLOGF(2) << "Initialization time of the feature is "
            << initialize_timer.Elapsed();
 
@@ -44,23 +43,20 @@ void RunBenchmark(BenchmarkConfig& benchmark_config,
   base::TimeDelta total_running_time = base::Seconds(running_time_sec);
   base::TimeDelta max_latency = base::Seconds(1.0 / fps);
   base::TimeDelta process_time;
-  base::TimeDelta avg_process_time = base::Seconds(0);
 
   int count = 0;
   while (total_timer.Elapsed() < total_running_time) {
-    base::ElapsedTimer run_once_timer;
-    benchmark_runner->Run();
-    process_time = run_once_timer.Elapsed();
-    avg_process_time = (avg_process_time * count + process_time) / (count + 1);
+    benchmark_runner->RunWithLatencyMeasured(process_time);
     if (max_latency > process_time) {
       base::PlatformThread::Sleep(max_latency - process_time);
     }
     ++count;
   }
 
-  LOGF(INFO) << "The avg time of the feature running in milliseconds is: "
-             << avg_process_time.InMillisecondsF() << " with counts: " << count
-             << " and fps: " << count / total_timer.Elapsed().InSecondsF();
+  LOGF(INFO) << "The avg fps of running the benchmark is "
+             << count / total_timer.Elapsed().InSecondsF();
+
+  benchmark_runner->OutputMetricsToJsonFile(metrics_output_json_path);
 }
 
 }  // namespace cros::tests
@@ -75,6 +71,10 @@ int main(int argc, char** argv) {
   DEFINE_int32(min_running_time_sec, 0,
                "The minimum time that the feature should be keep running for "
                "in seconds");
+  constexpr char kMetricOutputJsonPathDefault[] =
+      "/tmp/feature_benchmark_metrics.json";
+  DEFINE_string(metrics_output_json_path, kMetricOutputJsonPathDefault,
+                "The path of the metrics output JSON file.");
   brillo::FlagHelper::Init(argc, argv, "Cros Camera feature benchmark");
   base::test::SingleThreadTaskEnvironment task_environment;
 
@@ -82,5 +82,6 @@ int main(int argc, char** argv) {
   cros::tests::BenchmarkConfig benchmark_config(test_config_file_path,
                                                 FLAGS_test_case_name);
   cros::tests::RunBenchmark(benchmark_config, test_config_file_path.DirName(),
-                            FLAGS_min_running_time_sec);
+                            FLAGS_min_running_time_sec,
+                            base::FilePath(FLAGS_metrics_output_json_path));
 }

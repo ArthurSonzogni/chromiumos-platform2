@@ -27,6 +27,8 @@ class FaceDetectionBenchmark : public BenchmarkRunner {
   // }
   explicit FaceDetectionBenchmark(const BenchmarkConfig& benchmark_config,
                                   const base::FilePath& data_dir);
+
+ protected:
   bool Initialize() final;
   void Run() final;
 

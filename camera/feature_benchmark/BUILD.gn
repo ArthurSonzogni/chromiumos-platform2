@@ -22,6 +22,7 @@ executable("cros_camera_feature_benchmark") {
   sources = [
     "//camera/feature_benchmark/benchmark_runner.cc",
     "//camera/feature_benchmark/benchmark_runner_main.cc",
+    "//camera/feature_benchmark/metrics.cc",
   ]
   configs += [ ":target_defaults" ]
   install_path = "bin"

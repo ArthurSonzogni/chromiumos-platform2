@@ -11,9 +11,19 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
+#include <base/timer/elapsed_timer.h>
 #include <base/values.h>
 
 namespace cros::tests {
+
+namespace {
+
+constexpr char kBenchmarkRunnerInitializeLatencyMetricName[] =
+    "BenchmarkRunner::Initialize_latency";
+constexpr char kBenchmarkRunnerRunLatencyMetricName[] =
+    "BenchmarkRunner::Run_latency";
+
+}  // namespace
 
 BenchmarkConfig::BenchmarkConfig(const base::FilePath& file_path,
                                  const std::string& test_case_name)
@@ -38,6 +48,29 @@ BenchmarkConfig::BenchmarkConfig(const base::FilePath& file_path,
   std::optional<int> fps = test_case_config_.FindInt(kFpsKey);
   CHECK(fps.has_value());
   fps_ = *fps;
+}
+
+BenchmarkRunner::BenchmarkRunner(const base::FilePath& data_dir)
+    : data_dir_(data_dir) {
+  metrics_.AddMetric(kBenchmarkRunnerInitializeLatencyMetricName, "us",
+                     /*bigger_is_better=*/false);
+  metrics_.AddMetric(kBenchmarkRunnerRunLatencyMetricName, "us",
+                     /*bigger_is_better=*/false);
+}
+
+bool BenchmarkRunner::InitializeWithLatencyMeasured() {
+  base::ElapsedTimer timer;
+  bool ret = Initialize();
+  metrics_.AddMetricSample(kBenchmarkRunnerInitializeLatencyMetricName,
+                           timer.Elapsed().InMicroseconds());
+  return ret;
+}
+
+void BenchmarkRunner::RunWithLatencyMeasured(base::TimeDelta& process_time) {
+  base::ElapsedTimer timer;
+  Run();
+  metrics_.AddMetricSample(kBenchmarkRunnerRunLatencyMetricName,
+                           timer.Elapsed().InMicrosecondsF());
 }
 
 }  // namespace cros::tests

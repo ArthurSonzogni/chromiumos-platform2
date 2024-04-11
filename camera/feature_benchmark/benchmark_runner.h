@@ -11,6 +11,8 @@
 #include <base/test/task_environment.h>
 #include <base/values.h>
 
+#include "feature_benchmark/metrics.h"
+
 namespace cros::tests {
 
 class BenchmarkConfig {
@@ -41,22 +43,27 @@ class BenchmarkConfig {
 
 class BenchmarkRunner {
  public:
-  explicit BenchmarkRunner(const base::FilePath& data_dir)
-      : data_dir_(data_dir) {}
+  explicit BenchmarkRunner(const base::FilePath& data_dir);
   BenchmarkRunner(const BenchmarkRunner&) = delete;
   BenchmarkRunner& operator=(const BenchmarkRunner&) = delete;
   BenchmarkRunner(BenchmarkRunner&&) = delete;
   BenchmarkRunner& operator=(const BenchmarkRunner&&) = delete;
   virtual ~BenchmarkRunner() = default;
 
-  virtual bool Initialize() = 0;
-  virtual void Run() = 0;
+  bool InitializeWithLatencyMeasured();
+  void RunWithLatencyMeasured(base::TimeDelta& process_time);
+  void OutputMetricsToJsonFile(const base::FilePath& output_file_path) {
+    metrics_.OutputMetricsToJsonFile(output_file_path);
+  }
 
  protected:
+  virtual bool Initialize() = 0;
+  virtual void Run() = 0;
   const base::FilePath& data_dir() const { return data_dir_; }
 
  private:
   base::FilePath data_dir_;
+  Metrics metrics_;
 };
 
 }  // namespace cros::tests
