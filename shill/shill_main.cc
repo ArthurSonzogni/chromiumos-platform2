@@ -59,8 +59,6 @@ const char kHelpMessage[] =
     "      -1 = SLOG(..., 1), -2 = SLOG(..., 2), etc.\n"
     "  --log-scopes=\"*scope1+scope2\".\n"
     "    Scopes to enable for SLOG()-based logging.\n"
-    "  --passive-mode\n"
-    "    Do not manage any devices by default\n"
     "  --default-technology-order=technology1,technology2\n"
     "    Specify the default priority order of the technologies.\n";
 }  // namespace switches
