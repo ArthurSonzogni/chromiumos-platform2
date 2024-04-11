@@ -383,11 +383,14 @@ bool ClobberState::GetDevicesToWipe(
 
 // static
 void ClobberState::RemoveVpdKeys() {
-  constexpr std::array<const char*, 1> keys_to_remove{
+  constexpr std::array<const char*, 2> keys_to_remove{
       // This key is used for caching the feature level.
       // Need to remove it, as it must be recalculated when re-entering normal
       // mode.
       "feature_device_info",
+      // This key is used to store LVM migration status.
+      // Need to remove this to prevent incoherence.
+      "thinpool_migration_status",
   };
   for (auto key : keys_to_remove) {
     brillo::ProcessImpl vpd;
