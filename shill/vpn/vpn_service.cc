@@ -381,8 +381,8 @@ void VPNService::OnDefaultPhysicalServiceChanged(
 
   bool default_physical_service_online =
       physical_service && physical_service->IsOnline();
-  const std::string physical_service_path =
-      physical_service ? physical_service->GetDBusObjectPathIdentifier() : "";
+  bool service_changed =
+      default_physical_service_.get() != physical_service.get();
 
   if (!last_default_physical_service_online_ &&
       default_physical_service_online) {
@@ -396,8 +396,7 @@ void VPNService::OnDefaultPhysicalServiceChanged(
     driver_->OnDefaultPhysicalServiceEvent(
         VPNDriver::DefaultPhysicalServiceEvent::kDown);
   } else if (last_default_physical_service_online_ &&
-             default_physical_service_online &&
-             physical_service_path != last_default_physical_service_path_) {
+             default_physical_service_online && service_changed) {
     // The original service is no longer the default, but manager was able
     // to find another physical service that is already Online.
     driver_->OnDefaultPhysicalServiceEvent(
@@ -405,7 +404,8 @@ void VPNService::OnDefaultPhysicalServiceChanged(
   }
 
   last_default_physical_service_online_ = default_physical_service_online;
-  last_default_physical_service_path_ = physical_service_path;
+  default_physical_service_ =
+      physical_service ? physical_service->AsWeakPtr() : nullptr;
 }
 
 void VPNService::StartDriverConnectTimeout(base::TimeDelta timeout) {

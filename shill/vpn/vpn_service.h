@@ -125,7 +125,7 @@ class VPNService : public Service,
   // service must be online before we connect to any VPN service.
   bool last_default_physical_service_online_;
   // The current default physical service known from Manager.
-  std::string last_default_physical_service_path_;
+  base::WeakPtr<Service> default_physical_service_;
 
   base::CancelableOnceClosure driver_connect_timeout_callback_;
 
