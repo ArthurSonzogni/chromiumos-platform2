@@ -125,6 +125,96 @@ static constexpr VPNEnumMetric kMetricConnectionLostReason = {
     .max = kConnectionLostReasonEndReasonMax,
 };
 
+// Routing setup for a specific IP family. This only considers the routing table
+// setup for the VPN interface (i.e., routes in the routing table), but not the
+// actual routing setup on the system (i.e., all the components affecting
+// routing: rules, routes, iptables, etc.).
+//
+// Caveat: when we calculate whether the address space is fully covered, we will
+// only check if there is a default route and no excluded route. If there is no
+// /0 route but the address space is fully covered by multiple routes, it will
+// be considered as kRoutingTypeSplit.
+enum RoutingType {
+  // The routes cover the whole address space.
+  kRoutingTypeFull,
+  // The routes cover the address space partially.
+  kRoutingTypeSplit,
+  // No route for this IP family.
+  kRoutingTypeBypass,
+  // This IP family is blocked.
+  kRoutingTypeBlocked,
+
+  kRoutingTypeMax,
+};
+constexpr VPNEnumMetric kMetricIPv4RoutingType = {
+    .n = NameByVPNType{"IPv4RoutingType"},
+    .max = kRoutingTypeMax,
+};
+constexpr VPNEnumMetric kMetricIPv6RoutingType = {
+    .n = NameByVPNType{"IPv6RoutingType"},
+    .max = kRoutingTypeMax,
+};
+
+// The length of the largest (shortest) prefix for {IPv4, IPv6} x {included
+// routes, excluded routes}. These metrics will only be reported when the
+// routing type is kRoutingTypeSplit on the corresponding IP family, but it's
+// still valid that the reported value is 0 since included routes and excluded
+// routes can be set at the same time.
+constexpr int kPrefixLengthHistogramBucket = 8;
+constexpr VPNHistogramMetric kMetricIPv4IncludedRoutesLargestPrefix = {
+    .n = NameByVPNType{"IPv4IncludedRoutesLargestPrefix"},
+    .min = 1,
+    .max = 32,
+    .num_buckets = kPrefixLengthHistogramBucket,
+};
+constexpr VPNHistogramMetric kMetricIPv4ExcludedRoutesLargestPrefix = {
+    .n = NameByVPNType{"IPv4ExcludedRoutesLargestPrefix"},
+    .min = 1,
+    .max = 32,
+    .num_buckets = kPrefixLengthHistogramBucket,
+};
+constexpr VPNHistogramMetric kMetricIPv6IncludedRoutesLargestPrefix = {
+    .n = NameByVPNType{"IPv6IncludedRoutesLargestPrefix"},
+    .min = 1,
+    .max = 128,
+    .num_buckets = kPrefixLengthHistogramBucket,
+};
+constexpr VPNHistogramMetric kMetricIPv6ExcludedRoutesLargestPrefix = {
+    .n = NameByVPNType{"IPv6ExcludedRoutesLargestPrefix"},
+    .min = 1,
+    .max = 128,
+    .num_buckets = kPrefixLengthHistogramBucket,
+};
+
+// Number of included or excluded routes. Note that for a default route, it will
+// always be counted as an included route, even if it is not explicitly set.
+constexpr int kPrefixNumberHistogramMax = 20;
+constexpr int kPrefixNumberHistogramBucket = 8;
+constexpr VPNHistogramMetric kMetricIPv4IncludedRoutesNumber = {
+    .n = NameByVPNType{"IPv4IncludedRoutesNumber"},
+    .min = 1,
+    .max = kPrefixNumberHistogramMax,
+    .num_buckets = kPrefixNumberHistogramBucket,
+};
+constexpr VPNHistogramMetric kMetricIPv4ExcludedRoutesNumber = {
+    .n = NameByVPNType{"IPv4ExcludedRoutesNumber"},
+    .min = 1,
+    .max = kPrefixNumberHistogramMax,
+    .num_buckets = kPrefixNumberHistogramBucket,
+};
+constexpr VPNHistogramMetric kMetricIPv6IncludedRoutesNumber = {
+    .n = NameByVPNType{"IPv6IncludedRoutesNumber"},
+    .min = 1,
+    .max = kPrefixNumberHistogramMax,
+    .num_buckets = kPrefixNumberHistogramBucket,
+};
+constexpr VPNHistogramMetric kMetricIPv6ExcludedRoutesNumber = {
+    .n = NameByVPNType{"IPv6ExcludedRoutesNumber"},
+    .min = 1,
+    .max = kPrefixNumberHistogramMax,
+    .num_buckets = kPrefixNumberHistogramBucket,
+};
+
 }  // namespace vpn_metrics_internal
 }  // namespace shill
 

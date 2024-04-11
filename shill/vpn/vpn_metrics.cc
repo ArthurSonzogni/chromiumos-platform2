@@ -4,6 +4,9 @@
 
 #include "shill/vpn/vpn_metrics.h"
 
+#include <algorithm>
+#include <vector>
+
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/time/time.h>
@@ -65,6 +68,89 @@ void ReportIPType(Metrics* metrics,
   metrics->SendEnumToUMA(vpn_metrics::kMetricIPType, vpn_type, ip_type);
 }
 
+void ReportRoutingSetup(Metrics* metrics,
+                        VPNType vpn_type,
+                        net_base::IPFamily family,
+                        const NetworkConfig& network_config) {
+  using Prefixes = std::vector<net_base::IPCIDR>;
+
+  const bool is_ipv4 = family == net_base::IPFamily::kIPv4;
+
+  struct PrefixesInfo {
+    bool has_default = false;
+    std::optional<int> shortest_len = std::nullopt;
+    int count = 0;
+  };
+  auto scan_prefixes = [family](const Prefixes& prefixes) -> PrefixesInfo {
+    PrefixesInfo ret;
+    for (const auto& prefix : prefixes) {
+      int len = prefix.prefix_length();
+      if (prefix.GetFamily() != family) {
+        continue;
+      }
+      ret.count++;
+      if (len == 0) {
+        ret.has_default = true;
+      }
+      if (!ret.shortest_len.has_value() || *ret.shortest_len > len) {
+        ret.shortest_len = len;
+      }
+    }
+    return ret;
+  };
+
+  // Default IPv4 route needs special handling.
+  Prefixes included_prefixes = network_config.included_route_prefixes;
+  if (is_ipv4 && network_config.ipv4_default_route) {
+    included_prefixes.push_back(net_base::IPCIDR(family));
+  }
+
+  auto included_info = scan_prefixes(included_prefixes);
+  auto excluded_info = scan_prefixes(network_config.excluded_route_prefixes);
+
+  vpn_metrics::RoutingType routing_type;
+  if (!is_ipv4 && network_config.ipv6_blackhole_route) {
+    routing_type = vpn_metrics::kRoutingTypeBlocked;
+  } else if (included_info.has_default && excluded_info.count == 0) {
+    routing_type = vpn_metrics::kRoutingTypeFull;
+  } else if (included_info.count == 0) {
+    routing_type = vpn_metrics::kRoutingTypeBypass;
+  } else {
+    routing_type = vpn_metrics::kRoutingTypeSplit;
+  }
+
+  const auto& metric_routing_type = is_ipv4
+                                        ? vpn_metrics::kMetricIPv4RoutingType
+                                        : vpn_metrics::kMetricIPv6RoutingType;
+  metrics->SendEnumToUMA(metric_routing_type, vpn_type, routing_type);
+
+  const auto& metric_included_routes_number =
+      is_ipv4 ? vpn_metrics::kMetricIPv4IncludedRoutesNumber
+              : vpn_metrics::kMetricIPv6IncludedRoutesNumber;
+  const auto& metric_excluded_routes_number =
+      is_ipv4 ? vpn_metrics::kMetricIPv4ExcludedRoutesNumber
+              : vpn_metrics::kMetricIPv6ExcludedRoutesNumber;
+  metrics->SendToUMA(metric_included_routes_number, vpn_type,
+                     included_info.count);
+  metrics->SendToUMA(metric_excluded_routes_number, vpn_type,
+                     excluded_info.count);
+
+  if (included_info.shortest_len.has_value()) {
+    const auto& metric_included_routes_largest_prefix =
+        is_ipv4 ? vpn_metrics::kMetricIPv4IncludedRoutesLargestPrefix
+                : vpn_metrics::kMetricIPv6IncludedRoutesLargestPrefix;
+    metrics->SendToUMA(metric_included_routes_largest_prefix, vpn_type,
+                       *included_info.shortest_len);
+  }
+  if (excluded_info.shortest_len.has_value()) {
+    const auto& metric_excluded_routes_largest_prefix =
+        is_ipv4 ? vpn_metrics::kMetricIPv4ExcludedRoutesLargestPrefix
+                : vpn_metrics::kMetricIPv6ExcludedRoutesLargestPrefix;
+    metrics->SendToUMA(metric_excluded_routes_largest_prefix, vpn_type,
+                       *excluded_info.shortest_len);
+  }
+}
+
 vpn_metrics::ConnectFailureReason InterpretEndReasonAsConnectFailure(
     VPNEndReason reason) {
   switch (reason) {
@@ -124,6 +210,10 @@ VPNDriverMetrics::~VPNDriverMetrics() = default;
 void VPNDriverMetrics::ReportNetworkConfig(
     const NetworkConfig& network_config) const {
   ReportIPType(metrics_, vpn_type_, network_config);
+  ReportRoutingSetup(metrics_, vpn_type_, net_base::IPFamily::kIPv4,
+                     network_config);
+  ReportRoutingSetup(metrics_, vpn_type_, net_base::IPFamily::kIPv6,
+                     network_config);
 }
 
 void VPNDriverMetrics::ReportConnecting() {
