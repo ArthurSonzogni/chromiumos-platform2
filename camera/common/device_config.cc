@@ -185,7 +185,7 @@ void DeviceConfig::ProbeSensorSubdev(struct media_entity_desc* desc,
     base::TrimWhitespaceASCII(vendor_id, base::TRIM_ALL, &sensor.vendor_id);
   }
   sensor.subdev_path = base::MakeAbsoluteFilePath(path);
-  LOG(INFO) << "Found V4L2 sensor subdev on " << sensor.subdev_path;
+  LOGF(INFO) << "Found V4L2 sensor subdev on " << sensor.subdev_path;
 
   v4l2_sensors_.emplace_back(std::move(sensor));
 }
@@ -199,8 +199,8 @@ base::FilePath DeviceConfig::FindSubdevSysfsByDevId(int major, int minor) {
     base::FilePath dev_path = name.Append("dev");
     std::string dev_id("255:255");
     if (!base::ReadFileToStringWithMaxSize(dev_path, &dev_id, dev_id.size())) {
-      LOG(ERROR) << "Failed to read device ID of '" << dev_path.value()
-                 << "' from sysfs";
+      LOGF(ERROR) << "Failed to read device ID of '" << dev_path.value()
+                  << "' from sysfs";
       continue;
     }
     base::TrimWhitespaceASCII(dev_id, base::TRIM_ALL, &dev_id);
@@ -226,13 +226,13 @@ void DeviceConfig::ProbeMediaController(int media_fd) {
     const base::FilePath& path =
         FindSubdevSysfsByDevId(desc.dev.major, desc.dev.minor);
     if (path.empty()) {
-      LOG(ERROR) << "v4l-subdev node for sensor '" << desc.name
-                 << "' not found";
+      LOGF(ERROR) << "v4l-subdev node for sensor '" << desc.name
+                  << "' not found";
       continue;
     }
 
-    LOG(INFO) << "Probing sensor '" << desc.name << "' ("
-              << path.BaseName().value() << ")";
+    LOGF(INFO) << "Probing sensor '" << desc.name << "' ("
+               << path.BaseName().value() << ")";
     ProbeSensorSubdev(&desc, path);
   }
 }
@@ -244,7 +244,7 @@ void DeviceConfig::AddV4L2Sensors() {
        name = dev_enum.Next()) {
     auto fd = base::ScopedFD(open(name.value().c_str(), O_RDWR));
     if (!fd.is_valid()) {
-      LOG(ERROR) << "Failed to open '" << name.value() << "'";
+      LOGF(ERROR) << "Failed to open '" << name.value() << "'";
       continue;
     }
 
@@ -257,7 +257,7 @@ void DeviceConfig::AddV4L2Sensors() {
       continue;
     }
 
-    LOG(INFO) << "Probing media device '" << name.value() << "'";
+    LOGF(INFO) << "Probing media device '" << name.value() << "'";
     ProbeMediaController(fd.get());
   }
 }
@@ -266,6 +266,62 @@ enum class EepromReadError {
   kReadFailure,
   kNotCamera,
 };
+
+std::map<base::FilePath, base::FilePath> GetNvmemToEepromPathMap() {
+  auto matching_length = [](const base::FilePath& a, const base::FilePath& b) {
+    return std::distance(
+        a.value().begin(),
+        std::mismatch(a.value().begin(), a.value().end(), b.value().begin())
+            .first);
+  };
+
+  std::map<base::FilePath, base::FilePath> result;
+  base::FileEnumerator nvmem_enum(base::FilePath(kSysfsNvmemDevicesRoot), false,
+                                  base::FileEnumerator::DIRECTORIES);
+  for (base::FilePath path = nvmem_enum.Next(); !path.empty();
+       path = nvmem_enum.Next()) {
+    // Some Thunderbolt nvmem devices can take multiple minutes to be read.
+    // Avoid reading them, as the camera eeprom will not be sitting there
+    // anyway (b/213525227).
+    if (path.BaseName().value().find("nvm_active") == 0) {
+      LOGF(INFO) << "Ignoring nvmem at " << path;
+      continue;
+    }
+    base::FilePath nvmem_path =
+        base::MakeAbsoluteFilePath(path.Append("nvmem"));
+    if (!nvmem_path.empty()) {
+      result[std::move(nvmem_path)] = base::FilePath();
+    }
+  }
+  if (result.empty()) {
+    return {};
+  }
+
+  // Find the corresponding nvmem file for each eeprom file on the I2C bus by
+  // matching the sysfs path.
+  base::FileEnumerator i2c_enum(base::FilePath(kSysfsI2cDevicesRoot), false,
+                                base::FileEnumerator::DIRECTORIES);
+  for (base::FilePath path = i2c_enum.Next(); !path.empty();
+       path = i2c_enum.Next()) {
+    base::FilePath eeprom_path =
+        base::MakeAbsoluteFilePath(path.Append("eeprom"));
+    if (eeprom_path.empty()) {
+      continue;
+    }
+    auto it =
+        std::max_element(result.begin(), result.end(), [&](auto& a, auto& b) {
+          return matching_length(eeprom_path, a.first) <
+                 matching_length(eeprom_path, b.first);
+        });
+    if (!it->second.empty()) {
+      LOGF(WARNING) << it->first << " matched to both " << it->second << " and "
+                    << eeprom_path;
+    }
+    it->second = std::move(eeprom_path);
+  }
+
+  return result;
+}
 
 void DeviceConfig::AddCameraEeproms() {
   auto read_eeprom = [&](base::FilePath from_path)
@@ -279,58 +335,11 @@ void DeviceConfig::AddCameraEeproms() {
       // Not a camera EEPROM. Ignore the device.
       return base::unexpected(EepromReadError::kNotCamera);
     }
-    LOG(INFO) << "Read camera eeprom from " << from_path;
+    LOGF(INFO) << "Read camera eeprom from " << from_path;
     return id_block.value();
   };
 
-  // Try finding the EEPROM file corresponding to the given |nvmem_path| by
-  // matching the devname.
-  auto locate_eeprom_file =
-      [](base::FilePath nvmem_path) -> std::optional<base::FilePath> {
-    // Find the eeprom file that locates closest to the nvmem file in the i2c
-    // sysfs tree.
-    base::FileEnumerator dev_enum(base::FilePath(kSysfsI2cDevicesRoot), false,
-                                  base::FileEnumerator::DIRECTORIES);
-    size_t max_matching_length = 0;
-    base::FilePath matching_eeprom_path;
-    for (base::FilePath dev_path = dev_enum.Next(); !dev_path.empty();
-         dev_path = dev_enum.Next()) {
-      const base::FilePath eeprom_path =
-          base::MakeAbsoluteFilePath(dev_path.Append("eeprom"));
-      if (!base::PathExists(eeprom_path)) {
-        continue;
-      }
-      const size_t matching_length = std::distance(
-          eeprom_path.value().begin(),
-          std::mismatch(eeprom_path.value().begin(), eeprom_path.value().end(),
-                        nvmem_path.value().begin())
-              .first);
-      if (matching_length > max_matching_length) {
-        max_matching_length = matching_length;
-        matching_eeprom_path = eeprom_path;
-      }
-    }
-    return max_matching_length > 0 ? std::make_optional(matching_eeprom_path)
-                                   : std::nullopt;
-  };
-
-  base::FileEnumerator dev_enum(base::FilePath(kSysfsNvmemDevicesRoot), false,
-                                base::FileEnumerator::DIRECTORIES);
-  for (base::FilePath dev_path = dev_enum.Next(); !dev_path.empty();
-       dev_path = dev_enum.Next()) {
-    // Some Thunderbolt nvmem devices can take multiple minutes to be read.
-    // Avoid reading them, as the camera eeprom will not be sitting there
-    // anyway (b/213525227).
-    if (dev_path.BaseName().value().find("nvm_active") == 0) {
-      LOGF(INFO) << "Ignoring nvmem at " << dev_path;
-      continue;
-    }
-    const base::FilePath nvmem_path =
-        base::MakeAbsoluteFilePath(dev_path.Append("nvmem"));
-    if (nvmem_path.empty()) {
-      LOG(ERROR) << "Failed to resolve absolute nvmem path from " << dev_path;
-      continue;
-    }
+  for (auto& [nvmem_path, eeprom_path] : GetNvmemToEepromPathMap()) {
     base::expected<EepromIdBlock, EepromReadError> id_block =
         read_eeprom(nvmem_path);
     if (!id_block.has_value() &&
@@ -338,14 +347,13 @@ void DeviceConfig::AddCameraEeproms() {
       // User 'arc-camera' does not have the permission to read the EEPROM file
       // on the nvmem bus (/sys/bus/nvmem/devices/*/nvmem). Fallback to reading
       // the EEPROM file on the i2c bus (/sys/bus/i2c/devices/*/eeprom).
-      std::optional<base::FilePath> eeprom_path =
-          locate_eeprom_file(nvmem_path);
-      if (eeprom_path.has_value()) {
-        id_block = read_eeprom(eeprom_path.value());
+      if (!eeprom_path.empty()) {
+        id_block = read_eeprom(eeprom_path);
       }
     }
-    if (!id_block.has_value())
+    if (!id_block.has_value()) {
       continue;
+    }
     eeproms_.push_back(EepromInfo{
         .id_block = *id_block,
         .nvmem_path = std::move(nvmem_path),
