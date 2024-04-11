@@ -36,8 +36,9 @@ inline bool IsValidDuration(
 
 }  // namespace
 
-CameraDiagnosticsProcessor::CameraDiagnosticsProcessor()
-    : thread_("CameraDiagnostics") {
+CameraDiagnosticsProcessor::CameraDiagnosticsProcessor(
+    CameraDiagnosticsMojoManager* mojo_manager)
+    : thread_("CameraDiagnostics"), mojo_manager_(mojo_manager) {
   CHECK(thread_.Start());
 }
 
@@ -86,7 +87,8 @@ void CameraDiagnosticsProcessor::RunFrameAnalysisOnThread(
   // Don't hold the lock for too long.
   {
     base::AutoLock lock(session_lock_);
-    current_session_ = std::make_unique<CameraDiagnosticsSession>(future);
+    current_session_ =
+        std::make_unique<CameraDiagnosticsSession>(mojo_manager_, future);
     current_session_->RunFrameAnalysis(config->Clone());
   }
 

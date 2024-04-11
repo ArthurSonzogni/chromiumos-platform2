@@ -11,6 +11,8 @@
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/camera_thread.h"
+#include "diagnostics/camera_diagnostics_mojo_manager.h"
+#include "diagnostics/camera_service_controller.h"
 
 namespace cros {
 
@@ -20,7 +22,8 @@ namespace cros {
 // Thread-safe.
 class CameraDiagnosticsSession {
  public:
-  explicit CameraDiagnosticsSession(scoped_refptr<Future<void>> notify_finish);
+  CameraDiagnosticsSession(CameraDiagnosticsMojoManager* mojo_manager,
+                           scoped_refptr<Future<void>> notify_finish);
   CameraDiagnosticsSession(const CameraDiagnosticsSession&) = delete;
   CameraDiagnosticsSession& operator=(const CameraDiagnosticsSession&) = delete;
   CameraDiagnosticsSession(CameraDiagnosticsSession&&) = delete;
@@ -40,12 +43,17 @@ class CameraDiagnosticsSession {
   void RunFrameAnalysisOnThread(
       camera_diag::mojom::FrameAnalysisConfigPtr config);
 
+  void OnStartStreaming(camera_diag::mojom::StartStreamingResultPtr result);
+
   void PrepareResult();
 
   CameraThread thread_;
 
-  std::optional<camera_diag::mojom::FrameAnalysisResultPtr> result_ =
-      std::nullopt;
+  CameraServiceController camera_service_controller_;
+
+  base::Lock lock_;
+  std::optional<camera_diag::mojom::FrameAnalysisResultPtr> result_
+      GUARDED_BY(lock_) = std::nullopt;
 
   scoped_refptr<Future<void>> notify_finish_;
 };

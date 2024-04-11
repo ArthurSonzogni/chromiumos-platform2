@@ -25,7 +25,8 @@ class CameraDiagnosticsProcessor {
   using RunFrameAnalysisCallback =
       camera_diag::mojom::CameraDiagnostics::RunFrameAnalysisCallback;
 
-  CameraDiagnosticsProcessor();
+  explicit CameraDiagnosticsProcessor(
+      CameraDiagnosticsMojoManager* mojo_manager);
   CameraDiagnosticsProcessor(const CameraDiagnosticsProcessor&) = delete;
   CameraDiagnosticsProcessor& operator=(const CameraDiagnosticsProcessor&) =
       delete;
@@ -52,6 +53,8 @@ class CameraDiagnosticsProcessor {
   void ResetSession();
 
   CameraThread thread_;
+
+  CameraDiagnosticsMojoManager* mojo_manager_;
 
   base::Lock session_lock_;
   std::unique_ptr<CameraDiagnosticsSession> current_session_

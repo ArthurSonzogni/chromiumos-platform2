@@ -52,6 +52,7 @@ enum ErrorCode {
   kAlreadyRunningAnalysis = 3,
   kNotEnoughFrames = 4,
   kInvalidDuration = 5,
+  kCrosCameraControllerNotRegistered = 6,
 };
 
 [Extensible]
