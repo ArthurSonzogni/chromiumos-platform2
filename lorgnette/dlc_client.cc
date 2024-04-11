@@ -6,6 +6,7 @@
 
 #include <base/functional/bind.h>
 #include <brillo/errors/error.h>
+#include <chromeos/constants/lorgnette_dlc.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
 
 #include <string>
@@ -15,7 +16,6 @@
 #include "base/task/single_thread_task_runner.h"
 
 namespace lorgnette {
-constexpr char kDlcId[] = "sane-backends-pfu";
 
 void DlcClient::Init(
     std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
@@ -36,7 +36,7 @@ void DlcClient::SetCallbacks(
 }
 
 void DlcClient::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
-  if (dlc_state.id() != kDlcId) {
+  if (dlc_state.id() != kSaneBackendsPfuDlcId) {
     return;
   }
 
@@ -47,14 +47,16 @@ void DlcClient::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
     case dlcservice::DlcState::INSTALLING:
       break;
     case dlcservice::DlcState::NOT_INSTALLED: {
-      std::string err = base::StrCat({"Failed to install DLC: ", kDlcId,
-                                      " Error: ", dlc_state.last_error_code()});
+      std::string err =
+          base::StrCat({"Failed to install DLC: ", kSaneBackendsPfuDlcId,
+                        " Error: ", dlc_state.last_error_code()});
       InvokeErrorCb(err);
       break;
     }
     default:
-      std::string err = base::StrCat({"Unknown error when installing: ", kDlcId,
-                                      " Error: ", dlc_state.last_error_code()});
+      std::string err = base::StrCat(
+          {"Unknown error when installing: ", kSaneBackendsPfuDlcId,
+           " Error: ", dlc_state.last_error_code()});
       InvokeErrorCb(err);
       break;
   }
@@ -75,7 +77,7 @@ void DlcClient::OnDlcStateChangedConnect(const std::string& interface,
 void DlcClient::InstallDlc() {
   brillo::ErrorPtr error;
   dlcservice::InstallRequest install_request;
-  install_request.set_id(kDlcId);
+  install_request.set_id(kSaneBackendsPfuDlcId);
   dlcservice_client_->InstallAsync(
       install_request,
       base::BindRepeating(&DlcClient::OnDlcInstall, base::Unretained(this)),
