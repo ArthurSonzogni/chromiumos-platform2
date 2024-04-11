@@ -4,7 +4,7 @@
 
 import("//common-mk/pkg_config.gni")
 
-if (use.lvm_stateful_partition) {
+if (use.lvm_stateful_partition && !use.disable_lvm_install) {
   action("chromeos_install_script") {
     inputs = [ "chromeos-install" ]
     outputs = [ "${root_gen_dir}/chromeos-install" ]
