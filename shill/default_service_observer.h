@@ -11,21 +11,12 @@
 
 namespace shill {
 
-// Interface for Observer of default logical and physical service changes. When
-// both of the default services changed, OnDefaultLogicalServiceChanged will
-// be triggered at first. Registered and unregistered using
+// Interface for Observer of default physical service changes (i.e., VPN is
+// excluded). Registered and unregistered using
 // Manager::{Add,Remove}DefaultServiceObserver.
 class DefaultServiceObserver : public base::CheckedObserver {
  public:
   virtual ~DefaultServiceObserver() = default;
-
-  // For the default logical service, "changed" means one of the following
-  // events: 1) another logical service becomes the default, 2) the connected
-  // state of the default logical service (i.e., whether this service is
-  // associated with a Connection object) has changed, or 3) the above two
-  // events happen at the same time.
-  virtual void OnDefaultLogicalServiceChanged(
-      const ServiceRefPtr& logical_service) = 0;
 
   // For the default physical service, "changed" means one of the following
   // events: 1) another physical service becomes the default, 2) the online

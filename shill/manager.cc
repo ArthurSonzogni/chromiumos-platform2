@@ -1622,7 +1622,7 @@ void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
   // have a corresponding Connection, this takes into account both a
   // change in default Service and a change in loss/gain of Connection
   // for an unchanged default Service.
-  bool logical_service_changed = EmitDefaultService();
+  EmitDefaultService();
 
   bool physical_service_online =
       physical_service && physical_service->IsOnline();
@@ -1649,15 +1649,8 @@ void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
     }
   }
 
-  if (!physical_service_changed && !logical_service_changed) {
-    return;
-  }
-
-  for (auto& observer : default_service_observers_) {
-    if (logical_service_changed) {
-      observer.OnDefaultLogicalServiceChanged(logical_service);
-    }
-    if (physical_service_changed) {
+  if (physical_service_changed) {
+    for (auto& observer : default_service_observers_) {
       observer.OnDefaultPhysicalServiceChanged(physical_service);
     }
   }

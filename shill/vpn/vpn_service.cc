@@ -373,8 +373,6 @@ void VPNService::OnAfterResume() {
   Service::OnAfterResume();
 }
 
-void VPNService::OnDefaultLogicalServiceChanged(const ServiceRefPtr&) {}
-
 void VPNService::OnDefaultPhysicalServiceChanged(
     const ServiceRefPtr& physical_service) {
   SLOG(this, 2) << __func__ << "("

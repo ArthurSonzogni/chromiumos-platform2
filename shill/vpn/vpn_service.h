@@ -47,8 +47,6 @@ class VPNService : public Service,
   void OnAfterResume() override;
 
   // Inherited from DefaultServiceObserver.
-  void OnDefaultLogicalServiceChanged(
-      const ServiceRefPtr& logical_service) override;
   void OnDefaultPhysicalServiceChanged(
       const ServiceRefPtr& physical_service) override;
 

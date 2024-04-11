@@ -398,11 +398,6 @@ class Manager {
   const base::FilePath& run_path() const { return run_path_; }
   const base::FilePath& storage_path() const { return storage_path_; }
 
-  const base::ObserverList<DefaultServiceObserver>& default_service_observers()
-      const {
-    return default_service_observers_;
-  }
-
   virtual int64_t GetSuspendDurationUsecs() const {
     return power_manager_->suspend_duration_us();
   }
