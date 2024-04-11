@@ -10,25 +10,25 @@
 #include <sys/socket.h>
 #define _Static_assert static_assert
 namespace secagentd::bpf {
-#else
+#else  // else ifdef __cplusplus
 #include "include/secagentd/vmlinux/vmlinux.h"
-// Kernels 5.10,5.15 won't have support for fentry/fexit
-// hooks. Instead these kernels have downstream tracepoints
-// defined and added to areas of interest within the kernel.
-// LINUX_VERSION_CODE is defined in vmlinux.h and when that is the case
-// then the NO substitution is used otherwise it is assumed the
-// kernel supports fentry/fexit and so the YES substitution is used.
-// In short, this allows different hooks to be used based on
-// whether the kernel is expected to support fentry/fexit hooks
-// or not.
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0) && \
-    LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)
-#define CROS_IF_FUNCTION_HOOK(YES, NO) SEC(NO)
-#else
-#define CROS_IF_FUNCTION_HOOK(YES, NO) SEC(YES)
+
+// Kernels older than v6.6  support fentry/fexit/lsm hooks for x86 only.
+#if defined(__TARGET_ARCH_x86) || LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 #define CROS_FENTRY_FEXIT_SUPPORTED (1)
 #endif
+
+// If the kernel supports fentry/fexit for the platform arch then use
+// fentry/fexit, otherwise fallback to using downstream cros_net tracepoints.
+#ifdef CROS_FENTRY_FEXIT_SUPPORTED
+#define CROS_IF_FUNCTION_HOOK(FENTRY_FEXIT_TYPE, CROS_NET_TP_TYPE) \
+  SEC(FENTRY_FEXIT_TYPE)
+#else
+#define CROS_IF_FUNCTION_HOOK(FENTRY_FEXIT_TYPE, CROS_NET_TP_TYPE) \
+  SEC(CROS_NET_TP_TYPE)
 #endif
+
+#endif  // ifdef __cplusplus
 
 // The max arg size set by limits.h is ~128KB. To avoid consuming an absurd
 // amount of memory arguments will be truncated to 512 bytes. If all 512
