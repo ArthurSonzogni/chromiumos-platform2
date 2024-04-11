@@ -382,6 +382,7 @@ void LivenessCheckerImpl::PrintTopCommand() {
 
 void LivenessCheckerImpl::RecordStateForTimeout(bool verbose) {
   RecordDBusStats();
+  PrintTopCommand();
 
   LoginMetrics::BrowserState state = GetBrowserState();
   // If the browser is currently running there's no point in trying to dump its
@@ -391,8 +392,8 @@ void LivenessCheckerImpl::RecordStateForTimeout(bool verbose) {
       state != LoginMetrics::BrowserState::kTracedOrStopped) {
     return;
   }
+
   if (verbose) {
-    PrintTopCommand();
     RecordWchanState(state);
     RequestKernelTraces();
   } else {
