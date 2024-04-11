@@ -113,6 +113,7 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
     }
   }
 
+  sched_stat_on_ping_ = ReadBrowserProcFile("sched");
   ping_sent_ = base::TimeTicks::Now();
   remaining_retries_ = retry_limit_;
   SendPing(interval_ / (retry_limit_ + 1));
@@ -327,6 +328,14 @@ void LivenessCheckerImpl::RecordWchanState(LoginMetrics::BrowserState state) {
                << *wchan;
 }
 
+void LivenessCheckerImpl::RecordSchedStat() {
+  std::optional<std::string> sched = ReadBrowserProcFile("sched");
+  if (!sched) {
+    return;
+  }
+  LOG(WARNING) << "Scheduler statistics for the browser: " << *sched;
+}
+
 void LivenessCheckerImpl::RequestKernelTraces() {
   base::FilePath file_path(proc_directory_);
   file_path = file_path.Append("sysrq-trigger");
@@ -383,6 +392,12 @@ void LivenessCheckerImpl::PrintTopCommand() {
 void LivenessCheckerImpl::RecordStateForTimeout(bool verbose) {
   RecordDBusStats();
   PrintTopCommand();
+
+  if (remaining_retries_ == retry_limit_ && sched_stat_on_ping_) {
+    LOG(WARNING) << "Scheduler statistics for the browser when ping was sent: "
+                 << *sched_stat_on_ping_;
+  }
+  RecordSchedStat();
 
   LoginMetrics::BrowserState state = GetBrowserState();
   // If the browser is currently running there's no point in trying to dump its

@@ -98,6 +98,11 @@ class LivenessCheckerImpl : public LivenessChecker {
   // now it just logs it; some day will also record in UMA).
   void RecordWchanState(LoginMetrics::BrowserState state);
 
+  // Reads /proc/browser_pid/sched and records the result. This contains
+  // information about scheduler statistics, such as how much time the process
+  // spent on the CPU, context switches, etc.
+  void RecordSchedStat();
+
   // Reads selected metrics of the DBus connection that the Liveness service
   // is using. This works by sending a DBus message to dbus-daemon over a
   // blocking call, with a relatively short, 0.5s timeout.
@@ -132,6 +137,7 @@ class LivenessCheckerImpl : public LivenessChecker {
   base::CancelableOnceClosure liveness_check_;
   base::TimeTicks ping_sent_;
   LoginMetrics* metrics_ = nullptr;
+  std::optional<std::string> sched_stat_on_ping_;
   base::WeakPtrFactory<LivenessCheckerImpl> weak_ptr_factory_{this};
 };
 }  // namespace login_manager
