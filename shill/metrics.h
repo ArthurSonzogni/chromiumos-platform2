@@ -1835,9 +1835,6 @@ class Metrics {
       .num_buckets = 11,
   };
 
-  // Assigned MTU values from PPP.
-  static constexpr char kMetricPPPMTUValue[] = "Network.Shill.PPPMTUValue";
-
   // Wireless regulatory domain metric.
   static constexpr char kMetricRegulatoryDomain[] =
       "Network.Shill.WiFi.RegulatoryDomain";
