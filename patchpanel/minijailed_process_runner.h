@@ -59,12 +59,33 @@ class MinijailedProcessRunner {
   // to std::string_view for ip() and ip6().
   virtual int ip(const std::string& obj,
                  const std::string& cmd,
-                 const std::vector<std::string>& args,
+                 base::span<const std::string> argv,
                  bool as_patchpanel_user = false,
                  bool log_failures = true);
+  virtual int ip(const std::string& obj,
+                 const std::string& cmd,
+                 base::span<std::string_view> argv,
+                 bool as_patchpanel_user = false,
+                 bool log_failures = true);
+  virtual int ip(const std::string& obj,
+                 const std::string& cmd,
+                 std::initializer_list<std::string_view> argv,
+                 bool as_patchpanel_user = false,
+                 bool log_failures = true);
+
   virtual int ip6(const std::string& obj,
                   const std::string& cmd,
-                  const std::vector<std::string>& args,
+                  base::span<const std::string> argv,
+                  bool as_patchpanel_user = false,
+                  bool log_failures = true);
+  virtual int ip6(const std::string& obj,
+                  const std::string& cmd,
+                  base::span<std::string_view> argv,
+                  bool as_patchpanel_user = false,
+                  bool log_failures = true);
+  virtual int ip6(const std::string& obj,
+                  const std::string& cmd,
+                  std::initializer_list<std::string_view> argv,
                   bool as_patchpanel_user = false,
                   bool log_failures = true);
 

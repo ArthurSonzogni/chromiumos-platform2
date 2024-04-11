@@ -290,7 +290,27 @@ int MinijailedProcessRunner::RunIp(base::span<std::string_view> argv,
 
 int MinijailedProcessRunner::ip(const std::string& obj,
                                 const std::string& cmd,
-                                const std::vector<std::string>& argv,
+                                base::span<const std::string> argv,
+                                bool as_patchpanel_user,
+                                bool log_failures) {
+  std::vector<std::string_view> args = {kIpPath, obj, cmd};
+  args.insert(args.end(), argv.begin(), argv.end());
+  return RunIp(args, as_patchpanel_user, log_failures);
+}
+
+int MinijailedProcessRunner::ip(const std::string& obj,
+                                const std::string& cmd,
+                                base::span<std::string_view> argv,
+                                bool as_patchpanel_user,
+                                bool log_failures) {
+  std::vector<std::string_view> args = {kIpPath, obj, cmd};
+  args.insert(args.end(), argv.begin(), argv.end());
+  return RunIp(args, as_patchpanel_user, log_failures);
+}
+
+int MinijailedProcessRunner::ip(const std::string& obj,
+                                const std::string& cmd,
+                                std::initializer_list<std::string_view> argv,
                                 bool as_patchpanel_user,
                                 bool log_failures) {
   std::vector<std::string_view> args = {kIpPath, obj, cmd};
@@ -300,7 +320,27 @@ int MinijailedProcessRunner::ip(const std::string& obj,
 
 int MinijailedProcessRunner::ip6(const std::string& obj,
                                  const std::string& cmd,
-                                 const std::vector<std::string>& argv,
+                                 base::span<const std::string> argv,
+                                 bool as_patchpanel_user,
+                                 bool log_failures) {
+  std::vector<std::string_view> args = {kIpPath, "-6", obj, cmd};
+  args.insert(args.end(), argv.begin(), argv.end());
+  return RunIp(args, as_patchpanel_user, log_failures);
+}
+
+int MinijailedProcessRunner::ip6(const std::string& obj,
+                                 const std::string& cmd,
+                                 base::span<std::string_view> argv,
+                                 bool as_patchpanel_user,
+                                 bool log_failures) {
+  std::vector<std::string_view> args = {kIpPath, "-6", obj, cmd};
+  args.insert(args.end(), argv.begin(), argv.end());
+  return RunIp(args, as_patchpanel_user, log_failures);
+}
+
+int MinijailedProcessRunner::ip6(const std::string& obj,
+                                 const std::string& cmd,
+                                 std::initializer_list<std::string_view> argv,
                                  bool as_patchpanel_user,
                                  bool log_failures) {
   std::vector<std::string_view> args = {kIpPath, "-6", obj, cmd};

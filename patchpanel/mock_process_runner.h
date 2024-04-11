@@ -12,6 +12,8 @@
 
 #include <gmock/gmock.h>
 
+#include "patchpanel/datapath.h"
+
 namespace patchpanel {
 
 class MockProcessRunner : public MinijailedProcessRunner {
@@ -19,19 +21,14 @@ class MockProcessRunner : public MinijailedProcessRunner {
   MockProcessRunner();
   ~MockProcessRunner();
 
+  // Sets expectations that `ip()` and `ip6()` is called with the given |argv|.
+  void ExpectCallIp(IpFamily family, std::string_view argv);
+  // Checks that `ip()` and `ip6()` is not called.
+  void ExpectNoCallIp();
+
   MOCK_METHOD(int,
-              ip,
-              (const std::string& obj,
-               const std::string& cmd,
-               const std::vector<std::string>& args,
-               bool as_patchpanel_user,
-               bool log_failures),
-              (override));
-  MOCK_METHOD(int,
-              ip6,
-              (const std::string& obj,
-               const std::string& cmd,
-               const std::vector<std::string>& args,
+              RunIp,
+              (base::span<std::string_view> argv,
                bool as_patchpanel_user,
                bool log_failures),
               (override));

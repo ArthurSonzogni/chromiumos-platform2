@@ -19,7 +19,6 @@
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
-#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
@@ -55,11 +54,6 @@ namespace {
 
 // TODO(hugobenichi) Centralize this constant definition
 constexpr pid_t kTestPID = -2;
-
-std::vector<std::string> SplitArgs(const std::string& args) {
-  return base::SplitString(args, " ", base::WhitespaceHandling::TRIM_WHITESPACE,
-                           base::SplitResult::SPLIT_WANT_NONEMPTY);
-}
 
 // This class fakes the implementation for iptables() and ip6tables() based on a
 // MockProcessRunner. For these two functions:
@@ -209,26 +203,6 @@ class MockFirewall : public Firewall {
                     uint16_t dst_port));
 };
 
-void Verify_ip(MockProcessRunner& runner, const std::string& args) {
-  auto argv = SplitArgs(args);
-  const auto object = argv[0];
-  const auto action = argv[1];
-  argv.erase(argv.begin());
-  argv.erase(argv.begin());
-  EXPECT_CALL(runner,
-              ip(StrEq(object), StrEq(action), ElementsAreArray(argv), _, _));
-}
-
-void Verify_ip6(MockProcessRunner& runner, const std::string& args) {
-  auto argv = SplitArgs(args);
-  const auto object = argv[0];
-  const auto action = argv[1];
-  argv.erase(argv.begin());
-  argv.erase(argv.begin());
-  EXPECT_CALL(runner,
-              ip6(StrEq(object), StrEq(action), ElementsAreArray(argv), _, _));
-}
-
 void Verify_iptables(MockProcessRunnerForIptablesTest& runner,
                      IpFamily family,
                      const std::string& args,
@@ -336,7 +310,7 @@ TEST_F(DatapathTest, AddTunWithoutMACAddress) {
 }
 
 TEST_F(DatapathTest, RemoveTUN) {
-  Verify_ip(runner_, "tuntap del foo0 mode tun");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "tuntap del foo0 mode tun");
 
   datapath_.RemoveTunTap("foo0", DeviceMode::kTun);
 }
@@ -382,7 +356,7 @@ TEST_F(DatapathTest, AddTAPNoAddrs) {
 }
 
 TEST_F(DatapathTest, RemoveTAP) {
-  Verify_ip(runner_, "tuntap del foo0 mode tap");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "tuntap del foo0 mode tap");
 
   datapath_.RemoveTunTap("foo0", DeviceMode::kTap);
 }
@@ -401,8 +375,9 @@ TEST_F(DatapathTest, NetnsDeleteName) {
 }
 
 TEST_F(DatapathTest, AddBridge) {
-  Verify_ip(runner_, "addr add 1.1.1.1/30 brd 1.1.1.3 dev br");
-  Verify_ip(runner_, "link set br up");
+  runner_.ExpectCallIp(IpFamily::kIPv4,
+                       "addr add 1.1.1.1/30 brd 1.1.1.3 dev br");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set br up");
 
   datapath_.AddBridge("br", *IPv4CIDR::CreateFromCIDRString("1.1.1.1/30"));
 
@@ -412,7 +387,7 @@ TEST_F(DatapathTest, AddBridge) {
 }
 
 TEST_F(DatapathTest, RemoveBridge) {
-  Verify_ip(runner_, "link set br down");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set br down");
 
   datapath_.RemoveBridge("br");
 
@@ -433,13 +408,16 @@ TEST_F(DatapathTest, AddToBridge) {
 }
 
 TEST_F(DatapathTest, ConnectVethPair) {
-  Verify_ip(runner_,
-            "link add veth_foo type veth peer name peer_foo netns netns_foo");
-  Verify_ip(runner_,
-            "addr add 100.115.92.169/30 brd 100.115.92.171 dev peer_foo");
-  Verify_ip(runner_,
-            "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
-  Verify_ip(runner_, "link set veth_foo up");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link add veth_foo type veth peer name peer_foo netns netns_foo");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "addr add 100.115.92.169/30 brd 100.115.92.171 dev peer_foo");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set veth_foo up");
 
   EXPECT_TRUE(datapath_.ConnectVethPair(
       kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
@@ -448,14 +426,17 @@ TEST_F(DatapathTest, ConnectVethPair) {
 }
 
 TEST_F(DatapathTest, ConnectVethPair_StaticIPv6) {
-  Verify_ip(runner_,
-            "link add veth_foo type veth peer name peer_foo netns netns_foo");
-  Verify_ip(runner_,
-            "addr add 100.115.92.169/30 brd 100.115.92.171 dev peer_foo");
-  Verify_ip(runner_, "addr add fd11::1234/64 dev peer_foo");
-  Verify_ip(runner_,
-            "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
-  Verify_ip(runner_, "link set veth_foo up");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link add veth_foo type veth peer name peer_foo netns netns_foo");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "addr add 100.115.92.169/30 brd 100.115.92.171 dev peer_foo");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "addr add fd11::1234/64 dev peer_foo");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link set dev peer_foo up addr 01:02:03:04:05:06 multicast on");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set veth_foo up");
 
   EXPECT_TRUE(datapath_.ConnectVethPair(
       kTestPID, "netns_foo", "veth_foo", "peer_foo", {1, 2, 3, 4, 5, 6},
@@ -464,40 +445,44 @@ TEST_F(DatapathTest, ConnectVethPair_StaticIPv6) {
 }
 
 TEST_F(DatapathTest, AddVirtualInterfacePair) {
-  Verify_ip(runner_,
-            "link add veth_foo type veth peer name peer_foo netns netns_foo");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link add veth_foo type veth peer name peer_foo netns netns_foo");
 
   EXPECT_TRUE(
       datapath_.AddVirtualInterfacePair("netns_foo", "veth_foo", "peer_foo"));
 }
 
 TEST_F(DatapathTest, ToggleInterface) {
-  Verify_ip(runner_, "link set foo up");
-  Verify_ip(runner_, "link set bar down");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set foo up");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set bar down");
 
   EXPECT_TRUE(datapath_.ToggleInterface("foo", true));
   EXPECT_TRUE(datapath_.ToggleInterface("bar", false));
 }
 
 TEST_F(DatapathTest, ConfigureInterface) {
-  Verify_ip(runner_, "addr add 100.115.92.2/30 brd 100.115.92.3 dev test0");
-  Verify_ip(runner_,
-            "link set dev test0 up addr 02:02:02:02:02:03 multicast on");
+  runner_.ExpectCallIp(IpFamily::kIPv4,
+                       "addr add 100.115.92.2/30 brd 100.115.92.3 dev test0");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link set dev test0 up addr 02:02:02:02:02:03 multicast on");
   constexpr net_base::MacAddress mac_addr(2, 2, 2, 2, 2, 3);
   EXPECT_TRUE(datapath_.ConfigureInterface(
       "test0", mac_addr, *IPv4CIDR::CreateFromCIDRString("100.115.92.2/30"),
       /*ipv6_cidr=*/std::nullopt, true, true));
   Mock::VerifyAndClearExpectations(&runner_);
 
-  Verify_ip(runner_, "addr add 192.168.1.37/24 brd 192.168.1.255 dev test1");
-  Verify_ip(runner_, "link set dev test1 up multicast off");
+  runner_.ExpectCallIp(IpFamily::kIPv4,
+                       "addr add 192.168.1.37/24 brd 192.168.1.255 dev test1");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set dev test1 up multicast off");
   EXPECT_TRUE(datapath_.ConfigureInterface(
       "test1", std::nullopt, *IPv4CIDR::CreateFromCIDRString("192.168.1.37/24"),
       /*ipv6_cidr=*/std::nullopt, true, false));
 }
 
 TEST_F(DatapathTest, RemoveInterface) {
-  Verify_ip(runner_, "link delete foo");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link delete foo");
 
   datapath_.RemoveInterface("foo");
 }
@@ -508,16 +493,22 @@ TEST_F(DatapathTest, StartRoutingNamespace) {
 
   Verify_ip_netns_delete(runner_, "netns_foo");
   Verify_ip_netns_attach(runner_, "netns_foo", kTestPID);
-  Verify_ip(runner_,
-            "link add arc_ns0 type veth peer name veth0 netns netns_foo");
-  Verify_ip(runner_, "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
-  Verify_ip(runner_,
-            "link set dev veth0 up addr 01:02:03:04:05:06 multicast off");
-  Verify_ip(runner_, "link set arc_ns0 up");
-  Verify_ip(runner_,
-            "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
-  Verify_ip(runner_,
-            "link set dev arc_ns0 up addr 06:05:04:03:02:01 multicast off");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link add arc_ns0 type veth peer name veth0 netns netns_foo");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link set dev veth0 up addr 01:02:03:04:05:06 multicast off");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set arc_ns0 up");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link set dev arc_ns0 up addr 06:05:04:03:02:01 multicast off");
   Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
   Verify_iptables(runner_, IpFamily::kDual,
@@ -571,7 +562,7 @@ TEST_F(DatapathTest, StopRoutingNamespace) {
   Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_arc_ns0 -w");
   Verify_ip_netns_delete(runner_, "netns_foo");
-  Verify_ip(runner_, "link delete arc_ns0");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link delete arc_ns0");
 
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = kTestPID;
@@ -594,18 +585,24 @@ TEST_F(DatapathTest, StartRoutingNamespace_StaticIPv6) {
 
   Verify_ip_netns_delete(runner_, "netns_foo");
   Verify_ip_netns_attach(runner_, "netns_foo", kTestPID);
-  Verify_ip(runner_,
-            "link add arc_ns0 type veth peer name veth0 netns netns_foo");
-  Verify_ip(runner_, "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
-  Verify_ip(runner_, "addr add fd11::2/64 dev veth0");
-  Verify_ip(runner_,
-            "link set dev veth0 up addr 01:02:03:04:05:06 multicast off");
-  Verify_ip(runner_, "link set arc_ns0 up");
-  Verify_ip(runner_,
-            "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
-  Verify_ip(runner_, "addr add fd11::1/64 dev arc_ns0");
-  Verify_ip(runner_,
-            "link set dev arc_ns0 up addr 06:05:04:03:02:01 multicast off");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link add arc_ns0 type veth peer name veth0 netns netns_foo");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "addr add 100.115.92.130/30 brd 100.115.92.131 dev veth0");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "addr add fd11::2/64 dev veth0");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link set dev veth0 up addr 01:02:03:04:05:06 multicast off");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set arc_ns0 up");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "addr add 100.115.92.129/30 brd 100.115.92.131 dev arc_ns0");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "addr add fd11::1/64 dev arc_ns0");
+  runner_.ExpectCallIp(
+      IpFamily::kIPv4,
+      "link set dev arc_ns0 up addr 06:05:04:03:02:01 multicast off");
   Verify_iptables(runner_, IpFamily::kDual,
                   "filter -A FORWARD -o arc_ns0 -j ACCEPT -w");
   Verify_iptables(runner_, IpFamily::kDual,
@@ -664,7 +661,7 @@ TEST_F(DatapathTest, StopRoutingNamespace_StaticIPv6) {
   Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_arc_ns0 -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_arc_ns0 -w");
   Verify_ip_netns_delete(runner_, "netns_foo");
-  Verify_ip(runner_, "link delete arc_ns0");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link delete arc_ns0");
 
   ConnectedNamespace nsinfo = {};
   nsinfo.pid = kTestPID;
@@ -683,6 +680,7 @@ TEST_F(DatapathTest, StopRoutingNamespace_StaticIPv6) {
 
   datapath_.StopRoutingNamespace(nsinfo);
 }
+
 TEST_F(DatapathTest, StartDownstreamTetheredNetwork) {
   EXPECT_CALL(system_, IfNametoindex("wwan0")).WillRepeatedly(Return(4));
   Verify_iptables(runner_, IpFamily::kDual,
@@ -712,8 +710,9 @@ TEST_F(DatapathTest, StartDownstreamTetheredNetwork) {
   Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_ap0 -j MARK --set-mark "
                   "0x03ec0000/0xffff0000 -w");
-  Verify_ip(runner_, "addr add 172.17.49.1/24 brd 172.17.49.255 dev ap0");
-  Verify_ip(runner_, "link set dev ap0 up multicast on");
+  runner_.ExpectCallIp(IpFamily::kIPv4,
+                       "addr add 172.17.49.1/24 brd 172.17.49.255 dev ap0");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set dev ap0 up multicast on");
   Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_ap0 -j CONNMARK --restore-mark "
                   "--mask 0x00003f00 -w");
@@ -757,8 +756,9 @@ TEST_F(DatapathTest, StartDownstreamLocalOnlyNetwork) {
   Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -A PREROUTING_ap0 -j CONNMARK --restore-mark "
                   "--mask 0xffff0000 -w");
-  Verify_ip(runner_, "addr add 172.17.49.1/24 brd 172.17.49.255 dev ap0");
-  Verify_ip(runner_, "link set dev ap0 up multicast on");
+  runner_.ExpectCallIp(IpFamily::kIPv4,
+                       "addr add 172.17.49.1/24 brd 172.17.49.255 dev ap0");
+  runner_.ExpectCallIp(IpFamily::kIPv4, "link set dev ap0 up multicast on");
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kLocalOnly;
@@ -779,7 +779,7 @@ TEST_F(DatapathTest, StopDownstreamTetheredNetwork) {
                   "mangle -D PREROUTING -i ap0 -j PREROUTING_ap0 -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_ap0 -w");
-  EXPECT_CALL(runner_, ip).Times(0);
+  runner_.ExpectNoCallIp();
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kTethering;
@@ -805,7 +805,7 @@ TEST_F(DatapathTest, StopDownstreamLocalOnlyNetwork) {
                   "mangle -D PREROUTING -i ap0 -j PREROUTING_ap0 -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -X PREROUTING_ap0 -w");
-  EXPECT_CALL(runner_, ip).Times(0);
+  runner_.ExpectNoCallIp();
 
   DownstreamNetworkInfo info;
   info.topology = DownstreamNetworkTopology::kLocalOnly;
@@ -1223,21 +1223,24 @@ TEST_F(DatapathTest, MaskInterfaceFlags) {
 }
 
 TEST_F(DatapathTest, AddIPv6HostRoute) {
-  Verify_ip6(runner_, "route replace 2001:da8:e00::1234/128 dev eth0");
+  runner_.ExpectCallIp(IpFamily::kIPv6,
+                       "route replace 2001:da8:e00::1234/128 dev eth0");
 
   datapath_.AddIPv6HostRoute("eth0", *net_base::IPv6CIDR::CreateFromCIDRString(
                                          "2001:da8:e00::1234/128"));
 }
 
 TEST_F(DatapathTest, AddIPv4RouteToTable) {
-  Verify_ip(runner_, "route add 192.0.2.2/24 dev eth0 table 123");
+  runner_.ExpectCallIp(IpFamily::kIPv4,
+                       "route add 192.0.2.2/24 dev eth0 table 123");
 
   datapath_.AddIPv4RouteToTable(
       "eth0", *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.2/24"), 123);
 }
 
 TEST_F(DatapathTest, DeleteIPv4RouteFromTable) {
-  Verify_ip(runner_, "route del 192.0.2.2/24 dev eth0 table 123");
+  runner_.ExpectCallIp(IpFamily::kIPv4,
+                       "route del 192.0.2.2/24 dev eth0 table 123");
 
   datapath_.DeleteIPv4RouteFromTable(
       "eth0", *net_base::IPv4CIDR::CreateFromCIDRString("192.0.2.2/24"), 123);

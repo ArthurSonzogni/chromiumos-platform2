@@ -97,38 +97,80 @@ TEST_F(MinijailProcessRunnerTest, modprobe_all) {
 }
 
 TEST_F(MinijailProcessRunnerTest, ip) {
-  uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(mj_, RunAndDestroy(
-                       _,
-                       ElementsAre(StrEq("/bin/ip"), StrEq("obj"), StrEq("cmd"),
-                                   StrEq("arg1"), StrEq("arg2"), nullptr),
-                       _));
-  EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
+  auto set_expectations_for_ip = [this]() -> void {
+    uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+    EXPECT_CALL(mj_, New());
+    EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
+        .WillOnce(Return(true));
+    EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
+    EXPECT_CALL(mj_, RunAndDestroy(_,
+                                   ElementsAre(StrEq("/bin/ip"), StrEq("obj"),
+                                               StrEq("cmd"), StrEq("arg1"),
+                                               StrEq("arg2"), nullptr),
+                                   _));
+    EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
+        .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
+  };
 
+  // Check ip() can be called with initializer list only contains string
+  // literals.
+  set_expectations_for_ip();
   EXPECT_TRUE(runner_->ip("obj", "cmd", {"arg1", "arg2"}));
+
+  // Check ip() can be called with string vector.
+  std::vector<std::string> str_vec_args = {"arg1", "arg2"};
+  set_expectations_for_ip();
+  EXPECT_TRUE(runner_->ip("obj", "cmd", str_vec_args));
+
+  // Check ip() can be called with string_view vector.
+  std::vector<std::string_view> string_view_vector = {"arg1", "arg2"};
+  set_expectations_for_ip();
+  EXPECT_TRUE(runner_->ip("obj", "cmd", string_view_vector));
+
+  // Check ip() can be called with initializer list that contains string
+  // literals and string_view objects.
+  set_expectations_for_ip();
+  std::string_view arg = "arg1";
+  EXPECT_TRUE(runner_->ip("obj", "cmd", {arg, "arg2"}));
 }
 
 TEST_F(MinijailProcessRunnerTest, ip6) {
-  uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-  EXPECT_CALL(mj_, New());
-  EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
-      .WillOnce(Return(true));
-  EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
-  EXPECT_CALL(
-      mj_, RunAndDestroy(
-               _,
-               ElementsAre(StrEq("/bin/ip"), StrEq("-6"), StrEq("obj"),
-                           StrEq("cmd"), StrEq("arg1"), StrEq("arg2"), nullptr),
-               _));
-  EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
+  auto set_expectations_for_ip6 = [this]() -> void {
+    uint64_t caps = CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+    EXPECT_CALL(mj_, New());
+    EXPECT_CALL(mj_, DropRoot(_, StrEq("nobody"), StrEq("nobody")))
+        .WillOnce(Return(true));
+    EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
+    EXPECT_CALL(
+        mj_, RunAndDestroy(_,
+                           ElementsAre(StrEq("/bin/ip"), StrEq("-6"),
+                                       StrEq("obj"), StrEq("cmd"),
+                                       StrEq("arg1"), StrEq("arg2"), nullptr),
+                           _));
+    EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
+        .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
+  };
 
+  // Check ip6() can be called with initializer list only contains string
+  // literals.
+  set_expectations_for_ip6();
   EXPECT_TRUE(runner_->ip6("obj", "cmd", {"arg1", "arg2"}));
+
+  // Check ip6() can be called with string vector.
+  std::vector<std::string> str_vec_args = {"arg1", "arg2"};
+  set_expectations_for_ip6();
+  EXPECT_TRUE(runner_->ip6("obj", "cmd", str_vec_args));
+
+  // Check ip6() can be called with string_view vector.
+  std::vector<std::string_view> string_view_vector = {"arg1", "arg2"};
+  set_expectations_for_ip6();
+  EXPECT_TRUE(runner_->ip6("obj", "cmd", string_view_vector));
+
+  // Check ip6() can be called with initializer list that contains string
+  // literals and string_view objects.
+  set_expectations_for_ip6();
+  std::string_view arg = "arg1";
+  EXPECT_TRUE(runner_->ip6("obj", "cmd", {arg, "arg2"}));
 }
 
 TEST_F(MinijailProcessRunnerTest, RunIPAsPatchpanel) {
