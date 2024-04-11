@@ -13,16 +13,13 @@
 #include <string_view>
 #include <vector>
 
+#include "base/containers/span_writer.h"
 #include "base/memory/ref_counted.h"
 #include "base/time/time.h"
 #include "brillo/brillo_export.h"
 
 #include "patchpanel/dns/dns_protocol.h"
 #include "patchpanel/dns/io_buffer.h"
-
-namespace base {
-class BigEndianWriter;
-}  // namespace base
 
 namespace patchpanel {
 
@@ -209,12 +206,12 @@ class BRILLO_EXPORT DnsResponse {
   DnsRecordParser Parser() const;
 
  private:
-  bool WriteHeader(base::BigEndianWriter* writer,
+  bool WriteHeader(base::SpanWriter<uint8_t>* writer,
                    const dns_protocol::Header& header);
-  bool WriteQuestion(base::BigEndianWriter* writer, const DnsQuery& query);
-  bool WriteRecord(base::BigEndianWriter* writer,
+  bool WriteQuestion(base::SpanWriter<uint8_t>* writer, const DnsQuery& query);
+  bool WriteRecord(base::SpanWriter<uint8_t>* writer,
                    const DnsResourceRecord& record);
-  bool WriteAnswer(base::BigEndianWriter* writer,
+  bool WriteAnswer(base::SpanWriter<uint8_t>* writer,
                    const DnsResourceRecord& answer,
                    const std::optional<DnsQuery>& query);
 

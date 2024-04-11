@@ -683,16 +683,17 @@ TEST(DnsResponseWriteTest,
       10 /* extra bytes that inflate the internal buffer of a query */;
   auto buf = base::MakeRefCounted<IOBufferWithSize>(buf_size);
   memset(buf->data(), 0, buf_size);
-  base::BigEndianWriter writer(buf->data(), buf_size);
-  writer.WriteU16(0x1234);                              // id
-  writer.WriteU16(0);                                   // flags, is query
-  writer.WriteU16(1);                                   // qdcount
-  writer.WriteU16(0);                                   // ancount
-  writer.WriteU16(0);                                   // nscount
-  writer.WriteU16(0);                                   // arcount
-  writer.WriteBytes(dns_name.data(), dns_name.size());  // qname
-  writer.WriteU16(dns_protocol::kTypeA);                // qtype
-  writer.WriteU16(dns_protocol::kClassIN);              // qclass
+  base::SpanWriter<uint8_t> writer(
+      base::as_writable_bytes(base::make_span(buf->data(), buf_size)));
+  writer.WriteU16BigEndian(0x1234);                  // id
+  writer.WriteU16BigEndian(0);                       // flags, is query
+  writer.WriteU16BigEndian(1);                       // qdcount
+  writer.WriteU16BigEndian(0);                       // ancount
+  writer.WriteU16BigEndian(0);                       // nscount
+  writer.WriteU16BigEndian(0);                       // arcount
+  writer.Write(base::as_byte_span(dns_name));        // qname
+  writer.WriteU16BigEndian(dns_protocol::kTypeA);    // qtype
+  writer.WriteU16BigEndian(dns_protocol::kClassIN);  // qclass
   // buf contains 10 extra zero bytes.
   std::optional<DnsQuery> query;
   query.emplace(buf);

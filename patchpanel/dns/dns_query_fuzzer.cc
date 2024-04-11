@@ -4,6 +4,7 @@
 
 #include <base/big_endian.h>
 #include <base/check.h>
+#include <base/containers/span_writer.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
@@ -19,8 +20,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   FuzzedDataProvider provider(data, size);
   auto buf = base::MakeRefCounted<IOBufferWithSize>(size);
   size_t buf_size = static_cast<size_t>(buf->size());
-  base::BigEndianWriter writer(buf->data(), buf_size);
-  writer.WriteBytes(data, size);
+  base::SpanWriter<uint8_t> writer(
+      base::as_writable_bytes(base::make_span(buf->data(), buf_size)));
+  writer.Write(base::span(data, size));
   DnsQuery query(buf);
   query.Parse(buf_size);
 
