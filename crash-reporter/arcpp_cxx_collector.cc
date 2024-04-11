@@ -19,6 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringize_macros.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 
@@ -201,21 +202,17 @@ bool ArcppCxxCollector::GetExecutableBaseNameAndDirectoryFromPid(
   return true;
 }
 
-bool ArcppCxxCollector::ShouldDump(pid_t pid,
-                                   uid_t uid,
-                                   const std::string& exec,
-                                   std::string* reason) {
+base::expected<void, CrashCollectionStatus> ArcppCxxCollector::ShouldDump(
+    pid_t pid, uid_t uid, const std::string& exec) {
   if (!IsArcProcess(pid)) {
-    *reason = "ignoring - crash origin is not ARC";
-    return false;
+    return base::unexpected(CrashCollectionStatus::kNotArc);
   }
 
   if (uid >= kSystemUserEnd) {
-    *reason = "ignoring - not a system process";
-    return false;
+    return base::unexpected(CrashCollectionStatus::kNotArcSystemProcess);
   }
 
-  return UserCollectorBase::ShouldDump(reason);
+  return UserCollectorBase::ShouldDump();
 }
 
 CrashCollectionStatus ArcppCxxCollector::ConvertCoreToMinidump(

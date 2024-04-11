@@ -17,12 +17,24 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
 
 enum class CrashCollectionStatus;
 
+// UserCollectorBase is the base class for two classes that collect userspace
+// crashes passed to us as coredumps (`man 5 core`): UserCollector, which
+// collects userspace crashes from the Host OS via
+// /proc/sys/kernel/core_pattern, and  ArcppCxxCollector, which collects
+// ARC++ system crashes.
+//
+// Crashes are passed into the |HandleCrash| function of this class, which has
+// the high-level flow but defers some decisions on whether or not to handle a
+// particular crash to its subclasses (via |ShouldDump| overrides) and defers
+// the details of how to turn the coredump into a minidump to its subclasses
+// (via the |ConvertCoreToMinidump| overrides).
 class UserCollectorBase : public CrashCollector {
  public:
   explicit UserCollectorBase(
@@ -42,9 +54,9 @@ class UserCollectorBase : public CrashCollector {
     std::string exec_name;
   };
 
-  // Handle a specific user crash.  Returns true on success.
-  bool HandleCrash(const CrashAttributes& crash_attributes,
-                   const char* force_exec);
+  // Handle a single userspace crash. The main entry point into this class.
+  CrashCollectionStatus HandleCrash(const CrashAttributes& crash_attributes,
+                                    const char* force_exec);
 
   // Attempt to parse a given attributes string into a CrashAttributes struct.
   // The attributes string is generated in the kernel by the core_pattern
@@ -68,9 +80,18 @@ class UserCollectorBase : public CrashCollector {
     kIdMax
   };
 
-  bool ShouldDump(std::optional<pid_t> pid, std::string* reason) const;
+  // Helper for the virtual ShouldDump. Returns base::ok() if a crash report
+  // should be generated for this crash, base::unexpected() with a reason code
+  // if not. Note that UserCollectorBase::HandleCrash does not call this
+  // function directly; it's expected that the subclass's override of
+  // |ShouldDump(pid_t pid, uid_t uid, const std::string& exec) will call back
+  // down to either this function or |ShouldDump()| - but not both.
+  base::expected<void, CrashCollectionStatus> ShouldDump(
+      std::optional<pid_t> pid) const;
 
-  bool ShouldDump(std::string* reason) const;
+  // Helper for the virtual ShouldDump. Equivalent to calling
+  // |ShouldDump(std::nullopt)| (above).
+  base::expected<void, CrashCollectionStatus> ShouldDump() const;
 
   // Returns, via |line|, the first line in |lines| that starts with |prefix|.
   // Returns true if a line is found, or false otherwise.
@@ -127,10 +148,12 @@ class UserCollectorBase : public CrashCollector {
                                   const std::string& exec,
                                   const base::FilePath& exec_directory);
 
-  virtual bool ShouldDump(pid_t pid,
-                          uid_t uid,
-                          const std::string& exec,
-                          std::string* reason) = 0;
+  // Returns base::ok if we should dump, or a reason code if we should not
+  // dump. Note that many reason-not-to-dump codes will be success codes
+  // (expected cases where we don't dump), so avoid using IsSuccessCode
+  // on the reason enum to determine if the caller should generate a dump.
+  virtual base::expected<void, CrashCollectionStatus> ShouldDump(
+      pid_t pid, uid_t uid, const std::string& exec) = 0;
 
   virtual CrashCollectionStatus ConvertCoreToMinidump(
       pid_t pid,

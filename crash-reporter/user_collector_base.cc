@@ -108,7 +108,7 @@ void UserCollectorBase::AnnounceUserCrash() {
   dbus.Release();
 }
 
-bool UserCollectorBase::HandleCrash(
+CrashCollectionStatus UserCollectorBase::HandleCrash(
     const UserCollectorBase::CrashAttributes& attrs, const char* force_exec) {
   CHECK(initialized_);
 
@@ -130,8 +130,15 @@ bool UserCollectorBase::HandleCrash(
 
   BeginHandlingCrash(attrs.pid, exec, exec_directory);
 
+  base::expected<void, CrashCollectionStatus> should_dump =
+      ShouldDump(attrs.pid, attrs.uid, exec);
+
   std::string reason;
-  bool dump = ShouldDump(attrs.pid, attrs.uid, exec, &reason);
+  if (should_dump.has_value()) {
+    reason = "handling";
+  } else {
+    reason = CrashCollectionStatusToString(should_dump.error());
+  }
 
   // anomaly_detector's CrashReporterParser looks for this message; don't change
   // it without updating the regex.
@@ -139,25 +146,24 @@ bool UserCollectorBase::HandleCrash(
       "Received crash notification for %s[%d] sig %d, user %u group %u",
       exec.c_str(), attrs.pid, attrs.signal, attrs.uid, attrs.gid);
   LogCrash(message, reason);
-
-  if (dump) {
-    AnnounceUserCrash();
-
-    AddExtraMetadata(exec, attrs.pid);
-
-    bool out_of_capacity = false;
-    CrashCollectionStatus status =
-        ConvertAndEnqueueCrash(attrs.pid, exec, attrs.uid, attrs.gid,
-                               attrs.signal, crash_time, &out_of_capacity);
-    if (!IsSuccessCode(status)) {
-      if (!out_of_capacity) {
-        EnqueueCollectionErrorLog(status, exec);
-      }
-      return false;
-    }
+  if (!should_dump.has_value()) {
+    return should_dump.error();
   }
 
-  return true;
+  AnnounceUserCrash();
+
+  AddExtraMetadata(exec, attrs.pid);
+
+  bool out_of_capacity = false;
+  CrashCollectionStatus status =
+      ConvertAndEnqueueCrash(attrs.pid, exec, attrs.uid, attrs.gid,
+                             attrs.signal, crash_time, &out_of_capacity);
+  if (!IsSuccessCode(status)) {
+    if (!out_of_capacity) {
+      EnqueueCollectionErrorLog(status, exec);
+    }
+  }
+  return status;
 }
 
 std::optional<UserCollectorBase::CrashAttributes>
@@ -174,26 +180,27 @@ UserCollectorBase::ParseCrashAttributes(const std::string& crash_attributes) {
 void UserCollectorBase::BeginHandlingCrash(
     pid_t pid, const std::string& exec, const base::FilePath& exec_directory) {}
 
-bool UserCollectorBase::ShouldDump(std::optional<pid_t> pid,
-                                   std::string* reason) const {
+base::expected<void, CrashCollectionStatus> UserCollectorBase::ShouldDump(
+    std::optional<pid_t> pid) const {
   VmSupport* vm_support = VmSupport::Get();
   if (vm_support) {
     if (!pid.has_value()) {
-      *reason = "ignoring - unknown PID inside VM";
-      return false;
+      return base::unexpected(CrashCollectionStatus::kNeedPidForVm);
     }
 
-    if (!vm_support->ShouldDump(*pid, reason)) {
-      return false;
+    base::expected<void, CrashCollectionStatus> vm_status =
+        vm_support->ShouldDump(*pid);
+    if (!vm_status.has_value()) {
+      return vm_status;
     }
   }
 
-  *reason = "handling";
-  return true;
+  return base::ok();
 }
 
-bool UserCollectorBase::ShouldDump(std::string* reason) const {
-  return ShouldDump(std::nullopt, reason);
+base::expected<void, CrashCollectionStatus> UserCollectorBase::ShouldDump()
+    const {
+  return ShouldDump(std::nullopt);
 }
 
 bool UserCollectorBase::GetFirstLineWithPrefix(

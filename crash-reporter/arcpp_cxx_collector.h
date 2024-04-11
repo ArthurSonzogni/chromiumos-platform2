@@ -18,6 +18,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
 
@@ -117,10 +118,8 @@ class ArcppCxxCollector : public UserCollectorBase {
       base::FilePath* exec_directory) override;
 
   // UserCollectorBase overrides.
-  bool ShouldDump(pid_t pid,
-                  uid_t uid,
-                  const std::string& exec,
-                  std::string* reason) override;
+  base::expected<void, CrashCollectionStatus> ShouldDump(
+      pid_t pid, uid_t uid, const std::string& exec) override;
 
   CrashCollectionStatus ConvertCoreToMinidump(
       pid_t pid,

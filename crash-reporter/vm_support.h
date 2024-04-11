@@ -5,11 +5,12 @@
 #ifndef CRASH_REPORTER_VM_SUPPORT_H_
 #define CRASH_REPORTER_VM_SUPPORT_H_
 
-#include <base/files/file_util.h>
-#include <string>
+#include <base/files/file_path.h>
+#include <base/types/expected.h>
 
 class UserCollector;
 class UserCollectorBase;
+enum class CrashCollectionStatus;
 
 // Various methods and utilities for working with crashes that occur in a VM (as
 // opposed to the host).
@@ -39,9 +40,10 @@ class VmSupport {
   virtual bool GetMetricsConsent() = 0;
 
   // Perform extra checks to exclude |collector|'s crash for software CrOS
-  // doesn't care about (i.e. non first-party apps e.g. gedit). Returns |true|
-  // if we care about this crash, and if we don't explains why in |out_reason|.
-  virtual bool ShouldDump(pid_t pid, std::string* out_reason) = 0;
+  // doesn't care about (i.e. non first-party apps e.g. gedit). Returns base::ok
+  // if we care about this crash, and if we don't, sets the return value's
+  // error() enum.
+  virtual base::expected<void, CrashCollectionStatus> ShouldDump(pid_t pid) = 0;
 };
 
 #endif  // CRASH_REPORTER_VM_SUPPORT_H_

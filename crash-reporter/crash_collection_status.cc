@@ -17,6 +17,16 @@ constexpr std::pair<CrashCollectionStatus, std::string_view> kStatusNames[] = {
     {CrashCollectionStatus::kFinishedEphermeralCollection,
      "Finished ephermeral collection"},
     {CrashCollectionStatus::kNoCrashFound, "No crashes found"},
+    {CrashCollectionStatus::kChromeCrashInUserCollector,
+     // anomaly_detector's CrashReporterParser looks for this message; don't
+     // change it without updating the regex.
+     "ignoring call by kernel - chrome crash; "
+     "waiting for chrome to call us directly"},
+    {CrashCollectionStatus::kFilteredOut, "Filtered out"},
+    {CrashCollectionStatus::kVmProcessNotInRootNamespace,
+     "ignoring - process not in root namespace"},
+    {CrashCollectionStatus::kNotArc, "Not an ARC crash"},
+    {CrashCollectionStatus::kNotArcSystemProcess, "Not an ARC system process"},
     {CrashCollectionStatus::kUnknownStatus, "Unknown Status"},
     {CrashCollectionStatus::kOutOfCapacity, "Out of capacity"},
     {CrashCollectionStatus::kFailedMetaWrite, "Failed to write .meta"},
@@ -149,6 +159,11 @@ constexpr std::pair<CrashCollectionStatus, std::string_view> kStatusNames[] = {
     {CrashCollectionStatus::kFailureOpeningWatchdogFile,
      "Failure opening watchdog file"},
     {CrashCollectionStatus::kRamoopsDumpEmpty, "Ramoops dump was empty"},
+    {CrashCollectionStatus::kNeedPidForVm, "Need PID to evaluate VM crashes"},
+    {CrashCollectionStatus::kFailureRetrievingProcessPIDNamespace,
+     "Failure retrieving process PID namespace"},
+    {CrashCollectionStatus::kFailureRetrievingOwnPIDNamespace,
+     "Failure retrieving own PID namespace"},
 };
 // LINT.ThenChange(crash_collection_status.h:status_list)
 

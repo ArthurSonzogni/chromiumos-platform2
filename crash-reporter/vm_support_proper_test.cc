@@ -7,12 +7,17 @@
 #include <unistd.h>
 #include <string>
 
+#include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/expected.h>
+#include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
@@ -44,29 +49,30 @@ class VmSupportProperTest : public testing::Test {
 
   // Forward calls to PassesFilterConfig, to avoid VmSupportProper needing to
   // declare each test case as a friend individually.
-  bool PassesFilterConfig(pid_t pid, std::string* out_reason) {
-    return vm_support_.PassesFilterConfig(pid, out_reason);
+  base::expected<void, CrashCollectionStatus> PassesFilterConfig(pid_t pid) {
+    return vm_support_.PassesFilterConfig(pid);
   }
 
   base::FilePath test_dir_;
   base::ScopedTempDir scoped_temp_dir_;
   VmSupportProper vm_support_;
-  std::string reason_;
   base::FilePath filter_config_;
   std::string config_blocking_home_;
   base::FilePath proc_exe_;
 };
 
 TEST_F(VmSupportProperTest, FilterConfigNotRequired) {
-  EXPECT_TRUE(PassesFilterConfig(kTestPid, &reason_));
-  EXPECT_THAT(reason_, testing::HasSubstr("failed to read"));
+  brillo::ClearLog();
+  EXPECT_EQ(PassesFilterConfig(kTestPid), base::ok());
+  EXPECT_TRUE(brillo::FindLog("failed to read"));
 }
 
 TEST_F(VmSupportProperTest, FilterConfigMayBeInvalid) {
   EXPECT_TRUE(test_util::CreateFile(filter_config_, "junk"));
 
-  EXPECT_TRUE(PassesFilterConfig(kTestPid, &reason_));
-  EXPECT_THAT(reason_, testing::HasSubstr("failed to parse"));
+  brillo::ClearLog();
+  EXPECT_EQ(PassesFilterConfig(kTestPid), base::ok());
+  EXPECT_TRUE(brillo::FindLog("failed to parse"));
 }
 
 TEST_F(VmSupportProperTest, EmptyFilterConfigPermitsAll) {
@@ -74,7 +80,10 @@ TEST_F(VmSupportProperTest, EmptyFilterConfigPermitsAll) {
   EXPECT_TRUE(
       base::CreateSymbolicLink(paths::Get("/home/chronos/myprog"), proc_exe_));
 
-  EXPECT_TRUE(PassesFilterConfig(kTestPid, &reason_));
+  brillo::ClearLog();
+  EXPECT_EQ(PassesFilterConfig(kTestPid), base::ok());
+  EXPECT_FALSE(brillo::FindLog("failed to read"));
+  EXPECT_FALSE(brillo::FindLog("failed to parse"));
 }
 
 TEST_F(VmSupportProperTest, EmptyFilterPermitsAll) {
@@ -82,7 +91,10 @@ TEST_F(VmSupportProperTest, EmptyFilterPermitsAll) {
   EXPECT_TRUE(
       base::CreateSymbolicLink(paths::Get("/home/chronos/myprog"), proc_exe_));
 
-  EXPECT_TRUE(PassesFilterConfig(kTestPid, &reason_));
+  brillo::ClearLog();
+  EXPECT_EQ(PassesFilterConfig(kTestPid), base::ok());
+  EXPECT_FALSE(brillo::FindLog("failed to read"));
+  EXPECT_FALSE(brillo::FindLog("failed to parse"));
 }
 
 TEST_F(VmSupportProperTest, BlockedPathsAreNotPermitted) {
@@ -90,13 +102,18 @@ TEST_F(VmSupportProperTest, BlockedPathsAreNotPermitted) {
   EXPECT_TRUE(
       base::CreateSymbolicLink(paths::Get("/home/chronos/myprog"), proc_exe_));
 
-  EXPECT_FALSE(PassesFilterConfig(kTestPid, &reason_));
-  EXPECT_THAT(reason_, testing::HasSubstr("/home are blocked"));
+  brillo::ClearLog();
+  EXPECT_EQ(PassesFilterConfig(kTestPid),
+            base::unexpected(CrashCollectionStatus::kFilteredOut));
+  EXPECT_TRUE(brillo::FindLog("/home are blocked"));
 }
 
 TEST_F(VmSupportProperTest, OtherPathsArePermitted) {
   EXPECT_TRUE(test_util::CreateFile(filter_config_, config_blocking_home_));
   EXPECT_TRUE(base::CreateSymbolicLink(paths::Get("/bin/bash"), proc_exe_));
 
-  EXPECT_TRUE(PassesFilterConfig(kTestPid, &reason_));
+  brillo::ClearLog();
+  EXPECT_EQ(PassesFilterConfig(kTestPid), base::ok());
+  EXPECT_FALSE(brillo::FindLog("failed to read"));
+  EXPECT_FALSE(brillo::FindLog("failed to parse"));
 }

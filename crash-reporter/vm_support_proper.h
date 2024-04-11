@@ -10,11 +10,13 @@
 #include <memory>
 #include <string>
 
+#include <base/types/expected.h>
 #include <vm_protos/proto_bindings/vm_crash.grpc.pb.h>
 
 namespace brillo {
 class KeyValueStore;
 }
+enum class CrashCollectionStatus;
 
 class VmSupportProper : public VmSupport {
  public:
@@ -26,15 +28,15 @@ class VmSupportProper : public VmSupport {
 
   bool GetMetricsConsent() override;
 
-  bool ShouldDump(pid_t pid, std::string* out_reason) override;
+  base::expected<void, CrashCollectionStatus> ShouldDump(pid_t pid) override;
 
   static const char kFilterConfigPath[];
 
  private:
   friend class VmSupportProperTest;
 
-  bool InRootProcessNamespace(pid_t pid, std::string* out_reason);
-  bool PassesFilterConfig(pid_t pid, std::string* out_reason);
+  base::expected<void, CrashCollectionStatus> InRootProcessNamespace(pid_t pid);
+  base::expected<void, CrashCollectionStatus> PassesFilterConfig(pid_t pid);
 
   void ProcessFileData(const base::FilePath& crash_meta_path,
                        const brillo::KeyValueStore& metadata,

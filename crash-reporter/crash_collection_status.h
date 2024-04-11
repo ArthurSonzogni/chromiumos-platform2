@@ -25,7 +25,12 @@ enum class CrashCollectionStatus {
   // the report isn't going into the normal crash pipeline.
   kFinishedEphermeralCollection = 1,
   kNoCrashFound = 2,
-  kLastSuccessCode = kNoCrashFound,
+  kChromeCrashInUserCollector = 3,
+  kFilteredOut = 4,
+  kVmProcessNotInRootNamespace = 5,
+  kNotArc = 6,
+  kNotArcSystemProcess = 7,
+  kLastSuccessCode = kNotArcSystemProcess,
 
   // We should never see this status. It exists just to initialize variables
   // before they get a real value.
@@ -105,7 +110,10 @@ enum class CrashCollectionStatus {
   kFailureReadingWatchdogFile = 469,
   kFailureOpeningWatchdogFile = 470,
   kRamoopsDumpEmpty = 471,
-  kMaxValue = kRamoopsDumpEmpty,
+  kNeedPidForVm = 472,
+  kFailureRetrievingProcessPIDNamespace = 473,
+  kFailureRetrievingOwnPIDNamespace = 474,
+  kMaxValue = kFailureRetrievingOwnPIDNamespace,
 };
 // LINT.ThenChange(crash_collection_status.cc:status_list)
 

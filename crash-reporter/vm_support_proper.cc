@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/expected.h>
 #include <brillo/key_value_store.h>
 #include <chromeos/constants/vm_tools.h>
 #include <grpcpp/grpcpp.h>
@@ -21,6 +22,7 @@
 #include <linux/vm_sockets.h>
 
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_reporter.pb.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/user_collector.h"
@@ -146,13 +148,17 @@ bool VmSupportProper::GetMetricsConsent() {
   return status.ok() && response.consent_granted();
 }
 
-bool VmSupportProper::ShouldDump(pid_t pid, std::string* out_reason) {
-  return InRootProcessNamespace(pid, out_reason) &&
-         PassesFilterConfig(pid, out_reason);
+base::expected<void, CrashCollectionStatus> VmSupportProper::ShouldDump(
+    pid_t pid) {
+  auto result = InRootProcessNamespace(pid);
+  if (result.has_value()) {
+    result = PassesFilterConfig(pid);
+  }
+  return result;
 }
 
-bool VmSupportProper::InRootProcessNamespace(pid_t pid,
-                                             std::string* out_reason) {
+base::expected<void, CrashCollectionStatus>
+VmSupportProper::InRootProcessNamespace(pid_t pid) {
   // Namespaces are accessed via the /proc/*/ns/* set of paths. The kernel
   // guarantees that if two processes share a namespace, their corresponding
   // namespace files will have the same inode number, as reported by stat.
@@ -166,37 +172,38 @@ bool VmSupportProper::InRootProcessNamespace(pid_t pid,
 
   auto namespace_path = base::StringPrintf("/proc/%d/ns/pid", pid);
   if (stat(namespace_path.c_str(), &st) < 0) {
-    *out_reason = "failed to get process PID namespace";
-    return false;
+    return base::unexpected(
+        CrashCollectionStatus::kFailureRetrievingProcessPIDNamespace);
   }
   ino_t inode = st.st_ino;
 
   if (stat("/proc/self/ns/pid", &st) < 0) {
-    *out_reason = "failed to get own PID namespace";
-    return false;
+    return base::unexpected(
+        CrashCollectionStatus::kFailureRetrievingOwnPIDNamespace);
   }
   ino_t self_inode = st.st_ino;
 
   if (inode != self_inode) {
-    *out_reason = "ignoring - process not in root namespace";
-    return false;
+    return base::unexpected(
+        CrashCollectionStatus::kVmProcessNotInRootNamespace);
   }
-  return true;
+  return base::ok();
 }
 
-bool VmSupportProper::PassesFilterConfig(pid_t pid, std::string* out_reason) {
+base::expected<void, CrashCollectionStatus> VmSupportProper::PassesFilterConfig(
+    pid_t pid) {
   // Read and apply the filter configuration.
   // If the config is missing or invalid, fail open (report all crashes) so
   // we're alerted about the issue.
   std::string config;
   if (!base::ReadFileToString(paths::Get(kFilterConfigPath), &config)) {
-    *out_reason = base::StringPrintf("failed to read %s", kFilterConfigPath);
-    return true;
+    LOG(WARNING) << "failed to read " << kFilterConfigPath;
+    return base::ok();  // fail open
   }
   crash::VmCrashFilters filters;
   if (!google::protobuf::TextFormat::ParseFromString(config, &filters)) {
-    *out_reason = base::StringPrintf("failed to parse %s", kFilterConfigPath);
-    return true;
+    LOG(WARNING) << "failed to parse " << kFilterConfigPath;
+    return base::ok();  // fail open
   }
 
   if (filters.filters_size() > 0) {
@@ -204,23 +211,21 @@ bool VmSupportProper::PassesFilterConfig(pid_t pid, std::string* out_reason) {
         paths::Get(base::StringPrintf("/proc/%d/exe", pid));
     base::FilePath process_path;
     if (!ReadSymbolicLink(exe_symlink, &process_path)) {
-      *out_reason = base::StringPrintf("failed to read symbolic link %s",
-                                       exe_symlink.value().c_str());
-      return true;  // fail open
+      LOG(ERROR) << "failed to read symbolic link " << exe_symlink;
+      return base::ok();  // fail open
     }
     for (auto f : filters.filters()) {
       if (!f.blocked_path().empty()) {
         auto blocked_path = base::FilePath(f.blocked_path());
         if (blocked_path.IsParent(process_path) ||
             blocked_path == process_path) {
-          *out_reason =
-              base::StringPrintf("ignoring - processes in %s are blocked",
-                                 f.blocked_path().c_str());
-          return false;
+          LOG(INFO) << "ignoring - processes in " << f.blocked_path()
+                    << " are blocked";
+          return base::unexpected(CrashCollectionStatus::kFilteredOut);
         }
       }
     }
   }
 
-  return true;
+  return base::ok();
 }

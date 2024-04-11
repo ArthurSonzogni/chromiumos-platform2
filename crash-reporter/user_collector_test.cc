@@ -112,10 +112,22 @@ class UserCollectorTest : public ::testing::Test {
     collector_.set_crash_directory_for_test(crash_dir_);
     pid_ = pid;
 
+#if USE_KVM_GUEST
+    // Since we're not testing the VM support, just have the VM always return
+    // that we should dump from ShouldDump.
+    VmSupport::SetForTesting(&vm_support_mock_);
+    ON_CALL(vm_support_mock_, ShouldDump(_)).WillByDefault(Return(base::ok()));
+#endif
+
     brillo::ClearLog();
   }
 
-  void TearDown() override { paths::SetPrefixForTesting(base::FilePath()); }
+  void TearDown() override {
+    paths::SetPrefixForTesting(base::FilePath());
+#if USE_KVM_GUEST
+    VmSupport::SetForTesting(nullptr);
+#endif
+  }
 
   void ExpectFileEquals(const char* golden, const FilePath& file_path) {
     std::string contents;
@@ -149,6 +161,9 @@ class UserCollectorTest : public ::testing::Test {
   FilePath test_core_pattern_file_;
   FilePath test_core_pipe_limit_file_;
   base::ScopedTempDir scoped_temp_dir_;
+#if USE_KVM_GUEST
+  VmSupportMock vm_support_mock_;
+#endif
 };
 
 TEST_F(UserCollectorTest, EnableOK) {
@@ -242,58 +257,39 @@ TEST_F(UserCollectorTest, ParseCrashAttributes) {
 }
 
 TEST_F(UserCollectorTest, ShouldDumpChromeOverridesDeveloperImage) {
-  std::string reason;
+  const std::vector<std::string> kChromeProcessNames = {
+      "chrome",
+      "supplied_Compositor",
+      "supplied_PipelineThread",
+      "Chrome_ChildIOThread",
+      "supplied_Chrome_ChildIOT",
+      "supplied_ChromotingClien",
+      "supplied_LocalInputMonit"};
   // When handle_chrome_crashes is false, should ignore chrome processes.
-  EXPECT_FALSE(collector_.ShouldDump(pid_, false, "chrome", &reason));
-  EXPECT_EQ(kChromeIgnoreMsg, reason);
-  EXPECT_FALSE(
-      collector_.ShouldDump(pid_, false, "supplied_Compositor", &reason));
-  EXPECT_EQ(kChromeIgnoreMsg, reason);
-  EXPECT_FALSE(
-      collector_.ShouldDump(pid_, false, "supplied_PipelineThread", &reason));
-  EXPECT_EQ(kChromeIgnoreMsg, reason);
-  EXPECT_FALSE(
-      collector_.ShouldDump(pid_, false, "Chrome_ChildIOThread", &reason));
-  EXPECT_EQ(kChromeIgnoreMsg, reason);
-  EXPECT_FALSE(
-      collector_.ShouldDump(pid_, false, "supplied_Chrome_ChildIOT", &reason));
-  EXPECT_EQ(kChromeIgnoreMsg, reason);
-  EXPECT_FALSE(
-      collector_.ShouldDump(pid_, false, "supplied_ChromotingClien", &reason));
-  EXPECT_EQ(kChromeIgnoreMsg, reason);
-  EXPECT_FALSE(
-      collector_.ShouldDump(pid_, false, "supplied_LocalInputMonit", &reason));
-  EXPECT_EQ(kChromeIgnoreMsg, reason);
+  for (const std::string& chrome_process_name : kChromeProcessNames) {
+    EXPECT_EQ(
+        collector_.ShouldDump(pid_, false, chrome_process_name),
+        base::unexpected(CrashCollectionStatus::kChromeCrashInUserCollector))
+        << " for " << chrome_process_name;
+  }
+
+  // It's important that the returned status will resolve to the correct
+  // message:
+  EXPECT_EQ(kChromeIgnoreMsg,
+            CrashCollectionStatusToString(
+                CrashCollectionStatus::kChromeCrashInUserCollector));
 
   // Test that chrome crashes are handled when the "handle_chrome_crashes" flag
   // is set.
-  EXPECT_TRUE(collector_.ShouldDump(pid_, true, "chrome", &reason));
-  EXPECT_EQ("handling", reason);
-  EXPECT_TRUE(
-      collector_.ShouldDump(pid_, true, "supplied_Compositor", &reason));
-  EXPECT_EQ("handling", reason);
-  EXPECT_TRUE(
-      collector_.ShouldDump(pid_, true, "supplied_PipelineThread", &reason));
-  EXPECT_EQ("handling", reason);
-  EXPECT_TRUE(
-      collector_.ShouldDump(pid_, true, "Chrome_ChildIOThread", &reason));
-  EXPECT_EQ("handling", reason);
-  EXPECT_TRUE(
-      collector_.ShouldDump(pid_, true, "supplied_Chrome_ChildIOT", &reason));
-  EXPECT_EQ("handling", reason);
-  EXPECT_TRUE(
-      collector_.ShouldDump(pid_, true, "supplied_ChromotingClien", &reason));
-  EXPECT_EQ("handling", reason);
-  EXPECT_TRUE(
-      collector_.ShouldDump(pid_, true, "supplied_LocalInputMonit", &reason));
-  EXPECT_EQ("handling", reason);
+  for (const std::string& chrome_process_name : kChromeProcessNames) {
+    EXPECT_EQ(collector_.ShouldDump(pid_, true, chrome_process_name),
+              base::ok())
+        << " for " << chrome_process_name;
+  }
 }
 
 TEST_F(UserCollectorTest, ShouldDumpUserConsentProductionImage) {
-  std::string reason;
-
-  EXPECT_TRUE(collector_.ShouldDump(pid_, false, "chrome-wm", &reason));
-  EXPECT_EQ("handling", reason);
+  EXPECT_EQ(collector_.ShouldDump(pid_, false, "chrome-wm"), base::ok());
 }
 
 // HandleNonChromeCrashWithConsent tests that we will create a dmp file if we
@@ -305,9 +301,6 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsent) {
   // FormatDumpBasename.
   const std::string crash_prefix = crash_dir_.Append("chromeos_wm").value();
   int expected_mock_calls = 1;
-  if (VmSupport::Get()) {
-    expected_mock_calls = 0;
-  }
   EXPECT_CALL(collector_, AnnounceUserCrash()).Times(expected_mock_calls);
   // NOTE: The '5' which appears in several strings below is the pid of the
   // simulated crashing process.
@@ -327,13 +320,11 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsent) {
   attrs.uid = 1000;
   attrs.gid = 1000;
   attrs.exec_name = "ignored";
-  EXPECT_TRUE(collector_.HandleCrash(attrs, "chromeos-wm"));
-  if (!VmSupport::Get()) {
-    EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
-        crash_dir_, "chromeos_wm.*.meta", "exec_name=chromeos-wm"));
-    EXPECT_TRUE(
-        FindLog("Received crash notification for chromeos-wm[5] sig 2"));
-  }
+  EXPECT_EQ(collector_.HandleCrash(attrs, "chromeos-wm"),
+            CrashCollectionStatus::kSuccess);
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      crash_dir_, "chromeos_wm.*.meta", "exec_name=chromeos-wm"));
+  EXPECT_TRUE(FindLog("Received crash notification for chromeos-wm[5] sig 2"));
 }
 
 TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsentAndSigsysNoSyscall) {
@@ -342,9 +333,6 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsentAndSigsysNoSyscall) {
   // FormatDumpBasename.
   const std::string crash_prefix = crash_dir_.Append("chromeos_wm").value();
   int expected_mock_calls = 1;
-  if (VmSupport::Get()) {
-    expected_mock_calls = 0;
-  }
   EXPECT_CALL(collector_, AnnounceUserCrash()).Times(expected_mock_calls);
   // NOTE: The '5' which appears in several strings below is the pid of the
   // simulated crashing process.
@@ -365,14 +353,36 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsentAndSigsysNoSyscall) {
   attrs.gid = 1000;
   attrs.exec_name = "ignored";
   // Should succeed even without /proc/[pid]/syscall
-  EXPECT_TRUE(collector_.HandleCrash(attrs, "chromeos-wm"));
-  if (!VmSupport::Get()) {
-    EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
-        crash_dir_, "chromeos_wm.*.meta", "exec_name=chromeos-wm"));
-    EXPECT_TRUE(
-        FindLog("Received crash notification for chromeos-wm[5] sig 31"));
-  }
+  EXPECT_EQ(collector_.HandleCrash(attrs, "chromeos-wm"),
+            CrashCollectionStatus::kSuccess);
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      crash_dir_, "chromeos_wm.*.meta", "exec_name=chromeos-wm"));
+  EXPECT_TRUE(FindLog("Received crash notification for chromeos-wm[5] sig 31"));
 }
+
+#if USE_KVM_GUEST
+// On VMs, confirm that if VmSupport::Get()->ShouldDump returns "don't dump",
+// UserCollector will not create a crash dump
+TEST_F(UserCollectorTest, HandleDoesNotDumpIfVmSupportSaysNotTo) {
+  EXPECT_CALL(vm_support_mock_, ShouldDump(5))
+      .WillOnce(Return(base::unexpected(
+          CrashCollectionStatus::kVmProcessNotInRootNamespace)));
+  const std::string crash_prefix = crash_dir_.Append("chromeos_wm").value();
+  EXPECT_CALL(collector_, AnnounceUserCrash()).Times(0);
+  EXPECT_CALL(collector_, ConvertCoreToMinidump(_, _, _, _)).Times(0);
+
+  UserCollectorBase::CrashAttributes attrs;
+  attrs.pid = 5;
+  attrs.signal = 2;
+  attrs.uid = 1000;
+  attrs.gid = 1000;
+  attrs.exec_name = "ignored";
+  EXPECT_EQ(collector_.HandleCrash(attrs, "chromeos-wm"),
+            CrashCollectionStatus::kVmProcessNotInRootNamespace);
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPatternAndContents(
+      crash_dir_, "chromeos_wm.*.meta", "exec_name=chromeos-wm"));
+}
+#endif  // USE_KVM_GUEST
 
 // HandleChromeCrashWithConsent tests that we do not attempt to create a dmp
 // file if the process is named chrome. This is because we expect Chrome's own
@@ -388,13 +398,12 @@ TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
   attrs.uid = 1000;
   attrs.gid = 1000;
   attrs.exec_name = "ignored";
-  EXPECT_TRUE(collector_.HandleCrash(attrs, "chrome"));
+  EXPECT_EQ(collector_.HandleCrash(attrs, "chrome"),
+            CrashCollectionStatus::kChromeCrashInUserCollector);
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       crash_dir_, "chrome.*.meta", nullptr));
-  if (!VmSupport::Get()) {
-    EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
-    EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
-  }
+  EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
+  EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
 }
 
 // HandleSuppliedChromeCrashWithConsent also tests that we do not attempt to
@@ -411,14 +420,13 @@ TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
   attrs.uid = 1000;
   attrs.gid = 1000;
   attrs.exec_name = "chrome";
-  EXPECT_TRUE(collector_.HandleCrash(attrs, nullptr));
+  EXPECT_EQ(collector_.HandleCrash(attrs, nullptr),
+            CrashCollectionStatus::kChromeCrashInUserCollector);
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       crash_dir_, "chrome.*.meta", nullptr));
-  if (!VmSupport::Get()) {
-    EXPECT_TRUE(
-        FindLog("Received crash notification for supplied_chrome[5] sig 2"));
-    EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
-  }
+  EXPECT_TRUE(
+      FindLog("Received crash notification for supplied_chrome[5] sig 2"));
+  EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
 }
 
 TEST_F(UserCollectorTest, GetExecutableBaseNameFromPid) {
@@ -1138,44 +1146,17 @@ TEST_F(ShouldCaptureEarlyChromeCrashTest, FalseIfNotChrome) {
       collector_.ShouldCaptureEarlyChromeCrash("shill", kShillProcessID));
 }
 
-class BeginHandlingCrashTest : public ShouldCaptureEarlyChromeCrashTest {
- public:
-  void SetUp() override {
-    ShouldCaptureEarlyChromeCrashTest::SetUp();
-
-#if USE_KVM_GUEST
-    // Since we're not testing the VM support, just have the VM always return
-    // true from ShouldDump.
-    VmSupport::SetForTesting(&vm_support_mock_);
-    ON_CALL(vm_support_mock_, ShouldDump(_, _)).WillByDefault(Return(true));
-#endif
-  }
-
-  void TearDown() override {
-    ShouldCaptureEarlyChromeCrashTest::TearDown();
-#if USE_KVM_GUEST
-    VmSupport::SetForTesting(nullptr);
-#endif
-  }
-
-#if USE_KVM_GUEST
-  VmSupportMock vm_support_mock_;
-#endif
-};
-
-TEST_F(BeginHandlingCrashTest, SetsUpForEarlyChromeCrashes) {
+TEST_F(ShouldCaptureEarlyChromeCrashTest, SetsUpForEarlyChromeCrashes) {
   collector_.BeginHandlingCrash(kEarlyBrowserProcessID, "chrome",
                                 paths::Get("/opt/google/chrome"));
 
   // Ignored but we need something for ShouldDump().
   constexpr uid_t kUserUid = 1000;
 
-  // We should be in early-chrome-crash mode, so ShouldDump should return true
-  // even for a chrome executable.
-  std::string reason;
-  EXPECT_TRUE(collector_.ShouldDump(kEarlyBrowserProcessID, kUserUid, "chrome",
-                                    &reason))
-      << reason;
+  // We should be in early-chrome-crash mode, so ShouldDump should return
+  // base::ok ("dump this crash") even for a chrome executable.
+  EXPECT_EQ(collector_.ShouldDump(kEarlyBrowserProcessID, kUserUid, "chrome"),
+            base::ok());
 
   EXPECT_THAT(collector_.get_extra_metadata_for_test(),
               AllOf(HasSubstr("upload_var_prod=Chrome_ChromeOS\n"),
@@ -1183,16 +1164,16 @@ TEST_F(BeginHandlingCrashTest, SetsUpForEarlyChromeCrashes) {
                     HasSubstr("upload_var_ptype=browser\n")));
 }
 
-TEST_F(BeginHandlingCrashTest, IgnoresNonEarlyBrowser) {
+TEST_F(ShouldCaptureEarlyChromeCrashTest, IgnoresNonEarlyBrowser) {
   collector_.BeginHandlingCrash(kNormalBrowserProcessID, "chrome",
                                 paths::Get("/opt/google/chrome"));
 
   // Ignored but we need something for ShouldDump().
   constexpr uid_t kUserUid = 1000;
 
-  std::string reason;
-  EXPECT_FALSE(collector_.ShouldDump(kNormalBrowserProcessID, kUserUid,
-                                     "chrome", &reason));
+  EXPECT_EQ(
+      collector_.ShouldDump(kNormalBrowserProcessID, kUserUid, "chrome"),
+      base::unexpected(CrashCollectionStatus::kChromeCrashInUserCollector));
 
   EXPECT_THAT(collector_.get_extra_metadata_for_test(),
               AllOf(Not(HasSubstr("upload_var_prod=Chrome_ChromeOS\n")),
@@ -1200,14 +1181,13 @@ TEST_F(BeginHandlingCrashTest, IgnoresNonEarlyBrowser) {
                     Not(HasSubstr("upload_var_ptype=browser\n"))));
 }
 
-TEST_F(BeginHandlingCrashTest, NoEffectIfNotChrome) {
+TEST_F(ShouldCaptureEarlyChromeCrashTest, NoEffectIfNotChrome) {
   collector_.BeginHandlingCrash(kShillProcessID, "shill",
                                 paths::Get("/usr/bin"));
 
-  std::string reason;
-  EXPECT_TRUE(collector_.ShouldDump(kShillProcessID, constants::kRootUid,
-                                    "shill", &reason))
-      << reason;
+  EXPECT_EQ(
+      collector_.ShouldDump(kShillProcessID, constants::kRootUid, "shill"),
+      base::ok());
 
   EXPECT_THAT(collector_.get_extra_metadata_for_test(),
               AllOf(Not(HasSubstr("upload_var_prod=Chrome_ChromeOS\n")),
@@ -1215,7 +1195,7 @@ TEST_F(BeginHandlingCrashTest, NoEffectIfNotChrome) {
                     Not(HasSubstr("upload_var_ptype=browser\n"))));
 }
 
-TEST_F(BeginHandlingCrashTest,
+TEST_F(ShouldCaptureEarlyChromeCrashTest,
        ComputeSeverity_HandleEarlyChromeCrashes_Lacros) {
   collector_.BeginHandlingCrash(kEarlyBrowserProcessID, "chrome",
                                 paths::Get("/run/lacros"));

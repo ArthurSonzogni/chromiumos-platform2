@@ -18,6 +18,7 @@
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/types/expected.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
 
@@ -105,6 +106,7 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(UserCollectorTest, ValidateProcFiles);
   FRIEND_TEST(UserCollectorTest, ValidateCoreFile);
   FRIEND_TEST(UserCollectorTest, ComputeSeverity_HandleEarlyChromeCrashes_Ash);
+  FRIEND_TEST(UserCollectorTest, HandleDoesNotDumpIfVmSupportSaysNotTo);
   FRIEND_TEST(UserCollectorNoFixtureTest, GuessChromeProductNameTest);
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, BasicTrue);
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, DISABLED_BasicTrue);
@@ -115,13 +117,14 @@ class UserCollector : public UserCollectorBase {
   FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, FalseIfNotChrome);
   friend class CopyStdinToCoreFileTest;
   FRIEND_TEST(CopyStdinToCoreFileTest, Test);
-  FRIEND_TEST(BeginHandlingCrashTest, SetsUpForEarlyChromeCrashes);
-  FRIEND_TEST(BeginHandlingCrashTest, DISABLED_SetsUpForEarlyChromeCrashes);
-  FRIEND_TEST(BeginHandlingCrashTest, IgnoresNonEarlyBrowser);
-  FRIEND_TEST(BeginHandlingCrashTest, NoEffectIfNotChrome);
-  FRIEND_TEST(BeginHandlingCrashTest,
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, SetsUpForEarlyChromeCrashes);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest,
+              DISABLED_SetsUpForEarlyChromeCrashes);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, IgnoresNonEarlyBrowser);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest, NoEffectIfNotChrome);
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest,
               ComputeSeverity_HandleEarlyChromeCrashes_Lacros);
-  FRIEND_TEST(BeginHandlingCrashTest,
+  FRIEND_TEST(ShouldCaptureEarlyChromeCrashTest,
               DISABLED_ComputeSeverity_HandleEarlyChromeCrashes_Lacros);
 
   // Returns true if we want to try to capture a crash of Chrome because we
@@ -167,16 +170,12 @@ class UserCollector : public UserCollectorBase {
 
   bool RunFilter(pid_t pid);
 
-  bool ShouldDump(pid_t pid,
-                  bool handle_chrome_crashes,
-                  const std::string& exec,
-                  std::string* reason);
+  base::expected<void, CrashCollectionStatus> ShouldDump(
+      pid_t pid, bool handle_chrome_crashes, const std::string& exec);
 
   // UserCollectorBase overrides.
-  bool ShouldDump(pid_t pid,
-                  uid_t uid,
-                  const std::string& exec,
-                  std::string* reason) override;
+  base::expected<void, CrashCollectionStatus> ShouldDump(
+      pid_t pid, uid_t uid, const std::string& exec) override;
 
   CrashCollectionStatus ConvertCoreToMinidump(
       pid_t pid,

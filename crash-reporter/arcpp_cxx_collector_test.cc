@@ -15,6 +15,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/strcat.h>
+#include <base/types/expected.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -309,16 +310,14 @@ TEST_F(ArcppCxxCollectorTest, ShouldDump) {
   context_->AddProcess(789, "arc", "app_process32", "/sbin", "com.arc.app",
                        k32BitAuxv);
 
-  std::string reason;
-  EXPECT_FALSE(collector_->ShouldDump(50, 1234, "chrome", &reason));
-  EXPECT_EQ("ignoring - crash origin is not ARC", reason);
+  EXPECT_EQ(collector_->ShouldDump(50, 1234, "chrome"),
+            base::unexpected(CrashCollectionStatus::kNotArc));
 
-  EXPECT_TRUE(collector_->ShouldDump(123, 0, "arc_service", &reason));
-  EXPECT_EQ("handling", reason);
+  EXPECT_EQ(collector_->ShouldDump(123, 0, "arc_service"), base::ok());
 
-  EXPECT_FALSE(collector_->ShouldDump(123, ArcppCxxCollector::kSystemUserEnd,
-                                      "com.arc.app", &reason));
-  EXPECT_EQ("ignoring - not a system process", reason);
+  EXPECT_EQ(collector_->ShouldDump(123, ArcppCxxCollector::kSystemUserEnd,
+                                   "com.arc.app"),
+            base::unexpected(CrashCollectionStatus::kNotArcSystemProcess));
 }
 
 TEST_F(ArcppCxxCollectorTest, CorrectlyDetectBitness) {
@@ -368,7 +367,8 @@ TEST_F(ArcppCxxCollectorTest, WritesMeta) {
   attrs.uid = 0;
   attrs.gid = 0;
   attrs.exec_name = "arc_service";
-  EXPECT_TRUE(collector_->HandleCrash(attrs, nullptr));
+  EXPECT_EQ(collector_->HandleCrash(attrs, nullptr),
+            CrashCollectionStatus::kSuccess);
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       crash_dir_, "arc_service.*.123.meta", "exec_name=arc_service"));
 }

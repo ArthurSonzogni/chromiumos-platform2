@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -22,11 +23,11 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/containers/contains.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/expected.h>
 #include <brillo/process/process.h>
 #include <chromeos/constants/crash_reporter.h>
 #include <metrics/metrics_library.h>
@@ -638,38 +639,26 @@ void UserCollector::BeginHandlingCrash(pid_t pid,
   }
 }
 
-bool UserCollector::ShouldDump(pid_t pid,
-                               bool handle_chrome_crashes,
-                               const std::string& exec,
-                               std::string* reason) {
-  reason->clear();
-
+base::expected<void, CrashCollectionStatus> UserCollector::ShouldDump(
+    pid_t pid, bool handle_chrome_crashes, const std::string& exec) {
   // Treat Chrome crashes as if the user opted-out.  We stop counting Chrome
   // crashes towards user crashes, so user crashes really mean non-Chrome
   // user-space crashes.
   if (!handle_chrome_crashes && !handling_early_chrome_crash_ &&
       IsChromeExecName(exec)) {
-    // anomaly_detector's CrashReporterParser looks for this message; don't
-    // change it without updating the regex.
-    *reason =
-        "ignoring call by kernel - chrome crash; "
-        "waiting for chrome to call us directly";
-    return false;
+    return base::unexpected(CrashCollectionStatus::kChromeCrashInUserCollector);
   }
 
   if (!RunFilter(pid)) {
-    *reason = "filtered out";
-    return false;
+    return base::unexpected(CrashCollectionStatus::kFilteredOut);
   }
 
-  return UserCollectorBase::ShouldDump(pid, reason);
+  return UserCollectorBase::ShouldDump(pid);
 }
 
-bool UserCollector::ShouldDump(pid_t pid,
-                               uid_t,
-                               const std::string& exec,
-                               std::string* reason) {
-  return ShouldDump(pid, ShouldHandleChromeCrashes(), exec, reason);
+base::expected<void, CrashCollectionStatus> UserCollector::ShouldDump(
+    pid_t pid, uid_t, const std::string& exec) {
+  return ShouldDump(pid, ShouldHandleChromeCrashes(), exec);
 }
 
 CrashCollectionStatus UserCollector::ConvertCoreToMinidump(
