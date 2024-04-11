@@ -57,3 +57,9 @@ option('with_tests',
   value: true,
   description: 'build the sommelier_test target'
 )
+
+option('log_level',
+  type: 'integer',
+  value: 0,
+  description: 'log level to print, -1 prints everything, default is 0 (up to INFO)'
+)

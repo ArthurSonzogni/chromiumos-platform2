@@ -166,6 +166,12 @@ if get_option('quirks')
 endif
 
 #===========#
+# Log level #
+#===========#
+
+cpp_args += '-DLOG_LEVEL=' + get_option('log_level').to_string()
+
+#===========#
 # Sommelier #
 #===========#
 
@@ -205,6 +211,7 @@ libsommelier = static_library(
     'sommelier-global.cc',
     'sommelier-idle-inhibit-manager.cc',
     'sommelier-inpututils.cc',
+    'sommelier-logging.cc',
     'sommelier-output.cc',
     'sommelier-pointer-constraints.cc',
     'sommelier-relative-pointer-manager.cc',
