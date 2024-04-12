@@ -956,8 +956,9 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   nsinfo.pid = request.pid();
   nsinfo.netns_name = "connected_netns_" + ifname_id;
   nsinfo.source = ProtoToTrafficSource(request.traffic_source());
-  if (nsinfo.source == TrafficSource::kUnknown)
+  if (nsinfo.source == TrafficSource::kUnknown) {
     nsinfo.source = TrafficSource::kSystem;
+  }
   nsinfo.outbound_ifname = outbound_ifname;
   nsinfo.route_on_vpn = request.route_on_vpn();
   nsinfo.host_ifname = "arc_ns" + ifname_id;
@@ -994,9 +995,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
 
   if (!datapath_->StartRoutingNamespace(nsinfo)) {
     LOG(ERROR) << "Failed to setup datapath";
-    if (!DeleteLifelineFd(local_client_fd.release())) {
-      LOG(ERROR) << "Failed to delete lifeline fd";
-    }
+    DeleteLifelineFd(local_client_fd.release());
     return response;
   }
 
@@ -1051,10 +1050,11 @@ base::ScopedFD Manager::AddLifelineFd(const base::ScopedFD& dbus_fd) {
   return base::ScopedFD(fd);
 }
 
-bool Manager::DeleteLifelineFd(int dbus_fd) {
-  auto iter = lifeline_fd_controllers_.find(dbus_fd);
+void Manager::DeleteLifelineFd(int lifeline_fd) {
+  auto iter = lifeline_fd_controllers_.find(lifeline_fd);
   if (iter == lifeline_fd_controllers_.end()) {
-    return false;
+    LOG(ERROR) << __func__ << ": untracked fd " << lifeline_fd;
+    return;
   }
 
   iter->second.reset();  // Destruct the controller, which removes the callback.
@@ -1063,11 +1063,9 @@ bool Manager::DeleteLifelineFd(int dbus_fd) {
   // AddLifelineFd() calls dup(), so this function should close the fd.
   // We still return true since at this point the FileDescriptorWatcher object
   // has been destructed.
-  if (IGNORE_EINTR(close(dbus_fd)) < 0) {
-    PLOG(ERROR) << "close";
+  if (IGNORE_EINTR(close(lifeline_fd)) < 0) {
+    PLOG(ERROR) << __func__ << ": close(" << lifeline_fd << ") failed";
   }
-
-  return true;
 }
 
 void Manager::OnLifelineFdClosed(int client_fd) {
@@ -1161,6 +1159,7 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
   if (!proxy_address) {
     LOG(ERROR) << "proxy_address is invalid IP address: "
                << request.proxy_address();
+    DeleteLifelineFd(local_client_fd.release());
     return false;
   }
   DnsRedirectionRule rule{.type = request.type(),
@@ -1179,8 +1178,7 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
 
   if (!datapath_->StartDnsRedirection(rule)) {
     LOG(ERROR) << "Failed to setup datapath";
-    if (!DeleteLifelineFd(local_client_fd.release()))
-      LOG(ERROR) << "Failed to delete lifeline fd";
+    DeleteLifelineFd(local_client_fd.release());
     return false;
   }
   // Notify GuestIPv6Service to add a route for the IPv6 proxy address to the
@@ -1243,6 +1241,7 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
   if (!datapath_->StartDownstreamNetwork(info)) {
     LOG(ERROR) << __func__ << " " << info
                << ": Failed to configure forwarding to downstream network";
+    DeleteLifelineFd(local_client_fd.release());
     return patchpanel::DownstreamNetworkResult::DATAPATH_ERROR;
   }
 
@@ -1253,12 +1252,14 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
       LOG(ERROR) << __func__ << " " << info
                  << ": DHCP server is already running at "
                  << info.downstream_ifname;
+      DeleteLifelineFd(local_client_fd.release());
       return patchpanel::DownstreamNetworkResult::INTERFACE_USED;
     }
     const auto config = info.ToDHCPServerConfig();
     if (!config) {
       LOG(ERROR) << __func__ << " " << info
                  << ": Failed to get DHCP server config";
+      DeleteLifelineFd(local_client_fd.release());
       return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
     }
     auto dhcp_server_controller = std::make_unique<DHCPServerController>(
@@ -1266,6 +1267,7 @@ patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
     // TODO(b/274722417): Handle the DHCP server exits unexpectedly.
     if (!dhcp_server_controller->Start(*config, base::DoNothing())) {
       LOG(ERROR) << __func__ << " " << info << ": Failed to start DHCP server";
+      DeleteLifelineFd(local_client_fd.release());
       return patchpanel::DownstreamNetworkResult::DHCP_SERVER_FAILURE;
     }
     dhcp_server_controllers_[info.downstream_ifname] =

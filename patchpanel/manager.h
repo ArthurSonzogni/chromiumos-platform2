@@ -218,7 +218,7 @@ class Manager : public ForwardingService {
   // |dbus_fd|. The duplicate is added to the list of file descriptors watched
   // for invalidation. Returns an invalid ScopedFD object if it fails.
   base::ScopedFD AddLifelineFd(const base::ScopedFD& dbus_fd);
-  bool DeleteLifelineFd(int dbus_fd);
+  void DeleteLifelineFd(int lifeline_fd);
 
   // Detects if any file descriptor committed in patchpanel's DBus API has been
   // invalidated by the caller. Calls OnLifelineFdClosed for any invalid fd
