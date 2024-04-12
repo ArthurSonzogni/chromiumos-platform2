@@ -2,10 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+futex: 1
+
 clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
 connect: 1
+# socket is a required syscall for logging
 socket: arg0 == AF_UNIX
 brk: 1
 close: 1

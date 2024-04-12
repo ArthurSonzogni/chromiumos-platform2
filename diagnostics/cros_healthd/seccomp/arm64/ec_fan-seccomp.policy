@@ -11,6 +11,8 @@ clock_gettime: 1
 gettimeofday: 1
 exit_group: 1
 
+futex: 1
+brk: 1
 # CROS_EC_DEV_IOCXCMD = 0xc0283a00
 # CROS_EC_DEV_IOCRDMEM_V2 = 0xc108ec01
 # CROS_EC_DEV_IOCXCMD_V2 = 0xc014ec00
@@ -18,7 +20,8 @@ ioctl: arg1 == 0xc0283a00 || arg1 == 0xc108ec01 || arg1 == 0xc014ec00
 openat: 1
 read: 1
 uname: 1
-socket: 1
+# socket is a required syscall for logging.
+socket: arg0 == AF_UNIX
 connect: 1
 sendto: 1
 gettid: 1
@@ -39,6 +42,6 @@ getpid: 1
 memfd_create: 1
 eventfd2: 1
 epoll_pwait: 1
-mmap: 1
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 close: 1
 process_vm_readv: 1

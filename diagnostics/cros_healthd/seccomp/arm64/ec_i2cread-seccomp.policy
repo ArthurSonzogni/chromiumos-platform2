@@ -5,6 +5,7 @@
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
+futex: 1
 brk: 1
 exit_group: 1
 exit: 1
@@ -54,5 +55,5 @@ memfd_create: 1
 eventfd2: 1
 epoll_pwait: 1
 sendto: 1
-# Required syscall for delegate process.
+# socket is a required syscall for logging.
 socket: arg0 == AF_UNIX

@@ -5,9 +5,11 @@
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
-# Socket is a dangerous syscall.
+# socket is a required syscall for logging.
 socket: arg0 == AF_UNIX
 
+futex: 1
+brk: 1
 # Required syscalls by seccomp_checker
 clock_getres: 1
 clock_gettime: 1

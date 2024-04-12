@@ -4,11 +4,14 @@
 
 # Currently not supported.
 
+futex: 1
+brk: 1
 clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
 getrandom: arg2 in ~GRND_RANDOM
 connect: 1
+# socket is a required syscall for logging.
 socket: arg0 == AF_UNIX
 exit_group: 1
 process_vm_readv: 1

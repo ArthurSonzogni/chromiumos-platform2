@@ -2,9 +2,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+futex: 1
+brk: 1
+# TODO(b/333978583): Document why prctl is required.
 prctl: arg0 == PR_SET_NAME || arg0 == PR_SET_KEEPCAPS || arg0 == PR_SET_SECCOMP
 close: 1
 exit_group: 1
+# TODO(b/333978583): Document why ioctl is required.
 ioctl: arg1 == TCGETS
 newfstatat: 1
 unlinkat: 1

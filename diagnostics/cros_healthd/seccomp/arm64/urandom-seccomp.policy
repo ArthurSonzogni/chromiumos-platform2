@@ -2,7 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Socket is a required syscall for delegate process.
+# socket is a required syscall for logging.
 socket: arg0 == AF_UNIX
 
 clock_getres: 1
@@ -11,6 +11,8 @@ gettimeofday: 1
 connect: 1
 exit_group: 1
 
+futex: 1
+brk: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_pwait: 1

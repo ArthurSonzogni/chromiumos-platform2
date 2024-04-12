@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+futex: 1
 gettid: 1
 clock_gettime: 1
 read: 1
@@ -26,12 +27,14 @@ uname: 1
 fcntl: 1
 getpid: 1
 exit_group: 1
+# socket is a required syscall for logging.
 socket: arg0 == AF_UNIX
 connect: 1
 epoll_create1: 1
 memfd_create: 1
 eventfd2: 1
 brk: 1
+# TODO(b/333978583): Document why kill is required.
 kill: 1
 rt_sigreturn: 1
 wait4: 1

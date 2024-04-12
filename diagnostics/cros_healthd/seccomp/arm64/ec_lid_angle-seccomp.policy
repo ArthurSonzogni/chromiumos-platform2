@@ -5,6 +5,7 @@
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
+futex: 1
 openat: 1
 read: 1
 brk: 1
@@ -40,6 +41,7 @@ eventfd2: 1
 epoll_pwait: 1
 sendto: 1
 close: 1
+# socket is a required syscall for logging.
 socket: arg0 == AF_UNIX
 connect: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

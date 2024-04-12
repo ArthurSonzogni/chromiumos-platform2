@@ -26,6 +26,16 @@ if (getenv("ARCH") == "arm") {
   ]
 }
 
+if (getenv("ARCH") == "arm64") {
+  BASE_REQUIRED_SYSCALLS += [
+    # `brk` is used by malloc.
+    "brk",
+
+    # `futex` is used in `libc_start_call_main`.
+    "futex",
+  ]
+}
+
 BASE_DENIED_SYSCALLS = [
   # This often be added because of the syscall that minijail execute the
   # jailed process, which is not needed.

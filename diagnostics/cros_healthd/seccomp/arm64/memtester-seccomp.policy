@@ -5,6 +5,8 @@
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
+futex: 1
+brk: 1
 exit_group: 1
 exit: 1
 fstat: 1
