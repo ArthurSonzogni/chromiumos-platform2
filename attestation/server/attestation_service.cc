@@ -2714,6 +2714,16 @@ template <typename RequestType>
 void AttestationService::CreateCertificateRequestTask(
     const RequestType& request,
     const std::shared_ptr<CreateCertificateRequestReply>& result) {
+  // The "CreateCertifiedKey" will use a lot of TPM resource, we should not do
+  // that if the pre-condition is not satisfied.
+  if (request.certificate_profile() ==
+          CertificateProfile::SOFT_BIND_CERTIFICATE &&
+      !IsVerifiedMode()) {
+    LOG(ERROR) << "Soft bind certificate is not supported in unverified mode.";
+    result->set_status(STATUS_NOT_ALLOWED);
+    return;
+  }
+
   const int identity = kFirstIdentity;
   auto database_pb = database_->GetProtobuf();
   if (database_pb.identities().size() <= identity) {
