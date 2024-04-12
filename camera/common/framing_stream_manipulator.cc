@@ -1797,7 +1797,8 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
   if (is_upsample_request) {
     std::optional<base::ScopedFD> upsample_fence =
         single_frame_upsampler_->ProcessRequest(
-            *upsample_input_buffer, output_yuv, EglFence().GetNativeFd());
+            *upsample_input_buffer, output_yuv, EglFence().GetNativeFd(),
+            ResamplingMethod::kLancet);
     if (!upsample_fence.has_value()) {
       LOGF(ERROR) << "Failed to upsample from cropped buffer";
       return std::nullopt;

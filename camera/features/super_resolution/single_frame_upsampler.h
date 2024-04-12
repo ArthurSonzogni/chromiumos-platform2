@@ -12,6 +12,7 @@
 #include <base/files/scoped_file.h>
 
 #include "cros-camera/camera_buffer_manager.h"
+#include "cros-camera/libupsample/upsample_wrapper_types.h"
 
 namespace cros {
 
@@ -26,7 +27,8 @@ class SingleFrameUpsampler {
 
   std::optional<base::ScopedFD> ProcessRequest(buffer_handle_t input_buffer,
                                                buffer_handle_t output_buffer,
-                                               base::ScopedFD release_fence);
+                                               base::ScopedFD release_fence,
+                                               ResamplingMethod method);
 
  private:
   bool ConvertNV12ToRGB(const ScopedMapping& in_mapping,

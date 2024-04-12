@@ -17,13 +17,12 @@
 #include <base/files/file_util.h>
 #include <base/native_library.h>
 #include <base/system/sys_info.h>
-#include <cros-camera/libupsample/upsample_wrapper_bindings.h>
-#include <cros-camera/libupsample/upsample_wrapper_types.h>
 #include <hardware/gralloc.h>
 #include <libyuv.h>
 #include <libyuv/convert_argb.h>
 
 #include "cros-camera/common.h"
+#include "cros-camera/libupsample/upsample_wrapper_bindings.h"
 
 namespace cros {
 
@@ -113,8 +112,9 @@ bool SingleFrameUpsampler::Initialize(const base::FilePath& dlc_root_path) {
 
   // Initialize the Upsampler engine.
   CHECK(g_init_upsampler_fn);
-  if (!g_init_upsampler_fn(runner_, inference_mode,
-                           /*use_lancet_alpha=*/true)) {
+  if (!g_init_upsampler_fn(runner_, static_cast<int>(inference_mode),
+                           /*use_lancet_alpha=*/true,
+                           /*stable_delegate_settings_file=*/"")) {
     LOGF(ERROR) << "Failed to initialize Lancet upsampler engine";
     runner_ = nullptr;
     return false;
@@ -126,7 +126,8 @@ bool SingleFrameUpsampler::Initialize(const base::FilePath& dlc_root_path) {
 std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
     buffer_handle_t input_buffer,
     buffer_handle_t output_buffer,
-    base::ScopedFD release_fence) {
+    base::ScopedFD release_fence,
+    ResamplingMethod method) {
   if (!runner_) {
     LOGF(ERROR) << "Upsampler engine is not initialized";
     return std::nullopt;
@@ -177,7 +178,7 @@ std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
   };
 
   CHECK(g_upsample_fn);
-  if (!g_upsample_fn(runner_, &upsample_request)) {
+  if (!g_upsample_fn(runner_, static_cast<int>(method), &upsample_request)) {
     LOGF(ERROR) << "Failed to upsample frame with Lancet";
     return std::nullopt;
   }

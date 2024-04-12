@@ -15,6 +15,7 @@
 
 #include "common/test_support/test_image.h"
 #include "cros-camera/common.h"
+#include "cros-camera/libupsample/upsample_wrapper_types.h"
 #include "features/super_resolution/single_frame_upsampler.h"
 #include "ml_core/dlc/dlc_ids.h"
 #include "ml_core/dlc/dlc_loader.h"
@@ -91,8 +92,9 @@ class SingleFrameUpsamplerTest : public ::testing::Test {
     }
 
     // Perform upsampling on the input image.
-    std::optional<base::ScopedFD> fence = upsampler_->ProcessRequest(
-        *input_buffer, *output_buffer, base::ScopedFD());
+    std::optional<base::ScopedFD> fence =
+        upsampler_->ProcessRequest(*input_buffer, *output_buffer,
+                                   base::ScopedFD(), ResamplingMethod::kLancet);
     if (!fence.has_value()) {
       LOGF(ERROR) << "Failed to upsample from input buffer";
       return false;
