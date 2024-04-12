@@ -53,6 +53,7 @@ enum ErrorCode {
   kNotEnoughFrames = 4,
   kInvalidDuration = 5,
   kCrosCameraControllerNotRegistered = 6,
+  kDiagnosticsInternal = 7,
 };
 
 [Extensible]
@@ -101,6 +102,7 @@ struct CameraFrame {
   uint32? frame_number;
   DataSource source;
   CameraFrameBuffer buffer;
+  bool is_empty;
 };
 
 struct StreamingConfig {

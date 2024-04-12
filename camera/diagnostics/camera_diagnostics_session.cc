@@ -24,6 +24,42 @@ constexpr int kStreamingFrameIntervalDefault = 30;  // every 30th frame
 
 namespace cros {
 
+namespace {
+constexpr int kMaxStreamWidth = 640;
+constexpr int kMaxStreamHeight = 480;
+
+// Creates an empty camera frame of |camera_diag::mojom::PixelFormat::kYuv420|.
+camera_diag::mojom::CameraFramePtr CreateEmptyCameraFrame(
+    const camera_diag::mojom::CameraStreamPtr& stream) {
+  if (!(stream->pixel_format == camera_diag::mojom::PixelFormat::kYuv420 &&
+        stream->width > 0 && stream->height > 0 &&
+        stream->width <= kMaxStreamWidth &&
+        stream->height <= kMaxStreamHeight && stream->width % 2 == 0 &&
+        stream->height % 2 == 0)) {
+    LOGF(ERROR) << "Can not create camera frame with invalid stream size: "
+                << stream->width << "x" << stream->height;
+    return nullptr;
+  }
+  // TODO(imranziad): Validate stream size.
+  auto frame = camera_diag::mojom::CameraFrame::New();
+  frame->stream = stream.Clone();
+  frame->source = camera_diag::mojom::DataSource::kCameraDiagnostics;
+  frame->is_empty = true;
+  frame->buffer = camera_diag::mojom::CameraFrameBuffer::New();
+  // Only NV12 frames are supported now. Average of 12 bits per pixel.
+  frame->buffer->size = (stream->width * stream->height * 3) / 2;
+  frame->buffer->shm_handle =
+      mojo::SharedBufferHandle::Create(frame->buffer->size);
+  if (!frame->buffer->shm_handle->is_valid()) {
+    LOGF(ERROR) << "Failed to create SharedBufferHandle for stream size: "
+                << stream->width << "x" << stream->height;
+    return nullptr;
+  }
+  return frame;
+}
+
+}  // namespace
+
 CameraDiagnosticsSession::CameraDiagnosticsSession(
     CameraDiagnosticsMojoManager* mojo_manager,
     scoped_refptr<Future<void>> notify_finish)
@@ -65,10 +101,17 @@ void CameraDiagnosticsSession::OnStartStreaming(
   base::AutoLock lock(lock_);
   // Successfully started streaming.
   if (result->is_stream()) {
-    auto stream_config = std::move(result->get_stream());
-    LOGF(INFO) << "Selected stream config: " << stream_config->width << "x"
-               << stream_config->height;
-    // TODO(imranziad): Allocate buffers.
+    selected_stream_ = std::move(result->get_stream());
+    LOGF(INFO) << "Selected stream config: " << selected_stream_.value()->width
+               << "x" << selected_stream_.value()->height;
+    auto frame = CreateEmptyCameraFrame(selected_stream_.value());
+    if (frame.is_null()) {
+      result_ = camera_diag::mojom::FrameAnalysisResult::NewError(
+          camera_diag::mojom::ErrorCode::kDiagnosticsInternal);
+      notify_finish_->Set();
+      return;
+    }
+    camera_service_controller_.RequestFrame(std::move(frame));
     return;
   }
   // Failed to start streaming. Set an error result and finish the session.

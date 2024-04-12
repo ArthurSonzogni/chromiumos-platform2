@@ -91,8 +91,13 @@ uint32_t CameraDiagnosticsClientImpl::frame_interval() const {
 
 std::optional<camera_diag::mojom::CameraFramePtr>
 CameraDiagnosticsClientImpl::RequestEmptyFrame() {
-  // TODO(imranziad): Return frames from |frame_list_|.
-  return std::nullopt;
+  base::AutoLock lock(session_lock_);
+  if (frame_list_.empty()) {
+    return std::nullopt;
+  }
+  auto frame = std::move(frame_list_.back());
+  frame_list_.pop_back();
+  return frame;
 }
 
 void CameraDiagnosticsClientImpl::AddCameraSession(const Size& stream_size) {
@@ -116,24 +121,29 @@ void CameraDiagnosticsClientImpl::RemoveCameraSession() {
 void CameraDiagnosticsClientImpl::StartStreaming(
     camera_diag::mojom::StreamingConfigPtr config,
     StartStreamingCallback callback) {
-  base::AutoLock lock(session_lock_);
   camera_diag::mojom::StartStreamingResultPtr result;
 
-  frame_analysis_enabled_ = false;
-  frame_list_.clear();
+  {
+    // Don't run the IPC callback while holding the lock. Diagnostics
+    // service can call another endpoint again in that callback and
+    // create a deadlock.
+    base::AutoLock lock(session_lock_);
+    frame_analysis_enabled_ = false;
+    frame_list_.clear();
 
-  if (!session_stream_size_.has_value()) {
-    result = camera_diag::mojom::StartStreamingResult::NewError(
-        camera_diag::mojom::ErrorCode::kCameraClosed);
-  } else {
-    auto stream = camera_diag::mojom::CameraStream::New();
-    stream->height = session_stream_size_.value().height;
-    stream->width = session_stream_size_.value().width;
-    // Only supported format for now.
-    stream->pixel_format = camera_diag::mojom::PixelFormat::kYuv420;
-    result =
-        camera_diag::mojom::StartStreamingResult::NewStream(std::move(stream));
-    frame_analysis_enabled_ = true;
+    if (!session_stream_size_.has_value()) {
+      result = camera_diag::mojom::StartStreamingResult::NewError(
+          camera_diag::mojom::ErrorCode::kCameraClosed);
+    } else {
+      auto stream = camera_diag::mojom::CameraStream::New();
+      stream->height = session_stream_size_.value().height;
+      stream->width = session_stream_size_.value().width;
+      // Only supported format for now.
+      stream->pixel_format = camera_diag::mojom::PixelFormat::kYuv420;
+      result = camera_diag::mojom::StartStreamingResult::NewStream(
+          std::move(stream));
+      frame_analysis_enabled_ = true;
+    }
   }
 
   std::move(callback).Run(std::move(result));
@@ -150,9 +160,11 @@ void CameraDiagnosticsClientImpl::RequestFrame(
     camera_diag::mojom::CameraFramePtr frame) {
   base::AutoLock lock(session_lock_);
   if (session_stream_size_.has_value() && frame_analysis_enabled_) {
+    VLOGF(1) << "Received frame, size " << frame->buffer->size;
     frame_list_.push_back(std::move(frame));
   } else {
-    // TODO(imranziad): Reject the frame and send it back with error.
+    // Rejection; send the frame back.
+    SendFrame(std::move(frame));
   }
 }
 

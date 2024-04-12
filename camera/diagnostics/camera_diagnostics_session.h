@@ -5,6 +5,8 @@
 #ifndef CAMERA_DIAGNOSTICS_CAMERA_DIAGNOSTICS_SESSION_H_
 #define CAMERA_DIAGNOSTICS_CAMERA_DIAGNOSTICS_SESSION_H_
 
+#include <optional>
+
 #include <base/memory/scoped_refptr.h>
 #include <base/threading/thread_checker.h>
 #include <mojo/public/cpp/bindings/remote.h>
@@ -56,6 +58,9 @@ class CameraDiagnosticsSession {
       GUARDED_BY(lock_) = std::nullopt;
 
   scoped_refptr<Future<void>> notify_finish_;
+
+  std::optional<camera_diag::mojom::CameraStreamPtr> selected_stream_ =
+      std::nullopt;
 };
 
 }  // namespace cros
