@@ -859,21 +859,6 @@ cmd_modem() (
 )
 
 # shellcheck disable=SC2034
-USAGE_set_apn='[-c] [-n <network-id>] [-u <username>] [-p <password>] <apn>'
-# shellcheck disable=SC2034
-HELP_set_apn='
-  Set the APN to use when connecting to the network specified by <network-id>.
-  If <network-id> is not specified, use the network-id of the currently
-  registered network.
-
-  The -c option clears the APN to be used, so that the default APN will be used
-  instead.
-'
-cmd_set_apn() (
-  debugd_shill set_apn "$@"
-)
-
-# shellcheck disable=SC2034
 USAGE_autest='[--scheduled]'
 # shellcheck disable=SC2034
 HELP_autest='

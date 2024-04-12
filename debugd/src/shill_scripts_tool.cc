@@ -40,7 +40,6 @@ const char * const kAllowedScripts[] = {
     "ff_debug",
     "modem",
     "network_diag",
-    "set_apn",
     "set_arpgw",
     "set_wake_on_lan",
 };
