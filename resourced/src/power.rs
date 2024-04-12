@@ -29,7 +29,6 @@ use crate::config::PowerSourceType;
 use crate::cpu_utils::hotplug_cpus;
 use crate::cpu_utils::write_to_cpu_policy_patterns;
 use crate::cpu_utils::HotplugCpuAction;
-
 #[cfg(target_arch = "x86_64")]
 use crate::globals::read_dynamic_epp_feature;
 #[cfg(target_arch = "x86_64")]
@@ -280,6 +279,13 @@ impl<P: PowerSourceProvider> DirectoryPowerPreferencesManager<P> {
         Ok(())
     }
 
+    fn get_first_scaling_governor(&self) -> Result<String> {
+        const FIRST_GOVERNOR_PATTERN: &str =
+            "sys/devices/system/cpu/cpufreq/policy0/scaling_governor";
+        let governor = std::fs::read_to_string(self.root.join(FIRST_GOVERNOR_PATTERN))?;
+        Ok(governor)
+    }
+
     fn has_epp(&self) -> Result<bool> {
         const CPU0_EPP_PATH: &str =
             "sys/devices/system/cpu/cpufreq/policy0/energy_performance_preference";
@@ -456,8 +462,18 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
                 error!("Failed to set energy performance preference: {:#}", err);
             }
         } else {
-            // Default EPP
-            self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
+            // When scaling_governor is performance, energy_performance_preference can only be
+            // performance.
+            //
+            // Reference:
+            //   https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/kernel/v6.6/drivers/cpufreq/intel_pstate.c;drc=1a868273760040b746518aca7fea4f8c07366884;l=795
+            match self.get_first_scaling_governor() {
+                Ok(governor) if governor == "performance" => {}
+                _ => {
+                    // Default EPP
+                    self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
+                }
+            }
         }
 
         Ok(())
