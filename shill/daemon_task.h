@@ -40,7 +40,6 @@ class DaemonTask {
   struct Settings {
     std::vector<std::string> devices_blocked;
     std::vector<std::string> devices_allowed;
-    bool ignore_unknown_ethernet = false;
   };
 
   DaemonTask(const Settings& settings, Config* config);

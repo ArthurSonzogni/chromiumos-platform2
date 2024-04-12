@@ -441,13 +441,6 @@ class Manager {
   void AddDefaultServiceObserver(DefaultServiceObserver* observer);
   void RemoveDefaultServiceObserver(DefaultServiceObserver* observer);
 
-  // Decides whether Ethernet-like devices are treated as unknown devices
-  // if they do not indicate a driver name.
-  virtual void SetIgnoreUnknownEthernet(bool ignore);
-  virtual bool ignore_unknown_ethernet() const {
-    return ignore_unknown_ethernet_;
-  }
-
   // Returns true iff |power_manager_| exists and is suspending (i.e.
   // power_manager->suspending() is true), false otherwise.
   virtual bool IsSuspending();
@@ -884,9 +877,6 @@ class Manager {
 
   // Whether Wake on LAN should be enabled for all Ethernet devices.
   bool is_wake_on_lan_enabled_;
-
-  // Whether to ignore Ethernet-like devices that don't have an assigned driver.
-  bool ignore_unknown_ethernet_;
 
   // List of DefaultServiceObservers registered with AddDefaultServiceObserver.
   base::ObserverList<DefaultServiceObserver> default_service_observers_;

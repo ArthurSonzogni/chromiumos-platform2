@@ -1244,17 +1244,11 @@ void DeviceInfo::DelayedDeviceCreationTask() {
                 << " is now assumed to be regular Ethernet.";
       technology = Technology::kEthernet;
     } else if (technology == Technology::kNoDeviceSymlink) {
-      if (manager_->ignore_unknown_ethernet()) {
-        SLOG(2) << __func__ << ": device " << link_name
-                << ", without driver name will be ignored";
-        technology = Technology::kUnknown;
-      } else {
-        // Act the same as if there was a driver symlink, but we did not
-        // recognize the driver name.
-        SLOG(2) << __func__ << ": device " << link_name
-                << ", without driver name is defaulted to type ethernet";
-        technology = Technology::kEthernet;
-      }
+      // Act the same as if there was a driver symlink, but we did not
+      // recognize the driver name.
+      SLOG(2) << __func__ << ": device " << link_name
+              << ", without driver name is defaulted to type ethernet";
+      technology = Technology::kEthernet;
     } else if (technology != Technology::kCellular &&
                technology != Technology::kTunnel &&
                technology != Technology::kGuestInterface) {

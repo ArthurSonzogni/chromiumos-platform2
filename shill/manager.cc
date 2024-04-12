@@ -200,7 +200,6 @@ Manager::Manager(ControlInterface* control_interface,
       pending_traffic_counter_request_(false),
       termination_actions_(dispatcher),
       is_wake_on_lan_enabled_(true),
-      ignore_unknown_ethernet_(false),
       suppress_autoconnect_(false),
       is_connected_state_(false),
       has_user_session_(false),
@@ -1172,11 +1171,6 @@ void Manager::UpdateUninitializedTechnologies() {
   Error error;
   adaptor_->EmitStringsChanged(kUninitializedTechnologiesProperty,
                                UninitializedTechnologies(&error));
-}
-
-void Manager::SetIgnoreUnknownEthernet(bool ignore) {
-  SLOG(2) << __func__ << "(" << ignore << ")";
-  ignore_unknown_ethernet_ = ignore;
 }
 
 bool Manager::IsSuspending() {

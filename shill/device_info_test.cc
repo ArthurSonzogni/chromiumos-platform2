@@ -1526,18 +1526,6 @@ TEST_F(DeviceInfoDelayedCreationTest, TunnelDevice) {
   EnsureDelayedDevice(Technology::kTunnel, Technology::kTunnel);
 }
 
-TEST_F(DeviceInfoDelayedCreationTest, NoDeviceSymlinkEthernet) {
-  AddDelayedDevice(Technology::kNoDeviceSymlink);
-  EXPECT_CALL(manager_, ignore_unknown_ethernet()).WillOnce(Return(false));
-  EnsureDelayedDevice(Technology::kNoDeviceSymlink, Technology::kEthernet);
-}
-
-TEST_F(DeviceInfoDelayedCreationTest, NoDeviceSymlinkIgnored) {
-  AddDelayedDevice(Technology::kNoDeviceSymlink);
-  EXPECT_CALL(manager_, ignore_unknown_ethernet()).WillOnce(Return(true));
-  EnsureDelayedDevice(Technology::kNoDeviceSymlink, Technology::kUnknown);
-}
-
 TEST_F(DeviceInfoDelayedCreationTest, GuestInterface) {
   AddDelayedDevice(Technology::kNoDeviceSymlink);
   EnsureDelayedDevice(Technology::kGuestInterface, Technology::kGuestInterface);

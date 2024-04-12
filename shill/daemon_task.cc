@@ -50,7 +50,6 @@ DaemonTask::~DaemonTask() = default;
 void DaemonTask::ApplySettings() {
   manager_->SetBlockedDevices(settings_.devices_blocked);
   manager_->SetAllowedDevices(settings_.devices_allowed);
-  manager_->SetIgnoreUnknownEthernet(settings_.ignore_unknown_ethernet);
 }
 
 bool DaemonTask::Quit(base::OnceClosure completion_callback) {
