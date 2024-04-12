@@ -125,7 +125,7 @@ impl Dispatcher {
         };
 
         while entry.position < entry.tokens.len() {
-            let sub: Option<&Command> = command.handle_tokens(entry);
+            let sub: Option<&Command> = command.find_subcommand(&entry.tokens[entry.position]);
 
             if sub.is_none() {
                 break;
@@ -206,7 +206,7 @@ impl Dispatcher {
         let mut command: &Command = c.unwrap();
         list.push(command);
         while entry.position < entry.tokens.len() {
-            let sub: Option<&Command> = command.handle_tokens(&mut entry);
+            let sub: Option<&Command> = command.find_subcommand(&entry.tokens[entry.position]);
 
             if sub.is_none() {
                 break;
@@ -303,20 +303,6 @@ impl Command {
 
     fn find_subcommand(&self, name: &str) -> Option<&Command> {
         find_by_name(name, &self.sub_commands)
-    }
-
-    fn handle_tokens(&self, entry: &mut Arguments) -> Option<&Command> {
-        while entry.position < entry.tokens.len() {
-            let token = &entry.tokens[entry.position];
-
-            let result = self.find_subcommand(token);
-            if result.is_some() {
-                return result;
-            }
-
-            entry.position += 1;
-        }
-        None
     }
 }
 
@@ -598,6 +584,29 @@ mod tests {
             PARENT_COMMAND_NAME.to_string(),
             CHILD_COMMAND_NAME.to_string(),
         ];
+
+        assert!(dispatcher.handle_command(tokens).is_ok());
+    }
+
+    static EXPECTED_ARGS: &[&str] = &["arg0", "arg1", "arg2"];
+
+    fn expect_args_command_callback(_cmd: &Command, args: &Arguments) -> Result<(), Error> {
+        assert_eq!(args.get_args().len(), EXPECTED_ARGS.len());
+        for (x, expected) in EXPECTED_ARGS.iter().enumerate() {
+            assert_eq!(&args.get_args()[x], expected);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_handle_command_args() {
+        let dispatcher = default_dispatcher(
+            default_parent_command(default_child_command())
+                .set_command_callback(Some(expect_args_command_callback)),
+        );
+
+        let mut tokens: Vec<String> = vec![PARENT_COMMAND_NAME.to_string()];
+        tokens.extend(EXPECTED_ARGS.iter().map(|a| a.to_string()));
 
         assert!(dispatcher.handle_command(tokens).is_ok());
     }
