@@ -13,7 +13,7 @@
 
 #include <base/files/file_path.h>
 
-#include "rmad/system/cryptohome_client.h"
+#include "rmad/system/device_management_client.h"
 #include "rmad/system/runtime_probe_client.h"
 #include "rmad/utils/write_protect_utils.h"
 
@@ -24,13 +24,13 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   explicit ComponentsRepairStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject |working_dir_path|, |cryptohome_client_|,
+  // Used to inject |working_dir_path|, |device_management_client_|,
   // |runtime_probe_client_|, and |crossystem_utils_| for testing.
   explicit ComponentsRepairStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
-      std::unique_ptr<CryptohomeClient> cryptohome_client,
+      std::unique_ptr<DeviceManagementClient> device_management_client,
       std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
       std::unique_ptr<WriteProtectUtils> write_protect_utils);
 
@@ -55,7 +55,7 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
 
   bool active_;
   base::FilePath working_dir_path_;
-  std::unique_ptr<CryptohomeClient> cryptohome_client_;
+  std::unique_ptr<DeviceManagementClient> device_management_client_;
   std::unique_ptr<RuntimeProbeClient> runtime_probe_client_;
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
 };

@@ -18,7 +18,7 @@
 #include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
-#include "rmad/system/cryptohome_client_impl.h"
+#include "rmad/system/device_management_client_impl.h"
 #include "rmad/system/runtime_probe_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/write_protect_utils_impl.h"
@@ -144,7 +144,8 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     : BaseStateHandler(json_store, daemon_callback),
       active_(false),
       working_dir_path_(kDefaultWorkingDirPath) {
-  cryptohome_client_ = std::make_unique<CryptohomeClientImpl>(GetSystemBus());
+  device_management_client_ =
+      std::make_unique<DeviceManagementClientImpl>(GetSystemBus());
   runtime_probe_client_ =
       std::make_unique<RuntimeProbeClientImpl>(GetSystemBus());
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
@@ -154,13 +155,13 @@ ComponentsRepairStateHandler::ComponentsRepairStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
-    std::unique_ptr<CryptohomeClient> cryptohome_client,
+    std::unique_ptr<DeviceManagementClient> device_management_client,
     std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
     std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
       active_(false),
       working_dir_path_(working_dir_path),
-      cryptohome_client_(std::move(cryptohome_client)),
+      device_management_client_(std::move(device_management_client)),
       runtime_probe_client_(std::move(runtime_probe_client)),
       write_protect_utils_(std::move(write_protect_utils)) {}
 
@@ -263,7 +264,7 @@ ComponentsRepairStateHandler::GetNextStateCase(const RmadState& state) {
             ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER));
     json_store_->SetValue(kWpDisableRequired, true);
     json_store_->SetValue(kWipeDevice, true);
-    if (cryptohome_client_->IsCcdBlocked()) {
+    if (device_management_client_->IsCcdBlocked()) {
       // Case 1.
       json_store_->SetValue(kCcdBlocked, true);
       return NextStateCaseWrapper(RmadState::StateCase::kWpDisableRsu);

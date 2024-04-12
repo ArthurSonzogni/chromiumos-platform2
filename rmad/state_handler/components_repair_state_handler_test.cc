@@ -19,7 +19,7 @@
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/state_handler/components_repair_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
-#include "rmad/system/mock_cryptohome_client.h"
+#include "rmad/system/mock_device_management_client.h"
 #include "rmad/system/mock_runtime_probe_client.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
@@ -47,10 +47,10 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
 
   scoped_refptr<ComponentsRepairStateHandler> CreateStateHandler(
       const StateHandlerArgs& args) {
-    // Mock |CryptohomeClient|.
-    auto mock_cryptohome_client =
-        std::make_unique<NiceMock<MockCryptohomeClient>>();
-    ON_CALL(*mock_cryptohome_client, IsCcdBlocked())
+    // Mock |DeviceManagementClient|.
+    auto mock_device_management_client =
+        std::make_unique<NiceMock<MockDeviceManagementClient>>();
+    ON_CALL(*mock_device_management_client, IsCcdBlocked())
         .WillByDefault(Return(args.ccd_blocked));
     // Mock |RuntimeProbeClient|.
     auto mock_runtime_probe_client =
@@ -70,7 +70,8 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
 
     return base::MakeRefCounted<ComponentsRepairStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_cryptohome_client), std::move(mock_runtime_probe_client),
+        std::move(mock_device_management_client),
+        std::move(mock_runtime_probe_client),
         std::move(mock_write_protect_utils));
   }
 

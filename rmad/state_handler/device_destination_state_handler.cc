@@ -17,7 +17,7 @@
 #include "rmad/logs/logs_utils.h"
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
-#include "rmad/system/cryptohome_client_impl.h"
+#include "rmad/system/device_management_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
@@ -29,17 +29,18 @@ DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
-  cryptohome_client_ = std::make_unique<CryptohomeClientImpl>(GetSystemBus());
+  device_management_client_ =
+      std::make_unique<DeviceManagementClientImpl>(GetSystemBus());
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 
 DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
-    std::unique_ptr<CryptohomeClient> cryptohome_client,
+    std::unique_ptr<DeviceManagementClient> device_management_client,
     std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      cryptohome_client_(std::move(cryptohome_client)),
+      device_management_client_(std::move(device_management_client)),
       write_protect_utils_(std::move(write_protect_utils)) {}
 
 RmadErrorCode DeviceDestinationStateHandler::InitializeState() {
@@ -91,7 +92,7 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
         ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_SAME_OWNER));
     if (ReplacedComponentNeedHwwpDisabled()) {
       json_store_->SetValue(kWpDisableRequired, true);
-      if (cryptohome_client_->IsCcdBlocked()) {
+      if (device_management_client_->IsCcdBlocked()) {
         // Case 1.
         json_store_->SetValue(kCcdBlocked, true);
         json_store_->SetValue(kWipeDevice, true);
@@ -117,7 +118,7 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
                          ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER));
     json_store_->SetValue(kWpDisableRequired, true);
     json_store_->SetValue(kWipeDevice, true);
-    if (cryptohome_client_->IsCcdBlocked()) {
+    if (device_management_client_->IsCcdBlocked()) {
       // Case 4.
       json_store_->SetValue(kCcdBlocked, true);
       return NextStateCaseWrapper(RmadState::StateCase::kWpDisableRsu);
