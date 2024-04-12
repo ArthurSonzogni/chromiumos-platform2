@@ -16,19 +16,21 @@
 
 namespace patchpanel {
 
+class RoutingTable;
+
 // A singleton providing capability to configure address onto kernel netdevice,
 // and maintaining the address information currently configured.
 class AddressService {
  public:
   virtual ~AddressService();
 
-  AddressService();
+  explicit AddressService(RoutingTable* routing_table);
   AddressService(const AddressService&) = delete;
   AddressService& operator=(const AddressService&) = delete;
 
   // Helper factory function for test code with dependency injection.
   static std::unique_ptr<AddressService> CreateForTesting(
-      net_base::RTNLHandler* rtnl_handler);
+      net_base::RTNLHandler* rtnl_handler, RoutingTable* routing_table);
 
   // Removes all addresses previous configured onto |interface_index|.
   virtual void FlushAddress(int interface_index);
@@ -58,6 +60,9 @@ class AddressService {
   // Cache for the addresses added earlier by us, keyed by the interface id.
   std::map<int, net_base::IPv4CIDR> added_ipv4_address_;
   std::map<int, std::vector<net_base::IPv6CIDR>> added_ipv6_addresses_;
+
+  // Owned by the same NetworkApplier that owns the instance of AddressService.
+  RoutingTable* routing_table_;
 
   // Cache singleton pointer for performance and test purposes.
   net_base::RTNLHandler* rtnl_handler_;

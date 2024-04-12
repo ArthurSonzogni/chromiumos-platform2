@@ -88,7 +88,7 @@ constexpr uint32_t kCatchallPriority =
 NetworkApplier::NetworkApplier()
     : rule_table_(std::make_unique<RoutingPolicyService>()),
       routing_table_(std::make_unique<RoutingTable>()),
-      address_service_(std::make_unique<AddressService>()),
+      address_service_(std::make_unique<AddressService>(routing_table_.get())),
       rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       proc_fs_(std::make_unique<net_base::ProcFsStub>("")) {}
 
@@ -304,10 +304,19 @@ void NetworkApplier::ApplyRoutingPolicy(
 
   if (technology != Technology::kVPN) {
     // Select the per-device table if the outgoing packet's src address matches
-    // the interface's addresses or the input interface is this interface.
+    // the interface's addresses, dst address is in the interface's prefix, or
+    // the input interface is this interface.
     for (const auto& address : all_addresses) {
       auto if_addr_rule = RoutingPolicyEntry(address.GetFamily());
-      if_addr_rule.src = address;
+      if_addr_rule.src = *net_base::IPCIDR::CreateFromAddressAndPrefix(
+          address.address(),
+          net_base::IPCIDR::GetMaxPrefixLength(address.GetFamily()));
+      if_addr_rule.table = table_id;
+      if_addr_rule.priority = rule_priority;
+      rule_table_->AddRule(interface_index, if_addr_rule);
+
+      if_addr_rule = RoutingPolicyEntry(address.GetFamily());
+      if_addr_rule.dst = address;
       if_addr_rule.table = table_id;
       if_addr_rule.priority = rule_priority;
       rule_table_->AddRule(interface_index, if_addr_rule);

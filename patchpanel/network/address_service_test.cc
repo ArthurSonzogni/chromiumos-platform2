@@ -10,6 +10,8 @@
 #include <net-base/mock_rtnl_handler.h>
 #include <net-base/network_priority.h>
 
+#include "patchpanel/network/mock_routing_table.h"
+
 using testing::_;
 using testing::Eq;
 using testing::Return;
@@ -20,13 +22,21 @@ namespace patchpanel {
 class AddressServiceTest : public testing::Test {
  public:
   AddressServiceTest() {
-    address_service_ = AddressService::CreateForTesting(&address_rtnl_handler_);
+    address_service_ = AddressService::CreateForTesting(&address_rtnl_handler_,
+                                                        &routing_table_);
   }
 
  protected:
   StrictMock<net_base::MockRTNLHandler> address_rtnl_handler_;
+  StrictMock<MockRoutingTable> routing_table_;
   std::unique_ptr<AddressService> address_service_;
 };
+
+namespace {
+MATCHER_P(IsRouteInTable, table, "") {
+  return table == arg.table;
+}
+}  // namespace
 
 TEST_F(AddressServiceTest, AddAddressFlow) {
   const int kInterfaceIndex = 3;
@@ -42,6 +52,11 @@ TEST_F(AddressServiceTest, AddAddressFlow) {
       AddInterfaceAddress(kInterfaceIndex, net_base::IPCIDR(ipv4_addr_1),
                           Eq(std::nullopt)))
       .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              RemoveRoute(kInterfaceIndex, IsRouteInTable(RT_TABLE_MAIN)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, AddRoute(kInterfaceIndex, IsRouteInTable(1003u)))
+      .WillOnce(Return(true));
   address_service_->SetIPv4Address(kInterfaceIndex, ipv4_addr_1, std::nullopt);
 
   // Setting a second IPv4 address should remove the first one.
@@ -52,6 +67,14 @@ TEST_F(AddressServiceTest, AddAddressFlow) {
       address_rtnl_handler_,
       AddInterfaceAddress(kInterfaceIndex, net_base::IPCIDR(ipv4_addr_2),
                           Eq(std::nullopt)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              RemoveRoute(kInterfaceIndex, IsRouteInTable(1003u)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              RemoveRoute(kInterfaceIndex, IsRouteInTable(RT_TABLE_MAIN)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, AddRoute(kInterfaceIndex, IsRouteInTable(1003u)))
       .WillOnce(Return(true));
   address_service_->SetIPv4Address(kInterfaceIndex, ipv4_addr_2, std::nullopt);
 
@@ -72,12 +95,23 @@ TEST_F(AddressServiceTest, AddAddressFlow) {
       AddInterfaceAddress(kInterfaceIndex, net_base::IPCIDR(ipv4_addr_1),
                           Eq(std::nullopt)))
       .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              RemoveRoute(kInterfaceIndex, IsRouteInTable(1003u)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              RemoveRoute(kInterfaceIndex, IsRouteInTable(RT_TABLE_MAIN)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, AddRoute(kInterfaceIndex, IsRouteInTable(1003u)))
+      .WillOnce(Return(true));
   address_service_->SetIPv4Address(kInterfaceIndex, ipv4_addr_1, std::nullopt);
 
   // ClearIPv4Address will remove the previous added IPv4 address.
   EXPECT_CALL(
       address_rtnl_handler_,
       RemoveInterfaceAddress(kInterfaceIndex, net_base::IPCIDR(ipv4_addr_1)));
+  EXPECT_CALL(routing_table_,
+              RemoveRoute(kInterfaceIndex, IsRouteInTable(1003u)))
+      .WillOnce(Return(true));
   address_service_->ClearIPv4Address(kInterfaceIndex);
 }
 
@@ -91,6 +125,11 @@ TEST_F(AddressServiceTest, IPv4WithBroadcast) {
   EXPECT_CALL(
       address_rtnl_handler_,
       AddInterfaceAddress(kInterfaceIndex, net_base::IPCIDR(local), broadcast))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              RemoveRoute(kInterfaceIndex, IsRouteInTable(RT_TABLE_MAIN)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, AddRoute(kInterfaceIndex, IsRouteInTable(1003u)))
       .WillOnce(Return(true));
   address_service_->SetIPv4Address(kInterfaceIndex, local, broadcast);
 }
@@ -157,6 +196,11 @@ TEST_F(AddressServiceTest, MultipleInterface) {
       AddInterfaceAddress(kInterfaceIndex1, net_base::IPCIDR(ipv4_addr_1),
                           Eq(std::nullopt)))
       .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              RemoveRoute(kInterfaceIndex1, IsRouteInTable(RT_TABLE_MAIN)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, AddRoute(kInterfaceIndex1, IsRouteInTable(1003u)))
+      .WillOnce(Return(true));
   address_service_->SetIPv4Address(kInterfaceIndex1, ipv4_addr_1);
 
   EXPECT_CALL(
@@ -164,12 +208,20 @@ TEST_F(AddressServiceTest, MultipleInterface) {
       AddInterfaceAddress(kInterfaceIndex2, net_base::IPCIDR(ipv4_addr_2),
                           Eq(std::nullopt)))
       .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_,
+              RemoveRoute(kInterfaceIndex2, IsRouteInTable(RT_TABLE_MAIN)))
+      .WillOnce(Return(true));
+  EXPECT_CALL(routing_table_, AddRoute(kInterfaceIndex2, IsRouteInTable(1007u)))
+      .WillOnce(Return(true));
   address_service_->SetIPv4Address(kInterfaceIndex2, ipv4_addr_2);
 
   // Clearing interface 2 should has no effect on interface 1.
   EXPECT_CALL(
       address_rtnl_handler_,
       RemoveInterfaceAddress(kInterfaceIndex2, net_base::IPCIDR(ipv4_addr_2)));
+  EXPECT_CALL(routing_table_,
+              RemoveRoute(kInterfaceIndex2, IsRouteInTable(1007u)))
+      .WillOnce(Return(true));
   address_service_->ClearIPv4Address(kInterfaceIndex2);
 
   EXPECT_CALL(

@@ -4,9 +4,11 @@
 
 #include "patchpanel/network/mock_address_service.h"
 
+#include "patchpanel/network/address_service.h"
+
 namespace patchpanel {
 
-MockAddressService::MockAddressService() = default;
+MockAddressService::MockAddressService() : AddressService(nullptr) {}
 MockAddressService::~MockAddressService() = default;
 
 }  // namespace patchpanel

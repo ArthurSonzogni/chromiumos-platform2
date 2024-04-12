@@ -12,18 +12,21 @@
 #include <base/memory/ptr_util.h>
 #include <net-base/ip_address.h>
 
+#include "patchpanel/network/routing_table.h"
+
 namespace patchpanel {
 
-AddressService::AddressService()
-    : rtnl_handler_(net_base::RTNLHandler::GetInstance()) {}
+AddressService::AddressService(RoutingTable* routing_table)
+    : routing_table_(routing_table),
+      rtnl_handler_(net_base::RTNLHandler::GetInstance()) {}
 
 AddressService::~AddressService() = default;
 
 // static
 std::unique_ptr<AddressService> AddressService::CreateForTesting(
-    net_base::RTNLHandler* rtnl_handler) {
+    net_base::RTNLHandler* rtnl_handler, RoutingTable* routing_table) {
   // Using `new` to access a non-public constructor.
-  auto ptr = base::WrapUnique(new AddressService());
+  auto ptr = base::WrapUnique(new AddressService(routing_table));
   ptr->rtnl_handler_ = rtnl_handler;
   return ptr;
 }
@@ -40,6 +43,14 @@ void AddressService::ClearIPv4Address(int interface_index) {
   }
   rtnl_handler_->RemoveInterfaceAddress(interface_index,
                                         net_base::IPCIDR(current->second));
+  auto route =
+      RoutingTableEntry(net_base::IPCIDR(current->second.GetPrefixCIDR()),
+                        net_base::IPCIDR(net_base::IPFamily::kIPv4),
+                        net_base::IPAddress(net_base::IPFamily::kIPv4))
+          .SetTable(RoutingTable::GetInterfaceTableId(interface_index))
+          .SetScope(RT_SCOPE_LINK)
+          .SetPrefSrc(net_base::IPAddress(current->second.address()));
+  routing_table_->RemoveRoute(interface_index, route);
   added_ipv4_address_.erase(current);
 }
 
@@ -55,6 +66,15 @@ void AddressService::SetIPv4Address(
     LOG(INFO) << __func__ << ": removing existing address " << current->second;
     rtnl_handler_->RemoveInterfaceAddress(interface_index,
                                           net_base::IPCIDR(current->second));
+
+    auto route =
+        RoutingTableEntry(net_base::IPCIDR(current->second.GetPrefixCIDR()),
+                          net_base::IPCIDR(net_base::IPFamily::kIPv4),
+                          net_base::IPAddress(net_base::IPFamily::kIPv4))
+            .SetTable(RoutingTable::GetInterfaceTableId(interface_index))
+            .SetScope(RT_SCOPE_LINK)
+            .SetPrefSrc(net_base::IPAddress(current->second.address()));
+    routing_table_->RemoveRoute(interface_index, route);
   }
 
   if (!rtnl_handler_->AddInterfaceAddress(interface_index,
@@ -66,6 +86,25 @@ void AddressService::SetIPv4Address(
     LOG(INFO) << __func__ << ": adding new address " << local;
   }
   added_ipv4_address_[interface_index] = local;
+
+  // Move kernel-added local IPv4 route from main table to per-network table.
+  // Note that for IPv6 kernel directly adds those routes into per-device table
+  // thanks to accept_ra_rt_table.
+  auto route = RoutingTableEntry(net_base::IPCIDR(local.GetPrefixCIDR()),
+                                 net_base::IPCIDR(net_base::IPFamily::kIPv4),
+                                 net_base::IPAddress(net_base::IPFamily::kIPv4))
+                   .SetTable(RoutingTable::GetInterfaceTableId(interface_index))
+                   .SetScope(RT_SCOPE_LINK)
+                   .SetPrefSrc(net_base::IPAddress(local.address()));
+  if (!routing_table_->AddRoute(interface_index, route)) {
+    LOG(ERROR) << __func__ << ": fail to add local route " << route
+               << " to per-network table, keeping the kernel-added route in "
+                  "main table";
+    return;
+  }
+  route.protocol = RTPROT_KERNEL;
+  route.table = RT_TABLE_MAIN;
+  routing_table_->RemoveRoute(interface_index, route);
 }
 
 void AddressService::SetIPv6Addresses(

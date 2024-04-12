@@ -389,6 +389,12 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
               AddRule(-1, IsValidRoutingRule(net_base::IPFamily::kIPv4, 1000u,
                                              RT_TABLE_MAIN)))
       .WillOnce(Return(true));
+  // 1010:  from all to 198.51.100.101/24 lookup 1003
+  EXPECT_CALL(*rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidDstRule(net_base::IPFamily::kIPv4, 1010u,
+                                     all_addresses[0], kExpectedTable)))
+      .WillOnce(Return(true));
   // 1010:  from all fwmark 0x3eb0000/0xffff0000 lookup 1003
   EXPECT_CALL(*rule_table_,
               AddRule(kInterfaceIndex,
@@ -401,11 +407,14 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
       AddRule(kInterfaceIndex, IsValidOifRule(net_base::IPFamily::kIPv4, 1010u,
                                               "eth0", kExpectedTable)))
       .WillOnce(Return(true));
-  // 1010:  from 198.51.100.101/24 lookup 1003
-  EXPECT_CALL(*rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(net_base::IPFamily::kIPv4, 1010u,
-                                     all_addresses[0], kExpectedTable)))
+  // 1010:  from 198.51.100.101 lookup 1003
+  EXPECT_CALL(
+      *rule_table_,
+      AddRule(kInterfaceIndex,
+              IsValidSrcRule(net_base::IPFamily::kIPv4, 1010u,
+                             net_base::IPCIDR::CreateFromAddressAndPrefix(
+                                 all_addresses[0].address(), 32),
+                             kExpectedTable)))
       .WillOnce(Return(true));
   // 1010:  from all iif eth0 lookup 1003
   EXPECT_CALL(
@@ -460,6 +469,12 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
               AddRule(-1, IsValidRoutingRule(net_base::IPFamily::kIPv6, 1000u,
                                              RT_TABLE_MAIN)))
       .WillOnce(Return(true));
+  // 1010:  from all to 2001:db8:0:1000::abcd/64 lookup 1003
+  EXPECT_CALL(*rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidDstRule(net_base::IPFamily::kIPv6, 1010u,
+                                     all_addresses[1], kExpectedTable)))
+      .WillOnce(Return(true));
   // 1010:  from all fwmark 0x3eb0000/0xffff0000 lookup 1003
   EXPECT_CALL(*rule_table_,
               AddRule(kInterfaceIndex,
@@ -472,11 +487,14 @@ TEST_F(NetworkApplierRoutingPolicyTest, DefaultPhysical) {
       AddRule(kInterfaceIndex, IsValidOifRule(net_base::IPFamily::kIPv6, 1010u,
                                               "eth0", kExpectedTable)))
       .WillOnce(Return(true));
-  // 1010:  from 2001:db8:0:1000::abcd/64 lookup 1003
-  EXPECT_CALL(*rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(net_base::IPFamily::kIPv6, 1010u,
-                                     all_addresses[1], kExpectedTable)))
+  // 1010:  from 2001:db8:0:1000::abcd lookup 1003
+  EXPECT_CALL(
+      *rule_table_,
+      AddRule(kInterfaceIndex,
+              IsValidSrcRule(net_base::IPFamily::kIPv6, 1010u,
+                             net_base::IPCIDR::CreateFromAddressAndPrefix(
+                                 all_addresses[1].address(), 128),
+                             kExpectedTable)))
       .WillOnce(Return(true));
   // 1010:  from all iif eth0 lookup 1003
   EXPECT_CALL(
@@ -644,6 +662,12 @@ TEST_F(NetworkApplierRoutingPolicyTest,
   EXPECT_CALL(*rule_table_, FlushRules(kInterfaceIndex));
 
   // IPv4 rules:
+  // 1020:  from all to 198.51.100.101/24 lookup 1004
+  EXPECT_CALL(*rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidDstRule(net_base::IPFamily::kIPv4, 1020u,
+                                     all_addresses[0], kExpectedTable)))
+      .WillOnce(Return(true));
   // 1020:  from all fwmark 0x3ec0000/0xffff0000 lookup 1004
   EXPECT_CALL(*rule_table_,
               AddRule(kInterfaceIndex,
@@ -656,11 +680,14 @@ TEST_F(NetworkApplierRoutingPolicyTest,
       AddRule(kInterfaceIndex, IsValidOifRule(net_base::IPFamily::kIPv4, 1020u,
                                               kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
-  // 1020:  from 198.51.100.101/24 lookup 1004
-  EXPECT_CALL(*rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(net_base::IPFamily::kIPv4, 1020u,
-                                     all_addresses[0], kExpectedTable)))
+  // 1020:  from 198.51.100.101 lookup 1004
+  EXPECT_CALL(
+      *rule_table_,
+      AddRule(kInterfaceIndex,
+              IsValidSrcRule(net_base::IPFamily::kIPv4, 1020u,
+                             net_base::IPCIDR::CreateFromAddressAndPrefix(
+                                 all_addresses[0].address(), 32),
+                             kExpectedTable)))
       .WillOnce(Return(true));
   // 1020:  from all iif wlan0 lookup 1004
   EXPECT_CALL(
@@ -684,6 +711,12 @@ TEST_F(NetworkApplierRoutingPolicyTest,
       .WillOnce(Return(true));
 
   // IPv6 rules:
+  // 1020:  from all to 2001:db8:0:1000::abcd/64 lookup 1004
+  EXPECT_CALL(*rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidDstRule(net_base::IPFamily::kIPv6, 1020u,
+                                     all_addresses[1], kExpectedTable)))
+      .WillOnce(Return(true));
   // 1020:  from all fwmark 0x3ec0000/0xffff0000 lookup 1004
   EXPECT_CALL(*rule_table_,
               AddRule(kInterfaceIndex,
@@ -696,11 +729,14 @@ TEST_F(NetworkApplierRoutingPolicyTest,
       AddRule(kInterfaceIndex, IsValidOifRule(net_base::IPFamily::kIPv6, 1020u,
                                               kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
-  // 1020:  from 198.51.100.101/24 lookup 1004
-  EXPECT_CALL(*rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(net_base::IPFamily::kIPv6, 1020u,
-                                     all_addresses[1], kExpectedTable)))
+  // 1020:  from 2001:db8:0:1000::abcd lookup 1004
+  EXPECT_CALL(
+      *rule_table_,
+      AddRule(kInterfaceIndex,
+              IsValidSrcRule(net_base::IPFamily::kIPv6, 1020u,
+                             net_base::IPCIDR::CreateFromAddressAndPrefix(
+                                 all_addresses[1].address(), 128),
+                             kExpectedTable)))
       .WillOnce(Return(true));
   // 1020:  from all iif wlan0 lookup 1004
   EXPECT_CALL(
@@ -738,6 +774,12 @@ TEST_F(NetworkApplierRoutingPolicyTest,
   EXPECT_CALL(*rule_table_, FlushRules(kInterfaceIndex));
 
   // IPv4 rules:
+  // 1030:  from all to 198.51.100.101/24 lookup 1005
+  EXPECT_CALL(*rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidDstRule(net_base::IPFamily::kIPv4, 1030u,
+                                     all_addresses[0], kExpectedTable)))
+      .WillOnce(Return(true));
   // 1030:  from all fwmark 0x3ed0000/0xffff0000 lookup 1005
   EXPECT_CALL(*rule_table_,
               AddRule(kInterfaceIndex,
@@ -750,11 +792,14 @@ TEST_F(NetworkApplierRoutingPolicyTest,
       AddRule(kInterfaceIndex, IsValidOifRule(net_base::IPFamily::kIPv4, 1030u,
                                               kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
-  // 1030:  from 198.51.100.101/24 lookup 1005
-  EXPECT_CALL(*rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(net_base::IPFamily::kIPv4, 1030u,
-                                     all_addresses[0], kExpectedTable)))
+  // 1030:  from 198.51.100.101 lookup 1005
+  EXPECT_CALL(
+      *rule_table_,
+      AddRule(kInterfaceIndex,
+              IsValidSrcRule(net_base::IPFamily::kIPv4, 1030u,
+                             net_base::IPCIDR::CreateFromAddressAndPrefix(
+                                 all_addresses[0].address(), 32),
+                             kExpectedTable)))
       .WillOnce(Return(true));
   // 1030:  from all iif wwan0 lookup 1005
   EXPECT_CALL(
@@ -771,6 +816,12 @@ TEST_F(NetworkApplierRoutingPolicyTest,
                                             all_addresses[1], 100u,
                                             RoutingTable::kUnreachableTableId)))
       .WillOnce(Return(true));
+  // 1030:  from all to 2001:db8:0:1000::abcd/64 lookup 1005
+  EXPECT_CALL(*rule_table_,
+              AddRule(kInterfaceIndex,
+                      IsValidDstRule(net_base::IPFamily::kIPv6, 1030u,
+                                     all_addresses[1], kExpectedTable)))
+      .WillOnce(Return(true));
   // 1030:  from all fwmark 0x3ed0000/0xffff0000 lookup 1005
   EXPECT_CALL(*rule_table_,
               AddRule(kInterfaceIndex,
@@ -783,11 +834,14 @@ TEST_F(NetworkApplierRoutingPolicyTest,
       AddRule(kInterfaceIndex, IsValidOifRule(net_base::IPFamily::kIPv6, 1030u,
                                               kInterfaceName, kExpectedTable)))
       .WillOnce(Return(true));
-  // 1030:  from 2001:db8:0:1000::abcd/64 lookup 1005
-  EXPECT_CALL(*rule_table_,
-              AddRule(kInterfaceIndex,
-                      IsValidSrcRule(net_base::IPFamily::kIPv6, 1030u,
-                                     all_addresses[1], kExpectedTable)))
+  // 1030:  from 2001:db8:0:1000::abcd lookup 1005
+  EXPECT_CALL(
+      *rule_table_,
+      AddRule(kInterfaceIndex,
+              IsValidSrcRule(net_base::IPFamily::kIPv6, 1030u,
+                             net_base::IPCIDR::CreateFromAddressAndPrefix(
+                                 all_addresses[1].address(), 128),
+                             kExpectedTable)))
       .WillOnce(Return(true));
   // 1030:  from all iif wwan0 lookup 1005
   EXPECT_CALL(
