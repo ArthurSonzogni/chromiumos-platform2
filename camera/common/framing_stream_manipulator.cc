@@ -893,7 +893,8 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
   ctx->state_transition = state_transition;
 
   if (state_transition.second == State::kManualZoom) {
-    ctx->crop_region = normalized_crop_region;
+    ctx->crop_region =
+        ConvertToCropSpace(normalized_crop_region.value(), full_frame_crop_);
     ctx->requested_crop_region =
         Rect<uint32_t>(requested_crop_region[0], requested_crop_region[1],
                        requested_crop_region[2], requested_crop_region[3]);
