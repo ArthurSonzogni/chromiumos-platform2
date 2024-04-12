@@ -285,6 +285,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   FRIEND_TEST(ManagerTest, ConnectToMostSecureWiFi);
   FRIEND_TEST(ManagerTest, RefreshAllTrafficCountersTask);
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
+  FRIEND_TEST(ManagerTest, TechnologyEnabledCheck);
   FRIEND_TEST(VirtualDeviceTest, ResetConnection);
 
   ~Device() override;

@@ -584,6 +584,7 @@ class Manager {
   FRIEND_TEST(ManagerTest, SetCheckPortalListProp);
   FRIEND_TEST(ManagerTest, SetDNSProxyAddresses);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
+  FRIEND_TEST(ManagerTest, TechnologyEnabledCheck);
   FRIEND_TEST(ManagerTest, TetheringLoadAndUnloadConfiguration);
   FRIEND_TEST(ManagerTest, UpdateDefaultPhysicalService);
   FRIEND_TEST(ManagerTest, UpdateDefaultPhysicalServiceDNSProxy);
@@ -698,6 +699,7 @@ class Manager {
   void SortServicesTask();
   void DeviceStatusCheckTask();
   void DevicePresenceStatusCheck();
+  void TechnologyEnabledCheck();
 
   // Sets the profile of |service| to |profile|, without notifying its
   // previous profile.  Configures a |service| with |args|, then saves

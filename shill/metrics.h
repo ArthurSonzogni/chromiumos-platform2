@@ -943,6 +943,20 @@ class Metrics {
       .max = kDevicePresenceStatusMax,
   };
 
+  // The state if a technology--Ethernet, WiFi, Cellular--is enabled or not
+  enum TechnologyEnabled {
+    kTechnologyEnabledNo = 0,
+    kTechnologyEnabledYes = 1,
+    kTechnologyEnabledMax
+  };
+  // Metric indicating if a technology is enabled or not. The enabled state is
+  // checked periodically together with |DevicePresenceStatus|. The checking
+  // frequency is every |kDeviceStatusCheckInterval|.
+  static constexpr EnumMetric<NameByTechnology> kMetricTechnologyEnabled = {
+      .n = NameByTechnology{"TechnologyEnabled"},
+      .max = kTechnologyEnabledMax,
+  };
+
   enum DeviceTechnologyType {
     kDeviceTechnologyTypeUnknown = 0,
     kDeviceTechnologyTypeEthernet = 1,

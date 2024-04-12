@@ -1976,11 +1976,25 @@ void Manager::DeviceStatusCheckTask() {
   SLOG(4) << "In " << __func__;
 
   DevicePresenceStatusCheck();
+  TechnologyEnabledCheck();
 
   device_status_check_task_.Reset(base::BindOnce(
       &Manager::DeviceStatusCheckTask, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, device_status_check_task_.callback(),
                                kDeviceStatusCheckInterval);
+}
+
+void Manager::TechnologyEnabledCheck() {
+  Error error;
+  std::vector<std::string> enabled_technologies = EnabledTechnologies(&error);
+
+  for (const auto& technology : kProbeTechnologies) {
+    auto enabled = base::Contains(enabled_technologies, technology)
+                       ? Metrics::kTechnologyEnabledYes
+                       : Metrics::kTechnologyEnabledNo;
+    metrics_->SendEnumToUMA(Metrics::kMetricTechnologyEnabled,
+                            TechnologyFromName(technology), enabled);
+  }
 }
 
 void Manager::DevicePresenceStatusCheck() {

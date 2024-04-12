@@ -2135,6 +2135,32 @@ TEST_F(ManagerTest, DevicePresenceStatusCheck) {
   manager()->DevicePresenceStatusCheck();
 }
 
+TEST_F(ManagerTest, TechnologyEnabledCheck) {
+  DisableTechnologyReplyHandler disable_technology_reply_handler;
+  auto disable_technology_callback =
+      base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
+                          disable_technology_reply_handler.AsWeakPtr());
+  SetMockDevices(
+      {Technology::kEthernet, Technology::kWiFi, Technology::kCellular});
+  manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
+  manager()->RegisterDevice(mock_devices_[2]);
+  mock_devices_[0]->enabled_ = true;
+  mock_devices_[1]->enabled_ = true;
+  mock_devices_[2]->enabled_ = false;
+
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricTechnologyEnabled,
+                                        Technology::kEthernet,
+                                        Metrics::kTechnologyEnabledYes));
+  EXPECT_CALL(*metrics(),
+              SendEnumToUMA(Metrics::kMetricTechnologyEnabled,
+                            Technology::kWiFi, Metrics::kTechnologyEnabledYes));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricTechnologyEnabled,
+                                        Technology::kCellular,
+                                        Metrics::kTechnologyEnabledNo));
+  manager()->TechnologyEnabledCheck();
+}
+
 TEST_F(ManagerTest, SortServicesWithConnection) {
   MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
