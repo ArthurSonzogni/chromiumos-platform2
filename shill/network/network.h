@@ -243,7 +243,7 @@ class Network : public NetworkMonitor::ClientNetwork {
     config_.SetFromLinkProtocol(std::move(config));
   }
 
-  int network_id() const { return network_id_; }
+  mockable int network_id() const { return network_id_; }
   int interface_index() const { return interface_index_; }
   std::string interface_name() const { return interface_name_; }
   Technology technology() const { return technology_; }

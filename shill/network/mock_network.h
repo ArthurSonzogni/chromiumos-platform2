@@ -90,6 +90,7 @@ class MockNetwork : public Network {
               OnTermsAndConditions,
               (const net_base::HttpUrl&),
               (override));
+  MOCK_METHOD(int, network_id, (), (const, override));
 };
 
 class MockNetworkEventHandler : public Network::EventHandler {

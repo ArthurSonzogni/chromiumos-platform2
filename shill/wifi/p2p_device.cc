@@ -249,6 +249,8 @@ KeyValueStore P2PDevice::GetClientInfo() const {
                             interface_address_.value().ToString());
     go_info.insert({kP2PClientInfoGroupOwnerMACAddressProperty, group_bssid_});
     if (IsNetworkLayerConnected()) {
+      client_info.Set<int32_t>(kP2PClientInfoNetworkIDProperty,
+                               client_network_->network_id());
       const auto network_config = client_network_->GetNetworkConfig();
       if (network_config.ipv4_address != std::nullopt) {
         client_info.Set<String>(
@@ -271,9 +273,6 @@ KeyValueStore P2PDevice::GetClientInfo() const {
         go_info.insert({kP2PClientInfoGroupOwnerIPv6AddressProperty,
                         network_config.ipv6_gateway->ToString()});
       }
-      // TODO(b/325124667): use the network_id from Network class.
-      client_info.Set<int32_t>(kP2PClientInfoNetworkIDProperty,
-                               base::RandInt(0, INT_MAX));
     }
     client_info.Set<Stringmap>(kP2PClientInfoGroupOwnerProperty, go_info);
   }

@@ -59,6 +59,7 @@ const char kP2PBSSID[] = "de:ad:be:ef:00:00";
 const std::vector<uint8_t> kP2PMACAddress{0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a};
 const char kP2PPassphrase[] = "test0000";
 const int32_t kP2PFrequency = 2437;
+const int kClientNetworkID = 10;
 
 static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
 static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
@@ -562,6 +563,7 @@ TEST_F(P2PDeviceTest, ClientInfo) {
       *net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.100/24");
   config.ipv4_gateway = *net_base::IPv4Address::CreateFromString("192.168.1.1");
   network_->set_dhcp_network_config_for_testing(config);
+  ON_CALL(*network_, network_id()).WillByDefault(Return(kClientNetworkID));
 
   client_info = client_device_->GetClientInfo();
   EXPECT_TRUE(client_info.Contains<uint32_t>(kP2PClientInfoShillIDProperty));
@@ -593,6 +595,8 @@ TEST_F(P2PDeviceTest, ClientInfo) {
       net_base::MacAddress::CreateFromBytes(kP2PMACAddress).value().ToString());
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoIPv4AddressProperty),
             "192.168.1.100");
+  EXPECT_EQ(client_info.Get<int32_t>(kP2PClientInfoNetworkIDProperty),
+            kClientNetworkID);
   GOInfo = client_info.Get<Stringmap>(kP2PClientInfoGroupOwnerProperty);
   EXPECT_EQ(GOInfo.at(kP2PClientInfoGroupOwnerMACAddressProperty), kP2PBSSID);
   EXPECT_EQ(GOInfo.at(kP2PClientInfoGroupOwnerIPv4AddressProperty),
