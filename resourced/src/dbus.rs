@@ -351,7 +351,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                 ) {
                     Ok(()) => Ok(()),
                     Err(e) => {
-                        error!("set_rtc_audeio_active failed: {:#}", e);
+                        error!("set_rtc_audio_active failed: {:#}", e);
                         Err(MethodErr::failed("Failed to set RTC audio activity"))
                     }
                 }
