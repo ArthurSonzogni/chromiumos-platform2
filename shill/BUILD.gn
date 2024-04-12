@@ -241,7 +241,14 @@ generate_dbus_proxies("generate_bluetooth_proxies") {
 
 generate_mojom_bindings("mojo_bindings") {
   mojo_root = "${platform2_root}"
-  sources = [ "mojom/passpoint.mojom" ]
+  sources = [
+    "mojom/passpoint.mojom",
+    "mojom/portal.mojom",
+  ]
+  mojo_extra_args = [
+    "--typemap",
+    rebase_path("mojom/type_mappings.json"),
+  ]
 }
 
 install_config("mojo_policy") {
@@ -332,6 +339,8 @@ static_library("libshill") {
     "manager.cc",
     "metrics.cc",
     "mojom/mojo_passpoint_service.cc",
+    "mojom/mojo_portal_service.cc",
+    "mojom/mojo_portal_ui_interaction_handler.cc",
     "mojom/shill_mojo_service_manager.cc",
     "network/capport_proxy.cc",
     "network/compound_network_config.cc",
@@ -784,7 +793,9 @@ if (use.test) {
       "mock_service.cc",
       "mock_time.cc",
       "mock_virtual_device.cc",
+      "mojom/mock_mojo_portal_ui_interaction_handler.cc",
       "mojom/mock_shill_mojo_service_manager.cc",
+      "mojom/mojo_portal_service_test.cc",
       "network/capport_proxy_test.cc",
       "network/compound_network_config_test.cc",
       "network/connection_diagnostics_test.cc",

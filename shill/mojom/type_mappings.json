@@ -1,0 +1,19 @@
+{
+  "c++": {
+    "chromeos.connectivity.mojom.URL": {
+      "copyable_pass_by_value": false,
+      "default_constructible": true,
+      "force_serialize": false,
+      "hashable": false,
+      "move_only": false,
+      "nullable_is_same_type": true,
+      "public_headers": [
+        "net-base/http_url.h"
+      ],
+      "traits_headers": [
+        "shill/mojom/url_mojom_traits.h"
+      ],
+      "typename": "::net_base::HttpUrl"
+    }
+  }
+}
