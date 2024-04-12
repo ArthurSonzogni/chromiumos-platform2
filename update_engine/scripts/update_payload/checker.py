@@ -57,6 +57,7 @@ _SUPPORTED_MINOR_VERSIONS = {
     5: (_TYPE_DELTA,),
     6: (_TYPE_DELTA,),
     7: (_TYPE_DELTA,),
+    8: (_TYPE_DELTA,),
 }
 
 
