@@ -28,6 +28,11 @@ namespace patchpanel {
 // patchpaneld user.
 void EnterChildProcessJail();
 
+// Runs the current process with minimal privileges. This function is expected
+// to be used by child processes that need only CAP_NET_ADMIN and to run as the
+// patchpaneld user.
+void EnterChildProcessJailWithNetAdmin();
+
 // Enforces the expected processes are run with the correct privileges.
 class MinijailedProcessRunner {
  public:

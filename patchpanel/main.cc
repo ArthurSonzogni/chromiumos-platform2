@@ -18,6 +18,7 @@
 #include "patchpanel/multicast_proxy.h"
 #include "patchpanel/ndproxy.h"
 #include "patchpanel/patchpanel_daemon.h"
+#include "patchpanel/socket_daemon.h"
 #include "patchpanel/subprocess_controller.h"
 
 int main(int argc, char* argv[]) {
@@ -31,6 +32,9 @@ int main(int argc, char* argv[]) {
   DEFINE_int32(
       nd_proxy_fd, -1,
       "Control socket for starting the ND proxy subprocess. Used internally.");
+  DEFINE_int32(socket_service_fd, -1,
+               "Control socket for starting the socket daemon subprocess. "
+               "Used internally.");
 
   brillo::FlagHelper::Init(argc, argv, "ARC network daemon");
 
@@ -58,6 +62,13 @@ int main(int argc, char* argv[]) {
     base::ScopedFD fd(FLAGS_mcast_proxy_fd);
     patchpanel::MulticastProxy mcast_proxy(std::move(fd));
     return mcast_proxy.Run();
+  }
+
+  if (FLAGS_socket_service_fd >= 0) {
+    LOG(INFO) << "Spawning socket D-Bus daemon";
+    base::ScopedFD fd(FLAGS_socket_service_fd);
+    patchpanel::SocketDaemon socket_daemon(std::move(fd));
+    return socket_daemon.Run();
   }
 
   LOG(INFO) << "Starting patchpanel D-Bus daemon";

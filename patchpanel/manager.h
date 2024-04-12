@@ -268,6 +268,8 @@ class Manager : public ForwardingService {
   std::unique_ptr<SubprocessController> mcast_proxy_;
   // IPv6 neighbor discovery forwarder process handler.
   std::unique_ptr<SubprocessController> nd_proxy_;
+  // Socket service process handler.
+  std::unique_ptr<SubprocessController> socket_service_;
 
   // IPv6 address provisioning / ndp forwarding service.
   std::unique_ptr<GuestIPv6Service> ipv6_svc_;

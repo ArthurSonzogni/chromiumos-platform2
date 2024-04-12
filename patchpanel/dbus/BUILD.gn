@@ -30,7 +30,7 @@ pkg_config("target_defaults") {
 generate_dbus_proxies("patchpanel_dbus_proxies") {
   sources = [ "../dbus_bindings/org.chromium.patchpanel.xml" ]
   proxy_output_file = "include/patchpanel/dbus-proxies.h"
-  dbus_service_config = "../dbus_bindings/dbus-service-config.json"
+  dbus_service_config = "../dbus_bindings/patchpanel-dbus-service-config.json"
 }
 
 shared_library("libpatchpanel-client") {

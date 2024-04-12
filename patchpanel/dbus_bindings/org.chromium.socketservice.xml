@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  Copyright 2024 The ChromiumOS Authors
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+-->
+
+<!--
+  The object and interface defined in this file is used with the service name
+  "org.chromium.SocketService"
+
+  The protobuf specified in this file can be found in:
+  platform2/system_api/dbus/patchpanel/patchpanel_service.proto
+  platform2/system_api/dbus/traffic_annotation/traffic_annotation.proto
+
+  Note: If you update this file, please remember to update the dbus-constants
+  file at:
+  platform2/system_api/dbus/patchpanel/dbus-constants.h
+-->
+
+<node name="/org/chromium/SocketService"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.SocketService">
+    <method name="TagSocket">
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::TagSocketRequest" />
+      </arg>
+      <arg name="socket_fd" type="h" direction="in" />
+      <arg name="response" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="patchpanel::TagSocketResponse" />
+      </arg>
+    </method>
+  </interface>
+</node>

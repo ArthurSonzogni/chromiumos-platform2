@@ -39,7 +39,10 @@ group("all") {
 
 # Install the D-Bus config.
 install_config("install_dbus_config") {
-  sources = [ "dbus/org.chromium.Patchpanel.conf" ]
+  sources = [
+    "dbus/org.chromium.Patchpanel.conf",
+    "dbus/org.chromium.SocketService.conf",
+  ]
   install_path = "dbus_system_d"
 }
 
@@ -98,7 +101,13 @@ proto_library("patchpanel_ipc_protos") {
 generate_dbus_adaptors("patchpanel_dbus_adaptors") {
   sources = [ "dbus_bindings/org.chromium.patchpanel.xml" ]
   dbus_adaptors_out_dir = "include/patchpanel/dbus_adaptors"
-  dbus_service_config = "dbus_bindings/dbus-service-config.json"
+  dbus_service_config = "dbus_bindings/patchpanel-dbus-service-config.json"
+}
+
+generate_dbus_adaptors("socketservice_dbus_adaptors") {
+  sources = [ "dbus_bindings/org.chromium.socketservice.xml" ]
+  dbus_adaptors_out_dir = "include/socketservice/dbus_adaptors"
+  dbus_service_config = "dbus_bindings/socketservice-dbus-service-config.json"
 }
 
 source_set("util_sources") {
@@ -167,6 +176,8 @@ static_library("libpatchpanel") {
     "rtnl_client.cc",
     "scoped_ns.cc",
     "shill_client.cc",
+    "socket_daemon.cc",
+    "socket_service_adaptor.cc",
     "subprocess_controller.cc",
     "system.cc",
     "vm_concierge_client.cc",
@@ -191,6 +202,7 @@ static_library("libpatchpanel") {
   deps = [
     ":patchpanel_dbus_adaptors",
     ":patchpanel_ipc_protos",
+    ":socketservice_dbus_adaptors",
     ":util_sources",
   ]
 }

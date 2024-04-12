@@ -263,6 +263,19 @@ void EnterChildProcessJail() {
   m->Destroy(jail);
 }
 
+void EnterChildProcessJailWithNetAdmin() {
+  brillo::Minijail* m = brillo::Minijail::GetInstance();
+  struct minijail* jail = m->New();
+
+  // Most of these return void, but DropRoot() can fail if the user/group
+  // does not exist.
+  CHECK(m->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup))
+      << "Could not drop root privileges";
+  m->UseCapabilities(jail, kNetAdminCapMask);
+  m->Enter(jail);
+  m->Destroy(jail);
+}
+
 MinijailedProcessRunner* MinijailedProcessRunner::GetInstance() {
   return g_process_runner_.Pointer();
 }

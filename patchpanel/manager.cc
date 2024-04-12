@@ -81,10 +81,13 @@ Manager::Manager(const base::FilePath& cmd_path,
       system, process_manager, cmd_path, "--mcast_proxy_fd");
   nd_proxy_ = std::make_unique<patchpanel::SubprocessController>(
       system, process_manager, cmd_path, "--nd_proxy_fd");
+  socket_service_ = std::make_unique<patchpanel::SubprocessController>(
+      system, process_manager, cmd_path, "--socket_service_fd");
 
   adb_proxy_->Start();
   mcast_proxy_->Start();
   nd_proxy_->Start();
+  socket_service_->Start();
 
   routing_svc_ = std::make_unique<RoutingService>();
   counters_svc_ =
