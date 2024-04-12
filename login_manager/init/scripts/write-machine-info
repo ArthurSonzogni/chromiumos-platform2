@@ -55,9 +55,9 @@ chmod 0644 "${MACHINE_INFO}"
 
 # Output the Flex ID if this is a Reven device, and SN if not.
 if crossystem "hwid?REVEN-ANAE A6A-A7I"; then
-  (echo "flex_id=\"$(flex_id_tool --type=id)\"") >> "${MACHINE_INFO}"
+  echo "flex_id=\"$(flex_id_tool --type=id)\"" >> "${MACHINE_INFO}"
 else
-  echo "serial_number=\"$(serial_number)\""
+  echo "serial_number=\"$(serial_number)\"" >> "${MACHINE_INFO}"
 fi
 
 MACHINE_INFO_ERR=$( {
