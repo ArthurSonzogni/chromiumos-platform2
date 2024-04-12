@@ -9089,6 +9089,7 @@ mno {
       name: "Telcel"
     }
     mccmnc: "33402"
+    mccmnc: "334020"
     mobile_apn {
       apn: "internet.itelcel.com"
       username: "webgprs"
