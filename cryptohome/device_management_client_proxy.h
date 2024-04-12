@@ -14,7 +14,6 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
-#include <cryptohome/firmware_management_parameters_interface.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
 #include <device_management/proto_bindings/device_management_interface.pb.h>
