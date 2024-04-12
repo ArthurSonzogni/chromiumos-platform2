@@ -49,6 +49,8 @@ void ConvertToStatusResult(const UpdateEngineStatus& ue_status,
   }
   out_status->set_is_interactive(ue_status.is_interactive);
   out_status->set_will_defer_update(ue_status.will_defer_update);
+  out_status->set_extended_date(ue_status.extended_date);
+  out_status->set_extended_opt_in_required(ue_status.extended_opt_in_required);
 }
 }  // namespace
 
