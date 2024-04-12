@@ -14032,6 +14032,17 @@ mno {
 
 mno {
   data {
+    uuid: "df7ee931-dfbf-473b-ac8a-56e1ad1757e9"
+    country: "us"
+    localized_name {
+      name: "Cellular One"
+    }
+    mccmnc: "310320"
+  }
+}
+
+mno {
+  data {
     uuid: "b7566324-83e5-4a57-8924-7c88b3ae731c"
     country: "us"
     localized_name {
