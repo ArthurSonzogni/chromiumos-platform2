@@ -188,16 +188,10 @@ const char kNumOfSessionsPerChargeName[] = "Power.NumberOfSessionsPerCharge";
 const int kNumOfSessionsPerChargeMin = 1;
 const int kNumOfSessionsPerChargeMax = 10000;
 
-const char kPowerButtonDownTimeName[] = "Power.PowerButtonDownTime";  // ms
-const int kPowerButtonDownTimeMin = 1;
-const int kPowerButtonDownTimeMax = 8 * 1000;
-
 const char kPowerButtonAcknowledgmentDelayName[] =
     "Power.PowerButtonAcknowledgmentDelay";  // ms
 const int kPowerButtonAcknowledgmentDelayMin = 1;
 const int kPowerButtonAcknowledgmentDelayMax = 8 * 1000;
-
-const char kBatteryInfoSampleName[] = "Power.BatteryInfoSample";
 
 const char kPowerSupplyMaxVoltageName[] = "Power.PowerSupplyMaxVoltage";
 const int kPowerSupplyMaxVoltageMax = 21;

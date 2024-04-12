@@ -449,15 +449,6 @@ void MetricsCollector::HandlePowerStatusUpdate(const PowerStatus& status) {
 
   GenerateBatteryDischargeRateMetric();
   GenerateBatteryDischargeRateWhileSuspendedMetric();
-
-  SendEnumMetric(kBatteryInfoSampleName,
-                 static_cast<int>(BatteryInfoSampleResult::READ),
-                 static_cast<int>(BatteryInfoSampleResult::MAX));
-  // TODO(derat): Continue sending BAD in some situations? Remove this metric
-  // entirely?
-  SendEnumMetric(kBatteryInfoSampleName,
-                 static_cast<int>(BatteryInfoSampleResult::GOOD),
-                 static_cast<int>(BatteryInfoSampleResult::MAX));
 }
 
 void MetricsCollector::HandleShutdown(ShutdownReason reason) {
@@ -612,12 +603,7 @@ void MetricsCollector::HandlePowerButtonEvent(ButtonState state) {
       if (last_power_button_down_timestamp_.is_null()) {
         LOG(ERROR) << "Got power-button-up event while button was already up";
       } else {
-        base::TimeDelta delta =
-            clock_.GetCurrentTime() - last_power_button_down_timestamp_;
         last_power_button_down_timestamp_ = base::TimeTicks();
-        SendMetric(kPowerButtonDownTimeName, delta.InMilliseconds(),
-                   kPowerButtonDownTimeMin, kPowerButtonDownTimeMax,
-                   kDefaultBuckets);
       }
       break;
     }

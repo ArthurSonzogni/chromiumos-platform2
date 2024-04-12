@@ -136,7 +136,6 @@ class MetricsCollectorTest : public TestEnvironment {
                  kBatteryCapacityActualSuffix);
     IgnoreMetric(std::string(kBatteryLifeWhileSuspendedName) +
                  kBatteryCapacityDesignSuffix);
-    IgnoreEnumMetric(kBatteryInfoSampleName);
     IgnoreEnumMetric(kPowerSupplyTypeName);
     IgnoreEnumMetric(kPowerSupplyMaxVoltageName);
     IgnoreEnumMetric(kPowerSupplyMaxPowerName);
@@ -698,28 +697,6 @@ TEST_F(MetricsCollectorTest, SendMetricWithPowerSource) {
   ExpectMetric("Dummy.MetricOnAC", 6, 2, 200, 80);
   EXPECT_TRUE(
       collector_.SendMetricWithPowerSource("Dummy.Metric", 6, 2, 200, 80));
-}
-
-TEST_F(MetricsCollectorTest, PowerButtonDownMetric) {
-  Init();
-
-  // We should ignore a button release that wasn't preceded by a press.
-  collector_.HandlePowerButtonEvent(ButtonState::UP);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
-
-  // Presses that are followed by additional presses should also be ignored.
-  collector_.HandlePowerButtonEvent(ButtonState::DOWN);
-  collector_.HandlePowerButtonEvent(ButtonState::DOWN);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
-
-  // Send a regular sequence of events and check that the duration is reported.
-  collector_.HandlePowerButtonEvent(ButtonState::DOWN);
-  const base::TimeDelta kDuration = base::Milliseconds(243);
-  AdvanceTime(kDuration);
-  ExpectMetric(kPowerButtonDownTimeName, kDuration.InMilliseconds(),
-               kPowerButtonDownTimeMin, kPowerButtonDownTimeMax,
-               kDefaultBuckets);
-  collector_.HandlePowerButtonEvent(ButtonState::UP);
 }
 
 TEST_F(MetricsCollectorTest, AmbientLightResumeMetric) {

@@ -148,15 +148,9 @@ extern const char kNumOfSessionsPerChargeName[];
 extern const int kNumOfSessionsPerChargeMin;
 extern const int kNumOfSessionsPerChargeMax;
 
-extern const char kPowerButtonDownTimeName[];
-extern const int kPowerButtonDownTimeMin;
-extern const int kPowerButtonDownTimeMax;
-
 extern const char kPowerButtonAcknowledgmentDelayName[];
 extern const int kPowerButtonAcknowledgmentDelayMin;
 extern const int kPowerButtonAcknowledgmentDelayMax;
-
-extern const char kBatteryInfoSampleName[];
 
 extern const char kPowerSupplyMaxVoltageName[];
 extern const int kPowerSupplyMaxVoltageMax;
@@ -210,14 +204,6 @@ extern const char kBatterySaverUserBrightenedSec[];
 extern const char kDisplayAfterResumeDurationMsName[];
 extern const int kDisplayAfterResumeDurationMsMin;
 extern const int kDisplayAfterResumeDurationMsMax;
-
-// Values for kBatteryInfoSampleName.
-enum class BatteryInfoSampleResult {
-  READ,
-  GOOD,
-  BAD,
-  MAX,
-};
 
 // Values for kPowerSupplyTypeName. Do not renumber.
 enum class PowerSupplyType {
