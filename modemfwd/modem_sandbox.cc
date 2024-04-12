@@ -65,8 +65,8 @@ int RunProcessInSandboxWithTimeout(
   // Create sandbox and run process.
   ScopedMinijail j =
       ConfigureSandbox(seccomp_file_path, should_remove_capabilities);
-  int ret = minijail_run_pid_pipes(j.get(), args[0], args.data(), &pid, nullptr,
-                                   child_stdout, child_stderr);
+  int ret = minijail_run_pid_pipes_no_preload(
+      j.get(), args[0], args.data(), &pid, nullptr, child_stdout, child_stderr);
 
   if (ret != 0) {
     LOG(ERROR) << "Failed to run minijail: " << strerror(-ret);
