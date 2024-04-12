@@ -12,6 +12,12 @@ set +e
 # Create an empty file so that we can simply append to it.
 true > "${UI_MACHINE_INFO_FILE}"
 
+# If we're on Flex, use the Flex state key as the re-enrollment key.
+if [ -n "$(which flex_id_tool)" ]; then
+  echo "\"re_enrollment_key\"=\"$(flex_id_tool --type=state_key)\"" \
+  >> "${UI_MACHINE_INFO_FILE}"
+fi
+
 ROOTDEV=$(rootdev -s -d || true)
 udevadm info --query=property --name="${ROOTDEV}" |
     awk -F = '/^ID_SERIAL=/ { print "\"root_disk_serial_number\"=\"" $2 "\""}' \

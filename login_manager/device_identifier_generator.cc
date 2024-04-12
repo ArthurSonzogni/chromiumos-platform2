@@ -190,8 +190,9 @@ DeviceIdentifierGenerator::ComputeKeys() {
         key_bytes.size() < 32) {
       metrics_->SendStateKeyGenerationStatus(
           LoginMetrics::STATE_KEY_STATUS_BAD_RE_ENROLLMENT_KEY);
-      LOG(ERROR) << "Malformed re-enrollment key. Bytes found: "
-                 << key_bytes.size() << ".";
+      LOG(ERROR) << "Malformed re-enrollment key, length: "
+                 << re_enrollment_key_.size()
+                 << ". Bytes found: " << key_bytes.size() << ".";
       return base::unexpected(
           StateKeysComputationError::kMalformedReEnrollmentKey);
     }
