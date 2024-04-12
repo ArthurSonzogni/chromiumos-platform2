@@ -585,10 +585,10 @@ class Manager {
   FRIEND_TEST(ManagerTest, SetDNSProxyAddresses);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
   FRIEND_TEST(ManagerTest, TetheringLoadAndUnloadConfiguration);
-  FRIEND_TEST(ManagerTest, UpdateDefaultServices);
-  FRIEND_TEST(ManagerTest, UpdateDefaultServicesDNSProxy);
+  FRIEND_TEST(ManagerTest, UpdateDefaultPhysicalService);
+  FRIEND_TEST(ManagerTest, UpdateDefaultPhysicalServiceDNSProxy);
   FRIEND_TEST(ManagerTest,
-              UpdateDefaultServicesWithDefaultServiceCallbacksRemoved);
+              UpdateDefaultPhysicalServiceWithDefaultServiceCallbacksRemoved);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiMainTest, ScanAllowRoam);
   FRIEND_TEST(WiFiMainTest, WiFiRequestScanTypeDefault);
@@ -714,8 +714,7 @@ class Manager {
   // their current state.
   void ConnectToBestServicesForTechnologies(bool is_wifi);
 
-  void UpdateDefaultServices(const ServiceRefPtr& logical_service,
-                             const ServiceRefPtr& physical_service);
+  void UpdateDefaultPhysicalService(const ServiceRefPtr& physical_service);
 
   // Runs the termination actions.  If all actions complete within
   // |kTerminationActionsTimeoutMilliseconds|, |done_callback| is called with a

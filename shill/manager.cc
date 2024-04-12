@@ -1568,14 +1568,8 @@ void Manager::RemoveDefaultServiceObserver(DefaultServiceObserver* observer) {
   default_service_observers_.RemoveObserver(observer);
 }
 
-void Manager::UpdateDefaultServices(const ServiceRefPtr& logical_service,
-                                    const ServiceRefPtr& physical_service) {
-  // Since GetDefaultService returns nullptr when the Service doesn't
-  // have a corresponding Connection, this takes into account both a
-  // change in default Service and a change in loss/gain of Connection
-  // for an unchanged default Service.
-  EmitDefaultService();
-
+void Manager::UpdateDefaultPhysicalService(
+    const ServiceRefPtr& physical_service) {
   bool physical_service_online =
       physical_service && physical_service->IsOnline();
   bool physical_service_changed =
@@ -1828,7 +1822,8 @@ void Manager::SortServicesTask() {
                                ConnectedTechnologies(&error));
   adaptor_->EmitStringChanged(kDefaultTechnologyProperty,
                               DefaultTechnology(&error));
-  UpdateDefaultServices(new_logical, new_physical);
+  EmitDefaultService();
+  UpdateDefaultPhysicalService(new_physical);
   RefreshConnectionState();
   if (ethernet_provider_)
     ethernet_provider_->RefreshGenericEthernetService();

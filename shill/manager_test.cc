@@ -2279,14 +2279,14 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   manager()->SortServicesTask();
 }
 
-TEST_F(ManagerTest, UpdateDefaultServices) {
+TEST_F(ManagerTest, UpdateDefaultPhysicalService) {
   EXPECT_EQ(GetDefaultServiceObserverCount(), 0);
 
   MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   ServiceRefPtr service = mock_service;
   ServiceRefPtr null_service = nullptr;
 
-  manager()->UpdateDefaultServices(null_service, null_service);
+  manager()->UpdateDefaultPhysicalService(null_service);
 
   ServiceWatcher service_watcher1;
   ServiceWatcher service_watcher2;
@@ -2295,38 +2295,39 @@ TEST_F(ManagerTest, UpdateDefaultServices) {
 
   EXPECT_CALL(service_watcher1, OnDefaultPhysicalServiceChanged(service));
   EXPECT_CALL(service_watcher2, OnDefaultPhysicalServiceChanged(service));
-  manager()->UpdateDefaultServices(mock_service, mock_service);
+  manager()->UpdateDefaultPhysicalService(mock_service);
 
   EXPECT_CALL(service_watcher1, OnDefaultPhysicalServiceChanged(null_service));
   EXPECT_CALL(service_watcher2, OnDefaultPhysicalServiceChanged(null_service));
-  manager()->UpdateDefaultServices(null_service, null_service);
+  manager()->UpdateDefaultPhysicalService(null_service);
 
   manager()->RemoveDefaultServiceObserver(&service_watcher1);
-  EXPECT_CALL(service_watcher1, OnDefaultPhysicalServiceChanged(_)).Times(0);
+  EXPECT_CALL(service_watcher1, OnDefaultPhysicalServiceChanged).Times(0);
   EXPECT_CALL(service_watcher2, OnDefaultPhysicalServiceChanged(service));
-  manager()->UpdateDefaultServices(mock_service, mock_service);
+  manager()->UpdateDefaultPhysicalService(mock_service);
   EXPECT_EQ(GetDefaultServiceObserverCount(), 1);
 
   manager()->RemoveDefaultServiceObserver(&service_watcher2);
-  EXPECT_CALL(service_watcher2, OnDefaultPhysicalServiceChanged(_)).Times(0);
-  manager()->UpdateDefaultServices(null_service, null_service);
+  EXPECT_CALL(service_watcher2, OnDefaultPhysicalServiceChanged).Times(0);
+  manager()->UpdateDefaultPhysicalService(null_service);
 
   EXPECT_EQ(GetDefaultServiceObserverCount(), 0);
 }
 
-TEST_F(ManagerTest, UpdateDefaultServicesWithDefaultServiceCallbacksRemoved) {
+TEST_F(ManagerTest,
+       UpdateDefaultPhysicalServiceWithDefaultServiceCallbacksRemoved) {
   EXPECT_EQ(GetDefaultServiceObserverCount(), 0);
 
   MockServiceRefPtr mock_service(new NiceMock<MockService>(manager()));
   ServiceRefPtr service = mock_service;
   ServiceRefPtr null_service = nullptr;
 
-  manager()->UpdateDefaultServices(null_service, null_service);
+  manager()->UpdateDefaultPhysicalService(null_service);
 
   // Register many callbacks where each callback simply deregisters itself from
-  // Manager. This verifies that Manager::UpdateDefaultServices() can safely
-  // iterate the container holding the callbacks while callbacks are removed
-  // from the container during iteration.
+  // Manager. This verifies that Manager::UpdateDefaultPhysicalService() can
+  // safely iterate the container holding the callbacks while callbacks are
+  // removed from the container during iteration.
   ServiceWatcher service_watchers[1000];
   for (auto& service_watcher : service_watchers) {
     manager()->AddDefaultServiceObserver(&service_watcher);
@@ -2336,13 +2337,13 @@ TEST_F(ManagerTest, UpdateDefaultServicesWithDefaultServiceCallbacksRemoved) {
         }));
   }
 
-  manager()->UpdateDefaultServices(mock_service, mock_service);
+  manager()->UpdateDefaultPhysicalService(mock_service);
   EXPECT_EQ(GetDefaultServiceObserverCount(), 0);
 
   for (auto& service_watcher : service_watchers) {
-    EXPECT_CALL(service_watcher, OnDefaultPhysicalServiceChanged(_)).Times(0);
+    EXPECT_CALL(service_watcher, OnDefaultPhysicalServiceChanged).Times(0);
   }
-  manager()->UpdateDefaultServices(null_service, null_service);
+  manager()->UpdateDefaultPhysicalService(null_service);
   EXPECT_EQ(GetDefaultServiceObserverCount(), 0);
 }
 
@@ -2353,7 +2354,7 @@ TEST_F(ManagerTest, DefaultServiceStateChange) {
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
 
-  manager()->UpdateDefaultServices(mock_service0, mock_service0);
+  manager()->UpdateDefaultPhysicalService(mock_service0);
 
   // Changing the default service's state should notify both services.
   EXPECT_CALL(*mock_service0, OnDefaultServiceStateChanged(_));
@@ -2367,7 +2368,7 @@ TEST_F(ManagerTest, DefaultServiceStateChange) {
   EXPECT_CALL(*mock_service1, OnDefaultServiceStateChanged(_)).Times(0);
   manager()->NotifyServiceStateChanged(mock_service1);
 
-  manager()->UpdateDefaultServices(nullptr, nullptr);
+  manager()->UpdateDefaultPhysicalService(nullptr);
 
   manager()->DeregisterService(mock_service1);
   manager()->DeregisterService(mock_service0);
@@ -2553,7 +2554,7 @@ TEST_F(ManagerTest, RecheckPortal) {
   manager()->RecheckPortal(nullptr);
 }
 
-TEST_F(ManagerTest, UpdateDefaultServicesDNSProxy) {
+TEST_F(ManagerTest, UpdateDefaultPhysicalServiceDNSProxy) {
   MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
   MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
 
@@ -2564,25 +2565,25 @@ TEST_F(ManagerTest, UpdateDefaultServicesDNSProxy) {
       .WillOnce(Return(true))
       .WillOnce(Return(false))
       .WillOnce(Return(true));
-  manager()->UpdateDefaultServices(mock_service0, mock_service0);
+  manager()->UpdateDefaultPhysicalService(mock_service0);
 
   // Online -> offline should always force dns-proxy off.
   EXPECT_CALL(resolver_, SetDNSProxyAddresses(ElementsAre()))
       .WillOnce(Return(true));
-  manager()->UpdateDefaultServices(mock_service0, mock_service0);
+  manager()->UpdateDefaultPhysicalService(mock_service0);
 
   // Offline -> online should push the dns-proxy info if set.
   manager()->props_.dns_proxy_addresses = {"100.115.92.100"};
   EXPECT_CALL(resolver_, SetDNSProxyAddresses(ElementsAre("100.115.92.100")))
       .WillOnce(Return(true));
-  manager()->UpdateDefaultServices(mock_service0, mock_service0);
+  manager()->UpdateDefaultPhysicalService(mock_service0);
 
   // Switching from an online service to an offline one should force dns-proxy
   // off.
   EXPECT_CALL(*mock_service1, IsOnline).WillOnce(Return(false));
   EXPECT_CALL(resolver_, SetDNSProxyAddresses(ElementsAre()))
       .WillOnce(Return(true));
-  manager()->UpdateDefaultServices(mock_service1, mock_service1);
+  manager()->UpdateDefaultPhysicalService(mock_service1);
 }
 
 TEST_F(ManagerTest, AvailableTechnologies) {
