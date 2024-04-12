@@ -1210,28 +1210,8 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
   return true;
 }
 
-bool Manager::ValidateDownstreamNetworkRequest(
-    const DownstreamNetworkInfo& info) {
-  // TODO(b/239559602): Validate the request and log any invalid argument:
-  //    - |upstream_ifname| should be an active shill Device/Network,
-  //    - |downstream_ifname| should not be a shill Device/Network already in
-  //    use,
-  //    - |downstream_ifname| should not be already in use in another
-  //    DownstreamNetworkInfo,
-  //    - if there are IPv4 and/or IPv6 configurations, check the prefixes are
-  //      correct and available.
-  //    - check the downstream subnet doesn't conflict with any IPv4
-  //      configuration of the currently connected networks.
-  return true;
-}
-
 patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
     const base::ScopedFD& client_fd, const DownstreamNetworkInfo& info) {
-  if (!ValidateDownstreamNetworkRequest(info)) {
-    LOG(ERROR) << __func__ << " " << info << ": Invalid request";
-    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
-  }
-
   base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << __func__ << " " << info << ": Failed to create lifeline fd";

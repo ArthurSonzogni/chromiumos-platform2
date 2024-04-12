@@ -231,9 +231,6 @@ class Manager : public ForwardingService {
       uint32_t subnet_index = kAnySubnetIndex);
   void StopCrosVm(uint64_t vm_id, CrostiniService::VMType vm_type);
 
-  // Checks the validaty of a CreateTetheredNetwork or CreatedLocalOnlyNetwork
-  // DBus request.
-  bool ValidateDownstreamNetworkRequest(const DownstreamNetworkInfo& info);
   // Creates a downstream L3 network on the network interface specified by the
   // |info|. If successful, |client_fd| is monitored and triggers the teardown
   // of the network setup when closed.
