@@ -173,3 +173,49 @@ TEST(FlexCpuMetrics, SendCpuIsaLevelMetric) {
 
   EXPECT_TRUE(SendCpuIsaLevelMetric(metrics, CpuIsaLevel::kX86_64_V2));
 }
+
+// Test getting the boot method in various circumstances.
+TEST(FlexBootMethodMetrics, GetBootMethod) {
+  base::ScopedTempDir root_dir;
+  CHECK(root_dir.CreateUniqueTempDir());
+
+  // Expect kBios if the VPD path and EFI path do not exist,
+  EXPECT_EQ(GetBootMethod(root_dir.GetPath()), BootMethod::kBios);
+
+  // Expect kCoreboot if the VPD path exists.
+  const auto vpd_sysfs_path = root_dir.GetPath().Append("sys/firmware/vpd/");
+  CHECK(base::CreateDirectory(vpd_sysfs_path));
+  EXPECT_EQ(GetBootMethod(root_dir.GetPath()), BootMethod::kCoreboot);
+
+  // Expect kCoreboot if both the VPD path and EFI paths exist.
+  const auto efi_sysfs_path = root_dir.GetPath().Append("sys/firmware/efi/");
+  CHECK(base::CreateDirectory(efi_sysfs_path));
+
+  // Delete the VPD path to move onto EFI.
+  brillo::DeleteFile(vpd_sysfs_path);
+
+  // Expect kUnknown if the EFI path exists but the value
+  // of `fw_platform_size` is bad or missing.
+  EXPECT_EQ(GetBootMethod(root_dir.GetPath()), BootMethod::kUnknown);
+  CHECK(base::WriteFile(efi_sysfs_path.Append("fw_platform_size"), "abcd"));
+  EXPECT_EQ(GetBootMethod(root_dir.GetPath()), BootMethod::kUnknown);
+
+  // Expect kUefi64 if the value of `fw_platform_size` is "64".
+  brillo::DeleteFile(efi_sysfs_path.Append("fw_platform_size"));
+  CHECK(base::WriteFile(efi_sysfs_path.Append("fw_platform_size"), "64"));
+  EXPECT_EQ(GetBootMethod(root_dir.GetPath()), BootMethod::kUefi64);
+
+  // Expect kUefi32 if the value of `fw_platform_size` is "32".
+  brillo::DeleteFile(efi_sysfs_path.Append("fw_platform_size"));
+  CHECK(base::WriteFile(efi_sysfs_path.Append("fw_platform_size"), "32"));
+  EXPECT_EQ(GetBootMethod(root_dir.GetPath()), BootMethod::kUefi32);
+}
+
+// Test successfully sending the boot method metric.
+TEST(FlexBootMethodMetrics, SendBootMethodMetric) {
+  StrictMock<MetricsLibraryMock> metrics;
+  EXPECT_CALL(metrics, SendEnumToUMA("Platform.FlexBootMethod", 3, 5))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(SendBootMethodMetric(metrics, BootMethod::kUefi64));
+}

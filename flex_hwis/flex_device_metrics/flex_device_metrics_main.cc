@@ -53,5 +53,9 @@ int main() {
     return EXIT_FAILURE;
   }
 
+  if (!SendBootMethodMetric(metrics, GetBootMethod(base::FilePath("/")))) {
+    return EXIT_FAILURE;
+  }
+
   return EXIT_SUCCESS;
 }

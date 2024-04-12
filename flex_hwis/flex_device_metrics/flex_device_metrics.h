@@ -129,4 +129,35 @@ CpuIsaLevel GetCpuIsaLevel();
 bool SendCpuIsaLevelMetric(MetricsLibraryInterface& metrics,
                            CpuIsaLevel isa_level);
 
+// Enum representing the method used to boot the device.
+//
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class BootMethod {
+  // Unknown boot mode (likely an error has occurred).
+  kUnknown = 0,
+
+  // Coreboot (ie Chromebook) firmware.
+  kCoreboot = 1,
+  // 32-bit UEFI environment.
+  kUefi32 = 2,
+  // 64-bit UEFI environment.
+  kUefi64 = 3,
+  // BIOS/Legacy boot.
+  kBios = 4,
+
+  kMaxValue = kBios,
+};
+
+// Get the method used to boot the device.
+BootMethod GetBootMethod(const base::FilePath& root);
+
+// Send the Boot Method metric.
+//
+// This is an enum metric, see `GetBootMethod` for details of `boot_method`.
+//
+// Returns true on success, false if any error occurs.
+bool SendBootMethodMetric(MetricsLibraryInterface& metrics,
+                          BootMethod boot_method);
+
 #endif  // FLEX_HWIS_FLEX_DEVICE_METRICS_FLEX_DEVICE_METRICS_H_

@@ -64,3 +64,10 @@ categorizes the CPU by its ISA level. See [isa-levels] for details of
 the levels.
 
 [isa-levels]: https://en.wikipedia.org/wiki/X86-64#Microarchitecture_levels
+
+### Boot Method
+
+ChromeOS Flex requires 64-bit CPUs. On a small number of devices,
+even though the CPU is 64-bit, the UEFI environment is 32-bit.
+This enum metric reports the method used to boot the device. This can be
+BIOS/legacy, Coreboot, 32-bit UEFI, or 64-bit UEFI.

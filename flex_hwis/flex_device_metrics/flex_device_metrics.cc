@@ -152,3 +152,40 @@ bool SendCpuIsaLevelMetric(MetricsLibraryInterface& metrics,
                            CpuIsaLevel isa_level) {
   return metrics.SendEnumToUMA("Platform.FlexCpuIsaLevel", isa_level);
 }
+
+BootMethod GetBootMethod(const base::FilePath& root) {
+  const auto vpd_sysfs_path = root.Append("sys/firmware/vpd/");
+  if (base::PathExists(vpd_sysfs_path)) {
+    return BootMethod::kCoreboot;
+  }
+
+  const auto efi_sysfs_path = root.Append("sys/firmware/efi/");
+  if (!base::PathExists(efi_sysfs_path)) {
+    return BootMethod::kBios;
+  }
+
+  const auto uefi_bitness_path = efi_sysfs_path.Append("fw_platform_size");
+  std::string uefi_bitness_str;
+  if (!ReadFileToStringWithMaxSize(uefi_bitness_path, &uefi_bitness_str,
+                                   /*max_size=*/3)) {
+    PLOG(ERROR) << "Failed to read " << uefi_bitness_path;
+    return BootMethod::kUnknown;
+  }
+
+  const auto uefi_bitness_str_trimmed =
+      TrimWhitespaceASCII(uefi_bitness_str, base::TRIM_TRAILING);
+
+  if (uefi_bitness_str_trimmed == "64") {
+    return BootMethod::kUefi64;
+  } else if (uefi_bitness_str_trimmed == "32") {
+    return BootMethod::kUefi32;
+  }
+
+  LOG(ERROR) << "Device boot method could not be determined.";
+  return BootMethod::kUnknown;
+}
+
+bool SendBootMethodMetric(MetricsLibraryInterface& metrics,
+                          BootMethod boot_method) {
+  return metrics.SendEnumToUMA("Platform.FlexBootMethod", boot_method);
+}
