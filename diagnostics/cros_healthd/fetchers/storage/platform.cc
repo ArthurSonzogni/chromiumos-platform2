@@ -12,12 +12,12 @@
 #include <cstdint>
 #include <string>
 
-#include <base/logging.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/expected.h>
-#include <base/posix/eintr_wrapper.h>
 #include <rootdev/rootdev.h>
 
 #include "diagnostics/cros_healthd/utils/error_utils.h"

@@ -10,8 +10,8 @@
 #include <string>
 #include <utility>
 
-#include <base/check.h>
 #include <base/cancelable_callback.h>
+#include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_forward.h>
 #include <base/memory/ptr_util.h>

@@ -13,7 +13,6 @@
 #include <base/files/file_path.h>
 #include <brillo/udev/mock_udev.h>
 #include <brillo/udev/mock_udev_device.h>
-
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

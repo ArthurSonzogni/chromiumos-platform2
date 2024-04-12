@@ -10,14 +10,14 @@
 #include <tuple>
 #include <utility>
 
+#include <base/check.h>
 #include <base/json/json_writer.h>
+#include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/values.h>
-#include <base/check.h>
-#include <base/notreached.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
 #include <mojo/public/cpp/system/handle.h>
-#include <mojo/public/cpp/bindings/pending_receiver.h>
 
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"

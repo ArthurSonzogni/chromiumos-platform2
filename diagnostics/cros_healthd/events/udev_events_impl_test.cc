@@ -19,8 +19,8 @@
 #include <brillo/udev/mock_udev_device.h>
 #include <brillo/udev/mock_udev_monitor.h>
 #include <brillo/unittest_utils.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <gtest/gtest_prod.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver.h>

@@ -4,8 +4,9 @@
 
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 
-#include <cstdint>
 #include <glob.h>
+
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <utility>

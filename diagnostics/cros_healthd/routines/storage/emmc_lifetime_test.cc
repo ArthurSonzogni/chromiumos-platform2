@@ -10,10 +10,10 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/json/json_reader.h>
-#include <base/strings/stringprintf.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/json/json_reader.h>
+#include <base/strings/stringprintf.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <gtest/gtest.h>
 

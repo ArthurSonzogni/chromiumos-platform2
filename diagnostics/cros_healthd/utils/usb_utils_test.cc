@@ -14,7 +14,6 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
-
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {

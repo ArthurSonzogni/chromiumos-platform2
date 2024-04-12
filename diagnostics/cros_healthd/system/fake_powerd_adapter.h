@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_POWERD_ADAPTER_H_
 
 #include <optional>
+
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
 #include "diagnostics/cros_healthd/system/powerd_adapter.h"

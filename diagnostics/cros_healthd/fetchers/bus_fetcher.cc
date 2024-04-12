@@ -23,7 +23,6 @@
 #include <fwupd/dbus-proxies.h>
 
 #include "diagnostics/base/file_utils.h"
-
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/pci_util.h"

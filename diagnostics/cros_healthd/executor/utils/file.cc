@@ -4,6 +4,9 @@
 
 #include "diagnostics/cros_healthd/executor/utils/file.h"
 
+#include <sys/stat.h>
+#include <sys/time.h>
+
 #include <algorithm>
 #include <limits>
 
@@ -12,8 +15,6 @@
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/time/time.h>
-#include <sys/stat.h>
-#include <sys/time.h>
 
 namespace diagnostics {
 

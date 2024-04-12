@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_LIBEVDEV_WRAPPER_H_
 
 #include <linux/input.h>
+
 #include <string>
 
 namespace diagnostics {

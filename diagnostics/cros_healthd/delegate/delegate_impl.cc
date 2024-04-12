@@ -4,10 +4,11 @@
 
 #include "diagnostics/cros_healthd/delegate/delegate_impl.h"
 
+#include <fcntl.h>
+
 #include <algorithm>
 #include <array>
 #include <cstdint>
-#include <fcntl.h>
 #include <limits>
 #include <memory>
 #include <optional>

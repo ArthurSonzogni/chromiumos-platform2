@@ -14,8 +14,8 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/string_util.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <debugd/dbus-proxies.h>
 #include <re2/re2.h>
 

@@ -10,10 +10,10 @@
 
 #include <base/functional/bind.h>
 #include <base/task/sequenced_task_runner.h>
-#include <base/test/task_environment.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
 #include <base/test/bind.h>
 #include <base/test/gmock_callback_support.h>
+#include <base/test/task_environment.h>
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"

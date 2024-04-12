@@ -12,8 +12,8 @@
 
 #include <base/check.h>
 #include <base/json/json_writer.h>
-#include <base/values.h>
 #include <base/test/task_environment.h>
+#include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

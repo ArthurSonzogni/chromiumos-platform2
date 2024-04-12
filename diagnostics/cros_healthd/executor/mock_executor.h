@@ -6,11 +6,11 @@
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_MOCK_EXECUTOR_H_
 
 #include <cstdint>
-#include <string>
-#include <gmock/gmock.h>
 #include <optional>
+#include <string>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"

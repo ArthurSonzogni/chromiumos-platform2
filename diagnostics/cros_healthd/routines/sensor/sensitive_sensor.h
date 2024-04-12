@@ -10,8 +10,8 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <base/values.h>
 #include <base/time/tick_clock.h>
+#include <base/values.h>
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 

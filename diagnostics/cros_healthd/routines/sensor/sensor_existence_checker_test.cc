@@ -11,8 +11,8 @@
 #include <vector>
 
 #include <base/check.h>
-#include <base/test/test_future.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"

@@ -14,8 +14,8 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/test/gmock_callback_support.h>
 #include <base/strings/string_split.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/files/file_util.h>

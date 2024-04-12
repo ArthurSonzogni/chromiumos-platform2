@@ -9,9 +9,9 @@
 #include <tuple>
 #include <vector>
 
-#include <mojo/public/cpp/bindings/unique_receiver_set.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
+#include <mojo/public/cpp/bindings/unique_receiver_set.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"

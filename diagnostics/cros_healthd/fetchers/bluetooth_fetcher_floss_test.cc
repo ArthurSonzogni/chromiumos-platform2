@@ -8,8 +8,8 @@
 #include <vector>
 
 #include <base/test/gmock_callback_support.h>
-#include <base/test/test_future.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>

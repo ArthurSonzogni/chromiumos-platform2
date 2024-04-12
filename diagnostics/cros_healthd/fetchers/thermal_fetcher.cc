@@ -8,10 +8,10 @@
 #include <utility>
 #include <vector>
 
-#include <base/functional/callback.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
 
 #include "diagnostics/base/file_utils.h"

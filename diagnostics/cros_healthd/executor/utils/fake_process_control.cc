@@ -8,10 +8,10 @@
 #include <string>
 #include <utility>
 
-#include <base/files/platform_file.h>
-#include <base/files/scoped_file.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
+#include <base/files/platform_file.h>
+#include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_forward.h>
 #include <mojo/public/cpp/system/handle.h>

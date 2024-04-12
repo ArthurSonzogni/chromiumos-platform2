@@ -13,8 +13,8 @@
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <base/test/gmock_callback_support.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>

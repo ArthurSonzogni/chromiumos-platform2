@@ -8,10 +8,10 @@
 #include <optional>
 #include <string>
 
-#include <dbus/object_path.h>
 #include <base/memory/weak_ptr.h>
-#include <base/values.h>
 #include <base/time/tick_clock.h>
+#include <base/values.h>
+#include <dbus/object_path.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluez/bluetooth_base.h"
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
