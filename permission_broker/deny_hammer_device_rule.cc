@@ -36,6 +36,7 @@ bool IsHammerDevice(udev_device* device) {
       {0x18d1, 0x505b},  // duck
       {0x18d1, 0x505d},  // gelatin
       {0x18d1, 0x5061},  // jewel
+      {0x18d1, 0x5067},  // spickyrock
   };
   uint32_t vendor_id, product_id;
   GetUIntSysattr(device, "idVendor", &vendor_id);
