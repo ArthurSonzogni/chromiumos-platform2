@@ -22,8 +22,7 @@
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
-namespace diagnostics {
-namespace fwupd_utils {
+namespace diagnostics::fwupd_utils {
 
 namespace {
 
@@ -232,5 +231,4 @@ mojom::FwupdFirmwareVersionInfoPtr FetchUsbFirmwareVersion(
   return info;
 }
 
-}  // namespace fwupd_utils
-}  // namespace diagnostics
+}  // namespace diagnostics::fwupd_utils

@@ -14,8 +14,7 @@
 
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
-namespace diagnostics {
-namespace fwupd_utils {
+namespace diagnostics::fwupd_utils {
 
 inline constexpr char kFwupdReusltKeyGuid[] = "Guid";
 inline constexpr char kFwupdResultKeyInstanceIds[] = "InstanceIds";
@@ -87,7 +86,6 @@ std::optional<std::string> InstanceIdToGuid(const std::string& instance_id);
 ash::cros_healthd::mojom::FwupdFirmwareVersionInfoPtr FetchUsbFirmwareVersion(
     const DeviceList& device_infos, const UsbDeviceFilter& target_usb_device);
 
-}  // namespace fwupd_utils
-}  // namespace diagnostics
+}  // namespace diagnostics::fwupd_utils
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_UTILS_FWUPD_UTILS_H_
