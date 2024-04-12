@@ -29,9 +29,9 @@ use crate::config::PowerSourceType;
 use crate::cpu_utils::hotplug_cpus;
 use crate::cpu_utils::write_to_cpu_policy_patterns;
 use crate::cpu_utils::HotplugCpuAction;
+
 #[cfg(target_arch = "x86_64")]
 use crate::globals::read_dynamic_epp_feature;
-//globals
 #[cfg(target_arch = "x86_64")]
 use crate::globals::set_rtc_fs_signal_state;
 
@@ -393,6 +393,8 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
     ) -> Result<()> {
         #[cfg(target_arch = "x86_64")]
         let dynamic_epp = read_dynamic_epp_feature();
+        #[cfg(not(target_arch = "x86_64"))]
+        let dynamic_epp = false;
 
         let mut preferences: Option<PowerPreferences> = None;
 
@@ -446,30 +448,18 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
 
         let fullscreen_video_efficiency_mode = power_source == PowerSourceType::DC
             && (rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active);
-        #[cfg(not(target_arch = "x86_64"))]
-        {
-            if fullscreen_video_efficiency_mode {
-                if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
-                    error!("Failed to set energy performance preference: {:#}", err);
-                }
-            } else {
-                self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
-                // Default EPP
+        if dynamic_epp {
+            #[cfg(target_arch = "x86_64")]
+            set_rtc_fs_signal_state(fullscreen_video_efficiency_mode);
+        } else if fullscreen_video_efficiency_mode {
+            if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
+                error!("Failed to set energy performance preference: {:#}", err);
             }
+        } else {
+            // Default EPP
+            self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
         }
-        #[cfg(target_arch = "x86_64")]
-        {
-            if dynamic_epp {
-                set_rtc_fs_signal_state(fullscreen_video_efficiency_mode);
-            } else if fullscreen_video_efficiency_mode {
-                if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
-                    error!("Failed to set energy performance preference: {:#}", err);
-                }
-            } else {
-                // Default EPP
-                self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
-            }
-        }
+
         Ok(())
     }
 
