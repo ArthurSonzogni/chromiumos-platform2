@@ -157,7 +157,8 @@ class BRILLO_EXPORT FuzzedPlatform : public Platform {
   bool IsDirectoryEmpty(const base::FilePath& path) override;
   FileEnumerator* GetFileEnumerator(const base::FilePath& path,
                                     bool recursive,
-                                    int file_type) override;
+                                    int file_type,
+                                    const std::string& pattern) override;
   bool Stat(const base::FilePath& path, base::stat_wrapper_t* buf) override;
   bool HasExtendedFileAttribute(const base::FilePath& path,
                                 const std::string& name) override;

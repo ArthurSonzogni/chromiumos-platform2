@@ -182,11 +182,9 @@ class BRILLO_EXPORT FileEnumerator {
 
   FileEnumerator(const base::FilePath& root_path,
                  bool recursive,
-                 int file_type);
-  FileEnumerator(const base::FilePath& root_path,
-                 bool recursive,
                  int file_type,
                  const std::string& pattern);
+
   // Meant for testing only.
   FileEnumerator();
   virtual ~FileEnumerator();
@@ -590,9 +588,11 @@ class BRILLO_EXPORT Platform {
   //
   // Parameters
   // (see FileEnumerator())
-  virtual FileEnumerator* GetFileEnumerator(const base::FilePath& root_path,
-                                            bool recursive,
-                                            int file_type);
+  virtual FileEnumerator* GetFileEnumerator(
+      const base::FilePath& root_path,
+      bool recursive,
+      int file_type,
+      const std::string& pattern = std::string());
 
   // Look up information about a file or directory
   //

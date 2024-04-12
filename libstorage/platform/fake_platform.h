@@ -45,7 +45,8 @@ class BRILLO_EXPORT FakePlatform : public Platform {
 
   FileEnumerator* GetFileEnumerator(const base::FilePath& path,
                                     bool recursive,
-                                    int file_type) override;
+                                    int file_type,
+                                    const std::string& pattern) override;
   bool EnumerateDirectoryEntries(
       const base::FilePath& path,
       bool recursive,

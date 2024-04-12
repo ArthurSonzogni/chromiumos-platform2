@@ -2830,7 +2830,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
   start_auth_session_req_->mutable_account_id()->set_account_id(
       "foo@example.com");
   EXPECT_CALL(system_apis_.platform, DirectoryExists(_)).WillOnce(Return(true));
-  EXPECT_CALL(system_apis_.platform, GetFileEnumerator(_, _, _))
+  EXPECT_CALL(system_apis_.platform, GetFileEnumerator(_, _, _, std::string()))
       .WillOnce(Return(new NiceMock<libstorage::MockFileEnumerator>));
   TestFuture<user_data_auth::StartAuthSessionReply> auth_session_reply_future;
   userdataauth_->StartAuthSession(

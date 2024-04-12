@@ -37,7 +37,7 @@ MockPlatform::MockPlatform(std::unique_ptr<FakePlatform> fake_platform)
   ON_CALL(*this, EnumerateDirectoryEntries(_, _, _))
       .WillByDefault(Invoke(fake_platform_.get(),
                             &FakePlatform::EnumerateDirectoryEntries));
-  ON_CALL(*this, GetFileEnumerator(_, _, _))
+  ON_CALL(*this, GetFileEnumerator(_, _, _, _))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::GetFileEnumerator));
   ON_CALL(*this, IsDirectoryEmpty(_))

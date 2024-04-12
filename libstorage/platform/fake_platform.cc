@@ -428,10 +428,12 @@ bool FakePlatform::CloseFile(FILE* file) {
 
 FileEnumerator* FakePlatform::GetFileEnumerator(const base::FilePath& path,
                                                 bool recursive,
-                                                int file_type) {
-  return new ProxyFileEnumerator(path, this, fake_mount_mapper_.get(),
-                                 real_platform_.GetFileEnumerator(
-                                     TestFilePath(path), recursive, file_type));
+                                                int file_type,
+                                                const std::string& pattern) {
+  return new ProxyFileEnumerator(
+      path, this, fake_mount_mapper_.get(),
+      real_platform_.GetFileEnumerator(TestFilePath(path), recursive, file_type,
+                                       pattern));
 }
 
 bool FakePlatform::GetFileSize(const base::FilePath& path, int64_t* size) {

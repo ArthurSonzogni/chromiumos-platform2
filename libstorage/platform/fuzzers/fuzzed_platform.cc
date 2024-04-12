@@ -851,7 +851,8 @@ bool FuzzedPlatform::IsDirectoryEmpty(const base::FilePath& path) {
 
 FileEnumerator* FuzzedPlatform::GetFileEnumerator(const base::FilePath& path,
                                                   bool recursive,
-                                                  int file_type) {
+                                                  int file_type,
+                                                  const std::string& pattern) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   AssertIsValidAbsolutePath(path);
   return new FuzzedFileEnumerator(CanonicalizePath(path), recursive, file_type,

@@ -110,7 +110,8 @@ class DiskCleanupRoutinesTest
     }
 
     EXPECT_CALL(platform_, GetFileEnumerator(parent_directory, false,
-                                             base::FileEnumerator::DIRECTORIES))
+                                             base::FileEnumerator::DIRECTORIES,
+                                             std::string()))
         .WillRepeatedly(InvokeWithoutArgs(
             std::bind(CreateMockFileEnumeratorWithEntries, child_directories)));
   }
@@ -141,7 +142,7 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserCache) {
 
   EXPECT_CALL(platform_, GetFileEnumerator(Property(&base::FilePath::value,
                                                     HasSubstr("user/Cache")),
-                                           false, _))
+                                           false, _, std::string()))
       .WillRepeatedly(InvokeWithoutArgs(
           std::bind(CreateMockFileEnumeratorWithEntries, entriesToClean)));
 
@@ -174,17 +175,19 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserGCacheV1) {
   EXPECT_CALL(platform_,
               GetFileEnumerator(Property(&base::FilePath::value,
                                          HasSubstr("user/GCache/v1/tmp")),
-                                false, _))
+                                false, _, std::string()))
       .WillRepeatedly(InvokeWithoutArgs(
           std::bind(CreateMockFileEnumeratorWithEntries, entriesToClean)));
 
-  EXPECT_CALL(platform_, GetFileEnumerator(Property(&base::FilePath::value,
-                                                    EndsWith("user/GCache/v1")),
-                                           true, base::FileEnumerator::FILES))
+  EXPECT_CALL(platform_,
+              GetFileEnumerator(
+                  Property(&base::FilePath::value, EndsWith("user/GCache/v1")),
+                  true, base::FileEnumerator::FILES, std::string()))
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
-  EXPECT_CALL(platform_, GetFileEnumerator(Property(&base::FilePath::value,
-                                                    EndsWith("user/GCache/v2")),
-                                           true, base::FileEnumerator::FILES))
+  EXPECT_CALL(platform_,
+              GetFileEnumerator(
+                  Property(&base::FilePath::value, EndsWith("user/GCache/v2")),
+                  true, base::FileEnumerator::FILES, std::string()))
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
   // Don't delete anything else.
@@ -222,17 +225,19 @@ TEST_P(DiskCleanupRoutinesTest, DeleteUserGCacheV2) {
   EXPECT_CALL(platform_,
               GetFileEnumerator(Property(&base::FilePath::value,
                                          HasSubstr("user/GCache/v1/tmp")),
-                                false, _))
+                                false, _, std::string()))
       .WillRepeatedly(InvokeWithoutArgs(CreateMockFileEnumerator));
 
-  EXPECT_CALL(platform_, GetFileEnumerator(Property(&base::FilePath::value,
-                                                    EndsWith("user/GCache/v1")),
-                                           true, base::FileEnumerator::FILES))
+  EXPECT_CALL(platform_,
+              GetFileEnumerator(
+                  Property(&base::FilePath::value, EndsWith("user/GCache/v1")),
+                  true, base::FileEnumerator::FILES, std::string()))
       .WillRepeatedly(InvokeWithoutArgs(
           std::bind(CreateMockFileEnumeratorWithEntries, v1Entries)));
-  EXPECT_CALL(platform_, GetFileEnumerator(Property(&base::FilePath::value,
-                                                    EndsWith("user/GCache/v2")),
-                                           true, base::FileEnumerator::FILES))
+  EXPECT_CALL(platform_,
+              GetFileEnumerator(
+                  Property(&base::FilePath::value, EndsWith("user/GCache/v2")),
+                  true, base::FileEnumerator::FILES, std::string()))
       .WillRepeatedly(InvokeWithoutArgs(
           std::bind(CreateMockFileEnumeratorWithEntries, v2Entries)));
 
@@ -300,7 +305,8 @@ TEST_P(DiskCleanupRoutinesTest, DeleteAndroidCache) {
                 GetFileEnumerator(entry, false,
                                   base::FileEnumerator::FILES |
                                       base::FileEnumerator::DIRECTORIES |
-                                      base::FileEnumerator::SHOW_SYM_LINKS))
+                                      base::FileEnumerator::SHOW_SYM_LINKS,
+                                  std::string()))
         .WillRepeatedly(InvokeWithoutArgs(
             std::bind(CreateMockFileEnumeratorWithEntries, entries)));
 
@@ -355,7 +361,7 @@ TEST_P(DiskCleanupRoutinesTest, DeleteAndroidCache) {
                    EndsWith(std::string(ShouldTestEcryptfs() ? kEcryptfsVaultDir
                                                              : kMountDir) +
                             "/root")),
-          true, base::FileEnumerator::DIRECTORIES))
+          true, base::FileEnumerator::DIRECTORIES, std::string()))
       .WillRepeatedly(Return(enumerator));
 
   EXPECT_TRUE(routines_.DeleteUserAndroidCache(kTestUser));
@@ -387,7 +393,8 @@ TEST_P(DiskCleanupRoutinesTest, DeleteDaemonStoreCache) {
   ExpectTrackedDirectoryEnumeration({root});
   ExpectTrackedDirectoryEnumeration({daemon_store_cache});
 
-  EXPECT_CALL(platform_, GetFileEnumerator(daemon_store_cache, false, _))
+  EXPECT_CALL(platform_,
+              GetFileEnumerator(daemon_store_cache, false, _, std::string()))
       .WillRepeatedly(
           Return(CreateMockFileEnumeratorWithEntries(allDaemonPaths)));
 
@@ -410,19 +417,21 @@ TEST_P(DiskCleanupRoutinesTest, DeleteDaemonStoreCacheMountedUsers) {
   base::FilePath daemon_two_user = daemon_two.Append(kTestUser->c_str());
   base::FilePath daemon_two_user_file = daemon_one_user.Append("another-file");
 
-  EXPECT_CALL(platform_, GetFileEnumerator(cache_dir, false, _))
+  EXPECT_CALL(platform_, GetFileEnumerator(cache_dir, false, _, std::string()))
       .WillOnce(Return(
           CreateMockFileEnumeratorWithEntries({daemon_one, daemon_two})));
 
-  EXPECT_CALL(platform_, GetFileEnumerator(daemon_one, false, _))
+  EXPECT_CALL(platform_, GetFileEnumerator(daemon_one, false, _, std::string()))
       .WillOnce(Return(CreateMockFileEnumeratorWithEntries({daemon_one_user})));
-  EXPECT_CALL(platform_, GetFileEnumerator(daemon_one_user, false, _))
+  EXPECT_CALL(platform_,
+              GetFileEnumerator(daemon_one_user, false, _, std::string()))
       .WillOnce(
           Return(CreateMockFileEnumeratorWithEntries({daemon_one_user_file})));
 
-  EXPECT_CALL(platform_, GetFileEnumerator(daemon_two, false, _))
+  EXPECT_CALL(platform_, GetFileEnumerator(daemon_two, false, _, std::string()))
       .WillOnce(Return(CreateMockFileEnumeratorWithEntries({daemon_two_user})));
-  EXPECT_CALL(platform_, GetFileEnumerator(daemon_two_user, false, _))
+  EXPECT_CALL(platform_,
+              GetFileEnumerator(daemon_two_user, false, _, std::string()))
       .WillOnce(
           Return(CreateMockFileEnumeratorWithEntries({daemon_two_user_file})));
 

@@ -81,7 +81,7 @@ class BRILLO_EXPORT MockPlatform : public Platform {
 
   MOCK_METHOD(FileEnumerator*,
               GetFileEnumerator,
-              (const base::FilePath&, bool, int),
+              (const base::FilePath&, bool, int, const std::string&),
               (override));
   MOCK_METHOD(bool,
               Rename,
