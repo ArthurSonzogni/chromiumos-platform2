@@ -82,6 +82,7 @@ class PortManager : public UdevMonitor::TypecObserver,
  private:
   friend class PortManagerFuzzer;
   friend class PortManagerTest;
+  friend class DBusManagerTest;
   FRIEND_TEST(PortManagerTest, ModeEntryNotSupported);
   FRIEND_TEST(PortManagerTest, SimpleModeEntry);
   FRIEND_TEST(PortManagerTest, ModeSwitchUnlockDPandTBT);
@@ -123,6 +124,18 @@ class PortManager : public UdevMonitor::TypecObserver,
   FRIEND_TEST(MetricsTest, CheckPartnerLocationNoPreference);
   FRIEND_TEST(MetricsTest, CheckPowerSourceLocation);
   FRIEND_TEST(MetricsTest, CheckPowerSourceLocationNoChoice);
+  FRIEND_TEST(DBusManagerTest, DBusGetPortCount);
+  FRIEND_TEST(DBusManagerTest, DBusGetAltModesAppleTBT3ProCable);
+  FRIEND_TEST(DBusManagerTest, DBusGetAltModesUnbrandedUSB2Cable);
+  FRIEND_TEST(DBusManagerTest, DBusGetAltModesOWCTBT4Dock);
+  FRIEND_TEST(DBusManagerTest, DBusGetCurrentModeDpAltMode);
+  FRIEND_TEST(DBusManagerTest, DBusGetCurrentModeUSB4Mode);
+  FRIEND_TEST(DBusManagerTest, DBusGetIdentityUnbrandedUSB2Cable);
+  FRIEND_TEST(DBusManagerTest, DBusGetIdentityAnkerUSB3p2Gen2Cable);
+  FRIEND_TEST(DBusManagerTest, DBusGetIdentityCableMatterDock);
+  FRIEND_TEST(DBusManagerTest, DBusGetPLD);
+  FRIEND_TEST(DBusManagerTest, DBusGetRevisionPD2p0);
+  FRIEND_TEST(DBusManagerTest, DBusGetRevisionPD3p1);
 
   // UdevMonitor::Observer overrides.
   void OnPortAddedOrRemoved(const base::FilePath& path,

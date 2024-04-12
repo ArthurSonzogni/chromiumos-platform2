@@ -46,6 +46,7 @@ void AddThinkpadTBT3Dock(Port& port);
 void AddIntelUSB4GatkexCreekDock(Port& port);
 void AddOWCTBT4Dock(Port& port);
 void AddWimaxitDisplay(Port& port);
+void AddHPG4Dock(Port& port);
 
 }  // namespace typecd
 

@@ -104,6 +104,7 @@ if (use.test) {
     sources = [
       "cable_test.cc",
       "cros_ec_util_test.cc",
+      "dbus_manager_test.cc",
       "metrics_test.cc",
       "partner_test.cc",
       "pdo_test.cc",

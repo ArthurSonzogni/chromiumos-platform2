@@ -694,4 +694,65 @@ void AddTargus180Dock(Port& port) {
   port.AddRemovePartnerAltMode(mode1_path, true);
 }
 
+void AddHPG4Dock(Port& port) {
+  base::ScopedTempDir scoped_temp_dir_;
+  if (!scoped_temp_dir_.CreateUniqueTempDir())
+    return;
+  base::FilePath temp_dir_ = scoped_temp_dir_.GetPath();
+
+  port.AddPartner(base::FilePath(kFakePort0PartnerSysPath));
+
+  // PD ID VDOs for the HP G4 Dock.
+  port.partner_->SetPDRevision(PDRevision::k31);
+  port.partner_->SetIdHeaderVDO(0x4ce003f0);
+  port.partner_->SetCertStatVDO(0x0);
+  port.partner_->SetProductVDO(0x4880083);
+  port.partner_->SetProductTypeVDO1(0x6d80003b);
+  port.partner_->SetProductTypeVDO2(0x0);
+  port.partner_->SetProductTypeVDO3(0x0);
+
+  // Add partner alternate modes.
+  port.partner_->SetNumAltModes(3);
+  std::string mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 0);
+  auto mode_path = temp_dir_.Append(mode_dirname);
+  if (!CreateFakeAltMode(mode_path, kDPAltModeSID, 0x1c0045, 0))
+    return;
+  port.AddRemovePartnerAltMode(mode_path, true);
+  mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 1);
+  mode_path = temp_dir_.Append(mode_dirname);
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x4000001, 0))
+    return;
+  port.AddRemovePartnerAltMode(mode_path, true);
+  mode_dirname = base::StringPrintf("port%d-partner.%d", 0, 2);
+  mode_path = temp_dir_.Append(mode_dirname);
+  if (!CreateFakeAltMode(mode_path, 0x03f0, 0x60000000, 0))
+    return;
+  port.AddRemovePartnerAltMode(mode_path, true);
+
+  // The HP G4 has a captive cable.
+  port.AddCable(base::FilePath(kFakePort0CableSysPath));
+
+  // PD ID VDOs for the HP G4's cable.
+  port.cable_->SetPDRevision(PDRevision::k30);
+  port.cable_->SetIdHeaderVDO(0x1c6017ef);
+  port.cable_->SetCertStatVDO(0x0);
+  port.cable_->SetProductVDO(0x94880310);
+  port.cable_->SetProductTypeVDO1(0x46082043);
+  port.cable_->SetProductTypeVDO2(0x0);
+  port.cable_->SetProductTypeVDO3(0x0);
+
+  // Add cable alternate modes.
+  port.cable_->SetNumAltModes(2);
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 0);
+  mode_path = temp_dir_.Append(mode_dirname);
+  if (!CreateFakeAltMode(mode_path, kTBTAltModeVID, 0x30001, 0))
+    return;
+  port.AddCableAltMode(mode_path);
+  mode_dirname = base::StringPrintf("port%d-plug0.%d", 0, 1);
+  mode_path = temp_dir_.Append(mode_dirname);
+  if (!CreateFakeAltMode(mode_path, 0x1e4e, 0x9031011c, 0))
+    return;
+  port.AddCableAltMode(mode_path);
+}
+
 }  // namespace typecd

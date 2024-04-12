@@ -18,6 +18,11 @@
 
 namespace typecd {
 
+static constexpr uint16_t kPDRevision20 = 0x0200;
+static constexpr uint16_t kPDRevision30 = 0x0300;
+static constexpr uint16_t kPDRevision31 = 0x0301;
+static constexpr uint16_t kPDRevision32 = 0x0302;
+
 // DBusManager and PortManager classes include pointers to each other.
 // Forward declare PortManager to resolve dependencies during compilation.
 class PortManager;
@@ -63,11 +68,6 @@ class DBusManager : public org::chromium::typecdAdaptor,
  private:
   ChromeFeaturesServiceClient* features_client_;
   PortManager* port_mgr_;
-
-  static constexpr uint16_t kPDRevision20 = 0x0200;
-  static constexpr uint16_t kPDRevision30 = 0x0300;
-  static constexpr uint16_t kPDRevision31 = 0x0301;
-  static constexpr uint16_t kPDRevision32 = 0x0302;
 };
 
 }  // namespace typecd

@@ -276,6 +276,7 @@ class Port {
   friend void AddWimaxitDisplay(Port& port);
   friend void AddTargusDV4KDock(Port& port);
   friend void AddTargus180Dock(Port& port);
+  friend void AddHPG4Dock(Port& port);
 
   bool IsPartnerAltModePresent(uint16_t altmode_sid);
 
