@@ -44,6 +44,7 @@ TEST(RoutineV2TestUtilsDeathTest,
 
 TEST(RoutineV2TestUtilsDeathTest,
      UnexpectedRoutineExceptionCallbackCheckInTestFuture) {
+  GTEST_FLAG_SET(death_test_style, "threadsafe");
   base::test::TaskEnvironment task_environment;
   EXPECT_DEATH(StartFakeExceptionRoutineButDontExpectExceptions(),
                "An unexpected routine exception has occurred.*");
