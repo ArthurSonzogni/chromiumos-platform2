@@ -538,7 +538,9 @@ const std::array kFeedbackLogs {
       "/usr/bin/connectivity show-feedback devices"},
   Log{kCommand, "network-services",
       "/usr/bin/connectivity show-feedback services"},
-  Log{kFile, "psi", "/proc/pressure/memory"},
+  Log{kFile, "psi_cpu", "/proc/pressure/cpu"},
+  Log{kFile, "psi_io", "/proc/pressure/io"},
+  Log{kFile, "psi_memory", "/proc/pressure/memory"},
   Log{kCommand, "shill_connection_diagnostic",
     "croslog --show-cursor=false --identifier=shill"
     "  --grep='Connection issue:' --quiet | tail -n 3"},
