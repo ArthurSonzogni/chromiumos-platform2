@@ -265,8 +265,6 @@ Manager::Manager(ControlInterface* control_interface,
   store_.RegisterBool(kWakeOnLanEnabledProperty, &is_wake_on_lan_enabled_);
   HelpRegisterConstDerivedStrings(kClaimedDevicesProperty,
                                   &Manager::ClaimedDevices);
-  HelpRegisterConstDerivedStrings(kBlockedDevicesProperty,
-                                  &Manager::BlockedDevices);
   HelpRegisterDerivedKeyValueStore(kDNSProxyDOHProvidersProperty,
                                    &Manager::GetDNSProxyDOHProviders,
                                    &Manager::SetDNSProxyDOHProviders);
@@ -314,16 +312,6 @@ Manager::~Manager() {
 void Manager::RegisterAsync(
     base::OnceCallback<void(bool)> completion_callback) {
   adaptor_->RegisterAsync(std::move(completion_callback));
-}
-
-void Manager::SetBlockedDevices(
-    const std::vector<std::string>& blocked_devices) {
-  blocked_devices_ = blocked_devices;
-}
-
-void Manager::SetAllowedDevices(
-    const std::vector<std::string>& allowed_devices) {
-  allowed_devices_ = allowed_devices;
 }
 
 void Manager::Start() {
@@ -764,20 +752,6 @@ void Manager::OnProfileChanged(const ProfileRefPtr& profile) {
   }
 }
 
-bool Manager::DeviceManagementAllowed(const std::string& device_name) {
-  if (base::Contains(blocked_devices_, device_name)) {
-    return false;
-  }
-  if (allowed_devices_.empty()) {
-    // If no list is specified, all devices are allowed.
-    return true;
-  }
-  if (base::Contains(allowed_devices_, device_name)) {
-    return true;
-  }
-  return false;
-}
-
 void Manager::ClaimDevice(const std::string& device_name, Error* error) {
   SLOG(2) << __func__;
 
@@ -785,12 +759,6 @@ void Manager::ClaimDevice(const std::string& device_name, Error* error) {
   if (device_name.empty()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                           "Empty device name");
-    return;
-  }
-
-  if (!DeviceManagementAllowed(device_name)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Not allowed to claim unmanaged device");
     return;
   }
 
@@ -813,12 +781,6 @@ void Manager::ClaimDevice(const std::string& device_name, Error* error) {
 
 void Manager::ReleaseDevice(const std::string& device_name, Error* error) {
   SLOG(2) << __func__;
-
-  if (!DeviceManagementAllowed(device_name)) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                          "Not allowed to release unmanaged device");
-    return;
-  }
 
   if (claimed_devices_.find(device_name) == claimed_devices_.end()) {
     Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
@@ -1251,10 +1213,6 @@ void Manager::DeregisterDeviceByLinkName(const std::string& link_name) {
 std::vector<std::string> Manager::ClaimedDevices(Error* error) {
   // set to vector conversion.
   return {claimed_devices_.begin(), claimed_devices_.end()};
-}
-
-std::vector<std::string> Manager::BlockedDevices(Error* error) {
-  return blocked_devices_;
 }
 
 void Manager::LoadDeviceFromProfiles(const DeviceRefPtr& device) {

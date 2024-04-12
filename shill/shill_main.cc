@@ -13,8 +13,6 @@
 #include <base/command_line.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
 #include <brillo/minijail/minijail.h>
 #include <brillo/syslog_logging.h>
 
@@ -31,10 +29,6 @@ namespace switches {
 
 // Don't daemon()ize; run in foreground.
 const char kForeground[] = "foreground";
-// Don't attempt to manage these devices.
-const char kDevicesBlocked[] = "devices-blocked";
-// Manage only these devices.
-const char kDevicesAllowed[] = "devices-allowed";
 // Flag that causes shill to show the help message and exit.
 const char kHelp[] = "help";
 
@@ -44,18 +38,12 @@ const char kHelpMessage[] =
     "Available Switches: \n"
     "  --foreground\n"
     "    Don\'t daemon()ize; run in foreground.\n"
-    "  --devices-blocked=device1,device2\n"
-    "    Do not manage devices named device1 or device2\n"
-    "  --devices-allowed=device1,device2\n"
-    "    Manage only devices named device1 and device2\n"
     "  --log-level=N\n"
     "    Logging level:\n"
     "      0 = LOG(INFO), 1 = LOG(WARNING), 2 = LOG(ERROR),\n"
     "      -1 = SLOG(..., 1), -2 = SLOG(..., 2), etc.\n"
     "  --log-scopes=\"*scope1+scope2\".\n"
-    "    Scopes to enable for SLOG()-based logging.\n"
-    "  --default-technology-order=technology1,technology2\n"
-    "    Specify the default priority order of the technologies.\n";
+    "    Scopes to enable for SLOG()-based logging.\n";
 }  // namespace switches
 
 const char kLoggerCommand[] = "/usr/bin/logger";
@@ -113,23 +101,9 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  shill::DaemonTask::Settings settings;
-
-  if (cl->HasSwitch(switches::kDevicesBlocked)) {
-    settings.devices_blocked =
-        base::SplitString(cl->GetSwitchValueASCII(switches::kDevicesBlocked),
-                          ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  }
-
-  if (cl->HasSwitch(switches::kDevicesAllowed)) {
-    settings.devices_allowed =
-        base::SplitString(cl->GetSwitchValueASCII(switches::kDevicesAllowed),
-                          ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-  }
-
   shill::Config config;
   // Construct the daemon first, so we get our AtExitManager.
-  shill::ShillDaemon daemon(settings, &config);
+  shill::ShillDaemon daemon(&config);
 
   // Configure logging before we start anything else, so early log messages go
   // to a consistent place.

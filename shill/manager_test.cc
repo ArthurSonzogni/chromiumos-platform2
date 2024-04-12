@@ -4359,68 +4359,6 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
                                           enable_technology_callback);
 }
 
-TEST_F(ManagerTest, ClaimBlockedDevice) {
-  const std::string kDeviceName = "test_device";
-
-  // Set blocked devices.
-  std::vector<std::string> blocked_devices = {kDeviceName};
-  manager()->SetBlockedDevices(blocked_devices);
-
-  Error error;
-  manager()->ClaimDevice(kDeviceName, &error);
-  EXPECT_TRUE(error.IsFailure());
-  EXPECT_EQ("Not allowed to claim unmanaged device", error.message());
-}
-
-TEST_F(ManagerTest, ReleaseBlockedDevice) {
-  const std::string kDeviceName = "test_device";
-
-  // Set blocked devices.
-  std::vector<std::string> blocked_devices = {kDeviceName};
-  manager()->SetBlockedDevices(blocked_devices);
-
-  Error error;
-  manager()->ReleaseDevice(kDeviceName, &error);
-  EXPECT_TRUE(error.IsFailure());
-  EXPECT_EQ("Not allowed to release unmanaged device", error.message());
-}
-
-TEST_F(ManagerTest, BlockedDeviceIsNotManaged) {
-  const std::string kDeviceName = "test_device";
-
-  std::vector<std::string> blocked_devices = {kDeviceName};
-  manager()->SetBlockedDevices(blocked_devices);
-  EXPECT_FALSE(manager()->DeviceManagementAllowed(kDeviceName));
-}
-
-TEST_F(ManagerTest, NonBlockedDeviceIsManaged) {
-  const std::string kDeviceName = "test_device";
-
-  std::vector<std::string> blocked_devices = {"other_device"};
-  manager()->SetBlockedDevices(blocked_devices);
-  EXPECT_TRUE(manager()->DeviceManagementAllowed(kDeviceName));
-}
-
-TEST_F(ManagerTest, AllowedDeviceIsManaged) {
-  const std::string kDeviceName = "test_device";
-
-  std::vector<std::string> allowed_devices = {kDeviceName};
-  manager()->SetAllowedDevices(allowed_devices);
-  EXPECT_TRUE(manager()->DeviceManagementAllowed(kDeviceName));
-}
-
-TEST_F(ManagerTest, NonAllowedDeviceIsNotManaged) {
-  const std::string kDeviceName = "test_device";
-
-  std::vector<std::string> allowed_devices = {"other_device"};
-  manager()->SetAllowedDevices(allowed_devices);
-  EXPECT_FALSE(manager()->DeviceManagementAllowed(kDeviceName));
-}
-
-TEST_F(ManagerTest, DevicesIsManagedByDefault) {
-  EXPECT_TRUE(manager()->DeviceManagementAllowed("test_device"));
-}
-
 TEST_F(ManagerTest, ClaimDevice) {
   const char kDeviceName[] = "test_device";
 

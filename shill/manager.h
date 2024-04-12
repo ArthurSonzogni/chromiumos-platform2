@@ -137,15 +137,6 @@ class Manager {
 
   void RegisterAsync(base::OnceCallback<void(bool)> completion_callback);
 
-  virtual void SetBlockedDevices(
-      const std::vector<std::string>& blockeded_devices);
-  virtual void SetAllowedDevices(
-      const std::vector<std::string>& allowed_devices);
-
-  // Returns true if |device_name| is either not in the blocked list, or in the
-  // allowed list, depending on which list was supplied in startup settings.
-  virtual bool DeviceManagementAllowed(const std::string& device_name);
-
   virtual void Start();
   virtual void Stop();
   bool running() const { return running_; }
@@ -778,10 +769,6 @@ class Manager {
   // Returns the names of all of the claimed devices by ClaimDevice().
   std::vector<std::string> ClaimedDevices(Error* error);
 
-  // Returns the names of all the devices blocked through --devices-blocked
-  // command line switch.
-  std::vector<std::string> BlockedDevices(Error* error);
-
   // Iterate through all Ethernet services to check if any of them matches the
   // current disconnect-wifi-on-ethernet criteria.
   bool HasEthernetMatchingDisconnectWiFiCriteria();
@@ -905,12 +892,6 @@ class Manager {
   // Set to true if there is a user session, which is inferred based on calls
   // to Manager::InsertUserProfile() and Manager::PopAllUserProfiles().
   bool has_user_session_;
-
-  // List of blocked devices specified from command line.
-  std::vector<std::string> blocked_devices_;
-
-  // List of allowed devices specified from command line.
-  std::vector<std::string> allowed_devices_;
 
   // List of devices claimed by other processes via ClaimerInterface D-Bus API.
   std::set<std::string> claimed_devices_;

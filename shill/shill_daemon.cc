@@ -12,9 +12,7 @@
 
 namespace shill {
 
-ShillDaemon::ShillDaemon(const shill::DaemonTask::Settings& settings,
-                         Config* config)
-    : daemon_task_(settings, config) {}
+ShillDaemon::ShillDaemon(Config* config) : daemon_task_(config) {}
 
 ShillDaemon::~ShillDaemon() = default;
 

@@ -18,7 +18,7 @@ class Config;
 // to DaemonTask, and additionally overrides methods of brillo::Daemon.
 class ShillDaemon : public brillo::Daemon {
  public:
-  ShillDaemon(const shill::DaemonTask::Settings& settings, Config* config);
+  explicit ShillDaemon(Config* config);
   ShillDaemon(const ShillDaemon&) = delete;
   ShillDaemon& operator=(const ShillDaemon&) = delete;
 

@@ -37,20 +37,14 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDaemon;
 }  // namespace Logging
 
-DaemonTask::DaemonTask(const Settings& settings, Config* config)
-    : settings_(settings),
-      config_(config),
+DaemonTask::DaemonTask(Config* config)
+    : config_(config),
       rtnl_handler_(nullptr),
       dhcp_provider_(nullptr),
       netlink_manager_(nullptr),
       process_manager_(nullptr) {}
 
 DaemonTask::~DaemonTask() = default;
-
-void DaemonTask::ApplySettings() {
-  manager_->SetBlockedDevices(settings_.devices_blocked);
-  manager_->SetAllowedDevices(settings_.devices_allowed);
-}
 
 bool DaemonTask::Quit(base::OnceClosure completion_callback) {
   SLOG(1) << "Starting termination actions.";
@@ -81,7 +75,6 @@ void DaemonTask::Init() {
   control_->RegisterManagerObject(
       manager_.get(),
       base::BindOnce(&DaemonTask::Start, base::Unretained(this)));
-  ApplySettings();
 }
 
 void DaemonTask::TerminationActionsCompleted(const Error& error) {

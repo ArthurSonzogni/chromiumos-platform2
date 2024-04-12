@@ -25,14 +25,6 @@ if [ -n "${SHILL_LOG_VMODULES}" ]; then
   set -- "$@" --vmodule="${SHILL_LOG_VMODULES}"
 fi
 
-if [ -n "${BLOCKED_DEVICES}" ]; then
-  set -- "$@" --devices-blocked="${BLOCKED_DEVICES}"
-fi
-
-if [ -n "${ALLOWED_DEVICES}" ]; then
-  set -- "$@" --devices-allowed="${ALLOWED_DEVICES}"
-fi
-
 # Run shill as shill user/group in a minijail:
 #   -G so shill programs can inherit supplementary groups.
 #   -n to run shill with no_new_privs.

@@ -44,8 +44,7 @@ constexpr uint32_t RTMGRP_ND_USEROPT = 1 << (RTNLGRP_ND_USEROPT - 1);
 
 class DaemonTaskForTest : public DaemonTask {
  public:
-  DaemonTaskForTest(const Settings& setttings, Config* config)
-      : DaemonTask(Settings(), config) {}
+  explicit DaemonTaskForTest(Config* config) : DaemonTask(config) {}
   ~DaemonTaskForTest() override = default;
 
   bool quit_result() const { return quit_result_; }
@@ -69,7 +68,7 @@ class DaemonTaskForTest : public DaemonTask {
 class DaemonTaskTest : public Test {
  public:
   DaemonTaskTest()
-      : daemon_(DaemonTask::Settings(), &config_),
+      : daemon_(&config_),
         dispatcher_(new EventDispatcherForTest()),
         control_(new MockControl()),
         metrics_(new MockMetrics()),
@@ -97,11 +96,6 @@ class DaemonTaskTest : public Test {
   void StopDaemon() { daemon_.Stop(); }
 
   void RunDaemon() { daemon_.RunMessageLoop(); }
-
-  void ApplySettings(const DaemonTask::Settings& settings) {
-    daemon_.settings_ = settings;
-    daemon_.ApplySettings();
-  }
 
   MOCK_METHOD(void, OnMojoServiceDestroyed, ());
   MOCK_METHOD(void, TerminationAction, ());
@@ -222,20 +216,6 @@ TEST_F(DaemonTaskTest, QuitWithoutTerminationActions) {
   EXPECT_CALL(*this, BreakTerminationLoop()).Times(0);
   EXPECT_TRUE(daemon_.Quit(base::BindOnce(&DaemonTaskTest::BreakTerminationLoop,
                                           base::Unretained(this))));
-}
-
-TEST_F(DaemonTaskTest, ApplySettings) {
-  DaemonTask::Settings settings;
-  std::vector<std::string> kEmptyStringList;
-  EXPECT_CALL(*manager_, SetBlockedDevices(kEmptyStringList));
-  ApplySettings(settings);
-  Mock::VerifyAndClearExpectations(manager_);
-
-  std::vector<std::string> kBlockedDevices = {"eth0", "eth1"};
-  settings.devices_blocked = kBlockedDevices;
-  EXPECT_CALL(*manager_, SetBlockedDevices(kBlockedDevices));
-  ApplySettings(settings);
-  Mock::VerifyAndClearExpectations(manager_);
 }
 
 }  // namespace shill

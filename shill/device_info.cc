@@ -779,9 +779,6 @@ void DeviceInfo::AddLinkMsgHandler(const net_base::RTNLMessage& msg) {
       technology = Technology::kArcBridge;
     } else if (IsDeviceBlocked(link_name)) {
       technology = Technology::kBlocked;
-    } else if (!manager_->DeviceManagementAllowed(link_name)) {
-      technology = Technology::kBlocked;
-      BlockDevice(link_name);
     } else {
       technology = GetDeviceTechnology(link_name, msg.link_status().kind);
     }

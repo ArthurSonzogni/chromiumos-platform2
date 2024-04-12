@@ -36,13 +36,7 @@ class RoutingTable;
 // test_runner.cc.
 class DaemonTask {
  public:
-  // Run-time settings retrieved from command line.
-  struct Settings {
-    std::vector<std::string> devices_blocked;
-    std::vector<std::string> devices_allowed;
-  };
-
-  DaemonTask(const Settings& settings, Config* config);
+  explicit DaemonTask(Config* config);
   DaemonTask(const DaemonTask&) = delete;
   DaemonTask& operator=(const DaemonTask&) = delete;
 
@@ -67,9 +61,6 @@ class DaemonTask {
 
   void Start();
 
-  // Apply run-time settings to the manager.
-  void ApplySettings();
-
   // Called when the termination actions are completed.
   void TerminationActionsCompleted(const Error& error);
 
@@ -79,7 +70,6 @@ class DaemonTask {
 
   void Stop();
 
-  Settings settings_;
   Config* config_;
   std::unique_ptr<EventDispatcher> dispatcher_;
   std::unique_ptr<ControlInterface> control_;

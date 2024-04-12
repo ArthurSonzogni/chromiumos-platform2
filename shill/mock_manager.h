@@ -108,10 +108,6 @@ class MockManager : public Manager {
               GetEnabledDeviceWithTechnology,
               (Technology),
               (const, override));
-  MOCK_METHOD(void,
-              SetBlockedDevices,
-              (const std::vector<std::string>&),
-              (override));
   MOCK_METHOD(ServiceRefPtr, GetFirstEthernetService, (), (override));
   MOCK_METHOD(DeviceRefPtr,
               FindDeviceFromService,
