@@ -141,6 +141,8 @@ TEST_F(FlexHwisMojoTest, MojoInput) {
   flex_hwis_mojo_->SetInputInfo(&data);
 
   EXPECT_EQ(data.mutable_touchpad()->stack(), kTouchpadLibraryName);
+  EXPECT_EQ(data.mutable_touchpad()->driver().size(), 1);
+  EXPECT_EQ(data.mutable_touchpad()->driver()[0], kTouchpadDriverName);
 }
 
 TEST_F(FlexHwisMojoTest, MojoTpm) {

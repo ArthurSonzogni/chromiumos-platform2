@@ -282,6 +282,12 @@ void FlexHwisMojo::SetInputInfo(hwis_proto::Device* data) {
 
   const auto& input_info = input_result->get_input_info();
   data->mutable_touchpad()->set_stack(input_info->touchpad_library_name);
+
+  if (input_info->touchpad_devices && !input_info->touchpad_devices->empty()) {
+    for (const auto& touchpad_device : input_info->touchpad_devices.value()) {
+      data->mutable_touchpad()->add_driver(touchpad_device->driver_name);
+    }
+  }
 }
 
 void FlexHwisMojo::SetTpmInfo(hwis_proto::Device* data) {

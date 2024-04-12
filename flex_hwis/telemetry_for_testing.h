@@ -30,6 +30,7 @@ inline constexpr char kGraphicsRenderer[] = "Mesa Intel(R) HD Graphics 620";
 inline constexpr char kGraphicsShadingVer[] = "OpenGL ES GLSL ES 3.20";
 inline constexpr char kGraphicsExtension[] = "GL_EXT_blend_minmax";
 inline constexpr char kTouchpadLibraryName[] = "gestures";
+inline constexpr char kTouchpadDriverName[] = "hid-multitouch";
 inline constexpr int kTpmFamily = 0x322e3000;
 inline constexpr char kTpmFamilyStr[] = "2.0";
 inline constexpr int kTpmSpecLevel = 0;

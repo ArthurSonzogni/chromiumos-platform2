@@ -119,6 +119,12 @@ void TelemetryForTesting::AddInputInfo() {
   auto input_info = mojom::InputInfo::New();
   input_info->touchpad_library_name = kTouchpadLibraryName;
 
+  auto touchpad_device = mojom::TouchpadDevice::New();
+  touchpad_device->driver_name = kTouchpadDriverName;
+  input_info->touchpad_devices =
+      std::vector<ash::cros_healthd::mojom::TouchpadDevicePtr>{};
+  input_info->touchpad_devices->push_back(std::move(touchpad_device));
+
   info_->input_result =
       mojom::InputResult::NewInputInfo({std::move(input_info)});
 }
