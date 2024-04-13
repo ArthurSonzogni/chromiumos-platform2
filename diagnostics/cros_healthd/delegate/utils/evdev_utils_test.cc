@@ -103,6 +103,26 @@ void SetMockTouchPointInfo(test::MockLibevdevWrapper* dev,
   SetMockSlotValue(dev, slot, ABS_MT_TOUCH_MINOR, info->touch_minor);
 }
 
+class FakeEvdevUtil : public EvdevUtil {
+ public:
+  using LibevdevWrapperFactoryMethod =
+      base::RepeatingCallback<std::unique_ptr<LibevdevWrapper>(int fd)>;
+  FakeEvdevUtil(std::unique_ptr<Delegate> delegate,
+                LibevdevWrapperFactoryMethod factory_method)
+      : EvdevUtil(std::move(delegate)),
+        factory_method_(std::move(factory_method)) {}
+  FakeEvdevUtil(const FakeEvdevUtil& oth) = delete;
+  FakeEvdevUtil(FakeEvdevUtil&& oth) = delete;
+  ~FakeEvdevUtil() = default;
+
+  std::unique_ptr<LibevdevWrapper> CreateLibevdev(int fd) override {
+    return factory_method_.Run(fd);
+  }
+
+ private:
+  LibevdevWrapperFactoryMethod factory_method_;
+};
+
 class EvdevUtilsTest : public ::testing::Test {
  public:
   EvdevUtilsTest(const EvdevUtilsTest&) = delete;
@@ -129,9 +149,9 @@ class EvdevUtilsTest : public ::testing::Test {
   void StartEvdevUtil(bool allow_multiple_devices = false) {
     CHECK(mock_delegate_);
     CHECK(!evdev_util_) << "StartEvdevUtil can only be called once";
-    evdev_util_ = std::make_unique<EvdevUtil>(std::move(mock_delegate_),
-                                              allow_multiple_devices,
-                                              mock_factory_method_.Get());
+    evdev_util_ = std::make_unique<FakeEvdevUtil>(std::move(mock_delegate_),
+                                                  mock_factory_method_.Get());
+    evdev_util_->StartMonitoring(allow_multiple_devices);
   }
 
   void ExpectEventFromNode(int fd, input_event fake_event) {
@@ -165,7 +185,8 @@ class EvdevUtilsTest : public ::testing::Test {
     return *mock_delegate_;
   }
 
-  StrictMock<base::MockCallback<EvdevUtil::LibevdevWrapperFactoryMethod>>
+  StrictMock<base::MockCallback<
+      base::RepeatingCallback<std::unique_ptr<LibevdevWrapper>(int)>>>
       mock_factory_method_;
   base::test::RepeatingTestFuture<input_event> event_future;
 

@@ -84,28 +84,21 @@ bool EvdevUtil::EvdevDevice::StarWatchingEvents(
   return !!watcher_;
 }
 
-EvdevUtil::EvdevUtil(std::unique_ptr<Delegate> delegate,
-                     bool allow_multiple_devices)
-    : EvdevUtil(std::move(delegate),
-                allow_multiple_devices,
-                base::BindRepeating(&LibevdevWrapperImpl::Create)) {}
-
-EvdevUtil::EvdevUtil(std::unique_ptr<Delegate> delegate,
-                     bool allow_multiple_devices,
-                     LibevdevWrapperFactoryMethod factory_method)
-    : allow_multiple_devices_(allow_multiple_devices),
-      delegate_(std::move(delegate)) {
-  Initialize(factory_method);
-}
+EvdevUtil::EvdevUtil(std::unique_ptr<Delegate> delegate)
+    : delegate_(std::move(delegate)) {}
 
 EvdevUtil::~EvdevUtil() = default;
 
-void EvdevUtil::Initialize(LibevdevWrapperFactoryMethod factory_method) {
+std::unique_ptr<LibevdevWrapper> EvdevUtil::CreateLibevdev(int fd) {
+  return LibevdevWrapperImpl::Create(fd);
+}
+
+void EvdevUtil::StartMonitoring(bool allow_multiple_devices) {
   base::FileEnumerator file_enum(GetRootedPath(kDevInputPath),
                                  /*recursive=*/false,
                                  base::FileEnumerator::FILES);
   for (auto path = file_enum.Next(); !path.empty(); path = file_enum.Next()) {
-    if (Initialize(path, factory_method) && !allow_multiple_devices_) {
+    if (TryMonitoringEvdevDevice(path) && !allow_multiple_devices) {
       return;
     }
   }
@@ -117,14 +110,13 @@ void EvdevUtil::Initialize(LibevdevWrapperFactoryMethod factory_method) {
   }
 }
 
-bool EvdevUtil::Initialize(const base::FilePath& path,
-                           LibevdevWrapperFactoryMethod factory_method) {
+bool EvdevUtil::TryMonitoringEvdevDevice(const base::FilePath& path) {
   auto fd = base::ScopedFD(open(path.value().c_str(), O_RDONLY | O_NONBLOCK));
   if (!fd.is_valid()) {
     return false;
   }
 
-  auto dev = factory_method.Run(fd.get());
+  auto dev = CreateLibevdev(fd.get());
   if (!dev) {
     return false;
   }

@@ -60,33 +60,32 @@ class EvdevUtil {
     std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   };
 
-  using LibevdevWrapperFactoryMethod =
-      base::RepeatingCallback<std::unique_ptr<LibevdevWrapper>(int fd)>;
-
-  // If |allow_multiple_devices| is true, all evdev nodes for which
-  // |Delegate::IsTarget| returns true will be monitored. Otherwise, at most one
-  // evdev node will be monitored.
-  EvdevUtil(std::unique_ptr<Delegate> delegate,
-            bool allow_multiple_devices = false);
-  // Constructor that overrides |factory_method| is only for testing.
-  EvdevUtil(std::unique_ptr<Delegate> delegate,
-            bool allow_multiple_devices,
-            LibevdevWrapperFactoryMethod factory_method);
+  explicit EvdevUtil(std::unique_ptr<Delegate> delegate);
   EvdevUtil(const EvdevUtil& oth) = delete;
   EvdevUtil(EvdevUtil&& oth) = delete;
   virtual ~EvdevUtil();
 
+  // Starts monitoring evdev events.
+  //
+  // If `allow_multiple_devices` is true, all evdev nodes for which
+  // `Delegate::IsTarget` returns true will be monitored. Otherwise, at most one
+  // evdev node will be monitored.
+  void StartMonitoring(bool allow_multiple_devices);
+
+ protected:
+  // Creates a libevdev device object from `fd`.
+  // Declared as virtual to be overridden for testing.
+  virtual std::unique_ptr<LibevdevWrapper> CreateLibevdev(int fd);
+
  private:
-  void Initialize(LibevdevWrapperFactoryMethod factory_method);
-  bool Initialize(const base::FilePath& path,
-                  LibevdevWrapperFactoryMethod factory_method);
+  // Monitors the evdev device created from `path` and returns whether the
+  // monitoring was successful or not.
+  bool TryMonitoringEvdevDevice(const base::FilePath& path);
 
   // Called when the fd of a targeted evdev device |dev| is readable. It reads
   // events from the fd and fires events through |FireEvent|.
   void OnEvdevEvent(LibevdevWrapper* dev);
 
-  // Whether to monitor events from multiple devices.
-  const bool allow_multiple_devices_ = false;
   // The evdev devices to monitor.
   std::vector<std::unique_ptr<EvdevDevice>> devs_;
   // Delegate to implement dedicated behaviors for different evdev devices.
