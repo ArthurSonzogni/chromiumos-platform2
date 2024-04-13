@@ -50,18 +50,19 @@ serial_number() {
 }
 
 # shellcheck disable=SC2154
-touch "${MACHINE_INFO}"
+true > "${MACHINE_INFO}"
 chmod 0644 "${MACHINE_INFO}"
 
-# Output the Flex ID if this is a Reven device, and SN if not.
-if crossystem "hwid?REVEN-ANAE A6A-A7I"; then
-  echo "flex_id=\"$(flex_id_tool --type=id)\"" >> "${MACHINE_INFO}"
-else
-  echo "serial_number=\"$(serial_number)\"" >> "${MACHINE_INFO}"
-fi
-
+# Generate the key-value pairs we need, and capture and log errors.
 MACHINE_INFO_ERR=$( {
-  # Dynamic information. Capture and log error messages from commands.
+  # If we have the Flex ID tool, output a Flex ID, or a serial number if not.
+  if [ -n "$(which flex_id_tool)" ]; then
+    echo "flex_id=\"$(flex_id_tool --type=id)\""
+  else
+    echo "serial_number=\"$(serial_number)\""
+  fi
+
+  # Dynamic information.
   echo "customization_id=\"$(cros_config /ui help-content-id)\""
   echo "rlz_brand_code=\"$(cros_config / brand-code)\""
   echo "wpsw_cur=\"$(crossystem wpsw_cur)\""
