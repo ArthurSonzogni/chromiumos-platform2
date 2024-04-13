@@ -103,13 +103,6 @@ const VPNDriver::Property IKEv2Driver::kProperties[] = {
     {kProviderTypeProperty, 0},
 };
 
-// static
-bool IKEv2Driver::IsSupported() {
-  // IKEv2 is currently supported on kernel version >= 4.19, due to the
-  // availability of XFRM interface.
-  return VPNUtil::CheckKernelVersion(base::Version("4.19"));
-}
-
 IKEv2Driver::IKEv2Driver(Manager* manager,
                          net_base::ProcessManager* process_manager)
     : VPNDriver(manager,

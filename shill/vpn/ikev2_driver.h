@@ -23,9 +23,6 @@ namespace shill {
 
 class IKEv2Driver : public VPNDriver {
  public:
-  // Returns whether IKEv2 is supported by the device.
-  static bool IsSupported();
-
   IKEv2Driver(Manager* manager, net_base::ProcessManager* process_manager);
   IKEv2Driver(const IKEv2Driver&) = delete;
   IKEv2Driver& operator=(const IKEv2Driver&) = delete;
