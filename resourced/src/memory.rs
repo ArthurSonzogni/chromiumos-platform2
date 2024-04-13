@@ -1047,6 +1047,7 @@ full avg10=29.29 avg60=19.01 avg300=5.44 total=17589167"#;
         // Touches /run/resourced.
         OpenOptions::new()
             .create(true)
+            .truncate(true)
             .write(true)
             .open(root.path().join(RESOURCED_CONFIG_DIR))
             .unwrap();

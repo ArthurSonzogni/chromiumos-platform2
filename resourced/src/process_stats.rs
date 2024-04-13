@@ -210,9 +210,7 @@ fn classify_daemon(
         return Some((TreeKind::Arc, ProcessGroupKind::ARC));
     }
 
-    let Some(exe) = get_exe(procfs_path, pid) else {
-        return None;
-    };
+    let exe = get_exe(procfs_path, pid)?;
 
     let exe = exe.as_os_str();
     if exe == "/opt/google/chrome/chrome" {

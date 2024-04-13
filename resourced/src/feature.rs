@@ -11,9 +11,8 @@ use anyhow::Context;
 use anyhow::Result;
 use dbus::nonblock::SyncConnection;
 #[cfg(feature = "chromeos")]
-use featured::CheckFeature;
-use log::error;
-use once_cell::sync::OnceCell; // Trait CheckFeature is for is_feature_enabled_blocking
+use featured::CheckFeature; // Trait CheckFeature is for get_params_and_enabled
+use once_cell::sync::OnceCell;
 
 type FeatureChangeCallback = Box<dyn Fn(bool) + Send + Sync + 'static>;
 type FeatureRegisterInfo = (&'static str, bool, Option<FeatureChangeCallback>);
@@ -208,7 +207,7 @@ pub async fn init(conn: &SyncConnection) -> Result<()> {
             .get()
             .expect("FEATURE_MANAGER singleton disappeared");
         if let Err(e) = feature_manager.reload_cache() {
-            error!("Error reloading feature cache: {:?}", e);
+            log::error!("Error reloading feature cache: {:?}", e);
         }
     })
     .await
