@@ -209,6 +209,7 @@ void DeviceUser::OnSessionStateChange(const std::string& state) {
   for (auto& cb : on_device_user_ready_cbs_) {
     std::move(cb).Run(device_user_);
   }
+  on_device_user_ready_cbs_.clear();
 
   for (auto cb : session_change_listeners_) {
     cb.Run(state);

@@ -4,6 +4,7 @@
 
 #include "secagentd/device_user.h"
 
+#include <cstdint>
 #include <memory>
 
 #include "absl/strings/str_format.h"
@@ -12,6 +13,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/run_loop.h"
 #include "base/test/task_environment.h"
@@ -165,6 +167,14 @@ class DeviceUserTestFixture : public ::testing::Test {
 
   void SetDeviceUserReady(bool ready) {
     device_user_->device_user_ready_ = ready;
+  }
+
+  size_t GetDeviceUserReadyCbsSize() {
+    return device_user_->on_device_user_ready_cbs_.size();
+  }
+
+  void PushBackDeviceUserReadyCbs() {
+    device_user_->on_device_user_ready_cbs_.push_back(base::DoNothing());
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -919,6 +929,7 @@ TEST_F(DeviceUserTestFixture, TestGetDeviceUserAsync) {
   device_user_->GetDeviceUserAsync(std::move(cb_not_ready_1));
   device_user_->GetDeviceUserAsync(std::move(cb_not_ready_2));
   EXPECT_FALSE(is_called);
+  EXPECT_EQ(2, GetDeviceUserReadyCbsSize());
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
   run_loop_not_ready_1.Run();
   run_loop_not_ready_2.Run();
@@ -929,6 +940,38 @@ TEST_F(DeviceUserTestFixture, TestGetDeviceUserAsync) {
   EXPECT_EQ(kDeviceUser, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
   EXPECT_EQ(kDeviceUser, device_user_->GetUsernamesForRedaction().front());
+  EXPECT_EQ(0, GetDeviceUserReadyCbsSize());
+}
+
+TEST_F(DeviceUserTestFixture, TestClearDeviceUserReadyCbs) {
+  EXPECT_CALL(*session_manager_ref_, IsGuestSessionActive)
+      .WillRepeatedly(WithArg<0>(Invoke([](bool* is_guest) {
+        *is_guest = false;
+        return true;
+      })));
+  EXPECT_CALL(*session_manager_ref_, RetrievePrimarySession)
+      .WillOnce(WithArgs<0>(Invoke([](std::string* username) {
+        *username = "6b696f736b5f617070@public-accounts.device-local.localhost";
+        return true;
+      })));
+  EXPECT_CALL(
+      *session_manager_ref_,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob("device", ""), _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob("device", kAffiliationID);
+        return true;
+      })));
+
+  SaveRegistrationCallbacks();
+  device_user_->RegisterSessionChangeHandler();
+  EXPECT_EQ(0, GetDeviceUserReadyCbsSize());
+  PushBackDeviceUserReadyCbs();
+  EXPECT_EQ(1, GetDeviceUserReadyCbsSize());
+
+  registration_cb_.Run(kStarted);
+
+  EXPECT_TRUE(GetDeviceUserReady());
+  EXPECT_EQ(0, GetDeviceUserReadyCbsSize());
 }
 
 TEST_F(DeviceUserTestFixture, TestGetUsernameBasedOnAffiliation) {
