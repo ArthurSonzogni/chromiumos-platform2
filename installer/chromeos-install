@@ -215,11 +215,18 @@ write_partition() {
   local chunk_num="$7"
   local total_chunks="$8"
   local cache_input="$9"
-  local format fs_format
+  local format fs_format dst_part_size
 
   if [ "${user_count}" -eq 0 ]; then
     echo "Skipping partition as it does not exist"
     return 0
+  fi
+
+  dst_part_size="$(partsize "${dst}" "${user_part}")"
+  if [ "${user_count}" -gt "${dst_part_size}" ]; then
+    # Limit the copy size to prevent overflow.
+    die "Error: Source size (${part_size}) is larger than destination " \
+        "(${dst_part_size})."
   fi
 
   format="$(get_format "${user_part}")"
