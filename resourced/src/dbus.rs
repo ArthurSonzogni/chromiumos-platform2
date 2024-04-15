@@ -91,22 +91,13 @@ fn send_pressure_signal(
     level: u8,
     reclaim_target_kb: u64,
 ) {
-    let mut ts = libc::timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
+    let signal_origin_timestamp_ms = match get_monotonic_timestamp_ms() {
+        Ok(timestamp) => timestamp,
+        Err(_) => {
+            error!("Failed to get current time.");
+            -1
+        }
     };
-
-    let mut signal_origin_timestamp_ms = -1;
-
-    // SAFETY: Safe because the only side-effects of this function are modifications via the
-    // passed pointer, and we pass a pointer of the proper type.
-    let result =
-        unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts as *mut libc::timespec) };
-    if result == 0 {
-        signal_origin_timestamp_ms = ts.tv_sec * 1000 + ts.tv_nsec / 1_000_000;
-    } else {
-        error!("Failed to get current time.");
-    }
 
     let msg = Message::signal(
         &PATH_NAME.into(),
@@ -708,6 +699,27 @@ fn report_memory_stats(stats: process_stats::MemStats) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn get_monotonic_timestamp_ms() -> Result<i64> {
+    let mut ts = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+
+    // SAFETY: Safe because the only side-effects of this function are modifications via the
+    // passed pointer, and we pass a pointer of the proper type.
+    let current_timestamp_ms =
+        if unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts as *mut libc::timespec) }
+            == 0
+        {
+            // On 32bit platforms, tv_sec and tv_nsec are i32. Upcast to u64 here for compatibility.
+            (ts.tv_sec as u64) * 1000 + (ts.tv_nsec as u64) / 1_000_000
+        } else {
+            bail!("Failed to get current time.");
+        };
+
+    Ok(current_timestamp_ms as i64)
 }
 
 pub async fn service_main() -> Result<()> {
