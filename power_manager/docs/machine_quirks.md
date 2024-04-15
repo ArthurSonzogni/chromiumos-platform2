@@ -59,3 +59,7 @@ restart powerd
 ```
 
 \*`has_machine_quirks` should be set to 1 for the above to work.
+
+## Dynamic Machine Quirk(s)
+
+There is also one dynamic machine quirk, kAllowZeroChargeReadOnACPref, which decides whether to activate the quirk on init rather than through a ListPref (kHasMachineQuirksPref still must be enabled). Instead of reading and comparing DMI info, this kAllowZeroChargeReadOnACPref checks if the device is using the generic ACPI battery driver, linux/drivers/acpi/battery.c.

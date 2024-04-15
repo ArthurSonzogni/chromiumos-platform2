@@ -909,6 +909,7 @@ In the tables below,
 | adaptive-charging-hold-percent | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | adaptive-charging-min-probability | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | allow-ambient-eq | string | ```^[01]$``` | False |  | False | Enable (1) or disable (0) Ambient EQ. |
+| allow-zero-charge-readings-on-ac | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | als-smoothing-constant | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | autobrightness | [autobrightness](#autobrightness) |  | False |  | False |  |
 | avoid-suspend-when-headphone-jack-plugged | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |

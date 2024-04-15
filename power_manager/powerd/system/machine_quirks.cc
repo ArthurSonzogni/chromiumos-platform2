@@ -4,13 +4,17 @@
 
 #include "power_manager/powerd/system/machine_quirks.h"
 
+#include <optional>
 #include <string_view>
 
+#include <base/files/file_enumerator.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/pattern.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <re2/re2.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -31,9 +35,17 @@ const base::FilePath kPowerManagerSuspendToIdleFile("suspend_to_idle_models");
 // File containing the product names that require suspend blocking.
 const base::FilePath kPowerManagerSuspendPreventionFile(
     "suspend_prevention_models");
+
+constexpr std::string_view kAcpiGenericBatteryDriver = "battery";
+
+// As defined in
+// https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-power
+constexpr std::string_view kBatteryType = "Battery";
+constexpr std::string_view kDeviceScope = "Device";
 }  // namespace
 
-MachineQuirks::MachineQuirks() : dmi_id_dir_(kDefaultDmiIdDir) {}
+MachineQuirks::MachineQuirks()
+    : dmi_id_dir_(kDefaultDmiIdDir), power_supply_dir_(kPowerStatusPath) {}
 
 void MachineQuirks::Init(PrefsInterface* prefs) {
   DCHECK(prefs);
@@ -61,6 +73,15 @@ void MachineQuirks::ApplyQuirksToPrefs() {
   if (IsExternalDisplayOnly()) {
     prefs_->SetInt64(kExternalDisplayOnlyPref, 1);
     LOG(INFO) << "ExternalDisplayOnly Pref set to enabled";
+  }
+
+  if (IsGenericAcpiBatteryDriver()) {
+    // This pref is set as the generic ACPI battery driver can read out the
+    // current charge as 0. Such devices then cause various power related tools
+    // to crash as they do not expect to receive a 0 value for current charge,
+    // but this pref handles such cases.
+    prefs_->SetInt64(kAllowZeroChargeReadOnACPref, 1);
+    LOG(INFO) << "AllowZeroChargeReadOnAC Pref set to enabled";
   }
 }
 
@@ -113,6 +134,94 @@ bool MachineQuirks::IsExternalDisplayOnly() {
   return false;
 }
 
+// Returns true if |power_supply_path|, a sysfs directory, corresponds to an
+// external peripheral (e.g. a wireless mouse or keyboard).
+bool IsPeripheralBattery(const base::FilePath& power_supply_path) {
+  std::string scope;
+  return util::MaybeReadStringFile(power_supply_path.Append("scope"), &scope) &&
+         scope == kDeviceScope;
+}
+
+bool IsMainBattery(const base::FilePath& power_supply_path) {
+  if (IsPeripheralBattery(power_supply_path))
+    return false;
+
+  std::string type;
+  if (!util::MaybeReadStringFile(power_supply_path.Append("type"), &type))
+    return false;
+
+  if (type == kBatteryType) {
+    return true;
+  }
+  return false;
+}
+
+// TODO(http://b/291920258): Currently, we ignore devices with multiple
+// batteries. Make sure these devices don't contribute to excessive crashes.
+std::optional<base::FilePath> GetMainBatteryPath(
+    const base::FilePath& power_supply_dir) {
+  std::optional<base::FilePath> battery = std::nullopt;
+
+  // Iterate through sysfs's power supply information.
+  base::FileEnumerator file_enum(power_supply_dir, false,
+                                 base::FileEnumerator::DIRECTORIES);
+  for (base::FilePath path = file_enum.Next(); !path.empty();
+       path = file_enum.Next()) {
+    if (IsMainBattery(path)) {
+      if (battery.has_value()) {
+        LOG(INFO) << "Found multiple batteries, " << battery->BaseName()
+                  << "and " << path.BaseName() << ".";
+        return std::nullopt;
+      }
+      battery = path;
+    }
+  }
+  return battery;
+}
+
+bool IsGenericBatteryDriver(const base::FilePath& driver_path) {
+  std::string uevent;
+  if (!base::ReadFileToString(driver_path.Append("uevent"), &uevent))
+    return false;
+
+  std::string driver;
+  static constexpr LazyRE2 kDriverRe = {"DRIVER=([A-z]+)"};
+  if (RE2::PartialMatch(uevent, *kDriverRe, &driver)) {
+    if (driver == kAcpiGenericBatteryDriver)
+      return true;
+  }
+  return false;
+}
+
+bool HasGenericBatteryDriver(const base::FilePath& battery_path) {
+  // Find the directory corresponding to the battery's device id.
+  base::FileEnumerator file_enum(battery_path.Append("device/driver"), false,
+                                 base::FileEnumerator::DIRECTORIES);
+  for (base::FilePath path = file_enum.Next(); !path.empty();
+       path = file_enum.Next()) {
+    if (IsGenericBatteryDriver(path)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool MachineQuirks::IsGenericAcpiBatteryDriver() {
+  CHECK(prefs_) << "MachineQuirks::Init() wasn't called";
+
+  std::optional<base::FilePath> battery_path =
+      GetMainBatteryPath(base::FilePath(power_supply_dir_));
+  if (!battery_path.has_value())
+    return false;
+
+  if (HasGenericBatteryDriver(battery_path.value())) {
+    LOG(INFO) << "Quirk match found for generic ACPI battery: "
+              << battery_path->BaseName() << ".";
+    return true;
+  }
+  return false;
+}
+
 bool MachineQuirks::ReadDMIValFromFile(std::string_view dmi_file_name,
                                        std::string* value_out) {
   const base::FilePath dmi_file(dmi_file_name);
@@ -136,8 +245,8 @@ bool MachineQuirks::IsProductNameMatch(std::string_view product_name_pref) {
 }
 
 bool MachineQuirks::IsDMIMatch(std::string_view dmi_pref_entry) {
-  // If the DMI entry doesn't follow the key:val format, that means that it just
-  // contains the product_name, so do just a product_name match.
+  // If the DMI entry doesn't follow the key:val format, that means that it
+  // just contains the product_name, so do just a product_name match.
   if (dmi_pref_entry.find(':') == std::string::npos) {
     return IsProductNameMatch(dmi_pref_entry);
   }
@@ -173,8 +282,8 @@ bool MachineQuirks::IsDMIMatch(std::string_view dmi_pref_entry) {
 }
 
 bool MachineQuirks::ContainsDMIMatch(std::string_view dmi_ids_pref) {
-  // The DMI IDs pref is read from models.yaml as a pref and comes originally as
-  // a single string before it is processed into a vector of strings.
+  // The DMI IDs pref is read from models.yaml as a pref and comes originally
+  // as a single string before it is processed into a vector of strings.
 
   for (const auto& dmi_entry :
        base::SplitString(dmi_ids_pref, "\n", base::TRIM_WHITESPACE,

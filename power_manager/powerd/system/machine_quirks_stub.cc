@@ -42,6 +42,10 @@ bool MachineQuirksStub::IsExternalDisplayOnly() {
   return external_display_only_;
 }
 
+bool MachineQuirksStub::IsGenericAcpiBatteryDriver() {
+  return is_generic_battery_driver_;
+}
+
 void MachineQuirksStub::ResetQuirks() {
   force_idle_ = false;
   block_suspend_ = false;

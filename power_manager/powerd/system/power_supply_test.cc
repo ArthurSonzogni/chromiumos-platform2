@@ -1437,6 +1437,24 @@ TEST_F(PowerSupplyTest, BadSingleBattery) {
   EXPECT_FALSE(status.battery_below_shutdown_threshold);
 }
 
+TEST_F(PowerSupplyTest, BadSingleBatteryButGenericDriverInUse) {
+  // Check that zero charge readings are not dropped when
+  // kAllowZeroChargeReadOnACPref is set.
+  WriteDefaultValues(PowerSource::AC);
+  prefs_.SetInt64(kAllowZeroChargeReadOnACPref, 1);
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+
+  UpdateChargeAndCurrent(0.0, 0.0);
+  EXPECT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
+
+  // Still should fail if charge_full is <= 0
+  WriteDoubleValue(battery_dir_, "charge_full", 0.0);
+  EXPECT_FALSE(UpdateStatus(&status));
+}
+
 TEST_F(PowerSupplyTest, BadMultipleBatteries) {
   // Start out with two batteries.
   WriteDefaultValues(PowerSource::AC);

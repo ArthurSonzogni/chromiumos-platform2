@@ -1325,9 +1325,19 @@ bool PowerSupply::ReadBatteryDirectory(const base::FilePath& path,
   // Drop bogus readings (sometimes seen during firmware updates) that can
   // confuse users: https://crbug.com/924869
   if (charge_full <= 0.0 || charge < 0.0 || (charge == 0.0 && !allow_empty)) {
-    LOG(WARNING) << "Ignoring reading with battery charge " << charge
-                 << " and battery-full charge " << charge_full;
-    return false;
+    // However, keep zero charge readings on Flex devices using the generic ACPI
+    // battery driver as these devices can legitmately read out zero charge
+    // and do not signal an error otherwise: b/291920258
+    bool is_generic_battery_driver = false;
+    prefs_->GetBool(kAllowZeroChargeReadOnACPref, &is_generic_battery_driver);
+    if (charge_full > 0.0 && is_generic_battery_driver) {
+      LOG(WARNING) << "Got reading with battery charge 0,"
+                   << " battery may be dead.";
+    } else {
+      LOG(WARNING) << "Ignoring reading with battery charge " << charge
+                   << " and battery-full charge " << charge_full;
+      return false;
+    }
   }
 
   status->battery_charge_full = charge_full;

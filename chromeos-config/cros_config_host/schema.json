@@ -1327,6 +1327,10 @@
                     "pattern": "^[01]$",
                     "type": "string"
                   },
+                  "allow-zero-charge-readings-on-ac": {
+                    "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",
+                    "type": "string"
+                  },
                   "als-smoothing-constant": {
                     "default": "1.0",
                     "description": "For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/",

@@ -32,6 +32,9 @@ class MachineQuirksInterface {
   // Checks if the machine quirk indicates that
   // the device doesn't have an internal monitor.
   virtual bool IsExternalDisplayOnly() = 0;
+  // Checks if the machine quirk indicates that
+  // the device uses the generic ACPI battery.
+  virtual bool IsGenericAcpiBatteryDriver() = 0;
 };
 
 // Check for machine specific quirks from the running machine.
@@ -69,6 +72,13 @@ class MachineQuirks : public MachineQuirksInterface {
   // machine has an internal monitor or not.
   bool IsExternalDisplayOnly() override;
 
+  // Determine if the machine is using the generic ACPI battery driver, that is,
+  // linux/drivers/acpi/battery.c
+  // This quirk is required as the generic ACPI battery driver can read out the
+  // current charge as 0. Such devices then cause various power related tools to
+  // crash as they do not expect to receive a 0 value for current charge.
+  bool IsGenericAcpiBatteryDriver() override;
+
   // Reads the DMI value, given a DMI filename
   bool ReadDMIValFromFile(std::string_view dmi_file_name,
                           std::string* value_out);
@@ -86,9 +96,13 @@ class MachineQuirks : public MachineQuirksInterface {
 
   // Functions used to pass in mock directories for unit tests
   void set_dmi_id_dir_for_test(const base::FilePath& dir) { dmi_id_dir_ = dir; }
+  void set_power_supply_dir_for_test(const base::FilePath& dir) {
+    power_supply_dir_ = dir;
+  }
 
  private:
   base::FilePath dmi_id_dir_;
+  base::FilePath power_supply_dir_;
 
   PrefsInterface* prefs_ = nullptr;  // non-owned
 };

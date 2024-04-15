@@ -147,6 +147,7 @@ const char kDeferExternalDisplayTimeoutPref[] =
     "defer_external_display_timeout";
 const char kExternalAmbientLightSensorPref[] = "external_ambient_light_sensor";
 const char kExternalBacklightAlsStepsPref[] = "external_backlight_als_steps";
+const char kAllowZeroChargeReadOnACPref[] = "allow_zero_charge_readings_on_ac";
 
 // This pref is incomplete. Prefs based on it are defined by other packages
 // populating them.

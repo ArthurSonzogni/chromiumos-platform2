@@ -367,6 +367,9 @@ extern const char kExternalAmbientLightSensorPref[];
 // powerd/policy/ambient_light_handler.h for details.
 extern const char kExternalBacklightAlsStepsPref[];
 
+// If true, device uses the generic ACPI battery driver.
+extern const char kAllowZeroChargeReadOnACPref[];
+
 // Miscellaneous constants.
 
 // Name of the cros_fp fingerprint sensor input device.
