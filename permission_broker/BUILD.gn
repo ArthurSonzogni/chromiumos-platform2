@@ -85,7 +85,6 @@ static_library("libpermission_broker") {
   configs += [ ":target_defaults" ]
   libs = [ "policy" ]
   deps = [ ":permission_broker_adaptors" ]
-  pkg_deps = [ "libfeatures" ]
 }
 
 executable("permission_broker") {
@@ -127,7 +126,6 @@ if (use.test) {
       ":libpermission_broker",
       "//common-mk/testrunner:testrunner",
     ]
-    pkg_deps = [ "libfake_platform_features" ]
   }
 }
 

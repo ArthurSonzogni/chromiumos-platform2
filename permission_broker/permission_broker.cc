@@ -23,7 +23,6 @@
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "featured/feature_library.h"
 #include "permission_broker/allow_conforming_usb_device_rule.h"
 #include "permission_broker/allow_group_tty_device_rule.h"
 #include "permission_broker/allow_hidraw_device_rule.h"
@@ -60,11 +59,6 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
       dbus_object_(
           nullptr, bus, dbus::ObjectPath(kPermissionBrokerServicePath)),
       usb_control_(std::make_unique<UsbDeviceManager>()) {
-  if (!feature::PlatformFeatures::Initialize(bus)) {
-    LOG(WARNING) << "Unable to initialize PlatformFeatures framework, will not "
-                    "be able to check for system flags.";
-  }
-
   rule_engine_.AddRule(new AllowConformingUsbDeviceRule());
   rule_engine_.AddRule(new AllowTtyDeviceRule());
   rule_engine_.AddRule(new DenyUninitializedDeviceRule());

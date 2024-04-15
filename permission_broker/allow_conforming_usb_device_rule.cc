@@ -12,7 +12,6 @@
 #include <string>
 
 #include "base/logging.h"
-#include "featured/feature_library.h"
 #include "permission_broker/allow_lists.h"
 #include "permission_broker/rule.h"
 #include "permission_broker/rule_utils.h"
@@ -329,7 +328,6 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessTaggedDevice(
 
 AllowConformingUsbDeviceRule::AllowConformingUsbDeviceRule()
     : UsbSubsystemUdevRule("AllowConformingUsbDeviceRule"),
-      platform_features_(feature::PlatformFeatures::Get()),
       policy_loaded_(false),
       running_on_chromebox_(GetFormFactor() == FormFactor::kChromebox ||
                             GetFormFactor() == FormFactor::kUnknown) {}
@@ -348,26 +346,22 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessUsbDevice(
 
   constexpr bool legacy_usb_passthrough = USE_LEGACY_USB_PASSTHROUGH;
 
-  if (!platform_features_) {
-    LOG(ERROR) << "Unable to get PlatformFeatures library, will not enable "
-                  "permissive features";
-    // There are more UI/UX implications that must be considered for
-    // chromeboxes, disable for now.
-  } else if (!running_on_chromebox_ && !legacy_usb_passthrough &&
-             platform_features_->IsEnabledBlocking(
-                 RuleUtils::kEnablePermissiveUsbPassthrough)) {
-    // If permissive USB is enabled, but we have no tag information, fall back
-    // to legacy behavior.
-    if (cros_usb_location.has_value()) {
-      Result result = ProcessTaggedDevice(device, cros_usb_location.value());
-      // If the tagged flow was truly not able to make a decision for a device,
-      // allow the legacy flow to have an opinion.
-      if (result != Result::IGNORE)
-        return result;
+  // There are more UI/UX implications that must be considered for
+  // chromeboxes, disable for now.
+  LOG_IF(INFO, running_on_chromebox_)
+      << "Running on chromebox form-factor, falling back to legacy logic";
+  // If permissive USB is enabled, but we have no tag information, fall back
+  // to legacy behavior.
+  if (!running_on_chromebox_ && !legacy_usb_passthrough &&
+      cros_usb_location.has_value()) {
+    Result result = ProcessTaggedDevice(device, cros_usb_location.value());
+    // If the tagged flow was truly not able to make a decision for a device,
+    // allow the legacy flow to have an opinion.
+    if (result != Result::IGNORE)
+      return result;
 
-      LOG(INFO) << "CROS_USB_LOCATION had a value but was not enough to "
-                   "determine permissibility, falling back to legacy logic.";
-    }
+    LOG(WARNING) << "CROS_USB_LOCATION had a value but was not enough to "
+                    "determine permissibility, falling back to legacy logic.";
   }
   return ProcessLegacyDevice(device, cros_usb_location);
 }

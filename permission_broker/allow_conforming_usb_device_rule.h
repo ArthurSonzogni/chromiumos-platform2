@@ -12,7 +12,6 @@
 #include <optional>
 #include <vector>
 
-#include "featured/feature_library.h"
 #include "permission_broker/rule.h"
 #include "permission_broker/rule_utils.h"
 #include "permission_broker/usb_subsystem_udev_rule.h"
@@ -58,10 +57,6 @@ class AllowConformingUsbDeviceRule : public UsbSubsystemUdevRule {
  protected:
   // Devices that have been allowed via device policy.
   std::vector<policy::DevicePolicy::UsbDeviceId> usb_allow_list_;
-
-  // Pointer to the platform features interface, by default will be the global
-  // instance but may be overridden for testing.
-  feature::PlatformFeaturesInterface* platform_features_;
 
  private:
   // Device policy is cached after a successful load.

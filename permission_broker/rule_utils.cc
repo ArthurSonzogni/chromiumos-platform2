@@ -114,9 +114,4 @@ template bool UsbDeviceListContainsId<
     uint16_t vendor_id,
     uint16_t product_id);
 
-const VariationsFeature RuleUtils::kEnablePermissiveUsbPassthrough = {
-    .name = "CrOSLateBootPermissiveUsbPassthrough",
-    .default_state = FEATURE_DISABLED_BY_DEFAULT,
-};
-
 }  // namespace permission_broker

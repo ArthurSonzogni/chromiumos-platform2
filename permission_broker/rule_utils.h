@@ -7,7 +7,6 @@
 
 #include <libudev.h>
 
-#include "featured/c_feature_library.h"  // for enums
 #include "policy/device_policy.h"
 
 using policy::DevicePolicy;
@@ -44,11 +43,6 @@ bool UsbDeviceListContainsId(Iterator first,
 
 // Checks if a device is intended to work with WebHID.
 bool IsDeviceAllowedWebHID(udev_device* device);
-
-class RuleUtils {
- public:
-  static const VariationsFeature kEnablePermissiveUsbPassthrough;
-};
 
 }  // namespace permission_broker
 
