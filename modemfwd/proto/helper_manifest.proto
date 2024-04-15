@@ -13,6 +13,7 @@ message HelperEntry {
   repeated string device_id = 2;
   repeated string extra_argument = 3;
   repeated string variant = 4;
+  optional bool net_admin_required = 5;
 }
 
 message HelperManifest {
