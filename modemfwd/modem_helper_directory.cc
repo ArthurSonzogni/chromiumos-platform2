@@ -50,6 +50,9 @@ class ModemHelperDirectoryImpl : public ModemHelperDirectory {
         helper_info.extra_arguments.push_back(extra_argument);
       }
 
+      helper_info.net_admin_required =
+          entry.has_net_admin_required() && entry.net_admin_required();
+
       auto helper = CreateModemHelper(helper_info, bus);
       for (const std::string& device_id : entry.device_id()) {
         ELOG(INFO) << "Adding helper " << helper_info.executable_path.value()

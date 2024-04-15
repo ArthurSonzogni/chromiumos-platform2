@@ -48,6 +48,7 @@ struct HelperInfo {
 
   base::FilePath executable_path;
   std::vector<std::string> extra_arguments;
+  bool net_admin_required;
 };
 
 struct FirmwareConfig {

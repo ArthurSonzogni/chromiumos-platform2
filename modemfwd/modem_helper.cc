@@ -48,8 +48,8 @@ bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
       "%s/%s-seccomp.policy", kSeccompPolicyDirectory,
       helper_info.executable_path.BaseName().value().c_str()));
 
-  // Allow cap_net_admin to persist only on fm350-helper
-  if (base::Contains(helper_info.executable_path.value(), "fm350"))
+  // Allow cap_net_admin to persist if the helper requires it
+  if (helper_info.net_admin_required)
     should_remove_capabilities = false;
 
   int exit_code = RunProcessInSandbox(
@@ -102,8 +102,8 @@ bool RunHelperProcess(const HelperInfo& helper_info,
       "%s/%s-seccomp.policy", kSeccompPolicyDirectory,
       helper_info.executable_path.BaseName().value().c_str()));
 
-  // Allow cap_net_admin to persist only on fm350-helper
-  if (base::Contains(helper_info.executable_path.value(), "fm350"))
+  // Allow cap_net_admin to persist if the helper requires it
+  if (helper_info.net_admin_required)
     should_remove_capabilities = false;
 
   int exit_code = RunProcessInSandbox(
