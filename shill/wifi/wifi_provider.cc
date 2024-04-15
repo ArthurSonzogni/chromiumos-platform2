@@ -501,8 +501,8 @@ bool WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr& endpoint) {
   }
 
   std::string asgn_endpoint_log = base::StringPrintf(
-      "Assigning endpoint %s to service %s", endpoint->bssid_string().c_str(),
-      service->log_name().c_str());
+      "Assigning endpoint %s to service %s",
+      endpoint->bssid().ToString().c_str(), service->log_name().c_str());
 
   if (!service->HasEndpoints() && service->IsRemembered()) {
     LOG(INFO) << asgn_endpoint_log;
@@ -528,11 +528,11 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
   WiFiServiceRefPtr service = FindServiceForEndpoint(endpoint);
 
   CHECK(service) << "Can't find Service for Endpoint (with BSSID "
-                 << endpoint->bssid_string() << ").";
+                 << endpoint->bssid().ToString() << ").";
 
   std::string rmv_endpoint_log = base::StringPrintf(
-      "Removed endpoint %s from service %s", endpoint->bssid_string().c_str(),
-      service->log_name().c_str());
+      "Removed endpoint %s from service %s",
+      endpoint->bssid().ToString().c_str(), service->log_name().c_str());
 
   service->RemoveEndpoint(endpoint);
   service_by_endpoint_.erase(endpoint.get());
@@ -1021,11 +1021,11 @@ void WiFiProvider::OnPasspointCredentialsMatches(
   std::map<WiFiService*, PasspointMatch> matches_by_service;
   for (const auto& m : matches) {
     LOG(INFO) << __func__ << " match between " << *m.credentials << " and "
-              << m.endpoint->bssid_string();
+              << m.endpoint->bssid().ToString();
 
     WiFiServiceRefPtr service = FindServiceForEndpoint(m.endpoint);
     if (!service) {
-      SLOG(1) << "No service for endpoint " << m.endpoint->bssid_string();
+      SLOG(1) << "No service for endpoint " << m.endpoint->bssid().ToString();
       metrics()->SendEnumToUMA(Metrics::kMetricPasspointMatch,
                                Metrics::kPasspointMatchServiceNotFound);
       continue;

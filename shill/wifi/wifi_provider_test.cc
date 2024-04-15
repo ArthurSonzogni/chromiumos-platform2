@@ -563,7 +563,7 @@ class WiFiProviderTest : public testing::Test {
                                       uint16_t frequency,
                                       int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        nullptr, nullptr, ssid, bssid.ToString(),
+        nullptr, nullptr, ssid, bssid,
         WPASupplicant::kNetworkModeInfrastructure, frequency, signal_dbm);
   }
   WiFiEndpointRefPtr Make8021xEndpoint(const std::string& ssid,
@@ -572,7 +572,7 @@ class WiFiProviderTest : public testing::Test {
                                        int16_t signal_dbm) {
     WiFiEndpoint::SecurityFlags rsn_flags;
     rsn_flags.rsn_8021x = true;
-    return WiFiEndpoint::MakeEndpoint(nullptr, nullptr, ssid, bssid.ToString(),
+    return WiFiEndpoint::MakeEndpoint(nullptr, nullptr, ssid, bssid,
                                       WPASupplicant::kNetworkModeInfrastructure,
                                       frequency, signal_dbm, rsn_flags);
   }
@@ -582,7 +582,7 @@ class WiFiProviderTest : public testing::Test {
       uint16_t frequency,
       int16_t signal_dbm,
       const WiFiEndpoint::SecurityFlags& security_flags) {
-    return WiFiEndpoint::MakeEndpoint(nullptr, nullptr, ssid, bssid.ToString(),
+    return WiFiEndpoint::MakeEndpoint(nullptr, nullptr, ssid, bssid,
                                       WPASupplicant::kNetworkModeInfrastructure,
                                       frequency, signal_dbm, security_flags);
   }

@@ -14,8 +14,8 @@
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <net-base/mac_address.h>
 
-#include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
@@ -116,9 +116,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const std::vector<uint8_t>& ssid() const;
   const std::string& ssid_string() const;
   const std::string& ssid_hex() const;
-  const std::vector<uint8_t>& bssid() const;
-  const std::string& bssid_string() const;
-  const std::string& bssid_hex() const;
+  net_base::MacAddress bssid() const;
   const std::string& country_code() const;
   const WiFiRefPtr& device() const;
   int16_t signal_strength() const;
@@ -187,7 +185,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   static WiFiEndpointRefPtr MakeEndpoint(ControlInterface* control_interface,
                                          const WiFiRefPtr& wifi,
                                          const std::string& ssid,
-                                         const std::string& bssid,
+                                         net_base::MacAddress bssid,
                                          const std::string& network_mode,
                                          uint16_t frequency,
                                          int16_t signal_dbm,
@@ -197,7 +195,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
       ControlInterface* control_interface,
       const WiFiRefPtr& wifi,
       const std::string& ssid,
-      const std::string& bssid,
+      net_base::MacAddress bssid,
       const std::string& network_mode,
       uint16_t frequency,
       int16_t signal_dbm);
@@ -271,13 +269,11 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   void set_security_mode(WiFiSecurity::Mode mode) { security_mode_ = mode; }
 
   const std::vector<uint8_t> ssid_;
-  const std::vector<uint8_t> bssid_;
+  const net_base::MacAddress bssid_;
   std::vector<uint8_t> owe_ssid_;
   std::vector<uint8_t> owe_bssid_;
   std::string ssid_string_;
   const std::string ssid_hex_;
-  const std::string bssid_string_;
-  const std::string bssid_hex_;
   std::string country_code_;
   int16_t signal_strength_;
   base::Time last_seen_;

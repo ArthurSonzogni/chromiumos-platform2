@@ -42,7 +42,9 @@ class WiFiANQPFuzz {
         nullptr);
 
     auto endpoint = WiFiEndpoint::MakeOpenEndpoint(
-        nullptr, wifi, "ssid", "00:00:00:00:00:01", kModeManaged, 2412, 0);
+        nullptr, wifi, "ssid",
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), kModeManaged,
+        2412, 0);
     endpoint->ParseANQPFields(properties);
   }
 };

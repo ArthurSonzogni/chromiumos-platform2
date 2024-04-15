@@ -507,8 +507,8 @@ class ManagerTest : public PropertyStoreTest {
         manager(), wifi_provider_, std::vector<uint8_t>(), "", securityClass,
         WiFiSecurity(mode), false));
     WiFiEndpointRefPtr endpoint = WiFiEndpoint::MakeEndpoint(
-        nullptr, wifi, "", address.ToString(),
-        WPASupplicant::kNetworkModeInfrastructure, 0, 0, flags);
+        nullptr, wifi, "", address, WPASupplicant::kNetworkModeInfrastructure,
+        0, 0, flags);
     // MockWiFiServiceRefPtr wifi_service doesn't call
     // WiFiService::AddEndpoint(), so the endpoint is added to wifi_service here
     wifi_service->endpoints_.insert(endpoint);

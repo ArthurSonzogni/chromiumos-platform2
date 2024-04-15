@@ -42,7 +42,9 @@ class WiFiIEsFuzz {
     Metrics::WiFiNetworkPhyMode phy_mode;
 
     auto endpoint = WiFiEndpoint::MakeOpenEndpoint(
-        nullptr, wifi, "ssid", "00:00:00:00:00:01", kModeManaged, 2412, 0);
+        nullptr, wifi, "ssid",
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), kModeManaged,
+        2412, 0);
     endpoint->ParseIEs(properties, &phy_mode);
 
     // D-Bus wants our strings UTF-8, and ISO 3166 says they should be ASCII.

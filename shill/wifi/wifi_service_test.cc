@@ -123,7 +123,7 @@ class WiFiServiceTest : public testing::Test {
       uint16_t frequency,
       int16_t signal_dbm,
       const WiFiEndpoint::SecurityFlags& security_flags) {
-    return WiFiEndpoint::MakeEndpoint(nullptr, wifi(), ssid, bssid.ToString(),
+    return WiFiEndpoint::MakeEndpoint(nullptr, wifi(), ssid, bssid,
                                       WPASupplicant::kNetworkModeInfrastructure,
                                       frequency, signal_dbm, security_flags);
   }
@@ -133,8 +133,8 @@ class WiFiServiceTest : public testing::Test {
                                       uint16_t frequency,
                                       int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        nullptr, wifi(), ssid, bssid.ToString(),
-        WPASupplicant::kNetworkModeInfrastructure, frequency, signal_dbm);
+        nullptr, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
+        frequency, signal_dbm);
   }
 
   WiFiEndpointRefPtr MakeOpenEndpointWithWiFi(WiFiRefPtr wifi,
@@ -143,8 +143,8 @@ class WiFiServiceTest : public testing::Test {
                                               uint16_t frequency,
                                               int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        nullptr, wifi, ssid, bssid.ToString(),
-        WPASupplicant::kNetworkModeInfrastructure, frequency, signal_dbm);
+        nullptr, wifi, ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
+        frequency, signal_dbm);
   }
 
   WiFiServiceRefPtr MakeServiceSSID(const std::string& security_class,

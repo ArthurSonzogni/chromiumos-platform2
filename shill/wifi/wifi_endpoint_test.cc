@@ -190,9 +190,9 @@ class WiFiEndpointTest : public PropertyStoreTest {
       const std::string& ssid,
       net_base::MacAddress bssid,
       const WiFiEndpoint::SecurityFlags& security_flags) {
-    return WiFiEndpoint::MakeEndpoint(
-        control_interface, wifi, ssid, bssid.ToString(),
-        WPASupplicant::kNetworkModeInfrastructure, 0, 0, security_flags);
+    return WiFiEndpoint::MakeEndpoint(control_interface, wifi, ssid, bssid,
+                                      WPASupplicant::kNetworkModeInfrastructure,
+                                      0, 0, security_flags);
   }
 
   WiFiEndpointRefPtr MakeOpenEndpoint(ControlInterface* control_interface,
@@ -200,7 +200,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
                                       const std::string& ssid,
                                       net_base::MacAddress bssid) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        control_interface, wifi, ssid, bssid.ToString(),
+        control_interface, wifi, ssid, bssid,
         WPASupplicant::kNetworkModeInfrastructure, 0, 0);
   }
 
@@ -407,7 +407,7 @@ TEST_F(WiFiEndpointTest, SSIDAndBSSIDString) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(nullptr, nullptr, kSSID, kBSSID);
   EXPECT_EQ(kSSID, endpoint->ssid_string());
-  EXPECT_EQ(kBSSID.ToString(), endpoint->bssid_string());
+  EXPECT_EQ(kBSSID, endpoint->bssid());
 }
 
 TEST_F(WiFiEndpointTest, SSIDWithNull) {

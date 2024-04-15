@@ -403,7 +403,7 @@ void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr& endpoint) {
   DCHECK(i != endpoints_.end());
   if (i == endpoints_.end()) {
     LOG(WARNING) << "In " << __func__ << "(): ignoring non-existent endpoint "
-                 << endpoint->bssid_string();
+                 << endpoint->bssid().ToString();
     return;
   }
   endpoints_.erase(i);
@@ -1476,7 +1476,7 @@ void WiFiService::UpdateFromEndpoints() {
   if (representative_endpoint) {
     wifi = representative_endpoint->device();
     if (((current_endpoint_ == representative_endpoint) &&
-         (bssid_ != representative_endpoint->bssid_string() ||
+         (bssid_ != representative_endpoint->bssid().ToString() ||
           frequency_ != representative_endpoint->frequency())) ||
         abs(representative_endpoint->signal_strength() - raw_signal_strength_) >
             10) {
@@ -1511,7 +1511,7 @@ void WiFiService::UpdateFromEndpoints() {
     frequency = representative_endpoint->frequency();
     signal = representative_endpoint->signal_strength();
     raw_signal_strength_ = signal;
-    bssid = representative_endpoint->bssid_string();
+    bssid = representative_endpoint->bssid().ToString();
     country_code = representative_endpoint->country_code();
     vendor_information = representative_endpoint->GetVendorInformation();
     ap_physical_mode = representative_endpoint->physical_mode();
@@ -2232,7 +2232,7 @@ bool WiFiService::IsBSSIDConnectable(
     case BSSIDAllowlistPolicy::kNoneAllowed:
       return false;
     case BSSIDAllowlistPolicy::kMatchOnlyAllowed:
-      if (!base::Contains(bssid_allowlist_, endpoint->bssid())) {
+      if (!base::Contains(bssid_allowlist_, endpoint->bssid().ToBytes())) {
         return false;
       }
       [[fallthrough]];
@@ -2240,7 +2240,7 @@ bool WiFiService::IsBSSIDConnectable(
       // If there was a specific BSSID requested, then only that one endpoint
       // is considered connectable.
       return bssid_requested_.empty() ||
-             bssid_requested_ == endpoint->bssid_string();
+             bssid_requested_ == endpoint->bssid().ToString();
   }
 }
 

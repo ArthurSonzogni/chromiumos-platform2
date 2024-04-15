@@ -1605,7 +1605,8 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
   if (!service) {
     LOG(WARNING) << "WiFi " << link_name()
                  << " could not find Service for Endpoint "
-                 << endpoint->bssid_string() << " (service will be unchanged)";
+                 << endpoint->bssid().ToString()
+                 << " (service will be unchanged)";
     return;
   }
 
@@ -1631,7 +1632,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
   metrics()->NotifyANQPSupport(endpoint->anqp_support());
 
   SLOG(this, 2) << "WiFi " << link_name() << " roamed to Endpoint "
-                << endpoint->bssid_string() << " "
+                << endpoint->bssid().ToString() << " "
                 << LogSSID(endpoint->ssid_string());
 
   service->NotifyCurrentEndpoint(endpoint);
@@ -1648,7 +1649,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
     //
     // So we leave |pending_service_| untouched.
     SLOG(this, 2) << "WiFi " << link_name() << " new current Endpoint "
-                  << endpoint->bssid_string()
+                  << endpoint->bssid().ToString()
                   << " is not part of pending service "
                   << pending_service_->log_name();
 
@@ -1656,7 +1657,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
     // should still be on |current_service_|.
     if (service.get() != current_service_.get()) {
       LOG(WARNING) << "WiFi " << link_name() << " new current Endpoint "
-                   << endpoint->bssid_string()
+                   << endpoint->bssid().ToString()
                    << " is neither part of pending service "
                    << pending_service_->log_name()
                    << " nor part of current service "
@@ -1689,7 +1690,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
   // to a new Service. Quick check that we're still on |current_service_|.
   if (service.get() != current_service_.get()) {
     LOG(WARNING) << "WiFi " << link_name() << " new current Endpoint "
-                 << endpoint->bssid_string()
+                 << endpoint->bssid().ToString()
                  << (current_service_.get()
                          ? base::StringPrintf(
                                " is not part of current service %s",
@@ -2069,7 +2070,7 @@ void WiFi::BSSAddedTask(const RpcIdentifier& path,
       new WiFiEndpoint(control_interface(), this, path, properties, metrics()));
   SLOG(this, 5) << "Found endpoint. RPC path: " << path.value() << ", "
                 << LogSSID(endpoint->ssid_string()) << ", "
-                << "bssid: " << endpoint->bssid_string() << ", "
+                << "bssid: " << endpoint->bssid().ToString() << ", "
                 << "signal: " << endpoint->signal_strength() << ", "
                 << "security: " << endpoint->security_mode() << ", "
                 << "frequency: " << endpoint->frequency();
@@ -2665,7 +2666,7 @@ void WiFi::StateChanged(const std::string& new_state) {
           !current->anqp_capabilities().capability_list) {
         // The endpoint supports ANQP requests, query the capability list to
         // know the fields supported by the access point.
-        ANQPGet(current->bssid_string(), {IEEE_80211::kANQPCapabilityList});
+        ANQPGet(current->bssid().ToString(), {IEEE_80211::kANQPCapabilityList});
       }
     }
     has_already_completed_ = true;
@@ -2874,7 +2875,7 @@ void WiFi::UpdateGeolocationObjects(
   for (const auto& endpoint_entry : endpoint_by_rpcid_) {
     GeolocationInfo geoinfo;
     const WiFiEndpointRefPtr& endpoint = endpoint_entry.second;
-    geoinfo[kGeoMacAddressProperty] = endpoint->bssid_string();
+    geoinfo[kGeoMacAddressProperty] = endpoint->bssid().ToString();
     geoinfo[kGeoSignalStrengthProperty] =
         base::StringPrintf("%d", endpoint->signal_strength());
     geoinfo[kGeoChannelProperty] = base::StringPrintf(

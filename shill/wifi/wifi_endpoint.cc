@@ -14,6 +14,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/mac_address.h>
 
 #include "shill/control_interface.h"
 #include "shill/logging.h"
@@ -85,11 +86,11 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
                            Metrics* metrics)
     : ssid_(properties.Get<std::vector<uint8_t>>(
           WPASupplicant::kBSSPropertySSID)),
-      bssid_(properties.Get<std::vector<uint8_t>>(
-          WPASupplicant::kBSSPropertyBSSID)),
+      bssid_(net_base::MacAddress::CreateFromBytes(
+                 properties.Get<std::vector<uint8_t>>(
+                     WPASupplicant::kBSSPropertyBSSID))
+                 .value()),
       ssid_hex_(base::HexEncode(ssid_.data(), ssid_.size())),
-      bssid_string_(Device::MakeStringFromHardwareAddress(bssid_)),
-      bssid_hex_(base::HexEncode(bssid_.data(), bssid_.size())),
       frequency_(0),
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       metrics_(metrics),
@@ -157,7 +158,7 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
     auto new_mode =
         ParseMode(properties.Get<std::string>(WPASupplicant::kBSSPropertyMode));
     if (!new_mode.empty() && new_mode != network_mode_) {
-      SLOG(2) << "WiFiEndpoint " << bssid_string_
+      SLOG(2) << "WiFiEndpoint " << bssid_.ToString()
               << " mode change: " << network_mode_ << " -> " << new_mode;
       network_mode_ = new_mode;
       should_notify = true;
@@ -172,7 +173,7 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
         metrics_->NotifyApChannelSwitch(frequency_, new_frequency);
       }
       if (device_->GetCurrentEndpoint().get() == this) {
-        SLOG(2) << "Current WiFiEndpoint " << bssid_string_
+        SLOG(2) << "Current WiFiEndpoint " << bssid_.ToString()
                 << " frequency change: " << frequency_ << " -> "
                 << new_frequency;
       }
@@ -191,7 +192,7 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
       new_phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
     }
     if (new_phy_mode != physical_mode_) {
-      SLOG(2) << "WiFiEndpoint " << bssid_string_
+      SLOG(2) << "WiFiEndpoint " << bssid_.ToString()
               << " phy mode change: " << physical_mode_ << " -> "
               << new_phy_mode;
       physical_mode_ = new_phy_mode;
@@ -203,7 +204,7 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
   WiFiSecurity::Mode new_security_mode =
       ParseSecurity(properties, &security_flags_);
   if (new_security_mode != security_mode()) {
-    SLOG(2) << "WiFiEndpoint " << bssid_string_
+    SLOG(2) << "WiFiEndpoint " << bssid_.ToString()
             << " security change: " << security_mode() << " -> "
             << new_security_mode;
     security_mode_ = new_security_mode;
@@ -289,16 +290,8 @@ const std::string& WiFiEndpoint::ssid_hex() const {
   return ssid_hex_;
 }
 
-const std::vector<uint8_t>& WiFiEndpoint::bssid() const {
+net_base::MacAddress WiFiEndpoint::bssid() const {
   return bssid_;
-}
-
-const std::string& WiFiEndpoint::bssid_string() const {
-  return bssid_string_;
-}
-
-const std::string& WiFiEndpoint::bssid_hex() const {
-  return bssid_hex_;
 }
 
 const std::vector<uint8_t>& WiFiEndpoint::owe_ssid() const {
@@ -391,7 +384,7 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeOpenEndpoint(
     ControlInterface* control_interface,
     const WiFiRefPtr& wifi,
     const std::string& ssid,
-    const std::string& bssid,
+    net_base::MacAddress bssid,
     const std::string& network_mode,
     uint16_t frequency,
     int16_t signal_dbm) {
@@ -404,7 +397,7 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
     ControlInterface* control_interface,
     const WiFiRefPtr& wifi,
     const std::string& ssid,
-    const std::string& bssid,
+    net_base::MacAddress bssid,
     const std::string& network_mode,
     uint16_t frequency,
     int16_t signal_dbm,
@@ -414,7 +407,7 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
   auto ssid_bytes = std::vector<uint8_t>(ssid.begin(), ssid.end());
   args.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertySSID, ssid_bytes);
 
-  auto bssid_bytes = Device::MakeHardwareAddressFromString(bssid);
+  std::vector<uint8_t> bssid_bytes = bssid.ToBytes();
   args.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyBSSID, bssid_bytes);
 
   args.Set<int16_t>(WPASupplicant::kBSSPropertySignal, signal_dbm);
@@ -474,11 +467,12 @@ WiFiEndpointRefPtr WiFiEndpoint::MakeEndpoint(
 
   PackSecurity(security_flags, &args);
 
-  return new WiFiEndpoint(control_interface, wifi,
-                          RpcIdentifier(bssid),  // |bssid| fakes an RPC ID
-                          args,
-                          nullptr);  // MakeEndpoint is only used for unit
-                                     // tests, where Metrics are not needed.
+  return new WiFiEndpoint(
+      control_interface, wifi,
+      RpcIdentifier(bssid.ToString()),  // |bssid| fakes an RPC ID
+      args,
+      nullptr);  // MakeEndpoint is only used for unit
+                 // tests, where Metrics are not needed.
 }
 
 // static
@@ -1199,8 +1193,8 @@ bool WiFiEndpoint::ParseANQPCapabilityList(
 
 void WiFiEndpoint::CheckForTetheringSignature() {
   has_tethering_signature_ =
-      Tethering::IsAndroidBSSID(bssid_) ||
-      (Tethering::IsLocallyAdministeredBSSID(bssid_) &&
+      Tethering::IsAndroidBSSID(bssid_.ToBytes()) ||
+      (Tethering::IsLocallyAdministeredBSSID(bssid_.ToBytes()) &&
        Tethering::HasIosOui(vendor_information_.oui_set));
 }
 

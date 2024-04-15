@@ -797,7 +797,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                                           net_base::MacAddress bssid,
                                           const std::string& mode) {
     return WiFiEndpoint::MakeOpenEndpoint(&control_interface_, nullptr, ssid,
-                                          bssid.ToString(), mode, 0, 0);
+                                          bssid, mode, 0, 0);
   }
   MockWiFiServiceRefPtr MakeMockServiceWithSSID(std::vector<uint8_t> ssid,
                                                 const WiFiSecurity& security) {
@@ -1952,8 +1952,10 @@ TEST_F(WiFiMainTest, ScanResults) {
 
   for (const auto& endpoint : endpoints_by_rpcid) {
     EXPECT_NE(kNetworkModeAdHoc, endpoint.second->network_mode());
-    EXPECT_NE(endpoint.second->bssid_string(), "00:00:00:00:00:00");
-    EXPECT_NE(endpoint.second->bssid_string(), "00:00:00:00:00:04");
+    EXPECT_NE(endpoint.second->bssid(),
+              net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00));
+    EXPECT_NE(endpoint.second->bssid(),
+              net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x04));
   }
 }
 
@@ -1965,12 +1967,10 @@ TEST_F(WiFiMainTest, ScanCompleted) {
       "ssid1", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap0))).Times(1);
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap1))).Times(1);
-  ReportBSS(RpcIdentifier("bss0"), ap0->ssid_string(),
-            net_base::MacAddress::CreateFromString(ap0->bssid_string()).value(),
-            0, 0, kNetworkModeInfrastructure, 0);
-  ReportBSS(RpcIdentifier("bss1"), ap1->ssid_string(),
-            net_base::MacAddress::CreateFromString(ap1->bssid_string()).value(),
-            0, 0, kNetworkModeInfrastructure, 0);
+  ReportBSS(RpcIdentifier("bss0"), ap0->ssid_string(), ap0->bssid(), 0, 0,
+            kNetworkModeInfrastructure, 0);
+  ReportBSS(RpcIdentifier("bss1"), ap1->ssid_string(), ap1->bssid(), 0, 0,
+            kNetworkModeInfrastructure, 0);
   manager()->set_suppress_autoconnect(true);
   ReportScanDone();
   EXPECT_FALSE(manager()->suppress_autoconnect());
@@ -2164,7 +2164,7 @@ TEST_F(WiFiMainTest, GetCurrentEndpoint) {
       SetupConnectedService(RpcIdentifier(""), &endpoint, &bss_path));
   const WiFiEndpointConstRefPtr current_endpoint = wifi()->GetCurrentEndpoint();
   EXPECT_NE(nullptr, current_endpoint);
-  EXPECT_EQ(current_endpoint->bssid_string(), endpoint->bssid_string());
+  EXPECT_EQ(current_endpoint->bssid(), endpoint->bssid());
 }
 
 TEST_F(WiFiMainTest, NonSolitaryBSSRemoved) {
@@ -5993,12 +5993,10 @@ TEST_F(WiFiMainTest, InterworkingSelectSimpleMatch) {
   WiFiEndpointRefPtr ap1 = MakeEndpoint(
       "ssid1", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   RpcIdentifier bss0_path("bss0"), bss1_path("bss1");
-  ReportBSS(bss0_path, ap0->ssid_string(),
-            net_base::MacAddress::CreateFromString(ap0->bssid_string()).value(),
-            0, 0, kNetworkModeInfrastructure, 0);
-  ReportBSS(bss1_path, ap1->ssid_string(),
-            net_base::MacAddress::CreateFromString(ap1->bssid_string()).value(),
-            0, 0, kNetworkModeInfrastructure, 0);
+  ReportBSS(bss0_path, ap0->ssid_string(), ap0->bssid(), 0, 0,
+            kNetworkModeInfrastructure, 0);
+  ReportBSS(bss1_path, ap1->ssid_string(), ap1->bssid(), 0, 0,
+            kNetworkModeInfrastructure, 0);
   ReportScanDone();
 
   // No credentials added, we must ignore false matches.
@@ -6056,12 +6054,10 @@ TEST_F(WiFiMainTest, InterworkingSelectMultipleMatches) {
   WiFiEndpointRefPtr ap1 = MakeEndpoint(
       "ssid1", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   RpcIdentifier bss0_path("bss0"), bss1_path("bss1");
-  ReportBSS(bss0_path, ap0->ssid_string(),
-            net_base::MacAddress::CreateFromString(ap0->bssid_string()).value(),
-            0, 0, kNetworkModeInfrastructure, 0);
-  ReportBSS(bss1_path, ap1->ssid_string(),
-            net_base::MacAddress::CreateFromString(ap1->bssid_string()).value(),
-            0, 0, kNetworkModeInfrastructure, 0);
+  ReportBSS(bss0_path, ap0->ssid_string(), ap0->bssid(), 0, 0,
+            kNetworkModeInfrastructure, 0);
+  ReportBSS(bss1_path, ap1->ssid_string(), ap1->bssid(), 0, 0,
+            kNetworkModeInfrastructure, 0);
   ReportScanDone();
 
   // Interworking select will find two matches and report them to the provider.
