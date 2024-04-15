@@ -56,6 +56,8 @@ prlimit64: 1
 getrandom: arg2 in ~GRND_RANDOM
 eventfd2: 1
 memfd_create: 1
+clock_gettime: 1
+gettimeofday: 1
 
 # The following are syscalls enabled by -L in minijail.
 # Document those syscalls here because runtime_probe daemon doesn't use -L by
