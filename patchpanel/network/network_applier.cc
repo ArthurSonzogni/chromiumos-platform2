@@ -4,7 +4,6 @@
 
 #include "patchpanel/network/network_applier.h"
 
-#include <algorithm>
 #include <optional>
 #include <string>
 #include <utility>
@@ -365,17 +364,12 @@ void NetworkApplier::ApplyRoute(
   if (fix_gateway_reachability) {
     CHECK(gateway);
     CHECK(gateway->GetFamily() == net_base::IPFamily::kIPv4);
-    net_base::IPv4CIDR gateway_only =
-        *net_base::IPv4CIDR::CreateFromAddressAndPrefix(
-            *gateway->ToIPv4Address(), 32);
-    auto entry =
-        RoutingTableEntry(net_base::IPCIDR(gateway_only),
-                          net_base::IPCIDR(net_base::IPFamily::kIPv4),
-                          net_base::IPAddress(net_base::IPFamily::kIPv4))
-            .SetScope(RT_SCOPE_LINK)
-            .SetTable(table_id)
-            .SetType(RTN_UNICAST)
-            .SetTag(interface_index);
+    auto entry = RoutingTableEntry(net_base::IPFamily::kIPv4);
+    entry.dst = *net_base::IPCIDR::CreateFromAddressAndPrefix(*gateway, 32);
+    entry.scope = RT_SCOPE_LINK;
+    entry.table = table_id;
+    entry.type = RTN_UNICAST;
+    entry.tag = interface_index;
     if (!routing_table_->AddRoute(interface_index, entry)) {
       LOG(ERROR) << "Unable to add link-scoped route to gateway " << entry
                  << ", if " << interface_index;
@@ -409,11 +403,11 @@ void NetworkApplier::ApplyRoute(
     if (excluded_prefix.GetFamily() != family) {
       continue;
     }
-    auto entry = RoutingTableEntry(family)
-                     .SetScope(RT_SCOPE_LINK)
-                     .SetTable(table_id)
-                     .SetType(RTN_THROW)
-                     .SetTag(interface_index);
+    auto entry = RoutingTableEntry(family);
+    entry.scope = RT_SCOPE_LINK;
+    entry.table = table_id;
+    entry.type = RTN_THROW;
+    entry.tag = interface_index;
     entry.dst = excluded_prefix;
     if (!routing_table_->AddRoute(interface_index, entry)) {
       LOG(WARNING) << "Unable to setup excluded route " << entry << ", if "
@@ -426,10 +420,13 @@ void NetworkApplier::ApplyRoute(
     if (included_prefix.GetFamily() != family) {
       continue;
     }
-    auto entry = RoutingTableEntry(included_prefix, empty_ip,
-                                   gateway.value_or(empty_ip.address()))
-                     .SetTable(table_id)
-                     .SetTag(interface_index);
+    auto entry = RoutingTableEntry(family);
+    entry.dst = included_prefix;
+    if (gateway) {
+      entry.gateway = *gateway;
+    }
+    entry.table = table_id;
+    entry.tag = interface_index;
     if (!routing_table_->AddRoute(interface_index, entry)) {
       LOG(WARNING) << "Unable to setup included route " << entry << ", if "
                    << interface_index;
@@ -438,11 +435,11 @@ void NetworkApplier::ApplyRoute(
 
   // 5. RFC 3442 Static Classless Routes from DHCPv4
   for (const auto& [route_prefix, route_gateway] : rfc3442_routes) {
-    auto entry = RoutingTableEntry(net_base::IPCIDR(route_prefix),
-                                   net_base::IPCIDR(net_base::IPFamily::kIPv4),
-                                   net_base::IPAddress(route_gateway))
-                     .SetTable(table_id)
-                     .SetTag(interface_index);
+    auto entry = RoutingTableEntry(net_base::IPFamily::kIPv4);
+    entry.dst = net_base::IPCIDR(route_prefix);
+    entry.gateway = net_base::IPAddress(route_gateway);
+    entry.table = table_id;
+    entry.tag = interface_index;
     if (!routing_table_->AddRoute(interface_index, entry)) {
       LOG(WARNING) << "Unable to setup static classless route " << entry
                    << ", if " << interface_index;

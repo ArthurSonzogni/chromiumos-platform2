@@ -18,22 +18,10 @@ struct RoutingTableEntry {
   static constexpr int kDefaultTag = -1;
 
   explicit RoutingTableEntry(net_base::IPFamily family);
-  RoutingTableEntry(const net_base::IPCIDR& dst_in,
-                    const net_base::IPCIDR& src_in,
-                    const net_base::IPAddress& gateway_in);
-
-  RoutingTableEntry& SetMetric(uint32_t metric_in);
-  RoutingTableEntry& SetScope(unsigned char scope_in);
-  RoutingTableEntry& SetTable(uint32_t table_in);
-  RoutingTableEntry& SetType(unsigned char type_in);
-  RoutingTableEntry& SetTag(int tag_in);
-  RoutingTableEntry& SetPrefSrc(const net_base::IPAddress& pref_src_in);
 
   bool operator==(const RoutingTableEntry& b) const;
 
   net_base::IPCIDR dst;
-  net_base::IPCIDR src;          // Note this is not the "src" field in iproute2
-                                 // output format, but the "from" field.
   net_base::IPAddress gateway;   // RoutingTableEntry uses all-zero gateway
                                  // address to represent no gateway.
   net_base::IPAddress pref_src;  // The source IP preferred when sending packet

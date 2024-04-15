@@ -109,8 +109,7 @@ MATCHER_P(IsValidThrowRoute, dst, "") {
 }
 
 MATCHER_P(IsLinkRouteTo, dst, "") {
-  return dst == arg.dst && arg.src.address().IsZero() && arg.gateway.IsZero() &&
-         arg.scope == RT_SCOPE_LINK;
+  return dst == arg.dst && arg.gateway.IsZero() && arg.scope == RT_SCOPE_LINK;
 }
 
 }  // namespace

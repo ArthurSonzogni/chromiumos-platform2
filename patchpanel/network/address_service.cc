@@ -43,15 +43,14 @@ void AddressService::ClearIPv4Address(int interface_index) {
   }
   rtnl_handler_->RemoveInterfaceAddress(interface_index,
                                         net_base::IPCIDR(current->second));
-  auto route =
-      RoutingTableEntry(net_base::IPCIDR(current->second.GetPrefixCIDR()),
-                        net_base::IPCIDR(net_base::IPFamily::kIPv4),
-                        net_base::IPAddress(net_base::IPFamily::kIPv4))
-          .SetTable(RoutingTable::GetInterfaceTableId(interface_index))
-          .SetScope(RT_SCOPE_LINK)
-          .SetPrefSrc(net_base::IPAddress(current->second.address()));
+
+  auto route = RoutingTableEntry(net_base::IPFamily::kIPv4);
+  route.dst = net_base::IPCIDR(current->second.GetPrefixCIDR());
+  route.pref_src = net_base::IPAddress(current->second.address());
+  route.scope = RT_SCOPE_LINK;
+  route.table = RoutingTable::GetInterfaceTableId(interface_index);
   routing_table_->RemoveRoute(interface_index, route);
-  added_ipv4_address_.erase(current);
+  added_ipv4_address_.erase(interface_index);
 }
 
 void AddressService::SetIPv4Address(
@@ -67,13 +66,11 @@ void AddressService::SetIPv4Address(
     rtnl_handler_->RemoveInterfaceAddress(interface_index,
                                           net_base::IPCIDR(current->second));
 
-    auto route =
-        RoutingTableEntry(net_base::IPCIDR(current->second.GetPrefixCIDR()),
-                          net_base::IPCIDR(net_base::IPFamily::kIPv4),
-                          net_base::IPAddress(net_base::IPFamily::kIPv4))
-            .SetTable(RoutingTable::GetInterfaceTableId(interface_index))
-            .SetScope(RT_SCOPE_LINK)
-            .SetPrefSrc(net_base::IPAddress(current->second.address()));
+    auto route = RoutingTableEntry(net_base::IPFamily::kIPv4);
+    route.dst = net_base::IPCIDR(current->second.GetPrefixCIDR());
+    route.pref_src = net_base::IPAddress(current->second.address());
+    route.scope = RT_SCOPE_LINK;
+    route.table = RoutingTable::GetInterfaceTableId(interface_index);
     routing_table_->RemoveRoute(interface_index, route);
   }
 
@@ -90,12 +87,11 @@ void AddressService::SetIPv4Address(
   // Move kernel-added local IPv4 route from main table to per-network table.
   // Note that for IPv6 kernel directly adds those routes into per-device table
   // thanks to accept_ra_rt_table.
-  auto route = RoutingTableEntry(net_base::IPCIDR(local.GetPrefixCIDR()),
-                                 net_base::IPCIDR(net_base::IPFamily::kIPv4),
-                                 net_base::IPAddress(net_base::IPFamily::kIPv4))
-                   .SetTable(RoutingTable::GetInterfaceTableId(interface_index))
-                   .SetScope(RT_SCOPE_LINK)
-                   .SetPrefSrc(net_base::IPAddress(local.address()));
+  auto route = RoutingTableEntry(net_base::IPFamily::kIPv4);
+  route.dst = net_base::IPCIDR(local.GetPrefixCIDR());
+  route.pref_src = net_base::IPAddress(local.address());
+  route.scope = RT_SCOPE_LINK;
+  route.table = RoutingTable::GetInterfaceTableId(interface_index);
   if (!routing_table_->AddRoute(interface_index, route)) {
     LOG(ERROR) << __func__ << ": fail to add local route " << route
                << " to per-network table, keeping the kernel-added route in "

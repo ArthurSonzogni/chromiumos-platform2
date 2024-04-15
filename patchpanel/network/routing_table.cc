@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include "patchpanel/network/routing_table_entry.h"
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -65,13 +66,13 @@ void RoutingTable::Start() {
   VLOG(2) << __func__;
 
   // Initialize kUnreachableTableId as a table to block traffic.
-  auto route = RoutingTableEntry(net_base::IPFamily::kIPv6)
-                   .SetTable(kUnreachableTableId)
-                   .SetType(RTN_UNREACHABLE);
+  auto route = RoutingTableEntry(net_base::IPFamily::kIPv6);
+  route.table = kUnreachableTableId;
+  route.type = RTN_UNREACHABLE;
   AddRouteToKernelTable(0, route);
-  route = RoutingTableEntry(net_base::IPFamily::kIPv4)
-              .SetTable(kUnreachableTableId)
-              .SetType(RTN_UNREACHABLE);
+  route = RoutingTableEntry(net_base::IPFamily::kIPv4);
+  route.table = kUnreachableTableId;
+  route.type = RTN_UNREACHABLE;
   AddRouteToKernelTable(0, route);
 }
 
@@ -162,14 +163,12 @@ bool RoutingTable::SetDefaultRoute(int interface_index,
     }
   }
 
-  const auto default_address = net_base::IPCIDR(gateway_address.GetFamily());
-
-  return AddRoute(
-      interface_index,
-      RoutingTableEntry(default_address, default_address, gateway_address)
-          .SetMetric(kDefaultRouteMetric)
-          .SetTable(table_id)
-          .SetTag(interface_index));
+  RoutingTableEntry entry(gateway_address.GetFamily());
+  entry.gateway = gateway_address;
+  entry.metric = kDefaultRouteMetric;
+  entry.table = table_id;
+  entry.tag = interface_index;
+  return AddRoute(interface_index, entry);
 }
 
 void RoutingTable::FlushRoutes(int interface_index) {
@@ -228,17 +227,16 @@ bool RoutingTable::ApplyRoute(int interface_index,
   DCHECK(entry.table != RT_TABLE_UNSPEC && entry.table != RT_TABLE_COMPAT)
       << "Attempted to apply route: " << entry;
 
-  VLOG(2) << base::StringPrintf("%s: dst %s src %s index %d mode %d flags 0x%x",
+  VLOG(2) << base::StringPrintf("%s: dst %s index %d mode %d flags 0x%x",
                                 __func__, entry.dst.ToString().c_str(),
-                                entry.src.ToString().c_str(), interface_index,
-                                mode, flags);
+                                interface_index, mode, flags);
 
   auto message = std::make_unique<net_base::RTNLMessage>(
       net_base::RTNLMessage::kTypeRoute, mode, NLM_F_REQUEST | flags, 0, 0, 0,
       net_base::ToSAFamily(entry.dst.GetFamily()));
   message->set_route_status(net_base::RTNLMessage::RouteStatus(
       static_cast<uint8_t>(entry.dst.prefix_length()),
-      static_cast<uint8_t>(entry.src.prefix_length()),
+      /*src_prefix_in=*/0,
       entry.table < 256 ? static_cast<uint8_t>(entry.table) : RT_TABLE_COMPAT,
       entry.protocol, entry.scope, entry.type, 0));
 
@@ -248,9 +246,6 @@ bool RoutingTable::ApplyRoute(int interface_index,
                         net_base::byte_utils::ToBytes<uint32_t>(entry.metric));
   if (entry.type != RTN_BLACKHOLE) {
     message->SetAttribute(RTA_DST, entry.dst.address().ToBytes());
-  }
-  if (!entry.src.IsDefault()) {
-    message->SetAttribute(RTA_SRC, entry.src.address().ToBytes());
   }
   if (!entry.gateway.IsZero()) {
     message->SetAttribute(RTA_GATEWAY, entry.gateway.ToBytes());
@@ -276,11 +271,11 @@ bool RoutingTable::CreateBlackholeRoute(int interface_index,
   VLOG(2) << base::StringPrintf("%s: family %s metric %d", __func__,
                                 net_base::ToString(family).c_str(), metric);
 
-  auto entry = RoutingTableEntry(family)
-                   .SetMetric(metric)
-                   .SetTable(table_id)
-                   .SetType(RTN_BLACKHOLE)
-                   .SetTag(interface_index);
+  auto entry = RoutingTableEntry(family);
+  entry.metric = metric;
+  entry.table = table_id;
+  entry.type = RTN_BLACKHOLE;
+  entry.tag = interface_index;
   return AddRoute(interface_index, entry);
 }
 
