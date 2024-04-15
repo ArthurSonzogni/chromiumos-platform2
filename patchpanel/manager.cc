@@ -686,8 +686,9 @@ bool Manager::TagSocket(const patchpanel::TagSocketRequest& request,
   return routing_svc_->TagSocket(socket_fd.get(), network_id, policy);
 }
 
-patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
-    const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
+std::pair<DownstreamNetworkResult, DownstreamNetworkInfo>
+Manager::CreateTetheredNetwork(const TetheredNetworkRequest& request,
+                               const base::ScopedFD& client_fd) {
   // b/273741099, b/293964582: patchpanel must support callers using either the
   // shill Device kInterfaceProperty value (Cellular multiplexing disabled) or
   // the kPrimaryMultiplexedInterfaceProperty value (Cellular multiplexing
@@ -710,29 +711,44 @@ patchpanel::DownstreamNetworkResult Manager::CreateTetheredNetwork(
     upstream_shill_device = StartTetheringUpstreamNetwork(request);
     if (!upstream_shill_device) {
       LOG(ERROR) << "Unknown shill Device " << request.upstream_ifname();
-      return patchpanel::DownstreamNetworkResult::UPSTREAM_UNKNOWN;
+      return std::make_pair(
+          patchpanel::DownstreamNetworkResult::UPSTREAM_UNKNOWN,
+          DownstreamNetworkInfo{});
     }
   }
   const auto info =
       DownstreamNetworkInfo::Create(request, *upstream_shill_device);
   if (!info) {
-    LOG(ERROR) << __func__ << ": Unable to parse request";
-    return patchpanel::DownstreamNetworkResult::INVALID_REQUEST;
+    LOG(ERROR) << __func__ << ": Invalid request";
+    return std::make_pair(patchpanel::DownstreamNetworkResult::INVALID_REQUEST,
+                          DownstreamNetworkInfo{});
   }
 
-  return HandleDownstreamNetworkInfo(client_fd, *info);
+  DownstreamNetworkResult result =
+      HandleDownstreamNetworkInfo(client_fd, *info);
+  if (result != patchpanel::DownstreamNetworkResult::SUCCESS) {
+    return std::make_pair(result, DownstreamNetworkInfo{});
+  }
+  return std::make_pair(result, *info);
 }
 
-patchpanel::DownstreamNetworkResult Manager::CreateLocalOnlyNetwork(
-    const LocalOnlyNetworkRequest& request, const base::ScopedFD& client_fd) {
+std::pair<DownstreamNetworkResult, DownstreamNetworkInfo>
+Manager::CreateLocalOnlyNetwork(const LocalOnlyNetworkRequest& request,
+                                const base::ScopedFD& client_fd) {
   std::optional<DownstreamNetworkInfo> info =
       DownstreamNetworkInfo::Create(request);
   if (!info) {
-    LOG(ERROR) << __func__ << ": Unable to parse request";
-    return patchpanel::DownstreamNetworkResult::INVALID_REQUEST;
+    LOG(ERROR) << __func__ << ": Invalid request";
+    return std::make_pair(patchpanel::DownstreamNetworkResult::INVALID_REQUEST,
+                          DownstreamNetworkInfo{});
   }
 
-  return HandleDownstreamNetworkInfo(client_fd, *info);
+  DownstreamNetworkResult result =
+      HandleDownstreamNetworkInfo(client_fd, *info);
+  if (result != patchpanel::DownstreamNetworkResult::SUCCESS) {
+    return std::make_pair(result, DownstreamNetworkInfo{});
+  }
+  return std::make_pair(result, *info);
 }
 
 std::optional<
@@ -1210,7 +1226,7 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
   return true;
 }
 
-patchpanel::DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
+DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
     const base::ScopedFD& client_fd, const DownstreamNetworkInfo& info) {
   base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
   if (!local_client_fd.is_valid()) {

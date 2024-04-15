@@ -98,6 +98,7 @@ void FillDownstreamNetworkProto(
       downstream_network_info.ipv4_cidr.address().ToByteString());
   FillSubnetProto(downstream_network_info.ipv4_cidr,
                   output->mutable_ipv4_subnet());
+  output->set_network_id(downstream_network_info.network_id);
 }
 
 void FillNetworkClientInfoProto(const DownstreamClientInfo& network_client_info,

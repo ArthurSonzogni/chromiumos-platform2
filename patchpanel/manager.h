@@ -127,12 +127,14 @@ class Manager : public ForwardingService {
 
   // Creates an L3 network on a network interface and tethered to an upstream
   // network.
-  DownstreamNetworkResult CreateTetheredNetwork(
-      const TetheredNetworkRequest& request, const base::ScopedFD& client_fd);
+  std::pair<DownstreamNetworkResult, DownstreamNetworkInfo>
+  CreateTetheredNetwork(const TetheredNetworkRequest& request,
+                        const base::ScopedFD& client_fd);
 
   // Creates a local-only L3 network on a network interface.
-  DownstreamNetworkResult CreateLocalOnlyNetwork(
-      const LocalOnlyNetworkRequest& request, const base::ScopedFD& client_fd);
+  std::pair<DownstreamNetworkResult, DownstreamNetworkInfo>
+  CreateLocalOnlyNetwork(const LocalOnlyNetworkRequest& request,
+                         const base::ScopedFD& client_fd);
 
   // Provides L3 and DHCP client information about clients connected to a
   // network created with CreateTetheredNetwork or CreateLocalOnlyNetwork.

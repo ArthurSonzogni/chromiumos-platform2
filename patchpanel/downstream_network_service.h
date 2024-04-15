@@ -32,9 +32,15 @@ enum class DownstreamNetworkTopology {
 
 // Describes a CreateNetwork request issued by shill.
 struct DownstreamNetworkInfo {
+  // The unique id assigned to this network managed as a DownstreamNetwork by
+  // patchpanel.
+  int network_id;
+  // The type of DownstreamNetwork requested by shill.
   DownstreamNetworkTopology topology;
   // The upstream interface is only defined for Tethering. It is left undefined
   // for LocalOnlyNetwork.
+  // TODO(b/273744897): Replace ShillClient::Device with the upstream
+  // network_id of the shill Network.
   std::optional<ShillClient::Device> upstream_device;
   std::string downstream_ifname;
   // IPv4 CIDR of the DUT on the downstream network. This is the effective

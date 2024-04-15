@@ -111,7 +111,7 @@ LocalOnlyNetworkResponse PatchpanelAdaptor::CreateLocalOnlyNetwork(
     const LocalOnlyNetworkRequest& request, const base::ScopedFD& client_fd) {
   RecordDbusEvent(DbusUmaEvent::kCreateLocalOnlyNetwork);
 
-  const auto response_code =
+  const auto [response_code, downstream_network_info] =
       manager_->CreateLocalOnlyNetwork(request, client_fd);
   if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
@@ -121,6 +121,8 @@ LocalOnlyNetworkResponse PatchpanelAdaptor::CreateLocalOnlyNetwork(
 
   LocalOnlyNetworkResponse response;
   response.set_response_code(response_code);
+  FillDownstreamNetworkProto(downstream_network_info,
+                             response.mutable_downstream_network());
   return response;
 }
 
@@ -128,7 +130,7 @@ TetheredNetworkResponse PatchpanelAdaptor::CreateTetheredNetwork(
     const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
   RecordDbusEvent(DbusUmaEvent::kCreateTetheredNetwork);
 
-  const auto response_code =
+  const auto [response_code, downstream_network_info] =
       manager_->CreateTetheredNetwork(request, client_fd);
   if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(DbusUmaEvent::kCreateTetheredNetworkSuccess);
@@ -138,6 +140,8 @@ TetheredNetworkResponse PatchpanelAdaptor::CreateTetheredNetwork(
 
   TetheredNetworkResponse response;
   response.set_response_code(response_code);
+  FillDownstreamNetworkProto(downstream_network_info,
+                             response.mutable_downstream_network());
   return response;
 }
 

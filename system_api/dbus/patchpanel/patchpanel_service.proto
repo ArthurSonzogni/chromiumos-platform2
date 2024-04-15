@@ -725,6 +725,8 @@ enum DownstreamNetworkResult {
   INVALID_REQUEST = 7;
 }
 
+// Describes a network created by Patchpanel for a CreateTetheredNetwork or
+// CreateLocalOnlyNetwork request.
 message DownstreamNetwork {
   // Name of the network interface on which the downstream L3 network was
   // created.
@@ -739,6 +741,10 @@ message DownstreamNetwork {
   // network and the next hop address for remote clients connected to the
   // network. Empty if the upstream network does not have IPv4 connectivity.
   bytes ipv4_gateway_addr = 3;
+
+  // The unique network id assigned by patchpanel to the downstream network.
+  // TODO(b/322083502): Add a link/description to explain network_id.
+  int32 network_id = 4;
 }
 
 // Request to create a L3 logical network on a network interface and share
@@ -810,6 +816,10 @@ message TetheredNetworkRequest {
 message TetheredNetworkResponse {
   // Status of the request.
   DownstreamNetworkResult response_code = 1;
+
+  // Describes the network created by patchpanel for the CreateTetheredNetwork
+  // request.
+  DownstreamNetwork downstream_network = 2;
 }
 
 // Request to create an isolated L3 logical network on a network interface like
@@ -841,6 +851,10 @@ message LocalOnlyNetworkRequest {
 message LocalOnlyNetworkResponse {
   // Status of the request.
   DownstreamNetworkResult response_code = 1;
+
+  // Describes the network created by patchpanel for the CreateTetheredNetwork
+  // request.
+  DownstreamNetwork downstream_network = 2;
 }
 
 // GetDownstreamNetworkInfo request object to obtain the IP configuration of a

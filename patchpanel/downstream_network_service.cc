@@ -12,6 +12,10 @@
 
 namespace patchpanel {
 namespace {
+
+constexpr int kStubbedTetheredNetworkId = 411;
+constexpr int kStubbedLocalOnlyNetworkId = 733;
+
 bool CopyIPv4Configuration(const IPv4Configuration& ipv4_config,
                            DownstreamNetworkInfo* info) {
   info->enable_ipv4_dhcp = true;
@@ -96,6 +100,8 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     const TetheredNetworkRequest& request,
     const ShillClient::Device& shill_device) {
   auto info = std::make_optional<DownstreamNetworkInfo>();
+  // TODO(b/325124473): Assign a network_id.
+  info->network_id = kStubbedTetheredNetworkId;
   info->topology = DownstreamNetworkTopology::kTethering;
   info->enable_ipv6 = request.enable_ipv6();
   info->upstream_device = shill_device;
@@ -109,15 +115,17 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
       return std::nullopt;
     }
   }
-  // TODO(b/239559602) Copy the IPv6 configuration if needed.
+  // TODO(b/239559602): Copy the IPv6 configuration if needed.
   return info;
 }
 
 std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     const LocalOnlyNetworkRequest& request) {
   auto info = std::make_optional<DownstreamNetworkInfo>();
+  // TODO(b/325124473): Assign a network_id.
+  info->network_id = kStubbedLocalOnlyNetworkId;
   info->topology = DownstreamNetworkTopology::kLocalOnly;
-  // TODO(b/239559602) If IPv6 is specified, enable IPv6 LocalOnlyNetwork with
+  // TODO(b/239559602): If IPv6 is specified, enable IPv6 LocalOnlyNetwork with
   // RAServer and copy or generate the IPv6 configuration is needed.
   info->enable_ipv6 = false;
   info->upstream_device = std::nullopt;
@@ -154,7 +162,7 @@ TrafficSource DownstreamNetworkInfo::GetTrafficSource() const {
 
 std::ostream& operator<<(std::ostream& stream,
                          const DownstreamNetworkInfo& info) {
-  stream << "{ topology: ";
+  stream << "{ network_id: " << info.network_id << ", topology: ";
   switch (info.topology) {
     case DownstreamNetworkTopology::kTethering:
       stream << "Tethering, upstream: ";
