@@ -13,6 +13,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/threading/thread_checker.h>
 #include <chromeos/mojo/service_constants.h>
+#include <ml_core/dlc/dlc_ids.h>
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/common.h"
@@ -40,6 +41,39 @@ CameraDiagnosticsProcessor::CameraDiagnosticsProcessor(
     CameraDiagnosticsMojoManager* mojo_manager)
     : thread_("CameraDiagnostics"), mojo_manager_(mojo_manager) {
   CHECK(thread_.Start());
+  // Install blur detector library at startup, since it might take some time to
+  // download the DLC.
+  mojo_manager_->GetTaskRunner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &CameraDiagnosticsProcessor::InstallBlurDetectorDlcOnIpcThread,
+          base::Unretained(this)));
+}
+
+void CameraDiagnosticsProcessor::InstallBlurDetectorDlcOnIpcThread() {
+  DCHECK(mojo_manager_->GetTaskRunner()->RunsTasksInCurrentSequence());
+  // base::Unretained(this) is safe because |this| outlives |dlc_client_|.
+  blur_detector_dlc_client_ = DlcClient::Create(
+      cros::dlc_client::kBlurDetectorDlcId,
+      base::BindOnce(&CameraDiagnosticsProcessor::OnBlurDetectorDlcSuccess,
+                     base::Unretained(this)),
+      base::BindOnce(&CameraDiagnosticsProcessor::OnBlurDetectorDlcFailure,
+                     base::Unretained(this)));
+  if (!blur_detector_dlc_client_) {
+    OnBlurDetectorDlcFailure("error creating DlcClient");
+    return;
+  }
+  blur_detector_dlc_client_->InstallDlc();
+}
+
+void CameraDiagnosticsProcessor::OnBlurDetectorDlcSuccess(
+    const base::FilePath& dlc_path) {
+  blur_detector_dlc_root_path_ = dlc_path;
+}
+
+void CameraDiagnosticsProcessor::OnBlurDetectorDlcFailure(
+    const std::string& error_msg) {
+  LOGF(ERROR) << "BlurDetector DLC failed to install. Error: " << error_msg;
 }
 
 void CameraDiagnosticsProcessor::RunFrameAnalysis(
@@ -87,8 +121,8 @@ void CameraDiagnosticsProcessor::RunFrameAnalysisOnThread(
   // Don't hold the lock for too long.
   {
     base::AutoLock lock(session_lock_);
-    current_session_ =
-        std::make_unique<CameraDiagnosticsSession>(mojo_manager_, future);
+    current_session_ = std::make_unique<CameraDiagnosticsSession>(
+        mojo_manager_, blur_detector_dlc_root_path_, future);
     current_session_->RunFrameAnalysis(config->Clone());
   }
 

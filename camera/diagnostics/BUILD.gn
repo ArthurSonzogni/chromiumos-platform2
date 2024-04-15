@@ -22,6 +22,7 @@ generate_mojom_bindings("cros_camera_diagnostics_mojom") {
 
 executable("cros_camera_diagnostics_service") {
   sources = [
+    "analyzers/dirty_lens_analyzer.cc",
     "analyzers/privacy_shutter_analyzer.cc",
     "camera_diagnostics_main.cc",
     "camera_diagnostics_mojo_manager.cc",
@@ -29,7 +30,6 @@ executable("cros_camera_diagnostics_service") {
     "camera_diagnostics_server.cc",
     "camera_diagnostics_session.cc",
     "camera_service_controller.cc",
-    "dirty_lens_analyzer.cc",
   ]
   configs += [ "//camera/build:cros_camera_common" ]
   pkg_deps = [

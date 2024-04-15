@@ -6,8 +6,11 @@
 #define CAMERA_DIAGNOSTICS_CAMERA_DIAGNOSTICS_PROCESSOR_H_
 
 #include <memory>
+#include <string>
 
+#include <base/files/file_path.h>
 #include <base/thread_annotations.h>
+#include <ml_core/dlc/dlc_client.h>
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/camera_thread.h"
@@ -41,6 +44,12 @@ class CameraDiagnosticsProcessor {
                         RunFrameAnalysisCallback callback);
 
  private:
+  void InstallBlurDetectorDlcOnIpcThread();
+
+  void OnBlurDetectorDlcSuccess(const base::FilePath& dlc_path);
+
+  void OnBlurDetectorDlcFailure(const std::string& error_msg);
+
   // Creates a new session and starts frame analysis. Blocks the thread
   // until frame analysis is finished.
   void RunFrameAnalysisOnThread(
@@ -59,6 +68,12 @@ class CameraDiagnosticsProcessor {
   base::Lock session_lock_;
   std::unique_ptr<CameraDiagnosticsSession> current_session_
       GUARDED_BY(session_lock_);
+
+  base::FilePath blur_detector_dlc_root_path_;
+
+  // Do not transfer ownership once created. |this| should outlive
+  // |dlc_client_|.
+  std::unique_ptr<DlcClient> blur_detector_dlc_client_;
 };
 
 }  // namespace cros

@@ -21,6 +21,7 @@
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/common.h"
 #include "cros-camera/common_types.h"
+#include "diagnostics/analyzers/dirty_lens_analyzer.h"
 #include "diagnostics/analyzers/privacy_shutter_analyzer.h"
 #include "diagnostics/camera_diagnostics_mojo_manager.h"
 
@@ -104,6 +105,7 @@ camera_diag::mojom::CameraFramePtr CreateEmptyCameraFrame(
 
 CameraDiagnosticsSession::CameraDiagnosticsSession(
     CameraDiagnosticsMojoManager* mojo_manager,
+    const base::FilePath& blur_detector_dlc_path,
     scoped_refptr<Future<void>> notify_finish)
     : thread_("CameraDiagSession"),
       camera_service_controller_(mojo_manager),
@@ -112,6 +114,14 @@ CameraDiagnosticsSession::CameraDiagnosticsSession(
 
   frame_analyzers_.push_back(std::make_unique<PrivacyShutterAnalyzer>());
   LOGF(INFO) << "PrivacyShutterAnalyzer enabled";
+
+  auto dirty_lens_analyzer = std::make_unique<DirtyLensAnalyzer>();
+  if (dirty_lens_analyzer->Initialize(blur_detector_dlc_path)) {
+    frame_analyzers_.push_back(std::move(dirty_lens_analyzer));
+    LOGF(INFO) << "DirtyLensAnalyzer enabled";
+  } else {
+    LOGF(INFO) << "DirtyLensAnalyzer disabled";
+  }
 }
 
 void CameraDiagnosticsSession::RunFrameAnalysis(
@@ -234,6 +244,10 @@ void CameraDiagnosticsSession::PrepareResult() {
         case cros::camera_diag::mojom::AnalyzerType::kPrivacyShutterSwTest:
           diag_result->suggested_issue =
               camera_diag::mojom::CameraIssue::kPrivacyShutterOn;
+          break;
+        case cros::camera_diag::mojom::AnalyzerType::kDirtyLens:
+          diag_result->suggested_issue =
+              camera_diag::mojom::CameraIssue::kDirtyLens;
           break;
         default:
           break;

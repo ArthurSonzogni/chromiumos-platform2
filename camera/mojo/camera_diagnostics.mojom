@@ -16,6 +16,7 @@ enum AnalyzerStatus {
 enum AnalyzerType {
   [Default] kUnknown = 0,
   kPrivacyShutterSwTest = 1,
+  kDirtyLens = 2,
 };
 
 [Extensible]

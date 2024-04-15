@@ -28,6 +28,7 @@ namespace cros {
 class CameraDiagnosticsSession {
  public:
   CameraDiagnosticsSession(CameraDiagnosticsMojoManager* mojo_manager,
+                           const base::FilePath& blur_detector_dlc_path,
                            scoped_refptr<Future<void>> notify_finish);
   CameraDiagnosticsSession(const CameraDiagnosticsSession&) = delete;
   CameraDiagnosticsSession& operator=(const CameraDiagnosticsSession&) = delete;
