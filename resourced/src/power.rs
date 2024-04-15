@@ -468,7 +468,7 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
             // Reference:
             //   https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/kernel/v6.6/drivers/cpufreq/intel_pstate.c;drc=1a868273760040b746518aca7fea4f8c07366884;l=795
             match self.get_first_scaling_governor() {
-                Ok(governor) if governor == "performance" => {}
+                Ok(governor) if governor.trim() == "performance" => {}
                 _ => {
                     // Default EPP
                     self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
