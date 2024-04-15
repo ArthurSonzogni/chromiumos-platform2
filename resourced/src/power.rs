@@ -125,8 +125,15 @@ impl PowerSourceProvider for DirectoryPowerSourceProvider {
                 continue;
             }
 
-            let status_string = read_to_string(&status_path)
-                .with_context(|| format!("Error reading status from {}", status_path.display()))?;
+            let status_string = match read_to_string(&status_path) {
+                Ok(data) => data,
+                Err(e) => {
+                    info!("Error reading status from {}, error: {}", status_path.display(), e);
+                    // On some boards, reading some power supply status may return ENODATA, it's an
+                    // uncategorized Rust IO error kind. Continue checking other power supplies.
+                    continue;
+                }
+            };
 
             let status_result = PowerSupplyStatus::from_str(&status_string);
 
