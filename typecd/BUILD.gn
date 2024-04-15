@@ -75,6 +75,7 @@ static_library("typecd_common") {
     "chrome_features_service_client.cc",
     "cros_ec_util.cc",
     "dbus_manager.cc",
+    "dbus_utils.cc",
     "metrics.cc",
     "partner.cc",
     "pdo.cc",
