@@ -28,7 +28,6 @@
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store_test.h"
 #include "shill/supplicant/wpa_supplicant.h"
-#include "shill/tethering.h"
 #include "shill/wifi/ieee80211.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
@@ -1285,6 +1284,8 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
 }
 
 TEST_F(WiFiEndpointTest, HasTetheringSignature) {
+  constexpr uint32_t kIosOui = 0x0017f2;
+
   {
     WiFiEndpointRefPtr endpoint =
         MakeEndpoint(nullptr, wifi(), "ssid",
@@ -1298,7 +1299,7 @@ TEST_F(WiFiEndpointTest, HasTetheringSignature) {
                      net_base::MacAddress(0x02, 0x1a, 0x10, 0x00, 0x00, 0x01),
                      WiFiEndpoint::SecurityFlags());
     EXPECT_FALSE(endpoint->has_tethering_signature());
-    endpoint->vendor_information_.oui_set.insert(Tethering::kIosOui);
+    endpoint->vendor_information_.oui_set.insert(kIosOui);
     endpoint->CheckForTetheringSignature();
     EXPECT_TRUE(endpoint->has_tethering_signature());
   }
@@ -1308,7 +1309,7 @@ TEST_F(WiFiEndpointTest, HasTetheringSignature) {
                      net_base::MacAddress(0x04, 0x1a, 0x10, 0x00, 0x00, 0x01),
                      WiFiEndpoint::SecurityFlags());
     EXPECT_FALSE(endpoint->has_tethering_signature());
-    endpoint->vendor_information_.oui_set.insert(Tethering::kIosOui);
+    endpoint->vendor_information_.oui_set.insert(kIosOui);
     endpoint->CheckForTetheringSignature();
     EXPECT_FALSE(endpoint->has_tethering_signature());
   }

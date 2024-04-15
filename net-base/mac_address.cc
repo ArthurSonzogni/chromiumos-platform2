@@ -81,6 +81,10 @@ bool MacAddress::IsZero() const {
                      [](uint8_t byte) { return byte == 0; });
 }
 
+bool MacAddress::IsLocallyAdministered() const {
+  return (data_[0] & kLocallyAdministratedMacBit) != 0;
+}
+
 bool MacAddress::operator==(const MacAddress& rhs) const {
   return data_ == rhs.data_;
 }

@@ -40,7 +40,6 @@
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
-#include "shill/tethering.h"
 #include "shill/wifi/ieee80211.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
@@ -2352,7 +2351,8 @@ TEST_F(WiFiServiceTest, GetTethering) {
   // If this endpoint reports the right vendor OUI, we should suspect
   // it to be tethered.  However since this evaluation normally only
   // happens in the endpoint constructor, we must force it to recalculate.
-  endpoint_ios->vendor_information_.oui_set.insert(Tethering::kIosOui);
+  constexpr uint32_t kIosOui = 0x0017f2;
+  endpoint_ios->vendor_information_.oui_set.insert(kIosOui);
   endpoint_ios->CheckForTetheringSignature();
   EXPECT_EQ(Service::TetheringState::kSuspected, service->GetTethering());
 

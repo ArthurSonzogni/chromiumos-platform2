@@ -21,7 +21,6 @@
 #include "shill/metrics.h"
 #include "shill/supplicant/supplicant_bss_proxy_interface.h"
 #include "shill/supplicant/wpa_supplicant.h"
-#include "shill/tethering.h"
 #include "shill/wifi/ieee80211.h"
 #include "shill/wifi/wifi.h"
 
@@ -32,6 +31,20 @@ static auto kModuleLogScope = ScopeLogger::kWiFi;
 }  // namespace Logging
 
 namespace {
+
+// Returns whether an 802.11 BSSID is likely to be owned by an Android device.
+bool IsAndroidBSSID(net_base::MacAddress bssid) {
+  constexpr uint8_t kAndroidBSSIDPrefix[] = {0x02, 0x1a, 0x11};
+  return std::memcmp(bssid.data(), kAndroidBSSIDPrefix,
+                     sizeof(kAndroidBSSIDPrefix)) == 0;
+}
+
+// Returns whether any of the organizationally unique identifiers in
+// |oui_set| is commonly associated with IOS devices.
+bool HasIosOui(const std::set<uint32_t>& oui_set) {
+  constexpr uint32_t kIosOui = 0x0017f2;
+  return oui_set.find(kIosOui) != oui_set.end();
+}
 
 void PackSecurity(const WiFiEndpoint::SecurityFlags& flags,
                   KeyValueStore* args) {
@@ -1193,9 +1206,8 @@ bool WiFiEndpoint::ParseANQPCapabilityList(
 
 void WiFiEndpoint::CheckForTetheringSignature() {
   has_tethering_signature_ =
-      Tethering::IsAndroidBSSID(bssid_.ToBytes()) ||
-      (Tethering::IsLocallyAdministeredBSSID(bssid_.ToBytes()) &&
-       Tethering::HasIosOui(vendor_information_.oui_set));
+      IsAndroidBSSID(bssid_) || (bssid_.IsLocallyAdministered() &&
+                                 HasIosOui(vendor_information_.oui_set));
 }
 
 Metrics::WiFiConnectionAttemptInfo::ApSupportedFeatures

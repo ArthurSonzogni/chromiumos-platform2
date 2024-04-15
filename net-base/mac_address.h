@@ -73,6 +73,10 @@ class BRILLO_EXPORT MacAddress {
   // Returns true if the address is "00:00:00:00:00:00".
   bool IsZero() const;
 
+  // Returns whether the address is a locally-administered address, as
+  // opposed to a unique IEEE-issued address.
+  bool IsLocallyAdministered() const;
+
   // Compares the byte value of |data_| with |rhs|.
   bool operator==(const MacAddress& rhs) const;
   bool operator!=(const MacAddress& rhs) const;

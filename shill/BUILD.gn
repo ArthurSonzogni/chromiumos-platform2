@@ -379,7 +379,6 @@ static_library("libshill") {
     "supplicant/supplicant_manager.cc",
     "supplicant/wpa_supplicant.cc",
     "technology.cc",
-    "tethering.cc",
     "tethering_manager.cc",
     "time.cc",
     "upstart/upstart.cc",

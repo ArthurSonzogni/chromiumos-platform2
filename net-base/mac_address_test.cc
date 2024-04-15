@@ -34,6 +34,14 @@ TEST(MacAddress, CreateRandom) {
   EXPECT_FALSE(addr[0] & MacAddress::kMulicastMacBit);
 }
 
+TEST(MacAddress, IsLocallyAdministered) {
+  MacAddress addr1(0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
+  EXPECT_FALSE(addr1.IsLocallyAdministered());
+
+  MacAddress addr2(0x02, 0x01, 0x02, 0x03, 0x04, 0x05);
+  EXPECT_TRUE(addr2.IsLocallyAdministered());
+}
+
 TEST(MacAddress, CreateFromString) {
   EXPECT_EQ(MacAddress::CreateFromString("12:34:56:78:9a:bc"),
             MacAddress(0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc));
