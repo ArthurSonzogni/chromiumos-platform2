@@ -80,7 +80,8 @@ void CameraDiagnosticsSession::RunFrameAnalysis(
 void CameraDiagnosticsSession::QueueFrame(
     camera_diag::mojom::CameraFramePtr frame) {
   // Process frame
-  VLOGF(1) << "Frame received";
+  VLOGF(2) << "Frame received, frame_number "
+           << frame->frame_number.value_or(-1);
 }
 
 void CameraDiagnosticsSession::RunFrameAnalysisOnThread(
@@ -131,6 +132,7 @@ void CameraDiagnosticsSession::OnStartStreaming(
 
 camera_diag::mojom::FrameAnalysisResultPtr
 CameraDiagnosticsSession::StopAndGetResult() {
+  camera_service_controller_.StopStreaming();
   PrepareResult();
   base::AutoLock lock(lock_);
   return result_.value()->Clone();

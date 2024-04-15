@@ -8,7 +8,9 @@
 #include <cutils/native_handle.h>
 #include <drm_fourcc.h>
 
+#include "camera/mojo/camera_diagnostics.mojom.h"
 #include "common/camera_diagnostics_client.h"
+#include "common/camera_hal3_helpers.h"
 #include "common/stream_manipulator.h"
 
 namespace cros {
@@ -34,6 +36,9 @@ class DiagnosticsStreamManipulator : public StreamManipulator {
 
  private:
   void Reset();
+  bool FillDiagnosticsBuffer(
+      Camera3StreamBuffer& stream_buffer,
+      camera_diag::mojom::CameraFrameBufferPtr& out_frame);
 
   CameraBufferManager* camera_buffer_manager_;
   StreamManipulator::Callbacks callbacks_;
@@ -42,6 +47,7 @@ class DiagnosticsStreamManipulator : public StreamManipulator {
   const camera3_stream_t* selected_stream_ = nullptr;
   // Target size for the downscaled buffer.
   Size target_frame_size_{0, 0};
+  int next_target_frame_number_ = 0;
 };
 
 }  // namespace cros

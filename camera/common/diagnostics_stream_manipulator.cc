@@ -4,12 +4,14 @@
 
 #include "common/diagnostics_stream_manipulator.h"
 
+#include <cstdint>
 #include <utility>
 
 #include <base/check.h>
 #include <drm_fourcc.h>
 #include <libyuv/scale.h>
 
+#include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/camera_buffer_manager.h"
 
 namespace {
@@ -101,12 +103,104 @@ bool DiagnosticsStreamManipulator::ProcessCaptureRequest(
 bool DiagnosticsStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   DCHECK(diagnostics_client_);
-  if (!diagnostics_client_->IsFrameAnalysisEnabled()) {
+  if (!diagnostics_client_->IsFrameAnalysisEnabled() || !selected_stream_ ||
+      result.frame_number() < next_target_frame_number_) {
     callbacks_.result_callback.Run(std::move(result));
     return true;
   }
-  // TODO(imranziad): Select and copy an output buffer.
+
+  for (auto& buffer : result.GetMutableOutputBuffers()) {
+    if (buffer.stream() != selected_stream_) {
+      continue;
+    }
+
+    auto requested_buffer = diagnostics_client_->RequestEmptyFrame();
+    if (!requested_buffer.has_value()) {
+      VLOGF(2) << "Failed to get an empty buffer from diag client, skip!";
+      break;
+    }
+
+    auto diag_buffer = std::move(requested_buffer.value());
+    diag_buffer->stream->width = target_frame_size_.width;
+    diag_buffer->stream->height = target_frame_size_.height;
+    diag_buffer->frame_number = result.frame_number();
+    diag_buffer->source = camera_diag::mojom::DataSource::kCameraService;
+    diag_buffer->is_empty = true;
+
+    VLOGF(1) << "Processing buffer for frame " << result.frame_number();
+
+    if (FillDiagnosticsBuffer(buffer, diag_buffer->buffer)) {
+      diag_buffer->is_empty = false;
+      next_target_frame_number_ =
+          result.frame_number() + diagnostics_client_->frame_interval();
+      VLOGF(1) << "Output buffer processed in frame " << result.frame_number()
+               << ", next_target_frame_number_: " << next_target_frame_number_;
+    }
+
+    diagnostics_client_->SendFrame(std::move(diag_buffer));
+    break;
+  }
+
   callbacks_.result_callback.Run(std::move(result));
+  return true;
+}
+
+bool DiagnosticsStreamManipulator::FillDiagnosticsBuffer(
+    Camera3StreamBuffer& stream_buffer,
+    camera_diag::mojom::CameraFrameBufferPtr& out_frame) {
+  constexpr int kSyncWaitTimeoutMs = 300;
+  if (!stream_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
+    LOGFID(ERROR, 1) << "Timed out waiting for acquiring output buffer";
+    return false;
+  }
+  auto mapping_src = ScopedMapping(*stream_buffer.buffer());
+  if (!mapping_src.is_valid() || mapping_src.drm_format() != DRM_FORMAT_NV12) {
+    VLOGF(1) << "Invalid mapping_src. Can not process frame";
+    return false;
+  }
+
+  uint32_t src_width = stream_buffer.stream()->width;
+  uint32_t src_height = stream_buffer.stream()->height;
+
+  uint32_t y_size = target_frame_size_.height * target_frame_size_.width;
+  uint32_t nv12_data_size = y_size * 3 / 2;
+  uint8_t y_stride = target_frame_size_.height;
+  uint8_t uv_stride = target_frame_size_.width / 2;
+
+  if (out_frame->shm_handle->GetSize() < nv12_data_size) {
+    // Soft ignore the invalid diagnsotics frame instead of CHECKs.
+    VLOGF(1) << "Too small size of CameraFrameBufferPtr, "
+             << out_frame->shm_handle->GetSize() << " vs " << nv12_data_size;
+    return false;
+  }
+
+  mojo::ScopedSharedBufferMapping y_mapping =
+      out_frame->shm_handle->Map(y_size);
+  mojo::ScopedSharedBufferMapping uv_mapping =
+      out_frame->shm_handle->MapAtOffset(nv12_data_size - y_size, y_size);
+
+  if (y_mapping == nullptr || uv_mapping == nullptr) {
+    VLOGF(1) << "Failed to map the output buffer";
+    return false;
+  }
+
+  VLOGF(1) << "Downscaling " << src_width << "x" << src_height << " -> "
+           << target_frame_size_.width << "x" << target_frame_size_.height;
+
+  // TODO(imranziad): Use GPU scaling.
+  int ret = libyuv::NV12Scale(
+      mapping_src.plane(0).addr, mapping_src.plane(0).stride,
+      mapping_src.plane(1).addr, mapping_src.plane(1).stride, src_width,
+      src_height, static_cast<uint8_t*>(y_mapping.get()), y_stride,
+      static_cast<uint8_t*>(uv_mapping.get()), uv_stride,
+      target_frame_size_.width, target_frame_size_.height,
+      libyuv::kFilterBilinear);
+
+  if (ret != 0) {
+    LOGF(ERROR) << "DiagnosticsSM: libyuv::NV12Scale() failed: " << ret;
+    return false;
+  }
+
   return true;
 }
 
@@ -125,6 +219,7 @@ void DiagnosticsStreamManipulator::Reset() {
   }
   selected_stream_ = nullptr;
   target_frame_size_ = {0, 0};
+  next_target_frame_number_ = 0;
 }
 
 }  // namespace cros

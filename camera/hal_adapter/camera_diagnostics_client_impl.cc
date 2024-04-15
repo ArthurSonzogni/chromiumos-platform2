@@ -121,6 +121,7 @@ void CameraDiagnosticsClientImpl::RemoveCameraSession() {
 void CameraDiagnosticsClientImpl::StartStreaming(
     camera_diag::mojom::StreamingConfigPtr config,
     StartStreamingCallback callback) {
+  VLOGF(1) << "StartStreaming called";
   camera_diag::mojom::StartStreamingResultPtr result;
 
   {
@@ -142,6 +143,7 @@ void CameraDiagnosticsClientImpl::StartStreaming(
       stream->pixel_format = camera_diag::mojom::PixelFormat::kYuv420;
       result = camera_diag::mojom::StartStreamingResult::NewStream(
           std::move(stream));
+      frame_interval_ = config->frame_interval;
       frame_analysis_enabled_ = true;
     }
   }
@@ -150,6 +152,7 @@ void CameraDiagnosticsClientImpl::StartStreaming(
 }
 
 void CameraDiagnosticsClientImpl::StopStreaming() {
+  VLOGF(1) << "StopStreaming called";
   frame_analysis_enabled_ = false;
   base::AutoLock lock(session_lock_);
   // Drop the frames, no need to send them back.
