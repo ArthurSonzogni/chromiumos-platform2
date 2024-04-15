@@ -5,7 +5,9 @@
 #ifndef CAMERA_DIAGNOSTICS_CAMERA_DIAGNOSTICS_SESSION_H_
 #define CAMERA_DIAGNOSTICS_CAMERA_DIAGNOSTICS_SESSION_H_
 
+#include <memory>
 #include <optional>
+#include <vector>
 
 #include <base/memory/scoped_refptr.h>
 #include <base/threading/thread_checker.h>
@@ -13,6 +15,7 @@
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/camera_thread.h"
+#include "diagnostics/analyzers/frame_analyzer.h"
 #include "diagnostics/camera_diagnostics_mojo_manager.h"
 #include "diagnostics/camera_service_controller.h"
 
@@ -47,6 +50,8 @@ class CameraDiagnosticsSession {
 
   void OnStartStreaming(camera_diag::mojom::StartStreamingResultPtr result);
 
+  void QueueFrameOnThread(camera_diag::mojom::CameraFramePtr frame);
+
   void PrepareResult();
 
   CameraThread thread_;
@@ -58,6 +63,8 @@ class CameraDiagnosticsSession {
       GUARDED_BY(lock_) = std::nullopt;
 
   scoped_refptr<Future<void>> notify_finish_;
+
+  std::vector<std::unique_ptr<FrameAnalyzer>> frame_analyzers_;
 };
 
 }  // namespace cros

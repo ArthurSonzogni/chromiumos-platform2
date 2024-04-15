@@ -21,15 +21,15 @@
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/common.h"
 #include "cros-camera/common_types.h"
+#include "diagnostics/analyzers/privacy_shutter_analyzer.h"
 #include "diagnostics/camera_diagnostics_mojo_manager.h"
-
-namespace {
-constexpr int kStreamingFrameIntervalDefault = 30;  // every 30th frame
-}  // namespace
 
 namespace cros {
 
 namespace {
+// We set this low because FPS can drop due to long exposure in dark
+// environment.
+constexpr int kStreamingFrameIntervalDefault = 10;  // every 10th frame
 // |DirtyLensAnalyzer| requires frames to have at least 640*480 pixels. So, we
 // set this as a diagnostics service requirement.
 constexpr int kMinPixelCount = 640 * 480;
@@ -109,6 +109,9 @@ CameraDiagnosticsSession::CameraDiagnosticsSession(
       camera_service_controller_(mojo_manager),
       notify_finish_(notify_finish) {
   CHECK(thread_.Start());
+
+  frame_analyzers_.push_back(std::make_unique<PrivacyShutterAnalyzer>());
+  LOGF(INFO) << "PrivacyShutterAnalyzer enabled";
 }
 
 void CameraDiagnosticsSession::RunFrameAnalysis(
@@ -121,9 +124,27 @@ void CameraDiagnosticsSession::RunFrameAnalysis(
 
 void CameraDiagnosticsSession::QueueFrame(
     camera_diag::mojom::CameraFramePtr frame) {
-  // Process frame
   VLOGF(2) << "Frame received, frame_number "
            << frame->frame_number.value_or(-1);
+  thread_.PostTaskAsync(
+      FROM_HERE, base::BindOnce(&CameraDiagnosticsSession::QueueFrameOnThread,
+                                base::Unretained(this), std::move(frame)));
+}
+
+void CameraDiagnosticsSession::QueueFrameOnThread(
+    camera_diag::mojom::CameraFramePtr frame) {
+  DCHECK(thread_.IsCurrentThread());
+  if (frame->is_empty) {
+    // Frame is not filled up properly, resend to camera service.
+    camera_service_controller_.RequestFrame(std::move(frame));
+    return;
+  }
+  for (auto& analyzer : frame_analyzers_) {
+    analyzer->AnalyzeFrame(frame);
+  }
+  // Resend the frame to camera service to fill up again.
+  frame->is_empty = true;
+  camera_service_controller_.RequestFrame(std::move(frame));
 }
 
 void CameraDiagnosticsSession::RunFrameAnalysisOnThread(
@@ -193,8 +214,35 @@ void CameraDiagnosticsSession::PrepareResult() {
   if (result_.has_value()) {
     return;
   }
+
   auto diag_result = camera_diag::mojom::DiagnosticsResult::New();
   diag_result->suggested_issue = camera_diag::mojom::CameraIssue::kNone;
+
+  for (auto& analyzer : frame_analyzers_) {
+    camera_diag::mojom::AnalyzerResultPtr analyzer_result =
+        analyzer->GetResult();
+
+    VLOGF(1) << "Analyzer " << analyzer_result->type
+             << ", status: " << analyzer_result->status;
+
+    // Prioritized first analyzer's failure as the suggested issue.
+    if (diag_result->suggested_issue ==
+            camera_diag::mojom::CameraIssue::kNone &&
+        analyzer_result->status ==
+            camera_diag::mojom::AnalyzerStatus::kFailed) {
+      switch (analyzer_result->type) {
+        case cros::camera_diag::mojom::AnalyzerType::kPrivacyShutterSwTest:
+          diag_result->suggested_issue =
+              camera_diag::mojom::CameraIssue::kPrivacyShutterOn;
+          break;
+        default:
+          break;
+      }
+    }
+
+    diag_result->analyzer_results.push_back(std::move(analyzer_result));
+  }
+
   result_ =
       camera_diag::mojom::FrameAnalysisResult::NewRes(std::move(diag_result));
 }
