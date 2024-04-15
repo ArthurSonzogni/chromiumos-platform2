@@ -98,11 +98,18 @@ class OutputManager : public SessionStateManagerInterface::Observer,
 
   void DeleteAllFiles();
 
+  // Every few minutes, report to UMA how many firmware dumps are available to
+  // be added to feedback reports.
+  void EmitMetrics();
+
   std::set<OutputFile> files_;
 
   base::Lock files_lock_;
 
   base::OneShotTimer expiration_timer_;
+
+  // Timer used to periodically report metrics with |EmitMetrics()|.
+  base::RepeatingTimer metrics_polling_timer_;
 
   // Delete pseudonymized firmware dumps from disk after |expire_after_|.
   base::TimeDelta expire_after_;

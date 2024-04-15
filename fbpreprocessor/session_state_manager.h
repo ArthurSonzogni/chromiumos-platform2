@@ -16,6 +16,7 @@
 #include <session_manager/dbus-proxies.h>
 
 #include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/platform_features_client.h"
 
 namespace fbpreprocessor {
 
@@ -43,16 +44,21 @@ class SessionStateManagerInterface {
   virtual ~SessionStateManagerInterface() = default;
 };
 
-class SessionStateManager : public SessionStateManagerInterface {
+class SessionStateManager : public SessionStateManagerInterface,
+                            public PlatformFeaturesClientInterface::Observer {
  public:
   explicit SessionStateManager(Manager* manager, dbus::Bus* bus);
   SessionStateManager(const SessionStateManager&) = delete;
   SessionStateManager& operator=(const SessionStateManager&) = delete;
-  ~SessionStateManager() override = default;
+  ~SessionStateManager() override;
 
-  void AddObserver(Observer* observer) override;
-  void RemoveObserver(Observer* observer) override;
+  void AddObserver(SessionStateManagerInterface::Observer* observer) override;
+  void RemoveObserver(
+      SessionStateManagerInterface::Observer* observer) override;
   bool RefreshPrimaryUser();
+
+  // Called by |PlatformFeaturesClientInterface| after fetching Finch.
+  void OnFeatureChanged(bool allowed) override;
 
   // Returns true if the user is allowed to include firmware dumps in feedback
   // reports, false otherwise.
@@ -90,6 +96,8 @@ class SessionStateManager : public SessionStateManagerInterface {
   // Notify all observers the user login and logout events
   void NotifyObserversOnUserLogin();
   void NotifyObserversOnUserLogout();
+
+  void EmitFeatureAllowedMetric();
 
   // Query session manager for the current primary user. Returns std::nullopt
   // when there was an error while getting primary user.
@@ -159,8 +167,17 @@ class SessionStateManager : public SessionStateManagerInterface {
   // process firmware dumps.
   bool fw_dumps_allowed_by_policy_;
 
+  // When the user logs in, it takes a little time to fetch the policy. This
+  // boolean is flipped to true once we've retrieved all the necessary policy
+  // information.
+  bool fw_dumps_policy_loaded_;
+
+  // Set to true if we have already retrieved the Finch setting.
+  bool finch_loaded_;
+
   // List of SessionStateManager observers
-  base::ObserverList<Observer>::Unchecked observers_;
+  base::ObserverList<SessionStateManagerInterface::Observer>::Unchecked
+      observers_;
 
   // Pointer to the Manager class that instantiates all the main modules.
   Manager* manager_;

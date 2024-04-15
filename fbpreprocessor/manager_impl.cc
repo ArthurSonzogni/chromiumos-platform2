@@ -29,12 +29,12 @@ void ManagerImpl::Start(dbus::Bus* bus) {
       << "No default task runner.";
   task_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
 
-  // SessionStateManager must be instantiated first since the other modules will
-  // register as observers with the SessionStateManager::Observer interface.
-  // Same thing for PlatformFeaturesClient, other modules will also register as
-  // observers so it must be instantiated before the observers.
-  session_state_manager_ = std::make_unique<SessionStateManager>(this, bus);
+  // |SessionStateManager| and |PlatformFeaturesClient| must be instantiated
+  // before other objects that will register as their |Observer|.
   platform_features_ = std::make_unique<PlatformFeaturesClient>();
+  // |SessionStateManager| is an |Observer| of |PlatformFeaturesClient| so we
+  // instantiate it after.
+  session_state_manager_ = std::make_unique<SessionStateManager>(this, bus);
 
   pseudonymization_manager_ = std::make_unique<PseudonymizationManager>(this);
   output_manager_ = std::make_unique<OutputManager>(this);

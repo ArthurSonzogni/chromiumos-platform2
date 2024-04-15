@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -243,6 +244,38 @@ TEST_F(PseudonymizationManagerTest, RejectedRequestDeletesDump) {
   EXPECT_FALSE(pseudonymization_manager()->StartPseudonymization(fw_dump));
   // The firmware dump that can't be pseudonymized must have been deleted.
   EXPECT_FALSE(base::PathExists(fw_dump.DumpFile()));
+}
+
+TEST_F(PseudonymizationManagerTest, PseudonymizationEmitsStartTypeUMA) {
+  // We're pseudonymizing 2 firmware dumps, both of type WiFi. Expect that the
+  // value "1" for the type is sent to UMA both times.
+  std::vector<int> expected_uma_calls{1, 1};
+  SimulateUserLogin();
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
+  base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+  pseudonymization_manager()->StartPseudonymization(fw_dump);
+  pseudonymization_manager()->StartPseudonymization(fw_dump);
+
+  EXPECT_EQ(manager()->GetMetricCalls(
+                "Platform.FbPreprocessor.Pseudonymization.DumpType"),
+            expected_uma_calls);
+}
+
+TEST_F(PseudonymizationManagerTest, PseudonymizationEmitsResultUMA) {
+  // Test that we emit Metrics::PseudonymizationResult::kSuccess after a
+  // successful pseudonymization.
+  std::vector<int> expected_uma_calls{1};
+  SimulateUserLogin();
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
+  base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+  pseudonymization_manager()->StartPseudonymization(fw_dump);
+  manager()->RunTasksUntilIdle();
+
+  EXPECT_EQ(manager()->GetMetricCalls(
+                "Platform.FbPreprocessor.WiFi.Pseudonymization.Result"),
+            expected_uma_calls);
 }
 
 }  // namespace

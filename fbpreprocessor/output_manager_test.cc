@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -157,6 +158,85 @@ TEST_F(OutputManagerTest, AddFirmwareDumpSucceeds) {
     // real world conditions. Work around that by advancing the clock by 1s.
     manager()->FastForwardBy(base::Seconds(1));
   }
+}
+
+// Test that the number of firmware dumps available is sent to UMA periodically.
+TEST_F(OutputManagerTest, NumberOfDumpsSentToUMA) {
+  SimulateUserLogin();
+  std::vector<int> expected_uma_calls;
+
+  // Add a firmware dump at T+2 minutes.
+  manager()->FastForwardBy(base::Minutes(2));
+  FirmwareDump dump1(GetOutputFirmwareDumpName("test1.dmp"),
+                     FirmwareDump::Type::kWiFi);
+  base::WriteFile(dump1.DumpFile(), kTestFirmwareContent);
+  AddFirmwareDumpToOutputManager(dump1);
+  // Add a second firmware dump at T+4 minutes.
+  manager()->FastForwardBy(base::Minutes(2));
+  FirmwareDump dump2(GetOutputFirmwareDumpName("test2.dmp"),
+                     FirmwareDump::Type::kWiFi);
+  base::WriteFile(dump2.DumpFile(), kTestFirmwareContent);
+  AddFirmwareDumpToOutputManager(dump2);
+
+  // At T+6 minutes, expect that we've reported 2 dumps available since the
+  // metric was supposed to be sent at T+5 minutes.
+  manager()->FastForwardBy(base::Minutes(2));
+  expected_uma_calls.push_back(2);
+
+  // Add a 3rd firmware dump at T+9 minutes.
+  manager()->FastForwardBy(base::Minutes(3));
+  FirmwareDump dump3(GetOutputFirmwareDumpName("test3.dmp"),
+                     FirmwareDump::Type::kWiFi);
+  base::WriteFile(dump3.DumpFile(), kTestFirmwareContent);
+  AddFirmwareDumpToOutputManager(dump3);
+
+  // At T+11 minutes, expect that we've reported 3 dumps available since the
+  // metric was supposed to be sent at T+10 minutes.
+  manager()->FastForwardBy(base::Minutes(2));
+  expected_uma_calls.push_back(3);
+
+  // At T+16, T+21, T+26 and T+31, expect that we've reported 3 dumps available.
+  for (int i = 0; i < 4; i++) {
+    manager()->FastForwardBy(base::Minutes(5));
+    expected_uma_calls.push_back(3);
+  }
+
+  // At T+36 minutes, expect that we've reported 1 available firmware dump:
+  // - dump1 expired at T+32
+  // - dump2 expired at T+34
+  // - At T+35, only dump3 is left when the metric is emitted
+  manager()->FastForwardBy(base::Minutes(5));
+  expected_uma_calls.push_back(1);
+
+  // At T+41 minutes, expect that we've reported 0 available dump:
+  // - dump3 expired at T+39
+  // - metric is emitted at T+40.
+  manager()->FastForwardBy(base::Minutes(5));
+  expected_uma_calls.push_back(0);
+
+  EXPECT_EQ(
+      manager()->GetMetricCalls("Platform.FbPreprocessor.WiFi.Output.Number"),
+      expected_uma_calls);
+}
+
+TEST_F(OutputManagerTest, NoUMAWhenCollectionDisabled) {
+  SimulateUserLogin();
+  manager()->set_firmware_dumps_allowed(false);
+
+  manager()->FastForwardBy(base::Minutes(60));
+  EXPECT_TRUE(manager()
+                  ->GetMetricCalls("Platform.FbPreprocessor.WiFi.Output.Number")
+                  .empty());
+}
+
+TEST_F(OutputManagerTest, NoUMAWhenUserLoggedOut) {
+  SimulateUserLogin();
+  manager()->FastForwardBy(base::Minutes(1));
+  SimulateUserLogout();
+  manager()->FastForwardBy(base::Minutes(60));
+  EXPECT_TRUE(manager()
+                  ->GetMetricCalls("Platform.FbPreprocessor.WiFi.Output.Number")
+                  .empty());
 }
 
 TEST_F(OutputManagerTest, FirmwareDumpsExpire) {

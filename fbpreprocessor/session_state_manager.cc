@@ -35,7 +35,9 @@
 #include <session_manager/dbus-proxies.h>
 
 #include "fbpreprocessor/constants.h"
+#include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/metrics.h"
 
 namespace {
 constexpr char kSessionStateStarted[] = "started";
@@ -110,6 +112,49 @@ bool IsUserInAllowedDomain(std::string_view username) {
   }
   return false;
 }
+
+// Fetch the policy from login_manager and see if
+// |UserFeedbackWithLowLevelDebugDataAllowed| is set to allow firmware dumps.
+// If fetching and parsing is successful, fw_dumps_allowed is updated. Otherwise
+// it's left untouched.
+// Returns true if fetching and parsing the policy was successful.
+bool RetrieveAndParsePolicy(
+    org::chromium::SessionManagerInterfaceProxyInterface* proxy,
+    const login_manager::PolicyDescriptor& descriptor,
+    bool* fw_dumps_allowed) {
+  brillo::ErrorPtr error;
+  std::vector<uint8_t> out_blob;
+  std::string descriptor_string = descriptor.SerializeAsString();
+  if (!proxy->RetrievePolicyEx(std::vector<uint8_t>(descriptor_string.begin(),
+                                                    descriptor_string.end()),
+                               &out_blob, &error) ||
+      error.get()) {
+    LOG(ERROR) << "Failed to retrieve policy "
+               << (error ? error->GetMessage() : "unknown error") << ".";
+    return false;
+  }
+  enterprise_management::PolicyFetchResponse response;
+  if (!response.ParseFromArray(out_blob.data(), out_blob.size())) {
+    LOG(ERROR) << "Failed to parse policy response";
+    return false;
+  }
+
+  enterprise_management::PolicyData policy_data;
+  if (!policy_data.ParseFromArray(response.policy_data().data(),
+                                  response.policy_data().size())) {
+    LOG(ERROR) << "Failed to parse policy data.";
+    return false;
+  }
+
+  enterprise_management::CloudPolicySettings user_policy;
+  if (!user_policy.ParseFromString(policy_data.policy_value())) {
+    LOG(ERROR) << "Failed to parse user policy.";
+    return false;
+  }
+
+  *fw_dumps_allowed = IsFirmwareDumpPolicyAllowed(user_policy);
+  return true;
+}
 }  // namespace
 
 namespace fbpreprocessor {
@@ -121,12 +166,23 @@ SessionStateManager::SessionStateManager(Manager* manager, dbus::Bus* bus)
       base_dir_(kDaemonStorageRoot),
       active_sessions_num_(kNumberActiveSessionsUnknown),
       fw_dumps_allowed_by_policy_(false),
+      fw_dumps_policy_loaded_(false),
+      finch_loaded_(false),
       manager_(manager) {
   session_manager_proxy_->RegisterSessionStateChangedSignalHandler(
       base::BindRepeating(&SessionStateManager::OnSessionStateChanged,
                           weak_factory_.GetWeakPtr()),
       base::BindOnce(&SessionStateManager::OnSignalConnected,
                      weak_factory_.GetWeakPtr()));
+  if (manager_->platform_features()) {
+    manager_->platform_features()->AddObserver(this);
+  }
+}
+
+SessionStateManager::~SessionStateManager() {
+  if (manager_->platform_features()) {
+    manager_->platform_features()->RemoveObserver(this);
+  }
 }
 
 void SessionStateManager::OnSessionStateChanged(const std::string& state) {
@@ -222,11 +278,13 @@ void SessionStateManager::OnClearFirmwareDumpBufferError(brillo::Error* error) {
   fw_dumps_allowed_by_policy_ = false;
 }
 
-void SessionStateManager::AddObserver(Observer* observer) {
+void SessionStateManager::AddObserver(
+    SessionStateManagerInterface::Observer* observer) {
   observers_.AddObserver(observer);
 }
 
-void SessionStateManager::RemoveObserver(Observer* observer) {
+void SessionStateManager::RemoveObserver(
+    SessionStateManagerInterface::Observer* observer) {
   observers_.RemoveObserver(observer);
 }
 
@@ -240,6 +298,35 @@ void SessionStateManager::NotifyObserversOnUserLogout() {
   for (auto& observer : observers_) {
     observer.OnUserLoggedOut();
   }
+}
+
+void SessionStateManager::OnFeatureChanged(bool allowed) {
+  finch_loaded_ = true;
+  EmitFeatureAllowedMetric();
+}
+
+void SessionStateManager::EmitFeatureAllowedMetric() {
+  if (!finch_loaded_ || !fw_dumps_policy_loaded_) {
+    // The state is not complete yet, either the policy or Finch have not yet
+    // been queried.
+    return;
+  }
+
+  Metrics::CollectionAllowedStatus status =
+      Metrics::CollectionAllowedStatus::kAllowed;
+
+  // The order of precedence of the reasons why the feature is disallowed must
+  // remain constant over time. Do not modify.
+  if (!manager_->platform_features()->FirmwareDumpsAllowedByFinch())
+    status = Metrics::CollectionAllowedStatus::kDisallowedByFinch;
+  else if (!PrimaryUserInAllowlist())
+    status = Metrics::CollectionAllowedStatus::kDisallowedForUserDomain;
+  else if (!fw_dumps_allowed_by_policy_)
+    status = Metrics::CollectionAllowedStatus::kDisallowedByPolicy;
+  else if (active_sessions_num_ != 1)
+    status = Metrics::CollectionAllowedStatus::kDisallowedForMultipleSessions;
+
+  manager_->metrics()->SendAllowedStatus(FirmwareDump::Type::kWiFi, status);
 }
 
 bool SessionStateManager::PrimaryUserInAllowlist() const {
@@ -265,38 +352,14 @@ void SessionStateManager::OnPolicyUpdated() {
   descriptor.set_domain(login_manager::POLICY_DOMAIN_CHROME);
   descriptor.set_account_id(primary_user_);
 
-  brillo::ErrorPtr error;
-  std::vector<uint8_t> out_blob;
-  std::string descriptor_string = descriptor.SerializeAsString();
-  if (!session_manager_proxy_->RetrievePolicyEx(
-          std::vector<uint8_t>(descriptor_string.begin(),
-                               descriptor_string.end()),
-          &out_blob, &error) ||
-      error.get()) {
-    LOG(ERROR) << "Failed to retrieve policy "
-               << (error ? error->GetMessage() : "unknown error") << ".";
-    return;
-  }
-  enterprise_management::PolicyFetchResponse response;
-  if (!response.ParseFromArray(out_blob.data(), out_blob.size())) {
-    LOG(ERROR) << "Failed to parse policy response";
+  if (!RetrieveAndParsePolicy(session_manager_proxy_.get(), descriptor,
+                              &fw_dumps_allowed_by_policy_)) {
+    LOG(ERROR) << "Failed to get policy.";
     return;
   }
 
-  enterprise_management::PolicyData policy_data;
-  if (!policy_data.ParseFromArray(response.policy_data().data(),
-                                  response.policy_data().size())) {
-    LOG(ERROR) << "Failed to parse policy data.";
-    return;
-  }
-
-  enterprise_management::CloudPolicySettings user_policy;
-  if (!user_policy.ParseFromString(policy_data.policy_value())) {
-    LOG(ERROR) << "Failed to parse user policy.";
-    return;
-  }
-
-  fw_dumps_allowed_by_policy_ = IsFirmwareDumpPolicyAllowed(user_policy);
+  fw_dumps_policy_loaded_ = true;
+  EmitFeatureAllowedMetric();
   LOG(INFO) << "Adding firmware dumps to feedback reports "
             << (fw_dumps_allowed_by_policy_ ? "" : "NOT ")
             << "allowed by policy.";
@@ -363,6 +426,8 @@ void SessionStateManager::ResetPrimaryUser() {
   primary_user_.clear();
   primary_user_hash_.clear();
   active_sessions_num_ = kNumberActiveSessionsUnknown;
+  finch_loaded_ = false;
+  fw_dumps_policy_loaded_ = false;
   fw_dumps_allowed_by_policy_ = false;
 }
 

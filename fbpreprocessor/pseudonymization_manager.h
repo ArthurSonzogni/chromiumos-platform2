@@ -21,6 +21,7 @@ namespace fbpreprocessor {
 
 class PseudonymizationManager : public SessionStateManagerInterface::Observer {
  public:
+  static constexpr int kMaxProcessedDumps = 5;
   explicit PseudonymizationManager(Manager* manager);
   PseudonymizationManager(const PseudonymizationManager&) = delete;
   PseudonymizationManager& operator=(const PseudonymizationManager&) = delete;
@@ -41,12 +42,21 @@ class PseudonymizationManager : public SessionStateManagerInterface::Observer {
   }
 
  private:
+  enum class Result {
+    kUnknown = 0,
+    kSuccess = 1,
+    kFailedToStart = 2,
+    kNoOpFailedToMove = 3,
+  };
+
+  static Metrics::PseudonymizationResult ConvertToMetrics(Result result);
+
   void DoNoOpPseudonymization(const FirmwareDump& input,
                               const FirmwareDump& output) const;
 
   void OnPseudonymizationComplete(const FirmwareDump& input,
                                   const FirmwareDump& output,
-                                  bool success) const;
+                                  Result result) const;
 
   // Returns true if we haven't handled "too many" pseudonymizations recently
   // and we can start a new one without exceeding the rate limits.

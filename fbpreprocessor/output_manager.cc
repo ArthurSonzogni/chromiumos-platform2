@@ -29,9 +29,13 @@
 #include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/metrics.h"
 #include "fbpreprocessor/platform_features_client.h"
 
 namespace {
+// Send status to UMA every 5 minutes.
+constexpr base::TimeDelta kMetricsReportInterval = base::Minutes(5);
+
 void DeleteFirmwareDump(const fbpreprocessor::FirmwareDump& fw_dump,
                         std::string_view reason) {
   LOG(INFO) << "Deleting dump file triggered by: " << reason;
@@ -73,10 +77,14 @@ void OutputManager::OnUserLoggedIn(const std::string& user_dir) {
   }
   user_root_dir_ = base_dir_.Append(user_dir);
   DeleteAllFiles();
+  metrics_polling_timer_.Start(FROM_HERE, kMetricsReportInterval,
+                               base::BindRepeating(&OutputManager::EmitMetrics,
+                                                   weak_factory_.GetWeakPtr()));
 }
 
 void OutputManager::OnUserLoggedOut() {
   LOG(INFO) << "User logged out.";
+  metrics_polling_timer_.Stop();
   // When we're notified that the user has logged out the daemon-store could be
   // unmounted already, so we should not try to delete the files from disk.
   // We merely clear the list of files that we're managing. The files themselves
@@ -184,6 +192,16 @@ void OutputManager::OnExpiredFile() {
   }
   RestartExpirationTask(now);
   files_lock_.Release();
+}
+
+void OutputManager::EmitMetrics() {
+  if (manager_->FirmwareDumpsAllowed()) {
+    files_lock_.Acquire();
+    int num_wifi_dumps = static_cast<int>(files_.size());
+    files_lock_.Release();
+    manager_->metrics()->SendNumberOfAvailableDumps(FirmwareDump::Type::kWiFi,
+                                                    num_wifi_dumps);
+  }
 }
 
 void OutputManager::ClearManagedFiles(bool delete_files) {

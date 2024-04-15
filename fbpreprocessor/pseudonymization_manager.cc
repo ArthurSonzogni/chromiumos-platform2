@@ -22,11 +22,11 @@
 #include "fbpreprocessor/constants.h"
 #include "fbpreprocessor/firmware_dump.h"
 #include "fbpreprocessor/manager.h"
+#include "fbpreprocessor/metrics.h"
 #include "fbpreprocessor/output_manager.h"
 #include "fbpreprocessor/session_state_manager.h"
 
 namespace {
-constexpr int kMaxProcessedDumps = 5;
 constexpr base::TimeDelta kMaxProcessedInterval = base::Minutes(30);
 }  // namespace
 
@@ -56,6 +56,7 @@ bool PseudonymizationManager::StartPseudonymization(
     }
     return false;
   }
+
   if (!RateLimitingAllowsNewPseudonymization()) {
     LOG(INFO) << "Too many recent pseudonymizations, rejecting the current "
                  "request.";
@@ -69,6 +70,7 @@ bool PseudonymizationManager::StartPseudonymization(
   FirmwareDump output(
       user_root_dir_.Append(kProcessedDirectory).Append(fw_dump.BaseName()),
       fw_dump.type());
+  manager_->metrics()->SendPseudonymizationFirmwareType(fw_dump.type());
   if (manager_->task_runner()->PostTask(
           FROM_HERE,
           base::BindOnce(&PseudonymizationManager::DoNoOpPseudonymization,
@@ -91,6 +93,9 @@ bool PseudonymizationManager::StartPseudonymization(
     if (!fw_dump.Delete()) {
       LOG(ERROR) << "Failed to delete input firmware dump.";
     }
+    manager_->metrics()->SendPseudonymizationResult(
+        fw_dump.type(),
+        fbpreprocessor::Metrics::PseudonymizationResult::kFailedToStart);
     return false;
   }
   return true;
@@ -115,21 +120,26 @@ void PseudonymizationManager::OnUserLoggedOut() {
 
 void PseudonymizationManager::DoNoOpPseudonymization(
     const FirmwareDump& input, const FirmwareDump& output) const {
-  bool success = true;
+  Result result = Result::kSuccess;
   LOG(INFO) << "Pseudonymizing in progress.";
   VLOG(kLocalOnlyDebugVerbosity) << "Pseudonymizing " << input;
   if (!base::Move(input.DumpFile(), output.DumpFile())) {
     LOG(ERROR) << "Failed to move file to destination.";
-    success = false;
+    result = Result::kNoOpFailedToMove;
   }
-  OnPseudonymizationComplete(input, output, success);
+  OnPseudonymizationComplete(input, output, result);
 }
 
 void PseudonymizationManager::OnPseudonymizationComplete(
-    const FirmwareDump& input, const FirmwareDump& output, bool success) const {
+    const FirmwareDump& input,
+    const FirmwareDump& output,
+    Result result) const {
+  bool success = result == Result::kSuccess;
   LOG(INFO) << "Pseudonymization completed" << (success ? " " : " un")
             << "successfully.";
   VLOG(kLocalOnlyDebugVerbosity) << "Completed pseudonymization of " << input;
+  manager_->metrics()->SendPseudonymizationResult(input.type(),
+                                                  ConvertToMetrics(result));
   if (success) {
     CHECK(manager_->output_manager());
     manager_->output_manager()->AddFirmwareDump(output);
@@ -169,6 +179,21 @@ void PseudonymizationManager::ResetRateLimiter() {
   recently_processed_lock_.Acquire();
   recently_processed_.clear();
   recently_processed_lock_.Release();
+}
+
+// static
+Metrics::PseudonymizationResult PseudonymizationManager::ConvertToMetrics(
+    Result result) {
+  switch (result) {
+    case Result::kUnknown:
+      return Metrics::PseudonymizationResult::kUnknown;
+    case Result::kSuccess:
+      return Metrics::PseudonymizationResult::kSuccess;
+    case Result::kFailedToStart:
+      return Metrics::PseudonymizationResult::kFailedToStart;
+    case Result::kNoOpFailedToMove:
+      return Metrics::PseudonymizationResult::kNoOpFailedToMove;
+  }
 }
 
 }  // namespace fbpreprocessor

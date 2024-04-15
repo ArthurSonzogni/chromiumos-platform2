@@ -6,12 +6,17 @@
 #define FBPREPROCESSOR_FAKE_MANAGER_H_
 
 #include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
 
+#include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <dbus/bus.h>
+#include <metrics/fake_metrics_library.h>
 
 #include "fbpreprocessor/fake_session_state_manager.h"
 #include "fbpreprocessor/manager.h"
@@ -93,6 +98,12 @@ class FakeManager : public Manager {
   // example by policy.
   void set_firmware_dumps_allowed(bool allowed) { fw_dumps_allowed_ = allowed; }
 
+  // Returns the calls to a particular UMA metric.
+  std::vector<int> GetMetricCalls(const std::string& name) const {
+    CHECK(uma_lib_);
+    return uma_lib_->GetCalls(name);
+  }
+
  private:
   // Create a temporary directory with the same structure as the real-world
   // daemon-store. Tests can create firmware dumps in the input directory and
@@ -114,6 +125,9 @@ class FakeManager : public Manager {
   std::unique_ptr<FakeSessionStateManager> session_state_manager_;
 
   std::unique_ptr<OutputManager> output_manager_;
+
+  // Owned by |fbpreprocessor::Metrics|.
+  FakeMetricsLibrary* uma_lib_;
 };
 
 }  // namespace fbpreprocessor

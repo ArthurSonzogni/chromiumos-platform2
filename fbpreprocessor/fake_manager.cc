@@ -5,6 +5,7 @@
 #include "fbpreprocessor/fake_manager.h"
 
 #include <memory>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -12,8 +13,10 @@
 #include <base/files/scoped_temp_dir.h>
 #include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <dbus/bus.h>
+#include <metrics/fake_metrics_library.h>
 
 #include "fbpreprocessor/fake_session_state_manager.h"
+#include "fbpreprocessor/metrics.h"
 #include "fbpreprocessor/output_manager.h"
 
 namespace {
@@ -25,6 +28,9 @@ namespace fbpreprocessor {
 FakeManager::FakeManager()
     : fw_dumps_allowed_(true),
       default_file_expiration_in_secs_(kTestDefaultExpirationSeconds) {
+  auto uma_lib = std::make_unique<FakeMetricsLibrary>();
+  uma_lib_ = uma_lib.get();
+  metrics()->SetLibraryForTesting(std::move(uma_lib));
   session_state_manager_ = std::make_unique<FakeSessionStateManager>(this);
   output_manager_ = std::make_unique<OutputManager>(this);
 }

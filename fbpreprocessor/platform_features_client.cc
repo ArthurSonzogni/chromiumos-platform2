@@ -54,12 +54,9 @@ void PlatformFeaturesClient::OnConnected(bool ready) {
 
 void PlatformFeaturesClient::OnFetched(bool allowed) {
   LOG(INFO) << "Firmware dumps allowed: " << allowed;
-  bool notify_observers = allowed_ != allowed;
   allowed_ = allowed;
-  if (notify_observers) {
-    for (auto& observer : observers_) {
-      observer.OnFeatureChanged(allowed_);
-    }
+  for (auto& observer : observers_) {
+    observer.OnFeatureChanged(allowed_);
   }
   // Write the value of the Finch flag to disk. Instead of having to query the
   // flag, the other processes involved in the feature (crash-report, debugd)
