@@ -82,6 +82,7 @@ constexpr int kTestInterfaceIndex = 3;
 constexpr char kTestInterfaceName[] = "wwan0";
 constexpr char kTestDownstreamDeviceForTest[] = "wlan5";
 constexpr uint32_t kTestDownstreamPhyIndexForTest = 5;
+constexpr int kTetheredNetworkId = 411;
 
 // The value below is "testAP-0000" in hex;
 constexpr char kTestAPHexSSID[] = "7465737441502d30303030";
@@ -314,7 +315,8 @@ class TetheringManagerTest : public testing::Test {
                             hotspot_device_.get());
       OnUpstreamNetworkAcquired(tethering_manager_,
                                 TetheringManager::SetEnabledResult::kSuccess);
-      OnDownstreamNetworkReady(tethering_manager_, MakeFd());
+      OnDownstreamNetworkReady(tethering_manager_, MakeFd(),
+                               {.network_id = kTetheredNetworkId});
     } else {
       // Send upstream tear down event
       OnUpstreamNetworkReleased(tethering_manager_, true);
@@ -479,9 +481,12 @@ class TetheringManagerTest : public testing::Test {
     cellular_service_provider_->AddService(service);
   }
 
-  void OnDownstreamNetworkReady(TetheringManager* tethering_manager,
-                                base::ScopedFD fd) {
-    tethering_manager->OnDownstreamNetworkReady(std::move(fd));
+  void OnDownstreamNetworkReady(
+      TetheringManager* tethering_manager,
+      base::ScopedFD fd,
+      const patchpanel::Client::DownstreamNetwork& downstream_network) {
+    tethering_manager->OnDownstreamNetworkReady(std::move(fd),
+                                                downstream_network);
   }
 
   void OnUpstreamNetworkAcquired(TetheringManager* tethering_manager,
@@ -1092,7 +1097,8 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithCellularUpstream) {
                             TetheringManager::SetEnabledResult::kSuccess);
 
   // Tethering network created.
-  OnDownstreamNetworkReady(tethering_manager_, MakeFd());
+  OnDownstreamNetworkReady(tethering_manager_, MakeFd(),
+                           {.network_id = kTetheredNetworkId});
 
   VerifyResult(TetheringManager::SetEnabledResult::kSuccess);
   EXPECT_EQ(TetheringState(tethering_manager_),
@@ -1144,7 +1150,8 @@ TEST_F(TetheringManagerTest, StartTetheringSessionSuccessWithEthernetUpstream) {
       .probe_result_metric = Metrics::kPortalDetectorResultOnline,
   };
   eth_network.set_network_monitor_result_for_testing(network_monitor_result);
-  OnDownstreamNetworkReady(tethering_manager_, MakeFd());
+  OnDownstreamNetworkReady(tethering_manager_, MakeFd(),
+                           {.network_id = kTetheredNetworkId});
 
   Mock::VerifyAndClearExpectations(&manager_);
   VerifyResult(TetheringManager::SetEnabledResult::kSuccess);
@@ -1199,7 +1206,7 @@ TEST_F(TetheringManagerTest,
                             TetheringManager::SetEnabledResult::kSuccess);
 
   // Tethering network creation request fails
-  OnDownstreamNetworkReady(tethering_manager_, base::ScopedFD(-1));
+  OnDownstreamNetworkReady(tethering_manager_, base::ScopedFD(-1), {});
 
   VerifyResult(TetheringManager::SetEnabledResult::kNetworkSetupFailure);
   CheckTetheringStopping(tethering_manager_,
@@ -1270,7 +1277,8 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkNotReady) {
             TetheringManager::TetheringState::kTetheringStarting);
 
   // Tethering network created.
-  OnDownstreamNetworkReady(tethering_manager_, MakeFd());
+  OnDownstreamNetworkReady(tethering_manager_, MakeFd(),
+                           {.network_id = kTetheredNetworkId});
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringActive);
 
@@ -1315,7 +1323,8 @@ TEST_F(TetheringManagerTest, StartTetheringSessionUpstreamNetworkHasPortal) {
             TetheringManager::TetheringState::kTetheringStarting);
 
   // Tethering network created.
-  OnDownstreamNetworkReady(tethering_manager_, MakeFd());
+  OnDownstreamNetworkReady(tethering_manager_, MakeFd(),
+                           {.network_id = kTetheredNetworkId});
 
   VerifyResult(TetheringManager::SetEnabledResult::kSuccess);
   EXPECT_EQ(TetheringState(tethering_manager_),
@@ -1497,7 +1506,8 @@ TEST_F(TetheringManagerTest, UpstreamNetworkValidationFails) {
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
-  OnDownstreamNetworkReady(tethering_manager_, MakeFd());
+  OnDownstreamNetworkReady(tethering_manager_, MakeFd(),
+                           {.network_id = kTetheredNetworkId});
 
   // Downstream network is fully configured. Upstream network is acquired but
   // not yet ready. The tethering session is now started, with the upstream
@@ -1557,7 +1567,8 @@ TEST_F(TetheringManagerTest, UpstreamNetworkLosesInternetAccess) {
   OnUpstreamNetworkAcquired(tethering_manager_,
                             TetheringManager::SetEnabledResult::kSuccess);
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
-  OnDownstreamNetworkReady(tethering_manager_, MakeFd());
+  OnDownstreamNetworkReady(tethering_manager_, MakeFd(),
+                           {.network_id = kTetheredNetworkId});
 
   // Downstream network is fully configured. Upstream network is acquired
   // readyand . The tethering session is now started, without the upstream

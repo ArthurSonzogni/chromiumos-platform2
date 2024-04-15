@@ -1062,7 +1062,8 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
 }
 
 void TetheringManager::OnDownstreamNetworkReady(
-    base::ScopedFD downstream_network_fd) {
+    base::ScopedFD downstream_network_fd,
+    const patchpanel::Client::DownstreamNetwork& downstream_network) {
   if (state_ != TetheringState::kTetheringStarting &&
       state_ != TetheringState::kTetheringRestarting) {
     LOG(WARNING) << __func__ << ": unexpected tethering state " << state_;
@@ -1097,7 +1098,8 @@ void TetheringManager::OnDownstreamNetworkReady(
     return;
   }
 
-  LOG(INFO) << "Established downstream network " << downstream_ifname
+  LOG(INFO) << "Established downstream network network_id="
+            << downstream_network.network_id << " on " << downstream_ifname
             << " tethered to " << upstream_ifname;
   downstream_network_fd_ = std::move(downstream_network_fd);
   CheckAndPostTetheringStartResult();

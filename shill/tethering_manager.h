@@ -239,7 +239,9 @@ class TetheringManager : public Network::EventHandler {
   void OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
                                const LocalDevice* device);
   // patchpanel DownstreamNetwork callback handler.
-  void OnDownstreamNetworkReady(base::ScopedFD downstream_network_fd);
+  void OnDownstreamNetworkReady(
+      base::ScopedFD downstream_network_fd,
+      const patchpanel::Client::DownstreamNetwork& downstream_network);
   // Upstream network fetch callback handler.
   void OnUpstreamNetworkAcquired(SetEnabledResult result,
                                  Network* network,

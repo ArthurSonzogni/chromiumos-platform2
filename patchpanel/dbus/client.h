@@ -144,6 +144,7 @@ class BRILLO_EXPORT Client {
 
   // See DownstreamNetwork in patchpanel_service.proto.
   struct DownstreamNetwork {
+    int network_id;
     std::string ifname;
     net_base::IPv4CIDR ipv4_subnet;
     net_base::IPv4Address ipv4_gateway_addr;
@@ -312,10 +313,10 @@ class BRILLO_EXPORT Client {
       base::RepeatingCallback<void(const NeighborReachabilityEvent&)>;
   using VirtualDeviceEventHandler =
       base::RepeatingCallback<void(VirtualDeviceEvent, const VirtualDevice&)>;
-  using CreateTetheredNetworkCallback =
-      base::OnceCallback<void(base::ScopedFD)>;
-  using CreateLocalOnlyNetworkCallback =
-      base::OnceCallback<void(base::ScopedFD)>;
+  using CreateTetheredNetworkCallback = base::OnceCallback<void(
+      base::ScopedFD, const DownstreamNetwork& downstream_network)>;
+  using CreateLocalOnlyNetworkCallback = base::OnceCallback<void(
+      base::ScopedFD, const DownstreamNetwork& downstream_network)>;
   using GetDownstreamNetworkInfoCallback =
       base::OnceCallback<void(bool success,
                               const DownstreamNetwork& downstream_network,
@@ -451,7 +452,8 @@ class BRILLO_EXPORT Client {
   // the Internet connection of |upstream_ifname| with the created network.
   // Returns true if the request was successfully sent, false otherwise. After
   // the request completes successfully, |callback| is ran with a file
-  // descriptor controlling the lifetime of the tethering setup. The tethering
+  // descriptor controlling the lifetime of the tethering setup and a
+  // DownstreamNetwork struct describing the created network. The tethering
   // setup is torn down when the file descriptor is closed by the client. If the
   // request failed, |callback| is ran with an invalid ScopedFD value.
   // The additional argument |uplink_ipv6_config| should only be used to specify
@@ -468,10 +470,11 @@ class BRILLO_EXPORT Client {
   // Sends request for creating a local-only L3 network on |ifname|.
   // Returns true if the request was successfully sent, false otherwise. After
   // the request completes successfully, |callback| is ran with a file
-  // descriptor controlling the lifetime of the local only network setup. The
-  // local only network setup is torn down when the file descriptor is closed by
-  // the client. If the request failed, |callback| is ran with an invalid
-  // ScopedFD value.
+  // descriptor controlling the lifetime of the local only network setup and a
+  // DownstreamNetwork struct describing the created network. The local only
+  // network setup is torn down when the file descriptor is closed by the
+  // client. If the request failed, |callback| is ran with an invalid ScopedFD
+  // value.
   virtual bool CreateLocalOnlyNetwork(
       const std::string& ifname, CreateLocalOnlyNetworkCallback callback) = 0;
 

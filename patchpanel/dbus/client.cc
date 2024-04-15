@@ -438,6 +438,7 @@ std::optional<Client::NetworkClientInfo> ConvertNetworkClientInfo(
 std::optional<Client::DownstreamNetwork> ConvertDownstreamNetwork(
     const DownstreamNetwork& in) {
   auto out = std::make_optional<Client::DownstreamNetwork>();
+  out->network_id = in.network_id();
   out->ifname = in.downstream_ifname();
 
   const auto ipv4_subnet = ConvertIPv4Subnet(in.ipv4_subnet());
@@ -670,17 +671,24 @@ void OnTetheredNetworkResponse(Client::CreateTetheredNetworkCallback callback,
     LOG(ERROR) << kCreateTetheredNetworkMethod << " failed: "
                << patchpanel::DownstreamNetworkResult_Name(
                       response.response_code());
-    std::move(callback).Run({});
+    std::move(callback).Run({}, {});
     return;
   }
 
-  std::move(callback).Run(std::move(fd_local));
+  std::optional<Client::DownstreamNetwork> downstream_network =
+      ConvertDownstreamNetwork(response.downstream_network());
+  if (!downstream_network) {
+    std::move(callback).Run({}, {});
+    return;
+  }
+
+  std::move(callback).Run(std::move(fd_local), *downstream_network);
 }
 
 void OnTetheredNetworkError(Client::CreateTetheredNetworkCallback callback,
                             brillo::Error* error) {
   LOG(ERROR) << __func__ << "(): " << error->GetMessage();
-  std::move(callback).Run({});
+  std::move(callback).Run({}, {});
 }
 
 // Helper static function to process answers to CreateLocalOnlyNetwork calls.
@@ -691,24 +699,31 @@ void OnLocalOnlyNetworkResponse(Client::CreateLocalOnlyNetworkCallback callback,
     LOG(ERROR) << kCreateLocalOnlyNetworkMethod << " failed: "
                << patchpanel::DownstreamNetworkResult_Name(
                       response.response_code());
-    std::move(callback).Run({});
+    std::move(callback).Run({}, {});
     return;
   }
 
-  std::move(callback).Run(std::move(fd_local));
+  std::optional<Client::DownstreamNetwork> downstream_network =
+      ConvertDownstreamNetwork(response.downstream_network());
+  if (!downstream_network) {
+    std::move(callback).Run({}, {});
+    return;
+  }
+
+  std::move(callback).Run(std::move(fd_local), *downstream_network);
 }
 
 void OnLocalOnlyNetworkError(Client::CreateLocalOnlyNetworkCallback callback,
                              brillo::Error* error) {
   LOG(ERROR) << __func__ << "(): " << error->GetMessage();
-  std::move(callback).Run({});
+  std::move(callback).Run({}, {});
 }
 
 // Helper static function to process answers to GetDownstreamNetworkInfo calls.
 void OnGetDownstreamNetworkInfoResponse(
     Client::GetDownstreamNetworkInfoCallback callback,
     const GetDownstreamNetworkInfoResponse& response) {
-  auto downstream_network =
+  std::optional<Client::DownstreamNetwork> downstream_network =
       ConvertDownstreamNetwork(response.downstream_network());
   if (!downstream_network) {
     std::move(callback).Run(false, {}, {});

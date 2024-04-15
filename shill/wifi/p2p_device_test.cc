@@ -61,6 +61,7 @@ const std::vector<uint8_t> kP2PMACAddress{0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a};
 const char kP2PPassphrase[] = "test0000";
 const int32_t kP2PFrequency = 2437;
 const int kClientNetworkID = 10;
+const int kLocalOnlyNetworkId = 733;
 
 static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
 static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
@@ -310,12 +311,12 @@ TEST_F(P2PDeviceTest, GroupInfo) {
 
   // kGOActive
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
-  go_device_->OnGroupNetworkStarted(MakeFd());
   patchpanel::Client::DownstreamNetwork downstream_network = {
-      kInterfaceName,
+      kLocalOnlyNetworkId, kInterfaceName,
       net_base::IPv4CIDR::CreateFromStringAndPrefix("192.168.1.128", 25)
           .value(),
       net_base::IPv4Address(192, 168, 1, 1)};
+  go_device_->OnGroupNetworkStarted(MakeFd(), downstream_network);
   go_device_->OnGroupNetworkInfo(
       true, downstream_network,
       std::vector<patchpanel::Client::NetworkClientInfo>());
@@ -776,7 +777,8 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
 
   // Emulate OnGroupNetworkStarted callback from patchpanel.
-  go_device_->OnGroupNetworkStarted(MakeFd());
+  go_device_->OnGroupNetworkStarted(MakeFd(),
+                                    {.network_id = kLocalOnlyNetworkId});
 
   // Attempting to create group again should be a no-op and and return false.
   auto service1 = std::make_unique<MockP2PService>(
@@ -1326,7 +1328,8 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOActive) {
   EXPECT_EQ(go_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
   // Emulate OnGroupNetworkStarted callback from patchpanel.
-  go_device_->OnGroupNetworkStarted(MakeFd());
+  go_device_->OnGroupNetworkStarted(MakeFd(),
+                                    {.network_id = kLocalOnlyNetworkId});
 
   // Emulate GroupFinished signal from wpa_supplicant (link failure).
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkFailure, _)).Times(1);
@@ -1596,7 +1599,8 @@ TEST_F(P2PDeviceTest, StartingTimerExpired_WhileGOActive) {
   EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
   // Emulate OnGroupNetworkStarted callback from patchpanel.
-  go_device_->OnGroupNetworkStarted(MakeFd());
+  go_device_->OnGroupNetworkStarted(MakeFd(),
+                                    {.network_id = kLocalOnlyNetworkId});
 
   // Ignore group creation timeout while in active state
   FastForwardBy(kStartTimeout);
@@ -1639,7 +1643,8 @@ TEST_F(P2PDeviceTest, StoppingTimerExpired_WhileGOStopping) {
   EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
   // Emulate OnGroupNetworkStarted callback from patchpanel.
-  go_device_->OnGroupNetworkStarted(MakeFd());
+  go_device_->OnGroupNetworkStarted(MakeFd(),
+                                    {.network_id = kLocalOnlyNetworkId});
 
   // Remove group.
   EXPECT_TRUE(go_device_->RemoveGroup());
@@ -1856,7 +1861,7 @@ TEST_F(P2PDeviceTest, GO_StartGroupNetworkFail) {
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
 
   // Emulate OnGroupNetworkStarted callback from patchpanel with invalid FD.
-  go_device_->OnGroupNetworkStarted(base::ScopedFD(-1));
+  go_device_->OnGroupNetworkStarted(base::ScopedFD(-1), {});
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkFailure, _)).Times(1);
   DispatchPendingEvents();
 

@@ -13,6 +13,7 @@
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/mac_address.h>
 
@@ -284,7 +285,9 @@ class P2PDevice : public LocalDevice,
   // from patchpanel or Shill::Network, in case of GO and Client, respectively.
   void AcquireClientIP();
   bool StartGroupNetwork();
-  void OnGroupNetworkStarted(base::ScopedFD network_fd);
+  void OnGroupNetworkStarted(
+      base::ScopedFD network_fd,
+      const patchpanel::Client::DownstreamNetwork& network);
   void NetworkFinished();
   void NetworkFailure(const std::string& reason);
 

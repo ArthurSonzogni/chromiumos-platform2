@@ -989,7 +989,9 @@ void P2PDevice::OnNetworkStopped(int interface_index, bool is_failure) {
   }
 }
 
-void P2PDevice::OnGroupNetworkStarted(base::ScopedFD network_fd) {
+void P2PDevice::OnGroupNetworkStarted(
+    base::ScopedFD network_fd,
+    const patchpanel::Client::DownstreamNetwork& network) {
   if (state_ != P2PDeviceState::kGOConfiguring) {
     LOG(WARNING) << log_name() << ": Ignored " << __func__ << " while in state "
                  << P2PDeviceStateName(state_);
@@ -1003,8 +1005,8 @@ void P2PDevice::OnGroupNetworkStarted(base::ScopedFD network_fd) {
     return;
   }
 
-  LOG(INFO) << log_name() << ": Established downstream network on "
-            << link_name().value();
+  LOG(INFO) << log_name() << ": Established downstream network network_id="
+            << network.network_id << " on " << link_name().value();
   group_network_fd_ = std::move(network_fd);
   if (!UpdateGroupNetworkInfo()) {
     PostDeviceEvent(DeviceEvent::kNetworkFailure);
