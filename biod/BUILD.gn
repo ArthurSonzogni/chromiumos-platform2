@@ -125,7 +125,6 @@ executable("bio_wash") {
 executable("biod_client_tool") {
   sources = [ "tools/biod_client_tool.cc" ]
   configs += [ ":target_defaults" ]
-  install_path = "/usr/local/bin"
   libs = [ "biod_proxy" ]
 }
 
