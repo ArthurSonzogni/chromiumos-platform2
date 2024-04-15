@@ -258,7 +258,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
 
   InhibitMode _inhibit(modem);
   journal_->MarkStartOfFlashingFirmware(fw_types, device_id, current_carrier);
-  metrics_->StartFwFlashTimer();
+
+  base::Time start_time = base::Time::Now();
   if (!modem->FlashFirmwares(flash_cfg)) {
     flash_state->OnFlashFailed();
     journal_->MarkEndOfFlashingFirmware(device_id, current_carrier);
@@ -271,13 +272,10 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
         err->get(), GetFirmwareTypesForMetrics(flash_cfg));
     flash_state->fw_flashed_ = false;
     flash_state->fw_types_flashed_ = 0;
-    // Stop the flashing timer. We will not report flashing
-    // times in failure cases as it will be inconclusive.
-    metrics_->StopFwFlashTimer();
     return base::OnceClosure();
   }
   // Report flashing time in successful cases
-  metrics_->SendFwFlashTime();
+  metrics_->SendFwFlashTime(base::Time::Now() - start_time);
   flash_state->fw_flashed_ = true;
   flash_state->fw_types_flashed_ = GetFirmwareTypesForMetrics(flash_cfg);
 

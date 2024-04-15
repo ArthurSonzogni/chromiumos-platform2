@@ -136,14 +136,6 @@ Metrics::FwInstallResultMap Metrics::fw_install_result_ = {
      FwInstallResult::kInitFailureNonLteSku},  // dbus error
 };
 
-void Metrics::Init() {
-  flash_timer_.reset(new chromeos_metrics::TimerReporter(
-      metrics::kMetricFwInstallTime,
-      metrics::kMetricFwInstallTimeMin.InSeconds(),
-      metrics::kMetricFwInstallTimeMax.InSeconds(),
-      metrics::kMetricFwInstallTimeNumBuckets));
-}
-
 void Metrics::SendDlcInstallResultSuccess() {
   SendDlcInstallResult(DlcInstallResult::kSuccess);
 }
@@ -235,19 +227,11 @@ void Metrics::SendDetailedFwInstallSuccessResult(uint32_t firmware_types) {
   SendDetailedFwInstallResult(firmware_types, FwInstallResult::kSuccess);
 }
 
-void Metrics::StartFwFlashTimer() {
-  DCHECK(flash_timer_);
-  flash_timer_->Start();
-}
-
-void Metrics::StopFwFlashTimer() {
-  DCHECK(flash_timer_);
-  flash_timer_->Stop();
-}
-
-void Metrics::SendFwFlashTime() {
-  DCHECK(flash_timer_);
-  flash_timer_->ReportSeconds();
+void Metrics::SendFwFlashTime(base::TimeDelta duration) {
+  metrics_library_->SendTimeToUMA(metrics::kMetricFwInstallTime, duration,
+                                  metrics::kMetricFwInstallTimeMin,
+                                  metrics::kMetricFwInstallTimeMax,
+                                  metrics::kMetricFwInstallTimeNumBuckets);
 }
 
 }  // namespace modemfwd

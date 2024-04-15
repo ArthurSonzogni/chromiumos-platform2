@@ -169,7 +169,6 @@ int Daemon::OnInit() {
   std::unique_ptr<MetricsLibraryInterface> metrics_library =
       std::make_unique<MetricsLibrary>();
   metrics_ = std::make_unique<Metrics>(std::move(metrics_library));
-  metrics_->Init();
 
   notification_mgr_ = std::make_unique<NotificationManager>(dbus_adaptor_.get(),
                                                             metrics_.get());

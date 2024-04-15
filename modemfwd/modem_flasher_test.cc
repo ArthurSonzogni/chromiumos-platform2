@@ -197,7 +197,7 @@ TEST_F(ModemFlasherTest, FlashMainFirmware) {
   EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
   EXPECT_CALL(*modem, GetMainFirmwareVersion()).Times(AtLeast(1));
   EXPECT_CALL(*modem, FlashFirmwares(main_cfg)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_metrics_, SendFwFlashTime()).Times(1);
+  EXPECT_CALL(*mock_metrics_, SendFwFlashTime(_)).Times(1);
   modem_flasher_->TryFlash(modem.get(), true, &err);
   ASSERT_EQ(err.get(), nullptr);
 }
@@ -253,7 +253,7 @@ TEST_F(ModemFlasherTest, UpgradeOemFirmware) {
   EXPECT_CALL(*modem, GetDeviceId()).Times(AtLeast(1));
   EXPECT_CALL(*modem, GetOemFirmwareVersion()).Times(AtLeast(1));
   EXPECT_CALL(*modem, FlashFirmwares(oem_cfg)).WillOnce(Return(true));
-  EXPECT_CALL(*mock_metrics_, SendFwFlashTime()).Times(1);
+  EXPECT_CALL(*mock_metrics_, SendFwFlashTime(_)).Times(1);
   modem_flasher_->TryFlash(modem.get(), true, &err);
   ASSERT_EQ(err.get(), nullptr);
 }

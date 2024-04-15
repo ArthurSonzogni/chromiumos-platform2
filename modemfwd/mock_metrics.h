@@ -40,11 +40,7 @@ class MockMetrics : public Metrics {
               (metrics::ModemRecoveryState),
               (override));
 
-  MOCK_METHOD(void, StartFwFlashTimer, (), (override));
-
-  MOCK_METHOD(void, StopFwFlashTimer, (), (override));
-
-  MOCK_METHOD(void, SendFwFlashTime, (), (override));
+  MOCK_METHOD(void, SendFwFlashTime, (base::TimeDelta), (override));
 
  private:
   MockMetrics(const MockMetrics&) = delete;

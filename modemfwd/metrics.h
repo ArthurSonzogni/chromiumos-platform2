@@ -10,10 +10,10 @@
 #include <string>
 #include <utility>
 
+#include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <metrics/metrics_library.h>
 #include <metrics/structured_events.h>
-#include <metrics/timer.h>
 
 namespace modemfwd {
 
@@ -124,9 +124,6 @@ class Metrics {
 
   virtual ~Metrics() = default;
 
-  // Initializes the class.
-  void Init();
-
   // Sends the |DlcInstallResult::kSuccess| value.
   void SendDlcInstallResultSuccess();
 
@@ -162,9 +159,7 @@ class Metrics {
 
   virtual void SendDetailedFwInstallSuccessResult(uint32_t firmware_types);
 
-  virtual void StartFwFlashTimer();
-  virtual void StopFwFlashTimer();
-  virtual void SendFwFlashTime();
+  virtual void SendFwFlashTime(base::TimeDelta duration);
 
  protected:
   // For testing.
@@ -180,7 +175,6 @@ class Metrics {
 
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
-  std::unique_ptr<chromeos_metrics::TimerReporter> flash_timer_;
   // Map DBus error codes and |modemfwd::error|s to |DlcInstallResult| values.
   typedef std::map<std::string, metrics::DlcInstallResult> DlcInstallResultMap;
   static DlcInstallResultMap install_result_;
