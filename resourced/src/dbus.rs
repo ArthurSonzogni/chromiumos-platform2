@@ -11,6 +11,7 @@ use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::Instant;
 
 use anyhow::bail;
 use anyhow::Context;
@@ -530,20 +531,51 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                             ));
                         }
                     };
-                let mut background_pids = Vec::<i32>::new();
-                let mut protected_pids = Vec::<i32>::new();
-                for process in report_browser_processes.processes {
+                let mut background_tab_processes = Vec::<memory::TabProcess>::new();
+                let mut protected_tab_processes = Vec::<memory::TabProcess>::new();
+
+                // The tab processes' last visible times are sent by Chrome as millisecond values
+                // from CLOCK_MONOTONIC.
+                // Rust doesn't support initializing 'Instant's from external values, so the
+                // raw CLOCK_MONOTONIC value is needed as a reference.
+                let current_timestamp_ms = match get_monotonic_timestamp_ms() {
+                    Ok(timestamp) => timestamp,
+                    Err(_) => {
+                        error!("Failed to get current time.");
+                        return Err(MethodErr::failed("Failed to get current time."));
+                    }
+                };
+                let now = Instant::now();
+
+                for tab_process in report_browser_processes.processes {
                     // The focused tab processes are not used yet.
-                    if process.focused {
+                    if tab_process.focused {
                         continue;
                     }
-                    if process.protected {
-                        protected_pids.push(process.pid);
+
+                    // To obtain the 'Instant' at which the tab was last visible,
+                    // subtract the number of milliseconds since the tab was visible from the
+                    // current Instant.
+                    let last_visible_instant = now
+                        - Duration::from_millis(
+                            (current_timestamp_ms - tab_process.last_visible_ms) as u64,
+                        );
+
+                    if tab_process.protected {
+                        &mut protected_tab_processes
                     } else {
-                        background_pids.push(process.pid);
+                        &mut background_tab_processes
                     }
+                    .push(memory::TabProcess {
+                        pid: tab_process.pid,
+                        last_visible: last_visible_instant,
+                    });
                 }
-                memory::set_browser_processes(browser_type, background_pids, protected_pids);
+                memory::set_browser_tab_processes(
+                    browser_type,
+                    background_tab_processes,
+                    protected_tab_processes,
+                );
                 Ok(())
             },
         );

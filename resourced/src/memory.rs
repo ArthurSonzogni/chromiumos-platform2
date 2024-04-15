@@ -750,39 +750,49 @@ impl fmt::Display for ChromeProcessType {
     }
 }
 
+#[derive(Copy, Clone)]
+pub struct TabProcess {
+    pub pid: i32,
+    pub last_visible: Instant,
+}
+
 // Lists of the processes to estimate the host memory usage.
-static CHROME_PIDS: Mutex<BTreeMap<(BrowserType, ChromeProcessType), Vec<i32>>> =
+static CHROME_TAB_PROCESSES: Mutex<BTreeMap<(BrowserType, ChromeProcessType), Vec<TabProcess>>> =
     Mutex::new(BTreeMap::new());
 
 // Returns the process list for a given browser/process type pair
 fn get_chrome_processes(
     browser_type: BrowserType,
     process_type: ChromeProcessType,
-) -> Result<Vec<i32>> {
+) -> Result<Vec<TabProcess>> {
     // Panic on poisoned mutex.
-    let chrome_pids = CHROME_PIDS.lock().expect("Lock chrome_pids failed");
-    let Some(tab_list) = chrome_pids.get(&(browser_type, process_type)) else {
+    let all_tab_processes = CHROME_TAB_PROCESSES
+        .lock()
+        .expect("Lock chrome tab processes failed");
+    let Some(filtered_process_list) = all_tab_processes.get(&(browser_type, process_type)) else {
         // Returns empty list if process list is not present.
         // E.g., When Lacros Chrome is not running.
         return Ok(Vec::new());
     };
 
-    Ok(tab_list.clone())
+    Ok(filtered_process_list.clone())
 }
 
-pub fn set_browser_processes(
+pub fn set_browser_tab_processes(
     browser_type: BrowserType,
-    background_pids: Vec<i32>,
-    protected_pids: Vec<i32>,
+    background_tab_processes: Vec<TabProcess>,
+    protected_tab_processes: Vec<TabProcess>,
 ) {
-    let mut chrome_pids = CHROME_PIDS.lock().expect("Lock chrome_pids failed");
-    chrome_pids.insert(
+    let mut chrome_tab_processes = CHROME_TAB_PROCESSES
+        .lock()
+        .expect("Lock chrome tab processes failed");
+    chrome_tab_processes.insert(
         (browser_type, ChromeProcessType::Background),
-        background_pids,
+        background_tab_processes,
     );
-    chrome_pids.insert(
+    chrome_tab_processes.insert(
         (browser_type, ChromeProcessType::Protected),
-        protected_pids,
+        protected_tab_processes,
     );
 }
 
@@ -796,8 +806,8 @@ fn get_chrome_memory_kb(process_type: ChromeProcessType, threshold_kb: u64) -> u
 
     let mut total_background_memory_kb = 0;
     for browser_type in [BrowserType::Ash, BrowserType::Lacros] {
-        let pids = match get_chrome_processes(browser_type, process_type) {
-            Ok(pids) => pids,
+        let tab_processes = match get_chrome_processes(browser_type, process_type) {
+            Ok(tab_processes) => tab_processes,
             Err(e) => {
                 error!(
                     "Failed to get chrome {} {} processes: {}",
@@ -806,8 +816,8 @@ fn get_chrome_memory_kb(process_type: ChromeProcessType, threshold_kb: u64) -> u
                 continue;
             }
         };
-        for pid in pids {
-            match get_chrome_process_memory_usage(pid) {
+        for tab_process in tab_processes {
+            match get_chrome_process_memory_usage(tab_process.pid) {
                 Ok(result) => {
                     total_background_memory_kb += result;
                     if total_background_memory_kb > threshold_kb {
@@ -818,7 +828,10 @@ fn get_chrome_memory_kb(process_type: ChromeProcessType, threshold_kb: u64) -> u
                     // It's Ok to continue when failed to get memory usage for a pid.
                     // When get_chrome_process_memory_usage() failed, total_background_memory_kb
                     // would be less and the pressure level would tend to be unmodified.
-                    error!("Failed to get memory usage, pid: {}, error: {}", pid, e);
+                    error!(
+                        "Failed to get memory usage, pid: {}, error: {}",
+                        tab_process.pid, e
+                    );
                 }
             }
         }
