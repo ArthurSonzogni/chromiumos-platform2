@@ -386,8 +386,7 @@ class WiFiProviderTest : public testing::Test {
       : manager_(&control_, &dispatcher_, &metrics_),
         provider_(manager_.wifi_provider()),
         default_profile_(new NiceMock<MockProfile>(&manager_, "default")),
-        user_profile_(new NiceMock<MockProfile>(&manager_, "user")),
-        storage_entry_index_(0) {}
+        user_profile_(new NiceMock<MockProfile>(&manager_, "user")) {}
 
   ~WiFiProviderTest() override = default;
 
@@ -560,30 +559,30 @@ class WiFiProviderTest : public testing::Test {
     return provider_->FindService(ssid, mode, security_class, security);
   }
   WiFiEndpointRefPtr MakeOpenEndpoint(const std::string& ssid,
-                                      const std::string& bssid,
+                                      net_base::MacAddress bssid,
                                       uint16_t frequency,
                                       int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        nullptr, nullptr, ssid, bssid,
+        nullptr, nullptr, ssid, bssid.ToString(),
         WPASupplicant::kNetworkModeInfrastructure, frequency, signal_dbm);
   }
   WiFiEndpointRefPtr Make8021xEndpoint(const std::string& ssid,
-                                       const std::string& bssid,
+                                       net_base::MacAddress bssid,
                                        uint16_t frequency,
                                        int16_t signal_dbm) {
     WiFiEndpoint::SecurityFlags rsn_flags;
     rsn_flags.rsn_8021x = true;
-    return WiFiEndpoint::MakeEndpoint(nullptr, nullptr, ssid, bssid,
+    return WiFiEndpoint::MakeEndpoint(nullptr, nullptr, ssid, bssid.ToString(),
                                       WPASupplicant::kNetworkModeInfrastructure,
                                       frequency, signal_dbm, rsn_flags);
   }
   WiFiEndpointRefPtr MakeEndpoint(
       const std::string& ssid,
-      const std::string& bssid,
+      net_base::MacAddress bssid,
       uint16_t frequency,
       int16_t signal_dbm,
       const WiFiEndpoint::SecurityFlags& security_flags) {
-    return WiFiEndpoint::MakeEndpoint(nullptr, nullptr, ssid, bssid,
+    return WiFiEndpoint::MakeEndpoint(nullptr, nullptr, ssid, bssid.ToString(),
                                       WPASupplicant::kNetworkModeInfrastructure,
                                       frequency, signal_dbm, security_flags);
   }
@@ -723,7 +722,7 @@ class WiFiProviderTest : public testing::Test {
   scoped_refptr<MockProfile> user_profile_;
   FakeStore default_profile_storage_;
   FakeStore user_profile_storage_;
-  int storage_entry_index_;  // shared across profiles
+  int storage_entry_index_ = 0;  // shared across profiles
 };
 
 MATCHER_P(RefPtrMatch, ref, "") {
@@ -766,7 +765,8 @@ TEST_F(WiFiProviderTest, Stop) {
       std::vector<uint8_t>(1, '0'), kModeManaged, kSecurityClassNone, false);
   MockWiFiServiceRefPtr service1 = AddMockService(
       std::vector<uint8_t>(1, '1'), kModeManaged, kSecurityClassNone, false);
-  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint("", "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      "", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   AddEndpointToService(service0, endpoint);
 
   EXPECT_EQ(2, GetServices().size());
@@ -1481,8 +1481,8 @@ TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
   WiFiServiceRefPtr service = GetService(
       kSSID.c_str(), kModeManaged, kSecurityClassNone, false, true, &error);
   ASSERT_NE(nullptr, service);
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint(kSSID, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      kSSID, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   WiFiServiceRefPtr endpoint_service =
       provider_->FindServiceForEndpoint(endpoint);
   // Just because a matching service exists, we shouldn't necessarily have
@@ -1496,8 +1496,8 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   EXPECT_FALSE(FindService(ssid0_bytes, kModeManaged, kSecurityClassNone));
-  WiFiEndpointRefPtr endpoint0 =
-      MakeOpenEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint0 = MakeOpenEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_->OnEndpointAdded(endpoint0);
@@ -1512,8 +1512,8 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
       provider_->FindServiceForEndpoint(endpoint0);
   EXPECT_EQ(service0, endpoint_service);
 
-  WiFiEndpointRefPtr endpoint1 =
-      MakeOpenEndpoint(ssid0, "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint1 = MakeOpenEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   provider_->OnEndpointAdded(endpoint1);
@@ -1523,8 +1523,8 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
   const std::string ssid1("another_ssid");
   const std::vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
   EXPECT_FALSE(FindService(ssid1_bytes, kModeManaged, kSecurityClassNone));
-  WiFiEndpointRefPtr endpoint2 =
-      MakeOpenEndpoint(ssid1, "00:00:00:00:00:02", 0, 0);
+  WiFiEndpointRefPtr endpoint2 = MakeOpenEndpoint(
+      ssid1, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_->OnEndpointAdded(endpoint2);
@@ -1545,8 +1545,9 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
   EXPECT_FALSE(FindService(ssid0_bytes, kModeManaged, kSecurityClassNone));
   WiFiEndpoint::SecurityFlags rsn_flags;
   rsn_flags.rsn_psk = true;
-  WiFiEndpointRefPtr endpoint0 =
-      MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0, rsn_flags);
+  WiFiEndpointRefPtr endpoint0 = MakeEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0,
+      rsn_flags);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_->OnEndpointAdded(endpoint0);
@@ -1560,8 +1561,9 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
 
   WiFiEndpoint::SecurityFlags wpa_flags;
   wpa_flags.wpa_psk = true;
-  WiFiEndpointRefPtr endpoint1 =
-      MakeEndpoint(ssid0, "00:00:00:00:00:01", 0, 0, wpa_flags);
+  WiFiEndpointRefPtr endpoint1 = MakeEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+      wpa_flags);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   provider_->OnEndpointAdded(endpoint1);
@@ -1572,8 +1574,9 @@ TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
   const std::string ssid1("another_ssid");
   const std::vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
   EXPECT_FALSE(FindService(ssid1_bytes, kModeManaged, kSecurityClassNone));
-  WiFiEndpointRefPtr endpoint2 =
-      MakeEndpoint(ssid1, "00:00:00:00:00:02", 0, 0, wpa_flags);
+  WiFiEndpointRefPtr endpoint2 = MakeEndpoint(
+      ssid1, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0, 0,
+      wpa_flags);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_->OnEndpointAdded(endpoint2);
@@ -1596,8 +1599,9 @@ TEST_F(WiFiProviderTest, OnEndpointAddedMultiSecurity) {
 
   WiFiEndpoint::SecurityFlags rsn_flags;
   rsn_flags.rsn_psk = true;
-  WiFiEndpointRefPtr endpoint0 =
-      MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0, rsn_flags);
+  WiFiEndpointRefPtr endpoint0 = MakeEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0,
+      rsn_flags);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_->OnEndpointAdded(endpoint0);
@@ -1611,8 +1615,9 @@ TEST_F(WiFiProviderTest, OnEndpointAddedMultiSecurity) {
   EXPECT_EQ(WiFiSecurity::kWpa2, service0->security());
 
   WiFiEndpoint::SecurityFlags none_flags;
-  WiFiEndpointRefPtr endpoint1 =
-      MakeEndpoint(ssid0, "00:00:00:00:00:01", 0, 0, none_flags);
+  WiFiEndpointRefPtr endpoint1 = MakeEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+      none_flags);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_->OnEndpointAdded(endpoint1);
@@ -1630,8 +1635,8 @@ TEST_F(WiFiProviderTest, OnEndpointAddedMultiSecurity) {
 TEST_F(WiFiProviderTest, OnEndpointAddedWhileStopped) {
   // If we don't call provider_->Start(), OnEndpointAdded should have no effect.
   const std::string ssid("an_ssid");
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      ssid, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(_)).Times(0);
   provider_->OnEndpointAdded(endpoint);
@@ -1654,8 +1659,8 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
       AddMockService(ssid1_bytes, kModeManaged, kSecurityClassNone, false);
   EXPECT_EQ(service0,
             FindService(ssid0_bytes, kModeManaged, kSecurityClassNone));
-  WiFiEndpointRefPtr endpoint0 =
-      MakeOpenEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint0 = MakeOpenEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   EXPECT_CALL(*service0, AddEndpoint(RefPtrMatch(endpoint0))).Times(1);
@@ -1665,8 +1670,8 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
   Mock::VerifyAndClearExpectations(service0.get());
   Mock::VerifyAndClearExpectations(service1.get());
 
-  WiFiEndpointRefPtr endpoint1 =
-      MakeOpenEndpoint(ssid0, "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint1 = MakeOpenEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
   EXPECT_CALL(*service0, AddEndpoint(RefPtrMatch(endpoint1))).Times(1);
@@ -1676,8 +1681,8 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
   Mock::VerifyAndClearExpectations(service0.get());
   Mock::VerifyAndClearExpectations(service1.get());
 
-  WiFiEndpointRefPtr endpoint2 =
-      MakeOpenEndpoint(ssid1, "00:00:00:00:00:02", 0, 0);
+  WiFiEndpointRefPtr endpoint2 = MakeOpenEndpoint(
+      ssid1, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service1))).Times(1);
   EXPECT_CALL(*service0, AddEndpoint(_)).Times(0);
@@ -1698,8 +1703,8 @@ TEST_F(WiFiProviderTest, OnEndpointRemoved) {
   EXPECT_EQ(2, GetServices().size());
 
   // Remove the last endpoint of a non-remembered service.
-  WiFiEndpointRefPtr endpoint0 =
-      MakeOpenEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint0 = MakeOpenEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   AddEndpointToService(service0, endpoint0);
   EXPECT_EQ(1, GetServiceByEndpoint().size());
 
@@ -1730,8 +1735,8 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
   EXPECT_EQ(1, GetServices().size());
 
   // Remove an endpoint of a non-remembered service.
-  WiFiEndpointRefPtr endpoint0 =
-      MakeOpenEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint0 = MakeOpenEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   AddEndpointToService(service0, endpoint0);
   EXPECT_EQ(1, GetServiceByEndpoint().size());
 
@@ -1759,8 +1764,8 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
   EXPECT_EQ(1, GetServices().size());
 
   // Remove the last endpoint of a remembered service.
-  WiFiEndpointRefPtr endpoint0 =
-      MakeOpenEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint0 = MakeOpenEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   AddEndpointToService(service0, endpoint0);
   EXPECT_EQ(1, GetServiceByEndpoint().size());
 
@@ -1783,8 +1788,8 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedWhileStopped) {
   // If we don't call provider_->Start(), OnEndpointRemoved should not
   // cause a crash even if a service matching the endpoint does not exist.
   const std::string ssid("an_ssid");
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      ssid, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   provider_->OnEndpointRemoved(endpoint);
 }
 
@@ -1793,8 +1798,8 @@ TEST_F(WiFiProviderTest, OnEndpointUpdated) {
 
   // Create an endpoint and associate it with a mock service.
   const std::string ssid("an_ssid");
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      ssid, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
 
   const std::vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
   MockWiFiServiceRefPtr open_service =
@@ -1830,8 +1835,8 @@ TEST_F(WiFiProviderTest, OnEndpointUpdatedWhileStopped) {
   // If we don't call provider_->Start(), OnEndpointUpdated should not
   // cause a crash even if a service matching the endpoint does not exist.
   const std::string ssid("an_ssid");
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      ssid, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   provider_->OnEndpointUpdated(endpoint);
 }
 
@@ -2156,7 +2161,7 @@ TEST_F(WiFiProviderTest, HasActiveCredentials) {
   // Mismatched provisioning source.
   PasspointCredentialsRefPtr creds3 = NewCredentials(
       domains, realm, ois, ois, ois, metered_override,
-      /*app_name=*/"com.sp-green.app", friendly_name, expiration_time);
+      /*app_package_name=*/"com.sp-green.app", friendly_name, expiration_time);
   EXPECT_FALSE(provider_->HasCredentials(creds3, user_profile_.get()));
 }
 
@@ -2192,7 +2197,7 @@ TEST_F(WiFiProviderTest, HasSavedCredentials) {
   // Mismatched provisioning source.
   PasspointCredentialsRefPtr creds3 = NewCredentials(
       domains, realm, ois, ois, ois, metered_override,
-      /*app_name=*/"com.sp-green.app", friendly_name, expiration_time);
+      /*app_package_name=*/"com.sp-green.app", friendly_name, expiration_time);
   EXPECT_FALSE(provider_->HasCredentials(creds3, user_profile_.get()));
 }
 
@@ -2216,10 +2221,10 @@ TEST_F(WiFiProviderTest, DeleteCredentials) {
       AddMockService(ssid1_bytes, kModeManaged, kSecurityClass8021x, false);
 
   // Report endpoints
-  WiFiEndpointRefPtr endpoint0 =
-      Make8021xEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
-  WiFiEndpointRefPtr endpoint1 =
-      Make8021xEndpoint(ssid1, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint0 = Make8021xEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
+  WiFiEndpointRefPtr endpoint1 = Make8021xEndpoint(
+      ssid1, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0)));
   EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service1)));
   provider_->OnEndpointAdded(endpoint0);
@@ -2255,8 +2260,8 @@ TEST_F(WiFiProviderTest, SimpleCredentialsMatchesOverride) {
   // Provide some scan results
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
-  WiFiEndpointRefPtr endpoint0 =
-      Make8021xEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint0 = Make8021xEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_->OnEndpointAdded(endpoint0);
@@ -2300,8 +2305,8 @@ TEST_F(WiFiProviderTest, MultipleCredentialsMatches) {
   // Provide some scan results
   const std::string ssid0("an_ssid");
   const std::vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
-  WiFiEndpointRefPtr endpoint0 =
-      Make8021xEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint0 = Make8021xEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_->OnEndpointAdded(endpoint0);
@@ -2351,8 +2356,8 @@ TEST_F(WiFiProviderTest, AbandonService) {
   // Provide a scan result for a future match.
   const std::string ssid("passpoint_ssid");
   const std::vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
-  WiFiEndpointRefPtr endpoint =
-      Make8021xEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
+  WiFiEndpointRefPtr endpoint = Make8021xEndpoint(
+      ssid, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   EXPECT_CALL(manager_, UpdateService(_)).Times(1);
   provider_->OnEndpointAdded(endpoint);

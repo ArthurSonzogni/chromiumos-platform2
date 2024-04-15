@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/scoped_file.h>
 #include <base/test/mock_callback.h>
@@ -55,7 +56,7 @@ const RpcIdentifier kGroupPath =
 const uint32_t kPhyIndex = 5678;
 const uint32_t kShillId = 0;
 const char kP2PSSID[] = "chromeOS-1234";
-const char kP2PBSSID[] = "de:ad:be:ef:00:00";
+const net_base::MacAddress kP2PBSSID(0xde, 0xad, 0xbe, 0xef, 0x00, 0x00);
 const std::vector<uint8_t> kP2PMACAddress{0x5a, 0x5a, 0x5a, 0x5a, 0x5a, 0x5a};
 const char kP2PPassphrase[] = "test0000";
 const int32_t kP2PFrequency = 2437;
@@ -132,10 +133,8 @@ class P2PDeviceTest : public testing::Test {
             SetArgPointee<0>(net_base::byte_utils::ByteStringToBytes(kP2PSSID)),
             Return(true)));
     ON_CALL(*supplicant_group_proxy_, GetBSSID(_))
-        .WillByDefault(DoAll(
-            SetArgPointee<0>(
-                net_base::MacAddress::CreateFromString(kP2PBSSID)->ToBytes()),
-            Return(true)));
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(kP2PBSSID.ToBytes()), Return(true)));
     ON_CALL(*supplicant_group_proxy_, GetFrequency(_))
         .WillByDefault(DoAll(SetArgPointee<0>(kP2PFrequency), Return(true)));
     ON_CALL(*supplicant_group_proxy_, GetPassphrase(_))
@@ -296,7 +295,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
             kP2PGroupInfoStateConfiguring);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoSSIDProperty), kP2PSSID);
-  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty), kP2PBSSID);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty),
+            kP2PBSSID.ToString());
   EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoFrequencyProperty),
             kP2PFrequency);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
@@ -339,7 +339,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
             kP2PGroupInfoStateActive);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoSSIDProperty), kP2PSSID);
-  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty), kP2PBSSID);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty),
+            kP2PBSSID.ToString());
   EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoFrequencyProperty),
             kP2PFrequency);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
@@ -390,7 +391,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoStateProperty),
             kP2PGroupInfoStateActive);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoSSIDProperty), kP2PSSID);
-  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty), kP2PBSSID);
+  EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoBSSIDProperty),
+            kP2PBSSID.ToString());
   EXPECT_EQ(group_info.Get<Integer>(kP2PGroupInfoFrequencyProperty),
             kP2PFrequency);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoPassphraseProperty),
@@ -537,7 +539,7 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoSSIDProperty), kP2PSSID);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoGroupBSSIDProperty),
-            kP2PBSSID);
+            kP2PBSSID.ToString());
   EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoFrequencyProperty),
             kP2PFrequency);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
@@ -548,7 +550,8 @@ TEST_F(P2PDeviceTest, ClientInfo) {
       client_info.Get<String>(kP2PClientInfoMACAddressProperty),
       net_base::MacAddress::CreateFromBytes(kP2PMACAddress).value().ToString());
   auto GOInfo = client_info.Get<Stringmap>(kP2PClientInfoGroupOwnerProperty);
-  EXPECT_EQ(GOInfo.at(kP2PClientInfoGroupOwnerMACAddressProperty), kP2PBSSID);
+  EXPECT_EQ(GOInfo.at(kP2PClientInfoGroupOwnerMACAddressProperty),
+            kP2PBSSID.ToString());
   EXPECT_EQ(GOInfo.count(kP2PClientInfoGroupOwnerIPv4AddressProperty), 0);
   EXPECT_EQ(GOInfo.count(kP2PClientInfoGroupOwnerIPv6AddressProperty), 0);
 
@@ -583,7 +586,7 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_EQ(client_info.Get<uint32_t>(kP2PClientInfoShillIDProperty), kShillId);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoSSIDProperty), kP2PSSID);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoGroupBSSIDProperty),
-            kP2PBSSID);
+            kP2PBSSID.ToString());
   EXPECT_EQ(client_info.Get<Integer>(kP2PClientInfoFrequencyProperty),
             kP2PFrequency);
   EXPECT_EQ(client_info.Get<String>(kP2PClientInfoPassphraseProperty),
@@ -598,7 +601,8 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_EQ(client_info.Get<int32_t>(kP2PClientInfoNetworkIDProperty),
             kClientNetworkID);
   GOInfo = client_info.Get<Stringmap>(kP2PClientInfoGroupOwnerProperty);
-  EXPECT_EQ(GOInfo.at(kP2PClientInfoGroupOwnerMACAddressProperty), kP2PBSSID);
+  EXPECT_EQ(GOInfo.at(kP2PClientInfoGroupOwnerMACAddressProperty),
+            kP2PBSSID.ToString());
   EXPECT_EQ(GOInfo.at(kP2PClientInfoGroupOwnerIPv4AddressProperty),
             "192.168.1.1");
   EXPECT_EQ(GOInfo.count(kP2PClientInfoGroupOwnerIPv6AddressProperty), 0);
@@ -764,7 +768,7 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_NE(go_device_->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(go_device_->link_name_.value(), kInterfaceName);
   EXPECT_EQ(go_device_->group_ssid_, kP2PSSID);
-  EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID);
+  EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID.ToString());
   EXPECT_EQ(go_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(go_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
@@ -842,7 +846,7 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_NE(client_device_->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(client_device_->link_name_.value(), kInterfaceName);
   EXPECT_EQ(client_device_->group_ssid_, kP2PSSID);
-  EXPECT_EQ(client_device_->group_bssid_, kP2PBSSID);
+  EXPECT_EQ(client_device_->group_bssid_, kP2PBSSID.ToString());
   EXPECT_EQ(client_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(client_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_FALSE(client_device_->start_timer_callback_.IsCancelled());
@@ -932,7 +936,7 @@ TEST_F(P2PDeviceTest, BadState_Client) {
   EXPECT_NE(client_device_->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(client_device_->link_name_.value(), kInterfaceName);
   EXPECT_EQ(client_device_->group_ssid_, kP2PSSID);
-  EXPECT_EQ(client_device_->group_bssid_, kP2PBSSID);
+  EXPECT_EQ(client_device_->group_bssid_, kP2PBSSID.ToString());
   EXPECT_EQ(client_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(client_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(client_device_->state_,
@@ -1020,7 +1024,7 @@ TEST_F(P2PDeviceTest, BadState_GO) {
   EXPECT_NE(go_device_->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(go_device_->link_name_.value(), kInterfaceName);
   EXPECT_EQ(go_device_->group_ssid_, kP2PSSID);
-  EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID);
+  EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID.ToString());
   EXPECT_EQ(go_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(go_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
@@ -1151,7 +1155,7 @@ TEST_F(P2PDeviceTest, SetupGroup) {
   EXPECT_NE(go_device_->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(go_device_->link_name_.value(), kInterfaceName);
   EXPECT_EQ(go_device_->group_ssid_, kP2PSSID);
-  EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID);
+  EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID.ToString());
   EXPECT_EQ(go_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(go_device_->group_passphrase_, kP2PPassphrase);
 }
@@ -1268,7 +1272,7 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOConfiguring) {
   EXPECT_NE(go_device_->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(go_device_->link_name_.value(), kInterfaceName);
   EXPECT_EQ(go_device_->group_ssid_, kP2PSSID);
-  EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID);
+  EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID.ToString());
   EXPECT_EQ(go_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(go_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
@@ -1317,7 +1321,7 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOActive) {
   EXPECT_NE(go_device_->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(go_device_->link_name_.value(), kInterfaceName);
   EXPECT_EQ(go_device_->group_ssid_, kP2PSSID);
-  EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID);
+  EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID.ToString());
   EXPECT_EQ(go_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(go_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
@@ -1409,7 +1413,7 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileClientConfiguring) {
   EXPECT_NE(client_device_->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(client_device_->link_name_.value(), kInterfaceName);
   EXPECT_EQ(client_device_->group_ssid_, kP2PSSID);
-  EXPECT_EQ(client_device_->group_bssid_, kP2PBSSID);
+  EXPECT_EQ(client_device_->group_bssid_, kP2PBSSID.ToString());
   EXPECT_EQ(client_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(client_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(client_device_->state_,
@@ -1461,7 +1465,7 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileClientConnected) {
   EXPECT_NE(client_device_->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(client_device_->link_name_.value(), kInterfaceName);
   EXPECT_EQ(client_device_->group_ssid_, kP2PSSID);
-  EXPECT_EQ(client_device_->group_bssid_, kP2PBSSID);
+  EXPECT_EQ(client_device_->group_bssid_, kP2PBSSID.ToString());
   EXPECT_EQ(client_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(client_device_->group_passphrase_, kP2PPassphrase);
   EXPECT_EQ(client_device_->state_,

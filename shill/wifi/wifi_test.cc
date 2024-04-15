@@ -585,7 +585,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         manager_(&control_interface_, event_dispatcher_.get(), &metrics_),
         power_manager_(new MockPowerManager(control_interface())),
         wifi_provider_(&manager_),
-        bss_counter_(0),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_bss_proxy_(new NiceMock<MockSupplicantBSSProxy>()),
         dhcp_hostname_("chromeos"),
@@ -778,27 +777,27 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   WiFiEndpointRefPtr MakeNewEndpoint(bool use_ssid,
                                      std::string* ssid,
                                      RpcIdentifier* path,
-                                     std::string* bssid) {
+                                     net_base::MacAddress* bssid) {
     bss_counter_++;
     if (!use_ssid) {
       *ssid = base::StringPrintf("ssid%d", bss_counter_);
     }
     *path = RpcIdentifier(base::StringPrintf("/interface/bss%d", bss_counter_));
-    *bssid = base::StringPrintf("00:00:00:00:00:%02x", bss_counter_);
+    *bssid = net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, bss_counter_);
     WiFiEndpointRefPtr endpoint = MakeEndpoint(*ssid, *bssid);
     EXPECT_CALL(wifi_provider_, OnEndpointAdded(EndpointMatch(endpoint)))
         .Times(1);
     return endpoint;
   }
   WiFiEndpointRefPtr MakeEndpoint(const std::string& ssid,
-                                  const std::string& bssid) {
+                                  net_base::MacAddress bssid) {
     return MakeEndpointWithMode(ssid, bssid, kNetworkModeInfrastructure);
   }
   WiFiEndpointRefPtr MakeEndpointWithMode(const std::string& ssid,
-                                          const std::string& bssid,
+                                          net_base::MacAddress bssid,
                                           const std::string& mode) {
     return WiFiEndpoint::MakeOpenEndpoint(&control_interface_, nullptr, ssid,
-                                          bssid, mode, 0, 0);
+                                          bssid.ToString(), mode, 0, 0);
   }
   MockWiFiServiceRefPtr MakeMockServiceWithSSID(std::vector<uint8_t> ssid,
                                                 const WiFiSecurity& security) {
@@ -815,7 +814,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                                           MockWiFiServiceRefPtr* service_ptr) {
     std::string ssid;
     RpcIdentifier path;
-    std::string bssid;
+    net_base::MacAddress bssid;
     WiFiEndpointRefPtr endpoint = MakeNewEndpoint(false, &ssid, &path, &bssid);
     MockWiFiServiceRefPtr service =
         MakeMockServiceWithSSID(endpoint->ssid(), endpoint->security_mode());
@@ -839,7 +838,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                                      WiFiEndpointRefPtr* endpoint_ptr) {
     std::string ssid(service->ssid().begin(), service->ssid().end());
     RpcIdentifier path;
-    std::string bssid;
+    net_base::MacAddress bssid;
     WiFiEndpointRefPtr endpoint = MakeNewEndpoint(true, &ssid, &path, &bssid);
     EXPECT_CALL(wifi_provider_, FindServiceForEndpoint(EndpointMatch(endpoint)))
         .WillRepeatedly(Return(service));
@@ -1004,7 +1003,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   void RemoveBSS(const RpcIdentifier& bss_path);
   void ReportBSS(const RpcIdentifier& bss_path,
                  const std::string& ssid,
-                 const std::string& bssid,
+                 net_base::MacAddress bssid,
                  int16_t signal_strength,
                  uint16_t frequency,
                  const char* mode,
@@ -1405,7 +1404,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   MockPowerManager* power_manager_;  // Owned by |manager_|.
   WiFiRefPtr wifi_;
   NiceMock<MockWiFiProvider> wifi_provider_;
-  int bss_counter_;
+  int bss_counter_ = 0;
   MockNetwork* network_;  // Owned by |wifi_|
 
   // protected fields interspersed between private fields, due to
@@ -1489,14 +1488,14 @@ KeyValueStore WiFiObjectTest::CreateBSSProperties(const std::string& ssid,
 
 void WiFiObjectTest::ReportBSS(const RpcIdentifier& bss_path,
                                const std::string& ssid,
-                               const std::string& bssid,
+                               net_base::MacAddress bssid,
                                int16_t signal_strength,
                                uint16_t frequency,
                                const char* mode,
                                uint32_t age) {
   wifi_->BSSAddedTask(
-      bss_path,
-      CreateBSSProperties(ssid, bssid, signal_strength, frequency, mode, age));
+      bss_path, CreateBSSProperties(ssid, bssid.ToString(), signal_strength,
+                                    frequency, mode, age));
 }
 
 void WiFiObjectTest::ReportBSSWithIEs(const RpcIdentifier& bss_path,
@@ -1718,7 +1717,8 @@ TEST_F(WiFiMainTest, ClearCachedCredentials) {
 }
 
 TEST_F(WiFiMainTest, NotifyEndpointChanged) {
-  WiFiEndpointRefPtr endpoint = MakeEndpoint("ssid", "00:00:00:00:00:00");
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(
+      "ssid", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00));
   EXPECT_CALL(*wifi_provider(), OnEndpointUpdated(EndpointMatch(endpoint)));
   NotifyEndpointChanged(endpoint);
 }
@@ -1930,17 +1930,22 @@ TEST_F(WiFiMainTest, ScanResults) {
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(_)).Times(3);
   StartWiFi();
   // Ad-hoc networks will be dropped.
-  ReportBSS(RpcIdentifier("bss0"), "ssid0", "00:00:00:00:00:00", 0, 0,
+  ReportBSS(RpcIdentifier("bss0"), "ssid0",
+            net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0,
             kNetworkModeAdHoc, 0);
-  ReportBSS(RpcIdentifier("bss1"), "ssid1", "00:00:00:00:00:01", 1, 0,
+  ReportBSS(RpcIdentifier("bss1"), "ssid1",
+            net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 1, 0,
             kNetworkModeInfrastructure, 0);
-  ReportBSS(RpcIdentifier("bss2"), "ssid2", "00:00:00:00:00:02", 2, 0,
+  ReportBSS(RpcIdentifier("bss2"), "ssid2",
+            net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 2, 0,
             kNetworkModeInfrastructure, 0);
-  ReportBSS(RpcIdentifier("bss3"), "ssid3", "00:00:00:00:00:03", 3, 0,
+  ReportBSS(RpcIdentifier("bss3"), "ssid3",
+            net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x03), 3, 0,
             kNetworkModeInfrastructure, 0);
   const uint16_t frequency = 2412;
-  ReportBSS(RpcIdentifier("bss4"), "ssid4", "00:00:00:00:00:04", 4, frequency,
-            kNetworkModeAdHoc, 0);
+  ReportBSS(RpcIdentifier("bss4"), "ssid4",
+            net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x04), 4,
+            frequency, kNetworkModeAdHoc, 0);
 
   const WiFi::EndpointMap& endpoints_by_rpcid = GetEndpointMap();
   EXPECT_EQ(3, endpoints_by_rpcid.size());
@@ -1954,14 +1959,18 @@ TEST_F(WiFiMainTest, ScanResults) {
 
 TEST_F(WiFiMainTest, ScanCompleted) {
   StartWiFi();
-  WiFiEndpointRefPtr ap0 = MakeEndpoint("ssid0", "00:00:00:00:00:00");
-  WiFiEndpointRefPtr ap1 = MakeEndpoint("ssid1", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr ap0 = MakeEndpoint(
+      "ssid0", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00));
+  WiFiEndpointRefPtr ap1 = MakeEndpoint(
+      "ssid1", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap0))).Times(1);
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap1))).Times(1);
-  ReportBSS(RpcIdentifier("bss0"), ap0->ssid_string(), ap0->bssid_string(), 0,
-            0, kNetworkModeInfrastructure, 0);
-  ReportBSS(RpcIdentifier("bss1"), ap1->ssid_string(), ap1->bssid_string(), 0,
-            0, kNetworkModeInfrastructure, 0);
+  ReportBSS(RpcIdentifier("bss0"), ap0->ssid_string(),
+            net_base::MacAddress::CreateFromString(ap0->bssid_string()).value(),
+            0, 0, kNetworkModeInfrastructure, 0);
+  ReportBSS(RpcIdentifier("bss1"), ap1->ssid_string(),
+            net_base::MacAddress::CreateFromString(ap1->bssid_string()).value(),
+            0, 0, kNetworkModeInfrastructure, 0);
   manager()->set_suppress_autoconnect(true);
   ReportScanDone();
   EXPECT_FALSE(manager()->suppress_autoconnect());
@@ -1970,11 +1979,13 @@ TEST_F(WiFiMainTest, ScanCompleted) {
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(_)).Times(0);
 
   // BSSes with SSIDs that start with nullptr should be filtered.
-  ReportBSS(RpcIdentifier("bss2"), std::string(1, 0), "00:00:00:00:00:02", 3, 0,
+  ReportBSS(RpcIdentifier("bss2"), std::string(1, 0),
+            net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 3, 0,
             kNetworkModeInfrastructure, 0);
 
   // BSSes with empty SSIDs should be filtered.
-  ReportBSS(RpcIdentifier("bss2"), std::string(), "00:00:00:00:00:02", 3, 0,
+  ReportBSS(RpcIdentifier("bss2"), std::string(),
+            net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 3, 0,
             kNetworkModeInfrastructure, 0);
 }
 
@@ -3873,7 +3884,8 @@ TEST_F(WiFiMainTest, BSSAddedCreatesBSSProxy) {
   EXPECT_CALL(*supplicant_bss_proxy_, Die()).Times(AnyNumber());
   EXPECT_CALL(*control_interface(), CreateSupplicantBSSProxy(_, _));
   StartWiFi();
-  ReportBSS(RpcIdentifier("bss0"), "ssid0", "00:00:00:00:00:00", 0, 0,
+  ReportBSS(RpcIdentifier("bss0"), "ssid0",
+            net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0,
             kNetworkModeInfrastructure, 0);
 }
 
@@ -4881,7 +4893,7 @@ TEST_F(WiFiMainTest, PendingScanDoesNotCrashAfterStop) {
 struct BSS {
   RpcIdentifier bsspath;
   std::string ssid;
-  std::string bssid;
+  net_base::MacAddress bssid;
   int16_t signal_strength;
   uint16_t frequency;
   const char* mode;
@@ -4890,13 +4902,16 @@ struct BSS {
 
 TEST_F(WiFiMainTest, UpdateGeolocationObjects) {
   BSS bsses[] = {
-      {RpcIdentifier("bssid1"), "ssid1", "00:00:00:00:00:00", 5,
+      {RpcIdentifier("bssid1"), "ssid1",
+       net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 5,
        Metrics::kWiFiFrequency2412, kNetworkModeInfrastructure, 0},
-      {RpcIdentifier("bssid2"), "ssid2", "01:00:00:00:00:00", 30,
+      {RpcIdentifier("bssid2"), "ssid2",
+       net_base::MacAddress(0x01, 0x00, 0x00, 0x00, 0x00, 0x00), 30,
        Metrics::kWiFiFrequency5170, kNetworkModeInfrastructure,
        WiFi::kWiFiGeolocationInfoExpiration.InSeconds() + 1},
       // Same SSID but different BSSID is an additional geolocation object.
-      {RpcIdentifier("bssid3"), "ssid1", "02:00:00:00:00:00", 100, 0,
+      {RpcIdentifier("bssid3"), "ssid1",
+       net_base::MacAddress(0x02, 0x00, 0x00, 0x00, 0x00, 0x00), 100, 0,
        kNetworkModeInfrastructure, 0}};
   StartWiFi();
   auto objects = &(manager()->device_geolocation_info_[wifi()]);
@@ -4908,7 +4923,7 @@ TEST_F(WiFiMainTest, UpdateGeolocationObjects) {
               bsses[i].age);
     wifi()->UpdateGeolocationObjects(objects);
     EXPECT_EQ(objects->size(), i + 1);
-    EXPECT_EQ((*objects)[i][kGeoMacAddressProperty], bsses[i].bssid);
+    EXPECT_EQ((*objects)[i][kGeoMacAddressProperty], bsses[i].bssid.ToString());
     EXPECT_EQ((*objects)[i][kGeoSignalStrengthProperty],
               base::StringPrintf("%d", bsses[i].signal_strength));
     EXPECT_EQ((*objects)[i][kGeoChannelProperty],
@@ -4916,20 +4931,20 @@ TEST_F(WiFiMainTest, UpdateGeolocationObjects) {
                   "%d", Metrics::WiFiFrequencyToChannel(bsses[i].frequency)));
   }
   // Update the geolocation cache using new scan results
-  for (size_t i = 0; i < std::size(bsses); ++i) {
-    RemoveBSS(bsses[i].bsspath);
+  for (const auto& bss : bsses) {
+    RemoveBSS(bss.bsspath);
   }
   //  bsses_in_scan are the BSSes reported in the latest scan result
   BSS bsses_in_scan[] = {
-      {RpcIdentifier("bssid1"), "ssid1", "00:00:00:00:00:00", 6,
+      {RpcIdentifier("bssid1"), "ssid1",
+       net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 6,
        Metrics::kWiFiFrequency2412, kNetworkModeInfrastructure, 0},
-      {RpcIdentifier("bssid4"), "ssid4", "03:00:00:00:00:00", 100,
+      {RpcIdentifier("bssid4"), "ssid4",
+       net_base::MacAddress(0x03, 0x00, 0x00, 0x00, 0x00, 0x00), 100,
        Metrics::kWiFiFrequency5170, kNetworkModeInfrastructure, 0}};
-  for (size_t i = 0; i < std::size(bsses_in_scan); ++i) {
-    ReportBSS(bsses_in_scan[i].bsspath, bsses_in_scan[i].ssid,
-              bsses_in_scan[i].bssid, bsses_in_scan[i].signal_strength,
-              bsses_in_scan[i].frequency, bsses_in_scan[i].mode,
-              bsses_in_scan[i].age);
+  for (const auto& bss : bsses_in_scan) {
+    ReportBSS(bss.bsspath, bss.ssid, bss.bssid, bss.signal_strength,
+              bss.frequency, bss.mode, bss.age);
   }
   //  bsses_after_update are the BSSes remained in the geolocation cache after
   //  the update using the latest scan result, where
@@ -4946,7 +4961,7 @@ TEST_F(WiFiMainTest, UpdateGeolocationObjects) {
   EXPECT_EQ(objects->size(), std::size(bsses_after_update));
   for (size_t i = 0; i < std::size(bsses_after_update); ++i) {
     EXPECT_EQ((*objects)[i][kGeoMacAddressProperty],
-              bsses_after_update[i].bssid);
+              bsses_after_update[i].bssid.ToString());
     EXPECT_EQ((*objects)[i][kGeoSignalStrengthProperty],
               base::StringPrintf("%d", bsses_after_update[i].signal_strength));
     EXPECT_EQ((*objects)[i][kGeoChannelProperty],
@@ -5532,9 +5547,12 @@ TEST_F(WiFiMainTest, PendingScanEvents) {
            CreateBSSProperties("ssid2", "00:00:00:00:00:02", 0, 0,
                                kNetworkModeInfrastructure, 0));
 
-  WiFiEndpointRefPtr ap0 = MakeEndpoint("ssid0", "00:00:00:00:00:00");
-  WiFiEndpointRefPtr ap1 = MakeEndpoint("ssid1", "00:00:00:00:00:01");
-  WiFiEndpointRefPtr ap2 = MakeEndpoint("ssid2", "00:00:00:00:00:02");
+  WiFiEndpointRefPtr ap0 = MakeEndpoint(
+      "ssid0", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00));
+  WiFiEndpointRefPtr ap1 = MakeEndpoint(
+      "ssid1", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
+  WiFiEndpointRefPtr ap2 = MakeEndpoint(
+      "ssid2", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02));
 
   InSequence seq;
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap0)));
@@ -5970,13 +5988,17 @@ TEST_F(WiFiMainTest, InterworkingSelectSimpleMatch) {
   StartWiFi();
 
   // Provide scan results
-  WiFiEndpointRefPtr ap0 = MakeEndpoint("ssid0", "00:00:00:00:00:00");
-  WiFiEndpointRefPtr ap1 = MakeEndpoint("ssid1", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr ap0 = MakeEndpoint(
+      "ssid0", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00));
+  WiFiEndpointRefPtr ap1 = MakeEndpoint(
+      "ssid1", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   RpcIdentifier bss0_path("bss0"), bss1_path("bss1");
-  ReportBSS(bss0_path, ap0->ssid_string(), ap0->bssid_string(), 0, 0,
-            kNetworkModeInfrastructure, 0);
-  ReportBSS(bss1_path, ap1->ssid_string(), ap1->bssid_string(), 0, 0,
-            kNetworkModeInfrastructure, 0);
+  ReportBSS(bss0_path, ap0->ssid_string(),
+            net_base::MacAddress::CreateFromString(ap0->bssid_string()).value(),
+            0, 0, kNetworkModeInfrastructure, 0);
+  ReportBSS(bss1_path, ap1->ssid_string(),
+            net_base::MacAddress::CreateFromString(ap1->bssid_string()).value(),
+            0, 0, kNetworkModeInfrastructure, 0);
   ReportScanDone();
 
   // No credentials added, we must ignore false matches.
@@ -6029,13 +6051,17 @@ TEST_F(WiFiMainTest, InterworkingSelectMultipleMatches) {
   StartWiFi();
 
   // Provide scan results
-  WiFiEndpointRefPtr ap0 = MakeEndpoint("ssid0", "00:00:00:00:00:00");
-  WiFiEndpointRefPtr ap1 = MakeEndpoint("ssid1", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr ap0 = MakeEndpoint(
+      "ssid0", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00));
+  WiFiEndpointRefPtr ap1 = MakeEndpoint(
+      "ssid1", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   RpcIdentifier bss0_path("bss0"), bss1_path("bss1");
-  ReportBSS(bss0_path, ap0->ssid_string(), ap0->bssid_string(), 0, 0,
-            kNetworkModeInfrastructure, 0);
-  ReportBSS(bss1_path, ap1->ssid_string(), ap1->bssid_string(), 0, 0,
-            kNetworkModeInfrastructure, 0);
+  ReportBSS(bss0_path, ap0->ssid_string(),
+            net_base::MacAddress::CreateFromString(ap0->bssid_string()).value(),
+            0, 0, kNetworkModeInfrastructure, 0);
+  ReportBSS(bss1_path, ap1->ssid_string(),
+            net_base::MacAddress::CreateFromString(ap1->bssid_string()).value(),
+            0, 0, kNetworkModeInfrastructure, 0);
   ReportScanDone();
 
   // Interworking select will find two matches and report them to the provider.
@@ -6100,7 +6126,8 @@ TEST_F(WiFiMainTest, BSSUpdateTriggersInterworkingSelect) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), InterworkingSelect()).Times(0);
 
   RpcIdentifier bss0_path("bss0");
-  ReportBSS(bss0_path, "ssid0", "00:00:00:00:00:00", 0, 0,
+  ReportBSS(bss0_path, "ssid0",
+            net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0, 0,
             kNetworkModeInfrastructure, 0);
   ReportScanDone();
 
@@ -6312,7 +6339,7 @@ TEST_F(WiFiMainTest, ANQPGet) {
 
   std::string ssid;
   RpcIdentifier path;
-  std::string bssid;
+  net_base::MacAddress bssid;
   WiFiEndpointRefPtr endpoint = MakeNewEndpoint(false, &ssid, &path, &bssid);
   MockWiFiServiceRefPtr service =
       MakeMockServiceWithSSID(endpoint->ssid(), endpoint->security_mode());
@@ -6320,7 +6347,8 @@ TEST_F(WiFiMainTest, ANQPGet) {
       .WillRepeatedly(Return(service));
   ON_CALL(*service, GetBSSIDConnectableEndpointCount())
       .WillByDefault(Return(1));
-  ReportBSSWithIEs(path, ssid, bssid, -90, 0, kNetworkModeInfrastructure, ies);
+  ReportBSSWithIEs(path, ssid, bssid.ToString(), -90, 0,
+                   kNetworkModeInfrastructure, ies);
 
   InitiateConnect(service);
   ReportCurrentBSSChanged(path);

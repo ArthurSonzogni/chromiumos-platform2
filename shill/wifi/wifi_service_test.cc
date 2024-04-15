@@ -119,32 +119,32 @@ class WiFiServiceTest : public testing::Test {
 
   WiFiEndpointRefPtr MakeEndpoint(
       const std::string& ssid,
-      const std::string& bssid,
+      net_base::MacAddress bssid,
       uint16_t frequency,
       int16_t signal_dbm,
       const WiFiEndpoint::SecurityFlags& security_flags) {
-    return WiFiEndpoint::MakeEndpoint(nullptr, wifi(), ssid, bssid,
+    return WiFiEndpoint::MakeEndpoint(nullptr, wifi(), ssid, bssid.ToString(),
                                       WPASupplicant::kNetworkModeInfrastructure,
                                       frequency, signal_dbm, security_flags);
   }
 
   WiFiEndpointRefPtr MakeOpenEndpoint(const std::string& ssid,
-                                      const std::string& bssid,
+                                      net_base::MacAddress bssid,
                                       uint16_t frequency,
                                       int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        nullptr, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
-        frequency, signal_dbm);
+        nullptr, wifi(), ssid, bssid.ToString(),
+        WPASupplicant::kNetworkModeInfrastructure, frequency, signal_dbm);
   }
 
   WiFiEndpointRefPtr MakeOpenEndpointWithWiFi(WiFiRefPtr wifi,
                                               const std::string& ssid,
-                                              const std::string& bssid,
+                                              net_base::MacAddress bssid,
                                               uint16_t frequency,
                                               int16_t signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        nullptr, wifi, ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
-        frequency, signal_dbm);
+        nullptr, wifi, ssid, bssid.ToString(),
+        WPASupplicant::kNetworkModeInfrastructure, frequency, signal_dbm);
   }
 
   WiFiServiceRefPtr MakeServiceSSID(const std::string& security_class,
@@ -319,8 +319,9 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
       EXPECT_TRUE(false) << sec;
       return nullptr;
     }
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     EXPECT_EQ(security, service->security());
     return service;
@@ -391,9 +392,9 @@ class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
   static const int16_t kOkEndpointSignal = -60;
   static const int16_t kBadEndpointSignal = -75;
   static const int16_t kGoodEndpointSignal = -50;
-  static const char kOkEndpointBssId[];
-  static const char kGoodEndpointBssId[];
-  static const char kBadEndpointBssId[];
+  static const net_base::MacAddress kOkEndpointBssId;
+  static const net_base::MacAddress kGoodEndpointBssId;
+  static const net_base::MacAddress kBadEndpointBssId;
   // Can't be both static and const (because initialization requires a
   // function call). So choose to be just const.
   const uint8_t kOkEndpointStrength;
@@ -406,12 +407,14 @@ class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
   ServiceMockAdaptor& adaptor;
 };
 
-const char WiFiServiceUpdateFromEndpointsTest::kOkEndpointBssId[] =
-    "00:00:00:00:00:01";
-const char WiFiServiceUpdateFromEndpointsTest::kGoodEndpointBssId[] =
-    "00:00:00:00:00:02";
-const char WiFiServiceUpdateFromEndpointsTest::kBadEndpointBssId[] =
-    "00:00:00:00:00:03";
+const net_base::MacAddress WiFiServiceUpdateFromEndpointsTest::kOkEndpointBssId(
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x01);
+const net_base::MacAddress
+    WiFiServiceUpdateFromEndpointsTest::kGoodEndpointBssId(
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x02);
+const net_base::MacAddress
+    WiFiServiceUpdateFromEndpointsTest::kBadEndpointBssId(
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x03);
 
 TEST_F(WiFiServiceTest, Constructor) {
   MakeSimpleService(kSecurityClassNone);
@@ -494,10 +497,10 @@ MATCHER(PSKSecurityArgs, "") {
 }
 
 TEST_F(WiFiServiceTest, ConnectReportBSSes) {
-  WiFiEndpointRefPtr endpoint1 =
-      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
-  WiFiEndpointRefPtr endpoint2 =
-      MakeOpenEndpoint("a", "00:00:00:00:00:02", 0, 0);
+  WiFiEndpointRefPtr endpoint1 = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
+  WiFiEndpointRefPtr endpoint2 = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0, 0);
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassNone);
   wifi_service->AddEndpoint(endpoint1);
   wifi_service->AddEndpoint(endpoint2);
@@ -725,9 +728,12 @@ TEST_F(WiFiServiceTest, ConnectTaskBSSIDAllowlist) {
     // The duped bssid's should get filtered out before we pass it to WPA
     // supplicant.
     std::vector<std::string> duped_bssid_allowlist = {
-        "00:00:00:00:00:01", "00:00:00:00:00:01", "00:00:00:00:00:02"};
-    std::vector<std::string> not_duped_bssid_allowlist = {"00:00:00:00:00:01",
-                                                          "00:00:00:00:00:02"};
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString(),
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString(),
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02).ToString()};
+    std::vector<std::string> not_duped_bssid_allowlist = {
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString(),
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02).ToString()};
     kv.Set<std::string>(WPASupplicant::kNetworkPropertyBSSIDAccept,
                         base::JoinString(not_duped_bssid_allowlist, " "));
     EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, kv, _))
@@ -1012,8 +1018,12 @@ TEST_F(WiFiServiceTest, EndpointMatch) {
     EXPECT_NE(service, nullptr);
     for (auto& e_sec : securities) {
       auto flags = SecurityModeToFlags(e_sec.mode());
-      auto endpoint = MakeEndpoint(ssid, "00:01:02:03:04:05", 2412, 0, flags);
-      auto endpoint2 = MakeEndpoint(ssid2, "01:02:03:04:05:06", 2412, 0, flags);
+      auto endpoint = MakeEndpoint(
+          ssid, net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05), 2412,
+          0, flags);
+      auto endpoint2 = MakeEndpoint(
+          ssid2, net_base::MacAddress(0x01, 0x02, 0x03, 0x04, 0x05, 0x06), 2412,
+          0, flags);
       EXPECT_NE(endpoint, nullptr);
       EXPECT_NE(endpoint2, nullptr);
 
@@ -1035,8 +1045,12 @@ TEST_F(WiFiServiceTest, EndpointMatchTransOwe) {
   EXPECT_NE(service, nullptr);
   // First match public endpoints.
   auto flags = SecurityModeToFlags(WiFiSecurity::kTransOwe);
-  auto endpoint = MakeEndpoint(ssid, "00:01:02:03:04:05", 2412, 0, flags);
-  auto endpoint2 = MakeEndpoint(ssid2, "01:02:03:04:05:06", 2412, 0, flags);
+  auto endpoint = MakeEndpoint(
+      ssid, net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0x05), 2412, 0,
+      flags);
+  auto endpoint2 = MakeEndpoint(
+      ssid2, net_base::MacAddress(0x01, 0x02, 0x03, 0x04, 0x05, 0x06), 2412, 0,
+      flags);
   EXPECT_NE(endpoint, nullptr);
   EXPECT_NE(endpoint2, nullptr);
 
@@ -1048,13 +1062,15 @@ TEST_F(WiFiServiceTest, EndpointMatchTransOwe) {
   flags.rsn_owe = true;
   // "_hidden" suffix and XOR the last byte of BSSID (see the
   // implementation of WiFiEndpoint::MakeEndpoint()).
-  auto hidden =
-      MakeEndpoint(ssid + "_hidden", "00:01:02:03:04:FA", 2412, 0, flags);
+  auto hidden = MakeEndpoint(
+      ssid + "_hidden",
+      net_base::MacAddress(0x00, 0x01, 0x02, 0x03, 0x04, 0xFA), 2412, 0, flags);
   EXPECT_NE(hidden, nullptr);
   EXPECT_TRUE(service->IsMatch(hidden));
 
-  auto hidden2 =
-      MakeEndpoint(ssid2 + "_hidden", "01:02:03:04:05:F9", 2412, 0, flags);
+  auto hidden2 = MakeEndpoint(
+      ssid2 + "_hidden",
+      net_base::MacAddress(0x01, 0x02, 0x03, 0x04, 0x05, 0xF9), 2412, 0, flags);
   EXPECT_NE(hidden2, nullptr);
   EXPECT_FALSE(service->IsMatch(hidden2));
 }
@@ -1081,8 +1097,9 @@ TEST_F(WiFiServiceSecurityTest, EndpointsDisappear) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
   WiFiEndpoint::SecurityFlags flags;
   flags.rsn_psk = true;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+      flags);
   service->AddEndpoint(endpoint);
   EXPECT_EQ(WiFiSecurity::kWpa2, service->security());
   EXPECT_EQ(kSecurityClassPsk, service->security_class());
@@ -1095,16 +1112,17 @@ TEST_F(WiFiServiceSecurityTest, EndpointsDisappear) {
 
 TEST_F(WiFiServiceSecurityTest, EndpointAddRemoveOWE) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-  WiFiEndpointRefPtr open_endpoint =
-      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr open_endpoint = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   service->AddEndpoint(open_endpoint);
   EXPECT_EQ(WiFiSecurity::kNone, service->security());
   EXPECT_EQ(service->key_management(), WPASupplicant::kKeyManagementNone);
 
   WiFiEndpoint::SecurityFlags flags;
   flags.rsn_owe = true;
-  WiFiEndpointRefPtr owe_endpoint =
-      MakeEndpoint(simple_ssid_string(), "00:00:00:00:00:02", 0, 0, flags);
+  WiFiEndpointRefPtr owe_endpoint = MakeEndpoint(
+      simple_ssid_string(),
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0, 0, flags);
   service->AddEndpoint(owe_endpoint);
   EXPECT_EQ(WiFiSecurity::kOwe, service->security());
   EXPECT_EQ(service->key_management(), WPASupplicant::kKeyManagementOWE);
@@ -1118,8 +1136,9 @@ TEST_F(WiFiServiceSecurityTest, EndpointSecurityChange) {
   WiFiServiceRefPtr service = MakeSimpleService(WiFiSecurity::kWpa2);
   WiFiEndpoint::SecurityFlags flags;
   flags.rsn_psk = true;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint(simple_ssid_string(), "00:00:00:00:00:01", 0, 0, flags);
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(
+      simple_ssid_string(),
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0, flags);
   service->AddEndpoint(endpoint);
   EXPECT_EQ(WiFiSecurity::kWpa2, service->security());
 
@@ -1453,8 +1472,9 @@ TEST_F(WiFiServiceTest, Connectable) {
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_psk = true;
     flags.rsn_sae = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     // WPA3-transitional; all devices should support.
     EXPECT_TRUE(service->connectable());
@@ -1464,8 +1484,9 @@ TEST_F(WiFiServiceTest, Connectable) {
     SetPassphrase(service, "abcdefgh");
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_sae = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     EXPECT_EQ(service->security(), WiFiSecurity::kWpa3);
     // WPA3-only; match device support.
@@ -1486,8 +1507,8 @@ TEST_F(WiFiServiceTest, IsAutoConnectable) {
   EXPECT_STREQ(WiFiService::kAutoConnMediumUnavailable, reason);
 
   reason = "";
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   service->AddEndpoint(endpoint);
   EXPECT_CALL(*wifi(), IsIdle()).WillRepeatedly(Return(true));
   EXPECT_TRUE(service->HasEndpoints());
@@ -1511,8 +1532,8 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   service->AutoConnect();
   dispatcher()->DispatchPendingEvents();
 
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   service->AddEndpoint(endpoint);
   EXPECT_CALL(*wifi(), IsIdle()).WillRepeatedly(Return(true));
   EXPECT_TRUE(service->IsAutoConnectable(&reason));
@@ -1528,8 +1549,8 @@ TEST_F(WiFiServiceTest, AutoConnect) {
 
 TEST_F(WiFiServiceTest, IsInAutoConnect) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   service->AddEndpoint(endpoint);
   EXPECT_CALL(*wifi(), IsIdle()).WillRepeatedly(Return(true));
 
@@ -1559,10 +1580,12 @@ TEST_F(WiFiServiceTest, PreferWPA2OverWPA) {
   rsn_flags.rsn_psk = true;
   WiFiEndpoint::SecurityFlags wpa_flags;
   wpa_flags.wpa_psk = true;
-  WiFiEndpointRefPtr rsn_endpoint =
-      MakeEndpoint(ssid0, "00:00:00:00:00:01", 0, 0, rsn_flags);
-  WiFiEndpointRefPtr wpa_endpoint =
-      MakeEndpoint(ssid1, "00:00:00:00:00:02", 0, 0, wpa_flags);
+  WiFiEndpointRefPtr rsn_endpoint = MakeEndpoint(
+      ssid0, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+      rsn_flags);
+  WiFiEndpointRefPtr wpa_endpoint = MakeEndpoint(
+      ssid1, net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0, 0,
+      wpa_flags);
   service0->AddEndpoint(rsn_endpoint);
   service1->AddEndpoint(wpa_endpoint);
 
@@ -1639,7 +1662,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Strengths) {
 TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   // Initial endpoint updates values.
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, kOkEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitStringChanged(kWifiBSsid, kOkEndpointBssId.ToString()));
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, kOkEndpointStrength));
   EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty,
@@ -1653,7 +1677,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   // Endpoint with stronger signal updates values.
   EXPECT_CALL(adaptor,
               EmitUint16Changed(kWifiFrequency, kGoodEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kGoodEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitStringChanged(kWifiBSsid, kGoodEndpointBssId.ToString()));
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, kGoodEndpointStrength));
   EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty,
@@ -1688,7 +1713,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
 
   // Removing optimal endpoint updates values.
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, kOkEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitStringChanged(kWifiBSsid, kOkEndpointBssId.ToString()));
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, kOkEndpointStrength));
   EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty,
@@ -1725,7 +1751,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   // doesn't have the highest signal.
   EXPECT_CALL(adaptor,
               EmitUint16Changed(kWifiFrequency, kBadEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kBadEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitStringChanged(kWifiBSsid, kBadEndpointBssId.ToString()));
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, kBadEndpointStrength));
   EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty,
@@ -1754,7 +1781,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
 
   // Removing the current endpoint is safe and healthy.
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, kOkEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitStringChanged(kWifiBSsid, kOkEndpointBssId.ToString()));
   EXPECT_CALL(adaptor,
               EmitUint8Changed(kSignalStrengthProperty, kOkEndpointStrength));
   EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty,
@@ -1805,7 +1833,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, EndpointModified) {
 
   // Change in optimal Endpoint updates Service properties.
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiFrequency, kOkEndpointFrequency));
-  EXPECT_CALL(adaptor, EmitStringChanged(kWifiBSsid, kOkEndpointBssId));
+  EXPECT_CALL(adaptor,
+              EmitStringChanged(kWifiBSsid, kOkEndpointBssId.ToString()));
   EXPECT_CALL(adaptor, EmitUint8Changed(kSignalStrengthProperty, _));
   EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _));
   ok_endpoint->signal_strength_ = kGoodEndpointSignal + 2;
@@ -1897,8 +1926,10 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
   // Endpoint with same frequency -> frequency remains.
   // Notification may or may not occur -- don't care.
   // Frequency may or may not be repeated in list -- don't care.
-  WiFiEndpointRefPtr same_freq_as_ok_endpoint = MakeOpenEndpoint(
-      simple_ssid_string(), "aa:bb:cc:dd:ee:ff", ok_endpoint->frequency(), 0);
+  WiFiEndpointRefPtr same_freq_as_ok_endpoint =
+      MakeOpenEndpoint(simple_ssid_string(),
+                       net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff),
+                       ok_endpoint->frequency(), 0);
   service->AddEndpoint(same_freq_as_ok_endpoint);
   EXPECT_THAT(service->frequency_list(),
               IsSetwiseEqual(std::set<uint16_t>{kOkEndpointFrequency}));
@@ -1964,8 +1995,9 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
     WiFiEndpoint::SecurityFlags flags;
     flags.wpa_psk = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     EXPECT_EQ(WiFiSecurity::kWpa, service->security());
     EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
@@ -1976,12 +2008,14 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
     WiFiEndpoint::SecurityFlags flags;
     flags.wpa_psk = true;
-    WiFiEndpointRefPtr endpoint1 =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint1 = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint1);
     flags.rsn_psk = true;
-    WiFiEndpointRefPtr endpoint2 =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint2 = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint2);
     EXPECT_EQ(WiFiSecurity::kWpaWpa2, service->security());
     // Service in WPA/WPA2 mixed mode with a pure WPA endpoint should stick to
@@ -1994,8 +2028,9 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_psk = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     EXPECT_EQ(WiFiSecurity::kWpa2, service->security());
     // Downgrade to mixed mode.
@@ -2010,8 +2045,9 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_psk = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     EXPECT_EQ(WiFiSecurity::kWpa2, service->security());
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
@@ -2023,8 +2059,9 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_psk = true;
     flags.rsn_sae = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     EXPECT_EQ(WiFiSecurity::kWpa2Wpa3, service->security());
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
@@ -2035,8 +2072,9 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_sae = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     EXPECT_EQ(WiFiSecurity::kWpa3, service->security());
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
@@ -2058,8 +2096,9 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiServiceRefPtr service = MakeSimpleService(kSecurityClass8021x);
     WiFiEndpoint::SecurityFlags flags;
     flags.wpa_8021x = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
@@ -2070,8 +2109,9 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiServiceRefPtr service = MakeSimpleService(kSecurityClass8021x);
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_8021x = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
@@ -2083,8 +2123,9 @@ TEST_F(WiFiServiceTest, UpdateSecurity) {
     WiFiEndpoint::SecurityFlags flags;
     flags.wpa_8021x = true;
     flags.rsn_8021x = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(endpoint);
     EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
     EXPECT_TRUE(service->key_rotation());
@@ -2110,46 +2151,65 @@ TEST_F(WiFiServiceTest, ComputeCipher8021x) {
   // Single endpoint, various configs.
   {
     std::set<WiFiEndpointConstRefPtr> endpoints;
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, wpa_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        wpa_flags));
     EXPECT_EQ(Service::kCryptoRc4, WiFiService::ComputeCipher8021x(endpoints));
   }
   {
     std::set<WiFiEndpointConstRefPtr> endpoints;
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, rsn_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        rsn_flags));
     EXPECT_EQ(Service::kCryptoAes, WiFiService::ComputeCipher8021x(endpoints));
   }
   {
     std::set<WiFiEndpointConstRefPtr> endpoints;
-    endpoints.insert(
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, wparsn_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        wparsn_flags));
     EXPECT_EQ(Service::kCryptoAes, WiFiService::ComputeCipher8021x(endpoints));
   }
 
   // Multiple endpoints.
   {
     std::set<WiFiEndpointConstRefPtr> endpoints;
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, wpa_flags));
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, wpa_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        wpa_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0, 0,
+        wpa_flags));
     EXPECT_EQ(Service::kCryptoRc4, WiFiService::ComputeCipher8021x(endpoints));
   }
   {
     std::set<WiFiEndpointConstRefPtr> endpoints;
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, wpa_flags));
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, rsn_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        wpa_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0, 0,
+        rsn_flags));
     EXPECT_EQ(Service::kCryptoRc4, WiFiService::ComputeCipher8021x(endpoints));
   }
   {
     std::set<WiFiEndpointConstRefPtr> endpoints;
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, rsn_flags));
-    endpoints.insert(MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, rsn_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        rsn_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0, 0,
+        rsn_flags));
     EXPECT_EQ(Service::kCryptoAes, WiFiService::ComputeCipher8021x(endpoints));
   }
   {
     std::set<WiFiEndpointConstRefPtr> endpoints;
-    endpoints.insert(
-        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, wparsn_flags));
-    endpoints.insert(
-        MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, wparsn_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        wparsn_flags));
+    endpoints.insert(MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0, 0,
+        wparsn_flags));
     EXPECT_EQ(Service::kCryptoAes, WiFiService::ComputeCipher8021x(endpoints));
   }
 }
@@ -2256,11 +2316,11 @@ TEST_F(WiFiServiceTest, GetTethering) {
 
   // Add two endpoints that have a BSSID associated with some Android devices
   // in tethering mode.
-  WiFiEndpointRefPtr endpoint_android1 =
-      MakeOpenEndpoint("a", "02:1a:11:00:00:01", 2412, 0);
+  WiFiEndpointRefPtr endpoint_android1 = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x02, 0x1a, 0x11, 0x00, 0x00, 0x01), 2412, 0);
   service->AddEndpoint(endpoint_android1);
-  WiFiEndpointRefPtr endpoint_android2 =
-      MakeOpenEndpoint("a", "02:1a:11:00:00:02", 2412, 0);
+  WiFiEndpointRefPtr endpoint_android2 = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x02, 0x1a, 0x11, 0x00, 0x00, 0x02), 2412, 0);
   service->AddEndpoint(endpoint_android2);
 
   // Since there are two endpoints, we should not detect tethering mode.
@@ -2284,8 +2344,8 @@ TEST_F(WiFiServiceTest, GetTethering) {
   // Add a different endpoint which has a locally administered MAC address
   // but not one used by Android.
   service->RemoveEndpoint(endpoint_android2);
-  WiFiEndpointRefPtr endpoint_ios =
-      MakeOpenEndpoint("a", "02:00:00:00:00:01", 2412, 0);
+  WiFiEndpointRefPtr endpoint_ios = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x02, 0x00, 0x00, 0x00, 0x00, 0x01), 2412, 0);
   service->AddEndpoint(endpoint_ios);
   EXPECT_EQ(Service::TetheringState::kNotDetected, service->GetTethering());
 
@@ -2309,8 +2369,8 @@ TEST_F(WiFiServiceTest, IsVisible) {
 
   // Adding the first endpoint emits a change: Visible = true.
   EXPECT_CALL(*adaptor, EmitBoolChanged(kVisibleProperty, true));
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   wifi_service->AddEndpoint(endpoint);
   EXPECT_TRUE(wifi_service->IsVisible());
   Mock::VerifyAndClearExpectations(adaptor);
@@ -2482,7 +2542,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPersistentPolicy) {
   base::SimpleTestClock* clock = clock_ptr.get();
   wifi_service->clock_ = std::move(clock_ptr);
   wifi_service->security_ = WiFiSecurity::kWpaWpa2;
-  wifi_service->was_portal_detected_ = 1;
+  wifi_service->was_portal_detected_ = true;
   Error ret;
 
   EXPECT_TRUE(
@@ -2516,7 +2576,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPersistentPolicy) {
   EXPECT_FALSE(mac.mac.has_value());
   EXPECT_FALSE(mac.policy_change);
   EXPECT_EQ(wifi_service->mac_address_.ToString(), addr);
-  wifi_service->was_portal_detected_ = 0;
+  wifi_service->was_portal_detected_ = false;
 
   wifi_service->mac_address_.Clear();
   clock->Advance(MACAddress::kDefaultExpirationTime + base::Seconds(1));
@@ -2540,7 +2600,7 @@ TEST_F(WiFiServiceTest, UpdateMACAddressPolicySwitch) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassNone);
   wifi()->random_mac_supported_ = true;
   wifi_service->security_ = WiFiSecurity::kWpaWpa2;
-  wifi_service->was_portal_detected_ = 1;
+  wifi_service->was_portal_detected_ = true;
   Error ret;
 
   EXPECT_TRUE(
@@ -3041,13 +3101,16 @@ TEST_F(WiFiServiceTest, CompareWithSameTechnology) {
 }
 
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoSuccess) {
-  WiFiEndpointRefPtr ep = MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr ep = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
   service->AddEndpoint(ep);
 
   Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
   EXPECT_EQ(info.ssid, "a");
-  EXPECT_EQ(info.bssid, "00:00:00:00:00:01");
+  EXPECT_EQ(
+      info.bssid,
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString());
   EXPECT_EQ(info.security, Metrics::kWirelessSecurityNone);
 }
 
@@ -3058,7 +3121,8 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoNoBSSID) {
 }
 
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoOUI) {
-  WiFiEndpointRefPtr ep = MakeOpenEndpoint("a", "01:23:45:67:89:ab", 0, 0);
+  WiFiEndpointRefPtr ep = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x01, 0x23, 0x45, 0x67, 0x89, 0xab), 0, 0);
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
   service->AddEndpoint(ep);
 
@@ -3072,8 +3136,9 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoOUI) {
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoLowBand) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
   WiFiEndpoint::SecurityFlags flags;
-  WiFiEndpointRefPtr ep =
-      MakeEndpoint("a", "00:00:00:00:00:01", 2412, -57, flags);
+  WiFiEndpointRefPtr ep = MakeEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 2412, -57,
+      flags);
   service->AddEndpoint(ep);
 
   Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
@@ -3085,8 +3150,9 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoLowBand) {
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoHighBand) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
   WiFiEndpoint::SecurityFlags flags;
-  WiFiEndpointRefPtr ep =
-      MakeEndpoint("a", "00:00:00:00:00:01", 5180, -71, flags);
+  WiFiEndpointRefPtr ep = MakeEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 5180, -71,
+      flags);
   service->AddEndpoint(ep);
 
   Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
@@ -3098,8 +3164,9 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoHighBand) {
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoUltraHighBand) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
   WiFiEndpoint::SecurityFlags flags;
-  WiFiEndpointRefPtr ep =
-      MakeEndpoint("a", "00:00:00:00:00:01", 6115, -40, flags);
+  WiFiEndpointRefPtr ep = MakeEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 6115, -40,
+      flags);
   service->AddEndpoint(ep);
 
   Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
@@ -3113,7 +3180,9 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
     WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_sae = true;
-    WiFiEndpointRefPtr ep = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr ep = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(ep);
 
     Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
@@ -3123,7 +3192,9 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
     WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_psk = true;
-    WiFiEndpointRefPtr ep = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, flags);
+    WiFiEndpointRefPtr ep = MakeEndpoint(
+        "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0,
+        flags);
     service->AddEndpoint(ep);
     Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
     EXPECT_EQ(WiFiSecurity::ToMetricEnum(WiFiSecurity::kWpa2), info.security);
@@ -3132,8 +3203,8 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
 
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoAutoConnection) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   service->AddEndpoint(endpoint);
   // Make sure the WiFi medium will always be available for connection.
   EXPECT_CALL(*wifi(), IsIdle()).WillRepeatedly(Return(true));
@@ -3146,8 +3217,8 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoAutoConnection) {
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoUserInitiatedConnection) {
   Error error;
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
   service->AddEndpoint(endpoint);
   // Make sure the WiFi medium will always be available for connection.
   EXPECT_CALL(*wifi(), IsIdle()).WillRepeatedly(Return(true));
@@ -3168,7 +3239,8 @@ TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
   EXPECT_EQ(empty_list, service->GetBSSIDAllowlist(&error));
 
   // Set some values
-  std::vector<std::string> bssid_allowlist = {"aa:bb:cc:dd:ee:ff"};
+  std::vector<std::string> bssid_allowlist = {
+      net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff).ToString()};
   EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
   EXPECT_EQ(bssid_allowlist, service->GetBSSIDAllowlist(&error));
 
@@ -3182,15 +3254,19 @@ TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
   EXPECT_EQ(bssid_allowlist, service->GetBSSIDAllowlist(&error));
 
   // Single value of zeroes is ok
-  std::vector<std::string> zeroes_bssid_allowlist = {"00:00:00:00:00:00"};
+  std::vector<std::string> zeroes_bssid_allowlist = {
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00).ToString()};
   EXPECT_TRUE(service->SetBSSIDAllowlist(zeroes_bssid_allowlist, &error));
   EXPECT_EQ(zeroes_bssid_allowlist, service->GetBSSIDAllowlist(&error));
 
   // We should filter out dupes
   std::vector<std::string> duped_bssid_allowlist = {
-      "00:00:00:00:00:01", "00:00:00:00:00:01", "00:00:00:00:00:02"};
-  std::vector<std::string> not_duped_bssid_allowlist = {"00:00:00:00:00:01",
-                                                        "00:00:00:00:00:02"};
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString(),
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString(),
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02).ToString()};
+  std::vector<std::string> not_duped_bssid_allowlist = {
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString(),
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02).ToString()};
   EXPECT_TRUE(service->SetBSSIDAllowlist(duped_bssid_allowlist, &error));
   EXPECT_EQ(not_duped_bssid_allowlist, service->GetBSSIDAllowlist(&error));
 
@@ -3200,13 +3276,16 @@ TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
   EXPECT_TRUE(error.type() == Error::kInvalidArguments);
 
   // Can't have zeroes and non-zeroes values at the same time
-  std::vector<std::string> non_zeroes_bssid_allowlist = {"00:00:00:00:00:00",
-                                                         "aa:bb:cc:dd:ee:ff"};
+  std::vector<std::string> non_zeroes_bssid_allowlist = {
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00).ToString(),
+      net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff).ToString()};
   EXPECT_FALSE(service->SetBSSIDAllowlist(non_zeroes_bssid_allowlist, &error));
   EXPECT_TRUE(error.type() == Error::kInvalidArguments);
 
   // Can't have multiple zeroes
-  zeroes_bssid_allowlist = {"00:00:00:00:00:00", "00:00:00:00:00:00"};
+  zeroes_bssid_allowlist = {
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00).ToString(),
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00).ToString()};
   EXPECT_TRUE(service->SetBSSIDAllowlist(zeroes_bssid_allowlist, &error));
   EXPECT_TRUE(error.type() == Error::kInvalidArguments);
 
@@ -3219,7 +3298,8 @@ TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
   EXPECT_CALL(*wifi(), UpdateSupplicantProperties(_, _, _))
       .WillRepeatedly(Return(false));
 
-  std::vector<std::string> new_bssid_allowlist = {"00:00:00:00:00:01"};
+  std::vector<std::string> new_bssid_allowlist = {
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString()};
   EXPECT_FALSE(service->SetBSSIDAllowlist(new_bssid_allowlist, &error));
   EXPECT_EQ(bssid_allowlist, service->GetBSSIDAllowlist(&error));
 }
@@ -3234,7 +3314,8 @@ TEST_F(WiFiServiceTest, BSSIDConnectableEndpoints) {
   // By default, an endpoint is potentially connectable
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint = MakeEndpoint(
-      "a", "00:00:00:00:00:01", /*frequency=*/0, /*signal_dbm=*/0, flags);
+      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01),
+      /*frequency=*/0, /*signal_dbm=*/0, flags);
   service->AddEndpoint(endpoint);
   EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
   EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
@@ -3247,21 +3328,24 @@ TEST_F(WiFiServiceTest, NoBSSIDConnectableEndpoints) {
 
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint = MakeEndpoint(
-      "a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0, /*signal_dbm=*/0, flags);
+      "a", net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff),
+      /*frequency=*/0, /*signal_dbm=*/0, flags);
   service->AddEndpoint(endpoint);
 
   EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
   EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
   EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 
-  std::vector<std::string> bssid_allowlist = {"00:00:00:00:00:00"};
+  std::vector<std::string> bssid_allowlist = {
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00).ToString()};
   Error error;
   EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
   EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
   EXPECT_FALSE(service->HasBSSIDConnectableEndpoints());
   EXPECT_FALSE(service->IsBSSIDConnectable(endpoint));
 
-  bssid_allowlist = {"00:00:00:00:00:01"};
+  bssid_allowlist = {
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString()};
   EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
   EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
   EXPECT_FALSE(service->HasBSSIDConnectableEndpoints());
@@ -3275,7 +3359,8 @@ TEST_F(WiFiServiceTest, AllowlistedBSSIDConnectableEndpoints) {
 
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint = MakeEndpoint(
-      "a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0, /*signal_dbm=*/0, flags);
+      "a", net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff),
+      /*frequency=*/0, /*signal_dbm=*/0, flags);
   service->AddEndpoint(endpoint);
 
   EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
@@ -3283,7 +3368,8 @@ TEST_F(WiFiServiceTest, AllowlistedBSSIDConnectableEndpoints) {
   EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 
   // Allowlist matches endpoints
-  std::vector<std::string> bssid_allowlist = {"aa:bb:cc:dd:ee:ff"};
+  std::vector<std::string> bssid_allowlist = {
+      net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff).ToString()};
   Error error;
   EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
 
@@ -3292,7 +3378,9 @@ TEST_F(WiFiServiceTest, AllowlistedBSSIDConnectableEndpoints) {
   EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 
   // Extra allowlisted BSSIDs don't affect anything
-  bssid_allowlist = {"00:00:00:00:00:01", "aa:bb:cc:dd:ee:ff"};
+  bssid_allowlist = {
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString(),
+      net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff).ToString()};
   EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
 
   EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
@@ -3310,11 +3398,16 @@ TEST_F(WiFiServiceTest, SetBSSIDRequested) {
   EXPECT_EQ("", service->GetBSSIDRequested(&error));
 
   // Set arbitrary value
-  EXPECT_TRUE(service->SetBSSIDRequested("00:00:00:00:00:00", &error));
-  EXPECT_EQ("00:00:00:00:00:00", service->GetBSSIDRequested(&error));
+  EXPECT_TRUE(service->SetBSSIDRequested(
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00).ToString(),
+      &error));
+  EXPECT_EQ(net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00).ToString(),
+            service->GetBSSIDRequested(&error));
 
   // Set same value
-  EXPECT_FALSE(service->SetBSSIDRequested("00:00:00:00:00:00", &error));
+  EXPECT_FALSE(service->SetBSSIDRequested(
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00).ToString(),
+      &error));
 
   // Unparsable hardware address
   EXPECT_FALSE(service->SetBSSIDRequested("foo", &error));
@@ -3336,7 +3429,9 @@ TEST_F(WiFiServiceTest, BSSIDRequestedToSupplicant) {
 
   // Non-empty values should be present though
   Error unused_error;
-  service->SetBSSIDRequested("00:00:00:00:00:01", &unused_error);
+  service->SetBSSIDRequested(
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString(),
+      &unused_error);
   params = service->GetSupplicantConfigurationParameters();
   EXPECT_TRUE(
       params.Contains<std::string>(WPASupplicant::kNetworkPropertyBSSID));
@@ -3350,7 +3445,8 @@ TEST_F(WiFiServiceTest, BSSIDRequestedConnectableEndpoints) {
 
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint = MakeEndpoint(
-      "a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0, /*signal_dbm=*/0, flags);
+      "a", net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff),
+      /*frequency=*/0, /*signal_dbm=*/0, flags);
   service->AddEndpoint(endpoint);
 
   EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
@@ -3358,14 +3454,18 @@ TEST_F(WiFiServiceTest, BSSIDRequestedConnectableEndpoints) {
   EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 
   // Request specific BSSID that's also in |endpoints|
-  EXPECT_TRUE(service->SetBSSIDRequested("aa:bb:cc:dd:ee:ff", &error));
+  EXPECT_TRUE(service->SetBSSIDRequested(
+      net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff).ToString(),
+      &error));
 
   EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
   EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
   EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 
   // Request specific BSSID that's not in |endpoints|
-  EXPECT_TRUE(service->SetBSSIDRequested("00:00:00:00:00:01", &error));
+  EXPECT_TRUE(service->SetBSSIDRequested(
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString(),
+      &error));
 
   EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
   EXPECT_FALSE(service->HasBSSIDConnectableEndpoints());
@@ -3380,12 +3480,16 @@ TEST_F(WiFiServiceTest, BSSIDRequestedAndAllowlistedConnectableEndpoints) {
 
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint = MakeEndpoint(
-      "a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0, /*signal_dbm=*/0, flags);
+      "a", net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff),
+      /*frequency=*/0, /*signal_dbm=*/0, flags);
   service->AddEndpoint(endpoint);
 
   // |endpoint| is requested and in the allowlist
-  EXPECT_TRUE(service->SetBSSIDRequested("aa:bb:cc:dd:ee:ff", &error));
-  std::vector<std::string> bssid_allowlist = {"aa:bb:cc:dd:ee:ff"};
+  EXPECT_TRUE(service->SetBSSIDRequested(
+      net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff).ToString(),
+      &error));
+  std::vector<std::string> bssid_allowlist = {
+      net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff).ToString()};
   EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
 
   EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
@@ -3393,8 +3497,11 @@ TEST_F(WiFiServiceTest, BSSIDRequestedAndAllowlistedConnectableEndpoints) {
   EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 
   // |endpoint| is requested, but not in the allowlist
-  service->SetBSSIDRequested("aa:bb:cc:dd:ee:ff", &error);
-  bssid_allowlist = {"00:00:00:00:00:01"};
+  service->SetBSSIDRequested(
+      net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff).ToString(),
+      &error);
+  bssid_allowlist = {
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString()};
   service->SetBSSIDAllowlist(bssid_allowlist, &error);
 
   EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
@@ -3402,8 +3509,11 @@ TEST_F(WiFiServiceTest, BSSIDRequestedAndAllowlistedConnectableEndpoints) {
   EXPECT_FALSE(service->IsBSSIDConnectable(endpoint));
 
   // |endpoint| is in the allowlist, but not requested
-  service->SetBSSIDRequested("00:00:00:00:00:01", &error);
-  bssid_allowlist = {"aa:bb:cc:dd:ee:ff"};
+  service->SetBSSIDRequested(
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString(),
+      &error);
+  bssid_allowlist = {
+      net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff).ToString()};
   service->SetBSSIDAllowlist(bssid_allowlist, &error);
 
   EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
@@ -3412,8 +3522,11 @@ TEST_F(WiFiServiceTest, BSSIDRequestedAndAllowlistedConnectableEndpoints) {
 
   // |endpoint| is requested, but allowlist is all zeroes (i.e. nothing is
   // connectable)
-  service->SetBSSIDRequested("aa:bb:cc:dd:ee:ff", &error);
-  bssid_allowlist = {"00:00:00:00:00:00"};
+  service->SetBSSIDRequested(
+      net_base::MacAddress(0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff).ToString(),
+      &error);
+  bssid_allowlist = {
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00).ToString()};
   service->SetBSSIDAllowlist(bssid_allowlist, &error);
 
   EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
@@ -3508,9 +3621,9 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDLB) {
   WiFiServiceRefPtr service =
       MakeServiceWithWiFi(kSecurityClassWep, WiFiSecurity::kWep);
   const int kStrength = -42;
-  const std::string kBSSID = "00:00:00:00:00:12";
+  const net_base::MacAddress kBSSID(0x00, 0x00, 0x00, 0x00, 0x00, 0x12);
   service->frequency_ = 2412;
-  service->bssid_ = kBSSID;
+  service->bssid_ = kBSSID.ToString();
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
   auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
@@ -3524,7 +3637,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDLB) {
   service->set_time_resume_to_ready_timer_for_testing(std::move(mock_timer));
 
   // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
+  wifi_device->set_pre_suspend_bssid_for_test(kBSSID.ToString());
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWirelessSecurityWep, -kStrength);
@@ -3556,9 +3669,9 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDHB) {
   WiFiServiceRefPtr service =
       MakeServiceWithWiFi(kSecurityClassWep, WiFiSecurity::kWep);
   const int kStrength = -42;
-  const std::string kBSSID = "00:00:00:00:00:12";
+  const net_base::MacAddress kBSSID(0x00, 0x00, 0x00, 0x00, 0x00, 0x12);
   service->frequency_ = 5180;
-  service->bssid_ = kBSSID;
+  service->bssid_ = kBSSID.ToString();
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
   auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
@@ -3572,7 +3685,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDHB) {
   service->set_time_resume_to_ready_timer_for_testing(std::move(mock_timer));
 
   // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
+  wifi_device->set_pre_suspend_bssid_for_test(kBSSID.ToString());
   ExpectCommonPostReady(Metrics::kWiFiChannel5180,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWirelessSecurityWep, -kStrength);
@@ -3604,9 +3717,9 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUHB) {
   WiFiServiceRefPtr service =
       MakeServiceWithWiFi(kSecurityClassWep, WiFiSecurity::kWep);
   const int kStrength = -42;
-  const std::string kBSSID = "00:00:00:00:00:12";
+  const net_base::MacAddress kBSSID(0x00, 0x00, 0x00, 0x00, 0x00, 0x12);
   service->frequency_ = 6375;
-  service->bssid_ = kBSSID;
+  service->bssid_ = kBSSID.ToString();
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
   auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
@@ -3620,7 +3733,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUHB) {
   service->set_time_resume_to_ready_timer_for_testing(std::move(mock_timer));
 
   // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
+  wifi_device->set_pre_suspend_bssid_for_test(kBSSID.ToString());
   ExpectCommonPostReady(Metrics::kWiFiChannel6375,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWirelessSecurityWep, -kStrength);
@@ -3652,9 +3765,9 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUndef) {
   WiFiServiceRefPtr service =
       MakeServiceWithWiFi(kSecurityClassWep, WiFiSecurity::kWep);
   const int kStrength = -42;
-  const std::string kBSSID = "00:00:00:00:00:12";
+  const net_base::MacAddress kBSSID(0x00, 0x00, 0x00, 0x00, 0x00, 0x12);
   service->frequency_ = 123;
-  service->bssid_ = kBSSID;
+  service->bssid_ = kBSSID.ToString();
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
   auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
@@ -3668,7 +3781,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUndef) {
   service->set_time_resume_to_ready_timer_for_testing(std::move(mock_timer));
 
   // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
+  wifi_device->set_pre_suspend_bssid_for_test(kBSSID.ToString());
   ExpectCommonPostReady(Metrics::kWiFiChannelUndef,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWirelessSecurityWep, -kStrength);

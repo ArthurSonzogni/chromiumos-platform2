@@ -188,19 +188,19 @@ class WiFiEndpointTest : public PropertyStoreTest {
       ControlInterface* control_interface,
       const WiFiRefPtr& wifi,
       const std::string& ssid,
-      const std::string& bssid,
+      net_base::MacAddress bssid,
       const WiFiEndpoint::SecurityFlags& security_flags) {
-    return WiFiEndpoint::MakeEndpoint(control_interface, wifi, ssid, bssid,
-                                      WPASupplicant::kNetworkModeInfrastructure,
-                                      0, 0, security_flags);
+    return WiFiEndpoint::MakeEndpoint(
+        control_interface, wifi, ssid, bssid.ToString(),
+        WPASupplicant::kNetworkModeInfrastructure, 0, 0, security_flags);
   }
 
   WiFiEndpointRefPtr MakeOpenEndpoint(ControlInterface* control_interface,
                                       const WiFiRefPtr& wifi,
                                       const std::string& ssid,
-                                      const std::string& bssid) {
+                                      net_base::MacAddress bssid) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        control_interface, wifi, ssid, bssid,
+        control_interface, wifi, ssid, bssid.ToString(),
         WPASupplicant::kNetworkModeInfrastructure, 0, 0);
   }
 
@@ -399,7 +399,7 @@ TEST_F(WiFiEndpointTest, ParseSecurityNone) {
 
 TEST_F(WiFiEndpointTest, SSIDAndBSSIDString) {
   const char kSSID[] = "The SSID";
-  const char kBSSID[] = "00:01:02:03:04:05";
+  const net_base::MacAddress kBSSID(0x00, 0x01, 0x02, 0x03, 0x04, 0x05);
 
   // The MakeOpenEndpoint method translates both of the above parameters into
   // binary equivalents before calling the Endpoint constructor.  Let's make
@@ -407,12 +407,13 @@ TEST_F(WiFiEndpointTest, SSIDAndBSSIDString) {
   WiFiEndpointRefPtr endpoint =
       MakeOpenEndpoint(nullptr, nullptr, kSSID, kBSSID);
   EXPECT_EQ(kSSID, endpoint->ssid_string());
-  EXPECT_EQ(kBSSID, endpoint->bssid_string());
+  EXPECT_EQ(kBSSID.ToString(), endpoint->bssid_string());
 }
 
 TEST_F(WiFiEndpointTest, SSIDWithNull) {
   WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
-      nullptr, nullptr, std::string(1, 0), "00:00:00:00:00:01");
+      nullptr, nullptr, std::string(1, 0),
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   EXPECT_EQ("?", endpoint->ssid_string());
 }
 
@@ -449,7 +450,9 @@ TEST_F(WiFiEndpointTest, DeterminePhyModeFromFrequency) {
 }
 
 TEST_F(WiFiEndpointTest, ParseIEs) {
-  auto ep = MakeOpenEndpoint(nullptr, nullptr, "TestSSID", "00:00:00:00:00:01");
+  auto ep = MakeOpenEndpoint(
+      nullptr, nullptr, "TestSSID",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   {
     std::vector<uint8_t> ies;
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
@@ -639,7 +642,9 @@ TEST_F(WiFiEndpointTest, ParseIEs) {
 }
 
 TEST_F(WiFiEndpointTest, ParseVendorIEs) {
-  auto ep = MakeOpenEndpoint(nullptr, nullptr, "TestSSID", "00:00:00:00:00:01");
+  auto ep = MakeOpenEndpoint(
+      nullptr, nullptr, "TestSSID",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   {
     ScopedMockLog log;
     EXPECT_CALL(log, Log(logging::LOGGING_WARNING, _,
@@ -872,7 +877,9 @@ TEST_F(WiFiEndpointTest, ParseVendorIEs) {
 }
 
 TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
-  auto ep = MakeOpenEndpoint(nullptr, nullptr, "TestSSID", "00:00:00:00:00:01");
+  auto ep = MakeOpenEndpoint(
+      nullptr, nullptr, "TestSSID",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   {
     std::vector<uint8_t> ies;
     std::vector<uint32_t> authkeys(4, 0);
@@ -912,7 +919,9 @@ TEST_F(WiFiEndpointTest, ParseWPACapabilities) {
 }
 
 TEST_F(WiFiEndpointTest, ParseCountryCode) {
-  auto ep = MakeOpenEndpoint(nullptr, nullptr, "TestSSID", "00:00:00:00:00:01");
+  auto ep = MakeOpenEndpoint(
+      nullptr, nullptr, "TestSSID",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   {
     std::vector<uint8_t> ies;
     Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
@@ -952,7 +961,9 @@ TEST_F(WiFiEndpointTest, ParseCountryCode) {
 }
 
 TEST_F(WiFiEndpointTest, ParseAdvertisementProtocolList) {
-  auto ep = MakeOpenEndpoint(nullptr, nullptr, "TestSSID", "00:00:00:00:00:01");
+  auto ep = MakeOpenEndpoint(
+      nullptr, nullptr, "TestSSID",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   {
     std::vector<uint8_t> ies;
     const std::vector<uint8_t> kAdvProt{0x7f, IEEE_80211::kAdvProtANQP};
@@ -998,7 +1009,9 @@ TEST_F(WiFiEndpointTest, ParseAdvertisementProtocolList) {
 }
 
 TEST_F(WiFiEndpointTest, ParseANQPFields) {
-  auto ep = MakeOpenEndpoint(nullptr, nullptr, "TestSSID", "00:00:00:00:00:01");
+  auto ep = MakeOpenEndpoint(
+      nullptr, nullptr, "TestSSID",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   {
     std::vector<uint8_t> ies;
     AddANQPCapability(IEEE_80211::kANQPCapabilityList, &ies);
@@ -1049,8 +1062,9 @@ TEST_F(WiFiEndpointTest, ParseANQPFields) {
 }
 
 TEST_F(WiFiEndpointTest, PropertiesChangedNone) {
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      nullptr, wifi(), "ssid",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   EXPECT_EQ(kModeManaged, endpoint->network_mode());
   EXPECT_EQ(WiFiSecurity::kNone, endpoint->security_mode());
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
@@ -1061,8 +1075,9 @@ TEST_F(WiFiEndpointTest, PropertiesChangedNone) {
 }
 
 TEST_F(WiFiEndpointTest, PropertiesChangedStrength) {
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      nullptr, wifi(), "ssid",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   KeyValueStore changed_properties;
   int16_t signal_strength = 10;
 
@@ -1076,8 +1091,9 @@ TEST_F(WiFiEndpointTest, PropertiesChangedStrength) {
 }
 
 TEST_F(WiFiEndpointTest, PropertiesChangedNetworkMode) {
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      nullptr, wifi(), "ssid",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   EXPECT_EQ(kModeManaged, endpoint->network_mode());
   // AdHoc mode is not supported. Mode should not change.
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_)).Times(0);
@@ -1089,8 +1105,9 @@ TEST_F(WiFiEndpointTest, PropertiesChangedNetworkMode) {
 }
 
 TEST_F(WiFiEndpointTest, PropertiesChangedFrequency) {
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      nullptr, wifi(), "ssid",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   KeyValueStore changed_properties;
   uint16_t frequency = 2412;
 
@@ -1105,7 +1122,8 @@ TEST_F(WiFiEndpointTest, PropertiesChangedFrequency) {
 
 TEST_F(WiFiEndpointTest, PropertiesChangedHS20Support) {
   WiFiEndpointRefPtr endpoint =
-      MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01",
+      MakeEndpoint(nullptr, wifi(), "ssid",
+                   net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01),
                    WiFiEndpoint::SecurityFlags());
 
   KeyValueStore changed_properties;
@@ -1122,8 +1140,9 @@ TEST_F(WiFiEndpointTest, PropertiesChangedHS20Support) {
 }
 
 TEST_F(WiFiEndpointTest, PropertiesChangedSecurityMode) {
-  WiFiEndpointRefPtr endpoint =
-      MakeOpenEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01");
+  WiFiEndpointRefPtr endpoint = MakeOpenEndpoint(
+      nullptr, wifi(), "ssid",
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
   EXPECT_EQ(WiFiSecurity::kNone, endpoint->security_mode());
 
   // Upgrade to WEP if privacy flag is added.
@@ -1182,7 +1201,8 @@ TEST_F(WiFiEndpointTest, PropertiesChangedANQP) {
   KeyValueStore changed_properties;
   std::vector<uint8_t> ies;
   WiFiEndpointRefPtr endpoint =
-      MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01",
+      MakeEndpoint(nullptr, wifi(), "ssid",
+                   net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01),
                    WiFiEndpoint::SecurityFlags());
 
   // Empty capabilities should not trigger the call.
@@ -1200,7 +1220,8 @@ TEST_F(WiFiEndpointTest, PropertiesChangedANQP) {
 TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
   {
     WiFiEndpointRefPtr endpoint =
-        MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01",
+        MakeEndpoint(nullptr, wifi(), "ssid",
+                     net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01),
                      WiFiEndpoint::SecurityFlags());
     EXPECT_FALSE(endpoint->has_wpa_property());
     EXPECT_FALSE(endpoint->has_rsn_property());
@@ -1209,8 +1230,9 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
   {
     WiFiEndpoint::SecurityFlags flags;
     flags.wpa_psk = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        nullptr, wifi(), "ssid",
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), flags);
     EXPECT_TRUE(endpoint->has_wpa_property());
     EXPECT_FALSE(endpoint->has_rsn_property());
     EXPECT_TRUE(endpoint->has_psk_property());
@@ -1218,8 +1240,9 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
   {
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_8021x = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        nullptr, wifi(), "ssid",
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), flags);
     EXPECT_FALSE(endpoint->has_wpa_property());
     EXPECT_TRUE(endpoint->has_rsn_property());
     EXPECT_FALSE(endpoint->has_psk_property());
@@ -1229,8 +1252,9 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
     WiFiEndpoint::SecurityFlags flags;
     flags.wpa_psk = true;
     flags.rsn_psk = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        nullptr, wifi(), "ssid",
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), flags);
     EXPECT_TRUE(endpoint->has_wpa_property());
     EXPECT_TRUE(endpoint->has_rsn_property());
     EXPECT_TRUE(endpoint->has_psk_property());
@@ -1240,8 +1264,9 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_psk = true;
     flags.rsn_sae = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        nullptr, wifi(), "ssid",
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), flags);
     EXPECT_FALSE(endpoint->has_wpa_property());
     EXPECT_TRUE(endpoint->has_rsn_property());
     EXPECT_TRUE(endpoint->has_psk_property());
@@ -1250,8 +1275,9 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
     // WPA3-SAE only.
     WiFiEndpoint::SecurityFlags flags;
     flags.rsn_sae = true;
-    WiFiEndpointRefPtr endpoint =
-        MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01", flags);
+    WiFiEndpointRefPtr endpoint = MakeEndpoint(
+        nullptr, wifi(), "ssid",
+        net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), flags);
     EXPECT_FALSE(endpoint->has_wpa_property());
     EXPECT_TRUE(endpoint->has_rsn_property());
     EXPECT_FALSE(endpoint->has_psk_property());
@@ -1261,13 +1287,15 @@ TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
 TEST_F(WiFiEndpointTest, HasTetheringSignature) {
   {
     WiFiEndpointRefPtr endpoint =
-        MakeEndpoint(nullptr, wifi(), "ssid", "02:1a:11:00:00:01",
+        MakeEndpoint(nullptr, wifi(), "ssid",
+                     net_base::MacAddress(0x02, 0x1a, 0x11, 0x00, 0x00, 0x01),
                      WiFiEndpoint::SecurityFlags());
     EXPECT_TRUE(endpoint->has_tethering_signature());
   }
   {
     WiFiEndpointRefPtr endpoint =
-        MakeEndpoint(nullptr, wifi(), "ssid", "02:1a:10:00:00:01",
+        MakeEndpoint(nullptr, wifi(), "ssid",
+                     net_base::MacAddress(0x02, 0x1a, 0x10, 0x00, 0x00, 0x01),
                      WiFiEndpoint::SecurityFlags());
     EXPECT_FALSE(endpoint->has_tethering_signature());
     endpoint->vendor_information_.oui_set.insert(Tethering::kIosOui);
@@ -1276,7 +1304,8 @@ TEST_F(WiFiEndpointTest, HasTetheringSignature) {
   }
   {
     WiFiEndpointRefPtr endpoint =
-        MakeEndpoint(nullptr, wifi(), "ssid", "04:1a:10:00:00:01",
+        MakeEndpoint(nullptr, wifi(), "ssid",
+                     net_base::MacAddress(0x04, 0x1a, 0x10, 0x00, 0x00, 0x01),
                      WiFiEndpoint::SecurityFlags());
     EXPECT_FALSE(endpoint->has_tethering_signature());
     endpoint->vendor_information_.oui_set.insert(Tethering::kIosOui);
@@ -1287,7 +1316,8 @@ TEST_F(WiFiEndpointTest, HasTetheringSignature) {
 
 TEST_F(WiFiEndpointTest, Ap80211krvSupported) {
   WiFiEndpointRefPtr endpoint =
-      MakeEndpoint(nullptr, wifi(), "ssid", "00:00:00:00:00:01",
+      MakeEndpoint(nullptr, wifi(), "ssid",
+                   net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01),
                    WiFiEndpoint::SecurityFlags());
   EXPECT_FALSE(endpoint->krv_support().neighbor_list_supported);
   endpoint->supported_features_.krv_support.neighbor_list_supported = true;

@@ -502,13 +502,13 @@ class ManagerTest : public PropertyStoreTest {
       const char* securityClass,
       const WiFiSecurity::Mode mode,
       const WiFiEndpoint::SecurityFlags flags,
-      const std::string& address) {
+      net_base::MacAddress address) {
     MockWiFiServiceRefPtr wifi_service(new NiceMock<MockWiFiService>(
         manager(), wifi_provider_, std::vector<uint8_t>(), "", securityClass,
         WiFiSecurity(mode), false));
     WiFiEndpointRefPtr endpoint = WiFiEndpoint::MakeEndpoint(
-        nullptr, wifi, "", address, WPASupplicant::kNetworkModeInfrastructure,
-        0, 0, flags);
+        nullptr, wifi, "", address.ToString(),
+        WPASupplicant::kNetworkModeInfrastructure, 0, 0, flags);
     // MockWiFiServiceRefPtr wifi_service doesn't call
     // WiFiService::AddEndpoint(), so the endpoint is added to wifi_service here
     wifi_service->endpoints_.insert(endpoint);
@@ -3377,21 +3377,25 @@ TEST_F(ManagerTest, ConnectToMostSecureWiFi) {
 
   WiFiRefPtr wifi = wifi_device;
 
-  MockWiFiServiceRefPtr wifi_service_open =
-      CreateWiFiService(wifi, kSecurityClassNone, WiFiSecurity::kNone,
-                        WiFiEndpoint::SecurityFlags{}, "00:00:00:00:00:01");
+  MockWiFiServiceRefPtr wifi_service_open = CreateWiFiService(
+      wifi, kSecurityClassNone, WiFiSecurity::kNone,
+      WiFiEndpoint::SecurityFlags{},
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01));
 
   MockWiFiServiceRefPtr wifi_service_wep = CreateWiFiService(
       wifi, kSecurityClassWep, WiFiSecurity::kWep,
-      WiFiEndpoint::SecurityFlags{.privacy = true}, "00:00:00:00:00:02");
+      WiFiEndpoint::SecurityFlags{.privacy = true},
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02));
 
   MockWiFiServiceRefPtr wifi_service_wpa_psk = CreateWiFiService(
       wifi, kSecurityClassPsk, WiFiSecurity::kWpa,
-      WiFiEndpoint::SecurityFlags{.wpa_psk = true}, "00:00:00:00:00:03");
+      WiFiEndpoint::SecurityFlags{.wpa_psk = true},
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x03));
 
   MockWiFiServiceRefPtr wifi_service_wep_8021x = CreateWiFiService(
       wifi, kSecurityClassWep, WiFiSecurity::kWep,
-      WiFiEndpoint::SecurityFlags{.privacy = true}, "00:00:00:00:00:04");
+      WiFiEndpoint::SecurityFlags{.privacy = true},
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x04));
   // WiFiService::UpdateSecurity() updates the key_rotation and endpoint_auth of
   // WEP to Is8021x(), which checks if the EAP key management is
   // WPASupplicant::kKeyManagementIeee8021X.
@@ -3401,43 +3405,48 @@ TEST_F(ManagerTest, ConnectToMostSecureWiFi) {
 
   MockWiFiServiceRefPtr wifi_service_wpa_8021x = CreateWiFiService(
       wifi, kSecurityClass8021x, WiFiSecurity::kWpaEnterprise,
-      WiFiEndpoint::SecurityFlags{.wpa_8021x = true}, "00:00:00:00:00:05");
+      WiFiEndpoint::SecurityFlags{.wpa_8021x = true},
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x05));
 
   MockWiFiServiceRefPtr wifi_service_wpawpa2_psk = CreateWiFiService(
       wifi, kSecurityClassPsk, WiFiSecurity::kWpaWpa2,
       WiFiEndpoint::SecurityFlags{.rsn_psk = true, .wpa_psk = true},
-      "00:00:00:00:00:06");
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x06));
 
   MockWiFiServiceRefPtr wifi_service_wpa2_psk = CreateWiFiService(
       wifi, kSecurityClassPsk, WiFiSecurity::kWpa2,
-      WiFiEndpoint::SecurityFlags{.rsn_psk = true}, "00:00:00:00:00:07");
+      WiFiEndpoint::SecurityFlags{.rsn_psk = true},
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x07));
 
   MockWiFiServiceRefPtr wifi_service_wpa2wpa3_psk = CreateWiFiService(
       wifi, kSecurityClassPsk, WiFiSecurity::kWpa2Wpa3,
       WiFiEndpoint::SecurityFlags{.rsn_psk = true, .rsn_sae = true},
-      "00:00:00:00:00:08");
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x08));
 
   MockWiFiServiceRefPtr wifi_service_wpa3_sae = CreateWiFiService(
       wifi, kSecurityClassPsk, WiFiSecurity::kWpa3,
-      WiFiEndpoint::SecurityFlags{.rsn_sae = true}, "00:00:00:00:00:09");
+      WiFiEndpoint::SecurityFlags{.rsn_sae = true},
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x09));
 
   MockWiFiServiceRefPtr wifi_service_wpawpa2_8021x = CreateWiFiService(
       wifi, kSecurityClass8021x, WiFiSecurity::kWpaWpa2Enterprise,
       WiFiEndpoint::SecurityFlags{.rsn_8021x = true, .wpa_8021x = true},
-      "00:00:00:00:00:10");
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x10));
 
   MockWiFiServiceRefPtr wifi_service_wpa2_8021x = CreateWiFiService(
       wifi, kSecurityClass8021x, WiFiSecurity::kWpa2Enterprise,
-      WiFiEndpoint::SecurityFlags{.rsn_8021x = true}, "00:00:00:00:00:11");
+      WiFiEndpoint::SecurityFlags{.rsn_8021x = true},
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x11));
 
   MockWiFiServiceRefPtr wifi_service_wpa2wpa3_8021x = CreateWiFiService(
       wifi, kSecurityClass8021x, WiFiSecurity::kWpa2Wpa3Enterprise,
       WiFiEndpoint::SecurityFlags{.rsn_8021x_wpa3 = true, .rsn_8021x = true},
-      "00:00:00:00:00:12");
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x12));
 
   MockWiFiServiceRefPtr wifi_service_wpa3_8021x = CreateWiFiService(
       wifi, kSecurityClass8021x, WiFiSecurity::kWpa3Enterprise,
-      WiFiEndpoint::SecurityFlags{.rsn_8021x_wpa3 = true}, "00:00:00:00:00:13");
+      WiFiEndpoint::SecurityFlags{.rsn_8021x_wpa3 = true},
+      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x13));
 
   EXPECT_CALL(*wifi_service_open, Connect(_, _)).Times(0);
   EXPECT_CALL(*wifi_service_wep, Connect(_, _)).Times(1);
