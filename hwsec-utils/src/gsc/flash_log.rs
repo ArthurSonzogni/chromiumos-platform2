@@ -68,13 +68,16 @@ pub fn set_log_file_time_base(ctx: &mut impl Context) -> Result<(), HwsecError> 
     Ok(())
 }
 
-fn get_next_u64_from_iterator(iter: &mut SplitAsciiWhitespace) -> Result<u64, HwsecError> {
+fn get_next_u64_from_iterator(
+    iter: &mut SplitAsciiWhitespace,
+    radix: u32,
+) -> Result<u64, HwsecError> {
     match iter.next() {
         None => {
             error!("Failed to parse gsctool log line");
             Err(HwsecError::InternalError)
         }
-        Some(str) => str.parse::<u64>().map_err(|_| {
+        Some(s) => u64::from_str_radix(s, radix).map_err(|_| {
             error!("Failed to parse gsctool log line");
             HwsecError::InternalError
         }),
@@ -92,8 +95,8 @@ fn get_next_u64_from_iterator(iter: &mut SplitAsciiWhitespace) -> Result<u64, Hw
 fn parse_timestamp_and_event_id_from_log_entry(line: &str) -> Result<(u64, u64), HwsecError> {
     let binding = line.trim().replace(':', " ");
     let mut parts = binding.split_ascii_whitespace();
-    let stamp: u64 = get_next_u64_from_iterator(&mut parts)?;
-    let mut event_id: u64 = get_next_u64_from_iterator(&mut parts)?;
+    let stamp: u64 = get_next_u64_from_iterator(&mut parts, 10)?;
+    let mut event_id: u64 = get_next_u64_from_iterator(&mut parts, 16)?;
 
     if event_id == FE_LOG_NVMEM {
         // If event_id is 05, which is FE_LOG_NVMEM, then adopt '200 + the first
@@ -103,7 +106,7 @@ fn parse_timestamp_and_event_id_from_log_entry(line: &str) -> Result<(u64, u64),
 
         // For example, event_id=05, payload[0]=00, then new event id is 200, which
         // is labeled as 'Nvmem Malloc'.
-        let payload_0: u64 = get_next_u64_from_iterator(&mut parts)?;
+        let payload_0: u64 = get_next_u64_from_iterator(&mut parts, 16)?;
         event_id = NVMEM_MALLOC + payload_0;
     } else if event_id == FE_LOG_AP_RO_VERIFICATION {
         // If event_id is 09, which is FE_LOG_AP_RO_VERIFICATION, then adopt
@@ -114,7 +117,7 @@ fn parse_timestamp_and_event_id_from_log_entry(line: &str) -> Result<(u64, u64),
 
         // For example, event_id=09, payload[0]=03, then new event id is 163, which
         // is labeled as 'AP RO Triggered'.
-        let payload_0: u64 = get_next_u64_from_iterator(&mut parts)?;
+        let payload_0: u64 = get_next_u64_from_iterator(&mut parts, 16)?;
         // Ignore the codes less than CHECK_TRIGGERED. They're normal. Verification
         // did not run.
         if payload_0 < APROF_CHECK_TRIGGERED {
@@ -197,6 +200,13 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_ok_hex_event() {
+        let line: &str = "100:0A";
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        assert_eq!(result, Ok((100, 10)));
+    }
+
+    #[test]
     fn test_parse_timestamp_and_event_id_from_log_entry_event_id_is_fe_log_nvmem() {
         use super::FE_LOG_NVMEM;
         use super::NVMEM_MALLOC;
@@ -233,6 +243,13 @@ mod tests {
     #[test]
     fn test_parse_timestamp_and_event_id_from_log_entry_not_integer() {
         let line: &str = "TEST";
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_hex_timestamp() {
+        let line: &str = "A:00";
         let result = parse_timestamp_and_event_id_from_log_entry(line);
         assert_eq!(result, Err(HwsecError::InternalError));
     }
