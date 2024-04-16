@@ -516,10 +516,6 @@ void StatefulMount::MountStateful() {
   }
 }
 
-void StatefulMount::SetStateDevForTest(const base::FilePath& dev) {
-  state_dev_ = dev;
-}
-
 base::FilePath StatefulMount::GetStateDev() {
   return state_dev_;
 }

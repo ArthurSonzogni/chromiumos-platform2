@@ -41,7 +41,6 @@ class StatefulMount {
                     std::string key,
                     base::Value* vars);
 
-  void SetStateDevForTest(const base::FilePath& dev);
   base::FilePath GetStateDev();
   base::FilePath GetDevImage();
 
