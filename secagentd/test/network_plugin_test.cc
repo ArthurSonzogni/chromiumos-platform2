@@ -129,6 +129,45 @@ class NetworkPluginTestFixture : public ::testing::Test {
     EXPECT_TRUE(plugin_->Activate().ok());
   }
 
+  void GenerateHierarchyFromExpectedProcesses(
+      std::vector<std::unique_ptr<pb::Process>>* hierarchy,
+      std::vector<pb::Process>* expected_hierarchy,
+      std::vector<ExpectedProcess> expected) {
+    for (const auto& p : expected) {
+      hierarchy->push_back(std::make_unique<pb::Process>());
+      hierarchy->back()->set_canonical_pid(p.pid);
+      hierarchy->back()->set_canonical_uid(p.uid);
+      hierarchy->back()->set_commandline(p.cmdline);
+      hierarchy->back()->set_rel_start_time_s(p.rel_start_time_s);
+      expected_hierarchy->emplace_back(*hierarchy->back());
+    }
+  }
+
+  absl::Status fillTuple(const char local_addr[],
+                         uint16_t local_port,
+                         const char remote_addr[],
+                         uint16_t remote_port,
+                         bpf::cros_network_protocol protocol,
+                         bpf::cros_synthetic_network_flow* flow) {
+    auto& tuple = flow->flow_map_key.five_tuple;
+    if (inet_pton(AF_INET, local_addr, &tuple.local_addr.addr4) == 1 &&
+        inet_pton(AF_INET, remote_addr, &tuple.remote_addr.addr4) == 1) {
+      tuple.local_port = local_port;
+      tuple.remote_port = remote_port;
+      tuple.family = bpf::CROS_FAMILY_AF_INET;
+      tuple.protocol = protocol;
+      return absl::OkStatus();
+    } else if (inet_pton(AF_INET6, local_addr, tuple.local_addr.addr6) == 1 &&
+               inet_pton(AF_INET6, remote_addr, tuple.remote_addr.addr6) == 1) {
+      tuple.local_port = local_port;
+      tuple.remote_port = remote_port;
+      tuple.family = bpf::CROS_FAMILY_AF_INET6;
+      tuple.protocol = protocol;
+      return absl::OkStatus();
+    }
+    return absl::InternalError("invalid format for ip addresses");
+  }
+
   scoped_refptr<MockSkeletonFactory> skel_factory_;
   scoped_refptr<MockMessageSender> message_sender_;
   scoped_refptr<MockProcessCache> process_cache_;
@@ -194,28 +233,143 @@ TEST_F(NetworkPluginTestFixture, TestWrongBPFEvent) {
       bpf::cros_event{.type = bpf::kProcessEvent});
 }
 
-TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
-  bpf::cros_network_5_tuple tuple;
-  // inet_pton stores in network byte order.
-  inet_pton(AF_INET, "168.152.10.1", &tuple.remote_addr.addr4);
-  inet_pton(AF_INET, "192.168.0.1", &tuple.local_addr.addr4);
-  tuple.local_port = 4591;
-  tuple.remote_port = 5231;
-  tuple.protocol = bpf::CROS_PROTOCOL_TCP;
+TEST_F(NetworkPluginTestFixture, TestSyntheticIpv4FlowEvent) {
+  bpf::cros_synthetic_network_flow flow;
+  constexpr char remote_addr[] = "168.152.10.1";
+  constexpr char local_addr[] = "192.168.0.1";
+  constexpr uint16_t local_port{4591};
+  constexpr uint16_t remote_port{5231};
+  ASSERT_EQ(fillTuple(local_addr, local_port, remote_addr, remote_port,
+                      bpf::CROS_PROTOCOL_TCP, &flow),
+            absl::OkStatus());
 
-  bpf::cros_flow_map_value val;
+  auto& val = flow.flow_map_value;
   val.direction = bpf::CROS_SOCKET_DIRECTION_OUT;
   val.garbage_collect_me = false;
-  val.rx_bytes = 1456;
-  val.tx_bytes = 2563;
+  constexpr uint32_t rx_bytes{1456};
+  constexpr uint32_t tx_bytes{2563};
+  constexpr uint32_t rx_bytes2{rx_bytes + 100};
+  constexpr uint32_t tx_bytes2{tx_bytes + 124};
+  val.rx_bytes = rx_bytes;
+  val.tx_bytes = tx_bytes;
 
-  bpf::cros_synthetic_network_flow flow;
-  flow.flow_map_key.five_tuple = tuple;
   flow.flow_map_value = val;
   flow.flow_map_value.has_full_process_info = false;
   flow.flow_map_value.process_info = kDefaultProcessInfo;
 
-  auto event = CreateCrosFlowEvent(flow);
+  auto flow1 = CreateCrosFlowEvent(flow);
+  std::vector<std::unique_ptr<pb::Process>> hierarchy, hierarchy2;
+  std::vector<pb::Process> expected_hierarchy;
+
+  GenerateHierarchyFromExpectedProcesses(&hierarchy, &expected_hierarchy,
+                                         kDefaultProcessHierarchy);
+  GenerateHierarchyFromExpectedProcesses(&hierarchy2, &expected_hierarchy,
+                                         kDefaultProcessHierarchy);
+
+  auto& process =
+      flow1.data.network_event.data.flow.flow_map_value.process_info.task_info;
+  /* Three flows will be generated but only two events are expected.
+  The second flow has the same tx/rx byte count so it should be ignored.*/
+  EXPECT_CALL(*process_cache_,
+              GetProcessHierarchy(process.pid, process.start_time, 2))
+      .Times(2)
+      .WillOnce(Return(ByMove(std::move(hierarchy))))
+      .WillOnce(Return(ByMove(std::move(hierarchy2))));
+
+  std::unique_ptr<pb::NetworkEventAtomicVariant> actual_sent_event;
+  EXPECT_CALL(*device_user_, GetDeviceUserAsync)
+      .Times(2)
+      .WillRepeatedly(WithArg<0>(Invoke(
+          [](base::OnceCallback<void(const std::string& device_user)> cb) {
+            std::move(cb).Run(kDeviceUser);
+          })));
+
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
+      .Times(2)
+      .WillRepeatedly([&actual_sent_event](
+                          std::unique_ptr<pb::NetworkEventAtomicVariant> e) {
+        actual_sent_event = std::move(e);
+      });
+
+  cbs_.ring_buffer_event_callback.Run(flow1);
+  EXPECT_THAT(expected_hierarchy[0],
+              EqualsProto(actual_sent_event->network_flow().process()));
+  EXPECT_THAT(expected_hierarchy[1],
+              EqualsProto(actual_sent_event->network_flow().parent_process()));
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().local_ip(),
+            local_addr);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().local_port(),
+            local_port);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().remote_ip(),
+            remote_addr);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().remote_port(),
+            remote_port);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().protocol(),
+            pb::TCP);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().direction(),
+            pb::NetworkFlow_Direction_OUTGOING);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().rx_bytes(),
+            rx_bytes);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().tx_bytes(),
+            tx_bytes);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().community_id_v1(),
+            "1:xQuGZjr6e08tldWqhl7702m03YU=");
+
+  // Identical event so no event should be generated.
+  cbs_.ring_buffer_event_callback.Run(flow1);
+
+  // a bit more traffic.
+  val.rx_bytes = rx_bytes2;
+  val.tx_bytes = tx_bytes2;
+  auto flow2 = CreateCrosFlowEvent(flow);
+  cbs_.ring_buffer_event_callback.Run(flow2);
+  EXPECT_THAT(expected_hierarchy[0],
+              EqualsProto(actual_sent_event->network_flow().process()));
+  EXPECT_THAT(expected_hierarchy[1],
+              EqualsProto(actual_sent_event->network_flow().parent_process()));
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().local_ip(),
+            local_addr);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().local_port(),
+            local_port);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().remote_ip(),
+            remote_addr);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().remote_port(),
+            remote_port);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().protocol(),
+            pb::TCP);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().direction(),
+            pb::NetworkFlow_Direction_OUTGOING);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().rx_bytes(),
+            rx_bytes2 - rx_bytes);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().tx_bytes(),
+            tx_bytes2 - tx_bytes);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().community_id_v1(),
+            "1:xQuGZjr6e08tldWqhl7702m03YU=");
+}
+
+TEST_F(NetworkPluginTestFixture, TestSyntheticIpv6FlowEvent) {
+  bpf::cros_synthetic_network_flow flow;
+  constexpr char remote_addr[] = "fd00::65:4cc4:d4ff:fe18:d7b9";
+  constexpr char local_addr[] = "fd00::65:fb92:6a08:5c09:b81";
+  constexpr uint16_t local_port{4591};
+  constexpr uint16_t remote_port{5231};
+  ASSERT_EQ(fillTuple(local_addr, local_port, remote_addr, remote_port,
+                      bpf::CROS_PROTOCOL_TCP, &flow),
+            absl::OkStatus());
+
+  auto& val = flow.flow_map_value;
+  val.direction = bpf::CROS_SOCKET_DIRECTION_OUT;
+  val.garbage_collect_me = false;
+
+  constexpr uint32_t rx_bytes{1456};
+  constexpr uint32_t tx_bytes{2563};
+  val.rx_bytes = rx_bytes;
+  val.tx_bytes = tx_bytes;
+
+  flow.flow_map_value.has_full_process_info = false;
+  flow.flow_map_value.process_info = kDefaultProcessInfo;
+
+  auto flowEvent = CreateCrosFlowEvent(flow);
   std::vector<std::unique_ptr<pb::Process>> hierarchy;
   std::vector<pb::Process> expected_hierarchy;
   for (const auto& p : kDefaultProcessHierarchy) {
@@ -226,8 +380,8 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
     hierarchy.back()->set_rel_start_time_s(p.rel_start_time_s);
     expected_hierarchy.emplace_back(*hierarchy.back());
   }
-  auto& process =
-      event.data.network_event.data.flow.flow_map_value.process_info.task_info;
+  auto& process = flowEvent.data.network_event.data.flow.flow_map_value
+                      .process_info.task_info;
   EXPECT_CALL(*process_cache_,
               GetProcessHierarchy(process.pid, process.start_time, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
@@ -246,47 +400,50 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEvent) {
         actual_sent_event = std::move(e);
       });
 
-  cbs_.ring_buffer_event_callback.Run(event);
+  cbs_.ring_buffer_event_callback.Run(flowEvent);
   EXPECT_THAT(expected_hierarchy[0],
               EqualsProto(actual_sent_event->network_flow().process()));
   EXPECT_THAT(expected_hierarchy[1],
               EqualsProto(actual_sent_event->network_flow().parent_process()));
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().local_ip(),
-            "192.168.0.1");
+            local_addr);
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().local_port(),
-            4591);
+            local_port);
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().remote_ip(),
-            "168.152.10.1");
+            remote_addr);
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().remote_port(),
-            5231);
+            remote_port);
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().protocol(),
             pb::TCP);
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().direction(),
             pb::NetworkFlow_Direction_OUTGOING);
-  EXPECT_EQ(actual_sent_event->network_flow().network_flow().rx_bytes(), 1456);
-  EXPECT_EQ(actual_sent_event->network_flow().network_flow().tx_bytes(), 2563);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().rx_bytes(),
+            rx_bytes);
+  EXPECT_EQ(actual_sent_event->network_flow().network_flow().tx_bytes(),
+            tx_bytes);
   EXPECT_EQ(actual_sent_event->network_flow().network_flow().community_id_v1(),
-            "1:xQuGZjr6e08tldWqhl7702m03YU=");
+            "1:Ri1ArKrJ+g/QrTLp8fPFFQd3jcw=");
 }
 
 TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEventWithFullProcessInfo) {
-  bpf::cros_network_5_tuple tuple;
-  // inet_pton stores in network byte order.
-  inet_pton(AF_INET, "168.152.10.1", &tuple.remote_addr.addr4);
-  inet_pton(AF_INET, "192.168.0.1", &tuple.local_addr.addr4);
-  tuple.local_port = 4591;
-  tuple.remote_port = 5231;
-  tuple.protocol = bpf::CROS_PROTOCOL_TCP;
+  bpf::cros_synthetic_network_flow flow;
 
-  bpf::cros_flow_map_value val;
+  constexpr char remote_addr[] = "168.152.10.1";
+  constexpr char local_addr[] = "192.168.0.1";
+  constexpr uint16_t local_port{4591};
+  constexpr uint16_t remote_port{5231};
+  ASSERT_EQ(fillTuple(local_addr, local_port, remote_addr, remote_port,
+                      bpf::CROS_PROTOCOL_TCP, &flow),
+            absl::OkStatus());
+
+  auto& val = flow.flow_map_value;
   val.direction = bpf::CROS_SOCKET_DIRECTION_OUT;
   val.garbage_collect_me = false;
-  val.rx_bytes = 1456;
-  val.tx_bytes = 2563;
+  constexpr uint32_t rx_bytes{1456};
+  constexpr uint32_t tx_bytes{2563};
+  val.tx_bytes = tx_bytes;
+  val.rx_bytes = rx_bytes;
 
-  bpf::cros_synthetic_network_flow flow;
-  flow.flow_map_key.five_tuple = tuple;
-  flow.flow_map_value = val;
   flow.flow_map_value.has_full_process_info = true;
   flow.flow_map_value.process_info = kDefaultProcessInfo;
 
@@ -352,21 +509,25 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEventWithFullProcessInfo) {
   EXPECT_THAT(expected_hierarchy[0],
               EqualsProto(actual_sent_event.network_flow().parent_process()));
   EXPECT_EQ(actual_sent_event.network_flow().network_flow().local_ip(),
-            "192.168.0.1");
-  EXPECT_EQ(actual_sent_event.network_flow().network_flow().local_port(), 4591);
+            local_addr);
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().local_port(),
+            local_port);
   EXPECT_EQ(actual_sent_event.network_flow().network_flow().remote_ip(),
-            "168.152.10.1");
+            remote_addr);
   EXPECT_EQ(actual_sent_event.network_flow().network_flow().remote_port(),
-            5231);
+            remote_port);
   EXPECT_EQ(actual_sent_event.network_flow().network_flow().protocol(),
             pb::TCP);
   EXPECT_EQ(actual_sent_event.network_flow().network_flow().direction(),
             pb::NetworkFlow_Direction_OUTGOING);
-  EXPECT_EQ(actual_sent_event.network_flow().network_flow().rx_bytes(), 1456);
-  EXPECT_EQ(actual_sent_event.network_flow().network_flow().tx_bytes(), 2563);
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().rx_bytes(),
+            rx_bytes);
+  EXPECT_EQ(actual_sent_event.network_flow().network_flow().tx_bytes(),
+            tx_bytes);
   EXPECT_EQ(actual_sent_event.network_flow().network_flow().community_id_v1(),
             "1:xQuGZjr6e08tldWqhl7702m03YU=");
 }
+
 TEST_F(NetworkPluginTestFixture, TestSSDPFiltering) {
   // UUT should ignore SSDP broadcast traffic from patchpanel.
   const uint32_t kPatchPanelPid{0xDEADBEEF};
@@ -389,14 +550,20 @@ TEST_F(NetworkPluginTestFixture, TestSSDPFiltering) {
   EXPECT_CALL(*batch_sender_, Enqueue(_)).Times(0);
 
   bpf::cros_synthetic_network_flow patchpaneld_flow;
-  auto& patchpaneld_tuple = patchpaneld_flow.flow_map_key.five_tuple;
+
+  constexpr char remote_addr[] = "10.10.10.10";
+  constexpr char local_addr[] = "239.255.255.250";
+  constexpr uint16_t local_port{1900};
+  constexpr uint16_t remote_port{2500};
+  ASSERT_EQ(fillTuple(local_addr, local_port, remote_addr, remote_port,
+                      bpf::CROS_PROTOCOL_UDP, &patchpaneld_flow),
+            absl::OkStatus());
   auto& patchpaneld_value = patchpaneld_flow.flow_map_value;
-  patchpaneld_value.rx_bytes = 24;
-  patchpaneld_value.tx_bytes = 48;
-  inet_pton(AF_INET, "10.10.10.10", &patchpaneld_tuple.remote_addr.addr4);
-  inet_pton(AF_INET, "239.255.255.250", &patchpaneld_tuple.local_addr.addr4);
-  patchpaneld_tuple.local_port = 1900;
-  patchpaneld_tuple.protocol = bpf::CROS_PROTOCOL_UDP;
+  constexpr uint32_t rx_bytes{24};
+  constexpr uint32_t tx_bytes{48};
+  patchpaneld_value.rx_bytes = rx_bytes;
+  patchpaneld_value.tx_bytes = tx_bytes;
+
   patchpaneld_value.direction = bpf::CROS_SOCKET_DIRECTION_OUT;
   patchpaneld_value.process_info.task_info.pid = kPatchPanelPid;
   patchpaneld_value.process_info.task_info.start_time = kPatchPanelStartTime;
