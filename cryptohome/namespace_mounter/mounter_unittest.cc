@@ -1310,14 +1310,6 @@ class MounterEphemeral : public ::testing::Test {
   std::unique_ptr<Mounter> mount_helper_;
   struct statvfs ephemeral_statvfs_;
 
-  base::FilePath EphemeralBackingFile(const Username& username) {
-    const ObfuscatedUsername obfuscated_username =
-        brillo::cryptohome::home::SanitizeUserName(username);
-    return base::FilePath(kEphemeralCryptohomeDir)
-        .Append(kSparseFileDir)
-        .Append(*obfuscated_username);
-  }
-
   base::FilePath EphemeralMountPoint(const Username& username) {
     const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
