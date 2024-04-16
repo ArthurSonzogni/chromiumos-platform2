@@ -24,6 +24,9 @@ const NVMEM_MALLOC: u64 = 200;
 const APRO_OFFSET: u64 = 160;
 const APRO_IGNORE_ENTRY: u64 = APRO_OFFSET;
 
+// Events are reported in 1 byte.
+const EVENT_ID_MAX: u64 = 255;
+
 pub fn read_prev_timestamp_from_file(
     ctx: &mut impl Context,
     file_path: &str,
@@ -125,6 +128,10 @@ fn parse_timestamp_and_event_id_from_log_entry(line: &str) -> Result<(u64, u64),
         } else {
             event_id = APRO_OFFSET + payload_0;
         }
+    }
+
+    if event_id > EVENT_ID_MAX {
+        return Err(HwsecError::InternalError);
     }
     Ok((stamp, event_id))
 }
@@ -250,6 +257,13 @@ mod tests {
     #[test]
     fn test_parse_timestamp_and_event_id_from_log_entry_hex_timestamp() {
         let line: &str = "A:00";
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
+
+    #[test]
+    fn test_parse_event_id_too_large() {
+        let line: &str = "1:100";
         let result = parse_timestamp_and_event_id_from_log_entry(line);
         assert_eq!(result, Err(HwsecError::InternalError));
     }
