@@ -208,20 +208,22 @@ mod tests {
 
     #[test]
     fn test_parse_timestamp_and_event_id_from_log_entry_event_id_is_fe_log_aprv() {
-        use super::FE_LOG_AP_RO_VERIFICATION;
-        use super::APRO_OFFSET;
         use super::APROF_CHECK_TRIGGERED;
+        use super::APRO_OFFSET;
+        use super::FE_LOG_AP_RO_VERIFICATION;
 
-        let line: &str = &format!("{:>10}:{:02x} {:02x}", 1, FE_LOG_AP_RO_VERIFICATION,
-            APROF_CHECK_TRIGGERED);
+        let line: &str = &format!(
+            "{:>10}:{:02x} {:02x}",
+            1, FE_LOG_AP_RO_VERIFICATION, APROF_CHECK_TRIGGERED
+        );
         let result = parse_timestamp_and_event_id_from_log_entry(line);
         assert_eq!(result, Ok((1, APRO_OFFSET + APROF_CHECK_TRIGGERED)));
     }
 
     #[test]
     fn test_parse_timestamp_and_event_id_from_log_entry_event_id_is_fe_log_drop_aprv() {
-        use super::FE_LOG_AP_RO_VERIFICATION;
         use super::APRO_IGNORE_ENTRY;
+        use super::FE_LOG_AP_RO_VERIFICATION;
 
         let line: &str = &format!("{:>10}:{:02x} 02", 1, FE_LOG_AP_RO_VERIFICATION);
         let result = parse_timestamp_and_event_id_from_log_entry(line);
@@ -276,24 +278,32 @@ mod tests {
 
     #[test]
     fn test_gsc_flash_log_multiple_lines_flash_log() {
-        use super::FE_LOG_AP_RO_VERIFICATION;
-        use super::APRO_OFFSET;
         use super::APROF_CHECK_TRIGGERED;
+        use super::APRO_OFFSET;
+        use super::FE_LOG_AP_RO_VERIFICATION;
 
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--machine", "--flog", "0"],
             0,
-            &format!("{:>10}:00\n{:>10}:{:02x} {:02x}\n{:>10}:{:02x} {:02x}", 1,
-                2, FE_LOG_AP_RO_VERIFICATION, APROF_CHECK_TRIGGERED,
-                3, FE_LOG_AP_RO_VERIFICATION, APROF_CHECK_TRIGGERED),
+            &format!(
+                "{:>10}:00\n{:>10}:{:02x} {:02x}\n{:>10}:{:02x} {:02x}",
+                1,
+                2,
+                FE_LOG_AP_RO_VERIFICATION,
+                APROF_CHECK_TRIGGERED,
+                3,
+                FE_LOG_AP_RO_VERIFICATION,
+                APROF_CHECK_TRIGGERED
+            ),
             "",
         );
 
         mock_ctx.cmd_runner().add_metrics_client_expectation(0);
         for _ in 0..2 {
-            mock_ctx.cmd_runner().add_metrics_client_expectation(
-                APRO_OFFSET + APROF_CHECK_TRIGGERED);
+            mock_ctx
+                .cmd_runner()
+                .add_metrics_client_expectation(APRO_OFFSET + APROF_CHECK_TRIGGERED);
         }
 
         let result = gsc_flash_log(&mut mock_ctx, PREV_STAMP);
@@ -302,15 +312,20 @@ mod tests {
 
     #[test]
     fn test_gsc_flash_log_multiple_lines_flash_log_ignore_noop_apro_data() {
-        use super::FE_LOG_AP_RO_VERIFICATION;
         use super::APROF_CHECK_TRIGGERED;
+        use super::FE_LOG_AP_RO_VERIFICATION;
 
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
             vec!["--any", "--machine", "--flog", "0"],
             0,
-            &format!("{:>10}:00\n{:>10}:{:02x} {:02x}", 1,
-                2, FE_LOG_AP_RO_VERIFICATION, APROF_CHECK_TRIGGERED - 1),
+            &format!(
+                "{:>10}:00\n{:>10}:{:02x} {:02x}",
+                1,
+                2,
+                FE_LOG_AP_RO_VERIFICATION,
+                APROF_CHECK_TRIGGERED - 1
+            ),
             "",
         );
 
