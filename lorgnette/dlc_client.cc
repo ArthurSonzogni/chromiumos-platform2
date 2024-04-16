@@ -26,6 +26,7 @@ void DlcClient::Init(
   dlcservice_client_->RegisterDlcStateChangedSignalHandler(
       base::BindRepeating(&DlcClient::OnDlcStateChanged, weak_ptr),
       base::BindOnce(&DlcClient::OnDlcStateChangedConnect, weak_ptr));
+  supported_dlc_ids_ = std::set<std::string>({kSaneBackendsPfuDlcId});
 }
 
 void DlcClient::SetCallbacks(
@@ -36,7 +37,7 @@ void DlcClient::SetCallbacks(
 }
 
 void DlcClient::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
-  if (dlc_state.id() != kSaneBackendsPfuDlcId) {
+  if (supported_dlc_ids_.find(dlc_state.id()) == supported_dlc_ids_.end()) {
     return;
   }
 
@@ -47,16 +48,15 @@ void DlcClient::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
     case dlcservice::DlcState::INSTALLING:
       break;
     case dlcservice::DlcState::NOT_INSTALLED: {
-      std::string err =
-          base::StrCat({"Failed to install DLC: ", kSaneBackendsPfuDlcId,
-                        " Error: ", dlc_state.last_error_code()});
+      std::string err = base::StrCat({"Failed to install DLC: ", dlc_state.id(),
+                                      " Error: ", dlc_state.last_error_code()});
       InvokeErrorCb(err);
       break;
     }
     default:
-      std::string err = base::StrCat(
-          {"Unknown error when installing: ", kSaneBackendsPfuDlcId,
-           " Error: ", dlc_state.last_error_code()});
+      std::string err =
+          base::StrCat({"Unknown error when installing: ", dlc_state.id(),
+                        " Error: ", dlc_state.last_error_code()});
       InvokeErrorCb(err);
       break;
   }

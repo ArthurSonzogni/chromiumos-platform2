@@ -6,6 +6,7 @@
 #define LORGNETTE_DLC_CLIENT_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 
@@ -44,6 +45,7 @@ class DlcClient {
   void InvokeSuccessCb(std::string dlc_root_path);
   void InvokeErrorCb(const std::string& error_msg);
 
+  std::set<std::string> supported_dlc_ids_;
   base::OnceCallback<void(const base::FilePath&)> success_cb_;
   base::OnceCallback<void(const std::string&)> failure_cb_;
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
