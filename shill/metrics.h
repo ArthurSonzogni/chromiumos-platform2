@@ -16,6 +16,7 @@
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
+#include <net-base/mac_address.h>
 
 #include "shill/error.h"
 #include "shill/mockable.h"
@@ -2202,7 +2203,7 @@ class Metrics {
     WiFiChannel channel;
     int rssi;
     std::string ssid;
-    std::string bssid;
+    std::optional<net_base::MacAddress> bssid;
     SSIDProvisioningMode provisioning_mode;
     bool ssid_hidden;
     int ap_oui;

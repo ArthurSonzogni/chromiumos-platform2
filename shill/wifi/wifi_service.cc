@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -22,6 +23,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <net-base/mac_address.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/certificate_file.h"
@@ -93,16 +95,6 @@ static constexpr std::array<const char*, 5> SSIDsExcludedFromRandomization = {
 // "home" Passpoint network.
 constexpr uint64_t kDefaultMatchPriority = WiFiProvider::MatchPriority::kHome;
 
-// Returns true if every element of |bytes| is zero, false otherwise.
-bool IsZero(const ByteArray& bytes) {
-  for (const auto& byte : bytes) {
-    if (byte != 0) {
-      return false;
-    }
-  }
-  return true;
-}
-
 enum class BSSIDAllowlistPolicy {
   kNoneAllowed,
   kAllAllowed,
@@ -110,12 +102,12 @@ enum class BSSIDAllowlistPolicy {
 };
 
 BSSIDAllowlistPolicy GetBSSIDAllowlistPolicy(
-    const std::set<ByteArray>& allowlist) {
+    const std::set<net_base::MacAddress>& allowlist) {
   if (allowlist.size() == 0) {
     // An empty list means nothing is restricted and everything is allowed.
     return BSSIDAllowlistPolicy::kAllAllowed;
   }
-  if (allowlist.size() == 1 && IsZero(*allowlist.begin())) {
+  if (allowlist.size() == 1 && allowlist.begin()->IsZero()) {
     // Special case where a single element of zeroes means don't connect to
     // any AP.
     return BSSIDAllowlistPolicy::kNoneAllowed;
@@ -203,7 +195,7 @@ WiFiService::WiFiService(Manager* manager,
   store->RegisterConstUint16(kWifiFrequency, &frequency_);
   store->RegisterConstUint16s(kWifiFrequencyListProperty, &frequency_list_);
   store->RegisterConstUint16(kWifiPhyMode, &ap_physical_mode_);
-  store->RegisterConstString(kWifiBSsid, &bssid_);
+  HelpRegisterConstDerivedString(kWifiBSsid, &WiFiService::GetBssid);
   store->RegisterConstString(kCountryProperty, &country_code_);
   store->RegisterConstStringmap(kWifiVendorInformationProperty,
                                 &vendor_information_);
@@ -672,7 +664,7 @@ bool WiFiService::Load(const StoreInterface* storage) {
 
   std::string bssid_requested;
   if (storage->GetString(id, kStorageBSSIDRequested, &bssid_requested)) {
-    bssid_requested_ = bssid_requested;
+    bssid_requested_ = net_base::MacAddress::CreateFromString(bssid_requested);
   }
 
   return true;
@@ -732,7 +724,9 @@ bool WiFiService::Save(StoreInterface* storage) {
   Error unused_error;
   storage->SetStringList(id, kStorageBSSIDAllowlist,
                          GetBSSIDAllowlist(&unused_error));
-  storage->SetString(id, kStorageBSSIDRequested, bssid_requested_);
+  storage->SetString(
+      id, kStorageBSSIDRequested,
+      bssid_requested_.has_value() ? bssid_requested_->ToString() : "");
 
   return true;
 }
@@ -760,7 +754,7 @@ bool WiFiService::Unload() {
   PasspointCredentialsRefPtr creds = parent_credentials_;
   parent_credentials_ = nullptr;
   bssid_allowlist_.clear();
-  bssid_requested_.clear();
+  bssid_requested_ = std::nullopt;
   return provider_->OnServiceUnloaded(this, creds);
 }
 
@@ -918,7 +912,8 @@ void WiFiService::SendPostReadyStateMetrics(
         Metrics::kTimerHistogramNumBuckets);
 
     if (wifi_ && !wifi_->pre_suspend_bssid().empty() &&
-        bssid() == wifi_->pre_suspend_bssid()) {
+        (bssid_.has_value() ? bssid_->ToString() : "") ==
+            wifi_->pre_suspend_bssid()) {
       std::string metric_name;
       Metrics::WiFiChannel channel =
           Metrics::WiFiFrequencyToChannel(frequency_);
@@ -1047,13 +1042,13 @@ void WiFiService::OnConnect(Error* error) {
 
 Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   int ap_oui = 0xFFFFFFFF;
-  auto bssid_bytes = Device::MakeHardwareAddressFromString(bssid());
-  if (bssid_bytes.empty()) {
+  if (!bssid_.has_value()) {
     // Log an error but still emit the event (with OUI=0xFFFFFFFF) since the
     // rest of the data is still useful.
     LOG(ERROR) << "Invalid AP BSSID";
   } else {
-    ap_oui = (bssid_bytes[0] << 16) | (bssid_bytes[1] << 8) | (bssid_bytes[2]);
+    ap_oui = (bssid_->data()[0] << 16) | (bssid_->data()[1] << 8) |
+             (bssid_->data()[2]);
   }
 
   Metrics::WiFiConnectionAttemptInfo info;
@@ -1072,7 +1067,7 @@ Metrics::WiFiConnectionAttemptInfo WiFiService::ConnectionAttemptInfo() const {
   info.channel = Metrics::WiFiFrequencyToChannel(frequency());
   info.rssi = SignalLevel();
   info.ssid = friendly_name_;
-  info.bssid = bssid();
+  info.bssid = bssid_;
   info.provisioning_mode = Metrics::kProvisionUnknown;  // TODO(b/203692510)
   info.ssid_hidden = hidden_ssid();
   info.ap_oui = ap_oui;
@@ -1344,9 +1339,9 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
                             base::JoinString(bssid_allowlist, " "));
   }
 
-  if (!bssid_requested_.empty()) {
+  if (bssid_requested_.has_value()) {
     params.Set<std::string>(WPASupplicant::kNetworkPropertyBSSID,
-                            bssid_requested_);
+                            bssid_requested_->ToString());
   }
 
   return params;
@@ -1476,7 +1471,7 @@ void WiFiService::UpdateFromEndpoints() {
   if (representative_endpoint) {
     wifi = representative_endpoint->device();
     if (((current_endpoint_ == representative_endpoint) &&
-         (bssid_ != representative_endpoint->bssid().ToString() ||
+         (bssid_ != representative_endpoint->bssid() ||
           frequency_ != representative_endpoint->frequency())) ||
         abs(representative_endpoint->signal_strength() - raw_signal_strength_) >
             10) {
@@ -1500,7 +1495,7 @@ void WiFiService::UpdateFromEndpoints() {
 
   uint16_t frequency = 0;
   int16_t signal = WiFiService::SignalLevelMin;
-  std::string bssid;
+  std::optional<net_base::MacAddress> bssid = std::nullopt;
   std::string country_code;
   Stringmap vendor_information;
   uint16_t ap_physical_mode = Metrics::kWiFiNetworkPhyModeUndef;
@@ -1511,7 +1506,7 @@ void WiFiService::UpdateFromEndpoints() {
     frequency = representative_endpoint->frequency();
     signal = representative_endpoint->signal_strength();
     raw_signal_strength_ = signal;
-    bssid = representative_endpoint->bssid().ToString();
+    bssid = representative_endpoint->bssid();
     country_code = representative_endpoint->country_code();
     vendor_information = representative_endpoint->GetVendorInformation();
     ap_physical_mode = representative_endpoint->physical_mode();
@@ -1523,7 +1518,8 @@ void WiFiService::UpdateFromEndpoints() {
   }
   if (bssid_ != bssid) {
     bssid_ = bssid;
-    adaptor()->EmitStringChanged(kWifiBSsid, bssid_);
+    adaptor()->EmitStringChanged(kWifiBSsid,
+                                 bssid_.has_value() ? bssid_->ToString() : "");
   }
   if (country_code_ != country_code) {
     country_code_ = country_code;
@@ -1931,6 +1927,10 @@ std::string WiFiService::GetSecurityClass(Error* /*error*/) {
   return security_class();
 }
 
+std::string WiFiService::GetBssid(Error* /*error*/) {
+  return bssid_.has_value() ? bssid_->ToString() : "";
+}
+
 void WiFiService::ClearCachedCredentials() {
   if (wifi_) {
     wifi_->ClearCachedCredentials(this);
@@ -2092,33 +2092,34 @@ Strings WiFiService::GetBSSIDAllowlist(Error* error) {
 
 Strings WiFiService::GetBSSIDAllowlistConst(Error* /*error*/) const {
   Strings bssid_allowlist;
-  for (const ByteArray& bssid : bssid_allowlist_) {
-    bssid_allowlist.push_back(Device::MakeStringFromHardwareAddress(bssid));
+  for (const auto& bssid : bssid_allowlist_) {
+    bssid_allowlist.push_back(bssid.ToString());
   }
   return bssid_allowlist;
 }
 
 bool WiFiService::SetBSSIDAllowlist(const Strings& bssid_allowlist,
                                     Error* error) {
-  std::set<ByteArray> filtered_bssid_allowlist;
+  std::set<net_base::MacAddress> filtered_bssid_allowlist;
   bool found_zero = false;
-  for (const std::string& bssid : bssid_allowlist) {
-    const ByteArray bssid_bytes = Device::MakeHardwareAddressFromString(bssid);
+  for (const std::string& bssid_str : bssid_allowlist) {
+    const std::optional<net_base::MacAddress> bssid =
+        net_base::MacAddress::CreateFromString(bssid_str);
 
-    if (bssid_bytes.empty()) {
+    if (!bssid.has_value()) {
       Error::PopulateAndLog(
           FROM_HERE, error, Error::kInvalidArguments,
           base::StringPrintf("Invalid BSSID '%s' in BSSID allowlist: [%s]",
-                             bssid.c_str(),
+                             bssid_str.c_str(),
                              base::JoinString(bssid_allowlist, ", ").c_str()));
       return false;
     }
 
-    if (IsZero(bssid_bytes)) {
+    if (bssid->IsZero()) {
       found_zero = true;
     }
 
-    filtered_bssid_allowlist.insert(bssid_bytes);
+    filtered_bssid_allowlist.insert(*bssid);
   }
 
   // If there is a zero BSSID, it must be the only element in the list
@@ -2137,9 +2138,8 @@ bool WiFiService::SetBSSIDAllowlist(const Strings& bssid_allowlist,
 
   if (wifi_) {
     Strings strings_bssid_allowlist;
-    for (const auto& bytes : filtered_bssid_allowlist) {
-      strings_bssid_allowlist.push_back(
-          Device::MakeStringFromHardwareAddress(bytes));
+    for (const auto& bssid : filtered_bssid_allowlist) {
+      strings_bssid_allowlist.push_back(bssid.ToString());
     }
     // Try to update WPA supplicant as well.
     KeyValueStore kv;
@@ -2163,29 +2163,28 @@ bool WiFiService::SetBSSIDAllowlist(const Strings& bssid_allowlist,
 }
 
 std::string WiFiService::GetBSSIDRequested(Error* /*error*/) {
-  return bssid_requested_;
+  return bssid_requested_.has_value() ? bssid_requested_->ToString() : "";
 }
 
-bool WiFiService::SetBSSIDRequested(const std::string& bssid_requested,
+bool WiFiService::SetBSSIDRequested(const std::string& bssid_requested_str,
                                     Error* error) {
+  const std::optional<net_base::MacAddress> bssid_requested =
+      net_base::MacAddress::CreateFromString(bssid_requested_str);
   if (bssid_requested_ == bssid_requested) {
     return false;
   }
 
-  if (!bssid_requested.empty()) {
-    const ByteArray bssid_bytes =
-        Device::MakeHardwareAddressFromString(bssid_requested);
-    if (bssid_bytes.empty()) {
-      Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
-                            base::StringPrintf("Invalid BSSID '%s' requested",
-                                               bssid_requested.c_str()));
-      return false;
-    }
+  if (!bssid_requested_str.empty() && !bssid_requested.has_value()) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
+                          base::StringPrintf("Invalid BSSID '%s' requested",
+                                             bssid_requested_str.c_str()));
+    return false;
   }
 
   // Try to update WPA supplicant as well.
   KeyValueStore kv;
-  kv.Set<std::string>(WPASupplicant::kNetworkPropertyBSSID, bssid_requested);
+  kv.Set<std::string>(WPASupplicant::kNetworkPropertyBSSID,
+                      bssid_requested_str);
   if (wifi_ && !wifi_->UpdateSupplicantProperties(this, kv, error)) {
     // We allow a kNotFound error because it's ok if the network rpcid doesn't
     // exist yet. We'll eventually set the BSSID in WPA supplicant on the
@@ -2232,15 +2231,15 @@ bool WiFiService::IsBSSIDConnectable(
     case BSSIDAllowlistPolicy::kNoneAllowed:
       return false;
     case BSSIDAllowlistPolicy::kMatchOnlyAllowed:
-      if (!base::Contains(bssid_allowlist_, endpoint->bssid().ToBytes())) {
+      if (!base::Contains(bssid_allowlist_, endpoint->bssid())) {
         return false;
       }
       [[fallthrough]];
     case BSSIDAllowlistPolicy::kAllAllowed:
       // If there was a specific BSSID requested, then only that one endpoint
       // is considered connectable.
-      return bssid_requested_.empty() ||
-             bssid_requested_ == endpoint->bssid().ToString();
+      return !bssid_requested_.has_value() ||
+             bssid_requested_ == endpoint->bssid();
   }
 }
 

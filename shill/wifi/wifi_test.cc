@@ -1913,9 +1913,10 @@ TEST_F(WiFiMainTest, PreSuspendBSSIDSet) {
   StartWiFi();
   WiFiEndpointRefPtr endpoint;
   SetupConnectedService(RpcIdentifier(""), &endpoint, nullptr);
-  std::string bssid = GetCurrentService()->bssid();
+  const std::optional<net_base::MacAddress> bssid =
+      GetCurrentService()->bssid();
   OnBeforeSuspend();
-  EXPECT_EQ(GetPreSuspendBSSID(), bssid);
+  EXPECT_EQ(GetPreSuspendBSSID(), (bssid.has_value() ? bssid->ToString() : ""));
 }
 
 TEST_F(WiFiMainTest, ResumeWithCurrentService) {

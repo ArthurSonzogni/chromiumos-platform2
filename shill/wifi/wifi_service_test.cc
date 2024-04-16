@@ -3101,16 +3101,16 @@ TEST_F(WiFiServiceTest, CompareWithSameTechnology) {
 }
 
 TEST_F(WiFiServiceTest, ConnectionAttemptInfoSuccess) {
-  WiFiEndpointRefPtr ep = MakeOpenEndpoint(
-      "a", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0, 0);
+  constexpr char kSsid[] = "a";
+  constexpr net_base::MacAddress kBSsid(0x00, 0x00, 0x00, 0x00, 0x00, 0x01);
+
+  WiFiEndpointRefPtr ep = MakeOpenEndpoint(kSsid, kBSsid, 0, 0);
   WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
   service->AddEndpoint(ep);
 
   Metrics::WiFiConnectionAttemptInfo info = GetConnectionAttemptInfo(service);
-  EXPECT_EQ(info.ssid, "a");
-  EXPECT_EQ(
-      info.bssid,
-      net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01).ToString());
+  EXPECT_EQ(info.ssid, kSsid);
+  EXPECT_EQ(info.bssid, kBSsid);
   EXPECT_EQ(info.security, Metrics::kWirelessSecurityNone);
 }
 
@@ -3623,7 +3623,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDLB) {
   const int kStrength = -42;
   const net_base::MacAddress kBSSID(0x00, 0x00, 0x00, 0x00, 0x00, 0x12);
   service->frequency_ = 2412;
-  service->bssid_ = kBSSID.ToString();
+  service->bssid_ = kBSSID;
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
   auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
@@ -3671,7 +3671,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDHB) {
   const int kStrength = -42;
   const net_base::MacAddress kBSSID(0x00, 0x00, 0x00, 0x00, 0x00, 0x12);
   service->frequency_ = 5180;
-  service->bssid_ = kBSSID.ToString();
+  service->bssid_ = kBSSID;
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
   auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
@@ -3719,7 +3719,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUHB) {
   const int kStrength = -42;
   const net_base::MacAddress kBSSID(0x00, 0x00, 0x00, 0x00, 0x00, 0x12);
   service->frequency_ = 6375;
-  service->bssid_ = kBSSID.ToString();
+  service->bssid_ = kBSSID;
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
   auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,
@@ -3767,7 +3767,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUndef) {
   const int kStrength = -42;
   const net_base::MacAddress kBSSID(0x00, 0x00, 0x00, 0x00, 0x00, 0x12);
   service->frequency_ = 123;
-  service->bssid_ = kBSSID.ToString();
+  service->bssid_ = kBSSID;
   service->ap_physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   service->raw_signal_strength_ = kStrength;
   auto* wifi_device = new NiceMock<MockWiFi>(manager(), "wifi", std::nullopt, 0,

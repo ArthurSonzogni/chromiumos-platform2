@@ -2974,8 +2974,11 @@ void WiFi::OnBeforeSuspend(ResultCallback callback) {
   }
   LOG(INFO) << __func__ << ": "
             << (IsConnectedToCurrentService() ? "connected" : "not connected");
-  pre_suspend_bssid_ =
-      IsConnectedToCurrentService() ? current_service_->bssid() : "";
+  if (IsConnectedToCurrentService() && current_service_->bssid().has_value()) {
+    pre_suspend_bssid_ = current_service_->bssid()->ToString();
+  } else {
+    pre_suspend_bssid_ = "";
+  }
   StopScanTimer();
   supplicant_process_proxy()->ExpectDisconnect();
   if (!wake_on_wifi_) {

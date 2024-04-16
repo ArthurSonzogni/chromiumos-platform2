@@ -128,7 +128,7 @@ class WiFiService : public Service {
   const std::string& mode() const { return mode_; }
   const std::string& key_management() const { return GetEAPKeyManagement(); }
   const std::vector<uint8_t>& ssid() const { return ssid_; }
-  const std::string& bssid() const { return bssid_; }
+  std::optional<net_base::MacAddress> bssid() const { return bssid_; }
   const std::vector<uint16_t>& frequency_list() const {
     return frequency_list_;
   }
@@ -467,6 +467,8 @@ class WiFiService : public Service {
   // returned.
   std::string GetSecurityClass(Error* error);
 
+  std::string GetBssid(Error* error);
+
   // Profile data for a WPA/RSN service can be stored under a number of
   // different security types.  These functions create different storage
   // property lists based on whether they are saved with their generic
@@ -574,9 +576,9 @@ class WiFiService : public Service {
   int16_t raw_signal_strength_;
   std::string hex_ssid_;
   std::string storage_identifier_;
-  std::string bssid_;
-  std::string bssid_requested_;
-  std::set<ByteArray> bssid_allowlist_;
+  std::optional<net_base::MacAddress> bssid_;
+  std::optional<net_base::MacAddress> bssid_requested_;
+  std::set<net_base::MacAddress> bssid_allowlist_;
   Stringmap vendor_information_;
   // The country code reported by the current endpoint.
   std::string country_code_;
