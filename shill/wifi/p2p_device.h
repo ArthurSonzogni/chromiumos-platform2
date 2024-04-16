@@ -9,11 +9,11 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <net-base/ipv4_address.h>
-#include "net-base/ipv6_address.h"
 #include <net-base/mac_address.h>
 
 #include "shill/network/network.h"
@@ -119,25 +119,25 @@ class P2PDevice : public LocalDevice,
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
-  void PropertiesChanged(const KeyValueStore& properties) override{};
+  void PropertiesChanged(const KeyValueStore& properties) override {}
   void BSSAdded(const RpcIdentifier& BSS,
-                const KeyValueStore& properties) override{};
-  void BSSRemoved(const RpcIdentifier& BSS) override{};
-  void Certification(const KeyValueStore& properties) override{};
+                const KeyValueStore& properties) override {}
+  void BSSRemoved(const RpcIdentifier& BSS) override {}
+  void Certification(const KeyValueStore& properties) override {}
   void EAPEvent(const std::string& status,
-                const std::string& parameter) override{};
+                const std::string& parameter) override {}
   void InterworkingAPAdded(const RpcIdentifier& BSS,
                            const RpcIdentifier& cred,
-                           const KeyValueStore& properties) override{};
-  void InterworkingSelectDone() override{};
+                           const KeyValueStore& properties) override {}
+  void InterworkingSelectDone() override {}
   void ANQPQueryDone(const std::string& addr,
-                     const std::string& result) override{};
-  void ScanDone(const bool& success) override{};
+                     const std::string& result) override {}
+  void ScanDone(const bool& success) override {}
   void StationAdded(const RpcIdentifier& Station,
-                    const KeyValueStore& properties) override{};
-  void StationRemoved(const RpcIdentifier& Station) override{};
-  void PskMismatch() override{};
-  void TermsAndConditions(const std::string& url) override{};
+                    const KeyValueStore& properties) override {}
+  void StationRemoved(const RpcIdentifier& Station) override {}
+  void PskMismatch() override {}
+  void TermsAndConditions(const std::string& url) override {}
 
   // Implementation of SupplicantP2PDeviceEventDelegateInterface. These
   // methods are called by the P2PManager, in response to events from
@@ -258,7 +258,7 @@ class P2PDevice : public LocalDevice,
   // These helper methods are used to retrieve group properties
   // via wpa_supplicant group proxy.
   String GetGroupSSID() const;
-  String GetGroupBSSID() const;
+  std::optional<net_base::MacAddress> GetGroupBSSID() const;
   Integer GetGroupFrequency() const;
   String GetGroupPassphrase() const;
 
@@ -343,7 +343,7 @@ class P2PDevice : public LocalDevice,
 
   // The wpa_supplicant group properties.
   String group_ssid_;
-  String group_bssid_;
+  std::optional<net_base::MacAddress> group_bssid_;
   Integer group_frequency_;
   String group_passphrase_;
 
@@ -373,7 +373,7 @@ class P2PDevice : public LocalDevice,
 
   // P2P interface address, only available after the link layer is connected.
   std::optional<net_base::MacAddress> interface_address_;
-  // TODO (b/331679921) Remove cached IP address.
+  // TODO(b/331679921): Remove cached IP address.
   // IPv4 address of current device, only available after the network layer has
   // been setup.
   std::optional<net_base::IPv4Address> ipv4_address_;

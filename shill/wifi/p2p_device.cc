@@ -113,7 +113,7 @@ P2PDevice::P2PDevice(Manager* manager,
   supplicant_group_path_ = RpcIdentifier("");
   supplicant_persistent_group_path_ = RpcIdentifier("");
   group_ssid_ = "";
-  group_bssid_ = "";
+  group_bssid_ = std::nullopt;
   group_frequency_ = 0;
   group_passphrase_ = "";
   interface_address_ = std::nullopt;
@@ -205,7 +205,9 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
 
   if (IsLinkLayerConnected()) {
     group_info.Set<String>(kP2PGroupInfoSSIDProperty, group_ssid_);
-    group_info.Set<String>(kP2PGroupInfoBSSIDProperty, group_bssid_);
+    group_info.Set<String>(
+        kP2PGroupInfoBSSIDProperty,
+        group_bssid_.has_value() ? group_bssid_->ToString() : "");
     group_info.Set<Integer>(kP2PGroupInfoFrequencyProperty, group_frequency_);
     group_info.Set<String>(kP2PGroupInfoPassphraseProperty, group_passphrase_);
     group_info.Set<String>(kP2PGroupInfoInterfaceProperty, *link_name());
@@ -239,15 +241,18 @@ KeyValueStore P2PDevice::GetClientInfo() const {
 
   if (IsLinkLayerConnected()) {
     Stringmap go_info;
+    const std::string group_bssid_str =
+        group_bssid_.has_value() ? group_bssid_->ToString() : "";
     client_info.Set<String>(kP2PClientInfoSSIDProperty, group_ssid_);
-    client_info.Set<String>(kP2PClientInfoGroupBSSIDProperty, group_bssid_);
+    client_info.Set<String>(kP2PClientInfoGroupBSSIDProperty, group_bssid_str);
     client_info.Set<Integer>(kP2PClientInfoFrequencyProperty, group_frequency_);
     client_info.Set<String>(kP2PClientInfoPassphraseProperty,
                             group_passphrase_);
     client_info.Set<String>(kP2PClientInfoInterfaceProperty, *link_name());
     client_info.Set<String>(kP2PClientInfoMACAddressProperty,
                             interface_address_.value().ToString());
-    go_info.insert({kP2PClientInfoGroupOwnerMACAddressProperty, group_bssid_});
+    go_info.insert(
+        {kP2PClientInfoGroupOwnerMACAddressProperty, group_bssid_str});
     if (IsNetworkLayerConnected()) {
       client_info.Set<int32_t>(kP2PClientInfoNetworkIDProperty,
                                client_network_->network_id());
@@ -637,13 +642,13 @@ String P2PDevice::GetGroupSSID() const {
   return net_base::byte_utils::ByteStringFromBytes(ssid);
 }
 
-String P2PDevice::GetGroupBSSID() const {
+std::optional<net_base::MacAddress> P2PDevice::GetGroupBSSID() const {
   ByteArray bssid;
   if (!supplicant_group_proxy_->GetBSSID(&bssid)) {
     LOG(ERROR) << log_name() << ": Failed to GetBSSID via Group proxy";
-    return "";
+    return std::nullopt;
   }
-  return net_base::MacAddress::CreateFromBytes(bssid)->ToString();
+  return net_base::MacAddress::CreateFromBytes(bssid);
 }
 
 Integer P2PDevice::GetGroupFrequency() const {
@@ -711,11 +716,12 @@ bool P2PDevice::SetupGroup(const KeyValueStore& properties) {
   }
 
   group_bssid_ = GetGroupBSSID();
-  if (group_bssid_.empty()) {
+  if (!group_bssid_.has_value()) {
     LOG(ERROR) << log_name() << ": Failed to get group BSSID";
     return false;
   } else {
-    LOG(INFO) << log_name() << ": BSSID configured: " << group_bssid_;
+    LOG(INFO) << log_name()
+              << ": BSSID configured: " << group_bssid_->ToString();
   }
 
   group_frequency_ = GetGroupFrequency();
@@ -775,7 +781,7 @@ void P2PDevice::TeardownGroup() {
   // TODO(b/322557062): Ensure that the underlying kernel interface is properly
   // torn down.
   group_ssid_ = "";
-  group_bssid_ = "";
+  group_bssid_ = std::nullopt;
   group_frequency_ = 0;
   group_passphrase_ = "";
   group_peers_.clear();
