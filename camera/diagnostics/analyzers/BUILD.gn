@@ -1,0 +1,29 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("target_defaults") {
+  configs = [ "//camera/build:cros_camera_common" ]
+  pkg_deps = [
+    "libbrillo",
+    "libcros_camera",
+    "libcros_camera_android_deps",
+    "libmojo",
+  ]
+}
+
+source_set("analyzers") {
+  sources = [ "privacy_shutter_analyzer.cc" ]
+
+  public_configs = [ ":target_defaults" ]
+
+  configs += [ "//common-mk:pic" ]
+  deps = [ "//camera/diagnostics:cros_camera_diagnostics_mojom" ]
+
+  if (use.dlc) {
+    sources += [ "dirty_lens_analyzer.cc" ]
+    deps += [ "//camera/diagnostics/libs:blur_detector" ]
+  }
+}

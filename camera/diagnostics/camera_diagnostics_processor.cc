@@ -41,6 +41,7 @@ CameraDiagnosticsProcessor::CameraDiagnosticsProcessor(
     CameraDiagnosticsMojoManager* mojo_manager)
     : thread_("CameraDiagnostics"), mojo_manager_(mojo_manager) {
   CHECK(thread_.Start());
+#if USE_DLC
   // Install blur detector library at startup, since it might take some time to
   // download the DLC.
   mojo_manager_->GetTaskRunner()->PostTask(
@@ -48,6 +49,7 @@ CameraDiagnosticsProcessor::CameraDiagnosticsProcessor(
       base::BindOnce(
           &CameraDiagnosticsProcessor::InstallBlurDetectorDlcOnIpcThread,
           base::Unretained(this)));
+#endif  // USE_DLC
 }
 
 void CameraDiagnosticsProcessor::InstallBlurDetectorDlcOnIpcThread() {

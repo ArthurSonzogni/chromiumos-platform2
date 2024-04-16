@@ -12,4 +12,6 @@ pkg_config("target_defaults") {
 source_set("blur_detector") {
   sources = [ "blur_detector.cc" ]
   public_configs = [ ":target_defaults" ]
+
+  configs += [ "//common-mk:pic" ]
 }

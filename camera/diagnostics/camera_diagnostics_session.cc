@@ -21,7 +21,9 @@
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/common.h"
 #include "cros-camera/common_types.h"
+#if USE_DLC
 #include "diagnostics/analyzers/dirty_lens_analyzer.h"
+#endif  // USE_DLC
 #include "diagnostics/analyzers/privacy_shutter_analyzer.h"
 #include "diagnostics/camera_diagnostics_mojo_manager.h"
 
@@ -115,6 +117,7 @@ CameraDiagnosticsSession::CameraDiagnosticsSession(
   frame_analyzers_.push_back(std::make_unique<PrivacyShutterAnalyzer>());
   LOGF(INFO) << "PrivacyShutterAnalyzer enabled";
 
+#if USE_DLC
   auto dirty_lens_analyzer = std::make_unique<DirtyLensAnalyzer>();
   if (dirty_lens_analyzer->Initialize(blur_detector_dlc_path)) {
     frame_analyzers_.push_back(std::move(dirty_lens_analyzer));
@@ -122,6 +125,7 @@ CameraDiagnosticsSession::CameraDiagnosticsSession(
   } else {
     LOGF(INFO) << "DirtyLensAnalyzer disabled";
   }
+#endif  // USE_DLC
 }
 
 void CameraDiagnosticsSession::RunFrameAnalysis(

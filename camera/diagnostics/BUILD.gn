@@ -22,8 +22,6 @@ generate_mojom_bindings("cros_camera_diagnostics_mojom") {
 
 executable("cros_camera_diagnostics_service") {
   sources = [
-    "analyzers/dirty_lens_analyzer.cc",
-    "analyzers/privacy_shutter_analyzer.cc",
     "camera_diagnostics_main.cc",
     "camera_diagnostics_mojo_manager.cc",
     "camera_diagnostics_processor.cc",
@@ -31,7 +29,10 @@ executable("cros_camera_diagnostics_service") {
     "camera_diagnostics_session.cc",
     "camera_service_controller.cc",
   ]
-  configs += [ "//camera/build:cros_camera_common" ]
+  configs += [
+    "//camera/build:cros_camera_common",
+    ":camera_diagnostics_config",
+  ]
   pkg_deps = [
     "libbrillo",
     "libcros_camera",
@@ -48,10 +49,14 @@ executable("cros_camera_diagnostics_service") {
   ]
   deps = [
     ":cros_camera_diagnostics_mojom",
-    "//camera/diagnostics/libs:blur_detector",
+    "//camera/diagnostics/analyzers:analyzers",
     "//ml_core/dlc:dlc_client",
   ]
   install_path = "bin"
+}
+
+config("camera_diagnostics_config") {
+  defines = [ "USE_DLC=${use.dlc}" ]
 }
 
 install_config("install_cros_camera_diagnostics_conf") {
