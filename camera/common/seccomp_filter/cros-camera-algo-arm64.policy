@@ -26,6 +26,8 @@ faccessat: 1
 faccessat2: 1
 fcntl: 1
 fstat: 1
+# Needed for eeprom anonymous files in libcamera.
+ftruncate: 1
 futex: 1
 getdents64: 1
 getegid: 1
@@ -38,7 +40,8 @@ gettid: 1
 gettimeofday: 1
 getuid: 1
 inotify_init1: 1
-ioctl: arg1 == TCGETS
+# DMA_BUF_IOCTL_SYNC == 1074291200
+ioctl: arg1 == 1074291200 || arg1 == TCGETS
 kill: 1
 listen: 1
 madvise: 1
@@ -58,11 +61,14 @@ prlimit64: 1
 process_vm_readv: 1
 read: 1
 readlinkat: 1
+recvfrom: 1
 recvmsg: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
+sendmsg: 1
 sendto: 1
+setpgid: arg0 == 0 && arg1 == 0
 set_robust_list: 1
 set_tid_address: 1
 setgroups: 1
