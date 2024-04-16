@@ -79,12 +79,6 @@ class ModemFlasher {
       flashed_fw_types_.clear();
     }
 
-    // Used to determine if any FW was installed before reporting metrics.
-    bool fw_flashed_ = false;
-    // Used to preserve the combination of firmware types flashed before
-    // reporting metrics.
-    uint32_t fw_types_flashed_ = 0;
-
    private:
     // Unlike carrier firmware, we should usually successfully flash the main
     // firmware at most once per boot. In the past vendors have failed to
@@ -114,11 +108,14 @@ class ModemFlasher {
 
   base::FilePath GetFirmwarePath(const FirmwareFileInfo& info);
 
-  // Notify UpdateFirmwareComplete failure and reset the |fw_flashed_| flag.
+  // Notify UpdateFirmwareComplete failure.
   void ProcessFailedToPrepareFirmwareFile(const base::Location& code_location,
-                                          FlashState* flash_state,
                                           const std::string& firmware_path,
                                           brillo::ErrorPtr* err);
+
+  void FlashFinished(const std::string& device_id,
+                     const std::string& carrier_id,
+                     uint32_t fw_types_flashed);
 
   uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> flash_cfg);
 

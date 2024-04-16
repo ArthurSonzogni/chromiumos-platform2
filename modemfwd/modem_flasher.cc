@@ -66,15 +66,12 @@ ModemFlasher::ModemFlasher(FirmwareDirectory* firmware_directory,
 
 void ModemFlasher::ProcessFailedToPrepareFirmwareFile(
     const base::Location& code_location,
-    FlashState* flash_state,
     const std::string& firmware_path,
     brillo::ErrorPtr* err) {
   Error::AddTo(err, code_location, kErrorResultFailedToPrepareFirmwareFile,
                base::StringPrintf("Failed to prepare firmware file: %s",
                                   firmware_path.c_str()));
   notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
-  flash_state->fw_flashed_ = false;
-  flash_state->fw_types_flashed_ = 0;
 }
 
 base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,
@@ -129,8 +126,6 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
                            "many times; not flashing",
                            equipment_id.c_str()));
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
-    flash_state->fw_flashed_ = false;
-    flash_state->fw_types_flashed_ = 0;
     return base::OnceClosure();
   }
 
@@ -177,8 +172,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
     auto firmware_file = std::make_unique<FirmwareFile>();
     if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
                                     file_info)) {
-      ProcessFailedToPrepareFirmwareFile(FROM_HERE, flash_state,
-                                         file_info.firmware_path, err);
+      ProcessFailedToPrepareFirmwareFile(FROM_HERE, file_info.firmware_path,
+                                         err);
       return base::OnceClosure();
     }
 
@@ -218,8 +213,8 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
       auto firmware_file = std::make_unique<FirmwareFile>();
       if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
                                       file_info)) {
-        ProcessFailedToPrepareFirmwareFile(FROM_HERE, flash_state,
-                                           file_info.firmware_path, err);
+        ProcessFailedToPrepareFirmwareFile(FROM_HERE, file_info.firmware_path,
+                                           err);
         return base::OnceClosure();
       }
 
@@ -245,10 +240,7 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
   if (flash_cfg.empty()) {
     // This message is used by tests to track the end of flashing.
     LOG(INFO) << "The modem already has the correct firmware installed";
-    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(
-        flash_state->fw_flashed_, flash_state->fw_types_flashed_);
-    flash_state->fw_flashed_ = false;
-    flash_state->fw_types_flashed_ = 0;
+    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false, 0);
     return base::OnceClosure();
   }
   std::vector<std::string> fw_types;
@@ -270,14 +262,10 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
                  "Helper failed to flash firmware files");
     notification_mgr_->NotifyUpdateFirmwareCompletedFlashFailure(
         err->get(), GetFirmwareTypesForMetrics(flash_cfg));
-    flash_state->fw_flashed_ = false;
-    flash_state->fw_types_flashed_ = 0;
     return base::OnceClosure();
   }
   // Report flashing time in successful cases
   metrics_->SendFwFlashTime(base::Time::Now() - start_time);
-  flash_state->fw_flashed_ = true;
-  flash_state->fw_types_flashed_ = GetFirmwareTypesForMetrics(flash_cfg);
 
   for (const auto& info : flash_cfg) {
     std::string fw_type = info.fw_type;
@@ -286,12 +274,21 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
     ELOG(INFO) << "Flashed " << fw_type << " firmware (" << path_for_logging
                << ") to the modem";
   }
-  return base::BindOnce(&Journal::MarkEndOfFlashingFirmware,
-                        base::Unretained(journal_), device_id, current_carrier);
+  return base::BindOnce(&ModemFlasher::FlashFinished, base::Unretained(this),
+                        device_id, current_carrier,
+                        GetFirmwareTypesForMetrics(flash_cfg));
 }
 
 base::FilePath ModemFlasher::GetFirmwarePath(const FirmwareFileInfo& info) {
   return firmware_directory_->GetFirmwarePath().Append(info.firmware_path);
+}
+
+void ModemFlasher::FlashFinished(const std::string& device_id,
+                                 const std::string& carrier_id,
+                                 uint32_t fw_types_flashed) {
+  journal_->MarkEndOfFlashingFirmware(device_id, carrier_id);
+  notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(true,
+                                                          fw_types_flashed);
 }
 
 }  // namespace modemfwd
