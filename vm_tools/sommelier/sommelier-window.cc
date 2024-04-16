@@ -692,11 +692,18 @@ void sl_internal_toplevel_configure_state(struct sl_window* window,
       window->compositor_fullscreen = 1;
     }
     if (*state == XDG_TOPLEVEL_STATE_MAXIMIZED) {
+      bool force_x11_unmaximize = false;
+#ifdef QUIRKS_SUPPORT
+      force_x11_unmaximize = window->ctx->quirks.IsEnabled(
+          window, quirks::FEATURE_FORCE_X11_UNMAXIMIZE);
+#endif
       window->allow_resize = 0;
-      window->next_config.states[state_idx++] =
-          window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
-      window->next_config.states[state_idx++] =
-          window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
+      if (!force_x11_unmaximize) {
+        window->next_config.states[state_idx++] =
+            window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
+        window->next_config.states[state_idx++] =
+            window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
+      }
     }
     if (*state == XDG_TOPLEVEL_STATE_ACTIVATED) {
       activated = true;
@@ -735,11 +742,18 @@ void sl_internal_toplevel_configure_state_containerized(
 
   // Ditto as above, but maximize state.
   if (window->maximized) {
+    bool force_x11_unmaximize = false;
+#ifdef QUIRKS_SUPPORT
+    force_x11_unmaximize = window->ctx->quirks.IsEnabled(
+        window, quirks::FEATURE_FORCE_X11_UNMAXIMIZE);
+#endif
     window->allow_resize = 0;
-    window->next_config.states[state_idx++] =
-        window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
-    window->next_config.states[state_idx++] =
-        window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
+    if (!force_x11_unmaximize) {
+      window->next_config.states[state_idx++] =
+          window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_VERT].value;
+      window->next_config.states[state_idx++] =
+          window->ctx->atoms[ATOM_NET_WM_STATE_MAXIMIZED_HORZ].value;
+    }
   }
 
   sl_array_for_each(state, states) {
