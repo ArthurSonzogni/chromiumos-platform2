@@ -166,6 +166,8 @@ bool RuntimeProbeClientImpl::ProbeSsfcComponents(
                    use_customized_identifier, components);
   AppendComponents(rmad::RMAD_COMPONENT_TOUCHSCREEN, reply.touchscreen(),
                    use_customized_identifier, components);
+  AppendComponents(rmad::RMAD_COMPONENT_CAMERA, reply.camera(),
+                   use_customized_identifier, components);
 
   return true;
 }
