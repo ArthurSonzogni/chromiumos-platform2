@@ -22,7 +22,7 @@ pub mod intel_device {
     use crate::common;
     use crate::common::read_from_file;
     use crate::common::GameMode;
-    use crate::cpu_scaling::DeviceCpuStatus;
+    use crate::x86_64::cpu_scaling::DeviceCpuStatus;
 
     // Device path for cpuinfo.
     const CPUINFO_PATH: &str = "proc/cpuinfo";
@@ -392,7 +392,8 @@ pub mod amd_device {
         /// Auto mode ignores any system clock values.
         Auto,
 
-        /// Manual mode will use any selected system clock value.  If a system clock wasn't explicitly selected, the system will use the last selected value or boot time default.
+        /// Manual mode will use any selected system clock value.  If a system clock wasn't
+        /// explicitly selected, the system will use the last selected value or boot time default.
         Manual,
     }
 
@@ -499,7 +500,8 @@ pub mod amd_device {
         ///
         /// # Arguments
         ///
-        /// * `req_mode` - requested GPU system clock.  This will be an integer mapping to available sclk options.
+        /// * `req_mode` - requested GPU system clock.  This will be an integer mapping to
+        ///   available sclk options.
         fn set_sclk_mode(&self, req_mode: u32) -> Result<()> {
             // Bounds check before trying to set sclk
             let (sclk_modes, selected) = self.get_sclk_modes()?;
@@ -592,7 +594,8 @@ pub mod amd_device {
         Ok(())
     }
 
-    /// Cleanup function to return GPU to _auto_ mode if applicable.  Will force to auto sclk regardless of initial state or intermediate changes.
+    /// Cleanup function to return GPU to _auto_ mode if applicable.  Will force to auto sclk
+    /// regardless of initial state or intermediate changes.
     ///
     /// # Arguments
     ///
@@ -617,12 +620,12 @@ mod tests {
 
     use tempfile::tempdir;
 
+    use super::amd_device::AmdDeviceConfig;
     use super::intel_device::IntelGpuDeviceConfig;
     use super::*;
     use crate::common;
-    use crate::cpu_scaling::DeviceCpuStatus;
-    use crate::gpu_freq_scaling::amd_device::AmdDeviceConfig;
     use crate::test_utils::*;
+    use crate::x86_64::cpu_scaling::DeviceCpuStatus;
 
     #[test]
     fn test_intel_malformed_root() {

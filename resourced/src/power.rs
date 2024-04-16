@@ -30,9 +30,9 @@ use crate::cpu_utils::hotplug_cpus;
 use crate::cpu_utils::write_to_cpu_policy_patterns;
 use crate::cpu_utils::HotplugCpuAction;
 #[cfg(target_arch = "x86_64")]
-use crate::globals::read_dynamic_epp_feature;
+use crate::x86_64::globals::read_dynamic_epp_feature;
 #[cfg(target_arch = "x86_64")]
-use crate::globals::set_rtc_fs_signal_state;
+use crate::x86_64::globals::set_rtc_fs_signal_state;
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
 const POWER_SUPPLY_ONLINE: &str = "online";
@@ -128,7 +128,11 @@ impl PowerSourceProvider for DirectoryPowerSourceProvider {
             let status_string = match read_to_string(&status_path) {
                 Ok(data) => data,
                 Err(e) => {
-                    info!("Error reading status from {}, error: {}", status_path.display(), e);
+                    info!(
+                        "Error reading status from {}, error: {}",
+                        status_path.display(),
+                        e
+                    );
                     // On some boards, reading some power supply status may return ENODATA, it's an
                     // uncategorized Rust IO error kind. Continue checking other power supplies.
                     continue;

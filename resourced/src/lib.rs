@@ -18,26 +18,11 @@ mod qos;
 mod vm_concierge_client;
 mod vm_memory_management_client;
 
-#[cfg(target_arch = "x86_64")]
-mod auto_epp;
-
-#[cfg(target_arch = "x86_64")]
-mod globals;
-
-#[cfg(target_arch = "x86_64")]
-mod auto_epp_config;
-
 #[cfg(test)]
 mod test_utils;
 
-#[cfg(target_arch = "x86_64")]
-pub mod cgroup_x86_64;
-
-#[cfg(target_arch = "x86_64")]
-mod gpu_freq_scaling;
-
-#[cfg(target_arch = "x86_64")]
-mod cpu_scaling;
-
 #[cfg(feature = "vm_grpc")]
 mod vm_grpc;
+
+#[cfg(target_arch = "x86_64")]
+mod x86_64;

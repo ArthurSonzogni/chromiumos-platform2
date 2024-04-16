@@ -559,14 +559,14 @@ mod tests {
 
         std::fs::write(
             path.join("cpuinfo"),
-            "model name	: Intel(R) Core(TM) i7-4700HQ CPU @ 2.40GHz",
+            "model name : Intel(R) Core(TM) i7-4700HQ CPU @ 2.40GHz",
         )
         .unwrap();
         assert!(intel_i7_or_above(Path::new(root.path())).unwrap());
 
         std::fs::write(
             path.join("cpuinfo"),
-            "model name	: Intel(R) Core(TM) i5-4400HQ CPU @ 2.20GHz",
+            "model name : Intel(R) Core(TM) i5-4400HQ CPU @ 2.20GHz",
         )
         .unwrap();
         assert!(!intel_i7_or_above(Path::new(root.path())).unwrap());

@@ -19,27 +19,27 @@ use log::info;
 use log::warn;
 use once_cell::sync::Lazy;
 
-#[cfg(target_arch = "x86_64")]
-use crate::cgroup_x86_64::media_dynamic_cgroup;
-#[cfg(target_arch = "x86_64")]
-use crate::cgroup_x86_64::MediaDynamicCgroupAction;
 use crate::config;
-#[cfg(target_arch = "x86_64")]
-use crate::cpu_scaling::double_min_freq;
-#[cfg(target_arch = "x86_64")]
-use crate::cpu_scaling::intel_i7_or_above;
-#[cfg(target_arch = "x86_64")]
-use crate::cpu_scaling::set_min_cpu_freq;
-#[cfg(target_arch = "x86_64")]
-use crate::globals::read_dynamic_epp_feature;
-#[cfg(target_arch = "x86_64")]
-use crate::globals::set_media_cgroup_state;
-#[cfg(target_arch = "x86_64")]
-use crate::gpu_freq_scaling::intel_device;
 use crate::memory;
 use crate::power;
 use crate::power::DirectoryPowerSourceProvider;
 use crate::power::PowerSourceProvider;
+#[cfg(target_arch = "x86_64")]
+use crate::x86_64::cgroup_x86_64::media_dynamic_cgroup;
+#[cfg(target_arch = "x86_64")]
+use crate::x86_64::cgroup_x86_64::MediaDynamicCgroupAction;
+#[cfg(target_arch = "x86_64")]
+use crate::x86_64::cpu_scaling::double_min_freq;
+#[cfg(target_arch = "x86_64")]
+use crate::x86_64::cpu_scaling::intel_i7_or_above;
+#[cfg(target_arch = "x86_64")]
+use crate::x86_64::cpu_scaling::set_min_cpu_freq;
+#[cfg(target_arch = "x86_64")]
+use crate::x86_64::globals::read_dynamic_epp_feature;
+#[cfg(target_arch = "x86_64")]
+use crate::x86_64::globals::set_media_cgroup_state;
+#[cfg(target_arch = "x86_64")]
+use crate::x86_64::gpu_freq_scaling::intel_device;
 
 // Paths for RPS up/down threshold relative to rootdir.
 const DEVICE_RPS_PATH_UP: &str = "sys/class/drm/card0/gt/gt0/rps_up_threshold_pct";

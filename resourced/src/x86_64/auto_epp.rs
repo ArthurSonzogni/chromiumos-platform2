@@ -17,20 +17,20 @@ use log::warn;
 use tokio::time::Instant;
 
 // Configuration parameters import
-use crate::auto_epp_config::Epp;
-use crate::auto_epp_config::ThresholdsIntel;
-use crate::auto_epp_config::TimeConstantsIntel;
-use crate::auto_epp_config::IS_MTL;
-use crate::auto_epp_config::MAX_CONSECUTIVE_ERRORS;
-use crate::auto_epp_config::PREVENT_OVERTURBO;
-use crate::cpu_utils::write_to_cpu_policy_patterns;
+use super::auto_epp_config::Epp;
+use super::auto_epp_config::ThresholdsIntel;
+use super::auto_epp_config::TimeConstantsIntel;
+use super::auto_epp_config::IS_MTL;
+use super::auto_epp_config::MAX_CONSECUTIVE_ERRORS;
+use super::auto_epp_config::PREVENT_OVERTURBO;
 // globals
-use crate::globals::read_bsm_signal_state;
-use crate::globals::read_dynamic_epp_feature;
-use crate::globals::read_media_cgroup_state;
-use crate::globals::read_rtc_fs_signal_state;
-use crate::globals::set_autoepp_running_status;
-use crate::globals::set_dynamic_epp_feature;
+use super::globals::read_bsm_signal_state;
+use super::globals::read_dynamic_epp_feature;
+use super::globals::read_media_cgroup_state;
+use super::globals::read_rtc_fs_signal_state;
+use super::globals::set_autoepp_running_status;
+use super::globals::set_dynamic_epp_feature;
+use crate::cpu_utils::write_to_cpu_policy_patterns;
 
 // File path
 const STAT_FILE_PATH: &str = "/proc/stat";
@@ -470,15 +470,15 @@ mod tests {
     use tokio::time::Duration;
     use tokio::time::Instant;
 
-    use crate::auto_epp::calculate_epp_duration;
-    use crate::auto_epp::calculate_rc6_residency;
-    use crate::auto_epp::parse_cpu_stats;
-    use crate::auto_epp::read_and_parse_cpu_stats;
-    use crate::auto_epp::CpuStats;
-    use crate::auto_epp::CpuStatsContext;
-    use crate::auto_epp::EppCalculationArgs;
-    use crate::auto_epp_config::Epp;
-    use crate::auto_epp_config::TimeConstantsIntel;
+    use super::calculate_epp_duration;
+    use super::calculate_rc6_residency;
+    use super::parse_cpu_stats;
+    use super::read_and_parse_cpu_stats;
+    use super::CpuStats;
+    use super::CpuStatsContext;
+    use super::EppCalculationArgs;
+    use crate::x86_64::auto_epp_config::Epp;
+    use crate::x86_64::auto_epp_config::TimeConstantsIntel;
 
     const GPU_RC6_PATH_1: &str = "/tmp/gpu_rc6_residency_1.txt";
 
