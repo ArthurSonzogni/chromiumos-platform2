@@ -294,7 +294,6 @@ mod tests {
     #[test]
     fn test_gsc_flash_log_multiple_lines_flash_log_ignore_noop_apro_data() {
         use super::FE_LOG_AP_RO_VERIFICATION;
-        use super::APRO_OFFSET;
         use super::APROF_CHECK_TRIGGERED;
 
         let mut mock_ctx = MockContext::new();
