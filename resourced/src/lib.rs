@@ -21,8 +21,5 @@ mod vm_memory_management_client;
 #[cfg(test)]
 mod test_utils;
 
-#[cfg(feature = "vm_grpc")]
-mod vm_grpc;
-
 #[cfg(target_arch = "x86_64")]
 mod x86_64;

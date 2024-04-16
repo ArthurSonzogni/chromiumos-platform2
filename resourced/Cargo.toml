@@ -4,9 +4,6 @@ version = "0.1.0"
 authors = ["The ChromiumOS Authors"]
 edition = "2021"
 
-# Build the GRPC APIs only when feature vm_grpc is enabled.
-build = "src/vm_grpc/proto/build.rs"
-
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [profile.release]
@@ -62,11 +59,6 @@ futures-util = { version = "0.3", features = ["sink"] , default-features = false
 featured = {  path = "../../../src/platform2/featured/rust-client" } # ignored by ebuild
 grpcio-sys = {  path = "../../../chroot/usr/lib/cros_rust_registry/registry/grpcio-sys-0.9.1+1.38.0/" } # ignored by ebuild
 metrics_rs = { path = "../metrics/rust-client/" } # ignored by ebuild
-
-[[example]]
-name = "test_client_v2"
-path = "./src/vm_grpc/test_client/client_v2.rs"
-required-features = ["vm_grpc"]
 
 [build-dependencies]
 protoc-grpcio = "2.0.0"
