@@ -47,11 +47,6 @@ constexpr base::TimeDelta kProbeInitialDelay = base::Seconds(1);
 constexpr base::TimeDelta kProbeMaximumDelay = base::Hours(1);
 constexpr float kProbeRetryMultiplier = 1.5;
 
-// For TCP, DNS has an additional 2-bytes header representing the length
-// of the query. A 2-bytes padding length is added to the receiving buffer,
-// so it is 4-bytes aligned.
-constexpr int kTCPBufferPaddingLength = 2;
-
 // The size of TCP header representing the length of the DNS query.
 constexpr int kDNSTCPHeaderLength = 2;
 
@@ -153,20 +148,42 @@ std::ostream& operator<<(std::ostream& stream, const Resolver& resolver) {
   return stream;
 }
 
-Resolver::SocketFd::SocketFd(int type, int fd)
+Resolver::SocketFd::SocketFd(int type, int fd, size_t buf_size)
     : type(type),
       fd(fd),
       len(0),
       num_retries(0),
       num_active_queries(0),
       id(NextId()) {
-  msg = buf;
+  buf.resize(buf_size > kMaxDNSBufSize ? kMaxDNSBufSize : buf_size);
+  msg = buf.data();
   if (type == SOCK_STREAM) {
     msg += kTCPBufferPaddingLength;
     socklen = 0;
     return;
   }
   socklen = sizeof(src);
+}
+
+size_t Resolver::SocketFd::try_resize() {
+  size_t remaining_len = buf.size() - len;
+  if (type == SOCK_STREAM) {
+    remaining_len -= kTCPBufferPaddingLength;
+  }
+
+  // Resize only if buffer is full.
+  if (remaining_len > 0) {
+    return buf.size();
+  }
+  buf.resize(std::min(2 * buf.size(), kMaxDNSBufSize));
+
+  // Reset |msg| pointer in case of re-allocation.
+  msg = buf.data();
+  if (type == SOCK_STREAM) {
+    msg += kTCPBufferPaddingLength;
+  }
+
+  return buf.size();
 }
 
 const char* Resolver::SocketFd::get_message() const {
@@ -652,15 +669,18 @@ void Resolver::OnDNSQuery(int fd, int type) {
     sock_fd->timer.set_metrics(metrics_.get());
   }
 
+  // If the current buffer is full, resize the container.
+  ssize_t buf_size = sock_fd->try_resize();
+
   // For TCP, it is possible for the packets to be chunked. Move the buffer
   // to the last empty position and adjust the size.
   // For UDP, |sock_fd->len| is always initialized to 0.
-  char* buf = sock_fd->buf + sock_fd->len;
-  ssize_t buf_size = kDNSBufSize - sock_fd->len;
+  char* buf = sock_fd->buf.data() + sock_fd->len;
+  buf_size -= sock_fd->len;
 
   // For TCP, DNS has an additional 2-bytes header representing the length
   // of the query. Move the receiving buffer, so it is 4-bytes aligned.
-  if (type == SOCK_STREAM) {
+  if (sock_fd->type == SOCK_STREAM) {
     buf += kTCPBufferPaddingLength;
     buf_size -= kTCPBufferPaddingLength;
   }
@@ -717,7 +737,8 @@ void Resolver::HandleDNSQuery(std::unique_ptr<SocketFd> sock_fd) {
     std::unique_ptr<SocketFd> tmp_sock_fd = {};
     ssize_t tcp_dns_len = kDNSTCPHeaderLength + dns_len;
     if (sock_fd->len > tcp_dns_len) {
-      tmp_sock_fd = std::make_unique<SocketFd>(sock_fd->type, sock_fd->fd);
+      tmp_sock_fd = std::make_unique<SocketFd>(sock_fd->type, sock_fd->fd,
+                                               sock_fd->buf.size());
       tmp_sock_fd->len = sock_fd->len - tcp_dns_len;
       // This copy is safe because the buffer size of |tmp_sock_fd| and
       // |sock_fd| is equal and only partial data of |sock_fd| is copied.
@@ -921,7 +942,7 @@ patchpanel::DnsResponse Resolver::ConstructServFailResponse(const char* msg,
                                                             int len) {
   // Construct a DNS query from the message buffer.
   std::optional<patchpanel::DnsQuery> query;
-  if (len > 0 && len <= dns_proxy::kDNSBufSize) {
+  if (len > 0 && len <= dns_proxy::kMaxDNSBufSize) {
     scoped_refptr<patchpanel::IOBufferWithSize> query_buf =
         base::MakeRefCounted<patchpanel::IOBufferWithSize>(len);
     memcpy(query_buf->data(), msg, len);

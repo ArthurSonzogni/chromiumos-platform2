@@ -26,9 +26,19 @@
 
 namespace dns_proxy {
 
-// |kDNSBufSize| holds the maximum size of a DNS message which is the maximum
+// |kDefaultDNSBufSize| holds the default receive buffer size for a DNS message.
+// The value is taken as the recommended maximum EDNS buffer size of 1232,
+// following default MTU value of 1500.
+constexpr size_t kDefaultDNSBufSize = 2048;
+
+// |kMaxDNSBufSize| holds the maximum size of a DNS message which is the maximum
 // size of a TCP packet.
-constexpr uint32_t kDNSBufSize = 65536;
+constexpr size_t kMaxDNSBufSize = 65536;
+
+// For TCP, DNS has an additional 2-bytes header representing the length
+// of the query. A 2-bytes padding length is added to the receiving buffer,
+// so it is 4-bytes aligned.
+constexpr int kTCPBufferPaddingLength = 2;
 
 // Resolver receives wire-format DNS queries and proxies them to DNS server(s).
 // This class supports standard plain-text resolving using c-ares and secure
@@ -48,7 +58,11 @@ class Resolver {
   // |SocketFd| stores client's socket data.
   // This is used to send reply to the client on callback called.
   struct SocketFd {
-    SocketFd(int type, int fd);
+    SocketFd(int type, int fd, size_t buf_size = kDefaultDNSBufSize);
+
+    // If |buf| is full, resize by doubling the buffer size up to a maximum of
+    // |kMaxDNSBufSize|. Otherwise, do nothing. Returns the size of |buf|.
+    size_t try_resize();
 
     // Getter for |msg| and |len| that excludes the additional 2-bytes TCP
     // header data containing the DNS query length.
@@ -74,8 +88,8 @@ class Resolver {
     struct sockaddr_storage src;
     socklen_t socklen;
 
-    // Underlying buffer of |data|.
-    char buf[kDNSBufSize];
+    // Underlying buffer of |msg| with default size of |kDefaultDNSBufSize|.
+    std::vector<char> buf;
 
     // Number of attempted retry. Query should not be retried when reaching
     // a certain threshold.

@@ -132,8 +132,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
             provider.ConsumeBytes<uint8_t>(sizeof(struct sockaddr_in6));
       }
     }
-    resolver.payload = provider.ConsumeBytes<uint8_t>(
-        provider.ConsumeIntegralInRange(0, 2 * static_cast<int>(kDNSBufSize)));
+    resolver.payload =
+        provider.ConsumeBytes<uint8_t>(provider.ConsumeIntegralInRange(
+            0, 2 * static_cast<int>(kMaxDNSBufSize)));
     while (resolver.payload.size() > 0) {
       resolver.OnDNSQuery(/*fd=*/type == SOCK_STREAM ? 0 : 1, type);
     }

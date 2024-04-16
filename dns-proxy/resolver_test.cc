@@ -752,6 +752,7 @@ TEST_F(ResolverTest, Resolve_HandleChunkedTCPQuery) {
 
   // Send partial TCP data.
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, /*fd=*/0);
+  sock_fd->buf.resize(kTCPBufferPaddingLength + sizeof(kDNSTCPFragment));
   memcpy(sock_fd->msg, kDNSTCPFragment, partial_len);
   sock_fd->len = partial_len;
 
@@ -776,6 +777,7 @@ TEST_F(ResolverTest, Resolve_HandleMultipleTCPQueries) {
 
   // Send 2 TCP DNS queries.
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, /*fd=*/0);
+  sock_fd->buf.resize(kTCPBufferPaddingLength + 2 * sizeof(kDNSTCPFragment));
   memcpy(sock_fd->msg, kDNSTCPFragment, sizeof(kDNSTCPFragment));
   memcpy(sock_fd->msg + sizeof(kDNSTCPFragment), kDNSTCPFragment,
          sizeof(kDNSTCPFragment));
@@ -797,6 +799,7 @@ TEST_F(ResolverTest, Resolve_ChunkedTCPQueryNotResolved) {
 
   // Receive 1-byte at a time.
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, /*fd=*/0);
+  sock_fd->buf.resize(kTCPBufferPaddingLength + sizeof(kDNSTCPFragment));
   memcpy(sock_fd->msg, kDNSTCPFragment, 1);
   sock_fd->len += 1;
 
@@ -806,6 +809,30 @@ TEST_F(ResolverTest, Resolve_ChunkedTCPQueryNotResolved) {
     sock_fd = resolver_->PopPendingSocketFd(/*fd=*/0);
     memcpy(sock_fd->msg + sock_fd->len, kDNSTCPFragment + sock_fd->len, 1);
     sock_fd->len += 1;
+  }
+}
+
+TEST_F(ResolverTest, SocketFd_Resize) {
+  for (const int sock_type : {SOCK_STREAM, SOCK_DGRAM}) {
+    auto sock_fd = std::make_unique<Resolver::SocketFd>(sock_type, /*fd=*/0);
+
+    // Expects buffer size to not grow when not full.
+    int cur_size = sock_fd->try_resize();
+    EXPECT_EQ(sock_fd->buf.size(), cur_size);
+
+    // Expects buffer size to grow.
+    while (cur_size < kMaxDNSBufSize) {
+      sock_fd->len = sock_fd->buf.size();
+      if (sock_fd->type == SOCK_STREAM) {
+        sock_fd->len -= kTCPBufferPaddingLength;
+      }
+      EXPECT_GT(sock_fd->try_resize(), cur_size);
+      cur_size = sock_fd->buf.size();
+    }
+    EXPECT_EQ(sock_fd->buf.size(), kMaxDNSBufSize);
+
+    // Expects buffer size to no longer grow after maximum size.
+    EXPECT_EQ(sock_fd->try_resize(), kMaxDNSBufSize);
   }
 }
 }  // namespace dns_proxy
