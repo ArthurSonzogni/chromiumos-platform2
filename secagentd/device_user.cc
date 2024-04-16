@@ -150,6 +150,9 @@ void DeviceUser::OnSessionManagerNameChange(const std::string& old_owner,
                                             const std::string& new_owner) {
   // When session manager crashes it logs user out.
   device_user_ = device_user::kEmpty;
+
+  LOG(INFO) << "Session manager's name changed. Old: " << old_owner
+            << " New: " << new_owner;
 }
 
 void DeviceUser::GetDeviceUserAsync(
