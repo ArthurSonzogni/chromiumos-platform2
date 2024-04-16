@@ -28,6 +28,21 @@ const base::FilePath kWakeupCountPath("/sys/power/wakeup_count");
 namespace {
 static constexpr base::TimeDelta kFreezerTimeout = base::Seconds(10);
 static constexpr base::TimeDelta kFreezerSampleTime = base::Milliseconds(10);
+static constexpr char kCgroupFreezerBasePath[] = "/sys/fs/cgroup/freezer/";
+static constexpr char kTpmManagerCgroupName[] = "tpm_manager";
+static constexpr char kTrunksCgroupName[] = "trunks";
+
+std::vector<base::FilePath> GetEssentialCgroups() {
+  std::vector<base::FilePath> essential_cgroups;
+  essential_cgroups.push_back(
+      base::FilePath(kCgroupFreezerBasePath).Append(kTpmManagerCgroupName));
+  essential_cgroups.push_back(
+      base::FilePath(kCgroupFreezerBasePath).Append(kTrunksCgroupName));
+  // TODO(betuls) : Add session_manager to a separate cgroup and add it to
+  // essential processes.
+  return essential_cgroups;
+}
+
 }  // namespace
 
 SuspendFreezer::SuspendFreezer()
@@ -309,13 +324,13 @@ bool SuspendFreezer::ThawCgroups(std::vector<base::FilePath>& croups_to_thaw) {
 }
 
 bool SuspendFreezer::ThawEssentialProcesses() {
-  std::vector<base::FilePath> lock_screen_cgroups_to_thaw;
-  // TODO(b/293161997): Add essential CGroups here.
-  if (!GetCgroups(&lock_screen_cgroups_to_thaw)) {
-    return false;
-  }
+  // Cryptohome is in the root cgroup and doesn't need to be handled here; it is
+  // thawed already.
+  std::vector<base::FilePath> essential_cgroups = GetEssentialCgroups();
 
-  return ThawCgroups(lock_screen_cgroups_to_thaw);
+  LOG(INFO) << "Only essential cgroups have been thawed to restore the "
+               "filesystem key.";
+  return ThawCgroups(essential_cgroups);
 }
 
 bool SuspendFreezer::SystemUtilsInterface::PathExists(

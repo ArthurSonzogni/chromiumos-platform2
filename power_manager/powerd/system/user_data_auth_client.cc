@@ -81,7 +81,7 @@ void UserDataAuthClient::HandleKeyRestoredSignal(dbus::Signal* signal) {
                << " args";
     return;
   }
-
+  LOG(INFO) << "Filesystem key has been restored.";
   device_key_restored_callback_.Run();
 }
 
