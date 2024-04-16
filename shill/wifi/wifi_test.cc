@@ -944,7 +944,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->selected_service();
   }
   const RpcIdentifier& GetSupplicantBSS() { return wifi_->supplicant_bss_; }
-  const std::string& GetPreSuspendBSSID() { return wifi_->pre_suspend_bssid_; }
+  std::optional<net_base::MacAddress> GetPreSuspendBSSID() {
+    return wifi_->pre_suspend_bssid();
+  }
   void SetSupplicantBSS(const RpcIdentifier& bss) {
     wifi_->supplicant_bss_ = bss;
   }
@@ -1916,7 +1918,7 @@ TEST_F(WiFiMainTest, PreSuspendBSSIDSet) {
   const std::optional<net_base::MacAddress> bssid =
       GetCurrentService()->bssid();
   OnBeforeSuspend();
-  EXPECT_EQ(GetPreSuspendBSSID(), (bssid.has_value() ? bssid->ToString() : ""));
+  EXPECT_EQ(GetPreSuspendBSSID(), bssid);
 }
 
 TEST_F(WiFiMainTest, ResumeWithCurrentService) {

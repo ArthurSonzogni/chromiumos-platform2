@@ -2666,7 +2666,7 @@ void WiFi::StateChanged(const std::string& new_state) {
           !current->anqp_capabilities().capability_list) {
         // The endpoint supports ANQP requests, query the capability list to
         // know the fields supported by the access point.
-        ANQPGet(current->bssid().ToString(), {IEEE_80211::kANQPCapabilityList});
+        ANQPGet(current->bssid(), {IEEE_80211::kANQPCapabilityList});
       }
     }
     has_already_completed_ = true;
@@ -2975,9 +2975,9 @@ void WiFi::OnBeforeSuspend(ResultCallback callback) {
   LOG(INFO) << __func__ << ": "
             << (IsConnectedToCurrentService() ? "connected" : "not connected");
   if (IsConnectedToCurrentService() && current_service_->bssid().has_value()) {
-    pre_suspend_bssid_ = current_service_->bssid()->ToString();
+    pre_suspend_bssid_ = current_service_->bssid();
   } else {
-    pre_suspend_bssid_ = "";
+    pre_suspend_bssid_ = std::nullopt;
   }
   StopScanTimer();
   supplicant_process_proxy()->ExpectDisconnect();
@@ -4326,12 +4326,14 @@ bool WiFi::UpdateSupplicantProperties(const WiFiService* service,
   return true;
 }
 
-void WiFi::ANQPGet(const std::string& bssid, const std::vector<uint16_t>& ids) {
+void WiFi::ANQPGet(net_base::MacAddress bssid,
+                   const std::vector<uint16_t>& ids) {
   KeyValueStore args;
-  args.Set<std::string>(WPASupplicant::kANQPPropertyAddr, bssid);
+  args.Set<std::string>(WPASupplicant::kANQPPropertyAddr, bssid.ToString());
   args.Set<std::vector<uint16_t>>(WPASupplicant::kANQPPropertyIds, ids);
   if (!supplicant_interface_proxy_->ANQPGet(args)) {
-    LOG(ERROR) << __func__ << "failed to send ANQP request to " << bssid;
+    LOG(ERROR) << __func__ << "failed to send ANQP request to "
+               << bssid.ToString();
   }
 }
 

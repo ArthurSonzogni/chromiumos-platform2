@@ -911,9 +911,8 @@ void WiFiService::SendPostReadyStateMetrics(
         Metrics::kTimerHistogramMillisecondsMax,
         Metrics::kTimerHistogramNumBuckets);
 
-    if (wifi_ && !wifi_->pre_suspend_bssid().empty() &&
-        (bssid_.has_value() ? bssid_->ToString() : "") ==
-            wifi_->pre_suspend_bssid()) {
+    if (wifi_ && wifi_->pre_suspend_bssid().has_value() &&
+        bssid_ == wifi_->pre_suspend_bssid()) {
       std::string metric_name;
       Metrics::WiFiChannel channel =
           Metrics::WiFiFrequencyToChannel(frequency_);

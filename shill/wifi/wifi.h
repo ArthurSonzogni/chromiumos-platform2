@@ -236,9 +236,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     return service == pending_service_.get();
   }
 
-  std::string pre_suspend_bssid() const { return pre_suspend_bssid_; }
-  void reset_pre_suspend_bssid() { pre_suspend_bssid_.clear(); }
-  void set_pre_suspend_bssid_for_test(const std::string& bssid) {
+  std::optional<net_base::MacAddress> pre_suspend_bssid() const {
+    return pre_suspend_bssid_;
+  }
+  void reset_pre_suspend_bssid() { pre_suspend_bssid_ = std::nullopt; }
+  void set_pre_suspend_bssid_for_test(net_base::MacAddress bssid) {
     pre_suspend_bssid_ = bssid;
   }
 
@@ -805,7 +807,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Sends an ANQP request to for the identifier list |ids| to the access point
   // represented by |bssid|.
-  void ANQPGet(const std::string& bssid, const std::vector<uint16_t>& ids);
+  void ANQPGet(net_base::MacAddress bssid, const std::vector<uint16_t>& ids);
 
   // Called when link becomes unreliable (multiple link monitor failures
   // detected in short period of time).
@@ -994,7 +996,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       scoped_supplicant_listener_;
 
   // The BSSID of the connected AP right before a system suspend.
-  std::string pre_suspend_bssid_;
+  std::optional<net_base::MacAddress> pre_suspend_bssid_;
 
   // For weak pointers that will be invalidated in Stop().
   base::WeakPtrFactory<WiFi> weak_ptr_factory_while_started_;

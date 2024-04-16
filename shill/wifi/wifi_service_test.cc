@@ -3637,7 +3637,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDLB) {
   service->set_time_resume_to_ready_timer_for_testing(std::move(mock_timer));
 
   // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID.ToString());
+  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
   ExpectCommonPostReady(Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWirelessSecurityWep, -kStrength);
@@ -3657,7 +3657,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDLB) {
       .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   service->OnAfterResume();
   service->UpdateStateTransitionMetrics(Service::kStateConnected);
-  EXPECT_EQ(wifi_device->pre_suspend_bssid().length(), 0);
+  EXPECT_EQ(wifi_device->pre_suspend_bssid(), std::nullopt);
 
   Mock::VerifyAndClearExpectations(metrics());
   Mock::VerifyAndClearExpectations(timer);
@@ -3685,7 +3685,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDHB) {
   service->set_time_resume_to_ready_timer_for_testing(std::move(mock_timer));
 
   // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID.ToString());
+  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
   ExpectCommonPostReady(Metrics::kWiFiChannel5180,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWirelessSecurityWep, -kStrength);
@@ -3705,7 +3705,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDHB) {
       .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   service->OnAfterResume();
   service->UpdateStateTransitionMetrics(Service::kStateConnected);
-  EXPECT_EQ(wifi_device->pre_suspend_bssid().length(), 0);
+  EXPECT_EQ(wifi_device->pre_suspend_bssid(), std::nullopt);
 
   Mock::VerifyAndClearExpectations(metrics());
   Mock::VerifyAndClearExpectations(timer);
@@ -3733,7 +3733,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUHB) {
   service->set_time_resume_to_ready_timer_for_testing(std::move(mock_timer));
 
   // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID.ToString());
+  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
   ExpectCommonPostReady(Metrics::kWiFiChannel6375,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWirelessSecurityWep, -kStrength);
@@ -3753,7 +3753,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUHB) {
       .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   service->OnAfterResume();
   service->UpdateStateTransitionMetrics(Service::kStateConnected);
-  EXPECT_EQ(wifi_device->pre_suspend_bssid().length(), 0);
+  EXPECT_EQ(wifi_device->pre_suspend_bssid(), std::nullopt);
 
   Mock::VerifyAndClearExpectations(metrics());
   Mock::VerifyAndClearExpectations(timer);
@@ -3781,7 +3781,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUndef) {
   service->set_time_resume_to_ready_timer_for_testing(std::move(mock_timer));
 
   // Simulate suspend/resume/connect to same BSSID
-  wifi_device->set_pre_suspend_bssid_for_test(kBSSID.ToString());
+  wifi_device->set_pre_suspend_bssid_for_test(kBSSID);
   ExpectCommonPostReady(Metrics::kWiFiChannelUndef,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWirelessSecurityWep, -kStrength);
@@ -3804,7 +3804,7 @@ TEST_F(WiFiServiceTest, WiFiServiceMetricsPostReadySameBSSIDUndef) {
       .WillOnce(DoAll(SetArgPointee<0>(non_zero_time_delta), Return(true)));
   service->OnAfterResume();
   service->UpdateStateTransitionMetrics(Service::kStateConnected);
-  EXPECT_EQ(wifi_device->pre_suspend_bssid().length(), 0);
+  EXPECT_EQ(wifi_device->pre_suspend_bssid(), std::nullopt);
 
   Mock::VerifyAndClearExpectations(metrics());
   Mock::VerifyAndClearExpectations(timer);
