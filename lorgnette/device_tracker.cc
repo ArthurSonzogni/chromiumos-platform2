@@ -385,7 +385,8 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
   }
 
   for (auto& device : libusb_->GetDevices()) {
-    if (!dlc_completed_successfully_ && device->NeedsNonBundledBackend() &&
+    std::optional<std::string> dlc_id = device->GetNonBundledBackendId();
+    if (!dlc_completed_successfully_ && dlc_id != std::nullopt &&
         session->dlc_policy != BackendDownloadPolicy::DOWNLOAD_NEVER) {
       dlc_pending_sessions_.insert(session_id);
       if (!dlc_started_) {

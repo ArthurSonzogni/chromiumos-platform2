@@ -25,6 +25,7 @@
 #include <base/test/task_environment.h>
 #include <base/files/file_path.h>
 #include <brillo/files/file_util.h>
+#include <chromeos/constants/lorgnette_dlc.h>
 
 #include "lorgnette/dlc_client_fake.h"
 #include "lorgnette/firewall_manager.h"
@@ -129,7 +130,9 @@ class DlcDeviceTrackerTest : public testing::Test {
     VidPid device1 = {0x832, 0x231};
     VidPid device2 = {0x832, 0x342};
     VidPid device3 = {0x432, 0x342};
-    dlc_backend_scanners_ = {device1, device2, device3};
+    dlc_backend_scanners_ = {{device1, kSaneBackendsPfuDlcId},
+                             {device2, kSaneBackendsPfuDlcId},
+                             {device3, kSaneBackendsPfuDlcId}};
 
     device_desc_.bDeviceClass = LIBUSB_CLASS_PER_INTERFACE;
     device_desc_.bNumConfigurations = 1;
@@ -236,7 +239,7 @@ class DlcDeviceTrackerTest : public testing::Test {
       std::make_unique<libusb_interface>();
   std::unique_ptr<SaneClientFake> sane_client_ =
       std::make_unique<SaneClientFake>();
-  std::set<VidPid> dlc_backend_scanners_;
+  std::map<VidPid, std::string> dlc_backend_scanners_;
 
   // Test root path set in dlc_client_fake.cc
   const base::FilePath root_path_ = base::FilePath("/test/path/to/dlc");

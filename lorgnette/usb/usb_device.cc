@@ -4,9 +4,13 @@
 
 #include "lorgnette/usb/usb_device.h"
 
+#include <map>
+#include <string>
+
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/constants/lorgnette_dlc.h>
 #include <libusb.h>
 #include <set>
 
@@ -20,12 +24,29 @@ namespace {
 const char kScannerTypeMFP[] = "multi-function peripheral";  // Matches SANE.
 
 // Scanners requiring the sane-backends-pfu DLC.
-std::set<VidPid> kScannersRequiringDlc = {
+std::set<VidPid> kScannersRequiringSaneBackendsPfuDlc = {
     {0x04c5, 0x132e}, {0x04c5, 0x15fc}, {0x04c5, 0x15ff}, {0x05ca, 0x0307}};
+
+// Creates a new key in `map` for each scanner in `scanners`, with the value
+// `id`.
+void SetScannerIds(const std::set<VidPid>& scanners,
+                   const std::string& id,
+                   std::map<VidPid, std::string>* map) {
+  DCHECK(map);
+  for (const auto& vidpid : scanners) {
+    auto itr = map->find(vidpid);
+    DCHECK(itr == map->end());
+    (*map)[vidpid] = id;
+  }
+}
 
 }  // namespace
 
-UsbDevice::UsbDevice() : dlc_backend_scanners_(&kScannersRequiringDlc) {}
+UsbDevice::UsbDevice() {
+  SetScannerIds(kScannersRequiringSaneBackendsPfuDlc, kSaneBackendsPfuDlcId,
+                &default_dlc_backend_scanners_);
+  dlc_backend_scanners_ = &default_dlc_backend_scanners_;
+}
 
 uint16_t UsbDevice::GetVid() const {
   return vid_;
@@ -146,19 +167,23 @@ std::optional<ScannerInfo> UsbDevice::IppUsbScannerInfo() {
   return info;
 }
 
-std::set<VidPid>* UsbDevice::GetDlcBackendScanners() {
+std::map<VidPid, std::string>* UsbDevice::GetDlcBackendScanners() {
   return dlc_backend_scanners_;
 }
 
-void UsbDevice::SetDlcBackendScanners(std::set<VidPid>* dlc_backend_scanners) {
+void UsbDevice::SetDlcBackendScanners(
+    std::map<VidPid, std::string>* dlc_backend_scanners) {
   CHECK(dlc_backend_scanners);
   dlc_backend_scanners_ = dlc_backend_scanners;
 }
 
-bool UsbDevice::NeedsNonBundledBackend() const {
+std::optional<std::string> UsbDevice::GetNonBundledBackendId() const {
   VidPid curr_device = {GetVid(), GetPid()};
-  return dlc_backend_scanners_->find(curr_device) !=
-         dlc_backend_scanners_->end();
+  auto itr = dlc_backend_scanners_->find(curr_device);
+  if (itr == dlc_backend_scanners_->end()) {
+    return std::nullopt;
+  }
+  return itr->second;
 }
 
 }  // namespace lorgnette
