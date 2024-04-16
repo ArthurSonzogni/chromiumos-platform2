@@ -227,76 +227,6 @@ bool AddWallpaperFlags(
   return true;
 }
 
-// Adds ARC related flags.
-void AddArcFlags(ChromiumCommandBuilder* builder,
-                 std::set<std::string>* disallowed_params_out,
-                 brillo::CrosConfigInterface* cros_config) {
-  if (builder->UseFlagIsSet("arc") ||
-      (builder->UseFlagIsSet("cheets") && builder->is_test_build())) {
-    builder->AddArg("--arc-availability=officially-supported");
-  } else if (builder->UseFlagIsSet("cheets")) {
-    builder->AddArg("--arc-availability=installed");
-  } else {
-    // Don't pass ARC availability related flags in chrome_dev.conf to Chrome if
-    // ARC is not installed at all.
-    disallowed_params_out->insert("--arc-availability");
-    disallowed_params_out->insert("--enable-arc");
-    disallowed_params_out->insert("--arc-available");
-    disallowed_params_out->insert("-arc-availability");
-    disallowed_params_out->insert("-enable-arc");
-    disallowed_params_out->insert("-arc-available");
-  }
-
-  if (builder->UseFlagIsSet("arc_adb_sideloading"))
-    builder->AddFeatureEnableOverride("ArcAdbSideloading");
-  if (builder->UseFlagIsSet("arc_container_app_killer"))
-    builder->AddFeatureEnableOverride("ContainerAppKiller");
-  if (builder->UseFlagIsSet("arc_transition_m_to_n"))
-    builder->AddArg("--arc-transition-migration-required");
-  if (builder->UseFlagIsSet("arc_force_2x_scaling"))
-    builder->AddArg("--force-remote-shell-scale=2");
-  if (builder->UseFlagIsSet("arcvm") && !builder->UseFlagIsSet("arcpp"))
-    builder->AddArg("--enable-arcvm");
-  if (builder->UseFlagIsSet("arcvm_data_migration"))
-    builder->AddFeatureEnableOverride("ArcVmDataMigration");
-  if (builder->UseFlagIsSet("arcvm_virtio_blk_data"))
-    builder->AddFeatureEnableOverride("ArcEnableVirtioBlkForData");
-  if (builder->UseFlagIsSet("lvm_application_containers"))
-    builder->AddFeatureEnableOverride("ArcLvmApplicationContainers");
-  // Devices of tablet form factor will have special app behaviour.
-  if (builder->UseFlagIsSet("tablet_form_factor"))
-    builder->AddArg("--enable-tablet-form-factor");
-
-  if (builder->UseFlagIsSet("arc_erofs"))
-    builder->AddArg("--arc-erofs");
-
-  std::string arc_scale;
-  if (cros_config &&
-      cros_config->GetString(kArcScalePath, kArcScaleProperty, &arc_scale)) {
-    builder->AddArg("--arc-scale=" + arc_scale);
-  }
-
-  // Pass USE flag of blocking KeyMint to Chrome.
-  // TODO(b/302648164): Remove the block_keymint flag on selected boards
-  // once the migration issue of older keyblobs is resolved.
-  if (builder->UseFlagIsSet("block_keymint")) {
-    LOG(INFO) << "KeyMint is temporarily blocked on this board.";
-    builder->AddArg("--arc-block-keymint");
-  }
-
-  // Pass USE flags of ARM binary translation libraries to Chrome.
-  if (builder->UseFlagIsSet("houdini"))
-    builder->AddArg("--enable-houdini");
-  if (builder->UseFlagIsSet("houdini64"))
-    builder->AddArg("--enable-houdini64");
-  if (builder->UseFlagIsSet("houdini_dlc"))
-    builder->AddArg("--enable-houdini-dlc");
-  if (builder->UseFlagIsSet("ndk_translation"))
-    builder->AddArg("--enable-ndk-translation");
-  if (builder->UseFlagIsSet("ndk_translation64"))
-    builder->AddArg("--enable-ndk-translation64");
-}
-
 void AddCrostiniFlags(ChromiumCommandBuilder* builder) {
   if (builder->UseFlagIsSet("kvm_host")) {
     builder->AddFeatureEnableOverride("Crostini");
@@ -973,6 +903,78 @@ void SetUpInstantTetheringFlag(ChromiumCommandBuilder* builder,
 
   if (disable_instant_tethering_str == "true")
     builder->AddFeatureDisableOverride("InstantTethering");
+}
+
+// Adds ARC related flags.
+void AddArcFlags(ChromiumCommandBuilder* builder,
+                 std::set<std::string>* disallowed_params_out,
+                 brillo::CrosConfigInterface* cros_config) {
+  if (builder->UseFlagIsSet("arc") ||
+      (builder->UseFlagIsSet("cheets") && builder->is_test_build())) {
+    builder->AddArg("--arc-availability=officially-supported");
+  } else if (builder->UseFlagIsSet("cheets")) {
+    builder->AddArg("--arc-availability=installed");
+  } else {
+    // Don't pass ARC availability related flags in chrome_dev.conf to Chrome if
+    // ARC is not installed at all.
+    disallowed_params_out->insert("--arc-availability");
+    disallowed_params_out->insert("--enable-arc");
+    disallowed_params_out->insert("--arc-available");
+    disallowed_params_out->insert("-arc-availability");
+    disallowed_params_out->insert("-enable-arc");
+    disallowed_params_out->insert("-arc-available");
+  }
+
+  if (builder->UseFlagIsSet("arc_adb_sideloading"))
+    builder->AddFeatureEnableOverride("ArcAdbSideloading");
+  if (builder->UseFlagIsSet("arc_container_app_killer"))
+    builder->AddFeatureEnableOverride("ContainerAppKiller");
+  if (builder->UseFlagIsSet("arc_transition_m_to_n"))
+    builder->AddArg("--arc-transition-migration-required");
+  if (builder->UseFlagIsSet("arc_force_2x_scaling"))
+    builder->AddArg("--force-remote-shell-scale=2");
+  if (builder->UseFlagIsSet("arcvm") && !builder->UseFlagIsSet("arcpp"))
+    builder->AddArg("--enable-arcvm");
+  if (builder->UseFlagIsSet("arcvm_data_migration"))
+    builder->AddFeatureEnableOverride("ArcVmDataMigration");
+  if (builder->UseFlagIsSet("arcvm_virtio_blk_data"))
+    builder->AddFeatureEnableOverride("ArcEnableVirtioBlkForData");
+  if (builder->UseFlagIsSet("lvm_application_containers"))
+    builder->AddFeatureEnableOverride("ArcLvmApplicationContainers");
+  // Devices of tablet form factor will have special app behaviour.
+  if (builder->UseFlagIsSet("tablet_form_factor"))
+    builder->AddArg("--enable-tablet-form-factor");
+
+  if (builder->UseFlagIsSet("arc_erofs"))
+    builder->AddArg("--arc-erofs");
+  if (builder->UseFlagIsSet("arcvm_gki"))
+    builder->AddFeatureEnableOverride("ArcVmGki");
+
+  std::string arc_scale;
+  if (cros_config &&
+      cros_config->GetString(kArcScalePath, kArcScaleProperty, &arc_scale)) {
+    builder->AddArg("--arc-scale=" + arc_scale);
+  }
+
+  // Pass USE flag of blocking KeyMint to Chrome.
+  // TODO(b/302648164): Remove the block_keymint flag on selected boards
+  // once the migration issue of older keyblobs is resolved.
+  if (builder->UseFlagIsSet("block_keymint")) {
+    LOG(INFO) << "KeyMint is temporarily blocked on this board.";
+    builder->AddArg("--arc-block-keymint");
+  }
+
+  // Pass USE flags of ARM binary translation libraries to Chrome.
+  if (builder->UseFlagIsSet("houdini"))
+    builder->AddArg("--enable-houdini");
+  if (builder->UseFlagIsSet("houdini64"))
+    builder->AddArg("--enable-houdini64");
+  if (builder->UseFlagIsSet("houdini_dlc"))
+    builder->AddArg("--enable-houdini-dlc");
+  if (builder->UseFlagIsSet("ndk_translation"))
+    builder->AddArg("--enable-ndk-translation");
+  if (builder->UseFlagIsSet("ndk_translation64"))
+    builder->AddArg("--enable-ndk-translation64");
 }
 
 // Adds flags related to machine learning features that are enabled only on a

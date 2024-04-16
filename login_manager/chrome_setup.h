@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -209,6 +210,11 @@ void AddCrashHandlerFlag(chromeos::ui::ChromiumCommandBuilder* builder);
 
 // Add appropriate patterns to the --vmodule argument.
 void AddVmodulePatterns(chromeos::ui::ChromiumCommandBuilder* builder);
+
+// Adds flags related to ARC.
+void AddArcFlags(chromeos::ui::ChromiumCommandBuilder* builder,
+                 std::set<std::string>* disallowed_params_out,
+                 brillo::CrosConfigInterface* cros_config);
 
 // Adds flags related to feature management that must be enabled for this
 // device.

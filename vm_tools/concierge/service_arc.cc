@@ -48,6 +48,9 @@ constexpr char kStubVolumeSharedDir[] = "/run/arcvm/media";
 
 // Path to the VM guest kernel.
 constexpr char kKernelPath[] = "/opt/google/vms/android/vmlinux";
+//
+// Path to the GKI guest kernel.
+constexpr char kGkiPath[] = "/opt/google/vms/android/gki";
 
 // Path to the VM rootfs image file.
 constexpr char kRootfsPath[] = "/opt/google/vms/android/system.raw.img";
@@ -469,11 +472,14 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
       .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling())
       .SetWaylandSocket(request.vm().wayland_server());
 
-  if (USE_ARCVM_GKI) {
+  base::FilePath kernel_path;
+  if (request.use_gki()) {
+    kernel_path = base::FilePath(kGkiPath);
     vm_builder.AppendCustomParam("--initrd", kRamdiskPath);
     // This is set to 0 by the GKI kernel so we set back to the default.
     vm_builder.AppendKernelParam("8250.nr_uarts=4");
   } else {
+    kernel_path = base::FilePath(kKernelPath);
     vm_builder.AppendCustomParam("--android-fstab", kFstabPath);
   }
 
@@ -555,7 +561,7 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   }
 
   auto vm = ArcVm::Create(ArcVm::Config{
-      .kernel = base::FilePath(kKernelPath),
+      .kernel = kernel_path,
       .vsock_cid = vsock_cid,
       .network = std::move(network),
       .seneschal_server_proxy = std::move(server_proxy),

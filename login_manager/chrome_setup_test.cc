@@ -395,4 +395,25 @@ void InitWithUseFlag(std::optional<std::string> flag,
   CHECK(builder->Init());
 }
 
+TEST_F(ChromeSetupTest, TestGkiEnabled) {
+  base::ScopedTempDir temp_dir;
+  std::set<std::string> disallowed_params;
+  InitWithUseFlag("arcvm_gki", &temp_dir, &builder_);
+  login_manager::AddArcFlags(&builder_, &disallowed_params, nullptr);
+  auto argv = builder_.arguments();
+  std::vector<std::string> result =
+      base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
+  EXPECT_THAT(result, testing::Contains("ArcVmGki"));
+}
+
+TEST_F(ChromeSetupTest, TestGkiDisabled) {
+  std::set<std::string> disallowed_params;
+  login_manager::AddArcFlags(&builder_, &disallowed_params, nullptr);
+  auto argv = builder_.arguments();
+  std::vector<std::string> result =
+      base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
+                        base::SPLIT_WANT_ALL);
+  EXPECT_THAT(result, testing::Not(testing::Contains("ArcVmGki")));
+}
 }  // namespace login_manager
