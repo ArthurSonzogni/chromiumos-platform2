@@ -4,18 +4,23 @@
 
 #include "diagnostics/camera_diagnostics_session.h"
 
+#include <cmath>
+#include <cstdint>
+#include <numeric>
 #include <utility>
 
-#include <base/functional/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/location.h>
 #include <base/sequence_checker.h>
+#include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/threading/thread_checker.h>
 #include <chromeos/mojo/service_constants.h>
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/common.h"
+#include "cros-camera/common_types.h"
 #include "diagnostics/camera_diagnostics_mojo_manager.h"
 
 namespace {
@@ -25,34 +30,71 @@ constexpr int kStreamingFrameIntervalDefault = 30;  // every 30th frame
 namespace cros {
 
 namespace {
-constexpr int kMaxStreamWidth = 640;
-constexpr int kMaxStreamHeight = 480;
+// |DirtyLensAnalyzer| requires frames to have at least 640*480 pixels. So, we
+// set this as a diagnostics service requirement.
+constexpr int kMinPixelCount = 640 * 480;
+// We don't want to process too large frames. This is sufficient for all the
+// analyzers.
+constexpr int kMaxPixelCount = 1920 * 1080;
+
+// Calculates the smallest frame dimension with the same aspect ratio as that of
+// |size| having pixel count >= |kMinPixelCount|. Input dimension must be even.
+Size GetSmallestDimension(const Size& size) {
+  CHECK(size.is_valid());
+  // We can reduce/increase the dimension by GCD(width,height) times without
+  // having to handle fractions.
+  int gcd = std::gcd(size.width, size.height);
+  CHECK_EQ(gcd % 2, 0);  // Sanity check that input is even.
+  uint32_t dw = size.width / gcd;
+  uint32_t dh = size.height / gcd;
+  // We can safely increase it without having to worry about |std::ceil()|
+  // conversion errors.
+  uint32_t times =
+      1 + std::sqrt(kMinPixelCount / static_cast<float>((dw * dh)));
+  times += (times % 2);  // Making it even will ensure that the result is even.
+  return {dw * times, dh * times};
+}
 
 // Creates an empty camera frame of |camera_diag::mojom::PixelFormat::kYuv420|.
 camera_diag::mojom::CameraFramePtr CreateEmptyCameraFrame(
     const camera_diag::mojom::CameraStreamPtr& stream) {
-  if (!(stream->pixel_format == camera_diag::mojom::PixelFormat::kYuv420 &&
-        stream->width > 0 && stream->height > 0 &&
-        stream->width <= kMaxStreamWidth &&
-        stream->height <= kMaxStreamHeight && stream->width % 2 == 0 &&
-        stream->height % 2 == 0)) {
+  Size stream_size = {stream->width, stream->height};
+  if (stream->pixel_format != camera_diag::mojom::PixelFormat::kYuv420 ||
+      !stream_size.is_valid() || stream_size.width % 2 ||
+      stream_size.height % 2) {
     LOGF(ERROR) << "Can not create camera frame with invalid stream size: "
-                << stream->width << "x" << stream->height;
+                << stream_size.ToString();
     return nullptr;
   }
-  // TODO(imranziad): Validate stream size.
+  Size frame_size = GetSmallestDimension(stream_size);
+  if (frame_size.area() < kMinPixelCount ||
+      frame_size.area() > kMaxPixelCount) {
+    LOGF(ERROR) << "Out of bounds frame size. Original "
+                << stream_size.ToString() << ", target "
+                << frame_size.ToString();
+    return nullptr;
+  }
+  LOGF(INFO) << "Target frame size: " << frame_size.ToString()
+             << ", area: " << frame_size.area();
+  if (frame_size.area() > stream_size.area()) {
+    // TODO(imranziad): Disable analyzers that needs bigger frames for good
+    // analysis.
+    LOGF(WARNING) << "Frames will be upscaled, some analyzers might not run.";
+  }
   auto frame = camera_diag::mojom::CameraFrame::New();
   frame->stream = stream.Clone();
+  frame->stream->width = frame_size.width;
+  frame->stream->height = frame_size.height;
   frame->source = camera_diag::mojom::DataSource::kCameraDiagnostics;
   frame->is_empty = true;
   frame->buffer = camera_diag::mojom::CameraFrameBuffer::New();
   // Only NV12 frames are supported now. Average of 12 bits per pixel.
-  frame->buffer->size = (stream->width * stream->height * 3) / 2;
+  frame->buffer->size = (frame->stream->width * frame->stream->height * 3) / 2;
   frame->buffer->shm_handle =
       mojo::SharedBufferHandle::Create(frame->buffer->size);
   if (!frame->buffer->shm_handle->is_valid()) {
     LOGF(ERROR) << "Failed to create SharedBufferHandle for stream size: "
-                << stream->width << "x" << stream->height;
+                << frame->stream->width << "x" << frame->stream->height;
     return nullptr;
   }
   return frame;
@@ -91,21 +133,29 @@ void CameraDiagnosticsSession::RunFrameAnalysisOnThread(
   auto start_stream_config = camera_diag::mojom::StreamingConfig::New();
   // TODO(imranziad): Adjust the interval based on |config->duration_ms|.
   start_stream_config->frame_interval = kStreamingFrameIntervalDefault;
-  camera_service_controller_.StartStreaming(
-      std::move(start_stream_config),
+  // This callback needs to run on session thread.
+  auto callback = base::BindPostTask(
+      thread_.task_runner(),
       base::BindOnce(&CameraDiagnosticsSession::OnStartStreaming,
                      base::Unretained(this)));
+  camera_service_controller_.StartStreaming(std::move(start_stream_config),
+                                            std::move(callback));
 }
 
+// Run on session thread so that we don't block the IPC thread during frame
+// allocation.
 void CameraDiagnosticsSession::OnStartStreaming(
     camera_diag::mojom::StartStreamingResultPtr result) {
+  DCHECK(thread_.IsCurrentThread());
   base::AutoLock lock(lock_);
   // Successfully started streaming.
   if (result->is_stream()) {
-    selected_stream_ = std::move(result->get_stream());
-    LOGF(INFO) << "Selected stream config: " << selected_stream_.value()->width
-               << "x" << selected_stream_.value()->height;
-    auto frame = CreateEmptyCameraFrame(selected_stream_.value());
+    // Send an empty frame with shared buffer to camera service to fill up.
+    auto selected_stream = std::move(result->get_stream());
+    LOGF(INFO) << "Camera service selected stream " << selected_stream->width
+               << "x" << selected_stream->height
+               << ", format: " << selected_stream->pixel_format;
+    auto frame = CreateEmptyCameraFrame(selected_stream);
     if (frame.is_null()) {
       result_ = camera_diag::mojom::FrameAnalysisResult::NewError(
           camera_diag::mojom::ErrorCode::kDiagnosticsInternal);

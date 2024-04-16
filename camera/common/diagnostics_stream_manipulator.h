@@ -37,16 +37,17 @@ class DiagnosticsStreamManipulator : public StreamManipulator {
  private:
   void Reset();
   bool FillDiagnosticsBuffer(
+      const Size& target_size,
       Camera3StreamBuffer& stream_buffer,
       camera_diag::mojom::CameraFrameBufferPtr& out_frame);
+  bool ValidateDiagnosticsFrame(
+      const camera_diag::mojom::CameraFramePtr& frame);
 
   CameraBufferManager* camera_buffer_manager_;
   StreamManipulator::Callbacks callbacks_;
   CameraDiagnosticsClient* diagnostics_client_;
 
   const camera3_stream_t* selected_stream_ = nullptr;
-  // Target size for the downscaled buffer.
-  Size target_frame_size_{0, 0};
   int next_target_frame_number_ = 0;
 };
 

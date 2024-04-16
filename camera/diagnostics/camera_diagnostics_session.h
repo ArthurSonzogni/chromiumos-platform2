@@ -58,9 +58,6 @@ class CameraDiagnosticsSession {
       GUARDED_BY(lock_) = std::nullopt;
 
   scoped_refptr<Future<void>> notify_finish_;
-
-  std::optional<camera_diag::mojom::CameraStreamPtr> selected_stream_ =
-      std::nullopt;
 };
 
 }  // namespace cros

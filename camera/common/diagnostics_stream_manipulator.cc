@@ -14,12 +14,12 @@
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/camera_buffer_manager.h"
 
-namespace {
-// Target width of the downscaled buffer.
-constexpr uint32_t kTargetStreamWidth = 640;
-}  // namespace
-
 namespace cros {
+
+namespace {
+// Minimum pixel count in a frame required by diagnostics service.
+constexpr int kMinPixelCount = 640 * 480;
+}  // namespace
 
 DiagnosticsStreamManipulator::DiagnosticsStreamManipulator(
     CameraDiagnosticsClient* diagnostics_client)
@@ -49,8 +49,16 @@ bool DiagnosticsStreamManipulator::ConfigureStreams(
         (stream->usage & GRALLOC_USAGE_HW_CAMERA_ZSL)) {
       continue;
     }
-    if (!selected_stream_ || (stream->width < selected_stream_->width &&
-                              stream->width >= kTargetStreamWidth)) {
+    uint32_t stream_pixel_count = stream->width * stream->height;
+    uint32_t selected_pixel_count =
+        selected_stream_ ? selected_stream_->width * selected_stream_->height
+                         : 0;
+    // Prefer the smallest stream with pixel count >= |kMinPixelCount|. Select
+    // the largest when all streams are smaller than |kMinPixelCount|.
+    if ((stream_pixel_count >= kMinPixelCount &&
+         stream_pixel_count < selected_pixel_count) ||
+        (stream_pixel_count > selected_pixel_count &&
+         selected_pixel_count < kMinPixelCount)) {
       selected_stream_ = stream;
     }
   }
@@ -58,30 +66,10 @@ bool DiagnosticsStreamManipulator::ConfigureStreams(
     VLOGF(1) << "No YUV stream found, diagnostics will be ignored";
     return true;
   }
-  DCHECK_GE(selected_stream_->width, kTargetStreamWidth);
-  // We don't need to be accurate, just choose a size that works for us.
-  constexpr float kAspectRatioMargin = 0.04;
-  constexpr float kTargetAspectRatio16_9 = 1.778;
-  constexpr float kTargetAspectRatio4_3 = 1.333;
-
-  float aspect_ratio = static_cast<float>(selected_stream_->width) /
-                       static_cast<float>(selected_stream_->height);
-
-  if (std::fabs(kTargetAspectRatio16_9 - aspect_ratio) < kAspectRatioMargin) {
-    target_frame_size_ = {kTargetStreamWidth, 360};
-  } else if (std::fabs(kTargetAspectRatio4_3 - aspect_ratio) <
-             kAspectRatioMargin) {
-    target_frame_size_ = {kTargetStreamWidth, 480};
-  } else {
-    VLOGF(1) << "Aspect ratio not supported, diagnostics will be ignored";
-    // TODO(imranziad): Test and enable for any aspect ratio.
-    selected_stream_ = nullptr;
-    return true;
-  }
-  diagnostics_client_->AddCameraSession(target_frame_size_);
+  diagnostics_client_->AddCameraSession(
+      Size{selected_stream_->width, selected_stream_->height});
   VLOGF(1) << "Selected stream for diagnostics "
-           << GetDebugString(selected_stream_)
-           << ", target=" << target_frame_size_.ToString();
+           << GetDebugString(selected_stream_);
   return true;
 }
 
@@ -121,15 +109,22 @@ bool DiagnosticsStreamManipulator::ProcessCaptureResult(
     }
 
     auto diag_buffer = std::move(requested_buffer.value());
-    diag_buffer->stream->width = target_frame_size_.width;
-    diag_buffer->stream->height = target_frame_size_.height;
+
+    if (!ValidateDiagnosticsFrame(diag_buffer)) {
+      VLOGF(1) << "Invalid diagnostics frame, skip!";
+      diagnostics_client_->SendFrame(std::move(diag_buffer));
+      break;
+    }
+
     diag_buffer->frame_number = result.frame_number();
     diag_buffer->source = camera_diag::mojom::DataSource::kCameraService;
     diag_buffer->is_empty = true;
 
     VLOGF(1) << "Processing buffer for frame " << result.frame_number();
 
-    if (FillDiagnosticsBuffer(buffer, diag_buffer->buffer)) {
+    if (FillDiagnosticsBuffer(
+            Size{diag_buffer->stream->width, diag_buffer->stream->height},
+            buffer, diag_buffer->buffer)) {
       diag_buffer->is_empty = false;
       next_target_frame_number_ =
           result.frame_number() + diagnostics_client_->frame_interval();
@@ -146,6 +141,7 @@ bool DiagnosticsStreamManipulator::ProcessCaptureResult(
 }
 
 bool DiagnosticsStreamManipulator::FillDiagnosticsBuffer(
+    const Size& target_size,
     Camera3StreamBuffer& stream_buffer,
     camera_diag::mojom::CameraFrameBufferPtr& out_frame) {
   constexpr int kSyncWaitTimeoutMs = 300;
@@ -162,10 +158,10 @@ bool DiagnosticsStreamManipulator::FillDiagnosticsBuffer(
   uint32_t src_width = stream_buffer.stream()->width;
   uint32_t src_height = stream_buffer.stream()->height;
 
-  uint32_t y_size = target_frame_size_.height * target_frame_size_.width;
+  uint32_t y_size = target_size.height * target_size.width;
   uint32_t nv12_data_size = y_size * 3 / 2;
-  uint8_t y_stride = target_frame_size_.height;
-  uint8_t uv_stride = target_frame_size_.width / 2;
+  uint32_t y_stride = target_size.width;
+  uint32_t uv_stride = y_stride;
 
   if (out_frame->shm_handle->GetSize() < nv12_data_size) {
     // Soft ignore the invalid diagnsotics frame instead of CHECKs.
@@ -185,16 +181,15 @@ bool DiagnosticsStreamManipulator::FillDiagnosticsBuffer(
   }
 
   VLOGF(1) << "Downscaling " << src_width << "x" << src_height << " -> "
-           << target_frame_size_.width << "x" << target_frame_size_.height;
+           << target_size.width << "x" << target_size.height;
 
   // TODO(imranziad): Use GPU scaling.
   int ret = libyuv::NV12Scale(
       mapping_src.plane(0).addr, mapping_src.plane(0).stride,
       mapping_src.plane(1).addr, mapping_src.plane(1).stride, src_width,
       src_height, static_cast<uint8_t*>(y_mapping.get()), y_stride,
-      static_cast<uint8_t*>(uv_mapping.get()), uv_stride,
-      target_frame_size_.width, target_frame_size_.height,
-      libyuv::kFilterBilinear);
+      static_cast<uint8_t*>(uv_mapping.get()), uv_stride, target_size.width,
+      target_size.height, libyuv::kFilterBilinear);
 
   if (ret != 0) {
     LOGF(ERROR) << "DiagnosticsSM: libyuv::NV12Scale() failed: " << ret;
@@ -212,13 +207,28 @@ bool DiagnosticsStreamManipulator::Flush() {
   return true;
 }
 
+bool DiagnosticsStreamManipulator::ValidateDiagnosticsFrame(
+    const camera_diag::mojom::CameraFramePtr& frame) {
+  if (!selected_stream_ || frame.is_null() || !frame->is_empty) {
+    return false;
+  }
+  Size selected_size = {selected_stream_->width, selected_stream_->height};
+  Size diag_frame_size = {frame->stream->width, frame->stream->height};
+  // Aspect ratio should be the same.
+  // We could compare the ratios with integers to be precise, but that would
+  // make it slow. This error margin is good enough for us.
+  constexpr float kAspectRatioMargin = 0.004;
+  return (selected_size.is_valid() && diag_frame_size.is_valid() &&
+          std::fabs(selected_size.aspect_ratio() -
+                    diag_frame_size.aspect_ratio()) < kAspectRatioMargin);
+}
+
 void DiagnosticsStreamManipulator::Reset() {
   if (selected_stream_) {
     // Removing a session we did not setup may override a current session.
     diagnostics_client_->RemoveCameraSession();
   }
   selected_stream_ = nullptr;
-  target_frame_size_ = {0, 0};
   next_target_frame_number_ = 0;
 }
 
