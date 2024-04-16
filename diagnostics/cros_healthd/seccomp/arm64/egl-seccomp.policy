@@ -108,3 +108,21 @@ signalfd4: 1
 socket: arg0 == AF_UNIX
 uname: 1
 write: 1
+exit: 1
+kcmp: 1
+madvise: 1
+sched_setaffinity: 1
+setpriority: 1
+sched_setscheduler: 1
+sched_getaffinity: 1
+sysinfo: 1
+fstatfs: 1
+shutdown: 1
+readlinkat: 1
+getdents64: 1
+faccessat: 1
+ppoll: 1
+munmap: 1
+# Graphics fetcher will crash without prctl.
+# TODO(b/333978583): Document why prctl is required.
+prctl: arg0 == PR_SET_NO_NEW_PRIVS || arg0 == PR_SET_NAME
