@@ -143,7 +143,7 @@ CryptohomeVaultFactory::GenerateStorageContainer(
       break;
     }
     case libstorage::StorageContainerType::kEphemeral:
-      // Configure an ext4 filesystem that will use the backing device:
+      // Configure an ext4 filesystem that will use a ramdisk device:
       config.filesystem_config = {
           // features once dm-crypt cryptohomes are stable.
           .mkfs_opts =
@@ -160,15 +160,21 @@ CryptohomeVaultFactory::GenerateStorageContainer(
                // Assume that the storage device is already zeroed out.
                "-E", "discard,assume_storage_prezeroed=1"},
           .backend_type = type,
-          // No need to specify recovery, the device is purge at destruction.
+          // No need to specify recovery, the device is purged at destruction.
       };
       type = libstorage::StorageContainerType::kExt4;
-      config.backing_file_path = base::FilePath(kEphemeralCryptohomeDir)
-                                     .Append(kSparseFileDir)
-                                     .Append(*obfuscated_username);
+      config.unencrypted_config = {
+          .backing_device_config = {
+              .type = libstorage::BackingDeviceType::kRamdiskDevice,
+              .ramdisk = {.backing_file_path =
+                              base::FilePath(kEphemeralCryptohomeDir)
+                                  .Append(kSparseFileDir)
+                                  .Append(*obfuscated_username)}}};
       break;
     case libstorage::StorageContainerType::kExt4:
       // Not given directly, passed with the raw block device.
+    case libstorage::StorageContainerType::kUnencrypted:
+      // cryptohome does not use plain unencrypted device.
     case libstorage::StorageContainerType::kEcryptfsToFscrypt:
     case libstorage::StorageContainerType::kEcryptfsToDmcrypt:
     case libstorage::StorageContainerType::kFscryptToDmcrypt:

@@ -30,6 +30,7 @@ enum class StorageContainerType {
   kFscrypt,
   kDmcrypt,
   kEphemeral,
+  kUnencrypted,
   kExt4,
   kEcryptfsToFscrypt,
   kEcryptfsToDmcrypt,
@@ -41,6 +42,10 @@ struct DmcryptConfig {
   std::string dmcrypt_device_name;
   std::string dmcrypt_cipher;
   uint32_t iv_offset;
+};
+
+struct UnencryptedConfig {
+  BackingDeviceConfig backing_device_config;
 };
 
 // Recovery option when the filesystem is not clean
@@ -61,7 +66,7 @@ struct StorageContainerConfig {
   base::FilePath backing_dir;
   Ext4FileSystemConfig filesystem_config;
   DmcryptConfig dmcrypt_config;
-  base::FilePath backing_file_path;
+  UnencryptedConfig unencrypted_config;
 };
 
 // An encrypted container is an abstract class that represents an encrypted

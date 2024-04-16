@@ -32,7 +32,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <libstorage/platform/keyring/fake_keyring.h>
 #include <libstorage/platform/mock_platform.h>
-#include <libstorage/storage_container/fake_backing_device.h>
 #include <libstorage/storage_container/fake_storage_container_factory.h>
 #include <libstorage/storage_container/storage_container.h>
 #include <policy/libpolicy.h>
@@ -617,7 +616,7 @@ class EphemeralSystemTest : public ::testing::Test {
         std::make_unique<libstorage::StorageContainerFactory>(
             &platform_, /* metrics */ nullptr,
             std::make_unique<libstorage::FakeKeyring>(),
-            std::make_unique<libstorage::FakeBackingDeviceFactory>(&platform_));
+            std::make_unique<libstorage::BackingDeviceFactory>(&platform_));
     vault_factory_ = std::make_unique<CryptohomeVaultFactory>(
         &platform_, std::move(container_factory));
     homedirs_ = std::make_unique<HomeDirs>(

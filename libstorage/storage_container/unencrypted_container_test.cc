@@ -5,7 +5,7 @@
 #include <memory>
 #include <utility>
 
-#include "libstorage/storage_container/ephemeral_container.h"
+#include "libstorage/storage_container/unencrypted_container.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -22,9 +22,9 @@ namespace {
 constexpr char kDevice[] = "/dev/fake_loop";
 }  // namespace
 
-class EphemeralContainerTest : public ::testing::Test {
+class UnencryptedContainerTest : public ::testing::Test {
  public:
-  EphemeralContainerTest()
+  UnencryptedContainerTest()
       : backing_device_(std::make_unique<FakeBackingDevice>(
             BackingDeviceType::kRamdiskDevice, base::FilePath(kDevice))) {}
 
@@ -32,15 +32,15 @@ class EphemeralContainerTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   std::unique_ptr<FakeBackingDevice> backing_device_;
 
-  std::unique_ptr<EphemeralContainer> CreateContainer() {
-    return std::unique_ptr<EphemeralContainer>(
-        new EphemeralContainer(std::move(backing_device_), &platform_));
+  std::unique_ptr<UnencryptedContainer> CreateContainer() {
+    return std::unique_ptr<UnencryptedContainer>(
+        new UnencryptedContainer(std::move(backing_device_), &platform_));
   }
 };
 
 namespace {
 
-TEST_F(EphemeralContainerTest, Construct) {
+TEST_F(UnencryptedContainerTest, Construct) {
   auto container_ = CreateContainer();
   EXPECT_FALSE(container_->Exists());
   EXPECT_THAT(container_->GetBackingLocation(), Eq(base::FilePath()));
@@ -50,7 +50,8 @@ TEST_F(EphemeralContainerTest, Construct) {
   EXPECT_TRUE(container_->Teardown());
   EXPECT_FALSE(container_->Exists());
   EXPECT_THAT(container_->GetBackingLocation(), Eq(base::FilePath()));
-  EXPECT_FALSE(container_->Purge());  // false for ephemeral teardown does purge
+  EXPECT_FALSE(
+      container_->Purge());  // false for unencrypted teardown does purge
   EXPECT_FALSE(container_->Exists());
   EXPECT_THAT(container_->GetBackingLocation(), Eq(base::FilePath()));
 }

@@ -31,6 +31,7 @@ shared_library("libstorage_storage_container") {
     "loopback_device.cc",
     "ramdisk_device.cc",
     "storage_container_factory.cc",
+    "unencrypted_container.cc",
   ]
   if (use.device_mapper) {
     sources += [
@@ -79,6 +80,7 @@ install_config("install_libstorage_container_headers") {
     "ramdisk_device.h",
     "storage_container.h",
     "storage_container_factory.h",
+    "unencrypted_container.h",
   ]
   install_path = "/usr/include/libstorage/storage_container"
 }
@@ -87,11 +89,12 @@ if (use.test) {
   executable("storage_container_testrunner") {
     sources = [
       "ecryptfs_container_test.cc",
-      "ephemeral_container_test.cc",
       "ext4_container_test.cc",
       "fscrypt_container_test.cc",
       "loopback_device_test.cc",
       "ramdisk_device_test.cc",
+      "storage_container_factory_test.cc",
+      "unencrypted_container_test.cc",
     ]
     if (use.device_mapper) {
       sources += [

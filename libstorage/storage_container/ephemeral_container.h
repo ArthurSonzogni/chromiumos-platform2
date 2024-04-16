@@ -14,12 +14,14 @@
 #include "libstorage/storage_container/filesystem_key.h"
 #include "libstorage/storage_container/ramdisk_device.h"
 #include "libstorage/storage_container/storage_container.h"
+#include "libstorage/storage_container/unencrypted_container.h"
 
 namespace libstorage {
 
-// EphemeralContainer accepts a ramdisk backing device and ensures its purge
-// upon container's teardown.
-class BRILLO_EXPORT EphemeralContainer final : public StorageContainer {
+// Ephemeral container are unencrypted container backed exclusively by a RAM
+// disk. It is used by cryptohome for ephemeral users, as it is guaranteed
+// the data is purged upon container's teardown.
+class EphemeralContainer : public UnencryptedContainer {
  public:
   // Unlike other containers, it forces a specific backing device type top
   // enforce that only ramdisk backed devices are used.
@@ -28,33 +30,11 @@ class BRILLO_EXPORT EphemeralContainer final : public StorageContainer {
 
   ~EphemeralContainer() override;
 
-  bool Exists() override;
-
-  bool Purge() override;
-
   bool Setup(const FileSystemKey& encryption_key) override;
-
-  bool Reset() override;
-
-  bool Teardown() override;
 
   StorageContainerType GetType() const override {
     return StorageContainerType::kEphemeral;
   }
-
-  base::FilePath GetPath() const override { return GetBackingLocation(); }
-
-  base::FilePath GetBackingLocation() const override;
-
- private:
-  // A private constructor with FakeBackingDevice for tests.
-  EphemeralContainer(std::unique_ptr<FakeBackingDevice> backing_device,
-                     Platform* platform);
-
-  const std::unique_ptr<BackingDevice> backing_device_;
-  Platform* platform_;
-
-  friend class EphemeralContainerTest;
 };
 
 }  // namespace libstorage

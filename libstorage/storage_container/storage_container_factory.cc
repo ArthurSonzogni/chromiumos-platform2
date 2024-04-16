@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include <absl/base/macros.h>
 #include <base/files/file_path.h>
 #include <libstorage/platform/keyring/keyring.h>
 #include <libstorage/platform/keyring/real_keyring.h>
@@ -24,6 +25,7 @@
 #include "libstorage/storage_container/filesystem_key.h"
 #include "libstorage/storage_container/fscrypt_container.h"
 #include "libstorage/storage_container/storage_container.h"
+#include "libstorage/storage_container/unencrypted_container.h"
 
 namespace libstorage {
 
@@ -71,14 +73,33 @@ std::unique_ptr<StorageContainer> StorageContainerFactory::Generate(
                                              platform_, metrics_);
     }
     case StorageContainerType::kEphemeral: {
-      auto backing_device =
-          RamdiskDevice::Generate(config.backing_file_path, platform_);
+      // kEphemeral is a special unencrypted device backed by a ramdisk.
+      if (config.unencrypted_config.backing_device_config.type !=
+          BackingDeviceType::kRamdiskDevice) {
+        LOG(ERROR) << "Invalid backing device for an ephemeral";
+        return nullptr;
+      }
+      auto backing_device = RamdiskDevice::Generate(
+          config.unencrypted_config.backing_device_config.ramdisk
+              .backing_file_path,
+          platform_);
       if (!backing_device) {
         LOG(ERROR) << "Could not create backing device for ephemeral container";
         return nullptr;
       }
       return std::make_unique<EphemeralContainer>(std::move(backing_device),
                                                   platform_);
+    }
+    case StorageContainerType::kUnencrypted: {
+      auto backing_device = backing_device_factory_->Generate(
+          config.unencrypted_config.backing_device_config);
+      if (!backing_device) {
+        LOG(ERROR)
+            << "Could not create backing device for unencrypted container";
+        return nullptr;
+      }
+      return std::make_unique<UnencryptedContainer>(std::move(backing_device),
+                                                    platform_);
     }
     case StorageContainerType::kDmcrypt:
 #if USE_DEVICE_MAPPER
@@ -98,7 +119,7 @@ std::unique_ptr<StorageContainer> StorageContainerFactory::Generate(
     case StorageContainerType::kEcryptfsToDmcrypt:
     case StorageContainerType::kFscryptToDmcrypt:
       // The migrating type is handled by the higher level abstraction.
-      // FALLTHROUGH
+      ABSL_FALLTHROUGH_INTENDED;
     case StorageContainerType::kUnknown:
       return nullptr;
   }
