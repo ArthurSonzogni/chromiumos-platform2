@@ -23,6 +23,7 @@ enum class BackingDeviceType {
   kLoopbackDevice,
   kRamdiskDevice,
   kLogicalVolumeBackingDevice,
+  kPartition,
 };
 
 // Configuration for backing devices.

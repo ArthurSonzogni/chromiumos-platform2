@@ -13,6 +13,7 @@
 #include "libstorage/storage_container/logical_volume_backing_device.h"
 #endif
 
+#include "libstorage/storage_container/partition_device.h"
 #include "libstorage/storage_container/ramdisk_device.h"
 
 namespace libstorage {
@@ -28,6 +29,8 @@ std::unique_ptr<BackingDevice> BackingDeviceFactory::Generate(
     case BackingDeviceType::kRamdiskDevice:
       return RamdiskDevice::Generate(config.ramdisk.backing_file_path,
                                      platform_);
+    case BackingDeviceType::kPartition:
+      return std::make_unique<PartitionDevice>(config, platform_);
     case BackingDeviceType::kLogicalVolumeBackingDevice:
 #if USE_DEVICE_MAPPER
       return std::make_unique<LogicalVolumeBackingDevice>(
