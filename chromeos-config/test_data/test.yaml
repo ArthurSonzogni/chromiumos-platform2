@@ -283,6 +283,8 @@ chromeos:
               ec-ro-image: "bcs://Another_EC.1111.11.1.tbz2"
               main-ro-image: "bcs://Another.1111.11.1.tbz2"
               main-rw-image: "bcs://Another_RW.1111.11.1.tbz2"
+              main-rw-a-hash: "4c7655c067999e7cf097f050d05666cb"
+              main-rw-a-hash-algorithm: "md5sum"
               build-targets:
                 base: "another_base"
                 ec_extras:

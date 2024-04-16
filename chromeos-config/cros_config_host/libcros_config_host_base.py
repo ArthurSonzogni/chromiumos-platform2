@@ -41,6 +41,8 @@ SymlinkedFile = collections.namedtuple(
 #   dest: Destination filename in the root filesystem
 BaseFile = collections.namedtuple("BaseFile", ["source", "dest"])
 
+FirmwareHash = collections.namedtuple("FirmwareHash", ["digest", "algorithm"])
+
 # Represents information needed to create firmware for a model:
 #   model: Name of model (e.g 'reef'). Also used as the signature ID for signing
 #   shared_model: Name of model containing the shared firmware used by this
@@ -89,6 +91,7 @@ FirmwareInfo = collections.namedtuple(
         "pd_image_uri",
         "sig_id",
         "brand_code",
+        "main_rw_a_hash",
     ],
 )
 

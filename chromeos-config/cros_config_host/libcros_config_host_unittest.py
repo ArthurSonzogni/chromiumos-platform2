@@ -19,6 +19,7 @@ import unittest
 from libcros_config_host import CrosConfig
 from libcros_config_host_base import BaseFile
 from libcros_config_host_base import DeviceSignerInfo
+from libcros_config_host_base import FirmwareHash
 from libcros_config_host_base import FirmwareImage
 from libcros_config_host_base import FirmwareInfo
 from libcros_config_host_base import SymlinkedFile
@@ -523,6 +524,10 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="another",
                         brand_code="",
+                        main_rw_a_hash=FirmwareHash(
+                            digest="4c7655c067999e7cf097f050d05666cb",
+                            algorithm="md5sum",
+                        ),
                     ),
                 ),
                 (
@@ -543,6 +548,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id=None,
                         brand_code="",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -563,6 +569,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id=None,
                         brand_code="",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -583,6 +590,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="sig-id-in-customization-id",
                         brand_code="",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -603,6 +611,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="multi-whitelabel1",
                         brand_code="WLBA",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -623,6 +632,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="sig-id-in-customization-id",
                         brand_code="",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -643,6 +653,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="multi_other-whitelabel1",
                         brand_code="WLBA",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -663,6 +674,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="multi-whitelabel2",
                         brand_code="WLBB",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -683,6 +695,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="multi_other-whitelabel2",
                         brand_code="WLBB",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -703,6 +716,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="some",
                         brand_code="",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -723,6 +737,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="some2",
                         brand_code="",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -743,6 +758,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="some2",
                         brand_code="",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -763,6 +779,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="sig-id-in-customization-id",
                         brand_code="",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -783,6 +800,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="whitelabel-whitelabel1",
                         brand_code="WLBA",
+                        main_rw_a_hash=None,
                     ),
                 ),
                 (
@@ -803,6 +821,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         pd_image_uri="",
                         sig_id="whitelabel-whitelabel2",
                         brand_code="WLBB",
+                        main_rw_a_hash=None,
                     ),
                 ),
             ]

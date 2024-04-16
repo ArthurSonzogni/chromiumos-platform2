@@ -28,6 +28,7 @@ from libcros_config_host_base import BaseFile
 from libcros_config_host_base import CrosConfigBaseImpl
 from libcros_config_host_base import DeviceConfig
 from libcros_config_host_base import DeviceSignerInfo
+from libcros_config_host_base import FirmwareHash
 from libcros_config_host_base import FirmwareImage
 from libcros_config_host_base import FirmwareInfo
 from libcros_config_host_base import SymlinkedFile
@@ -265,6 +266,13 @@ class CrosConfigJson(CrosConfigBaseImpl):
                     fw_signer_config, "sig-id-in-customization-id"
                 )
 
+                main_rw_a_hash = None
+                if config.GetValue(fw, "main-rw-a-hash"):
+                    main_rw_a_hash = FirmwareHash(
+                        config.GetValue(fw, "main-rw-a-hash"),
+                        config.GetValue(fw, "main-rw-a-hash-algorithm"),
+                    )
+
                 have_image = True
 
                 if sig_in_customization_id:
@@ -290,6 +298,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
                     pd_image_uri,
                     sig_id,
                     brand_code,
+                    main_rw_a_hash,
                 )
                 config.firmware_info[firmware_name] = info
 
