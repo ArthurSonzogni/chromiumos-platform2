@@ -243,10 +243,19 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_timestamp_and_event_id_from_log_entry_missing_payload_0() {
+    fn test_parse_timestamp_and_event_id_from_log_entry_nvmem_missing_payload_0() {
         use super::FE_LOG_NVMEM;
 
         let line: &str = &format!("{:>10}:{:02x}", 1, FE_LOG_NVMEM);
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        assert_eq!(result, Err(HwsecError::InternalError));
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_apro_missing_payload_0() {
+        use super::FE_LOG_AP_RO_VERIFICATION;
+
+        let line: &str = &format!("{:>10}:{:02x}", 1, FE_LOG_AP_RO_VERIFICATION);
         let result = parse_timestamp_and_event_id_from_log_entry(line);
         assert_eq!(result, Err(HwsecError::InternalError));
     }
