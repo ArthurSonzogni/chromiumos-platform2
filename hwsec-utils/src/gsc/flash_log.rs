@@ -21,7 +21,7 @@ const APROF_CHECK_TRIGGERED: u64 = 3;
 
 // Offsets used to expand nvmem and apro verification FLOG codes.
 const NVMEM_MALLOC: u64 = 200;
-const APRO_OFFSET: u64 = 900;
+const APRO_OFFSET: u64 = 160;
 const APRO_IGNORE_ENTRY: u64 = APRO_OFFSET;
 
 pub fn read_prev_timestamp_from_file(
@@ -107,12 +107,12 @@ fn parse_timestamp_and_event_id_from_log_entry(line: &str) -> Result<(u64, u64),
         event_id = NVMEM_MALLOC + payload_0;
     } else if event_id == FE_LOG_AP_RO_VERIFICATION {
         // If event_id is 09, which is FE_LOG_AP_RO_VERIFICATION, then adopt
-        // '900 + the first byte of payload' as an new event_id, as defined as
+        // '160 + the first byte of payload' as an new event_id, as defined as
         // enum Cr50FlashLogs in
         // https://chromium.googlesource.com/chromium/src/+//main:tools/metrics/
         // histograms/enums.xml.
 
-        // For example, event_id=09, payload[0]=03, then new event id is 903, which
+        // For example, event_id=09, payload[0]=03, then new event id is 163, which
         // is labeled as 'AP RO Triggered'.
         let payload_0: u64 = get_next_u64_from_iterator(&mut parts)?;
         // Ignore the codes less than CHECK_TRIGGERED. They're normal. Verification
