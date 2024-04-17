@@ -52,7 +52,8 @@ FactoryModeMountHelper::FactoryModeMountHelper(
                   std::move(impl),
                   std::move(storage_container_factory)) {}
 
-bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
+bool FactoryModeMountHelper::DoMountVarAndHomeChronos(
+    std::optional<encryption::EncryptionKey> _) {
   base::FilePath option_file = stateful_.Append(kOptionsFile);
   std::string option;
   platform_->ReadFileToString(option_file, &option);
@@ -75,7 +76,7 @@ bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
     return true;
   }
   // Mount /var and /home/chronos in the unencrypted mode.
-  return MountVarAndHomeChronos();
+  return MountVarAndHomeChronos(std::nullopt);
 }
 
 }  // namespace startup

@@ -66,7 +66,8 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
       return std::make_unique<TestModeMountHelper>(
           platform_, startup_dep_, flags_, root_, stateful_,
           std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
-              platform_, startup_dep_, root_, stateful_),
+              platform_, startup_dep_, storage_container_factory.get(), root_,
+              stateful_),
           std::move(storage_container_factory));
     else
       return std::make_unique<TestModeMountHelper>(
@@ -80,7 +81,8 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
     return std::make_unique<StandardMountHelper>(
         platform_, startup_dep_, flags_, root_, stateful_,
         std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
-            platform_, startup_dep_, root_, stateful_),
+            platform_, startup_dep_, storage_container_factory.get(), root_,
+            stateful_),
         std::move(storage_container_factory));
   return std::make_unique<StandardMountHelper>(
       platform_, startup_dep_, flags_, root_, stateful_,

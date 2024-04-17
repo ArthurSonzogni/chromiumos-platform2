@@ -124,6 +124,9 @@ static_library("libcrosstartup") {
     ":libinit_utils",
     ":libtpm_encryption",
   ]
+  if (use.encrypted_stateful) {
+    deps += [ ":libmount_encrypted" ]
+  }
 }
 
 static_library("libclobber") {

@@ -39,8 +39,9 @@ StandardMountHelper::StandardMountHelper(
                   std::move(impl),
                   std::move(storage_container_factory)) {}
 
-bool StandardMountHelper::DoMountVarAndHomeChronos() {
-  return MountVarAndHomeChronos();
+bool StandardMountHelper::DoMountVarAndHomeChronos(
+    std::optional<encryption::EncryptionKey> key) {
+  return MountVarAndHomeChronos(key);
 }
 
 }  // namespace startup

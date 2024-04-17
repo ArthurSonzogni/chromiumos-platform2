@@ -29,11 +29,8 @@
 
 namespace {
 
-// Flag file indicating that mount encrypted stateful failed last time.
-// If the file is present and mount_encrypted failed again, machine would
-// enter self-repair mode.
-constexpr char kMountEncryptedFailedFile[] = "mount_encrypted_failed";
-constexpr char kSysKeyLogFile[] = "run/chromeos_startup/create_system_key.log";
+constexpr char kNoEarlyKeyFile[] = ".no_early_system_key";
+constexpr char kSysKeyBackupFile[] = "unencrypted/preserve/system.key";
 
 }  // namespace
 
@@ -58,33 +55,23 @@ TestModeMountHelper::TestModeMountHelper(
                   std::move(impl),
                   std::move(storage_container_factory)) {}
 
-bool TestModeMountHelper::DoMountVarAndHomeChronos() {
+base::FilePath TestModeMountHelper::GetKeyBackupFile() {
   // If this a TPM 2.0 device that supports encrypted stateful, creates and
   // persists a system key into NVRAM and backs the key up if it doesn't exist.
   // If the call create_system_key is successful, mount_var_and_home_chronos
   // will skip the normal system key generation procedure; otherwise, it will
   // generate and persist a key via its normal workflow.
-  if (flags_.sys_key_util) {
+  base::FilePath no_early = stateful_.Append(kNoEarlyKeyFile);
+  if (flags_.sys_key_util && !platform_->FileExists(no_early)) {
     LOG(INFO) << "Creating System Key";
-    std::string output;
-    CreateSystemKey(platform_, root_, stateful_, startup_dep_, &output);
-    base::FilePath log_file = root_.Append(kSysKeyLogFile);
-    platform_->WriteStringToFile(log_file, output);
+    return stateful_.Append(kSysKeyBackupFile);
   }
+  return base::FilePath();
+}
 
-  base::FilePath encrypted_failed = stateful_.Append(kMountEncryptedFailedFile);
-  bool ret;
-  uid_t uid;
-  if (!platform_->GetOwnership(encrypted_failed, &uid, nullptr,
-                               false /* follow_links */) ||
-      (uid != getuid())) {
-    // This is the default path
-    // Try to use the original handler in chromeos_startup.
-    // When it fails, we will reboot and try again below.
-    return MountVarAndHomeChronos();
-  }
-
-  ret = MountVarAndHomeChronos();
+bool TestModeMountHelper::DoMountVarAndHomeChronos(
+    std::optional<encryption::EncryptionKey> key) {
+  bool ret = MountVarAndHomeChronos(key);
   if (!ret) {
     // Try to re-construct encrypted folders, otherwise such a failure will lead
     // to wiping whole stateful partition (including all helpful programs in
@@ -112,9 +99,9 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
       platform_->Rename(path, to_path, true /* cros_fs */);
     }
 
-    return MountVarAndHomeChronos();
+    ret = MountVarAndHomeChronos(key);
   }
-  return true;
+  return ret;
 }
 
 }  // namespace startup

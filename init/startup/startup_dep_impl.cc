@@ -41,25 +41,6 @@ namespace startup {
 
 StartupDep::StartupDep(libstorage::Platform* platform) : platform_(platform) {}
 
-int StartupDep::MountEncrypted(const std::vector<std::string>& args,
-                               std::string* output) {
-  std::unique_ptr<brillo::Process> mount_enc =
-      platform_->CreateProcessInstance();
-  mount_enc->AddArg("/usr/sbin/mount-encrypted");
-  for (auto arg : args) {
-    mount_enc->AddArg(arg);
-  }
-  if (output) {
-    mount_enc->RedirectOutputToMemory(true);
-  }
-
-  int status = mount_enc->Run();
-  if (output) {
-    *output = mount_enc->GetOutputString(STDOUT_FILENO);
-  }
-  return status;
-}
-
 void StartupDep::BootAlert(const std::string& arg) {
   std::unique_ptr<brillo::Process> boot_alert =
       platform_->CreateProcessInstance();

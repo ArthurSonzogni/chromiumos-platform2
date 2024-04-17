@@ -20,11 +20,6 @@ namespace startup {
 FakeStartupDep::FakeStartupDep(libstorage::Platform* platform)
     : StartupDep(platform), platform_(platform) {}
 
-void FakeStartupDep::SetMountEncOutputForArg(const std::string& arg,
-                                             const std::string& output) {
-  mount_enc_result_map_[arg] = output;
-}
-
 int FakeStartupDep::GetBootAlertForArg(const std::string& arg) {
   return alert_result_map_[arg];
 }
@@ -35,20 +30,6 @@ void FakeStartupDep::GetClobberLog(std::string* log) {
 
 std::set<std::string> FakeStartupDep::GetClobberArgs() {
   return clobber_args_;
-}
-
-int FakeStartupDep::MountEncrypted(const std::vector<std::string>& args,
-                                   std::string* output) {
-  std::string arg;
-  if (!args.empty()) {
-    arg = args.at(0);
-  }
-  if (mount_enc_result_map_.count(arg) == 0) {
-    return -1;
-  }
-
-  *output = mount_enc_result_map_[arg];
-  return 0;
 }
 
 void FakeStartupDep::BootAlert(const std::string& arg) {

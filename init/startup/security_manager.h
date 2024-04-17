@@ -37,12 +37,6 @@ bool BlockSymlinkAndFifo(libstorage::Platform* platform,
                          const base::FilePath& root,
                          const std::string& path);
 
-void CreateSystemKey(libstorage::Platform* platform,
-                     const base::FilePath& root,
-                     const base::FilePath& stateful,
-                     StartupDep* startup_dep,
-                     std::string* output);
-
 bool AllowSymlink(libstorage::Platform* platform,
                   const base::FilePath& root,
                   const std::string& path);

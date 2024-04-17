@@ -20,47 +20,42 @@
 #include <brillo/process/process.h>
 #include <libstorage/platform/platform.h>
 
+#include "init/mount_encrypted/encrypted_fs.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/startup_dep_impl.h"
-
-namespace {
-
-constexpr char kMountEncryptedLog[] = "run/mount_encrypted/mount-encrypted.log";
-
-}  // namespace
 
 namespace startup {
 
 MountVarAndHomeChronosEncryptedImpl::MountVarAndHomeChronosEncryptedImpl(
     libstorage::Platform* platform,
     StartupDep* startup_dep,
+    libstorage::StorageContainerFactory* container_factory,
     const base::FilePath& root,
     const base::FilePath& stateful)
     : platform_(platform),
       startup_dep_(startup_dep),
+      container_factory_(container_factory),
       root_(root),
       stateful_(stateful) {}
 
 // Create, possibly migrate from, the unencrypted stateful partition, and bind
 // mount the /var and /home/chronos mounts from the encrypted filesystem
 // /mnt/stateful_partition/encrypted, all managed by the "mount-encrypted"
-// helper. Takes the same arguments as mount-encrypted. Since /var is managed by
-// mount-encrypted, it should not be created in the unencrypted stateful
-// partition. Its mount point in the root filesystem exists already from the
-// rootfs image. Since /home is still mounted from the unencrypted stateful
-// partition, having /home/chronos already doesn't matter. It will be created by
+// helper. Since /var is managed by mount-encrypted, it should not be created
+// in the unencrypted stateful partition. Its mount point in the root
+// filesystem exists already from the rootfs image.
+// Since /home is still mounted from the unencrypted stateful partition,
+// having /home/chronos already doesn't matter. It will be created by
 // mount-encrypted if it is missing. These mounts inherit nodev,noexec,nosuid
 // from the encrypted filesystem /mnt/stateful_partition/encrypted.
-bool MountVarAndHomeChronosEncryptedImpl::Mount() {
-  base::FilePath mount_enc_log = root_.Append(kMountEncryptedLog);
-  std::string output;
-  int status =
-      startup_dep_->MountEncrypted(std::vector<std::string>(), &output);
-  std::string existing_log;
-  platform_->ReadFileToString(mount_enc_log, &existing_log);
-  existing_log.append(output);
-  platform_->WriteStringToFile(mount_enc_log, existing_log);
-  return status == 0;
+bool MountVarAndHomeChronosEncryptedImpl::Mount(
+    std::optional<encryption::EncryptionKey> key) {
+  auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
+      root_, stateful_, platform_, container_factory_);
+
+  libstorage::FileSystemKey encryption_key;
+  encryption_key.fek = key->encryption_key();
+  return encrypted_fs->Setup(encryption_key, key->is_fresh());
 }
 
 // Give mount-encrypted umount 10 times to retry, otherwise
@@ -83,18 +78,17 @@ bool MountVarAndHomeChronosEncryptedImpl::Umount() {
     return true;
   }
 
-  brillo::ProcessImpl umount;
-  umount.AddArg("/usr/sbin/mount-encrypted");
-  umount.AddArg("umount");
-  int ret = 0;
-  for (int i = 0; i < 10; i++) {
-    ret = umount.Run();
-    if (ret == 0) {
-      break;
-    }
+  auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
+      root_, stateful_, platform_, container_factory_);
+
+  base::TimeTicks deadline = base::TimeTicks::Now() + base::Seconds(1);
+  do {
+    if (encrypted_fs->Teardown())
+      return true;
+
     base::PlatformThread::Sleep(base::Milliseconds(100));
-  }
-  return ret == 0;
+  } while (base::TimeTicks::Now() < deadline);
+  return false;
 }
 
 }  // namespace startup

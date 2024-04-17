@@ -21,8 +21,8 @@
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
-#include <base/strings/string_split.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_split.h>
 #include <brillo/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/process/process.h>
@@ -50,6 +50,7 @@
 #include "init/startup/test_mode_mount_helper.h"
 #include "init/startup/uefi_startup.h"
 #include "init/tpm_encryption/tpm.h"
+#include "init/tpm_encryption/tpm_setup.h"
 #include "init/utils.h"
 
 namespace {
@@ -573,8 +574,9 @@ void ChromeosStartup::StartTpm2Simulator() {
   }
 }
 
-// Clean up after a TPM firmware update. This must happen before mounting
-// stateful, which will initialize the TPM again.
+// Clean up after a TPM firmware update.
+// Called before initiatlizing the TPM, which is done just before
+// mount encrypted stateful.
 void ChromeosStartup::CleanupTpm() {
   base::FilePath tpm_update_req =
       stateful_.Append(kTpmFirmwareUpdateRequestFlagFile);
@@ -840,23 +842,44 @@ int ChromeosStartup::Run() {
 
   CleanupTpm();
 
-  base::FilePath encrypted_failed = stateful_.Append(kMountEncryptedFailedFile);
-  if (!mount_helper_->DoMountVarAndHomeChronos()) {
-    uid_t uid;
-    if (!platform_->GetOwnership(encrypted_failed, &uid, nullptr,
-                                 false /* follow_links */) ||
-        (uid != getuid())) {
-      platform_->TouchFileDurable(encrypted_failed);
-    } else {
-      crossystem->VbSetSystemPropertyInt("recovery_request", 1);
-    }
+  std::optional<encryption::EncryptionKey> key;
 
-    utils::Reboot();
-    return 0;
+  if (flags_.encstateful) {
+    base::FilePath encrypted_failed =
+        stateful_.Append(kMountEncryptedFailedFile);
+    // Setup the TPM
+    // In case of error, reboot once.
+    // If it fails again, trigger a recovery.
+    auto tpm_system_key = encryption::TpmSystemKey(platform_, tlcl_.get(),
+                                                   metrics_, root_, stateful_);
+
+    key =
+        tpm_system_key.Load(true /* safe */, mount_helper_->GetKeyBackupFile());
+    if (!key) {
+      uid_t uid;
+      if (!platform_->GetOwnership(encrypted_failed, &uid, nullptr,
+                                   false /* follow_links */) ||
+          (uid != getuid())) {
+        platform_->TouchFileDurable(encrypted_failed);
+      } else {
+        crossystem->VbSetSystemPropertyInt("recovery_request", 1);
+      }
+
+      utils::Reboot();
+      return 0;
+    }
+    if (platform_->FileExists(encrypted_failed))
+      platform_->DeleteFile(encrypted_failed);
   }
 
-  if (platform_->FileExists(encrypted_failed))
-    platform_->DeleteFile(encrypted_failed);
+  // Mount encstateful
+  // If it fails clobber. In testing mode, a backup may have been saved and
+  // a fresh encstateful created.
+  if (!mount_helper_->DoMountVarAndHomeChronos(key)) {
+    mount_helper_->CleanupMounts("Unable to mount encrypted");
+    // No return unless in unit tests.
+    return 0;
+  }
 
   base::FilePath pcr_extend_failed =
       stateful_.Append(kVersionPCRExtendFailedFile);

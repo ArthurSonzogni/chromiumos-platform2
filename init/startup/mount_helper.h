@@ -17,6 +17,7 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/startup_dep_impl.h"
+#include "init/tpm_encryption/encryption_key.h"
 
 namespace startup {
 
@@ -52,7 +53,8 @@ class MountHelper {
                        const base::FilePath& target);
   // Mount or unmount home chronos.
   // DoMountVarAndHomeChronos is defined in children of this class.
-  bool MountVarAndHomeChronos();
+  // The key is only needed for encrypted stateful.
+  bool MountVarAndHomeChronos(std::optional<encryption::EncryptionKey> key);
   bool DoUmountVarAndHomeChronos();
 
   // Return the storage container factory, used to create filestsytem
@@ -64,7 +66,12 @@ class MountHelper {
   // Bind mount the /var and /home/chronos mounts. The implementation
   // is different for test images and when in factory mode. It also
   // changes depending on the encrypted stateful USE flag.
-  virtual bool DoMountVarAndHomeChronos() = 0;
+  virtual bool DoMountVarAndHomeChronos(
+      std::optional<encryption::EncryptionKey> key) = 0;
+
+  // Returns a location to save the initial random TPM system key seed.
+  // Used only in test mode.
+  virtual base::FilePath GetKeyBackupFile() { return base::FilePath(); }
 
  protected:
   raw_ptr<libstorage::Platform> platform_;

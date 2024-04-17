@@ -43,7 +43,8 @@ MountVarAndHomeChronosUnencryptedImpl::MountVarAndHomeChronosUnencryptedImpl(
       stateful_(stateful) {}
 
 // Bind mount /var and /home/chronos. All function arguments are ignored.
-bool MountVarAndHomeChronosUnencryptedImpl::Mount() {
+bool MountVarAndHomeChronosUnencryptedImpl::Mount(
+    std::optional<encryption::EncryptionKey> _) {
   base::FilePath var = stateful_.Append(kVar);
   if (!platform_->CreateDirectory(var)) {
     return false;

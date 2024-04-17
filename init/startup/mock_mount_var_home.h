@@ -26,7 +26,10 @@ class MockMountVarAndHomeChronos : public MountVarAndHomeChronosInterface {
   virtual ~MockMountVarAndHomeChronos() = default;
 
   MOCK_METHOD(bool, Umount, (), (override));
-  MOCK_METHOD(bool, Mount, (), (override));
+  MOCK_METHOD(bool,
+              Mount,
+              (std::optional<encryption::EncryptionKey> key),
+              (override));
 };
 
 }  // namespace startup

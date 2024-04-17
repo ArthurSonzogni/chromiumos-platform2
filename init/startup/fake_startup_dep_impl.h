@@ -27,17 +27,11 @@ class FakeStartupDep : public StartupDep {
  public:
   explicit FakeStartupDep(libstorage::Platform* platform);
 
-  void SetMountEncOutputForArg(const std::string& arg,
-                               const std::string& output);
-
   int GetBootAlertForArg(const std::string& arg);
 
   void GetClobberLog(std::string* log);
 
   std::set<std::string> GetClobberArgs();
-
-  int MountEncrypted(const std::vector<std::string>& args,
-                     std::string* const output) override;
 
   void BootAlert(const std::string& arg) override;
 
@@ -49,7 +43,6 @@ class FakeStartupDep : public StartupDep {
 
  private:
   libstorage::Platform* platform_;
-  std::unordered_map<std::string, std::string> mount_enc_result_map_;
   std::unordered_map<std::string, int> alert_result_map_;
   std::string clobber_log_;
   std::set<std::string> clobber_args_;

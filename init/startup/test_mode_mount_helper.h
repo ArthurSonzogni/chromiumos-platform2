@@ -32,7 +32,9 @@ class TestModeMountHelper : public MountHelper {
                       std::unique_ptr<libstorage::StorageContainerFactory>
                           storage_container_factory);
 
-  bool DoMountVarAndHomeChronos() override;
+  bool DoMountVarAndHomeChronos(
+      std::optional<encryption::EncryptionKey> key) override;
+  base::FilePath GetKeyBackupFile() override;
 };
 
 }  // namespace startup

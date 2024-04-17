@@ -22,9 +22,9 @@
 #include <base/values.h>
 #include <gtest/gtest.h>
 #include <libcrossystem/crossystem_fake.h>
+#include <libhwsec-foundation/tlcl_wrapper/mock_tlcl_wrapper.h>
 #include <libstorage/platform/fake_platform.h>
 #include <libstorage/platform/mock_platform.h>
-#include <libhwsec-foundation/tlcl_wrapper/mock_tlcl_wrapper.h>
 #include <vpd/fake_vpd.h>
 
 #include "init/startup/constants.h"
@@ -44,6 +44,7 @@ using testing::AnyNumber;
 using testing::ByMove;
 using testing::DoAll;
 using testing::HasSubstr;
+using testing::Pointee;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
@@ -821,6 +822,8 @@ class MountVarAndHomeChronosEncryptedTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
         std::move(mock_mount_impl_),
         std::unique_ptr<libstorage::StorageContainerFactory>());
+    encryption_key_ = std::make_unique<encryption::EncryptionKey>(
+        platform_.get(), nullptr /* loader */, base_dir_, base_dir_);
   }
 
   startup::Flags flags_{};
@@ -831,16 +834,17 @@ class MountVarAndHomeChronosEncryptedTest : public ::testing::Test {
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::MockMountVarAndHomeChronos> mock_mount_impl_;
   startup::MockMountVarAndHomeChronos* mock_mount_impl_ptr_;
+  std::unique_ptr<encryption::EncryptionKey> encryption_key_;
 };
 
 TEST_F(MountVarAndHomeChronosEncryptedTest, MountEncrypted) {
-  EXPECT_CALL(*mock_mount_impl_ptr_, Mount()).WillOnce(Return(true));
-  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(true));
+  EXPECT_TRUE(mount_helper_->MountVarAndHomeChronos(*encryption_key_));
 }
 
 TEST_F(MountVarAndHomeChronosEncryptedTest, MountEncryptedFail) {
-  EXPECT_CALL(*mock_mount_impl_ptr_, Mount()).WillOnce(Return(false));
-  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(false));
+  EXPECT_FALSE(mount_helper_->MountVarAndHomeChronos(*encryption_key_));
 }
 
 class DoMountTest : public ::testing::Test {
@@ -850,6 +854,8 @@ class DoMountTest : public ::testing::Test {
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mock_mount_impl_ = std::make_unique<startup::MockMountVarAndHomeChronos>();
     mock_mount_impl_ptr_ = mock_mount_impl_.get();
+    encryption_key_ = std::make_unique<encryption::EncryptionKey>(
+        platform_.get(), nullptr /* loader */, base_dir_, base_dir_);
   }
 
   startup::Flags flags_{};
@@ -860,42 +866,35 @@ class DoMountTest : public ::testing::Test {
   std::unique_ptr<startup::MountHelper> mount_helper_;
   std::unique_ptr<startup::MockMountVarAndHomeChronos> mock_mount_impl_;
   startup::MockMountVarAndHomeChronos* mock_mount_impl_ptr_;
+  std::unique_ptr<encryption::EncryptionKey> encryption_key_;
 };
 
-#if USE_ENCRYPTED_STATEFUL
 TEST_F(DoMountTest, StandardMountHelper) {
-  flags_.encstateful = true;
-  startup_dep_->SetMountEncOutputForArg("", "1");
-  mount_helper_ = std::make_unique<StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
-      std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
-          platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_),
-      std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos());
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
+      std::make_unique<startup::StandardMountHelper>(
+          platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+          std::move(mock_mount_impl_),
+          std::unique_ptr<libstorage::StorageContainerFactory>());
+  EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(true));
+  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(*encryption_key_));
 }
 
+#if USE_ENCRYPTED_STATEFUL
 TEST_F(DoMountTest, TestModeMountHelperCreateSystemKey) {
   // Test we are not creating the early system key.
   // Only useful when encrypted stateful is compiled-in.
   flags_.sys_key_util = true;
-  flags_.encstateful = true;
   base::FilePath no_early = stateful_dir_.Append(".no_early_system_key");
-  base::FilePath log_file =
-      base_dir_.Append("run/chromeos_startup/create_system_key.log");
-  ASSERT_TRUE(platform_->WriteStringToFile(no_early, "1"));
 
-  startup_dep_->SetMountEncOutputForArg("", "1");
-  mount_helper_ = std::make_unique<TestModeMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
-      std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
-          platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_),
-      std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos());
-  std::string sys_key_log_out;
-  platform_->ReadFileToString(log_file, &sys_key_log_out);
-  EXPECT_EQ(sys_key_log_out, "Opt not to create a system key in advance.");
+  std::unique_ptr<startup::TestModeMountHelper> mount_helper_ =
+      std::make_unique<startup::TestModeMountHelper>(
+          platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
+          std::move(mock_mount_impl_),
+          std::unique_ptr<libstorage::StorageContainerFactory>());
+  EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(true));
+  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(*encryption_key_));
+  EXPECT_FALSE(mount_helper_->GetKeyBackupFile().empty());
 }
-#endif  // USE_ENCRYPTED_STATEFUL
 
 TEST_F(DoMountTest, TestModeMountHelperMountEncryptFailed) {
   flags_.sys_key_util = false;
@@ -906,9 +905,11 @@ TEST_F(DoMountTest, TestModeMountHelperMountEncryptFailed) {
       platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
       std::move(mock_mount_impl_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_CALL(*mock_mount_impl_ptr_, Mount()).WillOnce(Return(true));
-  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(true));
+  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(*encryption_key_));
+  EXPECT_TRUE(mount_helper_->GetKeyBackupFile().empty());
 }
+#endif  // USE_ENCRYPTED_STATEFUL
 
 TEST_F(DoMountTest, TestModeMountHelperMountVarSuccess) {
   flags_.sys_key_util = false;
@@ -917,8 +918,8 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarSuccess) {
       platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
       std::move(mock_mount_impl_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_CALL(*mock_mount_impl_ptr_, Mount()).WillOnce(Return(true));
-  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillOnce(Return(true));
+  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(*encryption_key_));
   std::string clobber_log_out;
   startup_dep_->GetClobberLog(&clobber_log_out);
   EXPECT_EQ(clobber_log_out, "");
@@ -928,10 +929,6 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarFail) {
   // We already failed one, so at reboot, "mount_encrypted_failed" exists.
   // Let's fail second time and check we are staving backups.
   flags_.sys_key_util = false;
-  base::FilePath mnt_encrypt_fail =
-      stateful_dir_.Append("mount_encrypted_failed");
-  EXPECT_CALL(*platform_, GetOwnership(mnt_encrypt_fail, _, nullptr, false))
-      .WillOnce(DoAll(SetArgPointee<1>(getuid()), Return(true)));
   base::FilePath corrupted_enc = stateful_dir_.Append("corrupted_encryption");
   base::FilePath encrypted_test = stateful_dir_.Append("encrypted.test1");
   base::FilePath encrypted_test2 = stateful_dir_.Append("encrypted.test2");
@@ -942,8 +939,8 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarFail) {
       platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
       std::move(mock_mount_impl_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_CALL(*mock_mount_impl_ptr_, Mount()).WillRepeatedly(Return(false));
-  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_CALL(*mock_mount_impl_ptr_, Mount(_)).WillRepeatedly(Return(false));
+  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos(*encryption_key_));
   std::string clobber_log_out;
   startup_dep_->GetClobberLog(&clobber_log_out);
   EXPECT_EQ(clobber_log_out,
@@ -962,7 +959,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntVar) {
       platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
       std::unique_ptr<MountVarAndHomeChronosUnencryptedImpl>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntHomeChronos) {
@@ -979,7 +976,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsFailMntHomeChronos) {
       platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
       std::unique_ptr<MountVarAndHomeChronosUnencryptedImpl>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperTmpfsSuccess) {
@@ -998,7 +995,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperTmpfsSuccess) {
       platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_dir_,
       std::unique_ptr<MountVarAndHomeChronosUnencryptedImpl>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntVar) {
@@ -1011,7 +1008,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntVar) {
       std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
           platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntHomeChronos) {
@@ -1031,7 +1028,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptFailMntHomeChronos) {
       std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
           platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
 }
 
 TEST_F(DoMountTest, FactoryModeMountHelperUnencryptSuccess) {
@@ -1051,7 +1048,7 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptSuccess) {
       std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
           platform_.get(), startup_dep_.get(), base_dir_, stateful_dir_),
       std::unique_ptr<libstorage::StorageContainerFactory>());
-  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos());
+  EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos(std::nullopt));
 }
 
 class IsVarFullTest : public ::testing::Test {

@@ -39,10 +39,6 @@ class StartupDep {
   explicit StartupDep(libstorage::Platform* platform);
   virtual ~StartupDep() = default;
 
-  // Runs mount-encrypted with the given arg.
-  virtual int MountEncrypted(const std::vector<std::string>& args,
-                             std::string* output);
-
   // Runs chromeos-boot-alert with the given arg.
   virtual void BootAlert(const std::string& arg);
 

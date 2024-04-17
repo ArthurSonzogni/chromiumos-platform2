@@ -5,10 +5,9 @@
 #ifndef INIT_STARTUP_MOUNT_VAR_HOME_INTERFACE_H_
 #define INIT_STARTUP_MOUNT_VAR_HOME_INTERFACE_H_
 
+#include "init/tpm_encryption/encryption_key.h"
+
 namespace startup {
-
-class MountVarAndHomeChronosInterfaceInterface;
-
 // MountVarAndHomeChronosInterface contains the functionality for mount/umount
 // encstateful, encrypted or not.
 class MountVarAndHomeChronosInterface {
@@ -18,7 +17,7 @@ class MountVarAndHomeChronosInterface {
   // Unmount bind mounts for /var and /home/chronos.
   virtual bool Umount() = 0;
   // Mount bind mounts for /var and /home/chronos.
-  virtual bool Mount() = 0;
+  virtual bool Mount(std::optional<encryption::EncryptionKey> key) = 0;
 };
 
 }  // namespace startup

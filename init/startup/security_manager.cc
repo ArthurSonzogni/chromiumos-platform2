@@ -5,6 +5,7 @@
 #include "init/startup/security_manager.h"
 
 #include <fcntl.h>
+#include <linux/loadpin.h>
 #include <sys/ioctl.h>
 
 #include <iostream>
@@ -20,8 +21,6 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <libstorage/platform/platform.h>
-#include <linux/loadpin.h>
-#include <openssl/sha.h>
 
 #include "init/startup/startup_dep_impl.h"
 
@@ -42,10 +41,6 @@ constexpr char kSafeSetIDProcessMgmtPolicies[] = "safesetid";
 
 constexpr char kLsmInodePolicies[] =
     "sys/kernel/security/chromiumos/inode_security_policies";
-
-constexpr char kNoEarlyKeyFile[] = ".no_early_system_key";
-constexpr char kSysKeyBackupFile[] = "unencrypted/preserve/system.key";
-constexpr int kKeySize = SHA256_DIGEST_LENGTH;
 
 const std::array<const char*, 3> kSymlinkExceptions = {
     "var/lib/timezone",
@@ -228,53 +223,6 @@ bool BlockSymlinkAndFifo(libstorage::Platform* platform,
     ret = false;
   }
   return ret;
-}
-
-// Generates a system key in test images, before the normal mount-encrypted.
-// This allows us to soft-clear the TPM in integration tests w/o accidentally
-// wiping encstateful after a reboot.
-void CreateSystemKey(libstorage::Platform* platform,
-                     const base::FilePath& root,
-                     const base::FilePath& stateful,
-                     StartupDep* startup_dep,
-                     std::string* log_content) {
-  base::FilePath no_early = stateful.Append(kNoEarlyKeyFile);
-  base::FilePath backup = stateful.Append(kSysKeyBackupFile);
-  base::FilePath empty;
-
-  if (platform->FileExists(no_early)) {
-    log_content->append("Opt not to create a system key in advance.");
-    return;
-  }
-
-  log_content->append("Checking if a system key already exists in NVRAM...\n");
-  std::string output;
-  std::vector<std::string> mnt_enc_info = {"info"};
-  if (!startup_dep->MountEncrypted(mnt_enc_info, &output)) {
-    log_content->append(output);
-    log_content->append("\n");
-    if (output.find("NVRAM: available.") != std::string::npos) {
-      log_content->append("There is already a system key in NVRAM.\n");
-      return;
-    }
-  }
-
-  log_content->append("No system key found in NVRAM. Start creating one.\n");
-
-  // Generates 32-byte random key material and backs it up.
-  brillo::Blob buf(kKeySize);
-  base::RandBytes(buf);
-  if (!platform->WriteFile(backup, buf)) {
-    log_content->append("Failed to generate or back up system key material.\n");
-    return;
-  }
-
-  // Persists system key.
-  std::vector<std::string> mnt_enc_set = {"set", backup.value()};
-  if (!startup_dep->MountEncrypted(mnt_enc_set, &output)) {
-    log_content->append(output);
-    log_content->append("Successfully created a system key.");
-  }
 }
 
 bool AllowSymlink(libstorage::Platform* platform,

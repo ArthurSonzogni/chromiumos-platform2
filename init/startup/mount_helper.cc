@@ -20,9 +20,11 @@
 #include <brillo/process/process.h>
 #include <libstorage/platform/platform.h>
 
+#include "init/mount_encrypted/encrypted_fs.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_var_home_interface.h"
 #include "init/startup/startup_dep_impl.h"
+#include "init/tpm_encryption/tpm.h"
 
 namespace startup {
 
@@ -120,8 +122,9 @@ void MountHelper::BindMountOrFail(const base::FilePath& source,
   CleanupMounts(msg);
 }
 
-bool MountHelper::MountVarAndHomeChronos() {
-  return impl_->Mount();
+bool MountHelper::MountVarAndHomeChronos(
+    std::optional<encryption::EncryptionKey> key) {
+  return impl_->Mount(key);
 }
 
 bool MountHelper::DoUmountVarAndHomeChronos() {

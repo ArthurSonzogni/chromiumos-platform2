@@ -32,7 +32,7 @@ class MountVarAndHomeChronosUnencryptedImpl
   // Unmount bind mounts for /var and /home/chronos.
   bool Umount() override;
   // Mount bind mounts for /var and /home/chronos.
-  bool Mount() override;
+  bool Mount(std::optional<encryption::EncryptionKey> key) override;
 
  private:
   raw_ptr<libstorage::Platform> platform_;
