@@ -162,6 +162,28 @@ TEST_F(SecurityManagerTest, After_v5_9) {
   EXPECT_NE(allow.find(result2), std::string::npos);
 }
 
+TEST_F(SecurityManagerTest, After_v5_9_gid) {
+  base::FilePath policies_dir = base_dir_.Append(
+      "usr/share/cros/startup/gid_process_management_policies");
+  base::FilePath mgmt_policies =
+      base_dir_.Append("sys/kernel/security/safesetid/gid_allowlist_policy");
+  ASSERT_TRUE(CreateDirAndWriteFile(mgmt_policies, "#AllowList"));
+  base::FilePath allow_1 = policies_dir.Append("allow_1.txt");
+  std::string result1 = "254:607\n607:607";
+  ASSERT_TRUE(CreateDirAndWriteFile(allow_1, result1));
+  base::FilePath allow_2 = policies_dir.Append("allow_2.txt");
+  std::string result2 = "20104:224\n20104:217\n217:217";
+  ASSERT_TRUE(CreateDirAndWriteFile(allow_2, result2));
+
+  startup::ConfigureProcessMgmtSecurity(base_dir_);
+
+  std::string allow;
+  base::ReadFileToString(mgmt_policies, &allow);
+
+  EXPECT_NE(allow.find(result1), std::string::npos);
+  EXPECT_NE(allow.find(result2), std::string::npos);
+}
+
 TEST_F(SecurityManagerTest, EmptyAfter_v5_9) {
   base::FilePath mgmt_policies =
       base_dir_.Append("sys/kernel/security/safesetid/uid_allowlist_policy");

@@ -146,7 +146,7 @@ bool ConfigureProcessMgmtSecurity(const base::FilePath& root) {
 
   // For GID relevant files.
   const base::FilePath gid_mgmt_policies =
-      root.Append(kSafeSetIDProcessMgmtPolicies).Append("gid_allowlist_policy");
+      policies_dir.Append("gid_allowlist_policy");
   const base::FilePath pmp_gid = root.Append(kProcessMgmtPoliciesDirGID);
 
   return AccumulatePolicyFiles(root, uid_mgmt_policies, pmpd) &&
