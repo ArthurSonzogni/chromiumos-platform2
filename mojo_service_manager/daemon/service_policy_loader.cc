@@ -4,6 +4,9 @@
 
 #include "mojo_service_manager/daemon/service_policy_loader.h"
 
+#include <pwd.h>
+#include <sys/types.h>
+
 #include <optional>
 #include <set>
 #include <string>
@@ -21,10 +24,11 @@ namespace {
 
 // Keys of the policy files.
 constexpr char kKeyIdentity[] = "identity";
+constexpr char kKeyUser[] = "user";
 constexpr char kKeyOwn[] = "own";
 constexpr char kKeyRequest[] = "request";
-constexpr std::array<const char*, 3> kExpectedKeys = {kKeyIdentity, kKeyOwn,
-                                                      kKeyRequest};
+constexpr std::array<const char*, 4> kExpectedKeys = {kKeyIdentity, kKeyUser,
+                                                      kKeyOwn, kKeyRequest};
 // The json option for parsing policy files.
 constexpr int kJSONOption =
     base::JSON_ALLOW_TRAILING_COMMAS | base::JSON_ALLOW_COMMENTS;
@@ -81,7 +85,68 @@ bool GetStringByKey(const base::Value::Dict& value,
   return true;
 }
 
+LoadServicePolicyDelegate*& GetLoadServicePolicyDelegate() {
+  static LoadServicePolicyDelegate* g_instanse =
+      new LoadServicePolicyDelegate();
+  return g_instanse;
+}
+
+bool GetUidFromPolicy(const base::Value::Dict& policy, uint32_t& out) {
+  std::string username;
+  if (!GetStringByKey(policy, kKeyUser, username)) {
+    return false;
+  }
+  const struct passwd* passwd = nullptr;
+  do {
+    passwd = GetLoadServicePolicyDelegate()->GetPWNam(username.c_str());
+  } while (passwd == nullptr && errno == EINTR);
+  if (!passwd) {
+    LOG(ERROR) << "Cannot find user \"" << username << "\".";
+    return false;
+  }
+  static_assert(sizeof(passwd->pw_uid) == sizeof(uint32_t));
+  out = static_cast<uint32_t>(passwd->pw_uid);
+  return true;
+}
+
+bool GetSecurityContextFromPolicy(const base::Value::Dict& policy,
+                                  std::string& out) {
+  std::string identity;
+  if (!GetStringByKey(policy, kKeyIdentity, identity)) {
+    return false;
+  }
+  if (!ValidateSecurityContext(identity)) {
+    LOG(ERROR) << "\"" << identity
+               << "\" is not a valid SELinux security context.";
+    return false;
+  }
+  out = identity;
+  return true;
+}
+
 }  // namespace
+
+LoadServicePolicyDelegate::LoadServicePolicyDelegate() = default;
+
+LoadServicePolicyDelegate::~LoadServicePolicyDelegate() = default;
+
+const struct passwd* LoadServicePolicyDelegate::GetPWNam(
+    const char* name) const {
+  return getpwnam(name);
+}
+
+void SetLoadServicePolicyDelegateForTest(LoadServicePolicyDelegate* delegate) {
+  static LoadServicePolicyDelegate* g_instanse_backup = nullptr;
+  if (delegate) {
+    CHECK(!g_instanse_backup);
+    g_instanse_backup = GetLoadServicePolicyDelegate();
+    GetLoadServicePolicyDelegate() = delegate;
+  } else {
+    CHECK(g_instanse_backup);
+    GetLoadServicePolicyDelegate() = g_instanse_backup;
+    g_instanse_backup = nullptr;
+  }
+}
 
 bool LoadAllServicePolicyFileFromDirectory(const base::FilePath& dir,
                                            ServicePolicyMap* policy_map) {
@@ -159,13 +224,23 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
     if (!ValidateDictKeys(policy))
       return std::nullopt;
 
-    std::string identity;
-    if (!GetStringByKey(policy, kKeyIdentity, identity))
+    // TODO(b/333323875): Remove "identity" after migration.
+    if (policy.Find(kKeyUser) && policy.Find(kKeyIdentity)) {
+      LOG(ERROR) << "Cannot set both \"" << kKeyUser << "\" and \""
+                 << kKeyIdentity << "\".";
       return std::nullopt;
-    if (!ValidateSecurityContext(identity)) {
-      LOG(ERROR) << "\"" << identity
-                 << "\" is not a valid SELinux security context.";
-      return std::nullopt;
+    }
+    uint32_t uid = 0;
+    std::optional<std::string> identity;
+    if (policy.Find(kKeyIdentity)) {
+      identity = "";
+      if (!GetSecurityContextFromPolicy(policy, identity.value())) {
+        return std::nullopt;
+      }
+    } else {
+      if (!GetUidFromPolicy(policy, uid)) {
+        return std::nullopt;
+      }
     }
 
     std::vector<std::string> owns;
@@ -177,11 +252,15 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
         LOG(ERROR) << "\"" << service << "\" is not a valid service name.";
         return std::nullopt;
       }
-      if (!result[service].owner().empty()) {
+      if (!result[service].owner().empty() || result[service].owner_uid()) {
         LOG(ERROR) << "\"" << service << "\" can have only one owner.";
         return std::nullopt;
       }
-      result[service].SetOwner(identity);
+      if (identity) {
+        result[service].SetOwner(identity.value());
+      } else {
+        result[service].SetOwnerUid(uid);
+      }
     }
 
     std::vector<std::string> requests;
@@ -193,7 +272,11 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
         LOG(ERROR) << "\"" << service << "\" is not a valid service name.";
         return std::nullopt;
       }
-      result[service].AddRequester(identity);
+      if (identity) {
+        result[service].AddRequester(identity.value());
+      } else {
+        result[service].AddRequesterUid(uid);
+      }
     }
 
     LOG_IF(WARNING, owns.empty() && requests.empty())

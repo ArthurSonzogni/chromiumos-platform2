@@ -14,6 +14,8 @@
 
 #include "mojo_service_manager/daemon/service_policy.h"
 
+struct passwd;
+
 namespace chromeos::mojo_service_manager {
 
 // Note that the functions here use |base::JSONReader| which is not guaranteed
@@ -43,6 +45,23 @@ std::optional<ServicePolicyMap> ParseServicePolicyFromString(
 // Same as above but takes a |base::Value|.
 std::optional<ServicePolicyMap> ParseServicePolicyFromValue(
     const base::Value::List& value);
+
+// A delegate for overriding functions for testing.
+class LoadServicePolicyDelegate {
+ public:
+  LoadServicePolicyDelegate();
+  LoadServicePolicyDelegate(const LoadServicePolicyDelegate&) = delete;
+  LoadServicePolicyDelegate& operator=(const LoadServicePolicyDelegate&) =
+      delete;
+  virtual ~LoadServicePolicyDelegate();
+
+  // Calls `getpwnam`.
+  virtual const struct passwd* GetPWNam(const char* name) const;
+};
+
+// Sets delegate for testing. Pass `nullptr` to reset the delegate to the
+// default one.
+void SetLoadServicePolicyDelegateForTest(LoadServicePolicyDelegate* delegate);
 
 }  // namespace chromeos::mojo_service_manager
 
