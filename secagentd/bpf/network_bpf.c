@@ -800,3 +800,30 @@ int BPF_PROG(cros_handle_inet_recvmsg_exit,
   cros_maybe_new_socket(sock);
   return 0;
 }
+
+// TODO(b/339679923): soft rollout on all platforms that support LSM hooks to
+// gather support for adding downstream tracepoint patches to support ARM64.
+#ifdef CROS_LSM_BPF_SUPPORTED
+SEC("lsm/socket_post_create")
+int BPF_PROG(cros_handle_socket_post_create,
+             struct socket* sock,
+             int family,
+             int type,
+             int protocol,
+             int kern) {
+  bpf_printk("post socket created for family=%d protocol=%d kern=%d", family,
+             protocol, kern);
+  if (kern) {
+    return 0;
+  }
+  const struct cros_sk_info* sk_info =
+      create_process_map_entry(sock, "socket_post_create");
+  if (!sk_info) {
+    bpf_printk(
+        "socket_post_create was unable to allocate and populate sk_info");
+    return 0;
+  }
+  cros_maybe_new_socket(sock);
+  return 0;
+}
+#endif

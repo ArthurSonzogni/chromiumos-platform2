@@ -16,6 +16,7 @@ namespace secagentd::bpf {
 // Kernels older than v6.6  support fentry/fexit/lsm hooks for x86 only.
 #if defined(__TARGET_ARCH_x86) || LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
 #define CROS_FENTRY_FEXIT_SUPPORTED (1)
+#define CROS_LSM_BPF_SUPPORTED (1)
 #endif
 
 // If the kernel supports fentry/fexit for the platform arch then use
