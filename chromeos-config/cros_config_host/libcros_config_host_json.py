@@ -240,12 +240,15 @@ class CrosConfigJson(CrosConfigBaseImpl):
                         build_config, "coreboot"
                     )
                     ec_build_target = config.GetValue(build_config, "ec")
+                    is_zephyr_ec = False
                     if not ec_build_target:
                         ec_build_target = config.GetValue(
                             build_config, "zephyr-ec"
                         )
+                        is_zephyr_ec = True
                 else:
                     bios_build_target, ec_build_target = None, None
+                    is_zephyr_ec = False
 
                 main_image_uri = config.GetValue(fw, "main-ro-image") or ""
                 main_rw_image_uri = config.GetValue(fw, "main-rw-image") or ""
@@ -278,6 +281,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
                     have_image,
                     bios_build_target,
                     ec_build_target,
+                    is_zephyr_ec,
                     main_image_uri,
                     main_rw_image_uri,
                     ec_image_uri,

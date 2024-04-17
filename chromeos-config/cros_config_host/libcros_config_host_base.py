@@ -54,6 +54,7 @@ BaseFile = collections.namedtuple("BaseFile", ["source", "dest"])
 #   bios_build_target: Build target to use to build the BIOS, or None if none
 #   ec_build_target: Build target to use to build the EC (either CrOS EC or
 #       zephyr EC), or None if none
+#   is_zephyr_ec: Whether ec_build_target comes from zephyr EC.
 #   main_image_uri: URI to use to obtain main firmware image (e.g.
 #       'bcs://Caroline.2017.21.1.tbz2')
 #   main_rw_image_uri: URI to use to obtain main firmware RW image (e.g.
@@ -79,6 +80,7 @@ FirmwareInfo = collections.namedtuple(
         "have_image",
         "bios_build_target",
         "ec_build_target",
+        "is_zephyr_ec",
         "main_image_uri",
         "main_rw_image_uri",
         "ec_image_uri",
