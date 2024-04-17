@@ -7,6 +7,7 @@
 #include <sys/socket.h>
 
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -1641,9 +1642,9 @@ TEST_F(TetheringManagerTest, GetStatus) {
       status.Contains<std::string>(kTetheringStatusIdleReasonProperty));
 
   // Connect 2 clients.
-  std::vector<std::vector<uint8_t>> clients;
-  clients.push_back({00, 11, 22, 33, 44, 55});
-  clients.push_back({00, 11, 22, 33, 44, 66});
+  const std::vector<net_base::MacAddress> clients = {
+      net_base::MacAddress(0x00, 0x11, 0x22, 0x33, 0x44, 0x55),
+      net_base::MacAddress(0x00, 0x11, 0x22, 0x33, 0x44, 0x66)};
   EXPECT_CALL(*hotspot_device_.get(), GetStations()).WillOnce(Return(clients));
   status = GetStatus(tethering_manager_);
   EXPECT_EQ(status.Get<Stringmaps>(kTetheringStatusClientsProperty).size(), 2);
@@ -1677,8 +1678,8 @@ TEST_F(TetheringManagerTest, InactiveTimer) {
   EXPECT_FALSE(GetInactiveTimer(tethering_manager_).IsCancelled());
 
   // Connect client to the hotspot.
-  std::vector<std::vector<uint8_t>> clients;
-  clients.push_back({00, 11, 22, 33, 44, 55});
+  std::vector<net_base::MacAddress> clients = {
+      net_base::MacAddress(0x00, 0x11, 0x22, 0x33, 0x44, 0x55)};
   EXPECT_CALL(*hotspot_device_.get(), GetStations()).WillOnce(Return(clients));
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kPeerConnected,
@@ -1923,8 +1924,8 @@ TEST_F(TetheringManagerTest, ChangeAutoDisableWhileActive) {
             TetheringManager::TetheringState::kTetheringActive);
 
   // Connect client to the hotspot.
-  std::vector<std::vector<uint8_t>> clients;
-  clients.push_back({00, 11, 22, 33, 44, 55});
+  const std::vector<net_base::MacAddress> clients = {
+      net_base::MacAddress(0x00, 0x11, 0x22, 0x33, 0x44, 0x55)};
   ON_CALL(*hotspot_device_.get(), GetStations()).WillByDefault(Return(clients));
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kPeerConnected,

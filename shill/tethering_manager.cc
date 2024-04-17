@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <iostream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -517,11 +518,9 @@ KeyValueStore TetheringManager::GetStatus() {
 
   // Get stations information.
   Stringmaps clients;
-  auto stations = hotspot_dev_->GetStations();
-  for (auto const& station : stations) {
+  for (const net_base::MacAddress station : hotspot_dev_->GetStations()) {
     Stringmap client;
-    client.insert({kTetheringStatusClientMACProperty,
-                   Device::MakeStringFromHardwareAddress(station)});
+    client.insert({kTetheringStatusClientMACProperty, station.ToString()});
     // TODO(b/235763170): Get IP address and hostname from patchpanel
     clients.push_back(client);
   }

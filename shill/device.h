@@ -222,14 +222,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Renew DHCPv4 lease and invalidate the IPv6 config kept in shill.
   void ForceIPConfigUpdate();
 
-  // Creates a byte vector from a colon-separated hardware address string.
-  static std::vector<uint8_t> MakeHardwareAddressFromString(
-      const std::string& address_string);
-
-  // Creates a colon-separated hardware address string from a byte vector.
-  static std::string MakeStringFromHardwareAddress(
-      const std::vector<uint8_t>& address_data);
-
   // Request the WiFi device to roam to AP with |addr|.
   // This call will send Roam command to wpa_supplicant.
   virtual bool RequestRoam(const std::string& addr, Error* error);

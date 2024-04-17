@@ -14,9 +14,7 @@
 #include <gmock/gmock.h>
 #include <net-base/mac_address.h>
 
-#include "shill/error.h"
 #include "shill/mock_control.h"
-#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/store/key_value_store.h"
@@ -24,7 +22,6 @@
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/test_event_dispatcher.h"
-#include "shill/testing.h"
 #include "shill/wifi/hotspot_service.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/mock_wifi_phy.h"
@@ -54,8 +51,10 @@ constexpr net_base::MacAddress kDeviceAddress(
 constexpr char kHotspotSSID[] = "chromeOS-1234";
 constexpr char kHotspotPassphrase[] = "test0000";
 constexpr int kHotspotFrequency = 2437;
-const std::vector<uint8_t> kStationAddress1 = {00, 11, 22, 33, 44, 55};
-const std::vector<uint8_t> kStationAddress2 = {00, 11, 22, 33, 44, 66};
+constexpr net_base::MacAddress kStationAddress1(
+    0x00, 0x11, 0x22, 0x33, 0x44, 0x55);
+constexpr net_base::MacAddress kStationAddress2(
+    0x00, 0x11, 0x22, 0x33, 0x44, 0x66);
 constexpr uint32_t kPhyIndex = 5678;
 const RpcIdentifier kPrimaryIfacePath = RpcIdentifier("/interface/wlan0");
 const RpcIdentifier kIfacePath = RpcIdentifier("/interface/ap0");
@@ -332,7 +331,7 @@ TEST_F(HotspotDeviceTest, StationAddedRemoved) {
   // Station connects.
   KeyValueStore props1;
   props1.Set<std::vector<uint8_t>>(WPASupplicant::kStationPropertyAddress,
-                                   kStationAddress1);
+                                   kStationAddress1.ToBytes());
   props1.Set<uint16_t>(WPASupplicant::kStationPropertyAID, 0);
   EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kPeerConnected, _)).Times(1);
   device_->StationAdded(kStationPath1, props1);
@@ -358,45 +357,40 @@ TEST_F(HotspotDeviceTest, StationAddedRemoved) {
 }
 
 TEST_F(HotspotDeviceTest, GetStations) {
-  std::vector<std::vector<uint8_t>> mac;
+  std::vector<net_base::MacAddress> mac;
 
   // Station1 connects.
   KeyValueStore props1;
   props1.Set<std::vector<uint8_t>>(WPASupplicant::kStationPropertyAddress,
-                                   kStationAddress1);
+                                   kStationAddress1.ToBytes());
   props1.Set<uint16_t>(WPASupplicant::kStationPropertyAID, 0);
   mac.push_back(kStationAddress1);
   device_->StationAdded(kStationPath1, props1);
-  auto stations = device_->GetStations();
-  EXPECT_EQ(stations, mac);
+  EXPECT_EQ(device_->GetStations(), mac);
 
   // Station2 connects.
   KeyValueStore props2;
   props2.Set<std::vector<uint8_t>>(WPASupplicant::kStationPropertyAddress,
-                                   kStationAddress2);
+                                   kStationAddress2.ToBytes());
   props2.Set<uint16_t>(WPASupplicant::kStationPropertyAID, 1);
   mac.push_back(kStationAddress2);
   device_->StationAdded(kStationPath2, props2);
-  stations = device_->GetStations();
-  EXPECT_EQ(stations, mac);
+  EXPECT_EQ(device_->GetStations(), mac);
 
   // Remove station1
   mac.erase(mac.begin());
   device_->StationRemoved(kStationPath1);
-  stations = device_->GetStations();
-  EXPECT_EQ(stations, mac);
+  EXPECT_EQ(device_->GetStations(), mac);
 
   // Remove station2
   mac.erase(mac.begin());
   device_->StationRemoved(kStationPath2);
-  stations = device_->GetStations();
-  EXPECT_EQ(stations, mac);
+  EXPECT_EQ(device_->GetStations(), mac);
 
   // Station without properties connects.
   KeyValueStore props3;
   device_->StationAdded(kStationPath3, props3);
-  stations = device_->GetStations();
-  EXPECT_EQ(stations.size(), 1);
+  EXPECT_EQ(device_->GetStations().size(), 0);
 }
 
 }  // namespace shill

@@ -61,10 +61,6 @@ static std::string ObjectID(const Device* d) {
 }
 }  // namespace Logging
 
-namespace {
-constexpr size_t kHardwareAddressLength = 6;
-}  // namespace
-
 const char Device::kStoragePowered[] = "Powered";
 
 Device::Device(Manager* manager,
@@ -722,28 +718,6 @@ void Device::SetEnabledUnchecked(bool enable,
     }
     Stop(std::move(chained_callback));
   }
-}
-
-// static
-std::vector<uint8_t> Device::MakeHardwareAddressFromString(
-    const std::string& address_string) {
-  std::string address_nosep;
-  base::RemoveChars(address_string, ":", &address_nosep);
-  std::vector<uint8_t> address_bytes;
-  base::HexStringToBytes(address_nosep, &address_bytes);
-  if (address_bytes.size() != kHardwareAddressLength) {
-    return std::vector<uint8_t>();
-  }
-  return address_bytes;
-}
-
-// static
-std::string Device::MakeStringFromHardwareAddress(
-    const std::vector<uint8_t>& address_bytes) {
-  CHECK_EQ(kHardwareAddressLength, address_bytes.size());
-  return base::StringPrintf(
-      "%02x:%02x:%02x:%02x:%02x:%02x", address_bytes[0], address_bytes[1],
-      address_bytes[2], address_bytes[3], address_bytes[4], address_bytes[5]);
 }
 
 bool Device::RequestRoam(const std::string& addr, Error* error) {

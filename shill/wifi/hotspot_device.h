@@ -61,7 +61,7 @@ class HotspotDevice : public LocalDevice,
   mockable bool DeconfigureService();
 
   // Get the MAC addresses of the connected stations to this hotspot device.
-  mockable std::vector<std::vector<uint8_t>> GetStations();
+  mockable std::vector<net_base::MacAddress> GetStations();
 
   // Get mac_address_.
   net_base::MacAddress mac_address() const { return mac_address_; }
@@ -93,6 +93,12 @@ class HotspotDevice : public LocalDevice,
   friend class HotspotDeviceTest;
   FRIEND_TEST(HotspotDeviceTest, InterfaceDisabledEvent);
   FRIEND_TEST(HotspotDeviceTest, ServiceEvent);
+
+  // The information of the connected station.
+  struct StationInfo {
+    uint16_t aid;
+    net_base::MacAddress mac_address;
+  };
 
   // Create an AP interface and connect to the wpa_supplicant interface proxy.
   bool CreateInterface();
@@ -126,7 +132,7 @@ class HotspotDevice : public LocalDevice,
   // Hotspot service configured on this device.
   std::unique_ptr<HotspotService> service_;
   // wpa_supplicant's RPC paths and properties for the connected stations.
-  std::map<RpcIdentifier, KeyValueStore> stations_;
+  std::map<RpcIdentifier, StationInfo> stations_;
   std::string supplicant_state_;
   // MAC address to be configured on the device.
   net_base::MacAddress mac_address_;

@@ -5,6 +5,7 @@
 #include "shill/wifi/hotspot_device.h"
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/containers/contains.h>
@@ -263,16 +264,32 @@ void HotspotDevice::StationAdded(const RpcIdentifier& path,
                                  const KeyValueStore& properties) {
   CHECK(link_name());
   if (base::Contains(stations_, path)) {
-    LOG(INFO) << "Receive StationAdded event for " << path.value()
+    LOG(INFO) << "Received StationAdded event for " << path.value()
               << ", which is already in the list. Ignore.";
     return;
   }
 
-  stations_[path] = properties;
+  if (!properties.Contains<std::vector<uint8_t>>(
+          WPASupplicant::kStationPropertyAddress)) {
+    LOG(WARNING) << "Received StationAdded event but no MAC address. Ignore.";
+    return;
+  }
+  const std::optional<net_base::MacAddress> mac_addr =
+      net_base::MacAddress::CreateFromBytes(
+          properties.Get<std::vector<uint8_t>>(
+              WPASupplicant::kStationPropertyAddress));
+  if (!mac_addr.has_value()) {
+    LOG(ERROR)
+        << "Received StationAdded event but MAC address is invalid. Ignore.";
+    return;
+  }
 
-  auto aid = properties.Contains<uint16_t>(WPASupplicant::kStationPropertyAID)
-                 ? properties.Get<uint16_t>(WPASupplicant::kStationPropertyAID)
-                 : -1;
+  const uint16_t aid =
+      properties.Contains<uint16_t>(WPASupplicant::kStationPropertyAID)
+          ? properties.Get<uint16_t>(WPASupplicant::kStationPropertyAID)
+          : -1;
+  stations_[path] = StationInfo{aid, *mac_addr};
+
   LOG(INFO) << "Station [" << aid << "] connected to hotspot device "
             << *link_name() << ", total station count: " << stations_.size();
   PostDeviceEvent(DeviceEvent::kPeerConnected);
@@ -286,27 +303,18 @@ void HotspotDevice::StationRemoved(const RpcIdentifier& path) {
     return;
   }
 
-  auto aid =
-      stations_[path].Contains<uint16_t>(WPASupplicant::kStationPropertyAID)
-          ? stations_[path].Get<uint16_t>(WPASupplicant::kStationPropertyAID)
-          : -1;
+  const uint16_t aid = stations_[path].aid;
   stations_.erase(path);
   LOG(INFO) << "Station [" << aid << "] disconnected from hotspot device "
             << *link_name() << ", total station count: " << stations_.size();
   PostDeviceEvent(DeviceEvent::kPeerDisconnected);
 }
 
-std::vector<std::vector<uint8_t>> HotspotDevice::GetStations() {
-  std::vector<std::vector<uint8_t>> stations;
+std::vector<net_base::MacAddress> HotspotDevice::GetStations() {
+  std::vector<net_base::MacAddress> stations;
 
   for (auto const& iter : stations_) {
-    std::vector<uint8_t> station;
-    if (iter.second.Contains<std::vector<uint8_t>>(
-            WPASupplicant::kStationPropertyAddress)) {
-      station = iter.second.Get<std::vector<uint8_t>>(
-          WPASupplicant::kStationPropertyAddress);
-    }
-    stations.push_back(station);
+    stations.push_back(iter.second.mac_address);
   }
 
   return stations;
