@@ -182,4 +182,11 @@ void ZramRecompression::PeriodicRecompress() {
   }
 }
 
+// Return true if recomp_algorithm exists. otherwise return false.
+bool ZramRecompression::KernelSupportsZramRecompression() {
+  return Utils::Get()
+      ->PathExists(base::FilePath(kZramSysfsDir).Append("recomp_algorithm"))
+      .ok();
+}
+
 }  // namespace swap_management

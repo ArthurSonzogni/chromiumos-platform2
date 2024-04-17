@@ -53,7 +53,7 @@ TEST_F(ZramRecompressionTest, PeriodicRecompress) {
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   // MarkIdle
   EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/idle"), "3750"))
+              WriteFile(base::FilePath("/sys/block/zram0/idle"), "7260"))
       .WillOnce(Return(absl::OkStatus()));
   // InitiateWriteback
   EXPECT_CALL(mock_util_,
@@ -66,7 +66,7 @@ TEST_F(ZramRecompressionTest, PeriodicRecompress) {
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   // MarkIdle
   EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/idle"), "3750"))
+              WriteFile(base::FilePath("/sys/block/zram0/idle"), "7260"))
       .WillOnce(Return(absl::OkStatus()));
   // InitiateWriteback
   EXPECT_CALL(mock_util_,

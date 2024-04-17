@@ -36,13 +36,13 @@ constexpr char kSwapSizeFile[] = "/var/lib/swap/swap_size";
 constexpr float kDefaultZramSizeToMemTotalMultiplier = 2.0;
 
 constexpr VariationsFeature kSwapZramCompAlgorithmFeature{
-    "CrOSLateBootSwapZramCompAlgorithm", FEATURE_DISABLED_BY_DEFAULT};
+    "CrOSLateBootSwapZramCompAlgorithm", FEATURE_ENABLED_BY_DEFAULT};
 constexpr VariationsFeature kSwapZramDisksizeFeature{
     "CrOSLateBootSwapZramDisksize", FEATURE_DISABLED_BY_DEFAULT};
 constexpr VariationsFeature kSwapZramWritebackFeature{
     "CrOSLateBootSwapZramWriteback", FEATURE_DISABLED_BY_DEFAULT};
 constexpr VariationsFeature kSwapZramRecompressionFeature{
-    "CrOSLateBootSwapZramRecompression", FEATURE_DISABLED_BY_DEFAULT};
+    "CrOSLateBootSwapZramRecompression", FEATURE_ENABLED_BY_DEFAULT};
 
 // Reclaimable memory types.
 //
@@ -109,15 +109,22 @@ absl::StatusOr<uint64_t> SwapTool::GetUserConfigZramSizeBytes() {
   return (*requested_size_mib) * 1024 * 1024;
 }
 
-// Set comp_algorithm if kSwapZramCompAlgorithmFeature is enabled.
-void SwapTool::SetCompAlgorithmIfOverridden() {
-  std::optional<std::string> comp_algorithm =
-      GetFeatureParamValue(kSwapZramCompAlgorithmFeature, "comp_algorithm");
-  if (comp_algorithm.has_value()) {
-    LOG(INFO) << "Setting zram comp_algorithm to " << *comp_algorithm;
+// Set comp_algorithm, override if kSwapZramCompAlgorithmFeature is enabled.
+void SwapTool::SetCompAlgorithm() {
+  // Start from M126, we enable recompression with lz4 as default compression
+  // algorithm. Since lz4 can only improve performance with recompression, we
+  // will use the system default comp algorithm if recompression cannot be
+  // enabled.
+  std::string comp_algorithm = zram_recompression_configured_ ? "lz4" : "";
+
+  auto params = GetFeatureParams(kSwapZramCompAlgorithmFeature);
+  if (params.has_value() && (*params).find("comp_algorithm") != (*params).end())
+    comp_algorithm = (*params)["comp_algorithm"];
+
+  if (!comp_algorithm.empty()) {
+    LOG(INFO) << "Setting zram comp_algorithm to " << comp_algorithm;
     absl::Status status = Utils::Get()->WriteFile(
-        base::FilePath(kZramSysfsDir).Append("comp_algorithm"),
-        *comp_algorithm);
+        base::FilePath(kZramSysfsDir).Append("comp_algorithm"), comp_algorithm);
     LOG_IF(WARNING, !status.ok())
         << "Failed to set zram comp_algorithm: " << status;
   }
@@ -171,6 +178,9 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSizeBytes() {
 
 // Enable zram recompression if kSwapZramRecompressionFeature is enabled.
 absl::Status SwapTool::EnableZramRecompression() {
+  if (!ZramRecompression::Get()->KernelSupportsZramRecompression())
+    return absl::OkStatus();
+
   // Check if feature is enabled, and get the params.
   auto params = GetFeatureParams(kSwapZramRecompressionFeature);
   if (!params.has_value())
@@ -271,8 +281,8 @@ absl::Status SwapTool::SwapStart() {
   LOG_IF(WARNING, !status.ok())
       << "Failed to enable zram recompression: " << status;
 
-  // Set zram compress algorithm if feature is available.
-  SetCompAlgorithmIfOverridden();
+  // Set zram compress algorithm.
+  SetCompAlgorithm();
 
   // Set zram size.
   LOG(INFO) << "Setting zram disksize to " << *size_byte << " bytes";

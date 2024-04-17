@@ -9,6 +9,7 @@
 
 #include <memory>
 
+#include <absl/status/status.h>
 #include <absl/strings/str_cat.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 #include <gtest/gtest.h>
@@ -85,6 +86,11 @@ TEST_F(SwapToolTest, SwapStart) {
   EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/modprobe", "zram")))
       .WillOnce(Return(absl::OkStatus()));
+  // EnableZramRecompression, we don't test it here.
+  EXPECT_CALL(mock_util_,
+              PathExists(base::FilePath("/sys/block/zram0/recomp_algorithm")))
+      .WillOnce(Return(absl::NotFoundError(
+          "/sys/block/zram0/recomp_algorithm does not exist.")));
   EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/sys/block/zram0/disksize"),
                                     kZramDisksize8G))
       .WillOnce(Return(absl::OkStatus()));

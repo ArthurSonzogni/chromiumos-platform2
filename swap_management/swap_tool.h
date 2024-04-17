@@ -51,7 +51,7 @@ class SwapTool {
   absl::StatusOr<uint64_t> GetMemTotalKiB();
   absl::StatusOr<uint64_t> GetUserConfigZramSizeBytes();
   absl::StatusOr<uint64_t> GetZramSizeBytes();
-  void SetCompAlgorithmIfOverridden();
+  void SetCompAlgorithm();
   absl::Status EnableZramSwapping();
   std::optional<std::map<std::string, std::string>> GetFeatureParams(
       const VariationsFeature& vf);

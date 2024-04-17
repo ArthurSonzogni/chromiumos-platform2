@@ -26,6 +26,7 @@ class ZramRecompression {
   absl::Status EnableRecompression();
   absl::Status SetZramRecompressionConfigIfOverriden(const std::string& key,
                                                      const std::string& value);
+  bool KernelSupportsZramRecompression();
   void Start();
   void Stop();
 
@@ -44,14 +45,14 @@ class ZramRecompression {
 
   struct ZramRecompressionParams {
     std::string recomp_algorithm = "zstd";
-    base::TimeDelta periodic_time = base::Minutes(5);
-    base::TimeDelta backoff_time = base::Minutes(5);
+    base::TimeDelta periodic_time = base::Hours(1);
+    base::TimeDelta backoff_time = base::Minutes(30);
     uint64_t threshold_mib = 1024;
     bool recompression_huge_idle = true;
     bool recompression_idle = true;
     bool recompression_huge = true;
-    base::TimeDelta idle_min_time = base::Hours(1);
-    base::TimeDelta idle_max_time = base::Hours(6);
+    base::TimeDelta idle_min_time = base::Hours(2);
+    base::TimeDelta idle_max_time = base::Hours(4);
 
     friend std::ostream& operator<<(std::ostream& out,
                                     const ZramRecompressionParams& p) {
