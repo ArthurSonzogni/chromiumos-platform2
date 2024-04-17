@@ -5,6 +5,7 @@
 #include "sommelier-window.h"  // NOLINT(build/include_directory)
 
 #include <algorithm>
+#include <climits>
 #include <fstream>
 #include <assert.h>
 #include <cstdint>
@@ -413,17 +414,14 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
                                                        int32_t width_in_pixels,
                                                        int32_t height_in_pixels,
                                                        int& mut_config_idx) {
-  // TODO(b/328699937): Re-visit the correctness of this function when XWayland
-  // is emulating screen size for the window.
-
   // Forward resizes to the client if requested size fits within the min&max
   // dimensions. Note that min&max dimensions are strictly set by the X11 client
   // only (and forwarded to Exo immediately). If min&max dimensions are not set,
   // we will set the size of the window to screen size (see below).
-  if (window->max_width >= width_in_pixels &&
+  if ((window->max_width >= width_in_pixels || !window->max_width) &&
       window->min_width <= width_in_pixels &&
-      window->max_height >= height_in_pixels &&
-      window->max_height <= height_in_pixels) {
+      (window->max_height >= height_in_pixels || !window->max_height) &&
+      window->min_height <= height_in_pixels && !window->use_emulated_rects) {
     // TODO(b/330639760): Consider unset aspect ratio every frame in
     // surface_commit.
     zaura_surface_set_aspect_ratio(window->aura_surface, -1, -1);
@@ -453,7 +451,14 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
       window->max_width ? window->max_width : window->min_width;
   int safe_window_height =
       window->max_height ? window->max_height : window->min_height;
-  if (!safe_window_width || !safe_window_height || window->fullscreen) {
+  if (window->use_emulated_rects) {
+    // If screen size emulation is set by XWayland, set the window size to the
+    // emulated size and adjust the viewport size as Exo had requested it to be.
+    safe_window_width = window->emulated_width;
+    safe_window_height = window->emulated_height;
+  } else if (!safe_window_width || !safe_window_height ||
+             window->max_width > output->width ||
+             window->max_height > output->height || window->fullscreen) {
     safe_window_width = output->width;
     safe_window_height = output->height;
   }
@@ -465,7 +470,23 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
   window->next_config.values[mut_config_idx++] = safe_window_height;
   window->next_config.values[mut_config_idx++] = 0;
 
-  // Use viewport to resize surface as per Exo request.
+  if (window->use_emulated_rects && window->compositor_fullscreen) {
+    // If we are using emulated rects and the window is fullscreen in
+    // compositor, we only have to report the emulated size (done above). Aspect
+    // ratio changes are moot (since compositor fullscreen). We don't have to
+    // set viewport overrides since we can fully rely on viewport setup by
+    // Xwayland.
+    // If the window is windowed in compositor, then we have to do additional
+    // viewport operations to make the window fit into the size that compositor
+    // wants it to be, without disrupting the emulation. This has identical code
+    // path as non-emulated mode, except pointer movement scaling (see below).
+    sl_window_reset_viewport(window);
+    return;
+  }
+
+  // Use viewport to resize surface as per Exo request if we are not using
+  // emulated rects, or window is not fullscreen in Exo (and using emulated
+  // rects).
   window->viewport_override = true;
 
   int32_t safe_window_width_in_wl = safe_window_width;
@@ -516,8 +537,18 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
         safe_window_width;
     window->viewport_width = host_width;
   }
-  window->viewport_pointer_scale =
-      static_cast<float>(safe_window_width_in_wl) / window->viewport_width;
+
+  if (window->use_emulated_rects) {
+    // Pointer scaling is being done in XWayland as well, assuming the viewport
+    // is the size of the screen. Map the movement from viewport to logical
+    // width of the screen (which XWayland is expecting).
+    window->viewport_pointer_scale =
+        static_cast<float>(output->logical_width) / window->viewport_width;
+  } else {
+    // Map movement from viewport to the window's space.
+    window->viewport_pointer_scale =
+        static_cast<float>(safe_window_width_in_wl) / window->viewport_width;
+  }
 
   if (window->xdg_toplevel) {
     // Override X11 client-defined min and max size to a value relative to
@@ -601,6 +632,10 @@ void sl_internal_toplevel_configure_size(struct sl_window* window,
     window->next_config.values[mut_config_idx++] = window->width;
     window->next_config.values[mut_config_idx++] = window->height;
     window->next_config.values[mut_config_idx++] = 0;
+  } else if (window->use_emulated_rects) {
+    window->next_config.values[mut_config_idx++] = window->emulated_width;
+    window->next_config.values[mut_config_idx++] = window->emulated_height;
+    window->next_config.values[mut_config_idx++] = 0;
   } else {
     window->next_config.values[mut_config_idx++] = width_in_pixels;
     window->next_config.values[mut_config_idx++] = height_in_pixels;
@@ -614,7 +649,14 @@ void sl_internal_toplevel_configure_position(struct sl_window* window,
                                              int32_t width_in_pixels,
                                              int32_t height_in_pixels,
                                              int& mut_config_idx) {
-  if (x != kUnspecifiedCoord && y != kUnspecifiedCoord) {
+  if (window->use_emulated_rects) {
+    // Ignore requests from the compositor and set the coordinates as emulation
+    // requested.
+    window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
+    window->next_config.values[mut_config_idx++] = window->emulated_x;
+    window->next_config.values[mut_config_idx++] = window->emulated_y;
+
+  } else if (x != kUnspecifiedCoord && y != kUnspecifiedCoord) {
     // Convert to virtual coordinates
     int32_t guest_x = x;
     int32_t guest_y = y;
@@ -1273,4 +1315,20 @@ void sl_window_get_width_height(struct sl_window* window,
       *h = window->height;
     }
   }
+}
+
+bool sl_window_get_output_virt_position(struct sl_window* window,
+                                        uint32_t& mut_x,
+                                        uint32_t& mut_y) {
+  for (auto output : window->ctx->host_outputs) {
+    if (window->x >= output->virt_x &&
+        window->x < output->virt_x + output->virt_width &&
+        window->y >= output->virt_y &&
+        window->y < output->virt_y + output->virt_height) {
+      mut_x = output->virt_x;
+      mut_y = output->virt_y;
+      return true;
+    }
+  }
+  return false;
 }

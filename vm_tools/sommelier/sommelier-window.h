@@ -67,6 +67,8 @@ struct sl_window {
   bool use_emulated_rects = false;
   int emulated_width = 0;
   int emulated_height = 0;
+  int emulated_x = 0;
+  int emulated_y = 0;
 
   int border_width = 0;
   int depth = 0;
@@ -332,5 +334,11 @@ void sl_window_update_should_be_containerized_from_pid(
     struct sl_window* window);
 bool sl_window_is_containerized(struct sl_window* window);
 void sl_window_reset_viewport(struct sl_window* window);
+
+// Get the virtual screen position that the window is in. Returns true if mut_x
+// and mut_y were updated with the found screen, false otherwise.
+bool sl_window_get_output_virt_position(struct sl_window* window,
+                                        uint32_t& mut_x,
+                                        uint32_t& mut_y);
 
 #endif  // VM_TOOLS_SOMMELIER_SOMMELIER_WINDOW_H_

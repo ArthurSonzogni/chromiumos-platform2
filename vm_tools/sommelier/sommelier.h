@@ -323,6 +323,11 @@ struct sl_host_output {
   double xdg_scale_x;
   double xdg_scale_y;
   int virt_x;
+  // Note that all virtual screens are repositioned laterally in a row
+  // (regardless of host's positioning), which means y coordinate is always 0.
+  // However, in case future implementation changes, utilize this attribute
+  // whenever we reference virtual y coordinates.
+  int virt_y;
 };
 MAP_STRUCTS(wl_output, sl_host_output);
 

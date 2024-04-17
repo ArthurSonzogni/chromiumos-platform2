@@ -611,6 +611,7 @@ static void sl_bind_host_output(struct wl_client* client,
   host->x = 0;
   host->y = 0;
   host->virt_x = 0;
+  host->virt_y = 0;
   host->logical_x = 0;
   host->logical_y = 0;
   host->physical_width = 0;

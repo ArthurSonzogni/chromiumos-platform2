@@ -1459,8 +1459,16 @@ void sl_handle_map_request(struct sl_context* ctx,
     window->min_height = size_hints.min_height;
   }
   if (window->size_flags & P_MAX_SIZE) {
-    window->max_width = size_hints.max_width;
-    window->max_height = size_hints.max_height;
+    if (size_hints.max_width < INT_MAX) {
+      window->max_width = size_hints.max_width;
+    } else {
+      window->max_width = 0;
+    }
+    if (size_hints.max_height < INT_MAX) {
+      window->max_height = size_hints.max_height;
+    } else {
+      window->max_height = 0;
+    }
   }
 
   window->border_width = 0;
@@ -1900,6 +1908,8 @@ void sl_handle_client_message(struct sl_context* ctx,
     if (window && window->xdg_toplevel) {
       xdg_toplevel_set_minimized(window->xdg_toplevel);
 #ifdef QUIRKS_SUPPORT
+      // TODO(b/333819234): Migrate FEATURE_BLACK_SCREEN_FIX to quirk condition
+      // `runtime: Proton`.
       if (window->ctx->quirks.IsEnabled(window,
                                         quirks::FEATURE_BLACK_SCREEN_FIX)) {
         // Workaround for some borealis apps showing a black screen after losing
@@ -2311,8 +2321,16 @@ void sl_handle_property_notify(struct sl_context* ctx,
         window->min_height = size_hints.min_height;
       }
       if (window->size_flags & P_MAX_SIZE) {
-        window->max_width = size_hints.max_width;
-        window->max_height = size_hints.max_height;
+        if (size_hints.max_width < INT_MAX) {
+          window->max_width = size_hints.max_width;
+        } else {
+          window->max_width = 0;
+        }
+        if (size_hints.max_height < INT_MAX) {
+          window->max_height = size_hints.max_height;
+        } else {
+          window->max_height = 0;
+        }
       }
     }
 
@@ -2490,23 +2508,42 @@ void sl_handle_property_notify(struct sl_context* ctx,
       return;
     }
 
+    // We need to select the appropriate emulated screen based on the screen the
+    // window is in.
+    uint32_t target_x = 0;
+    uint32_t target_y = 0;
+    if (!sl_window_get_output_virt_position(window, target_x, target_y)) {
+      window->use_emulated_rects = false;
+      free(reply);
+      return;
+    }
+
     for (uint32_t i = 0; i < reply->value_len; i += 4) {
       // Assume the fullscreen window position is the screen's position.
       // XWayland emulation must match this x/y coordinates.
-      if (xywh[i] == window->x && xywh[i + 1] == window->y) {
-        // NOTE: XWayland will send a wp_viewport.set_source request based on
-        // ConfigureNotify request. ConfigureNotify with emulated values will be
-        // sent in the next sl_host_surface_commit().
-        window->use_emulated_rects = true;
+      if (xywh[i] == target_x && xywh[i + 1] == target_y) {
+        window->emulated_x = xywh[i];
+        window->emulated_y = xywh[i + 1];
         window->emulated_width = xywh[i + 2];
         window->emulated_height = xywh[i + 3];
+        window->use_emulated_rects = true;
+        // XWayland will send a wp_viewport.set_source and destination request
+        // (plus, do other busy work such as setting pointer scaling) based on
+        // window property set. Configure window manually here to trigger
+        // necessary changes since some games do not do anything further than
+        // adding the attributes.
+        xcb()->configure_window(window->ctx->connection, window->id,
+                                XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                                    XCB_CONFIG_WINDOW_WIDTH |
+                                    XCB_CONFIG_WINDOW_HEIGHT,
+                                &xywh[i]);
         free(reply);
         return;
       }
     }
 
-    fprintf(stderr, "failed to find screen with position %u,%u\n", window->x,
-            window->y);
+    fprintf(stderr, "failed to find screen with position %u,%u\n", target_x,
+            target_y);
     window->use_emulated_rects = false;
     free(reply);
 
