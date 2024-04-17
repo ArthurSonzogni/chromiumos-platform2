@@ -19,12 +19,14 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use log::error;
+use log::info;
 use once_cell::sync::Lazy;
 use system_api::vm_memory_management::ResizePriority;
 
 pub use self::meminfo::MemInfo;
 use crate::common;
 use crate::common::read_from_file;
+use crate::feature;
 use crate::metrics;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
@@ -45,6 +47,19 @@ const RAM_SWAP_WEIGHT_FILENAME: &str = "ram_swap_weight";
 
 // The available memory for background components is discounted by 300 MiB.
 const GAME_MODE_OFFSET_KB: u64 = 300 * 1024;
+
+pub const DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME: &str =
+    "CrOSLateBootDiscardStaleAtModeratePressure";
+
+pub const DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_VISIBLE_SECONDS_THRESHOLD_PARAM: &str =
+    "MinLastVisibleDurationSeconds";
+pub const DISCARD_STALE_AT_MODERATE_PRESSURE_MAX_VISIBLE_SECONDS_THRESHOLD_PARAM: &str =
+    "MaxLastVisibleDurationSeconds";
+
+// The minimum allowed interval between stale tab discard attempts.
+pub const DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_DISCARD_INTERVAL: &str =
+    "MinDiscardIntervalSeconds";
+const MIN_DISCARD_INTERVAL_DEFAULT: Duration = Duration::from_secs(10);
 
 /// calculate_reserved_free_kb() calculates the reserved free memory in KiB from
 /// /proc/zoneinfo.  Reserved pages are free pages reserved for emergent kernel
@@ -487,25 +502,40 @@ fn get_adjusted_arcvm_levels(
     (arcvm_level, arcvm_reclaim_target_kb)
 }
 
-async fn try_vmms_reclaim_memory(
+// Should only be called when the Chrome pressure level is moderate.
+// If necessary, attempts to reclaim memory from VMMS in concierge at
+// the appropriate priority for moderate memory pressure.
+async fn try_vmms_reclaim_memory_moderate(
     vmms_client: &VmMemoryManagementClient,
-    chrome_level: PressureLevelChrome,
+    reclaim_target: u64,
+) -> u64 {
+    // If the discard stale at moderate feature is enabled,
+    // attempt to reclaim from vmms at stale cached tab priority.
+    // Note that this reclaim is attempted regardless of if there
+    // is actually any stale cached tab memory from Chrome.
+    // There may still be stale memory to clean up in other contexts (i.e. ARCVM).
+    if reclaim_target > 0 {
+        vmms_client
+            .try_reclaim_memory(
+                reclaim_target,
+                ResizePriority::RESIZE_PRIORITY_STALE_CACHED_TAB,
+            )
+            .await
+    } else {
+        0
+    }
+}
+
+// Should only be called when the Chrome pressure level is critical.
+// Attempts to reclaim memory from VMMS in concierge at the appropriate priorities for
+// critical memory pressure.
+// Returns the total amount of memory reclaimed by VMMS.
+async fn try_vmms_reclaim_memory_critical(
+    vmms_client: &VmMemoryManagementClient,
     mut reclaim_target: u64,
     chrome_background_memory: u64,
     game_mode: common::GameMode,
 ) -> u64 {
-    if !vmms_client.is_active() {
-        return 0;
-    }
-
-    let now = Instant::now();
-
-    // Chrome won't kill tabs, so no need to try to save anything by
-    // inflating the balloon.
-    if chrome_level != PressureLevelChrome::Critical {
-        return 0;
-    }
-
     // Tell VM Memory Management Service to reclaim memory from guests to
     // try to save the background tabs.
     let cached_target = std::cmp::min(chrome_background_memory, reclaim_target);
@@ -532,7 +562,7 @@ async fn try_vmms_reclaim_memory(
 
     // Tell VM MMS to reclaim memory at perceptible priority for any protected tabs
     // that Chrome will kill after it kills all background tabs.
-    let protected_memory = get_chrome_memory_kb(ChromeProcessType::Protected, reclaim_target);
+    let protected_memory = get_chrome_memory_kb(ChromeProcessType::Protected, None, reclaim_target);
     let perceptible_actual = if protected_memory > 0 {
         vmms_client
             .try_reclaim_memory(
@@ -551,21 +581,148 @@ async fn try_vmms_reclaim_memory(
         vmms_client.send_no_kill_candidates().await;
     }
 
-    if let Err(e) = report_vmms_reclaim_memory_duration(now.elapsed()) {
-        error!("Failed to report try_vmms_reclaim_memory duration {:?}", e);
-    }
-
     cached_actual + perceptible_actual
 }
 
-fn report_vmms_reclaim_memory_duration(duration: Duration) -> Result<()> {
+// Attempts to reclaim memory from VMMS in concierge at the correct priority according to
+// the current memory pressure level and reclaim targets.
+// Returns the total amount of memory reclaimed from VMMMS.
+async fn try_vmms_reclaim_memory(
+    vmms_client: &VmMemoryManagementClient,
+    chrome_level: PressureLevelChrome,
+    reclaim_target: u64,
+    chrome_background_memory: u64,
+    game_mode: common::GameMode,
+    discard_stale_at_moderate: bool,
+) -> u64 {
+    let now = Instant::now();
+
+    // When the vmms client is not connected, nothing can be reclaimed.
+    if !vmms_client.is_active() {
+        return 0;
+    }
+
+    let vmms_reclaim_actual = match chrome_level {
+        // When there is no memory pressure, never attempt to reclaim from VMMS.
+        PressureLevelChrome::None => {
+            return 0;
+        }
+
+        PressureLevelChrome::Moderate => {
+            // If the discard stale at moderate feature is not enabled,
+            // do not attempt to reclaim at moderate memory pressure.
+            if !discard_stale_at_moderate {
+                return 0;
+            }
+
+            try_vmms_reclaim_memory_moderate(vmms_client, reclaim_target).await
+        }
+
+        PressureLevelChrome::Critical => {
+            try_vmms_reclaim_memory_critical(
+                vmms_client,
+                reclaim_target,
+                chrome_background_memory,
+                game_mode,
+            )
+            .await
+        }
+    };
+
+    if let Err(e) = report_vmms_reclaim_memory_duration(chrome_level, now.elapsed()) {
+        error!("Failed to report try_vmms_reclaim_memory duration {:?}", e);
+    }
+
+    vmms_reclaim_actual
+}
+
+fn report_vmms_reclaim_memory_duration(
+    chrome_level: PressureLevelChrome,
+    duration: Duration,
+) -> Result<()> {
+    const DURATION_BASE: &str = "Platform.Resourced.VmmsReclaimMemoryDuration.";
+    const MODERATE: &str = "Moderate";
+    const CRITICAL: &str = "Critical";
+
     metrics::send_to_uma(
-        "Platform.Resourced.VmmsReclaimMemoryDuration", // Metric name
-        duration.as_millis() as i32,                    // Sample
-        0,                                              // Min
-        1000,                                           // Max
-        50,                                             // Number of buckets
+        &format!(
+            "{}{}",
+            DURATION_BASE,
+            match chrome_level {
+                // No VMMS reclaim for none level.
+                PressureLevelChrome::None => {
+                    return Ok(());
+                }
+                PressureLevelChrome::Moderate => MODERATE,
+                PressureLevelChrome::Critical => CRITICAL,
+            }
+        ), // Metric name
+        duration.as_millis() as i32, // Sample
+        0,                           // Min
+        5000,                        // Max
+        50,                          // Number of buckets
     )
+}
+
+fn get_min_stale_discard_interval() -> Duration {
+    let min_discard_interval = get_individual_duration_param(
+        DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME,
+        DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_DISCARD_INTERVAL,
+    );
+
+    let Ok(min_discard_interval) = min_discard_interval else {
+        return MIN_DISCARD_INTERVAL_DEFAULT;
+    };
+
+    min_discard_interval
+}
+
+// The time of the last stale tab discard attempt.
+static LAST_STALE_TAB_DISCARD: Mutex<Option<Instant>> = Mutex::new(None);
+
+fn try_discard_stale_at_moderate(
+    margins: &ComponentMarginsKb,
+    chrome_level: PressureLevelChrome,
+    chrome_reclaim_target_kb: u64,
+) -> (PressureLevelChrome, u64) {
+    let stale_tab_cutoff =
+        get_stale_tab_age_cutoff(margins, chrome_level, chrome_reclaim_target_kb);
+
+    // Only one stale tab is discarded at a time, so using a threshold of 1 is fine.
+    // get_chrome_memory_kb will still return the size of the most stale tab (if any).
+    let stale_background_memory_kb =
+        get_chrome_memory_kb(ChromeProcessType::Background, Some(stale_tab_cutoff), 1);
+
+    let mut last_discard_time = LAST_STALE_TAB_DISCARD
+        .lock()
+        .expect("Lock last stale tab discard time failed.");
+    let min_stale_discard_interval = get_min_stale_discard_interval();
+
+    // If chrome pressure is Moderate, and there are stale background tabs, send a
+    // one-off critical memory pressure signal to clear out a stale background tab.
+    // This signal is rate-limited will only be sent if the min discard interval has
+    // elapsed since the previous attempt.
+    if chrome_level == PressureLevelChrome::Moderate
+        && stale_background_memory_kb > 0
+        && last_discard_time.map_or(Duration::MAX, |d| d.elapsed()) > min_stale_discard_interval
+    {
+        info!(
+            "Discarding single tab at moderate memory pressure.
+             Stale Tab Cutoff: {}s Stale Background Memory: {}kb",
+            stale_tab_cutoff.as_secs(),
+            stale_background_memory_kb
+        );
+        *last_discard_time = Some(Instant::now());
+        (
+            PressureLevelChrome::Critical,
+            // Regardless of what the reclaim target is Chrome will kill at least one tab.
+            // Since this isn't critical memory pressure and memory doesn't need to be
+            // freed quickly, just send '1' so that a single stale tab will be discarded.
+            1,
+        )
+    } else {
+        (chrome_level, chrome_reclaim_target_kb)
+    }
 }
 
 pub async fn get_memory_pressure_status(
@@ -574,6 +731,8 @@ pub async fn get_memory_pressure_status(
     let game_mode = common::get_game_mode()?;
     let available = get_background_available_memory_kb(game_mode)?;
     let margins = get_component_margins_kb();
+    let discard_stale_at_moderate =
+        feature::is_feature_enabled(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME)?;
 
     let (raw_chrome_level, raw_chrome_reclaim_target_kb) =
         margins.compute_chrome_pressure(available);
@@ -587,7 +746,8 @@ pub async fn get_memory_pressure_status(
     let max_target = arcvm_perceptible_target
         .max(arc_container_perceptible_target)
         .max(raw_chrome_reclaim_target_kb);
-    let background_memory_kb = get_chrome_memory_kb(ChromeProcessType::Background, max_target);
+    let background_memory_kb =
+        get_chrome_memory_kb(ChromeProcessType::Background, None, max_target);
 
     let vmms_reclaim_kb = try_vmms_reclaim_memory(
         vmms_client,
@@ -595,10 +755,11 @@ pub async fn get_memory_pressure_status(
         raw_chrome_reclaim_target_kb,
         background_memory_kb,
         game_mode,
+        discard_stale_at_moderate,
     )
     .await;
 
-    let (chrome_level, chrome_reclaim_target_kb) =
+    let (after_vmms_chrome_level, after_vmms_chrome_reclaim_target_kb) =
         margins.compute_chrome_pressure(available + vmms_reclaim_kb);
 
     let (arcvm_level, arcvm_reclaim_target_kb) = get_adjusted_arcvm_levels(
@@ -612,9 +773,19 @@ pub async fn get_memory_pressure_status(
     let (arc_container_level, arc_container_reclaim_target_kb) =
         get_arc_container_level(&margins.arc_container, available, background_memory_kb);
 
+    let (final_chrome_level, final_chrome_reclaim_target_kb) = if discard_stale_at_moderate {
+        try_discard_stale_at_moderate(
+            &margins,
+            after_vmms_chrome_level,
+            after_vmms_chrome_reclaim_target_kb,
+        )
+    } else {
+        (after_vmms_chrome_level, after_vmms_chrome_reclaim_target_kb)
+    };
+
     Ok(PressureStatus {
-        chrome_level,
-        chrome_reclaim_target_kb,
+        chrome_level: final_chrome_level,
+        chrome_reclaim_target_kb: final_chrome_reclaim_target_kb,
         arcvm_level,
         arcvm_reclaim_target_kb,
         arc_container_level,
@@ -722,9 +893,10 @@ static CHROME_TAB_PROCESSES: Mutex<BTreeMap<(BrowserType, ChromeProcessType), Ve
     Mutex::new(BTreeMap::new());
 
 // Returns the process list for a given browser/process type pair
-fn get_chrome_processes(
+fn get_chrome_tab_processes(
     browser_type: BrowserType,
     process_type: ChromeProcessType,
+    min_last_visible_age: Option<Duration>,
 ) -> Result<Vec<TabProcess>> {
     // Panic on poisoned mutex.
     let all_tab_processes = CHROME_TAB_PROCESSES
@@ -736,7 +908,16 @@ fn get_chrome_processes(
         return Ok(Vec::new());
     };
 
-    Ok(filtered_process_list.clone())
+    let now = Instant::now();
+
+    return match min_last_visible_age {
+        Some(duration) => Ok(filtered_process_list
+            .iter()
+            .filter(|tab_process| now - tab_process.last_visible >= duration)
+            .cloned()
+            .collect()),
+        None => Ok(filtered_process_list.clone()),
+    };
 }
 
 pub fn set_browser_tab_processes(
@@ -757,26 +938,32 @@ pub fn set_browser_tab_processes(
     );
 }
 
-// Returns the amount of memory in KiB of the given chrome process type. To reduce
+// Returns the amount of memory in KiB of the given chrome process type where the
+// last visible time of the tab is older than |min_last_visible_age|. To reduce
 // the work when there are a lot of chrome processes, it would stop counting if the
 // memory exceeds |threshold_kb|. When |threshold_kb| is 0, it returns 0.
-fn get_chrome_memory_kb(process_type: ChromeProcessType, threshold_kb: u64) -> u64 {
+fn get_chrome_memory_kb(
+    process_type: ChromeProcessType,
+    min_last_visible_age: Option<Duration>,
+    threshold_kb: u64,
+) -> u64 {
     if threshold_kb == 0 {
         return 0;
     }
 
     let mut total_background_memory_kb = 0;
     for browser_type in [BrowserType::Ash, BrowserType::Lacros] {
-        let tab_processes = match get_chrome_processes(browser_type, process_type) {
-            Ok(tab_processes) => tab_processes,
-            Err(e) => {
-                error!(
-                    "Failed to get chrome {} {} processes: {}",
-                    browser_type, process_type, e
-                );
-                continue;
-            }
-        };
+        let tab_processes =
+            match get_chrome_tab_processes(browser_type, process_type, min_last_visible_age) {
+                Ok(tab_processes) => tab_processes,
+                Err(e) => {
+                    error!(
+                        "Failed to get chrome {} {} tabs: {}",
+                        browser_type, process_type, e
+                    );
+                    continue;
+                }
+            };
         for tab_process in tab_processes {
             match get_chrome_process_memory_usage(tab_process.pid) {
                 Ok(result) => {
@@ -823,6 +1010,94 @@ fn get_chrome_process_memory_usage(pid: i32) -> Result<u64> {
         .vmswap
         .with_context(|| format!("Couldn't get the VmSwap field in /proc/{}/status", pid))?;
     Ok(rssanon + vmswap)
+}
+
+fn get_stale_tab_age_cutoff(
+    margins: &ComponentMarginsKb,
+    chrome_level: PressureLevelChrome,
+    reclaim_target_kb: u64,
+) -> Duration {
+    // If there is no memory pressure, nothing is treated as stale.
+    // Return the max cutoff value to exclude everything.
+    if chrome_level == PressureLevelChrome::None {
+        return Duration::MAX;
+    }
+
+    // For critical memory pressure, do not exclude anything, so return the
+    // zero duration.
+    if chrome_level == PressureLevelChrome::Critical {
+        return Duration::ZERO;
+    }
+
+    let (min_last_visible, max_last_visible) = get_last_visible_threshold_values();
+
+    // Find the actual cutoff as a linear scale between the min and max values above
+    // in relation to the moderate memory pressure range.
+    // Example:
+    //                   RAM Usage
+    // 0GB........................................4GB
+    // |------None------||---Moderate---||-Critical-|
+    //                               ^
+    //                         Current Usage
+    // In this case, used RAM is 80% of the way through the moderate memory
+    // pressure range.
+    // Return the value that is 80% of the way between min_last_visible and max_last_visible.
+    let percent_into_moderate =
+        ((reclaim_target_kb * 100) / (margins.chrome_moderate - margins.chrome_critical)) as u32;
+
+    max_last_visible - ((max_last_visible - min_last_visible) * percent_into_moderate) / 100
+}
+
+#[cfg(not(test))]
+fn get_last_visible_threshold_values() -> (Duration, Duration) {
+    // By default, use the same threshold values as Chrome memory saver which is
+    // 2 hours regardless of memory pressure level.
+    const LAST_VISIBLE_THRESHOLD_DEFAULT: Duration = Duration::from_secs(2 * 60 * 60);
+
+    let min_last_visible = get_individual_duration_param(
+        DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME,
+        DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_VISIBLE_SECONDS_THRESHOLD_PARAM,
+    );
+    let max_last_visible = get_individual_duration_param(
+        DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME,
+        DISCARD_STALE_AT_MODERATE_PRESSURE_MAX_VISIBLE_SECONDS_THRESHOLD_PARAM,
+    );
+
+    let (Ok(min_last_visible), Ok(max_last_visible)) = (min_last_visible, max_last_visible) else {
+        return (
+            LAST_VISIBLE_THRESHOLD_DEFAULT,
+            LAST_VISIBLE_THRESHOLD_DEFAULT,
+        );
+    };
+
+    // Sanity check for the cutoffs since the threshold calculation requires
+    // min to be less than max.
+    // Min and max being the same is fine since we may want to test a constant cutoff.
+    if min_last_visible > max_last_visible {
+        return (
+            LAST_VISIBLE_THRESHOLD_DEFAULT,
+            LAST_VISIBLE_THRESHOLD_DEFAULT,
+        );
+    }
+
+    (min_last_visible, max_last_visible)
+}
+
+fn get_individual_duration_param(feature_name: &str, param_name: &str) -> Result<Duration> {
+    let threshold_param = feature::get_feature_param(feature_name, param_name)?;
+
+    let raw_feature_val = threshold_param.as_ref().context("No valid feature param")?;
+
+    Ok(Duration::from_secs(raw_feature_val.parse::<u64>()?))
+}
+
+// For tests, have non-default min/max values.
+#[cfg(test)]
+fn get_last_visible_threshold_values() -> (Duration, Duration) {
+    (
+        Duration::from_secs(5 * 60),
+        Duration::from_secs(2 * 60 * 60),
+    )
 }
 
 #[cfg(test)]
@@ -1033,5 +1308,58 @@ full avg10=29.29 avg60=19.01 avg300=5.44 total=17589167"#;
         )
         .unwrap();
         assert!(init_memory_configs_impl(root.path()).is_err());
+    }
+
+    #[test]
+    fn test_get_stale_tab_age_cutoff() {
+        let margins = ComponentMarginsKb {
+            chrome_critical: 1000,
+            chrome_moderate: 5000,
+            arc_container: ArcMarginsKb {
+                foreground: 0,
+                perceptible: 0,
+                cached: 0,
+            },
+            arcvm: ArcMarginsKb {
+                foreground: 0,
+                perceptible: 0,
+                cached: 0,
+            },
+        };
+
+        // With no memory pressure, the max duration should be returned.
+        let stale_tab_cutoff = get_stale_tab_age_cutoff(&margins, PressureLevelChrome::None, 0);
+        assert!(stale_tab_cutoff == Duration::MAX);
+
+        // At the very beginning of moderate memory pressure, the max stale target should be
+        // returned.
+        let stale_tab_cutoff = get_stale_tab_age_cutoff(&margins, PressureLevelChrome::Moderate, 0);
+        assert!(stale_tab_cutoff == Duration::from_secs(7200));
+
+        // At moderate memory pressure with a reclaim target of 1000, the pressure level is 25% of
+        // the way into moderate. Therefore, the stale tab cutoff should be 25% of the way between
+        // 7200 seconds an 300 seconds.
+        let stale_tab_cutoff =
+            get_stale_tab_age_cutoff(&margins, PressureLevelChrome::Moderate, 1000);
+        assert!(stale_tab_cutoff == Duration::from_secs(5475));
+
+        // Halfway through moderate memory pressure should be halfway between 7200 and 300.
+        let stale_tab_cutoff =
+            get_stale_tab_age_cutoff(&margins, PressureLevelChrome::Moderate, 2000);
+        assert!(stale_tab_cutoff == Duration::from_secs(3750));
+
+        // 75% through moderate memory pressure should be 75% between 7200 and 300.
+        let stale_tab_cutoff =
+            get_stale_tab_age_cutoff(&margins, PressureLevelChrome::Moderate, 3000);
+        assert!(stale_tab_cutoff == Duration::from_secs(2025));
+
+        // All the way through should be the minimum stale value.
+        let stale_tab_cutoff =
+            get_stale_tab_age_cutoff(&margins, PressureLevelChrome::Moderate, 4000);
+        assert!(stale_tab_cutoff == Duration::from_secs(300));
+
+        // With critical memory pressure, the min duration should be returned.
+        let stale_tab_cutoff = get_stale_tab_age_cutoff(&margins, PressureLevelChrome::Critical, 0);
+        assert!(stale_tab_cutoff == Duration::ZERO);
     }
 }
