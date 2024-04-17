@@ -203,15 +203,6 @@ const char kPowerSupplyTypeName[] = "Power.PowerSupplyType";
 
 const char kConnectedChargingPortsName[] = "Power.ConnectedChargingPorts";
 
-const char kExternalBrightnessRequestResultName[] =
-    "Power.ExternalBrightnessRequestResult";
-const char kExternalBrightnessReadResultName[] =
-    "Power.ExternalBrightnessReadResult";
-const char kExternalBrightnessWriteResultName[] =
-    "Power.ExternalBrightnessWriteResult";
-const char kExternalDisplayOpenResultName[] = "Power.ExternalDisplayOpenResult";
-const int kExternalDisplayResultMax = 10;
-
 const char kDarkResumeWakeupsPerHourName[] = "Power.DarkResumeWakeupsPerHour";
 const int kDarkResumeWakeupsPerHourMin = 0;
 const int kDarkResumeWakeupsPerHourMax = 60 * 60;

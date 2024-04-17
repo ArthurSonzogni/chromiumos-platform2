@@ -224,12 +224,6 @@ TEST_F(ExternalDisplayTest, BasicCommunication) {
   // brightness" request being sent.
   display_.AdjustBrightnessByPercent(10.0);
   EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessRequestResultName,
-                static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            PopMetric());
 
   // After the timer fires, the reply should be read and a request to set the
   // brightness to 60 should be sent.
@@ -237,22 +231,6 @@ TEST_F(ExternalDisplayTest, BasicCommunication) {
   EXPECT_EQ(ExternalDisplay::kDdcGetDelay, test_api_.GetTimerDelay());
   ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
-
-  // The successful read and write should both be reported.
-  EXPECT_EQ(2, metrics_sender_.num_metrics());
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessReadResultName,
-                static_cast<int>(ExternalDisplay::ReceiveResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            metrics_sender_.GetMetric(0));
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessWriteResultName,
-                static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            metrics_sender_.GetMetric(1));
-  metrics_sender_.clear_metrics();
 
   // Asking for more changes shouldn't result in requests being sent at first,
   // since no time has passed since the previous request. After the timer fires,
@@ -346,21 +324,9 @@ TEST_F(ExternalDisplayTest, InvalidBrightnessReplies) {
 
     display_.AdjustBrightnessByPercent(10.0);
     ASSERT_EQ(request_brightness_message_, delegate_->PopSentMessage());
-    EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                  metrics::kExternalBrightnessRequestResultName,
-                  static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                  metrics::kExternalDisplayResultMax)
-                  .ToString(),
-              PopMetric());
 
     delegate_->set_reply_message(test_case.reply);
     ASSERT_TRUE(test_api_.TriggerTimeout());
-    EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                  metrics::kExternalBrightnessReadResultName,
-                  static_cast<int>(test_case.metric),
-                  metrics::kExternalDisplayResultMax)
-                  .ToString(),
-              PopMetric());
 
     EXPECT_EQ("", delegate_->PopSentMessage());
     EXPECT_FALSE(test_api_.TriggerTimeout());
@@ -372,12 +338,6 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   delegate_->set_report_write_failure(true);
   display_.AdjustBrightnessByPercent(10.0);
   EXPECT_FALSE(test_api_.TriggerTimeout());
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessRequestResultName,
-                static_cast<int>(ExternalDisplay::SendResult::IOCTL_FAILED),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            PopMetric());
 
   // Now let the initial request succeed but make the read fail. The timer
   // should be stopped.
@@ -387,21 +347,6 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
   ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_FALSE(test_api_.TriggerTimeout());
-
-  EXPECT_EQ(2, metrics_sender_.num_metrics());
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessRequestResultName,
-                static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            metrics_sender_.GetMetric(0));
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessReadResultName,
-                static_cast<int>(ExternalDisplay::ReceiveResult::IOCTL_FAILED),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            metrics_sender_.GetMetric(1));
-  metrics_sender_.clear_metrics();
 
   // Let the initial request and read succeed, but make the attempt to change
   // the brightness fail. The timer should be stopped.
@@ -413,39 +358,12 @@ TEST_F(ExternalDisplayTest, CommunicationFailures) {
   ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_FALSE(test_api_.TriggerTimeout());
 
-  EXPECT_EQ(3, metrics_sender_.num_metrics());
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessRequestResultName,
-                static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            metrics_sender_.GetMetric(0));
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessReadResultName,
-                static_cast<int>(ExternalDisplay::ReceiveResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            metrics_sender_.GetMetric(1));
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessWriteResultName,
-                static_cast<int>(ExternalDisplay::SendResult::IOCTL_FAILED),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            metrics_sender_.GetMetric(2));
-  metrics_sender_.clear_metrics();
-
   // The previously-read brightness should still be cached, so another
   // adjustment attempt should be attempted immediately. Let it succeed this
   // time.
   delegate_->set_report_write_failure(false);
   display_.AdjustBrightnessByPercent(10.0);
   EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessWriteResultName,
-                static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            PopMetric());
 }
 
 TEST_F(ExternalDisplayTest, MinimumAndMaximumBrightness) {
@@ -511,23 +429,10 @@ TEST_F(ExternalDisplayTest, ZeroMax) {
   // Make the display return a maximum value of zero.
   display_.AdjustBrightnessByPercent(5.0);
   EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessRequestResultName,
-                static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            PopMetric());
 
   // ExternalDisplay should report a failure and avoid writing an updated level.
   delegate_->set_reply_message(GetBrightnessReply(0, 0));
   ASSERT_TRUE(test_api_.TriggerTimeout());
-  EXPECT_EQ(
-      MetricsSenderStub::Metric::CreateEnum(
-          metrics::kExternalBrightnessReadResultName,
-          static_cast<int>(ExternalDisplay::ReceiveResult::ZERO_MAX_VALUE),
-          metrics::kExternalDisplayResultMax)
-          .ToString(),
-      PopMetric());
   EXPECT_FALSE(test_api_.TriggerTimeout());
 }
 
@@ -536,12 +441,6 @@ TEST_F(ExternalDisplayTest, AbsoluteBrightness) {
   // being sent.
   display_.SetBrightness(60.0);
   EXPECT_EQ(request_brightness_message_, delegate_->PopSentMessage());
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessRequestResultName,
-                static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            PopMetric());
 
   // After the timer fires, the reply should be read and a request to set the
   // brightness to 60 should be sent.
@@ -549,22 +448,6 @@ TEST_F(ExternalDisplayTest, AbsoluteBrightness) {
   EXPECT_EQ(ExternalDisplay::kDdcGetDelay, test_api_.GetTimerDelay());
   ASSERT_TRUE(test_api_.TriggerTimeout());
   EXPECT_EQ(GetSetBrightnessMessage(60), delegate_->PopSentMessage());
-
-  // The successful read and write should both be reported.
-  EXPECT_EQ(2, metrics_sender_.num_metrics());
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessReadResultName,
-                static_cast<int>(ExternalDisplay::ReceiveResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            metrics_sender_.GetMetric(0));
-  EXPECT_EQ(MetricsSenderStub::Metric::CreateEnum(
-                metrics::kExternalBrightnessWriteResultName,
-                static_cast<int>(ExternalDisplay::SendResult::SUCCESS),
-                metrics::kExternalDisplayResultMax)
-                .ToString(),
-            metrics_sender_.GetMetric(1));
-  metrics_sender_.clear_metrics();
 
   // Asking for more changes shouldn't result in requests being sent at first,
   // since no time has passed since the previous request. After the timer fires,

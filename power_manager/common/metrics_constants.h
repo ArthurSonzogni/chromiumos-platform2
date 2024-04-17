@@ -162,12 +162,6 @@ extern const char kPowerSupplyTypeName[];
 
 extern const char kConnectedChargingPortsName[];
 
-extern const char kExternalBrightnessRequestResultName[];
-extern const char kExternalBrightnessReadResultName[];
-extern const char kExternalBrightnessWriteResultName[];
-extern const char kExternalDisplayOpenResultName[];
-extern const int kExternalDisplayResultMax;
-
 extern const char kDarkResumeWakeupsPerHourName[];
 extern const int kDarkResumeWakeupsPerHourMin;
 extern const int kDarkResumeWakeupsPerHourMax;
