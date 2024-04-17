@@ -311,7 +311,7 @@ const std::vector<uint8_t>& WiFiEndpoint::owe_ssid() const {
   return owe_ssid_;
 }
 
-const std::vector<uint8_t>& WiFiEndpoint::owe_bssid() const {
+std::optional<net_base::MacAddress> WiFiEndpoint::owe_bssid() const {
   return owe_bssid_;
 }
 
@@ -1012,8 +1012,9 @@ void WiFiEndpoint::ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
       return;
     }
     security_flags_.trans_owe = true;
-    owe_bssid_.resize(ETH_ALEN);
-    std::copy_n(ie, ETH_ALEN, owe_bssid_.begin());
+    net_base::MacAddress::DataType owe_bssid_bytes;
+    std::copy_n(ie, owe_bssid_bytes.size(), owe_bssid_bytes.begin());
+    owe_bssid_ = net_base::MacAddress(owe_bssid_bytes);
     ie += ETH_ALEN;
     uint8_t ssid_len = *ie++;
     if (std::distance(ie, end) < ssid_len) {

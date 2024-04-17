@@ -141,7 +141,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   // identification and these two functions return them. For endpoints not
   // belonging to the transitional mode OWE AP returned values are empty.
   const std::vector<uint8_t>& owe_ssid() const;
-  const std::vector<uint8_t>& owe_bssid() const;
+  std::optional<net_base::MacAddress> owe_bssid() const;
 
  private:
   friend class ManagerTest;  // for MakeOpenEndpoint
@@ -271,7 +271,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const std::vector<uint8_t> ssid_;
   const net_base::MacAddress bssid_;
   std::vector<uint8_t> owe_ssid_;
-  std::vector<uint8_t> owe_bssid_;
+  std::optional<net_base::MacAddress> owe_bssid_;
   std::string ssid_string_;
   const std::string ssid_hex_;
   std::string country_code_;
