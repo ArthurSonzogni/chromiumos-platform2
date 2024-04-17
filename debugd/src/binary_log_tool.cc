@@ -161,22 +161,17 @@ bool CompressAndSendFilesToFD(const base::FilePath& tarball_name,
 
 namespace debugd {
 
-BinaryLogTool::BinaryLogTool(
-    std::unique_ptr<org::chromium::FbPreprocessorProxyInterface>
-        fbpreprocessor_proxy)
-    : fbpreprocessor_proxy_(std::move(fbpreprocessor_proxy)) {}
-
 BinaryLogTool::BinaryLogTool(scoped_refptr<dbus::Bus> bus)
-    : BinaryLogTool(std::make_unique<org::chromium::FbPreprocessorProxy>(bus)) {
-}
-
-org::chromium::FbPreprocessorProxyInterface*
-BinaryLogTool::GetFbPreprocessorProxyForTesting() {
-  return fbpreprocessor_proxy_.get();
-}
+    : fbpreprocessor_proxy_(
+          std::make_unique<org::chromium::FbPreprocessorProxy>(bus)) {}
 
 void BinaryLogTool::DisableMinijailForTesting() {
   use_minijail_ = false;
+}
+
+void BinaryLogTool::SetFbPreprocessorProxyForTesting(
+    std::unique_ptr<org::chromium::FbPreprocessorProxyInterface> proxy) {
+  fbpreprocessor_proxy_ = std::move(proxy);
 }
 
 void BinaryLogTool::GetBinaryLogs(

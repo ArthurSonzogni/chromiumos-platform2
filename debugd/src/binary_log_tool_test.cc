@@ -5,7 +5,8 @@
 #include <map>
 #include <memory>
 #include <set>
-#include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include <base/files/file.h>
@@ -13,18 +14,18 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/scoped_refptr.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
-#include <dbus/debugd/dbus-constants.h>
+#include <chromeos/dbus/debugd/dbus-constants.h>
+#include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
-#include <fbpreprocessor-client/fbpreprocessor/dbus-proxies.h>
 #include <fbpreprocessor-client-test/fbpreprocessor/dbus-proxy-mocks.h>
 
 #include <gtest/gtest.h>
 
 #include "debugd/src/binary_log_tool.h"
-#include "debugd/src/sandboxed_process.h"
 
 using testing::_;
 using testing::Invoke;
@@ -38,8 +39,7 @@ constexpr std::string_view kDefaultOutputFile("output.tar.zst");
 
 constexpr int kIncorrectBinaryLogType = -1;
 
-void CreateFiles(const std::set<base::FilePath>& files,
-                 const std::string_view& data) {
+void CreateFiles(const std::set<base::FilePath>& files, std::string_view data) {
   for (auto file : files) {
     CHECK(base::WriteFile(file, data));
   }
@@ -68,11 +68,6 @@ namespace debugd {
 
 class BinaryLogToolTest : public testing::Test {
  protected:
-  org::chromium::FbPreprocessorProxyMock* GetFbPreprocessorProxy() {
-    return static_cast<org::chromium::FbPreprocessorProxyMock*>(
-        binary_log_tool_->GetFbPreprocessorProxyForTesting());
-  }
-
   base::FilePath InputDirectory() const {
     return daemon_store_base_dir_.GetPath()
         .Append(kDefaultUserhash)
@@ -85,8 +80,8 @@ class BinaryLogToolTest : public testing::Test {
 
   void SimulateDaemonDBusResponses(
       const fbpreprocessor::DebugDumps& input_debug_dumps,
-      const std::string_view& userhash) {
-    ON_CALL(*GetFbPreprocessorProxy(), GetDebugDumps(_, _, _))
+      std::string_view userhash) {
+    ON_CALL(*fbpreprocessor_proxy_, GetDebugDumps(_, _, _))
         .WillByDefault(WithArg<0>(Invoke(
             [&input_debug_dumps](fbpreprocessor::DebugDumps* out_DebugDumps) {
               *out_DebugDumps = input_debug_dumps;
@@ -119,11 +114,18 @@ class BinaryLogToolTest : public testing::Test {
     CHECK(output_dir_.CreateUniqueTempDir());
     SetUpFakeDaemonStore();
 
-    binary_log_tool_ = std::unique_ptr<BinaryLogTool>(new BinaryLogTool(
-        std::make_unique<org::chromium::FbPreprocessorProxyMock>()));
+    auto fbpreprocessor_proxy =
+        std::make_unique<org::chromium::FbPreprocessorProxyMock>();
+    fbpreprocessor_proxy_ = fbpreprocessor_proxy.get();
+    binary_log_tool_ = std::make_unique<BinaryLogTool>(
+        base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options()));
+    binary_log_tool_->SetFbPreprocessorProxyForTesting(
+        std::move(fbpreprocessor_proxy));
   }
 
   std::unique_ptr<BinaryLogTool> binary_log_tool_;
+  // Owned by |binary_log_tool_|.
+  org::chromium::FbPreprocessorProxyMock* fbpreprocessor_proxy_;
 
   base::ScopedTempDir daemon_store_base_dir_;
   base::ScopedTempDir output_dir_;

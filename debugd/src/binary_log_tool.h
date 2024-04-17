@@ -7,7 +7,6 @@
 
 #include <map>
 #include <memory>
-#include <optional>
 #include <string>
 
 #include <base/files/scoped_file.h>
@@ -28,12 +27,11 @@ class BinaryLogTool {
       const std::map<FeedbackBinaryLogType, base::ScopedFD>& outfds);
 
   // Test-only.
-  explicit BinaryLogTool(
-      std::unique_ptr<org::chromium::FbPreprocessorProxyInterface>
-          fbpreprocessor_proxy);
-
-  org::chromium::FbPreprocessorProxyInterface*
-  GetFbPreprocessorProxyForTesting();
+  // Tests that want to mock the D-Bus interaction between debugd and
+  // fbpreprocessord can provide a mock proxy.
+  // BinaryLogTool will take ownership of the unique_ptr.
+  void SetFbPreprocessorProxyForTesting(
+      std::unique_ptr<org::chromium::FbPreprocessorProxyInterface> proxy);
 
   void DisableMinijailForTesting();
 
