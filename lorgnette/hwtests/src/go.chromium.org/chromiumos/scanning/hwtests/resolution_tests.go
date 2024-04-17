@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"math"
 
-	"chromiumos/scanning/utils"
+	"go.chromium.org/chromiumos/scanning/utils"
 )
 
 // checkForSupportedResolution returns true if `sourceResolutions` advertises at

@@ -5,7 +5,7 @@
 package hwtests
 
 import (
-	"chromiumos/scanning/utils"
+	"go.chromium.org/chromiumos/scanning/utils"
 )
 
 // NoCameraSourceTest checks if `cameraCapabilities` is the zero value. If it

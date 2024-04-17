@@ -7,7 +7,7 @@ package hwtests
 import (
 	"fmt"
 
-	"chromiumos/scanning/utils"
+	"go.chromium.org/chromiumos/scanning/utils"
 )
 
 var supportedColorModes = []string{"BlackAndWhite1", "Grayscale8", "RGB24"}

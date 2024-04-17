@@ -7,7 +7,7 @@ package hwtests
 import (
 	"testing"
 
-	"chromiumos/scanning/utils"
+	"go.chromium.org/chromiumos/scanning/utils"
 )
 
 // Valid JSON data from `lorgnette CLI get_json_caps`.

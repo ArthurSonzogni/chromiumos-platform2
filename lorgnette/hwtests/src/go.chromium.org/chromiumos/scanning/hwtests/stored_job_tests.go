@@ -7,7 +7,7 @@ package hwtests
 import (
 	"github.com/google/go-cmp/cmp"
 
-	"chromiumos/scanning/utils"
+	"go.chromium.org/chromiumos/scanning/utils"
 )
 
 // NoStoredJobSupportTest passes if `storedJobRequestSupport` is empty.

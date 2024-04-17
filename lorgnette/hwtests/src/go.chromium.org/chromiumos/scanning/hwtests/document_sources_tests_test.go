@@ -7,7 +7,7 @@ package hwtests
 import (
 	"testing"
 
-	"chromiumos/scanning/utils"
+	"go.chromium.org/chromiumos/scanning/utils"
 )
 
 // TestNoCameraSourceTest tests that the NoCameraSourceTest functions correctly.

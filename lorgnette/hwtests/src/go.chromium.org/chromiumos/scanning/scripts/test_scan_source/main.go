@@ -10,8 +10,8 @@ import (
 	"log"
 	"path"
 
-	"chromiumos/scanning/hwtests"
-	"chromiumos/scanning/utils"
+	"go.chromium.org/chromiumos/scanning/hwtests"
+	"go.chromium.org/chromiumos/scanning/utils"
 )
 
 // Tests each scan source of a scanner to make sure the scanning behavior

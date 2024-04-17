@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"log"
 
-	"chromiumos/scanning/hwtests"
-	"chromiumos/scanning/utils"
+	"go.chromium.org/chromiumos/scanning/hwtests"
+	"go.chromium.org/chromiumos/scanning/utils"
 )
 
 // Runs various tests to verify that a scanner's reported capabilities satisfy
