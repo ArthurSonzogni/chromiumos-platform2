@@ -280,6 +280,8 @@ std::optional<FirmwareFileInfo::Compression> ToFirmwareFileInfoCompression(
       return FirmwareFileInfo::Compression::NONE;
     case Compression::XZ:
       return FirmwareFileInfo::Compression::XZ;
+    case Compression::BSDIFF:
+      return FirmwareFileInfo::Compression::BSDIFF;
     default:
       std::string name = Compression_Name(compression);
       if (name.empty())

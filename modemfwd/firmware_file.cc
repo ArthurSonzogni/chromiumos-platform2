@@ -2,12 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+
 #include "modemfwd/firmware_file.h"
 
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <brillo/process/process.h>
 
 #include "modemfwd/file_decompressor.h"
 
@@ -50,10 +53,29 @@ bool FirmwareFile::PrepareFrom(const base::FilePath& firmware_dir,
       path_on_filesystem_ = actual_path;
       return true;
     }
+    case FirmwareFileInfo::Compression::BSDIFF: {
+      constexpr std::string patchmaker_path("/usr/bin/patchmaker");
+      brillo::ProcessImpl cmd;
+
+      if (!temp_dir_.CreateUniqueTempDir()) {
+        LOG(ERROR) << "Failed to create temporary directory for "
+                      "decompressing firmware";
+        return false;
+      }
+
+      path_for_logging_ = firmware_path;
+      path_on_filesystem_ = temp_dir_.GetPath().Append(file_info.firmware_path);
+
+      cmd.AddArg(patchmaker_path);
+      cmd.AddArg("--decode");
+      cmd.AddArg("--src_path=" + firmware_path.value());
+      cmd.AddArg("--dest_path=" + temp_dir_.GetPath().value());
+
+      return 0 == cmd.Run();
+    }
   }
 
-  NOTREACHED();
-  return false;
+  NOTREACHED_NORETURN();
 }
 
 }  // namespace modemfwd

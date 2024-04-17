@@ -11,6 +11,7 @@ option go_package = "go.chromium.org/chromiumos/modemfwd";
 enum Compression {
   NONE = 0;
   XZ = 1;
+  BSDIFF = 2;
 }
 
 message AssociatedFirmware {

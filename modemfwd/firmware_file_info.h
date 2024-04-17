@@ -15,6 +15,7 @@ struct FirmwareFileInfo {
   enum class Compression {
     NONE,
     XZ,
+    BSDIFF,
   };
 
   FirmwareFileInfo() : compression(Compression::NONE) {}
