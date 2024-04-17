@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "mems_setup/sensor_kind.h"
+
 #include <base/logging.h>
 #include <base/notreached.h>
-
 #include <libmems/common_types.h>
-
-#include "mems_setup/sensor_kind.h"
 
 namespace mems_setup {
 
@@ -25,7 +24,8 @@ constexpr char kBaroDeviceName[] = "cros-ec-baro";
 
 constexpr char kProxDeviceNames[][23] = {
     "cros-ec-activity", "cros-ec-prox", "sx9310", "sx9311",
-    "sx9324",           "sx932x",       "sx9360", "cros-ec-mkbp-proximity"};
+    "sx9324",           "sx932x",       "sx9360", "cros-ec-mkbp-proximity",
+    "hx9023s"};
 
 constexpr char kHidDeviceNames[][13] = {
     "accel_3d",    "gyro_3d",  "magn_3d",     "als",
