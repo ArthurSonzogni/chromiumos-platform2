@@ -997,7 +997,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     return wifi_->RemoveNetwork(network);
   }
   KeyValueStore CreateBSSProperties(const std::string& ssid,
-                                    const std::string& bssid,
+                                    net_base::MacAddress bssid,
                                     int16_t signal_strength,
                                     uint16_t frequency,
                                     const char* mode,
@@ -1012,7 +1012,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                  uint32_t age);
   void ReportBSSWithIEs(const RpcIdentifier& bss_path,
                         const std::string& ssid,
-                        const std::string& bssid,
+                        net_base::MacAddress bssid,
                         int16_t signal_strength,
                         uint16_t frequency,
                         const char* mode,
@@ -1464,7 +1464,7 @@ void WiFiObjectTest::RemoveBSS(const RpcIdentifier& bss_path) {
 }
 
 KeyValueStore WiFiObjectTest::CreateBSSProperties(const std::string& ssid,
-                                                  const std::string& bssid,
+                                                  net_base::MacAddress bssid,
                                                   int16_t signal_strength,
                                                   uint16_t frequency,
                                                   const char* mode,
@@ -1472,13 +1472,7 @@ KeyValueStore WiFiObjectTest::CreateBSSProperties(const std::string& ssid,
   KeyValueStore bss_properties;
   bss_properties.Set<std::vector<uint8_t>>(
       "SSID", std::vector<uint8_t>(ssid.begin(), ssid.end()));
-  {
-    std::string bssid_nosep;
-    std::vector<uint8_t> bssid_bytes;
-    base::RemoveChars(bssid, ":", &bssid_nosep);
-    base::HexStringToBytes(bssid_nosep, &bssid_bytes);
-    bss_properties.Set<std::vector<uint8_t>>("BSSID", bssid_bytes);
-  }
+  bss_properties.Set<std::vector<uint8_t>>("BSSID", bssid.ToBytes());
   bss_properties.Set<int16_t>(WPASupplicant::kBSSPropertySignal,
                               signal_strength);
   bss_properties.Set<uint16_t>(WPASupplicant::kBSSPropertyFrequency, frequency);
@@ -1496,13 +1490,13 @@ void WiFiObjectTest::ReportBSS(const RpcIdentifier& bss_path,
                                const char* mode,
                                uint32_t age) {
   wifi_->BSSAddedTask(
-      bss_path, CreateBSSProperties(ssid, bssid.ToString(), signal_strength,
-                                    frequency, mode, age));
+      bss_path,
+      CreateBSSProperties(ssid, bssid, signal_strength, frequency, mode, age));
 }
 
 void WiFiObjectTest::ReportBSSWithIEs(const RpcIdentifier& bss_path,
                                       const std::string& ssid,
-                                      const std::string& bssid,
+                                      net_base::MacAddress bssid,
                                       int16_t signal_strength,
                                       uint16_t frequency,
                                       const char* mode,
@@ -5539,16 +5533,22 @@ TEST_F(WiFiMainTest, PendingScanEvents) {
   // This test essentially performs ReportBSS(), but ensures that the
   // WiFi object successfully dispatches events in order.
   StartWiFi();
-  BSSAdded(RpcIdentifier("bss0"),
-           CreateBSSProperties("ssid0", "00:00:00:00:00:00", 0, 0,
-                               kNetworkModeInfrastructure, 0));
-  BSSAdded(RpcIdentifier("bss1"),
-           CreateBSSProperties("ssid1", "00:00:00:00:00:01", 0, 0,
-                               kNetworkModeInfrastructure, 0));
+  BSSAdded(
+      RpcIdentifier("bss0"),
+      CreateBSSProperties(
+          "ssid0", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0,
+          0, kNetworkModeInfrastructure, 0));
+  BSSAdded(
+      RpcIdentifier("bss1"),
+      CreateBSSProperties(
+          "ssid1", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x01), 0,
+          0, kNetworkModeInfrastructure, 0));
   BSSRemoved(RpcIdentifier("bss0"));
-  BSSAdded(RpcIdentifier("bss2"),
-           CreateBSSProperties("ssid2", "00:00:00:00:00:02", 0, 0,
-                               kNetworkModeInfrastructure, 0));
+  BSSAdded(
+      RpcIdentifier("bss2"),
+      CreateBSSProperties(
+          "ssid2", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x02), 0,
+          0, kNetworkModeInfrastructure, 0));
 
   WiFiEndpointRefPtr ap0 = MakeEndpoint(
       "ssid0", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00));
@@ -6096,8 +6096,9 @@ TEST_F(WiFiMainTest, ScanTriggersInterworkingSelect) {
   AddVendorIE(IEEE_80211::kOUIVendorWiFiAlliance,
               IEEE_80211::kOUITypeWiFiAllianceHS20Indicator, data, &ies);
   RpcIdentifier bss0_path("bss0");
-  ReportBSSWithIEs(RpcIdentifier("bss0"), "ssid0", "00:00:00:00:00:00", 0, 0,
-                   kNetworkModeInfrastructure, ies);
+  ReportBSSWithIEs(RpcIdentifier("bss0"), "ssid0",
+                   net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0,
+                   0, kNetworkModeInfrastructure, ies);
 
   // When a Passpoint compatible AP is found, an interworking selection is
   // scheduled.
@@ -6346,8 +6347,7 @@ TEST_F(WiFiMainTest, ANQPGet) {
       .WillRepeatedly(Return(service));
   ON_CALL(*service, GetBSSIDConnectableEndpointCount())
       .WillByDefault(Return(1));
-  ReportBSSWithIEs(path, ssid, bssid.ToString(), -90, 0,
-                   kNetworkModeInfrastructure, ies);
+  ReportBSSWithIEs(path, ssid, bssid, -90, 0, kNetworkModeInfrastructure, ies);
 
   InitiateConnect(service);
   ReportCurrentBSSChanged(path);
