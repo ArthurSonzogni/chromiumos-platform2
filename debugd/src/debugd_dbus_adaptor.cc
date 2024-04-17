@@ -145,7 +145,8 @@ bool DebugdDBusAdaptor::CroshShellStart(
     return false;
   }
 
-  return crosh_shell_tool_->Run(shell_lifeline_fd, infd, eventfd, handle, error);
+  return crosh_shell_tool_->Run(shell_lifeline_fd, infd, eventfd, handle,
+                                error);
 }
 
 bool DebugdDBusAdaptor::PingStart(brillo::ErrorPtr* error,
