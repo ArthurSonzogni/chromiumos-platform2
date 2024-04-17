@@ -822,6 +822,8 @@ void Metrics::NotifyDetailedCellularConnectionResult(
       apn_source = kCellularApnSourceUi;
     else if (result.apn_info.at(kApnSourceProperty) == kApnSourceModem)
       apn_source = kCellularApnSourceModem;
+    else if (result.apn_info.at(kApnSourceProperty) == kApnSourceAdmin)
+      apn_source = kCellularApnSourceAdmin;
     else if (result.apn_info.at(kApnSourceProperty) ==
              cellular::kApnSourceFallback)
       apn_source = kCellularApnSourceFallback;

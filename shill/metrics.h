@@ -539,6 +539,7 @@ class Metrics {
     kCellularApnSourceUi = 1,
     kCellularApnSourceModem = 2,
     kCellularApnSourceFallback = 3,
+    kCellularApnSourceAdmin = 4,
     kCellularApnSourceMax
   };
 
