@@ -1,1 +1,2 @@
 !tests/**/*.d
+!Cargo.lock

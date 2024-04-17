@@ -4,6 +4,12 @@
 
 //! Constants and utilities for interacting with syslog compatible programs.
 
+mod facility;
+mod message;
+mod rfc3164_message;
 mod severity;
 
+pub use crate::syslog::facility::Facility;
+pub use crate::syslog::message::SyslogMessage;
+pub use crate::syslog::rfc3164_message::Rfc3164Message;
 pub use crate::syslog::severity::Severity;

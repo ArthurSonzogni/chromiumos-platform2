@@ -2,12 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use num_enum::TryFromPrimitive;
 use serde::Deserialize;
 
 /// Enum representing syslog severities.
 ///
 /// Allows full severity name, keyword and numeric value.
-#[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, PartialEq, PartialOrd)]
+#[derive(Copy, Clone, Debug, Deserialize, Eq, Hash, PartialEq, PartialOrd, TryFromPrimitive)]
+#[repr(u8)]
 pub enum Severity {
     #[serde(alias = "emerg", alias = "0")]
     Emergency = 0,
