@@ -434,7 +434,57 @@ TEST_F(ServiceManagerTest, QueryErrorSELinux) {
             mojom::ErrorCode::kPermissionDenied);
 }
 
-TEST_F(ServiceManagerTest, ServiceObserverGetEvent) {
+TEST_F(ServiceManagerTest, ServiceObserverGetEventUid) {
+  FakeServcieObserver observer;
+  ConnectServiceManagerAs(kRequesterUid)
+      ->AddServiceObserver(observer.receiver_.BindNewPipeAndPassRemote());
+
+  FakeServcieProvider povider;
+  ConnectServiceManagerAs(kOwnerUid)->Register(
+      "FooUidService", povider.receiver_.BindNewPipeAndPassRemote());
+  ExpectServiceEvent(&observer);
+  EXPECT_EQ(observer.last_event_,
+            mojom::ServiceEvent::New(
+                mojom::ServiceEvent::Type::kRegistered, "FooUidService",
+                mojom::ProcessIdentity::New("any_security_context", 0,
+                                            kOwnerUid, 0)));
+
+  // Reset the receiver to unregister from service manager.
+  povider.receiver_.reset();
+  ExpectServiceEvent(&observer);
+  EXPECT_EQ(observer.last_event_,
+            mojom::ServiceEvent::New(
+                mojom::ServiceEvent::Type::kUnRegistered, "FooUidService",
+                mojom::ProcessIdentity::New("any_security_context", 0,
+                                            kOwnerUid, 0)));
+}
+
+TEST_F(ServiceManagerTest, ServiceObserverGetEventUidOwnerSELinuxRequester) {
+  FakeServcieObserver observer;
+  ConnectServiceManagerAs("requester")
+      ->AddServiceObserver(observer.receiver_.BindNewPipeAndPassRemote());
+
+  FakeServcieProvider povider;
+  ConnectServiceManagerAs(kOwnerUid)->Register(
+      "FooUidService", povider.receiver_.BindNewPipeAndPassRemote());
+  ExpectServiceEvent(&observer);
+  EXPECT_EQ(observer.last_event_,
+            mojom::ServiceEvent::New(
+                mojom::ServiceEvent::Type::kRegistered, "FooUidService",
+                mojom::ProcessIdentity::New("any_security_context", 0,
+                                            kOwnerUid, 0)));
+
+  // Reset the receiver to unregister from service manager.
+  povider.receiver_.reset();
+  ExpectServiceEvent(&observer);
+  EXPECT_EQ(observer.last_event_,
+            mojom::ServiceEvent::New(
+                mojom::ServiceEvent::Type::kUnRegistered, "FooUidService",
+                mojom::ProcessIdentity::New("any_security_context", 0,
+                                            kOwnerUid, 0)));
+}
+
+TEST_F(ServiceManagerTest, ServiceObserverGetEventSELinux) {
   FakeServcieObserver observer;
   ConnectServiceManagerAs("requester")
       ->AddServiceObserver(observer.receiver_.BindNewPipeAndPassRemote());
@@ -457,7 +507,23 @@ TEST_F(ServiceManagerTest, ServiceObserverGetEvent) {
                 mojom::ProcessIdentity::New("owner", 0, 0, 0)));
 }
 
-TEST_F(ServiceManagerTest, ServiceObserverNotRequester) {
+TEST_F(ServiceManagerTest, ServiceObserverNotRequesterUid) {
+  FakeServcieObserver observer_not_a_requester;
+  ConnectServiceManagerAs(kNotRequesterUid)
+      ->AddServiceObserver(
+          observer_not_a_requester.receiver_.BindNewPipeAndPassRemote());
+
+  // Register a service and the observer should not receiver the event.
+  FakeServcieProvider provider;
+  ConnectServiceManagerAs(kOwnerUid)->Register(
+      "FooUidService", provider.receiver_.BindNewPipeAndPassRemote());
+
+  // Run until all the async mojo operations are fulfilled.
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(observer_not_a_requester.last_event_.is_null());
+}
+
+TEST_F(ServiceManagerTest, ServiceObserverNotRequesterSELinux) {
   FakeServcieObserver observer_not_a_requester;
   ConnectServiceManagerAs("not_requester")
       ->AddServiceObserver(
@@ -602,7 +668,7 @@ TEST_F(PermissiveServiceManagerTest, ServiceObserverPermissive) {
   // Test if observer can receive events from services which it is not a
   // requester.
   FakeServcieObserver observer;
-  ConnectServiceManagerAs("not_requester")
+  ConnectServiceManagerAs(kNotRequesterUid)
       ->AddServiceObserver(observer.receiver_.BindNewPipeAndPassRemote());
 
   FakeServcieProvider povider;

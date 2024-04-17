@@ -9,6 +9,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <utility>
 
 #include <base/memory/weak_ptr.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
@@ -69,11 +70,15 @@ class ServiceManager : public mojom::ServiceManager {
   void ServiceProviderDisconnectHandler(const std::string& service_name);
 
   // Sends a service event to observers owned by requesters.
-  void SendServiceEvent(const std::set<std::string>& requesters,
+  void SendServiceEvent(const std::set<uint32_t>& requesters_uid,
+                        const std::set<std::string>& requesters_selinux,
                         mojom::ServiceEventPtr event);
 
   // Handles the disconnect of clients.
   void HandleDisconnect();
+
+  // Handles the disconnect of observers.
+  void HandleObserverDisconnect(uint32_t uid, mojo::RemoteSetElementId id);
 
   // The service manager configuration.
   const Configuration configuration_;
@@ -84,10 +89,16 @@ class ServiceManager : public mojom::ServiceManager {
   // handle the requests.
   mojo::ReceiverSet<mojom::ServiceManager, mojom::ProcessIdentityPtr>
       receiver_set_;
-  // Maps security context to the remote set of service observers. Each set can
-  // only receive events sent to each security context.
-  std::map<std::string, mojo::RemoteSet<mojom::ServiceObserver>>
+  // Maps uid to the remote set of service observers. Each set can only receives
+  // events sent to each uid.
+  std::map<uint32_t, mojo::RemoteSet<mojom::ServiceObserver>>
       service_observer_map_;
+  // Maps security context to a set of `(uid, RemoteSetElementId)`. Each pair
+  // refers to a remote in `receiver_set_[uid]`. Each set can only receives
+  // events sent to each security context.
+  // TODO(b/333323875): Remove this.
+  std::map<std::string, std::set<std::pair<uint32_t, mojo::RemoteSetElementId>>>
+      service_observer_map_legacy_;
   // Must be the last member.
   base::WeakPtrFactory<ServiceManager> weak_factory_{this};
 };

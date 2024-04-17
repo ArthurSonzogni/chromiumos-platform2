@@ -94,7 +94,7 @@ void ServiceManager::Register(
 
   service_state.owner = identity.Clone();
   SendServiceEvent(
-      service_state.policy.requesters(),
+      service_state.policy.requesters_uid(), service_state.policy.requesters(),
       mojom::ServiceEvent::New(mojom::ServiceEvent::Type::kRegistered,
                                service_name, identity.Clone()));
 
@@ -190,7 +190,13 @@ void ServiceManager::Query(const std::string& service_name,
 void ServiceManager::AddServiceObserver(
     mojo::PendingRemote<mojom::ServiceObserver> observer) {
   const mojom::ProcessIdentityPtr& identity = receiver_set_.current_context();
-  service_observer_map_[identity->security_context].Add(std::move(observer));
+  auto id = service_observer_map_[identity->uid].Add(std::move(observer));
+  service_observer_map_legacy_[identity->security_context].insert(
+      std::make_pair(identity->uid, id));
+
+  service_observer_map_[identity->uid].set_disconnect_handler(
+      base::BindRepeating(&ServiceManager::HandleObserverDisconnect,
+                          weak_factory_.GetWeakPtr(), identity->uid));
 }
 
 void ServiceManager::ServiceProviderDisconnectHandler(
@@ -202,13 +208,15 @@ void ServiceManager::ServiceProviderDisconnectHandler(
   mojom::ProcessIdentityPtr dispatcher;
   dispatcher.Swap(&service_state.owner);
   SendServiceEvent(
-      service_state.policy.requesters(),
+      service_state.policy.requesters_uid(), service_state.policy.requesters(),
       mojom::ServiceEvent::New(mojom::ServiceEvent::Type::kUnRegistered,
                                service_name, std::move(dispatcher)));
 }
 
-void ServiceManager::SendServiceEvent(const std::set<std::string>& requesters,
-                                      mojom::ServiceEventPtr event) {
+void ServiceManager::SendServiceEvent(
+    const std::set<uint32_t>& requesters_uid,
+    const std::set<std::string>& requesters_selinux,
+    mojom::ServiceEventPtr event) {
   if (configuration_.is_permissive) {
     // In permissive mode, all the observer can receive the event.
     for (const auto& item : service_observer_map_) {
@@ -218,12 +226,21 @@ void ServiceManager::SendServiceEvent(const std::set<std::string>& requesters,
     }
     return;
   }
-  for (const std::string& security_context : requesters) {
-    auto it = service_observer_map_.find(security_context);
+  for (const uint32_t& uid : requesters_uid) {
+    auto it = service_observer_map_.find(uid);
     if (it == service_observer_map_.end())
       continue;
     for (const mojo::Remote<mojom::ServiceObserver>& remote : it->second) {
       remote->OnServiceEvent(event.Clone());
+    }
+  }
+  // TODO(b/333323875): Remove this selinux workaround.
+  for (const std::string& security_context : requesters_selinux) {
+    auto it = service_observer_map_legacy_.find(security_context);
+    if (it == service_observer_map_legacy_.end())
+      continue;
+    for (const auto& [uid, remote_id] : it->second) {
+      service_observer_map_[uid].Get(remote_id)->OnServiceEvent(event.Clone());
     }
   }
 }
@@ -235,6 +252,18 @@ void ServiceManager::HandleDisconnect() {
             << receiver_set_.current_context()->username.value_or(
                    "unknown user")
             << ")";
+}
+
+void ServiceManager::HandleObserverDisconnect(uint32_t uid,
+                                              mojo::RemoteSetElementId id) {
+  // Iterate through all legacy map to find the disconnected remote id.
+  // TODO(b/333323875): Remove this selinux workaround.
+  for (auto& [unused_security_context, remote_id_set] :
+       service_observer_map_legacy_) {
+    if (remote_id_set.erase(std::make_pair(uid, id)) == 1) {
+      return;
+    }
+  }
 }
 
 }  // namespace chromeos::mojo_service_manager
