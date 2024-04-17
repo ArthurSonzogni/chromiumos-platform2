@@ -512,6 +512,36 @@ macro_rules! get_arc_level {
 get_arc_level!(get_arc_container_level, PressureLevelArcContainer);
 get_arc_level!(get_arcvm_level, PressureLevelArcvm);
 
+fn get_adjusted_arcvm_levels(
+    arc_margins: &ArcMarginsKb,
+    available: u64,
+    background_memory_kb: u64,
+    game_mode: common::GameMode,
+    vmms_active: bool,
+) -> (PressureLevelArcvm, u64) {
+    // Instead of killing apps with ApplyHostMemoryPressure, rely on balloon
+    // pressure from VM memory management service to trigger lmkd kills if
+    // vmms client is connected.
+    if vmms_active {
+        return (PressureLevelArcvm::None, 0)
+    }
+
+    let (raw_arcvm_level, arcvm_reclaim_target_kb) =
+        get_arcvm_level(arc_margins, available, background_memory_kb);
+
+    let arcvm_level =
+        if game_mode == common::GameMode::Arc && raw_arcvm_level > PressureLevelArcvm::Cached {
+            // Do not kill Android apps that are perceptible or foreground, only
+            // those that are cached. Otherwise, the fullscreen Android app or a
+            // service it needs may be killed.
+            PressureLevelArcvm::Cached
+        } else {
+            raw_arcvm_level
+        };
+
+    (arcvm_level, arcvm_reclaim_target_kb)
+}
+
 async fn try_vmms_reclaim_memory(
     vmms_client: &VmMemoryManagementClient,
     chrome_level: PressureLevelChrome,
@@ -519,6 +549,12 @@ async fn try_vmms_reclaim_memory(
     chrome_background_memory: u64,
     game_mode: common::GameMode,
 ) -> u64 {
+    if !vmms_client.is_active() {
+        return 0;
+    }
+
+    let now = Instant::now();
+
     // Chrome won't kill tabs, so no need to try to save anything by
     // inflating the balloon.
     if chrome_level != PressureLevelChrome::Critical {
@@ -570,6 +606,10 @@ async fn try_vmms_reclaim_memory(
         vmms_client.send_no_kill_candidates().await;
     }
 
+    if let Err(e) = report_vmms_reclaim_memory_duration(now.elapsed()) {
+        error!("Failed to report try_vmms_reclaim_memory duration {:?}", e);
+    }
+
     cached_actual + perceptible_actual
 }
 
@@ -603,50 +643,26 @@ pub async fn get_memory_pressure_status(
         .max(arc_container_perceptible_target)
         .max(raw_chrome_reclaim_target_kb);
     let background_memory_kb = get_chrome_memory_kb(ChromeProcessType::Background, max_target);
-    let (chrome_level, chrome_reclaim_target_kb, arcvm_level, arcvm_reclaim_target_kb) =
-        if vmms_client.is_active() {
-            let now = Instant::now();
-            let balloon_reclaim_kb = try_vmms_reclaim_memory(
-                vmms_client,
-                raw_chrome_level,
-                raw_chrome_reclaim_target_kb,
-                background_memory_kb,
-                game_mode,
-            )
-            .await;
-            if let Err(e) = report_vmms_reclaim_memory_duration(now.elapsed()) {
-                error!("Failed to report try_vmms_reclaim_memory duration {:?}", e);
-            }
-            let (chrome_level, chrome_reclaim_target_kb) =
-                margins.compute_chrome_pressure(available + balloon_reclaim_kb);
-            (
-                chrome_level,
-                chrome_reclaim_target_kb,
-                // Instead of killing apps with ApplyHostMemoryPressure, rely on balloon
-                // pressure from VM memory management service to trigger lmkd kills.
-                PressureLevelArcvm::None,
-                0,
-            )
-        } else {
-            let (raw_arcvm_level, arcvm_reclaim_target_kb) =
-                get_arcvm_level(&margins.arcvm, available, background_memory_kb);
-            let arcvm_level = if game_mode == common::GameMode::Arc
-                && raw_arcvm_level > PressureLevelArcvm::Cached
-            {
-                // Do not kill Android apps that are perceptible or foreground, only
-                // those that are cached. Otherwise, the fullscreen Android app or a
-                // service it needs may be killed.
-                PressureLevelArcvm::Cached
-            } else {
-                raw_arcvm_level
-            };
-            (
-                raw_chrome_level,
-                raw_chrome_reclaim_target_kb,
-                arcvm_level,
-                arcvm_reclaim_target_kb,
-            )
-        };
+
+    let vmms_reclaim_kb = try_vmms_reclaim_memory(
+        vmms_client,
+        raw_chrome_level,
+        raw_chrome_reclaim_target_kb,
+        background_memory_kb,
+        game_mode,
+    )
+    .await;
+
+    let (chrome_level, chrome_reclaim_target_kb) =
+        margins.compute_chrome_pressure(available + vmms_reclaim_kb);
+
+    let (arcvm_level, arcvm_reclaim_target_kb) = get_adjusted_arcvm_levels(
+        &margins.arcvm,
+        available,
+        background_memory_kb,
+        game_mode,
+        vmms_client.is_active(),
+    );
 
     let (arc_container_level, arc_container_reclaim_target_kb) =
         get_arc_container_level(&margins.arc_container, available, background_memory_kb);
