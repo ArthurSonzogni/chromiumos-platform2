@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <optional>
 #include <set>
 #include <string>
 
@@ -12,6 +13,24 @@
 
 namespace chromeos::mojo_service_manager {
 namespace {
+
+TEST(ServicePolicyTest, OwnerUid) {
+  ServicePolicy policy;
+  EXPECT_FALSE(policy.IsOwnerUid(123));
+  EXPECT_EQ(policy.owner_uid(), std::nullopt);
+  policy.SetOwnerUid(123);
+  EXPECT_TRUE(policy.IsOwnerUid(123));
+  EXPECT_FALSE(policy.IsOwnerUid(456));
+  EXPECT_EQ(policy.owner_uid(), 123);
+}
+
+TEST(ServicePolicyTest, RequesterUid) {
+  ServicePolicy policy;
+  policy.AddRequesterUid(123);
+  EXPECT_TRUE(policy.IsRequesterUid(123));
+  EXPECT_FALSE(policy.IsRequesterUid(456));
+  EXPECT_EQ(policy.requesters_uid(), std::set<uint32_t>{123});
+}
 
 TEST(ServicePolicyTest, Default) {
   ServicePolicy policy;
@@ -26,6 +45,24 @@ TEST(ServicePolicyTest, Default) {
   EXPECT_TRUE(policy.IsRequester("requester"));
   EXPECT_FALSE(policy.IsRequester("not_a_requester"));
   EXPECT_EQ(policy.requesters(), std::set<std::string>{"requester"});
+}
+
+TEST(ServicePolicyTest, MergeUid) {
+  ServicePolicy policy;
+  EXPECT_TRUE(policy.Merge(CreateServicePolicyForTest(/*owner=*/std::nullopt,
+                                                      /*requesters=*/{4})));
+  EXPECT_FALSE(policy.owner_uid());
+  EXPECT_TRUE(policy.IsRequesterUid(4));
+
+  EXPECT_TRUE(policy.Merge(
+      CreateServicePolicyForTest(/*owner=*/1, /*requesters=*/{5})));
+  EXPECT_TRUE(policy.IsOwnerUid(1));
+  EXPECT_TRUE(policy.IsRequesterUid(5));
+
+  // Merge will fail because owner has been set.
+  EXPECT_FALSE(policy.Merge(
+      CreateServicePolicyForTest(/*owner=*/2, /*requesters=*/{6})));
+  EXPECT_TRUE(policy.IsRequesterUid(6));
 }
 
 TEST(ServicePolicyTest, Merge) {
@@ -43,6 +80,54 @@ TEST(ServicePolicyTest, Merge) {
   EXPECT_FALSE(
       policy.Merge(CreateServicePolicyForTest("owner_b", {"requester_c"})));
   EXPECT_TRUE(policy.IsRequester("requester_c"));
+}
+
+TEST(ServicePolicyTest, MergeUidOwnerAndLegacyOwner) {
+  ServicePolicy policy;
+  EXPECT_TRUE(
+      policy.Merge(CreateServicePolicyForTest(/*owner=*/1, /*requesters=*/{})));
+  EXPECT_EQ(policy.owner_uid(), 1);
+  EXPECT_TRUE(policy.owner().empty());
+
+  // Merge will fail because owner has been set.
+  EXPECT_FALSE(policy.Merge(CreateServicePolicyForTest("owner", {})));
+}
+
+TEST(ServicePolicyTest, MergeUidRequesterAndLegacyRequester) {
+  ServicePolicy policy;
+  EXPECT_TRUE(policy.Merge(CreateServicePolicyForTest(/*owner=*/std::nullopt,
+                                                      /*requesters=*/{1})));
+  EXPECT_TRUE(policy.Merge(CreateServicePolicyForTest("", {"requester_a"})));
+  EXPECT_TRUE(policy.IsRequester("requester_a"));
+  EXPECT_TRUE(policy.IsRequesterUid(1));
+}
+
+TEST(ServicePolicyTest, MergeUidServicePolicyMaps) {
+  auto from = CreateServicePolicyMapForTest({
+      {"ServiceA", {/*owner=*/1, /*requesters=*/{2, 3}}},
+      {"ServiceB", {/*owner=*/1, /*requesters=*/{2, 3}}},
+  });
+  auto to = CreateServicePolicyMapForTest({
+      {"ServiceA", {/*owner=*/std::nullopt, /*requesters=*/{3, 4}}},
+      {"ServiceC", {/*owner=*/1, /*requesters=*/{3, 4}}},
+  });
+  EXPECT_TRUE(MergeServicePolicyMaps(&from, &to));
+  EXPECT_EQ(to, CreateServicePolicyMapForTest({
+                    {"ServiceA", {/*owner=*/1, /*requesters=*/{2, 3, 4}}},
+                    {"ServiceB", {/*owner=*/1, /*requesters=*/{2, 3}}},
+                    {"ServiceC", {/*owner=*/1, /*requesters=*/{3, 4}}},
+                }));
+  // "ServiceA" sets owner twice, so the merge will return false but the
+  // requester are still merged.
+  from = CreateServicePolicyMapForTest({
+      {"ServiceA", {1, {5}}},
+  });
+  EXPECT_FALSE(MergeServicePolicyMaps(&from, &to));
+  EXPECT_EQ(to, CreateServicePolicyMapForTest({
+                    {"ServiceA", {/*owner=*/1, /*requesters=*/{2, 3, 4, 5}}},
+                    {"ServiceB", {/*owner=*/1, /*requesters=*/{2, 3}}},
+                    {"ServiceC", {/*owner=*/1, /*requesters=*/{3, 4}}},
+                }));
 }
 
 TEST(ServicePolicyTest, MergeServicePolicyMaps) {

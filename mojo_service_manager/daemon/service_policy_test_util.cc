@@ -8,6 +8,8 @@
 #include <set>
 #include <string>
 
+#include <base/check.h>
+
 namespace chromeos::mojo_service_manager {
 namespace {
 
@@ -22,6 +24,18 @@ void PrintStringSet(const std::set<T>& set, std::ostream* out) {
 }  // namespace
 
 ServicePolicyMap CreateServicePolicyMapForTest(
+    const std::map<std::string,
+                   std::pair<std::optional<uint32_t>, std::set<uint32_t>>>&
+        items) {
+  ServicePolicyMap result;
+  for (const auto& item : items) {
+    result[item.first] =
+        CreateServicePolicyForTest(item.second.first, item.second.second);
+  }
+  return result;
+}
+
+ServicePolicyMap CreateServicePolicyMapForTest(
     const std::map<std::string, std::pair<std::string, std::set<std::string>>>&
         items) {
   ServicePolicyMap result;
@@ -30,6 +44,26 @@ ServicePolicyMap CreateServicePolicyMapForTest(
         CreateServicePolicyForTest(item.second.first, item.second.second);
   }
   return result;
+}
+
+ServicePolicyMap CreateServicePolicyMapForTest(
+    const std::map<std::string,
+                   std::pair<std::optional<uint32_t>, std::set<uint32_t>>>&
+        items_uid,
+    const std::map<std::string, std::pair<std::string, std::set<std::string>>>&
+        items_selinux) {
+  auto map_uid = CreateServicePolicyMapForTest(items_uid);
+  auto map_selinux = CreateServicePolicyMapForTest(items_selinux);
+  CHECK(MergeServicePolicyMaps(&map_selinux, &map_uid));
+  return map_uid;
+}
+
+ServicePolicy CreateServicePolicyForTest(const std::optional<uint32_t>& owner,
+                                         const std::set<uint32_t>& requesters) {
+  ServicePolicy policy;
+  policy.owner_uid_ = owner;
+  policy.requesters_uid_ = requesters;
+  return policy;
 }
 
 ServicePolicy CreateServicePolicyForTest(

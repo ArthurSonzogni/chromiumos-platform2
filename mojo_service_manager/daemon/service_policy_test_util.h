@@ -17,10 +17,22 @@ namespace chromeos::mojo_service_manager {
 // Creates ServicePolicyMap from braced-init-list. This avoid adding copy
 // constructor to ServicePolicy.
 ServicePolicyMap CreateServicePolicyMapForTest(
+    const std::map<std::string,
+                   std::pair<std::optional<uint32_t>, std::set<uint32_t>>>&
+        items);
+ServicePolicyMap CreateServicePolicyMapForTest(
+    const std::map<std::string,
+                   std::pair<std::optional<uint32_t>, std::set<uint32_t>>>&
+        items_uid,
+    const std::map<std::string, std::pair<std::string, std::set<std::string>>>&
+        items_selinux);
+ServicePolicyMap CreateServicePolicyMapForTest(
     const std::map<std::string, std::pair<std::string, std::set<std::string>>>&
         items);
 
 // Creates ServicePolicy from defined sets.
+ServicePolicy CreateServicePolicyForTest(const std::optional<uint32_t>& owner,
+                                         const std::set<uint32_t>& requesters);
 ServicePolicy CreateServicePolicyForTest(
     const std::string& owner, const std::set<std::string>& requesters);
 

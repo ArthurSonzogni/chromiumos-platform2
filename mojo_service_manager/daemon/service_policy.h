@@ -72,6 +72,9 @@ class ServicePolicy {
 
   // This accesses private fields to create ServicePolicy for testing.
   friend ServicePolicy CreateServicePolicyForTest(
+      const std::optional<uint32_t>& owner,
+      const std::set<uint32_t>& requesters);
+  friend ServicePolicy CreateServicePolicyForTest(
       const std::string& owner, const std::set<std::string>& requesters);
 };
 
