@@ -2,8 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-project('sommelier', 'c', 'cpp',
-        default_options : ['cpp_std=c++17'])
+project('sommelier', 'c', 'cpp', default_options: ['cpp_std=c++17'])
 
 #===============#
 # Configuration #
@@ -22,41 +21,41 @@ wl_generators = [
   generator(
     wl_scanner,
     output: '@BASENAME@-code.c',
-    arguments: ['private-code', '@INPUT@', '@OUTPUT@']
+    arguments: ['private-code', '@INPUT@', '@OUTPUT@'],
   ),
   generator(
     wl_scanner,
     output: '@BASENAME@-client-protocol.h',
-    arguments: ['client-header', '@INPUT@', '@OUTPUT@']
+    arguments: ['client-header', '@INPUT@', '@OUTPUT@'],
   ),
   generator(
     wl_scanner,
     output: '@BASENAME@-server-protocol.h',
-    arguments: ['server-header', '@INPUT@', '@OUTPUT@']
+    arguments: ['server-header', '@INPUT@', '@OUTPUT@'],
   ),
 ]
 
 wl_protocols = [
-    'protocol/aura-shell.xml',
-    'protocol/drm.xml',
-    'protocol/fractional-scale-v1.xml',
-    'protocol/gaming-input-unstable-v2.xml',
-    'protocol/gtk-shell.xml',
-    'protocol/idle-inhibit-unstable-v1.xml',
-    'protocol/keyboard-extension-unstable-v1.xml',
-    'protocol/linux-dmabuf-unstable-v1.xml',
-    'protocol/linux-explicit-synchronization-unstable-v1.xml',
-    'protocol/pointer-constraints-unstable-v1.xml',
-    'protocol/relative-pointer-unstable-v1.xml',
-    'protocol/stylus-unstable-v2.xml',
-    'protocol/tablet-unstable-v2.xml',
-    'protocol/text-input-crostini-unstable-v1.xml',
-    'protocol/text-input-unstable-v1.xml',
-    'protocol/text-input-extension-unstable-v1.xml',
-    'protocol/text-input-x11-unstable-v1.xml',
-    'protocol/viewporter.xml',
-    'protocol/xdg-output-unstable-v1.xml',
-    'protocol/xdg-shell.xml',
+  'protocol/aura-shell.xml',
+  'protocol/drm.xml',
+  'protocol/fractional-scale-v1.xml',
+  'protocol/gaming-input-unstable-v2.xml',
+  'protocol/gtk-shell.xml',
+  'protocol/idle-inhibit-unstable-v1.xml',
+  'protocol/keyboard-extension-unstable-v1.xml',
+  'protocol/linux-dmabuf-unstable-v1.xml',
+  'protocol/linux-explicit-synchronization-unstable-v1.xml',
+  'protocol/pointer-constraints-unstable-v1.xml',
+  'protocol/relative-pointer-unstable-v1.xml',
+  'protocol/stylus-unstable-v2.xml',
+  'protocol/tablet-unstable-v2.xml',
+  'protocol/text-input-crostini-unstable-v1.xml',
+  'protocol/text-input-unstable-v1.xml',
+  'protocol/text-input-extension-unstable-v1.xml',
+  'protocol/text-input-x11-unstable-v1.xml',
+  'protocol/viewporter.xml',
+  'protocol/xdg-output-unstable-v1.xml',
+  'protocol/xdg-shell.xml',
 ]
 
 wl_outs = []
@@ -72,17 +71,15 @@ endforeach
 #===============#
 
 # Ensure jinja2 exists within the python3 install.
-if run_command(
-    'python3', '-c', 'import jinja2',
-    check: false).returncode() != 0
-        error('python3 jinja2 missing')
+if run_command('python3', '-c', 'import jinja2', check: false).returncode() != 0
+  error('python3 jinja2 missing')
 endif
 
 python_program = find_program('gen-shim.py')
 shim_generator = generator(
   python_program,
   output: ['@BASENAME@-shim.cc', '@BASENAME@-shim.h', 'mock-@BASENAME@-shim.h'],
-  arguments: ['@INPUT@', '@BUILD_DIR@']
+  arguments: ['@INPUT@', '@BUILD_DIR@'],
 )
 
 shim_outs = []
@@ -150,13 +147,17 @@ if get_option('quirks')
     preserve_path_from: meson.current_source_dir(),
   )
 
-  quirks_sources = [
-    'quirks/sommelier-quirks.cc',
-  ] + quirks_proto
+  quirks_sources = (
+    [
+      'quirks/sommelier-quirks.cc',
+    ] + quirks_proto
+  )
 
-  quirks_testing = [
-    'quirks/sommelier-quirks-test.cc',
-  ] + quirks_proto
+  quirks_testing = (
+    [
+      'quirks/sommelier-quirks-test.cc',
+    ] + quirks_proto
+  )
 
   quirks_dependencies = [
     dependency('protobuf'),
@@ -173,20 +174,21 @@ if get_option('commit_loop_fix')
 endif
 
 sommelier_defines = [
-    '-D_GNU_SOURCE',
-    '-DWL_HIDE_DEPRECATED',
-    '-DXWAYLAND_PATH="' + get_option('xwayland_path') + '"',
-    '-DXWAYLAND_GL_DRIVER_PATH="' + get_option('xwayland_gl_driver_path') + '"',
-    '-DFRAME_COLOR="' + get_option('frame_color') + '"',
-    '-DDARK_FRAME_COLOR="' + get_option('dark_frame_color') + '"',
+  '-D_GNU_SOURCE',
+  '-DWL_HIDE_DEPRECATED',
+  '-DXWAYLAND_PATH="' + get_option('xwayland_path') + '"',
+  '-DXWAYLAND_GL_DRIVER_PATH="' + get_option('xwayland_gl_driver_path') + '"',
+  '-DFRAME_COLOR="' + get_option('frame_color') + '"',
+  '-DDARK_FRAME_COLOR="' + get_option('dark_frame_color') + '"',
 ]
 
 testing_defines = []
 if (get_option('with_tests'))
-    testing_defines += '-DWITH_TESTS'
+  testing_defines += '-DWITH_TESTS'
 endif
 
-libsommelier = static_library('sommelier',
+libsommelier = static_library(
+  'sommelier',
   sources: [
     'compositor/sommelier-compositor.cc',
     'compositor/sommelier-dmabuf-sync.cc',
@@ -242,7 +244,8 @@ libsommelier = static_library('sommelier',
   include_directories: includes,
 )
 
-executable('sommelier',
+executable(
+  'sommelier',
   install: true,
   sources: [
     'sommelier-main.cc',
@@ -255,7 +258,8 @@ executable('sommelier',
 if get_option('with_tests')
   testing_includes = [include_directories('testing')]
 
-  sommelier_test = executable('sommelier_test',
+  sommelier_test = executable(
+    'sommelier_test',
     install: true,
     sources: [
       'compositor/sommelier-linux-dmabuf-test.cc',
@@ -274,7 +278,7 @@ if get_option('with_tests')
     dependencies: [
       dependency('gtest'),
       dependency('gmock'),
-      dependency('pixman-1')
+      dependency('pixman-1'),
     ] + gamepad_dependencies + tracing_dependencies + quirks_dependencies,
     cpp_args: cpp_args + sommelier_defines + testing_defines,
     include_directories: includes + testing_includes,
