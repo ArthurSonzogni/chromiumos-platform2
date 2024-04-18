@@ -59,7 +59,7 @@ class BatchSender
       base::RepeatingCallback<KeyType(const AtomicVariantMessage&)>;
   using VisitCallback = base::OnceCallback<bool(AtomicVariantMessage*)>;
 
-  static constexpr size_t kMaxMessageSizeBytes = 8 * 1024 * 1024;
+  static constexpr size_t kMaxMessageSizeBytes = 800 * 1024;
 
   BatchSender(KeyDerive kd,
               scoped_refptr<secagentd::MessageSenderInterface> message_sender,
