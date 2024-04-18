@@ -92,9 +92,9 @@ class SingleFrameUpsamplerTest : public ::testing::Test {
     }
 
     // Perform upsampling on the input image.
-    std::optional<base::ScopedFD> fence =
-        upsampler_->ProcessRequest(*input_buffer, *output_buffer,
-                                   base::ScopedFD(), ResamplingMethod::kLancet);
+    std::optional<base::ScopedFD> fence = upsampler_->ProcessRequest(
+        *input_buffer, *output_buffer, base::ScopedFD(),
+        ResamplingMethod::kLancet, /*use_lancet_alpha=*/true);
     if (!fence.has_value()) {
       LOGF(ERROR) << "Failed to upsample from input buffer";
       return false;

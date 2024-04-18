@@ -92,8 +92,11 @@ bool LoadUpsamplerLibrary(const base::FilePath& dlc_root_path) {
 }  // namespace
 
 SingleFrameUpsampler::~SingleFrameUpsampler() {
-  if (runner_ && g_delete_fn) {
-    g_delete_fn(runner_);
+  if (lancet_runner_ && g_delete_fn) {
+    g_delete_fn(lancet_runner_);
+  }
+  if (lancet_alpha_runner_ && g_delete_fn) {
+    g_delete_fn(lancet_alpha_runner_);
   }
 }
 
@@ -104,7 +107,8 @@ bool SingleFrameUpsampler::Initialize(const base::FilePath& dlc_root_path) {
   }
 
   // Create a function pointer of UpsampleWrapper.
-  runner_ = g_create_fn();
+  lancet_runner_ = g_create_fn();
+  lancet_alpha_runner_ = g_create_fn();
 
   // Use stable delegate for APU accelerator. Default to OpenCL for others.
   InferenceMode inference_mode = cros::InferenceMode::kOpenCL;
@@ -115,7 +119,8 @@ bool SingleFrameUpsampler::Initialize(const base::FilePath& dlc_root_path) {
     delegate_settings_file = kApuStableDelegateConfigFile;
     if (!base::PathExists(base::FilePath(delegate_settings_file))) {
       LOGF(ERROR) << "File not exist: " << delegate_settings_file;
-      runner_ = nullptr;
+      lancet_runner_ = nullptr;
+      lancet_alpha_runner_ = nullptr;
       return false;
     }
   }
@@ -123,11 +128,16 @@ bool SingleFrameUpsampler::Initialize(const base::FilePath& dlc_root_path) {
   // Initialize the Upsampler engine.
   CHECK(g_init_upsampler_fn);
   if (!g_init_upsampler_fn(
-          runner_, static_cast<int>(inference_mode),
+          lancet_runner_, static_cast<int>(inference_mode),
+          /*use_lancet_alpha=*/false,
+          /*stable_delegate_settings_file=*/delegate_settings_file.c_str()) ||
+      !g_init_upsampler_fn(
+          lancet_alpha_runner_, static_cast<int>(inference_mode),
           /*use_lancet_alpha=*/true,
           /*stable_delegate_settings_file=*/delegate_settings_file.c_str())) {
     LOGF(ERROR) << "Failed to initialize Lancet upsampler engine";
-    runner_ = nullptr;
+    lancet_runner_ = nullptr;
+    lancet_alpha_runner_ = nullptr;
     return false;
   }
 
@@ -138,8 +148,9 @@ std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
     buffer_handle_t input_buffer,
     buffer_handle_t output_buffer,
     base::ScopedFD release_fence,
-    ResamplingMethod method) {
-  if (!runner_) {
+    ResamplingMethod method,
+    bool use_lancet_alpha) {
+  if (!lancet_runner_ || !lancet_alpha_runner_) {
     LOGF(ERROR) << "Upsampler engine is not initialized";
     return std::nullopt;
   }
@@ -189,8 +200,9 @@ std::optional<base::ScopedFD> SingleFrameUpsampler::ProcessRequest(
   };
 
   CHECK(g_upsample_fn);
-  if (!g_upsample_fn(runner_, static_cast<int>(method), &upsample_request)) {
-    LOGF(ERROR) << "Failed to upsample frame with Lancet";
+  if (!g_upsample_fn(use_lancet_alpha ? lancet_alpha_runner_ : lancet_runner_,
+                     static_cast<int>(method), &upsample_request)) {
+    LOGF(ERROR) << "Failed to upsample frame";
     return std::nullopt;
   }
 

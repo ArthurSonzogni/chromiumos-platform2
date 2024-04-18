@@ -42,6 +42,9 @@ const char kForceDisableEffectsPath[] = "/run/camera/force_disable_effects";
 // Special files to force control single frame super resolution in zooming mode.
 const char kForceEnableSuperResPath[] = "/run/camera/force_enable_super_res";
 const char kForceDisableSuperResPath[] = "/run/camera/force_disable_super_res";
+// Special file for evaluation mode to generate different upsampling results.
+const char kForceEnableSuperResEvalPath[] =
+    "/run/camera/force_enable_super_res_eval";
 
 // ------Configuration for |kCrosCameraTestConfigPathString|-------
 // boolean value used in test mode for forcing hardware jpeg encode/decode in

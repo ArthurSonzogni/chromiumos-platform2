@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <system/camera_metadata.h>
 #include <utility>
 #include <vector>
@@ -87,6 +88,15 @@ class FramingStreamManipulator : public StreamManipulator {
     // FACE_RECTANGLES metadata and we can use Chrome Camera App to visualize
     // the auto-framing transition.
     bool debug = false;
+  };
+
+  enum class ScaleMethod {
+    kBicubic = 0,
+    kLanczos = 1,
+    kRaisr = 2,
+    kLancet = 3,
+    kLancetAlpha = 4,
+    kInvalid = 5,
   };
 
   FramingStreamManipulator(
@@ -190,7 +200,16 @@ class FramingStreamManipulator : public StreamManipulator {
       buffer_handle_t output_yuv,
       base::ScopedFD output_fence,
       const Rect<float>& crop_region,
-      bool try_upsample);
+      ScaleMethod method);
+
+#if USE_CAMERA_FEATURE_SUPER_RES
+  // In evaluation mode, we produce different upsampling results: Bicubic,
+  // Lanczos, Raisr, Lancet, LancetAlpha.
+  // TODO(julianachang): Remove this function once the evaluation is complete.
+  void ProduceMultiUpsamplingResults(int64_t timestamp,
+                                     buffer_handle_t full_yuv,
+                                     const Rect<float>& crop_region);
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
   bool GetAutoFramingEnabled();
 

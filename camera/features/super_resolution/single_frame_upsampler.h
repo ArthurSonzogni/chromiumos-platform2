@@ -28,7 +28,8 @@ class SingleFrameUpsampler {
   std::optional<base::ScopedFD> ProcessRequest(buffer_handle_t input_buffer,
                                                buffer_handle_t output_buffer,
                                                base::ScopedFD release_fence,
-                                               ResamplingMethod method);
+                                               ResamplingMethod method,
+                                               bool use_lancet_alpha);
 
  private:
   bool ConvertNV12ToRGB(const ScopedMapping& in_mapping,
@@ -41,7 +42,8 @@ class SingleFrameUpsampler {
 
   // Function pointer to the upsampling algorithm implementation loaded from the
   // upsampler library.
-  void* runner_ = nullptr;
+  void* lancet_runner_ = nullptr;
+  void* lancet_alpha_runner_ = nullptr;
 };
 
 }  // namespace cros
