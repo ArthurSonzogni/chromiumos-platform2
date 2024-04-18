@@ -366,6 +366,7 @@ if (use.test) {
       "qos_service_test.cc",
       "routing_service_test.cc",
       "shill_client_test.cc",
+      "socket_service_adaptor_test.cc",
       "subnet_pool_test.cc",
       "subnet_test.cc",
       "subprocess_controller_test.cc",

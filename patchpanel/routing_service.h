@@ -343,10 +343,10 @@ class RoutingService {
   // according to the input parameters. Preserves any other bits of the fwmark
   // already set.
   // TODO(b/331744250): |annotation_id| is ignored for now.
-  bool TagSocket(int sockfd,
-                 std::optional<int> network_id,
-                 VPNRoutingPolicy vpn_policy,
-                 std::optional<TrafficAnnotationId> annotation_id);
+  virtual bool TagSocket(int sockfd,
+                         std::optional<int> network_id,
+                         VPNRoutingPolicy vpn_policy,
+                         std::optional<TrafficAnnotationId> annotation_id);
 
   // Sets the fwmark on the given socket with the given mask.
   // Preserves any other bits of the fwmark already set.

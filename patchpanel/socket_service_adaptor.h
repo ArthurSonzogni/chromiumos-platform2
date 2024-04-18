@@ -5,12 +5,15 @@
 #ifndef PATCHPANEL_SOCKET_SERVICE_ADAPTOR_H_
 #define PATCHPANEL_SOCKET_SERVICE_ADAPTOR_H_
 
+#include <memory>
+
 #include <base/files/scoped_file.h>
 #include <base/memory/scoped_refptr.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "patchpanel/routing_service.h"
 #include "socketservice/dbus_adaptors/org.chromium.socketservice.h"
 
 namespace patchpanel {
@@ -18,7 +21,8 @@ namespace patchpanel {
 class SocketServiceAdaptor : public org::chromium::SocketServiceInterface,
                              public org::chromium::SocketServiceAdaptor {
  public:
-  explicit SocketServiceAdaptor(scoped_refptr<::dbus::Bus> bus);
+  SocketServiceAdaptor(scoped_refptr<::dbus::Bus> bus,
+                       std::unique_ptr<RoutingService> routing_svc);
   virtual ~SocketServiceAdaptor();
 
   SocketServiceAdaptor(const SocketServiceAdaptor&) = delete;
@@ -33,6 +37,9 @@ class SocketServiceAdaptor : public org::chromium::SocketServiceInterface,
                               const base::ScopedFD& in_socket_fd) override;
 
  private:
+  // Routing service.
+  std::unique_ptr<RoutingService> routing_svc_;
+
   brillo::dbus_utils::DBusObject dbus_object_;
 };
 
