@@ -105,6 +105,7 @@ enum ChromeOSError {
     },
     FailedUpdateContainerDevices(String),
     FakeConnectionProxy,
+    GetIoDevices,
     InvalidDiskSize(u64),
     InvalidEmail,
     InvalidPath(String),
@@ -215,6 +216,7 @@ impl fmt::Display for ChromeOSError {
             FakeConnectionProxy => {
                 write!(f, "fake connection proxy for test")
             }
+            GetIoDevices => write!(f, "failed to get io devices"),
             InvalidDiskSize(n) => write!(f, "invalid disk size {}", n),
             InvalidEmail => write!(f, "the active session has an invalid email address"),
             InvalidPath(p) => write!(f, "invalid path: `{}`", p),
@@ -2056,6 +2058,52 @@ impl Methods {
 
         OrgChromiumPermissionBroker::open_path(&proxy, path_str)
             .map_err(|_| FailedGetOpenPath(path.into()).into())
+    }
+
+    pub fn list_primary_io_devices(&mut self) -> Result<Vec<String>, Box<dyn Error>> {
+        let method = Message::new_method_call(
+            PRIMARY_IO_MANAGER_SERVICE_NAME,
+            PRIMARY_IO_MANAGER_SERVICE_PATH,
+            PRIMARY_IO_MANAGER_INTERFACE,
+            GET_IO_DEVICES,
+        )?;
+
+        let message = self
+            .connection
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
+
+        match message.get1::<Vec<String>>() {
+            Some(devices) => Ok(devices),
+            _ => Err(GetIoDevices.into()),
+        }
+    }
+
+    pub fn unset_primary_keyboard(&self) -> Result<(), Box<dyn Error>> {
+        let method = Message::new_method_call(
+            PRIMARY_IO_MANAGER_SERVICE_NAME,
+            PRIMARY_IO_MANAGER_SERVICE_PATH,
+            PRIMARY_IO_MANAGER_INTERFACE,
+            UNSET_PRIMARY_KEYBOARD,
+        )?;
+
+        self.connection
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
+
+        Ok(())
+    }
+
+    pub fn unset_primary_mouse(&self) -> Result<(), Box<dyn Error>> {
+        let method = Message::new_method_call(
+            PRIMARY_IO_MANAGER_SERVICE_NAME,
+            PRIMARY_IO_MANAGER_SERVICE_PATH,
+            PRIMARY_IO_MANAGER_INTERFACE,
+            UNSET_PRIMARY_MOUSE,
+        )?;
+
+        self.connection
+            .send_with_reply_and_block(method, DEFAULT_TIMEOUT)?;
+
+        Ok(())
     }
 
     fn send_problem_report_for_plugin_vm(

@@ -132,6 +132,7 @@ impl SystemApiDbus {
 const APIS: &[SystemApiDbus] = &[
     SystemApiDbus::constants("dbus/debugd"),
     SystemApiDbus::constants("dbus/permission_broker"),
+    SystemApiDbus::constants("dbus/primary_io_manager"),
     // service_constants.h is the only header file needed that isn't called dbus_constants.h.
     SystemApiDbus::constants("dbus/service_constants.h"),
     SystemApiDbus::new("dbus/vm_applications", "apps.proto"),

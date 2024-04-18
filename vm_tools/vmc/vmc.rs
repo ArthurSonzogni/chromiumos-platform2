@@ -865,6 +865,51 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         Ok(())
     }
 
+    fn allow_all_io_devices(&mut self) -> VmcResult {
+        if !self.args.is_empty() {
+            return Err(ExpectedNoArgs.into());
+        }
+
+        try_command!(self.methods.unset_primary_mouse());
+        try_command!(self.methods.unset_primary_keyboard());
+
+        Ok(())
+    }
+
+    fn list_primary_io_devices(&mut self) -> VmcResult {
+        if !self.args.is_empty() {
+            return Err(ExpectedNoArgs.into());
+        }
+
+        let primary_devices = try_command!(self.methods.list_primary_io_devices());
+
+        for device in primary_devices {
+            println!("{}", device)
+        }
+
+        Ok(())
+    }
+
+    fn unset_primary_mouse(&mut self) -> VmcResult {
+        if !self.args.is_empty() {
+            return Err(ExpectedNoArgs.into());
+        }
+
+        try_command!(self.methods.unset_primary_mouse());
+
+        Ok(())
+    }
+
+    fn unset_primary_keyboard(&mut self) -> VmcResult {
+        if !self.args.is_empty() {
+            return Err(ExpectedNoArgs.into());
+        }
+
+        try_command!(self.methods.unset_primary_keyboard());
+
+        Ok(())
+    }
+
     fn key_attach(&mut self) -> VmcResult {
         // TODO(morg): need to implement command for sharing security key with container too
         let (vm_name, hidraw_device) = match self.args.len() {
@@ -983,6 +1028,10 @@ const USAGE: &str = "
      usb-list <vm name> |
      key-attach <vm name> <hidraw path> |
      pvm.send-problem-report [-n <vm name>] [-e <reporter's email>] <description of the problem> |
+     allow-all-io-devices [on chromeboxes, allow all keyboards/mice to connect] |
+     list-primary-io-devices |
+     unset-primary-keyboard |
+     unset-primary-mouse |
      --help | -h ]
 ";
 
@@ -1046,6 +1095,10 @@ impl Vmc<'_> {
             "usb-list" => command.usb_list(),
             "key-attach" => command.key_attach(),
             "pvm.send-problem-report" => command.pvm_send_problem_report(),
+            "allow-all-io-devices" => command.allow_all_io_devices(),
+            "list-primary-io-devices" => command.list_primary_io_devices(),
+            "unset-primary-mouse" => command.unset_primary_mouse(),
+            "unset-primary-keyboard" => command.unset_primary_keyboard(),
             _ => Err(UnknownSubcommand(command_name.to_owned()).into()),
         }
     }
