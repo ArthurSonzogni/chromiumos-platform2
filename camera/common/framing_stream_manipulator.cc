@@ -75,21 +75,21 @@ bool CanCreateUpsampler() {
 
 // Ensure even input dimensions for GPU cropping.
 std::pair<uint32_t, uint32_t> GetEvenInputDimensions(
-    const Rect<float>& crop_region, const Size& active_array_dimension) {
+    const Rect<float>& crop_region, const Size& dimension) {
   const uint32_t crop_width =
-      DivideRoundUp(crop_region.width * active_array_dimension.width, 2) * 2;
+      DivideRoundUp(crop_region.width * dimension.width, 2) * 2;
   const uint32_t crop_height =
-      DivideRoundUp(crop_region.height * active_array_dimension.height, 2) * 2;
+      DivideRoundUp(crop_region.height * dimension.height, 2) * 2;
   return std::make_pair(crop_width, crop_height);
 }
 
 // Check if the request can be applied upsampling.
 bool IsUpsampleRequestValid(uint32_t target_width,
                             uint32_t target_height,
-                            const Rect<float>& adjusted_crop_region,
-                            const Size& active_array_dimension) {
+                            const Rect<float>& crop_region,
+                            const Size& dimension) {
   auto [crop_width, crop_height] =
-      GetEvenInputDimensions(adjusted_crop_region, active_array_dimension);
+      GetEvenInputDimensions(crop_region, dimension);
   return target_width > crop_width && target_height > crop_height;
 }
 #endif  // USE_CAMERA_FEATURE_SUPER_RES
@@ -1231,8 +1231,9 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
   }
   const Rect<float> adjusted_crop_region = AdjustCropRectToTargetAspectRatio(
       *ctx->crop_region,
-      static_cast<float>(full_frame_size_.height * blob_stream_->width) /
-          static_cast<float>(full_frame_size_.width * blob_stream_->height));
+      static_cast<float>(yuv_stream_for_blob_->height * blob_stream_->width) /
+          static_cast<float>(yuv_stream_for_blob_->width *
+                             blob_stream_->height));
   std::optional<base::ScopedFD> release_fence = CropAndScaleOnThread(
       *still_yuv_buffer.buffer(),
       base::ScopedFD(still_yuv_buffer.take_release_fence()),
@@ -1758,15 +1759,17 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
   bool is_upsample_request = false;
   ScopedBufferHandle upsample_input_buffer;
 #if USE_CAMERA_FEATURE_SUPER_RES
+  Size dimension(CameraBufferManager::GetWidth(input_yuv),
+                 CameraBufferManager::GetHeight(input_yuv));
   is_upsample_request =
       try_upsample && single_frame_upsampler_ &&
       IsUpsampleRequestValid(CameraBufferManager::GetWidth(output_yuv),
                              CameraBufferManager::GetHeight(output_yuv),
-                             crop_region, active_array_dimension_);
+                             crop_region, dimension);
 
   if (is_upsample_request) {
     auto [crop_width, crop_height] =
-        GetEvenInputDimensions(crop_region, active_array_dimension_);
+        GetEvenInputDimensions(crop_region, dimension);
     upsample_input_buffer = CameraBufferManager::AllocateScopedBuffer(
         crop_width, crop_height, HAL_PIXEL_FORMAT_YCbCr_420_888,
         kStillYuvBufferUsage);
