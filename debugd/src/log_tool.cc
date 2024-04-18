@@ -296,6 +296,13 @@ const std::array kCommandLogs {
     "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2>/dev/null",
     SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
     LogTool::Encoding::kBase64},
+  // TODO(b/344690913): remove redundant encoded i915_error_state upload.
+  Log{kCommand, "i915_error_state_decoded",
+    "command -v /usr/bin/aubinator_error_decode 1>/dev/null && "
+    "((/usr/bin/aubinator_error_decode /sys/kernel/debug/dri/0/i915_error_state"
+    "  | /usr/bin/xz -c) 2>/dev/null)",
+    SandboxedProcess::kDefaultUser, kDebugfsGroup, Log::kDefaultMaxBytes,
+    LogTool::Encoding::kBase64},
   Log{kFile, "i915_gem_gtt", "/sys/kernel/debug/dri/0/i915_gem_gtt",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kFile, "i915_gem_objects", "/sys/kernel/debug/dri/0/i915_gem_objects",

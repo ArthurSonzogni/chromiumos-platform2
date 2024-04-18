@@ -164,13 +164,16 @@ class ChromeCollector : public CrashCollector {
   // pair is added to |logs|. Regardless of success or failure,
   // |completion_closure| is called once we are finished.
   void HandleDriErrorState(base::FilePath dri_error_state_path,
+                           const char* filename,
                            std::map<std::string, base::FilePath>* logs,
                            base::RepeatingClosure completion_closure,
                            const std::string& dri_error_state_str);
   // Helper for HandleDriErrorState. Decodes the information from debugd in
-  // |dri_error_state_str| and writes it to |error_state_path|. Separate
-  // function to make error handling easier. Returns true on success.
-  bool ProcessDriErrorState(const std::string& dri_error_state_str,
+  // |dri_error_state_str| that came from |filename| and writes it to
+  // |error_state_path|. Separate function to make error handling easier.
+  // Returns true on success.
+  bool ProcessDriErrorState(const std::string& log_name,
+                            const std::string& dri_error_state_str,
                             const base::FilePath& error_state_path);
   // Callback if the debugd call to get DriErrorState fails. |error| is nullptr
   // if the call never returned (normally means it timed out), otherwise it has

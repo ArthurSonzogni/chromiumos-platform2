@@ -58,7 +58,8 @@ class ChromeCollectorForFuzzing : public ChromeCollector {
   explicit ChromeCollectorForFuzzing(CrashSendingMode crash_sending_mode,
                                      std::string user_name,
                                      std::string user_hash,
-                                     std::string dri_error_state,
+                                     std::string encoded_dri_error_state,
+                                     std::string decoded_dri_error_state,
                                      std::string dmesg_result)
       : ChromeCollector(
             crash_sending_mode,
@@ -67,7 +68,8 @@ class ChromeCollectorForFuzzing : public ChromeCollector {
                 std::make_unique<MetricsLibraryMock>())),
         user_name_(std::move(user_name)),
         user_hash_(std::move(user_hash)),
-        dri_error_state_(std::move(dri_error_state)),
+        encoded_dri_error_state_(std::move(encoded_dri_error_state)),
+        decoded_dri_error_state_(std::move(decoded_dri_error_state)),
         dmesg_result_(std::move(dmesg_result)) {}
 
   void SetUpDBus() override {
@@ -81,14 +83,23 @@ class ChromeCollectorForFuzzing : public ChromeCollector {
 
     auto proxy_mock = std::make_unique<org::chromium::debugdProxyMock>();
     std::function<void(base::OnceCallback<void(const std::string&)>&&)>
-        handler_dri_error_state =
+        handler_encoded_dri_error_state =
             [this](base::OnceCallback<void(const std::string&)> callback) {
               task_environment_.GetMainThreadTaskRunner()->PostNonNestableTask(
-                  FROM_HERE,
-                  base::BindOnce(std::move(callback), dri_error_state_));
+                  FROM_HERE, base::BindOnce(std::move(callback),
+                                            encoded_dri_error_state_));
             };
     ON_CALL(*proxy_mock, GetLogAsync("i915_error_state", _, _, _))
-        .WillByDefault(WithArgs<1>(handler_dri_error_state));
+        .WillByDefault(WithArgs<1>(handler_encoded_dri_error_state));
+    std::function<void(base::OnceCallback<void(const std::string&)>&&)>
+        handler_decoded_dri_error_state =
+            [this](base::OnceCallback<void(const std::string&)> callback) {
+              task_environment_.GetMainThreadTaskRunner()->PostNonNestableTask(
+                  FROM_HERE, base::BindOnce(std::move(callback),
+                                            decoded_dri_error_state_));
+            };
+    ON_CALL(*proxy_mock, GetLogAsync("i915_error_state_decoded", _, _, _))
+        .WillByDefault(WithArgs<1>(handler_decoded_dri_error_state));
 
     std::function<void(base::OnceCallback<void(const std::string&)>&&)>
         handler_dmesg =
@@ -109,8 +120,9 @@ class ChromeCollectorForFuzzing : public ChromeCollector {
   // Results from the fake RetrieveActiveSessions call
   const std::string user_name_;
   const std::string user_hash_;
-  // Results for the fake GetLogAsync call
-  const std::string dri_error_state_;
+  // Results for the fake GetLogAsync calls
+  const std::string encoded_dri_error_state_;
+  const std::string decoded_dri_error_state_;
   // Results for the fake CallDmesgAsync call
   const std::string dmesg_result_;
 };
@@ -168,7 +180,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     return 0;
   }
 
-  std::string dri_error_state = provider.ConsumeRandomLengthString();
+  std::string encoded_dri_error_state = provider.ConsumeRandomLengthString();
+  std::string decoded_dri_error_state = provider.ConsumeRandomLengthString();
   std::string dmesg_result = provider.ConsumeRandomLengthString();
 
   // Despite the Memfd in the name of HandleCrashThroughMemfd, we can pass a
@@ -192,7 +205,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // DBus calls, and we're not fuzzing the crash loop logic.
   ChromeCollectorForFuzzing collector(
       CrashSendingMode::kNormal, std::move(user_name), std::move(user_hash),
-      std::move(dri_error_state), std::move(dmesg_result));
+      std::move(encoded_dri_error_state), std::move(decoded_dri_error_state),
+      std::move(dmesg_result));
   collector.Initialize(false);
   collector.force_daemon_store_for_testing(use_daemon_store);
   collector.HandleCrashThroughMemfd(test_input.TakePlatformFile(), pid, uid,

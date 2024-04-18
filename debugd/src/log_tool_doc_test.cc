@@ -74,7 +74,6 @@ const std::set<std::string_view> kEmptyEntries{
     "hardware_class",
     "hardware_verification_report",
     "hostname",
-    "i915_error_state",
     "i915_gem_gtt",
     "i915_gem_objects",
     "ifconfig",

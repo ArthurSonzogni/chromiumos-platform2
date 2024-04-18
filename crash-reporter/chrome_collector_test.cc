@@ -187,12 +187,19 @@ const char kCrashFormatWithLacrosJSStack[] =
     "prod:13:Chrome_Lacros"
     "value3:2:ok";
 
-const char kSampleDriErrorStateEncoded[] =
+const char kSampleDriErrorStateBase64Encoded[] =
     "<base64>: SXQgYXBwZWFycyB0byBiZSBzb21lIHNvcnQgb2YgZXJyb3IgZGF0YS4=";
-const char kSampleDriErrorStateDecoded[] =
+const char kSampleDriErrorStateBase64Decoded[] =
     "It appears to be some sort of error data.";
 
-const char kSampleDriErrorStateEncodedLong[] =
+const char kSampleDriErrorStateBase64EncodedDetailed[] =
+    "<base64>: "
+    "SXQgYXBwZWFycyB0byBiZSBzb21lIHNvcnQgb2YgZXJyb3IgZGF0YSB3aXRoIGFkZGl0aW9uY"
+    "WwgZGV0YWlsLg==";
+const char kSampleDriErrorStateBase64DecodedDetailed[] =
+    "It appears to be some sort of error data with additional detail.";
+
+const char kSampleDriErrorStateBase64EncodedLong[] =
     "<base64>: "
     "MDEyMzQ1Njc4OTAwMTIzNDU2Nzg5MDAxMjM0NTY3ODkwMDEyMzQ1Njc4OTAwMTIzNDU2Nzg5M"
     "DAxMjM0NTY3ODkwMDEyMzQ1Njc4OTAwMTIzNDU2Nzg5MDAxMjM0NTY3ODkwMDEyMzQ1Njc4OT"
@@ -250,7 +257,8 @@ class ChromeCollectorTest : public ::testing::Test {
 
   // Set things up so that the call to get the DriErrorState will return the
   // indicating string. Set to "<empty>" to avoid creating a DriErrorState.
-  void SetUpDriErrorStateToReturn(std::string result) {
+  void SetUpDriErrorStateToReturn(const std::string& log_name,
+                                  std::string result) {
     std::function<void(base::OnceCallback<void(const std::string&)>&&)>
         handler = [this, result](
                       base::OnceCallback<void(const std::string&)> callback) {
@@ -258,20 +266,19 @@ class ChromeCollectorTest : public ::testing::Test {
               FROM_HERE, base::BindOnce(std::move(callback), result));
         };
     CHECK(debugd_proxy_mock_);
-    ON_CALL(*debugd_proxy_mock_, GetLogAsync("i915_error_state", _, _, _))
+    ON_CALL(*debugd_proxy_mock_, GetLogAsync(log_name, _, _, _))
         .WillByDefault(WithArgs<1>(handler));
   }
 
-  // Set things up so that the call to get the DriErrorState will give the
-  // indicated Error.
-  void SetUpDriErrorStateToErrorOut(brillo::Error* error) {
+  void SetUpDriErrorStateToErrorOut(const std::string& log_name,
+                                    brillo::Error* error) {
     std::function<void(base::OnceCallback<void(brillo::Error*)>&&)> handler =
         [this, error](base::OnceCallback<void(brillo::Error*)> callback) {
           task_environment_.GetMainThreadTaskRunner()->PostNonNestableTask(
               FROM_HERE, base::BindOnce(std::move(callback), error));
         };
     CHECK(debugd_proxy_mock_);
-    ON_CALL(*debugd_proxy_mock_, GetLogAsync("i915_error_state", _, _, _))
+    ON_CALL(*debugd_proxy_mock_, GetLogAsync(log_name, _, _, _))
         .WillByDefault(WithArgs<2>(handler));
   }
 
@@ -372,16 +379,17 @@ class ChromeCollectorTest : public ::testing::Test {
   }
 
   // Expect that the dri error state file exists and has contents equal to
-  // kSampleDriErrorStateDecoded. Returns the filename in
-  // |output_dri_error_file|.
-  void ExpectSampleDriErrorState(base::FilePath& output_dri_error_file) {
+  // |expected_contents|. Returns the filename in |output_dri_error_file|.
+  void ExpectSampleDriErrorState(const std::string& log_name,
+                                 base::FilePath& output_dri_error_file,
+                                 const char* expected_contents) {
+    const std::string file_name = "chrome_test.*.123." + log_name + ".log.xz";
     EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-        test_crash_directory_, "chrome_test.*.123.i915_error_state.log.xz",
-        &output_dri_error_file));
+        test_crash_directory_, file_name, &output_dri_error_file));
     std::string dri_error_file_contents;
     EXPECT_TRUE(base::ReadFileToString(output_dri_error_file,
                                        &dri_error_file_contents));
-    EXPECT_EQ(dri_error_file_contents, kSampleDriErrorStateDecoded);
+    EXPECT_EQ(dri_error_file_contents, expected_contents);
   }
 
   // Expect that the log output file exists and it has compressed contents
@@ -422,7 +430,7 @@ class ChromeCollectorTest : public ::testing::Test {
   void SetUp() override {
     std::string dummy_to_check_validity;
     ASSERT_TRUE(brillo::data_encoding::Base64Decode(
-        kSampleDriErrorStateEncodedLong + strlen("<base64>: "),
+        kSampleDriErrorStateBase64EncodedLong + strlen("<base64>: "),
         &dummy_to_check_validity));
 
     collector_.Initialize(false);
@@ -675,7 +683,8 @@ TEST_F(ChromeCollectorTest, HandleCrash) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath input_dump_file = dir.Append("test.dmp");
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
-  SetUpDriErrorStateToReturn("<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state", "<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state_decoded", "<empty>");
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
@@ -731,7 +740,8 @@ TEST_F(ChromeCollectorTest, HandleCrashWithEmbeddedNuls) {
   std::string input(kCrashFormatWithDumpFileWithEmbeddedNulBytes,
                     sizeof(kCrashFormatWithDumpFileWithEmbeddedNulBytes) - 1);
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, input));
-  SetUpDriErrorStateToReturn("<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state", "<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state_decoded", "<empty>");
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
@@ -789,7 +799,8 @@ TEST_F(ChromeCollectorTest, HandleCrashWithWeirdFilename) {
   std::string input(kCrashFormatWithWeirdFilename,
                     sizeof(kCrashFormatWithWeirdFilename) - 1);
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, input));
-  SetUpDriErrorStateToReturn("<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state", "<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state_decoded", "<empty>");
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
@@ -843,7 +854,10 @@ TEST_F(ChromeCollectorTest, HandleCrashWithLogsAndDriErrorStateAndDmesg) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath input_dump_file = dir.Append("test.dmp");
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
-  SetUpDriErrorStateToReturn(kSampleDriErrorStateEncoded);
+  SetUpDriErrorStateToReturn("i915_error_state",
+                             kSampleDriErrorStateBase64Encoded);
+  SetUpDriErrorStateToReturn("i915_error_state_decoded",
+                             kSampleDriErrorStateBase64EncodedDetailed);
   SetUpCallDmesgToReturn(kSampleDmesg);
   SetUpLogsShort();
 
@@ -851,8 +865,12 @@ TEST_F(ChromeCollectorTest, HandleCrashWithLogsAndDriErrorStateAndDmesg) {
       collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
       CrashCollectionStatus::kSuccess);
 
-  base::FilePath output_dri_error_file;
-  ExpectSampleDriErrorState(output_dri_error_file);
+  base::FilePath output_encoded_dri_error_file, output_decoded_dri_error_file;
+  ExpectSampleDriErrorState("i915_error_state", output_encoded_dri_error_file,
+                            kSampleDriErrorStateBase64Decoded);
+  ExpectSampleDriErrorState("i915_error_state_decoded",
+                            output_decoded_dri_error_file,
+                            kSampleDriErrorStateBase64DecodedDetailed);
 
   base::FilePath output_dmesg_file;
   int64_t dmesg_log_compressed_size = 0;
@@ -885,7 +903,8 @@ TEST_F(ChromeCollectorTest, HandleCrashWithLogsAndDriErrorStateAndDmesg) {
   EXPECT_EQ(collector_.get_bytes_written(),
             meta_file_contents.size() + output_log_compressed_size +
                 dmesg_log_compressed_size +
-                strlen(kSampleDriErrorStateDecoded) +
+                strlen(kSampleDriErrorStateBase64Decoded) +
+                strlen(kSampleDriErrorStateBase64DecodedDetailed) +
                 other_file_contents.size() + output_dump_file_contents.size());
   EXPECT_THAT(meta_file_contents,
               HasSubstr("payload=" + output_dump_file.BaseName().value()));
@@ -895,7 +914,10 @@ TEST_F(ChromeCollectorTest, HandleCrashWithLogsAndDriErrorStateAndDmesg) {
                                             output_log.BaseName().value()));
   EXPECT_THAT(meta_file_contents,
               HasSubstr("upload_file_i915_error_state.log.xz=" +
-                        output_dri_error_file.BaseName().value()));
+                        output_encoded_dri_error_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents,
+              HasSubstr("upload_file_i915_error_state_decoded.log.xz=" +
+                        output_decoded_dri_error_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents,
               HasSubstr("upload_file_dmesg.txt=" +
                         output_dmesg_file.BaseName().value()));
@@ -909,7 +931,10 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsSupplementalFilesIfDumpFileLarge) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath input_dump_file = dir.Append("test.dmp");
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
-  SetUpDriErrorStateToReturn(kSampleDriErrorStateEncoded);
+  SetUpDriErrorStateToReturn("i915_error_state",
+                             kSampleDriErrorStateBase64Encoded);
+  SetUpDriErrorStateToReturn("i915_error_state_decoded",
+                             kSampleDriErrorStateBase64EncodedDetailed);
   SetUpCallDmesgToReturn(kSampleDmesg);
   SetUpLogsShort();
   // Make dmp file "too large"
@@ -922,6 +947,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsSupplementalFilesIfDumpFileLarge) {
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "chrome_test.*.123.i915_error_state.log.xz",
       nullptr));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_,
+      "chrome_test.*.123.i915_error_state_decoded.log.xz", nullptr));
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "chrome_test.*.123.chrome.txt.gz", nullptr));
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -950,6 +978,8 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsSupplementalFilesIfDumpFileLarge) {
   EXPECT_THAT(meta_file_contents, Not(HasSubstr("upload_file_chrome.txt")));
   EXPECT_THAT(meta_file_contents,
               Not(HasSubstr("upload_file_i915_error_state.log.xz")));
+  EXPECT_THAT(meta_file_contents,
+              Not(HasSubstr("upload_file_i915_error_state_decoded.log.xz")));
   EXPECT_THAT(meta_file_contents, Not(HasSubstr("upload_file_dmesg.txt")));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
@@ -961,7 +991,10 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeLogFiles) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath input_dump_file = dir.Append("test.dmp");
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
-  SetUpDriErrorStateToReturn(kSampleDriErrorStateEncoded);
+  SetUpDriErrorStateToReturn("i915_error_state",
+                             kSampleDriErrorStateBase64Encoded);
+  SetUpDriErrorStateToReturn("i915_error_state_decoded",
+                             kSampleDriErrorStateBase64EncodedDetailed);
   SetUpCallDmesgToReturn(kSampleDmesg);
   SetUpLogsLong();
   collector_.set_max_upload_bytes_for_test(1000);
@@ -974,8 +1007,12 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeLogFiles) {
       test_crash_directory_, "chrome_test.*.123.chrome.txt.gz", nullptr));
 
   // Error state & dmesg file still written even after log file rejected.
-  base::FilePath output_dri_error_file;
-  ExpectSampleDriErrorState(output_dri_error_file);
+  base::FilePath output_encoded_dri_error_file, output_decoded_dri_error_file;
+  ExpectSampleDriErrorState("i915_error_state", output_encoded_dri_error_file,
+                            kSampleDriErrorStateBase64Decoded);
+  ExpectSampleDriErrorState("i915_error_state_decoded",
+                            output_decoded_dri_error_file,
+                            kSampleDriErrorStateBase64DecodedDetailed);
 
   base::FilePath output_dmesg_file;
   int64_t dmesg_log_compressed_size = 0;
@@ -997,7 +1034,8 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeLogFiles) {
   EXPECT_EQ(collector_.get_bytes_written(),
             meta_file_contents.size() + kOutputDumpFileSize +
                 dmesg_log_compressed_size + kOutputOtherFileSize +
-                strlen(kSampleDriErrorStateDecoded));
+                strlen(kSampleDriErrorStateBase64Decoded) +
+                strlen(kSampleDriErrorStateBase64DecodedDetailed));
   EXPECT_THAT(meta_file_contents,
               HasSubstr("payload=" + output_dump_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_some_file=" +
@@ -1005,7 +1043,10 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeLogFiles) {
   EXPECT_THAT(meta_file_contents, Not(HasSubstr("upload_file_chrome.txt")));
   EXPECT_THAT(meta_file_contents,
               HasSubstr("upload_file_i915_error_state.log.xz=" +
-                        output_dri_error_file.BaseName().value()));
+                        output_encoded_dri_error_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents,
+              HasSubstr("upload_file_i915_error_state_decoded.log.xz=" +
+                        output_decoded_dri_error_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents,
               HasSubstr("upload_file_dmesg.txt=" +
                         output_dmesg_file.BaseName().value()));
@@ -1019,7 +1060,10 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDriErrorFiles) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath input_dump_file = dir.Append("test.dmp");
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
-  SetUpDriErrorStateToReturn(kSampleDriErrorStateEncodedLong);
+  SetUpDriErrorStateToReturn("i915_error_state",
+                             kSampleDriErrorStateBase64Encoded);
+  SetUpDriErrorStateToReturn("i915_error_state_decoded",
+                             kSampleDriErrorStateBase64EncodedLong);
   SetUpCallDmesgToReturn(kSampleDmesg);
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
@@ -1027,10 +1071,14 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDriErrorFiles) {
       collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
       CrashCollectionStatus::kSuccess);
 
-  // Dri Error State file not written.
+  // Large Dri Error State file not written, but small one written.
+  base::FilePath output_dri_error_file;
+  ExpectSampleDriErrorState("i915_error_state", output_dri_error_file,
+                            kSampleDriErrorStateBase64Decoded);
+
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
-      test_crash_directory_, "chrome_test.*.123.i915_error_state.log.xz",
-      nullptr));
+      test_crash_directory_,
+      "chrome_test.*.123.i915_error_state_decoded.log.xz", nullptr));
 
   // Log & dmesg files still written even after Dri Error State file rejected.
   base::FilePath output_dmesg_file;
@@ -1056,6 +1104,7 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDriErrorFiles) {
   EXPECT_TRUE(base::ReadFileToString(meta_file, &meta_file_contents));
   EXPECT_EQ(collector_.get_bytes_written(),
             meta_file_contents.size() + kOutputDumpFileSize +
+                strlen(kSampleDriErrorStateBase64Decoded) +
                 dmesg_log_compressed_size + kOutputOtherFileSize +
                 output_log_compressed_size);
   EXPECT_THAT(meta_file_contents,
@@ -1065,7 +1114,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDriErrorFiles) {
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_chrome.txt=" +
                                             output_log.BaseName().value()));
   EXPECT_THAT(meta_file_contents,
-              Not(HasSubstr("upload_file_i915_error_state.log.xz")));
+              HasSubstr("upload_file_i915_error_state.log.xz"));
+  EXPECT_THAT(meta_file_contents,
+              Not(HasSubstr("upload_file_i915_error_state_decoded.log.xz")));
   EXPECT_THAT(meta_file_contents,
               HasSubstr("upload_file_dmesg.txt=" +
                         output_dmesg_file.BaseName().value()));
@@ -1079,7 +1130,10 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDmesgFiles) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath input_dump_file = dir.Append("test.dmp");
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
-  SetUpDriErrorStateToReturn(kSampleDriErrorStateEncoded);
+  SetUpDriErrorStateToReturn("i915_error_state",
+                             kSampleDriErrorStateBase64Encoded);
+  SetUpDriErrorStateToReturn("i915_error_state_decoded",
+                             kSampleDriErrorStateBase64EncodedDetailed);
   SetUpCallDmesgToReturn(GetDmesgLong());
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
@@ -1092,8 +1146,12 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDmesgFiles) {
       test_crash_directory_, "chrome_test.*.123.dmesg.txt.gz", nullptr));
 
   // Log & dri error files still written even after dmesg file rejected.
-  base::FilePath output_dri_error_file;
-  ExpectSampleDriErrorState(output_dri_error_file);
+  base::FilePath output_encoded_dri_error_file, output_decoded_dri_error_file;
+  ExpectSampleDriErrorState("i915_error_state", output_encoded_dri_error_file,
+                            kSampleDriErrorStateBase64Decoded);
+  ExpectSampleDriErrorState("i915_error_state_decoded",
+                            output_decoded_dri_error_file,
+                            kSampleDriErrorStateBase64DecodedDetailed);
 
   base::FilePath output_log;
   int64_t output_log_compressed_size = 0;
@@ -1114,8 +1172,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDmesgFiles) {
   EXPECT_TRUE(base::ReadFileToString(meta_file, &meta_file_contents));
   EXPECT_EQ(collector_.get_bytes_written(),
             meta_file_contents.size() + kOutputDumpFileSize +
-                strlen(kSampleDriErrorStateDecoded) + kOutputOtherFileSize +
-                output_log_compressed_size);
+                strlen(kSampleDriErrorStateBase64Decoded) +
+                strlen(kSampleDriErrorStateBase64DecodedDetailed) +
+                kOutputOtherFileSize + output_log_compressed_size);
   EXPECT_THAT(meta_file_contents,
               HasSubstr("payload=" + output_dump_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_some_file=" +
@@ -1124,7 +1183,10 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDmesgFiles) {
                                             output_log.BaseName().value()));
   EXPECT_THAT(meta_file_contents,
               HasSubstr("upload_file_i915_error_state.log.xz=" +
-                        output_dri_error_file.BaseName().value()));
+                        output_encoded_dri_error_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents,
+              HasSubstr("upload_file_i915_error_state_decoded.log.xz=" +
+                        output_decoded_dri_error_file.BaseName().value()));
   EXPECT_THAT(meta_file_contents, Not(HasSubstr("upload_file_dmesg.txt")));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
@@ -1136,7 +1198,10 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeSupplementalFiles) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath input_dump_file = dir.Append("test.dmp");
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
-  SetUpDriErrorStateToReturn(kSampleDriErrorStateEncodedLong);
+  SetUpDriErrorStateToReturn("i915_error_state",
+                             kSampleDriErrorStateBase64EncodedLong);
+  SetUpDriErrorStateToReturn("i915_error_state_decoded",
+                             kSampleDriErrorStateBase64EncodedLong);
   SetUpCallDmesgToReturn(GetDmesgLong());
   SetUpLogsLong();
   collector_.set_max_upload_bytes_for_test(1000);
@@ -1148,6 +1213,9 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeSupplementalFiles) {
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "chrome_test.*.123.i915_error_state.log.xz",
       nullptr));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_,
+      "chrome_test.*.123.i915_error_state_decoded.log.xz", nullptr));
 
   // dmesg file not written
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -1191,7 +1259,8 @@ TEST_F(ChromeCollectorTest, HandleCrash_GetCreatedCrashDirectoryByEuidFailure) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath input_dump_file = dir.Append("test.dmp");
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
-  SetUpDriErrorStateToReturn("<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state", "<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state_decoded", "<empty>");
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
   collector_.force_get_created_crash_directory_by_euid_status_for_test(
@@ -1223,7 +1292,8 @@ TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_ShutdownHang) {
   FilePath aborted_browser_pid_file = dir.Append("aborted_browser_pid");
   FilePath shutdown_browser_pid_file = dir.Append("shutdown_browser_pid");
   ASSERT_TRUE(test_util::CreateFile(shutdown_browser_pid_file, "123"));
-  SetUpDriErrorStateToReturn("<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state", "<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state_decoded", "<empty>");
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
@@ -1241,7 +1311,8 @@ TEST_F(ChromeCollectorTest,
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath aborted_browser_pid_file = dir.Append("aborted_browser_pid");
   FilePath shutdown_browser_pid_file = dir.Append("shutdown_browser_pid");
-  SetUpDriErrorStateToReturn("<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state", "<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state_decoded", "<empty>");
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
@@ -1260,7 +1331,8 @@ TEST_F(ChromeCollectorTest,
   FilePath aborted_browser_pid_file = dir.Append("aborted_browser_pid");
   FilePath shutdown_browser_pid_file = dir.Append("shutdown_browser_pid");
   ASSERT_TRUE(test_util::CreateFile(shutdown_browser_pid_file, "77"));
-  SetUpDriErrorStateToReturn("<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state", "<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state_decoded", "<empty>");
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
@@ -1277,7 +1349,8 @@ TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_Signal_Fatal) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath aborted_browser_pid_file = dir.Append("aborted_browser_pid");
   FilePath shutdown_browser_pid_file = dir.Append("shutdown_browser_pid");
-  SetUpDriErrorStateToReturn("<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state", "<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state_decoded", "<empty>");
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 
@@ -1293,7 +1366,8 @@ TEST_F(ChromeCollectorTest, HandleDbusTimeouts) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath input_dump_file = dir.Append("test.dmp");
   ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
-  SetUpDriErrorStateToErrorOut(nullptr);
+  SetUpDriErrorStateToErrorOut("i915_error_state", nullptr);
+  SetUpDriErrorStateToErrorOut("i915_error_state_decoded", nullptr);
   SetUpCallDmesgToErrorOut(nullptr);
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
@@ -1310,6 +1384,9 @@ TEST_F(ChromeCollectorTest, HandleDbusTimeouts) {
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "chrome_test.*.123.i915_error_state.log.xz",
       nullptr));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_,
+      "chrome_test.*.123.i915_error_state_decoded.log.xz", nullptr));
 
   // dmesg file not written
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -1344,6 +1421,8 @@ TEST_F(ChromeCollectorTest, HandleDbusTimeouts) {
                                             output_log.BaseName().value()));
   EXPECT_THAT(meta_file_contents,
               Not(HasSubstr("upload_file_i915_error_state.log.xz")));
+  EXPECT_THAT(meta_file_contents,
+              Not(HasSubstr("upload_file_i915_error_state_decoded.log.xz")));
   EXPECT_THAT(meta_file_contents, Not(HasSubstr("upload_file_dmesg.txt")));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
@@ -1361,7 +1440,9 @@ TEST_F(ChromeCollectorTest, HandleDbusErrors) {
   brillo::ErrorPtr dmesg_error = brillo::Error::CreateNoLog(
       FROM_HERE, /*domain=*/"source.chromium.org", /*code=*/"EPERM",
       /*message=*/"dmesg no permission", /*inner_error=*/nullptr);
-  SetUpDriErrorStateToErrorOut(dir_error_state_error.get());
+  SetUpDriErrorStateToErrorOut("i915_error_state", dir_error_state_error.get());
+  SetUpDriErrorStateToErrorOut("i915_error_state_decoded",
+                               dir_error_state_error.get());
   SetUpCallDmesgToErrorOut(dmesg_error.get());
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
@@ -1379,6 +1460,9 @@ TEST_F(ChromeCollectorTest, HandleDbusErrors) {
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "chrome_test.*.123.i915_error_state.log.xz",
       nullptr));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_,
+      "chrome_test.*.123.i915_error_state_decoded.log.xz", nullptr));
 
   // dmesg file not written
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -1413,6 +1497,87 @@ TEST_F(ChromeCollectorTest, HandleDbusErrors) {
                                             output_log.BaseName().value()));
   EXPECT_THAT(meta_file_contents,
               Not(HasSubstr("upload_file_i915_error_state.log.xz")));
+  EXPECT_THAT(meta_file_contents,
+              Not(HasSubstr("upload_file_i915_error_state_decoded.log.xz")));
+  EXPECT_THAT(meta_file_contents, Not(HasSubstr("upload_file_dmesg.txt")));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value3=ok"));
+  EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
+}
+
+TEST_F(ChromeCollectorTest, HandlePartialDbusErrors) {
+  const FilePath& dir = scoped_temp_dir_.GetPath();
+  FilePath input_dump_file = dir.Append("test.dmp");
+  ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
+  brillo::ErrorPtr dir_error_state_error = brillo::Error::CreateNoLog(
+      FROM_HERE, /*domain=*/"source.chromium.org", /*code=*/"EBAD",
+      /*message=*/"dri_error_state retrieval failed", /*inner_error=*/nullptr);
+  brillo::ErrorPtr dmesg_error = brillo::Error::CreateNoLog(
+      FROM_HERE, /*domain=*/"source.chromium.org", /*code=*/"EPERM",
+      /*message=*/"dmesg no permission", /*inner_error=*/nullptr);
+  SetUpDriErrorStateToReturn("i915_error_state",
+                             kSampleDriErrorStateBase64Encoded);
+  SetUpDriErrorStateToErrorOut("i915_error_state_decoded",
+                               dir_error_state_error.get());
+  SetUpCallDmesgToErrorOut(dmesg_error.get());
+  SetUpLogsShort();
+  collector_.set_max_upload_bytes_for_test(1000);
+  EXPECT_EQ(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+      CrashCollectionStatus::kSuccess);
+
+  EXPECT_TRUE(
+      brillo::FindLog("Error retrieving DriErrorState from debugd: "
+                      "dri_error_state retrieval failed"));
+  EXPECT_TRUE(brillo::FindLog(
+      "Error retrieving dmesg from debugd: dmesg no permission"));
+
+  // Dri Error State failing file not written, but successful file written.
+  base::FilePath output_dri_error_file;
+  ExpectSampleDriErrorState("i915_error_state", output_dri_error_file,
+                            kSampleDriErrorStateBase64Decoded);
+
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_,
+      "chrome_test.*.123.i915_error_state_decoded.log.xz", nullptr));
+
+  // dmesg file not written
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "chrome_test.*.123.dmesg.txt.gz", nullptr));
+
+  // Log file still written
+  base::FilePath output_log;
+  int64_t output_log_compressed_size = 0;
+  ExpectShortOutputLog(output_log, output_log_compressed_size);
+
+  // .dmp file and other files in the input dump still written.
+  base::FilePath output_dump_file;
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "chrome_test.*.123.dmp", &output_dump_file));
+  base::FilePath other_file;
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "chrome_test.*.123-foo_txt.other", &other_file));
+
+  base::FilePath meta_file;
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "chrome_test.*.123.meta", &meta_file));
+  std::string meta_file_contents;
+  EXPECT_TRUE(base::ReadFileToString(meta_file, &meta_file_contents));
+  EXPECT_EQ(collector_.get_bytes_written(),
+            meta_file_contents.size() + kOutputDumpFileSize +
+                strlen(kSampleDriErrorStateBase64Decoded) +
+                kOutputOtherFileSize + output_log_compressed_size);
+  EXPECT_THAT(meta_file_contents,
+              HasSubstr("payload=" + output_dump_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_some_file=" +
+                                            other_file.BaseName().value()));
+  EXPECT_THAT(meta_file_contents, HasSubstr("upload_file_chrome.txt=" +
+                                            output_log.BaseName().value()));
+  EXPECT_THAT(meta_file_contents,
+              HasSubstr("upload_file_i915_error_state.log.xz"));
+  EXPECT_THAT(meta_file_contents,
+              Not(HasSubstr("upload_file_i915_error_state_decoded.log.xz")));
   EXPECT_THAT(meta_file_contents, Not(HasSubstr("upload_file_dmesg.txt")));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value1=abcdefghij"));
   EXPECT_THAT(meta_file_contents, HasSubstr("upload_var_value2=12345"));
@@ -1550,7 +1715,8 @@ TEST_P(ComputeChromeCollectorCrashSeverityParameterizedTest,
     ASSERT_TRUE(test_util::CreateFile(shutdown_browser_pid_file, "123"));
   }
 
-  SetUpDriErrorStateToReturn("<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state", "<empty>");
+  SetUpDriErrorStateToReturn("i915_error_state_decoded", "<empty>");
   SetUpCallDmesgToReturn("");
   SetUpLogsNone();
 

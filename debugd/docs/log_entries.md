@@ -347,6 +347,12 @@ The kernel log from the ManaTEE hypervisor.
 
 ## i915_error_state
 
+Return a (compressed) binary i915\_error\_state.
+
+## i915_error_state_decoded
+
+Return a (compressed) human readable i915\_error\_state decoded using `aubinator_error_decode`.
+
 ## i915_gem_gtt
 
 ## i915_gem_objects

@@ -47,6 +47,7 @@ constexpr char kDefaultJavaScriptStackName[] = "upload_file_js_stack";
 // Filenames for logs attached to crash reports. Also used as metadata keys.
 constexpr char kChromeLogFilename[] = "chrome.txt";
 constexpr char kGpuStateFilename[] = "i915_error_state.log.xz";
+constexpr char kGpuStateDecodedFilename[] = "i915_error_state_decoded.log.xz";
 constexpr char kDmesgOutputFilename[] = "dmesg.txt";
 
 // Filename for the pid of the browser process if it was aborted due to a
@@ -564,6 +565,8 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
 
       const FilePath dri_error_state_path =
           GetCrashPath(dir, basename, kGpuStateFilename);
+      const FilePath dri_error_state_decoded_path =
+          GetCrashPath(dir, basename, kGpuStateDecodedFilename);
       const FilePath dmesg_out_path =
           GetCrashPath(dir, basename, kDmesgOutputFilename).AddExtension("gz");
 
@@ -574,7 +577,7 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
       // calls -- the dmesg and the DriError will both timeout when 5 seconds
       // pass.
       base::RunLoop run_loop;
-      constexpr int kNumAsyncDbusCalls = 2;
+      constexpr int kNumAsyncDbusCalls = 3;
       auto one_dbus_complete_closure =
           base::BarrierClosure(kNumAsyncDbusCalls, run_loop.QuitClosure());
       // We can base::Unretained() the various pointers since all the callbacks
@@ -583,7 +586,17 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
           "i915_error_state",
           base::BindOnce(&ChromeCollector::HandleDriErrorState,
                          base::Unretained(this), dri_error_state_path,
-                         base::Unretained(&logs), one_dbus_complete_closure),
+                         kGpuStateFilename, base::Unretained(&logs),
+                         one_dbus_complete_closure),
+          base::BindOnce(&ChromeCollector::HandleDriErrorStateError,
+                         one_dbus_complete_closure),
+          kDebugdCallTimeoutMsec);
+      debugd_proxy_->GetLogAsync(
+          "i915_error_state_decoded",
+          base::BindOnce(&ChromeCollector::HandleDriErrorState,
+                         base::Unretained(this), dri_error_state_decoded_path,
+                         kGpuStateDecodedFilename, base::Unretained(&logs),
+                         one_dbus_complete_closure),
           base::BindOnce(&ChromeCollector::HandleDriErrorStateError,
                          one_dbus_complete_closure),
           kDebugdCallTimeoutMsec);
@@ -610,16 +623,21 @@ std::map<std::string, base::FilePath> ChromeCollector::GetAdditionalLogs(
 
 void ChromeCollector::HandleDriErrorState(
     base::FilePath dri_error_state_path,
+    const char* filename,
     std::map<std::string, base::FilePath>* logs,
     base::RepeatingClosure completion_closure,
     const std::string& dri_error_state_str) {
-  if (ProcessDriErrorState(dri_error_state_str, dri_error_state_path)) {
-    AddLogIfNotTooBig(kGpuStateFilename, dri_error_state_path, logs);
+  const std::string log_name =
+      base::FilePath(filename).RemoveExtension().MaybeAsASCII();
+  if (ProcessDriErrorState(log_name, dri_error_state_str,
+                           dri_error_state_path)) {
+    AddLogIfNotTooBig(filename, dri_error_state_path, logs);
   }
   completion_closure.Run();
 }
 
 bool ChromeCollector::ProcessDriErrorState(
+    const std::string& log_name,
     const std::string& dri_error_state_str,
     const base::FilePath& error_state_path) {
   if (dri_error_state_str == "<empty>")
@@ -628,7 +646,7 @@ bool ChromeCollector::ProcessDriErrorState(
   const char kBase64Header[] = "<base64>: ";
   const size_t kBase64HeaderLength = sizeof(kBase64Header) - 1;
   if (dri_error_state_str.compare(0, kBase64HeaderLength, kBase64Header)) {
-    LOG(ERROR) << "i915_error_state is missing base64 header";
+    LOG(ERROR) << log_name << " is missing base64 header";
     return false;
   }
 
@@ -637,7 +655,7 @@ bool ChromeCollector::ProcessDriErrorState(
   if (!brillo::data_encoding::Base64Decode(
           dri_error_state_str.c_str() + kBase64HeaderLength,
           &decoded_error_state)) {
-    LOG(ERROR) << "Could not decode i915_error_state";
+    LOG(ERROR) << "Could not decode " << log_name;
     return false;
   }
 
