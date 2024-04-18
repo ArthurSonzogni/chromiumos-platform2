@@ -1,0 +1,5 @@
+Name: libprivacy
+Description: Chrome OS privacy library
+Version: 0.0.1
+Requires.private: libchrome
+Libs: -lprivacy

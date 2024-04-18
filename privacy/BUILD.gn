@@ -1,0 +1,26 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+import("//common-mk/pkg_config.gni")
+group("all") {
+  deps = [
+    ":install_pkg_config",
+    ":libprivacy",
+  ]
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [ "libchrome" ]
+}
+
+shared_library("libprivacy") {
+  sources = [ "log.cc" ]
+  install_path = "lib"
+  include_dirs = [ "." ]
+  public_configs = [ ":target_defaults" ]
+}
+
+install_config("install_pkg_config") {
+  sources = [ "libprivacy.pc" ]
+  install_path = "${libdir}/pkgconfig"
+}
