@@ -42,7 +42,6 @@ allow cros_chapsd cros_run:dir { r_dir_perms };
 allow cros_chapsd cros_run_lock:dir { r_dir_perms };
 allow cros_chapsd cros_run_lock_power_override:dir { rw_dir_perms };
 
-# TODO(crbug.com/1177773): Replace this with appropriate macro.
 allow cros_chapsd cros_run_daemon_store:dir { r_dir_perms };
 allow cros_chapsd cros_home_shadow_uid_root:dir { getattr search };
 allow cros_chapsd cros_home_root:dir { getattr search };
@@ -51,5 +50,4 @@ allow cros_chapsd cros_home_shadow_uid_root_chaps:dir create_dir_perms;
 allow cros_chapsd cros_home_shadow_uid_root_chaps:file create_file_perms;
 dontaudit cros_chapsd cros_home_shadow_uid:dir search;
 
-# TODO(crbug.com/1175203): Find this directory and add a spesific context.
 dontaudit cros_chapsd unlabeled:dir search;
