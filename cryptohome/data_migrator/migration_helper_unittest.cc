@@ -984,16 +984,17 @@ TEST_P(DataMigrationTest, CopyFileData) {
   const FilePath kToFile = to_dir_.Append(kFileName);
 
   const size_t kFileSize = GetParam();
-  char from_contents[kFileSize];
-  base::RandBytes(from_contents, kFileSize);
-  ASSERT_TRUE(platform_.WriteArrayToFile(kFromFile, from_contents, kFileSize));
+  std::string from_contents(kFileSize, '\0');
+  base::RandBytes(from_contents.data(), kFileSize);
+  ASSERT_TRUE(
+      platform_.WriteArrayToFile(kFromFile, from_contents.data(), kFileSize));
 
   EXPECT_TRUE(helper.Migrate(base::BindRepeating(
       &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   std::string to_contents;
   ASSERT_TRUE(platform_.ReadFileToString(kToFile, &to_contents));
-  EXPECT_EQ(0, strncmp(from_contents, to_contents.data(), kFileSize));
+  EXPECT_EQ(from_contents, to_contents);
   EXPECT_FALSE(platform_.FileExists(kFromFile));
 }
 
