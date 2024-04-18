@@ -439,7 +439,10 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             stdout().flush()?;
 
             let mut line = String::new();
-            stdin().lock().read_line(&mut line).unwrap();
+            if stdin().lock().read_line(&mut line).is_err() {
+                return Err(UserCancelled.into());
+            }
+
             line = line.trim_end().to_string();
 
             if !(line == "y" || line == "yes") {
