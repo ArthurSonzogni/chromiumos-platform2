@@ -388,9 +388,7 @@ impl<'a> ProtobusSignalWatcher<'a> {
 impl Drop for ProtobusSignalWatcher<'_> {
     fn drop(&mut self) {
         if let Some(connection) = self.connection {
-            connection
-                .remove_match_no_cb(&self.match_rule().match_str())
-                .expect("unable to remove match rule on protobus");
+            let _ = connection.remove_match_no_cb(&self.match_rule().match_str());
         }
     }
 }
