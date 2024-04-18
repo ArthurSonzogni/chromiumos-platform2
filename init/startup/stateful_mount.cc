@@ -61,7 +61,7 @@ constexpr char kOverlay[] = "_overlay";
 constexpr char kDevImage[] = "dev_image";
 
 constexpr char kVarLogAsan[] = "var/log/asan";
-constexpr char kStatefulDevImage[] = "mnt/stateful_partition/dev_image";
+constexpr char kStatefulDevImage[] = "dev_image";
 constexpr char kUsrLocal[] = "usr/local";
 constexpr char kDisableStatefulSecurityHardening[] =
     "usr/share/cros/startup/disable_stateful_security_hardening";
@@ -70,7 +70,6 @@ constexpr char kProcMounts[] = "proc/mounts";
 constexpr char kMountOptionsLog[] = "var/log/mount_options.log";
 const std::vector<const char*> kMountDirs = {"db/pkg", "lib/portage",
                                              "cache/dlc-images"};
-const std::vector kDisableSecHardDirs = {kStatefulDevImage, kTmpPortage};
 
 // TODO(asavery): update the check for removable devices to be
 // more advanced, b/209476959
@@ -480,9 +479,8 @@ void StatefulMount::MountStateful() {
     EnableExt4Features();
 
     // Mount stateful partition from state_dev.
-    if (!platform_->Mount(state_dev_, base::FilePath("/mnt/stateful_partition"),
-                          *fs_form_state, stateful_mount_flags,
-                          stateful_mount_opts)) {
+    if (!platform_->Mount(state_dev_, stateful_, *fs_form_state,
+                          stateful_mount_flags, stateful_mount_opts)) {
       // Try to rebuild the stateful partition by clobber-state. (Not using fast
       // mode out of security consideration: the device might have gotten into
       // this state through power loss during dev mode transition).
@@ -735,7 +733,7 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
   }
 
   // Create dev_image directory in base images in developer mode.
-  base::FilePath stateful_dev_image = root_.Append(kStatefulDevImage);
+  base::FilePath stateful_dev_image = stateful_.Append(kStatefulDevImage);
   if (!platform_->DirectoryExists(stateful_dev_image)) {
     if (!platform_->CreateDirectory(stateful_dev_image)) {
       PLOG(ERROR) << "Failed to create " << stateful_dev_image.value();
@@ -774,8 +772,7 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
   if (!platform_->FileExists(disable_state_sec_hard)) {
     // Add exceptions to allow symlink traversal and opening of FIFOs in the
     // dev_image subtree.
-    for (const auto dir : kDisableSecHardDirs) {
-      base::FilePath path = root_.Append(dir);
+    for (const auto& path : {root_.Append(kTmpPortage), stateful_dev_image}) {
       if (!platform_->DirectoryExists(path)) {
         if (!platform_->CreateDirectory(path)) {
           PLOG(ERROR) << "Failed to create " << path.value();

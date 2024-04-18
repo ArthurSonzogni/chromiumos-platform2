@@ -42,6 +42,7 @@ using testing::_;
 using testing::AnyNumber;
 using testing::ByMove;
 using testing::DoAll;
+using testing::HasSubstr;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrictMock;
@@ -1358,35 +1359,48 @@ class DevMountPackagesTest : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     base_dir_ = temp_dir_.GetPath();
+    stateful_ = base_dir_.Append("stateful_test");
+    base::CreateDirectory(stateful_);
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_,
+        platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_,
         true);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
-        flags_, base_dir_, base_dir_, platform_.get(), startup_dep_.get(),
+        flags_, base_dir_, stateful_, platform_.get(), startup_dep_.get(),
         mount_helper_.get());
     proc_mounts_ = base_dir_.Append("proc/mounts");
     mount_log_ = base_dir_.Append("var/log/mount_options.log");
-    stateful_dev_image_ = base_dir_.Append("mnt/stateful_partition/dev_image");
+    stateful_dev_image_ = stateful_.Append("dev_image");
     usrlocal_ = base_dir_.Append("usr/local");
     asan_dir_ = base_dir_.Append("var/log/asan");
     lsm_dir_ = base_dir_.Append(kLSMDir);
     allow_sym_ = lsm_dir_.Append("allow_symlink");
     disable_ssh_ = base_dir_.Append(
         "usr/share/cros/startup/disable_stateful_security_hardening");
-    var_overlay_ = base_dir_.Append("var_overlay");
+    var_overlay_ = stateful_.Append("var_overlay");
     var_portage_ = base_dir_.Append("var/lib/portage");
     ASSERT_TRUE(platform_->WriteStringToFile(allow_sym_, ""));
     ASSERT_TRUE(platform_->CreateDirectory(stateful_dev_image_));
     ASSERT_TRUE(platform_->CreateDirectory(usrlocal_));
     ASSERT_TRUE(platform_->CreateDirectory(var_overlay_));
     ASSERT_TRUE(platform_->CreateDirectory(var_portage_));
+
+    // Collect all writes to sysfs attribute "allow_symlink" to a local
+    // variable, ignore the rest.
+    EXPECT_CALL(*platform_, WriteStringToFile(_, _)).Times(AnyNumber());
+    EXPECT_CALL(*platform_, WriteStringToFile(allow_sym_, _))
+        .WillRepeatedly(
+            [this](const base::FilePath&, const std::string& c) -> bool {
+              allow_sym_contents_ += c;
+              return true;
+            });
   }
 
   startup::Flags flags_;
   base::FilePath base_dir_;
   std::unique_ptr<libstorage::MockPlatform> platform_;
+  base::FilePath stateful_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
@@ -1398,6 +1412,7 @@ class DevMountPackagesTest : public ::testing::Test {
   base::FilePath asan_dir_;
   base::FilePath lsm_dir_;
   base::FilePath allow_sym_;
+  std::string allow_sym_contents_;
   base::FilePath disable_ssh_;
   base::FilePath var_overlay_;
   base::FilePath var_portage_;
@@ -1428,9 +1443,7 @@ TEST_F(DevMountPackagesTest, NoDeviceDisableStatefulSecurity) {
   platform_->ReadFileToString(mount_log_, &mount_log_contents);
   EXPECT_EQ(mount_contents, mount_log_contents);
 
-  std::string allow_sym_contents;
-  platform_->ReadFileToString(allow_sym_, &allow_sym_contents);
-  EXPECT_EQ("", allow_sym_contents);
+  EXPECT_EQ("", allow_sym_contents_);
 }
 
 TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
@@ -1461,11 +1474,10 @@ TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
   platform_->ReadFileToString(mount_log_, &mount_log_contents);
   EXPECT_EQ(mount_contents, mount_log_contents);
 
-  base::FilePath tmp_portage = base_dir_.Append("var/tmp/portage");
-  std::string expected_allow = tmp_portage.value();
-  std::string allow_sym_contents;
-  platform_->ReadFileToString(allow_sym_, &allow_sym_contents);
-  EXPECT_EQ(expected_allow, allow_sym_contents);
+  // 2 locations are allowed to have symlinks: portage and dev_image.
+  EXPECT_EQ(
+      base_dir_.Append("var/tmp/portage").value() + stateful_dev_image_.value(),
+      allow_sym_contents_);
 }
 
 class RestoreContextsForVarTest : public ::testing::Test {
