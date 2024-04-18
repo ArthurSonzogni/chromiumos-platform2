@@ -18,6 +18,7 @@
 #include <base/functional/bind.h>
 #include <base/location.h>
 #include <base/notreached.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/default_clock.h>
 #include <base/time/time.h>
 #include <base/unguessable_token.h>
@@ -39,8 +40,11 @@ using ::hwsec_foundation::status::OkStatus;
 
 }  // namespace
 
-AuthSessionManager::AuthSessionManager(AuthSession::BackingApis backing_apis)
-    : backing_apis_(backing_apis), clock_(base::DefaultClock::GetInstance()) {
+AuthSessionManager::AuthSessionManager(AuthSession::BackingApis backing_apis,
+                                       base::SequencedTaskRunner* task_runner)
+    : backing_apis_(backing_apis),
+      task_runner_(task_runner),
+      clock_(base::DefaultClock::GetInstance()) {
   CHECK(backing_apis.crypto);
   CHECK(backing_apis.platform);
   CHECK(backing_apis.user_session_map);
@@ -184,8 +188,9 @@ void AuthSessionManager::RemoveAllAuthSessions() {
 
 void AuthSessionManager::RunWhenAvailable(
     const base::UnguessableToken& token,
-    base::OnceCallback<void(InUseAuthSession)> callback) {
-  PendingWork work(token, std::move(callback));
+    base::OnceCallback<void(InUseAuthSession)> callback,
+    const base::Location& from_here) {
+  PendingWork work(token, from_here, std::move(callback), task_runner_);
 
   // Look up the user sessions instance for the given token. If it doesn't exist
   // just execute the callback immediately with an invalid InUse object.
@@ -221,7 +226,8 @@ void AuthSessionManager::RunWhenAvailable(
 
 void AuthSessionManager::RunWhenAvailable(
     const std::string& serialized_token,
-    base::OnceCallback<void(InUseAuthSession)> callback) {
+    base::OnceCallback<void(InUseAuthSession)> callback,
+    const base::Location& from_here) {
   std::optional<base::UnguessableToken> token =
       AuthSession::GetTokenFromSerializedString(serialized_token);
   if (!token.has_value()) {
@@ -229,7 +235,7 @@ void AuthSessionManager::RunWhenAvailable(
     std::move(callback).Run(InUseAuthSession());
     return;
   }
-  RunWhenAvailable(token.value(), std::move(callback));
+  RunWhenAvailable(token.value(), std::move(callback), from_here);
 }
 
 base::UnguessableToken AuthSessionManager::AddAuthSession(
@@ -464,20 +470,28 @@ void AuthSessionManager::MarkNotInUse(std::unique_ptr<AuthSession> session) {
 }
 
 AuthSessionManager::PendingWork::PendingWork(
-    base::UnguessableToken session_token, Callback work_callback)
+    base::UnguessableToken session_token,
+    const base::Location& from_here,
+    Callback work_callback,
+    base::SequencedTaskRunner* task_runner)
     : session_token_(std::move(session_token)),
-      work_callback_(std::move(work_callback)) {}
+      work_callback_(std::move(work_callback)),
+      task_runner_(task_runner) {}
 
 AuthSessionManager::PendingWork::PendingWork(PendingWork&& other)
     : session_token_(std::move(other.session_token_)),
-      work_callback_(std::move(other.work_callback_)) {
+      from_here_(std::move(other.from_here_)),
+      work_callback_(std::move(other.work_callback_)),
+      task_runner_(other.task_runner_) {
   other.work_callback_ = std::nullopt;
 }
 
 AuthSessionManager::PendingWork& AuthSessionManager::PendingWork::operator=(
     PendingWork&& other) {
   session_token_ = std::move(other.session_token_);
+  from_here_ = std::move(other.from_here_);
   work_callback_ = std::move(other.work_callback_);
+  task_runner_ = other.task_runner_;
   other.work_callback_ = std::nullopt;
   return *this;
 }
@@ -494,7 +508,9 @@ void AuthSessionManager::PendingWork::Run(InUseAuthSession session) && {
   }
   Callback work = std::move(*work_callback_);
   work_callback_ = std::nullopt;
-  std::move(work).Run(std::move(session));
+  task_runner_->PostTask(
+      from_here_,
+      base::BindOnce(std::move(work), std::move(session).BindForCallback()));
 }
 
 InUseAuthSession::InUseAuthSession() : manager_(nullptr), session_(nullptr) {}

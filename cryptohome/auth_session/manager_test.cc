@@ -76,6 +76,7 @@ class AuthSessionManagerTest : public ::testing::Test {
   std::optional<InUseAuthSession> TryTakeAuthSession(const T& token) {
     TestFuture<InUseAuthSession> session_future;
     auth_session_manager_.RunWhenAvailable(token, session_future.GetCallback());
+    task_environment_.RunUntilIdle();
     if (session_future.IsReady()) {
       return session_future.Take();
     }
@@ -143,7 +144,8 @@ class AuthSessionManagerTest : public ::testing::Test {
       &uss_manager_,
       &features_.async,
       AsyncInitPtr<SignallingInterface>(&signalling_)};
-  AuthSessionManager auth_session_manager_{backing_apis_};
+  AuthSessionManager auth_session_manager_{
+      backing_apis_, task_environment_.GetMainThreadTaskRunner().get()};
 };
 
 TEST_F(AuthSessionManagerTest, CreateRemove) {
@@ -507,6 +509,7 @@ TEST_F(AuthSessionManagerTest, AddAndWaitRemove) {
                             .user_exists = false});
     TestFuture<InUseAuthSession> created_future;
     auth_session_manager_.RunWhenAvailable(token, created_future.GetCallback());
+    task_environment_.RunUntilIdle();
     InUseAuthSession auth_session = created_future.Take();
     ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
 
@@ -514,16 +517,19 @@ TEST_F(AuthSessionManagerTest, AddAndWaitRemove) {
     // directly, but wait for the session is not in use instead.
     auth_session_manager_.RunWhenAvailable(
         token, base::BindLambdaForTesting(callback));
+    task_environment_.RunUntilIdle();
     EXPECT_FALSE(is_called);
 
     // |future| will be queued behind |callback|.
     auth_session_manager_.RunWhenAvailable(token, future.GetCallback());
+    task_environment_.RunUntilIdle();
     EXPECT_FALSE(future.IsReady());
 
     // Scope ends here to free the InUseAuthSession, after this |future| will
     // be executed.
   }
 
+  task_environment_.RunUntilIdle();
   ASSERT_TRUE(is_called);
   EXPECT_THAT(saved_session.AuthSessionStatus(), IsOk());
   EXPECT_FALSE(future.IsReady());
@@ -536,6 +542,7 @@ TEST_F(AuthSessionManagerTest, AddAndWaitRemove) {
   // Release the existing in-use instance. The callback should now happen with
   // an invalid session.
   std::move(saved_session).Release();
+  task_environment_.RunUntilIdle();
   EXPECT_TRUE(future.IsReady());
   EXPECT_THAT(future.Get().AuthSessionStatus(), NotOk());
 }
@@ -592,11 +599,13 @@ TEST_F(AuthSessionManagerTest, MultiUserBlocking) {
       }
 
       // Check that the expected work was blocked (or not).
+      task_environment_.RunUntilIdle();
       EXPECT_THAT(work_done, ElementsAre(2, 3));
 
       // Scope ends here to free the InUseAuthSession, after this all the
       // remaining work should get run.
     }
+    task_environment_.RunUntilIdle();
     EXPECT_THAT(work_done, ElementsAre(2, 3, 0, 1));
   }
 
@@ -616,11 +625,13 @@ TEST_F(AuthSessionManagerTest, MultiUserBlocking) {
       }
 
       // Check that the expected work was blocked (or not).
+      task_environment_.RunUntilIdle();
       EXPECT_THAT(work_done, ElementsAre(0, 1));
 
       // Scope ends here to free the InUseAuthSession, after this all the
       // remaining work should get run.
     }
+    task_environment_.RunUntilIdle();
     EXPECT_THAT(work_done, ElementsAre(0, 1, 2, 3));
   }
 
@@ -642,12 +653,17 @@ TEST_F(AuthSessionManagerTest, MultiUserBlocking) {
       }
 
       // Check that all of the work was blocked.
+      task_environment_.RunUntilIdle();
       EXPECT_THAT(work_done, IsEmpty());
 
-      // Scope ends here to free the sessions, all the work should execute. Note
-      // that the session for user 2 should be ended first.
+      // Scope ends here to free the sessions, all the work should execute.
     }
-    EXPECT_THAT(work_done, ElementsAre(2, 3, 0, 1));
+    task_environment_.RunUntilIdle();
+    // The expected ordering here is based on fact that work from user 2 goes
+    // into the task environment first, because u2_session is destroyed before
+    // u1_session, and the fact that the work tasks for each user are added into
+    // the task environment once the prior task for that user completes.
+    EXPECT_THAT(work_done, ElementsAre(2, 0, 3, 1));
   }
 }
 
@@ -701,6 +717,7 @@ TEST_F(AuthSessionManagerTest, PendingWorkStaysBlockedAfterRemove) {
     // remaining work should get run. However, only the work on the first
     // session should be given a valid session to work with.
   }
+  task_environment_.RunUntilIdle();
   EXPECT_THAT(work_done, ElementsAre(0, 1, 2, 3, 4, 5, 6, 7));
   EXPECT_THAT(work_done_with_session, ElementsAre(0, 2, 4, 6));
 }
@@ -755,6 +772,7 @@ TEST_F(AuthSessionManagerTest, RemovedSessionsStillBlockNewWork) {
     // remaining work should get run. However, only the work on the first
     // session should be given a valid session to work with.
   }
+  task_environment_.RunUntilIdle();
   EXPECT_THAT(work_done, ElementsAre(1, 3, 5, 7, 0, 2, 4, 6));
   EXPECT_THAT(work_done_with_session, ElementsAre(0, 2, 4, 6));
 }

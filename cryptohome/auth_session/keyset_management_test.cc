@@ -154,13 +154,14 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
 
     system_apis_.crypto.Init();
 
-    auth_session_manager_ =
-        std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
+    auth_session_manager_ = std::make_unique<AuthSessionManager>(
+        AuthSession::BackingApis{
             &system_apis_.crypto, &system_apis_.platform, &user_session_map_,
             &system_apis_.keyset_management, &auth_block_utility_,
             &auth_factor_driver_manager_, &system_apis_.auth_factor_manager,
             &fp_migration_utility_, &system_apis_.uss_storage,
-            &system_apis_.uss_manager, &features_.async});
+            &system_apis_.uss_manager, &features_.async},
+        task_environment_.GetMainThreadTaskRunner().get());
     // Initializing UserData class.
     userdataauth_.set_homedirs(&homedirs_);
     userdataauth_.set_user_session_factory(&user_session_factory_);
@@ -607,6 +608,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, StartAuthSessionWithoutKeyData) {
             *auth_reply_ptr = reply;
           },
           base::Unretained(&auth_session_reply)));
+  task_environment_.RunUntilIdle();
 
   EXPECT_EQ(auth_session_reply.error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -618,6 +620,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, StartAuthSessionWithoutKeyData) {
       *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
       }));
+  task_environment_.RunUntilIdle();
 }
 
 // Test that a VaultKeyset without KeyData migration succeeds during login.
@@ -1253,13 +1256,14 @@ TEST_F(AuthSessionTestWithKeysetManagement,
 TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   // Attach the mock_auth_block_utility to our AuthSessionManager and created
   // AuthSession.
-  auto auth_session_manager_mock =
-      std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
+  auto auth_session_manager_mock = std::make_unique<AuthSessionManager>(
+      AuthSession::BackingApis{
           &system_apis_.crypto, &system_apis_.platform, &user_session_map_,
           &system_apis_.keyset_management, &mock_auth_block_utility_,
           &auth_factor_driver_manager_, &system_apis_.auth_factor_manager,
           &fp_migration_utility_, &system_apis_.uss_storage,
-          &system_apis_.uss_manager, &features_.async});
+          &system_apis_.uss_manager, &features_.async},
+      task_environment_.GetMainThreadTaskRunner().get());
 
   base::UnguessableToken token = auth_session_manager_mock->CreateAuthSession(
       Username(kUsername),

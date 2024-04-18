@@ -12,7 +12,9 @@
 #include <string>
 #include <utility>
 
+#include <base/location.h>
 #include <base/memory/weak_ptr.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/clock.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
@@ -42,7 +44,8 @@ class AuthSessionManager {
 
   // Construct a session manager that will use the given backing APIs to create
   // new AuthSession objects.
-  explicit AuthSessionManager(AuthSession::BackingApis backing_apis);
+  AuthSessionManager(AuthSession::BackingApis backing_apis,
+                     base::SequencedTaskRunner* task_runner);
 
   AuthSessionManager(AuthSessionManager&) = delete;
   AuthSessionManager& operator=(AuthSessionManager&) = delete;
@@ -74,10 +77,12 @@ class AuthSessionManager {
   // |callback| will be invoked when the auth session becomes available
   // (released from active usage).
   void RunWhenAvailable(const base::UnguessableToken& token,
-                        base::OnceCallback<void(InUseAuthSession)> callback);
+                        base::OnceCallback<void(InUseAuthSession)> callback,
+                        const base::Location& from_here = FROM_HERE);
   // Overload to avoid deserialization on client side.
   void RunWhenAvailable(const std::string& serialized_token,
-                        base::OnceCallback<void(InUseAuthSession)> callback);
+                        base::OnceCallback<void(InUseAuthSession)> callback,
+                        const base::Location& from_here = FROM_HERE);
 
  private:
   friend class InUseAuthSession;
@@ -90,7 +95,10 @@ class AuthSessionManager {
    public:
     using Callback = base::OnceCallback<void(InUseAuthSession)>;
 
-    PendingWork(base::UnguessableToken session_token, Callback work_callback);
+    PendingWork(base::UnguessableToken session_token,
+                const base::Location& from_here,
+                Callback work_callback,
+                base::SequencedTaskRunner* task_runner);
 
     // Pending work objects can be moved but not copied, because the underlying
     // work callback cannot be copied. A moved-from work object is considered to
@@ -113,8 +121,13 @@ class AuthSessionManager {
    private:
     // Token that identifies the session this work is targeted to.
     base::UnguessableToken session_token_;
+    // The location the work was being run from. This comes from the original
+    // caller of RunWhenAvailable.
+    base::Location from_here_;
     // The work callback. Once the callback is executed this will be cleared.
     std::optional<Callback> work_callback_;
+    // The task runner on which the pending work will be executed.
+    base::SequencedTaskRunner* task_runner_;
   };
 
   // Add a new session. Implements the common portion of the CreateAuthSession
@@ -147,6 +160,9 @@ class AuthSessionManager {
 
   // The underlying backing APIs used to construct new sessions.
   AuthSession::BackingApis backing_apis_;
+
+  // The task runner for running any async work.
+  base::SequencedTaskRunner* task_runner_;
 
   // Map of session tokens to the session user.
   std::map<base::UnguessableToken, ObfuscatedUsername> token_to_user_;

@@ -768,6 +768,10 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   }
   if (!mount_task_runner_) {
     mount_thread_ = std::make_unique<MountThread>(kMountThreadName, this);
+    base::Thread::Options options;
+    options.message_pump_type = base::MessagePumpType::IO;
+    mount_thread_->StartWithOptions(std::move(options));
+    mount_task_runner_ = mount_thread_->task_runner();
   }
 
   crypto_->Init();
@@ -841,13 +845,14 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   }
 
   if (!auth_session_manager_) {
-    default_auth_session_manager_ =
-        std::make_unique<AuthSessionManager>(AuthSession::BackingApis{
+    default_auth_session_manager_ = std::make_unique<AuthSessionManager>(
+        AuthSession::BackingApis{
             crypto_, platform_, sessions_, keyset_management_,
             auth_block_utility_, auth_factor_driver_manager_,
             auth_factor_manager_, fp_migration_utility_, uss_storage_,
             uss_manager_, &async_init_features_, async_signalling,
-            async_key_store_cert_provider});
+            async_key_store_cert_provider},
+        mount_task_runner_.get());
     auth_session_manager_ = default_auth_session_manager_.get();
   }
 
@@ -937,13 +942,6 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
       disk_cleanup_critical_threshold_);
   low_disk_space_handler_->disk_cleanup()->set_target_free_space(
       disk_cleanup_target_free_space_);
-
-  if (!mount_task_runner_) {
-    base::Thread::Options options;
-    options.message_pump_type = base::MessagePumpType::IO;
-    mount_thread_->StartWithOptions(std::move(options));
-    mount_task_runner_ = mount_thread_->task_runner();
-  }
 
   if (platform_->FileExists(base::FilePath(kNotFirstBootFilePath))) {
     // Clean up any unreferenced mountpoints at startup.

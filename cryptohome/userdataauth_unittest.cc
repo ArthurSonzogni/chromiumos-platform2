@@ -1790,6 +1790,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   userdataauth_->StartAuthSession(
       start_session_req,
       reply_future.GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::optional<base::UnguessableToken> auth_session_id =
@@ -1804,16 +1805,17 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
         ASSERT_THAT(auth_session->OnUserCreated(), IsOk());
       }));
+  RunUntilIdle();
 
   // Mount user vault.
   user_data_auth::PreparePersistentVaultRequest prepare_request;
   prepare_request.set_auth_session_id(reply_future.Get().auth_session_id());
   TestFuture<user_data_auth::PreparePersistentVaultReply> prepare_future;
-
   userdataauth_->PreparePersistentVault(
       prepare_request,
       prepare_future
           .GetCallback<const user_data_auth::PreparePersistentVaultReply&>());
+  RunUntilIdle();
   ASSERT_EQ(prepare_future.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
@@ -1925,6 +1927,7 @@ TEST_F(UserDataAuthTest,
   userdataauth_->StartAuthSession(
       start_session_req,
       reply_future.GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::optional<base::UnguessableToken> auth_session_id =
@@ -1939,6 +1942,7 @@ TEST_F(UserDataAuthTest,
         ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
         ASSERT_THAT(auth_session->OnUserCreated(), IsOk());
       }));
+  RunUntilIdle();
 
   // Mount user vault.
   user_data_auth::PreparePersistentVaultRequest prepare_request;
@@ -1949,6 +1953,7 @@ TEST_F(UserDataAuthTest,
       prepare_request,
       prepare_future
           .GetCallback<const user_data_auth::PreparePersistentVaultReply&>());
+  RunUntilIdle();
   ASSERT_EQ(prepare_future.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
@@ -2293,6 +2298,7 @@ TEST_F(UserDataAuthExTest,
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::optional<base::UnguessableToken> auth_session_id =
@@ -2307,6 +2313,7 @@ TEST_F(UserDataAuthExTest,
         ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
         ASSERT_THAT(auth_session->OnUserCreated(), IsOk());
       }));
+  RunUntilIdle();
 
   user_data_auth::StartMigrateToDircryptoRequest request;
   request.set_auth_session_id(
@@ -2333,6 +2340,7 @@ TEST_F(UserDataAuthExTest,
               (*success_cnt_ptr)++;
             },
             base::Unretained(&success_cnt)));
+    RunUntilIdle();
     EXPECT_THAT(reply_future.Get().has_error_info(), IsFalse());
   }
   EXPECT_EQ(success_cnt, 1);
@@ -2350,6 +2358,7 @@ TEST_F(UserDataAuthExTest,
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::optional<base::UnguessableToken> auth_session_id =
@@ -2361,6 +2370,7 @@ TEST_F(UserDataAuthExTest,
       *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
       }));
+  RunUntilIdle();
 
   user_data_auth::StartMigrateToDircryptoRequest request;
   request.set_auth_session_id(
@@ -2382,6 +2392,7 @@ TEST_F(UserDataAuthExTest,
               (*called_ctr_ptr)++;
             },
             base::Unretained(&called_ctr)));
+    RunUntilIdle();
     EXPECT_THAT(reply_future.Get().has_error_info(), IsFalse());
   }
   EXPECT_EQ(called_ctr, 1);
@@ -2410,6 +2421,7 @@ TEST_F(UserDataAuthExTest, StartMigrateToDircryptoWithInvalidAuthSession) {
               (*called_ctr_ptr)++;
             },
             base::Unretained(&called_ctr)));
+    RunUntilIdle();
     EXPECT_THAT(reply_future.Get().has_error_info(), IsFalse());
   }
   EXPECT_EQ(called_ctr, 1);
@@ -2435,6 +2447,7 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
   userdataauth_->Remove(
       *remove_homedir_req_,
       remove_reply_future1.GetCallback<const user_data_auth::RemoveReply&>());
+  RunUntilIdle();
   EXPECT_EQ(remove_reply_future1.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
@@ -2453,6 +2466,7 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
   userdataauth_->Remove(
       *remove_homedir_req_,
       remove_reply_future2.GetCallback<const user_data_auth::RemoveReply&>());
+  RunUntilIdle();
   EXPECT_NE(remove_reply_future2.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
@@ -2468,6 +2482,7 @@ TEST_F(UserDataAuthExTest, RemoveBusyMounted) {
   userdataauth_->Remove(
       *remove_homedir_req_,
       remove_reply_future.GetCallback<const user_data_auth::RemoveReply&>());
+  RunUntilIdle();
   EXPECT_NE(remove_reply_future.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
@@ -2482,6 +2497,7 @@ TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
   userdataauth_->Remove(
       *remove_homedir_req_,
       remove_reply_future1.GetCallback<const user_data_auth::RemoveReply&>());
+  RunUntilIdle();
   EXPECT_NE(remove_reply_future1.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
@@ -2491,6 +2507,7 @@ TEST_F(UserDataAuthExTest, RemoveInvalidArguments) {
   userdataauth_->Remove(
       *remove_homedir_req_,
       remove_reply_future2.GetCallback<const user_data_auth::RemoveReply&>());
+  RunUntilIdle();
   EXPECT_NE(remove_reply_future2.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
@@ -2507,6 +2524,7 @@ TEST_F(UserDataAuthExTest, RemoveInvalidAuthSession) {
   userdataauth_->Remove(
       *remove_homedir_req_,
       remove_reply_future.GetCallback<const user_data_auth::RemoveReply&>());
+  RunUntilIdle();
   EXPECT_NE(remove_reply_future.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 }
@@ -2529,6 +2547,7 @@ TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   const std::string auth_session_id =
@@ -2542,6 +2561,7 @@ TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
   userdataauth_->Remove(
       *remove_homedir_req_,
       remove_reply_future.GetCallback<const user_data_auth::RemoveReply&>());
+  RunUntilIdle();
   EXPECT_EQ(remove_reply_future.Get().error_info().primary_action(),
             user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
@@ -2550,6 +2570,7 @@ TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
       auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), NotOk());
       }));
+  RunUntilIdle();
   EXPECT_EQ(*GetObfuscatedUsername(kUsername1),
             remove_completed.sanitized_username());
 }
@@ -2563,6 +2584,7 @@ TEST_F(UserDataAuthExTest, StartAuthSession) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::optional<base::UnguessableToken> auth_session_id =
@@ -2583,6 +2605,7 @@ TEST_F(UserDataAuthExTest, StartAuthSession) {
             ASSERT_THAT(auth_session->public_token(), Eq(public_token));
           },
           *auth_session_id, *broadcast_id));
+  RunUntilIdle();
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
@@ -2597,6 +2620,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
   std::optional<base::UnguessableToken> auth_session_id =
@@ -2607,6 +2631,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
       *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
       }));
+  RunUntilIdle();
 }
 
 TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
@@ -2619,6 +2644,7 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::optional<base::UnguessableToken> auth_session_id =
@@ -2629,6 +2655,7 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
       *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
       }));
+  RunUntilIdle();
 
   // Test.
   user_data_auth::InvalidateAuthSessionRequest inv_auth_session_req;
@@ -2647,6 +2674,7 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
       *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), NotOk());
       }));
+  RunUntilIdle();
 }
 
 TEST_F(UserDataAuthExTest, ExtendAuthSession) {
@@ -2660,6 +2688,7 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::optional<base::UnguessableToken> auth_session_id =
@@ -2674,6 +2703,7 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
         ASSERT_THAT(auth_session->OnUserCreated(), IsOk());
       }));
+  RunUntilIdle();
 
   // Test.
   user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
@@ -2687,6 +2717,7 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
       ext_auth_session_req,
       reply_future
           .GetCallback<const user_data_auth::ExtendAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_TRUE(reply_future.Get().has_seconds_left());
@@ -2700,6 +2731,7 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
         auto time_difference = kAuthSessionTimeout - requested_delay;
         EXPECT_LT(time_difference, base::Seconds(1));
       }));
+  RunUntilIdle();
 }
 
 TEST_F(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail) {
@@ -2713,6 +2745,7 @@ TEST_F(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::optional<base::UnguessableToken> auth_session_id =
@@ -2723,6 +2756,7 @@ TEST_F(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail) {
       *auth_session_id, base::BindOnce([](InUseAuthSession auth_session) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
       }));
+  RunUntilIdle();
 
   // Test.
   user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
@@ -2736,6 +2770,7 @@ TEST_F(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail) {
       ext_auth_session_req,
       reply_future
           .GetCallback<const user_data_auth::ExtendAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_UNAUTHENTICATED_AUTH_SESSION);
   EXPECT_FALSE(reply_future.Get().has_seconds_left());
@@ -2752,6 +2787,7 @@ TEST_F(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::optional<base::UnguessableToken> auth_session_id =
@@ -2770,6 +2806,7 @@ TEST_F(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication) {
         // Test timer is correctly set after authentication.
         EXPECT_FALSE(auth_session.GetRemainingTime().is_max());
       }));
+  RunUntilIdle();
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
@@ -2805,6 +2842,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
       *start_auth_session_req_,
       start_auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   const user_data_auth::StartAuthSessionReply& start_auth_session_reply =
       start_auth_session_reply_future.Get();
 
@@ -2875,6 +2913,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
       *start_auth_session_req_,
       start_auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   const user_data_auth::StartAuthSessionReply& start_auth_session_reply =
       start_auth_session_reply_future.Get();
 
@@ -2930,6 +2969,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionEphemeralFactors) {
       *start_auth_session_req_,
       start_auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   const user_data_auth::StartAuthSessionReply& start_auth_session_reply =
       start_auth_session_reply_future.Get();
 
@@ -3586,6 +3626,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
       start_request,
       start_reply_future_1
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(start_reply_future_1.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(start_reply_future_1.Get().configured_auth_factors_with_status(),
@@ -3634,6 +3675,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedLegacy) {
       start_request,
       start_reply_future_2
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   user_data_auth::StartAuthSessionReply start_reply =
       start_reply_future_2.Take();
   EXPECT_EQ(start_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3710,6 +3752,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
       start_request,
       start_reply_future_1
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(start_reply_future_1.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(start_reply_future_1.Get().configured_auth_factors_with_status(),
@@ -3761,6 +3804,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionPinLockedModern) {
       start_request,
       start_reply_future_2
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   user_data_auth::StartAuthSessionReply start_reply =
       start_reply_future_2.Take();
   EXPECT_EQ(start_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -3834,6 +3878,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionFingerprintLocked) {
       start_request,
       start_reply_future_1
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(start_reply_future_1.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   EXPECT_THAT(start_reply_future_1.Get().configured_auth_factors_with_status(),
@@ -3864,6 +3909,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionFingerprintLocked) {
       start_request,
       start_reply_future_2
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   user_data_auth::StartAuthSessionReply start_reply =
       start_reply_future_2.Take();
   EXPECT_EQ(start_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
@@ -4299,6 +4345,7 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorNoAuthSessionIdFailure) {
       prepare_auth_factor_req,
       prepare_auth_factor_reply_future
           .GetCallback<const user_data_auth::PrepareAuthFactorReply&>());
+  RunUntilIdle();
 
   // Verify.
   EXPECT_EQ(prepare_auth_factor_reply_future.Get().error(),
@@ -4315,6 +4362,7 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorPasswordFailure) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   const std::string auth_session_id =
@@ -4337,6 +4385,7 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorPasswordFailure) {
       prepare_auth_factor_req,
       prepare_auth_factor_reply_future
           .GetCallback<const user_data_auth::PrepareAuthFactorReply&>());
+  RunUntilIdle();
 
   // Verify.
   EXPECT_EQ(prepare_auth_factor_reply_future.Get().error(),
@@ -4353,6 +4402,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorFingerprintSuccess) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   const std::string auth_session_id =
@@ -4375,6 +4425,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorFingerprintSuccess) {
       prepare_auth_factor_req,
       prepare_auth_factor_reply_future
           .GetCallback<const user_data_auth::PrepareAuthFactorReply&>());
+  RunUntilIdle();
   EXPECT_EQ(prepare_auth_factor_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
@@ -4389,6 +4440,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorFingerprintSuccess) {
       terminate_auth_factor_req,
       terminate_auth_factor_reply_future
           .GetCallback<const user_data_auth::TerminateAuthFactorReply&>());
+  RunUntilIdle();
 
   // Verify.
   EXPECT_EQ(terminate_auth_factor_reply_future.Get().error(),
@@ -4405,6 +4457,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorInactiveFactorFailure) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   const std::string auth_session_id =
@@ -4424,6 +4477,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorInactiveFactorFailure) {
       terminate_auth_factor_req,
       terminate_auth_factor_reply_future
           .GetCallback<const user_data_auth::TerminateAuthFactorReply&>());
+  RunUntilIdle();
 
   // Verify.
   EXPECT_EQ(terminate_auth_factor_reply_future.Get().error(),
@@ -4440,6 +4494,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorBadTypeFailure) {
       *start_auth_session_req_,
       auth_session_reply_future
           .GetCallback<const user_data_auth::StartAuthSessionReply&>());
+  RunUntilIdle();
   EXPECT_EQ(auth_session_reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   const std::string auth_session_id =
@@ -4459,6 +4514,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorBadTypeFailure) {
       terminate_auth_factor_req,
       terminate_auth_factor_reply_future
           .GetCallback<const user_data_auth::TerminateAuthFactorReply&>());
+  RunUntilIdle();
 
   // Verify.
   EXPECT_EQ(terminate_auth_factor_reply_future.Get().error(),
@@ -4501,6 +4557,7 @@ TEST_F(UserDataAuthExTest, GetRecoverableKeyStores) {
       request,
       reply_future
           .GetCallback<const user_data_auth::GetRecoverableKeyStoresReply&>());
+  RunUntilIdle();
   user_data_auth::GetRecoverableKeyStoresReply reply = reply_future.Take();
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
@@ -5123,6 +5180,7 @@ TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
   userdataauth_->Remove(
       req,
       remove_reply_future.GetCallback<const user_data_auth::RemoveReply&>());
+  RunUntilIdle();
 
   // Failure to Remove() due to still mounted vault should result in Reboot and
   // Powerwash recommendation.
@@ -5353,6 +5411,7 @@ TEST_F(UserDataAuthApiTest, EvictDeviceKeySuccess) {
       session_id.value(), base::BindOnce([](InUseAuthSession auth_session) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
       }));
+  RunUntilIdle();
 
   // Check that EvictDeviceKey fails when the key eviction operation fails.
   user_data_auth::EvictDeviceKeyRequest evict_req;
@@ -5368,6 +5427,7 @@ TEST_F(UserDataAuthApiTest, EvictDeviceKeySuccess) {
       session_id.value(), base::BindOnce([](InUseAuthSession auth_session) {
         ASSERT_THAT(auth_session.AuthSessionStatus(), NotOk());
       }));
+  RunUntilIdle();
 }
 
 TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithoutPersistentVault) {
@@ -5405,6 +5465,7 @@ TEST_F(UserDataAuthApiTest, EphemeralUserNotAuthorizedForRestoreDevice) {
         ASSERT_THAT(auth_session->GetAuthForVerifyOnly(), NotNull());
         ASSERT_THAT(auth_session->GetAuthForRestoreKey(), IsNull());
       }));
+  RunUntilIdle();
 }
 
 TEST_F(UserDataAuthApiTest, GuestMountFailed) {
