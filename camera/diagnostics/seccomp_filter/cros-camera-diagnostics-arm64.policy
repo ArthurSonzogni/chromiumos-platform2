@@ -1,11 +1,12 @@
-# Copyright 2023 The ChromiumOS Authors
+# Copyright 2024 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
 brk: 1
-# For DLC
+clock_gettime: 1
+# clone is used to spawn threads.
 clone: 1
 close: 1
 connect: 1
@@ -19,7 +20,6 @@ faccessat: 1
 fcntl: 1
 fstatfs: 1
 futex: 1
-getdents64: 1
 getegid: 1
 geteuid: 1
 getgid: 1
@@ -29,22 +29,24 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
-# For DLC
-ioctl: 1
+# For reading terminal settings.
+ioctl: arg1 == TCGETS
 lseek: 1
 madvise: 1
 memfd_create: 1
+# Prevent PROT_WRITE | PROT_EXEC.
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
 newfstatat: 1
 openat: 1
 pipe2: 1
-poll: 1
+ppoll: 1
+# prctl is used to create threads.
+prctl: arg0 == PR_SET_NAME || arg0 == PR_SET_KEEPCAPS
 prlimit64: 1
-# For DLC
-prctl: 1
 read: 1
 recvmsg: 1
 restart_syscall: 1
@@ -55,11 +57,12 @@ sched_getaffinity: 1
 sched_yield: 1
 sendmsg: 1
 sendto: 1
-setpriority: 1
 set_robust_list: 1
 set_tid_address: 1
+setpriority: 1
 signalfd4: 1
-# For DLC
+# Allow AF_UNIX for syslog and mojo IPC.
 socket: arg0 == AF_UNIX
+statfs: 1
 uname: 1
 write: 1
