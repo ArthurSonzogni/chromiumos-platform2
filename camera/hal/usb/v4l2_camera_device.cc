@@ -1886,10 +1886,12 @@ void V4L2CameraDevice::TransformFromActiveArrayToROICoordinate(
         2.0f;
   }
 
-  roi.left =
-      static_cast<int>((static_cast<float>(roi.left) - offset_x) * scale_ratio);
+  roi.left = static_cast<int>((static_cast<float>(roi.left) - offset_x) *
+                              scale_ratio) +
+             roi_control_.roi_bounds.left;
   roi.top =
-      static_cast<int>((static_cast<float>(roi.top) - offset_y) * scale_ratio);
+      static_cast<int>((static_cast<float>(roi.top) - offset_y) * scale_ratio) +
+      roi_control_.roi_bounds.top;
   roi.width = static_cast<int>((static_cast<float>(roi.width) * scale_ratio));
   roi.height = static_cast<int>((static_cast<float>(roi.height) * scale_ratio));
   return;
