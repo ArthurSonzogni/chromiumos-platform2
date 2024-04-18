@@ -77,9 +77,17 @@ bool WriteBufferIntoFile(buffer_handle_t buffer, base::FilePath file_to_write) {
     return false;
   }
 
+  // We currently support NV12 format only.
+  CHECK_EQ(mapping.drm_format(), DRM_FORMAT_NV12);
   for (size_t p = 0; p < mapping.num_planes(); ++p) {
     auto plane = mapping.plane(p);
-    output_file.write(reinterpret_cast<char*>(plane.addr), plane.size);
+    const uint32_t plane_height =
+        (p == 0) ? mapping.height() : mapping.height() / 2;
+    for (uint32_t row = 0; row < plane_height; ++row) {
+      output_file.write(
+          reinterpret_cast<const char*>(plane.addr + row * plane.stride),
+          mapping.width());
+    }
   }
   output_file.close();
 
