@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "../sommelier-logging.h"  // NOLINT(build/include_directory)
 #include "linux-headers/virtwl.h"  // NOLINT(build/include_directory)
 #include "wayland_channel.h"       // NOLINT(build/include_directory)
 
@@ -39,9 +40,8 @@ int32_t VirtWaylandChannel::init() {
 
   ret = allocate(create_info, create_output);
   if (ret && errno == ENOTTY) {
-    fprintf(stderr,
-            "warning: virtwl-dmabuf driver not supported by host,"
-            " using virtwl instead\n");
+    LOG(WARNING)
+        << "virtwl-dmabuf driver not supported by host, using virtwl instead";
     supports_dmabuf_ = false;
   } else if (create_output.fd >= 0) {
     // Close the returned dmabuf fd in case the invalid dmabuf metadata

@@ -14,6 +14,7 @@
 #include <xf86drm.h>
 
 #include "../sommelier.h"          // NOLINT(build/include_directory)
+#include "../sommelier-logging.h"  // NOLINT(build/include_directory)
 #include "../sommelier-tracing.h"  // NOLINT(build/include_directory)
 #include "../virtualization/linux-headers/virtgpu_drm.h"  // NOLINT(build/include_directory)
 #include "sommelier-dmabuf-sync.h"  // NOLINT(build/include_directory)
@@ -90,8 +91,8 @@ void sl_dmabuf_sync_wait(int sync_file_fd) {
     struct sync_file_info sfi = {};
 
     ret = sl_ioctl(sync_file_fd, SYNC_IOC_FILE_INFO, &sfi);
-    fprintf(stderr, "Fence wait timeout. Possible GPU hang! fd:%d name:%s\n",
-            sync_file_fd, ret < 0 ? "<unknown>" : sfi.name);
+    LOG(WARNING) << "Fence wait timeout. Possible GPU hang! fd:" << sync_file_fd
+                 << " name:" << (ret < 0 ? "<unknown>" : sfi.name);
   }
 }
 

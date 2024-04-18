@@ -491,6 +491,11 @@ struct sl_sync_point {
 };
 
 #ifdef GAMEPAD_SUPPORT
+struct InputMapping {
+  const char* id;
+  const std::unordered_map<uint32_t, uint32_t> mapping;
+};
+
 struct sl_host_gaming_seat {
   struct sl_host_gaming_seat* gaming_seat;
   struct wl_resource* resource;

@@ -17,6 +17,7 @@
 #include <sstream>
 #include <string>
 
+#include "sommelier.h"         // NOLINT(build/include_directory)
 #include "sommelier-window.h"  // NOLINT(build/include_directory)
 
 // Build Sommelier with -Dlog_level=X to define LOG_LEVEL
@@ -74,6 +75,20 @@ class Log {
           << std::dec;
     return *this;
   }
+
+#ifdef GAMEPAD_SUPPORT
+  Log& operator<<(sl_host_gamepad* host_gamepad) {
+    *this << "(name=" << host_gamepad->name << ", bus=" << host_gamepad->bus
+          << ", vendor_id=" << std::hex << host_gamepad->vendor_id
+          << ", product_id=" << host_gamepad->product_id
+          << ", version=" << host_gamepad->version << std::dec
+          << ", input_mapping="
+          << (host_gamepad->input_mapping ? host_gamepad->input_mapping->id
+                                          : "none")
+          << ")";
+    return *this;
+  }
+#endif
 
   ~Log() {
     // Example expected usage:

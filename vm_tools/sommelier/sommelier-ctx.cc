@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <cerrno>
+#include <cstdlib>
 #include <string>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -13,6 +14,7 @@
 
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "sommelier.h"                   // NOLINT(build/include_directory)
+#include "sommelier-logging.h"           // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"           // NOLINT(build/include_directory)
 
 // TODO(b/173147612): Use container_token rather than this name.
@@ -239,7 +241,7 @@ static int sl_handle_clipboard_event(int fd, uint32_t mask, void* data) {
 
   rv = ctx->channel->handle_pipe(fd, readable, hang_up);
   if (rv) {
-    fprintf(stderr, "reading pipe failed with %s\n", strerror(rv));
+    LOG(ERROR) << "reading pipe failed with " << strerror(rv);
     return 0;
   }
 
@@ -265,11 +267,9 @@ static int sl_handle_wayland_channel_event(int fd, uint32_t mask, void* data) {
   int rv;
 
   if (!(mask & WL_EVENT_READABLE)) {
-    fprintf(stderr,
-            "Got error or hangup on virtwl ctx fd"
-            " (mask %d), exiting\n",
-            mask);
-    exit(EXIT_SUCCESS);
+    LOG(FATAL) << "Got error or hangup on virtwl ctx fd (mask " << mask
+               << "), exiting";
+    exit(EXIT_FAILURE);
   }
 
   receive.channel_fd = fd;
@@ -339,11 +339,9 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
   int rv;
 
   if (!(mask & WL_EVENT_READABLE)) {
-    fprintf(stderr,
-            "Got error or hangup on virtwl socket"
-            " (mask %d), exiting\n",
-            mask);
-    exit(EXIT_SUCCESS);
+    LOG(FATAL) << "Got error or hangup on virtwl socket (mask " << mask
+               << "), exiting";
+    exit(EXIT_FAILURE);
   }
 
   buffer_iov.iov_base = data_buffer;
@@ -398,8 +396,7 @@ bool sl_context_init_wayland_channel(struct sl_context* ctx,
   }
   int rv = ctx->channel->init();
   if (rv) {
-    fprintf(stderr, "error: could not initialize wayland channel: %s\n",
-            strerror(-rv));
+    LOG(ERROR) << "could not initialize wayland channel: " << strerror(-rv);
     return false;
   }
   if (!display) {
@@ -418,8 +415,7 @@ bool sl_context_init_wayland_channel(struct sl_context* ctx,
 
     rv = ctx->channel->create_context(ctx->wayland_channel_fd);
     if (rv) {
-      fprintf(stderr, "error: failed to create virtwl context: %s\n",
-              strerror(-rv));
+      LOG(ERROR) << "failed to create virtwl context: " << strerror(-rv);
       return false;
     }
 

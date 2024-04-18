@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-logging.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
@@ -199,7 +200,7 @@ static void sl_data_offer_receive(struct wl_client* client,
   int pipe_fd, rv;
   rv = host->ctx->channel->create_pipe(pipe_fd);
   if (rv) {
-    fprintf(stderr, "error: failed to create virtwl pipe: %s\n", strerror(-rv));
+    LOG(ERROR) << "failed to create virtwl pipe: " << strerror(-rv);
     close(fd);
     return;
   }

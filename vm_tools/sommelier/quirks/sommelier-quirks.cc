@@ -11,8 +11,9 @@
 
 #include "quirks/quirks.pb.h"
 #include "quirks/sommelier-quirks.h"
-#include "sommelier-ctx.h"     // NOLINT(build/include_directory)
-#include "sommelier-window.h"  // NOLINT(build/include_directory)
+#include "sommelier-ctx.h"      // NOLINT(build/include_directory)
+#include "sommelier-logging.h"  // NOLINT(build/include_directory)
+#include "sommelier-window.h"   // NOLINT(build/include_directory)
 #include "xcb/xcb-shim.h"
 
 void Quirks::Load(std::string textproto) {
@@ -39,7 +40,7 @@ void Quirks::LoadFromFile(std::string path) {
   int fd = open(path.c_str(), O_RDONLY);
   if (fd < 0) {
     const char* e = strerror(errno);
-    fprintf(stderr, "Failed to open quirks config: %s: %s\n", path.c_str(), e);
+    LOG(ERROR) << "failed to open quirks config: " << path << ": " << e;
     return;
   }
   google::protobuf::io::FileInputStream f(fd);
@@ -52,7 +53,7 @@ void Quirks::LoadFromFile(std::string path) {
 void Quirks::PrintFeaturesEnabled(uint32_t steam_game_id) {
   // Very inefficient but straight-forward function to
   // print features enabled for the steam_game_id.
-  fprintf(stderr, "Enabled features for %d:\n", steam_game_id);
+  LOG(INFO) << "Enabled features for " << steam_game_id;
   for (int i = quirks::Feature_MIN; i <= quirks::Feature_MAX; i++) {
     if (!quirks::Feature_IsValid(i) || !IsEnabled(steam_game_id, i)) {
       continue;
@@ -92,10 +93,10 @@ bool Quirks::IsEnabled(struct sl_window* window, int feature) {
   bool is_enabled = IsEnabled(window->steam_game_id, feature);
 
   if (is_enabled && sl_window_should_log_quirk(window, feature)) {
-    fprintf(stderr,
-            "Quirk %s applied to window 0x%x due to rule `steam_game_id: %d`\n",
-            quirks::Feature_Name(feature).c_str(), window->id,
-            window->steam_game_id);
+    LOG(INFO) << "Quirk " << quirks::Feature_Name(feature) << " applied to "
+              << window
+              << " due to rule `steam_game_id: " << window->steam_game_id
+              << "`";
 
     // Also set a window property for additional debugging.
     // Create comma-separated list of quirks

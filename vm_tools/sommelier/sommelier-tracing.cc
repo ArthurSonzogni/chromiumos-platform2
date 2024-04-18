@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <fcntl.h>
+#include <cstring>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -15,8 +16,9 @@
 #include <vector>
 #include <xcb/xproto.h>
 
-#include "sommelier.h"      // NOLINT(build/include_directory)
-#include "sommelier-ctx.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"          // NOLINT(build/include_directory)
+#include "sommelier-ctx.h"      // NOLINT(build/include_directory)
+#include "sommelier-logging.h"  // NOLINT(build/include_directory)
 
 #if defined(_M_IA64) || defined(_M_IX86) || defined(__ia64__) ||      \
     defined(__i386__) || defined(__amd64__) || defined(__x86_64__) || \
@@ -74,8 +76,8 @@ void dump_trace(const char* trace_filename) {
   // Write the trace into a file.
   int fd = open(trace_filename, O_RDWR | O_CREAT | O_TRUNC, 0644);
   if (fd == -1) {
-    fprintf(stderr, "error: unable to open trace file %s: %s\n", trace_filename,
-            strerror(errno));
+    LOG(ERROR) << "unable to open trace file " << trace_filename << ": "
+               << strerror(errno);
     return;
   }
   size_t pos = 0;
@@ -85,8 +87,8 @@ void dump_trace(const char* trace_filename) {
       if (errno == EINTR || errno == EAGAIN) {
         continue;
       }
-      fprintf(stderr, "error: unable to write trace file %s: %s\n",
-              trace_filename, strerror(errno));
+      LOG(ERROR) << "unable to write trace file " << trace_filename << ": "
+                 << strerror(errno);
       close(fd);
       return;
     }

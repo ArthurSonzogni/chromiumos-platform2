@@ -6,6 +6,7 @@
 #include "sommelier.h"  // NOLINT(build/include_directory)
 #include <cstdint>
 #include <cstring>
+#include "sommelier-logging.h"      // NOLINT(build/include_directory)
 #include "sommelier-scope-timer.h"  // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"      // NOLINT(build/include_directory)
 #include "sommelier-transform.h"    // NOLINT(build/include_directory)
@@ -2048,7 +2049,7 @@ static int sl_handle_selection_fd_writable(int fd, uint32_t mask, void* data) {
 
   bytes = write(fd, value + ctx->selection_property_offset, bytes_left);
   if (bytes == -1) {
-    fprintf(stderr, "write error to target fd: %m\n");
+    LOG(ERROR) << "write error to target fd: " << strerror(errno);
     close(fd);
     fd = -1;
   } else if (bytes == bytes_left) {
@@ -2149,7 +2150,7 @@ static int sl_handle_selection_fd_readable(int fd, uint32_t mask, void* data) {
 
   int bytes = read(fd, p, bytes_left);
   if (bytes == -1) {
-    fprintf(stderr, "read error from data source: %m\n");
+    LOG(ERROR) << "read error from data source: " << strerror(errno);
     sl_send_selection_notify(ctx, XCB_ATOM_NONE);
     ctx->selection_data_offer_receive_fd = -1;
     close(fd);
@@ -2494,6 +2495,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
       // - the window property length is not a multiple of 4 (property invalid)
       //   resolution
       // - we failed to get reply
+      LOG(VERBOSE) << window << " _RANDR_EMU_MONITOR_RECTS unset";
       window->use_emulated_rects = false;
       free(reply);
       return;
@@ -2503,6 +2505,7 @@ void sl_handle_property_notify(struct sl_context* ctx,
     if (!xywh) {
       // The values are probably incorrectly set by XWayland, consider it as
       // buggy and do not proceed further.
+      LOG(VERBOSE) << window << " _RANDR_EMU_MONITOR_RECTS invalid values";
       window->use_emulated_rects = false;
       free(reply);
       return;
@@ -2513,6 +2516,8 @@ void sl_handle_property_notify(struct sl_context* ctx,
     uint32_t target_x = 0;
     uint32_t target_y = 0;
     if (!sl_window_get_output_virt_position(window, target_x, target_y)) {
+      LOG(ERROR) << window
+                 << " _RANDR_EMU_MONITOR_RECTS failed to find output it is in";
       window->use_emulated_rects = false;
       free(reply);
       return;
@@ -2537,13 +2542,17 @@ void sl_handle_property_notify(struct sl_context* ctx,
                                     XCB_CONFIG_WINDOW_WIDTH |
                                     XCB_CONFIG_WINDOW_HEIGHT,
                                 &xywh[i]);
+        LOG(VERBOSE) << window << " _RANDR_EMU_MONITOR_RECTS set as "
+                     << xywh[i + 2] << "x" << xywh[i + 3] << " (" << xywh[i]
+                     << "," << xywh[i + 1] << ")";
         free(reply);
         return;
       }
     }
 
-    fprintf(stderr, "failed to find screen with position %u,%u\n", target_x,
-            target_y);
+    LOG(ERROR)
+        << "_RANDR_EMU_MONITOR_RECTS failed to find screen with position "
+        << target_x << ", " << target_y;
     window->use_emulated_rects = false;
     free(reply);
 
@@ -2791,7 +2800,7 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
   }
 
   if (ctx->selection_event_source) {
-    fprintf(stderr, "error: selection transfer already pending\n");
+    LOG(ERROR) << "error: selection transfer already pending";
     sl_send_selection_notify(ctx, XCB_ATOM_NONE);
     return;
   }
@@ -2819,8 +2828,7 @@ static void sl_send_data(struct sl_context* ctx, xcb_atom_t data_type) {
     int pipe_fd;
     rv = ctx->channel->create_pipe(pipe_fd);
     if (rv) {
-      fprintf(stderr, "error: failed to create virtwl pipe: %s\n",
-              strerror(-rv));
+      LOG(ERROR) << "error: failed to create virtwl pipe: " << strerror(-rv);
       sl_send_selection_notify(ctx, XCB_ATOM_NONE);
       return;
     }
@@ -2928,8 +2936,8 @@ static int sl_handle_x_connection_event(int fd, uint32_t mask, void* data) {
   uint32_t count = 0;
 
   if ((mask & WL_EVENT_HANGUP) || (mask & WL_EVENT_ERROR)) {
-    fprintf(stderr, "Got error or hangup (mask %d) on X connection, exiting\n",
-            mask);
+    LOG(FATAL) << "got error or hangup (mask " << mask
+               << ") on X connection, exiting";
     exit(EXIT_SUCCESS);
   }
 
@@ -3314,7 +3322,7 @@ static int sl_handle_sigchld(int signal_number, void* data) {
     if (pid == ctx->child_pid) {
       ctx->child_pid = -1;
       if (WIFEXITED(status) && WEXITSTATUS(status)) {
-        fprintf(stderr, "Child exited with status: %d\n", WEXITSTATUS(status));
+        LOG(ERROR) << "child exited with status: " << WEXITSTATUS(status);
       }
       if (ctx->exit_with_child) {
         if (ctx->xwayland_pid >= 0)
@@ -3328,8 +3336,7 @@ static int sl_handle_sigchld(int signal_number, void* data) {
     } else if (pid == ctx->xwayland_pid) {
       ctx->xwayland_pid = -1;
       if (WIFEXITED(status) && WEXITSTATUS(status)) {
-        fprintf(stderr, "Xwayland exited with status: %d\n",
-                WEXITSTATUS(status));
+        LOG(FATAL) << "Xwayland exited with status: " << WEXITSTATUS(status);
         exit(WEXITSTATUS(status));
       }
     }
@@ -3340,7 +3347,7 @@ static int sl_handle_sigchld(int signal_number, void* data) {
 
 static int sl_handle_sigusr1(int signal_number, void* data) {
   struct sl_context* ctx = (struct sl_context*)data;
-  fprintf(stderr, "dumping trace %s\n", ctx->trace_filename);
+  LOG(INFO) << "dumping trace " << ctx->trace_filename;
   dump_trace(ctx->trace_filename);
   if (ctx->timing != nullptr) {
     ctx->timing->OutputLog();
@@ -3432,11 +3439,9 @@ static int sl_handle_display_ready_event(int fd, uint32_t mask, void* data) {
   pid_t pid;
 
   if (!(mask & WL_EVENT_READABLE)) {
-    fprintf(stderr,
-            "Got error or hangup on display ready connection"
-            " (mask %d), exiting\n",
-            mask);
-    exit(EXIT_SUCCESS);
+    LOG(FATAL) << "Got error or hangup on display ready connection (mask"
+               << mask << "), exiting";
+    exit(EXIT_FAILURE);
   }
 
   display_name[0] = ':';
@@ -3483,7 +3488,7 @@ static int sl_handle_display_ready_event(int fd, uint32_t mask, void* data) {
     wl_display_add_client_created_listener(ctx->host_display,
                                            &ctx->extra_client_created_listener);
   } else {
-    fprintf(stderr, "warning: unable to open wayland socket for cros_im.\n");
+    LOG(WARNING) << "unable to open wayland socket for cros_im";
   }
   free(socket_name);
 
@@ -3657,7 +3662,7 @@ static bool sl_parse_accelerators(
           modifiers |= SHIFT_MASK;
           accelerators += 7;
         } else {
-          fprintf(stderr, "error: invalid modifier\n");
+          LOG(ERROR) << "invalid modifier";
           return false;
         }
       } else {
@@ -3670,7 +3675,7 @@ static bool sl_parse_accelerators(
         accelerator->symbol =
             xkb_keysym_from_name(name, XKB_KEYSYM_CASE_INSENSITIVE);
         if (accelerator->symbol == XKB_KEY_NoSymbol) {
-          fprintf(stderr, "error: invalid key symbol\n");
+          LOG(ERROR) << "invalid key symbol";
           return false;
         }
 
@@ -3696,7 +3701,7 @@ int sl_open_wayland_socket(const char* socket_name,
 
   const char* runtime_dir = getenv("XDG_RUNTIME_DIR");
   if (!runtime_dir) {
-    fprintf(stderr, "error: XDG_RUNTIME_DIR not set in the environment\n");
+    LOG(ERROR) << "XDG_RUNTIME_DIR not set in the environment";
     return -1;
   }
 
@@ -3712,9 +3717,8 @@ int sl_open_wayland_socket(const char* socket_name,
 
   rv = flock(*lock_fd, LOCK_EX | LOCK_NB);
   if (rv < 0) {
-    fprintf(stderr,
-            "error: unable to lock %s, is another compositor running?\n",
-            lock_addr);
+    LOG(ERROR) << "error: unable to lock " << lock_addr
+               << ", is another compositor running?";
     return rv;
   }
   free(lock_addr);
@@ -3785,7 +3789,7 @@ int sl_run_parent(int argc,
 
     int client_fd = accept(sock_fd, (struct sockaddr*)&addr, &length);
     if (client_fd < 0) {
-      fprintf(stderr, "error: failed to accept: %m\n");
+      LOG(ERROR) << "failed to accept: " << strerror(errno);
       continue;
     }
 
@@ -3810,7 +3814,7 @@ int sl_run_parent(int argc,
 
         i = sl_parse_cmd_prefix(peer_cmd_prefix_str, 32, args);
         if (i > 32) {
-          fprintf(stderr, "error: too many arguments in cmd prefix: %d\n", i);
+          LOG(ERROR) << "too many arguments in cmd prefix: " << i;
           i = 0;
         }
       }
@@ -3887,7 +3891,7 @@ void sl_spawn_xwayland(sl_context* ctx,
 
       i = sl_parse_cmd_prefix(xwayland_cmd_prefix_str, 32, args);
       if (i > 32) {
-        fprintf(stderr, "error: too many arguments in cmd prefix: %d\n", i);
+        LOG(ERROR) << "too many arguments in cmd prefix: " << i;
         i = 0;
       }
     }
@@ -4015,9 +4019,8 @@ int real_main(int argc, char** argv) {
 #ifdef QUIRKS_SUPPORT
     if (strstr(arg, "--print-enabled-features") == arg) {
       if (!quirks_paths) {
-        fprintf(stderr,
-                "Env var SOMMELIER_QUIRKS_CONFIG must be set to quirks "
-                "textproto path!\n");
+        LOG(FATAL) << "Env var SOMMELIER_QUIRKS_CONFIG must be set to quirks "
+                      "textproto path";
         return EXIT_FAILURE;
       }
       Quirks quirks;
@@ -4143,7 +4146,7 @@ int real_main(int argc, char** argv) {
       }
       // Don't exit on unknown options so we can have forward compatibility
       // with new flags introduced.
-      fprintf(stderr, "Option `%s' is unknown, ignoring.\n", arg);
+      LOG(WARNING) << "option '" << arg << "' is unknown, ignoring";
     } else {
       ctx.runprog = &argv[i];
       break;
@@ -4159,12 +4162,10 @@ int real_main(int argc, char** argv) {
   }
 
   if (ctx.application_id && ctx.vm_id) {
-    fprintf(stderr, "warning: --application-id overrides --vm-identifier\n");
+    LOG(WARNING) << "--application-id overrides --vm-identifier";
   }
   if (ctx.application_id && ctx.application_id_property_name) {
-    fprintf(stderr,
-            "warning: --application-id overrides"
-            " --application-id-x11-property\n");
+    LOG(WARNING) << "--application-id overrides --application-id-x11-property";
   }
 
   if (parent) {
@@ -4231,7 +4232,7 @@ int real_main(int argc, char** argv) {
     } else if (strcmp(fullscreen_mode, "plain") == 0) {
       ctx.fullscreen_mode = ZAURA_SURFACE_FULLSCREEN_MODE_PLAIN;
     } else {
-      fprintf(stderr, "error: unrecognised --fullscreen-mode\n");
+      LOG(FATAL) << "unrecognised --fullscreen-mode";
       sl_print_usage();
       return EXIT_FAILURE;
     }
@@ -4267,8 +4268,8 @@ int real_main(int argc, char** argv) {
       // Use DRM device specified on the command line.
       drm_fd = open(force_drm_device, O_RDWR | O_CLOEXEC);
       if (drm_fd == -1) {
-        fprintf(stderr, "error: could not open %s (%s)\n", force_drm_device,
-                strerror(errno));
+        LOG(FATAL) << "could not open " << force_drm_device << ": "
+                   << strerror(errno);
         return EXIT_FAILURE;
       }
       drm_device = strdup(force_drm_device);
@@ -4279,7 +4280,7 @@ int real_main(int argc, char** argv) {
     if (drm_fd >= 0) {
       ctx.gbm = gbm_create_device(drm_fd);
       if (!ctx.gbm) {
-        fprintf(stderr, "error: couldn't get display device\n");
+        LOG(FATAL) << "couldn't get display device";
         return EXIT_FAILURE;
       }
 
@@ -4305,7 +4306,7 @@ int real_main(int argc, char** argv) {
   // The success of this depends on xkb-data being installed.
   ctx.xkb_context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
   if (!ctx.xkb_context) {
-    fprintf(stderr, "error: xkb_context_new failed. xkb-data missing?\n");
+    LOG(FATAL) << "xkb_context_new failed. xkb-data missing?";
     return EXIT_FAILURE;
   }
 
@@ -4323,7 +4324,7 @@ int real_main(int argc, char** argv) {
     }
 
     if (!ctx.display) {
-      fprintf(stderr, "error: failed to connect to %s\n", display);
+      LOG(FATAL) << "failed to connect to " << display;
       return EXIT_FAILURE;
     }
 
@@ -4414,6 +4415,7 @@ int real_main(int argc, char** argv) {
 
   wl_client_add_destroy_listener(ctx.client, &client_destroy_listener);
 
+  LOG(VERBOSE) << "starting main loop";
   while (true) {
     wl_display_flush_clients(ctx.host_display);
     if (ctx.connection) {

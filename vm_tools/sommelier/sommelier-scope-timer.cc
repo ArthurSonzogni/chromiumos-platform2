@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "sommelier-logging.h"      // NOLINT(build/include_directory)
 #include "sommelier-scope-timer.h"  // NOLINT(build/include_directory)
 
 #include <fstream>
@@ -26,6 +27,7 @@ ScopeTimer::~ScopeTimer() {
   int64_t end = timespec_to_ns(&end_time);
   int64_t start = timespec_to_ns(&start_time_);
   int64_t diff = end - start;
-  fprintf(stderr, "sommelier_scope_timer: %s: %f seconds\n", event_name_,
-          static_cast<float>(diff) / static_cast<float>(NSEC_PER_SEC));
+  LOG(INFO) << event_name_ << ": "
+            << static_cast<float>(diff) / static_cast<float>(NSEC_PER_SEC)
+            << " seconds";
 }

@@ -14,6 +14,7 @@
 
 #include "sommelier.h"                       // NOLINT(build/include_directory)
 #include "sommelier-ctx.h"                   // NOLINT(build/include_directory)
+#include "sommelier-logging.h"               // NOLINT(build/include_directory)
 #include "virtualization/wayland_channel.h"  // NOLINT(build/include_directory)
 
 class FuzzChannel : public WaylandChannel {
@@ -125,7 +126,7 @@ int drain_socket(int fd, uint32_t mask, void* data) {
 int count_fds() {
   DIR* dir = opendir("/proc/self/fd");
   if (!dir) {
-    fprintf(stderr, "Failed to open /proc/self/fd: %m\n");
+    LOG(ERROR) << "failed to open /proc/self/fd: " << strerror(errno);
     abort();
   }
 
@@ -134,16 +135,16 @@ int count_fds() {
 
   // Needed to distinguish between eof and errors.
   errno = 0;
-  while (struct dirent* dirent = readdir(dir)) {
+  while (struct dirent* _ = readdir(dir)) {
     count++;
   }
   if (errno) {
-    fprintf(stderr, "Failed to read from /proc/self/fd: %m\n");
+    LOG(ERROR) << "failed to read from /proc/self/fd: " << strerror(errno);
     abort();
   }
 
   if (closedir(dir)) {
-    fprintf(stderr, "Failed to close /proc/self/fd: %m\n");
+    LOG(ERROR) << "failed to close /proc/self/fd: " << strerror(errno);
     abort();
   }
 
@@ -246,7 +247,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   int end_fds = count_fds();
   if (start_fds != end_fds) {
-    fprintf(stderr, "Leaked %d file descriptors!\n", end_fds - start_fds);
+    LOG(ERROR) << "leaked " << end_fds - start_fds << " file descriptors!";
     abort();
   }
 

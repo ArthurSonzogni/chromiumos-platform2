@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "../sommelier.h"            // NOLINT(build/include_directory)
+#include "../sommelier-logging.h"    // NOLINT(build/include_directory)
 #include "../sommelier-timing.h"     // NOLINT(build/include_directory)
 #include "../sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "../sommelier-transform.h"  // NOLINT(build/include_directory)
@@ -238,8 +239,7 @@ static void sl_host_surface_attach(struct wl_client* client,
 
         rv = host->ctx->channel->allocate(create_info, create_output);
         if (rv) {
-          fprintf(stderr, "error: virtwl dmabuf allocation failed: %s\n",
-                  strerror(-rv));
+          LOG(FATAL) << "virtwl dmabuf allocation failed: " << strerror(-rv);
           _exit(EXIT_FAILURE);
         }
 
@@ -332,14 +332,11 @@ static void sl_host_surface_attach(struct wl_client* client,
           // of guest side sync going forward.
           zwp_linux_surface_synchronization_v1_destroy(host->surface_sync);
           host->surface_sync = nullptr;
-          fprintf(stderr,
-                  "DMA_BUF_IOCTL_EXPORT_SYNC_FILE not implemented, defaulting "
-                  "to implicit fence for synchronization.\n");
+          LOG(INFO) << "DMA_BUF_IOCTL_EXPORT_SYNC_FILE not implemented, "
+                       "defaulting to implicit fence for synchronization";
         } else {
-          fprintf(stderr,
-                  "Explicit synchronization failed with reason: %s. "
-                  "Will retry on next attach.\n",
-                  strerror(ret));
+          LOG(WARNING) << "Explicit synchronization failed with reason: "
+                       << strerror(ret) << ", will retry on next attach";
         }
       } else {
         if (sl_dmabuf_sync_is_virtgpu(sync_file_fd)) {
