@@ -175,7 +175,8 @@ void DeviceUser::OnRegistrationResult(const std::string& interface,
     LOG(ERROR) << "Callback registration failed for dbus signal: " << signal
                << " on interface: " << interface;
     device_user_ = device_user::kUnknown;
-  } else {
+  } else if (interface == "org.chromium.SessionManagerInterface" &&
+             signal == "SessionStateChanged") {
     OnSessionStateChange(kInit);
   }
 }

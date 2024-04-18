@@ -69,10 +69,16 @@ class DeviceUserTestFixture : public ::testing::Test {
               std::move(*cb).Run(true);
             })));
     EXPECT_CALL(*cryptohome_proxy_, DoRegisterRemoveCompletedSignalHandler)
-        .WillOnce(WithArg<0>(
-            Invoke([this](base::RepeatingCallback<void(
-                              const user_data_auth::RemoveCompleted&)> cb) {
+        .WillOnce(WithArgs<0, 1>(Invoke(
+            [this](
+                base::RepeatingCallback<void(
+                    const user_data_auth::RemoveCompleted&)> cb,
+                base::OnceCallback<void(const std::string&, const std::string&,
+                                        bool)>* registration_result_cb) {
               remove_completed_cb_ = cb;
+              std::move(*registration_result_cb)
+                  .Run("org.chromium.UserDataAuthInterface", "RemoveCompleted",
+                       true);
             })));
 
     device_user_ = DeviceUser::CreateForTesting(std::move(session_manager_),
@@ -263,7 +269,8 @@ TEST_F(DeviceUserTestFixture, TestUserAlreadySignedIn) {
   EXPECT_FALSE(GetDeviceUserReady());
   SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
-  std::move(registration_result_cb_).Run("", "", true);
+  std::move(registration_result_cb_)
+      .Run("org.chromium.SessionManagerInterface", "SessionStateChanged", true);
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
   EXPECT_TRUE(GetDeviceUserReady());
 
