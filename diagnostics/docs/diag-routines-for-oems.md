@@ -1143,7 +1143,7 @@ Errors:
 
 ### Network Bandwidth
 
-Checks the network bandwidth and report the speed info.
+Checks the network bandwidth and reports the speed info.
 
 The network bandwidth routine has no parameters.
 
