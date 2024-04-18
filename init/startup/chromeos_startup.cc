@@ -502,8 +502,9 @@ void ChromeosStartup::CheckForStatefulWipe() {
         }
         clobber_log_msg = msg;
       } else {
-        // Only fast clobber the non-protected paths in debug build to preserve
-        // the testing tools.
+        // Only fast "clobber" the non-protected paths in debug build to
+        // preserve the testing tools. We are not invoking clobber, cleaning up
+        // stateful manually.
         clobber_log_msg = "Leave developer mode on a debug build";
         DevUpdateStatefulPartition("clobber");
       }
@@ -533,7 +534,11 @@ void ChromeosStartup::CheckForStatefulWipe() {
     }
   }
 
-  if (!clobber_args.empty()) {
+  if (clobber_args.empty()) {
+    if (!clobber_log_msg.empty()) {
+      startup_dep_->ClobberLog(clobber_log_msg);
+    }
+  } else {
     startup_dep_->Clobber(boot_alert_msg, clobber_args, clobber_log_msg);
   }
 }
