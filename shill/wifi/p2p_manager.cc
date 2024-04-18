@@ -275,8 +275,7 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
   }
 }
 
-void P2PManager::DestroyP2PGroup(P2PResultCallback callback,
-                                 uint32_t shill_id) {
+void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int32_t shill_id) {
   LOG(INFO) << __func__;
   CHECK(callback) << "Callback is empty";
 
@@ -297,7 +296,7 @@ void P2PManager::DestroyP2PGroup(P2PResultCallback callback,
 }
 
 void P2PManager::DisconnectFromP2PGroup(P2PResultCallback callback,
-                                        uint32_t shill_id) {
+                                        int32_t shill_id) {
   LOG(INFO) << __func__;
   CHECK(callback) << "Callback is empty";
 
@@ -358,7 +357,7 @@ bool P2PManager::SetAllowed(const bool& value, Error* error) {
 }
 
 void P2PManager::PostResult(std::string result_code,
-                            std::optional<uint32_t> shill_id,
+                            std::optional<int32_t> shill_id,
                             P2PResultCallback callback) {
   if (!callback) {
     LOG(ERROR) << "Callback is not set";
@@ -367,7 +366,7 @@ void P2PManager::PostResult(std::string result_code,
   KeyValueStore response_dict;
   response_dict.Set<std::string>(kP2PResultCode, result_code);
   if (shill_id) {
-    response_dict.Set<uint32_t>(kP2PDeviceShillID, *shill_id);
+    response_dict.Set<int32_t>(kP2PDeviceShillID, *shill_id);
   }
   manager_->dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), response_dict));

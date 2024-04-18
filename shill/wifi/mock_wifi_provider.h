@@ -119,7 +119,7 @@ class MockWiFiProvider : public WiFiProvider {
               RequestP2PDeviceCreation,
               (LocalDevice::IfaceType,
                LocalDevice::EventCallback,
-               uint32_t shill_id,
+               int32_t shill_id,
                WiFiPhy::Priority priority,
                base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
                base::OnceCallback<void()> fail_cb),
@@ -128,7 +128,7 @@ class MockWiFiProvider : public WiFiProvider {
               CreateP2PDevice,
               (LocalDevice::IfaceType,
                LocalDevice::EventCallback,
-               uint32_t shill_id,
+               int32_t shill_id,
                base::OnceCallback<void(P2PDeviceRefPtr)>,
                base::OnceCallback<void()>),
               (override));

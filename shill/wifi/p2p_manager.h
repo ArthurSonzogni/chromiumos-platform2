@@ -56,12 +56,12 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
 
   // Destroy the existing P2P group and tear down the P2P group-owner interface.
   void DestroyP2PGroup(base::OnceCallback<void(KeyValueStore result)> callback,
-                       uint32_t shill_id);
+                       int32_t shill_id);
 
   // Disconnect from a P2P group. Will destroy the P2P client interface.
   void DisconnectFromP2PGroup(
       base::OnceCallback<void(KeyValueStore result)> callback,
-      uint32_t shill_id);
+      int32_t shill_id);
 
   // D-Bus property getters
   // This property is temporary and will be removed when the feature is mature.
@@ -182,7 +182,7 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   void OnPeerDisassoc(P2PDeviceRefPtr device) { return; }
 
   void PostResult(std::string result_code,
-                  std::optional<uint32_t> shill_id,
+                  std::optional<int32_t> shill_id,
                   P2PResultCallback callback);
 
   // Delete a P2P device, stopping all active operations and deleting it's
@@ -213,14 +213,14 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   bool allowed_;
 
   // Map of unique IDs to P2P group owners.
-  std::map<uint32_t, P2PDeviceRefPtr> p2p_group_owners_;
+  std::map<int32_t, P2PDeviceRefPtr> p2p_group_owners_;
   // Map of unique IDs to P2P clients.
-  std::map<uint32_t, P2PDeviceRefPtr> p2p_clients_;
+  std::map<int32_t, P2PDeviceRefPtr> p2p_clients_;
 
   // The next value that should be used as a unique ID for a P2P device.
   // Increases by 1 for each new device and resets to 0 when P2PManager is
   // reset.
-  uint32_t next_unique_id_;
+  int32_t next_unique_id_;
 
   // Member to hold the result callback function. This callback function gets
   // set when dbus methods (CreateP2PGroup, ConnectToP2PGroup, DestroyP2PGroup,

@@ -67,7 +67,7 @@ class P2PDevice : public LocalDevice,
             LocalDevice::IfaceType iface_type,
             const std::string& primary_link_name,
             uint32_t phy_index,
-            uint32_t shill_id,
+            int32_t shill_id,
             LocalDevice::EventCallback callback);
 
   P2PDevice(const P2PDevice&) = delete;
@@ -111,7 +111,7 @@ class P2PDevice : public LocalDevice,
   const std::string& log_name() const { return log_name_; }
 
   // Get shill_id_.
-  uint32_t shill_id() const { return shill_id_; }
+  int32_t shill_id() const { return shill_id_; }
 
   // Get state_.
   mockable P2PDeviceState state() const { return state_; }
@@ -311,7 +311,7 @@ class P2PDevice : public LocalDevice,
   // Name used for logging.
   std::string log_name_;
   // Uniquely identifies this device relative to all other P2P devices in Shill.
-  uint32_t shill_id_;
+  int32_t shill_id_;
   // P2P device state as listed in enum P2PDeviceState.
   P2PDeviceState state_;
   // P2P service configured on this device.

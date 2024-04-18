@@ -277,7 +277,7 @@ class WiFiProvider : public ProviderInterface {
   mockable bool RequestP2PDeviceCreation(
       LocalDevice::IfaceType iface_type,
       LocalDevice::EventCallback callback,
-      uint32_t shill_id,
+      int32_t shill_id,
       WiFiPhy::Priority priority,
       base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
       base::OnceCallback<void()> fail_cb);
@@ -403,7 +403,7 @@ class WiFiProvider : public ProviderInterface {
   mockable void CreateP2PDevice(
       LocalDevice::IfaceType iface_type,
       LocalDevice::EventCallback callback,
-      uint32_t shill_id,
+      int32_t shill_id,
       base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
       base::OnceCallback<void()> fail_cb);
 

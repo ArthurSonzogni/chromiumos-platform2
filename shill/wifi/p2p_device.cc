@@ -94,7 +94,7 @@ P2PDevice::P2PDevice(Manager* manager,
                      LocalDevice::IfaceType iface_type,
                      const std::string& primary_link_name,
                      uint32_t phy_index,
-                     uint32_t shill_id,
+                     int32_t shill_id,
                      LocalDevice::EventCallback callback)
     : LocalDevice(manager, iface_type, std::nullopt, phy_index, callback),
       primary_link_name_(primary_link_name),
@@ -200,7 +200,7 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
                  << iface_type();
     return group_info;
   }
-  group_info.Set<uint32_t>(kP2PGroupInfoShillIDProperty, shill_id());
+  group_info.Set<int32_t>(kP2PGroupInfoShillIDProperty, shill_id());
   group_info.Set<String>(kP2PGroupInfoStateProperty, GroupInfoState(state_));
 
   if (IsLinkLayerConnected()) {
@@ -236,7 +236,7 @@ KeyValueStore P2PDevice::GetClientInfo() const {
                  << iface_type();
     return client_info;
   }
-  client_info.Set<uint32_t>(kP2PClientInfoShillIDProperty, shill_id());
+  client_info.Set<int32_t>(kP2PClientInfoShillIDProperty, shill_id());
   client_info.Set<String>(kP2PClientInfoStateProperty, ClientInfoState(state_));
 
   if (IsLinkLayerConnected()) {
