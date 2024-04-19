@@ -507,11 +507,10 @@ std::string GetOrCreateArcSalt() {
 bool IsChromeOSUserAvailable(Mode mode) {
   switch (mode) {
     case Mode::BOOT_CONTINUE:
-    case Mode::CREATE_DATA:
+    case Mode::PREPARE_ARCVM_DATA:
     case Mode::REMOVE_DATA:
     case Mode::REMOVE_STALE_DATA:
     case Mode::MOUNT_SDCARD:
-    case Mode::HANDLE_UPGRADE:
       return true;
     case Mode::PREPARE_HOST_GENERATED_DIR:
     case Mode::APPLY_PER_BOARD_CONFIG:
@@ -802,9 +801,8 @@ ArcSetup::ArcSetup(Mode mode, const base::FilePath& config_json)
       arc_mounter_(GetDefaultMounter()),
       arc_paths_(ArcPaths::Create(mode_, config_)),
       arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()) {
-  CHECK(mode == Mode::APPLY_PER_BOARD_CONFIG || mode == Mode::CREATE_DATA ||
-        mode == Mode::REMOVE_DATA || mode == Mode::REMOVE_STALE_DATA ||
-        !config_json.empty());
+  CHECK(mode == Mode::APPLY_PER_BOARD_CONFIG || mode == Mode::REMOVE_DATA ||
+        mode == Mode::REMOVE_STALE_DATA || !config_json.empty());
 }
 
 ArcSetup::ArcSetup(Mode mode, const ArcVmDataType arcvm_data_type)
@@ -814,7 +812,7 @@ ArcSetup::ArcSetup(Mode mode, const ArcVmDataType arcvm_data_type)
       arc_mounter_(GetDefaultMounter()),
       arc_paths_(ArcPaths::Create(mode_, config_)),
       arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()) {
-  CHECK(mode == Mode::HANDLE_UPGRADE);
+  CHECK(mode == Mode::PREPARE_ARCVM_DATA);
   CHECK(arcvm_data_type > ArcVmDataType::kUndefined &&
         arcvm_data_type <= ArcVmDataType::kMaxValue)
       << "Invalid arcvm_data_type: " << static_cast<int>(arcvm_data_type);
@@ -2842,10 +2840,23 @@ void ArcSetup::OnApplyPerBoardConfig() {
   }
 }
 
-void ArcSetup::OnCreateData() {
+void ArcSetup::OnPrepareArcVmData() {
+  // Android's user data needs to be removed in certain upgrading scenarios.
+  // Hence first check the data SDK version to decide the upgrade type, send
+  // upgrade metrics, and remove /data if necessary.
+  const AndroidSdkVersion data_sdk_version = GetArcVmDataSdkVersion();
+  SendUpgradeMetrics(data_sdk_version);
+  DeleteAndroidMediaProviderDataOnUpgrade(data_sdk_version);
+  DeleteAndroidDataOnUpgrade(data_sdk_version);
+
+  if (arcvm_data_type_ != ArcVmDataType::kVirtiofs) {
+    // Skip setting up /home/root/<hash>/android-data when virtio-blk /data is
+    // used.
+    return;
+  }
   const base::FilePath bind_target(
       config_.GetStringOrDie("ANDROID_MUTABLE_SOURCE"));
-  // bind_target may be already bound if arc-create-data has previously run
+  // bind_target may be already bound if arcvm-prepare-data has previously run
   // during this session.
   EXIT_IF(!arc_mounter_->UmountIfExists(bind_target));
   // Create data folder and bind to bind_target. The bind mount will be cleaned
@@ -2885,13 +2896,6 @@ void ArcSetup::OnUpdateRestoreconLast() {
   std::string hash;
   EXIT_IF(!GetSha1HashOfFiles(context_files, &hash));
   EXIT_IF(!SetRestoreconLastXattr(mutable_data_dir, hash));
-}
-
-void ArcSetup::OnHandleUpgrade() {
-  const AndroidSdkVersion data_sdk_version = GetArcVmDataSdkVersion();
-  SendUpgradeMetrics(data_sdk_version);
-  DeleteAndroidMediaProviderDataOnUpgrade(data_sdk_version);
-  DeleteAndroidDataOnUpgrade(data_sdk_version);
 }
 
 std::string ArcSetup::GetSystemBuildPropertyOrDie(const std::string& name) {
@@ -2949,8 +2953,8 @@ void ArcSetup::Run() {
     case Mode::APPLY_PER_BOARD_CONFIG:
       OnApplyPerBoardConfig();
       break;
-    case Mode::CREATE_DATA:
-      OnCreateData();
+    case Mode::PREPARE_ARCVM_DATA:
+      OnPrepareArcVmData();
       break;
     case Mode::REMOVE_DATA:
       OnRemoveData();
@@ -2966,9 +2970,6 @@ void ArcSetup::Run() {
       break;
     case Mode::UPDATE_RESTORECON_LAST:
       OnUpdateRestoreconLast();
-      break;
-    case Mode::HANDLE_UPGRADE:
-      OnHandleUpgrade();
       break;
     case Mode::UNKNOWN:
       NOTREACHED();

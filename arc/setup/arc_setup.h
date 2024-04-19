@@ -73,13 +73,12 @@ enum class Mode {
   PRE_CHROOT,
   PREPARE_HOST_GENERATED_DIR,
   APPLY_PER_BOARD_CONFIG,  // for ARCVM
-  CREATE_DATA,             // for ARCVM
+  PREPARE_ARCVM_DATA,      // for ARCVM
   REMOVE_DATA,
   REMOVE_STALE_DATA,
   MOUNT_SDCARD,
   UNMOUNT_SDCARD,
   UPDATE_RESTORECON_LAST,
-  HANDLE_UPGRADE,  // for ARC upgrades
   UNKNOWN,
 };
 
@@ -396,8 +395,8 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // Called when arc-apply-per-board-config is executed.
   void OnApplyPerBoardConfig();
 
-  // Called when arc-create-data is executed.
-  void OnCreateData();
+  // Called when arcvm-prepare-data is executed.
+  void OnPrepareArcVmData();
 
   // Called when arc-remove-data is executed.
   void OnRemoveData();
@@ -413,9 +412,6 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
 
   // Called when arc-setup is called with --mode=update-restorecon-last.
   void OnUpdateRestoreconLast();
-
-  // Called on every boot to handle any necessary upgrades.
-  void OnHandleUpgrade();
 
   // Returns system build property.
   std::string GetSystemBuildPropertyOrDie(const std::string& name);

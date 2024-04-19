@@ -26,8 +26,7 @@ group("all") {
   if (use.arcvm) {
     deps += [
       ":arc-apply-per-board-config",
-      ":arc-create-data",
-      ":arc-handle-upgrade",
+      ":arcvm-prepare-data",
       "xml:arc-packages-xml-reader",
     ]
   }
@@ -105,9 +104,9 @@ install_config("install_minijail_configs") {
   }
   if (use.arcvm) {
     sources += [
-      "init/minijail/arc-create-data.conf",
-      "init/minijail/arc-handle-upgrade.conf",
       "init/minijail/arcvm-per-board-features.conf",
+      "init/minijail/arcvm-prepare-virtio-blk-data.conf",
+      "init/minijail/arcvm-prepare-virtio-fs-data.conf",
     ]
   }
   install_path = "minijail_conf"
@@ -138,9 +137,8 @@ install_config("install_upstart_configs") {
   }
   if (use.arcvm) {
     sources += [
-      "init/arc-create-data.conf",
-      "init/arc-handle-upgrade.conf",
       "init/arcvm-per-board-features.conf",
+      "init/arcvm-prepare-data.conf",
     ]
   }
   install_path = "upstart"
@@ -221,15 +219,8 @@ executable("arc-apply-per-board-config") {
   install_path = "sbin"
 }
 
-executable("arc-create-data") {
-  sources = [ "arc_create_data_main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":libarc_setup" ]
-  install_path = "sbin"
-}
-
-executable("arc-handle-upgrade") {
-  sources = [ "arc_handle_upgrade_main.cc" ]
+executable("arcvm-prepare-data") {
+  sources = [ "arcvm_prepare_data_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libarc_setup" ]
   install_path = "sbin"
