@@ -30,6 +30,8 @@ namespace {
 
 constexpr char kLibraryName[] = "libupsampler.so";
 constexpr char kGeraltModelName[] = "GERALT";
+constexpr char kApuStableDelegateConfigFile[] =
+    "/etc/camera/apu_stable_delegate_settings.json";
 constexpr uint32_t kRGBNumOfChannels = 3;
 constexpr int kSyncWaitTimeoutMs = 300;
 
@@ -104,17 +106,26 @@ bool SingleFrameUpsampler::Initialize(const base::FilePath& dlc_root_path) {
   // Create a function pointer of UpsampleWrapper.
   runner_ = g_create_fn();
 
-  // Use NNAPI delegate for APU accelerator. Default to OpenCL for others.
-  InferenceMode inference_mode =
-      base::SysInfo::HardwareModelName() == kGeraltModelName
-          ? cros::InferenceMode::kNnApi
-          : cros::InferenceMode::kOpenCL;
+  // Use stable delegate for APU accelerator. Default to OpenCL for others.
+  InferenceMode inference_mode = cros::InferenceMode::kOpenCL;
+  std::string delegate_settings_file = "";
+
+  if (base::SysInfo::HardwareModelName() == kGeraltModelName) {
+    inference_mode = cros::InferenceMode::kStableDelegate;
+    delegate_settings_file = kApuStableDelegateConfigFile;
+    if (!base::PathExists(base::FilePath(delegate_settings_file))) {
+      LOGF(ERROR) << "File not exist: " << delegate_settings_file;
+      runner_ = nullptr;
+      return false;
+    }
+  }
 
   // Initialize the Upsampler engine.
   CHECK(g_init_upsampler_fn);
-  if (!g_init_upsampler_fn(runner_, static_cast<int>(inference_mode),
-                           /*use_lancet_alpha=*/true,
-                           /*stable_delegate_settings_file=*/"")) {
+  if (!g_init_upsampler_fn(
+          runner_, static_cast<int>(inference_mode),
+          /*use_lancet_alpha=*/true,
+          /*stable_delegate_settings_file=*/delegate_settings_file.c_str())) {
     LOGF(ERROR) << "Failed to initialize Lancet upsampler engine";
     runner_ = nullptr;
     return false;
