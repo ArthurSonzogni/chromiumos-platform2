@@ -9,7 +9,10 @@ group("all") {
     ":arc-prepare-host-generated-dir",
     ":arc-remove-data",
     ":arc-remove-stale-data",
+    ":install_dbus_system_d_configs",
     ":install_minijail_configs",
+    ":install_tmpfilesd_configs",
+    ":install_upstart_configs",
     ":libarc_setup",
     "xml:libandroidxml",
   ]
@@ -17,6 +20,7 @@ group("all") {
     deps += [
       ":arc-setup",
       ":generate_squashfs",
+      ":install_config_json",
     ]
   }
   if (use.arcvm) {
@@ -80,6 +84,17 @@ config("target_defaults") {
   ]
 }
 
+install_config("install_dbus_system_d_configs") {
+  sources = []
+  if (use.arcpp) {
+    sources += [ "init/dbus-1/ArcSetupUpstart.conf" ]
+  }
+  if (use.arcvm) {
+    sources += [ "init/dbus-1/ArcVmSetupUpstart.conf" ]
+  }
+  install_path = "dbus_system_d"
+}
+
 install_config("install_minijail_configs") {
   sources = [
     "init/minijail/arc-remove-data.conf",
@@ -96,6 +111,44 @@ install_config("install_minijail_configs") {
     ]
   }
   install_path = "minijail_conf"
+}
+
+install_config("install_tmpfilesd_configs") {
+  sources = [ "tmpfiles.d/arc-setup.conf" ]
+  install_path = "tmpfilesd"
+}
+
+install_config("install_upstart_configs") {
+  sources = [
+    "init/arc-prepare-host-generated-dir.conf",
+    "init/arc-remove-data.conf",
+    "init/arc-stale-directory-remover.conf",
+  ]
+  if (use.arcpp) {
+    sources += [
+      "init/arc-boot-continue.conf",
+      "init/arc-lifetime.conf",
+      "init/arc-sdcard-mount.conf",
+      "init/arc-sdcard.conf",
+      "init/arc-system-mount.conf",
+      "init/arc-update-restorecon-last.conf",
+      "init/arcpp-media-sharing-services.conf",
+      "init/arcpp-post-login-services.conf",
+    ]
+  }
+  if (use.arcvm) {
+    sources += [
+      "init/arc-create-data.conf",
+      "init/arc-handle-upgrade.conf",
+      "init/arcvm-per-board-features.conf",
+    ]
+  }
+  install_path = "upstart"
+}
+
+install_config("install_config_json") {
+  sources = [ "init/arc-setup/config.json" ]
+  install_path = "/usr/share/arc-setup"
 }
 
 libarc_setup_sources = [
@@ -130,48 +183,56 @@ shared_library("libarc_setup") {
     "bootstat",
   ]
   deps = [ "xml:libandroidxml" ]
+  install_path = "lib"
 }
 
 executable("arc-setup") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libarc_setup" ]
+  install_path = "sbin"
 }
 
 executable("arc-prepare-host-generated-dir") {
   sources = [ "arc_prepare_host_generated_dir_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libarc_setup" ]
+  install_path = "sbin"
 }
 
 executable("arc-remove-data") {
   sources = [ "arc_remove_data_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libarc_setup" ]
+  install_path = "sbin"
 }
 
 executable("arc-remove-stale-data") {
   sources = [ "arc_remove_stale_data_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libarc_setup" ]
+  install_path = "sbin"
 }
 
 executable("arc-apply-per-board-config") {
   sources = [ "arc_apply_per_board_config_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libarc_setup" ]
+  install_path = "sbin"
 }
 
 executable("arc-create-data") {
   sources = [ "arc_create_data_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libarc_setup" ]
+  install_path = "sbin"
 }
 
 executable("arc-handle-upgrade") {
   sources = [ "arc_handle_upgrade_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libarc_setup" ]
+  install_path = "sbin"
 }
 
 action("mkdir_squashfs_source_dir") {

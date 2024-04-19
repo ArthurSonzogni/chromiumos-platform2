@@ -13,10 +13,14 @@ shared_library("libandroidxml") {
     "USE_ARCVM=${use.arcvm}",
   ]
   pkg_deps = [ "libchrome" ]
+  install_path = "lib"
 }
 
 executable("arc-packages-xml-reader") {
   sources = [ "arc_packages_xml_reader_main.cc" ]
   deps = [ ":libandroidxml" ]
   pkg_deps = [ "libchrome" ]
+
+  # Install to /usr/bin so that ARCVM can use this binary via virtio-fs.
+  install_path = "bin"
 }
