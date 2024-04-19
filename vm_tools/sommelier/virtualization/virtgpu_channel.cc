@@ -293,8 +293,8 @@ int32_t VirtGpuChannel::create_context(int& out_channel_fd) {
   cmd_init.query_ring_id = query_ring_res_id;
   cmd_init.channel_ring_id = channel_ring_res_id;
   cmd_init.channel_type = CROSS_DOMAIN_CHANNEL_TYPE_WAYLAND;
-  ret = submit_cmd((uint32_t*)&cmd_init, cmd_init.hdr.cmd_size,
-                   CROSS_DOMAIN_RING_NONE, 0, false);
+  ret = submit_cmd(reinterpret_cast<uint32_t*>(&cmd_init),
+                   cmd_init.hdr.cmd_size, CROSS_DOMAIN_RING_NONE, 0, false);
   if (ret < 0)
     return ret;
 
@@ -353,8 +353,8 @@ int32_t VirtGpuChannel::send(const struct WaylandSendReceive& send) {
     cmd_send->num_identifiers++;
   }
 
-  ret = submit_cmd((uint32_t*)cmd_send, cmd_send->hdr.cmd_size,
-                   CROSS_DOMAIN_RING_NONE, 0, false);
+  ret = submit_cmd(reinterpret_cast<uint32_t*>(cmd_send),
+                   cmd_send->hdr.cmd_size, CROSS_DOMAIN_RING_NONE, 0, false);
   if (ret < 0)
     return ret;
 
@@ -372,7 +372,7 @@ int32_t VirtGpuChannel::handle_channel_event(
   struct drm_event dummy_event;
 
   bytes_read = read(virtgpu_, &dummy_event, sizeof(struct drm_event));
-  if (bytes_read < (int)sizeof(struct drm_event)) {
+  if (bytes_read < static_cast<int>(sizeof(struct drm_event))) {
     LOG(ERROR) << "invalid event size";
     return -EINVAL;
   }
@@ -466,8 +466,8 @@ int32_t VirtGpuChannel::handle_pipe(int read_fd, bool readable, bool& hang_up) {
       sizeof(struct CrossDomainReadWrite) + cmd_write->opaque_data_size;
   cmd_write->hang_up = hang_up;
 
-  ret = submit_cmd((uint32_t*)cmd_write, cmd_write->hdr.cmd_size,
-                   CROSS_DOMAIN_RING_NONE, 0, false);
+  ret = submit_cmd(reinterpret_cast<uint32_t*>(cmd_write),
+                   cmd_write->hdr.cmd_size, CROSS_DOMAIN_RING_NONE, 0, false);
   if (ret < 0)
     return ret;
 
@@ -534,7 +534,7 @@ int32_t VirtGpuChannel::image_query(const struct WaylandBufferCreateInfo& input,
                                     struct WaylandBufferCreateOutput& output,
                                     uint64_t& blob_id) {
   int32_t ret = 0;
-  uint32_t* addr = (uint32_t*)query_ring_addr_;
+  uint32_t* addr = reinterpret_cast<uint32_t*>(query_ring_addr_);
   struct CrossDomainGetImageRequirements cmd_get_reqs = {};
   struct BufferDescription new_desc = {};
 
@@ -558,8 +558,9 @@ int32_t VirtGpuChannel::image_query(const struct WaylandBufferCreateInfo& input,
   // Assumes a gbm-like API on the host
   cmd_get_reqs.flags = GBM_BO_USE_LINEAR | GBM_BO_USE_SCANOUT;
 
-  ret = submit_cmd((uint32_t*)&cmd_get_reqs, cmd_get_reqs.hdr.cmd_size,
-                   CROSS_DOMAIN_QUERY_RING, query_ring_handle_, true);
+  ret = submit_cmd(reinterpret_cast<uint32_t*>(&cmd_get_reqs),
+                   cmd_get_reqs.hdr.cmd_size, CROSS_DOMAIN_QUERY_RING,
+                   query_ring_handle_, true);
   if (ret < 0)
     return ret;
 
@@ -611,8 +612,8 @@ int32_t VirtGpuChannel::channel_poll() {
 
   // Specifying `channel_ring_handle_` is unnecessary.  The waiting mechanism
   // is `VIRTGPU_CONTEXT_PARAM_POLL_RINGS_MASK` for channel responses.
-  ret = submit_cmd((uint32_t*)&cmd_poll, cmd_poll.hdr.cmd_size,
-                   CROSS_DOMAIN_CHANNEL_RING, 0, false);
+  ret = submit_cmd(reinterpret_cast<uint32_t*>(&cmd_poll),
+                   cmd_poll.hdr.cmd_size, CROSS_DOMAIN_CHANNEL_RING, 0, false);
   if (ret < 0)
     return ret;
 
@@ -757,8 +758,8 @@ int32_t VirtGpuChannel::handle_receive(enum WaylandChannelEvent& event_type,
   struct CrossDomainSendReceive* cmd_receive =
       (struct CrossDomainSendReceive*)channel_ring_addr_;
 
-  uint8_t* recv_data =
-      (uint8_t*)channel_ring_addr_ + sizeof(struct CrossDomainSendReceive);
+  uint8_t* recv_data = reinterpret_cast<uint8_t*>(channel_ring_addr_) +
+                       sizeof(struct CrossDomainSendReceive);
 
   for (uint32_t i = 0; i < CROSS_DOMAIN_MAX_IDENTIFIERS; i++) {
     if (i < cmd_receive->num_identifiers) {
@@ -809,8 +810,8 @@ int32_t VirtGpuChannel::handle_read() {
   struct CrossDomainReadWrite* cmd_read =
       (struct CrossDomainReadWrite*)channel_ring_addr_;
 
-  uint8_t* read_data =
-      (uint8_t*)channel_ring_addr_ + sizeof(struct CrossDomainReadWrite);
+  uint8_t* read_data = reinterpret_cast<uint8_t*>(channel_ring_addr_) +
+                       sizeof(struct CrossDomainReadWrite);
 
   ret = pipe_lookup(CROSS_DOMAIN_ID_TYPE_READ_PIPE, cmd_read->identifier,
                     write_fd, index);
