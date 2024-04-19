@@ -735,13 +735,14 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
   }
 
   // Create dev_image directory in base images in developer mode.
-  base::FilePath stateful_dev = root_.Append(kStatefulDevImage);
-  if (!platform_->DirectoryExists(stateful_dev)) {
-    if (!platform_->CreateDirectory(stateful_dev)) {
-      PLOG(ERROR) << "Failed to create " << stateful_dev.value();
+  base::FilePath stateful_dev_image = root_.Append(kStatefulDevImage);
+  if (!platform_->DirectoryExists(stateful_dev_image)) {
+    if (!platform_->CreateDirectory(stateful_dev_image)) {
+      PLOG(ERROR) << "Failed to create " << stateful_dev_image.value();
     }
-    if (!platform_->SetPermissions(stateful_dev, 0755)) {
-      PLOG(ERROR) << "Failed to set permissions for " << stateful_dev.value();
+    if (!platform_->SetPermissions(stateful_dev_image, 0755)) {
+      PLOG(ERROR) << "Failed to set permissions for "
+                  << stateful_dev_image.value();
     }
   }
 
@@ -752,7 +753,7 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
       brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
       auto lg = lvm->GetLogicalVolume(volume_group_.value(), "unencrypted");
       lg->Activate();
-      platform_->Mount(device, stateful_dev, "",
+      platform_->Mount(device, stateful_dev_image, "",
                        MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
                        "discard");
     }
@@ -763,7 +764,7 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
 
   // Mount and then remount to enable exec/suid.
   base::FilePath usrlocal = root_.Append(kUsrLocal);
-  mount_helper_->BindMountOrFail(stateful_dev, usrlocal);
+  mount_helper_->BindMountOrFail(stateful_dev_image, usrlocal);
   if (!platform_->Mount(base::FilePath(), usrlocal, "", MS_REMOUNT, "")) {
     PLOG(WARNING) << "Failed to remount " << usrlocal.value();
   }

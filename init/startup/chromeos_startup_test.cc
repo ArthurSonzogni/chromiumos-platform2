@@ -1368,7 +1368,7 @@ class DevMountPackagesTest : public ::testing::Test {
         mount_helper_.get());
     proc_mounts_ = base_dir_.Append("proc/mounts");
     mount_log_ = base_dir_.Append("var/log/mount_options.log");
-    stateful_dev_ = base_dir_.Append("mnt/stateful_partition/dev_image");
+    stateful_dev_image_ = base_dir_.Append("mnt/stateful_partition/dev_image");
     usrlocal_ = base_dir_.Append("usr/local");
     asan_dir_ = base_dir_.Append("var/log/asan");
     lsm_dir_ = base_dir_.Append(kLSMDir);
@@ -1378,7 +1378,7 @@ class DevMountPackagesTest : public ::testing::Test {
     var_overlay_ = base_dir_.Append("var_overlay");
     var_portage_ = base_dir_.Append("var/lib/portage");
     ASSERT_TRUE(platform_->WriteStringToFile(allow_sym_, ""));
-    ASSERT_TRUE(platform_->CreateDirectory(stateful_dev_));
+    ASSERT_TRUE(platform_->CreateDirectory(stateful_dev_image_));
     ASSERT_TRUE(platform_->CreateDirectory(usrlocal_));
     ASSERT_TRUE(platform_->CreateDirectory(var_overlay_));
     ASSERT_TRUE(platform_->CreateDirectory(var_portage_));
@@ -1393,7 +1393,7 @@ class DevMountPackagesTest : public ::testing::Test {
   base::ScopedTempDir temp_dir_;
   base::FilePath proc_mounts_;
   base::FilePath mount_log_;
-  base::FilePath stateful_dev_;
+  base::FilePath stateful_dev_image_;
   base::FilePath usrlocal_;
   base::FilePath asan_dir_;
   base::FilePath lsm_dir_;
@@ -1415,7 +1415,7 @@ TEST_F(DevMountPackagesTest, NoDeviceDisableStatefulSecurity) {
 
   ASSERT_TRUE(platform_->WriteStringToFile(proc_mounts_, mount_contents));
 
-  EXPECT_CALL(*platform_, Mount(stateful_dev_, usrlocal_, _, MS_BIND, _))
+  EXPECT_CALL(*platform_, Mount(stateful_dev_image_, usrlocal_, _, MS_BIND, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*platform_, Mount(base::FilePath(), usrlocal_, _, MS_REMOUNT, _))
       .WillOnce(Return(true));
@@ -1428,7 +1428,7 @@ TEST_F(DevMountPackagesTest, NoDeviceDisableStatefulSecurity) {
   platform_->ReadFileToString(mount_log_, &mount_log_contents);
   EXPECT_EQ(mount_contents, mount_log_contents);
 
-  EXPECT_TRUE(platform_->DirectoryExists(stateful_dev_));
+  EXPECT_TRUE(platform_->DirectoryExists(stateful_dev_image_));
 
   std::string allow_sym_contents;
   platform_->ReadFileToString(allow_sym_, &allow_sym_contents);
@@ -1445,7 +1445,7 @@ TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
 
   ASSERT_TRUE(platform_->WriteStringToFile(proc_mounts_, mount_contents));
 
-  EXPECT_CALL(*platform_, Mount(stateful_dev_, usrlocal_, _, MS_BIND, _))
+  EXPECT_CALL(*platform_, Mount(stateful_dev_image_, usrlocal_, _, MS_BIND, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*platform_, Mount(base::FilePath(), usrlocal_, _, MS_REMOUNT, _))
       .WillOnce(Return(true));
@@ -1463,7 +1463,7 @@ TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
   platform_->ReadFileToString(mount_log_, &mount_log_contents);
   EXPECT_EQ(mount_contents, mount_log_contents);
 
-  EXPECT_TRUE(platform_->DirectoryExists(stateful_dev_));
+  EXPECT_TRUE(platform_->DirectoryExists(stateful_dev_image_));
 
   base::FilePath tmp_portage = base_dir_.Append("var/tmp/portage");
   std::string expected_allow = tmp_portage.value();
