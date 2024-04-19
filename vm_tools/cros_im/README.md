@@ -39,21 +39,19 @@ as backwards compatibility with older versions of ChromeOS is not guaranteed.
 
 ### IME switching shortcuts
 
-If you use Ctrl+Space or Ctrl+Shift+Space to switch IMEs, you may want to
-configure sommelier to allow the host compositor to handle these. This
-configuration is *not* officially supported by the Crostini team.
+If you use the default keyboard shortcuts to switch IMEs, it is recommended to
+use the keyboard shortcut customization app to change these from Ctrl+Space to
+Search+Space and Ctrl+Shift+Space to Search+Ctrl+Space. Shortcuts making use of
+the Search key are guaranteed to work across the platform and not be consumed
+by applications. The shortcut customization app is enabled by default from M124
+but can be manually turned on via the #enable-shortcut-customization flag in
+earlier versions.
 
-```bash
-setup_conf() {
-  mkdir -p "$1"
-  echo -e '[Service]\nEnvironment="SOMMELIER_ACCELERATORS=Super_L,<Alt>bracketleft,<Alt>bracketright,<Control>space,<Control><Shift>space"' > "$1"/override.conf
-}
-setup_conf ~/.config/systemd/user/sommelier@.service.d
-setup_conf ~/.config/systemd/user/sommelier-x@.service.d
-# This will likely kill all running GUI apps
-systemctl --user daemon-reload
-systemctl --user restart sommelier{,-x}@{0,1}.service
-```
+It is also possible to continue using Ctrl+Space to switch IMEs but configure
+sommelier to allow the host compositor to handle these. Unlike using the
+shortcut customization app, this configuration is neither officially supported
+nor recommended, but steps are detailed in earlier revisions of this README if
+you really want to do this.
 
 ## Manual build instructions
 ### Compiling
