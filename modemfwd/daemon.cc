@@ -300,9 +300,10 @@ void Daemon::InstallDlcCompleted(const std::string& mount_path,
 }
 
 void Daemon::CompleteInitialization() {
-  if (!fw_manifest_directory_)
+  if (!fw_manifest_directory_) {
     fw_manifest_directory_ = CreateFirmwareDirectory(
         std::move(fw_index_), fw_manifest_dir_path_, variant_);
+  }
   DCHECK(fw_manifest_directory_);
 
   auto journal = OpenJournal(journal_file_path_, fw_manifest_directory_.get(),
