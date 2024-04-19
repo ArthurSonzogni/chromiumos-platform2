@@ -2031,6 +2031,26 @@ void ArcSetup::GetBootTypeAndDataSdkVersion(
   *out_data_sdk_version = SdkVersionFromString(data_sdk_version);
 }
 
+AndroidSdkVersion ArcSetup::GetArcVmDataSdkVersion() {
+  // Mount virtio-blk /data on /home/root/<hash>/android-data/data when needed.
+  const base::FilePath data_device_path = GetArcVmDataDevicePath(
+      config_.GetStringOrDie("CHROMEOS_USER"), arc_paths_->root_directory);
+  std::unique_ptr<ScopedMount> android_data_mount =
+      data_device_path.empty()
+          ? nullptr
+          : ScopedMount::CreateScopedLoopMount(
+                arc_mounter_.get(), data_device_path.value(),
+                arc_paths_->android_data_directory.Append("data"),
+                LoopMountFilesystemType::kExt4,
+                MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RDONLY);
+  LOG_IF(INFO, android_data_mount) << "Mounted " << data_device_path;
+
+  ArcBootType boot_type;
+  AndroidSdkVersion data_sdk_version;
+  GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
+  return data_sdk_version;
+}
+
 void ArcSetup::ShouldDeleteDataExecutables(
     ArcBootType boot_type,
     bool* out_should_delete_data_dalvik_cache_directory,
@@ -2872,26 +2892,7 @@ void ArcSetup::OnUpdateRestoreconLast() {
 }
 
 void ArcSetup::OnHandleUpgrade() {
-  // Mount virtio-blk /data on /home/root/<hash>/android-data/data when needed.
-  // Here, we mount an ext4 image as read-only but without the "noload" option,
-  // which should be safe since arc-handle-upgrade blocks the guest side /data
-  // mount on ARCVM.
-  const base::FilePath data_device_path = GetArcVmDataDevicePath(
-      config_.GetStringOrDie("CHROMEOS_USER"), arc_paths_->root_directory);
-  std::unique_ptr<ScopedMount> android_data_mount =
-      data_device_path.empty()
-          ? nullptr
-          : ScopedMount::CreateScopedLoopMount(
-                arc_mounter_.get(), data_device_path.value(),
-                arc_paths_->android_data_directory.Append("data"),
-                LoopMountFilesystemType::kExt4,
-                MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RDONLY);
-  LOG_IF(INFO, android_data_mount) << "Mounted " << data_device_path;
-
-  ArcBootType boot_type;
-  AndroidSdkVersion data_sdk_version;
-  GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
-
+  const AndroidSdkVersion data_sdk_version = GetArcVmDataSdkVersion();
   SendUpgradeMetrics(data_sdk_version);
   DeleteAndroidMediaProviderDataOnUpgrade(data_sdk_version);
   DeleteAndroidDataOnUpgrade(data_sdk_version);

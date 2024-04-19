@@ -286,6 +286,10 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   void GetBootTypeAndDataSdkVersion(ArcBootType* out_boot_type,
                                     AndroidSdkVersion* out_data_sdk_version);
 
+  // Returns the SDK version read from packages.xml in ARCVM /data by internally
+  // calling GetBootTypeAndDataSdkVersion().
+  AndroidSdkVersion GetArcVmDataSdkVersion();
+
   // Checks if arc-setup should clobber /data/dalvik-cache and /data/app/*/oat
   // before starting the container.
   void ShouldDeleteDataExecutables(
