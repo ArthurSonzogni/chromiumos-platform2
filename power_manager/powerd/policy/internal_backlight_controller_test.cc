@@ -34,6 +34,9 @@ namespace {
 // trigger an update to InternalBacklightController's ALS brightness percent.
 const int kAlsSamplesToTriggerAdjustment = 2;
 
+// The screen brightness used by Battery Saver to dim the screen.
+const double kBatterySaverBrightnessPercent = 20.0;
+
 }  // namespace
 
 class InternalBacklightControllerTest : public TestEnvironment {
@@ -94,6 +97,12 @@ class InternalBacklightControllerTest : public TestEnvironment {
 
   void SetBrightnessScale(system::BacklightInterface::BrightnessScale scale) {
     backlight_.SetBrightnessScale(scale);
+  }
+
+  void SetBatterySaverState(bool enabled) {
+    BatterySaverModeState state;
+    state.set_enabled(enabled);
+    controller_->HandleBatterySaverModeChange(state);
   }
 
   // Max and initial brightness levels for |backlight_|.
@@ -1336,6 +1345,72 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
       /*expected_ambient_light_sensor_enabled=*/false,
       /*expected_cause=*/
       AmbientLightSensorChange_Cause_BRIGHTNESS_OTHER);
+}
+
+TEST_F(InternalBacklightControllerTest, BatterySaverRestoreIfUntouched) {
+  Init(PowerSource::BATTERY);
+
+  // Set the brightness to a known percent.
+  const double kBrightPercent = 80.0;
+  test::CallSetScreenBrightness(dbus_wrapper_.get(), kBrightPercent,
+                                SetBacklightBrightnessRequest_Transition_FAST,
+                                SetBacklightBrightnessRequest_Cause_MODEL);
+  ASSERT_DOUBLE_EQ(round(kBrightPercent), round(GetBrightnessPercent()));
+
+  // Enable Battery Saver and check that the backlight is dimmed.
+  SetBatterySaverState(true);
+  ASSERT_DOUBLE_EQ(round(kBatterySaverBrightnessPercent),
+                   round(GetBrightnessPercent()));
+
+  // Disable Battery Saver and check that the backlight is restored.
+  SetBatterySaverState(false);
+  ASSERT_DOUBLE_EQ(round(kBrightPercent), round(GetBrightnessPercent()));
+}
+
+TEST_F(InternalBacklightControllerTest, BatterySaverNoRestoreIfTouched) {
+  Init(PowerSource::BATTERY);
+
+  // Set the brightness to a known percent.
+  const double kBrightPercent = 80.0;
+  test::CallSetScreenBrightness(dbus_wrapper_.get(), kBrightPercent,
+                                SetBacklightBrightnessRequest_Transition_FAST,
+                                SetBacklightBrightnessRequest_Cause_MODEL);
+  ASSERT_DOUBLE_EQ(round(kBrightPercent), round(GetBrightnessPercent()));
+
+  // Enable Battery Saver and check that the backlight is dimmed.
+  SetBatterySaverState(true);
+  ASSERT_DOUBLE_EQ(round(kBatterySaverBrightnessPercent),
+                   round(GetBrightnessPercent()));
+
+  // Change the screen brightness, disable Battery Saver, and check that
+  // brightness is NOT restored.
+  test::CallDecreaseScreenBrightness(dbus_wrapper_.get(), false);
+  double dim_percent = GetBrightnessPercent();
+  SetBatterySaverState(false);
+  ASSERT_DOUBLE_EQ(round(dim_percent), round(GetBrightnessPercent()));
+}
+
+TEST_F(InternalBacklightControllerTest, BatterySaverNoRestoreIfAmbientEnabled) {
+  Init(PowerSource::BATTERY);
+
+  // Set the brightness to a known percent.
+  const double kBrightPercent = 80.0;
+  test::CallSetScreenBrightness(dbus_wrapper_.get(), kBrightPercent,
+                                SetBacklightBrightnessRequest_Transition_FAST,
+                                SetBacklightBrightnessRequest_Cause_MODEL);
+  ASSERT_DOUBLE_EQ(round(kBrightPercent), round(GetBrightnessPercent()));
+
+  // Enable Battery Saver and check that the backlight is dimmed.
+  SetBatterySaverState(true);
+  ASSERT_DOUBLE_EQ(round(kBatterySaverBrightnessPercent),
+                   round(GetBrightnessPercent()));
+
+  // Enable the ambient light sensor, disable Battery Saver, and check that
+  // brightness is NOT restored.
+  double dim_percent = GetBrightnessPercent();
+  test::CallSetAmbientLightSensorEnabled(dbus_wrapper_.get(), true);
+  SetBatterySaverState(false);
+  ASSERT_DOUBLE_EQ(round(dim_percent), round(GetBrightnessPercent()));
 }
 
 }  // namespace power_manager::policy

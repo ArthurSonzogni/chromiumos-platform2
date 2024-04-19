@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 
 #include <base/compiler_specific.h>
 #include <base/memory/weak_ptr.h>
@@ -236,8 +237,9 @@ class InternalBacklightController : public BacklightController,
   double ac_explicit_brightness_percent_ = 100.0;
   double battery_explicit_brightness_percent_ = 100.0;
 
-  // Brightness percent when on battery power with battery saver on.
-  double battery_saver_explicit_brightness_percent_ = 30.0;
+  // The backlight percent before battery saver was enabled. Used to restore
+  // backlight brightness to the previous value after battery saver disables.
+  std::optional<double> pre_battery_saver_percent_ = std::nullopt;
 
   // True if the most-recently-received policy message requested a specific
   // brightness and no user adjustments have been made since then.
@@ -281,10 +283,6 @@ class InternalBacklightController : public BacklightController,
   // at the lower end of the range and less at the upper end. (Initialized to a
   // const value in c'tor.)
   double level_to_percent_exponent_;
-
-  // Percentage, in the range [0.0, 100.0], to which we dim the backlight when
-  // battery saver is enabled.
-  double battery_saver_brightness_percent_;
 
   // |backlight_|'s current brightness level (or the level to which it's
   // transitioning).

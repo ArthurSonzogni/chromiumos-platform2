@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -51,9 +52,9 @@ const double kDimmedBrightnessFraction = 0.1;
 // just use 1.0 to give us a linear scale.
 const double kDefaultLevelToPercentExponent = 0.5;
 
-// Default brightness ratio used for battery saver.
+// Default brightness percent used for Battery Saver.
 // TODO(sxm): Implement downstream model-level brightness overrides.
-const double kDefaultBatterySaverBrightnessFraction = 0.2;
+const double kDefaultBatterySaverBrightnessPercent = 20.0;
 
 // Returns the animation duration for |transition|.
 base::TimeDelta TransitionToTimeDelta(
@@ -143,8 +144,6 @@ InternalBacklightController::InternalBacklightController()
     : clock_(new Clock),
       dimmed_brightness_percent_(kDimmedBrightnessFraction * 100.0),
       level_to_percent_exponent_(kDefaultLevelToPercentExponent),
-      battery_saver_brightness_percent_(kDefaultBatterySaverBrightnessFraction *
-                                        100.0),
       weak_ptr_factory_(this) {}
 
 InternalBacklightController::~InternalBacklightController() = default;
@@ -239,9 +238,6 @@ void InternalBacklightController::Init(
 
   dimmed_brightness_percent_ = ClampPercentToVisibleRange(
       LevelToPercent(lround(kDimmedBrightnessFraction * real_max_level)));
-
-  battery_saver_brightness_percent_ = ClampPercentToVisibleRange(LevelToPercent(
-      lround(kDefaultBatterySaverBrightnessFraction * real_max_level)));
 
   RegisterIncreaseBrightnessHandler(
       dbus_wrapper_, kIncreaseScreenBrightnessMethod,
@@ -418,20 +414,27 @@ void InternalBacklightController::HandleBatterySaverModeChange(
   // TODO(sxm): Dimmed brightness levels might be too dark on low-nit screens.
   battery_saver_ = state.enabled();
 
-  // TODO(sxm): There is a caveat with this implementation.
-  //
-  // If the explicit brightness was set by a policy, we disrespect the
-  // policy and give BSM precedence. Explicit brightness policy is usually
-  // not a critical feature for display brightness, but we do need to
-  // be explicit about what takes precedence here.
   if (battery_saver_) {
-    battery_saver_explicit_brightness_percent_ =
-        ClampPercentToVisibleRange(battery_saver_brightness_percent_);
-    battery_saver_user_brightened_logged_ = false;
-    battery_saver_enabled_time_ = clock_->GetCurrentTime();
+    // Activate.
+    double old_percent = GetUndimmedBrightnessPercent();
+    double new_percent = kDefaultBatterySaverBrightnessPercent;
+    if (old_percent <= new_percent) {
+      // Already dim enough, don't do anything.
+      return;
+    }
+    HandleSetBrightnessRequest(
+        new_percent, Transition::FAST,
+        SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+    // NB: HandleSetBrightnessRequest clears pre_battery_saver_percent_ to
+    // preserve any brightness changes the user has made after battery saver is
+    // enabled. So set it after the call.
+    pre_battery_saver_percent_ = old_percent;
+  } else if (pre_battery_saver_percent_.has_value()) {
+    // Deactivate and there is a brightness to restore.
+    HandleSetBrightnessRequest(
+        pre_battery_saver_percent_.value(), Transition::FAST,
+        SetBacklightBrightnessRequest_Cause_USER_REQUEST);
   }
-
-  UpdateState(BacklightBrightnessChange_Cause_BATTERY_SAVER_STATE_CHANGED);
 }
 
 void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
@@ -606,19 +609,13 @@ double InternalBacklightController::SnapBrightnessPercentToNearestStep(
 }
 
 double InternalBacklightController::GetExplicitBrightnessPercent() const {
-  if (power_source_ == PowerSource::BATTERY) {
-    if (battery_saver_) {
-      return std::min(battery_explicit_brightness_percent_,
-                      battery_saver_explicit_brightness_percent_);
-    } else {
-      return battery_explicit_brightness_percent_;
-    }
-  }
-  return ac_explicit_brightness_percent_;
+  return power_source_ == PowerSource::AC
+             ? ac_explicit_brightness_percent_
+             : battery_explicit_brightness_percent_;
 }
 
 double InternalBacklightController::GetUndimmedBrightnessPercent() const {
-  if (use_ambient_light_ && !battery_saver_)
+  if (use_ambient_light_)
     return ClampPercentToVisibleRange(ambient_light_brightness_percent_);
 
   const double percent = GetExplicitBrightnessPercent();
@@ -709,10 +706,15 @@ void InternalBacklightController::HandleSetBrightnessRequest(
   // both AC and battery power.
   SetExplicitBrightnessPercent(percent, percent, transition, change_cause);
 
+  // Backlight brightness has been set, forget the brightness we would restore
+  // to after Battery Saver is disabled.
+  pre_battery_saver_percent_ = std::nullopt;
+
   // Log a metric if the user increased brightness above what Battery Saver
   // dimmed the display to.
-  if (battery_saver_ && user_triggered_change &&
-      percent > ClampPercentToVisibleRange(battery_saver_brightness_percent_) &&
+  if (battery_saver_ &&
+      cause == SetBacklightBrightnessRequest_Cause_USER_REQUEST &&
+      percent > kDefaultBatterySaverBrightnessPercent &&
       !battery_saver_user_brightened_logged_) {
     const int battery_saver_active_time =
         (clock_->GetCurrentTime() - battery_saver_enabled_time_).InSeconds();
@@ -782,17 +784,10 @@ void InternalBacklightController::SetExplicitBrightnessPercent(
   SetUseAmbientLight(false, als_change_cause);
   ac_explicit_brightness_percent_ =
       ac_percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(ac_percent);
-  if (battery_saver_) {
-    battery_saver_explicit_brightness_percent_ =
-        battery_percent <= kEpsilon
-            ? 0.0
-            : ClampPercentToVisibleRange(battery_percent);
-  } else {
-    battery_explicit_brightness_percent_ =
-        battery_percent <= kEpsilon
-            ? 0.0
-            : ClampPercentToVisibleRange(battery_percent);
-  }
+  battery_explicit_brightness_percent_ =
+      battery_percent <= kEpsilon ? 0.0
+                                  : ClampPercentToVisibleRange(battery_percent);
+
   UpdateState(cause, transition);
 }
 
@@ -917,8 +912,12 @@ void InternalBacklightController::SetUseAmbientLight(
     dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
     dbus_wrapper_->EmitSignal(&signal);
   }
-
   use_ambient_light_ = use_ambient_light;
+
+  // Do not restore any previous brightness when Battery Saver is disabled
+  // because the light sensor was enabled by the user after Battery Saver was
+  // enabled.
+  pre_battery_saver_percent_ = std::nullopt;
 }
 
 }  // namespace power_manager::policy
