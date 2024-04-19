@@ -16,11 +16,18 @@
 #include <chromeos/switches/modemfwd_switches.h>
 
 #include "modemfwd/firmware_directory.h"
+#include "modemfwd/firmware_file.h"
 #include "modemfwd/journal.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/notification_manager.h"
 
 namespace modemfwd {
+
+struct FlashConfig {
+  std::string carrier_id;
+  std::vector<FirmwareConfig> fw_configs;
+  std::map<std::string, std::unique_ptr<FirmwareFile>> files;
+};
 
 // ModemFlasher contains all of the logic to make decisions about whether
 // or not it should flash new firmware onto the modem.
@@ -101,16 +108,18 @@ class ModemFlasher {
 
   base::FilePath GetFirmwarePath(const FirmwareFileInfo& info);
 
-  // Notify UpdateFirmwareComplete failure.
-  void ProcessFailedToPrepareFirmwareFile(const base::Location& code_location,
-                                          const std::string& firmware_path,
-                                          brillo::ErrorPtr* err);
-
+  bool ShouldFlash(Modem* modem, brillo::ErrorPtr* err);
+  std::unique_ptr<FlashConfig> BuildFlashConfig(Modem* modem,
+                                                brillo::ErrorPtr* err);
+  bool RunFlash(Modem* modem,
+                const FlashConfig& flash_cfg,
+                bool modem_seen_since_oobe,
+                base::TimeDelta* out_duration,
+                brillo::ErrorPtr* err);
   void FlashFinished(const std::string& device_id,
-                     const std::string& carrier_id,
-                     uint32_t fw_types_flashed);
+                     std::unique_ptr<FlashConfig> flash_cfg);
 
-  uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> flash_cfg);
+  uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> fw_cfg);
 
   std::map<std::string, FlashState> modem_info_;
 

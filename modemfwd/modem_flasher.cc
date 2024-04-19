@@ -64,16 +64,6 @@ ModemFlasher::ModemFlasher(FirmwareDirectory* firmware_directory,
       notification_mgr_(notification_mgr),
       metrics_(metrics) {}
 
-void ModemFlasher::ProcessFailedToPrepareFirmwareFile(
-    const base::Location& code_location,
-    const std::string& firmware_path,
-    brillo::ErrorPtr* err) {
-  Error::AddTo(err, code_location, kErrorResultFailedToPrepareFirmwareFile,
-               base::StringPrintf("Failed to prepare firmware file: %s",
-                                  firmware_path.c_str()));
-  notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
-}
-
 uint32_t ModemFlasher::GetFirmwareTypesForMetrics(
     std::vector<FirmwareConfig> flash_cfg) {
   uint32_t fw_types = 0;
@@ -106,9 +96,7 @@ uint32_t ModemFlasher::GetFirmwareTypesForMetrics(
   return fw_types;
 }
 
-base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
-                                         bool modem_seen_since_oobe,
-                                         brillo::ErrorPtr* err) {
+bool ModemFlasher::ShouldFlash(Modem* modem, brillo::ErrorPtr* err) {
   std::string equipment_id = modem->GetEquipmentId();
   FlashState* flash_state = &modem_info_[equipment_id];
   if (!flash_state->ShouldFlash()) {
@@ -117,23 +105,23 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
         base::StringPrintf("Modem with equipment ID \"%s\" failed to flash too "
                            "many times; not flashing",
                            equipment_id.c_str()));
-    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
-    return base::OnceClosure();
+    return false;
   }
 
+  return true;
+}
+
+std::unique_ptr<FlashConfig> ModemFlasher::BuildFlashConfig(
+    Modem* modem, brillo::ErrorPtr* err) {
+  FlashState* flash_state = &modem_info_[modem->GetEquipmentId()];
   std::string device_id = modem->GetDeviceId();
-  std::string current_carrier = modem->GetCarrierId();
-  // The real carrier ID before it might be replaced by the generic one
-  std::string real_carrier = current_carrier;
-  flash_state->OnCarrierSeen(current_carrier);
+
+  std::unique_ptr<FlashConfig> res = std::make_unique<FlashConfig>();
+  res->carrier_id = modem->GetCarrierId();
+
+  flash_state->OnCarrierSeen(res->carrier_id);
   FirmwareDirectory::Files files = firmware_directory_->FindFirmware(
-      device_id, current_carrier.empty() ? nullptr : &current_carrier);
-
-  // Clear the attach APN if needed for a specific modem/carrier combination.
-  if (!real_carrier.empty() && !modem->ClearAttachAPN(real_carrier))
-    ELOG(INFO) << "Clear attach APN failed for current carrier.";
-
-  std::vector<FirmwareConfig> flash_cfg;
+      device_id, res->carrier_id.empty() ? nullptr : &res->carrier_id);
 
   std::vector<std::pair<std::string, const FirmwareFileInfo*>> flash_infos;
   if (files.main_firmware.has_value())
@@ -143,7 +131,6 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
   for (const auto& assoc_entry : files.assoc_firmware)
     flash_infos.emplace_back(assoc_entry.first, &assoc_entry.second);
 
-  std::map<std::string, std::unique_ptr<FirmwareFile>> flash_files;
   for (const auto& flash_info : flash_infos) {
     const FirmwareFileInfo& file_info = *flash_info.second;
     base::FilePath fw_path = GetFirmwarePath(file_info);
@@ -164,111 +151,158 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
     auto firmware_file = std::make_unique<FirmwareFile>();
     if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
                                     file_info)) {
-      ProcessFailedToPrepareFirmwareFile(FROM_HERE, file_info.firmware_path,
-                                         err);
-      return base::OnceClosure();
+      Error::AddTo(err, FROM_HERE, kErrorResultFailedToPrepareFirmwareFile,
+                   base::StringPrintf("Failed to prepare firmware file: %s",
+                                      fw_path.value().c_str()));
+      return nullptr;
     }
 
     // We found different firmware! Add it to the list of firmware to flash.
-    flash_cfg.push_back({flash_info.first, firmware_file->path_on_filesystem(),
-                         file_info.version});
-    flash_files[flash_info.first] = std::move(firmware_file);
+    res->fw_configs.push_back({flash_info.first,
+                               firmware_file->path_on_filesystem(),
+                               file_info.version});
+    res->files[flash_info.first] = std::move(firmware_file);
   }
 
   // Check if we need to update the carrier firmware.
-  if (!current_carrier.empty() && files.carrier_firmware.has_value() &&
-      flash_state->ShouldFlashFirmware(
-          kFwCarrier, GetFirmwarePath(files.carrier_firmware.value()))) {
-    const FirmwareFileInfo& file_info = files.carrier_firmware.value();
+  if (res->carrier_id.empty()) {
+    ELOG(INFO) << "No carrier found. Is a SIM card inserted?";
+    return res;
+  }
+  if (!files.carrier_firmware.has_value()) {
+    ELOG(INFO) << "No carrier firmware found for carrier " << res->carrier_id;
+    return res;
+  }
 
-    ELOG(INFO) << "Found carrier firmware blob " << file_info.version
-               << " for carrier " << current_carrier;
+  const FirmwareFileInfo& file_info = files.carrier_firmware.value();
+  base::FilePath fw_path = GetFirmwarePath(file_info);
+  if (!flash_state->ShouldFlashFirmware(kFwCarrier, fw_path)) {
+    ELOG(INFO) << "Already flashed carrier firmware for " << res->carrier_id;
+    return res;
+  }
 
-    // Carrier firmware operates a bit differently. We need to flash if
-    // the carrier or the version has changed, or if there wasn't any carrier
-    // firmware to begin with.
-    std::string carrier_fw_id = modem->GetCarrierFirmwareId();
-    std::string carrier_fw_version = modem->GetCarrierFirmwareVersion();
-    bool has_carrier_fw =
-        !(carrier_fw_id.empty() || carrier_fw_version.empty());
-    if (has_carrier_fw) {
-      ELOG(INFO) << "Currently installed carrier firmware version "
-                 << carrier_fw_version << " for carrier " << carrier_fw_id;
-    } else {
-      ELOG(INFO) << "No carrier firmware is currently installed";
-    }
+  ELOG(INFO) << "Found carrier firmware blob " << file_info.version
+             << " for carrier " << res->carrier_id;
 
-    if (!has_carrier_fw ||
-        !firmware_directory_->IsUsingSameFirmware(device_id, carrier_fw_id,
-                                                  current_carrier) ||
-        carrier_fw_version != file_info.version) {
-      auto firmware_file = std::make_unique<FirmwareFile>();
-      if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
-                                      file_info)) {
-        ProcessFailedToPrepareFirmwareFile(FROM_HERE, file_info.firmware_path,
-                                           err);
-        return base::OnceClosure();
-      }
-
-      flash_cfg.push_back(
-          {kFwCarrier, firmware_file->path_on_filesystem(), file_info.version});
-      flash_files[kFwCarrier] = std::move(firmware_file);
-    }
+  // Carrier firmware operates a bit differently. We need to flash if
+  // the carrier or the version has changed, or if there wasn't any carrier
+  // firmware to begin with.
+  std::string carrier_fw_id = modem->GetCarrierFirmwareId();
+  std::string carrier_fw_version = modem->GetCarrierFirmwareVersion();
+  if (carrier_fw_id.empty() || carrier_fw_version.empty()) {
+    ELOG(INFO) << "No carrier firmware is currently installed";
   } else {
-    // Log why we are not flashing the carrier firmware for debug
-    if (current_carrier.empty()) {
-      ELOG(INFO) << "No carrier found. Is a SIM card inserted?";
-    } else if (!files.carrier_firmware.has_value()) {
-      // Check if we have carrier firmware matching the SIM's carrier. If not,
-      // there's nothing to flash.
-      ELOG(INFO) << "No carrier firmware found for carrier " << current_carrier;
-    } else {
-      // ShouldFlashCarrierFirmware() was false
-      ELOG(INFO) << "Already flashed carrier firmware for " << current_carrier;
+    ELOG(INFO) << "Currently installed carrier firmware version "
+               << carrier_fw_version << " for carrier " << carrier_fw_id;
+    if (firmware_directory_->IsUsingSameFirmware(device_id, carrier_fw_id,
+                                                 res->carrier_id) &&
+        carrier_fw_version == file_info.version) {
+      ELOG(INFO) << "Correct carrier firmware is already installed";
+      return res;
     }
   }
 
-  // Flash if we have new firmwares
-  if (flash_cfg.empty()) {
-    // This message is used by tests to track the end of flashing.
-    LOG(INFO) << "The modem already has the correct firmware installed";
-    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false, 0);
-    return base::OnceClosure();
+  auto firmware_file = std::make_unique<FirmwareFile>();
+  if (!firmware_file->PrepareFrom(firmware_directory_->GetFirmwarePath(),
+                                  file_info)) {
+    Error::AddTo(err, FROM_HERE, kErrorResultFailedToPrepareFirmwareFile,
+                 base::StringPrintf("Failed to prepare firmware file: %s",
+                                    fw_path.value().c_str()));
+    return nullptr;
   }
-  std::vector<std::string> fw_types;
-  std::transform(flash_cfg.begin(), flash_cfg.end(),
-                 std::back_inserter(fw_types),
-                 [](const FirmwareConfig& cfg) { return cfg.fw_type; });
 
-  InhibitMode _inhibit(modem);
-  journal_->MarkStartOfFlashingFirmware(fw_types, device_id, current_carrier);
+  res->fw_configs.push_back(
+      {kFwCarrier, firmware_file->path_on_filesystem(), file_info.version});
+  res->files[kFwCarrier] = std::move(firmware_file);
 
-  base::Time start_time = base::Time::Now();
-  if (!modem->FlashFirmwares(flash_cfg)) {
+  return res;
+}
+
+bool ModemFlasher::RunFlash(Modem* modem,
+                            const FlashConfig& flash_cfg,
+                            bool modem_seen_since_oobe,
+                            base::TimeDelta* out_duration,
+                            brillo::ErrorPtr* err) {
+  FlashState* flash_state = &modem_info_[modem->GetEquipmentId()];
+
+  base::Time start = base::Time::Now();
+  bool success = modem->FlashFirmwares(flash_cfg.fw_configs);
+  if (out_duration)
+    *out_duration = base::Time::Now() - start;
+
+  if (!success) {
     flash_state->OnFlashFailed();
-    journal_->MarkEndOfFlashingFirmware(device_id, current_carrier);
     Error::AddTo(err, FROM_HERE,
                  (modem_seen_since_oobe
                       ? kErrorResultFailureReturnedByHelper
                       : kErrorResultFailureReturnedByHelperModemNeverSeen),
                  "Helper failed to flash firmware files");
-    notification_mgr_->NotifyUpdateFirmwareCompletedFlashFailure(
-        err->get(), GetFirmwareTypesForMetrics(flash_cfg));
-    return base::OnceClosure();
+    return false;
   }
-  // Report flashing time in successful cases
-  metrics_->SendFwFlashTime(base::Time::Now() - start_time);
 
-  for (const auto& info : flash_cfg) {
+  for (const auto& info : flash_cfg.fw_configs) {
     std::string fw_type = info.fw_type;
-    base::FilePath path_for_logging = flash_files[fw_type]->path_for_logging();
+    base::FilePath path_for_logging =
+        flash_cfg.files.at(fw_type)->path_for_logging();
     flash_state->OnFlashedFirmware(fw_type, path_for_logging);
     ELOG(INFO) << "Flashed " << fw_type << " firmware (" << path_for_logging
                << ") to the modem";
   }
+
+  return true;
+}
+
+base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
+                                         bool modem_seen_since_oobe,
+                                         brillo::ErrorPtr* err) {
+  if (!ShouldFlash(modem, err)) {
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
+    return base::OnceClosure();
+  }
+
+  // Clear the attach APN if needed for a specific modem/carrier combination.
+  std::string carrier_id = modem->GetCarrierId();
+  if (!carrier_id.empty() && !modem->ClearAttachAPN(carrier_id)) {
+    ELOG(INFO) << "Clear attach APN failed for current carrier.";
+  }
+
+  std::unique_ptr<FlashConfig> flash_cfg = BuildFlashConfig(modem, err);
+  if (!flash_cfg) {
+    notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
+    return base::OnceClosure();
+  }
+
+  // End early if we don't have any new firmware.
+  if (flash_cfg->fw_configs.empty()) {
+    // This message is used by tests to track the end of flashing.
+    LOG(INFO) << "The modem already has the correct firmware installed";
+    notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false, 0);
+    return base::OnceClosure();
+  }
+
+  std::string device_id = modem->GetDeviceId();
+  InhibitMode _inhibit(modem);
+
+  std::vector<std::string> fw_types;
+  std::transform(flash_cfg->fw_configs.begin(), flash_cfg->fw_configs.end(),
+                 std::back_inserter(fw_types),
+                 [](const FirmwareConfig& cfg) { return cfg.fw_type; });
+  journal_->MarkStartOfFlashingFirmware(fw_types, device_id,
+                                        flash_cfg->carrier_id);
+
+  base::TimeDelta flash_duration;
+  if (!RunFlash(modem, *flash_cfg, modem_seen_since_oobe, &flash_duration,
+                err)) {
+    journal_->MarkEndOfFlashingFirmware(device_id, flash_cfg->carrier_id);
+    notification_mgr_->NotifyUpdateFirmwareCompletedFlashFailure(
+        err->get(), GetFirmwareTypesForMetrics(flash_cfg->fw_configs));
+    return base::OnceClosure();
+  }
+
+  // Report flashing time in successful cases
+  metrics_->SendFwFlashTime(flash_duration);
   return base::BindOnce(&ModemFlasher::FlashFinished, base::Unretained(this),
-                        device_id, current_carrier,
-                        GetFirmwareTypesForMetrics(flash_cfg));
+                        device_id, std::move(flash_cfg));
 }
 
 base::FilePath ModemFlasher::GetFirmwarePath(const FirmwareFileInfo& info) {
@@ -276,11 +310,10 @@ base::FilePath ModemFlasher::GetFirmwarePath(const FirmwareFileInfo& info) {
 }
 
 void ModemFlasher::FlashFinished(const std::string& device_id,
-                                 const std::string& carrier_id,
-                                 uint32_t fw_types_flashed) {
-  journal_->MarkEndOfFlashingFirmware(device_id, carrier_id);
-  notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(true,
-                                                          fw_types_flashed);
+                                 std::unique_ptr<FlashConfig> flash_cfg) {
+  journal_->MarkEndOfFlashingFirmware(device_id, flash_cfg->carrier_id);
+  notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(
+      true, GetFirmwareTypesForMetrics(flash_cfg->fw_configs));
 }
 
 }  // namespace modemfwd
