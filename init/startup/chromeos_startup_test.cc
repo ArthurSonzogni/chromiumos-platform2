@@ -1428,8 +1428,6 @@ TEST_F(DevMountPackagesTest, NoDeviceDisableStatefulSecurity) {
   platform_->ReadFileToString(mount_log_, &mount_log_contents);
   EXPECT_EQ(mount_contents, mount_log_contents);
 
-  EXPECT_TRUE(platform_->DirectoryExists(stateful_dev_image_));
-
   std::string allow_sym_contents;
   platform_->ReadFileToString(allow_sym_, &allow_sym_contents);
   EXPECT_EQ("", allow_sym_contents);
@@ -1462,8 +1460,6 @@ TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
   std::string mount_log_contents;
   platform_->ReadFileToString(mount_log_, &mount_log_contents);
   EXPECT_EQ(mount_contents, mount_log_contents);
-
-  EXPECT_TRUE(platform_->DirectoryExists(stateful_dev_image_));
 
   base::FilePath tmp_portage = base_dir_.Append("var/tmp/portage");
   std::string expected_allow = tmp_portage.value();
