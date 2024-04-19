@@ -176,9 +176,6 @@ constexpr const char kGeneratedPropertyFilesPath[] = "/run/arc/host_generated";
 constexpr const char* kBinFmtMiscEntryNames[] = {"arm_dyn", "arm_exe",
                                                  "arm64_dyn", "arm64_exe"};
 
-// Value of vm_tools::GetEncodedName("arcvm").
-constexpr const char kArcvmEncodedName[] = "YXJjdm0=";
-
 // These are board-specific configuration settings, which are managed through
 // the chromeos-config architecture.
 // For details, see:
@@ -614,37 +611,6 @@ void RemoveStaleDataDirectory(brillo::SafeFD& root_fd,
   }
 }
 
-// Returns the device path for virtio-blk /data on ARCVM. It first looks for an
-// LVM application container, and then falls back to a Concierge disk image.
-// An empty path is returned if neither device is found, in which case virtio-fs
-// /data is expected to be used. For simplicity it just checks the existence of
-// a file without looking up USE flags, assuming that a device for virtio-blk
-// /data is created only when it is actually used.
-base::FilePath GetArcVmDataDevicePath(const std::string& chromeos_user,
-                                      const base::FilePath& home_root_dir) {
-  // Check if an LVM application container exists.
-  // See cryptohome::DmcryptVolumePrefix() for how the volume's path is
-  // constructed.
-  const brillo::cryptohome::home::Username username(chromeos_user);
-  const std::string user_hash =
-      *brillo::cryptohome::home::SanitizeUserName(username);
-  const base::FilePath lvm_application_container_path(base::StringPrintf(
-      "/dev/mapper/vm/dmcrypt-%s-arcvm", user_hash.substr(0, 8).c_str()));
-  if (base::PathExists(lvm_application_container_path)) {
-    return lvm_application_container_path;
-  }
-
-  // Check if a Concierge disk image exists. The disk image's name is a constant
-  // defined by vm_tools::GetEncodedName("arcvm").
-  const base::FilePath concierge_disk_path = home_root_dir.Append(
-      base::StringPrintf("crosvm/%s.img", kArcvmEncodedName));
-  if (base::PathExists(concierge_disk_path)) {
-    return concierge_disk_path;
-  }
-
-  return base::FilePath();
-}
-
 bool SetRestoreconLastXattr(const base::FilePath& mutable_data_dir,
                             const std::string& hash) {
   // On Android, /init writes the security.restorecon_last attribute to /data
@@ -831,12 +797,26 @@ struct ArcPaths {
 ArcSetup::ArcSetup(Mode mode, const base::FilePath& config_json)
     : mode_(mode),
       config_(config_json, base::Environment::Create()),
+      arcvm_data_type_(ArcVmDataType::kUndefined),
       arc_mounter_(GetDefaultMounter()),
       arc_paths_(ArcPaths::Create(mode_, config_)),
       arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()) {
   CHECK(mode == Mode::APPLY_PER_BOARD_CONFIG || mode == Mode::CREATE_DATA ||
         mode == Mode::REMOVE_DATA || mode == Mode::REMOVE_STALE_DATA ||
-        mode == Mode::HANDLE_UPGRADE || !config_json.empty());
+        !config_json.empty());
+}
+
+ArcSetup::ArcSetup(Mode mode, const ArcVmDataType arcvm_data_type)
+    : mode_(mode),
+      config_(base::FilePath(), base::Environment::Create()),
+      arcvm_data_type_(arcvm_data_type),
+      arc_mounter_(GetDefaultMounter()),
+      arc_paths_(ArcPaths::Create(mode_, config_)),
+      arc_setup_metrics_(std::make_unique<ArcSetupMetrics>()) {
+  CHECK(mode == Mode::HANDLE_UPGRADE);
+  CHECK(arcvm_data_type > ArcVmDataType::kUndefined &&
+        arcvm_data_type <= ArcVmDataType::kMaxValue)
+      << "Invalid arcvm_data_type: " << static_cast<int>(arcvm_data_type);
 }
 
 ArcSetup::~ArcSetup() = default;
@@ -2032,21 +2012,35 @@ void ArcSetup::GetBootTypeAndDataSdkVersion(
 }
 
 AndroidSdkVersion ArcSetup::GetArcVmDataSdkVersion() {
-  // Mount virtio-blk /data on /home/root/<hash>/android-data/data when needed.
-  const base::FilePath data_device_path = GetArcVmDataDevicePath(
-      config_.GetStringOrDie("CHROMEOS_USER"), arc_paths_->root_directory);
-  std::unique_ptr<ScopedMount> android_data_mount =
-      data_device_path.empty()
-          ? nullptr
-          : ScopedMount::CreateScopedLoopMount(
-                arc_mounter_.get(), data_device_path.value(),
-                arc_paths_->android_data_directory.Append("data"),
-                LoopMountFilesystemType::kExt4,
-                MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RDONLY);
-  LOG_IF(INFO, android_data_mount) << "Mounted " << data_device_path;
-
   ArcBootType boot_type;
   AndroidSdkVersion data_sdk_version;
+
+  if (arcvm_data_type_ == ArcVmDataType::kVirtiofs) {
+    // Just read packages.xml from virtio-fs /data.
+    GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
+    return data_sdk_version;
+  }
+
+  // Mount virtio-blk /data on /home/root/<hash>/android-data/data.
+  const base::FilePath data_device_path = GetArcVmDataDevicePath(
+      arcvm_data_type_, config_.GetStringOrDie("CHROMEOS_USER"),
+      arc_paths_->root_directory);
+  CHECK(!data_device_path.empty());
+  const base::FilePath data_mount_path =
+      arc_paths_->android_data_directory.Append("data");
+  std::unique_ptr<ScopedMount> android_data_mount =
+      ScopedMount::CreateScopedLoopMount(
+          arc_mounter_.get(), data_device_path.value(), data_mount_path,
+          LoopMountFilesystemType::kExt4,
+          MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RDONLY);
+  if (!android_data_mount) {
+    // Mount can fail when /data has not been created/formatted yet. Return the
+    // unknown value which includes the first boot after opt-in.
+    LOG(INFO) << "Failed to mount " << data_device_path << " on "
+              << data_mount_path << ". Assuming the first boot after opt-in";
+    return AndroidSdkVersion::UNKNOWN;
+  }
+  LOG(INFO) << "Mounted " << data_device_path << " on " << data_mount_path;
   GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
   return data_sdk_version;
 }

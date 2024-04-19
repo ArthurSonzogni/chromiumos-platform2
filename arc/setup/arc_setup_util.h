@@ -38,6 +38,9 @@ const uint32_t kErofsMagicNumber = 0xe0f5e1e2;
 const off_t kSquashfsMagicOffset = 0;
 const uint32_t kSquashfsMagicNumber = 0x73717368;
 
+// Value of vm_tools::GetEncodedName("arcvm").
+static constexpr const char kArcvmEncodedName[] = "YXJjdm0=";
+
 constexpr bool kUseHoudini64 = USE_HOUDINI64;
 constexpr bool kUseHoudini = USE_HOUDINI;
 constexpr bool kUseNdkTranslation = USE_NDK_TRANSLATION;
@@ -48,6 +51,15 @@ enum class LoopMountFilesystemType {
   kUnspecified,
   kSquashFS,
   kExt4,
+};
+
+// Enum that describes what type of /data is used in ARCVM.
+enum class ArcVmDataType {
+  kUndefined = 0,  // Unknown or the device runs ARC++ container.
+  kVirtiofs = 1,
+  kLvmVolume = 2,
+  kConciergeDisk = 3,
+  kMaxValue = kConciergeDisk,
 };
 
 // A class that provides mount(2) and umount(2) wrappers. They return true on
@@ -303,6 +315,12 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
                              const base::FilePath& fstab_path,
                              const base::FilePath& vendor_image_path,
                              const std::string& cache_partition);
+
+// Returns the device path of ARCVM virtio-blk /data for the given |data_type|.
+// An empty path is returned when |data_type| is not a virtio-blk /data type.
+base::FilePath GetArcVmDataDevicePath(const ArcVmDataType data_type,
+                                      const std::string& chromeos_user,
+                                      const base::FilePath& home_root_dir);
 
 // A string managed either by Rust or by a C++ std::string. The destructor will
 // free the string the right way depending on who owns it.

@@ -87,6 +87,7 @@ enum class Mode {
 class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
  public:
   ArcSetup(Mode mode, const base::FilePath& config_json);
+  ArcSetup(Mode mode, const ArcVmDataType arcvm_data_type);
   ArcSetup(const ArcSetup&) = delete;
   ArcSetup& operator=(const ArcSetup&) = delete;
 
@@ -419,6 +420,7 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
 
   const Mode mode_;
   const Config config_;
+  const ArcVmDataType arcvm_data_type_;
   std::unique_ptr<ArcMounter> arc_mounter_;
   std::unique_ptr<ArcPaths> arc_paths_;
   std::unique_ptr<ArcSetupMetrics> arc_setup_metrics_;

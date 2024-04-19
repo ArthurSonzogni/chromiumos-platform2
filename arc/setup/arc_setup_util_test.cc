@@ -35,6 +35,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
+#include <brillo/cryptohome.h>
+#include <brillo/fake_cryptohome.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/safe_fd.h>
 #include <gtest/gtest.h>
@@ -1307,6 +1309,36 @@ TEST(ArcSetupUtil, GenerateFirstStageFstab_InvalidVendorImage) {
   EXPECT_FALSE(
       GenerateFirstStageFstab(base::FilePath(kFakeCombinedBuildPropPath), fstab,
                               vendor_img_path, cache_partition));
+}
+
+TEST(ArcSetupUtil, GetArcVmDataDevicePath) {
+  brillo::cryptohome::home::FakeSystemSaltLoader fake_salt_loader("fake-salt");
+
+  const std::string chromeos_user("testuser@gmail.com");
+
+  const brillo::cryptohome::home::Username username(chromeos_user);
+  const std::string user_hash =
+      *brillo::cryptohome::home::SanitizeUserName(username);
+  const base::FilePath lvm_volume_path(base::StringPrintf(
+      "/dev/mapper/vm/dmcrypt-%s-arcvm", user_hash.substr(0, 8).c_str()));
+
+  const base::FilePath home_root_dir =
+      brillo::cryptohome::home::GetRootPath(username);
+  const base::FilePath concierge_disk_path = home_root_dir.Append(
+      base::StringPrintf("crosvm/%s.img", kArcvmEncodedName));
+
+  EXPECT_EQ(GetArcVmDataDevicePath(ArcVmDataType::kUndefined, chromeos_user,
+                                   home_root_dir),
+            base::FilePath());
+  EXPECT_EQ(GetArcVmDataDevicePath(ArcVmDataType::kVirtiofs, chromeos_user,
+                                   home_root_dir),
+            base::FilePath());
+  EXPECT_EQ(GetArcVmDataDevicePath(ArcVmDataType::kLvmVolume, chromeos_user,
+                                   home_root_dir),
+            lvm_volume_path);
+  EXPECT_EQ(GetArcVmDataDevicePath(ArcVmDataType::kConciergeDisk, chromeos_user,
+                                   home_root_dir),
+            concierge_disk_path);
 }
 
 TEST_P(FilterMediaProfileTest, All) {

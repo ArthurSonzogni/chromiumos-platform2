@@ -55,6 +55,7 @@
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <base/values.h>
+#include <brillo/cryptohome.h>
 #include <brillo/file_utils.h>
 #include <brillo/files/safe_fd.h>
 #include <crypto/sha2.h>
@@ -1119,6 +1120,29 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
                          combined_property_file_name.value().c_str());
 
   return WriteToFile(fstab_path, 0644, firstStageFstabTemplate);
+}
+
+base::FilePath GetArcVmDataDevicePath(const ArcVmDataType data_type,
+                                      const std::string& chromeos_user,
+                                      const base::FilePath& home_root_dir) {
+  switch (data_type) {
+    case ArcVmDataType::kLvmVolume: {
+      // See cryptohome::DmcryptVolumePrefix() for how the volume's path is
+      // constructed.
+      const brillo::cryptohome::home::Username username(chromeos_user);
+      const std::string user_hash =
+          *brillo::cryptohome::home::SanitizeUserName(username);
+      return base::FilePath(base::StringPrintf(
+          "/dev/mapper/vm/dmcrypt-%s-arcvm", user_hash.substr(0, 8).c_str()));
+    }
+    case ArcVmDataType::kConciergeDisk:
+      // The disk image's name is a constant defined by
+      // vm_tools::GetEncodedName("arcvm").
+      return home_root_dir.Append(
+          base::StringPrintf("crosvm/%s.img", kArcvmEncodedName));
+    default:
+      return base::FilePath();
+  }
 }
 
 ManagedString::ManagedString(char* rust_ptr) : rust_ptr_(rust_ptr) {
