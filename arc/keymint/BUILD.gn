@@ -222,6 +222,7 @@ shared_library("libarckeymint_context") {
     "context/crypto_operation.cc",
     "context/openssl_utils.cc",
   ]
+  libs = [ "arc-attestation" ]
   public_configs = [ ":libarckeymint_context_config" ]
   configs += [
     # Needed since the keymint context doesn't follow CrOS's guidelines.
@@ -378,10 +379,13 @@ if (use.test) {
       ":arc-keymintd_testrunner_config",
       ":boringssl_config",
     ]
+    libs = [ "arc-attestation" ]
     deps = [
       ":keymint_mojo_bindings",
       ":libarckeymint_context",
+      ":libcppbor_external",
       ":libkeymint",
+      ":liblog",
       "//common-mk/testrunner:testrunner",
     ]
   }

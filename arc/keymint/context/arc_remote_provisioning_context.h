@@ -5,7 +5,14 @@
 #ifndef ARC_KEYMINT_CONTEXT_ARC_REMOTE_PROVISIONING_CONTEXT_H_
 #define ARC_KEYMINT_CONTEXT_ARC_REMOTE_PROVISIONING_CONTEXT_H_
 
+#include <cppbor.h>
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
+
+#include <optional>
+#include <utility>
+#include <vector>
+
+#include "arc/keymint/context/openssl_utils.h"
 
 namespace arc::keymint::context {
 
@@ -27,6 +34,18 @@ enum BccPayloadLabel : int {
   MODE = -4670551,
 };
 
+// These functions are created on the lines of similar functions
+// in libcppcose.
+cppcose::ErrMsgOr<std::vector<uint8_t>> createCoseSign1SignatureFromDK(
+    const std::vector<uint8_t>& protectedParams,
+    const std::vector<uint8_t>& payload,
+    const std::vector<uint8_t>& additionalAuthData);
+
+cppcose::ErrMsgOr<cppbor::Array> constructCoseSign1FromDK(
+    cppbor::Map protectedParams,
+    const std::vector<uint8_t>& payload,
+    const std::vector<uint8_t>& additionalAuthData);
+
 // Defines specific behavior for ARC Remote Provisioning Context in ChromeOS.
 class ArcRemoteProvisioningContext
     : public ::keymaster::PureSoftRemoteProvisioningContext {
@@ -40,6 +59,8 @@ class ArcRemoteProvisioningContext
   ArcRemoteProvisioningContext(const ArcRemoteProvisioningContext&) = delete;
   ArcRemoteProvisioningContext& operator=(const ArcRemoteProvisioningContext&) =
       delete;
+
+  std::optional<cppbor::Array> GenerateBcc(bool test_mode) const;
 };
 }  // namespace arc::keymint::context
 
