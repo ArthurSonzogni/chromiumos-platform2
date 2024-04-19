@@ -126,6 +126,8 @@ const char ChromiumCommandBuilder::kCrosConfigBluetoothFlagsPath[] =
     "/bluetooth/flags";
 const char ChromiumCommandBuilder::kCrosConfigBlockFlossAvailability[] =
     "block-floss-availability";
+const char ChromiumCommandBuilder::kCrosConfigBlockLLPrivacyAvailability[] =
+    "block-llprivacy-availability";
 
 ChromiumCommandBuilder::ChromiumCommandBuilder() = default;
 
@@ -587,6 +589,15 @@ void ChromiumCommandBuilder::AddUiFlags() {
                              &block_floss_availability) &&
        block_floss_availability == "true")) {
     AddFeatureDisableOverride("FlossIsAvailable");
+  }
+
+  // Disable LLPrivacy if the cros config was specified.
+  std::string block_llprivacy_availability;
+  if (cros_config.GetString(kCrosConfigBluetoothFlagsPath,
+                            kCrosConfigBlockLLPrivacyAvailability,
+                            &block_llprivacy_availability) &&
+      block_llprivacy_availability == "true") {
+    AddFeatureDisableOverride("LLPrivacyIsAvailable");
   }
 
   // Allow Chrome to access GPU memory information despite /sys/kernel/debug

@@ -55,6 +55,7 @@ class BRILLO_EXPORT ChromiumCommandBuilder {
 
   static const char kCrosConfigBluetoothFlagsPath[];
   static const char kCrosConfigBlockFlossAvailability[];
+  static const char kCrosConfigBlockLLPrivacyAvailability[];
 
   ChromiumCommandBuilder();
   ChromiumCommandBuilder(const ChromiumCommandBuilder&) = delete;

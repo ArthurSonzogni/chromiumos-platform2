@@ -643,6 +643,9 @@ properties:
                     block-floss-availability:
                       description: Block Floss from enablement by chrome.
                       type: boolean
+                    block-llprivacy-availability:
+                      description: Block LL Privacy from enablement by chrome.
+                      type: boolean
                   additionalProperties: false
               additionalProperties: false
             wifi:
