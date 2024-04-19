@@ -994,7 +994,12 @@ std::optional<FilePath> CrashCollector::GetUserCrashDirectoryNew() {
     // When testing, store crashes in the fallback crash directory
     // (/var/spool/crash or /home/chronos/crash); otherwise,
     // the test framework can't get to them after logging the user out.
-    return std::nullopt;
+    // ...unless we are in kAlwaysUseDaemonStore mode, in which case crash
+    // reporter really truly can't use the fallback. Since crash reporter can't
+    // use the fallback, it must try to use the daemon store.
+    if (crash_directory_selection_method_ != kAlwaysUseDaemonStore) {
+      return std::nullopt;
+    }
   }
   // In this multiprofile world, there is no one-specific user dir anymore.
   // Ask the session manager for the active ones, then just run with the

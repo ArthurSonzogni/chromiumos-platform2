@@ -178,7 +178,9 @@ We store reports in a couple of different places.
     *** promo
     When on a test build, all user crashes are written to `/home/chronos/crash`
     instead of `/run/daemon-store/crash/<user_hash>/`. This avoids having crashes
-    become inaccessible if a test logs the user out.
+    become inaccessible if a test logs the user out. Exception: Even on test
+    builds, crashes in crostini and similar VMs are written to
+    `/run/daemon-store/crash/<user_hash>/` due to permission issues.
     ***
 *   `/run/daemon-store/crash/<user_hash>/`: All crashes that occur when a user
     is logged in are sent here.
