@@ -25,13 +25,6 @@ inline constexpr uint32_t kVmCr = 0xC0010114;
 
 }  // namespace cpu_msr
 
-namespace fingerprint {
-
-// The path to the fingerprint device node.
-inline constexpr char kCrosFpPath[] = "/dev/cros_fp";
-
-}  // namespace fingerprint
-
 namespace psr {
 
 // The path to the psr device node.
