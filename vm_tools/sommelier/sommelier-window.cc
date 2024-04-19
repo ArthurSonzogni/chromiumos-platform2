@@ -12,6 +12,7 @@
 #include <wayland-client-protocol.h>
 
 #include "sommelier.h"            // NOLINT(build/include_directory)
+#include "sommelier-logging.h"    // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
 #include "viewporter-shim.h"      // NOLINT(build/include_directory)
@@ -313,6 +314,10 @@ bool sl_window_is_containerized(struct sl_window* window) {
       // half-perimeter) than specified value.
       ((window->max_width + window->max_height == 0) ||
        (window->max_width + window->max_height >= 400));
+  if (window_containerized && !probably_game_window) {
+    LOG(VERBOSE) << window
+                 << " is not a game window! max_width=" << window->max_width;
+  }
   window_containerized =
       probably_game_window && window->ctx->quirks.IsEnabled(
                                   window, quirks::FEATURE_CONTAINERIZE_WINDOWS);
@@ -432,6 +437,8 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
     window->next_config.values[mut_config_idx++] = width_in_pixels;
     window->next_config.values[mut_config_idx++] = height_in_pixels;
     window->next_config.values[mut_config_idx++] = 0;
+    LOG(VERBOSE) << window << " size set to " << width_in_pixels << "x"
+                 << height_in_pixels;
     return;
   }
 
@@ -469,6 +476,8 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
   window->next_config.values[mut_config_idx++] = safe_window_width;
   window->next_config.values[mut_config_idx++] = safe_window_height;
   window->next_config.values[mut_config_idx++] = 0;
+  LOG(VERBOSE) << window << " size(safe) set to " << safe_window_width << "x"
+               << safe_window_height;
 
   if (window->use_emulated_rects && window->compositor_fullscreen) {
     // If we are using emulated rects and the window is fullscreen in
@@ -537,6 +546,8 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
         safe_window_width;
     window->viewport_width = host_width;
   }
+  LOG(VERBOSE) << window << " viewport set to " << window->viewport_width << "x"
+               << window->viewport_height;
 
   if (window->use_emulated_rects) {
     // Pointer scaling is being done in XWayland as well, assuming the viewport
@@ -629,14 +640,20 @@ void sl_internal_toplevel_configure_size(struct sl_window* window,
                               XCB_CONFIG_WINDOW_HEIGHT |
                               XCB_CONFIG_WINDOW_BORDER_WIDTH;
   if (window->viewport_override) {
+    LOG(VERBOSE) << window << " viewport override, size set to "
+                 << window->width << "x" << window->height;
     window->next_config.values[mut_config_idx++] = window->width;
     window->next_config.values[mut_config_idx++] = window->height;
     window->next_config.values[mut_config_idx++] = 0;
   } else if (window->use_emulated_rects) {
+    LOG(VERBOSE) << window << " emulated, size set to "
+                 << window->emulated_width << "x" << window->emulated_height;
     window->next_config.values[mut_config_idx++] = window->emulated_width;
     window->next_config.values[mut_config_idx++] = window->emulated_height;
     window->next_config.values[mut_config_idx++] = 0;
   } else {
+    LOG(VERBOSE) << window << " size set to " << width_in_pixels << "x"
+                 << height_in_pixels;
     window->next_config.values[mut_config_idx++] = width_in_pixels;
     window->next_config.values[mut_config_idx++] = height_in_pixels;
     window->next_config.values[mut_config_idx++] = 0;
@@ -655,6 +672,8 @@ void sl_internal_toplevel_configure_position(struct sl_window* window,
     window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
     window->next_config.values[mut_config_idx++] = window->emulated_x;
     window->next_config.values[mut_config_idx++] = window->emulated_y;
+    LOG(VERBOSE) << window << " position set to emulated " << window->emulated_x
+                 << "," << window->emulated_y;
 
   } else if (x != kUnspecifiedCoord && y != kUnspecifiedCoord) {
     // Convert to virtual coordinates
@@ -667,6 +686,8 @@ void sl_internal_toplevel_configure_position(struct sl_window* window,
     window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
     window->next_config.values[mut_config_idx++] = guest_x;
     window->next_config.values[mut_config_idx++] = guest_y;
+    LOG(VERBOSE) << window << " position set to specified " << guest_x << ","
+                 << guest_y;
 
   } else if (!(window->size_flags & (US_POSITION | P_POSITION))) {
     uint32_t new_x = 0;
@@ -686,6 +707,7 @@ void sl_internal_toplevel_configure_position(struct sl_window* window,
     window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
     window->next_config.values[mut_config_idx++] = new_x;
     window->next_config.values[mut_config_idx++] = new_y;
+    LOG(VERBOSE) << window << " position set to new " << new_x << "," << new_y;
   }
 }
 
@@ -758,6 +780,8 @@ void sl_internal_toplevel_configure_state(struct sl_window* window,
 
   sl_internal_toplevel_configure_set_activated(window, activated);
 
+  LOG(VERBOSE) << window << " state change, fullscreen=" << window->fullscreen
+               << " compositor_fullscreen=" << window->compositor_fullscreen;
   // Override previous state definitions
   window->next_config.states_length = state_idx;
 }
@@ -826,6 +850,9 @@ void sl_internal_toplevel_configure_state_containerized(
     zaura_surface_set_frame(window->aura_surface,
                             ZAURA_SURFACE_FRAME_TYPE_NORMAL);
   }
+
+  LOG(VERBOSE) << window << " state change, fullscreen=" << window->fullscreen
+               << " compositor_fullscreen=" << window->compositor_fullscreen;
   // Override previous state definitions
   window->next_config.states_length = state_idx;
 }

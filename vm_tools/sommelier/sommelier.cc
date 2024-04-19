@@ -1349,6 +1349,7 @@ void sl_handle_map_request(struct sl_context* ctx,
         // behaviour is consistent with sl_handle_client_message().
         window->maximized = maximize_h && maximize_v;
         window->fullscreen = fullscreen;
+        LOG(VERBOSE) << window << " fullscreen=" << fullscreen;
         if (window->maximized) {
           if (window->fullscreen) {
             value =
@@ -1458,6 +1459,8 @@ void sl_handle_map_request(struct sl_context* ctx,
   if (window->size_flags & P_MIN_SIZE) {
     window->min_width = size_hints.min_width;
     window->min_height = size_hints.min_height;
+    LOG(VERBOSE) << window << " min=" << window->min_width << "x"
+                 << window->min_height;
   }
   if (window->size_flags & P_MAX_SIZE) {
     if (size_hints.max_width < INT_MAX) {
@@ -1470,6 +1473,8 @@ void sl_handle_map_request(struct sl_context* ctx,
     } else {
       window->max_height = 0;
     }
+    LOG(VERBOSE) << window << " max=" << window->max_width << "x"
+                 << window->max_height;
   }
 
   window->border_width = 0;
@@ -1858,6 +1863,7 @@ void sl_handle_client_message(struct sl_context* ctx,
                     window->name);
         if (action == NET_WM_STATE_ADD) {
           window->fullscreen = 1;
+          LOG(VERBOSE) << window << " fullscreen=1";
           if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_set_fullscreen(window->xdg_toplevel, nullptr);
           } else {
@@ -1869,6 +1875,7 @@ void sl_handle_client_message(struct sl_context* ctx,
           window->maybe_promote_to_fullscreen = true;
 
           window->fullscreen = 0;
+          LOG(VERBOSE) << window << " fullscreen=0";
           if (window->xdg_toplevel && !window->iconified) {
             xdg_toplevel_unset_fullscreen(window->xdg_toplevel);
           } else {
@@ -2320,6 +2327,8 @@ void sl_handle_property_notify(struct sl_context* ctx,
       if (window->size_flags & P_MIN_SIZE) {
         window->min_width = size_hints.min_width;
         window->min_height = size_hints.min_height;
+        LOG(VERBOSE) << window << " min=" << window->min_width << "x"
+                     << window->min_height;
       }
       if (window->size_flags & P_MAX_SIZE) {
         if (size_hints.max_width < INT_MAX) {
@@ -2332,6 +2341,8 @@ void sl_handle_property_notify(struct sl_context* ctx,
         } else {
           window->max_height = 0;
         }
+        LOG(VERBOSE) << window << " max=" << window->max_width << "x"
+                     << window->max_height;
       }
     }
 

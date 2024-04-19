@@ -2,12 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"          // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
 #include <stdlib.h>
 
+#include "sommelier-logging.h"           // NOLINT(build/include_directory)
 #include "viewporter-client-protocol.h"  // NOLINT(build/include_directory)
 #include "viewporter-server-protocol.h"  // NOLINT(build/include_directory)
 
@@ -40,6 +41,9 @@ static void sl_viewport_set_source(struct wl_client* client,
   host->viewport.src_y = y;
   host->viewport.src_width = width;
   host->viewport.src_height = height;
+  LOG(VERBOSE) << "viewport src set " << wl_fixed_to_int(width) << "x"
+               << wl_fixed_to_int(height) << " (" << wl_fixed_to_int(x) << ","
+               << wl_fixed_to_int(y) << ")";
 }
 
 static void sl_viewport_set_destination(struct wl_client* client,
@@ -53,6 +57,7 @@ static void sl_viewport_set_destination(struct wl_client* client,
 
   host->viewport.dst_width = width;
   host->viewport.dst_height = height;
+  LOG(VERBOSE) << "viewport dst set " << width << "x" << height;
 }
 
 static const struct wp_viewport_interface sl_viewport_implementation = {
