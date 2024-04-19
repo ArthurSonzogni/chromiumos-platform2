@@ -131,6 +131,7 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   std::unique_ptr<FirmwareIndex> fw_index_;
   std::unique_ptr<ModemHelperDirectory> helper_directory_;
   std::unique_ptr<Metrics> metrics_;
+  std::unique_ptr<Journal> journal_;
   std::unique_ptr<Prefs> prefs_;
   std::unique_ptr<Prefs> modems_seen_since_oobe_prefs_;
 

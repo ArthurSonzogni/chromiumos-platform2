@@ -79,13 +79,11 @@ class ModemFlasherTest : public ::testing::Test {
     firmware_directory_ =
         std::make_unique<FirmwareDirectoryStub>(base::FilePath());
 
-    auto journal = std::make_unique<MockJournal>();
-    journal_ = journal.get();
-
+    journal_ = std::make_unique<MockJournal>();
     notification_mgr_ = std::make_unique<MockNotificationManager>();
     mock_metrics_ = std::make_unique<MockMetrics>();
     modem_flasher_ = std::make_unique<ModemFlasher>(
-        firmware_directory_.get(), std::move(journal), notification_mgr_.get(),
+        firmware_directory_.get(), journal_.get(), notification_mgr_.get(),
         mock_metrics_.get());
 
     only_main_ = {kFwMain};
@@ -169,7 +167,7 @@ class ModemFlasherTest : public ::testing::Test {
   }
 
   brillo::ErrorPtr err;
-  MockJournal* journal_;
+  std::unique_ptr<MockJournal> journal_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
   std::unique_ptr<MockNotificationManager> notification_mgr_;
   std::unique_ptr<MockMetrics> mock_metrics_;

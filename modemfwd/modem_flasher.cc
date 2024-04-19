@@ -56,11 +56,11 @@ std::string GetFirmwareVersion(Modem* modem, std::string type) {
 }  // namespace
 
 ModemFlasher::ModemFlasher(FirmwareDirectory* firmware_directory,
-                           std::unique_ptr<Journal> journal,
+                           Journal* journal,
                            NotificationManager* notification_mgr,
                            Metrics* metrics)
-    : journal_(std::move(journal)),
-      firmware_directory_(firmware_directory),
+    : firmware_directory_(firmware_directory),
+      journal_(journal),
       notification_mgr_(notification_mgr),
       metrics_(metrics) {}
 
@@ -289,8 +289,7 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
                << ") to the modem";
   }
   return base::BindOnce(&Journal::MarkEndOfFlashingFirmware,
-                        base::Unretained(journal_.get()), device_id,
-                        current_carrier);
+                        base::Unretained(journal_), device_id, current_carrier);
 }
 
 base::FilePath ModemFlasher::GetFirmwarePath(const FirmwareFileInfo& info) {

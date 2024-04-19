@@ -27,7 +27,7 @@ namespace modemfwd {
 class ModemFlasher {
  public:
   ModemFlasher(FirmwareDirectory* firmware_directory,
-               std::unique_ptr<Journal> journal,
+               Journal* journal,
                NotificationManager* notification_mgr,
                Metrics* metrics);
   ModemFlasher(const ModemFlasher&) = delete;
@@ -122,12 +122,11 @@ class ModemFlasher {
 
   uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> flash_cfg);
 
-  std::unique_ptr<Journal> journal_;
-
   std::map<std::string, FlashState> modem_info_;
 
   // Owned by Daemon
   FirmwareDirectory* firmware_directory_;
+  Journal* journal_;
   NotificationManager* notification_mgr_;
   Metrics* metrics_;
 };

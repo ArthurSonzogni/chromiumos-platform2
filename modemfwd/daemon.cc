@@ -306,9 +306,9 @@ void Daemon::CompleteInitialization() {
   }
   DCHECK(fw_manifest_directory_);
 
-  auto journal = OpenJournal(journal_file_path_, fw_manifest_directory_.get(),
-                             helper_directory_.get());
-  if (!journal) {
+  journal_ = OpenJournal(journal_file_path_, fw_manifest_directory_.get(),
+                         helper_directory_.get());
+  if (!journal_) {
     auto err = Error::Create(FROM_HERE, kErrorResultInitJournalFailure,
                              "Could not open journal file");
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err.get());
@@ -316,7 +316,7 @@ void Daemon::CompleteInitialization() {
   }
 
   modem_flasher_ = std::make_unique<modemfwd::ModemFlasher>(
-      fw_manifest_directory_.get(), std::move(journal), notification_mgr_.get(),
+      fw_manifest_directory_.get(), journal_.get(), notification_mgr_.get(),
       metrics_.get());
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
