@@ -420,7 +420,10 @@ class ArcMounterImpl : public ArcMounter {
       case LoopMountFilesystemType::kUnspecified:
         if (!Mount(device_path.value(), target, "squashfs", mount_flags,
                    nullptr) &&
-            !Mount(device_path.value(), target, "ext4", mount_flags, nullptr)) {
+            // Add the `noload` option on read-only mount to prevent journal
+            // replay.
+            !Mount(device_path.value(), target, "ext4", mount_flags,
+                   is_readonly_mount ? "noload" : nullptr)) {
           PLOG(ERROR) << "Failed to mount " << source << " as squashfs or ext4";
           return false;
         }
@@ -433,7 +436,9 @@ class ArcMounterImpl : public ArcMounter {
         }
         break;
       case LoopMountFilesystemType::kExt4:
-        if (!Mount(device_path.value(), target, "ext4", mount_flags, nullptr)) {
+        // Add the `noload` option on read-only mount to prevent journal replay.
+        if (!Mount(device_path.value(), target, "ext4", mount_flags,
+                   is_readonly_mount ? "noload" : nullptr)) {
           PLOG(ERROR) << "Failed to mount " << source << " as ext4";
           return false;
         }
