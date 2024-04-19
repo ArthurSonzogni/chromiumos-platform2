@@ -56,6 +56,8 @@ class BRILLO_EXPORT FeatureManagementImpl : public FeatureManagementInterface {
 
   const std::set<std::string> ListFeatures(const FeatureUsage usage) override;
 
+  bool FlashLevels() override;
+
   // Return feature level information based on HWID information and
   // hardware requirement.
   std::optional<DeviceSelection> GetDeviceInfoFromHwid(bool check_prefix_only);

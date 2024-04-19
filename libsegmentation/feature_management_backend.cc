@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/system/sys_info.h>
 #include <base/values.h>
+#include <brillo/file_utils.h>
 #include <brillo/process/process.h>
 #include <rootdev/rootdev.h>
 #include <vpd/vpd.h>
@@ -160,16 +161,16 @@ FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
 bool FeatureManagementImpl::CacheDeviceInfo() {
   std::optional<libsegmentation::DeviceInfo> device_info_result;
 
-  // Read from the tmpfs file for development purposes, if it exists.
-  if (base::PathExists(base::FilePath(kTempDeviceInfoPath))) {
-    device_info_result = FeatureManagementUtil::ReadDeviceInfo(
-        base::FilePath(kTempDeviceInfoPath));
+  base::FilePath tpmfs_cache = base::FilePath(kTempDeviceInfoPath);
+  // Read from the tmpfs file if it exists.
+  if (base::PathExists(tpmfs_cache)) {
+    device_info_result = FeatureManagementUtil::ReadDeviceInfo(tpmfs_cache);
     // To overwrite hash check: it eases testing and prevent entering the real
     // logic.
     if (device_info_result)
       device_info_result->set_cached_version_hash(current_version_hash_);
   }
-  // No luck from dev file, read from the cached location in vpd.
+  // No luck from tmpfs, read from the cached location in vpd.
   if (!device_info_result) {
     std::optional<std::string> encoded =
         vpd_->GetValue(vpd::VpdRw, kVpdKeyDeviceInfo);
@@ -178,7 +179,8 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
   }
 
   // If the device info isn't cached, read it form the hardware id and write it
-  // to the VPD for subsequent boots.
+  // to tpmfs for subsequent calls until reboots.
+  // A upstart job may save the value in the VPD when the device is stable.
   if (!device_info_result ||
       device_info_result->cached_version_hash() != current_version_hash_) {
     // If we are running in a VM, do not check HWID/GSC.
@@ -202,10 +204,13 @@ bool FeatureManagementImpl::CacheDeviceInfo() {
         gsc_tool_output->hw_compliance_version);
     device_info_result->set_cached_version_hash(current_version_hash_);
 
-    if (!vpd_->WriteValue(
-            vpd::VpdRw, kVpdKeyDeviceInfo,
+    // Write in the tmpfs cache. Do not write in the VPD since the API call
+    // could be done early at boot, in a time-critical section. It will be
+    // written later in the VPD by a call to "feature_check --flash".
+    if (!brillo::WriteStringToFile(
+            tpmfs_cache,
             FeatureManagementUtil::EncodeDeviceInfo(*device_info_result))) {
-      LOG(ERROR) << "Failed to persist device info via vpd";
+      LOG(ERROR) << "Failed to cache device info in " << tpmfs_cache.value();
       return false;
     }
   }
@@ -277,6 +282,34 @@ bool FeatureManagementImpl::Check_HW_Requirement(
   if (*size < k110GiB)
     return false;
 
+  return true;
+}
+
+bool FeatureManagementImpl::FlashLevels() {
+  base::FilePath tpmfs_cache = base::FilePath(kTempDeviceInfoPath);
+  if (!base::PathExists(tpmfs_cache)) {
+    // Usual case: the VPD is up to date, CacheDeviceInfo() did not have to
+    // query the device internals.
+    VLOG(1) << "Segmentation level has not been computed since boot.";
+    return true;
+  }
+
+  std::string encoded_cached;
+  if (!base::ReadFileToString(tpmfs_cache, &encoded_cached)) {
+    LOG(WARNING) << "Unable to read cached value";
+    return false;
+  }
+
+  std::optional<std::string> encoded_saved =
+      vpd_->GetValue(vpd::VpdRw, kVpdKeyDeviceInfo);
+  if (!encoded_saved || encoded_saved != encoded_cached) {
+    LOG(INFO) << "Update VPD information";
+    return vpd_->WriteValue(vpd::VpdRw, kVpdKeyDeviceInfo, encoded_cached);
+  }
+
+  // What CacheDeviceInfo() calculated ended up being the same as the
+  // one in the VPD. It can happen during testing.
+  LOG(INFO) << "VPD already up to date";
   return true;
 }
 

@@ -33,6 +33,8 @@ class BRILLO_EXPORT FeatureManagementFake : public FeatureManagementInterface {
 
   const std::set<std::string> ListFeatures(const FeatureUsage usage) override;
 
+  bool FlashLevels() override;
+
   // Set the feature level for the device.
   //
   // @param level: the feature level.

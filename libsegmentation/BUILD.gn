@@ -21,6 +21,9 @@ group("all") {
   if (use.test) {
     deps += [ ":libsegmentation_tests" ]
   }
+  if (use.feature_management) {
+    deps += [ ":install_upstart_backend_config" ]
+  }
 }
 
 default_pkg_deps = [
@@ -155,6 +158,11 @@ executable("feature_check") {
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/libsegmentation.conf" ]
   install_path = "tmpfilesd"
+}
+
+install_config("install_upstart_backend_config") {
+  sources = [ "init/libsegmentation-backend.conf" ]
+  install_path = "upstart"
 }
 
 if (use.test) {

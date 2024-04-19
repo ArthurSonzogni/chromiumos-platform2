@@ -43,6 +43,9 @@ class BRILLO_EXPORT FeatureManagement {
   // or Android).
   const std::set<std::string> ListFeatures(const FeatureUsage usage);
 
+  // Flash current level to VPD.
+  bool FlashLevels();
+
   // Prefix for naming features.
   static constexpr char kPrefix[] = "FeatureManagement";
 

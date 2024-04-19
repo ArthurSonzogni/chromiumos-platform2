@@ -46,6 +46,10 @@ void FeatureManagementFake::SetScopeLevel(ScopeLevel level) {
   system_scope_level_ = level;
 }
 
+bool FeatureManagementFake::FlashLevels() {
+  return false;
+}
+
 void FeatureManagementFake::SetFeature(const std::string& name,
                                        const FeatureUsage usage) {
   system_features_properties_[usage].insert(name);

@@ -44,6 +44,10 @@ FeatureManagementImpl::GetFeatureLevel() {
 FeatureManagementInterface::ScopeLevel FeatureManagementImpl::GetScopeLevel() {
   return ScopeLevel::SCOPE_LEVEL_0;
 }
+
+bool FeatureManagementImpl::FlashLevels() {
+  return true;
+}
 #endif
 
 FeatureManagementInterface::FeatureLevel

@@ -50,4 +50,8 @@ const std::set<std::string> FeatureManagement::ListFeatures(
   return impl_->ListFeatures(usage);
 }
 
+bool FeatureManagement::FlashLevels() {
+  return impl_->FlashLevels();
+}
+
 }  // namespace segmentation

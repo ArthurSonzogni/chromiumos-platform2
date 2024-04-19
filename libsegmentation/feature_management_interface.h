@@ -64,6 +64,11 @@ class FeatureManagementInterface {
   // or Android).
   virtual const std::set<std::string> ListFeatures(
       const FeatureUsage usage) = 0;
+
+  // Flash current level to VPD.
+  //
+  // @return false when writing to VPD fails.
+  virtual bool FlashLevels() = 0;
 };
 
 }  // namespace segmentation
