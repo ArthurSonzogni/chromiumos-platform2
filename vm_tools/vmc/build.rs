@@ -149,7 +149,15 @@ const PROTOS: &[SystemApiDbus] = &[SystemApiDbus::new("dbus", "arc/arc.proto")];
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let system_api_root = match env::var("SYSROOT") {
-        Ok(path) => PathBuf::from(path).join("usr/include/chromeos"),
+        Ok(path) => {
+            let path = PathBuf::from(path);
+            let usr_path = path.join("usr/include/chromeos");
+            if usr_path.is_dir() {
+                usr_path
+            } else {
+                path.join("include/chromeos")
+            }
+        }
         // Make this work when typing "cargo build" in platform2/vm_tools/vmc
         Err(_) => PathBuf::from("../../system_api"),
     };
