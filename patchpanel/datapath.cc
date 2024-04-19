@@ -100,6 +100,17 @@ constexpr char kEgressTetheringChain[] = "egress_tethering";
 // downstream network interface of a tethered connection by a tethering client.
 constexpr char kIngressTetheringChain[] = "ingress_tethering";
 
+// FORWARD filter chain to stop any forwarded traffic between a downstream
+// network interface and any other physical network, VPN, or guest virtual
+// network.
+constexpr char kForwardLocalOnlyChain[] = "forward_localonly";
+// OUPUT filter chain to accept egress traffic sent by ChromeOS on the
+// downstream network interface of a local only network managed by patchpanel.
+constexpr char kEgressLocalOnlyChain[] = "egress_localonly";
+// INPUT filter chain to accept ingress traffic received by ChromeOS on the
+// downstream network interface of a local only network managed by patchpanel.
+constexpr char kIngressLocalOnlyChain[] = "ingress_localonly";
+
 // OUTPUT filter chain to drop host-initiated connection to Bruschetta and
 // FORWARD filter chain to drop external- and other-vm-initiated connection.
 constexpr char kDropOutputToBruschettaChain[] = "drop_output_to_bruschetta";
@@ -185,6 +196,10 @@ enum class ForwardFirewallRuleType {
   //  - The downstream interface is not used for anything other traffic.
   //  - There is at most a single unique tethering setup on the device.
   kTethering,
+  // Rules for a downstream interface used for a local-only network associated
+  // with a WiFi hotspot or a WiFi Direct Group Owner link. At the moment, no
+  // traffic forwarding is allowed.
+  kLocalOnly,
   // Rules for a virtual interface used for an isolated guest VM like Bruschetta
   // with strict ingress firewall rules. Only traffic originated from the VM is
   // allowed.
@@ -197,11 +212,37 @@ ForwardFirewallRuleType GetForwardFirewallRuleType(TrafficSource source) {
   switch (source) {
     case TrafficSource::kTetherDownstream:
       return ForwardFirewallRuleType::kTethering;
+    case TrafficSource::kWiFiLOHS:
+    case TrafficSource::kWiFiDirect:
+      return ForwardFirewallRuleType::kLocalOnly;
     case TrafficSource::kBruschettaVM:
       return ForwardFirewallRuleType::kIsolatedGuest;
     default:
       return ForwardFirewallRuleType::kOpen;
   }
+}
+
+std::string GetEgressFilterChainName(DownstreamNetworkTopology topology) {
+  switch (topology) {
+    case DownstreamNetworkTopology::kLocalOnly:
+      return kEgressLocalOnlyChain;
+    case DownstreamNetworkTopology::kTethering:
+      return kEgressTetheringChain;
+  }
+}
+
+std::string GetIngressFilterChainName(DownstreamNetworkTopology topology) {
+  switch (topology) {
+    case DownstreamNetworkTopology::kLocalOnly:
+      return kIngressLocalOnlyChain;
+    case DownstreamNetworkTopology::kTethering:
+      return kIngressTetheringChain;
+  }
+}
+
+bool IsDownstreamNetworkForwardFirewallRule(ForwardFirewallRuleType rule) {
+  return rule == ForwardFirewallRuleType::kTethering ||
+         rule == ForwardFirewallRuleType::kLocalOnly;
 }
 
 }  // namespace
@@ -876,12 +917,24 @@ void Datapath::AddDownstreamInterfaceRules(
     // is exclusively used for tethering or not, and add the additional DROP
     // rules if that is the case.
   }
+
+  if (forward_firewall_rule_type == ForwardFirewallRuleType::kLocalOnly) {
+    // Reject any forwarded traffic between the downstream network interface
+    // and any other interface.
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kA, kForwardLocalOnlyChain, "DROP",
+                   /*iif=*/"", int_ifname);
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kA, kForwardLocalOnlyChain, "DROP",
+                   int_ifname, /*oif=*/"");
+  }
+
   if (forward_firewall_rule_type == ForwardFirewallRuleType::kOpen) {
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                    Iptables::Command::kA, "FORWARD", "ACCEPT", /*iif=*/"",
                    int_ifname);
   }
-  if (forward_firewall_rule_type != ForwardFirewallRuleType::kTethering) {
+  if (!IsDownstreamNetworkForwardFirewallRule(forward_firewall_rule_type)) {
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                    Iptables::Command::kA, "FORWARD", "ACCEPT", int_ifname,
                    /*oif=*/"");
@@ -1060,12 +1113,19 @@ void Datapath::StopRoutingDevice(const std::string& int_ifname,
     FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
                kForwardTetheringChain);
   }
+  if (forward_firewall_rule_type == ForwardFirewallRuleType::kLocalOnly) {
+    // Assume there is a single and unique local only downstream network setup
+    // across the device. Therefore, the tethering accept and drop rules can be
+    // removed by flushing the relevant chain.
+    FlushChain(IpFamily::kDual, Iptables::Table::kFilter,
+               kForwardLocalOnlyChain);
+  }
   if (forward_firewall_rule_type == ForwardFirewallRuleType::kOpen) {
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                    Iptables::Command::kD, "FORWARD", "ACCEPT", /*iif=*/"",
                    int_ifname);
   }
-  if (forward_firewall_rule_type != ForwardFirewallRuleType::kTethering) {
+  if (!IsDownstreamNetworkForwardFirewallRule(forward_firewall_rule_type)) {
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
                    Iptables::Command::kD, "FORWARD", "ACCEPT", int_ifname,
                    /*oif=*/"");
@@ -1571,13 +1631,19 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
   }
 
   if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                      Iptables::Command::kI, "OUTPUT", kEgressTetheringChain,
+                      Iptables::Command::kI, "OUTPUT",
+                      GetEgressFilterChainName(info.topology),
                       /*iif=*/"", /*oif=*/info.downstream_ifname)) {
     return false;
   }
   if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                      Iptables::Command::kI, "INPUT", kIngressTetheringChain,
+                      Iptables::Command::kI, "INPUT",
+                      GetIngressFilterChainName(info.topology),
                       /*iif=*/info.downstream_ifname, /*oif=*/"")) {
+    ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
+                   Iptables::Command::kD, "OUTPUT",
+                   GetEgressFilterChainName(info.topology),
+                   /*iif=*/"", /*oif=*/info.downstream_ifname);
     return false;
   }
 
@@ -1616,10 +1682,12 @@ void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
   // or flip it back to client mode and restart a Network on top.
   StopRoutingDevice(info.downstream_ifname, info.GetTrafficSource());
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "OUTPUT", kEgressTetheringChain,
+                 Iptables::Command::kD, "OUTPUT",
+                 GetEgressFilterChainName(info.topology),
                  /*iif=*/"", /*oif=*/info.downstream_ifname);
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "INPUT", kIngressTetheringChain,
+                 Iptables::Command::kD, "INPUT",
+                 GetIngressFilterChainName(info.topology),
                  /*iif=*/info.downstream_ifname, /*oif=*/"");
 }
 

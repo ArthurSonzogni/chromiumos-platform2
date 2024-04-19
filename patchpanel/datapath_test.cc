@@ -736,13 +736,13 @@ TEST_F(DatapathTest, StartDownstreamTetheredNetwork) {
 
 TEST_F(DatapathTest, StartDownstreamLocalOnlyNetwork) {
   Verify_iptables(runner_, IpFamily::kDual,
-                  "filter -I OUTPUT -o ap0 -j egress_tethering -w");
+                  "filter -I OUTPUT -o ap0 -j egress_localonly -w");
   Verify_iptables(runner_, IpFamily::kDual,
-                  "filter -I INPUT -i ap0 -j ingress_tethering -w");
+                  "filter -I INPUT -i ap0 -j ingress_localonly -w");
   Verify_iptables(runner_, IpFamily::kDual,
-                  "filter -A FORWARD -o ap0 -j ACCEPT -w");
+                  "filter -A forward_localonly -i ap0 -j DROP -w");
   Verify_iptables(runner_, IpFamily::kDual,
-                  "filter -A FORWARD -i ap0 -j ACCEPT -w");
+                  "filter -A forward_localonly -o ap0 -j DROP -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -N PREROUTING_ap0 -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");
   Verify_iptables(runner_, IpFamily::kDual,
@@ -794,13 +794,10 @@ TEST_F(DatapathTest, StopDownstreamTetheredNetwork) {
 
 TEST_F(DatapathTest, StopDownstreamLocalOnlyNetwork) {
   Verify_iptables(runner_, IpFamily::kDual,
-                  "filter -D OUTPUT -o ap0 -j egress_tethering -w");
+                  "filter -D OUTPUT -o ap0 -j egress_localonly -w");
   Verify_iptables(runner_, IpFamily::kDual,
-                  "filter -D INPUT -i ap0 -j ingress_tethering -w");
-  Verify_iptables(runner_, IpFamily::kDual,
-                  "filter -D FORWARD -o ap0 -j ACCEPT -w");
-  Verify_iptables(runner_, IpFamily::kDual,
-                  "filter -D FORWARD -i ap0 -j ACCEPT -w");
+                  "filter -D INPUT -i ap0 -j ingress_localonly -w");
+  Verify_iptables(runner_, IpFamily::kDual, "filter -F forward_localonly -w");
   Verify_iptables(runner_, IpFamily::kDual,
                   "mangle -D PREROUTING -i ap0 -j PREROUTING_ap0 -w");
   Verify_iptables(runner_, IpFamily::kDual, "mangle -F PREROUTING_ap0 -w");

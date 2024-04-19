@@ -82,6 +82,9 @@ COMMIT
 :forward_tethering - [0:0]
 :ingress_tethering - [0:0]
 :egress_tethering - [0:0]
+:forward_localonly - [0:0]
+:ingress_localonly - [0:0]
+:egress_localonly - [0:0]
 :accept_egress_to_dns_proxy - [0:0]
 
 -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
@@ -94,6 +97,7 @@ COMMIT
 -A FORWARD -j vpn_egress_filters
 -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
 -A FORWARD -j forward_tethering
+-A FORWARD -j forward_localonly
 -A FORWARD -j drop_forward_to_bruschetta
 -A FORWARD -p ipv6-icmp -j ACCEPT
 -A OUTPUT -j accept_egress_to_dns_proxy
@@ -110,6 +114,12 @@ COMMIT
 -A egress_tethering -j DROP
 -A ingress_tethering -p ipv6-icmp -j ACCEPT
 -A ingress_tethering -j DROP
+-A egress_localonly -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
+-A egress_localonly -p ipv6-icmp -j ACCEPT
+-A egress_localonly -j DROP
+-A ingress_localonly -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A ingress_localonly -p ipv6-icmp -j ACCEPT
+-A ingress_localonly -j DROP
 -A vpn_egress_filters -j vpn_accept
 -A vpn_egress_filters -j vpn_lockdown
 COMMIT

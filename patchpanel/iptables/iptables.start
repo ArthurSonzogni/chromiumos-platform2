@@ -136,6 +136,9 @@ COMMIT
 :forward_tethering - [0:0]
 :egress_tethering - [0:0]
 :ingress_tethering - [0:0]
+:forward_localonly - [0:0]
+:ingress_localonly - [0:0]
+:egress_localonly - [0:0]
 :drop_output_to_bruschetta - [0:0]
 :drop_forward_to_bruschetta - [0:0]
 :accept_egress_to_dns_proxy - [0:0]
@@ -179,6 +182,11 @@ COMMIT
 # the downstream and another network interface. Jump rules for the OUTPUT and
 # INPUT filter chains are created dynamically.
 -A FORWARD -j forward_tethering
+
+# Jump to the chain checking localonly traffic and block any traffic between the
+# downstrean network interface and any other network, physical, VPN, or guest
+# virtual network.
+-A FORWARD -j forward_localonly
 
 -A FORWARD -j drop_forward_to_bruschetta
 
@@ -225,11 +233,20 @@ COMMIT
 -A drop_guest_ipv4_prefix -s 100.115.92.0/23 -o wwan+ -j DROP
 
 -A egress_tethering -p icmp -j ACCEPT
--A egress_tethering -p udp -m udp --sport 67 --dport 68 -j ACCEPT
+-A egress_tethering -p udp -m udp --dport 68 -j ACCEPT
 -A egress_tethering -j DROP
 -A ingress_tethering -p icmp -j ACCEPT
--A ingress_tethering -p udp -m udp --sport 68 --dport 67 -j ACCEPT
+-A ingress_tethering -p udp -m udp --dport 67 -j ACCEPT
 -A ingress_tethering -j DROP
+
+-A egress_localonly -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
+-A egress_localonly -p icmp -j ACCEPT
+-A egress_localonly -p udp -m udp --dport 68 -j ACCEPT
+-A ingress_localonly -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A ingress_localonly -p icmp -j ACCEPT
+-A ingress_localonly -p udp -m udp --dport 67 -j ACCEPT
+-A ingress_localonly -j DROP
+
 -A vpn_egress_filters -j vpn_accept
 -A vpn_egress_filters -j vpn_lockdown
 COMMIT
