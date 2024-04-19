@@ -703,9 +703,15 @@ void sl_internal_toplevel_configure_position(struct sl_window* window,
     const sl_host_output* output =
         window->paired_surface ? window->paired_surface->output.get() : nullptr;
     if (output) {
-      new_x =
-          output->virt_x + (output->virt_rotated_width - width_in_pixels) / 2;
-      new_y = (output->virt_rotated_height - height_in_pixels) / 2;
+      if (sl_window_is_containerized(window) && window->viewport_override &&
+          window->fullscreen && !window->compositor_fullscreen) {
+        new_x = output->virt_x;
+        new_y = output->virt_y;
+      } else {
+        new_x =
+            output->virt_x + (output->virt_rotated_width - width_in_pixels) / 2;
+        new_y = (output->virt_rotated_height - height_in_pixels) / 2;
+      }
     } else {
       new_x = window->ctx->screen->width_in_pixels / 2 - width_in_pixels / 2;
       new_y = window->ctx->screen->height_in_pixels / 2 - height_in_pixels / 2;
