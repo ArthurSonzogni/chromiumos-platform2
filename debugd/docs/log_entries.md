@@ -441,6 +441,18 @@ File system mount information from the init process's mount namespace. See
 https://www.kernel.org/doc/html/latest/filesystems/sharedsubtree.html for what
 it means.
 
+## nbr_minios_log
+
+Details of [Network Based Recovery (NBR)] process.
+
+## nbr_update_engine_log
+
+Details of update engine progress during [Network Based Recovery (NBR)].
+
+## nbr_upstart_log
+
+[Upstart] details from [Network Based Recovery (NBR)].
+
 ## netlog
 
 ## netstat
@@ -680,6 +692,7 @@ Useful to know how much memory is being stored compressed in zram.
 [Memory PSI]: https://docs.kernel.org/accounting/psi.html
 [Memory PSI code]: https://chromium.googlesource.com/chromiumos/third_party/kernel/+/v6.1/kernel/sched/psi.c#1143
 [Modern Standby (S0ix)]: https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby
+[Network Based Recovery (NBR)]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/minios/README.md
 [Package Cstate]: https://edc.intel.com/content/www/us/en/design/ipla/software-development-platforms/client/platforms/alder-lake-desktop/12th-generation-intel-core-processors-datasheet-volume-1-of-2/001/package-c-states/
 [Panic Data]: https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md#Panicinfo
 [proc(5)]: https://man7.org/linux/man-pages/man5/proc.5.html
@@ -687,4 +700,5 @@ Useful to know how much memory is being stored compressed in zram.
 [segmentation library]: /libsegmentation/README.md
 [slabinfo(5)]: https://man7.org/linux/man-pages/man5/slabinfo.5.html
 [uname(1)]: https://man7.org/linux/man-pages/man1/uname.1.html
+[Upstart]: https://en.wikipedia.org/wiki/Upstart_(software)
 [uptime(1)]: https://man7.org/linux/man-pages/man1/uptime.1.html
