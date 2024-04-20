@@ -15,7 +15,7 @@
 
 namespace fbpreprocessor {
 
-class InputManager : public SessionStateManager::Observer {
+class InputManager : public SessionStateManagerInterface::Observer {
  public:
   explicit InputManager(Manager* manager);
   InputManager(const InputManager&) = delete;

@@ -19,7 +19,7 @@
 
 namespace fbpreprocessor {
 
-class PseudonymizationManager : public SessionStateManager::Observer {
+class PseudonymizationManager : public SessionStateManagerInterface::Observer {
  public:
   explicit PseudonymizationManager(Manager* manager);
   PseudonymizationManager(const PseudonymizationManager&) = delete;

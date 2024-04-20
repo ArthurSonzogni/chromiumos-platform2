@@ -24,8 +24,8 @@
 
 namespace fbpreprocessor {
 
-class OutputManager : public SessionStateManager::Observer,
-                      public PlatformFeaturesClient::Observer {
+class OutputManager : public SessionStateManagerInterface::Observer,
+                      public PlatformFeaturesClientInterface::Observer {
  public:
   static constexpr base::TimeDelta kDefaultExpiration = base::Minutes(30);
 
