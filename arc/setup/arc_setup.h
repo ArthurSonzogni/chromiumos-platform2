@@ -284,8 +284,10 @@ class COMPONENT_EXPORT(LIBARC_SETUP) ArcSetup {
   // If Android's packages.xml exists, fills |out_data_sdk_version| with the SDK
   // version for the internal storage found in the XML. If packages.xml doesn't
   // exist, fills it with AndroidSdkVersion::UNKNOWN.
-  void GetBootTypeAndDataSdkVersion(ArcBootType* out_boot_type,
-                                    AndroidSdkVersion* out_data_sdk_version);
+  void GetBootTypeAndDataSdkVersion(
+      const base::FilePath& android_data_directory,
+      ArcBootType* out_boot_type,
+      AndroidSdkVersion* out_data_sdk_version);
 
   // Returns the SDK version read from packages.xml in ARCVM /data by internally
   // calling GetBootTypeAndDataSdkVersion().

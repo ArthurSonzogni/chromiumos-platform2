@@ -33,6 +33,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
@@ -1962,7 +1963,9 @@ void ArcSetup::RemoveAndroidKmsgFifo() {
 // Note: This function has to be in sync with Android's arc-boot-type-detector.
 // arc-boot-type-detector's main() function is very similar to this.
 void ArcSetup::GetBootTypeAndDataSdkVersion(
-    ArcBootType* out_boot_type, AndroidSdkVersion* out_data_sdk_version) {
+    const base::FilePath& android_data_directory,
+    ArcBootType* out_boot_type,
+    AndroidSdkVersion* out_data_sdk_version) {
   const std::string system_fingerprint =
       GetSystemBuildPropertyOrDie(kFingerprintProp);
 
@@ -1970,7 +1973,7 @@ void ArcSetup::GetBootTypeAndDataSdkVersion(
   // mSettingsFilename. This will be very unlikely to change, but we still need
   // to be careful.
   const base::FilePath packages_xml =
-      arc_paths_->android_data_directory.Append("data/system/packages.xml");
+      android_data_directory.Append("data/system/packages.xml");
 
   if (!base::PathExists(packages_xml)) {
     // This path is taken when /data is empty, which is not an error.
@@ -2017,31 +2020,36 @@ AndroidSdkVersion ArcSetup::GetArcVmDataSdkVersion() {
 
   if (arcvm_data_type_ == ArcVmDataType::kVirtiofs) {
     // Just read packages.xml from virtio-fs /data.
-    GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
+    GetBootTypeAndDataSdkVersion(arc_paths_->android_data_directory, &boot_type,
+                                 &data_sdk_version);
     return data_sdk_version;
   }
 
-  // Mount virtio-blk /data on /home/root/<hash>/android-data/data.
+  // Mount virtio-blk /data on a temporary directory.
   const base::FilePath data_device_path = GetArcVmDataDevicePath(
       arcvm_data_type_, config_.GetStringOrDie("CHROMEOS_USER"),
       arc_paths_->root_directory);
   CHECK(!data_device_path.empty());
+  base::ScopedTempDir temp_android_data_dir;
+  EXIT_IF(!temp_android_data_dir.CreateUniqueTempDir());
   const base::FilePath data_mount_path =
-      arc_paths_->android_data_directory.Append("data");
+      temp_android_data_dir.GetPath().Append("data");
+  EXIT_IF(!InstallDirectory(0700, kRootUid, kRootGid, data_mount_path));
   std::unique_ptr<ScopedMount> android_data_mount =
       ScopedMount::CreateScopedLoopMount(
           arc_mounter_.get(), data_device_path.value(), data_mount_path,
           LoopMountFilesystemType::kExt4,
           MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_RDONLY);
   if (!android_data_mount) {
-    // Mount can fail when /data has not been created/formatted yet. Return the
-    // unknown value which includes the first boot after opt-in.
+    // Mount can fail when /data has not been formatted yet. Return the unknown
+    // value which includes the first boot after opt-in.
     LOG(INFO) << "Failed to mount " << data_device_path << " on "
               << data_mount_path << ". Assuming the first boot after opt-in";
     return AndroidSdkVersion::UNKNOWN;
   }
   LOG(INFO) << "Mounted " << data_device_path << " on " << data_mount_path;
-  GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
+  GetBootTypeAndDataSdkVersion(temp_android_data_dir.GetPath(), &boot_type,
+                               &data_sdk_version);
   return data_sdk_version;
 }
 
@@ -2506,7 +2514,8 @@ void ArcSetup::OnBootContinue() {
 
   ArcBootType boot_type;
   AndroidSdkVersion data_sdk_version;
-  GetBootTypeAndDataSdkVersion(&boot_type, &data_sdk_version);
+  GetBootTypeAndDataSdkVersion(arc_paths_->android_data_directory, &boot_type,
+                               &data_sdk_version);
 
   SendUpgradeMetrics(data_sdk_version);
   DeleteAndroidDataOnUpgrade(data_sdk_version);
