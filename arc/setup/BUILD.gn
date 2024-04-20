@@ -6,24 +6,27 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":arc-apply-per-board-config",
-    ":arc-create-data",
-    ":arc-handle-upgrade",
     ":arc-prepare-host-generated-dir",
     ":arc-remove-data",
     ":arc-remove-stale-data",
-    ":arc-setup",
-    ":generate_squashfs",
-    ":install_minijail_arc_boot_continue",
-    ":install_minijail_arc_create_data_conf",
-    ":install_minijail_arc_handle_upgrade_conf",
-    ":install_minijail_arc_remove_data_conf",
-    ":install_minijail_arc_stale_directory_remover_conf",
-    ":install_minijail_arcvm_per_board_features_conf",
+    ":install_minijail_configs",
     ":libarc_setup",
-    "xml:arc-packages-xml-reader",
     "xml:libandroidxml",
   ]
+  if (use.arcpp) {
+    deps += [
+      ":arc-setup",
+      ":generate_squashfs",
+    ]
+  }
+  if (use.arcvm) {
+    deps += [
+      ":arc-apply-per-board-config",
+      ":arc-create-data",
+      ":arc-handle-upgrade",
+      "xml:arc-packages-xml-reader",
+    ]
+  }
   if (use.test) {
     deps += [ ":arc-setup_testrunner" ]
   }
@@ -65,36 +68,6 @@ pkg_config("target_defaults_pkg_deps") {
   }
 }
 
-install_config("install_minijail_arc_boot_continue") {
-  sources = [ "init/minijail/arc-boot-continue.conf" ]
-  install_path = "minijail_conf"
-}
-
-install_config("install_minijail_arc_create_data_conf") {
-  sources = [ "init/minijail/arc-create-data.conf" ]
-  install_path = "minijail_conf"
-}
-
-install_config("install_minijail_arc_handle_upgrade_conf") {
-  sources = [ "init/minijail/arc-handle-upgrade.conf" ]
-  install_path = "minijail_conf"
-}
-
-install_config("install_minijail_arcvm_per_board_features_conf") {
-  sources = [ "init/minijail/arcvm-per-board-features.conf" ]
-  install_path = "minijail_conf"
-}
-
-install_config("install_minijail_arc_remove_data_conf") {
-  sources = [ "init/minijail/arc-remove-data.conf" ]
-  install_path = "minijail_conf"
-}
-
-install_config("install_minijail_arc_stale_directory_remover_conf") {
-  sources = [ "init/minijail/arc-stale-directory-remover.conf" ]
-  install_path = "minijail_conf"
-}
-
 config("target_defaults") {
   configs = [ ":target_defaults_pkg_deps" ]
   defines = [
@@ -105,6 +78,24 @@ config("target_defaults") {
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
     "USE_NDK_TRANSLATION=${use.ndk_translation}",
   ]
+}
+
+install_config("install_minijail_configs") {
+  sources = [
+    "init/minijail/arc-remove-data.conf",
+    "init/minijail/arc-stale-directory-remover.conf",
+  ]
+  if (use.arcpp) {
+    sources += [ "init/minijail/arc-boot-continue.conf" ]
+  }
+  if (use.arcvm) {
+    sources += [
+      "init/minijail/arc-create-data.conf",
+      "init/minijail/arc-handle-upgrade.conf",
+      "init/minijail/arcvm-per-board-features.conf",
+    ]
+  }
+  install_path = "minijail_conf"
 }
 
 libarc_setup_sources = [
@@ -147,6 +138,12 @@ executable("arc-setup") {
   deps = [ ":libarc_setup" ]
 }
 
+executable("arc-prepare-host-generated-dir") {
+  sources = [ "arc_prepare_host_generated_dir_main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libarc_setup" ]
+}
+
 executable("arc-remove-data") {
   sources = [ "arc_remove_data_main.cc" ]
   configs += [ ":target_defaults" ]
@@ -173,12 +170,6 @@ executable("arc-create-data") {
 
 executable("arc-handle-upgrade") {
   sources = [ "arc_handle_upgrade_main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":libarc_setup" ]
-}
-
-executable("arc-prepare-host-generated-dir") {
-  sources = [ "arc_prepare_host_generated_dir_main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libarc_setup" ]
 }
