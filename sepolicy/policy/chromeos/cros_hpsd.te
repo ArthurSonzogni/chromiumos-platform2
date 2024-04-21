@@ -1,6 +1,10 @@
 # SELinux policy for hpsd.
 type cros_hpsd, domain, chromeos_domain;
 
+# Permissive because the Minijail config provides protection through
+# bind-mounts and Landlock.
+permissive cros_hpsd;
+
 # Enable sandboxing.
 from_minijail_static(cros_hpsd, cros_hpsd_exec)
 domain_auto_trans_nnp(minijail, cros_hpsd_exec, cros_hpsd)
