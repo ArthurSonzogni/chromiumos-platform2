@@ -31,4 +31,4 @@ SELinux policy for Chrome OS lives here.
 ## Docs
 
 Docs are located at
-[chromiumos/docs/security/selinux.md](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/security/selinux.md)
+[SELinux in ChromeOS](https://www.chromium.org/chromium-os/developer-library/reference/security/selinux/)
