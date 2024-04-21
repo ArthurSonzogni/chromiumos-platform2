@@ -16,7 +16,6 @@ filetrans_pattern(cros_debugd, cros_run, cros_run_avahi_daemon, dir, "avahi-daem
 allow cros_debugd_minijail cros_debugd:fd use;
 
 # debugd needs pretty wide access to generate logs.
-# TODO(b/242717537): Turn these into 'allow' rules after ARC++ P is deprecated.
 dontaudit cros_debugd_minijail domain:dir r_dir_perms;
 dontaudit cros_debugd_minijail domain:file r_file_perms;
 dontaudit cros_debugd_minijail domain:lnk_file read;
