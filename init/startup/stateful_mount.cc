@@ -49,7 +49,8 @@ constexpr char kExt4Features[] = "sys/fs/ext4/features";
 constexpr char kReservedBlocksGID[] = "20119";
 constexpr char kQuotaOpt[] = "quota";
 constexpr char kQuotaProjectOpt[] = "project";
-constexpr char kDumpe2fsStatefulLog[] = "run/dumpe2fs_stateful.log";
+constexpr char kDumpe2fsStatefulLog[] =
+    "run/chromeos_startup/dumpe2fs_stateful.log";
 constexpr char kDirtyExpireCentisecs[] = "proc/sys/vm/dirty_expire_centisecs";
 
 constexpr char kUpdateAvailable[] = ".update_available";
