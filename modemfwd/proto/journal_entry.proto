@@ -20,3 +20,7 @@ message JournalEntry {
   string carrier_id = 2;
   repeated JournalEntryType type = 3;
 };
+
+message JournalLog {
+  repeated JournalEntry entry = 1;
+};

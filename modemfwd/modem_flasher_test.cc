@@ -71,6 +71,9 @@ constexpr char kDevFirmwareTag[] = "dev";
 constexpr char kDevFirmwarePath[] = "dev_firmware";
 constexpr char kDevFirmwareVersion[] = "000.012";
 
+// Journal entry ID
+constexpr char kJournalEntryId[] = "journal-entry";
+
 }  // namespace
 
 class ModemFlasherTest : public ::testing::Test {
@@ -595,8 +598,8 @@ TEST_F(ModemFlasherTest, WritesToJournal) {
   EXPECT_CALL(*modem, GetMainFirmwareVersion()).Times(AtLeast(1));
   EXPECT_CALL(*modem, FlashFirmwares(main_cfg)).WillOnce(Return(true));
   EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(only_main_, kDeviceId1, _))
-      .Times(1);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, _)).Times(1);
+      .WillOnce(Return(kJournalEntryId));
+  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
   base::OnceClosure cb = modem_flasher_->TryFlash(modem.get(), true, &err);
   ASSERT_EQ(err.get(), nullptr);
   // The cleanup callback marks the end of flashing the firmware.
@@ -615,8 +618,8 @@ TEST_F(ModemFlasherTest, WritesToJournalOnFailure) {
   EXPECT_CALL(*modem, GetMainFirmwareVersion()).Times(AtLeast(1));
   EXPECT_CALL(*modem, FlashFirmwares(main_cfg)).WillOnce(Return(false));
   EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(only_main_, kDeviceId1, _))
-      .Times(1);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, _)).Times(1);
+      .WillOnce(Return(kJournalEntryId));
+  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
   // There should be no journal cleanup after the flashing fails.
   base::OnceClosure cb = modem_flasher_->TryFlash(modem.get(), true, &err);
   ASSERT_NE(err.get(), nullptr);
@@ -642,9 +645,8 @@ TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
   EXPECT_CALL(*modem, FlashFirmwares(carrier_other_cfg)).WillOnce(Return(true));
   EXPECT_CALL(*journal_,
               MarkStartOfFlashingFirmware(only_carrier_, kDeviceId1, kCarrier2))
-      .Times(1);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, kCarrier2))
-      .Times(1);
+      .WillOnce(Return(kJournalEntryId));
+  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
   base::OnceClosure cb = modem_flasher_->TryFlash(modem.get(), true, &err);
   ASSERT_EQ(err.get(), nullptr);
   ASSERT_FALSE(cb.is_null());
@@ -668,9 +670,8 @@ TEST_F(ModemFlasherTest, WritesCarrierSwitchesToJournal) {
   EXPECT_CALL(*modem, FlashFirmwares(carrier_orig_cfg)).WillOnce(Return(true));
   EXPECT_CALL(*journal_,
               MarkStartOfFlashingFirmware(only_carrier_, kDeviceId1, kCarrier1))
-      .Times(1);
-  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kDeviceId1, kCarrier1))
-      .Times(1);
+      .WillOnce(Return(kJournalEntryId));
+  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
   cb = modem_flasher_->TryFlash(modem.get(), true, &err);
   ASSERT_EQ(err.get(), nullptr);
   ASSERT_FALSE(cb.is_null());

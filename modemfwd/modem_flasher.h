@@ -116,7 +116,7 @@ class ModemFlasher {
                 bool modem_seen_since_oobe,
                 base::TimeDelta* out_duration,
                 brillo::ErrorPtr* err);
-  void FlashFinished(const std::string& device_id,
+  void FlashFinished(std::optional<std::string> journal_entry_id,
                      std::unique_ptr<FlashConfig> flash_cfg);
 
   uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> fw_cfg);

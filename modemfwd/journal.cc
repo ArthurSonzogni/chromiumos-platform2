@@ -10,11 +10,13 @@
 
 #include <base/check.h>
 #include <base/files/file.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/types/optional_util.h>
+#include <base/unguessable_token.h>
 #include <brillo/proto_file_io.h>
 #include <chromeos/switches/modemfwd_switches.h>
 
@@ -22,6 +24,7 @@
 #include "modemfwd/logging.h"
 #include "modemfwd/modem_helper.h"
 #include "modemfwd/proto_bindings/journal_entry.pb.h"
+#include "modemfwd/scoped_temp_file.h"
 
 namespace modemfwd {
 
@@ -38,7 +41,6 @@ std::string JournalTypeToFirmwareType(int t) {
     default:
       return std::string();
   }
-  NOTREACHED();
 }
 
 JournalEntryType FirmwareTypeToJournalType(std::string fw_type) {
@@ -51,6 +53,11 @@ JournalEntryType FirmwareTypeToJournalType(std::string fw_type) {
   else
     return JournalEntryType::UNKNOWN;
 }
+
+struct JournalEntryWithId {
+  std::string id;
+  JournalEntry entry;
+};
 
 // Returns true if the operation was restarted successfully or false if it
 // failed.
@@ -138,70 +145,94 @@ bool RestartOperation(const JournalEntry& entry,
   return helper->FlashFirmwares(flashed_fw);
 }
 
+std::optional<JournalLog> ParseJournal(base::File& journal_file) {
+  JournalLog log;
+
+  if (brillo::ReadTextProtobuf(journal_file.GetPlatformFile(), &log)) {
+    return log;
+  }
+
+  // Old versions of the journal may have just a single entry in the file.
+  journal_file.Seek(base::File::FROM_BEGIN, 0);
+  JournalEntry entry;
+  if (brillo::ReadTextProtobuf(journal_file.GetPlatformFile(), &entry)) {
+    *log.add_entry() = entry;
+    return log;
+  }
+
+  LOG(WARNING) << "Failed to parse journal";
+  return std::nullopt;
+}
+
 class JournalImpl : public Journal {
  public:
-  explicit JournalImpl(base::File journal_file)
-      : journal_file_(std::move(journal_file)) {
-    // Clearing the journal prevents it from growing without bound but also
-    // ensures that if we crash after this point, we won't try to restart
-    // any operations an extra time.
-    ClearJournalFile();
-  }
+  explicit JournalImpl(const base::FilePath& journal_path)
+      : journal_path_(journal_path) {}
   JournalImpl(const JournalImpl&) = delete;
   JournalImpl& operator=(const JournalImpl&) = delete;
 
-  void MarkStartOfFlashingFirmware(
+  std::optional<std::string> MarkStartOfFlashingFirmware(
       const std::vector<std::string>& firmware_types,
       const std::string& device_id,
       const std::string& carrier_id) override {
     JournalEntry entry;
     entry.set_device_id(device_id);
     entry.set_carrier_id(carrier_id);
-    for (const auto& t : firmware_types)
+    for (const auto& t : firmware_types) {
       entry.add_type(FirmwareTypeToJournalType(t));
-    WriteJournalEntry(entry);
+    }
+
+    std::string entry_id = base::UnguessableToken().Create().ToString();
+    entries_.emplace_back(entry_id, entry);
+    if (!SerializeJournal()) {
+      LOG(INFO) << __func__ << ": failed to serialize journal";
+      return std::nullopt;
+    }
+
+    return entry_id;
   }
 
-  void MarkEndOfFlashingFirmware(const std::string& device_id,
-                                 const std::string& carrier_id) override {
-    JournalEntry entry;
-    if (!ReadJournalEntry(&entry)) {
-      LOG(ERROR) << __func__ << ": no journal entry to commit";
-      return;
+  void MarkEndOfFlashingFirmware(const std::string& entry_id) override {
+    std::erase_if(
+        entries_,
+        [&entry_id](const std::pair<std::string, JournalEntry>& entry) {
+          return entry_id == entry.first;
+        });
+    if (!SerializeJournal()) {
+      LOG(INFO) << __func__ << ": failed to serialize journal";
     }
-    if (entry.device_id() != device_id || entry.carrier_id() != carrier_id) {
-      LOG(ERROR) << __func__ << ": found journal entry, but it didn't match";
-      return;
-    }
-    ClearJournalFile();
   }
 
  private:
-  bool ReadJournalEntry(JournalEntry* entry) {
-    if (journal_file_.GetLength() == 0) {
-      ELOG(INFO) << "Tried to read from empty journal";
+  bool SerializeJournal() {
+    JournalLog log;
+    for (const auto& entry : entries_) {
+      *log.add_entry() = entry.second;
+    }
+
+    // Replace the file atomically.
+    auto temp_file = ScopedTempFile::Create();
+    if (!temp_file) {
+      LOG(ERROR) << "Couldn't create temp file";
       return false;
     }
-    journal_file_.Seek(base::File::FROM_BEGIN, 0);
-    return brillo::ReadTextProtobuf(journal_file_.GetPlatformFile(), entry);
-  }
-
-  bool WriteJournalEntry(const JournalEntry& entry) {
-    if (journal_file_.GetLength() > 0) {
-      ELOG(INFO) << "Tried to write to journal with uncommitted entry";
+    base::File new_journal(temp_file->path(), base::File::FLAG_CREATE_ALWAYS |
+                                                  base::File::FLAG_WRITE);
+    if (!brillo::WriteTextProtobuf(new_journal.GetPlatformFile(), log)) {
+      LOG(ERROR) << "Couldn't write new journal to temp file";
       return false;
     }
-    journal_file_.Seek(base::File::FROM_BEGIN, 0);
-    return brillo::WriteTextProtobuf(journal_file_.GetPlatformFile(), entry);
+
+    if (!base::Move(temp_file->path(), journal_path_)) {
+      LOG(ERROR) << "Couldn't replace journal file";
+      return false;
+    }
+
+    return true;
   }
 
-  void ClearJournalFile() {
-    journal_file_.SetLength(0);
-    journal_file_.Seek(base::File::FROM_BEGIN, 0);
-    journal_file_.Flush();
-  }
-
-  base::File journal_file_;
+  std::vector<std::pair<std::string, JournalEntry>> entries_;
+  base::FilePath journal_path_;
 };
 
 }  // namespace
@@ -217,16 +248,30 @@ std::unique_ptr<Journal> OpenJournal(const base::FilePath& journal_path,
     return nullptr;
   }
 
-  // Restart operations if necessary.
-  if (journal_file.GetLength() > 0) {
-    JournalEntry last_entry;
-    if (brillo::ReadTextProtobuf(journal_file.GetPlatformFile(), &last_entry) &&
-        !RestartOperation(last_entry, firmware_dir, helper_dir)) {
+  // Check to see if we have uncommitted operations to restart.
+  JournalLog entries_to_restart;
+  if (journal_file.GetLength() != 0) {
+    std::optional<JournalLog> log = ParseJournal(journal_file);
+    if (log.has_value()) {
+      entries_to_restart = *log;
+    }
+  }
+  for (const auto& entry : entries_to_restart.entry()) {
+    if (!RestartOperation(entry, firmware_dir, helper_dir)) {
       LOG(ERROR) << "Failed to restart uncommitted operation";
+      // Note that we don't stop here; we will try to commit every
+      // operation in the journal.
     }
   }
 
-  return std::make_unique<JournalImpl>(std::move(journal_file));
+  // Clearing the journal prevents it from growing without bound but also
+  // ensures that if we crash after this point, we won't try to restart
+  // any operations an extra time.
+  journal_file.SetLength(0);
+  journal_file.Seek(base::File::FROM_BEGIN, 0);
+  journal_file.Flush();
+
+  return std::make_unique<JournalImpl>(journal_path);
 }
 
 }  // namespace modemfwd

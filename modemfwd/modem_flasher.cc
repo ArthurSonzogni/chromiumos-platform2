@@ -287,13 +287,18 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
   std::transform(flash_cfg->fw_configs.begin(), flash_cfg->fw_configs.end(),
                  std::back_inserter(fw_types),
                  [](const FirmwareConfig& cfg) { return cfg.fw_type; });
-  journal_->MarkStartOfFlashingFirmware(fw_types, device_id,
-                                        flash_cfg->carrier_id);
+  std::optional<std::string> entry_id = journal_->MarkStartOfFlashingFirmware(
+      fw_types, device_id, flash_cfg->carrier_id);
+  if (!entry_id.has_value()) {
+    LOG(WARNING) << "Couldn't write operation to journal";
+  }
 
   base::TimeDelta flash_duration;
   if (!RunFlash(modem, *flash_cfg, modem_seen_since_oobe, &flash_duration,
                 err)) {
-    journal_->MarkEndOfFlashingFirmware(device_id, flash_cfg->carrier_id);
+    if (entry_id.has_value()) {
+      journal_->MarkEndOfFlashingFirmware(*entry_id);
+    }
     notification_mgr_->NotifyUpdateFirmwareCompletedFlashFailure(
         err->get(), GetFirmwareTypesForMetrics(flash_cfg->fw_configs));
     return base::OnceClosure();
@@ -302,16 +307,18 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
   // Report flashing time in successful cases
   metrics_->SendFwFlashTime(flash_duration);
   return base::BindOnce(&ModemFlasher::FlashFinished, base::Unretained(this),
-                        device_id, std::move(flash_cfg));
+                        entry_id, std::move(flash_cfg));
 }
 
 base::FilePath ModemFlasher::GetFirmwarePath(const FirmwareFileInfo& info) {
   return firmware_directory_->GetFirmwarePath().Append(info.firmware_path);
 }
 
-void ModemFlasher::FlashFinished(const std::string& device_id,
+void ModemFlasher::FlashFinished(std::optional<std::string> journal_entry_id,
                                  std::unique_ptr<FlashConfig> flash_cfg) {
-  journal_->MarkEndOfFlashingFirmware(device_id, flash_cfg->carrier_id);
+  if (journal_entry_id.has_value()) {
+    journal_->MarkEndOfFlashingFirmware(*journal_entry_id);
+  }
   notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(
       true, GetFirmwareTypesForMetrics(flash_cfg->fw_configs));
 }
