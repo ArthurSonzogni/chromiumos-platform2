@@ -15,46 +15,22 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use log::error;
-use log::info;
 use log::warn;
 use once_cell::sync::Lazy;
 
-use crate::config;
-use crate::memory;
 use crate::power;
-use crate::power::DirectoryPowerSourceProvider;
-use crate::power::PowerSourceProvider;
+#[cfg(target_arch = "x86_64")]
+use crate::x86_64::borealis::apply_borealis_tuning;
 #[cfg(target_arch = "x86_64")]
 use crate::x86_64::cgroup_x86_64::media_dynamic_cgroup;
 #[cfg(target_arch = "x86_64")]
 use crate::x86_64::cgroup_x86_64::MediaDynamicCgroupAction;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::cpu_scaling::double_min_freq;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::cpu_scaling::intel_i7_or_above;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::cpu_scaling::set_min_cpu_freq;
 #[cfg(target_arch = "x86_64")]
 use crate::x86_64::globals::read_dynamic_epp_feature;
 #[cfg(target_arch = "x86_64")]
 use crate::x86_64::globals::set_media_cgroup_state;
 #[cfg(target_arch = "x86_64")]
 use crate::x86_64::gpu_freq_scaling::intel_device;
-
-// Paths for RPS up/down threshold relative to rootdir.
-const DEVICE_RPS_PATH_UP: &str = "sys/class/drm/card0/gt/gt0/rps_up_threshold_pct";
-const DEVICE_RPS_PATH_DOWN: &str = "sys/class/drm/card0/gt/gt0/rps_down_threshold_pct";
-const DEVICE_RPS_DEFAULT_PATH_UP: &str =
-    "sys/class/drm/card0/gt/gt0/.defaults/rps_up_threshold_pct";
-const DEVICE_RPS_DEFAULT_PATH_DOWN: &str =
-    "sys/class/drm/card0/gt/gt0/.defaults/rps_down_threshold_pct";
-
-//TODO(syedfaaiz) : modify these values following a benchy run to 70/50.
-const GAMEMODE_RPS_UP: u64 = 95;
-const GAMEMODE_RPS_DOWN: u64 = 85;
-
-const TUNED_SWAPPINESS_VALUE: u32 = 30;
-const DEFAULT_SWAPPINESS_VALUE: u32 = 60;
 
 /// Parse the first line of a file as a type implementing std::str::FromStr.
 pub fn read_from_file<T: FromStr, P: AsRef<Path>>(path: &P) -> Result<T>
@@ -92,8 +68,6 @@ impl TryFrom<u8> for GameMode {
 }
 
 static GAME_MODE: Lazy<Mutex<GameMode>> = Lazy::new(|| Mutex::new(GameMode::Off));
-#[cfg(target_arch = "x86_64")]
-const GPU_TUNING_POLLING_INTERVAL_MS: u64 = 1000;
 
 pub struct TuneSwappiness {
     pub swappiness: u32,
@@ -124,78 +98,14 @@ pub fn set_game_mode(
 
     #[cfg(target_arch = "x86_64")]
     if old_mode != GameMode::Borealis && mode == GameMode::Borealis {
-        match intel_device::run_active_gpu_tuning(GPU_TUNING_POLLING_INTERVAL_MS) {
-            Ok(_) => info!("Active GPU tuning running."),
-            Err(e) => warn!("Active GPU tuning not set. {:?}", e),
-        }
-        let mut power_is_ac = false;
-        match DirectoryPowerSourceProvider::new(root.clone()).get_power_source() {
-            Ok(source) => power_is_ac = source == config::PowerSourceType::AC,
-            Err(_) => warn!("Failed to get power state"),
-        };
-
-        if intel_device::is_intel_device(root.clone()) && power_is_ac {
-            match set_rps_thresholds(GAMEMODE_RPS_UP, GAMEMODE_RPS_DOWN) {
-                Ok(_) => {
-                    info! {"Set RPS up/down freq to {:?}/{:?}",GAMEMODE_RPS_UP,GAMEMODE_RPS_DOWN}
-                }
-                Err(e) => {
-                    warn! {"Failed to set RPS up/down values to {:?}/{:?}, {:?}"
-                    ,GAMEMODE_RPS_UP,GAMEMODE_RPS_DOWN, e}
-                }
-            }
-        }
-
-        // Tuning CPU frequency.
-        match intel_i7_or_above(Path::new(&root)) {
-            Ok(res) => {
-                if res && power_is_ac && double_min_freq(Path::new(&root)).is_err() {
-                    warn! {"Failed to double scaling min freq"};
-                }
-            }
-            Err(_) => {
-                warn! {"Failed to check if device is Intel i7 or above"};
-            }
-        }
-        // Tuning Transparent huge pages.
-        if let Err(e) = set_thp(THPMode::Always) {
-            warn! {"Failed to tune TPH: {:?}", e};
-        }
-
-        return Ok(Some(TuneSwappiness {
-            swappiness: TUNED_SWAPPINESS_VALUE,
-        }));
+        Ok(apply_borealis_tuning(&root, true))
     } else if old_mode == GameMode::Borealis && mode != GameMode::Borealis {
-        if intel_device::is_intel_device(root.clone()) {
-            match reset_rps_thresholds(&root) {
-                Ok(_) => {
-                    info! {"reset RPS up/down freq to defaults"}
-                }
-                Err(e) => {
-                    warn! {"Failed to set RPS up/down values to defaults, due to {:?}"
-                    ,e}
-                }
-            }
-        }
-        match intel_i7_or_above(Path::new(&root)) {
-            Ok(res) => {
-                if res && set_min_cpu_freq(Path::new(&root)).is_err() {
-                    warn! {"Failed to set cpu min back to default values"};
-                }
-            }
-            Err(_) => {
-                warn! {"Failed to check if device is Intel i7 or above"};
-            }
-        }
-
-        if let Err(e) = set_thp(THPMode::Default) {
-            warn! {"Failed to set TPH to default: {:?}", e};
-        }
-
-        return Ok(Some(TuneSwappiness {
-            swappiness: DEFAULT_SWAPPINESS_VALUE,
-        }));
+        Ok(apply_borealis_tuning(&root, false))
+    } else {
+        Ok(None)
     }
+
+    #[cfg(not(target_arch = "x86_64"))]
     Ok(None)
 }
 
@@ -301,12 +211,6 @@ impl TryFrom<u8> for BatterySaverMode {
             _ => bail!("Unsupported battery saver mode value"),
         })
     }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum THPMode {
-    Default = 0,
-    Always = 1,
 }
 
 pub fn update_power_preferences(
@@ -433,39 +337,6 @@ pub fn set_vm_boot_mode(
     Ok(())
 }
 
-fn reset_rps_thresholds(root: &Path) -> Result<()> {
-    let mut default_up_rps = 95;
-    if let Ok(val) = read_from_file(&root.join(DEVICE_RPS_DEFAULT_PATH_UP)) {
-        default_up_rps = val;
-    } else {
-        warn!("Could not read rps up value.");
-    };
-    let mut default_down_rps = 85;
-    if let Ok(val) = read_from_file(&root.join(DEVICE_RPS_DEFAULT_PATH_DOWN)) {
-        default_down_rps = val;
-    } else {
-        warn!("Could not read rps down value.");
-    };
-    if set_rps_thresholds(default_up_rps, default_down_rps).is_err() {
-        bail!("Failed to reset rps values to defaults.");
-    };
-    Ok(())
-}
-
-fn set_rps_thresholds(up: u64, down: u64) -> Result<()> {
-    if std::path::Path::new(DEVICE_RPS_DEFAULT_PATH_UP).exists()
-        && std::path::Path::new(DEVICE_RPS_DEFAULT_PATH_DOWN).exists()
-    {
-        let path_rps_up = Path::new(&DEVICE_RPS_PATH_UP);
-        std::fs::write(path_rps_up, up.to_string().as_bytes())?;
-        let path_rps_down = Path::new(&DEVICE_RPS_PATH_DOWN);
-        std::fs::write(path_rps_down, down.to_string().as_bytes())?;
-    } else {
-        bail!("Failed to find path to RPS up/down nodes.")
-    }
-    Ok(())
-}
-
 #[cfg(target_arch = "x86_64")]
 fn set_gt_boost_freq_mhz(mode: RTCAudioActive) -> Result<()> {
     set_gt_boost_freq_mhz_impl(Path::new("/"), mode)
@@ -478,32 +349,8 @@ fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
     gpu_config.set_rtc_audio_active(mode == RTCAudioActive::Active)
 }
 
-// Enable THP tuning for devices with total memory > 4GB.
-fn set_thp(mode: THPMode) -> Result<()> {
-    const THP_MODE_PATH: &str = "/sys/kernel/mm/transparent_hugepage/enabled";
-    let path = Path::new(THP_MODE_PATH);
-    if path.exists() {
-        static ENABLE_THP: Lazy<bool> = Lazy::new(|| match memory::get_meminfo() {
-            Ok(meminfo) => meminfo.total > 9 * 1024 * 1024,
-            Err(e) => {
-                warn! {"Failed to validate device memory: {:?}", e};
-                false
-            }
-        });
-
-        if *ENABLE_THP {
-            match mode {
-                THPMode::Default => std::fs::write(THP_MODE_PATH, "madvise")?,
-                THPMode::Always => std::fs::write(THP_MODE_PATH, "always")?,
-            }
-        }
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
-    use std::fs;
     use std::io::Write;
 
     use tempfile::tempdir;
@@ -553,17 +400,6 @@ mod tests {
 
             assert!(read_from_file::<u64, _>(&file.path()).is_err());
         }
-    }
-
-    fn write_i32_to_file(path: &Path, value: i32) {
-        fs::create_dir_all(
-            path.parent()
-                .with_context(|| format!("cannot get parent: {}", path.display()))
-                .unwrap(),
-        )
-        .unwrap();
-
-        std::fs::write(path, value.to_string()).unwrap();
     }
 
     #[test]
@@ -648,21 +484,5 @@ mod tests {
         assert_eq!(get_fullscreen_video().unwrap(), FullscreenVideo::Inactive);
         set_fullscreen_video(&power_manager, FullscreenVideo::Active).unwrap();
         assert_eq!(get_fullscreen_video().unwrap(), FullscreenVideo::Active);
-    }
-
-    #[test]
-    fn test_modify_rps_value() {
-        const RPS_DOWN_FREQ_PATH: &str = "sys/class/drm/card0/rps_down_threshold_pct";
-        const RPS_UP_FREQ_PATH: &str = "sys/class/drm/card0/rps_up_threshold_pct";
-
-        let root = tempdir().unwrap();
-        let root_path = root.path();
-        let rps_down_path = root_path.join(RPS_DOWN_FREQ_PATH);
-        let rps_up_path = root_path.join(RPS_UP_FREQ_PATH);
-        write_i32_to_file(&rps_down_path, 50);
-        write_i32_to_file(&rps_up_path, 75);
-
-        assert_eq!(read_from_file::<u64, _>(&rps_down_path).unwrap(), 50);
-        assert_eq!(read_from_file::<u64, _>(&rps_up_path).unwrap(), 75);
     }
 }

@@ -4,6 +4,7 @@
 
 pub mod auto_epp;
 pub mod auto_epp_config;
+pub mod borealis;
 pub mod cgroup_x86_64;
 pub mod cpu_scaling;
 pub mod globals;
