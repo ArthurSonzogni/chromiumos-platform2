@@ -58,7 +58,7 @@ constexpr char kTpmFirmwareUpdateRequestFlagFile[] =
 constexpr char kLsbRelease[] = "etc/lsb-release";
 constexpr char kStatefulPartition[] = "mnt/stateful_partition";
 constexpr char kProcCmdLine[] = "proc/cmdline";
-constexpr char kSysKeyLog[] = "run/create_system_key.log";
+constexpr char kSysKeyLog[] = "run/chromeos_startup/create_system_key.log";
 constexpr char kMntOptionsFile[] =
     "dev_image/factory/init/encstateful_mount_option";
 constexpr char kLSMDir[] =
@@ -850,7 +850,6 @@ TEST_F(DoMountTest, TestModeMountHelperCreateSystemKey) {
   base::FilePath no_early = base_dir_.Append(".no_early_system_key");
   base::FilePath log_file = base_dir_.Append(kSysKeyLog);
   ASSERT_TRUE(platform_->WriteStringToFile(no_early, "1"));
-  ASSERT_TRUE(platform_->WriteStringToFile(log_file, "1"));
 
   startup_dep_->SetMountEncOutputForArg("", "1");
   std::unique_ptr<startup::TestModeMountHelper> mount_helper_ =

@@ -31,7 +31,7 @@ namespace {
 // If the file is present and mount_encrypted failed again, machine would
 // enter self-repair mode.
 constexpr char kMountEncryptedFailedFile[] = "mount_encrypted_failed";
-constexpr char kSysKeyLogFile[] = "run/create_system_key.log";
+constexpr char kSysKeyLogFile[] = "run/chromeos_startup/create_system_key.log";
 
 }  // namespace
 
