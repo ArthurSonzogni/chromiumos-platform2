@@ -61,6 +61,7 @@ config("host_target_defaults") {
     "USE_CROSVM_VIRTIO_VIDEO=${use.crosvm_virtio_video}",
     "USE_CROSVM_VULKAN=${use.vulkan}",
     "USE_PMEM_DEVICE_FOR_ROOTFS=${use.amd64}",
+    "USE_BOREALIS_HOST=${use.borealis_host}",
   ]
 
   # TODO(b/331634345): Fix thread safety violations so we can turn this back on.
