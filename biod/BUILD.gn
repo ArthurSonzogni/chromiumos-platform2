@@ -122,6 +122,7 @@ executable("bio_wash") {
   deps = [ ":libbiod" ]
 }
 
+# The biod_client_tool will be installed by the biod-dev package.
 executable("biod_client_tool") {
   sources = [ "tools/biod_client_tool.cc" ]
   configs += [ ":target_defaults" ]
