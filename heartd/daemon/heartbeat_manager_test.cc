@@ -79,7 +79,9 @@ TEST_F(HeartbeatManagerTest, RebindPacemaker) {
 }
 
 TEST_F(HeartbeatManagerTest, RemoveUnusedHeartbeatTrackers) {
+  EXPECT_FALSE(heartbeat_manager_->AnyHeartbeatTracker());
   EstablishHeartbeatTracker();
+  EXPECT_TRUE(heartbeat_manager_->AnyHeartbeatTracker());
 
   base::test::TestFuture<void> test_future;
   pacemaker_->StopMonitor(test_future.GetCallback());
@@ -91,6 +93,7 @@ TEST_F(HeartbeatManagerTest, RemoveUnusedHeartbeatTrackers) {
   task_environment_.RunUntilIdle();
   EXPECT_FALSE(
       heartbeat_manager_->IsPacemakerBound(mojom::ServiceName::kKiosk));
+  EXPECT_FALSE(heartbeat_manager_->AnyHeartbeatTracker());
 }
 
 TEST_F(HeartbeatManagerTest, TakeRebootAction) {

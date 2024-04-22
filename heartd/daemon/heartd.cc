@@ -44,6 +44,13 @@ int HeartdDaemon::OnEventLoopStarted() {
   heartbeat_manager_ = std::make_unique<HeartbeatManager>(action_runner_.get());
   mojo_service_ = std::make_unique<HeartdMojoService>(heartbeat_manager_.get(),
                                                       action_runner_.get());
+  scavenger_ = std::make_unique<Scavenger>(
+      base::BindOnce(&Daemon::Quit, base::Unretained(this)),
+      heartbeat_manager_.get());
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&HeartdDaemon::ScavengerDelayTask, base::Unretained(this)),
+      base::Minutes(2));
 
   action_runner_->SetupSysrq(sysrq_fd_);
 
@@ -56,6 +63,10 @@ int HeartdDaemon::OnEventLoopStarted() {
       database_->GetBootRecordFromTime(base::Time().Now() - base::Days(7)));
 
   return EX_OK;
+}
+
+void HeartdDaemon::ScavengerDelayTask() {
+  scavenger_->Start();
 }
 
 }  // namespace heartd

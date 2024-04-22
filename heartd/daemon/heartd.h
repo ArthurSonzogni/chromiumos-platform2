@@ -16,6 +16,7 @@
 #include "heartd/daemon/dbus_connector.h"
 #include "heartd/daemon/heartbeat_manager.h"
 #include "heartd/daemon/mojo_service.h"
+#include "heartd/daemon/scavenger.h"
 #include "heartd/mojom/heartd.mojom.h"
 
 namespace heartd {
@@ -32,12 +33,15 @@ class HeartdDaemon final : public brillo::DBusServiceDaemon {
   int OnEventLoopStarted() override;
 
  private:
+  void ScavengerDelayTask();
+
+ private:
   friend class HeartdDaemonTest;
 
  private:
   // For mojo thread initialization.
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-  // Databse.
+  // Database.
   std::unique_ptr<Database> database_ = nullptr;
   // Used to connect to dbus.
   std::unique_ptr<DbusConnector> dbus_connector_ = nullptr;
@@ -47,6 +51,8 @@ class HeartdDaemon final : public brillo::DBusServiceDaemon {
   std::unique_ptr<HeartbeatManager> heartbeat_manager_ = nullptr;
   // Used to provide mojo interface to mojo service manager.
   std::unique_ptr<HeartdMojoService> mojo_service_ = nullptr;
+  // Used to run cleanup task.
+  std::unique_ptr<Scavenger> scavenger_ = nullptr;
   // /proc/sysrq-trigger fd, this will be used in ActionRunner.
   int sysrq_fd_ = -1;
 };

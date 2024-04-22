@@ -64,6 +64,10 @@ void HeartbeatManager::EstablishHeartbeatTracker(
   StartVerifier();
 }
 
+bool HeartbeatManager::AnyHeartbeatTracker() {
+  return !heartbeat_trackers_.empty();
+}
+
 void HeartbeatManager::RemoveUnusedHeartbeatTrackers() {
   std::vector<mojom::ServiceName> stop_trackers;
   for (const auto& [name, heartbeat_tracker] : heartbeat_trackers_) {

@@ -36,6 +36,9 @@ class HeartbeatManager {
       mojo::PendingReceiver<ash::heartd::mojom::Pacemaker> receiver,
       ash::heartd::mojom::HeartbeatServiceArgumentPtr argument);
 
+  // Returns if there is any active heartbeat trackers.
+  bool AnyHeartbeatTracker();
+
  private:
   // Removes the heartbeat tracker instances while |IsStopMonitor()| returning
   // true.
