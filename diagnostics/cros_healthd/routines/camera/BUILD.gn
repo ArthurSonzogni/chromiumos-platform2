@@ -2,21 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-pkg_config("camera_pkg_config") {
-  pkg_deps = [
-    "libchrome",
-    "mojo_service_manager",
-    "system_api",
-  ]
-}
-
 source_set("camera") {
   sources = [ "camera_availability.cc" ]
-  configs += [ ":camera_pkg_config" ]
+  public_pkg_deps = [
+    "libchrome",
+    "mojo_service_manager",
+  ]
+  pkg_deps = [ "system_api" ]
   public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
   deps = [
-    "//diagnostics/base",
     "//diagnostics/cros_healthd/system",
+    "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
@@ -24,10 +20,13 @@ source_set("camera") {
 if (use.test) {
   source_set("camera_test") {
     sources = [ "camera_availability_test.cc" ]
-    configs += [ ":camera_pkg_config" ]
+    pkg_deps = [
+      "libchrome-test",
+      "mojo_service_manager",
+      "system_api",
+    ]
     deps = [
       ":camera",
-      "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/system:test_support",
