@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+mod arch;
 mod common;
 mod config;
 pub mod cpu_config;
@@ -21,6 +22,3 @@ mod vm_memory_management_client;
 
 #[cfg(test)]
 mod test_utils;
-
-#[cfg(target_arch = "x86_64")]
-mod x86_64;

@@ -477,8 +477,8 @@ mod tests {
     use super::CpuStats;
     use super::CpuStatsContext;
     use super::EppCalculationArgs;
-    use crate::x86_64::auto_epp_config::Epp;
-    use crate::x86_64::auto_epp_config::TimeConstantsIntel;
+    use crate::arch::x86_64::auto_epp_config::Epp;
+    use crate::arch::x86_64::auto_epp_config::TimeConstantsIntel;
 
     const GPU_RC6_PATH_1: &str = "/tmp/gpu_rc6_residency_1.txt";
 

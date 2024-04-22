@@ -10,16 +10,16 @@ use log::info;
 use log::warn;
 use once_cell::sync::Lazy;
 
+use super::cpu_scaling::double_min_freq;
+use super::cpu_scaling::intel_i7_or_above;
+use super::cpu_scaling::set_min_cpu_freq;
+use super::gpu_freq_scaling::intel_device;
 use crate::common::read_from_file;
 use crate::common::TuneSwappiness;
 use crate::config::PowerSourceType;
 use crate::memory;
 use crate::power::DirectoryPowerSourceProvider;
 use crate::power::PowerSourceProvider;
-use crate::x86_64::cpu_scaling::double_min_freq;
-use crate::x86_64::cpu_scaling::intel_i7_or_above;
-use crate::x86_64::cpu_scaling::set_min_cpu_freq;
-use crate::x86_64::gpu_freq_scaling::intel_device;
 
 const GPU_TUNING_POLLING_INTERVAL_MS: u64 = 1000;
 
@@ -138,10 +138,7 @@ fn set_rps_thresholds(root: &Path, up: u64, down: u64) -> Result<()> {
         && root.join(DEVICE_RPS_DEFAULT_PATH_DOWN).exists()
     {
         std::fs::write(root.join(DEVICE_RPS_PATH_UP), up.to_string().as_bytes())?;
-        std::fs::write(
-            root.join(DEVICE_RPS_PATH_DOWN),
-            down.to_string().as_bytes(),
-        )?;
+        std::fs::write(root.join(DEVICE_RPS_PATH_DOWN), down.to_string().as_bytes())?;
     } else {
         bail!("Failed to find path to RPS up/down nodes.")
     }

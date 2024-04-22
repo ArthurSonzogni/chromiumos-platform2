@@ -19,10 +19,10 @@ pub mod intel_device {
     use log::warn;
     use regex::Regex;
 
+    use crate::arch::x86_64::cpu_scaling::DeviceCpuStatus;
     use crate::common;
     use crate::common::read_from_file;
     use crate::common::GameMode;
-    use crate::x86_64::cpu_scaling::DeviceCpuStatus;
 
     // Device path for cpuinfo.
     const CPUINFO_PATH: &str = "proc/cpuinfo";
@@ -623,9 +623,9 @@ mod tests {
     use super::amd_device::AmdDeviceConfig;
     use super::intel_device::IntelGpuDeviceConfig;
     use super::*;
+    use crate::arch::x86_64::cpu_scaling::DeviceCpuStatus;
     use crate::common;
     use crate::test_utils::*;
-    use crate::x86_64::cpu_scaling::DeviceCpuStatus;
 
     #[test]
     fn test_intel_malformed_root() {

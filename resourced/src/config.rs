@@ -80,16 +80,6 @@ pub enum EnergyPerformancePreference {
 }
 
 impl EnergyPerformancePreference {
-    pub fn name(&self) -> &'static str {
-        match self {
-            EnergyPerformancePreference::Default => "default",
-            EnergyPerformancePreference::Performance => "performance",
-            EnergyPerformancePreference::BalancePerformance => "balance_performance",
-            EnergyPerformancePreference::BalancePower => "balance_power",
-            EnergyPerformancePreference::Power => "power",
-        }
-    }
-
     #[cfg(test)]
     fn dir_name(&self) -> &'static str {
         match self {

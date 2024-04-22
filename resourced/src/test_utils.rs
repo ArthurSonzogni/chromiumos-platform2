@@ -14,6 +14,9 @@ use crate::common::FullscreenVideo;
 use crate::common::GameMode;
 use crate::common::RTCAudioActive;
 use crate::common::VmBootMode;
+use crate::config::Governor;
+use crate::config::PowerSourceType;
+use crate::power::PowerSourceProvider;
 pub use crate::config::FakeConfig;
 use crate::cpu_utils::SMT_CONTROL_PATH;
 use crate::power;
@@ -338,4 +341,109 @@ pub fn fork_process_for_test() -> (u32, ProcessForTest) {
             process_id: child_process_id,
         },
     )
+}
+
+pub struct FakePowerSourceProvider {
+    pub power_source: PowerSourceType,
+}
+
+impl PowerSourceProvider for FakePowerSourceProvider {
+    fn get_power_source(&self) -> Result<PowerSourceType> {
+        Ok(self.power_source)
+    }
+}
+
+// In the following per policy access functions, there are 2 cpufreq policies: policy0 and
+// policy1.
+
+pub const TEST_CPUFREQ_POLICIES: &[&str] = &[
+    "sys/devices/system/cpu/cpufreq/policy0",
+    "sys/devices/system/cpu/cpufreq/policy1",
+];
+pub const SCALING_GOVERNOR_FILENAME: &str = "scaling_governor";
+pub const ONDEMAND_DIRECTORY: &str = "ondemand";
+pub const POWERSAVE_BIAS_FILENAME: &str = "powersave_bias";
+pub const SAMPLING_RATE_FILENAME: &str = "sampling_rate";
+pub const AFFECTED_CPUS_NAME: &str = "affected_cpus";
+pub const AFFECTED_CPU_NONE: &str = "";
+pub const AFFECTED_CPU0: &str = "0";
+pub const AFFECTED_CPU1: &str = "1";
+
+pub struct PolicyConfigs<'a> {
+    pub policy_path: &'a str,
+    pub governor: &'a Governor,
+    pub affected_cpus: &'a str,
+}
+// Instead of returning an error, crash/assert immediately in a test utility function makes it
+// easier to debug an unittest.
+pub fn write_per_policy_scaling_governor(root: &Path, policies: Vec<PolicyConfigs>) {
+    for policy in policies {
+        let policy_path = root.join(policy.policy_path);
+        fs::create_dir_all(&policy_path).unwrap();
+        std::fs::write(
+            policy_path.join(SCALING_GOVERNOR_FILENAME),
+            policy.governor.name().to_string() + "\n",
+        )
+        .unwrap();
+        std::fs::write(
+            policy_path.join(AFFECTED_CPUS_NAME),
+            policy.affected_cpus.to_owned() + "\n",
+        )
+        .unwrap();
+    }
+}
+
+pub fn check_per_policy_scaling_governor(root: &Path, expected: Vec<Governor>) {
+    for (i, policy) in TEST_CPUFREQ_POLICIES.iter().enumerate() {
+        let governor_path = root.join(policy).join(SCALING_GOVERNOR_FILENAME);
+        let scaling_governor = std::fs::read_to_string(governor_path).unwrap();
+        assert_eq!(scaling_governor.trim_end_matches('\n'), expected[i].name());
+    }
+}
+
+pub fn write_per_policy_powersave_bias(root: &Path, value: u32) {
+    for policy in TEST_CPUFREQ_POLICIES {
+        let ondemand_path = root.join(policy).join(ONDEMAND_DIRECTORY);
+        println!("ondemand_path: {}", ondemand_path.display());
+        fs::create_dir_all(&ondemand_path).unwrap();
+        std::fs::write(
+            ondemand_path.join(POWERSAVE_BIAS_FILENAME),
+            value.to_string() + "\n",
+        )
+        .unwrap();
+    }
+}
+
+pub fn check_per_policy_powersave_bias(root: &Path, expected: u32) {
+    for policy in TEST_CPUFREQ_POLICIES {
+        let powersave_bias_path = root
+            .join(policy)
+            .join(ONDEMAND_DIRECTORY)
+            .join(POWERSAVE_BIAS_FILENAME);
+        let powersave_bias = std::fs::read_to_string(powersave_bias_path).unwrap();
+        assert_eq!(powersave_bias.trim_end_matches('\n'), expected.to_string());
+    }
+}
+
+pub fn write_per_policy_sampling_rate(root: &Path, value: u32) {
+    for policy in TEST_CPUFREQ_POLICIES {
+        let ondemand_path = root.join(policy).join(ONDEMAND_DIRECTORY);
+        fs::create_dir_all(&ondemand_path).unwrap();
+        std::fs::write(
+            ondemand_path.join(SAMPLING_RATE_FILENAME),
+            value.to_string(),
+        )
+        .unwrap();
+    }
+}
+
+pub fn check_per_policy_sampling_rate(root: &Path, expected: u32) {
+    for policy in TEST_CPUFREQ_POLICIES {
+        let sampling_rate_path = root
+            .join(policy)
+            .join(ONDEMAND_DIRECTORY)
+            .join(SAMPLING_RATE_FILENAME);
+        let sampling_rate = std::fs::read_to_string(sampling_rate_path).unwrap();
+        assert_eq!(sampling_rate, expected.to_string());
+    }
 }

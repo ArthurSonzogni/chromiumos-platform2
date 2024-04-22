@@ -14,23 +14,11 @@ use std::sync::Mutex;
 use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
-use log::error;
 use log::warn;
 use once_cell::sync::Lazy;
 
+use crate::arch;
 use crate::power;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::borealis::apply_borealis_tuning;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::cgroup_x86_64::media_dynamic_cgroup;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::cgroup_x86_64::MediaDynamicCgroupAction;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::globals::read_dynamic_epp_feature;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::globals::set_media_cgroup_state;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::gpu_freq_scaling::intel_device;
 
 /// Parse the first line of a file as a type implementing std::str::FromStr.
 pub fn read_from_file<T: FromStr, P: AsRef<Path>>(path: &P) -> Result<T>
@@ -96,17 +84,13 @@ pub fn set_game_mode(
         );
     }
 
-    #[cfg(target_arch = "x86_64")]
     if old_mode != GameMode::Borealis && mode == GameMode::Borealis {
-        Ok(apply_borealis_tuning(&root, true))
+        Ok(arch::apply_borealis_tuning(&root, true))
     } else if old_mode == GameMode::Borealis && mode != GameMode::Borealis {
-        Ok(apply_borealis_tuning(&root, false))
+        Ok(arch::apply_borealis_tuning(&root, false))
     } else {
         Ok(None)
     }
-
-    #[cfg(not(target_arch = "x86_64"))]
-    Ok(None)
 }
 
 pub fn get_game_mode() -> Result<GameMode> {
@@ -246,10 +230,6 @@ pub fn set_rtc_audio_active(
     match RTC_AUDIO_ACTIVE.lock() {
         Ok(mut data) => {
             *data = mode;
-            #[cfg(target_arch = "x86_64")]
-            if let Err(err) = set_gt_boost_freq_mhz(mode) {
-                error!("Set boost freq not supported: {:#}", err)
-            }
         }
         Err(_) => bail!("Failed to set RTC audio activity"),
     }
@@ -277,20 +257,6 @@ pub fn set_fullscreen_video(
     }
 
     update_power_preferences(power_preference_manager)?;
-
-    #[cfg(target_arch = "x86_64")]
-    let dynamic_epp = read_dynamic_epp_feature();
-    // Send signal to Auto EPP when MediaDynamicCgroup is enabled
-    #[cfg(target_arch = "x86_64")]
-    if dynamic_epp {
-        set_media_cgroup_state(mode == FullscreenVideo::Active);
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    match mode {
-        FullscreenVideo::Active => media_dynamic_cgroup(MediaDynamicCgroupAction::Start)?,
-        FullscreenVideo::Inactive => media_dynamic_cgroup(MediaDynamicCgroupAction::Stop)?,
-    }
 
     Ok(())
 }
@@ -335,18 +301,6 @@ pub fn set_vm_boot_mode(
     update_power_preferences(power_preference_manager)?;
 
     Ok(())
-}
-
-#[cfg(target_arch = "x86_64")]
-fn set_gt_boost_freq_mhz(mode: RTCAudioActive) -> Result<()> {
-    set_gt_boost_freq_mhz_impl(Path::new("/"), mode)
-}
-
-// Extract the impl function for unittest.
-#[cfg(target_arch = "x86_64")]
-fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
-    let mut gpu_config = intel_device::IntelGpuDeviceConfig::new(root.to_owned(), 100)?;
-    gpu_config.set_rtc_audio_active(mode == RTCAudioActive::Active)
 }
 
 #[cfg(test)]
@@ -400,44 +354,6 @@ mod tests {
 
             assert!(read_from_file::<u64, _>(&file.path()).is_err());
         }
-    }
-
-    #[test]
-    #[cfg(target_arch = "x86_64")]
-    fn test_set_gt_boost_freq_mhz() {
-        let tmp_root = tempdir().unwrap();
-        let root = tmp_root.path();
-
-        setup_mock_intel_gpu_dev_dirs(root);
-        setup_mock_intel_gpu_files(root);
-        write_mock_cpuinfo(
-            root,
-            "filter_out",
-            "Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz",
-        );
-        set_gt_boost_freq_mhz_impl(root, RTCAudioActive::Active)
-            .expect_err("Should return error on non-intel CPUs");
-
-        write_mock_cpuinfo(
-            root,
-            "GenuineIntel",
-            "Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz",
-        );
-        set_intel_gpu_min(root, 300);
-        set_intel_gpu_max(root, 1100);
-
-        set_intel_gpu_boost(root, 0);
-        set_gt_boost_freq_mhz_impl(root, RTCAudioActive::Active)
-            .expect_err("Should return error when gpu_boost is 0");
-
-        set_intel_gpu_boost(root, 500);
-        set_gt_boost_freq_mhz_impl(root, RTCAudioActive::Active).unwrap();
-
-        assert_eq!(get_intel_gpu_boost(root), 300);
-
-        set_gt_boost_freq_mhz_impl(root, RTCAudioActive::Inactive).unwrap();
-
-        assert_eq!(get_intel_gpu_boost(root), 1100);
     }
 
     #[test]

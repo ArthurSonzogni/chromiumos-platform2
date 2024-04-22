@@ -9,9 +9,9 @@ use std::str::FromStr;
 
 use anyhow::Context;
 use anyhow::Result;
-use log::error;
 use log::info;
 
+use crate::arch;
 use crate::common;
 use crate::common::read_from_file;
 use crate::common::BatterySaverMode;
@@ -21,7 +21,6 @@ use crate::common::RTCAudioActive;
 use crate::common::VmBootMode;
 use crate::config::ConfigProvider;
 use crate::config::CpuOfflinePreference;
-use crate::config::EnergyPerformancePreference;
 use crate::config::Governor;
 use crate::config::PowerPreferences;
 use crate::config::PowerPreferencesType;
@@ -29,10 +28,6 @@ use crate::config::PowerSourceType;
 use crate::cpu_utils::hotplug_cpus;
 use crate::cpu_utils::write_to_cpu_policy_patterns;
 use crate::cpu_utils::HotplugCpuAction;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::globals::read_dynamic_epp_feature;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::globals::set_rtc_fs_signal_state;
 
 const POWER_SUPPLY_PATH: &str = "sys/class/power_supply";
 const POWER_SUPPLY_ONLINE: &str = "online";
@@ -204,6 +199,16 @@ pub struct DirectoryPowerPreferencesManager<P: PowerSourceProvider> {
 }
 
 impl<P: PowerSourceProvider> DirectoryPowerPreferencesManager<P> {
+    #[cfg(test)]
+    pub fn new(root: &Path, config_provider: ConfigProvider, power_source_provider: P) -> Self {
+        let root = root.to_path_buf();
+        Self {
+            root: root.to_path_buf(),
+            config_provider,
+            power_source_provider,
+        }
+    }
+
     // The global ondemand parameters are in /sys/devices/system/cpu/cpufreq/ondemand/.
     fn set_global_ondemand_governor_value(&self, attr: &str, value: u32) -> Result<()> {
         let path = self.root.join(GLOBAL_ONDEMAND_PATH).join(attr);
@@ -290,55 +295,9 @@ impl<P: PowerSourceProvider> DirectoryPowerPreferencesManager<P> {
         Ok(())
     }
 
-    fn get_first_scaling_governor(&self) -> Result<String> {
-        const FIRST_GOVERNOR_PATTERN: &str =
-            "sys/devices/system/cpu/cpufreq/policy0/scaling_governor";
-        let governor = std::fs::read_to_string(self.root.join(FIRST_GOVERNOR_PATTERN))?;
-        Ok(governor)
-    }
-
-    fn has_epp(&self) -> Result<bool> {
-        const CPU0_EPP_PATH: &str =
-            "sys/devices/system/cpu/cpufreq/policy0/energy_performance_preference";
-        let pattern = self
-            .root
-            .join(CPU0_EPP_PATH)
-            .to_str()
-            .context("Cannot convert cpu0 epp path to string")?
-            .to_owned();
-        Ok(Path::new(&pattern).exists())
-    }
-
-    fn set_epp(&self, epp: EnergyPerformancePreference) -> Result<()> {
-        const EPP_PATTERN: &str =
-            "sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference";
-        if self.has_epp()? {
-            let pattern = self
-                .root
-                .join(EPP_PATTERN)
-                .to_str()
-                .context("Cannot convert epp path to string")?
-                .to_owned();
-            return write_to_cpu_policy_patterns(&pattern, epp.name());
-        }
-        Ok(())
-    }
-
     fn apply_power_preferences(&self, preferences: PowerPreferences) -> Result<()> {
-        if let Some(epp) = preferences.epp {
-            #[cfg(not(target_arch = "x86_64"))]
-            {
-                self.set_epp(epp)?;
-            }
+        arch::apply_platform_power_preferences(self.get_root(), &preferences)?;
 
-            #[cfg(target_arch = "x86_64")]
-            {
-                let dynamic_epp = read_dynamic_epp_feature();
-                if !dynamic_epp {
-                    self.set_epp(epp)?;
-                }
-            }
-        }
         if let Some(governor) = preferences.governor {
             self.apply_governor_preferences(governor)?
         }
@@ -408,11 +367,6 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
         vmboot: VmBootMode,
         batterysaver: BatterySaverMode,
     ) -> Result<()> {
-        #[cfg(target_arch = "x86_64")]
-        let dynamic_epp = read_dynamic_epp_feature();
-        #[cfg(not(target_arch = "x86_64"))]
-        let dynamic_epp = false;
-
         let mut preferences: Option<PowerPreferences> = None;
 
         let power_source = self.power_source_provider.get_power_source()?;
@@ -463,29 +417,13 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
             self.apply_cpufreq_boost(preferences)?;
         }
 
-        let fullscreen_video_efficiency_mode = power_source == PowerSourceType::DC
-            && (rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active);
-        if dynamic_epp {
-            #[cfg(target_arch = "x86_64")]
-            set_rtc_fs_signal_state(fullscreen_video_efficiency_mode);
-        } else if fullscreen_video_efficiency_mode {
-            if let Err(err) = self.set_epp(EnergyPerformancePreference::BalancePower) {
-                error!("Failed to set energy performance preference: {:#}", err);
-            }
-        } else {
-            // When scaling_governor is performance, energy_performance_preference can only be
-            // performance.
-            //
-            // Reference:
-            //   https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/kernel/v6.6/drivers/cpufreq/intel_pstate.c;drc=1a868273760040b746518aca7fea4f8c07366884;l=795
-            match self.get_first_scaling_governor() {
-                Ok(governor) if governor.trim() == "performance" => {}
-                _ => {
-                    // Default EPP
-                    self.set_epp(EnergyPerformancePreference::BalancePerformance)?;
-                }
-            }
-        }
+        arch::apply_platform_power_settings(
+            self.get_root(),
+            power_source,
+            rtc,
+            fullscreen,
+            batterysaver,
+        )?;
 
         Ok(())
     }
@@ -608,16 +546,6 @@ mod tests {
         assert_eq!(power_source, PowerSourceType::DC);
     }
 
-    struct FakePowerSourceProvider {
-        power_source: PowerSourceType,
-    }
-
-    impl PowerSourceProvider for FakePowerSourceProvider {
-        fn get_power_source(&self) -> Result<PowerSourceType> {
-            Ok(self.power_source)
-        }
-    }
-
     fn write_global_powersave_bias(root: &Path, value: u32) -> Result<()> {
         let ondemand_path = root.join("sys/devices/system/cpu/cpufreq/ondemand");
         fs::create_dir_all(&ondemand_path)?;
@@ -681,121 +609,6 @@ mod tests {
         std::fs::write(cpufreq_boost_path.join("boost"), value.to_string())?;
 
         Ok(())
-    }
-
-    // In the following per policy access functions, there are 2 cpufreq policies: policy0 and
-    // policy1.
-
-    const TEST_CPUFREQ_POLICIES: &[&str] = &[
-        "sys/devices/system/cpu/cpufreq/policy0",
-        "sys/devices/system/cpu/cpufreq/policy1",
-    ];
-    const SCALING_GOVERNOR_FILENAME: &str = "scaling_governor";
-    const ONDEMAND_DIRECTORY: &str = "ondemand";
-    const POWERSAVE_BIAS_FILENAME: &str = "powersave_bias";
-    const SAMPLING_RATE_FILENAME: &str = "sampling_rate";
-    const AFFECTED_CPUS_NAME: &str = "affected_cpus";
-    const AFFECTED_CPU_NONE: &str = "";
-    const AFFECTED_CPU0: &str = "0";
-    const AFFECTED_CPU1: &str = "1";
-
-    struct PolicyConfigs<'a> {
-        policy_path: &'a str,
-        governor: &'a Governor,
-        affected_cpus: &'a str,
-    }
-    // Instead of returning an error, crash/assert immediately in a test utility function makes it
-    // easier to debug an unittest.
-    fn write_per_policy_scaling_governor(root: &Path, policies: Vec<PolicyConfigs>) {
-        for policy in policies {
-            let policy_path = root.join(policy.policy_path);
-            fs::create_dir_all(&policy_path).unwrap();
-            std::fs::write(
-                policy_path.join(SCALING_GOVERNOR_FILENAME),
-                policy.governor.name().to_string() + "\n",
-            )
-            .unwrap();
-            std::fs::write(
-                policy_path.join(AFFECTED_CPUS_NAME),
-                policy.affected_cpus.to_owned() + "\n",
-            )
-            .unwrap();
-        }
-    }
-
-    fn check_per_policy_scaling_governor(root: &Path, expected: Vec<Governor>) {
-        for (i, policy) in TEST_CPUFREQ_POLICIES.iter().enumerate() {
-            let governor_path = root.join(policy).join(SCALING_GOVERNOR_FILENAME);
-            let scaling_governor = std::fs::read_to_string(governor_path).unwrap();
-            assert_eq!(scaling_governor.trim_end_matches('\n'), expected[i].name());
-        }
-    }
-
-    fn write_per_policy_powersave_bias(root: &Path, value: u32) {
-        for policy in TEST_CPUFREQ_POLICIES {
-            let ondemand_path = root.join(policy).join(ONDEMAND_DIRECTORY);
-            println!("ondemand_path: {}", ondemand_path.display());
-            fs::create_dir_all(&ondemand_path).unwrap();
-            std::fs::write(
-                ondemand_path.join(POWERSAVE_BIAS_FILENAME),
-                value.to_string() + "\n",
-            )
-            .unwrap();
-        }
-    }
-
-    fn check_per_policy_powersave_bias(root: &Path, expected: u32) {
-        for policy in TEST_CPUFREQ_POLICIES {
-            let powersave_bias_path = root
-                .join(policy)
-                .join(ONDEMAND_DIRECTORY)
-                .join(POWERSAVE_BIAS_FILENAME);
-            let powersave_bias = std::fs::read_to_string(powersave_bias_path).unwrap();
-            assert_eq!(powersave_bias.trim_end_matches('\n'), expected.to_string());
-        }
-    }
-
-    fn write_per_policy_sampling_rate(root: &Path, value: u32) {
-        for policy in TEST_CPUFREQ_POLICIES {
-            let ondemand_path = root.join(policy).join(ONDEMAND_DIRECTORY);
-            fs::create_dir_all(&ondemand_path).unwrap();
-            std::fs::write(
-                ondemand_path.join(SAMPLING_RATE_FILENAME),
-                value.to_string(),
-            )
-            .unwrap();
-        }
-    }
-
-    fn check_per_policy_sampling_rate(root: &Path, expected: u32) {
-        for policy in TEST_CPUFREQ_POLICIES {
-            let sampling_rate_path = root
-                .join(policy)
-                .join(ONDEMAND_DIRECTORY)
-                .join(SAMPLING_RATE_FILENAME);
-            let sampling_rate = std::fs::read_to_string(sampling_rate_path).unwrap();
-            assert_eq!(sampling_rate, expected.to_string());
-        }
-    }
-
-    fn write_epp(root: &Path, value: &str, affected_cpus: &str) -> Result<()> {
-        let policy_path = root.join("sys/devices/system/cpu/cpufreq/policy0");
-        fs::create_dir_all(&policy_path)?;
-
-        std::fs::write(policy_path.join("energy_performance_preference"), value)?;
-        std::fs::write(policy_path.join("affected_cpus"), affected_cpus)?;
-
-        Ok(())
-    }
-
-    fn read_epp(root: &Path) -> Result<String> {
-        let epp_path = root
-            .join("sys/devices/system/cpu/cpufreq/policy0/")
-            .join("energy_performance_preference");
-
-        let epp = std::fs::read_to_string(epp_path)?;
-
-        Ok(epp)
     }
 
     #[test]
@@ -1081,136 +894,7 @@ mod tests {
         assert_eq!(sampling_rate, "16000");
     }
 
-    #[test]
     /// Tests default battery saver mode
-    fn test_power_update_power_preferences_battery_saver_active() {
-        let temp_dir = tempdir().unwrap();
-        let root = temp_dir.path();
-
-        test_write_cpuset_root_cpus(root, "0-3");
-
-        let power_source_provider = FakePowerSourceProvider {
-            power_source: PowerSourceType::AC,
-        };
-
-        let mut fake_config = FakeConfig::new();
-        fake_config.write_power_preference(
-            PowerSourceType::AC,
-            PowerPreferencesType::ArcvmGaming,
-            &PowerPreferences {
-                governor: Some(Governor::Schedutil),
-                epp: None,
-                cpu_offline: None,
-                cpufreq_disable_boost: false,
-            },
-        );
-        fake_config.write_power_preference(
-            PowerSourceType::AC,
-            PowerPreferencesType::BatterySaver,
-            &PowerPreferences {
-                governor: Some(Governor::Conservative),
-                epp: None,
-                cpu_offline: None,
-                cpufreq_disable_boost: false,
-            },
-        );
-        fake_config.write_power_preference(
-            PowerSourceType::AC,
-            PowerPreferencesType::Default,
-            &PowerPreferences {
-                governor: Some(Governor::Schedutil),
-                epp: None,
-                cpu_offline: None,
-                cpufreq_disable_boost: false,
-            },
-        );
-        let config_provider = fake_config.provider();
-
-        let manager = DirectoryPowerPreferencesManager {
-            root: root.to_path_buf(),
-            config_provider,
-            power_source_provider,
-        };
-
-        let tests = [
-            (
-                BatterySaverMode::Active,
-                "balance_performance",
-                Governor::Conservative,
-                AFFECTED_CPU0, // policy0 affected_cpus
-                AFFECTED_CPU1, // policy1 affected_cpus
-            ),
-            (
-                BatterySaverMode::Inactive,
-                "balance_performance",
-                Governor::Schedutil,
-                AFFECTED_CPU0, // policy0 affected_cpus
-                AFFECTED_CPU1, // policy1 affected_cpus
-            ),
-            (
-                BatterySaverMode::Active,
-                "balance_performance",
-                Governor::Conservative,
-                AFFECTED_CPU_NONE, // policy0 affected_cpus, which has no affected cpus
-                AFFECTED_CPU1,     // policy1 affected_cpus
-            ),
-        ];
-
-        // Test device without EPP path
-        for test in tests {
-            let orig_governor = Governor::Performance;
-            let policy0 = PolicyConfigs {
-                policy_path: TEST_CPUFREQ_POLICIES[0],
-                governor: &orig_governor,
-                affected_cpus: test.3,
-            };
-            let policy1 = PolicyConfigs {
-                policy_path: TEST_CPUFREQ_POLICIES[1],
-                governor: &orig_governor,
-                affected_cpus: test.4,
-            };
-            let policies = vec![policy0, policy1];
-            write_per_policy_scaling_governor(root, policies);
-            manager
-                .update_power_preferences(
-                    common::RTCAudioActive::Inactive,
-                    common::FullscreenVideo::Inactive,
-                    common::GameMode::Arc,
-                    common::VmBootMode::Inactive,
-                    test.0,
-                )
-                .unwrap();
-
-            let mut expected_governors = vec![test.2, test.2];
-            if test.3.is_empty() {
-                expected_governors[0] = orig_governor;
-            }
-            check_per_policy_scaling_governor(root, expected_governors);
-        }
-
-        // Test device with EPP path
-        let orig_epp = "balance_performance";
-        for test in tests {
-            write_epp(root, orig_epp, test.3).unwrap();
-            manager
-                .update_power_preferences(
-                    common::RTCAudioActive::Inactive,
-                    common::FullscreenVideo::Inactive,
-                    common::GameMode::Arc,
-                    common::VmBootMode::Inactive,
-                    test.0,
-                )
-                .unwrap();
-
-            let epp = read_epp(root).unwrap();
-            let mut expected_epp = test.1;
-            if test.3.is_empty() {
-                expected_epp = orig_epp;
-            }
-            assert_eq!(epp, expected_epp);
-        }
-    }
-
     #[test]
     fn test_apply_hotplug_cpus() {
         struct Test<'a> {
@@ -1380,109 +1064,6 @@ mod tests {
                     state,
                 );
             }
-        }
-    }
-
-    #[test]
-    /// Tests the various EPP permutations
-    fn test_power_update_power_preferences_epp() {
-        let root = tempdir().unwrap();
-
-        write_epp(root.path(), "balance_performance", AFFECTED_CPU0).unwrap();
-        test_write_cpuset_root_cpus(root.path(), "0-3");
-
-        let tests = [
-            (
-                FakePowerSourceProvider {
-                    power_source: PowerSourceType::DC,
-                },
-                RTCAudioActive::Active,
-                FullscreenVideo::Inactive,
-                "balance_power",
-            ),
-            (
-                FakePowerSourceProvider {
-                    power_source: PowerSourceType::DC,
-                },
-                RTCAudioActive::Inactive,
-                FullscreenVideo::Active,
-                "balance_power",
-            ),
-            (
-                FakePowerSourceProvider {
-                    power_source: PowerSourceType::DC,
-                },
-                RTCAudioActive::Active,
-                FullscreenVideo::Active,
-                "balance_power",
-            ),
-            (
-                FakePowerSourceProvider {
-                    power_source: PowerSourceType::DC,
-                },
-                RTCAudioActive::Inactive,
-                FullscreenVideo::Inactive,
-                "balance_performance",
-            ),
-            (
-                FakePowerSourceProvider {
-                    power_source: PowerSourceType::AC,
-                },
-                RTCAudioActive::Inactive,
-                FullscreenVideo::Active,
-                "balance_performance",
-            ),
-            (
-                FakePowerSourceProvider {
-                    power_source: PowerSourceType::AC,
-                },
-                RTCAudioActive::Active,
-                FullscreenVideo::Active,
-                "balance_performance",
-            ),
-            (
-                FakePowerSourceProvider {
-                    power_source: PowerSourceType::AC,
-                },
-                RTCAudioActive::Active,
-                FullscreenVideo::Inactive,
-                "balance_performance",
-            ),
-        ];
-
-        for test in tests {
-            let mut fake_config = FakeConfig::new();
-            fake_config.write_power_preference(
-                PowerSourceType::AC,
-                PowerPreferencesType::Default,
-                &PowerPreferences {
-                    governor: Some(Governor::Schedutil),
-                    epp: None,
-                    cpu_offline: None,
-                    cpufreq_disable_boost: false,
-                },
-            );
-            let config_provider = fake_config.provider();
-
-            let manager = DirectoryPowerPreferencesManager {
-                root: root.path().to_path_buf(),
-                config_provider,
-                power_source_provider: test.0,
-            };
-
-            manager
-                .update_power_preferences(
-                    test.1,
-                    test.2,
-                    common::GameMode::Off,
-                    common::VmBootMode::Inactive,
-                    common::BatterySaverMode::Inactive,
-                )
-                .unwrap();
-
-            let epp = read_epp(root.path()).unwrap();
-
-            assert_eq!(epp, test.3);
         }
     }
 
