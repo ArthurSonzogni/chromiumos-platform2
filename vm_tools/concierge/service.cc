@@ -1357,7 +1357,7 @@ void Service::DoInitVmMemoryManagementService() {
     return;
   }
 
-  const feature::PlatformFeatures::ParamsResult& result =
+  const feature::PlatformFeatures::ParamsResult result =
       feature::PlatformFeatures::Get()->GetParamsAndEnabledBlocking(
           {&kVmMemoryManagementServiceFeature});
 
@@ -4709,7 +4709,7 @@ void Service::GetVmGpuCachePath(
 }
 
 int Service::GetCpuQuota() {
-  const feature::PlatformFeatures::ParamsResult& result =
+  const feature::PlatformFeatures::ParamsResult result =
       feature::PlatformFeatures::Get()->GetParamsAndEnabledBlocking(
           {&kArcVmInitialThrottleFeature});
 
