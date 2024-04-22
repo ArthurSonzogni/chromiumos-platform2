@@ -1465,6 +1465,9 @@ std::vector<std::string> ArcVm::GetKernelParams(
       base::StringPrintf("androidboot.arc.signed_in=%d",
                          mini_instance_request.arc_signed_in()),
       base::StringPrintf("androidboot.arc.s2idle=%d", request.enable_s2idle()),
+      // Make the default mem sleep state standby instead of freeze, so that the
+      // guest clock is paused while suspended.
+      "mem_sleep_default=shallow",
       // Avoid the RCU synchronization from blocking. See b/285791678#comment74
       // for the context.
       "rcupdate.rcu_expedited=1",
