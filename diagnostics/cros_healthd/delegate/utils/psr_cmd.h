@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
+
 namespace diagnostics::psr {
 
 // PSR version major
@@ -238,7 +240,7 @@ class PsrCmdVirt {
 // PSR Command Class.
 class PsrCmd : public PsrCmdVirt {
  public:
-  explicit PsrCmd(const char* mei_fp);
+  explicit PsrCmd(const base::FilePath& mei_path);
   PsrCmd(const PsrCmd&) = delete;
   PsrCmd& operator=(const PsrCmd&) = delete;
   virtual ~PsrCmd() = default;
@@ -254,7 +256,7 @@ class PsrCmd : public PsrCmdVirt {
   CmdStatus Transaction(HeciGetRequest& tx_buff, PsrHeciResp& rx_buff) override;
   CmdStatus Check(FwCapsRequest& tx_buff, FwCapsResp& rx_buff) override;
 
-  const char* mei_fp_;
+  base::FilePath mei_path_;
   int mei_fd_;
   struct mei_connect_client_data* mei_connect_data_;
 };

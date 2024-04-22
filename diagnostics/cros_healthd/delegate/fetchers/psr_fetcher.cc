@@ -10,6 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 
+#include "diagnostics/base/paths.h"
 #include "diagnostics/cros_healthd/delegate/utils/psr_cmd.h"
 #include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -37,11 +38,10 @@ mojom::GetPsrResultPtr FetchPsrInfo() {
   auto result = mojom::PsrInfo::New();
 
   // Treat a device that doesn't have /dev/mei0 as not supporting PSR.
-  if (!base::PathExists(base::FilePath(psr::kCrosMeiPath))) {
+  if (!base::PathExists(paths::dev::kMei0.ToFull())) {
     return mojom::GetPsrResult::NewInfo(std::move(result));
   }
-
-  auto psr_cmd = psr::PsrCmd(psr::kCrosMeiPath);
+  auto psr_cmd = psr::PsrCmd(paths::dev::kMei0.ToFull());
   if (std::optional<bool> check_psr_result =
           psr_cmd.CheckPlatformServiceRecord();
       !check_psr_result.has_value()) {

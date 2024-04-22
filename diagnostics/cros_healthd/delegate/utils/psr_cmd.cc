@@ -27,7 +27,7 @@
 
 namespace diagnostics::psr {
 
-PsrCmd::PsrCmd(const char* mei_fp) : mei_fp_(mei_fp) {}
+PsrCmd::PsrCmd(const base::FilePath& mei_path) : mei_path_(mei_path) {}
 
 bool PsrCmd::MeiConnect() {
   if (ioctl(mei_fd_, IOCTL_MEI_CONNECT_CLIENT, mei_connect_data_) == -1) {
@@ -135,7 +135,7 @@ std::optional<bool> PsrCmd::CheckPlatformServiceRecord() {
 
   mei_connect_data_ = new mei_connect_client_data;
   mei_connect_data_->in_client_uuid = kHciGuid;
-  mei_fd_ = open(mei_fp_, O_RDWR, S_IRUSR | S_IWUSR);
+  mei_fd_ = open(mei_path_.value().c_str(), O_RDWR, S_IRUSR | S_IWUSR);
   CmdStatus status = Check(request, response);
   close(mei_fd_);
   delete mei_connect_data_;
@@ -205,7 +205,7 @@ bool PsrCmd::GetPlatformServiceRecord(PsrHeciResp& psr_blob) {
 
   mei_connect_data_ = new mei_connect_client_data;
   mei_connect_data_->in_client_uuid = kGuid;
-  mei_fd_ = open(mei_fp_, O_RDWR, S_IRUSR | S_IWUSR);
+  mei_fd_ = open(mei_path_.value().c_str(), O_RDWR, S_IRUSR | S_IWUSR);
   CmdStatus status = Transaction(request, psr_blob);
   close(mei_fd_);
   delete mei_connect_data_;

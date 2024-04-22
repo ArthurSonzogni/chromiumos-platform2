@@ -486,8 +486,8 @@ void Executor::GetPsr(GetPsrCallback callback) {
       seccomp_file::kPsr,
       SandboxedProcess::Options{
           .user = user::kPsr,
-          .readonly_mount_points = {base::FilePath{psr::kCrosMeiPath}},
-          .writable_mount_points = {base::FilePath{psr::kCrosMeiPath}},
+          .readonly_mount_points = {paths::dev::kMei0.ToFull()},
+          .writable_mount_points = {paths::dev::kMei0.ToFull()},
       });
 
   auto* delegate_ptr = delegate.get();

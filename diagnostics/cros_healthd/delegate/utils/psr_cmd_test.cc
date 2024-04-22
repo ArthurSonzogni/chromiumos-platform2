@@ -8,8 +8,11 @@
 #include <vector>
 
 #include <base/strings/string_util.h>
+#include <base/files/file_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include <diagnostics/base/paths.h>
 
 namespace diagnostics::psr {
 
@@ -19,10 +22,8 @@ using ::testing::Return;
 using ::testing::SetArgReferee;
 
 class MockPsrCmd : public PsrCmd {
-  static constexpr char kFd[] = "/dev/mei0";
-
  public:
-  MockPsrCmd() : PsrCmd(kFd) {}
+  MockPsrCmd() : PsrCmd(paths::dev::kMei0.ToFull()) {}
   MockPsrCmd(const MockPsrCmd&) = delete;
   MockPsrCmd& operator=(const MockPsrCmd&) = delete;
   virtual ~MockPsrCmd() = default;

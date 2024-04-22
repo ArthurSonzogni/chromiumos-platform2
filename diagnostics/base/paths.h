@@ -119,6 +119,13 @@ VAR_(PATH_("name"), kCodeName);
 
 }  // namespace cros_config
 
+namespace dev {
+
+// The path to the psr device node.
+VAR_(PATH_("dev", "mei0"), kMei0);
+
+}  // namespace dev
+
 }  // namespace diagnostics::paths
 
 #undef PATH_

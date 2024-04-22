@@ -25,13 +25,6 @@ inline constexpr uint32_t kVmCr = 0xC0010114;
 
 }  // namespace cpu_msr
 
-namespace psr {
-
-// The path to the psr device node.
-inline constexpr char kCrosMeiPath[] = "/dev/mei0";
-
-}  // namespace psr
-
 namespace path {
 
 // Path of the cache file for fio test.
