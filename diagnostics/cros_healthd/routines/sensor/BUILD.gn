@@ -2,23 +2,22 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-pkg_config("sensor_pkg_config") {
-  pkg_deps = [
-    "iioservice_ipc",
-    "libchrome",
-  ]
-}
-
 source_set("sensor") {
   sources = [
     "sensitive_sensor.cc",
     "sensor_existence_checker.cc",
   ]
-  configs += [ ":sensor_pkg_config" ]
-  public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
+  public_pkg_deps = [
+    "iioservice_ipc",
+    "libchrome",
+    "libmojo",
+  ]
+  public_deps = [
+    "//diagnostics/cros_healthd/routines:utils",
+    "//diagnostics/cros_healthd/system",
+  ]
   deps = [
     "//diagnostics/base",
-    "//diagnostics/cros_healthd/system",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
@@ -29,13 +28,18 @@ if (use.test) {
       "sensitive_sensor_test.cc",
       "sensor_existence_checker_test.cc",
     ]
-    configs += [ ":sensor_pkg_config" ]
+    pkg_deps = [
+      "libchrome-test",
+      "libmojo",
+    ]
     deps = [
       ":sensor",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/system:test_support",
+      "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
+      "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
   }
 }
