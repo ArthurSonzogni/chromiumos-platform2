@@ -202,7 +202,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/sbin/dnsproxyd             u:object_r:cros_dnsproxyd_exec:s0
 /usr/sbin/device_managementd    u:object_r:cros_device_managementd_exec:s0
 /usr/sbin/gsctool               u:object_r:cros_gsctool_exec:s0
-/usr/sbin/hiberman              u:object_r:cros_hiberman_exec:s0
 /usr/sbin/hpsd                  u:object_r:cros_hpsd_exec:s0
 /usr/sbin/huddly-monitor        u:object_r:cros_huddly_monitor_exec:s0
 /usr/sbin/iioservice            u:object_r:cros_iioservice_exec:s0
@@ -327,7 +326,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/fwupd                  u:object_r:cros_var_lib_fwupd:s0
 /var/lib/fwupd/pending          u:object_r:cros_var_lib_fwupd_pending:s0
 /var/lib/heartd(/.*)?           u:object_r:cros_var_lib_heartd:s0
-/var/lib/hiberman               u:object_r:cros_var_lib_hiberman:s0
 /var/lib/imageloader(/.*)?      u:object_r:cros_var_lib_imageloader:s0
 /var/lib/metrics(/.*)?          u:object_r:cros_metrics_file:s0
 /var/lib/metrics/uma-events     u:object_r:cros_metrics_uma_events_file:s0
@@ -489,7 +487,6 @@ has_arc(`
 /run/featured_seed              u:object_r:cros_run_featured_seed:s0
 /run/frecon                     u:object_r:cros_run_frecon:s0
 /run/fuse                       u:object_r:cros_run_fuse:s0
-/run/hibernate                  u:object_r:cros_run_hibernate:s0
 /run/ippusb(/.*)?               u:object_r:cros_run_ippusb:s0
 /run/ipsec                      u:object_r:cros_run_ipsec:s0
 /run/lock                       u:object_r:cros_run_lock:s0
