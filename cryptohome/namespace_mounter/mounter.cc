@@ -892,12 +892,19 @@ bool Mounter::InternalMountDaemonStoreDirectories(
         file_enumerator->GetInfo().stat();
 
     // TODO(dlunev): add some reporting when we see ACL mismatch.
-    if (!platform_->DirectoryExists(mount_source) &&
-        !platform_->SafeCreateDirAndSetOwnershipAndPermissions(
-            mount_source, etc_daemon_path_stat.st_mode,
-            etc_daemon_path_stat.st_uid, etc_daemon_path_stat.st_gid)) {
-      LOG(ERROR) << "Failed to create directory " << mount_source.value();
-      return false;
+    if (platform_->DirectoryExists(mount_source)) {
+      if (!platform_->SafeDirChmod(mount_source,
+                                   etc_daemon_path_stat.st_mode)) {
+        LOG(ERROR) << "Failed to chmod directory " << mount_source.value();
+        return false;
+      }
+    } else {
+      if (!platform_->SafeCreateDirAndSetOwnershipAndPermissions(
+              mount_source, etc_daemon_path_stat.st_mode,
+              etc_daemon_path_stat.st_uid, etc_daemon_path_stat.st_gid)) {
+        LOG(ERROR) << "Failed to create directory " << mount_source.value();
+        return false;
+      }
     }
 
     // The target directory's parent exists in the root mount namespace so the
