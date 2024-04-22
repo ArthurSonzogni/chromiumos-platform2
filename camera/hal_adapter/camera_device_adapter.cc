@@ -1368,6 +1368,7 @@ int32_t CameraDeviceAdapter::RegisterBufferLocked(
       buffer->has_modifier ? buffer->modifier : DRM_FORMAT_MOD_LINEAR);
 }
 
+// TODO(kamesan): Handle the fatal errors here.
 mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
     Camera3CaptureDescriptor result) {
   mojom::Camera3CaptureResultPtr r = mojom::Camera3CaptureResult::New();
@@ -1387,8 +1388,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
       mojom::Camera3StreamBufferPtr out_buf = internal::SerializeStreamBuffer(
           &buf.raw_buffer(), streams_, buffer_handles_);
       if (out_buf.is_null()) {
-        LOGF(ERROR) << "Failed to serialize output stream buffer";
-        // TODO(jcliang): Handle error?
+        LOGF(FATAL) << "Failed to serialize output stream buffer";
       }
 
       const camera3_stream_buffer_t buf_handle = buf.raw_buffer();
@@ -1412,7 +1412,7 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
         internal::SerializeStreamBuffer(&result.GetInputBuffer()->raw_buffer(),
                                         streams_, buffer_handles_);
     if (input_buffer.is_null()) {
-      LOGF(ERROR) << "Failed to serialize input stream buffer";
+      LOGF(FATAL) << "Failed to serialize input stream buffer";
     }
 
     auto buf = result.AcquireInputBuffer().value();
@@ -1426,19 +1426,18 @@ mojom::Camera3CaptureResultPtr CameraDeviceAdapter::PrepareCaptureResult(
   }
 
   if (device_api_version_ >= CAMERA_DEVICE_API_VERSION_3_5) {
-    // TODO(lnishan): Handle the errors here.
     std::vector<mojom::Camera3PhyscamMetadataPtr> phys_metadata;
     for (int i = 0; i < result.num_physcam_metadata(); ++i) {
       auto m = mojom::Camera3PhyscamMetadata::New();
       int internal_camera_id = 0;
       if (!base::StringToInt(result.physcam_ids()[i], &internal_camera_id)) {
-        LOGF(ERROR) << "Invalid physical camera ID: "
+        LOGF(FATAL) << "Invalid physical camera ID: "
                     << result.physcam_ids()[i];
       }
       int public_camera_id =
           get_public_camera_id_callback_.Run(internal_camera_id);
       if (public_camera_id == -1) {
-        LOGF(ERROR) << "Failed to find public camera ID for internal camera "
+        LOGF(FATAL) << "Failed to find public camera ID for internal camera "
                     << internal_camera_id;
       }
       m->id = public_camera_id;
