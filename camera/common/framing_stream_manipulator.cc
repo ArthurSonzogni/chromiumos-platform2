@@ -338,6 +338,7 @@ uint32_t GetFullFrameBufferUsage(uint32_t yuv_stream_usage) {
 
 struct FramingStreamManipulator::CaptureContext {
   std::pair<State, State> state_transition;
+  bool bypassed = false;
   uint32_t num_pending_buffers = 0;
   bool metadata_received = false;
   bool has_pending_blob = false;
@@ -636,12 +637,13 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
   // Filter client streams into |hal_streams| that will be requested to the HAL.
   client_streams_ = CopyToVector(stream_config->GetStreams());
   camera3_stream_t* client_still_yuv_stream = nullptr;
-  std::vector<camera3_stream_t*> hal_streams = client_streams_;
+  std::vector<camera3_stream_t*> hal_streams;
   Size target_size;
   char* physical_camera_id;
   uint32_t full_frame_buffer_usage = kFullFrameBufferUsage;
   for (auto* s : client_streams_) {
     if (IsStreamBypassed(s)) {
+      hal_streams.push_back(s);
       continue;
     }
     if (s->format == HAL_PIXEL_FORMAT_BLOB) {
@@ -654,11 +656,13 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
                   &FramingStreamManipulator::ReturnStillCaptureResultOnThread,
                   base::Unretained(this))));
       blob_stream_ = s;
+      hal_streams.push_back(s);
     } else if ((s->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
                 s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
                (s->usage & kStillCaptureUsageFlag)) {
       CHECK_EQ(client_still_yuv_stream, nullptr);
       client_still_yuv_stream = s;
+      hal_streams.push_back(s);
     }
     if (s->format == HAL_PIXEL_FORMAT_YCBCR_420_888) {
       full_frame_buffer_usage = GetFullFrameBufferUsage(s->usage);
@@ -880,17 +884,39 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
   const std::pair<State, State> state_transition =
       StateTransitionOnThread(manual_zoom_enabled);
 
-  // Bypass reprocessing requests and all requests when in |kDisabled| state.
-  if (request->has_input_buffer() ||
-      state_transition.second == State::kDisabled) {
-    return true;
-  }
   CaptureContext* ctx = CreateCaptureContext(request->frame_number());
   if (!ctx) {
     ++metrics_.errors[AutoFramingError::kProcessRequestError];
     return false;
   }
   ctx->state_transition = state_transition;
+
+  // Bypass reprocessing requests and all requests when in |kDisabled| state.
+  if (request->has_input_buffer() ||
+      state_transition.second == State::kDisabled) {
+    ctx->bypassed = true;
+    // Replace video streams by full frame stream.
+    for (auto& b : request->AcquireOutputBuffers()) {
+      if (IsStreamBypassed(b.stream()) || b.stream() == blob_stream_ ||
+          b.stream() == yuv_stream_for_blob_) {
+        request->AppendOutputBuffer(std::move(b));
+      } else {
+        ctx->client_video_yuv_buffers.push_back(b.raw_buffer());
+      }
+    }
+    if (!ctx->client_video_yuv_buffers.empty()) {
+      ctx->full_frame_buffer = full_frame_buffer_pool_->RequestBuffer();
+      CHECK(ctx->full_frame_buffer.has_value());
+      request->AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
+          .stream = &full_frame_stream_,
+          .buffer = ctx->full_frame_buffer->handle(),
+          .status = CAMERA3_BUFFER_STATUS_OK,
+          .acquire_fence = -1,
+          .release_fence = -1,
+      }));
+    }
+    return true;
+  }
 
   if (state_transition.second == State::kManualZoom) {
     ctx->crop_region =
@@ -995,6 +1021,51 @@ bool FramingStreamManipulator::ProcessCaptureResultOnThread(
   CaptureContext* ctx = GetCaptureContext(result->frame_number());
   if (!ctx) {
     // This capture is bypassed.
+    return true;
+  }
+
+  if (ctx->bypassed) {
+    // Scale the full frame into client video yuv buffers.
+    std::optional<Camera3StreamBuffer> full_frame_buffer;
+    for (auto& b : result->AcquireOutputBuffers()) {
+      if (b.stream() == &full_frame_stream_) {
+        full_frame_buffer.emplace(std::move(b));
+      } else {
+        result->AppendOutputBuffer(std::move(b));
+      }
+    }
+    if (full_frame_buffer.has_value()) {
+      if (full_frame_buffer->status() == CAMERA3_BUFFER_STATUS_OK) {
+        for (auto& b : ctx->client_video_yuv_buffers) {
+          std::optional<base::ScopedFD> fence = CropAndScaleOnThread(
+              *full_frame_buffer->buffer(),
+              base::ScopedFD(full_frame_buffer->take_release_fence()),
+              *b.buffer, base::ScopedFD(b.acquire_fence),
+              RelativeFov(full_frame_size_, active_array_dimension_)
+                  .GetCropWindowInto(
+                      RelativeFov(Size(b.stream->width, b.stream->height),
+                                  active_array_dimension_)),
+              /*try_upsample=*/false);
+          b.acquire_fence = -1;
+          if (fence.has_value()) {
+            b.release_fence = fence->release();
+          } else {
+            b.status = CAMERA3_BUFFER_STATUS_ERROR;
+          }
+          result->AppendOutputBuffer(Camera3StreamBuffer::MakeResultOutput(b));
+        }
+      } else {
+        for (auto& b : ctx->client_video_yuv_buffers) {
+          b.status = CAMERA3_BUFFER_STATUS_ERROR;
+          result->AppendOutputBuffer(Camera3StreamBuffer::MakeResultOutput(b));
+        }
+      }
+      ctx->client_video_yuv_buffers.clear();
+      ctx->full_frame_buffer.reset();
+    }
+    if (ctx->client_video_yuv_buffers.empty()) {
+      RemoveCaptureContext(result->frame_number());
+    }
     return true;
   }
 
