@@ -269,9 +269,9 @@ void CreateSystemKey(libstorage::Platform* platform,
   log_content->append("No system key found in NVRAM. Start creating one.\n");
 
   // Generates 32-byte random key material and backs it up.
-  char buf[kKeySize];
-  crypto::RandBytes(buf, kKeySize);
-  if (!platform->WriteArrayToFile(backup, buf, kKeySize)) {
+  brillo::Blob buf(kKeySize);
+  crypto::RandBytes(buf.data(), buf.size());
+  if (!platform->WriteFile(backup, buf)) {
     log_content->append("Failed to generate or back up system key material.\n");
     return;
   }

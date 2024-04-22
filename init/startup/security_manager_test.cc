@@ -313,8 +313,7 @@ TEST_F(SysKeyTest, AlreadySysKey) {
 
 TEST_F(SysKeyTest, NeedSysKeyBadRandomWrite) {
   base::FilePath backup = stateful.Append(kPreserveSysKeyFile);
-  EXPECT_CALL(*platform_, WriteArrayToFile(backup, _, _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(*platform_, WriteFile(backup, _)).WillOnce(Return(false));
   startup_dep_->SetMountEncOutputForArg("info", "not found.");
 
   std::string res;
