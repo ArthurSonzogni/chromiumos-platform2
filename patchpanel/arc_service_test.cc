@@ -21,6 +21,7 @@
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/technology.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
@@ -1854,8 +1855,8 @@ TEST_F(ArcServiceTest, ConvertARCContainerWiFiDevice) {
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(
-      ArcService::ArcType::kContainer, ArcService::ArcDevice::Technology::kWiFi,
-      "wlan0", "vethwlan0", mac_addr, arc_config, "arc_wlan0", "wlan0");
+      ArcService::ArcType::kContainer, net_base::Technology::kWiFi, "wlan0",
+      "vethwlan0", mac_addr, arc_config, "arc_wlan0", "wlan0");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -1889,10 +1890,9 @@ TEST_F(ArcServiceTest, ConvertARCContainerCellularDevice) {
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
-  ArcService::ArcDevice arc_device(ArcService::ArcType::kContainer,
-                                   ArcService::ArcDevice::Technology::kCellular,
-                                   "wwan0", "vethwwan0", mac_addr, arc_config,
-                                   "arc_wwan0", "wwan0");
+  ArcService::ArcDevice arc_device(
+      ArcService::ArcType::kContainer, net_base::Technology::kCellular, "wwan0",
+      "vethwwan0", mac_addr, arc_config, "arc_wwan0", "wwan0");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -1927,8 +1927,8 @@ TEST_F(ArcServiceTest, ConvertARCVMWiFiDevice) {
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
   ArcService::ArcDevice arc_device(
-      ArcService::ArcType::kVMStatic, ArcService::ArcDevice::Technology::kWiFi,
-      "wlan0", "vmtap1", mac_addr, arc_config, "arc_wlan0", "eth3");
+      ArcService::ArcType::kVMStatic, net_base::Technology::kWiFi, "wlan0",
+      "vmtap1", mac_addr, arc_config, "arc_wlan0", "eth3");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 
@@ -1961,10 +1961,9 @@ TEST_F(ArcServiceTest, ConvertARCVMCellularDevice) {
   auto expected_base_cidr = ipv4_subnet->base_cidr();
 
   ArcService::ArcConfig arc_config(mac_addr, std::move(ipv4_subnet));
-  ArcService::ArcDevice arc_device(ArcService::ArcType::kVMStatic,
-                                   ArcService::ArcDevice::Technology::kCellular,
-                                   "wwan0", "vmtap5", mac_addr, arc_config,
-                                   "arc_wwan0", "eth5");
+  ArcService::ArcDevice arc_device(
+      ArcService::ArcType::kVMStatic, net_base::Technology::kCellular, "wwan0",
+      "vmtap5", mac_addr, arc_config, "arc_wwan0", "eth5");
   NetworkDevice proto_device;
   arc_device.ConvertToProto(&proto_device);
 

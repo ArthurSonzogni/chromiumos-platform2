@@ -18,6 +18,7 @@
 #include <metrics/metrics_library.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/technology.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
@@ -99,15 +100,8 @@ class ArcService {
   // created for every host Network exposed to ARC.
   class ArcDevice {
    public:
-    // Technology of the underlying physical device of the virtual device.
-    enum class Technology {
-      kCellular,
-      kEthernet,
-      kWiFi,
-    };
-
     ArcDevice(ArcType type,
-              std::optional<ArcDevice::Technology> technology,
+              std::optional<net_base::Technology> technology,
               std::optional<std::string_view> shill_device_ifname,
               std::string_view arc_device_ifname,
               net_base::MacAddress arc_device_mac_address,
@@ -121,7 +115,9 @@ class ArcService {
 
     // Technology of the underlying physical device of the virtual device, if it
     // exists.
-    std::optional<Technology> technology() const { return technology_; }
+    std::optional<net_base::Technology> technology() const {
+      return technology_;
+    }
 
     // The interface name of the shill Device that this ARC device is bound to.
     // This value is not defined for the "arc0" device used for VPN forwarding.
@@ -174,7 +170,7 @@ class ArcService {
 
    private:
     ArcType type_;
-    std::optional<Technology> technology_;
+    std::optional<net_base::Technology> technology_;
     std::optional<std::string> shill_device_ifname_;
     std::string arc_device_ifname_;
     net_base::MacAddress arc_device_mac_address_;

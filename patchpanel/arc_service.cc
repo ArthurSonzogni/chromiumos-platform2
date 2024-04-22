@@ -25,13 +25,12 @@
 #include <metrics/metrics_library.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/technology.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/mac_address_generator.h"
 #include "patchpanel/metrics.h"
-#include "patchpanel/net_util.h"
 #include "patchpanel/proto_utils.h"
 #include "patchpanel/scoped_ns.h"
 #include "patchpanel/shill_client.h"
@@ -51,18 +50,18 @@ void RecordEvent(MetricsLibraryInterface* metrics, ArcServiceUmaEvent event) {
   metrics->SendEnumToUMA(kArcServiceUmaEventMetrics, event);
 }
 
-std::optional<ArcService::ArcDevice::Technology> TranslateTechnologyType(
+std::optional<net_base::Technology> TranslateTechnologyType(
     ShillClient::Device::Type type) {
   using ShillType = ShillClient::Device::Type;
   switch (type) {
     case ShillType::kCellular:
-      return ArcService::ArcDevice::Technology::kCellular;
+      return net_base::Technology::kCellular;
     case ShillType::kWifi:
-      return ArcService::ArcDevice::Technology::kWiFi;
+      return net_base::Technology::kWiFi;
     case ShillType::kEthernet:
       // fallthrough.
     case ShillType::kEthernetEap:
-      return ArcService::ArcDevice::Technology::kEthernet;
+      return net_base::Technology::kEthernet;
     case ShillType::kVPN:
       // fallthrough.
     case ShillType::kGuestInterface:
@@ -217,7 +216,7 @@ ArcService::ArcConfig::ArcConfig(const net_base::MacAddress& mac_addr,
 
 ArcService::ArcDevice::ArcDevice(
     ArcType type,
-    std::optional<ArcDevice::Technology> technology,
+    std::optional<net_base::Technology> technology,
     std::optional<std::string_view> shill_device_ifname,
     std::string_view arc_device_ifname,
     net_base::MacAddress arc_device_mac_address,
@@ -252,14 +251,16 @@ void ArcService::ArcDevice::ConvertToProto(NetworkDevice* output) const {
   }
   if (technology().has_value()) {
     switch (technology().value()) {
-      case ArcDevice::Technology::kCellular:
+      case net_base::Technology::kCellular:
         output->set_technology_type(NetworkDevice::CELLULAR);
         break;
-      case ArcDevice::Technology::kWiFi:
+      case net_base::Technology::kWiFi:
         output->set_technology_type(NetworkDevice::WIFI);
         break;
-      case ArcDevice::Technology::kEthernet:
+      case net_base::Technology::kEthernet:
         output->set_technology_type(NetworkDevice::ETHERNET);
+        break;
+      default:
         break;
     }
   }
@@ -768,7 +769,7 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     guest_ifname = shill_device.shill_device_interface_property;
   }
 
-  const std::optional<ArcDevice::Technology> technology =
+  const std::optional<net_base::Technology> technology =
       TranslateTechnologyType(shill_device.type);
   if (!technology.has_value()) {
     LOG(ERROR) << "Shill device technology type " << shill_device.type
