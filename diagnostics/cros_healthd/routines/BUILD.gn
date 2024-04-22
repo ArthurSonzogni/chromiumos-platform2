@@ -12,7 +12,8 @@ pkg_config("routines_pkg_config") {
   ]
 }
 
-group("routines") {
+source_set("routines") {
+  sources = [ "cros_healthd_routine_factory_impl.cc" ]
   deps = [
     ":utils",
     "//diagnostics/cros_healthd/routines/android_network",
@@ -53,6 +54,7 @@ source_set("utils") {
 if (use.test) {
   source_set("libroutine_test_utils") {
     sources = [
+      "fake_cros_healthd_routine_factory.cc",
       "routine_observer_for_testing.cc",
       "routine_test_utils.cc",
       "routine_v2_test_utils.cc",

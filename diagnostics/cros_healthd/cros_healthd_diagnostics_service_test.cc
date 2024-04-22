@@ -20,7 +20,7 @@
 
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/base/paths.h"
-#include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
+#include "diagnostics/cros_healthd/routines/fake_cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"

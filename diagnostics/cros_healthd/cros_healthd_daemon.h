@@ -13,9 +13,9 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
-#include "diagnostics/cros_healthd/cros_healthd_routine_factory_impl.h"
 #include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
+#include "diagnostics/cros_healthd/routines/cros_healthd_routine_factory_impl.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {

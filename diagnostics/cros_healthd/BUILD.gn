@@ -23,7 +23,6 @@ source_set("libcros_healthd") {
     "cros_healthd_daemon.cc",
     "cros_healthd_diagnostics_service.cc",
     "cros_healthd_mojo_service.cc",
-    "cros_healthd_routine_factory_impl.cc",
     "event_aggregator.cc",
     "fetch_aggregator.cc",
   ]
@@ -67,10 +66,7 @@ if (use.test) {
 
   executable("cros_healthd_test") {
     run_test = true
-    sources = [
-      "cros_healthd_diagnostics_service_test.cc",
-      "fake_cros_healthd_routine_factory.cc",
-    ]
+    sources = [ "cros_healthd_diagnostics_service_test.cc" ]
     configs += [ ":cros_healthd_test_pkg_deps" ]
     deps = [
       ":libcros_healthd",

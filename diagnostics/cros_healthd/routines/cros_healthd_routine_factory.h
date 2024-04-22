@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_ROUTINE_FACTORY_H_
-#define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_ROUTINE_FACTORY_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_CROS_HEALTHD_ROUTINE_FACTORY_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_CROS_HEALTHD_ROUTINE_FACTORY_H_
 
 #include <cstdint>
 #include <memory>
@@ -179,4 +179,4 @@ class CrosHealthdRoutineFactory {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_ROUTINE_FACTORY_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_CROS_HEALTHD_ROUTINE_FACTORY_H_

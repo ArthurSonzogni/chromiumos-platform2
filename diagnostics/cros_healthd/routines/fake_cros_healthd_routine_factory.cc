@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
+#include "diagnostics/cros_healthd/routines/fake_cros_healthd_routine_factory.h"
 
 #include <cstdint>
 #include <memory>
