@@ -7,6 +7,7 @@
 #include <utility>
 
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/location.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
@@ -24,16 +25,16 @@ CameraServiceController::CameraServiceController(
       ipc_task_runner_(mojo_manager->GetTaskRunner()) {}
 
 CameraServiceController::~CameraServiceController() {
-  auto future = cros::Future<void>::Create(nullptr);
   if (ipc_task_runner_->RunsTasksInCurrentSequence()) {
-    ResetRemote(cros::GetFutureCallback(future));
+    ResetRemote(base::NullCallback());
   } else {
+    auto future = cros::Future<void>::Create(nullptr);
     ipc_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&CameraServiceController::ResetRemote,
                                   base::Unretained(this),
                                   cros::GetFutureCallback(future)));
+    future->Wait();
   }
-  future->Wait();
 }
 
 void CameraServiceController::StartStreaming(
@@ -131,7 +132,9 @@ void CameraServiceController::RequestFrameInternal(
 void CameraServiceController::ResetRemote(base::OnceClosure callback) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   remote_.reset();
-  std::move(callback).Run();
+  if (callback) {
+    std::move(callback).Run();
+  }
 }
 
 }  // namespace cros
