@@ -539,6 +539,7 @@ type cros_run_arcvm, file_type, cros_file_type, cros_run_file_type;
 type cros_run_avahi_daemon, file_type, cros_file_type, cros_run_file_type;
 type cros_run_bluetooth, file_type, cros_file_type, cros_run_file_type;
 type cros_run_camera_tokens, file_type, cros_file_type, cros_run_file_type;
+type cros_run_chromeos_startup, file_type, cros_file_type, cros_run_file_type;
 type cros_run_containers, file_type, cros_file_type, cros_run_file_type;
 type cros_run_crash_reporter, file_type, cros_file_type, cros_run_file_type;
 type cros_run_crosdns, file_type, cros_file_type, cros_run_file_type;

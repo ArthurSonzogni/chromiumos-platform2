@@ -468,6 +468,7 @@ has_arc(`
 /run/camera                     u:object_r:camera_dir:s0
 /run/camera/.*\.sock            u:object_r:camera_socket:s0
 /run/camera_tokens(/.*)?        u:object_r:cros_run_camera_tokens:s0
+/run/chromeos_startup           u:object_r:cros_run_chromeos_startup:s0
 /run/cras(/.*)?                 u:object_r:cras_socket:s0
 /run/crosdns(/.*)?              u:object_r:cros_run_crosdns:s0
 /run/cryptohome                 u:object_r:cros_run_cryptohome:s0
