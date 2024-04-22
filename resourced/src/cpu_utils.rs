@@ -4,11 +4,8 @@
 
 use std::collections::HashSet;
 use std::fmt::Display;
-use std::fs::File;
-use std::os::unix::prelude::FileExt;
 use std::fs::read_to_string;
 use std::io::BufRead;
-use std::io::Write;
 use std::io::BufReader;
 use std::path::Path;
 use std::slice::Iter;
@@ -25,7 +22,6 @@ use crate::common::read_from_file;
 pub const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
 const ROOT_CPUSET_CPUS_PATH: &str = "sys/fs/cgroup/cpuset/cpus";
 const UI_USE_FLAGS_PATH: &str = "etc/ui_use_flags.txt";
-const DEV_CPU_PATH: &str = "dev/cpu/";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum HotplugCpuAction {
@@ -399,50 +395,6 @@ pub fn hotplug_cpus(root: &Path, action: HotplugCpuAction) -> Result<()> {
 
     Ok(())
 }
-
-pub fn write_msr_on_all_cpus(root: &Path, msr_value: u64, msr_addr: u64) -> Result<()> {
-    let data :[u8; 8] = msr_value.to_le_bytes();
-    let cpu_msr_path = root
-            .join(DEV_CPU_PATH)
-            .join("*/")
-            .join("msr")
-            .as_path()
-            .display()
-            .to_string();
-
-    if let Ok(msr_paths) = glob(&cpu_msr_path) {
-        for msr_path in msr_paths.flatten() {
-            let path_str : String = msr_path.display().to_string();
-            let msr_file_path = Path::new(&path_str);
-
-            if !msr_file_path.exists() {
-              bail!("MSR file not Found {:?}", msr_file_path);
-            }
-
-            let mut file = File::options()
-                    .read(true)
-                    .write(true)
-                    .open(msr_file_path)
-                    .context(format!(
-                        "Failed to open MSR file {} in rw mode",
-                        msr_file_path.display()
-                    ))?;
-
-            let bytes_written = file.write_at(&data, msr_addr)?;
-            if bytes_written == 8 {
-              info!("Updated MSR {:02X} with value {:02X}",
-                    msr_addr, msr_value);
-            } else {
-              bail! {"Failed to update MSR {:02X} with value {:02X}",
-                  msr_addr, msr_value};
-            }
-            file.flush()?;
-        }
-    }
-
-    Ok(())
-}
-
 
 #[cfg(test)]
 mod tests {

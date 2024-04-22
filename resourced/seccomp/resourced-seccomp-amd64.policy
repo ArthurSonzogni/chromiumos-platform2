@@ -81,9 +81,4 @@ get_robust_list: arg1 == 0
 kcmp: kill
 process_vm_readv: kill
 process_vm_writev: kill
-# repo upload hooks need a comment on the preceding line for ptrace cap
-# requires review from chrome_security@
 ptrace: kill
-# For reading and writing x86 MSR files
-pread64: 1
-pwrite64: 1

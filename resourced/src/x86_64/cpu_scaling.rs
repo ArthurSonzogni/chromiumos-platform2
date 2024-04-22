@@ -76,39 +76,6 @@ pub fn intel_i7_or_above(root: &Path) -> Result<bool> {
     Ok(false)
 }
 
-// Only specific Intel SoCs support setting cache allocation through MSRs
-// This method checks current CPU model is one of them
-pub fn intel_cache_allocation_supported(root :&Path) -> Result<bool> {
-    // TODO: enable for RPL post tuning and assessment
-    let llc_sharing_supported_cpu_models =
-        [   140, // TGL
-            154, // ADL-P
-            // 186, // RPL
-            // 190  // ADL-N
-        ];
-
-    let cpuinfo = r"model\s+:\s+(\d+)";
-    let exp = Regex::new(cpuinfo)?;
-    let path = root.join("proc/cpuinfo");
-    let file = File::open(path)?;
-    let reader = BufReader::new(file);
-    info! {"Checking CPU Model id for cache allocation support"};
-    for line in reader.lines() {
-        if let Some(result) = exp.captures(&line?) {
-            let model_id :u16 = result[1].to_string().parse::<u16>()?;
-            let supported : bool = llc_sharing_supported_cpu_models.contains(&model_id);
-
-            if supported {
-                info! {"CPU Model {} supports cache allocation", model_id };
-            } else {
-                info! {"CPU Model {} does not support cache allocation", model_id };
-            }
-            return Ok(supported);
-        }
-    }
-    Ok(false)
-}
-
 #[allow(dead_code)]
 impl DeviceCpuStatus {
     #[inline(always)]

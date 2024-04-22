@@ -40,10 +40,6 @@ use crate::x86_64::globals::read_dynamic_epp_feature;
 use crate::x86_64::globals::set_media_cgroup_state;
 #[cfg(target_arch = "x86_64")]
 use crate::x86_64::gpu_freq_scaling::intel_device;
-#[cfg(target_arch = "x86_64")]
-use crate::cpu_utils::write_msr_on_all_cpus;
-#[cfg(target_arch = "x86_64")]
-use crate::x86_64::cpu_scaling::intel_cache_allocation_supported;
 
 // Paths for RPS up/down threshold relative to rootdir.
 const DEVICE_RPS_PATH_UP: &str = "sys/class/drm/card0/gt/gt0/rps_up_threshold_pct";
@@ -52,13 +48,6 @@ const DEVICE_RPS_DEFAULT_PATH_UP: &str =
     "sys/class/drm/card0/gt/gt0/.defaults/rps_up_threshold_pct";
 const DEVICE_RPS_DEFAULT_PATH_DOWN: &str =
     "sys/class/drm/card0/gt/gt0/.defaults/rps_down_threshold_pct";
-
-const CACHE_ALLOC_MSR1_ADDR : u64 = 0xc90;
-const CACHE_ALLOC_MSR2_ADDR : u64 = 0x1890;
-const CACHE_ALLOC_MSR1_VALUE : u64 = 0x007;
-const CACHE_ALLOC_MSR2_VALUE : u64 = 0xFF8;
-const CACHE_ALLOC_MSR1_DEFAULT : u64 = 0xFFF;
-const CACHE_ALLOC_MSR2_DEFAULT : u64 = 0xFFFFFF;
 
 //TODO(syedfaaiz) : modify these values following a benchy run to 70/50.
 const GAMEMODE_RPS_UP: u64 = 95;
@@ -173,20 +162,6 @@ pub fn set_game_mode(
             warn! {"Failed to tune TPH: {:?}", e};
         }
 
-        // Setting cache allocation for game mode
-        match intel_cache_allocation_supported(Path::new(&root)) {
-            Ok(res) => {
-                if res {
-                    if let Err(e) = set_cache_allocation(Path::new(&root)) {
-                        warn! {"Failed to set cache allocation MSRs, {:?}", e};
-                    }
-                }
-            }
-            Err(e) => {
-                warn! {"Failed to check cache allocation support, {:?}", e};
-            }
-        }
-
         return Ok(Some(TuneSwappiness {
             swappiness: TUNED_SWAPPINESS_VALUE,
         }));
@@ -215,21 +190,6 @@ pub fn set_game_mode(
 
         if let Err(e) = set_thp(THPMode::Default) {
             warn! {"Failed to set TPH to default: {:?}", e};
-        }
-
-        // Reset cache allocation MSRs to default values
-        match intel_cache_allocation_supported(Path::new(&root)) {
-            Ok(res) => {
-                if res {
-                    if let Err(e) = reset_cache_allocation(Path::new(&root)) {
-                        warn! {"Failed to reset cache allocation MSRs, {:?}",
-                        e};
-                    }
-                }
-            }
-            Err(e) => {
-                warn! {"Failed to check cache allocation support, {:?}", e};
-            }
         }
 
         return Ok(Some(TuneSwappiness {
@@ -538,40 +498,6 @@ fn set_thp(mode: THPMode) -> Result<()> {
             }
         }
     }
-    Ok(())
-}
-
-#[cfg(target_arch = "x86_64")]
-fn set_cache_allocation(root: &Path) -> Result<()> {
-
-    if let Err(e) = write_msr_on_all_cpus(root, CACHE_ALLOC_MSR1_VALUE,
-                               CACHE_ALLOC_MSR1_ADDR) {
-        bail! {"Failed to set cache allocation MSR1 {:?}", e};
-    }
-
-    if let Err(e) = write_msr_on_all_cpus(root, CACHE_ALLOC_MSR2_VALUE,
-                               CACHE_ALLOC_MSR2_ADDR) {
-        // Revert the values of MSR1 to default on failure
-        let _ = write_msr_on_all_cpus(root, CACHE_ALLOC_MSR1_DEFAULT,
-                              CACHE_ALLOC_MSR1_ADDR);
-        bail! {"Failed to set cahce allocation MSR2 {:?}", e};
-    }
-
-    Ok(())
-}
-
-#[cfg(target_arch = "x86_64")]
-fn reset_cache_allocation(root: &Path) -> Result<()> {
-
-    if let Err(e) = write_msr_on_all_cpus(root, CACHE_ALLOC_MSR1_DEFAULT,
-                               CACHE_ALLOC_MSR1_ADDR) {
-        bail! {"Failed to reset cache allocation MSR1 {:?}", e};
-    }
-    if let Err(e) = write_msr_on_all_cpus(root, CACHE_ALLOC_MSR2_DEFAULT,
-                               CACHE_ALLOC_MSR2_ADDR) {
-        bail! {"Failed to reset cache allocation MSR2 {:?}", e};
-    }
-
     Ok(())
 }
 
