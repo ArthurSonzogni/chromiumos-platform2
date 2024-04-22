@@ -38,7 +38,7 @@ if (use.test) {
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/system:test_support",
-      "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
+      "//diagnostics/cros_healthd/utils",
       "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
   }

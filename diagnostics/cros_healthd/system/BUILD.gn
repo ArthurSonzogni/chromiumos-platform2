@@ -43,7 +43,7 @@ source_set("system") {
     ":system_pci_util",
     "//diagnostics/base",
     "//diagnostics/cros_healthd/mojom:executor_mojo_bindings",
-    "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
+    "//diagnostics/cros_healthd/utils",
     "//diagnostics/dbus_bindings",
     "//diagnostics/mojom/external:libcros_healthd_internal",
   ]

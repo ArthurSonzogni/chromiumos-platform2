@@ -100,7 +100,7 @@ if (use.test) {
       "//diagnostics/cros_healthd/routines/storage:storage_test",
       "//diagnostics/cros_healthd/system:system_test",
       "//diagnostics/cros_healthd/system:test_support",
-      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test",
+      "//diagnostics/cros_healthd/utils:utils_test",
       "//diagnostics/dbus_bindings",
       "//diagnostics/mojom:libmojom_utils_test",
     ]

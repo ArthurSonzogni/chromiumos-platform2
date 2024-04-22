@@ -12,7 +12,7 @@ source_set("camera") {
   public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
   deps = [
     "//diagnostics/cros_healthd/system",
-    "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
+    "//diagnostics/cros_healthd/utils",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }

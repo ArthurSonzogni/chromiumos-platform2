@@ -5,7 +5,7 @@
 import("//common-mk/pkg_config.gni")
 
 # Library that provides utilities used by cros_healthd.
-pkg_config("libcros_healthd_utils_pkg_deps") {
+pkg_config("utils_pkg_deps") {
   pkg_deps = [
     "fwupd",
     "libbrillo",
@@ -17,8 +17,8 @@ pkg_config("libcros_healthd_utils_pkg_deps") {
   ]
 }
 
-source_set("libcros_healthd_utils") {
-  configs += [ ":libcros_healthd_utils_pkg_deps" ]
+source_set("utils") {
+  configs += [ ":utils_pkg_deps" ]
   sources = [
     "callback_barrier.cc",
     "floss_utils.cc",
@@ -37,7 +37,7 @@ source_set("libcros_healthd_utils") {
 }
 
 if (use.test) {
-  pkg_config("libcros_healthd_utils_test_pkg_deps") {
+  pkg_config("utils_test_pkg_deps") {
     pkg_deps = [
       "fwupd",
       "libbrillo",
@@ -47,7 +47,7 @@ if (use.test) {
     ]
   }
 
-  source_set("libcros_healthd_utils_test") {
+  source_set("utils_test") {
     sources = [
       "callback_barrier_test.cc",
       "dbus_utils_test.cc",
@@ -59,9 +59,9 @@ if (use.test) {
       "resource_queue_test.cc",
       "usb_utils_test.cc",
     ]
-    configs += [ ":libcros_healthd_utils_test_pkg_deps" ]
+    configs += [ ":utils_test_pkg_deps" ]
     deps = [
-      ":libcros_healthd_utils",
+      ":utils",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
     ]

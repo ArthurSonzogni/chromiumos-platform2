@@ -19,7 +19,7 @@ source_set("executor") {
   ]
   deps = [
     "//diagnostics/base",
-    "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
+    "//diagnostics/cros_healthd/utils",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }

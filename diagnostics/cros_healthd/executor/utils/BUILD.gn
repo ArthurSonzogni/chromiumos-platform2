@@ -56,7 +56,7 @@ if (use.test) {
       ":test_support",
       ":utils",
       "//diagnostics/base:healthd_testrunner",
-      "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
+      "//diagnostics/cros_healthd/utils",
     ]
   }
 }
