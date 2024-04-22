@@ -65,6 +65,7 @@ shared_library("libnet-base") {
     "rtnl_message.cc",
     "socket.cc",
     "socket_forwarder.cc",
+    "technology.cc",
   ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
@@ -147,6 +148,7 @@ if (use.test) {
       "rtnl_message_test.cc",
       "socket_forwarder_test.cc",
       "socket_test.cc",
+      "technology_test.cc",
     ]
     configs += [
       "//common-mk:test",
