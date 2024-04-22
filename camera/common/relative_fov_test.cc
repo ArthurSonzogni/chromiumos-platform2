@@ -37,7 +37,7 @@ TEST(RelativeFovTest, ActiveArray4x3) {
 }
 
 TEST(RelativeFovTest, ActiveArray16x9) {
-  const Size active_array_size(1920, 1080);
+  const Size active_array_size(1936, 1096);
 
   EXPECT_EQ(RelativeFov(active_array_size, active_array_size),
             RelativeFov(1.0f, 1.0f));
