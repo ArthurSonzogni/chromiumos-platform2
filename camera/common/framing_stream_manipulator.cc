@@ -695,8 +695,6 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
   // Reuse or create still YUV stream for processing still capture.
   if (blob_stream_ != nullptr) {
     if (client_still_yuv_stream != nullptr) {
-      CHECK_EQ(client_still_yuv_stream->width, blob_stream_->width);
-      CHECK_EQ(client_still_yuv_stream->height, blob_stream_->height);
       yuv_stream_for_blob_ = client_still_yuv_stream;
       yuv_stream_for_blob_->usage |= kStillYuvBufferUsage;
     } else {
@@ -1324,7 +1322,13 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
         *still_yuv_buffer.buffer(), base::ScopedFD(),
         *ctx->client_still_yuv_buffer->buffer,
         base::ScopedFD(ctx->client_still_yuv_buffer->acquire_fence),
-        adjusted_crop_region, /*try_upsample=*/true);
+        AdjustCropRectToTargetAspectRatio(
+            *ctx->crop_region,
+            static_cast<float>(full_frame_size_.height *
+                               yuv_stream_for_blob_->width) /
+                static_cast<float>(full_frame_size_.width *
+                                   yuv_stream_for_blob_->height)),
+        /*try_upsample=*/true);
     if (!fence.has_value()) {
       LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
       ++metrics_.errors[AutoFramingError::kProcessResultError];
