@@ -117,8 +117,6 @@ void CameraDiagnosticsProcessor::RunFrameAnalysisOnThread(
   DCHECK(thread_.IsCurrentThread());
 
   auto future = Future<void>::Create(nullptr);
-  base::ScopedClosureRunner session_resetter(base::BindOnce(
-      &CameraDiagnosticsProcessor::ResetSession, base::Unretained(this)));
 
   // Don't hold the lock for too long.
   {
@@ -134,6 +132,8 @@ void CameraDiagnosticsProcessor::RunFrameAnalysisOnThread(
 
   base::AutoLock lock(session_lock_);
   std::move(callback).Run(current_session_->StopAndGetResult());
+
+  current_session_.reset();
 }
 
 void CameraDiagnosticsProcessor::ReturnErrorResult(
@@ -141,11 +141,6 @@ void CameraDiagnosticsProcessor::ReturnErrorResult(
   LOGF(ERROR) << "Failed to run new frame analysis! Error " << error;
   auto result = camera_diag::mojom::FrameAnalysisResult::NewError(error);
   std::move(callback).Run(std::move(result));
-}
-
-void CameraDiagnosticsProcessor::ResetSession() {
-  base::AutoLock lock(session_lock_);
-  current_session_.reset();
 }
 
 }  // namespace cros

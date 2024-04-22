@@ -59,8 +59,6 @@ class CameraDiagnosticsProcessor {
   void ReturnErrorResult(RunFrameAnalysisCallback callback,
                          camera_diag::mojom::ErrorCode error);
 
-  void ResetSession();
-
   CameraThread thread_;
 
   CameraDiagnosticsMojoManager* mojo_manager_;
