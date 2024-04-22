@@ -3,10 +3,7 @@
 # found in the LICENSE file.
 import("//common-mk/pkg_config.gni")
 group("all") {
-  deps = [
-    ":install_pkg_config",
-    ":libprivacy",
-  ]
+  deps = [ ":libprivacy" ]
 }
 
 pkg_config("target_defaults") {
@@ -18,9 +15,15 @@ shared_library("libprivacy") {
   install_path = "lib"
   include_dirs = [ "." ]
   public_configs = [ ":target_defaults" ]
+  deps = [ ":libprivacy_pc" ]
 }
 
-install_config("install_pkg_config") {
-  sources = [ "libprivacy.pc" ]
-  install_path = "${libdir}/pkgconfig"
+generate_pkg_config("libprivacy_pc") {
+  name = "libprivacy"
+  output_name = "libprivacy"
+  description = "Chrome OS privacy library"
+  version = "0.0.1"
+
+  libs = [ "-lprivacy" ]
+  install = true
 }
