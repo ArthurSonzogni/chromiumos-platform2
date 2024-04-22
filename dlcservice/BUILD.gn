@@ -173,6 +173,7 @@ static_library("libdlcservice") {
 install_config("install_dlctool") {
   sources = [ "tools/dlctool" ]
   install_path = "/usr/local/bin"
+  outputs = [ "dlctool-shell" ]
   type = "executable"
 }
 
