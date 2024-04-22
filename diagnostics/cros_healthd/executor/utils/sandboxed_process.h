@@ -28,6 +28,16 @@ inline constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy/";
 // * |options|: Extra options for minijail. See comments of the class |Options|.
 class SandboxedProcess : public brillo::ProcessImpl {
  public:
+  struct MountPoint {
+    // Path to the filesystem to be mounted.
+    base::FilePath path;
+    // Whether the filesystem should be writable by the sandbox.
+    bool writable = false;
+    // Whether the filesystem is required. If the path does not exist, the mount
+    // point will be ignored if `is_required` is false, or an error will be
+    // produced if `is_required` is true.
+    bool is_required = false;
+  };
   // The options
   // * |user|: The user to run the command. Default to
   //     |kCrosHealthdSandboxUser|.
@@ -36,10 +46,7 @@ class SandboxedProcess : public brillo::ProcessImpl {
   // default values for highest security.
   // * |capabilities_mask|: The capabilities mask. See linux headers
   //     "uapi/linux/capability.h". Default to |0| (no capability).
-  // * |readonly_mount_points|: The paths to be mounted readonly. If a path
-  //     doesn't exist it is ignored. Default to |{}|.
-  // * |writable_mount_points|: The paths to be mounted writable. All the paths
-  //     must exist, otherwise the process will fail to be run. Default to |{}|.
+  // * |mount_points|: The paths to be mounted in the sandbox. Default to |{}|.
   // * |enter_network_namespace|: Whether to enter a new network namespace for
   //     minijail. Default to |true|.
   // * |mount_dlc|: Mount /run/imageloader for accessing DLC. Default to
@@ -49,8 +56,7 @@ class SandboxedProcess : public brillo::ProcessImpl {
   struct Options {
     std::string user = kCrosHealthdSandboxUser;
     uint64_t capabilities_mask = 0;
-    std::vector<base::FilePath> readonly_mount_points;
-    std::vector<base::FilePath> writable_mount_points;
+    std::vector<MountPoint> mount_points;
     bool enter_network_namespace = true;
     bool mount_dlc = false;
     bool skip_sandbox = false;
@@ -84,7 +90,7 @@ class SandboxedProcess : public brillo::ProcessImpl {
 
  private:
   // Prepares some arguments which need to be handled before use.
-  virtual void PrepareSandboxArguments();
+  virtual bool PrepareSandboxArguments();
 
   // Adds argument to process. For mocking.
   virtual void BrilloProcessAddArg(const std::string& arg);
@@ -106,8 +112,8 @@ class SandboxedProcess : public brillo::ProcessImpl {
   std::vector<std::string> sandbox_arguments_;
   // The command to run by minijail.
   std::vector<std::string> command_;
-  // The paths to be mounted readonly.
-  std::vector<base::FilePath> readonly_mount_points_;
+  // The paths to be mounted.
+  std::vector<MountPoint> mount_points_;
   // Whether to skip the sandbox.
   bool skip_sandbox_ = false;
 };

@@ -78,7 +78,7 @@ SandboxedProcess::SandboxedProcess(const std::vector<std::string>& command,
                                    std::string_view seccomp_filename,
                                    const Options& options)
     : command_(command),
-      readonly_mount_points_(options.readonly_mount_points),
+      mount_points_(options.mount_points),
       skip_sandbox_(options.skip_sandbox) {
   // Per our security requirement, it is not allowed to invoke a sandboxed
   // process as root. In addition, minijail would refuse to start the subprocess
@@ -150,10 +150,6 @@ SandboxedProcess::SandboxedProcess(const std::vector<std::string>& command,
     sandbox_arguments_.push_back(
         "/run/imageloader,/run/imageloader,none,MS_BIND|MS_REC");
   }
-  for (const base::FilePath& f : options.writable_mount_points) {
-    sandbox_arguments_.push_back("-b");
-    sandbox_arguments_.push_back(f.value() + "," + f.value() + ",1");
-  }
 }
 
 void SandboxedProcess::AddArg(const std::string& arg) {
@@ -161,7 +157,9 @@ void SandboxedProcess::AddArg(const std::string& arg) {
 }
 
 bool SandboxedProcess::Start() {
-  PrepareSandboxArguments();
+  if (!PrepareSandboxArguments()) {
+    return false;
+  }
 
   if constexpr (GENERATE_STRACE_LOG_MODE) {
     LOG(ERROR) << "Executer is in GENERATE_STRACE_LOG_MODE. Seccomp policy is "
@@ -275,15 +273,27 @@ int SandboxedProcess::KillJailedProcess(int signal, base::TimeDelta timeout) {
 }
 
 // Prepares some arguments which need to be handled before use.
-void SandboxedProcess::PrepareSandboxArguments() {
-  for (const base::FilePath& f : readonly_mount_points_) {
-    if (!IsPathExists(f)) {
-      DLOG(INFO) << "Try to mount a file which doesn't exist: " << f;
+bool SandboxedProcess::PrepareSandboxArguments() {
+  for (const MountPoint& mount_point : mount_points_) {
+    if (!IsPathExists(mount_point.path)) {
+      if (mount_point.is_required) {
+        LOG(ERROR) << "Required mount file does not exist: "
+                   << mount_point.path;
+        return false;
+      }
+      DLOG(INFO) << "Try to mount a file which doesn't exist: "
+                 << mount_point.path;
       continue;
     }
     sandbox_arguments_.push_back("-b");
-    sandbox_arguments_.push_back(f.value());
+    if (mount_point.writable) {
+      sandbox_arguments_.push_back(mount_point.path.value() + "," +
+                                   mount_point.path.value() + ",1");
+    } else {
+      sandbox_arguments_.push_back(mount_point.path.value());
+    }
   }
+  return true;
 }
 
 void SandboxedProcess::BrilloProcessAddArg(const std::string& arg) {

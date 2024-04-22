@@ -75,6 +75,8 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
+using MountPoint = SandboxedProcess::MountPoint;
+
 namespace seccomp_file {
 
 // SECCOMP policy for evdev related routines.
@@ -308,11 +310,11 @@ void Executor::GetFileInfo(File file_enum, GetFileInfoCallback callback) {
 
 void Executor::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kFan,
-      SandboxedProcess::Options{
-          .user = user::kEc,
-          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
-      });
+      seccomp_file::kFan, SandboxedProcess::Options{
+                              .user = user::kEc,
+                              .mount_points = {MountPoint{
+                                  .path = base::FilePath{path::kCrosEcDevice}}},
+                          });
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetAllFanSpeed(CreateOnceDelegateCallback(
@@ -436,12 +438,14 @@ void Executor::ReadMsr(const uint32_t msr_reg,
 }
 
 void Executor::GetLidAngle(GetLidAngleCallback callback) {
-  auto delegate = CreateDelegateProcess(
-      seccomp_file::kLidAngle,
-      SandboxedProcess::Options{
-          .user = user::kEc,
-          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
-      });
+  auto delegate =
+      CreateDelegateProcess(seccomp_file::kLidAngle,
+                            SandboxedProcess::Options{
+                                .user = user::kEc,
+                                .mount_points = {MountPoint{
+                                    .path = base::FilePath{path::kCrosEcDevice},
+                                }},
+                            });
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetLidAngle(CreateOnceDelegateCallback(
@@ -453,10 +457,11 @@ void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
                                    GetFingerprintFrameCallback callback) {
   auto delegate = CreateDelegateProcess(
       seccomp_file::kFingerprint,
-      SandboxedProcess::Options{
-          .user = user::kFingerprint,
-          .writable_mount_points = {base::FilePath{path::kCrosFpDevice}},
-      });
+      SandboxedProcess::Options{.user = user::kFingerprint,
+                                .mount_points = {MountPoint{
+                                    .path = base::FilePath{path::kCrosFpDevice},
+                                    .writable = true,
+                                }}});
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetFingerprintFrame(
@@ -469,10 +474,11 @@ void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
 void Executor::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
   auto delegate = CreateDelegateProcess(
       seccomp_file::kFingerprint,
-      SandboxedProcess::Options{
-          .user = user::kFingerprint,
-          .writable_mount_points = {base::FilePath{path::kCrosFpDevice}},
-      });
+      SandboxedProcess::Options{.user = user::kFingerprint,
+                                .mount_points = {MountPoint{
+                                    .path = base::FilePath{path::kCrosFpDevice},
+                                    .writable = true,
+                                }}});
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetFingerprintInfo(CreateOnceDelegateCallback(
@@ -491,11 +497,12 @@ void Executor::GetPsr(GetPsrCallback callback) {
 
   auto delegate = CreateDelegateProcess(
       seccomp_file::kPsr,
-      SandboxedProcess::Options{
-          .user = user::kPsr,
-          .readonly_mount_points = {paths::dev::kMei0.ToFull()},
-          .writable_mount_points = {paths::dev::kMei0.ToFull()},
-      });
+      SandboxedProcess::Options{.user = user::kPsr,
+                                .mount_points = {MountPoint{
+                                    .path = paths::dev::kMei0.ToFull(),
+                                    .writable = true,
+                                    .is_required = true,
+                                }}});
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetPsr(CreateOnceDelegateCallback(
@@ -531,11 +538,12 @@ void Executor::SetLedColor(mojom::LedName name,
                            mojom::LedColor color,
                            SetLedColorCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kLed,
-      SandboxedProcess::Options{
-          .user = user::kEc,
-          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
-      });
+      seccomp_file::kLed, SandboxedProcess::Options{
+                              .user = user::kEc,
+                              .mount_points = {MountPoint{
+                                  .path = base::FilePath{path::kCrosEcDevice},
+                              }},
+                          });
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->SetLedColor(
@@ -548,11 +556,11 @@ void Executor::SetLedColor(mojom::LedName name,
 void Executor::ResetLedColor(mojom::LedName name,
                              ResetLedColorCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kLed,
-      SandboxedProcess::Options{
-          .user = user::kEc,
-          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
-      });
+      seccomp_file::kLed, SandboxedProcess::Options{
+                              .user = user::kEc,
+                              .mount_points = {MountPoint{
+                                  .path = base::FilePath{path::kCrosEcDevice}}},
+                          });
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->ResetLedColor(
@@ -578,11 +586,12 @@ void Executor::MonitorAudioJack(
     mojo::PendingRemote<mojom::AudioJackObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kEvdev,
-      SandboxedProcess::Options{
-          .user = user::kEvdev,
-          .readonly_mount_points = {base::FilePath{path::kInputDevice}},
-      });
+      seccomp_file::kEvdev, SandboxedProcess::Options{
+                                .user = user::kEvdev,
+                                .mount_points = {MountPoint{
+                                    .path = base::FilePath{path::kInputDevice},
+                                }},
+                            });
 
   delegate->remote()->MonitorAudioJack(std::move(observer));
   auto controller =
@@ -599,11 +608,12 @@ void Executor::MonitorTouchpad(
     mojo::PendingRemote<mojom::TouchpadObserver> observer,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kEvdev,
-      SandboxedProcess::Options{
-          .user = user::kEvdev,
-          .readonly_mount_points = {base::FilePath{path::kInputDevice}},
-      });
+      seccomp_file::kEvdev, SandboxedProcess::Options{
+                                .user = user::kEvdev,
+                                .mount_points = {MountPoint{
+                                    .path = base::FilePath{path::kInputDevice},
+                                }},
+                            });
 
   delegate->remote()->MonitorTouchpad(std::move(observer));
   auto controller =
@@ -645,13 +655,13 @@ void Executor::FetchBootPerformance(FetchBootPerformanceCallback callback) {
   auto delegate = CreateDelegateProcess(
       seccomp_file::kReadOnlyFetchers,
       SandboxedProcess::Options{
-          .readonly_mount_points =
+          .mount_points =
               {
-                  base::FilePath{path::kBiosTimes},
-                  base::FilePath{path::kPreviousPowerdLog},
-                  base::FilePath{path::kProcUptime},
-                  base::FilePath{path::kShutdownMetrics},
-                  base::FilePath{path::kBootstatDir},
+                  MountPoint{.path = base::FilePath{path::kBiosTimes}},
+                  MountPoint{.path = base::FilePath{path::kPreviousPowerdLog}},
+                  MountPoint{.path = base::FilePath{path::kProcUptime}},
+                  MountPoint{.path = base::FilePath{path::kShutdownMetrics}},
+                  MountPoint{.path = base::FilePath{path::kBootstatDir}},
               },
       });
 
@@ -670,7 +680,8 @@ void Executor::MonitorTouchscreen(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
-          .readonly_mount_points = {base::FilePath{path::kInputDevice}},
+          .mount_points = {MountPoint{.path =
+                                          base::FilePath{path::kInputDevice}}},
       });
 
   delegate->remote()->MonitorTouchscreen(std::move(observer));
@@ -691,7 +702,8 @@ void Executor::MonitorStylusGarage(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
-          .readonly_mount_points = {base::FilePath{path::kInputDevice}},
+          .mount_points = {MountPoint{.path =
+                                          base::FilePath{path::kInputDevice}}},
       });
 
   delegate->remote()->MonitorStylusGarage(std::move(observer));
@@ -712,7 +724,8 @@ void Executor::MonitorStylus(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
-          .readonly_mount_points = {base::FilePath{path::kInputDevice}},
+          .mount_points = {MountPoint{.path =
+                                          base::FilePath{path::kInputDevice}}},
       });
 
   delegate->remote()->MonitorStylus(std::move(observer));
@@ -743,14 +756,17 @@ void Executor::RunFioWithDlcRoot(
     return;
   }
 
-  std::vector<base::FilePath> readonly_mount_points, writable_mount_points;
+  std::vector<MountPoint> mount_points;
   switch (argument->which()) {
     case mojom::FioJobArgument::Tag::kPrepare:
-      writable_mount_points.push_back(
-          base::FilePath(path::kFioCacheFile).DirName());
+      mount_points.push_back(MountPoint{
+          .path = base::FilePath(path::kFioCacheFile).DirName(),
+          .writable = true,
+      });
       break;
     case mojom::FioJobArgument::Tag::kRead:
-      readonly_mount_points.emplace_back(path::kFioCacheFile);
+      mount_points.push_back(
+          MountPoint{.path = base::FilePath(path::kFioCacheFile)});
       break;
   }
 
@@ -760,25 +776,25 @@ void Executor::RunFioWithDlcRoot(
     receiver.reset();
     return;
   }
-  auto process =
-      CreateProcess(command.value(), seccomp_file::kFio,
-                    SandboxedProcess::Options{
-                        .readonly_mount_points = readonly_mount_points,
-                        .writable_mount_points = writable_mount_points,
-                        .mount_dlc = true,
-                    });
+  auto process = CreateProcess(command.value(), seccomp_file::kFio,
+                               SandboxedProcess::Options{
+                                   .mount_points = mount_points,
+                                   .mount_dlc = true,
+                               });
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/false);
 }
 
 void Executor::RemoveFioTestFile(RemoveFioTestFileCallback callback) {
   std::vector<std::string> command = {"/bin/rm", "-f", path::kFioCacheFile};
-  auto process =
-      CreateProcess(command, seccomp_file::kRm,
-                    SandboxedProcess::Options{
-                        .writable_mount_points =
-                            {base::FilePath(path::kFioCacheFile).DirName()},
-                    });
+  auto process = CreateProcess(
+      command, seccomp_file::kRm,
+      SandboxedProcess::Options{
+          .mount_points = {MountPoint{
+              .path = base::FilePath(path::kFioCacheFile).DirName(),
+              .writable = true,
+          }},
+      });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);
@@ -791,7 +807,8 @@ void Executor::MonitorPowerButton(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
-          .readonly_mount_points = {base::FilePath{path::kInputDevice}},
+          .mount_points = {MountPoint{.path =
+                                          base::FilePath{path::kInputDevice}}},
       });
 
   delegate->remote()->MonitorPowerButton(std::move(observer));
@@ -832,7 +849,8 @@ void Executor::MonitorVolumeButton(
       seccomp_file::kEvdev,
       SandboxedProcess::Options{
           .user = user::kEvdev,
-          .readonly_mount_points = {base::FilePath{path::kInputDevice}},
+          .mount_points = {MountPoint{.path =
+                                          base::FilePath{path::kInputDevice}}},
       });
 
   delegate->remote()->MonitorVolumeButton(std::move(observer));
@@ -871,14 +889,16 @@ void Executor::StartBtmon(
   std::vector<std::string> command = {path::kBtmonBinary, "--index",
                                       base::NumberToString(hci_interface), "-w",
                                       path::kBtmonLogFile};
-  auto process =
-      CreateProcess(command, seccomp_file::kBtmon,
-                    SandboxedProcess::Options{
-                        .capabilities_mask = CAP_TO_MASK(CAP_NET_RAW),
-                        .writable_mount_points =
-                            {base::FilePath{path::kBtmonLogFile}.DirName()},
-                        .enter_network_namespace = false,
-                    });
+  auto process = CreateProcess(
+      command, seccomp_file::kBtmon,
+      SandboxedProcess::Options{
+          .capabilities_mask = CAP_TO_MASK(CAP_NET_RAW),
+          .mount_points = {MountPoint{
+              .path = base::FilePath{path::kBtmonLogFile}.DirName(),
+              .writable = true,
+          }},
+          .enter_network_namespace = false,
+      });
 
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/false);
@@ -889,11 +909,12 @@ void Executor::ReadBtmonLog(ReadBtmonLogCallback callback) {
       path::kBtmonBinary, "-r", path::kBtmonLogFile,
       // Set the output width to an arbitrary value 100 to get the full log.
       "--columns", "100"};
-  auto process = CreateProcess(
-      command, seccomp_file::kBtmon,
-      SandboxedProcess::Options{
-          .readonly_mount_points = {base::FilePath{path::kBtmonLogFile}},
-      });
+  auto process =
+      CreateProcess(command, seccomp_file::kBtmon,
+                    SandboxedProcess::Options{
+                        .mount_points = {MountPoint{
+                            .path = base::FilePath{path::kBtmonLogFile}}},
+                    });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);
@@ -901,12 +922,14 @@ void Executor::ReadBtmonLog(ReadBtmonLogCallback callback) {
 
 void Executor::RemoveBtmonLog(RemoveBtmonLogCallback callback) {
   std::vector<std::string> command = {"/bin/rm", "-f", path::kBtmonLogFile};
-  auto process =
-      CreateProcess(command, seccomp_file::kRm,
-                    SandboxedProcess::Options{
-                        .writable_mount_points =
-                            {base::FilePath(path::kBtmonLogFile).DirName()},
-                    });
+  auto process = CreateProcess(
+      command, seccomp_file::kRm,
+      SandboxedProcess::Options{
+          .mount_points = {MountPoint{
+              .path = base::FilePath(path::kBtmonLogFile).DirName(),
+              .writable = true,
+          }},
+      });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
                     /*combine_stdout_and_stderr=*/false);
@@ -963,10 +986,10 @@ void Executor::GetConnectedExternalDisplayConnectors(
     const std::optional<std::vector<uint32_t>>& last_known_connectors,
     GetConnectedExternalDisplayConnectorsCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kDrm,
-      SandboxedProcess::Options{
-          .readonly_mount_points = {base::FilePath{path::kDrmDevice}},
-      });
+      seccomp_file::kDrm, SandboxedProcess::Options{
+                              .mount_points = {MountPoint{
+                                  .path = base::FilePath{path::kDrmDevice}}},
+                          });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetConnectedExternalDisplayConnectors(
       last_known_connectors,
@@ -979,10 +1002,10 @@ void Executor::GetConnectedExternalDisplayConnectors(
 
 void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kDrm,
-      SandboxedProcess::Options{
-          .readonly_mount_points = {base::FilePath{path::kDrmDevice}},
-      });
+      seccomp_file::kDrm, SandboxedProcess::Options{
+                              .mount_points = {MountPoint{
+                                  .path = base::FilePath{path::kDrmDevice}}},
+                          });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetPrivacyScreenInfo(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
@@ -992,10 +1015,10 @@ void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
 
 void Executor::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kDrm,
-      SandboxedProcess::Options{
-          .readonly_mount_points = {base::FilePath{path::kDrmDevice}},
-      });
+      seccomp_file::kDrm, SandboxedProcess::Options{
+                              .mount_points = {MountPoint{
+                                  .path = base::FilePath{path::kDrmDevice}}},
+                          });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->FetchDisplayInfo(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
@@ -1008,11 +1031,11 @@ void Executor::SetFanSpeed(
     const base::flat_map<uint8_t, uint16_t>& fan_id_to_rpm,
     SetFanSpeedCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kFan,
-      SandboxedProcess::Options{
-          .user = user::kEc,
-          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
-      });
+      seccomp_file::kFan, SandboxedProcess::Options{
+                              .user = user::kEc,
+                              .mount_points = {MountPoint{
+                                  .path = base::FilePath{path::kCrosEcDevice}}},
+                          });
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->SetFanSpeed(
@@ -1024,11 +1047,11 @@ void Executor::SetFanSpeed(
 
 void Executor::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kFan,
-      SandboxedProcess::Options{
-          .user = user::kEc,
-          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
-      });
+      seccomp_file::kFan, SandboxedProcess::Options{
+                              .user = user::kEc,
+                              .mount_points = {MountPoint{
+                                  .path = base::FilePath{path::kCrosEcDevice}}},
+                          });
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->SetAllFanAutoControl(CreateOnceDelegateCallback(
@@ -1040,11 +1063,14 @@ void Executor::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {
   auto delegate = CreateDelegateProcess(
       seccomp_file::kTouchpadFetcher,
       SandboxedProcess::Options{
-          .readonly_mount_points =
+          .mount_points =
               {// directories needed for udev to work properly
-               base::FilePath{"/dev/input/"}, base::FilePath{"/run/udev"},
-               base::FilePath{"/sys/devices"}, base::FilePath{"/sys/dev"},
-               base::FilePath{"/sys/bus"}, base::FilePath{"/sys/class"}},
+               MountPoint{.path = base::FilePath{"/dev/input/"}},
+               MountPoint{.path = base::FilePath{"/run/udev"}},
+               MountPoint{.path = base::FilePath{"/sys/devices"}},
+               MountPoint{.path = base::FilePath{"/sys/dev"}},
+               MountPoint{.path = base::FilePath{"/sys/bus"}},
+               MountPoint{.path = base::FilePath{"/sys/class"}}},
       });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetTouchpadDevices(CreateOnceDelegateCallback(
@@ -1058,7 +1084,8 @@ void Executor::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
       seccomp_file::kThermal,
       SandboxedProcess::Options{
           .user = user::kEc,
-          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
+          .mount_points = {MountPoint{.path =
+                                          base::FilePath{path::kCrosEcDevice}}},
       });
 
   auto* delegate_ptr = delegate.get();
@@ -1074,7 +1101,8 @@ void Executor::GetSmartBatteryManufactureDate(
       seccomp_file::kI2CRead,
       SandboxedProcess::Options{
           .user = user::kEc,
-          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
+          .mount_points = {MountPoint{.path =
+                                          base::FilePath{path::kCrosEcDevice}}},
       });
 
   auto* delegate_ptr = delegate.get();
@@ -1090,7 +1118,8 @@ void Executor::GetSmartBatteryTemperature(
       seccomp_file::kI2CRead,
       SandboxedProcess::Options{
           .user = user::kEc,
-          .readonly_mount_points = {base::FilePath{path::kCrosEcDevice}},
+          .mount_points = {MountPoint{.path =
+                                          base::FilePath{path::kCrosEcDevice}}},
       });
 
   auto* delegate_ptr = delegate.get();
@@ -1148,7 +1177,7 @@ void Executor::RunNetworkBandwidthTest(
   auto delegate = std::make_unique<DelegateProcess>(
       seccomp_file::kNdt,
       SandboxedProcess::Options{
-          .readonly_mount_points = {paths::run::kDnsProxy.ToFull()},
+          .mount_points = {MountPoint{.path = paths::run::kDnsProxy.ToFull()}},
           .enter_network_namespace = false,
       });
   delegate->remote()->RunNetworkBandwidthTest(
@@ -1167,15 +1196,16 @@ void Executor::RunNetworkBandwidthTest(
 
 void Executor::FetchGraphicsInfo(FetchGraphicsInfoCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kEgl, SandboxedProcess::Options{
-                              .readonly_mount_points =
-                                  {
-                                      base::FilePath{path::kDrmDevice},
-                                      base::FilePath{path::kArmGraphicsDevice},
-                                      base::FilePath{"/sys/dev"},
-                                      base::FilePath{"/sys/devices"},
-                                  },
-                          });
+      seccomp_file::kEgl,
+      SandboxedProcess::Options{
+          .mount_points =
+              {
+                  MountPoint{.path = base::FilePath{path::kDrmDevice}},
+                  MountPoint{.path = base::FilePath{path::kArmGraphicsDevice}},
+                  MountPoint{.path = base::FilePath{"/sys/dev"}},
+                  MountPoint{.path = base::FilePath{"/sys/devices"}},
+              },
+      });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->FetchGraphicsInfo(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),

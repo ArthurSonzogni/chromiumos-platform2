@@ -57,11 +57,12 @@ class SandboxedProcessTest : public testing::Test {
     minijail_args_ = std::vector<std::string>{};
     cmd_ = std::vector<std::string>{};
     EXPECT_CALL(process, BrilloProcessStart()).WillOnce(Return(true));
-    EXPECT_CALL(process, IsPathExists(base::FilePath{kTestReadOnlyFile}))
-        .WillOnce(Return(true));
-    EXPECT_CALL(process,
-                IsPathExists(base::FilePath{kTestReadOnlyFileNotExist}))
-        .WillOnce(Return(false));
+    ON_CALL(process, IsPathExists(base::FilePath{kTestReadOnlyFile}))
+        .WillByDefault(Return(true));
+    ON_CALL(process, IsPathExists(base::FilePath{kTestReadOnlyFileNotExist}))
+        .WillByDefault(Return(false));
+    ON_CALL(process, IsPathExists(base::FilePath{kTestWritableFile}))
+        .WillByDefault(Return(true));
     EXPECT_CALL(process, BrilloProcessAddArg(_))
         .WillRepeatedly([&](const std::string& arg) {
           // These are minijail flags with string argument.
@@ -110,9 +111,15 @@ TEST_F(SandboxedProcessTest, Default) {
       SandboxedProcess::Options{
           .user = kTestUser,
           .capabilities_mask = kTestCapabilitiesMask,
-          .readonly_mount_points = {base::FilePath{kTestReadOnlyFile},
-                                    base::FilePath{kTestReadOnlyFileNotExist}},
-          .writable_mount_points = {base::FilePath{kTestWritableFile}},
+          .mount_points = {SandboxedProcess::MountPoint{
+                               .path = base::FilePath{kTestReadOnlyFile}},
+                           SandboxedProcess::MountPoint{
+                               .path =
+                                   base::FilePath{kTestReadOnlyFileNotExist}},
+                           SandboxedProcess::MountPoint{
+                               .path = base::FilePath{kTestWritableFile},
+                               .writable = true,
+                           }},
       }};
 
   SetUpExpectCallForMinijailParsing(process);
@@ -157,9 +164,15 @@ TEST_F(SandboxedProcessTest, NoNetworkNamespace) {
       SandboxedProcess::Options{
           .user = kTestUser,
           .capabilities_mask = kTestCapabilitiesMask,
-          .readonly_mount_points = {base::FilePath{kTestReadOnlyFile},
-                                    base::FilePath{kTestReadOnlyFileNotExist}},
-          .writable_mount_points = {base::FilePath{kTestWritableFile}},
+          .mount_points = {SandboxedProcess::MountPoint{
+                               .path = base::FilePath{kTestReadOnlyFile}},
+                           SandboxedProcess::MountPoint{
+                               .path =
+                                   base::FilePath{kTestReadOnlyFileNotExist}},
+                           SandboxedProcess::MountPoint{
+                               .path = base::FilePath{kTestWritableFile},
+                               .writable = true,
+                           }},
           .enter_network_namespace = false,
       }};
 
@@ -179,9 +192,15 @@ TEST_F(SandboxedProcessTest, MOUNT_DLC) {
       SandboxedProcess::Options{
           .user = kTestUser,
           .capabilities_mask = kTestCapabilitiesMask,
-          .readonly_mount_points = {base::FilePath{kTestReadOnlyFile},
-                                    base::FilePath{kTestReadOnlyFileNotExist}},
-          .writable_mount_points = {base::FilePath{kTestWritableFile}},
+          .mount_points = {SandboxedProcess::MountPoint{
+                               .path = base::FilePath{kTestReadOnlyFile}},
+                           SandboxedProcess::MountPoint{
+                               .path =
+                                   base::FilePath{kTestReadOnlyFileNotExist}},
+                           SandboxedProcess::MountPoint{
+                               .path = base::FilePath{kTestWritableFile},
+                               .writable = true,
+                           }},
           .mount_dlc = true,
       }};
 
@@ -211,7 +230,7 @@ TEST_F(SandboxedProcessTest, SkipSandbox) {
   EXPECT_TRUE(process.Start());
   EXPECT_EQ(cmd_, expected_cmd);
   EXPECT_EQ(minijail_args_set_.size(), 0);
-}  // namespace diagnostics
+}
 
 TEST_F(SandboxedProcessTest, SkipSandboxInNormalMode) {
   std::vector<std::string> expected_cmd{"ls", "-al"};
@@ -223,6 +242,26 @@ TEST_F(SandboxedProcessTest, SkipSandboxInNormalMode) {
                                }};
 
   EXPECT_CALL(process, IsDevMode()).WillRepeatedly(Return(false));
+  EXPECT_FALSE(process.Start());
+}
+
+TEST_F(SandboxedProcessTest, FailToStartOnMissingRequiredMountPoint) {
+  std::vector<std::string> expected_cmd{"ls", "-al"};
+  MockSandboxedProcess process{
+      /*command=*/expected_cmd,
+      /*seccomp_filename=*/kTestSeccompName,
+      SandboxedProcess::Options{
+          .user = kTestUser,
+          .capabilities_mask = kTestCapabilitiesMask,
+          .mount_points = {SandboxedProcess::MountPoint{
+              .path = base::FilePath{kTestReadOnlyFileNotExist},
+              .writable = false,
+              .is_required = true,
+          }}}};
+
+  ON_CALL(process, IsPathExists(base::FilePath{kTestReadOnlyFileNotExist}))
+      .WillByDefault(Return(false));
+
   EXPECT_FALSE(process.Start());
 }
 
