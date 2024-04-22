@@ -36,6 +36,7 @@ using testing::ByMove;
 using testing::DoAll;
 using testing::InvokeWithoutArgs;
 using testing::Return;
+using testing::StrEq;
 using testing::StrictMock;
 
 namespace {
@@ -207,7 +208,7 @@ TEST_F(SecurityManagerLoadPinTest, LoadPinAttributeUnsupported) {
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToOpenLoadPinVerity) {
-  EXPECT_CALL(*platform_, OpenFile(loadpin_verity_path_, "w"))
+  EXPECT_CALL(*platform_, OpenFile(loadpin_verity_path_, StrEq("w")))
       .WillOnce(Return(nullptr));
   EXPECT_CALL(*platform_, Ioctl(_, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, _))
       .Times(0);
@@ -234,11 +235,11 @@ TEST_F(SecurityManagerLoadPinTest, MissingDigests) {
 
 TEST_F(SecurityManagerLoadPinTest, FailureToReadDigests) {
   // List all the expected calls to OpenFile.
-  EXPECT_CALL(*platform_, OpenFile(loadpin_verity_path_, "w"));
-  EXPECT_CALL(*platform_, OpenFile(trusted_verity_digests_path_, "r"))
+  EXPECT_CALL(*platform_, OpenFile(loadpin_verity_path_, StrEq("w")));
+  EXPECT_CALL(*platform_, OpenFile(trusted_verity_digests_path_, StrEq("r")))
       .WillOnce(
           DoAll(InvokeWithoutArgs([] { errno = EACCES; }), Return(nullptr)));
-  EXPECT_CALL(*platform_, OpenFile(dev_null_path_, "r"));
+  EXPECT_CALL(*platform_, OpenFile(dev_null_path_, StrEq("r")));
   EXPECT_CALL(*platform_, Ioctl(_, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, _))
       .WillOnce(Return(0));
 
@@ -247,11 +248,11 @@ TEST_F(SecurityManagerLoadPinTest, FailureToReadDigests) {
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToReadInvalidDigestsDevNull) {
-  EXPECT_CALL(*platform_, OpenFile(loadpin_verity_path_, "w"));
-  EXPECT_CALL(*platform_, OpenFile(trusted_verity_digests_path_, "r"))
+  EXPECT_CALL(*platform_, OpenFile(loadpin_verity_path_, StrEq("w")));
+  EXPECT_CALL(*platform_, OpenFile(trusted_verity_digests_path_, StrEq("r")))
       .WillOnce(
           DoAll(InvokeWithoutArgs([] { errno = EACCES; }), Return(nullptr)));
-  EXPECT_CALL(*platform_, OpenFile(dev_null_path_, "r"))
+  EXPECT_CALL(*platform_, OpenFile(dev_null_path_, StrEq("r")))
       .WillOnce(
           DoAll(InvokeWithoutArgs([] { errno = EACCES; }), Return(nullptr)));
 
