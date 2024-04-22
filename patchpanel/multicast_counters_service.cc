@@ -5,7 +5,6 @@
 #include "patchpanel/multicast_counters_service.h"
 
 #include <map>
-#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -13,6 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <re2/re2.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
@@ -183,9 +183,9 @@ void MulticastCountersService::Stop() {
 void MulticastCountersService::OnPhysicalDeviceAdded(
     const ShillClient::Device& device) {
   std::string technology;
-  if (device.type == ShillClient::Device::Type::kWifi) {
+  if (device.technology == net_base::Technology::kWiFi) {
     technology = kTechnologyWifi;
-  } else if (device.type == ShillClient::Device::Type::kEthernet) {
+  } else if (device.technology == net_base::Technology::kEthernet) {
     technology = kTechnologyEthernet;
   } else {
     return;
@@ -197,9 +197,9 @@ void MulticastCountersService::OnPhysicalDeviceAdded(
 void MulticastCountersService::OnPhysicalDeviceRemoved(
     const ShillClient::Device& device) {
   std::string technology;
-  if (device.type == ShillClient::Device::Type::kWifi) {
+  if (device.technology == net_base::Technology::kWiFi) {
     technology = kTechnologyWifi;
-  } else if (device.type == ShillClient::Device::Type::kEthernet) {
+  } else if (device.technology == net_base::Technology::kEthernet) {
     technology = kTechnologyEthernet;
   } else {
     return;

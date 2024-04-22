@@ -4,7 +4,7 @@
 
 #include "patchpanel/shill_client.h"
 
-#include <algorithm>
+#include <memory>
 #include <optional>
 #include <string_view>
 
@@ -19,49 +19,28 @@
 #include <dbus/object_path.h>
 #include <dbus/bus.h>
 #include <net-base/ip_address.h>
+#include <net-base/technology.h>
 #include <shill/dbus-proxies.h>
 
 namespace patchpanel {
 
 namespace {
 
-ShillClient::Device::Type ParseDeviceType(std::string_view type_str) {
+std::optional<net_base::Technology> ParseDeviceType(std::string_view type_str) {
   static constexpr auto str2enum =
-      base::MakeFixedFlatMap<std::string_view, ShillClient::Device::Type>({
-          {shill::kTypeCellular, ShillClient::Device::Type::kCellular},
-          {shill::kTypeEthernet, ShillClient::Device::Type::kEthernet},
-          {shill::kTypeEthernetEap, ShillClient::Device::Type::kEthernetEap},
-          {shill::kTypeGuestInterface,
-           ShillClient::Device::Type::kGuestInterface},
-          {shill::kTypeLoopback, ShillClient::Device::Type::kLoopback},
-          {shill::kTypePPP, ShillClient::Device::Type::kPPP},
-          {shill::kTypeTunnel, ShillClient::Device::Type::kTunnel},
-          {shill::kTypeWifi, ShillClient::Device::Type::kWifi},
-          {shill::kTypeVPN, ShillClient::Device::Type::kVPN},
+      base::MakeFixedFlatMap<std::string_view, net_base::Technology>({
+          {shill::kTypeCellular, net_base::Technology::kCellular},
+          {shill::kTypeEthernet, net_base::Technology::kEthernet},
+          {shill::kTypeEthernetEap, net_base::Technology::kEthernet},
+          {shill::kTypeWifi, net_base::Technology::kWiFi},
+          {shill::kTypeVPN, net_base::Technology::kVPN},
       });
 
-  const auto it = str2enum.find(type_str);
-  return it != str2enum.end() ? it->second
-                              : ShillClient::Device::Type::kUnknown;
-}
-
-std::string_view DeviceTypeName(ShillClient::Device::Type type) {
-  static constexpr auto enum2str =
-      base::MakeFixedFlatMap<ShillClient::Device::Type, std::string_view>({
-          {ShillClient::Device::Type::kUnknown, "Unknown"},
-          {ShillClient::Device::Type::kCellular, "Cellular"},
-          {ShillClient::Device::Type::kEthernet, "Ethernet"},
-          {ShillClient::Device::Type::kEthernetEap, "EthernetEap"},
-          {ShillClient::Device::Type::kGuestInterface, "GuestInterface"},
-          {ShillClient::Device::Type::kLoopback, "Loopback"},
-          {ShillClient::Device::Type::kPPP, "PPP"},
-          {ShillClient::Device::Type::kTunnel, "Tunnel"},
-          {ShillClient::Device::Type::kVPN, "VPN"},
-          {ShillClient::Device::Type::kWifi, "Wifi"},
-      });
-
-  const auto it = enum2str.find(type);
-  return it != enum2str.end() ? it->second : "Unknown";
+  const auto iter = str2enum.find(type_str);
+  if (iter == str2enum.end()) {
+    return std::nullopt;
+  }
+  return iter->second;
 }
 
 void RunDefaultNetworkListeners(
@@ -79,7 +58,7 @@ void RunDefaultNetworkListeners(
 
 bool IsActiveDevice(const ShillClient::Device& device) {
   // By default all new non-Cellular shill Devices are active.
-  if (device.type != ShillClient::Device::Type::kCellular) {
+  if (device.technology != net_base::Technology::kCellular) {
     return true;
   }
   // b/273741099: A Cellular Device is active iff it has a primary multiplexed
@@ -98,7 +77,8 @@ bool ShillClient::Device::IsIPv6Only() const {
 
 ShillClient::ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system)
     : bus_(bus), system_(system) {
-  manager_proxy_.reset(new org::chromium::flimflam::ManagerProxy(bus_));
+  manager_proxy_ =
+      std::make_unique<org::chromium::flimflam::ManagerProxy>(bus_);
   manager_proxy_->RegisterPropertyChangedSignalHandler(
       base::BindRepeating(&ShillClient::OnManagerPropertyChange,
                           weak_factory_.GetWeakPtr()),
@@ -194,7 +174,7 @@ void ShillClient::UpdateDefaultDevices() {
   SetDefaultLogicalDevice(default_logical_device);
 
   // No VPN connection, the logical and physical Devices are the same.
-  if (default_logical_device->type != ShillClient::Device::Type::kVPN) {
+  if (default_logical_device->technology != net_base::Technology::kVPN) {
     SetDefaultPhysicalDevice(default_logical_device);
     return;
   }
@@ -261,11 +241,7 @@ std::optional<ShillClient::Device> ShillClient::GetDeviceFromServicePath(
     return std::nullopt;
   }
 
-  Device device = {};
-  if (!GetDeviceProperties(device_path, &device)) {
-    return std::nullopt;
-  }
-  return device;
+  return GetDeviceProperties(device_path);
 }
 
 void ShillClient::OnManagerPropertyChangeRegistration(
@@ -386,20 +362,21 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
 
     // Populate ShillClient::Device properties for any new active shill Device.
     if (!base::Contains(devices_, device_path)) {
-      ShillClient::Device new_device;
-      if (!GetDeviceProperties(device_path, &new_device)) {
+      const std::optional<ShillClient::Device> new_device =
+          GetDeviceProperties(device_path);
+      if (!new_device.has_value()) {
         LOG(WARNING) << "Failed to add properties of new Device "
                      << device_path.value();
         devices_.erase(device_path);
         continue;
       }
-      if (!IsActiveDevice(new_device)) {
-        LOG(INFO) << "Ignoring inactive shill Device " << new_device;
+      if (!IsActiveDevice(*new_device)) {
+        LOG(INFO) << "Ignoring inactive shill Device " << *new_device;
         continue;
       }
-      LOG(INFO) << "New shill Device " << new_device;
-      added_devices.push_back(new_device);
-      devices_[device_path] = new_device;
+      LOG(INFO) << "New shill Device " << *new_device;
+      added_devices.push_back(*new_device);
+      devices_[device_path] = *new_device;
     }
   }
 
@@ -543,37 +520,39 @@ ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
   return ipconfig;
 }
 
-bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
-                                      Device* output) {
-  DCHECK(output);
+std::optional<ShillClient::Device> ShillClient::GetDeviceProperties(
+    const dbus::ObjectPath& device_path) {
+  auto output = std::make_optional<ShillClient::Device>();
 
   org::chromium::flimflam::DeviceProxy proxy(bus_, device_path);
   brillo::VariantDictionary props;
   if (!proxy.GetProperties(&props, nullptr)) {
     LOG(ERROR) << "Unable to get shill Device properties for "
                << device_path.value();
-    return false;
+    return std::nullopt;
   }
 
   const auto& type_it = props.find(shill::kTypeProperty);
   if (type_it == props.end()) {
     LOG(ERROR) << "shill Device properties is missing Type for "
                << device_path.value();
-    return false;
+    return std::nullopt;
   }
   const std::string& type_str = type_it->second.TryGet<std::string>();
-  output->type = ParseDeviceType(type_str);
-  if (output->type == Device::Type::kUnknown) {
+  const std::optional<net_base::Technology> technology =
+      ParseDeviceType(type_str);
+  if (!technology.has_value()) {
     LOG(ERROR) << "Unknown shill Device type " << type_str << " for "
                << device_path.value();
-    return false;
+    return std::nullopt;
   }
+  output->technology = *technology;
 
   const auto& interface_it = props.find(shill::kInterfaceProperty);
   if (interface_it == props.end()) {
     LOG(ERROR) << "shill Device properties is missing Interface for "
                << device_path.value();
-    return false;
+    return std::nullopt;
   }
   output->shill_device_interface_property =
       interface_it->second.TryGet<std::string>();
@@ -584,7 +563,7 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   //   Devices,
   //   - the Device is not a Cellular Device.
   output->primary_multiplexed_interface = std::nullopt;
-  if (output->type == Device::Type::kCellular) {
+  if (output->technology == net_base::Technology::kCellular) {
     const auto& it = props.find(shill::kPrimaryMultiplexedInterfaceProperty);
     if (it == props.end()) {
       LOG(WARNING) << "shill Cellular Device properties is missing "
@@ -621,7 +600,7 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
     if (it != datapath_interface_cache_.end()) {
       output->ifname = it->second.first;
       output->ifindex = it->second.second;
-    } else if (output->type == Device::Type::kCellular) {
+    } else if (output->technology == net_base::Technology::kCellular) {
       // When a Cellular shill Device is inactive, it is expected that the
       // datapath interface name and interface index are undefined. Furthermore
       // if the Device has never been active, there is no cache entry in
@@ -632,7 +611,7 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
       LOG(ERROR)
           << "No datapath interface name and index entry for shill Device "
           << output->shill_device_interface_property;
-      return false;
+      return std::nullopt;
     }
   }
 
@@ -640,7 +619,7 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
   if (ipconfigs_it == props.end()) {
     LOG(ERROR) << "shill Device properties is missing IPConfigs for "
                << device_path.value();
-    return false;
+    return std::nullopt;
   }
   output->ipconfig = ParseIPConfigsProperty(device_path, ipconfigs_it->second);
 
@@ -652,7 +631,7 @@ bool ShillClient::GetDeviceProperties(const dbus::ObjectPath& device_path,
         selected_service_it->second.TryGet<dbus::ObjectPath>().value();
   }
 
-  return true;
+  return output;
 }
 
 const ShillClient::Device* ShillClient::GetDeviceByShillDeviceName(
@@ -747,11 +726,13 @@ void ShillClient::OnDevicePrimaryMultiplexedInterfaceChange(
                << primary_multiplexed_interface << "\" but we had "
                << device_it->second;
   }
-  if (!GetDeviceProperties(device_path, &device_it->second)) {
+  const std::optional<Device> updated_device = GetDeviceProperties(device_path);
+  if (!updated_device.has_value()) {
     LOG(ERROR) << "Failed to update properties of Device "
                << device_path.value();
     return;
   }
+  device_it->second = *updated_device;
   if (!IsActiveDevice(device_it->second)) {
     ScanDevices();
     UpdateDefaultDevices();
@@ -769,11 +750,13 @@ void ShillClient::OnDeviceIPConfigChange(const dbus::ObjectPath& device_path) {
   IPConfig old_ip_config = device_it->second.ipconfig;
 
   // Refresh all properties at once.
-  if (!GetDeviceProperties(device_path, &device_it->second)) {
+  const std::optional<Device> updated_device = GetDeviceProperties(device_path);
+  if (!updated_device.has_value()) {
     LOG(ERROR) << "Failed to update properties of Device "
                << device_path.value();
     return;
   }
+  device_it->second = *updated_device;
 
   // Do not run the IPConfigsChangeHandler and IPv6NetworkChangeHandler
   // callbacks if there is no IPConfig change.
@@ -850,8 +833,10 @@ void ShillClient::UpdateDoHProviders(const brillo::Any& property_value) {
 
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev) {
   stream << "{shill_device: " << dev.shill_device_interface_property
-         << ", type: " << DeviceTypeName(dev.type);
-  if (dev.type == ShillClient::Device::Type::kCellular) {
+         << ", type: "
+         << (dev.technology.has_value() ? ToString(*dev.technology)
+                                        : "Unknown");
+  if (dev.technology == net_base::Technology::kCellular) {
     stream << ", primary_multiplexed_interface: "
            << dev.primary_multiplexed_interface.value_or("none");
   }
@@ -872,11 +857,6 @@ std::ostream& operator<<(std::ostream& stream, const ShillClient::Device* dev) {
     return stream << "none";
   }
   return stream << *dev;
-}
-
-std::ostream& operator<<(std::ostream& stream,
-                         const ShillClient::Device::Type type) {
-  return stream << DeviceTypeName(type);
 }
 
 std::ostream& operator<<(std::ostream& stream,

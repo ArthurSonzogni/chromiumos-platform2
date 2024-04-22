@@ -14,6 +14,7 @@
 #include <base/strings/string_split.h>
 #include <base/types/cxx23_to_underlying.h>
 #include <net-base/dns_client.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/connmark_updater.h"
 #include "patchpanel/datapath.h"
@@ -221,7 +222,7 @@ void QoSService::Disable() {
 }
 
 void QoSService::OnPhysicalDeviceAdded(const ShillClient::Device& device) {
-  if (device.type != ShillClient::Device::Type::kWifi) {
+  if (device.technology != net_base::Technology::kWiFi) {
     return;
   }
   if (!interfaces_.insert(device.ifname).second) {
@@ -235,7 +236,7 @@ void QoSService::OnPhysicalDeviceAdded(const ShillClient::Device& device) {
 }
 
 void QoSService::OnPhysicalDeviceRemoved(const ShillClient::Device& device) {
-  if (device.type != ShillClient::Device::Type::kWifi) {
+  if (device.technology != net_base::Technology::kWiFi) {
     return;
   }
   if (interfaces_.erase(device.ifname) != 1) {
@@ -250,7 +251,7 @@ void QoSService::OnPhysicalDeviceRemoved(const ShillClient::Device& device) {
 
 void QoSService::OnPhysicalDeviceDisconnected(
     const ShillClient::Device& device) {
-  if (device.type != ShillClient::Device::Type::kWifi) {
+  if (device.technology != net_base::Technology::kWiFi) {
     return;
   }
   // Initiates a new ConnmarkUpdater to clean up pending connections list in

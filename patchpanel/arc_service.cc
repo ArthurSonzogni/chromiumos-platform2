@@ -10,10 +10,10 @@
 #include <sys/utsname.h>
 
 #include <optional>
-#include <set>
 #include <string_view>
 #include <utility>
 
+#include <base/containers/fixed_flat_set.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -50,40 +50,27 @@ void RecordEvent(MetricsLibraryInterface* metrics, ArcServiceUmaEvent event) {
   metrics->SendEnumToUMA(kArcServiceUmaEventMetrics, event);
 }
 
-std::optional<net_base::Technology> TranslateTechnologyType(
-    ShillClient::Device::Type type) {
-  using ShillType = ShillClient::Device::Type;
-  switch (type) {
-    case ShillType::kCellular:
-      return net_base::Technology::kCellular;
-    case ShillType::kWifi:
-      return net_base::Technology::kWiFi;
-    case ShillType::kEthernet:
-      // fallthrough.
-    case ShillType::kEthernetEap:
-      return net_base::Technology::kEthernet;
-    case ShillType::kVPN:
-      // fallthrough.
-    case ShillType::kGuestInterface:
-      // fallthrough.
-    case ShillType::kLoopback:
-      // fallthrough.
-    case ShillType::kPPP:
-      // fallthrough.
-    case ShillType::kTunnel:
-      // fallthrough.
-    case ShillType::kUnknown:
-      return std::nullopt;
-  }
+bool IsArcValidTechnology(std::optional<net_base::Technology> technology) {
+  // For now ignore WiFi Direct shill Networks until patchpanel is explicitly
+  // aware of Android's WiFi Direct client connection API calls via ARC.
+  static constexpr auto allowed_technologies =
+      base::MakeFixedFlatSet<net_base::Technology>({
+          net_base::Technology::kCellular,
+          net_base::Technology::kWiFi,
+          net_base::Technology::kEthernet,
+      });
+  return technology.has_value() &&
+         allowed_technologies.find(*technology) != allowed_technologies.end();
 }
 
-bool IsAdbAllowed(ShillClient::Device::Type type) {
-  static const std::set<ShillClient::Device::Type> adb_allowed_types{
-      ShillClient::Device::Type::kEthernet,
-      ShillClient::Device::Type::kEthernetEap,
-      ShillClient::Device::Type::kWifi,
-  };
-  return adb_allowed_types.find(type) != adb_allowed_types.end();
+bool IsAdbAllowed(std::optional<net_base::Technology> technology) {
+  static constexpr auto allowed_technologies =
+      base::MakeFixedFlatSet<net_base::Technology>({
+          net_base::Technology::kEthernet,
+          net_base::Technology::kWiFi,
+      });
+  return technology.has_value() &&
+         allowed_technologies.find(*technology) != allowed_technologies.end();
 }
 
 bool KernelVersion(int* major, int* minor) {
@@ -769,17 +756,18 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
     guest_ifname = shill_device.shill_device_interface_property;
   }
 
-  const std::optional<net_base::Technology> technology =
-      TranslateTechnologyType(shill_device.type);
-  if (!technology.has_value()) {
-    LOG(ERROR) << "Shill device technology type " << shill_device.type
+  if (!IsArcValidTechnology(shill_device.technology)) {
+    LOG(ERROR) << "Shill device technology type "
+               << (shill_device.technology.has_value()
+                       ? net_base::ToString(*shill_device.technology)
+                       : "unknown")
                << " is invalid for ArcDevice.";
     ReleaseConfig(std::move(config));
     return;
   }
 
   auto arc_device_it = devices_.try_emplace(
-      shill_device.ifname, arc_type_, technology.value(),
+      shill_device.ifname, arc_type_, *shill_device.technology,
       shill_device.shill_device_interface_property, arc_device_ifname,
       config->mac_addr(), *config, ArcBridgeName(shill_device), guest_ifname);
 
@@ -787,9 +775,11 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   StartArcDeviceDatapath(arc_device_it.first->second);
   // Only start forwarding multicast traffic if ARC is in an interactive state.
   // In addition, on WiFi the Android WiFi multicast lock must also be held.
+  // Multicast forwarding is not supported for WiFi Direct client Networks
+  // started by Android App requests.
   bool forward_multicast =
       is_arc_interactive_ &&
-      (shill_device.type != ShillClient::Device::Type::kWifi ||
+      (shill_device.technology != net_base::Technology::kWiFi ||
        is_android_wifi_multicast_lock_held_);
   forwarding_service_->StartForwarding(
       shill_device, arc_device_it.first->second.bridge_ifname(),
@@ -974,7 +964,7 @@ void ArcService::StartArcDeviceDatapath(
       shill_device_it->second, arc_device.bridge_ifname(), TrafficSource::kArc);
   datapath_->AddInboundIPv4DNAT(AutoDNATTarget::kArc, shill_device_it->second,
                                 arc_device.arc_ipv4_address().address());
-  if (IsAdbAllowed(shill_device_it->second.type) &&
+  if (IsAdbAllowed(shill_device_it->second.technology) &&
       !datapath_->AddAdbPortAccessRule(shill_device_it->second.ifname)) {
     LOG(ERROR) << __func__ << "(" << arc_device
                << "): Failed to add ADB port access rule";
@@ -990,7 +980,7 @@ void ArcService::StopArcDeviceDatapath(
       LOG(ERROR) << __func__ << "(" << arc_device
                  << "): Failed to find shill Device";
     } else {
-      if (IsAdbAllowed(shill_device_it->second.type)) {
+      if (IsAdbAllowed(shill_device_it->second.technology)) {
         datapath_->DeleteAdbPortAccessRule(shill_device_it->second.ifname);
       }
       datapath_->RemoveInboundIPv4DNAT(AutoDNATTarget::kArc,
@@ -1038,7 +1028,7 @@ void ArcService::NotifyAndroidWifiMulticastLockChange(bool is_held) {
                  << arc_device;
       continue;
     }
-    if (shill_device_it->second.type != ShillClient::Device::Type::kWifi) {
+    if (shill_device_it->second.technology != net_base::Technology::kWiFi) {
       continue;
     }
     if (is_android_wifi_multicast_lock_held_) {
@@ -1077,7 +1067,7 @@ void ArcService::NotifyAndroidInteractiveState(bool is_interactive) {
                  << arc_device;
       continue;
     }
-    if (shill_device_it->second.type == ShillClient::Device::Type::kWifi &&
+    if (shill_device_it->second.technology == net_base::Technology::kWiFi &&
         !is_android_wifi_multicast_lock_held_) {
       continue;
     }
@@ -1101,7 +1091,7 @@ bool ArcService::IsWiFiMulticastForwardingRunning() {
   }
   // Ensure there is also an active WiFi Device;
   for (const auto& [_, shill_dev] : shill_devices_) {
-    if (shill_dev.type == ShillClient::Device::Type::kWifi) {
+    if (shill_dev.technology == net_base::Technology::kWiFi) {
       return true;
     }
   }

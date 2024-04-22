@@ -17,6 +17,7 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/mac_address.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/fake_process_runner.h"
@@ -94,7 +95,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   ShillClient::Device shill_device;
   shill_device.ifname = ifname;
-  shill_device.type = ShillClient::Device::Type::kWifi;
+  shill_device.technology = net_base::Technology::kWiFi;
   shill_device.service_path = provider.ConsumeRandomLengthString(10);
   shill_device.ifindex = provider.ConsumeIntegral<int32_t>();
 

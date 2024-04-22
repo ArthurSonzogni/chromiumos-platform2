@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/metrics.h"
 #include "patchpanel/multicast_counters_service.h"
@@ -33,15 +34,22 @@ namespace {
 constexpr int kPacketCountMax = 30 * kMulticastPollDelay.InSeconds();
 constexpr int kPacketCountBuckets = 100;
 
-std::optional<MulticastMetrics::Type> ShillDeviceTypeToMulticastMetricsType(
-    ShillClient::Device::Type type) {
-  switch (type) {
-    case ShillClient::Device::Type::kEthernet:
+std::optional<MulticastMetrics::Type> TechnologyToMulticastMetricsType(
+    std::optional<net_base::Technology> technology) {
+  if (!technology.has_value()) {
+    return std::nullopt;
+  }
+  switch (*technology) {
+    case net_base::Technology::kEthernet:
       return MulticastMetrics::Type::kEthernet;
-    case ShillClient::Device::Type::kWifi:
+
+    case net_base::Technology::kWiFi:
       return MulticastMetrics::Type::kWiFi;
-    default:
-      // Invalid multicast metrics type.
+
+    // Invalid multicast metrics type.
+    case net_base::Technology::kCellular:
+    case net_base::Technology::kVPN:
+    case net_base::Technology::kWiFiDirect:
       return std::nullopt;
   }
 }
@@ -176,7 +184,8 @@ void MulticastMetrics::Stop(MulticastMetrics::Type type,
 }
 
 void MulticastMetrics::OnIPConfigsChanged(const ShillClient::Device& device) {
-  auto type = ShillDeviceTypeToMulticastMetricsType(device.type);
+  const std::optional<MulticastMetrics::Type> type =
+      TechnologyToMulticastMetricsType(device.technology);
   if (!type) {
     return;
   }
@@ -189,7 +198,7 @@ void MulticastMetrics::OnIPConfigsChanged(const ShillClient::Device& device) {
   }
 
   // Handle ARC pollers.
-  if (device.type != ShillClient::Device::Type::kWifi) {
+  if (device.technology != net_base::Technology::kWiFi) {
     return;
   }
   if (device.IsConnected()) {
@@ -201,7 +210,8 @@ void MulticastMetrics::OnIPConfigsChanged(const ShillClient::Device& device) {
 
 void MulticastMetrics::OnPhysicalDeviceAdded(
     const ShillClient::Device& device) {
-  auto type = ShillDeviceTypeToMulticastMetricsType(device.type);
+  const std::optional<MulticastMetrics::Type> type =
+      TechnologyToMulticastMetricsType(device.technology);
   if (!type) {
     return;
   }
@@ -212,7 +222,7 @@ void MulticastMetrics::OnPhysicalDeviceAdded(
   }
 
   // Handle ARC pollers.
-  if (device.type != ShillClient::Device::Type::kWifi) {
+  if (device.technology != net_base::Technology::kWiFi) {
     return;
   }
   if (device.IsConnected()) {
@@ -222,7 +232,8 @@ void MulticastMetrics::OnPhysicalDeviceAdded(
 
 void MulticastMetrics::OnPhysicalDeviceRemoved(
     const ShillClient::Device& device) {
-  auto type = ShillDeviceTypeToMulticastMetricsType(device.type);
+  const std::optional<MulticastMetrics::Type> type =
+      TechnologyToMulticastMetricsType(device.technology);
   if (!type) {
     return;
   }
@@ -231,7 +242,7 @@ void MulticastMetrics::OnPhysicalDeviceRemoved(
   Stop(*type, device.ifname);
 
   // Handle ARC pollers.
-  if (device.type != ShillClient::Device::Type::kWifi) {
+  if (device.technology != net_base::Technology::kWiFi) {
     return;
   }
   Stop(Type::kARC, device.ifname);

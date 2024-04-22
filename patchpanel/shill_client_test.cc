@@ -92,7 +92,7 @@ class ShillClientTest : public testing::Test {
 TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
   dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
   ShillClient::Device eth0_dev;
-  eth0_dev.type = ShillClient::Device::Type::kEthernet;
+  eth0_dev.technology = net_base::Technology::kEthernet;
   eth0_dev.ifindex = 1;
   eth0_dev.ifname = "eth0";
   eth0_dev.service_path = "/service/1";
@@ -100,7 +100,7 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
 
   dbus::ObjectPath eth1_path = dbus::ObjectPath("/device/eth1");
   ShillClient::Device eth1_dev;
-  eth1_dev.type = ShillClient::Device::Type::kEthernet;
+  eth1_dev.technology = net_base::Technology::kEthernet;
   eth1_dev.ifindex = 2;
   eth1_dev.ifname = "eth1";
   eth1_dev.service_path = "/service/2";
@@ -108,7 +108,7 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
 
   dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
   ShillClient::Device wlan_dev;
-  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.technology = net_base::Technology::kWiFi;
   wlan_dev.ifindex = 3;
   wlan_dev.ifname = "wlan0";
   wlan_dev.service_path = "/service/3";
@@ -155,7 +155,7 @@ TEST_F(ShillClientTest, DevicesChangedHandlerCalledOnDevicesPropertyChange) {
 TEST_F(ShillClientTest, VerifyDevicesPrefixStripped) {
   dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
   ShillClient::Device eth0_dev;
-  eth0_dev.type = ShillClient::Device::Type::kEthernet;
+  eth0_dev.technology = net_base::Technology::kEthernet;
   eth0_dev.ifindex = 1;
   eth0_dev.ifname = "eth0";
   eth0_dev.service_path = "/service/1";
@@ -215,7 +215,7 @@ TEST_F(ShillClientTest, DefaultDeviceChangedHandlerNotCalledForSameDefault) {
 TEST_F(ShillClientTest, DefaultDeviceChanges) {
   dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
   ShillClient::Device eth0_dev;
-  eth0_dev.type = ShillClient::Device::Type::kEthernet;
+  eth0_dev.technology = net_base::Technology::kEthernet;
   eth0_dev.ifindex = 1;
   eth0_dev.ifname = "eth0";
   eth0_dev.service_path = "/service/1";
@@ -223,7 +223,7 @@ TEST_F(ShillClientTest, DefaultDeviceChanges) {
 
   dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
   ShillClient::Device wlan_dev;
-  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.technology = net_base::Technology::kWiFi;
   wlan_dev.ifindex = 3;
   wlan_dev.ifname = "wlan0";
   wlan_dev.service_path = "/service/3";
@@ -300,7 +300,7 @@ TEST_F(ShillClientTest, DefaultDeviceChanges) {
 TEST_F(ShillClientTest, ListenToDeviceChangeSignalOnNewDevices) {
   dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
   ShillClient::Device eth0_dev;
-  eth0_dev.type = ShillClient::Device::Type::kEthernet;
+  eth0_dev.technology = net_base::Technology::kEthernet;
   eth0_dev.ifindex = 1;
   eth0_dev.ifname = "eth0";
   eth0_dev.service_path = "/service/1";
@@ -308,7 +308,7 @@ TEST_F(ShillClientTest, ListenToDeviceChangeSignalOnNewDevices) {
 
   dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
   ShillClient::Device wlan_dev;
-  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.technology = net_base::Technology::kWiFi;
   wlan_dev.ifindex = 3;
   wlan_dev.ifname = "wlan0";
   wlan_dev.service_path = "/service/3";
@@ -337,7 +337,7 @@ TEST_F(ShillClientTest, TriggerOnIPConfigsChangeHandlerOnce) {
   // Adds a fake WiFi device.
   dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
   ShillClient::Device wlan_dev;
-  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.technology = net_base::Technology::kWiFi;
   wlan_dev.ifindex = 1;
   wlan_dev.ifname = "wlan0";
   wlan_dev.service_path = "/service/1";
@@ -408,7 +408,7 @@ TEST_F(ShillClientTest, TriggerOnIPv6NetworkChangedHandler) {
   // Adds a fake WiFi device.
   dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
   ShillClient::Device wlan_dev;
-  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.technology = net_base::Technology::kWiFi;
   wlan_dev.ifindex = 1;
   wlan_dev.ifname = "wlan0";
   wlan_dev.service_path = "/service/1";

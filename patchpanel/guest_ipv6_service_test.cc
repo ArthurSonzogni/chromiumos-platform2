@@ -10,6 +10,7 @@
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/fake_system.h"
 #include "patchpanel/guest_ipv6_service.h"
@@ -68,7 +69,7 @@ class GuestIPv6ServiceUnderTest : public GuestIPv6Service {
 ShillClient::Device MakeFakeShillDevice(const std::string& ifname,
                                         int ifindex) {
   ShillClient::Device dev;
-  dev.type = ShillClient::Device::Type::kEthernet;
+  dev.technology = net_base::Technology::kEthernet;
   dev.ifindex = ifindex;
   dev.ifname = ifname;
   dev.service_path = "/service/" + std::to_string(ifindex);

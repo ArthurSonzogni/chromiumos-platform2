@@ -17,6 +17,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <net-base/mac_address.h>
 #include <net-base/process_manager.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/crostini_service.h"
@@ -211,12 +212,12 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
     return;
   }
 
-  if (prev_device && prev_device->type == ShillClient::Device::Type::kVPN) {
+  if (prev_device && prev_device->technology == net_base::Technology::kVPN) {
     datapath_->StopVpnRouting(*prev_device);
     counters_svc_->OnVpnDeviceRemoved(prev_device->ifname);
   }
 
-  if (new_device && new_device->type == ShillClient::Device::Type::kVPN) {
+  if (new_device && new_device->technology == net_base::Technology::kVPN) {
     counters_svc_->OnVpnDeviceAdded(new_device->ifname);
     datapath_->StartVpnRouting(*new_device);
   }
@@ -353,7 +354,7 @@ void Manager::OnShillDevicesChanged(
     multicast_counters_svc_->OnPhysicalDeviceRemoved(device);
     qos_svc_->OnPhysicalDeviceRemoved(device);
 
-    if (device.type == ShillClient::Device::Type::kCellular) {
+    if (device.technology == net_base::Technology::kCellular) {
       datapath_->StopSourceIPv6PrefixEnforcement(device);
     }
   }
@@ -386,7 +387,7 @@ void Manager::OnShillDevicesChanged(
     }
 
     arc_svc_->AddDevice(device);
-    if (device.type == ShillClient::Device::Type::kCellular) {
+    if (device.technology == net_base::Technology::kCellular) {
       datapath_->StartSourceIPv6PrefixEnforcement(device);
     }
   }
@@ -436,7 +437,7 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
   ipv6_svc_->OnUplinkIPv6Changed(shill_device);
 
   if (!shill_device.ipconfig.ipv6_cidr) {
-    if (shill_device.type == ShillClient::Device::Type::kCellular) {
+    if (shill_device.technology == net_base::Technology::kCellular) {
       datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
     }
     return;
@@ -455,7 +456,7 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
     RestartIPv6(nsinfo.netns_name);
   }
 
-  if (shill_device.type == ShillClient::Device::Type::kCellular) {
+  if (shill_device.technology == net_base::Technology::kCellular) {
     // TODO(b/279871350): Support prefix shorter than /64.
     const auto prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
         shill_device.ipconfig.ipv6_cidr->address());
@@ -819,7 +820,7 @@ std::optional<ShillClient::Device> Manager::StartTetheringUpstreamNetwork(
   // ShillClient.
   ShillClient::Device upstream_network;
   for (const auto& shill_device : shill_client_->GetDevices()) {
-    if (shill_device.type == ShillClient::Device::Type::kCellular) {
+    if (shill_device.technology == net_base::Technology::kCellular) {
       // Copy the shill Device and Service properties common to both the primary
       // multiplexed Network and the tethering Network.
       upstream_network.shill_device_interface_property =
@@ -835,7 +836,7 @@ std::optional<ShillClient::Device> Manager::StartTetheringUpstreamNetwork(
                << upstream_ifname;
     return std::nullopt;
   }
-  upstream_network.type = ShillClient::Device::Type::kCellular;
+  upstream_network.technology = net_base::Technology::kCellular;
   upstream_network.ifindex = ifindex;
   upstream_network.ifname = upstream_ifname;
   // b/294287313: copy the IPv6 configuration of the upstream Network

@@ -16,6 +16,7 @@
 #include <net-base/ipv6_address.h>
 #include <net-base/mock_process_manager.h>
 #include <net-base/process_manager.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/fake_system.h"
@@ -78,7 +79,7 @@ constexpr char kIPv6CIDR[] = "2001:db8::1/64";
 ShillClient::Device MakeFakeShillDevice(const std::string& ifname,
                                         int ifindex) {
   ShillClient::Device dev;
-  dev.type = ShillClient::Device::Type::kEthernet;
+  dev.technology = net_base::Technology::kEthernet;
   dev.ifindex = ifindex;
   dev.ifname = ifname;
 

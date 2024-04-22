@@ -21,6 +21,7 @@
 #include <dbus/object_path.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/system.h"
 
@@ -78,20 +79,6 @@ class ShillClient {
   // - the connection state of the Service, if possible by translating back to
   //   the enum shill::Service::ConnectState
   struct Device {
-    // A subset of shill::Technology::Type.
-    enum class Type {
-      kUnknown,
-      kCellular,
-      kEthernet,
-      kEthernetEap,
-      kGuestInterface,
-      kLoopback,
-      kPPP,
-      kTunnel,
-      kVPN,
-      kWifi,
-    };
-
     // Interface name of the shill Device, corresponding to the
     // kInterfaceProperty value. b/273741099: The kInterfaceProperty value must
     // be tracked separately to ensure that patchpanel can advertise it in its
@@ -101,7 +88,7 @@ class ShillClient {
     // Cellular multiplexed interfaces.
     std::string shill_device_interface_property;
     // Technology type of this Device.
-    Type type;
+    std::optional<net_base::Technology> technology;
     // Interface name of the primary multiplexed interface. Only defined for
     // Cellular Devices. For Cellular Device not using multiplexing, this value
     // is equivalent to the kInterfaceProperty value.
@@ -239,10 +226,10 @@ class ShillClient {
       const Device& device, const std::optional<net_base::IPv6CIDR>& old_cidr);
 
   // Fetches Device dbus properties via dbus for the shill Device identified
-  // by |device_path|. Returns false if an error occurs. Note that this method
-  // will block the current thread.
-  virtual bool GetDeviceProperties(const dbus::ObjectPath& device_path,
-                                   Device* output);
+  // by |device_path|. Returns std::nullopt if an error occurs. Note that this
+  // method will block the current thread.
+  virtual std::optional<Device> GetDeviceProperties(
+      const dbus::ObjectPath& device_path);
 
   // Updates the current default logical and physical shill Devices for the
   // system, and notifies listeners if there was any change.
@@ -343,8 +330,6 @@ std::ostream& operator<<(std::ostream& stream, const ShillClient::Device& dev);
 std::ostream& operator<<(std::ostream& stream,
                          const std::optional<ShillClient::Device>& dev);
 std::ostream& operator<<(std::ostream& stream, const ShillClient::Device* dev);
-std::ostream& operator<<(std::ostream& stream,
-                         const ShillClient::Device::Type type);
 std::ostream& operator<<(std::ostream& stream,
                          const ShillClient::IPConfig& ipconfig);
 

@@ -433,7 +433,7 @@ class NetworkMonitorServiceTest : public testing::Test {
 TEST_F(NetworkMonitorServiceTest, CallGetDevicePropertiesOnNewDevice) {
   dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
   ShillClient::Device eth_dev;
-  eth_dev.type = ShillClient::Device::Type::kEthernet;
+  eth_dev.technology = net_base::Technology::kEthernet;
   eth_dev.ifindex = 1;
   eth_dev.ifname = "eth0";
   eth_dev.service_path = "/service/2";
@@ -441,7 +441,7 @@ TEST_F(NetworkMonitorServiceTest, CallGetDevicePropertiesOnNewDevice) {
 
   dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
   ShillClient::Device wlan_dev;
-  wlan_dev.type = ShillClient::Device::Type::kWifi;
+  wlan_dev.technology = net_base::Technology::kWiFi;
   wlan_dev.ifindex = 2;
   wlan_dev.ifname = "wlan0";
   wlan_dev.service_path = "/service/2";

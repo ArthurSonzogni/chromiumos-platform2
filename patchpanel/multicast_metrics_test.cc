@@ -83,7 +83,7 @@ TEST_F(MulticastMetricsTest, NetworkTechnology_StartStop) {
 TEST_F(MulticastMetricsTest, IPConfigChanges_StartStop) {
   ShillClient::Device device;
   device.ifname = "eth0";
-  device.type = ShillClient::Device::Type::kEthernet;
+  device.technology = net_base::Technology::kEthernet;
   device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // Device is connected.
@@ -103,7 +103,7 @@ TEST_F(MulticastMetricsTest, IPConfigChanges_StartStop) {
 TEST_F(MulticastMetricsTest, DeviceChanges_StartStop) {
   ShillClient::Device device;
   device.ifname = "eth0";
-  device.type = ShillClient::Device::Type::kEthernet;
+  device.technology = net_base::Technology::kEthernet;
 
   // Device is added but not connected.
   multicast_metrics_->OnPhysicalDeviceAdded(device);
@@ -122,12 +122,12 @@ TEST_F(MulticastMetricsTest, DeviceChanges_StartStop) {
 TEST_F(MulticastMetricsTest, MultipleDeviceChanges_StartStop) {
   ShillClient::Device device0;
   device0.ifname = "eth0";
-  device0.type = ShillClient::Device::Type::kEthernet;
+  device0.technology = net_base::Technology::kEthernet;
   device0.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   ShillClient::Device device1;
   device1.ifname = "eth1";
-  device1.type = ShillClient::Device::Type::kEthernet;
+  device1.technology = net_base::Technology::kEthernet;
   device1.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // First device added.
@@ -154,7 +154,7 @@ TEST_F(MulticastMetricsTest, MultipleDeviceChanges_StartStop) {
 TEST_F(MulticastMetricsTest, ARC_StartStop) {
   ShillClient::Device device;
   device.ifname = "wlan0";
-  device.type = ShillClient::Device::Type::kWifi;
+  device.technology = net_base::Technology::kWiFi;
   device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // WiFi device added.
@@ -201,7 +201,7 @@ TEST_F(MulticastMetricsTest, ARC_ForwardingStateChanges) {
 TEST_F(MulticastMetricsTest, ARC_StartStopWithForwardingChanges) {
   ShillClient::Device device;
   device.ifname = "wlan0";
-  device.type = ShillClient::Device::Type::kWifi;
+  device.technology = net_base::Technology::kWiFi;
   device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // ARC started.
@@ -243,7 +243,7 @@ TEST_F(MulticastMetricsTest, ARC_SendActiveTimeMetrics) {
       .Times(1);
   ShillClient::Device device;
   device.ifname = "wlan0";
-  device.type = ShillClient::Device::Type::kWifi;
+  device.technology = net_base::Technology::kWiFi;
   device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // WiFi device added.
@@ -269,7 +269,7 @@ TEST_F(MulticastMetricsTest, ARC_NotSendActiveTimeMetricsNoStop) {
       .Times(0);
   ShillClient::Device device;
   device.ifname = "wlan0";
-  device.type = ShillClient::Device::Type::kWifi;
+  device.technology = net_base::Technology::kWiFi;
   device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // WiFi device added.
@@ -291,7 +291,7 @@ TEST_F(MulticastMetricsTest, ARC_NotSendActiveTimeMetricsARCNotRunning) {
       .Times(0);
   ShillClient::Device device;
   device.ifname = "wlan0";
-  device.type = ShillClient::Device::Type::kWifi;
+  device.technology = net_base::Technology::kWiFi;
   device.ipconfig.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("1.2.3.4/32");
 
   // WiFi device added.

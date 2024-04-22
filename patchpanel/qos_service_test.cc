@@ -6,7 +6,6 @@
 
 #include <cstddef>
 #include <memory>
-#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -18,9 +17,9 @@
 #include <gtest/gtest.h>
 #include <net-base/dns_client.h>
 #include <net-base/ipv4_address.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/connmark_updater.h"
-#include "patchpanel/conntrack_monitor.h"
 #include "patchpanel/mock_connmark_updater.h"
 #include "patchpanel/mock_conntrack_monitor.h"
 #include "patchpanel/mock_datapath.h"
@@ -150,21 +149,20 @@ class FakeDNSClientFactory : public net_base::DNSClientFactory {
 // Verifies the interactions between QoSService and Datapath when feature on the
 // events of feature enable/disable and device change events.
 TEST(QoSServiceTest, EnableDisableQoSFeature) {
-  using Device = ShillClient::Device;
-  const Device kEth0 = {
-      .type = Device::Type::kEthernet,
+  const ShillClient::Device kEth0 = {
+      .technology = net_base::Technology::kEthernet,
       .ifname = "eth0",
   };
-  const Device kEth1 = {
-      .type = Device::Type::kEthernet,
+  const ShillClient::Device kEth1 = {
+      .technology = net_base::Technology::kEthernet,
       .ifname = "eth1",
   };
-  const Device kWlan0 = {
-      .type = Device::Type::kWifi,
+  const ShillClient::Device kWlan0 = {
+      .technology = net_base::Technology::kWiFi,
       .ifname = "wlan0",
   };
-  const Device kWlan1 = {
-      .type = Device::Type::kWifi,
+  const ShillClient::Device kWlan1 = {
+      .technology = net_base::Technology::kWiFi,
       .ifname = "wlan1",
   };
 

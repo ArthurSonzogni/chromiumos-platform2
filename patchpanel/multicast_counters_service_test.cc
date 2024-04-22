@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/iptables.h"
 #include "patchpanel/mock_datapath.h"
@@ -355,11 +356,11 @@ bool IsEmptyCounters(std::map<CounterKey, uint64_t> counter) {
   return true;
 }
 
-ShillClient::Device MakeShillDevice(ShillClient::Device::Type type,
+ShillClient::Device MakeShillDevice(net_base::Technology technology,
                                     std::string_view ifname,
                                     int ifindex) {
   ShillClient::Device dev;
-  dev.type = type;
+  dev.technology = technology;
   dev.shill_device_interface_property = ifname;
   dev.ifname = ifname;
   dev.ifindex = ifindex;
@@ -503,7 +504,7 @@ TEST_F(MulticastCountersServiceTest, StopMulticastCountersService) {
 TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceAdded) {
   // The following commands are expected when an ethernet device comes up.
   ShillClient::Device eth0_device =
-      MakeShillDevice(ShillClient::Device::Type::kEthernet, "eth0", 1);
+      MakeShillDevice(net_base::Technology::kEthernet, "eth0", 1);
   std::vector<std::string> mdns_args = {"-i", "eth0", "-j", "rx_ethernet_mdns",
                                         "-w"};
   EXPECT_CALL(*datapath_,
@@ -524,7 +525,7 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceAdded) {
 TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceAdded) {
   // The following commands are expected when a wifi device comes up.
   ShillClient::Device wlan0_device =
-      MakeShillDevice(ShillClient::Device::Type::kWifi, "wlan0", 3);
+      MakeShillDevice(net_base::Technology::kWiFi, "wlan0", 3);
   std::vector<std::string> mdns_args = {"-i", "wlan0", "-j", "rx_wifi_mdns",
                                         "-w"};
   EXPECT_CALL(*datapath_,
@@ -545,7 +546,7 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceAdded) {
 TEST_F(MulticastCountersServiceTest, OnPhysicalCellDeviceAdded) {
   // Modification to iptables are not expected when a cell device comes up.
   ShillClient::Device cell_device =
-      MakeShillDevice(ShillClient::Device::Type::kCellular, "wwan0", 3);
+      MakeShillDevice(net_base::Technology::kCellular, "wwan0", 3);
   cell_device.primary_multiplexed_interface = "wwan0";
   EXPECT_CALL(*datapath_,
               ModifyIptables(_, Iptables::Table::kMangle, _, _, _, _))
@@ -556,7 +557,7 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalCellDeviceAdded) {
 TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceRemoved) {
   // The following commands are expected when an ethernet device is removed.
   ShillClient::Device eth0_device =
-      MakeShillDevice(ShillClient::Device::Type::kEthernet, "eth0", 1);
+      MakeShillDevice(net_base::Technology::kEthernet, "eth0", 1);
   std::vector<std::string> mdns_args = {"-i", "eth0", "-j", "rx_ethernet_mdns",
                                         "-w"};
 
@@ -578,7 +579,7 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalEthernetDeviceRemoved) {
 TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceRemoved) {
   // The following commands are expected when a wifi device is removed.
   ShillClient::Device wlan0_device =
-      MakeShillDevice(ShillClient::Device::Type::kWifi, "wlan0", 3);
+      MakeShillDevice(net_base::Technology::kWiFi, "wlan0", 3);
   std::vector<std::string> mdns_args = {"-i", "wlan0", "-j", "rx_wifi_mdns",
                                         "-w"};
   EXPECT_CALL(*datapath_,
@@ -599,7 +600,7 @@ TEST_F(MulticastCountersServiceTest, OnPhysicalWifiDeviceRemoved) {
 TEST_F(MulticastCountersServiceTest, OnPhysicalCellDeviceRemoved) {
   // Modification to iptables are not expected when a cell device is removed.
   ShillClient::Device cell_device =
-      MakeShillDevice(ShillClient::Device::Type::kCellular, "wwan0", 3);
+      MakeShillDevice(net_base::Technology::kCellular, "wwan0", 3);
   cell_device.primary_multiplexed_interface = "wwan0";
   EXPECT_CALL(*datapath_,
               ModifyIptables(_, Iptables::Table::kMangle, _, _, _, _))

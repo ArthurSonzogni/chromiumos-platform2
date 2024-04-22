@@ -53,7 +53,7 @@ class FakeShillClient : public ShillClient {
 
   std::optional<Device> GetDeviceFromServicePath(
       const dbus::ObjectPath& service_path) override {
-    Device device = {.type = Device::Type::kUnknown};
+    Device device = {.technology = std::nullopt};
     if (service_path.value() == fake_default_logical_ifname_) {
       device.ifname = *fake_default_logical_ifname_;
       return device;
@@ -93,14 +93,14 @@ class FakeShillClient : public ShillClient {
     OnDevicePropertyChange(device_path, name, value);
   }
 
-  bool GetDeviceProperties(const dbus::ObjectPath& device_path,
-                           Device* output) override {
+  std::optional<Device> GetDeviceProperties(
+      const dbus::ObjectPath& device_path) override {
     get_device_properties_calls_.insert(device_path);
     if (fake_device_properties_.find(device_path) !=
         fake_device_properties_.end()) {
-      *output = fake_device_properties_[device_path];
+      return fake_device_properties_[device_path];
     }
-    return true;
+    return Device();
   }
 
   const ShillClient::Device* GetDeviceByShillDeviceName(

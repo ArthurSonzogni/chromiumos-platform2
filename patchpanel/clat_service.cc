@@ -25,6 +25,7 @@
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/process_manager.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"
@@ -73,7 +74,9 @@ bool RemoveConfigFileIfExists(const base::FilePath& conf_file_path) {
 }
 
 bool NeedsClat(const ShillClient::Device& device) {
-  return device.IsIPv6Only() && device.type != ShillClient::Device::Type::kVPN;
+  return device.IsIPv6Only() &&
+         device.technology != net_base::Technology::kVPN &&
+         device.technology != net_base::Technology::kWiFiDirect;
 }
 
 }  // namespace

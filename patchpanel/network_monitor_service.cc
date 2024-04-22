@@ -20,6 +20,7 @@
 #include <net-base/ipv6_address.h>
 #include <net-base/rtnl_handler.h>
 #include <net-base/rtnl_listener.h>
+#include <net-base/technology.h>
 
 namespace patchpanel {
 
@@ -371,16 +372,21 @@ void NetworkMonitorService::OnShillDevicesChanged(
     const std::vector<ShillClient::Device>& removed) {
   System system;
   for (const auto& device : added) {
-    switch (device.type) {
+    if (!device.technology.has_value()) {
+      LOG(INFO) << "Skipped creating neighbor monitor for " << device;
+      continue;
+    }
+    switch (*device.technology) {
       // Link monitoring is possible for physical local area networks on which
       // neighbor discovery is possible.
-      case ShillClient::Device::Type::kWifi:
-      case ShillClient::Device::Type::kEthernet:
-      case ShillClient::Device::Type::kEthernetEap:
+      case net_base::Technology::kWiFi:
+      case net_base::Technology::kWiFiDirect:
+      case net_base::Technology::kEthernet:
         break;
-      // Ignore VPN networks, Cellular networks, and other types of
-      // point-to-point networks and internal virtual networks.
-      default:
+
+      // Ignore VPN networks, Cellular networks.
+      case net_base::Technology::kCellular:
+      case net_base::Technology::kVPN:
         LOG(INFO) << "Skipped creating neighbor monitor for " << device;
         continue;
     }

@@ -28,6 +28,7 @@
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <net-base/ipv6_address.h>
+#include <net-base/technology.h>
 
 #include "patchpanel/shill_client.h"
 
@@ -43,17 +44,22 @@ constexpr base::TimeDelta kTimeoutForSIGTERM = base::Seconds(2);
 constexpr base::TimeDelta kTimeoutForSIGKILL = base::Seconds(1);
 
 GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
-    ShillClient::Device::Type type) {
-  switch (type) {
-    case ShillClient::Device::Type::kEthernet:
-    case ShillClient::Device::Type::kEthernetEap:
-    case ShillClient::Device::Type::kWifi:
+    std::optional<net_base::Technology> type) {
+  if (!type.has_value()) {
+    return GuestIPv6Service::ForwardMethod::kMethodUnknown;
+  }
+  switch (*type) {
+    case net_base::Technology::kEthernet:
+    case net_base::Technology::kWiFi:
       // b/246444885: Make guests consider physical network off-link to reduce
       // amount of NS/NA sent to the physical network.
       return GuestIPv6Service::ForwardMethod::kMethodNDProxyInjectingRA;
-    case ShillClient::Device::Type::kCellular:
+
+    case net_base::Technology::kCellular:
       return GuestIPv6Service::ForwardMethod::kMethodRAServer;
-    default:
+
+    case net_base::Technology::kWiFiDirect:
+    case net_base::Technology::kVPN:
       return GuestIPv6Service::ForwardMethod::kMethodUnknown;
   }
 }
@@ -128,7 +134,8 @@ void GuestIPv6Service::StartForwarding(
     forward_record_[ifname_uplink] = {
         forward_method, {ifname_downlink}, std::nullopt, std::nullopt};
   } else {
-    forward_method = GetForwardMethodByDeviceType(upstream_shill_device.type);
+    forward_method =
+        GetForwardMethodByDeviceType(upstream_shill_device.technology);
 
     if (forward_method == ForwardMethod::kMethodUnknown) {
       LOG(INFO) << __func__ << ": " << pair
