@@ -33,7 +33,7 @@ source_set("libcros_healthd") {
     "//diagnostics/cros_healthd/events:libcros_healthd_events",
     "//diagnostics/cros_healthd/fetchers:libcros_healthd_fetchers",
     "//diagnostics/cros_healthd/routines",
-    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/cros_healthd/system",
     "//diagnostics/dbus_bindings",
     "//diagnostics/mojom:libmojom_utils",
     "//diagnostics/mojom/external:libcros_healthd_internal",
@@ -51,7 +51,7 @@ executable("cros_healthd") {
     ":libcros_healthd",
     "//diagnostics/cros_healthd/executor",
     "//diagnostics/cros_healthd/minijail",
-    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/cros_healthd/system",
   ]
 }
 
@@ -102,8 +102,8 @@ if (use.test) {
       "//diagnostics/cros_healthd/routines/privacy_screen:privacy_screen_test",
       "//diagnostics/cros_healthd/routines/sensor:sensor_test",
       "//diagnostics/cros_healthd/routines/storage:storage_test",
-      "//diagnostics/cros_healthd/system:libcros_healthd_system_test",
-      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+      "//diagnostics/cros_healthd/system:system_test",
+      "//diagnostics/cros_healthd/system:test_support",
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test",
       "//diagnostics/dbus_bindings",
       "//diagnostics/mojom:libmojom_utils_test",

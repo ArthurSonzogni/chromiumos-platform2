@@ -8,7 +8,7 @@ source_set("privacy_screen") {
   public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
   deps = [
     "//diagnostics/base",
-    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/cros_healthd/system",
     "//diagnostics/mojom/external:libcros_healthd_internal",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
@@ -27,7 +27,7 @@ if (use.test) {
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/mojom:executor_mojo_bindings",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
-      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+      "//diagnostics/cros_healthd/system:test_support",
     ]
   }
 }

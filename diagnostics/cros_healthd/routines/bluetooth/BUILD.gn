@@ -29,7 +29,7 @@ source_set("bluetooth") {
   public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
   deps = [
     "//diagnostics/base",
-    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/cros_healthd/system",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
@@ -56,7 +56,7 @@ if (use.test) {
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/executor/utils:test_support",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
-      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+      "//diagnostics/cros_healthd/system:test_support",
     ]
   }
 }

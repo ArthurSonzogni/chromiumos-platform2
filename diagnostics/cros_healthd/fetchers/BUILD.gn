@@ -27,7 +27,7 @@ source_set("libcros_healthd_fetchers") {
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/fetchers/storage:storage_data_source",
-    "//diagnostics/cros_healthd/system:libcros_healthd_system",
+    "//diagnostics/cros_healthd/system",
     "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
@@ -106,7 +106,7 @@ if (use.test) {
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/fetchers/storage:storage_data_source_test",
-      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+      "//diagnostics/cros_healthd/system:test_support",
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils",
     ]
   }
@@ -126,7 +126,7 @@ if (use.fuzzer) {
     deps = [
       ":libcros_healthd_fetchers",
       "//diagnostics/base",
-      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+      "//diagnostics/cros_healthd/system:test_support",
     ]
   }
 }
