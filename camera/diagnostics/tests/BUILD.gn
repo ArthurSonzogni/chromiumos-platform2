@@ -1,0 +1,33 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/mojom_bindings_generator.gni")
+
+group("all") {
+  deps = [ ":cros_camera_diagnostics_test_cli" ]
+}
+
+generate_mojom_bindings("cros_camera_diagnostics_mojom") {
+  sources = [ "//camera/mojo/camera_diagnostics.mojom" ]
+  mojo_root = "${platform2_root}"
+}
+
+executable("cros_camera_diagnostics_test_cli") {
+  sources = [ "camera_diagnostics_test_cli.cc" ]
+  configs += [ "//camera/build:cros_camera_common" ]
+  pkg_deps = [
+    "libbrillo",
+    "libcros_camera",
+    "libcros_camera_android_deps",
+    "libmojo",
+    "mojo_service_manager",
+    "perfetto",
+  ]
+  libs = [
+    "dl",
+    "rt",
+  ]
+  deps = [ ":cros_camera_diagnostics_mojom" ]
+  install_path = "/usr/local/bin"
+}
