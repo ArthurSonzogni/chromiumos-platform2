@@ -15,7 +15,6 @@
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -58,13 +57,11 @@ class GetImageVarsTest : public ::testing::Test {
   GetImageVarsTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
         platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
-    json_file_ = temp_dir_.GetPath().Append("vars.json");
+    json_file_ = base_dir.Append("vars.json");
     ASSERT_TRUE(platform_->WriteStringToFile(json_file_, kImageVarsContent));
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
@@ -74,8 +71,7 @@ class GetImageVarsTest : public ::testing::Test {
   base::FilePath json_file_;
   startup::Flags flags_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir;
+  base::FilePath base_dir{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
@@ -109,8 +105,6 @@ class Ext4FeaturesTest : public ::testing::Test {
   Ext4FeaturesTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
@@ -119,8 +113,7 @@ class Ext4FeaturesTest : public ::testing::Test {
 
   startup::Flags flags_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir;
+  base::FilePath base_dir{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
@@ -241,8 +234,6 @@ class DevUpdateStatefulTest : public ::testing::Test {
   DevUpdateStatefulTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
@@ -260,8 +251,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
         mount_helper_.get());
   }
 
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir;
+  base::FilePath base_dir{"/"};
   base::FilePath stateful;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::Flags flags_;
@@ -361,8 +351,6 @@ class DevGatherLogsTest : public ::testing::Test {
   DevGatherLogsTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
@@ -380,8 +368,7 @@ class DevGatherLogsTest : public ::testing::Test {
     ASSERT_TRUE(platform_->CreateDirectory(home_chronos_));
   }
 
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir;
+  base::FilePath base_dir{"/"};
   base::FilePath stateful;
   base::FilePath lab_preserve_logs_;
   base::FilePath prior_log_dir_;

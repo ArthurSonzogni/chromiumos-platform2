@@ -11,7 +11,6 @@
 #include <memory>
 
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libstorage/platform/mock_platform.h>
@@ -83,15 +82,11 @@ TEST(UefiStartup, UefiDisabled) {
 class UefiDelegateTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    root_dir_ = temp_dir_.GetPath();
-
     uefi_delegate_ = std::make_unique<UefiDelegateImpl>(&platform_, root_dir_);
   }
 
   libstorage::MockPlatform platform_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath root_dir_;
+  base::FilePath root_dir_{"/"};
 
   std::unique_ptr<UefiDelegate> uefi_delegate_;
 };

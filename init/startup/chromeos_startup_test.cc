@@ -14,7 +14,6 @@
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -82,8 +81,6 @@ void RestoreconTestFunc(libstorage::Platform* platform,
 class EarlySetupTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     kernel_debug_ = base_dir_.Append("sys/kernel/debug");
     kernel_config_ = base_dir_.Append("sys/kernel/config");
     kernel_tracing_ = base_dir_.Append("sys/kernel/tracing");
@@ -111,8 +108,7 @@ class EarlySetupTest : public ::testing::Test {
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   base::FilePath kernel_debug_;
   base::FilePath kernel_tracing_;
   base::FilePath dev_pts_;
@@ -155,10 +151,8 @@ TEST_F(EarlySetupTest, EarlySetup) {
 class DevCheckBlockTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     auto vpd_fake = std::make_unique<vpd::FakeVpd>();
     vpd_ = vpd_fake.get();
-    base_dir_ = temp_dir_.GetPath();
     dev_mode_file = base_dir_.Append(".developer_mode");
     platform_ = std::make_unique<libstorage::FakePlatform>();
     crossystem_ = platform_->GetCrosssystem();
@@ -181,8 +175,7 @@ class DevCheckBlockTest : public ::testing::Test {
   crossystem::Crossystem* crossystem_;
   vpd::FakeVpd* vpd_;
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   base::FilePath dev_mode_file;
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
@@ -225,8 +218,6 @@ TEST_F(DevCheckBlockTest, CrosSysBlockDev) {
 class TPMTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
@@ -242,8 +233,7 @@ class TPMTest : public ::testing::Test {
   }
 
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -387,8 +377,6 @@ class StatefulWipeTest : public ::testing::Test {
   StatefulWipeTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     stateful_ = base_dir_.Append("mnt/stateful_partition");
     platform_ = std::make_unique<libstorage::FakePlatform>();
     crossystem_ = platform_->GetCrosssystem();
@@ -409,8 +397,7 @@ class StatefulWipeTest : public ::testing::Test {
 
   crossystem::Crossystem* crossystem_;
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   base::FilePath stateful_;
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
@@ -581,8 +568,6 @@ TEST_F(StatefulWipeTest, TransitionToDevModeDebugBuild) {
 class TpmCleanupTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::FakePlatform>();
     mock_startup_dep_ = std::make_unique<startup::MockStartupDep>();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
@@ -600,8 +585,7 @@ class TpmCleanupTest : public ::testing::Test {
   }
 
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::MockStartupDep> mock_startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -633,8 +617,6 @@ class ConfigTest : public ::testing::Test {
   ConfigTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     lsb_file_ = base_dir_.Append(kLsbRelease);
     stateful_ = base_dir_.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::MockPlatform>();
@@ -651,8 +633,7 @@ class ConfigTest : public ::testing::Test {
   }
 
   crossystem::Crossystem* crossystem_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   base::FilePath lsb_file_;
   base::FilePath stateful_;
   std::unique_ptr<libstorage::MockPlatform> platform_;
@@ -740,14 +721,10 @@ class MountStackTest : public ::testing::Test {
                       base_dir_,
                       true) {}
 
-  void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
-  }
+  void SetUp() override {}
 
   startup::Flags flags_;
-  base::FilePath base_dir_;
-  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::StandardMountHelper mount_helper_;
@@ -781,9 +758,7 @@ TEST_F(MountStackTest, CleanupMountsNoEncrypt) {
 
 TEST(MountVarAndHomeChronosEncrypted, MountEncrypted) {
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  base::FilePath base_dir_ = temp_dir_.GetPath();
+  base::FilePath base_dir_{"/"};
 
   std::unique_ptr<libstorage::FakePlatform> platform_ =
       std::make_unique<libstorage::FakePlatform>();
@@ -800,9 +775,7 @@ TEST(MountVarAndHomeChronosEncrypted, MountEncrypted) {
 
 TEST(MountVarAndHomeChronosEncrypted, MountEncryptedFail) {
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-  base::FilePath base_dir_ = temp_dir_.GetPath();
+  base::FilePath base_dir_{"/"};
 
   std::unique_ptr<libstorage::FakePlatform> platform_ =
       std::make_unique<libstorage::FakePlatform>();
@@ -821,15 +794,12 @@ class DoMountTest : public ::testing::Test {
   DoMountTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
   }
 
   startup::Flags flags_;
-  base::FilePath base_dir_;
-  base::ScopedTempDir temp_dir_;
+  base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
 };
@@ -1032,8 +1002,6 @@ TEST_F(DoMountTest, FactoryModeMountHelperUnencryptSuccess) {
 class IsVarFullTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
@@ -1049,8 +1017,7 @@ class IsVarFullTest : public ::testing::Test {
   }
 
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -1101,8 +1068,6 @@ TEST_F(IsVarFullTest, TrueFavail) {
 class DeviceSettingsTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
@@ -1121,8 +1086,7 @@ class DeviceSettingsTest : public ::testing::Test {
   }
 
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -1171,8 +1135,6 @@ TEST_F(DeviceSettingsTest, NeitherPathEmpty) {
 class DaemonStoreTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
@@ -1188,8 +1150,7 @@ class DaemonStoreTest : public ::testing::Test {
   }
 
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -1235,10 +1196,8 @@ TEST_F(DaemonStoreTest, NonEmptyEtc) {
 class RemoveVarEmptyTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
-    base_dir_ = temp_dir_.GetPath();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
@@ -1254,8 +1213,7 @@ class RemoveVarEmptyTest : public ::testing::Test {
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
 };
@@ -1278,10 +1236,8 @@ class CheckVarLogTest : public ::testing::Test {
   CheckVarLogTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
-    base_dir_ = temp_dir_.GetPath();
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
@@ -1299,8 +1255,7 @@ class CheckVarLogTest : public ::testing::Test {
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
   base::FilePath var_log_;
@@ -1361,8 +1316,6 @@ class DevMountPackagesTest : public ::testing::Test {
   DevMountPackagesTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     stateful_ = base_dir_.Append("stateful_test");
     base::CreateDirectory(stateful_);
     platform_ = std::make_unique<libstorage::MockPlatform>();
@@ -1402,13 +1355,12 @@ class DevMountPackagesTest : public ::testing::Test {
   }
 
   startup::Flags flags_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   base::FilePath stateful_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
-  base::ScopedTempDir temp_dir_;
   base::FilePath proc_mounts_;
   base::FilePath mount_log_;
   base::FilePath stateful_dev_image_;
@@ -1487,8 +1439,6 @@ TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
 class RestoreContextsForVarTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
@@ -1504,8 +1454,7 @@ class RestoreContextsForVarTest : public ::testing::Test {
   }
 
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   hwsec_foundation::MockTlclWrapper* tlcl_;
 
   std::unique_ptr<libstorage::FakePlatform> platform_;
@@ -1534,10 +1483,8 @@ TEST_F(RestoreContextsForVarTest, Restorecon) {
 class RestorePreservedPathsTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
-    base_dir_ = temp_dir_.GetPath();
     stateful_ = base_dir_.Append("stateful_test");
     platform_->CreateDirectory(stateful_);
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
@@ -1556,8 +1503,7 @@ class RestorePreservedPathsTest : public ::testing::Test {
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::Flags flags_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
   base::FilePath stateful_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
 

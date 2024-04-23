@@ -15,7 +15,6 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -66,8 +65,6 @@ class SecurityManagerTest : public ::testing::Test {
   SecurityManagerTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir_ = temp_dir_.GetPath();
     platform_ = std::make_unique<libstorage::MockPlatform>();
     mock_startup_dep_ = std::make_unique<StrictMock<startup::MockStartupDep>>();
   }
@@ -75,8 +72,7 @@ class SecurityManagerTest : public ::testing::Test {
   std::unique_ptr<startup::MockStartupDep> mock_startup_dep_;
 
   std::unique_ptr<libstorage::MockPlatform> platform_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir_;
+  base::FilePath base_dir_{"/"};
 };
 
 class SecurityManagerLoadPinTest : public SecurityManagerTest {
@@ -273,15 +269,12 @@ class SysKeyTest : public ::testing::Test {
   SysKeyTest() {}
 
   void SetUp() override {
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir = temp_dir_.GetPath();
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
   }
 
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir;
+  base::FilePath base_dir{"/"};
   base::FilePath stateful;
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
@@ -351,16 +344,13 @@ class ExceptionsTest : public ::testing::Test {
 
   void SetUp() override {
     platform_ = std::make_unique<libstorage::FakePlatform>();
-    ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
-    base_dir = temp_dir_.GetPath();
     allow_file_ = base_dir.Append("allow_file");
     ASSERT_TRUE(platform_->WriteStringToFile(allow_file_, ""));
     excepts_dir_ = base_dir.Append("excepts_dir");
   }
 
   std::unique_ptr<libstorage::FakePlatform> platform_;
-  base::ScopedTempDir temp_dir_;
-  base::FilePath base_dir;
+  base::FilePath base_dir{"/"};
   base::FilePath allow_file_;
   base::FilePath excepts_dir_;
 };
