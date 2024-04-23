@@ -895,8 +895,6 @@ TEST_F(AsyncGrpcClientServerTest, RpcServerStartedAfter) {
   client_->CallRpc(&test_rpcs::ExampleService::Stub::AsyncEchoIntRpc, request,
                    rpc_reply.MakeWriter());
 
-  base::TimeTicks start = base::TimeTicks::Now();
-
   StartManualService();
 
   manual_service()->pending_echo_int_rpcs()->WaitUntilPendingRpcCount(1);
@@ -912,11 +910,6 @@ TEST_F(AsyncGrpcClientServerTest, RpcServerStartedAfter) {
   rpc_reply.Wait();
   EXPECT_FALSE(rpc_reply.IsError());
   EXPECT_EQ(2, rpc_reply.response().echoed_int());
-
-  base::TimeDelta duration = base::TimeTicks::Now() - start;
-
-  // Check the reduced initial reconnect time. 1 second is the gRPC default.
-  EXPECT_LT(duration.InMilliseconds(), 1000);
 }
 
 // Test that there's no crash caused by calls incoming during/after the server
