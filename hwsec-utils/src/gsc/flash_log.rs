@@ -15,17 +15,21 @@ use crate::gsc::run_metrics_client;
 use crate::gsc::GSC_METRICS_PREFIX;
 
 // This should match the definitions in Cr50 firmware.
-const FE_LOG_NVMEM: u64 = 5;
-const FE_LOG_AP_RO_VERIFICATION: u64 = 9;
-const APROF_CHECK_TRIGGERED: u64 = 3;
+const CR50_FE_LOG_NVMEM: u64 = 5;
+const CR50_FE_LOG_AP_RO_VERIFICATION: u64 = 9;
+const CR50_APROF_CHECK_TRIGGERED: u64 = 3;
+
+// This should match the definitions in Cr50 firmware.
+const TI50_FE_LOG_NVMEM: u64 = 3;
+const TI50_FE_LOG_AP_RO_VERIFICATION: u64 = 7;
 
 // Offsets used to expand nvmem and apro verification FLOG codes.
 const NVMEM_MALLOC: u64 = 200;
 const APRO_OFFSET: u64 = 160;
-const APRO_IGNORE_ENTRY: u64 = APRO_OFFSET;
 
 // Events are reported in 1 byte.
 const EVENT_ID_MAX: u64 = 255;
+const EVENT_IGNORE_ENTRY: u64 = EVENT_ID_MAX + 1;
 
 pub fn read_prev_timestamp_from_file(
     ctx: &mut impl Context,
@@ -91,9 +95,20 @@ fn get_next_u64_from_iterator(
 fn expand_cr50_event_id(_event_id: u64, _fe_log_event_id: u64) -> bool {
     return false;
 }
+
 #[cfg(feature = "cr50_onboard")]
 fn expand_cr50_event_id(event_id: u64, fe_log_event_id: u64) -> bool {
     return event_id == fe_log_event_id;
+}
+
+#[cfg(feature = "ti50_onboard")]
+fn expand_ti50_event_id(event_id: u64, fe_log_event_id: u64) -> bool {
+    return event_id == fe_log_event_id;
+}
+
+#[cfg(feature = "cr50_onboard")]
+fn expand_ti50_event_id(_event_id: u64, _fe_log_event_id: u64) -> bool {
+    return false;
 }
 
 // The output from "gsctool -a -M -L 0" may look as follows:
@@ -109,19 +124,38 @@ fn parse_timestamp_and_event_id_from_log_entry(line: &str) -> Result<(u64, u64),
     let mut parts = binding.split_ascii_whitespace();
     let stamp: u64 = get_next_u64_from_iterator(&mut parts, 10)?;
     let mut event_id: u64 = get_next_u64_from_iterator(&mut parts, 16)?;
+    let mut offset: u64 = 0;
 
-    if expand_cr50_event_id(event_id, FE_LOG_NVMEM) {
-        // If event_id is 05, which is FE_LOG_NVMEM, then adopt '200 + the first
-        // byte of payload' as an new event_id, as defined as enum Cr50FlashLogs in
+    if event_id > EVENT_ID_MAX {
+        return Err(HwsecError::InternalError);
+    }
+
+    // Events that expand the first byte.
+    if expand_cr50_event_id(event_id, CR50_FE_LOG_NVMEM)
+        || expand_ti50_event_id(event_id, TI50_FE_LOG_NVMEM)
+    {
+        offset = NVMEM_MALLOC;
+    } else if expand_ti50_event_id(event_id, TI50_FE_LOG_AP_RO_VERIFICATION) {
+        offset = APRO_OFFSET;
+    }
+    if offset != 0 {
+        // If there's a non-zero offset, then return the expand the result using the
+        // event offset and add the first byte of the payload.
+        // ex: if event_id is 05 on a cr50 device, which is CR50_FE_LOG_NVMEM,
+        // then adopt '200 + the first byte of payload' as an new event_id, as
+        // defined as enum Cr50FlashLogs in
+        // event_id=05, payload[0]=00, then new event id is 200, which is
+        // labeled as 'Nvmem Malloc'.
         // https://chromium.googlesource.com/chromium/src/+//main:tools/metrics/
         // histograms/enums.xml.
-
-        // For example, event_id=05, payload[0]=00, then new event id is 200, which
-        // is labeled as 'Nvmem Malloc'.
         let payload_0: u64 = get_next_u64_from_iterator(&mut parts, 16)?;
-        event_id = NVMEM_MALLOC + payload_0;
-    } else if expand_cr50_event_id(event_id, FE_LOG_AP_RO_VERIFICATION) {
-        // If event_id is 09, which is FE_LOG_AP_RO_VERIFICATION, then adopt
+        event_id = offset + payload_0;
+    }
+    // Cr50 AP RO verification events require special handling, because it logs
+    // non-critical AP RO verification events. Handle it separately from the
+    // other events that process the first byte.
+    if expand_cr50_event_id(event_id, CR50_FE_LOG_AP_RO_VERIFICATION) {
+        // If event_id is 09, which is CR50_FE_LOG_AP_RO_VERIFICATION, then adopt
         // '160 + the first byte of payload' as an new event_id, as defined as
         // enum Cr50FlashLogs in
         // https://chromium.googlesource.com/chromium/src/+//main:tools/metrics/
@@ -132,16 +166,13 @@ fn parse_timestamp_and_event_id_from_log_entry(line: &str) -> Result<(u64, u64),
         let payload_0: u64 = get_next_u64_from_iterator(&mut parts, 16)?;
         // Ignore the codes less than CHECK_TRIGGERED. They're normal. Verification
         // did not run.
-        if payload_0 < APROF_CHECK_TRIGGERED {
-            event_id = APRO_IGNORE_ENTRY;
+        if payload_0 < CR50_APROF_CHECK_TRIGGERED {
+            event_id = EVENT_IGNORE_ENTRY;
         } else {
             event_id = APRO_OFFSET + payload_0;
         }
     }
 
-    if event_id > EVENT_ID_MAX {
-        return Err(HwsecError::InternalError);
-    }
     Ok((stamp, event_id))
 }
 
@@ -171,9 +202,10 @@ pub fn gsc_flash_log(ctx: &mut impl Context, prev_stamp: u64) -> Result<u64, (Hw
             return Err((HwsecError::InternalError, new_stamp));
         };
 
-        if event_id == APRO_IGNORE_ENTRY {
+        if event_id > EVENT_ID_MAX {
             continue;
         }
+
         let Ok(metrics_client_result) = run_metrics_client(
             ctx,
             vec![
@@ -223,49 +255,97 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_timestamp_and_event_id_from_log_entry_event_id_expand_nvmem() {
-        use super::FE_LOG_NVMEM;
+    fn test_parse_timestamp_and_event_id_from_log_entry_expand_cr50_nvmem() {
+        use super::CR50_FE_LOG_NVMEM;
         use super::NVMEM_MALLOC;
 
-        let line: &str = &format!("{:>10}:{:02x} 00", 1, FE_LOG_NVMEM);
+        let line: &str = &format!("{:>10}:{:02x} 00", 1, CR50_FE_LOG_NVMEM);
         let result = parse_timestamp_and_event_id_from_log_entry(line);
         if cfg!(feature = "cr50_onboard") {
             assert_eq!(result, Ok((1, NVMEM_MALLOC)));
         } else {
-            assert_eq!(result, Ok((1, FE_LOG_NVMEM)));
+            assert_eq!(result, Ok((1, CR50_FE_LOG_NVMEM)));
         }
     }
 
     #[test]
-    fn test_parse_timestamp_and_event_id_from_log_entry_event_id_expand_apro() {
-        use super::APROF_CHECK_TRIGGERED;
+    fn test_parse_timestamp_and_event_id_from_log_entry_expand_ti50_nvmem() {
+        use super::NVMEM_MALLOC;
+        use super::TI50_FE_LOG_NVMEM;
+
+        let line: &str = &format!("{:>10}:{:02x} 00", 1, TI50_FE_LOG_NVMEM);
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        if cfg!(feature = "ti50_onboard") {
+            assert_eq!(result, Ok((1, NVMEM_MALLOC)));
+        } else {
+            assert_eq!(result, Ok((1, TI50_FE_LOG_NVMEM)));
+        }
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_expand_cr50_apro() {
         use super::APRO_OFFSET;
-        use super::FE_LOG_AP_RO_VERIFICATION;
+        use super::CR50_APROF_CHECK_TRIGGERED;
+        use super::CR50_FE_LOG_AP_RO_VERIFICATION;
 
         let line: &str = &format!(
             "{:>10}:{:02x} {:02x}",
-            1, FE_LOG_AP_RO_VERIFICATION, APROF_CHECK_TRIGGERED
+            1, CR50_FE_LOG_AP_RO_VERIFICATION, CR50_APROF_CHECK_TRIGGERED
         );
         let result = parse_timestamp_and_event_id_from_log_entry(line);
         if cfg!(feature = "cr50_onboard") {
-            assert_eq!(result, Ok((1, APRO_OFFSET + APROF_CHECK_TRIGGERED)));
+            assert_eq!(result, Ok((1, APRO_OFFSET + CR50_APROF_CHECK_TRIGGERED)));
         } else {
-            assert_eq!(result, Ok((1, FE_LOG_AP_RO_VERIFICATION)));
+            assert_eq!(result, Ok((1, CR50_FE_LOG_AP_RO_VERIFICATION)));
         }
     }
 
     #[test]
-    fn test_parse_timestamp_and_event_id_from_log_entry_event_id_expand_ignored_apro() {
-        use super::APRO_IGNORE_ENTRY;
-        use super::FE_LOG_AP_RO_VERIFICATION;
+    fn test_parse_timestamp_and_event_id_from_log_entry_expand_cr50_ignored_apro() {
+        use super::CR50_FE_LOG_AP_RO_VERIFICATION;
+        use super::EVENT_IGNORE_ENTRY;
 
-        let line: &str = &format!("{:>10}:{:02x} 02", 1, FE_LOG_AP_RO_VERIFICATION);
+        let line: &str = &format!("{:>10}:{:02x} 02", 1, CR50_FE_LOG_AP_RO_VERIFICATION);
         let result = parse_timestamp_and_event_id_from_log_entry(line);
 
         if cfg!(feature = "cr50_onboard") {
-            assert_eq!(result, Ok((1, APRO_IGNORE_ENTRY)));
+            assert_eq!(result, Ok((1, EVENT_IGNORE_ENTRY)));
         } else {
-            assert_eq!(result, Ok((1, FE_LOG_AP_RO_VERIFICATION)));
+            assert_eq!(result, Ok((1, CR50_FE_LOG_AP_RO_VERIFICATION)));
+        }
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_expand_ti50_apro() {
+        use super::APRO_OFFSET;
+        use super::CR50_APROF_CHECK_TRIGGERED;
+        use super::TI50_FE_LOG_AP_RO_VERIFICATION;
+
+        let line: &str = &format!(
+            "{:>10}:{:02x} {:02x}",
+            1, TI50_FE_LOG_AP_RO_VERIFICATION, CR50_APROF_CHECK_TRIGGERED
+        );
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        if cfg!(feature = "ti50_onboard") {
+            assert_eq!(result, Ok((1, APRO_OFFSET + CR50_APROF_CHECK_TRIGGERED)));
+        } else {
+            assert_eq!(result, Ok((1, TI50_FE_LOG_AP_RO_VERIFICATION)));
+        }
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_entry_expand_ti50_apro_ok() {
+        use super::APRO_OFFSET;
+        use super::TI50_FE_LOG_AP_RO_VERIFICATION;
+
+        // Cr50 reporting drops ap ro verification events less than 3. Make sure
+        // Ti50 doesn't.
+        let line: &str = &format!("{:>10}:{:02x} 00", 1, TI50_FE_LOG_AP_RO_VERIFICATION);
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        if cfg!(feature = "ti50_onboard") {
+            assert_eq!(result, Ok((1, APRO_OFFSET)));
+        } else {
+            assert_eq!(result, Ok((1, TI50_FE_LOG_AP_RO_VERIFICATION)));
         }
     }
 
@@ -284,8 +364,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_event_id_too_large() {
-        let line: &str = "1:100";
+    fn test_parse_large_event_id() {
+        use super::EVENT_ID_MAX;
+        let line: &str = &format!("{:>10}:{:02x}", 1, EVENT_ID_MAX + 1);
         let result = parse_timestamp_and_event_id_from_log_entry(line);
         assert_eq!(result, Err(HwsecError::InternalError));
     }
@@ -298,28 +379,54 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_timestamp_and_event_id_from_log_expanded_nvmem_missing_payload_0() {
-        use super::FE_LOG_NVMEM;
+    fn test_parse_timestamp_and_event_id_from_log_cr50_nvmem_missing_payload_0() {
+        use super::CR50_FE_LOG_NVMEM;
 
-        let line: &str = &format!("{:>10}:{:02x}", 1, FE_LOG_NVMEM);
+        let line: &str = &format!("{:>10}:{:02x}", 1, CR50_FE_LOG_NVMEM);
         let result = parse_timestamp_and_event_id_from_log_entry(line);
         if cfg!(feature = "cr50_onboard") {
             assert_eq!(result, Err(HwsecError::InternalError));
         } else {
-            assert_eq!(result, Ok((1, FE_LOG_NVMEM)));
+            assert_eq!(result, Ok((1, CR50_FE_LOG_NVMEM)));
         }
     }
 
     #[test]
-    fn test_parse_timestamp_and_event_id_from_log_apro_missing_payload_0() {
-        use super::FE_LOG_AP_RO_VERIFICATION;
+    fn test_parse_timestamp_and_event_id_from_log_ti50_nvmem_missing_payload_0() {
+        use super::TI50_FE_LOG_NVMEM;
 
-        let line: &str = &format!("{:>10}:{:02x}", 1, FE_LOG_AP_RO_VERIFICATION);
+        let line: &str = &format!("{:>10}:{:02x}", 1, TI50_FE_LOG_NVMEM);
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        if cfg!(feature = "ti50_onboard") {
+            assert_eq!(result, Err(HwsecError::InternalError));
+        } else {
+            assert_eq!(result, Ok((1, TI50_FE_LOG_NVMEM)));
+        }
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_cr50_apro_missing_payload_0() {
+        use super::CR50_FE_LOG_AP_RO_VERIFICATION;
+
+        let line: &str = &format!("{:>10}:{:02x}", 1, CR50_FE_LOG_AP_RO_VERIFICATION);
         let result = parse_timestamp_and_event_id_from_log_entry(line);
         if cfg!(feature = "cr50_onboard") {
             assert_eq!(result, Err(HwsecError::InternalError));
         } else {
-            assert_eq!(result, Ok((1, FE_LOG_AP_RO_VERIFICATION)));
+            assert_eq!(result, Ok((1, CR50_FE_LOG_AP_RO_VERIFICATION)));
+        }
+    }
+
+    #[test]
+    fn test_parse_timestamp_and_event_id_from_log_ti50_apro_missing_payload_0() {
+        use super::TI50_FE_LOG_AP_RO_VERIFICATION;
+
+        let line: &str = &format!("{:>10}:{:02x}", 1, TI50_FE_LOG_AP_RO_VERIFICATION);
+        let result = parse_timestamp_and_event_id_from_log_entry(line);
+        if cfg!(feature = "ti50_onboard") {
+            assert_eq!(result, Err(HwsecError::InternalError));
+        } else {
+            assert_eq!(result, Ok((1, TI50_FE_LOG_AP_RO_VERIFICATION)));
         }
     }
 
@@ -339,9 +446,9 @@ mod tests {
 
     #[test]
     fn test_gsc_flash_log_multiple_lines_flash_log() {
-        use super::APROF_CHECK_TRIGGERED;
         use super::APRO_OFFSET;
-        use super::FE_LOG_AP_RO_VERIFICATION;
+        use super::CR50_APROF_CHECK_TRIGGERED;
+        use super::CR50_FE_LOG_AP_RO_VERIFICATION;
 
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -351,20 +458,20 @@ mod tests {
                 "{:>10}:00\n{:>10}:{:02x} {:02x}\n{:>10}:{:02x} {:02x}",
                 1,
                 2,
-                FE_LOG_AP_RO_VERIFICATION,
-                APROF_CHECK_TRIGGERED,
+                CR50_FE_LOG_AP_RO_VERIFICATION,
+                CR50_APROF_CHECK_TRIGGERED,
                 3,
-                FE_LOG_AP_RO_VERIFICATION,
-                APROF_CHECK_TRIGGERED
+                CR50_FE_LOG_AP_RO_VERIFICATION,
+                CR50_APROF_CHECK_TRIGGERED
             ),
             "",
         );
 
         mock_ctx.cmd_runner().add_metrics_client_expectation(0);
 
-        let mut expected_event: u64 = FE_LOG_AP_RO_VERIFICATION;
+        let mut expected_event: u64 = CR50_FE_LOG_AP_RO_VERIFICATION;
         if cfg!(feature = "cr50_onboard") {
-            expected_event = APRO_OFFSET + APROF_CHECK_TRIGGERED;
+            expected_event = APRO_OFFSET + CR50_APROF_CHECK_TRIGGERED;
         }
 
         for _ in 0..2 {
@@ -378,9 +485,46 @@ mod tests {
     }
 
     #[test]
-    fn test_gsc_flash_log_multiple_lines_flash_log_ignore_apro() {
-        use super::APROF_CHECK_TRIGGERED;
-        use super::FE_LOG_AP_RO_VERIFICATION;
+    fn test_gsc_flash_log_event_too_large() {
+        use super::EVENT_ID_MAX;
+
+        let last_good_timestamp: u64 = 75;
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--any", "--machine", "--flog", "0"],
+            0,
+            &format!(
+                "{:>10}:00\n{:>10}:{:02x}\n{:>10}:{:02x}\n{:>10}:{:02x}",
+                1,
+                2,
+                EVENT_ID_MAX - 1,
+                last_good_timestamp,
+                EVENT_ID_MAX,
+                4,
+                EVENT_ID_MAX + 1
+            ),
+            "",
+        );
+
+        mock_ctx.cmd_runner().add_metrics_client_expectation(0);
+        mock_ctx
+            .cmd_runner()
+            .add_metrics_client_expectation(EVENT_ID_MAX - 1);
+        mock_ctx
+            .cmd_runner()
+            .add_metrics_client_expectation(EVENT_ID_MAX);
+
+        let result = gsc_flash_log(&mut mock_ctx, PREV_STAMP);
+        assert_eq!(
+            result,
+            Err((HwsecError::InternalError, last_good_timestamp))
+        );
+    }
+
+    #[test]
+    fn test_gsc_flash_log_multiple_lines_cr50_ignore_apro() {
+        use super::CR50_APROF_CHECK_TRIGGERED;
+        use super::CR50_FE_LOG_AP_RO_VERIFICATION;
 
         let mut mock_ctx = MockContext::new();
         mock_ctx.cmd_runner().add_gsctool_interaction(
@@ -390,8 +534,8 @@ mod tests {
                 "{:>10}:00\n{:>10}:{:02x} {:02x}",
                 1,
                 2,
-                FE_LOG_AP_RO_VERIFICATION,
-                APROF_CHECK_TRIGGERED - 1
+                CR50_FE_LOG_AP_RO_VERIFICATION,
+                CR50_APROF_CHECK_TRIGGERED - 1
             ),
             "",
         );
@@ -403,11 +547,55 @@ mod tests {
             num_cmds = 2;
             mock_ctx
                 .cmd_runner()
-                .add_metrics_client_expectation(FE_LOG_AP_RO_VERIFICATION);
+                .add_metrics_client_expectation(CR50_FE_LOG_AP_RO_VERIFICATION);
         }
 
         let result = gsc_flash_log(&mut mock_ctx, PREV_STAMP);
         assert_eq!(result, Ok(num_cmds));
+    }
+
+    #[test]
+    fn test_gsc_flash_log_multiple_lines_ti50_apro() {
+        use super::APRO_OFFSET;
+        use super::CR50_APROF_CHECK_TRIGGERED;
+        use super::TI50_FE_LOG_AP_RO_VERIFICATION;
+
+        let mut mock_ctx = MockContext::new();
+        mock_ctx.cmd_runner().add_gsctool_interaction(
+            vec!["--any", "--machine", "--flog", "0"],
+            0,
+            &format!(
+                "{:>10}:00\n{:>10}:{:02x} {:02x}\n{:>10}:{:02x} {:02x}",
+                1,
+                2,
+                TI50_FE_LOG_AP_RO_VERIFICATION,
+                CR50_APROF_CHECK_TRIGGERED - 1,
+                3,
+                TI50_FE_LOG_AP_RO_VERIFICATION,
+                CR50_APROF_CHECK_TRIGGERED
+            ),
+            "",
+        );
+
+        mock_ctx.cmd_runner().add_metrics_client_expectation(0);
+
+        if cfg!(feature = "ti50_onboard") {
+            mock_ctx
+                .cmd_runner()
+                .add_metrics_client_expectation(APRO_OFFSET + CR50_APROF_CHECK_TRIGGERED - 1);
+            mock_ctx
+                .cmd_runner()
+                .add_metrics_client_expectation(APRO_OFFSET + CR50_APROF_CHECK_TRIGGERED);
+        } else {
+            for _ in 0..2 {
+                mock_ctx
+                    .cmd_runner()
+                    .add_metrics_client_expectation(TI50_FE_LOG_AP_RO_VERIFICATION);
+            }
+        }
+
+        let result = gsc_flash_log(&mut mock_ctx, PREV_STAMP);
+        assert_eq!(result, Ok(3));
     }
 
     #[test]
