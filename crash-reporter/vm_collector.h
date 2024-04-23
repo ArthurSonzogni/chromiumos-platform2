@@ -10,9 +10,14 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
 
 #include "crash-reporter/crash_collector.h"
+
+namespace google::protobuf::io {
+class FileInputStream;
+}
 
 // Collector for processing crashes inside a VM. This collector runs on the host
 // and is used to write out a crash report to the appropriate location. For the
@@ -38,6 +43,14 @@ class VmCollector : public CrashCollector {
       const scoped_refptr<
           base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
           metrics_lib);
+
+ private:
+  FRIEND_TEST(VmCollectorTest, SuccessfulCollect);
+  FRIEND_TEST(VmCollectorTest, BadProto);
+
+  // Body of Collect() that reads from a provided stream instead of stdin.
+  // Split off of Collect() for testing.
+  bool CollectFromFile(pid_t pid, google::protobuf::io::FileInputStream input);
 };
 
 #endif  // CRASH_REPORTER_VM_COLLECTOR_H_

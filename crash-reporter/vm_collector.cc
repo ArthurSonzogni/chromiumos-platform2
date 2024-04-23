@@ -33,8 +33,13 @@ VmCollector::VmCollector(
                      metrics_lib) {}
 
 bool VmCollector::Collect(pid_t pid) {
+  return CollectFromFile(pid,
+                         google::protobuf::io::FileInputStream(0 /* stdin */));
+}
+
+bool VmCollector::CollectFromFile(pid_t pid,
+                                  google::protobuf::io::FileInputStream input) {
   vm_tools::cicerone::CrashReport crash_report;
-  google::protobuf::io::FileInputStream input(0 /* stdin */);
   if (!google::protobuf::TextFormat::Parse(&input, &crash_report)) {
     LOG(ERROR) << "Failed to parse crash report from stdin";
     return false;
