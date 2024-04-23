@@ -6,7 +6,6 @@
 
 #include <fcntl.h>
 
-#include <compare>
 #include <algorithm>
 #include <optional>
 #include <ostream>
@@ -22,6 +21,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
+#include <net-base/technology.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dbus-proxies.h"
@@ -226,16 +226,16 @@ std::optional<Client::VirtualDevice> ConvertVirtualDevice(
       net_base::IPv6Address::CreateFromBytes(in.dns_proxy_ipv6_addr());
   switch (in.technology_type()) {
     case patchpanel::NetworkDevice::CELLULAR:
-      out->technology_type = Client::TechnologyType::kCellular;
+      out->technology = net_base::Technology::kCellular;
       break;
     case patchpanel::NetworkDevice::ETHERNET:
-      out->technology_type = Client::TechnologyType::kEthernet;
+      out->technology = net_base::Technology::kEthernet;
       break;
     case patchpanel::NetworkDevice::WIFI:
-      out->technology_type = Client::TechnologyType::kWiFi;
+      out->technology = net_base::Technology::kWiFi;
       break;
     default:
-      out->technology_type = std::nullopt;
+      out->technology = std::nullopt;
       break;
   }
 

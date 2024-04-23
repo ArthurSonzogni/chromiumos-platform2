@@ -26,6 +26,7 @@
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
 #include <net-base/network_priority.h>
+#include <net-base/technology.h>
 
 namespace org::chromium {
 class PatchPanelProxyInterface;
@@ -111,13 +112,6 @@ class BRILLO_EXPORT Client {
     kParallelsVm,
   };
 
-  // See NetworkDevice.TechnologyType in patchpanel_service.proto.
-  enum class TechnologyType {
-    kCellular,
-    kEthernet,
-    kWiFi,
-  };
-
   // See NetworkDeviceChangedSignal in patchpanel_service.proto.
   enum class VirtualDeviceEvent {
     kAdded,
@@ -135,7 +129,7 @@ class BRILLO_EXPORT Client {
     GuestType guest_type;
     std::optional<net_base::IPv4Address> dns_proxy_ipv4_addr;
     std::optional<net_base::IPv6Address> dns_proxy_ipv6_addr;
-    std::optional<TechnologyType> technology_type;
+    std::optional<net_base::Technology> technology;
   };
 
   // See ConnectNamespaceResponse in patchpanel_service.proto.
