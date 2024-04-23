@@ -1,0 +1,60 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+group("fake") {
+  deps = [
+    ":headers",
+    ":libmojo_service_manager_fake",
+    ":mojo_service_manager_fake",
+  ]
+}
+
+pkg_config("target_default") {
+  pkg_deps = [
+    "libchrome",
+    "libmojo",
+  ]
+}
+
+static_library("libmojo_service_manager_fake") {
+  sources = [ "simple_fake_service_manager.cc" ]
+
+  # Using non-thin archive to ensure object files are directly accessible
+  # during linking, especially when used by external packages.
+  configs -= [ "//common-mk:use_thin_archive" ]
+  configs += [
+    ":target_default",
+    "//common-mk:pic",
+    "//common-mk:nouse_thin_archive",
+  ]
+  deps = [
+    ":mojo_service_manager_fake",
+    "//mojo_service_manager/lib/mojom:libmojo_service_manager-mojom",
+  ]
+  install_path = "/build/lib"
+}
+
+generate_pkg_config("mojo_service_manager_fake") {
+  name = "libmojo_service_manager_fake"
+  output_name = "libmojo_service_manager_fake"
+  description = "API for testing with mojo service manager."
+  version = "0.1"
+  requires_private = [
+    "libchrome",
+    "libmojo",
+  ]
+  libs = [
+    "-lmojo_service_manager_fake",
+    "-lmojo_service_manager-mojom",
+  ]
+  cflags = [ "-I/usr/include/mojo_service_manager" ]
+  install = true
+}
+
+install_config("headers") {
+  sources = [ "simple_fake_service_manager.h" ]
+  install_path = "/usr/include/mojo_service_manager/mojo_service_manager/fake"
+}

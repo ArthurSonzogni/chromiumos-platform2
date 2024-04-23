@@ -5,6 +5,7 @@
 group("all") {
   deps = [
     "//mojo_service_manager/daemon",
+    "//mojo_service_manager/fake",
     "//mojo_service_manager/init",
     "//mojo_service_manager/lib",
   ]
