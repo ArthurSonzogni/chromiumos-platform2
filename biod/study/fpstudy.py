@@ -21,6 +21,7 @@ from __future__ import print_function
 import argparse
 import glob
 import logging
+import math
 import os
 import shutil
 import stat
@@ -65,6 +66,9 @@ SENSORS = {
     ),
     "FPC1025": Sensor(
         "FPC1025", 160, 160, 8, frame_size=26260, frame_offset_image=400
+    ),
+    "ELAN80SG": Sensor(
+        "ELAN80SG", 80, 80, 14, frame_size=12800, frame_offset_image=0
     ),
 }
 
@@ -224,11 +228,28 @@ def convert(
     pgm_buffer += f"{sensor.width} {sensor.height}\n"
     # The Max Value can be any value between 0 and 65536, exclusive.
     pgm_buffer += "# Max Value:\n"
-    pgm_buffer += f"{2**sensor.bits - 1}\n"
+    pixel_max_value = 2**sensor.bits - 1
+    pgm_buffer += f"{pixel_max_value}\n"
     # Write table of pixel values.
+    pixel_bytes_count = math.ceil(sensor.bits / 8)
     for h in range(sensor.height):
         for w in range(sensor.width):
-            pgm_buffer += f"{int(raw_capture[sensor.width*h + w])} "
+            pixel_index = pixel_bytes_count * (sensor.width * h + w)
+            pixel_raw_bytes = raw_capture[
+                pixel_index : pixel_index + pixel_bytes_count
+            ]
+            pixel_value = int.from_bytes(
+                pixel_raw_bytes,
+                byteorder="little",
+                signed=False,
+            )
+            if pixel_value > pixel_max_value:
+                raise ValueError(
+                    f"Parsed pixel value of {pixel_value}"
+                    f"(0x{pixel_raw_bytes.hex()}) at offset {pixel_index} is"
+                    f"larger than max value {pixel_max_value}."
+                )
+            pgm_buffer += f"{pixel_value} "
         pgm_buffer += "\n"
     # Write non-essential footer.
     pgm_buffer += "# END OF FILE\n"
