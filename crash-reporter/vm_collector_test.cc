@@ -20,6 +20,7 @@
 
 #include "base/files/file_util.h"
 #include "crash-reporter/constants.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
@@ -81,9 +82,10 @@ TEST_F(VmCollectorTest, SuccessfulCollect) {
                          base::File::FLAG_OPEN | base::File::FLAG_READ);
   ASSERT_TRUE(proto_input.IsValid());
 
-  EXPECT_TRUE(collector_.CollectFromFile(
-      88,
-      google::protobuf::io::FileInputStream(proto_input.GetPlatformFile())));
+  EXPECT_EQ(
+      collector_.CollectFromFile(88, google::protobuf::io::FileInputStream(
+                                         proto_input.GetPlatformFile())),
+      CrashCollectionStatus::kSuccess);
 
   base::FilePath meta_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
@@ -122,9 +124,10 @@ TEST_F(VmCollectorTest, BadProto) {
                          base::File::FLAG_OPEN | base::File::FLAG_READ);
   ASSERT_TRUE(proto_input.IsValid());
 
-  EXPECT_FALSE(collector_.CollectFromFile(
-      88,
-      google::protobuf::io::FileInputStream(proto_input.GetPlatformFile())));
+  EXPECT_EQ(
+      collector_.CollectFromFile(88, google::protobuf::io::FileInputStream(
+                                         proto_input.GetPlatformFile())),
+      CrashCollectionStatus::kFailureParsingVmToolsCiceroneCrashReport);
 
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       temp_dir_.GetPath(), "vm_crash.*.88.meta", nullptr));

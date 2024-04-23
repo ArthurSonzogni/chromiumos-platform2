@@ -113,7 +113,9 @@ enum class CrashCollectionStatus {
   kNeedPidForVm = 472,
   kFailureRetrievingProcessPIDNamespace = 473,
   kFailureRetrievingOwnPIDNamespace = 474,
-  kMaxValue = kFailureRetrievingOwnPIDNamespace,
+  kFailureParsingVmToolsCiceroneCrashReport = 475,
+  kFailureWritingProcessTree = 476,
+  kMaxValue = kFailureWritingProcessTree,
 };
 // LINT.ThenChange(crash_collection_status.cc:status_list)
 

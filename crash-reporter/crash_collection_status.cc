@@ -164,6 +164,10 @@ constexpr std::pair<CrashCollectionStatus, std::string_view> kStatusNames[] = {
      "Failure retrieving process PID namespace"},
     {CrashCollectionStatus::kFailureRetrievingOwnPIDNamespace,
      "Failure retrieving own PID namespace"},
+    {CrashCollectionStatus::kFailureParsingVmToolsCiceroneCrashReport,
+     "Failure parsing vm_tools::cicerone::CrashReport proto"},
+    {CrashCollectionStatus::kFailureWritingProcessTree,
+     "Failure writing process tree"},
 };
 // LINT.ThenChange(crash_collection_status.h:status_list)
 

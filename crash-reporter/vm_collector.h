@@ -18,6 +18,7 @@
 namespace google::protobuf::io {
 class FileInputStream;
 }
+enum class CrashCollectionStatus;
 
 // Collector for processing crashes inside a VM. This collector runs on the host
 // and is used to write out a crash report to the appropriate location. For the
@@ -31,7 +32,7 @@ class VmCollector : public CrashCollector {
   VmCollector(const VmCollector&) = delete;
   VmCollector& operator=(const VmCollector&) = delete;
 
-  bool Collect(pid_t pid);
+  CrashCollectionStatus Collect(pid_t pid);
 
   // Returns the severity level and product group of the crash.
   CrashCollector::ComputedCrashSeverity ComputeSeverity(
@@ -50,7 +51,8 @@ class VmCollector : public CrashCollector {
 
   // Body of Collect() that reads from a provided stream instead of stdin.
   // Split off of Collect() for testing.
-  bool CollectFromFile(pid_t pid, google::protobuf::io::FileInputStream input);
+  CrashCollectionStatus CollectFromFile(
+      pid_t pid, google::protobuf::io::FileInputStream input);
 };
 
 #endif  // CRASH_REPORTER_VM_COLLECTOR_H_

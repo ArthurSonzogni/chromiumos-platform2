@@ -32,17 +32,17 @@ VmCollector::VmCollector(
                      kNormalCrashSendMode,
                      metrics_lib) {}
 
-bool VmCollector::Collect(pid_t pid) {
+CrashCollectionStatus VmCollector::Collect(pid_t pid) {
   return CollectFromFile(pid,
                          google::protobuf::io::FileInputStream(0 /* stdin */));
 }
 
-bool VmCollector::CollectFromFile(pid_t pid,
-                                  google::protobuf::io::FileInputStream input) {
+CrashCollectionStatus VmCollector::CollectFromFile(
+    pid_t pid, google::protobuf::io::FileInputStream input) {
   vm_tools::cicerone::CrashReport crash_report;
   if (!google::protobuf::TextFormat::Parse(&input, &crash_report)) {
     LOG(ERROR) << "Failed to parse crash report from stdin";
-    return false;
+    return CrashCollectionStatus::kFailureParsingVmToolsCiceroneCrashReport;
   }
 
   base::FilePath crash_path;
@@ -50,7 +50,7 @@ bool VmCollector::CollectFromFile(pid_t pid,
       GetCreatedCrashDirectoryByEuid(geteuid(), &crash_path, nullptr);
   if (!IsSuccessCode(status)) {
     LOG(ERROR) << "Failed to create or find crash directory: " << status;
-    return false;
+    return status;
   }
   std::string basename = FormatDumpBasename("vm_crash", time(nullptr), pid);
 
@@ -62,14 +62,14 @@ bool VmCollector::CollectFromFile(pid_t pid,
   int bytes = crash_report.process_tree().size();
   if (WriteNewFile(proc_log_path, crash_report.process_tree()) < bytes) {
     LOG(ERROR) << "Failed to write out process tree";
-    return false;
+    return CrashCollectionStatus::kFailureWritingProcessTree;
   }
   AddCrashMetaUploadFile("process_tree", proc_log_path.BaseName().value());
 
   bytes = crash_report.minidump().size();
   if (WriteNewFile(minidump_path, crash_report.minidump()) < bytes) {
     LOG(ERROR) << "Failed to write out minidump";
-    return false;
+    return CrashCollectionStatus::kFailedMinidumpWrite;
   }
   AddCrashMetaData("payload", minidump_path.BaseName().value());
 
@@ -81,7 +81,7 @@ bool VmCollector::CollectFromFile(pid_t pid,
   // was already done inside the VM), so just write out the metadata file
   // ourselves.
   WriteNewFile(meta_path, extra_metadata_);
-  return true;
+  return CrashCollectionStatus::kSuccess;
 }
 
 CrashCollector::ComputedCrashSeverity VmCollector::ComputeSeverity(
