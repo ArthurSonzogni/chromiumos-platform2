@@ -176,11 +176,11 @@ void FakeClient::PrepareTagSocket(
     const TrafficAnnotation& annotation,
     std::shared_ptr<brillo::http::Transport> transport) {}
 
-bool FakeClient::TagSocket(base::ScopedFD fd,
-                           std::optional<int> network_id,
-                           std::optional<VpnRoutingPolicy> vpn_policy,
-                           std::optional<TrafficAnnotation> traffic_annotation,
-                           TagSocketCallback callback) {
+bool FakeClient::TagSocket(
+    base::ScopedFD fd,
+    std::optional<int> network_id,
+    std::optional<VpnRoutingPolicy> vpn_policy,
+    std::optional<TrafficAnnotation> traffic_annotation) {
   return true;
 }
 

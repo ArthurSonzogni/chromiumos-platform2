@@ -9,8 +9,10 @@
 #include <algorithm>
 #include <optional>
 #include <ostream>
+#include <vector>
 
 #include <base/functional/bind.h>
+#include <base/barrier_callback.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_util.h>
@@ -27,12 +29,14 @@
 #include <patchpanel/proto_bindings/traffic_annotation.pb.h>
 
 #include "patchpanel/dbus-proxies.h"
+#include "socketservice/dbus-proxies.h"
 
 namespace patchpanel {
 
 namespace {
 
 using org::chromium::PatchPanelProxyInterface;
+using org::chromium::SocketServiceProxyInterface;
 
 patchpanel::TrafficCounter::Source ConvertTrafficSource(
     Client::TrafficSource source) {
@@ -794,28 +798,17 @@ void OnConfigureNetworkError(Client::ConfigureNetworkCallback callback,
   std::move(callback).Run(false);
 }
 
-void OnTagSocketResponse(Client::TagSocketCallback callback,
-                         const patchpanel::TagSocketResponse& response) {
-  if (!response.success()) {
-    LOG(ERROR) << __func__ << "(): failed to tag socket";
-    std::move(callback).Run(false);
-    return;
-  }
-  std::move(callback).Run(true);
-}
-
-void OnTagSocketError(Client::TagSocketCallback callback,
-                      brillo::Error* error) {
-  LOG(ERROR) << __func__ << "(): " << error->GetMessage();
-  std::move(callback).Run(false);
-}
-
 class ClientImpl : public Client {
  public:
-  ClientImpl(scoped_refptr<dbus::Bus> bus,
-             std::unique_ptr<org::chromium::PatchPanelProxyInterface> proxy,
-             bool owns_bus)
-      : bus_(std::move(bus)), proxy_(std::move(proxy)), owns_bus_(owns_bus) {}
+  ClientImpl(
+      scoped_refptr<dbus::Bus> bus,
+      std::unique_ptr<org::chromium::PatchPanelProxyInterface> pp_proxy,
+      std::unique_ptr<org::chromium::SocketServiceProxyInterface> ss_proxy,
+      bool owns_bus)
+      : bus_(std::move(bus)),
+        pp_proxy_(std::move(pp_proxy)),
+        ss_proxy_(std::move(ss_proxy)),
+        owns_bus_(owns_bus) {}
 
   ClientImpl(const ClientImpl&) = delete;
   ClientImpl& operator=(const ClientImpl&) = delete;
@@ -915,8 +908,7 @@ class ClientImpl : public Client {
   bool TagSocket(base::ScopedFD fd,
                  std::optional<int> network_id,
                  std::optional<VpnRoutingPolicy> vpn_policy,
-                 std::optional<TrafficAnnotation> traffic_annotation,
-                 TagSocketCallback callback) override;
+                 std::optional<TrafficAnnotation> traffic_annotation) override;
 
   void PrepareTagSocket(
       const TrafficAnnotation& annotation,
@@ -963,7 +955,8 @@ class ClientImpl : public Client {
   }
 
   scoped_refptr<dbus::Bus> bus_;
-  std::unique_ptr<org::chromium::PatchPanelProxyInterface> proxy_;
+  std::unique_ptr<org::chromium::PatchPanelProxyInterface> pp_proxy_;
+  std::unique_ptr<org::chromium::SocketServiceProxyInterface> ss_proxy_;
   bool owns_bus_;  // Yes if |bus_| is created by Client::New
 
   base::RepeatingCallback<void(bool)> owner_callback_;
@@ -981,12 +974,32 @@ ClientImpl::~ClientImpl() {
 
 void ClientImpl::RegisterOnAvailableCallback(
     base::OnceCallback<void(bool)> callback) {
-  auto* object_proxy = proxy_->GetObjectProxy();
-  if (!object_proxy) {
-    LOG(ERROR) << "Cannot register callback - no proxy";
+  auto done_cb = base::BindOnce(
+      [](base::OnceCallback<void(bool)> cb, const std::vector<bool>& results) {
+        bool result = false;
+        for (const auto r : results) {
+          result = result || r;
+        }
+        std::move(cb).Run(result);
+      },
+      std::move(callback));
+  // |ready_cb| will be called twice, will collect the boolean results and will
+  // call |done_cb| with the list of results.
+  auto ready_cb = base::BarrierCallback<bool>(2, std::move(done_cb));
+
+  auto* pp_object_proxy = pp_proxy_->GetObjectProxy();
+  if (!pp_object_proxy) {
+    LOG(ERROR) << "Cannot register callback - no patchpanel proxy";
     return;
   }
-  object_proxy->WaitForServiceToBeAvailable(std::move(callback));
+  pp_object_proxy->WaitForServiceToBeAvailable(ready_cb);
+
+  auto* ss_object_proxy = ss_proxy_->GetObjectProxy();
+  if (!ss_object_proxy) {
+    LOG(ERROR) << "Cannot register callback - no socketservice proxy";
+    return;
+  }
+  ss_object_proxy->WaitForServiceToBeAvailable(ready_cb);
 }
 
 void ClientImpl::RegisterProcessChangedCallback(
@@ -1023,7 +1036,7 @@ bool ClientImpl::NotifyArcStartup(pid_t pid) {
          ArcStartupResponse* response, brillo::ErrorPtr* error) {
         return proxy->ArcStartup(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "ARC network startup failed: " << error->GetMessage();
     return false;
@@ -1040,7 +1053,7 @@ bool ClientImpl::NotifyArcShutdown() {
         ArcShutdownResponse response;
         return proxy->ArcShutdown({}, &response, error);
       },
-      proxy_.get(), &error));
+      pp_proxy_.get(), &error));
   if (!result) {
     LOG(ERROR) << "ARC network shutdown failed: " << error->GetMessage();
     return false;
@@ -1062,7 +1075,7 @@ std::optional<Client::ArcVMAllocation> ClientImpl::NotifyArcVmStartup(
          ArcVmStartupResponse* response, brillo::ErrorPtr* error) {
         return proxy->ArcVmStartup(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "ARCVM network startup failed: " << error->GetMessage();
     return std::nullopt;
@@ -1095,7 +1108,7 @@ bool ClientImpl::NotifyArcVmShutdown(uint32_t cid) {
          ArcVmShutdownResponse* response, brillo::ErrorPtr* error) {
         return proxy->ArcVmShutdown(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "ARCVM network shutdown failed: " << error->GetMessage();
   }
@@ -1116,7 +1129,7 @@ std::optional<Client::TerminaAllocation> ClientImpl::NotifyTerminaVmStartup(
          TerminaVmStartupResponse* response, brillo::ErrorPtr* error) {
         return proxy->TerminaVmStartup(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
 
   if (!result) {
     LOG(ERROR) << __func__ << "(cid: " << cid
@@ -1145,7 +1158,7 @@ bool ClientImpl::NotifyTerminaVmShutdown(uint32_t cid) {
          TerminaVmShutdownResponse* response, brillo::ErrorPtr* error) {
         return proxy->TerminaVmShutdown(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "TerminaVM network shutdown failed: " << error->GetMessage();
     return false;
@@ -1167,7 +1180,7 @@ std::optional<Client::ParallelsAllocation> ClientImpl::NotifyParallelsVmStartup(
          ParallelsVmStartupResponse* response, brillo::ErrorPtr* error) {
         return proxy->ParallelsVmStartup(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
 
   if (!result) {
     LOG(ERROR) << __func__ << "(cid: " << vm_id
@@ -1198,7 +1211,7 @@ bool ClientImpl::NotifyParallelsVmShutdown(uint64_t vm_id) {
          ParallelsVmShutdownResponse* response, brillo::ErrorPtr* error) {
         return proxy->ParallelsVmShutdown(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "ParallelsVM network shutdown failed: "
                << error->GetMessage();
@@ -1220,7 +1233,7 @@ ClientImpl::NotifyBruschettaVmStartup(uint64_t vm_id) {
          BruschettaVmStartupResponse* response, brillo::ErrorPtr* error) {
         return proxy->BruschettaVmStartup(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
 
   if (!result) {
     LOG(ERROR) << __func__ << "(vm_id: " << vm_id
@@ -1249,7 +1262,7 @@ bool ClientImpl::NotifyBruschettaVmShutdown(uint64_t vm_id) {
          BruschettaVmShutdownResponse* response, brillo::ErrorPtr* error) {
         return proxy->BruschettaVmShutdown(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "BruschettaVM network shutdown failed: "
                << error->GetMessage();
@@ -1271,7 +1284,7 @@ std::optional<Client::BorealisAllocation> ClientImpl::NotifyBorealisVmStartup(
          BorealisVmStartupResponse* response, brillo::ErrorPtr* error) {
         return proxy->BorealisVmStartup(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
 
   if (!result) {
     LOG(ERROR) << __func__ << "(vm_id: " << vm_id
@@ -1300,7 +1313,7 @@ bool ClientImpl::NotifyBorealisVmShutdown(uint32_t vm_id) {
          BorealisVmShutdownResponse* response, brillo::ErrorPtr* error) {
         return proxy->BorealisVmShutdown(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "Borealis VM network shutdown failed: "
                << error->GetMessage();
@@ -1340,7 +1353,7 @@ ClientImpl::ConnectNamespace(pid_t pid,
          ConnectNamespaceResponse* response, brillo::ErrorPtr* error) {
         return proxy->ConnectNamespace(request, fd_remote, response, error);
       },
-      proxy_.get(), request, std::move(fd_remote), &response, &error));
+      pp_proxy_.get(), request, std::move(fd_remote), &response, &error));
   if (!result) {
     LOG(ERROR) << "ConnectNamespace failed: " << error->GetMessage();
     return {};
@@ -1385,7 +1398,7 @@ void ClientImpl::GetTrafficCounters(const std::set<std::string>& devices,
             base::BindOnce(&OnGetTrafficCountersError,
                            std::move(split_callback.second)));
       },
-      proxy_.get(), request,
+      pp_proxy_.get(), request,
       base::BindPostTaskToCurrentDefault(std::move(callback))));
 }
 
@@ -1415,7 +1428,7 @@ bool ClientImpl::ModifyPortRule(Client::FirewallRequestOperation op,
          ModifyPortRuleResponse* response, brillo::ErrorPtr* error) {
         return proxy->ModifyPortRule(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
   if (!result) {
     LOG(ERROR) << "ModifyPortRule failed: " << error->GetMessage();
     return false;
@@ -1445,7 +1458,7 @@ void ClientImpl::SetVpnLockdown(bool enable) {
         proxy->SetVpnLockdownAsync(request, success_callback,
                                    base::BindOnce(error_callback));
       },
-      proxy_.get(), request));
+      pp_proxy_.get(), request));
 }
 
 base::ScopedFD ClientImpl::RedirectDns(
@@ -1480,7 +1493,7 @@ base::ScopedFD ClientImpl::RedirectDns(
         return proxy->SetDnsRedirectionRule(request, fd_remote, response,
                                             error);
       },
-      proxy_.get(), request, std::move(fd_remote), &response, &error));
+      pp_proxy_.get(), request, std::move(fd_remote), &response, &error));
   if (!result) {
     LOG(ERROR) << "SetDnsRedirectionRule failed: " << error->GetMessage();
     return {};
@@ -1503,7 +1516,7 @@ std::vector<Client::VirtualDevice> ClientImpl::GetDevices() {
          brillo::ErrorPtr* error) {
         return proxy->GetDevices({}, response, error);
       },
-      proxy_.get(), &response, &error));
+      pp_proxy_.get(), &response, &error));
   if (!result) {
     LOG(ERROR) << "GetDevices failed: " << error->GetMessage();
     return {};
@@ -1521,14 +1534,14 @@ std::vector<Client::VirtualDevice> ClientImpl::GetDevices() {
 
 void ClientImpl::RegisterVirtualDeviceEventHandler(
     VirtualDeviceEventHandler handler) {
-  proxy_->RegisterNetworkDeviceChangedSignalHandler(
+  pp_proxy_->RegisterNetworkDeviceChangedSignalHandler(
       base::BindRepeating(OnNetworkDeviceChanged, std::move(handler)),
       base::BindOnce(OnSignalConnectedCallback));
 }
 
 void ClientImpl::RegisterNeighborReachabilityEventHandler(
     NeighborReachabilityEventHandler handler) {
-  proxy_->RegisterNeighborReachabilityEventSignalHandler(
+  pp_proxy_->RegisterNeighborReachabilityEventSignalHandler(
       base::BindRepeating(OnNeighborReachabilityEvent, std::move(handler)),
       base::BindOnce(OnSignalConnectedCallback));
 }
@@ -1596,7 +1609,7 @@ bool ClientImpl::CreateTetheredNetwork(
             base::BindOnce(&OnTetheredNetworkError,
                            std::move(split_callback.second)));
       },
-      proxy_.get(), request, std::move(fd_local), std::move(fd_remote),
+      pp_proxy_.get(), request, std::move(fd_local), std::move(fd_remote),
       base::BindPostTaskToCurrentDefault(std::move(callback))));
 
   return true;
@@ -1630,7 +1643,7 @@ bool ClientImpl::CreateLocalOnlyNetwork(
             base::BindOnce(&OnLocalOnlyNetworkError,
                            std::move(split_callback.second)));
       },
-      proxy_.get(), request, std::move(fd_local), std::move(fd_remote),
+      pp_proxy_.get(), request, std::move(fd_local), std::move(fd_remote),
       base::BindPostTaskToCurrentDefault(std::move(callback))));
 
   return true;
@@ -1653,7 +1666,7 @@ bool ClientImpl::GetDownstreamNetworkInfo(
             base::BindOnce(&OnGetDownstreamNetworkInfoError,
                            std::move(split_callback.second)));
       },
-      proxy_.get(), request,
+      pp_proxy_.get(), request,
       base::BindPostTaskToCurrentDefault(std::move(callback))));
 
   return true;
@@ -1693,7 +1706,7 @@ bool ClientImpl::ConfigureNetwork(int interface_index,
                            std::move(split_callback.second),
                            std::string(interface_name)));
       },
-      proxy_.get(), request, interface_name,
+      pp_proxy_.get(), request, interface_name,
       base::BindPostTaskToCurrentDefault(std::move(callback))));
   return true;
 }
@@ -1711,7 +1724,7 @@ bool ClientImpl::SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) {
          SetFeatureFlagResponse* response, brillo::ErrorPtr* error) {
         return proxy->SetFeatureFlag(request, response, error);
       },
-      proxy_.get(), request, &response, &error));
+      pp_proxy_.get(), request, &response, &error));
 
   if (!result) {
     LOG(ERROR) << "Failed to set feature flag of " << flag << ": "
@@ -1722,11 +1735,11 @@ bool ClientImpl::SendSetFeatureFlagRequest(FeatureFlag flag, bool enable) {
   return true;
 }
 
-bool ClientImpl::TagSocket(base::ScopedFD fd,
-                           std::optional<int> network_id,
-                           std::optional<VpnRoutingPolicy> vpn_policy,
-                           std::optional<TrafficAnnotation> traffic_annotation,
-                           TagSocketCallback callback) {
+bool ClientImpl::TagSocket(
+    base::ScopedFD fd,
+    std::optional<int> network_id,
+    std::optional<VpnRoutingPolicy> vpn_policy,
+    std::optional<TrafficAnnotation> traffic_annotation) {
   TagSocketRequest request;
   if (network_id.has_value()) {
     request.set_network_id(network_id.value());
@@ -1743,18 +1756,18 @@ bool ClientImpl::TagSocket(base::ScopedFD fd,
   TagSocketResponse response;
   brillo::ErrorPtr error;
 
-  RunOnDBusThreadAsync(base::BindOnce(
-      [](PatchPanelProxyInterface* proxy, const TagSocketRequest& request,
-         base::ScopedFD fd, TagSocketCallback callback) {
-        auto split_callback = SplitOnceCallback(std::move(callback));
-        proxy->TagSocketAsync(request, fd,
-                              base::BindOnce(&OnTagSocketResponse,
-                                             std::move(split_callback.first)),
-                              base::BindOnce(&OnTagSocketError,
-                                             std::move(split_callback.second)));
+  const bool result = RunOnDBusThreadSync(base::BindOnce(
+      [](SocketServiceProxyInterface* proxy, const TagSocketRequest& request,
+         base::ScopedFD fd, TagSocketResponse* response,
+         brillo::ErrorPtr* error) {
+        return proxy->TagSocket(request, std::move(fd), response, error);
       },
-      proxy_.get(), request, std::move(fd),
-      base::BindPostTaskToCurrentDefault(std::move(callback))));
+      ss_proxy_.get(), request, std::move(fd), &response, &error));
+
+  if (!result) {
+    LOG(ERROR) << "Failed to tag socket";
+    return false;
+  }
 
   return true;
 }
@@ -1779,10 +1792,8 @@ bool OnSocketAnnotation(base::WeakPtr<ClientImpl> client,
   }
 
   Client::TrafficAnnotation annotation(id);
-  // TODO(b/331620358) use a synchronous call to a dedicated TagSocket service
-  // to guarantee the socket is tagged when the call returns.
   return client->TagSocket(base::ScopedFD(tag_fd), std::nullopt, std::nullopt,
-                           std::move(annotation), base::DoNothing());
+                           std::move(annotation));
 }
 
 void ClientImpl::PrepareTagSocket(
@@ -1865,32 +1876,47 @@ std::unique_ptr<Client> Client::New() {
     return nullptr;
   }
 
-  auto proxy = std::make_unique<org::chromium::PatchPanelProxy>(bus);
-  if (!proxy) {
+  auto pp_proxy = std::make_unique<org::chromium::PatchPanelProxy>(bus);
+  if (!pp_proxy) {
     LOG(ERROR) << "Failed to create proxy";
     return nullptr;
   }
 
-  return std::make_unique<ClientImpl>(std::move(bus), std::move(proxy),
+  auto ss_proxy = std::make_unique<org::chromium::SocketServiceProxy>(bus);
+  if (!ss_proxy) {
+    LOG(ERROR) << "Failed to create SocketService proxy";
+    return nullptr;
+  }
+
+  return std::make_unique<ClientImpl>(std::move(bus), std::move(pp_proxy),
+                                      std::move(ss_proxy),
                                       /*owns_bus=*/true);
 }
 
 // static
 std::unique_ptr<Client> Client::New(const scoped_refptr<dbus::Bus>& bus) {
-  auto proxy = std::make_unique<org::chromium::PatchPanelProxy>(bus);
-  if (!proxy) {
+  auto pp_proxy = std::make_unique<org::chromium::PatchPanelProxy>(bus);
+  if (!pp_proxy) {
     LOG(ERROR) << "Failed to create proxy";
     return nullptr;
   }
-  return std::make_unique<ClientImpl>(bus, std::move(proxy),
+  auto ss_proxy = std::make_unique<org::chromium::SocketServiceProxy>(bus);
+  if (!ss_proxy) {
+    LOG(ERROR) << "Failed to create SocketService proxy";
+    return nullptr;
+  }
+  return std::make_unique<ClientImpl>(bus, std::move(pp_proxy),
+                                      std::move(ss_proxy),
                                       /*owns_bus=*/false);
 }
 
 // static
 std::unique_ptr<Client> Client::NewForTesting(
     scoped_refptr<dbus::Bus> bus,
-    std::unique_ptr<org::chromium::PatchPanelProxyInterface> proxy) {
-  return std::make_unique<ClientImpl>(std::move(bus), std::move(proxy),
+    std::unique_ptr<org::chromium::PatchPanelProxyInterface> pp_proxy,
+    std::unique_ptr<org::chromium::SocketServiceProxyInterface> ss_proxy) {
+  return std::make_unique<ClientImpl>(std::move(bus), std::move(pp_proxy),
+                                      std::move(ss_proxy),
                                       /*owns_bus=*/false);
 }
 

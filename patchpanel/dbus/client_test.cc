@@ -19,6 +19,8 @@
 #include <patchpanel/proto_bindings/traffic_annotation.pb.h>
 
 #include "patchpanel/dbus/mock_patchpanel_proxy.h"
+#include "patchpanel/dbus/mock_socketservice_proxy.h"
+#include "socketservice/dbus-proxies.h"
 
 namespace patchpanel {
 namespace {
@@ -35,22 +37,25 @@ class ClientTest : public testing::Test {
  protected:
   void SetUp() override {
     dbus_ = new dbus::MockBus{dbus::Bus::Options{}};
-    proxy_ = new MockPatchPanelProxy();
+    pp_proxy_ = new MockPatchPanelProxy();
+    ss_proxy_ = new MockSocketServiceProxy();
     http_transport_ = std::make_shared<brillo::http::MockTransport>();
     client_ = Client::NewForTesting(
         dbus_,
-        std::unique_ptr<org::chromium::PatchPanelProxyInterface>(proxy_));
+        std::unique_ptr<org::chromium::PatchPanelProxyInterface>(pp_proxy_),
+        std::unique_ptr<org::chromium::SocketServiceProxyInterface>(ss_proxy_));
   }
 
   scoped_refptr<dbus::MockBus> dbus_;
   std::unique_ptr<Client> client_;
-  MockPatchPanelProxy* proxy_;  // It's owned by |client_|.
+  MockPatchPanelProxy* pp_proxy_;  // It's owned by |client_|.
+  MockSocketServiceProxy* ss_proxy_;
   std::shared_ptr<brillo::http::MockTransport> http_transport_;
 };
 
 TEST_F(ClientTest, NotifyArcStartup) {
   const pid_t pid = 3456;
-  EXPECT_CALL(*proxy_,
+  EXPECT_CALL(*pp_proxy_,
               ArcStartup(Property(&ArcStartupRequest::pid, pid), _, _, _))
       .WillOnce(Return(true));
 
@@ -59,7 +64,7 @@ TEST_F(ClientTest, NotifyArcStartup) {
 }
 
 TEST_F(ClientTest, NotifyArcShutdown) {
-  EXPECT_CALL(*proxy_, ArcShutdown(_, _, _, _)).WillOnce(Return(true));
+  EXPECT_CALL(*pp_proxy_, ArcShutdown(_, _, _, _)).WillOnce(Return(true));
 
   const bool result = client_->NotifyArcShutdown();
   EXPECT_TRUE(result);
@@ -75,7 +80,7 @@ TEST_F(ClientTest, NotifyArcVmStartup) {
   response_proto.add_tap_device_ifnames("vmtap2");
   response_proto.set_arc0_ipv4_address(arc0_addr.ToByteString());
 
-  EXPECT_CALL(*proxy_,
+  EXPECT_CALL(*pp_proxy_,
               ArcVmStartup(Property(&ArcVmStartupRequest::cid, cid), _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
 
@@ -89,7 +94,7 @@ TEST_F(ClientTest, NotifyArcVmStartup) {
 TEST_F(ClientTest, NotifyArcVmShutdown) {
   const uint32_t cid = 5;
 
-  EXPECT_CALL(*proxy_,
+  EXPECT_CALL(*pp_proxy_,
               ArcVmShutdown(Property(&ArcVmShutdownRequest::cid, cid), _, _, _))
       .WillOnce(Return(true));
 
@@ -128,7 +133,7 @@ TEST_F(ClientTest, NotifyTerminaVmStartup) {
       container_ipv4_address.ToByteString());
 
   EXPECT_CALL(
-      *proxy_,
+      *pp_proxy_,
       TerminaVmStartup(Property(&TerminaVmStartupRequest::cid, cid), _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
 
@@ -146,7 +151,7 @@ TEST_F(ClientTest, NotifyTerminaVmShutdown) {
   const uint32_t cid = 5;
 
   EXPECT_CALL(
-      *proxy_,
+      *pp_proxy_,
       TerminaVmShutdown(Property(&TerminaVmShutdownRequest::cid, cid), _, _, _))
       .WillOnce(Return(true));
 
@@ -170,7 +175,7 @@ TEST_F(ClientTest, NotifyParallelsVmStartup) {
       static_cast<uint32_t>(parallels_ipv4_subnet.prefix_length()));
   response_proto.set_ipv4_address(parallels_ipv4_address.ToByteString());
 
-  EXPECT_CALL(*proxy_,
+  EXPECT_CALL(*pp_proxy_,
               ParallelsVmStartup(
                   AllOf(Property(&ParallelsVmStartupRequest::id, id),
                         Property(&ParallelsVmStartupRequest::subnet_index,
@@ -188,7 +193,7 @@ TEST_F(ClientTest, NotifyParallelsVmStartup) {
 TEST_F(ClientTest, NotifyParallelsVmShutdown) {
   const uint64_t id = 5;
 
-  EXPECT_CALL(*proxy_,
+  EXPECT_CALL(*pp_proxy_,
               ParallelsVmShutdown(Property(&ParallelsVmShutdownRequest::id, id),
                                   _, _, _))
       .WillOnce(Return(true));
@@ -216,7 +221,7 @@ TEST_F(ClientTest, NotifyBruschettaVmStartup) {
   response_proto.set_ipv4_address(bruschetta_ipv4_address.ToByteString());
   response_proto.set_gateway_ipv4_address(gateway_ipv4_address.ToByteString());
 
-  EXPECT_CALL(*proxy_,
+  EXPECT_CALL(*pp_proxy_,
               BruschettaVmStartup(Property(&BruschettaVmStartupRequest::id, id),
                                   _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
@@ -232,7 +237,7 @@ TEST_F(ClientTest, NotifyBruschettaVmStartup) {
 TEST_F(ClientTest, NotifyBruschettaVmShutdown) {
   const uint64_t id = 5;
 
-  EXPECT_CALL(*proxy_,
+  EXPECT_CALL(*pp_proxy_,
               BruschettaVmShutdown(
                   Property(&BruschettaVmShutdownRequest::id, id), _, _, _))
       .WillOnce(Return(true));
@@ -261,7 +266,7 @@ TEST_F(ClientTest, NotifyBorealisVmStartup) {
   response_proto.set_gateway_ipv4_address(gateway_ipv4_address.ToByteString());
 
   EXPECT_CALL(
-      *proxy_,
+      *pp_proxy_,
       BorealisVmStartup(Property(&BorealisVmStartupRequest::id, id), _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
 
@@ -277,7 +282,7 @@ TEST_F(ClientTest, NotifyBorealisVmShutdown) {
   const uint32_t id = 6;
 
   EXPECT_CALL(
-      *proxy_,
+      *pp_proxy_,
       BorealisVmShutdown(Property(&BorealisVmShutdownRequest::id, id), _, _, _))
       .WillOnce(Return(true));
 
@@ -295,9 +300,10 @@ TEST_F(ClientTest, ConnectNamespace_Fail) {
     *error = brillo::Error::Create(FROM_HERE, "", "", "");
     return false;
   };
-  EXPECT_CALL(*proxy_, ConnectNamespace(
-                           Property(&ConnectNamespaceRequest::pid, invalid_pid),
-                           _, _, _, _))
+  EXPECT_CALL(
+      *pp_proxy_,
+      ConnectNamespace(Property(&ConnectNamespaceRequest::pid, invalid_pid), _,
+                       _, _, _))
       .WillOnce(action);
 
   const auto result =
@@ -327,7 +333,7 @@ TEST_F(ClientTest, ConnectNamespace) {
   response_subnet->set_addr(std::vector<uint8_t>{100, 115, 92, 128}.data(), 4);
 
   EXPECT_CALL(
-      *proxy_,
+      *pp_proxy_,
       ConnectNamespace(
           AllOf(Property(&ConnectNamespaceRequest::pid, pid),
                 Property(&ConnectNamespaceRequest::outbound_physical_device,
@@ -358,7 +364,7 @@ TEST_F(ClientTest, RegisterNeighborEventHandler) {
   base::RepeatingCallback<void(
       const patchpanel::NeighborReachabilityEventSignal&)>
       registered_dbus_callback;
-  EXPECT_CALL(*proxy_, RegisterNeighborReachabilityEventSignalHandler(_, _))
+  EXPECT_CALL(*pp_proxy_, RegisterNeighborReachabilityEventSignalHandler(_, _))
       .WillOnce(SaveArg<0>(&registered_dbus_callback));
 
   client_->RegisterNeighborReachabilityEventHandler(callback);
@@ -437,7 +443,7 @@ TEST_F(ClientTest, SendSetFeatureFlagRequest) {
       SetFeatureFlagRequest_FeatureFlag_WIFI_QOS;
 
   EXPECT_CALL(
-      *proxy_,
+      *pp_proxy_,
       SetFeatureFlag(AllOf(Property(&SetFeatureFlagRequest::enabled, enable),
                            Property(&SetFeatureFlagRequest::flag, flag)),
                      _, _, _))
@@ -587,7 +593,8 @@ TEST_F(ClientTest, PrepareTagSocket) {
   base::RepeatingCallback<bool(int)> tag_socket_callback;
   EXPECT_CALL(*http_transport_, SetSockOptCallback)
       .WillOnce(SaveArg<0>(&tag_socket_callback));
-  EXPECT_CALL(*proxy_, TagSocketAsync).WillOnce(SaveArg<0>(&request));
+  EXPECT_CALL(*ss_proxy_, TagSocket)
+      .WillOnce(DoAll(SaveArg<0>(&request), Return(true)));
 
   patchpanel::Client::TrafficAnnotation annotation;
   annotation.id = Client::TrafficAnnotationId::kUnspecified;
@@ -598,6 +605,65 @@ TEST_F(ClientTest, PrepareTagSocket) {
   EXPECT_EQ(request.traffic_annotation().host_id(),
             traffic_annotation::TrafficAnnotation_Id::
                 TrafficAnnotation_Id_UNSPECIFIED);
+}
+
+TEST_F(ClientTest, TagSocketNetworkId) {
+  const int net_id = 6;
+  TagSocketResponse response_proto;
+  response_proto.set_success(true);
+
+  EXPECT_CALL(
+      *ss_proxy_,
+      TagSocket(Property(&TagSocketRequest::network_id, net_id), _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(response_proto), Return(true)));
+
+  const auto result = client_->TagSocket(base::ScopedFD(-1), net_id,
+                                         std::nullopt, std::nullopt);
+  EXPECT_TRUE(result);
+}
+
+TEST_F(ClientTest, TagSocketVpnPolicy) {
+  TagSocketResponse response_proto;
+  response_proto.set_success(true);
+
+  EXPECT_CALL(*ss_proxy_, TagSocket(Property(&TagSocketRequest::vpn_policy,
+                                             TagSocketRequest::DEFAULT_ROUTING),
+                                    _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(response_proto), Return(true)));
+
+  const auto result = client_->TagSocket(
+      base::ScopedFD(-1), std::nullopt,
+      Client::VpnRoutingPolicy::kDefaultRouting, std::nullopt);
+  EXPECT_TRUE(result);
+}
+
+TEST_F(ClientTest, TagSocketTrafficAnnotation) {
+  TagSocketResponse response_proto;
+  response_proto.set_success(true);
+
+  EXPECT_CALL(*ss_proxy_, TagSocket(_, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(response_proto), Return(true)));
+
+  Client::TrafficAnnotation annotation;
+  annotation.id = Client::TrafficAnnotationId::kUnspecified;
+  const auto result = client_->TagSocket(base::ScopedFD(-1), std::nullopt,
+                                         std::nullopt, std::move(annotation));
+  EXPECT_TRUE(result);
+}
+
+TEST_F(ClientTest, TagSocketFail) {
+  const int net_id = 3;
+  TagSocketResponse response_proto;
+  response_proto.set_success(false);
+
+  EXPECT_CALL(
+      *ss_proxy_,
+      TagSocket(Property(&TagSocketRequest::network_id, net_id), _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(response_proto), Return(false)));
+
+  const auto result = client_->TagSocket(base::ScopedFD(-1), net_id,
+                                         std::nullopt, std::nullopt);
+  EXPECT_FALSE(result);
 }
 
 }  // namespace

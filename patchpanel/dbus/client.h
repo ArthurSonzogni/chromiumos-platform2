@@ -33,6 +33,10 @@ namespace org::chromium {
 class PatchPanelProxyInterface;
 }  // namespace org::chromium
 
+namespace org::chromium {
+class SocketServiceProxyInterface;
+}  // namespace org::chromium
+
 namespace patchpanel {
 
 // Simple wrapper around patchpanel DBus API. All public functions are blocking
@@ -345,7 +349,6 @@ class BRILLO_EXPORT Client {
                               const DownstreamNetwork& downstream_network,
                               const std::vector<NetworkClientInfo>& clients)>;
   using ConfigureNetworkCallback = base::OnceCallback<void(bool success)>;
-  using TagSocketCallback = base::OnceCallback<void(bool)>;
 
   // Creates the instance with the system dbus object which is created
   // internally. The dbus object will shutdown at destruction.
@@ -357,7 +360,8 @@ class BRILLO_EXPORT Client {
   // Creates the instance by injecting the bus and proxy objects.
   static std::unique_ptr<Client> NewForTesting(
       scoped_refptr<dbus::Bus> bus,
-      std::unique_ptr<org::chromium::PatchPanelProxyInterface> proxy);
+      std::unique_ptr<org::chromium::PatchPanelProxyInterface> pp_proxy,
+      std::unique_ptr<org::chromium::SocketServiceProxyInterface> ss_proxy);
 
   static bool IsArcGuest(GuestType guest_type);
   static std::string TrafficSourceName(TrafficSource source);
@@ -523,9 +527,8 @@ class BRILLO_EXPORT Client {
                                 NetworkTechnology technology,
                                 ConfigureNetworkCallback callback) = 0;
 
-  // Sends a request to tag the socket pointed by |fd| for routing and other
-  // purposes. Returns true if the request was successfully sent, false
-  // otherwise. |callback| is ran after the request has completed.
+  // Tags the socket pointed by |fd| for routing and other purposes. Returns
+  // true if the socket was successfully tagged, false otherwise.
   // - |network_id|: if specified, binds the traffic of this socket to the
   //   corresponding network.
   // - |vpn_policy|: if specified, overrides the default VPN routing policy
@@ -535,11 +538,14 @@ class BRILLO_EXPORT Client {
   // As |fd| is a base::ScopedFD, the underlying file descriptor will be closed
   // once the request is sent. To avoid losing the effect of the call, the
   // caller needs to dup() the underlying file descriptor before the call.
-  virtual bool TagSocket(base::ScopedFD fd,
-                         std::optional<int> network_id,
-                         std::optional<VpnRoutingPolicy> vpn_policy,
-                         std::optional<TrafficAnnotation> traffic_annotation,
-                         TagSocketCallback callback) = 0;
+  //
+  // Note: TagSocket is a synchronous call to guarantee the tag is applied to
+  // the socket when this call returns.
+  virtual bool TagSocket(
+      base::ScopedFD fd,
+      std::optional<int> network_id,
+      std::optional<VpnRoutingPolicy> vpn_policy,
+      std::optional<TrafficAnnotation> traffic_annotation) = 0;
 
   // Prepares a socket tag with annotation |annotation| and attaches a callback
   // to |transport| to apply that socket tag annotation at connection

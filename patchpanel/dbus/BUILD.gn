@@ -33,6 +33,13 @@ generate_dbus_proxies("patchpanel_dbus_proxies") {
   dbus_service_config = "../dbus_bindings/patchpanel-dbus-service-config.json"
 }
 
+generate_dbus_proxies("socketservice_dbus_proxies") {
+  sources = [ "../dbus_bindings/org.chromium.socketservice.xml" ]
+  proxy_output_file = "include/socketservice/dbus-proxies.h"
+  dbus_service_config =
+      "../dbus_bindings/socketservice-dbus-service-config.json"
+}
+
 shared_library("libpatchpanel-client") {
   sources = [
     "../net_util.cc",
@@ -46,12 +53,18 @@ shared_library("libpatchpanel-client") {
     all_dependent_pkg_deps = [ "protobuf-lite" ]
   }
   libs = [ "system_api" ]
-  deps = [ ":patchpanel_dbus_proxies" ]
+  deps = [
+    ":patchpanel_dbus_proxies",
+    ":socketservice_dbus_proxies",
+  ]
 }
 
 if (use.fuzzer || use.test) {
   source_set("patchpanel_client_test_support") {
-    sources = [ "mock_patchpanel_proxy.cc" ]
+    sources = [
+      "mock_patchpanel_proxy.cc",
+      "mock_socketservice_proxy.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
