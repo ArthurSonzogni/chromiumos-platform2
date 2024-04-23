@@ -5,6 +5,7 @@
 use std::{
     fs,
     io::Write,
+    os::unix::fs::{chown, PermissionsExt},
     path::{Path, PathBuf},
     process::ExitCode,
 };
@@ -12,7 +13,7 @@ use std::{
 use anyhow::{bail, Context, Result};
 use libchromeos::{panic_handler, syslog};
 use log::{error, info};
-use nix::sys::reboot::reboot;
+use nix::sys::{reboot::reboot, stat::Mode};
 
 mod cgpt;
 mod chromeos_install;
@@ -27,6 +28,14 @@ const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEX_CONFIG_SRC_FILENAME: &str = "flex_config.json";
 const FLEX_CONFIG_TARGET_FILEPATH: &str = "unencrypted/flex_config/config.json";
 const FLEXOR_LOG_FILE: &str = "/var/log/messages";
+
+// User ID and Group ID for the oobe_config_restore user in ChromeOS.
+const OOBE_CFG_RESTORE_UID: u32 = 20121;
+const OOBE_CFG_RESTORE_GID: u32 = 20121;
+
+// File and folder permissions for the Flex config.
+const FLEX_CONFIG_DIR_PERM: u32 = 0o740;
+const FLEX_CONFIG_FILE_PERM: u32 = 0o640;
 
 // This struct contains all of the information commonly passed around
 // during an installation.
@@ -123,7 +132,7 @@ fn setup_flex_deploy_partition_and_install(config: &InstallConfig) -> Result<()>
 }
 
 /// Copies the flex config to stateful partition.
-fn copy_config_to_stateful(config: &InstallConfig) -> Result<()> {
+fn copy_flex_config_to_stateful(config: &InstallConfig) -> Result<()> {
     let stateful_mount = mount::Mount::mount_by_path(
         &libchromeos::disk::get_partition_device(
             &config.target_device,
@@ -136,13 +145,33 @@ fn copy_config_to_stateful(config: &InstallConfig) -> Result<()> {
     let config_path = stateful_mount
         .mount_path()
         .join(FLEX_CONFIG_TARGET_FILEPATH);
-    // Create all folders along the path and copy the file.
-    std::fs::create_dir_all(config_path.parent().unwrap())?;
+
+    // Create the new `flex_config` folder and copy the file.
+    nix::unistd::mkdir(
+        config_path.parent().unwrap(),
+        Mode::from_bits(FLEX_CONFIG_DIR_PERM).unwrap(),
+    )?;
     std::fs::copy(
         Path::new("root").join(FLEX_CONFIG_SRC_FILENAME),
-        config_path,
+        &config_path,
     )
     .context("Unable to copy config")?;
+
+    // Set correct owner for both the new `flex_config` folder and
+    // `config.json` file.
+    fn set_oobe_cfg_restore_owner(path: &Path) -> Result<()> {
+        chown(path, Some(OOBE_CFG_RESTORE_UID), Some(OOBE_CFG_RESTORE_GID)).context(format!(
+            "Unable to set correct owner for {}",
+            path.display()
+        ))
+    }
+    set_oobe_cfg_restore_owner(config_path.parent().unwrap())?;
+    set_oobe_cfg_restore_owner(&config_path)?;
+
+    // Set the correct file permissions for the config.
+    let mut perm = std::fs::metadata(&config_path)?.permissions();
+    perm.set_mode(FLEX_CONFIG_FILE_PERM);
+    std::fs::set_permissions(&config_path, perm)?;
 
     Ok(())
 }
@@ -158,16 +187,19 @@ fn perform_installation(config: &InstallConfig) -> Result<()> {
     info!("Trying to remove the flex deployment partition");
     disk::try_remove_thirteenth_partition(&config.target_device)?;
 
-    match copy_config_to_stateful(config) {
-        Ok(_) => {
-            info!("Successfully copied a flex config.");
-            Ok(())
-        }
-        Err(_) => {
-            info!("Unable to copy the flex config, still proceeding");
-            Ok(())
-        }
+    if matches!(
+        Path::new("root")
+            .join(FLEX_CONFIG_SRC_FILENAME)
+            .try_exists(),
+        Ok(true)
+    ) {
+        copy_flex_config_to_stateful(config)?;
+        info!("Successfully copied a flex config.");
+        return Ok(());
     }
+
+    info!("Didn't find a flex config to copy, still proceeding");
+    Ok(())
 }
 
 /// Installs ChromeOS Flex and retries the actual installation steps at most three times.
