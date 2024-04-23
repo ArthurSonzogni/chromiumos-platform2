@@ -2,19 +2,20 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
-
-# Library that provides core functionality for the cros_healthd daemon.
-pkg_config("libcros_healthd_pkg_deps") {
+executable("cros_healthd") {
+  sources = [ "main.cc" ]
   pkg_deps = [
-    "dbus-1",
-    "iioservice_ipc",
     "libbrillo",
     "libchrome",
-    "libmetrics",
     "libmojo",
-    "mojo_service_manager",
     "vboot_host",
+  ]
+  install_path = "bin"
+  assert_no_deps = [ "//diagnostics/cros_healthd/delegate/*" ]
+  deps = [
+    ":libcros_healthd",
+    "//diagnostics/cros_healthd/executor",
+    "//diagnostics/cros_healthd/minijail",
   ]
 }
 
@@ -26,48 +27,41 @@ source_set("libcros_healthd") {
     "event_aggregator.cc",
     "fetch_aggregator.cc",
   ]
-  configs += [ ":libcros_healthd_pkg_deps" ]
-  deps = [
-    "//diagnostics/base",
+  public_pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libmojo",
+    "mojo_service_manager",
+  ]
+  pkg_deps = [
+    "libmetrics",
+    "system_api",
+  ]
+  public_deps = [
     "//diagnostics/cros_healthd/events:libcros_healthd_events",
     "//diagnostics/cros_healthd/fetchers:libcros_healthd_fetchers",
     "//diagnostics/cros_healthd/routines",
     "//diagnostics/cros_healthd/system",
+    "//diagnostics/mojom/external:libnetwork_health_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+  ]
+  deps = [
+    "//diagnostics/base",
+    "//diagnostics/cros_healthd/utils",
     "//diagnostics/dbus_bindings",
     "//diagnostics/mojom:libmojom_utils",
     "//diagnostics/mojom/external:libcros_healthd_internal",
-    "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",
-    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
-  ]
-}
-
-executable("cros_healthd") {
-  sources = [ "main.cc" ]
-  configs += [ ":libcros_healthd_pkg_deps" ]
-  install_path = "bin"
-  assert_no_deps = [ "//diagnostics/cros_healthd/delegate/*" ]
-  deps = [
-    ":libcros_healthd",
-    "//diagnostics/cros_healthd/executor",
-    "//diagnostics/cros_healthd/minijail",
-    "//diagnostics/cros_healthd/system",
   ]
 }
 
 if (use.test) {
-  pkg_config("cros_healthd_test_pkg_deps") {
-    pkg_deps = [
-      "iioservice_ipc",
-      "libchrome",
-      "libchrome-test",
-      "mojo_service_manager",
-    ]
-  }
-
   executable("cros_healthd_test") {
     run_test = true
     sources = [ "cros_healthd_diagnostics_service_test.cc" ]
-    configs += [ ":cros_healthd_test_pkg_deps" ]
+    pkg_deps = [
+      "libchrome-test",
+      "libmojo",
+    ]
     deps = [
       ":libcros_healthd",
       "//diagnostics/base",
@@ -84,6 +78,7 @@ if (use.test) {
       "//diagnostics/cros_healthd/fetchers:libcros_healthd_fetchers_test",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/routines:routine_test",
+      "//diagnostics/cros_healthd/routines:utils",
       "//diagnostics/cros_healthd/routines/android_network:android_network_test",
       "//diagnostics/cros_healthd/routines/audio:audio_test",
       "//diagnostics/cros_healthd/routines/battery_and_power:battery_and_power_test",
