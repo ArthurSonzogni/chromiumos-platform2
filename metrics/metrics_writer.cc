@@ -23,6 +23,8 @@ SynchronousMetricsWriter::SynchronousMetricsWriter(
     base::FilePath uma_events_dir)
     : avoid_blocking_(avoid_blocking),
       uma_events_file_(std::move(uma_events_file)),
+      // Set |uma_events_dir_| to `/run/early-metrics` if
+      // recording metrics before the stateful partition is mounted.
       uma_events_dir_(std::move(uma_events_dir)) {}
 
 bool SynchronousMetricsWriter::WriteMetrics(

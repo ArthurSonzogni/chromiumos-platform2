@@ -7,7 +7,6 @@
 
 #include <optional>
 #include <string>
-#include <utility>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -606,9 +605,14 @@ int main(int argc, char* argv[]) {
 
   // Use a nonblocking writer to prevent deadlocking if the crashed process was
   // holding the metrics file lock.
+  // FLAGS_early is used to determine the target directory to capture metrics.
+  // Metrics recorded before the stateful partition is mounted are
+  // written to the /run/early-metrics directory.
+  base::FilePath metrics_dir = FLAGS_early ? base::FilePath(kUMAEarlyEventsDir)
+                                           : base::FilePath(kUMAEventsDir);
   scoped_refptr<SynchronousMetricsWriter> metrics_writer =
       base::MakeRefCounted<SynchronousMetricsWriter>(
-          /*avoid_blocking=*/true);
+          /*avoid_blocking=*/true, base::FilePath(kUMAEventsPath), metrics_dir);
   // Used for consent verification and metrics reporting.
   scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
       metrics_lib = base::MakeRefCounted<

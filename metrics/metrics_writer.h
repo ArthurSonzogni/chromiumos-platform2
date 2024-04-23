@@ -17,6 +17,7 @@
 
 inline constexpr char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
 inline constexpr char kUMAEventsDir[] = "/var/lib/metrics/uma-events.d";
+inline constexpr char kUMAEarlyEventsDir[] = "/run/early-metrics";
 
 // Logs UMA metrics to metrics file.
 class MetricsWriter : public base::RefCountedThreadSafe<MetricsWriter> {
@@ -68,6 +69,7 @@ class SynchronousMetricsWriter : public MetricsWriter {
 
   // Whether to use a per-PID file when calling `WriteMetrics()`.
   bool avoid_blocking_;
+
   base::FilePath uma_events_file_;
   base::FilePath uma_events_dir_;
 };
