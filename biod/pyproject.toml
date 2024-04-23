@@ -17,3 +17,9 @@ typeCheckingMode = "strict"
 # Please run ./study/python-venv-setup.sh to create this virtual environment.
 venvPath = "study"
 venv = ".venv"
+
+[tool.black]
+# Copied from ~/chromiumos/chromite/pyproject.toml, since we can't include that
+# config file from within our own.
+line-length = 80
+target-version = ['py38']
