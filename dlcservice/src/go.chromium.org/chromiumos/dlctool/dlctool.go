@@ -13,6 +13,8 @@ import (
 	"os"
 	"os/exec"
 	"path"
+
+	"go.chromium.org/chromiumos/dlclib"
 )
 
 const (
@@ -224,6 +226,7 @@ func unpackDlc(id, path *string) error {
 }
 
 func main() {
+	dlclib.Init()
 	initFlags()
 
 	args := flag.Args()
