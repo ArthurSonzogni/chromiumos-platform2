@@ -80,16 +80,16 @@ class EncryptedFsTest : public ::testing::Test {
         /* metrics */ nullptr);
 
     encrypted_fs_ = std::make_unique<EncryptedFs>(
-        base::FilePath("/"), 3UL * 1024 * 1024 * 1024, dmcrypt_name_,
+        rootdir_, statefulmnt_, 3UL * 1024 * 1024 * 1024, dmcrypt_name_,
         std::move(ext4_container), &platform_, &device_mapper_);
   }
   ~EncryptedFsTest() override = default;
 
   void SetUp() override {
+    ASSERT_TRUE(platform_.CreateDirectory(statefulmnt_));
+    ASSERT_TRUE(platform_.CreateDirectory(rootdir_.Append("var")));
     ASSERT_TRUE(
-        platform_.CreateDirectory(base::FilePath("/mnt/stateful_partition/")));
-    ASSERT_TRUE(platform_.CreateDirectory(base::FilePath("/var")));
-    ASSERT_TRUE(platform_.CreateDirectory(base::FilePath("/home/chronos")));
+        platform_.CreateDirectory(rootdir_.Append("home").Append("chronos")));
   }
 
   void ExpectSetup() {
@@ -119,6 +119,8 @@ class EncryptedFsTest : public ::testing::Test {
   libstorage::StorageContainerConfig config_;
 
   NiceMock<libstorage::MockPlatform> platform_;
+  base::FilePath rootdir_{"/"};
+  base::FilePath statefulmnt_{"/stateful_test"};
   libstorage::FakeKeyring keyring_;
   brillo::DeviceMapper device_mapper_;
   libstorage::FakeBackingDeviceFactory fake_backing_device_factory_;

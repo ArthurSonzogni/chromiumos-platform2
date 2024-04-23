@@ -70,7 +70,8 @@ int main(int argc, const char* argv[]) {
       &platform, init_metrics::InitMetrics::GetInternal());
   brillo::DeviceMapper device_mapper;
   auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
-      rootdir, &platform, &device_mapper, &storage_container_factory);
+      rootdir, rootdir.Append("mnt/stateful_partition"), &platform,
+      &device_mapper, &storage_container_factory);
 
   auto tpm_system_key = encryption::TpmSystemKey(
       &platform, init_metrics::InitMetrics::Get(), rootdir);

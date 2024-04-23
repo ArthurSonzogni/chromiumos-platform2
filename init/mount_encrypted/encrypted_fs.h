@@ -21,9 +21,6 @@
 #include <libstorage/storage_container/storage_container.h>
 #include <libstorage/storage_container/storage_container_factory.h>
 
-#define STATEFUL_MNT "mnt/stateful_partition"
-#define ENCRYPTED_MNT STATEFUL_MNT "/encrypted"
-
 namespace mount_encrypted {
 
 // Teardown stage: for granular teardowns
@@ -52,6 +49,7 @@ class EncryptedFs {
  public:
   // Set up the encrypted filesystem..
   EncryptedFs(const base::FilePath& rootdir,
+              const base::FilePath& statefulmnt,
               uint64_t fs_size,
               const std::string& dmcrypt_name,
               std::unique_ptr<libstorage::StorageContainer> container,
@@ -61,6 +59,7 @@ class EncryptedFs {
 
   static std::unique_ptr<EncryptedFs> Generate(
       const base::FilePath& rootdir,
+      const base::FilePath& statefulmnt,
       libstorage::Platform* platform,
       brillo::DeviceMapper* device_mapper,
       libstorage::StorageContainerFactory* storage_container_factory);

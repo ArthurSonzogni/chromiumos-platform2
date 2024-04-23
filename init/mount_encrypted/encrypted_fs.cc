@@ -102,6 +102,7 @@ std::string GetMountOpts() {
 
 EncryptedFs::EncryptedFs(
     const base::FilePath& rootdir,
+    const base::FilePath& statefulmnt,
     uint64_t fs_size,
     const std::string& dmcrypt_name,
     std::unique_ptr<libstorage::StorageContainer> container,
@@ -110,32 +111,32 @@ EncryptedFs::EncryptedFs(
     : rootdir_(rootdir),
       fs_size_(fs_size),
       dmcrypt_name_(dmcrypt_name),
-      stateful_mount_(rootdir_.Append(STATEFUL_MNT)),
+      stateful_mount_(statefulmnt),
       dmcrypt_dev_(base::FilePath(kDevMapperPath).Append(dmcrypt_name_)),
-      encrypted_mount_(rootdir_.Append(ENCRYPTED_MNT)),
+      encrypted_mount_(stateful_mount_.Append("encrypted")),
       platform_(platform),
       device_mapper_(device_mapper),
       container_(std::move(container)),
       bind_mounts_(
-          {{rootdir_.Append(ENCRYPTED_MNT "/var"), rootdir_.Append("var"),
+          {{encrypted_mount_.Append("var"), rootdir_.Append("var"),
             libstorage::kRootUid, libstorage::kRootGid,
             S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, false},
-           {rootdir_.Append(ENCRYPTED_MNT "/chronos"),
-            rootdir_.Append("home/chronos"), libstorage::kChronosUid,
-            libstorage::kChronosGid,
+           {encrypted_mount_.Append("chronos"), rootdir_.Append("home/chronos"),
+            libstorage::kChronosUid, libstorage::kChronosGid,
             S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH, true}}) {}
 
 // static
 std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
     const base::FilePath& rootdir,
+    const base::FilePath& statefulmnt,
     libstorage::Platform* platform,
     brillo::DeviceMapper* device_mapper,
     libstorage::StorageContainerFactory* storage_container_factory) {
   // Calculate the maximum size of the encrypted stateful partition.
   // truncate()/ftruncate() use int64_t for file size.
   struct statvfs stateful_statbuf;
-  if (!platform->StatVFS(rootdir.Append(STATEFUL_MNT), &stateful_statbuf)) {
-    PLOG(ERROR) << "stat() failed on: " << rootdir.Append(STATEFUL_MNT);
+  if (!platform->StatVFS(statefulmnt, &stateful_statbuf)) {
+    PLOG(ERROR) << "stat() failed on: " << statefulmnt;
     return nullptr;
   }
 
@@ -154,8 +155,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
   // Initialize the encrypted container.
   libstorage::BackingDeviceConfig backing_device_config;
 
-  base::FilePath sparse_backing_file =
-      rootdir.Append(STATEFUL_MNT "/encrypted.block");
+  base::FilePath sparse_backing_file = statefulmnt.Append("encrypted.block");
 
   base::FilePath stateful_device = platform->GetStatefulDevice();
 
@@ -173,9 +173,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
         .type = libstorage::BackingDeviceType::kLoopbackDevice,
         .name = dmcrypt_name,
         .size = fs_bytes_max,
-        .loopback = {.backing_file_path =
-                         rootdir.Append(STATEFUL_MNT "/encrypted.block")}};
-
+        .loopback = {.backing_file_path = sparse_backing_file}};
   } else {
     brillo::LogicalVolumeManager* lvm = platform->GetLogicalVolumeManager();
     brillo::PhysicalVolume pv(stateful_device,
@@ -223,9 +221,9 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
           container_config, libstorage::StorageContainerType::kExt4,
           key_reference);
 
-  return std::make_unique<EncryptedFs>(rootdir, fs_bytes_max, dmcrypt_name,
-                                       std::move(container), platform,
-                                       device_mapper);
+  return std::make_unique<EncryptedFs>(rootdir, statefulmnt, fs_bytes_max,
+                                       dmcrypt_name, std::move(container),
+                                       platform, device_mapper);
 }
 
 bool EncryptedFs::Purge() {
