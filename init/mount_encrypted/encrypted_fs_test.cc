@@ -39,7 +39,6 @@ class EncryptedFsTest : public ::testing::Test {
   EncryptedFsTest()
       : dmcrypt_name_("encstateful"),
         dmcrypt_device_(base::FilePath("/dev/mapper/encstateful")),
-        mount_point_(base::FilePath("/mnt/stateful_partition/encrypted")),
         config_(
             {.filesystem_config =
                  {
@@ -117,7 +116,6 @@ class EncryptedFsTest : public ::testing::Test {
  protected:
   const std::string dmcrypt_name_;
   const base::FilePath dmcrypt_device_;
-  const base::FilePath mount_point_;
   libstorage::StorageContainerConfig config_;
 
   NiceMock<libstorage::MockPlatform> platform_;

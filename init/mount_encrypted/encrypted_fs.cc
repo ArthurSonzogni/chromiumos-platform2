@@ -111,7 +111,6 @@ EncryptedFs::EncryptedFs(
       fs_size_(fs_size),
       dmcrypt_name_(dmcrypt_name),
       stateful_mount_(rootdir_.Append(STATEFUL_MNT)),
-      block_path_(stateful_mount_.Append("encrypted.block")),
       dmcrypt_dev_(base::FilePath(kDevMapperPath).Append(dmcrypt_name_)),
       encrypted_mount_(rootdir_.Append(ENCRYPTED_MNT)),
       platform_(platform),
@@ -419,7 +418,6 @@ bool EncryptedFs::CheckStates() {
 bool EncryptedFs::ReportInfo() const {
   printf("rootdir: %s\n", rootdir_.value().c_str());
   printf("stateful_mount: %s\n", stateful_mount_.value().c_str());
-  printf("block_path: %s\n", block_path_.value().c_str());
   printf("encrypted_mount: %s\n", encrypted_mount_.value().c_str());
   printf("dmcrypt_name: %s\n", dmcrypt_name_.c_str());
   printf("dmcrypt_dev: %s\n", dmcrypt_dev_.value().c_str());

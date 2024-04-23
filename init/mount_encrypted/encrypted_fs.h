@@ -111,7 +111,6 @@ class EncryptedFs {
 
   // File paths used by encrypted stateful.
   const base::FilePath stateful_mount_;
-  const base::FilePath block_path_;
   const base::FilePath dmcrypt_dev_;
   const base::FilePath encrypted_mount_;
 
