@@ -2,18 +2,16 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/pkg_config.gni")
-
-pkg_config("routines_pkg_config") {
-  pkg_deps = [
+source_set("routines") {
+  sources = [
+    "cros_healthd_routine_factory_impl.cc",
+    "routine_service.cc",
+  ]
+  public_pkg_deps = [
     "libchrome",
     "libmojo",
-    "mojo_service_manager",
   ]
-}
-
-source_set("routines") {
-  sources = [ "cros_healthd_routine_factory_impl.cc" ]
+  public_deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
   deps = [
     ":utils",
     "//diagnostics/cros_healthd/routines/android_network",
@@ -30,6 +28,7 @@ source_set("routines") {
     "//diagnostics/cros_healthd/routines/privacy_screen",
     "//diagnostics/cros_healthd/routines/sensor",
     "//diagnostics/cros_healthd/routines/storage",
+    "//diagnostics/cros_healthd/system",
   ]
 }
 
@@ -40,10 +39,12 @@ source_set("utils") {
     "interactive_routine_control.cc",
     "noninteractive_routine_control.cc",
     "routine_adapter.cc",
-    "routine_service.cc",
     "simple_routine.cc",
   ]
-  configs += [ ":routines_pkg_config" ]
+  public_pkg_deps = [
+    "libchrome",
+    "libmojo",
+  ]
   public_deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
   deps = [
     "//diagnostics/base",
@@ -60,10 +61,17 @@ if (use.test) {
       "routine_v2_test_utils.cc",
     ]
     configs += [ "//common-mk:test" ]
-    deps = [
-      "//diagnostics/base",
+    public_pkg_deps = [
+      "libchrome",
+      "libmojo",
+    ]
+    pkg_deps = [ "libchrome-test" ]
+    public_deps = [
+      ":routines",
+      ":utils",
       "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
+    deps = [ "//diagnostics/base" ]
   }
 
   source_set("routine_test") {
@@ -76,13 +84,18 @@ if (use.test) {
       "routine_v2_test_utils_test.cc",
       "simple_routine_test.cc",
     ]
-    configs += [ ":routines_pkg_config" ]
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+      "libmojo",
+    ]
     deps = [
       ":libroutine_test_utils",
       ":routines",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/system:test_support",
+      "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
   }
 }

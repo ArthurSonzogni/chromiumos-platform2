@@ -48,6 +48,7 @@ if (use.test) {
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/executor/utils:test_support",
+      "//diagnostics/cros_healthd/routines",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/system:test_support",
     ]
