@@ -38,8 +38,8 @@ string ICMPTool::TestICMPWithOptions(const string& host,
   p.SetSeccompFilterPolicyFile(kSeccompPolicy);
   p.SetCapabilities(kCapabilities);
   p.set_separate_stderr(true);
-  // "--ambient" is required to allow the subprocess ("/bin/ping" in this case)
-  // to inherit capabilities.
+  // "--ambient" is required to allow the subprocess ("/usr/bin/ping" in this
+  // case) to inherit capabilities.
   if (!p.Init(/*minijail_extra_args=*/{"--ambient"}))
     return "<can't create process>";
   p.AddArg(path);

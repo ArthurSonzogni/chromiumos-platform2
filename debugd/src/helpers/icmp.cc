@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
   string ttl_out = ttl ? StringPrintf("-t %d", ttl) : "";
   string timeout_out = timeout ? StringPrintf("-W %d", timeout) : "";
   string command =
-      StringPrintf("/bin/ping -c %d -w 10 -n %s %s %s %s %s", count,
+      StringPrintf("/usr/bin/ping -c %d -w 10 -n %s %s %s %s %s", count,
                    ttl_out.c_str(), size_out.c_str(), interface_out.c_str(),
                    timeout_out.c_str(), ip_addr.c_str());
 

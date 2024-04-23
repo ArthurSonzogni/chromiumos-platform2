@@ -20,8 +20,8 @@ namespace {
 
 const char kSetuidHack[] =
     "/usr/libexec/debugd/helpers/minijail-setuid-hack.sh";
-const char kPing[] = "/bin/ping";
-const char kPing6[] = "/bin/ping6";
+const char kPing[] = "/usr/bin/ping";
+const char kPing6[] = "/usr/bin/ping6";
 
 const char kPingToolErrorString[] = "org.chromium.debugd.error.Ping";
 
