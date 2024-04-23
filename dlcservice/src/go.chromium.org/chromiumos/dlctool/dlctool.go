@@ -18,12 +18,6 @@ import (
 )
 
 const (
-	dlcPreloadPath             = "/var/cache/dlc-images"
-	dlcserviceMetadataUtilPath = "/usr/bin/dlc_metadata_util"
-	dlcserviceUtilPath         = "/usr/bin/dlcservice_util"
-	dlctoolShellPath           = "/usr/local/bin/dlctool-shell"
-	dlcImageFile               = "dlc.img"
-
 	unsquashfsPath = "/usr/bin/unsquashfs"
 )
 
@@ -56,8 +50,8 @@ func initFlags() {
 
 func dlctoolShell(args []string) {
 	cmd := &exec.Cmd{
-		Path:   dlctoolShellPath,
-		Args:   append([]string{dlctoolShellPath}, args...),
+		Path:   dlclib.ToolShellPath,
+		Args:   append([]string{dlclib.ToolShellPath}, args...),
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 		Env:    os.Environ(),
@@ -69,16 +63,16 @@ func dlctoolShell(args []string) {
 
 func readState(id *string) ([]byte, error) {
 	cmd := &exec.Cmd{
-		Path: dlcserviceUtilPath,
-		Args: append([]string{dlcserviceUtilPath}, "--dlc_state", "--id="+*id),
+		Path: dlclib.UtilPath,
+		Args: append([]string{dlclib.UtilPath}, "--dlc_state", "--id="+*id),
 	}
 	return cmd.Output()
 }
 
 func readMetadata(id *string) ([]byte, error) {
 	cmd := &exec.Cmd{
-		Path: dlcserviceMetadataUtilPath,
-		Args: append([]string{dlcserviceMetadataUtilPath}, "--get", "--id="+*id),
+		Path: dlclib.MetadataUtilPath,
+		Args: append([]string{dlclib.MetadataUtilPath}, "--get", "--id="+*id),
 	}
 	return cmd.Output()
 }
@@ -102,7 +96,7 @@ func isDlcInstalled(id *string) bool {
 }
 
 func isDlcPreloadable(id *string) bool {
-	_, err := os.Stat(path.Join(dlcPreloadPath, *id, "package", dlcImageFile))
+	_, err := os.Stat(path.Join(dlclib.PreloadPath, *id, "package", dlclib.ImageFile))
 	return !os.IsNotExist(err)
 }
 
@@ -166,8 +160,8 @@ func getDlcImagePath(id *string) string {
 
 func installDlc(id *string) error {
 	cmd := &exec.Cmd{
-		Path: dlcserviceUtilPath,
-		Args: append([]string{dlcserviceUtilPath}, "--install", "--id="+*id),
+		Path: dlclib.UtilPath,
+		Args: append([]string{dlclib.UtilPath}, "--install", "--id="+*id),
 	}
 	return cmd.Run()
 }
