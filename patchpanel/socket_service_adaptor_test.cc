@@ -17,7 +17,7 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <patchpanel/proto_bindings/traffic_annotation.pb.h>
 
-#include "patchpanel/routing_service.h"
+#include "patchpanel/mock_routing_service.h"
 
 using testing::_;
 using testing::Ge;
@@ -25,17 +25,6 @@ using testing::Return;
 
 namespace patchpanel {
 namespace {
-
-class MockRoutingService : public RoutingService {
- public:
-  MOCK_METHOD(bool,
-              TagSocket,
-              (int,
-               std::optional<int>,
-               VPNRoutingPolicy,
-               std::optional<TrafficAnnotationId>),
-              (override));
-};
 
 class SocketServiceAdaptorTest : public testing::Test {
  public:

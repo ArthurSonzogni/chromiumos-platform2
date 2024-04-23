@@ -147,7 +147,7 @@ class GuestIPv6Service {
   SubprocessController* nd_proxy_;
   // Routing and iptables controller service. Owned by Manager.
   Datapath* datapath_;
-  // Owned by Manager
+  // Owned by PatchpanelDaemon.
   System* system_;
 
   bool StartRadvd(const std::string& ifname);

@@ -66,6 +66,7 @@ class SubprocessController {
   base::RepeatingCallback<void(const FeedbackMessage&)> feedback_handler_;
 
   // Used to create the subprocess and watch the subprocess exited unexpectedly.
+  // Owned by PatchpanelDaemon.
   System* system_;
   // The singleton instance which is used to create the subprocess and watch the
   // subprocess exited unexpectedly.

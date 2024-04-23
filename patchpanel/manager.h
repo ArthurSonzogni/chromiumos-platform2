@@ -246,7 +246,7 @@ class Manager : public ForwardingService {
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);
 
-  // Owned by PatchpanelDaemon.
+  // patchpanel::System shared for all subsystems, owned by PatchpanelDaemon.
   System* system_;
 
   // UMA metrics client. Owned by PatchpanelDaemon.

@@ -127,7 +127,7 @@ class ClatServiceTest : public ::testing::Test {
   MockDatapath datapath_ = MockDatapath();
   net_base::MockProcessManager process_manager_ =
       net_base::MockProcessManager();
-  FakeSystem system_ = FakeSystem();
+  FakeSystem system_;
   std::unique_ptr<ClatServiceUnderTest> target_;
 };
 

@@ -4,14 +4,26 @@
 
 #include "patchpanel/routing_service.h"
 
+#include <sys/socket.h>
+
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <set>
 #include <sstream>
+#include <utility>
 
+#include <base/files/scoped_file.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/cxx23_to_underlying.h>
 #include <gtest/gtest.h>
+
+#include "patchpanel/fake_system.h"
+#include "patchpanel/mock_lifeline_fd_service.h"
+#include "patchpanel/system.h"
+
+using testing::Return;
+using testing::WithArgs;
 
 namespace patchpanel {
 namespace {
@@ -43,9 +55,14 @@ Fwmark fwmark(uint32_t fwmark) {
   return {.fwmark = fwmark};
 }
 
+base::ScopedFD MakeTestSocket() {
+  return base::ScopedFD(socket(AF_INET, SOCK_DGRAM, 0));
+}
+
 class TestableRoutingService : public RoutingService {
  public:
-  TestableRoutingService() = default;
+  TestableRoutingService(System* system, LifelineFDService* lifeline_fd_svc)
+      : RoutingService(system, lifeline_fd_svc) {}
   ~TestableRoutingService() = default;
 
   int GetSockopt(int sockfd,
@@ -88,7 +105,17 @@ class RoutingServiceTest : public testing::Test {
   RoutingServiceTest() = default;
 
  protected:
-  void SetUp() override {}
+  void SetUp() override {
+    ON_CALL(lifeline_fd_svc_, AddLifelineFD)
+        .WillByDefault(
+
+            WithArgs<1>([](base::OnceClosure cb) {
+              return base::ScopedClosureRunner(base::DoNothing());
+            }));
+  }
+
+  FakeSystem system_;
+  MockLifelineFDService lifeline_fd_svc_;
 };
 
 }  // namespace
@@ -194,13 +221,20 @@ TEST_F(RoutingServiceTest, FwmarkQoSCategories) {
 }
 
 TEST_F(RoutingServiceTest, TagSocket) {
-  auto svc = std::make_unique<TestableRoutingService>();
+  ON_CALL(system_, IfNametoindex("eth0")).WillByDefault(Return(1));
+  ON_CALL(system_, IfNametoindex("eth1")).WillByDefault(Return(2));
+  ON_CALL(system_, IfNametoindex("eth2")).WillByDefault(Return(3));
+
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
   svc->getsockopt_ret = 0;
   svc->setsockopt_ret = 0;
+  svc->AssignInterfaceToNetwork(1, "eth0", MakeTestSocket());
+  svc->AssignInterfaceToNetwork(34567, "eth1", MakeTestSocket());
+  svc->AssignInterfaceToNetwork(12, "eth2", MakeTestSocket());
 
   using Policy = VPNRoutingPolicy;
   struct {
-    // TODO(b/322083502): This is interface index now.
     std::optional<int> network_id;
     Policy policy;
     std::optional<TrafficAnnotationId> annotation_id;
@@ -212,13 +246,13 @@ TEST_F(RoutingServiceTest, TagSocket) {
       {std::nullopt, Policy::kRouteOnVPN, std::nullopt, 0x1, 0x00008001},
       {1, Policy::kBypassVPN, std::nullopt, 0xabcd00ef, 0x03e940ef},
       {std::nullopt, Policy::kRouteOnVPN, std::nullopt, 0x11223344, 0x0000b344},
-      {34567, Policy::kBypassVPN, std::nullopt, 0x11223344, 0x8aef7344},
+      {34567, Policy::kBypassVPN, std::nullopt, 0x11223344, 0x03ea7344},
       {std::nullopt, Policy::kRouteOnVPN, std::nullopt, 0x00008000, 0x00008000},
       {std::nullopt, Policy::kBypassVPN, std::nullopt, 0x00004000, 0x00004000},
       {std::nullopt, Policy::kBypassVPN, std::nullopt, 0x00008000, 0x00004000},
       {std::nullopt, Policy::kRouteOnVPN, std::nullopt, 0x00004000, 0x00008000},
       {1, Policy::kDefault, std::nullopt, 0x00008000, 0x03e90000},
-      {12, Policy::kDefault, std::nullopt, 0x00004000, 0x03f40000},
+      {12, Policy::kDefault, std::nullopt, 0x00004000, 0x03eb0000},
   };
 
   for (const auto& tt : testcases) {
@@ -248,7 +282,8 @@ TEST_F(RoutingServiceTest, TagSocket) {
 }
 
 TEST_F(RoutingServiceTest, SetFwmark) {
-  auto svc = std::make_unique<TestableRoutingService>();
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
   svc->getsockopt_ret = 0;
   svc->setsockopt_ret = 0;
 
@@ -278,17 +313,18 @@ TEST_F(RoutingServiceTest, SetFwmark) {
 }
 
 TEST_F(RoutingServiceTest, SetFwmark_Failures) {
-  auto svc = std::make_unique<TestableRoutingService>();
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
   svc->getsockopt_ret = -1;
   svc->setsockopt_ret = 0;
   EXPECT_FALSE(svc->SetFwmark(4, fwmark(0x1), fwmark(0x01)));
 
-  svc = std::make_unique<TestableRoutingService>();
+  svc = std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
   svc->getsockopt_ret = 0;
   svc->setsockopt_ret = -1;
   EXPECT_FALSE(svc->SetFwmark(5, fwmark(0x1), fwmark(0x01)));
 
-  svc = std::make_unique<TestableRoutingService>();
+  svc = std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
   svc->getsockopt_ret = 0;
   svc->setsockopt_ret = 0;
   EXPECT_TRUE(svc->SetFwmark(6, fwmark(0x1), fwmark(0x01)));
@@ -317,6 +353,156 @@ TEST_F(RoutingServiceTest, LocalSourceSpecsPrettyPrinting) {
     stream << tt.source;
     EXPECT_EQ(tt.expected_output, stream.str());
   }
+}
+
+TEST_F(RoutingServiceTest, AllocateNetworkIDs) {
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
+  std::set<int> net_ids;
+  for (int i = 0; i < 100; i++) {
+    int id = svc->AllocateNetworkID();
+    ASSERT_FALSE(net_ids.contains(id));
+    net_ids.insert(id);
+  }
+}
+
+TEST_F(RoutingServiceTest, AssignInterfaceToNetwork) {
+  ON_CALL(system_, IfNametoindex("wlan0")).WillByDefault(Return(12));
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
+  int network1 = svc->AllocateNetworkID();
+
+  ASSERT_TRUE(
+      svc->AssignInterfaceToNetwork(network1, "wlan0", MakeTestSocket()));
+  ASSERT_EQ("wlan0", *svc->GetInterface(network1));
+  ASSERT_EQ(Fwmark{.rt_table_id = 1012}, svc->GetRoutingFwmark(network1));
+  ASSERT_EQ(network1, svc->GetNetworkID("wlan0"));
+}
+
+TEST_F(RoutingServiceTest, AssignInterfaceToMultipleNetworks) {
+  ON_CALL(system_, IfNametoindex("wlan0")).WillByDefault(Return(12));
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
+  int network1 = svc->AllocateNetworkID();
+  int network2 = svc->AllocateNetworkID();
+
+  ASSERT_TRUE(
+      svc->AssignInterfaceToNetwork(network1, "wlan0", MakeTestSocket()));
+  ASSERT_FALSE(
+      svc->AssignInterfaceToNetwork(network2, "wlan0", MakeTestSocket()));
+  ASSERT_EQ("wlan0", *svc->GetInterface(network1));
+  ASSERT_EQ(Fwmark{.rt_table_id = 1012}, svc->GetRoutingFwmark(network1));
+  ASSERT_EQ(network1, svc->GetNetworkID("wlan0"));
+  ASSERT_EQ(nullptr, svc->GetInterface(network2));
+  ASSERT_EQ(std::nullopt, svc->GetRoutingFwmark(network2));
+}
+
+TEST_F(RoutingServiceTest, AssignMultipleInterfacesToNetwork) {
+  ON_CALL(system_, IfNametoindex("wlan0")).WillByDefault(Return(12));
+  ON_CALL(system_, IfNametoindex("eth0")).WillByDefault(Return(13));
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
+  int network1 = svc->AllocateNetworkID();
+
+  ASSERT_TRUE(
+      svc->AssignInterfaceToNetwork(network1, "wlan0", MakeTestSocket()));
+  ASSERT_FALSE(
+      svc->AssignInterfaceToNetwork(network1, "eth0", MakeTestSocket()));
+  ASSERT_EQ("wlan0", *svc->GetInterface(network1));
+  ASSERT_EQ(Fwmark{.rt_table_id = 1012}, svc->GetRoutingFwmark(network1));
+  ASSERT_EQ(network1, svc->GetNetworkID("wlan0"));
+  ASSERT_EQ(std::nullopt, svc->GetNetworkID("eth0"));
+}
+
+TEST_F(RoutingServiceTest, ReassignDifferentInterfacesToNetwork) {
+  ON_CALL(system_, IfNametoindex("wlan0")).WillByDefault(Return(12));
+  ON_CALL(system_, IfNametoindex("eth0")).WillByDefault(Return(13));
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
+  int network1 = svc->AllocateNetworkID();
+
+  ASSERT_TRUE(
+      svc->AssignInterfaceToNetwork(network1, "wlan0", MakeTestSocket()));
+  ASSERT_EQ("wlan0", *svc->GetInterface(network1));
+  ASSERT_EQ(Fwmark{.rt_table_id = 1012}, svc->GetRoutingFwmark(network1));
+  ASSERT_EQ(network1, svc->GetNetworkID("wlan0"));
+
+  svc->ForgetNetworkID(network1);
+  ASSERT_EQ(nullptr, svc->GetInterface(network1));
+  ASSERT_EQ(std::nullopt, svc->GetNetworkID("wlan0"));
+
+  ASSERT_TRUE(
+      svc->AssignInterfaceToNetwork(network1, "eth0", MakeTestSocket()));
+  ASSERT_EQ("eth0", *svc->GetInterface(network1));
+  ASSERT_EQ(Fwmark{.rt_table_id = 1013}, svc->GetRoutingFwmark(network1));
+  ASSERT_EQ(std::nullopt, svc->GetNetworkID("wlan0"));
+  ASSERT_EQ(1, svc->GetNetworkID("eth0"));
+}
+
+TEST_F(RoutingServiceTest, ReassignInterfaceToDifferentNetworks) {
+  ON_CALL(system_, IfNametoindex("wlan0")).WillByDefault(Return(12));
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
+
+  int network1 = svc->AllocateNetworkID();
+  ASSERT_TRUE(
+      svc->AssignInterfaceToNetwork(network1, "wlan0", MakeTestSocket()));
+  ASSERT_EQ("wlan0", *svc->GetInterface(network1));
+  ASSERT_EQ(Fwmark{.rt_table_id = 1012}, svc->GetRoutingFwmark(network1));
+  ASSERT_EQ(network1, svc->GetNetworkID("wlan0"));
+
+  svc->ForgetNetworkID(network1);
+  ASSERT_EQ(nullptr, svc->GetInterface(network1));
+  ASSERT_EQ(std::nullopt, svc->GetRoutingFwmark(network1));
+  ASSERT_EQ(std::nullopt, svc->GetNetworkID("wlan0"));
+
+  int network2 = svc->AllocateNetworkID();
+  ASSERT_TRUE(
+      svc->AssignInterfaceToNetwork(network2, "wlan0", MakeTestSocket()));
+  ASSERT_EQ("wlan0", *svc->GetInterface(network2));
+  ASSERT_EQ(Fwmark{.rt_table_id = 1012}, svc->GetRoutingFwmark(network2));
+  ASSERT_EQ(network2, svc->GetNetworkID("wlan0"));
+  ASSERT_EQ(nullptr, svc->GetInterface(network1));
+  ASSERT_EQ(std::nullopt, svc->GetRoutingFwmark(network1));
+}
+
+TEST_F(RoutingServiceTest, AssignUnknownInterfaceToNetwork) {
+  ON_CALL(system_, IfNametoindex("wlan0")).WillByDefault(Return(-1));
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
+  int network1 = svc->AllocateNetworkID();
+
+  ASSERT_TRUE(
+      svc->AssignInterfaceToNetwork(network1, "wlan0", MakeTestSocket()));
+  ASSERT_EQ("wlan0", *svc->GetInterface(network1));
+  ASSERT_EQ(std::nullopt, svc->GetRoutingFwmark(network1));
+  ASSERT_EQ(network1, svc->GetNetworkID("wlan0"));
+}
+
+TEST_F(RoutingServiceTest, NetworkAssignmentAutomaticCleanup) {
+  ON_CALL(system_, IfNametoindex("wlan0")).WillByDefault(Return(-1));
+  auto svc =
+      std::make_unique<TestableRoutingService>(&system_, &lifeline_fd_svc_);
+
+  int network1 = svc->AllocateNetworkID();
+  base::OnceClosure on_lifeline_fd_event;
+  EXPECT_CALL(lifeline_fd_svc_, AddLifelineFD)
+      .WillOnce(WithArgs<1>([&](base::OnceClosure cb) {
+        on_lifeline_fd_event = std::move(cb);
+        return base::ScopedClosureRunner(base::DoNothing());
+      }));
+
+  ASSERT_TRUE(
+      svc->AssignInterfaceToNetwork(network1, "wlan0", MakeTestSocket()));
+  ASSERT_EQ("wlan0", *svc->GetInterface(network1));
+  ASSERT_EQ(std::nullopt, svc->GetRoutingFwmark(network1));
+  ASSERT_EQ(network1, svc->GetNetworkID("wlan0"));
+
+  std::move(on_lifeline_fd_event).Run();
+  ASSERT_EQ(nullptr, svc->GetInterface(network1));
+  ASSERT_EQ(std::nullopt, svc->GetRoutingFwmark(network1));
+  ASSERT_EQ(std::nullopt, svc->GetNetworkID("wlan0"));
+  ASSERT_EQ(0, svc->GetNetworkIDs().size());
 }
 
 }  // namespace patchpanel

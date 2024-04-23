@@ -13,8 +13,10 @@
 #include <brillo/dbus/async_event_sequencer.h>
 
 #include "patchpanel/ipc.h"
+#include "patchpanel/lifeline_fd_service.h"
 #include "patchpanel/message_dispatcher.h"
 #include "patchpanel/socket_service_adaptor.h"
+#include "patchpanel/system.h"
 
 namespace patchpanel {
 
@@ -40,6 +42,10 @@ class SocketDaemon : public brillo::DBusServiceDaemon {
  private:
   // Communication channel with the parent process.
   MessageDispatcher<SubprocessMessage> msg_dispatcher_;
+  // Unique instance of patchpanel::System shared for this subprocess.
+  System system_;
+  // LifelineFD management service for this subprocess.
+  LifelineFDService lifeline_fd_svc_;
   // DBus implementation of the SocketService.
   std::unique_ptr<SocketServiceAdaptor> adaptor_;
 

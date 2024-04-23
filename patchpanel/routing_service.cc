@@ -7,8 +7,12 @@
 #include <iostream>
 #include <optional>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include <base/containers/fixed_flat_map.h>
+#include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 
@@ -17,7 +21,9 @@ namespace patchpanel {
 // Make sure that the compiler is not doing padding.
 static_assert(sizeof(Fwmark) == sizeof(uint32_t));
 
-RoutingService::RoutingService() {}
+RoutingService::RoutingService(System* system,
+                               LifelineFDService* lifeline_fd_service)
+    : system_(system), lifeline_fd_svc_(lifeline_fd_service) {}
 
 int RoutingService::GetSockopt(
     int sockfd, int level, int optname, void* optval, socklen_t* optlen) {
@@ -75,11 +81,10 @@ bool RoutingService::TagSocket(
   Fwmark mark = {.fwmark = 0};
 
   if (network_id.has_value()) {
-    // TODO(b/322083502): Assume network_id is interface_id now so that we can
-    // test this function. Change this to the real implementation after
-    // network_id is ready.
-    mark.rt_table_id =
-        kInterfaceTableIdIncrement + static_cast<uint16_t>(*network_id);
+    std::optional<Fwmark> routing_fwmark = GetRoutingFwmark(*network_id);
+    if (routing_fwmark) {
+      mark.rt_table_id = routing_fwmark->rt_table_id;
+    }
   }
 
   switch (vpn_policy) {
@@ -97,6 +102,94 @@ bool RoutingService::TagSocket(
   LOG(INFO) << "SetFwmark mark=" << mark.ToString()
             << " mask=" << mask.ToString();
   return SetFwmark(sockfd, mark, mask);
+}
+
+int RoutingService::AllocateNetworkID() {
+  CHECK_LT(0, next_network_id_);
+  return next_network_id_++;
+}
+
+bool RoutingService::AssignInterfaceToNetwork(int network_id,
+                                              std::string_view ifname,
+                                              base::ScopedFD client_fd) {
+  if (auto it = network_ids_to_interfaces_.find(network_id);
+      it != network_ids_to_interfaces_.end()) {
+    LOG(ERROR) << __func__ << ": " << it->second << " already assigned to "
+               << network_id;
+    return false;
+  }
+
+  if (auto it = interfaces_to_network_ids_.find(ifname);
+      it != interfaces_to_network_ids_.end()) {
+    LOG(ERROR) << __func__ << ": " << ifname << " already assigned to "
+               << it->second;
+    return false;
+  }
+
+  base::ScopedClosureRunner cancel_lifeline_fd =
+      lifeline_fd_svc_->AddLifelineFD(
+          std::move(client_fd),
+          base::BindOnce(&RoutingService::ForgetNetworkID,
+                         weak_factory_.GetWeakPtr(), network_id));
+  if (!cancel_lifeline_fd) {
+    LOG(ERROR) << __func__ << ": Failed to create lifeline fd";
+    return false;
+  }
+
+  LOG(INFO) << __func__ << ": " << network_id << " <-> " << ifname;
+  network_ids_to_interfaces_[network_id] = ifname;
+  interfaces_to_network_ids_.emplace(ifname, network_id);
+  cancel_lifeline_fds_.emplace(network_id, std::move(cancel_lifeline_fd));
+  return true;
+}
+
+void RoutingService::ForgetNetworkID(int network_id) {
+  const auto it = network_ids_to_interfaces_.find(network_id);
+  if (it == network_ids_to_interfaces_.end()) {
+    LOG(ERROR) << __func__ << ": Unknown " << network_id;
+    return;
+  }
+  LOG(INFO) << __func__ << ": " << network_id << " <-> " << it->second;
+  interfaces_to_network_ids_.erase(it->second);
+  network_ids_to_interfaces_.erase(it);
+  cancel_lifeline_fds_.erase(network_id);
+}
+
+const std::string* RoutingService::GetInterface(int network_id) const {
+  const auto it = network_ids_to_interfaces_.find(network_id);
+  if (it == network_ids_to_interfaces_.end()) {
+    return nullptr;
+  }
+  return &it->second;
+}
+
+std::optional<Fwmark> RoutingService::GetRoutingFwmark(int network_id) const {
+  const std::string* ifname = GetInterface(network_id);
+  if (!ifname) {
+    return std::nullopt;
+  }
+  int ifindex = system_->IfNametoindex(*ifname);
+  if (ifindex == 0) {
+    return std::nullopt;
+  }
+  return Fwmark::FromIfIndex(ifindex);
+}
+
+std::optional<int> RoutingService::GetNetworkID(std::string_view ifname) const {
+  const auto it = interfaces_to_network_ids_.find(ifname);
+  if (it == interfaces_to_network_ids_.end()) {
+    return std::nullopt;
+  }
+  return it->second;
+}
+
+std::vector<int> RoutingService::GetNetworkIDs() const {
+  std::vector<int> network_ids;
+  network_ids.reserve(network_ids_to_interfaces_.size());
+  for (const auto& [network_id, _] : network_ids_to_interfaces_) {
+    network_ids.push_back(network_id);
+  }
+  return network_ids;
 }
 
 std::string QoSFwmarkWithMask(QoSCategory category) {

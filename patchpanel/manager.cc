@@ -72,6 +72,8 @@ Manager::Manager(const base::FilePath& cmd_path,
       rtnl_client_(std::move(rtnl_client)) {
   DCHECK(rtnl_client_);
 
+  lifeline_fd_svc_ = std::make_unique<LifelineFDService>();
+
   auto conntrack_monitor = ConntrackMonitor::GetInstance();
   conntrack_monitor->Start(kConntrackEvents);
 
@@ -90,7 +92,8 @@ Manager::Manager(const base::FilePath& cmd_path,
   nd_proxy_->Start();
   socket_service_->Start();
 
-  routing_svc_ = std::make_unique<RoutingService>();
+  routing_svc_ =
+      std::make_unique<RoutingService>(system, lifeline_fd_svc_.get());
   counters_svc_ =
       std::make_unique<CountersService>(datapath_.get(), conntrack_monitor);
   multicast_counters_svc_ =
@@ -104,8 +107,6 @@ Manager::Manager(const base::FilePath& cmd_path,
   multicast_metrics_->Start(MulticastMetrics::Type::kTotal);
 
   qos_svc_ = std::make_unique<QoSService>(datapath_.get(), conntrack_monitor);
-
-  lifeline_fd_svc_ = std::make_unique<LifelineFDService>();
 
   downstream_network_svc_ = std::make_unique<DownstreamNetworkService>(
       metrics_, system_, datapath_.get(), this, rtnl_client_.get(),

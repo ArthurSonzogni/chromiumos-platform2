@@ -12,9 +12,11 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <chromeos/dbus/patchpanel/dbus-constants.h>
 
+#include "patchpanel/lifeline_fd_service.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/socket_service_adaptor.h"
+#include "patchpanel/system.h"
 
 namespace patchpanel {
 
@@ -42,7 +44,7 @@ void SocketDaemon::OnShutdown(int* exit_code) {
 void SocketDaemon::RegisterDBusObjectsAsync(
     brillo::dbus_utils::AsyncEventSequencer* sequencer) {
   adaptor_ = std::make_unique<SocketServiceAdaptor>(
-      bus_, std::make_unique<RoutingService>());
+      bus_, std::make_unique<RoutingService>(&system_, &lifeline_fd_svc_));
   adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
 }

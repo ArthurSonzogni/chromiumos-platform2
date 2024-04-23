@@ -348,6 +348,7 @@ if (use.test) {
       "mock_lifeline_fd_service.cc",
       "mock_multicast_counters_service.cc",
       "mock_process_runner.cc",
+      "mock_routing_service.cc",
       "mock_rtnl_client.cc",
       "mock_vm_concierge_client.cc",
       "multicast_counters_service_test.cc",

@@ -593,7 +593,7 @@ class Datapath {
 
   MinijailedProcessRunner* process_runner_;
   std::unique_ptr<Firewall> firewall_;
-  // Owned by Manager
+  // Owned by PatchpanelDaemon.
   System* system_;
 
   FRIEND_TEST(DatapathTest, AddVirtualInterfacePair);

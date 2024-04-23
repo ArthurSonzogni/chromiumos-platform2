@@ -11,13 +11,23 @@
 #include <sys/socket.h>
 
 #include <array>
+#include <functional>
+#include <map>
 #include <optional>
 #include <ostream>
 #include <string>
 #include <string_view>
+#include <vector>
 
+#include <base/files/scoped_file.h>
+#include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
+#include <base/memory/weak_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <base/types/cxx23_to_underlying.h>
+
+#include "patchpanel/lifeline_fd_service.h"
+#include "patchpanel/system.h"
 
 namespace patchpanel {
 
@@ -334,7 +344,7 @@ constexpr const Fwmark kFwmarkQoSCategoryMask = {.qos_category = 0x7};
 // TODO(hugobenichi) Explain how this coordinates with shill's RoutingTable.
 class RoutingService {
  public:
-  RoutingService();
+  RoutingService(System* system, LifelineFDService* lifeline_fd_service);
   RoutingService(const RoutingService&) = delete;
   RoutingService& operator=(const RoutingService&) = delete;
   virtual ~RoutingService() = default;
@@ -352,12 +362,55 @@ class RoutingService {
   // Preserves any other bits of the fwmark already set.
   bool SetFwmark(int sockfd, Fwmark mark, Fwmark mask);
 
+  // Allocates a new unique network id. Network id values assigned with this
+  // function do not need to be returned or freed and are never reused. If the
+  // operation that requested a network id fails, the network id can simply be
+  // discarded.
+  virtual int AllocateNetworkID();
+  // Assigns the interface |ifname| to the network id |network_id|. An interface
+  // cannot be assigned to two network ids at the same time. Currently
+  // patchpanel also only supports a single interface by network id. Returns
+  // true if the assignment was successful.
+  virtual bool AssignInterfaceToNetwork(int network_id,
+                                        std::string_view ifname,
+                                        base::ScopedFD client_fd);
+  // Forgets any network interface assignment to |network_id|.
+  virtual void ForgetNetworkID(int network_id);
+  // Returns the interface assigned to |network_id| if any.
+  const std::string* GetInterface(int network_id) const;
+  // Returns the routing Fwmark of the interface assigned to |network_id| if
+  // any.
+  std::optional<Fwmark> GetRoutingFwmark(int network_id) const;
+  // Returns the network id to which |ifname| is assigned, or nullopt otherwise.
+  std::optional<int> GetNetworkID(std::string_view ifname) const;
+  // Returns all network ids with a network interface assigned.
+  std::vector<int> GetNetworkIDs() const;
+
  protected:
   // Can be overridden in tests.
   virtual int GetSockopt(
       int sockfd, int level, int optname, void* optval, socklen_t* optlen);
   virtual int SetSockopt(
       int sockfd, int level, int optname, const void* optval, socklen_t optlen);
+
+ private:
+  // Owned by PatchpanelDaemon.
+  System* system_;
+  // Owner by Manager
+  LifelineFDService* lifeline_fd_svc_;
+
+  // Monotonically increasing counter for assigning unique network ids.
+  int next_network_id_ = 1;
+  // Bidirectional maps of all network ids currently with a network interface
+  // assignment.
+  std::map<int, std::string> network_ids_to_interfaces_;
+  std::map<std::string, int, std::less<>> interfaces_to_network_ids_;
+
+  // Map of scoped closures for automatically releasing lifeline FDs registered
+  // to |lifeline_fd_svc_|, keyed by network id.
+  std::map<int, base::ScopedClosureRunner> cancel_lifeline_fds_;
+
+  base::WeakPtrFactory<RoutingService> weak_factory_{this};
 };
 
 }  // namespace patchpanel

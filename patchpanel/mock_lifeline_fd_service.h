@@ -17,7 +17,7 @@ namespace patchpanel {
 class MockLifelineFDService : public LifelineFDService {
  public:
   MockLifelineFDService();
-  explicit MockLifelineFDService(const MockLifelineFDService&) = delete;
+  MockLifelineFDService(const MockLifelineFDService&) = delete;
   MockLifelineFDService& operator=(const MockLifelineFDService&) = delete;
   virtual ~MockLifelineFDService();
 
