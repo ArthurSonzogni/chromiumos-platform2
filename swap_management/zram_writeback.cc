@@ -15,6 +15,7 @@
 #include <absl/cleanup/cleanup.h>
 #include <absl/status/status.h>
 #include <absl/strings/numbers.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
@@ -106,8 +107,16 @@ absl::StatusOr<std::unique_ptr<DmDev>> DmDev::Create(
 
 DmDev::~DmDev() {
   absl::Status status = absl::OkStatus();
-
   if (!name_.empty()) {
+    // Remove symlink to avoid unexpected access to zram writeback backing
+    // device.
+    std::optional<base::FilePath> realpath =
+        base::ReadSymbolicLinkAbsolute(base::FilePath(GetPath()));
+    if (realpath.has_value()) {
+      status = Utils::Get()->DeleteFile(*realpath);
+      LOG_IF(WARNING, !status.ok()) << status;
+    }
+
     status = Utils::Get()->RunProcessHelper(
         {"/sbin/dmsetup", "remove", "--deferred", name_});
     LOG_IF(ERROR, !status.ok()) << "Can not remove dm device: " << status;
