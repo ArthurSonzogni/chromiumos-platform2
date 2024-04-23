@@ -2,6 +2,9 @@ type cros_featured, chromeos_domain, domain;
 
 domain_auto_trans(cros_init, cros_featured_exec, cros_featured)
 
+# Run with Minijail.
+from_minijail_static(cros_featured, cros_featured_exec)
+
 log_writer(cros_featured)
 cros_dbus_client(cros_featured)
 
