@@ -465,6 +465,20 @@ cleanup_on_failure() {
   cleanup
 }
 
+deactivate_volume_group() {
+  local vg="${1}"
+  local rc=0
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    vgchange -an "${vg}"
+    rc="$?"
+    if [ "${rc}" -eq "0" ]; then
+      break
+    fi
+    sleep 1
+  done
+  return "${rc}"
+}
+
 # Undo all mounts and loops.
 cleanup() {
   set +e
@@ -614,7 +628,7 @@ wipe_stateful() {
     # loop_offset_cleanup may return "device busy" error.
     sync
     if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
-      vgchange --force -an "${vg_name}"
+      deactivate_volume_group "${vg_name}"
     elif [ ! -b "${DST}" ]; then
       loop_offset_cleanup
     fi
@@ -790,7 +804,7 @@ install_stateful() {
     # loop_offset_cleanup may return "device busy" error.
     sync
     if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
-      vgchange -an "${vg_name}"
+      deactivate_volume_group "${vg_name}"
     else
       loop_offset_cleanup
     fi
