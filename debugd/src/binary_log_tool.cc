@@ -6,6 +6,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -17,12 +18,13 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/logging.h>
-#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
-#include <brillo/cryptohome.h>
 #include <brillo/errors/error.h>
+#include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/debugd/dbus-constants.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <fbpreprocessor-client/fbpreprocessor/dbus-proxies.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 #include "debugd/src/sandboxed_process.h"
 
@@ -157,13 +159,37 @@ bool CompressAndSendFilesToFD(const base::FilePath& tarball_name,
   return true;
 }
 
+std::optional<base::FilePath> GetDaemonStorePath(
+    org::chromium::CryptohomeMiscInterfaceProxyInterface* proxy,
+    base::FilePath& daemon_store_base_dir,
+    const std::string& username) {
+  user_data_auth::GetSanitizedUsernameRequest request;
+  user_data_auth::GetSanitizedUsernameReply reply;
+  request.set_username(username);
+  brillo::ErrorPtr error;
+  if (!proxy->GetSanitizedUsername(request, &reply, &error) || error.get()) {
+    LOG(ERROR) << "Failed to retrieve sanitized username: "
+               << error->GetMessage();
+    return std::nullopt;
+  }
+  if (reply.sanitized_username().empty()) {
+    LOG(ERROR) << "Retrieved emtpy sanitized username.";
+    return std::nullopt;
+  }
+  return daemon_store_base_dir.Append(reply.sanitized_username());
+}
+
 }  // namespace
 
 namespace debugd {
 
 BinaryLogTool::BinaryLogTool(scoped_refptr<dbus::Bus> bus)
     : fbpreprocessor_proxy_(
-          std::make_unique<org::chromium::FbPreprocessorProxy>(bus)) {}
+          std::make_unique<org::chromium::FbPreprocessorProxy>(bus)),
+      cryptohome_proxy_(
+          std::make_unique<org::chromium::CryptohomeMiscInterfaceProxy>(bus)),
+      daemon_store_base_dir_(
+          base::FilePath(fbpreprocessor::kDaemonStorageRoot)) {}
 
 void BinaryLogTool::DisableMinijailForTesting() {
   use_minijail_ = false;
@@ -172,6 +198,12 @@ void BinaryLogTool::DisableMinijailForTesting() {
 void BinaryLogTool::SetFbPreprocessorProxyForTesting(
     std::unique_ptr<org::chromium::FbPreprocessorProxyInterface> proxy) {
   fbpreprocessor_proxy_ = std::move(proxy);
+}
+
+void BinaryLogTool::SetCryptohomeProxyForTesting(
+    std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
+        proxy) {
+  cryptohome_proxy_ = std::move(proxy);
 }
 
 void BinaryLogTool::GetBinaryLogs(
@@ -206,24 +238,21 @@ void BinaryLogTool::GetBinaryLogs(
 
   // GetDaemonStorePath() returns "/run/daemon-store/<daemon_name>/<user_hash>"
   // path, which is the preferred place to store per-user data.
-  base::FilePath daemon_store_path =
-      brillo::cryptohome::home::GetDaemonStorePath(
-          brillo::cryptohome::home::Username(username),
-          fbpreprocessor::kDaemonName);
-
-  if (daemon_store_path.empty()) {
+  std::optional<base::FilePath> daemon_store_path = GetDaemonStorePath(
+      cryptohome_proxy_.get(), daemon_store_base_dir_, username);
+  if (!daemon_store_path) {
     LOG(ERROR) << "Failed to get the daemon store path";
     return;
   }
 
-  if (!ValidateDirectoryNames(files, daemon_store_path)) {
+  if (!ValidateDirectoryNames(files, daemon_store_path.value())) {
     LOG(ERROR) << "Failed to validate binary log files";
     return;
   }
 
   int out_fd = outfds.at(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP).get();
   base::FilePath tarball_name(kWiFiTarballName);
-  if (!CompressAndSendFilesToFD(tarball_name, files, daemon_store_path,
+  if (!CompressAndSendFilesToFD(tarball_name, files, daemon_store_path.value(),
                                 use_minijail_, out_fd)) {
     LOG(ERROR) << "Failed to send binary logs";
     return;

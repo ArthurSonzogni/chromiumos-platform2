@@ -16,12 +16,15 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
 #include <brillo/files/file_util.h>
+#include <brillo/process/process.h>
 #include <chromeos/dbus/fbpreprocessor/dbus-constants.h>
 #include <chromeos/dbus/debugd/dbus-constants.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <fbpreprocessor-client-test/fbpreprocessor/dbus-proxy-mocks.h>
+#include <user_data_auth-client-test/user_data_auth/dbus-proxy-mocks.h>
 
 #include <gtest/gtest.h>
 
@@ -62,6 +65,19 @@ fbpreprocessor::DebugDumps CreateProtobuf(
   return dump_files;
 }
 
+bool DecompressFile(const base::FilePath& file,
+                    const base::FilePath& output_dir) {
+  brillo::ProcessImpl p;
+
+  p.AddArg("/bin/tar");
+  p.AddArg("-xf");
+  p.AddArg(file.value());
+  p.AddArg("-C");
+  p.AddArg(output_dir.value());
+
+  return p.Run() == EXIT_SUCCESS;
+}
+
 }  // namespace
 
 namespace debugd {
@@ -85,6 +101,13 @@ class BinaryLogToolTest : public testing::Test {
         .WillByDefault(WithArg<0>(Invoke(
             [&input_debug_dumps](fbpreprocessor::DebugDumps* out_DebugDumps) {
               *out_DebugDumps = input_debug_dumps;
+              return true;
+            })));
+
+    ON_CALL(*cryptohome_proxy_, GetSanitizedUsername(_, _, _, _))
+        .WillByDefault(WithArg<1>(Invoke(
+            [userhash](user_data_auth::GetSanitizedUsernameReply* reply) {
+              reply->set_sanitized_username(userhash);
               return true;
             })));
   }
@@ -114,18 +137,29 @@ class BinaryLogToolTest : public testing::Test {
     CHECK(output_dir_.CreateUniqueTempDir());
     SetUpFakeDaemonStore();
 
+    binary_log_tool_ = std::make_unique<BinaryLogTool>(
+        base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options()));
+
     auto fbpreprocessor_proxy =
         std::make_unique<org::chromium::FbPreprocessorProxyMock>();
     fbpreprocessor_proxy_ = fbpreprocessor_proxy.get();
-    binary_log_tool_ = std::make_unique<BinaryLogTool>(
-        base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options()));
     binary_log_tool_->SetFbPreprocessorProxyForTesting(
         std::move(fbpreprocessor_proxy));
+
+    auto cryptohome_proxy =
+        std::make_unique<org::chromium::CryptohomeMiscInterfaceProxyMock>();
+    cryptohome_proxy_ = cryptohome_proxy.get();
+    binary_log_tool_->SetCryptohomeProxyForTesting(std::move(cryptohome_proxy));
+
+    binary_log_tool_->SetDaemonStoreBaseDirForTesting(
+        daemon_store_base_dir_.GetPath());
   }
 
   std::unique_ptr<BinaryLogTool> binary_log_tool_;
   // Owned by |binary_log_tool_|.
   org::chromium::FbPreprocessorProxyMock* fbpreprocessor_proxy_;
+  // Owned by |binary_log_tool_|.
+  org::chromium::CryptohomeMiscInterfaceProxyMock* cryptohome_proxy_;
 
   base::ScopedTempDir daemon_store_base_dir_;
   base::ScopedTempDir output_dir_;
@@ -163,6 +197,151 @@ TEST_F(BinaryLogToolTest, EmptyDumpsListDoesNotWriteToFD) {
   std::optional<std::vector<uint8_t>> bytes = ReadFileToBytes(OutputFile());
   ASSERT_TRUE(bytes.has_value());
   EXPECT_TRUE(bytes.value().empty());
+}
+
+// GetSanitizedUsername() returns empty userhash to GetBinaryLogs(). No further
+// processing can be done. Verify that nothing is written to file descriptor.
+TEST_F(BinaryLogToolTest, EmptyUserhashDoesNotWriteToFD) {
+  base::FilePath file_path(InputDirectory().Append("test_file.txt"));
+  std::set<base::FilePath> input_files = {file_path};
+  CreateFiles(input_files, kDefaultTestData);
+
+  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
+
+  // Use empty userhash
+  SimulateDaemonDBusResponses(input_dumps, "");
+
+  WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
+
+  std::optional<std::vector<uint8_t>> bytes = ReadFileToBytes(OutputFile());
+  ASSERT_TRUE(bytes.has_value());
+  EXPECT_TRUE(bytes.value().empty());
+}
+
+// If the primary userhash doesn't match the userhash in the input file's
+// location, no further processing can be done. Verify that nothing is written
+// to the output file descriptor.
+TEST_F(BinaryLogToolTest, IncorrectUserhashDirDoesNotWriteToFD) {
+  base::FilePath file_path(InputDirectory().Append("test_file.txt"));
+  std::set<base::FilePath> input_files = {file_path};
+  CreateFiles(input_files, kDefaultTestData);
+
+  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
+
+  // Use incorrect userhash
+  SimulateDaemonDBusResponses(input_dumps, "test_userhash");
+
+  WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
+
+  std::optional<std::vector<uint8_t>> bytes = ReadFileToBytes(OutputFile());
+  ASSERT_TRUE(bytes.has_value());
+  EXPECT_TRUE(bytes.value().empty());
+}
+
+// Process input files only from <daemon_store>/<userhash>/processed_dumps. If
+// input files are from some other location, no further processing can be done.
+// Verify that nothing is written to the file descriptor.
+TEST_F(BinaryLogToolTest, IncorrectProcessedDirDoesNotWriteToFD) {
+  // Use a different directory for input file instead of the
+  // <daemon_store>/<userhash>/processed_dumps
+  base::ScopedTempDir test_dir;
+  ASSERT_TRUE(test_dir.CreateUniqueTempDir());
+
+  base::FilePath file_path(test_dir.GetPath().Append("test_file.txt"));
+  std::set<base::FilePath> input_files = {file_path};
+  CreateFiles(input_files, kDefaultTestData);
+
+  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
+
+  SimulateDaemonDBusResponses(input_dumps, kDefaultUserhash);
+
+  WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
+
+  std::optional<std::vector<uint8_t>> bytes = ReadFileToBytes(OutputFile());
+  ASSERT_TRUE(bytes.has_value());
+  EXPECT_TRUE(bytes.value().empty());
+}
+
+// If the daemon-store base directory is incorrect, no further processing can be
+// done. Verify that nothing is written to the output file descriptor.
+TEST_F(BinaryLogToolTest, IncorrectDaemonStoreDirDoesNotWriteToFD) {
+  // Use a different daemon-store base directory
+  base::ScopedTempDir base_dir;
+  ASSERT_TRUE(base_dir.CreateUniqueTempDir());
+  base::FilePath input_directory(
+      base_dir.GetPath()
+          .Append(kDefaultUserhash)
+          .Append(fbpreprocessor::kProcessedDirectory));
+  ASSERT_TRUE(base::CreateDirectory(input_directory));
+
+  base::FilePath file_path(input_directory.Append("test_file.txt"));
+  std::set<base::FilePath> input_files = {file_path};
+  CreateFiles(input_files, kDefaultTestData);
+
+  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
+
+  SimulateDaemonDBusResponses(input_dumps, kDefaultUserhash);
+
+  WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
+
+  std::optional<std::vector<uint8_t>> bytes = ReadFileToBytes(OutputFile());
+  ASSERT_TRUE(bytes.has_value());
+  EXPECT_TRUE(bytes.value().empty());
+}
+
+// If the scratch directory is not present, no further processing can be done.
+// Verify that nothing is written to the output file descriptor.
+TEST_F(BinaryLogToolTest, NoScratchDirDoesNotWriteToFD) {
+  // Delete the scratch directory for this test
+  ASSERT_TRUE(brillo::DeleteFile(
+      InputDirectory().DirName().Append(fbpreprocessor::kScratchDirectory)));
+
+  base::FilePath file_path(InputDirectory().Append("test_file.txt"));
+  std::set<base::FilePath> input_files = {file_path};
+  CreateFiles(input_files, kDefaultTestData);
+
+  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
+
+  SimulateDaemonDBusResponses(input_dumps, kDefaultUserhash);
+
+  WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
+
+  std::optional<std::vector<uint8_t>> bytes = ReadFileToBytes(OutputFile());
+  ASSERT_TRUE(bytes.has_value());
+  EXPECT_TRUE(bytes.value().empty());
+}
+
+// This test verifies that the correct compressed binary logs are written to
+// the output file descriptor in an ideal case.
+TEST_F(BinaryLogToolTest, ValidInputWriteCompressedLogsToFD) {
+  base::FilePath file_path_1(InputDirectory().Append("test_file_1.txt"));
+  base::FilePath file_path_2(InputDirectory().Append("test_file_2.txt"));
+  std::set<base::FilePath> input_files = {file_path_1, file_path_2};
+  CreateFiles(input_files, kDefaultTestData);
+
+  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
+
+  SimulateDaemonDBusResponses(input_dumps, kDefaultUserhash);
+
+  WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
+
+  // Extract the OutputFile() tarball in a new directory, verify that the two
+  // files are in there and verify that the contents of those files match the
+  // contents of the corresponding input files.
+  base::ScopedTempDir output_dir;
+  ASSERT_TRUE(output_dir.CreateUniqueTempDir());
+
+  ASSERT_TRUE(DecompressFile(OutputFile(), output_dir.GetPath()));
+
+  std::string out_data;
+  ASSERT_TRUE(base::ReadFileToString(
+      output_dir.GetPath().Append(file_path_1.BaseName()), &out_data));
+  EXPECT_EQ(out_data, kDefaultTestData);
+
+  out_data.clear();
+  ASSERT_TRUE(base::ReadFileToString(
+      output_dir.GetPath().Append(file_path_2.BaseName()), &out_data));
+  EXPECT_EQ(out_data, kDefaultTestData);
 }
 
 }  // namespace debugd

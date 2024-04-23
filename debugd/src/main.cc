@@ -10,7 +10,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <brillo/cryptohome.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -187,10 +186,6 @@ int main(int argc, char* argv[]) {
       brillo::FlagHelper::Init(argc, argv, "CrOS debug daemon");
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
 
-  // Reads the system salt before we init minijail.
-  if (!brillo::cryptohome::home::EnsureSystemSaltIsLoaded()) {
-    LOG(ERROR) << "Failed to ensure system salt to be loaded into memory.";
-  }
   enter_vfs_namespace();
   Daemon(FLAGS_perf_logging).Run();
   return 0;

@@ -9,12 +9,15 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/scoped_refptr.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
 #include <dbus/debugd/dbus-constants.h>
 #include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <fbpreprocessor-client/fbpreprocessor/dbus-proxies.h>
+#include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
 namespace debugd {
 
@@ -33,11 +36,34 @@ class BinaryLogTool {
   void SetFbPreprocessorProxyForTesting(
       std::unique_ptr<org::chromium::FbPreprocessorProxyInterface> proxy);
 
+  // Tests that want to mock the D-Bus interaction between debugd and
+  // cryptohomed can provide a mock proxy.
+  // BinaryLogTool will take ownership of the unique_ptr.
+  void SetCryptohomeProxyForTesting(
+      std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
+          proxy);
+
+  // Make it possible for tests to use a temporary directory instead of the
+  // usual /run/daemon-store/fbpreprocessord/ base directory.
+  void SetDaemonStoreBaseDirForTesting(const base::FilePath& base_dir) {
+    daemon_store_base_dir_ = base_dir;
+  }
+
   void DisableMinijailForTesting();
 
  private:
   std::unique_ptr<org::chromium::FbPreprocessorProxyInterface>
       fbpreprocessor_proxy_;
+
+  std::unique_ptr<org::chromium::CryptohomeMiscInterfaceProxyInterface>
+      cryptohome_proxy_;
+
+  // Firmware dumps are normally stored under the usual daemon-store path
+  // /run/daemon-store/fbpreprocessord/<user_hash>/. |daemon_store_base_dir_|
+  // will typically be /run/daemon-store/fbpreprocessord/. However, unit tests
+  // can specify a different base directory so they can use a temporary
+  // directory instead.
+  base::FilePath daemon_store_base_dir_;
 
   // Test-only.
   // Set to true by default. If set to false, the "tar" subprocess will not be
