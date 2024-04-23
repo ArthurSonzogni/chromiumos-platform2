@@ -461,11 +461,12 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
              << "variant [" << variant << "], carrier_uuid [" << carrier_uuid
              << "], use_modems_fw_info [" << use_modems_fw_info << "]";
 
+  fw_manifest_directory_->OverrideVariantForTesting(variant);
+
   StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  base::OnceClosure cb = modem_flasher_->TryFlashForTesting(
-      stub_modem.get(), variant,
-      modems_seen_since_oobe_prefs_->Exists(device_id), &err);
+  base::OnceClosure cb = modem_flasher_->TryFlash(
+      stub_modem.get(), modems_seen_since_oobe_prefs_->Exists(device_id), &err);
   StartHeartbeatTask(device_id);
 
   // We don't know the equipment ID of this modem, and if we're force-flashing

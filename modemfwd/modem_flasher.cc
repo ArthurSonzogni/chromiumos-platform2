@@ -74,14 +74,6 @@ void ModemFlasher::ProcessFailedToPrepareFirmwareFile(
   notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
 }
 
-base::OnceClosure ModemFlasher::TryFlashForTesting(Modem* modem,
-                                                   const std::string& variant,
-                                                   bool modem_seen_since_oobe,
-                                                   brillo::ErrorPtr* err) {
-  firmware_directory_->OverrideVariantForTesting(variant);
-  return TryFlash(modem, modem_seen_since_oobe, err);
-}
-
 uint32_t ModemFlasher::GetFirmwareTypesForMetrics(
     std::vector<FirmwareConfig> flash_cfg) {
   uint32_t fw_types = 0;

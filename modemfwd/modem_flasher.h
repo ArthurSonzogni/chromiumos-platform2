@@ -39,13 +39,6 @@ class ModemFlasher {
                              bool modem_seen_since_oobe,
                              brillo::ErrorPtr* err);
 
-  // This function is the same as TryFlash, but it sets the variant to be used.
-  // |err| is set if an error occurred.
-  base::OnceClosure TryFlashForTesting(Modem* modem,
-                                       const std::string& variant,
-                                       bool modem_seen_since_oobe,
-                                       brillo::ErrorPtr* err);
-
  private:
   class FlashState {
    public:
