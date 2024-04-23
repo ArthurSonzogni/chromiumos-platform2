@@ -50,6 +50,7 @@
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mobile_operator_info.h"
+#include "shill/cellular/modem.h"
 #include "shill/cellular/modem_info.h"
 #include "shill/control_interface.h"
 #include "shill/data_types.h"
@@ -206,6 +207,7 @@ const char Cellular::kQ6V5ModemManufacturerName[] = "QUALCOMM INCORPORATED";
 const char Cellular::kQ6V5DriverName[] = "qcom-q6v5-mss";
 const char Cellular::kQ6V5SysfsBasePath[] = "/sys/class/remoteproc";
 const char Cellular::kQ6V5RemoteprocPattern[] = "remoteproc*";
+const char Cellular::kInternalStorageIdentifier[] = "internal_device";
 
 // static
 std::string Cellular::GetStateString(State state) {
@@ -226,8 +228,8 @@ std::string Cellular::GetStateString(State state) {
       return "Connected";
     case State::kLinked:
       return "Linked";
-    default:
-      NOTREACHED();
+    case State::kPoweredOff:
+      return "PoweredOff";
   }
   return base::StringPrintf("CellularStateUnknown-%d", static_cast<int>(state));
 }
@@ -315,8 +317,16 @@ Cellular::Cellular(Manager* manager,
                  << "IPv6 will be unavailable.";
   }
 
+  if (interface_index == Modem::kInternalInterfaceIndex) {
+    internal_device_ = true;
+  }
+
   // Create an initial Capability.
-  CreateCapability();
+  if (!internal_device_) {
+    CreateCapability();
+  } else {
+    LOG(INFO) << LoggingTag() << "not creating capability for internal device";
+  }
 
   // Reset networks
   default_pdn_apn_type_ = std::nullopt;
@@ -389,7 +399,19 @@ bool Cellular::Load(const StoreInterface* storage) {
   LOG(INFO) << LoggingTag() << ": " << __func__ << ": " << kAllowRoaming << ":"
             << allow_roaming_ << " " << kPolicyAllowRoaming << ":"
             << policy_allow_roaming_;
-  return Device::Load(storage);
+  bool res = Device::Load(storage);
+
+  /* Check if we have persistent enabled state for internal device*/
+  if (!internal_device()) {
+    if (storage->ContainsGroup(kInternalStorageIdentifier)) {
+      bool enabled = enabled_persistent();
+      storage->GetBool(kInternalStorageIdentifier, kStoragePowered, &enabled);
+      set_enabled_persistent(enabled);
+      LOG(INFO) << LoggingTag() << ": " << __func__ << ": "
+                << "Loading from internal: enabled: " << enabled;
+    }
+  }
+  return res;
 }
 
 bool Cellular::Save(StoreInterface* storage) {
@@ -407,6 +429,22 @@ bool Cellular::Save(StoreInterface* storage) {
     storage->DeleteGroup(legacy_storage_id_);
     legacy_storage_id_.clear();
   }
+
+  // During Save(), update the kStoragePowered property for internal
+  // device also.
+  // This is to ensure that when a real device is de-registered and the
+  // internal device is re-created, it should start with the right enabled
+  // state (which is the enabled state of the current device).
+  // Hence in the Save() we also update any enabled state changes to the storage
+  // id of the internal device. This ensures that when the internal device is
+  // re-created it gets the right enabled state during Load().
+  if (!internal_device()) {
+    LOG(INFO) << LoggingTag() << "update enabled setting on internal device: "
+              << kInternalStorageIdentifier;
+    storage->SetBool(kInternalStorageIdentifier, kStoragePowered,
+                     enabled_persistent());
+  }
+
   return result;
 }
 
@@ -846,6 +884,14 @@ void Cellular::OnAfterResume() {
   Device::OnAfterResume();
 }
 
+void Cellular::OnDeregistered() {
+  LOG(INFO) << LoggingTag() << ": " << __func__;
+  if (!internal_device()) {
+    LOG(INFO) << LoggingTag() << ": Create internal " << __func__;
+    Modem::CreateInternalCellularDevice(manager()->device_info());
+  }
+}
+
 void Cellular::UpdateGeolocationObjects(
     std::vector<GeolocationInfo>* geolocation_infos) const {
   const std::string& mcc = location_info_.mcc;
@@ -1025,6 +1071,7 @@ void Cellular::HandleNewRegistrationState() {
 
   switch (state_) {
     case State::kDisabled:
+    case State::kPoweredOff:
     case State::kModemStarting:
     case State::kModemStopping:
       // Defer updating Services while disabled and during transitions.
@@ -3289,6 +3336,9 @@ void Cellular::UpdateScanning() {
   bool scanning;
   switch (state_) {
     case State::kDisabled:
+      scanning = false;
+      break;
+    case State::kPoweredOff:
       scanning = false;
       break;
     case State::kEnabled:

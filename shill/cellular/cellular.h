@@ -69,6 +69,8 @@ class Cellular : public Device,
     kConnected,
     // The network interface is up.
     kLinked,
+    // The modem is powered off.
+    kPoweredOff,
   };
 
   // This enum must be kept in sync with ModemManager's MMModemState enum.
@@ -357,6 +359,8 @@ class Cellular : public Device,
 
   // Called when an OTA profile update arrives from the network.
   void OnProfilesChanged();
+  // Called when shill manager deregisters the device.
+  void OnDeregistered() override;
 
   // Returns a list of APNs of type |apn_type| to try. The logic when using
   // SetApn and SetCustomApnList(APN UI revamp) differs. When using
@@ -450,6 +454,7 @@ class Cellular : public Device,
   const std::string& model_id() const { return model_id_; }
   const std::string& mm_plugin() const { return mm_plugin_; }
   bool scanning() const { return scanning_; }
+  bool internal_device() const { return internal_device_; }
 
   const std::string& selected_network() const { return selected_network_; }
   const Stringmaps& found_networks() const { return found_networks_; }
@@ -613,6 +618,9 @@ class Cellular : public Device,
 
   // Modem driver name
   static const char kQ6V5DriverName[];
+
+  // Internal device storage identifier
+  static const char kInternalStorageIdentifier[];
 
   // Time between stop and start of modem device
   static constexpr base::TimeDelta kModemResetTimeout = base::Seconds(1);
@@ -940,6 +948,7 @@ class Cellular : public Device,
   std::string mm_plugin_;
   uint32_t max_multiplexed_bearers_ = 1;
   bool scanning_ = false;
+  bool internal_device_ = false;
   bool polling_location_ = false;
   base::CancelableOnceClosure poll_location_task_;
 

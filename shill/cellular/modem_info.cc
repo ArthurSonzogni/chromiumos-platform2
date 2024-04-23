@@ -54,6 +54,10 @@ void ModemInfo::Stop() {
   Disconnect();
 }
 
+void ModemInfo::CreateInternalCellularDevice() {
+  Modem::CreateInternalCellularDevice(manager_->device_info());
+}
+
 void ModemInfo::OnDeviceInfoAvailable(const std::string& link_name) {
   for (const auto& modem_entry : modems_) {
     modem_entry.second->OnDeviceInfoAvailable(link_name);

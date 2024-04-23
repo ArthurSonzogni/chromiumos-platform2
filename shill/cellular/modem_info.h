@@ -45,6 +45,8 @@ class ModemInfo {
     return pending_activation_store_.get();
   }
 
+  void CreateInternalCellularDevice();
+
  protected:
   // The following methods are virtual to support test overrides.
   virtual std::unique_ptr<DBusObjectManagerProxyInterface> CreateProxy();

@@ -4,6 +4,7 @@
 
 #include "shill/cellular/modem.h"
 
+#include <memory>
 #include <optional>
 #include <tuple>
 #include <utility>
@@ -15,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <ModemManager/ModemManager.h>
 #include <net-base/mac_address.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/control_interface.h"
@@ -120,6 +122,29 @@ bool Modem::GetLinkName(const KeyValueStore& modem_props,
   return true;
 }
 
+void Modem::CreateInternalCellularDevice(DeviceInfo* device_info) {
+  CellularRefPtr cellular;
+
+  std::unique_ptr<brillo::CrosConfigInterface> cros_config =
+      std::make_unique<brillo::CrosConfig>();
+
+  std::string temp_variant;
+  if (!cros_config->GetString("/modem", "firmware-variant", &temp_variant)) {
+    LOG(INFO)
+        << __func__
+        << "Not creating internal cellular device for non-cellular variant.";
+    return;
+  }
+
+  LOG(INFO) << "creating internal cellular device for " << temp_variant;
+
+  cellular =
+      new Cellular(device_info->manager(), kInternalInterface, kFakeDevAddress,
+                   kInternalInterfaceIndex,
+                   modemmanager::kModemManager1ServiceName, RpcIdentifier(""));
+  device_info->RegisterDevice(cellular);
+}
+
 void Modem::CreateDeviceFromModemProperties(
     const InterfaceToProperties& properties) {
   SLOG(this, 1) << __func__;
@@ -198,11 +223,20 @@ CellularRefPtr Modem::GetOrCreateCellularDevice(
     cellular = nullptr;
     device_info_->DeregisterDevice(interface_index);
   }
+
   if (cellular) {
     LOG(INFO) << "Using existing Cellular Device: " << cellular->enabled();
     // Update the Cellular dbus path and mac address to match the new Modem.
     cellular->UpdateModemProperties(path_, mac_address);
     return cellular;
+  }
+
+  // Deregister any internal cellular device before creating new from real
+  // values.
+  CellularRefPtr internalCellular =
+      GetExistingCellularDevice(kInternalInterfaceIndex);
+  if (internalCellular) {
+    device_info_->DeregisterDevice(kInternalInterfaceIndex);
   }
 
   cellular = new Cellular(device_info_->manager(), link_name_, mac_address,
