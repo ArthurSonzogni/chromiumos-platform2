@@ -482,6 +482,13 @@ void Executor::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
 }
 
 void Executor::GetPsr(GetPsrCallback callback) {
+  if (!base::PathExists(paths::dev::kMei0.ToFull())) {
+    auto result = mojom::PsrInfo::New();
+    result->is_supported = false;
+    std::move(callback).Run(mojom::GetPsrResult::NewInfo(std::move(result)));
+    return;
+  }
+
   auto delegate = CreateDelegateProcess(
       seccomp_file::kPsr,
       SandboxedProcess::Options{
