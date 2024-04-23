@@ -18,10 +18,10 @@ namespace cros {
 CameraDiagnosticsServer::CameraDiagnosticsServer(
     CameraDiagnosticsMojoManager* mojo_manager)
     : mojo_manager_(mojo_manager), processor_(mojo_manager) {
-  diag_provider_.Register(mojo_manager->GetMojoServiceManager().get(),
+  diag_provider_.Register(mojo_manager->GetMojoServiceManager(),
                           chromeos::mojo_services::kCrosCameraDiagnostics);
   diag_service_provider_.Register(
-      mojo_manager->GetMojoServiceManager().get(),
+      mojo_manager->GetMojoServiceManager(),
       chromeos::mojo_services::kCrosCameraDiagnosticsService);
 }
 

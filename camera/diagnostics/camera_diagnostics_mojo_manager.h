@@ -31,8 +31,12 @@ class CameraDiagnosticsMojoManager {
   scoped_refptr<base::SequencedTaskRunner>& GetTaskRunner();
 
   // This should only be called in the IPC sequenced task runner.
-  mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
+  chromeos::mojo_service_manager::mojom::ServiceManager*
   GetMojoServiceManager();
+
+  void SetMojoServiceManagerForTest(
+      mojo::PendingRemote<chromeos::mojo_service_manager::mojom::ServiceManager>
+          service_manager);
 
  private:
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;

@@ -32,7 +32,7 @@ CameraDiagnosticsMojoManager::GetTaskRunner() {
   return ipc_task_runner_;
 }
 
-mojo::Remote<chromeos::mojo_service_manager::mojom::ServiceManager>&
+chromeos::mojo_service_manager::mojom::ServiceManager*
 CameraDiagnosticsMojoManager::GetMojoServiceManager() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
   if (!mojo_service_manager_.is_bound() ||
@@ -46,7 +46,14 @@ CameraDiagnosticsMojoManager::GetMojoServiceManager() {
     }
     mojo_service_manager_.Bind(std::move(pending_remote));
   }
-  return mojo_service_manager_;
+  return mojo_service_manager_.get();
+}
+
+void CameraDiagnosticsMojoManager::SetMojoServiceManagerForTest(
+    mojo::PendingRemote<chromeos::mojo_service_manager::mojom::ServiceManager>
+        service_manager) {
+  LOGF(INFO) << "Set mojo service manager for test";
+  mojo_service_manager_.Bind(std::move(service_manager));
 }
 
 }  // namespace cros
