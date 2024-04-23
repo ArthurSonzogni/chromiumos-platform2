@@ -200,8 +200,9 @@ def convert(
     # If the user wants a more complex type, we feed the PGM representation
     # into mogrify and save the output image binary.
 
-    # More information about PGM can be found at
-    # https://en.wikipedia.org/wiki/Netpbm#File_formats
+    # More information about PGM can be found at the following webpages:
+    # - https://en.wikipedia.org/wiki/Netpbm#File_formats
+    # - https://netpbm.sourceforge.net/doc/pgm.html
     #
     # This raw to PGM conversion can also be seen in the upload_pgm_image
     # function of ec/common/fpsensor/fpsensor.c and the cmd_fp_frame
@@ -216,9 +217,13 @@ def convert(
     # Use magic vendor frame offset.
     raw_capture = raw_capture[sensor.frame_offset_image :]
 
-    # Write 8-bpp PGM ASCII header.
+    # Write graymap PGM ASCII header.
     pgm_buffer += "P2\n"
+    pgm_buffer += f"# {sensor.name} is {sensor.width}x{sensor.height} "
+    pgm_buffer += f"{sensor.bits}bpp\n"
     pgm_buffer += f"{sensor.width} {sensor.height}\n"
+    # The Max Value can be any value between 0 and 65536, exclusive.
+    pgm_buffer += "# Max Value:\n"
     pgm_buffer += f"{2**sensor.bits - 1}\n"
     # Write table of pixel values.
     for h in range(sensor.height):
