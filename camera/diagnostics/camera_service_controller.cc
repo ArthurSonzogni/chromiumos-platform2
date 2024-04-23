@@ -117,7 +117,9 @@ void CameraServiceController::StartStreamingInternal(
 
 void CameraServiceController::StopStreamingInternal() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-  remote_->StopStreaming();
+  if (remote_.is_bound()) {
+    remote_->StopStreaming();
+  }
 }
 
 void CameraServiceController::RequestFrameInternal(
