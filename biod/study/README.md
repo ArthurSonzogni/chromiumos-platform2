@@ -285,3 +285,10 @@ Navigate to http://127.0.0.1:9000 in a web browser.
 
 [Enable Developer Mode]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_mode.md#dev-mode
 [Typography conventions]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#typography-conventions
+
+## VSCode Python Completion
+
+1.  Run `python-venv-setup.sh` to create the Python virtual environment.
+2.  Open the platform2/biod directory in VS Code. You must explicitly open this
+    directory for the [`biod/pyproject.toml`](../pyproject.toml) to
+    automatically configure VS Code for Python.
