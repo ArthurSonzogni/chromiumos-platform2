@@ -23,7 +23,6 @@
 
 #include "debugd/src/constants.h"
 #include "debugd/src/error_utils.h"
-#include "debugd/src/process_with_output.h"
 
 namespace debugd {
 
@@ -657,25 +656,6 @@ bool DebugdDBusAdaptor::SetRlzPingSent(brillo::ErrorPtr* error) {
     return false;
   }
 
-  // Regenerate the vpd cache log.
-  // TODO(b/77594752): remove when dump_vpd_log consumers are gone.
-  std::string stderr;
-  int result =
-      ProcessWithOutput::RunProcess("/usr/sbin/dump_vpd_log", {"--force"},
-                                    true,     // requires root
-                                    false,    // disable_sandbox
-                                    nullptr,  // stdin
-                                    nullptr,  // stdout
-                                    &stderr, error);
-  if (result != EXIT_SUCCESS) {
-    std::string error_string =
-        "Failed to dump vpd log with exit code: " + std::to_string(result) +
-        " with error: " + stderr;
-    DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString, error_string);
-    PLOG(ERROR) << error_string;
-  }
-  // The client only cares if updating |kShouldSendRlzPingKey| is successful,
-  // so returns true regardless of the result of the cache log update.
   return true;
 }
 

@@ -462,20 +462,6 @@ bool HardwareChromeOS::SetFirstActiveOmahaPingSent() {
     LOG(ERROR) << "Failed to set vpd key for " << kActivePingKey;
     return false;
   }
-
-  // TODO(b/77594752): remove when dump_vpd_log consumers are gone.
-  int exit_code = 0;
-  string output, error;
-  vector<string> vpd_dump_cmd = {"dump_vpd_log", "--force"};
-  if (!Subprocess::SynchronousExec(vpd_dump_cmd, &exit_code, &output, &error) ||
-      exit_code) {
-    LOG(ERROR) << "Failed to cache " << kActivePingKey << " using dump_vpd_log"
-               << " with exit code: " << exit_code << " with output: " << output
-               << " and error: " << error;
-    return false;
-  } else if (!error.empty()) {
-    LOG(INFO) << "dump_vpd_log succeeded but with error logs: " << error;
-  }
   return true;
 }
 
