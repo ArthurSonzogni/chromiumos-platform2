@@ -5,8 +5,13 @@
 #ifndef PRIVACY_LOG_H_
 #define PRIVACY_LOG_H_
 
+#include <string>
+
 #include <base/logging.h>
+#include <brillo/brillo_export.h>
+
 namespace privacy {
+
 enum PIIType {
   NOT_SPECIFIED = 0,
 
@@ -64,10 +69,14 @@ enum PIIType {
   // handling
   SECURITY_MATERIAL = 12,
 };
+struct PrivacyMetadata {
+  std::string value;
+  PIIType piiType;
+};
 
-#define LOGM(severity, piiType)       \
-  ::privacy::PersistMarkers(piiType); \
-  LOG(severity)
+BRILLO_EXPORT std::ostream& operator<<(std::ostream& out,
+                                       const privacy::PrivacyMetadata metadata);
+
 }  // namespace privacy
 
 #endif  // PRIVACY_LOG_H_

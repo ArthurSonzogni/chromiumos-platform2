@@ -4,18 +4,12 @@
 
 #include "privacy/log.h"
 
-#include <string>
-#include <vector>
-
 #include <base/logging.h>
 
 namespace privacy {
-void PersistMarkers(std::vector<privacy::PIIType> piiTypeList) {
-  std::string all_pii_strings;
-  for (const logging::PIIType piiType : piiTypeList) {
-    all_pii_strings += std::to_string(piiType) + ", ";
-  }
-  LOG(WARNING) << "The following log might contain PII data:"
-               << all_pii_strings;
+
+std::ostream& operator<<(std::ostream& out, privacy::PrivacyMetadata metadata) {
+  // TODO(b/338062698): sensitive metadata logged
+  return out << '[' << metadata.piiType << "] " << metadata.value;
 }
 }  // namespace privacy

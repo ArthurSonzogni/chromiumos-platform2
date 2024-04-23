@@ -4,6 +4,9 @@
 import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [ ":libprivacy" ]
+  if (use.test) {
+    deps += [ ":privacy_test_runner" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -26,4 +29,21 @@ generate_pkg_config("libprivacy_pc") {
 
   libs = [ "-lprivacy" ]
   install = true
+}
+
+if (use.test) {
+  executable("privacy_test_runner") {
+    sources = [ "log_test.cc" ]
+    configs += [
+      "//common-mk:test",
+
+      ":target_defaults",
+    ]
+    run_test = true
+
+    deps = [
+      ":libprivacy",
+      "//common-mk/testrunner",
+    ]
+  }
 }
