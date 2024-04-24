@@ -46,16 +46,12 @@ BacklightBrightnessChange GetLastBrightnessChangedSignal(
     system::DBusWrapperStub* wrapper);
 
 // Checks that the D-Bus signal at |index| is an
-// AmbientLightSensorEnabledChanged signal.
-void CheckAmbientLightSensorEnabledChangedSignalAtIndex(
-    system::DBusWrapperStub* wrapper, size_t index);
-
-// Checks that the D-Bus signal at |index| is an
 // AmbientLightSensorEnabledChanged signal, and that the signal contains the
 // expected boolean value.
 void CheckAmbientLightSensorEnabledChangedSignal(
     system::DBusWrapperStub* wrapper,
     size_t index,
+    bool is_keyboard,
     bool expected_ambient_light_sensor_enabled,
     AmbientLightSensorChange_Cause expected_cause);
 

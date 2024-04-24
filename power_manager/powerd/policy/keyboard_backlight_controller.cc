@@ -554,11 +554,12 @@ void KeyboardBacklightController::HandleIncreaseBrightnessRequest() {
   if (!backlight_->DeviceExists())
     return;
 
-  // If this is the first time the backlight was manually controlled, use the
-  // current backlight brightness as our starting point.
-  if (!user_brightness_percent_.has_value()) {
-    UpdateUserBrightnessPercent(current_percent_);
-  }
+  // Disable keyboard ambient light sensor when manually increasing the
+  // brightness. If this is the first time the backlight was manually
+  // controlled, this will set the current backlight brightness as our starting
+  // point.
+  SetKeyboardAmbientLightSensorEnabled(
+      false, AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST);
 
   // Increase the brightness by one step.
   //
@@ -591,11 +592,12 @@ void KeyboardBacklightController::HandleDecreaseBrightnessRequest(
   if (!backlight_->DeviceExists())
     return;
 
-  // If this is the first time the backlight was manually controlled, use the
-  // current backlight brightness as our starting point.
-  if (!user_brightness_percent_.has_value()) {
-    UpdateUserBrightnessPercent(current_percent_);
-  }
+  // Disable keyboard ambient light sensor when manually decreasing the
+  // brightness. If this is the first time the backlight was manually
+  // controlled, this will set the current backlight brightness as our starting
+  // point.
+  SetKeyboardAmbientLightSensorEnabled(
+      false, AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST);
 
   // Decrease the brightness by one step.
   //
@@ -628,6 +630,8 @@ void KeyboardBacklightController::HandleSetBrightnessRequest(
     double percent,
     Transition transition,
     SetBacklightBrightnessRequest_Cause cause) {
+  SetKeyboardAmbientLightSensorEnabled(
+      false, AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST);
   // Ensure |percent| is a valid value, and in [0, 100.0].
   percent = util::ClampPercent(percent);
 
@@ -656,6 +660,9 @@ void KeyboardBacklightController::HandleSetBrightnessRequest(
 
 void KeyboardBacklightController::HandleToggleKeyboardBacklightRequest() {
   LOG(INFO) << "Got user-triggered request to toggle keyboard backlight";
+
+  SetKeyboardAmbientLightSensorEnabled(
+      false, AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST);
 
   // Toggle the state of the backlight.
   //
@@ -690,21 +697,8 @@ void KeyboardBacklightController::HandleToggleKeyboardBacklightRequest() {
 
 void KeyboardBacklightController::
     HandleSetKeyboardAmbientLightSensorEnabledRequest(bool enabled) {
-  if (enabled) {
-    // Set manual control off.
-    user_brightness_percent_ = std::nullopt;
-    // Update to automated_percent_ slowly when enable keyboard
-    // auto brightness.
-    if (UpdateState(
-            Transition::SLOW,
-            BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP)) {
-      num_als_adjustments_++;
-    }
-  } else {
-    // Set manual control on, use the current backlight brightness as starting
-    // point.
-    UpdateUserBrightnessPercent(current_percent_);
-  }
+  SetKeyboardAmbientLightSensorEnabled(
+      enabled, AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP);
 }
 
 void KeyboardBacklightController::
@@ -878,6 +872,32 @@ void KeyboardBacklightController::HandleActivity(
   last_user_activity_time_ = clock_->GetCurrentTime();
   UpdateTurnOffTimer();
   UpdateState(Transition::FAST, cause);
+}
+
+void KeyboardBacklightController::SetKeyboardAmbientLightSensorEnabled(
+    bool als_enabled_next, AmbientLightSensorChange_Cause cause) {
+  bool als_enabled_current = !user_brightness_percent_.has_value();
+  if (als_enabled_next != als_enabled_current) {
+    EmitAmbientLightSensorEnabledChangedSignal(
+        dbus_wrapper_, kKeyboardAmbientLightSensorEnabledChangedSignal,
+        als_enabled_next, cause);
+  }
+
+  if (als_enabled_next) {
+    // Set manual control off.
+    user_brightness_percent_ = std::nullopt;
+    // Update to automated_percent_ slowly when enable keyboard
+    // auto brightness.
+    if (UpdateState(
+            Transition::SLOW,
+            BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP)) {
+      num_als_adjustments_++;
+    }
+  } else {
+    // Set manual control on, use the current backlight brightness as starting
+    // point.
+    UpdateUserBrightnessPercent(current_percent_);
+  }
 }
 
 }  // namespace power_manager::policy

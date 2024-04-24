@@ -325,6 +325,13 @@
       </tp:docstring>
       <arg name="serialized_proto" direction="out" type="ay" />
     </signal>
+    <signal name="KeyboardAmbientLightSensorEnabledChanged">
+      <tp:docstring>
+        |serialized_proto| is a serialized
+        power_manager::AmbientLightSensorChange protobuf.
+      </tp:docstring>
+      <arg name="serialized_proto" direction="out" type="ay" />
+    </signal>
 
     <signal name="PeripheralBatteryStatus">
       <tp:docstring>

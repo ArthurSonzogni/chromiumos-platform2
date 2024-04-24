@@ -237,6 +237,21 @@ void BacklightController::EmitBrightnessChangedSignal(
 }
 
 // static
+void BacklightController::EmitAmbientLightSensorEnabledChangedSignal(
+    system::DBusWrapperInterface* dbus_wrapper,
+    const std::string& signal_name,
+    bool ambient_light_sensor_enabled,
+    AmbientLightSensorChange_Cause cause) {
+  DCHECK(dbus_wrapper);
+  dbus::Signal signal(kPowerManagerInterface, signal_name);
+  AmbientLightSensorChange proto;
+  proto.set_sensor_enabled(ambient_light_sensor_enabled);
+  proto.set_cause(cause);
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  dbus_wrapper->EmitSignal(&signal);
+}
+
+// static
 void BacklightController::RegisterGetAmbientLightSensorEnabledHandler(
     system::DBusWrapperInterface* dbus_wrapper,
     const std::string& method_name,

@@ -202,6 +202,13 @@ class BacklightController {
       const std::string& signal_name,
       double brightness_percent,
       BacklightBrightnessChange_Cause cause);
+
+  // Emits a D-Bus signal announcing a ambient light sensor enabled change.
+  static void EmitAmbientLightSensorEnabledChangedSignal(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& signal_name,
+      bool ambient_light_sensor_enabled,
+      AmbientLightSensorChange_Cause cause);
 };
 
 }  // namespace policy

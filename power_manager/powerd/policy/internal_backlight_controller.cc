@@ -903,14 +903,9 @@ void InternalBacklightController::SetUseAmbientLight(
     bool use_ambient_light, AmbientLightSensorChange_Cause cause) {
   // If the value changed, emit a signal.
   if (use_ambient_light_ != use_ambient_light) {
-    DCHECK(dbus_wrapper_);
-    dbus::Signal signal(kPowerManagerInterface,
-                        kAmbientLightSensorEnabledChangedSignal);
-    AmbientLightSensorChange proto;
-    proto.set_sensor_enabled(use_ambient_light);
-    proto.set_cause(cause);
-    dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
-    dbus_wrapper_->EmitSignal(&signal);
+    EmitAmbientLightSensorEnabledChangedSignal(
+        dbus_wrapper_, kAmbientLightSensorEnabledChangedSignal,
+        use_ambient_light, cause);
   }
   use_ambient_light_ = use_ambient_light;
 

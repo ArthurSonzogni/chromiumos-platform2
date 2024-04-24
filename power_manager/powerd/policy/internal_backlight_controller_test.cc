@@ -153,8 +153,10 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   test::CallIncreaseScreenBrightness(dbus_wrapper_.get());
   EXPECT_GT(backlight_.current_level(), kAlsLevel);
   // The first signal emitted should be for the ambient light sensor change.
-  test::CheckAmbientLightSensorEnabledChangedSignalAtIndex(dbus_wrapper_.get(),
-                                                           /*index=*/0);
+  ASSERT_TRUE(dbus_wrapper_->GetSentSignal(
+      /*index=*/0,
+      /*expected_signal_name=*/kAmbientLightSensorEnabledChangedSignal,
+      /*protobuf_out=*/nullptr, /*signal_out=*/nullptr));
   // The second signal emitted should be for the brightness change.
   test::CheckBrightnessChangedSignal(
       dbus_wrapper_.get(), /*index=*/1, kScreenBrightnessChangedSignal,
@@ -1107,8 +1109,10 @@ TEST_F(InternalBacklightControllerTest, SetAndGetBrightness) {
   EXPECT_EQ(kFastBacklightTransition, backlight_.current_interval());
 
   // The first signal emitted should be for the ambient light sensor change.
-  test::CheckAmbientLightSensorEnabledChangedSignalAtIndex(dbus_wrapper_.get(),
-                                                           /*index=*/0);
+  ASSERT_TRUE(dbus_wrapper_->GetSentSignal(
+      /*index=*/0,
+      /*expected_signal_name=*/kAmbientLightSensorEnabledChangedSignal,
+      /*protobuf_out=*/nullptr, /*signal_out=*/nullptr));
   // A signal should've been emitted with the appropriate cause.
   test::CheckBrightnessChangedSignal(
       dbus_wrapper_.get(), /*index=*/1, kScreenBrightnessChangedSignal,
@@ -1139,8 +1143,10 @@ TEST_F(InternalBacklightControllerTest, SetBrightnessCause) {
   ASSERT_DOUBLE_EQ(round(kBrightnessPercent), round(percent));
 
   // The first signal emitted should be for the ambient light sensor change.
-  test::CheckAmbientLightSensorEnabledChangedSignalAtIndex(dbus_wrapper_.get(),
-                                                           /*index=*/0);
+  ASSERT_TRUE(dbus_wrapper_->GetSentSignal(
+      /*index=*/0,
+      /*expected_signal_name=*/kAmbientLightSensorEnabledChangedSignal,
+      /*protobuf_out=*/nullptr, /*signal_out=*/nullptr));
   // The second signal emitted should be for the brightness change, with the
   // appropriate cause.
   test::CheckBrightnessChangedSignal(
@@ -1251,6 +1257,7 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   // the ambient light sensor is now disabled.
   test::CheckAmbientLightSensorEnabledChangedSignal(
       dbus_wrapper_.get(), /*index=*/0,
+      /*is_keyboard=*/false,
       /*expected_ambient_light_sensor_enabled=*/false,
       /*expected_cause=*/
       AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST);
@@ -1272,6 +1279,7 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   // is now enabled.
   test::CheckAmbientLightSensorEnabledChangedSignal(
       dbus_wrapper_.get(), /*index=*/0,
+      /*is_keyboard=*/false,
       /*expected_ambient_light_sensor_enabled=*/true,
       /*expected_cause=*/
       AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP);
@@ -1301,6 +1309,7 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
   // is now disabled.
   test::CheckAmbientLightSensorEnabledChangedSignal(
       dbus_wrapper_.get(), /*index=*/0,
+      /*is_keyboard=*/false,
       /*expected_ambient_light_sensor_enabled=*/false,
       /*expected_cause=*/
       AmbientLightSensorChange_Cause_USER_REQUEST_SETTINGS_APP);
@@ -1326,6 +1335,7 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
       SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   test::CheckAmbientLightSensorEnabledChangedSignal(
       dbus_wrapper_.get(), /*index=*/0,
+      /*is_keyboard=*/false,
       /*expected_ambient_light_sensor_enabled=*/false,
       /*expected_cause=*/
       AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST_SETTINGS_APP);
@@ -1342,6 +1352,7 @@ TEST_F(InternalBacklightControllerTest, SetAmbientLightSensorEnabled) {
       SetBacklightBrightnessRequest_Cause_MODEL);
   test::CheckAmbientLightSensorEnabledChangedSignal(
       dbus_wrapper_.get(), /*index=*/0,
+      /*is_keyboard=*/false,
       /*expected_ambient_light_sensor_enabled=*/false,
       /*expected_cause=*/
       AmbientLightSensorChange_Cause_BRIGHTNESS_OTHER);

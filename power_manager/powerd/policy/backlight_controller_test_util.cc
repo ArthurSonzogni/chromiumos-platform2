@@ -91,24 +91,19 @@ void CheckBrightnessChangedSignal(system::DBusWrapperStub* wrapper,
   EXPECT_EQ(cause, proto.cause());
 }
 
-void CheckAmbientLightSensorEnabledChangedSignalAtIndex(
-    system::DBusWrapperStub* wrapper, size_t index) {
-  std::unique_ptr<dbus::Signal> signal;
-  ASSERT_TRUE(wrapper->GetSentSignal(
-      /*index=*/index,
-      /*expected_signal_name=*/kAmbientLightSensorEnabledChangedSignal,
-      /*protobuf_out=*/nullptr, /*signal_out=*/&signal));
-}
-
 void CheckAmbientLightSensorEnabledChangedSignal(
     system::DBusWrapperStub* wrapper,
     size_t index,
+    bool is_keyboard,
     bool expected_ambient_light_sensor_enabled,
     AmbientLightSensorChange_Cause expected_cause) {
   std::unique_ptr<dbus::Signal> signal;
+  const char* signal_name =
+      is_keyboard ? kKeyboardAmbientLightSensorEnabledChangedSignal
+                  : kAmbientLightSensorEnabledChangedSignal;
   ASSERT_TRUE(wrapper->GetSentSignal(
       /*index=*/index,
-      /*expected_signal_name=*/kAmbientLightSensorEnabledChangedSignal,
+      /*expected_signal_name=*/signal_name,
       /*protobuf_out=*/nullptr, /*signal_out=*/&signal));
 
   AmbientLightSensorChange proto;

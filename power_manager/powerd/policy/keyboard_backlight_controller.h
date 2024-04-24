@@ -202,6 +202,13 @@ class KeyboardBacklightController : public BacklightController,
   // should cause the backlight to be turned on temporarily.
   void HandleActivity(BacklightBrightnessChange_Cause cause);
 
+  // Set the keyboard ambient light sensor on or off. As a result of this
+  // change, this function may also emit a
+  // kAmbientLightSensorEnabledChangedSignal, and the user-set brightness level
+  // may be reset.
+  void SetKeyboardAmbientLightSensorEnabled(
+      bool enabled, AmbientLightSensorChange_Cause cause);
+
   mutable std::unique_ptr<Clock> clock_;
 
   // Not owned by this class.

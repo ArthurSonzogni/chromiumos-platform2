@@ -98,6 +98,8 @@ const char kThermalEventSignal[] = "ThermalEvent";
 const char kBatterySaverModeStateChanged[] = "BatterySaverModeStateChanged";
 const char kAmbientLightSensorEnabledChangedSignal[] =
     "AmbientLightSensorEnabledChanged";
+const char kKeyboardAmbientLightSensorEnabledChangedSignal[] =
+    "KeyboardAmbientLightSensorEnabledChanged";
 
 // Values
 const int kBrightnessTransitionGradual = 1;
