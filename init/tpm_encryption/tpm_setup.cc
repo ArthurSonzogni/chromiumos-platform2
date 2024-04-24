@@ -46,23 +46,7 @@ constexpr char kFeaturedTpmSeedSalt[] = "featured";
 constexpr char kFeaturedTpmSeedTmpDir[] = "/run/featured_seed";
 constexpr char kFeaturedTpmSeedFile[] = "tpm_seed";
 constexpr char kOldTpmOwnershipStateFile[] = ".tpm_owned";
-constexpr char kNvramExport[] = "/tmp/lockbox.nvram";
-
-/* Exports NVRAM contents to tmpfs for use by install attributes */
-void NvramExport(const brillo::SecureBlob& contents) {
-  int fd;
-  LOG(INFO) << "Export NVRAM contents";
-  fd = open(kNvramExport, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR | S_IWUSR);
-  if (fd < 0) {
-    PLOG(ERROR) << "open(nvram_export)";
-    return;
-  }
-  if (write(fd, contents.data(), contents.size()) != contents.size()) {
-    // Don't leave broken files around
-    unlink(kNvramExport);
-  }
-  close(fd);
-}
+constexpr char kNvramExport[] = "tmp/lockbox.nvram";
 
 bool SendSecretToTmpFile(const encryption::EncryptionKey& key,
                          const std::string& salt,
@@ -256,7 +240,8 @@ bool TpmSystemKey::Export() {
       encryption::NvramSpace* lockbox_space = tpm_.GetLockboxSpace();
       if (lockbox_valid && lockbox_space->is_valid()) {
         LOG(INFO) << "Lockbox is valid, exporting.";
-        NvramExport(lockbox_space->contents());
+        return platform_->WriteSecureBlobToFile(rootdir_.Append(kNvramExport),
+                                                lockbox_space->contents());
       }
     } else {
       LOG(ERROR) << "Lockbox validity check error.";
