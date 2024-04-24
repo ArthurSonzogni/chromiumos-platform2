@@ -38,7 +38,7 @@
       margin-left:500px;
     }
 
-    #server-state, .progress {
+    .text-footer-status, .progress {
       margin-top:20px;
     }
 
@@ -61,7 +61,7 @@
         Participant group:
         <input type="text" name="grp" id="grp" pattern="[A-Za-z0-9]{1,2}">
       </h1>
-      <div id="server-state" class="text-danger">
+      <div id="server-state" class="text-footer-status text-danger">
         Waiting for the fingerprint scanner to be ready...
       </div>
       <button id="set_participant" disabled>OK</button>
@@ -100,7 +100,7 @@
       <div id="fingerprint-icon">
         <img src="static/fingerprint.svg" height="100" width="100">
       </div>
-      <div id="error" class="text-danger" hidden>
+      <div id="error" class="text-footer-status text-danger" hidden>
         <b><span id="error_message">DEADBEEF</span></b>
       </div>
     </div>
@@ -129,7 +129,7 @@
       <button id="next_finger">OK</button>
     </div>
 
-    <div id="server-error" class="text-danger" hidden>
+    <div id="server-error" class="text-footer-status text-danger" hidden>
       Lost connection to fingerprint scanner. Please reload the page.
     </div>
   </container>
