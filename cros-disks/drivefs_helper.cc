@@ -198,7 +198,7 @@ DrivefsHelper::DrivefsHelper(const Platform* platform,
           SandboxedExecutable{
               base::FilePath("/opt/google/drive-file-stream/drivefs"),
               base::FilePath("/usr/share/policy/drivefs-seccomp.policy")},
-          OwnerUser{kChronosUID, kChronosGID},
+          OwnerUser{kChronosUID, kChronosAccessGID},
           /* has_network_access= */ true) {}
 
 DrivefsHelper::~DrivefsHelper() = default;
