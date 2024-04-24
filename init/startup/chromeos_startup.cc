@@ -525,7 +525,7 @@ void ChromeosStartup::CheckForStatefulWipe() {
         clobber_log_msg = "Enter developer mode on a debug build";
         DevUpdateStatefulPartition("clobber");
         if (!platform_->FileExists(dev_mode_allowed_file_)) {
-          if (!platform_->WriteStringToFile(dev_mode_allowed_file_, "")) {
+          if (!platform_->TouchFileDurable(dev_mode_allowed_file_)) {
             PLOG(WARNING) << "Failed to create file: "
                           << dev_mode_allowed_file_.value();
           }
@@ -844,7 +844,7 @@ int ChromeosStartup::Run() {
         !platform_->GetOwnership(encrypted_failed, &uid, nullptr,
                                  false /* follow_links */) ||
         !(uid != getuid())) {
-      platform_->WriteStringToFile(encrypted_failed, "");
+      platform_->TouchFileDurable(encrypted_failed);
     } else {
       crossystem->VbSetSystemPropertyInt("recovery_request", 1);
     }
@@ -862,7 +862,7 @@ int ChromeosStartup::Run() {
     // At the moment we'll only log it but not force reboot or recovery.
     // TODO(b/278071784): Monitor if the failure occurs frequently and later
     // change this to reboot/send to recovery when it failed.
-    platform_->WriteStringToFile(pcr_extend_failed, "");
+    platform_->TouchFileDurable(pcr_extend_failed);
   } else if (platform_->FileExists(pcr_extend_failed)) {
     platform_->DeleteFile(pcr_extend_failed);
   }
@@ -1010,7 +1010,7 @@ void ChromeosStartup::DevCheckBlockDevMode(
     // Put a flag file into place that will trigger a stateful partition wipe
     // after reboot in verified mode.
     if (!platform_->FileExists(dev_mode_file)) {
-      platform_->WriteStringToFile(dev_mode_file, "");
+      platform_->TouchFileDurable(dev_mode_file);
     }
 
     startup_dep_->BootAlert("block_devmode");
