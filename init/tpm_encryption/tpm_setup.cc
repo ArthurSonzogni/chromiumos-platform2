@@ -42,10 +42,6 @@ constexpr char kBioCryptoInitPath[] = "/usr/bin/bio_crypto_init";
 constexpr char kBioTpmSeedSalt[] = "biod";
 constexpr char kBioTpmSeedTmpDir[] = "/run/bio_crypto_init";
 constexpr char kBioTpmSeedFile[] = "seed";
-constexpr char kHibermanPath[] = "/usr/sbin/hiberman";
-constexpr char kHibermanTpmSeedSalt[] = "hiberman";
-constexpr char kHibermanTpmSeedTmpDir[] = "/run/hiberman";
-constexpr char kHibermanTpmSeedFile[] = "tpm_seed";
 constexpr char kFeaturedTpmSeedSalt[] = "featured";
 constexpr char kFeaturedTpmSeedTmpDir[] = "/run/featured_seed";
 constexpr char kFeaturedTpmSeedFile[] = "tpm_seed";
@@ -123,22 +119,6 @@ bool SendSecretToBiodTmpFile(const encryption::EncryptionKey& key,
   return SendSecretToTmpFile(
       key, std::string(kBioTpmSeedSalt), base::FilePath(kBioTpmSeedTmpDir),
       kBioTpmSeedFile, libstorage::kBiodUid, libstorage::kBiodGid, platform);
-}
-
-// Send a secret derived from the system key to hiberman, if available, via a
-// tmpfs file which will be read by hiberman. The tmpfs directory will be
-// created if it doesn't exist.
-bool SendSecretToHibermanTmpFile(const encryption::EncryptionKey& key,
-                                 libstorage::Platform* platform) {
-  if (!platform->FileExists(base::FilePath(kHibermanPath))) {
-    LOG(INFO) << "There is no hiberman binary, so skip sending TPM seed.";
-    return true;
-  }
-
-  return SendSecretToTmpFile(key, std::string(kHibermanTpmSeedSalt),
-                             base::FilePath(kHibermanTpmSeedTmpDir),
-                             kHibermanTpmSeedFile, libstorage::kHibermanUid,
-                             libstorage::kHibermanGid, platform);
 }
 
 // Send a secret derived from the system key to featured, if available, via a
@@ -230,15 +210,13 @@ std::optional<encryption::EncryptionKey> TpmSystemKey::Load(bool safe_mount) {
     LOG(ERROR) << "biod won't get a TPM seed without chromefw.";
   }
 
-  /* Log errors during sending seed to hiberman and featured, but don't stop
+  /* Log errors during sending seed to featured, but don't stop
    * execution. */
   if (ShallUseTpmForSystemKey()) {
-    LOG_IF(ERROR, !SendSecretToHibermanTmpFile(key, platform_))
-        << "Failed to send TPM secret to hiberman.";
     LOG_IF(ERROR, !SendSecretToFeaturedTmpFile(key, platform_))
         << "Failed to send TPM secret to featured.";
   } else {
-    LOG(ERROR) << "Failed to load TPM system key, hiberman and featured won't "
+    LOG(ERROR) << "Failed to load TPM system key, featured won't "
                   "get a TPM seed.";
   }
 
