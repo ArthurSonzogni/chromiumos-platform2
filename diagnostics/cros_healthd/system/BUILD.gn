@@ -39,6 +39,7 @@ source_set("system_pci_util") {
 
 source_set("system") {
   configs += [ ":system_pkg_deps" ]
+  public_deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
   deps = [
     ":system_pci_util",
     "//diagnostics/base",
@@ -143,6 +144,7 @@ if (use.test) {
       ":test_support",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/dbus_bindings",
     ]
   }
 }

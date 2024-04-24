@@ -24,12 +24,16 @@ pkg_config("libcros_healthd_fetchers_pkg_deps") {
 
 source_set("libcros_healthd_fetchers") {
   configs += [ ":libcros_healthd_fetchers_pkg_deps" ]
+  public_deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/fetchers/storage:storage_data_source",
+    "//diagnostics/cros_healthd/mojom",
     "//diagnostics/cros_healthd/system",
     "//diagnostics/cros_healthd/utils",
-    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
+    "//diagnostics/dbus_bindings",
+    "//diagnostics/mojom/external:libcros_healthd_internal",
+    "//diagnostics/mojom/external:libnetwork_health_mojo_bindings",
   ]
   sources = [
     "audio_fetcher.cc",
@@ -106,8 +110,10 @@ if (use.test) {
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/fetchers/storage:storage_data_source_test",
+      "//diagnostics/cros_healthd/mojom",
       "//diagnostics/cros_healthd/system:test_support",
       "//diagnostics/cros_healthd/utils",
+      "//diagnostics/dbus_bindings",
     ]
   }
 }

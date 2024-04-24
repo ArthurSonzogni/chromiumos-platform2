@@ -17,6 +17,7 @@ source_set("android_network") {
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system",
+    "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }

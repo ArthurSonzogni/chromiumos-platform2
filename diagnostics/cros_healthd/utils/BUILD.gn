@@ -30,10 +30,8 @@ source_set("utils") {
     "resource_queue.cc",
     "usb_utils.cc",
   ]
-  deps = [
-    "//diagnostics/base",
-    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
-  ]
+  public_deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
+  deps = [ "//diagnostics/base" ]
 }
 
 if (use.test) {

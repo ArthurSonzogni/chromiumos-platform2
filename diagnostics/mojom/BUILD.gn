@@ -39,7 +39,7 @@ generate_pkg_config("cros_healthd_client") {
 source_set("libmojom_utils") {
   sources = [ "routine_output_utils.cc" ]
   pkg_deps = [ "libchrome" ]
-  deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
+  public_deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
 }
 
 if (use.test) {

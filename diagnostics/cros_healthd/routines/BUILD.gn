@@ -95,6 +95,7 @@ if (use.test) {
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/system:test_support",
+      "//diagnostics/dbus_bindings",
       "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
     ]
   }

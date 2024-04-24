@@ -18,6 +18,7 @@ source_set("audio") {
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system",
+    "//diagnostics/dbus_bindings",
     "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
 }
@@ -32,6 +33,7 @@ if (use.test) {
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/system:test_support",
+      "//diagnostics/dbus_bindings",
     ]
   }
 }

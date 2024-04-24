@@ -26,7 +26,11 @@ source_set("bluetooth") {
     "floss/bluetooth_scanning.cc",
   ]
   configs += [ ":bluetooth_pkg_config" ]
-  public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
+  public_deps = [
+    "//diagnostics/cros_healthd/mojom",
+    "//diagnostics/cros_healthd/routines:utils",
+    "//diagnostics/dbus_bindings",
+  ]
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system",

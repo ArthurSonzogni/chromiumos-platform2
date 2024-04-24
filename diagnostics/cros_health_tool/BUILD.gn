@@ -23,6 +23,8 @@ executable("cros_health_tool") {
     "diag:libdiag",
     "event:libevent",
     "telem:libtelem",
+    "//diagnostics/mojom/external:libnetwork_health_mojo_bindings",
+    "//diagnostics/mojom/public:libcros_healthd_mojo_bindings",
   ]
   install_path = "bin"
 }

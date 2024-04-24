@@ -6,14 +6,14 @@ import("//common-mk/generate-dbus-adaptors.gni")
 import("//common-mk/generate-dbus-proxies.gni")
 
 group("dbus_bindings") {
-  deps = [
+  public_deps = [
     ":dbus_adaptors",
     ":dbus_proxies",
   ]
 }
 
 group("dbus_adaptors") {
-  deps = [ ":floss_callback_adaptors" ]
+  public_deps = [ ":floss_callback_adaptors" ]
 }
 
 generate_dbus_adaptors("floss_callback_adaptors") {
@@ -27,7 +27,7 @@ generate_dbus_adaptors("floss_callback_adaptors") {
 }
 
 group("dbus_proxies") {
-  deps = [
+  public_deps = [
     ":bluetooth_manager_proxies",
     ":bluez_proxies",
     ":cras_proxies",

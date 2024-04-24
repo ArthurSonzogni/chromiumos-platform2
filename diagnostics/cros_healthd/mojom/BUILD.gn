@@ -5,7 +5,7 @@
 import("//common-mk/mojom_bindings_generator.gni")
 
 group("mojom") {
-  deps = [
+  public_deps = [
     ":delegate_mojo_bindings",
     ":executor_mojo_bindings",
   ]

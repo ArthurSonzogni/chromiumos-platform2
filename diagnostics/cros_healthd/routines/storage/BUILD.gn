@@ -21,7 +21,10 @@ source_set("storage") {
     "ufs_lifetime.cc",
   ]
   configs += [ ":storage_pkg_config" ]
-  public_deps = [ "//diagnostics/cros_healthd/routines:utils" ]
+  public_deps = [
+    "//diagnostics/cros_healthd/mojom",
+    "//diagnostics/cros_healthd/routines:utils",
+  ]
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system",
