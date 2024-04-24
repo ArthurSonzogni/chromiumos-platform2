@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+CGROUP_FREEZER_PIDFILE=/sys/fs/cgroup/freezer/system_daemons/cgroup.procs
+
 # Set logging level and scope if sticky flag exists.
 if [ -f /var/cache/modem-utilities/log_shill_verbose3 ]; then
   # Only set SHILL_LOG_LEVEL if no value was set
@@ -26,6 +28,9 @@ if [ -n "${SHILL_LOG_VMODULES}" ]; then
 fi
 
 # Run shill as shill user/group in a minijail:
+#   -f write the PIDs of the process tree to CGROUP_FREEZER_PIDFILE, if it
+#     exists. CGROUP_FREEZER_PIDFILE file exists only if `key_eviction`USE flag
+#     is enabled.
 #   -G so shill programs can inherit supplementary groups.
 #   -n to run shill with no_new_privs.
 #   -B 20 to avoid locking SECURE_KEEP_CAPS flag.
@@ -34,5 +39,11 @@ fi
 #     CAP_NET_BIND_SERVICE | CAP_SETPCAP | CAP_SETUID | CAP_SETGID | CAP_KILL
 #   --ambient so child processes can inherit runtime capabilities.
 #   -i to lose the dangling minijail0 process.
-exec /sbin/minijail0 -u shill -g shill -G -n -B 20 -c 800003de0 --ambient -i \
-     -- /usr/bin/shill "$@"
+if [ -f "${CGROUP_FREEZER_PIDFILE}" ]; then
+  # Will add the PIDs in the freezer cgroup.
+  exec /sbin/minijail0 -u shill -g shill -f "${CGROUP_FREEZER_PIDFILE}" -G -n \
+      -B 20 -c 800003de0 --ambient -i -- /usr/bin/shill "$@"
+else
+  exec /sbin/minijail0 -u shill -g shill -G -n -B 20 -c 800003de0 --ambient -i \
+       -- /usr/bin/shill "$@"
+fi
