@@ -100,17 +100,17 @@ class ZramWriteback {
 
   struct ZramWritebackParams {
     uint32_t backing_dev_size_mib = 1024;
-    base::TimeDelta periodic_time = base::Seconds(10);
-    base::TimeDelta backoff_time = base::Seconds(30);
-    uint64_t min_pages = ((2 << 20) / kPageSize);   /* 2MiB worth of pages */
-    uint64_t max_pages = ((128 << 20) / kPageSize); /* 128MiB worth of pages */
+    base::TimeDelta periodic_time = base::Hours(1);
+    base::TimeDelta backoff_time = base::Minutes(10);
+    uint64_t min_pages = ((5 << 20) / kPageSize);   /* 5MiB worth of pages */
+    uint64_t max_pages = ((300 << 20) / kPageSize); /* 300MiB worth of pages */
     uint64_t max_pages_per_day =
         ((1 << 30) / kPageSize); /* 1GiB worth of pages */
     bool writeback_huge_idle = true;
     bool writeback_idle = true;
-    bool writeback_huge = false;
-    base::TimeDelta idle_min_time = base::Minutes(2);
-    base::TimeDelta idle_max_time = base::Days(1);
+    bool writeback_huge = true;
+    base::TimeDelta idle_min_time = base::Hours(20);
+    base::TimeDelta idle_max_time = base::Hours(25);
 
     friend std::ostream& operator<<(std::ostream& out,
                                     const ZramWritebackParams& p) {

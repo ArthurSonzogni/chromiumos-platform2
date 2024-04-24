@@ -199,13 +199,13 @@ TEST_F(ZramWritebackTest, PeriodicWriteback) {
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(
       mock_util_,
-      WriteFile(base::FilePath("/sys/block/zram0/writeback_limit"), "9351"))
+      WriteFile(base::FilePath("/sys/block/zram0/writeback_limit"), "21918"))
       .WillOnce(Return(absl::OkStatus()));
   // GetWritebackLimit
   EXPECT_CALL(
       mock_util_,
       ReadFileToString(base::FilePath("/sys/block/zram0/writeback_limit"), _))
-      .WillOnce(DoAll(SetArgPointee<1>("9351\n"), Return(absl::OkStatus())));
+      .WillOnce(DoAll(SetArgPointee<1>("21918\n"), Return(absl::OkStatus())));
   // huge_idle
   // GetCurrentIdleTimeSec
   base::SystemMemoryInfoKB mock_meminfo;
@@ -214,7 +214,7 @@ TEST_F(ZramWritebackTest, PeriodicWriteback) {
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   // MarkIdle
   EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/idle"), "839"))
+              WriteFile(base::FilePath("/sys/block/zram0/idle"), "72150"))
       .WillOnce(Return(absl::OkStatus()));
   // InitiateWriteback
   EXPECT_CALL(
@@ -232,7 +232,7 @@ TEST_F(ZramWritebackTest, PeriodicWriteback) {
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   // MarkIdle
   EXPECT_CALL(mock_util_,
-              WriteFile(base::FilePath("/sys/block/zram0/idle"), "839"))
+              WriteFile(base::FilePath("/sys/block/zram0/idle"), "72150"))
       .WillOnce(Return(absl::OkStatus()));
   // InitiateWriteback
   EXPECT_CALL(mock_util_,

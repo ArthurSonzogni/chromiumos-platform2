@@ -40,7 +40,7 @@ constexpr VariationsFeature kSwapZramCompAlgorithmFeature{
 constexpr VariationsFeature kSwapZramDisksizeFeature{
     "CrOSLateBootSwapZramDisksize", FEATURE_DISABLED_BY_DEFAULT};
 constexpr VariationsFeature kSwapZramWritebackFeature{
-    "CrOSLateBootSwapZramWriteback", FEATURE_DISABLED_BY_DEFAULT};
+    "CrOSLateBootSwapZramWriteback", FEATURE_ENABLED_BY_DEFAULT};
 constexpr VariationsFeature kSwapZramRecompressionFeature{
     "CrOSLateBootSwapZramRecompression", FEATURE_ENABLED_BY_DEFAULT};
 
