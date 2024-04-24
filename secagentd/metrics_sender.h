@@ -33,6 +33,38 @@ static constexpr int kMaxMapValue = 256;
 // Matches the time at which the metrics file is flushed (30s).
 static constexpr int kBatchTimer = 30;
 
+struct CountMetric {
+  const char* name;
+  int max;
+  int min;
+  unsigned int nbuckets;  // prefer to be <50, must be <100. See
+                          // src/platform2/metrics/metrics_library.h description
+                          // for SendToUMA.
+};
+
+bool operator==(const CountMetric& m1, const CountMetric& m2);
+}  // namespace metrics
+}  // namespace secagentd
+
+// make CountMetric hashable for use within unordered_map.
+namespace std {
+template <>
+struct hash<secagentd::metrics::CountMetric> {
+  std::size_t operator()(const secagentd::metrics::CountMetric& m) const {
+    return std::hash<std::string>{}(std::string(m.name));
+  }
+};
+}  // namespace std
+
+namespace secagentd {
+namespace metrics {
+
+using MetricsCountSubMap = std::unordered_map<int, unsigned int>;
+using MetricsCountMap = std::unordered_map<CountMetric, MetricsCountSubMap>;
+
+static constexpr CountMetric kCommandLineSize = {
+    .name = "CommandLineLength", .max = 4096, .min = 64, .nbuckets = 32};
+
 template <class E>
 struct EnumMetric {
   const char* name;
@@ -199,6 +231,10 @@ class MetricsSender {
         base::StrCat({metrics::kMetricNamePrefix, name}), sample, max);
   }
 
+  // Increment the batched count histogram for sample.
+  // The contents of the batch are periodically flushed.
+  void IncrementCountMetric(metrics::CountMetric m, int sample);
+
   // Creates a key with the given metric sample pair and increments the map
   // value by one.
   template <typename M>
@@ -216,10 +252,10 @@ class MetricsSender {
       LOG(ERROR) << "Key not found in success_value_map. Key = " << metric.name;
       return;
     }
-    batch_count_map_[key]++;
+    batch_enum_map_[key]++;
 
     // Trigger a flush if count is high and not success value.
-    if (batch_count_map_[key] >= metrics::kMaxMapValue &&
+    if (batch_enum_map_[key] >= metrics::kMaxMapValue &&
         sample_val != success_value->second) {
       Flush();
     }
@@ -239,7 +275,8 @@ class MetricsSender {
   friend class testing::MetricsSenderTestFixture;
 
   // Sends all metrics contained in the metrics map.
-  void SendBatchedMetricsToUMA(metrics::MetricsMap map_copy);
+  void SendBatchedMetricsToUMA(metrics::MetricsMap map_copy,
+                               metrics::MetricsCountMap count_map_copy);
 
   // Starts job for SendMetricsToUMA and clears metrics_map_.
   void Flush();
@@ -264,7 +301,8 @@ class MetricsSender {
       base::ThreadPool::CreateSequencedTaskRunner({});
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
   std::vector<base::RepeatingCallback<void()>> metric_callbacks_;
-  metrics::MetricsMap batch_count_map_;
+  metrics::MetricsMap batch_enum_map_;
+  metrics::MetricsCountMap batch_count_map_;
   const metrics::MetricsMap exclusive_max_map_ = {
       {metrics::kSendMessage.name,
        static_cast<int>(metrics::SendMessage::kMaxValue) + 1},

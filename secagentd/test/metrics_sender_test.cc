@@ -42,7 +42,13 @@ class MetricsSenderTestFixture : public ::testing::Test {
     return metrics_sender_->success_value_map_.find(name)->second;
   }
 
-  int GetBatchMapSize() { return metrics_sender_->batch_count_map_.size(); }
+  int GetBatchEnumMapSize() { return metrics_sender_->batch_enum_map_.size(); }
+  int GetNBatchCountHistogram() {
+    return metrics_sender_->batch_count_map_.size();
+  }
+  int GetBatchHistogramNBucket(metrics::CountMetric m) {
+    return metrics_sender_->batch_count_map_[m].size();
+  }
 
   void Flush() { metrics_sender_->Flush(); }
 };
@@ -78,7 +84,7 @@ TEST_F(MetricsSenderTestFixture, CheckSuccessValueMap) {
   EXPECT_EQ(0, GetSuccessValue("Process.TerminateEvent"));
 }
 
-TEST_F(MetricsSenderTestFixture, SendBatchedMetricsToUMA) {
+TEST_F(MetricsSenderTestFixture, SendBatchedEnumMetricsToUMA) {
   metrics_sender_->InitBatchedMetrics();
 
   static constexpr int kMetricCount1{201};
@@ -100,10 +106,10 @@ TEST_F(MetricsSenderTestFixture, SendBatchedMetricsToUMA) {
               SendRepeatedEnumToUMA("ChromeOS.Secagentd.Process.TerminateEvent",
                                     4, 5, kMetricCount2))
       .WillOnce(Return(true));
-  EXPECT_EQ(2, GetBatchMapSize());
+  EXPECT_EQ(2, GetBatchEnumMapSize());
 
   task_environment_.FastForwardBy(base::Seconds(metrics::kBatchTimer));
-  EXPECT_EQ(0, GetBatchMapSize());
+  EXPECT_EQ(0, GetBatchEnumMapSize());
 
   for (int i = 0; i < kMetricCount1; i++) {
     metrics_sender_->IncrementBatchedMetric(metrics::kSendMessage,
@@ -115,10 +121,54 @@ TEST_F(MetricsSenderTestFixture, SendBatchedMetricsToUMA) {
               SendRepeatedEnumToUMA("ChromeOS.Secagentd.SendMessageResult", 0,
                                     17, kRounded))
       .WillOnce(Return(true));
-  EXPECT_EQ(1, GetBatchMapSize());
+  EXPECT_EQ(1, GetBatchEnumMapSize());
 
   task_environment_.FastForwardBy(base::Seconds(metrics::kBatchTimer));
-  EXPECT_EQ(0, GetBatchMapSize());
+  EXPECT_EQ(0, GetBatchEnumMapSize());
+}
+
+TEST_F(MetricsSenderTestFixture, SendBatchedCountMetricsToUMA) {
+  metrics_sender_->InitBatchedMetrics();
+
+  static constexpr int kMetricCount1{201};
+  static constexpr int kMetricSample1{527};
+  static constexpr int kMetricSample1Bucketized{
+      512};  // quantized to nbuckets and rounded down.
+
+  static constexpr int kMetricCount2{50};
+  static constexpr int kMetricSample2{734};
+  static constexpr int kMetricSample2Bucketized{
+      704};  // quantized to nbuckets and rounded down.
+
+  for (int i = 0; i < kMetricCount1; i++) {
+    metrics_sender_->IncrementCountMetric(metrics::kCommandLineSize,
+                                          kMetricSample1);
+  }
+  for (int i = 0; i < kMetricCount2; i++) {
+    metrics_sender_->IncrementCountMetric(metrics::kCommandLineSize,
+                                          kMetricSample2);
+  }
+
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendRepeatedToUMA("ChromeOS.Secagentd.CommandLineLength",
+                        kMetricSample1Bucketized, metrics::kCommandLineSize.min,
+                        metrics::kCommandLineSize.max,
+                        metrics::kCommandLineSize.nbuckets, kMetricCount1))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(
+      *metrics_library_mock_,
+      SendRepeatedToUMA("ChromeOS.Secagentd.CommandLineLength",
+                        kMetricSample2Bucketized, metrics::kCommandLineSize.min,
+                        metrics::kCommandLineSize.max,
+                        metrics::kCommandLineSize.nbuckets, kMetricCount2))
+      .WillOnce(Return(true));
+  EXPECT_EQ(1, GetNBatchCountHistogram());
+  EXPECT_EQ(2, GetBatchHistogramNBucket(metrics::kCommandLineSize));
+
+  task_environment_.FastForwardBy(base::Seconds(metrics::kBatchTimer));
+  EXPECT_EQ(0, GetNBatchCountHistogram());
 }
 
 TEST_F(MetricsSenderTestFixture, RunRegisteredCallbacks) {
@@ -147,14 +197,14 @@ TEST_F(MetricsSenderTestFixture, EarlyFlushSaturatedMetric) {
     metrics_sender_->IncrementBatchedMetric(
         metrics::kExecEvent, metrics::ProcessEvent::kSpawnPidNotInCache);
   }
-  EXPECT_EQ(0, GetBatchMapSize());
+  EXPECT_EQ(0, GetBatchEnumMapSize());
 
   for (int i = 0; i < metrics::kMaxMapValue; i++) {
     // Send in success value.
     metrics_sender_->IncrementBatchedMetric(metrics::kExecEvent,
                                             metrics::ProcessEvent::kFullEvent);
   }
-  EXPECT_EQ(1, GetBatchMapSize());
+  EXPECT_EQ(1, GetBatchEnumMapSize());
 }
 
 }  // namespace secagentd::testing

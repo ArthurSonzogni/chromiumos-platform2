@@ -15,6 +15,15 @@
 #include "metrics/metrics_library.h"
 
 namespace secagentd {
+namespace metrics {
+bool operator==(const CountMetric& m1, const CountMetric& m2) {
+  if (std::string_view(m1.name) == std::string_view(m2.name) &&
+      m1.min == m2.min && m1.max == m2.max && m1.nbuckets == m2.nbuckets) {
+    return true;
+  }
+  return false;
+}
+}  // namespace metrics
 
 MetricsSender& MetricsSender::GetInstance() {
   static base::NoDestructor<MetricsSender> instance;
@@ -27,13 +36,27 @@ void MetricsSender::InitBatchedMetrics() {
       base::BindRepeating(&MetricsSender::Flush, base::Unretained(this)));
 }
 
-void MetricsSender::Flush() {
-  metrics::MetricsMap map_copy(batch_count_map_);
-  batch_count_map_.clear();
+void MetricsSender::IncrementCountMetric(metrics::CountMetric m, int value) {
+  unsigned int scaled_value = value / m.nbuckets;
 
+  // properly round down if negative.
+  if (value < 0 && abs(value) % m.nbuckets > m.nbuckets / 2) {
+    // round down.
+    scaled_value -= 1;
+  }
+  batch_count_map_[m][scaled_value] += 1;
+  if (batch_count_map_[m][scaled_value] >= metrics::kMaxMapValue) {
+    Flush();
+  }
+}
+
+void MetricsSender::Flush() {
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&MetricsSender::SendBatchedMetricsToUMA,
-                                weak_ptr_factory_.GetWeakPtr(), map_copy));
+                                weak_ptr_factory_.GetWeakPtr(), batch_enum_map_,
+                                batch_count_map_));
+  batch_enum_map_.clear();
+  batch_count_map_.clear();
 
   // Run registered callbacks.
   for (auto cb : metric_callbacks_) {
@@ -41,8 +64,11 @@ void MetricsSender::Flush() {
   }
 }
 
-void MetricsSender::SendBatchedMetricsToUMA(metrics::MetricsMap map_copy) {
-  for (auto const& [key, val] : map_copy) {
+void MetricsSender::SendBatchedMetricsToUMA(
+    metrics::MetricsMap enum_map_copy,
+    metrics::MetricsCountMap count_map_copy) {
+  // Commit enum histogram metrics.
+  for (auto const& [key, val] : enum_map_copy) {
     int pos = key.find_last_of(":");
     auto metric_name = key.substr(0, pos);
     auto sample = stoi(key.substr(pos + 1));
@@ -58,6 +84,17 @@ void MetricsSender::SendBatchedMetricsToUMA(metrics::MetricsMap map_copy) {
             base::StrCat({metrics::kMetricNamePrefix, metric_name}), sample,
             it->second, count)) {
       LOG(ERROR) << "Failed to send batched metrics for " << metric_name;
+    }
+  }
+  // Commit count histogram metrics.
+  for (auto const& [metric, submap] : count_map_copy) {
+    std::string metric_name =
+        base::StrCat({metrics::kMetricNamePrefix, metric.name});
+    for (auto const& [sample, nsample] : submap) {
+      // sample was scaled down on storage to conserve memory, scale it back up.
+      metrics_library_->SendRepeatedToUMA(metric_name, sample * metric.nbuckets,
+                                          metric.min, metric.max,
+                                          metric.nbuckets, nsample);
     }
   }
 }
