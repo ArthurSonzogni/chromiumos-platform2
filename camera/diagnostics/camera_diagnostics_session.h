@@ -35,7 +35,7 @@ class CameraDiagnosticsSession {
   CameraDiagnosticsSession(CameraDiagnosticsSession&&) = delete;
   CameraDiagnosticsSession& operator=(CameraDiagnosticsSession&&) = delete;
 
-  ~CameraDiagnosticsSession() = default;
+  ~CameraDiagnosticsSession();
 
   void QueueFrame(camera_diag::mojom::CameraFramePtr frame);
 

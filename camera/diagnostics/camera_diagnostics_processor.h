@@ -36,7 +36,7 @@ class CameraDiagnosticsProcessor {
   CameraDiagnosticsProcessor(CameraDiagnosticsProcessor&&) = delete;
   CameraDiagnosticsProcessor& operator=(CameraDiagnosticsProcessor&&) = delete;
 
-  ~CameraDiagnosticsProcessor() = default;
+  ~CameraDiagnosticsProcessor();
 
   void QueueFrame(camera_diag::mojom::CameraFramePtr frame);
 

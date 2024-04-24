@@ -128,6 +128,10 @@ CameraDiagnosticsSession::CameraDiagnosticsSession(
 #endif  // USE_DLC
 }
 
+CameraDiagnosticsSession::~CameraDiagnosticsSession() {
+  thread_.Stop();
+}
+
 void CameraDiagnosticsSession::RunFrameAnalysis(
     camera_diag::mojom::FrameAnalysisConfigPtr config) {
   thread_.PostTaskAsync(

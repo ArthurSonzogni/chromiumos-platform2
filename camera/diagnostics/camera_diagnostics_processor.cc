@@ -52,6 +52,11 @@ CameraDiagnosticsProcessor::CameraDiagnosticsProcessor(
 #endif  // USE_DLC
 }
 
+CameraDiagnosticsProcessor::~CameraDiagnosticsProcessor() {
+  // This makes sure analysis is stopped before destroying any objects.
+  thread_.Stop();
+}
+
 void CameraDiagnosticsProcessor::InstallBlurDetectorDlcOnIpcThread() {
   DCHECK(mojo_manager_->GetTaskRunner()->RunsTasksInCurrentSequence());
   // base::Unretained(this) is safe because |this| outlives |dlc_client_|.
@@ -131,9 +136,14 @@ void CameraDiagnosticsProcessor::RunFrameAnalysisOnThread(
   future->Wait(config->duration_ms - kSessionTimeoutOffsetMs);
 
   base::AutoLock lock(session_lock_);
-  std::move(callback).Run(current_session_->StopAndGetResult());
-
+  camera_diag::mojom::FrameAnalysisResultPtr result =
+      current_session_->StopAndGetResult();
+  // Clean up before running the callback, since remotes need to unbind on IPC
+  // thread. Once we return the callback, IPC thread might exit without waiting
+  // for the reset.
   current_session_.reset();
+
+  std::move(callback).Run(std::move(result));
 }
 
 void CameraDiagnosticsProcessor::ReturnErrorResult(
