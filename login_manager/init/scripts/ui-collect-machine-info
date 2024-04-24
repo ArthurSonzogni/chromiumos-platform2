@@ -13,7 +13,7 @@ set +e
 true > "${UI_MACHINE_INFO_FILE}"
 
 # If we're on Flex, use the Flex state key as the re-enrollment key.
-if [ -n "$(which flex_id_tool)" ]; then
+if command -v flex_id_tool >/dev/null; then
   echo "\"re_enrollment_key\"=\"$(flex_id_tool --type=state_key)\"" \
   >> "${UI_MACHINE_INFO_FILE}"
 fi
