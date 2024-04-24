@@ -7,7 +7,6 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -15,38 +14,12 @@ import (
 	"path"
 
 	"go.chromium.org/chromiumos/dlc/dlclib"
+	"go.chromium.org/chromiumos/dlc/dlctool/parse"
 )
 
 const (
 	unsquashfsPath = "/usr/bin/unsquashfs"
 )
-
-var (
-	flagID     *string = flag.String("id", "", "ID of the DLC to [un]pack.")
-	flagUnpack *bool   = flag.Bool("unpack", false, "To unpack the DLC passed.")
-	flagShell  *bool   = flag.Bool("shell", true, "Force shell usage.")
-)
-
-// Defined, but ignored.
-var (
-	flagCompress   *bool = flag.Bool("compress", true, "Compress the image. Slower to pack but creates smaller images.")
-	flagNoCompress *bool = flag.Bool("nocompress", false, "Don't compress the image.")
-)
-
-func initFlags() {
-	// Parse only after flag definitions.
-	flag.Parse()
-
-	// Special treatment for select flags.
-	flag.Visit(func(f *flag.Flag) {
-		if f.Name == "shell" && f.Value.(flag.Getter).Get().(bool) == true {
-			log.Fatal("Please don't explicitly pass in `shell` flag with `true`.")
-		}
-	})
-	if *flagID == "" {
-		log.Fatal("Cannot pass empty ID.")
-	}
-}
 
 func dlctoolShell(args []string) {
 	cmd := &exec.Cmd{
@@ -205,23 +178,20 @@ func unpackDlc(id, path *string) error {
 
 func main() {
 	dlclib.Init()
-	initFlags()
-
-	args := flag.Args()
-	if len(args) != 1 {
-		log.Fatal("Please only pass in <path>.")
+	p, err := parse.Args(os.Args[0], os.Args[1:])
+	if err != nil {
+		log.Fatalf("Parsing flags failed: %v", err)
 	}
-	path := path.Clean(args[0])
 
-	if *flagUnpack {
-		log.Printf("Unpacking DLC (%s) to: %s\n", *flagID, path)
-		if err := unpackDlc(flagID, &path); err != nil {
-			log.Fatalf("Unpacking DLC (%s) failed: %v", *flagID, err)
+	if *parse.FlagUnpack {
+		log.Printf("Unpacking DLC (%s) to: %s\n", *parse.FlagID, p)
+		if err := unpackDlc(parse.FlagID, &p); err != nil {
+			log.Fatalf("Unpacking DLC (%s) failed: %v", *parse.FlagID, err)
 		}
 		return
 	}
 
-	if *flagShell {
+	if *parse.FlagShell {
 		dlctoolShell(os.Args[1:])
 		return
 	}
