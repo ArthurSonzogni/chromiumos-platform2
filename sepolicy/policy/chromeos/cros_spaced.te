@@ -39,6 +39,9 @@ allow cros_spaced tmpfs:file { getattr open read write };
 # quota-related operations for ARC).
 allow cros_spaced cros_home_shadow_uid_user:dir { getattr };
 
+# Needed for getting the backing logical volume for quota-related operations
+allow cros_spaced cros_file_type:dir { getattr };
+
 # Needed for quota-related D-Bus methods.
 allow cros_spaced labeledfs:filesystem { quotaget };
 
