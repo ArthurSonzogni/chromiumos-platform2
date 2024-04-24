@@ -17,7 +17,7 @@ use super::gpu_freq_scaling::intel_device;
 use crate::common::read_from_file;
 use crate::common::TuneSwappiness;
 use crate::config::PowerSourceType;
-use crate::memory;
+use crate::memory::MemInfo;
 use crate::power::DirectoryPowerSourceProvider;
 use crate::power::PowerSourceProvider;
 
@@ -156,7 +156,7 @@ fn set_thp(mode: THPMode) -> Result<()> {
     const THP_MODE_PATH: &str = "/sys/kernel/mm/transparent_hugepage/enabled";
     let path = Path::new(THP_MODE_PATH);
     if path.exists() {
-        static ENABLE_THP: Lazy<bool> = Lazy::new(|| match memory::get_meminfo() {
+        static ENABLE_THP: Lazy<bool> = Lazy::new(|| match MemInfo::load() {
             Ok(meminfo) => meminfo.total > 9 * 1024 * 1024,
             Err(e) => {
                 warn! {"Failed to validate device memory: {:?}", e};

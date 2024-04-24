@@ -14,12 +14,12 @@ use crate::common::FullscreenVideo;
 use crate::common::GameMode;
 use crate::common::RTCAudioActive;
 use crate::common::VmBootMode;
+pub use crate::config::FakeConfig;
 use crate::config::Governor;
 use crate::config::PowerSourceType;
-use crate::power::PowerSourceProvider;
-pub use crate::config::FakeConfig;
 use crate::cpu_utils::SMT_CONTROL_PATH;
 use crate::power;
+use crate::power::PowerSourceProvider;
 
 const MOCK_NUM_CPU: i32 = 16;
 
