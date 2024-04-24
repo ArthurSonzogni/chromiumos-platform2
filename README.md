@@ -62,6 +62,7 @@ copies.
 | [dlp](./dlp/) | Date Leak Prevention (DLP) daemon |
 | [dns-proxy](./dns-proxy/) | DNS Proxy daemon |
 | [easy-unlock](./easy-unlock/) | Daemon for handling Easy Unlock requests (e.g. unlocking Chromebooks with an Android device) |
+| [ethernet-hide](./ethernet-hide/) | Tool for hiding Ethernet interfaces while enabling the SSH connection |
 | [extended-updates](./extended-updates/) | Utilities supporting the Extended Auto Updates process |
 | [faced](./faced/) | Face Authentication Daemon |
 | [fbpreprocessor](./fbpreprocessor/) | Debug file preprocessing for feedback reports |
