@@ -545,7 +545,7 @@ int main(int argc, char* argv[]) {
   // holding the metrics file lock.
   scoped_refptr<SynchronousMetricsWriter> metrics_writer =
       base::MakeRefCounted<SynchronousMetricsWriter>(
-          /*use_nonblocking_lock=*/true);
+          /*avoid_blocking=*/true);
   // Used for consent verification and metrics reporting.
   scoped_refptr<base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>
       metrics_lib = base::MakeRefCounted<
