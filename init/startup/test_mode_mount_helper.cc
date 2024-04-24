@@ -70,8 +70,9 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   if (!platform_->GetOwnership(encrypted_failed, &uid, nullptr,
                                false /* follow_links */) ||
       (uid != getuid())) {
+    // This is the default path
     // Try to use the original handler in chromeos_startup.
-    // It should not wipe whole stateful partition in this case.
+    // When it fails, we will reboot and try again below.
     return MountVarAndHomeChronos();
   }
 
@@ -95,13 +96,12 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
 
     std::unique_ptr<libstorage::FileEnumerator> enumerator(
         platform_->GetFileEnumerator(stateful_, false /* recursive */,
-                                     base::FileEnumerator::FILES));
+                                     base::FileEnumerator::FILES,
+                                     "encrypted.*"));
     for (base::FilePath path = enumerator->Next(); !path.empty();
          path = enumerator->Next()) {
-      if (path.BaseName().value().rfind("encrypted.", 0) == 0) {
-        base::FilePath to_path = backup.Append(path.BaseName());
-        platform_->Rename(path, to_path, true /* cros_fs */);
-      }
+      base::FilePath to_path = backup.Append(path.BaseName());
+      platform_->Rename(path, to_path, true /* cros_fs */);
     }
 
     return MountVarAndHomeChronos();

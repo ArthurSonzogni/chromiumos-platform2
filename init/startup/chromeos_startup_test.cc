@@ -895,6 +895,8 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarSuccess) {
 }
 
 TEST_F(DoMountTest, TestModeMountHelperMountVarFail) {
+  // We already failed one, so at reboot, "mount_encrypted_failed" exists.
+  // Let's fail second time and check we are staving backups.
   flags_.sys_key_util = false;
   flags_.encstateful = true;
   base::FilePath clobber_log_ = base_dir_.Append("clobber_test_log");

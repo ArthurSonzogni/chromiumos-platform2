@@ -840,10 +840,9 @@ int ChromeosStartup::Run() {
   base::FilePath encrypted_failed = stateful_.Append(kMountEncryptedFailedFile);
   if (!mount_helper_->DoMountVarAndHomeChronos()) {
     uid_t uid;
-    if (!platform_->FileExists(encrypted_failed) ||
-        !platform_->GetOwnership(encrypted_failed, &uid, nullptr,
+    if (!platform_->GetOwnership(encrypted_failed, &uid, nullptr,
                                  false /* follow_links */) ||
-        !(uid != getuid())) {
+        (uid != getuid())) {
       platform_->TouchFileDurable(encrypted_failed);
     } else {
       crossystem->VbSetSystemPropertyInt("recovery_request", 1);
