@@ -7,7 +7,7 @@ import("//common-mk/pkg_config.gni")
 # For cros_healthd-client package.
 group("mojom") {
   deps = [
-    ":cros_healthd-client",
+    ":cros_healthd_client",
     "//diagnostics/mojom/external:libnetwork_diagnostics_mojo_bindings",
     "//diagnostics/mojom/external:libnetwork_health_mojo_bindings",
     "//diagnostics/mojom/external:libpublic_dependencies",
@@ -15,7 +15,8 @@ group("mojom") {
   ]
 }
 
-generate_pkg_config("cros_healthd-client") {
+generate_pkg_config("cros_healthd_client") {
+  output_name = "cros_healthd-client"
   description = "Generated Mojo API for communicating with cros_healthd."
   version = "1.0"
   requires_private = [

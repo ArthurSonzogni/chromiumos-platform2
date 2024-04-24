@@ -11,7 +11,8 @@ pkg_config("cros_health_tool_pkg_deps") {
   ]
 }
 
-executable("cros-health-tool") {
+executable("cros_health_tool") {
+  output_name = "cros-health-tool"
   sources = [
     "main.cc",
     "mojo_util.cc",

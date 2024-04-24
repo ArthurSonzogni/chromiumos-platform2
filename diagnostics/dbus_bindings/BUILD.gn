@@ -7,16 +7,16 @@ import("//common-mk/generate-dbus-proxies.gni")
 
 group("dbus_bindings") {
   deps = [
-    ":dbus-adaptors",
-    ":dbus-proxies",
+    ":dbus_adaptors",
+    ":dbus_proxies",
   ]
 }
 
-group("dbus-adaptors") {
-  deps = [ ":floss-callback-adaptors" ]
+group("dbus_adaptors") {
+  deps = [ ":floss_callback_adaptors" ]
 }
 
-generate_dbus_adaptors("floss-callback-adaptors") {
+generate_dbus_adaptors("floss_callback_adaptors") {
   dbus_adaptors_out_dir = "include/diagnostics/dbus_bindings/floss_callback"
   sources = [
     "bluetooth_manager/org.chromium.bluetooth.ManagerCallback.xml",
@@ -26,17 +26,17 @@ generate_dbus_adaptors("floss-callback-adaptors") {
   ]
 }
 
-group("dbus-proxies") {
+group("dbus_proxies") {
   deps = [
-    ":bluetooth-manager-proxies",
-    ":bluez-proxies",
-    ":cras-proxies",
-    ":floss-proxies",
-    ":fwupd-proxies",
+    ":bluetooth_manager_proxies",
+    ":bluez_proxies",
+    ":cras_proxies",
+    ":floss_proxies",
+    ":fwupd_proxies",
   ]
 }
 
-generate_dbus_proxies("bluetooth-manager-proxies") {
+generate_dbus_proxies("bluetooth_manager_proxies") {
   dbus_service_config = "bluetooth_manager/dbus-service-config.json"
   proxy_output_file =
       "include/diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
@@ -47,7 +47,7 @@ generate_dbus_proxies("bluetooth-manager-proxies") {
   sources = [ "bluetooth_manager/org.chromium.bluetooth.Manager.xml" ]
 }
 
-generate_dbus_proxies("bluez-proxies") {
+generate_dbus_proxies("bluez_proxies") {
   dbus_service_config = "bluez/dbus-service-config.json"
   proxy_output_file = "include/diagnostics/dbus_bindings/bluez/dbus-proxies.h"
   mock_output_file =
@@ -61,14 +61,14 @@ generate_dbus_proxies("bluez-proxies") {
   ]
 }
 
-generate_dbus_proxies("cras-proxies") {
+generate_dbus_proxies("cras_proxies") {
   sources =
       [ "${sysroot}/usr/share/dbus-1/interfaces/org.chromium.cras.Control.xml" ]
   proxy_output_file = "include/cras/dbus-proxies.h"
   mock_output_file = "include/cras/dbus-proxy-mocks.h"
 }
 
-generate_dbus_proxies("floss-proxies") {
+generate_dbus_proxies("floss_proxies") {
   dbus_service_config = "floss/dbus-service-config.json"
   proxy_output_file = "include/diagnostics/dbus_bindings/floss/dbus-proxies.h"
   mock_output_file =
@@ -83,7 +83,7 @@ generate_dbus_proxies("floss-proxies") {
   ]
 }
 
-generate_dbus_proxies("fwupd-proxies") {
+generate_dbus_proxies("fwupd_proxies") {
   sources =
       [ "${sysroot}/usr/share/dbus-1/interfaces/org.freedesktop.fwupd.xml" ]
   proxy_output_file = "include/fwupd/dbus-proxies.h"

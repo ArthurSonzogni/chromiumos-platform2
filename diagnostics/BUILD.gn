@@ -7,7 +7,7 @@ group("all") {
     ":install_init_config",
     ":install_service_manager_policy_config",
     ":install_tmpfiles_config",
-    "//diagnostics/cros_health_tool:cros-health-tool",
+    "//diagnostics/cros_health_tool",
     "//diagnostics/cros_healthd:cros_healthd",
     "//diagnostics/cros_healthd/delegate",
     "//diagnostics/cros_healthd/seccomp",
