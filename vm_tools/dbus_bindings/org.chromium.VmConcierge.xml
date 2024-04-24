@@ -620,7 +620,10 @@
     </method>
     <method name="StopAllVms">
       <tp:docstring>
-        Stops all running VMs.
+        Stops all running VMs preparing for shutdown. Called before concierge is
+        asked to shut down (at log out or shut down time) to let VMs have time
+        to clean up. Concierge will respond to dbus requests with an error after
+        this.
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="async" />
     </method>
