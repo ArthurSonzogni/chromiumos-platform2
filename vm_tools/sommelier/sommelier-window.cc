@@ -326,6 +326,7 @@ bool sl_window_is_containerized(struct sl_window* window) {
 }
 
 void sl_window_reset_viewport(struct sl_window* window) {
+  LOG(VERBOSE) << window << " viewport override unset";
   window->viewport_width = -1;
   window->viewport_height = -1;
   window->viewport_override = false;
@@ -419,14 +420,20 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
                                                        int32_t width_in_pixels,
                                                        int32_t height_in_pixels,
                                                        int& mut_config_idx) {
-  // Forward resizes to the client if requested size fits within the min&max
-  // dimensions. Note that min&max dimensions are strictly set by the X11 client
-  // only (and forwarded to Exo immediately). If min&max dimensions are not set,
-  // we will set the size of the window to screen size (see below).
-  if ((window->max_width >= width_in_pixels || !window->max_width) &&
+  // Check the game is windowed (with decorations, indicating that this is not
+  // borderless windowed), and has hinted that it can be resized to the size
+  // that Exo requested. Note that max size 0 means no limits. Note that min&max
+  // dimensions are strictly set by the X11 client only (and forwarded to Exo
+  // immediately).
+  bool windowed_and_resizable =
+      (!window->fullscreen && window->decorated) &&
+      (window->max_width >= width_in_pixels || !window->max_width) &&
       window->min_width <= width_in_pixels &&
       (window->max_height >= height_in_pixels || !window->max_height) &&
-      window->min_height <= height_in_pixels && !window->use_emulated_rects) {
+      window->min_height <= height_in_pixels;
+  // Forward resizes to the client if requested size fits within the min&max
+  // dimensions.
+  if (windowed_and_resizable && !window->use_emulated_rects) {
     // TODO(b/330639760): Consider unset aspect ratio every frame in
     // surface_commit.
     zaura_surface_set_aspect_ratio(window->aura_surface, -1, -1);
