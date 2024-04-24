@@ -127,8 +127,8 @@ class SmbProviderTest : public testing::Test {
 
     auto kerberos_artifact_synchronizer =
         std::make_unique<KerberosArtifactSynchronizer>(
-            krb5_conf_path_, krb5_ccache_path_, std::move(fake_artifact_client),
-            false /* allow_credentials_update */);
+            krb5_conf_path_, krb5_ccache_path_,
+            std::move(fake_artifact_client));
     kerberos_synchronizer_ = kerberos_artifact_synchronizer.get();
 
     const dbus::ObjectPath object_path("/object/path");
@@ -143,8 +143,7 @@ class SmbProviderTest : public testing::Test {
         MetadataCache::Mode::kDisabled);
   }
 
-  // Helper method that asserts there are no entries that have not been
-  // closed.
+  // Helper method that asserts there are no entries that have not been closed.
   void ExpectNoOpenEntries() { EXPECT_FALSE(fake_samba_->HasOpenEntries()); }
 
   bool GetRootPath(int32_t mount_id, std::string* mount_path) const {
@@ -173,7 +172,7 @@ class SmbProviderTest : public testing::Test {
   TempFileManager temp_file_manager_;
   FakeKerberosArtifactClient* kerberos_client_;
   KerberosArtifactSynchronizer* kerberos_synchronizer_;
-  // |metadata_cache| is used to test the GetEntries method
+  // |metadata_cache| is used to test the GetEntries method.
   std::unique_ptr<MetadataCache> metadata_cache_;
   bool enable_ntlm_ = false;
 };
@@ -356,7 +355,7 @@ TEST_F(SmbProviderTest, SetupKerberosWritesKerberosFilesSuccessfully) {
   SmbProvider::SetupKerberosCallback callback =
       std::make_unique<brillo::dbus_utils::DBusMethodResponse<bool>>(
           &method_call,
-          base::BindOnce(&ExpectKerberosCallback, true /* expected_result*/));
+          base::BindOnce(&ExpectKerberosCallback, /*expected_result=*/true));
 
   smbprovider_->SetupKerberos(std::move(callback), user);
 
@@ -373,7 +372,7 @@ TEST_F(SmbProviderTest, SetupKerberosFailsWhenKerberosFilesDoNotExist) {
   SmbProvider::SetupKerberosCallback callback =
       std::make_unique<brillo::dbus_utils::DBusMethodResponse<bool>>(
           &method_call,
-          base::BindOnce(&ExpectKerberosCallback, false /* expected_result*/));
+          base::BindOnce(&ExpectKerberosCallback, /*expected_result=*/false));
 
   smbprovider_->SetupKerberos(std::move(callback), user);
 }

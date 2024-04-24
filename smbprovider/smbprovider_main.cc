@@ -163,8 +163,7 @@ class SmbProviderDaemon : public brillo::DBusServiceDaemon {
     auto kerberos_artifact_synchronizer =
         std::make_unique<KerberosArtifactSynchronizer>(
             GetKrb5ConfPath(), GetCCachePath(),
-            std::move(kerberos_artifact_client),
-            /*allow_credentials_update=*/true);
+            std::move(kerberos_artifact_client));
 
     auto tick_clock = std::make_unique<base::DefaultTickClock>();
 

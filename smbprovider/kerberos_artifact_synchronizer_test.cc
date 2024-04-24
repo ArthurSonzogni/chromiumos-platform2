@@ -40,7 +40,7 @@ class KerberosArtifactSynchronizerTest : public testing::Test {
     krb5_conf_path_ = CreateKrb5ConfPath(temp_dir_.GetPath());
     krb5_ccache_path_ = CreateKrb5CCachePath(temp_dir_.GetPath());
 
-    Initialize(false /* allow_credentials_update */);
+    Initialize();
   }
   KerberosArtifactSynchronizerTest(const KerberosArtifactSynchronizerTest&) =
       delete;
@@ -49,13 +49,12 @@ class KerberosArtifactSynchronizerTest : public testing::Test {
 
   ~KerberosArtifactSynchronizerTest() override = default;
 
-  void Initialize(bool allow_credentials_update) {
+  void Initialize() {
     auto fake_ptr = std::make_unique<FakeKerberosArtifactClient>();
     fake_artifact_client_ = fake_ptr.get();
 
     synchronizer_ = std::make_unique<KerberosArtifactSynchronizer>(
-        krb5_conf_path_, krb5_ccache_path_, std::move(fake_ptr),
-        allow_credentials_update);
+        krb5_conf_path_, krb5_ccache_path_, std::move(fake_ptr));
   }
 
  protected:
@@ -131,32 +130,6 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesRunsOnSignalFire) {
   EXPECT_EQ(1, setup_callback_count);
 }
 
-// Synchronizer calls GetFiles an additional time when the signal fires
-// with credentials update allowed.
-TEST_F(KerberosArtifactSynchronizerTest,
-       GetFilesRunsOnSignalFireUpdateAllowed) {
-  Initialize(true /* allow_credentials_update */);
-
-  const std::string user = "test user";
-  const std::string krb5cc = "test creds";
-  const std::string krb5conf = "test conf";
-
-  kerberos::KerberosFiles kerberos_files =
-      CreateKerberosFilesProto(krb5cc, krb5conf);
-  fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
-  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
-  int setup_callback_count = 0;
-  synchronizer_->SetupKerberos(
-      user, base::BindOnce(&IncrementInt, &setup_callback_count, true));
-
-  EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
-
-  fake_artifact_client_->FireSignal();
-
-  EXPECT_EQ(2, fake_artifact_client_->GetFilesMethodCallCount());
-  EXPECT_EQ(1, setup_callback_count);
-}
-
 // Synchronizer calls GetFiles an additional time when the signal fires, but
 // GetUserKerberosFiles() fails.
 TEST_F(KerberosArtifactSynchronizerTest,
@@ -211,7 +184,7 @@ TEST_F(KerberosArtifactSynchronizerTest, GetFilesOverwritesOldFiles) {
   ExpectFileEqual(krb5_ccache_path_, new_krb5cc);
 }
 
-// SetupKerberos fails when the getting the user's kerberos files fails.
+// SetupKerberos fails when the getting the user's Kerberos files fails.
 TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosFailsKerberosFilesEmpty) {
   const std::string user = "test user";
 
@@ -250,35 +223,12 @@ TEST_F(KerberosArtifactSynchronizerTest,
   fake_artifact_client_->AddKerberosFiles(user2, kerberos_files);
 
   synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
-  synchronizer_->SetupKerberos(user2, base::BindOnce(&ExpectSetupFailure));
-  EXPECT_EQ(1, fake_artifact_client_->GetFilesMethodCallCount());
-}
-
-// SetupKerberos is called twice for different users with credentials update
-// allowed.
-TEST_F(KerberosArtifactSynchronizerTest,
-       SetupKerberosCalledTwiceDifferentUsersUpdateAllowed) {
-  Initialize(true /* allow_credentials_update */);
-
-  const std::string user = "test user";
-  const std::string user2 = "test user 2";
-  const std::string krb5cc = "test creds";
-  const std::string krb5conf = "test conf";
-
-  kerberos::KerberosFiles kerberos_files =
-      CreateKerberosFilesProto(krb5cc, krb5conf);
-  fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
-  fake_artifact_client_->AddKerberosFiles(user2, kerberos_files);
-
-  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
   synchronizer_->SetupKerberos(user2, base::BindOnce(&ExpectSetupSuccess));
   EXPECT_EQ(2, fake_artifact_client_->GetFilesMethodCallCount());
 }
 
 // Remove Kerberos files with credentials update allowed.
 TEST_F(KerberosArtifactSynchronizerTest, RemoveFilesUpdateAllowed) {
-  Initialize(true /* allow_credentials_update */);
-
   const std::string user = "test user";
   const std::string krb5cc = "test creds";
   const std::string krb5conf = "test conf";
@@ -292,7 +242,7 @@ TEST_F(KerberosArtifactSynchronizerTest, RemoveFilesUpdateAllowed) {
   ExpectFileEqual(krb5_ccache_path_, krb5cc);
 
   // Remove by passing empty |account_identifier|.
-  synchronizer_->SetupKerberos(std::string() /* account_identifier */,
+  synchronizer_->SetupKerberos(/*account_identifier=*/std::string(),
                                base::BindOnce(&ExpectSetupSuccess));
 
   // Expect credentials files not exist.
@@ -300,36 +250,11 @@ TEST_F(KerberosArtifactSynchronizerTest, RemoveFilesUpdateAllowed) {
   EXPECT_FALSE(base::PathExists(base::FilePath(krb5_ccache_path_)));
 }
 
-// Remove Kerberos files with credentials update not allowed.
-TEST_F(KerberosArtifactSynchronizerTest, RemoveFilesUpdateNotAllowed) {
-  const std::string user = "test user";
-  const std::string krb5cc = "test creds";
-  const std::string krb5conf = "test conf";
-
-  kerberos::KerberosFiles kerberos_files =
-      CreateKerberosFilesProto(krb5cc, krb5conf);
-  fake_artifact_client_->AddKerberosFiles(user, kerberos_files);
-  synchronizer_->SetupKerberos(user, base::BindOnce(&ExpectSetupSuccess));
-
-  ExpectFileEqual(krb5_conf_path_, krb5conf);
-  ExpectFileEqual(krb5_ccache_path_, krb5cc);
-
-  // Try to remove by passing empty |account_identifier|, expect to fail.
-  synchronizer_->SetupKerberos(std::string() /* account_identifier */,
-                               base::BindOnce(&ExpectSetupFailure));
-
-  // Expect files to be unchanged.
-  ExpectFileEqual(krb5_conf_path_, krb5conf);
-  ExpectFileEqual(krb5_ccache_path_, krb5cc);
-}
-
-// Setup Kerberos without a ticket by passing empty credentials
-// when updates are allowed, than add a ticket and call setup again.
-TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosNoTicketUpdateAllowed) {
-  Initialize(true /* allow_credentials_update */);
-
+// Setup Kerberos without a ticket by passing empty credentials, than add a
+// ticket and call setup again.
+TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosNoTicket) {
   // Setup first time with empty |account_identifier|, expect success.
-  synchronizer_->SetupKerberos(std::string() /* account_identifier */,
+  synchronizer_->SetupKerberos(/*account_identifier=*/std::string(),
                                base::BindOnce(&ExpectSetupSuccess));
 
   // Expect credentials files not exist.
@@ -349,21 +274,6 @@ TEST_F(KerberosArtifactSynchronizerTest, SetupKerberosNoTicketUpdateAllowed) {
 
   ExpectFileEqual(krb5_conf_path_, krb5conf);
   ExpectFileEqual(krb5_ccache_path_, krb5cc);
-}
-
-// SetupKerberos without a ticket by passing empty credentials
-// when updates are not allowed.
-TEST_F(KerberosArtifactSynchronizerTest,
-       SetupKerberosNoTicketUpdateNotAllowed) {
-  // If updates are not allowed, it is expected that credentials are valid
-  // from the start. Therefore, setting up Kerberos with empty
-  // |account_identifier| should fail.
-  synchronizer_->SetupKerberos(std::string() /* account_identifier */,
-                               base::BindOnce(&ExpectSetupFailure));
-
-  // Expect credentials files not exist.
-  EXPECT_FALSE(base::PathExists(base::FilePath(krb5_conf_path_)));
-  EXPECT_FALSE(base::PathExists(base::FilePath(krb5_ccache_path_)));
 }
 
 }  // namespace smbprovider

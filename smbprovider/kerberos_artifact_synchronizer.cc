@@ -22,32 +22,16 @@ namespace smbprovider {
 KerberosArtifactSynchronizer::KerberosArtifactSynchronizer(
     const std::string& krb5_conf_path,
     const std::string& krb5_ccache_path,
-    std::unique_ptr<KerberosArtifactClientInterface> client,
-    bool allow_credentials_update)
+    std::unique_ptr<KerberosArtifactClientInterface> client)
     : krb5_conf_path_(krb5_conf_path),
       krb5_ccache_path_(krb5_ccache_path),
-      client_(std::move(client)),
-      allow_credentials_update_(allow_credentials_update) {}
+      client_(std::move(client)) {}
 
 void KerberosArtifactSynchronizer::SetupKerberos(
     const std::string& account_identifier, SetupKerberosCallback callback) {
-  if (!allow_credentials_update_) {
-    if (account_identifier.empty()) {
-      LOG(ERROR) << "Kerberos account identifier is empty";
-      std::move(callback).Run(false /* success */);
-      return;
-    }
-    if (!account_identifier_.empty() &&
-        account_identifier_ != account_identifier) {
-      LOG(ERROR) << "Kerberos is already set up for a different user";
-      std::move(callback).Run(false /* success */);
-      return;
-    }
-  }
-
   if (is_kerberos_setup_ && account_identifier_ == account_identifier) {
     LOG(WARNING) << "Kerberos already set up the user";
-    std::move(callback).Run(true /* success */);
+    std::move(callback).Run(/*success=*/true);
     return;
   }
 
@@ -60,7 +44,7 @@ void KerberosArtifactSynchronizer::SetupKerberos(
       RemoveFiles(std::move(callback));
     } else {
       // Credential files were not created yet, so just return with success.
-      std::move(callback).Run(true /* success */);
+      std::move(callback).Run(/*success=*/true);
     }
     return;
   }

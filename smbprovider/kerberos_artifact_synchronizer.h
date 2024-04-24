@@ -32,16 +32,14 @@ class KerberosArtifactSynchronizer {
   KerberosArtifactSynchronizer(
       const std::string& krb5_conf_path,
       const std::string& krb5_ccache_path,
-      std::unique_ptr<KerberosArtifactClientInterface> client,
-      bool allow_credentials_update);
+      std::unique_ptr<KerberosArtifactClientInterface> client);
   KerberosArtifactSynchronizer(const KerberosArtifactSynchronizer&) = delete;
   KerberosArtifactSynchronizer& operator=(const KerberosArtifactSynchronizer&) =
       delete;
 
   // Sets up Kerberos for user with |account_identifier|. |callback| is run with
-  // the result. If |allow_credentials_update| is false, it may only be called
-  // once per instance. If |account_identifier| is empty, credential files will
-  // not be created or will be removed.
+  // the result. If |account_identifier| is empty, credential files will not be
+  // created or will be removed.
   void SetupKerberos(const std::string& account_identifier,
                      SetupKerberosCallback callback);
 
@@ -94,8 +92,6 @@ class KerberosArtifactSynchronizer {
   std::string account_identifier_;
 
   std::unique_ptr<KerberosArtifactClientInterface> client_;
-
-  const bool allow_credentials_update_ = false;
 };
 
 }  // namespace smbprovider
