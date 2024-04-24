@@ -1944,7 +1944,8 @@ StartVmResponse Service::StartVmInternal(
   if (vm_start_checker_status != VmStartChecker::Status::READY) {
     LOG(ERROR) << "Error starting VM. VmStartCheckerStatus="
                << vm_start_checker_status;
-    response.set_failure_reason(std::to_string(vm_start_checker_status));
+    response.set_failure_reason("Error starting VM. VmStartCheckerStatus=" +
+                                std::to_string(vm_start_checker_status));
     return response;
   }
 
