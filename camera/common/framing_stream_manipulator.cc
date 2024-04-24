@@ -859,6 +859,17 @@ bool FramingStreamManipulator::OnConfiguredStreamsOnThread(
         });
   }
 
+  // Configure the video YUV streams that are not passed to the HAL.
+  for (auto* s : client_streams_) {
+    if (!IsStreamBypassed(s) &&
+        (s->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
+         s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
+        !(s->usage & kStillCaptureUsageFlag)) {
+      s->usage |= GRALLOC_USAGE_HW_TEXTURE;
+      s->max_buffers = full_frame_stream_.max_buffers;
+    }
+  }
+
   if (!stream_config->SetStreams(client_streams_)) {
     LOGF(ERROR) << "Failed to recover stream config";
     setup_failed_ = true;
