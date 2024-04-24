@@ -627,10 +627,6 @@ class WiFiPhyTest : public ::testing::Test {
   void SetFrequencies(WiFiPhy::Frequencies& frequencies) {
     wifi_phy_.frequencies_ = frequencies;
   }
-
-  bool CanUseIface(nl80211_iftype iftype, unsigned int min_channels) {
-    return wifi_phy_.CanUseIface(iftype, min_channels);
-  }
 };
 
 TEST_F(WiFiPhyTest, AddAndDeleteDevices) {
@@ -807,247 +803,6 @@ TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
           .num_channels = 1}};
   AssertPhyConcurrencyIsEqualTo(SingleChannelNoAPSTAConcurrencyCombinations);
   AssertApStaConcurrency(false);
-  EXPECT_EQ(wifi_phy_.P2PSTAConcurrency(),
-            WiFiPhy::ConcurrencySupportLevel::SingleMode);
-}
-
-TEST_F(WiFiPhyTest, InterfaceCombinations) {
-  NewWiphyMessage msg;
-  net_base::NetlinkPacket packet(kNewSingleChannelNoAPSTAConcurrencyNlMsg);
-  msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
-  ParseConcurrency(msg);
-  struct {
-    std::vector<nl80211_iftype> present_types;  // Types already reserved.
-    nl80211_iftype new_type;                    // Type to check.
-    bool can_add;  // Should it be possible to use the interface.
-  } test_cases[] = {
-      // 1 + 1 combinations.
-      {{NL80211_IFTYPE_STATION}, NL80211_IFTYPE_STATION, false},
-      {{NL80211_IFTYPE_STATION}, NL80211_IFTYPE_P2P_GO, false},
-      {{NL80211_IFTYPE_STATION}, NL80211_IFTYPE_AP, false},
-      {{NL80211_IFTYPE_STATION}, NL80211_IFTYPE_P2P_CLIENT, true},
-      {{NL80211_IFTYPE_STATION}, NL80211_IFTYPE_P2P_DEVICE, true},
-
-      {{NL80211_IFTYPE_AP}, NL80211_IFTYPE_STATION, false},
-      {{NL80211_IFTYPE_AP}, NL80211_IFTYPE_P2P_GO, false},
-      {{NL80211_IFTYPE_AP}, NL80211_IFTYPE_AP, false},
-      {{NL80211_IFTYPE_AP}, NL80211_IFTYPE_P2P_CLIENT, true},
-      {{NL80211_IFTYPE_AP}, NL80211_IFTYPE_P2P_DEVICE, true},
-
-      {{NL80211_IFTYPE_P2P_GO}, NL80211_IFTYPE_STATION, false},
-      {{NL80211_IFTYPE_P2P_GO}, NL80211_IFTYPE_P2P_GO, false},
-      {{NL80211_IFTYPE_P2P_GO}, NL80211_IFTYPE_AP, false},
-      {{NL80211_IFTYPE_P2P_GO}, NL80211_IFTYPE_P2P_CLIENT, true},
-      {{NL80211_IFTYPE_P2P_GO}, NL80211_IFTYPE_P2P_DEVICE, true},
-
-      {{NL80211_IFTYPE_P2P_CLIENT}, NL80211_IFTYPE_STATION, true},
-      {{NL80211_IFTYPE_P2P_CLIENT}, NL80211_IFTYPE_P2P_GO, true},
-      {{NL80211_IFTYPE_P2P_CLIENT}, NL80211_IFTYPE_AP, true},
-      {{NL80211_IFTYPE_P2P_CLIENT}, NL80211_IFTYPE_P2P_CLIENT, false},
-      {{NL80211_IFTYPE_P2P_CLIENT}, NL80211_IFTYPE_P2P_DEVICE, true},
-
-      {{NL80211_IFTYPE_P2P_DEVICE}, NL80211_IFTYPE_STATION, true},
-      {{NL80211_IFTYPE_P2P_DEVICE}, NL80211_IFTYPE_P2P_GO, true},
-      {{NL80211_IFTYPE_P2P_DEVICE}, NL80211_IFTYPE_AP, true},
-      {{NL80211_IFTYPE_P2P_DEVICE}, NL80211_IFTYPE_P2P_CLIENT, true},
-      {{NL80211_IFTYPE_P2P_DEVICE}, NL80211_IFTYPE_P2P_DEVICE, false},
-
-      // 2 + 1 combinations.
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_STATION,
-       false},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_GO,
-       false},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_AP,
-       false},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_CLIENT,
-       false},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_DEVICE,
-       true},
-
-      {{NL80211_IFTYPE_AP, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_STATION,
-       false},
-      {{NL80211_IFTYPE_AP, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_GO,
-       false},
-      {{NL80211_IFTYPE_AP, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_AP,
-       false},
-      {{NL80211_IFTYPE_AP, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_CLIENT,
-       false},
-      {{NL80211_IFTYPE_AP, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_DEVICE,
-       true},
-
-      {{NL80211_IFTYPE_P2P_GO, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_STATION,
-       false},
-      {{NL80211_IFTYPE_P2P_GO, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_GO,
-       false},
-      {{NL80211_IFTYPE_P2P_GO, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_AP,
-       false},
-      {{NL80211_IFTYPE_P2P_GO, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_CLIENT,
-       false},
-      {{NL80211_IFTYPE_P2P_GO, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_DEVICE,
-       true},
-
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_STATION,
-       true},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_GO,
-       true},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_AP,
-       true},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_CLIENT,
-       false},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_P2P_DEVICE,
-       false},
-
-      {{NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_AP},
-       NL80211_IFTYPE_STATION,
-       false},
-      {{NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_AP},
-       NL80211_IFTYPE_P2P_GO,
-       false},
-      {{NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_AP},
-       NL80211_IFTYPE_AP,
-       false},
-      {{NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_AP},
-       NL80211_IFTYPE_P2P_CLIENT,
-       false},
-      {{NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_AP},
-       NL80211_IFTYPE_P2P_DEVICE,
-       true},
-
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_AP},
-       NL80211_IFTYPE_STATION,
-       false},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_AP},
-       NL80211_IFTYPE_P2P_GO,
-       false},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_AP},
-       NL80211_IFTYPE_AP,
-       false},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_AP},
-       NL80211_IFTYPE_P2P_CLIENT,
-       true},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_AP},
-       NL80211_IFTYPE_P2P_DEVICE,
-       false},
-
-      {{NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_STATION,
-       false},
-      {{NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_P2P_GO,
-       false},
-      {{NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_AP,
-       false},
-      {{NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_P2P_CLIENT,
-       false},
-      {{NL80211_IFTYPE_P2P_CLIENT, NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_P2P_DEVICE,
-       true},
-
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_STATION,
-       false},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_P2P_GO,
-       false},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_AP,
-       false},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_P2P_CLIENT,
-       true},
-      {{NL80211_IFTYPE_P2P_DEVICE, NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_P2P_DEVICE,
-       false},
-
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_DEVICE},
-       NL80211_IFTYPE_STATION,
-       false},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_DEVICE},
-       NL80211_IFTYPE_P2P_GO,
-       false},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_DEVICE},
-       NL80211_IFTYPE_AP,
-       false},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_DEVICE},
-       NL80211_IFTYPE_P2P_CLIENT,
-       true},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_DEVICE},
-       NL80211_IFTYPE_P2P_DEVICE,
-       false},
-  };
-
-  for (auto& tc : test_cases) {
-    for (auto& res : tc.present_types) {
-      ASSERT_TRUE(wifi_phy_.ReserveIfaceType(res, 1));
-    }
-    EXPECT_EQ(CanUseIface(tc.new_type, 1), tc.can_add);
-    for (auto& res : tc.present_types) {
-      ASSERT_TRUE(wifi_phy_.FreeIfaceType(res));
-    }
-  }
-}
-
-TEST_F(WiFiPhyTest, MccInterfaceCombinations) {
-  NewWiphyMessage msg;
-  net_base::NetlinkPacket packet(kNewMultiChannelConcurrencyNlMsg);
-  msg.InitFromPacketWithContext(&packet, Nl80211Message::Context());
-  ParseConcurrency(msg);
-
-  struct {
-    std::vector<nl80211_iftype> present_types;  // Types already reserved.
-    nl80211_iftype new_type;                    // Type to check.
-    bool can_add;  // Should it be possible to use the interface.
-  } test_cases[] = {
-      // Only use cases not covered by previous tests.
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_DEVICE},
-       NL80211_IFTYPE_STATION,
-       true},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_DEVICE,
-        NL80211_IFTYPE_P2P_GO},
-       NL80211_IFTYPE_STATION,
-       true},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_STATION},
-       NL80211_IFTYPE_STATION,
-       false},
-      {{NL80211_IFTYPE_STATION, NL80211_IFTYPE_P2P_DEVICE,
-        NL80211_IFTYPE_P2P_GO, NL80211_IFTYPE_P2P_CLIENT},
-       NL80211_IFTYPE_STATION,
-       false},
-      // Station + ADHOC is possible, but on SCC.
-      {{NL80211_IFTYPE_STATION}, NL80211_IFTYPE_ADHOC, false},
-  };
-
-  for (auto& tc : test_cases) {
-    for (auto& res : tc.present_types) {
-      ASSERT_TRUE(wifi_phy_.ReserveIfaceType(res, 1));
-    }
-    EXPECT_EQ(CanUseIface(tc.new_type, 2), tc.can_add);
-    for (auto& res : tc.present_types) {
-      ASSERT_TRUE(wifi_phy_.FreeIfaceType(res));
-    }
-  }
 }
 
 TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
@@ -1074,8 +829,6 @@ TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
       .num_channels = 1}};
   AssertPhyConcurrencyIsEqualTo(SingleChannelConcurrencyCombinations);
   AssertApStaConcurrency(true);
-  EXPECT_EQ(wifi_phy_.P2PSTAConcurrency(),
-            WiFiPhy::ConcurrencySupportLevel::SCC);
 }
 
 TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
@@ -1126,8 +879,6 @@ TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
   };
   AssertPhyConcurrencyIsEqualTo(MultiChannelConcurrencyCombinations);
   AssertApStaConcurrency(true);
-  EXPECT_EQ(wifi_phy_.P2PSTAConcurrency(),
-            WiFiPhy::ConcurrencySupportLevel::MCC);
 }
 
 TEST_F(WiFiPhyTest, SelectFrequency_Empty) {
