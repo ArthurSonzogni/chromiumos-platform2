@@ -14,7 +14,6 @@ group("all") {
     ":dlcservice_util",
     ":dlcverify",
     ":install_dbus_config",
-    ":install_dlctool",
     ":install_minijail_conf",
     ":install_seccomp_policy",
     ":install_upstart_conf",
@@ -167,14 +166,6 @@ static_library("libdlcservice") {
       "lvm/lvmd_proxy_wrapper.cc",
     ]
   }
-}
-
-# For dlctool:
-install_config("install_dlctool") {
-  sources = [ "tools/dlctool" ]
-  install_path = "/usr/local/bin"
-  outputs = [ "dlctool-shell" ]
-  type = "executable"
 }
 
 # For dlcservice:

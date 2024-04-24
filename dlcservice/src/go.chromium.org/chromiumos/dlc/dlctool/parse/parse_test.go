@@ -22,9 +22,6 @@ func TestStrictDefaultValues(t *testing.T) {
 	if *parse.FlagUnpack {
 		t.Fatal("Flag unpack is not default false")
 	}
-	if !*parse.FlagShell {
-		t.Fatal("Flag shell is not default true")
-	}
 }
 
 func TestBadFlag(t *testing.T) {
@@ -53,19 +50,6 @@ func TestEmptyIdFlag(t *testing.T) {
 	}
 }
 
-func TestExplicitShell(t *testing.T) {
-	_, err := parse.Args(
-		"dlctool",
-		[]string{"--shell", "true"},
-	)
-	if err == nil {
-		t.Fatal("Parsing explicit shell did not fail")
-	}
-	if !strings.Contains(err.Error(), "parse.Args: please don't explicitly pass in `shell` flag with `true`") {
-		t.Fatalf("Unexpected error: %v", err)
-	}
-}
-
 func TestMissingPath(t *testing.T) {
 	_, err := parse.Args(
 		"dlctool",
@@ -87,6 +71,22 @@ func TestNoCompressOption(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parsing no compress option failed: %v", err)
 	}
+	if *parse.FlagCompress != false {
+		t.Errorf("Unexpected compress value")
+	}
+}
+
+func TestDoubleNoCompressOption(t *testing.T) {
+	_, err := parse.Args(
+		"dlctool",
+		[]string{"--nocompress=false", "--id", "sample-dlc", "/path"},
+	)
+	if err == nil {
+		t.Error("Parsing double no compress option did not fail")
+	}
+	if !strings.Contains(err.Error(), "parse.Args: please don't explicity pass in `nocompress` with `false`") {
+		t.Errorf("Unexpected error: %v", err)
+	}
 }
 
 func TestCompressOption(t *testing.T) {
@@ -96,6 +96,9 @@ func TestCompressOption(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("Parsing compress option failed: %v", err)
+	}
+	if *parse.FlagCompress != true {
+		t.Errorf("Unexpected compress value")
 	}
 }
 

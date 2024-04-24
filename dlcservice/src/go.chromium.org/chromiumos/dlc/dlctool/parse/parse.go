@@ -19,13 +19,12 @@ var (
 	// FlagUnpack to hold parsed unpack option.
 	FlagUnpack *bool
 
-	// FlagShell to hold parsed shell option.
-	FlagShell *bool
+	// FlagCompress to hold parsed compress option.
+	FlagCompress *bool
 )
 
-// Defined, but ignored.
+// Defined, but hidden.
 var (
-	flagCompress   *bool
 	flagNoCompress *bool
 )
 
@@ -35,9 +34,8 @@ func Args(prog string, sysArgs []string) (string, error) {
 
 	FlagID = fs.String("id", "", "ID of the DLC to [un]pack.")
 	FlagUnpack = fs.Bool("unpack", false, "To unpack the DLC passed.")
-	FlagShell = fs.Bool("shell", true, "Force shell usage.")
+	FlagCompress = fs.Bool("compress", true, "Compress the image. Slower to pack but creates smaller images.")
 
-	flagCompress = fs.Bool("compress", true, "Compress the image. Slower to pack but creates smaller images.")
 	flagNoCompress = fs.Bool("nocompress", false, "Don't compress the image.")
 
 	// Usage update only after flag definitions.
@@ -64,8 +62,15 @@ func Args(prog string, sysArgs []string) (string, error) {
 	// Special treatment for select flags.
 	var err error
 	fs.Visit(func(f *flag.Flag) {
-		if f.Name == "shell" && f.Value.(flag.Getter).Get().(bool) == true {
-			err = errors.New("parse.Args: please don't explicitly pass in `shell` flag with `true`")
+		if f.Name == "compress" {
+			*FlagCompress = f.Value.(flag.Getter).Get().(bool)
+		}
+		// Lexicographical visiting, so "nocompress" has higher priority.
+		if f.Name == "nocompress" {
+			if f.Value.(flag.Getter).Get().(bool) == false {
+				err = errors.New("parse.Args: please don't explicity pass in `nocompress` with `false`")
+			}
+			*FlagCompress = false
 		}
 	})
 	if err != nil {

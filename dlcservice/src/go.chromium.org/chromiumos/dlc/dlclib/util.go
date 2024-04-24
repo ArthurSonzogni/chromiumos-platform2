@@ -22,3 +22,21 @@ func (u util) Read(id *string) ([]byte, error) {
 	}
 	return cmd.Output()
 }
+
+// Uninstall will `--uninstall`/`--purge` the `id` with dlcservice utility.
+func (u util) Uninstall(id *string) error {
+	cmd := &exec.Cmd{
+		Path: UtilPath,
+		Args: append([]string{UtilPath}, "--uninstall", "--id="+*id),
+	}
+	return cmd.Run()
+}
+
+// Deploy will `--deploy` the `id` with dlcservice utility.
+func (u util) Deploy(id *string) error {
+	cmd := &exec.Cmd{
+		Path: UtilPath,
+		Args: []string{UtilPath, "--deploy", "--id=" + *id},
+	}
+	return cmd.Run()
+}

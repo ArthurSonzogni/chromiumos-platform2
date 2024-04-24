@@ -5,6 +5,7 @@
 package dlclib
 
 import (
+	"bytes"
 	"os/exec"
 )
 
@@ -21,4 +22,14 @@ func (mu metadataUtil) Read(id *string) ([]byte, error) {
 		Args: append([]string{MetadataUtilPath}, "--get", "--id="+*id),
 	}
 	return cmd.Output()
+}
+
+// Write will `--set` the `id` metadata with DLC metadata util.
+func (mu metadataUtil) Write(id *string, metadata []byte) error {
+	cmd := &exec.Cmd{
+		Path:  MetadataUtilPath,
+		Args:  []string{MetadataUtilPath, "--set", "--id=" + *id},
+		Stdin: bytes.NewReader(metadata),
+	}
+	return cmd.Run()
 }
