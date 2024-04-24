@@ -61,24 +61,8 @@ func dlctoolShell(args []string) {
 	}
 }
 
-func readState(id *string) ([]byte, error) {
-	cmd := &exec.Cmd{
-		Path: dlclib.UtilPath,
-		Args: append([]string{dlclib.UtilPath}, "--dlc_state", "--id="+*id),
-	}
-	return cmd.Output()
-}
-
-func readMetadata(id *string) ([]byte, error) {
-	cmd := &exec.Cmd{
-		Path: dlclib.MetadataUtilPath,
-		Args: append([]string{dlclib.MetadataUtilPath}, "--get", "--id="+*id),
-	}
-	return cmd.Output()
-}
-
 func isDlcInstalled(id *string) bool {
-	out, err := readState(id)
+	out, err := dlclib.Util.Read(id)
 	if err != nil {
 		log.Fatalf("Failed to read state: %v", err)
 	}
@@ -101,7 +85,7 @@ func isDlcPreloadable(id *string) bool {
 }
 
 func isDlcScaled(id *string) bool {
-	out, err := readMetadata(id)
+	out, err := dlclib.MetadataUtil.Read(id)
 	if err != nil {
 		log.Fatalf("Failed to read metadata: %v", err)
 	}
@@ -121,7 +105,7 @@ func isDlcScaled(id *string) bool {
 }
 
 func isDlcForceOTA(id *string) bool {
-	out, err := readMetadata(id)
+	out, err := dlclib.MetadataUtil.Read(id)
 	if err != nil {
 		log.Fatalf("Failed to read metadata: %v", err)
 	}
@@ -141,7 +125,7 @@ func isDlcForceOTA(id *string) bool {
 }
 
 func getDlcImagePath(id *string) string {
-	out, err := readState(id)
+	out, err := dlclib.Util.Read(id)
 	if err != nil {
 		log.Fatalf("dlcImagePath: Failed to read state: %v", err)
 	}
