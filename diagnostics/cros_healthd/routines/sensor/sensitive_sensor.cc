@@ -20,6 +20,7 @@
 
 #include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor_constants.h"
+#include "diagnostics/cros_healthd/routines/sensor/sensor_detail.h"
 
 namespace diagnostics {
 namespace {
@@ -51,23 +52,6 @@ std::vector<cros::mojom::DeviceType> FilterSupportedTypes(
   std::copy_if(types.begin(), types.end(), std::back_inserter(supported_types),
                is_supported_type);
   return supported_types;
-}
-
-// Convert sensor device type enum to string.
-std::string ConverDeviceTypeToString(cros::mojom::DeviceType type) {
-  switch (type) {
-    case cros::mojom::DeviceType::ACCEL:
-      return kSensitiveSensorRoutineTypeAccel;
-    case cros::mojom::DeviceType::ANGLVEL:
-      return kSensitiveSensorRoutineTypeGyro;
-    case cros::mojom::DeviceType::GRAVITY:
-      return kSensitiveSensorRoutineTypeGravity;
-    case cros::mojom::DeviceType::MAGN:
-      return kSensitiveSensorRoutineTypeMagn;
-    default:
-      // The other sensor types are not supported in this routine.
-      NOTREACHED_NORETURN();
-  }
 }
 
 // Convert sensor device type enum to channel prefix.
@@ -136,58 +120,6 @@ std::string Convert(SensorExistenceChecker::Result::State state) {
 }
 
 }  // namespace
-
-void SensitiveSensorRoutine::SensorDetail::UpdateChannelSample(int32_t indice,
-                                                               int64_t value) {
-  // Passed channels are removed from |checking_channel_sample|.
-  if (checking_channel_sample.find(indice) == checking_channel_sample.end())
-    return;
-
-  // First sample data for the channel.
-  if (!checking_channel_sample[indice].has_value()) {
-    checking_channel_sample[indice] = value;
-    return;
-  }
-
-  // Remove channel when changed sample is found.
-  if (value != checking_channel_sample[indice].value()) {
-    checking_channel_sample.erase(indice);
-  }
-}
-
-bool SensitiveSensorRoutine::SensorDetail::IsErrorOccurred() {
-  // Error getting channels.
-  if (!channels.has_value()) {
-    LOG(ERROR) << "Failed to get sensor channels.";
-    return true;
-  }
-
-  // Error reading samples.
-  for (const auto& [_, last_reading_sample] : checking_channel_sample) {
-    if (!last_reading_sample.has_value()) {
-      LOG(ERROR) << "Failed to read sensor sample.";
-      return true;
-    }
-  }
-
-  return false;
-}
-
-base::Value::Dict SensitiveSensorRoutine::SensorDetail::GetDetailValue(
-    int32_t id) {
-  base::Value::Dict sensor_output;
-  sensor_output.Set("id", id);
-  base::Value::List out_types;
-  for (const auto& type : types)
-    out_types.Append(ConverDeviceTypeToString(type));
-  sensor_output.Set("types", std::move(out_types));
-  base::Value::List out_channels;
-  if (channels.has_value())
-    for (const auto& channel_name : channels.value())
-      out_channels.Append(channel_name);
-  sensor_output.Set("channels", std::move(out_channels));
-  return sensor_output;
-}
 
 SensitiveSensorRoutine::SensitiveSensorRoutine(
     MojoService* const mojo_service, SystemConfigInterface* const system_config)

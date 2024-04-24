@@ -5,6 +5,7 @@
 source_set("sensor") {
   sources = [
     "sensitive_sensor.cc",
+    "sensor_detail.cc",
     "sensor_existence_checker.cc",
   ]
   public_pkg_deps = [
@@ -26,6 +27,7 @@ if (use.test) {
   source_set("sensor_test") {
     sources = [
       "sensitive_sensor_test.cc",
+      "sensor_detail_test.cc",
       "sensor_existence_checker_test.cc",
     ]
     pkg_deps = [

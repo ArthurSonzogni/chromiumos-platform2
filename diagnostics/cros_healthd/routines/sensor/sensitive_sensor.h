@@ -22,6 +22,7 @@
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
+struct SensorDetail;
 
 constexpr base::TimeDelta kSensitiveSensorRoutineTimeout = base::Seconds(20);
 
@@ -46,25 +47,6 @@ class SensitiveSensorRoutine final
       ash::cros_healthd::mojom::RoutineUpdate& response) override;
 
  private:
-  struct SensorDetail {
-    // Sensor types.
-    std::vector<cros::mojom::DeviceType> types;
-    // Sensor channels.
-    std::optional<std::vector<std::string>> channels;
-    // First is channel indice, second is the last reading sample. If the
-    // channel finishes checking, remove it from this map.
-    std::map<int32_t, std::optional<int64_t>> checking_channel_sample;
-
-    // Update the sample for channel at index |indice|.
-    void UpdateChannelSample(int32_t indice, int64_t value);
-
-    // Check if there is any error when interacting with Iioservice.
-    bool IsErrorOccurred();
-
-    // Return the detail for output dict.
-    base::Value::Dict GetDetailValue(int32_t id);
-  };
-
   // Handle the response of sensor ids and types from the sensor service.
   void HandleGetAllDeviceIdsResponse(
       const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
