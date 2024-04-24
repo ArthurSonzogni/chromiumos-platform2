@@ -105,6 +105,18 @@ int main(int argc, char** argv) {
               " updates if the delta is greater than 100MB or the total"
               " disk space is less than 1GB");
   DEFINE_bool(human, false, "Print human-readable numbers");
+  DEFINE_bool(get_quota_usage, false,
+              "Get quota usage information for the given path,"
+              " use --uid, --gid, or --project_id to specify specific ids");
+  DEFINE_string(uid, "",
+                "Use with --get_quota_usage,"
+                " gets the quota usage information for the given UID");
+  DEFINE_string(gid, "",
+                "Use with --get_quota_usage,"
+                " gets the quota usage information for the given GID");
+  DEFINE_string(project_id, "",
+                "Use with --get_quota_usage,"
+                " gets the quota usage information for the given project ID");
 
   brillo::FlagHelper::Init(argc, argv,
                            "ChromiumOS Space Daemon CLI\n\n"
@@ -187,6 +199,50 @@ int main(int argc, char** argv) {
     free(rp);
   }
 
+  if (FLAGS_get_quota_usage) {
+    if (!disk_usage_proxy->IsQuotaSupported(path)) {
+      std::cout << "Quota is not supported for path: "
+                << std::quoted(path.value()) << '\n';
+      return EXIT_FAILURE;
+    }
+    if (!FLAGS_uid.empty()) {
+      uint32_t id = atoi(FLAGS_uid.c_str());
+      if (id == 0 && FLAGS_uid != "0") {
+        std::cout << "Could not determine the id \n";
+        return EXIT_FAILURE;
+      }
+      std::cout << "uid: " << FLAGS_uid << ": "
+                << Size(disk_usage_proxy->GetQuotaCurrentSpaceForUid(path, id))
+                << '\n';
+      return EXIT_SUCCESS;
+    }
+
+    if (!FLAGS_gid.empty()) {
+      uint32_t id = atoi(FLAGS_gid.c_str());
+      if (id == 0 && FLAGS_gid != "0") {
+        std::cout << "Could not determine the id \n";
+        return EXIT_FAILURE;
+      }
+      std::cout << "gid: " << FLAGS_gid << ": "
+                << Size(disk_usage_proxy->GetQuotaCurrentSpaceForGid(path, id))
+                << '\n';
+      return EXIT_SUCCESS;
+    }
+
+    if (!FLAGS_project_id.empty()) {
+      uint32_t id = atoi(FLAGS_project_id.c_str());
+      if (id == 0 && FLAGS_project_id != "0") {
+        std::cout << "Could not determine the id \n";
+        return EXIT_FAILURE;
+      }
+      std::cout << "project_id: " << FLAGS_uid << ": "
+                << Size(disk_usage_proxy->GetQuotaCurrentSpaceForProjectId(path,
+                                                                           id))
+                << '\n';
+      return EXIT_SUCCESS;
+    }
+  }
+
   std::cout << "path: " << std::quoted(path.value()) << '\n';
   std::cout << "free_disk_space: "
             << Size(disk_usage_proxy->GetFreeDiskSpace(path)) << '\n';
@@ -194,6 +250,8 @@ int main(int argc, char** argv) {
             << Size(disk_usage_proxy->GetTotalDiskSpace(path)) << '\n';
   std::cout << "root_device_size: "
             << Size(disk_usage_proxy->GetRootDeviceSize()) << '\n';
+  std::cout << "quota_supported: " << std::boolalpha
+            << disk_usage_proxy->IsQuotaSupported(path) << '\n';
   std::cout.flush();
 
   return EXIT_SUCCESS;
