@@ -29,8 +29,7 @@ namespace vm_tools::concierge {
 // Forces you to name your variables consistently.
 #define ASYNC_SERVICE_METHOD()                           \
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);    \
-  static const char* function_name = __func__;           \
-  VMT_TRACE(kCategory, function_name);                   \
+  VMT_TRACE(kCategory, __func__);                        \
   if (is_shutting_down_) {                               \
     RejectRequestDuringShutdown(std::move(response_cb)); \
     return;                                              \
