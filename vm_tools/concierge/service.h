@@ -570,9 +570,6 @@ class Service final : public org::chromium::VmConciergeInterface,
   // Helpers to handle (reject) requests which come in during shutdown.
   void RejectRequestDuringShutdown(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponseBase> response);
-  void RejectRequestDuringShutdown(
-      dbus::ExportedObject::ResponseSender response_sender,
-      dbus::MethodCall* method_call);
 
   // Destructor will need to run last after all metrics logging to allow
   // flushing of all metrics in AsynchronousMetricsWriter destructor.

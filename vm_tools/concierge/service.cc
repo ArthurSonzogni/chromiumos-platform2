@@ -4806,12 +4806,4 @@ void Service::RejectRequestDuringShutdown(
                            DBUS_ERROR_FAILED, "Shutdown in progress");
 }
 
-void Service::RejectRequestDuringShutdown(
-    dbus::ExportedObject::ResponseSender response_sender,
-    dbus::MethodCall* method_call) {
-  RejectRequestDuringShutdown(
-      std::make_unique<brillo::dbus_utils::DBusMethodResponseBase>(
-          method_call, std::move(response_sender)));
-}
-
 }  // namespace vm_tools::concierge
