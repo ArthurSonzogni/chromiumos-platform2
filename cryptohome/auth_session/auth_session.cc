@@ -2760,7 +2760,7 @@ void AuthSession::AuthForDecrypt::ContinueAddMigratedFpAuthFactor(
   user_data_auth::AddAuthFactorRequest req;
   auto* auth_factor = req.mutable_auth_factor();
   auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
-  auth_factor->mutable_fingerprint_metadata();
+  auth_factor->mutable_fingerprint_metadata()->set_was_migrated(true);
   auth_factor->mutable_common_metadata()->set_user_specified_name(
       legacy_record.user_specified_name);
 

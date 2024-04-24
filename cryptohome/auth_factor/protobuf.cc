@@ -83,7 +83,8 @@ void GetSmartCardMetadata(const user_data_auth::AuthFactor& auth_factor,
 
 void GetFingerprintMetadata(const user_data_auth::AuthFactor& auth_factor,
                             AuthFactorMetadata& out_auth_factor_metadata) {
-  out_auth_factor_metadata.metadata = FingerprintMetadata();
+  out_auth_factor_metadata.metadata = FingerprintMetadata{
+      .was_migrated = auth_factor.fingerprint_metadata().was_migrated()};
 }
 
 SerializedLockoutPolicy LockoutPolicyFromAuthFactorProto(

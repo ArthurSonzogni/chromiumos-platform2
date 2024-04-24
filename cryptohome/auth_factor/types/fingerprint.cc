@@ -377,7 +377,11 @@ FingerprintAuthFactorDriver::TypedConvertToProto(
     const FingerprintMetadata& typed_metadata) const {
   user_data_auth::AuthFactor proto;
   proto.set_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
-  proto.mutable_fingerprint_metadata();
+  user_data_auth::FingerprintMetadata& fingerprint_metadata =
+      *proto.mutable_fingerprint_metadata();
+  if (typed_metadata.was_migrated.has_value()) {
+    fingerprint_metadata.set_was_migrated(*typed_metadata.was_migrated);
+  }
   return proto;
 }
 

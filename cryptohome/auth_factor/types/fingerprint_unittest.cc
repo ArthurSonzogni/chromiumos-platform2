@@ -104,7 +104,9 @@ TEST_F(FingerprintDriverTest, ConvertToProto) {
       &platform_, &crypto_, &uss_manager_,
       AsyncInitPtr<BiometricsAuthBlockService>(bio_service_.get()));
   AuthFactorDriver& driver = fp_driver;
-  AuthFactorMetadata metadata = CreateMetadataWithType<FingerprintMetadata>();
+  FingerprintMetadata fingerprint_metadata{.was_migrated = true};
+  AuthFactorMetadata metadata =
+      CreateMetadataWithType<FingerprintMetadata>(fingerprint_metadata);
   metadata.common.user_specified_name = std::string(kUserSpecifiedName);
 
   // Test
@@ -125,6 +127,7 @@ TEST_F(FingerprintDriverTest, ConvertToProto) {
   EXPECT_THAT(proto->common_metadata().user_specified_name(),
               Eq(kUserSpecifiedName));
   EXPECT_THAT(proto.value().has_fingerprint_metadata(), IsTrue());
+  EXPECT_THAT(proto.value().fingerprint_metadata().was_migrated(), IsTrue());
 }
 
 TEST_F(FingerprintDriverTest, ConvertToProtoNullOpt) {

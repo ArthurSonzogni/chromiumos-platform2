@@ -88,7 +88,10 @@ table SmartCardMetadata {
 }
 
 // Metadata for a `Fingerprint` auth factor.
-table FingerprintMetadata {}
+table FingerprintMetadata {
+  // Set to true when migrated from a legacy fingerprint template.
+  was_migrated:bool = null (id: 0);
+}
 
 // Union that holds the auth factor's type-specific metadata.
 union TypeSpecificMetadata {

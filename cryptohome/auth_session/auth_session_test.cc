@@ -5616,11 +5616,15 @@ TEST_F(AuthSessionWithUssTest, MigrateLegacyFingerprints) {
     // auth factor.
     ASSERT_EQ(fp_auth_factor->metadata().common.user_specified_name,
               legacy_record.user_specified_name);
-    auto encrypted_uss =
-        uss_manager_.LoadEncrypted(auth_session->obfuscated_username());
-    ASSERT_OK(encrypted_uss);
-    ASSERT_EQ((*encrypted_uss)->legacy_fingerprint_migration_rollout(), 1);
+    auto& fp_metadata =
+        std::get<FingerprintMetadata>(fp_auth_factor->metadata().metadata);
+    ASSERT_NE(fp_metadata.was_migrated, std::nullopt);
+    ASSERT_TRUE(fp_metadata.was_migrated.value());
   }
+  auto encrypted_uss =
+      uss_manager_.LoadEncrypted(auth_session->obfuscated_username());
+  ASSERT_OK(encrypted_uss);
+  ASSERT_EQ((*encrypted_uss)->legacy_fingerprint_migration_rollout(), 1);
 }
 
 // Test that MigrateLegacyFingerprints properly returns error when it fails.

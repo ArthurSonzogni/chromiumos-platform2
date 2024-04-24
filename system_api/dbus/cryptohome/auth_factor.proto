@@ -302,7 +302,10 @@ message CommonMetadata {
 
 message LegacyFingerprintMetadata {}
 
-message FingerprintMetadata {}
+message FingerprintMetadata {
+  // Set to true when migrated from a legacy fingerprint template.
+  bool was_migrated = 1;
+}
 
 // AuthFactor is a backing store for any secret stored on Chrome OS in the USS
 // World. This proto definition is used to communicate with the client side.
