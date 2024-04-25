@@ -2,15 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-mod esp;
-
 use anyhow::Result;
 use dbus::arg::PropMap;
 use dbus::blocking::Connection;
 use dbus_crossroads::Crossroads;
-use esp::Esp;
 use log::error;
 
+// D-Bus constants.
 const MINI_UDISKS_INTERFACE_BLOCK: &str = "org.freedesktop.UDisks2.Block";
 const MINI_UDISKS_INTERFACE_FILESYSTEM: &str = "org.freedesktop.UDisks2.Filesystem";
 const MINI_UDISKS_INTERFACE_MANAGER: &str = "org.freedesktop.UDisks2.Manager";
@@ -18,23 +16,41 @@ const MINI_UDISKS_INTERFACE_PARTITION: &str = "org.freedesktop.UDisks2.Partition
 const MINI_UDISKS_PATH: &str = "/org/freedesktop/UDisks2";
 const MINI_UDISKS_NAME: &str = "org.freedesktop.UDisks2";
 
+/// Mount path for the fake ESP. Note that this is the path within
+/// fwupd's minijail sandbox; it is a bind mount of
+/// `/mnt/stateful_partition/unencrypted/uefi_capsule_updates`.
+const ESP_MOUNT_POINT: &str = "/run/uefi_capsule_updates";
+
+/// Arbitrary name for the ESP disk device.
+const FAKE_DISK_NAME: &str = "fakedisk";
+
+/// Arbitrary ESP partition number. This happens to match the real ESP
+/// partition number, but the value doesn't matter.
+const ESP_PARTITION_NUM: u32 = 12;
+
+/// Partition type GUID that identifies the ESP.
+///
+/// Defined in:
+/// https://uefi.org/specs/UEFI/2.10/05_GUID_Partition_Table_Format.html
+pub const ESP_TYPE_GUID: &'static str = "c12a7328-f81f-11d2-ba4b-00a0c93ec93b";
+
+/// Unique ID for the ESP.
+///
+/// This must be a valid GUID, but the value is otherwise arbitrary.
+pub const ESP_GUID: &'static str = "99cc6f39-2fd1-4d85-b15a-543e7b023a1f";
+
 // Create a minimal UDisks2 D-Bus API. This only exposes one block
-// device, the ESP partition. Only parts of the UDisks2 API that are
-// required by fwupd are exposed.
-//
-// If there is no ESP mount, no block devices will be exposed.
-fn create_dbus_api(esp: Option<Esp>) -> Result<Crossroads> {
+// device, the a fake ESP partition. Only parts of the UDisks2 API that
+// are required by fwupd are exposed.
+fn create_dbus_api() -> Result<Crossroads> {
     let mut cr = Crossroads::new();
 
-    // Get the D-Bus path for the ESP block device. Example:
-    // "/org/freedesktop/UDisks2/block_devices/sda12".
-    let dbus_esp_block_device_path = esp.as_ref().map(|esp| {
-        dbus::Path::new(format!(
-            "{MINI_UDISKS_PATH}/block_devices/{}",
-            esp.device_name
-        ))
-        .expect("invalid dbus path")
-    });
+    // D-Bus path for the fake ESP block device:
+    // "/org/freedesktop/UDisks2/block_devices/fakedisk12".
+    let dbus_esp_block_device_path = dbus::Path::new(format!(
+        "{MINI_UDISKS_PATH}/block_devices/{FAKE_DISK_NAME}{ESP_PARTITION_NUM}",
+    ))
+    .expect("invalid dbus path");
 
     // Manager interface.
     let dbus_esp_block_device_path_clone = dbus_esp_block_device_path.clone();
@@ -44,10 +60,8 @@ fn create_dbus_api(esp: Option<Esp>) -> Result<Crossroads> {
             ("options",),
             ("block_objects",),
             move |_, _, (_,): (PropMap,)| {
-                let mut devices = Vec::new();
-                if let Some(dbus_path) = dbus_esp_block_device_path_clone.clone() {
-                    devices.push(dbus_path);
-                }
+                let dbus_path = dbus_esp_block_device_path_clone.clone();
+                let devices = vec![dbus_path];
 
                 Ok((devices,))
             },
@@ -55,37 +69,27 @@ fn create_dbus_api(esp: Option<Esp>) -> Result<Crossroads> {
     });
 
     // Block interface.
-    let esp_clone = esp.clone();
-    let block_interface = cr.register(MINI_UDISKS_INTERFACE_BLOCK, move |b| {
-        if let Some(esp) = esp_clone {
-            b.property("Device")
-                .get(move |_, _| Ok(esp.device_path.clone()));
-        }
+    let block_interface = cr.register(MINI_UDISKS_INTERFACE_BLOCK, |b| {
+        b.property("Device")
+            .get(|_, _| Ok(format!("/dev/{FAKE_DISK_NAME}{ESP_PARTITION_NUM}")));
     });
 
     // Partition interface.
-    let esp_clone = esp.clone();
-    let partition_interface = cr.register(MINI_UDISKS_INTERFACE_PARTITION, move |b| {
-        if let Some(esp) = esp_clone {
-            b.property("Number").get(move |_, _| Ok(esp.partition_num));
-            b.property("Type")
-                .get(|_, _| Ok(Esp::TYPE_GUID.to_string()));
-            b.property("UUID")
-                .get(move |_, _| Ok(esp.unique_id.clone()));
-        }
+    let partition_interface = cr.register(MINI_UDISKS_INTERFACE_PARTITION, |b| {
+        b.property("Number").get(|_, _| Ok(ESP_PARTITION_NUM));
+        b.property("Type").get(|_, _| Ok(ESP_TYPE_GUID.to_string()));
+        b.property("UUID").get(|_, _| Ok(ESP_GUID.to_string()));
     });
 
     // Filesystem interface.
-    let esp_clone = esp.clone();
     let filesystem_interface = cr.register(MINI_UDISKS_INTERFACE_FILESYSTEM, |b| {
         b.property("MountPoints")
-            .get(move |_, _| -> Result<Vec<Vec<u8>>, _> {
-                let mut mount_points = Vec::new();
-                if esp_clone.is_some() {
-                    mount_points.push(Esp::MOUNT_POINT.as_bytes().to_vec());
-                }
+            .get(|_, _| -> Result<Vec<Vec<u8>>, _> {
+                let mut mount_point = ESP_MOUNT_POINT.as_bytes().to_vec();
+                // Add required null terminator.
+                mount_point.push(0);
 
-                Ok(mount_points)
+                Ok(vec![mount_point])
             });
     });
 
@@ -95,13 +99,11 @@ fn create_dbus_api(esp: Option<Esp>) -> Result<Crossroads> {
         (),
     );
 
-    if let Some(dbus_path) = dbus_esp_block_device_path {
-        cr.insert(
-            dbus_path,
-            &[block_interface, partition_interface, filesystem_interface],
-            (),
-        );
-    }
+    cr.insert(
+        dbus_esp_block_device_path,
+        &[block_interface, partition_interface, filesystem_interface],
+        (),
+    );
 
     Ok(cr)
 }
@@ -125,21 +127,18 @@ fn main() -> Result<()> {
     libchromeos::syslog::init("mini-udisks".to_string(), /*log_to_stderr=*/ true)
         .expect("failed to initialize logger");
 
-    // Get the ESP device/mount information. The ESP is mounted at boot;
-    // we can get this information once at startup and do not need to
-    // refresh it.
-    //
-    // Treat errors as fatal. Note that the ESP not being mounted is not
-    // an error; that will be a `None` value.
-    let esp = match Esp::find() {
-        Ok(esp) => esp,
+    let api = match create_dbus_api() {
+        Ok(api) => api,
         Err(err) => {
-            error!("failed to find ESP mount: {err}");
+            error!("failed to create dbus api: {err}");
             return Err(err);
         }
     };
 
-    let api = create_dbus_api(esp)?;
-
-    run_daemon(api)
+    if let Err(err) = run_daemon(api) {
+        error!("daemon error: {err}");
+        Err(err)
+    } else {
+        Ok(())
+    }
 }
