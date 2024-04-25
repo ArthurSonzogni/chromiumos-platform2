@@ -895,7 +895,7 @@ std::optional<resource_manager::GameMode> Service::GetGameMode() {
 static std::optional<std::string> GameModeToForegroundVmName(
     resource_manager::GameMode game_mode) {
   using resource_manager::GameMode;
-  if (game_mode == GameMode::BOREALIS) {
+  if (USE_BOREALIS_HOST && game_mode == GameMode::BOREALIS) {
     return "borealis";
   }
   if (game_mode == GameMode::OFF) {
@@ -1629,7 +1629,7 @@ StartVmResponse Service::StartVmInternal(
   // Storage ballooning enabled for Borealis (for ext4 setups in order
   // to not interfere with the storage management solutions of legacy
   // setups) and Bruschetta VMs.
-  if (classification == apps::VmType::BOREALIS &&
+  if (USE_BOREALIS_HOST && classification == apps::VmType::BOREALIS &&
       GetFilesystem(stateful_path) == "ext4") {
     storage_ballooning = request.storage_ballooning();
   } else if (classification == apps::VmType::BRUSCHETTA) {
@@ -1728,7 +1728,8 @@ StartVmResponse Service::StartVmInternal(
   const bool enable_render_server = request.enable_gpu() && USE_CROSVM_VULKAN;
   // Enable foz db list (dynamic un/loading for RO mesa shader cache) only for
   // Borealis, for now.
-  const bool enable_foz_db_list = classification == apps::VmType::BOREALIS;
+  const bool enable_foz_db_list =
+      USE_BOREALIS_HOST && classification == apps::VmType::BOREALIS;
 
   VMGpuCacheSpec gpu_cache_spec;
   if (request.enable_gpu()) {
@@ -1748,7 +1749,7 @@ StartVmResponse Service::StartVmInternal(
   std::unique_ptr<GuestOsNetwork> network;
   if (classification == apps::BRUSCHETTA) {
     network = BruschettaNetwork::Create(bus_, vsock_cid);
-  } else if (classification == apps::BOREALIS) {
+  } else if (USE_BOREALIS_HOST && classification == apps::BOREALIS) {
     network = BorealisNetwork::Create(bus_, vsock_cid);
   } else {
     network = TerminaNetwork::Create(bus_, vsock_cid);
@@ -1871,7 +1872,7 @@ StartVmResponse Service::StartVmInternal(
     vm_builder.AppendCustomParam("--hugepages", "");
   }
 
-  if (classification == apps::BOREALIS) {
+  if (USE_BOREALIS_HOST && classification == apps::BOREALIS) {
     bool vcpu_tweaks = feature::PlatformFeatures::Get()->IsEnabledBlocking(
         kBorealisVcpuTweaksFeature);
 
@@ -1884,7 +1885,7 @@ StartVmResponse Service::StartVmInternal(
   // TODO(b/288361720): This is temporary while we test the 'provision'
   // mount option. Once we're satisfied things are stable, we'll make this
   // the default and remove this feature check.
-  if (classification == apps::BOREALIS) {
+  if (USE_BOREALIS_HOST && classification == apps::BOREALIS) {
     std::string error;
     std::optional<bool> provision =
         IsFeatureEnabled(kBorealisProvisionFeature, &error);
