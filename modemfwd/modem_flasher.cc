@@ -293,6 +293,9 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
     LOG(WARNING) << "Couldn't write operation to journal";
   }
 
+  uint32_t types_for_metrics =
+      GetFirmwareTypesForMetrics(flash_cfg->fw_configs);
+
   base::TimeDelta flash_duration;
   if (!RunFlash(modem, *flash_cfg, modem_seen_since_oobe, &flash_duration,
                 err)) {
@@ -300,14 +303,14 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
       journal_->MarkEndOfFlashingFirmware(*entry_id);
     }
     notification_mgr_->NotifyUpdateFirmwareCompletedFlashFailure(
-        err->get(), GetFirmwareTypesForMetrics(flash_cfg->fw_configs));
+        err->get(), types_for_metrics);
     return base::OnceClosure();
   }
 
   // Report flashing time in successful cases
   metrics_->SendFwFlashTime(flash_duration);
   return base::BindOnce(&ModemFlasher::FlashFinished, base::Unretained(this),
-                        entry_id, std::move(flash_cfg));
+                        entry_id, types_for_metrics);
 }
 
 base::FilePath ModemFlasher::GetFirmwarePath(const FirmwareFileInfo& info) {
@@ -315,12 +318,11 @@ base::FilePath ModemFlasher::GetFirmwarePath(const FirmwareFileInfo& info) {
 }
 
 void ModemFlasher::FlashFinished(std::optional<std::string> journal_entry_id,
-                                 std::unique_ptr<FlashConfig> flash_cfg) {
+                                 uint32_t fw_types) {
   if (journal_entry_id.has_value()) {
     journal_->MarkEndOfFlashingFirmware(*journal_entry_id);
   }
-  notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(
-      true, GetFirmwareTypesForMetrics(flash_cfg->fw_configs));
+  notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(true, fw_types);
 }
 
 }  // namespace modemfwd
