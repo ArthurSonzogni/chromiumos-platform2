@@ -18,7 +18,7 @@ type imageloader struct{}
 func (i imageloader) Unmount(id *string) error {
 	cmd := &exec.Cmd{
 		Path: UtilPath,
-		Args: append([]string{UtilPath}, "--unmount", "--mount_point="+path.Join(ImageloaderRootMountPath, *id, Package)),
+		Args: []string{UtilPath, "--unmount", "--mount_point=" + path.Join(ImageloaderRootMountPath, *id, Package)},
 	}
 	return cmd.Run()
 }

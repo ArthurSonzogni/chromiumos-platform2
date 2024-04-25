@@ -19,7 +19,7 @@ type metadataUtil struct{}
 func (mu metadataUtil) Read(id *string) ([]byte, error) {
 	cmd := &exec.Cmd{
 		Path: MetadataUtilPath,
-		Args: append([]string{MetadataUtilPath}, "--get", "--id="+*id),
+		Args: []string{MetadataUtilPath, "--get", "--id=" + *id},
 	}
 	return cmd.Output()
 }

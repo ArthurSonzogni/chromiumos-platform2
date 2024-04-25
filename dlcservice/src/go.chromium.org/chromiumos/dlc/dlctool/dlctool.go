@@ -130,7 +130,7 @@ func getDlcManifest(id *string) json.RawMessage {
 func installDlc(id *string) error {
 	cmd := &exec.Cmd{
 		Path: dlclib.UtilPath,
-		Args: append([]string{dlclib.UtilPath}, "--install", "--id="+*id),
+		Args: []string{dlclib.UtilPath, "--install", "--id=" + *id},
 	}
 	return cmd.Run()
 }

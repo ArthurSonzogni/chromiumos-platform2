@@ -18,7 +18,7 @@ type util struct{}
 func (u util) Read(id *string) ([]byte, error) {
 	cmd := &exec.Cmd{
 		Path: UtilPath,
-		Args: append([]string{UtilPath}, "--dlc_state", "--id="+*id),
+		Args: []string{UtilPath, "--dlc_state", "--id=" + *id},
 	}
 	return cmd.Output()
 }
@@ -27,7 +27,7 @@ func (u util) Read(id *string) ([]byte, error) {
 func (u util) Uninstall(id *string) error {
 	cmd := &exec.Cmd{
 		Path: UtilPath,
-		Args: append([]string{UtilPath}, "--uninstall", "--id="+*id),
+		Args: []string{UtilPath, "--uninstall", "--id=" + *id},
 	}
 	return cmd.Run()
 }
