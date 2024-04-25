@@ -72,7 +72,7 @@ void DlcClient::OnDlcStateChangedConnect(const std::string& interface,
   if (!success) {
     std::string err =
         base::StrCat({"Error connecting ", interface, ". ", signal});
-    InvokeErrorCb(/*id=*/"", err);
+    InvokeErrorCb(/*dlc_id=*/"", err);
   }
 }
 
