@@ -14,7 +14,6 @@ use anyhow::Context;
 use anyhow::Result;
 use glob::glob;
 use log::info;
-use once_cell::sync::Lazy;
 
 use crate::common::read_from_file;
 use crate::cpu_utils::Cpuset;
@@ -23,7 +22,7 @@ use crate::sync::NoPoison;
 
 const MEDIA_MIN_ECORE_NUM: u32 = 4;
 
-static MEDIA_DYNAMIC_CGROUP_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+static MEDIA_DYNAMIC_CGROUP_ACTIVE: Mutex<bool> = Mutex::new(false);
 
 // List of sysfs, resourced updates during media dynamic cgroup.
 const CGROUP_CPUSET_ALL: [&str; 6] = [

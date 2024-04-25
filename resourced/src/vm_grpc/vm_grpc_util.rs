@@ -17,7 +17,6 @@ use dbus::nonblock::SyncConnection;
 use dbus::Message;
 use libchromeos::sys::info;
 use libchromeos::sys::warn;
-use once_cell::sync::Lazy;
 use protobuf::CodedInputStream;
 use protobuf::Message as protoMessage;
 
@@ -44,7 +43,7 @@ const CID_ANY: i16 = -1;
 // Name for the borealis VM.
 const BOREALIS_VM_NAME: &str = "borealis";
 
-static VM_GRPC_SERVER_STOP_REQ: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+static VM_GRPC_SERVER_STOP_REQ: Mutex<bool> = Mutex::new(false);
 
 pub fn vm_server_stop_requested() -> bool {
     *VM_GRPC_SERVER_STOP_REQ.do_lock()

@@ -15,7 +15,6 @@ use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use log::warn;
-use once_cell::sync::Lazy;
 
 use crate::arch;
 use crate::power;
@@ -56,7 +55,7 @@ impl TryFrom<u8> for GameMode {
     }
 }
 
-static GAME_MODE: Lazy<Mutex<GameMode>> = Lazy::new(|| Mutex::new(GameMode::Off));
+static GAME_MODE: Mutex<GameMode> = Mutex::new(GameMode::Off);
 
 pub struct TuneSwappiness {
     pub swappiness: u32,
@@ -103,8 +102,7 @@ pub enum RTCAudioActive {
     // RTC is active, RTC audio is playing and recording.
     Active = 1,
 }
-static RTC_AUDIO_ACTIVE: Lazy<Mutex<RTCAudioActive>> =
-    Lazy::new(|| Mutex::new(RTCAudioActive::Inactive));
+static RTC_AUDIO_ACTIVE: Mutex<RTCAudioActive> = Mutex::new(RTCAudioActive::Inactive);
 
 impl TryFrom<u8> for RTCAudioActive {
     type Error = anyhow::Error;
@@ -125,8 +123,7 @@ pub enum FullscreenVideo {
     // Full screen video is active.
     Active = 1,
 }
-static FULLSCREEN_VIDEO: Lazy<Mutex<FullscreenVideo>> =
-    Lazy::new(|| Mutex::new(FullscreenVideo::Inactive));
+static FULLSCREEN_VIDEO: Mutex<FullscreenVideo> = Mutex::new(FullscreenVideo::Inactive);
 
 impl TryFrom<u8> for FullscreenVideo {
     type Error = anyhow::Error;
@@ -147,7 +144,7 @@ pub enum VmBootMode {
     // VM boot mode active.
     Active = 1,
 }
-static VMBOOT_MODE: Lazy<Mutex<VmBootMode>> = Lazy::new(|| Mutex::new(VmBootMode::Inactive));
+static VMBOOT_MODE: Mutex<VmBootMode> = Mutex::new(VmBootMode::Inactive);
 
 impl TryFrom<u8> for VmBootMode {
     type Error = anyhow::Error;
@@ -178,8 +175,7 @@ pub enum BatterySaverMode {
     // Battery saver mode is active.
     Active = 1,
 }
-static BATTERY_SAVER_MODE: Lazy<Mutex<BatterySaverMode>> =
-    Lazy::new(|| Mutex::new(BatterySaverMode::Inactive));
+static BATTERY_SAVER_MODE: Mutex<BatterySaverMode> = Mutex::new(BatterySaverMode::Inactive);
 
 impl TryFrom<u8> for BatterySaverMode {
     type Error = anyhow::Error;
