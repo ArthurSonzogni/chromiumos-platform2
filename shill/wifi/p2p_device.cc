@@ -11,7 +11,6 @@
 #include <vector>
 
 #include <base/containers/span.h>
-#include <base/rand_util.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/byte_utils.h>
@@ -117,7 +116,8 @@ P2PDevice::P2PDevice(Manager* manager,
   group_frequency_ = 0;
   group_passphrase_ = "";
   interface_address_ = std::nullopt;
-  ipv4_address_ = std::nullopt;
+  go_ipv4_address_ = std::nullopt;
+  go_network_id_ = std::nullopt;
   LOG(INFO) << log_name() << ": P2PDevice created";
 }
 
@@ -157,32 +157,11 @@ const char* P2PDevice::P2PDeviceStateName(P2PDeviceState state) {
   return "Invalid";
 }
 
-void P2PDevice::OnGroupNetworkInfo(
-    bool success,
-    const patchpanel::Client::DownstreamNetwork& downstream_network,
-    const std::vector<patchpanel::Client::NetworkClientInfo>& clients) {
-  if (!success) {
-    LOG(ERROR) << "Failed to get group network information from patchpanel";
-  }
-
-  ipv4_address_ = downstream_network.ipv4_gateway_addr;
+void P2PDevice::UpdateGroupNetworkInfo(
+    const patchpanel::Client::DownstreamNetwork& downstream_network) {
+  go_ipv4_address_ = downstream_network.ipv4_gateway_addr;
+  go_network_id_ = downstream_network.network_id;
   // TODO(b/331859957): cache and expose IPv6 address.
-  // TODO(b/308081318): update L3 info to P2PPeer class.
-}
-
-bool P2PDevice::UpdateGroupNetworkInfo() {
-  if (!group_network_fd_.is_valid()) {
-    return false;
-  }
-
-  if (!manager()->patchpanel_client()->GetDownstreamNetworkInfo(
-          link_name().value(), base::BindOnce(&P2PDevice::OnGroupNetworkInfo,
-                                              base::Unretained(this)))) {
-    LOG(ERROR) << log_name() << ": Failed in " << __func__;
-    return false;
-  }
-
-  return true;
 }
 
 Stringmaps P2PDevice::GroupInfoClients() const {
@@ -216,12 +195,13 @@ KeyValueStore P2PDevice::GetGroupInfo() const {
     group_info.Set<Stringmaps>(kP2PGroupInfoClientsProperty,
                                GroupInfoClients());
     if (IsNetworkLayerConnected()) {
-      // TODO(b/325124473): use the network_id from patchpanel.
-      group_info.Set<int32_t>(kP2PGroupInfoNetworkIDProperty,
-                              base::RandInt(0, INT_MAX));
-      if (ipv4_address_ != std::nullopt) {
+      if (go_network_id_ != std::nullopt) {
+        group_info.Set<int32_t>(kP2PGroupInfoNetworkIDProperty,
+                                go_network_id_.value());
+      }
+      if (go_ipv4_address_ != std::nullopt) {
         group_info.Set<String>(kP2PGroupInfoIPv4AddressProperty,
-                               ipv4_address_.value().ToString());
+                               go_ipv4_address_.value().ToString());
       }
     }
   }
@@ -363,7 +343,8 @@ bool P2PDevice::RemoveGroup() {
     return false;
   }
   SetState(P2PDeviceState::kGOStopping);
-  ipv4_address_ = std::nullopt;
+  go_ipv4_address_ = std::nullopt;
+  go_network_id_ = std::nullopt;
   group_network_fd_.reset();
   FinishSupplicantGroup();
   // TODO(b/308081318): delete service on GroupFinished
@@ -963,11 +944,6 @@ void P2PDevice::OnConnectionUpdated(int net_interface_index) {
     return;
   }
 
-  const auto network_config = client_network_->GetNetworkConfig();
-  if (network_config.ipv4_address != std::nullopt) {
-    ipv4_address_ = network_config.ipv4_address->address();
-  }
-
   LOG(INFO) << log_name() << ": Successfully get IP address on "
             << link_name().value();
   SetState(P2PDeviceState::kClientConnected);
@@ -1008,10 +984,7 @@ void P2PDevice::OnGroupNetworkStarted(
   LOG(INFO) << log_name() << ": Established downstream network network_id="
             << network.network_id << " on " << link_name().value();
   group_network_fd_ = std::move(network_fd);
-  if (!UpdateGroupNetworkInfo()) {
-    PostDeviceEvent(DeviceEvent::kNetworkFailure);
-    return;
-  }
+  UpdateGroupNetworkInfo(network);
   SetState(P2PDeviceState::kGOActive);
   PostDeviceEvent(DeviceEvent::kNetworkUp);
 }

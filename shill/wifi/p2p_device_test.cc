@@ -317,9 +317,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
           .value(),
       net_base::IPv4Address(192, 168, 1, 1)};
   go_device_->OnGroupNetworkStarted(MakeFd(), downstream_network);
-  go_device_->OnGroupNetworkInfo(
-      true, downstream_network,
-      std::vector<patchpanel::Client::NetworkClientInfo>());
+  go_device_->UpdateGroupNetworkInfo(downstream_network);
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOActive);
 
   group_info = go_device_->GetGroupInfo();
@@ -351,6 +349,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_EQ(
       group_info.Get<String>(kP2PGroupInfoMACAddressProperty),
       net_base::MacAddress::CreateFromBytes(kP2PMACAddress).value().ToString());
+  EXPECT_EQ(group_info.Get<int32_t>(kP2PGroupInfoNetworkIDProperty),
+            kLocalOnlyNetworkId);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoIPv4AddressProperty),
             "192.168.1.1");
   EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(), 0);
@@ -403,6 +403,8 @@ TEST_F(P2PDeviceTest, GroupInfo) {
   EXPECT_EQ(
       group_info.Get<String>(kP2PGroupInfoMACAddressProperty),
       net_base::MacAddress::CreateFromBytes(kP2PMACAddress).value().ToString());
+  EXPECT_EQ(group_info.Get<int32_t>(kP2PGroupInfoNetworkIDProperty),
+            kLocalOnlyNetworkId);
   EXPECT_EQ(group_info.Get<String>(kP2PGroupInfoIPv4AddressProperty),
             "192.168.1.1");
   EXPECT_EQ(group_info.Get<Stringmaps>(kP2PGroupInfoClientsProperty).size(),

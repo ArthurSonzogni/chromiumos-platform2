@@ -302,11 +302,8 @@ class P2PDevice : public LocalDevice,
   void ResetTimersOnStateChange(P2PDeviceState new_state);
 
   // Methods to fetch L3 information from patchpanel.
-  bool UpdateGroupNetworkInfo();
-  void OnGroupNetworkInfo(
-      bool success,
-      const patchpanel::Client::DownstreamNetwork& downstream_network,
-      const std::vector<patchpanel::Client::NetworkClientInfo>& clients);
+  void UpdateGroupNetworkInfo(
+      const patchpanel::Client::DownstreamNetwork& downstream_network);
 
   // Primary interface link name.
   std::string primary_link_name_;
@@ -376,10 +373,12 @@ class P2PDevice : public LocalDevice,
 
   // P2P interface address, only available after the link layer is connected.
   std::optional<net_base::MacAddress> interface_address_;
-  // TODO(b/331679921): Remove cached IP address.
-  // IPv4 address of current device, only available after the network layer has
-  // been setup.
-  std::optional<net_base::IPv4Address> ipv4_address_;
+  // IPv4 address of current device, only available for GO after the network
+  // layer has been setup.
+  std::optional<net_base::IPv4Address> go_ipv4_address_;
+  // network_id of current device, only available for GO after the network layer
+  // has been setup.
+  std::optional<int> go_network_id_;
 
   // The weak pointer to P2PDevice object
   base::WeakPtrFactory<P2PDevice> weak_ptr_factory_{this};
