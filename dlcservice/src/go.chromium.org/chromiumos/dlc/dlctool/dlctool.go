@@ -14,7 +14,7 @@ import (
 	"os/exec"
 	"path"
 
-	"go.chromium.org/chromiumos/dlclib"
+	"go.chromium.org/chromiumos/dlc/dlclib"
 )
 
 const (
