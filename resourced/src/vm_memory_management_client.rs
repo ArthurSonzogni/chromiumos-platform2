@@ -29,6 +29,7 @@ use tokio::time::sleep;
 
 use crate::dbus_ownership_listener::monitor_dbus_service;
 use crate::dbus_ownership_listener::DbusOwnershipChangeCallback;
+use crate::sync::NoPoison;
 use crate::vm_concierge_client::VmConciergeClient;
 
 const VM_CONCIERGE_SERVICE_NAME: &str = "org.chromium.VmConcierge";
@@ -118,7 +119,7 @@ struct VmConciergeMonitor {
 impl DbusOwnershipChangeCallback for VmConciergeMonitor {
     async fn on_ownership_change(&self, old: String, new: String) -> Result<()> {
         if !old.is_empty() {
-            *self.state.lock().expect("failed to lock") = VmMMConnectionState::Disconnected;
+            *self.state.do_lock() = VmMMConnectionState::Disconnected;
         }
 
         if !new.is_empty() {
@@ -128,8 +129,7 @@ impl DbusOwnershipChangeCallback for VmConciergeMonitor {
                     let mut conn = VmMMConnection::new(fd, reclaim_request_timeout)
                         .context("create VmMMConnection")?;
                     conn.connect().await.context("initialize VmMMConnection")?;
-                    *self.state.lock().expect("poisoned lock") =
-                        VmMMConnectionState::Connected(conn)
+                    *self.state.do_lock() = VmMMConnectionState::Connected(conn)
                 }
                 Err(e) => {
                     info!("VmMemoryManagementClient not activating: {}", e);
@@ -188,8 +188,7 @@ impl VmMemoryManagementClient {
     }
 
     fn acquire_state(&self) -> MutexGuard<'_, VmMMConnectionState> {
-        // Panic on poisoned mutex.
-        self.state.lock().expect("poisoned lock")
+        self.state.do_lock()
     }
 }
 

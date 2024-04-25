@@ -23,6 +23,7 @@ pub mod intel_device {
     use crate::common;
     use crate::common::read_from_file;
     use crate::common::GameMode;
+    use crate::sync::NoPoison;
 
     // Device path for cpuinfo.
     const CPUINFO_PATH: &str = "proc/cpuinfo";
@@ -104,40 +105,33 @@ pub mod intel_device {
     ) -> Result<()> {
         static TUNING_RUNNING: Mutex<bool> = Mutex::new(false);
 
-        if let Ok(mut running) = TUNING_RUNNING.lock() {
-            if *running {
-                // Not an error case since set_game_mode called periodically.
-                // Prevent new thread from spawning.
-                info!("Tuning thread already running, ignoring new request");
-            } else {
-                let gpu_dev = IntelGpuDeviceConfig::new(root.to_owned(), polling_interval_ms)?;
-                gpu_dev.is_active_gpu_tuning_supported()?;
-                let cpu_dev = DeviceCpuStatus::new(root)?;
-
-                *running = true;
-
-                thread::spawn(move || {
-                    info!("Created GPU tuning thread with {polling_interval_ms}ms interval");
-                    match gpu_dev.adjust_gpu_frequency(&cpu_dev) {
-                        Ok(_) => info!("GPU tuning thread ended successfully"),
-                        Err(e) => {
-                            warn!("GPU tuning thread ended prematurely: {:?}", e);
-                        }
-                    }
-
-                    if gpu_dev.tuning_cleanup().is_err() {
-                        warn!("GPU tuning thread cleanup failed");
-                    }
-
-                    if let Ok(mut running) = TUNING_RUNNING.lock() {
-                        *running = false;
-                    } else {
-                        warn!("GPU Tuning thread Mutex poisoned, unable to reset flag");
-                    }
-                });
-            }
+        let mut running = TUNING_RUNNING.do_lock();
+        if *running {
+            // Not an error case since set_game_mode called periodically.
+            // Prevent new thread from spawning.
+            info!("Tuning thread already running, ignoring new request");
         } else {
-            warn!("GPU Tuning thread Mutex poisoned, ignoring run request");
+            let gpu_dev = IntelGpuDeviceConfig::new(root.to_owned(), polling_interval_ms)?;
+            gpu_dev.is_active_gpu_tuning_supported()?;
+            let cpu_dev = DeviceCpuStatus::new(root)?;
+
+            *running = true;
+
+            thread::spawn(move || {
+                info!("Created GPU tuning thread with {polling_interval_ms}ms interval");
+                match gpu_dev.adjust_gpu_frequency(&cpu_dev) {
+                    Ok(_) => info!("GPU tuning thread ended successfully"),
+                    Err(e) => {
+                        warn!("GPU tuning thread ended prematurely: {:?}", e);
+                    }
+                }
+
+                if gpu_dev.tuning_cleanup().is_err() {
+                    warn!("GPU tuning thread cleanup failed");
+                }
+
+                *TUNING_RUNNING.do_lock() = false;
+            });
         }
 
         Ok(())
@@ -273,7 +267,7 @@ pub mod intel_device {
             let mut last_pl_val = cpu_dev.get_pl0_curr()?;
             let mut prev_bucket_index = self.get_pl_bucket_index(last_pl_val);
 
-            while common::get_game_mode()? == GameMode::Borealis {
+            while common::get_game_mode() == GameMode::Borealis {
                 thread::sleep(Duration::from_millis(self.polling_interval_ms));
 
                 let current_pl = cpu_dev.get_pl0_curr()?;
@@ -722,14 +716,14 @@ mod tests {
         let power_manager = MockPowerPreferencesManager {
             root: root.to_path_buf(),
         };
-        assert!(common::get_game_mode().unwrap() == common::GameMode::Off);
+        assert!(common::get_game_mode() == common::GameMode::Off);
         common::set_game_mode(
             &power_manager,
             common::GameMode::Borealis,
             root.to_path_buf(),
         )
         .unwrap();
-        assert!(common::get_game_mode().unwrap() == common::GameMode::Borealis);
+        assert!(common::get_game_mode() == common::GameMode::Borealis);
 
         setup_mock_intel_gpu_dev_dirs(root);
         setup_mock_intel_gpu_files(root);

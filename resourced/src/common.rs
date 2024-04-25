@@ -19,6 +19,7 @@ use once_cell::sync::Lazy;
 
 use crate::arch;
 use crate::power;
+use crate::sync::NoPoison;
 
 /// Parse the first line of a file as a type implementing std::str::FromStr.
 pub fn read_from_file<T: FromStr, P: AsRef<Path>>(path: &P) -> Result<T>
@@ -66,14 +67,12 @@ pub fn set_game_mode(
     power_preference_manager: &dyn power::PowerPreferencesManager,
     mode: GameMode,
     root: PathBuf,
-) -> Result<Option<TuneSwappiness>> {
-    let old_mode = match GAME_MODE.lock() {
-        Ok(mut data) => {
-            let old_data = *data;
-            *data = mode;
-            old_data
-        }
-        Err(_) => bail!("Failed to set game mode"),
+) -> Option<TuneSwappiness> {
+    let old_mode = {
+        let mut data = GAME_MODE.do_lock();
+        let old_mode = *data;
+        *data = mode;
+        old_mode
     };
 
     // Don't fail game mode settings if EPP can't be changed.
@@ -85,19 +84,16 @@ pub fn set_game_mode(
     }
 
     if old_mode != GameMode::Borealis && mode == GameMode::Borealis {
-        Ok(arch::apply_borealis_tuning(&root, true))
+        arch::apply_borealis_tuning(&root, true)
     } else if old_mode == GameMode::Borealis && mode != GameMode::Borealis {
-        Ok(arch::apply_borealis_tuning(&root, false))
+        arch::apply_borealis_tuning(&root, false)
     } else {
-        Ok(None)
+        None
     }
 }
 
-pub fn get_game_mode() -> Result<GameMode> {
-    match GAME_MODE.lock() {
-        Ok(data) => Ok(*data),
-        Err(_) => bail!("Failed to get game mode"),
-    }
+pub fn get_game_mode() -> GameMode {
+    *GAME_MODE.do_lock()
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -202,82 +198,49 @@ pub fn update_power_preferences(
 ) -> Result<()> {
     // We need to ensure that any function that locks more than one lock does it
     // in the same order to avoid any dead locks.
-    match RTC_AUDIO_ACTIVE.lock() {
-        Ok(rtc_data) => match FULLSCREEN_VIDEO.lock() {
-            Ok(fsv_data) => match GAME_MODE.lock() {
-                Ok(game_data) => match VMBOOT_MODE.lock() {
-                    Ok(boot_data) => match BATTERY_SAVER_MODE.lock() {
-                        Ok(bsm_data) => power_preference_manager.update_power_preferences(
-                            *rtc_data, *fsv_data, *game_data, *boot_data, *bsm_data,
-                        )?,
-                        Err(_) => bail!("Failed to get battery saver mode"),
-                    },
-                    Err(_) => bail!("Failed to get VM boot mode"),
-                },
-                Err(_) => bail!("Failed to get game mode"),
-            },
-            Err(_) => bail!("Failed to get fullscreen mode!"),
-        },
-        Err(_) => bail!("Failed to get rtd audio mode!"),
-    }
-    Ok(())
+    let rtc_data = RTC_AUDIO_ACTIVE.do_lock();
+    let fsv_data = FULLSCREEN_VIDEO.do_lock();
+    let game_data = GAME_MODE.do_lock();
+    let boot_data = VMBOOT_MODE.do_lock();
+    let bsm_data = BATTERY_SAVER_MODE.do_lock();
+    power_preference_manager
+        .update_power_preferences(*rtc_data, *fsv_data, *game_data, *boot_data, *bsm_data)
 }
 
 pub fn set_rtc_audio_active(
     power_preference_manager: &dyn power::PowerPreferencesManager,
     mode: RTCAudioActive,
 ) -> Result<()> {
-    match RTC_AUDIO_ACTIVE.lock() {
-        Ok(mut data) => {
-            *data = mode;
-        }
-        Err(_) => bail!("Failed to set RTC audio activity"),
-    }
+    *RTC_AUDIO_ACTIVE.do_lock() = mode;
 
     update_power_preferences(power_preference_manager)?;
     Ok(())
 }
 
-pub fn get_rtc_audio_active() -> Result<RTCAudioActive> {
-    match RTC_AUDIO_ACTIVE.lock() {
-        Ok(data) => Ok(*data),
-        Err(_) => bail!("Failed to get status of RTC audio activity"),
-    }
+pub fn get_rtc_audio_active() -> RTCAudioActive {
+    *RTC_AUDIO_ACTIVE.do_lock()
 }
 
 pub fn set_fullscreen_video(
     power_preference_manager: &dyn power::PowerPreferencesManager,
     mode: FullscreenVideo,
 ) -> Result<()> {
-    match FULLSCREEN_VIDEO.lock() {
-        Ok(mut data) => {
-            *data = mode;
-        }
-        Err(_) => bail!("Failed to set full screen video activity"),
-    }
+    *FULLSCREEN_VIDEO.do_lock() = mode;
 
     update_power_preferences(power_preference_manager)?;
 
     Ok(())
 }
 
-pub fn get_fullscreen_video() -> Result<FullscreenVideo> {
-    match FULLSCREEN_VIDEO.lock() {
-        Ok(data) => Ok(*data),
-        Err(_) => bail!("Failed to get full screen video activity"),
-    }
+pub fn get_fullscreen_video() -> FullscreenVideo {
+    *FULLSCREEN_VIDEO.do_lock()
 }
 
 pub fn on_battery_saver_mode_change(
     power_preference_manager: &dyn power::PowerPreferencesManager,
     mode: BatterySaverMode,
 ) -> Result<()> {
-    match BATTERY_SAVER_MODE.lock() {
-        Ok(mut data) => {
-            *data = mode;
-        }
-        Err(_) => bail!("Failed to set Battery saver mode activity"),
-    }
+    *BATTERY_SAVER_MODE.do_lock() = mode;
 
     update_power_preferences(power_preference_manager)?;
 
@@ -291,12 +254,7 @@ pub fn set_vm_boot_mode(
     if !is_vm_boot_mode_enabled() {
         bail!("VM boot mode is not enabled");
     }
-    match VMBOOT_MODE.lock() {
-        Ok(mut data) => {
-            *data = mode;
-        }
-        Err(_) => bail!("Failed to set VM boot mode activity"),
-    }
+    *VMBOOT_MODE.do_lock() = mode;
 
     update_power_preferences(power_preference_manager)?;
 
@@ -367,11 +325,11 @@ mod tests {
         let power_manager = MockPowerPreferencesManager {
             root: root.to_path_buf(),
         };
-        assert_eq!(get_game_mode().unwrap(), GameMode::Off);
-        set_game_mode(&power_manager, GameMode::Borealis, root.to_path_buf()).unwrap();
-        assert_eq!(get_game_mode().unwrap(), GameMode::Borealis);
-        set_game_mode(&power_manager, GameMode::Arc, root.to_path_buf()).unwrap();
-        assert_eq!(get_game_mode().unwrap(), GameMode::Arc);
+        assert_eq!(get_game_mode(), GameMode::Off);
+        set_game_mode(&power_manager, GameMode::Borealis, root.to_path_buf());
+        assert_eq!(get_game_mode(), GameMode::Borealis);
+        set_game_mode(&power_manager, GameMode::Arc, root.to_path_buf());
+        assert_eq!(get_game_mode(), GameMode::Arc);
     }
 
     #[test]
@@ -383,9 +341,9 @@ mod tests {
             root: root.to_path_buf(),
         };
 
-        assert_eq!(get_rtc_audio_active().unwrap(), RTCAudioActive::Inactive);
+        assert_eq!(get_rtc_audio_active(), RTCAudioActive::Inactive);
         set_rtc_audio_active(&power_manager, RTCAudioActive::Active).unwrap();
-        assert_eq!(get_rtc_audio_active().unwrap(), RTCAudioActive::Active);
+        assert_eq!(get_rtc_audio_active(), RTCAudioActive::Active);
     }
 
     #[test]
@@ -397,8 +355,8 @@ mod tests {
             root: root.to_path_buf(),
         };
 
-        assert_eq!(get_fullscreen_video().unwrap(), FullscreenVideo::Inactive);
+        assert_eq!(get_fullscreen_video(), FullscreenVideo::Inactive);
         set_fullscreen_video(&power_manager, FullscreenVideo::Active).unwrap();
-        assert_eq!(get_fullscreen_video().unwrap(), FullscreenVideo::Active);
+        assert_eq!(get_fullscreen_video(), FullscreenVideo::Active);
     }
 }

@@ -21,6 +21,7 @@ use once_cell::sync::Lazy;
 use protobuf::CodedInputStream;
 use protobuf::Message as protoMessage;
 
+use crate::sync::NoPoison;
 use crate::vm_grpc::proto::concierge_service::GetVmInfoRequest;
 use crate::vm_grpc::proto::concierge_service::GetVmInfoResponse;
 use crate::vm_grpc::proto::concierge_service::VmStartedSignal;
@@ -46,33 +47,15 @@ const BOREALIS_VM_NAME: &str = "borealis";
 static VM_GRPC_SERVER_STOP_REQ: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
 pub fn vm_server_stop_requested() -> bool {
-    match VM_GRPC_SERVER_STOP_REQ.lock() {
-        Ok(data) => *data,
-        Err(_) => {
-            warn!("Could not acquire lock for  VM_GRPC_SERVER_STOP_REQ");
-            false
-        }
-    }
+    *VM_GRPC_SERVER_STOP_REQ.do_lock()
 }
 
-fn request_vm_server_stop() -> Result<()> {
-    match VM_GRPC_SERVER_STOP_REQ.lock() {
-        Ok(mut data) => {
-            *data = true;
-        }
-        Err(_) => bail!("GRPC server stop request failed"),
-    };
-    Ok(())
+fn request_vm_server_stop() {
+    *VM_GRPC_SERVER_STOP_REQ.do_lock() = true;
 }
 
 pub fn vm_server_stop_req_reset() {
-    match VM_GRPC_SERVER_STOP_REQ.lock() {
-        Ok(mut data) => *data = false,
-        Err(_) => {
-            warn!("Could not reset grpc_server_stop_request.");
-            warn!("Grpc server may not restart in future requests.");
-        }
-    }
+    *VM_GRPC_SERVER_STOP_REQ.do_lock() = false;
 }
 
 fn vm_grpc_init(borealis_cid: i16) -> Result<VmGrpcServer> {
@@ -238,9 +221,7 @@ pub async fn register_dbus_hooks_async(conn: Arc<SyncConnection>) -> Result<()> 
         Box::new(|msg, _| {
             if vm_stopped_signal_is_for_borealis(&msg).unwrap_or(false) {
                 info!("Got vm_stopped signal.");
-                if let Err(e) = request_vm_server_stop() {
-                    warn!("Could not request grpc server stop. {:?}", e);
-                }
+                request_vm_server_stop()
             }
 
             true

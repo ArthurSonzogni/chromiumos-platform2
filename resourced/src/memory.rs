@@ -28,6 +28,7 @@ use crate::common;
 use crate::common::read_from_file;
 use crate::feature;
 use crate::metrics;
+use crate::sync::NoPoison;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 // Critical margin is 5.2% of total memory, moderate margin is 40% of total
@@ -326,24 +327,14 @@ fn get_default_memory_margins_kb_impl() -> MemoryMarginsKb {
 }
 
 pub fn get_memory_margins_kb() -> (u64, u64) {
-    match MEMORY_MARGINS.lock() {
-        Ok(data) => (data.critical, data.moderate),
-        Err(poisoned) => {
-            let data = poisoned.into_inner();
-            (data.critical, data.moderate)
-        }
-    }
+    let data = MEMORY_MARGINS.do_lock();
+    (data.critical, data.moderate)
 }
 
-pub fn set_memory_margins_bps(critical: u32, moderate: u32) -> Result<()> {
-    match MEMORY_MARGINS.lock() {
-        Ok(mut data) => {
-            let margins = get_memory_margins_kb_from_bps(critical.into(), moderate.into());
-            *data = margins;
-            Ok(())
-        }
-        Err(_) => bail!("Failed to set memory margins"),
-    }
+pub fn set_memory_margins_bps(critical: u32, moderate: u32) {
+    let mut data = MEMORY_MARGINS.do_lock();
+    let margins = get_memory_margins_kb_from_bps(critical.into(), moderate.into());
+    *data = margins;
 }
 
 pub struct ArcMarginsKb {
@@ -693,9 +684,7 @@ fn try_discard_stale_at_moderate(
     let stale_background_memory_kb =
         get_chrome_memory_kb(ChromeProcessType::Background, Some(stale_tab_cutoff), 1);
 
-    let mut last_discard_time = LAST_STALE_TAB_DISCARD
-        .lock()
-        .expect("Lock last stale tab discard time failed.");
+    let mut last_discard_time = LAST_STALE_TAB_DISCARD.do_lock();
     let min_stale_discard_interval = get_min_stale_discard_interval();
 
     // If chrome pressure is Moderate, and there are stale background tabs, send a
@@ -728,7 +717,7 @@ fn try_discard_stale_at_moderate(
 pub async fn get_memory_pressure_status(
     vmms_client: &VmMemoryManagementClient,
 ) -> Result<PressureStatus> {
-    let game_mode = common::get_game_mode()?;
+    let game_mode = common::get_game_mode();
     let available = get_background_available_memory_kb(game_mode)?;
     let margins = get_component_margins_kb();
     let discard_stale_at_moderate =
@@ -899,9 +888,7 @@ fn get_chrome_tab_processes(
     min_last_visible_age: Option<Duration>,
 ) -> Result<Vec<TabProcess>> {
     // Panic on poisoned mutex.
-    let all_tab_processes = CHROME_TAB_PROCESSES
-        .lock()
-        .expect("Lock chrome tab processes failed");
+    let all_tab_processes = CHROME_TAB_PROCESSES.do_lock();
     let Some(filtered_process_list) = all_tab_processes.get(&(browser_type, process_type)) else {
         // Returns empty list if process list is not present.
         // E.g., When Lacros Chrome is not running.
@@ -925,9 +912,7 @@ pub fn set_browser_tab_processes(
     background_tab_processes: Vec<TabProcess>,
     protected_tab_processes: Vec<TabProcess>,
 ) {
-    let mut chrome_tab_processes = CHROME_TAB_PROCESSES
-        .lock()
-        .expect("Lock chrome tab processes failed");
+    let mut chrome_tab_processes = CHROME_TAB_PROCESSES.do_lock();
     chrome_tab_processes.insert(
         (browser_type, ChromeProcessType::Background),
         background_tab_processes,

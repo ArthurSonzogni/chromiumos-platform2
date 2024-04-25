@@ -113,7 +113,7 @@ fn set_game_mode_and_tune_swappiness(
     conn: Arc<SyncConnection>,
 ) -> Result<()> {
     if let Some(common::TuneSwappiness { swappiness }) =
-        common::set_game_mode(power_preferences_manager, mode, PathBuf::from("/"))?
+        common::set_game_mode(power_preferences_manager, mode, PathBuf::from("/"))
     {
         const SWAPPINESS_PATH: &str = "/proc/sys/vm/swappiness";
         if swappiness != read_from_file(&SWAPPINESS_PATH)? {
@@ -170,10 +170,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             (),
             ("available",),
             move |_, _, ()| {
-                let game_mode = match common::get_game_mode() {
-                    Ok(available) => Ok(available),
-                    Err(_) => Err(MethodErr::failed("Couldn't get game mode state")),
-                }?;
+                let game_mode = common::get_game_mode();
                 match memory::get_background_available_memory_kb(game_mode) {
                     Ok(available) => Ok((available,)),
                     Err(_) => Err(MethodErr::failed("Couldn't get available memory")),
@@ -224,24 +221,14 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             ("critical_bps", "moderate_bps"),
             ("critical", "moderate"),
             move |_, _, (critical_bps, moderate_bps): (u32, u32)| {
-                match memory::set_memory_margins_bps(critical_bps, moderate_bps) {
-                    Ok(()) => {
-                        let margins = memory::get_memory_margins_kb();
-                        Ok((margins.0, margins.1))
-                    }
-                    Err(_) => Err(MethodErr::failed("Failed to set memory thresholds")),
-                }
+                memory::set_memory_margins_bps(critical_bps, moderate_bps);
+                let margins = memory::get_memory_margins_kb();
+                Ok((margins.0, margins.1))
             },
         );
-        b.method(
-            "GetGameMode",
-            (),
-            ("game_mode",),
-            move |_, _, ()| match common::get_game_mode() {
-                Ok(game_mode) => Ok((game_mode as u8,)),
-                Err(_) => Err(MethodErr::failed("Failed to get game mode")),
-            },
-        );
+        b.method("GetGameMode", (), ("game_mode",), move |_, _, ()| {
+            Ok((common::get_game_mode() as u8,))
+        });
         let conn_clone = conn.clone();
         b.method(
             "SetGameMode",
@@ -273,8 +260,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             ("game_mode", "timeout_sec"),
             ("origin_game_mode",),
             move |_, context, (mode_raw, timeout_raw): (u8, u32)| {
-                let old_game_mode = common::get_game_mode()
-                    .map_err(|_| MethodErr::failed("Failed to get game mode"))?;
+                let old_game_mode = common::get_game_mode();
                 let mode = common::GameMode::try_from(mode_raw)
                     .map_err(|_| MethodErr::failed("Unsupported game mode value"))?;
                 let timeout = Duration::from_secs(timeout_raw.into());
@@ -318,10 +304,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             },
         );
         b.method("GetRTCAudioActive", (), ("mode",), move |_, _, ()| {
-            match common::get_rtc_audio_active() {
-                Ok(active) => Ok((active as u8,)),
-                Err(_) => Err(MethodErr::failed("Failed to get RTC audio activity")),
-            }
+            Ok((common::get_rtc_audio_active() as u8,))
         });
         b.method(
             "SetRTCAudioActive",
@@ -343,10 +326,7 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             },
         );
         b.method("GetFullscreenVideo", (), ("mode",), move |_, _, ()| {
-            match common::get_fullscreen_video() {
-                Ok(mode) => Ok((mode as u8,)),
-                Err(_) => Err(MethodErr::failed("Failed to get fullscreen video activity")),
-            }
+            Ok((common::get_fullscreen_video() as u8,))
         });
         b.method(
             "SetFullscreenVideoWithTimeout",

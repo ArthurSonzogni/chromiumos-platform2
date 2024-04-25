@@ -11,12 +11,13 @@ use anyhow::Result;
 // Use metrics_rs on ebuild.
 #[cfg(feature = "chromeos")]
 pub fn send_to_uma(name: &str, sample: i32, min: i32, max: i32, nbuckets: i32) -> Result<()> {
+    use crate::sync::NoPoison;
+
     let metrics = metrics_rs::MetricsLibrary::get().context("MetricsLibrary::get() failed")?;
 
     // Shall panic on poisoned mutex.
     metrics
-        .lock()
-        .expect("Lock MetricsLibrary object failed")
+        .do_lock()
         .send_to_uma(name, sample, min, max, nbuckets)?;
     Ok(())
 }

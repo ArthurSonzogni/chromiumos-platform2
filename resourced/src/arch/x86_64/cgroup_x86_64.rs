@@ -10,7 +10,6 @@ use std::io::BufReader;
 use std::path::Path;
 use std::sync::Mutex;
 
-use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use glob::glob;
@@ -20,6 +19,7 @@ use once_cell::sync::Lazy;
 use crate::common::read_from_file;
 use crate::cpu_utils::Cpuset;
 use crate::feature;
+use crate::sync::NoPoison;
 
 const MEDIA_MIN_ECORE_NUM: u32 = 4;
 
@@ -247,34 +247,30 @@ fn media_dynamic_cgroup_impl(action: MediaDynamicCgroupAction, root: &Path) -> R
         (false, f64::NAN)
     };
 
-    if let Ok(mut active) = MEDIA_DYNAMIC_CGROUP_ACTIVE.lock() {
-        if *active != new_active {
-            if new_active {
+    let mut active = MEDIA_DYNAMIC_CGROUP_ACTIVE.do_lock();
+    if *active != new_active {
+        if new_active {
+            info!(
+                "system load is reasonable: {}, so start media dynamic cgroup",
+                recent_system_load
+            );
+
+            // Write platform cpuset to media dynamic cgroup cpuset.
+            let media_cpus = get_media_dynamic_cgroup_cpuset_cpus(root)?;
+            write_cpusets(root, &media_cpus).context("Failed to update dynamic cgropu cpus")?;
+        } else {
+            if !recent_system_load.is_nan() {
                 info!(
-                    "system load is reasonable: {}, so start media dynamic cgroup",
+                    "system load is high: {}, stop media dynamic cgroup",
                     recent_system_load
                 );
-
-                // Write platform cpuset to media dynamic cgroup cpuset.
-                let media_cpus = get_media_dynamic_cgroup_cpuset_cpus(root)?;
-                write_cpusets(root, &media_cpus).context("Failed to update dynamic cgropu cpus")?;
             } else {
-                if !recent_system_load.is_nan() {
-                    info!(
-                        "system load is high: {}, stop media dynamic cgroup",
-                        recent_system_load
-                    );
-                } else {
-                    info!("stop media dynamic cgroup");
-                }
-                write_default_cpusets(root).context("Failed to restore cpuset")?;
+                info!("stop media dynamic cgroup");
             }
-            *active = new_active;
+            write_default_cpusets(root).context("Failed to restore cpuset")?;
         }
-    } else {
-        bail!("Failed to lock MEDIA_DYNAMIC_CGROUP_ACTIVE");
+        *active = new_active;
     }
-
     Ok(())
 }
 

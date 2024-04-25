@@ -14,6 +14,8 @@ use dbus::nonblock::SyncConnection;
 use featured::CheckFeature; // Trait CheckFeature is for get_params_and_enabled
 use once_cell::sync::OnceCell;
 
+use crate::sync::NoPoison;
+
 type FeatureChangeCallback = Box<dyn Fn(bool) + Send + Sync + 'static>;
 type FeatureRegisterInfo = (&'static str, bool, Option<FeatureChangeCallback>);
 
@@ -95,7 +97,7 @@ impl FeatureManager {
     fn is_feature_enabled(&self, feature_name: &str) -> bool {
         match self.features.get(feature_name) {
             Some(feature) => {
-                let state = feature.state.lock().expect("lock failed");
+                let state = feature.state.do_lock();
                 state.enabled
             }
             None => false,
@@ -105,7 +107,7 @@ impl FeatureManager {
     fn get_feature_param(&self, feature_name: &str, param_name: &str) -> Option<String> {
         match self.features.get(feature_name) {
             Some(feature) => {
-                let state = feature.state.lock().expect("lock failed");
+                let state = feature.state.do_lock();
                 state.params.get(param_name).cloned()
             }
             None => None,
@@ -122,7 +124,7 @@ impl FeatureManager {
                     .context("failed to query features")?;
                 for feature in self.features.values() {
                     let (run_callback, new_enabled) = {
-                        let mut state = feature.state.lock().expect("lock failed");
+                        let mut state = feature.state.do_lock();
 
                         let old_enabled = state.enabled;
 
@@ -180,8 +182,7 @@ pub fn register_feature(
 
     let pending = PENDING_FEATURES.get_or_init(|| Mutex::new(Vec::new()));
     pending
-        .lock()
-        .expect("lock failed")
+        .do_lock()
         .push((feature_name, enabled_by_default, cb))
 }
 
@@ -190,7 +191,7 @@ pub async fn init(conn: &SyncConnection) -> Result<()> {
     let Some(pending) = PENDING_FEATURES.get() else {
         return Ok(());
     };
-    let pending = std::mem::take(&mut *pending.lock().expect("lock failed"));
+    let pending = std::mem::take(&mut *pending.do_lock());
     let feature_manager = FeatureManager::new(pending)?;
 
     feature_manager
