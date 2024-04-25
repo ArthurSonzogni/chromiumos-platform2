@@ -4,8 +4,40 @@
 
 #include "arc/keymint/context/arc_remote_provisioning_context.h"
 
+#include <memory>
+#include <utility>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include <libarc-attestation/lib/test_utils.h>
+
 namespace arc::keymint::context {
 
-namespace {}
+namespace {
+using testing::NiceMock;
+}
+
+class ArcRemoteProvisioningContextTest : public ::testing::Test {
+ protected:
+  ArcRemoteProvisioningContextTest() {}
+
+  void SetUp() override {
+    arc_attestation::ArcAttestationManagerSingleton::DestroyForTesting();
+    arc_attestation::ArcAttestationManagerSingleton::CreateForTesting();
+    std::unique_ptr<NiceMock<arc_attestation::MockArcAttestationManager>>
+        manager = std::make_unique<
+            NiceMock<arc_attestation::MockArcAttestationManager>>();
+    manager_ = manager.get();
+    arc_attestation::ArcAttestationManagerSingleton::Get()
+        ->SetManagerForTesting(std::move(manager));
+  }
+
+  void TearDown() override {
+    arc_attestation::ArcAttestationManagerSingleton::DestroyForTesting();
+  }
+
+  NiceMock<arc_attestation::MockArcAttestationManager>* manager_;
+  ArcRemoteProvisioningContext* context_;
+};
 
 }  // namespace arc::keymint::context
