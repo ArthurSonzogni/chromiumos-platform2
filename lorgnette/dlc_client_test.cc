@@ -17,8 +17,10 @@
 
 #include "dlcservice/proto_bindings/dlcservice.pb.h"
 #include "dlcservice/dbus-proxy-mocks.h"  //NOLINT (build/include_alpha)
+#include "lorgnette/test_util.h"
 
 using ::testing::_;
+using ::testing::InvokeWithoutArgs;
 using ::testing::WithArgs;
 
 namespace lorgnette {
@@ -27,12 +29,18 @@ constexpr char kRootPath[] = "/root/path";
 
 namespace {
 
-dlcservice::DlcState MakeDlcState() {
+dlcservice::DlcState MakeDlcState(const std::string& dlc_id) {
   dlcservice::DlcState state;
   state.set_state(dlcservice::DlcState::INSTALLED);
-  state.set_id(kSaneBackendsPfuDlcId);
+  state.set_id(dlc_id);
   state.set_root_path(kRootPath);
   return state;
+}
+
+dlcservice::InstallRequest MakeInstallRequest(const std::string& dlc_id) {
+  dlcservice::InstallRequest install_request;
+  install_request.set_id(dlc_id);
+  return install_request;
 }
 
 class DlcClientTest : public ::testing::Test {
@@ -130,10 +138,33 @@ TEST_F(DlcClientTest, RespondsToDlcStateChangeSignal) {
           }));
   dlc_client.Init(std::move(mock_dlcservice_proxy_));
 
-  std::move(state_changed_cb).Run(MakeDlcState());
+  std::move(state_changed_cb).Run(MakeDlcState(kSaneBackendsPfuDlcId));
   run_loop.Run();
 
   EXPECT_TRUE(called);
+}
+
+TEST_F(DlcClientTest, InstallMultipleDlcs) {
+  const std::string kFirstDlcId = "first_id";
+  const std::string kSecondDlcId = "second_id";
+
+  base::RunLoop run_loop_1;
+  base::RunLoop run_loop_2;
+  EXPECT_CALL(
+      *mock_dlcservice_proxy_,
+      InstallAsync(EqualsProto(MakeInstallRequest(kFirstDlcId)), _, _, _))
+      .WillOnce(InvokeWithoutArgs([&]() { run_loop_1.Quit(); }));
+  EXPECT_CALL(
+      *mock_dlcservice_proxy_,
+      InstallAsync(EqualsProto(MakeInstallRequest(kSecondDlcId)), _, _, _))
+      .WillOnce(InvokeWithoutArgs([&]() { run_loop_2.Quit(); }));
+
+  DlcClient dlc_client = DlcClient();
+  dlc_client.Init(std::move(mock_dlcservice_proxy_));
+  dlc_client.InstallDlc({kFirstDlcId, kSecondDlcId});
+
+  run_loop_1.Run();
+  run_loop_2.Run();
 }
 
 }  // namespace

@@ -15,13 +15,15 @@
 
 namespace lorgnette {
 
-void DlcClientFake::InstallDlc() {
-  OnDlcSuccess();
+void DlcClientFake::InstallDlc(const std::set<std::string>& dlc_ids) {
+  for (const std::string& id : dlc_ids) {
+    OnDlcSuccess(id);
+  }
 }
 
-void DlcClientFake::OnDlcSuccess() {
+void DlcClientFake::OnDlcSuccess(const std::string& dlc_id) {
   if (success_cb_) {
-    std::move(success_cb_).Run(kSaneBackendsPfuDlcId, path_);
+    std::move(success_cb_).Run(dlc_id, path_);
   }
 }
 

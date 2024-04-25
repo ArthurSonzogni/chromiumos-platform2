@@ -33,7 +33,7 @@ class DlcClient {
           success_cb,
       base::RepeatingCallback<void(const std::string&, const std::string&)>
           failure_cb);
-  virtual void InstallDlc();
+  virtual void InstallDlc(const std::set<std::string>& dlc_ids);
   std::optional<std::string> GetRootPath(const std::string& in_id,
                                          std::string* out_error);
 

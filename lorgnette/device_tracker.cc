@@ -23,6 +23,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/file_utils.h>
+#include <chromeos/constants/lorgnette_dlc.h>
 #include <re2/re2.h>
 
 #include "lorgnette/constants.h"
@@ -382,7 +383,7 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
       session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_ALWAYS) {
     dlc_pending_sessions_.insert(session_id);
     dlc_started_ = true;
-    dlc_client_->InstallDlc();
+    dlc_client_->InstallDlc({kSaneBackendsPfuDlcId});
   }
 
   for (auto& device : libusb_->GetDevices()) {
@@ -392,7 +393,7 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
       dlc_pending_sessions_.insert(session_id);
       if (!dlc_started_) {
         dlc_started_ = true;
-        dlc_client_->InstallDlc();
+        dlc_client_->InstallDlc({kSaneBackendsPfuDlcId});
       }
     }
     if (device->SupportsIppUsb()) {

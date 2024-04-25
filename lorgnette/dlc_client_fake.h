@@ -5,6 +5,7 @@
 #ifndef LORGNETTE_DLC_CLIENT_FAKE_H_
 #define LORGNETTE_DLC_CLIENT_FAKE_H_
 
+#include <set>
 #include <string>
 
 #include "lorgnette/dlc_client.h"
@@ -13,8 +14,8 @@ namespace lorgnette {
 
 class DlcClientFake : public DlcClient {
  public:
-  void InstallDlc() override;
-  void OnDlcSuccess();
+  void InstallDlc(const std::set<std::string>& dlc_ids) override;
+  void OnDlcSuccess(const std::string& dlc_id);
   void SetCallbacks(
       base::RepeatingCallback<void(const std::string&, const base::FilePath&)>
           success_cb,

@@ -76,15 +76,16 @@ void DlcClient::OnDlcStateChangedConnect(const std::string& interface,
   }
 }
 
-void DlcClient::InstallDlc() {
-  brillo::ErrorPtr error;
-  dlcservice::InstallRequest install_request;
-  install_request.set_id(kSaneBackendsPfuDlcId);
-  dlcservice_client_->InstallAsync(
-      install_request,
-      base::BindRepeating(&DlcClient::OnDlcInstall, base::Unretained(this)),
-      base::BindRepeating(&DlcClient::OnDlcInstallError, base::Unretained(this),
-                          install_request.id()));
+void DlcClient::InstallDlc(const std::set<std::string>& dlc_ids) {
+  for (const std::string& id : dlc_ids) {
+    dlcservice::InstallRequest install_request;
+    install_request.set_id(id);
+    dlcservice_client_->InstallAsync(
+        install_request,
+        base::BindRepeating(&DlcClient::OnDlcInstall, base::Unretained(this)),
+        base::BindRepeating(&DlcClient::OnDlcInstallError,
+                            base::Unretained(this), install_request.id()));
+  }
 }
 
 std::optional<std::string> DlcClient::GetRootPath(const std::string& in_id,
