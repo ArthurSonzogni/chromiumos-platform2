@@ -76,7 +76,7 @@ COMMIT
 :enforce_ipv6_src_prefix - [0:0]
 :ingress_port_firewall - [0:0]
 :egress_port_firewall - [0:0]
-:accept_downstream_network - [0:0]
+:ingress_downstream_network - [0:0]
 :drop_forward_to_bruschetta - [0:0]
 :drop_output_to_bruschetta - [0:0]
 :forward_tethering - [0:0]
@@ -90,9 +90,10 @@ COMMIT
 -A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 -A INPUT -i lo -j ACCEPT
 -A INPUT -p ipv6-icmp -j ACCEPT
--A INPUT -d ff02::fb/128 -p udp -m udp --dport 5353 -j ACCEPT
--A INPUT -j ingress_port_firewall
 -A INPUT -p tcp -m tcp --dport 22 -j ACCEPT
+-A INPUT -j ingress_port_firewall
+-A INPUT -j ingress_downstream_network
+-A INPUT -d ff02::fb/128 -p udp -m udp --dport 5353 -j ACCEPT
 -A FORWARD -j accept_egress_to_dns_proxy
 -A FORWARD -j vpn_egress_filters
 -A FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
@@ -112,13 +113,10 @@ COMMIT
 -A enforce_ipv6_src_prefix -s fc00::/7 -j DROP
 -A egress_tethering -p ipv6-icmp -j ACCEPT
 -A egress_tethering -j DROP
--A ingress_tethering -p ipv6-icmp -j ACCEPT
 -A ingress_tethering -j DROP
 -A egress_localonly -m state --state NEW,RELATED,ESTABLISHED -j ACCEPT
 -A egress_localonly -p ipv6-icmp -j ACCEPT
 -A egress_localonly -j DROP
--A ingress_localonly -m state --state RELATED,ESTABLISHED -j ACCEPT
--A ingress_localonly -p ipv6-icmp -j ACCEPT
 -A ingress_localonly -j DROP
 -A vpn_egress_filters -j vpn_accept
 -A vpn_egress_filters -j vpn_lockdown

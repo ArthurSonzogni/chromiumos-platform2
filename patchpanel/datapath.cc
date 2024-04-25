@@ -111,6 +111,11 @@ constexpr char kEgressLocalOnlyChain[] = "egress_localonly";
 // downstream network interface of a local only network managed by patchpanel.
 constexpr char kIngressLocalOnlyChain[] = "ingress_localonly";
 
+// INPUT filter chain to jump to the specialized ingress chains for tethering or
+// local only networks. This static chain ensures the correct the traversal
+// orders of other INPUT rules and must be after "ingress_port_firewall".
+constexpr char kIngressDownstreamNetworkChain[] = "ingress_downstream_network";
+
 // OUTPUT filter chain to drop host-initiated connection to Bruschetta and
 // FORWARD filter chain to drop external- and other-vm-initiated connection.
 constexpr char kDropOutputToBruschettaChain[] = "drop_output_to_bruschetta";
@@ -1637,7 +1642,7 @@ bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
     return false;
   }
   if (!ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                      Iptables::Command::kI, "INPUT",
+                      Iptables::Command::kI, kIngressDownstreamNetworkChain,
                       GetIngressFilterChainName(info.topology),
                       /*iif=*/info.downstream_ifname, /*oif=*/"")) {
     ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
@@ -1686,7 +1691,7 @@ void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
                  GetEgressFilterChainName(info.topology),
                  /*iif=*/"", /*oif=*/info.downstream_ifname);
   ModifyJumpRule(IpFamily::kDual, Iptables::Table::kFilter,
-                 Iptables::Command::kD, "INPUT",
+                 Iptables::Command::kD, kIngressDownstreamNetworkChain,
                  GetIngressFilterChainName(info.topology),
                  /*iif=*/info.downstream_ifname, /*oif=*/"");
 }
