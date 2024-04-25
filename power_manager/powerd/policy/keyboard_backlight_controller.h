@@ -133,6 +133,7 @@ class KeyboardBacklightController : public BacklightController,
                                   SetBacklightBrightnessRequest_Cause cause);
   void HandleToggleKeyboardBacklightRequest();
   void HandleSetKeyboardAmbientLightSensorEnabledRequest(bool enabled);
+  void HandleGetKeyboardAmbientLightSensorEnabledRequest(bool* enabled_out);
 
   // Updates the current brightness after assessing the current state (based on
   // |dimmed_for_inactivity_|, |off_for_inactivity_|, etc.). Should be called

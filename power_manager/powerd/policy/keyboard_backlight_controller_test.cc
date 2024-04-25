@@ -146,6 +146,18 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
     ASSERT_TRUE(dbus_wrapper_.CallExportedMethodSync(&method_call));
   }
 
+  // Calls the GetKeyboardAmbientLightSensorEnabled D-Bus method.
+  void CallGetKeyboardAmbientLightSensorEnabled(bool expected_enabled) {
+    dbus::MethodCall method_call(kPowerManagerInterface,
+                                 kGetKeyboardAmbientLightSensorEnabledMethod);
+    std::unique_ptr<dbus::Response> response =
+        dbus_wrapper_.CallExportedMethodSync(&method_call);
+    ASSERT_TRUE(response);
+    bool actual_enabled = false;
+    ASSERT_TRUE(dbus::MessageReader(response.get()).PopBool(&actual_enabled));
+    EXPECT_EQ(actual_enabled, expected_enabled);
+  }
+
   base::test::SingleThreadTaskEnvironment task_environment_{
       base::test::TaskEnvironment::MainThreadType::IO,
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -1104,6 +1116,14 @@ TEST_F(KeyboardBacklightControllerTest,
                               SetBacklightBrightnessRequest_Cause_USER_REQUEST);
     EXPECT_EQ(backlight_.current_level(), test_case.expected);
   }
+}
+
+TEST_F(KeyboardBacklightControllerTest, GetKeyboardAmbientLightSensorEnabled) {
+  Init();
+  CallSetKeyboardAmbientLightSensorEnabled(true);
+  CallGetKeyboardAmbientLightSensorEnabled(/*expected_enabled=*/true);
+  CallSetKeyboardAmbientLightSensorEnabled(false);
+  CallGetKeyboardAmbientLightSensorEnabled(/*expected_enabled=*/false);
 }
 
 TEST_F(KeyboardBacklightControllerTest, SetKeyboardAmbientLightSensorEnabled) {

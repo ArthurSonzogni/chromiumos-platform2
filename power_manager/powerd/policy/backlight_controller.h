@@ -140,12 +140,14 @@ class BacklightController {
   using GetBrightnessCallback =
       base::RepeatingCallback<void(double* percent_out, bool* success_out)>;
   using ToggleKeyboardBacklightCallback = base::RepeatingClosure;
+  using SetAmbientLightSensorEnabledCallback =
+      base::RepeatingCallback<void(bool enabled)>;
   using GetAmbientLightSensorEnabledCallback =
       base::RepeatingCallback<void(bool* enabled_out)>;
   using SetKeyboardAmbientLightSensorEnabledCallback =
       base::RepeatingCallback<void(bool enabled)>;
-  using SetAmbientLightSensorEnabledCallback =
-      base::RepeatingCallback<void(bool enabled)>;
+  using GetKeyboardAmbientLightSensorEnabledCallback =
+      base::RepeatingCallback<void(bool* enabled_out)>;
 
   using AmbientLightOnResumeMetricsCallback =
       base::RepeatingCallback<void(int lux)>;
@@ -177,6 +179,10 @@ class BacklightController {
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,
       const ToggleKeyboardBacklightCallback& callback);
+  static void RegisterSetAmbientLightSensorEnabledHandler(
+      system::DBusWrapperInterface* dbus_wrapper,
+      const std::string& method_name,
+      const SetAmbientLightSensorEnabledCallback& callback);
   static void RegisterGetAmbientLightSensorEnabledHandler(
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,
@@ -185,10 +191,10 @@ class BacklightController {
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,
       const SetKeyboardAmbientLightSensorEnabledCallback& callback);
-  static void RegisterSetAmbientLightSensorEnabledHandler(
+  static void RegisterGetKeyboardAmbientLightSensorEnabledHandler(
       system::DBusWrapperInterface* dbus_wrapper,
       const std::string& method_name,
-      const SetAmbientLightSensorEnabledCallback& callback);
+      const GetKeyboardAmbientLightSensorEnabledCallback& callback);
 
   // Emits a D-Bus signal announcing a brightness change.
   static void EmitBrightnessChangedSignal(
