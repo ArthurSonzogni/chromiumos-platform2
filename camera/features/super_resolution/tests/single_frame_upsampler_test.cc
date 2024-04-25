@@ -215,12 +215,20 @@ int main(int argc, char** argv) {
   }
   cros::tests::g_dlc_path = client.GetDlcRootPath();
 
+  // Example command for testing a locally built libupsampler.so:
+  // /usr/bin/single_frame_upsampler_test --input_image_path={}
+  // --golden_image_path={} --dlc_path=/usr/local/lib64
+
   DEFINE_string(input_image_path, "", "Input image file path");
   DEFINE_string(golden_image_path, "", "Golden image file path");
+  DEFINE_string(dlc_path, "", "DLC path");
   brillo::FlagHelper::Init(argc, argv, "Single Frame Upsampler unit tests");
 
   LOG_ASSERT(!FLAGS_input_image_path.empty());
   LOG_ASSERT(!FLAGS_golden_image_path.empty());
+  if (!FLAGS_dlc_path.empty()) {
+    cros::tests::g_dlc_path = base::FilePath(FLAGS_dlc_path);
+  }
   cros::tests::g_input_image_path = base::FilePath(FLAGS_input_image_path);
   cros::tests::g_golden_image_path = base::FilePath(FLAGS_golden_image_path);
 
