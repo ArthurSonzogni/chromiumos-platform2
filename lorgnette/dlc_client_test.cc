@@ -117,13 +117,17 @@ TEST_F(DlcClientTest, RespondsToDlcStateChangeSignal) {
   base::RunLoop run_loop;
   bool called = false;
   dlc_client.SetCallbacks(
-      base::BindLambdaForTesting([&](const base::FilePath& root_path) {
-        EXPECT_EQ(root_path.value(), kRootPath);
-        called = true;
-        run_loop.Quit();
-      }),
       base::BindLambdaForTesting(
-          [](const std::string& error_msg) { EXPECT_TRUE(false); }));
+          [&](const std::string& dlc_id, const base::FilePath& root_path) {
+            EXPECT_EQ(dlc_id, kSaneBackendsPfuDlcId);
+            EXPECT_EQ(root_path.value(), kRootPath);
+            called = true;
+            run_loop.Quit();
+          }),
+      base::BindLambdaForTesting(
+          [](const std::string& dlc_id, const std::string& error_msg) {
+            EXPECT_TRUE(false);
+          }));
   dlc_client.Init(std::move(mock_dlcservice_proxy_));
 
   std::move(state_changed_cb).Run(MakeDlcState());

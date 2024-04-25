@@ -30,8 +30,10 @@ void DlcClient::Init(
 }
 
 void DlcClient::SetCallbacks(
-    base::OnceCallback<void(const base::FilePath&)> success_cb,
-    base::OnceCallback<void(const std::string&)> failure_cb) {
+    base::RepeatingCallback<void(const std::string&, const base::FilePath&)>
+        success_cb,
+    base::RepeatingCallback<void(const std::string&, const std::string&)>
+        failure_cb) {
   success_cb_ = std::move(success_cb);
   failure_cb_ = std::move(failure_cb);
 }
@@ -43,21 +45,21 @@ void DlcClient::OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
 
   switch (dlc_state.state()) {
     case dlcservice::DlcState::INSTALLED:
-      InvokeSuccessCb(dlc_state.root_path());
+      InvokeSuccessCb(dlc_state.id(), dlc_state.root_path());
       break;
     case dlcservice::DlcState::INSTALLING:
       break;
     case dlcservice::DlcState::NOT_INSTALLED: {
       std::string err = base::StrCat({"Failed to install DLC: ", dlc_state.id(),
                                       " Error: ", dlc_state.last_error_code()});
-      InvokeErrorCb(err);
+      InvokeErrorCb(dlc_state.id(), err);
       break;
     }
     default:
       std::string err =
           base::StrCat({"Unknown error when installing: ", dlc_state.id(),
                         " Error: ", dlc_state.last_error_code()});
-      InvokeErrorCb(err);
+      InvokeErrorCb(dlc_state.id(), err);
       break;
   }
 }
@@ -70,7 +72,7 @@ void DlcClient::OnDlcStateChangedConnect(const std::string& interface,
   if (!success) {
     std::string err =
         base::StrCat({"Error connecting ", interface, ". ", signal});
-    InvokeErrorCb(err);
+    InvokeErrorCb(/*id=*/"", err);
   }
 }
 
@@ -81,8 +83,8 @@ void DlcClient::InstallDlc() {
   dlcservice_client_->InstallAsync(
       install_request,
       base::BindRepeating(&DlcClient::OnDlcInstall, base::Unretained(this)),
-      base::BindRepeating(&DlcClient::OnDlcInstallError,
-                          base::Unretained(this)));
+      base::BindRepeating(&DlcClient::OnDlcInstallError, base::Unretained(this),
+                          install_request.id()));
 }
 
 std::optional<std::string> DlcClient::GetRootPath(const std::string& in_id,
@@ -113,22 +115,25 @@ void DlcClient::OnDlcInstall() {
   return;
 }
 
-void DlcClient::InvokeSuccessCb(std::string dlc_root_path) {
+void DlcClient::InvokeSuccessCb(const std::string& dlc_id,
+                                std::string dlc_root_path) {
   if (success_cb_) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
-        base::BindOnce(std::move(success_cb_), base::FilePath(dlc_root_path)));
+        base::BindOnce(success_cb_, dlc_id, base::FilePath(dlc_root_path)));
   }
 }
 
-void DlcClient::OnDlcInstallError(brillo::Error* error) {
-  InvokeErrorCb(error->GetMessage());
+void DlcClient::OnDlcInstallError(const std::string& dlc_id,
+                                  brillo::Error* error) {
+  InvokeErrorCb(dlc_id, error->GetMessage());
 }
 
-void DlcClient::InvokeErrorCb(const std::string& error_msg) {
+void DlcClient::InvokeErrorCb(const std::string& dlc_id,
+                              const std::string& error_msg) {
   if (failure_cb_) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(failure_cb_), error_msg));
+        FROM_HERE, base::BindOnce(failure_cb_, dlc_id, error_msg));
   }
 }
 

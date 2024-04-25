@@ -16,12 +16,16 @@ class DlcClientFake : public DlcClient {
   void InstallDlc() override;
   void OnDlcSuccess();
   void SetCallbacks(
-      base::OnceCallback<void(const base::FilePath&)> success_cb,
-      base::OnceCallback<void(const std::string&)> failure_cb) override;
+      base::RepeatingCallback<void(const std::string&, const base::FilePath&)>
+          success_cb,
+      base::RepeatingCallback<void(const std::string&, const std::string&)>
+          failure_cb) override;
 
  private:
-  base::OnceCallback<void(const base::FilePath&)> success_cb_;
-  base::OnceCallback<void(const std::string&)> failure_cb_;
+  base::RepeatingCallback<void(const std::string&, const base::FilePath&)>
+      success_cb_;
+  base::RepeatingCallback<void(const std::string&, const std::string&)>
+      failure_cb_;
   const base::FilePath path_ = base::FilePath("/test/path/to/dlc");
 };
 

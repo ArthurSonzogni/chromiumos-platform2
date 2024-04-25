@@ -29,25 +29,29 @@ class DlcClient {
   void Init(std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
                 dlcservice_client);
   virtual void SetCallbacks(
-      base::OnceCallback<void(const base::FilePath&)> success_cb,
-      base::OnceCallback<void(const std::string&)> failure_cb);
+      base::RepeatingCallback<void(const std::string&, const base::FilePath&)>
+          success_cb,
+      base::RepeatingCallback<void(const std::string&, const std::string&)>
+          failure_cb);
   virtual void InstallDlc();
   std::optional<std::string> GetRootPath(const std::string& in_id,
                                          std::string* out_error);
 
  private:
   void OnDlcInstall();
-  void OnDlcInstallError(brillo::Error* error);
+  void OnDlcInstallError(const std::string& dlc_id, brillo::Error* error);
   void OnDlcStateChanged(const dlcservice::DlcState& dlc_state);
   void OnDlcStateChangedConnect(const std::string& interface,
                                 const std::string& signal,
                                 bool success);
-  void InvokeSuccessCb(std::string dlc_root_path);
-  void InvokeErrorCb(const std::string& error_msg);
+  void InvokeSuccessCb(const std::string& dlc_id, std::string dlc_root_path);
+  void InvokeErrorCb(const std::string& dlc_id, const std::string& error_msg);
 
   std::set<std::string> supported_dlc_ids_;
-  base::OnceCallback<void(const base::FilePath&)> success_cb_;
-  base::OnceCallback<void(const std::string&)> failure_cb_;
+  base::RepeatingCallback<void(const std::string&, const base::FilePath&)>
+      success_cb_;
+  base::RepeatingCallback<void(const std::string&, const std::string&)>
+      failure_cb_;
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
       dlcservice_client_;
 

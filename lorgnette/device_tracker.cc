@@ -129,9 +129,10 @@ void DeviceTracker::SetFirewallManager(FirewallManager* firewall_manager) {
 
 void DeviceTracker::SetDlcClient(DlcClient* dlc_client) {
   dlc_client_ = dlc_client;
-  dlc_client_->SetCallbacks(
-      base::BindOnce(&DeviceTracker::OnDlcSuccess, weak_factory_.GetWeakPtr()),
-      base::BindOnce(&DeviceTracker::OnDlcFailure, weak_factory_.GetWeakPtr()));
+  dlc_client_->SetCallbacks(base::BindRepeating(&DeviceTracker::OnDlcSuccess,
+                                                weak_factory_.GetWeakPtr()),
+                            base::BindRepeating(&DeviceTracker::OnDlcFailure,
+                                                weak_factory_.GetWeakPtr()));
 }
 
 size_t DeviceTracker::NumActiveDiscoverySessions() const {
@@ -1430,7 +1431,8 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
   return response;
 }
 
-void DeviceTracker::OnDlcSuccess(const base::FilePath& file_path) {
+void DeviceTracker::OnDlcSuccess(const std::string& dlc_id,
+                                 const base::FilePath& file_path) {
   LOG(INFO) << "DLC install completed";
   dlc_root_path_ = file_path;
   dlc_started_ = false;
@@ -1443,7 +1445,8 @@ void DeviceTracker::OnDlcSuccess(const base::FilePath& file_path) {
   dlc_pending_sessions_.clear();
 }
 
-void DeviceTracker::OnDlcFailure(const std::string& error_msg) {
+void DeviceTracker::OnDlcFailure(const std::string& dlc_id,
+                                 const std::string& error_msg) {
   LOG(ERROR) << "DLC install failed with message: " << error_msg;
   dlc_root_path_ = base::FilePath();
   dlc_started_ = false;

@@ -228,8 +228,8 @@ class DeviceTracker {
   void SendEnumerationCompletedSignal(std::string session_id);
   void SendSessionEndingSignal(std::string session_id);
 
-  void OnDlcSuccess(const base::FilePath& file_path);
-  void OnDlcFailure(const std::string& error_msg);
+  void OnDlcSuccess(const std::string& dlc_id, const base::FilePath& file_path);
+  void OnDlcFailure(const std::string& dlc_id, const std::string& error_msg);
 
   SEQUENCE_CHECKER(sequence_checker_);
 
