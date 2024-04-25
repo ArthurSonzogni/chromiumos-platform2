@@ -187,7 +187,8 @@ UdevCollector::ConnectivityFwdumpAllowedForUserSession(
   return std::nullopt;
 }
 
-bool UdevCollector::HandleCrash(const std::string& udev_event) {
+CrashCollectionStatus UdevCollector::HandleCrash(
+    const std::string& udev_event) {
   // Process the udev event string.
   // First get all the key-value pairs.
   std::vector<std::pair<std::string, std::string>> udev_event_keyval;
@@ -203,7 +204,7 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
                            &instance_number)) {
       LOG(ERROR) << "Invalid kernel number: "
                  << udev_event_map[kUdevKernelNumber] << ".";
-      return false;
+      return CrashCollectionStatus::kInvalidKernelNumber;
     }
   }
 
@@ -228,7 +229,7 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
     LOG(INFO) << "Device coredumps are not processed on non-developer images.";
     // Clear devcoredump memory before returning.
     ClearDevCoredump(coredump_path);
-    return false;
+    return CrashCollectionStatus::kDevCoredumpIgnored;
   } else {
     LOG(INFO) << "Consent given - collect udev crash info.";
   }
@@ -240,12 +241,12 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
     // dumps are uploaded to feedback reports rather than crash reporter server.
     // GetConnectivityFwdumpStoragePath opens fbpreprocessord cryptohome
     // directory and returns a symlinked handle.
-    std::optional<base::FilePath> maybe_crash_directory =
-        GetConnectivityFwdumpStoragePath();
+    base::expected<base::FilePath, CrashCollectionStatus>
+        maybe_crash_directory = GetConnectivityFwdumpStoragePath();
     if (!maybe_crash_directory.has_value()) {
       LOG(ERROR)
           << "Could not get storage directory for connectivity fw dumps.";
-      return false;
+      return maybe_crash_directory.error();
     }
     crash_directory = *maybe_crash_directory;
   } else {
@@ -254,28 +255,37 @@ bool UdevCollector::HandleCrash(const std::string& udev_event) {
         GetCreatedCrashDirectoryByEuid(0, &crash_directory, nullptr);
     if (!IsSuccessCode(status)) {
       LOG(ERROR) << "Could not get crash directory: " << status;
-      return false;
+      return status;
     }
   }
 
+  CrashCollectionStatus status;
   if (udev_event_map[kUdevSubsystem] == kUdevSubsystemDevCoredump) {
-    return ProcessDevCoredump(crash_directory, instance_number,
-                              is_connectivity_fwdump);
+    status = ProcessDevCoredump(crash_directory, instance_number,
+                                is_connectivity_fwdump);
+  } else {
+    status = ProcessUdevCrashLogs(crash_directory, udev_event_map[kUdevAction],
+                                  udev_event_map[kUdevKernel],
+                                  udev_event_map[kUdevSubsystem]);
   }
 
-  return ProcessUdevCrashLogs(crash_directory, udev_event_map[kUdevAction],
-                              udev_event_map[kUdevKernel],
-                              udev_event_map[kUdevSubsystem]);
+  if (status == CrashCollectionStatus::kSuccess && is_connectivity_fwdump) {
+    // Since the crash reports will not be updated by crash_sender, use a
+    // different result code so that the counts can be compared more easily.
+    status = CrashCollectionStatus::kSuccessForConnectivityFwdump;
+  }
+  return status;
 }
 
-std::optional<base::FilePath>
+base::expected<base::FilePath, CrashCollectionStatus>
 UdevCollector::GetConnectivityFwdumpStoragePath() {
   std::optional<base::FilePath> maybe_directory =
       connectivity_util::GetDaemonStoreFbPreprocessordDirectory(*user_session_);
 
   if (!maybe_directory) {
     LOG(ERROR) << "Could not get connectivity fwdump storage directory.";
-    return std::nullopt;
+    return base::unexpected(
+        CrashCollectionStatus::kFailedGetDaemonStoreFbPreprocessordDirectory);
   }
 
   mode_t directory_mode;
@@ -287,13 +297,15 @@ UdevCollector::GetConnectivityFwdumpStoragePath() {
                                    &directory_owner, nullptr)) {
     LOG(ERROR) << "Couldn't look up user " << constants::kFbpreprocessorUserName
                << ".";
-    return std::nullopt;
+    return base::unexpected(
+        CrashCollectionStatus::kFailedGetFbpreprocessorUserNameInfo);
   }
   if (!brillo::userdb::GetGroupInfo(constants::kFbpreprocessorGroupName,
                                     &directory_group)) {
     LOG(ERROR) << "Couldn't look up group "
                << constants::kFbpreprocessorGroupName << ".";
-    return std::nullopt;
+    return base::unexpected(
+        CrashCollectionStatus::kFailedGetFbpreprocessorGroupNameInfo);
   }
 
   bool out_of_capacity = false;
@@ -304,19 +316,17 @@ UdevCollector::GetConnectivityFwdumpStoragePath() {
 
   if (out_of_capacity) {
     LOG(ERROR) << "Storage path is full, cannot add more fwdump files.";
-    return std::nullopt;
+    return base::unexpected(
+        CrashCollectionStatus::kOutOfFbpreprocessorCapacity);
   }
-  if (!maybe_dir.has_value()) {
-    LOG(ERROR) << "Could not get fwdump directory: " << maybe_dir.error();
-    return std::nullopt;
-  }
-  return *maybe_dir;
+  return maybe_dir;
 }
 
-bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
-                                         const std::string& action,
-                                         const std::string& kernel,
-                                         const std::string& subsystem) {
+CrashCollectionStatus UdevCollector::ProcessUdevCrashLogs(
+    const FilePath& crash_directory,
+    const std::string& action,
+    const std::string& kernel,
+    const std::string& subsystem) {
   // Construct the basename string for crash_reporter_logs.conf:
   //   "crash_reporter-udev-collection-[action]-[name]-[subsystem]"
   // If a udev field is not provided, "" is used in its place, e.g.:
@@ -332,55 +342,52 @@ bool UdevCollector::ProcessUdevCrashLogs(const FilePath& crash_directory,
   FilePath crash_path = GetCrashPath(crash_directory, log_file_name, "log.gz");
 
   // Handle the crash.
-  if (!IsSuccessCode(
-          GetLogContents(log_config_path_, udev_log_name, crash_path))) {
+  CrashCollectionStatus result =
+      GetLogContents(log_config_path_, udev_log_name, crash_path);
+  if (!IsSuccessCode(result)) {
     LOG(ERROR) << "Error reading udev log info " << udev_log_name;
-    return false;
+    return result;
   }
 
   std::string exec_name = std::string(kUdevExecName) + "-" + subsystem;
   AddCrashMetaData(kUdevSignatureKey, udev_log_name);
-  FinishCrash(GetCrashPath(crash_directory, log_file_name, "meta"), exec_name,
-              crash_path.BaseName().value());
-  return true;
+  return FinishCrash(GetCrashPath(crash_directory, log_file_name, "meta"),
+                     exec_name, crash_path.BaseName().value());
 }
 
-bool UdevCollector::ProcessDevCoredump(const FilePath& crash_directory,
-                                       int instance_number,
-                                       bool is_connectivity_fwdump) {
+CrashCollectionStatus UdevCollector::ProcessDevCoredump(
+    const FilePath& crash_directory,
+    int instance_number,
+    bool is_connectivity_fwdump) {
   FilePath coredump_path = FilePath(base::StringPrintf(
       "%s/devcd%d/data", dev_coredump_directory_.c_str(), instance_number));
   if (!base::PathExists(coredump_path)) {
     LOG(ERROR) << "Device coredump file " << coredump_path.value()
                << " does not exist.";
-    return false;
+    return CrashCollectionStatus::kDevCoredumpDoesntExist;
   }
 
   if (bluetooth_util::IsCoredumpEnabled() &&
       bluetooth_util::IsBluetoothCoredump(coredump_path)) {
-    if (!AppendBluetoothCoredump(crash_directory, coredump_path,
-                                 instance_number)) {
-      ClearDevCoredump(coredump_path);
-      return false;
-    }
-    return ClearDevCoredump(coredump_path);
+    CrashCollectionStatus result = AppendBluetoothCoredump(
+        crash_directory, coredump_path, instance_number);
+    ClearDevCoredump(coredump_path);
+    return result;
   }
 
   // Add coredump file to the crash directory.
-  if (!AppendDevCoredump(crash_directory, coredump_path, instance_number,
-                         is_connectivity_fwdump)) {
-    ClearDevCoredump(coredump_path);
-    return false;
-  }
-
+  CrashCollectionStatus result = AppendDevCoredump(
+      crash_directory, coredump_path, instance_number, is_connectivity_fwdump);
   // Clear the coredump data to allow generation of future device coredumps
   // without having to wait for the 5-minutes timeout.
-  return ClearDevCoredump(coredump_path);
+  ClearDevCoredump(coredump_path);
+  return result;
 }
 
-bool UdevCollector::AppendBluetoothCoredump(const FilePath& crash_directory,
-                                            const FilePath& coredump_path,
-                                            int instance_number) {
+CrashCollectionStatus UdevCollector::AppendBluetoothCoredump(
+    const FilePath& crash_directory,
+    const FilePath& coredump_path,
+    int instance_number) {
   std::string coredump_prefix = bluetooth_util::kBluetoothDevCoredumpExecName;
   std::string dump_basename =
       FormatDumpBasename(coredump_prefix, time(nullptr), instance_number);
@@ -392,7 +399,7 @@ bool UdevCollector::AppendBluetoothCoredump(const FilePath& crash_directory,
   if (!bluetooth_util::ProcessBluetoothCoredump(coredump_path, target_path,
                                                 &crash_sig)) {
     LOG(ERROR) << "Failed to parse bluetooth devcoredump.";
-    return false;
+    return CrashCollectionStatus::kFailedProcessBluetoothCoredump;
   }
 
   if (IsSuccessCode(
@@ -401,9 +408,8 @@ bool UdevCollector::AppendBluetoothCoredump(const FilePath& crash_directory,
   }
 
   AddCrashMetaData(kUdevSignatureKey, crash_sig);
-  FinishCrash(meta_path, coredump_prefix, target_path.BaseName().value());
-
-  return true;
+  return FinishCrash(meta_path, coredump_prefix,
+                     target_path.BaseName().value());
 }
 
 void UdevCollector::EmitConnectivityDebugDumpCreatedSignal(
@@ -435,16 +441,17 @@ void UdevCollector::EmitConnectivityDebugDumpCreatedSignal(
   crash_interface.get()->SendDebugDumpCreatedSignal(fw_dumps);
 }
 
-bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
-                                      const FilePath& coredump_path,
-                                      int instance_number,
-                                      bool is_connectivity_fwdump) {
+CrashCollectionStatus UdevCollector::AppendDevCoredump(
+    const FilePath& crash_directory,
+    const FilePath& coredump_path,
+    int instance_number,
+    bool is_connectivity_fwdump) {
   // Retrieve the driver name of the failing device.
   std::string driver_name = GetFailingDeviceDriverName(instance_number);
   if (driver_name.empty()) {
     LOG(ERROR) << "Failed to obtain driver name for instance: "
                << instance_number;
-    return false;
+    return CrashCollectionStatus::kFailureGettingDeviceDriverName;
   }
 
   std::string coredump_prefix =
@@ -467,14 +474,14 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
       HANDLE_EINTR(open(filename_cstr, O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
   if (source_fd < 0) {
     PLOG(ERROR) << "Failed to open " << filename_cstr;
-    return false;
+    return CrashCollectionStatus::kFailureOpeningCoreFile;
   }
   // Similarly, the core_path will be of form /proc/self/fd/<n>/foo.devcore,
   // where /proc/self is a symlink, but foo.devcore should not be.
   if (!CopyFdToNewCompressedFile(base::ScopedFD(source_fd), core_path)) {
     PLOG(ERROR) << "Failed to copy device coredump file from "
                 << coredump_path.value() << " to " << core_path.value();
-    return false;
+    return CrashCollectionStatus::kFailureCopyingCoreData;
   }
 
   // Do not write meta and log file if it is connectivity firmware dumps.
@@ -487,21 +494,20 @@ bool UdevCollector::AppendDevCoredump(const FilePath& crash_directory,
     // Get the filename and drop the parent directory path.
     base::FilePath filename = core_path.BaseName();
     EmitConnectivityDebugDumpCreatedSignal(filename);
-  } else {
-    // Collect additional logs if one is specified in the config file.
-    std::string udev_log_name = std::string(kCollectUdevSignature) + '-' +
-                                kUdevSubsystemDevCoredump + '-' + driver_name;
-    if (IsSuccessCode(
-            GetLogContents(log_config_path_, udev_log_name, log_path))) {
-      AddCrashMetaUploadFile("logs", log_path.BaseName().value());
-    }
-
-    AddCrashMetaData(kUdevSignatureKey, udev_log_name);
-
-    FinishCrash(meta_path, coredump_prefix, core_path.BaseName().value());
+    return CrashCollectionStatus::kSuccessForConnectivityFwdump;
   }
 
-  return true;
+  // Collect additional logs if one is specified in the config file.
+  std::string udev_log_name = std::string(kCollectUdevSignature) + '-' +
+                              kUdevSubsystemDevCoredump + '-' + driver_name;
+  if (IsSuccessCode(
+          GetLogContents(log_config_path_, udev_log_name, log_path))) {
+    AddCrashMetaUploadFile("logs", log_path.BaseName().value());
+  }
+
+  AddCrashMetaData(kUdevSignatureKey, udev_log_name);
+
+  return FinishCrash(meta_path, coredump_prefix, core_path.BaseName().value());
 }
 
 bool UdevCollector::ClearDevCoredump(const FilePath& coredump_path) {

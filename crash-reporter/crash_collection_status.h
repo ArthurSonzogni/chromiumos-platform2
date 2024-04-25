@@ -30,7 +30,9 @@ enum class CrashCollectionStatus {
   kVmProcessNotInRootNamespace = 5,
   kNotArc = 6,
   kNotArcSystemProcess = 7,
-  kLastSuccessCode = kNotArcSystemProcess,
+  kDevCoredumpIgnored = 8,
+  kSuccessForConnectivityFwdump = 9,
+  kLastSuccessCode = kSuccessForConnectivityFwdump,
 
   // We should never see this status. It exists just to initialize variables
   // before they get a real value.
@@ -115,7 +117,15 @@ enum class CrashCollectionStatus {
   kFailureRetrievingOwnPIDNamespace = 474,
   kFailureParsingVmToolsCiceroneCrashReport = 475,
   kFailureWritingProcessTree = 476,
-  kMaxValue = kFailureWritingProcessTree,
+  kInvalidKernelNumber = 477,
+  kFailedGetDaemonStoreFbPreprocessordDirectory = 478,
+  kFailedGetFbpreprocessorUserNameInfo = 479,
+  kFailedGetFbpreprocessorGroupNameInfo = 480,
+  kOutOfFbpreprocessorCapacity = 481,
+  kDevCoredumpDoesntExist = 482,
+  kFailedProcessBluetoothCoredump = 483,
+  kFailureGettingDeviceDriverName = 484,
+  kMaxValue = kFailureGettingDeviceDriverName,
 };
 // LINT.ThenChange(crash_collection_status.cc:status_list)
 

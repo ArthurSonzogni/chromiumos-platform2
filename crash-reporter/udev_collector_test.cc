@@ -30,6 +30,7 @@
 #include <re2/re2.h>
 #include <session_manager-client-test/session_manager/dbus-proxy-mocks.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
@@ -133,8 +134,8 @@ class UdevCollectorTest : public ::testing::Test {
  protected:
   base::ScopedTempDir temp_dir_generator_;
 
-  void HandleCrash(const std::string& udev_event) {
-    collector_.HandleCrash(udev_event);
+  CrashCollectionStatus HandleCrash(const std::string& udev_event) {
+    return collector_.HandleCrash(udev_event);
   }
 
   void GenerateDevCoredump(const std::string& device_name,
@@ -321,8 +322,9 @@ class UdevCollectorTest : public ::testing::Test {
 };
 
 TEST_F(UdevCollectorTest, TestNoMatch) {
-  // No rule should match this.
-  HandleCrash("ACTION=change:KERNEL=foo:SUBSYSTEM=bar");
+  // No log rule should match this.
+  EXPECT_EQ(HandleCrash("ACTION=change:KERNEL=foo:SUBSYSTEM=bar"),
+            CrashCollectionStatus::kExecNotConfiguredForLog);
   EXPECT_EQ(0,
             GetNumFiles(temp_dir_generator_.GetPath(), kCrashLogFilePattern));
 }
@@ -330,7 +332,8 @@ TEST_F(UdevCollectorTest, TestNoMatch) {
 TEST_F(UdevCollectorTest, TestMatches) {
   // Try multiple udev events in sequence.  The number of log files generated
   // should increase.
-  HandleCrash("ACTION=change:KERNEL=card0:SUBSYSTEM=drm");
+  EXPECT_EQ(HandleCrash("ACTION=change:KERNEL=card0:SUBSYSTEM=drm"),
+            CrashCollectionStatus::kSuccess);
   EXPECT_EQ(1,
             GetNumFiles(temp_dir_generator_.GetPath(), kCrashLogFilePattern));
 
@@ -338,14 +341,17 @@ TEST_F(UdevCollectorTest, TestMatches) {
   // collector for the second crash.
   UdevCollectorMock second_collector;
   SetUpCollector(&second_collector);
-  second_collector.HandleCrash("ACTION=add:KERNEL=state0:SUBSYSTEM=cpu");
+  EXPECT_EQ(
+      second_collector.HandleCrash("ACTION=add:KERNEL=state0:SUBSYSTEM=cpu"),
+      CrashCollectionStatus::kSuccess);
   EXPECT_EQ(2,
             GetNumFiles(temp_dir_generator_.GetPath(), kCrashLogFilePattern));
 }
 
 TEST_F(UdevCollectorTest, TestDevCoredump) {
   GenerateDevCoredump("devcd0", kNoCollectDriverName);
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kDevCoredumpIgnored);
   // IsDeveloperImage() returns false while running this test so devcoredumps
   // will not be added to the crash directory.
   EXPECT_EQ(
@@ -355,8 +361,9 @@ TEST_F(UdevCollectorTest, TestDevCoredump) {
   // collector for the second crash.
   UdevCollectorMock second_collector;
   SetUpCollector(&second_collector);
-  second_collector.HandleCrash(
-      "ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(second_collector.HandleCrash(
+                "ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kDevCoredumpIgnored);
   EXPECT_EQ(
       0, GetNumFiles(temp_dir_generator_.GetPath(), kDevCoredumpFilePattern));
 }
@@ -398,7 +405,8 @@ TEST_F(UdevCollectorTest,
       })));
 
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kSuccessForConnectivityFwdump);
   EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 
   // Generate another coredump and check additional fwdump file is generated.
@@ -433,8 +441,9 @@ TEST_F(UdevCollectorTest,
             "wifi");
         return true;
       })));
-  second_collector.HandleCrash(
-      "ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(second_collector.HandleCrash(
+                "ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kSuccessForConnectivityFwdump);
   EXPECT_EQ(2, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
@@ -474,7 +483,8 @@ TEST_F(UdevCollectorTest,
       })));
 
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kSuccessForConnectivityFwdump);
   EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
@@ -514,7 +524,8 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestEnsureOnlyDevcoredumpFileIsGenerated) {
       })));
 
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kSuccessForConnectivityFwdump);
   EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 
   // Ensure .meta and .log file are not generated.
@@ -555,7 +566,8 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestConnectivityWiFiDevCoredumpPolicySet) {
       })));
 
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kSuccessForConnectivityFwdump);
   EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
@@ -567,7 +579,8 @@ TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpDisabledByFinch) {
   SetupFirmwareDumpsFinchFlag("0");
 
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kDevCoredumpIgnored);
   EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
@@ -579,7 +592,8 @@ TEST_F(UdevCollectorTest,
   collector_.SetSessionManagerProxy(mock);
 
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kDevCoredumpIgnored);
   EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
@@ -594,7 +608,8 @@ TEST_F(UdevCollectorTest,
   SetupFirmwareDumpsFinchFlag("10");
 
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kDevCoredumpIgnored);
   EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
@@ -609,7 +624,8 @@ TEST_F(UdevCollectorTest,
   SetupFirmwareDumpsFinchFlag("1 ");
 
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kDevCoredumpIgnored);
   EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
@@ -626,7 +642,8 @@ TEST_F(UdevCollectorTest,
   collector_.EnableConnectivityFwdumpForTest(false);
 
   FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kDevCoredumpIgnored);
   EXPECT_EQ(0, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
@@ -659,7 +676,8 @@ TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpPolicyNotSet) {
         return true;
       })));
 
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kDevCoredumpIgnored);
   EXPECT_EQ(
       0, GetNumFiles(temp_dir_generator_.GetPath(), kWiFiCoredumpFilePattern));
 }
@@ -679,7 +697,8 @@ TEST_F(UdevCollectorTest, TestConnectivityWiFiDevCoredumpUserNotAllowed) {
             return true;
           })));
 
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kDevCoredumpIgnored);
   EXPECT_EQ(
       0, GetNumFiles(temp_dir_generator_.GetPath(), kWiFiCoredumpFilePattern));
 }
@@ -700,7 +719,8 @@ TEST_F(UdevCollectorTest, TestCollectedDevCoredump) {
     const std::string udev_event =
         std::string("ACTION=add:SUBSYSTEM=devcoredump:KERNEL_NUMBER=") +
         kernel_number;
-    third_collector.HandleCrash(udev_event);
+    EXPECT_EQ(third_collector.HandleCrash(udev_event),
+              CrashCollectionStatus::kSuccess);
   }
 
   EXPECT_EQ(driver_count, GetNumFiles(temp_dir_generator_.GetPath(),
@@ -756,7 +776,8 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestValidBluetoothDevCoredump) {
 
   ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
 
-  HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kSuccess);
   EXPECT_EQ(3, GetNumFiles(temp_dir_generator_.GetPath(),
                            kBluetoothCoredumpFilePattern));
 }
@@ -787,7 +808,8 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestInvalidBluetoothDevCoredump) {
 
   ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
 
-  HandleCrash("ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump");
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=1:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kFailedProcessBluetoothCoredump);
   EXPECT_EQ(0, GetNumFiles(temp_dir_generator_.GetPath(),
                            kBluetoothCoredumpFilePattern));
 }

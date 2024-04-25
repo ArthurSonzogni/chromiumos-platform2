@@ -23,11 +23,14 @@
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/types/expected.h>
 #include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
 
 #include "crash-reporter/connectivity_util.h"
 #include "crash-reporter/crash_collector.h"
+
+enum class CrashCollectionStatus;
 
 // Udev crash collector.
 class UdevCollector : public CrashCollector {
@@ -49,7 +52,7 @@ class UdevCollector : public CrashCollector {
   //   "ACTION=[action]:KERNEL=[name]:SUBSYSTEM=[subsystem]"
   // The values don't have to be in any particular order. One or more of them
   // could be omitted, in which case it would be treated as a wildcard (*).
-  bool HandleCrash(const std::string& udev_event);
+  CrashCollectionStatus HandleCrash(const std::string& udev_event);
 
   // This function is to be called from unit tests to specifically enable
   // connectivity fwdump feature for unit test.
@@ -103,31 +106,35 @@ class UdevCollector : public CrashCollector {
   // with this function. The path for connectivity fw dump is different than
   // general fw dumps is because, unlike regular fwdumps we want to upload
   // connectivity fwdumps only with feedback reports.
-  std::optional<base::FilePath> GetConnectivityFwdumpStoragePath();
+  base::expected<base::FilePath, CrashCollectionStatus>
+  GetConnectivityFwdumpStoragePath();
 
   // Process udev crash logs, collecting log files according to the config
   // file (crash_reporter_logs.conf).
-  bool ProcessUdevCrashLogs(const base::FilePath& crash_directory,
-                            const std::string& action,
-                            const std::string& kernel,
-                            const std::string& subsystem);
+  CrashCollectionStatus ProcessUdevCrashLogs(
+      const base::FilePath& crash_directory,
+      const std::string& action,
+      const std::string& kernel,
+      const std::string& subsystem);
   // Process device coredump, collecting device coredump file.
   // |instance_number| is the kernel number of the virtual device for the device
   // coredump instance.
-  bool ProcessDevCoredump(const base::FilePath& crash_directory,
-                          int instance_number,
-                          bool is_connectivity_fwdump);
+  CrashCollectionStatus ProcessDevCoredump(
+      const base::FilePath& crash_directory,
+      int instance_number,
+      bool is_connectivity_fwdump);
   // Copy bluetooth device coredump file to crash directory, and perform
   // necessary coredump file management.
-  bool AppendBluetoothCoredump(const base::FilePath& crash_directory,
-                               const base::FilePath& coredump_path,
-                               int instance_number);
+  CrashCollectionStatus AppendBluetoothCoredump(
+      const base::FilePath& crash_directory,
+      const base::FilePath& coredump_path,
+      int instance_number);
   // Copy device coredump file to crash directory, and perform necessary
   // coredump file management.
-  bool AppendDevCoredump(const base::FilePath& crash_directory,
-                         const base::FilePath& coredump_path,
-                         int instance_number,
-                         bool is_connectivity_fwdump);
+  CrashCollectionStatus AppendDevCoredump(const base::FilePath& crash_directory,
+                                          const base::FilePath& coredump_path,
+                                          int instance_number,
+                                          bool is_connectivity_fwdump);
   // Clear the device coredump file by performing a dummy write to it.
   bool ClearDevCoredump(const base::FilePath& coredump_path);
   // Generate the driver path of the failing device from instance and sub-path.
