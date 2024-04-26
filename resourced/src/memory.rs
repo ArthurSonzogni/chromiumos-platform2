@@ -1069,11 +1069,10 @@ fn get_last_visible_threshold_values() -> (Duration, Duration) {
 }
 
 fn get_individual_duration_param(feature_name: &str, param_name: &str) -> Result<Duration> {
-    let threshold_param = feature::get_feature_param(feature_name, param_name)?;
+    let threshold_seconds = feature::get_feature_param_as::<u64>(feature_name, param_name)?
+        .context("No valid feature param")?;
 
-    let raw_feature_val = threshold_param.as_ref().context("No valid feature param")?;
-
-    Ok(Duration::from_secs(raw_feature_val.parse::<u64>()?))
+    Ok(Duration::from_secs(threshold_seconds))
 }
 
 // For tests, have non-default min/max values.

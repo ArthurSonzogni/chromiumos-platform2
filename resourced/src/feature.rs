@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -104,14 +105,23 @@ impl FeatureManager {
         }
     }
 
-    fn get_feature_param(&self, feature_name: &str, param_name: &str) -> Option<String> {
-        match self.features.get(feature_name) {
-            Some(feature) => {
-                let state = feature.state.do_lock();
-                state.params.get(param_name).cloned()
+    fn get_feature_param_as<T: FromStr>(
+        &self,
+        feature_name: &str,
+        param_name: &str,
+    ) -> Result<Option<T>>
+    where
+        <T as FromStr>::Err: std::error::Error + Send + Sync + 'static,
+    {
+        if let Some(feature) = self.features.get(feature_name) {
+            let state = feature.state.do_lock();
+            if let Some(value) = state.params.get(param_name) {
+                return Ok(Some(value.parse::<T>().with_context(|| {
+                    format!("Failed to parse param {}={}", param_name, value)
+                })?));
             }
-            None => None,
         }
+        Ok(None)
     }
 
     fn reload_cache(&self) -> Result<()> {
@@ -230,22 +240,35 @@ pub fn is_feature_enabled(_feature_name: &str) -> Result<bool> {
     Ok(false)
 }
 
-#[cfg(not(test))]
-pub fn get_feature_param(feature_name: &str, param_name: &str) -> Result<Option<String>> {
-    Ok(FEATURE_MANAGER
+pub fn get_feature_param_as<T: FromStr>(feature_name: &str, param_name: &str) -> Result<Option<T>>
+where
+    <T as FromStr>::Err: std::error::Error + Send + Sync + 'static,
+{
+    FEATURE_MANAGER
         .get()
         .context("FEATURE_MANAGER is not initialized")?
-        .get_feature_param(feature_name, param_name))
-}
-
-#[cfg(test)]
-pub fn get_feature_param(_feature_name: &str, _param_name: &str) -> Result<Option<String>> {
-    Ok(None)
+        .get_feature_param_as(feature_name, param_name)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn set_feature_param(
+        feature_manager: &FeatureManager,
+        feature_name: &str,
+        param_name: String,
+        value: String,
+    ) {
+        let mut state = feature_manager
+            .features
+            .get(feature_name)
+            .unwrap()
+            .state
+            .lock()
+            .unwrap();
+        state.params.insert(param_name, value);
+    }
 
     #[test]
     fn test_initialize_feature_in_default_state() {
@@ -256,13 +279,47 @@ mod tests {
         .unwrap();
 
         assert!(!feature_manager.is_feature_enabled("FakeFeatureDisabled"));
-        assert!(feature_manager
-            .get_feature_param("FakeFeatureDisabled", "FakeFeatureParam")
-            .is_none());
-
         assert!(feature_manager.is_feature_enabled("FakeFeatureEnabled"));
+    }
+
+    #[test]
+    fn test_feature_param_parsing() {
+        let feature_manager = FeatureManager::new(vec![("FakeFeature", true, None)]).unwrap();
+        set_feature_param(
+            &feature_manager,
+            "FakeFeature",
+            "FakeFeatureParamInteger".to_string(),
+            "12345".to_string(),
+        );
+        set_feature_param(
+            &feature_manager,
+            "FakeFeature",
+            "FakeFeatureParamString".to_string(),
+            "abc".to_string(),
+        );
+
+        assert_eq!(
+            feature_manager
+                .get_feature_param_as::<u64>("FakeFeature", "FakeFeatureParamInteger")
+                .unwrap(),
+            Some(12345)
+        );
+        assert_eq!(
+            feature_manager
+                .get_feature_param_as::<String>("FakeFeature", "FakeFeatureParamString")
+                .unwrap(),
+            Some("abc".to_string())
+        );
         assert!(feature_manager
-            .get_feature_param("FakeFeatureEnabled", "FakeFeatureParam")
+            .get_feature_param_as::<u64>("FakeFeature", "FakeFeatureParamString")
+            .is_err());
+        assert!(feature_manager
+            .get_feature_param_as::<u64>("FakeFeature", "NonExistParam")
+            .unwrap()
+            .is_none());
+        assert!(feature_manager
+            .get_feature_param_as::<u64>("FakeFeatureNonExist", "FakeFeatureParamInteger")
+            .unwrap()
             .is_none());
     }
 }
