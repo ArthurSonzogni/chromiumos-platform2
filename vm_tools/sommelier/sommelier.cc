@@ -3639,13 +3639,47 @@ static void sl_print_usage() {
 }
 
 static const char* sl_arg_value(const char* arg) {
+  assert(arg != nullptr);
+
   const char* s = strchr(arg, '=');
   if (!s) {
     sl_print_usage();
+    printf("\n");
+    LOG(FATAL) << "failed to extract value from arg '" << arg
+               << "'. expected form is " << arg << "=value";
     exit(EXIT_FAILURE);
   }
   return s + 1;
 }
+
+#ifdef QUIRKS_SUPPORT
+// attempts to both split "--argname=argval" and parse "argval" signed integer,
+// or exits the program with a fatal error if detecting any non-integer
+// characters or is out-of-bounds.
+static int64_t sl_arg_parse_int_checked(const char* arg) {
+  assert(arg != nullptr);
+  const char* argval = sl_arg_value(arg);
+
+  // Use strtoll() because atoi() fails with UB, not error signaling.
+  // Note, that both parse and out-of-range failures are detected here,
+  // unlike atoi() (which implicitly succeeds with return value 0);
+  //
+  // e.g. atoi() parses "blah8" as '0' and "8blah" as '8', while this procedure
+  // detects invalid input in both cases and signals a fatality.
+  char* str_end;
+  int64_t res = strtoll(argval, &str_end, 10);
+
+  const bool has_non_numerical = (str_end == argval || *str_end != '\0');
+  const bool out_of_bounds =
+      (res == LLONG_MAX || res == LLONG_MIN) && errno == ERANGE;
+  if (has_non_numerical || out_of_bounds) {
+    LOG(FATAL) << "failed to convert string '" << argval
+               << "' to int while parsing argument '" << arg << "'";
+    exit(EXIT_FAILURE);
+  }
+  return res;
+}
+#endif  // QUIRKS_SUPPORT
 
 // Parse the list of accelerators that should be reserved by the
 // compositor. Format is "|MODIFIERS|KEYSYM", where MODIFIERS is a
@@ -4036,11 +4070,12 @@ int real_main(int argc, char** argv) {
       }
       Quirks quirks;
       quirks.LoadFromCommaSeparatedFiles(quirks_paths);
-      uint32_t steam_game_id = 0;
-      if (i + 1 < argc) {
-        steam_game_id = std::stoi(argv[i + 1]);
-      } else {
-        steam_game_id = std::stoi(sl_arg_value(arg));
+
+      int64_t steam_game_id = sl_arg_parse_int_checked(arg);
+      if (steam_game_id <= 0) {
+        LOG(FATAL) << "invalid value for arg '" << arg << "': " << steam_game_id
+                   << " (expected positive integer)";
+        return EXIT_FAILURE;
       }
       quirks.PrintFeaturesEnabled(steam_game_id);
       return EXIT_SUCCESS;
