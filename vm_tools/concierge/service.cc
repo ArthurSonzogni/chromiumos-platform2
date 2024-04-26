@@ -133,6 +133,9 @@ namespace {
 // the lower bound of how long it takes.  On a loaded system (like extracting
 // large compressed files), it could take 10 seconds to boot.
 constexpr base::TimeDelta kVmStartupDefaultTimeout = base::Seconds(60);
+// Borealis has a longer default timeout, as it can take a long time to create
+// its swap file on eMMC devices.
+constexpr base::TimeDelta kBorealisVmStartupDefaultTimeout = base::Seconds(180);
 
 // crosvm log directory name.
 constexpr char kCrosvmLogDir[] = "log";
@@ -1934,7 +1937,10 @@ StartVmResponse Service::StartVmInternal(
 
   // Wait for the VM to finish starting up and for maitre'd to signal that it's
   // ready.
-  base::TimeDelta timeout = kVmStartupDefaultTimeout;
+  // TODO(b/338085116) Remove Borealis special case when we fix swap creation.
+  base::TimeDelta timeout = (classification == apps::VmType::BOREALIS)
+                                ? kBorealisVmStartupDefaultTimeout
+                                : kVmStartupDefaultTimeout;
   if (request.timeout() != 0) {
     timeout = base::Seconds(request.timeout());
   }
