@@ -50,7 +50,7 @@ void UserDataAuthClient::Init(
                           weak_ptr_factory_.GetWeakPtr()));
 }
 
-void UserDataAuthClient::EvictDeviceKey(int suspend_request_id) {
+bool UserDataAuthClient::EvictDeviceKey(int suspend_request_id) {
   user_data_auth::EvictDeviceKeyRequest request;
   request.set_eviction_id(suspend_request_id);
   dbus::MethodCall method_call(user_data_auth::kUserDataAuthInterface,
@@ -60,17 +60,20 @@ void UserDataAuthClient::EvictDeviceKey(int suspend_request_id) {
   std::unique_ptr<dbus::Response> response = dbus_wrapper_->CallMethodSync(
       user_data_auth_dbus_proxy_, &method_call, kCryptohomeDBusTimeout);
   if (!response)
-    return;
+    return false;
 
   user_data_auth::EvictDeviceKeyReply reply;
   if (!dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&reply)) {
     LOG(ERROR) << "Unable to parse EvictDeviceKeyReply message";
-    return;
+    return false;
   }
   if (reply.error() !=
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
     LOG(ERROR) << "EvictDeviceKey() failed: " << reply.error();
+    return false;
   }
+
+  return true;
 }
 
 void UserDataAuthClient::HandleKeyRestoredSignal(dbus::Signal* signal) {

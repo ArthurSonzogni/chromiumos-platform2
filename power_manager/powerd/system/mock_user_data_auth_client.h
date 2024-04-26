@@ -16,7 +16,7 @@ class MockUserDataAuthClient : public UserDataAuthClient {
  public:
   ~MockUserDataAuthClient() = default;
 
-  MOCK_METHOD(void, EvictDeviceKey, (int), (override));
+  MOCK_METHOD(bool, EvictDeviceKey, (int), (override));
 };
 }  // namespace power_manager::system
 

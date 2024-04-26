@@ -42,7 +42,7 @@ class UserDataAuthClient {
 
   // Evicts the device key from the logged in user's cryptphome. All the user's
   // encrypted home directory will not be accessible after this action.
-  virtual void EvictDeviceKey(int suspend_request_id);
+  virtual bool EvictDeviceKey(int suspend_request_id);
 
  private:
   void HandleKeyRestoredSignal(dbus::Signal* signal);

@@ -972,7 +972,10 @@ policy::Suspender::Delegate::SuspendResult Daemon::DoSuspend(
   // TODO(b:311232193, thomascedeno): This should be gated by a finch feature
   // flag and controlled by chrome://settings ideally.
   if (DisableSyncOnSuspend(sync_on_suspend_path_) && user_data_auth_client_) {
-    user_data_auth_client_->EvictDeviceKey(suspend_request_id);
+    if (user_data_auth_client_->EvictDeviceKey(suspend_request_id))
+      suspender_->HandleDeviceKeyEvicted();
+    else
+      LOG(ERROR) << "Key eviction failed";
   }
 #endif  // USE_KEY_EVICTION
 
