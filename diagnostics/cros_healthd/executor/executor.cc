@@ -24,6 +24,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
@@ -153,8 +154,12 @@ constexpr uint32_t kMsrAccessAllowList[] = {
     cpu_msr::kIA32TmeCapability, cpu_msr::kIA32TmeActivate,
     cpu_msr::kIA32FeatureControl, cpu_msr::kVmCr};
 
-// Error message when failing to launch delegate.
-constexpr char kFailToLaunchDelegate[] = "Failed to launch delegate";
+// Returns error message when failing to launch delegate.
+std::string GetDelegateLaunchErrorMessage(const base::Location& location) {
+  return "Failed to launch delegate: " + location.ToString();
+}
+
+#define DELEGATE_LAUNCH_ERROR GetDelegateLaunchErrorMessage(FROM_HERE)
 
 base::FilePath FileEnumToFilePath(mojom::Executor::File file_enum) {
   switch (file_enum) {
@@ -319,7 +324,7 @@ void Executor::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetAllFanSpeed(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback), std::vector<uint16_t>{},
-      kFailToLaunchDelegate));
+      DELEGATE_LAUNCH_ERROR));
   delegate_ptr->StartAsync();
 }
 
@@ -467,7 +472,7 @@ void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
   delegate_ptr->remote()->GetFingerprintFrame(
       type, CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
                                        mojom::FingerprintFrameResult::New(),
-                                       kFailToLaunchDelegate));
+                                       DELEGATE_LAUNCH_ERROR));
   delegate_ptr->StartAsync();
 }
 
@@ -483,7 +488,7 @@ void Executor::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetFingerprintInfo(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
-      mojom::FingerprintInfoResult::New(), kFailToLaunchDelegate));
+      mojom::FingerprintInfoResult::New(), DELEGATE_LAUNCH_ERROR));
   delegate_ptr->StartAsync();
 }
 
@@ -507,7 +512,7 @@ void Executor::GetPsr(GetPsrCallback callback) {
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetPsr(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
-      mojom::GetPsrResult::NewError(kFailToLaunchDelegate)));
+      mojom::GetPsrResult::NewError(DELEGATE_LAUNCH_ERROR)));
   delegate_ptr->StartAsync();
 }
 
@@ -549,7 +554,7 @@ void Executor::SetLedColor(mojom::LedName name,
   delegate_ptr->remote()->SetLedColor(
       name, color,
       CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
-                                 kFailToLaunchDelegate));
+                                 DELEGATE_LAUNCH_ERROR));
   delegate_ptr->StartAsync();
 }
 
@@ -565,7 +570,7 @@ void Executor::ResetLedColor(mojom::LedName name,
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->ResetLedColor(
       name, CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
-                                       kFailToLaunchDelegate));
+                                       DELEGATE_LAUNCH_ERROR));
   delegate_ptr->StartAsync();
 }
 
@@ -669,7 +674,7 @@ void Executor::FetchBootPerformance(FetchBootPerformanceCallback callback) {
   delegate_ptr->remote()->FetchBootPerformance(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
       mojom::BootPerformanceResult::NewError(mojom::ProbeError::New(
-          mojom::ErrorType::kSystemUtilityError, kFailToLaunchDelegate))));
+          mojom::ErrorType::kSystemUtilityError, DELEGATE_LAUNCH_ERROR))));
   delegate_ptr->StartAsync();
 }
 
@@ -996,7 +1001,7 @@ void Executor::GetConnectedExternalDisplayConnectors(
       CreateOnceDelegateCallback(
           std::move(delegate), std::move(callback),
           base::flat_map<uint32_t, mojom::ExternalDisplayInfoPtr>{},
-          kFailToLaunchDelegate));
+          DELEGATE_LAUNCH_ERROR));
   delegate_ptr->StartAsync();
 }
 
@@ -1009,7 +1014,7 @@ void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetPrivacyScreenInfo(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
-      mojom::GetPrivacyScreenInfoResult::NewError(kFailToLaunchDelegate)));
+      mojom::GetPrivacyScreenInfoResult::NewError(DELEGATE_LAUNCH_ERROR)));
   delegate_ptr->StartAsync();
 }
 
@@ -1023,7 +1028,7 @@ void Executor::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
   delegate_ptr->remote()->FetchDisplayInfo(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
       mojom::DisplayResult::NewError(mojom::ProbeError::New(
-          mojom::ErrorType::kSystemUtilityError, kFailToLaunchDelegate))));
+          mojom::ErrorType::kSystemUtilityError, DELEGATE_LAUNCH_ERROR))));
   delegate_ptr->StartAsync();
 }
 
@@ -1041,7 +1046,7 @@ void Executor::SetFanSpeed(
   delegate_ptr->remote()->SetFanSpeed(
       fan_id_to_rpm,
       CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
-                                 kFailToLaunchDelegate));
+                                 DELEGATE_LAUNCH_ERROR));
   delegate_ptr->StartAsync();
 }
 
@@ -1055,7 +1060,7 @@ void Executor::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->SetAllFanAutoControl(CreateOnceDelegateCallback(
-      std::move(delegate), std::move(callback), kFailToLaunchDelegate));
+      std::move(delegate), std::move(callback), DELEGATE_LAUNCH_ERROR));
   delegate_ptr->StartAsync();
 }
 
@@ -1091,7 +1096,7 @@ void Executor::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetEcThermalSensors(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
-      std::vector<mojom::ThermalSensorInfoPtr>{}, kFailToLaunchDelegate));
+      std::vector<mojom::ThermalSensorInfoPtr>{}, DELEGATE_LAUNCH_ERROR));
   delegate_ptr->StartAsync();
 }
 
@@ -1210,7 +1215,7 @@ void Executor::FetchGraphicsInfo(FetchGraphicsInfoCallback callback) {
   delegate_ptr->remote()->FetchGraphicsInfo(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
       mojom::GraphicsResult::NewError(mojom::ProbeError::New(
-          mojom::ErrorType::kSystemUtilityError, kFailToLaunchDelegate))));
+          mojom::ErrorType::kSystemUtilityError, DELEGATE_LAUNCH_ERROR))));
   delegate_ptr->StartAsync();
 }
 
