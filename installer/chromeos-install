@@ -468,6 +468,9 @@ cleanup_on_failure() {
 }
 
 deactivate_volume_group() {
+  # Suppress failures and fallback to default value.
+  set +e
+
   local vg="${1}"
   local rc=0
   for _ in 1 2 3 4 5 6 7 8 9 10; do
@@ -478,6 +481,10 @@ deactivate_volume_group() {
     fi
     sleep 1
   done
+
+  # Back to strict.
+  set -e
+
   return "${rc}"
 }
 
