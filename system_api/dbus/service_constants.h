@@ -597,6 +597,17 @@ constexpr char kUnmountMethod[] = "Unmount";
 constexpr char kOpenFileMethod[] = "OpenFile";
 }  // namespace appfuse
 
+namespace tracing {
+// D-Bus service constants.
+constexpr char kArcTracingServiceName[] = "org.chromium.ArcTracing";
+constexpr char kArcTracingServicePath[] = "/org/chromium/ArcTracing";
+constexpr char kArcTracingInterfaceName[] = "org.chromium.ArcTracing";
+
+// Method names.
+constexpr char kArcTracingStartMethod[] = "StartTrace";
+constexpr char kArcTracingGetStatusMethod[] = "GetStatus";
+}  // namespace tracing
+
 }  // namespace arc
 
 namespace libvda {
