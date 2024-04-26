@@ -6,6 +6,7 @@ package dlclib_test
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path"
 	"testing"
@@ -146,6 +147,77 @@ func TestCopyFile(t *testing.T) {
 		t.Fatalf("Failed to read file: %v", err)
 	} else if !bytes.Equal(b, data) {
 		t.Fatalf("Unexpected data: %v", b)
+	}
+}
+
+func TestCopyDirectory(t *testing.T) {
+	p1 := path.Join(t.TempDir(), "dir1")
+	p2 := path.Join(t.TempDir(), "dir2")
+
+	if err := os.Mkdir(p1, 0755); err != nil {
+		t.Fatalf("Failed to mkdir: %v", err)
+	}
+
+	data := []byte("foobar")
+	for i := 0; i < 10; i++ {
+		if err := os.WriteFile(path.Join(p1, fmt.Sprintf("file%d", i)), data, 0755); err != nil {
+			t.Fatalf("Failed to write file: %v", err)
+		}
+		if i%2 == 0 {
+			if err := os.Mkdir(path.Join(p1, fmt.Sprintf("dir%d", i)), 0755); err != nil {
+				t.Fatalf("Failed to write dir: %v", err)
+			}
+		}
+	}
+
+	if err := os.Mkdir(p2, 0755); err != nil {
+		t.Fatalf("Failed to mkdir: %v", err)
+	}
+
+	if err := dlclib.CopyDirectory(p1, p2); err != nil {
+		t.Fatalf("Failed to copy directory: %v", err)
+	}
+}
+
+func TestCopyDirectoryMissingDestination(t *testing.T) {
+	p1 := path.Join(t.TempDir(), "dir1")
+	p2 := path.Join(t.TempDir(), "dir2")
+
+	if err := os.Mkdir(p1, 0755); err != nil {
+		t.Fatalf("Failed to mkdir: %v", err)
+	}
+
+	data := []byte("foobar")
+	if err := os.WriteFile(path.Join(p1, "file"), data, 0755); err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+
+	if err := dlclib.CopyDirectory(p1, p2); err == nil {
+		t.Fatal("Copy directory did not fail")
+	}
+}
+
+func TestDirectorySize(t *testing.T) {
+	p := path.Join(t.TempDir(), "dir")
+
+	if err := os.Mkdir(p, 0755); err != nil {
+		t.Fatalf("Failed to mkdir: %v", err)
+	}
+
+	data := []byte("f")
+	for i := 0; i < 10; i++ {
+		if err := os.WriteFile(path.Join(p, fmt.Sprintf("file%d", i)), data, 0755); err != nil {
+			t.Fatalf("Failed to write file: %v", err)
+		}
+	}
+	if err := os.Mkdir(path.Join(p, "dir-inner"), 0755); err != nil {
+		t.Fatalf("Failed to write dir: %v", err)
+	}
+
+	if size, err := dlclib.DirectorySize(p); err != nil {
+		t.Fatalf("Failed to calculate directory size: %v", err)
+	} else if expectedSize := int64(8202); size != expectedSize {
+		t.Fatalf("Unexpected size(%d) vs expected(%d)", size, expectedSize)
 	}
 }
 

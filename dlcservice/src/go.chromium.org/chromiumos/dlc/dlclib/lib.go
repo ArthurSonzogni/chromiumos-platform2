@@ -11,6 +11,7 @@ import (
 	"io"
 	"math"
 	"os"
+	"path/filepath"
 	"syscall"
 )
 
@@ -57,6 +58,49 @@ func AppendFile(src, dst string) error {
 // CopyFile will copy `src` contents of a file to `dst` file.
 func CopyFile(src, dst string) error {
 	return srcToDst(src, dst, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+}
+
+// CopyDirectory will copy all files in `src` into `dst`.
+func CopyDirectory(src, dst string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if path == src {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		dstPath := filepath.Join(dst, relPath)
+
+		if info.IsDir() {
+			return os.Mkdir(dstPath, info.Mode())
+		}
+		return CopyFile(path, dstPath)
+	})
+}
+
+// DirectorySize will return the bytes used within a directory (file sizes + directory as 4KiB).
+func DirectorySize(p string) (int64, error) {
+	var size int64
+
+	err := filepath.Walk(p, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		} else {
+			size += 4096
+		}
+		return nil
+	})
+
+	return size, err
 }
 
 // Sha256Sum will return the hex sha256sum of a given file.

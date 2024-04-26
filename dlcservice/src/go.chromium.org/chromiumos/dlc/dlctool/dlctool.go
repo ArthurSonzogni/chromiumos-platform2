@@ -22,9 +22,6 @@ import (
 )
 
 const (
-	mksquashfsPath = "/usr/bin/mksquashfs"
-	unsquashfsPath = "/usr/bin/unsquashfs"
-
 	verityPath = "/usr/bin/verity"
 )
 
@@ -158,21 +155,7 @@ func tryInstallingDlc(id *string) error {
 	return nil
 }
 
-func extractDlc(id, path *string) error {
-	// TODO(b/335722339): Add support for other filesystems based on image type.
-	cmd := &exec.Cmd{
-		Path: unsquashfsPath,
-		Args: []string{unsquashfsPath, "-d", *path, getDlcImagePath(id)},
-	}
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("extractDlc: failed to decompress: %w", err)
-	}
-
-	return nil
-}
-
-func unpackDlc(id, path *string) error {
+func unpackDlc(fsType, id, path *string) error {
 	if _, err := os.Stat(*path); !os.IsNotExist(err) {
 		return fmt.Errorf("%s is a path which already exists", *path)
 	}
@@ -181,14 +164,27 @@ func unpackDlc(id, path *string) error {
 		return fmt.Errorf("unpackDlc: failed installing DLC: %w", err)
 	}
 
-	if err := extractDlc(id, path); err != nil {
-		return fmt.Errorf("unpackDlc: failed extracting: %w", err)
+	switch *fsType {
+	case "squashfs":
+		if err := dlclib.Filesystem.ExtractSquashfs(getDlcImagePath(id), *path); err != nil {
+			return fmt.Errorf("unpackDlc: failed to extract squashfs: %w", err)
+		}
+	case "ext2":
+		if err := dlclib.Filesystem.ExtractExt2(getDlcImagePath(id), *path); err != nil {
+			return fmt.Errorf("unpackDlc: failed to extract ext2: %w", err)
+		}
+	case "ext4":
+		if err := dlclib.Filesystem.ExtractExt4(getDlcImagePath(id), *path); err != nil {
+			return fmt.Errorf("unpackDlc: failed to extract ext4: %w", err)
+		}
+	default:
+		return fmt.Errorf("unpackDlc: unsupported fs-type: %v", *fsType)
 	}
 
 	return nil
 }
 
-func packDlc(id, p *string, compress bool) error {
+func packDlc(fsType, id, p *string, compress bool) error {
 	var err error
 
 	if !dlclib.IsWritable("/") {
@@ -212,18 +208,25 @@ func packDlc(id, p *string, compress bool) error {
 	defer os.RemoveAll(tmpDir)
 
 	imgOutPath := path.Join(tmpDir, dlclib.ImageFile)
-	// TODO(b/335722339): Add support for other filesystems based on image type.
-	{
-		cmd := &exec.Cmd{
-			Path: mksquashfsPath,
-			Args: []string{mksquashfsPath, *p, imgOutPath, "-4k-align", "-noappend"},
+	switch *fsType {
+	case "squashfs":
+		if compress {
+			if err = dlclib.Filesystem.CreateSquashfs(*p, imgOutPath); err != nil {
+				return fmt.Errorf("packDlc: failed to create squashfs: %v", err)
+			}
+		} else if err = dlclib.Filesystem.CreateSquashfsNoCompression(*p, imgOutPath); err != nil {
+			return fmt.Errorf("packDlc: failed to create squashfs no compression: %v", err)
 		}
-		if !compress {
-			cmd.Args = append(cmd.Args, "-noI", "-noD", "-noF", "-noX", "-no-duplicates")
+	case "ext2":
+		if err = dlclib.Filesystem.CreateExt2(*p, imgOutPath); err != nil {
+			return fmt.Errorf("packDlc: failed to create ext2: %v", err)
 		}
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("packDlc: creating image failed: %v", err)
+	case "ext4":
+		if err = dlclib.Filesystem.CreateExt4(*p, imgOutPath); err != nil {
+			return fmt.Errorf("packDlc: failed to create ext4: %v", err)
 		}
+	default:
+		return fmt.Errorf("packDlc: unsupported fs-type: %v", *fsType)
 	}
 
 	var imgBlockCount int64
@@ -300,6 +303,7 @@ func packDlc(id, p *string, compress bool) error {
 		newSize := strconv.FormatInt(imgBlockCountWithHashtree*4096, 10)
 		manifestJSON.All["size"] = newSize
 		manifestJSON.All["pre-allocated-size"] = newSize
+		manifestJSON.All["fs-type"] = *fsType
 	}
 
 	metadata := struct {
@@ -377,14 +381,14 @@ func main() {
 
 	if *parse.FlagUnpack {
 		log.Printf("Unpacking DLC (%s) to: %s\n", *parse.FlagID, p)
-		if err := unpackDlc(parse.FlagID, &p); err != nil {
+		if err := unpackDlc(parse.FlagFsType, parse.FlagID, &p); err != nil {
 			log.Fatalf("Unpacking DLC (%s) failed: %v", *parse.FlagID, err)
 		}
 		return
 	}
 
 	log.Printf("Packing DLC (%s) from: %s\n", *parse.FlagID, p)
-	if err := packDlc(parse.FlagID, &p, *parse.FlagCompress); err != nil {
+	if err := packDlc(parse.FlagFsType, parse.FlagID, &p, *parse.FlagCompress); err != nil {
 		log.Fatalf("Packing DLC (%s) failed: %v", *parse.FlagID, err)
 	}
 }

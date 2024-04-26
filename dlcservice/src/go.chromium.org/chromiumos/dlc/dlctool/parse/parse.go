@@ -21,6 +21,9 @@ var (
 
 	// FlagCompress to hold parsed compress option.
 	FlagCompress *bool
+
+	// FlagFsType to hold parsed filesystem type option.
+	FlagFsType *string
 )
 
 // Defined, but hidden.
@@ -35,6 +38,7 @@ func Args(prog string, sysArgs []string) (string, error) {
 	FlagID = fs.String("id", "", "ID of the DLC to [un]pack.")
 	FlagUnpack = fs.Bool("unpack", false, "To unpack the DLC passed.")
 	FlagCompress = fs.Bool("compress", true, "Compress the image. Slower to pack but creates smaller images.")
+	FlagFsType = fs.String("fs-type", "squashfs", "Filesystem type to use, supported types: `squashfs`, `ext2`, and `ext4`.")
 
 	flagNoCompress = fs.Bool("nocompress", false, "Don't compress the image.")
 
@@ -79,6 +83,17 @@ func Args(prog string, sysArgs []string) (string, error) {
 
 	if *FlagID == "" {
 		return "", errors.New("parse.Args: cannot pass empty ID")
+	}
+
+	if func() bool {
+		for _, fsType := range []string{"squashfs", "ext2", "ext4"} {
+			if *FlagFsType == fsType {
+				return false
+			}
+		}
+		return true
+	}() {
+		return "", fmt.Errorf("parse.Args: invalid fs-type given: %v", *FlagFsType)
 	}
 
 	args := fs.Args()

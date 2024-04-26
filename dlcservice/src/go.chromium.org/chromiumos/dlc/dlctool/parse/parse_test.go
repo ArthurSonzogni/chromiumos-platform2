@@ -114,3 +114,31 @@ func TestPathCleanCheck(t *testing.T) {
 		t.Fatalf("Unexpected path parsed: %s", p)
 	}
 }
+
+func TestInvalidFsType(t *testing.T) {
+	_, err := parse.Args(
+		"dlctool",
+		[]string{"--id", "sample-dlc", "--fs-type", "foobarfs", "/path"},
+	)
+	if err == nil {
+		t.Fatalf("Parsing invalid fs-type did not fail")
+	}
+	if !strings.Contains(err.Error(), "parse.Args: invalid fs-type given:") {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+}
+
+func TestValidFsType(t *testing.T) {
+	fsTypes := []string{"squashfs", "ext2", "ext4"}
+	for _, fsType := range fsTypes {
+		t.Run(fsType, func(t *testing.T) {
+			_, err := parse.Args(
+				"dlctool",
+				[]string{"--id", "sample-dlc", "--fs-type", fsType, "/path"},
+			)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+		})
+	}
+}
