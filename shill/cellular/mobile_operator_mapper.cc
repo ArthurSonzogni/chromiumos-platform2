@@ -393,32 +393,31 @@ void MobileOperatorMapper::UpdateOperatorName(
     return;
   }
   user_operator_name_ = operator_name;
-  if (operator_name.empty()) {
-    Reset();
-    return;
-  }
+  if (!operator_name.empty()) {
+    SLOG(2) << GetLogPrefix(__func__) << ": " << operator_name;
+    HandleOperatorNameUpdate();
 
-  SLOG(2) << GetLogPrefix(__func__) << ": " << operator_name;
-  HandleOperatorNameUpdate();
-
-  // We must update the candidates by name anyway.
-  StringToMNOListMap::const_iterator cit =
-      name_to_mnos_.find(NormalizeOperatorName(operator_name));
-  candidates_by_name_.clear();
-  if (cit != name_to_mnos_.end()) {
-    candidates_by_name_ = cit->second;
-    // We should never have inserted an empty vector into the map.
-    DCHECK(!candidates_by_name_.empty());
+    // We must update the candidates by name anyway.
+    StringToMNOListMap::const_iterator cit =
+        name_to_mnos_.find(NormalizeOperatorName(operator_name));
+    candidates_by_name_.clear();
+    if (cit != name_to_mnos_.end()) {
+      candidates_by_name_ = cit->second;
+      // We should never have inserted an empty vector into the map.
+      DCHECK(!candidates_by_name_.empty());
+    } else {
+      LOG(INFO) << GetLogPrefix(__func__) << "Operator name [" << operator_name
+                << "] " << "(Normalized: ["
+                << NormalizeOperatorName(operator_name)
+                << "]) does not match any MNO.";
+    }
   } else {
-    LOG(INFO) << GetLogPrefix(__func__) << "Operator name [" << operator_name
-              << "] " << "(Normalized: ["
-              << NormalizeOperatorName(operator_name)
-              << "]) does not match any MNO.";
+    SLOG(2) << GetLogPrefix(__func__) << ": operator name is empty.";
   }
   if (raw_apn_filters_types_.count(
-          mobile_operator_db::Filter_Type::Filter_Type_OPERATOR_NAME))
+          mobile_operator_db::Filter_Type::Filter_Type_OPERATOR_NAME)) {
     HandleAPNListUpdate();
-
+  }
   operator_changed |= UpdateMNO();
   operator_changed |= UpdateMVNO();
   if (operator_changed || ShouldNotifyPropertyUpdate()) {
