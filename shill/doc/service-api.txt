@@ -858,6 +858,14 @@ Properties	boolean AutoConnect [readwrite]
 			detection has completed, or if a previous portal detection
 			attempt failed.
 
+		int32 NetworkID [readonly]
+
+			The network id of the Network attached to this Service.
+			Only defined when the Service is connecting or connected.
+			Otherwise, the value is 0. The network id uniquely identifies
+			the shill Network instance or patchpanel DownstreamNetwork instance
+			and is assigned by patchpanel.
+
 		array{string} L2TPIPsec.CACertPEM [writeonly]
 
 			(VPN Services of type L2TP/IPsec only) The list of

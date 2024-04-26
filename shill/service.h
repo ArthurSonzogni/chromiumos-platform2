@@ -749,6 +749,8 @@ class Service : public base::RefCounted<Service> {
   uint64_t GetLastConnectedProperty(Error* error) const;
   uint64_t GetLastOnlineProperty(Error* error) const;
 
+  int32 GetNetworkID(Error* error) const;
+
   // Read only access to previous error number.  This can f.e. be used to check
   // if SetFailure*() has been called for a service without any additional flags
   // - just check if it has been changed.
@@ -830,6 +832,9 @@ class Service : public base::RefCounted<Service> {
   void HelpRegisterConstDerivedUint64(std::string_view name,
                                       uint64_t (Service::*get)(Error* error)
                                           const);
+  void HelpRegisterConstDerivedInt32(std::string_view name,
+                                     int32_t (Service::*get)(Error* error)
+                                         const);
 
   ServiceAdaptorInterface* adaptor() const { return adaptor_.get(); }
 
@@ -957,7 +962,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, ConfigureEapStringProperty);
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
   FRIEND_TEST(ServiceTest, Constructor);
-  FRIEND_TEST(ServiceTest, GetIPConfigRpcIdentifier);
+  FRIEND_TEST(ServiceTest, AttachedNetworkChangeTriggersEmitPropertyChanged);
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, IsNotMeteredByDefault);

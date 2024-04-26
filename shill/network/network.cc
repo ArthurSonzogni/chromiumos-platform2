@@ -76,7 +76,7 @@ ShillTechnologyToPatchpanelClientTechnology(Technology technology) {
 
 }  // namespace
 
-int Network::next_network_id_ = 0;
+int Network::next_network_id_ = 1;
 
 std::unique_ptr<Network> Network::CreateForTesting(
     int interface_index,

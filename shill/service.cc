@@ -340,6 +340,7 @@ Service::Service(Manager* manager, Technology technology)
                                  &Service::GetLastConnectedProperty);
   HelpRegisterConstDerivedUint64(kLastOnlineProperty,
                                  &Service::GetLastOnlineProperty);
+  HelpRegisterConstDerivedInt32(kNetworkIDProperty, &Service::GetNetworkID);
 
   store_.RegisterConstUint32(kUplinkSpeedPropertyKbps, &uplink_speed_kbps_);
   store_.RegisterConstUint32(kDownlinkSpeedPropertyKbps, &downlink_speed_kbps_);
@@ -1198,6 +1199,7 @@ void Service::AttachNetwork(base::WeakPtr<Network> network) {
     return;
   }
   attached_network_ = network;
+  adaptor_->EmitIntChanged(kNetworkIDProperty, network->network_id());
   EmitIPConfigPropertyChange();
   attached_network_->RegisterCurrentIPConfigChangeHandler(base::BindRepeating(
       &Service::EmitIPConfigPropertyChange, weak_ptr_factory_.GetWeakPtr()));
@@ -1217,6 +1219,7 @@ void Service::DetachNetwork() {
   attached_network_->OnStaticIPConfigChanged({});
   attached_network_ = nullptr;
   EmitIPConfigPropertyChange();
+  adaptor_->EmitIntChanged(kNetworkIDProperty, 0);
 }
 
 void Service::EmitIPConfigPropertyChange() {
@@ -2165,6 +2168,13 @@ void Service::HelpRegisterConstDerivedUint64(
       Uint64Accessor(new CustomReadOnlyAccessor<Service, uint64_t>(this, get)));
 }
 
+void Service::HelpRegisterConstDerivedInt32(
+    std::string_view name, int32_t (Service::*get)(Error* error) const) {
+  store_.RegisterDerivedInt32(
+      name,
+      Int32Accessor(new CustomReadOnlyAccessor<Service, int32_t>(this, get)));
+}
+
 // static
 void Service::LoadString(const StoreInterface* storage,
                          const std::string& id,
@@ -2438,6 +2448,13 @@ void Service::SetLastOnlineProperty(const base::Time& value) {
 
 uint64_t Service::GetLastOnlineProperty(Error* /*error*/) const {
   return last_online_.ToDeltaSinceWindowsEpoch().InMilliseconds();
+}
+
+int32_t Service::GetNetworkID(Error* /*error*/) const {
+  if (!attached_network_) {
+    return 0;
+  }
+  return attached_network_->network_id();
 }
 
 bool Service::GetMeteredProperty(Error* /*error*/) {

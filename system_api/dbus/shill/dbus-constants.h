@@ -193,6 +193,7 @@ constexpr char kDownlinkSpeedPropertyKbps[] = "DownlinkSpeedKbps";
 constexpr char kLastManualConnectAttemptProperty[] = "LastManualConnectAttempt";
 constexpr char kLastConnectedProperty[] = "LastConnected";
 constexpr char kLastOnlineProperty[] = "LastOnline";
+constexpr char kNetworkIDProperty[] = "NetworkID";
 
 // Cellular Service property names.
 constexpr char kActivationStateProperty[] = "Cellular.ActivationState";

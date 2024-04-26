@@ -765,27 +765,38 @@ TEST_F(ServiceTest, StaticIPConfigsChanged) {
   update_address(kTestIpAddress1);
   ASSERT_TRUE(service_->Save(&storage));
 
+  EXPECT_EQ(0, service_->GetNetworkID(nullptr));
+
+  int fake_network_id = 335;
+  EXPECT_CALL(*GetAdaptor(),
+              EmitIntChanged(kNetworkIDProperty, fake_network_id));
   auto network =
       std::make_unique<MockNetwork>(1, "test_ifname", Technology::kEthernet);
+  ON_CALL(*network, network_id).WillByDefault(Return(fake_network_id));
   service_->AttachNetwork(network->AsWeakPtr());
   SetStateField(Service::kStateConnected);
 
   // Changes the address, network should be notified.
-  EXPECT_CALL(*network, OnStaticIPConfigChanged(_));
+  EXPECT_CALL(*network, OnStaticIPConfigChanged);
   update_address(kTestIpAddress2);
   // Address is not changed, network should not be notified.
   update_address(kTestIpAddress2);
   // Reloads the service, network should be notified since address is changed.
-  EXPECT_CALL(*network, OnStaticIPConfigChanged(_));
+  EXPECT_CALL(*network, OnStaticIPConfigChanged);
   ASSERT_TRUE(service_->Load(&storage));
+
+  EXPECT_EQ(fake_network_id, service_->GetNetworkID(nullptr));
 
   // Persists the service and reloads again, network should not be notified
   // since address is not changed.
   ASSERT_TRUE(service_->Save(&storage));
   // Detaches the network, it should be notified once, but not any more.
-  EXPECT_CALL(*network, OnStaticIPConfigChanged(_));
+  EXPECT_CALL(*network, OnStaticIPConfigChanged);
+  EXPECT_CALL(*GetAdaptor(), EmitIntChanged(kNetworkIDProperty, 0));
   service_->DetachNetwork();
   update_address(kTestIpAddress2);
+
+  EXPECT_EQ(0, service_->GetNetworkID(nullptr));
 }
 
 TEST_F(ServiceTest, State) {
@@ -1754,33 +1765,63 @@ INSTANTIATE_TEST_SUITE_P(
     WriteOnlyServicePropertyTest,
     Values(brillo::Any(std::string(kEapPasswordProperty))));
 
-TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
+TEST_F(ServiceTest, AttachedNetworkChangeTriggersEmitPropertyChanged) {
   {
     Error error;
     EXPECT_EQ(DBusControl::NullRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());
+    EXPECT_EQ(0, service_->GetNetworkID(nullptr));
   }
 
   {
-    Error error;
+    int fake_network_id = 335;
+    auto ipconfig = std::make_unique<IPConfig>(control_interface(), kIfName);
     auto network =
         std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+    ON_CALL(*network, network_id).WillByDefault(Return(fake_network_id));
+    ON_CALL(*network, GetCurrentIPConfig())
+        .WillByDefault(Return(ipconfig.get()));
+
+    EXPECT_CALL(*GetAdaptor(),
+                EmitIntChanged(kNetworkIDProperty, fake_network_id));
+    EXPECT_CALL(*GetAdaptor(),
+                EmitRpcIdentifierChanged(kIPConfigProperty,
+                                         ipconfig->GetRpcIdentifier()));
     service_->AttachNetwork(network->AsWeakPtr());
-    auto ipconfig = std::make_unique<IPConfig>(control_interface(), kIfName);
-    EXPECT_CALL(*network, GetCurrentIPConfig())
-        .WillOnce(Return(ipconfig.get()));
+    EXPECT_EQ(fake_network_id, service_->GetNetworkID(nullptr));
+    Error error;
     EXPECT_EQ(ipconfig->GetRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_TRUE(error.IsSuccess());
+
+    EXPECT_CALL(*GetAdaptor(), EmitIntChanged(kNetworkIDProperty, 0));
+    EXPECT_CALL(*GetAdaptor(), EmitRpcIdentifierChanged(kIPConfigProperty, _))
+        .Times(0);
     service_->DetachNetwork();
   }
 
   {
     Error error;
+    EXPECT_EQ(DBusControl::NullRpcIdentifier(),
+              service_->GetIPConfigRpcIdentifier(&error));
+    EXPECT_EQ(Error::kNotFound, error.type());
+    EXPECT_EQ(0, service_->GetNetworkID(nullptr));
+  }
+
+  {
+    int fake_network_id = 744;
     auto network =
         std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+    ON_CALL(*network, network_id).WillByDefault(Return(fake_network_id));
+    EXPECT_CALL(*GetAdaptor(),
+                EmitIntChanged(kNetworkIDProperty, fake_network_id));
+    EXPECT_CALL(*GetAdaptor(), EmitRpcIdentifierChanged(kIPConfigProperty, _))
+        .Times(0);
     service_->AttachNetwork(network->AsWeakPtr());
+    EXPECT_EQ(fake_network_id, service_->GetNetworkID(nullptr));
+
+    Error error;
     EXPECT_EQ(DBusControl::NullRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());
