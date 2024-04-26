@@ -755,7 +755,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessLockbox) {
   ClearTPM();
   ResetLoader();
   RequestPreservation();
-  SetupPendingFirmwareUpdate(false, EXIT_SUCCESS);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
   EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
@@ -820,7 +819,6 @@ TEST_F(EncryptionKeyTest, StatefulPreservationNoPreviousKey) {
   SetupSpace(kLockboxIndex, kLockboxAttributesTpm1, true, kLockboxV2Contents,
              sizeof(kLockboxV2Contents));
   RequestPreservation();
-  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
 
   ExpectFreshKey();
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
