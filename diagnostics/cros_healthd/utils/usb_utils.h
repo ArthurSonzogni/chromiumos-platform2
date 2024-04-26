@@ -10,10 +10,7 @@
 #include <string>
 #include <utility>
 
-namespace ash::cros_healthd::mojom {
-enum class UsbSpecSpeed;
-enum class UsbVersion;
-}  // namespace ash::cros_healthd::mojom
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace base {
 class FilePath;
