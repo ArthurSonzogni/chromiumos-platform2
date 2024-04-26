@@ -657,21 +657,22 @@ bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
   }
 
   // Launch the update locator script.
-  brillo::ProcessImpl tpm_firmware_update_locator;
-  tpm_firmware_update_locator.SetCloseUnusedFileDescriptors(true);
-  tpm_firmware_update_locator.RedirectUsingPipe(STDOUT_FILENO, false);
-  tpm_firmware_update_locator.AddArg(
+  std::unique_ptr<brillo::Process> tpm_firmware_update_locator =
+      platform_->CreateProcessInstance();
+  tpm_firmware_update_locator->SetCloseUnusedFileDescriptors(true);
+  tpm_firmware_update_locator->RedirectUsingPipe(STDOUT_FILENO, false);
+  tpm_firmware_update_locator->AddArg(
       rootdir_.Append(paths::kFirmwareUpdateLocator).value());
-  tpm_firmware_update_locator.AddArg(version_info);
-  tpm_firmware_update_locator.AddArg(ifx_field_upgrade_info);
-  if (!tpm_firmware_update_locator.Start()) {
+  tpm_firmware_update_locator->AddArg(version_info);
+  tpm_firmware_update_locator->AddArg(ifx_field_upgrade_info);
+  if (!tpm_firmware_update_locator->Start()) {
     LOG(ERROR) << "Failed to start update locator child process";
     return false;
   }
 
   // Read the output.
   {
-    base::File pipe(tpm_firmware_update_locator.GetPipe(STDOUT_FILENO));
+    base::File pipe(tpm_firmware_update_locator->GetPipe(STDOUT_FILENO));
     char update_location[PATH_MAX];
     int bytes_read =
         pipe.ReadAtCurrentPos(update_location, sizeof(update_location));
@@ -696,7 +697,7 @@ bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
   }
 
   // Make sure the locator script terminated cleanly.
-  if (tpm_firmware_update_locator.Wait() != 0) {
+  if (tpm_firmware_update_locator->Wait() != 0) {
     LOG(ERROR) << "TPM firmware update locator utility failed.";
     return false;
   }

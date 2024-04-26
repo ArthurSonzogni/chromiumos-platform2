@@ -8,11 +8,12 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
-#include <libstorage/platform/fake_platform.h>
+#include <libstorage/platform/mock_platform.h>
 #include <openssl/sha.h>
 #include <vboot/tlcl.h>
 
@@ -185,7 +186,7 @@ using EncryptionKeyStatus = EncryptionKey::EncryptionKeyStatus;
 class EncryptionKeyTest : public testing::Test {
  public:
   void SetUp() override {
-    platform_ = std::make_unique<libstorage::FakePlatform>();
+    platform_ = std::make_unique<libstorage::MockPlatform>();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(platform_->CreateDirectory(
         tmpdir_.GetPath().Append("mnt/stateful_partition")));
@@ -254,33 +255,51 @@ class EncryptionKeyTest : public testing::Test {
     ASSERT_TRUE(platform_->TouchFileDurable(key_->preservation_request_path()));
   }
 
-  void SetupPendingFirmwareUpdate(bool available, int exit_status) {
+  void SetupPendingFirmwareUpdate(bool available, bool exit_status) {
     // Put the firmware update request into place.
     base::FilePath update_request_path(
         tmpdir_.GetPath().Append(paths::kFirmwareUpdateRequest));
     ASSERT_TRUE(platform_->TouchFileDurable(update_request_path));
 
-    // Create a placeholder firmware update image file.
-    base::FilePath firmware_update_image_path;
-    if (available) {
-      firmware_update_image_path = tmpdir_.GetPath()
-                                       .Append(paths::kFirmwareDir)
-                                       .Append("placeholder_fw.bin");
-      ASSERT_TRUE(platform_->TouchFileDurable(firmware_update_image_path));
-    }
-
-    // Set up a shell script to simulate the update locator tool.
-    // Do not use platform-> since we are using brillo::ProcessImpl directly.
-    std::string script = base::StringPrintf(
-        "#!/bin/sh\necho \"%s\"\nexit %d",
-        firmware_update_image_path.value().c_str(), exit_status);
+    // Create a placeholder firmware updater.
     base::FilePath firmware_update_locator_path =
         tmpdir_.GetPath().Append(paths::kFirmwareUpdateLocator);
     ASSERT_TRUE(base::CreateDirectory(firmware_update_locator_path.DirName()));
-    ASSERT_TRUE(base::WriteFile(firmware_update_locator_path, script.data(),
-                                script.size()));
-    ASSERT_TRUE(
-        base::SetPosixFilePermissions(firmware_update_locator_path, 0755));
+    ASSERT_TRUE(base::WriteFile(firmware_update_locator_path, ""));
+
+    // Mock the (current/updater) process to return the firmware image file.
+    brillo::ProcessMock* process = platform_->mock_process();
+    EXPECT_CALL(*process, RedirectUsingPipe(STDOUT_FILENO, false /*is_input*/));
+    EXPECT_CALL(*process, Start()).WillOnce(Return(exit_status));
+    if (!exit_status)
+      return;
+
+    // Setup a pipe to echo the firmware name:
+    int pipe[2];
+    base::ScopedFD read_end, write_end;
+    ASSERT_TRUE(base::CreateLocalNonBlockingPipe(pipe));
+    read_end.reset(pipe[0]);
+    write_end.reset(pipe[1]);
+
+    if (available) {
+      // Create a placeholder firmware update image file.
+      base::FilePath firmware_update_image_path =
+          tmpdir_.GetPath()
+              .Append(paths::kFirmwareDir)
+              .Append("placeholder_fw.bin");
+      ASSERT_TRUE(platform_->TouchFileDurable(firmware_update_image_path));
+      // Feed the pipe with the firmware image path.
+      ASSERT_TRUE(base::WriteFileDescriptor(
+          write_end.get(), firmware_update_image_path.value() + "\n"));
+      EXPECT_CALL(*process, Wait()).WillOnce(Return(0));
+    } else {
+      ASSERT_TRUE(base::WriteFileDescriptor(write_end.get(), ""));
+    }
+    EXPECT_CALL(*process, GetPipe(STDOUT_FILENO))
+        .WillOnce(Return(read_end.get()));
+    // read_end is now used by |tpm_firmware_update_locator|, it will be
+    // closed when the test complete.
+    std::ignore = read_end.release();
   }
 
   void ExpectNeedsFinalization() {
@@ -353,7 +372,7 @@ class EncryptionKeyTest : public testing::Test {
   base::ScopedTempDir tmpdir_;
   TlclStub tlcl_;
 
-  std::unique_ptr<libstorage::FakePlatform> platform_;
+  std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<Tpm> tpm_;
   std::unique_ptr<SystemKeyLoader> loader_;
   std::unique_ptr<EncryptionKey> key_;
@@ -741,7 +760,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessLockbox) {
              sizeof(kLockboxV2Contents));
   WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
   RequestPreservation();
-  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+  SetupPendingFirmwareUpdate(true, true);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
   EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
@@ -773,7 +792,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationSuccessEncstateful) {
              sizeof(kLockboxV2Contents));
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
   RequestPreservation();
-  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+  SetupPendingFirmwareUpdate(true, true);
 
   ExpectExistingKey(kEncryptionKeyEncStatefulTpm1);
   EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
@@ -790,7 +809,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationErrorNotEligible) {
              sizeof(kLockboxV2Contents));
   WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
   RequestPreservation();
-  SetupPendingFirmwareUpdate(false, EXIT_SUCCESS);
+  SetupPendingFirmwareUpdate(false, true);
 
   ExpectFreshKey();
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
@@ -805,7 +824,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationErrorUpdateLocatorFailure) {
              sizeof(kLockboxV2Contents));
   WriteWrappedKey(key_->key_path(), kWrappedKeyLockboxV2);
   RequestPreservation();
-  SetupPendingFirmwareUpdate(true, EXIT_FAILURE);
+  SetupPendingFirmwareUpdate(true, false);
 
   ExpectFreshKey();
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
@@ -832,7 +851,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryKeyfileMove) {
              sizeof(kLockboxV2Contents));
   WriteWrappedKey(key_->preserved_previous_key_path(), kWrappedKeyLockboxV2);
   RequestPreservation();
-  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+  SetupPendingFirmwareUpdate(true, true);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
   EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
@@ -848,7 +867,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryEncryptionKeyWrapping) {
              sizeof(kLockboxV2Contents));
   WriteWrappedKey(key_->preserved_previous_key_path(), kWrappedKeyLockboxV2);
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
-  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+  SetupPendingFirmwareUpdate(true, true);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
   EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
@@ -865,7 +884,7 @@ TEST_F(EncryptionKeyTest, StatefulPreservationRetryTpmOwnership) {
   tlcl_.SetOwned({kOwnerSecret, kOwnerSecret + kOwnerSecretSize});
   WriteWrappedKey(key_->preserved_previous_key_path(), kWrappedKeyLockboxV2);
   WriteWrappedKey(key_->key_path(), kWrappedKeyEncStatefulTpm1);
-  SetupPendingFirmwareUpdate(true, EXIT_SUCCESS);
+  SetupPendingFirmwareUpdate(true, true);
 
   ExpectExistingKey(kEncryptionKeyLockboxV2);
   EXPECT_EQ(EncryptionKeyStatus::kKeyFile, key_->encryption_key_status());
