@@ -51,7 +51,8 @@ class EncryptionKey {
 
   EncryptionKey(libstorage::Platform* platform,
                 SystemKeyLoader* loader,
-                const base::FilePath& rootdir);
+                const base::FilePath& rootdir,
+                const base::FilePath& stateful_mount);
 
   // Loads the system key from TPM NVRAM via |loader_|.
   bool SetTpmSystemKey();
@@ -112,6 +113,7 @@ class EncryptionKey {
   SystemKeyLoader* loader_ = nullptr;
 
   // Paths.
+  base::FilePath rootdir_;
   base::FilePath key_path_;
   base::FilePath needs_finalization_path_;
   base::FilePath preservation_request_path_;

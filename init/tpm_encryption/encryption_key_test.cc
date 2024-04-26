@@ -7,7 +7,6 @@
 #include <memory>
 
 #include <base/files/file_util.h>
-#include <base/files/scoped_temp_dir.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -187,11 +186,9 @@ class EncryptionKeyTest : public testing::Test {
  public:
   void SetUp() override {
     platform_ = std::make_unique<libstorage::MockPlatform>();
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+    ASSERT_TRUE(platform_->CreateDirectory(rootdir_));
     ASSERT_TRUE(platform_->CreateDirectory(
-        tmpdir_.GetPath().Append("mnt/stateful_partition")));
-    ASSERT_TRUE(platform_->CreateDirectory(
-        tmpdir_.GetPath().Append(paths::cryptohome::kTpmOwned).DirName()));
+        stateful_mount_.Append(paths::cryptohome::kTpmOwned).DirName()));
 
     ClearTPM();
     ResetLoader();
@@ -201,10 +198,10 @@ class EncryptionKeyTest : public testing::Test {
 
   void ResetLoader() {
     tpm_ = std::make_unique<Tpm>();
-    loader_ =
-        SystemKeyLoader::Create(platform_.get(), tpm_.get(), tmpdir_.GetPath());
+    loader_ = SystemKeyLoader::Create(platform_.get(), tpm_.get(), rootdir_,
+                                      stateful_mount_);
     key_ = std::make_unique<EncryptionKey>(platform_.get(), loader_.get(),
-                                           tmpdir_.GetPath());
+                                           rootdir_, stateful_mount_);
   }
 
   void ResetTPM() {
@@ -221,7 +218,7 @@ class EncryptionKeyTest : public testing::Test {
     tlcl_.SetOwned({0x5e, 0xc2, 0xe7});
     if (!USE_TPM2) {
       ASSERT_TRUE(platform_->WriteStringToFile(
-          tmpdir_.GetPath().Append(paths::cryptohome::kTpmOwned), ""));
+          stateful_mount_.Append(paths::cryptohome::kTpmOwned), ""));
     }
   }
 
@@ -258,14 +255,13 @@ class EncryptionKeyTest : public testing::Test {
   void SetupPendingFirmwareUpdate(bool available, bool exit_status) {
     // Put the firmware update request into place.
     base::FilePath update_request_path(
-        tmpdir_.GetPath().Append(paths::kFirmwareUpdateRequest));
+        stateful_mount_.Append(paths::kFirmwareUpdateRequest));
     ASSERT_TRUE(platform_->TouchFileDurable(update_request_path));
 
     // Create a placeholder firmware updater.
     base::FilePath firmware_update_locator_path =
-        tmpdir_.GetPath().Append(paths::kFirmwareUpdateLocator);
-    ASSERT_TRUE(base::CreateDirectory(firmware_update_locator_path.DirName()));
-    ASSERT_TRUE(base::WriteFile(firmware_update_locator_path, ""));
+        rootdir_.Append(paths::kFirmwareUpdateLocator);
+    ASSERT_TRUE(platform_->WriteStringToFile(firmware_update_locator_path, ""));
 
     // Mock the (current/updater) process to return the firmware image file.
     brillo::ProcessMock* process = platform_->mock_process();
@@ -284,9 +280,7 @@ class EncryptionKeyTest : public testing::Test {
     if (available) {
       // Create a placeholder firmware update image file.
       base::FilePath firmware_update_image_path =
-          tmpdir_.GetPath()
-              .Append(paths::kFirmwareDir)
-              .Append("placeholder_fw.bin");
+          rootdir_.Append(paths::kFirmwareDir).Append("placeholder_fw.bin");
       ASSERT_TRUE(platform_->TouchFileDurable(firmware_update_image_path));
       // Feed the pipe with the firmware image path.
       ASSERT_TRUE(base::WriteFileDescriptor(
@@ -364,12 +358,13 @@ class EncryptionKeyTest : public testing::Test {
 
   void SetStaleOwnershipFlag() {
     ASSERT_TRUE(platform_->WriteStringToFile(
-        tmpdir_.GetPath().Append(paths::cryptohome::kTpmOwned), ""));
+        stateful_mount_.Append(paths::cryptohome::kTpmOwned), ""));
   }
 
 #endif
 
-  base::ScopedTempDir tmpdir_;
+  base::FilePath rootdir_{"/test1"};
+  base::FilePath stateful_mount_{"/test2"};
   TlclStub tlcl_;
 
   std::unique_ptr<libstorage::MockPlatform> platform_;

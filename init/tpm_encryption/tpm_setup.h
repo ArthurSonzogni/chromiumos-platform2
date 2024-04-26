@@ -25,7 +25,8 @@ class TpmSystemKey {
  public:
   TpmSystemKey(libstorage::Platform* platform,
                init_metrics::InitMetrics* metrics,
-               base::FilePath rootdir);
+               base::FilePath rootdir,
+               base::FilePath stateful_mount);
 
   // Reads key material from the file |key_material_file|, creates a system key
   // using the material, and persists the system key in NVRAM.
@@ -51,6 +52,7 @@ class TpmSystemKey {
   libstorage::Platform* platform_;
   init_metrics::InitMetrics* metrics_;
   base::FilePath rootdir_;
+  base::FilePath stateful_mount_;
   Tpm tpm_;
   std::unique_ptr<SystemKeyLoader> loader_;
   bool has_chromefw_;

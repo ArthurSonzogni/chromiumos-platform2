@@ -28,11 +28,11 @@
 
 namespace encryption {
 namespace paths {
-const char kStatefulMount[] = "mnt/stateful_partition";
+const char kKernelCmdline[] = "proc/cmdline";
+const char kProductUUID[] = "sys/class/dmi/id/product_uuid";
+// Using stateful partition mount point as base.
 const char kEncryptedKey[] = "encrypted.key";
 const char kNeedsFinalization[] = "encrypted.needs-finalization";
-const char kKernelCmdline[] = "/proc/cmdline";
-const char kProductUUID[] = "/sys/class/dmi/id/product_uuid";
 const char kStatefulPreservationRequest[] = "preservation_request";
 const char kPreservedPreviousKey[] = "encrypted.key.preserved";
 }  // namespace paths
@@ -134,9 +134,10 @@ brillo::SecureBlob GetUselessKey() {
 }
 
 // Extract the desired system key from the kernel's boot command line.
-brillo::SecureBlob GetKeyFromKernelCmdline(libstorage::Platform* platform) {
+brillo::SecureBlob GetKeyFromKernelCmdline(libstorage::Platform* platform,
+                                           const base::FilePath rootdir) {
   std::string cmdline;
-  if (!platform->ReadFileToString(base::FilePath(paths::kKernelCmdline),
+  if (!platform->ReadFileToString(rootdir.Append(paths::kKernelCmdline),
                                   &cmdline)) {
     PLOG(ERROR) << "Failed to read kernel command line";
     return brillo::SecureBlob();
@@ -159,9 +160,9 @@ brillo::SecureBlob GetKeyFromKernelCmdline(libstorage::Platform* platform) {
 
 EncryptionKey::EncryptionKey(libstorage::Platform* platform,
                              SystemKeyLoader* loader,
-                             const base::FilePath& rootdir)
-    : platform_(platform), loader_(loader) {
-  base::FilePath stateful_mount = rootdir.Append(paths::kStatefulMount);
+                             const base::FilePath& rootdir,
+                             const base::FilePath& stateful_mount)
+    : platform_(platform), loader_(loader), rootdir_(rootdir) {
   key_path_ = stateful_mount.Append(paths::kEncryptedKey);
   needs_finalization_path_ = stateful_mount.Append(paths::kNeedsFinalization);
   preservation_request_path_ =
@@ -182,7 +183,7 @@ bool EncryptionKey::SetTpmSystemKey() {
 }
 
 bool EncryptionKey::SetInsecureFallbackSystemKey() {
-  system_key_ = GetKeyFromKernelCmdline(platform_);
+  system_key_ = GetKeyFromKernelCmdline(platform_, rootdir_);
   if (!system_key_.empty()) {
     LOG(INFO) << "Using kernel command line argument as system key.";
     system_key_status_ = SystemKeyStatus::kKernelCommandLine;
@@ -190,7 +191,7 @@ bool EncryptionKey::SetInsecureFallbackSystemKey() {
   }
 
   std::string product_uuid;
-  if (platform_->ReadFileToString(base::FilePath(paths::kProductUUID),
+  if (platform_->ReadFileToString(rootdir_.Append(paths::kProductUUID),
                                   &product_uuid)) {
     system_key_ = Sha256(base::ToUpperASCII(product_uuid));
     LOG(INFO) << "Using UUID as system key.";

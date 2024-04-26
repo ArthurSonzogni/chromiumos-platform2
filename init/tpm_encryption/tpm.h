@@ -42,24 +42,27 @@ const uint32_t kPCRBootMode = 0;
 extern const uint8_t* kOwnerSecret;
 extern const size_t kOwnerSecretSize;
 
-// Path constants. Note that these don't carry the / root prefix because the
-// actual path gets constructed relative to a rootdir (which is a temporary
-// directory in tests, the actual root directory for production).
+// Path constants. Note that these don't carry the '/' root
+// prefix because the actual path gets constructed relative to a valid stateful
+// partition (which is a temporary directory in tests, the mounted
+// unencrypted stateful for production).
 namespace paths {
-inline constexpr char kFirmwareUpdateRequest[] =
-    "mnt/stateful_partition/unencrypted/preserve/tpm_firmware_update_request";
-inline constexpr char kFirmwareDir[] = "lib/firmware/tpm";
+// Based on using root prefix:
 inline constexpr char kFirmwareUpdateLocator[] =
     "usr/sbin/tpm-firmware-locate-update";
+inline constexpr char kFirmwareDir[] = "lib/firmware/tpm";
+
+// Based on /mnt/stateful prefix.
+inline constexpr char kFirmwareUpdateRequest[] =
+    "unencrypted/preserve/tpm_firmware_update_request";
 
 namespace cryptohome {
-inline constexpr char kTpmOwned[] =
-    "mnt/stateful_partition/unencrypted/tpm_manager/tpm_owned";
-inline constexpr char kTpmStatus[] = "mnt/stateful_partition/.tpm_status";
+inline constexpr char kTpmOwned[] = "unencrypted/tpm_manager/tpm_owned";
+inline constexpr char kTpmStatus[] = ".tpm_status";
 inline constexpr char kShallInitialize[] =
     "home/.shadow/.can_attempt_ownership";
 inline constexpr char kAttestationDatabase[] =
-    "mnt/stateful_partition/unencrypted/preserve/attestation.epb";
+    "unencrypted/preserve/attestation.epb";
 }  // namespace cryptohome
 }  // namespace paths
 
@@ -217,9 +220,11 @@ class SystemKeyLoader {
   virtual ~SystemKeyLoader() = default;
 
   // Create a system key loader suitable for the system.
-  static std::unique_ptr<SystemKeyLoader> Create(libstorage::Platform* platform,
-                                                 Tpm* tpm,
-                                                 const base::FilePath& rootdir);
+  static std::unique_ptr<SystemKeyLoader> Create(
+      libstorage::Platform* platform,
+      Tpm* tpm,
+      const base::FilePath& rootdir,
+      const base::FilePath& stateful_mount);
 
   // Load the encryption key from TPM NVRAM. Returns true if successful and
   // fills in key, false if the key is not available or there is an error.

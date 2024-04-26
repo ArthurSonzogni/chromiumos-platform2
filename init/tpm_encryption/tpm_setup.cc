@@ -45,8 +45,7 @@ constexpr char kBioTpmSeedFile[] = "seed";
 constexpr char kFeaturedTpmSeedSalt[] = "featured";
 constexpr char kFeaturedTpmSeedTmpDir[] = "/run/featured_seed";
 constexpr char kFeaturedTpmSeedFile[] = "tpm_seed";
-constexpr char kOldTpmOwnershipStateFile[] =
-    "mnt/stateful_partition/.tpm_owned";
+constexpr char kOldTpmOwnershipStateFile[] = ".tpm_owned";
 constexpr char kNvramExport[] = "/tmp/lockbox.nvram";
 
 /* Exports NVRAM contents to tmpfs for use by install attributes */
@@ -136,12 +135,15 @@ bool SendSecretToFeaturedTmpFile(const encryption::EncryptionKey& key,
 
 TpmSystemKey::TpmSystemKey(libstorage::Platform* platform,
                            init_metrics::InitMetrics* metrics,
-                           base::FilePath rootdir)
+                           base::FilePath rootdir,
+                           base::FilePath stateful_mount)
     : platform_(platform),
       metrics_(metrics),
       rootdir_(rootdir),
+      stateful_mount_(stateful_mount),
       tpm_(),
-      loader_(encryption::SystemKeyLoader::Create(platform_, &tpm_, rootdir_)),
+      loader_(encryption::SystemKeyLoader::Create(
+          platform_, &tpm_, rootdir_, stateful_mount_)),
       has_chromefw_(HasChromeFw()) {}
 
 bool TpmSystemKey::Set(base::FilePath key_material_file) {
@@ -179,7 +181,8 @@ std::optional<encryption::EncryptionKey> TpmSystemKey::Load(bool safe_mount) {
     LOG(ERROR) << "Failed to migrate tpm owership state file to" << kTpmOwned;
   }
 
-  encryption::EncryptionKey key(platform_, loader_.get(), rootdir_);
+  encryption::EncryptionKey key(platform_, loader_.get(), rootdir_,
+                                stateful_mount_);
   if (ShallUseTpmForSystemKey() && safe_mount) {
     if (!tpm_.available()) {
       // The TPM should be available before we load the system_key.
@@ -293,8 +296,10 @@ bool TpmSystemKey::ShallUseTpmForSystemKey() {
 }
 
 bool TpmSystemKey::MigrateTpmOwnerShipStateFile() {
-  base::FilePath tpm_owned = rootdir_.Append(kTpmOwned);
-  base::FilePath old_tpm_state = rootdir_.Append(kOldTpmOwnershipStateFile);
+  base::FilePath tpm_owned =
+      stateful_mount_.Append("unencrypted/tpm_manager/tpm_owned");
+  base::FilePath old_tpm_state =
+      stateful_mount_.Append(kOldTpmOwnershipStateFile);
 
   if (!platform_->CreateDirectory(tpm_owned.DirName())) {
     LOG(ERROR) << "Failed to create dir for TPM pwnership state file.";
@@ -302,8 +307,8 @@ bool TpmSystemKey::MigrateTpmOwnerShipStateFile() {
   }
 
   if (platform_->FileExists(old_tpm_state)) {
-    LOG(INFO) << kOldTpmOwnershipStateFile << " exists. " << "Moving it to "
-              << kTpmOwned;
+    LOG(INFO) << old_tpm_state.value() << " exists. " << "Moving it to "
+              << tpm_owned.value();
     return platform_->Rename(old_tpm_state, tpm_owned);
   }
   return true;

@@ -62,6 +62,7 @@ int main(int argc, const char* argv[]) {
 
   char* rootdir_env = getenv("MOUNT_ENCRYPTED_ROOT");
   base::FilePath rootdir = base::FilePath(rootdir_env ? rootdir_env : "/");
+  base::FilePath stateful_partition = rootdir.Append("mnt/stateful_partition");
   libstorage::Platform platform;
   init_metrics::ScopedInitMetricsSingleton scoped_metrics(
       kMountEncryptedMetricsPath);
@@ -70,11 +71,11 @@ int main(int argc, const char* argv[]) {
       &platform, init_metrics::InitMetrics::GetInternal());
   brillo::DeviceMapper device_mapper;
   auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
-      rootdir, rootdir.Append("mnt/stateful_partition"), &platform,
-      &device_mapper, &storage_container_factory);
+      rootdir, stateful_partition, &platform, &device_mapper,
+      &storage_container_factory);
 
   auto tpm_system_key = encryption::TpmSystemKey(
-      &platform, init_metrics::InitMetrics::Get(), rootdir);
+      &platform, init_metrics::InitMetrics::Get(), rootdir, stateful_partition);
 
   if (!encrypted_fs) {
     LOG(ERROR) << "Failed to create encrypted fs handler.";

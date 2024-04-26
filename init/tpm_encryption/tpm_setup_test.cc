@@ -10,7 +10,6 @@
 #include "init/tpm_encryption/tpm_setup.h"
 
 #include <base/files/file_path.h>
-#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libstorage/platform/fake_platform.h>
@@ -26,20 +25,21 @@ namespace encryption {
 class TpmSystemKeyTest : public testing::Test {
  public:
   void SetUp() override {
-    rootdir_ = base::FilePath("/");
-    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     platform_ = std::make_unique<libstorage::FakePlatform>();
+    ASSERT_TRUE(platform_->CreateDirectory(rootdir_));
+    ASSERT_TRUE(platform_->CreateDirectory(stateful_mount_));
     metrics_singleton_ =
         std::make_unique<init_metrics::ScopedInitMetricsSingleton>(
-            tmpdir_.GetPath().Append("metrics").value());
+            rootdir_.Append("metrics").value());
 
     tpm_system_key_ = std::make_unique<TpmSystemKey>(
-        platform_.get(), init_metrics::InitMetrics::Get(), rootdir_);
+        platform_.get(), init_metrics::InitMetrics::Get(), rootdir_,
+        stateful_mount_);
   }
 
  protected:
-  base::FilePath rootdir_;
-  base::ScopedTempDir tmpdir_;
+  base::FilePath rootdir_{"/test1"};
+  base::FilePath stateful_mount_{"/test2"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<init_metrics::ScopedInitMetricsSingleton> metrics_singleton_;
   std::unique_ptr<TpmSystemKey> tpm_system_key_;
@@ -51,21 +51,19 @@ class TpmSystemKeyTest : public testing::Test {
 TEST_F(TpmSystemKeyTest, MigrateTpmOwnerShipAbsent) {
   // Call Load, verify no migration occurs.
   EXPECT_TRUE(tpm_system_key_->Load(false /* safe_mount */));
-  EXPECT_FALSE(platform_->FileExists(rootdir_.Append(
-      "mnt/stateful_partition/unencrypted/tpm_manager/tpm_owned")));
   EXPECT_FALSE(platform_->FileExists(
-      rootdir_.Append("mnt/stateful_partition/.tpm_owned")));
+      stateful_mount_.Append("unencrypted/tpm_manager/tpm_owned")));
+  EXPECT_FALSE(platform_->FileExists(stateful_mount_.Append(".tpm_owned")));
 }
 
 TEST_F(TpmSystemKeyTest, MigrateTpmOwnerShipPresent) {
-  ASSERT_TRUE(platform_->TouchFileDurable(
-      rootdir_.Append("mnt/stateful_partition/.tpm_owned")));
+  ASSERT_TRUE(
+      platform_->TouchFileDurable(stateful_mount_.Append(".tpm_owned")));
   // Call Load, verify a migration does occur.
   EXPECT_TRUE(tpm_system_key_->Load(false /* safe_mount */));
-  EXPECT_TRUE(platform_->FileExists(rootdir_.Append(
-      "mnt/stateful_partition/unencrypted/tpm_manager/tpm_owned")));
-  EXPECT_FALSE(platform_->FileExists(
-      rootdir_.Append("mnt/stateful_partition/.tpm_owned")));
+  EXPECT_TRUE(platform_->FileExists(
+      stateful_mount_.Append("unencrypted/tpm_manager/tpm_owned")));
+  EXPECT_FALSE(platform_->FileExists(stateful_mount_.Append(".tpm_owned")));
 }
 
 }  // namespace encryption

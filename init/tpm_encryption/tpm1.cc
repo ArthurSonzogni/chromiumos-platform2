@@ -138,8 +138,12 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
  public:
   Tpm1SystemKeyLoader(libstorage::Platform* platform,
                       Tpm* tpm,
-                      const base::FilePath& rootdir)
-      : platform_(platform), tpm_(tpm), rootdir_(rootdir) {}
+                      const base::FilePath& rootdir,
+                      const base::FilePath& stateful_mount)
+      : platform_(platform),
+        tpm_(tpm),
+        rootdir_(rootdir),
+        stateful_mount_(stateful_mount) {}
   Tpm1SystemKeyLoader(const Tpm1SystemKeyLoader&) = delete;
   Tpm1SystemKeyLoader& operator=(const Tpm1SystemKeyLoader&) = delete;
 
@@ -196,6 +200,7 @@ class Tpm1SystemKeyLoader : public SystemKeyLoader {
   libstorage::Platform* platform_;
   Tpm* tpm_ = nullptr;
   base::FilePath rootdir_;
+  base::FilePath stateful_mount_;
 
   // Provisional space contents that get initialized by Generate() and written
   // to the NVRAM space by Persist();
@@ -375,7 +380,7 @@ bool Tpm1SystemKeyLoader::PrepareEncStatefulSpace() {
     }
   } else {
     const base::FilePath tpm_owned_path =
-        rootdir_.Append(paths::cryptohome::kTpmOwned);
+        stateful_mount_.Append(paths::cryptohome::kTpmOwned);
     if (platform_->FileExists(tpm_owned_path)) {
       LOG(ERROR)
           << "Unable to define space because TPM is already fully initialized.";
@@ -409,12 +414,13 @@ bool Tpm1SystemKeyLoader::PruneOwnershipStateFilesIfNotOwned() {
 
   // Reset ownership state files to make them consistent with TPM ownership.
   base::FilePath tpm_status_path =
-      rootdir_.Append(paths::cryptohome::kTpmStatus);
-  base::FilePath tpm_owned_path = rootdir_.Append(paths::cryptohome::kTpmOwned);
+      stateful_mount_.Append(paths::cryptohome::kTpmStatus);
+  base::FilePath tpm_owned_path =
+      stateful_mount_.Append(paths::cryptohome::kTpmOwned);
   base::FilePath shall_initialize_path =
-      rootdir_.Append(paths::cryptohome::kShallInitialize);
+      stateful_mount_.Append(paths::cryptohome::kShallInitialize);
   base::FilePath attestation_database_path =
-      rootdir_.Append(paths::cryptohome::kAttestationDatabase);
+      stateful_mount_.Append(paths::cryptohome::kAttestationDatabase);
   if ((platform_->FileExists(tpm_status_path) &&
        !platform_->DeleteFileDurable(tpm_status_path)) ||
       !platform_->DeleteFile(tpm_owned_path) ||
@@ -644,7 +650,8 @@ std::string Tpm1SystemKeyLoader::FormatIFXFieldUpgradeInfo() {
 
 bool Tpm1SystemKeyLoader::IsTPMFirmwareUpdatePending() {
   // Make sure a TPM firmware upgrade has been requested.
-  if (!platform_->FileExists(rootdir_.Append(paths::kFirmwareUpdateRequest))) {
+  if (!platform_->FileExists(
+          stateful_mount_.Append(paths::kFirmwareUpdateRequest))) {
     LOG(ERROR) << "TPM firmware update wasn't requested.";
     return false;
   }
@@ -755,7 +762,8 @@ bool Tpm1SystemKeyLoader::CheckLockbox(bool* valid) {
   // In case there is no encstateful space, the lockbox space is only valid once
   // tpm manager has initialized TPM with random password and recreated the
   // space.
-  *valid = platform_->FileExists(rootdir_.Append(paths::cryptohome::kTpmOwned));
+  *valid = platform_->FileExists(
+      stateful_mount_.Append(paths::cryptohome::kTpmOwned));
   return true;
 }
 
@@ -764,8 +772,12 @@ bool Tpm1SystemKeyLoader::UsingLockboxKey() {
 }
 
 std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(
-    libstorage::Platform* platform, Tpm* tpm, const base::FilePath& rootdir) {
-  return std::make_unique<Tpm1SystemKeyLoader>(platform, tpm, rootdir);
+    libstorage::Platform* platform,
+    Tpm* tpm,
+    const base::FilePath& rootdir,
+    const base::FilePath& stateful_mount) {
+  return std::make_unique<Tpm1SystemKeyLoader>(platform, tpm, rootdir,
+                                               stateful_mount);
 }
 
 }  // namespace encryption

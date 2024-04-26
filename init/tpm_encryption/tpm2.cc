@@ -242,7 +242,10 @@ bool Tpm2SystemKeyLoader::UsingLockboxKey() {
 }
 
 std::unique_ptr<SystemKeyLoader> SystemKeyLoader::Create(
-    libstorage::Platform* platform, Tpm* tpm, const base::FilePath& rootdir) {
+    libstorage::Platform* platform,
+    Tpm* tpm,
+    const base::FilePath& rootdir,
+    const base::FilePath& stateful_mount) {
   return std::make_unique<Tpm2SystemKeyLoader>(tpm);
 }
 
