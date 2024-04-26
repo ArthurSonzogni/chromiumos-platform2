@@ -10,4 +10,4 @@ buganizer {
   component_id: 1327904  # ChromeOS > Platform > baseOS > Storage > Feature Management
 }
 
-team_email: "gwendal@google.com"
+team_email: "chromeos-libsegmentation@google.com"
