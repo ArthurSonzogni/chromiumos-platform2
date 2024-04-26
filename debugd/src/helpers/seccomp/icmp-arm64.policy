@@ -55,3 +55,4 @@ setuid: 1
 dup: 1
 gettimeofday: 1
 sched_yield: 1
+clock_gettime: 1
