@@ -19,10 +19,10 @@ use log::error;
 
 use self::cgroup_x86_64::media_dynamic_cgroup;
 use self::cgroup_x86_64::MediaDynamicCgroupAction;
-use self::globals::read_dynamic_epp_feature;
-use self::globals::set_bsm_signal_state;
-use self::globals::set_media_cgroup_state;
-use self::globals::set_rtc_fs_signal_state;
+use self::globals::BSM_SIGNAL;
+use self::globals::DYNAMIC_EPP;
+use self::globals::MEDIA_CGROUP_SIGNAL;
+use self::globals::RTC_FS_SIGNAL;
 use self::gpu_freq_scaling::intel_device;
 use crate::common::BatterySaverMode;
 use crate::common::FullscreenVideo;
@@ -89,10 +89,10 @@ pub fn apply_platform_power_settings(
 ) -> Result<()> {
     let fullscreen_video_efficiency_mode = power_source == PowerSourceType::DC
         && (rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active);
-    if read_dynamic_epp_feature() {
-        set_rtc_fs_signal_state(fullscreen_video_efficiency_mode);
-        set_media_cgroup_state(fullscreen == FullscreenVideo::Active);
-        set_bsm_signal_state(bsm == BatterySaverMode::Active);
+    if DYNAMIC_EPP.read_value() {
+        RTC_FS_SIGNAL.set_value(fullscreen_video_efficiency_mode);
+        MEDIA_CGROUP_SIGNAL.set_value(fullscreen == FullscreenVideo::Active);
+        BSM_SIGNAL.set_value(bsm == BatterySaverMode::Active);
     } else if fullscreen_video_efficiency_mode {
         if let Err(err) = set_epp(root_path, EnergyPerformancePreference::BalancePower) {
             error!("Failed to set energy performance preference: {:#}", err);
@@ -128,7 +128,7 @@ pub fn apply_platform_power_preferences(
     root_path: &Path,
     preferences: &PowerPreferences,
 ) -> Result<()> {
-    if !read_dynamic_epp_feature() {
+    if !DYNAMIC_EPP.read_value() {
         if let Some(epp) = preferences.epp {
             set_epp(root_path, epp)?;
         }

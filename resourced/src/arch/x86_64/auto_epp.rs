@@ -24,12 +24,10 @@ use super::auto_epp_config::IS_MTL;
 use super::auto_epp_config::MAX_CONSECUTIVE_ERRORS;
 use super::auto_epp_config::PREVENT_OVERTURBO;
 // globals
-use super::globals::read_bsm_signal_state;
-use super::globals::read_dynamic_epp_feature;
-use super::globals::read_media_cgroup_state;
-use super::globals::read_rtc_fs_signal_state;
-use super::globals::set_autoepp_running_status;
-use super::globals::set_dynamic_epp_feature;
+use super::globals::BSM_SIGNAL;
+use super::globals::DYNAMIC_EPP;
+use super::globals::MEDIA_CGROUP_SIGNAL;
+use super::globals::RTC_FS_SIGNAL;
 use crate::cpu_utils::write_to_cpu_policy_patterns;
 
 // File path
@@ -53,17 +51,15 @@ pub fn init() {
 
 fn dynamic_epp_cb(new_state: bool) {
     if new_state {
-        set_dynamic_epp_feature(true);
+        DYNAMIC_EPP.set_value(true);
 
         tokio::spawn(async move {
             auto_epp_main().await;
         });
 
-        set_autoepp_running_status(true);
         info!("Dynamic EPP is now enabled!");
     } else {
-        set_dynamic_epp_feature(false);
-        set_autoepp_running_status(false);
+        DYNAMIC_EPP.set_value(false);
         info!("Dynamic EPP is now disabled!");
     }
 }
@@ -356,16 +352,16 @@ pub async fn auto_epp_main() {
         let mut moderate_utilization_cores: Vec<usize> = Vec::with_capacity(num_cores);
 
         // RTC and FS signal
-        let rtc_fs_value = read_rtc_fs_signal_state();
+        let rtc_fs_value = RTC_FS_SIGNAL.read_value();
 
         // Battery Saver Mode Signal
-        let bsm_state = read_bsm_signal_state();
+        let bsm_state = BSM_SIGNAL.read_value();
 
         // Media C-group Signal
-        let media_cgroup_state = read_media_cgroup_state();
+        let media_cgroup_state = MEDIA_CGROUP_SIGNAL.read_value();
 
         // Terminating Auto EPP
-        let terminate_flag = !read_dynamic_epp_feature();
+        let terminate_flag = !DYNAMIC_EPP.read_value();
 
         // Resize vectors based on the current number of CPU cores
         prev_cpu_stats.resize_with(num_cores, Default::default);
@@ -380,11 +376,9 @@ pub async fn auto_epp_main() {
         };
 
         if terminate_flag {
-            set_autoepp_running_status(false);
             set_epp_for_all_cores(Epp::epp_default());
             return;
         }
-        set_autoepp_running_status(true);
 
         let (threshold_high, threshold_moderate) = if rtc_fs_value {
             (
