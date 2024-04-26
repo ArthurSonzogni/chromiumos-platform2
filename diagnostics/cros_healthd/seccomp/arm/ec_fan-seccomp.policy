@@ -46,3 +46,4 @@ eventfd2: 1
 epoll_wait: 1
 mmap2: 1
 close: 1
+futex: 1

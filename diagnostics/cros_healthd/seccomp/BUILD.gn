@@ -100,6 +100,12 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
                         "connect",
                         "socket: arg0 == AF_UNIX",
                       ]
+  if (_arch == "arm") {
+    required_syscalls += [
+      # `futex` is used in `libc_start_call_main`.
+      "futex",
+    ]
+  }
   if (_arch == "arm64") {
     required_syscalls += [ "process_vm_readv" ]
   }

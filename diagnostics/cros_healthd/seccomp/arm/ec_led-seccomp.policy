@@ -37,3 +37,4 @@ getrandom: arg2 in ~GRND_RANDOM
 clock_getres: 1
 clock_getres_time64: 1
 gettimeofday: 1
+futex: 1

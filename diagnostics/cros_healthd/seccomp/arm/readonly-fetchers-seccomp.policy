@@ -44,3 +44,4 @@ getrandom: arg2 in ~GRND_RANDOM
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
+futex: 1

@@ -49,3 +49,4 @@ eventfd2: 1
 epoll_wait: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 close: 1
+futex: 1

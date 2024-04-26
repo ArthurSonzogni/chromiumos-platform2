@@ -44,3 +44,4 @@ epoll_pwait: 1
 sendto: 1
 # Required syscall for delegate process.
 socket: arg0 == AF_UNIX
+futex: 1
