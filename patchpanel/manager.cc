@@ -109,9 +109,9 @@ Manager::Manager(const base::FilePath& cmd_path,
   qos_svc_ = std::make_unique<QoSService>(datapath_.get(), conntrack_monitor);
 
   downstream_network_svc_ = std::make_unique<DownstreamNetworkService>(
-      metrics_, system_, datapath_.get(), this, rtnl_client_.get(),
-      lifeline_fd_svc_.get(), shill_client_.get(), ipv6_svc_.get(),
-      counters_svc_.get());
+      metrics_, system_, datapath_.get(), routing_svc_.get(), this,
+      rtnl_client_.get(), lifeline_fd_svc_.get(), shill_client_.get(),
+      ipv6_svc_.get(), counters_svc_.get());
 
   constexpr ArcService::ArcType arc_type = []() constexpr {
     if (USE_ARCVM_NIC_HOTPLUG) {

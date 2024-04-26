@@ -347,7 +347,7 @@ class RoutingService {
   RoutingService(System* system, LifelineFDService* lifeline_fd_service);
   RoutingService(const RoutingService&) = delete;
   RoutingService& operator=(const RoutingService&) = delete;
-  virtual ~RoutingService() = default;
+  virtual ~RoutingService();
 
   // Sets the routing tag and VPN bits of the fwmark for the given socket
   // according to the input parameters. Preserves any other bits of the fwmark

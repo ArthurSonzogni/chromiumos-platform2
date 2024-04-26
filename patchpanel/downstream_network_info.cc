@@ -15,9 +15,6 @@
 namespace patchpanel {
 namespace {
 
-constexpr int kStubbedTetheredNetworkId = 411;
-constexpr int kStubbedLocalOnlyNetworkId = 733;
-
 bool CopyIPv4Configuration(const IPv4Configuration& ipv4_config,
                            DownstreamNetworkInfo* info) {
   info->enable_ipv4_dhcp = true;
@@ -99,12 +96,12 @@ CreateDownstreamNetworkResult DownstreamNetworkResultToUMAEvent(
 }
 
 std::unique_ptr<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
+    int network_id,
     const TetheredNetworkRequest& request,
     const ShillClient::Device& shill_device) {
   std::unique_ptr<DownstreamNetworkInfo> info =
       std::make_unique<DownstreamNetworkInfo>();
-  // TODO(b/325124473): Assign a network_id.
-  info->network_id = kStubbedTetheredNetworkId;
+  info->network_id = network_id;
   info->topology = DownstreamNetworkTopology::kTethering;
   info->enable_ipv6 = request.enable_ipv6();
   info->upstream_device = shill_device;
@@ -123,11 +120,10 @@ std::unique_ptr<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
 }
 
 std::unique_ptr<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
-    const LocalOnlyNetworkRequest& request) {
+    int network_id, const LocalOnlyNetworkRequest& request) {
   std::unique_ptr<DownstreamNetworkInfo> info =
       std::make_unique<DownstreamNetworkInfo>();
-  // TODO(b/325124473): Assign a network_id.
-  info->network_id = kStubbedLocalOnlyNetworkId;
+  info->network_id = network_id;
   info->topology = DownstreamNetworkTopology::kLocalOnly;
   // TODO(b/239559602): If IPv6 is specified, enable IPv6 LocalOnlyNetwork with
   // RAServer and copy or generate the IPv6 configuration is needed.

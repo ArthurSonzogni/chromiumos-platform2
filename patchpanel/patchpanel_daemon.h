@@ -38,7 +38,8 @@ class PatchpanelDaemon final : public brillo::DBusServiceDaemon {
   // The file path of the patchpanel daemon binary.
   base::FilePath cmd_path_;
 
-  // Unique instance of patchpanel::System shared for all subsystems.
+  // Unique instance of patchpanel::System shared for all subsystems of the main
+  // patchpanel process.
   std::unique_ptr<System> system_;
   // The singleton instance that manages the creation and exit notification of
   // each subprocess. All the subprocesses should be created by this.

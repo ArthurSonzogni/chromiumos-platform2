@@ -41,6 +41,7 @@ class DownstreamNetworkService {
   DownstreamNetworkService(MetricsLibraryInterface* metrics,
                            System* system,
                            Datapath* datapath,
+                           RoutingService* routing_svc,
                            ForwardingService* forwarding_svc,
                            RTNLClient* rtnl_client,
                            LifelineFDService* lifeline_fd_svc,
@@ -107,6 +108,7 @@ class DownstreamNetworkService {
 
   // Ownned by Manager
   Datapath* datapath_;
+  RoutingService* routing_svc_;
   ForwardingService* forwarding_svc_;
   RTNLClient* rtnl_client_;
   LifelineFDService* lifeline_fd_svc_;

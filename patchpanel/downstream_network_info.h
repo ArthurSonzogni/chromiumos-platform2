@@ -75,12 +75,13 @@ struct DownstreamNetworkInfo {
   // Creates the DownstreamNetworkInfo instance from TetheredNetworkRequest.
   // Returns nullptr in case of failure.
   static std::unique_ptr<DownstreamNetworkInfo> Create(
+      int network_id,
       const TetheredNetworkRequest& request,
       const ShillClient::Device& shill_device);
   // Creates the DownstreamNetworkInfo instance from LocalOnlyNetworkRequest.
   // Returns nullptr in case of failure.
   static std::unique_ptr<DownstreamNetworkInfo> Create(
-      const LocalOnlyNetworkRequest& request);
+      int network_id, const LocalOnlyNetworkRequest& request);
 
   // Creates the configuration of the DHCPServerController.
   std::optional<DHCPServerController::Config> ToDHCPServerConfig() const;

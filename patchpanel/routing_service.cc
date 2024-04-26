@@ -25,6 +25,8 @@ RoutingService::RoutingService(System* system,
                                LifelineFDService* lifeline_fd_service)
     : system_(system), lifeline_fd_svc_(lifeline_fd_service) {}
 
+RoutingService::~RoutingService() = default;
+
 int RoutingService::GetSockopt(
     int sockfd, int level, int optname, void* optval, socklen_t* optlen) {
   return getsockopt(sockfd, level, optname, optval, optlen);

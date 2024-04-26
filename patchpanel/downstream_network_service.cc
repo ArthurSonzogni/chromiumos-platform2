@@ -15,6 +15,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/ipv6_address.h>
@@ -29,6 +30,7 @@
 #include "patchpanel/lifeline_fd_service.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/proto_utils.h"
+#include "patchpanel/routing_service.h"
 #include "patchpanel/rtnl_client.h"
 #include "patchpanel/shill_client.h"
 #include "patchpanel/system.h"
@@ -39,6 +41,7 @@ DownstreamNetworkService::DownstreamNetworkService(
     MetricsLibraryInterface* metrics,
     System* system,
     Datapath* datapath,
+    RoutingService* routing_svc,
     ForwardingService* forwarding_svc,
     RTNLClient* rtnl_client,
     LifelineFDService* lifeline_fd_svc,
@@ -48,6 +51,7 @@ DownstreamNetworkService::DownstreamNetworkService(
     : metrics_(metrics),
       system_(system),
       datapath_(datapath),
+      routing_svc_(routing_svc),
       forwarding_svc_(forwarding_svc),
       rtnl_client_(rtnl_client),
       lifeline_fd_svc_(lifeline_fd_svc),
@@ -93,8 +97,8 @@ DownstreamNetworkService::CreateTetheredNetwork(
     }
   }
 
-  std::unique_ptr<DownstreamNetworkInfo> info =
-      DownstreamNetworkInfo::Create(request, *upstream_shill_device);
+  std::unique_ptr<DownstreamNetworkInfo> info = DownstreamNetworkInfo::Create(
+      routing_svc_->AllocateNetworkID(), request, *upstream_shill_device);
   if (!info) {
     LOG(ERROR) << __func__ << ": Invalid request";
     response.set_response_code(
@@ -118,7 +122,7 @@ DownstreamNetworkService::CreateLocalOnlyNetwork(
   patchpanel::LocalOnlyNetworkResponse response;
 
   std::unique_ptr<DownstreamNetworkInfo> info =
-      DownstreamNetworkInfo::Create(request);
+      DownstreamNetworkInfo::Create(routing_svc_->AllocateNetworkID(), request);
   if (!info) {
     LOG(ERROR) << __func__ << ": Invalid request";
     response.set_response_code(
@@ -144,6 +148,15 @@ DownstreamNetworkService::HandleDownstreamNetworkInfo(
     return {patchpanel::DownstreamNetworkResult::INTERFACE_USED, nullptr};
   }
 
+  // Dup the caller FD to register twice to LifelineFDService, once for the
+  // DownstreamNetwork request itself and once for its network_id assignment.
+  base::ScopedFD client_fd_dup =
+      base::ScopedFD(HANDLE_EINTR(dup(client_fd.get())));
+  if (!client_fd_dup.is_valid()) {
+    PLOG(ERROR) << __func__ << " " << *info << ": Cannot dup client fd";
+    return {patchpanel::DownstreamNetworkResult::ERROR, nullptr};
+  }
+
   auto cancel_lifeline_fd = lifeline_fd_svc_->AddLifelineFD(
       std::move(client_fd),
       base::BindOnce(&DownstreamNetworkService::OnDownstreamNetworkAutoclose,
@@ -151,6 +164,14 @@ DownstreamNetworkService::HandleDownstreamNetworkInfo(
   if (!cancel_lifeline_fd) {
     LOG(ERROR) << __func__ << " " << *info << ": Failed to create lifeline fd";
     return {patchpanel::DownstreamNetworkResult::ERROR, nullptr};
+  }
+
+  if (!routing_svc_->AssignInterfaceToNetwork(info->network_id,
+                                              info->downstream_ifname,
+                                              std::move(client_fd_dup))) {
+    LOG(ERROR) << __func__ << " " << *info << ": Cannot assign "
+               << info->downstream_ifname << " to " << info->network_id;
+    return {patchpanel::DownstreamNetworkResult::INTERFACE_USED, nullptr};
   }
 
   if (!datapath_->StartDownstreamNetwork(*info)) {
@@ -239,6 +260,7 @@ void DownstreamNetworkService::OnDownstreamNetworkAutoclose(
     StopTetheringUpstreamNetwork(*info->upstream_device);
   }
 
+  routing_svc_->ForgetNetworkID(info->network_id);
   downstream_networks_.erase(downstream_network_it);
 }
 
