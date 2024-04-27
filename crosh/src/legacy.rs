@@ -35,7 +35,6 @@ const BASE_COMMANDS: &[&str] = &[
     "storage_test_2",
     "swap",
     "time_info",
-    "top",
     "tracepath",
     "vsh",
     "wifi_power_save",

@@ -24,6 +24,7 @@ mod rollback;
 mod set_time;
 mod sync;
 mod syslog;
+mod top;
 mod u2f_flags;
 mod uname;
 mod upload_crashes;
@@ -57,6 +58,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     set_time::register(dispatcher);
     sync::register(dispatcher);
     syslog::register(dispatcher);
+    top::register(dispatcher);
     u2f_flags::register(dispatcher);
     upload_crashes::register(dispatcher);
     upload_devcoredumps::register(dispatcher);
