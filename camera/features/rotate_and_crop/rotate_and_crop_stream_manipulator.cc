@@ -16,21 +16,20 @@
 #include <vector>
 
 #include <base/bits.h>
-#include <base/containers/contains.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_util.h>
-#include <base/task/bind_post_task.h>
-#include <brillo/key_value_store.h>
 #include <base/system/sys_info.h>
 
 #include "common/camera_hal3_helpers.h"
+#include "common/stream_manipulator_helper.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "cros-camera/device_config.h"
+#include "gpu/gpu_resources.h"
 
 namespace cros {
 
@@ -88,35 +87,15 @@ bool IsExclusiveBoard() {
     return false;
 }
 
-// Find the best YUV resolution for cropping and rotation into the target BLOB
-// resolution. If the same resolution is available, return it. Otherwise return
-// the largest resolution smaller than the BLOB with the same aspect ratio.
-std::optional<Size> FindYuvSizeForRotateAndCrop(
-    const Size& target_blob_size,
-    const std::set<std::pair<uint32_t, uint32_t>>& available_yuv_sizes) {
-  constexpr float kAspectRatioTolerance = 0.1f;
-  const float target_aspect_ratio = static_cast<float>(target_blob_size.width) /
-                                    static_cast<float>(target_blob_size.height);
-  std::optional<Size> yuv_size;
-  for (const auto& [width, height] : available_yuv_sizes) {
-    if (width > target_blob_size.width) {
-      break;
-    }
-    const float aspect_ratio =
-        static_cast<float>(width) / static_cast<float>(height);
-    if (std::abs(aspect_ratio - target_aspect_ratio) < kAspectRatioTolerance) {
-      yuv_size = Size(width, height);
-    }
-  }
-  return yuv_size;
-}
-
 }  // namespace
 
 RotateAndCropStreamManipulator::RotateAndCropStreamManipulator(
+    GpuResources* gpu_resources,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor)
-    : still_capture_processor_(std::move(still_capture_processor)),
+    : gpu_resources_(gpu_resources),
+      still_capture_processor_(std::move(still_capture_processor)),
       thread_("RotateAndCropThread") {
+  CHECK_NE(gpu_resources_, nullptr);
   CHECK(thread_.Start());
 }
 
@@ -149,7 +128,7 @@ bool RotateAndCropStreamManipulator::UpdateStaticMetadata(
   camera_metadata_entry_t entry =
       static_info->find(ANDROID_SCALER_AVAILABLE_ROTATE_AND_CROP_MODES);
   if (entry.count > 0) {
-    DCHECK_EQ(entry.type, TYPE_BYTE);
+    CHECK_EQ(entry.type, TYPE_BYTE);
     const std::vector<uint8_t> modes(entry.data.u8,
                                      entry.data.u8 + entry.count);
     if (static_info->update(RotateAndCropVendorTag::kHalAvailableModes,
@@ -196,109 +175,23 @@ bool RotateAndCropStreamManipulator::UpdateStaticMetadata(
 
 bool RotateAndCropStreamManipulator::Initialize(
     const camera_metadata_t* static_info, Callbacks callbacks) {
-  bool ret = false;
-  thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(&RotateAndCropStreamManipulator::InitializeOnThread,
-                     base::Unretained(this), static_info, callbacks),
-      &ret);
-  return ret;
-}
-
-bool RotateAndCropStreamManipulator::ConfigureStreams(
-    Camera3StreamConfiguration* stream_config) {
-  if (!IsArcTBoard() || IsExclusiveBoard()) {
-    return true;
+  disabled_ = !IsArcTBoard() || IsExclusiveBoard();
+  if (disabled_) {
+    LOGF(INFO) << "Disabled on non-ARC-T or exclusive board";
   }
-  bool ret = false;
-  thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(&RotateAndCropStreamManipulator::ConfigureStreamsOnThread,
-                     base::Unretained(this), stream_config),
-      &ret);
-  return ret;
-}
 
-bool RotateAndCropStreamManipulator::OnConfiguredStreams(
-    Camera3StreamConfiguration* stream_config) {
-  if (!IsArcTBoard() || IsExclusiveBoard()) {
-    return true;
-  }
-  bool ret = false;
-  thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(
-          &RotateAndCropStreamManipulator::OnConfiguredStreamsOnThread,
-          base::Unretained(this), stream_config),
-      &ret);
-  return ret;
-}
-
-bool RotateAndCropStreamManipulator::ConstructDefaultRequestSettings(
-    android::CameraMetadata* default_request_settings, int type) {
-  if (default_request_settings->isEmpty() || !IsArcTBoard() ||
-      IsExclusiveBoard()) {
-    return true;
-  }
-  const uint8_t rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_AUTO;
-  if (default_request_settings->update(ANDROID_SCALER_ROTATE_AND_CROP, &rc_mode,
-                                       1) != 0) {
-    LOGF(ERROR)
-        << "Failed to update ANDROID_SCALER_ROTATE_AND_CROP to default request";
-    return false;
-  }
-  return true;
-}
-
-bool RotateAndCropStreamManipulator::ProcessCaptureRequest(
-    Camera3CaptureDescriptor* request) {
-  if (!IsArcTBoard() || IsExclusiveBoard()) {
-    return true;
-  }
-  bool ret = false;
-  thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(
-          &RotateAndCropStreamManipulator::ProcessCaptureRequestOnThread,
-          base::Unretained(this), request),
-      &ret);
-  return ret;
-}
-
-bool RotateAndCropStreamManipulator::ProcessCaptureResult(
-    Camera3CaptureDescriptor result) {
-  if (!IsArcTBoard() || IsExclusiveBoard()) {
-    callbacks_.result_callback.Run(std::move(result));
-    return true;
-  }
-  bool ret = false;
-  thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(
-          &RotateAndCropStreamManipulator::ProcessCaptureResultOnThread,
-          base::Unretained(this), std::move(result)),
-      &ret);
-  return ret;
-}
-
-void RotateAndCropStreamManipulator::Notify(camera3_notify_msg_t msg) {
-  callbacks_.notify_callback.Run(msg);
-}
-
-bool RotateAndCropStreamManipulator::Flush() {
-  return true;
-}
-
-bool RotateAndCropStreamManipulator::InitializeOnThread(
-    const camera_metadata_t* static_info, Callbacks callbacks) {
-  DCHECK(thread_.IsCurrentThread());
-
-  callbacks_ = callbacks;
-
-  if (!IsArcTBoard() || IsExclusiveBoard()) {
-    LOGF(INFO) << "Disabled on non-ARC-T board";
-    return true;
-  }
+  helper_ = std::make_unique<StreamManipulatorHelper>(
+      StreamManipulatorHelper::Config{
+          .process_mode = disabled_ ? ProcessMode::kBypass
+                                    : ProcessMode::kVideoAndStillProcess,
+          .result_metadata_tags_to_update = {ANDROID_SCALER_ROTATE_AND_CROP},
+      },
+      static_info, std::move(callbacks),
+      base::BindRepeating(&RotateAndCropStreamManipulator::OnProcessTask,
+                          base::Unretained(this)),
+      GetCropScaleImageCallback(gpu_resources_->gpu_task_runner(),
+                                gpu_resources_->image_processor()),
+      std::move(still_capture_processor_), thread_.task_runner());
 
   base::span<const uint8_t> modes = GetRoMetadataAsSpan<uint8_t>(
       static_info, RotateAndCropVendorTag::kHalAvailableModes);
@@ -312,485 +205,203 @@ bool RotateAndCropStreamManipulator::InitializeOnThread(
     VLOGF(1) << "HAL available rotate-and-crop modes: ["
              << base::JoinString(mode_strs, ", ") << "]";
   }
-  partial_result_count_ = GetPartialResultCount(static_info);
-  VLOGF(1) << "Partial result count: " << partial_result_count_;
-
-  base::span<const int32_t> stream_configs = GetRoMetadataAsSpan<int32_t>(
-      static_info, ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS);
-  available_yuv_sizes_.clear();
-  for (size_t i = 0; i < stream_configs.size(); i += 4) {
-    const uint32_t format = base::checked_cast<uint32_t>(stream_configs[i]);
-    const uint32_t width = base::checked_cast<uint32_t>(stream_configs[i + 1]);
-    const uint32_t height = base::checked_cast<uint32_t>(stream_configs[i + 2]);
-    const uint32_t direction =
-        base::checked_cast<uint32_t>(stream_configs[i + 3]);
-    if (format != HAL_PIXEL_FORMAT_YCBCR_420_888 ||
-        direction != ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT) {
-      continue;
-    }
-    available_yuv_sizes_.emplace(width, height);
-  }
-
   return true;
 }
 
-bool RotateAndCropStreamManipulator::ConfigureStreamsOnThread(
+bool RotateAndCropStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
-  DCHECK(thread_.IsCurrentThread());
+  if (!disabled_) {
+    CHECK_GT(stream_config->num_streams(), 0);
+    client_crs_degrees_ =
+        stream_config->GetStreams()[0]->crop_rotate_scale_degrees;
+    // Translate |crop_rotate_scale_degrees| to ROTATE_AND_CROP API if the HAL
+    // has migrated to it.
+    const int hal_crs_degrees = hal_available_rc_modes_.empty()
+                                    ? client_crs_degrees_
+                                    : CAMERA3_STREAM_ROTATION_0;
+    for (auto* stream : stream_config->GetStreams()) {
+      stream->crop_rotate_scale_degrees = hal_crs_degrees;
+    }
 
-  ResetOnThread();
+    thread_.PostTaskAsync(
+        FROM_HERE,
+        base::BindOnce(&RotateAndCropStreamManipulator::ResetBuffersOnThread,
+                       base::Unretained(this)));
+  }
 
-  DCHECK_GT(stream_config->num_streams(), 0);
-  client_crs_degrees_ =
-      stream_config->GetStreams()[0]->crop_rotate_scale_degrees;
-  // Translate |crop_rotate_scale_degrees| to ROTATE_AND_CROP API if the HAL has
-  // migrated to it.
-  const int hal_crs_degrees = hal_available_rc_modes_.empty()
-                                  ? client_crs_degrees_
-                                  : CAMERA3_STREAM_ROTATION_0;
-  for (auto* stream : stream_config->GetStreams()) {
-    VLOGF(1) << "ConfigureStreams: " << GetDebugString(stream);
-    if (stream->crop_rotate_scale_degrees != client_crs_degrees_) {
-      LOGF(ERROR)
-          << "crop_rotate_scale_degrees should be the same in every stream";
+  return helper_->PreConfigure(stream_config);
+}
+
+bool RotateAndCropStreamManipulator::OnConfiguredStreams(
+    Camera3StreamConfiguration* stream_config) {
+  helper_->PostConfigure(stream_config);
+  return true;
+}
+
+bool RotateAndCropStreamManipulator::ConstructDefaultRequestSettings(
+    android::CameraMetadata* default_request_settings, int type) {
+  if (!disabled_ && !default_request_settings->isEmpty()) {
+    const uint8_t rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_AUTO;
+    if (default_request_settings->update(ANDROID_SCALER_ROTATE_AND_CROP,
+                                         &rc_mode, 1) != 0) {
+      LOGF(ERROR) << "Failed to update ANDROID_SCALER_ROTATE_AND_CROP to "
+                     "default request";
       return false;
     }
-    stream->crop_rotate_scale_degrees = hal_crs_degrees;
-    if (!blob_stream_ && stream->format == HAL_PIXEL_FORMAT_BLOB) {
-      blob_stream_ = stream;
-    }
-  }
-  if (blob_stream_) {
-    still_capture_processor_->Initialize(
-        blob_stream_,
-        base::BindPostTask(
-            thread_.task_runner(),
-            base::BindRepeating(&RotateAndCropStreamManipulator::
-                                    ReturnStillCaptureResultOnThread,
-                                base::Unretained(this))));
-    for (auto* stream : stream_config->GetStreams()) {
-      if (stream->stream_type == CAMERA3_STREAM_OUTPUT &&
-          (stream->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
-           stream->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
-          stream->width == blob_stream_->width &&
-          stream->height == blob_stream_->height) {
-        yuv_stream_for_blob_ = stream;
-      }
-    }
-    if (!yuv_stream_for_blob_) {
-      const Size blob_size(blob_stream_->width, blob_stream_->height);
-      std::optional<Size> yuv_size =
-          FindYuvSizeForRotateAndCrop(blob_size, available_yuv_sizes_);
-      int yuv_format = HAL_PIXEL_FORMAT_YCBCR_420_888;
-      if (!yuv_size.has_value()) {
-        LOGF(ERROR) << "No suitable YUV resolution for cropping into "
-                    << blob_size.ToString();
-        return false;
-      }
-
-      // A quirk for handling nautilus ipu3 limitation: b/323451172.
-      std::string model_name = DeviceConfig::Create()->GetModelName();
-      if ((model_name == "nautilus" || model_name == "nautiluslte") &&
-          ((blob_stream_->width == 640 && blob_stream_->height == 480) ||
-           (blob_stream_->width == 320 && blob_stream_->height == 240))) {
-        for (auto* stream : stream_config->GetStreams()) {
-          if (stream->stream_type == CAMERA3_STREAM_OUTPUT &&
-              (stream->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
-               stream->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)) {
-            yuv_size = Size(stream->width, stream->height);
-            yuv_format = stream->format;
-          }
-        }
-      }
-
-      if (yuv_size.value() != blob_size) {
-        LOGF(WARNING) << "Using " << yuv_size->ToString() << " YUV to generate "
-                      << blob_size.ToString() << " BLOB";
-      }
-      yuv_stream_for_blob_owned_ = camera3_stream_t{
-          .width = yuv_size->width,
-          .height = yuv_size->height,
-          .format = yuv_format,
-          .usage = GRALLOC_USAGE_SW_READ_OFTEN,
-          .physical_camera_id = blob_stream_->physical_camera_id,
-          .crop_rotate_scale_degrees = hal_crs_degrees,
-      };
-      SetStillCaptureUsage(&yuv_stream_for_blob_owned_.value());
-      yuv_stream_for_blob_ = &yuv_stream_for_blob_owned_.value();
-      stream_config->AppendStream(&yuv_stream_for_blob_owned_.value());
-      scaled_yuv_buffer_for_blob_ = CameraBufferManager::AllocateScopedBuffer(
-          blob_stream_->width, blob_stream_->height, yuv_format,
-          GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_SW_WRITE_OFTEN);
-    }
-    if (yuv_stream_for_blob_) {
-      VLOGF(1) << "YUV for BLOB: " << GetDebugString(yuv_stream_for_blob_)
-               << ", owned: " << (yuv_stream_for_blob_owned_ ? "YES" : "NO");
-    }
-  }
-
-  return true;
-}
-
-bool RotateAndCropStreamManipulator::OnConfiguredStreamsOnThread(
-    Camera3StreamConfiguration* stream_config) {
-  DCHECK(thread_.IsCurrentThread());
-
-  // Restore client config.
-  for (camera3_stream_t* stream : stream_config->GetStreams()) {
-    VLOGF(1) << "OnConfiguredStreams: " << GetDebugString(stream);
-    stream->crop_rotate_scale_degrees = client_crs_degrees_;
-  }
-  if (yuv_stream_for_blob_) {
-    yuv_buffer_pool_ =
-        std::make_unique<CameraBufferPool>(CameraBufferPool::Options{
-            .width = yuv_stream_for_blob_->width,
-            .height = yuv_stream_for_blob_->height,
-            .format =
-                base::checked_cast<uint32_t>(yuv_stream_for_blob_->format),
-            .usage = yuv_stream_for_blob_->usage,
-            .max_num_buffers = yuv_stream_for_blob_->max_buffers,
-        });
-    if (yuv_stream_for_blob_owned_) {
-      if (!stream_config->RemoveStream(yuv_stream_for_blob_)) {
-        LOGF(ERROR) << "Failed to remove appended YUV stream";
-        return false;
-      }
-    }
   }
   return true;
 }
 
-bool RotateAndCropStreamManipulator::ProcessCaptureRequestOnThread(
+bool RotateAndCropStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
-  DCHECK(thread_.IsCurrentThread());
+  if (disabled_) {
+    helper_->HandleRequest(request, true, nullptr);
+    return true;
+  }
 
   uint8_t rc_mode_from_crs_degrees =
       DegreesToRotateAndCropMode(client_crs_degrees_);
-  auto [ctx_it, is_inserted] = capture_contexts_.insert(std::make_pair(
-      request->frame_number(),
-      CaptureContext{
-          .client_rc_mode = rc_mode_from_crs_degrees,
-          .hal_rc_mode = rc_mode_from_crs_degrees,
-          .num_pending_buffers = request->num_output_buffers(),
-          .has_pending_input_buffer = request->has_input_buffer(),
-          .metadata_received = false,
-      }));
-  DCHECK(is_inserted);
-  CaptureContext& ctx = ctx_it->second;
+  auto ctx = std::make_unique<CaptureContext>();
+  ctx->client_rc_mode = rc_mode_from_crs_degrees;
+  ctx->hal_rc_mode = rc_mode_from_crs_degrees;
 
   // Check if the client uses ROTATE_AND_CROP API.
   base::span<const uint8_t> rc_mode =
       request->GetMetadata<uint8_t>(ANDROID_SCALER_ROTATE_AND_CROP);
   if (!rc_mode.empty() && rc_mode[0] != ANDROID_SCALER_ROTATE_AND_CROP_AUTO) {
-    ctx.client_rc_mode = rc_mode[0];
-    ctx.hal_rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_NONE;
+    ctx->client_rc_mode = rc_mode[0];
+    ctx->hal_rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_NONE;
   }
 
   // Check if the HAL has migrated to ROTATE_AND_CROP API and supports the
   // client requested rotation.
   if (!hal_available_rc_modes_.empty()) {
-    ctx.hal_rc_mode =
-        base::Contains(hal_available_rc_modes_, ctx.client_rc_mode)
-            ? ctx.client_rc_mode
-            : ANDROID_SCALER_ROTATE_AND_CROP_NONE;
+    ctx->hal_rc_mode = hal_available_rc_modes_.contains(ctx->client_rc_mode)
+                           ? ctx->client_rc_mode
+                           : ANDROID_SCALER_ROTATE_AND_CROP_NONE;
   }
 
   if (!request->UpdateMetadata<uint8_t>(
           ANDROID_SCALER_ROTATE_AND_CROP,
-          std::array<uint8_t, 1>{ctx.hal_rc_mode})) {
+          std::array<uint8_t, 1>{ctx->hal_rc_mode})) {
     LOGF(ERROR) << "Failed to update ANDROID_SCALER_ROTATE_AND_CROP in request "
                 << request->frame_number();
-    return false;
   }
 
   // Bypass the request when we don't need to do rotation.
-  if (ctx.client_rc_mode == ctx.hal_rc_mode) {
-    return true;
-  }
-
-  // Process still capture.
-  bool has_yuv = false;
-  for (const auto& b : request->GetOutputBuffers()) {
-    if (b.stream() == blob_stream_) {
-      ctx.has_pending_blob = true;
-      still_capture_processor_->QueuePendingRequest(request->frame_number(),
-                                                    *request);
-      if (b.raw_buffer().buffer != nullptr) {
-        still_capture_processor_->QueuePendingOutputBuffer(
-            request->frame_number(), b.raw_buffer());
-      }
-    } else if (b.stream() == yuv_stream_for_blob_) {
-      has_yuv = true;
-    }
-  }
-  if (ctx.has_pending_blob && !has_yuv) {
-    ctx.yuv_buffer = yuv_buffer_pool_->RequestBuffer();
-    if (!ctx.yuv_buffer) {
-      LOGF(ERROR) << "Failed to allocate buffer for frame "
-                  << request->frame_number();
-      return false;
-    }
-    request->AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
-        .stream = yuv_stream_for_blob_,
-        .buffer = ctx.yuv_buffer->handle(),
-        .status = CAMERA3_BUFFER_STATUS_OK,
-        .acquire_fence = -1,
-        .release_fence = -1,
-    }));
-    ++ctx.num_pending_buffers;
-    ctx.yuv_stream_appended = true;
-  }
+  const bool bypass_process = ctx->client_rc_mode == ctx->hal_rc_mode;
+  helper_->HandleRequest(request, bypass_process, std::move(ctx));
 
   return true;
 }
 
-bool RotateAndCropStreamManipulator::ProcessCaptureResultOnThread(
+bool RotateAndCropStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  DCHECK(thread_.IsCurrentThread());
-
-  if (result.is_empty()) {
-    VLOGFID(1, result.frame_number()) << "Skip empty capture result";
-    callbacks_.result_callback.Run(std::move(result));
-    return true;
-  }
-
-  auto ctx_it = capture_contexts_.find(result.frame_number());
-  CHECK(ctx_it != capture_contexts_.end());
-  CaptureContext& ctx = ctx_it->second;
-
-  DCHECK_GE(ctx.num_pending_buffers, result.num_output_buffers());
-  ctx.num_pending_buffers -= result.num_output_buffers();
-  ctx.metadata_received |= result.partial_result() == partial_result_count_;
-  if (result.partial_result() == partial_result_count_) {
-    ctx.metadata_received = true;
-  }
-  if (result.has_input_buffer()) {
-    ctx.has_pending_input_buffer = false;
-  }
-
-  base::ScopedClosureRunner ctx_deleter;
-  if (ctx.IsObsolete()) {
-    ctx_deleter.ReplaceClosure(base::BindOnce(
-        [](decltype(capture_contexts_)* contexts, uint32_t frame_number) {
-          contexts->erase(frame_number);
-        },
-        &capture_contexts_, result.frame_number()));
-  }
-
-  // Bypass the result when we don't need to do rotation.
-  base::span<const uint8_t> rc_mode =
-      result.GetMetadata<uint8_t>(ANDROID_SCALER_ROTATE_AND_CROP);
-  if (ctx.client_rc_mode == ctx.hal_rc_mode) {
-    if (result.partial_result() != 0) {
-      if (ctx.rc_tag_updated) {
-        // Delete the tag in case that HAL fills it again.
-        if (!rc_mode.empty() &&
-            !result.DeleteMetadata(ANDROID_SCALER_ROTATE_AND_CROP)) {
-          LOGF(ERROR)
-              << "Failed to remove ANDROID_SCALER_ROTATE_AND_CROP in result "
-              << result.frame_number();
-        }
-      } else {
-        if (!result.UpdateMetadata<uint8_t>(
-                ANDROID_SCALER_ROTATE_AND_CROP,
-                std::array<uint8_t, 1>{ctx.client_rc_mode})) {
-          LOGF(ERROR)
-              << "Failed to update ANDROID_SCALER_ROTATE_AND_CROP in result "
-              << result.frame_number();
-        }
-        ctx.rc_tag_updated = true;
-      }
-    }
-    callbacks_.result_callback.Run(std::move(result));
-    return true;
-  }
-  DCHECK_EQ(ctx.hal_rc_mode, ANDROID_SCALER_ROTATE_AND_CROP_NONE);
-
-  for (auto& b : result.AcquireOutputBuffers()) {
-    if (b.stream() == blob_stream_) {
-      if (!still_capture_processor_->IsPendingOutputBufferQueued(
-              result.frame_number())) {
-        still_capture_processor_->QueuePendingOutputBuffer(
-            result.frame_number(), b.mutable_raw_buffer());
-      }
-      still_capture_processor_->QueuePendingAppsSegments(
-          result.frame_number(), *b.buffer(),
-          base::ScopedFD(b.take_release_fence()));
-      continue;
-    }
-    if (b.stream()->stream_type == CAMERA3_STREAM_OUTPUT &&
-        (b.stream()->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
-         b.stream()->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED)) {
-      if (b.status() == CAMERA3_BUFFER_STATUS_OK) {
-        if (!RotateAndCropOnThread(*b.buffer(),
-                                   base::ScopedFD(b.take_release_fence()),
-                                   ctx.client_rc_mode)) {
-          b.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_ERROR;
-        }
-      }
-      if (b.stream() == yuv_stream_for_blob_) {
-        if (ctx.has_pending_blob) {
-          const bool need_scaling =
-              yuv_stream_for_blob_->width != blob_stream_->width ||
-              yuv_stream_for_blob_->height != blob_stream_->height;
-          if (b.status() == CAMERA3_BUFFER_STATUS_OK &&
-              (!need_scaling ||
-               ScaleOnThread(*b.buffer(), *scaled_yuv_buffer_for_blob_))) {
-            still_capture_processor_->QueuePendingYuvImage(
-                result.frame_number(),
-                need_scaling ? *scaled_yuv_buffer_for_blob_ : *b.buffer(),
-                base::ScopedFD());
-          } else {
-            LOGF(ERROR) << "Failed to produce YUV image for still capture "
-                        << result.frame_number();
-            still_capture_processor_->CancelPendingRequest(
-                result.frame_number());
-          }
-        }
-        if (ctx.yuv_stream_appended) {
-          continue;
-        }
-      }
-    }
-    result.AppendOutputBuffer(std::move(b));
-  }
-
-  if (result.partial_result() != 0) {
-    if (!ctx.rc_tag_updated) {
-      if (!rc_mode.empty() && rc_mode[0] != ctx.hal_rc_mode) {
-        LOGF(WARNING)
-            << "Incorrect ANDROID_SCALER_ROTATE_AND_CROP received in result "
-            << result.frame_number() << "; expected " << ctx.hal_rc_mode
-            << ", got " << rc_mode[0];
-      }
-      if (!result.UpdateMetadata<uint8_t>(
-              ANDROID_SCALER_ROTATE_AND_CROP,
-              std::array<uint8_t, 1>{ctx.client_rc_mode})) {
-        LOGF(ERROR)
-            << "Failed to update ANDROID_SCALER_ROTATE_AND_CROP in result "
-            << result.frame_number();
-      }
-      ctx.rc_tag_updated = true;
-    } else {
-      if (!rc_mode.empty() &&
-          !result.DeleteMetadata(ANDROID_SCALER_ROTATE_AND_CROP)) {
-        LOGF(ERROR)
-            << "Failed to remove ANDROID_SCALER_ROTATE_AND_CROP in result "
-            << result.frame_number();
-      }
-    }
-  }
-  // TODO(kamesan): Some metadata need to be mapped to the rotated image
-  // coordinates.
-
-  callbacks_.result_callback.Run(std::move(result));
+  helper_->HandleResult(std::move(result));
   return true;
 }
 
-void RotateAndCropStreamManipulator::ResetOnThread() {
-  DCHECK(thread_.IsCurrentThread());
+void RotateAndCropStreamManipulator::Notify(camera3_notify_msg_t msg) {
+  helper_->Notify(msg);
+}
 
-  still_capture_processor_->Reset();
-  client_crs_degrees_ = CAMERA3_STREAM_ROTATION_0;
-  blob_stream_ = nullptr;
-  yuv_stream_for_blob_owned_ = std::nullopt;
-  yuv_stream_for_blob_ = nullptr;
-  yuv_buffer_pool_.reset();
+bool RotateAndCropStreamManipulator::Flush() {
+  helper_->Flush();
+  return true;
+}
+
+void RotateAndCropStreamManipulator::ResetBuffersOnThread() {
+  CHECK(thread_.IsCurrentThread());
+
   buffer1_.Reset();
   buffer2_.Reset();
-  capture_contexts_.clear();
 }
 
-void RotateAndCropStreamManipulator::ReturnStillCaptureResultOnThread(
-    Camera3CaptureDescriptor result) {
-  DCHECK(thread_.IsCurrentThread());
+void RotateAndCropStreamManipulator::OnProcessTask(ScopedProcessTask task) {
+  CHECK(thread_.IsCurrentThread());
 
-  auto ctx_it = capture_contexts_.find(result.frame_number());
-  CHECK(ctx_it != capture_contexts_.end());
-  CaptureContext& ctx = ctx_it->second;
+  auto& ctx = *task->GetPrivateContextAs<CaptureContext>();
+  CHECK_EQ(ctx.hal_rc_mode, ANDROID_SCALER_ROTATE_AND_CROP_NONE);
+  CHECK_NE(ctx.client_rc_mode, ANDROID_SCALER_ROTATE_AND_CROP_NONE);
 
-  ctx.yuv_buffer = std::nullopt;
+  CHECK_EQ(task->result_metadata().update(ANDROID_SCALER_ROTATE_AND_CROP,
+                                          &ctx.client_rc_mode, 1),
+           0);
 
-  CHECK(ctx.has_pending_blob);
-  ctx.has_pending_blob = false;
-  if (ctx.IsObsolete()) {
-    capture_contexts_.erase(result.frame_number());
+  constexpr int kSyncWaitTimeoutMs = 300;
+  base::ScopedFD input_release_fence = task->TakeInputReleaseFence();
+  if (input_release_fence.is_valid() &&
+      sync_wait(input_release_fence.get(), kSyncWaitTimeoutMs) != 0) {
+    LOGF(ERROR) << "Sync wait timed out on input frame "
+                << task->frame_number();
+    task->Fail();
+    return;
+  }
+  base::ScopedFD output_acquire_fence = task->TakeOutputAcquireFence();
+  if (output_acquire_fence.is_valid() &&
+      sync_wait(output_acquire_fence.get(), kSyncWaitTimeoutMs) != 0) {
+    LOGF(ERROR) << "Sync wait timed out on output frame "
+                << task->frame_number();
+    task->Fail();
+    return;
   }
 
-  callbacks_.result_callback.Run(std::move(result));
-}
+  // TODO(kamesan): Offload the rotation to GPU.
+  ScopedMapping input_mapping(task->input_buffer());
+  ScopedMapping output_mapping(task->output_buffer());
+  CHECK_EQ(input_mapping.drm_format(), DRM_FORMAT_NV12);
+  CHECK_EQ(output_mapping.drm_format(), DRM_FORMAT_NV12);
+  CHECK_EQ(input_mapping.width(), output_mapping.width());
+  CHECK_EQ(input_mapping.height(), output_mapping.height());
+  CHECK_GT(input_mapping.width(), input_mapping.height());
 
-bool RotateAndCropStreamManipulator::RotateAndCropOnThread(
-    buffer_handle_t buffer, base::ScopedFD release_fence, uint8_t rc_mode) {
-  DCHECK(thread_.IsCurrentThread());
-
-  if (rc_mode == ANDROID_SCALER_ROTATE_AND_CROP_NONE) {
-    return true;
-  }
-
-  if (release_fence.is_valid()) {
-    constexpr int kSyncWaitTimeoutMs = 300;
-    if (sync_wait(release_fence.get(), kSyncWaitTimeoutMs) != 0) {
-      LOGF(ERROR) << "sync_wait() timed out";
-      return false;
-    }
-  }
-
-  ScopedMapping mapping(buffer);
-  if (mapping.drm_format() != DRM_FORMAT_NV12) {
-    LOGF(ERROR) << "Unsupported DRM format: " << mapping.drm_format();
-    return false;
-  }
-  if (mapping.width() < mapping.height()) {
-    LOGF(ERROR) << "Portrait image is not supported: " << mapping.width() << "x"
-                << mapping.height();
-    return false;
-  }
-
-  // TODO(kamesan): Offload the conversions to GPU with GpuImageProcessor.
-
-  uint32_t src_width = mapping.width();
-  uint32_t src_height = mapping.height();
+  uint32_t src_width = input_mapping.width();
+  uint32_t src_height = input_mapping.height();
   uint32_t src_offset = 0;
   uint32_t dst_width = src_width;
   uint32_t dst_height = src_height;
-  if (rc_mode == ANDROID_SCALER_ROTATE_AND_CROP_90 ||
-      rc_mode == ANDROID_SCALER_ROTATE_AND_CROP_270) {
+  if (ctx.client_rc_mode == ANDROID_SCALER_ROTATE_AND_CROP_90 ||
+      ctx.client_rc_mode == ANDROID_SCALER_ROTATE_AND_CROP_270) {
     src_width = base::bits::AlignUp(
-        mapping.height() * mapping.height() / mapping.width(), 2u);
-    src_height = mapping.height();
-    src_offset = base::bits::AlignDown((mapping.width() - src_width) / 2, 2u);
+        input_mapping.height() * input_mapping.height() / input_mapping.width(),
+        2u);
+    src_height = input_mapping.height();
+    src_offset =
+        base::bits::AlignDown((input_mapping.width() - src_width) / 2, 2u);
     dst_width = src_height;
     dst_height = src_width;
   }
   buffer1_.SetFormat(dst_width, dst_height, DRM_FORMAT_YUV420);
   int ret = libyuv::NV12ToI420Rotate(
-      mapping.plane(0).addr + src_offset, mapping.plane(0).stride,
-      mapping.plane(1).addr + src_offset, mapping.plane(1).stride,
+      input_mapping.plane(0).addr + src_offset, input_mapping.plane(0).stride,
+      input_mapping.plane(1).addr + src_offset, input_mapping.plane(1).stride,
       buffer1_.plane(0).addr, buffer1_.plane(0).stride, buffer1_.plane(1).addr,
       buffer1_.plane(1).stride, buffer1_.plane(2).addr,
       buffer1_.plane(2).stride, src_width, src_height,
-      RotateAndCropModeToLibyuvRotation(rc_mode));
+      RotateAndCropModeToLibyuvRotation(ctx.client_rc_mode));
   if (ret != 0) {
     LOGF(ERROR) << "libyuv::NV12ToI420Rotate() failed: " << ret;
-    return false;
+    task->Fail();
+    return;
   }
 
   ResizableCpuBuffer* final_i420 = &buffer1_;
-  if (rc_mode == ANDROID_SCALER_ROTATE_AND_CROP_90 ||
-      rc_mode == ANDROID_SCALER_ROTATE_AND_CROP_270) {
-    buffer2_.SetFormat(mapping.width(), mapping.height(), DRM_FORMAT_YUV420);
+  if (ctx.client_rc_mode == ANDROID_SCALER_ROTATE_AND_CROP_90 ||
+      ctx.client_rc_mode == ANDROID_SCALER_ROTATE_AND_CROP_270) {
+    buffer2_.SetFormat(input_mapping.width(), input_mapping.height(),
+                       DRM_FORMAT_YUV420);
     ret = libyuv::I420Scale(buffer1_.plane(0).addr, buffer1_.plane(0).stride,
                             buffer1_.plane(1).addr, buffer1_.plane(1).stride,
                             buffer1_.plane(2).addr, buffer1_.plane(2).stride,
                             dst_width, dst_height, buffer2_.plane(0).addr,
                             buffer2_.plane(0).stride, buffer2_.plane(1).addr,
                             buffer2_.plane(1).stride, buffer2_.plane(2).addr,
-                            buffer2_.plane(2).stride, mapping.width(),
-                            mapping.height(), libyuv::kFilterBilinear);
+                            buffer2_.plane(2).stride, input_mapping.width(),
+                            input_mapping.height(), libyuv::kFilterBilinear);
     if (ret != 0) {
       LOGF(ERROR) << "libyuv::I420Scale() failed: " << ret;
-      return false;
+      task->Fail();
+      return;
     }
     final_i420 = &buffer2_;
   }
@@ -799,40 +410,14 @@ bool RotateAndCropStreamManipulator::RotateAndCropOnThread(
       final_i420->plane(0).addr, final_i420->plane(0).stride,
       final_i420->plane(1).addr, final_i420->plane(1).stride,
       final_i420->plane(2).addr, final_i420->plane(2).stride,
-      mapping.plane(0).addr, mapping.plane(0).stride, mapping.plane(1).addr,
-      mapping.plane(1).stride, mapping.width(), mapping.height());
+      output_mapping.plane(0).addr, output_mapping.plane(0).stride,
+      output_mapping.plane(1).addr, output_mapping.plane(1).stride,
+      output_mapping.width(), output_mapping.height());
   if (ret != 0) {
     LOGF(ERROR) << "libyuv::I420ToNV12() failed: " << ret;
-    return false;
+    task->Fail();
+    return;
   }
-
-  return true;
-}
-
-bool RotateAndCropStreamManipulator::ScaleOnThread(buffer_handle_t src_buffer,
-                                                   buffer_handle_t dst_buffer) {
-  DCHECK(thread_.IsCurrentThread());
-
-  ScopedMapping src_mapping(src_buffer);
-  ScopedMapping dst_mapping(dst_buffer);
-  const int ret = libyuv::NV12Scale(
-      src_mapping.plane(0).addr, src_mapping.plane(0).stride,
-      src_mapping.plane(1).addr, src_mapping.plane(1).stride,
-      src_mapping.width(), src_mapping.height(), dst_mapping.plane(0).addr,
-      dst_mapping.plane(0).stride, dst_mapping.plane(1).addr,
-      dst_mapping.plane(1).stride, dst_mapping.width(), dst_mapping.height(),
-      libyuv::kFilterBilinear);
-  if (ret != 0) {
-    LOGF(ERROR) << "libyuv::NV12Scale() failed: " << ret;
-    return false;
-  }
-
-  return true;
-}
-
-bool RotateAndCropStreamManipulator::CaptureContext::IsObsolete() {
-  return num_pending_buffers == 0 && metadata_received && !has_pending_blob &&
-         !has_pending_input_buffer;
 }
 
 }  // namespace cros

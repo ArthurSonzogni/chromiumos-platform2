@@ -658,7 +658,9 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
       // processing tasks.
       if (result.has_metadata()) {
         android::CameraMetadata m = result.ReleaseMetadata();
-        CHECK_EQ(m.append(capture_ctx.result_metadata), 0);
+        if (!capture_ctx.result_metadata.isEmpty()) {
+          CHECK_EQ(m.append(capture_ctx.result_metadata), 0);
+        }
         capture_ctx.result_metadata.acquire(m);
       }
       result.SetPartialResult(0);

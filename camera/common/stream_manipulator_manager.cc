@@ -219,9 +219,9 @@ StreamManipulatorManager::StreamManipulatorManager(
 
   stream_manipulators_.emplace_back(
       std::make_unique<RotateAndCropStreamManipulator>(
-          std::make_unique<StillCaptureProcessorImpl>(
-              JpegCompressor::GetInstance(
-                  CameraMojoChannelManager::GetInstance()))));
+          gpu_resources, std::make_unique<StillCaptureProcessorImpl>(
+                             JpegCompressor::GetInstance(
+                                 CameraMojoChannelManager::GetInstance()))));
   LOGF(INFO) << "RotateAndCropStreamManipulator enabled";
 
 #if USE_CAMERA_FEATURE_EFFECTS

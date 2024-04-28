@@ -6,16 +6,27 @@
 
 #include "gpu/image_processor.h"
 
+#include <drm_fourcc.h>
+#include <sync/sync.h>
+
+#include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
+#include <base/files/scoped_file.h>
+#include <base/synchronization/waitable_event.h>
+
+#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/common.h"
+#include "gpu/egl/egl_fence.h"
 #include "gpu/embedded_gpu_shaders_toc.h"
 #include "gpu/gles/framebuffer.h"
 #include "gpu/gles/sampler.h"
 #include "gpu/gles/shader.h"
 #include "gpu/gles/state_guard.h"
 #include "gpu/gles/transform.h"
+#include "gpu/shared_image.h"
 
 namespace cros {
 
@@ -728,6 +739,77 @@ Sampler& GpuImageProcessor::GetSampler(FilterMode filter_mode) {
     case FilterMode::kBicubic:
       return linear_clamp_to_edge_;
   }
+}
+
+std::optional<base::ScopedFD> CropScaleOnGpuImageProcessor(
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    GpuImageProcessor* image_processor,
+    buffer_handle_t input,
+    base::ScopedFD input_release_fence,
+    buffer_handle_t output,
+    base::ScopedFD output_acquire_fence,
+    const Rect<float>& crop) {
+  CHECK_NE(task_runner, nullptr);
+  CHECK_NE(image_processor, nullptr);
+  CHECK_EQ(CameraBufferManager::GetDrmPixelFormat(input), DRM_FORMAT_NV12);
+  CHECK_EQ(CameraBufferManager::GetDrmPixelFormat(output), DRM_FORMAT_NV12);
+  CHECK(crop.is_valid());
+
+  if (!task_runner->BelongsToCurrentThread()) {
+    std::optional<base::ScopedFD> ret;
+    base::WaitableEvent done;
+    task_runner->PostTask(
+        FROM_HERE,
+        base::BindOnce(&CropScaleOnGpuImageProcessor, task_runner,
+                       image_processor, input, std::move(input_release_fence),
+                       output, std::move(output_acquire_fence), crop)
+            .Then(base::BindOnce(
+                [](base::WaitableEvent* done,
+                   std::optional<base::ScopedFD>* ret,
+                   std::optional<base::ScopedFD> result) {
+                  *ret = std::move(result);
+                  done->Signal();
+                },
+                base::Unretained(&done), base::Unretained(&ret))));
+    done.Wait();
+    return ret;
+  }
+
+  constexpr int kSyncWaitTimeoutMs = 300;
+  if (input_release_fence.is_valid() &&
+      sync_wait(input_release_fence.get(), kSyncWaitTimeoutMs) != 0) {
+    LOGF(ERROR) << "Sync wait timed out on input release fence";
+    return std::nullopt;
+  }
+  if (output_acquire_fence.is_valid() &&
+      sync_wait(output_acquire_fence.get(), kSyncWaitTimeoutMs) != 0) {
+    LOGF(ERROR) << "Sync wait timed out on output acquire fence";
+    return std::nullopt;
+  }
+
+  SharedImage input_image = SharedImage::CreateFromBuffer(
+      input, Texture2D::Target::kTarget2D, /*separate_yuv_textures=*/true);
+  if (!input_image.IsValid()) {
+    LOGF(ERROR) << "Failed to create shared image from input buffer";
+    return std::nullopt;
+  }
+  SharedImage output_image = SharedImage::CreateFromBuffer(
+      output, Texture2D::Target::kTarget2D, /*separate_yuv_textures=*/true);
+  if (!output_image.IsValid()) {
+    LOGF(ERROR) << "Failed to create shared image from output buffer";
+    return std::nullopt;
+  }
+
+  if (!image_processor->CropYuv(
+          input_image.y_texture(), input_image.uv_texture(), crop,
+          output_image.y_texture(), output_image.uv_texture(),
+          FilterMode::kBicubic)) {
+    LOGF(ERROR) << "Failed to crop and scale buffers";
+    return std::nullopt;
+  }
+
+  EglFence fence;
+  return fence.GetNativeFd();
 }
 
 }  // namespace cros

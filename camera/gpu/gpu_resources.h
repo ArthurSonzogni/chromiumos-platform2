@@ -129,11 +129,8 @@ class CROS_CAMERA_EXPORT GpuResources {
   void ClearCache(const std::string id);
 
   // Returns a GpuImageProcessor instance pre-allocated by the GpuResources
-  // instance.
-  GpuImageProcessor* image_processor() const {
-    DCHECK(gpu_thread_.IsCurrentThread());
-    return image_processor_.get();
-  }
+  // instance. It should be run on GpuResources::gpu_task_runner().
+  GpuImageProcessor* image_processor() const { return image_processor_.get(); }
 
   // Dumps the raw pixel data from shared image |image| to |output_file_path|.
   void DumpSharedImage(const SharedImage& image,

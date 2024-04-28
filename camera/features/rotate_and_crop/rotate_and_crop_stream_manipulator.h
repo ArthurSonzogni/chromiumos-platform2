@@ -10,16 +10,14 @@
 #include <hardware/camera3.h>
 
 #include <memory>
-#include <set>
-#include <utility>
 
 #include <base/containers/flat_set.h>
 
-#include "common/camera_buffer_pool.h"
 #include "common/still_capture_processor.h"
 #include "common/stream_manipulator.h"
-#include "cros-camera/camera_buffer_manager.h"
+#include "common/stream_manipulator_helper.h"
 #include "features/rotate_and_crop/resizable_cpu_buffer.h"
+#include "gpu/gpu_resources.h"
 
 namespace cros {
 
@@ -54,6 +52,7 @@ namespace cros {
 class RotateAndCropStreamManipulator : public StreamManipulator {
  public:
   explicit RotateAndCropStreamManipulator(
+      GpuResources* gpu_resources,
       std::unique_ptr<StillCaptureProcessor> still_capture_processor);
   ~RotateAndCropStreamManipulator() override;
 
@@ -73,50 +72,25 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
   bool Flush() override;
 
  private:
-  bool InitializeOnThread(const camera_metadata_t* static_info,
-                          Callbacks callbacks);
-  bool ConfigureStreamsOnThread(Camera3StreamConfiguration* stream_config);
-  bool OnConfiguredStreamsOnThread(Camera3StreamConfiguration* stream_config);
-  bool ProcessCaptureRequestOnThread(Camera3CaptureDescriptor* request);
-  bool ProcessCaptureResultOnThread(Camera3CaptureDescriptor result);
-  void ResetOnThread();
-  void ReturnStillCaptureResultOnThread(Camera3CaptureDescriptor result);
-  bool RotateAndCropOnThread(buffer_handle_t buffer,
-                             base::ScopedFD release_fence,
-                             uint8_t rc_mode);
-  bool ScaleOnThread(buffer_handle_t src_buffer, buffer_handle_t dst_buffer);
+  void ResetBuffersOnThread();
+  void OnProcessTask(ScopedProcessTask task);
 
-  struct CaptureContext {
-    bool IsObsolete();
-
+  struct CaptureContext : public StreamManipulatorHelper::PrivateContext {
     uint8_t client_rc_mode = 0;
     uint8_t hal_rc_mode = 0;
-    uint32_t num_pending_buffers = 0;
-    bool has_pending_input_buffer = false;
-    bool metadata_received = false;
-    bool has_pending_blob = false;
-    std::optional<CameraBufferPool::Buffer> yuv_buffer;
-    bool yuv_stream_appended = false;
-    bool rc_tag_updated = false;
   };
 
+  GpuResources* gpu_resources_ = nullptr;
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
+  std::unique_ptr<StreamManipulatorHelper> helper_;
 
   // Fixed after Initialize().
+  bool disabled_ = false;
   base::flat_set<uint8_t> hal_available_rc_modes_;
-  uint32_t partial_result_count_ = 0;
-  std::set<std::pair<uint32_t, uint32_t>> available_yuv_sizes_;
-  Callbacks callbacks_;
 
   // Per-stream-config context.
   int client_crs_degrees_ = 0;
-  const camera3_stream_t* blob_stream_ = nullptr;
-  std::optional<camera3_stream_t> yuv_stream_for_blob_owned_;
-  camera3_stream_t* yuv_stream_for_blob_ = nullptr;
-  std::unique_ptr<CameraBufferPool> yuv_buffer_pool_;
   ResizableCpuBuffer buffer1_, buffer2_;
-  ScopedBufferHandle scaled_yuv_buffer_for_blob_ = nullptr;
-  base::flat_map<uint32_t, CaptureContext> capture_contexts_;
 
   CameraThread thread_;
 };

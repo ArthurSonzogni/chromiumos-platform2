@@ -7,13 +7,17 @@
 #ifndef CAMERA_GPU_IMAGE_PROCESSOR_H_
 #define CAMERA_GPU_IMAGE_PROCESSOR_H_
 
+#include <utility>
+
+#include <base/files/scoped_file.h>
+#include <base/task/single_thread_task_runner.h>
+
+#include "cros-camera/common_types.h"
+#include "cros-camera/export.h"
 #include "gpu/gles/sampler.h"
 #include "gpu/gles/screen_space_rect.h"
 #include "gpu/gles/shader_program.h"
 #include "gpu/gles/texture_2d.h"
-
-#include "cros-camera/common_types.h"
-#include "cros-camera/export.h"
 
 namespace cros {
 
@@ -281,6 +285,25 @@ class CROS_CAMERA_EXPORT GpuImageProcessor {
   Sampler nearest_clamp_to_edge_;
   Sampler linear_clamp_to_edge_;
 };
+
+// Convenience function that crops and scales the buffers on the given task
+// runner and image processor.
+std::optional<base::ScopedFD> CropScaleOnGpuImageProcessor(
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    GpuImageProcessor* image_processor,
+    buffer_handle_t input,
+    base::ScopedFD input_release_fence,
+    buffer_handle_t output,
+    base::ScopedFD output_acquire_fence,
+    const Rect<float>& crop);
+
+inline auto GetCropScaleImageCallback(
+    scoped_refptr<base::SingleThreadTaskRunner> task_runner,
+    GpuImageProcessor* image_processor) {
+  return base::BindRepeating(&CropScaleOnGpuImageProcessor,
+                             std::move(task_runner),
+                             base::Unretained(image_processor));
+}
 
 }  // namespace cros
 
