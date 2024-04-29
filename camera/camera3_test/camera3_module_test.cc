@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <brillo/message_loops/base_message_loop.h>
@@ -1463,6 +1464,10 @@ bool InitializeTest(int* argc,
   std::string board = base::SysInfo::GetLsbReleaseBoard();
   std::optional<cros::DeviceConfig> config = cros::DeviceConfig::Create();
   std::string model = config.has_value() ? config->GetModelName() : "";
+  // remove kernelnext suffix
+  if (base::EndsWith(board, "-kernelnext")) {
+    board = board.substr(0, board.size() - 11);
+  }
   if (base::Contains(kIgnoreSensorOrientationTestBoards, board) ||
       base::Contains(kIgnoreSensorOrientationTestModels, model)) {
     LOGF(INFO) << "Ignore SensorOrientationTest on " << board << "/" << model;
