@@ -190,7 +190,8 @@ void ModemMbim::MbimDeviceOpenReadyCb(MbimDevice* device,
   g_autoptr(GError) error = NULL;
   base::OnceCallback<void(base::OnceCallback<void(int)>)> get_caps;
   if (!mbim_device_open_finish(device, res, &error)) {
-    LOG(ERROR) << "Failed  due to error: " << error->message;
+    LOG(ERROR) << "Failed due to error: "
+               << (error->message == NULL ? "unknown" : error->message);
     modem_mbim->RetryInitialization(std::move(modem_mbim->init_done_cb_));
     return;
   }
