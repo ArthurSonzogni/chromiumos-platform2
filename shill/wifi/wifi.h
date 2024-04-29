@@ -877,6 +877,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // be distinct from |current_service_|. (A service should not
   // simultaneously be both pending, and current.)
   WiFiServiceRefPtr pending_service_;
+  WiFiServiceRefPtr previous_pending_service_;
   std::string supplicant_state_;
   RpcIdentifier supplicant_bss_;
   int32_t supplicant_assoc_status_;

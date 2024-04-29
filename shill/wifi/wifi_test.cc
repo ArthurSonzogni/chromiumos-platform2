@@ -4,7 +4,6 @@
 
 #include "shill/wifi/wifi.h"
 
-#include <gmock/gmock.h>
 #include <linux/if.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <netinet/ether.h>
@@ -35,6 +34,7 @@
 #include <chromeos/net-base/netlink_message.h>
 #include <chromeos/net-base/netlink_packet.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <gmock/gmock.h>
 
 #include "shill/data_types.h"
 #include "shill/dbus/dbus_control.h"
@@ -3744,20 +3744,33 @@ TEST_F(WiFiMainTest, NewConnectPreemptsPending) {
 TEST_F(WiFiMainTest, ConnectedToUnintendedPreemptsPending) {
   StartWiFi();
   RpcIdentifier bss_path;
-  // Connecting two different services back-to-back.
-  MockWiFiServiceRefPtr unintended_service(
+  // Connecting two different services sequentially.
+  MockWiFiServiceRefPtr service0(
       SetupConnectingService(RpcIdentifier(""), nullptr, &bss_path));
-  MockWiFiServiceRefPtr intended_service(
+  EXPECT_EQ(service0, GetPendingService());
+  MockWiFiServiceRefPtr service1(
       SetupConnectingService(RpcIdentifier(""), nullptr, nullptr));
-
   // Verify the pending service.
-  EXPECT_EQ(intended_service, GetPendingService());
-
-  // Connected to the unintended service (service0).
+  EXPECT_EQ(service1, GetPendingService());
+  // Associated with the endpoint of the previous pending service (service0).
   ReportCurrentBSSChanged(bss_path);
+  // Association with service0 doesn't disconnect from the current pending
+  // service
+  EXPECT_EQ(service1->state(), Service::kStateAssociating);
+  // Verify the pending service and current service
+  EXPECT_EQ(service1, GetPendingService());
+  EXPECT_EQ(nullptr, GetCurrentService());
 
+  // Connecting to another service
+  MockWiFiServiceRefPtr service2(
+      SetupConnectingService(RpcIdentifier(""), nullptr, nullptr));
+  // Verify the pending service.
+  EXPECT_EQ(service2, GetPendingService());
+  // The associated endpoint doesn't belong to the previous pending service
+  // (service1).
+  ReportCurrentBSSChanged(bss_path);
   // Expect the pending service to go back to idle, so it is connectable again.
-  EXPECT_EQ(intended_service->state(), Service::kStateIdle);
+  EXPECT_EQ(service2->state(), Service::kStateIdle);
   // Verify the pending service is disconnected
   EXPECT_EQ(nullptr, GetPendingService());
   EXPECT_EQ(nullptr, GetCurrentService());

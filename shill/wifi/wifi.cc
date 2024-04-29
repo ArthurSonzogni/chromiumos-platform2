@@ -337,8 +337,9 @@ void WiFi::Stop(EnabledStateChangedCallback callback) {
   pending_matches_.clear();
   need_interworking_select_ = false;
   pending_scan_results_.reset();
-  current_service_ = nullptr;  // breaks a reference cycle
-  pending_service_ = nullptr;  // breaks a reference cycle
+  current_service_ = nullptr;           // breaks a reference cycle
+  pending_service_ = nullptr;           // breaks a reference cycle
+  previous_pending_service_ = nullptr;  // breaks a reference cycle
   // Reset autoconnect cooldown time for all WiFi services to 0. When WiFi
   // interface is toggled off-and-on (which is often used to fix issues by
   // resetting states), the cooldown time should be reset so that it does not
@@ -732,6 +733,7 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     }
     // Explicitly disconnect pending service.
     pending_service_->set_expecting_disconnect(true);
+    previous_pending_service_ = pending_service_;
     DisconnectFrom(pending_service_.get());
   }
 
@@ -1662,15 +1664,26 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
                   << " is not part of pending service "
                   << pending_service_->log_name();
 
-    // Quick check: if we didn't roam onto |pending_service_|, we
-    // should still be on |current_service_|.
-    if (service.get() != current_service_.get()) {
-      LOG(WARNING) << "WiFi " << link_name() << " new current Endpoint "
-                   << endpoint->bssid().ToString()
-                   << " is neither part of pending service "
-                   << pending_service_->log_name()
-                   << " nor part of current service "
-                   << (current_service_ ? current_service_->log_name()
+    // Quick check: if we didn't roam onto |pending_service_| or
+    // |previous_pending_service_|, we should still be on |current_service_|.
+    // It is allowed to roam onto |previous_pending_service_| because there is a
+    // delay between supplicant emits a CurrentBSSChanged signal and shill
+    // handles it, if shill connects to |pending_service_| during this delay,
+    // shill receives CurrentBSSChanged signal to an endpoint of
+    // |previous_pending_service_| when connecting to |pending_service_|, see
+    // b/339266878. Frequent switching between more than 2 Wi-Fi networks could
+    // potentially lead to unnecessary disconnections of the pending service,
+    // though this is a rare occurrence in real-world scenarios.
+    if (service.get() != current_service_.get() &&
+        (!previous_pending_service_ ||
+         service.get() != previous_pending_service_.get())) {
+      LOG(WARNING)
+          << "WiFi " << link_name() << " new current Endpoint "
+          << endpoint->bssid().ToString() << " is not part of pending service "
+          << pending_service_->log_name() << " or part of current service "
+          << (current_service_ ? current_service_->log_name() : "(nullptr)")
+          << " or part of previous pending service "
+          << (previous_pending_service_ ? previous_pending_service_->log_name()
                                         : "(nullptr)");
       // wpa_supplicant has no knowledge of the pending_service_ at this point.
       // Disconnect the pending_service_, so that it can be connectable again.
@@ -1692,6 +1705,7 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
     SetPhyState(WiFiState::PhyState::kConnected, wifi_state_->GetScanMethod(),
                 __func__);
     SetPendingService(nullptr);
+    previous_pending_service_ = nullptr;
     return;
   }
 
