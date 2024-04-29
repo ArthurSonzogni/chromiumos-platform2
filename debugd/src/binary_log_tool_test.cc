@@ -31,8 +31,6 @@
 #include "debugd/src/binary_log_tool.h"
 
 using testing::_;
-using testing::Invoke;
-using testing::WithArg;
 
 namespace {
 
@@ -94,22 +92,22 @@ class BinaryLogToolTest : public testing::Test {
     return output_dir_.GetPath().Append(kDefaultOutputFile);
   }
 
-  void SimulateDaemonDBusResponses(
-      const fbpreprocessor::DebugDumps& input_debug_dumps,
-      std::string_view userhash) {
+  void SimulateDaemonDBusResponses(const std::set<base::FilePath>& files,
+                                   std::string_view userhash) {
+    fbpreprocessor::DebugDumps dump_files = CreateProtobuf(files);
     ON_CALL(*fbpreprocessor_proxy_, GetDebugDumps(_, _, _))
-        .WillByDefault(WithArg<0>(Invoke(
-            [&input_debug_dumps](fbpreprocessor::DebugDumps* out_DebugDumps) {
-              *out_DebugDumps = input_debug_dumps;
+        .WillByDefault(testing::WithArg<0>(
+            [dump_files](fbpreprocessor::DebugDumps* out_DebugDumps) {
+              *out_DebugDumps = dump_files;
               return true;
-            })));
+            }));
 
     ON_CALL(*cryptohome_proxy_, GetSanitizedUsername(_, _, _, _))
-        .WillByDefault(WithArg<1>(Invoke(
+        .WillByDefault(testing::WithArg<1>(
             [userhash](user_data_auth::GetSanitizedUsernameReply* reply) {
               reply->set_sanitized_username(userhash);
               return true;
-            })));
+            }));
   }
 
   void WriteBinaryLogsToOutputFile(const FeedbackBinaryLogType log_type) {
@@ -172,9 +170,7 @@ TEST_F(BinaryLogToolTest, IncorrectBinaryLogTypeDoesNotWriteToFD) {
   std::set<base::FilePath> input_files = {file_path};
   CreateFiles(input_files, kDefaultTestData);
 
-  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
-
-  SimulateDaemonDBusResponses(input_dumps, kDefaultUserhash);
+  SimulateDaemonDBusResponses(input_files, kDefaultUserhash);
 
   // Use incorrect FeedbackBinaryLogType
   WriteBinaryLogsToOutputFile(FeedbackBinaryLogType(kIncorrectBinaryLogType));
@@ -188,9 +184,9 @@ TEST_F(BinaryLogToolTest, IncorrectBinaryLogTypeDoesNotWriteToFD) {
 // Verify that nothing is written to the file descriptor.
 TEST_F(BinaryLogToolTest, EmptyDumpsListDoesNotWriteToFD) {
   // Use an empty list of dump files
-  fbpreprocessor::DebugDumps input_dumps;
+  std::set<base::FilePath> input_files;
 
-  SimulateDaemonDBusResponses(input_dumps, kDefaultUserhash);
+  SimulateDaemonDBusResponses(input_files, kDefaultUserhash);
 
   WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
 
@@ -206,10 +202,8 @@ TEST_F(BinaryLogToolTest, EmptyUserhashDoesNotWriteToFD) {
   std::set<base::FilePath> input_files = {file_path};
   CreateFiles(input_files, kDefaultTestData);
 
-  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
-
   // Use empty userhash
-  SimulateDaemonDBusResponses(input_dumps, "");
+  SimulateDaemonDBusResponses(input_files, "");
 
   WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
 
@@ -226,10 +220,8 @@ TEST_F(BinaryLogToolTest, IncorrectUserhashDirDoesNotWriteToFD) {
   std::set<base::FilePath> input_files = {file_path};
   CreateFiles(input_files, kDefaultTestData);
 
-  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
-
   // Use incorrect userhash
-  SimulateDaemonDBusResponses(input_dumps, "test_userhash");
+  SimulateDaemonDBusResponses(input_files, "test_userhash");
 
   WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
 
@@ -251,9 +243,7 @@ TEST_F(BinaryLogToolTest, IncorrectProcessedDirDoesNotWriteToFD) {
   std::set<base::FilePath> input_files = {file_path};
   CreateFiles(input_files, kDefaultTestData);
 
-  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
-
-  SimulateDaemonDBusResponses(input_dumps, kDefaultUserhash);
+  SimulateDaemonDBusResponses(input_files, kDefaultUserhash);
 
   WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
 
@@ -278,9 +268,7 @@ TEST_F(BinaryLogToolTest, IncorrectDaemonStoreDirDoesNotWriteToFD) {
   std::set<base::FilePath> input_files = {file_path};
   CreateFiles(input_files, kDefaultTestData);
 
-  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
-
-  SimulateDaemonDBusResponses(input_dumps, kDefaultUserhash);
+  SimulateDaemonDBusResponses(input_files, kDefaultUserhash);
 
   WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
 
@@ -300,9 +288,7 @@ TEST_F(BinaryLogToolTest, NoScratchDirDoesNotWriteToFD) {
   std::set<base::FilePath> input_files = {file_path};
   CreateFiles(input_files, kDefaultTestData);
 
-  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
-
-  SimulateDaemonDBusResponses(input_dumps, kDefaultUserhash);
+  SimulateDaemonDBusResponses(input_files, kDefaultUserhash);
 
   WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
 
@@ -319,9 +305,7 @@ TEST_F(BinaryLogToolTest, ValidInputWriteCompressedLogsToFD) {
   std::set<base::FilePath> input_files = {file_path_1, file_path_2};
   CreateFiles(input_files, kDefaultTestData);
 
-  fbpreprocessor::DebugDumps input_dumps = CreateProtobuf(input_files);
-
-  SimulateDaemonDBusResponses(input_dumps, kDefaultUserhash);
+  SimulateDaemonDBusResponses(input_files, kDefaultUserhash);
 
   WriteBinaryLogsToOutputFile(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP);
 
