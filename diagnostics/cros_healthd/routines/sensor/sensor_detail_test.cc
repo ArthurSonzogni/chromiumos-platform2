@@ -15,9 +15,11 @@
 namespace diagnostics {
 namespace {
 
+constexpr int32_t kTestSensorId = 123;
+
 TEST(SensorDetailTest, UpdateChannelSampleAndNoError) {
-  SensorDetail sensor;
-  sensor.types = {cros::mojom::DeviceType::ACCEL};
+  SensorDetail sensor{.sensor_id = kTestSensorId,
+                      .types = {cros::mojom::DeviceType::ACCEL}};
   sensor.channels = {cros::mojom::kTimestampChannel, "accel_x", "accel_y",
                      "accel_z"};
   sensor.checking_channel_sample[0] = std::nullopt;
@@ -38,15 +40,15 @@ TEST(SensorDetailTest, UpdateChannelSampleAndNoError) {
 }
 
 TEST(SensorDetailTest, IsErrorOccurredNoChannels) {
-  SensorDetail sensor;
-  sensor.types = {cros::mojom::DeviceType::ACCEL};
+  SensorDetail sensor{.sensor_id = kTestSensorId,
+                      .types = {cros::mojom::DeviceType::ACCEL}};
   sensor.channels = {};
   EXPECT_TRUE(sensor.IsErrorOccurred());
 }
 
 TEST(SensorDetailTest, IsErrorOccurredNoLastReadingSample) {
-  SensorDetail sensor;
-  sensor.types = {cros::mojom::DeviceType::ACCEL};
+  SensorDetail sensor{.sensor_id = kTestSensorId,
+                      .types = {cros::mojom::DeviceType::ACCEL}};
   sensor.channels = {cros::mojom::kTimestampChannel, "accel_x", "accel_y",
                      "accel_z"};
   sensor.checking_channel_sample[0] = std::nullopt;
@@ -54,16 +56,13 @@ TEST(SensorDetailTest, IsErrorOccurredNoLastReadingSample) {
 }
 
 TEST(SensorDetailTest, GetDetailValue) {
-  SensorDetail sensor;
-  sensor.types = {cros::mojom::DeviceType::ACCEL};
+  SensorDetail sensor{.sensor_id = kTestSensorId,
+                      .types = {cros::mojom::DeviceType::ACCEL}};
   sensor.channels = {cros::mojom::kTimestampChannel, "accel_x", "accel_y",
                      "accel_z"};
 
-  const int32_t test_id = 123;
-  auto got_value = sensor.GetDetailValue(test_id);
-
   base::Value::Dict expected_value;
-  expected_value.Set("id", test_id);
+  expected_value.Set("id", kTestSensorId);
   base::Value::List out_types;
   out_types.Append("Accel");
   expected_value.Set("types", std::move(out_types));
@@ -74,7 +73,7 @@ TEST(SensorDetailTest, GetDetailValue) {
   out_channels.Append("accel_z");
   expected_value.Set("channels", std::move(out_channels));
 
-  EXPECT_EQ(got_value, expected_value);
+  EXPECT_EQ(sensor.ToDict(), expected_value);
 }
 
 }  // namespace

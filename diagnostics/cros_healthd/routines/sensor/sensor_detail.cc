@@ -71,9 +71,9 @@ bool SensorDetail::IsErrorOccurred() {
   return false;
 }
 
-base::Value::Dict SensorDetail::GetDetailValue(int32_t id) {
+base::Value::Dict SensorDetail::ToDict() {
   base::Value::Dict sensor_output;
-  sensor_output.Set("id", id);
+  sensor_output.Set("id", sensor_id);
   base::Value::List out_types;
   for (const auto& type : types)
     out_types.Append(ConverDeviceTypeToString(type));

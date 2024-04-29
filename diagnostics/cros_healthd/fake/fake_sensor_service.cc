@@ -42,6 +42,8 @@ void FakeSensorService::GetAllDeviceIds(GetAllDeviceIdsCallback callback) {
 void FakeSensorService::GetDevice(
     int32_t iio_device_id,
     mojo::PendingReceiver<cros::mojom::SensorDevice> device_request) {
+  CHECK(ids_devices_[iio_device_id])
+      << "Failed to get sensor device with ID: " << iio_device_id;
   ids_devices_[iio_device_id]->receiver().Bind(std::move(device_request));
 }
 

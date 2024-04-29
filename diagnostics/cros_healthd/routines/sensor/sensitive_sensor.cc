@@ -228,10 +228,11 @@ void SensitiveSensorRoutine::HandleVerificationResponse(
 
   for (const auto& [sensor_id, sensor_types] : ids_types) {
     auto types = FilterSupportedTypes(sensor_types);
+    // Skip unsupported sensors.
     if (types.empty())
       continue;
 
-    pending_sensors_[sensor_id] = {.types = types};
+    pending_sensors_[sensor_id] = {.sensor_id = sensor_id, .types = types};
     InitSensorDevice(sensor_id);
   }
   if (pending_sensors_.empty())
@@ -248,9 +249,8 @@ void SensitiveSensorRoutine::InitSensorDevice(int32_t sensor_id) {
 void SensitiveSensorRoutine::HandleFrequencyResponse(int32_t sensor_id,
                                                      double frequency) {
   if (frequency <= 0.0) {
-    LOG(ERROR) << "Failed to set frequency on sensor with id: " << sensor_id;
-    failed_sensors_[sensor_id] =
-        pending_sensors_[sensor_id].GetDetailValue(sensor_id);
+    LOG(ERROR) << "Failed to set frequency on sensor with ID: " << sensor_id;
+    failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineErrorMessage);
     return;
@@ -269,10 +269,9 @@ void SensitiveSensorRoutine::HandleChannelIdsResponse(
        GetRequiredChannels(pending_sensors_[sensor_id].types)) {
     auto it = std::find(channels.begin(), channels.end(), required_channel);
     if (it == channels.end()) {
-      LOG(ERROR) << "Failed to get required channels on sensor with id: "
+      LOG(ERROR) << "Failed to get required channels on sensor with ID: "
                  << sensor_id;
-      failed_sensors_[sensor_id] =
-          pending_sensors_[sensor_id].GetDetailValue(sensor_id);
+      failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                        kSensitiveSensorRoutineErrorMessage);
       return;
@@ -293,10 +292,9 @@ void SensitiveSensorRoutine::HandleChannelIdsResponse(
 void SensitiveSensorRoutine::HandleSetChannelsEnabledResponse(
     int32_t sensor_id, const std::vector<int32_t>& failed_indices) {
   if (!failed_indices.empty()) {
-    LOG(ERROR) << "Failed to set channels enabled on sensor with id: "
+    LOG(ERROR) << "Failed to set channels enabled on sensor with ID: "
                << sensor_id;
-    failed_sensors_[sensor_id] =
-        pending_sensors_[sensor_id].GetDetailValue(sensor_id);
+    failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineErrorMessage);
     return;
@@ -322,7 +320,7 @@ void SensitiveSensorRoutine::OnSampleUpdated(
     mojo_service_->GetSensorDevice(sensor_id)->StopReadingSamples();
 
     // Store detail of passed sensor.
-    passed_sensors_[sensor_id] = sensor.GetDetailValue(sensor_id);
+    passed_sensors_[sensor_id] = sensor.ToDict();
     pending_sensors_.erase(sensor_id);
     observer_receiver_set_.Remove(observer_receiver_set_.current_receiver());
     if (pending_sensors_.empty())
@@ -332,10 +330,10 @@ void SensitiveSensorRoutine::OnSampleUpdated(
 
 void SensitiveSensorRoutine::OnErrorOccurred(
     cros::mojom::ObserverErrorType type) {
-  const auto& id = observer_receiver_set_.current_context();
+  const auto& sensor_id = observer_receiver_set_.current_context();
   LOG(ERROR) << "Observer error occurred while reading sample: " << type
-             << ", sensor id: " << id;
-  failed_sensors_[id] = pending_sensors_[id].GetDetailValue(id);
+             << ", sensor ID: " << sensor_id;
+  failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
   SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                    kSensitiveSensorRoutineErrorMessage);
 }
@@ -355,9 +353,7 @@ void SensitiveSensorRoutine::OnTimeoutOccurred() {
     mojo_service_->GetSensorDevice(sensor_id)->StopReadingSamples();
 
     // Store detail of failed sensor.
-    failed_sensors_[sensor_id] =
-        pending_sensors_[sensor_id].GetDetailValue(sensor_id);
-
+    failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
     if (pending_sensors_[sensor_id].IsErrorOccurred()) {
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                        kSensitiveSensorRoutineErrorMessage);

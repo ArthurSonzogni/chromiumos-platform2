@@ -16,24 +16,32 @@
 
 namespace diagnostics {
 
-// The detail of sensor used for sensitive sensor routine.
+// The detail of sensor used for sensitive sensor routine. This is also a helper
+// class to record read sensor sample.
 struct SensorDetail {
+  // Sensor ID.
+  int32_t sensor_id;
+
   // Sensor types.
   std::vector<cros::mojom::DeviceType> types;
+
   // Sensor channels.
   std::optional<std::vector<std::string>> channels;
+
   // First is channel indice, second is the last reading sample. If the
   // channel finishes checking, remove it from this map.
   std::map<int32_t, std::optional<int64_t>> checking_channel_sample;
 
-  // Update the sample for channel at index |indice|.
+  // Update the read sample in `checking_channel_sample` for channel at index
+  // |indice|. Remove the channel from `checking_channel_sample` when we
+  // observe changed value.
   void UpdateChannelSample(int32_t indice, int64_t value);
 
   // Check if there is any error when interacting with Iioservice.
   bool IsErrorOccurred();
 
-  // Return the detail for output dict.
-  base::Value::Dict GetDetailValue(int32_t id);
+  // Return the detail for v1 routine output dict.
+  base::Value::Dict ToDict();
 };
 
 }  // namespace diagnostics
