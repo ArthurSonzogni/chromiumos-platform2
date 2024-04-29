@@ -11,6 +11,7 @@
 #include <base/files/important_file_writer.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_util.h>
 #include <crypto/random.h>
 #include <brillo/data_encoding.h>
 
@@ -68,7 +69,7 @@ std::optional<std::string> FlexStateKeyGenerator::GenerateFlexStateKey() {
   std::string flex_state_key_hex;
 
   crypto::RandBytes(flex_state_key_raw, kFlexStateKeyLength);
-  flex_state_key_hex = base::HexEncode(flex_state_key_raw);
+  flex_state_key_hex = base::ToLowerASCII(base::HexEncode(flex_state_key_raw));
 
   flex_state_key = flex_state_key_hex;
   return flex_state_key;
