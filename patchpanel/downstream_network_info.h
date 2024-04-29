@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <base/functional/callback_helpers.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/mac_address.h>
@@ -64,10 +65,12 @@ struct DownstreamNetworkInfo {
   std::vector<std::string> dhcp_domain_searches;
   // The extra DHCP options, only used when |enable_ipv4_dhcp| is true.
   DHCPServerController::Config::DHCPOptions dhcp_options;
-
   // Set to true if GuestIPv6Service is used on the downstream network.
   bool enable_ipv6;
   // TODO(b/239559602) Add IPv6 configuration for LocalOnlyNetwork.
+  // Closure to cancel lifeline FD tracking the file descriptor committed by the
+  // DBus client.
+  base::ScopedClosureRunner cancel_lifeline_fd;
 
   // Creates the DownstreamNetworkInfo instance from TetheredNetworkRequest.
   // Returns nullptr in case of failure.

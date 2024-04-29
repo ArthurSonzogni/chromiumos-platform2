@@ -16,6 +16,7 @@
 #include <string_view>
 #include <vector>
 
+#include <base/functional/callback_helpers.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
@@ -97,6 +98,9 @@ struct ConnectedNamespace {
   // request, otherwise it matches the default logical or physical Device
   // depending on |route_on_vpn| and depending if a default Device exists.
   std::optional<ShillClient::Device> current_outbound_device;
+  // Closure to cancel lifeline FD tracking the file descriptor committed by the
+  // DBus client.
+  base::ScopedClosureRunner cancel_lifeline_fd;
 };
 
 // Describes a DNS DNAT redirection rule issued by dns-proxy.
@@ -106,6 +110,9 @@ struct DnsRedirectionRule {
   net_base::IPAddress proxy_address;
   std::vector<net_base::IPAddress> nameservers;
   std::string host_ifname;
+  // Closure to cancel lifeline FD tracking the file descriptor committed by the
+  // DBus client.
+  base::ScopedClosureRunner cancel_lifeline_fd;
 };
 
 // Simple enum for specifying a set of IP family values.

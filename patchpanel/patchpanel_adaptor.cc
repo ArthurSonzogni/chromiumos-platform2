@@ -9,10 +9,11 @@
 #include <string>
 #include <utility>
 
+#include <base/posix/eintr_wrapper.h>
 #include <chromeos/dbus/patchpanel/dbus-constants.h>
 #include <metrics/metrics_library.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <net-base/process_manager.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/downstream_network_info.h"
 #include "patchpanel/manager.h"
@@ -22,6 +23,17 @@
 #include "patchpanel/rtnl_client.h"
 
 namespace patchpanel {
+namespace {
+// Convenience function to duplicate a ScopedFD.
+base::ScopedFD Dup(const base::ScopedFD& fd) {
+  int duped_fd = HANDLE_EINTR(dup(fd.get()));
+  if (duped_fd < 0) {
+    PLOG(ERROR) << "Failed to dup() client file descriptor";
+    return base::ScopedFD();
+  }
+  return base::ScopedFD(duped_fd);
+}
+}  // namespace
 
 PatchpanelAdaptor::PatchpanelAdaptor(const base::FilePath& cmd_path,
                                      scoped_refptr<::dbus::Bus> bus,
@@ -100,7 +112,7 @@ ConnectNamespaceResponse PatchpanelAdaptor::ConnectNamespace(
     const ConnectNamespaceRequest& request, const base::ScopedFD& client_fd) {
   RecordDbusEvent(DbusUmaEvent::kConnectNamespace);
 
-  const auto response = manager_->ConnectNamespace(request, client_fd);
+  const auto response = manager_->ConnectNamespace(request, Dup(client_fd));
   if (!response.netns_name().empty()) {
     RecordDbusEvent(DbusUmaEvent::kConnectNamespaceSuccess);
   }
@@ -111,7 +123,7 @@ LocalOnlyNetworkResponse PatchpanelAdaptor::CreateLocalOnlyNetwork(
     const LocalOnlyNetworkRequest& request, const base::ScopedFD& client_fd) {
   RecordDbusEvent(DbusUmaEvent::kCreateLocalOnlyNetwork);
   LocalOnlyNetworkResponse response =
-      manager_->CreateLocalOnlyNetwork(request, client_fd);
+      manager_->CreateLocalOnlyNetwork(request, Dup(client_fd));
   if (response.response_code() == DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
   }
@@ -125,7 +137,7 @@ TetheredNetworkResponse PatchpanelAdaptor::CreateTetheredNetwork(
     const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
   RecordDbusEvent(DbusUmaEvent::kCreateTetheredNetwork);
   TetheredNetworkResponse response =
-      manager_->CreateTetheredNetwork(request, client_fd);
+      manager_->CreateTetheredNetwork(request, Dup(client_fd));
   if (response.response_code() == DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(DbusUmaEvent::kCreateTetheredNetworkSuccess);
   }
@@ -343,7 +355,7 @@ SetDnsRedirectionRuleResponse PatchpanelAdaptor::SetDnsRedirectionRule(
     const base::ScopedFD& client_fd) {
   RecordDbusEvent(DbusUmaEvent::kSetDnsRedirectionRule);
 
-  const bool success = manager_->SetDnsRedirectionRule(request, client_fd);
+  const bool success = manager_->SetDnsRedirectionRule(request, Dup(client_fd));
   if (success) {
     RecordDbusEvent(DbusUmaEvent::kSetDnsRedirectionRuleSuccess);
   }

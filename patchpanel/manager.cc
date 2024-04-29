@@ -88,6 +88,8 @@ Manager::Manager(const base::FilePath& cmd_path,
 
   qos_svc_ = std::make_unique<QoSService>(datapath_.get(), conntrack_monitor);
 
+  lifeline_fd_svc_ = std::make_unique<LifelineFDService>();
+
   constexpr ArcService::ArcType arc_type = []() constexpr {
     if (USE_ARCVM_NIC_HOTPLUG) {
       return ArcService::ArcType::kVMHotplug;
@@ -157,19 +159,31 @@ Manager::~Manager() {
   // depends on Datapath.
   qos_svc_.reset();
 
-  // Tear down any remaining active lifeline file descriptors.
-  std::vector<int> lifeline_fds;
-  for (const auto& kv : connected_namespaces_) {
-    lifeline_fds.push_back(kv.first);
+  // Tear down any remaining ConnectNamespace setup.
+  std::vector<int> connected_namespaces_ifnames;
+  for (const auto& [id, _] : connected_namespaces_) {
+    connected_namespaces_ifnames.push_back(id);
   }
-  for (const auto& kv : dns_redirection_rules_) {
-    lifeline_fds.push_back(kv.first);
+  for (int id : connected_namespaces_ifnames) {
+    OnConnectedNamespaceAutoclose(id);
   }
-  for (const auto& kv : downstream_networks_) {
-    lifeline_fds.push_back(kv.first);
+
+  // Tear down any remaining DNS redirection rule setup.
+  std::vector<int> dns_proxy_lifelines_fds;
+  for (const auto& [lifeline_fd, _] : dns_redirection_rules_) {
+    dns_proxy_lifelines_fds.push_back(lifeline_fd);
   }
-  for (const int fdkey : lifeline_fds) {
-    OnLifelineFdClosed(fdkey);
+  for (int lifeline_fd : dns_proxy_lifelines_fds) {
+    OnDnsRedirectionRulesAutoclose(lifeline_fd);
+  }
+
+  // Tear down any remaining DownstreamNetwork setup.
+  std::vector<std::string> downstream_ifnames;
+  for (const auto& [ifname, _] : downstream_networks_) {
+    downstream_ifnames.push_back(ifname);
+  }
+  for (const std::string& ifname : downstream_ifnames) {
+    OnDownstreamNetworkAutoclose(ifname);
   }
 
   multicast_counters_svc_->Stop();
@@ -712,7 +726,7 @@ bool Manager::TagSocket(const patchpanel::TagSocketRequest& request,
 
 patchpanel::TetheredNetworkResponse Manager::CreateTetheredNetwork(
     const patchpanel::TetheredNetworkRequest& request,
-    const base::ScopedFD& client_fd) {
+    base::ScopedFD client_fd) {
   patchpanel::TetheredNetworkResponse response;
 
   // b/273741099, b/293964582: patchpanel must support callers using either the
@@ -753,7 +767,7 @@ patchpanel::TetheredNetworkResponse Manager::CreateTetheredNetwork(
   }
 
   auto [response_code, downstream_network] =
-      HandleDownstreamNetworkInfo(client_fd, std::move(info));
+      HandleDownstreamNetworkInfo(std::move(client_fd), std::move(info));
   response.set_response_code(response_code);
   if (downstream_network) {
     response.set_allocated_downstream_network(downstream_network.release());
@@ -763,7 +777,7 @@ patchpanel::TetheredNetworkResponse Manager::CreateTetheredNetwork(
 
 patchpanel::LocalOnlyNetworkResponse Manager::CreateLocalOnlyNetwork(
     const patchpanel::LocalOnlyNetworkRequest& request,
-    const base::ScopedFD& client_fd) {
+    base::ScopedFD client_fd) {
   patchpanel::LocalOnlyNetworkResponse response;
 
   std::unique_ptr<DownstreamNetworkInfo> info =
@@ -776,7 +790,7 @@ patchpanel::LocalOnlyNetworkResponse Manager::CreateLocalOnlyNetwork(
   }
 
   auto [response_code, downstream_network] =
-      HandleDownstreamNetworkInfo(client_fd, std::move(info));
+      HandleDownstreamNetworkInfo(std::move(client_fd), std::move(info));
   response.set_response_code(response_code);
   if (downstream_network) {
     response.set_allocated_downstream_network(downstream_network.release());
@@ -787,14 +801,7 @@ patchpanel::LocalOnlyNetworkResponse Manager::CreateLocalOnlyNetwork(
 patchpanel::GetDownstreamNetworkInfoResponse Manager::GetDownstreamNetworkInfo(
     const std::string& downstream_ifname) const {
   patchpanel::GetDownstreamNetworkInfoResponse response;
-
-  auto match_by_downstream_ifname = [&downstream_ifname](const auto& kv) {
-    return kv.second->downstream_ifname == downstream_ifname;
-  };
-
-  const auto it =
-      std::find_if(downstream_networks_.begin(), downstream_networks_.end(),
-                   match_by_downstream_ifname);
+  const auto it = downstream_networks_.find(downstream_ifname);
   if (it == downstream_networks_.end()) {
     response.set_success(false);
     return response;
@@ -948,7 +955,7 @@ void Manager::OnNeighborReachabilityEvent(
 }
 
 ConnectNamespaceResponse Manager::ConnectNamespace(
-    const ConnectNamespaceRequest& request, const base::ScopedFD& client_fd) {
+    const ConnectNamespaceRequest& request, base::ScopedFD client_fd) {
   ConnectNamespaceResponse response;
 
   const pid_t pid = request.pid();
@@ -1002,8 +1009,12 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
     return response;
   }
 
-  base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
-  if (!local_client_fd.is_valid()) {
+  auto cancel_lifeline_fd = lifeline_fd_svc_->AddLifelineFD(
+      std::move(client_fd),
+      base::BindOnce(&Manager::OnConnectedNamespaceAutoclose,
+                     weak_factory_.GetWeakPtr(),
+                     connected_namespaces_next_id_));
+  if (!cancel_lifeline_fd) {
     LOG(ERROR) << "Failed to create lifeline fd";
     return response;
   }
@@ -1052,7 +1063,6 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
 
   if (!datapath_->StartRoutingNamespace(nsinfo)) {
     LOG(ERROR) << "Failed to setup datapath";
-    DeleteLifelineFd(local_client_fd.release());
     return response;
   }
 
@@ -1077,116 +1087,83 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
   }
 
   // Store ConnectedNamespace
+  nsinfo.cancel_lifeline_fd = std::move(cancel_lifeline_fd);
+  connected_namespaces_.emplace(connected_namespaces_next_id_,
+                                std::move(nsinfo));
   connected_namespaces_next_id_++;
-  int fdkey = local_client_fd.release();
-  connected_namespaces_.emplace(fdkey, std::move(nsinfo));
-
   return response;
 }
 
-base::ScopedFD Manager::AddLifelineFd(const base::ScopedFD& dbus_fd) {
-  if (!dbus_fd.is_valid()) {
-    LOG(ERROR) << "Invalid client file descriptor";
-    return base::ScopedFD();
-  }
-
-  // Dup the client fd into our own: this guarantees that the fd number will
-  // be stable and tied to the actual kernel resources used by the client.
-  // The duped fd will be watched for read events.
-  int fd = dup(dbus_fd.get());
-  if (fd < 0) {
-    PLOG(ERROR) << "dup() failed";
-    return base::ScopedFD();
-  }
-
-  lifeline_fd_controllers_[fd] = base::FileDescriptorWatcher::WatchReadable(
-      fd, base::BindRepeating(&Manager::OnLifelineFdClosed,
-                              // The callback will not outlive the object.
-                              base::Unretained(this), fd));
-  return base::ScopedFD(fd);
-}
-
-void Manager::DeleteLifelineFd(int lifeline_fd) {
-  auto iter = lifeline_fd_controllers_.find(lifeline_fd);
-  if (iter == lifeline_fd_controllers_.end()) {
-    LOG(ERROR) << __func__ << ": untracked fd " << lifeline_fd;
+void Manager::OnDownstreamNetworkAutoclose(
+    const std::string& downstream_ifname) {
+  auto downstream_network_it = downstream_networks_.find(downstream_ifname);
+  if (downstream_network_it == downstream_networks_.end()) {
     return;
   }
 
-  iter->second.reset();  // Destruct the controller, which removes the callback.
-  lifeline_fd_controllers_.erase(iter);
+  const auto& info = downstream_network_it->second;
+  LOG(INFO) << __func__ << ": " << *info;
 
-  // AddLifelineFd() calls dup(), so this function should close the fd.
-  // We still return true since at this point the FileDescriptorWatcher object
-  // has been destructed.
-  if (IGNORE_EINTR(close(lifeline_fd)) < 0) {
-    PLOG(ERROR) << __func__ << ": close(" << lifeline_fd << ") failed";
+  // Stop IPv6 guest service on the downstream interface if IPv6 is enabled.
+  if (info->enable_ipv6 && info->upstream_device) {
+    StopIPv6NDPForwarding(*info->upstream_device, info->downstream_ifname);
   }
+
+  // Stop the DHCP server if exists.
+  // TODO(b/274998094): Currently the DHCPServerController stop the process
+  // asynchronously. It might cause the new DHCPServerController creation
+  // failure if the new one is created before the process terminated. We
+  // should polish the termination procedure to prevent this situation.
+  dhcp_server_controllers_.erase(info->downstream_ifname);
+
+  datapath_->StopDownstreamNetwork(*info);
+
+  // b/294287313: if the upstream network was created in an ad-hoc
+  // fashion through StartTetheringUpstreamNetwork and is not managed by
+  // ShillClient, the datapath tear down must also be triggered specially.
+  if (info->upstream_device &&
+      !shill_client_->GetDeviceByIfindex(info->upstream_device->ifindex)) {
+    StopTetheringUpstreamNetwork(*info->upstream_device);
+  }
+
+  downstream_networks_.erase(downstream_network_it);
 }
 
-void Manager::OnLifelineFdClosed(int client_fd) {
-  // The process that requested this port has died/exited.
-  DeleteLifelineFd(client_fd);
-
-  auto downstream_network_it = downstream_networks_.find(client_fd);
-  if (downstream_network_it != downstream_networks_.end()) {
-    const auto& info = downstream_network_it->second;
-    // Stop IPv6 guest service on the downstream interface if IPv6 is enabled.
-    if (info->enable_ipv6 && info->upstream_device) {
-      StopIPv6NDPForwarding(*info->upstream_device, info->downstream_ifname);
-    }
-
-    // Stop the DHCP server if exists.
-    // TODO(b/274998094): Currently the DHCPServerController stop the process
-    // asynchronously. It might cause the new DHCPServerController creation
-    // failure if the new one is created before the process terminated. We
-    // should polish the termination procedure to prevent this situation.
-    dhcp_server_controllers_.erase(info->downstream_ifname);
-
-    datapath_->StopDownstreamNetwork(*info);
-
-    // b/294287313: if the upstream network was created in an ad-hoc
-    // fashion through StartTetheringUpstreamNetwork and is not managed by
-    // ShillClient, the datapath tear down must also be triggered specially.
-    if (info->upstream_device &&
-        !shill_client_->GetDeviceByIfindex(info->upstream_device->ifindex)) {
-      StopTetheringUpstreamNetwork(*info->upstream_device);
-    }
-
-    LOG(INFO) << "Disconnected Downstream Network " << *info;
-    downstream_networks_.erase(downstream_network_it);
-    return;
-  }
-
+void Manager::OnConnectedNamespaceAutoclose(int connected_namespace_id) {
   // Remove the rules and IP addresses tied to the lifeline fd.
-  auto connected_namespace_it = connected_namespaces_.find(client_fd);
-  if (connected_namespace_it != connected_namespaces_.end()) {
-    if (connected_namespace_it->second.current_outbound_device) {
-      StopIPv6NDPForwarding(
-          *connected_namespace_it->second.current_outbound_device,
-          connected_namespace_it->second.host_ifname);
-    }
-    datapath_->StopRoutingNamespace(connected_namespace_it->second);
-    LOG(INFO) << "Disconnected network namespace "
-              << connected_namespace_it->second;
-    if (connected_namespace_it->second.static_ipv6_config.has_value()) {
-      addr_mgr_.ReleaseIPv6Subnet(
-          connected_namespace_it->second.static_ipv6_config->host_cidr
-              .GetPrefixCIDR());
-    }
-    // This release the allocated IPv4 subnet.
-    connected_namespaces_.erase(connected_namespace_it);
+  auto connected_namespace_it =
+      connected_namespaces_.find(connected_namespace_id);
+  if (connected_namespace_it == connected_namespaces_.end()) {
     return;
   }
 
-  auto dns_redirection_it = dns_redirection_rules_.find(client_fd);
+  LOG(INFO) << __func__ << ": " << connected_namespace_it->second;
+
+  if (connected_namespace_it->second.current_outbound_device) {
+    StopIPv6NDPForwarding(
+        *connected_namespace_it->second.current_outbound_device,
+        connected_namespace_it->second.host_ifname);
+  }
+  datapath_->StopRoutingNamespace(connected_namespace_it->second);
+  if (connected_namespace_it->second.static_ipv6_config.has_value()) {
+    addr_mgr_.ReleaseIPv6Subnet(
+        connected_namespace_it->second.static_ipv6_config->host_cidr
+            .GetPrefixCIDR());
+  }
+  // This release the allocated IPv4 subnet.
+  connected_namespaces_.erase(connected_namespace_it);
+}
+
+void Manager::OnDnsRedirectionRulesAutoclose(int lifeline_fd) {
+  auto dns_redirection_it = dns_redirection_rules_.find(lifeline_fd);
   if (dns_redirection_it == dns_redirection_rules_.end()) {
-    LOG(ERROR) << "No client_fd found for " << client_fd;
     return;
   }
-  auto rule = dns_redirection_it->second;
+
+  auto rule = std::move(dns_redirection_it->second);
+  LOG(INFO) << __func__ << ": " << rule;
+
   datapath_->StopDnsRedirection(rule);
-  LOG(INFO) << "Stopped DNS redirection " << rule;
   dns_redirection_rules_.erase(dns_redirection_it);
   // Propagate DNS proxy addresses change.
   if (rule.type == patchpanel::SetDnsRedirectionRuleRequest::ARC) {
@@ -1203,38 +1180,41 @@ void Manager::OnLifelineFdClosed(int client_fd) {
 }
 
 bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
-                                    const base::ScopedFD& client_fd) {
-  base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
-  if (!local_client_fd.is_valid()) {
-    LOG(ERROR) << "Failed to create lifeline fd";
+                                    base::ScopedFD client_fd) {
+  int lifeline_fd = client_fd.get();
+  auto cancel_lifeline_fd = lifeline_fd_svc_->AddLifelineFD(
+      std::move(client_fd),
+      base::BindOnce(&Manager::OnDnsRedirectionRulesAutoclose,
+                     weak_factory_.GetWeakPtr(), lifeline_fd));
+  if (!cancel_lifeline_fd) {
+    LOG(ERROR) << __func__ << ": Failed to create lifeline fd";
     return false;
   }
 
   const auto proxy_address =
       net_base::IPAddress::CreateFromString(request.proxy_address());
   if (!proxy_address) {
-    LOG(ERROR) << "proxy_address is invalid IP address: "
+    LOG(ERROR) << __func__ << ": proxy_address is invalid IP address: "
                << request.proxy_address();
-    DeleteLifelineFd(local_client_fd.release());
     return false;
   }
   DnsRedirectionRule rule{.type = request.type(),
                           .input_ifname = request.input_ifname(),
                           .proxy_address = *proxy_address,
-                          .host_ifname = request.host_ifname()};
+                          .host_ifname = request.host_ifname(),
+                          .cancel_lifeline_fd = std::move(cancel_lifeline_fd)};
 
   for (const auto& ns : request.nameservers()) {
     const auto nameserver = net_base::IPAddress::CreateFromString(ns);
     if (!nameserver || nameserver->GetFamily() != proxy_address->GetFamily()) {
-      LOG(WARNING) << "Invalid nameserver IP address: " << ns;
+      LOG(WARNING) << __func__ << ": Invalid nameserver IP address: " << ns;
     } else {
       rule.nameservers.push_back(*nameserver);
     }
   }
 
   if (!datapath_->StartDnsRedirection(rule)) {
-    LOG(ERROR) << "Failed to setup datapath";
-    DeleteLifelineFd(local_client_fd.release());
+    LOG(ERROR) << __func__ << ": Failed to setup datapath";
     return false;
   }
   // Notify GuestIPv6Service to add a route for the IPv6 proxy address to the
@@ -1260,18 +1240,24 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
   }
 
   // Store DNS proxy's redirection request.
-  int fdkey = local_client_fd.release();
-  dns_redirection_rules_.emplace(fdkey, std::move(rule));
-
+  dns_redirection_rules_.emplace(lifeline_fd, std::move(rule));
   return true;
 }
 
 std::pair<DownstreamNetworkResult, std::unique_ptr<DownstreamNetwork>>
 Manager::HandleDownstreamNetworkInfo(
-    const base::ScopedFD& client_fd,
-    std::unique_ptr<DownstreamNetworkInfo> info) {
-  base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
-  if (!local_client_fd.is_valid()) {
+    base::ScopedFD client_fd, std::unique_ptr<DownstreamNetworkInfo> info) {
+  if (downstream_networks_.contains(info->downstream_ifname)) {
+    LOG(ERROR) << __func__ << ": DownstreamNetwork already exist for "
+               << info->downstream_ifname;
+    return {patchpanel::DownstreamNetworkResult::INTERFACE_USED, nullptr};
+  }
+
+  auto cancel_lifeline_fd = lifeline_fd_svc_->AddLifelineFD(
+      std::move(client_fd),
+      base::BindOnce(&Manager::OnDownstreamNetworkAutoclose,
+                     weak_factory_.GetWeakPtr(), info->downstream_ifname));
+  if (!cancel_lifeline_fd) {
     LOG(ERROR) << __func__ << " " << *info << ": Failed to create lifeline fd";
     return {patchpanel::DownstreamNetworkResult::ERROR, nullptr};
   }
@@ -1279,7 +1265,6 @@ Manager::HandleDownstreamNetworkInfo(
   if (!datapath_->StartDownstreamNetwork(*info)) {
     LOG(ERROR) << __func__ << " " << *info
                << ": Failed to configure forwarding to downstream network";
-    DeleteLifelineFd(local_client_fd.release());
     return {patchpanel::DownstreamNetworkResult::DATAPATH_ERROR, nullptr};
   }
 
@@ -1290,14 +1275,12 @@ Manager::HandleDownstreamNetworkInfo(
       LOG(ERROR) << __func__ << " " << *info
                  << ": DHCP server is already running at "
                  << info->downstream_ifname;
-      DeleteLifelineFd(local_client_fd.release());
       return {patchpanel::DownstreamNetworkResult::INTERFACE_USED, nullptr};
     }
     const auto config = info->ToDHCPServerConfig();
     if (!config) {
       LOG(ERROR) << __func__ << " " << *info
                  << ": Failed to get DHCP server config";
-      DeleteLifelineFd(local_client_fd.release());
       return {patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT, nullptr};
     }
     auto dhcp_server_controller = std::make_unique<DHCPServerController>(
@@ -1305,7 +1288,6 @@ Manager::HandleDownstreamNetworkInfo(
     // TODO(b/274722417): Handle the DHCP server exits unexpectedly.
     if (!dhcp_server_controller->Start(*config, base::DoNothing())) {
       LOG(ERROR) << __func__ << " " << *info << ": Failed to start DHCP server";
-      DeleteLifelineFd(local_client_fd.release());
       return {patchpanel::DownstreamNetworkResult::DHCP_SERVER_FAILURE,
               nullptr};
     }
@@ -1326,8 +1308,8 @@ Manager::HandleDownstreamNetworkInfo(
   std::unique_ptr<DownstreamNetwork> downstream_network =
       std::make_unique<DownstreamNetwork>();
   FillDownstreamNetworkProto(*info, downstream_network.get());
-  int fdkey = local_client_fd.release();
-  downstream_networks_.emplace(fdkey, std::move(info));
+  info->cancel_lifeline_fd = std::move(cancel_lifeline_fd);
+  downstream_networks_.emplace(info->downstream_ifname, std::move(info));
   return {patchpanel::DownstreamNetworkResult::SUCCESS,
           std::move(downstream_network)};
 }

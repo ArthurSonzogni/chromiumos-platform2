@@ -29,6 +29,7 @@
 #include "patchpanel/downstream_network_info.h"
 #include "patchpanel/forwarding_service.h"
 #include "patchpanel/guest_ipv6_service.h"
+#include "patchpanel/lifeline_fd_service.h"
 #include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/network_monitor_service.h"
@@ -104,7 +105,7 @@ class Manager : public ForwardingService {
   // through rtnetlink RTM_NEWNSID.
   ConnectNamespaceResponse ConnectNamespace(
       const patchpanel::ConnectNamespaceRequest& request,
-      const base::ScopedFD& client_fd);
+      base::ScopedFD client_fd);
 
   // Queries traffic counters.
   std::map<CountersService::CounterKey, CountersService::Counter>
@@ -119,7 +120,7 @@ class Manager : public ForwardingService {
   // Creates iptables rules requests from dns-proxy.
   bool SetDnsRedirectionRule(
       const patchpanel::SetDnsRedirectionRuleRequest& request,
-      const base::ScopedFD& client_fd);
+      base::ScopedFD client_fd);
 
   // Tags the socket pointed by |sock_fd| for routing and other purposes.
   bool TagSocket(const patchpanel::TagSocketRequest& request,
@@ -130,13 +131,13 @@ class Manager : public ForwardingService {
   // protobuf message.
   patchpanel::TetheredNetworkResponse CreateTetheredNetwork(
       const patchpanel::TetheredNetworkRequest& request,
-      const base::ScopedFD& client_fd);
+      base::ScopedFD client_fd);
 
   // Creates a local-only L3 network on a network interface. Returns the result
   // of the operation as a TetheredNetworkResponse protobuf message.
   patchpanel::LocalOnlyNetworkResponse CreateLocalOnlyNetwork(
       const patchpanel::LocalOnlyNetworkRequest& request,
-      const base::ScopedFD& client_fd);
+      base::ScopedFD client_fd);
 
   // Provides L3 and DHCP client information about clients connected to a
   // network created with CreateTetheredNetwork or CreateLocalOnlyNetwork.
@@ -226,17 +227,14 @@ class Manager : public ForwardingService {
       NeighborLinkMonitor::NeighborRole role,
       NeighborReachabilityEventSignal::EventType event_type);
 
-  // Helper functions for tracking DBus request lifetime with file descriptors
-  // provided by DBus clients. Returns a duplicate wrapped in base::ScopedFD of
-  // |dbus_fd|. The duplicate is added to the list of file descriptors watched
-  // for invalidation. Returns an invalid ScopedFD object if it fails.
-  base::ScopedFD AddLifelineFd(const base::ScopedFD& dbus_fd);
-  void DeleteLifelineFd(int lifeline_fd);
-
-  // Detects if any file descriptor committed in patchpanel's DBus API has been
-  // invalidated by the caller. Calls OnLifelineFdClosed for any invalid fd
-  // found.
-  void OnLifelineFdClosed(int client_fd);
+  // Tears down a tethered or local-only DownstreamNetwork setup given its
+  // downstream network interface.
+  void OnDownstreamNetworkAutoclose(const std::string& downstream_ifname);
+  // Tears down a ConnectedNamespace setup given its connected namespace id.
+  void OnConnectedNamespaceAutoclose(int connected_namespace_id);
+  // Tears down a DNS redirection rule request given the lifeline fd value
+  // committed by the client dns-proxy instance.
+  void OnDnsRedirectionRulesAutoclose(int lifeline_fd);
 
   const CrostiniService::CrostiniDevice* StartCrosVm(
       uint64_t vm_id,
@@ -248,7 +246,7 @@ class Manager : public ForwardingService {
   // |info|. If successful, |client_fd| is monitored and triggers the teardown
   // of the network setup when closed.
   std::pair<DownstreamNetworkResult, std::unique_ptr<DownstreamNetwork>>
-  HandleDownstreamNetworkInfo(const base::ScopedFD& client_fd,
+  HandleDownstreamNetworkInfo(base::ScopedFD client_fd,
                               std::unique_ptr<DownstreamNetworkInfo> info);
 
   std::vector<DownstreamClientInfo> GetDownstreamClientInfo(
@@ -267,7 +265,7 @@ class Manager : public ForwardingService {
   // |upstream_ifname| as the upstream network.
   std::optional<ShillClient::Device> StartTetheringUpstreamNetwork(
       const TetheredNetworkRequest& request);
-  // Teardowns the minimal Datapath setup created with
+  // Tears down the minimal Datapath setup created with
   // StartTetheringUpstreamNetwork().
   void StopTetheringUpstreamNetwork(
       // const std::string& upstream_ifname);
@@ -316,6 +314,8 @@ class Manager : public ForwardingService {
   std::unique_ptr<NetworkMonitorService> network_monitor_svc_;
   // QoS service.
   std::unique_ptr<QoSService> qos_svc_;
+  // LifelineFD management service
+  std::unique_ptr<LifelineFDService> lifeline_fd_svc_;
 
   // The DHCP server controllers, keyed by its downstream interface.
   std::map<std::string, std::unique_ptr<DHCPServerController>>
@@ -325,8 +325,7 @@ class Manager : public ForwardingService {
   AddressManager addr_mgr_;
 
   // All namespaces currently connected through patchpanel ConnectNamespace
-  // API, keyed by file descriptors committed by clients when calling
-  // ConnectNamespace.
+  // API, keyed by the the namespace id of the ConnectedNamespace.
   std::map<int, ConnectedNamespace> connected_namespaces_;
   int connected_namespaces_next_id_{0};
 
@@ -335,19 +334,15 @@ class Manager : public ForwardingService {
   std::map<std::string, net_base::IPv6Address> dns_proxy_ipv6_addrs_;
 
   // All external network interfaces currently managed by patchpanel through
-  // the CreateTetheredNetwork or CreateLocalOnlyNetwork DBus APIs, keyed by the
-  // file descriptors committed by the DBus clients.
-  std::map<int, std::unique_ptr<DownstreamNetworkInfo>> downstream_networks_;
+  // the CreateTetheredNetwork or CreateLocalOnlyNetwork DBus APIs, keyed by
+  // their downstream interface name.
+  std::map<std::string, std::unique_ptr<DownstreamNetworkInfo>>
+      downstream_networks_;
 
   // All rules currently created through patchpanel RedirectDns
-  // API, keyed by file descriptors committed by clients when calling the
-  // API.
+  // API, keyed by the host-side interface name of the ConnectedNamespace of the
+  // target dns-proxy instance to which the queries should be redirected.
   std::map<int, DnsRedirectionRule> dns_redirection_rules_;
-
-  // For each fd (process) committed through a patchpanel's DBus API, keep
-  // track of the FileDescriptorWatcher::Controller object associated with it.
-  std::map<int, std::unique_ptr<base::FileDescriptorWatcher::Controller>>
-      lifeline_fd_controllers_;
 
   // Fetches and reports multicast packet count to UMA metrics.
   std::unique_ptr<MulticastMetrics> multicast_metrics_;
