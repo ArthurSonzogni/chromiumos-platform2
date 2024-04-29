@@ -28,7 +28,6 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr double kSampleReadingFrequency = 5;
-constexpr char kChannelAxes[] = {'x', 'y', 'z'};
 constexpr char kOutputDictPassedSensorsKey[] = "passed_sensors";
 constexpr char kOutputDictFailedSensorsKey[] = "failed_sensors";
 constexpr char kOutputDictExistenceCheckResultKey[] = "existence_check_result";
@@ -52,35 +51,6 @@ std::vector<cros::mojom::DeviceType> FilterSupportedTypes(
   std::copy_if(types.begin(), types.end(), std::back_inserter(supported_types),
                is_supported_type);
   return supported_types;
-}
-
-// Convert sensor device type enum to channel prefix.
-std::string ConvertDeviceTypeToChannelPrefix(cros::mojom::DeviceType type) {
-  switch (type) {
-    case cros::mojom::DeviceType::ACCEL:
-      return cros::mojom::kAccelerometerChannel;
-    case cros::mojom::DeviceType::ANGLVEL:
-      return cros::mojom::kGyroscopeChannel;
-    case cros::mojom::DeviceType::GRAVITY:
-      return cros::mojom::kGravityChannel;
-    case cros::mojom::DeviceType::MAGN:
-      return cros::mojom::kMagnetometerChannel;
-    default:
-      // The other sensor types are not supported in this routine.
-      NOTREACHED_NORETURN();
-  }
-}
-
-// Get required channels for each sensor type.
-std::vector<std::string> GetRequiredChannels(
-    std::vector<cros::mojom::DeviceType> types) {
-  std::vector<std::string> channels = {cros::mojom::kTimestampChannel};
-  for (auto type : types) {
-    auto channel_prefix = ConvertDeviceTypeToChannelPrefix(type);
-    for (char axis : kChannelAxes)
-      channels.push_back(channel_prefix + "_" + axis);
-  }
-  return channels;
 }
 
 // Convert the enum to readable string.
@@ -263,28 +233,19 @@ void SensitiveSensorRoutine::HandleFrequencyResponse(int32_t sensor_id,
 
 void SensitiveSensorRoutine::HandleChannelIdsResponse(
     int32_t sensor_id, const std::vector<std::string>& channels) {
-  pending_sensors_[sensor_id].channels = channels;
-  std::vector<int32_t> channel_indices;
-  for (auto required_channel :
-       GetRequiredChannels(pending_sensors_[sensor_id].types)) {
-    auto it = std::find(channels.begin(), channels.end(), required_channel);
-    if (it == channels.end()) {
-      LOG(ERROR) << "Failed to get required channels on sensor with ID: "
-                 << sensor_id;
-      failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
-      SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
-                       kSensitiveSensorRoutineErrorMessage);
-      return;
-    }
-
-    int32_t indice = it - channels.begin();
-    channel_indices.push_back(indice);
-    // Set the indeice of required channel to check samples.
-    pending_sensors_[sensor_id].checking_channel_sample[indice] = std::nullopt;
+  auto channel_indices =
+      pending_sensors_[sensor_id].CheckRequiredChannelsAndGetIndices(channels);
+  if (!channel_indices.has_value()) {
+    LOG(ERROR) << "Failed to get required channels on sensor with ID: "
+               << sensor_id;
+    failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
+    SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                     kSensitiveSensorRoutineErrorMessage);
+    return;
   }
 
   mojo_service_->GetSensorDevice(sensor_id)->SetChannelsEnabled(
-      channel_indices, true,
+      channel_indices.value(), true,
       base::BindOnce(&SensitiveSensorRoutine::HandleSetChannelsEnabledResponse,
                      weak_ptr_factory_.GetWeakPtr(), sensor_id));
 }
@@ -315,8 +276,7 @@ void SensitiveSensorRoutine::OnSampleUpdated(
   for (const auto& [channel_indice, channel_value] : sample)
     sensor.UpdateChannelSample(channel_indice, channel_value);
 
-  // All channels have finished checking.
-  if (sensor.checking_channel_sample.empty()) {
+  if (sensor.AllChannelsChecked()) {
     mojo_service_->GetSensorDevice(sensor_id)->StopReadingSamples();
 
     // Store detail of passed sensor.

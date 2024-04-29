@@ -8,6 +8,7 @@
 #include <utility>
 
 #include <base/logging.h>
+#include <base/types/expected.h>
 #include <base/values.h>
 #include <iioservice/mojo/sensor.mojom.h>
 
@@ -16,6 +17,8 @@
 namespace diagnostics {
 
 namespace {
+
+constexpr char kChannelAxes[] = {'x', 'y', 'z'};
 
 // Convert sensor device type enum to string.
 std::string ConverDeviceTypeToString(cros::mojom::DeviceType type) {
@@ -34,7 +37,57 @@ std::string ConverDeviceTypeToString(cros::mojom::DeviceType type) {
   }
 }
 
+// Convert sensor device type enum to channel prefix.
+std::string ConvertDeviceTypeToChannelPrefix(cros::mojom::DeviceType type) {
+  switch (type) {
+    case cros::mojom::DeviceType::ACCEL:
+      return cros::mojom::kAccelerometerChannel;
+    case cros::mojom::DeviceType::ANGLVEL:
+      return cros::mojom::kGyroscopeChannel;
+    case cros::mojom::DeviceType::GRAVITY:
+      return cros::mojom::kGravityChannel;
+    case cros::mojom::DeviceType::MAGN:
+      return cros::mojom::kMagnetometerChannel;
+    default:
+      // The other sensor types are not supported in this routine.
+      NOTREACHED_NORETURN();
+  }
+}
+
+// Get required channels for sensor types listed in `types`.
+std::vector<std::string> GetRequiredChannels(
+    const std::vector<cros::mojom::DeviceType>& types) {
+  std::vector<std::string> channels = {cros::mojom::kTimestampChannel};
+  for (auto type : types) {
+    auto channel_prefix = ConvertDeviceTypeToChannelPrefix(type);
+    for (char axis : kChannelAxes)
+      channels.push_back(channel_prefix + "_" + axis);
+  }
+  return channels;
+}
+
 }  // namespace
+
+std::optional<std::vector<int32_t>>
+SensorDetail::CheckRequiredChannelsAndGetIndices(
+    const std::vector<std::string>& sensor_channels) {
+  channels = sensor_channels;
+
+  std::vector<int32_t> channel_indices;
+  for (auto required_channel : GetRequiredChannels(types)) {
+    auto it = std::find(sensor_channels.begin(), sensor_channels.end(),
+                        required_channel);
+    if (it == sensor_channels.end()) {
+      return std::nullopt;
+    }
+    int32_t indice = it - sensor_channels.begin();
+    channel_indices.push_back(indice);
+    // Set the indeice of required channel to check samples.
+    checking_channel_sample[indice] = std::nullopt;
+  }
+
+  return channel_indices;
+}
 
 void SensorDetail::UpdateChannelSample(int32_t indice, int64_t value) {
   // Passed channels are removed from |checking_channel_sample|.
@@ -51,6 +104,10 @@ void SensorDetail::UpdateChannelSample(int32_t indice, int64_t value) {
   if (value != checking_channel_sample[indice].value()) {
     checking_channel_sample.erase(indice);
   }
+}
+
+bool SensorDetail::AllChannelsChecked() {
+  return checking_channel_sample.empty();
 }
 
 bool SensorDetail::IsErrorOccurred() {

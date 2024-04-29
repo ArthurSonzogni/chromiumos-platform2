@@ -32,10 +32,20 @@ struct SensorDetail {
   // channel finishes checking, remove it from this map.
   std::map<int32_t, std::optional<int64_t>> checking_channel_sample;
 
+  // Check the required sensor channels and update `checking_channel_sample` and
+  // `channels`. Return indices of required channels for all sensor types listed
+  // in `types`. Return null if `sensor_channels` don't contain all required
+  // channels.
+  std::optional<std::vector<int32_t>> CheckRequiredChannelsAndGetIndices(
+      const std::vector<std::string>& sensor_channels);
+
   // Update the read sample in `checking_channel_sample` for channel at index
   // |indice|. Remove the channel from `checking_channel_sample` when we
   // observe changed value.
   void UpdateChannelSample(int32_t indice, int64_t value);
+
+  // Return true if we finish checking on all channels.
+  bool AllChannelsChecked();
 
   // Check if there is any error when interacting with Iioservice.
   bool IsErrorOccurred();

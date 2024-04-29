@@ -17,15 +17,30 @@ namespace {
 
 constexpr int32_t kTestSensorId = 123;
 
+TEST(SensorDetailTest, GetRequiredChannelsIndicesSuccess) {
+  SensorDetail sensor{.sensor_id = kTestSensorId,
+                      .types = {cros::mojom::DeviceType::ACCEL}};
+  auto indices = sensor.CheckRequiredChannelsAndGetIndices(
+      {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"});
+  auto expected_indices = std::vector<int32_t>{0, 1, 2, 3};
+  EXPECT_EQ(indices, expected_indices);
+}
+
+TEST(SensorDetailTest, GetRequiredChannelsIndicesError) {
+  SensorDetail sensor{.sensor_id = kTestSensorId,
+                      .types = {cros::mojom::DeviceType::ACCEL}};
+  // accel_x is missing.
+  auto indices = sensor.CheckRequiredChannelsAndGetIndices(
+      {cros::mojom::kTimestampChannel, "accel_y", "accel_z"});
+  EXPECT_EQ(indices, std::nullopt);
+}
+
 TEST(SensorDetailTest, UpdateChannelSampleAndNoError) {
   SensorDetail sensor{.sensor_id = kTestSensorId,
                       .types = {cros::mojom::DeviceType::ACCEL}};
-  sensor.channels = {cros::mojom::kTimestampChannel, "accel_x", "accel_y",
-                     "accel_z"};
-  sensor.checking_channel_sample[0] = std::nullopt;
-  sensor.checking_channel_sample[1] = std::nullopt;
-  sensor.checking_channel_sample[2] = std::nullopt;
-  sensor.checking_channel_sample[3] = std::nullopt;
+  auto indices = sensor.CheckRequiredChannelsAndGetIndices(
+      {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"});
+  ASSERT_TRUE(indices.has_value());
 
   sensor.UpdateChannelSample(0, 21);
   sensor.UpdateChannelSample(0, 5);
@@ -37,29 +52,52 @@ TEST(SensorDetailTest, UpdateChannelSampleAndNoError) {
   sensor.UpdateChannelSample(3, 2389880497684);
 
   EXPECT_FALSE(sensor.IsErrorOccurred());
+  EXPECT_TRUE(sensor.AllChannelsChecked());
+}
+
+TEST(SensorDetailTest, NotAllChannelsChecked) {
+  SensorDetail sensor{.sensor_id = kTestSensorId,
+                      .types = {cros::mojom::DeviceType::ACCEL}};
+  auto indices = sensor.CheckRequiredChannelsAndGetIndices(
+      {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"});
+  ASSERT_TRUE(indices.has_value());
+
+  sensor.UpdateChannelSample(0, 21);
+  sensor.UpdateChannelSample(0, 5);
+  sensor.UpdateChannelSample(1, 14624);
+  sensor.UpdateChannelSample(1, 14613);
+  sensor.UpdateChannelSample(2, 6373);
+  sensor.UpdateChannelSample(3, 2389718579704);
+
+  EXPECT_FALSE(sensor.IsErrorOccurred());
+  EXPECT_FALSE(sensor.AllChannelsChecked());
 }
 
 TEST(SensorDetailTest, IsErrorOccurredNoChannels) {
   SensorDetail sensor{.sensor_id = kTestSensorId,
                       .types = {cros::mojom::DeviceType::ACCEL}};
-  sensor.channels = {};
   EXPECT_TRUE(sensor.IsErrorOccurred());
 }
 
 TEST(SensorDetailTest, IsErrorOccurredNoLastReadingSample) {
   SensorDetail sensor{.sensor_id = kTestSensorId,
                       .types = {cros::mojom::DeviceType::ACCEL}};
-  sensor.channels = {cros::mojom::kTimestampChannel, "accel_x", "accel_y",
-                     "accel_z"};
-  sensor.checking_channel_sample[0] = std::nullopt;
+  auto indices = sensor.CheckRequiredChannelsAndGetIndices(
+      {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"});
+  ASSERT_TRUE(indices.has_value());
+
+  // No sample on channel 0 and 1.
+  sensor.UpdateChannelSample(2, 6373);
+  sensor.UpdateChannelSample(3, 2389718579704);
   EXPECT_TRUE(sensor.IsErrorOccurred());
 }
 
-TEST(SensorDetailTest, GetDetailValue) {
+TEST(SensorDetailTest, ToDict) {
   SensorDetail sensor{.sensor_id = kTestSensorId,
                       .types = {cros::mojom::DeviceType::ACCEL}};
-  sensor.channels = {cros::mojom::kTimestampChannel, "accel_x", "accel_y",
-                     "accel_z"};
+  auto indices = sensor.CheckRequiredChannelsAndGetIndices(
+      {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"});
+  ASSERT_TRUE(indices.has_value());
 
   base::Value::Dict expected_value;
   expected_value.Set("id", kTestSensorId);
