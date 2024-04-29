@@ -5,6 +5,8 @@
 #ifndef CAMERA_DIAGNOSTICS_CAMERA_DIAGNOSTICS_HELPERS_H_
 #define CAMERA_DIAGNOSTICS_CAMERA_DIAGNOSTICS_HELPERS_H_
 
+#include <string>
+
 #include <base/functional/callback.h>
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
@@ -13,6 +15,9 @@ namespace cros {
 
 using CameraStartStreamingCallback =
     base::OnceCallback<void(camera_diag::mojom::StartStreamingResultPtr)>;
+
+std::string DiagnosticsResultToJsonString(
+    const cros::camera_diag::mojom::DiagnosticsResultPtr& result);
 
 }  // namespace cros
 

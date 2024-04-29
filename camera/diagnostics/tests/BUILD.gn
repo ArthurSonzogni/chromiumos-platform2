@@ -3,31 +3,65 @@
 # found in the LICENSE file.
 
 import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":cros_camera_diagnostics_test_cli" ]
+  deps = [
+    ":camera_diag_test_cli",
+    ":camera_diag_tests",
+  ]
 }
 
-generate_mojom_bindings("cros_camera_diagnostics_mojom") {
-  sources = [ "//camera/mojo/camera_diagnostics.mojom" ]
-  mojo_root = "${platform2_root}"
-}
-
-executable("cros_camera_diagnostics_test_cli") {
-  sources = [ "camera_diagnostics_test_cli.cc" ]
-  configs += [ "//camera/build:cros_camera_common" ]
+pkg_config("target_defaults") {
+  configs = [
+    "//camera/build:cros_camera_common",
+    "//common-mk:test",
+    "//common-mk:pic",
+    ":camera_diagnostics_config",
+  ]
   pkg_deps = [
     "libbrillo",
+    "libchrome-test",
     "libcros_camera",
     "libcros_camera_android_deps",
     "libmojo",
+    "libmojo_service_manager_fake",
     "mojo_service_manager",
     "perfetto",
   ]
-  libs = [
-    "dl",
-    "rt",
+}
+
+executable("camera_diag_test_cli") {
+  sources = [
+    "//camera/diagnostics/camera_diagnostics_helpers.cc",
+    "camera_diagnostics_test_cli.cc",
   ]
-  deps = [ ":cros_camera_diagnostics_mojom" ]
+  configs += [ ":target_defaults" ]
+  deps = [ "//camera/diagnostics:cros_camera_diagnostics_mojom" ]
   install_path = "/usr/local/bin"
+}
+
+executable("camera_diag_tests") {
+  sources = [
+    "//camera/diagnostics/camera_diagnostics_helpers.cc",
+    "//camera/diagnostics/camera_diagnostics_mojo_manager.cc",
+    "//camera/diagnostics/camera_diagnostics_processor.cc",
+    "//camera/diagnostics/camera_diagnostics_server.cc",
+    "//camera/diagnostics/camera_diagnostics_session.cc",
+    "//camera/diagnostics/camera_service_controller.cc",
+    "camera_diagnostics_tests_fixture.cc",
+    "camera_diagnostics_tests_main.cc",
+    "fake_cros_camera_controller.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    "//camera/diagnostics:cros_camera_diagnostics_mojom",
+    "//camera/diagnostics/analyzers:analyzers",
+    "//ml_core/dlc:dlc_client",
+  ]
+  install_path = "bin"
+}
+
+config("camera_diagnostics_config") {
+  defines = [ "USE_DLC=${use.dlc}" ]
 }

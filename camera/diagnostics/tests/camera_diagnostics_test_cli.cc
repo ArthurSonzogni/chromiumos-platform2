@@ -4,7 +4,6 @@
 
 #include <cstdlib>
 #include <memory>
-#include <ostream>
 
 #include <base/command_line.h>
 #include <base/functional/bind.h>
@@ -22,6 +21,7 @@
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
 #include "cros-camera/common.h"
+#include "diagnostics/camera_diagnostics_helpers.h"
 
 namespace {
 static void SetLogItems() {
@@ -31,23 +31,6 @@ static void SetLogItems() {
   constexpr bool kOptionTickcount = true;
   logging::SetLogItems(kOptionPID, kOptionTID, kOptionTimestamp,
                        kOptionTickcount);
-}
-
-std::string DiagnosticsResultToJsonString(
-    const cros::camera_diag::mojom::DiagnosticsResultPtr& result) {
-  std::ostringstream oss;
-  oss << "{";  // Begin JSON string
-  oss << "\"suggested_issue\": " << result->suggested_issue;
-  oss << ", \"numeber_of_analyzed_frames\": "
-      << result->numeber_of_analyzed_frames;
-  oss << ", \"analyzer_results\": [";  // Begin analyzer_results
-  for (auto& analyzer_res : result->analyzer_results) {
-    oss << "{\"type\": " << analyzer_res->type
-        << ", \"status\": " << analyzer_res->status << "}, ";
-  }
-  oss << "]";  // End analyzer_results
-  oss << "}";  // End JSON string
-  return oss.str();
 }
 
 void OnDiagnosticsResult(
@@ -61,7 +44,7 @@ void OnDiagnosticsResult(
       LOGF(INFO) << "Diagnostics Result: "
                  << result->get_res()->suggested_issue;
       LOGF(INFO) << "Full result: "
-                 << DiagnosticsResultToJsonString(result->get_res());
+                 << cros::DiagnosticsResultToJsonString(result->get_res());
       break;
     default:
       NOTREACHED();

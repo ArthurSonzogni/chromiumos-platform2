@@ -22,6 +22,7 @@ generate_mojom_bindings("cros_camera_diagnostics_mojom") {
 
 executable("cros_camera_diagnostics_service") {
   sources = [
+    "camera_diagnostics_helpers.cc",
     "camera_diagnostics_main.cc",
     "camera_diagnostics_mojo_manager.cc",
     "camera_diagnostics_processor.cc",
