@@ -32,7 +32,7 @@ const char InstallAttributes::kDefaultCacheFile[] =
     "/run/lockbox/install_attributes.pb";
 const mode_t InstallAttributes::kCacheFilePermissions = 0644;
 
-InstallAttributes::InstallAttributes(Platform* platform,
+InstallAttributes::InstallAttributes(libstorage::Platform* platform,
                                      const hwsec::CryptohomeFrontend* hwsec)
     : platform_(platform),
       hwsec_(hwsec),

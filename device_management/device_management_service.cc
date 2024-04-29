@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "device_management/device_management_service.h"
-#include "device_management/install_attributes/platform.h"
 #include "device_management/proto_bindings/device_management_interface.pb.h"
 #include "fwmp/firmware_management_parameters.h"
 
@@ -14,6 +13,7 @@
 #include <base/logging.h>
 #include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/structures/threading_mode.h>
+#include <libstorage/platform/platform.h>
 
 namespace device_management {
 
@@ -25,7 +25,7 @@ DeviceManagementService::DeviceManagementService()
 DeviceManagementService::~DeviceManagementService() {}
 
 void DeviceManagementService::Initialize(
-    const hwsec::CryptohomeFrontend& hwsec_, Platform& platform_) {
+    const hwsec::CryptohomeFrontend& hwsec_, libstorage::Platform& platform_) {
   if (!firmware_management_parameters_) {
     firmware_management_parameters_ =
         fwmp::FirmwareManagementParameters::CreateInstance(&hwsec_);

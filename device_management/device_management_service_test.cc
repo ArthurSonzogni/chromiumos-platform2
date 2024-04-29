@@ -17,10 +17,10 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "device_management/fwmp/mock_firmware_management_parameters.h"
 #include "device_management/install_attributes/mock_install_attributes.h"
-#include "device_management/install_attributes/mock_platform.h"
 #include "device_management/proto_bindings/device_management_interface.pb.h"
 
 using ::hwsec::TPMError;
@@ -74,7 +74,7 @@ class DeviceManagementServiceEnsureInstallAttributeInitTest
 
  protected:
   StrictMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   DeviceManagementService device_management_service_;
   StrictMock<MockFirmwareManagementParameters>* fwmp_;
   StrictMock<MockInstallAttributes>* install_attrs_;
@@ -134,7 +134,7 @@ class DeviceManagementServiceInstallAttibuteFirstInstallTest
 
  protected:
   StrictMock<hwsec::MockCryptohomeFrontend> hwsec_;
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   DeviceManagementService device_management_service_;
   StrictMock<MockFirmwareManagementParameters>* fwmp_;
   base::OnceCallback<void(hwsec::Status)> hwsec_callback_;

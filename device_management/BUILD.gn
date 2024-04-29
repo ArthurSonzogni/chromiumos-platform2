@@ -72,6 +72,7 @@ pkg_config("target_defaults") {
     # This is a list of pkg-config dependencies
     "libbrillo",
     "libchrome",
+    "libstorage_platform",
   ]
   libs = [
     "hwsec",
@@ -93,7 +94,6 @@ source_set("device_management_server_library") {
     "fwmp/firmware_management_parameters.cc",
     "install_attributes/install_attributes.cc",
     "install_attributes/lockbox.cc",
-    "install_attributes/platform.cc",
   ]
   configs += [
     ":target_defaults",
@@ -179,6 +179,7 @@ if (use.test) {
       "libbrillo-test",
       "libchrome-test",
       "libmetrics",
+      "libstorage_fake_platform",
     ]
   }
   executable("device_management_testrunner") {
@@ -186,11 +187,9 @@ if (use.test) {
       "device_management_service_test.cc",
       "device_management_testrunner.cc",
       "fwmp/firmware_management_parameters_test.cc",
-      "install_attributes/fake_platform.cc",
       "install_attributes/install_attributes_test.cc",
       "install_attributes/lockbox_test.cc",
       "install_attributes/mock_lockbox.cc",
-      "install_attributes/mock_platform.cc",
       "metrics.cc",
     ]
     libs = [

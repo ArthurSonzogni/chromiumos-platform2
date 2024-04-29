@@ -7,7 +7,6 @@
 
 #include "device_management/fwmp/firmware_management_parameters.h"
 #include "device_management/install_attributes/install_attributes.h"
-#include "device_management/install_attributes/platform.h"
 #include "device_management/metrics.h"
 #include "device_management/proto_bindings/device_management_interface.pb.h"
 
@@ -19,6 +18,7 @@
 #include <libhwsec/factory/factory.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 #include <libhwsec/status.h>
+#include <libstorage/platform/platform.h>
 
 namespace device_management {
 class DeviceManagementService {
@@ -33,7 +33,8 @@ class DeviceManagementService {
     install_attrs_ = std::move(install_attrs);
   }
 
-  void Initialize(const hwsec::CryptohomeFrontend& hwsec_, Platform& platform);
+  void Initialize(const hwsec::CryptohomeFrontend& hwsec_,
+                  libstorage::Platform& platform);
 
   // ========= Firmware Management Parameters Related Public Methods =========
 

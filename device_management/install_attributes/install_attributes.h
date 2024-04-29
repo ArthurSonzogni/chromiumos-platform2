@@ -14,10 +14,10 @@
 #include <brillo/proto_bindings/install_attributes.pb.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
+#include <libstorage/platform/platform.h>
 
 // #include "install_attributes/crypto.h"
 #include "device_management/install_attributes/lockbox.h"
-#include "device_management/install_attributes/platform.h"
 
 namespace device_management {
 
@@ -40,7 +40,8 @@ class InstallAttributes {
   };
 
   // The provided pointers must outlive this instance.
-  InstallAttributes(Platform* platform, const hwsec::CryptohomeFrontend* hwsec);
+  InstallAttributes(libstorage::Platform* platform,
+                    const hwsec::CryptohomeFrontend* hwsec);
 
   InstallAttributes(const InstallAttributes&) = delete;
   InstallAttributes& operator=(const InstallAttributes&) = delete;
@@ -133,7 +134,7 @@ class InstallAttributes {
   bool ClearData();
 
  private:
-  Platform* const platform_ = nullptr;
+  libstorage::Platform* const platform_ = nullptr;
   const hwsec::CryptohomeFrontend* const hwsec_ = nullptr;
   Status status_ = Status::kUnknown;
   base::FilePath data_file_;   // Location data is persisted to.
@@ -142,7 +143,7 @@ class InstallAttributes {
   // Default implementations of dependencies
   std::unique_ptr<cryptohome::SerializedInstallAttributes> default_attributes_;
   std::unique_ptr<Lockbox> default_lockbox_;
-  std::unique_ptr<Platform> default_platform_;
+  std::unique_ptr<libstorage::Platform> default_platform_;
   // Overridable dependency pointers which allow for easy injection.
   cryptohome::SerializedInstallAttributes* attributes_ = nullptr;
   Lockbox* lockbox_ = nullptr;

@@ -5,10 +5,11 @@
 #ifndef DEVICE_MANAGEMENT_DEVICE_MANAGEMENT_DAEMON_H_
 #define DEVICE_MANAGEMENT_DEVICE_MANAGEMENT_DAEMON_H_
 
+#include <libstorage/platform/platform.h>
+
 #include "device_management/dbus_interface.h"
 #include "device_management/device_management_adaptor.h"
 #include "device_management/device_management_service.h"
-#include "device_management/install_attributes/platform.h"
 
 #include <memory>
 
@@ -33,7 +34,7 @@ class DeviceManagementDaemon : public brillo::DBusServiceDaemon {
  private:
   std::unique_ptr<hwsec::Factory> hwsec_factory_;
   std::unique_ptr<const hwsec::CryptohomeFrontend> hwsec_;
-  std::unique_ptr<Platform> platform_;
+  std::unique_ptr<libstorage::Platform> platform_;
   std::unique_ptr<DeviceManagementService> service_;
   std::unique_ptr<DeviceManagementServiceAdaptor> adaptor_;
 };

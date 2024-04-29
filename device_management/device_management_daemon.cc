@@ -27,7 +27,7 @@ void DeviceManagementDaemon::RegisterDBusObjectsAsync(
   VLOG(1) << "Creating service...";
 
   hwsec_factory_ = std::make_unique<hwsec::FactoryImpl>();
-  platform_ = std::make_unique<Platform>();
+  platform_ = std::make_unique<libstorage::Platform>();
   hwsec_ = hwsec_factory_->GetCryptohomeFrontend();
 
   CHECK(hwsec_);

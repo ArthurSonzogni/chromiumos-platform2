@@ -17,10 +17,11 @@
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/fake_platform.h>
+#include <libstorage/platform/mock_platform.h>
 
 #include "device_management/install_attributes/lockbox.h"
 #include "device_management/install_attributes/mock_lockbox.h"
-#include "device_management/install_attributes/mock_platform.h"
 
 using base::FilePath;
 using ::hwsec_foundation::error::testing::ReturnValue;
@@ -86,7 +87,7 @@ class InstallAttributesTest : public ::testing::Test {
     return data;
   }
 
-  NiceMock<MockPlatform> platform_;
+  NiceMock<libstorage::MockPlatform> platform_;
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;
   NiceMock<MockLockbox> lockbox_;
   brillo::Blob lockbox_data_;
