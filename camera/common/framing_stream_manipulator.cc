@@ -865,7 +865,7 @@ bool FramingStreamManipulator::OnConfiguredStreamsOnThread(
         (s->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
          s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
         !(s->usage & kStillCaptureUsageFlag)) {
-      s->usage |= GRALLOC_USAGE_HW_TEXTURE;
+      s->usage |= GRALLOC_USAGE_HW_TEXTURE | GRALLOC_USAGE_HW_CAMERA_WRITE;
       s->max_buffers = full_frame_stream_.max_buffers;
     }
   }
