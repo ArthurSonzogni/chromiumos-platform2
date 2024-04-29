@@ -6,7 +6,7 @@
 [44835.446963] wlan0: deauthenticating from b0:2a:43:f3:ad:93 by local choice (Reason: 3=DEAUTH_LEAVING)
 [15883.337270] iwlwifi 0000:00:0c.0: Microcode SW error detected. Restarting 0x0.
 [15883.337346] iwlwifi 0000:00:0c.0: Start IWL Error Log Dump:
-[15883.337349] iwlwifi 0000:00:0c.0: Status: 0x00000100, count: 6
+[15883.337349] iwlwifi 0000:00:0c.0: Transport status: 0x00000100, count: 6
 [15883.337352] iwlwifi 0000:00:0c.0: Loaded firmware version: 46.b20aefee.0
 [15883.337355] iwlwifi 0000:00:0c.0: 0x00000084 | NMI_INTERRUPT_UNKNOWN
 [15883.337357] iwlwifi 0000:00:0c.0: 0x000022F0 | trm_hw_status0

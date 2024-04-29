@@ -216,7 +216,8 @@ TEST_F(KernelWarningCollectorTest, CollectUMACOK) {
       "[47755.132606] iwlwifi 0000:00:14.3: Microcode SW error detected. "
       "Restarting 0x0.\n"
       "[47755.132606] iwlwifi 0000:00:14.3: Start IWL Error Log Dump:\n"
-      "[47755.132606] iwlwifi 0000:00:14.3: Status: 0x00000040, count: 6\n"
+      "[47755.132606] iwlwifi 0000:00:14.3: Transport status: "
+      "0x00000040, count: 6\n"
       "[47755.132606] iwlwifi 0000:00:14.3: Loaded firmware version: "
       "53.c31ac674.0 "
       "QuZ-a0-hr-b0-53.ucode\n"
@@ -256,7 +257,8 @@ TEST_F(KernelWarningCollectorTest, CollectUMACOK) {
       "[47755.132606] iwlwifi 0000:00:14.3: 0x00000000 | timestamp\n"
       "[47755.132606] iwlwifi 0000:00:14.3: 0x000050A8 | flow_handler\n"
       "[47755.132606] iwlwifi 0000:00:14.3: Start IWL Error Log Dump:\n"
-      "[47755.132606] iwlwifi 0000:00:14.3: Status: 0x00000040, count: 7\n"
+      "[47755.132606] iwlwifi 0000:00:14.3: Transport status: 0x00000040, "
+      "count: 7\n"
       "[47755.132606] iwlwifi 0000:00:14.3: 0x201002FF | ADVANCED_SYSASSERT\n"
       "[47755.132606] iwlwifi 0000:00:14.3: 0x00000000 | umac branchlink1\n"
       "[47755.132606] iwlwifi 0000:00:14.3: 0x80467A40 | umac branchlink2\n"
@@ -364,6 +366,75 @@ TEST_F(KernelWarningCollectorTest, CollectSMMUFaultBad) {
   EXPECT_TRUE(IsDirectoryEmpty(test_crash_directory_));
 }
 
+TEST_F(KernelWarningCollectorTest, CollectUMACNMIOK) {
+  // Collector produces a crash report.
+  ASSERT_TRUE(test_util::CreateFile(
+      test_path_,
+      "[  126.770927] iwlwifi 0000:00:14.3: Loaded firmware version: "
+      "88.1e198eb9.0 so-a0-gf-a0-88.ucode\n"
+      "[  126.770931] iwlwifi 0000:00:14.3: 0x00000071 | "
+      "NMI_INTERRUPT_UMAC_FATAL    \n"
+      "[  126.770935] iwlwifi 0000:00:14.3: 0x000002F0 | trm_hw_status0\n"
+      "[  126.770938] iwlwifi 0000:00:14.3: 0x00000000 | trm_hw_status1\n"
+      "[  126.770941] iwlwifi 0000:00:14.3: 0x004D9B50 | branchlink2\n"
+      "[  126.770944] iwlwifi 0000:00:14.3: 0x004BD40E | interruptlink1\n"
+      "[  126.770946] iwlwifi 0000:00:14.3: 0x004BD40E | interruptlink2\n"
+      "[  126.770948] iwlwifi 0000:00:14.3: 0x00015A7A | data1\n"
+      "[  126.770966] iwlwifi 0000:00:14.3: 0x01000010 | data2\n"
+      "[  126.770969] iwlwifi 0000:00:14.3: 0x00000000 | data3\n"
+      "[  126.770972] iwlwifi 0000:00:14.3: 0x00000000 | beacon time\n"
+      "[  126.770975] iwlwifi 0000:00:14.3: 0x063D56CC | tsf low\n"
+      "[  126.770979] iwlwifi 0000:00:14.3: 0x00000000 | tsf hi\n"
+      "[  126.770982] iwlwifi 0000:00:14.3: 0x00000000 | time gp1\n"
+      "[  126.770985] iwlwifi 0000:00:14.3: 0x063E9FA9 | time gp2\n"
+      "[  126.770988] iwlwifi 0000:00:14.3: 0x00000001 | uCode revision type\n"
+      "[  126.770991] iwlwifi 0000:00:14.3: 0x00000058 | uCode version major\n"
+      "[  126.770995] iwlwifi 0000:00:14.3: 0x1E198EB9 | uCode version minor\n"
+      "[  126.771006] iwlwifi 0000:00:14.3: 0x00000370 | hw version\n"
+      "[  126.771009] iwlwifi 0000:00:14.3: 0x00C80002 | board version\n"
+      "[  126.771012] iwlwifi 0000:00:14.3: 0x8057FF00 | hcmd\n"
+      "[  126.771014] iwlwifi 0000:00:14.3: 0x00020000 | isr0\n"
+      "[  126.771016] iwlwifi 0000:00:14.3: 0x00000000 | isr1\n"
+      "[  126.771019] iwlwifi 0000:00:14.3: 0x48F04802 | isr2\n"
+      "[  126.771021] iwlwifi 0000:00:14.3: 0x00C3000C | isr3\n"
+      "[  126.771023] iwlwifi 0000:00:14.3: 0x00000000 | isr4\n"
+      "[  126.771026] iwlwifi 0000:00:14.3: 0x00260103 | last cmd Id\n"
+      "[  126.771028] iwlwifi 0000:00:14.3: 0x00015A7A | wait_event\n"
+      "[  126.771031] iwlwifi 0000:00:14.3: 0x00000000 | l2p_control\n"
+      "[  126.771033] iwlwifi 0000:00:14.3: 0x00000000 | l2p_duration\n"
+      "[  126.771036] iwlwifi 0000:00:14.3: 0x00000000 | l2p_mhvalid\n"
+      "[  126.771039] iwlwifi 0000:00:14.3: 0x00000000 | l2p_addr_match\n"
+      "[  126.771042] iwlwifi 0000:00:14.3: 0x00000018 | lmpm_pmg_sel\n"
+      "[  126.771044] iwlwifi 0000:00:14.3: 0x00000000 | timestamp\n"
+      "[  126.771047] iwlwifi 0000:00:14.3: 0x0000B0D8 | flow_handler\n"
+      "[  126.771572] iwlwifi 0000:00:14.3: Start IWL Error Log Dump:\n"
+      "[  126.771575] iwlwifi 0000:00:14.3: Transport status: 0x0000004A, "
+      "valid: 7\n"
+      "[  126.771579] iwlwifi 0000:00:14.3: 0x20000066 | NMI_INTERRUPT_HOST\n"
+      "[  126.771582] iwlwifi 0000:00:14.3: 0x00000000 | umac branchlink1\n"
+      "[  126.771584] iwlwifi 0000:00:14.3: 0x804879F6 | umac branchlink2\n"
+      "[  126.771587] iwlwifi 0000:00:14.3: 0xC0081510 | umac interruptlink1\n"
+      "[  126.771589] iwlwifi 0000:00:14.3: 0x0101D792 | umac interruptlink2\n"
+      "[  126.771592] iwlwifi 0000:00:14.3: 0x01000000 | umac data1\n"
+      "[  126.771594] iwlwifi 0000:00:14.3: 0x0101D792 | umac data2\n"
+      "[  126.771597] iwlwifi 0000:00:14.3: 0x00000000 | umac data3\n"
+      "[  126.771599] iwlwifi 0000:00:14.3: 0x00000058 | umac major\n"
+      "[  126.771602] iwlwifi 0000:00:14.3: 0x1E198EB9 | umac minor\n"
+      "[  126.771605] iwlwifi 0000:00:14.3: 0x063E9FA4 | frame pointer\n"
+      "[  126.771608] iwlwifi 0000:00:14.3: 0xC0886BEC | stack pointer\n"
+      "[  126.771611] iwlwifi 0000:00:14.3: 0x004A020F | last host cmd\n"
+      "[  126.771614] iwlwifi 0000:00:14.3: 0x00000409 | isr status reg\n"
+      "<remaining log contents>"));
+  EXPECT_TRUE(
+      collector_.Collect(50, KernelWarningCollector::WarningType::kIwlwifi));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_iwlwifi_error_NMI_INTERRUPT_HOST.*.meta",
+      "sig=iwlwifi 0x20000066 NMI_INTERRUPT_HOST"));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "kernel_iwlwifi_error_NMI_INTERRUPT_HOST.*.meta",
+      "upload_var_weight=50"));
+}
+
 TEST_F(KernelWarningCollectorTest, CollectLMACOK) {
   // Collector produces a crash report.
   ASSERT_TRUE(test_util::CreateFile(
@@ -371,7 +442,8 @@ TEST_F(KernelWarningCollectorTest, CollectLMACOK) {
       "[47755.132606] iwlwifi 0000:00:14.3: Microcode SW error detected. "
       "Restarting 0x0.\n"
       "[47755.132606] iwlwifi 0000:00:14.3: Start IWL Error Log Dump:\n"
-      "[47755.132606] iwlwifi 0000:00:14.3: Status: 0x00000040, count: 6\n"
+      "[47755.132606] iwlwifi 0000:00:14.3: Transport status: 0x00000040, "
+      "count: 6\n"
       "[47755.132606] iwlwifi 0000:00:14.3: Loaded firmware version: "
       "53.c31ac674.0 "
       "QuZ-a0-hr-b0-53.ucode\n"
@@ -411,7 +483,8 @@ TEST_F(KernelWarningCollectorTest, CollectLMACOK) {
       "[47755.132606] iwlwifi 0000:00:14.3: 0x00000000 | timestamp\n"
       "[47755.132606] iwlwifi 0000:00:14.3: 0x0000A8B8 | flow_handler\n"
       "[47755.132606] iwlwifi 0000:00:14.3: Start IWL Error Log Dump:\n"
-      "[47755.132606] iwlwifi 0000:00:14.3: Status: 0x00000040, count: 7\n"
+      "[47755.132606] iwlwifi 0000:00:14.3: Transport status: 0x00000040, "
+      "count: 7\n"
       "[47755.132606] iwlwifi 0000:00:14.3: 0x20000066 | NMI_INTERRUPT_HOST\n"
       "[47755.132606] iwlwifi 0000:00:14.3: 0x00000000 | umac branchlink1\n"
       "[47755.132606] iwlwifi 0000:00:14.3: 0x80467A40 | umac branchlink2\n"
@@ -539,7 +612,8 @@ TEST_F(KernelWarningCollectorTest, CollectOKBadIwlwifiSig) {
       "[47755.132606] iwlwifi 0000:01:00.0: Microcode SW error detected. "
       "Restarting 0x0.\n"
       "[47755.132606] iwlwifi 0000:01:00.0: Start IWL Error Log Dump:\n"
-      "[47755.132606] iwlwifi 0000:01:00.0: Status: 0x00000100, count: 6\n"
+      "[47755.132606] iwlwifi 0000:01:00.0: Transport status: 0x00000100, "
+      "count: 6\n"
       "[47755.132606] iwlwifi 0000:01:00.0: Loaded firmware version: "
       "43.95eb4e97.0\n"
       "[47755.132606] iwlwifi 0000:01:00.0: 0x00000071 | BAD_COMMAND\n"
@@ -547,7 +621,8 @@ TEST_F(KernelWarningCollectorTest, CollectOKBadIwlwifiSig) {
       "[47755.132606] iwlwifi 0000:01:00.0: 0x00000000 | trm_hw_status1\n"
       "[47755.132606] iwlwifi 0000:01:00.0: 0x0000C860 | flow_handler\n"
       "[47755.132606] iwlwifi 0000:01:00.0: Start IWL Error Log Dump:\n"
-      "[47755.132606] iwlwifi 0000:01:00.0: Status: 0x00000100, count: 7\n"
+      "[47755.132606] iwlwifi 0000:01:00.0: Transport status: 0x00000100, "
+      "count: 7\n"
       "[47755.132606] iwlwifi 0000:01:00.0: 0x20000079 | \n"
       "[47755.132606] iwlwifi 0000:01:00.0: 0x00000000 | umac branchlink1\n"
       "<remaining log contents>"));

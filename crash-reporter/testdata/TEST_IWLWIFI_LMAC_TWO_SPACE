@@ -5,7 +5,7 @@
 [ 9176.732047] perf: interrupt took too long (10586 > 10243), lowering kernel.perf_event_max_sample_rate to 18000
 [79553.430686] iwlwifi 0000:02:00.0: Microcode SW error detected.  Restarting 0x2000000.
 [79553.430913] iwlwifi 0000:02:00.0: Start IWL Error Log Dump:
-[79553.430919] iwlwifi 0000:02:00.0: Status: 0x00000040, count: 6
+[79553.430919] iwlwifi 0000:02:00.0: Transport status: 0x00000040, count: 6
 [79553.430924] iwlwifi 0000:02:00.0: Loaded firmware version: 29.116a852a.0 7265D-29.ucode
 [79553.430930] iwlwifi 0000:02:00.0: 0x00000084 | NMI_INTERRUPT_UNKNOWN       
 [79553.430935] iwlwifi 0000:02:00.0: 0x00A002F0 | trm_hw_status0

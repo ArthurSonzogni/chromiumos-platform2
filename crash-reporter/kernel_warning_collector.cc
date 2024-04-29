@@ -141,11 +141,12 @@ bool KernelWarningCollector::ExtractSignature(const std::string& content,
 // Loaded firmware version: 46.b20aefee.0
 // Signature example: 0x00000084 | NMI_INTERRUPT_UNKNOWN
 // The crashing function for the umac appears after the line:
-// iwlwifi 0000:00:0c.0: Status: 0x00000100, count: 7
+// iwlwifi 0000:00:0c.0: Transport status: 0x00000100, count: 7
 // Signature example: 0x20000066 | NMI_INTERRUPT_HOST
 constexpr LazyRE2 before_iwlwifi_assert_lmac = {
     R"(iwlwifi (?:.+): Loaded firmware version:)"};
-constexpr LazyRE2 before_iwlwifi_assert_umac = {R"(iwlwifi (?:.+): Status:)"};
+constexpr LazyRE2 before_iwlwifi_assert_umac = {
+    R"(iwlwifi (?:.+): Transport status:)"};
 constexpr LazyRE2 iwlwifi_sig_re = {
     R"(((iwlwifi) (?:.+): \b(\w+)\b \| \b(\w+)\b))"};
 
