@@ -112,6 +112,10 @@ std::optional<std::string> DlcClient::GetRootPath(const std::string& in_id,
   return state.root_path();
 }
 
+std::set<std::string> DlcClient::GetSupportedDlcIds() const {
+  return supported_dlc_ids_;
+}
+
 void DlcClient::OnDlcInstall() {
   return;
 }

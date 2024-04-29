@@ -36,6 +36,7 @@ class DlcClient {
   virtual void InstallDlc(const std::set<std::string>& dlc_ids);
   std::optional<std::string> GetRootPath(const std::string& in_id,
                                          std::string* out_error);
+  std::set<std::string> GetSupportedDlcIds() const;
 
  private:
   void OnDlcInstall();
