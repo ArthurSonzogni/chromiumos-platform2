@@ -1082,16 +1082,21 @@ do_post_install() {
       LOOP_DEV="/dev/ubiblock${PARTITION_NUM_ROOT_A}_0"
       # We need to pass the __writable__ device to postinst, hence ubiX_0.
       dst_rootfs_dev="/dev/ubi${PARTITION_NUM_ROOT_A}_0"
+      mount_on_loop_dev
+      IS_INSTALL="1" "${TMPMNT}/postinst" "${dst_rootfs_dev}" "$@"
+      umount_from_loop_dev
     else
-      loop_offset_setup "${DST}" "${START_ROOTFS_A}" "${DST_BLKSIZE}"
+      reload_partitions
       dst_rootfs_dev="$(make_partition_dev "${DST}" "${PARTITION_NUM_ROOT_A}")"
-    fi
-
-    mount_on_loop_dev
-    IS_INSTALL="1" "${TMPMNT}/postinst" "${dst_rootfs_dev}" "$@"
-    umount_from_loop_dev
-    if [ "${FLAGS_mtd_layout}" -eq "${FLAGS_FALSE}" ]; then
-      loop_offset_cleanup
+      if [ -n "${FLAGS_payload_image}" ]; then
+        loop_offset_setup "${DST}" "${START_ROOTFS_A}" "${DST_BLKSIZE}"
+        mount_on_loop_dev
+        IS_INSTALL="1" "${TMPMNT}/postinst" "${dst_rootfs_dev}" "$@"
+        umount_from_loop_dev
+        loop_offset_cleanup
+      else
+        IS_INSTALL="1" "/postinst" "${dst_rootfs_dev}" "$@"
+      fi
     fi
   fi
 }

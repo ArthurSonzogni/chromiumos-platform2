@@ -40,13 +40,16 @@ cleanup() {
 main() {
   cd "${INSTALL_ROOT}" || exit 1
 
-  trap cleanup EXIT
+  if [ "${INSTALL_ROOT}" != "/" ]; then
+    echo "Setting up mounts for chroot postinst"
+    trap cleanup EXIT
 
-  local d
-  for d in ${MOUNTS}; do
-    mount -n --bind "${d}" "./${d}"
-    mount --make-slave "./${d}"
-  done
+    local d
+    for d in ${MOUNTS}; do
+      mount -n --bind "${d}" "./${d}"
+      mount --make-slave "./${d}"
+    done
+  fi
 
   local install_dev="$1"
   shift
