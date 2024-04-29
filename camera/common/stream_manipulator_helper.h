@@ -108,6 +108,8 @@ class StreamManipulatorHelper {
     // Result metadata tags that will be copied and carried to process tasks
     // for visibility and modification.
     std::vector<uint32_t> result_metadata_tags_to_update;
+
+    bool enable_debug_logs = false;
   };
 
   // Base class for per-capture private context that can be carried from

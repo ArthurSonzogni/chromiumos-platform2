@@ -228,6 +228,12 @@ bool StreamManipulatorHelper::PreConfigure(
     return ret;
   }
 
+  if (VLOG_IS_ON(1) && config_.enable_debug_logs) {
+    for (auto* s : stream_config->GetStreams()) {
+      VLOGF(1) << "++ " << GetDebugString(s);
+    }
+  }
+
   Reset();
 
   if (config_.process_mode == ProcessMode::kBypass) {
@@ -394,6 +400,11 @@ bool StreamManipulatorHelper::PreConfigure(
   }
   CHECK(stream_config->SetStreams(streams_to_configure));
 
+  if (VLOG_IS_ON(1) && config_.enable_debug_logs) {
+    for (auto* s : stream_config->GetStreams()) {
+      VLOGF(1) << "-- " << GetDebugString(s);
+    }
+  }
   return true;
 }
 
@@ -409,6 +420,12 @@ void StreamManipulatorHelper::PostConfigure(
                                  base::Unretained(&done))));
     done.Wait();
     return;
+  }
+
+  if (VLOG_IS_ON(1) && config_.enable_debug_logs) {
+    for (auto* s : stream_config->GetStreams()) {
+      VLOGF(1) << "++ " << GetDebugString(s);
+    }
   }
 
   if (config_.process_mode == ProcessMode::kBypass ||
@@ -486,6 +503,12 @@ void StreamManipulatorHelper::PostConfigure(
     streams.push_back(s);
   }
   CHECK(stream_config->SetStreams(streams));
+
+  if (VLOG_IS_ON(1) && config_.enable_debug_logs) {
+    for (auto* s : stream_config->GetStreams()) {
+      VLOGF(1) << "-- " << GetDebugString(s);
+    }
+  }
 }
 
 void StreamManipulatorHelper::HandleRequest(
@@ -503,6 +526,20 @@ void StreamManipulatorHelper::HandleRequest(
                                  base::Unretained(&done))));
     done.Wait();
     return;
+  }
+
+  if (VLOG_IS_ON(2) && config_.enable_debug_logs) {
+    if (request->has_input_buffer()) {
+      auto& b = *request->GetInputBuffer();
+      VLOGF(2) << "++ " << request->frame_number() << " "
+               << GetDebugString(b.stream()) << "; buffer=" << *b.buffer()
+               << ", status=" << b.status();
+    }
+    for (auto& b : request->GetOutputBuffers()) {
+      VLOGF(2) << "++ " << request->frame_number() << " "
+               << GetDebugString(b.stream()) << "; buffer=" << *b.buffer()
+               << ", status=" << b.status();
+    }
   }
 
   result_sequencer_->AddRequest(*request);
@@ -645,6 +682,20 @@ void StreamManipulatorHelper::HandleRequest(
           std::move(video_yuv_buffers_to_generate);
     }
   }
+
+  if (VLOG_IS_ON(2) && config_.enable_debug_logs) {
+    if (request->has_input_buffer()) {
+      auto& b = *request->GetInputBuffer();
+      VLOGF(2) << "++ " << request->frame_number() << " "
+               << GetDebugString(b.stream()) << "; buffer=" << *b.buffer()
+               << ", status=" << b.status();
+    }
+    for (auto& b : request->GetOutputBuffers()) {
+      VLOGF(2) << "-- " << request->frame_number() << " "
+               << GetDebugString(b.stream()) << "; buffer=" << *b.buffer()
+               << ", status=" << b.status();
+    }
+  }
 }
 
 void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
@@ -653,6 +704,20 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
         FROM_HERE, base::BindOnce(&StreamManipulatorHelper::HandleResult,
                                   base::Unretained(this), std::move(result)));
     return;
+  }
+
+  if (VLOG_IS_ON(2) && config_.enable_debug_logs) {
+    VLOGF(2) << result.frame_number()
+             << " partial_result=" << result.partial_result();
+    if (result.has_input_buffer()) {
+      auto& b = *result.GetInputBuffer();
+      VLOGF(2) << result.frame_number() << " " << GetDebugString(b.stream())
+               << "; buffer=" << *b.buffer() << ", status=" << b.status();
+    }
+    for (auto& b : result.GetOutputBuffers()) {
+      VLOGF(2) << result.frame_number() << " " << GetDebugString(b.stream())
+               << "; buffer=" << *b.buffer() << ", status=" << b.status();
+    }
   }
 
   if (config_.process_mode == ProcessMode::kBypass ||
@@ -1088,6 +1153,20 @@ void StreamManipulatorHelper::ReturnCaptureResult(
   }
   if (result.partial_result() == partial_result_count_) {
     capture_ctx.last_result_metadata_sent = true;
+  }
+
+  if (VLOG_IS_ON(2) && config_.enable_debug_logs) {
+    VLOGF(2) << result.frame_number()
+             << " partial_result=" << result.partial_result();
+    if (result.has_input_buffer()) {
+      auto& b = *result.GetInputBuffer();
+      VLOGF(2) << result.frame_number() << " " << GetDebugString(b.stream())
+               << "; buffer=" << *b.buffer() << ", status=" << b.status();
+    }
+    for (auto& b : result.GetOutputBuffers()) {
+      VLOGF(2) << result.frame_number() << " " << GetDebugString(b.stream())
+               << "; buffer=" << *b.buffer() << ", status=" << b.status();
+    }
   }
 
   if (!result.is_empty()) {
