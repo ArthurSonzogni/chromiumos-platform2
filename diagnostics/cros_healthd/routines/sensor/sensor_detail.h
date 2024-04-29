@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -18,40 +19,53 @@ namespace diagnostics {
 
 // The detail of sensor used for sensitive sensor routine. This is also a helper
 // class to record read sensor sample.
-struct SensorDetail {
-  // Sensor ID.
-  int32_t sensor_id;
+class SensorDetail {
+ public:
+  // Return null if `types` don't contain any supported sensor types.
+  static std::unique_ptr<SensorDetail> Create(
+      int32_t sensor_id, const std::vector<cros::mojom::DeviceType>& types);
+  SensorDetail(const SensorDetail&) = delete;
+  SensorDetail& operator=(const SensorDetail&) = delete;
+  ~SensorDetail();
 
-  // Sensor types.
-  std::vector<cros::mojom::DeviceType> types;
-
-  // Sensor channels.
-  std::optional<std::vector<std::string>> channels;
-
-  // First is channel indice, second is the last reading sample. If the
-  // channel finishes checking, remove it from this map.
-  std::map<int32_t, std::optional<int64_t>> checking_channel_sample;
-
-  // Check the required sensor channels and update `checking_channel_sample` and
-  // `channels`. Return indices of required channels for all sensor types listed
-  // in `types`. Return null if `sensor_channels` don't contain all required
-  // channels.
+  // Check the required sensor channels and update `checking_channel_sample_`
+  // and `channels_`. Return indices of required channels for all sensor types
+  // listed in `types_`. Return null if `sensor_channels` don't contain all
+  // required channels.
   std::optional<std::vector<int32_t>> CheckRequiredChannelsAndGetIndices(
       const std::vector<std::string>& sensor_channels);
 
-  // Update the read sample in `checking_channel_sample` for channel at index
-  // |indice|. Remove the channel from `checking_channel_sample` when we
+  // Update the read sample in `checking_channel_sample_` for channel at index
+  // |indice|. Remove the channel from `checking_channel_sample_` when we
   // observe changed value.
   void UpdateChannelSample(int32_t indice, int64_t value);
 
   // Return true if we finish checking on all channels.
-  bool AllChannelsChecked();
+  bool AllChannelsChecked() const;
 
   // Check if there is any error when interacting with Iioservice.
-  bool IsErrorOccurred();
+  bool IsErrorOccurred() const;
 
   // Return the detail for v1 routine output dict.
-  base::Value::Dict ToDict();
+  base::Value::Dict ToDict() const;
+
+ protected:
+  explicit SensorDetail(int32_t sensor_id,
+                        const std::vector<cros::mojom::DeviceType>& types);
+
+ private:
+  // Sensor ID.
+  const int32_t sensor_id_;
+
+  // Sensor types.
+  const std::vector<cros::mojom::DeviceType> types_;
+
+  // Sensor channels.
+  std::optional<std::vector<std::string>> channels_;
+
+  // First is channel indice, second is the last reading sample. If the
+  // channel finishes checking, remove it from this map.
+  std::map<int32_t, std::optional<int64_t>> checking_channel_sample_;
 };
 
 }  // namespace diagnostics

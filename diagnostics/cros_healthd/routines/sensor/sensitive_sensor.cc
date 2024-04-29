@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h"
 
 #include <algorithm>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -31,27 +32,6 @@ constexpr double kSampleReadingFrequency = 5;
 constexpr char kOutputDictPassedSensorsKey[] = "passed_sensors";
 constexpr char kOutputDictFailedSensorsKey[] = "failed_sensors";
 constexpr char kOutputDictExistenceCheckResultKey[] = "existence_check_result";
-
-// This routine only supports accelerometers, gyro sensors, gravity sensors and
-// magnetometers.
-std::vector<cros::mojom::DeviceType> FilterSupportedTypes(
-    std::vector<cros::mojom::DeviceType> types) {
-  auto is_supported_type = [](cros::mojom::DeviceType type) {
-    switch (type) {
-      case cros::mojom::DeviceType::ACCEL:
-      case cros::mojom::DeviceType::ANGLVEL:
-      case cros::mojom::DeviceType::GRAVITY:
-      case cros::mojom::DeviceType::MAGN:
-        return true;
-      default:
-        return false;
-    }
-  };
-  std::vector<cros::mojom::DeviceType> supported_types;
-  std::copy_if(types.begin(), types.end(), std::back_inserter(supported_types),
-               is_supported_type);
-  return supported_types;
-}
 
 // Convert the enum to readable string.
 std::string Convert(SensorType sensor) {
@@ -197,12 +177,12 @@ void SensitiveSensorRoutine::HandleVerificationResponse(
   }
 
   for (const auto& [sensor_id, sensor_types] : ids_types) {
-    auto types = FilterSupportedTypes(sensor_types);
+    auto sensor_detail = SensorDetail::Create(sensor_id, sensor_types);
     // Skip unsupported sensors.
-    if (types.empty())
+    if (!sensor_detail) {
       continue;
-
-    pending_sensors_[sensor_id] = {.sensor_id = sensor_id, .types = types};
+    }
+    pending_sensors_[sensor_id] = std::move(sensor_detail);
     InitSensorDevice(sensor_id);
   }
   if (pending_sensors_.empty())
@@ -220,7 +200,7 @@ void SensitiveSensorRoutine::HandleFrequencyResponse(int32_t sensor_id,
                                                      double frequency) {
   if (frequency <= 0.0) {
     LOG(ERROR) << "Failed to set frequency on sensor with ID: " << sensor_id;
-    failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
+    failed_sensors_[sensor_id] = pending_sensors_[sensor_id]->ToDict();
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineErrorMessage);
     return;
@@ -234,11 +214,11 @@ void SensitiveSensorRoutine::HandleFrequencyResponse(int32_t sensor_id,
 void SensitiveSensorRoutine::HandleChannelIdsResponse(
     int32_t sensor_id, const std::vector<std::string>& channels) {
   auto channel_indices =
-      pending_sensors_[sensor_id].CheckRequiredChannelsAndGetIndices(channels);
+      pending_sensors_[sensor_id]->CheckRequiredChannelsAndGetIndices(channels);
   if (!channel_indices.has_value()) {
     LOG(ERROR) << "Failed to get required channels on sensor with ID: "
                << sensor_id;
-    failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
+    failed_sensors_[sensor_id] = pending_sensors_[sensor_id]->ToDict();
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineErrorMessage);
     return;
@@ -255,7 +235,7 @@ void SensitiveSensorRoutine::HandleSetChannelsEnabledResponse(
   if (!failed_indices.empty()) {
     LOG(ERROR) << "Failed to set channels enabled on sensor with ID: "
                << sensor_id;
-    failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
+    failed_sensors_[sensor_id] = pending_sensors_[sensor_id]->ToDict();
     SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kSensitiveSensorRoutineErrorMessage);
     return;
@@ -271,16 +251,16 @@ void SensitiveSensorRoutine::HandleSetChannelsEnabledResponse(
 void SensitiveSensorRoutine::OnSampleUpdated(
     const base::flat_map<int32_t, int64_t>& sample) {
   const auto& sensor_id = observer_receiver_set_.current_context();
-  auto& sensor = pending_sensors_[sensor_id];
+  const auto& sensor = pending_sensors_[sensor_id];
 
   for (const auto& [channel_indice, channel_value] : sample)
-    sensor.UpdateChannelSample(channel_indice, channel_value);
+    sensor->UpdateChannelSample(channel_indice, channel_value);
 
-  if (sensor.AllChannelsChecked()) {
+  if (sensor->AllChannelsChecked()) {
     mojo_service_->GetSensorDevice(sensor_id)->StopReadingSamples();
 
     // Store detail of passed sensor.
-    passed_sensors_[sensor_id] = sensor.ToDict();
+    passed_sensors_[sensor_id] = sensor->ToDict();
     pending_sensors_.erase(sensor_id);
     observer_receiver_set_.Remove(observer_receiver_set_.current_receiver());
     if (pending_sensors_.empty())
@@ -293,7 +273,7 @@ void SensitiveSensorRoutine::OnErrorOccurred(
   const auto& sensor_id = observer_receiver_set_.current_context();
   LOG(ERROR) << "Observer error occurred while reading sample: " << type
              << ", sensor ID: " << sensor_id;
-  failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
+  failed_sensors_[sensor_id] = pending_sensors_[sensor_id]->ToDict();
   SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                    kSensitiveSensorRoutineErrorMessage);
 }
@@ -313,8 +293,8 @@ void SensitiveSensorRoutine::OnTimeoutOccurred() {
     mojo_service_->GetSensorDevice(sensor_id)->StopReadingSamples();
 
     // Store detail of failed sensor.
-    failed_sensors_[sensor_id] = pending_sensors_[sensor_id].ToDict();
-    if (pending_sensors_[sensor_id].IsErrorOccurred()) {
+    failed_sensors_[sensor_id] = pending_sensors_[sensor_id]->ToDict();
+    if (pending_sensors_[sensor_id]->IsErrorOccurred()) {
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                        kSensitiveSensorRoutineErrorMessage);
       return;

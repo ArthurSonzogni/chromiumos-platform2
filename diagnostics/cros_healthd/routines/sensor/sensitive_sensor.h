@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSITIVE_SENSOR_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -22,7 +23,7 @@
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
-struct SensorDetail;
+class SensorDetail;
 
 constexpr base::TimeDelta kSensitiveSensorRoutineTimeout = base::Seconds(20);
 
@@ -107,7 +108,7 @@ class SensitiveSensorRoutine final
   std::map<int32_t, base::Value::Dict> failed_sensors_;
   // First is unfinished sensor id and second is the sensor detail. Also used to
   // handle timeout and calculate the progress percentage.
-  std::map<int32_t, SensorDetail> pending_sensors_;
+  std::map<int32_t, std::unique_ptr<SensorDetail>> pending_sensors_;
   // Routine start time, used to calculate the progress percentage.
   base::TimeTicks start_ticks_;
   // Mojo receiver set for binding pipe, which context is sensor id.
