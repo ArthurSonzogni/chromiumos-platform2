@@ -304,6 +304,32 @@ class FingerWebSocket(WebSocket):
             else:
                 cherrypy.log("FPC utils are unavailable")
 
+    def finger_setup(self, req: dict[str, Any]) -> Optional[str]:
+        """Run once before capturing each finger.
+
+        The user waits for this function to complete before capturing starts.
+        The expectation is that the user does not have a finger on the sensor
+        for this setup routine.
+
+        Args:
+            req: The finger capture request from the client page.
+
+        Returns:
+            The optional result string to send to the client page.
+            None when no result should be sent to the client page.
+        """
+        t0 = time.time()
+        # The pattern1 capture is needed for Elan 80SG to do off-chip
+        # evaluation.
+        cherrypy.log(f"Capturing pattern1 for finger {req['finger']:02d}")
+        img, result = self.capture("pattern1")
+        t1 = time.time()
+        cherrypy.log(f"Captured pattern1 in {t1 - t0:.2f}s")
+        if not img:
+            return result
+        self.finger_save_pattern1(req, img)
+        return "ok"
+
     def finger_process(self, req: dict[str, Any]) -> Optional[str]:
         """Capture and save fingerprint samples.
 
@@ -321,17 +347,7 @@ class FingerWebSocket(WebSocket):
             return None
 
         if req["action"] == "setup":
-            t0 = time.time()
-            # The pattern1 capture is needed for Elan 80SG to do off-chip
-            # evaluation.
-            cherrypy.log(f"Capturing pattern1 for finger {req['finger']:02d}")
-            img, result = self.capture("pattern1")
-            t1 = time.time()
-            cherrypy.log(f"Captured pattern1 in {t1 - t0:.2f}s")
-            if not img:
-                return result
-            self.finger_save_pattern1(req, img)
-            return "ok"
+            return self.finger_setup(req)
 
         if req["action"] != "sample":
             raise Exception(
