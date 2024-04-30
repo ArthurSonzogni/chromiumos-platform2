@@ -222,7 +222,6 @@ class InterfaceProxy final : public InterfaceProxyInterface {
 
     brillo::dbus_utils::Property<brillo::VariantDictionary> capabilities;
     brillo::dbus_utils::Property<uint32_t> bluetooth_class;
-
   };
 
   InterfaceProxy(
@@ -397,8 +396,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
     }
     PropertySet(const PropertySet&) = delete;
     PropertySet& operator=(const PropertySet&) = delete;
-
-
   };
 
   EmptyInterfaceProxy(
@@ -1646,7 +1643,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 
     brillo::dbus_utils::Property<brillo::VariantDictionary> readonly_property;
     brillo::dbus_utils::Property<brillo::VariantDictionary> writable_property;
-
   };
 
   EmptyInterfaceProxy(
@@ -1805,8 +1801,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
     }
     PropertySet(const PropertySet&) = delete;
     PropertySet& operator=(const PropertySet&) = delete;
-
-
   };
 
   EmptyInterfaceProxy(
@@ -2044,8 +2038,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
     }
     PropertySet(const PropertySet&) = delete;
     PropertySet& operator=(const PropertySet&) = delete;
-
-
   };
 
   EmptyInterfaceProxy(
@@ -2295,7 +2287,6 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
     PropertySet& operator=(const PropertySet&) = delete;
 
     brillo::dbus_utils::Property<brillo::VariantDictionary> capabilities;
-
   };
 
   EmptyInterfaceProxy(

@@ -8,7 +8,7 @@ import (
 	"go.chromium.org/chromiumos/dbusbindings/introspect"
 )
 
-const proxyInterfaceTemplate = `{{define "proxyInterface" -}}
+const proxyInterfaceTemplate = `{{- define "proxyInterface"}}
 {{- with .Itf -}}
 {{range extractNameSpaces .Name -}}
 namespace {{.}} {
