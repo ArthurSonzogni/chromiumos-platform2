@@ -49,7 +49,7 @@ media.
 ### A. Place Chromebook into Developer Mode
 
 See
-[https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_mode.md](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_mode.md).
+[https://www.chromium.org/chromium-os/developer-library/guides/device/developer-mode/](https://www.chromium.org/chromium-os/developer-library/guides/device/developer-mode/).
 
 For most modern Chromebooks this requires the following:
 
@@ -150,7 +150,7 @@ ability to capture fingerprints directly.
 
 See [CCD Open] and [CCD Cable] for more information.
 
-[CCD Open]: https://chromium.googlesource.com/chromiumos/platform/ec/+/cr50_stab/docs/case_closed_debugging_cr50.md#ccd-open
+[CCD Open]: https://chromium.googlesource.com/chromiumos/platform/ec/+/cr50_stab/docs/case_closed_debugging_gsc.md#ccd-open
 [CCD Cable]: https://chromium.googlesource.com/chromiumos/third_party/hdctools/+/main/docs/ccd.md#suzyq-suzyqable
 
 </details>
