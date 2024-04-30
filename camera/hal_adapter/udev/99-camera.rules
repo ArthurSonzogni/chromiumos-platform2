@@ -33,3 +33,6 @@ SUBSYSTEM=="dma_heap", ENV{DEVNAME}=="/dev/dma_heap/*", GROUP="camera"
 # Limit access to /dev/mtk_hcp to the camera HAL for mtkisp7 (geralt).
 # This should be removed once MTK migrate it to SCP.
 SUBSYSTEM=="mtk_hcp_driver", ENV{DEVNAME}=="/dev/mtk_hcp", GROUP="camera"
+
+# Limit access to /dev/apusys to the camera HAL for mtkisp7 (geralt).
+SUBSYSTEM=="misc", ENV{DEVNAME}=="/dev/apusys", GROUP="camera"
