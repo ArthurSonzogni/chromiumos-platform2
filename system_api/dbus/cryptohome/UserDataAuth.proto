@@ -1413,45 +1413,6 @@ message GetAuthFactorExtendedInfoReply {
   }
 }
 
-// GetRecoveryRequestRequest is built when a user is trying to get the
-// recovery payload for CryptohomeRecoveryAuthFactor for a user. When the call
-// is made, AuthSession is in an unauthenticated state. After the operation the
-// AuthSession would still be in an unauthenticated state.
-message GetRecoveryRequestRequest {
-  enum UserType {
-    UNKNOWN = 0;
-    GAIA_ID = 1;
-  }
-
-  // This id would be used to associate the AuthFactor to an AuthSession.
-  bytes auth_session_id = 1;
-  // Label to identify the existing cryptohome recovery AuthFactor.
-  string auth_factor_label = 2;
-
-  UserType requestor_user_id_type = 3;
-  // Format of `requestor_user_id` is determined by `requestor_user_id_type`
-  // enum. For GAIA_ID it's number string obfuscated Gaia id.
-  string requestor_user_id = 4;
-  // Access token with reauth scope.
-  string gaia_access_token = 5;
-  // A short-lived token, it's validity will be verified by the Recovery
-  // Service.
-  string gaia_reauth_proof_token = 6;
-  // Serialized cryptohome.cryptorecovery.CryptoRecoveryEpochResponse.
-  // An epoch response received from Recovery Mediator service containing epoch
-  // beacon value for Cryptohome recovery flow.
-  bytes epoch_response = 7;
-}
-
-message GetRecoveryRequestReply {
-  CryptohomeErrorCode error = 1;
-  CryptohomeErrorInfo error_info = 2;
-
-  // Serialized cryptohome.cryptorecovery.CryptoRecoveryRpcRequest, to be sent
-  // to the recovery server.
-  bytes recovery_request = 3;
-}
-
 // CreateVaultKeysetRequest is built when a user is trying to create a
 // VaultKeyset for a user, it is a similar operation to AddAuthFactor, but for
 // testing purposes with legacy VaultKeysets.

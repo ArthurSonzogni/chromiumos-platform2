@@ -58,7 +58,6 @@ inline constexpr char kListAuthFactors[] = "ListAuthFactors";
 inline constexpr char kGetAuthFactorExtendedInfo[] =
     "GetAuthFactorExtendedInfo";
 inline constexpr char kGetAuthSessionStatus[] = "GetAuthSessionStatus";
-inline constexpr char kGetRecoveryRequest[] = "GetRecoveryRequest";
 inline constexpr char kLockFactorUntilReboot[] = "LockFactorUntilReboot";
 inline constexpr char kModifyAuthFactorIntents[] = "ModifyAuthFactorIntents";
 inline constexpr char kCreateVaultkeyset[] = "CreateVaultKeyset";
