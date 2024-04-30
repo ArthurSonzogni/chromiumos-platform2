@@ -57,7 +57,7 @@ class TpmSystemKey {
   base::FilePath stateful_mount_;
   Tpm tpm_;
   std::unique_ptr<SystemKeyLoader> loader_;
-  bool has_chromefw_;
+  std::optional<bool> has_chromefw_;
 
   // To check if the device is a chromebook.
   bool HasChromeFw();

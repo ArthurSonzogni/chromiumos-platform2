@@ -129,8 +129,7 @@ TpmSystemKey::TpmSystemKey(libstorage::Platform* platform,
       stateful_mount_(stateful_mount),
       tpm_(tlcl_),
       loader_(encryption::SystemKeyLoader::Create(
-          platform_, &tpm_, rootdir_, stateful_mount_)),
-      has_chromefw_(HasChromeFw()) {}
+          platform_, &tpm_, rootdir_, stateful_mount_)) {}
 
 bool TpmSystemKey::Set(base::FilePath key_material_file) {
   if (!tpm_.is_tpm2()) {
@@ -192,7 +191,7 @@ std::optional<encryption::EncryptionKey> TpmSystemKey::Load(bool safe_mount) {
   }
 
   /* Log errors during sending seed to biod, but don't stop execution. */
-  if (has_chromefw_) {
+  if (HasChromeFw()) {
     LOG_IF(ERROR, !SendSecretToBiodTmpFile(key, platform_))
         << "Failed to send TPM secret to biod.";
   } else {
@@ -219,7 +218,7 @@ void TpmSystemKey::ReportInfo() {
     printf("TPM Owned: %s\n",
            tpm_.IsOwned(&owned) ? (owned ? "yes" : "no") : "fail");
   }
-  printf("ChromeOS: %s\n", has_chromefw_ ? "yes" : "no");
+  printf("ChromeOS: %s\n", HasChromeFw() ? "yes" : "no");
   printf("TPM2: %s\n", tpm_.is_tpm2() ? "yes" : "no");
   if (ShallUseTpmForSystemKey()) {
     brillo::SecureBlob system_key;
@@ -254,14 +253,15 @@ bool TpmSystemKey::Export() {
 }
 
 bool TpmSystemKey::HasChromeFw() {
-  bool state;
-  auto fw = platform_->GetCrosssystem()->VbGetSystemPropertyString(
-      crossystem::Crossystem::kMainFirmwareType);
-  if (!fw)
-    state = false;
-  else
-    state = (fw != crossystem::Crossystem::kMainfwTypeNonchrome);
-  return state;
+  if (!has_chromefw_) {
+    auto fw = platform_->GetCrosssystem()->VbGetSystemPropertyString(
+        crossystem::Crossystem::kMainFirmwareType);
+    if (!fw)
+      has_chromefw_ = false;
+    else
+      has_chromefw_ = (fw != crossystem::Crossystem::kMainfwTypeNonchrome);
+  }
+  return *has_chromefw_;
 }
 
 bool TpmSystemKey::ShallUseTpmForSystemKey() {
@@ -269,7 +269,7 @@ bool TpmSystemKey::ShallUseTpmForSystemKey() {
     return true;
   }
 
-  if (has_chromefw_) {
+  if (HasChromeFw()) {
     return true;
   }
 
