@@ -70,11 +70,6 @@ TEST_F(FunctionsTest, HashFileFunctionsTest) {
   (void)HashFile(base::FilePath(), 0, nullptr, false, std::move(mu_));
 }
 
-TEST_F(FunctionsTest, GetDlcManifestTest) {
-  EXPECT_CALL(*mu_ptr_, GetDlcManifest(_, _, _));
-  (void)GetDlcManifest(base::FilePath(), "", "", std::move(mu_));
-}
-
 TEST_F(FunctionsTest, GetCompressedDlcManifestTest) {
   EXPECT_CALL(*mu_ptr_, GetDlcManifest(_, _))
       .WillOnce(testing::Return(std::make_shared<imageloader::Manifest>()));

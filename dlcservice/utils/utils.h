@@ -57,11 +57,6 @@ class BRILLO_EXPORT Utils : public UtilsInterface {
                 std::vector<uint8_t>* sha256,
                 bool skip_size_check) override;
   std::shared_ptr<imageloader::Manifest> GetDlcManifest(
-      const base::FilePath& dlc_manifest_path,
-      const std::string& id,
-      const std::string& package) override;
-
-  std::shared_ptr<imageloader::Manifest> GetDlcManifest(
       const std::string& id, const base::FilePath& dlc_manifest_path) override;
 
   DlcIdList GetSupportedDlcIds(const base::FilePath& metadata_path) override;
@@ -76,6 +71,11 @@ class BRILLO_EXPORT Utils : public UtilsInterface {
   std::shared_ptr<imageloader::Manifest> GetDlcManifestInternal(
       const std::string& id);
 
+  std::shared_ptr<imageloader::Manifest> GetDlcManifestFallback(
+      const base::FilePath& dlc_manifest_path,
+      const std::string& id,
+      const std::string& package);
+
   std::unique_ptr<metadata::MetadataInterface> metadata_;
 };
 
@@ -89,11 +89,6 @@ BRILLO_EXPORT bool HashFile(
     int64_t size,
     std::vector<uint8_t>* sha256,
     bool skip_size_check = false,
-    std::unique_ptr<UtilsInterface> utils = std::make_unique<Utils>());
-BRILLO_EXPORT std::shared_ptr<imageloader::Manifest> GetDlcManifest(
-    const base::FilePath& dlc_manifest_path,
-    const std::string& id,
-    const std::string& package,
     std::unique_ptr<UtilsInterface> utils = std::make_unique<Utils>());
 BRILLO_EXPORT std::shared_ptr<imageloader::Manifest> GetDlcManifest(
     const std::string& id,

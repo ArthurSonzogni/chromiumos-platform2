@@ -42,12 +42,6 @@ class MockUtils : public UtilsInterface {
               (override));
   MOCK_METHOD(std::shared_ptr<imageloader::Manifest>,
               GetDlcManifest,
-              (const base::FilePath& dlc_manifest_path,
-               const std::string& id,
-               const std::string& package),
-              (override));
-  MOCK_METHOD(std::shared_ptr<imageloader::Manifest>,
-              GetDlcManifest,
               (const std::string& id, const base::FilePath& dlc_manifest_path),
               (override));
   MOCK_METHOD(DlcIdList,

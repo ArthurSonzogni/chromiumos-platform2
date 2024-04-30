@@ -119,7 +119,7 @@ bool HashFile(const base::FilePath& path,
   return utils->HashFile(path, size, sha256, skip_size_check);
 }
 
-std::shared_ptr<imageloader::Manifest> Utils::GetDlcManifest(
+std::shared_ptr<imageloader::Manifest> Utils::GetDlcManifestFallback(
     const FilePath& dlc_manifest_path,
     const std::string& id,
     const std::string& package) {
@@ -148,7 +148,7 @@ std::shared_ptr<imageloader::Manifest> Utils::GetDlcManifest(
   if (auto manifest = GetDlcManifestInternal(id)) {
     return manifest;
   } else {
-    return GetDlcManifest(dlc_manifest_path, id, kPackage);
+    return GetDlcManifestFallback(dlc_manifest_path, id, kPackage);
   }
 }
 
@@ -170,14 +170,6 @@ std::shared_ptr<imageloader::Manifest> Utils::GetDlcManifestInternal(
   }
 
   return manifest;
-}
-
-std::shared_ptr<imageloader::Manifest> GetDlcManifest(
-    const FilePath& dlc_manifest_path,
-    const std::string& id,
-    const std::string& package,
-    std::unique_ptr<UtilsInterface> utils) {
-  return utils->GetDlcManifest(dlc_manifest_path, id, package);
 }
 
 std::shared_ptr<imageloader::Manifest> GetDlcManifest(

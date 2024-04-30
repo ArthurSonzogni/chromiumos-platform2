@@ -45,12 +45,6 @@ class BRILLO_EXPORT UtilsInterface {
                         std::vector<uint8_t>* sha256,
                         bool skip_size_check = false) = 0;
 
-  // Retrieves the given DLC (id + package)  manifest.
-  virtual std::shared_ptr<imageloader::Manifest> GetDlcManifest(
-      const base::FilePath& dlc_manifest_path,
-      const std::string& id,
-      const std::string& package) = 0;
-
   // Retrieves the given DLC (id) manifest from metadata.
   virtual std::shared_ptr<imageloader::Manifest> GetDlcManifest(
       const std::string& id, const base::FilePath& dlc_manifest_path) = 0;

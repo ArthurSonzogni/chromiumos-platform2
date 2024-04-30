@@ -685,7 +685,7 @@ TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, MismatchingPowerwashFile) {
     "fs-type": "squashfs",
     "powerwash-safe": false
   )");
-  EXPECT_CALL(*mock_utils_ptr_, GetDlcManifest(_, _, _))
+  EXPECT_CALL(*mock_utils_ptr_, GetDlcManifest(_, _))
       .WillOnce(Return(std::move(manifest)));
   // DO NOT USE `manifest` beyond this point.
 
@@ -715,7 +715,7 @@ TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, SingleDlcPowerwashFile) {
           .Set("version", "1")
           .Set("manifest-version", 1);
   ASSERT_TRUE(manifest->ParseManifest(manifest_dict));
-  EXPECT_CALL(*mock_utils_ptr_, GetDlcManifest(temp_dir_.GetPath(), dlc, _))
+  EXPECT_CALL(*mock_utils_ptr_, GetDlcManifest(dlc, temp_dir_.GetPath()))
       .WillOnce(Return(std::move(manifest)));
   // DO NOT USE `manifest` beyond this point.
 
@@ -786,13 +786,12 @@ TEST_F(DlcPreserveLogicalVolumesWipeArgsTest, MixedDlcPowerwashFile) {
   }
 
   const std::string& dlc_ps("id-ps");
-  EXPECT_CALL(*mock_utils_ptr_, GetDlcManifest(temp_dir_.GetPath(), dlc_ps, _))
+  EXPECT_CALL(*mock_utils_ptr_, GetDlcManifest(dlc_ps, temp_dir_.GetPath()))
       .WillOnce(Return(std::move(manifest_ps)));
   EXPECT_CALL(*mock_utils_ptr_,
-              GetDlcManifest(temp_dir_.GetPath(), "id-not-ps", _))
+              GetDlcManifest("id-not-ps", temp_dir_.GetPath()))
       .WillOnce(Return(std::move(manifest_not_ps)));
-  EXPECT_CALL(*mock_utils_ptr_,
-              GetDlcManifest(temp_dir_.GetPath(), "some-dlc", _))
+  EXPECT_CALL(*mock_utils_ptr_, GetDlcManifest("some-dlc", temp_dir_.GetPath()))
       .WillOnce(Return(std::make_unique<imageloader::Manifest>()));
   // DO NOT USE `manifest_*` beyond this point.
 

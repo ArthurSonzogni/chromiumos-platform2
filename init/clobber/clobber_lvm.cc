@@ -368,11 +368,10 @@ ClobberLvm::DlcPreserveLogicalVolumesWipeArgs(
 
   ClobberLvm::PreserveLogicalVolumesWipeInfos verified_dlcs;
   for (const auto& dlc : dlcs) {
-    const auto& manifest = utils->GetDlcManifest(dlc_manifest_root_path, dlc,
-                                                 dlcservice::kPackage);
+    const auto& manifest = utils->GetDlcManifest(dlc, dlc_manifest_root_path);
 
     // Verify against rootfs that these DLCs are in fact, powerwash safe.
-    if (!manifest->powerwash_safe()) {
+    if (!manifest || !manifest->powerwash_safe()) {
       LOG(WARNING) << "DLC=" << dlc << " is not powerwash safe, but list in "
                    << "powerwash safe file, skipping it.";
       continue;
