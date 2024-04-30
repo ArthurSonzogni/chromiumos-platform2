@@ -175,7 +175,7 @@ bool CrosFpSessionManagerImpl::DeleteNotLoadedRecord(
   return record_manager_->DeleteNotLoadedRecord(user_id, record_id);
 }
 
-std::vector<SessionRecord> CrosFpSessionManagerImpl::GetRecords() {
+const std::vector<SessionRecord>& CrosFpSessionManagerImpl::GetRecords() const {
   return records_;
 }
 

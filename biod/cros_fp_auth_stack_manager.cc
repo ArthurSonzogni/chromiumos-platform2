@@ -551,7 +551,7 @@ bool CrosFpAuthStackManager::LoadUser(std::string user_id, bool lock_to_user) {
 }
 
 bool CrosFpAuthStackManager::UploadCurrentUserTemplates() {
-  std::vector<CrosFpSessionManager::SessionRecord> records =
+  const std::vector<CrosFpSessionManager::SessionRecord>& records =
       session_manager_->GetRecords();
   for (const auto& record : records) {
     // TODO(b/253993586): Send record format version metrics here.
@@ -877,7 +877,7 @@ CrosFpAuthStackManager::CrosFpMigrator::ListLegacyRecords() {
     reply.set_status(ListLegacyRecordsReply::INCORRECT_STATE);
     return reply;
   }
-  std::vector<CrosFpSessionManager::SessionRecord> records =
+  const std::vector<CrosFpSessionManager::SessionRecord>& records =
       session_manager_->GetRecords();
 
   for (const auto& record : records) {

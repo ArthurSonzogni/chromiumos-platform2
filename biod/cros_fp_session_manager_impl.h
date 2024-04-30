@@ -39,7 +39,7 @@ class CrosFpSessionManagerImpl : public CrosFpSessionManager {
   bool DeleteRecord(const std::string& record_id) override;
   bool DeleteNotLoadedRecord(const std::string& user_id,
                              const std::string& record_id) override;
-  std::vector<SessionRecord> GetRecords() override;
+  const std::vector<SessionRecord>& GetRecords() const override;
   std::optional<BiodStorageInterface::RecordMetadata> GetRecordMetadata(
       size_t idx) const override;
   size_t GetNumOfTemplates() override;

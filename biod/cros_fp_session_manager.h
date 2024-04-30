@@ -62,7 +62,7 @@ class CrosFpSessionManager {
 
   // Get all of the templates that belong to the current user session. It will
   // return an empty list if no user session exists.
-  virtual std::vector<SessionRecord> GetRecords() = 0;
+  virtual const std::vector<SessionRecord>& GetRecords() const = 0;
 
   // Get the idx-th record metadata.
   virtual std::optional<BiodStorageInterface::RecordMetadata> GetRecordMetadata(

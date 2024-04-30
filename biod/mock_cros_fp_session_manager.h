@@ -48,7 +48,10 @@ class MockCrosFpSessionManager : public CrosFpSessionManager {
               DeleteNotLoadedRecord,
               (const std::string&, const std::string&),
               (override));
-  MOCK_METHOD(std::vector<SessionRecord>, GetRecords, (), (override));
+  MOCK_METHOD(const std::vector<SessionRecord>&,
+              GetRecords,
+              (),
+              (const, override));
   MOCK_METHOD(std::optional<BiodStorageInterface::RecordMetadata>,
               GetRecordMetadata,
               (size_t idx),

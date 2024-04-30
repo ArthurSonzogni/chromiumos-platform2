@@ -35,7 +35,7 @@ class CrosFpSessionManagerTest : public ::testing::Test {
 
  protected:
   void CheckTemplatesEqual(const std::vector<Record> records) {
-    const std::vector<SessionRecord> current_records =
+    const std::vector<SessionRecord>& current_records =
         session_manager_->GetRecords();
     ASSERT_EQ(current_records.size(), records.size());
     // Test behavior of GetNumOfTemplates.
