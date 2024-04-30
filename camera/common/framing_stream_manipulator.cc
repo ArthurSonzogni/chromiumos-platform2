@@ -133,82 +133,97 @@ ResamplingMethod ScaleMethodToResamplingMethod(ScaleMethod method) {
 }
 #endif  // USE_CAMERA_FEATURE_SUPER_RES
 
-// Find the largest (video, still) stream resolutions with full FOV.
-std::pair<Size, Size> GetFullFrameResolutions(
-    const camera_metadata_t* static_info,
-    const Size& active_array_size,
-    std::optional<uint32_t> max_video_width,
-    std::optional<uint32_t> max_video_height) {
+std::vector<StreamFormat> GetAvailableOutputYuvFormats(
+    const camera_metadata_t* static_info, const Size& active_array_size) {
+  auto min_durations = GetRoMetadataAsSpan<int64_t>(
+      static_info, ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS);
+  CHECK_EQ(min_durations.size() % 4, 0);
+  auto get_max_fps = [&](uint32_t format, uint32_t width, uint32_t height) {
+    for (size_t i = 0; i < min_durations.size(); i += 4) {
+      if (format == min_durations[i] && width == min_durations[i + 1] &&
+          height == min_durations[i + 2]) {
+        const int64_t duration_ns = min_durations[i + 3];
+        CHECK_GT(duration_ns, 0);
+        return 1e9f / duration_ns;
+      }
+    }
+    LOGF(FATAL) << "Min frame duration not found for format "
+                << Size(width, height).ToString() << " " << format;
+  };
+
+  std::vector<StreamFormat> result;
   auto stream_configs = GetRoMetadataAsSpan<int32_t>(
       static_info, ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS);
-  if (stream_configs.empty() || stream_configs.size() % 4 != 0) {
-    LOGF(ERROR) << "Invalid ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS in "
-                   "static metadata";
-    return {};
-  }
-  auto frame_durations = GetRoMetadataAsSpan<int64_t>(
-      static_info, ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS);
-  if (frame_durations.empty() || frame_durations.size() % 4 != 0) {
-    LOGF(ERROR) << "Invalid ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS in "
-                   "static metadata";
-    return {};
-  }
-
-  auto is_frame_duration_ok_for_video = [&](int32_t format, int32_t width,
-                                            int32_t height) -> bool {
-    constexpr int64_t kRequiredFrameDurationNs =
-        (1'000'000'000LL + kRequiredVideoFrameRate - 1) /
-        kRequiredVideoFrameRate;
-    for (size_t i = 0; i < frame_durations.size(); i += 4) {
-      if (frame_durations[i] == format && frame_durations[i + 1] == width &&
-          frame_durations[i + 2] == height) {
-        return frame_durations[i + 3] <= kRequiredFrameDurationNs;
-      }
-    }
-    return false;
-  };
-
-  auto is_larger_or_closer_to_native_aspect_ratio =
-      [&](const Size& lhs, const Size& rhs) -> bool {
-    if (lhs.width >= rhs.width && lhs.height >= rhs.height) {
-      return true;
-    }
-    if (lhs.width <= rhs.width && lhs.height <= rhs.height) {
-      return false;
-    }
-    float active_aspect_ratio = static_cast<float>(active_array_size.width) /
-                                static_cast<float>(active_array_size.height);
-    float lhs_aspect_ratio =
-        static_cast<float>(lhs.width) / static_cast<float>(lhs.height);
-    float rhs_aspect_ratio =
-        static_cast<float>(rhs.width) / static_cast<float>(rhs.height);
-    return std::abs(lhs_aspect_ratio - active_aspect_ratio) <=
-           std::abs(rhs_aspect_ratio - active_aspect_ratio);
-  };
-
-  Size max_video_size, max_still_size;
+  CHECK_EQ(stream_configs.size() % 4, 0);
   for (size_t i = 0; i < stream_configs.size(); i += 4) {
-    int32_t format = stream_configs[i];
-    int32_t width = stream_configs[i + 1];
-    int32_t height = stream_configs[i + 2];
-    int32_t direction = stream_configs[i + 3];
-    Size size(base::checked_cast<uint32_t>(width),
-              base::checked_cast<uint32_t>(height));
-    if ((format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
-         format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
-        direction == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT) {
-      if (is_frame_duration_ok_for_video(format, width, height) &&
-          is_larger_or_closer_to_native_aspect_ratio(size, max_video_size) &&
-          (!max_video_width.has_value() || size.width <= *max_video_width) &&
-          (!max_video_height.has_value() || size.height <= *max_video_height)) {
-        max_video_size = size;
-      }
-      if (is_larger_or_closer_to_native_aspect_ratio(size, max_still_size)) {
-        max_still_size = size;
-      }
+    const uint32_t format = base::checked_cast<uint32_t>(stream_configs[i]);
+    const uint32_t width = base::checked_cast<uint32_t>(stream_configs[i + 1]);
+    const uint32_t height = base::checked_cast<uint32_t>(stream_configs[i + 2]);
+    const uint32_t direction =
+        base::checked_cast<uint32_t>(stream_configs[i + 3]);
+    if (direction == ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT &&
+        format == HAL_PIXEL_FORMAT_YCBCR_420_888) {
+      result.push_back(StreamFormat{
+          .width = width,
+          .height = height,
+          .format = format,
+          .max_fps = get_max_fps(format, width, height),
+          .fov = RelativeFov(Size(width, height), active_array_size),
+      });
     }
   }
-  return std::make_pair(max_video_size, max_still_size);
+  return result;
+}
+
+// Find a full frame resolution from available formats that can generate all the
+// destination streams.
+std::optional<Size> GetFullFrameResolution(
+    base::span<const StreamFormat> available_formats,
+    base::span<const camera3_stream_t* const> dst_streams) {
+  base::flat_map<const StreamFormat*, const camera3_stream_t*>
+      format_to_dst_stream;
+  for (auto* s : dst_streams) {
+    const StreamFormat* matching_format = nullptr;
+    for (auto& f : available_formats) {
+      if (s->width == f.width && s->height == f.height) {
+        matching_format = &f;
+        break;
+      }
+    }
+    CHECK_NE(matching_format, nullptr) << GetDebugString(s);
+    format_to_dst_stream[matching_format] = s;
+  }
+
+  auto can_generate_stream = [](const StreamFormat& src_format,
+                                const StreamFormat& dst_format) {
+    // Strictly speaking we can't generate stream from lower fps to higher fps,
+    // but in practice we only stream in video and photo speeds. Quantize the
+    // frame rates to allow more formats to be generated.
+    auto index_fps = [](float fps) {
+      return fps + 0.1f >= kRequiredVideoFrameRate ? 1 : 0;
+    };
+    return src_format.fov.Covers(dst_format.fov) &&
+           index_fps(src_format.max_fps) >= index_fps(dst_format.max_fps);
+  };
+  auto can_generate_all_streams = [&](const StreamFormat& src_format) {
+    for (auto& [dst_format, s] : format_to_dst_stream) {
+      if (!can_generate_stream(src_format, *dst_format)) {
+        return false;
+      }
+    }
+    return true;
+  };
+  auto index_format = [&](const StreamFormat& f) {
+    return std::make_tuple(can_generate_all_streams(f) ? 1 : 0, f.width,
+                           f.height, f.max_fps);
+  };
+  auto it = std::max_element(
+      available_formats.begin(), available_formats.end(),
+      [&](auto& f1, auto& f2) { return index_format(f1) < index_format(f2); });
+  CHECK(it != available_formats.end());
+  return can_generate_all_streams(*it)
+             ? std::make_optional<Size>(it->width, it->height)
+             : std::nullopt;
 }
 
 bool IsStreamBypassed(const camera3_stream_t* stream) {
@@ -607,22 +622,8 @@ bool FramingStreamManipulator::InitializeOnThread(
     return false;
   }
 
-  std::tie(full_frame_size_, still_size_) = GetFullFrameResolutions(
-      static_info, active_array_dimension_, options_.max_video_width,
-      options_.max_video_height);
-  if (!full_frame_size_.is_valid() || !still_size_.is_valid()) {
-    LOGF(ERROR) << "Cannot find suitable full video/still frame resolutions";
-    setup_failed_ = true;
-    ++metrics_.errors[AutoFramingError::kInitializationError];
-    return false;
-  }
-  VLOGF(1) << "Full frame sizes: video=" << full_frame_size_.ToString()
-           << ", still(disabled)=" << still_size_.ToString();
-
-  full_frame_crop_ = NormalizeRect(
-      GetCenteringFullCrop(active_array_dimension_, full_frame_size_.width,
-                           full_frame_size_.height),
-      active_array_dimension_);
+  available_formats_ =
+      GetAvailableOutputYuvFormats(static_info, active_array_dimension_);
 
   std::optional<uint8_t> vendor_tag =
       GetRoMetadata<uint8_t>(static_info, kCrosDigitalZoomVendorKey);
@@ -676,6 +677,7 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
   // Filter client streams into |hal_streams| that will be requested to the HAL.
   client_streams_ = CopyToVector(stream_config->GetStreams());
   camera3_stream_t* client_still_yuv_stream = nullptr;
+  std::vector<const camera3_stream_t*> client_video_yuv_streams;
   std::vector<camera3_stream_t*> hal_streams;
   Size target_size;
   char* physical_camera_id;
@@ -696,12 +698,16 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
                   base::Unretained(this))));
       blob_stream_ = s;
       hal_streams.push_back(s);
-    } else if ((s->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
-                s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
-               (s->usage & kStillCaptureUsageFlag)) {
-      CHECK_EQ(client_still_yuv_stream, nullptr);
-      client_still_yuv_stream = s;
-      hal_streams.push_back(s);
+    } else {
+      CHECK(s->format == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
+            s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED);
+      if (s->usage & kStillCaptureUsageFlag) {
+        CHECK_EQ(client_still_yuv_stream, nullptr);
+        client_still_yuv_stream = s;
+        hal_streams.push_back(s);
+      } else {
+        client_video_yuv_streams.push_back(s);
+      }
     }
     if (s->format == HAL_PIXEL_FORMAT_YCBCR_420_888) {
       full_frame_buffer_usage = GetFullFrameBufferUsage(s->usage);
@@ -729,6 +735,22 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
   active_crop_region_ = NormalizeRect(
       GetCenteringFullCrop(active_array_dimension_, target_aspect_ratio_x,
                            target_aspect_ratio_y),
+      active_array_dimension_);
+
+  const std::optional<Size> size =
+      GetFullFrameResolution(available_formats_, client_video_yuv_streams);
+  if (!size.has_value()) {
+    LOGF(ERROR) << "Can't find suitable resolution for full frame stream";
+    setup_failed_ = true;
+    ++metrics_.errors[AutoFramingError::kConfigurationError];
+    return false;
+  }
+  full_frame_size_ = size.value();
+  VLOGF(1) << "Full frame size: " << full_frame_size_.ToString();
+
+  full_frame_crop_ = NormalizeRect(
+      GetCenteringFullCrop(active_array_dimension_, full_frame_size_.width,
+                           full_frame_size_.height),
       active_array_dimension_);
 
   // Reuse or create still YUV stream for processing still capture.

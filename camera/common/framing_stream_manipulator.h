@@ -49,6 +49,14 @@ constexpr uint32_t kCrosDigitalZoomRequestedVendorKey =
 constexpr char kCrosDigitalZoomRequestedVendorTagName[] =
     "com.google.crosDigitalZoomRequested";
 
+struct StreamFormat {
+  uint32_t width = 0;
+  uint32_t height = 0;
+  uint32_t format = 0;
+  float max_fps = 0.0f;
+  RelativeFov fov;
+};
+
 class FramingStreamManipulator : public StreamManipulator {
  public:
   // The auto framing config file that overrides the default one for debugging.
@@ -243,6 +251,8 @@ class FramingStreamManipulator : public StreamManipulator {
   // Flagged if |ConfigureStreams| is skipped because both auto framing and
   // manual zoom will not be enabled throughout the camera session.
   bool stream_config_skipped_ = false;
+
+  std::vector<StreamFormat> available_formats_;
 
   // Per-stream-config contexts.
   State state_ = State::kDisabled;
