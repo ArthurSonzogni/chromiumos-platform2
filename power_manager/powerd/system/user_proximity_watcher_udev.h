@@ -84,8 +84,10 @@ class UserProximityWatcherUdev : public UserProximityWatcherInterface,
     // Bitwise combination of UserProximityObserver::SensorRole values
     uint32_t role;
     std::string channel;
-    std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
+    // `event_fd` must be declared before `controller` because the former needs
+    // to outlive the latter.
     base::ScopedFD event_fd;
+    std::unique_ptr<base::FileDescriptorWatcher::Controller> controller;
   };
 
   // Returns which subsystems the sensor at |path| should provide proximity
