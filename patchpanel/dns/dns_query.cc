@@ -7,7 +7,6 @@
 #include <string_view>
 #include <utility>
 
-#include "base/big_endian.h"
 #include "base/containers/span.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
@@ -48,8 +47,8 @@ bool DnsQuery::Parse(size_t valid_bytes) {
   // buffer. If we have constructed the query from data or the query is already
   // parsed after constructed from a raw buffer, |header_| is not null.
   DCHECK(header_ == nullptr);
-  base::BigEndianReader reader(
-      reinterpret_cast<const uint8_t*>(io_buffer_->data()), valid_bytes);
+  auto reader = base::SpanReader(base::span(
+      reinterpret_cast<const uint8_t*>(io_buffer_->data()), valid_bytes));
   dns_protocol::Header header;
   if (!ReadHeader(&reader, &header)) {
     return false;
@@ -67,7 +66,7 @@ bool DnsQuery::Parse(size_t valid_bytes) {
   }
   uint16_t qtype;
   uint16_t qclass;
-  if (!reader.ReadU16(&qtype) || !reader.ReadU16(&qclass) ||
+  if (!reader.ReadU16BigEndian(qtype) || !reader.ReadU16BigEndian(qclass) ||
       qclass != dns_protocol::kClassIN) {
     return false;
   }
@@ -102,30 +101,33 @@ size_t DnsQuery::question_size() const {
   return QuestionSize(qname_size_);
 }
 
-bool DnsQuery::ReadHeader(base::BigEndianReader* reader,
+bool DnsQuery::ReadHeader(base::SpanReader<const uint8_t>* reader,
                           dns_protocol::Header* header) {
-  return (
-      reader->ReadU16(&header->id) && reader->ReadU16(&header->flags) &&
-      reader->ReadU16(&header->qdcount) && reader->ReadU16(&header->ancount) &&
-      reader->ReadU16(&header->nscount) && reader->ReadU16(&header->arcount));
+  return (reader->ReadU16BigEndian(header->id) &&
+          reader->ReadU16BigEndian(header->flags) &&
+          reader->ReadU16BigEndian(header->qdcount) &&
+          reader->ReadU16BigEndian(header->ancount) &&
+          reader->ReadU16BigEndian(header->nscount) &&
+          reader->ReadU16BigEndian(header->arcount));
 }
 
-bool DnsQuery::ReadName(base::BigEndianReader* reader, std::string* out) {
+bool DnsQuery::ReadName(base::SpanReader<const uint8_t>* reader,
+                        std::string* out) {
   DCHECK(out != nullptr);
   out->clear();
   out->reserve(dns_protocol::kMaxNameLength);
   uint8_t label_length;
-  if (!reader->ReadU8(&label_length)) {
+  if (!reader->ReadU8BigEndian(label_length)) {
     return false;
   }
   out->append(reinterpret_cast<char*>(&label_length), 1);
   while (label_length) {
-    std::string_view label;
-    if (!reader->ReadPiece(&label, label_length)) {
+    base::span<const uint8_t> label;
+    if (!reader->ReadInto(label_length, label)) {
       return false;
     }
-    out->append(label.data(), label.size());
-    if (!reader->ReadU8(&label_length)) {
+    out->append(label.begin(), label.end());
+    if (!reader->ReadU8BigEndian(label_length)) {
       return false;
     }
     out->append(reinterpret_cast<char*>(&label_length), 1);

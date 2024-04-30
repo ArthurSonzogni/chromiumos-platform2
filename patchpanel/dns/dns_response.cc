@@ -12,8 +12,8 @@
 #include <string_view>
 #include <utility>
 
-#include "base/big_endian.h"
 #include "base/containers/span.h"
+#include "base/containers/span_reader.h"
 #include "base/logging.h"
 #include "base/numerics/byte_conversions.h"
 #include "base/numerics/safe_conversions.h"
@@ -275,13 +275,17 @@ bool DnsRecordParser::ReadRecord(DnsResourceRecord* out) {
   if (packet_end < record) {
     return false;
   }
-  base::BigEndianReader reader(reinterpret_cast<const uint8_t*>(record),
-                               static_cast<size_t>(packet_end - record));
+  auto reader =
+      base::SpanReader(base::span(reinterpret_cast<const uint8_t*>(record),
+                                  static_cast<size_t>(packet_end - record)));
   uint16_t rdlen;
-  if (reader.ReadU16(&out->type) && reader.ReadU16(&out->klass) &&
-      reader.ReadU32(&out->ttl) && reader.ReadU16(&rdlen) &&
-      reader.ReadPiece(&out->rdata, rdlen)) {
-    cur_ = reinterpret_cast<const char*>(reader.ptr());
+  base::span<const uint8_t> rdata;
+  if (reader.ReadU16BigEndian(out->type) &&
+      reader.ReadU16BigEndian(out->klass) &&
+      reader.ReadU32BigEndian(out->ttl) && reader.ReadU16BigEndian(rdlen) &&
+      reader.ReadInto(rdlen, rdata)) {
+    out->rdata = base::as_string_view(rdata);
+    cur_ = reinterpret_cast<const char*>(reader.remaining_span().data());
     return true;
   }
   return false;

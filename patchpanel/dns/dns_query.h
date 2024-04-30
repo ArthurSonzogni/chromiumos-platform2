@@ -12,12 +12,9 @@
 #include <string>
 #include <string_view>
 
+#include "base/containers/span_reader.h"
 #include "base/memory/ref_counted.h"
 #include "brillo/brillo_export.h"
-
-namespace base {
-class BigEndianReader;
-}  // namespace base
 
 namespace patchpanel {
 
@@ -65,11 +62,12 @@ class BRILLO_EXPORT DnsQuery {
   IOBufferWithSize* io_buffer() const { return io_buffer_.get(); }
 
  private:
-  bool ReadHeader(base::BigEndianReader* reader, dns_protocol::Header* out);
+  bool ReadHeader(base::SpanReader<const uint8_t>* reader,
+                  dns_protocol::Header* out);
   // After read, |out| is in the DNS format, e.g.
   // "\x03""www""\x08""chromium""\x03""com""\x00". Use DNSDomainToString to
   // convert to the dotted format "www.chromium.com" with no trailing dot.
-  bool ReadName(base::BigEndianReader* reader, std::string* out);
+  bool ReadName(base::SpanReader<const uint8_t>* reader, std::string* out);
 
   // Size of the DNS name (*NOT* hostname) we are trying to resolve; used
   // to calculate offsets.
