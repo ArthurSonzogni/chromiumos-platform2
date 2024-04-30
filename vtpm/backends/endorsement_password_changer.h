@@ -10,7 +10,8 @@
 #include <optional>
 #include <string>
 
-#include <tpm_manager/client/tpm_manager_utility.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 #include <trunks/tpm_generated.h>
 
 namespace vtpm {
@@ -18,14 +19,14 @@ namespace vtpm {
 class EndorsementPasswordChanger : public PasswordChanger {
  public:
   EndorsementPasswordChanger(
-      tpm_manager::TpmManagerUtility* tpm_manager_utility,
+      org::chromium::TpmManagerProxyInterface* tpm_manager,
       const std::string virtual_password);
   ~EndorsementPasswordChanger() override = default;
   trunks::TPM_RC Change(std::string& command) override;
 
  private:
   std::optional<std::string> GetEndorsementPassword();
-  tpm_manager::TpmManagerUtility* const tpm_manager_utility_;
+  org::chromium::TpmManagerProxyInterface* tpm_manager_;
   const std::string virtual_password_;
 };
 

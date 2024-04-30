@@ -75,6 +75,7 @@ class Virtualizer : public Command {
   SelfTestCommand self_test_command_{&real_response_serializer_};
   brillo::DBusConnection system_bus_connection_;
   std::unique_ptr<org::chromium::AttestationProxy> attestation_proxy_;
+  std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager_proxy_;
   std::unique_ptr<AttestedVirtualEndorsement> attested_virtual_endorsement_;
   std::unique_ptr<EndorsementPasswordChanger> endorsement_password_changer_;
 

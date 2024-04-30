@@ -11,19 +11,26 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <tpm_manager/client/tpm_manager_utility.h>
+#include <base/time/time.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 #include <trunks/error_codes.h>
 #include <trunks/tpm_generated.h>
 #include <trunks/tpm_structure_parser.h>
 
 namespace vtpm {
 
+namespace {
+// Default D-Bus connection Timeout
+constexpr base::TimeDelta kDefaultTimeout = base::Minutes(5);
+constexpr int kDefaultTimeoutMs = kDefaultTimeout.InMilliseconds();
+}  // namespace
+
 EndorsementPasswordChanger::EndorsementPasswordChanger(
-    tpm_manager::TpmManagerUtility* tpm_manager_utility,
+    org::chromium::TpmManagerProxyInterface* tpm_manager,
     const std::string virtual_password)
-    : tpm_manager_utility_(tpm_manager_utility),
-      virtual_password_(virtual_password) {
-  CHECK(tpm_manager_utility_);
+    : tpm_manager_(tpm_manager), virtual_password_(virtual_password) {
+  CHECK(tpm_manager_);
 }
 
 // TODO(b/230343588): Add fuzzing test.
@@ -124,23 +131,26 @@ trunks::TPM_RC EndorsementPasswordChanger::Change(std::string& command) {
 
 std::optional<std::string>
 EndorsementPasswordChanger::GetEndorsementPassword() {
-  tpm_manager::LocalData local_data;
-  bool is_enabled = false;
-  bool is_owned = false;
-  if (!tpm_manager_utility_->GetTpmStatus(&is_enabled, &is_owned,
-                                          &local_data)) {
+  tpm_manager::GetTpmStatusRequest status_request;
+  tpm_manager::GetTpmStatusReply status_reply;
+
+  if (brillo::ErrorPtr err;
+      !tpm_manager_->GetTpmStatus(status_request, &status_reply, &err,
+                                  kDefaultTimeoutMs) ||
+      status_reply.status() != tpm_manager::STATUS_SUCCESS) {
     LOG(ERROR) << __func__ << ": Failed to get tpm status from tpm_manager.";
     return std::nullopt;
   }
-  if (!is_enabled || !is_owned) {
+
+  if (!status_reply.enabled() || !status_reply.owned()) {
     LOG(ERROR) << __func__ << ": Tpm is not ready.";
     return std::nullopt;
   }
   // For those that have lost endorsement password, treat it as a system error.
-  if (local_data.endorsement_password().empty()) {
+  if (status_reply.local_data().endorsement_password().empty()) {
     LOG(ERROR) << __func__ << ": tpm manager has lost endorsement password.";
   }
-  return local_data.endorsement_password();
+  return status_reply.local_data().endorsement_password();
 }
 
 }  // namespace vtpm

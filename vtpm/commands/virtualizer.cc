@@ -89,16 +89,13 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
         std::make_unique<AttestedVirtualEndorsement>(
             v->attestation_proxy_.get());
 
-    // NOTE: This is not ideal due to race condition between tpm manager service
-    // being up and this call, and causes unnecessary crashes as other daemons
-    // have. However, the fix should not be here instead of
-    // `TpmManagerClient::Initialize()`.
-    CHECK(tpm_manager::TpmManagerUtility::GetSingleton())
-        << "Failed to initialize tpm manager utility.";
+    // Set up tpm_manager proxy.
+    v->tpm_manager_proxy_ =
+        std::make_unique<org::chromium::TpmManagerProxy>(bus);
+
     v->endorsement_password_changer_ =
         std::make_unique<EndorsementPasswordChanger>(
-            tpm_manager::TpmManagerUtility::GetSingleton(),
-            kVirtualEndorsementPassword);
+            v->tpm_manager_proxy_.get(), kVirtualEndorsementPassword);
 
     // Set up VEK.
     v->vek_cache_ =
@@ -115,8 +112,8 @@ std::unique_ptr<Virtualizer> Virtualizer::Create(Virtualizer::Profile profile) {
     v->cacheable_vek_cert_ = std::make_unique<CacheableBlob>(
         v->vek_cert_.get(), v->vek_cert_cache_.get());
 
-    v->vek_cert_manager_ = std::make_unique<VekCertManager>(
-        kVekCertIndex, v->vek_cert_.get());
+    v->vek_cert_manager_ =
+        std::make_unique<VekCertManager>(kVekCertIndex, v->vek_cert_.get());
 
     v->real_tpm_handle_manager_ = std::make_unique<RealTpmHandleManager>(
         &v->trunks_factory_, v->vek_cert_manager_.get(),

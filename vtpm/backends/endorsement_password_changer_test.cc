@@ -10,7 +10,8 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <tpm_manager/client/mock_tpm_manager_utility.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <trunks/tpm_generated.h>
 #include "trunks/password_authorization_delegate.h"
 
@@ -19,6 +20,9 @@ namespace vtpm {
 namespace {
 
 using ::testing::_;
+using ::testing::DoAll;
+using ::testing::Return;
+using ::testing::SetArgPointee;
 using ::testing::StrictMock;
 
 constexpr char kVirtualPassword[] = "virtual password";
@@ -31,8 +35,8 @@ constexpr trunks::UINT32 kFakeExpiration = 100;
 class EndorsementPasswordChangerTest : public testing::Test {
  public:
  protected:
-  StrictMock<tpm_manager::MockTpmManagerUtility> mock_tpm_manager_utility_;
-  EndorsementPasswordChanger password_changer_{&mock_tpm_manager_utility_,
+  StrictMock<org::chromium::TpmManagerProxyMock> mock_tpm_manager_;
+  EndorsementPasswordChanger password_changer_{&mock_tpm_manager_,
                                                kVirtualPassword};
 };
 
@@ -64,14 +68,13 @@ TEST_F(EndorsementPasswordChangerTest, PasswordChanged) {
                 kFakeExpiration, &real_command, &real_password_authorization),
             trunks::TPM_RC_SUCCESS);
 
-  EXPECT_CALL(mock_tpm_manager_utility_, GetTpmStatus(_, _, _))
-      .WillOnce([](bool* is_enabled, bool* is_owned,
-                   tpm_manager::LocalData* local_data) -> bool {
-        *is_enabled = true;
-        *is_owned = true;
-        local_data->set_endorsement_password(kRealPassword);
-        return true;
-      });
+  tpm_manager::GetTpmStatusReply reply;
+  reply.set_status(tpm_manager::STATUS_SUCCESS);
+  reply.set_enabled(true);
+  reply.set_owned(true);
+  reply.mutable_local_data()->set_endorsement_password(kRealPassword);
+  EXPECT_CALL(mock_tpm_manager_, GetTpmStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
   EXPECT_EQ(password_changer_.Change(virtual_command), trunks::TPM_RC_SUCCESS);
   EXPECT_EQ(virtual_command.size(), real_command.size());

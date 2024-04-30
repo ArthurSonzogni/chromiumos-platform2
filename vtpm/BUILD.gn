@@ -28,6 +28,7 @@ pkg_config("target_defaults") {
     "libattestation-client",
     "libbrillo",
     "libchrome",
+    "libtpm_manager-client",
     "protobuf",
     "system_api",
   ]
@@ -187,7 +188,10 @@ if (use.test) {
       "commands/virtualizer_test.cc",
       "vtpm_service_test.cc",
     ]
-    pkg_deps = [ "libattestation-client-test" ]
+    pkg_deps = [
+      "libattestation-client-test",
+      "libtpm_manager-client-test",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
