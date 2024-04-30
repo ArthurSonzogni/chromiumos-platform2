@@ -453,15 +453,6 @@ class AuthSession final {
   friend class AuthForForensics;
   AuthForForensics* GetAuthForForensics();
 
-  // Generates a payload that will be sent to the server for cryptohome recovery
-  // AuthFactor authentication. GetRecoveryRequest saves data in the
-  // AuthSession state. This call is required before the AuthenticateAuthFactor
-  // call for cryptohome recovery AuthFactor.
-  void GetRecoveryRequest(
-      user_data_auth::GetRecoveryRequestRequest request,
-      base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
-          on_done);
-
   // OnMigrationUssCreated is the callback function to be called after
   // migration secret is generated and added to UserSecretStash during the
   // AuthenticateViaVaultKeysetAndMigrateToUss() operation.

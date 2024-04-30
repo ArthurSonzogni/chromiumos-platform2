@@ -348,16 +348,6 @@ class UserDataAuthAdaptor
           user_data_auth::GetAuthSessionStatusReply>> response,
       const user_data_auth::GetAuthSessionStatusRequest& in_request);
 
-  void GetRecoveryRequest(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetRecoveryRequestReply>> response,
-      const user_data_auth::GetRecoveryRequestRequest& in_request) override;
-
-  void DoGetRecoveryRequest(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::GetRecoveryRequestReply>> response,
-      const user_data_auth::GetRecoveryRequestRequest& in_request);
-
   void LockFactorUntilReboot(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::LockFactorUntilRebootReply>> response,

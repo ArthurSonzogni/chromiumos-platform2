@@ -4287,23 +4287,6 @@ void UserDataAuth::GetAuthSessionStatus(
           }));
 }
 
-void UserDataAuth::GetRecoveryRequest(
-    user_data_auth::GetRecoveryRequestRequest request,
-    OnDoneCallback<user_data_auth::GetRecoveryRequestReply> on_done) {
-  AssertOnMountThread();
-  RunWithAuthSessionWhenAvailable(
-      auth_session_manager_,
-      CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInGetRecoveryRequest),
-      std::move(request), std::move(on_done),
-      base::BindOnce(
-          [](user_data_auth::GetRecoveryRequestRequest request,
-             OnDoneCallback<user_data_auth::GetRecoveryRequestReply> on_done,
-             InUseAuthSession auth_session) {
-            user_data_auth::GetRecoveryRequestReply reply;
-            auth_session->GetRecoveryRequest(request, std::move(on_done));
-          }));
-}
-
 void UserDataAuth::LockFactorUntilReboot(
     user_data_auth::LockFactorUntilRebootRequest request,
     OnDoneCallback<user_data_auth::LockFactorUntilRebootReply> on_done) {

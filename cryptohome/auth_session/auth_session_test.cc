@@ -2723,19 +2723,20 @@ TEST_F(AuthSessionWithUssTest, AuthenticateCryptohomeRecoveryAuthFactor) {
       });
   EXPECT_FALSE(auth_session.has_user_secret_stash());
 
-  // Calling GetRecoveryRequest.
-  user_data_auth::GetRecoveryRequestRequest request;
+  // Calling PrepareAuthFactor for recovery.
+  user_data_auth::PrepareAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  TestFuture<user_data_auth::GetRecoveryRequestReply> reply_future;
-  auth_session.GetRecoveryRequest(
-      request,
-      reply_future
-          .GetCallback<const user_data_auth::GetRecoveryRequestReply&>());
+  request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  request.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  request.mutable_prepare_input()
+      ->mutable_cryptohome_recovery_input()
+      ->set_auth_factor_label(kFakeLabel);
+  TestFuture<CryptohomeStatus> reply_future;
+  auth_session.PrepareAuthFactor(request, reply_future.GetCallback());
 
   // Verify.
-  EXPECT_EQ(reply_future.Get().error(),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(reply_future.Get(), IsOk());
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
   EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());
@@ -2856,19 +2857,20 @@ TEST_F(AuthSessionWithUssTest,
       });
   EXPECT_FALSE(auth_session.has_user_secret_stash());
 
-  // Calling GetRecoveryRequest.
-  user_data_auth::GetRecoveryRequestRequest request;
+  // Calling PrepareAuthFactor for recovery.
+  user_data_auth::PrepareAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
-  request.set_auth_factor_label(kFakeLabel);
-  TestFuture<user_data_auth::GetRecoveryRequestReply> reply_future;
-  auth_session.GetRecoveryRequest(
-      request,
-      reply_future
-          .GetCallback<const user_data_auth::GetRecoveryRequestReply&>());
+  request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  request.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  request.mutable_prepare_input()
+      ->mutable_cryptohome_recovery_input()
+      ->set_auth_factor_label(kFakeLabel);
+  TestFuture<CryptohomeStatus> reply_future;
+  auth_session.PrepareAuthFactor(request, reply_future.GetCallback());
 
   // Verify.
-  EXPECT_EQ(reply_future.Get().error(),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(reply_future.Get(), IsOk());
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_THAT(auth_session.GetAuthForDecrypt(), IsNull());
   EXPECT_THAT(auth_session.GetAuthForVerifyOnly(), IsNull());

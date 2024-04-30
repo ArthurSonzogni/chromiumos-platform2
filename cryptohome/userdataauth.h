@@ -590,10 +590,6 @@ class UserDataAuth {
       user_data_auth::GetAuthSessionStatusRequest request,
       OnDoneCallback<user_data_auth::GetAuthSessionStatusReply> on_done);
 
-  void GetRecoveryRequest(
-      user_data_auth::GetRecoveryRequestRequest request,
-      OnDoneCallback<user_data_auth::GetRecoveryRequestReply> on_done);
-
   void LockFactorUntilReboot(
       user_data_auth::LockFactorUntilRebootRequest request,
       OnDoneCallback<user_data_auth::LockFactorUntilRebootReply> on_done);

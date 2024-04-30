@@ -243,7 +243,6 @@ constexpr const char* kActions[] = {"unmount",
                                     "remove_auth_factor",
                                     "list_auth_factors",
                                     "get_auth_session_status",
-                                    "get_recovery_request",
                                     "reset_application_container",
                                     "prepare_auth_factor",
                                     "terminate_auth_factor",
@@ -300,7 +299,6 @@ enum ActionEnum {
   ACTION_REMOVE_AUTH_FACTOR,
   ACTION_LIST_AUTH_FACTORS,
   ACTION_GET_AUTH_SESSION_STATUS,
-  ACTION_GET_RECOVERY_REQUEST,
   ACTION_RESET_APPLICATION_CONTAINER,
   ACTION_PREPARE_AUTH_FACTOR,
   ACTION_TERMINATE_AUTH_FACTOR,
@@ -2462,50 +2460,6 @@ int main(int argc, char** argv) {
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput("Failed to get auth session status.\n");
-      return static_cast<int>(reply.error());
-    }
-  } else if (!strcmp(switches::kActions[switches::ACTION_GET_RECOVERY_REQUEST],
-                     action.c_str())) {
-    user_data_auth::GetRecoveryRequestRequest req;
-    user_data_auth::GetRecoveryRequestReply reply;
-    std::string auth_session_id_hex, auth_session_id;
-
-    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex)) {
-      return 1;
-    }
-    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
-    req.set_auth_session_id(auth_session_id);
-    if (cl->GetSwitchValueASCII(switches::kKeyLabelSwitch).empty()) {
-      printer.PrintHumanOutput("No auth factor label specified.\n");
-      return 1;
-    }
-    req.set_auth_factor_label(
-        cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
-    if (cl->GetSwitchValueASCII(switches::kRecoveryEpochResponseSwitch)
-            .empty()) {
-      printer.PrintHumanOutput("No epoch response specified.\n");
-      return 1;
-    }
-    std::string epoch_response_hex, epoch_response;
-    epoch_response_hex =
-        cl->GetSwitchValueASCII(switches::kRecoveryEpochResponseSwitch);
-    base::HexStringToString(epoch_response_hex.c_str(), &epoch_response);
-    req.set_epoch_response(epoch_response);
-
-    brillo::ErrorPtr error;
-    VLOG(1) << "Attempting to GetRecoveryRequest";
-    if (!userdataauth_proxy.GetRecoveryRequest(req, &reply, &error,
-                                               timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "GetRecoveryRequest call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Failed to get recovery request.\n");
       return static_cast<int>(reply.error());
     }
   } else if (!strcmp(switches::kActions

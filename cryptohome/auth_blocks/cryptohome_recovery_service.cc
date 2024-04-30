@@ -54,7 +54,7 @@ void CryptohomeRecoveryAuthBlockService::GenerateRecoveryRequest(
           // Note: the error format should match `cryptohome_recovery_failure`
           // in crash-reporter/anomaly_detector.cc
           LOG(ERROR)
-              << "Cryptohome Recovery GetRecoveryRequest failure, error = "
+              << "Cryptohome Recovery Request generation failure, error = "
               << token.err_status()->local_legacy_error().value();
         }
         std::move(wrapped_on_done).Run(std::move(token));

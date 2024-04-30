@@ -751,13 +751,13 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFailedToGetRecoveryCryptoBackendInGenerateRecoveryRequest = 462,
   /* ./auth_blocks/cryptohome_recovery_service.cc */
   kLocFailedGenerateRecoveryRequest = 463,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthSessionNotFoundInGetRecoveryRequest = 464,
   /* ./auth_session/auth_session.cc */
   kLocAuthSessionFactorNotFoundInCreatePrepareInput = 465,
   /* ./auth_session/auth_session.cc */
   kLocNoRecoveryAuthBlockStateInCreatePrepareInput = 466,
-  /* ./auth_session/auth_session.cc */
+  /* =Obsolete= */
   kLocCryptoFailedInGenerateRecoveryRequest = 467,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockNoUserInputInCreate = 468,

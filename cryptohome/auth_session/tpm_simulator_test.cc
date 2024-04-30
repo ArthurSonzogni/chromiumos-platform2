@@ -46,6 +46,7 @@
 #include "cryptohome/fake_features.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/vault_keyset.h"
@@ -216,19 +217,32 @@ CryptohomeStatus AuthenticateRecoveryFactor(AuthSession& auth_session) {
       FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
 
   // Obtain request for the server.
-  user_data_auth::GetRecoveryRequestRequest get_recovery_request;
-  get_recovery_request.set_auth_session_id(auth_session.serialized_token());
-  get_recovery_request.set_auth_factor_label(kRecoveryLabel);
-  get_recovery_request.set_epoch_response(epoch_response.SerializeAsString());
-  TestFuture<user_data_auth::GetRecoveryRequestReply> recovery_request_future;
-  auth_session.GetRecoveryRequest(
-      get_recovery_request,
-      recovery_request_future
-          .GetCallback<const user_data_auth::GetRecoveryRequestReply&>());
-  EXPECT_FALSE(recovery_request_future.Get().has_error_info());
-  cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
-  EXPECT_TRUE(recovery_request.ParseFromString(
-      recovery_request_future.Get().recovery_request()));
+  user_data_auth::PrepareAuthFactorRequest prepare_request;
+  prepare_request.set_auth_session_id(auth_session.serialized_token());
+  prepare_request.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  prepare_request.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  prepare_request.mutable_prepare_input()
+      ->mutable_cryptohome_recovery_input()
+      ->set_auth_factor_label(kRecoveryLabel);
+  prepare_request.mutable_prepare_input()
+      ->mutable_cryptohome_recovery_input()
+      ->set_epoch_response(epoch_response.SerializeAsString());
+  TestFuture<CryptohomeStatus> prepare_future;
+  auth_session.PrepareAuthFactor(prepare_request, prepare_future.GetCallback());
+  EXPECT_TRUE(prepare_future.Get().ok());
+  const PrepareOutput* prepare_output = auth_session.GetFactorTypePrepareOutput(
+      AuthFactorType::kCryptohomeRecovery);
+  if (!prepare_output) {
+    ADD_FAILURE() << "Prepare recovery did not produce any output";
+    return MakeFakeCryptohomeError();
+  }
+  if (!prepare_output->cryptohome_recovery_prepare_output) {
+    ADD_FAILURE() << "Prepare recovery did not produce any recovery output";
+    return MakeFakeCryptohomeError();
+  }
+  cryptorecovery::CryptoRecoveryRpcRequest recovery_request =
+      prepare_output->cryptohome_recovery_prepare_output->recovery_rpc_request;
 
   // Create fake server.
   std::unique_ptr<FakeRecoveryMediatorCrypto> recovery_crypto =

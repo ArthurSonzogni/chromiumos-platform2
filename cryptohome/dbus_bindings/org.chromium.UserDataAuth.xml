@@ -486,21 +486,6 @@ do.
       </arg>
     </method>
 
-    <!-- The request is intended to be sent to the recovery server. The server's
-         response can be used to authenticate against the recovery auth factor. -->
-    <method name="GetRecoveryRequest">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetRecoveryRequestRequest"/>
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetRecoveryRequestReply"/>
-      </arg>
-    </method>
-
     <!-- Lock AuthFactor for authentication until reboot. -->
     <method name="LockFactorUntilReboot">
       <annotation name="org.chromium.DBus.Method.Kind"

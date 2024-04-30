@@ -2994,69 +2994,6 @@ AuthSession::AuthForRestoreKey* AuthSession::GetAuthForRestoreKey() {
   return auth_for_restore_key_ ? &*auth_for_restore_key_ : nullptr;
 }
 
-void AuthSession::GetRecoveryRequest(
-    user_data_auth::GetRecoveryRequestRequest request,
-    base::OnceCallback<void(const user_data_auth::GetRecoveryRequestReply&)>
-        on_done) {
-  // Convert the recovery request into an equivalent PrepareAuthFactor request.
-  user_data_auth::PrepareAuthFactorRequest prepare_request;
-  prepare_request.set_auth_session_id(
-      std::move(*request.mutable_auth_session_id()));
-  prepare_request.set_auth_factor_type(
-      user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
-  prepare_request.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
-  auto* recovery_input = prepare_request.mutable_prepare_input()
-                             ->mutable_cryptohome_recovery_input();
-  recovery_input->set_auth_factor_label(
-      std::move(*request.mutable_auth_factor_label()));
-  recovery_input->set_requestor_user_id_type(
-      static_cast<user_data_auth::CryptohomeRecoveryPrepareInput::UserType>(
-          request.requestor_user_id_type()));
-  recovery_input->set_gaia_access_token(
-      std::move(*request.mutable_gaia_access_token()));
-  recovery_input->set_gaia_reauth_proof_token(
-      std::move(*request.mutable_gaia_reauth_proof_token()));
-  recovery_input->set_epoch_response(
-      std::move(*request.mutable_epoch_response()));
-
-  // Delegate the recovery request lookup to a PrepareAuthFactor call. This
-  // requires wrapping the on_done callback with one that can translate the
-  // result of the Prepare operation into a GetRecoveryRequestReply.
-  PrepareAuthFactor(
-      std::move(prepare_request),
-      base::BindOnce(
-          [](base::WeakPtr<AuthSession> auth_session,
-             base::OnceCallback<void(
-                 const user_data_auth::GetRecoveryRequestReply&)> on_done,
-             CryptohomeStatus status) {
-            user_data_auth::GetRecoveryRequestReply reply;
-            // If the prepare failed, then return an error.
-            if (!status.ok()) {
-              ReplyWithError(std::move(on_done), reply,
-                             MakeStatus<CryptohomeError>(
-                                 CRYPTOHOME_ERR_LOC(
-                                     kLocCryptoFailedInGenerateRecoveryRequest))
-                                 .Wrap(std::move(status)));
-              return;
-            }
-            // On success, extract the recovery RPC request and add it into the
-            // RPC response.
-            if (auth_session) {
-              if (const PrepareOutput* prepare_output =
-                      auth_session->GetFactorTypePrepareOutput(
-                          AuthFactorType::kCryptohomeRecovery)) {
-                if (prepare_output->cryptohome_recovery_prepare_output) {
-                  reply.set_recovery_request(
-                      prepare_output->cryptohome_recovery_prepare_output
-                          ->recovery_rpc_request.SerializeAsString());
-                }
-              }
-            }
-            std::move(on_done).Run(reply);
-          },
-          weak_factory_.GetWeakPtr(), std::move(on_done)));
-}
-
 AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
     const std::optional<brillo::SecureBlob> user_input,
     AuthBlockType auth_block_type) {
@@ -3404,8 +3341,10 @@ AuthSession::CreatePrepareInputForAuthentication(
       }
       if (stored_auth_factor->auth_factor().type() !=
           AuthFactorType::kCryptohomeRecovery) {
-        LOG(ERROR) << "GetRecoveryRequest can be called only for "
-                      "kCryptohomeRecovery auth factor";
+        LOG(ERROR)
+            << "Auth factor \"" << recovery_input_proto.auth_factor_label()
+            << "\" is not a recovery factor and so cannot be prepared for "
+               "recovery";
         return MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(kLocWrongAuthFactorInCreatePrepareInput),
             ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
