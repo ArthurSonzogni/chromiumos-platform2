@@ -223,6 +223,9 @@ void RoutineV2Client::OnFinishedState(
       case mojom::RoutineDetail::Tag::kNetworkBandwidth:
         PrintOutput(ConvertToValue(detail->get_network_bandwidth()));
         break;
+      case mojom::RoutineDetail::Tag::kSensitiveSensor:
+        // TODO(b/329377632): Support sensitive sensor routine output.
+        break;
     }
   }
   run_loop_.Quit();

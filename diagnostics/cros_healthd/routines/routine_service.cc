@@ -272,6 +272,14 @@ void RoutineService::CheckAndCreateRoutine(
                           std::move(callback));
       return;
     }
+    case mojom::RoutineArgument::Tag::kSensitiveSensor: {
+      // TODO(b/329377632): Add implementation.
+      std::move(callback).Run(base::unexpected(
+          mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
+              "Sensitive sensor routine is not supported",
+              /*reason=*/nullptr))));
+      return;
+    }
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {
       LOG(ERROR) << "Got RoutineArgument::UnrecognizedArgument";
       std::move(callback).Run(base::unexpected(
