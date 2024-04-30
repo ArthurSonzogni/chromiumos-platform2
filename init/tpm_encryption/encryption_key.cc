@@ -205,7 +205,7 @@ bool EncryptionKey::SetInsecureFallbackSystemKey() {
   return true;
 }
 
-bool EncryptionKey::LoadChromeOSSystemKey() {
+bool EncryptionKey::LoadChromeOSSystemKey(base::FilePath backup) {
   SetTpmSystemKey();
 
   // Check and handle potential requests to preserve an already existing
@@ -241,7 +241,7 @@ bool EncryptionKey::LoadChromeOSSystemKey() {
   if (system_key_.empty()) {
     LOG(INFO) << "Attempting to generate fresh NVRAM system key.";
 
-    const auto key_material =
+    const brillo::SecureBlob key_material =
         hwsec_foundation::CreateSecureRandomBlob(SHA256_DIGEST_LENGTH);
     bool rc = loader_->Initialize(key_material, &system_key_);
     if (!rc) {
@@ -250,7 +250,15 @@ bool EncryptionKey::LoadChromeOSSystemKey() {
     }
 
     if (!system_key_.empty() && !loader_->Persist()) {
+      LOG(WARNING) << "Unable to persist the key, will retry.";
       system_key_.clear();
+    }
+
+    if (!system_key_.empty() && !backup.empty()) {
+      if (!platform_->WriteSecureBlobToFile(backup, key_material)) {
+        LOG(WARNING)
+            << "Unable to save TPM random seed, TPM tast test will fail.";
+      }
     }
   }
 

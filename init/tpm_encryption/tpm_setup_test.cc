@@ -49,7 +49,7 @@ class TpmSystemKeyTest : public testing::Test {
 
 TEST_F(TpmSystemKeyTest, MigrateTpmOwnerShipAbsent) {
   // Call Load, verify no migration occurs.
-  EXPECT_TRUE(tpm_system_key_->Load(false /* safe_mount */));
+  EXPECT_TRUE(tpm_system_key_->Load(false /* safe_mount */, base::FilePath()));
   EXPECT_FALSE(platform_->FileExists(
       stateful_mount_.Append("unencrypted/tpm_manager/tpm_owned")));
   EXPECT_FALSE(platform_->FileExists(stateful_mount_.Append(".tpm_owned")));
@@ -59,7 +59,7 @@ TEST_F(TpmSystemKeyTest, MigrateTpmOwnerShipPresent) {
   ASSERT_TRUE(
       platform_->TouchFileDurable(stateful_mount_.Append(".tpm_owned")));
   // Call Load, verify a migration does occur.
-  EXPECT_TRUE(tpm_system_key_->Load(false /* safe_mount */));
+  EXPECT_TRUE(tpm_system_key_->Load(false /* safe_mount */, base::FilePath()));
   EXPECT_TRUE(platform_->FileExists(
       stateful_mount_.Append("unencrypted/tpm_manager/tpm_owned")));
   EXPECT_FALSE(platform_->FileExists(stateful_mount_.Append(".tpm_owned")));

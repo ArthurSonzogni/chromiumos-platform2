@@ -159,7 +159,8 @@ bool TpmSystemKey::Set(base::FilePath key_material_file) {
   return true;
 }
 
-std::optional<encryption::EncryptionKey> TpmSystemKey::Load(bool safe_mount) {
+std::optional<encryption::EncryptionKey> TpmSystemKey::Load(
+    bool safe_mount, base::FilePath backup) {
   bool rc;
 
   if (!MigrateTpmOwnerShipStateFile()) {
@@ -175,7 +176,7 @@ std::optional<encryption::EncryptionKey> TpmSystemKey::Load(bool safe_mount) {
       // We shouldn't continue to load the system_key.
       return std::nullopt;
     }
-    rc = key.LoadChromeOSSystemKey();
+    rc = key.LoadChromeOSSystemKey(backup);
   } else {
     rc = key.SetInsecureFallbackSystemKey();
   }

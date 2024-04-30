@@ -116,7 +116,8 @@ mount_encrypted_partition:
     return 1;
 
   // default operation is mount encrypted partition.
-  auto key = tpm_system_key.Load(!FLAGS_unsafe);
+  const base::FilePath empty;
+  auto key = tpm_system_key.Load(!FLAGS_unsafe, empty);
   if (!key)
     return 1;
 

@@ -314,14 +314,14 @@ class EncryptionKeyTest : public testing::Test {
   }
 
   void ExpectFreshKey() {
-    EXPECT_TRUE(key_->LoadChromeOSSystemKey());
+    EXPECT_TRUE(key_->LoadChromeOSSystemKey(base::FilePath()));
     EXPECT_TRUE(key_->LoadEncryptionKey());
     EXPECT_EQ(key_->encryption_key().size(), kEncryptionKeySize);
     EXPECT_TRUE(key_->is_fresh());
   }
 
   void ExpectExistingKey(const brillo::SecureBlob& expected_key) {
-    EXPECT_TRUE(key_->LoadChromeOSSystemKey());
+    EXPECT_TRUE(key_->LoadChromeOSSystemKey(base::FilePath()));
     EXPECT_TRUE(key_->LoadEncryptionKey());
     EXPECT_EQ(expected_key, key_->encryption_key());
     EXPECT_FALSE(key_->is_fresh());
@@ -352,7 +352,7 @@ class EncryptionKeyTest : public testing::Test {
                kLockboxV2Contents.data(), kLockboxV2Contents.size() - 1);
 
     ResetLoader();
-    key_->LoadChromeOSSystemKey();
+    key_->LoadChromeOSSystemKey(base::FilePath());
     key_->LoadEncryptionKey();
     ExpectLockboxValid(false);
   }

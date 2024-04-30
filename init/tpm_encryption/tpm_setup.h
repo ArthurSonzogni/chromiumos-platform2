@@ -42,7 +42,10 @@ class BRILLO_EXPORT TpmSystemKey {
 
   // Load key from TPM, spread to susbsystem that need it.
   // If |safe_mount| is set, fails if the TPM is not avaible when needed.
-  std::optional<encryption::EncryptionKey> Load(bool safe_mount);
+  // If |backup| is not empty and a new key has been created, save the seeding
+  // material for testing purposes.
+  std::optional<encryption::EncryptionKey> Load(bool safe_mount,
+                                                base::FilePath backup);
 
   // Print encrypted data information.
   void ReportInfo();

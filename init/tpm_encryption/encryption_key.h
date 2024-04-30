@@ -63,7 +63,9 @@ class BRILLO_EXPORT EncryptionKey {
   // generates a new system key. As a last resort, allows to continue without a
   // system key to cover systems where the NVRAM space is yet to be created by
   // cryptohomed.
-  bool LoadChromeOSSystemKey();
+  // For testing purposes, when a new key is generated, the random seed is saved
+  // in |backup|, when not empty.
+  bool LoadChromeOSSystemKey(base::FilePath backup);
 
   // While ChromeOS devices can store the system key in the NVRAM area, all the
   // rest will fallback through various places (kernel command line, BIOS UUID,
