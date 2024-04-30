@@ -193,8 +193,13 @@ fn perform_installation(config: &InstallConfig) -> Result<()> {
             .try_exists(),
         Ok(true)
     ) {
-        copy_flex_config_to_stateful(config)?;
-        info!("Successfully copied a flex config.");
+        if let Err(err) = copy_flex_config_to_stateful(config) {
+            error!("Unable to copy Flex config due to: {err}");
+            // If this fails, we can't do anything about it, so ignore the error.
+            let _ = try_safe_logs(config);
+        } else {
+            info!("Successfully copied a flex config.");
+        }
         return Ok(());
     }
 
