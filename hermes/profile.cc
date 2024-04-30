@@ -65,9 +65,10 @@ std::unique_ptr<Profile> Profile::Create(
     bool is_pending,
     base::RepeatingCallback<void(const std::string&)> on_profile_enabled_cb) {
   CHECK(profile_info.has_iccid());
-  auto profile = std::unique_ptr<Profile>(new Profile(
-      dbus::ObjectPath(kBasePath + eid + "/" + profile_info.iccid()),
-      physical_slot));
+  auto path = dbus::ObjectPath(kBasePath + (eid == "" ? "unknown" : eid) + "/" +
+                               profile_info.iccid());
+  auto profile =
+      std::unique_ptr<Profile>(new Profile(std::move(path), physical_slot));
   LOG(INFO) << __func__ << " Slot:" << physical_slot << " "
             << GetObjectPathForLog(profile->object_path_);
   // Initialize properties.
