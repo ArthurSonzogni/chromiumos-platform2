@@ -1,0 +1,14 @@
+{
+    "projects": [
+	{
+	    "comment": "Project IDs reserved for Android files",
+	    "name": "Android Files",
+            "reserved_range": "[1000-1099]"
+	},
+	{
+	    "comment": "Project IDs reserved for Android apps",
+	    "name": "Android Apps",
+            "reserved_range": "[20000-69999]"
+	}
+    ]
+}
