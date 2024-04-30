@@ -72,5 +72,5 @@ expected by the fingerprint study tool, please modify
 
 Navigate to http://127.0.0.1:9000 in a web browser.
 
-[Enable Developer Mode]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_mode.md#dev-mode
-[Typography conventions]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#typography-conventions
+[Enable Developer Mode]: https://www.chromium.org/chromium-os/developer-library/guides/device/developer-mode/
+[Typography conventions]: https://www.chromium.org/chromium-os/developer-library/guides/development/developer-guide/#typography-conventions

@@ -6,7 +6,7 @@ a single Fingerprint Study run.
 *See [Typography conventions] to understand what `(outside)`, `(inside)`,
 `(in/out)`, and `(device)` mean.*
 
-[Typography conventions]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#typography-conventions
+[Typography conventions]: https://www.chromium.org/chromium-os/developer-library/guides/development/developer-guide/#typography-conventions
 
 ## Generating Keys
 

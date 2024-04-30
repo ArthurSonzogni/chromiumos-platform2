@@ -10,6 +10,8 @@ See [Typography conventions] to understand what `(outside)`, `(inside)`,
 ***
 <!-- mdformat on -->
 
+[Typography conventions]: https://www.chromium.org/chromium-os/developer-library/guides/development/developer-guide/#typography-conventions
+
 ## Install/Run Fingerprint Study
 
 1.  You can install the fingerprint_study package on a Chromebook in dev mode
@@ -58,9 +60,9 @@ See [Typography conventions] to understand what `(outside)`, `(inside)`,
     [/etc/init/fingerprint_study.conf](init/fingerprint_study.conf).
 
 [boot-from-usb]:
-https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#boot-from-your-usb-disk
+https://www.chromium.org/chromium-os/developer-library/guides/development/developer-guide/#boot-from-your-usb-disk
 [install-from-usb]:
-https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#installing-your-chromium-os-image-to-your-hard-disk
+https://www.chromium.org/chromium-os/developer-library/guides/development/developer-guide/#installing-your-chromiumos-image-to-your-hard-disk
 
 ## Test on Host Using Mock ectool
 
@@ -81,8 +83,6 @@ finger press. This does not make use of the FPC python library.
 
 The tool supports encryption of the collected samples. See
 [FPSTUDY_ENCRYPTION.md](FPSTUDY_ENCRYPTION.md).
-
-[Typography conventions]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#typography-conventions
 
 ## VSCode Python Completion
 
