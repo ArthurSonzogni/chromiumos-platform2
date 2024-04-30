@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -63,7 +64,7 @@ class DeviceTracker {
   void SetScannerListChangedSignalSender(ScannerListChangedSignalSender sender);
   void SetFirewallManager(FirewallManager* firewall_manager);
   void SetDlcClient(DlcClient* dlc_client);
-  base::FilePath GetDlcRootPath();
+  std::optional<base::FilePath> GetDlcRootPath(const std::string& dlc_id);
   size_t NumActiveDiscoverySessions() const;
   base::Time LastDiscoverySessionActivity() const;
   size_t NumOpenScanners() const;
@@ -260,8 +261,8 @@ class DeviceTracker {
   // Manages connection to DLC for downloading more scanner software.
   DlcClient* dlc_client_;
 
-  // The DLC root path where the scanner software is installed.
-  base::FilePath dlc_root_path_;
+  // The DLC root paths where the scanner software is installed.
+  std::map<std::string, base::FilePath> dlc_root_paths_;
 
   // Indication to know if DLC download has already begun so we don't trigger it
   // multiple times (due to multiple sessions).

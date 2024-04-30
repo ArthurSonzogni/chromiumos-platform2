@@ -1434,8 +1434,9 @@ ReadScanDataResponse DeviceTracker::ReadScanData(
 
 void DeviceTracker::OnDlcSuccess(const std::string& dlc_id,
                                  const base::FilePath& file_path) {
-  LOG(INFO) << "DLC install completed";
-  dlc_root_path_ = file_path;
+  LOG(INFO) << "DLC install completed for " << dlc_id << " at "
+            << file_path.value();
+  dlc_root_paths_[dlc_id] = file_path;
   dlc_started_ = false;
   dlc_completed_successfully_ = true;
   for (const std::string& session_id : dlc_pending_sessions_) {
@@ -1449,7 +1450,6 @@ void DeviceTracker::OnDlcSuccess(const std::string& dlc_id,
 void DeviceTracker::OnDlcFailure(const std::string& dlc_id,
                                  const std::string& error_msg) {
   LOG(ERROR) << "DLC install failed with message: " << error_msg;
-  dlc_root_path_ = base::FilePath();
   dlc_started_ = false;
   dlc_completed_successfully_ = false;
   for (std::string session_id : dlc_pending_sessions_) {
@@ -1460,7 +1460,13 @@ void DeviceTracker::OnDlcFailure(const std::string& dlc_id,
   dlc_pending_sessions_.clear();
 }
 
-base::FilePath DeviceTracker::GetDlcRootPath() {
-  return dlc_root_path_;
+std::optional<base::FilePath> DeviceTracker::GetDlcRootPath(
+    const std::string& dlc_id) {
+  auto itr = dlc_root_paths_.find(dlc_id);
+  if (itr == dlc_root_paths_.end()) {
+    return std::nullopt;
+  }
+
+  return itr->second;
 }
 }  // namespace lorgnette

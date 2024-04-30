@@ -523,7 +523,7 @@ TEST_F(DlcDeviceTrackerTest, TestNeverDownloadDlcPolicy) {
   EXPECT_FALSE(response1.session_id().empty());
 
   run_loop.Run();
-  EXPECT_TRUE(tracker->GetDlcRootPath().empty());
+  EXPECT_EQ(tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), std::nullopt);
 }
 
 // Policy: Download if needed
@@ -558,7 +558,7 @@ TEST_F(DlcDeviceTrackerTest, TestDownloadIfNeededDlcPolicyWithoutDlcDevices) {
 
   run_loop.Run();
   // DLC not installed because no devices needed it.
-  EXPECT_TRUE(tracker->GetDlcRootPath().empty());
+  EXPECT_EQ(tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), std::nullopt);
 }
 
 // Policy: Download if needed
@@ -594,8 +594,8 @@ TEST_F(DlcDeviceTrackerTest, TestDownloadIfNeededDlcPolicyWithDlcDevices) {
 
   run_loop.Run();
   // DLC installed because 1 device needed it.
-  EXPECT_FALSE(tracker->GetDlcRootPath().empty());
-  EXPECT_EQ(tracker->GetDlcRootPath(), root_path_);
+  ASSERT_NE(tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), std::nullopt);
+  EXPECT_EQ(*tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), root_path_);
 }
 
 // Policy: Always download
@@ -630,8 +630,8 @@ TEST_F(DlcDeviceTrackerTest, TestAlwaysDownloadDlcPolicy) {
   EXPECT_FALSE(response1.session_id().empty());
 
   run_loop.Run();
-  EXPECT_FALSE(tracker->GetDlcRootPath().empty());
-  EXPECT_EQ(tracker->GetDlcRootPath(), root_path_);
+  ASSERT_NE(tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), std::nullopt);
+  EXPECT_EQ(*tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), root_path_);
 }
 
 // Test the whole flow with several fake USB devices.  Confirm that
