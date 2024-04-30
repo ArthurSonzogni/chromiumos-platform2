@@ -1379,7 +1379,7 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
       *still_yuv_buffer.buffer(),
       base::ScopedFD(still_yuv_buffer.take_release_fence()),
       *ctx->cropped_still_yuv_buffer->handle(), base::ScopedFD(),
-      adjusted_crop_region, ScaleMethod::kLancetAlpha);
+      adjusted_crop_region, ScaleMethod::kLancet);
   if (!release_fence.has_value()) {
     LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
     ++metrics_.errors[AutoFramingError::kProcessResultError];
@@ -1400,7 +1400,7 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
                                yuv_stream_for_blob_->width) /
                 static_cast<float>(full_frame_size_.width *
                                    yuv_stream_for_blob_->height)),
-        ScaleMethod::kLancetAlpha);
+        ScaleMethod::kLancet);
     if (!fence.has_value()) {
       LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
       ++metrics_.errors[AutoFramingError::kProcessResultError];
