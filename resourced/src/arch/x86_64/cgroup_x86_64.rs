@@ -12,7 +12,6 @@ use std::sync::Mutex;
 
 use anyhow::Context;
 use anyhow::Result;
-use glob::glob;
 use log::info;
 
 use crate::common::read_from_file;
@@ -166,19 +165,19 @@ fn is_intel_hybrid_platform() -> Result<bool> {
 
 // Return Intel hybrid platform total number of core and ecore.
 fn get_intel_hybrid_core_num(root: &Path) -> Result<(u32, u32)> {
-    let sysfs_path = root
-        .join("sys/devices/system/cpu/cpufreq/policy*/cpuinfo_max_freq")
-        .to_str()
-        .context("Failed to construct cpuinfo_max_freq glob string")?
-        .to_owned();
-
     // Frequency of P-core.
     // Intel platform policy0(cpu0) would be always P-core.
     let pcore_freq: u32 =
         read_from_file(&root.join("sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq"))?;
 
-    let core_freq_vec = glob(&sysfs_path)?
-        .map(|core_freq_path| read_from_file(&core_freq_path?))
+    let core_freq_vec = Cpuset::online_cpus(root)?
+        .iter()
+        .map(|cpu| {
+            read_from_file(&root.join(format!(
+                "sys/devices/system/cpu/cpufreq/policy{}/cpuinfo_max_freq",
+                cpu
+            )))
+        })
         .collect::<Result<Vec<u32>>>()?;
 
     // Total number of available cpus
@@ -287,11 +286,14 @@ pub fn media_dynamic_cgroup(action: MediaDynamicCgroupAction) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::fs::create_dir_all;
+    use std::fs::write;
     use std::path::PathBuf;
 
     use tempfile::TempDir;
 
     use super::*;
+    use crate::cpu_utils::CPU_ONLINE_PATH;
     use crate::test_utils::*;
 
     #[test]
@@ -358,6 +360,10 @@ mod tests {
     fn test_power_get_intel_hybrid_core_num() {
         let root = TempDir::new().unwrap();
 
+        let cpu_online_path = root.path().join(CPU_ONLINE_PATH);
+        create_dir_all(cpu_online_path.parent().unwrap()).unwrap();
+
+        write(&cpu_online_path, "0-3").unwrap();
         // Create fake sysfs ../cpufreq/policy*/cpuinfo_max_freq.
         // Start with platform with 4 ISO cores.
         for cpu in 0..4 {
@@ -374,6 +380,7 @@ mod tests {
         let core_num = get_intel_hybrid_core_num(root.path()).unwrap();
         assert_eq!(core_num, (4, 0));
 
+        write(&cpu_online_path, "0-11").unwrap();
         // Add fake 8 e-cores sysfs.
         for cpu in 4..12 {
             // Create fake sysfs ../cpufreq/policy*/cpufino_max_freq.
@@ -388,6 +395,11 @@ mod tests {
         // Check (total_core_num, total_ecore_num).
         let core_num = get_intel_hybrid_core_num(root.path()).unwrap();
         assert_eq!(core_num, (12, 8));
+
+        // Set CPU8, the E-core to offline
+        write(&cpu_online_path, "0-7,9-11").unwrap();
+        let core_num = get_intel_hybrid_core_num(root.path()).unwrap();
+        assert_eq!(core_num, (11, 7));
     }
 
     fn test_write_cpusets(root: &Path, cpus_content: &str) {

@@ -22,6 +22,7 @@ use regex::Regex;
 use crate::common::read_from_file;
 
 pub const SMT_CONTROL_PATH: &str = "sys/devices/system/cpu/smt/control";
+pub const CPU_ONLINE_PATH: &str = "sys/devices/system/cpu/online";
 const ROOT_CPUSET_CPUS_PATH: &str = "sys/fs/cgroup/cpuset/cpus";
 const ISOLATED_CPUSET_PATH: &str = "sys/devices/system/cpu/isolated";
 const UI_USE_FLAGS_PATH: &str = "etc/ui_use_flags.txt";
@@ -146,12 +147,16 @@ impl Cpuset {
         Self::all_cores(root)
     }
 
+    pub fn online_cpus(root: &Path) -> Result<Self> {
+        Self::parse(read_to_string(root.join(CPU_ONLINE_PATH))?.trim_end_matches('\n'))
+    }
+
     /// The number of cpu cores in this [Cpuset].
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
-    fn iter(&self) -> Iter<usize> {
+    pub fn iter(&self) -> Iter<usize> {
         self.0.iter()
     }
 }
@@ -889,5 +894,25 @@ mod tests {
             let _ = update_cpu_smt_control(root.path(), test.1);
             test_check_smt_control(root.path(), test.2);
         }
+    }
+
+    #[test]
+    fn test_online_cpus() {
+        let root_dir = tempfile::tempdir().unwrap();
+        let root_path = root_dir.path();
+        let cpu_online_path = root_path.join(CPU_ONLINE_PATH);
+        create_dir_all(cpu_online_path.parent().unwrap()).unwrap();
+
+        std::fs::write(&cpu_online_path, "0-3\n").unwrap();
+        let cpus = Cpuset::online_cpus(root_path).unwrap();
+        assert_eq!(cpus.0, vec![0, 1, 2, 3]);
+
+        std::fs::write(&cpu_online_path, "0,3-5\n").unwrap();
+        let cpus = Cpuset::online_cpus(root_path).unwrap();
+        assert_eq!(cpus.0, vec![0, 3, 4, 5]);
+
+        std::fs::write(&cpu_online_path, "0-1,3-5\n").unwrap();
+        let cpus = Cpuset::online_cpus(root_path).unwrap();
+        assert_eq!(cpus.0, vec![0, 1, 3, 4, 5]);
     }
 }
