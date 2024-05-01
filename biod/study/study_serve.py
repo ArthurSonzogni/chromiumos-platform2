@@ -304,6 +304,27 @@ class FingerWebSocket(WebSocket):
             else:
                 cherrypy.log("FPC utils are unavailable")
 
+    def finger_record_fpmcu_version(self, req: dict[str, Any]):
+        """Query the FPMCU firmware version and save to a file in finger dir.
+
+        This will occur once before each finger captured. Recording the
+        version this frequently is probably not necessary, but it will
+        ensure that we catch accidental version mismatches and changes across
+        different test devices and different days of capturing.
+
+        Args:
+            req: The finger capture request from the client page.
+
+        Returns:
+            The optional result string to send to the client page.
+            None when no result should be sent to the client page.
+        """
+        directory = os.path.join(self.pict_dir, self.DIR_FORMAT.format(**req))
+        self.make_dirs(directory)
+        version_file = directory + "/fpmcu_version.txt"
+        version_string = self.ectool("version")
+        self.save_to_file(version_string, version_file)
+
     def finger_setup(self, req: dict[str, Any]) -> Optional[str]:
         """Run once before capturing each finger.
 
@@ -328,6 +349,15 @@ class FingerWebSocket(WebSocket):
         if not img:
             return result
         self.finger_save_pattern1(req, img)
+
+        t0 = time.time()
+        cherrypy.log(
+            f"Recording FPMCU FW version for finger {req['finger']:02d}"
+        )
+        self.finger_record_fpmcu_version(req)
+        t1 = time.time()
+        cherrypy.log(f"Recorded FPMCU FW version in {t1 - t0:.2f}s")
+
         return "ok"
 
     def finger_process(self, req: dict[str, Any]) -> Optional[str]:
