@@ -82,13 +82,6 @@ struct PluginConfig {
   static constexpr reporting::Destination reporting_destination{destination};
 };
 
-using NetworkPluginConfig =
-    PluginConfig<std::string,
-                 cros_xdr::reporting::XdrNetworkEvent,
-                 cros_xdr::reporting::NetworkEventAtomicVariant,
-                 Types::BpfSkeleton::kNetwork,
-                 reporting::Destination::CROS_SECURITY_NETWORK>;
-
 class BpfSkeletonHelperInterface {
  public:
   virtual absl::Status LoadAndAttach(struct BpfCallbacks callbacks) = 0;
@@ -148,109 +141,7 @@ class BpfSkeletonHelper : public BpfSkeletonHelperInterface {
   std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
 };
 
-// TODO(b:326311219): Remove this class and use the newly created
-// BpfSkeletonHelper as a composed object in NetworkPlugin
-template <typename Config>
-class BpfPlugin : public PluginInterface {
- public:
-  using BatchSenderType = BatchSender<typename Config::HashType,
-                                      typename Config::XdrType,
-                                      typename Config::XdrAtomicType>;
-  using BatchSenderInterfaceType =
-      BatchSenderInterface<typename Config::HashType,
-                           typename Config::XdrType,
-                           typename Config::XdrAtomicType>;
-  using BatchKeyGenerator = base::RepeatingCallback<std::string(
-      const typename Config::XdrAtomicType&)>;
-
-  BpfPlugin(
-      BatchKeyGenerator batch_key_generator,
-      scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
-      scoped_refptr<DeviceUserInterface> device_user,
-      scoped_refptr<MessageSenderInterface> message_sender,
-      scoped_refptr<ProcessCacheInterface> process_cache,
-      scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
-      uint32_t batch_interval_s)
-      : batch_interval_s_(batch_interval_s),
-        weak_ptr_factory_(this),
-        device_user_(device_user),
-        message_sender_(message_sender),
-        policies_features_broker_(policies_features_broker),
-        process_cache_(process_cache) {
-    batch_sender_ = std::make_unique<BatchSenderType>(
-        std::move(batch_key_generator), message_sender,
-        Config::reporting_destination, batch_interval_s);
-    CHECK(message_sender != nullptr);
-    CHECK(process_cache != nullptr);
-    CHECK(bpf_skeleton_factory);
-    factory_ = std::move(bpf_skeleton_factory);
-  }
-
-  absl::Status Activate() override {
-    // Was called previously, so do nothing and report OK.
-    if (skeleton_wrapper_) {
-      return absl::OkStatus();
-    }
-    struct BpfCallbacks callbacks;
-    callbacks.ring_buffer_event_callback = base::BindRepeating(
-        &BpfPlugin::HandleRingBufferEvent, weak_ptr_factory_.GetWeakPtr());
-    callbacks.ring_buffer_read_ready_callback =
-        base::BindRepeating(&BpfPlugin::HandleBpfRingBufferReadReady,
-                            weak_ptr_factory_.GetWeakPtr());
-    skeleton_wrapper_ = factory_->Create(
-        Config::skeleton_type, std::move(callbacks), batch_interval_s_);
-    if (skeleton_wrapper_ == nullptr) {
-      return absl::InternalError(
-          absl::StrFormat("%s BPF program loading error.", GetName()));
-    }
-
-    batch_sender_->Start();
-    return absl::OkStatus();
-  }
-
-  absl::Status Deactivate() override {
-    // destructing the skeleton_wrapper_ unloads and cleans up the BPFs.
-    skeleton_wrapper_ = nullptr;
-    return absl::OkStatus();
-  }
-
-  bool IsActive() const override { return skeleton_wrapper_ != nullptr; }
-
-  void OnDeviceUserRetrieved(
-      std::unique_ptr<typename Config::XdrAtomicType> atomic_event,
-      const std::string& device_user) {
-    atomic_event->mutable_common()->set_device_user(device_user);
-    EnqueueBatchedEvent(std::move(atomic_event));
-  }
-
- protected:
-  uint32_t batch_interval_s_;
-  base::WeakPtrFactory<BpfPlugin> weak_ptr_factory_;
-  std::unique_ptr<BatchSenderInterfaceType> batch_sender_;
-  scoped_refptr<DeviceUserInterface> device_user_;
-  scoped_refptr<MessageSenderInterface> message_sender_;
-  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
-  scoped_refptr<ProcessCacheInterface> process_cache_;
-
- private:
-  friend testing::NetworkPluginTestFixture;
-
-  virtual void EnqueueBatchedEvent(
-      std::unique_ptr<typename Config::XdrAtomicType> atomic_event) = 0;
-  void HandleBpfRingBufferReadReady() const {
-    skeleton_wrapper_->ConsumeEvent();
-  }
-  virtual void HandleRingBufferEvent(const bpf::cros_event& bpf_event) = 0;
-  void SetBatchSenderForTesting(
-      std::unique_ptr<BatchSenderInterfaceType> given) {
-    batch_sender_ = std::move(given);
-  }
-
-  scoped_refptr<BpfSkeletonFactoryInterface> factory_;
-  std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
-};
-
-class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
+class NetworkPlugin : public PluginInterface {
  public:
   NetworkPlugin(
       scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
@@ -258,32 +149,21 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
       scoped_refptr<DeviceUserInterface> device_user,
-      uint32_t batch_interval_s)
-      : BpfPlugin(base::BindRepeating(
-                      [](const cros_xdr::reporting::NetworkEventAtomicVariant&)
-                          -> std::string {
-                        // TODO(b:282814056): Make hashing function optional
-                        //  for batch_sender then drop this. Not all users
-                        //  of batch_sender need the visit functionality.
-                        return "";
-                      }),
-                  bpf_skeleton_factory,
-                  device_user,
-                  message_sender,
-                  process_cache,
-                  policies_features_broker,
-                  batch_interval_s) {
-    prev_tx_rx_totals_ = std::make_unique<
-        base::LRUCache<bpf::cros_flow_map_key, bpf::cros_flow_map_value>>(
-        bpf::kMaxFlowMapEntries);
-  }
+      uint32_t batch_interval_s);
 
+  // Load, verify and attach the process BPF applications.
+  absl::Status Activate() override;
+  absl::Status Deactivate() override;
+  bool IsActive() const override;
   std::string GetName() const override;
   void Flush() override {
     if (batch_sender_) {
       batch_sender_->Flush();
     }
   }
+
+  // Handles an individual incoming Process BPF event.
+  void HandleRingBufferEvent(const bpf::cros_event& bpf_event);
 
   /* Given a set of addresses (in network byte order)
    * ,a set of ports and a protocol ID compute the
@@ -298,61 +178,31 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
       uint16_t seed = 0);
 
  private:
+  friend testing::NetworkPluginTestFixture;
+
+  using BatchSenderType =
+      BatchSenderInterface<std::string,
+                           cros_xdr::reporting::XdrNetworkEvent,
+                           cros_xdr::reporting::NetworkEventAtomicVariant>;
+  // Inject the given (mock) BatchSender object for unit testing.
+  void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {
+    batch_sender_ = std::move(given);
+  }
+  // Pushes the given process event into the next outgoing batch.
   void EnqueueBatchedEvent(
       std::unique_ptr<cros_xdr::reporting::NetworkEventAtomicVariant>
-          atomic_event) override;
+          atomic_event);
+
+  void OnDeviceUserRetrieved(
+      std::unique_ptr<cros_xdr::reporting::NetworkEventAtomicVariant>
+          atomic_event,
+      const std::string& device_user);
+
   template <typename ProtoT>
   void FillProcessTree(ProtoT proto,
                        const bpf::cros_process_start& process_start,
-                       bool has_full_process_start) const {
-    if (has_full_process_start) {
-      process_cache_->FillProcessFromBpf(
-          process_start.task_info, process_start.image_info,
-          proto->mutable_process(), device_user_->GetUsernamesForRedaction());
-      auto parent_process = process_cache_->GetProcessHierarchy(
-          process_start.task_info.ppid,
-          process_start.task_info.parent_start_time, 1);
-      if (parent_process.size() == 1) {
-        proto->set_allocated_parent_process(parent_process[0].release());
-      }
-      return;
-    }
-    // No full process info included, fallback to using cache.
-    auto hierarchy = process_cache_->GetProcessHierarchy(
-        process_start.task_info.pid, process_start.task_info.start_time, 2);
-    if (hierarchy.empty()) {
-      VLOG(1) << absl::StrFormat(
-          "pid %d cmdline(%s) not in process cache. "
-          "Creating a degraded %s filled with information available from BPF "
-          "process map.",
-          process_start.task_info.pid, process_start.task_info.commandline,
-          proto->GetTypeName());
-      ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
-          process_start.task_info, proto->mutable_process(),
-          device_user_->GetUsernamesForRedaction());
-      auto parent_process = process_cache_->GetProcessHierarchy(
-          process_start.task_info.ppid,
-          process_start.task_info.parent_start_time, 1);
-      if (parent_process.size() == 1) {
-        proto->set_allocated_parent_process(parent_process[0].release());
-      }
-    }
-    if (hierarchy.size() >= 1) {
-      proto->set_allocated_process(hierarchy[0].release());
-    }
-    if (hierarchy.size() == 2) {
-      proto->set_allocated_parent_process(hierarchy[1].release());
-    }
+                       bool has_full_process_start) const;
 
-    if (proto->has_process()) {
-      proto->mutable_process()->clear_meta_first_appearance();
-    }
-    if (proto->has_parent_process()) {
-      proto->mutable_parent_process()->clear_meta_first_appearance();
-    }
-  }
-
-  void HandleRingBufferEvent(const bpf::cros_event& bpf_event) override;
   std::unique_ptr<cros_xdr::reporting::NetworkSocketListenEvent>
   MakeListenEvent(
       const secagentd::bpf::cros_network_socket_listen& listen_event) const;
@@ -362,6 +212,13 @@ class NetworkPlugin : public BpfPlugin<NetworkPluginConfig> {
       base::LRUCache<bpf::cros_flow_map_key, bpf::cros_flow_map_value>>
       prev_tx_rx_totals_;  // declaring this as a value member strangely seems
                            // to make it const.
+
+  base::WeakPtrFactory<NetworkPlugin> weak_ptr_factory_;
+  scoped_refptr<ProcessCacheInterface> process_cache_;
+  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
+  scoped_refptr<DeviceUserInterface> device_user_;
+  std::unique_ptr<BatchSenderType> batch_sender_;
+  std::unique_ptr<BpfSkeletonHelperInterface> bpf_skeleton_helper_;
 };
 
 class ProcessPlugin : public PluginInterface {

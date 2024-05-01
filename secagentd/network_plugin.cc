@@ -101,6 +101,96 @@ bool IsFilteredOut(const pb::NetworkFlowEvent& flow_event) {
 
 }  // namespace
 
+NetworkPlugin::NetworkPlugin(
+    scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
+    scoped_refptr<MessageSenderInterface> message_sender,
+    scoped_refptr<ProcessCacheInterface> process_cache,
+    scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+    scoped_refptr<DeviceUserInterface> device_user,
+    uint32_t batch_interval_s)
+    : weak_ptr_factory_(this),
+      process_cache_(process_cache),
+      policies_features_broker_(policies_features_broker),
+      device_user_(device_user),
+      batch_sender_(
+          std::make_unique<BatchSender<std::string,
+                                       pb::XdrNetworkEvent,
+                                       pb::NetworkEventAtomicVariant>>(
+              base::BindRepeating(
+                  [](const cros_xdr::reporting::NetworkEventAtomicVariant&)
+                      -> std::string {
+                    // TODO(b:282814056): Make hashing function optional
+                    //  for batch_sender then drop this. Not all users
+                    //  of batch_sender need the visit functionality.
+                    return "";
+                  }),
+              message_sender,
+              reporting::Destination::CROS_SECURITY_NETWORK,
+              batch_interval_s)),
+      bpf_skeleton_helper_(
+          std::make_unique<BpfSkeletonHelper<Types::BpfSkeleton::kNetwork>>(
+              bpf_skeleton_factory, batch_interval_s)) {
+  CHECK(message_sender != nullptr);
+  CHECK(process_cache != nullptr);
+  CHECK(bpf_skeleton_factory);
+  prev_tx_rx_totals_ = std::make_unique<
+      base::LRUCache<bpf::cros_flow_map_key, bpf::cros_flow_map_value>>(
+      bpf::kMaxFlowMapEntries);
+}
+
+absl::Status NetworkPlugin::Activate() {
+  struct BpfCallbacks callbacks;
+  callbacks.ring_buffer_event_callback = base::BindRepeating(
+      &NetworkPlugin::HandleRingBufferEvent, weak_ptr_factory_.GetWeakPtr());
+
+  absl::Status status = bpf_skeleton_helper_->LoadAndAttach(callbacks);
+  if (status == absl::OkStatus()) {
+    batch_sender_->Start();
+  }
+  return status;
+}
+
+absl::Status NetworkPlugin::Deactivate() {
+  return bpf_skeleton_helper_->DetachAndUnload();
+}
+
+bool NetworkPlugin::IsActive() const {
+  return bpf_skeleton_helper_->IsAttached();
+}
+
+std::string NetworkPlugin::GetName() const {
+  return "Network";
+}
+
+void NetworkPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
+  auto atomic_event = std::make_unique<pb::NetworkEventAtomicVariant>();
+  if (bpf_event.type != bpf::kNetworkEvent) {
+    LOG(ERROR) << "Unexpected BPF event type.";
+    return;
+  }
+  const bpf::cros_network_event& ne = bpf_event.data.network_event;
+  if (ne.type == bpf::kSyntheticNetworkFlow) {
+    // Synthetic Network Flow events are synthesized by the NetworkBpfSkeleton
+    // These events are synthesized by scanning a BPF map and converting each
+    // map entry into a cros_event and then calling the HandleRingBufferEvent
+    // callback.
+    auto flow_proto = MakeFlowEvent(ne.data.flow);
+    if (flow_proto == nullptr) {
+      // The flow event was synthesized from a map entry that wasn't updated
+      // since the last map scan, so discard the event.
+      return;
+    }
+    atomic_event->set_allocated_network_flow(flow_proto.release());
+  } else if (ne.type == bpf::kNetworkSocketListen) {
+    atomic_event->set_allocated_network_socket_listen(
+        MakeListenEvent(ne.data.socket_listen).release());
+  }
+
+  device_user_->GetDeviceUserAsync(
+      base::BindOnce(&NetworkPlugin::OnDeviceUserRetrieved,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(atomic_event)));
+}
+
 std::string NetworkPlugin::ComputeCommunityHashv1(
     const absl::Span<const uint8_t>& source_address_in,
     const absl::Span<const uint8_t>& destination_address_in,
@@ -174,42 +264,68 @@ std::string NetworkPlugin::ComputeCommunityHashv1(
   return community_hash;
 }
 
-std::string NetworkPlugin::GetName() const {
-  return "Network";
-}
-
 void NetworkPlugin::EnqueueBatchedEvent(
     std::unique_ptr<pb::NetworkEventAtomicVariant> atomic_event) {
   batch_sender_->Enqueue(std::move(atomic_event));
 }
 
-void NetworkPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
-  auto atomic_event = std::make_unique<pb::NetworkEventAtomicVariant>();
-  if (bpf_event.type != bpf::kNetworkEvent) {
-    LOG(ERROR) << "Unexpected BPF event type.";
+void NetworkPlugin::OnDeviceUserRetrieved(
+    std::unique_ptr<pb::NetworkEventAtomicVariant> atomic_event,
+    const std::string& device_user) {
+  atomic_event->mutable_common()->set_device_user(device_user);
+  EnqueueBatchedEvent(std::move(atomic_event));
+}
+
+template <typename ProtoT>
+void NetworkPlugin::FillProcessTree(
+    ProtoT proto,
+    const bpf::cros_process_start& process_start,
+    bool has_full_process_start) const {
+  if (has_full_process_start) {
+    process_cache_->FillProcessFromBpf(
+        process_start.task_info, process_start.image_info,
+        proto->mutable_process(), device_user_->GetUsernamesForRedaction());
+    auto parent_process = process_cache_->GetProcessHierarchy(
+        process_start.task_info.ppid, process_start.task_info.parent_start_time,
+        1);
+    if (parent_process.size() == 1) {
+      proto->set_allocated_parent_process(parent_process[0].release());
+    }
     return;
   }
-  const bpf::cros_network_event& ne = bpf_event.data.network_event;
-  if (ne.type == bpf::kSyntheticNetworkFlow) {
-    // Synthetic Network Flow events are synthesized by the NetworkBpfSkeleton
-    // These events are synthesized by scanning a BPF map and converting each
-    // map entry into a cros_event and then calling the HandleRingBufferEvent
-    // callback.
-    auto flow_proto = MakeFlowEvent(ne.data.flow);
-    if (flow_proto == nullptr) {
-      // The flow event was synthesized from a map entry that wasn't updated
-      // since the last map scan, so discard the event.
-      return;
+  // No full process info included, fallback to using cache.
+  auto hierarchy = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 2);
+  if (hierarchy.empty()) {
+    VLOG(1) << absl::StrFormat(
+        "pid %d cmdline(%s) not in process cache. "
+        "Creating a degraded %s filled with information available from BPF"
+        "process map.",
+        process_start.task_info.pid, process_start.task_info.commandline,
+        proto->GetTypeName());
+    ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
+        process_start.task_info, proto->mutable_process(),
+        device_user_->GetUsernamesForRedaction());
+    auto parent_process = process_cache_->GetProcessHierarchy(
+        process_start.task_info.ppid, process_start.task_info.parent_start_time,
+        1);
+    if (parent_process.size() == 1) {
+      proto->set_allocated_parent_process(parent_process[0].release());
     }
-    atomic_event->set_allocated_network_flow(flow_proto.release());
-  } else if (ne.type == bpf::kNetworkSocketListen) {
-    atomic_event->set_allocated_network_socket_listen(
-        MakeListenEvent(ne.data.socket_listen).release());
+  }
+  if (hierarchy.size() >= 1) {
+    proto->set_allocated_process(hierarchy[0].release());
+  }
+  if (hierarchy.size() == 2) {
+    proto->set_allocated_parent_process(hierarchy[1].release());
   }
 
-  device_user_->GetDeviceUserAsync(
-      base::BindOnce(&BpfPlugin::OnDeviceUserRetrieved,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(atomic_event)));
+  if (proto->has_process()) {
+    proto->mutable_process()->clear_meta_first_appearance();
+  }
+  if (proto->has_parent_process()) {
+    proto->mutable_parent_process()->clear_meta_first_appearance();
+  }
 }
 
 std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
