@@ -144,6 +144,12 @@ class UserDataAuth {
   bool IsMounted(const Username& username = Username(),
                  bool* is_ephemeral_out = nullptr);
 
+  // If the user mount does not exist or is ephemeral, function
+  // will return INVALID_ARGUMENT error. When the mount exists, the function
+  // will return the appropriate encryption type.
+  user_data_auth::GetVaultPropertiesReply GetVaultProperties(
+      user_data_auth::GetVaultPropertiesRequest request);
+
   // Calling this function will unmount all mounted cryptohomes. It'll return
   // a reply without error if all mounts are cleanly unmounted.
   // Note: This must only be called on mount thread

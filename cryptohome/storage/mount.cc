@@ -6,13 +6,10 @@
 
 #include "cryptohome/storage/mount.h"
 
-#include <errno.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 
-#include <map>
 #include <memory>
-#include <set>
 #include <tuple>
 #include <utility>
 

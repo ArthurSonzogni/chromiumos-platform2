@@ -128,6 +128,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Reset application container.
   bool ResetApplicationContainer(const std::string& application);
 
+  // Return the the mount type as a string.
+  MountType GetMountType() const;
+
  private:
   // Gets the directory to mount the user's ephemeral cryptohome at.
   //
@@ -181,9 +184,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // A special of UnmountCryptohome to be called from the migration path.
   void UnmountCryptohomeFromMigration();
-
-  // Return the the mount type as a string.
-  MountType GetMountType() const;
 
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.

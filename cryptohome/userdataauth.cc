@@ -99,6 +99,8 @@
 #include "cryptohome/recoverable_key_store/backend_cert_provider_impl.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/storage/cryptohome_vault.h"
+#include "cryptohome/storage/mount.h"
+#include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_session/real_user_session_factory.h"
 #include "cryptohome/user_session/user_session.h"
@@ -712,6 +714,28 @@ void RunWithAuthorizedAuthSessionWhenAvailable(
           std::move(request), std::move(on_done), std::move(run_with)));
 }
 
+std::optional<user_data_auth::VaultEncryptionType>
+MountTypeToVaultEncryptionType(cryptohome::MountType mount_type) {
+  switch (mount_type) {
+    case cryptohome::MountType::NONE:
+    case cryptohome::MountType::EPHEMERAL:
+      return std::nullopt;
+    case cryptohome::MountType::DMCRYPT:
+      return user_data_auth::VaultEncryptionType::
+          CRYPTOHOME_VAULT_ENCRYPTION_DMCRYPT;
+    case cryptohome::MountType::ECRYPTFS:
+    case cryptohome::MountType::ECRYPTFS_TO_DIR_CRYPTO:
+    case cryptohome::MountType::ECRYPTFS_TO_DMCRYPT:
+      return user_data_auth::VaultEncryptionType::
+          CRYPTOHOME_VAULT_ENCRYPTION_ECRYPTFS;
+    case cryptohome::MountType::DIR_CRYPTO:
+    case cryptohome::MountType::DIR_CRYPTO_TO_DMCRYPT:
+      return user_data_auth::VaultEncryptionType::
+          CRYPTOHOME_VAULT_ENCRYPTION_FSCRYPT;
+      break;
+  }
+}
+
 }  // namespace
 
 UserDataAuth::UserDataAuth(BackingApis apis)
@@ -1210,6 +1234,60 @@ bool UserDataAuth::IsMounted(const Username& username, bool* is_ephemeral_out) {
   }
 
   return is_mounted;
+}
+
+user_data_auth::GetVaultPropertiesReply UserDataAuth::GetVaultProperties(
+    user_data_auth::GetVaultPropertiesRequest request) {
+  // Note: This can only run in mount_thread_.
+  AssertOnMountThread();
+  user_data_auth::GetVaultPropertiesReply reply;
+
+  if (request.username().empty()) {
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthUsernameEmpty),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        &reply);
+    return reply;
+  }
+
+  // A username is specified, find the session.
+  const UserSession* session = sessions_->Find(Username(request.username()));
+  if (!session) {
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFound),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        &reply);
+    return reply;
+  }
+
+  if (!session->IsActive()) {
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotActivity),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        &reply);
+    return reply;
+  }
+
+  auto mount_type = MountTypeToVaultEncryptionType(session->GetMountType());
+  if (!mount_type.has_value()) {
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocUserDataAuthNoMountFound),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        &reply);
+    return reply;
+  }
+
+  reply.set_encryption_type(mount_type.value());
+  PopulateReplyWithError(OkStatus<CryptohomeError>(), &reply);
+  return reply;
 }
 
 bool UserDataAuth::RemoveAllMounts() {

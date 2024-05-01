@@ -83,6 +83,8 @@ class RealUserSession : public UserSession {
 
   bool ResetApplicationContainer(const std::string& application) override;
 
+  MountType GetMountType() const override { return mount_->GetMountType(); };
+
  private:
   // Computes a public derivative from |fek| and |fnek|, and store its hash for
   // u2fd to fetch.

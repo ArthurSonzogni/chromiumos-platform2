@@ -1583,6 +1583,14 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorRecoveryPrepareForAuthNoInput = 2196,
   /* ./auth_factor/types/cryptohome_recovery.cc */
   kLocAuthFactorRecoveryPrepareForAddUnsupported = 2197,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoMountFound = 2198,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthUsernameEmpty = 2199,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotFound = 2200,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthSessionNotActivity = 2201,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.

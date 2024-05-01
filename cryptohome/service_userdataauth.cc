@@ -6,7 +6,6 @@
 
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/functional/bind.h>
@@ -48,6 +47,25 @@ void UserDataAuthAdaptor::DoIsMounted(
   reply.set_is_mounted(is_mounted);
   reply.set_is_ephemeral_mount(is_ephemeral);
   std::move(response)->Return(reply);
+}
+
+void UserDataAuthAdaptor::GetVaultProperties(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetVaultPropertiesReply>> response,
+    const user_data_auth::GetVaultPropertiesRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE, base::BindOnce(&UserDataAuthAdaptor::DoGetVaultProperties,
+                                weak_factory_.GetWeakPtr(), in_request,
+                                ThreadSafeDBusMethodResponse<
+                                    user_data_auth::GetVaultPropertiesReply>::
+                                    MakeThreadSafe(std::move(response))));
+}
+
+void UserDataAuthAdaptor::DoGetVaultProperties(
+    const user_data_auth::GetVaultPropertiesRequest& in_request,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::GetVaultPropertiesReply>> response) {
+  std::move(response)->Return(service_->GetVaultProperties(in_request));
 }
 
 void UserDataAuthAdaptor::Unmount(

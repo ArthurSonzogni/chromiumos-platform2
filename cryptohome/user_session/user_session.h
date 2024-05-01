@@ -21,6 +21,7 @@
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/storage/mount.h"
+#include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -142,6 +143,9 @@ class UserSession {
       const std::string& key_label);
   std::unique_ptr<CredentialVerifier> ReleaseCredentialVerifier(
       AuthFactorType type);
+
+  // Get mount type from mounts controlled by the session.
+  virtual MountType GetMountType() const = 0;
 
  private:
   // Storage for CredentialVerifiers associated with the session.

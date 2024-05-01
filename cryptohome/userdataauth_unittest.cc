@@ -10,7 +10,6 @@
 #include <memory>
 #include <optional>
 #include <set>
-#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -86,7 +85,7 @@
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mock_mount.h"
 #include "cryptohome/storage/mock_mount_factory.h"
-#include "cryptohome/user_secret_stash/manager.h"
+#include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/user_secret_stash/storage.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
@@ -159,6 +158,52 @@ ACTION_P(SetEphemeralSettings, ephemeral_settings) {
   *arg0 = ephemeral_settings;
   return true;
 }
+
+// Matches against user_data_auth::CryptohomeErrorInfo to see if it contains an
+// active recommendation for the specified PossibleAction |action|. "Active
+// recommendation" here refers to a correct PrimaryAction value such that the
+// PossibleAction field is active and not disregarded.
+MATCHER_P(HasPossibleAction, action, "") {
+  if (arg.primary_action() != user_data_auth::PrimaryAction::PRIMARY_NONE) {
+    *result_listener
+        << "Invalid PrimaryAction when checking for PossibleAction: "
+        << user_data_auth::PrimaryAction_Name(arg.primary_action());
+    return false;
+  }
+  for (int i = 0; i < arg.possible_actions_size(); i++) {
+    if (arg.possible_actions(i) == action)
+      return true;
+  }
+
+  return false;
+}
+
+// Same as multiple invocation of HasPossibleAction. This matcher checks that
+// the CryptohomeErrorInfo contains a correct PrimaryAction and the list of
+// recommended PossibleAction(s) contains the specified actions. |actions|
+// should be set<user_data_auth::PossibleAction>.
+MATCHER_P(HasPossibleActions, actions, "") {
+  // We need to copy the actions to strip off the constness.
+  std::set<user_data_auth::PossibleAction> to_match = actions;
+  if (arg.primary_action() != user_data_auth::PrimaryAction::PRIMARY_NONE) {
+    *result_listener
+        << "Invalid PrimaryAction when checking for PossibleAction: "
+        << user_data_auth::PrimaryAction_Name(arg.primary_action());
+    return false;
+  }
+  for (int i = 0; i < arg.possible_actions_size(); i++) {
+    const auto current_action = arg.possible_actions(i);
+    if (to_match.count(current_action) != 0) {
+      to_match.erase(current_action);
+    }
+  }
+  for (const auto& action : to_match) {
+    *result_listener << "Action " << user_data_auth::PossibleAction_Name(action)
+                     << " not found";
+  }
+  return to_match.size() == 0;
+}
+
 }  // namespace
 
 // UserDataAuthTestBase is a test fixture that does not call
@@ -840,6 +885,123 @@ TEST_F(UserDataAuthTest, IsMounted) {
   EXPECT_FALSE(
       userdataauth_->IsMounted(Username("bar@gmail.com"), &is_ephemeral));
   EXPECT_FALSE(is_ephemeral);
+}
+
+TEST_F(UserDataAuthTest, GetVaultProperties) {
+  user_data_auth::GetVaultPropertiesRequest req;
+  req.set_username("foo@gmail.com");
+
+  // By default there are no mount right after initialization
+  {
+    user_data_auth::GetVaultPropertiesReply reply =
+        userdataauth_->GetVaultProperties(req);
+    EXPECT_THAT(reply.error_info(),
+                HasPossibleActions(
+                    std::set({user_data_auth::PossibleAction::
+                                  POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+  }
+
+  // Add a mount associated with foo@gmail.com and that will be used in
+  // subsequent tests.
+  SetupMount("foo@gmail.com");
+
+  // Test the code path that doesn't specify a user, and when there's a mount
+  // that's unmounted.
+  {
+    EXPECT_CALL(*session_, IsActive()).WillOnce(Return(false));
+    user_data_auth::GetVaultPropertiesReply reply =
+        userdataauth_->GetVaultProperties(req);
+    EXPECT_THAT(reply.error_info(),
+                HasPossibleActions(
+                    std::set({user_data_auth::PossibleAction::
+                                  POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+  }
+
+  // Subsequent tests will be on active sessions.
+  EXPECT_CALL(*session_, IsActive()).WillRepeatedly(Return(true));
+
+  // Test to see if is_ephemeral mounts works correctly.
+  {
+    EXPECT_CALL(*session_, GetMountType())
+        .WillOnce(Return(cryptohome::MountType::EPHEMERAL));
+    user_data_auth::GetVaultPropertiesReply reply =
+        userdataauth_->GetVaultProperties(req);
+    EXPECT_THAT(reply.error_info(),
+                HasPossibleActions(
+                    std::set({user_data_auth::PossibleAction::
+                                  POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+  }
+
+  // Test to see when there is no mount, the case is handled correctly.
+  {
+    EXPECT_CALL(*session_, GetMountType())
+        .WillOnce(Return(cryptohome::MountType::NONE));
+    user_data_auth::GetVaultPropertiesReply reply =
+        userdataauth_->GetVaultProperties(req);
+    EXPECT_THAT(reply.error_info(),
+                HasPossibleActions(
+                    std::set({user_data_auth::PossibleAction::
+                                  POSSIBLY_DEV_CHECK_UNEXPECTED_STATE})));
+  }
+
+  // Test to see various mount cases are handled correctly.
+  {
+    EXPECT_CALL(*session_, GetMountType())
+        .WillOnce(Return(cryptohome::MountType::DMCRYPT));
+    user_data_auth::GetVaultPropertiesReply reply =
+        userdataauth_->GetVaultProperties(req);
+    EXPECT_THAT(reply.error_info().possible_actions(), IsEmpty());
+    EXPECT_EQ(reply.encryption_type(), user_data_auth::VaultEncryptionType::
+                                           CRYPTOHOME_VAULT_ENCRYPTION_DMCRYPT);
+  }
+  {
+    EXPECT_CALL(*session_, GetMountType())
+        .WillOnce(Return(cryptohome::MountType::ECRYPTFS));
+    user_data_auth::GetVaultPropertiesReply reply =
+        userdataauth_->GetVaultProperties(req);
+    EXPECT_THAT(reply.error_info().possible_actions(), IsEmpty());
+    EXPECT_EQ(reply.encryption_type(),
+              user_data_auth::VaultEncryptionType::
+                  CRYPTOHOME_VAULT_ENCRYPTION_ECRYPTFS);
+  }
+  {
+    EXPECT_CALL(*session_, GetMountType())
+        .WillOnce(Return(cryptohome::MountType::ECRYPTFS_TO_DIR_CRYPTO));
+    user_data_auth::GetVaultPropertiesReply reply =
+        userdataauth_->GetVaultProperties(req);
+    EXPECT_THAT(reply.error_info().possible_actions(), IsEmpty());
+    EXPECT_EQ(reply.encryption_type(),
+              user_data_auth::VaultEncryptionType::
+                  CRYPTOHOME_VAULT_ENCRYPTION_ECRYPTFS);
+  }
+  {
+    EXPECT_CALL(*session_, GetMountType())
+        .WillOnce(Return(cryptohome::MountType::ECRYPTFS_TO_DMCRYPT));
+    user_data_auth::GetVaultPropertiesReply reply =
+        userdataauth_->GetVaultProperties(req);
+    EXPECT_THAT(reply.error_info().possible_actions(), IsEmpty());
+    EXPECT_EQ(reply.encryption_type(),
+              user_data_auth::VaultEncryptionType::
+                  CRYPTOHOME_VAULT_ENCRYPTION_ECRYPTFS);
+  }
+  {
+    EXPECT_CALL(*session_, GetMountType())
+        .WillOnce(Return(cryptohome::MountType::DIR_CRYPTO));
+    user_data_auth::GetVaultPropertiesReply reply =
+        userdataauth_->GetVaultProperties(req);
+    EXPECT_THAT(reply.error_info().possible_actions(), IsEmpty());
+    EXPECT_EQ(reply.encryption_type(), user_data_auth::VaultEncryptionType::
+                                           CRYPTOHOME_VAULT_ENCRYPTION_FSCRYPT);
+  }
+  {
+    EXPECT_CALL(*session_, GetMountType())
+        .WillOnce(Return(cryptohome::MountType::DIR_CRYPTO_TO_DMCRYPT));
+    user_data_auth::GetVaultPropertiesReply reply =
+        userdataauth_->GetVaultProperties(req);
+    EXPECT_THAT(reply.error_info().possible_actions(), IsEmpty());
+    EXPECT_EQ(reply.encryption_type(), user_data_auth::VaultEncryptionType::
+                                           CRYPTOHOME_VAULT_ENCRYPTION_FSCRYPT);
+  }
 }
 
 TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
@@ -5051,51 +5213,6 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   // Mock to use to capture any signals sent.
   NiceMock<MockSignalling> signalling_;
 };
-
-// Matches against user_data_auth::CryptohomeErrorInfo to see if it contains an
-// active recommendation for the specified PossibleAction |action|. "Active
-// recommendation" here refers to a correct PrimaryAction value such that the
-// PossibleAction field is active and not disregarded.
-MATCHER_P(HasPossibleAction, action, "") {
-  if (arg.primary_action() != user_data_auth::PrimaryAction::PRIMARY_NONE) {
-    *result_listener
-        << "Invalid PrimaryAction when checking for PossibleAction: "
-        << user_data_auth::PrimaryAction_Name(arg.primary_action());
-    return false;
-  }
-  for (int i = 0; i < arg.possible_actions_size(); i++) {
-    if (arg.possible_actions(i) == action)
-      return true;
-  }
-
-  return false;
-}
-
-// Same as multiple invocation of HasPossibleAction. This matcher checks that
-// the CryptohomeErrorInfo contains a correct PrimaryAction and the list of
-// recommended PossibleAction(s) contains the specified actions. |actions|
-// should be set<user_data_auth::PossibleAction>.
-MATCHER_P(HasPossibleActions, actions, "") {
-  // We need to copy the actions to strip off the constness.
-  std::set<user_data_auth::PossibleAction> to_match = actions;
-  if (arg.primary_action() != user_data_auth::PrimaryAction::PRIMARY_NONE) {
-    *result_listener
-        << "Invalid PrimaryAction when checking for PossibleAction: "
-        << user_data_auth::PrimaryAction_Name(arg.primary_action());
-    return false;
-  }
-  for (int i = 0; i < arg.possible_actions_size(); i++) {
-    const auto current_action = arg.possible_actions(i);
-    if (to_match.count(current_action) != 0) {
-      to_match.erase(current_action);
-    }
-  }
-  for (const auto& action : to_match) {
-    *result_listener << "Action " << user_data_auth::PossibleAction_Name(action)
-                     << " not found";
-  }
-  return to_match.size() == 0;
-}
 
 TEST_F(UserDataAuthApiTest, LockRecoverySuccessFileExists) {
   user_data_auth::LockFactorUntilRebootRequest req;

@@ -47,6 +47,15 @@ class UserDataAuthAdaptor
                    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                        user_data_auth::IsMountedReply>> response);
 
+  void GetVaultProperties(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetVaultPropertiesReply>> response,
+      const user_data_auth::GetVaultPropertiesRequest& in_request) override;
+  void DoGetVaultProperties(
+      const user_data_auth::GetVaultPropertiesRequest& in_request,
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::GetVaultPropertiesReply>> response);
+
   void Unmount(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                    user_data_auth::UnmountReply>> response,
                const user_data_auth::UnmountRequest& in_request) override;

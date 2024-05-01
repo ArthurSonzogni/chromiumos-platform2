@@ -16,6 +16,7 @@
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/mount.h"
+#include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/user_session/user_session.h"
 
 namespace cryptohome {
@@ -65,6 +66,7 @@ class MockUserSession : public UserSession {
               ResetApplicationContainer,
               (const std::string&),
               (override));
+  MOCK_METHOD(MountType, GetMountType, (), (const, override));
 };
 
 }  // namespace cryptohome
