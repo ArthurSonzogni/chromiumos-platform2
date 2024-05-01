@@ -48,13 +48,13 @@ constexpr char kRootfsProvidedDir[] = "/usr/share/dev-install/rootfs.provided";
 constexpr char kLsbReleasePath[] = "/etc/lsb-release";
 
 // The devserer URL for this developer build.
-constexpr char kLsbChromeosDevserver[] = "CHROMEOS_DEVSERVER";
+constexpr char kLsbChromeOsDevserver[] = "CHROMEOS_DEVSERVER";
 
 // The current OS version.
-constexpr char kLsbChromeosReleaseVersion[] = "CHROMEOS_RELEASE_VERSION";
+constexpr char kLsbChromeOsReleaseVersion[] = "CHROMEOS_RELEASE_VERSION";
 
 // Setting for the board name.
-constexpr char kLsbChromeosReleaseBoard[] = "CHROMEOS_RELEASE_BOARD";
+constexpr char kLsbChromeOsReleaseBoard[] = "CHROMEOS_RELEASE_BOARD";
 
 // The base URL of the repository holding our portage prebuilt binpkgs.
 constexpr char kDefaultBinhostPrefix[] =
@@ -269,10 +269,10 @@ bool DevInstall::LoadRuntimeSettings(const base::FilePath& lsb_release) {
     return true;
   }
 
-  if (!store.GetString(kLsbChromeosDevserver, &devserver_url_))
+  if (!store.GetString(kLsbChromeOsDevserver, &devserver_url_))
     devserver_url_.clear();
 
-  if (store.GetString(kLsbChromeosReleaseBoard, &board_)) {
+  if (store.GetString(kLsbChromeOsReleaseBoard, &board_)) {
     size_t pos = board_.find("-signed-");
     if (pos != std::string::npos)
       board_.erase(pos);
@@ -282,7 +282,7 @@ bool DevInstall::LoadRuntimeSettings(const base::FilePath& lsb_release) {
 
   // If --binhost_version wasn't specified, calculate it.
   if (binhost_version_.empty()) {
-    store.GetString(kLsbChromeosReleaseVersion, &binhost_version_);
+    store.GetString(kLsbChromeOsReleaseVersion, &binhost_version_);
   }
 
   return true;
@@ -551,7 +551,7 @@ bool DevInstall::InstallExtraPackages() {
 int DevInstall::Run() {
   // Only run if dev mode is enabled.
   if (!IsDevMode()) {
-    LOG(ERROR) << "Chrome OS is not in developer mode";
+    LOG(ERROR) << "ChromeOS is not in developer mode";
     return 2;
   }
 
