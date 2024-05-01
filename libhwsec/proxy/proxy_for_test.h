@@ -38,8 +38,11 @@ class TpmManagerProxyMock;
 class TpmNvramProxyMock;
 }  // namespace org::chromium
 
+namespace libstorage {
+class MockPlatform;
+}  // namespace libstorage
+
 namespace hwsec {
-class FakePlatform;
 
 // A proxy implementation for testing. Custom instances can be injected. If no
 // instance has been injected, a default mock instance will be used. Objects for
@@ -71,7 +74,7 @@ class ProxyForTest : public Proxy {
   org::chromium::TpmManagerProxyMock& GetMockTpmManagerProxy();
   org::chromium::TpmNvramProxyMock& GetMockTpmNvramProxy();
   crossystem::Crossystem& GetFakeCrossystem();
-  FakePlatform& GetFakePlatform();
+  libstorage::MockPlatform& GetFakePlatform();
 
  private:
   // The InnerData implementation is in the cpp file.

@@ -10,6 +10,7 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <libcrossystem/crossystem.h>
+#include <libstorage/platform/fake_platform.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 #include <trunks/command_transceiver.h>
@@ -18,7 +19,6 @@
 #include <trunks/tpm_simulator_handle.h>
 #include <trunks/trunks_factory_impl.h>
 
-#include "libhwsec/platform/fake_platform.h"
 #include "libhwsec/proxy/proxy.h"
 #include "libhwsec/test_utils/fake_tpm_nvram_for_test.h"
 
@@ -50,7 +50,7 @@ class HWSEC_EXPORT Tpm2SimulatorProxyForTest : public Proxy {
   testing::NiceMock<org::chromium::TpmManagerProxyMock> tpm_manager_;
   FakeTpmNvramForTest tpm_nvram_;
   std::unique_ptr<crossystem::Crossystem> crossystem_;
-  testing::NiceMock<FakePlatform> platform_;
+  testing::NiceMock<libstorage::FakePlatform> platform_;
 
   bool initialized_ = false;
 };

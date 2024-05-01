@@ -25,10 +25,11 @@ class TpmNvramProxyInterface;
 namespace crossystem {
 class Crossystem;
 }  // namespace crossystem
+namespace libstorage {
+class Platform;
+}  // namespace libstorage
 
 namespace hwsec {
-
-class Platform;
 
 // Proxy is a layer to abstract the communication between backend and the
 // underlying services(e.g. tcsd, trunksd, tpm_managerd). And provide the
@@ -46,7 +47,7 @@ class Proxy {
   org::chromium::TpmManagerProxyInterface& GetTpmManager() const;
   org::chromium::TpmNvramProxyInterface& GetTpmNvram() const;
   crossystem::Crossystem& GetCrossystem() const;
-  Platform& GetPlatform() const;
+  libstorage::Platform& GetPlatform() const;
 
  protected:
   Proxy() = default;
@@ -60,7 +61,7 @@ class Proxy {
   void SetTpmManager(org::chromium::TpmManagerProxyInterface* tpm_manager);
   void SetTpmNvram(org::chromium::TpmNvramProxyInterface* tpm_nvram);
   void SetCrossystem(crossystem::Crossystem* crossystem);
-  void SetPlatform(Platform* platform);
+  void SetPlatform(libstorage::Platform* platform);
 
  private:
   hwsec::overalls::Overalls* overalls_ptr_;
@@ -70,7 +71,7 @@ class Proxy {
   org::chromium::TpmManagerProxyInterface* tpm_manager_;
   org::chromium::TpmNvramProxyInterface* tpm_nvram_;
   crossystem::Crossystem* crossystem_;
-  Platform* platform_;
+  libstorage::Platform* platform_;
 };
 
 }  // namespace hwsec

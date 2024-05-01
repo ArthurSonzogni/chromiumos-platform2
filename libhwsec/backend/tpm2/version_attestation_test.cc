@@ -4,12 +4,12 @@
 
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <libstorage/platform/mock_platform.h>
 #include <trunks/mock_tpm.h>
 #include <trunks/mock_tpm_utility.h>
 #include <trunks/tpm_generated.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
-#include "libhwsec/platform/fake_platform.h"
 
 using base::FilePath;
 using brillo::BlobFromString;

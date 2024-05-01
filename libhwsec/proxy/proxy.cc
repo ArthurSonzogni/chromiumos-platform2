@@ -7,6 +7,7 @@
 #include <base/check.h>
 
 #include <libcrossystem/crossystem.h>
+#include <libstorage/platform/platform.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
@@ -20,7 +21,6 @@
 #endif
 
 #include "libhwsec/proxy/proxy.h"
-#include "libhwsec/platform/platform.h"
 
 namespace hwsec {
 
@@ -55,7 +55,7 @@ void Proxy::SetCrossystem(crossystem::Crossystem* crossystem) {
   crossystem_ = crossystem;
 }
 
-void Proxy::SetPlatform(Platform* platform) {
+void Proxy::SetPlatform(libstorage::Platform* platform) {
   platform_ = platform;
 }
 
@@ -99,7 +99,7 @@ crossystem::Crossystem& Proxy::GetCrossystem() const {
   return *crossystem_;
 }
 
-Platform& Proxy::GetPlatform() const {
+libstorage::Platform& Proxy::GetPlatform() const {
   CHECK(platform_);
   return *platform_;
 }

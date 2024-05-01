@@ -8,10 +8,11 @@
 #include <string>
 #include <utility>
 
+#include <libstorage/platform/platform.h>
+
 #include "libhwsec/backend/tpm2/key_management.h"
 #include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/backend/version_attestation.h"
-#include "libhwsec/platform/platform.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
@@ -21,7 +22,7 @@ class VersionAttestationTpm2 : public VersionAttestation {
   VersionAttestationTpm2(TrunksContext& context,
                          ConfigTpm2& config,
                          KeyManagementTpm2& key_management,
-                         Platform& platform)
+                         libstorage::Platform& platform)
       : context_(context),
         config_(config),
         key_management_(key_management),
@@ -39,7 +40,7 @@ class VersionAttestationTpm2 : public VersionAttestation {
   TrunksContext& context_;
   ConfigTpm2& config_;
   KeyManagementTpm2& key_management_;
-  Platform& platform_;
+  libstorage::Platform& platform_;
 
   StatusOr<PcrQuoteResult> QuotePCRInternal(Key& key,
                                             const std::string& challenge);

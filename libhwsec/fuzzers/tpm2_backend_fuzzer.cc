@@ -15,6 +15,7 @@
 #include <gmock/gmock.h>
 #include <libcrossystem/crossystem.h>
 #include <libcrossystem/crossystem_fake.h>
+#include <libstorage/platform/mock_platform.h>
 #include <openssl/rand.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
@@ -52,7 +53,6 @@
 #include "libhwsec/fuzzers/backend_command_list.h"
 #include "libhwsec/middleware/middleware.h"
 #include "libhwsec/middleware/middleware_owner.h"
-#include "libhwsec/platform/mock_platform.h"
 #include "libhwsec/structures/threading_mode.h"
 #include "trunks/tpm_generated.h"
 
@@ -376,7 +376,7 @@ class Tpm2BackendFuzzerProxy : public Proxy {
   testing::NiceMock<org::chromium::TpmManagerProxyMock> tpm_manager_;
   testing::NiceMock<org::chromium::TpmNvramProxyMock> tpm_nvram_;
   crossystem::Crossystem crossystem_;
-  testing::NiceMock<MockPlatform> platform_;
+  testing::NiceMock<libstorage::MockPlatform> platform_;
 };
 
 // A variable |T| that need to be initialized & destructed manually.

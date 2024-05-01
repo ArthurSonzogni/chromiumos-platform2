@@ -37,6 +37,7 @@ pkg_config("target_defaults") {
     "libchrome",
     "libcrossystem",
     "libmetrics",
+    "libstorage_platform",
     "libtpm_manager-client",
     "openssl",
     "system_api",
@@ -127,14 +128,16 @@ if (use.test) {
   shared_library("libhwsec_test") {
     sources = [
       "factory/tpm2_simulator_factory_for_test.cc",
-      "platform/fake_platform.cc",
       "proxy/tpm2_simulator_proxy_for_test.cc",
       "test_utils/fake_tpm_nvram_for_test.cc",
     ]
     if (use.tpm) {
       sources += [ "test_utils/tpm1/test_fixture.cc" ]
     }
-    pkg_deps = [ "libcrossystem-test" ]
+    pkg_deps = [
+      "libcrossystem-test",
+      "libstorage_fake_platform",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -307,7 +310,6 @@ source_set("hardware_abstraction_internal_library") {
     "frontend/u2fd/vendor_frontend_impl.cc",
     "middleware/function_name.cc",
     "middleware/metrics.cc",
-    "platform/platform_impl.cc",
     "proxy/proxy.cc",
     "proxy/proxy_impl.cc",
   ]
@@ -486,6 +488,7 @@ if (use.fuzzer) {
     pkg_deps = [
       "libchrome-test",
       "libcrossystem-test",
+      "libstorage_fake_platform",
       "libtpm_manager-client-test",
     ]
   }
@@ -496,6 +499,7 @@ if (use.test) {
     pkg_deps = [
       "libchrome-test",
       "libcrossystem-test",
+      "libstorage_fake_platform",
       "libtpm_manager-client-test",
     ]
   }

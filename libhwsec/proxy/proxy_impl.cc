@@ -10,6 +10,7 @@
 #include <brillo/dbus/dbus_connection.h>
 #include <libcrossystem/crossystem.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
+#include <libstorage/platform/platform.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
@@ -22,7 +23,6 @@
 #include "libhwsec/overalls/overalls.h"
 #endif
 
-#include "libhwsec/platform/platform_impl.h"
 #include "libhwsec/proxy/proxy_impl.h"
 
 namespace {
@@ -47,7 +47,7 @@ struct ProxyImpl::InnerData {
   std::unique_ptr<org::chromium::TpmManagerProxy> tpm_manager;
   std::unique_ptr<org::chromium::TpmNvramProxy> tpm_nvram;
   std::unique_ptr<crossystem::Crossystem> crossystem;
-  std::unique_ptr<Platform> platform;
+  std::unique_ptr<libstorage::Platform> platform;
 };
 
 ProxyImpl::ProxyImpl() = default;
@@ -98,7 +98,7 @@ bool ProxyImpl::Init() {
       std::make_unique<org::chromium::TpmManagerProxy>(bus);
   inner_data_->tpm_nvram = std::make_unique<org::chromium::TpmNvramProxy>(bus);
   inner_data_->crossystem = std::make_unique<crossystem::Crossystem>();
-  inner_data_->platform = std::make_unique<PlatformImpl>();
+  inner_data_->platform = std::make_unique<libstorage::Platform>();
 
   // Export the pointer to the proxy interface.
 
