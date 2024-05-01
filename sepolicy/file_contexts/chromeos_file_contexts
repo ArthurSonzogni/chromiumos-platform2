@@ -589,6 +589,7 @@ has_arc(`
 /mnt/stateful_partition/unencrypted/profraws(/.*)?             u:object_r:cros_stateful_partition_unencrypted_profraws:s0
 /mnt/stateful_partition/unencrypted/rma-data(/.*)?             u:object_r:cros_stateful_partition_unencrypted_rma:s0
 /mnt/stateful_partition/unencrypted/tpm_manager(/.*)?          u:object_r:cros_stateful_partition_unencrypted_tpm_manager:s0
+/mnt/stateful_partition/unencrypted/uefi_capsule_updates(/.*)? u:object_r:cros_stateful_partition_unencrypted_uefi_capsule_updates:s0
 /mnt/stateful_partition/unencrypted/userspace_swap.tmp(/.*)?   u:object_r:cros_stateful_partition_unencrypted_userspace_swap:s0
 
 # These are bind mounts so they need to match their other labels.
