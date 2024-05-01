@@ -247,7 +247,7 @@ class ModemImpl : public Modem {
 
 std::unique_ptr<Modem> CreateModem(
     scoped_refptr<dbus::Bus> bus,
-    std::unique_ptr<org::chromium::flimflam::DeviceProxy> device,
+    std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> device,
     ModemHelperDirectory* helper_directory) {
   std::string object_path = device->GetObjectPath().value();
   DVLOG(1) << "Creating modem proxy for " << object_path;
