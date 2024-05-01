@@ -1255,6 +1255,30 @@ constexpr char kDisconnectFromP2PGroupResultOperationFailed[] =
 // Manager DNSProxyDOHProviders wildcard IP address value.
 constexpr char kDNSProxyDOHProvidersMatchAnyIPAddress[] = "*";
 
+// Represents the priority level of a Wi-Fi interface. When a new interface is
+// requested, existing interfaces of lower priority may be destroyed to make
+// room for the new interfaces.
+enum class WiFiInterfacePriority {
+  // Opportunistic requests with minimum priority; nice-to-have but don’t
+  // directly impact the user.
+  OPPORTUNISTIC = 0,
+  // Background requests; not triggered by direct user input.
+  BACKGROUND,
+  // Foreground requests with potential fallback media.
+  FOREGROUND_WITH_FALLBACK,
+  // Foreground requests without any fallback media.
+  FOREGROUND_WITHOUT_FALLBACK,
+  // Requests from OS-native applications like network settings that directly
+  // enable user use-cases.
+  OS_REQUEST,
+  // User-initiated requests in which the user has been explicitly informed that
+  // some Wi-Fi functionality may stop working, and agreed to start the
+  // interface anyway. Treated with maximum priority.
+  USER_ASSERTED,
+
+  NUM_PRIORITIES,
+};
+
 }  // namespace shill
 
 #endif  // SYSTEM_API_DBUS_SHILL_DBUS_CONSTANTS_H_

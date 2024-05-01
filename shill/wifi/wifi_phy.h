@@ -10,6 +10,8 @@
 #include <string_view>
 #include <vector>
 
+#include <chromeos/dbus/shill/dbus-constants.h>
+
 #include "shill/mockable.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/nl80211_message.h"
@@ -60,7 +62,8 @@ class WiFiPhy {
   class Priority {
    public:
     static constexpr int32_t kMinimumPriority = 0;
-    static constexpr int32_t kMaximumPriority = 5;
+    static constexpr int32_t kMaximumPriority =
+        static_cast<int32_t>(WiFiInterfacePriority::NUM_PRIORITIES) - 1;
     explicit constexpr Priority(int32_t priority) : priority_(priority) {}
     ~Priority() = default;
     operator int32_t() const { return priority_; }

@@ -579,7 +579,8 @@ TEST_F(P2PManagerTest, MissingArgs_ConnectClient) {
 
 TEST_F(P2PManagerTest, BadPriority) {
   KeyValueStore properties;
-  properties.Set<int32_t>(kP2PDevicePriority, 6);
+  properties.Set<int32_t>(kP2PDevicePriority,
+                          WiFiPhy::Priority::kMaximumPriority + 1);
   base::MockOnceCallback<void(KeyValueStore)> cb;
   KeyValueStore response_dict;
   int32_t expected_shill_id = p2p_manager_->next_unique_id_;

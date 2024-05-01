@@ -1104,14 +1104,18 @@ TEST_F(WiFiPhyTest, SelectFrequency_DualBandsAvailable) {
 }
 
 TEST_F(WiFiPhyTest, ValidPriority) {
-  EXPECT_TRUE(WiFiPhy::Priority(0).IsValid());
-  EXPECT_TRUE(WiFiPhy::Priority(1).IsValid());
-  EXPECT_TRUE(WiFiPhy::Priority(2).IsValid());
-  EXPECT_TRUE(WiFiPhy::Priority(3).IsValid());
-  EXPECT_TRUE(WiFiPhy::Priority(4).IsValid());
-  EXPECT_TRUE(WiFiPhy::Priority(5).IsValid());
-  EXPECT_FALSE(WiFiPhy::Priority(6).IsValid());
-  EXPECT_FALSE(WiFiPhy::Priority(-1).IsValid());
+  for (int i = 0;
+       i < static_cast<int32_t>(WiFiInterfacePriority::NUM_PRIORITIES); i++) {
+    EXPECT_TRUE(WiFiPhy::Priority(i).IsValid())
+        << i << " should be a vaild priority";
+  }
+  EXPECT_FALSE(WiFiPhy::Priority(
+                   static_cast<int32_t>(WiFiInterfacePriority::NUM_PRIORITIES))
+                   .IsValid())
+      << static_cast<int32_t>(WiFiInterfacePriority::NUM_PRIORITIES)
+      << " should be an invaild priority";
+  EXPECT_FALSE(WiFiPhy::Priority(-1).IsValid())
+      << -1 << " should be an invaild priority";
 }
 
 TEST_F(WiFiPhyTest, IfaceSorted) {

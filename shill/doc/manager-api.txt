@@ -495,7 +495,7 @@ Methods		dict GetProperties()
 			"network_setup_failure", "upstream_failure", "busy",
 			"concurrency_not_supported".
 
-		void EnableTethering(uint32_t priority)
+		void EnableTethering(WiFiInterfacePriority priority)
 
 			Enables tethering with the corresponding properties in
 			Manager.TetheringConfig. Only supports cellular and ethernet as the
@@ -546,8 +546,9 @@ Methods		dict GetProperties()
 			Creates a P2P group with the specified config with this device as
 			the group owner. Possible arguments are "ssid" (string),
 			"passphrase" (string), "frequency" (int32), and "priority"
-			(int32). "priority" is mandatory. All other arguments are optional
-			and all omitted args will be chosen by the platform.
+			(WiFiInterfacePriority). "priority" is mandatory. All other
+			arguments are optional and all omitted args will be chosen by the
+			platform.
 
 			Returns a dictionary with the following entries:
 
@@ -566,8 +567,8 @@ Methods		dict GetProperties()
 
 			Starts a P2P connection with a P2P group with the specified
 			config. Possible arguments are "ssid" (string), "passphrase"
-			(string), "frequency" (int32), and "priority" (int32). "ssid",
-			"passphrase", and "priority" are mandatory. If "frequency" is
+			(string), "frequency" (int32), and "priority" (WiFiInterfacePriority).
+			"ssid", "passphrase", and "priority" are mandatory. If "frequency" is
 			omitted then the platform will scan all available channels.
 
 			Returns a dictionary with the following entries:
@@ -1213,3 +1214,32 @@ Properties	object ActiveProfile [readonly]
 			Whether P2P feature is allowed. When false, all P2P-related calls
 			will return failure. Should only be modified by Chrome feature flag
 			or tests.
+
+Enums		WiFiInterfacePriority
+
+			Represents the priority level of a Wi-Fi interface. When a new
+			interface is requested, existing interfaces of lower priority may be
+			destroyed to make room for the new interfaces.
+
+			"OPPORTUNISTIC"
+				Opportunistic requests with minimum priority; nice-to-have but
+				don’t directly impact the user.
+
+			"BACKGROUND"
+				Background requests; not triggered by direct user input.
+
+			"FOREGROUND_WITH_FALLBACK"
+				Foreground requests with potential fallback media.
+
+			"FOREGROUND_WITHOUT_FALLBACK"
+				Foreground requests without any fallback media.
+
+			"OS_REQUEST"
+				Requests from OS-native applications like network settings that
+				directly enable user use-cases.
+
+			"USER_ASSERTED"
+				 User-initiated requests in which the user has been explicitly
+				 informed that some Wi-Fi functionality may stop working, and
+				 agreed to start the interface anyway. Treated with maximum
+				 priority.
