@@ -1457,6 +1457,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
                          request.enable_keyboard_shortcut_helper_integration()),
       base::StringPrintf("androidboot.arcvm_virtio_blk_data=%d",
                          request.enable_virtio_blk_data()),
+      base::StringPrintf("androidboot.arcvm.data_block_io_scheduler=%d",
+                         request.enable_data_block_io_scheduler()),
       base::StringPrintf("androidboot.zram_size=%" PRId64, zram_size),
       base::StringPrintf("androidboot.arc_switch_to_keymint=%d",
                          mini_instance_request.arc_switch_to_keymint()),

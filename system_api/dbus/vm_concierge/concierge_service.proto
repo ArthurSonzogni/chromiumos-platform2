@@ -443,6 +443,9 @@ message StartArcVmRequest {
 
   // Whether to use the GKI kernel.
   bool use_gki = 48;
+
+  // Enable IO scheduler for the /data block device (/dev/block/vde).
+  bool enable_data_block_io_scheduler = 49;
 }
 
 enum VmStatus {

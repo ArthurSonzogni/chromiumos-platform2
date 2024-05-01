@@ -273,6 +273,28 @@ TEST(ArcVmParamsTest, EnableVirtioBlockDataParamFalse) {
   EXPECT_TRUE(base::Contains(params, "androidboot.arcvm_virtio_blk_data=0"));
 }
 
+TEST(ArcVmParamsTest, ArcDataBlockIoSchedulerTrue) {
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  StartArcVmRequest request;
+  request.set_enable_data_block_io_scheduler(true);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(
+      base::Contains(params, "androidboot.arcvm.data_block_io_scheduler=1"));
+}
+
+TEST(ArcVmParamsTest, ArcDataBlockIoSchedulerFalse) {
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  StartArcVmRequest request;
+  request.set_enable_data_block_io_scheduler(false);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(
+      base::Contains(params, "androidboot.arcvm.data_block_io_scheduler=0"));
+}
+
 TEST(ArcVmParamsTest, EnableBroadcastAnrPrenotifyTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());
