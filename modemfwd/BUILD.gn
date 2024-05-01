@@ -136,6 +136,7 @@ if (use.test) {
       "journal_test.cc",
       "metrics_test.cc",
       "modem_flasher_test.cc",
+      "modem_test.cc",
       "prefs_test.cc",
     ]
     configs += [
@@ -146,6 +147,7 @@ if (use.test) {
     pkg_deps = [
       "libchrome-test",
       "libdlcservice-client-test",
+      "libshill-client-test",
     ]
     deps = [
       ":libmodemfw",
