@@ -137,17 +137,6 @@ if "${ENABLE_ENCRYPTION}"; then
 	cherry_pick $dir cros refs/changes/05/2651005/4
 fi
 
-# WORKON_PKGS+=( "chromeos-base/selinux-policy" )
-# sepolicy: Add policy for fpstudy
-# https://crrev.com/c/4829157
-# cherry_pick "src/platform2/sepolicy" cros refs/changes/57/4829157/8
-# fpstudy: Rename log dir to fpstudy
-# https://crrev.com/c/4834094
-# cherry_pick "src/platform2/biod/study" cros refs/changes/94/4834094/2
-# sepolicy: Rename fpstudy log dir
-# https://crrev.com/c/4833567
-# cherry_pick "src/platform2/sepolicy" cros refs/changes/67/4833567/1
-
 # Checkout chromiumos-overlay/.../fingerprint_study
 dir=src/third_party/chromiumos-overlay/chromeos-base/fingerprint_study
 #latest=cros/main
