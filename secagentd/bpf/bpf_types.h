@@ -105,6 +105,7 @@ struct cros_process_task_info {
   uint32_t commandline_len;  // At most CROS_MAX_REDUCED_ARG_SIZE.
   uint32_t uid;
   uint32_t gid;
+  uint32_t real_commandline_len;
 } __attribute__((aligned(8)));
 
 // This is the process information collected when a process starts.

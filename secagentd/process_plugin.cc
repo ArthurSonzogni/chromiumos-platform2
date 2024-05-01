@@ -225,6 +225,8 @@ std::unique_ptr<pb::ProcessExecEvent> ProcessPlugin::MakeExecEvent(
              process_exec_event->process().canonical_pid() > 1) {
     exec_event_metric = metrics::ProcessEvent::kParentPidNotInCache;
   }
+  MetricsSender::GetInstance().IncrementCountMetric(
+      metrics::kCommandLineSize, process_start.task_info.real_commandline_len);
   MetricsSender::GetInstance().IncrementBatchedMetric(metrics::kExecEvent,
                                                       exec_event_metric);
 

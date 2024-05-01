@@ -45,6 +45,7 @@ static inline __attribute__((always_inline)) void cros_fill_task_info(
   // Read argv from user memory.
   const uintptr_t arg_start = (uintptr_t)BPF_CORE_READ(t, mm, arg_start);
   const uintptr_t arg_end = (uintptr_t)BPF_CORE_READ(t, mm, arg_end);
+  task_info->real_commandline_len = arg_end - arg_start;
   if ((arg_end - arg_start) > sizeof(task_info->commandline)) {
     task_info->commandline_len = sizeof(task_info->commandline);
   } else {
