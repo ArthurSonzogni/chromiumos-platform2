@@ -13,6 +13,8 @@
 #include <chromeos/dbus/service_constants.h>
 #include <libudev.h>
 
+#include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "primary_io_manager/udev.h"
 #include "primary_io_manager/udev_scopers.h"
 
@@ -44,6 +46,8 @@ std::string IoDeviceToString(std::string syspath, const IoDevice* device) {
 }
 
 bool PrimaryIoManager::IsPrimaryIoDevice(const std::string& in_device) {
+  PruneDevices();
+
   auto device_iter = io_devices_.find(in_device);
   if (device_iter != io_devices_.end()) {
     return device_iter->second->keyboard == PRIMARY ||
@@ -51,6 +55,18 @@ bool PrimaryIoManager::IsPrimaryIoDevice(const std::string& in_device) {
   }
 
   return true;
+}
+
+void PrimaryIoManager::PruneDevices() {
+  std::vector<std::string> removable_devices;
+  for (auto& [syspath, _] : io_devices_) {
+    if (!base::PathExists(base::FilePath(syspath))) {
+      removable_devices.push_back(syspath);
+    }
+  }
+  for (auto& path : removable_devices) {
+    RemoveDevice(path);
+  }
 }
 
 void PrimaryIoManager::OnDeviceAdded(const ScopedUdevDevicePtr device) {
@@ -215,6 +231,8 @@ void PrimaryIoManager::PickNewPrimary(DeviceType type) {
 }
 
 std::vector<std::string> PrimaryIoManager::GetIoDevices() {
+  PruneDevices();
+
   std::vector<std::string> devices;
   for (const auto& [path, device] : io_devices_) {
     devices.push_back(IoDeviceToString(path, device.get()));

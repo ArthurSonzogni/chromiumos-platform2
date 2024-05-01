@@ -69,6 +69,10 @@ class PrimaryIoManager : public org::chromium::PrimaryIoManagerAdaptor,
   void OnDeviceAdded(const ScopedUdevDevicePtr);
   void OnDeviceRemoved(const ScopedUdevDevicePtr);
 
+  // Before returning device list or checking for primary-ness, run through
+  // devices we are keeping track of and make sure they all still exist.
+  void PruneDevices();
+
   std::unique_ptr<Udev> udev_;
   brillo::dbus_utils::DBusObject dbus_object_;
 
