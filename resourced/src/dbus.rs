@@ -719,6 +719,31 @@ fn get_monotonic_timestamp_ms() -> Result<i64> {
     Ok(current_timestamp_ms as i64)
 }
 
+fn send_pressure_signals(conn: &Arc<SyncConnection>, pressure_status: &memory::PressureStatus) {
+    send_pressure_signal(
+        conn,
+        "MemoryPressureChrome",
+        pressure_status.chrome_level as u8,
+        pressure_status.chrome_reclaim_target_kb,
+    );
+    if pressure_status.arcvm_level != memory::PressureLevelArcvm::None {
+        send_pressure_signal(
+            conn,
+            "MemoryPressureArcvm",
+            pressure_status.arcvm_level as u8,
+            pressure_status.arcvm_reclaim_target_kb,
+        );
+    }
+    if pressure_status.arc_container_level != memory::PressureLevelArcContainer::None {
+        send_pressure_signal(
+            conn,
+            "MemoryPressureArcContainer",
+            pressure_status.arc_container_level as u8,
+            pressure_status.arc_container_reclaim_target_kb,
+        );
+    }
+}
+
 pub async fn service_main() -> Result<()> {
     let root = Path::new("/");
     let config_provider = ConfigProvider::from_root(root);
@@ -910,28 +935,7 @@ pub async fn service_main() -> Result<()> {
 
         // Send memory pressure notification.
         if let Ok(pressure_status) = pressure_result {
-            send_pressure_signal(
-                &conn,
-                "MemoryPressureChrome",
-                pressure_status.chrome_level as u8,
-                pressure_status.chrome_reclaim_target_kb,
-            );
-            if pressure_status.arcvm_level != memory::PressureLevelArcvm::None {
-                send_pressure_signal(
-                    &conn,
-                    "MemoryPressureArcvm",
-                    pressure_status.arcvm_level as u8,
-                    pressure_status.arcvm_reclaim_target_kb,
-                );
-            }
-            if pressure_status.arc_container_level != memory::PressureLevelArcContainer::None {
-                send_pressure_signal(
-                    &conn,
-                    "MemoryPressureArcContainer",
-                    pressure_status.arc_container_level as u8,
-                    pressure_status.arc_container_reclaim_target_kb,
-                );
-            }
+            send_pressure_signals(&conn, &pressure_status);
         }
 
         notification_count.fetch_add(1, Ordering::Relaxed);
