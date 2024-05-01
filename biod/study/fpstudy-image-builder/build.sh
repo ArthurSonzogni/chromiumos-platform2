@@ -124,9 +124,8 @@ WORKON_PKGS+=( fingerprint_study )
 
 # Checkout platform2/biod/study
 dir=src/platform2/biod/study
-# latest=cros/main
-# latest=b1ee162959349067af5d52dcbcab607706bf77ea
-# cherry_pick_updates "${dir}" cros "${latest}" .
+# FINGERPRINT_STUDY_CHANGES=cros/main
+# FINGERPRINT_STUDY_CHANGES=b1ee162959349067af5d52dcbcab607706bf77ea
 if [[ -n "${FINGERPRINT_STUDY_CHANGES}" ]]; then
 	cherry_pick_updates "${dir}" cros "${FINGERPRINT_STUDY_CHANGES}" .
 fi
