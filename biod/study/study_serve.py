@@ -14,6 +14,7 @@ import json
 import logging
 import logging.handlers
 import os
+import pathlib
 import re
 import subprocess
 import sys
@@ -81,7 +82,7 @@ class FingerWebSocket(WebSocket):
     FILE_FORMAT = "{finger:02d}_{picture:02d}"
 
     config = {}
-    pict_dir = "/tmp"
+    pict_dir = pathlib.Path("/tmp")
     # fpcutils.FpUtils class to process images through the external library.
     fpcutils = None
     export_fmi = False
@@ -97,13 +98,29 @@ class FingerWebSocket(WebSocket):
     # Force terminating the current processing in the worker thread.
     abort_request = False
 
+    def get_finger_capture_dir_path(self, req: dict[str, Any]) -> pathlib.Path:
+        """Get the path to the current requested finger's capture directory."""
+        directory = self.pict_dir / pathlib.Path(self.DIR_FORMAT.format(**req))
+        directory.mkdir(parents=True, exist_ok=True)
+        return directory
+
+    def get_finger_capture_base_path(self, req: dict[str, Any]) -> pathlib.Path:
+        """Get the file name/path for the current finger capture.
+
+        This is the full path for the current finger and picture without the
+        file extension.
+        """
+        directory = self.get_finger_capture_dir_path(req)
+        file_base = directory / pathlib.Path(self.FILE_FORMAT.format(**req))
+        return file_base
+
     def set_config(self, arg: argparse.Namespace):
         self.config = {
             "fingerCount": arg.finger_count,
             "enrollmentCount": arg.enrollment_count,
             "verificationCount": arg.verification_count,
         }
-        self.pict_dir = arg.picture_dir
+        self.pict_dir = pathlib.Path(arg.picture_dir)
         if fpcutils:
             self.fpcutils = fpcutils.FpUtils()
         if arg.export_fmi:
@@ -196,14 +213,14 @@ class FingerWebSocket(WebSocket):
         if not os.path.exists(path):
             os.makedirs(path)
 
-    def save_to_file(self, data: bytes, file_path: str):
+    def save_to_file(self, data: bytes, file_path: pathlib.Path):
         """Save data bytes to file at file_path.
 
         If GPG is enabled, the .gpg suffix is added to file_path.
         """
 
         if self.gpg:
-            file_path += ".gpg"
+            file_path = file_path.with_suffix(file_path.suffix + ".gpg")
             enc = self.gpg.encrypt(data, self.gpg_recipients)
             data = enc.data
 
@@ -214,8 +231,7 @@ class FingerWebSocket(WebSocket):
             )
             return
 
-        with open(file_path, "wb") as f:
-            f.write(data)
+        file_path.write_bytes(data)
 
     def ectool(self, command: str, *args: str) -> bytes:
         """Run the ectool command and return its stdout as bytes."""
@@ -281,18 +297,10 @@ class FingerWebSocket(WebSocket):
             return (None, f"{msg}. Call operator.")
         return (img, None)
 
-    def finger_save_pattern1(self, req: dict[str, Any], img: bytes):
-        directory = os.path.join(self.pict_dir, self.DIR_FORMAT.format(**req))
-        self.make_dirs(directory)
-        base_file = directory + "/pattern1.raw"
-        self.save_to_file(img, base_file)
-
     def finger_save_image(self, req: dict[str, Any], img: bytes):
-        directory = os.path.join(self.pict_dir, self.DIR_FORMAT.format(**req))
-        self.make_dirs(directory)
-        file_base = os.path.join(directory, self.FILE_FORMAT.format(**req))
-        raw_file = file_base + ".raw"
-        fmi_file = file_base + ".fmi"
+        file_base = self.get_finger_capture_base_path(req)
+        raw_file = file_base.with_suffix(".raw")
+        fmi_file = file_base.with_suffix(".fmi")
         self.save_to_file(img, raw_file)
         if self.export_fmi:
             if self.fpcutils:
@@ -304,27 +312,6 @@ class FingerWebSocket(WebSocket):
             else:
                 cherrypy.log("FPC utils are unavailable")
 
-    def finger_record_fpmcu_version(self, req: dict[str, Any]):
-        """Query the FPMCU firmware version and save to a file in finger dir.
-
-        This will occur once before each finger captured. Recording the
-        version this frequently is probably not necessary, but it will
-        ensure that we catch accidental version mismatches and changes across
-        different test devices and different days of capturing.
-
-        Args:
-            req: The finger capture request from the client page.
-
-        Returns:
-            The optional result string to send to the client page.
-            None when no result should be sent to the client page.
-        """
-        directory = os.path.join(self.pict_dir, self.DIR_FORMAT.format(**req))
-        self.make_dirs(directory)
-        version_file = directory + "/fpmcu_version.txt"
-        version_string = self.ectool("version")
-        self.save_to_file(version_string, version_file)
-
     def finger_setup(self, req: dict[str, Any]) -> Optional[str]:
         """Run once before capturing each finger.
 
@@ -332,6 +319,14 @@ class FingerWebSocket(WebSocket):
         The expectation is that the user does not have a finger on the sensor
         for this setup routine.
 
+        This routine does the following:
+        1. Capture a pattern1 sample and save it.
+        2. Query the FPMCU running version and save it.
+           Recording the version this frequently is probably not necessary,
+           but it will ensure that we catch accidental version mismatches and
+           changes across different test devices and different days of
+           capturing.
+
         Args:
             req: The finger capture request from the client page.
 
@@ -339,23 +334,27 @@ class FingerWebSocket(WebSocket):
             The optional result string to send to the client page.
             None when no result should be sent to the client page.
         """
+
+        finger_dir = self.get_finger_capture_dir_path(req)
+
         t0 = time.time()
         # The pattern1 capture is needed for Elan 80SG to do off-chip
         # evaluation.
         cherrypy.log(f"Capturing pattern1 for finger {req['finger']:02d}")
-        img, result = self.capture("pattern1")
+        img_pattern1, result = self.capture("pattern1")
         t1 = time.time()
         cherrypy.log(f"Captured pattern1 in {t1 - t0:.2f}s")
-        if not img:
+        if not img_pattern1:
             return result
-        self.finger_save_pattern1(req, img)
+        self.save_to_file(img_pattern1, finger_dir / "pattern1.raw")
 
         t0 = time.time()
         cherrypy.log(
             f"Recording FPMCU FW version for finger {req['finger']:02d}"
         )
-        self.finger_record_fpmcu_version(req)
+        version_string = self.ectool("version")
         t1 = time.time()
+        self.save_to_file(version_string, finger_dir / "fpmcu_version.txt")
         cherrypy.log(f"Recorded FPMCU FW version in {t1 - t0:.2f}s")
 
         return "ok"
