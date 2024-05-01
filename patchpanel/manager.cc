@@ -1128,7 +1128,8 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     // b/294287313: if the upstream network was created in an ad-hoc
     // fashion through StartTetheringUpstreamNetwork and is not managed by
     // ShillClient, the datapath tear down must also be triggered specially.
-    if (!shill_client_->GetDeviceByIfindex(info.upstream_device->ifindex)) {
+    if (info.upstream_device &&
+        !shill_client_->GetDeviceByIfindex(info.upstream_device->ifindex)) {
       StopTetheringUpstreamNetwork(*info.upstream_device);
     }
 
