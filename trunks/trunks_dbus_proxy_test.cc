@@ -59,7 +59,7 @@ class FakeObjectProxy : public dbus::ObjectProxy {
                      int /* timeout_ms */) override {
     dbus::MessageReader reader(method_call);
     trunks::SendCommandRequest command_proto;
-    brillo::dbus_utils::PopValueFromReader(&reader, &command_proto);
+    brillo::dbus_utils::ReadDBusArgs(&reader, &command_proto);
     last_command_ = command_proto.command();
     if (next_response_.empty()) {
       return base::unexpected(dbus::Error());
@@ -69,7 +69,7 @@ class FakeObjectProxy : public dbus::ObjectProxy {
     dbus::MessageWriter writer(dbus_response.get());
     trunks::SendCommandResponse response_proto;
     response_proto.set_response(next_response_);
-    brillo::dbus_utils::AppendValueToWriter(&writer, response_proto);
+    brillo::dbus_utils::WriteDBusArgs(&writer, response_proto);
     return base::ok(std::move(dbus_response));
   }
 

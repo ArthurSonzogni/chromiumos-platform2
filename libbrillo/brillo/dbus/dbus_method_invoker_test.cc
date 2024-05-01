@@ -118,7 +118,7 @@ class DBusMethodInvokerTest : public testing::Test {
         if (PopValueFromReader(&reader, &msg)) {
           auto response = Response::CreateEmpty();
           MessageWriter writer(response.get());
-          AppendValueToWriter(&writer, msg);
+          WriteDBusArgs(&writer, msg);
           return base::ok(std::move(response));
         }
       } else if (method_call->GetMember() == kTestMethod4) {

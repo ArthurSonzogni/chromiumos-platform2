@@ -156,9 +156,7 @@ class ExportedPropertySetTest : public ::testing::Test {
                                  dbus::kPropertiesSet);
     method_call.SetSerial(123);
     dbus::MessageWriter writer(&method_call);
-    writer.AppendString(interface_name);
-    writer.AppendString(property_name);
-    dbus_utils::AppendValueToWriter(&writer, value);
+    dbus_utils::WriteDBusArgs(&writer, interface_name, property_name, value);
     return testing::CallMethod(p_->dbus_object_, &method_call);
   }
 

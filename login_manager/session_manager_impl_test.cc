@@ -238,7 +238,7 @@ MATCHER_P2(SignalEq, method_name, payload1, "") {
   PayloadStorage<decltype(payload1)> actual1;
   dbus::MessageReader reader(arg);
   return (arg->GetMember() == method_name &&
-          brillo::dbus_utils::PopValueFromReader(&reader, &actual1.value) &&
+          brillo::dbus_utils::ReadDBusArgs(&reader, &actual1.value) &&
           payload1 == actual1.value);
 }
 
@@ -247,10 +247,9 @@ MATCHER_P3(SignalEq, method_name, payload1, payload2, "") {
   PayloadStorage<decltype(payload2)> actual2;
   dbus::MessageReader reader(arg);
   return (arg->GetMember() == method_name &&
-          brillo::dbus_utils::PopValueFromReader(&reader, &actual1.value) &&
-          payload1 == actual1.value &&
-          brillo::dbus_utils::PopValueFromReader(&reader, &actual2.value) &&
-          payload2 == actual2.value);
+          brillo::dbus_utils::ReadDBusArgs(&reader, &actual1.value,
+                                           &actual2.value) &&
+          payload1 == actual1.value && payload2 == actual2.value);
 }
 
 // Checks whether a PolicyNamespace is not a POLICY_DOMAIN_CHROME namespace and

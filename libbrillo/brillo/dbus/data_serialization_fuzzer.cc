@@ -52,7 +52,7 @@ void AppendValue(dbus::MessageWriter* writer, bool variant, const T& value) {
   if (variant)
     brillo::dbus_utils::AppendValueToWriterAsVariant(writer, value);
   else
-    brillo::dbus_utils::AppendValueToWriter(writer, value);
+    brillo::dbus_utils::WriteDBusArgs(writer, value);
 }
 
 template <typename T>
@@ -67,7 +67,7 @@ void PopValue(dbus::MessageReader* reader, bool variant, T* value) {
   if (variant)
     brillo::dbus_utils::PopVariantValueFromReader(reader, value);
   else
-    brillo::dbus_utils::PopValueFromReader(reader, value);
+    brillo::dbus_utils::ReadDBusArgs(reader, value);
 }
 
 std::string GenerateValidUTF8(FuzzedDataProvider* data_provider) {

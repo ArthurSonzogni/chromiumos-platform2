@@ -24,7 +24,6 @@
 #include "rmad/utils/mock_crossystem_utils.h"
 
 using brillo::dbus_utils::AsyncEventSequencer;
-using brillo::dbus_utils::PopValueFromReader;
 using testing::_;
 using testing::A;
 using testing::AnyNumber;
