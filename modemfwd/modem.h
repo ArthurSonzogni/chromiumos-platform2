@@ -52,7 +52,7 @@ class Modem {
 };
 
 std::unique_ptr<Modem> CreateModem(
-    scoped_refptr<dbus::Bus> bus,
+    dbus::Bus* bus,
     std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> device,
     ModemHelperDirectory* helper_directory);
 

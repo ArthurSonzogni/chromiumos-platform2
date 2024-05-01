@@ -52,7 +52,7 @@ class Inhibitor {
 };
 
 std::unique_ptr<Inhibitor> GetInhibitor(
-    scoped_refptr<dbus::Bus> bus, const dbus::ObjectPath& mm_object_path) {
+    dbus::Bus* bus, const dbus::ObjectPath& mm_object_path) {
   CHECK(mm_object_path.IsValid());
 
   // Get the MM object backing this modem, and retrieve its Device property.
@@ -246,7 +246,7 @@ class ModemImpl : public Modem {
 };
 
 std::unique_ptr<Modem> CreateModem(
-    scoped_refptr<dbus::Bus> bus,
+    dbus::Bus* bus,
     std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> device,
     ModemHelperDirectory* helper_directory) {
   std::string object_path = device->GetObjectPath().value();

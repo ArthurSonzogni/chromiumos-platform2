@@ -372,7 +372,8 @@ void Daemon::OnModemDeviceSeen(std::string device_id,
 
 void Daemon::OnModemCarrierIdReady(
     std::unique_ptr<org::chromium::flimflam::DeviceProxy> device) {
-  auto modem = CreateModem(bus_, std::move(device), helper_directory_.get());
+  auto modem =
+      CreateModem(bus_.get(), std::move(device), helper_directory_.get());
   if (!modem)
     return;
 
