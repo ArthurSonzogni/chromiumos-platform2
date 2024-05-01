@@ -71,3 +71,19 @@ ChromeOS Flex requires 64-bit CPUs. On a small number of devices,
 even though the CPU is 64-bit, the UEFI environment is 32-bit.
 This enum metric reports the method used to boot the device. This can be
 BIOS/legacy, Coreboot, 32-bit UEFI, or 64-bit UEFI.
+
+## Contributing
+
+### Testing
+
+Googlers only: For information on access, where and how to view your data,
+see go/hwis-googlers-info.
+
+To test your changes to `flex_hwis_tool`, you can run it directly on a Flex
+test image.
+
+```
+reven ~ # flex_hwis_tool
+```
+
+`flex_hwis_tool` is gated to run once per day per device. To run more than once on your device delete the file at `/var/lib/flex_hwis_tool/time`.
