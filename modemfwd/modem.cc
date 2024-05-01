@@ -53,13 +53,10 @@ class Inhibitor {
 
 std::unique_ptr<Inhibitor> GetInhibitor(
     scoped_refptr<dbus::Bus> bus, const dbus::ObjectPath& mm_object_path) {
-  // Get the MM object backing this modem, and retrieve its Device property.
-  // This is the mm_physdev_uid we use for inhibition during updates.
-  if (!mm_object_path.IsValid()) {
-    LOG(WARNING) << __func__ << " " << mm_object_path.value() << " is invalid";
-    return nullptr;
-  }
+  CHECK(mm_object_path.IsValid());
 
+  // Get the MM object backing this modem, and retrieve its Device property.
+  // This is the physdev_uid we use for inhibition during updates.
   auto mm_device = bus->GetObjectProxy(modemmanager::kModemManager1ServiceName,
                                        mm_object_path);
   if (!mm_device)
@@ -290,12 +287,19 @@ std::unique_ptr<Modem> CreateModem(
 
   // Get a helper object for inhibiting the modem, if possible.
   std::unique_ptr<Inhibitor> inhibitor;
-  std::string mm_object_path;
-  if (!properties[shill::kDBusObjectProperty].GetValue(&mm_object_path)) {
+  std::string mm_object_path_prop;
+  if (!properties[shill::kDBusObjectProperty].GetValue(&mm_object_path_prop)) {
     LOG(INFO) << "Modem " << object_path << " has no ModemManager object";
-  } else {
-    inhibitor = GetInhibitor(bus, dbus::ObjectPath(mm_object_path));
+    return nullptr;
   }
+  dbus::ObjectPath mm_object_path(mm_object_path_prop);
+  if (!mm_object_path.IsValid()) {
+    LOG(WARNING) << "Modem " << object_path
+                 << " has invalid ModemManager object " << mm_object_path_prop;
+    return nullptr;
+  }
+
+  inhibitor = GetInhibitor(bus, dbus::ObjectPath(mm_object_path));
   if (!inhibitor)
     LOG(INFO) << "Inhibiting modem " << object_path << " will not be possible";
 
