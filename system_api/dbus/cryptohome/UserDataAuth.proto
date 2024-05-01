@@ -294,6 +294,29 @@ message IsMountedReply {
   bool is_ephemeral_mount = 2;
 }
 
+// Input parameters to GetVaultProperties()
+message GetVaultPropertiesRequest {
+  // If username is available, then it'll check if a specific user's home
+  // directory is mounted. Otherwise, it'll check if any home directory is
+  // mounted.
+  string username = 1;
+}
+
+// Output parameters for GetVaultPropertiesReply()
+message GetVaultPropertiesReply {
+  // Indicates an error if |error| is not empty.
+  CryptohomeErrorCode error = 1;
+
+  // Indicate an error if this field exists.
+  // This field is replacing the |error| field above, for more information on
+  // which field to use and the process on the migration, see comment in
+  // CryptohomeErrorInfo.
+  CryptohomeErrorInfo error_info = 2;
+
+  // Encryption type used for the current mount for the user.
+  VaultEncryptionType encryption_type = 3;
+}
+
 // Output parameters for EvictDeviceKey()
 message EvictDeviceKeyReply {
   // Indicates an error if |error| is not empty.
