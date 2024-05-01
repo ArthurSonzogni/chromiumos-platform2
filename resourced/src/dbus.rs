@@ -38,6 +38,7 @@ use crate::common::read_from_file;
 use crate::config::ConfigProvider;
 use crate::feature;
 use crate::memory;
+use crate::memory::MemInfo;
 use crate::metrics;
 use crate::power;
 use crate::proc::load_euid;
@@ -171,8 +172,10 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             ("available",),
             move |_, _, ()| {
                 let game_mode = common::get_game_mode();
-                match memory::get_background_available_memory_kb(game_mode) {
-                    Ok(available) => Ok((available,)),
+                match MemInfo::load() {
+                    Ok(meminfo) => Ok((memory::get_background_available_memory_kb(
+                        &meminfo, game_mode,
+                    ),)),
                     Err(_) => Err(MethodErr::failed("Couldn't get available memory")),
                 }
             },
@@ -181,8 +184,8 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
             "GetForegroundAvailableMemoryKB",
             (),
             ("available",),
-            move |_, _, ()| match memory::get_foreground_available_memory_kb() {
-                Ok(available) => Ok((available,)),
+            move |_, _, ()| match MemInfo::load() {
+                Ok(meminfo) => Ok((memory::get_foreground_available_memory_kb(&meminfo),)),
                 Err(_) => Err(MethodErr::failed(
                     "Couldn't get foreground available memory",
                 )),

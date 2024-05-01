@@ -223,34 +223,24 @@ fn get_memory_parameters() -> MemoryParameters {
     }
 }
 
-fn get_available_memory_kb() -> Result<u64> {
-    let meminfo = MemInfo::load().context("load meminfo")?;
+fn get_available_memory_kb(meminfo: &MemInfo) -> u64 {
     let p = get_memory_parameters();
-    Ok(calculate_available_memory_kb(
-        &meminfo,
-        p.reserved_free,
-        p.min_filelist,
-        p.ram_swap_weight,
-    ))
+    calculate_available_memory_kb(meminfo, p.reserved_free, p.min_filelist, p.ram_swap_weight)
 }
 
-pub fn get_foreground_available_memory_kb() -> Result<u64> {
-    get_available_memory_kb()
+pub fn get_foreground_available_memory_kb(meminfo: &MemInfo) -> u64 {
+    get_available_memory_kb(meminfo)
 }
 
 // |game_mode| is passed rather than implicitly queried. This saves us a query
 // (hence a lock) in the case where the caller needs the game mode state for a
 // separate purpose (see |get_memory_pressure_status|).
-pub fn get_background_available_memory_kb(game_mode: common::GameMode) -> Result<u64> {
-    let available = get_available_memory_kb()?;
+pub fn get_background_available_memory_kb(meminfo: &MemInfo, game_mode: common::GameMode) -> u64 {
+    let available = get_available_memory_kb(meminfo);
     if game_mode != common::GameMode::Off {
-        if available > GAME_MODE_OFFSET_KB {
-            Ok(available - GAME_MODE_OFFSET_KB)
-        } else {
-            Ok(0)
-        }
+        available.saturating_sub(GAME_MODE_OFFSET_KB)
     } else {
-        Ok(available)
+        available
     }
 }
 
@@ -718,7 +708,8 @@ pub async fn get_memory_pressure_status(
     vmms_client: &VmMemoryManagementClient,
 ) -> Result<PressureStatus> {
     let game_mode = common::get_game_mode();
-    let available = get_background_available_memory_kb(game_mode)?;
+    let meminfo = MemInfo::load().context("load meminfo")?;
+    let available = get_background_available_memory_kb(&meminfo, game_mode);
     let margins = get_component_margins_kb();
     let discard_stale_at_moderate =
         feature::is_feature_enabled(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME)?;
@@ -1292,6 +1283,41 @@ full avg10=29.29 avg60=19.01 avg300=5.44 total=17589167"#;
         )
         .unwrap();
         assert!(init_memory_configs_impl(root.path()).is_err());
+    }
+
+    #[test]
+    fn test_get_background_available_memory_kb() {
+        let p = get_memory_parameters();
+        let meminfo = MemInfo {
+            free: 400 * 1024 + p.reserved_free,
+            ..Default::default()
+        };
+        assert_eq!(
+            get_background_available_memory_kb(&meminfo, common::GameMode::Off),
+            400 * 1024
+        );
+        assert_eq!(
+            get_background_available_memory_kb(&meminfo, common::GameMode::Arc),
+            400 * 1024 - GAME_MODE_OFFSET_KB
+        );
+        assert_eq!(
+            get_background_available_memory_kb(&meminfo, common::GameMode::Borealis),
+            400 * 1024 - GAME_MODE_OFFSET_KB
+        );
+
+        // When available memory is less than GAME_MODE_OFFSET_KB.
+        let meminfo = MemInfo {
+            free: 200 * 1024 + p.reserved_free,
+            ..Default::default()
+        };
+        assert_eq!(
+            get_background_available_memory_kb(&meminfo, common::GameMode::Off),
+            200 * 1024
+        );
+        assert_eq!(
+            get_background_available_memory_kb(&meminfo, common::GameMode::Arc),
+            0
+        );
     }
 
     #[test]
