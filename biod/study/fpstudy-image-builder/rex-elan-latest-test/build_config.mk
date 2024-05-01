@@ -14,4 +14,5 @@ BRANCH       := main
 # BRANCH_SHORT := R115
 # BRANCH_SHORT := R116
 BRANCH_SHORT := main
-DESCRIPTION  := This is a test image designated for Chrome OS Fingerprint internal use.
+DESCRIPTION  := This is a test image designated for Elan 80SG Fingerprint \
+	evaluation.
