@@ -165,6 +165,9 @@ Manager::~Manager() {
   for (const auto& kv : dns_redirection_rules_) {
     lifeline_fds.push_back(kv.first);
   }
+  for (const auto& kv : downstream_networks_) {
+    lifeline_fds.push_back(kv.first);
+  }
   for (const int fdkey : lifeline_fds) {
     OnLifelineFdClosed(fdkey);
   }
