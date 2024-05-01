@@ -15,7 +15,7 @@ BOARD=hatch
 # image with all dev tools.
 # IMAGE_TYPE=base
 IMAGE_TYPE=test
-IMAGE_OPTS="--noenable_rootfs_verification"
+IMAGE_OPTS=( "--noenable_rootfs_verification" )
 
 # R89 has enough changes to fingerprint study related thing for this to work.
 # BRANCH=main

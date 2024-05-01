@@ -14,7 +14,7 @@ ENABLE_ENCRYPTION=false
 # image with all dev tools.
 # IMAGE_TYPE=base
 IMAGE_TYPE=test
-IMAGE_OPTS="--noenable_rootfs_verification"
+IMAGE_OPTS=( "--noenable_rootfs_verification" )
 
 # BRANCH=stable
 BRANCH=release-R116-15509.B
