@@ -6,7 +6,6 @@
 
 #include <memory>
 #include <set>
-#include "libhwsec/platform/platform_impl.h"
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
@@ -42,7 +41,6 @@ TEST(PersistentLookupTableTest, CreateDirStoreValues) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  std::unique_ptr<Platform> platform(new PlatformImpl());
   PersistentLookupTable lookup_table(temp_dir.GetPath());
   lookup_table.Init();
 
@@ -71,7 +69,6 @@ TEST(PersistentLookupTableTest, RestoreTable) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  std::unique_ptr<Platform> platform(new PlatformImpl());
   std::unique_ptr<PersistentLookupTable> lookup_table =
       std::make_unique<PersistentLookupTable>(temp_dir.GetPath());
   lookup_table->Init();
@@ -85,7 +82,6 @@ TEST(PersistentLookupTableTest, RestoreTable) {
   // Destroy old object, now instantiate a new table object and restore old
   // table.
   lookup_table.reset();
-  platform = std::make_unique<PlatformImpl>();
   lookup_table = std::make_unique<PersistentLookupTable>(temp_dir.GetPath());
   lookup_table->Init();
 
@@ -96,7 +92,6 @@ TEST(PersistentLookupTableTest, RestoreTable) {
 
   // Destroy it one last time, then reload it.
   lookup_table.reset();
-  platform = std::make_unique<PlatformImpl>();
   lookup_table = std::make_unique<PersistentLookupTable>(temp_dir.GetPath());
   lookup_table->Init();
 
@@ -122,7 +117,6 @@ TEST(PersistentLookupTableTest, DeleteKeys) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  std::unique_ptr<Platform> platform(new PlatformImpl());
   PersistentLookupTable lookup_table(temp_dir.GetPath());
   lookup_table.Init();
 
@@ -147,7 +141,6 @@ TEST(PersistentLookupTableTest, GetUsedKeys) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  std::unique_ptr<Platform> platform(new PlatformImpl());
   PersistentLookupTable lookup_table(temp_dir.GetPath());
   lookup_table.Init();
 
