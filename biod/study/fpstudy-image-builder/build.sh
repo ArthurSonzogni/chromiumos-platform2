@@ -15,7 +15,7 @@ set -e
 # (outside)
 
 # Apply argument.
-CONFIG=${1:-brya-latest-test}
+CONFIG="${1:-brya-latest-test}"
 
 echo "# Building ${CONFIG} ####################################################"
 
@@ -58,9 +58,9 @@ repo start fpstudy --all
 #
 # The file paths are relative to |dir|.
 cherry_pick_updates() {
-	local dir=$1
-	local remote=$2
-	local latest=$3 # "cros/main" to force latest
+	local dir="$1"
+	local remote="$2"
+	local latest="$3" # "cros/main" to force latest"
 	shift 3
 	local files=( "$@" )
 
@@ -92,14 +92,14 @@ cherry_pick_updates() {
 #
 # Usage: cherry_pick <dir> <remote> [refspec [refspecs...]]
 cherry_pick() {
-	local dir=$1
-	local remote=$2
+	local dir="$1"
+	local remote="$2"
 	shift 2
 
 	echo "# Dir ${dir}"
 	pushd "${dir}"
 	for commit; do
-		if ! git fetch $remote $commit; then
+		if ! git fetch "${remote}" "${commit}"; then
 			echo "Error fetching"
 			popd
 			return 1
@@ -133,7 +133,7 @@ fi
 # Force encryption enable
 if "${ENABLE_ENCRYPTION}"; then
 	# Modify study server upstart config to enable encryption.
-	cherry_pick $dir cros refs/changes/05/2651005/4
+	cherry_pick "${dir}" cros refs/changes/05/2651005/4
 fi
 
 # Checkout chromiumos-overlay/.../fingerprint_study
@@ -143,7 +143,7 @@ dir=src/third_party/chromiumos-overlay/chromeos-base/fingerprint_study
 if "${ENABLE_ENCRYPTION}"; then
 	# Change ebuild to install encryption key / recipients list files.
 	#cherry_pick_updates $dir cros $latest ./fingerprint_study-9999.ebuild
-	cherry_pick $dir cros refs/changes/82/2650782/2
+	cherry_pick "${dir}" cros refs/changes/82/2650782/2
 fi
 
 # Apply build_config.sh specific source changes.
@@ -162,9 +162,9 @@ fi
 
 # Enabled different chroot directory linking
 if [[ -d "${CHROOT_DST}" ]]; then
-	sudo rm -rf $CHROOT_DST_DIR
-	mkdir $CHROOT_DST_DIR
-	ln -s $CHROOT_DST_DIR $ROOT/chroot
+	sudo rm -rf "${CHROOT_DST_DIR}"
+	mkdir "${CHROOT_DST_DIR}"
+	ln -s "${CHROOT_DST_DIR}" "${ROOT}/chroot"
 fi
 
 # Remove /google/* directories from PATH
