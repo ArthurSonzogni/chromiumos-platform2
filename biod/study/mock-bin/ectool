@@ -11,6 +11,20 @@ import argparse
 import sys
 
 
+MOCK_VERSION_STR = """\
+RO version:    bloonchipper_v2.0.5938-197506c1
+RW version:    bloonchipper_v2.0.23521-642195b
+RW cros fwid:  bloonchipper_15749.0.0
+Firmware copy: RW
+Build info:    bloonchipper_v2.0.23521-642195b boringssl:v0.0.7276-e0d601a57\
+ cryptoc:v1.9308_26_0.14-0dd6790 private:v2.1.9999-642195ba\
+ fpc:v2.1.9999-642195ba bloonchipper_15749.0.0 2024-01-12 17:15:27\
+ @chromeos-release-builder-us-central1-a-x32-30-5d0f
+Tool version:  v2.0.24267-7420a2d0ef 2024-03-15 23:46:59\
+ @chromeos-release-builder-us-central1-b-x32-19-j5aj\
+"""
+
+
 def cmd_fpframe():
     """Provides the last fingerprint capture frame to stdout."""
     print("Act like I am a raw fingerprint image file.")
@@ -20,6 +34,12 @@ def cmd_fpframe():
 def cmd_fpmode():
     """Shows the current fingerprint subsystem's state/mode."""
     print("FP mode: (0x0)")
+    sys.exit(0)
+
+
+def cmd_version():
+    """Shows the current fingerprint subsystem's version information."""
+    print(MOCK_VERSION_STR)
     sys.exit(0)
 
 
@@ -48,6 +68,11 @@ def get_parser() -> argparse.ArgumentParser:
     parser_fpframe.description = cmd_fpframe.__doc__
     parser_fpframe.set_defaults(func=cmd_fpframe)
     parser_fpframe.add_argument("option", choices=["raw"])
+
+    # version
+    parser_version = parser_subparsers.add_parser("version")
+    parser_version.description = cmd_version.__doc__
+    parser_version.set_defaults(func=cmd_version)
     return parser
 
 
