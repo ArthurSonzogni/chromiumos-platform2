@@ -25,6 +25,8 @@
 #include "metrics/structured/batch_event_storage.h"
 #include "metrics/structured/event_base.h"
 #include "metrics/structured/proto/storage.pb.h"
+#include "metrics/structured/recorder.h"
+#include "metrics/structured/recorder_singleton.h"
 #include "metrics/structured/structured_events.h"
 
 namespace metrics::structured {
@@ -34,42 +36,38 @@ namespace {
 // in reset_counter_updater.cc.
 const char kResetCounterPath[] = "/var/lib/metrics/structured/reset-counter";
 
-// Max bytes size for event proto in-memory before a flush is triggered.
-constexpr int kMaxEventBytesSize = 10000;  // 10KB
-
-// Max time elapsed since last write before a flush of events is triggered. This
-// is currently set to 0 while users of Structured metrics are migrated to
-// explicitly call Flush() at the end of their programs. Otherwise, events
-// in-memory at the end of a process will not be flushed to disk and lost.
-//
-// TODO(b/333781135): Change this to an actual value once all users have been
-// migrated.
-constexpr base::TimeDelta kFlushTimeLimitSeconds = base::Seconds(0);
-
 }  // namespace
 
 RecorderImpl::RecorderImpl(const std::string& events_directory,
-                           const std::string& keys_path)
+                           const std::string& keys_path,
+                           Recorder::RecorderParams params)
     : RecorderImpl(events_directory,
                    keys_path,
+                   params,
                    base::FilePath(kResetCounterPath),
                    std::make_unique<MetricsLibrary>()) {}
 
 RecorderImpl::RecorderImpl(
     const std::string& events_directory,
     const std::string& keys_path,
+    Recorder::RecorderParams params,
     const base::FilePath& reset_counter_file,
     std::unique_ptr<MetricsLibraryInterface> metrics_library)
     : events_directory_(events_directory),
       key_data_(keys_path),
       reset_counter_file_(reset_counter_file),
       metrics_library_(std::move(metrics_library)),
-      event_storage_(base::FilePath(events_directory_),
-                     BatchEventStorage::StorageParams{
-                         .flush_time_limit = kFlushTimeLimitSeconds,
-                         .max_event_bytes_size = kMaxEventBytesSize}) {}
+      event_storage_(
+          base::FilePath(events_directory_),
+          BatchEventStorage::StorageParams{
+              .flush_time_limit = params.write_cadence,
+              .max_event_bytes_size = params.max_in_memory_size_bytes}) {
+  RecorderSingleton::GetInstance()->SetGlobalRecorder(this);
+}
 
-RecorderImpl::~RecorderImpl() = default;
+RecorderImpl::~RecorderImpl() {
+  RecorderSingleton::GetInstance()->UnsetGlobalRecorder(this);
+}
 
 bool RecorderImpl::Record(const EventBase& event) {
   // Do not record if the UMA consent is opted out, except for metrics for the

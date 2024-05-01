@@ -30,6 +30,7 @@
 
 #include "metrics/structured/lib/proto/key.pb.h"
 #include "metrics/structured/proto/storage.pb.h"
+#include "metrics/structured/recorder.h"
 #include "metrics/structured/recorder_singleton.h"
 #include "metrics/structured/structured_events.h"
 
@@ -69,12 +70,11 @@ class RecorderTest : public testing::Test {
     ASSERT_TRUE(base::CreateDirectory(GetEventPath()));
 
     // Create and set a test recorder.
-    std::unique_ptr<RecorderImpl> test_recorder =
-        std::make_unique<RecorderImpl>(
-            GetEventPath().value(), GetKeyPath().value(), GetResetCounterPath(),
-            std::make_unique<FakeMetricsLibrary>());
-    RecorderSingleton::GetInstance()->SetRecorderForTest(
-        std::move(test_recorder));
+    test_recorder_ = CreateNewRecorder(
+        GetEventPath().value(), GetKeyPath().value(),
+        Recorder::RecorderParams{.write_cadence = base::Seconds(0),
+                                 .max_in_memory_size_bytes = 100000},
+        GetResetCounterPath(), std::make_unique<FakeMetricsLibrary>());
   }
 
   base::FilePath GetKeyPath() { return temp_dir_.GetPath().Append("keys"); }
@@ -121,6 +121,19 @@ class RecorderTest : public testing::Test {
   void PopulateResetCounterFile(std::string reset_counter) {
     EXPECT_TRUE(base::WriteFile(GetResetCounterPath(), reset_counter));
   }
+
+  std::unique_ptr<RecorderImpl> CreateNewRecorder(
+      const std::string& events_directory,
+      const std::string& keys_path,
+      Recorder::RecorderParams params,
+      const base::FilePath& reset_counter_file,
+      std::unique_ptr<MetricsLibraryInterface> metrics_library) {
+    return std::unique_ptr<RecorderImpl>(
+        new RecorderImpl(events_directory, keys_path, params,
+                         reset_counter_file, std::move(metrics_library)));
+  }
+
+  std::unique_ptr<Recorder> test_recorder_;
 
   base::ScopedTempDir temp_dir_;
 };
@@ -171,6 +184,27 @@ TEST_F(RecorderTest, DISABLED_SequenceMetadataAttached) {
   EXPECT_EQ(event.event_sequence_metadata().reset_counter(), 5);
   EXPECT_NE(event.event_sequence_metadata().system_uptime(),
             kCounterFileUnread);
+}
+
+TEST_F(RecorderTest, EventsFlushOnDestruction) {
+  std::unique_ptr<RecorderImpl> test_recorder = CreateNewRecorder(
+      GetEventPath().value(), GetKeyPath().value(),
+      Recorder::RecorderParams{.write_cadence = base::Seconds(10000),
+                               .max_in_memory_size_bytes = 1000},
+      GetResetCounterPath(), std::make_unique<FakeMetricsLibrary>());
+
+  events::test_project_one::TestEventOne event1;
+  event1.SetTestMetricOne("test").SetTestMetricTwo(1).SetTestMetricThree(2.0);
+  EXPECT_TRUE(RecorderSingleton::GetInstance()->GetRecorder()->Record(event1));
+
+  // A flush should not have triggered yet.
+  EXPECT_EQ(GetEvents().size(), 0);
+
+  // Destroy the recorder.
+  test_recorder.reset();
+
+  // Event should have been flushed.
+  EXPECT_EQ(GetEvents().size(), 1);
 }
 
 }  // namespace metrics::structured

@@ -49,7 +49,10 @@ FakeRecorder::FakeRecorder()
 
 FakeRecorder::FakeRecorder(const std::string& events_directory,
                            const std::string& keys_path)
-    : RecorderImpl(events_directory, keys_path),
+    : RecorderImpl(events_directory,
+                   keys_path,
+                   Recorder::RecorderParams{.write_cadence = base::Seconds(0),
+                                            .max_in_memory_size_bytes = 1000}),
       events_directory_(events_directory),
       key_data_(keys_path) {
   FakeRecorder::ClearEventsData(events_directory, keys_path);

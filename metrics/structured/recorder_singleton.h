@@ -10,9 +10,9 @@
 #include <base/no_destructor.h>
 #include <brillo/brillo_export.h>
 
-namespace metrics::structured {
+#include "metrics/structured/recorder.h"
 
-class Recorder;
+namespace metrics::structured {
 
 // RecorderSingleton provides a way to set MockRecorder or FakeRecorder for
 // testing. This is used internally by events, but shouldn't need to be
@@ -31,13 +31,32 @@ class BRILLO_EXPORT RecorderSingleton {
   static RecorderSingleton* GetInstance();
   Recorder* GetRecorder();
 
+  // Creates and returns a handle to the recorder. Note that calling this
+  // function will set the global recorder to the returned instance. Its
+  // destruction will unset the global recorder.
+  //
+  // It is up to the caller to properly manage the lifetime.
+  std::unique_ptr<Recorder> CreateRecorder(Recorder::RecorderParams params);
+
   void SetRecorderForTest(std::unique_ptr<Recorder> recorder);
   void DestroyRecorderForTest();
 
  private:
-  friend class base::NoDestructor<RecorderSingleton>;
+  // Implementations.
+  friend class RecorderImpl;
 
-  std::unique_ptr<Recorder> recorder_;
+  void SetGlobalRecorder(Recorder* recorder);
+  void UnsetGlobalRecorder(Recorder* recorder);
+
+  Recorder* g_recorder_;
+
+  // TODO(b/333781135): Remove this once all users of SM have begun to use
+  // CreateRecorder() and manage their own recorder lifetime.
+  //
+  // Note that this instance is never destroyed, because GetInstance() creates a
+  // base::NoDestructor instance of |this|. The unique_ptr is used to document
+  // ownership.
+  std::unique_ptr<Recorder> owned_recorder_;
 };
 
 }  // namespace metrics::structured

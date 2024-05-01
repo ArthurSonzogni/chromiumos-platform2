@@ -5,8 +5,6 @@
 #ifndef METRICS_STRUCTURED_RECORDER_IMPL_H_
 #define METRICS_STRUCTURED_RECORDER_IMPL_H_
 
-#include "metrics/structured/recorder.h"
-
 #include <stdint.h>
 
 #include <memory>
@@ -19,6 +17,8 @@
 #include "metrics/metrics_library.h"
 #include "metrics/structured/batch_event_storage.h"
 #include "metrics/structured/key_data.h"
+#include "metrics/structured/recorder.h"
+#include "metrics/structured/recorder_singleton.h"
 
 namespace metrics::structured {
 
@@ -37,14 +37,6 @@ constexpr int kCounterFileUnread = -1;
 // added to the shutdown sequence to ensure events are properly saved onto disk.
 class RecorderImpl : public Recorder {
  public:
-  RecorderImpl(const std::string& events_directory,
-               const std::string& keys_path);
-
-  RecorderImpl(const std::string& events_directory,
-               const std::string& keys_path,
-               const base::FilePath& reset_counter_file,
-               std::unique_ptr<MetricsLibraryInterface> metrics_library);
-
   // Calls Flush() to write any remaining events to disk.
   ~RecorderImpl() override;
 
@@ -58,6 +50,25 @@ class RecorderImpl : public Recorder {
   void Flush() override;
 
  private:
+  friend class FakeRecorder;
+  // TODO(b/333781135): Remove RecorderSingleton friend once all users of SM
+  // have begun to use CreateRecorder() and manage their own recorder lifetime.
+  friend class RecorderSingleton;
+  friend class RecorderTest;
+
+  friend std::unique_ptr<Recorder> RecorderSingleton::CreateRecorder(
+      Recorder::RecorderParams params);
+
+  RecorderImpl(const std::string& events_directory,
+               const std::string& keys_path,
+               Recorder::RecorderParams params);
+
+  RecorderImpl(const std::string& events_directory,
+               const std::string& keys_path,
+               Recorder::RecorderParams params,
+               const base::FilePath& reset_counter_file,
+               std::unique_ptr<MetricsLibraryInterface> metrics_library);
+
   RecorderImpl(const RecorderImpl&) = delete;
   RecorderImpl& operator=(const RecorderImpl&) = delete;
 
