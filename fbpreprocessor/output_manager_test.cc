@@ -91,7 +91,8 @@ class OutputManagerTest : public testing::Test {
 };
 
 TEST_F(OutputManagerTest, ExistingDumpsDeletedOnLogin) {
-  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
   // |SessionManager| notifies registered observers that a user has logged in.
@@ -100,7 +101,8 @@ TEST_F(OutputManagerTest, ExistingDumpsDeletedOnLogin) {
 }
 
 TEST_F(OutputManagerTest, OnUserLoggedInDeletesExistingDumps) {
-  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
   // |OutputManager| is notified that a user has logged in.
@@ -118,7 +120,8 @@ TEST_F(OutputManagerTest, EmptyWiFiFirmwareListOnLogin) {
 
 TEST_F(OutputManagerTest, FilesOnDiskNotAutomaticallyAdded) {
   SimulateUserLogin();
-  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
 
   // The firmware dumps exist on disk but have not been registered with
@@ -137,7 +140,8 @@ TEST_F(OutputManagerTest, AddFirmwareDumpSucceeds) {
   std::set<std::string> expected_dumps;
   for (int i = 0; i < 3; i++) {
     FirmwareDump fw_dump(
-        GetOutputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"));
+        GetOutputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kWiFi);
     base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
     AddFirmwareDumpToOutputManager(fw_dump);
     expected_dumps.insert(fw_dump.DumpFile().value());
@@ -159,7 +163,8 @@ TEST_F(OutputManagerTest, FirmwareDumpsExpire) {
   SimulateUserLogin();
 
   // Add the firmware dump to OutputManager.
-  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
   AddFirmwareDumpToOutputManager(fw_dump);
@@ -180,7 +185,8 @@ TEST_F(OutputManagerTest, FirmwareDumpsExpire) {
 TEST_F(OutputManagerTest, DisallowingFeatureWithFinchDeletesFirmwareDumps) {
   SimulateUserLogin();
 
-  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
   AddFirmwareDumpToOutputManager(fw_dump);
@@ -200,7 +206,8 @@ TEST_F(OutputManagerTest, DisallowingFeatureWithFinchDeletesFirmwareDumps) {
 TEST_F(OutputManagerTest, DisallowingFeatureReturnsEmptyFirmwareList) {
   SimulateUserLogin();
 
-  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   AddFirmwareDumpToOutputManager(fw_dump);
 
@@ -217,7 +224,8 @@ TEST_F(OutputManagerTest, DisallowingFeatureReturnsEmptyFirmwareList) {
 TEST_F(OutputManagerTest, UserLogoutReturnsEmptyFirmwareList) {
   SimulateUserLogin();
 
-  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   AddFirmwareDumpToOutputManager(fw_dump);
 
@@ -234,7 +242,8 @@ TEST_F(OutputManagerTest, UserLogoutReturnsEmptyFirmwareList) {
 TEST_F(OutputManagerTest, UserLogoutDoesNotDeleteFiles) {
   SimulateUserLogin();
 
-  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetOutputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   AddFirmwareDumpToOutputManager(fw_dump);
 

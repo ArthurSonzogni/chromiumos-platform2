@@ -140,7 +140,7 @@ void OutputManager::GetAllAvailableDebugDumps(
     // fbpreprocessor::FirmwareDump instead of hardcoding it here.
     auto dump = file.fw_dump();
     auto debug_dump = out_DebugDumps.add_dump();
-    debug_dump->set_type(DebugDump::WIFI);
+    debug_dump->set_type(FirmwareDump::ConvertToDBusType(dump.type()));
     auto wifi_dump = debug_dump->mutable_wifi_dump();
     wifi_dump->set_dmpfile(dump.DumpFile().value());
     wifi_dump->set_state(WiFiDump::RAW);

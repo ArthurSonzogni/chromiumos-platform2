@@ -68,7 +68,8 @@ class PseudonymizationManagerTest : public testing::Test {
 TEST_F(PseudonymizationManagerTest, StartPseudonymizationNoUserLoggedIn) {
   // Expect the pseudonymization request to be rejected if there's no user
   // logged in.
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_FALSE(pseudonymization_manager()->StartPseudonymization(fw_dump));
 }
@@ -77,7 +78,8 @@ TEST_F(PseudonymizationManagerTest, StartPseudonymizationUserLoggedOut) {
   // Expect the pseudonymization request to be rejected if users have logged
   // out.
   SimulateUserLogin();
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   SimulateUserLogout();
   EXPECT_FALSE(pseudonymization_manager()->StartPseudonymization(fw_dump));
@@ -87,7 +89,8 @@ TEST_F(PseudonymizationManagerTest, StartPseudonymizationSuccessAfterLogin) {
   // |SessionManager| notifies registered observers that a user has logged in.
   SimulateUserLogin();
 
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   // If a user is logged in and a firmware dump exists in the input directory,
   // then the pseudonymization request will be accepted.
@@ -99,7 +102,8 @@ TEST_F(PseudonymizationManagerTest,
   // |PseudonymizationManager| is notified that a user has logged in.
   pseudonymization_manager()->OnUserLoggedIn(FakeManager::kTestUserHash.data());
 
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   // If a user is logged in and a firmware dump exists in the input directory,
   // then the pseudonymization request will be accepted.
@@ -108,7 +112,8 @@ TEST_F(PseudonymizationManagerTest,
 
 TEST_F(PseudonymizationManagerTest, StartPseudonymizationNoOp) {
   SimulateUserLogin();
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   // If a user is logged in and a firmware dump exists in the input directory,
   // then the pseudonymization request will be accepted.
@@ -133,7 +138,8 @@ TEST_F(PseudonymizationManagerTest, RateLimitAccepts5Requests) {
   // since we accept up to 5 pseudonymizations in 30 minutes.
   for (int i = 0; i < 5; ++i) {
     FirmwareDump fw_dump(
-        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"));
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kWiFi);
     base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
     EXPECT_TRUE(pseudonymization_manager()->StartPseudonymization(fw_dump))
         << "for file " << fw_dump.DumpFile();
@@ -147,7 +153,8 @@ TEST_F(PseudonymizationManagerTest, RateLimitAcceptsOnly5Requests) {
   // since we accept up to 5 pseudonymizations in 30 minutes.
   for (int i = 0; i < 5; ++i) {
     FirmwareDump fw_dump(
-        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"));
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kWiFi);
     base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
     pseudonymization_manager()->StartPseudonymization(fw_dump);
     manager()->FastForwardBy(base::Minutes(1));
@@ -155,7 +162,8 @@ TEST_F(PseudonymizationManagerTest, RateLimitAcceptsOnly5Requests) {
 
   // We're now at 5 pseudonymizations in the last 5 minutes, which is more than
   // the maximume rate (5 per 30 minutes). Pseudonymizations should be rejected.
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_FALSE(pseudonymization_manager()->StartPseudonymization(fw_dump));
 }
@@ -166,7 +174,8 @@ TEST_F(PseudonymizationManagerTest, RateLimitAcceptsAfter30Minutes) {
   // since we accept up to 5 pseudonymizations in 30 minutes.
   for (int i = 0; i < 5; ++i) {
     FirmwareDump fw_dump(
-        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"));
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kWiFi);
     base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
     pseudonymization_manager()->StartPseudonymization(fw_dump);
     manager()->FastForwardBy(base::Minutes(1));
@@ -179,7 +188,8 @@ TEST_F(PseudonymizationManagerTest, RateLimitAcceptsAfter30Minutes) {
   // Start 5 pseudonymizations, one per minute. They should all be accepted.
   for (int i = 0; i < 5; ++i) {
     FirmwareDump fw_dump(
-        GetInputFirmwareDumpName("retest_" + std::to_string(i) + ".dmp"));
+        GetInputFirmwareDumpName("retest_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kWiFi);
     base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
     EXPECT_TRUE(pseudonymization_manager()->StartPseudonymization(fw_dump))
         << "for file " << fw_dump.DumpFile();
@@ -192,7 +202,8 @@ TEST_F(PseudonymizationManagerTest, RateLimitClearedOnLogout) {
   // Start 5 pseudonymizations, one per minute.
   for (int i = 0; i < 5; ++i) {
     FirmwareDump fw_dump(
-        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"));
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kWiFi);
     base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
     pseudonymization_manager()->StartPseudonymization(fw_dump);
     manager()->FastForwardBy(base::Minutes(1));
@@ -205,7 +216,8 @@ TEST_F(PseudonymizationManagerTest, RateLimitClearedOnLogout) {
 
   // The user logged out and logged back in. The rate limiter has been reset,
   // expect pseudonymization requests to be accepted again.
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_TRUE(pseudonymization_manager()->StartPseudonymization(fw_dump));
 }
@@ -215,7 +227,8 @@ TEST_F(PseudonymizationManagerTest, RejectedRequestDeletesDump) {
   // Start 5 pseudonymizations, one per minute.
   for (int i = 0; i < 5; ++i) {
     FirmwareDump fw_dump(
-        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"));
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kWiFi);
     base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
     pseudonymization_manager()->StartPseudonymization(fw_dump);
     manager()->FastForwardBy(base::Minutes(1));
@@ -223,7 +236,8 @@ TEST_F(PseudonymizationManagerTest, RejectedRequestDeletesDump) {
 
   // We're now at 5 pseudonymizations in the last 5 minutes, which is more than
   // the maximume rate (5 per 30 minutes). Pseudonymizations should be rejected.
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
   EXPECT_FALSE(pseudonymization_manager()->StartPseudonymization(fw_dump));

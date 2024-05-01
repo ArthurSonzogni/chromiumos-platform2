@@ -55,7 +55,7 @@ void CrashReporterDBusAdaptor::OnFirmwareDumpCreated(
   for (auto dump : dumps.dump()) {
     if (dump.has_wifi_dump()) {
       base::FilePath path(dump.wifi_dump().dmpfile());
-      FirmwareDump fw_dump(path);
+      FirmwareDump fw_dump(path, FirmwareDump::Type::kWiFi);
       LOG(INFO) << __func__ << ": New WiFi dump file detected.";
       VLOG(kLocalOnlyDebugVerbosity) << "Detected new file " << fw_dump << ".";
       manager_->input_manager()->OnNewFirmwareDump(fw_dump);

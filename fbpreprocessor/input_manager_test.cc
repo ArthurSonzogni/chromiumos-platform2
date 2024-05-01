@@ -61,7 +61,8 @@ class InputManagerTest : public testing::Test {
 
 TEST_F(InputManagerTest, UserLoginDeletesExistingFirmwareDumps) {
   // Create a firmware dump in the daemon-store before the user has logged in.
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
 
@@ -74,7 +75,8 @@ TEST_F(InputManagerTest, UserLoginDeletesExistingFirmwareDumps) {
 
 TEST_F(InputManagerTest, OnUserLoggedInDeletesExistingFirmwareDumps) {
   // Create a firmware dump in the daemon-store before the user has logged in.
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_TRUE(base::PathExists(fw_dump.DumpFile()));
 
@@ -87,7 +89,8 @@ TEST_F(InputManagerTest, OnUserLoggedInDeletesExistingFirmwareDumps) {
 
 TEST_F(InputManagerTest, OnNewFirmwareDumpSucceeds) {
   SimulateUserLogin();
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
 
   EXPECT_TRUE(input_manager()->OnNewFirmwareDump(fw_dump));
@@ -95,7 +98,8 @@ TEST_F(InputManagerTest, OnNewFirmwareDumpSucceeds) {
 
 TEST_F(InputManagerTest, OnNewFirmwareDumpRejectsNonExistingFiles) {
   SimulateUserLogin();
-  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"));
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kWiFi);
 
   // The FirmwareDump object is not backed by an on-disk file, expect the
   // request to be rejected.

@@ -67,7 +67,8 @@ bool PseudonymizationManager::StartPseudonymization(
     return false;
   }
   FirmwareDump output(
-      user_root_dir_.Append(kProcessedDirectory).Append(fw_dump.BaseName()));
+      user_root_dir_.Append(kProcessedDirectory).Append(fw_dump.BaseName()),
+      fw_dump.type());
   if (manager_->task_runner()->PostTask(
           FROM_HERE,
           base::BindOnce(&PseudonymizationManager::DoNoOpPseudonymization,
