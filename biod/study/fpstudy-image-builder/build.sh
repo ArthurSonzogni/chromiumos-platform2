@@ -178,7 +178,6 @@ command cros_sdk --delete
 command cros_sdk -- setup_board --board="${BOARD}"
 echo "# cros workon ###########################################################"
 if [[ ${#WORKON_PKGS[@]} -gt 0 ]]; then
-	# command cros_sdk -- cros-workon-$BOARD start ${WORKON_PKGS[*]}
 	cros workon --board="${BOARD}" start "${WORKON_PKGS[@]}"
 fi
 
