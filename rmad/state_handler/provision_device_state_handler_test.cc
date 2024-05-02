@@ -614,26 +614,6 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_KeepDeviveOpenSucceeded) {
-  // Set up environment for same owner and keep user data path.
-  json_store_->SetValue(kSameOwner, true);
-  json_store_->SetValue(kWipeDevice, false);
-
-  auto handler = CreateInitializedStateHandler({});
-  handler->RunState();
-  task_environment_.RunUntilIdle();
-
-  // Provision complete signal is sent.
-  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
-  // A reboot is expected after provisioning succeeds.
-  ExpectTransitionReboot(handler);
-
-  // Successfully transition to WpEnablePhysical state.
-  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kWpEnablePhysical, {});
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_UnknownDestinationFailedBlocking) {
   // Set up environment without destination (internal error).
   auto handler = CreateInitializedStateHandler({});

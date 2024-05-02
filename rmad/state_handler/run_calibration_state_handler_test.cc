@@ -322,7 +322,6 @@ TEST_F(RunCalibrationStateHandlerTest, InitializeState_NoCalibrationMap) {
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationInstruction, kLidInstructionName));
 
@@ -370,58 +369,8 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success) {
   EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
-TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_Success_NoWipeDevice) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-  EXPECT_TRUE(
-      json_store_->SetValue(kCalibrationInstruction, kLidInstructionName));
-
-  const std::map<std::string, std::map<std::string, std::string>>
-      predefined_calibration_map = {{kBaseInstructionName,
-                                     {{kBaseAccName, kStatusCompleteName},
-                                      {kBaseGyroName, kStatusCompleteName}}},
-                                    {kLidInstructionName,
-                                     {{kLidAccName, kStatusWaitingName},
-                                      {kLidGyroName, kStatusWaitingName}}}};
-  EXPECT_TRUE(
-      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
-
-  auto handler = CreateStateHandler(
-      {.lid_acc_progresses = {0.5, 1.0}, .lid_gyro_progresses = {0.5, 1.0}});
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  task_environment_.RunUntilIdle();
-
-  std::map<std::string, std::map<std::string, std::string>>
-      current_calibration_map;
-  EXPECT_TRUE(json_store_->GetValue(kCalibrationMap, &current_calibration_map));
-
-  const std::map<std::string, std::map<std::string, std::string>>
-      target_calibration_map = {{kBaseInstructionName,
-                                 {{kBaseAccName, kStatusCompleteName},
-                                  {kBaseGyroName, kStatusCompleteName}}},
-                                {kLidInstructionName,
-                                 {{kLidAccName, kStatusCompleteName},
-                                  {kLidGyroName, kStatusCompleteName}}}};
-  EXPECT_EQ(current_calibration_map, target_calibration_map);
-
-  task_environment_.RunUntilIdle();
-  EXPECT_EQ(overall_status_history_.size(), 1);
-  EXPECT_EQ(overall_status_history_[0], RMAD_CALIBRATION_OVERALL_COMPLETE);
-
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  RmadState state = handler->GetState();
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
-  handler->CleanUpState();
-  // Check that only one overall signal is sent.
-  task_environment_.RunUntilIdle();
-  EXPECT_EQ(overall_status_history_.size(), 1);
-}
-
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessNeedAnotherRound) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
@@ -472,8 +421,6 @@ TEST_F(RunCalibrationStateHandlerTest,
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_NeedCheck_SomethingFailed) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusFailedName},
@@ -516,8 +463,6 @@ TEST_F(RunCalibrationStateHandlerTest,
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NoNeedCalibration) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
-
   const std::map<std::string, std::map<std::string, std::string>>
       predefined_calibration_map = {{kBaseInstructionName,
                                      {{kBaseAccName, kStatusCompleteName},
@@ -559,53 +504,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NoNeedCalibration) {
   EXPECT_EQ(overall_status_history_.size(), 1);
 }
 
-TEST_F(RunCalibrationStateHandlerTest,
-       GetNextStateCase_NoNeedCalibration_NoWipeDevice) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-
-  const std::map<std::string, std::map<std::string, std::string>>
-      predefined_calibration_map = {{kBaseInstructionName,
-                                     {{kBaseAccName, kStatusCompleteName},
-                                      {kBaseGyroName, kStatusSkipName}}},
-                                    {kLidInstructionName,
-                                     {{kLidAccName, kStatusCompleteName},
-                                      {kLidGyroName, kStatusCompleteName}}}};
-  EXPECT_TRUE(
-      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
-
-  auto handler = CreateStateHandler({});
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  task_environment_.RunUntilIdle();
-
-  std::map<std::string, std::map<std::string, std::string>>
-      current_calibration_map;
-  EXPECT_TRUE(json_store_->GetValue(kCalibrationMap, &current_calibration_map));
-  const std::map<std::string, std::map<std::string, std::string>>
-      target_calibration_map = {{kBaseInstructionName,
-                                 {{kBaseAccName, kStatusCompleteName},
-                                  {kBaseGyroName, kStatusSkipName}}},
-                                {kLidInstructionName,
-                                 {{kLidAccName, kStatusCompleteName},
-                                  {kLidGyroName, kStatusCompleteName}}}};
-  EXPECT_EQ(current_calibration_map, target_calibration_map);
-
-  EXPECT_EQ(overall_status_history_.size(), 1);
-  EXPECT_EQ(overall_status_history_[0], RMAD_CALIBRATION_OVERALL_COMPLETE);
-
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  RmadState state = handler->GetState();
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
-  handler->CleanUpState();
-  // Check that only one overall signal is sent.
-  task_environment_.RunUntilIdle();
-  EXPECT_EQ(overall_status_history_.size(), 1);
-}
-
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
@@ -633,36 +532,7 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
   EXPECT_EQ(state_case, RmadState::StateCase::kRunCalibration);
 }
 
-TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_MissingWipeDeviceVar) {
-  // No kWipeDevice set.
-  EXPECT_TRUE(
-      json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
-
-  const std::map<std::string, std::map<std::string, std::string>>
-      predefined_calibration_map = {{kBaseInstructionName,
-                                     {{kBaseAccName, kStatusWaitingName},
-                                      {kBaseGyroName, kStatusWaitingName}}},
-                                    {kLidInstructionName,
-                                     {{kLidAccName, kStatusWaitingName},
-                                      {kLidGyroName, kStatusWaitingName}}}};
-  EXPECT_TRUE(
-      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
-
-  auto handler = CreateStateHandler(
-      {.base_acc_progresses = {1.0}, .base_gyro_progresses = {1.0}});
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  task_environment_.RunUntilIdle();
-
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  RmadState state = handler->GetState();
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_TRANSITION_FAILED);
-  EXPECT_EQ(state_case, RmadState::StateCase::kRunCalibration);
-}
-
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnexpectedReboot) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(json_store_->SetValue(kCalibrationInstruction, kLidAccName));
 
   const std::map<std::string, std::map<std::string, std::string>>
@@ -697,7 +567,6 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_UnexpectedReboot) {
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NotFinished) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
@@ -739,7 +608,6 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_NotFinished) {
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessUnknownComponent) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
@@ -776,7 +644,6 @@ TEST_F(RunCalibrationStateHandlerTest,
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessInvalidComponent) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
@@ -812,7 +679,6 @@ TEST_F(RunCalibrationStateHandlerTest,
 }
 
 TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessUnknownStatus) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
@@ -848,7 +714,6 @@ TEST_F(RunCalibrationStateHandlerTest, GetNextStateCase_SuccessUnknownStatus) {
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessCalibrationFailed) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationInstruction, kBaseInstructionName));
 
@@ -885,7 +750,6 @@ TEST_F(RunCalibrationStateHandlerTest,
 
 TEST_F(RunCalibrationStateHandlerTest,
        GetNextStateCase_SuccessCalibrationFailedNoMoreSensors) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationInstruction, kLidInstructionName));
 
@@ -921,7 +785,6 @@ TEST_F(RunCalibrationStateHandlerTest,
 }
 
 TEST_F(RunCalibrationStateHandlerTest, TryGetNextStateCaseAtBoot_Success) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
   EXPECT_TRUE(
       json_store_->SetValue(kCalibrationInstruction, kLidInstructionName));
 

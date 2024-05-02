@@ -167,7 +167,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWipeSelection);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableMethod);
 
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
@@ -182,7 +182,40 @@ TEST_F(DeviceDestinationStateHandlerTest,
   EXPECT_FALSE(ccd_blocked);
 
   bool wipe_device;
-  EXPECT_FALSE(json_store_->GetValue(kWipeDevice, &wipe_device));
+  EXPECT_TRUE(json_store_->GetValue(kWipeDevice, &wipe_device));
+}
+
+TEST_F(DeviceDestinationStateHandlerTest,
+       GetNextStateCase_Success_Same_WpDisableRequired_CcdNotBlocked_HwwpOff) {
+  auto handler = CreateStateHandler({.hwwp_enabled = false});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  json_store_->SetValue(kReplacedComponentNames,
+                        std::vector<std::string>{
+                            RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE)});
+
+  RmadState state;
+  state.mutable_device_destination()->set_destination(
+      DeviceDestinationState::RMAD_DESTINATION_SAME);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
+
+  bool same_owner;
+  EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
+  EXPECT_TRUE(same_owner);
+
+  bool wp_disable_required;
+  EXPECT_TRUE(json_store_->GetValue(kWpDisableRequired, &wp_disable_required));
+  EXPECT_TRUE(wp_disable_required);
+
+  bool ccd_blocked;
+  EXPECT_TRUE(json_store_->GetValue(kCcdBlocked, &ccd_blocked));
+  EXPECT_FALSE(ccd_blocked);
+
+  bool wipe_device;
+  EXPECT_TRUE(json_store_->GetValue(kWipeDevice, &wipe_device));
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,
@@ -199,7 +232,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWipeSelection);
+  EXPECT_EQ(state_case, RmadState::StateCase::kFinalize);
 
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
@@ -213,7 +246,8 @@ TEST_F(DeviceDestinationStateHandlerTest,
   EXPECT_FALSE(json_store_->GetValue(kCcdBlocked, &ccd_blocked));
 
   bool wipe_device;
-  EXPECT_FALSE(json_store_->GetValue(kWipeDevice, &wipe_device));
+  EXPECT_TRUE(json_store_->GetValue(kWipeDevice, &wipe_device));
+  EXPECT_FALSE(wipe_device);
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,

@@ -180,44 +180,6 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_Success_WipeDevice) {
 }
 
 TEST_F(CheckCalibrationStateHandlerTest,
-       GetNextStateCase_Success_NoWipeDevice) {
-  EXPECT_TRUE(json_store_->SetValue(kWipeDevice, false));
-
-  const std::map<std::string, std::map<std::string, std::string>>
-      predefined_calibration_map = {{kBaseInstructionName,
-                                     {{kBaseAccName, kStatusCompleteName},
-                                      {kBaseGyroName, kStatusCompleteName}}},
-                                    {kLidInstructionName,
-                                     {{kLidAccName, kStatusCompleteName},
-                                      {kLidGyroName, kStatusCompleteName}}}};
-  EXPECT_TRUE(
-      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
-
-  auto handler = CreateStateHandler();
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  RmadState state = handler->GetState();
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case, RmadState::StateCase::kWpEnablePhysical);
-
-  std::map<std::string, std::map<std::string, std::string>>
-      current_calibration_map;
-  EXPECT_TRUE(json_store_->GetValue(kCalibrationMap, &current_calibration_map));
-
-  const std::map<std::string, std::map<std::string, std::string>>
-      target_calibration_map = {{kBaseInstructionName,
-                                 {{kBaseAccName, kStatusCompleteName},
-                                  {kBaseGyroName, kStatusCompleteName}}},
-                                {kLidInstructionName,
-                                 {{kLidAccName, kStatusCompleteName},
-                                  {kLidGyroName, kStatusCompleteName}}}};
-
-  EXPECT_EQ(current_calibration_map, target_calibration_map);
-}
-
-TEST_F(CheckCalibrationStateHandlerTest,
        GetNextStateCase_SuccessNeedCalibration) {
   EXPECT_TRUE(json_store_->SetValue(kWipeDevice, true));
 
@@ -527,30 +489,6 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_MissingState) {
 
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
-  EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
-}
-
-TEST_F(CheckCalibrationStateHandlerTest,
-       GetNextStateCase_MissingWipeDeviceVar) {
-  // No kWipeDevice set.
-
-  const std::map<std::string, std::map<std::string, std::string>>
-      predefined_calibration_map = {{kBaseInstructionName,
-                                     {{kBaseAccName, kStatusCompleteName},
-                                      {kBaseGyroName, kStatusCompleteName}}},
-                                    {kLidInstructionName,
-                                     {{kLidAccName, kStatusCompleteName},
-                                      {kLidGyroName, kStatusCompleteName}}}};
-  EXPECT_TRUE(
-      json_store_->SetValue(kCalibrationMap, predefined_calibration_map));
-
-  auto handler = CreateStateHandler();
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
-  RmadState state = handler->GetState();
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_TRANSITION_FAILED);
   EXPECT_EQ(state_case, RmadState::StateCase::kCheckCalibration);
 }
 

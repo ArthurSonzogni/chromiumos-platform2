@@ -246,10 +246,6 @@ ProvisionDeviceStateHandler::TryGetNextStateCaseAtBoot() {
           // TODO(genechang): Go to kCheckCalibration for the user to check.
           return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
         }
-      } else if (bool wipe_device;
-                 json_store_->GetValue(kWipeDevice, &wipe_device) &&
-                 !wipe_device) {
-        return NextStateCaseWrapper(RmadState::StateCase::kWpEnablePhysical);
       } else {
         return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
       }

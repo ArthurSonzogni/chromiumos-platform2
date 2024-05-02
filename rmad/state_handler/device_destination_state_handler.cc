@@ -65,50 +65,31 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
 
   state_ = state;
 
-  // There are 5 paths:
-  // 1. Same owner + replaced components require WP disabling + CCD blocked:
-  //    Go to RSU state. WP can only be disabled by RSU when CCD is blocked.
-  // 2. Same owner + replaced components require WP disabling + CCD not blocked:
-  //    Go to WipeSelection state.
-  // 3. Same owner + replaced components don't require WP disabling:
-  //    Go to WipeSelection state.
-  // 4. Different owner + CCD blocked:
-  //    Must wipe the device. Mandatory RSU. Go straight to RSU state.
-  // 5. Different owner + CCD not blocked:
-  //    Must wipe the device. Skip WipeSelection state and go to WpDisableMethod
-  //    state.
+  // There are 3 cases:
+  // Same owner and replaced components don't require WP disabling (Case 1):
+  //    Go to Finalize state.
+  // Different owner or Replaced components require WP disabling, and
+  //   - CCD blocked (Case 2):
+  //     Go to kWpDisableRsu state. WP can only be disabled by RSU when CCD is
+  //     blocked.
+  //   - CCD not blocked (Case 3):
+  //     Go to kWpDisableMethod state.
+  //
   // We should set the following values to json_store:
   // - kSameOwner
   // - kWpDisableRequired
   // - kCcdBlocked (only required when kWpDisableRequired is true)
-  if (device_destination.destination() ==
-      DeviceDestinationState::RMAD_DESTINATION_SAME) {
-    json_store_->SetValue(kSameOwner, true);
+  bool is_same_user = device_destination.destination() ==
+                      DeviceDestinationState::RMAD_DESTINATION_SAME;
+  json_store_->SetValue(kSameOwner, is_same_user);
+  if (is_same_user) {
     MetricsUtils::SetMetricsValue(
         json_store_, kMetricsReturningOwner,
         ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_SAME_OWNER));
     RecordDeviceDestinationToLogs(
         json_store_,
         ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_SAME_OWNER));
-    if (ReplacedComponentNeedHwwpDisabled()) {
-      json_store_->SetValue(kWpDisableRequired, true);
-      if (device_management_client_->IsCcdBlocked()) {
-        // Case 1.
-        json_store_->SetValue(kCcdBlocked, true);
-        json_store_->SetValue(kWipeDevice, true);
-        return NextStateCaseWrapper(RmadState::StateCase::kWpDisableRsu);
-      } else {
-        // Case 2.
-        json_store_->SetValue(kCcdBlocked, false);
-        return NextStateCaseWrapper(RmadState::StateCase::kWipeSelection);
-      }
-    } else {
-      // Case 3.
-      json_store_->SetValue(kWpDisableRequired, false);
-      return NextStateCaseWrapper(RmadState::StateCase::kWipeSelection);
-    }
   } else {
-    json_store_->SetValue(kSameOwner, false);
     MetricsUtils::SetMetricsValue(
         json_store_, kMetricsReturningOwner,
         ReturningOwner_Name(
@@ -116,15 +97,25 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
     RecordDeviceDestinationToLogs(
         json_store_, ReturningOwner_Name(
                          ReturningOwner::RMAD_RETURNING_OWNER_DIFFERENT_OWNER));
+  }
+
+  if (is_same_user && !ReplacedComponentNeedHwwpDisabled()) {
+    // Case 1.
+    json_store_->SetValue(kWpDisableRequired, false);
+    json_store_->SetValue(kWipeDevice, false);
+    return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
+  } else {
     json_store_->SetValue(kWpDisableRequired, true);
     json_store_->SetValue(kWipeDevice, true);
+
     if (device_management_client_->IsCcdBlocked()) {
-      // Case 4.
+      // Case 2.
       json_store_->SetValue(kCcdBlocked, true);
       return NextStateCaseWrapper(RmadState::StateCase::kWpDisableRsu);
     } else {
-      // Case 5.
+      // Case 3.
       json_store_->SetValue(kCcdBlocked, false);
+
       // If HWWP is already disabled, assume the user will select the physical
       // method and go directly to WpDisablePhysical state.
       if (auto hwwp_enabled =
