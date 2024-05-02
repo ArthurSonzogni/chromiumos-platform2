@@ -38,6 +38,9 @@ base::Value::Dict ConvertToValue(
 base::Value::Dict ConvertToValue(
     const ash::cros_healthd::mojom::NetworkBandwidthRoutineDetailPtr& detail);
 
+base::Value::Dict ConvertToValue(
+    const ash::cros_healthd::mojom::SensitiveSensorRoutineDetailPtr& detail);
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_MOJOM_ROUTINE_OUTPUT_UTILS_H_

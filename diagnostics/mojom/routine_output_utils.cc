@@ -88,6 +88,59 @@ std::string EnumToString(mojom::CameraSubtestResult subtest_result) {
   }
 }
 
+std::string EnumToString(mojom::SensitiveSensorInfo::Type type) {
+  switch (type) {
+    case mojom::SensitiveSensorInfo::Type::kUnmappedEnumField:
+      NOTREACHED_NORETURN();
+    case mojom::SensitiveSensorInfo::Type::kAccel:
+      return "Accel";
+    case mojom::SensitiveSensorInfo::Type::kGyro:
+      return "Gyro";
+    case mojom::SensitiveSensorInfo::Type::kMagn:
+      return "Magn";
+    case mojom::SensitiveSensorInfo::Type::kGravity:
+      return "Gravity";
+  }
+}
+
+base::Value::Dict ConvertToValue(const mojom::SensitiveSensorInfoPtr& info) {
+  base::Value::Dict output;
+  output.Set("id", info->id);
+  base::Value::List out_types;
+  for (const auto& type : info->types) {
+    out_types.Append(EnumToString(type));
+  }
+  output.Set("types", std::move(out_types));
+
+  base::Value::List out_channels;
+  for (const auto& channel : info->channels) {
+    out_channels.Append(channel);
+  }
+  output.Set("channels", std::move(out_channels));
+  return output;
+}
+
+base::Value::Dict ConvertToValue(
+    const mojom::SensitiveSensorReportPtr& report) {
+  base::Value::Dict output;
+
+  base::Value::List out_passed_sensors;
+  for (const auto& sensor : report->passed_sensors) {
+    out_passed_sensors.Append(ConvertToValue(sensor));
+  }
+  output.Set("passed_sensors", std::move(out_passed_sensors));
+
+  base::Value::List out_failed_sensors;
+  for (const auto& sensor : report->failed_sensors) {
+    out_failed_sensors.Append(ConvertToValue(sensor));
+  }
+  output.Set("failed_sensors", std::move(out_failed_sensors));
+
+  output.Set("sensor_presence_status",
+             EnumToString(report->sensor_presence_status));
+  return output;
+}
+
 }  // namespace
 
 base::Value::Dict ConvertToValue(
@@ -263,6 +316,23 @@ base::Value::Dict ConvertToValue(
 
   output.Set("download_speed_kbps", detail->download_speed_kbps);
   output.Set("upload_speed_kbps", detail->upload_speed_kbps);
+
+  return output;
+}
+
+base::Value::Dict ConvertToValue(
+    const mojom::SensitiveSensorRoutineDetailPtr& detail) {
+  base::Value::Dict output;
+
+  output.Set("base_accelerometer", ConvertToValue(detail->base_accelerometer));
+  output.Set("lid_accelerometer", ConvertToValue(detail->lid_accelerometer));
+  output.Set("base_gyroscope", ConvertToValue(detail->base_gyroscope));
+  output.Set("lid_gyroscope", ConvertToValue(detail->lid_gyroscope));
+  output.Set("base_magnetometer", ConvertToValue(detail->base_magnetometer));
+  output.Set("lid_magnetometer", ConvertToValue(detail->lid_magnetometer));
+  output.Set("base_gravity_sensor",
+             ConvertToValue(detail->base_gravity_sensor));
+  output.Set("lid_gravity_sensor", ConvertToValue(detail->lid_gravity_sensor));
 
   return output;
 }
