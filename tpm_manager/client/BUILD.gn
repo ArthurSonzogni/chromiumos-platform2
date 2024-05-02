@@ -8,13 +8,9 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
-    ":libtpm_manager",
     ":libtpm_manager-client-headers",
     ":tpm_manager_client",
   ]
-  if (use.test) {
-    deps += [ ":tpm_manager-client_testrunner" ]
-  }
 }
 
 # tpm_manager client library generated headers. Used by other tools to
@@ -95,17 +91,6 @@ static_library("proto_library") {
   public_deps = [ ":print_proto_library" ]
 }
 
-# A shared library for clients.
-shared_library("libtpm_manager") {
-  sources = [ "tpm_manager_utility.cc" ]
-  configs += [ ":target_defaults" ]
-  libs = [ "system_api" ]
-  deps = [
-    ":libtpm_manager-client",
-    ":proto_library",
-  ]
-}
-
 # A client command line utility.
 executable("tpm_manager_client") {
   sources = [ "main.cc" ]
@@ -114,7 +99,6 @@ executable("tpm_manager_client") {
     ":target_defaults",
   ]
   deps = [
-    ":libtpm_manager",
     ":libtpm_manager-client",
     ":proto_library",
   ]
@@ -127,40 +111,4 @@ executable("tpm_manager_client") {
     "system_api",
     "protobuf",
   ]
-}
-
-if (use.test) {
-  pkg_config("tpm_manager_testrunner_config") {
-    pkg_deps = [
-      "libbrillo-test",
-      "libchrome-test",
-      "libmetrics",
-    ]
-  }
-
-  executable("tpm_manager-client_testrunner") {
-    sources = [
-      "tpm_manager-client_testrunner.cc",
-      "tpm_manager_utility_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-      ":tpm_manager_testrunner_config",
-    ]
-
-    # NOSORT
-    pkg_deps = [
-      # system_api depends on protobuf (or protobuf-lite). It must appear
-      # before protobuf here or the linker flags won't be in the right
-      # order.
-      "system_api",
-      "protobuf",
-    ]
-    deps = [
-      ":libtpm_manager",
-      ":libtpm_manager-client-test",
-      ":proto_library",
-    ]
-  }
 }
