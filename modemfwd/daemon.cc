@@ -3,8 +3,6 @@
 // found in the LICENSE file.
 
 #include "modemfwd/daemon.h"
-#include "base/files/file_path.h"
-#include "modemfwd/modem_sandbox.h"
 
 #include <signal.h>
 #include <sysexits.h>
@@ -18,6 +16,7 @@
 #include <base/check.h>
 #include <base/containers/contains.h>
 #include <base/containers/fixed_flat_map.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -27,7 +26,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <cros_config/cros_config.h>
-#include <dbus/modemfwd/dbus-constants.h>
+#include <chromeos/dbus/service_constants.h>
 #include <sys/wait.h>
 
 #include "modemfwd/dlc_manager.h"
@@ -38,10 +37,10 @@
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_flasher.h"
 #include "modemfwd/modem_helper_directory.h"
+#include "modemfwd/modem_sandbox.h"
 #include "modemfwd/modem_tracker.h"
 #include "modemfwd/notification_manager.h"
 #include "modemfwd/prefs.h"
-
 #include "modemfwd/proto_bindings/firmware_manifest_v2.pb.h"
 
 namespace {
