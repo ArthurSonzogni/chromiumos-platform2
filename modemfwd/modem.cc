@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -22,14 +23,12 @@
 #include <brillo/strings/string_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/modemfwd_switches.h>
-#include <dbus/modemfwd/dbus-constants.h>
+#include <modemmanager/dbus-proxies.h>
 #include <ModemManager/ModemManager.h>
 
-#include "base/containers/contains.h"
 #include "modemfwd/logging.h"
 #include "modemfwd/modem_helper.h"
 #include "modemfwd/modem_sandbox.h"
-#include "modemmanager/dbus-proxies.h"
 
 namespace {
 
