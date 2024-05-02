@@ -92,7 +92,6 @@ source_set("vtpm_server_library") {
 
 config("vtpmd_config") {
   libs = [
-    "tpm_manager",
     "trunks",
     "hwsec-foundation",
   ]
@@ -159,7 +158,6 @@ install_config("install_tmpfiles_config") {
 if (use.test) {
   config("vtpm_test_config") {
     libs = [
-      "tpm_manager",
       "trunks",
       "trunks_test",
     ]

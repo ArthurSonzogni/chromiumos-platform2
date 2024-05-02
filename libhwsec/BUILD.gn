@@ -48,10 +48,7 @@ pkg_config("target_defaults") {
     pkg_deps += [ "protobuf-lite" ]
   }
 
-  libs = [
-    "hwsec-foundation",
-    "tpm_manager",
-  ]
+  libs = [ "hwsec-foundation" ]
 
   defines = [
     "BUILD_LIBHWSEC",

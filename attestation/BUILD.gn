@@ -97,7 +97,6 @@ pkg_config("common_library_config") {
   libs = [
     "hwsec",
     "hwsec-foundation",
-    "tpm_manager",
   ]
 }
 

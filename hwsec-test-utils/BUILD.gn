@@ -72,10 +72,7 @@ executable("hwsec-ownership-id") {
   configs += [ ":target_defaults" ]
   install_path = "bin"
 
-  libs = [
-    "hwsec-foundation",
-    "tpm_manager",
-  ]
+  libs = [ "hwsec-foundation" ]
 
   pkg_deps = [
     "openssl",
