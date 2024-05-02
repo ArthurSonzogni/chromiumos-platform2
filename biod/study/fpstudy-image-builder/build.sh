@@ -25,6 +25,8 @@ mkdir -p "${OUT}"
 
 echo "# Building ${CONFIG} ####################################################"
 
+USE_FLAGS=( )
+BUILD_FLAGS=( )
 source "${CONFIG_DIR}/build_config.sh"
 
 ROOT=~/chromiumos-fpstudy-${BOARD}-${BRANCH}
@@ -187,12 +189,11 @@ fi
 
 echo "# cros build-packages ###################################################"
 
-USE_FLAGS=( fpstudy )
+USE_FLAGS+=( fpstudy )
 if [[ "${IMAGE_TYPE}" == "test" ]]; then
 	USE_FLAGS+=( login_enable_crosh_sudo )
 fi
 
-BUILD_FLAGS=( )
 # We could add the --chrome, but that might make build take longer.
 # The 115 and 116 release branches wouldn't build without --chrome flag.
 # Note: cros "build" was the only version of build-packages.
