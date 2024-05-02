@@ -1,4 +1,13 @@
 {
+  "ap_i2c": {
+    "binds": [
+      {
+        "dirname": "/dev",
+        "basename": "i2c-\\d+"
+      }
+    ],
+    "group": "i2c"
+  },
   "ata_storage": {
     "binds": [
       "/sys/class/block/",
