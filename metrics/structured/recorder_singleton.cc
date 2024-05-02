@@ -18,8 +18,6 @@ constexpr char kKeysPath[] = "/var/lib/metrics/structured/keys";
 
 }  // namespace
 
-std::unique_ptr<Recorder> RecorderSingleton::recorder_ = nullptr;
-
 RecorderSingleton* RecorderSingleton::GetInstance() {
   static base::NoDestructor<RecorderSingleton> recorder_singleton{};
   return recorder_singleton.get();
@@ -41,7 +39,6 @@ void RecorderSingleton::DestroyRecorderForTest() {
 }
 
 RecorderSingleton::RecorderSingleton() = default;
-
 RecorderSingleton::~RecorderSingleton() = default;
 
 }  // namespace structured

@@ -137,6 +137,12 @@ void BatchEventStorage::MaybeWrite() {
 }
 
 void BatchEventStorage::Flush() {
+  // Do not write to file if there are no events.
+  if (events_.non_uma_events().size() == 0) {
+    last_write_uptime_ = GetUptime();
+    return;
+  }
+
   if (!WriteEventsProtoToDir(events_directory_.value(), events_)) {
     PLOG(WARNING) << "Events flush failed to " << events_directory_.value();
     return;
@@ -153,7 +159,7 @@ base::TimeDelta BatchEventStorage::GetUptime() {
 
   timespec boot_time;
   if (clock_gettime(CLOCK_BOOTTIME, &boot_time) != 0) {
-    PLOG(FATAL) << "Failed to get boot time.";
+    PLOG(WARNING) << "Failed to get boot time.";
   }
 
   return base::Seconds(boot_time.tv_sec) + base::Nanoseconds(boot_time.tv_nsec);

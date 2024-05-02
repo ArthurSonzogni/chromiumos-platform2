@@ -10,8 +10,7 @@
 #include <base/no_destructor.h>
 #include <brillo/brillo_export.h>
 
-namespace metrics {
-namespace structured {
+namespace metrics::structured {
 
 class Recorder;
 
@@ -31,16 +30,16 @@ class BRILLO_EXPORT RecorderSingleton {
 
   static RecorderSingleton* GetInstance();
   Recorder* GetRecorder();
+
   void SetRecorderForTest(std::unique_ptr<Recorder> recorder);
   void DestroyRecorderForTest();
 
  private:
   friend class base::NoDestructor<RecorderSingleton>;
 
-  static std::unique_ptr<Recorder> recorder_;
+  std::unique_ptr<Recorder> recorder_;
 };
 
-}  // namespace structured
-}  // namespace metrics
+}  // namespace metrics::structured
 
 #endif  // METRICS_STRUCTURED_RECORDER_SINGLETON_H_

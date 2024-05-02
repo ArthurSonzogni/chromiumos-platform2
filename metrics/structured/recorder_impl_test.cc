@@ -9,7 +9,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/logging.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -61,6 +60,8 @@ constexpr uint64_t kEventTwoHash = UINT64_C(18051195235939111613);
 
 }  // namespace
 
+// TODO(b/338458899): Investigate why calling DestroyRecorderForTest() in
+// TearDown() causes coverage builds to fail the test.
 class RecorderTest : public testing::Test {
  protected:
   void SetUp() override {
@@ -74,10 +75,6 @@ class RecorderTest : public testing::Test {
             std::make_unique<FakeMetricsLibrary>());
     RecorderSingleton::GetInstance()->SetRecorderForTest(
         std::move(test_recorder));
-  }
-
-  void TearDown() override {
-    RecorderSingleton::GetInstance()->DestroyRecorderForTest();
   }
 
   base::FilePath GetKeyPath() { return temp_dir_.GetPath().Append("keys"); }
@@ -131,6 +128,7 @@ class RecorderTest : public testing::Test {
 TEST_F(RecorderTest, WriteEvent) {
   events::test_project_one::TestEventOne event1;
   event1.SetTestMetricOne("test").SetTestMetricTwo(1).SetTestMetricThree(2.0);
+
   EXPECT_TRUE(RecorderSingleton::GetInstance()->GetRecorder()->Record(event1));
 
   // Check that the project key exists and contains something.
