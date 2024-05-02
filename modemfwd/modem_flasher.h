@@ -119,8 +119,6 @@ class ModemFlasher {
   void FlashFinished(std::optional<std::string> journal_entry_id,
                      uint32_t fw_types);
 
-  uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> fw_cfg);
-
   std::map<std::string, FlashState> modem_info_;
 
   // Owned by Daemon

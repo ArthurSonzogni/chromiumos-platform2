@@ -53,19 +53,7 @@ std::string GetFirmwareVersion(Modem* modem, std::string type) {
     return modem->GetAssocFirmwareVersion(type);
 }
 
-}  // namespace
-
-ModemFlasher::ModemFlasher(FirmwareDirectory* firmware_directory,
-                           Journal* journal,
-                           NotificationManager* notification_mgr,
-                           Metrics* metrics)
-    : firmware_directory_(firmware_directory),
-      journal_(journal),
-      notification_mgr_(notification_mgr),
-      metrics_(metrics) {}
-
-uint32_t ModemFlasher::GetFirmwareTypesForMetrics(
-    std::vector<FirmwareConfig> flash_cfg) {
+uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> flash_cfg) {
   uint32_t fw_types = 0;
   if (flash_cfg.empty())
     return 0;
@@ -95,6 +83,17 @@ uint32_t ModemFlasher::GetFirmwareTypesForMetrics(
 
   return fw_types;
 }
+
+}  // namespace
+
+ModemFlasher::ModemFlasher(FirmwareDirectory* firmware_directory,
+                           Journal* journal,
+                           NotificationManager* notification_mgr,
+                           Metrics* metrics)
+    : firmware_directory_(firmware_directory),
+      journal_(journal),
+      notification_mgr_(notification_mgr),
+      metrics_(metrics) {}
 
 bool ModemFlasher::ShouldFlash(Modem* modem, brillo::ErrorPtr* err) {
   std::string equipment_id = modem->GetEquipmentId();
