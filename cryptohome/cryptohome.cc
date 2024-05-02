@@ -256,6 +256,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "is_pw_pk_establishment_blocked",
                                     "lock_factor_until_reboot",
                                     "migrate_legacy_fingerprints",
+                                    "get_vault_properties",
                                     nullptr};
 enum ActionEnum {
   ACTION_UNMOUNT,
@@ -312,6 +313,7 @@ enum ActionEnum {
   ACTION_IS_PW_PK_ESTABLISHMENT_BLOCKED,
   ACTION_LOCK_FACTOR_UNTIL_REBOOT,
   ACTION_MIGRATE_LEGACY_FINGERPRINTS,
+  ACTION_GET_VAULT_PROPERTIES,
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -2781,6 +2783,36 @@ int main(int argc, char** argv) {
     if (reply.error() !=
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
       printer.PrintHumanOutput("Failed to migrate legacy fingerprints.\n");
+      return static_cast<int>(reply.error());
+    }
+
+    printer.PrintReplyProtobuf(reply);
+  } else if (!strcmp(switches::kActions[switches::ACTION_GET_VAULT_PROPERTIES],
+                     action.c_str())) {
+    user_data_auth::GetVaultPropertiesRequest req;
+    user_data_auth::GetVaultPropertiesReply reply;
+
+    cryptohome::Username account_id;
+
+    if (!GetAccountId(printer, cl, account_id)) {
+      return 1;
+    }
+
+    req.set_username(*account_id);
+
+    brillo::ErrorPtr error;
+    if (!userdataauth_proxy.GetVaultProperties(req, &reply, &error,
+                                               timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "GetVaultProperties call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printer.PrintHumanOutput("Failed to get vault properties.\n");
       return static_cast<int>(reply.error());
     }
 
