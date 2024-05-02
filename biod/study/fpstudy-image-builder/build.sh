@@ -16,7 +16,7 @@ set -e
 
 # Apply argument.
 CONFIG="${1:-brya-latest-test}"
-OUT="${2:-out/${CONFIG}}"
+OUT="$(realpath "${2:-out/${CONFIG}}")"
 
 IMG_BUILDER_DIR="$(dirname "$(realpath "$0")" )"
 CONFIG_DIR="${IMG_BUILDER_DIR}/${CONFIG}"
