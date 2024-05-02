@@ -12,6 +12,10 @@ namespace chromeos_update_engine {
 // Compresses the input buffer |in| into |out| with zstd.
 bool ZstdCompress(const brillo::Blob& in, brillo::Blob* out);
 
+// Compresses the input buffer |in| into |out| with zstd and long distance
+// matching with increased window.
+bool ZstdCompressIncreasedWindow(const brillo::Blob& in, brillo::Blob* out);
+
 }  // namespace chromeos_update_engine
 
 #endif  // UPDATE_ENGINE_PAYLOAD_GENERATOR_ZSTD_H_

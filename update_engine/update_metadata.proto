@@ -178,6 +178,9 @@ message InstallOperation {
 
     // On minor version 8 or newer, these operations are supported:
     REPLACE_ZSTD = 11;  // Replace destination extents w/ attached zstd data.
+    REPLACE_ZSTD_INCREASED_WINDOW = 12;  // Replace destination extents w/
+                                         // attached zstd data using increased
+                                         // long distance matching window size.
   }
   required Type type = 1;
 

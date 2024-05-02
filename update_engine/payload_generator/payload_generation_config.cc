@@ -218,7 +218,9 @@ bool PayloadVersion::Validate() const {
                         minor == kPuffdiffMinorPayloadVersion ||
                         minor == kVerityMinorPayloadVersion ||
                         minor == kPartialUpdateMinorPayloadVersion ||
-                        minor == kReplaceZstdMinorPayloadVersion);
+                        minor == kReplaceZstdMinorPayloadVersion ||
+                        minor ==
+                            kReplaceZstdIncreasedWindowMinorPayloadVersion);
   return true;
 }
 
@@ -251,6 +253,8 @@ bool PayloadVersion::OperationAllowed(InstallOperation::Type operation) const {
       return minor >= kPuffdiffMinorPayloadVersion;
     case InstallOperation::REPLACE_ZSTD:
       return minor >= kReplaceZstdMinorPayloadVersion;
+    case InstallOperation::REPLACE_ZSTD_INCREASED_WINDOW:
+      return minor >= kReplaceZstdIncreasedWindowMinorPayloadVersion;
 #ifndef __CHROMEOS__
     case InstallOperation::MOVE:
     case InstallOperation::BSDIFF:

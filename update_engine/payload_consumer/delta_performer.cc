@@ -674,6 +674,7 @@ bool DeltaPerformer::Write(const void* bytes, size_t count, ErrorCode* error) {
       case InstallOperation::REPLACE_BZ:
       case InstallOperation::REPLACE_XZ:
       case InstallOperation::REPLACE_ZSTD:
+      case InstallOperation::REPLACE_ZSTD_INCREASED_WINDOW:
         op_result = PerformReplaceOperation(op);
         OP_DURATION_HISTOGRAM("REPLACE", op_start_time);
         break;
@@ -959,7 +960,8 @@ bool DeltaPerformer::PerformReplaceOperation(
   CHECK(operation.type() == InstallOperation::REPLACE ||
         operation.type() == InstallOperation::REPLACE_BZ ||
         operation.type() == InstallOperation::REPLACE_XZ ||
-        operation.type() == InstallOperation::REPLACE_ZSTD);
+        operation.type() == InstallOperation::REPLACE_ZSTD ||
+        operation.type() == InstallOperation::REPLACE_ZSTD_INCREASED_WINDOW);
 
   // Since we delete data off the beginning of the buffer as we use it,
   // the data we need should be exactly at the beginning of the buffer.
@@ -973,7 +975,9 @@ bool DeltaPerformer::PerformReplaceOperation(
     writer.reset(new BzipExtentWriter(std::move(writer)));
   } else if (operation.type() == InstallOperation::REPLACE_XZ) {
     writer.reset(new XzExtentWriter(std::move(writer)));
-  } else if (operation.type() == InstallOperation::REPLACE_ZSTD) {
+  } else if (operation.type() == InstallOperation::REPLACE_ZSTD ||
+             operation.type() ==
+                 InstallOperation::REPLACE_ZSTD_INCREASED_WINDOW) {
     writer.reset(new ZstdExtentWriter(std::move(writer)));
   }
 

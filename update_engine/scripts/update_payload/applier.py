@@ -235,7 +235,7 @@ class PayloadApplier(object):
     def _ApplyReplaceOperation(
         self, op, op_name, out_data, part_file, part_size
     ):
-        """Applies a REPLACE{,_BZ,_XZ,_ZSTD} operation.
+        """Applies a REPLACE{,_BZ,_XZ,_ZSTD*} operation.
 
         Args:
           op: the operation object
@@ -261,7 +261,19 @@ class PayloadApplier(object):
         elif op.type == common.OpType.REPLACE_ZSTD:
             # pylint: disable=no-member
             out_data = subprocess.check_output(
-                ["zstd", "-d"], input=out_data, close_fds=False
+                ["zstd", "-d"],
+                input=out_data,
+                close_fds=False,
+            )
+            data_length = len(out_data)
+        elif op.type == common.OpType.REPLACE_ZSTD_INCREASED_WINDOW:
+            # pylint: disable=no-member
+            out_data = subprocess.check_output(
+                # Use 1GiB for 32 bit platform MAX as that's the generation set
+                # long distance matching window size.
+                ["zstd", "-d", "--long=30"],
+                input=out_data,
+                close_fds=False,
             )
             data_length = len(out_data)
 
@@ -569,6 +581,7 @@ class PayloadApplier(object):
                 common.OpType.REPLACE_BZ,
                 common.OpType.REPLACE_XZ,
                 common.OpType.REPLACE_ZSTD,
+                common.OpType.REPLACE_ZSTD_INCREASED_WINDOW,
             ):
                 self._ApplyReplaceOperation(
                     op, op_name, data, new_part_file, part_size

@@ -39,6 +39,7 @@ def _OpTypeByName(op_name):
         "PUFFDIFF": common.OpType.PUFFDIFF,
         "BROTLI_BSDIFF": common.OpType.BROTLI_BSDIFF,
         "REPLACE_ZSTD": common.OpType.REPLACE_ZSTD,
+        "REPLACE_ZSTD_INCREASED_WINDOW": common.OpType.REPLACE_ZSTD_INCREASED_WINDOW,
     }
     return op_name_to_type[op_name]
 
@@ -1034,7 +1035,7 @@ class PayloadCheckerTest(unittest.TestCase):
         """Parametric testing of _CheckOperation().
 
         Args:
-          op_type_name: 'REPLACE{_BZ,_XZ,_ZSTD}'
+          op_type_name: 'REPLACE{_BZ,_XZ,_ZSTD*}'
             'SOURCE_COPY', 'SOURCE_BSDIFF', BROTLI_BSDIFF or 'PUFFDIFF'.
           allow_unhashed: Whether we're allowing to not hash the data.
           fail_src_extents: Tamper with src extents.
@@ -1106,6 +1107,8 @@ class PayloadCheckerTest(unittest.TestCase):
             payload_checker.minor_version = 4 if fail_bad_minor_version else 5
         elif op_type == common.OpType.REPLACE_ZSTD:
             payload_checker.minor_version = 7 if fail_bad_minor_version else 8
+        elif op_type == common.OpType.REPLACE_ZSTD_INCREASED_WINDOW:
+            payload_checker.minor_version = 8 if fail_bad_minor_version else 9
 
         if op_type != common.OpType.SOURCE_COPY:
             if not fail_mismatched_data_offset_length:
@@ -1536,6 +1539,7 @@ def ValidateCheckOperationTest(
         common.OpType.REPLACE_BZ,
         common.OpType.REPLACE_XZ,
         common.OpType.REPLACE_ZSTD,
+        common.OpType.REPLACE_ZSTD_INCREASED_WINDOW,
     ) and (fail_src_extents or fail_src_length or fail_bad_minor_version):
         return False
 
@@ -1647,6 +1651,7 @@ def AddAllParametricTests():
                 "REPLACE_BZ",
                 "REPLACE_XZ",
                 "REPLACE_ZSTD",
+                "REPLACE_ZSTD_INCREASED_WINDOW",
                 "SOURCE_COPY",
                 "SOURCE_BSDIFF",
                 "PUFFDIFF",

@@ -58,6 +58,7 @@ _SUPPORTED_MINOR_VERSIONS = {
     6: (_TYPE_DELTA,),
     7: (_TYPE_DELTA,),
     8: (_TYPE_DELTA,),
+    9: (_TYPE_DELTA,),
 }
 
 
@@ -895,7 +896,7 @@ class PayloadChecker(object):
     def _CheckReplaceOperation(
         self, op, data_length, total_dst_blocks, op_name
     ):
-        """Specific checks for REPLACE{_BZ,_XZ,_ZSTD} operations.
+        """Specific checks for REPLACE{_BZ,_XZ,_ZSTD*} operations.
 
         Args:
           op: The operation object from the manifest.
@@ -1162,6 +1163,7 @@ class PayloadChecker(object):
             common.OpType.REPLACE_BZ,
             common.OpType.REPLACE_XZ,
             common.OpType.REPLACE_ZSTD,
+            common.OpType.REPLACE_ZSTD_INCREASED_WINDOW,
         ):
             self._CheckReplaceOperation(
                 op, data_length, total_dst_blocks, op_name
@@ -1253,6 +1255,7 @@ class PayloadChecker(object):
             common.OpType.REPLACE_BZ: 0,
             common.OpType.REPLACE_XZ: 0,
             common.OpType.REPLACE_ZSTD: 0,
+            common.OpType.REPLACE_ZSTD_INCREASED_WINDOW: 0,
             common.OpType.ZERO: 0,
             common.OpType.SOURCE_COPY: 0,
             common.OpType.SOURCE_BSDIFF: 0,
@@ -1265,6 +1268,7 @@ class PayloadChecker(object):
             common.OpType.REPLACE_BZ: 0,
             common.OpType.REPLACE_XZ: 0,
             common.OpType.REPLACE_ZSTD: 0,
+            common.OpType.REPLACE_ZSTD_INCREASED_WINDOW: 0,
             # SOURCE_COPY operations don't have blobs.
             common.OpType.SOURCE_BSDIFF: 0,
             common.OpType.PUFFDIFF: 0,

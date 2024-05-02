@@ -11,7 +11,11 @@
 
 namespace chromeos_update_engine {
 
-bool ZstdCompress(const brillo::Blob& in, brillo::Blob* out) {
+namespace {
+
+bool ZstdCompressWithOptions(const brillo::Blob& in,
+                             brillo::Blob* out,
+                             bool window_log) {
   TEST_AND_RETURN_FALSE(out);
   out->clear();
   if (in.size() == 0)
@@ -21,11 +25,15 @@ bool ZstdCompress(const brillo::Blob& in, brillo::Blob* out) {
 
   // Options step.
   ZSTD_CCtx* ctx = ZSTD_createCCtx();
+
   if (ZSTD_isError(
           ZSTD_CCtx_setParameter(ctx, ZSTD_c_enableLongDistanceMatching, 1)) ||
-      ZSTD_isError(
-          ZSTD_CCtx_setParameter(ctx, ZSTD_c_windowLog, ZSTD_WINDOWLOG_MAX)) ||
       ZSTD_isError(ZSTD_CCtx_setParameter(ctx, ZSTD_c_compressionLevel, 22))) {
+    ZSTD_freeCCtx(ctx);
+    return false;
+  }
+  if (window_log && ZSTD_isError(ZSTD_CCtx_setParameter(
+                        ctx, ZSTD_c_windowLog, ZSTD_WINDOWLOG_MAX_32))) {
     ZSTD_freeCCtx(ctx);
     return false;
   }
@@ -43,6 +51,16 @@ bool ZstdCompress(const brillo::Blob& in, brillo::Blob* out) {
     return false;
   out->resize(size);
   return true;
+}
+
+}  // namespace
+
+bool ZstdCompress(const brillo::Blob& in, brillo::Blob* out) {
+  return ZstdCompressWithOptions(in, out, /*window_log=*/false);
+}
+
+bool ZstdCompressIncreasedWindow(const brillo::Blob& in, brillo::Blob* out) {
+  return ZstdCompressWithOptions(in, out, /*window_log=*/true);
 }
 
 }  // namespace chromeos_update_engine

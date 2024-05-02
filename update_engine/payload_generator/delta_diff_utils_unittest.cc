@@ -309,7 +309,7 @@ TEST_F(DeltaDiffUtilsTest, PreferReplaceMaxTest) {
 
   EXPECT_FALSE(data.empty());
   EXPECT_TRUE(op.has_type());
-  EXPECT_EQ(InstallOperation::REPLACE_ZSTD, op.type());
+  EXPECT_EQ(InstallOperation::REPLACE_ZSTD_INCREASED_WINDOW, op.type());
 }
 
 // Test the simple case where all the blocks are different and no new blocks are

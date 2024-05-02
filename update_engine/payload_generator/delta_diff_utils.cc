@@ -627,7 +627,17 @@ bool GenerateBestFullOperation(const brillo::Blob& new_data,
   }
 
   // Try compressing it with zstd.
-  if (version.OperationAllowed(InstallOperation::REPLACE_ZSTD)) {
+  if (version.OperationAllowed(
+          InstallOperation::REPLACE_ZSTD_INCREASED_WINDOW)) {
+    brillo::Blob new_data_zstd;
+    if (ZstdCompressIncreasedWindow(new_data, &new_data_zstd) &&
+        !new_data_zstd.empty() &&
+        (!out_blob_set || out_blob->size() > new_data_zstd.size())) {
+      *out_type = InstallOperation::REPLACE_ZSTD_INCREASED_WINDOW;
+      *out_blob = std::move(new_data_zstd);
+      out_blob_set = true;
+    }
+  } else if (version.OperationAllowed(InstallOperation::REPLACE_ZSTD)) {
     brillo::Blob new_data_zstd;
     if (ZstdCompress(new_data, &new_data_zstd) && !new_data_zstd.empty() &&
         (!out_blob_set || out_blob->size() > new_data_zstd.size())) {

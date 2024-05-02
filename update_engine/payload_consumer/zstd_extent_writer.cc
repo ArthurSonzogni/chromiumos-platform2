@@ -23,6 +23,16 @@ bool ZstdExtentWriter::Init(
     return false;
   }
 
+  if (size_t set_d_stream_windowlog = ZSTD_DCtx_setParameter(
+          d_stream_, ZSTD_d_windowLogMax, ZSTD_WINDOWLOG_MAX_32);
+      ZSTD_isError(set_d_stream_windowlog)) {
+    LOG(ERROR) << "ZSTD set parameter failure: "
+               << ZSTD_getErrorName(set_d_stream_windowlog);
+    ZSTD_freeDCtx(d_stream_);
+    d_stream_ = nullptr;
+    return false;
+  }
+
   return writer_->Init(fd, extents, block_size);
 }
 

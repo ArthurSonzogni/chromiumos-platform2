@@ -50,6 +50,10 @@ extern const uint32_t kPartialUpdateMinorPayloadVersion;
 // The minor version that allows REPLACE_ZSTD operation.
 extern const uint32_t kReplaceZstdMinorPayloadVersion;
 
+// The minor version that allows REPLACE_ZSTD_INCREASED_WINDOW
+// operation.
+extern const uint32_t kReplaceZstdIncreasedWindowMinorPayloadVersion;
+
 // The minimum and maximum supported minor version.
 extern const uint32_t kMinSupportedMinorPayloadVersion;
 extern const uint32_t kMaxSupportedMinorPayloadVersion;
