@@ -15,6 +15,8 @@
 #include <base/values.h>
 #include <iioservice/mojo/sensor.mojom-forward.h>
 
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
+
 namespace diagnostics {
 
 // The detail of sensor used for sensitive sensor routine. This is also a helper
@@ -48,6 +50,9 @@ class SensorDetail {
 
   // Return the detail for v1 routine output dict.
   base::Value::Dict ToDict() const;
+
+  // Return the detail pointer for v2 routine output.
+  ash::cros_healthd::mojom::SensitiveSensorInfoPtr ToMojo() const;
 
  protected:
   explicit SensorDetail(int32_t sensor_id,

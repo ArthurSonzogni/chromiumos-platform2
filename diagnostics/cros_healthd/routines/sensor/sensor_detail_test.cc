@@ -12,8 +12,12 @@
 #include <gtest/gtest.h>
 #include <iioservice/mojo/sensor.mojom.h>
 
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
+
 namespace diagnostics {
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr int32_t kTestSensorId = 123;
 
@@ -129,6 +133,22 @@ TEST(SensorDetailTest, ToDict) {
   expected_value.Set("channels", std::move(out_channels));
 
   EXPECT_EQ(sensor->ToDict(), expected_value);
+}
+
+TEST(SensorDetailTest, ToMojo) {
+  auto sensor =
+      SensorDetail::Create(kTestSensorId, {cros::mojom::DeviceType::ACCEL});
+  ASSERT_TRUE(sensor);
+  auto indices = sensor->CheckRequiredChannelsAndGetIndices(
+      {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"});
+  ASSERT_TRUE(indices.has_value());
+
+  auto expected_value = mojom::SensitiveSensorInfo::New();
+  expected_value->id = kTestSensorId;
+  expected_value->types.push_back(mojom::SensitiveSensorInfo::Type::kAccel);
+  expected_value->channels = {cros::mojom::kTimestampChannel, "accel_x",
+                              "accel_y", "accel_z"};
+  EXPECT_EQ(sensor->ToMojo(), expected_value);
 }
 
 }  // namespace

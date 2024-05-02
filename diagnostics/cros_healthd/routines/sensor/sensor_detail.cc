@@ -14,10 +14,13 @@
 #include <iioservice/mojo/sensor.mojom.h>
 
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor_constants.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kChannelAxes[] = {'x', 'y', 'z'};
 
@@ -70,6 +73,23 @@ std::string ConvertDeviceTypeToChannelPrefix(cros::mojom::DeviceType type) {
       return cros::mojom::kGravityChannel;
     case cros::mojom::DeviceType::MAGN:
       return cros::mojom::kMagnetometerChannel;
+    default:
+      // The other sensor types are not supported in this routine.
+      NOTREACHED_NORETURN();
+  }
+}
+
+// Convert sensor device type enum to routines mojom enum.
+mojom::SensitiveSensorInfo::Type Convert(cros::mojom::DeviceType type) {
+  switch (type) {
+    case cros::mojom::DeviceType::ACCEL:
+      return mojom::SensitiveSensorInfo::Type::kAccel;
+    case cros::mojom::DeviceType::ANGLVEL:
+      return mojom::SensitiveSensorInfo::Type::kGyro;
+    case cros::mojom::DeviceType::MAGN:
+      return mojom::SensitiveSensorInfo::Type::kMagn;
+    case cros::mojom::DeviceType::GRAVITY:
+      return mojom::SensitiveSensorInfo::Type::kGravity;
     default:
       // The other sensor types are not supported in this routine.
       NOTREACHED_NORETURN();
@@ -178,6 +198,18 @@ base::Value::Dict SensorDetail::ToDict() const {
       out_channels.Append(channel_name);
   sensor_output.Set("channels", std::move(out_channels));
   return sensor_output;
+}
+
+mojom::SensitiveSensorInfoPtr SensorDetail::ToMojo() const {
+  auto output = mojom::SensitiveSensorInfo::New();
+  output->id = sensor_id_;
+  for (const auto& type : types_) {
+    output->types.push_back(Convert(type));
+  }
+  if (channels_.has_value()) {
+    output->channels = channels_.value();
+  }
+  return output;
 }
 
 }  // namespace diagnostics
