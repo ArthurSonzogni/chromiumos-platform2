@@ -1,0 +1,6 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+DRIVERS=="pmt_telemetry", ACTION=="add", \
+  RUN+="/bin/chgrp -R intel-pmt \"$sys$devpath/intel_pmt\""

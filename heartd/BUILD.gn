@@ -13,6 +13,7 @@ group("all") {
     ":install_mojo_service_manager_policy_config",
     ":install_seccomp_policy",
     ":install_tmpfiles_config",
+    ":install_udev_rule",
   ]
 
   if (use.test) {
@@ -65,6 +66,11 @@ install_config("install_seccomp_policy") {
 install_config("install_tmpfiles_config") {
   sources = [ "tmpfiles.d/heartd.conf" ]
   install_path = "tmpfilesd"
+}
+
+install_config("install_udev_rule") {
+  sources = [ "udev/99-intel-pmt-permissions.rules" ]
+  install_path = "/lib/udev/rules.d"
 }
 
 if (use.test) {
