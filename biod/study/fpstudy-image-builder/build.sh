@@ -16,12 +16,16 @@ set -e
 
 # Apply argument.
 CONFIG="${1:-brya-latest-test}"
+OUT="${2:-out/${CONFIG}}"
+
+IMG_BUILDER_DIR="$(dirname "$(realpath "$0")" )"
+CONFIG_DIR="${IMG_BUILDER_DIR}/${CONFIG}"
+
+mkdir -p "${OUT}"
 
 echo "# Building ${CONFIG} ####################################################"
 
-out="$(realpath "${CONFIG}")"
-
-source "${out}/build_config.sh"
+source "${CONFIG_DIR}/build_config.sh"
 
 ROOT=~/chromiumos-fpstudy-${BOARD}-${BRANCH}
 WORKON_PKGS=( )
@@ -204,7 +208,7 @@ echo USE="${USE_FLAGS[*]}" cros build-image --board="${BOARD}" "${BUILD_FLAGS[@]
 USE="${USE_FLAGS[*]}" cros build-image --board="${BOARD}" "${BUILD_FLAGS[@]}" "${IMAGE_OPTS[@]}" "${IMAGE_TYPE}"
 
 echo "# cros flash ############################################################"
-cros flash "file://${out}/fpstudy-image-${BOARD}-${BRANCH}.bin" "${BOARD}/latest"
+cros flash "file://${OUT}/fpstudy-image-${BOARD}-${BRANCH}.bin" "${BOARD}/latest"
 
 # Follow the Installing Chromium OS on your Device section from
 # https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#installing-chromium-os-on-your-device

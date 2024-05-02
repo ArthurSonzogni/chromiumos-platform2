@@ -4,6 +4,7 @@
 
 # make CONFIG=hatch-bloonchipper-test all
 CONFIG ?= brya-latest-test
+OUT_DIR ?= out
 
 # Example: 2023-06-25
 DATE_DAY     := $(shell date --iso-8601)
@@ -12,9 +13,10 @@ DATE_DAY     := $(shell date --iso-8601)
 # Example: 2023-06-25_14:32:09_PDT
 DATE_SEC     := $(shell date "+%Y-%m-%d_%H:%M:%S_%Z")
 
-out = $(CONFIG)
+CONFIG_DIR   := $(CONFIG)
+OUT          := $(OUT_DIR)/$(CONFIG)
 
-include $(out)/build_config.mk
+include $(CONFIG_DIR)/build_config.mk
 
 IMAGE          := fpstudy-image-$(BOARD)-$(BRANCH).bin
 BUNDLE         := fpstudy-bundle-$(BOARD)-$(TYPE)-$(BRANCH).tar.gz
@@ -25,12 +27,17 @@ BUILD_ROOT     := $(HOME)/chromiumos-fpstudy-$(BOARD)-$(BRANCH)
 # Artifacts that we want to see after running "make all"
 TARGETS         = $(BUNDLE) README.html README.md checksum.md5
 
-all : $(out)/$(BUNDLE)
+all : $(OUT)/$(BUNDLE)
 
 help:
-	@echo "Ex: make CONFIG=$(CONFIG)"
+	@echo "Ex: make CONFIG=$(CONFIG) OUT=~/DriveFS/Shared drives/..."
 
-$(out)/% : TEMPLATE_%.in
+dirs : $(OUT)
+
+$(OUT) :
+	mkdir -p "$@"
+
+$(OUT)/% : TEMPLATE_%.in | dirs
 	cp $< $@
 	sed -i "s|@BOARD@|$(BOARD)|" $@
 	sed -i "s|@DATE_DAY@|$(DATE_DAY)|" $@
@@ -54,13 +61,13 @@ $(out)/% : TEMPLATE_%.in
 # If we remove the dependency on these, we will only trigger
 # a rebuild if the release version is changed. This doesn't work
 # if we are using the "stable" branch name.
-$(out)/$(IMAGE) : build.sh $(out)/build_config.sh
-	bash build.sh "$(CONFIG)"
+$(OUT)/$(IMAGE) : build.sh $(CONFIG_DIR)/build_config.sh | dirs
+	bash build.sh "$(CONFIG)" "$(OUT)"
 
-$(out)/checksum.md5 : $(addprefix $(out)/,README.html README.md $(IMAGE))
+$(OUT)/checksum.md5 : $(addprefix $(OUT)/,README.html README.md $(IMAGE)) | dirs
 	$(RM) $@
 	bash drivefs-util.sh wait $^
-	md5sum $^ | sed "s|$(out)/||" >$@
+	md5sum $^ | sed "s|$(OUT)/||" >$@
 
 # We remove the archive if tar failed, but we still need to return an error
 # to stop the build.
@@ -68,7 +75,7 @@ $(out)/checksum.md5 : $(addprefix $(out)/,README.html README.md $(IMAGE))
 # If we are writing to DriveFS, we see that the subsequent tar command fails
 # with an error about the file changing while reading. Add this in the hopes
 # that it forces DriveFS to stabilize.
-$(out)/$(BUNDLE) : $(addprefix $(out)/,README.html README.md $(IMAGE) checksum.md5)
+$(OUT)/$(BUNDLE) : $(addprefix $(OUT)/,README.html README.md $(IMAGE) checksum.md5) | dirs
 	@echo "# wait for drivefs upload ##########################################"
 	@# This avoids the "file changed as we read it" tar error we keep seeing.
 	@# Note that sync doesn't help here.
@@ -77,17 +84,17 @@ $(out)/$(BUNDLE) : $(addprefix $(out)/,README.html README.md $(IMAGE) checksum.m
 	sync $^
 	sleep 1 # Wait for any possible file swaps that drive-fs needs to make
 	@echo "# bundling #########################################################"
-	mkdir -p "$(out)/archive"
-	tar czvf "$(out)/archive/$(BUNDLE_ARCHIVE)" -C "$(out)" $(subst $(out)/,,$^) || ( rm "$@" && false )
-	ln -f -s "$(out)/archive/$(BUNDLE_ARCHIVE)" "$@"
-	@#cp "$(out)/archive/$(BUNDLE_ARCHIVE)" "$@"
+	mkdir -p "$(OUT)/archive"
+	tar czvf "$(OUT)/archive/$(BUNDLE_ARCHIVE)" -C "$(OUT)" $(subst $(OUT)/,,$^) || ( rm "$@" && false )
+	ln -f -s "$(OUT)/archive/$(BUNDLE_ARCHIVE)" "$@"
+	@#cp "$(OUT)/archive/$(BUNDLE_ARCHIVE)" "$@"
 
 verify :
-	cd "$(out)"; md5sum -c checksum.md5
+	cd "$(OUT)"; md5sum -c checksum.md5
 
 clean :
-	$(RM) $(addprefix $(out)/,$(TARGETS))
-	$(RM) -i $(out)/$(IMAGE)
+	$(RM) $(addprefix $(OUT)/,$(TARGETS))
+	$(RM) $(OUT)/$(IMAGE)
 
 # Can't access DriveFS mount from root, so we must copt to tmp first.
 flash : IMAGE_TMP := $(shell mktemp /tmp/fpstudy-image-XXXX.bin)
@@ -97,8 +104,8 @@ flash :
 		&& echo -e "Example: make flash CONFIG=brya-latest-test OF=/dev/sdX." \
 		&& exit 1 )
 	sudo umount $(OF)* || true
-	cp -v "$(out)/$(IMAGE)" "$(IMAGE_TMP)"
+	cp -v "$(OUT)/$(IMAGE)" "$(IMAGE_TMP)"
 	sudo dd if="$(IMAGE_TMP)" bs=4M status=progress oflag=sync of="$(OF)"
 	sudo sync
 
-.PHONY: all clean verify help flash
+.PHONY: all clean dirs verify help flash
