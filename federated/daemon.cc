@@ -24,6 +24,12 @@
 #include "federated/federated_service_impl.h"
 #include "federated/storage_manager.h"
 
+#if USE_DEBUG
+#include <vector>
+#include "federated/mojom/federated_service.mojom.h"
+#include "federated/mojom/tables.mojom.h"
+#endif  // USE_DEBUG
+
 namespace federated {
 
 Daemon::Daemon() : weak_ptr_factory_(this) {}
@@ -44,6 +50,22 @@ int Daemon::OnInit() {
   scheduler_ =
       std::make_unique<Scheduler>(StorageManager::GetInstance(),
                                   std::move(device_status_monitor), bus_.get());
+
+#if USE_DEBUG
+  // In debug mode, start scheduling immediately.
+  DVLOG(1) << "Scheduling job for debug purposes";
+  using chromeos::federated::mojom::ClientScheduleConfig;
+  using chromeos::federated::mojom::ClientScheduleConfigPtr;
+  auto schedule_config = ClientScheduleConfig::New();
+  schedule_config->client_name = "timezone_code_phh";
+  schedule_config->example_storage_table_id =
+      chromeos::federated::mojom::FederatedExampleTableId::TIMEZONE_CODE;
+  schedule_config->launch_stage = "dev";
+  std::vector<ClientScheduleConfigPtr> schedule_configs;
+  schedule_configs.push_back(std::move(schedule_config));
+  scheduler_->Schedule(std::move(schedule_configs));
+#endif  // USE_DEBUG
+
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::SingleThreadTaskRunner::GetCurrentDefault(),

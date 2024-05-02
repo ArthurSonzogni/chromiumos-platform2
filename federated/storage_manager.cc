@@ -20,23 +20,22 @@
 #include "federated/session_manager_proxy.h"
 #include "federated/utils.h"
 
-#if USE_LOCAL_FEDERATED_SERVER
+#if USE_DEBUG
 #include <vector>
 #include "federated/mojom/example.mojom.h"
-#endif
+#endif  // USE_DEBUG
 
 namespace federated {
 namespace {
 const base::TimeDelta kExampleTtl = base::Days(10);
 
-#if USE_LOCAL_FEDERATED_SERVER
-// When we are testing against a local federated server, we want to populate
-// the test server with generic test data
+#if USE_DEBUG
+// When we are testing against a local federated server, we want to populate the
+// test server with generic test data. These are a couple of helper functions
+// for that purpose.
 using ::chromeos::federated::mojom::Example;
 using ::chromeos::federated::mojom::ExamplePtr;
 using ::chromeos::federated::mojom::Features;
-using ::chromeos::federated::mojom::FloatList;
-using ::chromeos::federated::mojom::Int64List;
 using ::chromeos::federated::mojom::StringList;
 using ::chromeos::federated::mojom::ValueList;
 using ::chromeos::federated::mojom::ValueListPtr;
@@ -47,15 +46,15 @@ ValueListPtr CreateStringList(const std::vector<std::string>& values) {
   return value_list;
 }
 
-ExamplePtr CreateExamplePtr(const std::string& query) {
+// We use the timezone code dev job for debug executions.
+ExamplePtr CreateDebugExamplePtr(const std::string& query) {
   ExamplePtr example = Example::New();
   example->features = Features::New();
   auto& feature_map = example->features->feature;
-  feature_map["query"] = CreateStringList({query});
-
+  feature_map["timezone_code"] = CreateStringList({query});
   return example;
 }
-#endif
+#endif  // USE_DEBUG
 
 }  // namespace
 
@@ -228,16 +227,18 @@ void StorageManager::ConnectToDatabaseIfNecessary() {
     example_database_.reset();
   } else {
     Metrics::GetInstance()->LogStorageEvent(StorageEvent::kConnected);
-#if USE_LOCAL_FEDERATED_SERVER
+
+#if USE_DEBUG
+    // During local development, add some test examples to the database.
     DVLOG(1) << "Successfully connect to database, inserts examples for test.";
     std::vector<std::string> queries = {"hey", "hey", "hey", "wow", "wow",
                                         "yay", "yay", "yay", "yay", "aha"};
     std::for_each(queries.begin(), queries.end(), [this](auto& query) {
-      OnExampleReceived("analytics_test_population",
-                        ConvertToTensorFlowExampleProto(CreateExamplePtr(query))
-                            .SerializeAsString());
+      OnExampleReceived("timezone_code_phh", ConvertToTensorFlowExampleProto(
+                                                 CreateDebugExamplePtr(query))
+                                                 .SerializeAsString());
     });
-#endif
+#endif  // USE_DEBUG
   }
 }
 

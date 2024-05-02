@@ -88,7 +88,7 @@ static_library("federated_common") {
     "storage_manager.cc",
     "utils.cc",
   ]
-  defines = [ "USE_LOCAL_FEDERATED_SERVER=${use.local_federated_server}" ]
+  defines = [ "USE_DEBUG=${use.debug}" ]
   all_dependent_configs = [ ":federated_common_pkg_deps" ]
   pkg_deps = [
     "protobuf",

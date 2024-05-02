@@ -28,11 +28,10 @@
 namespace federated {
 namespace {
 
-#if USE_LOCAL_FEDERATED_SERVER
-constexpr char kServiceUri[] = "https://127.0.0.1:8791";
-#else
+// Empty string "" means use the default production server.
+// For development purposes, if developing against a local federated server,
+// this can be overridden to e.g. "https://127.0.0.1:8791".
 constexpr char kServiceUri[] = "";
-#endif
 
 constexpr char kApiKey[] = "";
 constexpr char kDlcId[] = "fcp";

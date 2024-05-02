@@ -23,6 +23,8 @@
 namespace federated {
 
 namespace {
+
+#if !USE_DEBUG
 // The first checkin happens kInitialWaitingWindow after the device startup to
 // avoid resource competition.
 constexpr base::TimeDelta kInitialWaitingWindow = base::Minutes(5);
@@ -32,6 +34,12 @@ constexpr base::TimeDelta kDefaultRetryWindow = base::Minutes(30);
 // The retry window should not be shorter than kMinimalRetryWindow to avoid
 // spam.
 constexpr base::TimeDelta kMinimalRetryWindow = base::Minutes(1);
+#else
+// Short delays for debugging.
+constexpr base::TimeDelta kInitialWaitingWindow = base::Seconds(20);
+constexpr base::TimeDelta kDefaultRetryWindow = base::Seconds(20);
+constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(20);
+#endif  // !USE_DEBUG
 
 // Limits each round to 10 minutes.
 constexpr base::TimeDelta kMaximalExecutionTime = base::Minutes(10);
@@ -262,6 +270,7 @@ void FederatedClient::RunPlan(const StorageManager* const storage_manager) {
   const std::string population_name =
       base::StringPrintf("chromeos/%s/%s", client_config_.name.c_str(),
                          client_config_.launch_stage.c_str());
+  DVLOG(1) << "RunPlan population_name: " << population_name;
   FederatedClient::Context context(client_config_.name,
                                    client_config_.table_name, population_name,
                                    device_status_monitor_, storage_manager);
