@@ -121,6 +121,11 @@ void FlossBatteryProvider::UpdateDeviceBattery(const std::string& address,
   if (!IsRegistered()) {
     return;
   }
+  if (level < 0 || level > 100) {
+    LOG(WARNING) << __func__ << ": Ignoring invalid battery level '" << level
+                 << "' for address '" << address << "'";
+    return;
+  }
 
   dbus::MethodCall method_call(
       battery_manager::kFlossBatteryProviderManagerInterface,
