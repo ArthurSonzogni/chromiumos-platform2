@@ -126,6 +126,12 @@ void FlossBatteryProvider::UpdateDeviceBattery(const std::string& address,
                  << "' for address '" << address << "'";
     return;
   }
+  if (level == 0) {
+    // Some peripherals use 0 to indicate full charge (b/336978853)
+    LOG(INFO) << __func__ << ": '" << address
+              << "' battery level is 0, but sending 100";
+    level = 100;
+  }
 
   dbus::MethodCall method_call(
       battery_manager::kFlossBatteryProviderManagerInterface,

@@ -147,7 +147,7 @@ class FlossBatteryProviderTest : public TestEnvironment {
         EXPECT_TRUE(dict_reader.PopVariant(&variant_reader));
         EXPECT_TRUE(variant_reader.PopArray(&array_reader));
         EXPECT_TRUE(array_reader.PopArray(&battery));
-        EXPECT_DICT_ENTRY(battery, "percentage", level_);
+        EXPECT_DICT_ENTRY(battery, "percentage", expected_battery_level_);
         EXPECT_DICT_ENTRY(battery, "variant", "");
 
         // Ensure the entire object has been processed.
@@ -230,6 +230,8 @@ class FlossBatteryProviderTest : public TestEnvironment {
   // Trigger the provider to register the provider to send a battery status
   // update.
   void UpdateDeviceBattery(const std::string& address, int level) {
+    // If battery update is '0', expect '100'.
+    expected_battery_level_ = level == 0 ? 100 : level;
     floss_battery_provider_.UpdateDeviceBattery(address, level);
   }
 
@@ -253,6 +255,7 @@ class FlossBatteryProviderTest : public TestEnvironment {
   std::string address_ = "01-23-45-67-89-AB";
   std::string source_uuid_ = "6cb01dc5-326f-4e31-b06f-126fce10b3ff";
   std::string source_info_ = "HID";
+  int expected_battery_level_ = -1;
   int level_ = 97;
   int32_t hci_interface_ = 0;
 
@@ -299,6 +302,12 @@ TEST_F(FlossBatteryProviderTest, BatteryUpdate) {
   UpdateDeviceBattery(address_, level_);
 
   // Ensure the update was sent to the Bluetooth daemon.
+  EXPECT_EQ(
+      GetDBusMethodCalls(),
+      FlossBatteryProvider::kFlossBatteryProviderManagerUpdateDeviceBattery);
+
+  // Expect that a battery update of '0' sends '100'.
+  UpdateDeviceBattery(address_, 0);
   EXPECT_EQ(
       GetDBusMethodCalls(),
       FlossBatteryProvider::kFlossBatteryProviderManagerUpdateDeviceBattery);
