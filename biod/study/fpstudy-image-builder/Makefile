@@ -86,7 +86,7 @@ $(OUT)/$(BUNDLE) : $(addprefix $(OUT)/,README.html README.md $(IMAGE) checksum.m
 	@echo "# bundling #########################################################"
 	mkdir -p "$(OUT)/archive"
 	tar czvf "$(OUT)/archive/$(BUNDLE_ARCHIVE)" -C "$(OUT)" $(subst $(OUT)/,,$^) || ( rm "$@" && false )
-	ln -f -s "$(OUT)/archive/$(BUNDLE_ARCHIVE)" "$@"
+	ln -f -s "archive/$(BUNDLE_ARCHIVE)" "$@"
 	@#cp "$(OUT)/archive/$(BUNDLE_ARCHIVE)" "$@"
 
 verify :
