@@ -205,8 +205,8 @@ echo USE="${USE_FLAGS[*]}" cros build-packages --board="${BOARD}" "${BUILD_FLAGS
 USE="${USE_FLAGS[*]}" cros build-packages --board="${BOARD}" "${BUILD_FLAGS[@]}"
 
 echo "# cros build-image ######################################################"
-echo USE="${USE_FLAGS[*]}" cros build-image --board="${BOARD}" "${BUILD_FLAGS[@]}" "${IMAGE_OPTS[@]}" "${IMAGE_TYPE}"
-USE="${USE_FLAGS[*]}" cros build-image --board="${BOARD}" "${BUILD_FLAGS[@]}" "${IMAGE_OPTS[@]}" "${IMAGE_TYPE}"
+echo USE="${USE_FLAGS[*]}" cros build-image --board="${BOARD}" "${IMAGE_OPTS[@]}" "${IMAGE_TYPE}"
+USE="${USE_FLAGS[*]}" cros build-image --board="${BOARD}" "${IMAGE_OPTS[@]}" "${IMAGE_TYPE}"
 
 echo "# cros flash ############################################################"
 cros flash "file://${OUT}/fpstudy-image-${BOARD}-${BRANCH}.bin" "${BOARD}/latest"
