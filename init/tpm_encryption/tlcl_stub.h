@@ -2,14 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef INIT_ENCRYPTION_TLCL_STUB_H_
-#define INIT_ENCRYPTION_TLCL_STUB_H_
+#ifndef INIT_TPM_ENCRYPTION_TLCL_STUB_H_
+#define INIT_TPM_ENCRYPTION_TLCL_STUB_H_
 
 #include <stdint.h>
 
 #include <map>
 #include <vector>
 
+#include <brillo/secure_blob.h>
 #include <vboot/tlcl.h>
 
 namespace encryption {
@@ -19,7 +20,7 @@ class TlclStub {
   struct NvramSpaceData {
     uint32_t attributes = 0;
     std::vector<uint8_t> policy;
-    std::vector<uint8_t> contents;
+    brillo::SecureBlob contents;
     bool write_locked = false;
     bool read_locked = false;
   };
@@ -127,4 +128,4 @@ class TlclStub {
 
 }  // namespace encryption
 
-#endif  // INIT_ENCRYPTION_TLCL_STUB_H_
+#endif  // INIT_TPM_ENCRYPTION_TLCL_STUB_H_
