@@ -106,7 +106,7 @@ std::vector<uint8_t> GetRandomVector() {
   // out that we can actually run out of entropy during these code paths,
   // we'll need to refactor the interfaces to allow errors to propagate.
   CHECK_EQ(RAND_bytes(seed_vector.data(), seed_vector.size()), 1)
-      << "Unable to get random bytes";
+      << "Unable to get random vector";
   return seed_vector;
 }
 
@@ -297,6 +297,65 @@ ArcRemoteProvisioningContext::GenerateBcc(bool test_mode) const {
 
   // Boot Certificate Chain.
   return std::make_pair(std::move(private_key_vector), cbor_array.moveValue());
+}
+
+cppcose::ErrMsgOr<std::vector<uint8_t>>
+ArcRemoteProvisioningContext::BuildProtectedDataPayload(
+    bool test_mode,
+    const std::vector<uint8_t>& mac_key,
+    const std::vector<uint8_t>& additional_auth_data) const {
+  cppbor::Array boot_cert_chain;
+  cppcose::ErrMsgOr<cppbor::Array> signed_mac("");
+  if (test_mode) {
+    // In Test mode, signature is constructed by signing with the
+    // seed generated Ecdsa key.
+    auto bcc = GenerateBcc(/*test_mode*/ true);
+    std::vector<uint8_t> signing_key_test_mode;
+    if (bcc.has_value()) {
+      // Extract signing key and boot cert chain from the pair
+      // returned by GenerateBcc function.
+      signing_key_test_mode = std::move(bcc.value().first);
+      boot_cert_chain = std::move(bcc.value().second);
+      signed_mac = cppcose::constructECDSACoseSign1(
+          signing_key_test_mode, cppbor::Map(), mac_key, additional_auth_data);
+    }
+  } else {
+    // In Production mode, libarc-attestation does the signing.
+    ArcLazyInitProdBcc();
+    auto clone = boot_cert_chain_.clone();
+    if (!clone->asArray()) {
+      auto error_message = "The Boot Cert Chain is not an array";
+      LOG(ERROR) << error_message;
+      return error_message;
+    }
+    boot_cert_chain = std::move(*clone->asArray());
+    signed_mac = constructCoseSign1FromDK(/*Protected Params*/ {}, mac_key,
+                                          additional_auth_data);
+  }
+
+  if (!signed_mac) {
+    auto error_message = signed_mac.moveMessage();
+    LOG(ERROR) << "Signing while building Protected Data Payload failed: "
+               << error_message;
+    return error_message;
+  }
+
+  return cppbor::Array()
+      .add(signed_mac.moveValue())
+      .add(std::move(boot_cert_chain))
+      .encode();
+}
+
+void ArcRemoteProvisioningContext::ArcLazyInitProdBcc() const {
+  std::call_once(bcc_initialized_flag_, [this]() {
+    auto bcc = GenerateBcc(/*test_mode=*/false);
+    if (bcc.has_value()) {
+      // Extract boot cert chain from the pair returned by GenerateBcc.
+      // In Production mode, the first element of the pair - |private key|
+      // is not used.
+      boot_cert_chain_ = std::move(bcc.value().second);
+    }
+  });
 }
 
 }  // namespace arc::keymint::context

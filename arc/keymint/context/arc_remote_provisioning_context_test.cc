@@ -113,7 +113,7 @@ TEST_F(ArcRemoteProvisioningContextTest,
       createCoseSign1SignatureFromDK(protectedParams, payload, aad);
 
   // This should fail as we have not setup the Mock Arc Attestation manager yet.
-  ASSERT_FALSE(signature);
+  EXPECT_FALSE(signature);
 }
 
 TEST_F(ArcRemoteProvisioningContextTest, constructCoseSign1FromDKFailure) {
@@ -124,7 +124,7 @@ TEST_F(ArcRemoteProvisioningContextTest, constructCoseSign1FromDKFailure) {
   auto coseSign1 = constructCoseSign1FromDK(cppbor::Map(), payload, aad);
 
   // This should fail as we have not setup the Mock Arc Attestation manager yet.
-  ASSERT_FALSE(coseSign1);
+  EXPECT_FALSE(coseSign1);
 }
 
 TEST_F(ArcRemoteProvisioningContextTest,
@@ -167,7 +167,7 @@ TEST_F(ArcRemoteProvisioningContextTest, GenerateBccProductionMode) {
   auto coseSign1 = std::move(bcc.get(1));
   const cppbor::Array* cose_sign = coseSign1->asArray();
   std::vector<uint8_t> additional_authenticated_data;
-  ASSERT_TRUE(cppcose::verifyAndParseCoseSign1(cose_sign, coseKey->encode(),
+  EXPECT_TRUE(cppcose::verifyAndParseCoseSign1(cose_sign, coseKey->encode(),
                                                additional_authenticated_data));
 }
 
@@ -182,8 +182,47 @@ TEST_F(ArcRemoteProvisioningContextTest, GenerateBccTestMode) {
   auto coseSign1 = std::move(bcc.get(1));
   const cppbor::Array* cose_sign = coseSign1->asArray();
   std::vector<uint8_t> additional_authenticated_data;
-  ASSERT_TRUE(cppcose::verifyAndParseCoseSign1(cose_sign, coseKey->encode(),
+  EXPECT_TRUE(cppcose::verifyAndParseCoseSign1(cose_sign, coseKey->encode(),
                                                additional_authenticated_data));
+}
+
+TEST_F(ArcRemoteProvisioningContextTest,
+       BuildProtectedDataPayloadProductionMode) {
+  // Prepare.
+  std::vector<uint8_t> additional_authenticated_data;
+  std::vector<uint8_t> mac_key;
+  SetupManagerForTesting();
+  ExpectProvisionSuccess();
+  std::vector<uint8_t> byte_signature =
+      convertHexToRawBytes(kEcdsaDERSignatureHex);
+  // We need signing twice here.
+  // First time for Generate Bcc.
+  // Second time for BuildProtectedDataPayload.
+  EXPECT_CALL(*manager_, SignWithP256Dk(testing::_, testing::_))
+      .Times(2)
+      .WillRepeatedly(testing::DoAll(
+          testing::SetArgReferee<1>(byte_signature),
+          testing::Return(arc_attestation::AndroidStatus::ok())));
+
+  // Execute.
+  auto result = remote_provisioning_context_->BuildProtectedDataPayload(
+      false, mac_key, additional_authenticated_data);
+
+  // Test.
+  EXPECT_TRUE(result);
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, BuildProtectedDataPayloadTestMode) {
+  // Prepare.
+  std::vector<uint8_t> additional_authenticated_data;
+  std::vector<uint8_t> mac_key;
+
+  // Execute.
+  auto result = remote_provisioning_context_->BuildProtectedDataPayload(
+      true, mac_key, additional_authenticated_data);
+
+  // Test.
+  EXPECT_TRUE(result);
 }
 
 }  // namespace arc::keymint::context

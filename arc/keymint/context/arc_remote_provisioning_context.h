@@ -67,6 +67,18 @@ class ArcRemoteProvisioningContext
   // CBOR Array carries the Cose Key, and a signed payload.
   std::optional<std::pair<std::vector<uint8_t>, cppbor::Array>> GenerateBcc(
       bool test_mode) const;
+
+  cppcose::ErrMsgOr<std::vector<uint8_t>> BuildProtectedDataPayload(
+      bool test_mode,
+      const std::vector<uint8_t>& mac_key,
+      const std::vector<uint8_t>& additional_auth_data) const override;
+
+ private:
+  // Initialize the BCC if it has not yet happened.
+  void ArcLazyInitProdBcc() const;
+
+  mutable std::once_flag bcc_initialized_flag_;
+  mutable cppbor::Array boot_cert_chain_;
 };
 }  // namespace arc::keymint::context
 
