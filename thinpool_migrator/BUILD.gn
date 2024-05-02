@@ -28,6 +28,8 @@ pkg_config("target_defaults") {
     "libmetrics",
     "protobuf",
   ]
+
+  libs = [ "vpd" ]
 }
 
 generate_pkg_config("libthinpool_migrator_pc") {

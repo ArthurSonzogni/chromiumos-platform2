@@ -6,6 +6,7 @@
 
 #include <ext2fs/ext2fs.h>
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -18,6 +19,7 @@
 #include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
+#include <vpd/vpd.h>
 
 #include <thinpool_migrator/migration_metrics.h>
 #include <thinpool_migrator/migration_status.pb.h>
@@ -46,25 +48,17 @@ brillo::DevmapperTable GetMetadataDeviceTable(uint64_t offset,
           "%s %" PRIu64, device.value().c_str(), offset / kSectorSize)));
 }
 
-bool IsVpdSupported() {
-  static bool is_vpd_supported = true;
-  if (is_vpd_supported && !base::PathExists(base::FilePath(kVpdSysfsPath))) {
-    LOG(WARNING) << "VPD not supported; falling back to initial state";
-    is_vpd_supported = false;
-  }
-
-  return is_vpd_supported;
-}
-
 }  // namespace
 
 ThinpoolMigrator::ThinpoolMigrator(
     const base::FilePath& device_path,
     uint64_t size,
-    std::unique_ptr<brillo::DeviceMapper> device_mapper)
+    std::unique_ptr<brillo::DeviceMapper> device_mapper,
+    std::unique_ptr<vpd::Vpd> vpd)
     : block_device_(device_path),
       stateful_metadata_(std::make_unique<StatefulMetadata>(device_path, size)),
       device_mapper_(std::move(device_mapper)),
+      vpd_(std::move(vpd)),
       partition_size_(size),
 
       resized_filesystem_size_(stateful_metadata_->GetResizedFilesystemSize()),
@@ -73,8 +67,14 @@ ThinpoolMigrator::ThinpoolMigrator(
           stateful_metadata_->GetThinpoolMetadataOffset()),
       thinpool_metadata_size_(stateful_metadata_->GetThinpoolMetadataSize()) {
   status_.set_state(MigrationStatus::NOT_STARTED);
-  status_.set_tries(1);
+  status_.set_tries(0);
 }
+
+ThinpoolMigrator::ThinpoolMigrator()
+    : ThinpoolMigrator(base::FilePath("/dev/null"),
+                       0,
+                       std::make_unique<brillo::DeviceMapper>(),
+                       std::make_unique<vpd::Vpd>()) {}
 
 void ThinpoolMigrator::SetState(MigrationStatus::State state) {
   status_.set_state(state);
@@ -113,7 +113,8 @@ bool ThinpoolMigrator::Migrate(bool dry_run) {
     return false;
   }
 
-  if (!CheckFilesystemState()) {
+  if (status_.state() == MigrationStatus::NOT_STARTED &&
+      !CheckFilesystemState()) {
     LOG(ERROR) << "Invalid filesystem state";
     return false;
   }
@@ -424,7 +425,6 @@ bool ThinpoolMigrator::DuplicateHeader(uint64_t from,
   return true;
 }
 
-// static
 bool ThinpoolMigrator::EnableMigration() {
   if (!IsVpdSupported()) {
     return true;
@@ -440,7 +440,6 @@ bool ThinpoolMigrator::PersistMigrationStatus() {
   return PersistStatus(status_);
 }
 
-// static
 bool ThinpoolMigrator::PersistStatus(MigrationStatus status) {
   if (!IsVpdSupported()) {
     return true;
@@ -449,12 +448,8 @@ bool ThinpoolMigrator::PersistStatus(MigrationStatus status) {
   std::string serialized = status.SerializeAsString();
   auto base64_encoded = base::Base64Encode(serialized);
 
-  brillo::ProcessImpl vpd;
-  vpd.AddArg("/usr/sbin/vpd");
-  vpd.AddStringOption("-i", "RW_VPD");
-  vpd.AddStringOption("-s", base::StringPrintf("%s=%s", kMigrationStatusKey,
-                                               base64_encoded.c_str()));
-  return vpd.Run() == 0;
+  return vpd_->WriteValue(vpd::VpdRw, kMigrationStatusKey,
+                          base::StringPrintf("%s", base64_encoded.c_str()));
 }
 
 bool ThinpoolMigrator::RetrieveMigrationStatus() {
@@ -462,23 +457,14 @@ bool ThinpoolMigrator::RetrieveMigrationStatus() {
     return true;
   }
 
-  base::FilePath migration_status_path =
-      base::FilePath(kVpdSysfsPath).AppendASCII(kMigrationStatusKey);
-
-  if (!base::PathExists(migration_status_path)) {
-    status_.set_state(MigrationStatus::NOT_STARTED);
-    status_.set_tries(0);
-    return true;
-  }
-
-  std::string encoded;
-  if (!base::ReadFileToString(migration_status_path, &encoded)) {
+  auto encoded = vpd_->GetValue(vpd::VpdRw, kMigrationStatusKey);
+  if (!encoded) {
     LOG(ERROR) << "Failed to retreive migration status";
     return false;
   }
 
   std::string decoded_pb;
-  base::Base64Decode(encoded, &decoded_pb);
+  base::Base64Decode(*encoded, &decoded_pb);
   if (!status_.ParseFromString(decoded_pb)) {
     LOG(ERROR) << "Failed to parse invalid migration status";
     return false;
@@ -556,6 +542,16 @@ bool ThinpoolMigrator::CheckFilesystemState() {
   }
 
   return true;
+}
+
+bool ThinpoolMigrator::IsVpdSupported() {
+  static bool is_vpd_supported = true;
+  if (is_vpd_supported && !base::PathExists(base::FilePath(kVpdSysfsPath))) {
+    LOG(WARNING) << "VPD not supported; falling back to initial state";
+    is_vpd_supported = false;
+  }
+
+  return is_vpd_supported;
 }
 
 }  // namespace thinpool_migrator

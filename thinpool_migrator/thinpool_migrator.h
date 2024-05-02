@@ -15,6 +15,7 @@
 #include <thinpool_migrator/migration_status.pb.h>
 #include <thinpool_migrator/migration_metrics.h>
 #include <thinpool_migrator/stateful_metadata.h>
+#include <vpd/vpd.h>
 
 namespace thinpool_migrator {
 
@@ -44,9 +45,12 @@ void ForkAndCrash(const std::string& message) {
 // it into a thinpool with one thinly provisioned logical volume.
 class BRILLO_EXPORT ThinpoolMigrator {
  public:
+  ThinpoolMigrator();
+
   ThinpoolMigrator(const base::FilePath& device_path,
                    uint64_t size,
-                   const std::unique_ptr<brillo::DeviceMapper> device_mapper);
+                   const std::unique_ptr<brillo::DeviceMapper> device_mapper,
+                   const std::unique_ptr<vpd::Vpd> vpd);
 
   virtual ~ThinpoolMigrator() = default;
 
@@ -85,16 +89,16 @@ class BRILLO_EXPORT ThinpoolMigrator {
   MigrationStatus::State GetState() const { return status_.state(); }
   int64_t GetTries() const { return status_.tries(); }
 
-  void set_tries_for_testing(int64_t tries) { status_.set_tries(tries); }
-
-  void set_state_for_testing(MigrationStatus::State state) {
-    status_.set_state(state);
-  }
-
   // Allows migration to be called.
-  static bool EnableMigration();
+  bool EnableMigration();
+
+  // Helper to enable the migration.
+  bool PersistStatus(MigrationStatus status);
 
  protected:
+  // Checks if the device supports Vpd.
+  virtual bool IsVpdSupported();
+
   // ResizeStatefulFilesyste is used for making space for the thinpool's
   // metadata or for expanding the stateful filesystem iff the migration
   // fails for some reason.
@@ -120,9 +124,6 @@ class BRILLO_EXPORT ThinpoolMigrator {
   // if the key does not exist and ~0.4 if the key exists. To speed up
   // migration, set up the vpd key asynchronously ahead of time.
   virtual bool PersistMigrationStatus();
-
-  // Helper to enable the migration.
-  static bool PersistStatus(MigrationStatus status);
 
   // Replays the ext4 journal before the migration to ensure that the
   // filesystem is in a pristine state before calling resize2fs.
@@ -150,6 +151,8 @@ class BRILLO_EXPORT ThinpoolMigrator {
   // The device-mapper layer is used to set up a temporary dm-linear target
   // on top of the metadata location, for ease of use with `thin_dump`.
   std::unique_ptr<brillo::DeviceMapper> device_mapper_;
+
+  std::unique_ptr<vpd::Vpd> vpd_;
 
   const uint64_t partition_size_;
   const uint64_t resized_filesystem_size_;

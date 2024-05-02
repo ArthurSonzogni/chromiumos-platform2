@@ -60,9 +60,8 @@ int main(int argc, char** argv) {
   thinpool_migrator::InitializeMetrics();
 
   if (FLAGS_enable) {
-    return thinpool_migrator::ThinpoolMigrator::EnableMigration();
+    return thinpool_migrator::ThinpoolMigrator().EnableMigration();
   }
-
   std::optional<uint64_t> size = GetBlkSize(base::FilePath(FLAGS_device));
   if (!size) {
     LOG(ERROR) << "Failed to get device size for " << FLAGS_device;
@@ -71,6 +70,6 @@ int main(int argc, char** argv) {
 
   thinpool_migrator::ThinpoolMigrator migrator(
       base::FilePath(FLAGS_device), *size,
-      std::make_unique<brillo::DeviceMapper>());
+      std::make_unique<brillo::DeviceMapper>(), std::make_unique<vpd::Vpd>());
   return migrator.Migrate(FLAGS_dry_run) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
