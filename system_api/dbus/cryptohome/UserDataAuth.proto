@@ -295,10 +295,13 @@ message IsMountedReply {
 }
 
 // Input parameters to GetVaultProperties()
+// The call will return an error in the following scenarios:
+// 1. Username is empty.
+// 2. Mount is guest or ephemeral.
+// 3. User does not exist.
+// 4. User is not logged in.
 message GetVaultPropertiesRequest {
-  // If username is available, then it'll check if a specific user's home
-  // directory is mounted. Otherwise, it'll check if any home directory is
-  // mounted.
+  // Username is required to get properties.
   string username = 1;
 }
 
@@ -314,6 +317,10 @@ message GetVaultPropertiesReply {
   CryptohomeErrorInfo error_info = 2;
 
   // Encryption type used for the current mount for the user.
+  // This will be populated with default CRYPTOHOME_VAULT_ENCRYPTION_ANY
+  // for an ephemeral or a tempfs mount.
+  // In any case, if the value is CRYPTOHOME_VAULT_ENCRYPTION_ANY,
+  // it should not be considered reliable.
   VaultEncryptionType encryption_type = 3;
 }
 
