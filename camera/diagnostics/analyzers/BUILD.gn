@@ -20,7 +20,7 @@ source_set("analyzers") {
   public_configs = [ ":target_defaults" ]
 
   configs += [ "//common-mk:pic" ]
-  deps = [ "//camera/diagnostics:cros_camera_diagnostics_mojom" ]
+  deps = [ "//camera/diagnostics:libcros_camera_diagnostics_mojom" ]
 
   if (use.dlc) {
     sources += [ "dirty_lens_analyzer.cc" ]

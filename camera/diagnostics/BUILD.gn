@@ -4,20 +4,39 @@
 
 import("//common-mk/install_seccomp_policy.gni")
 import("//common-mk/mojom_bindings_generator.gni")
+import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":camera_diagnostics_ipc",
     ":cros_camera_diagnostics_service",
     ":install_cros_camera_diagnostics_conf",
     ":install_cros_camera_diagnostics_mojo",
     ":install_cros_camera_diagnostics_policy",
     ":install_minijail_conf",
+    ":libcros_camera_diagnostics_mojom",
   ]
 }
 
-generate_mojom_bindings("cros_camera_diagnostics_mojom") {
+generate_mojom_bindings("libcros_camera_diagnostics_mojom") {
   sources = [ "//camera/mojo/camera_diagnostics.mojom" ]
   mojo_root = "${platform2_root}"
+  use_pic = true
+  install_package = "camera-diagnostics"
+}
+
+generate_pkg_config("camera_diagnostics_ipc") {
+  name = "camera_diagnostics_ipc"
+  description = "Mojom bindings for camera diagnostics"
+  version = getenv("PV")
+  requires_private = [ "libchrome" ]
+  requires = [ "libmojo" ]
+  libs = [ "-lcros_camera_diagnostics_mojom" ]
+
+  # Other packages should include files from
+  # /usr/include/camera-diagnostics/camera/mojo.
+  cflags = [ "-I/usr/include/camera-diagnostics" ]
+  install = true
 }
 
 executable("cros_camera_diagnostics_service") {
@@ -49,7 +68,7 @@ executable("cros_camera_diagnostics_service") {
     "rt",
   ]
   deps = [
-    ":cros_camera_diagnostics_mojom",
+    ":libcros_camera_diagnostics_mojom",
     "//camera/diagnostics/analyzers:analyzers",
     "//ml_core/dlc:dlc_client",
   ]

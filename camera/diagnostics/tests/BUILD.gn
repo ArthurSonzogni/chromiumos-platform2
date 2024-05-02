@@ -37,7 +37,7 @@ executable("camera_diag_test_cli") {
     "camera_diagnostics_test_cli.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ "//camera/diagnostics:cros_camera_diagnostics_mojom" ]
+  deps = [ "//camera/diagnostics:libcros_camera_diagnostics_mojom" ]
   install_path = "/usr/local/bin"
 }
 
@@ -55,7 +55,7 @@ executable("camera_diag_tests") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
-    "//camera/diagnostics:cros_camera_diagnostics_mojom",
+    "//camera/diagnostics:libcros_camera_diagnostics_mojom",
     "//camera/diagnostics/analyzers:analyzers",
     "//ml_core/dlc:dlc_client",
   ]
