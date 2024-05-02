@@ -273,7 +273,7 @@ absl::Status SwapTool::SwapStart() {
     return status;
 
   // Load zram module. Ignore failure (it could be compiled in the kernel).
-  if (!Utils::Get()->RunProcessHelper({"/sbin/modprobe", "zram"}).ok())
+  if (!Utils::Get()->RunProcessHelper({"/usr/bin/modprobe", "zram"}).ok())
     LOG(WARNING) << "modprobe zram failed (compiled?)";
 
   // Enable zram recompression if feature is available.

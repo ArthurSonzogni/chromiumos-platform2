@@ -83,7 +83,7 @@ bool DelegateImpl::ProbeKernelModule(const std::string& module) {
   }
 
   std::vector<std::string> argv;
-  argv.emplace_back("/sbin/modprobe");
+  argv.emplace_back("/usr/bin/modprobe");
   argv.emplace_back("-q");
   argv.emplace_back(module);
 

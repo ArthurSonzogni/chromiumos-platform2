@@ -34,13 +34,10 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /sbin/frecon                    u:object_r:frecon_exec:s0
 /sbin/hwclock                   u:object_r:cros_hwclock_exec:s0
 /sbin/initctl                   u:object_r:cros_initctl_exec:s0
-/sbin/insmod                    u:object_r:cros_modprobe_exec:s0
 /sbin/losetup                   u:object_r:cros_losetup_exec:s0
 /sbin/minijail0                 u:object_r:cros_minijail_exec:s0
 /sbin/mke2fs                    u:object_r:cros_mke2fs_exec:s0
-/sbin/modprobe                  u:object_r:cros_modprobe_exec:s0
 /sbin/restorecon                u:object_r:cros_restorecon_exec:s0
-/sbin/rmmod                     u:object_r:cros_modprobe_exec:s0
 /sbin/session_manager           u:object_r:cros_session_manager_exec:s0
 /sbin/setfiles                  u:object_r:cros_restorecon_exec:s0
 /sbin/sfdisk                    u:object_r:cros_sfdisk_exec:s0
@@ -53,7 +50,6 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /bin/brltty                     u:object_r:cros_brltty_exec:s0
 /bin/dash                       u:object_r:sh_exec:s0
 /bin/grep                       u:object_r:cros_grep_exec:s0
-/bin/kmod                       u:object_r:cros_modprobe_exec:s0
 /bin/lsblk                      u:object_r:cros_lsblk_exec:s0
 /bin/mount                      u:object_r:cros_mount_exec:s0
 /bin/mountpoint                 u:object_r:cros_mountpoint_exec:s0
@@ -110,8 +106,10 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/hotlined               u:object_r:cros_hotlined_exec:s0
 /usr/bin/hotlog                 u:object_r:cros_hotlog_exec:s0
 /usr/bin/hps-factory            u:object_r:cros_hps_factory_exec:s0
+/usr/bin/insmod                 u:object_r:cros_modprobe_exec:s0
 /usr/bin/ionice                 u:object_r:cros_ionice_exec:s0
 /usr/bin/ippusb_bridge          u:object_r:cros_ippusb_bridge_exec:s0
+/usr/bin/kmod                   u:object_r:cros_modprobe_exec:s0
 /usr/bin/logger                 u:object_r:cros_logger_exec:s0
 /usr/bin/lorgnette              u:object_r:cros_lorgnette_exec:s0
 /usr/bin/mawk                   u:object_r:cros_mawk_exec:s0
@@ -124,6 +122,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/ml_service             u:object_r:cros_ml_service_exec:s0
 /usr/bin/mmdata_mgr             u:object_r:cros_mmdata_mgr_exec:s0
 /usr/bin/modemfwd               u:object_r:cros_modemfwd_exec:s0
+/usr/bin/modprobe               u:object_r:cros_modprobe_exec:s0
 /usr/bin/mojo_service_manager   u:object_r:cros_mojo_service_manager_exec:s0
 /usr/bin/mount-passthrough        u:object_r:cros_mount_passthrough_exec:s0
 /usr/bin/mount-passthrough-jailed u:object_r:cros_mount_passthrough_jailed_exec:s0
@@ -135,6 +134,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/powerd                 u:object_r:cros_powerd_exec:s0
 /usr/bin/qrtr-ns                u:object_r:cros_qrtr_ns_exec:s0
 /usr/bin/resourced              u:object_r:cros_resourced_exec:s0
+/usr/bin/rmmod                  u:object_r:cros_modprobe_exec:s0
 /usr/bin/rmtfs                  u:object_r:cros_rmtfs_exec:s0
 /usr/bin/rootdev                u:object_r:cros_rootdev_exec:s0
 /usr/bin/runtime_probe          u:object_r:cros_runtime_probe_exec:s0

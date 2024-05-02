@@ -149,7 +149,7 @@ bool ValidateProgramArgs(int argc, const char* argv[]) {
 
   if (prog == "/sbin/crash_reporter")
     return ValidateCrashReporter(argc, argv);
-  else if (prog == "/sbin/modprobe")
+  else if ((prog == "/usr/bin/modprobe") || (prog == "/sbin/modprobe"))
     return ValidateModprobe(argc, argv);
   else if (prog == "/sbin/poweroff")
     return ValidatePoweroff(argc, argv);

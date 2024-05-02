@@ -46,6 +46,7 @@ TEST(ValidateProgramArgs, BadCrashReporter) {
 
 TEST(ValidateProgramArgs, GoodModprobe) {
   EXPECT_TRUE(ValidateProgramArgs({"/sbin/modprobe", "-q", "--", "mod"}));
+  EXPECT_TRUE(ValidateProgramArgs({"/usr/bin/modprobe", "-q", "--", "mod"}));
 }
 
 TEST(ValidateProgramArgs, BadModprobe) {
@@ -58,6 +59,17 @@ TEST(ValidateProgramArgs, BadModprobe) {
   EXPECT_FALSE(ValidateProgramArgs({"/sbin/modprobe", "--", "mod"}));
   EXPECT_FALSE(ValidateProgramArgs({"/sbin/modprobe", "-a", "mod1", "mod2"}));
   EXPECT_FALSE(ValidateProgramArgs({"/sbin/modprobe", "-r", "mod"}));
+
+  EXPECT_FALSE(ValidateProgramArgs({"/usr/bin/modprobe"}));
+  EXPECT_FALSE(ValidateProgramArgs({"/usr/bin/modprobe", "mod"}));
+  EXPECT_FALSE(ValidateProgramArgs({"/usr/bin/modprobe", "-q"}));
+  EXPECT_FALSE(ValidateProgramArgs({"/usr/bin/modprobe", "-q", "mod"}));
+  EXPECT_FALSE(ValidateProgramArgs({"/usr/bin/modprobe", "-q", "--"}));
+  EXPECT_FALSE(ValidateProgramArgs({"/usr/bin/modprobe", "--"}));
+  EXPECT_FALSE(ValidateProgramArgs({"/usr/bin/modprobe", "--", "mod"}));
+  EXPECT_FALSE(
+      ValidateProgramArgs({"/usr/bin/modprobe", "-a", "mod1", "mod2"}));
+  EXPECT_FALSE(ValidateProgramArgs({"/usr/bin/modprobe", "-r", "mod"}));
 }
 
 TEST(ValidateProgramArgs, GoodPoweroff) {

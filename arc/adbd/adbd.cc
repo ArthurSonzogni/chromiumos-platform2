@@ -352,22 +352,24 @@ bool SetupKernelModules(
     const std::vector<AdbdConfigurationKernelModule>& kernel_modules) {
   for (const auto& kernel_module : kernel_modules) {
     std::vector<std::string> argv;
-    argv.emplace_back("/sbin/modprobe");
+    argv.emplace_back("/usr/bin/modprobe");
     argv.emplace_back(kernel_module.name);
     argv.insert(std::end(argv), std::begin(kernel_module.parameters),
                 std::end(kernel_module.parameters));
     base::Process process(base::LaunchProcess(argv, base::LaunchOptions()));
     if (!process.IsValid()) {
-      PLOG(ERROR) << "Failed to invoke /sbin/modprobe " << kernel_module.name;
+      PLOG(ERROR) << "Failed to invoke /usr/bin/modprobe "
+                  << kernel_module.name;
       return false;
     }
     int exit_code = -1;
     if (!process.WaitForExit(&exit_code)) {
-      PLOG(ERROR) << "Failed to wait for /sbin/modprobe " << kernel_module.name;
+      PLOG(ERROR) << "Failed to wait for /usr/bin/modprobe "
+                  << kernel_module.name;
       return false;
     }
     if (exit_code != 0) {
-      LOG(ERROR) << "Invocation of /sbin/modprobe " << kernel_module.name
+      LOG(ERROR) << "Invocation of /usr/bin/modprobe " << kernel_module.name
                  << " exited with non-zero code " << exit_code;
       return false;
     }

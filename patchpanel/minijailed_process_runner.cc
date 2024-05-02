@@ -62,7 +62,7 @@ constexpr char kIp6tablesPath[] = "/sbin/ip6tables";
 constexpr std::string_view kIptablesRestorePath = "/sbin/iptables-restore";
 constexpr std::string_view kIp6tablesRestorePath = "/sbin/ip6tables-restore";
 
-constexpr char kModprobePath[] = "/sbin/modprobe";
+constexpr char kModprobePath[] = "/usr/bin/modprobe";
 constexpr char kConntrackPath[] = "/usr/sbin/conntrack";
 
 constexpr char kIptablesSeccompFilterPath[] =

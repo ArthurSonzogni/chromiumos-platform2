@@ -87,7 +87,7 @@ TEST_F(MinijailProcessRunnerTest, modprobe_all) {
   EXPECT_CALL(mj_, UseCapabilities(_, Eq(caps)));
   EXPECT_CALL(mj_, RunAndDestroy(
                        _,
-                       ElementsAre(StrEq("/sbin/modprobe"), StrEq("-a"),
+                       ElementsAre(StrEq("/usr/bin/modprobe"), StrEq("-a"),
                                    StrEq("module1"), StrEq("module2"), nullptr),
                        _));
   EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))

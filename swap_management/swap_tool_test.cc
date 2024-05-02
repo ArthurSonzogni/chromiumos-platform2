@@ -84,7 +84,7 @@ TEST_F(SwapToolTest, SwapStart) {
   mock_meminfo.total = kZramMemTotal8G;
   EXPECT_CALL(mock_util_, GetSystemMemoryInfo()).WillOnce(Return(mock_meminfo));
   EXPECT_CALL(mock_util_,
-              RunProcessHelper(ElementsAre("/sbin/modprobe", "zram")))
+              RunProcessHelper(ElementsAre("/usr/bin/modprobe", "zram")))
       .WillOnce(Return(absl::OkStatus()));
   // EnableZramRecompression, we don't test it here.
   EXPECT_CALL(mock_util_,
