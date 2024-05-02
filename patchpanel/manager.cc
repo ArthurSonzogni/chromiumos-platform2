@@ -30,6 +30,7 @@
 #include "patchpanel/network/network_applier.h"
 #include "patchpanel/proto_utils.h"
 #include "patchpanel/qos_service.h"
+#include "patchpanel/routing_service.h"
 #include "patchpanel/scoped_ns.h"
 
 namespace patchpanel {
@@ -698,6 +699,9 @@ bool Manager::TagSocket(const patchpanel::TagSocketRequest& request,
         break;
       case traffic_annotation::TrafficAnnotation::SHILL_PORTAL_DETECTOR:
         annotation_id = TrafficAnnotationId::kShillPortalDetector;
+        break;
+      case traffic_annotation::TrafficAnnotation::SHILL_CAPPORT_CLIENT:
+        annotation_id = TrafficAnnotationId::kShillCapportClient;
         break;
       default:
         LOG(ERROR) << __func__ << ": Invalid traffic annotation id "

@@ -600,7 +600,7 @@ TEST_F(NetworkMonitorTest, SendBothResult) {
 TEST_F(NetworkMonitorTest, SetCapportAPIWithDHCP) {
   EXPECT_CALL(*mock_validation_log_, SetCapportDHCPSupported);
   EXPECT_CALL(*mock_capport_proxy_factory_,
-              Create(&metrics_, kInterface, kCapportAPI,
+              Create(&metrics_, &patchpanel_client_, kInterface, kCapportAPI,
                      ElementsAreArray(kDnsList), _, _))
       .Times(1);
   network_monitor_->SetCapportURL(kCapportAPI, kDnsList,
@@ -610,7 +610,7 @@ TEST_F(NetworkMonitorTest, SetCapportAPIWithDHCP) {
 TEST_F(NetworkMonitorTest, SetCapportAPIWithRA) {
   EXPECT_CALL(*mock_validation_log_, SetCapportRASupported);
   EXPECT_CALL(*mock_capport_proxy_factory_,
-              Create(&metrics_, kInterface, kCapportAPI,
+              Create(&metrics_, &patchpanel_client_, kInterface, kCapportAPI,
                      ElementsAreArray(kDnsList), _, _))
       .Times(1);
   network_monitor_->SetCapportURL(kCapportAPI, kDnsList,

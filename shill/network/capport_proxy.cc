@@ -107,6 +107,7 @@ std::optional<CapportStatus> CapportStatus::ParseFromJson(
 
 std::unique_ptr<CapportProxy> CapportProxy::Create(
     Metrics* metrics,
+    patchpanel::Client* patchpanel_client,
     std::string_view interface,
     const net_base::HttpUrl& api_url,
     base::span<const net_base::IPAddress> dns_list,
@@ -127,6 +128,11 @@ std::unique_ptr<CapportProxy> CapportProxy::Create(
   http_transport->SetDnsServers(dns_servers);
   http_transport->UseCustomCertificate(
       brillo::http::Transport::Certificate::kNss);
+
+  patchpanel::Client::TrafficAnnotation annotation;
+  annotation.id = patchpanel::Client::TrafficAnnotationId::kShillCapportClient;
+  patchpanel_client->PrepareTagSocket(std::move(annotation), http_transport);
+
   return std::make_unique<CapportProxy>(metrics, api_url,
                                         std::move(http_transport),
                                         std::string(interface) + ": ");
@@ -273,13 +279,15 @@ CapportProxyFactory::~CapportProxyFactory() = default;
 
 std::unique_ptr<CapportProxy> CapportProxyFactory::Create(
     Metrics* metrics,
+    patchpanel::Client* patchpanel_client,
     std::string_view interface,
     const net_base::HttpUrl& api_url,
     base::span<const net_base::IPAddress> dns_list,
     std::shared_ptr<brillo::http::Transport> http_transport,
     base::TimeDelta transport_timeout) {
-  return CapportProxy::Create(metrics, interface, api_url, dns_list,
-                              std::move(http_transport), transport_timeout);
+  return CapportProxy::Create(metrics, patchpanel_client, interface, api_url,
+                              dns_list, std::move(http_transport),
+                              transport_timeout);
 }
 
 }  // namespace shill

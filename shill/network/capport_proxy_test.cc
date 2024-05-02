@@ -14,6 +14,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/location.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport_fake.h>
@@ -32,6 +33,7 @@ using testing::_;
 using testing::AtMost;
 using testing::ElementsAre;
 using testing::Eq;
+using testing::Field;
 
 const net_base::HttpUrl kApiUrl = *net_base::HttpUrl::CreateFromString(
     "https://example.org/captive-portal/api/X54PD39JV");
@@ -176,9 +178,12 @@ class CapportProxyTest : public testing::Test {
  protected:
   CapportProxyTest()
       : fake_transport_(std::make_shared<brillo::http::fake::Transport>()),
-        proxy_(CapportProxy::Create(
-            &metrics_, kInterfaceName, kApiUrl, kDnsServers, fake_transport_)) {
-  }
+        proxy_(CapportProxy::Create(&metrics_,
+                                    &patchpanel_client_,
+                                    kInterfaceName,
+                                    kApiUrl,
+                                    kDnsServers,
+                                    fake_transport_)) {}
 
   void AddJSONReplyHandler(std::string_view json_str) {
     fake_transport_->AddSimpleReplyHandler(
@@ -194,6 +199,7 @@ class CapportProxyTest : public testing::Test {
 
   MockCapportClient client_;
   MockMetrics metrics_;
+  patchpanel::FakeClient patchpanel_client_;
   std::shared_ptr<brillo::http::fake::Transport> fake_transport_;
   std::unique_ptr<CapportProxy> proxy_;
 };
@@ -477,15 +483,31 @@ TEST_F(CapportProxyTest, DoesNotSendMetricsContainRemainingFields) {
                                      base::Unretained(&client_)));
 }
 
+class MockPatchpanelClient : public patchpanel::FakeClient {
+ public:
+  MockPatchpanelClient() = default;
+  ~MockPatchpanelClient() = default;
+
+  MOCK_METHOD(void,
+              PrepareTagSocket,
+              (const TrafficAnnotation&,
+               std::shared_ptr<brillo::http::Transport>),
+              (override));
+};
+
 class CapportProxyTestWithMockTransport : public testing::Test {
  protected:
   CapportProxyTestWithMockTransport()
       : mock_transport_(std::make_shared<brillo::http::MockTransport>()),
-        proxy_(CapportProxy::Create(
-            &metrics_, kInterfaceName, kApiUrl, kDnsServers, mock_transport_)) {
-  }
+        proxy_(CapportProxy::Create(&metrics_,
+                                    &patchpanel_client_,
+                                    kInterfaceName,
+                                    kApiUrl,
+                                    kDnsServers,
+                                    mock_transport_)) {}
 
   MockMetrics metrics_;
+  MockPatchpanelClient patchpanel_client_;
   std::shared_ptr<brillo::http::MockTransport> mock_transport_;
   std::unique_ptr<CapportProxy> proxy_;
 };
@@ -501,12 +523,18 @@ TEST_F(CapportProxyTestWithMockTransport, SendRequest) {
   EXPECT_CALL(*mock_transport_,
               UseCustomCertificate(brillo::http::Transport::Certificate::kNss));
   EXPECT_CALL(
+      patchpanel_client_,
+      PrepareTagSocket(
+          Field(&patchpanel::Client::TrafficAnnotation::id,
+                patchpanel::Client::TrafficAnnotationId::kShillCapportClient),
+          _));
+  EXPECT_CALL(
       *mock_transport_,
       CreateConnection(kApiUrl.ToString(), brillo::http::request_type::kGet,
                        kHeaders, _, _, _));
 
-  proxy_ = CapportProxy::Create(&metrics_, kInterfaceName, kApiUrl, kDnsServers,
-                                mock_transport_);
+  proxy_ = CapportProxy::Create(&metrics_, &patchpanel_client_, kInterfaceName,
+                                kApiUrl, kDnsServers, mock_transport_);
   EXPECT_NE(proxy_, nullptr);
   proxy_->SendRequest(base::DoNothing());
 }

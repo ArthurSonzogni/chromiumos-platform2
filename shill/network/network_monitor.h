@@ -254,6 +254,7 @@ class NetworkMonitor {
 
   // These instances outlive this NetworkMonitor instance.
   EventDispatcher* dispatcher_;
+  patchpanel::Client* patchpanel_client_;
   Metrics* metrics_;
   ClientNetwork* client_;
 

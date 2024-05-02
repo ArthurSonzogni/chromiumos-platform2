@@ -35,6 +35,7 @@ class MockCapportProxyFactory : public CapportProxyFactory {
   MOCK_METHOD(std::unique_ptr<CapportProxy>,
               Create,
               (Metrics*,
+               patchpanel::Client*,
                std::string_view,
                const net_base::HttpUrl&,
                base::span<const net_base::IPAddress>,

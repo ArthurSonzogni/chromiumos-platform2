@@ -14,6 +14,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
 #include <net-base/http_url.h>
@@ -54,6 +55,7 @@ class CapportProxy {
   // URL.
   static std::unique_ptr<CapportProxy> Create(
       Metrics* metrics,
+      patchpanel::Client* patchpanel_client,
       std::string_view interface,
       const net_base::HttpUrl& api_url,
       base::span<const net_base::IPAddress> dns_list,
@@ -139,6 +141,7 @@ class CapportProxyFactory {
   // The default factory method, calling CapportProxy::Create() method.
   virtual std::unique_ptr<CapportProxy> Create(
       Metrics* metrics,
+      patchpanel::Client* patchpanel_client,
       std::string_view interface,
       const net_base::HttpUrl& api_url,
       base::span<const net_base::IPAddress> dns_list,

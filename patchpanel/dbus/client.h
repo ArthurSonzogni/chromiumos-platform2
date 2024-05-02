@@ -317,6 +317,7 @@ class BRILLO_EXPORT Client {
   enum class TrafficAnnotationId {
     kUnspecified,
     kShillPortalDetector,
+    kShillCapportClient,
   };
 
   // Describes the semantic of the traffic going through a socket. See

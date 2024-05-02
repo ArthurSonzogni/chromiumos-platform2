@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <brillo/http/http_transport.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/network_config.h>
 #include <net-base/ip_address.h>
@@ -88,6 +89,7 @@ NetworkMonitor::NetworkMonitor(
     std::unique_ptr<ConnectionDiagnosticsFactory>
         connection_diagnostics_factory)
     : dispatcher_(dispatcher),
+      patchpanel_client_(patchpanel_client),
       metrics_(metrics),
       client_(client),
       technology_(technology),
@@ -102,7 +104,7 @@ NetworkMonitor::NetworkMonitor(
       connection_diagnostics_factory_(
           std::move(connection_diagnostics_factory)) {
   portal_detector_ = std::make_unique<PortalDetector>(
-      dispatcher_, patchpanel_client, interface_, probing_configuration_,
+      dispatcher_, patchpanel_client_, interface_, probing_configuration_,
       logging_tag_);
 }
 
@@ -204,8 +206,8 @@ void NetworkMonitor::SetCapportURL(
   }
 
   if (!capport_proxy_) {
-    capport_proxy_ = capport_proxy_factory_->Create(metrics_, interface_,
-                                                    capport_url, dns_list);
+    capport_proxy_ = capport_proxy_factory_->Create(
+        metrics_, patchpanel_client_, interface_, capport_url, dns_list);
   }
 }
 

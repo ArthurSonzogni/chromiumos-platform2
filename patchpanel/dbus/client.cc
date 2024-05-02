@@ -494,6 +494,8 @@ traffic_annotation::TrafficAnnotation::Id ConvertTrafficAnnotationId(
       return traffic_annotation::TrafficAnnotation::UNSPECIFIED;
     case Client::TrafficAnnotationId::kShillPortalDetector:
       return traffic_annotation::TrafficAnnotation::SHILL_PORTAL_DETECTOR;
+    case Client::TrafficAnnotationId::kShillCapportClient:
+      return traffic_annotation::TrafficAnnotation::SHILL_CAPPORT_CLIENT;
   }
 }
 
