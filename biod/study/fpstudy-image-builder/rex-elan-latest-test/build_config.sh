@@ -25,6 +25,8 @@ KEYS=(
     "${out}/chromeos-fpstudy-recipients.txt"
 )
 
+BUILD_FLAGS+=( --chrome )
+
 # elan: Create ChromeOS image for study
 # http://b/323057415
 
