@@ -134,7 +134,7 @@ func FormatComment(docString introspect.DocString, indent int) string {
 	}
 
 	var ret strings.Builder
-	prefix := strings.Repeat(" ", indent) + "//"
+	prefix := fmt.Sprintf("\n%s//", strings.Repeat(" ", indent))
 	for _, line := range lines {
 		ret.WriteString(prefix)
 		if line != "" {
@@ -146,7 +146,6 @@ func FormatComment(docString introspect.DocString, indent int) string {
 			}
 			ret.WriteString(line)
 		}
-		ret.WriteRune('\n')
 	}
 	return ret.String()
 }

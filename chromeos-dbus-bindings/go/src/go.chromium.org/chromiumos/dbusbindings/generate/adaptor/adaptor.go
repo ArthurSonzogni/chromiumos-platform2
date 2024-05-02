@@ -46,9 +46,10 @@ var funcMap = template.FuncMap{
 
 const (
 	templateText = `// Automatic generation of D-Bus interfaces:
-{{range .Introspects}}{{range .Interfaces -}}
+{{- range .Introspects}}{{range .Interfaces}}
 //  - {{.Name}}
-{{end}}{{end -}}
+{{- end}}{{end}}
+
 #ifndef {{.HeaderGuard}}
 #define {{.HeaderGuard}}
 #include <memory>
@@ -62,19 +63,23 @@ const (
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/variant_dictionary.h>
-{{range $introspect := .Introspects}}{{range .Interfaces -}}
-{{$itfName := makeInterfaceName .Name -}}
-{{$className := makeAdaptorName .Name -}}
-{{$fullItfName := makeFullItfName .Name}}
-{{range extractNameSpaces .Name -}}
+{{- range $introspect := .Introspects}}{{range .Interfaces}}
+{{- $itfName := makeInterfaceName .Name}}
+{{- $className := makeAdaptorName .Name}}
+{{- $fullItfName := makeFullItfName .Name}}
+{{- if extractNameSpaces .Name}}
+{{/* empty line */}}
+{{- range extractNameSpaces .Name}}
 namespace {{.}} {
-{{end}}
+{{- end}}
+{{- end}}
+
 // Interface definition for {{$fullItfName}}.
-{{formatComment .DocString 0 -}}
+{{- formatComment .DocString 0}}
 class {{$itfName}} {
  public:
   virtual ~{{$itfName}}() = default;
-{{template "interfaceMethodsTmpl" . -}}
+{{- template "interfaceMethodsTmpl" .}}
 };
 
 // Interface adaptor for {{$fullItfName}}.
@@ -88,166 +93,188 @@ class {{$className}} {
   {{$className}}(const {{$className}}&) = delete;
   {{$className}}& operator=(const {{$className}}&) = delete;
 
-{{template "registerWithDBusObjectTmpl" . -}}
-{{template "sendSignalMethodsTmpl" . -}}
-{{template "propertyMethodImplementationTmpl" . -}}
-{{if $introspect.Name}}
+{{- template "registerWithDBusObjectTmpl" .}}
+{{- template "sendSignalMethodsTmpl" .}}
+{{- template "propertyMethodImplementationTmpl" .}}
+{{- if $introspect.Name}}
+
   static dbus::ObjectPath GetObjectPath() {
     return dbus::ObjectPath{"{{$introspect.Name}}"};
   }
-{{end}}
-{{template "quotedIntrospectionForInterfaceTmpl" . -}}
-{{"\n "}}private:
-{{template "signalDataMembersTmpl" . -}}
-{{template "propertyDataMembersTmpl" . -}}
-{{if .Methods -}}
-{{"  "}}{{$itfName}}* interface_;  // Owned by container of this adapter.
-{{end -}}
+{{- end}}
+{{- template "quotedIntrospectionForInterfaceTmpl" .}}
+
+ private:
+{{- template "signalDataMembersTmpl" .}}
+{{- template "propertyDataMembersTmpl" .}}
+{{- if .Methods}}
+
+  {{$itfName}}* interface_;  // Owned by container of this adapter.
+{{- end}}
 };
 
-{{range extractNameSpaces .Name | reverse -}}
+{{- if extractNameSpaces .Name}}
+{{/* empty line */}}
+{{- range extractNameSpaces .Name | reverse}}
 }  // namespace {{.}}
-{{end -}}
-{{end}}{{end -}}
+{{- end}}
+{{- end}}
+{{- end}}{{end}}
+
 #endif  // {{.HeaderGuard}}
 `
-	interfaceMethodsTmpl = `{{define "interfaceMethodsTmpl" -}}
-{{if .Methods}}{{"\n"}}{{end -}}
-{{range .Methods -}}
-{{formatComment .DocString 2 -}}
-{{"  "}}virtual {{makeMethodRetType .}} {{.Name}}(
+	interfaceMethodsTmpl = `{{- define "interfaceMethodsTmpl"}}
+{{- if .Methods}}
+{{/* empty line */}}
+{{- range .Methods}}
+  {{- formatComment .DocString 2}}
+  virtual {{makeMethodRetType .}} {{.Name}}(
 {{- range $i, $arg := makeMethodParams .}}{{if ne $i 0}},{{end}}
-      {{$arg -}}
-{{end -}}
-) {{if .Const}}const {{end}}= 0;
-{{end -}}
-{{end}}`
+      {{$arg}}
+{{- end}}) {{if .Const}}const {{end}}= 0;
+{{- end}}
+{{- end}}
+{{- end}}`
 
-	registerWithDBusObjectTmpl = `{{define "registerWithDBusObjectTmpl" -}}
-{{"  "}}void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {
+	registerWithDBusObjectTmpl = `{{- define "registerWithDBusObjectTmpl"}}
+
+  void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {
     brillo::dbus_utils::DBusInterface* itf =
         object->AddOrGetInterface("{{.Name}}");
-{{if .Methods}}{{"\n"}}{{end -}}
-{{$itfName := makeInterfaceName .Name -}}
-{{range .Methods -}}
-{{"    "}}itf->{{makeAddHandlerName .}}(
+{{- if .Methods}}
+{{/* empty line */}}
+    {{- $itfName := makeInterfaceName .Name}}
+    {{- range .Methods}}
+    itf->{{makeAddHandlerName .}}(
         "{{.Name}}",
         base::Unretained(interface_),
         &{{$itfName}}::{{.Name}});
-{{end -}}
+    {{- end}}
+{{- end}}
 
-{{if .Signals}}{{"\n"}}{{end -}}
-{{range .Signals -}}
-{{"    "}}signal_{{.Name}}_ = itf->RegisterSignalOfType<Signal{{.Name}}Type>("{{.Name}}");
-{{end -}}
+{{- if .Signals}}
+{{/* empty line */}}
+{{- range .Signals}}
+    signal_{{.Name}}_ = itf->RegisterSignalOfType<Signal{{.Name}}Type>("{{.Name}}");
+{{- end}}
+{{- end}}
 
-{{$adaptorName := makeAdaptorName .Name -}}
-{{if .Properties}}{{"\n"}}{{end -}}
-{{range .Properties -}}
-{{$writeAccess := makePropertyWriteAccess . -}}
-{{$variableName := makePropertyVariableName . | makeVariableName -}}
-{{if $writeAccess -}} {{/* Register exported properties. */ -}}
-{{"    "}}{{$variableName}}_.SetAccessMode(
+{{- $adaptorName := makeAdaptorName .Name}}
+{{- if .Properties}}
+{{/* empty line */}}
+{{- range .Properties}}
+  {{- $writeAccess := makePropertyWriteAccess .}}
+  {{- $variableName := makePropertyVariableName . | makeVariableName}}
+  {{- if $writeAccess}}
+    {{- /* Register exported properties. */}}
+    {{$variableName}}_.SetAccessMode(
         brillo::dbus_utils::ExportedPropertyBase::Access::{{$writeAccess}});
     {{$variableName}}_.SetValidator(
         base::BindRepeating(&{{$adaptorName}}::Validate{{.Name}},
                             base::Unretained(this)));
-{{end -}}
-{{"    "}}itf->AddProperty({{.Name}}Name(), &{{$variableName}}_);
-{{end -}}
+  {{- end}}
+    itf->AddProperty({{.Name}}Name(), &{{$variableName}}_);
+{{- end}}
+{{- end}}
+  }
+{{- end}}`
 
-{{"  " -}} }
-{{end}}`
-
-	sendSignalMethodsTmpl = `{{define "sendSignalMethodsTmpl" -}}
-{{if .Signals}}{{"\n"}}{{end -}}
-{{range .Signals -}}
-{{formatComment .DocString 2 -}}
-{{"  "}}void Send{{.Name}}Signal(
+	sendSignalMethodsTmpl = `{{- define "sendSignalMethodsTmpl"}}
+{{- if .Signals}}
+{{/* empty line */}}
+{{- range .Signals}}
+  {{- formatComment .DocString 2}}
+  void Send{{.Name}}Signal(
 {{- range $i, $arg := makeSignalParams .}}{{if ne $i 0}},{{end}}
-      {{$arg -}}
-{{end}}) {
+      {{$arg}}
+{{- end}}) {
     auto signal = signal_{{.Name}}_.lock();
     if (signal)
       signal->Send({{makeSignalArgNames .}});
   }
-{{end -}}
-{{end}}`
+{{- end}}
+{{- end}}
+{{- end}}`
 
-	propertyMethodImplementationTmpl = `{{define "propertyMethodImplementationTmpl" -}}
-{{range .Properties}}{{"\n" -}}
-{{$baseType := makePropertyBaseTypeExtract . -}}
-{{$variableName := makePropertyVariableName . | makeVariableName -}}
+	propertyMethodImplementationTmpl = `{{- define "propertyMethodImplementationTmpl"}}
+{{- if .Properties}}
+{{- range .Properties}}
+  {{- $baseType := makePropertyBaseTypeExtract .}}
+  {{- $variableName := makePropertyVariableName . | makeVariableName}}
+{{/* empty line */}}
+  {{- /* Property name accessor. */}}
+  {{- formatComment .DocString 2}}
+  static const char* {{.Name}}Name() { return "{{.Name}}"; }
 
-{{/* Property name accessor. */ -}}
-{{formatComment .DocString 2 -}}
-{{"  "}}static const char* {{.Name}}Name() { return "{{.Name}}"; }
-
-{{- /* Getter method. */}}
+  {{- /* Getter method. */}}
   {{$baseType}} Get{{.Name}}() const {
     return {{$variableName}}_.GetValue().Get<{{$baseType}}>();
   }
 
-{{- /* Setter method. */}}
+  {{- /* Setter method. */}}
   void Set{{.Name}}({{makePropertyInArgTypeAdaptor .}} {{$variableName}}) {
     {{$variableName}}_.SetValue({{$variableName}});
   }
 
-{{- /* Validation method for property with write access. */}}
-{{if ne .Access "read" -}}
-{{"  "}}virtual bool Validate{{.Name}}(
+  {{- /* Validation method for property with write access. */}}
+{{- if ne .Access "read"}}
+  virtual bool Validate{{.Name}}(
       {{- /* Explicitly specify the "value" parameter as const & to match the */}}
       {{- /* validator callback function signature. */}}
       brillo::ErrorPtr* /*error*/, const {{$baseType}}& /*value*/) {
     return true;
   }
-{{end -}}
-{{end -}}
-{{end}}`
+{{- end}}
+{{- end}}
+{{- end}}
+{{- end}}`
 
-	quotedIntrospectionForInterfaceTmpl = `{{define "quotedIntrospectionForInterfaceTmpl" -}}
-{{"  "}}static const char* GetIntrospectionXml() {
+	quotedIntrospectionForInterfaceTmpl = `{{- define "quotedIntrospectionForInterfaceTmpl"}}
+
+  static const char* GetIntrospectionXml() {
     return
         "  <interface name=\"{{.Name}}\">\n"
 {{- range .Methods}}
         "    <method name=\"{{.Name}}\">\n"
-{{- range .InputArguments}}
+  {{- range .InputArguments}}
         "      <arg name=\"{{.Name}}\" type=\"{{.Type}}\" direction=\"in\"/>\n"
-{{- end}}
-{{- range .OutputArguments}}
+  {{- end}}
+  {{- range .OutputArguments}}
         "      <arg name=\"{{.Name}}\" type=\"{{.Type}}\" direction=\"out\"/>\n"
-{{- end}}
+  {{- end}}
         "    </method>\n"
 {{- end}}
 {{- range .Signals}}
         "    <signal name=\"{{.Name}}\">\n"
-{{- range .Args}}
+  {{- range .Args}}
         "      <arg name=\"{{.Name}}\" type=\"{{.Type}}\"/>\n"
-{{- end}}
+  {{- end}}
         "    </signal>\n"
 {{- end}}
         "  </interface>\n";
   }
-{{end}}`
+{{- end}}`
 
-	signalDataMembersTmpl = `{{define "signalDataMembersTmpl" -}}
-{{range .Signals -}}
-{{"  "}}using Signal{{.Name}}Type = brillo::dbus_utils::DBusSignal<
+	signalDataMembersTmpl = `{{- define "signalDataMembersTmpl"}}
+{{- range .Signals}}
+
+  using Signal{{.Name}}Type = brillo::dbus_utils::DBusSignal<
 {{- range $i, $arg := makeDBusSignalParams .}}{{if ne $i 0}},{{end}}
-      {{$arg -}}
-{{end}}>;
+      {{$arg}}
+{{- end}}>;
   std::weak_ptr<Signal{{.Name}}Type> signal_{{.Name}}_;
+{{- end}}
+{{- end}}`
 
-{{end -}}
-{{end}}`
-
-	propertyDataMembersTmpl = `{{define "propertyDataMembersTmpl" -}}
-{{range .Properties -}}
-{{$variableName := makePropertyVariableName . | makeVariableName -}}
-{{"  "}}brillo::dbus_utils::ExportedProperty<{{makePropertyBaseTypeExtract . }}> {{$variableName}}_;
-{{end -}}
-{{if .Properties}}{{"\n"}}{{end -}}
-{{end}}`
+	propertyDataMembersTmpl = `{{- define "propertyDataMembersTmpl"}}
+{{- if .Properties}}
+{{/* empty line */}}
+{{- range .Properties}}
+  {{- $variableName := makePropertyVariableName . | makeVariableName}}
+  brillo::dbus_utils::ExportedProperty<{{makePropertyBaseTypeExtract . }}> {{$variableName}}_;
+{{- end}}
+{{- end}}
+{{- end}}`
 )
 
 // Generate prints an interface definition and an interface adaptor for each interface in introspects.

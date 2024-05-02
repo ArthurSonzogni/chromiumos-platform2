@@ -18,6 +18,7 @@ const (
 	generateAdaptorsOutput = `// Automatic generation of D-Bus interfaces:
 //  - fi.w1.wpa_supplicant1.Interface
 //  - EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_ADAPTOR_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_ADAPTOR_H
 #include <memory>
@@ -125,6 +126,7 @@ class InterfaceAdaptor {
   }
 
  private:
+
   using SignalBSSRemovedType = brillo::dbus_utils::DBusSignal<
       YetAnotherProto /*BSSDetail1*/,
       std::tuple<int32_t, base::ScopedFD> /*BSSDetail2*/>;
@@ -139,7 +141,6 @@ class InterfaceAdaptor {
 }  // namespace wpa_supplicant1
 }  // namespace w1
 }  // namespace fi
-
 
 // Interface definition for EmptyInterface.
 class EmptyInterfaceInterface {
@@ -292,13 +293,13 @@ func TestInterfaceMethodsTempl(t *testing.T) {
 				},
 			},
 			want: `
+
   // this is comment1
   virtual bool methodWithComment1(
       brillo::ErrorPtr* error) = 0;
   // this is comment2
   virtual bool methodWithComment2(
-      brillo::ErrorPtr* error) = 0;
-`,
+      brillo::ErrorPtr* error) = 0;`,
 		}, {
 			input: introspect.Interface{
 				Name: "itfWithMethodWithNoArg",
@@ -315,8 +316,8 @@ func TestInterfaceMethodsTempl(t *testing.T) {
 				},
 			},
 			want: `
-  virtual int32_t methodWithNoArg() = 0;
-`,
+
+  virtual int32_t methodWithNoArg() = 0;`,
 		}, {
 			input: introspect.Interface{
 				Name: "itfWithMethodWithArgs",
@@ -334,10 +335,10 @@ func TestInterfaceMethodsTempl(t *testing.T) {
 				},
 			},
 			want: `
+
   virtual void methodWithArgs(
       int32_t in_n,
-      const std::string& in_2) = 0;
-`,
+      const std::string& in_2) = 0;`,
 		}, {
 			input: introspect.Interface{
 				Name: "itfWithConstMethod",
@@ -355,9 +356,9 @@ func TestInterfaceMethodsTempl(t *testing.T) {
 				},
 			},
 			want: `
+
   virtual void methodWithArgs(
-      int32_t in_n) const = 0;
-`,
+      int32_t in_n) const = 0;`,
 		},
 	}
 
@@ -437,7 +438,9 @@ func TestRegisterWithDBusObjectTmpl(t *testing.T) {
 					{Name: "BazProperty", Access: "read", Type: "i"},
 				},
 			},
-			want: `  void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {
+			want: `
+
+  void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {
     brillo::dbus_utils::DBusInterface* itf =
         object->AddOrGetInterface("fi.w1.wpa_supplicant1.ItfA");
 
@@ -490,17 +493,17 @@ func TestRegisterWithDBusObjectTmpl(t *testing.T) {
                             base::Unretained(this)));
     itf->AddProperty(BarPropertyName(), &bar_property_);
     itf->AddProperty(BazPropertyName(), &baz_property_);
-  }
-`,
+  }`,
 		}, {
 			input: introspect.Interface{
 				Name: "fi.w1.wpa_supplicant1.EmptyInterface",
 			},
-			want: `  void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {
+			want: `
+
+  void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {
     brillo::dbus_utils::DBusInterface* itf =
         object->AddOrGetInterface("fi.w1.wpa_supplicant1.EmptyInterface");
-  }
-`,
+  }`,
 		},
 	}
 
@@ -541,12 +544,12 @@ func TestSendSignalMethodsTmpl(t *testing.T) {
 				},
 			},
 			want: `
+
   void SendSignalWithNoArgSignal() {
     auto signal = signal_SignalWithNoArg_.lock();
     if (signal)
       signal->Send();
-  }
-`,
+  }`,
 		}, {
 			input: introspect.Interface{
 				Name: "itfWithSignalsWithArgs",
@@ -580,6 +583,7 @@ func TestSendSignalMethodsTmpl(t *testing.T) {
 				},
 			},
 			want: `
+
   // this is comment1
   void SendSig1Signal(
       const base::ScopedFD& in_a1,
@@ -594,8 +598,7 @@ func TestSendSignalMethodsTmpl(t *testing.T) {
     auto signal = signal_Sig2_.lock();
     if (signal)
       signal->Send(in_1);
-  }
-`,
+  }`,
 		},
 	}
 
@@ -664,7 +667,9 @@ func TestQuotedIntrospectionForInterfaceTmpl(t *testing.T) {
 					},
 				},
 			},
-			want: `  static const char* GetIntrospectionXml() {
+			want: `
+
+  static const char* GetIntrospectionXml() {
     return
         "  <interface name=\"fi.w1.wpa_supplicant1.ItfA\">\n"
         "    <method name=\"Mthd1\">\n"
@@ -682,18 +687,18 @@ func TestQuotedIntrospectionForInterfaceTmpl(t *testing.T) {
         "    <signal name=\"EmptySig\">\n"
         "    </signal>\n"
         "  </interface>\n";
-  }
-`,
+  }`,
 		}, {
 			input: introspect.Interface{
 				Name: "EmptyItf",
 			},
-			want: `  static const char* GetIntrospectionXml() {
+			want: `
+
+  static const char* GetIntrospectionXml() {
     return
         "  <interface name=\"EmptyItf\">\n"
         "  </interface>\n";
-  }
-`,
+  }`,
 		},
 	}
 
@@ -733,10 +738,10 @@ func TestSignalDataMembersTmpl(t *testing.T) {
 					},
 				},
 			},
-			want: `  using SignalSignalWithNoArgType = brillo::dbus_utils::DBusSignal<>;
-  std::weak_ptr<SignalSignalWithNoArgType> signal_SignalWithNoArg_;
+			want: `
 
-`,
+  using SignalSignalWithNoArgType = brillo::dbus_utils::DBusSignal<>;
+  std::weak_ptr<SignalSignalWithNoArgType> signal_SignalWithNoArg_;`,
 		}, {
 			input: introspect.Interface{
 				Name: "itfWithSignalsWithArgs",
@@ -767,16 +772,16 @@ func TestSignalDataMembersTmpl(t *testing.T) {
 					},
 				},
 			},
-			want: `  using SignalSig1Type = brillo::dbus_utils::DBusSignal<
+			want: `
+
+  using SignalSig1Type = brillo::dbus_utils::DBusSignal<
       base::ScopedFD /*a1*/,
       int32_t>;
   std::weak_ptr<SignalSig1Type> signal_Sig1_;
 
   using SignalSig2Type = brillo::dbus_utils::DBusSignal<
       MyProto>;
-  std::weak_ptr<SignalSig2Type> signal_Sig2_;
-
-`,
+  std::weak_ptr<SignalSig2Type> signal_Sig2_;`,
 		},
 	}
 
@@ -815,10 +820,10 @@ func TestPropertyDataMembersTmpl(t *testing.T) {
 					{Name: "BarProperty", Access: "readwrite", Type: "ay"},
 				},
 			},
-			want: `  brillo::dbus_utils::ExportedProperty<std::tuple<int32_t, std::string>> foo_property_;
-  brillo::dbus_utils::ExportedProperty<std::vector<uint8_t>> bar_property_;
+			want: `
 
-`,
+  brillo::dbus_utils::ExportedProperty<std::tuple<int32_t, std::string>> foo_property_;
+  brillo::dbus_utils::ExportedProperty<std::vector<uint8_t>> bar_property_;`,
 		},
 	}
 

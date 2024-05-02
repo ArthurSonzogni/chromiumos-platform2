@@ -113,6 +113,7 @@ func TestGenerateProxies(t *testing.T) {
 	const want = `// Automatic generation of D-Bus interfaces:
 //  - fi.w1.wpa_supplicant1.Interface
 //  - EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #include <memory>
@@ -207,6 +208,7 @@ namespace wpa_supplicant1 {
 // interface doc
 class InterfaceProxy final : public InterfaceProxyInterface {
  public:
+
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -352,6 +354,7 @@ class InterfaceProxy final : public InterfaceProxyInterface {
   }
 
  private:
+
   void OnPropertyChanged(const std::string& property_name) {
     if (!on_property_changed_.is_null())
       on_property_changed_.Run(this, property_name);
@@ -371,7 +374,6 @@ class InterfaceProxy final : public InterfaceProxyInterface {
 }  // namespace w1
 }  // namespace fi
 
-
 // Abstract interface proxy for EmptyInterface.
 class EmptyInterfaceProxyInterface {
  public:
@@ -381,11 +383,10 @@ class EmptyInterfaceProxyInterface {
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
 
-
-
 // Interface proxy for EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -428,21 +429,21 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   }
 
  private:
+
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
-
 };
-
 
 namespace foo {
 namespace bar {
 
 class ObjectManagerProxy : public dbus::ObjectManager::Interface {
  public:
-  ObjectManagerProxy(const scoped_refptr<dbus::Bus>& bus,
-                     const std::string& service_name)
+  ObjectManagerProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name)
       : bus_{bus},
         service_name_{service_name},
         dbus_object_manager_{bus->GetObjectManager(
@@ -509,6 +510,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   }
 
  private:
+
   void OnPropertyChanged(const dbus::ObjectPath& object_path,
                          const std::string& interface_name,
                          const std::string& property_name) {
@@ -639,6 +641,7 @@ func TestGenerateProxiesEmpty(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interfaces:
 //  - test.EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #include <memory>
@@ -680,6 +683,7 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+
   EmptyInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
@@ -710,11 +714,11 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   }
 
  private:
+
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
-
 };
 
 }  // namespace test
@@ -746,6 +750,7 @@ func TestGenerateProxiesWithServiceName(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interfaces:
 //  - test.EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #include <memory>
@@ -787,6 +792,7 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+
   EmptyInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const dbus::ObjectPath& object_path) :
@@ -815,11 +821,11 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   }
 
  private:
+
   scoped_refptr<dbus::Bus> bus_;
   const std::string service_name_{"test.ServiceName"};
   dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
-
 };
 
 }  // namespace test
@@ -850,6 +856,7 @@ func TestGenerateProxiesWithNodeName(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interfaces:
 //  - test.EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #include <memory>
@@ -891,6 +898,7 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+
   EmptyInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name) :
@@ -919,11 +927,11 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   }
 
  private:
+
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   const dbus::ObjectPath object_path_{"test.node.Name"};
   dbus::ObjectProxy* dbus_object_proxy_;
-
 };
 
 }  // namespace test
@@ -1007,6 +1015,7 @@ func TestGenerateProxiesWithMethods(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interfaces:
 //  - test.EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #include <memory>
@@ -1128,6 +1137,7 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+
   EmptyInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
@@ -1356,11 +1366,11 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   }
 
  private:
+
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
-
 };
 
 }  // namespace test
@@ -1422,6 +1432,7 @@ func TestGenerateProxiesWithSignals(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interfaces:
 //  - test.EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #include <memory>
@@ -1473,6 +1484,7 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+
   EmptyInterfaceProxy(
       const scoped_refptr<dbus::Bus>& bus,
       const std::string& service_name,
@@ -1527,11 +1539,11 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   }
 
  private:
+
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
-
 };
 
 }  // namespace test
@@ -1575,6 +1587,7 @@ func TestGenerateProxiesWithProperties(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interfaces:
 //  - test.EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #include <memory>
@@ -1628,6 +1641,7 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -1707,12 +1721,12 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   }
 
  private:
+
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
   std::unique_ptr<PropertySet> property_set_;
-
 };
 
 }  // namespace test
@@ -1746,6 +1760,7 @@ func TestGenerateProxiesWithObjectManager(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interfaces:
 //  - test.EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #include <memory>
@@ -1791,6 +1806,7 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -1833,11 +1849,11 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   }
 
  private:
+
   scoped_refptr<dbus::Bus> bus_;
   std::string service_name_;
   dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
-
 };
 
 }  // namespace test
@@ -1846,8 +1862,9 @@ namespace test {
 
 class ObjectManagerProxy : public dbus::ObjectManager::Interface {
  public:
-  ObjectManagerProxy(const scoped_refptr<dbus::Bus>& bus,
-                     const std::string& service_name)
+  ObjectManagerProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name)
       : bus_{bus},
         service_name_{service_name},
         dbus_object_manager_{bus->GetObjectManager(
@@ -1891,6 +1908,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   }
 
  private:
+
   void OnPropertyChanged(const dbus::ObjectPath& /* object_path */,
                          const std::string& /* interface_name */,
                          const std::string& /* property_name */) {}
@@ -1983,6 +2001,7 @@ func TestGenerateProxiesWithObjectManagerAndServiceName(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interfaces:
 //  - test.EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #include <memory>
@@ -2028,6 +2047,7 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -2068,11 +2088,11 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   }
 
  private:
+
   scoped_refptr<dbus::Bus> bus_;
   const std::string service_name_{"test.service.Name"};
   dbus::ObjectPath object_path_;
   dbus::ObjectProxy* dbus_object_proxy_;
-
 };
 
 }  // namespace test
@@ -2081,7 +2101,8 @@ namespace test {
 
 class ObjectManagerProxy : public dbus::ObjectManager::Interface {
  public:
-  ObjectManagerProxy(const scoped_refptr<dbus::Bus>& bus)
+  ObjectManagerProxy(
+      const scoped_refptr<dbus::Bus>& bus)
       : bus_{bus},
         dbus_object_manager_{bus->GetObjectManager(
             "test.service.Name",
@@ -2124,6 +2145,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   }
 
  private:
+
   void OnPropertyChanged(const dbus::ObjectPath& /* object_path */,
                          const std::string& /* interface_name */,
                          const std::string& /* property_name */) {}
@@ -2222,6 +2244,7 @@ func TestGenerateProxiesWithPropertiesAndObjectManager(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interfaces:
 //  - test.EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 #include <memory>
@@ -2274,6 +2297,7 @@ namespace test {
 // Interface proxy for test::EmptyInterface.
 class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
  public:
+
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -2337,6 +2361,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   }
 
  private:
+
   void OnPropertyChanged(const std::string& property_name) {
     if (!on_property_changed_.is_null())
       on_property_changed_.Run(this, property_name);
@@ -2358,8 +2383,9 @@ namespace test {
 
 class ObjectManagerProxy : public dbus::ObjectManager::Interface {
  public:
-  ObjectManagerProxy(const scoped_refptr<dbus::Bus>& bus,
-                     const std::string& service_name)
+  ObjectManagerProxy(
+      const scoped_refptr<dbus::Bus>& bus,
+      const std::string& service_name)
       : bus_{bus},
         service_name_{service_name},
         dbus_object_manager_{bus->GetObjectManager(
@@ -2403,6 +2429,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
   }
 
  private:
+
   void OnPropertyChanged(const dbus::ObjectPath& object_path,
                          const std::string& interface_name,
                          const std::string& property_name) {

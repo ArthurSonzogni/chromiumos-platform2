@@ -17,9 +17,9 @@ import (
 
 const (
 	mockTemplateText = `// Automatic generation of D-Bus interface mock proxies for:
-{{range .Introspects}}{{range .Interfaces -}}
+{{- range .Introspects}}{{range .Interfaces}}
 //  - {{.Name}}
-{{end}}{{end -}}
+{{- end}}{{end}}
 
 #ifndef {{.HeaderGuard}}
 #define {{.HeaderGuard}}
@@ -36,15 +36,21 @@ const (
 
 #include "{{$.ProxyFilePath}}"
 {{- end}}
-{{range $introspect := .Introspects}}{{range $itf := .Interfaces -}}
-{{- $itfName := makeProxyInterfaceName .Name -}}
+
+{{- range $introspect := .Introspects}}{{range $itf := .Interfaces}}
+{{- $itfName := makeProxyInterfaceName .Name}}
 
 {{- if (not $.ProxyFilePath)}}
-{{template "proxyInterface" (makeProxyInterfaceArgs . $.ObjectManagerName) }}
+{{- template "proxyInterface" (makeProxyInterfaceArgs . $.ObjectManagerName) }}
 {{- end}}
-{{range extractNameSpaces .Name -}}
+
+{{- if extractNameSpaces .Name}}
+{{/* empty line */}}
+{{- range extractNameSpaces .Name}}
 namespace {{.}} {
-{{end}}
+{{- end}}
+{{- end}}
+
 // Mock object for {{$itfName}}.
 {{- $mockName := makeProxyName .Name | printf "%sMock" }}
 class {{$mockName}} : public {{$itfName}} {
@@ -79,11 +85,15 @@ class {{$mockName}} : public {{$itfName}} {
               (override));
 {{- end}}
 };
-{{range extractNameSpaces .Name | reverse -}}
+
+{{- if extractNameSpaces .Name}}
+{{/* empty line */}}
+{{- range extractNameSpaces .Name | reverse}}
 }  // namespace {{.}}
-{{end}}
 {{- end}}
 {{- end}}
+{{- end}}{{end}}
+
 #endif  // {{.HeaderGuard}}
 `
 

@@ -112,7 +112,7 @@ func TestFormatComment(t *testing.T) {
 		want   string
 	}{
 		{2, "", ""},
-		{2, " \tcomment\t ", "  // comment\n"},
+		{2, " \tcomment\t ", "\n  // comment"},
 		{2, "  \n \t  \n", ""},
 		{
 			indent: 0,
@@ -124,10 +124,10 @@ func TestFormatComment(t *testing.T) {
 
 
 	`,
-			want: `// line1
+			want: `
+// line1
 //
-// line2
-`,
+// line2`,
 		}, {
 			indent: 2,
 			input: `
@@ -137,12 +137,12 @@ func TestFormatComment(t *testing.T) {
       - bullet2
   line3
 `,
-			want: `  // line1
+			want: `
+  // line1
   //   - bullet1
   //     line2
   //   - bullet2
-  // line3
-`,
+  // line3`,
 		},
 	}
 

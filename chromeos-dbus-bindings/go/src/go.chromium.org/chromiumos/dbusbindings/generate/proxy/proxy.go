@@ -70,9 +70,9 @@ var funcMap = template.FuncMap{
 
 const (
 	templateText = `// Automatic generation of D-Bus interfaces:
-{{range .Introspects}}{{range .Interfaces -}}
+{{- range .Introspects}}{{range .Interfaces}}
 //  - {{.Name}}
-{{end}}{{end -}}
+{{- end}}{{end}}
 
 #ifndef {{.HeaderGuard}}
 #define {{.HeaderGuard}}
@@ -96,42 +96,43 @@ const (
 #include <dbus/object_manager.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
-{{/* empty line */}}
-{{- if .ObjectManagerName}}
+
 {{- template "objectManagerForwardDecl" .}}
-{{/* empty line */}}
-{{- end}}
 
 {{- range $introspect := .Introspects}}{{range $itf := .Interfaces}}
-{{/* empty line */}}
 {{- template "proxyInterface" (makeProxyInterfaceArgs . $.ObjectManagerName) }}
 {{- template "proxyClass" (packProxyClassArgs $introspect $.ObjectManagerName $.ServiceName .) }}
 {{- end}}{{end}}
 
 {{- if .ObjectManagerName }}
 {{- template "objectManager" .}}
-{{/* empty line */}}
 {{- end}}
+
 #endif  // {{.HeaderGuard}}
 `
 
 	proxyClassTemplate = `{{- define "proxyClass"}}
 {{- with .Itf }}
-{{range extractNameSpaces .Name -}}
+{{- $proxyName := makeProxyName .Name}}
+{{- $itfName := makeProxyInterfaceName .Name}}
+
+{{- if extractNameSpaces .Name}}
+{{/* empty line */}}
+{{- range extractNameSpaces .Name}}
 namespace {{.}} {
-{{end}}
+{{- end}}
+{{- end}}
+
 // Interface proxy for {{makeFullItfName .Name}}.
-{{formatComment .DocString 0 -}}
-{{- $proxyName := makeProxyName .Name -}}
-{{- $itfName := makeProxyInterfaceName .Name -}}
+{{- formatComment .DocString 0}}
 class {{$proxyName}} final : public {{$itfName}} {
  public:
 {{- if (or $.ObjectManagerName .Properties) }}
 {{- template "propertySetClass" .}}
-{{/* empty line */}}
 {{- end}}
 
-{{- /* TODO(crbug.com/983008): Simplify the format into Chromium style. */ -}}
+{{- /* TODO(crbug.com/983008): Simplify the format into Chromium style. */}}
+{{/* empty line */}}
 {{- if and $.ServiceName $.Introspection.Name (or (not $.ObjectManagerName) (not .Properties))}}
   {{$proxyName}}(const scoped_refptr<dbus::Bus>& bus) :
       bus_{bus},
@@ -197,7 +198,8 @@ class {{$proxyName}} final : public {{$itfName}} {
   }
 
 {{- if .Properties}}
-{{if $.ObjectManagerName}}
+{{/* empty line */}}
+{{- if $.ObjectManagerName}}
   void SetPropertyChangedCallback(
       const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>& callback) override {
     on_property_changed_ = callback;
@@ -205,7 +207,7 @@ class {{$proxyName}} final : public {{$itfName}} {
 {{- else}}
   void InitializeProperties(
       const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>& callback) override {
-{{- /* TODO(crbug.com/983008): Use std::make_unique. */}}
+    {{- /* TODO(crbug.com/983008): Use std::make_unique. */}}
     property_set_.reset(
         new PropertySet(dbus_object_proxy_, base::BindRepeating(callback, this)));
     property_set_->ConnectSignals();
@@ -218,23 +220,22 @@ class {{$proxyName}} final : public {{$itfName}} {
 {{- end}}
 
 {{- range .Methods}}
-{{/* empty line */}}
 {{- template "proxyMethod" (packProxyMethodParams $.Itf.Name .)}}
 {{- end}}
 
 {{- range .Properties}}
-{{/* empty line */}}
 {{- template "proxyProperty" .}}
 {{- end}}
 
  private:
 {{- if and $.ObjectManagerName .Properties}}
+
   void OnPropertyChanged(const std::string& property_name) {
     if (!on_property_changed_.is_null())
       on_property_changed_.Run(this, property_name);
   }
-{{/* blank line separator */}}
 {{- end}}
+
   scoped_refptr<dbus::Bus> bus_;
 {{- if $.ServiceName}}
   const std::string service_name_{"{{$.ServiceName}}"};
@@ -247,6 +248,7 @@ class {{$proxyName}} final : public {{$itfName}} {
 {{- else}}
   dbus::ObjectPath object_path_;
 {{- end}}
+
 {{- if and $.ObjectManagerName .Properties}}
   PropertySet* property_set_;
   base::RepeatingCallback<void({{$itfName}}*, const std::string&)> on_property_changed_;
@@ -254,19 +256,24 @@ class {{$proxyName}} final : public {{$itfName}} {
   dbus::ObjectProxy* dbus_object_proxy_;
 {{- if and (not $.ObjectManagerName) .Properties}}
   std::unique_ptr<PropertySet> property_set_;
-{{- end}}{{"\n"}}
+{{- end}}
 {{- if and $.ObjectManagerName .Properties}}
+
   friend class {{makeFullProxyName $.ObjectManagerName}};
 {{- end}}
 };
 
-{{range extractNameSpaces .Name | reverse -}}
+{{- if extractNameSpaces .Name}}
+{{/* empty line */}}
+{{- range extractNameSpaces .Name | reverse}}
 }  // namespace {{.}}
-{{end}}
+{{- end}}
+{{- end}}
 {{- end}}
 {{- end}}`
 
 	propertySetClassTemplate = `{{- define "propertySetClass"}}
+
   class PropertySet : public dbus::PropertySet {
    public:
     PropertySet(dbus::ObjectProxy* object_proxy,
@@ -293,10 +300,11 @@ class {{$proxyName}} final : public {{$itfName}} {
 
 	proxyMethodTemplate = `{{- define "proxyMethod" }}
 {{- with .Method}}
-{{- $inParams := makeMethodParams 0 .InputArguments -}}
+{{- $inParams := makeMethodParams 0 .InputArguments}}
 {{- $outParams := makeMethodParams (len .InputArguments) .OutputArguments}}
-{{formatComment .DocString 2 -}}
-{{"  "}}bool {{.Name}}(
+{{/* empty line */}}
+  {{- formatComment .DocString 2}}
+  bool {{.Name}}(
 {{- range $inParams }}
       {{.Type}} {{.Name}},
 {{- end}}
@@ -317,9 +325,9 @@ class {{$proxyName}} final : public {{$itfName}} {
     return response && brillo::dbus_utils::ExtractMethodCallResults(
         response.get(), error{{range $i, $param := $outParams}}, {{.Name}}{{end}});
   }
-
-{{formatComment .DocString 2 -}}
-{{"  "}}void {{.Name}}Async(
+{{/* empty line */}}
+  {{- formatComment .DocString 2}}
+  void {{.Name}}Async(
 {{- range $inParams}}
       {{.Type}} {{.Name}},
 {{- end}}
@@ -341,8 +349,9 @@ class {{$proxyName}} final : public {{$itfName}} {
 {{- end}}`
 
 	proxyPropertyTemplate = `{{- define "proxyProperty"}}
-{{- $name := makePropertyVariableName . | makeVariableName -}}
+{{- $name := makePropertyVariableName . | makeVariableName}}
 {{- $type := makeProxyInArgTypeProxy . }}
+
   {{$type}} {{$name}}() const override {
     return property_set_->{{$name}}.value();
   }
@@ -360,6 +369,8 @@ class {{$proxyName}} final : public {{$itfName}} {
 {{- end}}`
 
 	objectManagerForwardDeclTemplate = `{{- define "objectManagerForwardDecl"}}
+{{- if .ObjectManagerName}}
+{{/* empty line */}}
 {{- range extractNameSpaces .ObjectManagerName}}
 namespace {{.}} {
 {{- end}}
@@ -367,19 +378,25 @@ class {{makeProxyName .ObjectManagerName}};
 {{- range extractNameSpaces .ObjectManagerName | reverse}}
 }  // namespace {{.}}
 {{- end}}
+{{- end}}
 {{- end}}`
 
 	objectManagerTemplate = `{{- define "objectManager"}}
+{{-  $className := makeProxyName .ObjectManagerName}}
+
+{{- if extractNameSpaces .ObjectManagerName}}
+{{/* empty line */}}
 {{- range extractNameSpaces .ObjectManagerName}}
 namespace {{.}} {
 {{- end}}
+{{- end}}
 
-{{ $className := makeProxyName .ObjectManagerName -}}
 class {{$className}} : public dbus::ObjectManager::Interface {
  public:
-  {{$className}}(const scoped_refptr<dbus::Bus>& bus
+  {{$className}}(
+      const scoped_refptr<dbus::Bus>& bus
 {{- if (not .ServiceName) }},
-  {{repeat " " (len $className)}} const std::string& service_name
+      const std::string& service_name
 {{- end}})
       : bus_{bus},
 {{- if (not .ServiceName) }}
@@ -409,12 +426,14 @@ class {{$className}} : public dbus::ObjectManager::Interface {
   dbus::ObjectManager* GetObjectManagerProxy() const {
     return dbus_object_manager_;
   }
-{{range $introspect := .Introspects}}{{range $itf := .Interfaces}}
+
+{{- range $introspect := .Introspects}}{{range $itf := .Interfaces}}
 {{- $typeName := makeTypeName .Name}}
 {{- $varName := makeVariableName .Name }}
 {{- $instancesName := printf "%s_instances_" $varName }}
 {{- $fullItfName := makeFullProxyInterfaceName .Name }}
 {{- $proxyName := makeProxyName .Name }}
+{{/* empty line */}}
 {{- if $introspect.Name }}
   {{- /* We have a fixed path, so the object could be considered a "singleton". */}}
   {{- /* Skip the object_path parameter and return the first available instance. */}}
@@ -448,10 +467,12 @@ class {{$className}} : public dbus::ObjectManager::Interface {
       const base::RepeatingCallback<void(const dbus::ObjectPath&)>& callback) {
     on_{{$varName}}_removed_ = callback;
   }
-{{end}}{{end}}
+{{- end}}{{end}}
+
  private:
-{{- $itfsWithProps := extractInterfacesWithProperties .Introspects -}}
+{{- $itfsWithProps := extractInterfacesWithProperties .Introspects}}
 {{- if $itfsWithProps }}
+
   void OnPropertyChanged(const dbus::ObjectPath& object_path,
                          const std::string& interface_name,
                          const std::string& property_name) {
@@ -467,6 +488,7 @@ class {{$className}} : public dbus::ObjectManager::Interface {
 {{- end }}
   }
 {{- else }}
+
   void OnPropertyChanged(const dbus::ObjectPath& /* object_path */,
                          const std::string& /* interface_name */,
                          const std::string& /* property_name */) {}
@@ -550,8 +572,12 @@ class {{$className}} : public dbus::ObjectManager::Interface {
 {{- end}}{{end}}
   base::WeakPtrFactory<{{$className}}> weak_ptr_factory_{this};
 };
-{{range extractNameSpaces .ObjectManagerName | reverse }}
+
+{{- if extractNameSpaces .ObjectManagerName}}
+{{/* empty line */}}
+{{- range extractNameSpaces .ObjectManagerName | reverse }}
 }  // namespace {{.}}
+{{- end}}
 {{- end}}
 {{- end}}`
 )

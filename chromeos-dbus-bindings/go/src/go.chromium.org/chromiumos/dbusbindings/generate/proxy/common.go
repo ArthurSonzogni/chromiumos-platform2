@@ -9,63 +9,75 @@ import (
 )
 
 const proxyInterfaceTemplate = `{{- define "proxyInterface"}}
-{{- with .Itf -}}
-{{range extractNameSpaces .Name -}}
+{{- with .Itf}}
+{{- $itfName := makeProxyName .Name | printf "%sInterface"}}
+
+{{- if extractNameSpaces .Name}}
+{{/* empty line */}}
+{{- range extractNameSpaces .Name}}
 namespace {{.}} {
-{{end}}
+{{- end}}
+{{- end}}
+
 // Abstract interface proxy for {{makeFullItfName .Name}}.
-{{formatComment .DocString 0 -}}
-{{- $itfName := makeProxyName .Name | printf "%sInterface" -}}
+{{- formatComment .DocString 0}}
 class {{$itfName}} {
  public:
   virtual ~{{$itfName}}() = default;
-{{- range .Methods}}
-{{- $inParams := makeMethodParams 0 .InputArguments -}}
-{{- $outParams := makeMethodParams (len .InputArguments) .OutputArguments}}
 
-{{formatComment .DocString 2 -}}
-{{"  "}}virtual bool {{.Name}}(
-{{- range $inParams }}
+{{- range .Methods}}
+  {{- $inParams := makeMethodParams 0 .InputArguments}}
+  {{- $outParams := makeMethodParams (len .InputArguments) .OutputArguments}}
+{{/* empty line */}}
+  {{- formatComment .DocString 2}}
+  virtual bool {{.Name}}(
+    {{- range $inParams }}
       {{.Type}} {{.Name}},
-{{- end}}
-{{- range $outParams }}
+    {{- end}}
+    {{- range $outParams }}
       {{.Type}} {{.Name}},
-{{- end}}
+    {{- end}}
       brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
-
-{{formatComment .DocString 2 -}}
-{{"  "}}virtual void {{.Name}}Async(
-{{- range $inParams}}
+{{/* empty line */}}
+  {{- formatComment .DocString 2}}
+  virtual void {{.Name}}Async(
+    {{- range $inParams}}
       {{.Type}} {{.Name}},
-{{- end}}
+    {{- end}}
       {{makeMethodCallbackType .OutputArguments}} success_callback,
       base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 {{- end}}
+
 {{- range .Signals}}
 
   virtual void Register{{.Name}}SignalHandler(
       {{- makeSignalCallbackType .Args | nindent 6}} signal_callback,
       dbus::ObjectProxy::OnConnectedCallback on_connected_callback) = 0;
 {{- end}}
-{{- if .Properties}}{{"\n"}}{{end}}
+
+{{- if .Properties}}
+{{/* empty line */}}
 {{- range .Properties}}
-{{- $name := makePropertyVariableName . | makeVariableName -}}
-{{- $type := makeProxyInArgTypeProxy . }}
+  {{- $name := makePropertyVariableName . | makeVariableName}}
+  {{- $type := makeProxyInArgTypeProxy . }}
   static const char* {{.Name}}Name() { return "{{.Name}}"; }
   virtual {{$type}} {{$name}}() const = 0;
   virtual bool is_{{$name}}_valid() const = 0;
-{{- if eq .Access "readwrite"}}
+  {{- if eq .Access "readwrite"}}
   virtual void set_{{$name}}({{$type}} value,
                    {{repeat " " (len $name)}} base::OnceCallback<void(bool)> callback) = 0;
+  {{- end}}
 {{- end}}
 {{- end}}
 
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
+
 {{- if .Properties}}
-{{if $.ObjectManagerName}}
+{{/* empty line */}}
+{{- if $.ObjectManagerName}}
   virtual void SetPropertyChangedCallback(
       const base::RepeatingCallback<void({{$itfName}}*, const std::string&)>& callback) = 0;
 {{- else}}
@@ -75,9 +87,12 @@ class {{$itfName}} {
 {{- end}}
 };
 
-{{range extractNameSpaces .Name | reverse -}}
+{{- if extractNameSpaces .Name}}
+{{/* empty line */}}
+{{- range extractNameSpaces .Name | reverse}}
 }  // namespace {{.}}
-{{end}}
+{{- end}}
+{{- end}}
 {{- end}}
 {{- end}}`
 

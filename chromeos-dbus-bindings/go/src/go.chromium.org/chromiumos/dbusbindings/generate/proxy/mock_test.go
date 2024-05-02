@@ -113,6 +113,7 @@ func TestGenerateMockProxies(t *testing.T) {
 	const want = `// Automatic generation of D-Bus interface mock proxies for:
 //  - fi.w1.wpa_supplicant1.Interface
 //  - EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #include <string>
@@ -248,10 +249,10 @@ class InterfaceProxyMock : public InterfaceProxyInterface {
                                                    const std::string&)>&)),
               (override));
 };
+
 }  // namespace wpa_supplicant1
 }  // namespace w1
 }  // namespace fi
-
 
 // Abstract interface proxy for EmptyInterface.
 class EmptyInterfaceProxyInterface {
@@ -261,8 +262,6 @@ class EmptyInterfaceProxyInterface {
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
-
-
 
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
@@ -300,6 +299,7 @@ func TestGenerateMockProxiesEmpty(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interface mock proxies for:
 //  - EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #include <string>
@@ -312,7 +312,6 @@ func TestGenerateMockProxiesEmpty(t *testing.T) {
 #include <brillo/variant_dictionary.h>
 #include <gmock/gmock.h>
 
-
 // Abstract interface proxy for EmptyInterface.
 class EmptyInterfaceProxyInterface {
  public:
@@ -321,8 +320,6 @@ class EmptyInterfaceProxyInterface {
   virtual const dbus::ObjectPath& GetObjectPath() const = 0;
   virtual dbus::ObjectProxy* GetObjectProxy() const = 0;
 };
-
-
 
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
@@ -360,6 +357,7 @@ func TestGenerateMockProxiesWithProxyPath(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interface mock proxies for:
 //  - EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #include <string>
@@ -373,7 +371,6 @@ func TestGenerateMockProxiesWithProxyPath(t *testing.T) {
 #include <gmock/gmock.h>
 
 #include "../proxy.h"
-
 
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
@@ -512,6 +509,7 @@ func TestGenerateMockProxiesWithMethods(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interface mock proxies for:
 //  - EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #include <string>
@@ -525,7 +523,6 @@ func TestGenerateMockProxiesWithMethods(t *testing.T) {
 #include <gmock/gmock.h>
 
 #include "../proxy.h"
-
 
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
@@ -787,6 +784,7 @@ func TestGenerateMockProxiesWithSignals(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interface mock proxies for:
 //  - EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #include <string>
@@ -800,7 +798,6 @@ func TestGenerateMockProxiesWithSignals(t *testing.T) {
 #include <gmock/gmock.h>
 
 #include "../proxy.h"
-
 
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
@@ -876,6 +873,7 @@ func TestGenerateMockProxiesWithProperties(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interface mock proxies for:
 //  - EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #include <string>
@@ -889,7 +887,6 @@ func TestGenerateMockProxiesWithProperties(t *testing.T) {
 #include <gmock/gmock.h>
 
 #include "../proxy.h"
-
 
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
@@ -961,6 +958,7 @@ func TestGenerateMockProxiesWithPropertiesAndObjectManager(t *testing.T) {
 
 	const want = `// Automatic generation of D-Bus interface mock proxies for:
 //  - EmptyInterface
+
 #ifndef ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #define ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 #include <string>
@@ -974,7 +972,6 @@ func TestGenerateMockProxiesWithPropertiesAndObjectManager(t *testing.T) {
 #include <gmock/gmock.h>
 
 #include "../proxy.h"
-
 
 // Mock object for EmptyInterfaceProxyInterface.
 class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
