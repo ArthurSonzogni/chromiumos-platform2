@@ -94,7 +94,7 @@ CameraHalServerImpl::IPCBridge::~IPCBridge() {
   camera_service_receiver_set_.Clear();
   observers_.Clear();
   provider_receiver_.reset();
-#if USE_CAMERA_FEATURE_DIAGNOSTICS
+#if USE_CAMERA_DIAGNOSTICS
   camera_diagnostics_client_.reset();
 #endif
 }
@@ -110,7 +110,7 @@ void CameraHalServerImpl::IPCBridge::Start(
 
   camera_hal_adapter_ = camera_hal_adapter;
 
-#if USE_CAMERA_FEATURE_DIAGNOSTICS
+#if USE_CAMERA_DIAGNOSTICS
   camera_diagnostics_client_ =
       std::make_unique<CameraDiagnosticsClientImpl>(mojo_manager_);
   camera_hal_adapter_->SetCameraDiagnosticsClient(

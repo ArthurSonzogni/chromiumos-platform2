@@ -38,8 +38,8 @@ config("cros_camera_common") {
   # Feature USE flags as declared in chromeos-base/cros-camera-libs.
   defines += [
     "USE_ARCVM=${use.arcvm}",
+    "USE_CAMERA_DIAGNOSTICS=${use.camera_diagnostics}",
     "USE_CAMERA_FEATURE_AUTO_FRAMING=${use.camera_feature_auto_framing}",
-    "USE_CAMERA_FEATURE_DIAGNOSTICS=${use.camera_feature_diagnostics}",
     "USE_CAMERA_FEATURE_EFFECTS=${use.camera_feature_effects}",
     "USE_CAMERA_FEATURE_FACE_DETECTION=${use.camera_feature_face_detection}",
     "USE_CAMERA_FEATURE_FRAME_ANNOTATOR=${use.camera_feature_frame_annotator}",

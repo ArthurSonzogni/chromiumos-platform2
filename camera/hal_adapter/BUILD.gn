@@ -56,7 +56,7 @@ executable("cros_camera_service") {
     "cros_camera_main.cc",
     "vendor_tag_ops_delegate.cc",
   ]
-  if (use.camera_feature_diagnostics) {
+  if (use.camera_diagnostics) {
     sources += [ "camera_diagnostics_client_impl.cc" ]
   }
   if (use.camera_angle_backend) {

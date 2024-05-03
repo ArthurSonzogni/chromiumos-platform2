@@ -32,7 +32,7 @@
 #include "features/zsl/zsl_stream_manipulator.h"
 #include "gpu/gpu_resources.h"
 
-#if USE_CAMERA_FEATURE_DIAGNOSTICS
+#if USE_CAMERA_DIAGNOSTICS
 #include "common/diagnostics_stream_manipulator.h"
 #endif
 
@@ -246,7 +246,7 @@ StreamManipulatorManager::StreamManipulatorManager(
   LOGF(INFO) << "Service built without effects support";
 #endif
 
-#if USE_CAMERA_FEATURE_DIAGNOSTICS
+#if USE_CAMERA_DIAGNOSTICS
   if (create_options.diagnostics_client != nullptr) {
     stream_manipulators_.emplace_back(
         std::make_unique<DiagnosticsStreamManipulator>(

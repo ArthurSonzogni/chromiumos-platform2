@@ -29,7 +29,7 @@
 #include "cros-camera/cros_camera_hal.h"
 #include "hal_adapter/camera_hal_adapter.h"
 
-#if USE_CAMERA_FEATURE_DIAGNOSTICS
+#if USE_CAMERA_DIAGNOSTICS
 #include "hal_adapter/camera_diagnostics_client_impl.h"
 #endif
 
@@ -133,7 +133,7 @@ class CameraHalServerImpl {
 
     mojo::ReceiverSet<mojom::CrosCameraService> camera_service_receiver_set_;
 
-#if USE_CAMERA_FEATURE_DIAGNOSTICS
+#if USE_CAMERA_DIAGNOSTICS
     std::unique_ptr<CameraDiagnosticsClient> camera_diagnostics_client_;
 #endif
 
