@@ -12,6 +12,7 @@
 #include <libyuv/scale.h>
 
 #include "camera/mojo/camera_diagnostics.mojom.h"
+#include "common/camera_hal3_helpers.h"
 #include "cros-camera/camera_buffer_manager.h"
 
 namespace cros {
@@ -45,8 +46,9 @@ bool DiagnosticsStreamManipulator::ConfigureStreams(
   for (const camera3_stream_t* stream : stream_config->GetStreams()) {
     if (stream->stream_type != CAMERA3_STREAM_OUTPUT ||
         stream->format != HAL_PIXEL_FORMAT_YCbCr_420_888 ||
-        (stream->usage & GRALLOC_USAGE_PRIVATE_1) ||
-        (stream->usage & GRALLOC_USAGE_HW_CAMERA_ZSL)) {
+        (stream->usage & kStillCaptureUsageFlag) == kStillCaptureUsageFlag ||
+        (stream->usage & GRALLOC_USAGE_HW_CAMERA_ZSL) ==
+            GRALLOC_USAGE_HW_CAMERA_ZSL) {
       continue;
     }
     uint32_t stream_pixel_count = stream->width * stream->height;
