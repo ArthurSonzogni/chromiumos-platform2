@@ -46,6 +46,7 @@ if (use.test) {
       "png_io_test.cc",
       "test_utilities.cc",
     ]
+    run_test = true
     configs += [ ":target_defaults" ]
     deps = [ "//ml_core:libcros_ml_core" ]
   }
