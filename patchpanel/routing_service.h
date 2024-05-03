@@ -99,6 +99,8 @@ enum class TrafficAnnotationId : uint8_t {
   kShillPortalDetector = 1,
   // The traffic comes from Shill CAPPORT client.
   kShillCapportClient = 2,
+  // The traffic comes from Shill carrier entitlement.
+  kShillCarrierEntitlement = 3,
 };
 
 // QoSCategory in fwmark indicates the inferred result from each QoS detector

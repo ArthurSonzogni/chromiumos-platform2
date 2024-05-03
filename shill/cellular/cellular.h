@@ -16,6 +16,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <net-base/mac_address.h>
 #include <net-base/network_config.h>

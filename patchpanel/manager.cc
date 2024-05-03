@@ -719,6 +719,9 @@ bool Manager::TagSocket(const patchpanel::TagSocketRequest& request,
       case traffic_annotation::TrafficAnnotation::SHILL_CAPPORT_CLIENT:
         annotation_id = TrafficAnnotationId::kShillCapportClient;
         break;
+      case traffic_annotation::TrafficAnnotation::SHILL_CARRIER_ENTITLEMENT:
+        annotation_id = TrafficAnnotationId::kShillCarrierEntitlement;
+        break;
       default:
         LOG(ERROR) << __func__ << ": Invalid traffic annotation id "
                    << request.traffic_annotation().host_id();

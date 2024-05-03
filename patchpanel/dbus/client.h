@@ -318,6 +318,7 @@ class BRILLO_EXPORT Client {
     kUnspecified,
     kShillPortalDetector,
     kShillCapportClient,
+    kShillCarrierEntitlement,
   };
 
   // Describes the semantic of the traffic going through a socket. See

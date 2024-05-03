@@ -16,6 +16,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
+#include <chromeos/patchpanel/dbus/client.h>
 #include <net-base/ip_address.h>
 
 #include "shill/cellular/mobile_operator_mapper.h"
@@ -48,6 +49,7 @@ class CarrierEntitlement {
 
   explicit CarrierEntitlement(Cellular* cellular,
                               Metrics* metrics,
+                              patchpanel::Client* patchpanel_client,
                               base::RepeatingCallback<void(Result)> check_cb);
   CarrierEntitlement(const CarrierEntitlement&) = delete;
   CarrierEntitlement& operator=(const CarrierEntitlement&) = delete;
@@ -102,6 +104,7 @@ class CarrierEntitlement {
 
   Cellular* cellular_;
   Metrics* metrics_;
+  patchpanel::Client* patchpanel_client_;
   base::RepeatingCallback<void(Result)> check_cb_;
   MobileOperatorMapper::EntitlementConfig config_;
   base::CancelableOnceClosure background_check_cancelable;

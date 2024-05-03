@@ -324,7 +324,7 @@ Cellular::Cellular(Manager* manager,
   multiplexed_tethering_pdn_.reset();
 
   carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
-      this, metrics(),
+      this, metrics(), manager->patchpanel_client(),
       base::BindRepeating(&Cellular::OnEntitlementCheckUpdated,
                           weak_ptr_factory_.GetWeakPtr()));
   SLOG(1) << LoggingTag() << ": Cellular()";

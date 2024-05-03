@@ -15,6 +15,7 @@
 #include <brillo/http/mock_connection.h>
 #include <brillo/http/mock_transport.h>
 #include <brillo/streams/mock_stream.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <curl/curl.h>
 #include <gmock/gmock-cardinalities.h>
 #include <gmock/gmock-more-matchers.h>
@@ -38,6 +39,7 @@ using testing::_;
 using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::Eq;
+using ::testing::Field;
 using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
@@ -72,6 +74,18 @@ base::ScopedTempDir MakeTempDir() {
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
   return temp_dir;
 }
+
+class MockPatchpanelClient : public patchpanel::FakeClient {
+ public:
+  MockPatchpanelClient() = default;
+  ~MockPatchpanelClient() = default;
+
+  MOCK_METHOD(void,
+              PrepareTagSocket,
+              (const TrafficAnnotation&,
+               std::shared_ptr<brillo::http::Transport>),
+              (override));
+};
 
 class CarrierEntitlementTest : public testing::Test {
  public:
@@ -115,7 +129,7 @@ class CarrierEntitlementTest : public testing::Test {
         .Times(AtLeast(0))
         .WillRepeatedly(Return(true));
     carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
-        cellular_.get(), &metrics_, check_cb_.Get());
+        cellular_.get(), &metrics_, &patchpanel_client_, check_cb_.Get());
   }
 
   void SetUp() override {
@@ -236,6 +250,12 @@ class CarrierEntitlementTest : public testing::Test {
     EXPECT_CALL(*transport_, UseCustomCertificate(_));
     EXPECT_CALL(*transport_,
                 SetDefaultTimeout(CarrierEntitlement::kHttpRequestTimeout));
+    EXPECT_CALL(
+        patchpanel_client_,
+        PrepareTagSocket(Field(&patchpanel::Client::TrafficAnnotation::id,
+                               patchpanel::Client::TrafficAnnotationId::
+                                   kShillCarrierEntitlement),
+                         _));
   }
 
   void VerifyAllExpectations() {
@@ -257,6 +277,7 @@ class CarrierEntitlementTest : public testing::Test {
   EventDispatcherForTest dispatcher_;
   scoped_refptr<MockCellular> cellular_;
   testing::StrictMock<MockMetrics> metrics_;
+  MockPatchpanelClient patchpanel_client_;
   std::shared_ptr<brillo::http::MockTransport> transport_;
   std::shared_ptr<brillo::http::MockConnection> brillo_connection_;
   base::MockRepeatingCallback<void(CarrierEntitlement::Result)> check_cb_;

@@ -32,9 +32,11 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 CarrierEntitlement::CarrierEntitlement(
     Cellular* cellular,
     Metrics* metrics,
+    patchpanel::Client* patchpanel_client,
     base::RepeatingCallback<void(Result)> check_cb)
     : cellular_(cellular),
       metrics_(metrics),
+      patchpanel_client_(patchpanel_client),
       check_cb_(check_cb),
       weak_ptr_factory_(this) {}
 
@@ -129,6 +131,11 @@ void CarrierEntitlement::CheckInternal(bool user_triggered) {
   } else {
     transport_ = brillo::http::Transport::CreateDefault();
   }
+
+  patchpanel::Client::TrafficAnnotation annotation;
+  annotation.id =
+      patchpanel::Client::TrafficAnnotationId::kShillCarrierEntitlement;
+  patchpanel_client_->PrepareTagSocket(std::move(annotation), transport_);
 
   transport_->SetDnsServers(dns_list_str);
   transport_->SetDnsInterface(network->interface_name());
