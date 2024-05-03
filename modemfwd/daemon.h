@@ -109,6 +109,13 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   // Possibly called multiple times.
   void OnModemDeviceSeen(std::string device_id, std::string equipment_id);
 
+  // Update state of the modem with |device_id|
+  void OnModemStateChange(std::string device_id, Modem::State new_state);
+
+  // Update power state of the modem with |device_id|
+  void OnModemPowerStateChange(std::string device_id,
+                               Modem::PowerState new_power_state);
+
   // Try to flash a modem.
   void DoFlash(const std::string& device_id, const std::string& equipment_id);
 

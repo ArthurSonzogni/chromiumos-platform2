@@ -277,12 +277,14 @@ class ModemHelperImpl : public ModemHelper {
 
     std::optional<int> max_failures;
     std::optional<int> interval_sec;
+    std::optional<int> modem_idle_interval_sec;
     for (const auto& pair : parsed_config) {
       if (pair.first == kHeartbeatMaxFailures) {
         int value;
         if (!base::StringToInt(pair.second, &value))
           return std::nullopt;
 
+        EVLOG(1) << __func__ << ": max_failures: " << value;
         max_failures = value;
       }
       if (pair.first == kHeartbeatInterval) {
@@ -290,7 +292,16 @@ class ModemHelperImpl : public ModemHelper {
         if (!base::StringToInt(pair.second, &value))
           return std::nullopt;
 
+        EVLOG(1) << __func__ << ": interval_sec: " << value;
         interval_sec = value;
+      }
+      if (pair.first == kHeartbeatModemIdleInterval) {
+        int value;
+        if (!base::StringToInt(pair.second, &value))
+          return std::nullopt;
+
+        EVLOG(1) << __func__ << ": modem_idle_interval: " << value;
+        modem_idle_interval_sec = value;
       }
     }
 
@@ -299,7 +310,14 @@ class ModemHelperImpl : public ModemHelper {
       return std::nullopt;
     }
 
-    return HeartbeatConfig{*max_failures, base::Seconds(*interval_sec)};
+    // |modem_idle_interval| is optional
+    return HeartbeatConfig{
+        .max_failures = *max_failures,
+        .interval = base::Seconds(*interval_sec),
+        .modem_idle_interval = modem_idle_interval_sec.has_value()
+                                   ? base::Seconds(*modem_idle_interval_sec)
+                                   : base::Seconds(0),
+    };
   }
 
  private:

@@ -306,6 +306,10 @@ void Daemon::CompleteInitialization() {
       base::BindRepeating(&Daemon::OnModemCarrierIdReady,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindRepeating(&Daemon::OnModemDeviceSeen,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&Daemon::OnModemStateChange,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&Daemon::OnModemPowerStateChange,
                           weak_ptr_factory_.GetWeakPtr()));
 
   if (dlc_manager_) {
@@ -343,6 +347,38 @@ void Daemon::RunModemReappearanceCallback(const std::string& equipment_id) {
     std::move(modem_reappear_callbacks_[equipment_id]).Run();
     modem_reappear_callbacks_.erase(equipment_id);
   }
+}
+
+void Daemon::OnModemStateChange(const std::string device_id,
+                                Modem::State new_state) {
+  ELOG(INFO) << __func__ << ": update modem with device id: " << device_id
+             << " to new modem state: " << new_state;
+  // Do not update heartbeat config when:
+  // 1. update to new modem state is not successful (no state change);
+  // 2. current power state is LOW, keep heartbeat stopped.
+  if (!modems_[device_id].get()->UpdateState(new_state) ||
+      modems_[device_id].get()->GetPowerState() == Modem::PowerState::LOW) {
+    return;
+  }
+  StopHeartbeatTask(device_id);
+  // Apply new heartbeat check rate based on the new modem state
+  StartHeartbeatTask(device_id);
+}
+
+void Daemon::OnModemPowerStateChange(const std::string device_id,
+                                     Modem::PowerState new_power_state) {
+  ELOG(INFO) << __func__ << ": update modem with device id: " << device_id
+             << " to new power state: " << new_power_state;
+  if (!modems_[device_id].get()->UpdatePowerState(new_power_state))
+    return;
+  if (new_power_state == Modem::PowerState::LOW) {
+    StopHeartbeatTask(device_id);
+  } else {
+    StartHeartbeatTask(device_id);
+  }
+  // TODO(b/341753271): restart the task when there is a request to exit power
+  // LOW state. In this case, there is no power state change yet. Current power
+  // state is still LOW
 }
 
 void Daemon::OnModemDeviceSeen(std::string device_id,
@@ -426,8 +462,8 @@ bool Daemon::ForceFlash(const std::string& device_id) {
 
   // We don't know the real equipment ID of this modem, and if we're
   // force-flashing then we probably already have a problem with the modem
-  // coming up, so cleaning up at this point is not a problem. Run the callback
-  // now if we got one.
+  // coming up, so cleaning up at this point is not a problem. Run the
+  // callback now if we got one.
   RunModemReappearanceCallback(stub_modem->GetEquipmentId());
   return !err;
 }
@@ -460,8 +496,8 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
 
   // We don't know the real equipment ID of this modem, and if we're
   // force-flashing then we probably already have a problem with the modem
-  // coming up, so cleaning up at this point is not a problem. Run the callback
-  // now if we got one.
+  // coming up, so cleaning up at this point is not a problem. Run the
+  // callback now if we got one.
   RunModemReappearanceCallback(stub_modem->GetEquipmentId());
   return !err;
 }

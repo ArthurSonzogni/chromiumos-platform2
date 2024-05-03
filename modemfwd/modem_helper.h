@@ -65,6 +65,8 @@ struct FirmwareConfig {
 struct HeartbeatConfig {
   int max_failures;
   base::TimeDelta interval;
+  // Use longer interval when modem is idle.
+  base::TimeDelta modem_idle_interval{base::Seconds(0)};
 };
 
 class ModemHelper {

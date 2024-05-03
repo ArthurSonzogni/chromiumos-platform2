@@ -5,6 +5,9 @@
 #include "modemfwd/error.h"
 #include "modemfwd/heartbeat_task.h"
 
+#include <vector>
+
+#include <base/containers/contains.h>
 #include <base/functional/callback.h>
 #include <base/strings/stringprintf.h>
 
@@ -20,13 +23,30 @@ HeartbeatTask::HeartbeatTask(Delegate* delegate,
     : delegate_(delegate), modem_(modem), metrics_(metrics), config_(config) {}
 
 void HeartbeatTask::Start() {
-  timer_.Start(FROM_HERE, config_.interval,
+  if (modem_->GetPowerState() == Modem::PowerState::LOW)
+    return;
+
+  base::TimeDelta interval;
+  auto modem_state = modem_->GetState();
+  std::vector<Modem::State> idle_states{
+      Modem::State::REGISTERED, Modem::State::ENABLED, Modem::State::LOCKED};
+  if (base::Contains(idle_states, modem_state) &&
+      config_.modem_idle_interval > base::Seconds(0)) {
+    interval = config_.modem_idle_interval;
+  } else {
+    interval = config_.interval;
+  }
+
+  ELOG(INFO) << "Modem state is: " << modem_state
+             << ". Apply heartbeat check interval: " << interval;
+  timer_.Start(FROM_HERE, interval,
                base::BindRepeating(&HeartbeatTask::DoHealthCheck,
                                    weak_ptr_factory_.GetWeakPtr()));
 }
 
 void HeartbeatTask::Stop() {
   timer_.Stop();
+  ELOG(INFO) << __func__ << ": heartbeat task has stopped.";
 }
 
 void HeartbeatTask::DoHealthCheck() {

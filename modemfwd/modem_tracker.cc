@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "modemfwd/logging.h"
+#include "modemfwd/modem.h"
 #include "modemfwd/modem_tracker.h"
 
 #include <memory>
@@ -15,6 +16,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/shill/dbus-constants.h>
+#include <ModemManager/ModemManager.h>
 
 namespace modemfwd {
 
@@ -32,11 +34,16 @@ void OnSignalConnected(const std::string& interface_name,
 ModemTracker::ModemTracker(
     scoped_refptr<dbus::Bus> bus,
     OnModemCarrierIdReadyCallback on_modem_carrier_id_ready_callback,
-    OnModemDeviceSeenCallback on_modem_device_seen_callback)
+    OnModemDeviceSeenCallback on_modem_device_seen_callback,
+    OnModemStateChangeCallback on_modem_state_change_callback,
+    OnModemPowerStateChangeCallback on_modem_power_state_change_callback)
     : bus_(bus),
       shill_proxy_(new org::chromium::flimflam::ManagerProxy(bus)),
       on_modem_carrier_id_ready_callback_(on_modem_carrier_id_ready_callback),
       on_modem_device_seen_callback_(on_modem_device_seen_callback),
+      on_modem_state_change_callback_(on_modem_state_change_callback),
+      on_modem_power_state_change_callback_(
+          on_modem_power_state_change_callback),
       weak_ptr_factory_(this) {
   shill_proxy_->GetObjectProxy()->WaitForServiceToBeAvailable(base::BindOnce(
       &ModemTracker::OnServiceAvailable, weak_ptr_factory_.GetWeakPtr()));
@@ -46,6 +53,7 @@ void ModemTracker::OnServiceAvailable(bool available) {
   if (!available) {
     LOG(WARNING) << "shill disappeared";
     modem_objects_.clear();
+    modem_proxys_.clear();
     return;
   }
 
@@ -64,6 +72,82 @@ void ModemTracker::OnServiceAvailable(bool available) {
 
   OnDeviceListChanged(properties[shill::kDevicesProperty]
                           .TryGet<std::vector<dbus::ObjectPath>>());
+
+  // Update |modem_proxys_| in case modem object path has changed.
+  UpdateModemProxyMultiDevice(properties[shill::kDevicesProperty]
+                                  .TryGet<std::vector<dbus::ObjectPath>>());
+}
+
+void ModemTracker::UpdateModemProxySingleDevice(dbus::ObjectPath device_path) {
+  brillo::VariantDictionary properties;
+  std::string modem_object_path;
+  auto device =
+      std::make_unique<org::chromium::flimflam::DeviceProxy>(bus_, device_path);
+
+  if (!device->GetProperties(&properties, NULL))
+    return;
+  if (properties[shill::kTypeProperty].TryGet<std::string>() !=
+      shill::kTypeCellular) {
+    return;
+  }
+  if (!properties[shill::kDBusObjectProperty].GetValue(&modem_object_path)) {
+    ELOG(ERROR) << "Could not get modem object path for device "
+                << device_path.value();
+    return;
+  }
+  // Empty modem object path, reset modem proxy
+  if (modem_object_path.empty()) {
+    modem_proxys_.erase(device_path);
+    return;
+  }
+
+  // Modem object path did not change, no need to update proxy
+  auto modem_proxy = modem_proxys_.find(device_path);
+  if (modem_proxy != modem_proxys_.end()) {
+    auto old_path = modem_proxy->second->GetObjectPath().value();
+    ELOG(INFO) << __func__ << ": modem object old path: " << old_path;
+    if (old_path == modem_object_path)
+      return;
+  }
+
+  ELOG(INFO) << __func__ << ": modem object new path: " << modem_object_path;
+  auto modem_proxy_ptr =
+      std::make_unique<org::freedesktop::ModemManager1::ModemProxy>(
+          bus_, MM_DBUS_SERVICE, dbus::ObjectPath(modem_object_path));
+  if (!modem_proxy_ptr) {
+    ELOG(ERROR) << ": could not create modem proxy for object path: "
+                << modem_object_path;
+    return;
+  }
+
+  // Start listening property change on the new modem object
+  modem_proxy_ptr->InitializeProperties(
+      base::BindRepeating(&ModemTracker::OnModemPropertyChanged,
+                          weak_ptr_factory_.GetWeakPtr(), device_path));
+
+  std::string device_id;
+  if (properties[shill::kDeviceIdProperty].GetValue(&device_id)) {
+    // Get current power state of the new modem object
+    if (modem_proxy_ptr->GetProperties()->power_state.GetAndBlock()) {
+      on_modem_power_state_change_callback_.Run(
+          device_id,
+          static_cast<Modem::PowerState>(modem_proxy_ptr->power_state()));
+    }
+    // Get current modem state of the new modem object
+    if (modem_proxy_ptr->GetProperties()->state.GetAndBlock()) {
+      on_modem_state_change_callback_.Run(
+          device_id, static_cast<Modem::State>(modem_proxy_ptr->state()));
+    }
+  }
+  // Save the updated modem proxy
+  modem_proxys_[device_path] = std::move(modem_proxy_ptr);
+}
+
+void ModemTracker::UpdateModemProxyMultiDevice(
+    const std::vector<dbus::ObjectPath>& device_list) {
+  for (const auto& device_path : device_list) {
+    UpdateModemProxySingleDevice(device_path);
+  }
 }
 
 void ModemTracker::OnManagerPropertyChanged(const std::string& property_name,
@@ -72,9 +156,50 @@ void ModemTracker::OnManagerPropertyChanged(const std::string& property_name,
     OnDeviceListChanged(property_value.TryGet<std::vector<dbus::ObjectPath>>());
 }
 
+void ModemTracker::OnModemPropertyChanged(
+    dbus::ObjectPath device_path,
+    org::freedesktop::ModemManager1::ModemProxyInterface* modem_proxy_interface,
+    const std::string& prop) {
+  auto device =
+      std::make_unique<org::chromium::flimflam::DeviceProxy>(bus_, device_path);
+  std::string device_id;
+  brillo::VariantDictionary properties;
+  // Cannot get valid device id
+  if (!(device->GetProperties(&properties, NULL) &&
+        properties[shill::kDeviceIdProperty].GetValue(&device_id))) {
+    return;
+  }
+
+  auto modem_proxy = modem_proxys_.find(device_path);
+  if (modem_proxy == modem_proxys_.end()) {
+    return;
+  }
+  if (prop == MM_MODEM_PROPERTY_POWERSTATE || prop == MM_MODEM_PROPERTY_STATE) {
+    // Update both power state and modem state whenever one of them has changed
+    // in case a property update signal is missed
+    if (modem_proxy->second->GetProperties()->power_state.is_valid()) {
+      Modem::PowerState power_state =
+          static_cast<Modem::PowerState>(modem_proxy->second->power_state());
+      ELOG(INFO) << __func__ << ": new power state: " << power_state;
+      on_modem_power_state_change_callback_.Run(device_id, power_state);
+    }
+    if (modem_proxy->second->GetProperties()->state.is_valid()) {
+      Modem::State modem_state =
+          static_cast<Modem::State>(modem_proxy->second->state());
+      ELOG(INFO) << __func__ << ": new modem state: " << modem_state;
+      on_modem_state_change_callback_.Run(device_id, modem_state);
+    }
+  }
+}
+
 void ModemTracker::OnDevicePropertyChanged(dbus::ObjectPath device_path,
                                            const std::string& property_name,
                                            const brillo::Any& property_value) {
+  // Modem object has changed. Update modem proxy
+  if (property_name == shill::kDBusObjectProperty) {
+    UpdateModemProxySingleDevice(device_path);
+  }
+
   // Listen for the HomeProvider change triggered by a SIM change
   if (property_name != shill::kHomeProviderProperty)
     return;
@@ -98,7 +223,7 @@ void ModemTracker::OnDevicePropertyChanged(dbus::ObjectPath device_path,
   if (carrier_id.empty())
     return;
 
-  // trigger the firmware update
+  // Trigger the firmware update
   auto device =
       std::make_unique<org::chromium::flimflam::DeviceProxy>(bus_, device_path);
   on_modem_carrier_id_ready_callback_.Run(std::move(device));
@@ -183,8 +308,8 @@ void ModemTracker::OnDeviceListChanged(
     std::string carrier_id = operator_info[shill::kOperatorUuidKey];
     new_modems[device_path] = carrier_id;
 
-    // Listen to the Device HomeProvider property in order to detect future SIM
-    // swaps.
+    // Listen to the Device HomeProvider property in order to detect future
+    // SIM swaps.
     device->RegisterPropertyChangedSignalHandler(
         base::BindRepeating(&ModemTracker::OnDevicePropertyChanged,
                             weak_ptr_factory_.GetWeakPtr(), device_path),

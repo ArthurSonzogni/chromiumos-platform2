@@ -151,6 +151,75 @@ std::unique_ptr<HealthChecker> GetHealthChecker(
 
 namespace modemfwd {
 
+std::ostream& operator<<(std::ostream& os, const Modem::State& rhs) {
+  switch (rhs) {
+    case Modem::State::FAILED:
+      os << "FAILED";
+      break;
+    case Modem::State::UNKNOWN:
+      os << "UNKNOWN";
+      break;
+    case Modem::State::INITIALIZING:
+      os << "INITIALIZING";
+      break;
+    case Modem::State::LOCKED:
+      os << "LOCKED";
+      break;
+    case Modem::State::DISABLED:
+      os << "DISABLED";
+      break;
+    case Modem::State::DISABLING:
+      os << "DISABLING";
+      break;
+    case Modem::State::ENABLING:
+      os << "ENABLING";
+      break;
+    case Modem::State::ENABLED:
+      os << "ENABLED";
+      break;
+    case Modem::State::SEARCHING:
+      os << "SEARCHING";
+      break;
+    case Modem::State::REGISTERED:
+      os << "REGISTERED";
+      break;
+    case Modem::State::DISCONNECTING:
+      os << "DISCONNECTING";
+      break;
+    case Modem::State::CONNECTING:
+      os << "CONNECTING";
+      break;
+    case Modem::State::CONNECTED:
+      os << "CONNECTED";
+      break;
+    default:
+      os << "INVALID";
+      break;
+  }
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const Modem::PowerState& rhs) {
+  switch (rhs) {
+    case (Modem::PowerState::UNKNOWN):
+      os << "UNKNOWN";
+      break;
+    case (Modem::PowerState::OFF):
+      os << "OFF";
+      break;
+    case (Modem::PowerState::LOW):
+      os << "LOW";
+      break;
+    case (Modem::PowerState::ON):
+      os << "ON";
+      break;
+    default:
+      os << "INVALID";
+      break;
+  }
+  return os;
+}
+
 class ModemImpl : public Modem {
  public:
   ModemImpl(const std::string& device_id,
@@ -232,8 +301,47 @@ class ModemImpl : public Modem {
     return health_checker_ && health_checker_->Check();
   }
 
+  State GetState() const override { return state_; }
+
+  PowerState GetPowerState() const override { return power_state_; }
+
+  bool UpdateState(State new_state) override {
+    ELOG(INFO) << __func__ << ": new modem state: " << new_state;
+    if (new_state > State::CONNECTED || new_state < State::FAILED) {
+      LOG(ERROR) << "Invalid modem state: " << new_state;
+      return false;
+    }
+
+    if (state_ == new_state) {
+      ELOG(WARNING) << " state(" << state_ << ") did not change.";
+      return false;
+    } else {
+      state_ = new_state;
+    }
+    return true;
+  }
+
+  bool UpdatePowerState(PowerState new_power_state) override {
+    ELOG(INFO) << __func__ << ": new power state: " << new_power_state;
+    if (new_power_state > PowerState::ON ||
+        new_power_state < PowerState::UNKNOWN) {
+      LOG(ERROR) << "Invalid power state: " << new_power_state;
+      return false;
+    }
+
+    if (power_state_ == new_power_state) {
+      ELOG(WARNING) << "Power state(" << power_state_ << ") did not change.";
+      return false;
+    } else {
+      power_state_ = new_power_state;
+    }
+    return true;
+  }
+
  private:
   int heartbeat_failures_;
+  State state_;
+  PowerState power_state_;
   std::string heartbeat_port_;
   std::string device_id_;
   std::string equipment_id_;
@@ -394,8 +502,46 @@ class StubModem : public Modem {
 
   bool CheckHealth() override { return false; }
 
+  State GetState() const override { return state_; }
+  PowerState GetPowerState() const override { return power_state_; }
+
+  bool UpdateState(State new_state) override {
+    ELOG(INFO) << __func__ << ": new modem state: " << new_state;
+    if (new_state > State::CONNECTED || new_state < State::FAILED) {
+      LOG(ERROR) << "Invalid modem state: " << new_state;
+      return false;
+    }
+
+    if (state_ == new_state) {
+      ELOG(WARNING) << " State(" << state_ << ") did not change.";
+      return false;
+    } else {
+      state_ = new_state;
+    }
+    return true;
+  }
+
+  bool UpdatePowerState(PowerState new_power_state) override {
+    ELOG(INFO) << __func__ << ": new power state: " << new_power_state;
+    if (new_power_state > PowerState::ON ||
+        new_power_state < PowerState::UNKNOWN) {
+      LOG(ERROR) << "Invalid power state: " << new_power_state;
+      return false;
+    }
+
+    if (power_state_ == new_power_state) {
+      ELOG(WARNING) << "Power state(" << power_state_ << ") did not change.";
+      return false;
+    } else {
+      power_state_ = new_power_state;
+    }
+    return true;
+  }
+
  private:
   int heartbeat_failures_;
+  State state_;
+  PowerState power_state_;
   std::string heartbeat_port_;
   std::string carrier_id_;
   std::string device_id_;
