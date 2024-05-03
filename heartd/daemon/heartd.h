@@ -12,6 +12,7 @@
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
 #include "heartd/daemon/action_runner.h"
+#include "heartd/daemon/context.h"
 #include "heartd/daemon/database.h"
 #include "heartd/daemon/dbus_connector.h"
 #include "heartd/daemon/heartbeat_manager.h"
@@ -42,8 +43,8 @@ class HeartdDaemon final : public brillo::DBusServiceDaemon {
  private:
   // For mojo thread initialization.
   std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-  // Database.
-  std::unique_ptr<Database> database_ = nullptr;
+  // Provides access to objects.
+  std::unique_ptr<Context> context_ = nullptr;
   // Used to connect to dbus.
   std::unique_ptr<DbusConnector> dbus_connector_ = nullptr;
   // Used to run action.

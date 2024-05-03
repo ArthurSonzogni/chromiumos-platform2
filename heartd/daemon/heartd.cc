@@ -24,6 +24,7 @@ HeartdDaemon::HeartdDaemon(int sysrq_fd)
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+  context_ = std::make_unique<Context>();
 }
 
 HeartdDaemon::~HeartdDaemon() = default;
@@ -37,8 +38,7 @@ int HeartdDaemon::OnEventLoopStarted() {
     return EX_UNAVAILABLE;
   }
 
-  database_ = std::make_unique<Database>();
-  database_->Init();
+  context_->database()->Init();
   dbus_connector_ = std::make_unique<DbusConnectorImpl>();
   action_runner_ = std::make_unique<ActionRunner>(dbus_connector_.get());
   heartbeat_manager_ = std::make_unique<HeartbeatManager>(action_runner_.get());
@@ -56,13 +56,13 @@ int HeartdDaemon::OnEventLoopStarted() {
   action_runner_->SetupSysrq(sysrq_fd_);
   top_sheriff_->StartShift();
 
-  RecordBootMetrics(base::FilePath("/"), database_.get());
-  database_->RemoveOutdatedData(kBootRecordTable);
+  RecordBootMetrics(base::FilePath("/"), context_->database());
+  context_->database()->RemoveOutdatedData(kBootRecordTable);
   // We have to cache the boot record when start up, because when we need to
   // trigger the reboot action, it's possible that we can't read the database
   // successfully.
-  action_runner_->CacheBootRecord(
-      database_->GetBootRecordFromTime(base::Time().Now() - base::Days(7)));
+  action_runner_->CacheBootRecord(context_->database()->GetBootRecordFromTime(
+      base::Time().Now() - base::Days(7)));
 
   return EX_OK;
 }
