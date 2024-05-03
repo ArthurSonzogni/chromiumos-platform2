@@ -298,11 +298,17 @@ int HandleReportError(const Configuration& config,
       LOG(INFO) << "Reporting hub error (" << error_code << ") from "
                 << normalized_devpath;
       usb_bouncer::StructuredMetricsHubError(
-          abs(error_code), usb_bouncer::GetVendorId(normalized_devpath),
-          usb_bouncer::GetProductId(normalized_devpath),
-          usb_bouncer::GetDeviceClass(normalized_devpath),
-          usb_bouncer::GetUsbTreePath(normalized_devpath),
-          usb_bouncer::GetConnectedDuration(normalized_devpath));
+          abs(error_code),
+          usb_bouncer::GetDevicePropHex(normalized_devpath,
+                                        usb_bouncer::kVendorIdPath),
+          usb_bouncer::GetDevicePropHex(normalized_devpath,
+                                        usb_bouncer::kProductIdPath),
+          usb_bouncer::GetDevicePropHex(normalized_devpath,
+                                        usb_bouncer::kDeviceClassPath),
+          usb_bouncer::GetDevicePropString(normalized_devpath,
+                                           usb_bouncer::kDevpathPath),
+          usb_bouncer::GetDevicePropInt(normalized_devpath,
+                                        usb_bouncer::kConnectionDurationPath));
     } else if (subsystem == "pci") {
       LOG(INFO) << "Reporting xHCI error (" << error_code << ") from "
                 << normalized_devpath;

@@ -313,9 +313,11 @@ bool EntryManager::PersistChanges() {
 void EntryManager::ReportMetricsCameraModule(
     base::FilePath normalized_devpath) {
   StructuredMetricsInternalCameraModule(
-      GetVendorId(normalized_devpath), GetVendorName(normalized_devpath),
-      GetProductId(normalized_devpath), GetProductName(normalized_devpath),
-      GetBcdDevice(normalized_devpath));
+      GetDevicePropHex(normalized_devpath, kVendorIdPath),
+      GetDevicePropString(normalized_devpath, kVendorPath),
+      GetDevicePropHex(normalized_devpath, kProductIdPath),
+      GetDevicePropString(normalized_devpath, kProductPath),
+      GetDevicePropHex(normalized_devpath, kBcdDevicePath));
 }
 
 void EntryManager::ReportMetricsExternal(base::FilePath normalized_devpath,
@@ -327,10 +329,12 @@ void EntryManager::ReportMetricsExternal(base::FilePath normalized_devpath,
                                GetDeviceSpeed(normalized_devpath));
 
   StructuredMetricsExternalDeviceAttached(
-      GetVendorId(normalized_devpath), GetVendorName(normalized_devpath),
-      GetProductId(normalized_devpath), GetProductName(normalized_devpath),
-      GetDeviceClass(normalized_devpath),
-      GetInterfaceClass(normalized_devpath));
+      GetDevicePropHex(normalized_devpath, kVendorIdPath),
+      GetDevicePropString(normalized_devpath, kVendorPath),
+      GetDevicePropHex(normalized_devpath, kProductIdPath),
+      GetDevicePropString(normalized_devpath, kProductPath),
+      GetDevicePropHex(normalized_devpath, kDeviceClassPath),
+      GetInterfacePropHexArr(normalized_devpath, kInterfaceClassPath));
 }
 
 void EntryManager::ReportMetrics(const std::string& devpath,
@@ -355,10 +359,13 @@ void EntryManager::ReportMetrics(const std::string& devpath,
     return;
 
   // Report further metrics only for external USB devices.
-  if (IsExternalDevice(normalized_devpath))
+  if (IsExternalDevice(normalized_devpath)) {
     ReportMetricsExternal(normalized_devpath, rule, new_entry, timing);
-  else if (IsCamera(GetInterfaceClass(normalized_devpath)) && is_user_login)
+  } else if (IsCamera(GetInterfacePropHexArr(normalized_devpath,
+                                             kInterfaceClassPath)) &&
+             is_user_login) {
     ReportMetricsCameraModule(normalized_devpath);
+  }
 }
 
 }  // namespace usb_bouncer

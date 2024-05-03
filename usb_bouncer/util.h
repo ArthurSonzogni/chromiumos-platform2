@@ -48,6 +48,20 @@ constexpr int kDefaultWaitTimeoutInSeconds = 5;
 constexpr size_t kMaxWriteAttempts = 10;
 constexpr uint32_t kAttemptDelayMicroseconds = 10000;
 
+constexpr char kBcdDevicePath[] = "bcdDevice";
+constexpr char kConnectionDurationPath[] = "power/connected_duration";
+constexpr char kDeviceClassPath[] = "bDeviceClass";
+constexpr char kInterfaceClassPath[] = "bInterfaceClass";
+constexpr char kDevpathPath[] = "devpath";
+constexpr char kPanelPath[] = "physical_location/panel";
+constexpr char kProductIdPath[] = "idProduct";
+constexpr char kProductPath[] = "product";
+constexpr char kRemovablePath[] = "removable";
+constexpr char kSpeedPath[] = "speed";
+constexpr char kVendorIdPath[] = "idVendor";
+constexpr char kVendorPath[] = "manufacturer";
+constexpr char kVersionPath[] = "version";
+
 enum class UMADeviceRecognized {
   kRecognized,
   kUnrecognized,
@@ -251,44 +265,29 @@ UMADeviceSpeed GetDeviceSpeed(base::FilePath normalized_devpath);
 // Determine if any of the devices implements the UVC interface.
 bool IsCamera(std::vector<int64_t> interfaces);
 
-// Returns bcdDevice (FW version) for a sysfs device.
-int GetBcdDevice(base::FilePath normalized_devpath);
+// Returns the integer value of a decimal USB device property at |prop|.
+int GetDevicePropInt(base::FilePath normalized_devpath, std::string prop);
 
-// Returns vendor ID for a sysfs device.
-int GetVendorId(base::FilePath normalized_devpath);
+// Returns the integer value of a hexadecimal USB device property at |prop|.
+int GetDevicePropHex(base::FilePath normalized_devpath, std::string prop);
 
-// Returns vendor name for a sysfs device.
-std::string GetVendorName(base::FilePath normalized_devpath);
+// Returns the string value of a USB device property at |prop|.
+std::string GetDevicePropString(base::FilePath normalized_devpath,
+                                std::string prop);
 
-// Returns product ID for a sysfs device.
-int GetProductId(base::FilePath normalized_devpath);
-
-// Returns product name for a sysfs device.
-std::string GetProductName(base::FilePath normalized_devpath);
+// Returns vector of interface property |prop| for all of a devices interfaces.
+// If there is a file read error, returns "-1" at that interface's index.
+std::vector<int64_t> GetInterfacePropHexArr(base::FilePath normalized_devpath,
+                                            std::string prop);
 
 // Assigns VID and PID from a uevent's product environment variable. This can
 // be used by USB bouncer methods that receive the product environment variable
 // to read VID/PID on device disconnection.
 void GetVidPidFromEnvVar(std::string product, int* vendor_id, int* product_id);
 
-// Returns device class for a sysfs device.
-int GetDeviceClass(base::FilePath normalized_devpath);
-
-// Returns interface classes for a sysfs device.
-std::vector<int64_t> GetInterfaceClass(base::FilePath normalized_devpath);
-
-// Returns a USB device's location in the USB device tree. Here, the device
-// location is a string with the content of the USB device's devpath file
-// which includes a period-separated list of numbers with information on hubs
-// and ports between the device and host controller (Example: "1.5.3.2").
-std::string GetUsbTreePath(base::FilePath normalized_devpath);
-
 // Returns the depth of a device in a USB topology. This is based on the USB
 // tree path returned by GetUsbTreePath.
 int GetUsbTreeDepth(base::FilePath normalized_devpath);
-
-// Returns the connected duration, in milliseconds, for a sysfs device.
-int GetConnectedDuration(base::FilePath normalized_devpath);
 
 // Returns the PCI device class for a sysfs device.
 int GetPciDeviceClass(base::FilePath normalized_devpath);

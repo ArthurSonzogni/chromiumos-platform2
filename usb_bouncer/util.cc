@@ -902,20 +902,6 @@ bool IsCamera(std::vector<int64_t> interfaces) {
   return false;
 }
 
-int GetBcdDevice(base::FilePath normalized_devpath) {
-  std::string bcdDevice;
-  int bcdDevice_int;
-  if (base::ReadFileToString(normalized_devpath.Append("bcdDevice"),
-                             &bcdDevice)) {
-    base::TrimWhitespaceASCII(bcdDevice, base::TRIM_ALL, &bcdDevice);
-    if (base::HexStringToInt(bcdDevice, &bcdDevice_int)) {
-      return bcdDevice_int;
-    }
-  }
-
-  return 0;
-}
-
 usbguard::Rule GetRuleFromString(const std::string& to_parse) {
   usbguard::Rule parsed_rule;
   parsed_rule.setTarget(usbguard::Rule::Target::Invalid);
@@ -968,33 +954,20 @@ base::FilePath GetInterfaceDevice(base::FilePath intf) {
 }
 
 bool IsExternalDevice(base::FilePath normalized_devpath) {
-  std::string removable;
-  if (base::ReadFileToString(normalized_devpath.Append("removable"),
-                             &removable)) {
-    base::TrimWhitespaceASCII(removable, base::TRIM_ALL, &removable);
-    if (removable == "removable")
-      return true;
-  }
+  if (GetDevicePropString(normalized_devpath, kRemovablePath) == "removable")
+    return true;
 
   auto dev_components = normalized_devpath.GetComponents();
   auto it = dev_components.begin();
   base::FilePath dev(*it++);
   for (; it != dev_components.end(); it++) {
     dev = dev.Append(*it);
-    if (base::ReadFileToString(dev.Append("removable"), &removable)) {
-      base::TrimWhitespaceASCII(removable, base::TRIM_ALL, &removable);
-      if (removable == "removable")
-        return true;
-    }
-  }
-
-  std::string panel;
-  if (base::ReadFileToString(
-          normalized_devpath.Append("physical_location/panel"), &panel)) {
-    base::TrimWhitespaceASCII(panel, base::TRIM_ALL, &panel);
-    if (panel != "unknown")
+    if (GetDevicePropString(dev, kRemovablePath) == "removable")
       return true;
   }
+
+  if (GetDevicePropString(dev, kPanelPath) != "unknown")
+    return true;
 
   return false;
 }
@@ -1029,14 +1002,7 @@ UMAPortType GetPortType(base::FilePath normalized_devpath) {
 }
 
 UMADeviceSpeed GetDeviceSpeed(base::FilePath normalized_devpath) {
-  std::string speed;
-  if (base::ReadFileToString(normalized_devpath.Append("speed"), &speed)) {
-    base::TrimWhitespaceASCII(speed, base::TRIM_ALL, &speed);
-  }
-  std::string version;
-  if (base::ReadFileToString(normalized_devpath.Append("version"), &version)) {
-    base::TrimWhitespaceASCII(version, base::TRIM_ALL, &version);
-  }
+  std::string speed = GetDevicePropString(normalized_devpath, kSpeedPath);
 
   if (speed == "20000") {
     return UMADeviceSpeed::k20000;
@@ -1045,7 +1011,7 @@ UMADeviceSpeed GetDeviceSpeed(base::FilePath normalized_devpath) {
   } else if (speed == "5000") {
     return UMADeviceSpeed::k5000;
   } else if (speed == "480") {
-    if (version == "2.10") {
+    if (GetDevicePropString(normalized_devpath, kVersionPath) == "2.10") {
       return UMADeviceSpeed::k480Fallback;
     } else {
       return UMADeviceSpeed::k480;
@@ -1057,56 +1023,6 @@ UMADeviceSpeed GetDeviceSpeed(base::FilePath normalized_devpath) {
   } else {
     return UMADeviceSpeed::kOther;
   }
-}
-
-int GetVendorId(base::FilePath normalized_devpath) {
-  std::string vendor_id;
-  int vendor_id_int;
-  if (base::ReadFileToString(normalized_devpath.Append("idVendor"),
-                             &vendor_id)) {
-    base::TrimWhitespaceASCII(vendor_id, base::TRIM_ALL, &vendor_id);
-    if (base::HexStringToInt(vendor_id, &vendor_id_int)) {
-      return vendor_id_int;
-    }
-  }
-
-  return 0;
-}
-
-std::string GetVendorName(base::FilePath normalized_devpath) {
-  std::string vendor_name;
-  if (base::ReadFileToString(normalized_devpath.Append("manufacturer"),
-                             &vendor_name)) {
-    base::TrimWhitespaceASCII(vendor_name, base::TRIM_ALL, &vendor_name);
-    return vendor_name;
-  }
-
-  return std::string();
-}
-
-int GetProductId(base::FilePath normalized_devpath) {
-  std::string product_id;
-  int product_id_int;
-  if (base::ReadFileToString(normalized_devpath.Append("idProduct"),
-                             &product_id)) {
-    base::TrimWhitespaceASCII(product_id, base::TRIM_ALL, &product_id);
-    if (base::HexStringToInt(product_id, &product_id_int)) {
-      return product_id_int;
-    }
-  }
-
-  return 0;
-}
-
-std::string GetProductName(base::FilePath normalized_devpath) {
-  std::string product_name;
-  if (base::ReadFileToString(normalized_devpath.Append("product"),
-                             &product_name)) {
-    base::TrimWhitespaceASCII(product_name, base::TRIM_ALL, &product_name);
-    return product_name;
-  }
-
-  return std::string();
 }
 
 void GetVidPidFromEnvVar(std::string product, int* vendor_id, int* product_id) {
@@ -1122,72 +1038,75 @@ void GetVidPidFromEnvVar(std::string product, int* vendor_id, int* product_id) {
                        product_id);
 }
 
-int GetDeviceClass(base::FilePath normalized_devpath) {
-  std::string device_class;
-  int device_class_int;
-  if (base::ReadFileToString(normalized_devpath.Append("bDeviceClass"),
-                             &device_class)) {
-    base::TrimWhitespaceASCII(device_class, base::TRIM_ALL, &device_class);
-    if (base::HexStringToInt(device_class, &device_class_int) &&
-        device_class_int != 0) {
-      return device_class_int;
+int GetDevicePropInt(base::FilePath normalized_devpath, std::string prop) {
+  int ret;
+  std::string prop_str;
+  if (base::ReadFileToString(normalized_devpath.Append(prop), &prop_str)) {
+    base::TrimWhitespaceASCII(prop_str, base::TRIM_ALL, &prop_str);
+    if (base::StringToInt(prop_str, &ret)) {
+      return ret;
     }
   }
 
   return 0;
 }
 
-std::vector<int64_t> GetInterfaceClass(base::FilePath normalized_devpath) {
-  std::vector<int64_t> ret;
-  base::FileEnumerator enumerator(normalized_devpath, false,
-                                  base::FileEnumerator::DIRECTORIES);
-  for (auto intf_path = enumerator.Next(); !intf_path.empty();
-       intf_path = enumerator.Next()) {
-    std::string intf_class;
-    int64_t intf_class_int;
-    if (!base::ReadFileToString(intf_path.Append("bInterfaceClass"),
-                                &intf_class)) {
-      continue;
-    }
-    base::TrimWhitespaceASCII(intf_class, base::TRIM_ALL, &intf_class);
-    if (base::HexStringToInt64(intf_class, &intf_class_int)) {
-      ret.push_back(intf_class_int);
+int GetDevicePropHex(base::FilePath normalized_devpath, std::string prop) {
+  int ret;
+  std::string prop_str;
+  if (base::ReadFileToString(normalized_devpath.Append(prop), &prop_str)) {
+    base::TrimWhitespaceASCII(prop_str, base::TRIM_ALL, &prop_str);
+    if (base::HexStringToInt(prop_str, &ret)) {
+      return ret;
     }
   }
 
-  return ret;
+  return 0;
 }
 
-std::string GetUsbTreePath(base::FilePath normalized_devpath) {
-  std::string device_path;
-  if (base::ReadFileToString(normalized_devpath.Append("devpath"),
-                             &device_path)) {
-    base::TrimWhitespaceASCII(device_path, base::TRIM_ALL, &device_path);
-    return device_path;
+std::string GetDevicePropString(base::FilePath normalized_devpath,
+                                std::string prop) {
+  std::string prop_str;
+  if (base::ReadFileToString(normalized_devpath.Append(prop), &prop_str)) {
+    base::TrimWhitespaceASCII(prop_str, base::TRIM_ALL, &prop_str);
+    return prop_str;
   }
 
   return std::string();
 }
 
-int GetUsbTreeDepth(base::FilePath normalized_devpath) {
-  std::string devpath = GetUsbTreePath(normalized_devpath);
-  return std::count(devpath.begin(), devpath.end(), '.');
-}
-
-int GetConnectedDuration(base::FilePath normalized_devpath) {
-  std::string connected_duration;
-  int connected_duration_int;
-  if (base::ReadFileToString(
-          normalized_devpath.Append("power/connected_duration"),
-          &connected_duration)) {
-    base::TrimWhitespaceASCII(connected_duration, base::TRIM_ALL,
-                              &connected_duration);
-    if (base::StringToInt(connected_duration, &connected_duration_int)) {
-      return connected_duration_int;
+std::vector<int64_t> GetInterfacePropHexArr(base::FilePath normalized_devpath,
+                                            std::string prop) {
+  std::vector<int64_t> ret;
+  base::FileEnumerator enumerator(normalized_devpath, false,
+                                  base::FileEnumerator::DIRECTORIES);
+  for (auto intf_path = enumerator.Next(); !intf_path.empty();
+       intf_path = enumerator.Next()) {
+    // Continue if the directory is not an interface.
+    if (!base::PathExists(intf_path.Append(kInterfaceClassPath))) {
+      continue;
     }
+
+    int64_t prop_int;
+    std::string prop_str;
+    if (!base::ReadFileToString(intf_path.Append(prop), &prop_str)) {
+      ret.push_back(-1);
+      continue;
+    }
+    base::TrimWhitespaceASCII(prop_str, base::TRIM_ALL, &prop_str);
+    if (!base::HexStringToInt64(prop_str, &prop_int)) {
+      ret.push_back(-1);
+      continue;
+    }
+    ret.push_back(prop_int);
   }
 
-  return 0;
+  return ret;
+}
+
+int GetUsbTreeDepth(base::FilePath normalized_devpath) {
+  std::string devpath = GetDevicePropString(normalized_devpath, kDevpathPath);
+  return std::count(devpath.begin(), devpath.end(), '.');
 }
 
 int GetPciDeviceClass(base::FilePath normalized_devpath) {
