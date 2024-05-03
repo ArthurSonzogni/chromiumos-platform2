@@ -17,6 +17,7 @@
 #include "heartd/daemon/heartbeat_manager.h"
 #include "heartd/daemon/mojo_service.h"
 #include "heartd/daemon/scavenger.h"
+#include "heartd/daemon/top_sheriff.h"
 #include "heartd/mojom/heartd.mojom.h"
 
 namespace heartd {
@@ -53,6 +54,8 @@ class HeartdDaemon final : public brillo::DBusServiceDaemon {
   std::unique_ptr<HeartdMojoService> mojo_service_ = nullptr;
   // Used to run cleanup task.
   std::unique_ptr<Scavenger> scavenger_ = nullptr;
+  // Used to manage sheriffs.
+  std::unique_ptr<TopSheriff> top_sheriff_ = nullptr;
   // /proc/sysrq-trigger fd, this will be used in ActionRunner.
   int sysrq_fd_ = -1;
 };

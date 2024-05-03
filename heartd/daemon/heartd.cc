@@ -42,6 +42,7 @@ int HeartdDaemon::OnEventLoopStarted() {
   dbus_connector_ = std::make_unique<DbusConnectorImpl>();
   action_runner_ = std::make_unique<ActionRunner>(dbus_connector_.get());
   heartbeat_manager_ = std::make_unique<HeartbeatManager>(action_runner_.get());
+  top_sheriff_ = std::make_unique<TopSheriff>();
   mojo_service_ = std::make_unique<HeartdMojoService>(heartbeat_manager_.get(),
                                                       action_runner_.get());
   scavenger_ = std::make_unique<Scavenger>(
@@ -53,6 +54,7 @@ int HeartdDaemon::OnEventLoopStarted() {
       base::Minutes(2));
 
   action_runner_->SetupSysrq(sysrq_fd_);
+  top_sheriff_->StartShift();
 
   RecordBootMetrics(base::FilePath("/"), database_.get());
   database_->RemoveOutdatedData(kBootRecordTable);

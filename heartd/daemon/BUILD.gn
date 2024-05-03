@@ -23,6 +23,7 @@ source_set("libheartd") {
     "heartd.cc",
     "mojo_service.cc",
     "scavenger.cc",
+    "top_sheriff.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [
