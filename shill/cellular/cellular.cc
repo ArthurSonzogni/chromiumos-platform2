@@ -3124,7 +3124,8 @@ bool Cellular::ModemIsEnabledButNotRegistered() {
   // TODO(b/186482862): Fix this behavior in ModemManager.
   return (state_ == State::kEnabled || state_ == State::kModemStarting ||
           state_ == State::kModemStarted) &&
-         modem_state_ == kModemStateEnabled;
+         (modem_state_ == kModemStateEnabled ||
+          modem_state_ == kModemStateSearching);
 }
 
 void Cellular::SetPendingConnect(const std::string& iccid) {
