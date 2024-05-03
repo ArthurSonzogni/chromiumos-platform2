@@ -86,11 +86,13 @@ uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> flash_cfg) {
 
 }  // namespace
 
-ModemFlasher::ModemFlasher(FirmwareDirectory* firmware_directory,
+ModemFlasher::ModemFlasher(Delegate* delegate,
+                           FirmwareDirectory* firmware_directory,
                            Journal* journal,
                            NotificationManager* notification_mgr,
                            Metrics* metrics)
-    : firmware_directory_(firmware_directory),
+    : delegate_(delegate),
+      firmware_directory_(firmware_directory),
       journal_(journal),
       notification_mgr_(notification_mgr),
       metrics_(metrics) {}
@@ -251,12 +253,12 @@ bool ModemFlasher::RunFlash(Modem* modem,
   return true;
 }
 
-base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
-                                         bool modem_seen_since_oobe,
-                                         brillo::ErrorPtr* err) {
+bool ModemFlasher::TryFlash(Modem* modem,
+                            bool modem_seen_since_oobe,
+                            brillo::ErrorPtr* err) {
   if (!ShouldFlash(modem, err)) {
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
-    return base::OnceClosure();
+    return false;
   }
 
   // Clear the attach APN if needed for a specific modem/carrier combination.
@@ -268,7 +270,7 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
   std::unique_ptr<FlashConfig> flash_cfg = BuildFlashConfig(modem, err);
   if (!flash_cfg) {
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
-    return base::OnceClosure();
+    return false;
   }
 
   // End early if we don't have any new firmware.
@@ -276,7 +278,7 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
     // This message is used by tests to track the end of flashing.
     LOG(INFO) << "The modem already has the correct firmware installed";
     notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false, 0);
-    return base::OnceClosure();
+    return true;
   }
 
   std::string device_id = modem->GetDeviceId();
@@ -303,13 +305,16 @@ base::OnceClosure ModemFlasher::TryFlash(Modem* modem,
     }
     notification_mgr_->NotifyUpdateFirmwareCompletedFlashFailure(
         err->get(), types_for_metrics);
-    return base::OnceClosure();
+    return false;
   }
 
   // Report flashing time in successful cases
   metrics_->SendFwFlashTime(flash_duration);
-  return base::BindOnce(&ModemFlasher::FlashFinished, base::Unretained(this),
-                        entry_id, types_for_metrics);
+  delegate_->RegisterOnModemReappearanceCallback(
+      modem->GetEquipmentId(), base::BindOnce(&ModemFlasher::FlashFinished,
+                                              weak_ptr_factory_.GetWeakPtr(),
+                                              entry_id, types_for_metrics));
+  return true;
 }
 
 base::FilePath ModemFlasher::GetFirmwarePath(const FirmwareFileInfo& info) {

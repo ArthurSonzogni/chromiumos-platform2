@@ -72,6 +72,8 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
                             const std::string& variant,
                             bool use_modems_fw_info) override;
   bool ResetModem(const std::string& device_id) override;
+  void RegisterOnModemReappearanceCallback(const std::string& equipment_id,
+                                           base::OnceClosure callback) override;
 
  protected:
   // brillo::Daemon overrides.
@@ -94,6 +96,8 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
 
   // Install DLC callback.
   void InstallDlcCompleted(const std::string&, const brillo::Error*);
+
+  void RunModemReappearanceCallback(const std::string& equipment_id);
 
   // Called when a modem gets its home operator carrier ID and might
   // need a new main firmware or carrier customization.

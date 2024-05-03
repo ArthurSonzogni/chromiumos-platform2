@@ -24,6 +24,10 @@ class MockDelegate : public Delegate {
       (const std::string&, const std::string&, const std::string&, bool),
       (override));
   MOCK_METHOD(bool, ResetModem, (const std::string&), (override));
+  MOCK_METHOD(void,
+              RegisterOnModemReappearanceCallback,
+              (const std::string&, base::OnceClosure),
+              (override));
 };
 
 }  // namespace modemfwd

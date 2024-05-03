@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/functional/callback.h>
+
 namespace modemfwd {
 
 class Delegate {
@@ -19,6 +21,9 @@ class Delegate {
                                     bool use_modems_fw_info) = 0;
 
   virtual bool ResetModem(const std::string& device_id) = 0;
+
+  virtual void RegisterOnModemReappearanceCallback(
+      const std::string& equipment_id, base::OnceClosure callback) = 0;
 };
 
 }  // namespace modemfwd

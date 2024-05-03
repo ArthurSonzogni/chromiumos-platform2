@@ -314,8 +314,8 @@ void Daemon::CompleteInitialization() {
   }
 
   modem_flasher_ = std::make_unique<modemfwd::ModemFlasher>(
-      fw_manifest_directory_.get(), journal_.get(), notification_mgr_.get(),
-      metrics_.get());
+      this, fw_manifest_directory_.get(), journal_.get(),
+      notification_mgr_.get(), metrics_.get());
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,
@@ -349,6 +349,18 @@ void Daemon::CompleteInitialization() {
       GetModemWedgeCheckDelay());
 }
 
+void Daemon::RegisterOnModemReappearanceCallback(
+    const std::string& equipment_id, base::OnceClosure callback) {
+  modem_reappear_callbacks_[equipment_id] = std::move(callback);
+}
+
+void Daemon::RunModemReappearanceCallback(const std::string& equipment_id) {
+  if (modem_reappear_callbacks_.count(equipment_id) > 0) {
+    std::move(modem_reappear_callbacks_[equipment_id]).Run();
+    modem_reappear_callbacks_.erase(equipment_id);
+  }
+}
+
 void Daemon::OnModemDeviceSeen(std::string device_id,
                                std::string equipment_id) {
   ELOG(INFO) << "Modem seen with equipment ID \"" << equipment_id << "\""
@@ -363,10 +375,7 @@ void Daemon::OnModemDeviceSeen(std::string device_id,
       LOG(ERROR) << "Failed to create modem seen pref for modem: " << device_id;
   }
 
-  if (modem_reappear_callbacks_.count(equipment_id) > 0) {
-    std::move(modem_reappear_callbacks_[equipment_id]).Run();
-    modem_reappear_callbacks_.erase(equipment_id);
-  }
+  RunModemReappearanceCallback(equipment_id);
 }
 
 void Daemon::OnModemCarrierIdReady(
@@ -401,13 +410,10 @@ void Daemon::DoFlash(const std::string& device_id,
                      const std::string& equipment_id) {
   StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  base::OnceClosure cb = modem_flasher_->TryFlash(
-      modems_[device_id].get(),
-      modems_seen_since_oobe_prefs_->Exists(device_id), &err);
+  modem_flasher_->TryFlash(modems_[device_id].get(),
+                           modems_seen_since_oobe_prefs_->Exists(device_id),
+                           &err);
   StartHeartbeatTask(device_id);
-
-  if (!cb.is_null())
-    modem_reappear_callbacks_[equipment_id] = std::move(cb);
 
   if (err) {
     LOG(ERROR) << "Flashing returned error: " << err->GetMessage();
@@ -430,16 +436,15 @@ bool Daemon::ForceFlash(const std::string& device_id) {
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
   StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  base::OnceClosure cb = modem_flasher_->TryFlash(
+  modem_flasher_->TryFlash(
       stub_modem.get(), modems_seen_since_oobe_prefs_->Exists(device_id), &err);
   StartHeartbeatTask(device_id);
 
-  // We don't know the equipment ID of this modem, and if we're force-flashing
-  // then we probably already have a problem with the modem coming up, so
-  // cleaning up at this point is not a problem. Run the callback now if we
-  // got one.
-  if (!cb.is_null())
-    std::move(cb).Run();
+  // We don't know the real equipment ID of this modem, and if we're
+  // force-flashing then we probably already have a problem with the modem
+  // coming up, so cleaning up at this point is not a problem. Run the callback
+  // now if we got one.
+  RunModemReappearanceCallback(stub_modem->GetEquipmentId());
   return !err;
 }
 
@@ -465,16 +470,15 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
 
   StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  base::OnceClosure cb = modem_flasher_->TryFlash(
+  modem_flasher_->TryFlash(
       stub_modem.get(), modems_seen_since_oobe_prefs_->Exists(device_id), &err);
   StartHeartbeatTask(device_id);
 
-  // We don't know the equipment ID of this modem, and if we're force-flashing
-  // then we probably already have a problem with the modem coming up, so
-  // cleaning up at this point is not a problem. Run the callback now if we
-  // got one.
-  if (!cb.is_null())
-    std::move(cb).Run();
+  // We don't know the real equipment ID of this modem, and if we're
+  // force-flashing then we probably already have a problem with the modem
+  // coming up, so cleaning up at this point is not a problem. Run the callback
+  // now if we got one.
+  RunModemReappearanceCallback(stub_modem->GetEquipmentId());
   return !err;
 }
 

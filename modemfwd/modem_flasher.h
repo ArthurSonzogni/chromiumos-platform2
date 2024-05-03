@@ -12,9 +12,11 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <brillo/errors/error.h>
 #include <chromeos/switches/modemfwd_switches.h>
 
+#include "modemfwd/daemon_delegate.h"
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/firmware_file.h"
 #include "modemfwd/journal.h"
@@ -33,18 +35,18 @@ struct FlashConfig {
 // or not it should flash new firmware onto the modem.
 class ModemFlasher {
  public:
-  ModemFlasher(FirmwareDirectory* firmware_directory,
+  ModemFlasher(Delegate* delegate,
+               FirmwareDirectory* firmware_directory,
                Journal* journal,
                NotificationManager* notification_mgr,
                Metrics* metrics);
   ModemFlasher(const ModemFlasher&) = delete;
   ModemFlasher& operator=(const ModemFlasher&) = delete;
 
-  // Returns a callback that should be executed when the modem reappears.
-  // |err| is set if an error occurred.
-  base::OnceClosure TryFlash(Modem* modem,
-                             bool modem_seen_since_oobe,
-                             brillo::ErrorPtr* err);
+  // Returns false and sets |err| if an error occurred.
+  bool TryFlash(Modem* modem,
+                bool modem_seen_since_oobe,
+                brillo::ErrorPtr* err);
 
  private:
   class FlashState {
@@ -122,10 +124,13 @@ class ModemFlasher {
   std::map<std::string, FlashState> modem_info_;
 
   // Owned by Daemon
+  Delegate* delegate_;
   FirmwareDirectory* firmware_directory_;
   Journal* journal_;
   NotificationManager* notification_mgr_;
   Metrics* metrics_;
+
+  base::WeakPtrFactory<ModemFlasher> weak_ptr_factory_{this};
 };
 
 }  // namespace modemfwd
