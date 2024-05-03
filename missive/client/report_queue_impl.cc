@@ -22,6 +22,7 @@
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
+#include <base/types/expected.h>
 
 #include "missive/analytics/metrics.h"
 #include "missive/client/report_queue_configuration.h"
@@ -233,9 +234,13 @@ void SpeculativeReportQueueImpl::AddProducedRecord(
   // runner.
   sequenced_task_runner_->PostTask(
       FROM_HERE,
-      base::BindOnce(&SpeculativeReportQueueImpl::MaybeEnqueueRecordProducer,
-                     weak_ptr_factory_.GetWeakPtr(), priority,
-                     std::move(callback), std::move(record_producer)));
+      base::BindOnce(
+          &SpeculativeReportQueueImpl::MaybeEnqueueRecordProducer,
+          weak_ptr_factory_.GetWeakPtr(), priority,
+          Scoped<Status>(  // Scoped EnqueueCallback
+              std::move(callback),
+              Status(error::UNAVAILABLE, "Speculative queue destructed")),
+          std::move(record_producer)));
 }
 
 void SpeculativeReportQueueImpl::MaybeEnqueueRecordProducer(

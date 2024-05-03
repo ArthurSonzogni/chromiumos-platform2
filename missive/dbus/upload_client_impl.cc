@@ -280,11 +280,14 @@ void UploadClientImpl::SendEncryptedRecords(
     HandleUploadResponseCallback response_callback) {
   bus_->GetOriginTaskRunner()->PostTask(
       FROM_HERE,
-      base::BindOnce(&UploadClientImpl::MaybeMakeCall,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(records),
-                     need_encryption_keys, std::move(health_module),
-                     remaining_storage_capacity, new_events_rate,
-                     std::move(response_callback)));
+      base::BindOnce(
+          &UploadClientImpl::MaybeMakeCall, weak_ptr_factory_.GetWeakPtr(),
+          std::move(records), need_encryption_keys, std::move(health_module),
+          remaining_storage_capacity, new_events_rate,
+          Scoped<StatusOr<UploadEncryptedRecordResponse>>(
+              std::move(response_callback),
+              base::unexpected(Status(error::UNAVAILABLE,
+                                      "Upload client has been destructed")))));
 }
 
 void UploadClientImpl::OwnerChanged(const std::string& old_owner,

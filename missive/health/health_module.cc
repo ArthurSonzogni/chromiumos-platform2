@@ -14,6 +14,8 @@
 #include <base/task/thread_pool.h>
 #include <base/thread_annotations.h>
 
+#include "missive/health/health_module_delegate.h"
+
 namespace reporting {
 
 // Recorder implementation
@@ -80,8 +82,10 @@ void HealthModule::PostHealthRecord(HealthDataHistory history) {
 
 void HealthModule::GetHealthData(HealthCallback cb) {
   task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&HealthModuleDelegate::GetERPHealthData,
-                                delegate_->GetWeakPtr(), std::move(cb)));
+      FROM_HERE,
+      base::BindOnce(&HealthModuleDelegate::GetERPHealthData,
+                     delegate_->GetWeakPtr(),
+                     Scoped<ERPHealthData>(std::move(cb), ERPHealthData())));
 }
 
 HealthModule::Recorder HealthModule::NewRecorder() {

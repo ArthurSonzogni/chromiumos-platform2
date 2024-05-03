@@ -42,22 +42,25 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
       dbus_object_(/*object_manager=*/nullptr,
                    bus,
                    org::chromium::MissivedAdaptor::GetObjectPath()),
-      missive_(std::move(missive)),
-      failure_cb_(std::move(failure_cb)) {
+      missive_(std::move(missive)) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(feature::PlatformFeatures::Initialize(bus));
 
   missive_->StartUp(
       bus, feature::PlatformFeatures::Get(),
       base::BindPostTaskToCurrentDefault(base::BindOnce(
-          &DBusAdaptor::StartupFinished, weak_ptr_factory_.GetWeakPtr())));
+          &DBusAdaptor::StartupFinished, weak_ptr_factory_.GetWeakPtr(),
+          Scoped<Status>(
+              std::move(failure_cb),
+              Status(error::UNAVAILABLE, "DBusAdaptor has been destructed")))));
 }
 
-void DBusAdaptor::StartupFinished(Status status) {
+void DBusAdaptor::StartupFinished(base::OnceCallback<void(Status)> failure_cb,
+                                  Status status) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!status.ok()) {
-    if (failure_cb_) {
-      std::move(failure_cb_).Run(status);
+    if (failure_cb) {
+      std::move(failure_cb).Run(status);
     }
     return;
   }

@@ -63,14 +63,14 @@ class DBusAdaptor : public org::chromium::MissivedAdaptor,
       const UpdateEncryptionKeyRequest& in_request) override;
 
  private:
-  void StartupFinished(Status status);
+  void StartupFinished(base::OnceCallback<void(Status)> failure_cb,
+                       Status status);
 
   static void OnFailure(Status status);
 
   brillo::dbus_utils::DBusObject dbus_object_;
   std::unique_ptr<MissiveService> missive_
       GUARDED_BY_CONTEXT(sequence_checker_);
-  base::OnceCallback<void(Status)> failure_cb_;
   bool daemon_is_ready_ GUARDED_BY_CONTEXT(sequence_checker_) = false;
 
   SEQUENCE_CHECKER(sequence_checker_);

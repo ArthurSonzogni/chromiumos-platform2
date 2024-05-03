@@ -4,16 +4,26 @@
 
 #include "missive/util/status.h"
 
-#include <algorithm>
+#include <memory>
 #include <utility>
 
+#include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/logging.h>
+#include <base/memory/weak_ptr.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/task/thread_pool.h>
+#include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "missive/proto/status.pb.h"
 #include "missive/util/status_macros.h"
+#include "missive/util/test_support_callbacks.h"
 
+using ::testing::AllOf;
+using ::testing::Eq;
+using ::testing::Property;
 using ::testing::StrEq;
 
 namespace reporting {
@@ -192,6 +202,56 @@ TEST(Status, ConvertStatusToString) {
     LOG(INFO) << p.first;
     EXPECT_THAT(p.first.ToString(), StrEq(p.second));
   }
+}
+
+TEST(Status, CallbackAfterDeletion) {
+  base::test::TaskEnvironment test_env{};
+  class Handler {
+   public:
+    Handler() = default;
+    Handler(const Handler&) = delete;
+    Handler& operator=(const Handler&) = delete;
+
+    void Handle(base::OnceCallback<void(Status)> done_cb) {
+      std::move(done_cb).Run(Status::StatusOK());
+    }
+
+    base::WeakPtr<Handler> GetWeakPtr() {
+      return weak_ptr_factory_.GetWeakPtr();
+    }
+
+   private:
+    base::WeakPtrFactory<Handler> weak_ptr_factory_{this};
+  };
+
+  // Create seq task runner as required by weak pointers.
+  auto task_runner = base::ThreadPool::CreateSequencedTaskRunner({});
+
+  test::TestEvent<Status> cb_dead;
+  base::OnceClosure async_cb_dead;
+
+  {
+    std::unique_ptr<Handler, base::OnTaskRunnerDeleter> handler{
+        new Handler, base::OnTaskRunnerDeleter(task_runner)};
+    test::TestEvent<Status> cb_alive;
+    task_runner->PostTask(
+        FROM_HERE,
+        base::BindOnce(&Handler::Handle, handler->GetWeakPtr(), cb_alive.cb()));
+    EXPECT_OK(cb_alive.result());
+    async_cb_dead = base::BindOnce(
+        &Handler::Handle, handler->GetWeakPtr(),
+        Scoped<Status>(cb_dead.cb(),
+                       Status(error::UNAVAILABLE, "Handler destructed")));
+  }
+
+  // Out of scope: run after Handler has been deleted (on sequence!).
+  task_runner->PostTask(FROM_HERE, std::move(async_cb_dead));
+
+  // Make sure callback is still invoked, but with error.
+  EXPECT_THAT(
+      cb_dead.result(),
+      AllOf(Property(&Status::error_code, Eq(error::UNAVAILABLE)),
+            Property(&Status::error_message, StrEq("Handler destructed"))));
 }
 }  // namespace
 }  // namespace reporting
