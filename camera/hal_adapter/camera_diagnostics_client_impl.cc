@@ -26,11 +26,7 @@ CrosCameraDiagnosticsService::CrosCameraDiagnosticsService(
     CameraMojoChannelManager* mojo_manager)
     : internal::MojoRemote<camera_diag::mojom::CrosCameraDiagnosticsService>(
           mojo_manager->GetIpcTaskRunner()),
-      mojo_manager_(mojo_manager) {
-  task_runner_->PostTask(FROM_HERE,
-                         base::BindOnce(&CrosCameraDiagnosticsService::Connect,
-                                        base::Unretained(this)));
-}
+      mojo_manager_(mojo_manager) {}
 
 void CrosCameraDiagnosticsService::SendFrame(
     camera_diag::mojom::CameraFramePtr frame) {
@@ -43,6 +39,9 @@ void CrosCameraDiagnosticsService::SendFrame(
 void CrosCameraDiagnosticsService::SendFrameOnThread(
     camera_diag::mojom::CameraFramePtr frame) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
+  if (!remote_.is_bound() || !remote_.is_connected()) {
+    Connect();
+  }
   remote_->SendFrame(std::move(frame));
 }
 
@@ -57,9 +56,8 @@ void CrosCameraDiagnosticsService::Connect() {
 
 void CrosCameraDiagnosticsService::OnDisconnect() {
   remote_.reset();
-  task_runner_->PostTask(FROM_HERE,
-                         base::BindOnce(&CrosCameraDiagnosticsService::Connect,
-                                        base::Unretained(this)));
+  LOGF(INFO) << "Disconnected from "
+             << chromeos::mojo_services::kCrosCameraDiagnosticsService;
 }
 
 CameraDiagnosticsClientImpl::CameraDiagnosticsClientImpl(
