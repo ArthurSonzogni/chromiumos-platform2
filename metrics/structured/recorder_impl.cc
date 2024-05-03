@@ -96,6 +96,8 @@ bool RecorderImpl::Record(const EventBase& event) {
       event.project_name_hash() !=
           events::usb_session::UsbSessionEvent::kProjectNameHash &&
       event.project_name_hash() !=
+          events::usb_quality::UsbBusConnect::kProjectNameHash &&
+      event.project_name_hash() !=
           events::usb_error::HubError::kProjectNameHash &&
       event.project_name_hash() !=
           events::usb_error::XhciError::kProjectNameHash &&
