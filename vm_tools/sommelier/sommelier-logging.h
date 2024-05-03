@@ -10,6 +10,7 @@
 #define VM_TOOLS_SOMMELIER_SOMMELIER_LOGGING_H_
 
 #include <cstdarg>
+#include <cstdint>
 #include <cstring>
 #include <iosfwd>
 #include <iostream>
@@ -42,6 +43,12 @@ namespace logging {
 std::string file_name(std::string file_path);
 std::string log_level_to_string(int level);
 
+// not thread-safe
+extern int64_t min_log_level;
+inline void set_min_log_level(int64_t level) {
+  min_log_level = level;
+}
+
 class Log {
  private:
   std::stringstream log_content;
@@ -64,7 +71,7 @@ class Log {
 
   template <typename T>
   Log& operator<<(T const& value) {
-    if (log_level >= LOG_LEVEL) {
+    if (log_level >= min_log_level) {
       this->log_content << value;
     }
     return *this;

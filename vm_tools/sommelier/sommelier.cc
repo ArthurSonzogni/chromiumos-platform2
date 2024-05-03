@@ -3578,6 +3578,8 @@ static void sl_print_usage() {
       "options:\n"
       "  -h, --help\t\t\tPrint this help\n"
       "  -X\t\t\t\tEnable X11 forwarding\n"
+      "  --log-level=LEVEL\t\tSet minimum log level to be processed\n"
+      "\t(allowed range: -1 to 3; lower is more verbose))\n"
       "  --parent\t\t\tRun as parent and spawn child processes\n"
       "  --socket=SOCKET\t\tName of socket to listen on\n"
       "  --display=DISPLAY\t\tWayland display to connect to\n"
@@ -3652,7 +3654,6 @@ static const char* sl_arg_value(const char* arg) {
   return s + 1;
 }
 
-#ifdef QUIRKS_SUPPORT
 // attempts to both split "--argname=argval" and parse "argval" signed integer,
 // or exits the program with a fatal error if detecting any non-integer
 // characters or is out-of-bounds.
@@ -3679,7 +3680,6 @@ static int64_t sl_arg_parse_int_checked(const char* arg) {
   }
   return res;
 }
-#endif  // QUIRKS_SUPPORT
 
 // Parse the list of accelerators that should be reserved by the
 // compositor. Format is "|MODIFIERS|KEYSYM", where MODIFIERS is a
@@ -4084,6 +4084,9 @@ int real_main(int argc, char** argv) {
 
     if (strstr(arg, "--parent") == arg) {
       parent = 1;
+    } else if (strstr(arg, "--log-level") == arg) {
+      const int64_t log_level = sl_arg_parse_int_checked(arg);
+      logging::set_min_log_level(log_level);
     } else if (strstr(arg, "--socket") == arg) {
       socket_name = sl_arg_value(arg);
     } else if (strstr(arg, "--display") == arg) {

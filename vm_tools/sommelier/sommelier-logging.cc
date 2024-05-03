@@ -6,6 +6,8 @@
 
 namespace logging {
 
+int64_t min_log_level = LOG_LEVEL;
+
 std::string file_name(std::string file_path) {
   // Extract file name from file path.
   auto found = file_path.find_last_of('/');
