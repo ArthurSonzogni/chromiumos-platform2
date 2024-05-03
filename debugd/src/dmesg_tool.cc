@@ -29,6 +29,9 @@ constexpr const char kNonzeroExitStatus[] =
     "<process exited with nonzero status>";
 constexpr const char kProcessInitFailed[] = "<process init failed>";
 
+constexpr const char kLevelRe[] = "emerg|alert|crit|err|warn|notice|info|debug";
+constexpr const char kSinceRe[] = "[+-][0-9]+sec";
+
 }  // namespace
 
 namespace debugd {
@@ -90,7 +93,10 @@ bool DmesgTool::CallDmesg(const brillo::VariantDictionary& options,
       !AddBoolOption(&process, options, "ctime", "-T", error) ||
       !AddBoolOption(&process, options, "notime", "-t", error) ||
       !AddBoolOption(&process, options, "userspace", "-u", error) ||
-      !AddBoolOption(&process, options, "decode", "-x", error)) {
+      !AddBoolOption(&process, options, "decode", "-x", error) ||
+      !AddStringOption(&process, options, "level", "-l", kLevelRe, error) ||
+      !AddStringOption(&process, options, "since", "--since", kSinceRe,
+                       error)) {
     *output = kInvalidOption;
     DEBUGD_ADD_ERROR(error, kErrorPath, kInvalidOption);
     return false;

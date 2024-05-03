@@ -74,6 +74,16 @@ bool AddBoolOption(SandboxedProcess* process,
                    const std::string& flag_name,
                    brillo::ErrorPtr* error);
 
+// Looks up an option in the |options| dictionary. If it exists and
+// isn't a string, returns false. The option value must match the
+// regular expression passed in |value_re| to be added to the process.
+bool AddStringOption(SandboxedProcess* process,
+                     const brillo::VariantDictionary& options,
+                     const std::string& key,
+                     const std::string& flag_name,
+                     const std::string& value_re,
+                     brillo::ErrorPtr* error);
+
 }  // namespace debugd
 
 #endif  // DEBUGD_SRC_VARIANT_UTILS_H_
