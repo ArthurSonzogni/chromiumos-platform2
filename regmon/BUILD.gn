@@ -23,6 +23,7 @@ pkg_config("target_defaults") {
     "dbus-1",
     "libbrillo",
     "libchrome",
+    "libfeatures",
     "system_api",
   ]
 }
@@ -34,6 +35,7 @@ executable("regmond") {
   deps = [
     "//regmon/daemon:regmon_daemon",
     "//regmon/dbus:dbus_adaptor",
+    "//regmon/features:regmon_features",
     "//regmon/metrics:metrics_reporter",
     "//regmon/regmon:regmon_impl",
     "//regmon/regmon:regmon_service",
@@ -86,6 +88,7 @@ if (use.test) {
     deps = [
       "//common-mk/testrunner",
       "//regmon/daemon:unit_tests",
+      "//regmon/features:unit_tests",
       "//regmon/metrics:unit_tests",
       "//regmon/regmon:unit_tests",
     ]

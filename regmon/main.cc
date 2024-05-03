@@ -4,11 +4,15 @@
 
 #include <sysexits.h>
 
+#include <base/check.h>
 #include <base/logging.h>
 
 #include <brillo/syslog_logging.h>
+#include <dbus/bus.h>
+#include <featured/feature_library.h>
 
 #include "regmon/daemon/regmon_daemon.h"
+#include "regmon/features/regmon_features_impl.h"
 
 namespace {
 
@@ -35,6 +39,18 @@ int main(int argc, char* argv[]) {
 
   // Always log to syslog and log to stderr if we are connected to a tty.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+
+  dbus::Bus::Options options;
+  options.bus_type = dbus::Bus::SYSTEM;
+  scoped_refptr<dbus::Bus> bus(new dbus::Bus(options));
+
+  CHECK(feature::PlatformFeatures::Initialize(bus));
+  ::regmon::features::RegmonFeaturesImpl regmon_features(
+      feature::PlatformFeatures::Get());
+  if (!regmon_features.PolicyMonitoringEnabled()) {
+    LOG(INFO) << "regmond: Feature not enabled.\n";
+    return EX_UNAVAILABLE;
+  }
 
   // Override the log items set by brillo:InitLog.
   SetLogItems();
