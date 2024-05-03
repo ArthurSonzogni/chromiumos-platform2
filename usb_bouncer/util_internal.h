@@ -51,6 +51,7 @@ std::ostream& operator<<(std::ostream& out, UMAPortType port);
 usbguard::Rule GetRuleFromString(const std::string& to_parse);
 
 UMADeviceClass GetClassFromRule(const usbguard::Rule& rule);
+UMADeviceClass GetClassFromInterface(int64_t intf);
 
 }  // namespace usb_bouncer
 

@@ -35,6 +35,7 @@
 #include <brillo/files/scoped_dir.h>
 #include <brillo/key_value_store.h>
 #include <brillo/userdb_utils.h>
+#include <metrics/metrics_library.h>
 #include <metrics/structured_events.h>
 #include <openssl/sha.h>
 #include <re2/re2.h>
@@ -64,6 +65,8 @@ constexpr char kSysFSEnabled[] = "1";
 constexpr char kUmaDeviceAttachedHistogram[] = "ChromeOS.USB.DeviceAttached";
 constexpr char kUmaExternalDeviceAttachedHistogram[] =
     "ChromeOS.USB.ExternalDeviceAttached";
+constexpr char kUmaUnboundInterfaceHistogram[] =
+    "ChromeOS.USB.UnboundInterface";
 
 enum class Subsystem {
   kNone,
@@ -579,8 +582,18 @@ void ReportMetricsUdev(UdevMetric* udev_metric) {
   base::FilePath normalized_devpath = root_dir.Append("sys").Append(
       usb_bouncer::StripLeadingPathSeparators(udev_metric->devpath));
 
-  // Only record UsbSessionEvents for devices in the USB metrics allowlist.
-  if (!DeviceInMetricsAllowlist(udev_metric->vid, udev_metric->pid))
+  bool skip_session_metric = false;
+  if (!DeviceInMetricsAllowlist(udev_metric->vid, udev_metric->pid)) {
+    udev_metric->vid = 0;
+    udev_metric->pid = 0;
+    // Session metric only logged for devices in metric allow list.
+    skip_session_metric = true;
+  }
+
+  if (udev_metric->action == UdevAction::kAdd)
+    ReportMetricsUdevAdd(udev_metric);
+
+  if (skip_session_metric)
     return;
 
   metrics::structured::events::usb_session::UsbSessionEvent()
@@ -592,6 +605,76 @@ void ReportMetricsUdev(UdevMetric* udev_metric) {
       .SetDepth(GetUsbTreeDepth(normalized_devpath))
       .SetVendorId(udev_metric->vid)
       .SetProductId(udev_metric->pid)
+      .Record();
+}
+
+void ReportMetricsUdevAdd(UdevMetric* udev_metric) {
+  MetricsLibrary uma_metrics;
+  base::FilePath root_dir("/");
+  base::FilePath normalized_devpath = root_dir.Append("sys").Append(
+      usb_bouncer::StripLeadingPathSeparators(udev_metric->devpath));
+
+  std::string connection_id = GenerateConnectionId(udev_metric);
+  bool lock_screen = IsLockscreenShown();
+  UMADeviceSpeed speed = GetDeviceSpeed(normalized_devpath);
+  int device_class = GetDevicePropHex(normalized_devpath, kDeviceClassPath);
+  std::vector<int64_t> interface_class =
+      GetInterfacePropHexArr(normalized_devpath, kInterfaceClassPath);
+  std::vector<int64_t> interface_subclass =
+      GetInterfacePropHexArr(normalized_devpath, kInterfaceSubClassPath);
+  std::vector<int64_t> interface_protocol =
+      GetInterfacePropHexArr(normalized_devpath, kInterfaceProtocolPath);
+  std::vector<int64_t> interface_driver =
+      GetInterfaceDrivers(normalized_devpath);
+  std::vector<int64_t> endpoint =
+      GetEndpointPropHexArr(normalized_devpath, kEndpointAddress);
+
+  for (int i = 0; i < interface_driver.size(); i++) {
+    if (interface_driver[i] == ((int64_t)UMADeviceDriver::kNone)) {
+      uma_metrics.SendEnumToUMA(kUmaUnboundInterfaceHistogram,
+                                GetClassFromInterface(interface_class[i]));
+    }
+  }
+
+  // Resize data to structured metric limits before logging
+  int max_interface_class = metrics::structured::events::usb_quality::
+      UsbBusConnect::GetInterfaceClassMaxLength();
+  if (interface_class.size() > max_interface_class)
+    interface_class.resize(max_interface_class);
+
+  int max_interface_subclass = metrics::structured::events::usb_quality::
+      UsbBusConnect::GetInterfaceSubClassMaxLength();
+  if (interface_subclass.size() > max_interface_subclass)
+    interface_subclass.resize(max_interface_subclass);
+
+  int max_interface_protocol = metrics::structured::events::usb_quality::
+      UsbBusConnect::GetInterfaceProtocolMaxLength();
+  if (interface_protocol.size() > max_interface_protocol)
+    interface_protocol.resize(max_interface_protocol);
+
+  int max_interface_driver = metrics::structured::events::usb_quality::
+      UsbBusConnect::GetInterfaceDriverMaxLength();
+  if (interface_driver.size() > max_interface_driver)
+    interface_driver.resize(max_interface_driver);
+
+  int max_endpoint = metrics::structured::events::usb_quality::UsbBusConnect::
+      GetEndpointMaxLength();
+  if (endpoint.size() > max_endpoint)
+    endpoint.resize(max_endpoint);
+
+  metrics::structured::events::usb_quality::UsbBusConnect()
+      .SetBootId(std::move(GetBootId()))
+      .SetConnectionId(std::move(connection_id))
+      .SetVendorId(udev_metric->vid)
+      .SetProductId(udev_metric->pid)
+      .SetLockScreen(static_cast<int>(lock_screen))
+      .SetSpeed(static_cast<int>(speed))
+      .SetDeviceClass(device_class)
+      .SetInterfaceClass(std::move(interface_class))
+      .SetInterfaceSubClass(std::move(interface_subclass))
+      .SetInterfaceProtocol(std::move(interface_protocol))
+      .SetInterfaceDriver(std::move(interface_driver))
+      .SetEndpoint(std::move(endpoint))
       .Record();
 }
 
@@ -935,6 +1018,48 @@ UMADeviceClass GetClassFromRule(const usbguard::Rule& rule) {
   return device_class;
 }
 
+UMADeviceClass GetClassFromInterface(int64_t intf) {
+  switch (intf) {
+    case 0x01:
+      return UMADeviceClass::kAudio;
+    case 0x02:
+      return UMADeviceClass::kComm;
+    case 0x03:
+      return UMADeviceClass::kHID;
+    case 0x05:
+      return UMADeviceClass::kPhys;
+    case 0x06:
+      return UMADeviceClass::kImage;
+    case 0x07:
+      return UMADeviceClass::kPrint;
+    case 0x08:
+      return UMADeviceClass::kStorage;
+    case 0x09:
+      return UMADeviceClass::kHub;
+    case 0x0A:
+      return UMADeviceClass::kComm;
+    case 0x0B:
+      return UMADeviceClass::kCard;
+    case 0x0D:
+      return UMADeviceClass::kSec;
+    case 0x0E:
+      return UMADeviceClass::kVideo;
+    case 0x0F:
+      return UMADeviceClass::kHealth;
+    case 0x10:
+      return UMADeviceClass::kAV;
+    case 0xE0:
+      return UMADeviceClass::kWireless;
+    case 0xEF:
+      return UMADeviceClass::kMisc;
+    case 0xFE:
+      return UMADeviceClass::kApp;
+    case 0xFF:
+      return UMADeviceClass::kVendor;
+  }
+  return UMADeviceClass::kOther;
+}
+
 base::FilePath GetRootDevice(base::FilePath dev) {
   auto dev_components = dev.GetComponents();
   auto it = dev_components.begin();
@@ -1042,6 +1167,42 @@ void GetVidPidFromEnvVar(std::string product, int* vendor_id, int* product_id) {
                        product_id);
 }
 
+UMADeviceDriver GetDriverEnum(std::string driver) {
+  if (driver == "cdc_acm") {
+    return UMADeviceDriver::kCDCACM;
+  } else if (driver == "cdc_ether") {
+    return UMADeviceDriver::kCDCEther;
+  } else if (driver == "cdc_mbim") {
+    return UMADeviceDriver::kCDCMBIM;
+  } else if (driver == "cdc_ncm") {
+    return UMADeviceDriver::kCDCNCM;
+  } else if (driver == "cdc_wdm") {
+    return UMADeviceDriver::kCDCWDM;
+  } else if (driver == "btusb") {
+    return UMADeviceDriver::kBTUSB;
+  } else if (driver == "hub") {
+    return UMADeviceDriver::kHub;
+  } else if (driver == "snd-usb-audio") {
+    return UMADeviceDriver::kSndUSBAudio;
+  } else if (driver == "uas") {
+    return UMADeviceDriver::kUAS;
+  } else if (driver == "udl") {
+    return UMADeviceDriver::kUDL;
+  } else if (driver == "ums-realtek") {
+    return UMADeviceDriver::kUMSRealtek;
+  } else if (driver == "usb") {
+    return UMADeviceDriver::kUSB;
+  } else if (driver == "usb-storage") {
+    return UMADeviceDriver::kUSBStorage;
+  } else if (driver == "usbfs") {
+    return UMADeviceDriver::kUSBFS;
+  } else if (driver == "usbhid") {
+    return UMADeviceDriver::kUSBHID;
+  }
+
+  return UMADeviceDriver::kUnknown;
+}
+
 int GetDevicePropInt(base::FilePath normalized_devpath, std::string prop) {
   int ret;
   std::string prop_str;
@@ -1108,6 +1269,81 @@ std::vector<int64_t> GetInterfacePropHexArr(base::FilePath normalized_devpath,
   return ret;
 }
 
+std::vector<int64_t> GetEndpointPropHexArr(base::FilePath normalized_devpath,
+                                           std::string prop) {
+  std::vector<int64_t> ret;
+  base::FileEnumerator intf_enumerator(normalized_devpath, false,
+                                       base::FileEnumerator::DIRECTORIES);
+  for (auto intf_path = intf_enumerator.Next(); !intf_path.empty();
+       intf_path = intf_enumerator.Next()) {
+    // Continue if the directory is not an interface.
+    if (!base::PathExists(intf_path.Append(kInterfaceClassPath))) {
+      continue;
+    }
+
+    base::FileEnumerator ep_enumerator(
+        intf_path, false, base::FileEnumerator::DIRECTORIES, "ep_*");
+    for (auto ep_path = ep_enumerator.Next(); !ep_path.empty();
+         ep_path = ep_enumerator.Next()) {
+      int64_t prop_int;
+      std::string prop_str;
+      if (!base::ReadFileToString(ep_path.Append(prop), &prop_str)) {
+        ret.push_back(-1);
+        continue;
+      }
+
+      base::TrimWhitespaceASCII(prop_str, base::TRIM_ALL, &prop_str);
+      if (!base::HexStringToInt64(prop_str, &prop_int)) {
+        ret.push_back(-1);
+        continue;
+      }
+      ret.push_back(prop_int);
+    }
+  }
+
+  return ret;
+}
+
+UMADeviceDriver GetDriverFromInterface(base::FilePath interface_path) {
+  base::FilePath driver_dir(kUsbDriversPath);
+  base::FileEnumerator enumerator(driver_dir, false,
+                                  base::FileEnumerator::DIRECTORIES);
+
+  std::string interface_name = interface_path.BaseName().value();
+  for (auto driver_path = enumerator.Next(); !driver_path.empty();
+       driver_path = enumerator.Next()) {
+    if (base::PathExists(driver_path.Append(interface_name))) {
+      return GetDriverEnum(driver_path.BaseName().value());
+    }
+  }
+
+  return UMADeviceDriver::kUnknown;
+}
+
+std::vector<int64_t> GetInterfaceDrivers(base::FilePath normalized_devpath) {
+  std::vector<int64_t> ret;
+  base::FileEnumerator enumerator(normalized_devpath, false,
+                                  base::FileEnumerator::DIRECTORIES);
+
+  for (auto intf_path = enumerator.Next(); !intf_path.empty();
+       intf_path = enumerator.Next()) {
+    // Continue if the directory is not an interface.
+    if (!base::PathExists(intf_path.Append(kInterfaceClassPath))) {
+      continue;
+    }
+
+    // Append kNone if there is no driver link
+    if (!base::PathExists(intf_path.Append(kDriverPath))) {
+      ret.push_back(static_cast<int64_t>(UMADeviceDriver::kNone));
+      continue;
+    }
+
+    // If there is a driver link, get the bound interface driver
+    ret.push_back(static_cast<int64_t>(GetDriverFromInterface(intf_path)));
+  }
+  return ret;
+}
+
 int GetUsbTreeDepth(base::FilePath normalized_devpath) {
   std::string devpath = GetDevicePropString(normalized_devpath, kDevpathPath);
   return std::count(devpath.begin(), devpath.end(), '.');
@@ -1137,6 +1373,14 @@ std::string GetBootId() {
     return boot_id;
   }
   return std::string();
+}
+
+std::string GenerateConnectionId(UdevMetric* udev_metric) {
+  return base::StringPrintf(
+      "%s.%s.%s.%s", GetBootId().c_str(),
+      std::to_string(udev_metric->init_time / 60000000).c_str(),
+      std::to_string(udev_metric->busnum).c_str(),
+      std::to_string(udev_metric->devnum).c_str());
 }
 
 int64_t GetSystemTime() {

@@ -40,6 +40,7 @@ constexpr char kUserDbBaseDir[] = "/run/daemon-store/usb_bouncer";
 constexpr char kUserDbParentDir[] = "device-db";
 
 constexpr char kDBusPath[] = "/run/dbus/system_bus_socket";
+constexpr char kUsbDriversPath[] = "/sys/bus/usb/drivers";
 
 constexpr uid_t kRootUid = 0;
 
@@ -51,7 +52,11 @@ constexpr uint32_t kAttemptDelayMicroseconds = 10000;
 constexpr char kBcdDevicePath[] = "bcdDevice";
 constexpr char kConnectionDurationPath[] = "power/connected_duration";
 constexpr char kDeviceClassPath[] = "bDeviceClass";
+constexpr char kDriverPath[] = "driver";
+constexpr char kEndpointAddress[] = "bEndpointAddress";
 constexpr char kInterfaceClassPath[] = "bInterfaceClass";
+constexpr char kInterfaceProtocolPath[] = "bInterfaceProtocol";
+constexpr char kInterfaceSubClassPath[] = "bInterfaceSubClass";
 constexpr char kDevpathPath[] = "devpath";
 constexpr char kPanelPath[] = "physical_location/panel";
 constexpr char kProductIdPath[] = "idProduct";
@@ -94,6 +99,27 @@ enum class UMADeviceSpeed {
   k10000 = 6,        // 10000 Mbps (USB 3.2 Gen 2)
   k20000 = 7,        // 20000 Mbps (USB 3.2 Gen 2x2)
   kMaxValue = k20000,
+};
+
+enum class UMADeviceDriver {
+  kNone = 1,
+  kUnknown = 2,
+  kBTUSB = 3,
+  kCDCACM = 4,
+  kCDCEther = 5,
+  kCDCMBIM = 6,
+  kCDCNCM = 7,
+  kCDCWDM = 8,
+  kHub = 9,
+  kSndUSBAudio = 10,
+  kUAS = 11,
+  kUDL = 12,
+  kUMSRealtek = 13,
+  kUSB = 14,
+  kUSBStorage = 15,
+  kUSBFS = 16,
+  kUSBHID = 17,
+  kMaxVaule = kUSBHID,
 };
 
 struct UdevMetric {
@@ -175,6 +201,9 @@ void StructuredMetricsInternalCameraModule(int VendorId,
 // Reports common metrics logged by the USB bouncer processing both udev add
 // and remove events.
 void ReportMetricsUdev(UdevMetric* udev_metric);
+
+// Reports metrics logged by the USB bouncer processing udev add events.
+void ReportMetricsUdevAdd(UdevMetric* udev_metric);
 
 // Report structured metric on error uevents from the hub driver.
 void StructuredMetricsHubError(int ErrorCode,
@@ -261,6 +290,9 @@ UMAPortType GetPortType(base::FilePath normalized_devpath);
 // Returns USB device speed for a sysfs device.
 UMADeviceSpeed GetDeviceSpeed(base::FilePath normalized_devpath);
 
+// Returns USB driver enum value from driver name.
+UMADeviceDriver GetDriverEnum(std::string driver);
+
 // Determine if any of the devices implements the UVC interface.
 bool IsCamera(std::vector<int64_t> interfaces);
 
@@ -279,6 +311,17 @@ std::string GetDevicePropString(base::FilePath normalized_devpath,
 std::vector<int64_t> GetInterfacePropHexArr(base::FilePath normalized_devpath,
                                             std::string prop);
 
+// Returns vector of endpoint property |prop| for all of a devices interfaces.
+std::vector<int64_t> GetEndpointPropHexArr(base::FilePath normalized_devpath,
+                                           std::string prop);
+
+// Returns the driver bound to a given interface.
+UMADeviceDriver GetDriverFromInterface(base::FilePath interface_path);
+
+// Returns vector of integers corresponding to each interface's driver. The
+// mapping is defined by UMADeviceDriver.
+std::vector<int64_t> GetInterfaceDrivers(base::FilePath normalized_devpath);
+
 // Assigns VID and PID from a uevent's product environment variable. This can
 // be used by USB bouncer methods that receive the product environment variable
 // to read VID/PID on device disconnection.
@@ -294,6 +337,10 @@ int GetPciDeviceClass(base::FilePath normalized_devpath);
 // Returns the kernel boot_id, which is a unique identifier randomly generated
 // each time a system boots.
 std::string GetBootId();
+
+// Returns a connection id based on boot id, connection time, busnum and devnum
+// which is unique to each device connection.
+std::string GenerateConnectionId(UdevMetric* udev_metric);
 
 // Returns the time since boot in microseconds.
 int64_t GetSystemTime();
