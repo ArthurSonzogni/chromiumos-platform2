@@ -160,6 +160,7 @@ void CameraDiagnosticsSession::QueueFrameOnThread(
   for (auto& analyzer : frame_analyzers_) {
     analyzer->AnalyzeFrame(frame);
   }
+  num_analyzed_frames_++;
   // Resend the frame to camera service to fill up again.
   frame->is_empty = true;
   camera_service_controller_.RequestFrame(std::move(frame));
@@ -173,6 +174,7 @@ void CameraDiagnosticsSession::RunFrameAnalysisOnThread(
   // TODO(imranziad): Adjust the interval based on |config->duration_ms|.
   start_stream_config->frame_interval = kStreamingFrameIntervalDefault;
   // This callback needs to run on session thread.
+  num_analyzed_frames_ = 0;
   auto callback = base::BindPostTask(
       thread_.task_runner(),
       base::BindOnce(&CameraDiagnosticsSession::OnStartStreaming,
@@ -235,6 +237,7 @@ void CameraDiagnosticsSession::PrepareResult() {
 
   auto diag_result = camera_diag::mojom::DiagnosticsResult::New();
   diag_result->suggested_issue = camera_diag::mojom::CameraIssue::kNone;
+  diag_result->num_analyzed_frames = num_analyzed_frames_;
 
   for (auto& analyzer : frame_analyzers_) {
     camera_diag::mojom::AnalyzerResultPtr analyzer_result =

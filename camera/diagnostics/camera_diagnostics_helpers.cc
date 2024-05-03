@@ -13,8 +13,7 @@ std::string DiagnosticsResultToJsonString(
   std::ostringstream oss;
   oss << "{";  // Begin JSON string
   oss << "\"suggested_issue\": " << result->suggested_issue;
-  oss << ", \"numeber_of_analyzed_frames\": "
-      << result->numeber_of_analyzed_frames;
+  oss << ", \"num_analyzed_frames\": " << result->num_analyzed_frames;
   oss << ", \"analyzer_results\": [";  // Begin analyzer_results
   for (auto& analyzer_res : result->analyzer_results) {
     oss << "{\"type\": " << analyzer_res->type

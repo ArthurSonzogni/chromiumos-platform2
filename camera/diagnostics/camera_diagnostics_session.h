@@ -66,6 +66,8 @@ class CameraDiagnosticsSession {
   scoped_refptr<Future<void>> notify_finish_;
 
   std::vector<std::unique_ptr<FrameAnalyzer>> frame_analyzers_;
+
+  int num_analyzed_frames_ = 0;
 };
 
 }  // namespace cros

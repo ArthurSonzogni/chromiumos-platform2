@@ -69,7 +69,7 @@ struct AnalyzerResult {
 };
 
 struct DiagnosticsResult {
-  uint32 numeber_of_analyzed_frames;
+  uint32 num_analyzed_frames;
   array<AnalyzerResult> analyzer_results;
   CameraIssue suggested_issue;
 };
