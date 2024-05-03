@@ -24,6 +24,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper_impl.h>
 #include <libstorage/platform/platform.h>
 #include <libstorage/storage_container/filesystem_key.h>
 #include <libstorage/storage_container/storage_container_factory.h>
@@ -74,8 +75,11 @@ int main(int argc, const char* argv[]) {
       rootdir, stateful_partition, &platform, &device_mapper,
       &storage_container_factory);
 
+  hwsec_foundation::TlclWrapperImpl tlcl;
+
   auto tpm_system_key = encryption::TpmSystemKey(
-      &platform, init_metrics::InitMetrics::Get(), rootdir, stateful_partition);
+      &platform, &tlcl, init_metrics::InitMetrics::Get(), rootdir,
+      stateful_partition);
 
   if (!encrypted_fs) {
     LOG(ERROR) << "Failed to create encrypted fs handler.";

@@ -14,10 +14,9 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <libstorage/platform/mock_platform.h>
+#include <libhwsec-foundation/tlcl_wrapper/fake_tlcl_wrapper.h>
 #include <openssl/sha.h>
-#include <vboot/tlcl.h>
 
-#include "init/tpm_encryption/tlcl_stub.h"
 #include "init/tpm_encryption/tpm.h"
 
 namespace encryption {
@@ -28,9 +27,13 @@ const size_t kEncryptionKeySize = 32;
 
 #if USE_TPM2
 
+#ifndef USE_TPM_DYNAMIC
+
 const uint32_t kEncStatefulAttributesTpm2 =
     TPMA_NV_AUTHWRITE | TPMA_NV_AUTHREAD | TPMA_NV_WRITEDEFINE |
     TPMA_NV_READ_STCLEAR | TPMA_NV_WRITTEN;
+
+#endif  // USE_TPM_DYNAMIC
 
 const uint8_t kPCRBootModeValue[] = {
     0x89, 0xea, 0xf3, 0x51, 0x34, 0xb4, 0xb3, 0xc6, 0x49, 0xf4, 0x4c,
@@ -191,7 +194,7 @@ class EncryptionKeyTest : public testing::Test {
   void TearDown() override { ASSERT_EQ(tlcl_.GetDictionaryAttackCounter(), 0); }
 
   void ResetLoader() {
-    tpm_ = std::make_unique<Tpm>();
+    tpm_ = std::make_unique<Tpm>(&tlcl_);
     loader_ = SystemKeyLoader::Create(platform_.get(), tpm_.get(), rootdir_,
                                       stateful_mount_);
     key_ = std::make_unique<EncryptionKey>(platform_.get(), loader_.get(),
@@ -221,7 +224,8 @@ class EncryptionKeyTest : public testing::Test {
                   bool bind_to_pcr0,
                   const uint8_t* data,
                   size_t size) {
-    TlclStub::NvramSpaceData* space = tlcl_.GetSpace(index);
+    hwsec_foundation::FakeTlclWrapper::NvramSpaceData* space =
+        tlcl_.GetSpace(index);
     space->contents.assign(data, data + size);
     space->attributes = attributes;
 
@@ -231,8 +235,8 @@ class EncryptionKeyTest : public testing::Test {
       uint8_t pcr_values[1][TPM_PCR_DIGEST] = {};
       memcpy(pcr_values[0], kPCRBootModeValue, TPM_PCR_DIGEST);
       ASSERT_EQ(TPM_SUCCESS,
-                TlclInitNvAuthPolicy((1 << kPCRBootMode), pcr_values,
-                                     space->policy.data(), &policy_size));
+                tlcl_.InitNvAuthPolicy((1 << kPCRBootMode), pcr_values,
+                                       space->policy.data(), &policy_size));
     }
   }
 
@@ -330,7 +334,8 @@ class EncryptionKeyTest : public testing::Test {
   }
 
   void CheckSpace(uint32_t index, uint32_t attributes, uint32_t size) {
-    TlclStub::NvramSpaceData* space = tlcl_.GetSpace(index);
+    hwsec_foundation::FakeTlclWrapper::NvramSpaceData* space =
+        tlcl_.GetSpace(index);
     EXPECT_EQ(attributes, space->attributes);
     EXPECT_EQ(size, space->contents.size());
     EXPECT_TRUE(space->read_locked);
@@ -361,7 +366,7 @@ class EncryptionKeyTest : public testing::Test {
 
   base::FilePath rootdir_{"/test1"};
   base::FilePath stateful_mount_{"/test2"};
-  TlclStub tlcl_;
+  hwsec_foundation::FakeTlclWrapper tlcl_;
 
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<Tpm> tpm_;
@@ -371,6 +376,7 @@ class EncryptionKeyTest : public testing::Test {
 
 #if USE_TPM2
 
+#ifndef USE_TPM_DYNAMIC
 TEST_F(EncryptionKeyTest, TpmClearNoSpaces) {
   ExpectFreshKey();
   EXPECT_EQ(EncryptionKeyStatus::kFresh, key_->encryption_key_status());
@@ -457,6 +463,8 @@ TEST_F(EncryptionKeyTest, TpmExistingSpaceValid) {
   EXPECT_EQ(SystemKeyStatus::kNVRAMEncstateful, key_->system_key_status());
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm2, kEncStatefulSize);
 }
+
+#endif  // USE_TPM_DYNAMIC
 
 #else  // USE_TPM2
 
@@ -556,7 +564,8 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearExisting) {
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(false);
 
-  TlclStub::NvramSpaceData* space = tlcl_.GetSpace(kEncStatefulIndex);
+  hwsec_foundation::FakeTlclWrapper::NvramSpaceData* space =
+      tlcl_.GetSpace(kEncStatefulIndex);
   EXPECT_NE(space->contents, kEncStatefulTpm1Contents);
 }
 
@@ -576,7 +585,8 @@ TEST_F(EncryptionKeyTest, TpmClearExistingLockboxV2UnownedStaleOwnershipFlag) {
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(false);
 
-  TlclStub::NvramSpaceData* space = tlcl_.GetSpace(kEncStatefulIndex);
+  hwsec_foundation::FakeTlclWrapper::NvramSpaceData* space =
+      tlcl_.GetSpace(kEncStatefulIndex);
   EXPECT_NE(space->contents, kEncStatefulTpm1Contents);
 }
 
@@ -595,7 +605,8 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearWritableAllZeros) {
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(false);
 
-  TlclStub::NvramSpaceData* space = tlcl_.GetSpace(kEncStatefulIndex);
+  hwsec_foundation::FakeTlclWrapper::NvramSpaceData* space =
+      tlcl_.GetSpace(kEncStatefulIndex);
   EXPECT_NE(space->contents, kEncStatefulTpm1ContentsAllZeros);
 }
 
@@ -614,7 +625,8 @@ TEST_F(EncryptionKeyTest, EncStatefulTpmClearWritableAllOnes) {
   CheckSpace(kEncStatefulIndex, kEncStatefulAttributesTpm1, kEncStatefulSize);
   ExpectLockboxValid(false);
 
-  TlclStub::NvramSpaceData* space = tlcl_.GetSpace(kEncStatefulIndex);
+  hwsec_foundation::FakeTlclWrapper::NvramSpaceData* space =
+      tlcl_.GetSpace(kEncStatefulIndex);
   EXPECT_NE(space->contents, kEncStatefulTpm1ContentsAllOnes);
 }
 

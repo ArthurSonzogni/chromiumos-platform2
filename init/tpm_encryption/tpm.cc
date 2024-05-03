@@ -16,9 +16,9 @@
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/crypto/rsa.h>
+#include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
-#include <vboot/tlcl.h>
 
 namespace encryption {
 namespace {
@@ -44,7 +44,10 @@ const size_t kInitialAuthPolicySize = 128;
 
 }  // namespace
 
-NvramSpace::NvramSpace(Tpm* tpm, uint32_t index) : tpm_(tpm), index_(index) {}
+NvramSpace::NvramSpace(hwsec_foundation::TlclWrapper* tlcl,
+                       Tpm* tpm,
+                       uint32_t index)
+    : tlcl_(tlcl), tpm_(tpm), index_(index) {}
 
 void NvramSpace::Reset() {
   attributes_ = 0;
@@ -76,7 +79,7 @@ bool NvramSpace::Read(uint32_t size) {
   }
 
   brillo::SecureBlob buffer(size);
-  uint32_t result = TlclRead(index_, buffer.data(), buffer.size());
+  uint32_t result = tlcl_->Read(index_, buffer.data(), buffer.size());
 
   VLOG(1) << "NVRAM read returned: " << (result == TPM_SUCCESS ? "ok" : "FAIL");
 
@@ -122,7 +125,7 @@ bool NvramSpace::Write(const brillo::SecureBlob& contents) {
   }
 
   brillo::SecureBlob buffer(contents.size());
-  uint32_t result = TlclWrite(index_, contents.data(), contents.size());
+  uint32_t result = tlcl_->Write(index_, contents.data(), contents.size());
 
   VLOG(1) << "NVRAM write returned: "
           << (result == TPM_SUCCESS ? "ok" : "FAIL");
@@ -142,7 +145,7 @@ bool NvramSpace::ReadLock() {
     return false;
   }
 
-  uint32_t result = TlclReadLock(index_);
+  uint32_t result = tlcl_->ReadLock(index_);
   if (result != TPM_SUCCESS) {
     LOG(ERROR) << "Failed to set read lock on NVRAM space " << index_ << ": "
                << result;
@@ -157,7 +160,7 @@ bool NvramSpace::WriteLock() {
     return false;
   }
 
-  uint32_t result = TlclWriteLock(index_);
+  uint32_t result = tlcl_->WriteLock(index_);
   if (result != TPM_SUCCESS) {
     LOG(ERROR) << "Failed to set write lock on NVRAM space " << index_ << ": "
                << result;
@@ -181,7 +184,7 @@ bool NvramSpace::Define(uint32_t attributes,
     return false;
   }
 
-  uint32_t result = TlclDefineSpaceEx(
+  uint32_t result = tlcl_->DefineSpaceEx(
       kOwnerSecret, kOwnerSecretSize, index_, attributes, size,
       policy.empty() ? nullptr : policy.data(), policy.size());
   if (result != TPM_SUCCESS) {
@@ -239,12 +242,12 @@ bool NvramSpace::GetSpaceInfo() {
   uint32_t auth_policy_size = kInitialAuthPolicySize;
   auth_policy_.resize(auth_policy_size);
   uint32_t size;
-  uint32_t result = TlclGetSpaceInfo(index_, &attributes_, &size,
-                                     auth_policy_.data(), &auth_policy_size);
+  uint32_t result = tlcl_->GetSpaceInfo(index_, &attributes_, &size,
+                                        auth_policy_.data(), &auth_policy_size);
   if (result == TPM_E_BUFFER_SIZE && auth_policy_size > 0) {
     auth_policy_.resize(auth_policy_size);
-    result = TlclGetSpaceInfo(index_, &attributes_, &size, auth_policy_.data(),
-                              &auth_policy_size);
+    result = tlcl_->GetSpaceInfo(index_, &attributes_, &size,
+                                 auth_policy_.data(), &auth_policy_size);
   }
   if (result != TPM_SUCCESS) {
     attributes_ = 0;
@@ -287,12 +290,12 @@ bool NvramSpace::GetPCRBindingPolicy(uint32_t pcr_selection,
 
   uint32_t auth_policy_size = kInitialAuthPolicySize;
   policy->resize(auth_policy_size);
-  uint32_t result = TlclInitNvAuthPolicy(pcr_selection, pcr_values,
-                                         policy->data(), &auth_policy_size);
+  uint32_t result = tlcl_->InitNvAuthPolicy(pcr_selection, pcr_values,
+                                            policy->data(), &auth_policy_size);
   if (result == TPM_E_BUFFER_SIZE && auth_policy_size > 0) {
     policy->resize(auth_policy_size);
-    result = TlclInitNvAuthPolicy(pcr_selection, pcr_values, policy->data(),
-                                  &auth_policy_size);
+    result = tlcl_->InitNvAuthPolicy(pcr_selection, pcr_values, policy->data(),
+                                     &auth_policy_size);
   }
 
   if (result != TPM_SUCCESS) {
@@ -307,7 +310,7 @@ bool NvramSpace::GetPCRBindingPolicy(uint32_t pcr_selection,
   return true;
 }
 
-Tpm::Tpm() {
+Tpm::Tpm(hwsec_foundation::TlclWrapper* tlcl) : tlcl_(tlcl) {
 #if USE_TPM2
   is_tpm2_ = true;
 #endif
@@ -315,14 +318,14 @@ Tpm::Tpm() {
   VLOG(1) << "Opening TPM";
 
   setenv("TPM_NO_EXIT", "1", 1);
-  available_ = (TlclLibInit() == TPM_SUCCESS);
+  available_ = (tlcl_->Init() == TPM_SUCCESS);
 
   LOG(INFO) << "TPM " << (available_ ? "ready" : "not available");
 }
 
 Tpm::~Tpm() {
   if (available_) {
-    TlclLibClose();
+    tlcl_->Close();
   }
 }
 
@@ -337,8 +340,7 @@ bool Tpm::IsOwned(bool* owned) {
     return false;
   }
 
-  uint8_t tmp_owned = 0;
-  uint32_t result = TlclGetOwnership(&tmp_owned);
+  uint32_t result = tlcl_->GetOwnership(&owned_);
   VLOG(1) << "TPM Ownership Flag returned: " << (result ? "FAIL" : "ok");
   if (result != TPM_SUCCESS) {
     LOG(INFO) << "Could not determine TPM ownership: error " << result;
@@ -346,7 +348,6 @@ bool Tpm::IsOwned(bool* owned) {
   }
 
   ownership_checked_ = true;
-  owned_ = tmp_owned;
   *owned = owned_;
   return true;
 }
@@ -357,7 +358,8 @@ bool Tpm::GetRandomBytes(uint8_t* buffer, int wanted) {
     int remaining = wanted;
     while (remaining) {
       uint32_t result, size;
-      result = TlclGetRandom(buffer + (wanted - remaining), remaining, &size);
+      result =
+          tlcl_->GetRandom(buffer + (wanted - remaining), remaining, &size);
       if (result != TPM_SUCCESS) {
         LOG(ERROR) << "TPM GetRandom failed: error " << result;
         return false;
@@ -395,7 +397,7 @@ bool Tpm::ReadPCR(uint32_t index, std::vector<uint8_t>* value) {
   }
 
   std::vector<uint8_t> temp_value(TPM_PCR_DIGEST);
-  uint32_t result = TlclPCRRead(index, temp_value.data(), temp_value.size());
+  uint32_t result = tlcl_->PCRRead(index, temp_value.data(), temp_value.size());
   if (result != TPM_SUCCESS) {
     LOG(ERROR) << "TPM PCR " << index << " read failed: " << result;
     return false;
@@ -411,7 +413,7 @@ bool Tpm::GetVersionInfo(uint32_t* vendor,
                          std::vector<uint8_t>* vendor_specific) {
   size_t vendor_specific_size = 32;
   vendor_specific->resize(vendor_specific_size);
-  uint32_t result = TlclGetVersion(
+  uint32_t result = tlcl_->GetVersion(
       vendor, firmware_version, vendor_specific->data(), &vendor_specific_size);
   if (result != TPM_SUCCESS) {
     LOG(ERROR) << "Failed to obtain TPM version info.";
@@ -423,7 +425,7 @@ bool Tpm::GetVersionInfo(uint32_t* vendor,
 }
 
 bool Tpm::GetIFXFieldUpgradeInfo(TPM_IFX_FIELDUPGRADEINFO* field_upgrade_info) {
-  uint32_t result = TlclIFXFieldUpgradeInfo(field_upgrade_info);
+  uint32_t result = tlcl_->IFXFieldUpgradeInfo(field_upgrade_info);
   if (result != TPM_SUCCESS) {
     LOG(ERROR) << "Failed to obtain IFX field upgrade info.";
     return false;
@@ -437,7 +439,7 @@ NvramSpace* Tpm::GetLockboxSpace() {
     return lockbox_space_.get();
   }
 
-  lockbox_space_ = std::make_unique<NvramSpace>(this, kLockboxIndex);
+  lockbox_space_ = std::make_unique<NvramSpace>(tlcl_, this, kLockboxIndex);
 
   // Reading the NVRAM takes 40ms. Instead of querying the NVRAM area for its
   // size (which takes time), just read the expected size. If it fails, then
@@ -461,7 +463,8 @@ NvramSpace* Tpm::GetEncStatefulSpace() {
     return encstateful_space_.get();
   }
 
-  encstateful_space_ = std::make_unique<NvramSpace>(this, kEncStatefulIndex);
+  encstateful_space_ =
+      std::make_unique<NvramSpace>(tlcl_, this, kEncStatefulIndex);
 
   if (encstateful_space_->Read(kEncStatefulSize)) {
     LOG(INFO) << "Found encstateful NVRAM area.";
@@ -493,7 +496,7 @@ bool Tpm::TakeOwnership() {
   uint32_t public_exponent = 0;
   uint8_t modulus[TPM_RSA_2048_LEN];
   uint32_t modulus_size = sizeof(modulus);
-  uint32_t result = TlclReadPubek(&public_exponent, modulus, &modulus_size);
+  uint32_t result = tlcl_->ReadPubek(&public_exponent, modulus, &modulus_size);
   if (result != TPM_SUCCESS) {
     LOG(ERROR) << "Failed to read public endorsement key: " << result;
     return false;
@@ -516,8 +519,7 @@ bool Tpm::TakeOwnership() {
   }
 
   // Take ownership.
-  result =
-      TlclTakeOwnership(enc_auth.data(), enc_auth.data(), owner_auth.data());
+  result = tlcl_->TakeOwnership(enc_auth, enc_auth, owner_auth);
   if (result != TPM_SUCCESS) {
     LOG(ERROR) << "Failed to take TPM ownership: " << result;
     return false;
@@ -544,7 +546,7 @@ bool Tpm::SetSystemKeyInitializedFlag() {
     return true;
   }
 
-  uint32_t result = TlclCreateDelegationFamily(
+  uint32_t result = tlcl_->CreateDelegationFamily(
       kSystemKeyInitializedFakeDelegationFamilyLabel);
   if (result != TPM_SUCCESS) {
     LOG(ERROR) << "Failed to create fake delegation family: " << result;
@@ -584,7 +586,7 @@ bool Tpm::HasSystemKeyInitializedFlag(bool* flag_value) {
 
   TPM_FAMILY_TABLE_ENTRY table[kDelegationTableSize];
   uint32_t table_size = kDelegationTableSize;
-  uint32_t result = TlclReadDelegationFamilyTable(table, &table_size);
+  uint32_t result = tlcl_->ReadDelegationFamilyTable(table, &table_size);
   if (result != TPM_SUCCESS) {
     LOG(ERROR) << "Failed to read delegation family table: " << result;
     return false;

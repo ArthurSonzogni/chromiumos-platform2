@@ -15,9 +15,9 @@
 
 #include <base/files/file_path.h>
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
 #include <libstorage/platform/platform.h>
 #include <openssl/sha.h>
-#include <vboot/tlcl.h>
 
 namespace encryption {
 const uint32_t kLockboxSizeV1 = 0x2c;
@@ -70,7 +70,7 @@ class Tpm;
 
 class NvramSpace {
  public:
-  NvramSpace(Tpm* tpm, uint32_t index);
+  NvramSpace(hwsec_foundation::TlclWrapper* tlcl, Tpm* tpm, uint32_t index);
 
   enum class Status {
     kUnknown,   // Not accessed yet.
@@ -118,6 +118,7 @@ class NvramSpace {
   bool GetPCRBindingPolicy(uint32_t pcr_selection,
                            std::vector<uint8_t>* policy);
 
+  hwsec_foundation::TlclWrapper* tlcl_;
   Tpm* tpm_;
   uint32_t index_;
 
@@ -138,7 +139,7 @@ class NvramSpace {
 // the TPM library.
 class Tpm {
  public:
-  Tpm();
+  explicit Tpm(hwsec_foundation::TlclWrapper* tlcl);
   Tpm(const Tpm&) = delete;
   Tpm& operator=(const Tpm&) = delete;
 
@@ -195,6 +196,8 @@ class Tpm {
 
   std::unique_ptr<NvramSpace> lockbox_space_;
   std::unique_ptr<NvramSpace> encstateful_space_;
+
+  hwsec_foundation::TlclWrapper* tlcl_;
 };
 
 // The interface used by the key handling logic to access the system key. The

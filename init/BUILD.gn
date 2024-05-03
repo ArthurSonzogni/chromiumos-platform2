@@ -79,7 +79,6 @@ pkg_config("target_defaults") {
     "libstorage_platform",
     "libstorage_storage_container",
     "re2",
-    "vboot_host",
   ]
   libs = [
     "bootstat",
@@ -92,6 +91,7 @@ pkg_config("target_defaults") {
 static_library("utils") {
   sources = [ "utils.cc" ]
   configs += [ ":target_defaults" ]
+  pkg_deps = [ "vboot_host" ]
 }
 
 static_library("libcrosstartup") {
@@ -228,7 +228,6 @@ static_library("tpm_encryption_lib") {
   ]
   configs += [ ":target_defaults" ]
   defines = [ "CHROMEOS_ENVIRONMENT=1" ]
-  pkg_deps = [ "vboot_host" ]
 
   if (use.tpm2) {
     sources += [ "tpm_encryption/tpm2.cc" ]
@@ -331,6 +330,7 @@ if (use.test) {
       ":test_config",
     ]
     run_test = true
+    libs = [ "hwsec-foundation-mock" ]
     deps = [
       ":libcrosstartup",
       "//common-mk/testrunner",
@@ -381,13 +381,13 @@ if (use.test) {
   executable("tpm_encryption_tests") {
     sources = [
       "tpm_encryption/encryption_key_test.cc",
-      "tpm_encryption/tlcl_stub.cc",
       "tpm_encryption/tpm_setup_test.cc",
     ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
     ]
+    libs = [ "hwsec-foundation-mock" ]
     deps = [
       ":tpm_encryption_lib",
       "//common-mk/testrunner",

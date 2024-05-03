@@ -12,10 +12,10 @@
 #include <base/files/file_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec-foundation/tlcl_wrapper/fake_tlcl_wrapper.h>
 #include <libstorage/platform/fake_platform.h>
 
 #include "init/metrics/metrics.h"
-#include "init/tpm_encryption/tlcl_stub.h"
 
 using ::testing::_;
 using ::testing::Return;
@@ -26,6 +26,7 @@ class TpmSystemKeyTest : public testing::Test {
  public:
   void SetUp() override {
     platform_ = std::make_unique<libstorage::FakePlatform>();
+    tlcl_ = std::make_unique<hwsec_foundation::FakeTlclWrapper>();
     ASSERT_TRUE(platform_->CreateDirectory(rootdir_));
     ASSERT_TRUE(platform_->CreateDirectory(stateful_mount_));
     metrics_singleton_ =
@@ -33,19 +34,17 @@ class TpmSystemKeyTest : public testing::Test {
             rootdir_.Append("metrics").value());
 
     tpm_system_key_ = std::make_unique<TpmSystemKey>(
-        platform_.get(), init_metrics::InitMetrics::Get(), rootdir_,
-        stateful_mount_);
+        platform_.get(), tlcl_.get(), init_metrics::InitMetrics::Get(),
+        rootdir_, stateful_mount_);
   }
 
  protected:
   base::FilePath rootdir_{"/test1"};
   base::FilePath stateful_mount_{"/test2"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
+  std::unique_ptr<hwsec_foundation::FakeTlclWrapper> tlcl_;
   std::unique_ptr<init_metrics::ScopedInitMetricsSingleton> metrics_singleton_;
   std::unique_ptr<TpmSystemKey> tpm_system_key_;
-
-  // Create a global variable needed by tpm_system_key.
-  TlclStub tlcl_;
 };
 
 TEST_F(TpmSystemKeyTest, MigrateTpmOwnerShipAbsent) {

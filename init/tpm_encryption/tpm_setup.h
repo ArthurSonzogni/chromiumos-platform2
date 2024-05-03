@@ -24,6 +24,7 @@ namespace encryption {
 class TpmSystemKey {
  public:
   TpmSystemKey(libstorage::Platform* platform,
+               hwsec_foundation::TlclWrapper* tlcl,
                init_metrics::InitMetrics* metrics,
                base::FilePath rootdir,
                base::FilePath stateful_mount);
@@ -50,6 +51,7 @@ class TpmSystemKey {
 
  private:
   libstorage::Platform* platform_;
+  hwsec_foundation::TlclWrapper* tlcl_;
   init_metrics::InitMetrics* metrics_;
   base::FilePath rootdir_;
   base::FilePath stateful_mount_;

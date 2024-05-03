@@ -10,6 +10,7 @@ group("all") {
     ":install_headers",
     ":install_hwsec_shutdown_signal",
     ":libhwsec-foundation",
+    ":libhwsec-foundation-mock",
     ":libhwsec-profiling",
     ":tpm_clear_request",
     ":tpm_version_client",
@@ -91,7 +92,7 @@ shared_library("libhwsec-foundation") {
     "da_reset/da_resetter.cc",
     "profiling/profiling.cc",
     "syscaller/syscaller_impl.cc",
-    "tlcl_wrapper/tlcl_wrapper.cc",
+    "tlcl_wrapper/tlcl_wrapper_impl.cc",
     "tpm/tpm_clear.cc",
     "tpm/tpm_version.cc",
     "tpm_error/auth_failure_analysis.cc",
@@ -119,6 +120,22 @@ shared_library("libhwsec-foundation") {
     configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
   }
   install_path = "lib"
+}
+
+shared_library("libhwsec-foundation-mock") {
+  sources = [
+    "tlcl_wrapper/fake_tlcl_wrapper.cc",
+    "tlcl_wrapper/mock_tlcl_wrapper.cc",
+  ]
+  pkg_deps = [ "libbrillo-test" ]
+  configs += [
+    ":target_defaults",
+    "//common-mk:test",
+  ]
+
+  # We want to install this shared lib on the test image.
+  # gnlint: disable=GnLintInstallPathAlias
+  install_path = "/usr/local/lib"
 }
 
 static_library("libhwsec-profiling") {
@@ -267,8 +284,10 @@ install_config("install_syscaller_headers") {
 
 install_config("install_tlcl_wrapper_headers") {
   sources = [
+    "tlcl_wrapper/fake_tlcl_wrapper.h",
     "tlcl_wrapper/mock_tlcl_wrapper.h",
     "tlcl_wrapper/tlcl_wrapper.h",
+    "tlcl_wrapper/tlcl_wrapper_impl.h",
   ]
   install_path = "/usr/include/libhwsec-foundation/tlcl_wrapper"
 }

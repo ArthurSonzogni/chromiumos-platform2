@@ -118,14 +118,16 @@ bool SendSecretToFeaturedTmpFile(const encryption::EncryptionKey& key,
 }  // namespace
 
 TpmSystemKey::TpmSystemKey(libstorage::Platform* platform,
+                           hwsec_foundation::TlclWrapper* tlcl,
                            init_metrics::InitMetrics* metrics,
                            base::FilePath rootdir,
                            base::FilePath stateful_mount)
     : platform_(platform),
+      tlcl_(tlcl),
       metrics_(metrics),
       rootdir_(rootdir),
       stateful_mount_(stateful_mount),
-      tpm_(),
+      tpm_(tlcl_),
       loader_(encryption::SystemKeyLoader::Create(
           platform_, &tpm_, rootdir_, stateful_mount_)),
       has_chromefw_(HasChromeFw()) {}

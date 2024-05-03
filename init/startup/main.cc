@@ -14,7 +14,7 @@
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
 #include <libcrossystem/crossystem.h>
-#include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
+#include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper_impl.h>
 #include <libstorage/platform/platform.h>
 #include <vpd/vpd.h>
 

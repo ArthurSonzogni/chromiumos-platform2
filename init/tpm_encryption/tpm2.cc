@@ -12,8 +12,8 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <libhwsec-foundation/crypto/sha.h>
+#include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
 #include <libstorage/platform/platform.h>
-#include <vboot/tlcl.h>
 
 #include "init/tpm_encryption/tpm.h"
 
