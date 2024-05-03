@@ -62,6 +62,8 @@ constexpr char kVendorIdPath[] = "idVendor";
 constexpr char kVendorPath[] = "manufacturer";
 constexpr char kVersionPath[] = "version";
 
+enum class UdevAction { kAdd = 0, kRemove = 1 };
+
 enum class UMADeviceRecognized {
   kRecognized,
   kUnrecognized,
@@ -94,15 +96,14 @@ enum class UMADeviceSpeed {
   kMaxValue = k20000,
 };
 
-struct UsbSessionMetric {
-  std::string boot_id;
-  int64_t system_time;
-  int action;
-  int devnum;
+struct UdevMetric {
+  UdevAction action;
+  std::string devpath;
   int busnum;
-  int depth;
+  int devnum;
   int vid;
   int pid;
+  int64_t init_time;
 };
 
 // Returns true if the process has CAP_CHOWN.
@@ -171,11 +172,9 @@ void StructuredMetricsInternalCameraModule(int VendorId,
                                            std::string ProductName,
                                            int BcdDevice);
 
-// Report structured metric on device attach and removal with topology and
-// system boot information. Device topology information only gets recorded
-// on device connection. This will only record the metric for devices in the
-// USB metrics allowlist.
-void StructuredMetricsUsbSessionEvent(UsbSessionMetric session_metric);
+// Reports common metrics logged by the USB bouncer processing both udev add
+// and remove events.
+void ReportMetricsUdev(UdevMetric* udev_metric);
 
 // Report structured metric on error uevents from the hub driver.
 void StructuredMetricsHubError(int ErrorCode,

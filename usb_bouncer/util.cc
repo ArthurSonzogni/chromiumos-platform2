@@ -574,20 +574,24 @@ void StructuredMetricsInternalCameraModule(int VendorId,
       .Record();
 }
 
-void StructuredMetricsUsbSessionEvent(UsbSessionMetric session_metric) {
+void ReportMetricsUdev(UdevMetric* udev_metric) {
+  base::FilePath root_dir("/");
+  base::FilePath normalized_devpath = root_dir.Append("sys").Append(
+      usb_bouncer::StripLeadingPathSeparators(udev_metric->devpath));
+
   // Only record UsbSessionEvents for devices in the USB metrics allowlist.
-  if (!DeviceInMetricsAllowlist(session_metric.vid, session_metric.pid))
+  if (!DeviceInMetricsAllowlist(udev_metric->vid, udev_metric->pid))
     return;
 
   metrics::structured::events::usb_session::UsbSessionEvent()
-      .SetBootId(std::move(session_metric.boot_id))
-      .SetSystemTime(std::move(session_metric.system_time))
-      .SetAction(session_metric.action)
-      .SetDeviceNum(session_metric.devnum)
-      .SetBusNum(session_metric.busnum)
-      .SetDepth(session_metric.depth)
-      .SetVendorId(session_metric.vid)
-      .SetProductId(session_metric.pid)
+      .SetBootId(std::move(GetBootId()))
+      .SetSystemTime(std::move(GetSystemTime()))
+      .SetAction(static_cast<int>(udev_metric->action))
+      .SetDeviceNum(udev_metric->devnum)
+      .SetBusNum(udev_metric->busnum)
+      .SetDepth(GetUsbTreeDepth(normalized_devpath))
+      .SetVendorId(udev_metric->vid)
+      .SetProductId(udev_metric->pid)
       .Record();
 }
 

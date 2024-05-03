@@ -60,10 +60,8 @@ class EntryManagerTest : public testing::Test {
     bool user_present = IsUserPresent(session_state);
     util_.RefreshDB(user_present /*include_user_db*/, true /*new_db*/);
 
-    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd,
-                                        kDefaultDevpath));
-    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kRemove,
-                                        kDefaultDevpath));
+    EXPECT_TRUE(util_.Get()->HandleUdev(UdevAction::kAdd, kDefaultDevpath));
+    EXPECT_TRUE(util_.Get()->HandleUdev(UdevAction::kRemove, kDefaultDevpath));
 
     bool lockscreen_is_shown = session_state == SessionState::kLockscreenShown;
     util_.SetUserDBReadOnly(lockscreen_is_shown);
@@ -91,10 +89,8 @@ class EntryManagerTest : public testing::Test {
 
     util_.SetUserDBReadOnly(false);
 
-    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd,
-                                        kDefaultDevpath));
-    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kRemove,
-                                        kDefaultDevpath));
+    EXPECT_TRUE(util_.Get()->HandleUdev(UdevAction::kAdd, kDefaultDevpath));
+    EXPECT_TRUE(util_.Get()->HandleUdev(UdevAction::kRemove, kDefaultDevpath));
     util_.ExpireEntry(user_present, kDefaultDevpath, kDefaultRule);
 
     util_.SetUserDBReadOnly(lockscreen_is_shown);
@@ -112,8 +108,7 @@ class EntryManagerTest : public testing::Test {
 
     EXPECT_FALSE(util_.Get()->GenerateRules().empty());
 
-    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd,
-                                        kDefaultDevpath));
+    EXPECT_TRUE(util_.Get()->HandleUdev(UdevAction::kAdd, kDefaultDevpath));
 
     bool lockscreen_is_shown = session_state == SessionState::kLockscreenShown;
     util_.SetUserDBReadOnly(lockscreen_is_shown);
@@ -135,28 +130,24 @@ class EntryManagerTest : public testing::Test {
     if (user_present) {
       EXPECT_FALSE(util_.UserDBContainsEntry(kDefaultRule));
     }
-    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd,
-                                        kDefaultDevpath));
+    EXPECT_TRUE(util_.Get()->HandleUdev(UdevAction::kAdd, kDefaultDevpath));
     EXPECT_TRUE(util_.GlobalDBContainsEntry(kDefaultDevpath, kDefaultRule));
     EXPECT_FALSE(util_.GlobalTrashContainsEntry(kDefaultDevpath, kDefaultRule));
     if (user_present) {
       EXPECT_NE(util_.UserDBContainsEntry(kDefaultRule), lockscreen_is_shown);
     }
 
-    EXPECT_FALSE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd, ""));
-    EXPECT_FALSE(util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd,
-                                         kUsbguardPolicyDir));
+    EXPECT_FALSE(util_.Get()->HandleUdev(UdevAction::kAdd, ""));
+    EXPECT_FALSE(util_.Get()->HandleUdev(UdevAction::kAdd, kUsbguardPolicyDir));
 
-    EXPECT_TRUE(util_.Get()->HandleUdev(EntryManager::UdevAction::kRemove,
-                                        kDefaultDevpath));
+    EXPECT_TRUE(util_.Get()->HandleUdev(UdevAction::kRemove, kDefaultDevpath));
     EXPECT_FALSE(util_.GlobalDBContainsEntry(kDefaultDevpath, kDefaultRule));
     EXPECT_TRUE(util_.GlobalTrashContainsEntry(kDefaultDevpath, kDefaultRule));
     if (user_present) {
       EXPECT_NE(util_.UserDBContainsEntry(kDefaultRule), lockscreen_is_shown);
     }
 
-    EXPECT_FALSE(
-        util_.Get()->HandleUdev(EntryManager::UdevAction::kRemove, ""));
+    EXPECT_FALSE(util_.Get()->HandleUdev(UdevAction::kRemove, ""));
   }
 
  protected:
@@ -208,8 +199,7 @@ TEST_F(EntryManagerTest, HandleUserLogin_NoUser) {
 TEST_F(EntryManagerTest, HandleUserLogin_UserPresent) {
   util_.RefreshDB(false /*include_user_db*/, true /*new_db*/);
 
-  EXPECT_TRUE(
-      util_.Get()->HandleUdev(EntryManager::UdevAction::kAdd, kDefaultDevpath));
+  EXPECT_TRUE(util_.Get()->HandleUdev(UdevAction::kAdd, kDefaultDevpath));
 
   util_.RefreshDB(true /*include_user_db*/, false /*new_db*/);
 

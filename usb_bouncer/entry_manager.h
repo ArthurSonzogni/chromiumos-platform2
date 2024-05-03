@@ -39,8 +39,6 @@ constexpr char kUsbguardPolicyDir[] = "etc/usbguard/rules.d";
 //   EntryManager::GetInstance()->GenerateRules();
 class EntryManager {
  public:
-  enum class UdevAction { kAdd = 0, kRemove = 1 };
-
   static EntryManager* GetInstance(DevpathToRuleCallback rule_from_devpath);
   static bool CreateDefaultGlobalDB();
 
