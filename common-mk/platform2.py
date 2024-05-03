@@ -14,6 +14,7 @@ import itertools
 import json
 import os
 import shlex
+import sys
 
 import common_utils
 import ebuild_function
@@ -688,6 +689,8 @@ class Platform2:
     def test_all(self, _args):
         """Runs all tests described from GN."""
         test_options_list = self.configure_test()
+        if not test_options_list:
+            print("WARNING: no unittests found", file=sys.stderr)
         for test_options in test_options_list:
             cros_build_lib.run(test_options, encoding="utf-8")
 
