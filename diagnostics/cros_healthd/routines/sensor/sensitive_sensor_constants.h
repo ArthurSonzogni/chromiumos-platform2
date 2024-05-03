@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSITIVE_SENSOR_CONSTANTS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSITIVE_SENSOR_CONSTANTS_H_
 
+#include <base/time/tick_clock.h>
+
 namespace diagnostics {
 
 // Status messages of the sensitive sensor routine.
@@ -24,6 +26,9 @@ inline constexpr char kSensitiveSensorRoutineTypeAccel[] = "Accel";
 inline constexpr char kSensitiveSensorRoutineTypeGyro[] = "Gyro";
 inline constexpr char kSensitiveSensorRoutineTypeGravity[] = "Gravity";
 inline constexpr char kSensitiveSensorRoutineTypeMagn[] = "Magn";
+
+// Routine timeout.
+constexpr base::TimeDelta kSensitiveSensorRoutineTimeout = base::Seconds(20);
 
 }  // namespace diagnostics
 

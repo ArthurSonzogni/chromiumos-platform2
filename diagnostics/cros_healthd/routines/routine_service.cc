@@ -29,6 +29,7 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom_v2.h"
 #include "diagnostics/cros_healthd/routines/network/network_bandwidth.h"
+#include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -273,11 +274,8 @@ void RoutineService::CheckAndCreateRoutine(
       return;
     }
     case mojom::RoutineArgument::Tag::kSensitiveSensor: {
-      // TODO(b/329377632): Add implementation.
-      std::move(callback).Run(base::unexpected(
-          mojom::SupportStatus::NewUnsupported(mojom::Unsupported::New(
-              "Sensitive sensor routine is not supported",
-              /*reason=*/nullptr))));
+      auto routine = std::make_unique<SensitiveSensorRoutineV2>(context_);
+      std::move(callback).Run(base::ok(std::move(routine)));
       return;
     }
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {

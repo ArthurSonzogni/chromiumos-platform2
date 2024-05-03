@@ -25,8 +25,6 @@
 namespace diagnostics {
 class SensorDetail;
 
-constexpr base::TimeDelta kSensitiveSensorRoutineTimeout = base::Seconds(20);
-
 // The sensitive sensor routine checks that the device's sensors are working
 // correctly by acquiring dynamic sensor sample data without user interaction.
 class SensitiveSensorRoutine final

@@ -224,7 +224,7 @@ void RoutineV2Client::OnFinishedState(
         PrintOutput(ConvertToValue(detail->get_network_bandwidth()));
         break;
       case mojom::RoutineDetail::Tag::kSensitiveSensor:
-        // TODO(b/329377632): Support sensitive sensor routine output.
+        PrintOutput(ConvertToValue(detail->get_sensitive_sensor()));
         break;
     }
   }
