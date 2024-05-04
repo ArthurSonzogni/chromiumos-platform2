@@ -80,6 +80,7 @@ _IUSE = [
     "cros_host",
     "cros_i686",
     "cross_domain_context",
+    "cross_domain_context_borealis",
     "crosvm_fixed_blob_mapping",
     "crosvm_virtio_video",
     "crosvm_wl_dmabuf",

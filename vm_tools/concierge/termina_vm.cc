@@ -242,6 +242,10 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
       vm_builder.EnableGpuContextTypeVirgl(true);
       vm_builder.EnableGpuContextTypeVenus(USE_CROSVM_VULKAN);
     }
+    if (USE_BOREALIS_HOST && USE_CROSVM_CROSS_DOMAIN_CONTEXT_BOREALIS &&
+        classification_ == apps::VmType::BOREALIS) {
+      vm_builder.EnableGpuContextTypeCrossDomain(true);
+    }
 
     if (classification_ == apps::VmType::BOREALIS) {
       vm_builder.SetGpuCacheSize(kGpuCacheSizeStringBorealis);
