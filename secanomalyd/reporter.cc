@@ -42,7 +42,8 @@ constexpr char kWeightFlag[] = "--weight";
 bool ShouldReport(bool report_in_dev_mode) {
   // Reporting should only happen when booted in Verified mode and not running
   // a developer image, unless explicitly instructed otherwise.
-  return ::VbGetSystemPropertyInt("cros_debug") == 0 || report_in_dev_mode;
+  static bool is_verified_mode = ::VbGetSystemPropertyInt("cros_debug") == 0;
+  return is_verified_mode || report_in_dev_mode;
 }
 
 std::string GenerateMountSignature(const MountEntryMap& wx_mounts) {
