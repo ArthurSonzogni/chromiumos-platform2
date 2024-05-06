@@ -456,6 +456,14 @@ void CrosFpAuthStackManager::OnUserLoggedIn(const std::string& user_id) {
   migrator_->OnUserLoggedIn(user_id);
 }
 
+bool CrosFpAuthStackManager::SendStatsOnLogin() {
+  size_t num_of_templates = session_manager_->GetNumOfTemplates();
+  bool rc = true;
+  rc = biod_metrics_->SendEnrolledFingerCount(num_of_templates) && rc;
+  rc = biod_metrics_->SendFpUnlockEnabled(num_of_templates > 0) && rc;
+  return rc;
+}
+
 void CrosFpAuthStackManager::SetEnrollScanDoneHandler(
     const AuthStackManager::EnrollScanDoneCallback& on_enroll_scan_done) {
   on_enroll_scan_done_ = on_enroll_scan_done;

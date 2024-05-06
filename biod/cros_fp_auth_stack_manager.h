@@ -96,6 +96,7 @@ class CrosFpAuthStackManager : public AuthStackManager {
       const DeleteCredentialRequest& request) override;
   void OnUserLoggedOut() override;
   void OnUserLoggedIn(const std::string& user_id) override;
+  bool SendStatsOnLogin() override;
   ListLegacyRecordsReply ListLegacyRecords() override;
   void EnrollLegacyTemplate(
       const EnrollLegacyTemplateRequest& request,

@@ -84,6 +84,10 @@ class AuthStackManager {
   // This will be called when a user logs in.
   virtual void OnUserLoggedIn(const std::string& user_id) = 0;
 
+  // This will be called when a new user logs in (so it won't be called when
+  // biod restarts while a user is already logged in).
+  virtual bool SendStatsOnLogin() { return true; }
+
   // Migration APIs
 
   // Lists the legacy templates of the currently logged-in user.

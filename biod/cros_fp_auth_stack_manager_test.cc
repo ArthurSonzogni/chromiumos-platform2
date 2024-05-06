@@ -518,6 +518,20 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInUploadFailed) {
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kLocked);
 }
 
+TEST_F(CrosFpAuthStackManagerTest, TestSendStatsOnLogin) {
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
+  EXPECT_CALL(mock_metrics_, SendEnrolledFingerCount(2)).WillOnce(Return(true));
+  EXPECT_CALL(mock_metrics_, SendFpUnlockEnabled(true)).WillOnce(Return(true));
+  EXPECT_TRUE(cros_fp_auth_stack_manager_->SendStatsOnLogin());
+}
+
+TEST_F(CrosFpAuthStackManagerTest, TestSendStatsOnLoginNoTemplates) {
+  EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(0));
+  EXPECT_CALL(mock_metrics_, SendEnrolledFingerCount(0)).WillOnce(Return(true));
+  EXPECT_CALL(mock_metrics_, SendFpUnlockEnabled(false)).WillOnce(Return(true));
+  EXPECT_TRUE(cros_fp_auth_stack_manager_->SendStatsOnLogin());
+}
+
 TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedOut) {
   const std::string kUserId("testuser");
   EXPECT_CALL(*mock_session_manager_, UnloadUser);
