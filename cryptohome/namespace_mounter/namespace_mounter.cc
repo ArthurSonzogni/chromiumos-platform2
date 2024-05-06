@@ -129,6 +129,14 @@ int main(int argc, char** argv) {
     CleanUpGuestDaemonDirectories(&platform);
   }
 
+  // TODO(b/328506748) Remove this code block once the Downloads folder
+  // migration is completed for everyone.
+  if (request.username().ends_with("@google.com") &&
+      request.bind_mount_downloads()) {
+    LOG(INFO) << "Forcing 'Downloads' folder migration for Googler";
+    request.set_bind_mount_downloads(false);
+  }
+
   std::unique_ptr<brillo::ScopedMountNamespace> ns_mnt;
   if (!request.mount_namespace_path().empty()) {
     // Enter the required mount namespace.
