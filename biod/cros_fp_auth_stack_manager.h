@@ -172,6 +172,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   bool RequestFingerUp();
   void OnFingerUpEvent(uint32_t event);
 
+  // Report the matching latency. |matched| is whether the match was successful.
+  void ReportMatchLatency(bool matched);
   void UpdateDirtyTemplates();
 
   std::string CurrentStateToString();

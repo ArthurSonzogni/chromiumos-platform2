@@ -12,6 +12,8 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <libhwsec/frontend/pinweaver_manager/frontend.h>
@@ -366,6 +368,12 @@ void CrosFpAuthStackManager::AuthenticateCredential(
       reply.set_status(AuthenticateCredentialReply::INTERNAL_ERROR);
   }
 
+  // Report match latency after responding to the callback to avoid blocking the
+  // operation.
+  base::ScopedClosureRunner report_match_latency(
+      base::BindOnce(&CrosFpAuthStackManager::ReportMatchLatency,
+                     session_weak_factory_.GetWeakPtr(), matched));
+
   if (!matched) {
     std::move(callback).Run(std::move(reply));
     return;
@@ -400,8 +408,6 @@ void CrosFpAuthStackManager::AuthenticateCredential(
   reply.set_record_id(metadata->record_id);
 
   std::move(callback).Run(std::move(reply));
-
-  // TODO(b/253993586): Get latency stats and send UMA.
 
   if (match_result == EC_MKBP_FP_ERR_MATCH_YES_UPDATED) {
     UpdateDirtyTemplates();
@@ -748,6 +754,14 @@ void CrosFpAuthStackManager::OnFingerUpEvent(uint32_t event) {
   } else {
     LOG(ERROR) << "Finger up event receiving in unexpected state: "
                << CurrentStateToString();
+  }
+}
+
+void CrosFpAuthStackManager::ReportMatchLatency(bool matched) {
+  std::optional<ec::CrosFpDeviceInterface::FpStats> stats =
+      cros_dev_->GetFpStats();
+  if (stats.has_value()) {
+    biod_metrics_->SendFpLatencyStats(matched, *stats);
   }
 }
 

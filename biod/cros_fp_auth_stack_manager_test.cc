@@ -1297,11 +1297,17 @@ TEST_P(CrosFpAuthStackManagerAuthScanResultTest, ScanResult) {
   const brillo::Blob kEncryptedSecret(32, 5), kSecretIv(16, 5);
   const brillo::Blob kPubOutX(32, 6), kPubOutY(32, 7);
   const RecordMetadata kMetadata{.record_id = "record1"};
+  const ec::CrosFpDeviceInterface::FpStats kStats{
+      .capture_ms = 10,
+      .matcher_ms = 20,
+      .overall_ms = 30,
+  };
   AuthScanResultTestParam param = GetParam();
 
   ON_CALL(*mock_cros_dev_, GetDirtyMap).WillByDefault(Return(std::nullopt));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kFingerUp)))
       .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, GetFpStats).WillOnce(Return(kStats));
   if (param.status == AuthenticateCredentialReply::SUCCESS &&
       param.scan_result == ScanResult::SCAN_RESULT_SUCCESS) {
     EXPECT_CALL(*mock_session_manager_, GetRecordMetadata(0))
@@ -1314,6 +1320,9 @@ TEST_P(CrosFpAuthStackManagerAuthScanResultTest, ScanResult) {
             .pk_out_x = kPubOutX,
             .pk_out_y = kPubOutY,
         }));
+    EXPECT_CALL(mock_metrics_, SendFpLatencyStats(true, _)).Times(1);
+  } else {
+    EXPECT_CALL(mock_metrics_, SendFpLatencyStats(false, _)).Times(1);
   }
 
   auto request = MakeAuthenticateCredentialRequest(kPubInX, kPubInY);
