@@ -56,17 +56,19 @@ int main() {
 
   MetricsLibrary metrics;
 
+  int rc = EXIT_SUCCESS;
+
   if (!GatherAndSendDiskMetrics(metrics)) {
-    return EXIT_FAILURE;
+    rc = EXIT_FAILURE;
   }
 
   if (!SendCpuIsaLevelMetric(metrics, GetCpuIsaLevel())) {
-    return EXIT_FAILURE;
+    rc = EXIT_FAILURE;
   }
 
   if (!SendBootMethodMetric(metrics, GetBootMethod(base::FilePath("/")))) {
-    return EXIT_FAILURE;
+    rc = EXIT_FAILURE;
   }
 
-  return EXIT_SUCCESS;
+  return rc;
 }
