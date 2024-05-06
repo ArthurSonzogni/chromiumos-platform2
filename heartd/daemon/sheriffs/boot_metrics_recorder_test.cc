@@ -2,10 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "heartd/daemon/utils/boot_record_recorder.h"
+#include "heartd/daemon/sheriffs/boot_metrics_recorder.h"
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file.h>
@@ -37,11 +38,13 @@ class BootMetricsRecorderTest : public testing::Test {
   ~BootMetricsRecorderTest() override = default;
 
   void Init() {
-    db_path_ = temp_dir_.GetPath().Append("test_db.db");
-    db_ = std::make_unique<Database>(db_path_.MaybeAsASCII());
-    db_->Init();
-    EXPECT_TRUE(db_->IsOpen());
+    database_ = std::make_unique<Database>(
+        temp_dir_.GetPath().Append("test_db.db").MaybeAsASCII());
+    boot_metrics_recorder_ =
+        std::make_unique<BootMetricsRecorder>(GetRoot(), database_.get());
 
+    database_->Init();
+    EXPECT_TRUE(database_->IsOpen());
     CreateFakeFiles();
   }
 
@@ -51,18 +54,18 @@ class BootMetricsRecorderTest : public testing::Test {
   }
 
   void CreateFakeShutdownMetricsDir() {
-    auto metrics_dir = GetFakeRoot().Append(kMetricsPath);
+    auto metrics_dir = GetRoot().Append(kMetricsPath);
     auto shutdown_metrics_dir = metrics_dir.Append(kFakeShutdownDirName);
     EXPECT_TRUE(base::CreateDirectory(shutdown_metrics_dir));
   }
 
   void CreateFakeBootIDFile(const std::string& content) {
-    auto boot_id_path = GetFakeRoot().Append(kBootIDPath);
+    auto boot_id_path = GetRoot().Append(kBootIDPath);
     EXPECT_EQ(base::WriteFile(boot_id_path, content.c_str(), content.size()),
               content.size());
   }
 
-  base::FilePath GetFakeRoot() { return temp_dir_.GetPath(); }
+  base::FilePath GetRoot() { return temp_dir_.GetPath(); }
 
  protected:
   void SetUp() override { ASSERT_TRUE(temp_dir_.CreateUniqueTempDir()); }
@@ -70,16 +73,16 @@ class BootMetricsRecorderTest : public testing::Test {
 
  protected:
   base::ScopedTempDir temp_dir_;
-  base::FilePath db_path_;
-  std::unique_ptr<Database> db_;
+  std::unique_ptr<Database> database_;
+  std::unique_ptr<BootMetricsRecorder> boot_metrics_recorder_;
 };
 
 TEST_F(BootMetricsRecorderTest, RecordBootMetrics) {
   Init();
-  RecordBootMetrics(GetFakeRoot(), db_.get());
+  boot_metrics_recorder_->OneShotWork();
 
   auto boot_records =
-      db_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
+      database_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
   EXPECT_EQ(boot_records.size(), 2);
   EXPECT_EQ(boot_records[0].id, kFakeShutdownDirName);
   EXPECT_EQ(boot_records[1].id, kLatestBootID);
@@ -87,59 +90,58 @@ TEST_F(BootMetricsRecorderTest, RecordBootMetrics) {
 
 TEST_F(BootMetricsRecorderTest, NoShutdownMetricsIsFine) {
   Init();
-  EXPECT_TRUE(
-      brillo::DeletePathRecursively(GetFakeRoot().Append(kMetricsPath)));
-  RecordBootMetrics(GetFakeRoot(), db_.get());
+  EXPECT_TRUE(brillo::DeletePathRecursively(GetRoot().Append(kMetricsPath)));
+  boot_metrics_recorder_->OneShotWork();
 
   auto boot_records =
-      db_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
+      database_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
   EXPECT_EQ(boot_records.size(), 1);
   EXPECT_EQ(boot_records[0].id, kLatestBootID);
 }
 
 TEST_F(BootMetricsRecorderTest, NoBootIDIsFine) {
   Init();
-  EXPECT_TRUE(brillo::DeleteFile(GetFakeRoot().Append(kBootIDPath)));
-  RecordBootMetrics(GetFakeRoot(), db_.get());
+  EXPECT_TRUE(brillo::DeleteFile(GetRoot().Append(kBootIDPath)));
+  boot_metrics_recorder_->OneShotWork();
 
   auto boot_records =
-      db_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
+      database_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
   EXPECT_EQ(boot_records.size(), 1);
   EXPECT_EQ(boot_records[0].id, kFakeShutdownDirName);
 }
 
 TEST_F(BootMetricsRecorderTest, EmptyBootIDIsFine) {
   Init();
-  EXPECT_TRUE(brillo::DeleteFile(GetFakeRoot().Append(kBootIDPath)));
+  EXPECT_TRUE(brillo::DeleteFile(GetRoot().Append(kBootIDPath)));
   CreateFakeBootIDFile("");
-  RecordBootMetrics(GetFakeRoot(), db_.get());
+  boot_metrics_recorder_->OneShotWork();
 
   auto boot_records =
-      db_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
+      database_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
   EXPECT_EQ(boot_records.size(), 1);
   EXPECT_EQ(boot_records[0].id, kFakeShutdownDirName);
 }
 
 TEST_F(BootMetricsRecorderTest, WrongBootIDText) {
   Init();
-  EXPECT_TRUE(brillo::DeleteFile(GetFakeRoot().Append(kBootIDPath)));
+  EXPECT_TRUE(brillo::DeleteFile(GetRoot().Append(kBootIDPath)));
   CreateFakeBootIDFile("2024-01-01 INFO wrong_boot_id_text: test");
-  RecordBootMetrics(GetFakeRoot(), db_.get());
+  boot_metrics_recorder_->OneShotWork();
 
   auto boot_records =
-      db_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
+      database_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
   EXPECT_EQ(boot_records.size(), 1);
   EXPECT_EQ(boot_records[0].id, kFakeShutdownDirName);
 }
 
 TEST_F(BootMetricsRecorderTest, WrongBootIDTokenLength) {
   Init();
-  EXPECT_TRUE(brillo::DeleteFile(GetFakeRoot().Append(kBootIDPath)));
+  EXPECT_TRUE(brillo::DeleteFile(GetRoot().Append(kBootIDPath)));
   CreateFakeBootIDFile("2024-01-01 INFO boot_id: one_more_text test");
-  RecordBootMetrics(GetFakeRoot(), db_.get());
+  boot_metrics_recorder_->OneShotWork();
 
   auto boot_records =
-      db_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
+      database_->GetBootRecordFromTime(base::Time().Now() - base::Minutes(1));
   EXPECT_EQ(boot_records.size(), 1);
   EXPECT_EQ(boot_records[0].id, kFakeShutdownDirName);
 }

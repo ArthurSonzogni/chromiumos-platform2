@@ -16,7 +16,6 @@ pkg_config("target_defaults") {
 source_set("libheartd") {
   sources = [
     "action_runner.cc",
-    "context.cc",
     "database.cc",
     "dbus_connector_impl.cc",
     "heartbeat_manager.cc",
@@ -28,6 +27,7 @@ source_set("libheartd") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
+    "//heartd/daemon/sheriffs:sheriffs",
     "//heartd/daemon/utils:utils",
     "//heartd/mojom:libheartd_mojo_bindings",
   ]
@@ -51,6 +51,7 @@ if (use.test) {
     ]
     deps = [
       ":libheartd",
+      "//heartd/daemon/sheriffs:sheriffs_test",
       "//heartd/daemon/test_utils:test_utils",
       "//heartd/daemon/utils:utils_test",
     ]

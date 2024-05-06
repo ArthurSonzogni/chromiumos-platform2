@@ -5,12 +5,17 @@
 #include "heartd/daemon/top_sheriff.h"
 
 #include <memory>
+#include <utility>
 
 namespace heartd {
 
 TopSheriff::TopSheriff() = default;
 
 TopSheriff::~TopSheriff() = default;
+
+void TopSheriff::AddSheriff(std::unique_ptr<Sheriff> sheriff) {
+  sheriffs.push_back(std::move(sheriff));
+}
 
 void TopSheriff::StartShift() {
   for (const auto& sheriff : sheriffs) {

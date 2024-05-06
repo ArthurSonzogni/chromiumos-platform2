@@ -5,19 +5,13 @@
 import("//common-mk/pkg_config.gni")
 
 source_set("utils") {
-  sources = [
-    "boot_record_recorder.cc",
-    "mojo_output.cc",
-  ]
+  sources = [ "mojo_output.cc" ]
   deps = [ "//heartd/mojom:libheartd_mojo_bindings" ]
 }
 
 if (use.test) {
   source_set("utils_test") {
-    sources = [
-      "boot_record_recorder_test.cc",
-      "mojo_output_test.cc",
-    ]
+    sources = [ "mojo_output_test.cc" ]
     configs += [ "//common-mk:test" ]
     deps = [ ":utils" ]
   }

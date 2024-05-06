@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "heartd/daemon/utils/boot_record_recorder.h"
+#include "heartd/daemon/sheriffs/boot_metrics_recorder.h"
 
 #include <string>
 
@@ -14,17 +14,32 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 
-#include "heartd/daemon/boot_record.h"
-#include "heartd/daemon/database.h"
-
 namespace heartd {
 
-namespace {
+BootMetricsRecorder::BootMetricsRecorder(const base::FilePath& root_dir,
+                                         const Database* database)
+    : root_dir_(root_dir), database_(database) {}
 
-void CollectShutdownTime(const base::FilePath& root_dir,
-                         const Database* db_ptr) {
+BootMetricsRecorder::~BootMetricsRecorder() = default;
+
+void BootMetricsRecorder::OneShotWork() {
+  CollectShutdownTime();
+  CollectBootID();
+}
+
+bool BootMetricsRecorder::HasShiftWork() {
+  return false;
+}
+
+void BootMetricsRecorder::AdjustSchedule() {}
+
+void BootMetricsRecorder::MainWork() {}
+
+void BootMetricsRecorder::CleanUp() {}
+
+void BootMetricsRecorder::CollectShutdownTime() {
   base::FileEnumerator file_enum(
-      root_dir.Append(kMetricsPath), /*recursive=*/false,
+      root_dir_.Append(kMetricsPath), /*recursive=*/false,
       base::FileEnumerator::FileType::FILES |
           base::FileEnumerator::FileType::DIRECTORIES);
   // According to b/293410814, there should be only one bootstat archive.
@@ -41,12 +56,12 @@ void CollectShutdownTime(const base::FilePath& root_dir,
     return;
   }
 
-  db_ptr->InsertBootRecord(
+  database_->InsertBootRecord(
       BootRecord(path.BaseName().value(), info.creation_time));
 }
 
-void CollectBootID(const base::FilePath& root_dir, const Database* db_ptr) {
-  auto boot_id_path = root_dir.Append(kBootIDPath);
+void BootMetricsRecorder::CollectBootID() {
+  auto boot_id_path = root_dir_.Append(kBootIDPath);
   base::File file(boot_id_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!file.IsValid()) {
     LOG(ERROR) << "Failed to open boot id file: " << boot_id_path;
@@ -77,14 +92,7 @@ void CollectBootID(const base::FilePath& root_dir, const Database* db_ptr) {
     return;
   }
 
-  db_ptr->InsertBootRecord(BootRecord(tokens.back(), info.last_modified));
-}
-
-}  // namespace
-
-void RecordBootMetrics(const base::FilePath& root_dir, const Database* db_ptr) {
-  CollectShutdownTime(root_dir, db_ptr);
-  CollectBootID(root_dir, db_ptr);
+  database_->InsertBootRecord(BootRecord(tokens.back(), info.last_modified));
 }
 
 }  // namespace heartd

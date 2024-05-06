@@ -19,6 +19,9 @@ class TopSheriff {
   TopSheriff& operator=(const TopSheriff&) = delete;
   ~TopSheriff();
 
+  // Add managed sheriff.
+  void AddSheriff(std::unique_ptr<Sheriff> sheriff);
+
   // Ask managed sheriffs to start shift.
   void StartShift();
 
