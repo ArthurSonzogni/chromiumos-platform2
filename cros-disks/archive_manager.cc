@@ -235,12 +235,6 @@ std::unique_ptr<MountPoint> ArchiveManager::DoMount(
 std::unique_ptr<FUSESandboxedProcessFactory>
 ArchiveManager::CreateSandboxFactory(SandboxedExecutable executable,
                                      const std::string& user_name) const {
-  // To access Play Files.
-  std::vector<gid_t> groups;
-  gid_t gid;
-  if (platform()->GetGroupId("android-everybody", &gid))
-    groups.push_back(gid);
-
   OwnerUser run_as;
   if (!platform()->GetUserAndGroupId(user_name, &run_as.uid, &run_as.gid)) {
     PLOG(ERROR) << "Cannot resolve required user " << quote(user_name);
@@ -253,7 +247,7 @@ ArchiveManager::CreateSandboxFactory(SandboxedExecutable executable,
   return std::make_unique<FUSESandboxedProcessFactory>(
       platform(), std::move(executable), std::move(run_as),
       /* has_network_access= */ false, /* kill_pid_namespace= */ true,
-      std::move(groups));
+      GetSupplementaryGroups());
 }
 
 }  // namespace cros_disks
