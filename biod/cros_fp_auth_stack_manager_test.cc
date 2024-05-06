@@ -1177,6 +1177,8 @@ TEST_F(CrosFpAuthStackManagerInitiallyAuthDone,
           .pk_out_x = kPubOutX,
           .pk_out_y = kPubOutY,
       }));
+  EXPECT_CALL(mock_metrics_, SendIgnoreMatchEventOnPowerButtonPress(false))
+      .Times(1);
 
   auto request = MakeAuthenticateCredentialRequest(kPubInX, kPubInY);
 
@@ -1259,6 +1261,8 @@ TEST_F(CrosFpAuthStackManagerInitiallyAuthDone, PowerButtonEvent) {
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_power_button_filter_, ShouldFilterFingerprintMatch)
       .WillOnce(Return(true));
+  EXPECT_CALL(mock_metrics_, SendIgnoreMatchEventOnPowerButtonPress(true))
+      .Times(1);
 
   auto request = MakeAuthenticateCredentialRequest(kPubInX, kPubInY);
 

@@ -320,11 +320,14 @@ void CrosFpAuthStackManager::AuthenticateCredential(
   if (power_button_filter_->ShouldFilterFingerprintMatch()) {
     LOG(INFO) << "Power button event seen along with fp match. Treating it as "
                  "an error.";
+    biod_metrics_->SendIgnoreMatchEventOnPowerButtonPress(true);
+
     reply.set_status(AuthenticateCredentialReply::SUCCESS);
     reply.set_scan_result(ScanResult::SCAN_RESULT_POWER_BUTTON_PRESSED);
     std::move(callback).Run(std::move(reply));
     return;
   }
+  biod_metrics_->SendIgnoreMatchEventOnPowerButtonPress(false);
 
   int match_result = EC_MKBP_FP_ERRCODE(*event);
   bool matched = false;
