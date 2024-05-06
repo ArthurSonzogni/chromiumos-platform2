@@ -49,8 +49,8 @@ impl Cpuset {
     // each range is either in the form "l-u" or "c", where l, u, and c are
     // positive integers.  Example: 0-3,9,11-12.
     fn parse(cpuset_str: &str) -> Result<Self> {
-        static CPUSET_RANGE_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(\d+)-(\d+)$")
-                                                        .expect("bad cpuset range RE"));
+        static CPUSET_RANGE_RE: Lazy<Regex> =
+            Lazy::new(|| Regex::new(r"^(\d+)-(\d+)$").expect("bad cpuset range RE"));
         let mut cores: Vec<usize> = vec![];
         if cpuset_str.is_empty() {
             return Ok(Cpuset(cores));
@@ -78,7 +78,10 @@ impl Cpuset {
         // Sanity check.
         for i in 0..cores.len() - 1 {
             if cores[i] >= cores[i + 1] {
-                bail!("cpuset '{}' has overlapping or out-of-order CPUs", cpuset_str);
+                bail!(
+                    "cpuset '{}' has overlapping or out-of-order CPUs",
+                    cpuset_str
+                );
             }
         }
         Ok(Cpuset(cores))
@@ -488,7 +491,8 @@ mod tests {
         // root cpuset cgroup is not found.
         assert!(Cpuset::all_cores(&root_path).is_err());
 
-        std::fs::write(&root_cpus_path, "1,2,3,100").expect(&root_cpus_path.display().to_string());
+        std::fs::write(&root_cpus_path, "1,2,3,100")
+            .unwrap_or_else(|_| panic!("{}", root_cpus_path.display().to_string()));
         assert_eq!(
             Cpuset::all_cores(&root_path).unwrap(),
             Cpuset(vec![1, 2, 3, 100])
@@ -512,7 +516,7 @@ mod tests {
     fn test_cpuset_bad() {
         let root_dir = TempDir::new().unwrap();
         let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
-        std::fs::write(&root_cpus_path, "a").unwrap();
+        std::fs::write(root_cpus_path, "a").unwrap();
         let _ = Cpuset::all_cores(&root_path).unwrap();
     }
 
@@ -521,7 +525,7 @@ mod tests {
     fn test_cpuset_bad2() {
         let root_dir = TempDir::new().unwrap();
         let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
-        std::fs::write(&root_cpus_path, ",").unwrap();
+        std::fs::write(root_cpus_path, ",").unwrap();
         let _ = Cpuset::all_cores(&root_path).unwrap();
     }
 
@@ -530,7 +534,7 @@ mod tests {
     fn test_cpuset_bad3() {
         let root_dir = TempDir::new().unwrap();
         let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
-        std::fs::write(&root_cpus_path, "1,9-8").unwrap();
+        std::fs::write(root_cpus_path, "1,9-8").unwrap();
         let _ = Cpuset::all_cores(&root_path).unwrap();
     }
 
@@ -539,7 +543,7 @@ mod tests {
     fn test_cpuset_bad4() {
         let root_dir = TempDir::new().unwrap();
         let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
-        std::fs::write(&root_cpus_path, "1,2,1").unwrap();
+        std::fs::write(root_cpus_path, "1,2,1").unwrap();
         let _ = Cpuset::all_cores(&root_path).unwrap();
     }
 
@@ -567,7 +571,7 @@ mod tests {
         let root_dir = TempDir::new().unwrap();
         let (root_path, root_cpus_path, _) = setup_sysfs(&root_dir);
 
-        std::fs::write(&root_cpus_path, "0-3").unwrap();
+        std::fs::write(root_cpus_path, "0-3").unwrap();
         update_big_little_support(&root_path, true);
 
         // Even if property files are not found, fallbacks to little cores.
@@ -615,8 +619,8 @@ mod tests {
     fn test_cpuset_isolated_cores() {
         let root_dir = TempDir::new().unwrap();
         let (root_path, root_cpus_path, isolated_path) = setup_sysfs(&root_dir);
-        std::fs::write(&root_cpus_path, "0-15").unwrap();
-        std::fs::write(&isolated_path, "2-4,9").unwrap();
+        std::fs::write(root_cpus_path, "0-15").unwrap();
+        std::fs::write(isolated_path, "2-4,9").unwrap();
         let all_cores = Cpuset::all_cores(&root_path).unwrap();
         assert_eq!(all_cores.to_string(), "0-1,5-8,10-15");
     }
@@ -627,7 +631,10 @@ mod tests {
         assert_eq!(&Cpuset(vec![1, 2]).to_string(), "1-2");
         assert_eq!(&Cpuset(vec![1, 2, 3]).to_string(), "1-3");
         assert_eq!(&Cpuset(vec![1, 2, 3, 100]).to_string(), "1-3,100");
-        assert_eq!(&Cpuset(vec![1, 2, 3, 5, 6, 7, 9, 99, 100]).to_string(), "1-3,5-7,9,99-100");
+        assert_eq!(
+            &Cpuset(vec![1, 2, 3, 5, 6, 7, 9, 99, 100]).to_string(),
+            "1-3,5-7,9,99-100"
+        );
         assert_eq!(&Cpuset(vec![100]).to_string(), "100");
     }
 
