@@ -139,6 +139,10 @@ void NetlinkMessage::PrintHeader(int log_level, const nlmsghdr* header) {
 void NetlinkMessage::PrintPayload(int log_level,
                                   const unsigned char* buf,
                                   size_t num_bytes) {
+  if (!VLOG_IS_ON(log_level)) {
+    return;
+  }
+
   while (num_bytes) {
     std::string output;
     size_t bytes_this_row = std::min(num_bytes, static_cast<size_t>(32));
