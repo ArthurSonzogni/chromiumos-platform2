@@ -54,7 +54,7 @@ const VariationsFeature& GetVariationFeatureFor(
     case Features::kGenerateRecoverableKeyStore:
       return kCrOSLateBootGenerateRecoverableKeyStore;
     case Features::kMigrateLegacyFingerprint:
-      return kCrOSMigrateLegacyFingerprintPostSignin;
+      return kCrOSMigrateLegacyFingerprint;
   }
 }
 

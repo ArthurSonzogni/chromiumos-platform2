@@ -37,10 +37,9 @@ inline constexpr struct VariationsFeature
 };
 
 // Control switch value for legacy fingerprint migration.
-inline constexpr struct VariationsFeature
-    kCrOSMigrateLegacyFingerprintPostSignin = {
-        .name = "CrOSMigrateLegacyFingerprint",
-        .default_state = FEATURE_DISABLED_BY_DEFAULT,
+inline constexpr struct VariationsFeature kCrOSMigrateLegacyFingerprint = {
+    .name = "CrOSLateBootMigrateLegacyFingerprint",
+    .default_state = FEATURE_DISABLED_BY_DEFAULT,
 };
 
 // Features is a class which is a wrapper around PlatformFeatureInterface, which
