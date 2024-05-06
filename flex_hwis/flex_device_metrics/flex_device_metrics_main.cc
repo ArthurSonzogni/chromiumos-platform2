@@ -23,14 +23,13 @@ std::optional<std::string> GetRootDiskDeviceName() {
   }
 }
 
-}  // namespace
-
-int main() {
-  brillo::InitLog(brillo::kLogToStderr | brillo::kLogToSyslog);
-
+// Get the size of a set of partitions and send as UMAs.
+//
+// Returns true on success, false if any error occurs.
+bool GatherAndSendDiskMetrics(MetricsLibraryInterface& metrics) {
   const auto root_disk_device_name = GetRootDiskDeviceName();
   if (!root_disk_device_name) {
-    return EXIT_FAILURE;
+    return false;
   }
 
   // The list of partition labels must match the variants of the
@@ -40,12 +39,24 @@ int main() {
       "EFI-SYSTEM", "KERN-A", "KERN-B", "ROOT-A", "ROOT-B",
   };
 
-  MetricsLibrary metrics;
-
   const MapPartitionLabelToMiBSize label_to_size_map =
       GetPartitionSizeMap(base::FilePath("/"), root_disk_device_name.value());
 
   if (!SendDiskMetrics(metrics, label_to_size_map, partition_labels)) {
+    return false;
+  }
+
+  return true;
+}
+
+}  // namespace
+
+int main() {
+  brillo::InitLog(brillo::kLogToStderr | brillo::kLogToSyslog);
+
+  MetricsLibrary metrics;
+
+  if (!GatherAndSendDiskMetrics(metrics)) {
     return EXIT_FAILURE;
   }
 
