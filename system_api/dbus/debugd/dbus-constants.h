@@ -71,6 +71,8 @@ const char kKernelFeatureEnable[] = "KernelFeatureEnable";
 // PacketCaptureStart method isn't defined as it's not needed by any component.
 const char kPacketCaptureStop[] = "PacketCaptureStop";
 const char kDRMTraceAnnotateLog[] = "DRMTraceAnnotateLog";
+const char kBluetoothStartBtsnoop[] = "BluetoothStartBtsnoop";
+const char kBluetoothStopBtsnoop[] = "BluetoothStopBtsnoop";
 
 // Signals.
 const char kPacketCaptureStartSignal[] = "PacketCaptureStart";

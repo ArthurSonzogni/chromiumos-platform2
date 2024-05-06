@@ -24,6 +24,7 @@
 #include "debugd/dbus_adaptors/org.chromium.debugd.h"
 #include "debugd/src/battery_tool.h"
 #include "debugd/src/binary_log_tool.h"
+#include "debugd/src/bluetooth_tool.h"
 #include "debugd/src/container_tool.h"
 #include "debugd/src/crash_sender_tool.h"
 #include "debugd/src/crosh_shell_tool.h"
@@ -285,9 +286,13 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool SetCrashSenderTestMode(brillo::ErrorPtr* error, bool mode) override;
   bool PrintscanDebugSetCategories(brillo::ErrorPtr* error,
                                    uint32_t categories) override;
+  bool BluetoothStartBtsnoop(brillo::ErrorPtr* error) override;
+  bool BluetoothStopBtsnoop(brillo::ErrorPtr* error,
+                            const base::ScopedFD& fd) override;
 
  private:
   void OnPacketCaptureStopped();
+  void InitializeBluetoothTool();
 
   brillo::dbus_utils::DBusObject dbus_object_;
 
@@ -295,6 +300,7 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
 
   std::unique_ptr<BatteryTool> battery_tool_;
   std::unique_ptr<BinaryLogTool> binary_log_tool_;
+  std::unique_ptr<BluetoothTool> bluetooth_tool_;
   std::unique_ptr<ContainerTool> container_tool_;
   std::unique_ptr<CrashSenderTool> crash_sender_tool_;
   std::unique_ptr<CroshShellTool> crosh_shell_tool_;
@@ -331,6 +337,8 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   std::unique_ptr<WifiPowerTool> wifi_power_tool_;
   std::unique_ptr<ProbeTool> probe_tool_;
   std::unique_ptr<KernelFeatureTool> kernel_feature_tool_;
+
+  scoped_refptr<dbus::Bus> bus_;
 };
 
 }  // namespace debugd

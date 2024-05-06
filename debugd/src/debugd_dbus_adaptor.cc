@@ -67,6 +67,7 @@ DebugdDBusAdaptor::DebugdDBusAdaptor(scoped_refptr<dbus::Bus> bus,
                                      const bool perf_logging)
     : org::chromium::debugdAdaptor(this),
       dbus_object_(nullptr, bus, dbus::ObjectPath(kDebugdServicePath)) {
+  bus_ = bus;
   battery_tool_ = std::make_unique<BatteryTool>();
   binary_log_tool_ = std::make_unique<BinaryLogTool>(bus);
   container_tool_ = std::make_unique<ContainerTool>();
@@ -123,6 +124,10 @@ DebugdDBusAdaptor::~DebugdDBusAdaptor() {
   // Destroy drm_trace_tool_ here since it holds a pointer to log_tool_, so
   // its lifetime should not exceed that of log_tool_.
   drm_trace_tool_.reset();
+
+  if (bluetooth_tool_) {
+    session_manager_proxy_->RemoveObserver(bluetooth_tool_.get());
+  }
 }
 
 void DebugdDBusAdaptor::RegisterAsync(
@@ -811,6 +816,27 @@ bool DebugdDBusAdaptor::PrintscanDebugSetCategories(brillo::ErrorPtr* error,
     }
   }
   return printscan_tool_->DebugSetCategories(error, categories_enum);
+}
+
+bool DebugdDBusAdaptor::BluetoothStartBtsnoop(brillo::ErrorPtr* error) {
+  InitializeBluetoothTool();
+  return bluetooth_tool_->StartBtsnoop();
+}
+
+bool DebugdDBusAdaptor::BluetoothStopBtsnoop(brillo::ErrorPtr* error,
+                                             const base::ScopedFD& fd) {
+  InitializeBluetoothTool();
+  bluetooth_tool_->StopBtsnoop();
+  return bluetooth_tool_->CopyBtsnoop(fd);
+}
+
+void DebugdDBusAdaptor::InitializeBluetoothTool() {
+  if (bluetooth_tool_) {
+    return;
+  }
+
+  bluetooth_tool_ = std::make_unique<BluetoothTool>(bus_);
+  session_manager_proxy_->AddObserver(bluetooth_tool_.get());
 }
 
 }  // namespace debugd

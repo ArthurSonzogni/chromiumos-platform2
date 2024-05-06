@@ -116,6 +116,7 @@ static_library("libdebugd") {
   sources = [
     "src/battery_tool.cc",
     "src/binary_log_tool.cc",
+    "src/bluetooth_tool.cc",
     "src/bluetooth_utils.cc",
     "src/constants.cc",
     "src/container_tool.cc",
@@ -455,6 +456,7 @@ if (use.test) {
   executable("debugd_testrunner") {
     sources = [
       "src/binary_log_tool_test.cc",
+      "src/bluetooth_tool_test.cc",
       "src/crash_sender_tool_test.cc",
       "src/cups_tool_test.cc",
       "src/dev_mode_no_owner_restriction_test.cc",

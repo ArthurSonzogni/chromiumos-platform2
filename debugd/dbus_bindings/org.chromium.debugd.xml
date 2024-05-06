@@ -1558,6 +1558,27 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="BluetoothStartBtsnoop">
+      <tp:docstring>
+        Starts capturing bluetooth traffic.
+        Log is saved inside daemon-store in btsnoop format.
+        Logging will be stopped if BluetoothStopBtsnoop is called, or
+        automatically when the user signs out.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="BluetoothStopBtsnoop">
+      <tp:docstring>
+        Stops capturing bluetooth traffic, then copy the resulting log to a
+        file.
+      </tp:docstring>
+      <arg name="fd" type="h" direction="in">
+        <tp:docstring>
+          The file descriptor to copy the log to.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <tp:flags name="DRMTraceCategories">
       <tp:docstring>
         Bit flags representing debug logging categories. Definitions of
