@@ -471,15 +471,18 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInSuccess) {
   const std::string kUserId("testuser");
   const std::vector<CrosFpSessionManager::SessionRecord> kRecords{
       {
+          .record_metadata{.record_format_version = 2},
           .tmpl = VendorTemplate(32, 1),
       },
       {
+          .record_metadata{.record_format_version = 2},
           .tmpl = VendorTemplate(32, 2),
       }};
 
   EXPECT_CALL(*mock_session_manager_, GetUser()).WillOnce(ReturnRef(kNoUser));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(ReturnRef(kRecords));
+  EXPECT_CALL(mock_metrics_, SendRecordFormatVersion(2)).Times(2);
   for (const auto& record : kRecords) {
     EXPECT_CALL(*mock_cros_dev_, UploadTemplate(record.tmpl))
         .WillOnce(Return(true));

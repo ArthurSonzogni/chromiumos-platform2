@@ -572,7 +572,8 @@ bool CrosFpAuthStackManager::UploadCurrentUserTemplates() {
   const std::vector<CrosFpSessionManager::SessionRecord>& records =
       session_manager_->GetRecords();
   for (const auto& record : records) {
-    // TODO(b/253993586): Send record format version metrics here.
+    biod_metrics_->SendRecordFormatVersion(
+        record.record_metadata.record_format_version);
     LOG(INFO) << "Upload record " << LogSafeID(record.record_metadata.record_id)
               << ".";
     if (!cros_dev_->UploadTemplate(record.tmpl)) {
