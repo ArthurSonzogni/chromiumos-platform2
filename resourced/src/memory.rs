@@ -49,18 +49,33 @@ const RAM_SWAP_WEIGHT_FILENAME: &str = "ram_swap_weight";
 // The available memory for background components is discounted by 300 MiB.
 const GAME_MODE_OFFSET_KB: u64 = 300 * 1024;
 
-pub const DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME: &str =
+const DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME: &str =
     "CrOSLateBootDiscardStaleAtModeratePressure";
 
-pub const DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_VISIBLE_SECONDS_THRESHOLD_PARAM: &str =
+#[cfg(not(test))]
+const DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_VISIBLE_SECONDS_THRESHOLD_PARAM: &str =
     "MinLastVisibleDurationSeconds";
-pub const DISCARD_STALE_AT_MODERATE_PRESSURE_MAX_VISIBLE_SECONDS_THRESHOLD_PARAM: &str =
+#[cfg(not(test))]
+const DISCARD_STALE_AT_MODERATE_PRESSURE_MAX_VISIBLE_SECONDS_THRESHOLD_PARAM: &str =
     "MaxLastVisibleDurationSeconds";
 
 // The minimum allowed interval between stale tab discard attempts.
-pub const DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_DISCARD_INTERVAL: &str =
-    "MinDiscardIntervalSeconds";
+const DISCARD_STALE_AT_MODERATE_PRESSURE_MIN_DISCARD_INTERVAL: &str = "MinDiscardIntervalSeconds";
 const MIN_DISCARD_INTERVAL_DEFAULT: Duration = Duration::from_secs(10);
+
+const PSI_ADJUST_AVAILABLE_FEATURE_NAME: &str = "CrOSLateBootPsiAdjustAvailable";
+
+const PSI_ADJUST_AVAILABLE_TOP_THRESHOLD_PARAM: &str = "PsiTopThreshold";
+
+const PSI_ADJUST_AVAILABLE_TOP_THRESHOLD_DEFAULT: f32 = 40.0;
+
+const PSI_ADJUST_AVAILABLE_USE_FULL_PARAM: &str = "PsiUseFull";
+
+pub fn register_features() {
+    feature::register_feature(DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME, false, None);
+
+    feature::register_feature(PSI_ADJUST_AVAILABLE_FEATURE_NAME, false, None);
+}
 
 /// calculate_reserved_free_kb() calculates the reserved free memory in KiB from
 /// /proc/zoneinfo.  Reserved pages are free pages reserved for emergent kernel
@@ -126,38 +141,48 @@ fn get_reserved_memory_kb() -> Result<u64> {
         - read_from_file(&"/proc/sys/vm/extra_free_kbytes").unwrap_or(0))
 }
 
-/// Returns the percentage of the recent 10 seconds that some process is blocked
-/// by memory.
-/// Example input:
-///   some avg10=0.00 avg60=0.00 avg300=0.00 total=0
-///   full avg10=0.00 avg60=0.00 avg300=0.00 total=0
-fn parse_psi_memory<R: BufRead>(reader: R) -> Result<f64> {
-    for line in reader.lines() {
-        let line = line?;
-        let mut tokens = line.split_whitespace();
-        if tokens.next() != Some("some") {
-            continue;
+/// Adjusts the memory component according to PSI memory some. When PSI memory some is higher,
+/// returns lower memory component in KiB.
+fn psi_adjust_memory_kb(memory_component_kb: u64) -> u64 {
+    let psi = match procfs::MemoryPressure::new() {
+        Ok(psi) => psi,
+        Err(e) => {
+            error!("procfs::MemoryPressure::new() failed: {}", e);
+            return memory_component_kb;
         }
-        if let Some(pair) = tokens.next() {
-            let mut elements = pair.split('=');
-            if elements.next() != Some("avg10") {
-                continue;
-            }
-            if let Some(value) = elements.next() {
-                return value.parse().context("Couldn't parse the avg10 value");
-            }
-        }
-        bail!("Couldn't parse /proc/pressure/memory, line: {}", line);
-    }
-    bail!("Couldn't parse /proc/pressure/memory");
-}
+    };
+    let psi_avg10 = match feature::get_feature_param_as::<bool>(
+        PSI_ADJUST_AVAILABLE_FEATURE_NAME,
+        PSI_ADJUST_AVAILABLE_USE_FULL_PARAM,
+    ) {
+        Ok(Some(true)) => psi.full.avg10,
+        _ => psi.some.avg10,
+    };
 
-#[allow(dead_code)]
-fn get_psi_memory_pressure_10_seconds() -> Result<f64> {
-    let reader = File::open(Path::new("/proc/pressure/memory"))
-        .map(BufReader::new)
-        .context("Couldn't read /proc/pressure/memory")?;
-    parse_psi_memory(reader)
+    // If PSI memory some is higher than the top threshold, discount the memory component to 0. If
+    // PSI memory some is lower than the bottom threshold, do not discount.
+    const PSI_BOTTOM_THRESHOLD: f32 = 5.0;
+    let psi_top_threshold = match feature::get_feature_param_as::<f32>(
+        PSI_ADJUST_AVAILABLE_FEATURE_NAME,
+        PSI_ADJUST_AVAILABLE_TOP_THRESHOLD_PARAM,
+    ) {
+        Ok(Some(threshold)) => threshold,
+        _ => PSI_ADJUST_AVAILABLE_TOP_THRESHOLD_DEFAULT,
+    };
+
+    let psi_multiplier = if psi_avg10 >= psi_top_threshold {
+        0.0
+    } else if psi_avg10 < PSI_BOTTOM_THRESHOLD {
+        1.0
+    } else {
+        // When PSI is between the bottom threshold and top threshold, discount a portion of the
+        // reclaimable memory. This portion should be the percentage that current PSI is between
+        // the top and bottom thresholds.
+        (psi_top_threshold - psi_avg10 as f32) / (psi_top_threshold - PSI_BOTTOM_THRESHOLD)
+    };
+
+    let result_f64 = (memory_component_kb as f32) * psi_multiplier;
+    result_f64.round() as u64
 }
 
 /// calculate_available_memory_kb implements similar available memory
@@ -188,9 +213,18 @@ fn calculate_available_memory_kb(
     } else {
         0
     };
-    free_component
-        .saturating_add(cache_component)
-        .saturating_add(swap_component)
+    let reclaimable_component = cache_component.saturating_add(swap_component);
+    let reclaimable_adjusted = match feature::is_feature_enabled(PSI_ADJUST_AVAILABLE_FEATURE_NAME)
+    {
+        Ok(true) => {
+            // When PSI memory some is high, the cost of reclaim memory is high, discount the
+            // reclaimable component of available memory. Do not adjust the free component according
+            // to PSI to avoid making free too high.
+            psi_adjust_memory_kb(reclaimable_component)
+        }
+        _ => reclaimable_component,
+    };
+    free_component.saturating_add(reclaimable_adjusted)
 }
 
 struct MemoryParameters {
@@ -1118,15 +1152,6 @@ Node 0, zone   Normal
         let lowmem_reserves = 3786 + 1953;
         let reserved = calculate_reserved_free_kb(mock_partial_zoneinfo.as_bytes()).unwrap();
         assert_eq!(reserved, (high_watermarks + lowmem_reserves) * page_size_kb);
-    }
-
-    #[test]
-    fn test_parse_psi_memory() {
-        let mock_psi_memory = r#"
-some avg10=57.25 avg60=35.97 avg300=10.18 total=32748793
-full avg10=29.29 avg60=19.01 avg300=5.44 total=17589167"#;
-        let pressure = parse_psi_memory(mock_psi_memory.as_bytes()).unwrap();
-        assert!((pressure - 57.25).abs() < f64::EPSILON);
     }
 
     #[test]

@@ -778,11 +778,7 @@ pub async fn service_main() -> Result<()> {
 
     arch::init();
 
-    feature::register_feature(
-        memory::DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME,
-        false,
-        None,
-    );
+    memory::register_features();
 
     feature::init(conn.as_ref())
         .await
