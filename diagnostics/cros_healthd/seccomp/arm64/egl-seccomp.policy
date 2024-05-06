@@ -126,3 +126,4 @@ munmap: 1
 # Graphics fetcher will crash without prctl.
 # TODO(b/333978583): Document why prctl is required.
 prctl: arg0 == PR_SET_NO_NEW_PRIVS || arg0 == PR_SET_NAME
+dup: 1

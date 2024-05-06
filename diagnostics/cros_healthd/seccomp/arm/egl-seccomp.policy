@@ -2,6 +2,9 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 # required by seccomp checker
 clock_getres: 1
 clock_gettime: 1
@@ -110,3 +113,14 @@ socket: arg0 == AF_UNIX
 statx: 1
 uname: 1
 write: 1
+rt_sigaction: 1
+# TODO(b/333978583): Document why clone is required.
+clone: 1
+set_robust_list: 1
+# Graphics fetcher will crash without prctl.
+# TODO(b/333978583): Document why prctl is required.
+prctl: arg0 == PR_SET_NO_NEW_PRIVS || arg0 == PR_SET_NAME
+madvise: 1
+exit: 1
+poll: 1
+clock_nanosleep: 1
