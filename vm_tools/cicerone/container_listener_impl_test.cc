@@ -1045,7 +1045,7 @@ TEST(ContainerListenerImplTest, ReportMetricsCallWithTooManyMetricsShouldFail) {
   vm_tools::container::ReportMetricsResponse response;
 
   request.set_token(ServiceTestingHelper::kDefaultContainerToken);
-  for (int i = 0; i < 20; ++i) {
+  for (int i = 0; i < 40; ++i) {
     vm_tools::container::Metric* m = request.add_metric();
     m->set_name("a-fake-metric-whose-name-will-be-ignored");
     m->set_value(123456);

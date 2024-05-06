@@ -561,7 +561,7 @@ grpc::Status ContainerListenerImpl::ReportMetrics(
   }
 
   // Validate ReportMetricsRequest
-  if (request->metric_size() > 15) {
+  if (request->metric_size() > 32) {
     return grpc::Status(grpc::FAILED_PRECONDITION, "Too many metrics");
   }
   for (const auto& metric : request->metric()) {
