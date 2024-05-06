@@ -207,6 +207,10 @@ class CrosFpAuthStackManager : public AuthStackManager {
   // we stick to the first logged-in user.
   bool locked_to_current_user_ = false;
 
+  // Used to track the number of enrollment captures, in order to report
+  // metrics.
+  uint8_t num_enrollment_captures_ = 0;
+
   // We need to cache the StartAuthSession request if we receive it during
   // WaitForFingerUp state.
   std::optional<StartAuthSessionRequest> pending_request_;

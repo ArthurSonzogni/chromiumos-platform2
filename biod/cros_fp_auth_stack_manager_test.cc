@@ -354,6 +354,10 @@ TEST_F(CrosFpAuthStackManagerTest, TestDoEnrollImageEventSuccess) {
   on_mkbp_event_.Run(EC_MKBP_FP_ENROLL | EC_MKBP_FP_ERR_ENROLL_LOW_QUALITY |
                      75 << EC_MKBP_FP_ENROLL_PROGRESS_OFFSET);
   on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
+
+  // The EnrollmentCapturesCount metrics will be sent when enroll completes.
+  EXPECT_CALL(mock_metrics_, SendEnrollmentCapturesCount(4)).Times(1);
+
   on_mkbp_event_.Run(EC_MKBP_FP_ENROLL | EC_MKBP_FP_ERR_ENROLL_OK |
                      100 << EC_MKBP_FP_ENROLL_PROGRESS_OFFSET);
 }

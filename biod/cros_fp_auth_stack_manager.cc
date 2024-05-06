@@ -183,6 +183,7 @@ BioSession CrosFpAuthStackManager::StartEnrollSession(
   if (!RequestEnrollImage())
     return BioSession(base::NullCallback());
   state_ = State::kEnroll;
+  num_enrollment_captures_ = 0;
 
   return BioSession(base::BindOnce(&CrosFpAuthStackManager::EndEnrollSession,
                                    session_weak_factory_.GetWeakPtr()));
@@ -628,6 +629,7 @@ void CrosFpAuthStackManager::DoEnrollImageEvent(uint32_t event) {
   }
 
   int percent = EC_MKBP_FP_ENROLL_PROGRESS(event);
+  ++num_enrollment_captures_;
 
   if (percent < 100) {
     AuthStackManager::EnrollStatus enroll_status = {
@@ -645,7 +647,9 @@ void CrosFpAuthStackManager::DoEnrollImageEvent(uint32_t event) {
   }
 
   OnTaskComplete();
+  biod_metrics_->SendEnrollmentCapturesCount(num_enrollment_captures_);
   state_ = State::kEnrollDone;
+
   AuthStackManager::EnrollStatus enroll_status = {
       .done = true,
       .percent_complete = 100,
