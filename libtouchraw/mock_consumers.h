@@ -15,7 +15,7 @@ namespace touchraw {
 
 class MockHeatmapConsumer : public HeatmapConsumerInterface {
  public:
-  MOCK_METHOD(void, Push, (std::unique_ptr<const Heatmap> data), (override));
+  MOCK_METHOD(void, Push, (std::unique_ptr<Heatmap> data), (override));
 };
 
 class MockHeatmapChunkConsumer : public HeatmapChunkConsumerInterface {

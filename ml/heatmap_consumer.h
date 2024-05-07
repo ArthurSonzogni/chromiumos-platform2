@@ -26,7 +26,7 @@ class HeatmapConsumer : public touchraw::HeatmapConsumerInterface {
       base::Clock* clock = base::DefaultClock::GetInstance());
 
   // touchraw::HeatmapConsumerInterface:
-  void Push(std::unique_ptr<const touchraw::Heatmap> heatmap) override;
+  void Push(std::unique_ptr<touchraw::Heatmap> heatmap) override;
 
  private:
   HeatmapProcessor* processor_;

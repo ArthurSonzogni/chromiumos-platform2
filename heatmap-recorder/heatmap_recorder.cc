@@ -68,7 +68,7 @@ class HeatmapConsumer : public HeatmapConsumerInterface {
   HeatmapConsumer(const HeatmapConsumer&) = delete;
   HeatmapConsumer& operator=(const HeatmapConsumer&) = delete;
 
-  void Push(std::unique_ptr<const Heatmap> hm) override {
+  void Push(std::unique_ptr<Heatmap> hm) override {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&HeatmapConsumer::Dump,
                                   base::Unretained(this), std::move(hm)));
@@ -80,7 +80,7 @@ class HeatmapConsumer : public HeatmapConsumerInterface {
    *
    * @param hm Heatmap data.
    */
-  void Dump(std::unique_ptr<const Heatmap> hm) {
+  void Dump(std::unique_ptr<Heatmap> hm) {
     static timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
 

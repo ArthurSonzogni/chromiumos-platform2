@@ -16,7 +16,7 @@ HeatmapConsumer::HeatmapConsumer(HeatmapProcessor* processor,
                                  base::Clock* clock)
     : processor_(processor), clock_(clock) {}
 
-void HeatmapConsumer::Push(std::unique_ptr<const touchraw::Heatmap> heatmap) {
+void HeatmapConsumer::Push(std::unique_ptr<touchraw::Heatmap> heatmap) {
   int height = heatmap->height;
   int width = heatmap->width;
   std::vector<double> data;

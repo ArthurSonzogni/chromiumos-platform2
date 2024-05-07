@@ -25,7 +25,7 @@ class HeatmapChunkConsumerInterface {
 
 class HeatmapConsumerInterface {
  public:
-  virtual void Push(std::unique_ptr<const Heatmap> hm) = 0;
+  virtual void Push(std::unique_ptr<Heatmap> hm) = 0;
   virtual ~HeatmapConsumerInterface() = default;
 };
 
