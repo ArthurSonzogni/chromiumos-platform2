@@ -72,23 +72,26 @@ void TelemetryForTesting::AddPciBusInfo(const mojom::BusDeviceClass dev_class,
 
 void TelemetryForTesting::AddUsbBusInfo(const mojom::BusDeviceClass dev_class) {
   AddUsbBusInfo(dev_class, kUsbVendorName, kBusProductName, kPciBusVendorId,
-                kPciBusDeviceId, kPciBusDriver);
+                kPciBusDeviceId, {kPciBusDriver});
 }
 
-void TelemetryForTesting::AddUsbBusInfo(const mojom::BusDeviceClass dev_class,
-                                        const std::string& vendor,
-                                        const std::string& product,
-                                        uint16_t vendor_id,
-                                        uint16_t product_id,
-                                        const std::string& driver) {
+void TelemetryForTesting::AddUsbBusInfo(
+    const mojom::BusDeviceClass dev_class,
+    const std::string& vendor,
+    const std::string& product,
+    uint16_t vendor_id,
+    uint16_t product_id,
+    const std::vector<std::string>& drivers) {
   // We don't use these four, just leave them blank;
   uint8_t interface_number = 0;
   uint8_t class_id = 0;
   uint8_t subclass_id = 0;
   uint8_t protocol_id = 0;
   std::vector<mojom::UsbBusInterfaceInfoPtr> interfaces;
-  interfaces.push_back(mojom::UsbBusInterfaceInfo::New(
-      interface_number, class_id, subclass_id, protocol_id, driver));
+  for (auto& driver : drivers) {
+    interfaces.push_back(mojom::UsbBusInterfaceInfo::New(
+        interface_number, class_id, subclass_id, protocol_id, driver));
+  }
   auto bus_info =
       mojom::UsbBusInfo::New(class_id, subclass_id, protocol_id, vendor_id,
                              product_id, std::move(interfaces));

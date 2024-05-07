@@ -81,7 +81,7 @@ class TelemetryForTesting {
                      const std::string& product,
                      uint16_t vendor_id,
                      uint16_t product_id,
-                     const std::string& driver);
+                     const std::vector<std::string>& drivers);
   // Fill in default fake graphics information.
   void AddGraphicsInfo();
   // Fill in default fake input information.
