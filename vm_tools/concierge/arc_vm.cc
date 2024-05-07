@@ -451,13 +451,15 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableVulkan(true).EnableRenderServer(true);
   }
 
-  if (USE_CROSVM_VIRTGPU_NATIVE_CONTEXT) {
-    vm_builder.EnableVirtgpuNativeContext(true);
-  }
-
+  // reset context-type choices, then set explicitly
+  vm_builder.EnableGpuContextTypeDefaults();
   if (USE_CROSVM_CROSS_DOMAIN_CONTEXT) {
-    vm_builder.EnableCrossDomainContext(true);
+    vm_builder.EnableGpuContextTypeCrossDomain(true);
+  } else {
+    vm_builder.EnableGpuContextTypeVirgl(true);
   }
+  vm_builder.EnableGpuContextTypeVenus(USE_CROSVM_VULKAN);
+  vm_builder.EnableGpuContextTypeDrm(USE_CROSVM_VIRTGPU_NATIVE_CONTEXT);
 
   if (USE_VIRTIO_PVCLOCK) {
     vm_builder.EnablePvClock(true);

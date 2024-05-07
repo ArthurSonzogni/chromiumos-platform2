@@ -240,16 +240,6 @@ VmBuilder& VmBuilder::EnableVulkan(bool enable) {
   return *this;
 }
 
-VmBuilder& VmBuilder::EnableVirtgpuNativeContext(bool enable) {
-  enable_virtgpu_native_context_ = enable;
-  return *this;
-}
-
-VmBuilder& VmBuilder::EnableCrossDomainContext(bool enable) {
-  enable_cross_domain_context_ = enable;
-  return *this;
-}
-
 VmBuilder& VmBuilder::EnableBigGl(bool enable) {
 #if USE_BIG_GL
   enable_big_gl_ = enable;
@@ -295,6 +285,34 @@ VmBuilder& VmBuilder::SetFozDbListPath(base::FilePath foz_db_list_path) {
 VmBuilder& VmBuilder::SetRenderServerCacheSize(
     std::string render_server_cache_size_str) {
   render_server_cache_size_str_ = std::move(render_server_cache_size_str);
+  return *this;
+}
+
+VmBuilder& VmBuilder::EnableGpuContextTypeDefaults() {
+  enabled_gpu_context_types_.reset();
+  return *this;
+}
+
+VmBuilder& VmBuilder::EnableGpuContextTypeVirgl(bool enable) {
+  enabled_gpu_context_types_.set(GpuContextType::GPU_CONTEXT_TYPE_VIRGL,
+                                 enable);
+  return *this;
+}
+
+VmBuilder& VmBuilder::EnableGpuContextTypeVenus(bool enable) {
+  enabled_gpu_context_types_.set(GpuContextType::GPU_CONTEXT_TYPE_VENUS,
+                                 enable);
+  return *this;
+}
+
+VmBuilder& VmBuilder::EnableGpuContextTypeCrossDomain(bool enable) {
+  enabled_gpu_context_types_.set(GpuContextType::GPU_CONTEXT_TYPE_CROSS_DOMAIN,
+                                 enable);
+  return *this;
+}
+
+VmBuilder& VmBuilder::EnableGpuContextTypeDrm(bool enable) {
+  enabled_gpu_context_types_.set(GpuContextType::GPU_CONTEXT_TYPE_DRM, enable);
   return *this;
 }
 
@@ -539,15 +557,23 @@ base::StringPairs VmBuilder::BuildRunParams() const {
   if (enable_gpu_) {
     std::string gpu_arg = "vulkan=";
     gpu_arg += enable_vulkan_ ? "true" : "false";
-    if (enable_virtgpu_native_context_ || enable_cross_domain_context_) {
+
+    // some of these are related to other options (e.g. use_vulkan_, big_gl_)
+    // but we treat them as orthogonal, requiring callers to manage their
+    // desired context types explicitly to keep a 1:1 mapping between VmBuilder
+    // options and the VMM's options.
+    if (enabled_gpu_context_types_.any()) {
       gpu_arg += ",context-types=";
-      if (enable_cross_domain_context_) {
-        gpu_arg += ":cross-domain";
+      if (enabled_gpu_context_types_.test(GPU_CONTEXT_TYPE_VIRGL)) {
+        gpu_arg += ":virgl:virgl2";
       }
-      if (enable_vulkan_) {
+      if (enabled_gpu_context_types_.test(GPU_CONTEXT_TYPE_VENUS)) {
         gpu_arg += ":venus";
       }
-      if (enable_virtgpu_native_context_) {
+      if (enabled_gpu_context_types_.test(GPU_CONTEXT_TYPE_CROSS_DOMAIN)) {
+        gpu_arg += ":cross-domain";
+      }
+      if (enabled_gpu_context_types_.test(GPU_CONTEXT_TYPE_DRM)) {
         gpu_arg += ":drm";
       }
     }

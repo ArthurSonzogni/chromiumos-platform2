@@ -113,8 +113,6 @@ class VmBuilder {
   VmBuilder& EnableGpu(bool enable);
   VmBuilder& EnableDGpuPassthrough(bool enable);
   VmBuilder& EnableVulkan(bool enable);
-  VmBuilder& EnableVirtgpuNativeContext(bool enable);
-  VmBuilder& EnableCrossDomainContext(bool enable);
   // Make virglrenderer use Big GL instead of the default GLES.
   VmBuilder& EnableBigGl(bool enable);
   // Offload Vulkan use to isolated virglrenderer render server
@@ -125,6 +123,16 @@ class VmBuilder {
   VmBuilder& SetPrecompiledCachePath(base::FilePath precompiled_cache_path);
   VmBuilder& SetFozDbListPath(base::FilePath foz_db_list_path);
   VmBuilder& SetRenderServerCacheSize(std::string render_server_cache_size_str);
+  // By default, VMM infers which context types should be advertised.
+  // Enabling any specific context type via these API functions instructs VMM to
+  // skip its inference and only advertise those enabled explicitly. Calling
+  // EnableGpuContextTypeDefaults() reverts all previous settings back to the
+  // VMM-inferred context types.
+  VmBuilder& EnableGpuContextTypeDefaults();
+  VmBuilder& EnableGpuContextTypeVirgl(bool enable);
+  VmBuilder& EnableGpuContextTypeVenus(bool enable);
+  VmBuilder& EnableGpuContextTypeCrossDomain(bool enable);
+  VmBuilder& EnableGpuContextTypeDrm(bool enable);
 
   VmBuilder& EnableVtpmProxy(bool enable);
   VmBuilder& EnableVideoDecoder(bool enable);
@@ -156,6 +164,17 @@ class VmBuilder {
   static void SetValidWaylandRegexForTesting(char* regex);
 
  private:
+  // note: used as unsigned "position" index in std::bitset
+  enum GpuContextType : unsigned int {
+    GPU_CONTEXT_TYPE_VIRGL,
+    GPU_CONTEXT_TYPE_VENUS,
+    GPU_CONTEXT_TYPE_CROSS_DOMAIN,
+    GPU_CONTEXT_TYPE_DRM,
+
+    // note: must remain last
+    GPU_CONTEXT_TYPE_COUNT,
+  };
+
   bool HasValidWaylandSockets() const;
 
   // Builds the parameters for `crosvm run` to start a VM based on this
@@ -182,8 +201,7 @@ class VmBuilder {
   bool enable_gpu_ = false;
   bool enable_dgpu_passthrough_ = false;
   bool enable_vulkan_ = false;
-  bool enable_virtgpu_native_context_ = false;
-  bool enable_cross_domain_context_ = false;
+
   bool enable_big_gl_ = false;
   bool enable_render_server_ = false;
   base::FilePath gpu_cache_path_;
@@ -192,6 +210,7 @@ class VmBuilder {
   base::FilePath foz_db_list_path_;
   base::FilePath precompiled_cache_path_;
   std::string render_server_cache_size_str_;
+  std::bitset<GPU_CONTEXT_TYPE_COUNT> enabled_gpu_context_types_;
 
   bool enable_vtpm_proxy_ = false;
   bool enable_video_decoder_ = false;

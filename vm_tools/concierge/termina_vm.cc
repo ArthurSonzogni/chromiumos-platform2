@@ -232,8 +232,16 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   if (features_.gpu) {
     vm_builder.EnableGpu(true)
         .EnableVulkan(USE_CROSVM_VULKAN)
-        .EnableBigGl(features_.big_gl)
-        .EnableVirtgpuNativeContext(features_.virtgpu_native_context);
+        .EnableBigGl(features_.big_gl);
+
+    // reset context-type choices, then set explicitly
+    vm_builder.EnableGpuContextTypeDefaults();
+    if (features_.virtgpu_native_context) {
+      vm_builder.EnableGpuContextTypeDrm(true);
+    } else {
+      vm_builder.EnableGpuContextTypeVirgl(true);
+      vm_builder.EnableGpuContextTypeVenus(USE_CROSVM_VULKAN);
+    }
 
     if (classification_ == apps::VmType::BOREALIS) {
       vm_builder.SetGpuCacheSize(kGpuCacheSizeStringBorealis);
