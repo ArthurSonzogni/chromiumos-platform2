@@ -485,8 +485,12 @@ DeleteCredentialReply CrosFpAuthStackManager::DeleteCredential(
 }
 
 void CrosFpAuthStackManager::OnUserLoggedOut() {
-  // Note that CrOS currently always logouts all users together.
-  session_manager_->UnloadUser();
+  // Don't unload the user from session_manager_ and FPMCU. The user will be
+  // brought back to login screen, where we'll have to load the records for them
+  // again anyway. Save the unnecessary unload/load. If there are multiple users
+  // on the device and another user is selected in the login screen, we'll still
+  // be able to unload the current user and load the new user as
+  // |locked_to_current_user_| is set to false;
   locked_to_current_user_ = false;
   migrator_->OnUserLoggedOut();
 }
@@ -599,6 +603,7 @@ bool CrosFpAuthStackManager::LoadUser(std::string user_id, bool lock_to_user) {
 }
 
 bool CrosFpAuthStackManager::UploadCurrentUserTemplates() {
+  cros_dev_->ResetContext();
   const std::vector<CrosFpSessionManager::SessionRecord>& records =
       session_manager_->GetRecords();
   for (const auto& record : records) {

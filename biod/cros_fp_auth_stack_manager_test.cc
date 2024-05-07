@@ -506,6 +506,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInSuccess) {
 
   EXPECT_CALL(*mock_session_manager_, GetUser()).WillOnce(ReturnRef(kNoUser));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, ResetContext);
   EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(ReturnRef(kRecords));
   EXPECT_CALL(mock_metrics_, SendRecordFormatVersion(2)).Times(2);
   for (const auto& record : kRecords) {
@@ -542,6 +543,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedInUploadFailed) {
 
   EXPECT_CALL(*mock_session_manager_, GetUser()).WillOnce(ReturnRef(kNoUser));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, ResetContext);
   EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(ReturnRef(kRecords));
   EXPECT_CALL(*mock_cros_dev_, UploadTemplate(kRecords[0].tmpl))
       .WillOnce(Return(false));
@@ -565,8 +567,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestSendStatsOnLoginNoTemplates) {
 }
 
 TEST_F(CrosFpAuthStackManagerTest, TestOnUserLoggedOut) {
-  const std::string kUserId("testuser");
-  EXPECT_CALL(*mock_session_manager_, UnloadUser);
+  EXPECT_CALL(*mock_legacy_session_manager_, UnloadUser);
   cros_fp_auth_stack_manager_->OnUserLoggedOut();
 }
 
@@ -591,6 +592,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopSuccessNoUser) {
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId)).WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, ResetContext);
   EXPECT_CALL(*mock_session_manager_, GetRecords).WillOnce(ReturnRef(kRecords));
   for (const auto& record : kRecords) {
     EXPECT_CALL(*mock_cros_dev_, UploadTemplate(record.tmpl))
@@ -686,6 +688,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionDifferentUserSuccess) {
   EXPECT_CALL(*mock_session_manager_, UnloadUser);
   EXPECT_CALL(*mock_session_manager_, LoadUser(kSecondUserId))
       .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, ResetContext);
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kNone)));
@@ -722,6 +725,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionDifferentUserFail) {
         .WillOnce(Return(true));
     EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
   }
+  EXPECT_CALL(*mock_cros_dev_, ResetContext);
   EXPECT_CALL(*mock_session_manager_, GetRecords())
       .WillOnce(ReturnRef(kNoRecords));
 
@@ -740,6 +744,7 @@ TEST_F(CrosFpAuthStackManagerTest, TestDeleteCredentialSuccess) {
       .WillOnce(Return(true));
   EXPECT_CALL(*mock_session_manager_, DeleteRecord(kRecordId))
       .WillOnce(Return(true));
+  EXPECT_CALL(*mock_cros_dev_, ResetContext);
   // Assume there are no more templates after deletion.
   EXPECT_CALL(*mock_session_manager_, GetRecords())
       .WillOnce(ReturnRef(kNoRecords));
