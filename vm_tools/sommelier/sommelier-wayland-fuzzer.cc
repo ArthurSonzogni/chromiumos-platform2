@@ -152,6 +152,7 @@ int count_fds() {
 }
 
 int LLVMFuzzerTestOneInput_real(const uint8_t* data, size_t size) {
+  int ret;
   static Environment env;
   FuzzedDataProvider source(data, size);
 
@@ -166,11 +167,13 @@ int LLVMFuzzerTestOneInput_real(const uint8_t* data, size_t size) {
   // goes to sommelier to listen on/write to, the other end is kept by us. The
   // channel implements send with a no-op, so we don't ever have to read from
   // our end.
-  ctx.host_display = wl_display_create();
+  ret = channel.init();
+  assert(!ret);
+
   struct wl_event_loop* event_loop =
-      wl_display_get_event_loop(ctx.host_display);
-  ctx.channel = &channel;
-  sl_context_init_wayland_channel(&ctx, event_loop, /*display=*/false);
+      sl_context_configure_event_loop(&ctx, &channel,
+                                      /*use_virtual_context=*/true);
+
   // `display` takes ownership of `virtwl_display_fd`
   ctx.display = wl_display_connect_to_fd(ctx.virtwl_display_fd);
 
@@ -179,7 +182,7 @@ int LLVMFuzzerTestOneInput_real(const uint8_t* data, size_t size) {
   // fuzzer. We set up the event loop to drain any data send by sommelier to our
   // end, and write fuzz data to our end in the main loop.
   int sv[2];
-  int ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv);
+  ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv);
   assert(!ret);
   // wl_client takes ownership of its file descriptor
   ctx.client = wl_client_create(ctx.host_display, sv[0]);

@@ -222,7 +222,6 @@ struct sl_context {
   // Command-line configurable options.
   bool trace_system;
   bool use_explicit_fence;
-  bool use_virtgpu_channel;
   bool use_direct_scale;
   bool viewport_resize;
   bool allow_xwayland_emulate_screen_pos_size;
@@ -252,9 +251,9 @@ const char* sl_context_atom_name(int atom_enum);
 
 void sl_context_init_default(struct sl_context* ctx);
 
-bool sl_context_init_wayland_channel(struct sl_context* ctx,
-                                     struct wl_event_loop* event_loop,
-                                     bool display);
+wl_event_loop* sl_context_configure_event_loop(sl_context* ctx,
+                                               WaylandChannel* channel,
+                                               bool use_virtual_context);
 
 sl_window* sl_context_lookup_window_for_surface(struct sl_context* ctx,
                                                 wl_resource* resource);

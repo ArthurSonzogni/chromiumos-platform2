@@ -180,14 +180,15 @@ class WaylandTestBase : public ::testing::Test {
     ON_CALL(mock_wayland_channel_, create_context(_)).WillByDefault(Return(0));
     ON_CALL(mock_wayland_channel_, max_send_size())
         .WillByDefault(Return(DEFAULT_BUFFER_SIZE));
-    EXPECT_CALL(mock_wayland_channel_, init).Times(1);
-    sl_context_init_default(&ctx);
-    ctx.host_display = wl_display_create();
-    assert(ctx.host_display);
 
-    ctx.channel = &mock_wayland_channel_;
-    EXPECT_TRUE(sl_context_init_wayland_channel(
-        &ctx, wl_display_get_event_loop(ctx.host_display), false));
+    sl_context_init_default(&ctx);
+
+    int ret = mock_wayland_channel_.init();
+    EXPECT_EQ(ret, 0);
+
+    event_loop = sl_context_configure_event_loop(&ctx, &mock_wayland_channel_,
+                                                 /*use_virtual_context=*/true);
+    EXPECT_NE(event_loop, nullptr);
 
     InitContext();
     Connect();
@@ -213,7 +214,7 @@ class WaylandTestBase : public ::testing::Test {
   // init messages not relevant to your test case.
   void Pump() {
     wl_display_flush(ctx.display);
-    wl_event_loop_dispatch(wl_display_get_event_loop(ctx.host_display), 0);
+    wl_event_loop_dispatch(event_loop, 0);
   }
 
  protected:
@@ -323,6 +324,7 @@ class WaylandTestBase : public ::testing::Test {
 
   NiceMock<MockWaylandChannel> mock_wayland_channel_;
   sl_context ctx;
+  wl_event_loop* event_loop;
 
   // IDs allocated by the server are in the range [0xff000000, 0xffffffff].
   uint32_t next_server_id = 0xff000000;

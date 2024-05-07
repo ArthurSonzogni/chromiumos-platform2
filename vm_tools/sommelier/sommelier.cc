@@ -3636,7 +3636,9 @@ static void sl_print_usage() {
       "  --stats-timer=SECS\t\tNumber of seconds between stats dumps\n"
       "  --fullscreen-mode=MODE\tDefault fullscreen behavior (immersive,"
       " plain)\n"
-      "  --noop-driver\t\tPass through to existing Wayland server"
+      "  --virtgpu-channel\t\tUse virtgpu cross-domain context as virtual"
+      " wayland channel\n"
+      "  --noop-driver\t\t\tPass through to existing Wayland server"
       " without virtualization\n");
 }
 
@@ -4004,6 +4006,40 @@ void create_shims() {
 #endif
 }
 
+static WaylandChannel* try_wayland_channel_init(
+    WaylandChannel* channel, const char* channel_description) {
+  if (channel) {
+    int ret = channel->init();
+    if (ret) {
+      LOG(VERBOSE) << "WaylandChannel init for candidate '"
+                   << channel_description << "' failed: " << strerror(-ret);
+      delete channel;
+      channel = nullptr;
+    } else {
+      LOG(VERBOSE) << "WaylandChannel init for candidate '"
+                   << channel_description << "' succeeded.";
+    }
+  }
+  return channel;
+}
+
+WaylandChannel* sl_create_wayland_channel(bool try_virtgpu_channel) {
+  // defines a preferred channel ordering and attempt early init so we can
+  // fallback if necessary.
+  WaylandChannel* channel = nullptr;
+  if (try_virtgpu_channel) {
+    channel = try_wayland_channel_init(new VirtGpuChannel(), "VirtGpuChannel");
+  }
+  if (!channel) {
+    channel = try_wayland_channel_init(new VirtWaylandChannel(),
+                                       "VirtWaylandChannel");
+  }
+  if (!channel) {
+    LOG(ERROR) << "WaylandChannel init failed for all candidate backends";
+  }
+  return channel;
+}
+
 int real_main(int argc, char** argv) {
   struct sl_context ctx;
   sl_context_init_default(&ctx);
@@ -4035,7 +4071,6 @@ int real_main(int argc, char** argv) {
 #endif
   const char* socket_name = "wayland-0";
   bool noop_driver = false;
-  struct wl_event_loop* event_loop;
   struct wl_listener client_destroy_listener = {};
   client_destroy_listener.notify = sl_client_destroy_notify;
   int sv[2];
@@ -4046,6 +4081,7 @@ int real_main(int argc, char** argv) {
   int i;
   const char* stats_summary = nullptr;
   const char* stats_log = nullptr;
+  bool use_virtgpu_channel = false;
 
   // Ignore SIGUSR1 (used for trace dumping) in all child processes.
   signal(SIGUSR1, SIG_IGN);
@@ -4159,7 +4195,7 @@ int real_main(int argc, char** argv) {
     } else if (strstr(arg, "--enable-x11-move-windows") == arg) {
       ctx.enable_x11_move_windows = true;
     } else if (strstr(arg, "--virtgpu-channel") == arg) {
-      ctx.use_virtgpu_channel = true;
+      use_virtgpu_channel = true;
     } else if (strstr(arg, "--noop-driver") == arg) {
       noop_driver = true;
     } else if (strstr(arg, "--stable-scaling") == arg) {
@@ -4290,21 +4326,29 @@ int real_main(int argc, char** argv) {
   // Handle broken pipes without signals that kill the entire process.
   signal(SIGPIPE, SIG_IGN);
 
-  ctx.host_display = wl_display_create();
-  assert(ctx.host_display);
-
-  if (noop_driver) {
-    ctx.channel = nullptr;
-  } else if (ctx.use_virtgpu_channel) {
-    ctx.channel = new VirtGpuChannel();
-  } else {
-    ctx.channel = new VirtWaylandChannel();
-  }
-
+  wl_event_loop* event_loop = nullptr;
   {
-    ScopeTimer timer("init wayland channel");
-    event_loop = wl_display_get_event_loop(ctx.host_display);
-    if (!sl_context_init_wayland_channel(&ctx, event_loop, display)) {
+    ScopeTimer timer("configure event loop");
+    // We use a wayland virtual context unless display name was explicitly
+    // specified.
+    const bool use_virtual_context = !display;
+
+    WaylandChannel* wayland_channel = nullptr;
+    if (!noop_driver) {
+      wayland_channel = sl_create_wayland_channel(use_virtgpu_channel);
+      if (!wayland_channel) {
+        LOG(FATAL) << "failed to initialize wayland channel.";
+        return EXIT_FAILURE;
+      }
+    } else if (use_virtual_context) {
+      LOG(FATAL) << "Must either provide a wayland display (--display=<name>) "
+                    "or use a virtual wayland channel (remove --noop-driver).";
+      return EXIT_FAILURE;
+    }
+
+    event_loop = sl_context_configure_event_loop(&ctx, wayland_channel,
+                                                 use_virtual_context);
+    if (!event_loop) {
       return EXIT_FAILURE;
     }
   }

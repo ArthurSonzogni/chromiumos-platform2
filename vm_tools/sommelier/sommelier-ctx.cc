@@ -387,46 +387,60 @@ static int sl_handle_virtwl_socket_event(int fd, uint32_t mask, void* data) {
   return 1;
 }
 
-bool sl_context_init_wayland_channel(struct sl_context* ctx,
-                                     struct wl_event_loop* event_loop,
-                                     bool display) {
-  if (ctx->channel == nullptr) {
-    // Running in noop mode, without virtualization.
-    return true;
+wl_event_loop* sl_context_configure_event_loop(sl_context* ctx,
+                                               WaylandChannel* channel,
+                                               bool use_virtual_context) {
+  assert(ctx);
+  // caller must provide a wayland channel to use virtual context
+  assert(!use_virtual_context || channel);
+
+  wl_display* host_display = wl_display_create();
+  if (!host_display) {
+    LOG(ERROR) << "failed to create host wayland display.";
+    return nullptr;
   }
-  int rv = ctx->channel->init();
-  if (rv) {
-    LOG(ERROR) << "could not initialize wayland channel: " << strerror(-rv);
-    return false;
-  }
-  if (!display) {
-    // We use a wayland virtual context unless display was explicitly specified.
+  // libwayland ensures event_loop can be retrieved from a valid display, but
+  // assert such in case that assumption ever changes.
+  wl_event_loop* event_loop = wl_display_get_event_loop(host_display);
+  assert(event_loop);
+
+  int wayland_channel_fd = -1;
+  if (channel && use_virtual_context) {
     // WARNING: It's critical that we never call wl_display_roundtrip
     // as we're not spawning a new thread to handle forwarding. Calling
     // wl_display_roundtrip will cause a deadlock.
-    int vws[2];
+    int ret;
+
+    ret = channel->create_context(wayland_channel_fd);
+    if (ret) {
+      LOG(ERROR) << "failed to create virtwl context: " << strerror(-ret);
+      return nullptr;
+    }
 
     // Connection to virtwl channel.
-    rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, vws);
-    errno_assert(!rv);
+    int vws[2];
+    ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, vws);
+    if (ret) {
+      LOG(ERROR) << "failed to create wayland channel socket pair: "
+                 << strerror(errno);
+      return nullptr;
+    }
 
     ctx->virtwl_socket_fd = vws[0];
     ctx->virtwl_display_fd = vws[1];
 
-    rv = ctx->channel->create_context(ctx->wayland_channel_fd);
-    if (rv) {
-      LOG(ERROR) << "failed to create virtwl context: " << strerror(-rv);
-      return false;
-    }
-
     ctx->virtwl_socket_event_source.reset(wl_event_loop_add_fd(
         event_loop, ctx->virtwl_socket_fd, WL_EVENT_READABLE,
         sl_handle_virtwl_socket_event, ctx));
-    ctx->wayland_channel_event_source.reset(wl_event_loop_add_fd(
-        event_loop, ctx->wayland_channel_fd, WL_EVENT_READABLE,
-        sl_handle_wayland_channel_event, ctx));
+    ctx->wayland_channel_event_source.reset(
+        wl_event_loop_add_fd(event_loop, wayland_channel_fd, WL_EVENT_READABLE,
+                             sl_handle_wayland_channel_event, ctx));
   }
-  return true;
+
+  ctx->host_display = host_display;
+  ctx->channel = channel;
+  ctx->wayland_channel_fd = wayland_channel_fd;
+  return event_loop;
 }
 
 sl_window* sl_context_lookup_window_for_surface(struct sl_context* ctx,
