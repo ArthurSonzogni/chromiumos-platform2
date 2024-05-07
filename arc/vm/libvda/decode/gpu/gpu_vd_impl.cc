@@ -95,10 +95,15 @@ class GpuVdContext : public VdaContext,
   void OnError(arc::mojom::DecoderStatus status) override;
 
   // arc::mojom::VideoFramePoolClient implementation.
+  void DEPRECATED_RequestVideoFrames(mojom::VideoPixelFormat format,
+                                     arc::mojom::SizePtr coded_size,
+                                     arc::mojom::RectPtr visible_rect_ptr,
+                                     uint32_t num_frames) override;
   void RequestVideoFrames(mojom::VideoPixelFormat format,
                           arc::mojom::SizePtr coded_size,
                           arc::mojom::RectPtr visible_rect_ptr,
-                          uint32_t num_frames) override;
+                          uint32_t num_frames,
+                          RequestVideoFramesCallback callback) override;
 
  private:
   // Callback invoked when VideoDecoder::Initialize completes.
@@ -173,6 +178,9 @@ class GpuVdContext : public VdaContext,
   // The number of output buffers.
   uint32_t output_buffer_count_ = 0;
 
+  // Callback to let chrome know that the video frames request was received.
+  RequestVideoFramesCallback request_video_frames_cb_;
+
   scoped_refptr<base::SingleThreadTaskRunner> ipc_task_runner_;
   THREAD_CHECKER(ipc_thread_checker_);
 
@@ -229,6 +237,7 @@ void GpuVdContext::OnInitialized(InitializeCallback callback,
   receiver_pool_.set_disconnect_with_reason_handler(
       base::BindRepeating(&GpuVdContext::OnConnectionError, weak_this_));
 
+  remote_pool_client.set_version(arc::mojom::VideoFramePoolClient::Version_);
   remote_pool_->Initialize(std::move(remote_pool_client));
 
   std::move(callback).Run(ConvertDecoderStatus(status));
@@ -267,6 +276,9 @@ void GpuVdContext::SetOutputBufferCountOnIpcThread(size_t num_output_buffers) {
   output_buffer_count_ = num_output_buffers;
   requested_coded_size_ = Size();
   requested_num_buffers_ = 0;
+
+  CHECK(request_video_frames_cb_);
+  std::move(request_video_frames_cb_).Run();
 }
 
 vda_result_t GpuVdContext::Decode(int32_t buffer_id,
@@ -456,11 +468,29 @@ void GpuVdContext::OnVideoFrameDecoded(int32_t video_frame_id,
 }
 
 // VideoFramePoolClient implementation function.
+void GpuVdContext::DEPRECATED_RequestVideoFrames(
+    mojom::VideoPixelFormat format,
+    arc::mojom::SizePtr coded_size,
+    arc::mojom::RectPtr visible_rect,
+    uint32_t num_frames) {
+  DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
+  RequestVideoFrames(format, std::move(coded_size), std::move(visible_rect),
+                     num_frames, base::DoNothing());
+}
+
 void GpuVdContext::RequestVideoFrames(mojom::VideoPixelFormat format,
                                       arc::mojom::SizePtr coded_size,
                                       arc::mojom::RectPtr visible_rect,
-                                      uint32_t num_frames) {
+                                      uint32_t num_frames,
+                                      RequestVideoFramesCallback callback) {
   DCHECK_CALLED_ON_VALID_THREAD(ipc_thread_checker_);
+
+  // Chrome should not call RequestVideoFrames() while there's a pending
+  // RequestVideoFrames(). We should be able to trust that since the Chrome GPU
+  // process is up the trust gradient.
+  CHECK(!request_video_frames_cb_);
+  CHECK(callback);
+  request_video_frames_cb_ = std::move(callback);
 
   // The requested coded size will only be applied after SetOutputBufferCount is
   // called, as the client might still add frames with the old coded size.
