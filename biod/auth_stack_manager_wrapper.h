@@ -14,6 +14,7 @@
 #include <dbus/object_path.h>
 
 #include "biod/auth_stack_manager.h"
+#include "biod/biod_metrics.h"
 #include "biod/session_state_manager.h"
 
 namespace biod {
@@ -27,6 +28,7 @@ class AuthStackManagerWrapper : public SessionStateManagerInterface::Observer {
       brillo::dbus_utils::ExportedObjectManager* object_manager,
       SessionStateManagerInterface* session_state_manager,
       dbus::ObjectPath object_path,
+      BiodMetricsInterface* biod_metrics,
       brillo::dbus_utils::AsyncEventSequencer::CompletionAction
           completion_callback);
   AuthStackManagerWrapper(const AuthStackManagerWrapper&) = delete;
@@ -81,6 +83,8 @@ class AuthStackManagerWrapper : public SessionStateManagerInterface::Observer {
   brillo::dbus_utils::DBusObject dbus_object_;
   dbus::ObjectPath object_path_;
   brillo::dbus_utils::ExportedProperty<uint32_t> property_type_;
+
+  BiodMetricsInterface* metrics_;
 
   AuthStackManager::Session enroll_session_;
   std::string enroll_session_owner_;

@@ -6,12 +6,14 @@
 #define BIOD_BIOD_METRICS_H_
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <libec/fingerprint/cros_fp_device_interface.h>
 #include <libec/fingerprint/fp_mode.h>
 #include <metrics/metrics_library.h>
 
+#include "biod/proto_bindings/messages.pb.h"
 #include "biod/updater/update_reason.h"
 
 namespace biod {
@@ -70,6 +72,14 @@ inline constexpr char kSessionRetrievePrimarySessionResult[] =
     "Fingerprint.Session.RetrievePrimarySessionResult";
 inline constexpr char kSessionRetrievePrimarySessionDuration[] =
     "Fingerprint.Session.RetrievePrimarySessionDuration";
+inline constexpr char kCreateCredentialStatus[] =
+    "Fingerprint.OpStatus.CreateCredential";
+inline constexpr char kAuthenticateCredentialStatus[] =
+    "Fingerprint.OpStatus.AuthenticateCredential";
+inline constexpr char kDeleteCredentialStatus[] =
+    "Fingerprint.OpStatus.DeleteCredential";
+inline constexpr char kListLegacyRecordsStatus[] =
+    "Fingerprint.OpStatus.ListLegacyRecords";
 
 // Special value to send to UMA on EC command related metrics.
 inline constexpr int kCmdRunFailure = -1;
@@ -141,6 +151,14 @@ class BiodMetricsInterface {
   virtual bool SendSessionRetrievePrimarySessionResult(
       RetrievePrimarySessionResult result) = 0;
   virtual bool SendSessionRetrievePrimarySessionDuration(int ms) = 0;
+  virtual bool SendCreateCredentialStatus(
+      CreateCredentialReply::CreateCredentialStatus status) = 0;
+  virtual bool SendAuthenticateCredentialStatus(
+      AuthenticateCredentialReply::AuthenticateCredentialStatus status) = 0;
+  virtual bool SendDeleteCredentialStatus(
+      DeleteCredentialReply::DeleteCredentialStatus status) = 0;
+  virtual bool SendListLegacyRecordsStatus(
+      ListLegacyRecordsReply::ListLegacyRecordsStatus status) = 0;
 };
 
 class BiodMetrics : public BiodMetricsInterface {
@@ -209,6 +227,17 @@ class BiodMetrics : public BiodMetricsInterface {
       RetrievePrimarySessionResult result) override;
   bool SendSessionRetrievePrimarySessionDuration(int ms) override;
 
+  // Operation return status metrics.
+  bool SendCreateCredentialStatus(
+      CreateCredentialReply::CreateCredentialStatus status) override;
+  bool SendAuthenticateCredentialStatus(
+      AuthenticateCredentialReply::AuthenticateCredentialStatus status)
+      override;
+  bool SendDeleteCredentialStatus(
+      DeleteCredentialReply::DeleteCredentialStatus status) override;
+  bool SendListLegacyRecordsStatus(
+      ListLegacyRecordsReply::ListLegacyRecordsStatus status) override;
+
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);
 
@@ -217,6 +246,9 @@ class BiodMetrics : public BiodMetricsInterface {
   }
 
  private:
+  // Helper method to be used by operation return status metrics.
+  bool SendReplyStatus(const std::string& name, int status, int max_status);
+
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 };
 

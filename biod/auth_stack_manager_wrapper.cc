@@ -13,6 +13,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <dbus/object_proxy.h>
 
+#include "biod/biod_metrics.h"
 #include "biod/utils.h"
 
 namespace biod {
@@ -35,14 +36,17 @@ AuthStackManagerWrapper::AuthStackManagerWrapper(
     ExportedObjectManager* object_manager,
     SessionStateManagerInterface* session_state_manager,
     ObjectPath object_path,
+    BiodMetricsInterface* biod_metrics,
     AsyncEventSequencer::CompletionAction completion_callback)
     : auth_stack_manager_(std::move(auth_stack_manager)),
       session_state_manager_(session_state_manager),
       dbus_object_(object_manager, object_manager->GetBus(), object_path),
       object_path_(std::move(object_path)),
+      metrics_(biod_metrics),
       enroll_session_object_path_(object_path_.value() + "/EnrollSession"),
       auth_session_object_path_(object_path_.value() + "/AuthSession") {
   CHECK(auth_stack_manager_);
+  CHECK(metrics_);
 
   auth_stack_manager_->SetEnrollScanDoneHandler(base::BindRepeating(
       &AuthStackManagerWrapper::OnEnrollScanDone, base::Unretained(this)));
@@ -245,7 +249,9 @@ bool AuthStackManagerWrapper::StartEnrollSession(
 void AuthStackManagerWrapper::CreateCredential(
     std::unique_ptr<DBusMethodResponse<const CreateCredentialReply&>> response,
     const CreateCredentialRequest& request) {
-  response->Return(auth_stack_manager_->CreateCredential(request));
+  CreateCredentialReply reply = auth_stack_manager_->CreateCredential(request);
+  metrics_->SendCreateCredentialStatus(reply.status());
+  response->Return(reply);
 }
 
 bool AuthStackManagerWrapper::StartAuthSession(
@@ -289,17 +295,24 @@ void AuthStackManagerWrapper::AuthenticateCredential(
         response,
     const AuthenticateCredentialRequest& request) {
   auto callback =
-      [](std::unique_ptr<DBusMethodResponse<const AuthenticateCredentialReply&>>
+      [](BiodMetricsInterface* metrics,
+         std::unique_ptr<DBusMethodResponse<const AuthenticateCredentialReply&>>
              response,
-         AuthenticateCredentialReply reply) { response->Return(reply); };
+         AuthenticateCredentialReply reply) {
+        metrics->SendAuthenticateCredentialStatus(reply.status());
+        response->Return(reply);
+      };
   auth_stack_manager_->AuthenticateCredential(
-      request, base::BindOnce(std::move(callback), std::move(response)));
+      request,
+      base::BindOnce(std::move(callback), metrics_, std::move(response)));
 }
 
 void AuthStackManagerWrapper::DeleteCredential(
     std::unique_ptr<DBusMethodResponse<const DeleteCredentialReply&>> response,
     const DeleteCredentialRequest& request) {
-  response->Return(auth_stack_manager_->DeleteCredential(request));
+  DeleteCredentialReply reply = auth_stack_manager_->DeleteCredential(request);
+  metrics_->SendDeleteCredentialStatus(reply.status());
+  response->Return(reply);
 }
 
 bool AuthStackManagerWrapper::EnrollSessionCancel(brillo::ErrorPtr* error) {
@@ -338,7 +351,9 @@ void AuthStackManagerWrapper::ListLegacyRecords(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<const ListLegacyRecordsReply&>>
         response) {
-  response->Return(auth_stack_manager_->ListLegacyRecords());
+  ListLegacyRecordsReply reply = auth_stack_manager_->ListLegacyRecords();
+  metrics_->SendListLegacyRecordsStatus(reply.status());
+  response->Return(reply);
 }
 
 void AuthStackManagerWrapper::EnrollLegacyTemplate(

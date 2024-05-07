@@ -9,6 +9,7 @@
 #include <metrics/metrics_library.h>
 
 #include "biod/biod_storage.h"
+#include "biod/proto_bindings/messages.pb.h"
 #include "biod/session_state_manager.h"
 #include "biod/updater/update_reason.h"
 #include "biod/utils.h"
@@ -213,4 +214,43 @@ bool BiodMetrics::SendSessionRetrievePrimarySessionDuration(int ms) {
       metrics::kSessionRetrievePrimarySessionDuration, ms, 0,
       kResponseDurationMaxMs, kResponseDurationBuckets);
 }
+
+bool BiodMetrics::SendCreateCredentialStatus(
+    CreateCredentialReply::CreateCredentialStatus status) {
+  return SendReplyStatus(metrics::kCreateCredentialStatus, status,
+                         CreateCredentialReply::CREATE_RECORD_FAILED);
+}
+
+bool BiodMetrics::SendAuthenticateCredentialStatus(
+    AuthenticateCredentialReply::AuthenticateCredentialStatus status) {
+  return SendReplyStatus(metrics::kAuthenticateCredentialStatus, status,
+                         AuthenticateCredentialReply::INTERNAL_ERROR);
+}
+
+bool BiodMetrics::SendDeleteCredentialStatus(
+    DeleteCredentialReply::DeleteCredentialStatus status) {
+  return SendReplyStatus(metrics::kDeleteCredentialStatus, status,
+                         DeleteCredentialReply::DELETION_FAILED);
+}
+
+bool BiodMetrics::SendListLegacyRecordsStatus(
+    ListLegacyRecordsReply::ListLegacyRecordsStatus status) {
+  return SendReplyStatus(metrics::kListLegacyRecordsStatus, status,
+                         ListLegacyRecordsReply::INCORRECT_STATE);
+}
+
+bool BiodMetrics::SendReplyStatus(const std::string& name,
+                                  int status,
+                                  int max_status) {
+  // To keep the enum range in [0, max_status], we map the proto enum values
+  // that are larger than |max_status| to 0 (which always means UNKNOWN by our
+  // enum convention), while DCHECKing.
+  DCHECK(status <= max_status);
+  if (status > max_status) {
+    status = 0;
+  }
+  return metrics_lib_->SendEnumToUMA(name, status,
+                                     /* exclusive_max=*/max_status + 1);
+}
+
 }  // namespace biod

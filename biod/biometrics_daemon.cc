@@ -94,6 +94,7 @@ BiometricsDaemon::BiometricsDaemon() {
           std::make_unique<AuthStackManagerWrapper>(
               std::move(cros_fp_manager), object_manager_.get(),
               session_state_manager_.get(), cros_fp_manager_path,
+              biod_metrics_.get(),
               sequencer->GetHandler(
                   "Failed to register CrosFpAuthStackManager object", true)));
     } else {

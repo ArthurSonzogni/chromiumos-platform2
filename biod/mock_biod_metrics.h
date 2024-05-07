@@ -73,6 +73,23 @@ class MockBiodMetrics : public BiodMetricsInterface {
               SendSessionRetrievePrimarySessionDuration,
               (int ms),
               (override));
+  MOCK_METHOD(bool,
+              SendCreateCredentialStatus,
+              (CreateCredentialReply::CreateCredentialStatus status),
+              (override));
+  MOCK_METHOD(
+      bool,
+      SendAuthenticateCredentialStatus,
+      (AuthenticateCredentialReply::AuthenticateCredentialStatus status),
+      (override));
+  MOCK_METHOD(bool,
+              SendDeleteCredentialStatus,
+              (DeleteCredentialReply::DeleteCredentialStatus status),
+              (override));
+  MOCK_METHOD(bool,
+              SendListLegacyRecordsStatus,
+              (ListLegacyRecordsReply::ListLegacyRecordsStatus status),
+              (override));
 };
 
 }  // namespace metrics

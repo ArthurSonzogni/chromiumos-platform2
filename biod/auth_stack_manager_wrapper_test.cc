@@ -19,8 +19,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <biod/mock_auth_stack_manager.h>
-#include <biod/mock_session_state_manager.h>
+#include "biod/mock_auth_stack_manager.h"
+#include "biod/mock_biod_metrics.h"
+#include "biod/mock_session_state_manager.h"
 
 namespace biod {
 namespace {
@@ -93,7 +94,7 @@ class AuthStackManagerWrapperTest : public ::testing::Test {
 
     wrapper_.emplace(
         std::move(mock_auth_stack_manager), object_manager_.get(),
-        session_manager_.get(), mock_bio_path_,
+        session_manager_.get(), mock_bio_path_, &mock_metrics_,
         sequencer->GetHandler("Failed to register AuthStackManager", false));
   }
 
@@ -107,6 +108,7 @@ class AuthStackManagerWrapperTest : public ::testing::Test {
   std::map<std::string, scoped_refptr<dbus::MockExportedObject>>
       exported_objects_;
   std::unique_ptr<MockSessionStateManager> session_manager_;
+  metrics::MockBiodMetrics mock_metrics_;
   std::optional<AuthStackManagerWrapper> wrapper_;
   AuthStackManager::EnrollScanDoneCallback on_enroll_scan_done;
   AuthStackManager::AuthScanDoneCallback on_auth_scan_done;
@@ -708,6 +710,9 @@ TEST_F(AuthStackManagerWrapperTest, TestCreateCredential) {
 
   EXPECT_CALL(*bio_manager_, CreateCredential(EqualsProto(request)))
       .WillOnce(Return(reply));
+  EXPECT_CALL(mock_metrics_,
+              SendCreateCredentialStatus(CreateCredentialReply::SUCCESS))
+      .Times(1);
 
   CreateCredentialReply returned_reply;
   auto response = CreateCredential(request, &returned_reply);
