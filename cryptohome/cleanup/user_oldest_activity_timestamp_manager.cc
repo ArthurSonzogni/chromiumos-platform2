@@ -78,22 +78,6 @@ void UserOldestActivityTimestampManager::LoadTimestamp(
   UpdateCachedTimestamp(obfuscated, ts_from_singular_file);
 }
 
-// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-void UserOldestActivityTimestampManager::LoadTimestampWithLegacy(
-    const ObfuscatedUsername& obfuscated, base::Time legacy_timestamp) {
-  LoadTimestamp(obfuscated);
-  const auto current_timestamp = GetLastUserActivityTimestamp(obfuscated);
-  if (legacy_timestamp <= current_timestamp) {
-    return;
-  }
-  if (!WriteTimestamp(obfuscated, legacy_timestamp)) {
-    LOG(ERROR) << "Failed to update timestamp for: " << obfuscated;
-    return;
-  }
-  UpdateCachedTimestamp(obfuscated, legacy_timestamp);
-  return;
-}
-
 bool UserOldestActivityTimestampManager::UpdateTimestamp(
     const ObfuscatedUsername& obfuscated, base::TimeDelta time_shift) {
   base::Time timestamp = platform_->GetCurrentTime();

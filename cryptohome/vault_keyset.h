@@ -103,10 +103,6 @@ class VaultKeyset {
   bool HasPasswordRounds() const;
   int32_t GetPasswordRounds() const;
 
-  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  bool HasLastActivityTimestamp() const;
-  int64_t GetLastActivityTimestamp() const;
-
   bool HasKeyData() const;
   void SetKeyData(const KeyData& key_data);
   void ClearKeyData();
@@ -331,9 +327,6 @@ class VaultKeyset {
   // before the TPM operation, have a number of rounds to run the key derivation
   // function.
   std::optional<int32_t> password_rounds_;
-  // An optional timestamp field.
-  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  std::optional<int64_t> last_activity_timestamp_;
   // Plaintet metadata describing the key.
   std::optional<KeyData> key_data_;
   // Used for the reset seed wrapping.

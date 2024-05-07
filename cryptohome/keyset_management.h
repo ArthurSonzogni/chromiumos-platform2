@@ -93,16 +93,6 @@ class KeysetManagement {
   virtual void RemoveLECredentials(
       const ObfuscatedUsername& obfuscated_username);
 
-  // Get timestamp from a legacy location.
-  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  virtual base::Time GetKeysetBoundTimestamp(
-      const ObfuscatedUsername& obfuscated);
-
-  // Remove legacy location for timestamp.
-  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  virtual void CleanupPerIndexTimestampFiles(
-      const ObfuscatedUsername& obfuscated);
-
   // Check if the vault keyset needs re-encryption.
   virtual bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
 
@@ -184,10 +174,6 @@ class KeysetManagement {
       std::unique_ptr<AuthBlockState> auth_state);
 
  private:
-  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  base::Time GetPerIndexTimestampFileData(const ObfuscatedUsername& obfuscated,
-                                          int index);
-
   // Records various metrics about the VaultKeyset into the VaultKeysetMetrics
   // struct.
   void RecordVaultKeysetMetrics(const VaultKeyset& vk,

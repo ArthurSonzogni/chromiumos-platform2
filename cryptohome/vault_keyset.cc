@@ -1040,17 +1040,6 @@ int32_t VaultKeyset::GetPasswordRounds() const {
   return password_rounds_.value();
 }
 
-// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-bool VaultKeyset::HasLastActivityTimestamp() const {
-  return last_activity_timestamp_.has_value();
-}
-
-// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-int64_t VaultKeyset::GetLastActivityTimestamp() const {
-  CHECK(last_activity_timestamp_.has_value());
-  return last_activity_timestamp_.value();
-}
-
 bool VaultKeyset::HasKeyData() const {
   return key_data_.has_value();
 }
@@ -1331,8 +1320,6 @@ void VaultKeyset::ResetVaultKeyset() {
   legacy_index_ = -1;
   tpm_public_key_hash_.reset();
   password_rounds_.reset();
-  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  last_activity_timestamp_.reset();
   key_data_.reset();
   reset_iv_.reset();
   le_label_.reset();
@@ -1375,11 +1362,6 @@ void VaultKeyset::InitializeFromSerialized(
 
   if (serialized.has_password_rounds()) {
     password_rounds_ = serialized.password_rounds();
-  }
-
-  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  if (serialized.has_last_activity_timestamp()) {
-    last_activity_timestamp_ = serialized.last_activity_timestamp();
   }
 
   if (serialized.has_key_data()) {

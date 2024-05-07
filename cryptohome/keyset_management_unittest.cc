@@ -693,39 +693,6 @@ TEST_F(KeysetManagementTest, GetValidKeysetCryptoError) {
   EXPECT_EQ(vk_status.status()->mount_error(), MOUNT_ERROR_KEY_FAILURE);
 }
 
-// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-TEST_F(KeysetManagementTest, GetKeysetBoundTimestamp) {
-  KeysetSetUpWithKeyDataAndKeyBlobs(DefaultKeyData());
-
-  constexpr int kTestTimestamp = 42000000;
-  Timestamp timestamp;
-  timestamp.set_timestamp(kTestTimestamp);
-  std::string timestamp_str;
-  ASSERT_TRUE(timestamp.SerializeToString(&timestamp_str));
-  ASSERT_TRUE(platform_.WriteStringToFileAtomicDurable(
-      UserActivityPerIndexTimestampPath(users_[0].obfuscated, 0), timestamp_str,
-      kKeyFilePermissions));
-
-  ASSERT_THAT(keyset_management_->GetKeysetBoundTimestamp(users_[0].obfuscated),
-              Eq(base::Time::FromInternalValue(kTestTimestamp)));
-}
-
-// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-TEST_F(KeysetManagementTest, CleanupPerIndexTimestampFiles) {
-  for (int i = 0; i < 10; ++i) {
-    const base::FilePath ts_file =
-        UserActivityPerIndexTimestampPath(users_[0].obfuscated, i);
-    ASSERT_TRUE(platform_.WriteStringToFileAtomicDurable(
-        ts_file, "doesn't matter", kKeyFilePermissions));
-  }
-  keyset_management_->CleanupPerIndexTimestampFiles(users_[0].obfuscated);
-  for (int i = 0; i < 10; ++i) {
-    const base::FilePath ts_file =
-        UserActivityPerIndexTimestampPath(users_[0].obfuscated, i);
-    ASSERT_FALSE(platform_.FileExists(ts_file));
-  }
-}
-
 // Successfully adds new keyset with KeyBlobs
 TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   // SETUP

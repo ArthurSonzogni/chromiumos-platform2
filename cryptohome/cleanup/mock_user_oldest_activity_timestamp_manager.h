@@ -19,12 +19,6 @@ class MockUserOldestActivityTimestampManager
  public:
   MockUserOldestActivityTimestampManager()
       : UserOldestActivityTimestampManager(nullptr) {}
-  virtual ~MockUserOldestActivityTimestampManager() = default;
-
-  MOCK_METHOD(void,
-              LoadTimestampWithLegacy,
-              (const ObfuscatedUsername&, base::Time),
-              (override));
 
   MOCK_METHOD(void, LoadTimestamp, (const ObfuscatedUsername&), (override));
   MOCK_METHOD(bool,

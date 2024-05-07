@@ -26,10 +26,6 @@ class UserOldestActivityTimestampManager {
 
   virtual ~UserOldestActivityTimestampManager() = default;
 
-  // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  virtual void LoadTimestampWithLegacy(const ObfuscatedUsername& obfuscated,
-                                       base::Time legacy_timestamp);
-
   // Loads timestamp from the per-user timestamp file into cache.
   virtual void LoadTimestamp(const ObfuscatedUsername& obfuscated);
 

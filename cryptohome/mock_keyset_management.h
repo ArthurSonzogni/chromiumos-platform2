@@ -56,14 +56,6 @@ class MockKeysetManagement : public KeysetManagement {
               LoadVaultKeysetForUser,
               (const ObfuscatedUsername&, int),
               (const, override));
-  MOCK_METHOD(base::Time,
-              GetKeysetBoundTimestamp,
-              (const ObfuscatedUsername&),
-              (override));
-  MOCK_METHOD(void,
-              CleanupPerIndexTimestampFiles,
-              (const ObfuscatedUsername&),
-              (override));
   MOCK_METHOD(bool,
               ShouldReSaveKeyset,
               (VaultKeyset * vault_keyset),

@@ -931,13 +931,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
 
   auto homedirs = homedirs_->GetHomeDirs();
   for (const auto& dir : homedirs) {
-    // TODO(b/205759690, dlunev): can be changed after a stepping stone release
-    //  to `user_activity_timestamp_manager_->LoadTimestamp(dir.obfuscated);`
-    base::Time legacy_timestamp =
-        keyset_management_->GetKeysetBoundTimestamp(dir.obfuscated);
-    user_activity_timestamp_manager_->LoadTimestampWithLegacy(dir.obfuscated,
-                                                              legacy_timestamp);
-    keyset_management_->CleanupPerIndexTimestampFiles(dir.obfuscated);
+    user_activity_timestamp_manager_->LoadTimestamp(dir.obfuscated);
   }
 
   if (!mount_factory_) {

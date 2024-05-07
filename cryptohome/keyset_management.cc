@@ -570,50 +570,6 @@ void KeysetManagement::RemoveLECredentials(
   return;
 }
 
-// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-base::Time KeysetManagement::GetPerIndexTimestampFileData(
-    const ObfuscatedUsername& obfuscated, int index) {
-  brillo::Blob tcontents;
-  if (!platform_->ReadFile(UserActivityPerIndexTimestampPath(obfuscated, index),
-                           &tcontents)) {
-    return base::Time();
-  }
-
-  Timestamp timestamp;
-  if (!timestamp.ParseFromArray(tcontents.data(), tcontents.size())) {
-    return base::Time();
-  }
-
-  return base::Time::FromInternalValue(timestamp.timestamp());
-}
-
-// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-base::Time KeysetManagement::GetKeysetBoundTimestamp(
-    const ObfuscatedUsername& obfuscated) {
-  base::Time timestamp = base::Time();
-
-  std::vector<int> key_indices;
-  GetVaultKeysets(obfuscated, &key_indices);
-  for (int index : key_indices) {
-    std::unique_ptr<VaultKeyset> keyset =
-        LoadVaultKeysetForUser(obfuscated, index);
-    if (keyset.get() && keyset->HasLastActivityTimestamp()) {
-      const base::Time new_timestamp =
-          base::Time::FromInternalValue(keyset->GetLastActivityTimestamp());
-      if (new_timestamp > timestamp) {
-        timestamp = new_timestamp;
-      }
-    }
-    const base::Time ts_from_index_file =
-        GetPerIndexTimestampFileData(obfuscated, index);
-    if (ts_from_index_file > timestamp) {
-      timestamp = ts_from_index_file;
-    }
-  }
-
-  return timestamp;
-}
-
 void KeysetManagement::RecordAllVaultKeysetMetrics(
     const ObfuscatedUsername& obfuscated) const {
   VaultKeysetMetrics keyset_metrics;
@@ -685,15 +641,6 @@ void KeysetManagement::RecordVaultKeysetMetrics(
         keyset_metrics.unclassified_count++;
         break;
     }
-  }
-}
-
-// TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-void KeysetManagement::CleanupPerIndexTimestampFiles(
-    const ObfuscatedUsername& obfuscated) {
-  for (int i = 0; i < kKeyFileMax; ++i) {
-    std::ignore = platform_->DeleteFileDurable(
-        UserActivityPerIndexTimestampPath(obfuscated, i));
   }
 }
 
