@@ -179,7 +179,9 @@ std::vector<StreamFormat> GetAvailableOutputYuvFormats(
 // destination streams.
 std::optional<Size> GetFullFrameResolution(
     base::span<const StreamFormat> available_formats,
-    base::span<const camera3_stream_t* const> dst_streams) {
+    base::span<const camera3_stream_t* const> dst_streams,
+    std::optional<uint32_t> max_width,
+    std::optional<uint32_t> max_height) {
   base::flat_map<const StreamFormat*, const camera3_stream_t*>
       format_to_dst_stream;
   for (auto* s : dst_streams) {
@@ -206,6 +208,10 @@ std::optional<Size> GetFullFrameResolution(
            index_fps(src_format.max_fps) >= index_fps(dst_format.max_fps);
   };
   auto can_generate_all_streams = [&](const StreamFormat& src_format) {
+    if ((max_width.has_value() && src_format.width > max_width.value()) ||
+        (max_height.has_value() && src_format.height > max_height.value())) {
+      return false;
+    }
     for (auto& [dst_format, s] : format_to_dst_stream) {
       if (!can_generate_stream(src_format, *dst_format)) {
         return false;
@@ -737,8 +743,9 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
                            target_aspect_ratio_y),
       active_array_dimension_);
 
-  const std::optional<Size> size =
-      GetFullFrameResolution(available_formats_, client_video_yuv_streams);
+  const std::optional<Size> size = GetFullFrameResolution(
+      available_formats_, client_video_yuv_streams, options_.max_video_width,
+      options_.max_video_height);
   if (!size.has_value()) {
     LOGF(ERROR) << "Can't find suitable resolution for full frame stream";
     setup_failed_ = true;
