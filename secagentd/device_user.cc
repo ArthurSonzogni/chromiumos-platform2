@@ -178,6 +178,12 @@ void DeviceUser::OnRegistrationResult(const std::string& interface,
   } else if (interface == "org.chromium.SessionManagerInterface" &&
              signal == "SessionStateChanged") {
     OnSessionStateChange(kInit);
+
+    // [DO NOT REMOVE]: Removing or changing this log will break tast testing.
+    // Log message that signifies secagentd is listening for session_manager's
+    // session state change signal so testing can continue.
+    VLOG(1) << "[DO NOT REMOVE] Used for tast testing: Listening for session "
+               "state changes";
   }
 }
 
