@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus/bus.h>
+#include <featured/c_feature_library.h>
 #include <featured/feature_library.h>
 
 namespace {
@@ -17,7 +18,7 @@ constexpr char kAllowFirmwareDumpsFeatureName[] =
     "CrOSLateBootAllowFirmwareDumps";
 
 const VariationsFeature kAllowFirmwareDumpsFeature{
-    kAllowFirmwareDumpsFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+    kAllowFirmwareDumpsFeatureName, FEATURE_ENABLED_BY_DEFAULT};
 
 constexpr char kAllowFirmwareDumpsFlagPath[] =
     "/run/fbpreprocessord/allow_firmware_dumps";
