@@ -52,9 +52,9 @@ constexpr char kEnableDelayKey[] = "enable_delay";
 constexpr char kDisableDelayKey[] = "disable_delay";
 
 constexpr int32_t kRequiredVideoFrameRate = 30;
-constexpr uint32_t kFullFrameBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
-                                           GRALLOC_USAGE_HW_TEXTURE |
-                                           GRALLOC_USAGE_SW_READ_OFTEN;
+constexpr uint32_t kFullFrameBufferUsage =
+    GRALLOC_USAGE_HW_CAMERA_WRITE | GRALLOC_USAGE_HW_TEXTURE |
+    GRALLOC_USAGE_SW_READ_OFTEN | GRALLOC_USAGE_HW_COMPOSER;
 constexpr uint32_t kStillYuvBufferUsage = GRALLOC_USAGE_HW_CAMERA_WRITE |
                                           GRALLOC_USAGE_HW_TEXTURE |
                                           kStillCaptureUsageFlag;
