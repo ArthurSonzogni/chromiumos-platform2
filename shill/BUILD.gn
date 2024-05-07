@@ -63,9 +63,6 @@ pkg_config("target_defaults") {
     "-Wextra",
     "-Werror",
     "-Wno-unused-parameter",  # for pppd_plugin.c, base/tuple.h
-
-    # TODO(crbug.com/1047566): Remove the warning when libchrome fixes the issue.
-    "-Wno-deprecated-copy",
   ]
   defines = [
     "PKCS11_LIB=\"${libdir}/libchaps.so\"",
