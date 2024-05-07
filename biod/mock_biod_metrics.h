@@ -90,6 +90,18 @@ class MockBiodMetrics : public BiodMetricsInterface {
               SendListLegacyRecordsStatus,
               (ListLegacyRecordsReply::ListLegacyRecordsStatus status),
               (override));
+  MOCK_METHOD(bool,
+              SendStartEnrollSessionStatus,
+              (StartEnrollSessionStatus status),
+              (override));
+  MOCK_METHOD(bool,
+              SendStartAuthSessionStatus,
+              (StartAuthSessionStatus status),
+              (override));
+  MOCK_METHOD(bool,
+              SendEnrollLegacyTemplateStatus,
+              (EnrollLegacyTemplateStatus status),
+              (override));
 };
 
 }  // namespace metrics

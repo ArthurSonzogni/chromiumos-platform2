@@ -80,6 +80,12 @@ inline constexpr char kDeleteCredentialStatus[] =
     "Fingerprint.OpStatus.DeleteCredential";
 inline constexpr char kListLegacyRecordsStatus[] =
     "Fingerprint.OpStatus.ListLegacyRecords";
+inline constexpr char kStartEnrollSessionStatus[] =
+    "Fingerprint.OpStatus.StartEnrollSession";
+inline constexpr char kStartAuthSessionStatus[] =
+    "Fingerprint.OpStatus.StartAuthSession";
+inline constexpr char kEnrollLegacyTemplateStatus[] =
+    "Fingerprint.OpStatus.EnrollLegacyTemplate";
 
 // Special value to send to UMA on EC command related metrics.
 inline constexpr int kCmdRunFailure = -1;
@@ -125,6 +131,47 @@ class BiodMetricsInterface {
     kMaxValue = kErrorParsing + 1,
   };
 
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class StartEnrollSessionStatus : int {
+    kSuccess = 0,
+    kIncorrectState = 1,
+    kTemplatesFull = 2,
+    kSetContextFailed = 3,
+    kUnlockTemplatesFailed = 4,
+    kSetEnrollModeFailed = 5,
+
+    kMaxValue = kSetEnrollModeFailed,
+  };
+
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class StartAuthSessionStatus : int {
+    kSuccess = 0,
+    kIncorrectState = 1,
+    kLoadUserFailed = 2,
+    kPendingFingerUp = 3,
+    kSetContextFailed = 4,
+    kUnlockTemplatesFailed = 5,
+    kSetMatchModeFailed = 6,
+
+    kMaxValue = kSetMatchModeFailed,
+  };
+
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class EnrollLegacyTemplateStatus : int {
+    kSuccess = 0,
+    kIncorrectState = 1,
+    kRecordNotFound = 2,
+    kTemplatesFull = 3,
+    kSetContextFailed = 4,
+    kUnlockTemplatesFailed = 5,
+    kMigrateCommandFailed = 6,
+
+    kMaxValue = kMigrateCommandFailed,
+  };
+
   virtual bool SendEnrolledFingerCount(int finger_count) = 0;
   virtual bool SendEnrollmentCapturesCount(int captures_count) = 0;
   virtual bool SendFpUnlockEnabled(bool enabled) = 0;
@@ -159,6 +206,11 @@ class BiodMetricsInterface {
       DeleteCredentialReply::DeleteCredentialStatus status) = 0;
   virtual bool SendListLegacyRecordsStatus(
       ListLegacyRecordsReply::ListLegacyRecordsStatus status) = 0;
+  virtual bool SendStartEnrollSessionStatus(
+      StartEnrollSessionStatus status) = 0;
+  virtual bool SendStartAuthSessionStatus(StartAuthSessionStatus status) = 0;
+  virtual bool SendEnrollLegacyTemplateStatus(
+      EnrollLegacyTemplateStatus status) = 0;
 };
 
 class BiodMetrics : public BiodMetricsInterface {
@@ -237,6 +289,10 @@ class BiodMetrics : public BiodMetricsInterface {
       DeleteCredentialReply::DeleteCredentialStatus status) override;
   bool SendListLegacyRecordsStatus(
       ListLegacyRecordsReply::ListLegacyRecordsStatus status) override;
+  bool SendStartEnrollSessionStatus(StartEnrollSessionStatus status) override;
+  bool SendStartAuthSessionStatus(StartAuthSessionStatus status) override;
+  bool SendEnrollLegacyTemplateStatus(
+      EnrollLegacyTemplateStatus status) override;
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);

@@ -253,4 +253,20 @@ bool BiodMetrics::SendReplyStatus(const std::string& name,
                                      /* exclusive_max=*/max_status + 1);
 }
 
+bool BiodMetrics::SendStartEnrollSessionStatus(
+    StartEnrollSessionStatus status) {
+  return metrics_lib_->SendEnumToUMA(metrics::kStartEnrollSessionStatus,
+                                     status);
+}
+
+bool BiodMetrics::SendStartAuthSessionStatus(StartAuthSessionStatus status) {
+  return metrics_lib_->SendEnumToUMA(metrics::kStartAuthSessionStatus, status);
+}
+
+bool BiodMetrics::SendEnrollLegacyTemplateStatus(
+    EnrollLegacyTemplateStatus status) {
+  return metrics_lib_->SendEnumToUMA(metrics::kEnrollLegacyTemplateStatus,
+                                     status);
+}
+
 }  // namespace biod

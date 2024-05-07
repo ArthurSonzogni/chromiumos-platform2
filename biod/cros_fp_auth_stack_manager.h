@@ -166,7 +166,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   bool RequestEnrollFingerUp();
   void DoEnrollImageEvent(uint32_t event);
   void DoEnrollFingerUpEvent(uint32_t event);
-  bool PrepareStartAuthSession(const StartAuthSessionRequest& request);
+  BiodMetricsInterface::StartAuthSessionStatus PrepareStartAuthSession(
+      const StartAuthSessionRequest& request);
   bool RequestMatchFingerDown();
   void OnMatchFingerDown(uint32_t event);
   bool RequestFingerUp();

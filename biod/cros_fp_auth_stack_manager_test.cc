@@ -31,6 +31,11 @@ using State = CrosFpAuthStackManager::State;
 using GetSecretReply = ec::CrosFpDeviceInterface::GetSecretReply;
 using KeygenReply = ec::CrosFpDeviceInterface::PairingKeyKeygenReply;
 
+using StartEnrollSessionStatus = BiodMetricsInterface::StartEnrollSessionStatus;
+using StartAuthSessionStatus = BiodMetricsInterface::StartAuthSessionStatus;
+using EnrollLegacyTemplateStatus =
+    BiodMetricsInterface::EnrollLegacyTemplateStatus;
+
 using brillo::BlobToString;
 
 using PinWeaverEccPoint = hwsec::PinWeaverManagerFrontend::PinWeaverEccPoint;
@@ -233,6 +238,10 @@ TEST_F(CrosFpAuthStackManagerTest, TestStartEnrollSessionSuccess) {
               SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
       .WillOnce(Return(true));
 
+  EXPECT_CALL(mock_metrics_,
+              SendStartEnrollSessionStatus(StartEnrollSessionStatus::kSuccess))
+      .Times(1);
+
   enroll_session = cros_fp_auth_stack_manager_->StartEnrollSession(request);
   EXPECT_TRUE(enroll_session);
 
@@ -262,6 +271,13 @@ TEST_F(CrosFpAuthStackManagerTest, TestStartEnrollSessionTwiceFailed) {
   EXPECT_CALL(*mock_cros_dev_,
               SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
       .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(mock_metrics_,
+              SendStartEnrollSessionStatus(StartEnrollSessionStatus::kSuccess))
+      .Times(1);
+  EXPECT_CALL(mock_metrics_, SendStartEnrollSessionStatus(
+                                 StartEnrollSessionStatus::kIncorrectState))
+      .Times(1);
 
   first_enroll_session =
       cros_fp_auth_stack_manager_->StartEnrollSession(request);
@@ -295,6 +311,11 @@ TEST_F(CrosFpAuthStackManagerTest, TestEnrollSessionEnrollModeFailed) {
               SetFpMode(ec::FpMode(Mode::kEnrollSessionEnrollImage)))
       .WillOnce(Return(false));
 
+  EXPECT_CALL(mock_metrics_,
+              SendStartEnrollSessionStatus(
+                  StartEnrollSessionStatus::kSetEnrollModeFailed))
+      .Times(1);
+
   enroll_session = cros_fp_auth_stack_manager_->StartEnrollSession(request);
   EXPECT_FALSE(enroll_session);
 }
@@ -309,6 +330,10 @@ TEST_F(CrosFpAuthStackManagerTest, TestEnrollSessionNoUser) {
                                                kLabelSeedIv);
 
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kNoUserId));
+
+  EXPECT_CALL(mock_metrics_, SendStartEnrollSessionStatus(
+                                 StartEnrollSessionStatus::kIncorrectState))
+      .Times(1);
 
   enroll_session = cros_fp_auth_stack_manager_->StartEnrollSession(request);
   EXPECT_FALSE(enroll_session);
@@ -577,6 +602,10 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopSuccessNoUser) {
   EXPECT_CALL(*mock_session_manager_, GetNumOfTemplates).WillOnce(Return(2));
   EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(2)).WillOnce(Return(true));
 
+  EXPECT_CALL(mock_metrics_,
+              SendStartAuthSessionStatus(StartAuthSessionStatus::kSuccess))
+      .Times(1);
+
   // Start auth session.
   auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
   EXPECT_TRUE(auth_session);
@@ -602,6 +631,10 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionStartStopNoUserFailed) {
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kNoUser));
   EXPECT_CALL(*mock_session_manager_, LoadUser(kUserId))
       .WillOnce(Return(false));
+
+  EXPECT_CALL(mock_metrics_, SendStartAuthSessionStatus(
+                                 StartAuthSessionStatus::kLoadUserFailed))
+      .Times(1);
 
   // Start auth session.
   auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
@@ -914,6 +947,10 @@ TEST_F(CrosFpAuthStackManagerTest, TestEnrollLegacyTemplateSuccess) {
   EXPECT_CALL(*mock_cros_dev_, MigrateLegacyTemplate(*kUserId, _))
       .WillOnce(Return(true));
 
+  EXPECT_CALL(mock_metrics_, SendEnrollLegacyTemplateStatus(
+                                 EnrollLegacyTemplateStatus::kSuccess))
+      .Times(1);
+
   bool success = false;
   cros_fp_auth_stack_manager_->EnrollLegacyTemplate(
       request,
@@ -938,6 +975,10 @@ TEST_F(CrosFpAuthStackManagerTest, TestEnrollLegacyTemplateNoUser) {
   EXPECT_CALL(*mock_cros_dev_, SetNonceContext).Times(0);
   EXPECT_CALL(*mock_cros_dev_, UnlockTemplates).Times(0);
   EXPECT_CALL(*mock_cros_dev_, MigrateLegacyTemplate).Times(0);
+
+  EXPECT_CALL(mock_metrics_, SendEnrollLegacyTemplateStatus(
+                                 EnrollLegacyTemplateStatus::kIncorrectState))
+      .Times(1);
 
   bool success = true;
   cros_fp_auth_stack_manager_->EnrollLegacyTemplate(
@@ -1083,6 +1124,10 @@ TEST_F(CrosFpAuthStackManagerInitiallyWaitForFingerUp,
 
   EXPECT_CALL(*mock_session_manager_, GetUser).WillOnce(ReturnRef(kUserId));
 
+  EXPECT_CALL(mock_metrics_, SendStartAuthSessionStatus(
+                                 StartAuthSessionStatus::kPendingFingerUp))
+      .Times(1);
+
   // Start auth session.
   auth_session = cros_fp_auth_stack_manager_->StartAuthSession(request);
   EXPECT_TRUE(auth_session);
@@ -1101,6 +1146,11 @@ TEST_F(CrosFpAuthStackManagerInitiallyWaitForFingerUp,
   EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(2)).WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(true));
+
+  EXPECT_CALL(mock_metrics_,
+              SendStartAuthSessionStatus(StartAuthSessionStatus::kSuccess))
+      .Times(1);
+
   on_mkbp_event_.Run(EC_MKBP_FP_FINGER_UP);
   EXPECT_EQ(cros_fp_auth_stack_manager_->GetState(), State::kAuth);
 
@@ -1129,6 +1179,10 @@ TEST_F(CrosFpAuthStackManagerTest, TestAuthSessionMatchModeFailed) {
   EXPECT_CALL(*mock_cros_dev_, UnlockTemplates(2)).WillOnce(Return(true));
   EXPECT_CALL(*mock_cros_dev_, SetFpMode(ec::FpMode(Mode::kMatch)))
       .WillOnce(Return(false));
+
+  EXPECT_CALL(mock_metrics_, SendStartAuthSessionStatus(
+                                 StartAuthSessionStatus::kSetMatchModeFailed))
+      .Times(1);
 
   // Auth session should fail to start when FPMCU refuses to set finger down
   // mode.

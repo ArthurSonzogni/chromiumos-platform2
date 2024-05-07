@@ -37,6 +37,10 @@ using Mode = ec::FpMode::Mode;
 using PinWeaverEccPoint = hwsec::PinWeaverManagerFrontend::PinWeaverEccPoint;
 using hwsec::PinWeaverEccPointSize;
 using hwsec::PinWeaverManagerFrontend::AuthChannel::kFingerprintAuthChannel;
+using StartEnrollSessionStatus = BiodMetricsInterface::StartEnrollSessionStatus;
+using StartAuthSessionStatus = BiodMetricsInterface::StartAuthSessionStatus;
+using EnrollLegacyTemplateStatus =
+    BiodMetricsInterface::EnrollLegacyTemplateStatus;
 
 CrosFpAuthStackManager::CrosFpAuthStackManager(
     std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
@@ -154,18 +158,24 @@ BioSession CrosFpAuthStackManager::StartEnrollSession(
   if (!CanStartEnroll()) {
     LOG(ERROR) << "Can't start an enroll session now, current state is: "
                << CurrentStateToString();
+    biod_metrics_->SendStartEnrollSessionStatus(
+        StartEnrollSessionStatus::kIncorrectState);
     return BioSession(base::NullCallback());
   }
 
   const std::optional<std::string>& user_id = session_manager_->GetUser();
   if (!user_id.has_value()) {
     LOG(ERROR) << "Can only start enroll session when there is a user session.";
+    biod_metrics_->SendStartEnrollSessionStatus(
+        StartEnrollSessionStatus::kIncorrectState);
     return Session(base::NullCallback());
   }
 
   size_t num_of_templates = session_manager_->GetNumOfTemplates();
   if (num_of_templates >= cros_dev_->MaxTemplateCount()) {
     LOG(ERROR) << "No space for an additional template.";
+    biod_metrics_->SendStartEnrollSessionStatus(
+        StartEnrollSessionStatus::kTemplatesFull);
     return BioSession(base::NullCallback());
   }
 
@@ -174,19 +184,29 @@ BioSession CrosFpAuthStackManager::StartEnrollSession(
           brillo::BlobFromString(request.encrypted_label_seed()),
           brillo::BlobFromString(request.iv()))) {
     LOG(ERROR) << "Failed to set nonce context";
+    biod_metrics_->SendStartEnrollSessionStatus(
+        StartEnrollSessionStatus::kSetContextFailed);
     return BioSession(base::NullCallback());
   }
 
   if (!cros_dev_->UnlockTemplates(num_of_templates)) {
     LOG(ERROR) << "Failed to unlock templates.";
+    biod_metrics_->SendStartEnrollSessionStatus(
+        StartEnrollSessionStatus::kUnlockTemplatesFailed);
     return BioSession(base::NullCallback());
   }
 
-  if (!RequestEnrollImage())
+  if (!RequestEnrollImage()) {
+    LOG(ERROR) << "Failed to set enroll image mode.";
+    biod_metrics_->SendStartEnrollSessionStatus(
+        StartEnrollSessionStatus::kSetEnrollModeFailed);
     return BioSession(base::NullCallback());
+  }
   state_ = State::kEnroll;
   num_enrollment_captures_ = 0;
 
+  biod_metrics_->SendStartEnrollSessionStatus(
+      StartEnrollSessionStatus::kSuccess);
   return BioSession(base::BindOnce(&CrosFpAuthStackManager::EndEnrollSession,
                                    session_weak_factory_.GetWeakPtr()));
 }
@@ -261,19 +281,29 @@ BioSession CrosFpAuthStackManager::StartAuthSession(
   if (!CanStartAuth()) {
     LOG(ERROR) << "Can't start an auth session now, current state is: "
                << CurrentStateToString();
+    biod_metrics_->SendStartAuthSessionStatus(
+        StartAuthSessionStatus::kIncorrectState);
     return BioSession(base::NullCallback());
   }
 
   if (!LoadUser(request.user_id(), false)) {
     LOG(ERROR) << "Failed to load user for authentication.";
+    biod_metrics_->SendStartAuthSessionStatus(
+        StartAuthSessionStatus::kLoadUserFailed);
     return BioSession(base::NullCallback());
   }
 
   if (state_ == State::kWaitForFingerUp) {
+    LOG(INFO) << "Received StartAuthSession while finger is down. Wait for "
+                 "finger up before proceeding.";
     state_ = State::kAuthWaitForFingerUp;
     pending_request_ = request;
+    biod_metrics_->SendStartAuthSessionStatus(
+        StartAuthSessionStatus::kPendingFingerUp);
   } else {
-    if (!PrepareStartAuthSession(request)) {
+    StartAuthSessionStatus status = PrepareStartAuthSession(request);
+    biod_metrics_->SendStartAuthSessionStatus(status);
+    if (status != StartAuthSessionStatus::kSuccess) {
       LOG(ERROR) << "Failed to prepare start auth session";
       return BioSession(base::NullCallback());
     }
@@ -678,23 +708,23 @@ void CrosFpAuthStackManager::DoEnrollFingerUpEvent(uint32_t event) {
     OnSessionFailed();
 }
 
-bool CrosFpAuthStackManager::PrepareStartAuthSession(
+StartAuthSessionStatus CrosFpAuthStackManager::PrepareStartAuthSession(
     const StartAuthSessionRequest& request) {
   if (!cros_dev_->SetNonceContext(
           brillo::BlobFromString(request.gsc_nonce()),
           brillo::BlobFromString(request.encrypted_label_seed()),
           brillo::BlobFromString(request.iv()))) {
     LOG(ERROR) << "Failed to set nonce context";
-    return false;
+    return StartAuthSessionStatus::kSetContextFailed;
   }
   if (!cros_dev_->UnlockTemplates(session_manager_->GetNumOfTemplates())) {
     LOG(ERROR) << "Failed to unlock templates.";
-    return false;
+    return StartAuthSessionStatus::kUnlockTemplatesFailed;
   }
   if (!RequestMatchFingerDown()) {
-    return false;
+    return StartAuthSessionStatus::kSetMatchModeFailed;
   }
-  return true;
+  return StartAuthSessionStatus::kSuccess;
 }
 
 bool CrosFpAuthStackManager::RequestMatchFingerDown() {
@@ -748,7 +778,9 @@ void CrosFpAuthStackManager::OnFingerUpEvent(uint32_t event) {
       state_ = State::kNone;
       return;
     }
-    if (!PrepareStartAuthSession(*request)) {
+    StartAuthSessionStatus status = PrepareStartAuthSession(*request);
+    biod_metrics_->SendStartAuthSessionStatus(status);
+    if (status != StartAuthSessionStatus::kSuccess) {
       LOG(ERROR) << "Failed to prepare start auth session";
       OnSessionFailed();
       state_ = State::kNone;
@@ -925,6 +957,8 @@ void CrosFpAuthStackManager::CrosFpMigrator::EnrollLegacyTemplate(
   if (!manager_->CanStartEnroll()) {
     LOG(ERROR) << "Can't enroll legacy template now, current state is: "
                << manager_->CurrentStateToString();
+    manager_->biod_metrics_->SendEnrollLegacyTemplateStatus(
+        EnrollLegacyTemplateStatus::kIncorrectState);
     std::move(callback).Run(false);
     return;
   }
@@ -933,6 +967,8 @@ void CrosFpAuthStackManager::CrosFpMigrator::EnrollLegacyTemplate(
   if (!user_id.has_value()) {
     LOG(ERROR)
         << "Can only enroll legacy template when there is a user session.";
+    manager_->biod_metrics_->SendEnrollLegacyTemplateStatus(
+        EnrollLegacyTemplateStatus::kIncorrectState);
     std::move(callback).Run(false);
     return;
   }
@@ -940,6 +976,8 @@ void CrosFpAuthStackManager::CrosFpMigrator::EnrollLegacyTemplate(
   size_t num_of_templates = manager_->session_manager_->GetNumOfTemplates();
   if (num_of_templates >= manager_->cros_dev_->MaxTemplateCount()) {
     LOG(ERROR) << "No space for an additional template.";
+    manager_->biod_metrics_->SendEnrollLegacyTemplateStatus(
+        EnrollLegacyTemplateStatus::kTemplatesFull);
     std::move(callback).Run(false);
     return;
   }
@@ -949,6 +987,8 @@ void CrosFpAuthStackManager::CrosFpMigrator::EnrollLegacyTemplate(
   if (!legacy_record.has_value()) {
     LOG(ERROR) << "Can't find legacy record with id: "
                << request.legacy_record_id();
+    manager_->biod_metrics_->SendEnrollLegacyTemplateStatus(
+        EnrollLegacyTemplateStatus::kRecordNotFound);
     std::move(callback).Run(false);
     return;
   }
@@ -958,12 +998,16 @@ void CrosFpAuthStackManager::CrosFpMigrator::EnrollLegacyTemplate(
           brillo::BlobFromString(request.encrypted_label_seed()),
           brillo::BlobFromString(request.iv()))) {
     LOG(ERROR) << "Failed to set nonce context";
+    manager_->biod_metrics_->SendEnrollLegacyTemplateStatus(
+        EnrollLegacyTemplateStatus::kSetContextFailed);
     std::move(callback).Run(false);
     return;
   }
 
   if (!manager_->cros_dev_->UnlockTemplates(num_of_templates)) {
     LOG(ERROR) << "Failed to unlock templates.";
+    manager_->biod_metrics_->SendEnrollLegacyTemplateStatus(
+        EnrollLegacyTemplateStatus::kUnlockTemplatesFailed);
     std::move(callback).Run(false);
     return;
   }
@@ -975,9 +1019,13 @@ void CrosFpAuthStackManager::CrosFpMigrator::EnrollLegacyTemplate(
   if (!manager_->cros_dev_->MigrateLegacyTemplate(*user_id,
                                                   legacy_record->tmpl)) {
     LOG(ERROR) << "Failed to migrate legacy template.";
+    manager_->biod_metrics_->SendEnrollLegacyTemplateStatus(
+        EnrollLegacyTemplateStatus::kMigrateCommandFailed);
     std::move(callback).Run(false);
     return;
   }
+  manager_->biod_metrics_->SendEnrollLegacyTemplateStatus(
+      EnrollLegacyTemplateStatus::kSuccess);
   manager_->state_ = State::kEnrollDone;
   std::move(callback).Run(true);
 }
