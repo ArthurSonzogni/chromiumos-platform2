@@ -15,7 +15,10 @@ inline constexpr char kSystemVersion[] = "LENOVO";
 inline constexpr char kSystemProductName[] = "20HQS1MX00";
 inline constexpr char kSystemProductVersion[] = "ThinkPad X1 Carbon 5th";
 inline constexpr char kSystemBiosVersion[] = "N1MET37W";
-inline constexpr bool kSystemUefi = false;
+inline constexpr ash::cros_healthd::mojom::BootMode kBootMode =
+    ash::cros_healthd::mojom::BootMode::kCrosEfiSecure;
+inline constexpr bool kSystemUefi = true;
+inline constexpr bool kSystemSecureboot = true;
 inline constexpr char kCpuModelName[] = "Mock CPU Model";
 inline constexpr int kMemoryKib = 16131552;
 inline constexpr char kPciId[] = "pci:0bda:8153";

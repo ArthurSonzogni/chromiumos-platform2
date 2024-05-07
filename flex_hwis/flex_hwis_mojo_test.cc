@@ -39,11 +39,12 @@ TEST_F(FlexHwisMojoTest, MojoSystem) {
   flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetSystemInfo(&data);
 
-  EXPECT_EQ(data.mutable_dmi_info()->vendor(), kSystemVersion);
-  EXPECT_EQ(data.mutable_dmi_info()->product_name(), kSystemProductName);
-  EXPECT_EQ(data.mutable_dmi_info()->product_version(), kSystemProductVersion);
-  EXPECT_EQ(data.mutable_bios()->bios_version(), kSystemBiosVersion);
-  EXPECT_EQ(data.mutable_bios()->uefi(), kSystemUefi);
+  EXPECT_EQ(data.dmi_info().vendor(), kSystemVersion);
+  EXPECT_EQ(data.dmi_info().product_name(), kSystemProductName);
+  EXPECT_EQ(data.dmi_info().product_version(), kSystemProductVersion);
+  EXPECT_EQ(data.bios().bios_version(), kSystemBiosVersion);
+  EXPECT_EQ(data.bios().uefi(), kSystemUefi);
+  EXPECT_EQ(data.bios().secureboot(), kSystemSecureboot);
 }
 
 TEST_F(FlexHwisMojoTest, MojoCpu) {
@@ -61,7 +62,7 @@ TEST_F(FlexHwisMojoTest, MojoMemory) {
   flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetMemoryInfo(&data);
 
-  EXPECT_EQ(data.mutable_memory()->total_kib(), kMemoryKib);
+  EXPECT_EQ(data.memory().total_kib(), kMemoryKib);
 }
 
 TEST_F(FlexHwisMojoTest, MojoBusEthernet) {
@@ -126,12 +127,11 @@ TEST_F(FlexHwisMojoTest, MojoGraphics) {
   flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetGraphicInfo(&data);
 
-  EXPECT_EQ(data.mutable_graphics_info()->gl_version(), kGraphicsVersion);
-  EXPECT_EQ(data.mutable_graphics_info()->gl_shading_version(),
-            kGraphicsShadingVer);
-  EXPECT_EQ(data.mutable_graphics_info()->gl_vendor(), kGraphicsVendor);
-  EXPECT_EQ(data.mutable_graphics_info()->gl_renderer(), kGraphicsRenderer);
-  EXPECT_EQ(data.mutable_graphics_info()->gl_extensions(0), kGraphicsExtension);
+  EXPECT_EQ(data.graphics_info().gl_version(), kGraphicsVersion);
+  EXPECT_EQ(data.graphics_info().gl_shading_version(), kGraphicsShadingVer);
+  EXPECT_EQ(data.graphics_info().gl_vendor(), kGraphicsVendor);
+  EXPECT_EQ(data.graphics_info().gl_renderer(), kGraphicsRenderer);
+  EXPECT_EQ(data.graphics_info().gl_extensions(0), kGraphicsExtension);
 }
 
 TEST_F(FlexHwisMojoTest, MojoInput) {
@@ -140,9 +140,9 @@ TEST_F(FlexHwisMojoTest, MojoInput) {
   flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetInputInfo(&data);
 
-  EXPECT_EQ(data.mutable_touchpad()->stack(), kTouchpadLibraryName);
-  EXPECT_EQ(data.mutable_touchpad()->driver().size(), 1);
-  EXPECT_EQ(data.mutable_touchpad()->driver()[0], kTouchpadDriverName);
+  EXPECT_EQ(data.touchpad().stack(), kTouchpadLibraryName);
+  EXPECT_EQ(data.touchpad().driver().size(), 1);
+  EXPECT_EQ(data.touchpad().driver()[0], kTouchpadDriverName);
 }
 
 TEST_F(FlexHwisMojoTest, MojoTpm) {
@@ -151,12 +151,12 @@ TEST_F(FlexHwisMojoTest, MojoTpm) {
   flex_hwis_mojo_->SetTelemetryInfoForTesting(telemetry_.Get());
   flex_hwis_mojo_->SetTpmInfo(&data);
 
-  EXPECT_EQ(data.mutable_tpm()->tpm_version(), kTpmFamilyStr);
-  EXPECT_EQ(data.mutable_tpm()->spec_level(), kTpmSpecLevel);
-  EXPECT_EQ(data.mutable_tpm()->manufacturer(), kTpmManufacturer);
-  EXPECT_EQ(data.mutable_tpm()->did_vid(), kTpmDidVid);
-  EXPECT_EQ(data.mutable_tpm()->tpm_allow_listed(), kTpmIsAllowed);
-  EXPECT_EQ(data.mutable_tpm()->tpm_owned(), kTpmOwned);
+  EXPECT_EQ(data.tpm().tpm_version(), kTpmFamilyStr);
+  EXPECT_EQ(data.tpm().spec_level(), kTpmSpecLevel);
+  EXPECT_EQ(data.tpm().manufacturer(), kTpmManufacturer);
+  EXPECT_EQ(data.tpm().did_vid(), kTpmDidVid);
+  EXPECT_EQ(data.tpm().tpm_allow_listed(), kTpmIsAllowed);
+  EXPECT_EQ(data.tpm().tpm_owned(), kTpmOwned);
 }
 
 }  // namespace flex_hwis

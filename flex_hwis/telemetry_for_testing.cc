@@ -20,7 +20,7 @@ void TelemetryForTesting::AddSystemInfo() {
 
   auto& os_info = system_info->os_info;
   os_info = mojom::OsInfo::New();
-  os_info->boot_mode = mojom::BootMode::kCrosSecure;
+  os_info->boot_mode = kBootMode;
 
   info_->system_result =
       mojom::SystemResult::NewSystemInfo({std::move(system_info)});
