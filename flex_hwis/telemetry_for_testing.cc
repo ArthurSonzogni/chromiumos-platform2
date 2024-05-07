@@ -107,9 +107,8 @@ void TelemetryForTesting::AddGraphicsInfo() {
   gles_info->renderer = kGraphicsRenderer;
   gles_info->shading_version = kGraphicsShadingVer;
 
-  auto& extensions = gles_info->extensions;
-  extensions = std::vector<std::string>(1);
-  extensions[0] = kGraphicsExtension;
+  gles_info->extensions = std::vector<std::string>{
+      kGraphicsExtension1, kGraphicsExtension2, kGraphicsExtension3};
 
   info_->graphics_result =
       mojom::GraphicsResult::NewGraphicsInfo({std::move(graphics_info)});

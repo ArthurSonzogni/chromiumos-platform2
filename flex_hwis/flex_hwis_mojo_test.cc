@@ -14,6 +14,7 @@
 #include <diagnostics/mojom/public/cros_healthd_probe.mojom.h>
 #include <diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h>
 #include <diagnostics/mojom/public/cros_healthd_probe.mojom-shared.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/service_constants.h>
@@ -131,7 +132,10 @@ TEST_F(FlexHwisMojoTest, MojoGraphics) {
   EXPECT_EQ(data.graphics_info().gl_shading_version(), kGraphicsShadingVer);
   EXPECT_EQ(data.graphics_info().gl_vendor(), kGraphicsVendor);
   EXPECT_EQ(data.graphics_info().gl_renderer(), kGraphicsRenderer);
-  EXPECT_EQ(data.graphics_info().gl_extensions(0), kGraphicsExtension);
+  EXPECT_THAT(
+      data.graphics_info().gl_extensions(),
+      testing::UnorderedElementsAre(kGraphicsExtension1, kGraphicsExtension2,
+                                    kGraphicsExtension3));
 }
 
 TEST_F(FlexHwisMojoTest, MojoInput) {
