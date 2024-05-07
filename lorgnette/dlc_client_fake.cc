@@ -23,7 +23,7 @@ void DlcClientFake::InstallDlc(const std::set<std::string>& dlc_ids) {
 
 void DlcClientFake::OnDlcSuccess(const std::string& dlc_id) {
   if (success_cb_) {
-    std::move(success_cb_).Run(dlc_id, path_);
+    success_cb_.Run(dlc_id, path_.Append(dlc_id));
   }
 }
 

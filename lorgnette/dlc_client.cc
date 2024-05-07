@@ -17,6 +17,9 @@
 
 namespace lorgnette {
 
+DlcClient::DlcClient()
+    : supported_dlc_ids_(std::set<std::string>({kSaneBackendsPfuDlcId})) {}
+
 void DlcClient::Init(
     std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
         dlcservice_client) {
@@ -26,7 +29,6 @@ void DlcClient::Init(
   dlcservice_client_->RegisterDlcStateChangedSignalHandler(
       base::BindRepeating(&DlcClient::OnDlcStateChanged, weak_ptr),
       base::BindOnce(&DlcClient::OnDlcStateChangedConnect, weak_ptr));
-  supported_dlc_ids_ = std::set<std::string>({kSaneBackendsPfuDlcId});
 }
 
 void DlcClient::SetCallbacks(

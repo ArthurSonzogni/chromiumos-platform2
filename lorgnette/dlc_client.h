@@ -22,7 +22,7 @@ namespace lorgnette {
 
 class DlcClient {
  public:
-  DlcClient() = default;
+  DlcClient();
   DlcClient(const DlcClient&) = delete;
   DlcClient& operator=(const DlcClient&) = delete;
   virtual ~DlcClient() = default;

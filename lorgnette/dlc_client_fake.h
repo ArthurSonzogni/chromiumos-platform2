@@ -27,6 +27,8 @@ class DlcClientFake : public DlcClient {
       success_cb_;
   base::RepeatingCallback<void(const std::string&, const std::string&)>
       failure_cb_;
+  // Base path for the install location for DLCs. The DLC ID will be appended to
+  // this path in order to differentiate between DLCs.
   const base::FilePath path_ = base::FilePath("/test/path/to/dlc");
 };
 

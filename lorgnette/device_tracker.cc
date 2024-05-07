@@ -379,22 +379,21 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
 
   LOG(INFO) << __func__ << ": Enumerating USB devices for " << session_id;
 
-  if (!dlc_completed_successfully_ &&
-      session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_ALWAYS) {
-    dlc_pending_sessions_.insert(session_id);
-    dlc_started_ = true;
-    dlc_client_->InstallDlc({kSaneBackendsPfuDlcId});
+  std::set<std::string> dlcs_to_install;
+  if (session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_ALWAYS) {
+    for (const auto& id : dlc_client_->GetSupportedDlcIds()) {
+      if (!base::Contains(dlcs_installed_successfully_, id)) {
+        dlcs_to_install.insert(id);
+      }
+    }
   }
 
   for (auto& device : libusb_->GetDevices()) {
     std::optional<std::string> dlc_id = device->GetNonBundledBackendId();
-    if (!dlc_completed_successfully_ && dlc_id != std::nullopt &&
-        session->dlc_policy != BackendDownloadPolicy::DOWNLOAD_NEVER) {
-      dlc_pending_sessions_.insert(session_id);
-      if (!dlc_started_) {
-        dlc_started_ = true;
-        dlc_client_->InstallDlc({kSaneBackendsPfuDlcId});
-      }
+    if (dlc_id != std::nullopt &&
+        !base::Contains(dlcs_installed_successfully_, *dlc_id) &&
+        session->dlc_policy == BackendDownloadPolicy::DOWNLOAD_IF_NEEDED) {
+      dlcs_to_install.insert(*dlc_id);
     }
     if (device->SupportsIppUsb()) {
       LOG(INFO) << __func__ << ": Device " << device->Description()
@@ -406,13 +405,14 @@ void DeviceTracker::EnumerateUSBDevices(std::string session_id) {
     }
   }
 
+  if (!dlcs_to_install.empty()) {
+    dlc_pending_sessions_[session_id] = dlcs_to_install;
+    dlc_client_->InstallDlc(dlcs_to_install);
+  }
+
   // If DLC download still running
-  if (dlc_started_) {
+  if (base::Contains(dlc_pending_sessions_, session_id)) {
     LOG(INFO) << __func__ << ": Waiting for DLC to finish";
-    if (!base::Contains(dlc_pending_sessions_, session_id)) {
-      // Sanity check, should never enter here
-      dlc_pending_sessions_.insert(session_id);
-    }
   } else {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&DeviceTracker::EnumerateSANEDevices,
@@ -1437,27 +1437,37 @@ void DeviceTracker::OnDlcSuccess(const std::string& dlc_id,
   LOG(INFO) << "DLC install completed for " << dlc_id << " at "
             << file_path.value();
   dlc_root_paths_[dlc_id] = file_path;
-  dlc_started_ = false;
-  dlc_completed_successfully_ = true;
-  for (const std::string& session_id : dlc_pending_sessions_) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(&DeviceTracker::EnumerateSANEDevices,
-                                  weak_factory_.GetWeakPtr(), session_id));
+  dlcs_installed_successfully_.insert(dlc_id);
+  for (auto itr = dlc_pending_sessions_.begin();
+       itr != dlc_pending_sessions_.end();) {
+    itr->second.erase(dlc_id);
+    if (itr->second.empty()) {
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, base::BindOnce(&DeviceTracker::EnumerateSANEDevices,
+                                    weak_factory_.GetWeakPtr(), itr->first));
+      dlc_pending_sessions_.erase(itr++);
+    } else {
+      itr++;
+    }
   }
-  dlc_pending_sessions_.clear();
 }
 
 void DeviceTracker::OnDlcFailure(const std::string& dlc_id,
                                  const std::string& error_msg) {
-  LOG(ERROR) << "DLC install failed with message: " << error_msg;
-  dlc_started_ = false;
-  dlc_completed_successfully_ = false;
-  for (std::string session_id : dlc_pending_sessions_) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(&DeviceTracker::EnumerateSANEDevices,
-                                  weak_factory_.GetWeakPtr(), session_id));
+  LOG(ERROR) << "DLC install failed with message: " << error_msg << "for "
+             << dlc_id;
+  for (auto itr = dlc_pending_sessions_.begin();
+       itr != dlc_pending_sessions_.end();) {
+    itr->second.erase(dlc_id);
+    if (itr->second.empty()) {
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, base::BindOnce(&DeviceTracker::EnumerateSANEDevices,
+                                    weak_factory_.GetWeakPtr(), itr->first));
+      dlc_pending_sessions_.erase(itr++);
+    } else {
+      itr++;
+    }
   }
-  dlc_pending_sessions_.clear();
 }
 
 std::optional<base::FilePath> DeviceTracker::GetDlcRootPath(

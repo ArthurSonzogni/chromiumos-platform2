@@ -272,8 +272,12 @@ class DeviceTracker {
   // isn't downloaded multiple times.
   bool dlc_completed_successfully_;
 
-  // List of all the sessions currently waiting for DLC download to complete
-  std::set<std::string> dlc_pending_sessions_;
+  // Set of all DLCs installed successfully.
+  std::set<std::string> dlcs_installed_successfully_;
+
+  // Map of all the sessions currently waiting for DLC download to complete and
+  // which DLCs the session is waiting on.
+  std::map<std::string, std::set<std::string>> dlc_pending_sessions_;
 
   // Mapping from discovery session IDs to session state.
   // The session_id is passed around instead of a pointer to avoid creating

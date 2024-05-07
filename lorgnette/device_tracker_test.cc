@@ -53,6 +53,12 @@ namespace {
 constexpr char kEpson2Name[] = "epson2:net:127.0.0.1";
 constexpr char kEpsonDsName[] = "epsonds:libusb:003:002";
 
+enum class DlcType {
+  kNoDlc,
+  kSingleDlc,
+  kMultipleDlcs,
+};
+
 ScanParameters MakeScanParameters(int width, int height) {
   return {
       .format = FrameFormat::kRGB,
@@ -123,7 +129,7 @@ UsbDeviceBundle MakeIPPUSBDevice(const std::string& model) {
 class DlcDeviceTrackerTest : public testing::Test {
  protected:
   std::unique_ptr<DeviceTracker> DlcMinimalDiscoverySetup(
-      base::RunLoop* run_loop, bool add_dlc_device = false) {
+      base::RunLoop* run_loop, DlcType dlc_type = DlcType::kNoDlc) {
     std::vector<std::unique_ptr<UsbDevice>> device_list;
 
     // Scanners that need DLC backend
@@ -132,7 +138,7 @@ class DlcDeviceTrackerTest : public testing::Test {
     VidPid device3 = {0x432, 0x342};
     dlc_backend_scanners_ = {{device1, kSaneBackendsPfuDlcId},
                              {device2, kSaneBackendsPfuDlcId},
-                             {device3, kSaneBackendsPfuDlcId}};
+                             {device3, kSaneBackendsExtrasDlcId}};
 
     device_desc_.bDeviceClass = LIBUSB_CLASS_PER_INTERFACE;
     device_desc_.bNumConfigurations = 1;
@@ -185,11 +191,23 @@ class DlcDeviceTrackerTest : public testing::Test {
     dlc_usb_printer->MutableDeviceDescriptor().idProduct = 0x231;
     dlc_usb_printer->MutableDeviceDescriptor().idVendor = 0x832;
 
+    // Second USB printer with different DLC required (Correct vid pid)
+    auto second_dlc_usb_printer = UsbDeviceFake::Clone(*usb_printer_.get());
+    second_dlc_usb_printer->MutableConfigDescriptor(0).interface =
+        printer_interface_.get();
+    second_dlc_usb_printer->SetStringDescriptors(
+        {"", "GoogleTest", "USB Printer 3000"});
+    second_dlc_usb_printer->MutableDeviceDescriptor().idProduct = 0x342;
+    second_dlc_usb_printer->MutableDeviceDescriptor().idVendor = 0x432;
+
     device_list.emplace_back(std::move(usb_printer_));
     device_list.emplace_back(std::move(no_dlc_usb_printer));
     device_list.emplace_back(std::move(no_dlc_usb_printer2));
-    if (add_dlc_device) {
+    if (dlc_type == DlcType::kSingleDlc) {
       device_list.emplace_back(std::move(dlc_usb_printer));
+    } else if (dlc_type == DlcType::kMultipleDlcs) {
+      device_list.emplace_back(std::move(dlc_usb_printer));
+      device_list.emplace_back(std::move(second_dlc_usb_printer));
     }
     libusb_->SetDevices(std::move(device_list));
 
@@ -317,6 +335,8 @@ class DeviceTrackerTest : public testing::Test {
     firewall_manager_ =
         std::make_unique<MockFirewallManager>(/*interface=*/"test");
     tracker_->SetFirewallManager(firewall_manager_.get());
+    dlc_client_ = std::make_unique<DlcClientFake>();
+    tracker_->SetDlcClient(dlc_client_.get());
   }
 
   void TearDown() override {
@@ -382,6 +402,7 @@ class DeviceTrackerTest : public testing::Test {
   std::unique_ptr<SaneClientFake> sane_client_;
   std::unique_ptr<LibusbWrapperFake> libusb_;
   std::unique_ptr<MockFirewallManager> firewall_manager_;
+  std::unique_ptr<DlcClientFake> dlc_client_;
   std::unique_ptr<DeviceTracker> tracker_;  // Must come after all the mocks.
   base::ScopedTempDir socket_dir_;
 
@@ -497,7 +518,7 @@ TEST_F(DlcDeviceTrackerTest, TestNeverDownloadDlcPolicy) {
   base::test::SingleThreadTaskEnvironment task_environment;
   base::RunLoop run_loop;
   // Add dlc requiring devices
-  auto tracker = DlcMinimalDiscoverySetup(&run_loop, true);
+  auto tracker = DlcMinimalDiscoverySetup(&run_loop, DlcType::kSingleDlc);
 
   MockFirewallManager firewall_manager(/*interface=*/"test");
   tracker->SetFirewallManager(&firewall_manager);
@@ -567,7 +588,7 @@ TEST_F(DlcDeviceTrackerTest, TestDownloadIfNeededDlcPolicyWithDlcDevices) {
   base::test::SingleThreadTaskEnvironment task_environment;
   base::RunLoop run_loop;
   // Add DLC requiring devices
-  auto tracker = DlcMinimalDiscoverySetup(&run_loop, true);
+  auto tracker = DlcMinimalDiscoverySetup(&run_loop, DlcType::kSingleDlc);
 
   MockFirewallManager firewall_manager(/*interface=*/"test");
   tracker->SetFirewallManager(&firewall_manager);
@@ -595,7 +616,8 @@ TEST_F(DlcDeviceTrackerTest, TestDownloadIfNeededDlcPolicyWithDlcDevices) {
   run_loop.Run();
   // DLC installed because 1 device needed it.
   ASSERT_NE(tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), std::nullopt);
-  EXPECT_EQ(*tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), root_path_);
+  EXPECT_EQ(*tracker->GetDlcRootPath(kSaneBackendsPfuDlcId),
+            root_path_.Append(kSaneBackendsPfuDlcId));
 }
 
 // Policy: Always download
@@ -631,7 +653,50 @@ TEST_F(DlcDeviceTrackerTest, TestAlwaysDownloadDlcPolicy) {
 
   run_loop.Run();
   ASSERT_NE(tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), std::nullopt);
-  EXPECT_EQ(*tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), root_path_);
+  EXPECT_EQ(*tracker->GetDlcRootPath(kSaneBackendsPfuDlcId),
+            root_path_.Append(kSaneBackendsPfuDlcId));
+}
+
+// Policy: Download if needed
+// Will install multiple DLCs since DLC devices are detected.
+TEST_F(DlcDeviceTrackerTest,
+       TestDownloadIfNeededDlcPolicyWithMultipleDlcDevices) {
+  base::test::TaskEnvironment task_environment;
+  base::RunLoop run_loop;
+  // Add DLC requiring devices
+  auto tracker = DlcMinimalDiscoverySetup(&run_loop, DlcType::kMultipleDlcs);
+
+  MockFirewallManager firewall_manager(/*interface=*/"test");
+  tracker->SetFirewallManager(&firewall_manager);
+  EXPECT_CALL(firewall_manager, RequestPortsForDiscovery()).WillRepeatedly([] {
+    std::vector<PortToken> retval;
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/8612));
+    retval.emplace_back(PortToken(/*firewall_manager=*/nullptr, /*port=*/1865));
+    return retval;
+  });
+
+  // Set fake DLC client
+  auto dlc_client = std::make_unique<DlcClientFake>();
+  tracker->SetDlcClient(dlc_client.get());
+
+  StartScannerDiscoveryRequest start_request;
+
+  // DOWNLOAD_IF_NEEDED Policy
+  start_request.set_client_id("dlc_client");
+  start_request.set_download_policy(BackendDownloadPolicy::DOWNLOAD_IF_NEEDED);
+  StartScannerDiscoveryResponse response1 =
+      tracker->StartScannerDiscovery(start_request);
+  EXPECT_TRUE(response1.started());
+  EXPECT_FALSE(response1.session_id().empty());
+
+  run_loop.Run();
+  // DLC installed because 2 devices needed it.
+  ASSERT_NE(tracker->GetDlcRootPath(kSaneBackendsPfuDlcId), std::nullopt);
+  EXPECT_EQ(*tracker->GetDlcRootPath(kSaneBackendsPfuDlcId),
+            root_path_.Append(kSaneBackendsPfuDlcId));
+  ASSERT_NE(tracker->GetDlcRootPath(kSaneBackendsExtrasDlcId), std::nullopt);
+  EXPECT_EQ(*tracker->GetDlcRootPath(kSaneBackendsExtrasDlcId),
+            root_path_.Append(kSaneBackendsExtrasDlcId));
 }
 
 // Test the whole flow with several fake USB devices.  Confirm that
