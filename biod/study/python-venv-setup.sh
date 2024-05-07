@@ -32,10 +32,17 @@ main() {
     fi
 
     # Install dependencies in the new virtual environment.
-    if ! "${loc}/bin/pip3" install -r "${script_dir}/requirements.txt"; then
-        echo "Error - Failed to install python dependencies." >&2
-        exit 1
-    fi
+    local requirements=(
+        "${script_dir}/requirements.txt"
+        "${script_dir}/analysis-tool/requirements.txt"
+    )
+    local req
+    for req in "${requirements[@]}"; do
+        if ! "${loc}/bin/pip3" install -r "${req}"; then
+            echo "Error - Failed to install python dependencies '${req}'." >&2
+            exit 1
+        fi
+    done
 
     # Setup gitignore.
     echo -e "# This directory should not be committed.\n*" >"${loc}/.gitignore"
