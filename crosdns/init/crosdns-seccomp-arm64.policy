@@ -54,6 +54,7 @@ getpid: 1
 prlimit64: arg2 == 0 && arg3 != 0
 futex: 1
 uname: 1
+eventfd2: 1
 
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: arg2 == SIGABRT

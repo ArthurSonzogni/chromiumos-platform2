@@ -63,6 +63,7 @@ futex: 1
 fstatfs64: 1
 fstatfs: 1
 uname: 1
+eventfd2: 1
 
 # tgkill is used by abort() and CHECK()/LOG(FATAL).
 tgkill: arg2 == SIGABRT
