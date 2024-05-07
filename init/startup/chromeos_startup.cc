@@ -610,17 +610,16 @@ bool ChromeosStartup::ExtendPCRForVersionAttestation() {
     return false;
   }
 
-  if (tlcl_->Extend(kVersionAttestationPcr, digest, nullptr) != 0) {
-    if (tlcl_->Close() != 0) {
-      PLOG(WARNING) << "Failure to close TlclWrapper after failure to extend.";
-    } else {
-      PLOG(WARNING) << "Failure to extend PCR with TlclWrapper.";
-    }
-    return false;
-  }
+  base::ScopedClosureRunner close(base::BindOnce(
+      [](hwsec_foundation::TlclWrapper* tlcl) {
+        if (tlcl->Close() != 0) {
+          PLOG(WARNING) << "Failed to shutdown TlclWrapper.";
+        }
+      },
+      tlcl_.get()));
 
-  if (tlcl_->Close() != 0) {
-    PLOG(WARNING) << "Failure to shutdown TlclWrapper.";
+  if (tlcl_->Extend(kVersionAttestationPcr, digest, nullptr) != 0) {
+    PLOG(WARNING) << "Failure to extend PCR with TlclWrapper.";
     return false;
   }
 
