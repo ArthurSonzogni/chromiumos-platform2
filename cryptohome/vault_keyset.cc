@@ -100,12 +100,12 @@ void VaultKeyset::InitializeToAdd(const VaultKeyset& vault_keyset) {
   }
 
   // Set reset_iv if it exists.
-  if (vault_keyset.HasResetIV()) {
+  if (vault_keyset.reset_iv_.has_value()) {
     SetResetIV(vault_keyset.GetResetIV());
   }
 
   // Set FSCrypt policy version
-  if (vault_keyset.HasFSCryptPolicyVersion()) {
+  if (vault_keyset.fscrypt_policy_version_.has_value()) {
     SetFSCryptPolicyVersion(vault_keyset.GetFSCryptPolicyVersion());
   }
 
@@ -1019,10 +1019,6 @@ bool VaultKeyset::IsLECredential() const {
   return false;
 }
 
-bool VaultKeyset::IsSignatureChallengeProtected() const {
-  return flags_ & SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED;
-}
-
 bool VaultKeyset::HasTpmPublicKeyHash() const {
   return tpm_public_key_hash_.has_value();
 }
@@ -1099,10 +1095,6 @@ void VaultKeyset::SetResetIV(const brillo::Blob& iv) {
   reset_iv_ = iv;
 }
 
-bool VaultKeyset::HasResetIV() const {
-  return reset_iv_.has_value();
-}
-
 const brillo::Blob& VaultKeyset::GetResetIV() const {
   CHECK(reset_iv_.has_value());
   return reset_iv_.value();
@@ -1135,32 +1127,6 @@ uint64_t VaultKeyset::GetLELabel() const {
   return le_label_.value();
 }
 
-void VaultKeyset::SetLEFekIV(const brillo::Blob& iv) {
-  le_fek_iv_ = iv;
-}
-
-bool VaultKeyset::HasLEFekIV() const {
-  return le_fek_iv_.has_value();
-}
-
-const brillo::Blob& VaultKeyset::GetLEFekIV() const {
-  CHECK(le_fek_iv_.has_value());
-  return le_fek_iv_.value();
-}
-
-void VaultKeyset::SetLEChapsIV(const brillo::Blob& iv) {
-  le_chaps_iv_ = iv;
-}
-
-bool VaultKeyset::HasLEChapsIV() const {
-  return le_chaps_iv_.has_value();
-}
-
-const brillo::Blob& VaultKeyset::GetLEChapsIV() const {
-  CHECK(le_chaps_iv_.has_value());
-  return le_chaps_iv_.value();
-}
-
 void VaultKeyset::SetResetSalt(const brillo::Blob& reset_salt) {
   reset_salt_ = reset_salt;
 }
@@ -1176,10 +1142,6 @@ const brillo::Blob& VaultKeyset::GetResetSalt() const {
 
 void VaultKeyset::SetFSCryptPolicyVersion(int32_t policy_version) {
   fscrypt_policy_version_ = policy_version;
-}
-
-bool VaultKeyset::HasFSCryptPolicyVersion() const {
-  return fscrypt_policy_version_.has_value();
 }
 
 int32_t VaultKeyset::GetFSCryptPolicyVersion() const {
@@ -1269,12 +1231,6 @@ void VaultKeyset::SetSignatureChallengeInfo(
 void VaultKeyset::SetChapsKey(const brillo::SecureBlob& chaps_key) {
   CHECK(chaps_key.size() == kCryptohomeChapsKeyLength);
   chaps_key_ = chaps_key;
-}
-
-void VaultKeyset::ClearChapsKey() {
-  CHECK(chaps_key_.size() == kCryptohomeChapsKeyLength);
-  chaps_key_.clear();
-  chaps_key_.resize(0);
 }
 
 void VaultKeyset::SetResetSeed(const brillo::SecureBlob& reset_seed) {

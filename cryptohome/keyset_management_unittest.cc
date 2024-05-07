@@ -339,6 +339,7 @@ TEST_F(KeysetManagementTest, AddInitialKeysetSaveError) {
 
   users_[0].key_data = DefaultKeyData();
   auto vk = std::make_unique<NiceMock<MockVaultKeyset>>();
+  vk->Initialize(&platform_, &crypto_);
   EXPECT_CALL(*vk, Save(_)).WillOnce(Return(false));
   EXPECT_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
       .WillOnce(Return(vk.release()));
@@ -348,6 +349,10 @@ TEST_F(KeysetManagementTest, AddInitialKeysetSaveError) {
   auth_state_ = std::make_unique<AuthBlockState>();
   auth_state_->state = pcr_state;
   users_[0].key_data = DefaultKeyData();
+
+  key_blobs_.vkk_key = kSecureBlob32;
+  key_blobs_.vkk_iv = kInitialBlob16;
+  key_blobs_.chaps_iv = kInitialBlob16;
 
   // TEST
 
@@ -403,6 +408,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
 
   // Mock vk to inject encryption failure on new keyset.
   auto mock_vk_to_add = new NiceMock<MockVaultKeyset>();
+  mock_vk_to_add->Initialize(&platform_, &crypto_);
   // Mock vk for existing keyset.
 
   vk_status.value()->CreateRandomResetSeed();

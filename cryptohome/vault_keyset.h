@@ -48,7 +48,7 @@ class VaultKeyset {
 
   // Does not take ownership of platform and crypto. The objects pointed to by
   // them must outlive this object.
-  virtual void Initialize(libstorage::Platform* platform, Crypto* crypto);
+  void Initialize(libstorage::Platform* platform, Crypto* crypto);
 
   // This function initializes the VaultKeyset as a backup keyset by setting the
   // |backup_vk_| field to true. Does not take ownership of platform and crypto.
@@ -59,17 +59,17 @@ class VaultKeyset {
   void InitializeFromSerialized(const SerializedVaultKeyset& serialized);
 
   // Populates the fields from a Vaultkeyset to add a new key for the user.
-  virtual void InitializeToAdd(const VaultKeyset& vault_keyset);
+  void InitializeToAdd(const VaultKeyset& vault_keyset);
 
-  //  The following methods deal with importing another object type into this
-  //  VaultKeyset container.
-  virtual void FromKeys(const VaultKeysetKeys& keys);
-  [[nodiscard]] virtual bool FromKeysBlob(const brillo::SecureBlob& keys_blob);
+  // The following methods deal with importing another object type into this
+  // VaultKeyset container.
+  void FromKeys(const VaultKeysetKeys& keys);
+  [[nodiscard]] bool FromKeysBlob(const brillo::SecureBlob& keys_blob);
 
   // The following two methods export this VaultKeyset container to other
   // objects.
-  [[nodiscard]] virtual bool ToKeys(VaultKeysetKeys* keys) const;
-  [[nodiscard]] virtual bool ToKeysBlob(brillo::SecureBlob* keys_blob) const;
+  [[nodiscard]] bool ToKeys(VaultKeysetKeys* keys) const;
+  [[nodiscard]] bool ToKeysBlob(brillo::SecureBlob* keys_blob) const;
 
   // Do not call Load directly, use KeysetManagement::LoadVaultKeysetForUser.
   [[nodiscard]] virtual bool Load(const base::FilePath& filename);
@@ -84,139 +84,124 @@ class VaultKeyset {
 
   // Encrypts the VaultKeyset fields with the provided |key_blobs| based on the
   // encryption mechanisms provided by the |auth_state|.
-  virtual CryptohomeStatus EncryptEx(const KeyBlobs& key_blobs,
-                                     const AuthBlockState& auth_state);
+  CryptohomeStatus EncryptEx(const KeyBlobs& key_blobs,
+                             const AuthBlockState& auth_state);
 
   // Convenience methods to initialize a new VaultKeyset with random values.
-  virtual void CreateRandomChapsKey();
-  virtual void CreateRandomResetSeed();
-  virtual void CreateFromFileSystemKeyset(
-      const FileSystemKeyset& file_system_keyset);
+  void CreateRandomChapsKey();
+  void CreateRandomResetSeed();
+  void CreateFromFileSystemKeyset(const FileSystemKeyset& file_system_keyset);
 
   // Methods to access runtime class state.
-  virtual const base::FilePath& GetSourceFile() const;
+  const base::FilePath& GetSourceFile() const;
 
-  virtual void SetAuthLocked(bool locked);
-  virtual bool GetAuthLocked() const;
+  void SetAuthLocked(bool locked);
+  bool GetAuthLocked() const;
 
   // Group 1. Methods to access plaintext metadata as stored in AuthBlockState.
   // Returns the SerializedVaultKeyset flags.
-  virtual int32_t GetFlags() const;
-  virtual void SetFlags(int32_t flags);
+  int32_t GetFlags() const;
+  void SetFlags(int32_t flags);
 
   // Getters and setters for the index. See the |legacy_index_| member for a
   // comment explaining the legacy name.
-  virtual void SetLegacyIndex(int index);
-  virtual const int GetLegacyIndex() const;
+  void SetLegacyIndex(int index);
+  const int GetLegacyIndex() const;
 
-  virtual bool HasTpmPublicKeyHash() const;
-  virtual const brillo::Blob& GetTpmPublicKeyHash() const;
-  virtual void SetTpmPublicKeyHash(const brillo::Blob& hash);
+  bool HasTpmPublicKeyHash() const;
+  const brillo::Blob& GetTpmPublicKeyHash() const;
+  void SetTpmPublicKeyHash(const brillo::Blob& hash);
 
-  virtual bool HasPasswordRounds() const;
-  virtual int32_t GetPasswordRounds() const;
+  bool HasPasswordRounds() const;
+  int32_t GetPasswordRounds() const;
 
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  virtual bool HasLastActivityTimestamp() const;
-  virtual int64_t GetLastActivityTimestamp() const;
+  bool HasLastActivityTimestamp() const;
+  int64_t GetLastActivityTimestamp() const;
 
-  virtual bool HasKeyData() const;
-  virtual void SetKeyData(const KeyData& key_data);
-  virtual void ClearKeyData();
-  virtual const KeyData& GetKeyData() const;
+  bool HasKeyData() const;
+  void SetKeyData(const KeyData& key_data);
+  void ClearKeyData();
+  const KeyData& GetKeyData() const;
 
   // Gets the KeyData or return default value if it's empty.
-  virtual KeyData GetKeyDataOrDefault() const;
+  KeyData GetKeyDataOrDefault() const;
 
   // Gets the label from the KeyData.
-  virtual std::string GetLabel() const;
+  std::string GetLabel() const;
 
   // Checks the key data policy for low entropy credential (not the flags).
-  virtual bool IsLECredential() const;
+  bool IsLECredential() const;
 
   // Populates the le cred policy field in |key_data_|. |key_data_| is created
   // if empty. An LE credential is a PinWeaver credential.
-  virtual void SetLowEntropyCredential(bool is_le_cred);
-
-  // Checks the flags field if this is a signature challenge credential.
-  virtual bool IsSignatureChallengeProtected() const;
+  void SetLowEntropyCredential(bool is_le_cred);
 
   // Sets the label on |key_data_|. |key_data_| is created if empty.
-  virtual void SetKeyDataLabel(const std::string& key_label);
+  void SetKeyDataLabel(const std::string& key_label);
 
-  virtual void SetResetIV(const brillo::Blob& iv);
-  virtual bool HasResetIV() const;
-  virtual const brillo::Blob& GetResetIV() const;
+  void SetResetIV(const brillo::Blob& iv);
+  const brillo::Blob& GetResetIV() const;
 
-  virtual void SetLELabel(uint64_t label);
-  virtual bool HasLELabel() const;
-  virtual uint64_t GetLELabel() const;
+  void SetLELabel(uint64_t label);
+  bool HasLELabel() const;
+  uint64_t GetLELabel() const;
 
-  virtual void SetLEFekIV(const brillo::Blob& iv);
-  virtual bool HasLEFekIV() const;
-  virtual const brillo::Blob& GetLEFekIV() const;
+  void SetResetSalt(const brillo::Blob& reset_salt);
+  bool HasResetSalt() const;
+  const brillo::Blob& GetResetSalt() const;
 
-  virtual void SetLEChapsIV(const brillo::Blob& iv);
-  virtual bool HasLEChapsIV() const;
-  virtual const brillo::Blob& GetLEChapsIV() const;
+  void SetFSCryptPolicyVersion(int32_t policy_version);
+  int32_t GetFSCryptPolicyVersion() const;
 
-  virtual void SetResetSalt(const brillo::Blob& reset_salt);
-  virtual bool HasResetSalt() const;
-  virtual const brillo::Blob& GetResetSalt() const;
-
-  virtual void SetFSCryptPolicyVersion(int32_t policy_version);
-  virtual bool HasFSCryptPolicyVersion() const;
-  virtual int32_t GetFSCryptPolicyVersion() const;
-
-  virtual bool HasVkkIv() const;
-  virtual const brillo::Blob& GetVkkIv() const;
+  bool HasVkkIv() const;
+  const brillo::Blob& GetVkkIv() const;
 
   // Group 2. Fields containing wrapped data.
 
-  virtual void SetWrappedKeyset(const brillo::Blob& wrapped_keyset);
-  virtual const brillo::Blob& GetWrappedKeyset() const;
+  void SetWrappedKeyset(const brillo::Blob& wrapped_keyset);
+  const brillo::Blob& GetWrappedKeyset() const;
 
-  virtual bool HasWrappedChapsKey() const;
-  virtual void SetWrappedChapsKey(const brillo::Blob& wrapped_chaps_key);
-  virtual const brillo::Blob& GetWrappedChapsKey() const;
-  virtual void ClearWrappedChapsKey();
+  bool HasWrappedChapsKey() const;
+  void SetWrappedChapsKey(const brillo::Blob& wrapped_chaps_key);
+  const brillo::Blob& GetWrappedChapsKey() const;
+  void ClearWrappedChapsKey();
 
-  virtual bool HasTPMKey() const;
-  virtual void SetTPMKey(const brillo::Blob& tpm_key);
-  virtual const brillo::Blob& GetTPMKey() const;
+  bool HasTPMKey() const;
+  void SetTPMKey(const brillo::Blob& tpm_key);
+  const brillo::Blob& GetTPMKey() const;
 
-  virtual bool HasExtendedTPMKey() const;
-  virtual void SetExtendedTPMKey(const brillo::Blob& tpm_key);
-  virtual const brillo::Blob& GetExtendedTPMKey() const;
+  bool HasExtendedTPMKey() const;
+  void SetExtendedTPMKey(const brillo::Blob& tpm_key);
+  const brillo::Blob& GetExtendedTPMKey() const;
 
-  virtual bool HasWrappedResetSeed() const;
-  virtual void SetWrappedResetSeed(const brillo::Blob& reset_seed);
-  virtual const brillo::Blob& GetWrappedResetSeed() const;
+  bool HasWrappedResetSeed() const;
+  void SetWrappedResetSeed(const brillo::Blob& reset_seed);
+  const brillo::Blob& GetWrappedResetSeed() const;
 
-  virtual bool HasSignatureChallengeInfo() const;
-  virtual const SerializedVaultKeyset::SignatureChallengeInfo&
+  bool HasSignatureChallengeInfo() const;
+  const SerializedVaultKeyset::SignatureChallengeInfo&
   GetSignatureChallengeInfo() const;
-  virtual void SetSignatureChallengeInfo(
+  void SetSignatureChallengeInfo(
       const SerializedVaultKeyset::SignatureChallengeInfo& info);
 
   // Group 3. Unwrapped data.
 
-  virtual const brillo::SecureBlob& GetFek() const;
-  virtual const brillo::SecureBlob& GetFekSig() const;
-  virtual const brillo::SecureBlob& GetFekSalt() const;
-  virtual const brillo::SecureBlob& GetFnek() const;
-  virtual const brillo::SecureBlob& GetFnekSig() const;
-  virtual const brillo::SecureBlob& GetFnekSalt() const;
+  const brillo::SecureBlob& GetFek() const;
+  const brillo::SecureBlob& GetFekSig() const;
+  const brillo::SecureBlob& GetFekSalt() const;
+  const brillo::SecureBlob& GetFnek() const;
+  const brillo::SecureBlob& GetFnekSig() const;
+  const brillo::SecureBlob& GetFnekSalt() const;
 
-  virtual void SetChapsKey(const brillo::SecureBlob& chaps_key);
-  virtual const brillo::SecureBlob& GetChapsKey() const;
-  virtual void ClearChapsKey();
+  void SetChapsKey(const brillo::SecureBlob& chaps_key);
+  const brillo::SecureBlob& GetChapsKey() const;
 
-  virtual void SetResetSeed(const brillo::SecureBlob& reset_seed);
-  virtual const brillo::SecureBlob& GetResetSeed() const;
+  void SetResetSeed(const brillo::SecureBlob& reset_seed);
+  const brillo::SecureBlob& GetResetSeed() const;
 
-  virtual void SetResetSecret(const brillo::SecureBlob& reset_secret);
-  virtual const brillo::SecureBlob& GetResetSecret() const;
+  void SetResetSecret(const brillo::SecureBlob& reset_secret);
+  const brillo::SecureBlob& GetResetSecret() const;
 
   // This populates each sub type of AuthBlockState into the caller allocated
   // object.
