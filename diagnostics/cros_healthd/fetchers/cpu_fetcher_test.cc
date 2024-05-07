@@ -596,6 +596,57 @@ TEST_F(CpuFetcherTest, ModelNameFromQualcommSoCID) {
   ASSERT_EQ(model_name.value(), "Qualcomm Snapdragon SC7180");
 }
 
+// Test that the jep106 SoC ID doesn't confuse us even after upstream
+// commit 3f84aa5ec052 ("base: soc: populate machine name in
+// soc_device_register if empty").
+TEST_F(CpuFetcherTest, ModelNameFromQualcommSoCIDNew) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(GetRootDir()),
+                                           kNoModelNameCpuinfoContents));
+
+  SetFile({kRelativeSoCDevicesDir, "soc0", "family"}, "jep106:0070\n");
+  SetFile({kRelativeSoCDevicesDir, "soc0", "machine"},
+          "Google Lazor (rev9+) with LTE\n");
+  SetFile({kRelativeSoCDevicesDir, "soc0", "soc_id"}, "jep106:0070:01a9\n");
+  SetFile({kRelativeSoCDevicesDir, "soc1", "family"}, "Snapdragon\n");
+  SetFile({kRelativeSoCDevicesDir, "soc1", "soc_id"}, "425\n");
+  SetFile({kRelativeSoCDevicesDir, "soc1", "machine"}, "SC7180\n");
+
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
+
+  auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
+  EXPECT_TRUE(model_name.has_value());
+  ASSERT_EQ(model_name.value(), "Qualcomm Snapdragon SC7180");
+}
+
+// Test that we're not confused even if some other SoC driver somehow shows up.
+TEST_F(CpuFetcherTest, ModelNameFromQualcommSoCIDWithBogus) {
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(GetRootDir()),
+                                           kNoModelNameCpuinfoContents));
+
+  SetFile({kRelativeSoCDevicesDir, "soc0", "family"}, "jep106:0070\n");
+  SetFile({kRelativeSoCDevicesDir, "soc0", "machine"},
+          "Google Lazor (rev9+) with LTE\n");
+  SetFile({kRelativeSoCDevicesDir, "soc0", "soc_id"}, "jep106:0070:01a9\n");
+  SetFile({kRelativeSoCDevicesDir, "soc1", "family"}, "Imaginary\n");
+  SetFile({kRelativeSoCDevicesDir, "soc1", "soc_id"}, "1\n");
+  SetFile({kRelativeSoCDevicesDir, "soc1", "machine"}, "sqrt(-1)\n");
+  SetFile({kRelativeSoCDevicesDir, "soc2", "family"}, "Snapdragon\n");
+  SetFile({kRelativeSoCDevicesDir, "soc2", "soc_id"}, "425\n");
+  SetFile({kRelativeSoCDevicesDir, "soc2", "machine"}, "SC7180\n");
+
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  ASSERT_EQ(cpu_result->get_cpu_info()->physical_cpus.size(), 1);
+
+  auto model_name = cpu_result->get_cpu_info()->physical_cpus[0]->model_name;
+  EXPECT_TRUE(model_name.has_value());
+  ASSERT_EQ(model_name.value(), "Qualcomm Snapdragon SC7180");
+}
+
 // Test that we have soc_id for MediaTek devices
 TEST_F(CpuFetcherTest, ModelNameFromMediaTekSoCID) {
   ASSERT_TRUE(WriteFileAndCreateParentDirs(GetProcCpuInfoPath(GetRootDir()),

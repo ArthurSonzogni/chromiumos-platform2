@@ -58,6 +58,7 @@ constexpr char kArmCpuFlagsKey[] = "Features";
 
 // Used to parse SoCs
 constexpr char kQualcommFamilyName[] = "Snapdragon";
+constexpr char kMediatekFamilyName[] = "MediaTek";
 
 // Regex used to parse /proc/stat.
 constexpr char kRelativeStatFileRegex[] = R"(cpu(\d+)\s+(\d+) \d+ (\d+) (\d+))";
@@ -315,10 +316,14 @@ void ParseSocID(const base::FilePath& root_dir, std::string* model_name) {
     // the SoC. If we find this then we return right away.
     if (ReadAndTrimString(path.Append("family"), &family) &&
         ReadAndTrimString(path.Append("machine"), &machine)) {
-      // "Snapdragon" doesn't include the brand name so add a "Qualcomm" prefix
-      // for better marketing display name.
       if (family == kQualcommFamilyName) {
+        // "Snapdragon" doesn't include the brand name so add a "Qualcomm"
+        // prefix for better marketing display name.
         family = "Qualcomm " + family;
+      } else if (family != kMediatekFamilyName) {
+        // For any not specifically recognized family we don't want the early
+        // return and we'll use the generic jep106 logic below.
+        continue;
       }
       *model_name = family + " " + machine;
       return;
