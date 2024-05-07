@@ -22,6 +22,7 @@ chromeos {
         project: "chromeos/config-internal"
         path: "test/plans/v2/ctpv1_compatible/fingerprint_cq.star"
       }
+      path_regexp_excludes: "biod/study/.*"
     }
   }
 }
