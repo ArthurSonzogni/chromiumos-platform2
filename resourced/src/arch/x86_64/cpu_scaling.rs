@@ -4,6 +4,8 @@
 use std::fs::File;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::io::Write;
+use std::os::unix::prelude::FileExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str;
@@ -25,6 +27,9 @@ const DEVICE_CPUFREQ_PATH: &str = "sys/devices/system/cpu/cpufreq";
 
 /// The threshold divsor for the minimum difference between min and max freq
 const CPU_DIFF_THRESHOLD_DIVISOR: i32 = 4;
+
+/// CPU path used for MSR register
+const DEV_CPU_PATH: &str = "dev/cpu/";
 
 /// Utility class for controlling device CPU parameters.
 /// To be used by resourced-nvpd communication and game mode power steering.
@@ -443,9 +448,102 @@ impl DeviceCpuStatus {
     }
 }
 
+/// Write MSR registers.
+///
+/// Attempts to write MSR with a given address and value.
+///
+/// # Arguments
+///
+/// * `root` - root path relative to sysfs.  Will normally be '/' unless unit testing.
+///
+/// * `msr_value` - Value to write inside MSR register.
+///
+/// * `msr_addr` - Address of MSR register to write.
+///
+/// # Return
+///
+/// Result object indication success or failure.
+pub fn write_msr_on_all_cpus(root: &Path, msr_value: u64, msr_addr: u64) -> Result<()> {
+    let data: [u8; 8] = msr_value.to_le_bytes();
+
+    let cpu_msr_path = root
+        .join(DEV_CPU_PATH)
+        .join("*/")
+        .join("msr")
+        .to_str()
+        .context("Failed to construct {CPU_PATH}/*/msr glob pattern")?
+        .to_string();
+
+    if let Ok(msr_paths) = glob(&cpu_msr_path) {
+        for msr_pathbuf in msr_paths.flatten() {
+            let msr_path = Path::new(&msr_pathbuf);
+
+            if !msr_path.exists() {
+                bail!("MSR file not Found {:?}", msr_path);
+            }
+
+            let mut file = File::options().write(true).open(msr_path).context(format!(
+                "Failed to open MSR file {} in rw mode",
+                msr_path.display()
+            ))?;
+
+            let bytes_written = file.write_at(&data, msr_addr)?;
+            if bytes_written == 8 {
+                info!("Updated MSR {:02X} with value {:02X}", msr_addr, msr_value);
+            } else {
+                bail!(
+                    "Failed to update MSR {:02X} with value {:02X}",
+                    msr_addr,
+                    msr_value
+                );
+            }
+            file.flush()?;
+        }
+    } else {
+        bail!("Could not read msr directory structure");
+    }
+
+    Ok(())
+}
+
+// Only specific Intel SoCs support setting cache allocation through MSRs
+// This method checks current CPU model is one of them
+pub fn intel_cache_allocation_supported(root: &Path) -> Result<bool> {
+    // TODO: enable for RPL post tuning and assessment
+    let llc_sharing_supported_cpu_models = [
+        140, // TGL
+        154, // ADL-P
+             // Models to be include in the future.
+             // 186, // RPL
+             // 190  // ADL-N
+    ];
+
+    let cpuinfo = r"model\s+:\s+(\d+)$";
+    let exp = Regex::new(cpuinfo)?;
+    let path = root.join("proc/cpuinfo");
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    info!("Checking CPU Model id for cache allocation support");
+    for line in reader.lines() {
+        if let Some(result) = exp.captures(&line?) {
+            let model_id: u16 = result[1].to_string().parse::<u16>()?;
+            let supported: bool = llc_sharing_supported_cpu_models.contains(&model_id);
+
+            if supported {
+                info!("CPU Model {} supports cache allocation", model_id);
+            } else {
+                info!("CPU Model {} does not support cache allocation", model_id);
+            }
+            return Ok(supported);
+        }
+    }
+    Ok(false)
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
+    use std::fs;
 
     use tempfile::tempdir;
 
@@ -582,5 +680,79 @@ mod tests {
         )
         .unwrap();
         assert!(!intel_i7_or_above(Path::new(root.path())).unwrap());
+    }
+
+    #[test]
+    pub fn test_is_llc_supported() {
+        let root = tempdir().unwrap();
+        let path = root.path().join("proc");
+        fs::create_dir_all(path.clone()).unwrap();
+
+        let file_path = path.join("cpuinfo");
+
+        // File missing
+        assert!(intel_cache_allocation_supported(root.path()).is_err());
+
+        fs::File::create(path.join("cpuinfo")).unwrap();
+
+        // Supported model(s)
+        fs::write(&file_path, "model           : 140").unwrap();
+        assert!(intel_cache_allocation_supported(root.path()).unwrap());
+        fs::write(&file_path, "model           : 154").unwrap();
+        assert!(intel_cache_allocation_supported(root.path()).unwrap());
+
+        // Malformed model
+        fs::write(&file_path, "no_model").unwrap();
+        assert!(!intel_cache_allocation_supported(root.path()).unwrap());
+        fs::write(&file_path, "model = 140").unwrap();
+        assert!(!intel_cache_allocation_supported(root.path()).unwrap());
+
+        // Unsupported model
+        fs::write(&file_path, "model           : 8080").unwrap();
+        assert!(!intel_cache_allocation_supported(root.path()).unwrap());
+        fs::write(&file_path, "model           : 1542").unwrap();
+        assert!(!intel_cache_allocation_supported(root.path()).unwrap());
+        fs::write(&file_path, "model           : 140 152").unwrap();
+        assert!(!intel_cache_allocation_supported(root.path()).unwrap());
+    }
+
+    pub fn setup_mock_msr_regs(root: PathBuf) {
+        for cpu_idx in 0..MOCK_NUM_CPU {
+            fs::create_dir_all(root.join(DEV_CPU_PATH).join(cpu_idx.to_string())).unwrap();
+
+            fs::write(
+                root.join(DEV_CPU_PATH)
+                    .join(cpu_idx.to_string())
+                    .join("msr"),
+                [0u8; 100],
+            )
+            .unwrap();
+        }
+    }
+
+    #[test]
+    pub fn test_msr_write() {
+        let root = tempdir().unwrap().into_path();
+        let path = root.join(DEV_CPU_PATH);
+
+        let test_msr_addr = 0x20;
+        let test_msr_val = 0x5;
+
+        //setup
+        setup_mock_msr_regs(root.to_owned());
+
+        for i in 0..MOCK_NUM_CPU {
+            let contents = fs::read(path.as_path().join(i.to_string()).join("msr")).unwrap();
+            assert_eq!(0, contents.iter().map(|x| *x as i32).sum());
+        }
+
+        write_msr_on_all_cpus(root.as_path(), test_msr_val, test_msr_addr).unwrap();
+        for i in 0..MOCK_NUM_CPU {
+            let contents = fs::read(path.as_path().join(i.to_string()).join("msr")).unwrap();
+            assert_eq!(
+                test_msr_val as i32,
+                contents.iter().map(|x| *x as i32).sum()
+            );
+        }
     }
 }

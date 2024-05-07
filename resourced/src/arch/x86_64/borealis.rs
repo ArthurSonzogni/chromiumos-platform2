@@ -11,8 +11,10 @@ use log::warn;
 use once_cell::sync::Lazy;
 
 use super::cpu_scaling::double_min_freq;
+use super::cpu_scaling::intel_cache_allocation_supported;
 use super::cpu_scaling::intel_i7_or_above;
 use super::cpu_scaling::set_min_cpu_freq;
+use super::cpu_scaling::write_msr_on_all_cpus;
 use super::gpu_freq_scaling::intel_device;
 use crate::common::read_from_file;
 use crate::common::TuneSwappiness;
@@ -38,6 +40,15 @@ const DEVICE_RPS_DEFAULT_PATH_UP: &str =
 const DEVICE_RPS_DEFAULT_PATH_DOWN: &str =
     "sys/class/drm/card0/gt/gt0/.defaults/rps_down_threshold_pct";
 
+// MSR address/values for LLC cache
+// MSR register programming guide can be found at https://www.intel.com/content/dam/develop/external/us/en/documents/335592-sdm-vol-4.pdf
+const CACHE_ALLOC_MSR1_ADDR: u64 = 0xc90;
+const CACHE_ALLOC_MSR2_ADDR: u64 = 0x1890;
+const CACHE_ALLOC_MSR1_VALUE: u64 = 0x007;
+const CACHE_ALLOC_MSR2_VALUE: u64 = 0xFF8;
+const CACHE_ALLOC_MSR1_DEFAULT: u64 = 0xFFF;
+const CACHE_ALLOC_MSR2_DEFAULT: u64 = 0xFFFFFF;
+
 pub fn apply_borealis_tuning(root: &Path, enable: bool) -> Option<TuneSwappiness> {
     if enable {
         match intel_device::run_active_gpu_tuning(GPU_TUNING_POLLING_INTERVAL_MS) {
@@ -53,11 +64,16 @@ pub fn apply_borealis_tuning(root: &Path, enable: bool) -> Option<TuneSwappiness
         if intel_device::is_intel_device(root.to_path_buf()) && power_is_ac {
             match set_rps_thresholds(root, GAMEMODE_RPS_UP, GAMEMODE_RPS_DOWN) {
                 Ok(_) => {
-                    info! {"Set RPS up/down freq to {:?}/{:?}",GAMEMODE_RPS_UP,GAMEMODE_RPS_DOWN}
+                    info!(
+                        "Set RPS up/down freq to {:?}/{:?}",
+                        GAMEMODE_RPS_UP, GAMEMODE_RPS_DOWN
+                    )
                 }
                 Err(e) => {
-                    warn! {"Failed to set RPS up/down values to {:?}/{:?}, {:?}"
-                    ,GAMEMODE_RPS_UP,GAMEMODE_RPS_DOWN, e}
+                    warn!(
+                        "Failed to set RPS up/down values to {:?}/{:?}, {:?}",
+                        GAMEMODE_RPS_UP, GAMEMODE_RPS_DOWN, e
+                    )
                 }
             }
         }
@@ -66,46 +82,78 @@ pub fn apply_borealis_tuning(root: &Path, enable: bool) -> Option<TuneSwappiness
         match intel_i7_or_above(Path::new(&root)) {
             Ok(res) => {
                 if res && power_is_ac && double_min_freq(Path::new(&root)).is_err() {
-                    warn! {"Failed to double scaling min freq"};
+                    warn!("Failed to double scaling min freq");
                 }
             }
             Err(_) => {
-                warn! {"Failed to check if device is Intel i7 or above"};
+                warn!("Failed to check if device is Intel i7 or above");
             }
         }
+
+        // Setting cache allocation for game mode
+        match intel_cache_allocation_supported(root) {
+            Ok(res) => {
+                if res {
+                    if let Err(e) = set_cache_allocation(root) {
+                        warn!("Failed to set cache allocation MSRs, {:?}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                warn!("Failed to check cache allocation support, {:?}", e);
+            }
+        }
+
         // Tuning Transparent huge pages.
         if let Err(e) = set_thp(THPMode::Always) {
-            warn! {"Failed to tune TPH: {:?}", e};
+            warn!("Failed to tune TPH: {:?}", e);
         }
 
         Some(TuneSwappiness {
             swappiness: TUNED_SWAPPINESS_VALUE,
         })
     } else {
+        //RESET codepath
         if intel_device::is_intel_device(root.to_path_buf()) {
             match reset_rps_thresholds(root) {
                 Ok(_) => {
-                    info! {"reset RPS up/down freq to defaults"}
+                    info!("reset RPS up/down freq to defaults")
                 }
                 Err(e) => {
-                    warn! {"Failed to set RPS up/down values to defaults, due to {:?}"
-                    ,e}
+                    warn!(
+                        "Failed to set RPS up/down values to defaults, due to {:?}",
+                        e
+                    )
                 }
             }
         }
         match intel_i7_or_above(Path::new(&root)) {
             Ok(res) => {
                 if res && set_min_cpu_freq(Path::new(&root)).is_err() {
-                    warn! {"Failed to set cpu min back to default values"};
+                    warn!("Failed to set cpu min back to default values");
                 }
             }
             Err(_) => {
-                warn! {"Failed to check if device is Intel i7 or above"};
+                warn!("Failed to check if device is Intel i7 or above");
+            }
+        }
+
+        // Reset cache allocation MSRs to default values
+        match intel_cache_allocation_supported(root) {
+            Ok(res) => {
+                if res {
+                    if let Err(e) = reset_cache_allocation(root) {
+                        warn!("Failed to reset cache allocation MSRs, {:?}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                warn!("Failed to check cache allocation support, {:?}", e);
             }
         }
 
         if let Err(e) = set_thp(THPMode::Default) {
-            warn! {"Failed to set TPH to default: {:?}", e};
+            warn!("Failed to set TPH to default: {:?}", e);
         }
 
         Some(TuneSwappiness {
@@ -145,6 +193,31 @@ fn set_rps_thresholds(root: &Path, up: u64, down: u64) -> Result<()> {
     Ok(())
 }
 
+fn set_cache_allocation(root: &Path) -> Result<()> {
+    if let Err(e) = write_msr_on_all_cpus(root, CACHE_ALLOC_MSR1_VALUE, CACHE_ALLOC_MSR1_ADDR) {
+        bail!("Failed to set cache allocation MSR1 {:?}", e);
+    }
+
+    if let Err(e) = write_msr_on_all_cpus(root, CACHE_ALLOC_MSR2_VALUE, CACHE_ALLOC_MSR2_ADDR) {
+        // Revert the values of MSR1 to default on failure
+        let _ = write_msr_on_all_cpus(root, CACHE_ALLOC_MSR1_DEFAULT, CACHE_ALLOC_MSR1_ADDR);
+        bail!("Failed to set cahce allocation MSR2 {:?}", e);
+    }
+
+    Ok(())
+}
+
+fn reset_cache_allocation(root: &Path) -> Result<()> {
+    if let Err(e) = write_msr_on_all_cpus(root, CACHE_ALLOC_MSR1_DEFAULT, CACHE_ALLOC_MSR1_ADDR) {
+        warn!("Failed to reset cache allocation MSR1 {:?}", e);
+    }
+    if let Err(e) = write_msr_on_all_cpus(root, CACHE_ALLOC_MSR2_DEFAULT, CACHE_ALLOC_MSR2_ADDR) {
+        bail!("Failed to reset cache allocation MSR2 {:?}", e);
+    }
+
+    Ok(())
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum THPMode {
     Default = 0,
@@ -159,7 +232,7 @@ fn set_thp(mode: THPMode) -> Result<()> {
         static ENABLE_THP: Lazy<bool> = Lazy::new(|| match MemInfo::load() {
             Ok(meminfo) => meminfo.total > 9 * 1024 * 1024,
             Err(e) => {
-                warn! {"Failed to validate device memory: {:?}", e};
+                warn!("Failed to validate device memory: {:?}", e);
                 false
             }
         });

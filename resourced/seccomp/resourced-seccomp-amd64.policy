@@ -82,3 +82,7 @@ kcmp: kill
 process_vm_readv: kill
 process_vm_writev: kill
 ptrace: kill
+
+# For reading and writing x86 MSR files
+pread64: 1
+pwrite64: 1
