@@ -432,6 +432,13 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // storage hierarchy.
   TPM_RC CreatePersistentSaltingKey(const std::string& owner_password);
 
+  // This method creates an ECC decryption key to be used for salting widevine
+  // sessions. This method also makes the salting key permanent under the
+  // storage hierarchy.
+  TPM_RC CreatePersistentWidevineSaltingKey(
+      const std::string& owner_password,
+      const std::string& endorsement_password);
+
   // This method returns a partially filled TPMT_PUBLIC structure,
   // which can then be modified by other methods to create the public
   // template for a key. It takes a valid |key_type| tp construct the

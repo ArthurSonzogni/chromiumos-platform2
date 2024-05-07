@@ -17,6 +17,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/sys_byteorder.h>
+#include <brillo/secure_blob.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/openssl_util.h>
 #include <crypto/scoped_openssl_types.h>
@@ -41,6 +42,7 @@
 #include "trunks/tpm_pinweaver.h"
 #include "trunks/tpm_state.h"
 #include "trunks/tpm_u2f.h"
+#include "trunks/tpm_utility.h"
 #include "trunks/trunks_factory.h"
 
 namespace {
@@ -86,6 +88,14 @@ constexpr uint8_t kPwSecretSize = 32;
 
 constexpr uint8_t kGscFipsCmdOnCode = 1;
 constexpr uint8_t kGscFipsCmdGetU2fStatusCode = 13;
+
+// Widevine salting key auth policy value.
+// The value is equal to SHA256("Widevine Salting Key").
+constexpr uint8_t kWidevineSaltingKeyAuthPolicy[] = {
+    0xe1, 0x47, 0xbf, 0x27, 0xe1, 0x74, 0x30, 0xc8, 0x16, 0xab, 0x72,
+    0x4d, 0x5c, 0x77, 0xe1, 0x5c, 0x61, 0x2d, 0x56, 0x81, 0xb3, 0x35,
+    0xcd, 0x9d, 0xeb, 0x67, 0x41, 0x37, 0x69, 0xf0, 0x32, 0x41,
+};
 
 // Returns a serialized representation of the unmodified handle. This is useful
 // for predefined handle values, like TPM_RH_OWNER. For details on what types of
@@ -411,6 +421,13 @@ TPM_RC TpmUtilityImpl::CreateStorageAndSaltingKeys() {
   if (result) {
     LOG(ERROR) << __func__
                << ": Error creating salting key: " << GetErrorString(result);
+    return result;
+  }
+
+  result = CreatePersistentWidevineSaltingKey(kWellKnownPassword, "");
+  if (result) {
+    LOG(ERROR) << __func__ << ": Error creating widevine salting key: "
+               << GetErrorString(result);
     return result;
   }
 
@@ -2598,6 +2615,52 @@ TPM_RC TpmUtilityImpl::CreatePersistentSaltingKey(
   result = factory_.GetTpm()->EvictControlSync(
       TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER), key.get(),
       StringFrom_TPM2B_NAME(key_name), kSaltingKey, owner_delegate.get());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__
+               << ": Failed to evict control sync: " << GetErrorString(result);
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
+TPM_RC TpmUtilityImpl::CreatePersistentWidevineSaltingKey(
+    const std::string& owner_password,
+    const std::string& endorsement_password) {
+  bool exists = false;
+  TPM_RC result = DoesPersistentKeyExist(kWidevineSaltingKey, &exists);
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+  if (exists) {
+    LOG(INFO) << __func__ << ": Widevine salting key already exists.";
+    return TPM_RC_SUCCESS;
+  }
+
+  std::unique_ptr<AuthorizationDelegate> endorsement_delegate =
+      factory_.GetPasswordAuthorization(endorsement_password);
+
+  TPM_HANDLE object_handle;
+  TPM2B_NAME object_name;
+
+  result = GetAuthPolicyEndorsementKey(
+      TPM_ALG_ECC,
+      std::string(std::begin(kWidevineSaltingKeyAuthPolicy),
+                  std::end(kWidevineSaltingKeyAuthPolicy)),
+      endorsement_delegate.get(), &object_handle, &object_name);
+  if (result) {
+    LOG(ERROR) << __func__
+               << ": Get auth policy EK failed: " << GetErrorString(result);
+    return result;
+  }
+
+  ScopedKeyHandle key(factory_, object_handle);
+
+  std::unique_ptr<AuthorizationDelegate> owner_delegate =
+      factory_.GetPasswordAuthorization(owner_password);
+  result = factory_.GetTpm()->EvictControlSync(
+      TPM_RH_OWNER, NameFromHandle(TPM_RH_OWNER), key.get(),
+      StringFrom_TPM2B_NAME(object_name), kWidevineSaltingKey,
+      owner_delegate.get());
   if (result != TPM_RC_SUCCESS) {
     LOG(ERROR) << __func__
                << ": Failed to evict control sync: " << GetErrorString(result);

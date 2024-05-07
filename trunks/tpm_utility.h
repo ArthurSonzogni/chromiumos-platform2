@@ -32,6 +32,8 @@ const TPMI_DH_PERSISTENT kStorageRootKey = PERSISTENT_FIRST;
 // Deprecated: kECCStorageRootKey = PERSISTENT_FIRST + 1;
 const TPMI_DH_PERSISTENT kSaltingKey = PERSISTENT_FIRST + 2;
 const TPMI_DH_PERSISTENT kRSAEndorsementKey = PERSISTENT_FIRST + 3;
+// Deprecated: kPinweaverSaltingKey = PERSISTENT_FIRST + 4;
+const TPMI_DH_PERSISTENT kWidevineSaltingKey = PERSISTENT_FIRST + 5;
 
 // VENDOR_RC_ERR | VENDOR_RC_NO_SUCH_COMMAND
 const int TPM_RC_NO_SUCH_COMMAND = 0x57f;
