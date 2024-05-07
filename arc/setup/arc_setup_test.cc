@@ -131,7 +131,8 @@ TEST(ArcSetup, TestOnetimeSetupStop) {
   base::ScopedTempDir temp_directory;
   ASSERT_TRUE(temp_directory.CreateUniqueTempDir());
   const base::FilePath config_json(temp_directory.GetPath().Append("json"));
-  ASSERT_TRUE(WriteToFile(config_json, 0700, "{\"WRITABLE_MOUNT\": false}"));
+  ASSERT_TRUE(
+      WriteToFile(config_json, 0700, "{\"ANDROID_DEBUGGABLE\": false}"));
 
   ArcSetup setup(Mode::ONETIME_SETUP, config_json);
   setup.set_arc_mounter_for_testing(std::make_unique<MockArcMounter>());

@@ -2340,23 +2340,16 @@ void ArcSetup::StopNetworking() {
 }
 
 void ArcSetup::MountOnOnetimeSetup() {
-  const bool is_writable = config_.GetBoolOrDie("WRITABLE_MOUNT");
-  const unsigned long writable_flag =  // NOLINT(runtime/int)
-      is_writable ? 0 : MS_RDONLY;
-
-  if (is_writable)
-    EXIT_IF(!arc_mounter_->Remount(base::FilePath("/"), 0 /* rw */, nullptr));
-
   // Try to drop as many privileges as possible. If we end up starting ARC,
   // we'll bind-mount the rootfs directory in the container-side with the
   // appropriate flags.
   EXIT_IF(!arc_mounter_->LoopMount(
       kSystemImage, arc_paths_->android_rootfs_directory,
       LoopMountFilesystemType::kUnspecified,
-      MS_NOEXEC | MS_NOSUID | MS_NODEV | writable_flag));
+      MS_NOEXEC | MS_NOSUID | MS_NODEV | MS_RDONLY));
 
   unsigned long kBaseFlags =  // NOLINT(runtime/int)
-      writable_flag | MS_NOEXEC | MS_NOSUID;
+      MS_RDONLY | MS_NOEXEC | MS_NOSUID;
 
   // Though we can technically mount these in mount namespace with minijail,
   // we do not bother to handle loopback mounts by ourselves but just mount it

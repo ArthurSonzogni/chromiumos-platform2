@@ -11,11 +11,9 @@ executable just for performance and better testability.
 
 ## `/usr/share/arc-setup/config.json`
 
-`config.json` is the configuration file for `arc-setup`. Currently, the
-following configurations are in the file:
-
-### `ANDROID_DEBUGGABLE`
-
+`config.json` is the configuration file for `arc-setup`. Currently, only
+`ANDROID_DEBUGGABLE` is defined in this file, which is rewritten by
+`board_specific_setup.py` at image build time.
 Setting this value to `true` will make Android boot with `ro.debuggable`. This
 should make Android behave *mostly* like an -userdebug image.
 
@@ -28,20 +26,5 @@ A non-comprehensive list of caveats:
 * `su` will be missing.
 * `strace` won't work.
 * The build type will still be -user.
-
-### `WRITABLE_MOUNT`
-
-Setting this value to `true` will make the Android root, and images for sdcard
-etc. filesystems read-write. Note that the images themselves need to be in a
-format that supports being mounted this way (e.g. ext4), which is not true of
-the default format (squashfs).
-
-## `config.json` and build/debug scripts
-
-Several scripts modify the variables in `config.json`:
-
-* `board_specific_setup.sh` rewrites `ANDROID_DEBUGGABLE` at image build time.
-* `setup_writable_android_mount.sh` which is a debug script in Android
-  repository rewrites `WRITABLE_MOUNT`.
 
 Be careful when adding, removing, or renaming the entries.

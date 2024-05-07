@@ -1,4 +1,3 @@
 {
-  "ANDROID_DEBUGGABLE": false,
-  "WRITABLE_MOUNT": false
+  "ANDROID_DEBUGGABLE": false
 }
