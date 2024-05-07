@@ -713,6 +713,16 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
       ReportDownloadsMigrationOperation("RemoveReappearedDownloads", ok);
       PLOG_IF(ERROR, !ok) << "Cannot remove the reappeared ~/Downloads folder";
     }
+
+    // Clean up the old ~/Downloads-backup folder if it is still there.
+    if (platform_->DirectoryExists(downloads_backup)) {
+      ok = platform_->DeletePathRecursively(downloads_backup);
+      ReportDownloadsMigrationOperation("CleanUp", ok);
+      PLOG_IF(ERROR, !ok)
+          << "Cannot delete old backup folder ~/Downloads-backup";
+      LOG_IF(INFO, ok) << "Deleted old backup folder ~/Downloads-backup";
+    }
+
     return true;
   }
 

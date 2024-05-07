@@ -1379,6 +1379,28 @@ TEST_F(DownloadsBindMountMigrationTest,
   }
 }
 
+TEST_F(DownloadsBindMountMigrationTest, BackupFolderIsCleanedUpAfterMigration) {
+  SetUpAndVerifyUserHome(/*bind_mount_downloads*/ false);
+
+  // Create ~/Downloads-backup folder.
+  ASSERT_TRUE(platform_.CreateDirectory(downloads_backup_));
+  ASSERT_TRUE(platform_.DirectoryExists(downloads_backup_));
+
+  // Create a test file in ~/Downloads-backup.
+  ASSERT_TRUE(CreateTestFileAtPath(downloads_backup_.Append("file")));
+
+  // Unmount and remount.
+  mount_helper_->UnmountAll();
+  ASSERT_THAT(mount_helper_->PerformMount(
+                  MountType::DIR_CRYPTO, kUser,
+                  SecureBlobToHex(keyset_.KeyReference().fek_sig),
+                  SecureBlobToHex(keyset_.KeyReference().fnek_sig)),
+              IsOk());
+
+  // The ~/Downloads-backup folder should have been cleaned up.
+  EXPECT_FALSE(platform_.DirectoryExists(downloads_backup_));
+}
+
 }  // namespace
 
 class MounterEphemeral : public ::testing::Test {
