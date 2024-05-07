@@ -32,6 +32,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/camera_metadata_utils.h"
+#include "cros-camera/camera_metrics.h"
 #include "cros-camera/constants.h"
 #include "cutils/native_handle.h"
 #include "features/auto_framing/tracing.h"
@@ -597,6 +598,7 @@ void FramingStreamManipulator::CreateUpsampler(
   if (!single_frame_upsampler_->Initialize(dlc_root_path)) {
     LOGF(ERROR) << "Failed to initialize SingleFrameUpsampler";
     single_frame_upsampler_ = nullptr;
+    ++super_res_metrics_.errors[SuperResError::kInitializationError];
   }
 }
 #endif  // USE_CAMERA_FEATURE_SUPER_RES
@@ -624,7 +626,7 @@ bool FramingStreamManipulator::InitializeOnThread(
     LOGF(ERROR) << "Invalid active array size: "
                 << active_array_dimension_.ToString();
     setup_failed_ = true;
-    ++metrics_.errors[AutoFramingError::kInitializationError];
+    ++auto_framing_metrics_.errors[AutoFramingError::kInitializationError];
     return false;
   }
 
@@ -731,7 +733,7 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
   if (!target_size.is_valid()) {
     LOGF(ERROR) << "No valid output stream found in stream config";
     setup_failed_ = true;
-    ++metrics_.errors[AutoFramingError::kConfigurationError];
+    ++auto_framing_metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
   auto [target_aspect_ratio_x, target_aspect_ratio_y] =
@@ -749,7 +751,7 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
   if (!size.has_value()) {
     LOGF(ERROR) << "Can't find suitable resolution for full frame stream";
     setup_failed_ = true;
-    ++metrics_.errors[AutoFramingError::kConfigurationError];
+    ++auto_framing_metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
   full_frame_size_ = size.value();
@@ -793,7 +795,7 @@ bool FramingStreamManipulator::ConfigureStreamsOnThread(
   if (!stream_config->SetStreams(hal_streams)) {
     LOGF(ERROR) << "Failed to manipulate stream config";
     setup_failed_ = true;
-    ++metrics_.errors[AutoFramingError::kConfigurationError];
+    ++auto_framing_metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
 
@@ -839,7 +841,7 @@ bool FramingStreamManipulator::OnConfiguredStreamsOnThread(
       kFullFrameBufferUsage) {
     LOGF(ERROR) << "Failed to negotiate buffer usage on full frame stream";
     setup_failed_ = true;
-    ++metrics_.errors[AutoFramingError::kConfigurationError];
+    ++auto_framing_metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
   full_frame_buffer_pool_ =
@@ -872,7 +874,7 @@ bool FramingStreamManipulator::OnConfiguredStreamsOnThread(
         kStillYuvBufferUsage) {
       LOGF(ERROR) << "Failed to negotiate buffer usage on still YUV stream";
       setup_failed_ = true;
-      ++metrics_.errors[AutoFramingError::kConfigurationError];
+      ++auto_framing_metrics_.errors[AutoFramingError::kConfigurationError];
       return false;
     }
     still_yuv_buffer_pool_ =
@@ -902,7 +904,7 @@ bool FramingStreamManipulator::OnConfiguredStreamsOnThread(
   if (!stream_config->SetStreams(client_streams_)) {
     LOGF(ERROR) << "Failed to recover stream config";
     setup_failed_ = true;
-    ++metrics_.errors[AutoFramingError::kConfigurationError];
+    ++auto_framing_metrics_.errors[AutoFramingError::kConfigurationError];
     return false;
   }
 
@@ -945,7 +947,7 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
     }
   }
 
-  ++metrics_.num_captures;
+  ++auto_framing_metrics_.num_captures;
 
   const base::span<const int32_t>& requested_crop_region =
       request->GetMetadata<int32_t>(ANDROID_SCALER_CROP_REGION);
@@ -963,7 +965,7 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
 
   CaptureContext* ctx = CreateCaptureContext(request->frame_number());
   if (!ctx) {
-    ++metrics_.errors[AutoFramingError::kProcessRequestError];
+    ++auto_framing_metrics_.errors[AutoFramingError::kProcessRequestError];
     return false;
   }
   ctx->state_transition = state_transition;
@@ -1036,7 +1038,7 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
     if (!ctx->full_frame_buffer) {
       LOGF(ERROR) << "Failed to allocate full frame buffer for request "
                   << request->frame_number();
-      ++metrics_.errors[AutoFramingError::kProcessRequestError];
+      ++auto_framing_metrics_.errors[AutoFramingError::kProcessRequestError];
       return false;
     }
     request->AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
@@ -1055,7 +1057,7 @@ bool FramingStreamManipulator::ProcessCaptureRequestOnThread(
     if (!ctx->still_yuv_buffer) {
       LOGF(ERROR) << "Failed to allocate still YUV buffer for request "
                   << request->frame_number();
-      ++metrics_.errors[AutoFramingError::kProcessRequestError];
+      ++auto_framing_metrics_.errors[AutoFramingError::kProcessRequestError];
       return false;
     }
     request->AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
@@ -1296,7 +1298,7 @@ bool FramingStreamManipulator::ProcessFullFrameOnThread(
   if (!full_frame_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
     LOGF(ERROR) << "sync_wait() HAL buffer timed out on capture result "
                 << frame_number;
-    ++metrics_.errors[AutoFramingError::kProcessResultError];
+    ++auto_framing_metrics_.errors[AutoFramingError::kProcessResultError];
     return false;
   }
 
@@ -1328,7 +1330,7 @@ bool FramingStreamManipulator::ProcessFullFrameOnThread(
                              adjusted_crop_region, ScaleMethod::kBicubic);
     if (!release_fence.has_value()) {
       LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
-      ++metrics_.errors[AutoFramingError::kProcessResultError];
+      ++auto_framing_metrics_.errors[AutoFramingError::kProcessResultError];
       return false;
     }
     b.acquire_fence = -1;
@@ -1374,7 +1376,7 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
   if (!ctx->cropped_still_yuv_buffer) {
     LOGF(ERROR) << "Failed to allocate cropped still YUV buffer on result "
                 << frame_number;
-    ++metrics_.errors[AutoFramingError::kProcessResultError];
+    ++auto_framing_metrics_.errors[AutoFramingError::kProcessResultError];
     return false;
   }
   const Rect<float> adjusted_crop_region = AdjustCropRectToTargetAspectRatio(
@@ -1389,7 +1391,7 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
       adjusted_crop_region, ScaleMethod::kLancet);
   if (!release_fence.has_value()) {
     LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
-    ++metrics_.errors[AutoFramingError::kProcessResultError];
+    ++auto_framing_metrics_.errors[AutoFramingError::kProcessResultError];
     return false;
   }
   still_capture_processor_->QueuePendingYuvImage(
@@ -1410,7 +1412,7 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
         ScaleMethod::kLancet);
     if (!fence.has_value()) {
       LOGF(ERROR) << "Failed to crop buffer on result " << frame_number;
-      ++metrics_.errors[AutoFramingError::kProcessResultError];
+      ++auto_framing_metrics_.errors[AutoFramingError::kProcessResultError];
       return false;
     }
     ctx->client_still_yuv_buffer->acquire_fence = -1;
@@ -1670,7 +1672,8 @@ void FramingStreamManipulator::ResetOnThread() {
   region_of_interest_ = Rect<float>(0.0f, 0.0f, 1.0f, 1.0f);
   active_crop_region_ = Rect<float>(0.0f, 0.0f, 1.0f, 1.0f);
 
-  metrics_ = Metrics{};
+  auto_framing_metrics_ = AutoFramingMetrics{};
+  super_res_metrics_ = SuperResMetrics{};
 }
 
 void FramingStreamManipulator::UploadMetricsOnThread() {
@@ -1680,27 +1683,33 @@ void FramingStreamManipulator::UploadMetricsOnThread() {
   const AutoFramingClient::Metrics pipeline_metrics =
       auto_framing_client_.GetMetrics();
   // Skip sessions that no frames are actually captured.
-  if (metrics_.num_captures == 0) {
+  if (auto_framing_metrics_.num_captures == 0) {
     return;
   }
-  VLOGF(1) << "Metrics:" << " num_captures=" << metrics_.num_captures
-           << " enabled_count=" << metrics_.enabled_count
-           << " accumulated_on_time=" << metrics_.accumulated_on_time
-           << " accumulated_off_time=" << metrics_.accumulated_off_time
+  VLOGF(1) << "Auto Framing Metrics:" << " num_captures="
+           << auto_framing_metrics_.num_captures
+           << " enabled_count=" << auto_framing_metrics_.enabled_count
+           << " accumulated_on_time="
+           << auto_framing_metrics_.accumulated_on_time
+           << " accumulated_off_time="
+           << auto_framing_metrics_.accumulated_off_time
            << " num_detections=" << pipeline_metrics.num_detections
            << " num_detection_hits=" << pipeline_metrics.num_detection_hits
            << " accumulated_detection_latency="
            << pipeline_metrics.accumulated_detection_latency;
 
   constexpr base::TimeDelta kRecordThreshold = base::Seconds(10);
-  if (metrics_.accumulated_on_time + metrics_.accumulated_off_time >=
+  if (auto_framing_metrics_.accumulated_on_time +
+          auto_framing_metrics_.accumulated_off_time >=
       kRecordThreshold) {
-    camera_metrics_->SendAutoFramingEnabledTimePercentage(static_cast<int>(
-        metrics_.accumulated_on_time /
-        (metrics_.accumulated_on_time + metrics_.accumulated_off_time) *
-        100.0f));
+    camera_metrics_->SendAutoFramingEnabledTimePercentage(
+        static_cast<int>(auto_framing_metrics_.accumulated_on_time /
+                         (auto_framing_metrics_.accumulated_on_time +
+                          auto_framing_metrics_.accumulated_off_time) *
+                         100.0f));
   }
-  camera_metrics_->SendAutoFramingEnabledCount(metrics_.enabled_count);
+  camera_metrics_->SendAutoFramingEnabledCount(
+      auto_framing_metrics_.enabled_count);
 
   if (pipeline_metrics.num_detections > 0) {
     const int detection_hit_rate = pipeline_metrics.num_detection_hits * 100 /
@@ -1722,7 +1731,7 @@ void FramingStreamManipulator::UploadMetricsOnThread() {
   }
 
   bool has_error = false;
-  for (auto& errors : {metrics_.errors, pipeline_metrics.errors}) {
+  for (auto& errors : {auto_framing_metrics_.errors, pipeline_metrics.errors}) {
     for (auto [error, count] : errors) {
       if (count > 0) {
         // Only report each error once in a session.
@@ -1737,6 +1746,38 @@ void FramingStreamManipulator::UploadMetricsOnThread() {
     camera_metrics_->SendAutoFramingError(AutoFramingError::kNoError);
   }
 #endif  // USE_CAMERA_FEATURE_AUTO_FRAMING
+#if USE_CAMERA_FEATURE_SUPER_RES
+  if (super_res_metrics_.num_still_shot_taken == 0) {
+    return;
+  }
+  VLOGF(1) << "Super Resolution Metrics:" << " num_captures="
+           << super_res_metrics_.num_still_shot_taken
+           << " accumulated_process_latency="
+           << super_res_metrics_.accumulated_process_latency;
+  camera_metrics_->SendSuperResNumStillShotsTaken(
+      super_res_metrics_.num_still_shot_taken);
+
+  const base::TimeDelta avg_process_latency =
+      super_res_metrics_.accumulated_process_latency /
+      super_res_metrics_.num_still_shot_taken;
+  VLOGF(1) << "Average process latency: " << avg_process_latency;
+  camera_metrics_->SendSuperResProcessAvgLatency(avg_process_latency);
+
+  bool super_res_has_error = false;
+  for (auto [error, count] : super_res_metrics_.errors) {
+    if (count > 0) {
+      // Only report each error once per session.
+      LOGF(ERROR) << "There were " << count << " occurrences of error "
+                  << static_cast<int>(error);
+      camera_metrics_->SendSuperResError(error);
+      super_res_has_error = true;
+    }
+  }
+  if (!super_res_has_error) {
+    camera_metrics_->SendSuperResError(SuperResError::kNoError);
+  }
+
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
 }
 
 void FramingStreamManipulator::UpdateOptionsOnThread(
@@ -1859,14 +1900,16 @@ FramingStreamManipulator::StateTransitionOnThread(bool manual_zoom_enabled) {
     LOGF(INFO) << "State: " << static_cast<int>(prev_state) << " -> "
                << static_cast<int>(state_);
     if (prev_state == State::kAutoFramingOn) {
-      metrics_.accumulated_on_time += state_transition_timer_.Elapsed();
+      auto_framing_metrics_.accumulated_on_time +=
+          state_transition_timer_.Elapsed();
     } else if ((prev_state == State::kDisabled &&
                 state_ != State::kManualZoom) ||
                prev_state == State::kAutoFramingOff) {
-      metrics_.accumulated_off_time += state_transition_timer_.Elapsed();
+      auto_framing_metrics_.accumulated_off_time +=
+          state_transition_timer_.Elapsed();
     }
     if (state_ == State::kAutoFramingOn) {
-      ++metrics_.enabled_count;
+      ++auto_framing_metrics_.enabled_count;
     }
     state_transition_timer_ = base::ElapsedTimer();
   }
@@ -1960,6 +2003,8 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
 #if USE_CAMERA_FEATURE_SUPER_RES
   // Perform upsampling on the cropped yuv buffer for still capture.
   if (is_upsample_request) {
+    ++super_res_metrics_.num_still_shot_taken;
+    base::ElapsedTimer timer;
     std::optional<base::ScopedFD> upsample_fence =
         single_frame_upsampler_->ProcessRequest(
             *upsample_input_buffer, output_yuv, EglFence().GetNativeFd(),
@@ -1968,8 +2013,10 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
                                                                      : false);
     if (!upsample_fence.has_value()) {
       LOGF(ERROR) << "Failed to upsample from cropped buffer";
+      ++super_res_metrics_.errors[SuperResError::kUpsampleRequestError];
       return std::nullopt;
     }
+    super_res_metrics_.accumulated_process_latency += timer.Elapsed();
     return upsample_fence;
   }
 #endif  // USE_CAMERA_FEATURE_SUPER_RES

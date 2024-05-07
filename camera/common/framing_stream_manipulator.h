@@ -157,12 +157,18 @@ class FramingStreamManipulator : public StreamManipulator {
     kManualZoom,
   };
 
-  struct Metrics {
+  struct AutoFramingMetrics {
     int num_captures = 0;
     int enabled_count = 0;
     base::TimeDelta accumulated_on_time = base::Seconds(0);
     base::TimeDelta accumulated_off_time = base::Seconds(0);
     base::flat_map<AutoFramingError, int> errors;
+  };
+
+  struct SuperResMetrics {
+    int num_still_shot_taken = 0;
+    base::TimeDelta accumulated_process_latency = base::Seconds(0);
+    base::flat_map<SuperResError, int> errors;
   };
 
   void CreateUpsampler(const base::FilePath& dlc_root_path);
@@ -292,7 +298,8 @@ class FramingStreamManipulator : public StreamManipulator {
   // Session parameters of the latest stream configuration.
   android::CameraMetadata session_parameters_;
 
-  Metrics metrics_;
+  AutoFramingMetrics auto_framing_metrics_;
+  SuperResMetrics super_res_metrics_;
 };
 
 }  // namespace cros

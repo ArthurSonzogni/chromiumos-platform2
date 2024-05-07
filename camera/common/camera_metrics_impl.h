@@ -85,6 +85,10 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendPortraitModeProcessAvgLatency(base::TimeDelta latency) override;
   void SendPortraitModeError(PortraitModeError error) override;
 
+  void SendSuperResNumStillShotsTaken(int num_shots) override;
+  void SendSuperResProcessAvgLatency(base::TimeDelta latency) override;
+  void SendSuperResError(SuperResError error) override;
+
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
 };

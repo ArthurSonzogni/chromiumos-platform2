@@ -217,6 +217,19 @@ constexpr int kPortraitModeLatencyBuckets = 100;
 constexpr char kCameraPortraitModeError[] =
     "ChromeOS.Camera.PortraitMode.Error";
 
+// *** Super Resolution metrics ***
+constexpr char kCameraSuperResNumStillShotsTaken[] =
+    "ChromeOS.Camera.SuperRes.NumStillShotsTaken";
+
+// 0ms -> 3000ms
+constexpr char kCameraSuperResAvgLatency[] =
+    "ChromeOS.Camera.SuperRes.AverageLatency";
+constexpr int kMinSuperResLatencyUs = 0;
+constexpr int kMaxSuperResLatencyUs = 3'000'000;
+constexpr int kSuperResLatencyBuckets = 100;
+
+constexpr char kCameraSuperResError[] = "ChromeOS.Camera.SuperRes.Error";
+
 const char* CameraEffectToString(CameraEffect effect) {
   switch (effect) {
     case CameraEffect::kNone:
@@ -578,6 +591,22 @@ void CameraMetricsImpl::SendPortraitModeProcessAvgLatency(
 
 void CameraMetricsImpl::SendPortraitModeError(PortraitModeError error) {
   metrics_lib_->SendEnumToUMA(kCameraPortraitModeError, error);
+}
+
+void CameraMetricsImpl::SendSuperResNumStillShotsTaken(int num_shots) {
+  metrics_lib_->SendToUMA(kCameraSuperResNumStillShotsTaken, num_shots,
+                          kMinNumShotsTaken, kMaxNumShotsTaken,
+                          kNumShotsTakenBuckets);
+}
+
+void CameraMetricsImpl::SendSuperResProcessAvgLatency(base::TimeDelta latency) {
+  metrics_lib_->SendToUMA(kCameraSuperResAvgLatency, latency.InMicroseconds(),
+                          kMinSuperResLatencyUs, kMaxSuperResLatencyUs,
+                          kSuperResLatencyBuckets);
+}
+
+void CameraMetricsImpl::SendSuperResError(SuperResError error) {
+  metrics_lib_->SendEnumToUMA(kCameraSuperResError, error);
 }
 
 }  // namespace cros

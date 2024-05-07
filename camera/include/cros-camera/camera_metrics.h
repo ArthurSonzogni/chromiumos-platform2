@@ -172,6 +172,17 @@ enum class PortraitModeError {
   kMaxValue = kProcessResultError,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class SuperResError {
+  kNoError = 0,
+  // Error in SingleFrameUpsampler initialization.
+  kInitializationError = 1,
+  // Error in upsampling processing request.
+  kUpsampleRequestError = 2,
+  kMaxValue = kUpsampleRequestError,
+};
+
 class CROS_CAMERA_EXPORT CameraMetrics {
  public:
   static std::unique_ptr<CameraMetrics> New();
@@ -346,6 +357,19 @@ class CROS_CAMERA_EXPORT CameraMetrics {
   // Records whether there's an error that can compromise the
   // Portrait Mode feature.
   virtual void SendPortraitModeError(PortraitModeError error) = 0;
+
+  // *** Super Resolution metrics ***
+
+  // Records the number of super resolution still capture shots taken per
+  // session.
+  virtual void SendSuperResNumStillShotsTaken(int num_shots) = 0;
+
+  // Records the average latency of upsampling processing requests per session.
+  virtual void SendSuperResProcessAvgLatency(base::TimeDelta latency) = 0;
+
+  // Records whether there's an error that can compromise the super resolution
+  // feature.
+  virtual void SendSuperResError(SuperResError error) = 0;
 };
 
 }  // namespace cros
