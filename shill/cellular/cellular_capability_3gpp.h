@@ -360,6 +360,7 @@ class CellularCapability3gpp {
   FRIEND_TEST(CellularCapability3gppTest, SimLockStatusChanged);
   FRIEND_TEST(CellularCapability3gppTest, SimLockStatusToProperty);
   FRIEND_TEST(CellularCapability3gppTest, SimPathChanged);
+  FRIEND_TEST(CellularCapability3gppTest, SimProxyNotInitialized);
   FRIEND_TEST(CellularCapability3gppTest, StartModemInWrongState);
   FRIEND_TEST(CellularCapability3gppTest, UpdateActiveBearers);
   FRIEND_TEST(CellularCapability3gppTest, UpdateLinkSpeed);

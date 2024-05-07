@@ -1334,11 +1334,23 @@ void CellularCapability3gpp::SetUnregistered(bool searching) {
 void CellularCapability3gpp::RequirePin(const std::string& pin,
                                         bool require,
                                         ResultCallback callback) {
+  if (!sim_proxy_) {
+    SLOG(this, 3) << __func__ << " skipping, no SIM proxy";
+    std::move(callback).Run(Error(Error::kWrongState));
+    return;
+  }
+
   sim_proxy_->EnablePin(pin, require, std::move(callback));
 }
 
 void CellularCapability3gpp::EnterPin(const std::string& pin,
                                       ResultCallback callback) {
+  if (!sim_proxy_) {
+    SLOG(this, 3) << __func__ << " skipping, no SIM proxy";
+    std::move(callback).Run(Error(Error::kWrongState));
+    return;
+  }
+
   SLOG(this, 3) << __func__;
   sim_proxy_->SendPin(pin, std::move(callback));
 }
@@ -1346,12 +1358,24 @@ void CellularCapability3gpp::EnterPin(const std::string& pin,
 void CellularCapability3gpp::UnblockPin(const std::string& unblock_code,
                                         const std::string& pin,
                                         ResultCallback callback) {
+  if (!sim_proxy_) {
+    SLOG(this, 3) << __func__ << " skipping, no SIM proxy";
+    std::move(callback).Run(Error(Error::kWrongState));
+    return;
+  }
+
   sim_proxy_->SendPuk(unblock_code, pin, std::move(callback));
 }
 
 void CellularCapability3gpp::ChangePin(const std::string& old_pin,
                                        const std::string& new_pin,
                                        ResultCallback callback) {
+  if (!sim_proxy_) {
+    SLOG(this, 3) << __func__ << " skipping, no SIM proxy";
+    std::move(callback).Run(Error(Error::kWrongState));
+    return;
+  }
+
   sim_proxy_->ChangePin(old_pin, new_pin, std::move(callback));
 }
 

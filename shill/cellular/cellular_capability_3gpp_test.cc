@@ -1372,6 +1372,26 @@ TEST_F(CellularCapability3gppTest, SimPathChanged) {
   EXPECT_EQ("", cellular_->iccid());
 }
 
+TEST_F(CellularCapability3gppTest, SimProxyNotInitialized) {
+  const char kPin[] = "1111";
+  base::test::TestFuture<const Error&> future;
+
+  EXPECT_FALSE(cellular_->sim_present());
+  EXPECT_EQ(nullptr, capability_->sim_proxy_);
+
+  capability_->RequirePin(kPin, true, future.GetCallback());
+  EXPECT_EQ(future.Take().type(), Error::kWrongState);
+
+  capability_->EnterPin(kPin, future.GetCallback());
+  EXPECT_EQ(future.Take().type(), Error::kWrongState);
+
+  capability_->UnblockPin(kPin, kPin, future.GetCallback());
+  EXPECT_EQ(future.Take().type(), Error::kWrongState);
+
+  capability_->ChangePin(kPin, kPin, future.GetCallback());
+  EXPECT_EQ(future.Take().type(), Error::kWrongState);
+}
+
 TEST_F(CellularCapability3gppTest, Reset) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy* modem_proxy = modem_proxy_.get();
