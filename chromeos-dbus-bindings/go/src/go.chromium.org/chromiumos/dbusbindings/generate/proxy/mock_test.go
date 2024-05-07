@@ -8,8 +8,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-
+	"go.chromium.org/chromiumos/dbusbindings/generate/testutil"
 	"go.chromium.org/chromiumos/dbusbindings/introspect"
 	"go.chromium.org/chromiumos/dbusbindings/serviceconfig"
 )
@@ -277,7 +276,7 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -335,7 +334,7 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -386,7 +385,7 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -730,7 +729,7 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -837,7 +836,7 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -918,7 +917,7 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -1003,7 +1002,7 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_MOCK_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }

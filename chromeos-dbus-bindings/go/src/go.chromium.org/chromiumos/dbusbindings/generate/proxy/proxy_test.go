@@ -8,10 +8,9 @@ import (
 	"bytes"
 	"testing"
 
+	"go.chromium.org/chromiumos/dbusbindings/generate/testutil"
 	"go.chromium.org/chromiumos/dbusbindings/introspect"
 	"go.chromium.org/chromiumos/dbusbindings/serviceconfig"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 func TestGenerateProxies(t *testing.T) {
@@ -619,7 +618,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -726,7 +725,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -833,7 +832,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -939,7 +938,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -1378,7 +1377,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -1551,7 +1550,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -1734,7 +1733,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -1974,7 +1973,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -2210,7 +2209,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -2506,7 +2505,7 @@ class ObjectManagerProxy : public dbus::ObjectManager::Interface {
 #endif  // ____CHROMEOS_DBUS_BINDING___TMP_PROXY_H
 `
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }

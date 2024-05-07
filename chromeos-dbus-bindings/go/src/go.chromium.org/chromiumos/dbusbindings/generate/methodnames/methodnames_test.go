@@ -9,9 +9,8 @@ import (
 	"testing"
 
 	"go.chromium.org/chromiumos/dbusbindings/generate/methodnames"
+	"go.chromium.org/chromiumos/dbusbindings/generate/testutil"
 	"go.chromium.org/chromiumos/dbusbindings/introspect"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 const (
@@ -98,7 +97,7 @@ func TestGenerateMethodnames(t *testing.T) {
 		t.Errorf("Generate got error, want nil: %v", err)
 	}
 
-	if diff := cmp.Diff(out.String(), want); diff != "" {
+	if diff := testutil.DiffLines(out.String(), want); diff != "" {
 		t.Errorf(" failed (-got +want):\n%s", diff)
 	}
 }

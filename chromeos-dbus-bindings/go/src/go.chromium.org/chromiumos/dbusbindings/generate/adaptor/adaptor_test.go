@@ -9,9 +9,8 @@ import (
 	"testing"
 	"text/template"
 
+	"go.chromium.org/chromiumos/dbusbindings/generate/testutil"
 	"go.chromium.org/chromiumos/dbusbindings/introspect"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 const (
@@ -264,7 +263,7 @@ func TestGenerateAdaptors(t *testing.T) {
 		t.Fatalf("Generate got error, want nil: %v", err)
 	}
 
-	if diff := cmp.Diff(out.String(), generateAdaptorsOutput); diff != "" {
+	if diff := testutil.DiffLines(out.String(), generateAdaptorsOutput); diff != "" {
 		t.Errorf("Generate failed (-got +want):\n%s", diff)
 	}
 }
@@ -372,7 +371,7 @@ func TestInterfaceMethodsTempl(t *testing.T) {
 		if err := tmpl.Execute(out, tc.input); err != nil {
 			t.Fatalf("interfaceMethodsTempl execute got error, want nil: %v", err)
 		}
-		if diff := cmp.Diff(out.String(), tc.want); diff != "" {
+		if diff := testutil.DiffLines(out.String(), tc.want); diff != "" {
 			t.Errorf("interfaceMethodsTempl execute faild, interface name is %s\n(-got +want):\n%s", tc.input.Name, diff)
 		}
 	}
@@ -517,7 +516,7 @@ func TestRegisterWithDBusObjectTmpl(t *testing.T) {
 		if err := tmpl.Execute(out, tc.input); err != nil {
 			t.Fatalf("registerWithDBusObjectTmpl execute got error, want nil: %v", err)
 		}
-		if diff := cmp.Diff(out.String(), tc.want); diff != "" {
+		if diff := testutil.DiffLines(out.String(), tc.want); diff != "" {
 			t.Errorf("registerWithDBusObjectTmpl execute faild, interface name is %s\n(-got +want):\n%s", tc.input.Name, diff)
 		}
 	}
@@ -612,7 +611,7 @@ func TestSendSignalMethodsTmpl(t *testing.T) {
 		if err := tmpl.Execute(out, tc.input); err != nil {
 			t.Fatalf("sendSignalMethodsTmpl execute got error, want nil: %v", err)
 		}
-		if diff := cmp.Diff(out.String(), tc.want); diff != "" {
+		if diff := testutil.DiffLines(out.String(), tc.want); diff != "" {
 			t.Errorf("sendSignalMethodsTmpl execute faild, interface name is %s\n(-got +want):\n%s", tc.input.Name, diff)
 		}
 	}
@@ -712,7 +711,7 @@ func TestQuotedIntrospectionForInterfaceTmpl(t *testing.T) {
 		if err := tmpl.Execute(out, tc.input); err != nil {
 			t.Fatalf("quotedIntrospectionForInterfaceTmpl execute got error, want nil: %v", err)
 		}
-		if diff := cmp.Diff(out.String(), tc.want); diff != "" {
+		if diff := testutil.DiffLines(out.String(), tc.want); diff != "" {
 			t.Errorf("quotedIntrospectionForInterfaceTmpl execute faild, interface name is %s\n(-got +want):\n%s", tc.input.Name, diff)
 		}
 	}
@@ -795,7 +794,7 @@ func TestSignalDataMembersTmpl(t *testing.T) {
 		if err := tmpl.Execute(out, tc.input); err != nil {
 			t.Fatalf("signalDataMembersTmpl execute got error, want nil: %v", err)
 		}
-		if diff := cmp.Diff(out.String(), tc.want); diff != "" {
+		if diff := testutil.DiffLines(out.String(), tc.want); diff != "" {
 			t.Errorf("signalDataMembersTmpl execute faild, interface name is %s\n(-got +want):\n%s", tc.input.Name, diff)
 		}
 	}
@@ -837,7 +836,7 @@ func TestPropertyDataMembersTmpl(t *testing.T) {
 		if err := tmpl.Execute(out, tc.input); err != nil {
 			t.Fatalf("propertyDataMembersTmpl execute got error, want nil: %v", err)
 		}
-		if diff := cmp.Diff(out.String(), tc.want); diff != "" {
+		if diff := testutil.DiffLines(out.String(), tc.want); diff != "" {
 			t.Errorf("propertyDataMembersTmpl execute faild, interface name is %s\n(-got +want):\n%s", tc.input.Name, diff)
 		}
 	}
