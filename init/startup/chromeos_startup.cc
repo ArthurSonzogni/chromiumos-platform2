@@ -46,6 +46,7 @@
 #include "init/startup/stateful_mount.h"
 #include "init/startup/test_mode_mount_helper.h"
 #include "init/startup/uefi_startup.h"
+#include "init/tpm_encryption/tpm.h"
 #include "init/utils.h"
 
 namespace {
@@ -197,27 +198,12 @@ void ChromeosStartup::Sysctl() {
   }
 }
 
-// Returns if the TPM is owned or couldn't determine.
+// Returns true if the TPM is owned or couldn't determine.
 bool ChromeosStartup::IsTPMOwned() {
-  if (tlcl_->Init() != 0) {
-    PLOG(WARNING) << "Failed to init TlclWrapper.";
+  encryption::Tpm tpm(tlcl_.get());
+  bool owned;
+  if (!tpm.IsOwned(&owned))
     return true;
-  }
-
-  base::ScopedClosureRunner close(base::BindOnce(
-      [](hwsec_foundation::TlclWrapper* tlcl) {
-        if (tlcl->Close() != 0) {
-          PLOG(WARNING) << "Failed to shutdown TlclWrapper.";
-        }
-      },
-      tlcl_.get()));
-
-  bool owned = false;
-  if (tlcl_->GetOwnership(&owned) != 0) {
-    PLOG(WARNING) << "Failed to get ownership.";
-    return true;
-  }
-
   return owned;
 }
 

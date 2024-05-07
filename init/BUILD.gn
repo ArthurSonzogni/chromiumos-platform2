@@ -116,6 +116,7 @@ static_library("libcrosstartup") {
   deps = [
     ":libfile_attrs_cleaner",
     ":libinit_utils",
+    ":libtpm_encryption",
   ]
 }
 
