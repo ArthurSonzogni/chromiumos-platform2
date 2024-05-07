@@ -229,13 +229,13 @@ class StreamManipulatorHelper {
     bool Done() const;
   };
 
-  struct ConfiguredState {
-    OwnedOrExternalStream src_stream;
+  struct SourceStreamInfo {
+    OwnedOrExternalStream stream;
     float max_scaling_factor = 0.0f;
   };
 
   const StreamFormat& GetFormat(const camera3_stream_t& stream) const;
-  std::optional<ConfiguredState> ConfigureStreamsAndFindSourceStream(
+  std::optional<SourceStreamInfo> FindSourceStream(
       base::span<camera3_stream_t* const> dst_yuv_streams,
       bool for_still_capture) const;
   // Returns capture context on the frame, and a scoped callback that removes

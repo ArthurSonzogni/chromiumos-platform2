@@ -253,23 +253,22 @@ bool StreamManipulatorHelper::PreConfigure(
     if (still_yuv_stream != nullptr) {
       still_streams.push_back(still_yuv_stream);
     }
-    std::optional<ConfiguredState> configured_state =
-        ConfigureStreamsAndFindSourceStream(still_streams,
-                                            /*for_still_capture=*/true);
-    if (!configured_state.has_value()) {
+    std::optional<SourceStreamInfo> info =
+        FindSourceStream(still_streams, /*for_still_capture=*/true);
+    if (!info.has_value()) {
       LOGF(WARNING) << "Stream config unsupported for still processing; "
                        "bypassing this stream manipulator";
       Reset();
       stream_config_unsupported_ = true;
       return false;
     }
-    still_process_input_stream_ = configured_state->src_stream;
+    still_process_input_stream_ = info->stream;
     still_process_output_size_.emplace(
         still_yuv_stream != nullptr
             ? Size(still_yuv_stream->width, still_yuv_stream->height)
             : Size(still_process_input_stream_->ptr()->width,
                    still_process_input_stream_->ptr()->height)
-                  .Scale(std::min(configured_state->max_scaling_factor, 1.0f)));
+                  .Scale(std::min(info->max_scaling_factor, 1.0f)));
     // Create fake stream/format for convenience that we can create
     // Camera3StreamBuffer and look up formats.
     fake_still_process_output_stream_.emplace(camera3_stream_t{
@@ -292,23 +291,22 @@ bool StreamManipulatorHelper::PreConfigure(
   // Configure video YUV streams.
   if (config_.process_mode == ProcessMode::kVideoAndStillProcess &&
       !video_yuv_streams.empty()) {
-    std::optional<ConfiguredState> configured_state =
-        ConfigureStreamsAndFindSourceStream(video_yuv_streams,
-                                            /*for_still_capture=*/false);
-    if (!configured_state.has_value()) {
+    std::optional<SourceStreamInfo> info =
+        FindSourceStream(video_yuv_streams, /*for_still_capture=*/false);
+    if (!info.has_value()) {
       LOGF(WARNING) << "Stream config unsupported for video processing; "
                        "bypassing this stream manipulator";
       Reset();
       stream_config_unsupported_ = true;
       return false;
     }
-    video_process_input_stream_ = configured_state->src_stream;
+    video_process_input_stream_ = info->stream;
     // If preferring large source size, let the process tasks output to a
     // smaller size.
     video_process_output_size_.emplace(
         Size(video_process_input_stream_->ptr()->width,
              video_process_input_stream_->ptr()->height)
-            .Scale(std::min(configured_state->max_scaling_factor, 1.0f)));
+            .Scale(std::min(info->max_scaling_factor, 1.0f)));
     // Create fake stream/format for convenience that we can create
     // Camera3StreamBuffer and look up formats.
     fake_video_process_output_stream_.emplace(camera3_stream_t{
@@ -447,12 +445,12 @@ void StreamManipulatorHelper::PostConfigure(
     switch (t) {
       case StreamType::kStillYuvToGenerate:
         CHECK(still_process_input_stream_.has_value());
-        s->usage |= kProcessStreamUsageFlags;
+        s->usage |= still_process_input_stream_->ptr()->usage;
         s->max_buffers = still_process_input_stream_->ptr()->max_buffers;
         break;
       case StreamType::kVideoYuvToGenerate:
         CHECK(video_process_input_stream_.has_value());
-        s->usage |= kProcessStreamUsageFlags;
+        s->usage |= video_process_input_stream_->ptr()->usage;
         s->max_buffers = video_process_input_stream_->ptr()->max_buffers;
         break;
       default:
@@ -887,21 +885,25 @@ const StreamFormat& StreamManipulatorHelper::GetFormat(
   return *it;
 }
 
-std::optional<StreamManipulatorHelper::ConfiguredState>
-StreamManipulatorHelper::ConfigureStreamsAndFindSourceStream(
+std::optional<StreamManipulatorHelper::SourceStreamInfo>
+StreamManipulatorHelper::FindSourceStream(
     base::span<camera3_stream_t* const> dst_streams,
     bool for_still_capture) const {
   CHECK(task_runner_->RunsTasksInCurrentSequence());
   CHECK(!dst_streams.empty());
 
+  uint32_t src_usage = kProcessStreamUsageFlags;
   uint32_t src_max_buffers = dst_streams[0]->max_buffers;
   int crop_rotate_scale_degrees = dst_streams[0]->crop_rotate_scale_degrees;
   for (auto* s : dst_streams) {
     CHECK(s->physical_camera_id == nullptr || s->physical_camera_id[0] == '\0');
     CHECK_EQ(crop_rotate_scale_degrees, s->crop_rotate_scale_degrees);
     src_max_buffers = std::max(src_max_buffers, s->max_buffers);
-    if (IsOutputFormatYuv(s->format)) {
-      s->usage |= kProcessStreamUsageFlags;
+    // Preserve video encoder usage flag for camera HAL to distinguish the use
+    // cases.
+    if (IsOutputFormatYuv(s->format) &&
+        (s->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER)) {
+      src_usage |= GRALLOC_USAGE_HW_VIDEO_ENCODER;
     }
   }
 
@@ -954,21 +956,22 @@ StreamManipulatorHelper::ConfigureStreamsAndFindSourceStream(
                   << " stream to generate other streams";
   }
   constexpr const char* kEmptyPhysicalCameraId = "";
-  return ConfiguredState{
-      .src_stream =
-          format_to_dst_stream.contains(&src_format)
-              ? OwnedOrExternalStream(format_to_dst_stream[&src_format])
-              : OwnedOrExternalStream(camera3_stream_t{
-                    .stream_type = CAMERA3_STREAM_OUTPUT,
-                    .width = src_format.width,
-                    .height = src_format.height,
-                    .format = base::checked_cast<int>(src_format.format),
-                    .usage = kProcessStreamUsageFlags |
-                             (for_still_capture ? kStillCaptureUsageFlag : 0),
-                    .max_buffers = src_max_buffers,
-                    .physical_camera_id = kEmptyPhysicalCameraId,
-                    .crop_rotate_scale_degrees = crop_rotate_scale_degrees,
-                }),
+  auto src_stream =
+      format_to_dst_stream.contains(&src_format)
+          ? OwnedOrExternalStream(format_to_dst_stream[&src_format])
+          : OwnedOrExternalStream(camera3_stream_t{
+                .stream_type = CAMERA3_STREAM_OUTPUT,
+                .width = src_format.width,
+                .height = src_format.height,
+                .format = base::checked_cast<int>(src_format.format),
+                .usage = for_still_capture ? kStillCaptureUsageFlag : 0,
+                .max_buffers = src_max_buffers,
+                .physical_camera_id = kEmptyPhysicalCameraId,
+                .crop_rotate_scale_degrees = crop_rotate_scale_degrees,
+            });
+  src_stream.ptr()->usage |= src_usage;
+  return SourceStreamInfo{
+      .stream = src_stream,
       .max_scaling_factor = max_scaling_factor.value(),
   };
 }
