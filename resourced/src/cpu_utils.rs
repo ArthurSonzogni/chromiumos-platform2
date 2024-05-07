@@ -52,10 +52,11 @@ impl Cpuset {
         static CPUSET_RANGE_RE: Lazy<Regex> =
             Lazy::new(|| Regex::new(r"^(\d+)-(\d+)$").expect("bad cpuset range RE"));
         let mut cores: Vec<usize> = vec![];
-        if cpuset_str.is_empty() {
+        // Check for a single newline, because trim() won't remove it.
+        if cpuset_str.is_empty() || cpuset_str == "\n" {
             return Ok(Cpuset(cores));
         }
-        let ranges = cpuset_str.split(',');
+        let ranges = cpuset_str.trim().split(',');
         for range in ranges {
             if let Some(m) = CPUSET_RANGE_RE.captures(range) {
                 // No errors expected here.
@@ -507,7 +508,11 @@ mod tests {
         );
         std::fs::write(&root_cpus_path, "2-2").unwrap();
         assert_eq!(Cpuset::all_cores(&root_path).unwrap(), Cpuset(vec![2]));
+        std::fs::write(&root_cpus_path, "2-2\n").unwrap();
+        assert_eq!(Cpuset::all_cores(&root_path).unwrap(), Cpuset(vec![2]));
         std::fs::write(&root_cpus_path, "").unwrap();
+        assert_eq!(Cpuset::all_cores(&root_path).unwrap(), Cpuset(vec![]));
+        std::fs::write(&root_cpus_path, "\n").unwrap();
         assert_eq!(Cpuset::all_cores(&root_path).unwrap(), Cpuset(vec![]));
     }
 
