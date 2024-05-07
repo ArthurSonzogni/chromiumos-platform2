@@ -27,13 +27,6 @@ MATCHER_P(ErrorTypeIs, error_type, "") {
   return error_type == arg.type();
 }
 
-// Use this matcher instead of passing RefPtrs directly into the arguments
-// of EXPECT_CALL() because otherwise we may create un-cleaned-up references at
-// system teardown.
-MATCHER_P(IsRefPtrTo, ref_address, "") {
-  return arg.get() == ref_address;
-}
-
 base::OnceCallback<void(const Error&)> GetResultCallback(
     base::test::TestFuture<Error>* e);
 

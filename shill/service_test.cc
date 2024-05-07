@@ -62,6 +62,7 @@ using testing::Ge;
 using testing::HasSubstr;
 using testing::Mock;
 using testing::NiceMock;
+using testing::Pointer;
 using testing::Return;
 using testing::ReturnNull;
 using testing::ReturnRef;
@@ -797,7 +798,7 @@ TEST_F(ServiceTest, State) {
 
   EXPECT_CALL(*GetAdaptor(), EmitStringChanged(kStateProperty, _)).Times(6);
   EXPECT_CALL(*GetAdaptor(), EmitStringChanged(kErrorProperty, _)).Times(4);
-  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
+  EXPECT_CALL(mock_manager_, UpdateService(Pointer(service_)));
   service_->SetState(Service::kStateConnected);
   EXPECT_EQ(Service::kStateIdle, GetPreviousState());
   // A second state change shouldn't cause another update
@@ -807,7 +808,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kFailureNone, service_->failure());
   EXPECT_TRUE(service_->has_ever_connected_);
 
-  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
+  EXPECT_CALL(mock_manager_, UpdateService(Pointer(service_)));
   service_->SetFailure(Service::kFailureOutOfRange);
   EXPECT_TRUE(service_->IsFailed());
   std::optional<base::TimeDelta> time_failed = GetTimeSinceFailed();
@@ -821,7 +822,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(out_of_range_error, service_->error());
   EXPECT_EQ(out_of_range_error, service_->previous_error_);
 
-  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
+  EXPECT_CALL(mock_manager_, UpdateService(Pointer(service_)));
   service_->SetState(Service::kStateConnected);
   EXPECT_FALSE(service_->IsFailed());
   EXPECT_FALSE(GetTimeSinceFailed());
@@ -829,7 +830,7 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(out_of_range_error, service_->previous_error_);
   EXPECT_GT(service_->previous_error_serial_number_, 0);
 
-  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
+  EXPECT_CALL(mock_manager_, UpdateService(Pointer(service_)));
   service_->SetFailureSilent(Service::kFailurePinMissing);
   EXPECT_TRUE(service_->IsFailed());
   time_failed = GetTimeSinceFailed();
@@ -850,9 +851,9 @@ TEST_F(ServiceTest, State) {
   FakeStore storage;
   service_->set_profile(mock_profile);
   service_->has_ever_connected_ = false;
-  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
+  EXPECT_CALL(mock_manager_, UpdateService(Pointer(service_)));
   EXPECT_CALL(*mock_profile, GetConstStorage()).WillOnce(Return(&storage));
-  EXPECT_CALL(*mock_profile, UpdateService(IsRefPtrTo(service_)));
+  EXPECT_CALL(*mock_profile, UpdateService(Pointer(service_)));
   service_->SetState(Service::kStateConnected);
   EXPECT_TRUE(service_->has_ever_connected_);
   service_->set_profile(nullptr);  // Break reference cycle.
@@ -863,7 +864,7 @@ TEST_F(ServiceTest, State) {
   service_->state_ = Service::kStateIdle;  // Skips state change logic.
   service_->set_profile(mock_profile);
   service_->has_ever_connected_ = false;
-  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
+  EXPECT_CALL(mock_manager_, UpdateService(Pointer(service_)));
   EXPECT_CALL(*mock_profile, GetConstStorage()).WillOnce(Return(nullptr));
   service_->SetState(Service::kStateConnected);
   EXPECT_TRUE(service_->has_ever_connected_);
@@ -1375,7 +1376,7 @@ TEST_F(ServiceTest, IsRemembered) {
 
   scoped_refptr<MockProfile> profile(new StrictMock<MockProfile>(manager()));
   service_->set_profile(profile);
-  EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service_)))
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(Pointer(service_)))
       .WillOnce(Return(true))
       .WillOnce(Return(false));
   EXPECT_FALSE(service_->IsRemembered());
@@ -2194,7 +2195,7 @@ TEST_F(ServiceTest, SetAutoConnectFullUserUpdatePersists) {
 
   EXPECT_CALL(*mock_profile, UpdateService(_));
   EXPECT_CALL(*mock_profile, GetConstStorage()).WillOnce(Return(&storage));
-  EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service_)))
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(Pointer(service_)))
       .WillOnce(Return(false));
   EXPECT_FALSE(service_->retain_auto_connect());
   SetAutoConnectFull(true, &error);
@@ -2334,7 +2335,7 @@ TEST_F(ServiceTest, ClearExplicitlyDisconnected) {
   Mock::VerifyAndClearExpectations(&mock_manager_);
 
   SetExplicitlyDisconnected(true);
-  EXPECT_CALL(mock_manager_, UpdateService(IsRefPtrTo(service_)));
+  EXPECT_CALL(mock_manager_, UpdateService(Pointer(service_)));
   service_->ClearExplicitlyDisconnected();
   Mock::VerifyAndClearExpectations(&mock_manager_);
   EXPECT_FALSE(GetExplicitlyDisconnected());
@@ -2369,9 +2370,9 @@ TEST_F(ServiceTest, Compare) {
 
   // When comparing two services with different profiles, prefer the one
   // that is not ephemeral.
-  EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service2)))
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(Pointer(service2)))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(mock_manager_, IsServiceEphemeral(IsRefPtrTo(service10)))
+  EXPECT_CALL(mock_manager_, IsServiceEphemeral(Pointer(service10)))
       .WillRepeatedly(Return(false));
   EXPECT_TRUE(DefaultSortingOrderIs(service10, service2));
   Mock::VerifyAndClearExpectations(&mock_manager_);
@@ -2381,10 +2382,10 @@ TEST_F(ServiceTest, Compare) {
   EXPECT_CALL(mock_manager_, IsServiceEphemeral(_))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_manager_,
-              IsProfileBefore(IsRefPtrTo(profile2), IsRefPtrTo(profile10)))
+              IsProfileBefore(Pointer(profile2), Pointer(profile10)))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_manager_,
-              IsProfileBefore(IsRefPtrTo(profile10), IsRefPtrTo(profile2)))
+              IsProfileBefore(Pointer(profile10), Pointer(profile2)))
       .WillRepeatedly(Return(true));
   EXPECT_TRUE(DefaultSortingOrderIs(service2, service10));
 

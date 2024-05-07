@@ -61,6 +61,7 @@ using testing::InSequence;
 using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
+using testing::Pointer;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
@@ -319,7 +320,7 @@ TEST_F(EthernetTest, LinkEvent) {
   Mock::VerifyAndClearExpectations(&manager_);
 
   // Link-up event while down.
-  EXPECT_CALL(manager_, UpdateService(IsRefPtrTo(mock_service_)));
+  EXPECT_CALL(manager_, UpdateService(Pointer(mock_service_)));
   EXPECT_CALL(*mock_service_, OnVisibilityChanged());
   EXPECT_CALL(*eap_listener_, Start());
 
@@ -348,7 +349,7 @@ TEST_F(EthernetTest, LinkEvent) {
   EXPECT_CALL(ethernet_eap_provider_,
               ClearCredentialChangeCallback(ethernet_.get()));
   EXPECT_CALL(*eap_listener_, Stop());
-  EXPECT_CALL(manager_, UpdateService(IsRefPtrTo(GetService().get())));
+  EXPECT_CALL(manager_, UpdateService(Pointer(GetService().get())));
   EXPECT_CALL(*mock_service_, OnVisibilityChanged());
   ethernet_->LinkEvent(0, IFF_LOWER_UP);
   EXPECT_FALSE(GetLinkUp());
@@ -668,8 +669,8 @@ TEST_F(EthernetTest, SetMacAddressServiceStorageIdentifierChange) {
   scoped_refptr<StrictMock<MockProfile>> mock_profile(
       new StrictMock<MockProfile>(&manager_));
   mock_service_->set_profile(mock_profile);
-  EXPECT_CALL(*mock_profile.get(), AbandonService(IsRefPtrTo(mock_service_)));
-  EXPECT_CALL(*mock_profile.get(), AdoptService(IsRefPtrTo(mock_service_)));
+  EXPECT_CALL(*mock_profile.get(), AbandonService(Pointer(mock_service_)));
+  EXPECT_CALL(*mock_profile.get(), AdoptService(Pointer(mock_service_)));
 
   SetMacAddress(kMacAddress);
   EXPECT_EQ(kMacAddress, ethernet_->mac_address());

@@ -76,6 +76,7 @@ using ::testing::InvokeWithoutArgs;
 using ::testing::IsEmpty;
 using ::testing::Mock;
 using ::testing::NiceMock;
+using ::testing::Pointer;
 using ::testing::Ref;
 using ::testing::Return;
 using ::testing::ReturnNull;
@@ -1264,13 +1265,13 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
   EXPECT_FALSE(IsSortServicesTaskPending());
 
   // Only services that are members of the profile and group will be abandoned.
-  EXPECT_CALL(*profile1, AbandonService(IsRefPtrTo(s_not_in_profile.get())))
+  EXPECT_CALL(*profile1, AbandonService(Pointer(s_not_in_profile.get())))
       .Times(0);
-  EXPECT_CALL(*profile1, AbandonService(IsRefPtrTo(s_not_in_group.get())))
+  EXPECT_CALL(*profile1, AbandonService(Pointer(s_not_in_group.get())))
       .Times(0);
-  EXPECT_CALL(*profile1, AbandonService(IsRefPtrTo(s_configure_fail.get())))
+  EXPECT_CALL(*profile1, AbandonService(Pointer(s_configure_fail.get())))
       .WillOnce(Return(true));
-  EXPECT_CALL(*profile1, AbandonService(IsRefPtrTo(s_configure_succeed.get())))
+  EXPECT_CALL(*profile1, AbandonService(Pointer(s_configure_succeed.get())))
       .WillOnce(Return(true));
 
   // Never allow services to re-join profile1.
@@ -1278,14 +1279,13 @@ TEST_F(ManagerTest, HandleProfileEntryDeletion) {
 
   // Only allow one of the members of the profile and group to successfully
   // join profile0.
-  EXPECT_CALL(*profile0, ConfigureService(IsRefPtrTo(s_not_in_profile.get())))
+  EXPECT_CALL(*profile0, ConfigureService(Pointer(s_not_in_profile.get())))
       .Times(0);
-  EXPECT_CALL(*profile0, ConfigureService(IsRefPtrTo(s_not_in_group.get())))
+  EXPECT_CALL(*profile0, ConfigureService(Pointer(s_not_in_group.get())))
       .Times(0);
-  EXPECT_CALL(*profile0, ConfigureService(IsRefPtrTo(s_configure_fail.get())))
+  EXPECT_CALL(*profile0, ConfigureService(Pointer(s_configure_fail.get())))
       .WillOnce(Return(false));
-  EXPECT_CALL(*profile0,
-              ConfigureService(IsRefPtrTo(s_configure_succeed.get())))
+  EXPECT_CALL(*profile0, ConfigureService(Pointer(s_configure_succeed.get())))
       .WillOnce(Return(true));
 
   // Expect the failed-to-configure service to have Unload() called on it.
@@ -2032,10 +2032,9 @@ TEST_F(ManagerTest,
   EXPECT_CALL(*profile0, AdoptService(_)).Times(0);
   EXPECT_CALL(*wifi_provider_, CreateTemporaryService(_, _))
       .WillOnce(InvokeWithoutArgs(this, &ManagerTest::ReleaseTempMockService));
-  EXPECT_CALL(*profile0, ConfigureService(IsRefPtrTo(mock_service_ptr)))
-      .Times(1);
+  EXPECT_CALL(*profile0, ConfigureService(Pointer(mock_service_ptr))).Times(1);
   EXPECT_CALL(*mock_service_ptr, Configure(_, _)).Times(1);
-  EXPECT_CALL(*profile0, UpdateService(IsRefPtrTo(mock_service_ptr))).Times(1);
+  EXPECT_CALL(*profile0, UpdateService(Pointer(mock_service_ptr))).Times(1);
 
   Error error;
   ServiceRefPtr service = manager()->ConfigureServiceForProfile(
