@@ -13,6 +13,7 @@
 #include <unistd.h>
 
 #include <base/files/file_path.h>
+#include <brillo/brillo_export.h>
 #include <libstorage/platform/platform.h>
 
 #include "init/metrics/metrics.h"
@@ -21,7 +22,7 @@
 namespace encryption {
 
 // Interface to communicate with outside world
-class TpmSystemKey {
+class BRILLO_EXPORT TpmSystemKey {
  public:
   TpmSystemKey(libstorage::Platform* platform,
                hwsec_foundation::TlclWrapper* tlcl,

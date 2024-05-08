@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <brillo/brillo_export.h>
 
 namespace file_attrs_cleaner {
 
@@ -22,13 +23,14 @@ enum class AttributeCheckStatus {
 // Check the file attributes of the specified path.  `path` is used for logging
 // and policy checking, so `fd` needs to be an open handle to it.  This helps
 // with TOCTTOU issues.
-AttributeCheckStatus CheckFileAttributes(const base::FilePath& path, int fd);
+AttributeCheckStatus BRILLO_EXPORT
+CheckFileAttributes(const base::FilePath& path, int fd);
 
 // Recursively scan the file attributes of paths under `dir`.
 // Don't recurse into any subdirectories that exactly match any string in
 // `skip_recurse`.
-bool ScanDir(const base::FilePath& dir,
-             const std::vector<std::string>& skip_recurse);
+bool BRILLO_EXPORT ScanDir(const base::FilePath& dir,
+                           const std::vector<std::string>& skip_recurse);
 
 // Convenience function.
 static inline bool ScanDir(const std::string& dir,

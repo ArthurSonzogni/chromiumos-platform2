@@ -12,19 +12,19 @@ group("all") {
     ":file_attrs_cleaner_tool",
     ":install_lvm_config",
     ":install_setuid_restriction",
+    ":libtpm_encryption",
     ":net_poll_tool",
     ":periodic_scheduler",
     ":process_killer",
     ":sbin_init_scripts",
     ":static_node_tool",
-    ":tpm_encryption_lib",
     ":usermode-helper",
     ":usr_share_cros_init_scripts",
   ]
   if (use.encrypted_stateful) {
     deps += [
+      ":libmount_encrypted",
       ":mount-encrypted",
-      ":mount_encrypted_lib",
     ]
   }
   if (use.syslog) {
@@ -82,16 +82,18 @@ pkg_config("target_defaults") {
   ]
   libs = [
     "bootstat",
+    "hwsec-foundation",
     "rootdev",
     "secure_erase_file",
     "vpd",
   ]
 }
 
-static_library("utils") {
+shared_library("libinit_utils") {
   sources = [ "utils.cc" ]
   configs += [ ":target_defaults" ]
   pkg_deps = [ "vboot_host" ]
+  install_path = "lib"
 }
 
 static_library("libcrosstartup") {
@@ -112,9 +114,8 @@ static_library("libcrosstartup") {
   defines = []
   libs = [ "hwsec-foundation" ]
   deps = [
-    ":file_attrs_cleaner_lib",
-    ":libclobber",
-    ":utils",
+    ":libfile_attrs_cleaner",
+    ":libinit_utils",
   ]
 }
 
@@ -129,16 +130,13 @@ static_library("libclobber") {
     sources += [ "clobber/clobber_lvm.cc" ]
   }
   configs += [ ":target_defaults" ]
-  deps = [ ":utils" ]
+  public_deps = [ ":libinit_utils" ]
 }
 
 executable("chromeos_startup") {
   sources = [ "startup/main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [
-    ":libclobber",
-    ":libcrosstartup",
-  ]
+  deps = [ ":libcrosstartup" ]
 
   # gnlint: disable=GnLintInstallPathAlias
   install_path = "/sbin"
@@ -147,22 +145,20 @@ executable("chromeos_startup") {
 executable("clobber-state") {
   sources = [ "clobber/clobber_state_main.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [
-    ":libclobber",
-    ":utils",
-  ]
+  deps = [ ":libclobber" ]
   install_path = "/sbin"
 }
 
-static_library("file_attrs_cleaner_lib") {
+shared_library("libfile_attrs_cleaner") {
   sources = [ "file_attrs_cleaner_lib.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "lib"
 }
 
 executable("file_attrs_cleaner_tool") {
   sources = [ "file_attrs_cleaner_tool.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":file_attrs_cleaner_lib" ]
+  deps = [ ":libfile_attrs_cleaner" ]
   install_path = "/sbin"
 }
 
@@ -215,12 +211,13 @@ static_library("usermode-helper_lib") {
   configs += [ ":target_defaults" ]
 }
 
-static_library("init_metrics_lib") {
+shared_library("libinit_metrics") {
   sources = [ "metrics/metrics.cc" ]
   configs += [ ":target_defaults" ]
+  install_path = "lib"
 }
 
-static_library("tpm_encryption_lib") {
+shared_library("libtpm_encryption") {
   sources = [
     "tpm_encryption/encryption_key.cc",
     "tpm_encryption/tpm.cc",
@@ -237,25 +234,23 @@ static_library("tpm_encryption_lib") {
   } else {
     sources += [ "tpm_encryption/tpm1.cc" ]
   }
-  libs = [ "hwsec-foundation" ]
-  deps = [ ":init_metrics_lib" ]
+  public_deps = [ ":libinit_metrics" ]
+  install_path = "lib"
 }
 
-static_library("mount_encrypted_lib") {
+shared_library("libmount_encrypted") {
   sources = [ "mount_encrypted/encrypted_fs.cc" ]
   configs += [ ":target_defaults" ]
   defines = [ "CHROMEOS_ENVIRONMENT=1" ]
 
-  deps = [
-    ":init_metrics_lib",
-    ":tpm_encryption_lib",
-  ]
+  public_deps = [ ":libtpm_encryption" ]
+  install_path = "lib"
 }
 
 executable("mount-encrypted") {
   sources = [ "mount_encrypted/mount_encrypted.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [ ":mount_encrypted_lib" ]
+  deps = [ ":libmount_encrypted" ]
   install_path = "sbin"
 }
 
@@ -358,7 +353,6 @@ if (use.test) {
     run_test = true
     deps = [
       ":libclobber",
-      ":utils",
       "//common-mk/testrunner",
     ]
     pkg_deps = [ "libcrossystem-test" ]
@@ -373,7 +367,7 @@ if (use.test) {
     ]
     run_test = true
     deps = [
-      ":file_attrs_cleaner_lib",
+      ":libfile_attrs_cleaner",
       "//common-mk/testrunner",
     ]
   }
@@ -389,7 +383,7 @@ if (use.test) {
     ]
     libs = [ "hwsec-foundation-mock" ]
     deps = [
-      ":tpm_encryption_lib",
+      ":libtpm_encryption",
       "//common-mk/testrunner",
     ]
     pkg_deps = [
@@ -411,7 +405,7 @@ if (use.test) {
       ":target_defaults",
     ]
     deps = [
-      ":mount_encrypted_lib",
+      ":libmount_encrypted",
       "//common-mk/testrunner",
     ]
     pkg_deps = [
@@ -478,7 +472,7 @@ if (use.test) {
     ]
     run_test = true
     deps = [
-      ":utils",
+      ":libinit_utils",
       "//common-mk/testrunner",
     ]
   }

@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/time/time.h>
+#include <brillo/brillo_export.h>
 #include <metrics/metrics_library.h>
 
 #include "init/tpm_encryption/encryption_key.h"
@@ -16,7 +17,7 @@ namespace init_metrics {
 
 // This class provides wrapping functions for callers to report UMAs of
 // `metrics`.
-class InitMetrics {
+class BRILLO_EXPORT InitMetrics {
  public:
   static void Initialize(const std::string& output_file);
   static InitMetrics* Get();

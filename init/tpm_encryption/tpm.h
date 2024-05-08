@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/tlcl_wrapper/tlcl_wrapper.h>
 #include <libstorage/platform/platform.h>
@@ -39,8 +40,8 @@ const uint32_t kPCRBootMode = 0;
 // TPM commands that require owner authorization. Currently, only the TPM 1.2
 // implementation uses owner authorization for some of its operations. The
 // constants are nullptr and zero, respectively, for TPM 2.0.
-extern const uint8_t* kOwnerSecret;
-extern const size_t kOwnerSecretSize;
+extern const BRILLO_EXPORT uint8_t* kOwnerSecret;
+extern const BRILLO_EXPORT size_t kOwnerSecretSize;
 
 // Path constants. Note that these don't carry the '/' root
 // prefix because the actual path gets constructed relative to a valid stateful
@@ -137,7 +138,7 @@ class NvramSpace {
 
 // Encapsulates high-level TPM state and the motions needed to open and close
 // the TPM library.
-class Tpm {
+class BRILLO_EXPORT Tpm {
  public:
   explicit Tpm(hwsec_foundation::TlclWrapper* tlcl);
   Tpm(const Tpm&) = delete;
@@ -218,7 +219,7 @@ class Tpm {
 //     fallback path to dump its key without protection by a system key until
 //     the latter becomes available, but that's a risk that should ideally be
 //     avoided.
-class SystemKeyLoader {
+class BRILLO_EXPORT SystemKeyLoader {
  public:
   virtual ~SystemKeyLoader() = default;
 

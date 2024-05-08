@@ -11,6 +11,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 #include <libstorage/platform/platform.h>
 
@@ -22,7 +23,7 @@ class SystemKeyLoader;
 // the encrypted stateful file system. This includes generation of the key,
 // wrapping it using a system key which is stored in TPM NVRAM, as well as
 // storing and loading the key to/from disk.
-class EncryptionKey {
+class BRILLO_EXPORT EncryptionKey {
  public:
   // Describes the status of the system key for metrics reporting purposes.
   // These values are persisted to logs. Entries should not be renumbered and

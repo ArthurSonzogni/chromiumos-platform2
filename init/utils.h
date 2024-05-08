@@ -11,45 +11,46 @@
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <brillo/brillo_export.h>
 
 namespace utils {
 
 // Try to set root to the root device filepath, optionally removing the
 // partition number
-bool GetRootDevice(base::FilePath* root, bool strip_partition);
+bool BRILLO_EXPORT GetRootDevice(base::FilePath* root, bool strip_partition);
 
 // Helper function to read a file to int
-bool ReadFileToInt(const base::FilePath& path, int* value);
+bool BRILLO_EXPORT ReadFileToInt(const base::FilePath& path, int* value);
 
 // Run encrypted-reboot-vault --action=create
-bool CreateEncryptedRebootVault();
+bool BRILLO_EXPORT CreateEncryptedRebootVault();
 
 // Run encrypted-reboot-vault --action=unlock
-bool UnlockEncryptedRebootVault();
+bool BRILLO_EXPORT UnlockEncryptedRebootVault();
 
 // Run shutdown.
-void Reboot();
+void BRILLO_EXPORT Reboot();
 
-void Restorecon(libstorage::Platform* platform_,
-                const base::FilePath& path,
-                const std::vector<base::FilePath>& exclude,
-                bool is_recursive,
-                bool set_digests);
+void BRILLO_EXPORT Restorecon(libstorage::Platform* platform_,
+                              const base::FilePath& path,
+                              const std::vector<base::FilePath>& exclude,
+                              bool is_recursive,
+                              bool set_digests);
 
 // Searches `drive_name` for the partition labeled `partition_label` and
 // returns its partition number if exactly one partition was found. Returns
 // -1 on error.
-int GetPartitionNumber(const base::FilePath& drive_name,
-                       const std::string& partition_label);
+int BRILLO_EXPORT GetPartitionNumber(const base::FilePath& drive_name,
+                                     const std::string& partition_label);
 
 // Splits a device path, for example /dev/mmcblk0p1, /dev/sda3,
 // /dev/ubiblock9_0 into the base device and partition numbers,
 // which would be respectively /dev/mmcblk0p, 1; /dev/sda, 3; and
 // /dev/ubiblock, 9.
 // Returns true on success.
-bool GetDevicePathComponents(const base::FilePath& device,
-                             std::string* base_device_out,
-                             int* partition_out);
+bool BRILLO_EXPORT GetDevicePathComponents(const base::FilePath& device,
+                                           std::string* base_device_out,
+                                           int* partition_out);
 
 // Reads successful and priority metadata from partition numbered
 // `partition_number` on `disk`, storing the results in `successful_out` and
@@ -61,17 +62,17 @@ bool GetDevicePathComponents(const base::FilePath& device,
 // the highest, 1 the lowest, and 0 meaning not bootable.
 // More information on partition metadata is available at.
 // https://www.chromium.org/chromium-os/chromiumos-design-docs/disk-format
-bool ReadPartitionMetadata(const base::FilePath& disk,
-                           int partition_number,
-                           bool* successful_out,
-                           int* priority_out);
+bool BRILLO_EXPORT ReadPartitionMetadata(const base::FilePath& disk,
+                                         int partition_number,
+                                         bool* successful_out,
+                                         int* priority_out);
 
 // Make sure the kernel partition numbered `kernel_partition` is still
 // bootable after being wiped. The system may be in AU state that active
 // kernel does not have "successful" bit set to 1, but the kernel has been
 // successfully booted.
-void EnsureKernelIsBootable(const base::FilePath root_disk,
-                            int kernel_partition);
+void BRILLO_EXPORT EnsureKernelIsBootable(const base::FilePath root_disk,
+                                          int kernel_partition);
 
 }  // namespace utils
 

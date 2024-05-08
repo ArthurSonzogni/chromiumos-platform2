@@ -15,6 +15,7 @@
 
 #include <base/files/file_path.h>
 #include <brillo/blkdev_utils/device_mapper.h>
+#include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 #include <libstorage/platform/platform.h>
 #include <libstorage/storage_container/filesystem_key.h>
@@ -45,7 +46,7 @@ struct BindMount {
 // EncryptedFs sets up, tears down and cleans up encrypted
 // stateful mounts. Given a root directory, the class
 // sets up an encrypted mount at <root_dir>/ENCRYPTED_MOUNT.
-class EncryptedFs {
+class BRILLO_EXPORT EncryptedFs {
  public:
   // Set up the encrypted filesystem..
   EncryptedFs(const base::FilePath& rootdir,
