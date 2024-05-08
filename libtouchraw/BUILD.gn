@@ -29,6 +29,7 @@ shared_library("libtouchraw") {
     "defragmenter.cc",
     "parser.cc",
     "reader.cc",
+    "reshaper.cc",
     "touchraw_interface.cc",
   ]
   configs += [ ":target_defaults_pkg_deps" ]
@@ -38,6 +39,7 @@ shared_library("libtouchraw") {
 install_config("install_headers") {
   sources = [
     "consumer_interface.h",
+    "crop.h",
     "touchraw.h",
     "touchraw_export.h",
   ]
@@ -61,6 +63,7 @@ if (use.test) {
       "defragmenter_test.cc",
       "parser_test.cc",
       "reader_test.cc",
+      "reshaper_test.cc",
     ]
     configs += [
       "//common-mk:test",
