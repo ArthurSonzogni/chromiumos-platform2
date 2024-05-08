@@ -13,6 +13,7 @@ group("all") {
     ":install_cros_camera_diagnostics_conf",
     ":install_cros_camera_diagnostics_mojo",
     ":install_cros_camera_diagnostics_policy",
+    ":install_enable_camera_diagnostics_sh",
     ":install_minijail_conf",
     ":libcros_camera_diagnostics_mojom",
   ]
@@ -99,4 +100,10 @@ install_seccomp_policy("install_cros_camera_diagnostics_policy") {
   sources = [ "seccomp_filter/cros-camera-diagnostics-${arch}.policy" ]
   outputs = [ "cros-camera-diagnostics.policy" ]
   install_path = "seccomp_policy"
+}
+
+# TODO(imranziad): Remove once enabled in CrOS release image.
+install_config("install_enable_camera_diagnostics_sh") {
+  sources = [ "init/enable_camera_diagnostics.sh" ]
+  install_path = "bin"
 }
