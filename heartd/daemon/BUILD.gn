@@ -43,6 +43,7 @@ if (use.test) {
       "heartbeat_tracker_test.cc",
       "heartd_test.cc",
       "scavenger_test.cc",
+      "top_sheriff_test.cc",
     ]
     configs += [
       "//common-mk:test",
