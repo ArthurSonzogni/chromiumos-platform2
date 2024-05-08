@@ -25,6 +25,7 @@ use crate::memory::psi_monitor::PsiMemoryPressureMonitor;
 use crate::memory::psi_policy::Config as PsiPolicyConfig;
 use crate::memory::psi_policy::MemoryReclaim;
 use crate::memory::psi_policy::PsiMemoryPolicy;
+use crate::memory::psi_policy::MAX_MEMORY_RECLAIM_REASON;
 use crate::memory::try_discard_stale_at_moderate;
 use crate::memory::try_vmms_reclaim_memory;
 use crate::memory::vmstat::Vmstat;
@@ -35,9 +36,11 @@ use crate::memory::PressureLevelArcvm;
 use crate::memory::PressureLevelChrome;
 use crate::memory::PressureStatus;
 use crate::memory::DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME;
+use crate::metrics;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const PSI_MEMORY_PRESSURE_DOWNGRADE_INTERVAL: Duration = Duration::from_secs(5);
+const UMA_NAME_RECLAIM_REASON: &str = "Platform.Memory.ReclaimReason";
 
 /// Distributes the [MemoryReclaim] to VMs and host using [VmMemoryManagementClient]. This returns
 /// [MemoryReclaim] for the host after distributing.
@@ -238,7 +241,13 @@ impl PsiMemoryHandler {
 
         if let MemoryReclaim::Critical(target_kb) = &reclaim {
             info!("PSI Memory Reclaim: {} KB, reason: {:?}", target_kb, reason);
-            // TODO(kawasin): log the reason to UMA
+            if let Err(e) = metrics::send_enum_to_uma(
+                UMA_NAME_RECLAIM_REASON,
+                reason as i32,
+                MAX_MEMORY_RECLAIM_REASON,
+            ) {
+                error!("Failed to send memory reclaim reason to UMA: {}", e);
+            }
         }
 
         let pressure_status =

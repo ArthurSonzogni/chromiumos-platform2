@@ -83,17 +83,23 @@ impl PartialOrd for MemoryReclaim {
     }
 }
 
-/// The reason of [MemoryReclaim]
+/// The reason of [MemoryReclaim].
+///
+/// The representing numbers are directly sent to UMA. Do not reuse the number in the future when
+/// you add a new reason. Also You need to update [MAX_MEMORY_RECLAIM_REASON] when you add a new
+/// reason.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemoryReclaimReason {
-    Unknown,
-    CriticalPressure,
-    SystemSlow,
-    ThrashingAnon,
-    ThrashingFile,
-    DirectReclaim,
-    Margin,
+    Unknown = 0,
+    CriticalPressure = 1,
+    SystemSlow = 2,
+    ThrashingAnon = 3,
+    ThrashingFile = 4,
+    DirectReclaim = 5,
+    Margin = 6,
 }
+
+pub const MAX_MEMORY_RECLAIM_REASON: i32 = MemoryReclaimReason::Margin as i32;
 
 fn calculate_per_sec_kb(after_pages: usize, before_pages: usize, duration: Duration) -> usize {
     let total_kb = (after_pages - before_pages) * get_page_size() / ONE_KB;
