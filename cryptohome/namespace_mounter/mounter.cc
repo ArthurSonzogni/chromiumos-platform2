@@ -703,24 +703,26 @@ bool Mounter::MoveDownloadsToMyFiles(const FilePath& user_home) {
     LOG(INFO) << "The 'Downloads' folder is already marked as 'migrated'";
     ReportDownloadsMigrationStatus(kAlreadyMigrated);
 
+    // Clean up the ~/Downloads folder if it reappeared after the migration.
     if (platform_->DirectoryExists(downloads)) {
       LOG(WARNING) << "The ~/Downloads folder reappeared after it was migrated "
                       "to ~/MyFiles/Downloads";
       ReportDownloadsMigrationStatus(kReappeared);
 
       MoveDirectoryContents(downloads, downloads_in_my_files);
-      ok = platform_->DeletePathRecursively(downloads);
+      ok = platform_->DeleteFile(downloads);
       ReportDownloadsMigrationOperation("RemoveReappearedDownloads", ok);
       PLOG_IF(ERROR, !ok) << "Cannot remove the reappeared ~/Downloads folder";
+      LOG_IF(INFO, ok) << "Removed the reappeared ~/Downloads folder";
     }
 
     // Clean up the old ~/Downloads-backup folder if it is still there.
     if (platform_->DirectoryExists(downloads_backup)) {
-      ok = platform_->DeletePathRecursively(downloads_backup);
+      MoveDirectoryContents(downloads_backup, downloads_in_my_files);
+      ok = platform_->DeleteFile(downloads_backup);
       ReportDownloadsMigrationOperation("CleanUp", ok);
-      PLOG_IF(ERROR, !ok)
-          << "Cannot delete old backup folder ~/Downloads-backup";
-      LOG_IF(INFO, ok) << "Deleted old backup folder ~/Downloads-backup";
+      PLOG_IF(ERROR, !ok) << "Cannot delete the old ~/Downloads-backup folder";
+      LOG_IF(INFO, ok) << "Deleted the old ~/Downloads-backup folder";
     }
 
     return true;
@@ -1084,18 +1086,9 @@ void Mounter::MoveDirectoryContents(const FilePath& from_dir,
   for (FilePath from = enumerator->Next(); !from.empty();
        from = enumerator->Next()) {
     num_items++;
-
-    // If the source item cannot be moved for whatever reason, then log an error
-    // and delete this source item.
-    if (!MoveWithConflictResolution(from, to_dir, probe_counts)) {
-      if (!platform_->DeletePathRecursively(from)) {
-        PLOG(ERROR) << "Cannot delete '" << from << "'";
-      }
-
-      continue;
-    }
-
-    num_moved++;
+    const bool ok = MoveWithConflictResolution(from, to_dir, probe_counts);
+    ReportDownloadsMigrationOperation("UnmaskItem", ok);
+    num_moved += ok;
   }
 
   LOG_IF(INFO, num_moved != 0) << "Moved " << num_moved << " items from '"
