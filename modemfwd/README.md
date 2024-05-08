@@ -58,6 +58,12 @@ Valid pairs are:
 * `max_failures`: the number of failures before `modemfwd` should reset this
   modem
 * `interval`: the interval between heartbeat checks, in seconds
+* `power_on_interval`: at modem power on state, the interval between
+  heartbeat checks, in seconds
+* `power_low_interval`: at modem power low state, the interval between
+  heartbeat checks, in seconds
+* `modem_idle_interval`: at modem idle state, the interval between heartbeat
+  checks, in seconds
 
 All commands should return 0 on success and something non-zero on failure.
 `modemfwd` will look for these binaries in the directory passed as the
