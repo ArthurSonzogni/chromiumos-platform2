@@ -330,10 +330,6 @@ void WiFi::Stop(EnabledStateChangedCallback callback) {
   }
   pending_matches_.clear();
   need_interworking_select_ = false;
-  // Remove interface from supplicant.
-  if (supplicant_present_ && supplicant_interface_proxy_) {
-    supplicant_process_proxy()->RemoveInterface(supplicant_interface_path_);
-  }
   pending_scan_results_.reset();
   current_service_ = nullptr;  // breaks a reference cycle
   pending_service_ = nullptr;  // breaks a reference cycle
@@ -4404,6 +4400,13 @@ void WiFi::ANQPGet(net_base::MacAddress bssid,
   if (!supplicant_interface_proxy_->ANQPGet(args)) {
     LOG(ERROR) << __func__ << "failed to send ANQP request to "
                << bssid.ToString();
+  }
+}
+
+void WiFi::OnDeviceClaimed() {
+  // Remove interface from supplicant.
+  if (supplicant_present_ && supplicant_interface_proxy_) {
+    supplicant_process_proxy()->RemoveInterface(supplicant_interface_path_);
   }
 }
 

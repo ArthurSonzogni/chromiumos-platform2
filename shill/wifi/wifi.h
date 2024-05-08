@@ -311,6 +311,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   mockable std::string supplicant_state() const { return supplicant_state_; }
 
+  void OnDeviceClaimed() override;
+
  private:
   std::string DeviceStorageSuffix() const override;
 
