@@ -70,6 +70,7 @@ static_library("missive_impl") {
     "//missive/scheduler:enqueue_job",
     "//missive/scheduler:upload_job",
     "//missive/storage:storage_module",
+    "//missive/util:server_configuration_controller",
     "//missive/util:status",
   ]
 }

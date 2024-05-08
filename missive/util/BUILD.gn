@@ -111,3 +111,15 @@ static_library("dynamic_flag") {
   ]
   configs += [ ":target_defaults" ]
 }
+
+static_library("server_configuration_controller") {
+  sources = [
+    "server_configuration_controller.cc",
+    "server_configuration_controller.h",
+  ]
+  configs += [ ":target_defaults" ]
+  public_deps = [
+    "//missive/proto:libmissiveprotorecord",
+    "//missive/proto:libmissiveprotorecordconstants",
+  ]
+}

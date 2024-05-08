@@ -212,6 +212,7 @@ if (use.test) {
       "util/dynamic_flag_test.cc",
       "util/file_test.cc",
       "util/refcounted_closure_list_test.cc",
+      "util/server_configuration_controller_test.cc",
       "util/status_macros_test.cc",
       "util/status_test.cc",
       "util/statusor_test.cc",
