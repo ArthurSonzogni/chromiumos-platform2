@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 
 #include "libtouchraw/consumer_interface.h"
+#include "libtouchraw/crop.h"
 #include "libtouchraw/reader.h"
 #include "libtouchraw/touchraw_export.h"
 
@@ -23,12 +24,16 @@ class LIBTOUCHRAW_EXPORT TouchrawInterface {
    * May return null on failure.
    *
    * @param path Input device file path.
-   * @param q Heatmap consumer queue for tasks to be posted.
+   * @param consumer Heatmap consumer queue for tasks to be posted.
+   * @param crop Optional crop to apply to heatmap if needed.
+   *
    * @return Unique pointer of TouchrawInterface if create succeeds, null
    * pointer otherwise.
    */
   static std::unique_ptr<TouchrawInterface> Create(
-      const base::FilePath& path, std::unique_ptr<HeatmapConsumerInterface> q);
+      const base::FilePath& path,
+      std::unique_ptr<HeatmapConsumerInterface> consumer,
+      Crop crop = {0, 0, 0, 0});
 
   TouchrawInterface(const TouchrawInterface&) = delete;
   TouchrawInterface& operator=(const TouchrawInterface&) = delete;

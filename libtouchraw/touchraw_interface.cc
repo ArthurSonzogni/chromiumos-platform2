@@ -12,21 +12,42 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 
+#include "libtouchraw/crop.h"
 #include "libtouchraw/defragmenter.h"
 #include "libtouchraw/parser.h"
 #include "libtouchraw/reader.h"
+#include "libtouchraw/reshaper.h"
 
 namespace touchraw {
 
 std::unique_ptr<TouchrawInterface> TouchrawInterface::Create(
-    const base::FilePath& path, std::unique_ptr<HeatmapConsumerInterface> q) {
+    const base::FilePath& path,
+    std::unique_ptr<HeatmapConsumerInterface> consumer,
+    const Crop crop) {
   base::ScopedFD fd(open(path.value().c_str(), O_RDONLY | O_CLOEXEC));
   if (!fd.is_valid()) {
     LOG(ERROR) << "Invalid file descriptor for device " << path.value();
     return nullptr;
   }
 
-  auto df = std::make_unique<Defragmenter>(std::move(q));
+  if (crop.bottom_crop || crop.left_crop || crop.right_crop || crop.top_crop) {
+    std::unique_ptr<HeatmapConsumerInterface> tmp;
+    tmp.swap(consumer);
+    std::unique_ptr<HeatmapConsumerInterface> reshaper =
+        std::make_unique<Reshaper>(crop, std::move(tmp));
+    if (!reshaper) {
+      LOG(ERROR) << "Failed to create reshaper.";
+      return nullptr;
+    }
+    consumer.swap(reshaper);
+    DVLOG(1) << "Reshaper added. Will crop top by: "
+             << static_cast<int>(crop.top_crop)
+             << ", crop right by: " << static_cast<int>(crop.right_crop)
+             << ", crop bottom by: " << static_cast<int>(crop.bottom_crop)
+             << ", crop left by: " << static_cast<int>(crop.left_crop);
+  }
+
+  auto df = std::make_unique<Defragmenter>(std::move(consumer));
   if (!df) {
     return nullptr;
   }
