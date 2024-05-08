@@ -20,6 +20,7 @@
 #include <base/notreached.h>
 #include <brillo/message_loops/message_loop.h>
 #if USE_INPUT_DEVICES_SPI_HEATMAP
+#include <libtouchraw/crop.h>
 #include <libtouchraw/touchraw_interface.h>
 #endif
 #include <ml_core/dlc/dlc_ids.h>
@@ -955,9 +956,22 @@ void MachineLearningServiceImpl::LoadHeatmapPalmRejection(
 #if USE_INPUT_DEVICES_SPI_HEATMAP
   auto processor = ml::HeatmapProcessor::GetInstance();
   auto consumer = std::make_unique<HeatmapConsumer>(processor);
-  static std::unique_ptr<touchraw::TouchrawInterface> touchraw_interface =
-      touchraw::TouchrawInterface::Create(
-          base::FilePath(config->heatmap_hidraw_device), std::move(consumer));
+  static std::unique_ptr<touchraw::TouchrawInterface> touchraw_interface;
+  if (config->crop_heatmap) {
+    touchraw::Crop crop = {
+        .bottom_crop = config->crop_heatmap->bottom_crop,
+        .left_crop = config->crop_heatmap->left_crop,
+        .right_crop = config->crop_heatmap->right_crop,
+        .top_crop = config->crop_heatmap->top_crop,
+    };
+    touchraw_interface = touchraw::TouchrawInterface::Create(
+        base::FilePath(config->heatmap_hidraw_device), std::move(consumer),
+        std::move(crop));
+  } else {
+    touchraw_interface = touchraw::TouchrawInterface::Create(
+        base::FilePath(config->heatmap_hidraw_device), std::move(consumer));
+  }
+
   if (touchraw_interface) {
     absl::Status status = touchraw_interface->StartWatching();
     if (status == absl::OkStatus()) {
