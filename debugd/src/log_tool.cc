@@ -401,9 +401,6 @@ const std::array kCommandLogs {
     "/usr/libexec/debugd/helpers/typec_connector_class_helper"},
   // typecd logs average around 56K.
   Log{kCommand, "uname", "/bin/uname -a"},
-  Log{kCommand, "update_engine.log",
-    "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
-    " s.^./var/log/update_engine/.)"},
   Log{kCommand, "uptime", "/usr/bin/cut -d' ' -f1 /proc/uptime"},
   Log{kCommand, "usb4 devices",
     "/usr/libexec/debugd/helpers/usb4_devinfo_helper", kRoot, kDebugfsGroup},
@@ -647,6 +644,9 @@ const std::array kVarLogFileLogs {
     "/var/log/tpm-firmware-updater.log"},
   Log{kFile, "typecd", "/var/log/typecd.log"},
   Log{kFile, "ui_log", "/var/log/ui/ui.LATEST"},
+  Log{kCommand, "update_engine.log",
+    "cat $(ls -1tr /var/log/update_engine | tail -5 | sed"
+    " s.^./var/log/update_engine/.)"},
   Log{kFile, "upstart", "/var/log/upstart.log"},
   Log{kFile, "verified boot", "/var/log/debug_vboot_noisy.log"},
   Log{kFile, "vmlog.1.LATEST", "/var/log/vmlog/vmlog.1.LATEST"},
