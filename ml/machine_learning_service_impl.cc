@@ -22,8 +22,8 @@
 #if USE_INPUT_DEVICES_SPI_HEATMAP
 #include <libtouchraw/touchraw_interface.h>
 #endif
-#include <mojo/public/cpp/bindings/self_owned_receiver.h>
 #include <ml_core/dlc/dlc_ids.h>
+#include <mojo/public/cpp/bindings/self_owned_receiver.h>
 #include <tensorflow/lite/model.h>
 #include <unicode/putil.h>
 #include <unicode/udata.h>
