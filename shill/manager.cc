@@ -772,13 +772,19 @@ void Manager::ClaimDevice(const std::string& device_name, Error* error) {
     return;
   }
 
+  for (const auto& device : devices_) {
+    if (device->link_name() == device_name) {
+      // Notify the device that it has been claimed, then deregister it.
+      device->OnDeviceClaimed();
+      DeregisterDevice(device);
+      break;
+    }
+  }
+
   // Block the device.
   device_info_.BlockDevice(device_name);
 
   claimed_devices_.insert(device_name);
-
-  // Deregister the device from manager if it is registered.
-  DeregisterDeviceByLinkName(device_name);
 }
 
 void Manager::ReleaseDevice(const std::string& device_name, Error* error) {
@@ -1206,15 +1212,6 @@ void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
     }
   }
   LOG(WARNING) << __func__ << " unknown device: " << to_forget->link_name();
-}
-
-void Manager::DeregisterDeviceByLinkName(const std::string& link_name) {
-  for (const auto& device : devices_) {
-    if (device->link_name() == link_name) {
-      DeregisterDevice(device);
-      break;
-    }
-  }
 }
 
 std::vector<std::string> Manager::ClaimedDevices(Error* error) {

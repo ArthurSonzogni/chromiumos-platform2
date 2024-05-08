@@ -240,6 +240,7 @@ DeviceInfo::DeviceInfo(Manager* manager)
 DeviceInfo::~DeviceInfo() = default;
 
 void DeviceInfo::BlockDevice(const std::string& device_name) {
+  LOG(INFO) << "Blocking device: " << device_name;
   blocked_list_.insert(device_name);
   // Remove the current device info if it exist, since it will be out-dated.
   DeregisterDevice(GetIndex(device_name));

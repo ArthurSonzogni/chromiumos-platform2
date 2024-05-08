@@ -230,6 +230,11 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // "$ifname no_service" if |selected_service_| is currently not defined.
   std::string LoggingTag() const;
 
+  // Called when the device is claimed via the "ClaimInterface" API command. Can
+  // be reimplemented by classes that have special steps for when they are
+  // claimed.
+  virtual void OnDeviceClaimed();
+
   // Overrides for Network::EventHandler. See the comments for
   // Network::EventHandler for more details.
 

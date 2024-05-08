@@ -748,4 +748,8 @@ std::string Device::LoggingTag() const {
          (selected_service_ ? selected_service_->log_name() : "no_service");
 }
 
+void Device::OnDeviceClaimed() {
+  SLOG(this, 2) << __func__;
+}
+
 }  // namespace shill

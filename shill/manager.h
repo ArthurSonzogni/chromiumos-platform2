@@ -755,8 +755,6 @@ class Manager {
     power_manager_.reset(power_manager);
   }
 
-  void DeregisterDeviceByLinkName(const std::string& link_name);
-
   std::string GetAlwaysOnVpnPackage(Error* error);
 
   // Initializes patchpanel_client_ if it has not already been initialized.
