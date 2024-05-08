@@ -23,5 +23,11 @@
       "CrosCameraDiagnostics",
       "CrosCameraDiagnosticsService"
     ]
+  },
+  {
+    "identity": "u:r:cros_healthd:s0",
+    "request": [
+      "CrosCameraDiagnostics"
+    ]
   }
 ]
