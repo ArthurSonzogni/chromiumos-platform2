@@ -19,6 +19,7 @@
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_power.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_scanning.h"
 #include "diagnostics/cros_healthd/routines/camera/camera_availability.h"
+#include "diagnostics/cros_healthd/routines/camera/camera_frame_analysis.h"
 #include "diagnostics/cros_healthd/routines/fan/fan.h"
 #include "diagnostics/cros_healthd/routines/hardware_button/volume_button.h"
 #include "diagnostics/cros_healthd/routines/led/led_lit_up.h"
@@ -103,6 +104,12 @@ CreateRoutineResult CreateRoutineHelperSync(
 CreateRoutineResult CreateRoutineHelperSync(
     Context* context, mojom::NetworkBandwidthRoutineArgumentPtr arg) {
   return NetworkBandwidthRoutine::Create(context);
+}
+
+CreateRoutineResult CreateRoutineHelperSync(
+    Context* context, mojom::CameraFrameAnalysisRoutineArgumentPtr /*arg*/) {
+  return MakeRoutineIfSupported<CameraFrameAnalysisRoutine>(
+      context->ground_truth()->PrepareRoutineCameraFrameAnalysis(), context);
 }
 
 void CreateRoutineHelper(Context* context,
@@ -276,6 +283,12 @@ void RoutineService::CheckAndCreateRoutine(
     case mojom::RoutineArgument::Tag::kSensitiveSensor: {
       auto routine = std::make_unique<SensitiveSensorRoutineV2>(context_);
       std::move(callback).Run(base::ok(std::move(routine)));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kCameraFrameAnalysis: {
+      CreateRoutineHelper(context_,
+                          std::move(routine_arg->get_camera_frame_analysis()),
+                          std::move(callback));
       return;
     }
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {

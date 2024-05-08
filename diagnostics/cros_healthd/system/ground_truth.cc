@@ -360,6 +360,22 @@ mojom::SupportStatusPtr GroundTruth::PrepareRoutineNetworkBandwidth(
   return MakeSupported();
 }
 
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineCameraFrameAnalysis() const {
+  uint32_t camera_count;
+  std::string error;
+  AssignOrAppendError(
+      cros_config()->GetU32CrosConfig(cros_config_property::kCameraCount),
+      camera_count, error);
+
+  if (!error.empty()) {
+    return MakeUnsupported(error);
+  }
+  if (camera_count == 0) {
+    return MakeUnsupported("Doesn't support device with no camera.");
+  }
+  return MakeSupported();
+}
+
 void GroundTruth::PrepareRoutineBluetoothFloss(
     PrepareRoutineBluetoothFlossCallback callback) const {
   auto manager = context_->floss_controller()->GetManager();

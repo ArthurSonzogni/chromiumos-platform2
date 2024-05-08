@@ -23,6 +23,10 @@ namespace chromeos::network_diagnostics::mojom {
 class NetworkDiagnosticsRoutines;
 }
 
+namespace cros::camera_diag::mojom {
+class CameraDiagnostics;
+}  // namespace cros::camera_diag::mojom
+
 namespace cros::mojom {
 class SensorService;
 class SensorDevice;
@@ -56,6 +60,10 @@ class MojoService {
 
   // Returns the mojo interface to SensorDevice.
   virtual cros::mojom::SensorDevice* GetSensorDevice(int32_t device_id) = 0;
+
+  // Returns the mojo interface to CameraDiagnostics.
+  virtual cros::camera_diag::mojom::CameraDiagnostics*
+  GetCameraDiagnostics() = 0;
 };
 
 }  // namespace diagnostics

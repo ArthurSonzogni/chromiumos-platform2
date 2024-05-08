@@ -3,9 +3,13 @@
 # found in the LICENSE file.
 
 source_set("camera") {
-  sources = [ "camera_availability.cc" ]
+  sources = [
+    "camera_availability.cc",
+    "camera_frame_analysis.cc",
+  ]
   public_pkg_deps = [
     "libchrome",
+    "libcros_camera",
     "mojo_service_manager",
   ]
   pkg_deps = [ "system_api" ]
@@ -19,15 +23,20 @@ source_set("camera") {
 
 if (use.test) {
   source_set("camera_test") {
-    sources = [ "camera_availability_test.cc" ]
+    sources = [
+      "camera_availability_test.cc",
+      "camera_frame_analysis_test.cc",
+    ]
     pkg_deps = [
       "libchrome-test",
+      "libcros_camera",
       "mojo_service_manager",
       "system_api",
     ]
     deps = [
       ":camera",
       "//diagnostics/base:healthd_testrunner",
+      "//diagnostics/cros_healthd/fake",
       "//diagnostics/cros_healthd/routines:libroutine_test_utils",
       "//diagnostics/cros_healthd/system:test_support",
     ]

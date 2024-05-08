@@ -56,6 +56,8 @@ std::unique_ptr<MojoServiceImpl> MojoServiceImpl::Create(
       impl->network_diagnostics_routines_, kFirstConnectDelay);
   impl->RequestService(chromeos::mojo_services::kIioSensor,
                        impl->sensor_service_, kFirstConnectDelay);
+  impl->RequestService(chromeos::mojo_services::kCrosCameraDiagnostics,
+                       impl->camera_diagnostics_, kFirstConnectDelay);
   return impl;
 }
 
@@ -95,6 +97,12 @@ cros::mojom::SensorService* MojoServiceImpl::GetSensorService() {
 cros::mojom::SensorDevice* MojoServiceImpl::GetSensorDevice(int32_t device_id) {
   MojoServiceImpl::BindSensorDeviceRemoteIfNeeded(device_id);
   return sensor_devices_[device_id].get();
+}
+
+cros::camera_diag::mojom::CameraDiagnostics*
+MojoServiceImpl::GetCameraDiagnostics() {
+  DCHECK(camera_diagnostics_.is_bound());
+  return camera_diagnostics_.get();
 }
 
 void MojoServiceImpl::BindSensorDeviceRemoteIfNeeded(int32_t device_id) {

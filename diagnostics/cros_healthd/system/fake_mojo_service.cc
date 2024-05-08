@@ -25,6 +25,9 @@ void FakeMojoService::InitializeFakeMojoService() {
 
   network_diagnostics_routines().Bind(
       fake_network_diagnostics_routines_.receiver().BindNewPipeAndPassRemote());
+
+  camera_diagnostics().Bind(
+      fake_camera_diagnostics_.receiver().BindNewPipeAndPassRemote());
 }
 
 void FakeMojoService::ResetNetworkHealthService() {

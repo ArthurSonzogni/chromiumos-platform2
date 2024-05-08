@@ -73,7 +73,7 @@ interface CrosHealthdRoutinesService {
 
 // Argument types for the possible routines the routine control API can create.
 //
-// NextMinVersion: 2, NextIndex: 20
+// NextMinVersion: 3, NextIndex: 21
 [Stable, Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -118,6 +118,9 @@ union RoutineArgument {
   NetworkBandwidthRoutineArgument network_bandwidth@18;
   // Arguments to create a sensitive sensor routine.
   [MinVersion=1] SensitiveSensorRoutineArgument sensitive_sensor@19;
+  // Arguments to create a camera frame analysis routine.
+  [MinVersion=2]
+  CameraFrameAnalysisRoutineArgument camera_frame_analysis@20;
 };
 
 // This routine checks whether there is any memory problem by reading/writing
@@ -348,6 +351,13 @@ struct NetworkBandwidthRoutineArgument {};
 // NextMinVersion: 1, NextIndex: 0
 [Stable]
 struct SensitiveSensorRoutineArgument {};
+
+// This routine checks the frames captured by camera. The frontend should ensure
+// the camera is opened during the execution of the routine.
+//
+// NextMinVersion: 1, NextIndex: 0
+[Stable]
+struct CameraFrameAnalysisRoutineArgument {};
 
 // Interface exposed to clients for controlling a routine.
 //
@@ -589,7 +599,7 @@ struct RoutineStateFinished {
 
 // Details about a finished routine.
 //
-// NextMinVersion: 3, NextIndex: 12
+// NextMinVersion: 4, NextIndex: 13
 [Stable, Extensible]
 union RoutineDetail {
   // Default field is required by extensible unions for backward compatibility.
@@ -619,6 +629,9 @@ union RoutineDetail {
   NetworkBandwidthRoutineDetail network_bandwidth@10;
   [MinVersion=2]
   SensitiveSensorRoutineDetail sensitive_sensor@11;
+  // Details of a completed camera frame analysis routine.
+  [MinVersion=3]
+  CameraFrameAnalysisRoutineDetail camera_frame_analysis@12;
 };
 
 // Details regarding memory routine.
@@ -1052,4 +1065,36 @@ struct SensitiveSensorRoutineDetail {
   SensitiveSensorReport base_gravity_sensor@6;
   // Report of lid gravity sensor.
   SensitiveSensorReport lid_gravity_sensor@7;
+};
+
+// Details regarding camera frame analysis routine.
+//
+// NextMinVersion: 1, NextIndex: 3
+[Stable]
+struct CameraFrameAnalysisRoutineDetail {
+  // The issue caught by the routine. See the fields for each subtest for their
+  // details.
+  //
+  // NextMinVersion: 1, NextIndex: 5
+  [Stable, Extensible]
+  enum Issue {
+    // For mojo backward compatibility, should not be used.
+    [Default] kUnmappedEnumField = 0,
+    // No issue.
+    kNone = 1,
+    // The camera service is not available.
+    kCameraServiceNotAvailable = 2,
+    // The len is blocked by the privacy shutter.
+    kBlockedByPrivacyShutter = 3,
+    // The frames are blurred. Lens might be dirty.
+    kLensAreDirty = 4,
+  };
+  Issue issue@0;
+  // The result is `kFailed` if the len is blocked by the privacy shutter. To
+  // mitigate the issue, users are suggested to open the privacy shutter to
+  // unveil the len.
+  CameraSubtestResult privacy_shutter_open_test@1;
+  // The result is `kFailed` if the frames are blurred. To mitigate the issue,
+  // users are suggested to clean the lens.
+  CameraSubtestResult lens_not_dirty_test@2;
 };

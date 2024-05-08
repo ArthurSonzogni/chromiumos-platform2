@@ -11,6 +11,7 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <camera/mojo/camera_diagnostics.mojom.h>
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
@@ -44,6 +45,7 @@ class MojoServiceImpl : public MojoService {
   GetNetworkDiagnosticsRoutines() override;
   cros::mojom::SensorService* GetSensorService() override;
   cros::mojom::SensorDevice* GetSensorDevice(int32_t device_id) override;
+  cros::camera_diag::mojom::CameraDiagnostics* GetCameraDiagnostics() override;
 
  protected:
   MojoServiceImpl();
@@ -68,6 +70,10 @@ class MojoServiceImpl : public MojoService {
       chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>&
   network_diagnostics_routines() {
     return network_diagnostics_routines_;
+  }
+  mojo::Remote<cros::camera_diag::mojom::CameraDiagnostics>&
+  camera_diagnostics() {
+    return camera_diagnostics_;
   }
 
  private:
@@ -107,6 +113,7 @@ class MojoServiceImpl : public MojoService {
       network_diagnostics_routines_;
   mojo::Remote<cros::mojom::SensorService> sensor_service_;
   std::map<int32_t, mojo::Remote<cros::mojom::SensorDevice>> sensor_devices_;
+  mojo::Remote<cros::camera_diag::mojom::CameraDiagnostics> camera_diagnostics_;
 
   // Must be the last class member.
   base::WeakPtrFactory<MojoServiceImpl> weak_ptr_factory_{this};

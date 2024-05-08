@@ -226,6 +226,9 @@ void RoutineV2Client::OnFinishedState(
       case mojom::RoutineDetail::Tag::kSensitiveSensor:
         PrintOutput(ConvertToValue(detail->get_sensitive_sensor()));
         break;
+      case mojom::RoutineDetail::Tag::kCameraFrameAnalysis:
+        PrintOutput(ConvertToValue(detail->get_camera_frame_analysis()));
+        break;
     }
   }
   run_loop_.Quit();

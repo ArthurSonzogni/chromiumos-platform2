@@ -1794,6 +1794,44 @@ Output:
 Errors:
 - `Failed to access mojo service manager.`
 
+### Camera frame analysis
+
+Check the frames captured by the camera. It includes two subtests
+-   privacy_shutter_open_test: failed if the len is blocked by the privacy
+    shutter.
+-   lens_not_dirty_test: failed if the frames are blurred.
+
+Notice that the camera must be opened before running the routine. You can open
+the camera by opening the "Camera" app.
+
+To run the camera frame analysis routine.
+
+From crosh:
+```bash
+crosh> diag camera_frame_analysis
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag camera_frame_analysis
+```
+
+Sample output:
+```bash
+Running Progress: 100
+Status: Passed
+Output:
+{
+   "issue": "None",
+   "lens_not_dirty_test": "Passed",
+   "privacy_shutter_open_test": "Passed"
+}
+```
+
+Errors:
+- `Internal error.`
+- `Camera frontend is not opened.`
+
 ## Audio Routines
 
 ### Audio driver malfunction

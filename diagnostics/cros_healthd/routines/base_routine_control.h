@@ -12,6 +12,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
 
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -80,8 +81,13 @@ class BaseRoutineControl : public ash::cros_healthd::mojom::RoutineControl {
       mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver> observer);
 
  protected:
-  // Calls the on_exception_ callback.
-  void RaiseException(const std::string& reason);
+  // Raises an unexpected exception.
+  void RaiseException(const std::string& debug_message);
+
+  // Similar to `RaiseException()` but with a concrete reason.
+  void RaiseExceptionWithReason(
+      ash::cros_healthd::mojom::Exception::Reason reason,
+      const std::string& debug_message);
 
   // Set the percentage, this can only be called if the state is currently
   // running.

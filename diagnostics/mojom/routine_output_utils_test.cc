@@ -340,5 +340,18 @@ TEST(RoutineOutputUtilsTest, ConvertSensitiveSensorDetail) {
   EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
+TEST(RoutineOutputUtilsTest, ConvertCameraFrameAnalysisDetail) {
+  auto detail = mojom::CameraFrameAnalysisRoutineDetail::New();
+  detail->issue = mojom::CameraFrameAnalysisRoutineDetail::Issue::kNone;
+  detail->privacy_shutter_open_test = mojom::CameraSubtestResult::kPassed;
+  detail->lens_not_dirty_test = mojom::CameraSubtestResult::kNotRun;
+
+  base::Value::Dict expected_result;
+  expected_result.Set("issue", "None");
+  expected_result.Set("privacy_shutter_open_test", "Passed");
+  expected_result.Set("lens_not_dirty_test", "Not Run");
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
+}
+
 }  // namespace
 }  // namespace diagnostics

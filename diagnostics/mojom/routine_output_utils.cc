@@ -103,6 +103,23 @@ std::string EnumToString(mojom::SensitiveSensorInfo::Type type) {
   }
 }
 
+std::string EnumToString(mojom::CameraFrameAnalysisRoutineDetail::Issue issue) {
+  switch (issue) {
+    case mojom::CameraFrameAnalysisRoutineDetail::Issue::kUnmappedEnumField:
+      NOTREACHED_NORETURN();
+    case mojom::CameraFrameAnalysisRoutineDetail::Issue::kNone:
+      return "None";
+    case mojom::CameraFrameAnalysisRoutineDetail::Issue::
+        kCameraServiceNotAvailable:
+      return "Camera Service Not Available";
+    case mojom::CameraFrameAnalysisRoutineDetail::Issue::
+        kBlockedByPrivacyShutter:
+      return "Blocked By Privacy Shutter";
+    case mojom::CameraFrameAnalysisRoutineDetail::Issue::kLensAreDirty:
+      return "Lens Are Dirty";
+  }
+}
+
 base::Value::Dict ConvertToValue(const mojom::SensitiveSensorInfoPtr& info) {
   base::Value::Dict output;
   output.Set("id", info->id);
@@ -333,6 +350,18 @@ base::Value::Dict ConvertToValue(
   output.Set("base_gravity_sensor",
              ConvertToValue(detail->base_gravity_sensor));
   output.Set("lid_gravity_sensor", ConvertToValue(detail->lid_gravity_sensor));
+
+  return output;
+}
+
+base::Value::Dict ConvertToValue(
+    const mojom::CameraFrameAnalysisRoutineDetailPtr& detail) {
+  base::Value::Dict output;
+
+  output.Set("issue", EnumToString(detail->issue));
+  output.Set("privacy_shutter_open_test",
+             EnumToString(detail->privacy_shutter_open_test));
+  output.Set("lens_not_dirty_test", EnumToString(detail->lens_not_dirty_test));
 
   return output;
 }

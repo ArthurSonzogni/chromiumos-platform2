@@ -114,6 +114,7 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
     case mojom::RoutineDetail::Tag::kNetworkBandwidth:
     // TODO(b/329377632): Support sensitive sensor routine v1.
     case mojom::RoutineDetail::Tag::kSensitiveSensor:
+    case mojom::RoutineDetail::Tag::kCameraFrameAnalysis:
       NOTREACHED_NORETURN() << "Not exposed in the v1 interface";
     case mojom::RoutineDetail::Tag::kMemory:
       return ConvertToValueInV1Format(detail->get_memory());

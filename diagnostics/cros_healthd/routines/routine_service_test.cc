@@ -574,5 +574,36 @@ TEST_F(RoutineServiceTest, NetworkBandwidthNoOemName) {
                          mojom::NetworkBandwidthRoutineArgument::New()));
 }
 
+TEST_F(RoutineServiceTest, CameraFrameAnalysis) {
+  SetFakeCrosConfig(paths::cros_config::kCameraCount, "1");
+
+  auto arg = mojom::RoutineArgument::NewCameraFrameAnalysis(
+      mojom::CameraFrameAnalysisRoutineArgument::New());
+  CheckIsRoutineArgumentSupported(MakeSupported(), arg.Clone());
+  CheckCreateRoutine(MakeSupported(), arg.Clone());
+}
+
+TEST_F(RoutineServiceTest, CameraFrameAnalysisNoCrosConfig) {
+  SetFakeCrosConfig(paths::cros_config::kCameraCount, std::nullopt);
+
+  auto status = MakeUnsupported(
+      "Expected cros_config property [camera/count] to be "
+      "[uint32], but got []");
+  auto arg = mojom::RoutineArgument::NewCameraFrameAnalysis(
+      mojom::CameraFrameAnalysisRoutineArgument::New());
+  CheckIsRoutineArgumentSupported(status, arg.Clone());
+  CheckCreateRoutine(status, arg.Clone());
+}
+
+TEST_F(RoutineServiceTest, CameraFrameAnalysisNoCamera) {
+  SetFakeCrosConfig(paths::cros_config::kCameraCount, "0");
+
+  auto status = MakeUnsupported("Doesn't support device with no camera.");
+  auto arg = mojom::RoutineArgument::NewCameraFrameAnalysis(
+      mojom::CameraFrameAnalysisRoutineArgument::New());
+  CheckIsRoutineArgumentSupported(status, arg.Clone());
+  CheckCreateRoutine(status, arg.Clone());
+}
+
 }  // namespace
 }  // namespace diagnostics

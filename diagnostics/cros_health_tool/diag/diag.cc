@@ -386,6 +386,14 @@ int SensitiveSensorV2Main(int argc, char** argv) {
   COMMON_V2_ROUTINE_MAIN(SensitiveSensor);
 }
 
+int CameraFrameAnalysisMain(int argc, char** argv) {
+  COMMON_V2_ROUTINE_FLAGS("Camera frame analysis routine");
+
+  auto argument = mojom::CameraFrameAnalysisRoutineArgument::New();
+
+  COMMON_V2_ROUTINE_MAIN(CameraFrameAnalysis);
+}
+
 #define COMMON_LEGACY_ROUTINE_FLAGS                                            \
   DEFINE_uint32(force_cancel_at_percent, std::numeric_limits<uint32_t>::max(), \
                 "If specified, will attempt to cancel the routine when its "   \
@@ -856,6 +864,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"urandom_v2", UrandomV2Main},
     {"network_bandwidth", NetworkBandwidthMain},
     {"sensitive_sensor_v2", SensitiveSensorV2Main},
+    {"camera_frame_analysis", CameraFrameAnalysisMain},
     // V1 routines.
     {"battery_capacity", BatteryCapacityMain},
     {"battery_health", BatteryHealthMain},

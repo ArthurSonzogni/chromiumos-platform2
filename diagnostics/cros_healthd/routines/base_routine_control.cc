@@ -76,13 +76,21 @@ void BaseRoutineControl::NotifyObserver() {
   }
 }
 
-void BaseRoutineControl::RaiseException(const std::string& reason) {
+void BaseRoutineControl::RaiseException(const std::string& debug_message) {
   CHECK(!on_exception_.is_null())
       << "Must call SetOnExceptionCallback before starting the routine, and "
          "exception can only be raised once";
   std::move(on_exception_)
       .Run(static_cast<uint32_t>(mojom::Exception::Reason::kUnexpected),
-           reason);
+           debug_message);
+}
+
+void BaseRoutineControl::RaiseExceptionWithReason(
+    mojom::Exception::Reason reason, const std::string& debug_message) {
+  CHECK(!on_exception_.is_null())
+      << "Must call SetOnExceptionCallback before starting the routine, and "
+         "exception can only be raised once";
+  std::move(on_exception_).Run(static_cast<uint32_t>(reason), debug_message);
 }
 
 void BaseRoutineControl::SetPercentage(uint8_t percentage) {
