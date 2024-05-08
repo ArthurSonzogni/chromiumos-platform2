@@ -105,3 +105,5 @@ fstatfs: 1
 process_vm_readv: 1
 
 flock: 1
+
+eventfd2: 1

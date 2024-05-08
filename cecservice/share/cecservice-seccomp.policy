@@ -56,3 +56,4 @@ readlink: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 futex: 1
 uname: 1
+eventfd2: 1

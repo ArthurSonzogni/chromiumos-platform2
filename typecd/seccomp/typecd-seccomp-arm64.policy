@@ -62,3 +62,4 @@ process_vm_readv: 1
 rt_sigaction: 1
 uname: 1
 fchmod: 1
+eventfd2: 1

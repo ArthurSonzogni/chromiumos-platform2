@@ -68,3 +68,4 @@ rt_sigaction: 1
 lchown: 1
 uname: 1
 fchmod: 1
+eventfd2: 1

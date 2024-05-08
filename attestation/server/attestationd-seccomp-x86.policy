@@ -58,6 +58,7 @@ faccessat2: 1
 # For device policy to walk through the directory of interest.
 getdents: 1
 getdents64: 1
+eventfd2: 1
 
 inotify_init: 1
 inotify_add_watch: 1

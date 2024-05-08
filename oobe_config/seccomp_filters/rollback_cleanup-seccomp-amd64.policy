@@ -80,3 +80,6 @@ fstatfs: 1
 clock_getres: 1
 clock_gettime: 1
 gettimeofday: 1
+
+# libchrome enabling MessagePumpEpoll
+eventfd2: 1

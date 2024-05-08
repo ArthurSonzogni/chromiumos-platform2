@@ -82,3 +82,6 @@ fstatfs64: 1
 
 # Manually added later because only used rarely.
 gettimeofday: 1
+
+# libchrome enabling MessagePumpEpoll
+eventfd2: 1
