@@ -620,6 +620,8 @@ grpc::Status ServiceImpl::ConfigureContainerGuest(
     return grpc::Status(grpc::INTERNAL,
                         "failed to write container token to file");
   }
+  LOG(INFO) << "Wrote container token to "
+            << vm_tools::kGarconContainerTokenFile;
 
 #if USE_VM_BOREALIS
   // Run garcon.
@@ -628,6 +630,7 @@ grpc::Status ServiceImpl::ConfigureContainerGuest(
                     &launch_info)) {
     return grpc::Status(grpc::INTERNAL, "failed to launch garcon");
   }
+  LOG(INFO) << "Launched garcon";
 #endif
   return grpc::Status::OK;
 }
