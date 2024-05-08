@@ -11,9 +11,9 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "mojom/passpoint.mojom.h"
 #include "shill/certificate_file.h"
 #include "shill/manager.h"
+#include "shill/mojom/passpoint.mojom.h"
 #include "shill/refptr_types.h"
 #include "shill/wifi/passpoint_credentials.h"
 #include "shill/wifi/wifi_provider.h"
