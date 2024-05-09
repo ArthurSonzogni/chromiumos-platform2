@@ -19,10 +19,6 @@ enum class AttributeCheckStatus {
   CLEARED,
 };
 
-// Whether we allow `path` to be marked with immutable file attribute.
-// If `path` is supposed to be a directory, set `isdir` to true.
-bool ImmutableAllowed(const base::FilePath& path, bool isdir);
-
 // Check the file attributes of the specified path.  `path` is used for logging
 // and policy checking, so `fd` needs to be an open handle to it.  This helps
 // with TOCTTOU issues.

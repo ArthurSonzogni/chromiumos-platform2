@@ -22,7 +22,6 @@
 
 using file_attrs_cleaner::AttributeCheckStatus;
 using file_attrs_cleaner::CheckFileAttributes;
-using file_attrs_cleaner::ImmutableAllowed;
 using file_attrs_cleaner::ScanDir;
 
 namespace {
