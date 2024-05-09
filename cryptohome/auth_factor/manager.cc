@@ -23,6 +23,7 @@
 #include <flatbuffers/flatbuffers.h>
 #include <libhwsec-foundation/flatbuffers/basic_objects.h>
 #include <libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h>
+#include <libhwsec-foundation/status/status_chain.h>
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
@@ -30,6 +31,7 @@
 #include "cryptohome/auth_factor/label.h"
 #include "cryptohome/auth_factor/metadata.h"
 #include "cryptohome/auth_factor/type.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_factor.h"
@@ -389,6 +391,48 @@ void AuthFactorManager::UpdateAuthFactor(
                      auth_factor, std::move(callback)));
 }
 
+void AuthFactorManager::RemoveMigratedFingerprintAuthFactors(
+    const ObfuscatedUsername& obfuscated_username,
+    AuthBlockUtility* auth_block_utility,
+    StatusCallback callback) {
+  const AuthFactorMap& auth_factor_map = GetAuthFactorMap(obfuscated_username);
+  std::optional<AuthFactorMap::ValueView> found_migrated_factor = std::nullopt;
+  for (auto factor_view : auth_factor_map) {
+    if (factor_view.auth_factor().type() == AuthFactorType::kFingerprint) {
+      const auto* fp_metadata = std::get_if<FingerprintMetadata>(
+          &(factor_view.auth_factor().metadata().metadata));
+      if (!fp_metadata) {
+        std::move(callback).Run(MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthFactorManagerMalformedFactorInRemoveMigratedFpFactors),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+        return;
+      }
+      if (fp_metadata->was_migrated) {
+        found_migrated_factor = factor_view;
+        break;
+      }
+    }
+  }
+
+  if (!found_migrated_factor) {
+    std::move(callback).Run(OkStatus<CryptohomeError>());
+    return;
+  }
+
+  auto& auth_factor = found_migrated_factor->auth_factor();
+  auto migrate_more = base::BindOnce(
+      &AuthFactorManager::ContinueRemoveFpAuthFactors,
+      weak_factory_.GetWeakPtr(), obfuscated_username, auth_factor.label(),
+      auth_block_utility, std::move(callback));
+  auth_block_utility->PrepareAuthBlockForRemoval(
+      obfuscated_username, auth_factor.auth_block_state(),
+      base::BindOnce(&AuthFactorManager::RemoveAuthFactorFiles,
+                     weak_factory_.GetWeakPtr(), obfuscated_username,
+                     auth_factor, std::move(migrate_more)));
+}
+
 AuthFactorMap AuthFactorManager::LoadAllAuthFactors(
     const ObfuscatedUsername& obfuscated_username) {
   AuthFactorMap auth_factor_map;
@@ -484,6 +528,27 @@ void AuthFactorManager::LogPrepareForRemovalStatus(
   }
 
   std::move(callback).Run(OkStatus<CryptohomeError>());
+}
+
+void AuthFactorManager::ContinueRemoveFpAuthFactors(
+    const ObfuscatedUsername& obfuscated_username,
+    const std::string& auth_factor_label,
+    AuthBlockUtility* auth_block_utility,
+    StatusCallback callback,
+    CryptohomeStatus status) {
+  if (!status.ok()) {
+    std::move(callback).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthFactorManagerFailedInRemoveOneMigratedFpFactors),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT)
+            .Wrap(std::move(status)));
+    return;
+  }
+  AuthFactorMap& auth_factor_map = GetAuthFactorMap(obfuscated_username);
+  auth_factor_map.Remove(auth_factor_label);
+  RemoveMigratedFingerprintAuthFactors(obfuscated_username, auth_block_utility,
+                                       std::move(callback));
 }
 
 }  // namespace cryptohome

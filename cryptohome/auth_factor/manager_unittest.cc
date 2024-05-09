@@ -28,9 +28,11 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state_test_utils.h"
+#include "cryptohome/flatbuffer_schemas/auth_factor.h"
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/user_secret_stash/storage.h"
+#include "gmock/gmock.h"
 
 namespace cryptohome {
 namespace {
@@ -56,6 +58,7 @@ using ::testing::Return;
 using ::testing::StrictMock;
 
 constexpr char kSomeIdpLabel[] = "some-idp";
+constexpr char kSomeLegacyFpLabel[] = "legacy-fp-some";
 constexpr char kChromeosVersion[] = "a.b.c_1_2_3";
 constexpr char kChromeVersion[] = "a.b.c.d";
 
@@ -82,6 +85,24 @@ AuthFactor CreatePasswordAuthFactor() {
       .metadata = PasswordMetadata()};
   return AuthFactor(AuthFactorType::kPassword, kSomeIdpLabel, metadata,
                     CreatePasswordAuthBlockState());
+}
+
+AuthFactor CreateMigratedFingerprintAuthFactor() {
+  AuthFactorMetadata metadata = {
+      .common =
+          CommonMetadata{
+              .chromeos_version_last_updated = kChromeosVersion,
+              .chrome_version_last_updated = kChromeVersion,
+          },
+      .metadata = FingerprintMetadata{
+          .was_migrated = true,
+      }};
+  AuthBlockState auth_block_state = {.state = FingerprintAuthBlockState{
+                                         .template_id = "template_id",
+                                         .gsc_secret_label = 1234,
+                                     }};
+  return AuthFactor{AuthFactorType::kFingerprint, kSomeLegacyFpLabel, metadata,
+                    auth_block_state};
 }
 
 class AuthFactorManagerTest : public ::testing::Test {
@@ -662,6 +683,9 @@ class GetAuthFactorMapTest : public AuthFactorManagerTest {
     EXPECT_THAT(
         auth_factor_manager_.SaveAuthFactorFile(kObfuscatedUsername, factor),
         IsOk());
+    EXPECT_TRUE(platform_.FileExists(
+        AuthFactorPath(kObfuscatedUsername,
+                       AuthFactorTypeToString(factor.type()), factor.label())));
   }
 
   // Create a random USS with wrapped keys with the given IDs. The actual keys
@@ -793,6 +817,109 @@ TEST_F(GetAuthFactorMapTest, LoadWithOnlyUssAndBrokenFactors) {
                                     AuthFactorStorageType::kUserSecretStash),
                   AuthFactorMapItem(AuthFactorType::kPin, "secondary",
                                     AuthFactorStorageType::kUserSecretStash)));
+}
+
+TEST_F(GetAuthFactorMapTest, RemoveFpAuthFactorsSuccess) {
+  InstallVaultKeysets({});
+  InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
+                              {.metadata = PasswordMetadata()},
+                              {.state = TpmBoundToPcrAuthBlockState()}));
+  AuthFactor auth_factor = CreateMigratedFingerprintAuthFactor();
+  InstallUssFactor(auth_factor);
+  ASSERT_THAT(CreateUssWithWrappingIds({"primary", kSomeLegacyFpLabel}),
+              IsOk());
+
+  CryptohomeStatusOr<AuthFactor> loaded_auth_factor =
+      auth_factor_manager_.LoadAuthFactor(kObfuscatedUsername,
+                                          AuthFactorType::kFingerprint,
+                                          kSomeLegacyFpLabel);
+  EXPECT_THAT(loaded_auth_factor, IsOk());
+  auto& auth_factor_map =
+      auth_factor_manager_.GetAuthFactorMap(kObfuscatedUsername);
+  EXPECT_THAT(
+      auth_factor_map,
+      UnorderedElementsAre(
+          AuthFactorMapItem(AuthFactorType::kPassword, "primary",
+                            AuthFactorStorageType::kUserSecretStash),
+          AuthFactorMapItem(AuthFactorType::kFingerprint, kSomeLegacyFpLabel,
+                            AuthFactorStorageType::kUserSecretStash)));
+
+  // Delete migrated fp auth factors.
+  NiceMock<MockAuthBlockUtility> auth_block_utility;
+  TestFuture<CryptohomeStatus> remove_result;
+  auth_factor_manager_.RemoveMigratedFingerprintAuthFactors(
+      kObfuscatedUsername, &auth_block_utility, remove_result.GetCallback());
+  EXPECT_TRUE(remove_result.IsReady());
+  EXPECT_THAT(remove_result.Take(), IsOk());
+
+  // Try to load the auth factor.
+  CryptohomeStatusOr<AuthFactor> loaded_auth_factor_again =
+      auth_factor_manager_.LoadAuthFactor(kObfuscatedUsername,
+                                          AuthFactorType::kFingerprint,
+                                          kSomeLegacyFpLabel);
+  EXPECT_THAT(loaded_auth_factor_again, Not(IsOk()));
+  EXPECT_FALSE(platform_.FileExists(
+      AuthFactorPath(kObfuscatedUsername,
+                     /*auth_factor_type_string=*/"fingerprint",
+                     kSomeLegacyFpLabel)
+          .AddExtension(libstorage::kChecksumExtension)));
+
+  // Check In-memory auth factor map has cleared the migrated fp auth factor.
+  EXPECT_FALSE(auth_factor_map.Find(auth_factor.label()).has_value());
+}
+
+TEST_F(GetAuthFactorMapTest, RemoveFpAuthFactorsFailureWithAuthBlock) {
+  const CryptohomeError::ErrorLocationPair
+      error_location_for_testing_auth_factor =
+          CryptohomeError::ErrorLocationPair(
+              static_cast<::cryptohome::error::CryptohomeError::ErrorLocation>(
+                  1),
+              std::string("MockErrorLocationAuthFactor"));
+
+  InstallVaultKeysets({});
+  InstallUssFactor(AuthFactor(AuthFactorType::kPassword, "primary",
+                              {.metadata = PasswordMetadata()},
+                              {.state = TpmBoundToPcrAuthBlockState()}));
+  AuthFactor auth_factor = CreateMigratedFingerprintAuthFactor();
+  InstallUssFactor(auth_factor);
+  ASSERT_THAT(CreateUssWithWrappingIds({"primary", kSomeLegacyFpLabel}),
+              IsOk());
+
+  CryptohomeStatusOr<AuthFactor> loaded_auth_factor =
+      auth_factor_manager_.LoadAuthFactor(kObfuscatedUsername,
+                                          AuthFactorType::kFingerprint,
+                                          kSomeLegacyFpLabel);
+  EXPECT_THAT(loaded_auth_factor, IsOk());
+  auto& auth_factor_map =
+      auth_factor_manager_.GetAuthFactorMap(kObfuscatedUsername);
+  EXPECT_THAT(
+      auth_factor_map,
+      UnorderedElementsAre(
+          AuthFactorMapItem(AuthFactorType::kPassword, "primary",
+                            AuthFactorStorageType::kUserSecretStash),
+          AuthFactorMapItem(AuthFactorType::kFingerprint, kSomeLegacyFpLabel,
+                            AuthFactorStorageType::kUserSecretStash)));
+
+  NiceMock<MockAuthBlockUtility> auth_block_utility;
+
+  // Intentionally fail the PrepareAuthBlockForRemoval for fingerprint factor.
+  EXPECT_CALL(auth_block_utility, PrepareAuthBlockForRemoval(_, _, _))
+      .WillOnce([&](const ObfuscatedUsername& obfuscated_username,
+                    const AuthBlockState& auth_state,
+                    AuthBlockUtility::CryptohomeStatusCallback callback) {
+        std::move(callback).Run(MakeStatus<error::CryptohomeCryptoError>(
+            error_location_for_testing_auth_factor,
+            error::ErrorActionSet(
+                {error::PossibleAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO));
+      });
+
+  // Try to delete migrated fp auth factors.
+  TestFuture<CryptohomeStatus> remove_result;
+  auth_factor_manager_.RemoveMigratedFingerprintAuthFactors(
+      kObfuscatedUsername, &auth_block_utility, remove_result.GetCallback());
+  EXPECT_TRUE(remove_result.IsReady());
+  EXPECT_THAT(remove_result.Take(), Not(IsOk()));
 }
 
 }  // namespace

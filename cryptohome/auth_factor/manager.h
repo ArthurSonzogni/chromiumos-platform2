@@ -104,6 +104,14 @@ class AuthFactorManager final {
                         AuthBlockUtility* auth_block_utility,
                         StatusCallback callback);
 
+  // Deletes the migrated fingerprint auth factors in the user's data vault.
+  // Useful in ensuring a clean sheet before a re-migration of legacy
+  // fingerprints.
+  void RemoveMigratedFingerprintAuthFactors(
+      const ObfuscatedUsername& obfuscated_username,
+      AuthBlockUtility* auth_block_utility,
+      StatusCallback callback);
+
  private:
   // Loads all configured auth factors for the given user from the disk. If any
   // factors are malformed they will be logged and skipped.
@@ -124,6 +132,18 @@ class AuthFactorManager final {
                                   const AuthFactor& auth_factor,
                                   StatusCallback callback,
                                   CryptohomeStatus status);
+
+  // ContinueRemoveAuthFactors removes the auth factor with |auth_factor_label|
+  // from the in-memory map, then calls RemoveMigratedFingerprintAuthFactor,
+  // if the passed-in |status| is ok. Otherwise, any error
+  // in |status| will be passed to |callback| and the auth factors' removal
+  // is aborted.
+  void ContinueRemoveFpAuthFactors(
+      const ObfuscatedUsername& obfuscated_username,
+      const std::string& auth_factor_label,
+      AuthBlockUtility* auth_block_utility,
+      StatusCallback callback,
+      CryptohomeStatus status);
 
   libstorage::Platform* const platform_;
   UssManager* const uss_manager_;

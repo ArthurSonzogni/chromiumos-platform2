@@ -2223,6 +2223,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionPersistUSSFailedInPersistFpMigrationRollout = 3564,
   /* ./auth_session/auth_session.cc */
   kLocAuthSessionNoDecryptedUSSInMigrateLegacyFps = 3565,
+  /* ./auth_factor/manager.cc */
+  kLocAuthFactorManagerMalformedFactorInRemoveMigratedFpFactors = 3566,
+  /* ./auth_factor/manager.cc */
+  kLocAuthFactorManagerFailedInRemoveOneMigratedFpFactors = 3567,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
