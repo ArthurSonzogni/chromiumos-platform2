@@ -91,6 +91,9 @@ constexpr char kJemallocSharedDirTag[] = "jemalloc";
 constexpr char kJemallocHighMemDeviceConfig[] =
     "narenas:12,tcache:true,lg_tcache_max:16";
 
+constexpr char kReadonlySharedDir[] = "/run/arcvm/ro";
+constexpr char kReadonlySharedDirTag[] = "ro";
+
 #if defined(__x86_64__) || defined(__aarch64__)
 constexpr char kLibSharedDir[] = "/lib64";
 constexpr char kUsrLibSharedDir[] = "/usr/lib64";
@@ -404,6 +407,14 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .ascii_casefold = false,
                           .posix_acl = true})
       .AppendSharedDir(CreateFontsSharedDataParam())
+      .AppendSharedDir(
+          SharedDataParam{.data_dir = base::FilePath(kReadonlySharedDir),
+                          .tag = kReadonlySharedDirTag,
+                          .uid_map = kAndroidUidMap,
+                          .gid_map = kAndroidGidMap,
+                          .enable_caches = SharedDataParam::Cache::kAlways,
+                          .ascii_casefold = false,
+                          .posix_acl = true})
       .AppendSharedDir(
           SharedDataParam{.data_dir = base::FilePath(kLibSharedDir),
                           .tag = kLibSharedDirTag,
