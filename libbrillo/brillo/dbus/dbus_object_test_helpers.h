@@ -62,7 +62,7 @@ inline std::unique_ptr<::dbus::Response> CallMethod(
   DBusInterface* itf = object.FindInterface(method_call->GetInterface());
   std::unique_ptr<::dbus::Response> response;
   if (!itf) {
-    response = CreateDBusErrorResponse(
+    response = dbus::ErrorResponse::FromMethodCall(
         method_call, DBUS_ERROR_UNKNOWN_INTERFACE,
         "Interface you invoked a method on isn't known by the object.");
   } else {

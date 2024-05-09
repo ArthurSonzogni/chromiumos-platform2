@@ -22,9 +22,11 @@ DBusMethodResponseBase::~DBusMethodResponseBase() {
 }
 
 void DBusMethodResponseBase::ReplyWithError(const brillo::Error* error) {
+  CHECK(error);
   CheckCanSendResponse();
-  auto response = GetDBusError(method_call_, error);
-  SendRawResponse(std::move(response));
+  dbus::Error dbus_error = ToDBusError(*error);
+  SendRawResponse(dbus::ErrorResponse::FromMethodCall(
+      method_call_, dbus_error.name(), dbus_error.message()));
 }
 
 void DBusMethodResponseBase::ReplyWithError(const base::Location& location,

@@ -2,52 +2,48 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <base/check.h>
 #include <brillo/dbus/utils.h>
 
 #include <tuple>
+#include <utility>
 #include <vector>
 
-#include <base/functional/bind.h>
+#include <base/strings/strcat.h>
+#include <dbus/dbus-protocol.h>
+
 #include <brillo/errors/error_codes.h>
 #include <brillo/strings/string_utils.h>
 
 namespace brillo {
 namespace dbus_utils {
 
-std::unique_ptr<dbus::Response> CreateDBusErrorResponse(
-    dbus::MethodCall* method_call,
-    const std::string& error_name,
-    const std::string& error_message) {
-  return dbus::ErrorResponse::FromMethodCall(method_call, error_name,
-                                             error_message);
-}
-
-std::unique_ptr<dbus::Response> GetDBusError(dbus::MethodCall* method_call,
-                                             const brillo::Error* error) {
-  CHECK(error) << "Error object must be specified";
+dbus::Error ToDBusError(const brillo::Error& error) {
   std::string error_name = DBUS_ERROR_FAILED;  // Default error code.
   std::string error_message;
+
+  const brillo::Error* current_error = &error;
 
   // Special case for "dbus" error domain.
   // Pop the error code and message from the error chain and use them as the
   // actual D-Bus error message.
-  if (error->GetDomain() == errors::dbus::kDomain) {
-    error_name = error->GetCode();
-    error_message = error->GetMessage();
-    error = error->GetInnerError();
+  if (current_error->GetDomain() == errors::dbus::kDomain) {
+    error_name = current_error->GetCode();
+    error_message = current_error->GetMessage();
+    current_error = current_error->GetInnerError();
   }
 
   // Append any inner errors to the error message.
-  while (error) {
+  while (current_error) {
     // Format error string as "domain/code:message".
     if (!error_message.empty())
       error_message += ';';
-    error_message +=
-        error->GetDomain() + '/' + error->GetCode() + ':' + error->GetMessage();
-    error = error->GetInnerError();
+    base::StrAppend(&error_message,
+                    {current_error->GetDomain(), "/", current_error->GetCode(),
+                     ":", current_error->GetMessage()});
+    current_error = current_error->GetInnerError();
   }
-  return CreateDBusErrorResponse(method_call, error_name, error_message);
+
+  return dbus::Error(std::move(error_name), std::move(error_message));
 }
 
 void AddDBusError(brillo::ErrorPtr* error,
