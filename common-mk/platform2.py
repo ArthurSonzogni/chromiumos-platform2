@@ -151,6 +151,7 @@ _IUSE = [
     "kvm_guest",
     "kvm_host",
     "legacy_usb_passthrough",
+    "libcamera",
     "libglvnd",
     "local_ml_core_internal",
     "login_apply_no_new_privs",
