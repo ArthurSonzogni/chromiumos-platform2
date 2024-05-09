@@ -107,8 +107,6 @@ static_library("libconcierge") {
     "vm_protos",
   ]
   defines = [
-    "USE_ARCVM_GKI=${use.arcvm_gki}",
-
     # TODO(b/293801301): Add PCI hotplug support for aarch64.
     # PCI hotplug is only enabled on x86_64 architecture.
     "USE_PCI_HOTPLUG_SLOTS=${use.amd64}",
