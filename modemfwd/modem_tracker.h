@@ -19,7 +19,7 @@
 namespace modemfwd {
 
 using OnModemCarrierIdReadyCallback = base::RepeatingCallback<void(
-    std::unique_ptr<org::chromium::flimflam::DeviceProxy>)>;
+    std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface>)>;
 
 using OnModemDeviceSeenCallback =
     base::RepeatingCallback<void(std::string, std::string)>;

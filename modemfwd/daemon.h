@@ -104,7 +104,7 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   // Generally this means on startup but can also be called in response
   // to e.g. rebooting the modem or SIM hot swapping.
   void OnModemCarrierIdReady(
-      std::unique_ptr<org::chromium::flimflam::DeviceProxy> modem);
+      std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface> modem);
   // Called when a modem device is seen (detected by ModemManager)
   // Possibly called multiple times.
   void OnModemDeviceSeen(std::string device_id, std::string equipment_id);
