@@ -279,7 +279,7 @@ TEST_F(MetricsTest, CheckCableSpeedTBTOnly) {
   ASSERT_TRUE(CreateFakeAltMode(mode_path, 0x04b4, 0x1, 0));
   c.AddAltMode(mode_path);
 
-  EXPECT_EQ(CableSpeedMetric::kTBTOnly10G20G, c.GetCableSpeedMetric());
+  EXPECT_EQ(CableSpeedMetric::kTBTOnly10G20G, c.GetCableSpeedMetric(false));
 }
 
 TEST_F(MetricsTest, CheckCableSpeedPassive40Gbps) {
@@ -296,7 +296,7 @@ TEST_F(MetricsTest, CheckCableSpeedPassive40Gbps) {
 
   c.SetNumAltModes(0);
 
-  EXPECT_EQ(CableSpeedMetric::kUSB3_1Gen1Gen2, c.GetCableSpeedMetric());
+  EXPECT_EQ(CableSpeedMetric::kUSB3_1Gen1Gen2, c.GetCableSpeedMetric(false));
 }
 
 TEST_F(MetricsTest, CheckCableSpeedPassiveUSB31_Gen1) {
@@ -313,7 +313,39 @@ TEST_F(MetricsTest, CheckCableSpeedPassiveUSB31_Gen1) {
 
   c.SetNumAltModes(0);
 
-  EXPECT_EQ(CableSpeedMetric::kUSB3_1Gen1, c.GetCableSpeedMetric());
+  EXPECT_EQ(CableSpeedMetric::kUSB3_1Gen1, c.GetCableSpeedMetric(false));
+}
+
+TEST_F(MetricsTest, CheckCableNonEmarked) {
+  Cable c(base::FilePath("foo"));
+  c.SetPDRevision(PDRevision::kNone);
+  c.SetIdHeaderVDO(0x0);
+  c.SetCertStatVDO(0x0);
+  c.SetProductVDO(0x0);
+  c.SetProductTypeVDO1(0x0);
+  c.SetProductVDO(0x0);
+  c.SetProductTypeVDO1(0x0);
+  c.SetProductTypeVDO2(0x0);
+  c.SetProductTypeVDO3(0x0);
+  c.SetNumAltModes(0);
+
+  EXPECT_EQ(CableSpeedMetric::kNonEmarked, c.GetCableSpeedMetric(false));
+}
+
+TEST_F(MetricsTest, CheckCableNonEmarkedCaptive) {
+  Cable c(base::FilePath("foo"));
+  c.SetPDRevision(PDRevision::kNone);
+  c.SetIdHeaderVDO(0x0);
+  c.SetCertStatVDO(0x0);
+  c.SetProductVDO(0x0);
+  c.SetProductTypeVDO1(0x0);
+  c.SetProductVDO(0x0);
+  c.SetProductTypeVDO1(0x0);
+  c.SetProductTypeVDO2(0x0);
+  c.SetProductTypeVDO3(0x0);
+  c.SetNumAltModes(0);
+
+  EXPECT_EQ(CableSpeedMetric::kNonEmarkedCaptive, c.GetCableSpeedMetric(true));
 }
 
 TEST_F(MetricsTest, CheckPartnerLocationPreferRightSide) {

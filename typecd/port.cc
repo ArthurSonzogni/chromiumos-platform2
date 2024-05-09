@@ -622,13 +622,13 @@ void Port::ReportPartnerMetrics(Metrics* metrics) {
   partner_->ReportMetrics(metrics);
 }
 
-void Port::ReportCableMetrics(Metrics* metrics) {
+void Port::ReportCableMetrics(Metrics* metrics, bool captive) {
   if (!cable_) {
     LOG(INFO) << "Trying to report metrics for non-existent cable.";
     return;
   }
 
-  cable_->ReportMetrics(metrics);
+  cable_->ReportMetrics(metrics, captive);
 }
 
 void Port::ReportPortMetrics(Metrics* metrics) {
@@ -694,7 +694,7 @@ void Port::ReportMetrics(Metrics* metrics, bool mode_entry_supported) {
     return;
 
   ReportPartnerMetrics(metrics);
-  ReportCableMetrics(metrics);
+  ReportCableMetrics(metrics, IsCaptiveCableConnected());
   if (mode_entry_supported)
     ReportPortMetrics(metrics);
   if (CanEnterDPAltMode(nullptr))

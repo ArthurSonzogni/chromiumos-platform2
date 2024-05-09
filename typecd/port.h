@@ -296,8 +296,9 @@ class Port {
   void ReportPartnerMetrics(Metrics* metrics);
 
   // Calls the |cable_|'s metrics reporting function, if a |cable_| is
-  // registered.
-  void ReportCableMetrics(Metrics* metrics);
+  // registered. |captive| must be provided to determine non-emarked cable
+  // type.
+  void ReportCableMetrics(Metrics* metrics, bool captive);
 
   // Reports port level metrics.
   void ReportPortMetrics(Metrics* metrics);

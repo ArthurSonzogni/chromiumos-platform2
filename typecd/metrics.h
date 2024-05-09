@@ -44,7 +44,9 @@ enum class CableSpeedMetric {
   kUSB3_1Gen1Gen2 = 5,
   kUSB4Gen3 = 6,
   kTBTOnly10G20G = 7,
-  kMaxValue = kTBTOnly10G20G,
+  kNonEmarked = 8,
+  kNonEmarkedCaptive = 9,
+  kMaxValue = kNonEmarkedCaptive,
 };
 
 // These values are persisted to logs. Entries should not be renumbered and

@@ -91,16 +91,19 @@ class Cable : public Peripheral {
 
   // Report any metrics associated with the cable using UMA reporting. If the
   // |metrics| pointer is nullptr, or if metrics have already been reported i.e
-  // |metrics_reported_| is true, we return immediately.
-  void ReportMetrics(Metrics* metrics);
+  // |metrics_reported_| is true, we return immediately. |captive| must be set
+  // to true if the port determines a captive cable is connected.
+  void ReportMetrics(Metrics* metrics, bool captive);
 
  private:
   friend class MetricsTest;
   FRIEND_TEST(MetricsTest, CheckCableSpeedTBTOnly);
   FRIEND_TEST(MetricsTest, CheckCableSpeedPassive40Gbps);
   FRIEND_TEST(MetricsTest, CheckCableSpeedPassiveUSB31_Gen1);
+  FRIEND_TEST(MetricsTest, CheckCableSpeedNonEmarked);
+  FRIEND_TEST(MetricsTest, CheckCableSpeedNonEmarkedCaptive);
 
-  CableSpeedMetric GetCableSpeedMetric();
+  CableSpeedMetric GetCableSpeedMetric(bool captive);
 
   // Map representing all SOP' alternate modes.
   // The key is the index of the alternate mode as determined

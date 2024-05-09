@@ -256,8 +256,16 @@ bool Cable::DiscoveryComplete() {
   return num_alt_modes_ == alt_modes_.size();
 }
 
-CableSpeedMetric Cable::GetCableSpeedMetric() {
+CableSpeedMetric Cable::GetCableSpeedMetric(bool captive) {
   CableSpeedMetric ret = CableSpeedMetric::kOther;
+
+  // If there is no ID header, this is a non-emarked cable.
+  if (!GetIdHeaderVDO()) {
+    if (captive)
+      return CableSpeedMetric::kNonEmarkedCaptive;
+    else
+      return CableSpeedMetric::kNonEmarked;
+  }
 
   // If we can't identify a valid cable in the ID Header, return early.
   auto cable_type = (GetIdHeaderVDO() >> kIDHeaderVDOProductTypeBitOffset) &
@@ -323,7 +331,7 @@ CableSpeedMetric Cable::GetCableSpeedMetric() {
   return ret;
 }
 
-void Cable::ReportMetrics(Metrics* metrics) {
+void Cable::ReportMetrics(Metrics* metrics, bool captive) {
   if (!metrics || metrics_reported_)
     return;
 
@@ -333,7 +341,7 @@ void Cable::ReportMetrics(Metrics* metrics) {
     return;
   }
 
-  metrics->ReportCableSpeed(GetCableSpeedMetric());
+  metrics->ReportCableSpeed(GetCableSpeedMetric(captive));
 
   metrics_reported_ = true;
 }
