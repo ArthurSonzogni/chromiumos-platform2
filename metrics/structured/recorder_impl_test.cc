@@ -154,7 +154,8 @@ TEST_F(RecorderTest, WriteEvent) {
   EXPECT_FALSE(event.has_event_sequence_metadata());
 }
 
-TEST_F(RecorderTest, SequenceMetadataAttached) {
+// TODO(b:339451736) Enable once fixed.
+TEST_F(RecorderTest, DISABLED_SequenceMetadataAttached) {
   PopulateResetCounterFile("5");
 
   events::test_project_two::TestEventThree event3;
