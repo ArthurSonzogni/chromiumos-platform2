@@ -157,15 +157,17 @@ class PortalDetectorTest : public Test {
   }
 
   PortalDetector::Result GetPortalRedirectResult(
-      const net_base::HttpUrl& probe_url) {
+      const net_base::HttpUrl& http_probe_url) {
     const PortalDetector::Result r = {
         .num_attempts = 1,
+        .ip_family = net_base::IPFamily::kIPv4,
         .http_result = PortalDetector::ProbeResult::kPortalRedirect,
         .http_status_code = 302,
         .http_content_length = 0,
         .https_result = PortalDetector::ProbeResult::kConnectionFailure,
         .redirect_url = net_base::HttpUrl::CreateFromString(kPortalSignInURL),
-        .probe_url = probe_url,
+        .http_probe_url = http_probe_url,
+        .https_probe_url = kHttpsUrl,
     };
     EXPECT_TRUE(r.IsHTTPProbeComplete());
     EXPECT_TRUE(r.IsHTTPSProbeComplete());
@@ -229,7 +231,7 @@ class PortalDetectorTest : public Test {
         .WillOnce(Return(status_code));
     auto response =
         std::make_unique<brillo::http::Response>(http_probe_connection_);
-    portal_detector_->ProcessHTTPProbeResult(kHttpUrl, base::TimeTicks(),
+    portal_detector_->ProcessHTTPProbeResult(base::TimeTicks(),
                                              std::move(response));
   }
 
@@ -241,7 +243,7 @@ class PortalDetectorTest : public Test {
   }
 
   void HTTPRequestFailure(HttpRequest::Error error) {
-    portal_detector_->ProcessHTTPProbeResult(kHttpUrl, base::TimeTicks(),
+    portal_detector_->ProcessHTTPProbeResult(base::TimeTicks(),
                                              base::unexpected(error));
   }
 
@@ -417,7 +419,7 @@ TEST_F(PortalDetectorTest, RestartAfterSuspectedRedirect) {
       .http_status_code = 200,
       .http_content_length = 345,
       .https_result = PortalDetector::ProbeResult::kConnectionFailure,
-      .probe_url = kHttpUrl,
+      .http_probe_url = kHttpUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_TRUE(result.IsHTTPSProbeComplete());
@@ -551,10 +553,13 @@ TEST_F(PortalDetectorTest, RequestSuccess) {
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kSuccess,
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kSuccess,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_TRUE(result.IsHTTPSProbeComplete());
@@ -573,10 +578,13 @@ TEST_F(PortalDetectorTest, RequestHTTPFailureHTTPSSuccess) {
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kFailure,
       .http_status_code = 123,
       .http_content_length = 10,
       .https_result = PortalDetector::ProbeResult::kSuccess,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_TRUE(result.IsHTTPSProbeComplete());
@@ -596,10 +604,13 @@ TEST_F(PortalDetectorTest, RequestHTTPSuccessHTTPSFailure) {
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kSuccess,
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kTLSFailure,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_TRUE(result.IsHTTPSProbeComplete());
@@ -621,10 +632,13 @@ TEST_F(PortalDetectorTest, RequestFail) {
   // HTTPS probe does not trigger anything (for now)
   const PortalDetector::Result result = {
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kFailure,
       .http_status_code = 123,
       .http_content_length = 10,
       .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_TRUE(result.IsHTTPSProbeComplete());
@@ -704,10 +718,13 @@ TEST_F(PortalDetectorTest, Request200AndInvalidContentLength) {
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kFailure,
       .http_status_code = 200,
       .http_content_length = std::nullopt,
       .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_TRUE(result.IsHTTPSProbeComplete());
@@ -727,10 +744,13 @@ TEST_F(PortalDetectorTest, Request200WithoutContent) {
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kSuccess,
       .http_status_code = 200,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kSuccess,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_TRUE(result.IsHTTPSProbeComplete());
@@ -750,10 +770,12 @@ TEST_F(PortalDetectorTest, Request200WithContent) {
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kPortalSuspected,
       .http_status_code = 200,
       .http_content_length = 768,
-      .probe_url = kHttpUrl,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_FALSE(result.IsHTTPSProbeComplete());
@@ -773,12 +795,14 @@ TEST_F(PortalDetectorTest, RequestInvalidRedirect) {
 
   const PortalDetector::Result result = {
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kPortalInvalidRedirect,
       .http_status_code = 302,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kTLSFailure,
       .redirect_url = std::nullopt,
-      .probe_url = kHttpUrl,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
   ASSERT_TRUE(result.IsHTTPProbeComplete());
   ASSERT_TRUE(result.IsHTTPSProbeComplete());
@@ -801,10 +825,13 @@ TEST_F(PortalDetectorTest, HTTPOnlyRequestSuccess) {
   const PortalDetector::Result result = {
       .http_only = true,
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kSuccess,
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kNoResult,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = std::nullopt,
   };
   ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             result.GetValidationState());
@@ -822,13 +849,15 @@ TEST_F(PortalDetectorTest, HTTPOnlyRequestRedirect) {
   const PortalDetector::Result result = {
       .http_only = true,
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kPortalRedirect,
       .http_status_code = 302,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kNoResult,
       .redirect_url =
           net_base::HttpUrl::CreateFromString("https://portal.com/login"),
-      .probe_url = kHttpUrl,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = std::nullopt,
   };
   ASSERT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             result.GetValidationState());
@@ -848,12 +877,14 @@ TEST_F(PortalDetectorTest, HTTPOnlyRequestPortalSuspected) {
   const PortalDetector::Result result = {
       .http_only = true,
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kPortalSuspected,
       .http_status_code = 200,
       .http_content_length = 456,
       .https_result = PortalDetector::ProbeResult::kNoResult,
       .redirect_url = std::nullopt,
-      .probe_url = kHttpUrl,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = std::nullopt,
   };
   ASSERT_EQ(PortalDetector::ValidationState::kPortalSuspected,
             result.GetValidationState());
@@ -871,12 +902,14 @@ TEST_F(PortalDetectorTest, HTTPOnlyRequestInvalidRedirect) {
   const PortalDetector::Result result = {
       .http_only = true,
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kPortalInvalidRedirect,
       .http_status_code = 302,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kNoResult,
       .redirect_url = std::nullopt,
-      .probe_url = kHttpUrl,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = std::nullopt,
   };
   ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             result.GetValidationState());
@@ -896,8 +929,11 @@ TEST_F(PortalDetectorTest, HTTPOnlyRequestFailure) {
   const PortalDetector::Result result = {
       .http_only = true,
       .num_attempts = 1,
+      .ip_family = net_base::IPFamily::kIPv4,
       .http_result = PortalDetector::ProbeResult::kConnectionFailure,
       .https_result = PortalDetector::ProbeResult::kNoResult,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = std::nullopt,
   };
   ASSERT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             result.GetValidationState());
@@ -962,6 +998,8 @@ TEST(PortalDetectorResultTest, HTTPSTimeout) {
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kHTTPTimeout,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -976,6 +1014,8 @@ TEST(PortalDetectorResultTest, PartialConnectivity) {
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -988,6 +1028,8 @@ TEST(PortalDetectorResultTest, NoConnectivity) {
   const PortalDetector::Result result = {
       .http_result = PortalDetector::ProbeResult::kConnectionFailure,
       .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
       .http_duration = base::Milliseconds(0),
       .https_duration = base::Milliseconds(200),
   };
@@ -1004,6 +1046,8 @@ TEST(PortalDetectorResultTest, InternetConnectivity) {
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kSuccess,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -1018,7 +1062,7 @@ TEST(PortalDetectorResultTest, PortalRedirect) {
       .http_content_length = 0,
       .redirect_url =
           net_base::HttpUrl::CreateFromString("https://portal.com/login"),
-      .probe_url = net_base::HttpUrl::CreateFromString(
+      .http_probe_url = net_base::HttpUrl::CreateFromString(
           "https://service.google.com/generate_204"),
   };
 
@@ -1035,6 +1079,8 @@ TEST(PortalDetectorResultTest, PortalInvalidRedirect) {
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kConnectionFailure,
       .redirect_url = std::nullopt,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -1049,6 +1095,8 @@ TEST(PortalDetectorResultTest, Empty200) {
       .http_status_code = 200,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kSuccess,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -1062,6 +1110,8 @@ TEST(PortalDetectorResultTest, PortalSuspected200) {
       .http_status_code = 200,
       .http_content_length = 1023,
       .https_result = PortalDetector::ProbeResult::kTLSFailure,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -1077,6 +1127,8 @@ TEST(PortalDetectorResultTest, HTTPOnlySuccessfulProbe) {
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kNoResult,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -1089,6 +1141,8 @@ TEST(PortalDetectorResultTest, HTTPOnlyDNSFailure) {
       .http_only = true,
       .http_result = PortalDetector::ProbeResult::kDNSFailure,
       .https_result = PortalDetector::ProbeResult::kNoResult,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -1101,6 +1155,8 @@ TEST(PortalDetectorResultTest, HTTPOnlyConnectionFailure) {
       .http_only = true,
       .http_result = PortalDetector::ProbeResult::kConnectionFailure,
       .https_result = PortalDetector::ProbeResult::kNoResult,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -1118,8 +1174,8 @@ TEST(PortalDetectorResultTest, HTTPOnlyPortalRedirect) {
       .https_result = PortalDetector::ProbeResult::kNoResult,
       .redirect_url =
           net_base::HttpUrl::CreateFromString("https://portal.com/login"),
-      .probe_url = net_base::HttpUrl::CreateFromString(
-          "https://service.google.com/generate_204"),
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -1136,7 +1192,8 @@ TEST(PortalDetectorResultTest, HTTPOnlyPortalInvalidRedirect) {
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kNoResult,
       .redirect_url = std::nullopt,
-      .probe_url = std::nullopt,
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),
@@ -1154,8 +1211,8 @@ TEST(PortalDetectorResultTest, HTTPOnlyPortalSuspected) {
       .https_result = PortalDetector::ProbeResult::kNoResult,
       .redirect_url =
           net_base::HttpUrl::CreateFromString("https://portal.com/login"),
-      .probe_url = net_base::HttpUrl::CreateFromString(
-          "https://service.google.com/generate_204"),
+      .http_probe_url = kHttpUrl,
+      .https_probe_url = kHttpsUrl,
   };
 
   EXPECT_EQ(result.GetValidationState(),

@@ -271,6 +271,8 @@ TEST_F(NetworkMonitorTest, StartWithResultReturned) {
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kSuccess,
+      .http_probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
       .http_duration = base::Milliseconds(100),
       .https_duration = base::Milliseconds(200),
   };
@@ -296,6 +298,8 @@ TEST_F(NetworkMonitorTest, StartWithHTTPOnly) {
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kNoResult,
+      .http_probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
       .http_duration = base::Milliseconds(100),
       .https_duration = base::Milliseconds(0),
   };
@@ -372,6 +376,8 @@ TEST_F(NetworkMonitorTest, MetricsWithPartialConnectivity) {
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .http_probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
       .http_duration = base::Milliseconds(100),
       .https_duration = base::Milliseconds(200),
   };
@@ -405,6 +411,8 @@ TEST_F(NetworkMonitorTest, MetricsWithNoConnectivity) {
   const PortalDetector::Result result{
       .http_result = PortalDetector::ProbeResult::kConnectionFailure,
       .https_result = PortalDetector::ProbeResult::kConnectionFailure,
+      .http_probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
       .http_duration = base::Milliseconds(0),
       .https_duration = base::Milliseconds(200),
   };
@@ -431,6 +439,8 @@ TEST_F(NetworkMonitorTest, MetricsWithInternetConnectivity) {
       .http_status_code = 204,
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kSuccess,
+      .http_probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
       .http_duration = base::Milliseconds(100),
       .https_duration = base::Milliseconds(200),
   };
@@ -462,7 +472,7 @@ TEST_F(NetworkMonitorTest, MetricsWithPortalRedirect) {
       .http_content_length = 0,
       .redirect_url =
           net_base::HttpUrl::CreateFromString("https://portal.com/login"),
-      .probe_url = net_base::HttpUrl::CreateFromString(
+      .http_probe_url = net_base::HttpUrl::CreateFromString(
           "https://service.google.com/generate_204"),
       .http_duration = base::Milliseconds(100),
       .https_duration = base::Milliseconds(200),
@@ -495,6 +505,8 @@ TEST_F(NetworkMonitorTest, MetricsWithPortalInvalidRedirect) {
       .http_content_length = 0,
       .https_result = PortalDetector::ProbeResult::kConnectionFailure,
       .redirect_url = std::nullopt,
+      .http_probe_url = net_base::HttpUrl::CreateFromString(
+          "https://service.google.com/generate_204"),
       .http_duration = base::Milliseconds(100),
       .https_duration = base::Milliseconds(200),
   };
@@ -565,7 +577,7 @@ TEST_F(NetworkMonitorTest, IgnorePortalDetectorResult) {
       .http_content_length = 0,
       .redirect_url =
           net_base::HttpUrl::CreateFromString("https://portal.com/login"),
-      .probe_url = net_base::HttpUrl::CreateFromString(
+      .http_probe_url = net_base::HttpUrl::CreateFromString(
           "https://service.google.com/generate_204"),
       .http_duration = base::Milliseconds(100),
       .https_duration = base::Milliseconds(200),
@@ -594,7 +606,7 @@ TEST_F(NetworkMonitorTest, SendBothResult) {
       .http_content_length = 0,
       .redirect_url =
           net_base::HttpUrl::CreateFromString("https://portal.com/login"),
-      .probe_url = net_base::HttpUrl::CreateFromString(
+      .http_probe_url = net_base::HttpUrl::CreateFromString(
           "https://service.google.com/generate_204"),
       .http_duration = base::Milliseconds(100),
       .https_duration = base::Milliseconds(200),

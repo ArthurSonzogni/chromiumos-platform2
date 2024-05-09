@@ -125,11 +125,11 @@ void PortalDetector::Start(bool http_only,
               << ": Attempt is already running";
     return;
   }
-  ip_family_ = ip_family;
   attempt_count_++;
   result_ = Result();
   result_->http_only = http_only;
   result_->num_attempts = attempt_count_;
+  result_->ip_family = ip_family;
   result_callback_ = std::move(callback);
   const base::TimeTicks start_time = base::TimeTicks::Now();
   StartHttpProbe(start_time, dns_list);
@@ -141,64 +141,64 @@ void PortalDetector::Start(bool http_only,
 void PortalDetector::StartHttpProbe(
     base::TimeTicks start_time,
     const std::vector<net_base::IPAddress>& dns_list) {
-  http_request_ = CreateHTTPRequest(ifname_, *ip_family_, dns_list,
-                                    /*allow_non_google_https=*/false);
-  net_base::HttpUrl http_url;
-  if (portal_found_http_url_.has_value()) {
-    http_url = *portal_found_http_url_;
-  } else {
-    http_url = PickProbeUrl(probing_configuration_.portal_http_url,
-                            probing_configuration_.portal_fallback_http_urls);
+  result_->http_probe_url = portal_found_http_url_;
+  if (!result_->http_probe_url) {
+    result_->http_probe_url =
+        PickProbeUrl(probing_configuration_.portal_http_url,
+                     probing_configuration_.portal_fallback_http_urls);
   }
+  http_request_ = CreateHTTPRequest(ifname_, result_->ip_family, dns_list,
+                                    /*allow_non_google_https=*/false);
   brillo::http::HeaderList userAgentHeader = {
       {brillo::http::request_header::kUserAgent, GetUserAgentString()}};
-  LOG(INFO) << LoggingTag() << " " << __func__ << ": " << http_url.host();
+  LOG(INFO) << LoggingTag() << " " << __func__ << ": " << *result_;
   http_request_->Start(
-      LoggingTag() + " HTTP probe", http_url, userAgentHeader,
+      LoggingTag() + " HTTP probe", *result_->http_probe_url, userAgentHeader,
       base::BindOnce(&PortalDetector::ProcessHTTPProbeResult,
-                     weak_ptr_factory_.GetWeakPtr(), http_url, start_time));
+                     weak_ptr_factory_.GetWeakPtr(), start_time));
 }
 
 void PortalDetector::StartHttpsProbe(
     base::TimeTicks start_time,
     const std::vector<net_base::IPAddress>& dns_list) {
-  const net_base::HttpUrl https_url =
-      PickProbeUrl(probing_configuration_.portal_https_url,
-                   probing_configuration_.portal_fallback_https_urls);
   // For non-default URLs, allow for secure communication with both Google and
   // non-Google servers.
-  bool allow_non_google_https = https_url.ToString() != kDefaultHttpsUrl;
-  https_request_ =
-      CreateHTTPRequest(ifname_, *ip_family_, dns_list, allow_non_google_https);
+  result_->https_probe_url =
+      PickProbeUrl(probing_configuration_.portal_https_url,
+                   probing_configuration_.portal_fallback_https_urls);
+  bool allow_non_google_https =
+      result_->https_probe_url->ToString() != kDefaultHttpsUrl;
+  https_request_ = CreateHTTPRequest(ifname_, result_->ip_family, dns_list,
+                                     allow_non_google_https);
   brillo::http::HeaderList userAgentHeader = {
       {brillo::http::request_header::kUserAgent, GetUserAgentString()}};
-  LOG(INFO) << LoggingTag() << " " << __func__ << ": " << https_url.host();
+  LOG(INFO) << LoggingTag() << " " << __func__ << ": " << *result_;
   https_request_->Start(
-      LoggingTag() + " HTTPS probe", https_url, userAgentHeader,
+      LoggingTag() + " HTTPS probe", *result_->https_probe_url, userAgentHeader,
       base::BindOnce(&PortalDetector::ProcessHTTPSProbeResult,
                      weak_ptr_factory_.GetWeakPtr(), start_time));
 }
 
-void PortalDetector::StopTrialIfComplete(Result result) {
-  LOG(INFO) << LoggingTag() << " " << __func__ << ": " << result;
+void PortalDetector::StopTrialIfComplete(const Result& result) {
   if (result_callback_.is_null() || !result.IsComplete()) {
     return;
   }
 
   if (result.IsHTTPProbeRedirected() ||
       result.IsHTTPProbeRedirectionSuspected()) {
-    portal_found_http_url_ = result.probe_url;
+    portal_found_http_url_ = result.http_probe_url;
   }
 
+  // CleanupTrial() invalidates the reference to |result_|, make a local here.
+  const Result final_result = result;
   CleanupTrial();
-  std::move(result_callback_).Run(result);
+  std::move(result_callback_).Run(final_result);
 }
 
 void PortalDetector::CleanupTrial() {
   result_ = std::nullopt;
   http_request_.reset();
   https_request_.reset();
-  ip_family_ = std::nullopt;
 }
 
 void PortalDetector::Reset() {
@@ -209,8 +209,7 @@ void PortalDetector::Reset() {
   CleanupTrial();
 }
 
-void PortalDetector::ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
-                                            base::TimeTicks start_time,
+void PortalDetector::ProcessHTTPProbeResult(base::TimeTicks start_time,
                                             HttpRequest::Result result) {
   if (!result.has_value()) {
     result_->http_result = GetProbeResultFromRequestError(result.error());
@@ -235,7 +234,6 @@ void PortalDetector::ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
         // strong indication of an evasive portal indirectly redirecting the
         // HTTP probe without a 302 response code.
         // TODO(b/309175584): Validate that the response is a valid HTML page
-        result_->probe_url = http_url;
         result_->http_result = ProbeResult::kPortalSuspected;
       } else {
         LOG(WARNING) << LoggingTag() << " " << __func__
@@ -243,7 +241,6 @@ void PortalDetector::ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
         result_->http_result = ProbeResult::kFailure;
       }
     } else if (IsRedirectResponse(status_code)) {
-      result_->probe_url = http_url;
       result_->redirect_url = net_base::HttpUrl::CreateFromString(
           response->GetHeader(brillo::http::response_header::kLocation));
       result_->http_result = result_->redirect_url.has_value()
@@ -255,6 +252,7 @@ void PortalDetector::ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
     }
   }
   result_->http_duration = base::TimeTicks::Now() - start_time;
+  LOG(INFO) << logging_tag_ << " " << __func__ << ": " << *result_;
   StopTrialIfComplete(*result_);
 }
 
@@ -269,6 +267,7 @@ void PortalDetector::ProcessHTTPSProbeResult(base::TimeTicks start_time,
     result_->https_result = ProbeResult::kSuccess;
   }
   result_->https_duration = base::TimeTicks::Now() - start_time;
+  LOG(INFO) << logging_tag_ << " " << __func__ << ": " << *result_;
   StopTrialIfComplete(*result_);
 }
 
@@ -406,13 +405,8 @@ std::optional<int> PortalDetector::Result::GetHTTPResponseCodeMetricResult()
   return http_status_code;
 }
 
-std::string PortalDetector::LoggingTag() const {
-  std::string tag = logging_tag_;
-  if (ip_family_.has_value()) {
-    base::StrAppend(&tag, {" IPFamily=", net_base::ToString(*ip_family_)});
-  }
-  base::StrAppend(&tag, {" attempt=", std::to_string(attempt_count_)});
-  return tag;
+const std::string& PortalDetector::LoggingTag() const {
+  return logging_tag_;
 }
 
 std::unique_ptr<HttpRequest> PortalDetector::CreateHTTPRequest(
@@ -543,8 +537,10 @@ bool PortalDetector::Result::operator==(
   return http_result == rhs.http_result &&
          http_status_code == rhs.http_status_code &&
          http_content_length == rhs.http_content_length &&
-         num_attempts == rhs.num_attempts && https_result == rhs.https_result &&
-         redirect_url == rhs.redirect_url && probe_url == rhs.probe_url;
+         num_attempts == rhs.num_attempts && ip_family == rhs.ip_family &&
+         https_result == rhs.https_result && redirect_url == rhs.redirect_url &&
+         http_probe_url == rhs.http_probe_url &&
+         https_probe_url == rhs.https_probe_url;
 }
 
 std::ostream& operator<<(std::ostream& stream,
@@ -559,31 +555,39 @@ std::ostream& operator<<(std::ostream& stream,
 
 std::ostream& operator<<(std::ostream& stream,
                          const PortalDetector::Result& result) {
-  stream << "{ num_attempts=" << result.num_attempts << ", HTTP probe";
-  if (!result.IsHTTPProbeComplete()) {
-    stream << " in-flight";
+  stream << "{ num_attempts=" << result.num_attempts << ", "
+         << net_base::ToString(result.ip_family) << ", HTTP probe";
+  if (!result.http_probe_url) {
+    stream << " not started";
   } else {
-    stream << " result=" << result.http_result
-           << " code=" << result.http_status_code;
-    if (result.http_content_length) {
-      stream << " content-length=" << *result.http_content_length;
+    stream << " " << result.http_probe_url->host();
+    if (!result.IsHTTPProbeComplete()) {
+      stream << " in-flight";
+    } else {
+      stream << " result=" << result.http_result
+             << " code=" << result.http_status_code;
+      if (result.http_content_length) {
+        stream << " content-length=" << *result.http_content_length;
+      }
+      stream << " duration=" << result.http_duration;
     }
-    stream << " duration=" << result.http_duration;
   }
   stream << ", HTTPS probe";
   if (result.http_only) {
     stream << " disabled";
-  } else if (!result.IsHTTPSProbeComplete()) {
-    stream << " in-flight";
+  } else if (!result.https_probe_url) {
+    stream << " not started";
   } else {
-    stream << " result=" << result.https_result
-           << " duration=" << result.https_duration;
+    stream << " " << result.https_probe_url->host();
+    if (!result.IsHTTPSProbeComplete()) {
+      stream << " in-flight";
+    } else {
+      stream << " result=" << result.https_result
+             << " duration=" << result.https_duration;
+    }
   }
   if (result.redirect_url) {
     stream << ", redirect_url=" << result.redirect_url->ToString();
-  }
-  if (result.probe_url) {
-    stream << ", probe_url=" << result.probe_url->ToString();
   }
   stream << ", is_complete=" << std::boolalpha << result.IsComplete();
   return stream << "}";

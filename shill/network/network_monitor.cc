@@ -600,7 +600,7 @@ NetworkMonitor::Result NetworkMonitor::Result::FromPortalDetectorResult(
       .num_attempts = result.num_attempts,
       .validation_state = result.GetValidationState(),
       .probe_result_metric = result.GetResultMetric(),
-      .target_url = result.probe_url,
+      .target_url = result.http_probe_url,
   };
 }
 

@@ -18,8 +18,6 @@
 #include "shill/network/portal_detector.h"
 #include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
-
-#include <base/logging.h>
 namespace shill {
 namespace {
 
@@ -75,7 +73,7 @@ class ValidationLogTest : public testing::Test {
     r.https_result = PortalDetector::ProbeResult::kConnectionFailure;
     r.redirect_url =
         net_base::HttpUrl::CreateFromString("https://portal.com/login");
-    r.probe_url = net_base::HttpUrl::CreateFromString(
+    r.http_probe_url = net_base::HttpUrl::CreateFromString(
         "https://service.google.com/generate_204");
     CHECK_EQ(PortalDetector::ValidationState::kPortalRedirect,
              r.GetValidationState());
@@ -88,7 +86,7 @@ class ValidationLogTest : public testing::Test {
     r.http_status_code = 200;
     r.http_content_length = 678;
     r.https_result = PortalDetector::ProbeResult::kConnectionFailure;
-    r.probe_url = net_base::HttpUrl::CreateFromString(
+    r.http_probe_url = net_base::HttpUrl::CreateFromString(
         "https://service.google.com/generate_204");
     CHECK_EQ(PortalDetector::ValidationState::kPortalSuspected,
              r.GetValidationState());
@@ -715,7 +713,7 @@ TEST_F(ValidationLogTest, ValidationLogRecordMetricsCapportSupported) {
       PortalDetector::ProbeResult::kConnectionFailure;
   redirect_result.redirect_url =
       net_base::HttpUrl::CreateFromString("https://portal.com/login");
-  redirect_result.probe_url = net_base::HttpUrl::CreateFromString(
+  redirect_result.http_probe_url = net_base::HttpUrl::CreateFromString(
       "https://service.google.com/generate_204");
   redirect_result.http_duration = base::Milliseconds(100);
   redirect_result.https_duration = base::Seconds(8);

@@ -169,6 +169,8 @@ class PortalDetector {
     bool http_only = false;
     // The total number of trial attempts so far.
     int num_attempts = 0;
+    // IP family of the current trial.
+    net_base::IPFamily ip_family;
     // The result of the HTTP probe.
     ProbeResult http_result = ProbeResult::kNoResult;
     // The HTTP response status code from the HTTP probe.
@@ -180,9 +182,10 @@ class PortalDetector {
     // Redirection URL obtained from the Location header when the final
     // ValidationState of the Result if kPortalRedirect.
     std::optional<net_base::HttpUrl> redirect_url = std::nullopt;
-    // URL of the HTTP probe when the final ValidationState of the Result is
-    // either kPortalRedirect or kPortalSuspected.
-    std::optional<net_base::HttpUrl> probe_url = std::nullopt;
+    // URL of the HTTP probe.
+    std::optional<net_base::HttpUrl> http_probe_url = std::nullopt;
+    // URL of the HTTPS probe when |http_only| is false.
+    std::optional<net_base::HttpUrl> https_probe_url = std::nullopt;
     // Total HTTP and HTTPS probe durations, recorded if the respective probe
     // successfully started. The todal duration of the network validation
     // attempt is the longest of the two durations.
@@ -255,8 +258,7 @@ class PortalDetector {
   // Returns whether a portal detection attempt is running.
   mockable bool IsRunning() const;
 
-  // Returns |logging_tag_| appended with the |ip_family_| and |attempt_count_|.
-  std::string LoggingTag() const;
+  const std::string& LoggingTag() const;
 
   // Returns the total number of detection attempts scheduled so far.
   mockable int attempt_count() const { return attempt_count_; }
@@ -310,8 +312,7 @@ class PortalDetector {
                        const std::vector<net_base::IPAddress>& dns_list);
 
   // Process the HttpRequest Result of the HTTP probe.
-  void ProcessHTTPProbeResult(const net_base::HttpUrl& http_url,
-                              base::TimeTicks start_time,
+  void ProcessHTTPProbeResult(base::TimeTicks start_time,
                               HttpRequest::Result result);
 
   // Process the HttpRequest Result of the HTTPS probe.
@@ -320,7 +321,7 @@ class PortalDetector {
 
   // Called after each probe result to check if the current trial can be
   // stopped and if |portal_result_callback_| can be invoked.
-  void StopTrialIfComplete(Result result);
+  void StopTrialIfComplete(const Result& result);
 
   // Internal method used to cancel the timeout timer and stop an active
   // HttpRequest.
@@ -347,8 +348,6 @@ class PortalDetector {
   // The value will be clear when Reset() is called.
   std::optional<net_base::HttpUrl> portal_found_http_url_ = std::nullopt;
 
-  // The IP family of the current trial. Used for logging.
-  std::optional<net_base::IPFamily> ip_family_ = std::nullopt;
   // The total number of detection attempts scheduled so far. Only used in logs
   // for debugging purposes, and for selecting the URL of detection and
   // validation probes.
