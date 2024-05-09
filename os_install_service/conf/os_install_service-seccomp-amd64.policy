@@ -93,6 +93,7 @@ mkdir: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mount: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mremap: 1
 munmap: 1
 nanosleep: 1
 newfstatat: 1
