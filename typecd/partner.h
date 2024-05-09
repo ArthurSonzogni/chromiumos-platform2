@@ -99,6 +99,15 @@ class Partner : public Peripheral {
   // Checks whether the partner supports USB. (not USB4)
   bool SupportsUsb();
 
+  // Convenience function used by ReportMetrics to get the right enum for
+  // PartnerTypeMetric.
+  PartnerTypeMetric GetPartnerTypeMetric();
+
+  // Extract ID values from VDOs.
+  int GetVendorId();
+  int GetProductId();
+  int GetXid();
+
  private:
   friend class MetricsTest;
   FRIEND_TEST(MetricsTest, CheckPartnerTypeUSB4Hub);
@@ -113,21 +122,12 @@ class Partner : public Peripheral {
   FRIEND_TEST(PartnerTest, PowerProfile);
 
   // Convenience function used by ReportMetrics to get the right enum for
-  // PartnerTypeMetric.
-  PartnerTypeMetric GetPartnerTypeMetric();
-
-  // Convenience function used by ReportMetrics to get the right enum for
   // DataRoleMetric.
   DataRoleMetric GetDataRoleMetric();
 
   // Convenience function used by ReportMetrics to get the right enum for
   // PowerRoleMetric.
   PowerRoleMetric GetPowerRoleMetric();
-
-  // Extract ID values from VDOs.
-  int GetVendorId();
-  int GetProductId();
-  int GetXid();
 
   // Parse and store the value of the "supports_usb_power_delivery" file from
   // sysfs. If there is an error parsing the file contents, the value is assumed

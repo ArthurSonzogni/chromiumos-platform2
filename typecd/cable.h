@@ -89,6 +89,9 @@ class Cable : public Peripheral {
   // which is read from sysfs.
   bool DiscoveryComplete();
 
+  // Returns the cable categorty defined by the metrics class.
+  CableSpeedMetric GetCableSpeedMetric(bool captive);
+
   // Report any metrics associated with the cable using UMA reporting. If the
   // |metrics| pointer is nullptr, or if metrics have already been reported i.e
   // |metrics_reported_| is true, we return immediately. |captive| must be set
@@ -102,8 +105,6 @@ class Cable : public Peripheral {
   FRIEND_TEST(MetricsTest, CheckCableSpeedPassiveUSB31_Gen1);
   FRIEND_TEST(MetricsTest, CheckCableSpeedNonEmarked);
   FRIEND_TEST(MetricsTest, CheckCableSpeedNonEmarkedCaptive);
-
-  CableSpeedMetric GetCableSpeedMetric(bool captive);
 
   // Map representing all SOP' alternate modes.
   // The key is the index of the alternate mode as determined
