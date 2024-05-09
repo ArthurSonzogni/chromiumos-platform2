@@ -4,15 +4,19 @@
 
 #include "cryptohome/storage/file_system_keyset.h"
 
+#include <utility>
+
 #include <brillo/cryptohome.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
 #include "cryptohome/cryptohome_common.h"
 
-using brillo::SecureBlob;
-using hwsec_foundation::CreateSecureRandomBlob;
-
 namespace cryptohome {
+namespace {
+
+using ::hwsec_foundation::CreateSecureRandomBlob;
+
+}
 
 FileSystemKeyset FileSystemKeyset::CreateRandom() {
   const libstorage::FileSystemKey key = {
@@ -34,25 +38,14 @@ FileSystemKeyset FileSystemKeyset::CreateRandom() {
 }
 
 FileSystemKeyset::FileSystemKeyset() = default;
-FileSystemKeyset::~FileSystemKeyset() = default;
-
-FileSystemKeyset::FileSystemKeyset(const VaultKeyset& vault_keyset) {
-  key_.fek = vault_keyset.GetFek();
-  key_.fek_salt = vault_keyset.GetFekSalt();
-  key_.fnek = vault_keyset.GetFnek();
-  key_.fnek_salt = vault_keyset.GetFnekSalt();
-
-  key_reference_.fek_sig = vault_keyset.GetFekSig();
-  key_reference_.fnek_sig = vault_keyset.GetFnekSig();
-
-  chaps_key_ = vault_keyset.GetChapsKey();
-}
 
 FileSystemKeyset::FileSystemKeyset(
     libstorage::FileSystemKey key,
     libstorage::FileSystemKeyReference key_reference,
     brillo::SecureBlob chaps_key)
-    : key_(key), key_reference_(key_reference), chaps_key_(chaps_key) {}
+    : key_(std::move(key)),
+      key_reference_(std::move(key_reference)),
+      chaps_key_(std::move(chaps_key)) {}
 
 const libstorage::FileSystemKey& FileSystemKeyset::Key() const {
   return key_;

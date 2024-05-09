@@ -35,15 +35,13 @@
 #include <libstorage/platform/platform.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
 
-#include "cryptohome/auth_factor/types/password.h"
+#include "cryptohome/crypto.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
-#include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
-#include "cryptohome/key_objects.h"
 #include "cryptohome/username.h"
 
 using base::FilePath;

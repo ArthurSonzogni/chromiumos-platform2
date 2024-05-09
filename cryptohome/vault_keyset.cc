@@ -197,6 +197,15 @@ void VaultKeyset::CreateFromFileSystemKeyset(
   CreateRandomResetSeed();
 }
 
+FileSystemKeyset VaultKeyset::ToFileSystemKeyset() const {
+  return FileSystemKeyset({.fek = fek_,
+                           .fnek = fnek_,
+                           .fek_salt = fek_salt_,
+                           .fnek_salt = fnek_salt_},
+                          {.fek_sig = fek_sig_, .fnek_sig = fnek_sig_},
+                          chaps_key_);
+}
+
 bool VaultKeyset::Load(const base::FilePath& filename) {
   CHECK(platform_);
   brillo::Blob contents;

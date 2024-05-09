@@ -5,12 +5,8 @@
 #ifndef CRYPTOHOME_STORAGE_FILE_SYSTEM_KEYSET_H_
 #define CRYPTOHOME_STORAGE_FILE_SYSTEM_KEYSET_H_
 
-#include <string>
-
 #include <brillo/secure_blob.h>
 #include <libstorage/storage_container/filesystem_key.h>
-
-#include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
 
@@ -19,19 +15,17 @@ namespace cryptohome {
 class FileSystemKeyset final {
  public:
   FileSystemKeyset();
-  explicit FileSystemKeyset(const VaultKeyset& vault_keyset);
   FileSystemKeyset(libstorage::FileSystemKey key,
                    libstorage::FileSystemKeyReference key_reference,
                    brillo::SecureBlob chaps_key);
-  ~FileSystemKeyset();
 
-  // Getters for the associated key data
+  // Getters for the associated key data.
   const libstorage::FileSystemKey& Key() const;
   const libstorage::FileSystemKeyReference& KeyReference() const;
   const brillo::SecureBlob& chaps_key() const;
 
-  // TODO(dlunev): make vault keyset to use this CreateRandom instead
-  // of its own.
+  // Create a new file system keyset with securely generated random keys for all
+  // of its key material.
   static FileSystemKeyset CreateRandom();
 
  private:

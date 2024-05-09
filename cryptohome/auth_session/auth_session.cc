@@ -910,7 +910,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   // updated.
   AuthBlockType auth_block_type_for_resaved_vk =
       ResaveVaultKeysetIfNeeded(auth_input.user_input, auth_block_type);
-  file_system_keyset_ = FileSystemKeyset(*vault_keyset_);
+  file_system_keyset_ = vault_keyset_->ToFileSystemKeyset();
 
   CryptohomeStatus prepare_status = OkStatus<error::CryptohomeError>();
   if (auth_intent_ == AuthIntent::kWebAuthn) {
