@@ -109,6 +109,7 @@ source_set("structured_metrics") {
   ]
 
   deps = [
+    ":gen_structured_events",
     ":libsm_proto",
     ":storage",
     "//metrics:libmetrics",
