@@ -8,6 +8,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <policy/device_policy.h>
 
 namespace typecd {
 
@@ -22,6 +23,11 @@ bool ReadHexFromPath(const base::FilePath& path, uint32_t* val);
 // string returned by FormatHexString will be zero-padded up to the provided
 // width.
 std::string FormatHexString(uint32_t val, int width);
+
+// Helper functions used to search through metric allow list.
+bool DeviceComp(policy::DevicePolicy::UsbDeviceId dev1,
+                policy::DevicePolicy::UsbDeviceId dev2);
+bool DeviceInMetricsAllowlist(uint16_t vendor_id, uint16_t product_id);
 
 }  // namespace typecd
 
