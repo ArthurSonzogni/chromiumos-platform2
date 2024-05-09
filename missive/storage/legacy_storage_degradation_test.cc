@@ -712,6 +712,9 @@ class LegacyStorageDegradationTest
              base::MakeRefCounted<test::TestCompressionModule>(),
          .health_module =
              HealthModule::Create(std::make_unique<HealthModuleDelegateMock>()),
+         .server_configuration_controller =
+             ServerConfigurationController::Create(
+                 /*is_enabled=*/false),
          .signature_verification_dev_flag =
              base::MakeRefCounted<SignatureVerificationDevFlag>(
                  /*is_enabled=*/false),

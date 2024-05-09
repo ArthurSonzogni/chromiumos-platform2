@@ -27,6 +27,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_uploader_interface.h"
+#include "missive/util/server_configuration_controller.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
@@ -69,6 +70,8 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
     const scoped_refptr<EncryptionModuleInterface> encryption_module;
     const scoped_refptr<CompressionModule> compression_module;
     const scoped_refptr<HealthModule> health_module;
+    const scoped_refptr<ServerConfigurationController>
+        server_configuration_controller;
     const scoped_refptr<SignatureVerificationDevFlag>
         signature_verification_dev_flag;
     const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb;
@@ -155,6 +158,9 @@ class Storage : public base::RefCountedThreadSafe<Storage> {
   // `queues_container_`).
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
+
+  const scoped_refptr<ServerConfigurationController>
+      server_configuration_controller_;
 
   // Health module for debugging support. Exists always, but active only when
   // the `is_debugging_` flag is set.

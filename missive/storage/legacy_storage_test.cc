@@ -53,6 +53,7 @@
 #include "missive/storage/key_delivery.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
+#include "missive/util/server_configuration_controller.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
@@ -919,21 +920,24 @@ class LegacyStorageTest
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
-    Storage::Create({.options = options,
-                     .queues_container = QueuesContainer::Create(
-                         /*storage_degradation_enabled=*/false),
-                     .encryption_module = encryption_module,
-                     .compression_module =
-                         base::MakeRefCounted<test::TestCompressionModule>(),
-                     .health_module = HealthModule::Create(
-                         std::make_unique<HealthModuleDelegateMock>()),
-                     .signature_verification_dev_flag =
-                         base::MakeRefCounted<SignatureVerificationDevFlag>(
-                             /*is_enabled=*/false),
-                     .async_start_upload_cb = base::BindRepeating(
-                         &LegacyStorageTest::AsyncStartMockUploader,
-                         base::Unretained(this))},
-                    e.cb());
+    Storage::Create(
+        {.options = options,
+         .queues_container = QueuesContainer::Create(
+             /*storage_degradation_enabled=*/false),
+         .encryption_module = encryption_module,
+         .compression_module =
+             base::MakeRefCounted<test::TestCompressionModule>(),
+         .health_module =
+             HealthModule::Create(std::make_unique<HealthModuleDelegateMock>()),
+         .server_configuration_controller =
+             ServerConfigurationController::Create(/*is_enabled=*/false),
+         .signature_verification_dev_flag =
+             base::MakeRefCounted<SignatureVerificationDevFlag>(
+                 /*is_enabled=*/false),
+         .async_start_upload_cb =
+             base::BindRepeating(&LegacyStorageTest::AsyncStartMockUploader,
+                                 base::Unretained(this))},
+        e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }
@@ -997,21 +1001,24 @@ class LegacyStorageTest
               /*renew_encryption_key_period=*/base::Minutes(30))) {
     // Initialize Storage with no key.
     test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
-    Storage::Create({.options = options,
-                     .queues_container = QueuesContainer::Create(
-                         /*storage_degradation_enabled=*/false),
-                     .encryption_module = encryption_module,
-                     .compression_module =
-                         base::MakeRefCounted<test::TestCompressionModule>(),
-                     .health_module = HealthModule::Create(
-                         std::make_unique<HealthModuleDelegateMock>()),
-                     .signature_verification_dev_flag =
-                         base::MakeRefCounted<SignatureVerificationDevFlag>(
-                             /*is_enabled=*/false),
-                     .async_start_upload_cb = base::BindRepeating(
-                         &LegacyStorageTest::AsyncStartMockUploaderFailing,
-                         base::Unretained(this))},
-                    e.cb());
+    Storage::Create(
+        {.options = options,
+         .queues_container = QueuesContainer::Create(
+             /*storage_degradation_enabled=*/false),
+         .encryption_module = encryption_module,
+         .compression_module =
+             base::MakeRefCounted<test::TestCompressionModule>(),
+         .health_module =
+             HealthModule::Create(std::make_unique<HealthModuleDelegateMock>()),
+         .server_configuration_controller =
+             ServerConfigurationController::Create(/*is_enabled=*/false),
+         .signature_verification_dev_flag =
+             base::MakeRefCounted<SignatureVerificationDevFlag>(
+                 /*is_enabled=*/false),
+         .async_start_upload_cb = base::BindRepeating(
+             &LegacyStorageTest::AsyncStartMockUploaderFailing,
+             base::Unretained(this))},
+        e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
     return storage;
   }

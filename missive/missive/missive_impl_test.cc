@@ -32,6 +32,7 @@
 #include "missive/missive/migration.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module.h"
+#include "missive/util/server_configuration_controller.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/test_support_callbacks.h"
@@ -144,6 +145,15 @@ class MissiveImplTest : public ::testing::Test {
               return self->encryption_module_;
             },
             base::Unretained(this)))
+        .SetServerConfigurationControllerFactory(base::BindOnce(
+            [](MissiveImplTest* self,
+               const MissiveArgs::ConfigFileParameters& parameters) {
+              self->server_configuration_controller_ =
+                  ServerConfigurationController::Create(
+                      parameters.blocking_destinations_enabled);
+              return self->server_configuration_controller_;
+            },
+            base::Unretained(this)))
         .SetHealthModuleFactory(base::BindOnce(
             [](MissiveImplTest* self, const base::FilePath&) {
               auto delegate = std::make_unique<HealthModuleDelegateMock>();
@@ -200,6 +210,7 @@ class MissiveImplTest : public ::testing::Test {
   scoped_refptr<CompressionModule> compression_module_;
   scoped_refptr<EncryptionModuleInterface> encryption_module_;
   scoped_refptr<MockStorageModule> storage_module_;
+  scoped_refptr<ServerConfigurationController> server_configuration_controller_;
   std::unique_ptr<MissiveImpl> missive_;
 };
 
@@ -476,7 +487,7 @@ TEST_F(MissiveImplTest, DisabledReportingTest) {
   }
 }
 
-TEST_F(MissiveImplTest, DynamicParametersUpdateTest) {
+TEST_F(MissiveImplTest, StorageDynamicParametersUpdateTest) {
   // Change parameters and refresh.
   fake_platform_features_ptr_->SetParam(
       MissiveArgs::kStorageFeature.name,
@@ -491,5 +502,20 @@ TEST_F(MissiveImplTest, DynamicParametersUpdateTest) {
 
   EXPECT_FALSE(compression_module_->is_enabled());
   EXPECT_FALSE(encryption_module_->is_enabled());
+}
+
+TEST_F(MissiveImplTest, ConfigFileDynamicParametersUpdateTest) {
+  // Change parameters and refresh.
+  fake_platform_features_ptr_->SetEnabled(MissiveArgs::kConfigFileFeature.name,
+                                          true);
+  fake_platform_features_ptr_->SetParam(
+      MissiveArgs::kConfigFileFeature.name,
+      MissiveArgs::kBlockingDestinationsEnabledParameter, "True");
+  fake_platform_features_ptr_->TriggerRefetchSignal();
+
+  // Let asynchronous update finish.
+  task_environment_.RunUntilIdle();
+
+  EXPECT_TRUE(server_configuration_controller_->is_enabled());
 }
 }  // namespace reporting

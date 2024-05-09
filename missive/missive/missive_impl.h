@@ -31,6 +31,7 @@
 #include "missive/scheduler/scheduler.h"
 #include "missive/storage/storage_module.h"
 #include "missive/storage/storage_uploader_interface.h"
+#include "missive/util/server_configuration_controller.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
@@ -62,6 +63,10 @@ class MissiveImpl : public MissiveService {
   MissiveImpl& SetHealthModuleFactory(
       base::OnceCallback<scoped_refptr<HealthModule>(
           const base::FilePath& file_path)> health_module_factory);
+  MissiveImpl& SetServerConfigurationControllerFactory(
+      base::OnceCallback<scoped_refptr<ServerConfigurationController>(
+          const MissiveArgs::ConfigFileParameters& parameters)>
+          server_configuration_controller_factory);
   MissiveImpl& SetStorageModuleFactory(
       base::OnceCallback<
           void(MissiveImpl* self,
@@ -121,6 +126,9 @@ class MissiveImpl : public MissiveService {
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback);
 
+  static scoped_refptr<ServerConfigurationController>
+  CreateServerConfigurationController(
+      const MissiveArgs::ConfigFileParameters& parameters);
   static scoped_refptr<HealthModule> CreateHealthModule(
       const base::FilePath& file_path);
   static scoped_refptr<CompressionModule> CreateCompressionModule(
@@ -133,6 +141,9 @@ class MissiveImpl : public MissiveService {
       base::OnceCallback<void(Status)> cb,
       StatusOr<scoped_refptr<UploadClient>> upload_client_result);
 
+  void OnConfigFileParameters(base::OnceCallback<void(Status)> cb,
+                              StatusOr<MissiveArgs::ConfigFileParameters>
+                                  config_file_parameters_result);
   void OnCollectionParameters(
       base::OnceCallback<void(Status)> cb,
       StatusOr<MissiveArgs::CollectionParameters> collection_parameters_result);
@@ -166,6 +177,9 @@ class MissiveImpl : public MissiveService {
   void OnStorageParametersUpdate(
       MissiveArgs::StorageParameters storage_parameters);
 
+  void OnConfigFileParametersUpdate(
+      MissiveArgs::ConfigFileParameters config_file_parameters);
+
   // Component factories called no more than once during `MissiveImpl::StartUp`
   base::OnceCallback<void(
       scoped_refptr<dbus::Bus> bus,
@@ -182,6 +196,10 @@ class MissiveImpl : public MissiveService {
   base::OnceCallback<scoped_refptr<HealthModule>(
       const base::FilePath& file_path)>
       health_module_factory_ = base::BindOnce(&MissiveImpl::CreateHealthModule);
+  base::OnceCallback<scoped_refptr<ServerConfigurationController>(
+      const MissiveArgs::ConfigFileParameters& parameters)>
+      server_configuration_controller_factory_ =
+          base::BindOnce(&MissiveImpl::CreateServerConfigurationController);
   base::OnceCallback<void(
       MissiveImpl* self,
       StorageOptions storage_options,
@@ -201,6 +219,9 @@ class MissiveImpl : public MissiveService {
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   scoped_refptr<HealthModule> health_module_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  scoped_refptr<ServerConfigurationController> server_configuration_controller_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
   scoped_refptr<const ResourceManager> disk_space_resource_

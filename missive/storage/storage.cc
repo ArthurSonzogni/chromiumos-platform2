@@ -354,6 +354,8 @@ Storage::Storage(const Storage::Settings& settings)
     : options_(settings.options),
       sequenced_task_runner_(
           settings.queues_container->sequenced_task_runner()),
+      server_configuration_controller_(
+          settings.server_configuration_controller),
       health_module_(settings.health_module),
       encryption_module_(settings.encryption_module),
       key_delivery_(KeyDelivery::Create(options_.key_check_period(),
@@ -380,6 +382,34 @@ void Storage::Write(Priority priority,
       base::BindOnce(
           [](scoped_refptr<Storage> self, Priority priority, Record record,
              base::OnceCallback<void(Status)> completion_cb) {
+            // Check if the destination is blocked by the current configuration
+            // file provided by the server, this file has already been
+            // fetched and validated on the browser code.
+            if (self->server_configuration_controller_->IsDestinationBlocked(
+                    record.destination())) {
+              // If the health module is enabled then we generate a record and
+              // move `recorder` into local variable, so that it gets
+              // destructed.
+              if (auto blocked_recorder = self->health_module_->NewRecorder()) {
+                auto* const blocked_record =
+                    blocked_recorder->mutable_blocked_record_call();
+                blocked_record->set_priority(priority);
+                blocked_record->set_destination(record.destination());
+                // Move `blocked_recorder` into local variable, so that it
+                // destructs. After that it is no longer necessary anyway,
+                // but being destructed here, it will be included in
+                // health history and attached to write response request
+                // and thus immediately visible on Chrome.
+                const auto finished_recording = std::move(blocked_recorder);
+              }
+              // Since we are blocking this record we are not adding it to the
+              // storage, we are just returning.
+              std::move(completion_cb)
+                  .Run(Status(error::CANCELLED,
+                              "Record blocked by destination."));
+              return;
+            }
+
             // Provide health module recorded, if debugging is enabled.
             if (auto recorder = self->health_module_->NewRecorder()) {
               auto* const enqueue_record =
@@ -487,8 +517,8 @@ void Storage::WriteToQueue(Record record,
               // Move `recorder` into local variable, so that it destructs.
               // After that it is no longer necessary anyway, but being
               // destructed here, it will be included in health history and
-              // attached to write response request and thus immediately visible
-              // on Chrome.
+              // attached to write response request and thus immediately
+              // visible on Chrome.
               const auto finished_recording = std::move(recorder);
             }
             std::move(completion_cb).Run(status);
@@ -668,8 +698,8 @@ void Storage::Flush(Priority priority,
         std::move(recorder), std::move(completion_cb));
   }
 
-  // If key is not available, there is nothing to flush, but we need to request
-  // the key instead.
+  // If key is not available, there is nothing to flush, but we need to
+  // request the key instead.
   if (encryption_module_->is_enabled() &&
       !encryption_module_->has_encryption_key()) {
     key_delivery_->Request(std::move(completion_cb));

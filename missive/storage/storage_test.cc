@@ -57,6 +57,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/storage/storage_util.h"
+#include "missive/util/server_configuration_controller.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
@@ -959,6 +960,8 @@ class StorageTest : public ::testing::TestWithParam<
              base::MakeRefCounted<test::TestCompressionModule>(),
          .health_module =
              HealthModule::Create(std::make_unique<HealthModuleDelegateMock>()),
+         .server_configuration_controller =
+             ServerConfigurationController::Create(/*is_enabled=*/false),
          .signature_verification_dev_flag =
              base::MakeRefCounted<SignatureVerificationDevFlag>(
                  /*storage_degradation_enabled=*/false),

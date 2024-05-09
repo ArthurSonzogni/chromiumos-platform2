@@ -128,6 +128,14 @@ MissiveImpl& MissiveImpl::SetHealthModuleFactory(
   health_module_factory_ = std::move(health_module_factory);
   return *this;
 }
+MissiveImpl& MissiveImpl::SetServerConfigurationControllerFactory(
+    base::OnceCallback<scoped_refptr<ServerConfigurationController>(
+        const MissiveArgs::ConfigFileParameters& parameters)>
+        server_configuration_controller_factory) {
+  server_configuration_controller_factory_ =
+      std::move(server_configuration_controller_factory);
+  return *this;
+}
 MissiveImpl& MissiveImpl::SetStorageModuleFactory(
     base::OnceCallback<
         void(MissiveImpl* self,
@@ -178,6 +186,31 @@ void MissiveImpl::OnUploadClientCreated(
     return;
   }
   upload_client_ = std::move(upload_client_result.value());
+
+  // `GetConfigFileParameters` only responds once the features were updated.
+  args_->AsyncCall(&MissiveArgs::GetConfigFileParameters)
+      .WithArgs(base::BindPostTaskToCurrentDefault(base::BindOnce(
+          &MissiveImpl::OnConfigFileParameters, GetWeakPtr(), std::move(cb))));
+}
+
+void MissiveImpl::OnConfigFileParameters(
+    base::OnceCallback<void(Status)> cb,
+    StatusOr<MissiveArgs::ConfigFileParameters> config_file_parameters_result) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!config_file_parameters_result.has_value()) {
+    std::move(cb).Run(config_file_parameters_result.error());
+    return;
+  }
+
+  auto& parameters = config_file_parameters_result.value();
+  server_configuration_controller_ =
+      std::move(server_configuration_controller_factory_).Run(parameters);
+
+  // Register for dynamic updates on the flags.
+  args_->AsyncCall(&MissiveArgs::OnConfigFileParametersUpdate)
+      .WithArgs(base::BindPostTaskToCurrentDefault(base::BindRepeating(
+                    &MissiveImpl::OnConfigFileParametersUpdate, GetWeakPtr())),
+                base::DoNothing());
 
   // `GetCollectionParameters` only responds once the features were updated.
   args_->AsyncCall(&MissiveArgs::GetCollectionParameters)
@@ -283,10 +316,19 @@ void MissiveImpl::CreateStorage(
        .encryption_module = encryption_module_,
        .compression_module = compression_module_,
        .health_module = health_module_,
+       .server_configuration_controller = server_configuration_controller_,
        .signature_verification_dev_flag = signature_verification_dev_flag_,
        .async_start_upload_cb = base::BindPostTaskToCurrentDefault(
            base::BindRepeating(&MissiveImpl::AsyncStartUpload, GetWeakPtr()))},
       std::move(callback));
+}
+
+// static
+scoped_refptr<ServerConfigurationController>
+MissiveImpl::CreateServerConfigurationController(
+    const MissiveArgs::ConfigFileParameters& parameters) {
+  return ServerConfigurationController::Create(
+      parameters.blocking_destinations_enabled);
 }
 
 // static
@@ -515,7 +557,10 @@ void MissiveImpl::UpdateConfigInMissive(
     out_response->Return(response_body);
     return;
   }
-  // Do nothing in the mean time.
+  // Provide health module recorder, if debugging is enabled.
+  auto recorder = health_module_->NewRecorder();
+  server_configuration_controller_->UpdateConfiguration(
+      in_request.list_of_blocked_destinations(), std::move(recorder));
   out_response->Return(response_body);
 }
 
@@ -599,6 +644,12 @@ void MissiveImpl::OnStorageParametersUpdate(
     storage_module_->SetLegacyEnabledPriorities(
         storage_parameters.legacy_storage_enabled);
   }
+}
+
+void MissiveImpl::OnConfigFileParametersUpdate(
+    MissiveArgs::ConfigFileParameters config_file_parameters) {
+  server_configuration_controller_->SetValue(
+      config_file_parameters.blocking_destinations_enabled);
 }
 
 base::WeakPtr<MissiveImpl> MissiveImpl::GetWeakPtr() {

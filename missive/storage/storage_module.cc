@@ -224,6 +224,8 @@ void StorageModule::InitStorage(
                    .encryption_module = settings.encryption_module,
                    .compression_module = settings.compression_module,
                    .health_module = settings.health_module,
+                   .server_configuration_controller =
+                       settings.server_configuration_controller,
                    .signature_verification_dev_flag =
                        settings.signature_verification_dev_flag,
                    .async_start_upload_cb = settings.async_start_upload_cb},

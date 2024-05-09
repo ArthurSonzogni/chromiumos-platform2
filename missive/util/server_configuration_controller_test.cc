@@ -197,5 +197,13 @@ TEST_F(ServerConfigurationControllerTest,
   AssertListReturnsFalse();
 }
 
+TEST_F(ServerConfigurationControllerTest, DynamicEnableDisable) {
+  EXPECT_TRUE(server_configuration_controller_->is_enabled());
+  server_configuration_controller_->SetValue(/*is_enabled=*/false);
+  EXPECT_FALSE(server_configuration_controller_->is_enabled());
+  server_configuration_controller_->SetValue(/*is_enabled=*/true);
+  EXPECT_TRUE(server_configuration_controller_->is_enabled());
+}
+
 }  // namespace
 }  // namespace reporting

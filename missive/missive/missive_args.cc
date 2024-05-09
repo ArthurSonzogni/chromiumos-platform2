@@ -260,7 +260,7 @@ void MissiveArgs::UpdateParameters(
   {
     std::string blocking_destinations_enabled;
     std::string blocking_metrics_enabled;
-    auto it = result.find(kCollectorFeature.name);
+    auto it = result.find(kConfigFileFeature.name);
     if (it != result.end() && it->second.enabled) {
       blocking_destinations_enabled = FindValueOrEmpty(
           kBlockingDestinationsEnabledParameter, it->second.params);
