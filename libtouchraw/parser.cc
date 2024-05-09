@@ -270,8 +270,8 @@ void Parser::ParseHIDData(std::unique_ptr<const HIDData> hid_data) {
                  usages_[sub_report_offset_.value()].report_id) {
     offset = sub_report_offset_.value();
   } else {
-    LOG(INFO) << "Report id " << static_cast<int>(hid_data->report_id)
-              << ": Not heat map data.";
+    DLOG(INFO) << "Report id " << static_cast<int>(hid_data->report_id)
+               << ": Not heat map data.";
     return;
   }
 
