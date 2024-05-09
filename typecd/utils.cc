@@ -12,6 +12,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
@@ -22,6 +23,9 @@ namespace {
 
 constexpr char kTbtDeviceRegex[] = "[0-9]+\\-[0-9]+";
 constexpr char kTbtDeviceDir[] = "sys/bus/thunderbolt/devices";
+constexpr char kBusnum[] = "busnum";
+constexpr char kDevnum[] = "devnum";
+constexpr char kDuration[] = "power/connected_duration";
 
 }  // namespace
 
@@ -79,6 +83,32 @@ int GetTbtDeviceCount() {
   }
 
   return ret;
+}
+
+int ReadUsbProp(base::FilePath usb_device, std::string prop) {
+  int ret;
+  std::string prop_str;
+  if (base::ReadFileToString(usb_device.Append(prop), &prop_str)) {
+    base::TrimWhitespaceASCII(prop_str, base::TRIM_ALL, &prop_str);
+    if (base::StringToInt(prop_str, &ret)) {
+      return ret;
+    }
+  }
+
+  return 0;
+}
+
+std::string GetConnectionId(std::string boot_id, base::FilePath usb_device) {
+  struct timespec ts;
+  int64_t duration, connect_time;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  duration = static_cast<int64_t>(ReadUsbProp(usb_device, kDuration) / 1000);
+  connect_time = (ts.tv_sec - duration) / 60;
+
+  return base::StringPrintf(
+      "%s.%s.%s.%s", boot_id.c_str(), std::to_string(connect_time).c_str(),
+      std::to_string(ReadUsbProp(usb_device, kBusnum)).c_str(),
+      std::to_string(ReadUsbProp(usb_device, kDevnum)).c_str());
 }
 
 }  // namespace typecd

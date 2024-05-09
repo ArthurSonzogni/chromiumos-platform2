@@ -739,9 +739,46 @@ void Port::ReportQualityMetrics(Metrics* metrics, bool mode_entry_supported) {
   if (!metrics)
     return;
 
+  std::string boot_id;
+  if (!base::ReadFileToString(base::FilePath("/proc/sys/kernel/random/boot_id"),
+                              &boot_id)) {
+    boot_id = "";
+  }
+  base::TrimWhitespaceASCII(boot_id, base::TRIM_ALL, &boot_id);
+
+  int vid = 0;
+  int pid = 0;
+  std::string usb2_id = "";
+  std::string usb3_id = "";
+  PartnerTypeMetric partner_type = PartnerTypeMetric::kOther;
+  if (partner_) {
+    vid = partner_->GetVendorId();
+    pid = partner_->GetProductId();
+    if (!DeviceInMetricsAllowlist(vid, pid)) {
+      vid = 0;
+      pid = 0;
+    }
+
+    partner_type = partner_->GetPartnerTypeMetric();
+    base::FilePath usb2_device, usb3_device;
+    if (!boot_id.empty() && partner_->GetUsbDevice(0, 480, &usb2_device))
+      usb2_id = GetConnectionId(boot_id, usb2_device);
+
+    if (!boot_id.empty() && partner_->GetUsbDevice(5000, 20000, &usb3_device))
+      usb3_id = GetConnectionId(boot_id, usb3_device);
+  }
+
+  CableSpeedMetric cable_speed = CableSpeedMetric::kOther;
+  if (cable_) {
+    cable_speed = cable_->GetCableSpeedMetric(IsCaptiveCableConnected());
+  }
+
   ModeEntryMetric mode_entry;
   GetModeEntryResult(mode_entry, mode_entry_supported);
+
   metrics->ReportModeEntry(mode_entry);
+  metrics->ReportPdConnect(boot_id, usb2_id, usb3_id, vid, pid, partner_type,
+                           cable_speed, mode_entry);
 }
 
 void Port::ReportMetrics(Metrics* metrics, bool mode_entry_supported) {

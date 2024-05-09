@@ -33,6 +33,13 @@ bool DeviceInMetricsAllowlist(uint16_t vendor_id, uint16_t product_id);
 // thunderbolt bus. Used to check for successful TBT/USB4 mode entry.
 int GetTbtDeviceCount();
 
+// Helper function to read a device property from |usb_device|.
+int ReadUsbProp(base::FilePath usb_device, std::string prop);
+
+// Given a boot_id and USB device path, generates a unique connection ID based
+// boot_id, enumeration time, busnum and devnum.
+std::string GetConnectionId(std::string boot_id, base::FilePath usb_device);
+
 }  // namespace typecd
 
 #endif  // TYPECD_UTILS_H_

@@ -194,6 +194,15 @@ class Metrics {
                                PowerRoleMetric power_role,
                                PartnerTypeMetric type);
 
+  void ReportPdConnect(std::string boot_id,
+                       std::string usb2_id,
+                       std::string usb3_id,
+                       int vid,
+                       int pid,
+                       PartnerTypeMetric partner_type,
+                       CableSpeedMetric cable_speed,
+                       ModeEntryMetric mode_entry);
+
  private:
   MetricsLibrary metrics_library_;
 };

@@ -101,4 +101,26 @@ void Metrics::ReportBasicPdDeviceInfo(int vid,
       .Record();
 }
 
+void Metrics::ReportPdConnect(std::string boot_id,
+                              std::string usb2_id,
+                              std::string usb3_id,
+                              int vid,
+                              int pid,
+                              PartnerTypeMetric partner_type,
+                              CableSpeedMetric cable_speed,
+                              ModeEntryMetric mode_entry) {
+  metrics::structured::events::usb_quality::UsbPdConnect()
+      .SetBootId(std::move(boot_id))
+      .SetUsb2ConnectionId(std::move(usb2_id))
+      .SetUsb3ConnectionId(std::move(usb3_id))
+      .SetVendorId(vid)
+      .SetProductId(pid)
+      .SetPartnerType(static_cast<int>(partner_type))
+      .SetCableType(static_cast<int>(cable_speed))
+      .SetMaxChargingRate(0)
+      .SetRealizedChargingRate(0)
+      .SetModeEntryResult(static_cast<int>(mode_entry))
+      .Record();
+}
+
 }  // namespace typecd

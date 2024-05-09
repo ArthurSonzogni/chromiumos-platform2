@@ -21,8 +21,9 @@
 namespace {
 
 constexpr char kPartnerAltModeRegex[] = R"(port(\d+)-partner.(\d+))";
+constexpr char kUsbDeviceRegex[] = "[0-9]+\\-[0-9\\.]+";
 
-}
+}  // namespace
 
 namespace typecd {
 
@@ -369,6 +370,39 @@ bool Partner::SupportsUsb4() {
   auto partner_cap = (GetProductTypeVDO1() >> kDeviceCapabilityBitOffset) &
                      kDeviceCapabilityMask;
   return (partner_cap & kDeviceCapabilityUSB4);
+}
+
+bool Partner::GetUsbDevice(int min_speed, int max_speed, base::FilePath* path) {
+  base::FileEnumerator typec_paths(
+      GetSysPath(), false,
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
+  for (base::FilePath typec_path = typec_paths.Next(); !typec_path.empty();
+       typec_path = typec_paths.Next()) {
+    if (!RE2::FullMatch(typec_path.BaseName().value(), kUsbDeviceRegex))
+      continue;
+
+    base::FilePath usb_path =
+        base::ReadSymbolicLinkAbsolute(typec_path).value();
+
+    std::string speed_str;
+    if (!base::ReadFileToString(usb_path.Append("speed"), &speed_str))
+      continue;
+
+    int speed;
+    base::TrimWhitespaceASCII(speed_str, base::TRIM_ALL, &speed_str);
+    if (!base::StringToInt(speed_str, &speed))
+      continue;
+
+    // If the current USB device meets the provided speed constraints, return
+    // true. There should only be one USB 2.0 and USB 3.2 device link per PD
+    // partner.
+    if (speed >= min_speed && speed <= max_speed) {
+      *path = usb_path;
+      return true;
+    }
+  }
+
+  return false;
 }
 
 int Partner::GetVendorId() {

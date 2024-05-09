@@ -99,6 +99,10 @@ class Partner : public Peripheral {
   // Checks whether the partner supports USB. (not USB4)
   bool SupportsUsb();
 
+  // Tries to find an associated USB device between the two given speeds.
+  // Returns true if it loads the device path onto |path|.
+  bool GetUsbDevice(int min_speed, int max_speed, base::FilePath* path);
+
   // Convenience function used by ReportMetrics to get the right enum for
   // PartnerTypeMetric.
   PartnerTypeMetric GetPartnerTypeMetric();
