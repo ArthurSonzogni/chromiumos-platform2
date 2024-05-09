@@ -133,6 +133,21 @@ enum class DpSuccessMetric {
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
+enum class ModeEntryMetric {
+  kUnknown = 0,
+  kModeEntryUnsupported = 1,
+  kModeEntryNotAttempted = 2,
+  kDpSuccess = 3,
+  kDpFailure = 4,
+  kTbtSuccess = 5,
+  kTbtFailure = 6,
+  kUsb4Success = 7,
+  kUsb4Failure = 8,
+  kMaxValue = kUsb4Failure,
+};
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
 enum class DataRoleMetric {
   kOther = 0,
   kDevice = 1,
@@ -164,6 +179,7 @@ class Metrics {
   void ReportPartnerLocation(PartnerLocationMetric location);
   void ReportPowerSourceLocation(PowerSourceLocationMetric location);
   void ReportDpSuccess(DpSuccessMetric val);
+  void ReportModeEntry(ModeEntryMetric val);
 
   // Structured metrics
   void ReportBasicPdDeviceInfo(int vid,

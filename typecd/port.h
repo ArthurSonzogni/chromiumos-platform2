@@ -312,10 +312,19 @@ class Port {
   // pointer)
   bool GetDpEntryState(DpSuccessMetric& result);
 
+  // Function which returns the mode entry result into |result| corresponding
+  // to the mode entry metrics. |mode_entry_supported| indicates whether the
+  // system supports AP-driven mode entry.
+  bool GetModeEntryResult(ModeEntryMetric& result, bool mode_entry_supported);
+
   // Reports whether DP alt mode was successfully entered on a system.
   // NOTE: This only generates a valid metric on AMD systems (other systems
   // don't use HPD GPIO signalling from the EC).
   void ReportDpMetric(Metrics* metrics);
+
+  // Reports USB Quality metrics. |mode_entry_supported| indicates whether the
+  // system supports AP-driven mode entry.
+  void ReportQualityMetrics(Metrics* metrics, bool mode_entry_supported);
 
   // Reports all metrics.
   virtual void ReportMetrics(Metrics* metrics, bool mode_entry_supported);

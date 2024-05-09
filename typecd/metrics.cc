@@ -19,6 +19,7 @@ constexpr char kPartnerLocationMetricName[] = "ChromeOS.TypeC.PartnerLocation";
 constexpr char kPowerSourceLocationMetricName[] =
     "ChromeOS.TypeC.PowerSourceLocation";
 constexpr char kDpSuccessMetricName[] = "ChromeOS.TypeC.DpSuccess";
+constexpr char kModeEntryMetricName[] = "ChromeOS.TypeC.ModeEntry";
 }  // namespace
 
 namespace typecd {
@@ -63,6 +64,13 @@ void Metrics::ReportPowerSourceLocation(PowerSourceLocationMetric location) {
 void Metrics::ReportDpSuccess(DpSuccessMetric val) {
   if (!metrics_library_.SendEnumToUMA(kDpSuccessMetricName, val)) {
     LOG(WARNING) << "Failed to send DP success sample to UMA, val: "
+                 << static_cast<int>(val);
+  }
+}
+
+void Metrics::ReportModeEntry(ModeEntryMetric val) {
+  if (!metrics_library_.SendEnumToUMA(kModeEntryMetricName, val)) {
+    LOG(WARNING) << "Failed to send Mode Entry sample to UMA, val: "
                  << static_cast<int>(val);
   }
 }

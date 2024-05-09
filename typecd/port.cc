@@ -15,6 +15,7 @@
 
 #include "typecd/pd_vdo_constants.h"
 #include "typecd/peripheral.h"
+#include "typecd/utils.h"
 
 namespace {
 
@@ -682,11 +683,65 @@ bool Port::GetDpEntryState(DpSuccessMetric& result) {
   return true;
 }
 
+bool Port::GetModeEntryResult(ModeEntryMetric& result,
+                              bool mode_entry_supported) {
+  result = ModeEntryMetric::kUnknown;
+
+  if (!mode_entry_supported) {
+    result = ModeEntryMetric::kModeEntryUnsupported;
+    return true;
+  }
+
+  switch (current_mode_) {
+    case TypeCMode::kNone:
+      result = ModeEntryMetric::kModeEntryNotAttempted;
+      break;
+    case TypeCMode::kDP:
+      bool dp;
+      if (!ec_util_->DpState(port_num_, &dp))
+        return false;
+
+      if (dp)
+        result = ModeEntryMetric::kDpSuccess;
+      else
+        result = ModeEntryMetric::kDpFailure;
+
+      break;
+    case TypeCMode::kTBT:
+      if (GetTbtDeviceCount() > tbt_device_count_)
+        result = ModeEntryMetric::kTbtSuccess;
+      else
+        result = ModeEntryMetric::kTbtFailure;
+
+      break;
+    case TypeCMode::kUSB4:
+      if (GetTbtDeviceCount() > tbt_device_count_)
+        result = ModeEntryMetric::kUsb4Success;
+      else
+        result = ModeEntryMetric::kUsb4Failure;
+
+      break;
+    default:
+      break;
+  }
+
+  return true;
+}
+
 void Port::ReportDpMetric(Metrics* metrics) {
   DpSuccessMetric result;
   if (!GetDpEntryState(result))
     return;
   metrics->ReportDpSuccess(result);
+}
+
+void Port::ReportQualityMetrics(Metrics* metrics, bool mode_entry_supported) {
+  if (!metrics)
+    return;
+
+  ModeEntryMetric mode_entry;
+  GetModeEntryResult(mode_entry, mode_entry_supported);
+  metrics->ReportModeEntry(mode_entry);
 }
 
 void Port::ReportMetrics(Metrics* metrics, bool mode_entry_supported) {
@@ -695,6 +750,7 @@ void Port::ReportMetrics(Metrics* metrics, bool mode_entry_supported) {
 
   ReportPartnerMetrics(metrics);
   ReportCableMetrics(metrics, IsCaptiveCableConnected());
+  ReportQualityMetrics(metrics, mode_entry_supported);
   if (mode_entry_supported)
     ReportPortMetrics(metrics);
   if (CanEnterDPAltMode(nullptr))
