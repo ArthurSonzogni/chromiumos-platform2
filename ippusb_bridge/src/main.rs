@@ -18,6 +18,7 @@ use std::os::unix::net::UnixListener;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use std::time::Duration;
 
+use dbus::blocking::Connection;
 use libchromeos::deprecated::{EventFd, PollContext, PollToken};
 use libchromeos::signal::register_signal_handler;
 use libchromeos::syslog;
@@ -29,11 +30,13 @@ use crate::arguments::Args;
 use crate::http::handle_request;
 use crate::listeners::{Accept, ScopedUnixListener};
 use crate::usb_connector::{UnplugDetector, UsbConnector};
+use crate::usb_connector::Error::ReadConfigDescriptor;
 
 #[derive(Debug)]
 pub enum Error {
     CreateSocket(io::Error),
     CreateUsbConnector(usb_connector::Error),
+    DBus(dbus::Error),
     EventFd(io::Error),
     ParseArgs(arguments::Error),
     PollEvents(nix::Error),
@@ -50,6 +53,7 @@ impl fmt::Display for Error {
         match self {
             CreateSocket(err) => write!(f, "Failed to create socket: {}", err),
             CreateUsbConnector(err) => write!(f, "Failed to create USB connector: {}", err),
+            DBus(err) => write!(f, "DBus error: {}", err),
             EventFd(err) => write!(f, "Failed to create/duplicate EventFd: {}", err),
             ParseArgs(err) => write!(f, "Failed to parse arguments: {}", err),
             PollEvents(err) => write!(f, "Failed to poll for events: {}", err),
@@ -223,8 +227,36 @@ fn run() -> Result<()> {
         Box::new(TcpListener::bind(host).map_err(Error::CreateSocket)?)
     };
 
-    let usb =
-        UsbConnector::new(args.verbose_log, args.bus_device).map_err(Error::CreateUsbConnector)?;
+    // Start up a connection to the system bus.
+    // We need to listen to a signal sent when access to USB is restored. It
+    // will be needed if access to USB is blocked by usbguard.
+    let mut dbus_rule =  dbus::message::MatchRule::new();
+    dbus_rule.path = Some("/com/ubuntu/Upstart/jobs/usbguard_2don_2dunlock".into());
+    dbus_rule.interface = Some("com.ubuntu.Upstart0_6.Job".into());
+    dbus_rule.member = Some("InstanceRemoved".into());
+    let dbus_conn = Connection::new_system().map_err(Error::DBus)?;
+    dbus_conn.add_match(dbus_rule, |_: (), _, _msg : &dbus::Message| {
+        info!("Received signal that access to USB was restored.");
+        true
+    }).map_err(Error::DBus)?;
+    // This is run to make sure there are no cached signals from DBus.
+    while dbus_conn.process(Duration::ZERO).map_err(Error::DBus)? {};
+
+    // Try to create UsbConnector in loop until it is created successfully or
+    // an unexpected error occurs. ReadConfigDescriptor error means that access
+    // to USB is blocked by usbguard (e.g.: the screen is locked).
+    let usb : UsbConnector;
+    loop {
+        match UsbConnector::new(args.verbose_log, args.bus_device) {
+            Ok(obj) => { usb = obj; break }
+            Err(ReadConfigDescriptor(..)) => {},
+            Err(err) => return Err(Error::CreateUsbConnector(err))
+        };
+        info!("Failed to create USB connector. Waiting for the signal from DBus.");
+        dbus_conn.process(Duration::MAX).map_err(Error::DBus)?;
+    }
+    info!("USB connector created successfully.");
+
     let unplug_shutdown_fd = shutdown_fd.try_clone().map_err(Error::EventFd)?;
     let _unplug = UnplugDetector::new(
         usb.device(),

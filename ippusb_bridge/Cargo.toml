@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 ascii = "1.0.0"
 chunked_transfer = "1"
+dbus = "0.9"
 getopts = "0.2.18"
 httparse = "1.3.4"
 libc = "0.2.44"
