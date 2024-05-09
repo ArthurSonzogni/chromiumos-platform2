@@ -22,13 +22,20 @@ template("generate_dbus_adaptors") {
   # with proxy generator.
   action_foreach(target_name) {
     sources = invoker.sources
+    inputs = [ "/usr/bin/go-generate-chromeos-dbus-bindings" ]
     script = "//common-mk/file_generator_wrapper.py"
     outputs = [ "${h_dir}/{{source_name_part}}.h" ]
     args = [
       "go-generate-chromeos-dbus-bindings",
       "-adaptor=${h_dir}/{{source_name_part}}.h",
       "-service-config=${service_config}",
-      "{{source}}",
     ]
+
+    # Note: the feature is not yet completely working yet. Investigation
+    # is on-going.
+    if (defined(invoker.use_adaptor_method) && invoker.use_adaptor_method) {
+      args += [ "-use-adaptor-method" ]
+    }
+    args += [ "{{source}}" ]
   }
 }

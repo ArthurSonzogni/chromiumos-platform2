@@ -27,6 +27,7 @@ func main() {
 	proxyPath := flag.String("proxy", "", "the output header file name containing the DBus proxy class")
 	mockPath := flag.String("mock", "", "the output header file name containing the DBus gmock proxy class")
 	proxyPathForMocks := flag.String("proxy-path-for-mocks", "", "the path to the header file for proxy interface, relative to the mock output path")
+	useAdaptorMethod := flag.Bool("use-adaptor-method", false, "instead of DBusObject's template methods, use generated adaptor methods")
 	flag.Parse()
 
 	var sc serviceconfig.Config
@@ -80,7 +81,7 @@ func main() {
 			}
 		}()
 
-		if err := adaptor.Generate(introspections, f, *adaptorPath); err != nil {
+		if err := adaptor.Generate(introspections, *useAdaptorMethod, f, *adaptorPath); err != nil {
 			log.Fatalf("Failed to generate adaptor: %v\n", err)
 		}
 	}

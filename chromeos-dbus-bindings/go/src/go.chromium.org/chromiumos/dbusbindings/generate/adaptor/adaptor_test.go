@@ -28,8 +28,10 @@ const (
 #include <base/files/scoped_file.h>
 #include <dbus/object_path.h>
 #include <brillo/any.h>
+#include <brillo/dbus/dbus_method_adaptor.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/exported_object_manager.h>
+#include <brillo/dbus/utils.h>
 #include <brillo/variant_dictionary.h>
 
 namespace fi {
@@ -259,7 +261,7 @@ func TestGenerateAdaptors(t *testing.T) {
 	}
 
 	out := new(bytes.Buffer)
-	if err := Generate(introspections, out, "/tmp/adaptor.h"); err != nil {
+	if err := Generate(introspections, false, out, "/tmp/adaptor.h"); err != nil {
 		t.Fatalf("Generate got error, want nil: %v", err)
 	}
 
@@ -513,7 +515,7 @@ func TestRegisterWithDBusObjectTmpl(t *testing.T) {
 
 	for _, tc := range cases {
 		out := new(bytes.Buffer)
-		if err := tmpl.Execute(out, tc.input); err != nil {
+		if err := tmpl.Execute(out, registerWithDBusObjectArgs{tc.input, false}); err != nil {
 			t.Fatalf("registerWithDBusObjectTmpl execute got error, want nil: %v", err)
 		}
 		if diff := testutil.DiffLines(out.String(), tc.want); diff != "" {

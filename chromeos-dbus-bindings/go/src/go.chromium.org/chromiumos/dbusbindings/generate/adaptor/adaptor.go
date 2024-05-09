@@ -14,8 +14,19 @@ import (
 )
 
 type templateArgs struct {
-	Introspects []introspect.Introspection
-	HeaderGuard string
+	Introspects      []introspect.Introspection
+	HeaderGuard      string
+	UseAdaptorMethod bool
+}
+
+type registerWithDBusObjectArgs struct {
+	Interface        introspect.Interface
+	UseAdaptorMethod bool
+}
+
+type adaptorMethodsArgs struct {
+	Methods          []introspect.Method
+	UseAdaptorMethod bool
 }
 
 var funcMap = template.FuncMap{
@@ -41,7 +52,13 @@ var funcMap = template.FuncMap{
 		return p.InArgType()
 	},
 	"makeDBusSignalParams": makeDBusSignalParams,
-	"reverse":              genutil.Reverse,
+	"packAdaptorMethodsArgs": func(ms []introspect.Method, useAdaptorMethod bool) adaptorMethodsArgs {
+		return adaptorMethodsArgs{ms, useAdaptorMethod}
+	},
+	"packRegisterWithDBusObjectArgs": func(itf introspect.Interface, useAdaptorMethod bool) registerWithDBusObjectArgs {
+		return registerWithDBusObjectArgs{itf, useAdaptorMethod}
+	},
+	"reverse": genutil.Reverse,
 }
 
 const (
@@ -60,8 +77,10 @@ const (
 #include <base/files/scoped_file.h>
 #include <dbus/object_path.h>
 #include <brillo/any.h>
+#include <brillo/dbus/dbus_method_adaptor.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/exported_object_manager.h>
+#include <brillo/dbus/utils.h>
 #include <brillo/variant_dictionary.h>
 {{- range $introspect := .Introspects}}{{range .Interfaces}}
 {{- $itfName := makeInterfaceName .Name}}
@@ -93,7 +112,7 @@ class {{$className}} {
   {{$className}}(const {{$className}}&) = delete;
   {{$className}}& operator=(const {{$className}}&) = delete;
 
-{{- template "registerWithDBusObjectTmpl" .}}
+{{- template "registerWithDBusObjectTmpl" (packRegisterWithDBusObjectArgs . $.UseAdaptorMethod)}}
 {{- template "sendSignalMethodsTmpl" .}}
 {{- template "propertyMethodImplementationTmpl" .}}
 {{- if $introspect.Name}}
@@ -105,6 +124,7 @@ class {{$className}} {
 {{- template "quotedIntrospectionForInterfaceTmpl" .}}
 
  private:
+{{- template "adaptorMethodsTmpl" (packAdaptorMethodsArgs .Methods $.UseAdaptorMethod)}}
 {{- template "signalDataMembersTmpl" .}}
 {{- template "propertyDataMembersTmpl" .}}
 {{- if .Methods}}
@@ -137,18 +157,27 @@ class {{$className}} {
 {{- end}}`
 
 	registerWithDBusObjectTmpl = `{{- define "registerWithDBusObjectTmpl"}}
+{{- with .Interface}}
+{{- $className := makeAdaptorName .Name}}
+{{- $itfName := makeInterfaceName .Name}}
 
   void RegisterWithDBusObject(brillo::dbus_utils::DBusObject* object) {
     brillo::dbus_utils::DBusInterface* itf =
         object->AddOrGetInterface("{{.Name}}");
 {{- if .Methods}}
 {{/* empty line */}}
-    {{- $itfName := makeInterfaceName .Name}}
     {{- range .Methods}}
+    {{- if $.UseAdaptorMethod}}
+    itf->AddRawMethodHandler(
+        "{{.Name}}",
+        base::BindRepeating(
+            &{{$className}}::Adaptor{{.Name}}, base::Unretained(this)));
+    {{- else}}
     itf->{{makeAddHandlerName .}}(
         "{{.Name}}",
         base::Unretained(interface_),
         &{{$itfName}}::{{.Name}});
+    {{- end}}
     {{- end}}
 {{- end}}
 
@@ -177,6 +206,7 @@ class {{$className}} {
 {{- end}}
 {{- end}}
   }
+{{- end}}
 {{- end}}`
 
 	sendSignalMethodsTmpl = `{{- define "sendSignalMethodsTmpl"}}
@@ -255,6 +285,75 @@ class {{$className}} {
   }
 {{- end}}`
 
+	adaptorMethodsTmpl = `{{- define "adaptorMethodsTmpl"}}
+{{- if .UseAdaptorMethod}}
+{{/* empty line */}}
+{{- range .Methods}}
+  void Adaptor{{.Name}}(::dbus::MethodCall* method_call,
+                        ::brillo::dbus_utils::ResponseSender sender) {
+    {{- if eq .Kind "raw"}}
+    interface_->{{.Name}}(method_call, std::move(sender));
+    {{- else if eq .Kind "async"}}
+    ::brillo::dbus_utils::details::HandleAsyncDBusMethod<
+        std::tuple<{{range $i, $arg := .InputArguments}}{{if ne $i 0}}, {{end}}{{$arg.BaseType}}{{end}}>,
+        ::brillo::dbus_utils::DBusMethodResponse<
+            {{range $i, $arg := .OutputArguments}}{{if ne $i 0}}, {{end}}{{$arg.BaseType}}{{end}}>
+    >(
+        method_call,
+        std::move(sender),
+        [this](auto response, ::dbus::MethodCall* method_call,
+                auto&&... args) {
+          interface_->{{.Name}}(
+              std::move(response),
+              {{- if .IncludeDBusMessage}}
+              method_call,
+              {{- end}}
+              std::forward<decltype(args)>(args)...);
+        });
+    {{- else}}
+    ::brillo::dbus_utils::details::HandleSyncDBusMethod<
+        std::tuple<{{range $i, $arg := .InputArguments}}{{if ne $i 0}}, {{end}}{{$arg.BaseType}}{{end}}>,
+        std::tuple<{{range $i, $arg := .OutputArguments}}{{if ne $i 0}}, {{end}}{{$arg.BaseType}}{{end}}>
+    >(
+        method_call,
+        std::move(sender),
+        [this](::dbus::MethodCall* method_call, auto&&... in_args) -> ::base::expected<std::tuple<{{range $i, $arg := .OutputArguments}}{{if ne $i 0}}, {{end}}{{$arg.BaseType}}{{end}}>, ::dbus::Error> {
+            std::tuple<{{range $i, $arg := .OutputArguments}}{{if ne $i 0}}, {{end}}{{$arg.BaseType}}{{end}}> output;
+            {{- if eq .Kind "simple"}}
+            {{- if eq (len .OutputArguments) 1}}
+            std::get<0>(output) = interface_->{{.Name}}(
+                std::forward<decltype(in_args)>(in_args)...);
+            {{- else}}
+            std::apply([&](auto&&... out_args) {
+                interface_->{{.Name}}(
+                    std::forward<decltype(in_args)>(in_args)...,
+                    &out_args...);
+            }, std::move(output));
+            {{- end}}
+            {{- else}}{{- /* i.e. eq .Kind "normal" */}}
+            ::brillo::ErrorPtr error;
+            bool result = std::apply([&](auto&&... out_args) {
+                return interface_->{{.Name}}(
+                    &error,
+                    {{- if .IncludeDBusMessage}}
+                    method_call,
+                    {{- end}}
+                    std::forward<decltype(in_args)>(in_args)...,
+                    &out_args...);
+            }, std::move(output));
+            if (!result) {
+              CHECK(error.get());
+              return ::base::unexpected(::brillo::dbus_utils::ToDBusError(*error));
+            }
+            {{- end}}
+            return ::base::ok(std::move(output));
+        });
+    {{- end}}
+  }
+{{- end}}
+{{- end}}
+{{- end}}`
+
 	signalDataMembersTmpl = `{{- define "signalDataMembersTmpl"}}
 {{- range .Signals}}
 
@@ -278,7 +377,7 @@ class {{$className}} {
 )
 
 // Generate prints an interface definition and an interface adaptor for each interface in introspects.
-func Generate(introspects []introspect.Introspection, f io.Writer, outputFilePath string) error {
+func Generate(introspects []introspect.Introspection, useAdaptorMethod bool, f io.Writer, outputFilePath string) error {
 	tmpl, err := template.New("adaptor").Funcs(funcMap).Parse(templateText)
 	if err != nil {
 		return err
@@ -299,6 +398,9 @@ func Generate(introspects []introspect.Introspection, f io.Writer, outputFilePat
 	if _, err = tmpl.Parse(quotedIntrospectionForInterfaceTmpl); err != nil {
 		return err
 	}
+	if _, err = tmpl.Parse(adaptorMethodsTmpl); err != nil {
+		return err
+	}
 	if _, err = tmpl.Parse(signalDataMembersTmpl); err != nil {
 		return err
 	}
@@ -307,5 +409,5 @@ func Generate(introspects []introspect.Introspection, f io.Writer, outputFilePat
 	}
 
 	var headerGuard = genutil.GenerateHeaderGuard(outputFilePath)
-	return tmpl.Execute(f, templateArgs{introspects, headerGuard})
+	return tmpl.Execute(f, templateArgs{introspects, headerGuard, useAdaptorMethod})
 }

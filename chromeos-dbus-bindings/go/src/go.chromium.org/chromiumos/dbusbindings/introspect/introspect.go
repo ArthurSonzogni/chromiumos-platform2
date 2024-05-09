@@ -16,22 +16,22 @@ import (
 // TODO(chromium:983008): Add checks for the presence of unexpected elements in XML files.
 
 // MethodKind is an enum to represent the kind of a method.
-type MethodKind int
+type MethodKind string
 
 const (
 	// MethodKindSimple indicates that the method doesn't fail and no brillo::ErrorPtr argument is given.
-	MethodKindSimple MethodKind = iota
+	MethodKindSimple MethodKind = "simple"
 
 	// MethodKindNormal indicates that the method returns false and sets a brillo::ErrorPtr on failure.
-	MethodKindNormal
+	MethodKindNormal MethodKind = "normal"
 
 	// MethodKindAsync indicates that instead of returning "out" arguments directly,
 	// the method takes a DBusMethodResponse argument templated on the types of the "out" arguments.
-	MethodKindAsync
+	MethodKindAsync MethodKind = "async"
 
 	// MethodKindRaw indicates that the method takes a dbus::MethodCall and dbus::ExportedObject::ResponseSender
 	// object directly.
-	MethodKindRaw
+	MethodKindRaw MethodKind = "raw"
 )
 
 // Annotation adds settings to MethodArg, SignalArg and Method.
