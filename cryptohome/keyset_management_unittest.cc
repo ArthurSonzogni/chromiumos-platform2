@@ -4,9 +4,7 @@
 
 #include "cryptohome/keyset_management.h"
 
-#include <algorithm>
 #include <memory>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -32,52 +30,40 @@
 #include <libstorage/platform/mock_platform.h>
 
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
-#include "cryptohome/auth_blocks/scrypt_auth_block.h"
-#include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
-#include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
-#include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/fake_features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
 #include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
+#include "cryptohome/vault_keyset.pb.h"
 
+namespace cryptohome {
+namespace {
+
+using ::base::test::TestFuture;
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorActionSet;
 using ::cryptohome::error::PossibleAction;
-using ::cryptohome::error::PrimaryAction;
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnError;
 using ::hwsec_foundation::error::testing::ReturnValue;
-using ::hwsec_foundation::status::StatusChain;
 using ::testing::_;
 using ::testing::ContainerEq;
 using ::testing::DoAll;
-using ::testing::ElementsAre;
 using ::testing::EndsWith;
 using ::testing::Eq;
 using ::testing::MatchesRegex;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
-using ::testing::ReturnRef;
 using ::testing::SetArgPointee;
 using ::testing::StrEq;
-using ::testing::UnorderedElementsAre;
-
-using base::test::TestFuture;
-
-namespace cryptohome {
-
-namespace {
 
 struct UserPassword {
   const char* name;
@@ -338,9 +324,11 @@ TEST_F(KeysetManagementTest, AddInitialKeysetSaveError) {
   // SETUP
 
   users_[0].key_data = DefaultKeyData();
-  auto vk = std::make_unique<NiceMock<MockVaultKeyset>>();
+  auto vk = std::make_unique<VaultKeyset>();
   vk->Initialize(&platform_, &crypto_);
-  EXPECT_CALL(*vk, Save(_)).WillOnce(Return(false));
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(
+                             VaultKeysetPath(users_[0].obfuscated, 0), _, _))
+      .WillOnce(Return(false));
   EXPECT_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
       .WillOnce(Return(vk.release()));
 
@@ -407,22 +395,20 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
   new_key_blobs.vkk_iv = kAdditionalBlob16;
 
   // Mock vk to inject encryption failure on new keyset.
-  auto mock_vk_to_add = new NiceMock<MockVaultKeyset>();
-  mock_vk_to_add->Initialize(&platform_, &crypto_);
+  auto vk_to_add = std::make_unique<VaultKeyset>();
+  vk_to_add->Initialize(&platform_, &crypto_);
   // Mock vk for existing keyset.
 
   vk_status.value()->CreateRandomResetSeed();
   vk_status.value()->SetWrappedResetSeed(brillo::BlobFromString("reset_seed"));
-  // ON_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
-  //    .WillByDefault(Return(mock_vk_to_add));
   EXPECT_CALL(*mock_vault_keyset_factory_, New(&platform_, &crypto_))
       .Times(2)
       .WillOnce(testing::DoDefault())
-      .WillOnce(Return(mock_vk_to_add));
+      .WillOnce(Return(vk_to_add.release()));
 
   // The first available slot is in indice 1 since the 0 is used by |vk|.
-  EXPECT_CALL(*mock_vk_to_add,
-              Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("1")))
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(
+                             VaultKeysetPath(users_[0].obfuscated, 1), _, _))
       .WillOnce(Return(false));
 
   // TEST
@@ -682,37 +668,29 @@ TEST_F(KeysetManagementTest, GetValidKeysetNoParsableKeyset) {
 }
 
 TEST_F(KeysetManagementTest, GetValidKeysetCryptoError) {
-  // Map's all the relevant CryptoError's to their equivalent MountError
-  // as per the conversion in GetValidKeyset.
-  const std::map<CryptoError, MountError> kErrorMap = {
-      {CryptoError::CE_TPM_FATAL, MOUNT_ERROR_VAULT_UNRECOVERABLE},
-      {CryptoError::CE_OTHER_FATAL, MOUNT_ERROR_VAULT_UNRECOVERABLE},
-      {CryptoError::CE_TPM_COMM_ERROR, MOUNT_ERROR_TPM_COMM_ERROR},
-      {CryptoError::CE_TPM_DEFEND_LOCK, MOUNT_ERROR_TPM_DEFEND_LOCK},
-      {CryptoError::CE_TPM_REBOOT, MOUNT_ERROR_TPM_NEEDS_REBOOT},
-      {CryptoError::CE_OTHER_CRYPTO, MOUNT_ERROR_KEY_FAILURE},
-  };
+  // Setup
+  KeysetSetUpWithoutKeyDataAndKeyBlobs();
 
-  for (const auto& [key, value] : kErrorMap) {
-    // Setup
-    KeysetSetUpWithoutKeyDataAndKeyBlobs();
+  // Supply minimal serialized data for VaultKeyset::Load to work. There's no
+  // actual keys attached so the later decryption step will fail (as expected).
+  SerializedVaultKeyset serialized_vk;
+  serialized_vk.set_flags(0);
+  serialized_vk.mutable_salt();
+  serialized_vk.mutable_wrapped_keyset();
+  brillo::Blob vk_bytes =
+      brillo::BlobFromString(serialized_vk.SerializeAsString());
+  EXPECT_CALL(platform_, ReadFile(VaultKeysetPath(users_[0].obfuscated, 0), _))
+      .WillOnce(DoAll(SetArgPointee<1>(vk_bytes), Return(true)));
 
-    // Mock vk to inject decryption failure on GetValidKeyset
-    auto mock_vk = new NiceMock<MockVaultKeyset>();
-    EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _))
-        .WillOnce(Return(mock_vk));
-    EXPECT_CALL(*mock_vk, Load(_)).WillOnce(Return(true));
-    EXPECT_CALL(*mock_vk, DecryptEx(_))
-        .WillOnce(ReturnError<CryptohomeCryptoError>(
-            kErrorLocationForTesting1,
-            ErrorActionSet({PossibleAction::kReboot}), key));
+  auto vk = std::make_unique<VaultKeyset>();
+  vk->Initialize(&platform_, &crypto_);
+  EXPECT_CALL(*mock_vault_keyset_factory_, New(_, _))
+      .WillOnce(Return(vk.release()));
 
-    MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_->GetValidKeyset(users_[0].obfuscated, key_blobs_,
-                                           "");
-    ASSERT_THAT(vk_status, NotOk());
-    EXPECT_EQ(vk_status.status()->mount_error(), value);
-  }
+  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
+      keyset_management_->GetValidKeyset(users_[0].obfuscated, key_blobs_, "");
+  ASSERT_THAT(vk_status, NotOk());
+  EXPECT_EQ(vk_status.status()->mount_error(), MOUNT_ERROR_KEY_FAILURE);
 }
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.

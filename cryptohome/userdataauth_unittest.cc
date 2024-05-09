@@ -76,7 +76,6 @@
 #include "cryptohome/mock_keyset_management.h"
 #include "cryptohome/mock_pkcs11_init.h"
 #include "cryptohome/mock_signalling.h"
-#include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/pkcs11/fake_pkcs11_token.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/recoverable_key_store/mock_backend_cert_provider.h"
@@ -2335,23 +2334,6 @@ class UserDataAuthExTest : public UserDataAuthTest {
   UserDataAuthExTest() = default;
   UserDataAuthExTest(const UserDataAuthExTest&) = delete;
   UserDataAuthExTest& operator=(const UserDataAuthExTest&) = delete;
-
-  ~UserDataAuthExTest() override = default;
-
-  std::unique_ptr<VaultKeyset> GetNiceMockVaultKeyset(
-      const ObfuscatedUsername& obfuscated_username,
-      const std::string& key_label) const {
-    // Note that technically speaking this is not strictly a mock, and probably
-    // closer to a stub. However, the underlying class is
-    // NiceMock<MockVaultKeyset>, thus we name the method accordingly.
-    std::unique_ptr<VaultKeyset> mvk(new NiceMock<MockVaultKeyset>);
-    mvk->SetKeyDataLabel(key_label);
-
-    SerializedVaultKeyset::SignatureChallengeInfo sig_challenge_info;
-    mvk->SetSignatureChallengeInfo(sig_challenge_info);
-
-    return mvk;
-  }
 
   // Create a USS with wrapped keys registered for all of the given labels. Note
   // that the generated USS will not contain any "real" keys.

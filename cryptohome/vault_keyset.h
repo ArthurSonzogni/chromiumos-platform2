@@ -15,7 +15,6 @@
 #include <libstorage/platform/platform.h>
 
 #include "cryptohome/crypto.h"
-#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
@@ -24,16 +23,6 @@
 namespace cryptohome {
 
 class FileSystemKeyset;
-
-// Defines the actual physical layout of a keyset.
-struct VaultKeysetKeys {
-  unsigned char fek[kCryptohomeDefaultKeySize];
-  unsigned char fek_sig[kCryptohomeDefaultKeySignatureSize];
-  unsigned char fek_salt[kCryptohomeDefaultKeySaltSize];
-  unsigned char fnek[kCryptohomeDefaultKeySize];
-  unsigned char fnek_sig[kCryptohomeDefaultKeySignatureSize];
-  unsigned char fnek_salt[kCryptohomeDefaultKeySaltSize];
-} __attribute__((__packed__));
 
 // VaultKeyset holds the File Encryption Key (FEK) and File Name Encryption Key
 // (FNEK) and their corresponding signatures.
@@ -44,7 +33,6 @@ class VaultKeyset {
   VaultKeyset(VaultKeyset&&) = default;
   VaultKeyset(const VaultKeyset&) = default;
   VaultKeyset& operator=(const VaultKeyset&) = default;
-  virtual ~VaultKeyset() = default;
 
   // Does not take ownership of platform and crypto. The objects pointed to by
   // them must outlive this object.
@@ -63,24 +51,22 @@ class VaultKeyset {
 
   // The following methods deal with importing another object type into this
   // VaultKeyset container.
-  void FromKeys(const VaultKeysetKeys& keys);
   [[nodiscard]] bool FromKeysBlob(const brillo::SecureBlob& keys_blob);
 
   // The following two methods export this VaultKeyset container to other
   // objects.
-  [[nodiscard]] bool ToKeys(VaultKeysetKeys* keys) const;
   [[nodiscard]] bool ToKeysBlob(brillo::SecureBlob* keys_blob) const;
 
   // Do not call Load directly, use KeysetManagement::LoadVaultKeysetForUser.
-  [[nodiscard]] virtual bool Load(const base::FilePath& filename);
+  [[nodiscard]] bool Load(const base::FilePath& filename);
 
   // Encrypt must be called first.
-  virtual bool Save(const base::FilePath& filename);
+  bool Save(const base::FilePath& filename);
 
   // Load must be called first.
   // Decrypts the encrypted fields of the VaultKeyset from serialized with the
   // provided |key_blobs|.
-  virtual CryptoStatus DecryptEx(const KeyBlobs& key_blobs);
+  CryptoStatus DecryptEx(const KeyBlobs& key_blobs);
 
   // Encrypts the VaultKeyset fields with the provided |key_blobs| based on the
   // encryption mechanisms provided by the |auth_state|.

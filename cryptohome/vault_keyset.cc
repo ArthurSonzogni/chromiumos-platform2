@@ -6,7 +6,6 @@
 
 #include <sys/types.h>
 
-#include <memory>
 #include <optional>
 #include <utility>
 #include <variant>
@@ -27,49 +26,50 @@
 #include <openssl/sha.h>
 
 #include "cryptohome/auth_blocks/auth_block_utils.h"
-#include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
-#include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
-#include "cryptohome/auth_blocks/scrypt_auth_block.h"
-#include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
-#include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
-#include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
-#include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
-using base::FilePath;
-using brillo::Blob;
-using brillo::SecureBlob;
-using cryptohome::error::CryptohomeCryptoError;
-using cryptohome::error::CryptohomeError;
-using cryptohome::error::ErrorActionSet;
-using cryptohome::error::PossibleAction;
-using cryptohome::error::PrimaryAction;
-using hwsec_foundation::AesDecryptDeprecated;
-using hwsec_foundation::AesEncryptDeprecated;
-using hwsec_foundation::CreateRandomBlob;
-using hwsec_foundation::CreateSecureRandomBlob;
-using hwsec_foundation::HmacSha256;
-using hwsec_foundation::kAesBlockSize;
-using hwsec_foundation::kDefaultScryptParams;
-using hwsec_foundation::kLibScryptSaltSize;
-using hwsec_foundation::LibScryptCompat;
-using hwsec_foundation::Sha1;
-using hwsec_foundation::status::MakeStatus;
-using hwsec_foundation::status::OkStatus;
-using hwsec_foundation::status::StatusChain;
-
+namespace cryptohome {
 namespace {
+
+using ::brillo::Blob;
+using ::brillo::SecureBlob;
+using ::cryptohome::error::CryptohomeCryptoError;
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorActionSet;
+using ::cryptohome::error::PossibleAction;
+using ::cryptohome::error::PrimaryAction;
+using ::hwsec_foundation::AesDecryptDeprecated;
+using ::hwsec_foundation::AesEncryptDeprecated;
+using ::hwsec_foundation::CreateRandomBlob;
+using ::hwsec_foundation::CreateSecureRandomBlob;
+using ::hwsec_foundation::kAesBlockSize;
+using ::hwsec_foundation::kDefaultScryptParams;
+using ::hwsec_foundation::LibScryptCompat;
+using ::hwsec_foundation::Sha1;
+using ::hwsec_foundation::status::MakeStatus;
+using ::hwsec_foundation::status::OkStatus;
+
 const mode_t kVaultFilePermissions = 0600;
 const char kKeyLegacyPrefix[] = "legacy-";
-}  // namespace
 
-namespace cryptohome {
+// Defines the actual physical layout of a keyset.
+struct VaultKeysetKeys {
+  unsigned char fek[kCryptohomeDefaultKeySize];
+  unsigned char fek_sig[kCryptohomeDefaultKeySignatureSize];
+  unsigned char fek_salt[kCryptohomeDefaultKeySaltSize];
+  unsigned char fnek[kCryptohomeDefaultKeySize];
+  unsigned char fnek_sig[kCryptohomeDefaultKeySignatureSize];
+  unsigned char fnek_salt[kCryptohomeDefaultKeySaltSize];
+} __attribute__((__packed__));
+
+}  // namespace
 
 void VaultKeyset::Initialize(libstorage::Platform* platform, Crypto* crypto) {
   platform_ = platform;
@@ -85,10 +85,11 @@ void VaultKeyset::InitializeAsBackup(libstorage::Platform* platform,
 }
 
 void VaultKeyset::InitializeToAdd(const VaultKeyset& vault_keyset) {
-  VaultKeysetKeys vault_keyset_keys;
   // This copies the encryption keys, reset_seed and chaps key.
-  CHECK(vault_keyset.ToKeys(&vault_keyset_keys));
-  FromKeys(vault_keyset_keys);
+  brillo::SecureBlob buffer;
+  CHECK(vault_keyset.ToKeysBlob(&buffer));
+  CHECK(FromKeysBlob(buffer));
+
   // Set chaps key if it exists.
   if (!vault_keyset.GetChapsKey().empty()) {
     SetChapsKey(vault_keyset.GetChapsKey());
@@ -116,7 +117,13 @@ void VaultKeyset::InitializeToAdd(const VaultKeyset& vault_keyset) {
   }
 }
 
-void VaultKeyset::FromKeys(const VaultKeysetKeys& keys) {
+bool VaultKeyset::FromKeysBlob(const SecureBlob& keys_blob) {
+  if (keys_blob.size() != sizeof(VaultKeysetKeys)) {
+    return false;
+  }
+  VaultKeysetKeys keys;
+  memcpy(&keys, keys_blob.data(), sizeof(keys));
+
   fek_.resize(sizeof(keys.fek));
   memcpy(fek_.data(), keys.fek, fek_.size());
   fek_sig_.resize(sizeof(keys.fek_sig));
@@ -129,56 +136,39 @@ void VaultKeyset::FromKeys(const VaultKeysetKeys& keys) {
   memcpy(fnek_sig_.data(), keys.fnek_sig, fnek_sig_.size());
   fnek_salt_.resize(sizeof(keys.fnek_salt));
   memcpy(fnek_salt_.data(), keys.fnek_salt, fnek_salt_.size());
-}
-
-bool VaultKeyset::FromKeysBlob(const SecureBlob& keys_blob) {
-  if (keys_blob.size() != sizeof(VaultKeysetKeys)) {
-    return false;
-  }
-  VaultKeysetKeys keys;
-  memcpy(&keys, keys_blob.data(), sizeof(keys));
-
-  FromKeys(keys);
 
   brillo::SecureClearObject(keys);
   return true;
 }
 
-bool VaultKeyset::ToKeys(VaultKeysetKeys* keys) const {
-  brillo::SecureClearObject(*keys);
-  if (fek_.size() != sizeof(keys->fek)) {
-    return false;
-  }
-  memcpy(keys->fek, fek_.data(), sizeof(keys->fek));
-  if (fek_sig_.size() != sizeof(keys->fek_sig)) {
-    return false;
-  }
-  memcpy(keys->fek_sig, fek_sig_.data(), sizeof(keys->fek_sig));
-  if (fek_salt_.size() != sizeof(keys->fek_salt)) {
-    return false;
-  }
-  memcpy(keys->fek_salt, fek_salt_.data(), sizeof(keys->fek_salt));
-  if (fnek_.size() != sizeof(keys->fnek)) {
-    return false;
-  }
-  memcpy(keys->fnek, fnek_.data(), sizeof(keys->fnek));
-  if (fnek_sig_.size() != sizeof(keys->fnek_sig)) {
-    return false;
-  }
-  memcpy(keys->fnek_sig, fnek_sig_.data(), sizeof(keys->fnek_sig));
-  if (fnek_salt_.size() != sizeof(keys->fnek_salt)) {
-    return false;
-  }
-  memcpy(keys->fnek_salt, fnek_salt_.data(), sizeof(keys->fnek_salt));
-
-  return true;
-}
-
 bool VaultKeyset::ToKeysBlob(SecureBlob* keys_blob) const {
   VaultKeysetKeys keys;
-  if (!ToKeys(&keys)) {
+  brillo::SecureClearObject(keys);
+
+  if (fek_.size() != sizeof(keys.fek)) {
     return false;
   }
+  memcpy(keys.fek, fek_.data(), sizeof(keys.fek));
+  if (fek_sig_.size() != sizeof(keys.fek_sig)) {
+    return false;
+  }
+  memcpy(keys.fek_sig, fek_sig_.data(), sizeof(keys.fek_sig));
+  if (fek_salt_.size() != sizeof(keys.fek_salt)) {
+    return false;
+  }
+  memcpy(keys.fek_salt, fek_salt_.data(), sizeof(keys.fek_salt));
+  if (fnek_.size() != sizeof(keys.fnek)) {
+    return false;
+  }
+  memcpy(keys.fnek, fnek_.data(), sizeof(keys.fnek));
+  if (fnek_sig_.size() != sizeof(keys.fnek_sig)) {
+    return false;
+  }
+  memcpy(keys.fnek_sig, fnek_sig_.data(), sizeof(keys.fnek_sig));
+  if (fnek_salt_.size() != sizeof(keys.fnek_salt)) {
+    return false;
+  }
+  memcpy(keys.fnek_salt, fnek_salt_.data(), sizeof(keys.fnek_salt));
 
   SecureBlob local_buffer(sizeof(keys));
   memcpy(local_buffer.data(), &keys, sizeof(keys));
@@ -207,7 +197,7 @@ void VaultKeyset::CreateFromFileSystemKeyset(
   CreateRandomResetSeed();
 }
 
-bool VaultKeyset::Load(const FilePath& filename) {
+bool VaultKeyset::Load(const base::FilePath& filename) {
   CHECK(platform_);
   brillo::Blob contents;
   if (!platform_->ReadFile(filename, &contents))
@@ -983,7 +973,7 @@ bool VaultKeyset::GetTpmEccState(AuthBlockState* auth_state) const {
   return true;
 }
 
-bool VaultKeyset::Save(const FilePath& filename) {
+bool VaultKeyset::Save(const base::FilePath& filename) {
   CHECK(platform_);
   if (!encrypted_)
     return false;

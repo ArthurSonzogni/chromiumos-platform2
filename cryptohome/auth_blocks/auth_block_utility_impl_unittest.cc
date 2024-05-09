@@ -53,7 +53,6 @@
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_signalling.h"
-#include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/signalling.h"
 #include "cryptohome/user_secret_stash/manager.h"
 #include "cryptohome/username.h"

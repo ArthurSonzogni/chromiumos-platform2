@@ -61,6 +61,7 @@
 #include "cryptohome/auth_session/intent.h"
 #include "cryptohome/auth_session/protobuf.h"
 #include "cryptohome/credential_verifier.h"
+#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/converter.h"
