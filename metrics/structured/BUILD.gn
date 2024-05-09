@@ -33,6 +33,25 @@ proto_library("libsm_proto") {
   use_pic = true
 }
 
+action("gen_metrics_client_structured_events") {
+  script = "gen_metrics_client_events.py"
+  inputs = [
+    "gen_metrics_client_events.py",
+    "codegen.py",
+    "sync/model.py",
+    "sync/model_util.py",
+    "templates_metrics_client.py",
+  ]
+  sources = [ _xml_file ]
+  outputs = [ _event_output_dir + "/metrics_client_structured_events.cc" ]
+  args = [
+    "--input",
+    rebase_path(_xml_file, root_build_dir),
+    "--output",
+    _event_output_dir,
+  ]
+}
+
 action("gen_structured_events") {
   script = "gen_events.py"
 
@@ -116,6 +135,17 @@ source_set("structured_metrics") {
   ]
 }
 
+static_library("libmetricsclientstructuredmetrics") {
+  sources = get_target_outputs(":gen_metrics_client_structured_events")
+
+  configs += [ ":target_defaults_pkg_deps" ]
+
+  deps = [
+    ":gen_metrics_client_structured_events",
+    ":libstructuredmetrics",
+  ]
+}
+
 source_set("test_support") {
   sources = [
     "fake_recorder.cc",
@@ -159,6 +189,19 @@ if (use.test) {
       ":test_support",
       "//common-mk/testrunner:testrunner",
       "//metrics:metrics_test_support",
+    ]
+  }
+  executable("metrics_client_structured_metrics_test") {
+    sources = [ "metrics_client_structured_metrics_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults_pkg_deps",
+    ]
+    run_test = true
+    deps = [
+      ":libmetricsclientstructuredmetrics",
+      "//common-mk/testrunner:testrunner",
+      "//metrics:metric_client_util",
     ]
   }
 }
