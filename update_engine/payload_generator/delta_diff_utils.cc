@@ -829,7 +829,8 @@ bool IsAReplaceOperation(InstallOperation::Type op_type) {
   return (op_type == InstallOperation::REPLACE ||
           op_type == InstallOperation::REPLACE_BZ ||
           op_type == InstallOperation::REPLACE_XZ ||
-          op_type == InstallOperation::REPLACE_ZSTD);
+          op_type == InstallOperation::REPLACE_ZSTD ||
+          op_type == InstallOperation::REPLACE_ZSTD_INCREASED_WINDOW);
 }
 
 bool IsNoSourceOperation(InstallOperation::Type op_type) {
