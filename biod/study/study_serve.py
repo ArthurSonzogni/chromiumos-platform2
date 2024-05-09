@@ -371,6 +371,11 @@ class FingerWebSocket(WebSocket):
         """
         # Ensure the user has removed the finger between 2 captures or
         # before the calibration capture occurs.
+        # If the finger is already up, this mode will immediately be cleared.
+        # Also, as a side effect, Elan's matcher will force a resample of
+        # pattern1 upon fingerup, if the sample taken on boot contained a
+        # fingerprint.
+        self.ectool_fpmode("fingerup")
         if not self.finger_wait_done(FP_MODE_FINGER_UP):
             # Aborted. Don't send a result to client.
             return None
@@ -388,9 +393,6 @@ class FingerWebSocket(WebSocket):
         if not img:
             return result
         t1 = time.time()
-        # Detect the finger removal before the next capture.
-        # If the finger is already up, this mode will immediately be cleared.
-        self.ectool_fpmode("fingerup")
         # Record the outcome of the capture.
         cherrypy.log(
             f'Captured finger {req["finger"]:02d}:{req["picture"]:02d}'
