@@ -13,7 +13,7 @@ namespace startup {
 // updated, which could be automated, they are in a separate file for
 // ease of maintenance.
 // NB: Keep in sync with tlsdate/configure.ac constants.
-constexpr int kMinYear = 2023;
+constexpr int kMinYear = 2024;
 // Assume that this build of the OS won't be used this far in the future.
 // Seems unlikely that we'll be able to reasonably communicate with the
 // rest of the world with such ancient software.  It doesn't prevent the
