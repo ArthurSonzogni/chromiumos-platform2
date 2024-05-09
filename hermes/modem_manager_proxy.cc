@@ -239,42 +239,31 @@ void ModemManagerProxy::InhibitDevice(bool inhibit, ResultCallback cb) {
     return;
   }
 
-  // convert cb into a repeating callback, so that it can be used by either
-  // on_inhibit_success or on_inhibit_fail or FinalInhibitAttempt
-  auto return_inhibit_result = base::BindRepeating(
-      [](ResultCallback cb, int err) { std::move(cb).Run(err); },
-      base::Passed(std::move(cb)));
-
   if (inhibit && !IsModemSafeToInhibit()) {
     LOG(INFO) << "Waiting for modem to become safe to inhibit";
-    pending_inhibit_cb_ = base::BindOnce(&ModemManagerProxy::InhibitDevice,
-                                         weak_factory_.GetWeakPtr(), inhibit,
-                                         return_inhibit_result);
+    pending_inhibit_cb_ =
+        base::BindOnce(&ModemManagerProxy::InhibitDevice,
+                       weak_factory_.GetWeakPtr(), inhibit, std::move(cb));
     base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&ModemManagerProxy::InhibitTimeout,
-                       weak_factory_.GetWeakPtr(), return_inhibit_result),
+                       weak_factory_.GetWeakPtr(), std::move(cb)),
         kInhibitTimeout);
     return;
   }
 
   auto uid = inhibit ? modem_proxy_->device() : inhibited_uid_.value();
-
   constexpr int kInhibitTimeoutMilliseconds = 15000;
-
-  auto on_inhibit_success = base::BindOnce(&ModemManagerProxy::OnInhibitSuccess,
-                                           weak_factory_.GetWeakPtr(), inhibit,
-                                           uid, return_inhibit_result);
-  auto on_inhibit_fail = base::BindOnce(
-      [](ResultCallback cb, brillo::Error* error) {
-        LOG(ERROR) << error->GetMessage();
-        std::move(cb).Run(kModemManagerError);
-      },
-      return_inhibit_result);
-
-  mm_proxy_->InhibitDeviceAsync(uid, inhibit, std::move(on_inhibit_success),
-                                std::move(on_inhibit_fail),
-                                kInhibitTimeoutMilliseconds);
+  brillo::ErrorPtr error;
+  // This is a synchronous call to avoid a race condition where another inhibit
+  // call comes in and we use a stale value of inhibited_uid_.
+  mm_proxy_->InhibitDevice(uid, inhibit, &error, kInhibitTimeoutMilliseconds);
+  if (error) {
+    LOG(ERROR) << error->GetMessage();
+    std::move(cb).Run(kModemManagerError);
+  } else {
+    OnInhibitSuccess(inhibit, uid, std::move(cb));
+  }
 }
 
 void ModemManagerProxy::InhibitTimeout(ResultCallback cb) {
