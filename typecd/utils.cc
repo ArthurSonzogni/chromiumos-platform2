@@ -9,12 +9,21 @@
 #include <sstream>
 #include <string>
 
+#include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <re2/re2.h>
 
 #include "typecd/metrics_allowlist.h"
+
+namespace {
+
+constexpr char kTbtDeviceRegex[] = "[0-9]+\\-[0-9]+";
+constexpr char kTbtDeviceDir[] = "sys/bus/thunderbolt/devices";
+
+}  // namespace
 
 namespace typecd {
 
@@ -56,6 +65,20 @@ bool DeviceInMetricsAllowlist(uint16_t vendor_id, uint16_t product_id) {
   policy::DevicePolicy::UsbDeviceId device = {vendor_id, product_id};
   return std::binary_search(std::begin(kMetricsAllowlist),
                             std::end(kMetricsAllowlist), device, DeviceComp);
+}
+
+int GetTbtDeviceCount() {
+  int ret = 0;
+  base::FileEnumerator tbt_links(
+      base::FilePath(kTbtDeviceDir), false,
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS);
+  for (base::FilePath tbt_link = tbt_links.Next(); !tbt_link.empty();
+       tbt_link = tbt_links.Next()) {
+    if (RE2::FullMatch(tbt_link.BaseName().value(), kTbtDeviceRegex))
+      ret++;
+  }
+
+  return ret;
 }
 
 }  // namespace typecd

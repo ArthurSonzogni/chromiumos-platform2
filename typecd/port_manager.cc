@@ -12,6 +12,8 @@
 #include <dbus/typecd/dbus-constants.h>
 #include <re2/re2.h>
 
+#include "typecd/utils.h"
+
 namespace {
 
 // Give enough time for the EC to complete the ExitMode command. Calculated as
@@ -397,6 +399,7 @@ void PortManager::RunModeEntry(int port_num) {
   if (can_enter_usb4 == ModeEntryResult::kSuccess) {
     if (ec_util_->EnterMode(port_num, TypeCMode::kUSB4)) {
       port->SetCurrentMode(TypeCMode::kUSB4);
+      port->SetTbtDeviceCount(GetTbtDeviceCount());
       LOG(INFO) << "Entered USB4 mode on port " << port_num;
     } else {
       LOG(ERROR) << "Attempt to call Enter USB4 failed for port " << port_num;
@@ -432,6 +435,9 @@ void PortManager::RunModeEntry(int port_num) {
 
     if (ec_util_->EnterMode(port_num, cur_mode)) {
       port->SetCurrentMode(cur_mode);
+      if (cur_mode == TypeCMode::kTBT)
+        port->SetTbtDeviceCount(GetTbtDeviceCount());
+
       LOG(INFO) << "Entered " << ModeToString(cur_mode) << " mode on port "
                 << port_num;
     } else {

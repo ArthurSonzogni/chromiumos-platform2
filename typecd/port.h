@@ -153,6 +153,9 @@ class Port {
   // entry and the cable may not be able to drive a display.
   virtual bool CanEnterDPAltMode(bool* invalid_cable_flag);
 
+  // Set TBT device count to check for enumeration after TBT3/USB4 entry.
+  void SetTbtDeviceCount(int count) { tbt_device_count_ = count; }
+
   // Check whether we can enter Thunderbolt Compatibility Alt Mode. This should
   // check for the presence of required attributes on the Partner and
   // (if applicable) Cable.
@@ -339,6 +342,8 @@ class Port {
   VerticalPosition vertical_position_;
   // Indicates whether the port is driving a display
   bool is_display_connected_;
+  // Indicates number of enumerated thunderbolt devices.
+  int tbt_device_count_;
 
   // Cancelable callback for metrics reporting.
   base::CancelableOnceClosure report_metrics_callback_;

@@ -4,6 +4,9 @@
 
 #include "typecd/metrics.h"
 
+#include <string>
+#include <utility>
+
 #include <base/logging.h>
 #include <metrics/structured_events.h>
 

@@ -29,6 +29,10 @@ bool DeviceComp(policy::DevicePolicy::UsbDeviceId dev1,
                 policy::DevicePolicy::UsbDeviceId dev2);
 bool DeviceInMetricsAllowlist(uint16_t vendor_id, uint16_t product_id);
 
+// Helper function to return the number of currently enumertated devices on the
+// thunderbolt bus. Used to check for successful TBT/USB4 mode entry.
+int GetTbtDeviceCount();
+
 }  // namespace typecd
 
 #endif  // TYPECD_UTILS_H_

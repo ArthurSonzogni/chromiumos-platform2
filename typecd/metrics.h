@@ -5,6 +5,8 @@
 #ifndef TYPECD_METRICS_H_
 #define TYPECD_METRICS_H_
 
+#include <string>
+
 #include <metrics/metrics_library.h>
 
 namespace typecd {
