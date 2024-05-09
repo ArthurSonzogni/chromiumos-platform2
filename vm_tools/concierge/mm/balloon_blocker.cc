@@ -85,6 +85,11 @@ int64_t BalloonBlocker::TryResize(ResizeRequest request) {
     request.LimitMagnitude(balloon_->GetTargetSize());
   }
 
+  // No need to attempt a no-op resize. Return early.
+  if (request.GetDeltaBytes() == 0) {
+    return 0;
+  }
+
   balloon_->DoResize(
       request.GetDeltaBytes(),
       base::BindOnce(&BalloonBlocker::OnResizeResult,
