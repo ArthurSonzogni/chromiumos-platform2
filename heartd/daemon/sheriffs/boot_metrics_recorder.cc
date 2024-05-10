@@ -23,6 +23,7 @@ BootMetricsRecorder::BootMetricsRecorder(const base::FilePath& root_dir,
 BootMetricsRecorder::~BootMetricsRecorder() = default;
 
 void BootMetricsRecorder::OneShotWork() {
+  CleanUp();
   CollectShutdownTime();
   CollectBootID();
 }
@@ -35,7 +36,9 @@ void BootMetricsRecorder::AdjustSchedule() {}
 
 void BootMetricsRecorder::MainWork() {}
 
-void BootMetricsRecorder::CleanUp() {}
+void BootMetricsRecorder::CleanUp() {
+  database_->RemoveOutdatedData(kBootRecordTable);
+}
 
 void BootMetricsRecorder::CollectShutdownTime() {
   base::FileEnumerator file_enum(

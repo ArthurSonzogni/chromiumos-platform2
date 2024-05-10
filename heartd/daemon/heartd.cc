@@ -61,7 +61,6 @@ int HeartdDaemon::OnEventLoopStarted() {
 
   action_runner_->SetupSysrq(sysrq_fd_);
 
-  database_->RemoveOutdatedData(kBootRecordTable);
   // We have to cache the boot record when start up, because when we need to
   // trigger the reboot action, it's possible that we can't read the database
   // successfully.
