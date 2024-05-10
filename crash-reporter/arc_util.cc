@@ -143,7 +143,8 @@ bool ParseCrashLog(const std::string& type,
   }
   *log = stream.str();
 
-  if (type == kDataAppAnr || type == kSystemAppAnr) {
+  if (type == kDataAppAnr || type == kSystemAppAnr ||
+      type == kSystemServerWatchdog) {
     // For ANR reports, the subject was moved under the data file, so we need
     // to keep searching to try to find it.
     auto subject = log->find(kSubjectKey);
