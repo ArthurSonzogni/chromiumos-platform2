@@ -22,7 +22,6 @@ source_set("libheartd") {
     "heartbeat_tracker.cc",
     "heartd.cc",
     "mojo_service.cc",
-    "scavenger.cc",
     "top_sheriff.cc",
   ]
   configs += [ ":target_defaults" ]
@@ -42,7 +41,6 @@ if (use.test) {
       "heartbeat_manager_test.cc",
       "heartbeat_tracker_test.cc",
       "heartd_test.cc",
-      "scavenger_test.cc",
       "top_sheriff_test.cc",
     ]
     configs += [

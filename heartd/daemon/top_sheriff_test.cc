@@ -27,16 +27,18 @@ class TestSheriff final : public Sheriff {
   bool HasShiftWork() override { return has_shift_work_; }
   void AdjustSchedule() override {}
   void ShiftWork() override { ++number_shift_work_called_; }
-  void CleanUp() override {}
+  void CleanUp() override { ++number_clean_up_called_; }
 
   void AdjustSchedule(const base::TimeDelta& schedule) { schedule_ = schedule; }
   int number_one_shot_work_called() { return number_one_shot_work_called_; }
   int number_main_work_called() { return number_shift_work_called_; }
+  int number_clean_up_called() { return number_clean_up_called_; }
 
  private:
   bool has_shift_work_ = false;
   int number_one_shot_work_called_ = 0;
   int number_shift_work_called_ = 0;
+  int number_clean_up_called_ = 0;
 };
 
 class TopSheriffTest : public testing::Test {
@@ -44,10 +46,19 @@ class TopSheriffTest : public testing::Test {
   TopSheriffTest() = default;
   ~TopSheriffTest() override = default;
 
+  void QuitCallback() { quit_callback_is_called_ = true; }
+
+  bool IsQuitCallbackCalled() { return quit_callback_is_called_; }
+
  protected:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
-  std::unique_ptr<TopSheriff> top_sheriff_ = std::make_unique<TopSheriff>();
+  std::unique_ptr<TopSheriff> top_sheriff_ = std::make_unique<TopSheriff>(
+      base::BindOnce(&TopSheriffTest::QuitCallback, base::Unretained(this)),
+      nullptr);
+
+ private:
+  bool quit_callback_is_called_ = false;
 };
 
 }  // namespace
@@ -60,9 +71,9 @@ TEST_F(TopSheriffTest, NoShiftWork) {
 
   EXPECT_EQ(test_sheriff->number_one_shot_work_called(), 1);
 
-  // The default shift frequency is 60 minutes.
-  task_environment_.FastForwardBy(base::Minutes(60));
-  EXPECT_EQ(test_sheriff->number_main_work_called(), 0);
+  // Heartd should be terminated after 2 minutes.
+  task_environment_.FastForwardBy(base::Minutes(2));
+  EXPECT_TRUE(IsQuitCallbackCalled());
 }
 
 TEST_F(TopSheriffTest, HasShiftWorkWithDefaultFrequency) {
@@ -126,6 +137,20 @@ TEST_F(TopSheriffTest, OneShotWorkOnlyRunOnce) {
   // Start shift again.
   top_sheriff_->GetToWork();
   EXPECT_EQ(test_sheriff->number_one_shot_work_called(), 1);
+}
+
+TEST_F(TopSheriffTest, CleanUpTask) {
+  TestSheriff* test_sheriff = new TestSheriff(/* has_shift_work */ true);
+
+  top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(test_sheriff));
+  top_sheriff_->GetToWork();
+
+  // For every 1 hour, we call managed sheriff's CleanUp() periodically.
+  task_environment_.FastForwardBy(base::Hours(1));
+  EXPECT_EQ(test_sheriff->number_clean_up_called(), 1);
+
+  task_environment_.FastForwardBy(base::Hours(1));
+  EXPECT_EQ(test_sheriff->number_clean_up_called(), 2);
 }
 
 }  // namespace heartd
