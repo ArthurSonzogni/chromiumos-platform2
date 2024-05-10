@@ -1465,10 +1465,10 @@ class RestoreContextsForVarTest : public ::testing::Test {
 TEST_F(RestoreContextsForVarTest, Restorecon) {
   base::FilePath var = base_dir_.Append("var");
   ASSERT_TRUE(platform_->CreateDirectory(var));
-  base::FilePath debug = base_dir_.Append("sys/kernel/debug");
-  ASSERT_TRUE(platform_->CreateDirectory(debug));
   base::FilePath shadow = base_dir_.Append("home/.shadow");
   ASSERT_TRUE(platform_->CreateDirectory(shadow));
+  base::FilePath cpu = base_dir_.Append("sys/devices/system/cpu");
+  ASSERT_TRUE(platform_->CreateDirectory(cpu));
 
   base::FilePath selinux = base_dir_.Append("sys/fs/selinux/enforce");
   ASSERT_TRUE(platform_->WriteStringToFile(selinux, "1"));
@@ -1477,7 +1477,7 @@ TEST_F(RestoreContextsForVarTest, Restorecon) {
 
   EXPECT_TRUE(platform_->FileExists(var.Append("restore")));
   EXPECT_TRUE(platform_->FileExists(shadow.Append("restore")));
-  EXPECT_TRUE(platform_->FileExists(debug.Append("exclude")));
+  EXPECT_TRUE(platform_->FileExists(cpu.Append("restore")));
 }
 
 class RestorePreservedPathsTest : public ::testing::Test {

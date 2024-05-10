@@ -2,24 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-/sys/kernel/security(/.*)?                 u:object_r:securityfs:s0
+# This policy file targets only /sys/devices/system/cpu, which needs regexp
+# rules. Directories which do not need regexp should be located in genfscon
+# instead. If you add a new directory, update chromeos_startup, too.
+#
+# Rules here are expensive from the perspective of the boot time. This policy
+# file is applied during the boot by chromeos_startup, and that delays the whole
+# ChromeOS boot time, since it's a critical path.
 
-/sys/firmware/efi/efivars(/.*)?            u:object_r:efivarfs:s0
-
-
-/sys/module/kvm/parameters/kvm_pv_sched    u:object_r:sysfs_kvm_pvsched:s0
-
-/sys/class/net(/.*)?                       u:object_r:sysfs_net:s0
-/sys/class/tpm(/.*)?                       u:object_r:sysfs_tpm:s0
-/sys/devices/virtual/block/dm-.*           u:object_r:sysfs_dm:s0
-/sys/class/devcoredump(/.*)?               u:object_r:sysfs_class_devcoredump:s0
-
-/sys/devices/system/cpu(/.*)?                                   u:object_r:sysfs_devices_system_cpu:s0
-
-/sys/devices/system/cpu/cpuidle(/.*)                            u:object_r:sysfs_cpuidle:s0
-
-# Use u:object_r:sysfs:s0 for writable files to disallow regular apps to
-# access them.
+# /sys/devices/system/cpu is labeld as sysfs_devices_system_cpu by genfscon.
+# Label writable files as u:object_r:sysfs:s0 to disallow regular apps to access
+# them.
 /sys/devices/system/cpu/cpufreq/ondemand/ignore_nice_load       u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/ondemand/io_is_busy             u:object_r:sysfs:s0
 /sys/devices/system/cpu/cpufreq/ondemand/powersave_bias         u:object_r:sysfs:s0

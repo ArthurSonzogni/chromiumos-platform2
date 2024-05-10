@@ -75,6 +75,7 @@ constexpr char kKernelConfig[] = "kernel/config";
 constexpr char kKernelDebug[] = "kernel/debug";
 constexpr char kKernelSecurity[] = "kernel/security";
 constexpr char kKernelTracing[] = "kernel/tracing";
+constexpr char kSysfsCpu[] = "devices/system/cpu";
 
 constexpr char kTpmSimulator[] = "etc/init/tpm2-simulator.conf";
 
@@ -731,12 +732,12 @@ void ChromeosStartup::RestoreContextsForVar(
   std::vector<base::FilePath> exc_empty;
   restorecon_func(platform_, var, exc_empty, true, true);
 
-  // Restoring file contexts for sysfs. debugfs and tracefs are excluded from
-  // this invocation because the kernel handles them via genfscon policy rules,
-  // and handling them here in user space would slow down boot significantly.
-  std::vector<base::FilePath> exclude = {sysfs.Append(kKernelDebug),
-                                         sysfs.Append(kKernelTracing)};
-  restorecon_func(platform_, sysfs, exclude, true, false);
+  // Restoring file contexts for sysfs. We only need to restore a sub directory
+  // which requires regexp, because the kernel handles prefix match rules via
+  // genfscon policy rules. Handling prefix match rules here in user space would
+  // slow down boot significantly.
+  base::FilePath sysfs_cpu = sysfs.Append(kSysfsCpu);
+  restorecon_func(platform_, sysfs_cpu, exc_empty, true, false);
 
   // We cannot do recursive for .shadow since userdata is encrypted (including
   // file names) before user logs-in. Restoring context for it may mislabel

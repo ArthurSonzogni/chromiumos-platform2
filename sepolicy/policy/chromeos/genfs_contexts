@@ -23,3 +23,12 @@ genfscon tracefs /trace_marker            u:object_r:debugfs_trace_marker:s0
 genfscon tracefs /instances               u:object_r:debugfs_tracing_instances:s0
 genfscon tracefs /options/pid-in-ns       u:object_r:debugfs_tracing:s0
 genfscon tracefs /set_trace_pidns         u:object_r:debugfs_tracing:s0
+
+genfscon sysfs /class/net                 u:object_r:sysfs_net:s0
+genfscon sysfs /class/tpm                 u:object_r:sysfs_tpm:s0
+genfscon sysfs /class/devcoredump         u:object_r:sysfs_class_devcoredump:s0
+genfscon sysfs /devices/system/cpu        u:object_r:sysfs_devices_system_cpu:s0
+genfscon sysfs /devices/virtual/block/dm- u:object_r:sysfs_dm:s0
+
+genfscon sysfs /module/kvm/parameters/kvm_pv_sched u:object_r:sysfs_kvm_pvsched:s0
+genfscon sysfs /devices/system/cpu/cpuidle         u:object_r:sysfs_cpuidle:s0
