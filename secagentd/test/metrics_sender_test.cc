@@ -6,8 +6,8 @@
 
 #include <memory>
 
-#include "base/functional/bind.h"
 #include "base/test/task_environment.h"
+#include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -172,19 +172,19 @@ TEST_F(MetricsSenderTestFixture, SendBatchedCountMetricsToUMA) {
 }
 
 TEST_F(MetricsSenderTestFixture, RunRegisteredCallbacks) {
-  base::RunLoop run_loop;
-  metrics_sender_->RegisterMetricOnFlushCallback(base::BindRepeating(
-      [](base::RunLoop* run_loop) { run_loop->Quit(); }, &run_loop));
+  base::test::TestFuture<void> future_1;
+  metrics_sender_->RegisterMetricOnFlushCallback(
+      future_1.GetRepeatingCallback());
 
-  base::RunLoop run_loop_2;
-  metrics_sender_->RegisterMetricOnFlushCallback(base::BindRepeating(
-      [](base::RunLoop* run_loop_2) { run_loop_2->Quit(); }, &run_loop_2));
+  base::test::TestFuture<void> future_2;
+  metrics_sender_->RegisterMetricOnFlushCallback(
+      future_2.GetRepeatingCallback());
 
   metrics_sender_->InitBatchedMetrics();
   task_environment_.FastForwardBy(base::Seconds(metrics::kBatchTimer));
 
-  run_loop.Run();
-  run_loop_2.Run();
+  EXPECT_TRUE(future_1.Wait());
+  EXPECT_TRUE(future_2.Wait());
 }
 
 TEST_F(MetricsSenderTestFixture, EarlyFlushSaturatedMetric) {

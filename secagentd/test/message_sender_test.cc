@@ -11,10 +11,9 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/functional/bind.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/run_loop.h"
 #include "base/test/task_environment.h"
+#include "base/test/test_future.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "missive/client/mock_report_queue.h"
@@ -235,16 +234,10 @@ TEST_F(MessageSenderTestFixture, TestSendMessageWithCallback) {
             std::move(status_cb).Run(reporting::Status::StatusOK());
           })));
 
-  base::RunLoop run_loop;
-  message_sender_->SendMessage(
-      destination, mutable_common, std::move(message),
-      base::BindOnce(
-          [](base::RunLoop* run_loop, reporting::Status status) {
-            EXPECT_TRUE(status.ok());
-            run_loop->Quit();
-          },
-          &run_loop));
-  run_loop.Run();
+  base::test::TestFuture<reporting::Status> future;
+  message_sender_->SendMessage(destination, mutable_common, std::move(message),
+                               future.GetCallback());
+  EXPECT_TRUE(future.Get().ok());
 }
 
 }  // namespace secagentd::testing

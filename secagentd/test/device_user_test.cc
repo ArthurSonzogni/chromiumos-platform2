@@ -6,17 +6,17 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 
 #include "absl/strings/str_format.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
-#include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/run_loop.h"
 #include "base/test/task_environment.h"
+#include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "base/uuid.h"
 #include "cryptohome/proto_bindings/UserDataAuth.pb.h"
@@ -909,40 +909,24 @@ TEST_F(DeviceUserTestFixture, TestGetDeviceUserAsync) {
         return true;
       })));
 
-  // Use runloops to verify all callbacks were called.
-  base::RunLoop run_loop_not_ready_1;
-  bool is_called = false;
-  auto cb_not_ready_1 = base::BindOnce(
-      [](base::RunLoop* run_loop_1, bool* is_called, const std::string& state) {
-        run_loop_1->Quit();
-        *is_called = true;
-      },
-      &run_loop_not_ready_1, &is_called);
-  base::RunLoop run_loop_not_ready_2;
-  auto cb_not_ready_2 =
-      base::BindOnce([](base::RunLoop* run_loop_2,
-                        const std::string& state) { run_loop_2->Quit(); },
-                     &run_loop_not_ready_2);
-  base::RunLoop run_loop_ready;
-  auto cb_ready =
-      base::BindOnce([](base::RunLoop* run_loop_ready,
-                        const std::string& state) { run_loop_ready->Quit(); },
-                     &run_loop_ready);
-
   SaveRegistrationCallbacks();
   device_user_->RegisterSessionChangeHandler();
   registration_cb_.Run(kStarted);
   EXPECT_FALSE(GetDeviceUserReady());
-  device_user_->GetDeviceUserAsync(std::move(cb_not_ready_1));
-  device_user_->GetDeviceUserAsync(std::move(cb_not_ready_2));
-  EXPECT_FALSE(is_called);
+  base::test::TestFuture<const std::string&> future_not_ready_1;
+  device_user_->GetDeviceUserAsync(future_not_ready_1.GetCallback());
+
+  base::test::TestFuture<const std::string&> future_not_ready_2;
+  device_user_->GetDeviceUserAsync(future_not_ready_2.GetCallback());
+  EXPECT_FALSE(future_not_ready_1.IsReady());
   EXPECT_EQ(2, GetDeviceUserReadyCbsSize());
   task_environment_.FastForwardBy(kDelayForFirstUserInit);
-  run_loop_not_ready_1.Run();
-  run_loop_not_ready_2.Run();
+  EXPECT_TRUE(future_not_ready_1.Wait());
+  EXPECT_TRUE(future_not_ready_2.Wait());
   EXPECT_TRUE(GetDeviceUserReady());
-  device_user_->GetDeviceUserAsync(std::move(cb_ready));
-  run_loop_ready.Run();
+  base::test::TestFuture<const std::string&> future_ready;
+  device_user_->GetDeviceUserAsync(future_ready.GetCallback());
+  EXPECT_TRUE(future_ready.Wait());
 
   EXPECT_EQ(kDeviceUser, GetUser());
   ASSERT_EQ(1, device_user_->GetUsernamesForRedaction().size());
