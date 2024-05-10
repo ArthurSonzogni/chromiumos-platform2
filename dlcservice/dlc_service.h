@@ -223,6 +223,12 @@ class DlcService : public DlcServiceInterface,
   FRIEND_TEST(DlcServiceTest, CleanupUnsupportedLvs);
 #endif  // USE_LVM_STATEFUL_PARTITION
 
+  // Report DLC service metrics periodically.
+  void PeriodicMetricsReport();
+
+  // Schedules the method |PeriodicMetricsReport()| to be ran at a later time.
+  void SchedulePeriodicMetricsReport(const base::TimeDelta& delay);
+
   // Holds the DLC that is being installed by installer.
   std::optional<DlcId> installing_dlc_id_;
 
@@ -241,6 +247,9 @@ class DlcService : public DlcServiceInterface,
 
   // Holds utils.
   std::shared_ptr<UtilsInterface> utils_;
+
+  // Holds the task id of periodic metrics reporting
+  brillo::MessageLoop::TaskId periodic_metrics_reporting_id_;
 
   base::WeakPtrFactory<DlcService> weak_ptr_factory_;
 

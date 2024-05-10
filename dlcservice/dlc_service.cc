@@ -4,6 +4,7 @@
 
 #include "dlcservice/dlc_service.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <unordered_set>
@@ -53,6 +54,11 @@ constexpr size_t kPeriodicInstallCheckSecondsDelay = 10;
 // idle period before an installation of a DLC is halted.
 constexpr size_t kToleranceCap = 30;
 
+// The time delay for reporting daily metrics.
+constexpr base::TimeDelta kPeriodicMetricsReportingDelay = base::Hours(24);
+// The time delay for the first metrics reporting after dlcservice starts.
+constexpr base::TimeDelta kFirstMetricsReportingDelay = base::Minutes(5);
+
 DlcIdList ToDlcIdList(const DlcMap& dlcs,
                       const std::function<bool(const DlcType&)>& filter) {
   DlcIdList list;
@@ -69,6 +75,7 @@ DlcService::DlcService(std::unique_ptr<DlcCreatorInterface> dlc_creator,
     : periodic_install_check_id_(MessageLoop::kTaskIdNull),
       dlc_creator_(std::move(dlc_creator)),
       utils_(utils),
+      periodic_metrics_reporting_id_(MessageLoop::kTaskIdNull),
       weak_ptr_factory_(this) {}
 
 DlcService::~DlcService() {
@@ -76,6 +83,11 @@ DlcService::~DlcService() {
       !brillo::MessageLoop::current()->CancelTask(periodic_install_check_id_))
     LOG(ERROR) << AlertLogTag(kCategoryCleanup)
                << "Failed to cancel delayed installer check during cleanup.";
+  if (periodic_metrics_reporting_id_ != MessageLoop::kTaskIdNull &&
+      !brillo::MessageLoop::current()->CancelTask(
+          periodic_metrics_reporting_id_))
+    LOG(ERROR) << AlertLogTag(kCategoryCleanup)
+               << "Failed to cancel delayed metrics reporting during cleanup.";
 }
 
 void DlcService::Initialize() {
@@ -111,6 +123,9 @@ void DlcService::Initialize() {
       initialize_dlc(id);
   }
   CleanupUnsupported();
+
+  // Start periodically reporting metrics.
+  SchedulePeriodicMetricsReport(kFirstMetricsReportingDelay);
 }
 
 void DlcService::CleanupUnsupported() {
@@ -735,6 +750,37 @@ std::string DlcService::SanitizeId(DlcId id) {
   if (dlc)
     return dlc->GetSanitizedId();
   return id;
+}
+
+void DlcService::PeriodicMetricsReport() {
+  periodic_metrics_reporting_id_ = MessageLoop::kTaskIdNull;
+
+  // Report total used bytes on disk.
+  uint64_t total_size = 0;
+  for (const auto& id : GetExistingDlcs()) {
+    brillo::ErrorPtr tmp_err;
+    if (const auto* dlc = GetDlc(id, &tmp_err)) {
+      auto used_bytes = dlc->GetUsedBytesOnDisk();
+      total_size += used_bytes ? *used_bytes : 0;
+    }
+  }
+  SystemState::Get()->metrics()->SendTotalUsedOnDisk(total_size);
+
+  // Schedule next reporting.
+  SchedulePeriodicMetricsReport(kPeriodicMetricsReportingDelay);
+}
+
+void DlcService::SchedulePeriodicMetricsReport(const base::TimeDelta& delay) {
+  if (periodic_metrics_reporting_id_ != MessageLoop::kTaskIdNull) {
+    LOG(INFO) << "Another periodic metrics reporting already scheduled.";
+    return;
+  }
+  periodic_metrics_reporting_id_ =
+      brillo::MessageLoop::current()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&DlcService::PeriodicMetricsReport,
+                         weak_ptr_factory_.GetWeakPtr()),
+          delay);
 }
 
 }  // namespace dlcservice

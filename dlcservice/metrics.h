@@ -76,6 +76,10 @@ class Metrics {
   // otherwise send a failure value.
   void SendUninstallResult(brillo::ErrorPtr* err);
 
+  // Sends the total disk space used by DLC in MiB buckets. This method takes
+  // bytes and does conversion internally.
+  void SendTotalUsedOnDisk(uint64_t used_bytes);
+
  protected:
   // For testing.
   Metrics() = default;

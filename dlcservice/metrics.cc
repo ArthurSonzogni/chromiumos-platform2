@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
+#include <cstdint>
+
 #include <base/check.h>
 #include <base/logging.h>
 #include <dbus/dlcservice/dbus-constants.h>
@@ -19,6 +22,10 @@ namespace metrics {
 
 const char kMetricInstallResult[] = "Platform.DlcService.InstallResult";
 const char kMetricUninstallResult[] = "Platform.DlcService.UninstallResult";
+
+constexpr char kMetricTotalUsedMBytes[] = "Platform.DlcService.TotalUsedMBytes";
+constexpr int kMetricTotalUsedMBytesMax = 1 * 1024 * 1024;  // 1 TiB.
+constexpr int kMetricTotalUsedMBytesNumBuckets = 50;
 }  // namespace metrics
 
 // IMPORTANT: To obsolete a metric enum value, just remove it from the map
@@ -86,6 +93,16 @@ void Metrics::SendUninstallResult(UninstallResult result) {
   metrics_library_->SendEnumToUMA(
       metrics::kMetricUninstallResult, static_cast<int>(result),
       static_cast<int>(UninstallResult::kNumConstants));
+}
+
+void Metrics::SendTotalUsedOnDisk(uint64_t used_bytes) {
+  // Convert to MiB (round up) with an upper limit.
+  auto used_mb = std::min<uint64_t>(1 + (used_bytes - 1) / (1024 * 1024),
+                                    metrics::kMetricTotalUsedMBytesMax);
+
+  metrics_library_->SendToUMA(metrics::kMetricTotalUsedMBytes, used_mb,
+                              /*min=*/0, metrics::kMetricTotalUsedMBytesMax,
+                              metrics::kMetricTotalUsedMBytesNumBuckets);
 }
 
 }  // namespace dlcservice
