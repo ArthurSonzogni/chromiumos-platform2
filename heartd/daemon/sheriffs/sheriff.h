@@ -16,7 +16,10 @@ class Sheriff {
   // This is called by TopSheriff to ask the sheriff start working.
   virtual void GetToWork() {
     // One shot work.
-    OneShotWork();
+    if (!is_one_shot_work_called_) {
+      OneShotWork();
+      is_one_shot_work_called_ = true;
+    }
 
     // Shift work.
     if (timer_.IsRunning() || !HasShiftWork()) {
@@ -26,7 +29,7 @@ class Sheriff {
     AdjustSchedule();
     timer_.Start(
         FROM_HERE, schedule_,
-        base::BindRepeating(&Sheriff::MainWork, base::Unretained(this)));
+        base::BindRepeating(&Sheriff::ShiftWork, base::Unretained(this)));
   }
 
   // One shot work. This will be called before starting the shift.
@@ -42,17 +45,21 @@ class Sheriff {
   // This is called by Sheriff::GetToWork to adjust the schedule.
   virtual void AdjustSchedule() = 0;
 
-  // Sheriff's main work.
-  virtual void MainWork() = 0;
+  // Sheriff's shift work.
+  virtual void ShiftWork() = 0;
 
   // This is called by TopSheriff to clean up.
   virtual void CleanUp() = 0;
 
  protected:
-  // The timer to run the MainWork().
+  // The timer to run the ShiftWork().
   base::RepeatingTimer timer_;
-  // The schedule to run the MainWork().
+  // The schedule to run the ShiftWork().
   base::TimeDelta schedule_ = base::Hours(1);
+
+ private:
+  // Uses to prevent duplicate call of OneShotWork().
+  bool is_one_shot_work_called_ = false;
 };
 
 }  // namespace heartd

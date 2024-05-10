@@ -34,7 +34,7 @@ bool BootMetricsRecorder::HasShiftWork() {
 
 void BootMetricsRecorder::AdjustSchedule() {}
 
-void BootMetricsRecorder::MainWork() {}
+void BootMetricsRecorder::ShiftWork() {}
 
 void BootMetricsRecorder::CleanUp() {
   database_->RemoveOutdatedData(kBootRecordTable);
