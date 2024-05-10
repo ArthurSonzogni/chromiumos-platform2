@@ -64,6 +64,9 @@ class BluetoothManager : public BluetoothManagerInterface {
   // |BluetoothBlueZProxy|.
   void CompleteInitialization();
 
+  // Utility function making sure that we have adapter proxy for given HCI.
+  bool UpdateAdapterProxy(int hci) const;
+
   // Flipped to true once the D-Bus proxies for btmanagerd are up and running.
   bool init_complete_;
 
@@ -74,7 +77,11 @@ class BluetoothManager : public BluetoothManagerInterface {
   // A single btmanager can handle several BT adapters. This is a map of the
   // proxies to communicate with the various BT adapters that is indexed on the
   // HCI index of those adapters.
-  std::map<int32_t, std::unique_ptr<BluetoothAdapterProxyInterface>>
+  // Note: it is made mutable because for the calls GetAvailableAdapters and
+  // GetDefaultAdapter (which are const - logical "constness", they do not
+  // change the state of BT manager) we want to make sure that adapter proxies
+  // are available in our cache (and if not then update it).
+  mutable std::map<int32_t, std::unique_ptr<BluetoothAdapterProxyInterface>>
       adapter_proxies_;
 
   std::unique_ptr<BluetoothBlueZProxyInterface> bluez_proxy_;
