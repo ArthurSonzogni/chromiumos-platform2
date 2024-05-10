@@ -33,6 +33,7 @@
 #include <openssl/sha.h>
 #include <vpd/vpd.h>
 
+#include "init/encrypted_reboot_vault/encrypted_reboot_vault.h"
 #include "init/file_attrs_cleaner.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
@@ -859,9 +860,9 @@ int ChromeosStartup::Run() {
   // power loss/reboot/invalid vault), attempt to recreate the encrypted reboot
   // vault.
   if (USE_ENCRYPTED_REBOOT_VAULT) {
-    if (!utils::UnlockEncryptedRebootVault()) {
-      utils::CreateEncryptedRebootVault();
-    }
+    encrypted_reboot_vault::EncryptedRebootVault vault(platform_);
+    if (!vault.UnlockVault())
+      vault.CreateVault();
   }
 
   ForceCleanFileAttrs(root_.Append(kVar));

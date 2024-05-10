@@ -22,12 +22,6 @@ bool BRILLO_EXPORT GetRootDevice(base::FilePath* root, bool strip_partition);
 // Helper function to read a file to int
 bool BRILLO_EXPORT ReadFileToInt(const base::FilePath& path, int* value);
 
-// Run encrypted-reboot-vault --action=create
-bool BRILLO_EXPORT CreateEncryptedRebootVault();
-
-// Run encrypted-reboot-vault --action=unlock
-bool BRILLO_EXPORT UnlockEncryptedRebootVault();
-
 // Run shutdown.
 void BRILLO_EXPORT Reboot();
 

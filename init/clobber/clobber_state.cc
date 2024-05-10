@@ -49,10 +49,12 @@
 #include <chromeos/constants/imageloader.h>
 #include <libdlcservice/utils.h>
 #include <libcrossystem/crossystem.h>
+#include <libstorage/platform/platform.h>
 #include <rootdev/rootdev.h>
 #include <chromeos/secure_erase_file/secure_erase_file.h>
 
 #include "init/clobber/clobber_state_log.h"
+#include "init/encrypted_reboot_vault/encrypted_reboot_vault.h"
 #include "init/utils.h"
 
 namespace {
@@ -915,7 +917,9 @@ int ClobberState::Run() {
   // Attempt to collect crashes into the reboot vault crash directory. Do not
   // collect crashes if this is a user triggered or a factory powerwash.
   if (preserve_sensitive_files && !args_.factory_wipe) {
-    if (utils::CreateEncryptedRebootVault())
+    libstorage::Platform platform;
+    encrypted_reboot_vault::EncryptedRebootVault vault(&platform);
+    if (vault.UnlockVault())
       CollectClobberCrashReports();
   }
 

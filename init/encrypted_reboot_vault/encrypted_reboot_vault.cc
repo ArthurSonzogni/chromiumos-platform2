@@ -96,8 +96,11 @@ libstorage::FileSystemKey RetrieveKey() {
 
 }  // namespace
 
-EncryptedRebootVault::EncryptedRebootVault()
+namespace encrypted_reboot_vault {
+
+EncryptedRebootVault::EncryptedRebootVault(libstorage::Platform* platform)
     : vault_path_(base::FilePath(kEncryptedRebootVaultPath)),
+      platform_(platform),
       keyring_(std::make_unique<libstorage::RealKeyring>()) {
   libstorage::FileSystemKeyReference key_reference;
   key_reference.fek_sig = brillo::SecureBlob(kEncryptionKeyTag);
@@ -105,7 +108,7 @@ EncryptedRebootVault::EncryptedRebootVault()
   // TODO(dlunev): change the allow_v2 to true once all the boards are on
   // 5.4+
   encrypted_container_ = std::make_unique<libstorage::FscryptContainer>(
-      vault_path_, key_reference, /*allow_v2=*/false, &platform_,
+      vault_path_, key_reference, /*allow_v2=*/false, platform_,
       keyring_.get());
 }
 
@@ -187,3 +190,5 @@ bool EncryptedRebootVault::UnlockVault() {
   std::move(purge_on_exit).Cancel();
   return true;
 }
+
+}  // namespace encrypted_reboot_vault

@@ -15,9 +15,10 @@
 #include <libstorage/platform/platform.h>
 #include <libstorage/storage_container/storage_container.h>
 
-class EncryptedRebootVault {
+namespace encrypted_reboot_vault {
+class BRILLO_EXPORT EncryptedRebootVault {
  public:
-  EncryptedRebootVault();
+  explicit EncryptedRebootVault(libstorage::Platform* platform);
   ~EncryptedRebootVault() = default;
   // Check if the encrypted reboot vault is setup correctly.
   bool Validate();
@@ -30,9 +31,10 @@ class EncryptedRebootVault {
 
  private:
   base::FilePath vault_path_;
-  libstorage::Platform platform_;
+  libstorage::Platform* platform_;
   std::unique_ptr<libstorage::Keyring> keyring_;
   std::unique_ptr<libstorage::StorageContainer> encrypted_container_;
 };
+}  // namespace encrypted_reboot_vault
 
 #endif  // INIT_ENCRYPTED_REBOOT_VAULT_ENCRYPTED_REBOOT_VAULT_H_

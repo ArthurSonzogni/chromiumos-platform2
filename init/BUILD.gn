@@ -114,6 +114,7 @@ static_library("libcrosstartup") {
   configs += [ ":target_defaults" ]
   defines = []
   deps = [
+    ":libencrypted-reboot-vault",
     ":libfile_attrs_cleaner",
     ":libinit_utils",
     ":libtpm_encryption",
@@ -132,6 +133,7 @@ static_library("libclobber") {
   }
   configs += [ ":target_defaults" ]
   public_deps = [ ":libinit_utils" ]
+  deps = [ ":libencrypted-reboot-vault" ]
 }
 
 executable("chromeos_startup") {
@@ -255,13 +257,19 @@ executable("mount-encrypted") {
   install_path = "sbin"
 }
 
-executable("encrypted-reboot-vault") {
-  sources = [
-    "encrypted_reboot_vault/encrypted_reboot_vault.cc",
-    "encrypted_reboot_vault/encrypted_reboot_vault_main.cc",
-  ]
+shared_library("libencrypted-reboot-vault") {
+  sources = [ "encrypted_reboot_vault/encrypted_reboot_vault.cc" ]
   configs += [ ":target_defaults" ]
-  install_path = "sbin"
+  install_path = "lib"
+}
+
+executable("encrypted-reboot-vault") {
+  sources = [ "encrypted_reboot_vault/encrypted_reboot_vault_main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libencrypted-reboot-vault" ]
+
+  # Only used for testing.
+  install_path = "/usr/local/bin"
 }
 
 executable("usermode-helper") {

@@ -75,26 +75,6 @@ bool ReadFileToInt(const base::FilePath& path, int* value) {
   return base::StringToInt(str, value);
 }
 
-bool CreateEncryptedRebootVault() {
-  brillo::ProcessImpl create_erv;
-  create_erv.AddArg("/usr/sbin/encrypted-reboot-vault");
-  create_erv.AddArg("--action=create");
-  if (create_erv.Run() != 0) {
-    return false;
-  }
-  return true;
-}
-
-bool UnlockEncryptedRebootVault() {
-  brillo::ProcessImpl unlock_erv;
-  unlock_erv.AddArg("/usr/sbin/encrypted-reboot-vault");
-  unlock_erv.AddArg("--action=unlock");
-  if (unlock_erv.Run() != 0) {
-    return false;
-  }
-  return true;
-}
-
 void Reboot() {
   brillo::ProcessImpl proc;
   proc.AddArg("/sbin/shutdown");

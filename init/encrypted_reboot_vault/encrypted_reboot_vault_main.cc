@@ -8,6 +8,7 @@
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/encrypted_reboot_vault/encrypted_reboot_vault.h"
 
@@ -20,7 +21,8 @@ int main(int argc, char* argv[]) {
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Reboot Vault Utility");
   brillo::InitLog(brillo::kLogToStderr);
 
-  EncryptedRebootVault vault;
+  libstorage::Platform platform;
+  encrypted_reboot_vault::EncryptedRebootVault vault(&platform);
 
   bool result = false;
   if (FLAGS_action == "create")

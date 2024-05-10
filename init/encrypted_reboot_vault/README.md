@@ -41,20 +41,14 @@ maintained exclusively in memory, any loss of power renders the encryption key
 irretrievable: on the next boot, the encrypted reboot vault would fail to
 retrieve the key from pstore, purge the existing vault and setup a new vault.
 
-## Command line usage
 The encrypted reboot vault is set up during startup, either by unlocking an
-existing vault:
-```
-$ encrypted-reboot-vault --action=unlock
-```
+existing vault (unlock) or, alternately, if an existing reboot vault does not
+exist (or fails to unlock), a new encrypted reboot vault is created
+(create).
 
-Alternately, if an existing reboot vault does not exist (or fails to unlock),
-a new encrypted reboot vault is created:
-```
-$ encrypted-reboot-vault --action=create
-```
+## Command line usage
 
-Additionally, the encrypted reboot vault can be removed at any point:
-```
-$ encrypted-reboot-vault --action=purge
+A test tool `encrypted-reboot-vault` exists to exercise and check the
+code (action validate) and remove the reboot vault at any point (action
+purge).
 ```
