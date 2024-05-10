@@ -9,7 +9,7 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
-#include "cryptohome/encrypted_reboot_vault/encrypted_reboot_vault.h"
+#include "init/encrypted_reboot_vault/encrypted_reboot_vault.h"
 
 int main(int argc, char* argv[]) {
   DEFINE_string(action, "",

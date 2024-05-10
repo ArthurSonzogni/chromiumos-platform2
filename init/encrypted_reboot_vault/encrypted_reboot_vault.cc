@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "cryptohome/encrypted_reboot_vault/encrypted_reboot_vault.h"
+#include "init/encrypted_reboot_vault/encrypted_reboot_vault.h"
 
 #include <utility>
 
@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/files/file_util.h>
 #include <brillo/key_value_store.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libstorage/platform/dircrypto_util.h>
@@ -80,7 +81,7 @@ libstorage::FileSystemKey RetrieveKey() {
         store.LoadFromString(pmsg_contents) &&
         store.GetString(kEncryptionKeyTag, &val)) {
       key.fek = brillo::SecureHexToSecureBlob(brillo::SecureBlob(val));
-      base::DeleteFile(ramoops_file);
+      brillo::DeleteFile(ramoops_file);
       // SaveKey stores the key again into pstore-pmsg on every boot since the
       // pstore object isn't persistent. Since the pstore object is always
       // stored in RAM on ChromiumOS, it is cleared the next time the device

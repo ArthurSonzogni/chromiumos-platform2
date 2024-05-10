@@ -9,6 +9,7 @@ group("all") {
     ":chromeos_startup",
     ":clobber-state",
     ":cros_sysrq_init",
+    ":encrypted-reboot-vault",
     ":file_attrs_cleaner_tool",
     ":install_lvm_config",
     ":install_setuid_restriction",
@@ -112,7 +113,6 @@ static_library("libcrosstartup") {
   ]
   configs += [ ":target_defaults" ]
   defines = []
-  libs = [ "hwsec-foundation" ]
   deps = [
     ":libfile_attrs_cleaner",
     ":libinit_utils",
@@ -252,6 +252,15 @@ executable("mount-encrypted") {
   sources = [ "mount_encrypted/mount_encrypted.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libmount_encrypted" ]
+  install_path = "sbin"
+}
+
+executable("encrypted-reboot-vault") {
+  sources = [
+    "encrypted_reboot_vault/encrypted_reboot_vault.cc",
+    "encrypted_reboot_vault/encrypted_reboot_vault_main.cc",
+  ]
+  configs += [ ":target_defaults" ]
   install_path = "sbin"
 }
 

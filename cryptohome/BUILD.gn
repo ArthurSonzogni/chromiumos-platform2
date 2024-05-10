@@ -15,7 +15,6 @@ group("all") {
     ":cryptohome-namespace-mounter",
     ":cryptohome-path",
     ":cryptohomed",
-    ":encrypted-reboot-vault",
     ":homedirs_initializer",
     ":install_dbus_config",
     ":install_tmpfilesd_cryptohome",
@@ -210,15 +209,6 @@ executable("lockbox-cache-manager") {
     ":target_defaults",
     ":lockbox-cache-manager_config",
   ]
-  install_path = "sbin"
-}
-
-executable("encrypted-reboot-vault") {
-  sources = [
-    "encrypted_reboot_vault/encrypted_reboot_vault.cc",
-    "encrypted_reboot_vault/encrypted_reboot_vault_main.cc",
-  ]
-  deps = [ "libs:libcrostpm" ]
   install_path = "sbin"
 }
 

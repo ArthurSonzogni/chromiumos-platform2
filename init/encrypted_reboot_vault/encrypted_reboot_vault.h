@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CRYPTOHOME_ENCRYPTED_REBOOT_VAULT_ENCRYPTED_REBOOT_VAULT_H_
-#define CRYPTOHOME_ENCRYPTED_REBOOT_VAULT_ENCRYPTED_REBOOT_VAULT_H_
+#ifndef INIT_ENCRYPTED_REBOOT_VAULT_ENCRYPTED_REBOOT_VAULT_H_
+#define INIT_ENCRYPTED_REBOOT_VAULT_ENCRYPTED_REBOOT_VAULT_H_
 
 #include <memory>
 #include <string>
@@ -35,4 +35,4 @@ class EncryptedRebootVault {
   std::unique_ptr<libstorage::StorageContainer> encrypted_container_;
 };
 
-#endif  // CRYPTOHOME_ENCRYPTED_REBOOT_VAULT_ENCRYPTED_REBOOT_VAULT_H_
+#endif  // INIT_ENCRYPTED_REBOOT_VAULT_ENCRYPTED_REBOOT_VAULT_H_
