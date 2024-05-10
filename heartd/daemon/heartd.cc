@@ -49,7 +49,7 @@ int HeartdDaemon::OnEventLoopStarted() {
   top_sheriff_ = std::make_unique<TopSheriff>();
   top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(
       new BootMetricsRecorder(base::FilePath("/"), database_.get())));
-  top_sheriff_->StartShift();
+  top_sheriff_->GetToWork();
 
   scavenger_ = std::make_unique<Scavenger>(
       base::BindOnce(&Daemon::Quit, base::Unretained(this)),

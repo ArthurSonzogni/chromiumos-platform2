@@ -56,21 +56,20 @@ TEST_F(TopSheriffTest, NoShiftWork) {
   TestSheriff* test_sheriff = new TestSheriff(/* has_shift_work */ false);
 
   top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(test_sheriff));
-  top_sheriff_->StartShift();
+  top_sheriff_->GetToWork();
 
   EXPECT_EQ(test_sheriff->number_one_shot_work_called(), 1);
 
   // The default shift frequency is 60 minutes.
   task_environment_.FastForwardBy(base::Minutes(60));
   EXPECT_EQ(test_sheriff->number_main_work_called(), 0);
-  EXPECT_FALSE(top_sheriff_->AnyActiveSheriff());
 }
 
 TEST_F(TopSheriffTest, HasShiftWorkWithDefaultFrequency) {
   TestSheriff* test_sheriff = new TestSheriff(/* has_shift_work */ true);
 
   top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(test_sheriff));
-  top_sheriff_->StartShift();
+  top_sheriff_->GetToWork();
 
   EXPECT_EQ(test_sheriff->number_one_shot_work_called(), 1);
 
@@ -79,7 +78,6 @@ TEST_F(TopSheriffTest, HasShiftWorkWithDefaultFrequency) {
   EXPECT_EQ(test_sheriff->number_main_work_called(), 1);
   task_environment_.FastForwardBy(base::Minutes(60));
   EXPECT_EQ(test_sheriff->number_main_work_called(), 2);
-  EXPECT_TRUE(top_sheriff_->AnyActiveSheriff());
 }
 
 TEST_F(TopSheriffTest, AdjustSchedule) {
@@ -87,7 +85,7 @@ TEST_F(TopSheriffTest, AdjustSchedule) {
   test_sheriff->AdjustSchedule(base::Minutes(10));
 
   top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(test_sheriff));
-  top_sheriff_->StartShift();
+  top_sheriff_->GetToWork();
 
   EXPECT_EQ(test_sheriff->number_one_shot_work_called(), 1);
 
@@ -105,7 +103,7 @@ TEST_F(TopSheriffTest, MultipleSheriffs) {
   top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(test_sheriff_1));
   top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(test_sheriff_2));
   top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(test_sheriff_3));
-  top_sheriff_->StartShift();
+  top_sheriff_->GetToWork();
 
   EXPECT_EQ(test_sheriff_1->number_one_shot_work_called(), 1);
   EXPECT_EQ(test_sheriff_2->number_one_shot_work_called(), 1);
@@ -121,12 +119,12 @@ TEST_F(TopSheriffTest, OneShotWorkOnlyRunOnce) {
   TestSheriff* test_sheriff = new TestSheriff(/* has_shift_work */ false);
 
   top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(test_sheriff));
-  top_sheriff_->StartShift();
+  top_sheriff_->GetToWork();
 
   EXPECT_EQ(test_sheriff->number_one_shot_work_called(), 1);
 
   // Start shift again.
-  top_sheriff_->StartShift();
+  top_sheriff_->GetToWork();
   EXPECT_EQ(test_sheriff->number_one_shot_work_called(), 1);
 }
 

@@ -12,21 +12,22 @@
 
 namespace heartd {
 
-class TopSheriff {
+class TopSheriff final : public Sheriff {
  public:
   TopSheriff();
   TopSheriff(const TopSheriff&) = delete;
   TopSheriff& operator=(const TopSheriff&) = delete;
   ~TopSheriff();
 
+  // heartd::Sheriff override:
+  void OneShotWork() override;
+  bool HasShiftWork() override;
+  void AdjustSchedule() override;
+  void ShiftWork() override;
+  void CleanUp() override;
+
   // Add managed sheriff.
   void AddSheriff(std::unique_ptr<Sheriff> sheriff);
-
-  // Ask managed sheriffs to start shift.
-  void StartShift();
-
-  // Returns if there are any active sheriffs.
-  bool AnyActiveSheriff();
 
  private:
   // Managed sheriffs.
