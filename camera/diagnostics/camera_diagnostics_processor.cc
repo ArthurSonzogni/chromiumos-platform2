@@ -86,7 +86,6 @@ void CameraDiagnosticsProcessor::OnBlurDetectorDlcFailure(
 void CameraDiagnosticsProcessor::RunFrameAnalysis(
     camera_diag::mojom::FrameAnalysisConfigPtr config,
     RunFrameAnalysisCallback callback) {
-  LOGF(INFO) << "RunFrameAnalysis called";
   base::AutoLock lock(session_lock_);
   if (current_session_) {
     ReturnErrorResult(std::move(callback),

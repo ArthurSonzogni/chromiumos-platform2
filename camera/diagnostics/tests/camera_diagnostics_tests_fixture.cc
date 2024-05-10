@@ -108,6 +108,7 @@ void CameraDiagnosticsTestsFixture::RunFrameAnalysisOnThread(
     uint32_t duration_ms) {
   CHECK(thread_.IsCurrentThread());
   auto config = cros::camera_diag::mojom::FrameAnalysisConfig::New();
+  config->client_type = cros::camera_diag::mojom::ClientType::kTest;
   config->duration_ms = duration_ms;
   diag_remote_->RunFrameAnalysis(
       std::move(config),

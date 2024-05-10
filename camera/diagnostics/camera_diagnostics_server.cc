@@ -28,6 +28,8 @@ CameraDiagnosticsServer::CameraDiagnosticsServer(
 void CameraDiagnosticsServer::RunFrameAnalysis(
     camera_diag::mojom::FrameAnalysisConfigPtr config,
     RunFrameAnalysisCallback callback) {
+  LOGF(INFO) << "Frame analysis requested, client: " << config->client_type
+             << ", duration: " << config->duration_ms << "ms";
   auto result_callback =
       base::BindPostTask(mojo_manager_->GetTaskRunner(), std::move(callback));
   processor_.RunFrameAnalysis(std::move(config), std::move(result_callback));

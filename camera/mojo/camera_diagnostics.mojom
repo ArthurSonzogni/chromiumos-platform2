@@ -22,26 +22,23 @@ enum AnalyzerType {
 [Extensible]
 enum CameraIssue {
   [Default] kNone = 0,
-  kManufacturerIssue = 1,
-  kPrivacyShutterOn = 2,
-  kDirtyLens = 3,
-  kCameraServiceDown = 4,
+  kPrivacyShutterOn = 1,
+  kDirtyLens = 2,
+  kCameraServiceDown = 3,
 };
 
 [Extensible]
 enum ClientType {
   [Default] kUnknown = 0,
   kHealthd = 1,
-  kCca = 2,
+  kTest = 2,
 };
 
 // Data source of frames and errors.
 [Extensible]
 enum DataSource {
-  [Default] kChrome = 0,
-  kCameraService = 1,
-  kClientApp = 2,
-  kCameraDiagnostics = 3,
+  [Default] kCameraService = 0,
+  kCameraDiagnostics = 1,
 };
 
 // All status and errors of various camera diagnostics operations.
@@ -49,12 +46,10 @@ enum DataSource {
 enum ErrorCode {
   [Default] kUnknown = 0,
   kCameraClosed = 1,
-  kMultipleOpenCameras = 2,
-  kAlreadyRunningAnalysis = 3,
-  kNotEnoughFrames = 4,
-  kInvalidDuration = 5,
-  kCrosCameraControllerNotRegistered = 6,
-  kDiagnosticsInternal = 7,
+  kAlreadyRunningAnalysis = 2,
+  kInvalidDuration = 3,
+  kCrosCameraControllerNotRegistered = 4,
+  kDiagnosticsInternal = 5,
 };
 
 [Extensible]

@@ -57,6 +57,7 @@ void RunFrameAnalysis(
     int32_t duration_ms) {
   LOGF(INFO) << "Start RunFrameAnalysis";
   auto config = cros::camera_diag::mojom::FrameAnalysisConfig::New();
+  config->client_type = cros::camera_diag::mojom::ClientType::kTest;
   config->duration_ms = duration_ms;
   remote->RunFrameAnalysis(std::move(config),
                            base::BindOnce(&OnDiagnosticsResult));
