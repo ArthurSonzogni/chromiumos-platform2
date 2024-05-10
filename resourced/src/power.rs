@@ -411,10 +411,15 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
                 .read_power_preferences(power_source, PowerPreferencesType::Default)?;
         }
 
+        // For non-dynamic EPP, it may need default EPP
+        let mut need_default_epp = true;
         if let Some(preferences) = preferences {
             self.apply_cpu_hotplug(preferences)?;
             self.apply_power_preferences(preferences)?;
             self.apply_cpufreq_boost(preferences)?;
+            if preferences.epp.is_some() {
+                need_default_epp = false;
+            }
         }
 
         arch::apply_platform_power_settings(
@@ -423,6 +428,7 @@ impl<P: PowerSourceProvider> PowerPreferencesManager for DirectoryPowerPreferenc
             rtc,
             fullscreen,
             batterysaver,
+            need_default_epp, /* For x86 non-dynamic EPP */
         )?;
 
         Ok(())

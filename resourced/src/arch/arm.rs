@@ -21,6 +21,7 @@ pub fn apply_platform_power_settings(
     _rtc: RTCAudioActive,
     _fullscreen: FullscreenVideo,
     _bsm: BatterySaverMode,
+    _need_default_epp: bool,
 ) -> Result<()> {
     Ok(())
 }

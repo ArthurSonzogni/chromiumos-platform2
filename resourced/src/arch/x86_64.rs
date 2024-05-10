@@ -75,7 +75,8 @@ fn get_first_scaling_governor(root_path: &Path) -> Result<String> {
 fn set_gt_boost_freq_mhz(mode: RTCAudioActive) -> Result<()> {
     if intel_device::is_intel_device(PathBuf::from("/")) {
         set_gt_boost_freq_mhz_impl(Path::new("/"), mode)
-    } else /* AMD */ {
+    } else {
+        /* AMD */
         Ok(())
     }
 }
@@ -86,12 +87,28 @@ fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
     gpu_config.set_rtc_audio_active(mode == RTCAudioActive::Active)
 }
 
+fn set_default_epp(root_path: &Path) -> Result<()> {
+    // When scaling_governor is performance, energy_performance_preference can only be
+    // performance.
+    //
+    // Reference:
+    //   https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/kernel/v6.6/drivers/cpufreq/intel_pstate.c;drc=1a868273760040b746518aca7fea4f8c07366884;l=795
+    match get_first_scaling_governor(root_path) {
+        Ok(governor) if governor.trim() == "performance" => Ok(()),
+        _ => {
+            // Default EPP
+            set_epp(root_path, EnergyPerformancePreference::BalancePerformance)
+        }
+    }
+}
+
 pub fn apply_platform_power_settings(
     root_path: &Path,
     power_source: PowerSourceType,
     rtc: RTCAudioActive,
     fullscreen: FullscreenVideo,
     bsm: BatterySaverMode,
+    need_default_epp: bool,
 ) -> Result<()> {
     let fullscreen_video_efficiency_mode = power_source == PowerSourceType::DC
         && (rtc == RTCAudioActive::Active || fullscreen == FullscreenVideo::Active);
@@ -99,23 +116,16 @@ pub fn apply_platform_power_settings(
         RTC_FS_SIGNAL.set_value(fullscreen_video_efficiency_mode);
         MEDIA_CGROUP_SIGNAL.set_value(fullscreen == FullscreenVideo::Active);
         BSM_SIGNAL.set_value(bsm == BatterySaverMode::Active);
-    } else if fullscreen_video_efficiency_mode {
-        if let Err(err) = set_epp(root_path, EnergyPerformancePreference::BalancePower) {
-            error!("Failed to set energy performance preference: {:#}", err);
-        }
-    } else {
-        // When scaling_governor is performance, energy_performance_preference can only be
-        // performance.
-        //
-        // Reference:
-        //   https://source.chromium.org/chromiumos/chromiumos/codesearch/+/main:src/third_party/kernel/v6.6/drivers/cpufreq/intel_pstate.c;drc=1a868273760040b746518aca7fea4f8c07366884;l=795
-        match get_first_scaling_governor(root_path) {
-            Ok(governor) if governor.trim() == "performance" => {}
-            _ => {
-                // Default EPP
-                set_epp(root_path, EnergyPerformancePreference::BalancePerformance)?;
+    } else if bsm == BatterySaverMode::Inactive {
+        if fullscreen_video_efficiency_mode {
+            if let Err(err) = set_epp(root_path, EnergyPerformancePreference::BalancePower) {
+                error!("Failed to set energy performance preference: {:#}", err);
             }
+        } else if need_default_epp {
+            set_default_epp(root_path)?;
         }
+    } else if need_default_epp {
+        set_default_epp(root_path)?;
     }
 
     match fullscreen {
@@ -225,7 +235,6 @@ mod tests {
     fn test_power_update_power_preferences_epp() {
         let root = tempdir().unwrap();
 
-        write_epp(root.path(), "balance_performance", AFFECTED_CPU0).unwrap();
         test_write_cpuset_root_cpus(root.path(), "0-3");
 
         let tests = [
@@ -288,6 +297,7 @@ mod tests {
         ];
 
         for test in tests {
+            write_epp(root.path(), "balance_performance", AFFECTED_CPU0).unwrap();
             let mut fake_config = FakeConfig::new();
             fake_config.write_power_preference(
                 PowerSourceType::AC,
