@@ -17,8 +17,8 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/run_loop.h>
 #include <base/strings/string_util.h>
+#include <base/test/test_future.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <net-base/ip_address.h>
@@ -376,16 +376,14 @@ TEST_F(IPsecConnectionTest, StartCharon) {
   // Triggers the task.
   ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kStartCharon);
   // Creates the socket file, and then IPsecConnection should be notified and
-  // forward the step. We use a RunLoop here instead of RunUtilIdle() since it
-  // cannot be guaranteed that FilePathWatcher posted the task before
-  // RunUtilIdle() is called.
+  // forward the step.
   base::ScopedFD vici_server_fd =
       CreateUnixSocketAt(kViciSocketPath, /*start_listen=*/true);
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   EXPECT_CALL(*ipsec_connection_,
               ScheduleConnectTask(ConnectStep::kCharonStarted))
-      .WillOnce([&](ConnectStep) { run_loop.Quit(); });
-  run_loop.Run();
+      .WillOnce([&](ConnectStep) { future.SetValue(); });
+  EXPECT_TRUE(future.Wait());
 }
 
 TEST_F(IPsecConnectionTest, StartCharonFailWithStartProcess) {
@@ -432,11 +430,11 @@ TEST_F(IPsecConnectionTest, StartCharonFailWithSocketNotListening) {
   ipsec_connection_->InvokeScheduleConnectTask(ConnectStep::kStartCharon);
   base::ScopedFD vici_server_fd =
       CreateUnixSocketAt(kViciSocketPath, /*start_listen=*/false);
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   EXPECT_CALL(callbacks_, OnFailure(_)).WillOnce([&](VPNEndReason) {
-    run_loop.Quit();
+    future.SetValue();
   });
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 TEST_F(IPsecConnectionTest, WriteSwanctlConfigL2TPIPsec) {
