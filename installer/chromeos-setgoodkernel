@@ -38,15 +38,15 @@ else
 fi
 
 # Extract the kernel partition's UniqueGuid from the command line.
-if [ "${is_efi}" -eq 1 ]; then
+guid=$(sed -n 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/p' /proc/cmdline)
+if [ -n "${guid}" ]; then
+  kern_dev=$(get_dev_by_part_uuid "${guid}")
+fi
+
+if [ -z "${guid}" ] && [ "${is_efi}" -eq 1 ]; then
   guid=$(sed -n 's/.*root=PARTUUID=\([0-9a-fA-F-]\+\).*/\1/p' /proc/cmdline)
   if [ -n "${guid}" ]; then
     root_dev=$(get_dev_by_part_uuid "${guid}")
-  fi
-else
-  guid=$(sed -n 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/p' /proc/cmdline)
-  if [ -n "${guid}" ]; then
-    kern_dev=$(get_dev_by_part_uuid "${guid}")
   fi
 fi
 
