@@ -14,6 +14,7 @@ group("all") {
     ":install_system_service",
     ":lorgnette",
     ":lorgnette_cli",
+    ":sane_backend_wwcb_tests",
     "//lorgnette/tmpfiles.d",
   ]
   if (use.test) {
@@ -154,6 +155,24 @@ install_config("install_init") {
 install_config("install_minijail_config") {
   sources = [ "minijail/lorgnette.conf" ]
   install_path = "minijail_conf"
+}
+
+executable("sane_backend_wwcb_tests") {
+  sources = [
+    "sane_backend_tests/main.cc",
+    "sane_backend_tests/scan_test.cc",
+  ]
+  configs += [
+    "//common-mk:test",
+    ":target_defaults",
+  ]
+  deps = [
+    ":liblorgnette",
+    "//common-mk/testrunner:testrunner",
+  ]
+
+  # We need googletest without USE=test, so we don't include liblorgnette_config_test.
+  pkg_deps = [ "libchrome-test" ]
 }
 
 if (use.test) {
