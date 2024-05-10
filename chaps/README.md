@@ -40,6 +40,77 @@ never provided to calling applications.
 - `C_GetOperationState` will return `CKR_STATE_UNSAVEABLE`.
 - `C_SetOperationState` will return `CKR_SAVED_STATE_INVALID`.
 
+## Chaps-specific WrapKey/UnWrapKey mechanism
+
+We implemented a new chaps-specific mechanism, "kChapsKeyWrapMechanism", which
+is specifically designed to securely move keys from one token to another. The
+mechanism is designed based on the CKM_AES_KEY_WRAP_KWP mechanism, which is
+using the same AES key to wrap/unwrap the target key. However, instead of
+retrieving the wrapping/unwrapping key from the handle, kChapsKeyWrapMechanism
+uses chaps' internal random seed (which is shared between chaps tokens) to
+derive the temporary AES key. As a result, no external wrapping/unwrapping key
+is needed for this mechanism, therefore avoid leaking the key outside of Chaps.
+
+Wrap key in source slot for transfer example:
+
+```c++
+CK_SESSION_HANDLE hSession;
+CK_OBJECT_HANDLE hWrappingKey, hKey;
+CK_MECHANISM mechanism = {
+  kChapsKeyWrapMechanism, NULL_PTR, 0
+};
+CK_BYTE wrappedKey[4096];
+CK_ULONG ulWrappedKeyLen;
+CK_RV rv;
+.
+.
+ulWrappedKeyLen = sizeof(wrappedKey);
+
+rv = C_WrapKey(
+  hSession, &mechanism,
+  hWrappingKey, hKey,
+  wrappedKey, &ulWrappedKeyLen);
+
+if (rv == CKR_OK) {
+  .
+  .
+}
+```
+
+Unwrap key in destination slot for transfer example:
+
+```c++
+CK_SESSION_HANDLE hSession;
+CK_OBJECT_HANDLE hUnwrappingKey, hKey;
+CK_MECHANISM mechanism = {
+  kChapsKeyWrapMechanism, NULL_PTR, 0
+};
+CK_BYTE wrappedKey[4096] = {...};
+CK_OBJECT_CLASS keyClass = CKO_SECRET_KEY;
+CK_KEY_TYPE keyType = CKK_DES;
+CK_BBOOL true = CK_TRUE;
+CK_ATTRIBUTE template[] = {
+  {CKA_CLASS, &keyClass, sizeof(keyClass)},
+  {CKA_KEY_TYPE, &keyType, sizeof(keyType)},
+  {CKA_ENCRYPT, &true, sizeof(true)},
+  {CKA_DECRYPT, &true, sizeof(true)}
+};
+CK_RV rv;
+
+.
+.
+rv = C_UnwrapKey(
+  hSession, &mechanism, hUnwrappingKey,
+  wrappedKey, sizeof(wrappedKey), template, 4, &hKey);
+
+if (rv == CKR_OK) {
+  .
+  .
+}
+```
+
+Checkout the implementation in chaps/session_impl.cc for more details.
+
 ## Unsupported Functions
 
 The following functions are not supported and will always return
@@ -54,6 +125,3 @@ The following functions are not supported and will always return
 - `C_DecryptDigestUpdate`
 - `C_SignEncryptUpdate`
 - `C_DecryptVerifyUpdate`
-- `C_WrapKey`
-- `C_UnwrapKey`
-- `C_DeriveKey`
