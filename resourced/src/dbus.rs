@@ -44,6 +44,9 @@ use crate::feature::register_feature;
 use crate::memory;
 use crate::memory::MemInfo;
 use crate::memory::PsiMemoryHandler;
+use crate::memory::PsiPolicyResult;
+use crate::memory::MAX_PSI_ERROR_TYPE;
+use crate::memory::UMA_NAME_PSI_POLICY_ERROR;
 use crate::metrics;
 use crate::power;
 use crate::proc::load_euid;
@@ -733,7 +736,7 @@ async fn psi_memory_handler_loop(
     vmms_client: &VmMemoryManagementClient,
     feature_notify: &Arc<Notify>,
     notification_count: &Arc<AtomicI32>,
-) -> anyhow::Result<()> {
+) -> PsiPolicyResult<()> {
     let mut handler = PsiMemoryHandler::new(root)?;
     loop {
         if let Some(pressure_status) = handler
@@ -1017,7 +1020,13 @@ pub async fn service_main() -> Result<()> {
             .await
             {
                 error!("Failed to run psi memory checker loop: {}", e);
-                // TODO(kawasin): report the error.
+                if let Err(e) = metrics::send_enum_to_uma(
+                    UMA_NAME_PSI_POLICY_ERROR,
+                    e.as_i32(),
+                    MAX_PSI_ERROR_TYPE,
+                ) {
+                    error!("Failed to send psi memory checker error to UMA: {}", e);
+                }
 
                 // wait 1 second to retry to avoid logging the error in a busy loop.
                 tokio::time::sleep(Duration::from_secs(1)).await;

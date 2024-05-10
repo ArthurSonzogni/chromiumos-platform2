@@ -30,6 +30,9 @@ use system_api::vm_memory_management::ResizePriority;
 
 pub use self::meminfo::MemInfo;
 pub use self::psi_memory_handler::PsiMemoryHandler;
+pub use self::psi_memory_handler::Result as PsiPolicyResult;
+pub use self::psi_memory_handler::MAX_PSI_ERROR_TYPE;
+pub use self::psi_memory_handler::UMA_NAME_PSI_POLICY_ERROR;
 use crate::common;
 use crate::common::read_from_file;
 use crate::feature;

@@ -3,12 +3,12 @@
 // found in the LICENSE file.
 
 use std::future;
+use std::io;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
-use anyhow::Context;
 use log::error;
 use log::info;
 use tokio::sync::Notify;
@@ -41,6 +41,60 @@ use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const PSI_MEMORY_PRESSURE_DOWNGRADE_INTERVAL: Duration = Duration::from_secs(5);
 const UMA_NAME_RECLAIM_REASON: &str = "Platform.Memory.ReclaimReason";
+
+pub const UMA_NAME_PSI_POLICY_ERROR: &str = "Platform.Memory.PsiPolicyError";
+pub const MAX_PSI_ERROR_TYPE: i32 = 4;
+
+/// The error type from psi memory policy feature.
+#[derive(Debug)]
+pub enum Error {
+    MemInfo(io::Error),
+    Vmstat(io::Error),
+    Cpuset(anyhow::Error),
+    CreatePsiMonitor(io::Error),
+    MonitorPsi(io::Error),
+}
+
+impl Error {
+    /// The error type numbers are reported to UMA. Do not reuse the number in
+    /// the future when you add a new error type. Also You need to update
+    /// [MAX_PSI_ERROR_TYPE] when you add a new error type.
+    pub fn as_i32(&self) -> i32 {
+        match self {
+            Error::MemInfo(_) => 0,
+            Error::Vmstat(_) => 1,
+            Error::Cpuset(_) => 2,
+            Error::CreatePsiMonitor(_) => 3,
+            Error::MonitorPsi(_) => 4,
+        }
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Error::MemInfo(e) => write!(f, "load meminfo: {}", e),
+            Error::Vmstat(e) => write!(f, "load vmstat: {}", e),
+            Error::Cpuset(e) => write!(f, "load cpuset: {}", e),
+            Error::CreatePsiMonitor(e) => write!(f, "create psi monitor: {}", e),
+            Error::MonitorPsi(e) => write!(f, "wait psi: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::MemInfo(e)
+            | Error::Vmstat(e)
+            | Error::CreatePsiMonitor(e)
+            | Error::MonitorPsi(e) => Some(e),
+            Error::Cpuset(e) => e.source(),
+        }
+    }
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// Distributes the [MemoryReclaim] to VMs and host using [VmMemoryManagementClient]. This returns
 /// [MemoryReclaim] for the host after distributing.
@@ -144,8 +198,8 @@ pub struct PsiMemoryHandler {
 }
 
 impl PsiMemoryHandler {
-    pub fn new(root: &Path) -> anyhow::Result<Self> {
-        let n_cpu = Cpuset::all_cores(root).context("load root cpuset")?.len();
+    pub fn new(root: &Path) -> Result<Self> {
+        let n_cpu = Cpuset::all_cores(root).map_err(Error::Cpuset)?.len();
         let monitor_config = match PsiMonitorConfig::load_from_feature() {
             Ok(config) => config,
             Err(e) => {
@@ -161,9 +215,9 @@ impl PsiMemoryHandler {
             }
         };
         let psi_monitor =
-            PsiMemoryPressureMonitor::new(monitor_config).context("create psi monitor")?;
+            PsiMemoryPressureMonitor::new(monitor_config).map_err(Error::CreatePsiMonitor)?;
         let now = Instant::now();
-        let vmstat = Vmstat::load().context("load vmstat")?;
+        let vmstat = Vmstat::load().map_err(Error::Vmstat)?;
         let psi_memory_policy = PsiMemoryPolicy::new(policy_config, n_cpu, now, vmstat);
         Ok(Self {
             psi_monitor,
@@ -200,11 +254,11 @@ impl PsiMemoryHandler {
         &mut self,
         vmms_client: &VmMemoryManagementClient,
         feature_notify: &Arc<Notify>,
-    ) -> anyhow::Result<Option<PressureStatus>> {
+    ) -> Result<Option<PressureStatus>> {
         let current_psi_level = self.psi_monitor.current_level();
         let psi_level = tokio::select! {
             result = self.psi_monitor.monitor() =>
-                result.context("wait psi monitor")?,
+                result.map_err(Error::MonitorPsi)?,
             _ = async {
                 if self.psi_memory_policy.is_low_memory() && current_psi_level == PsiLevel::None {
                     // If psi_monitor reports PsiLevel::None but psi_memory_policy still detects
@@ -229,12 +283,12 @@ impl PsiMemoryHandler {
         &mut self,
         vmms_client: &VmMemoryManagementClient,
         psi_level: PsiLevel,
-    ) -> anyhow::Result<PressureStatus> {
+    ) -> Result<PressureStatus> {
         let game_mode = common::get_game_mode();
         let margins = get_component_margins_kb();
         let now = Instant::now();
-        let meminfo = MemInfo::load().context("load meminfo")?;
-        let vmstat = Vmstat::load().context("load vmstat")?;
+        let meminfo = MemInfo::load().map_err(Error::MemInfo)?;
+        let vmstat = Vmstat::load().map_err(Error::Vmstat)?;
         let (reclaim, reason) = self
             .psi_memory_policy
             .calculate_reclaim(now, &meminfo, vmstat, game_mode, &margins, psi_level);
