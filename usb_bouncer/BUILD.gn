@@ -21,6 +21,7 @@ pkg_config("target_defaults") {
     "libcap",
     "libchrome",
     "libcrypto",
+    "libdebugd-client",
     "libmetrics",
     "libminijail",
     "libsession_manager-client",

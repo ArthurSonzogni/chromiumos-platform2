@@ -35,6 +35,8 @@
 #include <brillo/files/scoped_dir.h>
 #include <brillo/key_value_store.h>
 #include <brillo/userdb_utils.h>
+#include <dbus/bus.h>
+#include <debugd/dbus-proxies.h>
 #include <metrics/metrics_library.h>
 #include <metrics/structured_events.h>
 #include <openssl/sha.h>
@@ -63,10 +65,14 @@ constexpr char kSysFSAuthorized[] = "authorized";
 constexpr char kSysFSEnabled[] = "1";
 
 constexpr char kUmaDeviceAttachedHistogram[] = "ChromeOS.USB.DeviceAttached";
+constexpr char kUmaDeviceErrorHistogram[] = "ChromeOS.USB.DeviceError";
 constexpr char kUmaExternalDeviceAttachedHistogram[] =
     "ChromeOS.USB.ExternalDeviceAttached";
 constexpr char kUmaUnboundInterfaceHistogram[] =
     "ChromeOS.USB.UnboundInterface";
+
+constexpr uint32_t kDevpathMaxLength = 17;
+constexpr uint32_t kDmesgMaxLines = 50;
 
 enum class Subsystem {
   kNone,
@@ -592,6 +598,8 @@ void ReportMetricsUdev(UdevMetric* udev_metric) {
 
   if (udev_metric->action == UdevAction::kAdd)
     ReportMetricsUdevAdd(udev_metric);
+  else if (udev_metric->action == UdevAction::kRemove)
+    ReportMetricsUdevRemove(udev_metric);
 
   if (skip_session_metric)
     return;
@@ -675,6 +683,38 @@ void ReportMetricsUdevAdd(UdevMetric* udev_metric) {
       .SetInterfaceProtocol(std::move(interface_protocol))
       .SetInterfaceDriver(std::move(interface_driver))
       .SetEndpoint(std::move(endpoint))
+      .Record();
+}
+
+void ReportMetricsUdevRemove(UdevMetric* udev_metric) {
+  MetricsLibrary uma_metrics;
+  base::FilePath root_dir("/");
+  base::FilePath normalized_devpath = root_dir.Append("sys").Append(
+      usb_bouncer::StripLeadingPathSeparators(udev_metric->devpath));
+
+  std::string connection_id = GenerateConnectionId(udev_metric);
+  std::vector<UMADeviceError> device_error = GetDeviceErrors(udev_metric);
+  std::vector<int64_t> device_error_int;
+  for (auto err : device_error) {
+    // Skip device not authorized errors for UMA metric. This is typically
+    // intended behavior and the UMA metric does not include session data.
+    if (err != UMADeviceError::kNotAuthorized)
+      uma_metrics.SendEnumToUMA(kUmaDeviceErrorHistogram, err);
+
+    device_error_int.push_back(static_cast<int64_t>(err));
+  }
+
+  int max_device_error = metrics::structured::events::usb_quality::
+      UsbBusDisconnect::GetDeviceErrorMaxLength();
+  if (device_error_int.size() > max_device_error)
+    device_error_int.resize(max_device_error);
+
+  metrics::structured::events::usb_quality::UsbBusDisconnect()
+      .SetBootId(std::move(GetBootId()))
+      .SetConnectionId(std::move(connection_id))
+      .SetVendorId(udev_metric->vid)
+      .SetProductId(udev_metric->pid)
+      .SetDeviceError(std::move(device_error_int))
       .Record();
 }
 
@@ -1387,6 +1427,112 @@ int64_t GetSystemTime() {
   struct timespec ts;
   clock_gettime(CLOCK_BOOTTIME, &ts);
   return ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+}
+
+uint64_t GetSuspendTime() {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return GetSystemTime() - (ts.tv_sec * 1000000 + ts.tv_nsec / 1000);
+}
+
+uint64_t GetConnectionDuration(uint64_t init_time) {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (ts.tv_sec * 1000000 + ts.tv_nsec / 1000) - init_time;
+}
+
+std::string GetDmesgOffset(uint64_t init_time) {
+  int64_t offset, suspend_time, connection_duration;
+  suspend_time = static_cast<int64_t>(GetSuspendTime());
+  connection_duration = static_cast<int64_t>(GetConnectionDuration(init_time));
+
+  // Dmesg's --since option is based on a monotonic system time which does not
+  // increment in suspend. This requires the relative time to be offset by total
+  // system suspend time. 2 seconds is added to include device enumeration.
+  offset = suspend_time - (connection_duration + 2000000);
+  if (offset >= 0) {
+    return base::StringPrintf("+%dsec", static_cast<int>(offset / 1000000));
+  }
+
+  return base::StringPrintf("%dsec", static_cast<int>(offset / 1000000));
+}
+
+std::vector<UMADeviceError> ParseDmesgErrors(std::string devpath,
+                                             std::string dmesg) {
+  std::vector<UMADeviceError> ret;
+  const struct {
+    UMADeviceError err_type;
+    std::string err_substr;
+  } mapping[] = {
+      {UMADeviceError::kAny, ""},
+      {UMADeviceError::kLanguageIdError,
+       "language id specifier not provided by device"},
+      {UMADeviceError::kFailedToSuspend, "Failed to suspend device"},
+      {UMADeviceError::kNotAuthorized, "Device is not authorized for usage"},
+      {UMADeviceError::kNotAcceptingAddress, "device not accepting address"},
+      {UMADeviceError::kStringDescriptorZero, "string descriptor 0 read error"},
+      {UMADeviceError::kDescriptorReadError, "device descriptor read"},
+      {UMADeviceError::kHubWithoutPorts,
+       "config failed, hub doesn't have any ports"},
+      {UMADeviceError::kHubPortStatusError, "hub_ext_port_status failed"},
+      {UMADeviceError::kUnabletoEnumerate, "unable to enumerate USB device"},
+      {UMADeviceError::kOverCurrent, "over-current condition"},
+      {UMADeviceError::kPortDisabled, "disabled by hub"},
+      {UMADeviceError::kCannotReset, "cannot reset"},
+      {UMADeviceError::kCannotDisable, "cannot disable"},
+      {UMADeviceError::kCannotEnable,
+       "Cannot enable. Maybe the USB cable is bad"},
+  };
+
+  // Check for valid devpath.
+  if (devpath.size() > kDevpathMaxLength ||
+      !RE2::FullMatch(devpath.c_str(), R"(\d+-[\d\.]+)")) {
+    return ret;
+  }
+
+  for (const auto& m : mapping) {
+    std::string err_regex = base::StringPrintf(
+        "\\[\\s?[0-9\\.]+\\]\\s+(hub|usb)\\s+%s(|-port[0-9]+):\\s+%s",
+        devpath.c_str(), m.err_substr.c_str());
+
+    if (RE2::PartialMatch(dmesg, err_regex)) {
+      ret.push_back(m.err_type);
+    }
+  }
+  return ret;
+}
+
+std::vector<UMADeviceError> GetDeviceErrors(UdevMetric* udev_metric) {
+  if (!base::PathExists(base::FilePath(kDBusPath))) {
+    return {};
+  }
+
+  // Setup debugd proxy
+  scoped_refptr<dbus::Bus> bus;
+  if (!bus) {
+    dbus::Bus::Options options;
+    options.bus_type = dbus::Bus::SYSTEM;
+    bus = new dbus::Bus(options);
+    if (!bus->Connect())
+      return {};
+  }
+  std::unique_ptr<org::chromium::debugdProxyInterface> debugd_proxy =
+      std::make_unique<org::chromium::debugdProxy>(bus);
+
+  // Get errors from dmesg since the device's connection
+  const brillo::VariantDictionary dmesg_options = {
+      {"level", "err"},
+      {"since", GetDmesgOffset(udev_metric->init_time)},
+      {"tail", kDmesgMaxLines}};
+
+  brillo::ErrorPtr error;
+  std::string dmesg;
+  if (!debugd_proxy->CallDmesg(dmesg_options, &dmesg, &error)) {
+    return {};
+  }
+
+  base::FilePath devpath(udev_metric->devpath);
+  return ParseDmesgErrors(devpath.BaseName().value(), dmesg);
 }
 
 }  // namespace usb_bouncer

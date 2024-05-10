@@ -122,6 +122,25 @@ enum class UMADeviceDriver {
   kMaxVaule = kUSBHID,
 };
 
+enum class UMADeviceError {
+  kAny = 0,
+  kLanguageIdError = 1,
+  kFailedToSuspend = 2,
+  kNotAuthorized = 3,
+  kNotAcceptingAddress = 4,
+  kStringDescriptorZero = 5,
+  kDescriptorReadError = 6,
+  kHubWithoutPorts = 7,
+  kHubPortStatusError = 8,
+  kUnabletoEnumerate = 9,
+  kOverCurrent = 10,
+  kPortDisabled = 11,
+  kCannotReset = 12,
+  kCannotDisable = 13,
+  kCannotEnable = 14,
+  kMaxValue = kCannotEnable,
+};
+
 struct UdevMetric {
   UdevAction action;
   std::string devpath;
@@ -204,6 +223,9 @@ void ReportMetricsUdev(UdevMetric* udev_metric);
 
 // Reports metrics logged by the USB bouncer processing udev add events.
 void ReportMetricsUdevAdd(UdevMetric* udev_metric);
+
+// Reports metrics logged by the USB bouncer processing udev remove events.
+void ReportMetricsUdevRemove(UdevMetric* udev_metric);
 
 // Report structured metric on error uevents from the hub driver.
 void StructuredMetricsHubError(int ErrorCode,
@@ -344,6 +366,26 @@ std::string GenerateConnectionId(UdevMetric* udev_metric);
 
 // Returns the time since boot in microseconds.
 int64_t GetSystemTime();
+
+// Returns the amount of time the system has been suspended in microseconds.
+uint64_t GetSuspendTime();
+
+// Returns a device's connection duration from the current system time and
+// device init time reported by udev.
+uint64_t GetConnectionDuration(uint64_t init_time);
+
+// Returns a --since option for a dmesg query to include loglines starting at
+// the given |init_time|.
+std::string GetDmesgOffset(uint64_t init_time);
+
+// Parses dmesg errors returned by D-Bus for errors which can be attributed to
+// the provided device.
+std::vector<UMADeviceError> ParseDmesgErrors(std::string devpath,
+                                             std::string dmesg);
+
+// Returns a vector of device errors in dmesg over the lifespan of the device's
+// connection.
+std::vector<UMADeviceError> GetDeviceErrors(UdevMetric* udev_metric);
 
 }  // namespace usb_bouncer
 
