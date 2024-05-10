@@ -2,21 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+mod critical;
+mod margin;
+mod moderate;
+mod system_slow;
+mod thrashing;
+
 use std::time::Duration;
 use std::time::Instant;
 
 use crate::common::GameMode;
 use crate::feature;
-use crate::memory::get_background_available_memory_kb;
 use crate::memory::meminfo::MemInfo;
-use crate::memory::page_size::get_page_size;
 use crate::memory::psi_monitor::PsiLevel;
 use crate::memory::vmstat::Vmstat;
 use crate::memory::ComponentMarginsKb;
 use crate::memory::PressureLevelChrome;
 use crate::memory::PSI_MEMORY_POLICY_FEATURE_NAME;
 
-const ONE_KB: usize = 1024;
 const PSI_LEVEL_LOG_WINDOW_SIZE: usize = 3;
 const MINIMUM_VMSTAT_DURATION: Duration = Duration::from_millis(100);
 
@@ -34,7 +37,7 @@ const DEFAULT_THRASHING_FILE_THRESHOLD_KB: usize = 10 * 1024;
 const DEFAULT_PGSTEAL_DIRECT_THRESHOLD_KB: usize = 10 * 1024;
 
 /// [MemoryReclaim] describes how much memory to reclaim on memory pressure and its severity.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MemoryReclaim {
     None,
     Moderate(usize),
@@ -85,11 +88,6 @@ pub enum MemoryReclaimReason {
 }
 
 pub const MAX_MEMORY_RECLAIM_REASON: i32 = MemoryReclaimReason::Margin as i32;
-
-fn calculate_per_sec_kb(after_pages: usize, before_pages: usize, duration: Duration) -> usize {
-    let total_kb = (after_pages - before_pages) * get_page_size() / ONE_KB;
-    total_kb * 1000 / duration.as_millis() as usize
-}
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -157,9 +155,29 @@ impl Default for Config {
     }
 }
 
+struct CalculationArgs<'a> {
+    psi_level: PsiLevel,
+    psi_level_log: &'a [PsiLevel; PSI_LEVEL_LOG_WINDOW_SIZE],
+    vmstat: &'a Vmstat,
+    last_vmstat: &'a Vmstat,
+    vmstat_duration: Duration,
+    meminfo: &'a MemInfo,
+    margins: &'a ComponentMarginsKb,
+    game_mode: GameMode,
+    thrashing_threshold_multiplier: usize,
+}
+
+trait ReclaimCalculator {
+    fn calculate(
+        &mut self,
+        config: &Config,
+        context: &CalculationArgs,
+    ) -> Option<(MemoryReclaim, MemoryReclaimReason)>;
+}
+
 /// A policy decides how much memory to reclaim on memory pressure.
-#[derive(Debug)]
 pub struct PsiMemoryPolicy {
+    reclaim_calculators: Vec<Box<dyn ReclaimCalculator>>,
     config: Config,
     last_reclaim: MemoryReclaim,
     /// The last vmstat metrics.
@@ -169,9 +187,6 @@ pub struct PsiMemoryPolicy {
     last_vmstat: Vmstat,
     /// The time when the last vmstat was loaded.
     last_vmstat_at: Instant,
-    /// If the system has been unresponsive for a long time, request memory reclaim more
-    /// aggressively by increasing the memory reclaim target size exponetially.
-    reclaim_target_multiplier: usize,
     /// The ring buffer storing last several psi levels.
     ///
     /// This is used to increase booster.
@@ -185,14 +200,26 @@ pub struct PsiMemoryPolicy {
 impl PsiMemoryPolicy {
     /// Create a new [PSIMemoryPolicy].
     pub fn new(config: Config, n_cpu: usize, now: Instant, vmstat: Vmstat) -> Self {
+        // max_by_key() picks the last condition if the reclaim amount is the same. The more
+        // critical should be placed at last in conditions so that the reason reported to UMA makes
+        // sense.
+        let reclaim_calculators: Vec<Box<dyn ReclaimCalculator>> = vec![
+            Box::new(self::margin::MarginCondition::new()),
+            Box::new(self::moderate::ModerateCondition::new()),
+            Box::new(self::thrashing::DirectReclaimCondition::new()),
+            Box::new(self::thrashing::ThrashingFileCondition::new()),
+            Box::new(self::thrashing::ThrashingAnonCondition::new()),
+            Box::new(self::system_slow::SystemSlowCondition::new()),
+            Box::new(self::critical::CriticalCondition::new()),
+        ];
         Self {
             config,
+            reclaim_calculators,
             last_reclaim: MemoryReclaim::None,
             last_vmstat_at: now,
             last_vmstat: vmstat,
             idx_psi_level_log: 0,
             psi_level_log: [PsiLevel::None; PSI_LEVEL_LOG_WINDOW_SIZE],
-            reclaim_target_multiplier: 1,
             // The impact of thrashing on performance varies depending on the number of CPU cores.
             thrashing_threshold_multiplier: n_cpu,
         }
@@ -208,88 +235,25 @@ impl PsiMemoryPolicy {
         margins: &ComponentMarginsKb,
         psi_level: PsiLevel,
     ) -> (MemoryReclaim, MemoryReclaimReason) {
-        let mut reason = MemoryReclaimReason::Unknown;
         let vmstat_duration = now.duration_since(self.last_vmstat_at);
 
-        let mut reclaim = match psi_level {
-            PsiLevel::Critical => {
-                // If it monitors multiple critical memory pressure in a row, it means that critical
-                // memory pressure continues in the short time range. Increase the memory reclaim
-                // target size exponetially in that case.
-                if self
-                    .psi_level_log
-                    .iter()
-                    .all(|level| level == &PsiLevel::Critical)
-                {
-                    self.reclaim_target_multiplier =
-                        self.reclaim_target_multiplier.saturating_mul(2);
-                } else {
-                    self.reclaim_target_multiplier = 1;
-                }
-
-                let reclaim_target_kb = self
-                    .reclaim_target_multiplier
-                    .saturating_mul(self.config.unresponsive_reclaim_target_kb);
-                reason = MemoryReclaimReason::CriticalPressure;
-                MemoryReclaim::Critical(reclaim_target_kb)
-            }
-            PsiLevel::Foreground => {
-                reason = MemoryReclaimReason::SystemSlow;
-                MemoryReclaim::Critical(self.config.slow_reclaim_target_kb)
-            }
-            // The monitor can send signal in less than the monitoring window 1s if it gets a
-            // moderate PSI event just after downgrade timer fires. If the duration is too short,
-            // skip calculating vmstat metrics since we don't have enough confidence that the kb/s
-            // values are going to be accurate. If the system is actually thrashing, we should get
-            // another moderate PSI event soon.
-            PsiLevel::Background if vmstat_duration < MINIMUM_VMSTAT_DURATION => {
-                MemoryReclaim::Moderate(self.config.moderate_reclaim_target_kb)
-            }
-            PsiLevel::Background => {
-                let thrashing_anon_per_sec_kb = calculate_per_sec_kb(
-                    current_vmstat.workingset_refault_anon,
-                    self.last_vmstat.workingset_refault_anon,
-                    vmstat_duration,
-                );
-                let thrashing_file_per_sec_kb = calculate_per_sec_kb(
-                    current_vmstat.workingset_refault_file,
-                    self.last_vmstat.workingset_refault_file,
-                    vmstat_duration,
-                );
-                let pgsteal_direct_per_sec_kb = calculate_per_sec_kb(
-                    current_vmstat.pgsteal_direct,
-                    self.last_vmstat.pgsteal_direct,
-                    vmstat_duration,
-                );
-                if thrashing_anon_per_sec_kb
-                    >= self.config.thrashing_anon_threshold_kb * self.thrashing_threshold_multiplier
-                {
-                    reason = MemoryReclaimReason::ThrashingAnon;
-                    MemoryReclaim::Critical(thrashing_anon_per_sec_kb)
-                } else if thrashing_file_per_sec_kb
-                    >= self.config.thrashing_file_threshold_kb * self.thrashing_threshold_multiplier
-                {
-                    reason = MemoryReclaimReason::ThrashingFile;
-                    MemoryReclaim::Critical(thrashing_file_per_sec_kb)
-                } else if pgsteal_direct_per_sec_kb
-                    >= self.config.pgsteal_direct_threshold_kb * self.thrashing_threshold_multiplier
-                {
-                    reason = MemoryReclaimReason::DirectReclaim;
-                    MemoryReclaim::Critical(pgsteal_direct_per_sec_kb)
-                } else {
-                    MemoryReclaim::Moderate(self.config.moderate_reclaim_target_kb)
-                }
-            }
-            PsiLevel::None => MemoryReclaim::None,
+        let condition_ctx = CalculationArgs {
+            psi_level,
+            psi_level_log: &self.psi_level_log,
+            vmstat: &current_vmstat,
+            last_vmstat: &self.last_vmstat,
+            vmstat_duration,
+            meminfo: current_meminfo,
+            margins,
+            game_mode,
+            thrashing_threshold_multiplier: self.thrashing_threshold_multiplier,
         };
-
-        // Calculate the memory reclaim based on the memory margin and use higher memory reclaim.
-        let available = get_background_available_memory_kb(current_meminfo, game_mode);
-        let reclaim_margin = margins.compute_chrome_pressure(available).into();
-        if reclaim_margin > reclaim {
-            reason = MemoryReclaimReason::Margin;
-            reclaim = reclaim_margin;
-        }
+        let (mut reclaim, reason) = self
+            .reclaim_calculators
+            .iter_mut()
+            .filter_map(|cond| cond.calculate(&self.config, &condition_ctx))
+            .max_by_key(|(reclaim, _)| *reclaim)
+            .unwrap_or((MemoryReclaim::None, MemoryReclaimReason::Unknown));
 
         match &mut reclaim {
             MemoryReclaim::Critical(reclaim_target_kb)
@@ -332,6 +296,7 @@ impl PsiMemoryPolicy {
 mod tests {
     use super::*;
     use crate::memory::get_memory_parameters;
+    use crate::memory::page_size::get_page_size;
     use crate::memory::ArcMarginsKb;
 
     fn default_margin() -> ComponentMarginsKb {
@@ -399,6 +364,32 @@ mod tests {
         assert_eq!(
             reclaim,
             MemoryReclaim::Critical(config.unresponsive_reclaim_target_kb)
+        );
+    }
+
+    #[test]
+    fn test_create_reclaim_system_slow_pressure() {
+        let config = Config::default();
+        let now = Instant::now();
+        let vmstat = Vmstat::default();
+        let mut policy = PsiMemoryPolicy::new(config.clone(), 1, now, vmstat.clone());
+
+        let current_meminfo = default_meminfo();
+        let game_mode = GameMode::Off;
+        let margins = default_margin();
+        let psi_level = PsiLevel::Foreground;
+        let (reclaim, reason) = policy.calculate_reclaim(
+            now + Duration::from_secs(1),
+            &current_meminfo,
+            vmstat,
+            game_mode,
+            &margins,
+            psi_level,
+        );
+        assert_eq!(reason, MemoryReclaimReason::SystemSlow);
+        assert_eq!(
+            reclaim,
+            MemoryReclaim::Critical(config.slow_reclaim_target_kb)
         );
     }
 
@@ -674,6 +665,35 @@ mod tests {
         );
         assert_eq!(reason, MemoryReclaimReason::Margin);
         assert!(matches!(reclaim, MemoryReclaim::Critical(_)));
+    }
+
+    #[test]
+    fn test_create_reclaim_bigger_than_critical() {
+        let config = Config::default();
+        let mut now = Instant::now();
+        let mut vmstat = Vmstat::default();
+        let mut policy = PsiMemoryPolicy::new(config.clone(), 1, now, vmstat.clone());
+
+        let current_meminfo = default_meminfo();
+        now += Duration::from_secs(1);
+        let pgsteal_direct_kb = config
+            .pgsteal_direct_threshold_kb
+            .max(config.unresponsive_reclaim_target_kb)
+            + 1024;
+        vmstat.pgsteal_direct += pgsteal_direct_kb * 1024 / get_page_size();
+        let game_mode = GameMode::Off;
+        let margins = default_margin();
+        let psi_level = PsiLevel::Critical;
+        let (reclaim, reason) = policy.calculate_reclaim(
+            now,
+            &current_meminfo,
+            vmstat.clone(),
+            game_mode,
+            &margins,
+            psi_level,
+        );
+        assert_eq!(reason, MemoryReclaimReason::DirectReclaim);
+        assert_eq!(reclaim, MemoryReclaim::Critical(pgsteal_direct_kb));
     }
 
     #[test]
