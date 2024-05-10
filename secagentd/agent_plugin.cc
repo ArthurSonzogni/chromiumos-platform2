@@ -16,14 +16,10 @@
 #include <asm/bootparam.h>
 #define HAVE_BOOTPARAM
 #endif
-#include "absl/status/status.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
-#include "base/functional/bind.h"
-#include "base/functional/callback_forward.h"
-#include "base/functional/callback_helpers.h"
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
@@ -32,7 +28,6 @@
 #include "missive/proto/record_constants.pb.h"
 #include "secagentd/device_user.h"
 #include "secagentd/message_sender.h"
-#include "secagentd/metrics_sender.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "vboot/crossystem.h"
@@ -40,7 +35,6 @@
 namespace {
 
 constexpr int kWaitForServicesTimeoutMs = 2000;
-constexpr char kBootDataFilepath[] = "/sys/kernel/boot_params/data";
 
 std::string TpmPropertyToStr(uint32_t value) {
   std::string str;
@@ -67,14 +61,31 @@ AgentPlugin::AgentPlugin(
     std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy,
     base::OnceCallback<void()> cb,
     uint32_t heartbeat_timer)
+    : AgentPlugin(message_sender,
+                  device_user,
+                  std::move(attestation_proxy),
+                  std::move(tpm_manager_proxy),
+                  std::move(cb),
+                  base::FilePath("/"),
+                  heartbeat_timer) {}
+
+AgentPlugin::AgentPlugin(
+    scoped_refptr<MessageSenderInterface> message_sender,
+    scoped_refptr<DeviceUserInterface> device_user,
+    std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy,
+    std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy,
+    base::OnceCallback<void()> cb,
+    const base::FilePath& root_path,
+    uint32_t heartbeat_timer)
     : weak_ptr_factory_(this),
       message_sender_(message_sender),
       device_user_(device_user),
+      attestation_proxy_(std::move(attestation_proxy)),
+      tpm_manager_proxy_((std::move(tpm_manager_proxy))),
+      daemon_cb_(std::move(cb)),
+      root_path_(root_path),
       heartbeat_timer_(base::Seconds(std::max(heartbeat_timer, uint32_t(1)))) {
   CHECK(message_sender != nullptr);
-  attestation_proxy_ = std::move(attestation_proxy);
-  tpm_manager_proxy_ = std::move(tpm_manager_proxy);
-  daemon_cb_ = std::move(cb);
 }
 
 std::string AgentPlugin::GetName() const {
@@ -119,7 +130,7 @@ void AgentPlugin::StartInitializingAgentProto() {
   int get_uname_rv = uname(&buf);
 
   auto uefi_metric =
-      GetUefiSecureBootInformation(base::FilePath(kBootDataFilepath));
+      GetUefiSecureBootInformation(root_path_.Append(kBootDataFilepath));
   MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kUefiBootmode,
                                                    uefi_metric);
 

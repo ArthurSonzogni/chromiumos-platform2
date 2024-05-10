@@ -18,6 +18,8 @@
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
 #include "base/check.h"
+#include "base/files/file_path.h"
+#include "base/memory/ptr_util.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/timer/timer.h"
@@ -521,15 +523,17 @@ class AuthenticationPlugin : public PluginInterface {
 };
 
 class AgentPlugin : public PluginInterface {
+  static constexpr char kBootDataFilepath[] = "sys/kernel/boot_params/data";
+
  public:
-  explicit AgentPlugin(scoped_refptr<MessageSenderInterface> message_sender,
-                       scoped_refptr<DeviceUserInterface> device_user,
-                       std::unique_ptr<org::chromium::AttestationProxyInterface>
-                           attestation_proxy,
-                       std::unique_ptr<org::chromium::TpmManagerProxyInterface>
-                           tpm_manager_proxy,
-                       base::OnceCallback<void()> cb,
-                       uint32_t heartbeat_timer);
+  AgentPlugin(scoped_refptr<MessageSenderInterface> message_sender,
+              scoped_refptr<DeviceUserInterface> device_user,
+              std::unique_ptr<org::chromium::AttestationProxyInterface>
+                  attestation_proxy,
+              std::unique_ptr<org::chromium::TpmManagerProxyInterface>
+                  tpm_manager_proxy,
+              base::OnceCallback<void()> cb,
+              uint32_t heartbeat_timer);
 
   // Initialize Agent proto and starts agent heartbeat events.
   absl::Status Activate() override;
@@ -540,6 +544,24 @@ class AgentPlugin : public PluginInterface {
 
  private:
   friend class testing::AgentPluginTestFixture;
+
+  // Allow calling the private test-only constructor without befriending
+  // unique_ptr.
+  template <typename... Args>
+  static std::unique_ptr<AgentPlugin> CreateForTesting(Args&&... args) {
+    return base::WrapUnique(new AgentPlugin(std::forward<Args>(args)...));
+  }
+
+  // Accepts root_path for testing.
+  AgentPlugin(scoped_refptr<MessageSenderInterface> message_sender,
+              scoped_refptr<DeviceUserInterface> device_user,
+              std::unique_ptr<org::chromium::AttestationProxyInterface>
+                  attestation_proxy,
+              std::unique_ptr<org::chromium::TpmManagerProxyInterface>
+                  tpm_manager_proxy,
+              base::OnceCallback<void()> cb,
+              const base::FilePath& root_path,
+              uint32_t heartbeat_timer);
 
   // Starts filling in the tcb fields of the agent proto and initializes async
   // timers that wait for tpm_manager and attestation to be ready. When services
@@ -586,6 +608,7 @@ class AgentPlugin : public PluginInterface {
   std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy_;
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   base::OnceCallback<void()> daemon_cb_;
+  const base::FilePath root_path_;
   base::Lock tcb_attributes_lock_;
   base::TimeDelta heartbeat_timer_ = base::Minutes(5);
   bool is_active_{false};
