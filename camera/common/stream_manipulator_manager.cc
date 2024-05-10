@@ -224,9 +224,6 @@ StreamManipulatorManager::StreamManipulatorManager(
                   CameraMojoChannelManager::GetInstance()))));
   LOGF(INFO) << "RotateAndCropStreamManipulator enabled";
 
-  MaybeEnableFramingStreamManipulator(feature_profile, runtime_options,
-                                      gpu_resources, &stream_manipulators_);
-
 #if USE_CAMERA_FEATURE_EFFECTS
   LOGF(INFO) << "Service built with effects support";
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kEffects)) {
@@ -245,6 +242,9 @@ StreamManipulatorManager::StreamManipulatorManager(
 #else
   LOGF(INFO) << "Service built without effects support";
 #endif
+
+  MaybeEnableFramingStreamManipulator(feature_profile, runtime_options,
+                                      gpu_resources, &stream_manipulators_);
 
 #if USE_CAMERA_DIAGNOSTICS
   if (create_options.diagnostics_client != nullptr) {
