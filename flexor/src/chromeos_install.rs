@@ -37,9 +37,8 @@ fn get_chromeos_install_cmd(disk_path: &Path) -> Command {
     cmd.arg("--yes");
     // Set the destination path.
     cmd.arg("--dst").arg(disk_path);
-    // Skip all sanity checks for source or destination being removable.
+    // Skip sanity check for destination being removable.
     cmd.arg("--skip_dst_removable");
-    cmd.arg("--skip_src_removable");
 
     cmd
 }
