@@ -36,8 +36,6 @@ STATEFUL_FORMAT=
 # this script.
 
 DEFINE_string dst "" "Destination device"
-DEFINE_boolean skip_src_removable ${FLAGS_FALSE} \
-  "Skip check to ensure source is removable"
 DEFINE_boolean skip_dst_removable ${FLAGS_FALSE} \
   "Skip check to ensure destination is not removable"
 DEFINE_boolean skip_rootfs ${FLAGS_FALSE} \
