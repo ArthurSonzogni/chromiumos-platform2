@@ -435,14 +435,14 @@ loop_offset_cleanup() {
 # Mount the existing loop device at the mountpoint in $TMPMNT.
 # Args: optional 'rw'. If present, mount read-write, otherwise read-only.
 mount_on_loop_dev() {
-  local rw_flag="${1-ro}"
-  set -- -o nosuid,nodev
+  local rw_flag="${1:-}"
+  local mountopts="nosuid,nodev"
   if [ "${rw_flag}" != "rw" ]; then
-    set -- "$@",ro,exec
+    mountopts="${mountopts},ro,exec"
   else
-    set -- "$@",rw,noexec
+    mountopts="${mountopts},rw,noexec"
   fi
-  tracked_mount "$@" "${LOOP_DEV}" "${TMPMNT}"
+  tracked_mount -o "${mountopts}" "${LOOP_DEV}" "${TMPMNT}"
 }
 
 # Unmount loop-mounted device.
