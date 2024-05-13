@@ -5,11 +5,21 @@
 #ifndef ARC_KEYMINT_CONTEXT_OPENSSL_UTILS_H_
 #define ARC_KEYMINT_CONTEXT_OPENSSL_UTILS_H_
 
+#include "absl/types/span.h"
+
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
+#include <keymaster/android_keymaster_utils.h>
+#include <keymaster/km_openssl/openssl_err.h>
+#include <keymaster/km_openssl/openssl_utils.h>
+#include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/ossl_typ.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+
 #include <optional>
+#include <vector>
 
 // Exposes OpenSSL functionality through an API that is relevant to the ARC
 // KeyMint context.
@@ -42,6 +52,11 @@ std::optional<brillo::SecureBlob> Aes256GcmDecrypt(
     const brillo::Blob& auth_data,
     const brillo::Blob& input);
 
+// Helper function to extract ECDSA Affine Coordinates from Certificate
+// provided by ChromeOS' libarc-attestation.
+keymaster_error_t GetEcdsa256KeyFromCertBlob(brillo::Blob& certData,
+                                             absl::Span<uint8_t> x_coord,
+                                             absl::Span<uint8_t> y_coord);
 }  // namespace arc::keymint::context
 
 #endif  // ARC_KEYMINT_CONTEXT_OPENSSL_UTILS_H_

@@ -16,6 +16,7 @@ namespace {
 
 constexpr size_t kKeySize = 32;
 constexpr size_t kAes256GcmPadding = 16;
+constexpr uint32_t kAffinePointLength = 32;
 
 // Encrypts a given |input| using AES-GCM-256 with |key|, |auth_data|, and |iv|.
 // Returns std::nullopt if there's an error in the OpenSSL operation.
@@ -166,6 +167,69 @@ std::optional<brillo::SecureBlob> Aes256GcmDecrypt(
 
   // Decrypt the input.
   return DoAes256GcmDecrypt(key, auth_data, iv, encrypted);
+}
+
+// This function is based upon AOSP Keymaster's |GetEcdsa256KeyFromCert|
+// function.
+keymaster_error_t GetEcdsa256KeyFromCertBlob(brillo::Blob& certData,
+                                             absl::Span<uint8_t> x_coord,
+                                             absl::Span<uint8_t> y_coord) {
+  // Input Validation.
+  if (certData.empty() || x_coord.size() != kAffinePointLength ||
+      y_coord.size() != kAffinePointLength) {
+    return KM_ERROR_INVALID_ARGUMENT;
+  }
+
+  // Create BIO from Vector Data.
+  bssl::UniquePtr<BIO> certbio(
+      BIO_new_mem_buf(certData.data(), certData.size()));
+  if (!certbio.get()) {
+    // Handle BIO creation error.
+    return ::keymaster::TranslateLastOpenSslError();
+  }
+
+  // Read Certificate from BIO.
+  ::keymaster::X509_Ptr cert(
+      PEM_read_bio_X509(certbio.get(), nullptr, nullptr, nullptr));
+  if (!cert || !cert.get()) {
+    return ::keymaster::TranslateLastOpenSslError();
+  }
+
+  // Extract Jacobian coordinates from X509 Cert.
+  ::keymaster::EVP_PKEY_Ptr pubKey(X509_get_pubkey(cert.get()));
+  if (!pubKey.get()) {
+    return ::keymaster::TranslateLastOpenSslError();
+  }
+  EC_KEY* ecKey = EVP_PKEY_get0_EC_KEY(pubKey.get());
+  if (!ecKey) {
+    return ::keymaster::TranslateLastOpenSslError();
+  }
+  const EC_POINT* jacobian_coords = EC_KEY_get0_public_key(ecKey);
+  if (!jacobian_coords) {
+    return ::keymaster::TranslateLastOpenSslError();
+  }
+
+  // Extract Affine coordinates.
+  bssl::UniquePtr<BIGNUM> x(BN_new());
+  bssl::UniquePtr<BIGNUM> y(BN_new());
+  ::keymaster::BN_CTX_Ptr ctx(BN_CTX_new());
+  if (!ctx.get()) {
+    return ::keymaster::TranslateLastOpenSslError();
+  }
+  if (!EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(ecKey),
+                                           jacobian_coords, x.get(), y.get(),
+                                           ctx.get())) {
+    return ::keymaster::TranslateLastOpenSslError();
+  }
+  uint8_t* tmp_x = x_coord.data();
+  if (BN_bn2binpad(x.get(), tmp_x, kAffinePointLength) != kAffinePointLength) {
+    return ::keymaster::TranslateLastOpenSslError();
+  }
+  uint8_t* tmp_y = y_coord.data();
+  if (BN_bn2binpad(y.get(), tmp_y, kAffinePointLength) != kAffinePointLength) {
+    return ::keymaster::TranslateLastOpenSslError();
+  }
+  return KM_ERROR_OK;
 }
 
 }  // namespace arc::keymint::context
