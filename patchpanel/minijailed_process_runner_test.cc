@@ -9,7 +9,9 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/memory/ptr_util.h>
@@ -93,7 +95,8 @@ TEST_F(MinijailProcessRunnerTest, modprobe_all) {
   EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
 
-  EXPECT_TRUE(runner_->modprobe_all({"module1", "module2"}));
+  std::vector<std::string> mods = {"module1", "module2"};
+  EXPECT_TRUE(runner_->modprobe_all(mods));
 }
 
 TEST_F(MinijailProcessRunnerTest, ip) {
@@ -286,8 +289,8 @@ TEST_F(MinijailProcessRunnerTest, conntrack) {
   EXPECT_CALL(*system_, WaitPid(kFakePid, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(kFakePid)));
 
-  EXPECT_TRUE(
-      runner_->conntrack("-U", {"-p", "TCP", "-s", "8.8.8.8", "-m", "1"}));
+  std::vector<std::string> args = {"-p", "TCP", "-s", "8.8.8.8", "-m", "1"};
+  EXPECT_TRUE(runner_->conntrack("-U", args));
 }
 
 class IptablesBatchModeTest : public MinijailProcessRunnerTest {

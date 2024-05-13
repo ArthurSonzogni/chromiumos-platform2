@@ -288,8 +288,8 @@ int MinijailedProcessRunner::RunIp(base::span<std::string_view> argv,
   return RunSyncDestroy(argv, mj_, jail, log_failures, nullptr);
 }
 
-int MinijailedProcessRunner::ip(const std::string& obj,
-                                const std::string& cmd,
+int MinijailedProcessRunner::ip(std::string_view obj,
+                                std::string_view cmd,
                                 base::span<const std::string> argv,
                                 bool as_patchpanel_user,
                                 bool log_failures) {
@@ -298,8 +298,8 @@ int MinijailedProcessRunner::ip(const std::string& obj,
   return RunIp(args, as_patchpanel_user, log_failures);
 }
 
-int MinijailedProcessRunner::ip(const std::string& obj,
-                                const std::string& cmd,
+int MinijailedProcessRunner::ip(std::string_view obj,
+                                std::string_view cmd,
                                 base::span<std::string_view> argv,
                                 bool as_patchpanel_user,
                                 bool log_failures) {
@@ -308,8 +308,8 @@ int MinijailedProcessRunner::ip(const std::string& obj,
   return RunIp(args, as_patchpanel_user, log_failures);
 }
 
-int MinijailedProcessRunner::ip(const std::string& obj,
-                                const std::string& cmd,
+int MinijailedProcessRunner::ip(std::string_view obj,
+                                std::string_view cmd,
                                 std::initializer_list<std::string_view> argv,
                                 bool as_patchpanel_user,
                                 bool log_failures) {
@@ -318,8 +318,8 @@ int MinijailedProcessRunner::ip(const std::string& obj,
   return RunIp(args, as_patchpanel_user, log_failures);
 }
 
-int MinijailedProcessRunner::ip6(const std::string& obj,
-                                 const std::string& cmd,
+int MinijailedProcessRunner::ip6(std::string_view obj,
+                                 std::string_view cmd,
                                  base::span<const std::string> argv,
                                  bool as_patchpanel_user,
                                  bool log_failures) {
@@ -328,8 +328,8 @@ int MinijailedProcessRunner::ip6(const std::string& obj,
   return RunIp(args, as_patchpanel_user, log_failures);
 }
 
-int MinijailedProcessRunner::ip6(const std::string& obj,
-                                 const std::string& cmd,
+int MinijailedProcessRunner::ip6(std::string_view obj,
+                                 std::string_view cmd,
                                  base::span<std::string_view> argv,
                                  bool as_patchpanel_user,
                                  bool log_failures) {
@@ -338,8 +338,8 @@ int MinijailedProcessRunner::ip6(const std::string& obj,
   return RunIp(args, as_patchpanel_user, log_failures);
 }
 
-int MinijailedProcessRunner::ip6(const std::string& obj,
-                                 const std::string& cmd,
+int MinijailedProcessRunner::ip6(std::string_view obj,
+                                 std::string_view cmd,
                                  std::initializer_list<std::string_view> argv,
                                  bool as_patchpanel_user,
                                  bool log_failures) {
@@ -457,8 +457,8 @@ int MinijailedProcessRunner::RunIptables(std::string_view iptables_path,
   return RunSyncDestroy(args, mj_, jail, log_failures, output);
 }
 
-int MinijailedProcessRunner::modprobe_all(
-    const std::vector<std::string>& modules, bool log_failures) {
+int MinijailedProcessRunner::modprobe_all(base::span<const std::string> modules,
+                                          bool log_failures) {
   minijail* jail = mj_->New();
   CHECK(mj_->DropRoot(jail, kUnprivilegedUser, kUnprivilegedUser));
   mj_->UseCapabilities(jail, kModprobeCapMask);
@@ -467,13 +467,13 @@ int MinijailedProcessRunner::modprobe_all(
   return RunSyncDestroy(args, mj_, jail, log_failures, nullptr);
 }
 
-int MinijailedProcessRunner::ip_netns_add(const std::string& netns_name,
+int MinijailedProcessRunner::ip_netns_add(std::string_view netns_name,
                                           bool log_failures) {
   std::vector<std::string_view> args = {kIpPath, "netns", "add", netns_name};
   return RunIpNetns(args, log_failures);
 }
 
-int MinijailedProcessRunner::ip_netns_attach(const std::string& netns_name,
+int MinijailedProcessRunner::ip_netns_attach(std::string_view netns_name,
                                              pid_t netns_pid,
                                              bool log_failures) {
   auto pid = std::to_string(netns_pid);
@@ -482,7 +482,7 @@ int MinijailedProcessRunner::ip_netns_attach(const std::string& netns_name,
   return RunIpNetns(args, log_failures);
 }
 
-int MinijailedProcessRunner::ip_netns_delete(const std::string& netns_name,
+int MinijailedProcessRunner::ip_netns_delete(std::string_view netns_name,
                                              bool log_failures) {
   std::vector<std::string_view> args = {kIpPath, "netns", "delete", netns_name};
   return RunIpNetns(args, log_failures);
@@ -497,7 +497,7 @@ int MinijailedProcessRunner::RunIpNetns(base::span<std::string_view> argv,
 }
 
 int MinijailedProcessRunner::conntrack(std::string_view command,
-                                       const std::vector<std::string>& argv,
+                                       base::span<const std::string> argv,
                                        bool log_failures) {
   std::vector<std::string_view> args = {kConntrackPath, command};
   args.insert(args.end(), argv.begin(), argv.end());

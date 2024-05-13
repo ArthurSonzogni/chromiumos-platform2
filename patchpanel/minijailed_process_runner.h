@@ -55,36 +55,34 @@ class MinijailedProcessRunner {
   // Runs ip. If |as_patchpanel_user|, runs as user 'patchpaneld' and under the
   // group 'patchpaneld', as well as inherits supplemntary groups (i.e. group
   // 'tun') of user 'patchpaneld'. If not, runs as 'nobody'.
-  // TODO(b/325359902): Change argument type of |obj| and |cmd| from std::string
-  // to std::string_view for ip() and ip6().
-  virtual int ip(const std::string& obj,
-                 const std::string& cmd,
+  virtual int ip(std::string_view obj,
+                 std::string_view cmd,
                  base::span<const std::string> argv,
                  bool as_patchpanel_user = false,
                  bool log_failures = true);
-  virtual int ip(const std::string& obj,
-                 const std::string& cmd,
+  virtual int ip(std::string_view obj,
+                 std::string_view cmd,
                  base::span<std::string_view> argv,
                  bool as_patchpanel_user = false,
                  bool log_failures = true);
-  virtual int ip(const std::string& obj,
-                 const std::string& cmd,
+  virtual int ip(std::string_view obj,
+                 std::string_view cmd,
                  std::initializer_list<std::string_view> argv,
                  bool as_patchpanel_user = false,
                  bool log_failures = true);
 
-  virtual int ip6(const std::string& obj,
-                  const std::string& cmd,
+  virtual int ip6(std::string_view obj,
+                  std::string_view cmd,
                   base::span<const std::string> argv,
                   bool as_patchpanel_user = false,
                   bool log_failures = true);
-  virtual int ip6(const std::string& obj,
-                  const std::string& cmd,
+  virtual int ip6(std::string_view obj,
+                  std::string_view cmd,
                   base::span<std::string_view> argv,
                   bool as_patchpanel_user = false,
                   bool log_failures = true);
-  virtual int ip6(const std::string& obj,
-                  const std::string& cmd,
+  virtual int ip6(std::string_view obj,
+                  std::string_view cmd,
                   std::initializer_list<std::string_view> argv,
                   bool as_patchpanel_user = false,
                   bool log_failures = true);
@@ -153,32 +151,26 @@ class MinijailedProcessRunner {
                         std::string* output = nullptr);
 
   // Installs all |modules| via modprobe.
-  virtual int modprobe_all(const std::vector<std::string>& modules,
+  virtual int modprobe_all(base::span<const std::string> modules,
                            bool log_failures = true);
 
   // Creates a new named network namespace with name |netns_name|.
-  // TODO(b/325359902): Change argument type of |netns_name| from std::string
-  // to std::string_view.
-  virtual int ip_netns_add(const std::string& netns_name,
+  virtual int ip_netns_add(std::string_view netns_name,
                            bool log_failures = true);
 
   // Attaches a name to the network namespace of the given pid
   // TODO(hugobenichi) How can patchpanel create a |netns_name| file in
   // /run/netns without running ip as root ?
-  // TODO(b/325359902): Change argument type of |netns_name| from std::string
-  // to std::string_view.
-  virtual int ip_netns_attach(const std::string& netns_name,
+  virtual int ip_netns_attach(std::string_view netns_name,
                               pid_t netns_pid,
                               bool log_failures = true);
 
-  // TODO(b/325359902): Change argument type of |netns_name| from std::string
-  // to std::string_view.
-  virtual int ip_netns_delete(const std::string& netns_name,
+  virtual int ip_netns_delete(std::string_view netns_name,
                               bool log_failures = true);
 
   // Run conntrack command with given command option and |argv|.
   virtual int conntrack(std::string_view command,
-                        const std::vector<std::string>& argv,
+                        base::span<const std::string> argv,
                         bool log_failures = true);
 
   virtual int iptables_restore(std::string_view script_file,

@@ -70,26 +70,24 @@ class MockProcessRunner : public MinijailedProcessRunner {
               (override));
   MOCK_METHOD(int,
               ip_netns_add,
-              (const std::string& netns_name, bool log_failures),
+              (std::string_view netns_name, bool log_failures),
               (override));
   MOCK_METHOD(int,
               ip_netns_attach,
-              (const std::string& netns_name,
-               pid_t netns_pid,
-               bool log_failures),
+              (std::string_view netns_name, pid_t netns_pid, bool log_failures),
               (override));
   MOCK_METHOD(int,
               ip_netns_delete,
-              (const std::string& netns_name, bool log_failures),
+              (std::string_view netns_name, bool log_failures),
               (override));
   MOCK_METHOD(int,
               modprobe_all,
-              (const std::vector<std::string>& modules, bool log_failures),
+              (base::span<const std::string> modules, bool log_failures),
               (override));
   MOCK_METHOD(int,
               conntrack,
               (std::string_view command,
-               const std::vector<std::string>& argv,
+               base::span<const std::string> argv,
                bool log_failures),
               (override));
 };
