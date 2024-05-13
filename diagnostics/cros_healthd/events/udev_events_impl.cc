@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/events/udev_events_impl.h"
 
 #include <libusb.h>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -22,6 +23,7 @@
 
 #include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -31,6 +33,11 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+
+constexpr char kPropertyDeviceType[] = "DEVTYPE";
+constexpr char kPropertyDeviceTypeUSBDevice[] = "usb_device";
+constexpr char kAttributeIdProduct[] = "idProduct";
+constexpr char kAttributeIdVendor[] = "idVendor";
 
 std::string GetString(const char* str) {
   if (str) {
@@ -74,6 +81,29 @@ void FillUsbEventInfo(const std::unique_ptr<brillo::UdevDevice>& device,
   info->name = GetUsbProductName(device);
   std::tie(info->vid, info->pid) = GetUsbVidPid(device);
   FillUsbCategory(device, info);
+}
+
+bool GetVendorAndProductId(brillo::UdevDevice* dev,
+                           std::string& vendor_id,
+                           std::string& product_id) {
+  std::unique_ptr<brillo::UdevDevice> dev_unique_ptr;
+  while (dev) {
+    const char* device_type = dev->GetPropertyValue(kPropertyDeviceType);
+    if (device_type && strcmp(device_type, kPropertyDeviceTypeUSBDevice) == 0) {
+      const char* vendor_id_attr =
+          dev->GetSysAttributeValue(kAttributeIdVendor);
+      const char* product_id_attr =
+          dev->GetSysAttributeValue(kAttributeIdProduct);
+      if (vendor_id_attr && product_id_attr) {
+        vendor_id = vendor_id_attr;
+        product_id = product_id_attr;
+        return true;
+      }
+    }
+    dev_unique_ptr = dev->GetParent();
+    dev = dev_unique_ptr.get();
+  }
+  return false;
 }
 
 }  // namespace
@@ -179,10 +209,10 @@ void UdevEventsImpl::OnUdevEvent() {
     } else if (action == "remove") {
       OnSdCardRemove();
     }
-  } else if (subsystem == "block" && device_type == "partition") {
-    // Sd card event in the scsi subsystem is distinguishable via its model id.
-    auto model_id = GetString(device->GetPropertyValue("ID_MODEL"));
-    if (model_id == "SD_MMC_CRW") {
+  } else if (subsystem == "block" && device_type == "disk") {
+    std::string vendor_id, product_id;
+    if (GetVendorAndProductId(device.get(), vendor_id, product_id) &&
+        context_->ground_truth()->IsSdCardDevice(vendor_id, product_id)) {
       if (action == "add") {
         OnSdCardAdd();
       } else if (action == "remove") {

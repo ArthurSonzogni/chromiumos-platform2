@@ -62,6 +62,7 @@ source_set("system") {
     "powerd_adapter_impl.cc",
     "system_config.cc",
     "system_utilities_impl.cc",
+    "usb_device_info.cc",
   ]
 }
 
@@ -139,6 +140,7 @@ if (use.test) {
       "ground_truth_test.cc",
       "powerd_adapter_impl_test.cc",
       "system_config_test.cc",
+      "usb_device_info_test.cc",
     ]
     configs += [ ":system_test_pkg_deps" ]
     deps = [

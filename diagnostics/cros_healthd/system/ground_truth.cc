@@ -398,4 +398,10 @@ CrosConfig* GroundTruth::cros_config() const {
   return context_->cros_config();
 }
 
+bool GroundTruth::IsSdCardDevice(const std::string& vendor_id,
+                                 const std::string& product_id) {
+  return usb_device_info_.GetDeviceMediaType(vendor_id, product_id) ==
+         DeviceType::kSD;
+}
+
 }  // namespace diagnostics

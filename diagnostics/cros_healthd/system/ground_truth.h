@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include "diagnostics/cros_healthd/system/usb_device_info.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
@@ -86,11 +87,18 @@ class GroundTruth final {
   // Check if the device has CrOS EC.
   bool HasCrosEC() const;
 
+  // Returns whether the given USB device is a SD Card Reader device.
+  bool IsSdCardDevice(const std::string& vendor_id,
+                      const std::string& product_id);
+
  private:
   ash::cros_healthd::mojom::SupportStatusPtr GetEventSupportStatus(
       ash::cros_healthd::mojom::EventCategoryEnum category);
 
   CrosConfig* cros_config() const;
+
+  // Maps the {vid:pid} of USB devices to the actual underlying media type.
+  USBDeviceInfo usb_device_info_;
 
   // Unowned. Should outlive this instance.
   Context* const context_ = nullptr;
