@@ -2,7 +2,7 @@
 name = "crosh"
 version = "0.24.52"
 authors = ["The ChromiumOS Authors"]
-edition = "2018"
+edition = "2021"
 
 [profile.release]
 panic = "abort"
