@@ -372,9 +372,9 @@ tracked_mount() {
 tracked_umount() {
   # dash does not support ${//} expansions.
   local new_mounts
-  for mount in $MOUNTS; do
-    if [ "$mount" != "$1" ]; then
-      new_mounts="${new_mounts:-}${new_mounts+ }$mount"
+  for mount in ${MOUNTS}; do
+    if [ "${mount}" != "$1" ]; then
+      new_mounts="${new_mounts:-}${new_mounts+ }${mount}"
     fi
   done
   MOUNTS=${new_mounts:-}
@@ -406,7 +406,7 @@ loop_offset_setup() {
 
   LOOP_DEV=$("${losetup_path}" -f "$@" --show -o $((offset * blocksize)) \
     "${filename}")
-  if [ -z "$LOOP_DEV" ]; then
+  if [ -z "${LOOP_DEV}" ]; then
     die "No free loop device. Free up a loop device or reboot. Exiting."
   fi
 
@@ -417,9 +417,9 @@ loop_offset_setup() {
 loop_offset_cleanup() {
   # dash does not support ${//} expansions.
   local new_loops
-  for loop in $LOOPS; do
-    if [ "$loop" != "$LOOP_DEV" ]; then
-      new_loops="${new_loops:-}${new_loops+ }$loop"
+  for loop in ${LOOPS}; do
+    if [ "${loop}" != "${LOOP_DEV}" ]; then
+      new_loops="${new_loops:-}${new_loops+ }${loop}"
     fi
   done
   LOOPS=${new_loops:-}
