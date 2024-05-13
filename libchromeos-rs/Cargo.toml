@@ -9,7 +9,6 @@ pkg-config = { version = "0.3.11", optional = true }
 
 [dependencies]
 dbus = { version = "0.9", optional = true }
-lazy_static = { version = "1.4.0", optional = true }
 libc = "0.2"
 log = "0.4"
 multi_log = "0.1.2"
@@ -26,4 +25,4 @@ zeroize = { version = "1.2.0", features = ["zeroize_derive"] }
 
 [features]
 default = []
-chromeos-module = ["dbus", "lazy_static", "pkg-config", "system_api", "vboot_reference-sys"]
+chromeos-module = ["dbus", "pkg-config", "system_api", "vboot_reference-sys"]
