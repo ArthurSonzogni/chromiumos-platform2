@@ -215,7 +215,7 @@ bool Utils::WaitForGid(const base::FilePath& target_path, int target_gid) {
       return false;
     }
 
-    if (base::File::Stat(target_path.value().c_str(), &st) < 0) {
+    if (base::File::Stat(target_path, &st) < 0) {
       PLOG(ERROR) << "Failed to stat path=" << target_path;
       return false;
     }
