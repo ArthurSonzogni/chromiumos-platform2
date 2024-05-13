@@ -1191,7 +1191,8 @@ main() {
   echo "This will erase all data at this destination: ${DST}"
   local sure
   if [ "${FLAGS_yes}" -eq "${FLAGS_FALSE}" ]; then
-    read -r -p "Are you sure (y/N)? " sure
+    printf "Are you sure (y/N)? "
+    read -r sure
     if [ "${sure}" != "y" ]; then
       # Don't run diagnostics if the user explicitly bailed out.
       trap - EXIT
