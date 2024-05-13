@@ -140,7 +140,7 @@ void LogRotator::CreateNewBaseFile(int max_index) {
       continue;
 
     base::stat_wrapper_t file_info;
-    if (base::File::Stat(previous_file_path.value().c_str(), &file_info) == 0) {
+    if (base::File::Stat(previous_file_path, &file_info) == 0) {
       constexpr int kFilePermissionMask = S_IRWXU | S_IRWXG | S_IRWXO;
       mode = file_info.st_mode & kFilePermissionMask;
       uid = file_info.st_uid;
