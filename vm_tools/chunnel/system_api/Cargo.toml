@@ -3,6 +3,7 @@ name = "system_api"
 version = "0.1.0"
 authors = ["The ChromiumOS Authors"]
 build = "build.rs"
+edition = "2021"
 
 [dependencies]
 protobuf = "3.2"

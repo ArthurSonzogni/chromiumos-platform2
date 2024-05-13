@@ -59,7 +59,7 @@ const DBUS_TIMEOUT: Duration = Duration::from_secs(30);
 // Program name.
 const IDENT: &str = "chunneld";
 
-const VMADDR_PORT_ANY: u32 = u32::max_value();
+const VMADDR_PORT_ANY: u32 = u32::MAX;
 
 #[remain::sorted]
 #[derive(Debug)]
@@ -588,7 +588,7 @@ fn dbus_thread(
     // We don't want chunneld waking frequently, so use a big value.
     loop {
         connection
-            .process(Duration::from_millis(c_int::max_value() as u64))
+            .process(Duration::from_millis(c_int::MAX as u64))
             .map_err(Error::DBusProcessMessage)?;
     }
 }

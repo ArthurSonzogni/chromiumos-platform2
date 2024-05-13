@@ -114,15 +114,11 @@ impl SystemApiDbus {
         );
         let parse_output = shell_helper(&shell_parse_cmd);
         let mut lines = parse_output.lines();
-        loop {
-            if let (Some(var_name), Some(var_literal)) = (lines.next(), lines.next()) {
-                if var_name.starts_with('k') {
-                    let name = upper_snake_case(var_name.trim_matches('k'));
-                    let value = var_literal.trim_matches('"').to_owned();
-                    constants.insert(name, value);
-                }
-            } else {
-                break;
+        while let (Some(var_name), Some(var_literal)) = (lines.next(), lines.next()) {
+            if var_name.starts_with('k') {
+                let name = upper_snake_case(var_name.trim_matches('k'));
+                let value = var_literal.trim_matches('"').to_owned();
+                constants.insert(name, value);
             }
         }
     }

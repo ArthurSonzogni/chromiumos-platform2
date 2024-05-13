@@ -2369,11 +2369,8 @@ impl Methods {
     ) -> Result<String, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
         let vm_info = self.get_vm_info(name, user_id_hash)?;
-        let vm_path = self.share_path_with_vm(
-            vm_info.seneschal_server_handle.try_into()?,
-            user_id_hash,
-            path,
-        )?;
+        let vm_path =
+            self.share_path_with_vm(vm_info.seneschal_server_handle, user_id_hash, path)?;
         Ok(format!("{}/{}", MNT_SHARED_ROOT, vm_path))
     }
 
@@ -2473,7 +2470,7 @@ impl Methods {
                         DiskImageType::DISK_IMAGE_PLUGINVM => VmDiskImageType::PluginVm,
                     },
                     user_chosen_size: e.user_chosen_size,
-                    state: state,
+                    state,
                 };
                 Ok(info)
             })
