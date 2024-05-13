@@ -387,9 +387,9 @@ tracked_umount() {
 # Invoke as: command
 # Args: FILE OFFSET BLKSIZE
 loop_offset_setup() {
-  local filename=$1
-  local offset=$2
-  local blocksize=$3
+  local filename="$1"
+  local offset="$2"
+  local blocksize="$3"
 
   set --
   if [ "${blocksize}" -ne 512 ]; then
@@ -433,7 +433,7 @@ loop_offset_cleanup() {
 # Mount the existing loop device at the mountpoint in $TMPMNT.
 # Args: optional 'rw'. If present, mount read-write, otherwise read-only.
 mount_on_loop_dev() {
-  local rw_flag=${1-ro}
+  local rw_flag="${1-ro}"
   set -- -o nosuid,nodev
   if [ "${rw_flag}" != "rw" ]; then
     set -- "$@",ro,exec
@@ -597,7 +597,7 @@ wipe_stateful() {
 
   # Zero out the first block of the stateful partition to ensure that
   # mkfs/pvcreate don't get confused by existing state.
-  dd if=/dev/zero of="${DEV}" bs=${DST_BLKSIZE} count=1 >/dev/null 2>&1
+  dd if=/dev/zero of="${DEV}" bs="${DST_BLKSIZE}" count=1 >/dev/null 2>&1
 
   if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
     # Now we recreate the logical volume set up.
@@ -702,9 +702,9 @@ install_stateful() {
     ;;
   *)
     if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
-      dst_stateful_partition="$(make_partition_dev ${DST} \
-        ${PARTITION_NUM_STATE})"
-      vg_name="$(get_volume_group ${dst_stateful_partition})"
+      dst_stateful_partition="$(make_partition_dev "${DST}" \
+        "${PARTITION_NUM_STATE}")"
+      vg_name="$(get_volume_group "${dst_stateful_partition}")"
       vgchange -ay "${vg_name}"
       LOOP_DEV="/dev/${vg_name}/unencrypted"
     else
@@ -873,12 +873,12 @@ get_recovery_key_version() {
 # $5 - total_chunks
 # $6 - cache_input
 copy_partition() {
-  local part_num=$1
-  local src=$2
-  local dst=$3
-  local chunk_num=$4
-  local total_chunks=$5
-  local cache_input=$6
+  local part_num="$1"
+  local src="$2"
+  local dst="$3"
+  local chunk_num="$4"
+  local total_chunks="$5"
+  local cache_input="$6"
   local part_size
   local src_offset
   local dst_offset
@@ -961,8 +961,8 @@ copy_partition() {
 # information from the current GPT table.
 # $1 is the device node, such as "/dev/mtd0"
 recreate_nand_partitions() {
-  local dst=$1
-  local blocksize=$2
+  local dst="$1"
+  local blocksize="$2"
   local part_no
 
   for part_no in /dev/mtd*; do
