@@ -42,6 +42,9 @@ message SetBacklightBrightnessRequest {
     MODEL = 1;
     // User request via the Settings app.
     USER_REQUEST_FROM_SETTINGS_APP = 2;
+    // Brightness was restored to the previous user preference (typically on the
+    // login screen).
+    RESTORED_FROM_USER_PREFERENCE = 3;
   }
   optional Cause cause = 3;
 
@@ -89,7 +92,10 @@ message BacklightBrightnessChange {
     BATTERY_SAVER_STATE_CHANGED = 13;
     // User request via the Settings app.
     USER_REQUEST_FROM_SETTINGS_APP = 14;
-    // Next value to use: 15
+    // Brightness was restored to the previous user preference (typically on the
+    // login screen).
+    RESTORED_FROM_USER_PREFERENCE = 15;
+    // Next value to use: 16
   }
   optional Cause cause = 2;
 

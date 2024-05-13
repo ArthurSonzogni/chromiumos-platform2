@@ -691,12 +691,19 @@ void InternalBacklightController::HandleSetBrightnessRequest(
       change_cause =
           BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP;
       break;
+    case SetBacklightBrightnessRequest_Cause_RESTORED_FROM_USER_PREFERENCE:
+      cause_str = "restored-from-user-preference";
+      change_cause =
+          BacklightBrightnessChange_Cause_RESTORED_FROM_USER_PREFERENCE;
+      break;
   }
 
   LOG(INFO) << "Got " << cause_str << " request to set brightness to "
             << percent << "%";
   bool user_triggered_change =
-      cause != SetBacklightBrightnessRequest_Cause_MODEL;
+      cause != SetBacklightBrightnessRequest_Cause_MODEL &&
+      cause !=
+          SetBacklightBrightnessRequest_Cause_RESTORED_FROM_USER_PREFERENCE;
   if (user_triggered_change) {
     user_adjustment_count_++;
   }
