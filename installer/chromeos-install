@@ -846,8 +846,7 @@ get_recovery_key_version() {
   set +e
 
   # Read the flashrom.
-  flashrom -i GBB:"${tmpflash}" -r >&2
-  if [ "$?" -ne 0 ]; then
+  if ! flashrom -i GBB:"${tmpflash}" -r >&2; then
     echo "Failed to read flashrom, defaulting to recovery key version=\"1\"" >&2
     # Default.
     echo "1"
