@@ -24,13 +24,14 @@ static_library("missive_client") {
     "missive_client.cc",
     "missive_client.h",
     "missive_dbus_constants.h",
+    "missive_storage_module.cc",
+    "missive_storage_module.h",
   ]
   configs += [ ":target_defaults" ]
   deps = [
     "//missive/proto:libmissiveprotointerface",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
-    "//missive/storage:missive_storage_module",
     "//missive/util:disconnectable_client",
     "//missive/util:status",
   ]

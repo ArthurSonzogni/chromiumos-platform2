@@ -20,10 +20,9 @@
 
 #include "missive/client/empty_dm_token_retriever.h"
 #include "missive/client/missive_client.h"
+#include "missive/client/missive_storage_module.h"
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_provider.h"
-#include "missive/storage/missive_storage_module.h"
-#include "missive/storage/missive_storage_module_delegate_impl.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
@@ -113,26 +112,7 @@ void NonChromeReportQueueProvider::CreateMissiveStorageModule(
     return;
   }
   // Refer to the storage module.
-  auto missive_storage_module_delegate =
-      std::make_unique<MissiveStorageModuleDelegateImpl>(
-          base::BindPostTask(missive_client->origin_task_runner(),
-                             base::BindRepeating(&MissiveClient::EnqueueRecord,
-                                                 missive_client->GetWeakPtr())),
-          base::BindPostTask(
-              missive_client->origin_task_runner(),
-              base::BindRepeating(&MissiveClient::Flush,
-                                  missive_client->GetWeakPtr())));
-  auto missive_storage_module =
-      MissiveStorageModule::Create(std::move(missive_storage_module_delegate));
-  if (!missive_storage_module) {
-    std::move(cb).Run(
-        base::unexpected(Status(error::FAILED_PRECONDITION,
-                                "Missive Storage Module failed to create")));
-    return;
-  }
-  LOG(WARNING) << "Store reporting data by a Missive daemon";
-  std::move(cb).Run(missive_storage_module);
-  return;
+  MissiveStorageModule::Create(std::move(cb));
 }
 
 // static
