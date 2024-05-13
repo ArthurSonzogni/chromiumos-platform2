@@ -36,26 +36,26 @@ STATEFUL_FORMAT=
 # this script.
 
 DEFINE_string dst "" "Destination device"
-DEFINE_boolean skip_dst_removable ${FLAGS_FALSE} \
+DEFINE_boolean skip_dst_removable "${FLAGS_FALSE}" \
   "Skip check to ensure destination is not removable"
-DEFINE_boolean skip_rootfs ${FLAGS_FALSE} \
+DEFINE_boolean skip_rootfs "${FLAGS_FALSE}" \
   "Skip installing the rootfs; Only set up partition table and clear and \
 reinstall the stateful partition."
-DEFINE_boolean yes ${FLAGS_FALSE} \
+DEFINE_boolean yes "${FLAGS_FALSE}" \
   "Answer yes to everything"
-DEFINE_boolean preserve_stateful ${FLAGS_FALSE} \
+DEFINE_boolean preserve_stateful "${FLAGS_FALSE}" \
   "Don't create a new filesystem for the stateful partition. Be careful \
 using this option as this may make the stateful partition not mountable."
 DEFINE_string payload_image "" "Path to a Chromium OS image to install onto \
 the device's hard drive"
 DEFINE_string pmbr_code "" "Path to PMBR code to be installed"
 DEFINE_string target_bios "" "Bios type to boot with (see postinst --bios)"
-DEFINE_boolean mtd_layout ${FLAGS_FALSE} "This system uses MTD for \
+DEFINE_boolean mtd_layout "${FLAGS_FALSE}" "This system uses MTD for \
 partitioning rather than GPT"
-DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output"
-DEFINE_boolean large_test_partitions ${FLAGS_FALSE} \
+DEFINE_boolean debug "${FLAGS_FALSE}" "Show debug output"
+DEFINE_boolean large_test_partitions "${FLAGS_FALSE}" \
   "Make partitions 9 and 10 large (for filesystem testing)"
-DEFINE_boolean skip_postinstall ${FLAGS_FALSE} \
+DEFINE_boolean skip_postinstall "${FLAGS_FALSE}" \
   "Skip postinstall for situations where you're building for a \
 non-native arch. Note that this will probably break verity."
 DEFINE_string lab_preserve_logs "" "Path to a file containing logs to be \
@@ -303,11 +303,16 @@ write_partition() {
       dd_cache_arg="iflag=nocache"
     fi
 
+    # dd_cache_arg intentionally not quoted to avoid adding empty arg if unset.
+    # shellcheck disable=SC2248
     fast_dd "${user_count}" "${user_seek}" "${user_skip}" \
       "${chunk_num}" "${total_chunks}" if="${src}" of="${dst}" conv=notrunc \
       ${dd_cache_arg}
 
     # Incantation to advise the kernel to drop cache on the whole dst.
+    #
+    # dd_cache_arg intentionally not quoted to avoid adding empty arg if unset.
+    # shellcheck disable=SC2248
     dd if="${dst}" ${dd_cache_arg} count=0 status=none
     ;;
   esac
@@ -553,8 +558,8 @@ mkfs() {
   # We always make any ext* stateful partitions ext4.
   case "${fs_format}" in
   ext[234])
-    mkfs.ext4 -F -b ${sector_size} -L "${label}" "$@" "${device}" \
-      ${num_4k_sectors}
+    mkfs.ext4 -F -b "${sector_size}" -L "${label}" "$@" "${device}" \
+      "${num_4k_sectors}"
     ;;
   ubifs)
     mkfs.ubifs -y -x none -R 0 "/dev/ubi${PARTITION_NUM_STATE}_0"
@@ -626,6 +631,9 @@ wipe_stateful() {
     DEV="/dev/${vg_name}/unencrypted"
   fi
 
+  # NUM_STATEFUL_SECTORS intentionally not quoted to avoid adding empty arg
+  # if unset.
+  # shellcheck disable=SC2248
   mkfs "${stateful_fs_format}" ${NUM_STATEFUL_SECTORS} "${DEV}" "H-STATE"
 
   case ${STATEFUL_FORMAT} in
@@ -779,7 +787,7 @@ install_stateful() {
     # See chromeos_startup for the companion code that checks for this
     # file.
     #
-    touch ${TMPMNT}/.developer_mode
+    touch "${TMPMNT}"/.developer_mode
   fi
 
   if [ -n "${IS_RECOVERY_INSTALL-}" ] ; then
@@ -1061,7 +1069,7 @@ do_post_install() {
   # script had better not try to access it, for the reasons we just gave.
   # We can't run this if the target arch isn't the same as the host arch
   if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
-    if [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
+    if [ "${FLAGS_mtd_layout}" -eq "${FLAGS_TRUE}" ]; then
       if ! [ -b "/dev/ubiblock${PARTITION_NUM_ROOT_A}_0" ]; then
         ubiblock -c "/dev/ubi${PARTITION_NUM_ROOT_A}_0"
       fi
