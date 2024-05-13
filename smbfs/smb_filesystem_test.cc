@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/run_loop.h>
+#include <base/test/test_future.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -121,31 +122,31 @@ TEST_F(SmbFilesystemTest, MaybeUpdateCredentials_NoRequest) {
 TEST_F(SmbFilesystemTest, MaybeUpdateCredentials_RequestOnEPERM) {
   TestSmbFilesystem fs;
 
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   EXPECT_CALL(fs.delegate(), RequestCredentials(_))
       .WillOnce([&](MockDelegate::RequestCredentialsCallback callback) {
         std::move(callback).Run(std::make_unique<SmbCredential>(
             "" /* workgroup */, kUsername, nullptr));
-        run_loop.Quit();
+        future.SetValue();
       });
   EXPECT_CALL(*(fs.samba_impl()), UpdateCredentials(_)).Times(1);
   fs.MaybeUpdateCredentials(EPERM);
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 TEST_F(SmbFilesystemTest, MaybeUpdateCredentials_RequestOnEACCES) {
   TestSmbFilesystem fs;
 
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   EXPECT_CALL(fs.delegate(), RequestCredentials(_))
       .WillOnce([&](MockDelegate::RequestCredentialsCallback callback) {
         std::move(callback).Run(std::make_unique<SmbCredential>(
             "" /* workgroup */, kUsername, nullptr));
-        run_loop.Quit();
+        future.SetValue();
       });
   EXPECT_CALL(*(fs.samba_impl()), UpdateCredentials(_)).Times(1);
   fs.MaybeUpdateCredentials(EACCES);
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 TEST_F(SmbFilesystemTest, MaybeUpdateCredentials_NoDelegate) {
@@ -167,15 +168,15 @@ TEST_F(SmbFilesystemTest, MaybeUpdateCredentials_OnlyOneRequest) {
 TEST_F(SmbFilesystemTest, MaybeUpdateCredentials_IgnoreEmptyResponse) {
   TestSmbFilesystem fs;
 
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
   EXPECT_CALL(fs.delegate(), RequestCredentials(_))
       .WillOnce([&](MockDelegate::RequestCredentialsCallback callback) {
         std::move(callback).Run(nullptr);
-        run_loop.Quit();
+        future.SetValue();
       });
   EXPECT_CALL(*(fs.samba_impl()), UpdateCredentials(_)).Times(0);
   fs.MaybeUpdateCredentials(EACCES);
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 }
 
 }  // namespace smbfs
