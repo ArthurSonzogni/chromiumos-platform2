@@ -22,29 +22,34 @@ class ForwardingService {
   struct ForwardingSet {
     bool ipv6;
     bool multicast;
+    bool broadcast;
 
     bool operator==(const ForwardingSet& b) const {
-      return ipv6 == b.ipv6 && multicast == b.multicast;
+      return ipv6 == b.ipv6 && multicast == b.multicast &&
+             broadcast == b.broadcast;
     }
   };
 
-  // Starts IPv6 and multicast forwarding as specified in |fs| between the
-  // upstream |shill_device| and the dowsntream interface or guest
+  // Starts IPv6, broadcast and multicast forwarding as specified in |fs|
+  // between the upstream |shill_device| and the dowsntream interface or guest
   // |ifname_virtual|.
   virtual void StartForwarding(const ShillClient::Device& shill_device,
                                const std::string& ifname_virtual,
                                const ForwardingSet& fs = {.ipv6 = true,
-                                                          .multicast = true},
+                                                          .multicast = true,
+                                                          .broadcast = true},
                                std::optional<int> mtu = std::nullopt,
                                std::optional<int> hop_limit = std::nullopt) = 0;
 
-  // Stops IPv6 and multicast forwarding as specified in |fs| between the
-  // upstream |shill_device| and the dowsntream interface or guest
+  // Stops IPv6, broadcast and multicast forwarding as specified in |fs|
+  // between the upstream |shill_device| and the dowsntream interface or guest
   // |ifname_virtual|.
   virtual void StopForwarding(const ShillClient::Device& shill_device,
                               const std::string& ifname_virtual,
                               const ForwardingSet& fs = {
-                                  .ipv6 = true, .multicast = true}) = 0;
+                                  .ipv6 = true,
+                                  .multicast = true,
+                                  .broadcast = true}) = 0;
 };
 
 }  // namespace patchpanel

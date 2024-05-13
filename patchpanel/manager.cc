@@ -1325,14 +1325,25 @@ void Manager::StartForwarding(const ShillClient::Device& shill_device,
     ipv6_svc_->StartForwarding(shill_device, ifname_virtual, mtu, hop_limit);
   }
 
-  if (fs.multicast && IsMulticastInterface(shill_device.ifname)) {
+  if ((fs.multicast && IsMulticastInterface(shill_device.ifname)) ||
+      fs.broadcast) {
     ControlMessage cm;
     DeviceMessage* msg = cm.mutable_device_message();
     msg->set_dev_ifname(shill_device.ifname);
     msg->set_br_ifname(ifname_virtual);
 
-    LOG(INFO) << "Starting multicast forwarding from " << shill_device << " to "
-              << ifname_virtual;
+    if (fs.multicast) {
+      msg->set_multicast(true);
+      LOG(INFO) << "Starting multicast forwarding from " << shill_device
+                << " to " << ifname_virtual;
+    }
+
+    if (fs.broadcast) {
+      msg->set_broadcast(true);
+      LOG(INFO) << "Starting broadcast forwarding from " << shill_device
+                << " to " << ifname_virtual;
+    }
+
     mcast_proxy_->SendControlMessage(cm);
   }
 }
@@ -1351,18 +1362,33 @@ void Manager::StopForwarding(const ShillClient::Device& shill_device,
     }
   }
 
+  if (!fs.multicast && !fs.broadcast) {
+    return;
+  }
+  ControlMessage cm;
+  DeviceMessage* msg = cm.mutable_device_message();
+  msg->set_dev_ifname(shill_device.ifname);
+  msg->set_teardown(true);
+  if (!ifname_virtual.empty()) {
+    msg->set_br_ifname(ifname_virtual);
+  }
+
   if (fs.multicast) {
-    ControlMessage cm;
-    DeviceMessage* msg = cm.mutable_device_message();
-    msg->set_dev_ifname(shill_device.ifname);
-    msg->set_teardown(true);
-    if (!ifname_virtual.empty()) {
-      msg->set_br_ifname(ifname_virtual);
-    }
+    msg->set_multicast(true);
     if (ifname_virtual.empty()) {
       LOG(INFO) << "Stopping multicast forwarding on " << shill_device;
     } else {
       LOG(INFO) << "Stopping multicast forwarding from " << shill_device
+                << " to " << ifname_virtual;
+    }
+  }
+
+  if (fs.broadcast) {
+    msg->set_broadcast(true);
+    if (ifname_virtual.empty()) {
+      LOG(INFO) << "Stopping broadcast forwarding on " << shill_device;
+    } else {
+      LOG(INFO) << "Stopping broadcast forwarding from " << shill_device
                 << " to " << ifname_virtual;
     }
     mcast_proxy_->SendControlMessage(cm);

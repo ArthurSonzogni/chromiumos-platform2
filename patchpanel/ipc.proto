@@ -38,8 +38,9 @@ message FeedbackMessage {
 message DeviceMessage {
   required string dev_ifname = 1;
   optional string br_ifname = 2;
-  optional bool teardown = 3;  // value is ignored
-  optional bool force_local_next_hop = 4;
+  optional bool teardown = 3;   // value is ignored
+  optional bool multicast = 4;  // value is ignored
+  optional bool broadcast = 5;  // value is ignored
 }
 
 message GuestMessage {

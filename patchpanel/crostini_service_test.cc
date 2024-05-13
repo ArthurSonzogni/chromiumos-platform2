@@ -41,7 +41,8 @@ namespace {
 
 // CrostiniService always calls ForwardingService with the same configuration.
 constexpr ForwardingService::ForwardingSet kForwardingSet =
-    ForwardingService::ForwardingSet{.ipv6 = true, .multicast = true};
+    ForwardingService::ForwardingSet{
+        .ipv6 = true, .multicast = true, .broadcast = true};
 
 MATCHER_P(ShillDeviceHasInterfaceName, expected_ifname, "") {
   return arg.ifname == expected_ifname;
