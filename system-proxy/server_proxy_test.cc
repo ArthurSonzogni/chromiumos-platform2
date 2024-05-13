@@ -20,6 +20,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/test/test_future.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/net-base/socket.h>
@@ -191,16 +192,14 @@ TEST_F(ServerProxyTest, HandleConnectRequest) {
   ipv4addr.sin_port = htons(kTestPort);
   ipv4addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-  base::RunLoop run_loop;
-  server_proxy_->RunAfterOnConnectionAccept(run_loop.QuitClosure());
+  base::test::TestFuture<void> future;
+  server_proxy_->RunAfterOnConnectionAccept(future.GetCallback());
 
   std::unique_ptr<net_base::Socket> client_socket =
       net_base::Socket::Create(AF_INET, SOCK_STREAM);
   EXPECT_TRUE(client_socket->Connect((const struct sockaddr*)&ipv4addr,
                                      sizeof(ipv4addr)));
-  // This loop will stop once a connection request is processed and added to the
-  // queue.
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   EXPECT_EQ(1, server_proxy_->pending_connect_jobs_.size());
   const std::string_view http_req =
@@ -309,16 +308,14 @@ TEST_F(ServerProxyTest, HandleCanceledJobWhilePendingProxyResolution) {
   ipv4addr.sin_port = htons(3129);
   ipv4addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-  base::RunLoop run_loop;
-  server_proxy_->RunAfterOnConnectionAccept(run_loop.QuitClosure());
+  base::test::TestFuture<void> future;
+  server_proxy_->RunAfterOnConnectionAccept(future.GetCallback());
 
   std::unique_ptr<net_base::Socket> client_socket =
       net_base::Socket::Create(AF_INET, SOCK_STREAM);
   EXPECT_TRUE(client_socket->Connect((const struct sockaddr*)&ipv4addr,
                                      sizeof(ipv4addr)));
-  // This loop will stop once a connection request is processed and added to the
-  // queue.
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   EXPECT_EQ(1, server_proxy_->pending_connect_jobs_.size());
   const std::string_view http_req =
