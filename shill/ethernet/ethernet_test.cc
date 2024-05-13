@@ -17,7 +17,7 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/run_loop.h>
+#include <base/test/test_future.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
@@ -185,24 +185,24 @@ class EthernetTest : public testing::Test {
         .WillOnce(Return(mock_service_));
     EXPECT_CALL(ethernet_provider_, RegisterService(Eq(mock_service_)));
     EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(ifindex_, IFF_UP, IFF_UP));
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     ethernet_->Start(base::BindOnce(&EthernetTest::OnEnabledStateChanged,
-                                    run_loop.QuitClosure()));
-    run_loop.Run();
+                                    future.GetCallback()));
+    EXPECT_TRUE(future.Wait());
   }
   void StopEthernet() {
     EXPECT_CALL(ethernet_provider_, DeregisterService(Eq(mock_service_)));
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     ethernet_->Stop(base::BindOnce(&EthernetTest::OnEnabledStateChanged,
-                                   run_loop.QuitClosure()));
-    run_loop.Run();
+                                   future.GetCallback()));
+    EXPECT_TRUE(future.Wait());
   }
   void SetUsbEthernetMacAddressSource(const std::string& source,
                                       ResultCallback callback) {
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     ethernet_->SetUsbEthernetMacAddressSource(
-        source, std::move(callback).Then(run_loop.QuitClosure()));
-    run_loop.Run();
+        source, std::move(callback).Then(future.GetCallback()));
+    EXPECT_TRUE(future.Wait());
   }
   std::string GetUsbEthernetMacAddressSource(Error* error) {
     return ethernet_->GetUsbEthernetMacAddressSource(error);
