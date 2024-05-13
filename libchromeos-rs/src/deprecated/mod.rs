@@ -5,14 +5,12 @@
 //! Modules brought over from sys_util before it was reworked into crosvm-base that are no longer
 //! maintained. Please do not use these for any new code.
 
-mod clock;
 mod eventfd;
 mod linux;
 mod poll;
 mod scoped_event_macro;
 pub mod syslog;
 
-pub use clock::*;
 pub use eventfd::*;
 pub use poll::*;
 pub use poll_token_derive::*;
