@@ -115,7 +115,7 @@ bool Platform::DirectoryExists(const std::string& path) const {
 }
 
 bool Platform::Lstat(const std::string& path, base::stat_wrapper_t* out) const {
-  return base::File::Lstat(path.c_str(), out) == 0;
+  return base::File::Lstat(base::FilePath(path), out) == 0;
 }
 
 bool Platform::CreateDirectory(const std::string& path) const {

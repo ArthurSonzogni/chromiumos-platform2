@@ -12,6 +12,7 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_split.h>
@@ -156,12 +157,12 @@ TEST_F(SshfsHelperTest, ConfigureSandbox) {
   ASSERT_TRUE(GetParamValue(args, "UserKnownHostsFile", &hosts_path));
 
   base::stat_wrapper_t stat;
-  EXPECT_EQ(0, base::File::Stat(id_path.c_str(), &stat));
+  EXPECT_EQ(0, base::File::Stat(base::FilePath(id_path), &stat));
   EXPECT_EQ(0600, stat.st_mode & 0777);
-  EXPECT_EQ(0, base::File::Stat(hosts_path.c_str(), &stat));
+  EXPECT_EQ(0, base::File::Stat(base::FilePath(hosts_path), &stat));
   EXPECT_EQ(0600, stat.st_mode & 0777);
   base::FilePath dir = base::FilePath(id_path).DirName();
-  EXPECT_EQ(0, base::File::Stat(dir.value().c_str(), &stat));
+  EXPECT_EQ(0, base::File::Stat(dir, &stat));
   EXPECT_EQ(0770, stat.st_mode & 0777);
 
   std::string data;
