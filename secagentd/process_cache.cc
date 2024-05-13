@@ -207,7 +207,7 @@ VerifyStatAndGenerateImageHash(
     return hash.status();
   }
   base::stat_wrapper_t image_stat;
-  if (base::File::Stat(image_path_in_current_ns.value().c_str(), &image_stat) ||
+  if (base::File::Stat(image_path_in_current_ns, &image_stat) ||
       (image_stat.st_dev != image_key.inode_device_id) ||
       (image_stat.st_ino != image_key.inode) ||
       (image_stat.st_mtim.tv_sec != image_key.mtime.tv_sec) ||
@@ -527,7 +527,7 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
   const base::FilePath proc_pid_dir =
       root_path_.Append(base::StringPrintf("proc/%" PRIu64, key.pid));
   base::stat_wrapper_t pid_dir_stat;
-  if (base::File::Stat(proc_pid_dir.value().c_str(), &pid_dir_stat)) {
+  if (base::File::Stat(proc_pid_dir, &pid_dir_stat)) {
     return absl::NotFoundError(
         base::StrCat({kErrorFailedToStat, proc_pid_dir.value()}));
   }
@@ -740,7 +740,7 @@ absl::Status ProcessCache::FillImageFromProcfs(
   if (!statusorpath.ok()) {
     return statusorpath.status();
   }
-  if (base::File::Stat(statusorpath->value().c_str(), &exe_stat)) {
+  if (base::File::Stat(statusorpath.value(), &exe_stat)) {
     return absl::NotFoundError(
         base::StrCat({kErrorFailedToStat, statusorpath->value()}));
   }
