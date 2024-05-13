@@ -2,7 +2,7 @@
 name = "chromeos-dbus-bindings"
 version = "0.25.52"
 authors = ["The ChromiumOS Authors"]
-edition = "2018"
+edition = "2021"
 include = ["Cargo.toml", "src/lib.rs"]
 
 [dependencies]
