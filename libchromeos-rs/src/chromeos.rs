@@ -4,7 +4,7 @@
 
 //! Implements Chrome OS specific logic such as code that depends on system_api.
 
-use std::ffi::{CString, NulError};
+use std::ffi::{CStr, CString, NulError};
 use std::os::raw::{c_char, c_int};
 use std::path::{Path, PathBuf};
 use std::str::{from_utf8, Utf8Error};
@@ -77,11 +77,11 @@ pub enum CrossystemIntProperty {
     DebugBuild,
 }
 
-impl AsRef<str> for CrossystemIntProperty {
-    fn as_ref(&self) -> &'static str {
+impl AsRef<CStr> for CrossystemIntProperty {
+    fn as_ref(&self) -> &CStr {
         match self {
-            CrossystemIntProperty::CrosDebug => "cros_debug",
-            CrossystemIntProperty::DebugBuild => "debug_build",
+            CrossystemIntProperty::CrosDebug => c"cros_debug",
+            CrossystemIntProperty::DebugBuild => c"debug_build",
         }
     }
 }
@@ -91,10 +91,10 @@ pub enum CrossystemStringProperty {
     Arch,
 }
 
-impl AsRef<str> for CrossystemStringProperty {
-    fn as_ref(&self) -> &'static str {
+impl AsRef<CStr> for CrossystemStringProperty {
+    fn as_ref(&self) -> &CStr {
         match self {
-            CrossystemStringProperty::Arch => "arch",
+            CrossystemStringProperty::Arch => c"arch",
         }
     }
 }
@@ -118,7 +118,7 @@ impl Crossystem {
 
     pub fn get_int_property(&self, property: CrossystemIntProperty) -> Result<c_int> {
         let _guard = CROSSYSTEM_MUTEX.lock().unwrap();
-        let name = CString::new(AsRef::<str>::as_ref(&property)).unwrap();
+        let name = AsRef::<CStr>::as_ref(&property);
 
         // Safe because it doesn't change any system state, mutex guard provides thread safety, and
         // name is owned.
@@ -127,7 +127,7 @@ impl Crossystem {
 
     pub fn get_string_property(&self, property: CrossystemStringProperty) -> Result<String> {
         let _guard = CROSSYSTEM_MUTEX.lock().unwrap();
-        let name = CString::new(AsRef::<str>::as_ref(&property)).unwrap();
+        let name = AsRef::<CStr>::as_ref(&property);
         let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE as usize];
 
         // Safe because it doesn't change any system state, mutex guard provides thread safety, and
@@ -152,7 +152,7 @@ impl Crossystem {
 
     pub fn set_int_property(&self, property: CrossystemIntProperty, value: c_int) -> Result<()> {
         let _guard = CROSSYSTEM_MUTEX.lock().unwrap();
-        let name = CString::new(AsRef::<str>::as_ref(&property)).unwrap();
+        let name = AsRef::<CStr>::as_ref(&property);
 
         // Safe because the mutex guard provides thread safety, and name is owned.
         check_return(unsafe { VbSetSystemPropertyInt(name.as_ptr(), value) }).map(drop)
@@ -164,7 +164,7 @@ impl Crossystem {
         value: &str,
     ) -> Result<()> {
         let _guard = CROSSYSTEM_MUTEX.lock().unwrap();
-        let name = CString::new(AsRef::<str>::as_ref(&property)).unwrap();
+        let name = AsRef::<CStr>::as_ref(&property);
         let value = CString::new(value).map_err(Error::CStringNew)?;
 
         // Safe because the mutex guard provides thread safety, and both name and value are owned.
