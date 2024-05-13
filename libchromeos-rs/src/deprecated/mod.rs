@@ -11,10 +11,8 @@ mod linux;
 mod poll;
 mod scoped_event_macro;
 pub mod syslog;
-mod timerfd;
 
 pub use clock::*;
 pub use eventfd::*;
 pub use poll::*;
 pub use poll_token_derive::*;
-pub use timerfd::*;
