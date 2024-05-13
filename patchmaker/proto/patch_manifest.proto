@@ -1,0 +1,25 @@
+// Copyright 2024 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+message PatchManifestEntry {
+  // Original file name
+  string original_file_name = 1;
+
+  // Base file patch was built against
+  optional string base_file_name = 2;
+
+  // Patch file name
+  optional string patch_file_name = 3;
+
+  // MD5 checksum of original file
+  string original_file_md5_checksum = 4;
+}
+
+message PatchManifest {
+  int64 directory_size_full = 1;
+  int64 directory_size_patched = 2;
+  repeated PatchManifestEntry entry = 3;
+}

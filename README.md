@@ -143,6 +143,7 @@ copies.
 | [os_install_service](./os_install_service/) | Service that can be triggered by the UI to install CrOS to disk from a USB device |
 | [p2p](./p2p/) | Service for sharing files between CrOS devices (e.g. updates) |
 | [parallax](./parallax/) | Visual Analysis Framework |
+| [patchmaker](./patchmaker/) | Utility for bsdiff-encoding a directory of binaries |
 | [patchpanel](./patchpanel/) | Platform networking daemons |
 | [pciguard](./pciguard/) | Daemon to secure external PCI devices (thunderbolt etc) |
 | [perfetto_simple_producer](./perfetto_simple_producer/) | A simple producer of perfetto: An example demonstrating how to produce Perfetto performance trace data |

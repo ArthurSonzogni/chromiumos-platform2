@@ -1,0 +1,15 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [ ":patch-proto" ]
+}
+
+proto_library("patch-proto") {
+  proto_in_dir = "."
+  proto_out_dir = "include/patchmaker/proto_bindings"
+  sources = [ "${proto_in_dir}/patch_manifest.proto" ]
+}

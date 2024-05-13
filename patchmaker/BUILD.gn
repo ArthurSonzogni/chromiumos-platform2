@@ -1,0 +1,55 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("all") {
+  deps = [ ":patchmaker" ]
+  if (use.test) {
+    deps += [ ":patchmaker_test" ]
+  }
+}
+
+pkg_config("target_defaults") {
+  pkg_deps = [
+    "libbrillo",
+    "libbsdiff",
+    "libbspatch",
+    "libchrome",
+    "libzstd",
+    "protobuf",
+  ]
+}
+
+static_library("libpatchmaker") {
+  sources = [
+    "compression_util.cc",
+    "directory_util.cc",
+    "file_util.cc",
+    "managed_directory.cc",
+    "patch_util.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [ "//patchmaker//proto:patch-proto" ]
+}
+
+executable("patchmaker") {
+  sources = [ "patchmaker.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libpatchmaker" ]
+}
+
+if (use.test) {
+  executable("patchmaker_test") {
+    sources = [
+      "compression_util_test.cc",
+      "managed_directory_test.cc",
+      "patch_util_test.cc",
+    ]
+    configs += [ ":target_defaults" ]
+    run_test = true
+    deps = [
+      ":libpatchmaker",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+}
