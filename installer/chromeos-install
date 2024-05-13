@@ -56,8 +56,6 @@ DEFINE_string target_bios "" "Bios type to boot with (see postinst --bios)"
 DEFINE_boolean mtd_layout "${FLAGS_FALSE}" "This system uses MTD for \
 partitioning rather than GPT"
 DEFINE_boolean debug "${FLAGS_FALSE}" "Show debug output"
-DEFINE_boolean large_test_partitions "${FLAGS_FALSE}" \
-  "Make partitions 9 and 10 large (for filesystem testing)"
 DEFINE_boolean skip_postinstall "${FLAGS_FALSE}" \
   "Skip postinstall for situations where you're building for a \
 non-native arch. Note that this will probably break verity."
