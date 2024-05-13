@@ -11,8 +11,11 @@ if [ "${UID:-$(id -u)}" -ne 0 ]; then
 fi
 
 # Load functions and constants for chromeos-install.
+# shellcheck source=../chromeos-common-script/share/chromeos-common.sh
 . /usr/share/misc/chromeos-common.sh || exit 1
+# shellcheck source=../../scripts/lib/shflags/shflags
 . /usr/share/misc/shflags || exit 1
+# shellcheck source=../chromeos-common-script/share/lvm-utils.sh
 . /usr/share/misc/lvm-utils.sh || exit 1
 
 # Source blocksize
@@ -460,6 +463,7 @@ cleanup_on_failure() {
     fi
 
     if [ -f /usr/share/misc/storage-info-common.sh ]; then
+      # shellcheck source=../storage_info/share/storage-info-common.sh
       . /usr/share/misc/storage-info-common.sh
       # Run a few extra diagnostics with output to stdout. These will
       # be stored as part of the recovery.log for recovery images.
@@ -1169,6 +1173,7 @@ main() {
   fi
 
   # Reload the GPT helper functions and the image settings from target root.
+  # shellcheck disable=SC1091
   . "${ROOT}/usr/sbin/write_gpt.sh"
   load_base_vars
 
