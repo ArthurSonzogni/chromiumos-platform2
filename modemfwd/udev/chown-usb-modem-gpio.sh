@@ -11,7 +11,7 @@ OFFSET_LIST=("${@}")
 dir_list=$(find /sys/class/gpio -type l -name "gpiochip*")
 for d in ${dir_list}; do
   DEVICE=$(basename "$(readlink "${d}/device")")
-  if [ "${DEVICE}" == "${GPIO_DEVICE}" ]; then
+  if [ "${DEVICE}" = "${GPIO_DEVICE}" ]; then
     BASE=$(cat "${d}/base")
     break
   fi
@@ -23,7 +23,7 @@ fi
 TEMP="$(basename "${GPIO_BEING_ADDED}")"
 for OFFSET in "${OFFSET_LIST[@]}"; do
   MODEM_RESET_GPIO="gpio$((BASE + OFFSET))"
-  if [ "${MODEM_RESET_GPIO}" == "${TEMP}" ]; then
+  if [ "${MODEM_RESET_GPIO}" = "${TEMP}" ]; then
     /bin/chown modem:modem "${GPIO_BEING_ADDED}"/direction
     /bin/chown modem:modem "${GPIO_BEING_ADDED}"/value
     break

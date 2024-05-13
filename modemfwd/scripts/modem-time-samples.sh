@@ -68,46 +68,58 @@ set_en_gpio() {
 
   echo "$customer"
 
-  if [ "$customer" == "nautilus" ];then
+  case "${customer}" in
+  nautilus)
     echo "it's samsung platform, use EN_GPIO=432"
     EN_GPIO=432
-  elif [ "$customer" == "coral" ];then
+    ;;
+  coral)
     echo "it's acer platform, use EN_GPIO=395"
     EN_GPIO=395
-  elif [ "$customer" == "quanta" ];then
+    ;;
+  quanta)
     echo "it's quanta platform, use EN_GPIO=395"
     EN_GPIO=395
-  elif [ "$customer" == "sarien" ];then
+    ;;
+  sarien)
     echo "it's dell platform, use EN_GPIO=311"
     EN_GPIO=311
-  elif [ "$customer" == "drallion" ];then
+    ;;
+  drallion)
     echo "it's drallion platform, use EN_GPIO=466"
     EN_GPIO=466
-  elif [ "$customer" == "hatch" ];then
+    ;;
+  hatch)
     echo "it's hatch platform, use EN_GPIO=218"
     EN_GPIO=218
-  elif [ "$customer" == "dedede" ];then
+    ;;
+  dedede)
     echo "it's dedede platform, use EN_GPIO=349"
     EN_GPIO=349
-  elif [ "$customer" == "zork" ];then
+    ;;
+  zork)
     echo "it's zork platform, use EN_GPIO=345"
     EN_GPIO=345
-  elif [ "$customer" == "brya" ];then
+    ;;
+  brya)
     echo "it's brya platform, use EN_GPIO=488"
     EN_GPIO=488
-  elif [ "$customer" == "octopus" ];then
+    ;;
+  octopus)
     echo "it's octopus platform, use EN_GPIO=337"
     # EN_GPIO=393
     # set_modem_power "${EN_GPIO_ON}"
     # EN_GPIO=499
     # set_modem_power "${EN_GPIO_ON}"
     EN_GPIO=337
-  else
+    ;;
+  *)
     echo "$customer customer not support"
     # customer="other"
     usage
     exit 0
-  fi
+    ;;
+  esac
 }
 
 last_timestamp="$(get_timestamp)"
