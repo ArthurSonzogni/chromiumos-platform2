@@ -23,6 +23,7 @@
 
 #include "camera3_test/camera3_perf_log.h"
 #include "cros-camera/common.h"
+#include "cros-camera/device_config.h"
 
 namespace camera3_test {
 
@@ -1683,6 +1684,8 @@ class Camera3PortraitRotationTest
   // Rotate |in_buffer| 180 degrees to |out_buffer|.
   int Rotate180(const Image& in_buffer, Image* out_buffer);
 
+  bool IsBoardArcTOrHigher();
+
   int32_t format_;
 
   int32_t width_;
@@ -1724,6 +1727,10 @@ int Camera3PortraitRotationTest::Rotate180(const Image& in_buffer,
       in_buffer.height, libyuv::RotationMode::kRotate180);
 }
 
+bool Camera3PortraitRotationTest::IsBoardArcTOrHigher() {
+  return cros::DeviceConfig::GetArcApiLevel() >= 33;
+}
+
 TEST_P(Camera3PortraitRotationTest, GetFrame) {
   auto test_pattern_modes = GetAvailableColorBarsTestPatternModes();
   ASSERT_FALSE(test_pattern_modes.empty())
@@ -1751,6 +1758,10 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
     // Android only requires 90 to be supported. We additionally check every
     // tested rotation degrees here.
     EXPECT_EQ(modes.count(rotate_and_crop_mode), 1);
+  }
+
+  if (!use_rotate_and_crop_api_ && IsBoardArcTOrHigher()) {
+    GTEST_SKIP() << "ARC-T boards should use ANDROID_SCALER_ROTATE_AND_CROP";
   }
 
   if (cam_device_.GetStaticInfo()->IsFormatAvailable(format_)) {
