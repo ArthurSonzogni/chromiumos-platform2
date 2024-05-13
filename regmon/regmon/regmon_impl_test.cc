@@ -10,9 +10,9 @@
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <regmon/proto_bindings/regmon_service.pb.h>
 
 #include "regmon/metrics/metrics_reporter.h"
-#include "regmon/proto/policy_violation.pb.h"
 
 namespace regmon {
 

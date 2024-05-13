@@ -31,8 +31,5 @@ static_library("dbus_adaptor") {
   ]
   configs += [ ":target_defaults" ]
   public_deps = [ ":regmon_dbus_adaptors" ]
-  deps = [
-    "//regmon/proto:libregmonprotopolicyviolation",
-    "//regmon/regmon:regmon_service",
-  ]
+  deps = [ "//regmon/regmon:regmon_service" ]
 }

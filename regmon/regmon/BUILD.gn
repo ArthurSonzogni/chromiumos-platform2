@@ -9,13 +9,13 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "system_api",
   ]
 }
 
 static_library("regmon_service") {
   sources = [ "regmon_service.h" ]
   configs += [ ":target_defaults" ]
-  deps = [ "//regmon/proto:libregmonprotopolicyviolation" ]
 }
 
 static_library("regmon_impl") {
@@ -24,17 +24,11 @@ static_library("regmon_impl") {
     "regmon_impl.h",
   ]
   configs += [ ":target_defaults" ]
-  deps = [
-    ":regmon_service",
-    "//regmon/proto:libregmonprotopolicyviolation",
-  ]
+  deps = [ ":regmon_service" ]
 }
 
 source_set("unit_tests") {
   sources = [ "regmon_impl_test.cc" ]
-  deps = [
-    ":regmon_impl",
-    "//regmon/proto:libregmonprotopolicyviolation",
-  ]
+  deps = [ ":regmon_impl" ]
   configs += [ ":target_defaults" ]
 }

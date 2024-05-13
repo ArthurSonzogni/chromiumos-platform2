@@ -9,9 +9,9 @@
 #include <utility>
 
 #include <metrics/metrics_library.h>
+#include <regmon/proto_bindings/regmon_service.pb.h>
 
 #include "regmon/metrics/metrics_reporter_impl.h"
-#include "regmon/proto/policy_violation.pb.h"
 #include "regmon/regmon/regmon_service.h"
 
 namespace regmon {

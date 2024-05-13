@@ -9,8 +9,7 @@
 
 #include <brillo/dbus/dbus_method_response.h>
 #include <dbus/bus.h>
-
-#include "regmon/proto/policy_violation.pb.h"
+#include <regmon/proto_bindings/regmon_service.pb.h>
 
 namespace regmon {
 

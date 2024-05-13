@@ -8,8 +8,8 @@
 
 #include <base/logging.h>
 #include <dbus/bus.h>
+#include <regmon/proto_bindings/regmon_service.pb.h>
 
-#include "regmon/proto/policy_violation.pb.h"
 #include "regmon/regmon/regmon_service.h"
 
 namespace regmon {
