@@ -30,7 +30,7 @@ fn empty_fields_that_must_not_be_empty() {
 
         assert!(format!(
             "{}",
-            Rfc5424Message::try_from(sequence_with_empty_field.as_str())
+            Rfc5424Message::try_from(sequence_with_empty_field.as_bytes())
                 .unwrap_err()
                 .chain()
                 .last()
@@ -59,7 +59,7 @@ fn fields_too_long() {
 
         assert!(format!(
             "{}",
-            Rfc5424Message::try_from(too_long_field.as_str())
+            Rfc5424Message::try_from(too_long_field.as_bytes())
                 .unwrap_err()
                 .chain()
                 .last()
@@ -81,7 +81,7 @@ fn fields_contain_non_print_ascii() {
 
         assert!(format!(
             "{}",
-            Rfc5424Message::try_from(with_non_print_field.as_str())
+            Rfc5424Message::try_from(with_non_print_field.as_bytes())
                 .unwrap_err()
                 .chain()
                 .last()
@@ -103,7 +103,7 @@ fn not_enough_fields() {
     assert_eq!(
         format!(
             "{}",
-            Rfc5424Message::try_from(too_few_fields.as_str())
+            Rfc5424Message::try_from(too_few_fields.as_bytes())
                 .unwrap_err()
                 .chain()
                 .last()
@@ -116,7 +116,7 @@ fn not_enough_fields() {
     assert_eq!(
         format!(
             "{}",
-            Rfc5424Message::try_from(no_space)
+            Rfc5424Message::try_from(no_space.as_bytes())
                 .unwrap_err()
                 .chain()
                 .last()
@@ -183,7 +183,7 @@ fn rfc_examples() {
                 .unwrap()
                 .and_utc(),
         },
-        Rfc5424Message::try_from(example_with_bom.as_str()).unwrap()
+        Rfc5424Message::try_from(example_with_bom.as_bytes()).unwrap()
     );
 
     const SECONDS_IN_HOUR: i32 = 3600;
@@ -203,7 +203,7 @@ fn rfc_examples() {
                 .unwrap()
                 .to_utc(),
         },
-        Rfc5424Message::try_from(example_without_structured_data).unwrap()
+        Rfc5424Message::try_from(example_without_structured_data.as_bytes()).unwrap()
     );
 
     let example_with_bom_and_structured_data = format!(
@@ -225,7 +225,7 @@ fn rfc_examples() {
                 .unwrap()
                 .and_utc(),
         },
-        Rfc5424Message::try_from(example_with_bom_and_structured_data.as_str()).unwrap()
+        Rfc5424Message::try_from(example_with_bom_and_structured_data.as_bytes()).unwrap()
     );
 
     let example_only_structured_data = "<165>1 2003-10-11T22:14:15.003Z \
@@ -244,7 +244,7 @@ fn rfc_examples() {
                 .unwrap()
                 .and_utc(),
         },
-        Rfc5424Message::try_from(example_only_structured_data).unwrap()
+        Rfc5424Message::try_from(example_only_structured_data.as_bytes()).unwrap()
     );
 }
 
@@ -448,4 +448,16 @@ fn extract_structured_data_and_messages_invalid() {
             context
         );
     }
+}
+
+#[test]
+fn must_be_utf8() {
+    let utf16_data: Vec<u8> = vec![0xf7, 0xbf, 0xbf, 0xbf];
+    assert_eq!(
+        format!(
+            "{}",
+            Rfc5424Message::try_from(utf16_data.as_slice()).unwrap_err()
+        ),
+        "RFC 5424 data must be valid UTF-8"
+    );
 }

@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use std::path::Path;
-use std::str::Utf8Error;
 
 use anyhow::{bail, Context, Result};
 use thiserror::Error as ThisError;
@@ -15,10 +14,6 @@ use crate::intake_queue::Writer;
 enum ProcessMessageError {
     #[error("Received empty message")]
     EmptyMessage,
-    #[error("Received message longer than buffer size and now contains invalid UTF-8: {0}")]
-    MsgExceedsBufSize(Utf8Error),
-    #[error("Couldn't convert bytes to UTF-8 because: {0}")]
-    InvalidUtf8(Utf8Error),
     #[error("Can't put messages into queue anymore: {0}")]
     QueueClosed(#[from] tokio::sync::mpsc::error::SendError<crate::message::Message>),
 }
@@ -100,8 +95,6 @@ impl UnixSocket {
     }
 
     async fn process_message(&self, buf: &[u8]) -> Result<(), ProcessMessageError> {
-        use std::str;
-
         use crate::syslog::{Rfc3164Message, Rfc5424Message, SyslogMessage};
 
         use ProcessMessageError::*;
@@ -110,25 +103,11 @@ impl UnixSocket {
             return Err(EmptyMessage);
         }
 
-        let data = match str::from_utf8(buf) {
-            Ok(msg) => msg,
-            Err(err) => {
-                if buf.len() == Self::BUF_SIZE {
-                    return Err(MsgExceedsBufSize(err));
-                } else {
-                    return Err(InvalidUtf8(err));
-                }
-            }
-        };
-
-        let message: Box<dyn SyslogMessage> = match Rfc5424Message::try_from(data) {
+        let message: Box<dyn SyslogMessage> = match Rfc5424Message::try_from(buf) {
             Ok(msg) => Box::new(msg),
             Err(err) => {
                 log::trace!("Failed to parse message as RFC 5424 because: {err:#}");
-                Box::new(
-                    data.parse::<Rfc3164Message>()
-                        .unwrap_or_else(|e| match e {}),
-                )
+                Box::new(Rfc3164Message::from(buf))
             }
         };
 

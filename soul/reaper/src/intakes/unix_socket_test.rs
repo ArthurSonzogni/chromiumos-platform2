@@ -62,28 +62,21 @@ async fn larger_than_buf_message() {
     let mut harness = Harness::new(2);
 
     const LARGER_THAN_BUF: usize = UnixSocket::BUF_SIZE + 1;
-    harness
-        .sender
-        .send(&['0' as u8; LARGER_THAN_BUF])
-        .await
-        .unwrap();
+    harness.sender.send(&[0; LARGER_THAN_BUF]).await.unwrap();
     let message = harness.queue.next().await.unwrap();
 
     assert!(message.message.len() < LARGER_THAN_BUF);
     assert_eq!(message.message.len(), UnixSocket::BUF_SIZE);
 
-    // Cutting of the last 0x80 creates an invalid UTF8 string.
+    // Cutting of the last 0x80 creates an invalid UTF-8 string.
     let b = [0xee, 0x80, 0x80, 0xee, 0x80, 0x80];
     let cutoff_buf_size = UnixSocket::BUF_SIZE - b.len() + 1;
     let mut cutoff_buf = vec![0u8; cutoff_buf_size];
     cutoff_buf.extend_from_slice(&b);
     harness.sender.send(&cutoff_buf).await.unwrap();
-    let cutoff_message = time::timeout(Duration::from_millis(1000), harness.queue.next()).await;
+    let cutoff_message = harness.queue.next().await.unwrap();
 
-    assert_eq!(
-        format!("{}", cutoff_message.unwrap_err()),
-        "deadline has elapsed"
-    );
+    assert!(!cutoff_message.message.ends_with(&b));
 }
 
 #[tokio::test]
@@ -111,7 +104,7 @@ async fn rfc3164_message() {
         Message {
             application_name: "test3164".into(),
             facility: Facility::Kern,
-            message: " Sending to unix socket".into(),
+            message: (*b" Sending to unix socket").into(),
             severity: Severity::Emergency,
             timestamp: NaiveDate::from_ymd_opt(1970, 4, 1)
                 .unwrap()
@@ -131,7 +124,7 @@ async fn rfc3164_message() {
         Message {
             application_name: "".into(),
             facility: Facility::User,
-            message: "0>Apr  1 12:34:56 localhost test3164 Sending to unix socket".into(),
+            message: (*b"0>Apr  1 12:34:56 localhost test3164 Sending to unix socket").into(),
             severity: Severity::Notice,
             timestamp: NaiveDate::from_ymd_opt(1970, 1, 1)
                 .unwrap()
@@ -156,7 +149,7 @@ async fn rfc5142_message() {
         Message {
             application_name: "myproc".into(),
             facility: Facility::Local4,
-            message: "%% It's time to make the do-nuts.".into(),
+            message: (*b"%% It's time to make the do-nuts.").into(),
             severity: Severity::Notice,
             timestamp: chrono::DateTime::parse_from_rfc3339("2003-08-24T05:14:15.000003-07:00")
                 .unwrap()
@@ -178,9 +171,10 @@ async fn rfc5142_message() {
         Message {
             application_name: "".into(),
             facility: Facility::Local4,
-            message: "1 2003-08-24T05:14:15.000003-07:00 192.0.2.1 myproc 8710 -  %% It's time to \
-                 make the do-nuts."
-                .into(),
+            message:
+                (*b"1 2003-08-24T05:14:15.000003-07:00 192.0.2.1 myproc 8710 -  %% It's time to \
+                 make the do-nuts.")
+                    .into(),
             severity: Severity::Notice,
             timestamp: chrono::DateTime::UNIX_EPOCH,
         }
@@ -196,10 +190,14 @@ async fn utf16_data() {
         .send(&[0xf7, 0xbf, 0xbf, 0xbf])
         .await
         .unwrap();
-    let no_message = time::timeout(Duration::from_millis(1000), harness.queue.next()).await;
-
     assert_eq!(
-        format!("{}", no_message.unwrap_err()),
-        "deadline has elapsed"
+        harness.queue.next().await.unwrap(),
+        Message {
+            application_name: "".into(),
+            facility: Facility::User,
+            message: [0xf7, 0xbf, 0xbf, 0xbf].into(),
+            severity: Severity::Notice,
+            timestamp: chrono::DateTime::UNIX_EPOCH,
+        }
     );
 }

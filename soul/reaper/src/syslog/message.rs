@@ -10,7 +10,7 @@ pub use crate::syslog::{Facility, Severity};
 pub trait SyslogMessage: Send {
     fn application_name(&self) -> &str;
     fn facility(&self) -> Facility;
-    fn message(&self) -> &str;
+    fn message(&self) -> &[u8];
     fn severity(&self) -> Severity;
     fn timestamp(&self) -> DateTime<Utc>;
 }

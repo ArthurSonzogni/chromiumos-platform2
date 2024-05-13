@@ -4,7 +4,7 @@
 
 use std::cmp::PartialEq;
 use std::fmt::{Debug, Error, Formatter};
-use std::str::FromStr;
+use std::str;
 
 use anyhow::{bail, ensure, Context, Result};
 use chrono::{DateTime, Datelike, NaiveDate, Utc};
@@ -37,7 +37,7 @@ use crate::syslog::{Facility, Severity, SyslogMessage};
 pub struct Rfc3164Message {
     application_name: Box<str>,
     facility: Facility,
-    message: String,
+    message: Box<[u8]>,
     message_offset: usize,
     severity: Severity,
     /// The RFC requires the timestamp to be in local time but since we will use only UTC from here
@@ -72,7 +72,7 @@ impl Default for Rfc3164Message {
         Rfc3164Message {
             application_name: Box::from(""),
             facility: pri.facility(),
-            message: "".into(),
+            message: [].into(),
             message_offset: 0,
             severity: pri.severity(),
             timestamp: current_time(),
@@ -112,7 +112,7 @@ impl SyslogMessage for Rfc3164Message {
         self.facility
     }
 
-    fn message(&self) -> &str {
+    fn message(&self) -> &[u8] {
         &self.message[self.message_offset..]
     }
 
@@ -138,27 +138,30 @@ impl Rfc3164Message {
     ///
     /// Any characters which aren't printable, i.e. control characters, will be escaped. For this
     /// instance the collector acts as a relay fixing the otherwise invalid message it received.
-    fn parse(&mut self, data: &str) -> Result<()> {
-        self.message.clear();
-
+    fn parse(&mut self, data: &[u8]) -> Result<()> {
         ensure!(!data.is_empty(), "Empty messages are invalid");
 
-        self.message.reserve(data.len());
-        for c in data.chars() {
-            if c.is_control() {
-                self.message.extend(c.escape_default());
-            } else {
-                self.message.push(c);
-            }
-        }
+        self.message = Box::from(data);
 
-        let (pri, remaining) =
-            syslog_message::parse_pri(&self.message).context("Didn't find valid PRI")?;
+        let text = match str::from_utf8(data) {
+            Ok(s) => s,
+            Err(err) => {
+                let valid = err.valid_up_to();
+                log::warn!(
+                    "Failed to parse data after {valid} bytes as UTF-8. Skipping message \
+                    validation for the remaining {} bytes",
+                    data.len() - valid
+                );
+                str::from_utf8(&data[..valid]).expect("UTF-8 error indicated valid position")
+            }
+        };
+
+        let (pri, remaining) = syslog_message::parse_pri(text).context("Didn't find valid PRI")?;
 
         self.facility = pri.facility();
         self.severity = pri.severity();
 
-        self.message_offset += self.message.len() - remaining.len();
+        self.message_offset += text.len() - remaining.len();
 
         let ts_str = remaining
             .get(..TIMESTAMP_LEN)
@@ -205,6 +208,23 @@ impl Rfc3164Message {
             .context("Couldn't get tag from offset")?
             .into();
         self.message_offset += tag_offset + 1;
+
+        if data.len() == text.len() {
+            let mut message = String::with_capacity(data.len() - self.message_offset);
+            for c in text
+                .get(self.message_offset..)
+                .context("Couldn't get valid range from current message offset")?
+                .chars()
+            {
+                if c.is_control() {
+                    message.extend(c.escape_default());
+                } else {
+                    message.push(c);
+                }
+            }
+            self.message_offset = 0;
+            self.message = message.into_bytes().into();
+        }
 
         Ok(())
     }
@@ -305,10 +325,8 @@ fn parse_timestamp(text: &str) -> Result<DateTime<Utc>> {
     Ok(utc_date)
 }
 
-impl FromStr for Rfc3164Message {
-    type Err = core::convert::Infallible;
-
-    fn from_str(data: &str) -> Result<Self, Self::Err> {
+impl From<&[u8]> for Rfc3164Message {
+    fn from(data: &[u8]) -> Self {
         if data.len() > 1024 {
             log::warn!("Received message longer than 1024 bytes. This is a violation of the RFC");
         }
@@ -316,7 +334,7 @@ impl FromStr for Rfc3164Message {
         if let Err(err) = message.parse(data) {
             log::warn!("Received message but failed to fully parse: {err:#}");
         }
-        Ok(message)
+        message
     }
 }
 

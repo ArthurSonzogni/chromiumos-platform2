@@ -14,7 +14,7 @@ pub struct Message {
     /// Also called `tag` in syslog lingo.
     pub application_name: Box<str>,
     pub facility: Facility,
-    pub message: Box<str>,
+    pub message: Box<[u8]>,
     pub severity: Severity,
     pub timestamp: DateTime<Utc>,
 }
@@ -43,18 +43,18 @@ impl From<Box<dyn SyslogMessage>> for Message {
     }
 }
 
-/// For non-test configs the returned string will always be `(redacted)`.
+/// For non-test configs the returned data will always be the string `(redacted)`.
 ///
 /// This is to prevent accidental leakage of message contents while processing.
 /// The test config version of this method returns the full `message` input
 /// to aid with debugging.
 #[cfg(not(test))]
-pub fn redact(_message: &str) -> &str {
-    "(redacted)"
+pub fn redact(_message: &[u8]) -> &[u8] {
+    b"(redacted)"
 }
 
 #[cfg(test)]
-pub fn redact(message: &str) -> &str {
+pub fn redact(message: &[u8]) -> &[u8] {
     message
 }
 
@@ -66,7 +66,7 @@ pub mod tests {
         Message {
             application_name: Box::from("unit test"),
             facility: Facility::User,
-            message: Box::from("running a unit test"),
+            message: (*b"running a unit test").into(),
             severity: Severity::Informational,
             timestamp: chrono::offset::Utc::now(),
         }

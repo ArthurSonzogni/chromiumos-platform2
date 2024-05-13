@@ -59,8 +59,8 @@ impl SyslogMessage for Rfc5424Message {
         self.facility
     }
 
-    fn message(&self) -> &str {
-        &self.message
+    fn message(&self) -> &[u8] {
+        self.message.as_bytes()
     }
 
     fn severity(&self) -> Severity {
@@ -239,7 +239,7 @@ fn split_structured_data_and_message(text: &str) -> Result<(&str, &str)> {
     }
 }
 
-impl TryFrom<&str> for Rfc5424Message {
+impl TryFrom<&[u8]> for Rfc5424Message {
     type Error = anyhow::Error;
 
     // PRI VER SP TS SP HOST SP APP SP PROCID SP MSGID SP STRUCTD-DATA [SP MSG]
@@ -247,11 +247,13 @@ impl TryFrom<&str> for Rfc5424Message {
     //   1   2     3       4      5         6        7
     // Array index:
     // 0          1     2       3      4         5        6
-    fn try_from(data: &str) -> Result<Self> {
+    fn try_from(data: &[u8]) -> Result<Self> {
+        let text = std::str::from_utf8(data).context("RFC 5424 data must be valid UTF-8")?;
+
         const NUM_HEADER_FIELDS: usize = 6;
         // +1 here so we get the remaining content in the last element of the
         // vector.
-        let mut fields: Vec<&str> = data
+        let mut fields: Vec<&str> = text
             .splitn(NUM_HEADER_FIELDS + 1, FIELD_SEPARATOR)
             .collect();
 

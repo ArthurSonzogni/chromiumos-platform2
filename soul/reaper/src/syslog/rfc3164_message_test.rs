@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::str::FromStr;
-
 use chrono::{Datelike, NaiveDate, TimeDelta, Utc};
 
 use super::*;
@@ -17,7 +15,7 @@ fn rfc_examples() {
             Rfc3164Message {
                 application_name: "su".into(),
                 facility: Facility::Auth,
-                message: ": 'su root' failed for lonvick on /dev/pts/8".into(),
+                message: (*b": 'su root' failed for lonvick on /dev/pts/8").into(),
                 message_offset: 0,
                 severity: Severity::Critical,
                 timestamp: NaiveDate::from_ymd_opt(current_time().year(), 10, 11)
@@ -30,7 +28,7 @@ fn rfc_examples() {
         (
             "Use the BFG!",
             Rfc3164Message {
-                message: "Use the BFG!".into(),
+                message: (*b"Use the BFG!").into(),
                 ..Default::default()
             },
         ),
@@ -39,7 +37,7 @@ fn rfc_examples() {
             Rfc3164Message {
                 application_name: "Use".into(),
                 facility: Facility::User,
-                message: " the BFG!".into(),
+                message: (*b" the BFG!").into(),
                 message_offset: 0,
                 severity: Severity::Notice,
                 timestamp: NaiveDate::from_ymd_opt(current_time().year(), 2, 5)
@@ -57,10 +55,10 @@ fn rfc_examples() {
             Rfc3164Message {
                 application_name: "1987".into(),
                 facility: Facility::Local4,
-                message: " mymachine myproc[10]: %% It's \
+                message: (*b" mymachine myproc[10]: %% It's \
          time to make the do-nuts.  %%  Ingredients: Mix=OK, Jelly=OK #\
          Devices: Mixer=OK, Jelly_Injector=OK, Frier=OK # Transport:\
-         Conveyer1=OK, Conveyer2=OK # %%"
+         Conveyer1=OK, Conveyer2=OK # %%")
                     .into(),
                 message_offset: 0,
                 severity: Severity::Notice,
@@ -76,8 +74,8 @@ fn rfc_examples() {
          sched[0]: That's All Folks!",
             Rfc3164Message {
                 facility: Facility::Kern,
-                message: "1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 \
-         sched[0]: That's All Folks!"
+                message: (*b"1990 Oct 22 10:52:01 TZ-6 scapegoat.dmz.example.org 10.1.2.3 \
+         sched[0]: That's All Folks!")
                     .into(),
                 severity: Severity::Emergency,
                 ..Default::default()
@@ -89,8 +87,8 @@ fn rfc_examples() {
             Rfc3164Message {
                 application_name: "1990".into(),
                 facility: Facility::Kern,
-                message: " Oct 22 10:52:01 TZ-6 \
-         scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!"
+                message: (*b" Oct 22 10:52:01 TZ-6 \
+         scapegoat.dmz.example.org 10.1.2.3 sched[0]: That's All Folks!")
                     .into(),
                 message_offset: 0,
                 severity: Severity::Emergency,
@@ -104,7 +102,7 @@ fn rfc_examples() {
     ];
 
     for (input, expected) in examples {
-        assert_eq!(Rfc3164Message::from_str(input).unwrap(), expected);
+        assert_eq!(Rfc3164Message::from(input.as_bytes()), expected);
     }
 }
 
@@ -123,7 +121,7 @@ fn invalid_message_segments() {
             "String too short for timestamp",
             Rfc3164Message {
                 facility: Facility::Kern,
-                message: " foo bar".into(),
+                message: (*b" foo bar").into(),
                 severity: Severity::Emergency,
                 timestamp: fixed_date,
                 ..Default::default()
@@ -146,7 +144,7 @@ fn invalid_message_segments() {
             "Timestamp must be followed by a space",
             Rfc3164Message {
                 facility: Facility::Kern,
-                message: "_".into(),
+                message: (*b"_").into(),
                 severity: Severity::Emergency,
                 timestamp: fixed_date,
                 ..Default::default()
@@ -158,7 +156,7 @@ fn invalid_message_segments() {
             "Hostname must be valid ASCII %d32-126",
             Rfc3164Message {
                 facility: Facility::Kern,
-                message: "München su: foo bar".into(),
+                message: "München su: foo bar".as_bytes().into(),
                 severity: Severity::Emergency,
                 timestamp: fixed_date,
                 ..Default::default()
@@ -170,7 +168,7 @@ fn invalid_message_segments() {
             "Timestamp must be followed by hostname surrounded by spaces",
             Rfc3164Message {
                 facility: Facility::Kern,
-                message: "foo".into(),
+                message: (*b"foo").into(),
                 severity: Severity::Emergency,
                 timestamp: fixed_date,
                 ..Default::default()
@@ -188,7 +186,7 @@ fn invalid_message_segments() {
             "missing <",
             Rfc3164Message {
                 facility: Facility::User,
-                message: "Something happened".into(),
+                message: (*b"Something happened").into(),
                 severity: Severity::Notice,
                 timestamp: fixed_date,
                 ..Default::default()
@@ -200,7 +198,7 @@ fn invalid_message_segments() {
             "No end of tag found in first 33 characters",
             Rfc3164Message {
                 facility: Facility::User,
-                message: " 123456789012345678901234567890123 foo".into(),
+                message: (*b" 123456789012345678901234567890123 foo").into(),
                 severity: Severity::Notice,
                 timestamp: fixed_date,
                 ..Default::default()
@@ -212,7 +210,7 @@ fn invalid_message_segments() {
             "No end of tag found in first 33 characters",
             Rfc3164Message {
                 facility: Facility::User,
-                message: " TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ=".into(),
+                message: (*b" TG9yZW0gaXBzdW0gZG9sb3Igc2l0IGFtZXQ=").into(),
                 severity: Severity::Notice,
                 timestamp: fixed_date,
                 ..Default::default()
@@ -225,7 +223,12 @@ fn invalid_message_segments() {
         assert_eq!(
             format!(
                 "{}",
-                message.parse(input).unwrap_err().chain().last().unwrap()
+                message
+                    .parse(input.as_bytes())
+                    .unwrap_err()
+                    .chain()
+                    .last()
+                    .unwrap()
             ),
             output,
             "{context}"
@@ -428,32 +431,82 @@ fn valid_msg_parts() {
         ..Default::default()
     };
     let mut valid = Rfc3164Message::default();
-    valid.parse(&format!("{prefix} foo bar")).unwrap();
-    message.message = " bar".into();
+    valid
+        .parse(&format!("{prefix} foo bar").as_bytes())
+        .unwrap();
+    message.message = (*b" bar").into();
     message.application_name = "foo".into();
     assert_eq!(valid, message);
     let mut min_tag = Rfc3164Message::default();
-    min_tag.parse(&format!("{prefix} 1 foo")).unwrap();
-    message.message = " foo".into();
+    min_tag
+        .parse(&format!("{prefix} 1 foo").as_bytes())
+        .unwrap();
+    message.message = (*b" foo").into();
     message.application_name = "1".into();
     assert_eq!(min_tag, message);
     let mut max_tag = Rfc3164Message::default();
     max_tag
-        .parse(&format!("{prefix} 12345678901234567890123456789012 foo"))
+        .parse(&format!("{prefix} 12345678901234567890123456789012 foo").as_bytes())
         .unwrap();
-    message.message = " foo".into();
+    message.message = (*b" foo").into();
     message.application_name = "12345678901234567890123456789012".into();
     assert_eq!(max_tag, message);
     let mut unprintable_character = Rfc3164Message::default();
     unprintable_character
-        .parse(&format!("{prefix} foo \twrong\tindent"))
+        .parse(&format!("{prefix} foo \twrong\tindent").as_bytes())
         .unwrap();
-    message.message = " \\twrong\\tindent".into();
+    message.message = (*b" \\twrong\\tindent").into();
     message.application_name = "foo".into();
     assert_eq!(unprintable_character, message);
     let mut grapheme_cluster = Rfc3164Message::default();
-    grapheme_cluster.parse(&format!("{prefix} foo y̆")).unwrap();
-    message.message = " y̆".into();
+    grapheme_cluster
+        .parse(&format!("{prefix} foo y̆").as_bytes())
+        .unwrap();
+    message.message = " y̆".as_bytes().into();
     message.application_name = "foo".into();
     assert_eq!(grapheme_cluster, message);
+}
+
+#[test]
+fn non_utf8_parts() {
+    testing_logger::setup();
+
+    let parts = [
+        "<13>",
+        "Apr  1",
+        "12:34:56",
+        "localhost",
+        "appname",
+        "message",
+    ];
+
+    let utf16_data = vec![0xf7, 0xbf, 0xbf, 0xbf];
+
+    for i in 0..parts.len() {
+        let data_with_utf16 = parts
+            .iter()
+            .enumerate()
+            .map(|(idx, elem)| {
+                if idx == i {
+                    utf16_data.as_slice()
+                } else {
+                    elem.as_bytes()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(vec![0x20].as_slice());
+        assert!(Rfc3164Message::default().parse(&data_with_utf16).is_err());
+        testing_logger::validate(|captured_logs| {
+            assert_eq!(captured_logs.len(), 1);
+            assert_eq!(
+                captured_logs[0].body,
+                format!(
+                    "Failed to parse data after {} bytes as UTF-8. Skipping message validation \
+                    for the remaining {} bytes",
+                    parts.iter().take(i).join("").len() + i,
+                    parts.iter().skip(i).join(" ").len() + utf16_data.len() - parts[i].len()
+                )
+            );
+        });
+    }
 }
