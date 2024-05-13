@@ -45,7 +45,7 @@ pub struct Args {
 
 impl Args {
     pub fn parse<T: AsRef<str>>(args: &[T]) -> Result<Option<Self>> {
-        let program_name = args.get(0).map(|s| s.as_ref()).unwrap_or("ippusb_bridge");
+        let program_name = args.first().map(|s| s.as_ref()).unwrap_or("ippusb_bridge");
 
         let mut opts = getopts::Options::new();
         opts.optopt("d", "bus-device", "Identifier of device", "BUS:DEVICE")

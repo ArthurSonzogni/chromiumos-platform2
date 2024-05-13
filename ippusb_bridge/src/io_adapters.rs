@@ -149,13 +149,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use std::io::{Cursor, Seek, SeekFrom};
+    use std::io::{Cursor, Seek};
 
     use super::*;
 
     fn position<S: Seek>(mut s: S) -> u64 {
-        s.seek(SeekFrom::Current(0))
-            .expect("Getting stream position failed")
+        s.stream_position().expect("Getting stream position failed")
     }
 
     #[test]
