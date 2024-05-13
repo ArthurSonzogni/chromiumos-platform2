@@ -480,7 +480,7 @@ int64_t Platform::AmountOfFreeDiskSpace(const FilePath& path) const {
 bool Platform::GetQuotaProjectId(const base::FilePath& path,
                                  int* project_id) const {
   base::stat_wrapper_t stat = {};
-  if (base::File::Lstat(path.value().c_str(), &stat) != 0) {
+  if (base::File::Lstat(path, &stat) != 0) {
     PLOG(ERROR) << "Failed to stat " << path.value();
     return false;
   }
@@ -509,7 +509,7 @@ bool Platform::GetQuotaProjectId(const base::FilePath& path,
 
 bool Platform::SetQuotaProjectId(const base::FilePath& path, int project_id) {
   base::stat_wrapper_t stat = {};
-  if (base::File::Lstat(path.value().c_str(), &stat) != 0) {
+  if (base::File::Lstat(path, &stat) != 0) {
     PLOG(ERROR) << "Failed to stat " << path.value();
     return false;
   }
@@ -921,7 +921,7 @@ base::Time Platform::GetCurrentTime() const {
 bool Platform::Stat(const FilePath& path, base::stat_wrapper_t* buf) {
   DCHECK(path.IsAbsolute()) << "path=" << path;
 
-  return base::File::Lstat(path.value().c_str(), buf) == 0;
+  return base::File::Lstat(path, buf) == 0;
 }
 
 bool Platform::HasExtendedFileAttribute(const FilePath& path,
