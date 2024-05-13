@@ -82,7 +82,7 @@ class DlcInterface {
   virtual bool HasContent() const = 0;
 
   // Returns the amount of disk space this DLC is using right now.
-  virtual uint64_t GetUsedBytesOnDisk() const = 0;
+  virtual std::optional<uint64_t> GetUsedBytesOnDisk() const = 0;
 
   // Returns true if the DLC has a boolean true for 'preload-allowed'
   // attribute in the manifest for the given |id| and |package|.
@@ -168,7 +168,7 @@ class DlcBase : public DlcInterface {
   bool IsForceOTA() const override;
   bool IsUserTied() const override;
   bool HasContent() const override;
-  uint64_t GetUsedBytesOnDisk() const override;
+  std::optional<uint64_t> GetUsedBytesOnDisk() const override;
   bool IsPreloadAllowed() const override;
   bool IsFactoryInstall() const override;
   const DlcId& GetSanitizedId() const override;

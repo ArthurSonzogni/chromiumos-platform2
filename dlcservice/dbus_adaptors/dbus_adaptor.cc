@@ -85,7 +85,11 @@ bool DBusService::GetExistingDlcs(brillo::ErrorPtr* err,
     dlc_info->set_id(id);
     dlc_info->set_name(dlc->GetName());
     dlc_info->set_description(dlc->GetDescription());
-    dlc_info->set_used_bytes_on_disk(dlc->GetUsedBytesOnDisk());
+    if (auto used_bytes = dlc->GetUsedBytesOnDisk()) {
+      dlc_info->set_used_bytes_on_disk(*used_bytes);
+    } else {
+      dlc_info->set_used_bytes_on_disk(0);
+    }
 
     // TODO(crbug.com/1092770): This is a very temporarily measure so UI can
     // handle is_removable logic with exceptions for pita. Once the bug is

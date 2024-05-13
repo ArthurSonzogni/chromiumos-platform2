@@ -44,6 +44,11 @@ class LvmdProxyWrapperInterface {
   // Returns empty string if the logical volume does not exist.
   virtual std::string GetLogicalVolumePath(const std::string& lv_name) = 0;
 
+  // Returns the logical volume size in MiB. Returns nullopt if failed to get
+  // logical volume or its size.
+  virtual std::optional<int64_t> GetLogicalVolumeSize(
+      const std::string& lv_name) = 0;
+
   // Returns the physical volume information.
   virtual bool GetPhysicalVolume(const std::string& device_path,
                                  lvmd::PhysicalVolume* pv) = 0;
@@ -74,6 +79,8 @@ class LvmdProxyWrapper : public LvmdProxyWrapperInterface {
   bool ActivateLogicalVolume(const std::string& lv_name) override;
   bool ListLogicalVolumes(lvmd::LogicalVolumeList* lvs) override;
   std::string GetLogicalVolumePath(const std::string& lv_name) override;
+  std::optional<int64_t> GetLogicalVolumeSize(
+      const std::string& lv_name) override;
   bool GetPhysicalVolume(const std::string& device_path,
                          lvmd::PhysicalVolume* pv) override;
   bool ResizeLogicalVolumes(

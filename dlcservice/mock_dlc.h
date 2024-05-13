@@ -39,7 +39,10 @@ class MockDlc : public DlcInterface {
   MOCK_METHOD(bool, IsForceOTA, (), (const, override));
   MOCK_METHOD(bool, IsUserTied, (), (const, override));
   MOCK_METHOD(bool, HasContent, (), (const, override));
-  MOCK_METHOD(uint64_t, GetUsedBytesOnDisk, (), (const, override));
+  MOCK_METHOD(std::optional<uint64_t>,
+              GetUsedBytesOnDisk,
+              (),
+              (const, override));
   MOCK_METHOD(bool, IsPreloadAllowed, (), (const, override));
   MOCK_METHOD(bool, IsFactoryInstall, (), (const, override));
   MOCK_METHOD(const DlcId&, GetSanitizedId, (), (const, override));

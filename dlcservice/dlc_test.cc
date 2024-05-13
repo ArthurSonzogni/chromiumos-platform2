@@ -684,7 +684,7 @@ TEST_F(DlcBaseTest, GetUsedBytesOnDisk) {
   DlcBase dlc(kSecondDlc);
   dlc.Initialize();
 
-  EXPECT_EQ(dlc.GetUsedBytesOnDisk(), 0);
+  EXPECT_EQ(dlc.GetUsedBytesOnDisk(), std::nullopt);
 
   SetUpDlcWithSlots(kSecondDlc);
   uint64_t expected_size = 0;

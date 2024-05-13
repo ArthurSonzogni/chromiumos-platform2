@@ -39,6 +39,10 @@ class MockLvmdProxyWrapper : public LvmdProxyWrapperInterface {
               GetLogicalVolumePath,
               (const std::string&),
               (override));
+  MOCK_METHOD(std::optional<int64_t>,
+              GetLogicalVolumeSize,
+              (const std::string&),
+              (override));
   MOCK_METHOD(bool,
               GetPhysicalVolume,
               (const std::string&, lvmd::PhysicalVolume*),

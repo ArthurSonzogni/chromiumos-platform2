@@ -303,6 +303,14 @@ std::string LvmdProxyWrapper::GetLogicalVolumePath(const std::string& lv_name) {
   return GetLogicalVolume(lv_name, &lv) ? lv.path() : "";
 }
 
+std::optional<int64_t> LvmdProxyWrapper::GetLogicalVolumeSize(
+    const std::string& lv_name) {
+  lvmd::LogicalVolume lv;
+  if (GetLogicalVolume(lv_name, &lv) && lv.size() >= 0)
+    return lv.size();
+  return std::nullopt;
+}
+
 bool LvmdProxyWrapper::ResizeLogicalVolumes(
     const std::vector<lvmd::LogicalVolumeConfiguration>& lv_configs) {
   auto stateful_path =
@@ -336,7 +344,7 @@ bool LvmdProxyWrapper::ResizeLogicalVolumes(
     brillo::ErrorPtr err;
     if (!lvmd_proxy_->ResizeLogicalVolume(lv, lv_config.size(), &err)) {
       LOG(ERROR) << "Failed to ResizeLogicalVolume from lvmd: "
-                   << Error::ToString(err);
+                 << Error::ToString(err);
       return false;
     }
   }

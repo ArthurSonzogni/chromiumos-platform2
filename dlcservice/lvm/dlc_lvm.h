@@ -53,6 +53,7 @@ class DlcLvm : public DlcBase {
                       std::vector<uint8_t>* image_sha256) override;
   base::FilePath GetImagePath(BootSlot::Slot slot) const override;
   bool IsActiveImagePresent() const override;
+  std::optional<uint64_t> GetUsedBytesOnDisk() const override;
 
   virtual bool UseLogicalVolume() const;
 

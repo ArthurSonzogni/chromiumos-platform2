@@ -184,16 +184,16 @@ bool DlcBase::HasContent() const {
   return false;
 }
 
-uint64_t DlcBase::GetUsedBytesOnDisk() const {
+std::optional<uint64_t> DlcBase::GetUsedBytesOnDisk() const {
   uint64_t total_size = 0;
   for (const auto& path :
        {GetImagePath(BootSlot::Slot::A), GetImagePath(BootSlot::Slot::B)}) {
-    if (path.empty() || !base::PathExists(path))
-      continue;
     int64_t size = 0;
-    if (!base::GetFileSize(path, &size)) {
+    if (path.empty() || !base::PathExists(path) ||
+        !base::GetFileSize(path, &size)) {
       LOG(WARNING) << "Failed to get file size for path: "
                    << (IsUserTied() ? kPathNameImage : path.value());
+      return std::nullopt;
     }
     total_size += size;
   }

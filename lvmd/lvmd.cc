@@ -149,6 +149,11 @@ bool Lvmd::GetLogicalVolume(brillo::ErrorPtr* error,
   *out_logical_volume->mutable_volume_group() = in_volume_group;
   out_logical_volume->set_name(opt_lv->GetRawName());
   out_logical_volume->set_path(opt_lv->GetPath().value());
+  if (auto size = opt_lv->GetSize()) {
+    out_logical_volume->set_size(*size);
+  } else {
+    out_logical_volume->set_size(kErrorSize);
+  }
   return true;
 }
 

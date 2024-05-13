@@ -16,6 +16,7 @@
 #include <lvmd/proto_bindings/lvmd.pb.h>
 #include <lvmd/dbus-proxies.h>
 
+#include "dlcservice/boot/boot_slot.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/utils.h"
 #include "dlcservice/utils/utils_interface.h"
@@ -178,6 +179,26 @@ bool DlcLvm::IsActiveImagePresent() const {
       id_, ToPartitionSlot(SystemState::Get()->active_boot_slot()));
   return SystemState::Get()->lvmd_wrapper()->ActivateLogicalVolume(
       active_lv_name);
+}
+
+std::optional<uint64_t> DlcLvm::GetUsedBytesOnDisk() const {
+  if (!UseLogicalVolume()) {
+    return DlcBase::GetUsedBytesOnDisk();
+  }
+
+  uint64_t total_size = 0;
+  for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
+    auto lv_name = utils_->LogicalVolumeName(id_, ToPartitionSlot(slot));
+    auto size =
+        SystemState::Get()->lvmd_wrapper()->GetLogicalVolumeSize(lv_name);
+    if (!size) {
+      LOG(ERROR) << "Failed to get logical volume size for DLC=" << id_
+                   << " slot=" << BootSlot::ToString(slot);
+      return std::nullopt;
+    }
+    total_size += *size * 1024 * 1024;
+  }
+  return total_size;
 }
 
 bool DlcLvm::UseLogicalVolume() const {
