@@ -765,8 +765,8 @@ install_stateful() {
       for dlc_id in $(jq -nr --argjson list "${dlc_list}" '$list[]'); do
         local metadata
         if metadata=$(${metadata_cmd} --get --id="${dlc_id}"); then
-          local dlc_pkg=$(jq -nr --argjson metadata "${metadata}" \
-            '$metadata."manifest"."package"')
+          local dlc_pkg="$(jq -nr --argjson metadata "${metadata}" \
+            '$metadata."manifest"."package"')"
           if [ -z "${dlc_pkg}" ] || [ "${dlc_pkg}" = "null" ]; then
             dlc_pkg="package"
           fi
@@ -847,9 +847,9 @@ get_recovery_key_version() {
   else
     # If successful, continue to extract the key version.
     futility show "${tmpflash}" > "${tmpflashparsed}"
-    local key_version=$(grep -A3 'Recovery Key:' "${tmpflashparsed}" \
+    local key_version="$(grep -A3 'Recovery Key:' "${tmpflashparsed}" \
       | grep 'Key Version:' \
-      | grep -Eo '[0-9]+')
+      | grep -Eo '[0-9]+')"
     echo "${key_version}"
   fi
 
