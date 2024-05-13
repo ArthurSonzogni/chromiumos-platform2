@@ -31,16 +31,18 @@ pub fn send_to_uma(_name: &str, _sample: i32, _min: i32, _max: i32, _nbuckets: i
 
 // Use metrics_rs on ebuild.
 #[cfg(feature = "chromeos")]
-pub fn send_enum_to_uma(name: &str, sample: i32, max: i32) -> Result<()> {
+pub fn send_enum_to_uma(name: &str, sample: i32, exclusive_max: i32) -> Result<()> {
     let metrics = metrics_rs::MetricsLibrary::get().context("MetricsLibrary::get() failed")?;
 
     // Shall panic on poisoned mutex.
-    metrics.do_lock().send_enum_to_uma(name, sample, max)?;
+    metrics
+        .do_lock()
+        .send_enum_to_uma(name, sample, exclusive_max)?;
     Ok(())
 }
 
 // send_enum_to_uma is no-op on cargo build.
 #[cfg(not(feature = "chromeos"))]
-pub fn send_enum_to_uma(_name: &str, _sample: i32, _max: i32) -> Result<()> {
+pub fn send_enum_to_uma(_name: &str, _sample: i32, _exclusive_max: i32) -> Result<()> {
     Ok(())
 }

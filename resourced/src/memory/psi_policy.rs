@@ -86,8 +86,8 @@ impl PartialOrd for MemoryReclaim {
 /// The reason of [MemoryReclaim].
 ///
 /// The representing numbers are directly sent to UMA. Do not reuse the number in the future when
-/// you add a new reason. Also You need to update [MAX_MEMORY_RECLAIM_REASON] when you add a new
-/// reason.
+/// you add a new reason and do not renumber existing entries. Also You need to update
+/// [MAX_MEMORY_RECLAIM_REASON] when you add a new reason.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemoryReclaimReason {
     Unknown = 0,

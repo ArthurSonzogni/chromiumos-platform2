@@ -56,8 +56,8 @@ pub enum Error {
 }
 
 impl Error {
-    /// The error type numbers are reported to UMA. Do not reuse the number in
-    /// the future when you add a new error type. Also You need to update
+    /// The error type numbers are reported to UMA. Do not reuse the number in the future when you
+    /// add a new error type and do not renumber existing entries. Also You need to update
     /// [MAX_PSI_ERROR_TYPE] when you add a new error type.
     pub fn as_i32(&self) -> i32 {
         match self {
@@ -298,7 +298,7 @@ impl PsiMemoryHandler {
             if let Err(e) = metrics::send_enum_to_uma(
                 UMA_NAME_RECLAIM_REASON,
                 reason as i32,
-                MAX_MEMORY_RECLAIM_REASON,
+                MAX_MEMORY_RECLAIM_REASON + 1,
             ) {
                 error!("Failed to send memory reclaim reason to UMA: {}", e);
             }

@@ -1023,7 +1023,7 @@ pub async fn service_main() -> Result<()> {
                 if let Err(e) = metrics::send_enum_to_uma(
                     UMA_NAME_PSI_POLICY_ERROR,
                     e.as_i32(),
-                    MAX_PSI_ERROR_TYPE,
+                    MAX_PSI_ERROR_TYPE + 1,
                 ) {
                     error!("Failed to send psi memory checker error to UMA: {}", e);
                 }
