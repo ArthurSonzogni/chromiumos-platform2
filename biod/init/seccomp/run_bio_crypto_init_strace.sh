@@ -26,7 +26,7 @@ SEED="/run/bio_crypto_init/seed"
 dd if=/dev/urandom of="${SEED}" bs=32 count=1
 chown biod:biod "${SEED}"
 
-if [ "$1" == "--minijail" ]; then
+if [ "$1" = "--minijail" ]; then
   strace -ff -o "${OUTPUT_DIR}/strace.log"                               \
   minijail0                                                              \
     --uts                                                                \

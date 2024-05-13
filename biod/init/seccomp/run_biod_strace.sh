@@ -16,7 +16,7 @@ mkdir "${OUTPUT_DIR}"
 
 stop biod || true
 
-if [ "$1" == "--minijail" ]; then
+if [ "$1" = "--minijail" ]; then
   strace -ff -o "${OUTPUT_DIR}/strace.log"                                     \
   minijail0                                                                    \
     --uts                                                                      \
