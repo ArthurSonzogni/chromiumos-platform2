@@ -47,14 +47,6 @@ void enter_vfs_namespace() {
                                           nullptr)));
   PCHECK(mj_call(minijail_bind(j.get(), "/var", "/var", 1)));
 
-  // Hack a path for vpd until it can migrate to /var.
-  // https://crbug.com/876838
-  PCHECK(mj_call(minijail_mount_with_data(j.get(), "tmpfs", "/mnt", "tmpfs",
-                                          MS_NOSUID | MS_NOEXEC | MS_NODEV,
-                                          "mode=0755,size=10M")));
-  const char kVpdPath[] = "/mnt/stateful_partition/unencrypted/cache/vpd";
-  PCHECK(mj_call(minijail_bind(j.get(), kVpdPath, kVpdPath, 1)));
-
   minijail_remount_mode(j.get(), MS_SLAVE);
 
   PCHECK(mj_call(minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",
