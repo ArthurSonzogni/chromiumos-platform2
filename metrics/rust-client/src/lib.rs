@@ -65,11 +65,17 @@ impl MetricsLibrary {
         Ok(())
     }
 
-    pub fn send_enum_to_uma(&mut self, name: &str, sample: i32, max: i32) -> Result<(), Error> {
+    pub fn send_enum_to_uma(
+        &mut self,
+        name: &str,
+        sample: i32,
+        exclusive_max: i32,
+    ) -> Result<(), Error> {
         let c_name = std::ffi::CString::new(name)?;
         // Safety: Calls a C function. The argument types are checked.
-        let result =
-            unsafe { CMetricsLibrarySendEnumToUMA(self.handle, c_name.as_ptr(), sample, max) };
+        let result = unsafe {
+            CMetricsLibrarySendEnumToUMA(self.handle, c_name.as_ptr(), sample, exclusive_max)
+        };
         if result == 0 {
             return Err(Error::new(
                 ErrorKind::Other,
@@ -83,7 +89,7 @@ impl MetricsLibrary {
         &mut self,
         name: &str,
         sample: i32,
-        max: i32,
+        exclusive_max: i32,
         num_samples: i32,
     ) -> Result<(), Error> {
         let c_name = std::ffi::CString::new(name)?;
@@ -93,7 +99,7 @@ impl MetricsLibrary {
                 self.handle,
                 c_name.as_ptr(),
                 sample,
-                max,
+                exclusive_max,
                 num_samples,
             )
         };

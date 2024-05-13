@@ -371,16 +371,16 @@ void MetricsLibrary::SetConsentFileForTest(const base::FilePath& consent_file) {
 
 bool MetricsLibrary::SendEnumToUMA(const std::string& name,
                                    int sample,
-                                   int max) {
-  return SendRepeatedEnumToUMA(name, sample, max, /*num_samples=*/1);
+                                   int exclusive_max) {
+  return SendRepeatedEnumToUMA(name, sample, exclusive_max, /*num_samples=*/1);
 }
 
 bool MetricsLibrary::SendRepeatedEnumToUMA(const std::string& name,
                                            int sample,
-                                           int max,
+                                           int exclusive_max,
                                            int num_samples) {
   return metrics_writer_->WriteMetrics(
-      {metrics::MetricSample::LinearHistogramSample(name, sample, max,
+      {metrics::MetricSample::LinearHistogramSample(name, sample, exclusive_max,
                                                     num_samples)});
 }
 

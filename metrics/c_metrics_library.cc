@@ -37,22 +37,22 @@ extern "C" int CMetricsLibrarySendToUMA(CMetricsLibrary handle,
 extern "C" int CMetricsLibrarySendEnumToUMA(CMetricsLibrary handle,
                                             const char* name,
                                             int sample,
-                                            int max) {
+                                            int exclusive_max) {
   MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
   if (lib == NULL)
     return 0;
-  return lib->SendEnumToUMA(std::string(name), sample, max);
+  return lib->SendEnumToUMA(std::string(name), sample, exclusive_max);
 }
 
 extern "C" int CMetricsLibrarySendRepeatedEnumToUMA(CMetricsLibrary handle,
                                                     const char* name,
                                                     int sample,
-                                                    int max,
+                                                    int exclusive_max,
                                                     int num_samples) {
   MetricsLibrary* lib = reinterpret_cast<MetricsLibrary*>(handle);
   if (lib == NULL)
     return 0;
-  return lib->SendRepeatedEnumToUMA(std::string(name), sample, max,
+  return lib->SendRepeatedEnumToUMA(std::string(name), sample, exclusive_max,
                                     num_samples);
 }
 
