@@ -2,7 +2,7 @@
 name = "libchromeos"
 version = "0.1.0"
 authors = ["The ChromiumOS Authors"]
-edition = "2018"
+edition = "2021"
 
 [build-dependencies]
 pkg-config = { version = "0.3.11", optional = true }

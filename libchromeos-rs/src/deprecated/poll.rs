@@ -6,7 +6,6 @@ use std::{
     cell::{Cell, Ref, RefCell},
     cmp::min,
     fs::File,
-    i32, i64,
     marker::PhantomData,
     os::unix::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd},
     ptr::null_mut,
@@ -443,7 +442,7 @@ impl<T: PollToken> EpollContext<T> {
         events: &'a EpollEvents,
         timeout: Duration,
     ) -> Result<PollEvents<'a, T>> {
-        let timeout_millis = if timeout.as_secs() as i64 == i64::max_value() {
+        let timeout_millis = if timeout.as_secs() as i64 == i64::MAX {
             // We make the convenient assumption that 2^63 seconds is an effectively unbounded time
             // frame. This is meant to mesh with `wait` calling us with no timeout.
             -1
@@ -454,8 +453,8 @@ impl<T: PollToken> EpollContext<T> {
                 .as_secs()
                 .checked_mul(1_000)
                 .and_then(|ms| ms.checked_add(u64::from(timeout.subsec_nanos()) / 1_000_000))
-                .unwrap_or(i32::max_value() as u64);
-            min(i32::max_value() as u64, millis) as i32
+                .unwrap_or(i32::MAX as u64);
+            min(i32::MAX as u64, millis) as i32
         };
         let ret = {
             let mut epoll_events = events.0.borrow_mut();
