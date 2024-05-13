@@ -907,10 +907,10 @@ copy_partition() {
     echo "Error: Empty part_num is passed. Skip copying."
     return
     ;;
-  "${PARTITION_NUM_STATE}")
+  "${PARTITION_NUM_STATE:?}")
     install_stateful
     ;;
-  "${PARTITION_NUM_ROOT_A}"|"${PARTITION_NUM_ROOT_B}")
+  "${PARTITION_NUM_ROOT_A:?}"|"${PARTITION_NUM_ROOT_B:?}")
     # Always copy from ROOT_A for rootfs partitions.
     part_size=$(partsize "${src}" "${PARTITION_NUM_ROOT_A}")
     src_offset=$(partoffset "${src}" "${PARTITION_NUM_ROOT_A}")
@@ -918,7 +918,7 @@ copy_partition() {
       "${src_offset}" "${src}" "${dst}" "${chunk_num}" "${total_chunks}" \
       "${cache_input}"
     ;;
-  "${PARTITION_NUM_KERN_A}"|"${PARTITION_NUM_KERN_B}")
+  "${PARTITION_NUM_KERN_A:?}"|"${PARTITION_NUM_KERN_B:?}")
     # Use kernel B from the source into both kernel A and B in the destination.
     part_size="$(partsize "${src}" "${PARTITION_NUM_KERN_B}")"
     src_offset="$(partoffset "${src}" "${PARTITION_NUM_KERN_B}")"
@@ -926,7 +926,8 @@ copy_partition() {
       "${src_offset}" "${src}" "${dst}" "${chunk_num}" "${total_chunks}" \
       "${cache_input}"
     ;;
-  "${PARTITION_NUM_MINIOS_A}"|"${PARTITION_NUM_MINIOS_B}")
+  # If the disk layout doesn't have minios, these are set to an empty value.
+  "${PARTITION_NUM_MINIOS_A:-}"|"${PARTITION_NUM_MINIOS_B:-}")
     # Choose to copy from A or B for miniOS partitions.
     local src_part_num
     if [ -n "${RECOVERY_KEY_VERSION}" ]; then
@@ -989,7 +990,7 @@ recreate_nand_partitions() {
   mtd_size=$(cat "/sys/class/mtd/$(basename "${dst}")/size")
   mtd_gpt_file="-D ${mtd_size} ${gpt_file}"
   for part_no in $(seq "${PARTITION_NUM_STATE}" \
-      "${PARTITION_NUM_EFI_SYSTEM}"); do
+      "${PARTITION_NUM_EFI_SYSTEM:?}"); do
     part_size=$(partsize "${mtd_gpt_file}" "${part_no}")
     : $(( part_size *= blocksize ))
     part_offset=$(partoffset "${mtd_gpt_file}" "${part_no}")
@@ -1258,9 +1259,9 @@ main() {
   if [ "${PARTITION_NUM_RWFW+set}" = "set" ]; then
     copy_partition "${PARTITION_NUM_RWFW}" "${SRC}" "${DST}" 1 1 false     # 11
   fi
-  copy_partition "${PARTITION_NUM_OEM}" "${SRC}" "${DST}" 1 1 false        # 8
-  copy_partition "${PARTITION_NUM_ROOT_C}" "${SRC}" "${DST}" 1 1 false     # 7
-  copy_partition "${PARTITION_NUM_KERN_C}" "${SRC}" "${DST}" 1 1 false     # 6
+  copy_partition "${PARTITION_NUM_OEM:?}" "${SRC}" "${DST}" 1 1 false        # 8
+  copy_partition "${PARTITION_NUM_ROOT_C:?}" "${SRC}" "${DST}" 1 1 false     # 7
+  copy_partition "${PARTITION_NUM_KERN_C:?}" "${SRC}" "${DST}" 1 1 false     # 6
   # Cache the first read of KERN so the second is read from RAM.
   # This is okay as they read from the same source.
   if [ "${FLAGS_minimal_copy}" -eq "${FLAGS_TRUE}" ]; then
