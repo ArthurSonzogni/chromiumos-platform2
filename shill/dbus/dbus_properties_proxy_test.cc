@@ -7,11 +7,12 @@
 #include <utility>
 
 #include <base/memory/weak_ptr.h>
-#include <base/run_loop.h>
+#include <base/test/test_future.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
 #include "shill/dbus/fake_properties_proxy.h"
+#include "shill/store/key_value_store.h"
 
 namespace {
 
@@ -54,20 +55,12 @@ TEST_F(DBusPropertiesProxyTest, GetAll) {
 
 TEST_F(DBusPropertiesProxyTest, GetAllAsync) {
   KeyValueStore properties;
-  base::RunLoop run_loop;
-  dbus_properties_proxy_->GetAllAsync(
-      kInterface,
-      base::BindOnce(
-          [](base::OnceClosure callback, KeyValueStore* result,
-             const KeyValueStore& dict) {
-            *result = dict;
-            std::move(callback).Run();
-          },
-          run_loop.QuitClosure(), &properties),
-      base::BindOnce([](base::OnceClosure callback,
-                        const Error& error) { std::move(callback).Run(); },
-                     run_loop.QuitClosure()));
-  EXPECT_EQ(properties.properties(), kTestDictionary);
+  base::test::TestFuture<const KeyValueStore&> success_future;
+  base::test::TestFuture<const Error&> error_future;
+  dbus_properties_proxy_->GetAllAsync(kInterface, success_future.GetCallback(),
+                                      error_future.GetCallback());
+  EXPECT_EQ(success_future.Take().properties(), kTestDictionary);
+  EXPECT_FALSE(error_future.IsReady());
 }
 
 TEST_F(DBusPropertiesProxyTest, Get) {
@@ -86,43 +79,26 @@ TEST_F(DBusPropertiesProxyTest, GetFailed) {
 }
 
 TEST_F(DBusPropertiesProxyTest, GetAsync) {
-  brillo::Any property1;
-  base::RunLoop run_loop;
-  dbus_properties_proxy_->GetAsync(
-      kInterface, kProperty1,
-      base::BindOnce(
-          [](base::OnceClosure callback, brillo::Any* result,
-             const brillo::Any& value) {
-            *result = value;
-            std::move(callback).Run();
-          },
-          run_loop.QuitClosure(), &property1),
-      base::BindOnce([](base::OnceClosure callback,
-                        const Error& error) { std::move(callback).Run(); },
-                     run_loop.QuitClosure()));
-  EXPECT_EQ(property1, kTestDictionary.at(kProperty1));
+  base::test::TestFuture<const brillo::Any&> success_future;
+  base::test::TestFuture<const Error&> error_future;
+
+  dbus_properties_proxy_->GetAsync(kInterface, kProperty1,
+                                   success_future.GetCallback(),
+                                   error_future.GetCallback());
+  EXPECT_EQ(success_future.Take(), kTestDictionary.at(kProperty1));
+  EXPECT_FALSE(error_future.IsReady());
 }
 
 TEST_F(DBusPropertiesProxyTest, GetAsyncFailed) {
   const char kBadInterface[] = "bad interface";
   const char kBadProperty[] = "bad property";
-  brillo::Any property;
-  Error error;
-  base::RunLoop run_loop;
-  dbus_properties_proxy_->GetAsync(
-      kBadInterface, kBadProperty,
-      base::BindOnce(
-          [](base::OnceClosure callback, brillo::Any* result,
-             const brillo::Any& value) { std::move(callback).Run(); },
-          run_loop.QuitClosure(), &property),
-      base::BindOnce(
-          [](base::OnceClosure callback, Error* errorp, const Error& error) {
-            *errorp = error;
-            std::move(callback).Run();
-          },
-          run_loop.QuitClosure(), &error));
-  EXPECT_TRUE(property.IsEmpty());
-  EXPECT_EQ(error.type(), Error::kOperationFailed);
+  base::test::TestFuture<const brillo::Any&> success_future;
+  base::test::TestFuture<const Error&> error_future;
+  dbus_properties_proxy_->GetAsync(kBadInterface, kBadProperty,
+                                   success_future.GetCallback(),
+                                   error_future.GetCallback());
+  EXPECT_EQ(error_future.Take().type(), Error::kOperationFailed);
+  EXPECT_FALSE(success_future.IsReady());
 }
 
 }  // namespace shill
