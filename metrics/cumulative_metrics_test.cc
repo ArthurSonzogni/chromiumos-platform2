@@ -9,9 +9,9 @@
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/bind.h"
-#include "base/run_loop.h"
 #include "base/system/sys_info.h"
 #include "base/task/single_thread_task_executor.h"
+#include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "metrics/cumulative_metrics.h"
 
@@ -42,7 +42,7 @@ static void UpdateAccumulators(CumulativeMetrics* cm) {
   accumulator_update_total_count++;
 }
 
-static void ReportAccumulators(const base::RepeatingClosure& quit_closure,
+static void ReportAccumulators(base::test::TestFuture<void>* quit_future,
                                CumulativeMetrics* cm) {
   // The first call is done at initialization, to possibly report metrics
   // accumulated in the previous cycle.  We ignore it because we want to
@@ -54,7 +54,7 @@ static void ReportAccumulators(const base::RepeatingClosure& quit_closure,
   }
   // Quit loop.
   if (accumulator_report_count == kTotalReportCount) {
-    quit_closure.Run();
+    quit_future->SetValue();
   }
   accumulator_update_partial_count = 0;
   accumulator_report_count += 1;
@@ -62,7 +62,7 @@ static void ReportAccumulators(const base::RepeatingClosure& quit_closure,
 
 TEST_F(CumulativeMetricsTest, TestLoop) {
   base::SingleThreadTaskExecutor task_executor_;
-  base::RunLoop run_loop;
+  base::test::TestFuture<void> future;
 
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
@@ -70,12 +70,12 @@ TEST_F(CumulativeMetricsTest, TestLoop) {
   ASSERT_TRUE(base::CreateDirectory(pi_path));
 
   std::vector<std::string> names = {kMetricNameX, kMetricNameY, kMetricNameZ};
-  CumulativeMetrics cm(
-      pi_path, names, base::Milliseconds(100),
-      base::BindRepeating(&UpdateAccumulators), base::Milliseconds(500),
-      base::BindRepeating(&ReportAccumulators, run_loop.QuitClosure()));
+  CumulativeMetrics cm(pi_path, names, base::Milliseconds(100),
+                       base::BindRepeating(&UpdateAccumulators),
+                       base::Milliseconds(500),
+                       base::BindRepeating(&ReportAccumulators, &future));
 
-  run_loop.Run();
+  EXPECT_TRUE(future.Wait());
 
   // We don't want to rely on a precise number of calls to the update or report
   // callbacks because load on the buildbot can vary a lot, and also there are
