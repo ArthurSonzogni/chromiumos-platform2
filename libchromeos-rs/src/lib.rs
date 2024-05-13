@@ -37,7 +37,6 @@ pub mod disk;
 mod open_safely;
 mod open_safely_test;
 pub mod panic_handler;
-pub mod scoped_path;
 pub mod secure_blob;
 pub mod signal;
 pub mod syslog;
