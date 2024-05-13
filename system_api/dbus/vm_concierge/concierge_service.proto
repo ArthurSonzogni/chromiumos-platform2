@@ -161,6 +161,14 @@ message NetworkOptions {
   bool enable_vnet_hdr = 1;
 }
 
+message VirtualSwapConfig {
+  // Size of the virtual swap device in MiB.
+  uint32 size_mib = 1;
+  // The interval between swapping out virtual swap area to the host in
+  // milliseconds.
+  uint32 swap_interval_ms = 2;
+}
+
 // Information that must be included with every StartVm dbus message.
 message StartVmRequest {
   // The VM that should be started. This is ignored if starting a termina VM,
@@ -446,6 +454,9 @@ message StartArcVmRequest {
 
   // Enable IO scheduler for the /data block device (/dev/block/vde).
   bool enable_data_block_io_scheduler = 49;
+
+  // Configuration of the virtual swap device to be set up by crosvm.
+  VirtualSwapConfig virtual_swap_config = 50;
 }
 
 enum VmStatus {
