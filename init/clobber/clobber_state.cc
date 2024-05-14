@@ -99,17 +99,6 @@ constexpr char kDisableClobberCrashCollectionPath[] =
 constexpr char kExt4DircryptoSupportedPath[] =
     "/sys/fs/ext4/features/encryption";
 
-// |strip_partition| attempts to remove the partition number from the result.
-base::FilePath GetRootDevice(bool strip_partition) {
-  char buf[PATH_MAX];
-  int ret = rootdev(buf, PATH_MAX, /*use_slave=*/true, strip_partition);
-  if (ret == 0) {
-    return base::FilePath(buf);
-  } else {
-    return base::FilePath();
-  }
-}
-
 // Attempt to save logs from the boot when the clobber happened into the
 // stateful partition.
 void CollectClobberCrashReports() {
@@ -715,7 +704,7 @@ int ClobberState::Run() {
   if (root_disk_cstr != nullptr) {
     root_disk_ = base::FilePath(root_disk_cstr);
   } else {
-    root_disk_ = GetRootDevice(/*strip_partition=*/true);
+    root_disk_ = utils::GetRootDevice(/*strip_partition=*/true);
   }
 
   base::FilePath root_device;
@@ -723,7 +712,7 @@ int ClobberState::Run() {
   if (root_device_cstr != nullptr) {
     root_device = base::FilePath(root_device_cstr);
   } else {
-    root_device = GetRootDevice(/*strip_partition=*/false);
+    root_device = utils::GetRootDevice(/*strip_partition=*/false);
   }
 
   LOG(INFO) << "Root disk: " << root_disk_.value();

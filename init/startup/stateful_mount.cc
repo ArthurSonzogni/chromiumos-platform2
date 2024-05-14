@@ -313,9 +313,11 @@ bool StatefulMount::AttemptStatefulMigration() {
 void StatefulMount::MountStateful() {
   base::FilePath root_dev;
   // Prepare to mount stateful partition.
-  bool rootdev_ret = utils::GetRootDevice(&root_dev_type_, true);
+  root_dev_type_ = utils::GetRootDevice(true);
   int removable = 0;
-  if (!RemovableRootdev(root_dev_type_, &removable)) {
+  if (root_dev_type_.empty()) {
+    PLOG(INFO) << "rootdev could not find root device.";
+  } else if (!RemovableRootdev(root_dev_type_, &removable)) {
     PLOG(WARNING)
         << "Unable to read if rootdev is removable; assuming it's not";
   }
@@ -346,7 +348,7 @@ void StatefulMount::MountStateful() {
   // image also uses initramfs but it never reaches here). When using
   // initrd+tftpboot (some old netboot factory installer), ROOTDEV_TYPE will be
   // /dev/ram.
-  if (rootdev_ret && root_dev_type_ != base::FilePath("/dev/ram")) {
+  if (!root_dev_type_.empty() && root_dev_type_ != base::FilePath("/dev/ram")) {
     // Find our stateful partition mount point.
     stateful_mount_flags = kCommonMountFlags | MS_NOATIME;
     const int part_num_state =

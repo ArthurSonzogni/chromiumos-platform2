@@ -55,15 +55,14 @@ void CgptFindShowFunctionNoOp(struct CgptFindParams*,
 namespace utils {
 
 // |strip_partition| attempts to remove the partition number from the result.
-bool GetRootDevice(base::FilePath* root, bool strip_partition) {
+base::FilePath GetRootDevice(bool strip_partition) {
   char buf[PATH_MAX];
-  int ret = rootdev(buf, PATH_MAX, true, strip_partition);
+  int ret = rootdev(buf, PATH_MAX, /*use_slave=*/true, strip_partition);
   if (ret == 0) {
-    *root = base::FilePath(buf);
+    return base::FilePath(buf);
   } else {
-    *root = base::FilePath();
+    return base::FilePath();
   }
-  return !ret;
 }
 
 bool ReadFileToInt(const base::FilePath& path, int* value) {

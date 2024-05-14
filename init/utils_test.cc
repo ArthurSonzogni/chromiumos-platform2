@@ -38,7 +38,8 @@ TEST(GetRootDevice, DISABLED_NoStripPartition) {
   base::FilePath root_dev;
   char dev_path[PATH_MAX];
   int ret = rootdev(dev_path, sizeof(dev_path), true, false);
-  EXPECT_EQ(!ret, utils::GetRootDevice(&root_dev, false));
+  root_dev = utils::GetRootDevice(false);
+  EXPECT_EQ(!!ret, root_dev.empty());
   EXPECT_EQ(dev_path, root_dev.value());
 }
 

@@ -15,9 +15,10 @@
 
 namespace utils {
 
-// Try to set root to the root device filepath, optionally removing the
-// partition number
-bool BRILLO_EXPORT GetRootDevice(base::FilePath* root, bool strip_partition);
+// Get the root device filepath, optionally removing the
+// partition number.
+// Return an empty path if unable to find the root device.
+base::FilePath BRILLO_EXPORT GetRootDevice(bool strip_partition);
 
 // Helper function to read a file to int
 bool BRILLO_EXPORT ReadFileToInt(const base::FilePath& path, int* value);
