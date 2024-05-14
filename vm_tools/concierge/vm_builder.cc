@@ -16,6 +16,7 @@
 #include <re2/re2.h>
 
 #include "base/files/file_path.h"
+#include "base/strings/string_split.h"
 #include "vm_tools/concierge/pci_utils.h"
 #include "vm_tools/concierge/vm_util.h"
 
@@ -138,6 +139,11 @@ VmBuilder& VmBuilder::SetVsockCid(uint32_t vsock_cid) {
 
 VmBuilder& VmBuilder::AppendDisk(VmBuilder::Disk disk) {
   disks_.push_back(std::move(disk));
+  return *this;
+}
+
+VmBuilder& VmBuilder::AppendPmemDevice(VmBuilder::PmemDevice pmem_device) {
+  pmem_devices_.push_back(std::move(pmem_device));
   return *this;
 }
 
@@ -554,6 +560,11 @@ base::StringPairs VmBuilder::BuildRunParams() const {
     args.insert(std::end(args), std::begin(disk_args), std::end(disk_args));
   }
 
+  for (const auto& pmem_device : pmem_devices_) {
+    auto device_args = pmem_device.GetCrosvmArgs();
+    args.insert(std::end(args), std::begin(device_args), std::end(device_args));
+  }
+
   if (enable_gpu_) {
     std::string gpu_arg = "vulkan=";
     gpu_arg += enable_vulkan_ ? "true" : "false";
@@ -727,6 +738,24 @@ base::StringPairs VmBuilder::Disk::GetCrosvmArgs() const {
   std::string second = base::StrCat(
       {path.value(), readonly_arg, sparse_arg, o_direct_arg,
        multiple_workers_arg, block_size_arg, async_executor_arg, block_id_arg});
+  base::StringPairs result = {{std::move(first), std::move(second)}};
+  return result;
+}
+
+base::StringPairs VmBuilder::PmemDevice::GetCrosvmArgs() const {
+  std::string first = "--pmem";
+  std::string read_only_arg = writable ? ",ro=false" : ",ro=true";
+  std::string vma_size_arg;
+  if (vma_size) {
+    vma_size_arg = ",vma-size=" + std::to_string(vma_size.value());
+  }
+  std::string swap_interval_arg;
+  if (swap_interval_ms) {
+    swap_interval_arg =
+        ",swap-interval-ms=" + std::to_string(swap_interval_ms.value());
+  }
+  std::string second =
+      base::StrCat({path, read_only_arg, vma_size_arg, swap_interval_arg});
   base::StringPairs result = {{std::move(first), std::move(second)}};
   return result;
 }

@@ -73,6 +73,27 @@ class VmBuilder {
     std::vector<std::vector<std::string>> cpu_clusters;
   };
 
+  struct PmemDevice {
+    // Gets the command line argument that needs to be passed to crosvm
+    // corresponding to this pmem device.
+    base::StringPairs GetCrosvmArgs() const;
+
+    // Path to the disk image on the host, or an anonymous virtual memory area
+    // name when the vma_size is set.
+    std::string path;
+
+    // Whether the disk should be writable by the VM.
+    bool writable;
+
+    // Size in bytes for an anonymous memory area to be created to back this
+    // pmem device.
+    std::optional<uint64_t> vma_size;
+
+    // The interval in ms between swapping out the memory mapped by this pmem
+    // device.
+    std::optional<uint64_t> swap_interval_ms;
+  };
+
   VmBuilder();
   VmBuilder(VmBuilder&&);
   VmBuilder& operator=(VmBuilder&& other);
@@ -100,6 +121,7 @@ class VmBuilder {
   VmBuilder& AppendOemString(const std::string& string);
   VmBuilder& AppendAudioDevice(const std::string& params);
   VmBuilder& AppendSerialDevice(const std::string& device);
+  VmBuilder& AppendPmemDevice(PmemDevice device);
   VmBuilder& AppendSharedDir(SharedDataParam shared_data_param);
   VmBuilder& AppendCustomParam(const std::string& key,
                                const std::string& value);
@@ -235,6 +257,7 @@ class VmBuilder {
   std::vector<std::string> wayland_sockets_;
   std::vector<SharedDataParam> shared_dirs_;
   std::vector<std::vector<int32_t>> cpu_clusters_;
+  std::vector<PmemDevice> pmem_devices_;
 
   base::FilePath vmm_swap_dir_;
 

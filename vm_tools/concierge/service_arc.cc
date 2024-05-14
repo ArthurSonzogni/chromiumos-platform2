@@ -496,6 +496,16 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   // boot/provisioning.
   params.emplace_back("squashfs.cached_blks=20");
 
+  if (request.has_virtual_swap_config() &&
+      request.virtual_swap_config().size_mib() != 0) {
+    vm_builder.AppendPmemDevice(VmBuilder::PmemDevice{
+        .path = "arcvm_virtual_swap",
+        .writable = true,
+        .vma_size = MiB(request.virtual_swap_config().size_mib()),
+        .swap_interval_ms = request.virtual_swap_config().swap_interval_ms()});
+    params.emplace_back("androidboot.arc.swap_device=/dev/block/pmem0");
+  }
+
   vm_builder.SetCpus(topology.NumCPUs())
       .AppendKernelParam(base::JoinString(params, " "))
       .AppendCustomParam("--vcpu-cgroup-path",

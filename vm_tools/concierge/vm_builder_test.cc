@@ -4,6 +4,7 @@
 
 #include "vm_tools/concierge/vm_builder.h"
 
+#include <optional>
 #include <utility>
 
 #include "base/containers/contains.h"
@@ -198,6 +199,37 @@ TEST(VmBuilderTest, MultipleTapNetParams) {
           std::make_pair("--net", base::StringPrintf(
                                       "packed-queue=true,tap-fd=%d", raw_fd_2)))
           .Times(1));
+}
+
+TEST(VmBuilderTest, PmemDevice) {
+  VmBuilder builder;
+  builder.AppendPmemDevice(VmBuilder::PmemDevice{
+      .path = "/dev/read_only_pmem",
+  });
+  builder.AppendPmemDevice(VmBuilder::PmemDevice{
+      .path = "/dev/writable_pmem",
+      .writable = true,
+  });
+  builder.AppendPmemDevice(
+      VmBuilder::PmemDevice{.path = "virtual_swap_pmem",
+                            .writable = true,
+                            .vma_size = std::optional{1024},
+                            .swap_interval_ms = std::optional{1000}});
+  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
+
+  std::vector<std::string> pmem_params;
+  for (auto& p : result) {
+    if (base::Contains(p.first, "pmem")) {
+      pmem_params.push_back(p.first + " " + p.second);
+    }
+  }
+
+  EXPECT_EQ(pmem_params.size(), 3);
+  EXPECT_EQ(pmem_params[0], "--pmem /dev/read_only_pmem,ro=true");
+  EXPECT_EQ(pmem_params[1], "--pmem /dev/writable_pmem,ro=false");
+  EXPECT_EQ(
+      pmem_params[2],
+      "--pmem virtual_swap_pmem,ro=false,vma-size=1024,swap-interval-ms=1000");
 }
 
 TEST(VmBuilderTest, CrostiniDisks) {
