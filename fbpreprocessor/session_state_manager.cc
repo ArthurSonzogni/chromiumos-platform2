@@ -326,7 +326,7 @@ void SessionStateManager::EmitFeatureAllowedMetric() {
   else if (active_sessions_num_ != 1)
     status = Metrics::CollectionAllowedStatus::kDisallowedForMultipleSessions;
 
-  manager_->metrics()->SendAllowedStatus(FirmwareDump::Type::kWiFi, status);
+  manager_->metrics().SendAllowedStatus(FirmwareDump::Type::kWiFi, status);
 }
 
 bool SessionStateManager::PrimaryUserInAllowlist() const {

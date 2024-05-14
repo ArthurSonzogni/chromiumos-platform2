@@ -199,8 +199,8 @@ void OutputManager::EmitMetrics() {
     files_lock_.Acquire();
     int num_wifi_dumps = static_cast<int>(files_.size());
     files_lock_.Release();
-    manager_->metrics()->SendNumberOfAvailableDumps(FirmwareDump::Type::kWiFi,
-                                                    num_wifi_dumps);
+    manager_->metrics().SendNumberOfAvailableDumps(FirmwareDump::Type::kWiFi,
+                                                   num_wifi_dumps);
   }
 }
 

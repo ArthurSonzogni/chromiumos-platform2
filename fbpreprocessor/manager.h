@@ -22,7 +22,7 @@ class SessionStateManagerInterface;
 
 class Manager {
  public:
-  Manager() : metrics_(std::make_unique<Metrics>()) {}
+  Manager() = default;
   virtual ~Manager() {}
 
   // After this function has returned the manager is fully initialized (D-Bus is
@@ -43,14 +43,14 @@ class Manager {
 
   virtual PlatformFeaturesClient* platform_features() const = 0;
 
-  Metrics* metrics() const { return metrics_.get(); }
+  Metrics& metrics() { return metrics_; }
 
   virtual scoped_refptr<base::SequencedTaskRunner> task_runner() = 0;
 
   virtual int default_file_expiration_in_secs() const = 0;
 
  private:
-  std::unique_ptr<Metrics> metrics_;
+  Metrics metrics_;
 };
 
 }  // namespace fbpreprocessor

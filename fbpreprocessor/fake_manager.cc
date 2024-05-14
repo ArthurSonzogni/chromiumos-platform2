@@ -30,7 +30,7 @@ FakeManager::FakeManager()
       default_file_expiration_in_secs_(kTestDefaultExpirationSeconds) {
   auto uma_lib = std::make_unique<FakeMetricsLibrary>();
   uma_lib_ = uma_lib.get();
-  metrics()->SetLibraryForTesting(std::move(uma_lib));
+  metrics().SetLibraryForTesting(std::move(uma_lib));
   session_state_manager_ = std::make_unique<FakeSessionStateManager>(this);
   output_manager_ = std::make_unique<OutputManager>(this);
 }

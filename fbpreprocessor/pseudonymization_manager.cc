@@ -70,7 +70,7 @@ bool PseudonymizationManager::StartPseudonymization(
   FirmwareDump output(
       user_root_dir_.Append(kProcessedDirectory).Append(fw_dump.BaseName()),
       fw_dump.type());
-  manager_->metrics()->SendPseudonymizationFirmwareType(fw_dump.type());
+  manager_->metrics().SendPseudonymizationFirmwareType(fw_dump.type());
   if (manager_->task_runner()->PostTask(
           FROM_HERE,
           base::BindOnce(&PseudonymizationManager::DoNoOpPseudonymization,
@@ -93,7 +93,7 @@ bool PseudonymizationManager::StartPseudonymization(
     if (!fw_dump.Delete()) {
       LOG(ERROR) << "Failed to delete input firmware dump.";
     }
-    manager_->metrics()->SendPseudonymizationResult(
+    manager_->metrics().SendPseudonymizationResult(
         fw_dump.type(),
         fbpreprocessor::Metrics::PseudonymizationResult::kFailedToStart);
     return false;
@@ -138,8 +138,8 @@ void PseudonymizationManager::OnPseudonymizationComplete(
   LOG(INFO) << "Pseudonymization completed" << (success ? " " : " un")
             << "successfully.";
   VLOG(kLocalOnlyDebugVerbosity) << "Completed pseudonymization of " << input;
-  manager_->metrics()->SendPseudonymizationResult(input.type(),
-                                                  ConvertToMetrics(result));
+  manager_->metrics().SendPseudonymizationResult(input.type(),
+                                                 ConvertToMetrics(result));
   if (success) {
     CHECK(manager_->output_manager());
     manager_->output_manager()->AddFirmwareDump(output);
