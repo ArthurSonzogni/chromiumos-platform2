@@ -28,7 +28,7 @@ constexpr size_t kFrameSize = u2f::kU2fReportSize;
 
 brillo::Blob GetRandomData(size_t size) {
   brillo::Blob blob(size);
-  base::RandBytes(blob.data(), size);
+  base::RandBytes(blob);
   return blob;
 }
 
