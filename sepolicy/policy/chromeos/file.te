@@ -209,6 +209,7 @@ type cros_timberslide_exec, exec_type, file_type, cros_file_type, cros_system_fi
 type cros_tlsdated_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_tpm_managerd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_tpm2_simulator_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
+type cros_tpm_clear_request_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_traced_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_traced_probes_exec, exec_type, file_type, cros_file_type, cros_system_file_type;
 type cros_trunksd_exec, exec_type, file_type, cros_file_type, cros_system_file_type;

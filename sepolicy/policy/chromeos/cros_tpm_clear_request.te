@@ -1,0 +1,9 @@
+type cros_tpm_clear_request, domain, chromeos_domain;
+
+domain_auto_trans_nnp(cros_chromeos_install, cros_tpm_clear_request_exec, cros_tpm_clear_request)
+
+allow cros_tpm_clear_request cros_chromeos_install:fd use;
+allow cros_tpm_clear_request cros_run_lock:file { read write };
+allow cros_tpm_clear_request sysfs_tpm:dir search;
+allow cros_tpm_clear_request sysfs_tpm:file { getattr read write };
+allow cros_tpm_clear_request sysfs_tpm:lnk_file read;

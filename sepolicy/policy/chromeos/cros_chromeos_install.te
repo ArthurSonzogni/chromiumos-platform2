@@ -35,6 +35,9 @@ allow cros_chromeos_install self:capability { chown fowner fsetid sys_admin };
 allow cros_chromeos_install self:process setfscreate;
 allow cros_chromeos_install kernel:process setsched;
 
+allow cros_chromeos_install cros_var_lock:dir search;
+allow cros_chromeos_install cros_run_lock:file { read write lock };
+
 create_dir_file(cros_chromeos_install cros_dev_tast_test)
 create_dir_file(cros_chromeos_install cros_var_cache_dlcservice_images)
 create_dir_file(cros_chromeos_install cros_var_db_pkg)
