@@ -261,7 +261,7 @@ bool SetupDeviceMapper(const std::string& device_path,
   // Generate a name with a random string of 32 characters: we consider this to
   // have sufficiently low chance of collision to assume the name isn't taken.
   std::vector<uint8_t> rand_bytes(32);
-  base::RandBytes(rand_bytes.data(), rand_bytes.size());
+  base::RandBytes(rand_bytes);
   std::string name = base::HexEncode(rand_bytes.data(), rand_bytes.size());
 
   if (!LaunchDMCreate(name, final_table)) {
