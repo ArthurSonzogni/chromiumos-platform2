@@ -6,8 +6,9 @@
 # A script to install from removable media to hard disk.
 
 # If we're not running as root, restart as root.
-if [ "${UID:-$(id -u)}" -ne 0 ]; then
-  exec sudo "$0" "$@"
+if [ "$(id -u)" -ne 0 ]; then
+  echo "chromeos-install must be run as root"
+  exit 1
 fi
 
 # Load functions and constants for chromeos-install.
