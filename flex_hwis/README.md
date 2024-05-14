@@ -31,6 +31,17 @@ sending the data, the following checking steps are required:
     generated, the client will interact with the server by POST request.
     If the UUID already exists, then it will be a PUT request.
 
+## Hardware Cache
+
+This utility also handles creating an easily-read, on-disk cache of hardware
+data, for consumption by processes where making mojo requests is undesirable.
+
+On startup, `/etc/init/flex_hardware_cache.conf` handles running the tool to
+create a cache in `/run/flex_hardware/`. Each hardware value will be stored in
+a file with a name matching the keys we use to send the value in feedback and
+crash reports. Those keys are listed in the `system_api/constants/flex_hwis.h`
+header.
+
 ## Device metrics
 
 The `flex_device_metrics` directory contains a tool for sending metrics
