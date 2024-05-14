@@ -1971,6 +1971,12 @@ INSTANTIATE_TEST_SUITE_P(
     Camera3PortraitRotationTest,
     ::testing::Combine(::testing::ValuesIn(IterateCameraIdFormatResolution()),
                        ::testing::Values(90, 270),
-                       ::testing::Values(false, true)));
+                       // If camera service is loaded, then we only want to test
+                       // the new rotate and crop API (stream manipulator).
+                       // i.e. HAL3RotateCrop.
+                       base::CommandLine::ForCurrentProcess()->HasSwitch(
+                           "connect_to_camera_service")
+                           ? ::testing::ValuesIn({true})
+                           : ::testing::Values(false, true)));
 
 }  // namespace camera3_test
