@@ -382,6 +382,12 @@ class AuthSession final {
     CryptohomeStatusOr<PrepareInput> CreatePrepareInputForAdding(
         AuthFactorType auth_factor_type);
 
+    // UpdateUssAndStartFpMigration updates the USS with removed auth factors
+    // then starts the migration from legacy fingerprints. It is used as a
+    // callback to AuthFactorManager::RemoveMigratedFingerprintAuthFactor.
+    void UpdateUssAndStartFpMigration(StatusCallback on_done,
+                                      CryptohomeStatus status);
+
     // Migrates legacy fp records into fingerprint auth factors. It is used as a
     // callback to FpMigrationUtility::ListLegacyRecords.
     void MigrateLegacyRecords(

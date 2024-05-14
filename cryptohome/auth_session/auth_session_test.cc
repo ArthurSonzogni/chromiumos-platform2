@@ -105,6 +105,7 @@ using ::testing::DoDefault;
 using ::testing::ElementsAre;
 using ::testing::Eq;
 using ::testing::Field;
+using ::testing::InSequence;
 using ::testing::IsEmpty;
 using ::testing::IsNull;
 using ::testing::Matcher;
@@ -5570,7 +5571,7 @@ TEST_F(AuthSessionWithUssTest, MigrateLegacyFingerprints) {
   // Expect CreateKeyBlobsWithAuthBlock to be called multiple times:
   // return auth block states corresponding to each legacy record.
   {
-    testing::InSequence s;
+    InSequence s;
     for (auto record : legacy_records) {
       std::string legacy_record_id = record.legacy_record_id;
       EXPECT_CALL(
@@ -5692,6 +5693,129 @@ TEST_F(AuthSessionWithUssTest, MigrateLegacyFingerprintsAddCredFailure) {
   ASSERT_THAT(migration_future.Get(), NotOk());
   ASSERT_EQ(migration_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+}
+
+// Test that MigrateLegacyFingerprints can be retried. In particular, when it
+// retries, it should remove previous migrated fp factors properly so a retry
+// succeeds.
+TEST_F(AuthSessionWithUssTest, MigrateLegacyFingerprintsRetryPrepareFailure) {
+  // Set feature flags to allow fp migration.
+  fake_features_.SetDefaultForFeature(Features::kMigrateLegacyFingerprint,
+                                      true);
+  // Create an AuthSession and add a mock for a successful auth block prepare.
+  auto auth_session = std::make_unique<AuthSession>(
+      AuthSession::Params{.username = kFakeUsername,
+                          .is_ephemeral_user = false,
+                          .intent = AuthIntent::kDecrypt,
+                          .auth_factor_status_update_timer =
+                              std::make_unique<base::WallClockTimer>(),
+                          .user_exists = false},
+      backing_apis_);
+  EXPECT_TRUE(auth_session->OnUserCreated().ok());
+  EXPECT_CALL(hwsec_pw_manager_, InsertRateLimiter)
+      .WillOnce(ReturnValue(/* ret_label */ 0));
+  LegacyRecord record1{kFakeRecordId, "finger 1"};
+  LegacyRecord record2{kFakeSecondRecordId, "finger 2"};
+  std::vector<LegacyRecord> legacy_records = {record1, record2};
+  const brillo::Blob kNonce(32, 1);
+  ON_CALL(*bio_processor_, ListLegacyRecords(_))
+      .WillByDefault([legacy_records](auto&& callback) {
+        std::move(callback).Run(legacy_records);
+      });
+  ON_CALL(*bio_processor_, GetNonce(_))
+      .WillByDefault(
+          [kNonce](auto&& callback) { std::move(callback).Run(kNonce); });
+  ON_CALL(hwsec_pw_manager_, StartBiometricsAuth)
+      .WillByDefault(ReturnValue(
+          hwsec::PinWeaverManagerFrontend::StartBiometricsAuthReply{}));
+
+  // First migration should fail at the loading of the 2nd legacy records and
+  // later 2nd migration of both legacy records succeeds.
+  EXPECT_CALL(*bio_processor_, EnrollLegacyTemplate(_, _, _))
+      .WillOnce([](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(true);
+      })
+      .WillOnce([](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(false);
+      })
+      .WillRepeatedly([](auto&&, auto&&, auto&& callback) {
+        std::move(callback).Run(true);
+      });
+  EXPECT_CALL(auth_block_utility_, SelectAuthBlockTypeForCreation(_))
+      .WillRepeatedly(ReturnValue(AuthBlockType::kFingerprint));
+
+  // Expect CreateKeyBlobsWithAuthBlock to be called multiple times,
+  // return auth block states corresponding to each legacy record in the
+  // sequence.
+  {
+    InSequence s;
+    std::vector<LegacyRecord> legacy_record_sequence = {record1, record1,
+                                                        record2};
+    for (auto record : legacy_record_sequence) {
+      std::string legacy_record_id = record.legacy_record_id;
+      EXPECT_CALL(
+          auth_block_utility_,
+          CreateKeyBlobsWithAuthBlock(AuthBlockType::kFingerprint, _, _, _))
+          .WillOnce([&](AuthBlockType auth_block_type,
+                        const AuthInput& auth_input,
+                        const AuthFactorMetadata& auth_factor_metadata,
+                        AuthBlock::CreateCallback create_callback) {
+            EXPECT_TRUE(auth_input.reset_secret.has_value());
+            auto key_blobs = std::make_unique<KeyBlobs>();
+            key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
+            key_blobs->reset_secret = auth_input.reset_secret;
+            auto auth_block_state = std::make_unique<AuthBlockState>();
+            FingerprintAuthBlockState fingerprint_state =
+                FingerprintAuthBlockState();
+            fingerprint_state.template_id = legacy_record_id;
+            fingerprint_state.gsc_secret_label = kFakeFpLabel;
+            auth_block_state->state = fingerprint_state;
+            std::move(create_callback)
+                .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                     std::move(auth_block_state));
+          });
+    }
+  }
+
+  // Test.
+  TestFuture<CryptohomeStatus> migration_future;
+  auth_session->GetAuthForDecrypt()->MigrateLegacyFingerprints(
+      migration_future.GetCallback());
+
+  // Verify the expected failure of the 1st migration.
+  ASSERT_THAT(migration_future.Get(), NotOk());
+  ASSERT_EQ(migration_future.Get()->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
+
+  // Retry once.
+  TestFuture<CryptohomeStatus> second_migration_future;
+  auth_session->GetAuthForDecrypt()->MigrateLegacyFingerprints(
+      second_migration_future.GetCallback());
+
+  // Verify the 2nd migration succeeds.
+  ASSERT_THAT(second_migration_future.Get(), IsOk());
+  size_t index = 1;
+  for (auto legacy_record : legacy_records) {
+    auto auth_factor_label = FpMigrationUtility::MigratedLegacyFpLabel(index++);
+    CryptohomeStatusOr<AuthFactor> fp_auth_factor =
+        auth_factor_manager_.LoadAuthFactor(SanitizeUserName(kFakeUsername),
+                                            AuthFactorType::kFingerprint,
+                                            auth_factor_label);
+    ASSERT_THAT(fp_auth_factor, IsOk());
+    // The label in LegacyRecord is the user specified fingerprint
+    // name. Check that it is properly migrated into the common metadata of the
+    // auth factor.
+    ASSERT_EQ(fp_auth_factor->metadata().common.user_specified_name,
+              legacy_record.user_specified_name);
+    auto& fp_metadata =
+        std::get<FingerprintMetadata>(fp_auth_factor->metadata().metadata);
+    ASSERT_NE(fp_metadata.was_migrated, std::nullopt);
+    ASSERT_TRUE(fp_metadata.was_migrated.value());
+  }
+  auto encrypted_uss =
+      uss_manager_.LoadEncrypted(auth_session->obfuscated_username());
+  ASSERT_OK(encrypted_uss);
+  ASSERT_EQ((*encrypted_uss)->legacy_fingerprint_migration_rollout(), 1);
 }
 
 }  // namespace cryptohome

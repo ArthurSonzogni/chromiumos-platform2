@@ -8,6 +8,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -2659,15 +2660,64 @@ void AuthSession::AuthForDecrypt::MigrateLegacyFingerprints(
 
   if (session_->fp_migration_utility_->NeedsMigration(
           (*encrypted_uss)->legacy_fingerprint_migration_rollout())) {
-    // TODO(b/327048355): Delete all previous migrated fingerprint auth factor
-    // to ensure no conflicts when there are more than one rollout attempt.
-    session_->fp_migration_utility_->ListLegacyRecords(
-        base::BindOnce(&AuthSession::AuthForDecrypt::MigrateLegacyRecords,
-                       weak_factory_.GetWeakPtr(), std::move(on_done)));
+    session_->auth_factor_manager_->RemoveMigratedFingerprintAuthFactors(
+        session_->obfuscated_username(), session_->auth_block_utility_,
+        base::BindOnce(
+            &AuthSession::AuthForDecrypt::UpdateUssAndStartFpMigration,
+            weak_factory_.GetWeakPtr(), std::move(on_done)));
+    return;
   } else {
     std::move(on_done).Run(OkStatus<CryptohomeError>());
     return;
   }
+}
+
+void AuthSession::AuthForDecrypt::UpdateUssAndStartFpMigration(
+    StatusCallback on_done, CryptohomeStatus status) {
+  if (!status.ok()) {
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  // Walk through the wrapped key ids in the USS, each corresponding to an auth
+  // factor label. Remove the ids mapping to deleted auth factors.
+  DecryptedUss& decrypted_uss =
+      session_->uss_manager_->GetDecrypted(*session_->decrypt_token_);
+  std::set<std::string_view> uss_labels =
+      decrypted_uss.encrypted().WrappedMainKeyIds();
+  const auto& auth_factor_map = session_->GetAuthFactorMap();
+  auto transaction = decrypted_uss.StartTransaction();
+  for (const std::string_view label : uss_labels) {
+    const std::string auth_factor_label(label);
+    if (auth_factor_map.Find(auth_factor_label).has_value()) {
+      continue;
+    }
+
+    // If an auth factor has been removed, remove its associated entry in the
+    // USS. Log and ignore the return status as this removal should never fail.
+    if (auto status = transaction.RemoveWrappingId(auth_factor_label);
+        !status.ok()) {
+      LOG(ERROR) << "Failed to remove the wrapping id <" << auth_factor_label
+                 << "> from the USS after removing migrated fp factors: "
+                 << status;
+    }
+  }
+
+  if (auto status = std::move(transaction).Commit(); !status.ok()) {
+    LOG(ERROR) << "Failed to persist user secret stash after remove migrated "
+                  "fp factors:"
+               << status;
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionPersistUSSFailedInDeletingMigratedFpFactors),
+            user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+            .Wrap(std::move(status)));
+    return;
+  }
+  session_->fp_migration_utility_->ListLegacyRecords(
+      base::BindOnce(&AuthSession::AuthForDecrypt::MigrateLegacyRecords,
+                     weak_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
 void AuthSession::AuthForDecrypt::MigrateLegacyRecords(
@@ -2796,7 +2846,7 @@ void AuthSession::AuthForDecrypt::MarkFpMigrationCompletion(
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
-                kLocAuthSessionAddToUssFailedInPersistFpMigrationRollout),
+                kLocAuthSessionAddToUSSFailedInPersistFpMigrationRollout),
             user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
             .Wrap(std::move(status)));
     return;

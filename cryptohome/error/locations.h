@@ -2218,7 +2218,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./user_secret_stash/decrypted.cc */
   kLocUssUpdateInvalidLegacyFpMigrationRollout = 3562,
   /* ./auth_session/auth_session.cc */
-  kLocAuthSessionAddToUssFailedInPersistFpMigrationRollout = 3563,
+  kLocAuthSessionAddToUSSFailedInPersistFpMigrationRollout = 3563,
   /* ./auth_session/auth_session.cc */
   kLocAuthSessionPersistUSSFailedInPersistFpMigrationRollout = 3564,
   /* ./auth_session/auth_session.cc */
@@ -2227,6 +2227,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorManagerMalformedFactorInRemoveMigratedFpFactors = 3566,
   /* ./auth_factor/manager.cc */
   kLocAuthFactorManagerFailedInRemoveOneMigratedFpFactors = 3567,
+  /* ./auth_session/auth_session.cc */
+  kLocAuthSessionPersistUSSFailedInDeletingMigratedFpFactors = 3568,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
