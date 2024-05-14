@@ -67,9 +67,9 @@ class MockDevicePolicy : public DevicePolicy {
               GetEnrolledHwDataUsageEnabled,
               (),
               (const, override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(std::optional<EphemeralSettings>,
               GetEphemeralSettings,
-              (EphemeralSettings*),
+              (),
               (const, override));
   MOCK_METHOD(std::optional<bool>,
               GetDeviceExtendedAutoUpdateEnabled,

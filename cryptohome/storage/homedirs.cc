@@ -69,10 +69,12 @@ bool HomeDirs::GetEphemeralSettings(
     return false;
   }
 
-  if (!policy_provider_->GetDevicePolicy().GetEphemeralSettings(settings)) {
+   std::optional<policy::DevicePolicy::EphemeralSettings> ephemeral_settings =
+      policy_provider_->GetDevicePolicy().GetEphemeralSettings();
+  if (!ephemeral_settings)
     return false;
-  }
 
+  *settings = *ephemeral_settings;
   return true;
 }
 

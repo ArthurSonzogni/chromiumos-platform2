@@ -319,9 +319,10 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(optional_bool.has_value());
   EXPECT_FALSE(*optional_bool);
 
-  DevicePolicy::EphemeralSettings ephemeral_settings;
-  ASSERT_TRUE(policy.GetEphemeralSettings(&ephemeral_settings));
-  EXPECT_FALSE(ephemeral_settings.global_ephemeral_users_enabled);
+  std::optional<DevicePolicy::EphemeralSettings> ephemeral_settings =
+      policy.GetEphemeralSettings();
+  ASSERT_TRUE(ephemeral_settings.has_value());
+  EXPECT_FALSE(ephemeral_settings->global_ephemeral_users_enabled);
 
   std::string string_value;
   ASSERT_TRUE(policy.GetReleaseChannel(&string_value));
@@ -502,7 +503,7 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyNoneSetTest) {
   // so failure to read is success.
   EXPECT_TRUE(policy.GetEnrolledHwDataUsageEnabled().has_value());
   EXPECT_TRUE(*policy.GetEnrolledHwDataUsageEnabled());
-  EXPECT_FALSE(policy.GetEphemeralSettings(&ephemeral_settings));
+  EXPECT_EQ(policy.GetEphemeralSettings(), std::nullopt);
   EXPECT_FALSE(policy.GetReleaseChannel(&string_value));
   EXPECT_FALSE(policy.GetDeviceExtendedAutoUpdateEnabled().has_value());
   EXPECT_FALSE(policy.GetUpdateDisabled(&bool_value));

@@ -65,8 +65,7 @@ class DevicePolicyImpl : public DevicePolicy {
   std::optional<bool> GetMetricsEnabled() const override;
   std::optional<bool> GetUnenrolledHwDataUsageEnabled() const override;
   std::optional<bool> GetEnrolledHwDataUsageEnabled() const override;
-  bool GetEphemeralSettings(
-      EphemeralSettings* ephemeral_settings) const override;
+  std::optional<EphemeralSettings> GetEphemeralSettings() const override;
   std::optional<bool> GetDeviceExtendedAutoUpdateEnabled() const override;
   bool GetReleaseChannel(std::string* release_channel) const override;
   bool GetReleaseChannelDelegated(

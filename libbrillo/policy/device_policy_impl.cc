@@ -318,15 +318,16 @@ std::optional<bool> DevicePolicyImpl::GetEnrolledHwDataUsageEnabled() const {
   return proto.enabled();
 }
 
-bool DevicePolicyImpl::GetEphemeralSettings(
-    EphemeralSettings* ephemeral_settings) const {
+std::optional<DevicePolicy::EphemeralSettings>
+DevicePolicyImpl::GetEphemeralSettings() const {
   if (!device_policy_->has_ephemeral_users_enabled() &&
       !device_policy_->has_device_local_accounts())
-    return false;
+    return std::nullopt;
 
-  ephemeral_settings->global_ephemeral_users_enabled = false;
-  ephemeral_settings->specific_ephemeral_users.clear();
-  ephemeral_settings->specific_nonephemeral_users.clear();
+  DevicePolicy::EphemeralSettings ephemeral_settings;
+  ephemeral_settings.global_ephemeral_users_enabled = false;
+  ephemeral_settings.specific_ephemeral_users.clear();
+  ephemeral_settings.specific_nonephemeral_users.clear();
 
   if (device_policy_->has_device_local_accounts()) {
     const em::DeviceLocalAccountsProto& local_accounts =
@@ -340,23 +341,23 @@ bool DevicePolicyImpl::GetEphemeralSettings(
 
       if (account.ephemeral_mode() ==
           em::DeviceLocalAccountInfoProto::EPHEMERAL_MODE_DISABLE) {
-        ephemeral_settings->specific_nonephemeral_users.push_back(
+        ephemeral_settings.specific_nonephemeral_users.push_back(
             GenerateDeviceLocalAccountUserId(account.account_id(),
                                              account.type()));
       } else if (account.ephemeral_mode() ==
                  em::DeviceLocalAccountInfoProto::EPHEMERAL_MODE_ENABLE) {
-        ephemeral_settings->specific_ephemeral_users.push_back(
+        ephemeral_settings.specific_ephemeral_users.push_back(
             GenerateDeviceLocalAccountUserId(account.account_id(),
                                              account.type()));
       }
     }
   }
   if (device_policy_->has_ephemeral_users_enabled()) {
-    ephemeral_settings->global_ephemeral_users_enabled =
+    ephemeral_settings.global_ephemeral_users_enabled =
         device_policy_->ephemeral_users_enabled().ephemeral_users_enabled();
   }
 
-  return true;
+  return ephemeral_settings;
 }
 
 std::optional<bool> DevicePolicyImpl::GetDeviceExtendedAutoUpdateEnabled()

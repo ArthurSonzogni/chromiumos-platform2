@@ -66,11 +66,6 @@ ACTION_P2(SetOwner, owner_known, owner) {
   return owner_known;
 }
 
-ACTION_P(SetEphemeralSettings, ephemeral_settings) {
-  *arg0 = ephemeral_settings;
-  return true;
-}
-
 struct UserInfo {
   Username name;
   ObfuscatedUsername obfuscated;
@@ -195,8 +190,8 @@ TEST_P(HomeDirsTest, RemoveEphemeralCryptohomes_Error) {
 
   EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(0);
-  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings())
+      .WillRepeatedly(Return(std::nullopt));
 
   auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
   EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kError);
@@ -219,8 +214,8 @@ TEST_P(HomeDirsTest, RemoveEphemeralCryptohomes_EphemeralUsersDisabled) {
   EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(0);
   policy::DevicePolicy::EphemeralSettings ephemeral_settings;
   ephemeral_settings.global_ephemeral_users_enabled = false;
-  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
-      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings())
+      .WillRepeatedly(Return(ephemeral_settings));
 
   auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
   EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kNone);
@@ -244,8 +239,8 @@ TEST_P(HomeDirsTest, RemoveEphemeralCryptohomes_EphemeralUsersEnabled) {
   EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(3);
   policy::DevicePolicy::EphemeralSettings ephemeral_settings;
   ephemeral_settings.global_ephemeral_users_enabled = true;
-  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
-      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings())
+      .WillRepeatedly(Return(ephemeral_settings));
 
   auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
   EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kSome);
@@ -273,8 +268,8 @@ TEST_P(HomeDirsTest,
   EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(4);
   policy::DevicePolicy::EphemeralSettings ephemeral_settings;
   ephemeral_settings.global_ephemeral_users_enabled = true;
-  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
-      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings())
+      .WillRepeatedly(Return(ephemeral_settings));
 
   EXPECT_CALL(device_management_client_, IsEnterpriseOwned())
       .WillRepeatedly(Return(true));
@@ -304,8 +299,8 @@ TEST_P(HomeDirsTest,
   ephemeral_settings.global_ephemeral_users_enabled = true;
   ephemeral_settings.specific_ephemeral_users.push_back(kUser0);
   ephemeral_settings.specific_nonephemeral_users.push_back(kUser1);
-  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
-      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings())
+      .WillRepeatedly(Return(ephemeral_settings));
 
   auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
   EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kSome);
@@ -334,8 +329,8 @@ TEST_P(HomeDirsTest,
   ephemeral_settings.global_ephemeral_users_enabled = false;
   ephemeral_settings.specific_ephemeral_users.push_back(kUser0);
   ephemeral_settings.specific_nonephemeral_users.push_back(kUser1);
-  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
-      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings())
+      .WillRepeatedly(Return(ephemeral_settings));
 
   auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
   EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kSome);

@@ -10,7 +10,6 @@
 #include <optional>
 #include <set>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include <base/time/time.h>
@@ -109,11 +108,11 @@ class DevicePolicy {
   // (defaulting to true), or std::nullopt if not enrolled.
   virtual std::optional<bool> GetEnrolledHwDataUsageEnabled() const = 0;
 
-  // Writes the value of the EphemeralUsersEnabled policy and the values from
-  // DeviceLocalAccountInfoProto EphemeralMode to |ephemeral_settings|.
-  // Returns true if either of the policies are present.
-  virtual bool GetEphemeralSettings(
-      EphemeralSettings* ephemeral_settings) const = 0;
+  // Returns the value of the EphemeralUsersEnabled policy and the values from
+  // DeviceLocalAccountInfoProto EphemeralMode.
+  // Return std::nullopt on failed read, and if ephemeral users are disabled and
+  // there are no device local accounts.
+  virtual std::optional<EphemeralSettings> GetEphemeralSettings() const = 0;
 
   // Returns value of the `DeviceExtendedAutoUpdateEnabled` policy/device owner
   // setting or `std::nullopt` if unset.

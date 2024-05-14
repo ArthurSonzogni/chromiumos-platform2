@@ -538,11 +538,7 @@ TEST_F(DevicePolicyImplTest, GetEphemeralSettings_NotSet) {
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
                    device_policy_proto);
 
-  DevicePolicy::EphemeralSettings ephemeral_settings;
-  EXPECT_FALSE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
-  EXPECT_FALSE(ephemeral_settings.global_ephemeral_users_enabled);
-  EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
-  EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+  EXPECT_EQ(device_policy_.GetEphemeralSettings(), std::nullopt);
 }
 
 TEST_F(DevicePolicyImplTest,
@@ -553,11 +549,12 @@ TEST_F(DevicePolicyImplTest,
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
                    device_policy_proto);
 
-  DevicePolicy::EphemeralSettings ephemeral_settings;
-  EXPECT_TRUE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
-  EXPECT_TRUE(ephemeral_settings.global_ephemeral_users_enabled);
-  EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
-  EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+  std::optional<DevicePolicy::EphemeralSettings> ephemeral_settings =
+      device_policy_.GetEphemeralSettings();
+  ASSERT_TRUE(ephemeral_settings.has_value());
+  EXPECT_TRUE(ephemeral_settings->global_ephemeral_users_enabled);
+  EXPECT_TRUE(ephemeral_settings->specific_ephemeral_users.empty());
+  EXPECT_TRUE(ephemeral_settings->specific_nonephemeral_users.empty());
 }
 
 TEST_F(DevicePolicyImplTest,
@@ -568,11 +565,12 @@ TEST_F(DevicePolicyImplTest,
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
                    device_policy_proto);
 
-  DevicePolicy::EphemeralSettings ephemeral_settings;
-  EXPECT_TRUE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
-  EXPECT_FALSE(ephemeral_settings.global_ephemeral_users_enabled);
-  EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
-  EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+  std::optional<DevicePolicy::EphemeralSettings> ephemeral_settings =
+      device_policy_.GetEphemeralSettings();
+  ASSERT_TRUE(ephemeral_settings.has_value());
+  EXPECT_FALSE(ephemeral_settings->global_ephemeral_users_enabled);
+  EXPECT_TRUE(ephemeral_settings->specific_ephemeral_users.empty());
+  EXPECT_TRUE(ephemeral_settings->specific_nonephemeral_users.empty());
 }
 
 TEST_F(DevicePolicyImplTest, GetEphemeralSettings_Set_Non_Ephemeral_User) {
@@ -586,13 +584,14 @@ TEST_F(DevicePolicyImplTest, GetEphemeralSettings_Set_Non_Ephemeral_User) {
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
                    device_policy_proto);
 
-  DevicePolicy::EphemeralSettings ephemeral_settings;
-  EXPECT_TRUE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
-  EXPECT_FALSE(ephemeral_settings.global_ephemeral_users_enabled);
-  EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
-  EXPECT_EQ(1, ephemeral_settings.specific_nonephemeral_users.size());
+  std::optional<DevicePolicy::EphemeralSettings> ephemeral_settings =
+      device_policy_.GetEphemeralSettings();
+  ASSERT_TRUE(ephemeral_settings.has_value());
+  EXPECT_FALSE(ephemeral_settings->global_ephemeral_users_enabled);
+  EXPECT_TRUE(ephemeral_settings->specific_ephemeral_users.empty());
+  EXPECT_EQ(1, ephemeral_settings->specific_nonephemeral_users.size());
   EXPECT_EQ("6163636f756e74@public-accounts.device-local.localhost",
-            ephemeral_settings.specific_nonephemeral_users[0]);
+            ephemeral_settings->specific_nonephemeral_users[0]);
 }
 
 TEST_F(DevicePolicyImplTest, GetEphemeralSettings_Set_Ephemeral_User) {
@@ -606,13 +605,14 @@ TEST_F(DevicePolicyImplTest, GetEphemeralSettings_Set_Ephemeral_User) {
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
                    device_policy_proto);
 
-  DevicePolicy::EphemeralSettings ephemeral_settings;
-  EXPECT_TRUE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
-  EXPECT_FALSE(ephemeral_settings.global_ephemeral_users_enabled);
-  EXPECT_EQ(1, ephemeral_settings.specific_ephemeral_users.size());
+  std::optional<DevicePolicy::EphemeralSettings> ephemeral_settings =
+      device_policy_.GetEphemeralSettings();
+  ASSERT_TRUE(ephemeral_settings.has_value());
+  EXPECT_FALSE(ephemeral_settings->global_ephemeral_users_enabled);
+  EXPECT_EQ(1, ephemeral_settings->specific_ephemeral_users.size());
   EXPECT_EQ("6163636f756e74@public-accounts.device-local.localhost",
-            ephemeral_settings.specific_ephemeral_users[0]);
-  EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+            ephemeral_settings->specific_ephemeral_users[0]);
+  EXPECT_TRUE(ephemeral_settings->specific_nonephemeral_users.empty());
 }
 
 TEST_F(DevicePolicyImplTest, GetEphemeralSettings_Set_EphemeralMode_Unset) {
@@ -637,11 +637,12 @@ TEST_F(DevicePolicyImplTest, GetEphemeralSettings_Set_EphemeralMode_Unset) {
   InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
                    device_policy_proto);
 
-  DevicePolicy::EphemeralSettings ephemeral_settings;
-  EXPECT_TRUE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
-  EXPECT_TRUE(ephemeral_settings.global_ephemeral_users_enabled);
-  EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
-  EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+  std::optional<DevicePolicy::EphemeralSettings> ephemeral_settings =
+      device_policy_.GetEphemeralSettings();
+  ASSERT_TRUE(ephemeral_settings.has_value());
+  EXPECT_TRUE(ephemeral_settings->global_ephemeral_users_enabled);
+  EXPECT_TRUE(ephemeral_settings->specific_ephemeral_users.empty());
+  EXPECT_TRUE(ephemeral_settings->specific_nonephemeral_users.empty());
 }
 
 TEST_F(DevicePolicyImplTest, GetDeviceExtendedAutoUpdateEnabled_Set) {
