@@ -137,13 +137,13 @@ static constexpr VPNEnumMetric kMetricConnectionLostReason = {
 // be considered as kRoutingTypeSplit.
 enum RoutingType {
   // The routes cover the whole address space.
-  kRoutingTypeFull,
+  kRoutingTypeFull = 0,
   // The routes cover the address space partially.
-  kRoutingTypeSplit,
+  kRoutingTypeSplit = 1,
   // No route for this IP family.
-  kRoutingTypeBypass,
+  kRoutingTypeBypass = 2,
   // This IP family is blocked.
-  kRoutingTypeBlocked,
+  kRoutingTypeBlocked = 3,
 
   kRoutingTypeMax,
 };
