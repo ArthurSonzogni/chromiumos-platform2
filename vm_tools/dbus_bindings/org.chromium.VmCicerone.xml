@@ -1,0 +1,745 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  Copyright 2024 The ChromiumOS Authors
+  Use of this source code is governed by a BSD-style license that can be
+  found in the LICENSE file.
+  -->
+<!--
+  Configuration for /chromeos-dbus-bindings/.
+-->
+<node name="/org/chromium/VmCicerone"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.VmCicerone">
+    <method name="AddFileWatch">
+      <tp:docstring>
+        Handles a request to add a file watch.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::AddFileWatchRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::AddFileWatchResponse"/>
+      </arg>
+    </method>
+    <method name="ApplyAnsiblePlaybook">
+      <tp:docstring>
+        Handles a request to apply Ansible playbook to a container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ApplyAnsiblePlaybookRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ApplyAnsiblePlaybookResponse"/>
+      </arg>
+    </method>
+    <method name="AttachUsbToContainer">
+      <tp:docstring>
+        Attaches a USB device to a LXD container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::AttachUsbToContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::AttachUsbToContainerResponse"/>
+      </arg>
+    </method>
+    <method name="CancelExportLxdContainer">
+      <tp:docstring>
+        Handles a request to cancel an ongoing LXD container export.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::CancelExportLxdContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::CancelExportLxdContainerResponse"/>
+      </arg>
+    </method>
+    <method name="CancelImportLxdContainer">
+      <tp:docstring>
+        Handles a request to cancel an ongoing LXD container import.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::CancelImportLxdContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::CancelImportLxdContainerResponse"/>
+      </arg>
+    </method>
+    <method name="CancelUpgradeContainer">
+      <tp:docstring>
+        Handles a request to cancel an ongoing container upgrade.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::CancelUpgradeContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::CancelUpgradeContainerResponse"/>
+      </arg>
+    </method>
+    <method name="ConfigureForArcSideload">
+      <tp:docstring>
+        Handles a request to allow sideloading Arc (android) apps from the
+        container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ConfigureForArcSideloadRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ConfigureForArcSideloadResponse"/>
+      </arg>
+    </method>
+    <method name="ConnectChunnel">
+      <tp:docstring>
+        Connects to chunnel.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ConnectChunnelRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ConnectChunnelResponse"/>
+      </arg>
+    </method>
+    <method name="CreateLxdContainer">
+      <tp:docstring>
+        Creates a new Lxd Container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::CreateLxdContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::CreateLxdContainerResponse"/>
+      </arg>
+    </method>
+    <method name="DeleteLxdContainer">
+      <tp:docstring>
+        Handles a request to delete an LXD container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::DeleteLxdContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::DeleteLxdContainerResponse"/>
+      </arg>
+    </method>
+    <method name="DetachUsbFromContainer">
+      <tp:docstring>
+        Handles a request to detach a USB port from a container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::DetachUsbFromContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::DetachUsbFromContainerResponse"/>
+      </arg>
+    </method>
+    <method name="ExportLxdContainer">
+      <tp:docstring>
+        Handles a request to export an LXD container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ExportLxdContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ExportLxdContainerResponse"/>
+      </arg>
+    </method>
+    <method name="FileSelected">
+      <tp:docstring>
+        Handles a notification from Chrome in response to a SelectFile() request.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::FileSelectedSignal"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::EmptyMessage"/>
+      </arg>
+    </method>
+    <method name="GetContainerAppIcon">
+      <tp:docstring>
+        Handles a request to get application icons in a container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ContainerAppIconRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ContainerAppIconResponse"/>
+      </arg>
+    </method>
+    <method name="GetContainerToken">
+      <tp:docstring>
+        Get container token.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ContainerTokenRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ContainerTokenResponse"/>
+      </arg>
+    </method>
+    <method name="GetDebugInformation">
+      <tp:docstring>
+        Get debug information for feedback reports.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::GetDebugInformationRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::GetDebugInformationResponse"/>
+      </arg>
+    </method>
+    <method name="GetGarconSessionInfo">
+      <tp:docstring>
+        Handles a request to get session info from Garcon.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::GetGarconSessionInfoRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::GetGarconSessionInfoResponse"/>
+      </arg>
+    </method>
+    <method name="GetLinuxPackageInfo">
+      <tp:docstring>
+        Handles a request to get Linux package info from a container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LinuxPackageInfoRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LinuxPackageInfoResponse"/>
+      </arg>
+    </method>
+    <method name="GetLxdContainerUsername">
+      <tp:docstring>
+        Handles a request to get the primary username for an LXD container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::GetLxdContainerUsernameRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::GetLxdContainerUsernameResponse"/>
+      </arg>
+    </method>
+    <method name="GetVshSession">
+      <tp:docstring>
+        Handles a request to retrieve vsh session data.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::GetVshSessionRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::GetVshSessionResponse"/>
+      </arg>
+    </method>
+    <method name="InstallLinuxPackage">
+      <tp:docstring>
+        Handles a request to install a Linux package file in a container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::InstallLinuxPackageRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::InstallLinuxPackageResponse"/>
+      </arg>
+    </method>
+    <method name="ImportLxdContainer">
+      <tp:docstring>
+        Handles a request to import an LXD container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ImportLxdContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ImportLxdContainerResponse"/>
+      </arg>
+    </method>
+    <method name="LaunchContainerApplication">
+      <tp:docstring>
+        Launches an application inside a running Container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LaunchContainerApplicationRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LaunchContainerApplicationResponse"/>
+      </arg>
+    </method>
+    <method name="LaunchVshd">
+      <tp:docstring>
+        launches vshd in a container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LaunchVshdRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LaunchVshdResponse"/>
+      </arg>
+    </method>
+    <method name="ListRunningContainers">
+      <tp:docstring>
+        Handles a request to list containers.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ListRunningContainersRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ListRunningContainersResponse"/>
+      </arg>
+    </method>
+    <method name="NotifyVmStarted">
+      <tp:docstring>
+        Concierge notifies Cicerone that VM started.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::NotifyVmStartedRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::EmptyMessage"/>
+      </arg>
+    </method>
+    <method name="NotifyVmStopped">
+      <tp:docstring>
+        Concierge notifies Cicerone that VM has stopped.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::NotifyVmStoppedRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::EmptyMessage"/>
+      </arg>
+    </method>
+    <method name="NotifyVmStopping">
+      <tp:docstring>
+        Concierge notifies Cicerone that VM started the process of stopping.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::NotifyVmStoppingRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::EmptyMessage"/>
+      </arg>
+    </method>
+    <method name="RemoveFileWatch">
+      <tp:docstring>
+        Handles a request to remove a file watch.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::RemoveFileWatchRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::RemoveFileWatchResponse"/>
+      </arg>
+    </method>
+    <method name="RegisterVshSession">
+      <tp:docstring>
+        Add a mapping between vsh and the session data such as the container
+        shell pid.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::RegisterVshSessionRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::RegisterVshSessionResponse"/>
+      </arg>
+    </method>
+    <method name="SetTimezone">
+      <tp:docstring>
+        Sets the default timezone for an LXD instance.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::SetTimezoneRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::SetTimezoneResponse"/>
+      </arg>
+    </method>
+    <method name="SetUpLxdContainerUser">
+      <tp:docstring>
+        Sets the Lxd container user, creating it if needed.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::SetUpLxdContainerUserRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::SetUpLxdContainerUserResponse"/>
+      </arg>
+    </method>
+    <method name="StartLxd">
+      <tp:docstring>
+        Handles a request to start LXD.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::StartLxdRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::StartLxdResponse"/>
+      </arg>
+    </method>
+    <method name="StartLxdContainer">
+      <tp:docstring>
+        Starts a new Lxd Container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::StartLxdContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::StartLxdContainerResponse"/>
+      </arg>
+    </method>
+    <method name="StopLxdContainer">
+      <tp:docstring>
+        Handles a request to stop an LXD container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::StopLxdContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::StopLxdContainerResponse"/>
+      </arg>
+    </method>
+    <method name="UninstallPackageOwningFile">
+      <tp:docstring>
+        Handles a request to uninstall the Linux package that owns the indicated
+        .desktop file.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::UninstallPackageOwningFileRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::UninstallPackageOwningFileResponse"/>
+      </arg>
+    </method>
+    <method name="UpdateContainerDevices">
+      <tp:docstring>
+        Updates the VM devices available for a LXD container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::UpdateContainerDevicesRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::UpdateContainerDevicesResponse"/>
+      </arg>
+    </method>
+    <method name="UpgradeContainer">
+      <tp:docstring>
+        Handles a request to upgrade a container.
+      </tp:docstring>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple" />
+      <arg type="ay" name="request" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::UpgradeContainerRequest"/>
+      </arg>
+      <arg type="ay" name="response" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::UpgradeContainerResponse"/>
+      </arg>
+    </method>
+
+    <signal name="ApplyAnsiblePlaybookProgress">
+      <tp:docstring>
+        Inform listeners on update for the progress or completion of
+        ApplyAnsiblePlaybook request.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ApplyAnsiblePlaybookProgressSignal"/>
+      </arg>
+    </signal>
+    <signal name="ContainerShutdown">
+      <tp:docstring>
+        Signaled from Cicerone when container has shut down.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ContainerShutdownSignal"/>
+      </arg>
+    </signal>
+    <signal name="ContainerStarted">
+      <tp:docstring>
+        Signaled from Cicerone when container has started up.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ContainerStartedSignal"/>
+      </arg>
+    </signal>
+    <signal name="LxdContainerCreated">
+      <tp:docstring>
+        signaled from Cicerone when the long running creation of an Lxd
+        container is complete.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LxdContainerCreatedSignal"/>
+      </arg>
+    </signal>
+    <signal name="ExportLxdContainerProgress">
+      <tp:docstring>
+        Inform listeners on update for the progress or completion of container
+        export.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ExportLxdContainerProgressSignal"/>
+      </arg>
+    </signal>
+    <signal name="FileWatchTriggered">
+      <tp:docstring>
+        Sent by garcon to notify that a file in a watched directory has changed. Used
+        by FilesApp.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::FileWatchTriggeredSignal"/>
+      </arg>
+    </signal>
+    <signal name="ImportLxdContainerProgress">
+      <tp:docstring>
+        Inform listeners on update for the progress or completion of container
+        import.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::ImportLxdContainerProgressSignal"/>
+      </arg>
+    </signal>
+    <signal name="InhibitScreensaver">
+      <tp:docstring>
+        VM is requesting to inhibit screensaver.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::InhibitScreensaverSignal"/>
+      </arg>
+    </signal>
+    <signal name="InstallLinuxPackageProgress">
+      <tp:docstring>
+        Inform listeners on update for the progress or completion of installing package.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::InstallLinuxPackageProgressSignal"/>
+      </arg>
+    </signal>
+    <signal name="LowDiskSpaceTriggered">
+      <tp:docstring>
+        Sent by garcon to notify that container is running low on disk space.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LowDiskSpaceTriggeredSignal"/>
+      </arg>
+    </signal>
+    <signal name="LxdContainerDeleted">
+      <tp:docstring>
+        signaled from Cicerone when delete operation of container is completed.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LxdContainerDeletedSignal"/>
+      </arg>
+    </signal>
+    <signal name="LxdContainerDownloading">
+      <tp:docstring>
+        signaled from Cicerone when downloading container with the progress.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LxdContainerDownloadingSignal"/>
+      </arg>
+    </signal>
+    <signal name="LxdContainerStarting">
+      <tp:docstring>
+        Signaled from Cicerone when async container startup is used. This is
+        necessary if long running file remapping is required before an old
+        container is safe to use.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LxdContainerStartingSignal"/>
+      </arg>
+    </signal>
+    <signal name="LxdContainerStopping">
+      <tp:docstring>
+        Signaled from Cicerone when container is in progress of stopping with
+        status.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::LxdContainerStoppingSignal"/>
+      </arg>
+    </signal>
+    <signal name="PendingAppListUpdates">
+      <tp:docstring>
+        Signal from Container to indicate that an app list update has been
+        scheduled or completed.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::PendingAppListUpdatesSignal"/>
+      </arg>
+    </signal>
+    <signal name="StartLxdProgress">
+      <tp:docstring>
+        Inform listeners on update for the progress or completion of starting lxd.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::StartLxdProgressSignal"/>
+      </arg>
+    </signal>
+    <signal name="TremplinStarted">
+      <tp:docstring>
+        Signaled from Cicerone when Tremplin gRPC service is first connected in
+        a VM. This service is required for CreateLxdContainer and
+        StartLxdContainer.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::TremplinStartedSignal"/>
+      </arg>
+    </signal>
+    <signal name="UninhibitScreensaver">
+      <tp:docstring>
+        VM is requesting to uninhibit screensaver.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::UninhibitScreensaverSignal"/>
+      </arg>
+    </signal>
+    <signal name="UninstallPackageProgress">
+      <tp:docstring>
+        Inform listeners on update for the progress or completion of
+        UninstallPackageOwningFile request.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::UninstallPackageProgressSignal"/>
+      </arg>
+    </signal>
+    <signal name="UpgradeContainerProgress">
+      <tp:docstring>
+        Inform listeners on update for the progress or completion of container
+        upgrade.
+      </tp:docstring>
+      <arg name="signal" type="ay">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="vm_tools::cicerone::UpgradeContainerProgressSignal"/>
+      </arg>
+    </signal>
+  </interface>
+</node>

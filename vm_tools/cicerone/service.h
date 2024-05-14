@@ -38,6 +38,7 @@
 #include "vm_tools/cicerone/container.h"
 #include "vm_tools/cicerone/container_listener_impl.h"
 #include "vm_tools/cicerone/crash_listener_impl.h"
+#include "vm_tools/cicerone/dbus_adaptors/org.chromium.VmCicerone.h"
 #include "vm_tools/cicerone/guest_metrics.h"
 #include "vm_tools/cicerone/shadercached_helper.h"
 #include "vm_tools/cicerone/shill_client.h"
@@ -48,7 +49,7 @@ namespace vm_tools::cicerone {
 
 // VM Container Service responsible for responding to DBus method calls for
 // interacting with VM containers.
-class Service final {
+class Service : public org::chromium::VmCiceroneInterface {
  public:
   // Creates a new Service instance.  |quit_closure| is posted to the TaskRunner
   // for the current thread when this process receives a SIGTERM. |bus| is a
@@ -457,13 +458,9 @@ class Service final {
   }
 
  private:
-  // Sends the |signal_name| D-Bus signal with |signal_proto| as its contents.
-  // It will use |cid| to lookup VM and owner, and set these fields on
-  // |signal_proto| before sending it.
+  // Fills |signal_proto| with VM and owner using |cid| to lookup.
   template <typename T>
-  bool SendSignal(const std::string& signal_name,
-                  const uint32_t cid,
-                  T* signal_proto) {
+  bool FillVmInfoByCid(const uint32_t cid, T* signal_proto) {
     DCHECK(sequence_checker_.CalledOnValidSequence());
     CHECK(signal_proto);
     VirtualMachine* vm;
@@ -475,22 +472,17 @@ class Service final {
       return false;
     }
 
-    dbus::Signal signal(kVmCiceroneInterface, signal_name);
     signal_proto->set_vm_name(std::move(vm_name));
     signal_proto->set_owner_id(std::move(owner_id));
-    dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(*signal_proto);
-    exported_object_->SendSignal(&signal);
     return true;
   }
 
-  // Sends the |signal_name| D-Bus signal with |signal_proto| as its contents.
-  // It will use |cid| and |container_token| to lookup VM, owner, and container
-  // name, and set these fields on |signal_proto| before sending it.
+  // Fills |signal_proto| with VM and owner using |cid| and |container_token| to
+  // lookup VM, owner, and container name.
   template <typename T>
-  bool SendSignal(const std::string& signal_name,
-                  const std::string& container_token,
-                  const uint32_t cid,
-                  T* signal_proto) {
+  bool FillVmInfoByCidAndContainerToken(const std::string& container_token,
+                                        const uint32_t cid,
+                                        T* signal_proto) {
     DCHECK(sequence_checker_.CalledOnValidSequence());
     CHECK(signal_proto);
     VirtualMachine* vm;
@@ -509,12 +501,10 @@ class Service final {
       return false;
     }
 
-    dbus::Signal signal(kVmCiceroneInterface, signal_name);
     signal_proto->set_vm_name(std::move(vm_name));
     signal_proto->set_container_name(std::move(container_name));
     signal_proto->set_owner_id(std::move(owner_id));
-    dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(*signal_proto);
-    exported_object_->SendSignal(&signal);
+
     return true;
   }
 
@@ -536,152 +526,153 @@ class Service final {
   void HandleSigterm();
 
   // Handles notification a VM is starting.
-  std::unique_ptr<dbus::Response> NotifyVmStarted(
-      dbus::MethodCall* method_call);
+  EmptyMessage NotifyVmStarted(const NotifyVmStartedRequest& request) override;
 
   // Handles a notification a VM is stopping.
-  std::unique_ptr<dbus::Response> NotifyVmStopping(
-      dbus::MethodCall* method_call);
+  EmptyMessage NotifyVmStopping(
+      const NotifyVmStoppingRequest& request) override;
 
   // Handles a notification a VM has stopped.
-  std::unique_ptr<dbus::Response> NotifyVmStopped(
-      dbus::MethodCall* method_call);
+  EmptyMessage NotifyVmStopped(const NotifyVmStoppedRequest& request) override;
 
   // Handles a request to get a security token to associate with a container.
-  std::unique_ptr<dbus::Response> GetContainerToken(
-      dbus::MethodCall* method_call);
+  ContainerTokenResponse GetContainerToken(
+      const ContainerTokenRequest& request) override;
 
   // Handles a request to launch an application in a container.
-  std::unique_ptr<dbus::Response> LaunchContainerApplication(
-      dbus::MethodCall* method_call);
+  LaunchContainerApplicationResponse LaunchContainerApplication(
+      const LaunchContainerApplicationRequest& request) override;
 
   // Handles a request to get application icons in a container.
-  std::unique_ptr<dbus::Response> GetContainerAppIcon(
-      dbus::MethodCall* method_call);
+  ContainerAppIconResponse GetContainerAppIcon(
+      const ContainerAppIconRequest& request) override;
 
   // Handles a request to launch vshd in a container.
-  std::unique_ptr<dbus::Response> LaunchVshd(dbus::MethodCall* method_call);
+  LaunchVshdResponse LaunchVshd(const LaunchVshdRequest& request) override;
 
   // Handles a request to get Linux package info from a container.
-  std::unique_ptr<dbus::Response> GetLinuxPackageInfo(
-      dbus::MethodCall* method_call);
+  LinuxPackageInfoResponse GetLinuxPackageInfo(
+      const LinuxPackageInfoRequest& request) override;
 
   // Handles a request to install a Linux package file in a container.
-  std::unique_ptr<dbus::Response> InstallLinuxPackage(
-      dbus::MethodCall* method_call);
+  InstallLinuxPackageResponse InstallLinuxPackage(
+      const InstallLinuxPackageRequest& request) override;
 
   // Handles a request to uninstall the Linux package that owns the indicated
   // .desktop file.
-  std::unique_ptr<dbus::Response> UninstallPackageOwningFile(
-      dbus::MethodCall* method_call);
+  UninstallPackageOwningFileResponse UninstallPackageOwningFile(
+      const UninstallPackageOwningFileRequest& request) override;
 
   // Handles a request to create an LXD container.
-  std::unique_ptr<dbus::Response> CreateLxdContainer(
-      dbus::MethodCall* method_call);
+  CreateLxdContainerResponse CreateLxdContainer(
+      const CreateLxdContainerRequest& request) override;
 
   // Handles a request to delete an LXD container.
-  std::unique_ptr<dbus::Response> DeleteLxdContainer(
-      dbus::MethodCall* method_call);
+  DeleteLxdContainerResponse DeleteLxdContainer(
+      const DeleteLxdContainerRequest& request) override;
 
   // Handles a request to start an LXD container.
-  std::unique_ptr<dbus::Response> StartLxdContainer(
-      dbus::MethodCall* method_call);
+  StartLxdContainerResponse StartLxdContainer(
+      const StartLxdContainerRequest& request) override;
 
   // Handles a request to stop an LXD container.
-  std::unique_ptr<dbus::Response> StopLxdContainer(
-      dbus::MethodCall* method_call);
+  StopLxdContainerResponse StopLxdContainer(
+      const StopLxdContainerRequest& request) override;
 
   // Handles a request to set the default timezone for an LXD instance.
-  std::unique_ptr<dbus::Response> SetTimezone(dbus::MethodCall* method_call);
+  SetTimezoneResponse SetTimezone(const SetTimezoneRequest& request) override;
 
   // Handles a request to get the primary username for an LXD container.
-  std::unique_ptr<dbus::Response> GetLxdContainerUsername(
-      dbus::MethodCall* method_call);
+  GetLxdContainerUsernameResponse GetLxdContainerUsername(
+      const GetLxdContainerUsernameRequest& request) override;
 
   // Handles a request to set up the user for an LXD container.
-  std::unique_ptr<dbus::Response> SetUpLxdContainerUser(
-      dbus::MethodCall* method_call);
+  SetUpLxdContainerUserResponse SetUpLxdContainerUser(
+      const SetUpLxdContainerUserRequest& request) override;
 
   // Handles a request to export an LXD container.
-  std::unique_ptr<dbus::Response> ExportLxdContainer(
-      dbus::MethodCall* method_call);
-
-  // Handles a request to cancel an ongoing LXD container export.
-  std::unique_ptr<dbus::Response> CancelExportLxdContainer(
-      dbus::MethodCall* method_call);
+  ExportLxdContainerResponse ExportLxdContainer(
+      const ExportLxdContainerRequest& request) override;
 
   // Handles a request to import an LXD container.
-  std::unique_ptr<dbus::Response> ImportLxdContainer(
-      dbus::MethodCall* method_call);
+  ImportLxdContainerResponse ImportLxdContainer(
+      const ImportLxdContainerRequest& request) override;
+
+  // Handles a request to cancel an ongoing LXD container export.
+  CancelExportLxdContainerResponse CancelExportLxdContainer(
+      const CancelExportLxdContainerRequest& request) override;
 
   // Handles a request to cancel an ongoing LXD container import.
-  std::unique_ptr<dbus::Response> CancelImportLxdContainer(
-      dbus::MethodCall* method_call);
+  CancelImportLxdContainerResponse CancelImportLxdContainer(
+      const CancelImportLxdContainerRequest& request) override;
 
   // Handles a request to connect to chunnel.
-  std::unique_ptr<dbus::Response> ConnectChunnel(dbus::MethodCall* method_call);
+  ConnectChunnelResponse ConnectChunnel(
+      const ConnectChunnelRequest& request) override;
 
   // Handles a request to get debug information.
-  std::unique_ptr<dbus::Response> GetDebugInformation(
-      dbus::MethodCall* method_call);
+  GetDebugInformationResponse GetDebugInformation(
+      const GetDebugInformationRequest& request) override;
 
   // Handles a request to apply Ansible playbook to a container.
-  std::unique_ptr<dbus::Response> ApplyAnsiblePlaybook(
-      dbus::MethodCall* method_call);
+  ApplyAnsiblePlaybookResponse ApplyAnsiblePlaybook(
+      const ApplyAnsiblePlaybookRequest& request) override;
 
   // Handles a request to allow sideloading Arc (android) apps from the
   // container.
-  std::unique_ptr<dbus::Response> ConfigureForArcSideload(
-      dbus::MethodCall* method_call);
+  ConfigureForArcSideloadResponse ConfigureForArcSideload(
+      const ConfigureForArcSideloadRequest& request) override;
 
   // Handles a request to upgrade a container.
-  std::unique_ptr<dbus::Response> UpgradeContainer(
-      dbus::MethodCall* method_call);
+  UpgradeContainerResponse UpgradeContainer(
+      const UpgradeContainerRequest& request) override;
 
   // Handles a request to cancel an ongoing container upgrade.
-  std::unique_ptr<dbus::Response> CancelUpgradeContainer(
-      dbus::MethodCall* method_call);
+  CancelUpgradeContainerResponse CancelUpgradeContainer(
+      const CancelUpgradeContainerRequest& request) override;
 
   // Handles a request to start LXD.
-  std::unique_ptr<dbus::Response> StartLxd(dbus::MethodCall* method_call);
+  StartLxdResponse StartLxd(const StartLxdRequest& request) override;
 
   // Handles a request to add a file watch.
-  std::unique_ptr<dbus::Response> AddFileWatch(dbus::MethodCall* method_call);
+  AddFileWatchResponse AddFileWatch(
+      const AddFileWatchRequest& request) override;
 
   // Handles a request to remove a file watch.
-  std::unique_ptr<dbus::Response> RemoveFileWatch(
-      dbus::MethodCall* method_call);
+  RemoveFileWatchResponse RemoveFileWatch(
+      const RemoveFileWatchRequest& request) override;
 
   // Handles a request to add a mapping between vsh and the session data such as
   // the container shell pid.
-  std::unique_ptr<dbus::Response> RegisterVshSession(
-      dbus::MethodCall* method_call);
+  RegisterVshSessionResponse RegisterVshSession(
+      const RegisterVshSessionRequest& request) override;
 
   // Handles a request to retrieve vsh session data.
-  std::unique_ptr<dbus::Response> GetVshSession(dbus::MethodCall* method_call);
+  GetVshSessionResponse GetVshSession(
+      const GetVshSessionRequest& request) override;
 
   // Handles a notification from Chrome in response to a SelectFile() request.
-  std::unique_ptr<dbus::Response> FileSelected(dbus::MethodCall* method_call);
+  EmptyMessage FileSelected(const FileSelectedSignal& request) override;
 
   // Handles a request to attach a USB port to a container.
-  std::unique_ptr<dbus::Response> AttachUsbToContainer(
-      dbus::MethodCall* method_call);
+  AttachUsbToContainerResponse AttachUsbToContainer(
+      const AttachUsbToContainerRequest& request) override;
 
   // Handles a request to detach a USB port from a container.
-  std::unique_ptr<dbus::Response> DetachUsbFromContainer(
-      dbus::MethodCall* method_call);
+  DetachUsbFromContainerResponse DetachUsbFromContainer(
+      const DetachUsbFromContainerRequest& request) override;
 
   // Handles a request to list containers.
-  std::unique_ptr<dbus::Response> ListRunningContainers(
-      dbus::MethodCall* method_call);
+  ListRunningContainersResponse ListRunningContainers(
+      const ListRunningContainersRequest& request) override;
 
   // Handles a request to get session info from Garcon.
-  std::unique_ptr<dbus::Response> GetGarconSessionInfo(
-      dbus::MethodCall* method_call);
+  GetGarconSessionInfoResponse GetGarconSessionInfo(
+      const GetGarconSessionInfoRequest& request) override;
 
   // Handles a request to update the devices available to a container.
-  std::unique_ptr<dbus::Response> UpdateContainerDevices(
-      dbus::MethodCall* method_call);
+  UpdateContainerDevicesResponse UpdateContainerDevices(
+      const UpdateContainerDevicesRequest& request) override;
 
   // Registers |hostname| and |ip| with the hostname resolver service so that
   // the container is reachable from a known hostname.
@@ -750,14 +741,15 @@ class Service final {
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ExportedObject* exported_object_;                // Owned by |bus_|.
-  dbus::ObjectProxy* vm_applications_service_proxy_;     // Owned by |bus_|.
-  dbus::ObjectProxy* url_handler_service_proxy_;         // Owned by |bus_|.
-  dbus::ObjectProxy* chunneld_service_proxy_;            // Owned by |bus_|.
-  dbus::ObjectProxy* crosdns_service_proxy_;             // Owned by |bus_|.
-  dbus::ObjectProxy* concierge_service_proxy_;           // Owned by |bus_|.
-  dbus::ObjectProxy* vm_sk_forwarding_service_proxy_;    // Owned by |bus_|.
-  dbus::ObjectProxy* shadercached_proxy_;                // Owned by |bus_|.
+  dbus::ObjectProxy* vm_applications_service_proxy_;   // Owned by |bus_|.
+  dbus::ObjectProxy* url_handler_service_proxy_;       // Owned by |bus_|.
+  dbus::ObjectProxy* chunneld_service_proxy_;          // Owned by |bus_|.
+  dbus::ObjectProxy* crosdns_service_proxy_;           // Owned by |bus_|.
+  dbus::ObjectProxy* concierge_service_proxy_;         // Owned by |bus_|.
+  dbus::ObjectProxy* vm_sk_forwarding_service_proxy_;  // Owned by |bus_|.
+  dbus::ObjectProxy* shadercached_proxy_;              // Owned by |bus_|.
+  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  org::chromium::VmCiceroneAdaptor cicerone_adaptor_{this};
 
   // The ContainerListener service.
   std::unique_ptr<ContainerListenerImpl> container_listener_;

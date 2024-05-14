@@ -2,6 +2,14 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//common-mk/generate-dbus-adaptors.gni")
+
+generate_dbus_adaptors("dbus-adaptors") {
+  dbus_service_config = "../dbus_bindings/cicerone-dbus-service-config.json"
+  dbus_adaptors_out_dir = "include/vm_tools/cicerone/dbus_adaptors"
+  sources = [ "../dbus_bindings/org.chromium.VmCicerone.xml" ]
+}
+
 static_library("libcicerone") {
   sources = [
     "container.cc",
@@ -26,6 +34,7 @@ static_library("libcicerone") {
     "system_api",
     "vm_protos",
   ]
+  deps = [ ":dbus-adaptors" ]
 }
 
 executable("vm_cicerone") {

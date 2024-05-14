@@ -573,6 +573,10 @@ bool ServiceTestingHelper::StoreDBusCallback(
     const std::string& interface_name,
     const std::string& method_name,
     dbus::ExportedObject::MethodCallCallback method_call_callback) {
+  if (interface_name == "org.freedesktop.DBus.Properties") {
+    // chromeos-dbus-bindings implements "Get" method.
+    return true;
+  }
   CHECK_EQ(interface_name, kVmCiceroneInterface);
   bool found = false;
   for (auto& callback_info : dbus_callbacks_) {
