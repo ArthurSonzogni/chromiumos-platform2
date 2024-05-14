@@ -1426,7 +1426,7 @@ int HandleBiometricsSelfTest(
   LOG(INFO) << "start_bio_auth success";
   result_code = 0;
   brillo::Blob auth_nonce(PW_SECRET_SIZE, 0);
-  base::RandBytes(auth_nonce.data(), auth_nonce.size());
+  base::RandBytes(auth_nonce);
   brillo::Blob gsc_nonce, encrypted_hec, iv;
   result = tpm_utility->PinWeaverStartBiometricsAuth(
       protocol_version, kFpAuthChannel, auth_nonce, h_aux, cred_metadata,
@@ -1511,7 +1511,7 @@ int HandleBiometricsSelfTest(
   // the returned secret is identical.
   LOG(INFO) << "start_bio_auth success (check label_seed is the same)";
   result_code = 0;
-  base::RandBytes(auth_nonce.data(), auth_nonce.size());
+  base::RandBytes(auth_nonce);
   result = tpm_utility->PinWeaverStartBiometricsAuth(
       protocol_version, kFpAuthChannel, auth_nonce, h_aux, cred_metadata,
       &result_code, &root, &gsc_nonce, &encrypted_hec, &iv, &cred_metadata,
@@ -1546,7 +1546,7 @@ int HandleBiometricsSelfTest(
   // fail because the rate-limiter is locked out after 2 attempts.
   LOG(INFO) << "start_bio_auth should fail (rate-limited)";
   result_code = 0;
-  base::RandBytes(auth_nonce.data(), auth_nonce.size());
+  base::RandBytes(auth_nonce);
   std::string no_cred_metadata, no_mac;
   result = tpm_utility->PinWeaverStartBiometricsAuth(
       protocol_version, kFpAuthChannel, auth_nonce, h_aux, cred_metadata,
@@ -1586,7 +1586,7 @@ int HandleBiometricsSelfTest(
     // PW_ERR_LOWENT_AUTH_FAILED if we send the wrong auth channel.
     LOG(INFO) << "start_bio_auth should fail (wrong channel)";
     result_code = 0;
-    base::RandBytes(auth_nonce.data(), auth_nonce.size());
+    base::RandBytes(auth_nonce);
     result = tpm_utility->PinWeaverStartBiometricsAuth(
         protocol_version, kFaceAuthChannel, auth_nonce, h_aux, cred_metadata,
         &result_code, &root, &gsc_nonce, &encrypted_hec, &iv, &cred_metadata,
@@ -1612,7 +1612,7 @@ int HandleBiometricsSelfTest(
   // the returned secret is identical.
   LOG(INFO) << "start_bio_auth success (check label_seed is the same)";
   result_code = 0;
-  base::RandBytes(auth_nonce.data(), auth_nonce.size());
+  base::RandBytes(auth_nonce);
   result = tpm_utility->PinWeaverStartBiometricsAuth(
       protocol_version, kFpAuthChannel, auth_nonce, h_aux, cred_metadata,
       &result_code, &root, &gsc_nonce, &encrypted_hec, &iv, &cred_metadata,
