@@ -18,7 +18,7 @@
 namespace startup {
 
 FakeStartupDep::FakeStartupDep(libstorage::Platform* platform)
-    : StartupDep(), platform_(platform) {}
+    : StartupDep(platform), platform_(platform) {}
 
 void FakeStartupDep::SetMountEncOutputForArg(const std::string& arg,
                                              const std::string& output) {

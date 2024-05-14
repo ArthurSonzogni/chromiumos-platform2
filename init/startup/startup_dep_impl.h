@@ -42,7 +42,7 @@ bool IsFactoryMode(libstorage::Platform* platform,
 // wrappers functions for syscalls.
 class StartupDep {
  public:
-  StartupDep() {}
+  explicit StartupDep(libstorage::Platform* platform);
   virtual ~StartupDep() = default;
 
   // Runs mount-encrypted with the given arg.
@@ -66,9 +66,6 @@ class StartupDep {
 
   virtual void RemoveInBackground(const std::vector<base::FilePath>& paths);
 
-  // Run cmd_path as a brillo process.
-  virtual void RunProcess(const base::FilePath& cmd_path);
-
   // Runs crash_reporter with the given args.
   virtual void AddClobberCrashReport(const std::vector<std::string> args);
 
@@ -77,6 +74,9 @@ class StartupDep {
 
   // Runs clobber-log --repair for the given device with the given message.
   void ClobberLogRepair(const base::FilePath& dev, const std::string& msg);
+
+ private:
+  libstorage::Platform* platform_;
 };
 
 }  // namespace startup

@@ -26,7 +26,6 @@
 #include <linux/loadpin.h>
 
 #include "init/startup/fake_startup_dep_impl.h"
-#include "init/startup/mock_startup_dep_impl.h"
 #include "init/startup/security_manager.h"
 #include "init/startup/startup_dep_impl.h"
 
@@ -36,7 +35,6 @@ using testing::DoAll;
 using testing::InvokeWithoutArgs;
 using testing::Return;
 using testing::StrEq;
-using testing::StrictMock;
 
 namespace {
 
@@ -64,10 +62,10 @@ class SecurityManagerTest : public ::testing::Test {
  protected:
   void SetUp() override {
     platform_ = std::make_unique<libstorage::MockPlatform>();
-    mock_startup_dep_ = std::make_unique<StrictMock<startup::MockStartupDep>>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
   }
 
-  std::unique_ptr<startup::MockStartupDep> mock_startup_dep_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
 
   std::unique_ptr<libstorage::MockPlatform> platform_;
   base::FilePath base_dir_{"/"};
@@ -196,7 +194,7 @@ TEST_F(SecurityManagerLoadPinTest, LoadPinAttributeUnsupported) {
 
   // The call should succeed as there is no LoadPin verity file.
   EXPECT_TRUE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
-                                                 mock_startup_dep_.get()));
+                                                 startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToOpenLoadPinVerity) {
@@ -207,14 +205,14 @@ TEST_F(SecurityManagerLoadPinTest, FailureToOpenLoadPinVerity) {
 
   // The call should fail as failure to open LoadPin verity file.
   EXPECT_FALSE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
-                                                  mock_startup_dep_.get()));
+                                                  startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, ValidDigests) {
   EXPECT_CALL(*platform_, Ioctl(_, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, _))
       .WillOnce(Return(0));
   EXPECT_TRUE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
-                                                 mock_startup_dep_.get()));
+                                                 startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, MissingDigests) {
@@ -222,7 +220,7 @@ TEST_F(SecurityManagerLoadPinTest, MissingDigests) {
   EXPECT_CALL(*platform_, Ioctl(_, LOADPIN_IOC_SET_TRUSTED_VERITY_DIGESTS, _))
       .WillOnce(Return(0));
   EXPECT_TRUE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
-                                                 mock_startup_dep_.get()));
+                                                 startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToReadDigests) {
@@ -236,7 +234,7 @@ TEST_F(SecurityManagerLoadPinTest, FailureToReadDigests) {
       .WillOnce(Return(0));
 
   EXPECT_TRUE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
-                                                 mock_startup_dep_.get()));
+                                                 startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToReadInvalidDigestsDevNull) {
@@ -249,7 +247,7 @@ TEST_F(SecurityManagerLoadPinTest, FailureToReadInvalidDigestsDevNull) {
           DoAll(InvokeWithoutArgs([] { errno = EACCES; }), Return(nullptr)));
 
   EXPECT_FALSE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
-                                                  mock_startup_dep_.get()));
+                                                  startup_dep_.get()));
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToFeedLoadPin) {
@@ -257,7 +255,7 @@ TEST_F(SecurityManagerLoadPinTest, FailureToFeedLoadPin) {
       .WillOnce(Return(-1));
 
   EXPECT_FALSE(startup::SetupLoadPinVerityDigests(platform_.get(), base_dir_,
-                                                  mock_startup_dep_.get()));
+                                                  startup_dep_.get()));
 }
 
 class SysKeyTest : public ::testing::Test {

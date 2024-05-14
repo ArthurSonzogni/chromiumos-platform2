@@ -87,11 +87,12 @@ void MountHelper::CleanupMounts(const std::string& msg) {
   startup_dep_->ClobberLog(message);
 
   base::FilePath tmpfiles = root_.Append("run/tmpfiles.log");
-  brillo::ProcessImpl append_log;
-  append_log.AddArg("/sbin/clobber-log");
-  append_log.AddArg("--append_logfile");
-  append_log.AddArg(tmpfiles.value());
-  if (!append_log.Run()) {
+  std::unique_ptr<brillo::Process> append_log =
+      platform_->CreateProcessInstance();
+  append_log->AddArg("/sbin/clobber-log");
+  append_log->AddArg("--append_logfile");
+  append_log->AddArg(tmpfiles.value());
+  if (!append_log->Run()) {
     LOG(WARNING) << "clobber-log --append_logfile failed";
   }
 
@@ -162,12 +163,12 @@ bool MountHelper::UmountVarAndHomeChronosEncrypted() {
     return true;
   }
 
-  brillo::ProcessImpl umount;
-  umount.AddArg("/usr/sbin/mount-encrypted");
-  umount.AddArg("umount");
+  std::unique_ptr<brillo::Process> umount = platform_->CreateProcessInstance();
+  umount->AddArg("/usr/sbin/mount-encrypted");
+  umount->AddArg("umount");
   int ret = 0;
   for (int i = 0; i < 10; i++) {
-    ret = umount.Run();
+    ret = umount->Run();
     if (ret == 0) {
       break;
     }

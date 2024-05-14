@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
   logging::SetMinLogLevel(logging::LOGGING_WARNING - flags.verbosity);
 
   std::unique_ptr<startup::StartupDep> startup_dep =
-      std::make_unique<startup::StartupDep>();
+      std::make_unique<startup::StartupDep>(platform.get());
 
   startup::MountHelperFactory mount_helper_factory(
       platform.get(), startup_dep.get(), flags, base::FilePath("/"),

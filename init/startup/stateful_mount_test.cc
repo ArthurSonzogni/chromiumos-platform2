@@ -25,7 +25,6 @@
 
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/fake_startup_dep_impl.h"
-#include "init/startup/mock_startup_dep_impl.h"
 #include "init/startup/standard_mount_helper.h"
 #include "init/startup/startup_dep_impl.h"
 

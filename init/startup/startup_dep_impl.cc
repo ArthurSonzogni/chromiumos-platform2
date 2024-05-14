@@ -24,6 +24,7 @@
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 #include <libcrossystem/crossystem.h>
+#include <libstorage/platform/platform.h>
 
 #include "init/startup/startup_dep_impl.h"
 #include "init/utils.h"
@@ -37,29 +38,33 @@ constexpr char kFactoryDir[] = "mnt/stateful_partition/dev_image/factory";
 
 namespace startup {
 
+StartupDep::StartupDep(libstorage::Platform* platform) : platform_(platform) {}
+
 int StartupDep::MountEncrypted(const std::vector<std::string>& args,
                                std::string* output) {
-  brillo::ProcessImpl mount_enc;
-  mount_enc.AddArg("/usr/sbin/mount-encrypted");
+  std::unique_ptr<brillo::Process> mount_enc =
+      platform_->CreateProcessInstance();
+  mount_enc->AddArg("/usr/sbin/mount-encrypted");
   for (auto arg : args) {
-    mount_enc.AddArg(arg);
+    mount_enc->AddArg(arg);
   }
   if (output) {
-    mount_enc.RedirectOutputToMemory(true);
+    mount_enc->RedirectOutputToMemory(true);
   }
 
-  int status = mount_enc.Run();
+  int status = mount_enc->Run();
   if (output) {
-    *output = mount_enc.GetOutputString(STDOUT_FILENO);
+    *output = mount_enc->GetOutputString(STDOUT_FILENO);
   }
   return status;
 }
 
 void StartupDep::BootAlert(const std::string& arg) {
-  brillo::ProcessImpl boot_alert;
-  boot_alert.AddArg("/sbin/chromeos-boot-alert");
-  boot_alert.AddArg(arg);
-  int ret = boot_alert.Run();
+  std::unique_ptr<brillo::Process> boot_alert =
+      platform_->CreateProcessInstance();
+  boot_alert->AddArg("/sbin/chromeos-boot-alert");
+  boot_alert->AddArg(arg);
+  int ret = boot_alert->Run();
   if (ret == 0) {
     return;
   } else if (ret < 0) {
@@ -70,31 +75,31 @@ void StartupDep::BootAlert(const std::string& arg) {
 }
 
 [[noreturn]] void StartupDep::Clobber(const std::vector<std::string>& args) {
-  brillo::ProcessImpl clobber;
-  clobber.AddArg("/sbin/clobber-state");
+  std::unique_ptr<brillo::Process> clobber = platform_->CreateProcessInstance();
+  clobber->AddArg("/sbin/clobber-state");
 
   // Clobber should not be called with empty args, but to ensure that is
   // the case, use "keepimg" if nothing is specified.
   if (args.empty()) {
-    clobber.AddArg("keepimg");
+    clobber->AddArg("keepimg");
   } else {
     for (const std::string& arg : args) {
-      clobber.AddArg(arg);
+      clobber->AddArg(arg);
     }
   }
 
-  int ret = clobber.Run();
+  int ret = clobber->Run();
   CHECK_NE(ret, 0);
   PLOG(ERROR) << "unable to run clobber-state; ret=" << ret;
   exit(1);
 }
 
 void StartupDep::ClobberLog(const std::string& msg) {
-  brillo::ProcessImpl log;
-  log.AddArg("/sbin/clobber-log");
-  log.AddArg("--");
-  log.AddArg(msg);
-  if (log.Run() != 0) {
+  std::unique_ptr<brillo::Process> log = platform_->CreateProcessInstance();
+  log->AddArg("/sbin/clobber-log");
+  log->AddArg("--");
+  log->AddArg(msg);
+  if (log->Run() != 0) {
     LOG(WARNING) << "clobber-log failed for message: " << msg;
   }
 }
@@ -117,30 +122,15 @@ void StartupDep::RemoveInBackground(const std::vector<base::FilePath>& paths) {
   }
 }
 
-// Run command, cmd_path.
-void StartupDep::RunProcess(const base::FilePath& cmd_path) {
-  brillo::ProcessImpl proc;
-  proc.AddArg(cmd_path.value());
-  int res = proc.Run();
-  if (res == 0) {
-    return;
-  } else if (res < 0) {
-    PLOG(ERROR) << "Failed to run " << cmd_path.value();
-  } else {
-    LOG(WARNING) << "Process " << cmd_path.value()
-                 << " returned non zero exit code: " << res;
-  }
-}
-
 void StartupDep::AddClobberCrashReport(const std::vector<std::string> args) {
-  brillo::ProcessImpl crash;
-  crash.AddArg("/sbin/crash_reporter");
-  crash.AddArg("--early");
-  crash.AddArg("--log_to_stderr");
+  std::unique_ptr<brillo::Process> crash = platform_->CreateProcessInstance();
+  crash->AddArg("/sbin/crash_reporter");
+  crash->AddArg("--early");
+  crash->AddArg("--log_to_stderr");
   for (auto arg : args) {
-    crash.AddArg(arg);
+    crash->AddArg(arg);
   }
-  int ret = crash.Run();
+  int ret = crash->Run();
   if (ret < 0) {
     PLOG(ERROR) << "Failed to run crash_reporter";
     return;
@@ -154,13 +144,13 @@ void StartupDep::AddClobberCrashReport(const std::vector<std::string> args) {
 }
 
 void StartupDep::ReplayExt4Journal(const base::FilePath& dev) {
-  brillo::ProcessImpl e2fsck;
-  e2fsck.AddArg("/sbin/e2fsck");
-  e2fsck.AddArg("-p");
-  e2fsck.AddArg("-E");
-  e2fsck.AddArg("journal_only");
-  e2fsck.AddArg(dev.value());
-  int ret = e2fsck.Run();
+  std::unique_ptr<brillo::Process> e2fsck = platform_->CreateProcessInstance();
+  e2fsck->AddArg("/sbin/e2fsck");
+  e2fsck->AddArg("-p");
+  e2fsck->AddArg("-E");
+  e2fsck->AddArg("journal_only");
+  e2fsck->AddArg(dev.value());
+  int ret = e2fsck->Run();
   if (ret == 0) {
     return;
   } else if (ret < 0) {
@@ -172,12 +162,13 @@ void StartupDep::ReplayExt4Journal(const base::FilePath& dev) {
 
 void StartupDep::ClobberLogRepair(const base::FilePath& dev,
                                   const std::string& msg) {
-  brillo::ProcessImpl log_repair;
-  log_repair.AddArg("/sbin/clobber-log");
-  log_repair.AddArg("--repair");
-  log_repair.AddArg(dev.value());
-  log_repair.AddArg(msg);
-  int status = log_repair.Run();
+  std::unique_ptr<brillo::Process> log_repair =
+      platform_->CreateProcessInstance();
+  log_repair->AddArg("/sbin/clobber-log");
+  log_repair->AddArg("--repair");
+  log_repair->AddArg(dev.value());
+  log_repair->AddArg(msg);
+  int status = log_repair->Run();
   if (status == 0) {
     return;
   } else if (status < 0) {

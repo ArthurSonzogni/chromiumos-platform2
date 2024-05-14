@@ -30,11 +30,9 @@
 #include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/fake_startup_dep_impl.h"
 #include "init/startup/flags.h"
-#include "init/startup/mock_startup_dep_impl.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/mount_helper_factory.h"
 #include "init/startup/standard_mount_helper.h"
-#include "init/startup/startup_dep_impl.h"
 #include "init/startup/test_mode_mount_helper.h"
 
 using testing::_;
@@ -557,17 +555,17 @@ TEST_F(StatefulWipeTest, TransitionToDevModeDebugBuild) {
 class TpmCleanupTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    platform_ = std::make_unique<libstorage::FakePlatform>();
-    mock_startup_dep_ = std::make_unique<startup::MockStartupDep>();
+    platform_ = std::make_unique<libstorage::MockPlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     std::unique_ptr<hwsec_foundation::MockTlclWrapper> tlcl =
         std::make_unique<hwsec_foundation::MockTlclWrapper>();
     tlcl_ = tlcl.get();
     startup_ = std::make_unique<startup::ChromeosStartup>(
         std::make_unique<vpd::Vpd>(), flags_, base_dir_, base_dir_, base_dir_,
-        platform_.get(), mock_startup_dep_.get(),
+        platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
-            platform_.get(), mock_startup_dep_.get(), flags_, base_dir_,
-            base_dir_, true),
+            platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_,
+            true),
         std::move(tlcl));
     flag_file_ = base_dir_.Append(kTpmFirmwareUpdateRequestFlagFile);
     tpm_cleanup_ = base_dir_.Append(kTpmFirmwareUpdateCleanup);
@@ -575,8 +573,8 @@ class TpmCleanupTest : public ::testing::Test {
 
   startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
-  std::unique_ptr<libstorage::FakePlatform> platform_;
-  std::unique_ptr<startup::MockStartupDep> mock_startup_dep_;
+  std::unique_ptr<libstorage::MockPlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
   base::FilePath flag_file_;
@@ -584,20 +582,23 @@ class TpmCleanupTest : public ::testing::Test {
 };
 
 TEST_F(TpmCleanupTest, TpmCleanupNoFlagFile) {
-  EXPECT_CALL(*mock_startup_dep_, RunProcess(tpm_cleanup_)).Times(0);
+  brillo::ProcessMock* process = platform_->mock_process();
+  EXPECT_CALL(*process, Run()).Times(0);
   startup_->CleanupTpm();
 }
 
 TEST_F(TpmCleanupTest, TpmCleanupNoCmdPath) {
-  platform_->WriteStringToFile(flag_file_, "exists");
-  EXPECT_CALL(*mock_startup_dep_, RunProcess(tpm_cleanup_)).Times(0);
+  ASSERT_TRUE(platform_->WriteStringToFile(flag_file_, "exists"));
+  brillo::ProcessMock* process = platform_->mock_process();
+  EXPECT_CALL(*process, Run()).Times(0);
   startup_->CleanupTpm();
 }
 
 TEST_F(TpmCleanupTest, TpmCleanupSuccess) {
-  platform_->WriteStringToFile(flag_file_, "exists");
-  platform_->WriteStringToFile(tpm_cleanup_, "exists");
-  EXPECT_CALL(*mock_startup_dep_, RunProcess(tpm_cleanup_)).Times(1);
+  ASSERT_TRUE(platform_->WriteStringToFile(flag_file_, "exists"));
+  ASSERT_TRUE(platform_->WriteStringToFile(tpm_cleanup_, "exists"));
+  brillo::ProcessMock* process = platform_->mock_process();
+  EXPECT_CALL(*process, Run()).Times(1);
   startup_->CleanupTpm();
 }
 

@@ -97,32 +97,6 @@ uint64_t GetDirtyExpireCentisecs(libstorage::Platform* platform,
   return dirty_expire_centisecs;
 }
 
-// TODO(asavery): Use ext2fs library directly instead since we only use
-// a subset of the information provided, b/241965074.
-bool Dumpe2fs(const base::FilePath& path,
-              const std::vector<std::string>& args,
-              std::string* info) {
-  brillo::ProcessImpl dump;
-  dump.AddArg("/sbin/dumpe2fs");
-  dump.AddArg("-h");
-  for (const std::string& arg : args) {
-    dump.AddArg(arg);
-  }
-  dump.AddArg(path.value());
-
-  if (info) {
-    dump.RedirectUsingMemory(STDOUT_FILENO);
-  }
-  if (dump.Run() != 0) {
-    LOG(WARNING) << "dumpe2fs failed";
-    return false;
-  }
-  if (info) {
-    *info = dump.GetOutputString(STDOUT_FILENO);
-  }
-  return true;
-}
-
 bool IsFeatureEnabled(const std::string& fs_features,
                       const std::string& feature) {
   // Check if feature is already enabled.
@@ -256,11 +230,18 @@ void StatefulMount::EnableExt4Features() {
 }
 
 std::vector<std::string> StatefulMount::GenerateExt4FeaturesWrapper() {
+  std::unique_ptr<brillo::Process> dump = platform_->CreateProcessInstance();
+  dump->AddArg("/sbin/dumpe2fs");
+  dump->AddArg("-h");
+  dump->AddArg(state_dev_.value());
+
   std::string state_dumpe2fs;
-  std::vector<std::string> args;
-  if (!Dumpe2fs(state_dev_, args, &state_dumpe2fs)) {
+  dump->RedirectUsingMemory(STDOUT_FILENO);
+  if (dump->Run() != 0) {
     PLOG(ERROR) << "Failed dumpe2fs for stateful partition.";
     state_dumpe2fs = "";
+  } else {
+    state_dumpe2fs = dump->GetOutputString(STDOUT_FILENO);
   }
   return GenerateExt4Features(state_dumpe2fs);
 }
@@ -315,12 +296,13 @@ void StatefulMount::ClobberStateful(
 }
 
 bool StatefulMount::AttemptStatefulMigration() {
-  brillo::ProcessImpl thinpool_migrator;
-  thinpool_migrator.AddArg("/usr/sbin/thinpool_migrator");
-  thinpool_migrator.AddArg(
+  std::unique_ptr<brillo::Process> thinpool_migrator =
+      platform_->CreateProcessInstance();
+  thinpool_migrator->AddArg("/usr/sbin/thinpool_migrator");
+  thinpool_migrator->AddArg(
       base::StringPrintf("--device=%s", state_dev_.value().c_str()));
 
-  if (thinpool_migrator.Run() != 0) {
+  if (thinpool_migrator->Run() != 0) {
     LOG(ERROR) << "Failed to run thinpool migrator";
     return false;
   }

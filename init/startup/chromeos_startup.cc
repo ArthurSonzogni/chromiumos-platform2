@@ -196,11 +196,11 @@ void ChromeosStartup::CheckClock() {
 void ChromeosStartup::Sysctl() {
   // Initialize kernel sysctl settings early so that they take effect for boot
   // processes.
-  brillo::ProcessImpl proc;
-  proc.AddArg("/usr/sbin/sysctl");
-  proc.AddArg("-q");
-  proc.AddArg("--system");
-  int status = proc.Run();
+  std::unique_ptr<brillo::Process> proc = platform_->CreateProcessInstance();
+  proc->AddArg("/usr/sbin/sysctl");
+  proc->AddArg("-q");
+  proc->AddArg("--system");
+  int status = proc->Run();
   if (status != 0) {
     LOG(WARNING) << "Failed to initialize kernel sysctl settings.";
   }
@@ -407,16 +407,17 @@ void ChromeosStartup::EarlySetup() {
 // Apply /mnt/stateful_partition specific tmpfiles.d configurations
 void ChromeosStartup::TmpfilesConfiguration(
     const std::vector<std::string>& dirs) {
-  brillo::ProcessImpl tmpfiles;
-  tmpfiles.AddArg("/usr/bin/systemd-tmpfiles");
-  tmpfiles.AddArg("--create");
-  tmpfiles.AddArg("--remove");
-  tmpfiles.AddArg("--boot");
+  std::unique_ptr<brillo::Process> tmpfiles =
+      platform_->CreateProcessInstance();
+  tmpfiles->AddArg("/usr/bin/systemd-tmpfiles");
+  tmpfiles->AddArg("--create");
+  tmpfiles->AddArg("--remove");
+  tmpfiles->AddArg("--boot");
   for (std::string path : dirs) {
-    tmpfiles.AddArg("--prefix");
-    tmpfiles.AddArg(path);
+    tmpfiles->AddArg("--prefix");
+    tmpfiles->AddArg(path);
   }
-  if (tmpfiles.Run() != 0) {
+  if (tmpfiles->Run() != 0) {
     std::string msg =
         "tmpfiles.d failed for " + brillo::string_utils::Join(",", dirs);
     mount_helper_->CleanupMounts(msg);
@@ -556,12 +557,12 @@ void ChromeosStartup::MountHome() {
 void ChromeosStartup::StartTpm2Simulator() {
   base::FilePath tpm_simulator = root_.Append(kTpmSimulator);
   if (platform_->FileExists(tpm_simulator)) {
-    brillo::ProcessImpl ictl;
-    ictl.AddArg("/sbin/initctl");
-    ictl.AddArg("start");
-    ictl.AddArg("tpm2-simulator");
+    std::unique_ptr<brillo::Process> ictl = platform_->CreateProcessInstance();
+    ictl->AddArg("/sbin/initctl");
+    ictl->AddArg("start");
+    ictl->AddArg("tpm2-simulator");
     // Failure is fine, we just continue.
-    ictl.Run();
+    ictl->Run();
   }
 }
 
@@ -573,7 +574,12 @@ void ChromeosStartup::CleanupTpm() {
   if (platform_->FileExists(tpm_update_req)) {
     base::FilePath tpm_cleanup = root_.Append(kTpmFirmwareUpdateCleanup);
     if (platform_->FileExists(tpm_cleanup)) {
-      startup_dep_->RunProcess(tpm_cleanup);
+      std::unique_ptr<brillo::Process> tpm_cleanup_process =
+          platform_->CreateProcessInstance();
+      tpm_cleanup_process->AddArg(tpm_cleanup.value());
+      if (tpm_cleanup_process->Run() != 0) {
+        PLOG(ERROR) << tpm_cleanup.value() << " failed.";
+      }
     }
   }
 }
@@ -887,10 +893,11 @@ int ChromeosStartup::Run() {
   DevGatherLogs();
 
   // Collect crash reports from early boot/mount failures.
-  brillo::ProcessImpl crash_reporter;
-  crash_reporter.AddArg("/sbin/crash_reporter");
-  crash_reporter.AddArg("--ephemeral_collect");
-  if (crash_reporter.Run() != 0) {
+  std::unique_ptr<brillo::Process> crash_reporter =
+      platform_->CreateProcessInstance();
+  crash_reporter->AddArg("/sbin/crash_reporter");
+  crash_reporter->AddArg("--ephemeral_collect");
+  if (crash_reporter->Run() != 0) {
     LOG(WARNING) << "Unable to collect early logs and crashes.";
   }
 
