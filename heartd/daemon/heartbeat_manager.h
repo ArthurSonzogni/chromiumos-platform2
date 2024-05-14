@@ -8,7 +8,6 @@
 #include <memory>
 #include <unordered_map>
 
-#include <base/timer/timer.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
 #include "heartd/daemon/action_runner.h"
@@ -17,14 +16,12 @@
 
 namespace heartd {
 
-constexpr base::TimeDelta kVerificationPeriod = base::Seconds(60);
-
 class HeartbeatManager {
  public:
   explicit HeartbeatManager(ActionRunner* action_runner);
   HeartbeatManager(const HeartbeatManager&) = delete;
   HeartbeatManager& operator=(const HeartbeatManager&) = delete;
-  ~HeartbeatManager();
+  virtual ~HeartbeatManager();
 
   // Returns if the pacemaker is bound for the service. This is used to check if
   // it's a repeated registration.
@@ -37,19 +34,16 @@ class HeartbeatManager {
       ash::heartd::mojom::HeartbeatServiceArgumentPtr argument);
 
   // Returns if there is any active heartbeat trackers.
-  bool AnyHeartbeatTracker();
+  virtual bool AnyHeartbeatTracker();
+
+  // Asks each heartbeat tracker instances to verify the heartbeat, and takes
+  // actions if needed.
+  virtual void VerifyHeartbeatAndTakeAction();
 
  private:
   // Removes the heartbeat tracker instances while |IsStopMonitor()| returning
   // true.
   void RemoveUnusedHeartbeatTrackers();
-
-  // Asks each heartbeat tracker instances to verify the heartbeat, and takes
-  // actions if needed.
-  void VerifyHeartbeatAndTakeAction();
-
-  // Runs the periodic verifier.
-  void StartVerifier();
 
   void DryRun(ash::heartd::mojom::ServiceName name,
               HeartbeatTracker* heartbeat_tracker);
@@ -62,8 +56,6 @@ class HeartbeatManager {
   std::unordered_map<ash::heartd::mojom::ServiceName,
                      std::unique_ptr<HeartbeatTracker>>
       heartbeat_trackers_;
-  // The timer to run the periodic verifier.
-  base::RepeatingTimer verifier_timer_;
 };
 
 }  // namespace heartd

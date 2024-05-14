@@ -61,7 +61,6 @@ void HeartbeatManager::EstablishHeartbeatTracker(
   }
 
   heartbeat_trackers_[name]->SetupArgument(std::move(argument));
-  StartVerifier();
 }
 
 bool HeartbeatManager::AnyHeartbeatTracker() {
@@ -84,8 +83,6 @@ void HeartbeatManager::RemoveUnusedHeartbeatTrackers() {
 void HeartbeatManager::VerifyHeartbeatAndTakeAction() {
   RemoveUnusedHeartbeatTrackers();
   if (heartbeat_trackers_.empty()) {
-    verifier_timer_.Stop();
-    LOG(INFO) << "No heartbeat trackers, stop verifier.";
     return;
   }
 
@@ -124,18 +121,6 @@ void HeartbeatManager::DryRun(ash::heartd::mojom::ServiceName name,
       break;
     }
   }
-}
-
-void HeartbeatManager::StartVerifier() {
-  if (verifier_timer_.IsRunning()) {
-    return;
-  }
-
-  LOG(INFO) << "Heartd start periodic verifier.";
-  verifier_timer_.Start(
-      FROM_HERE, kVerificationPeriod,
-      base::BindRepeating(&HeartbeatManager::VerifyHeartbeatAndTakeAction,
-                          base::Unretained(this)));
 }
 
 }  // namespace heartd

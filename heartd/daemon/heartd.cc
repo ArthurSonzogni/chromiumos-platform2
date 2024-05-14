@@ -43,16 +43,15 @@ int HeartdDaemon::OnEventLoopStarted() {
   dbus_connector_ = std::make_unique<DbusConnectorImpl>();
   action_runner_ = std::make_unique<ActionRunner>(dbus_connector_.get());
   heartbeat_manager_ = std::make_unique<HeartbeatManager>(action_runner_.get());
-  mojo_service_ = std::make_unique<HeartdMojoService>(heartbeat_manager_.get(),
-                                                      action_runner_.get());
 
   top_sheriff_ = std::make_unique<TopSheriff>(
-      base::BindOnce(&Daemon::Quit, base::Unretained(this)),
-      heartbeat_manager_.get());
+      base::BindOnce(&Daemon::Quit, base::Unretained(this)));
   top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(
       new BootMetricsRecorder(base::FilePath("/"), database_.get())));
   top_sheriff_->GetToWork();
 
+  mojo_service_ = std::make_unique<HeartdMojoService>(
+      heartbeat_manager_.get(), action_runner_.get(), top_sheriff_.get());
   action_runner_->SetupSysrq(sysrq_fd_);
 
   // We have to cache the boot record when start up, because when we need to

@@ -12,10 +12,8 @@
 
 namespace heartd {
 
-TopSheriff::TopSheriff(base::OnceCallback<void()> quit_heartd_job,
-                       HeartbeatManager* heartbeat_manager)
-    : quit_heartd_job_(std::move(quit_heartd_job)),
-      heartbeat_manager_(heartbeat_manager) {}
+TopSheriff::TopSheriff(base::OnceCallback<void()> quit_heartd_job)
+    : quit_heartd_job_(std::move(quit_heartd_job)) {}
 
 TopSheriff::~TopSheriff() = default;
 
@@ -48,10 +46,6 @@ void TopSheriff::ShiftWork() {
 }
 
 void TopSheriff::CleanUp() {
-  if (heartbeat_manager_ && heartbeat_manager_->AnyHeartbeatTracker()) {
-    return;
-  }
-
   for (const auto& sheriff : sheriffs) {
     if (sheriff->IsWorking()) {
       return;

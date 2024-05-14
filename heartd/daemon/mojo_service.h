@@ -12,6 +12,8 @@
 
 #include "heartd/daemon/action_runner.h"
 #include "heartd/daemon/heartbeat_manager.h"
+#include "heartd/daemon/sheriffs/heartbeat_verifier.h"
+#include "heartd/daemon/top_sheriff.h"
 #include "heartd/mojom/heartd.mojom.h"
 
 namespace heartd {
@@ -22,7 +24,8 @@ class HeartdMojoService final : public ash::heartd::mojom::HeartbeatService,
                                 public ash::heartd::mojom::HeartdControl {
  public:
   explicit HeartdMojoService(HeartbeatManager* heartbeat_manager,
-                             ActionRunner* action_runner);
+                             ActionRunner* action_runner,
+                             TopSheriff* top_sheriff);
   HeartdMojoService(const HeartdMojoService&) = delete;
   HeartdMojoService& operator=(const HeartdMojoService&) = delete;
   ~HeartdMojoService() override;
@@ -59,6 +62,11 @@ class HeartdMojoService final : public ash::heartd::mojom::HeartbeatService,
   // Unowned pointer. Should outlive this instance.
   // It is used to configure the actions.
   ActionRunner* const action_runner_;
+  // Unowned pointer. Should outlive this instance.
+  // It is used to run the sheriff task such as heartbeat verifier.
+  TopSheriff* const top_sheriff_;
+  // It is owned by TopSheriff and has the same lifecycle with heartd.
+  HeartbeatVerifier* heartbeat_verifier_;
 };
 
 }  // namespace heartd

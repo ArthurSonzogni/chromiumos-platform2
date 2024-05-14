@@ -54,8 +54,7 @@ class TopSheriffTest : public testing::Test {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::unique_ptr<TopSheriff> top_sheriff_ = std::make_unique<TopSheriff>(
-      base::BindOnce(&TopSheriffTest::QuitCallback, base::Unretained(this)),
-      nullptr);
+      base::BindOnce(&TopSheriffTest::QuitCallback, base::Unretained(this)));
 
  private:
   bool quit_callback_is_called_ = false;

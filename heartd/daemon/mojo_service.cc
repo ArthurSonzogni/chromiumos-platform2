@@ -4,6 +4,7 @@
 
 #include "heartd/daemon/mojo_service.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -13,6 +14,7 @@
 #include <mojo_service_manager/lib/connect.h>
 
 #include "heartd/daemon/action_runner.h"
+#include "heartd/daemon/sheriffs/sheriff.h"
 #include "heartd/daemon/utils/mojo_output.h"
 #include "heartd/mojom/heartd.mojom.h"
 
@@ -25,8 +27,11 @@ namespace mojom = ::ash::heartd::mojom;
 }  // namespace
 
 HeartdMojoService::HeartdMojoService(HeartbeatManager* heartbeat_manager,
-                                     ActionRunner* action_runner)
-    : heartbeat_manager_(heartbeat_manager), action_runner_(action_runner) {
+                                     ActionRunner* action_runner,
+                                     TopSheriff* top_sheriff)
+    : heartbeat_manager_(heartbeat_manager),
+      action_runner_(action_runner),
+      top_sheriff_(top_sheriff) {
   auto pending_remote =
       chromeos::mojo_service_manager::ConnectToMojoServiceManager();
   CHECK(pending_remote) << "Failed to connect to mojo service manager.";
@@ -44,6 +49,8 @@ HeartdMojoService::HeartdMojoService(HeartbeatManager* heartbeat_manager,
       service_manager_.get(), chromeos::mojo_services::kHeartdHeartbeatService);
   heartd_control_provider_.Register(service_manager_.get(),
                                     chromeos::mojo_services::kHeartdControl);
+  heartbeat_verifier_ = new HeartbeatVerifier(heartbeat_manager_);
+  top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(heartbeat_verifier_));
 }
 
 HeartdMojoService::~HeartdMojoService() = default;
@@ -61,6 +68,7 @@ void HeartdMojoService::Register(
 
   heartbeat_manager_->EstablishHeartbeatTracker(name, std::move(receiver),
                                                 std::move(argument));
+  heartbeat_verifier_->GetToWork();
   std::move(callback).Run(true);
 }
 

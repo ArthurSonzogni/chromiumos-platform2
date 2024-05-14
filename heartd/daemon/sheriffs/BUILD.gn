@@ -12,13 +12,20 @@ pkg_config("target_defaults") {
 }
 
 source_set("sheriffs") {
-  sources = [ "boot_metrics_recorder.cc" ]
+  sources = [
+    "boot_metrics_recorder.cc",
+    "heartbeat_verifier.cc",
+  ]
   configs += [ ":target_defaults" ]
+  deps = [ "//heartd/mojom:libheartd_mojo_bindings" ]
 }
 
 if (use.test) {
   source_set("sheriffs_test") {
-    sources = [ "boot_metrics_recorder_test.cc" ]
+    sources = [
+      "boot_metrics_recorder_test.cc",
+      "heartbeat_verifier_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",

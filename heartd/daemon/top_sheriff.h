@@ -8,16 +8,13 @@
 #include <memory>
 #include <vector>
 
-#include "heartd/daemon/heartbeat_manager.h"
 #include "heartd/daemon/sheriffs/sheriff.h"
 
 namespace heartd {
 
 class TopSheriff final : public Sheriff {
  public:
-  // TODO(kerker): Remove HeartbeatManager from the constructor.
-  explicit TopSheriff(base::OnceCallback<void()> quit_heartd_job,
-                      HeartbeatManager* heartbeat_manager);
+  explicit TopSheriff(base::OnceCallback<void()> quit_heartd_job);
   TopSheriff(const TopSheriff&) = delete;
   TopSheriff& operator=(const TopSheriff&) = delete;
   ~TopSheriff();
@@ -35,8 +32,6 @@ class TopSheriff final : public Sheriff {
  private:
   // Quit the heartd daemon.
   base::OnceCallback<void()> quit_heartd_job_;
-  // Unowned pointer. Should outlive this instance.
-  HeartbeatManager* const heartbeat_manager_;
   // Managed sheriffs.
   std::vector<std::unique_ptr<Sheriff>> sheriffs;
 };

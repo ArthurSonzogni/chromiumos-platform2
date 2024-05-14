@@ -89,8 +89,8 @@ TEST_F(HeartbeatManagerTest, RemoveUnusedHeartbeatTrackers) {
     NOTREACHED_NORETURN();
   }
 
-  task_environment_.FastForwardBy(kVerificationPeriod);
-  task_environment_.RunUntilIdle();
+  // This should remove the unused heartbeat trackers.
+  heartbeat_manager_->VerifyHeartbeatAndTakeAction();
   EXPECT_FALSE(
       heartbeat_manager_->IsPacemakerBound(mojom::ServiceName::kKiosk));
   EXPECT_FALSE(heartbeat_manager_->AnyHeartbeatTracker());
@@ -103,8 +103,11 @@ TEST_F(HeartbeatManagerTest, TakeRebootAction) {
               RequestRestartAsync(_, _, _, _, _))
       .Times(Exactly(1));
 
-  task_environment_.FastForwardBy(kVerificationPeriod * 3);
-  task_environment_.RunUntilIdle();
+  // Forward the time so that the gap of the current time and the previous
+  // heartbeat will exceed the threshold.
+  task_environment_.FastForwardBy(base::Minutes(3));
+  heartbeat_manager_->VerifyHeartbeatAndTakeAction();
+  heartbeat_manager_->VerifyHeartbeatAndTakeAction();
 }
 
 TEST_F(HeartbeatManagerTest, NotEnableRebootAction) {
@@ -113,8 +116,11 @@ TEST_F(HeartbeatManagerTest, NotEnableRebootAction) {
               RequestRestartAsync(_, _, _, _, _))
       .Times(Exactly(0));
 
-  task_environment_.FastForwardBy(kVerificationPeriod * 3);
-  task_environment_.RunUntilIdle();
+  // Forward the time so that the gap of the current time and the previous
+  // heartbeat will exceed the threshold.
+  task_environment_.FastForwardBy(base::Minutes(3));
+  heartbeat_manager_->VerifyHeartbeatAndTakeAction();
+  heartbeat_manager_->VerifyHeartbeatAndTakeAction();
 }
 
 }  // namespace
