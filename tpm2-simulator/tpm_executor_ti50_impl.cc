@@ -99,7 +99,7 @@ void RemoveSocketFiles() {
                            base::FileEnumerator::FILES);
   for (base::FilePath path = emt.Next(); !path.empty(); path = emt.Next()) {
     base::stat_wrapper_t statbuf;
-    if (base::File::Lstat(path.value().c_str(), &statbuf) != 0) {
+    if (base::File::Lstat(path, &statbuf) != 0) {
       PLOG(ERROR) << "Failed to lstat " << path.value();
       continue;
     }
