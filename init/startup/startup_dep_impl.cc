@@ -153,25 +153,6 @@ void StartupDep::AddClobberCrashReport(const std::vector<std::string> args) {
   sync();
 }
 
-std::optional<base::FilePath> StartupDep::GetRootDevicePartitionPath(
-    const std::string& partition_label) {
-  base::FilePath root_dev;
-  if (!utils::GetRootDevice(&root_dev, /*strip_partition=*/true)) {
-    LOG(WARNING) << "Unable to get root device";
-    return std::nullopt;
-  }
-
-  const int esp_partition_num =
-      utils::GetPartitionNumber(root_dev, partition_label);
-  if (esp_partition_num == -1) {
-    LOG(WARNING) << "Unable to get partition number for label "
-                 << partition_label;
-    return std::nullopt;
-  }
-
-  return brillo::AppendPartition(root_dev, esp_partition_num);
-}
-
 void StartupDep::ReplayExt4Journal(const base::FilePath& dev) {
   brillo::ProcessImpl e2fsck;
   e2fsck.AddArg("/sbin/e2fsck");

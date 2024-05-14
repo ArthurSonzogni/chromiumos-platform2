@@ -21,10 +21,6 @@ class MockStartupDep : public StartupDep {
   MockStartupDep& operator=(const MockStartupDep&) = delete;
 
   MOCK_METHOD(void, RunProcess, (const base::FilePath& cmd_path), (override));
-  MOCK_METHOD(std::optional<base::FilePath>,
-              GetRootDevicePartitionPath,
-              (const std::string& partition_label),
-              (override));
 };
 
 }  // namespace startup
