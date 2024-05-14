@@ -49,6 +49,19 @@ class ModemFlasher {
                 brillo::ErrorPtr* err);
 
  private:
+  FRIEND_TEST(ModemFlasherTest, NewModemIsFlashable);
+  FRIEND_TEST(ModemFlasherTest, EmptyConfigFromEmptyFirmwareDirectory);
+  FRIEND_TEST(ModemFlasherTest, NewMainFirmwareAvailable);
+  FRIEND_TEST(ModemFlasherTest, EmptyConfigFromSameMainFirmware);
+  FRIEND_TEST(ModemFlasherTest, NewOemFirmwareAvailable);
+  FRIEND_TEST(ModemFlasherTest, EmptyConfigFromSameOemFirmware);
+  FRIEND_TEST(ModemFlasherTest, NewCarrierFirmwareAvailable);
+  FRIEND_TEST(ModemFlasherTest, EmptyConfigFromSameCarrierFirmware);
+  FRIEND_TEST(ModemFlasherTest, ShouldNotFlashAfterMainFlashFailure);
+  FRIEND_TEST(ModemFlasherTest, ShouldNotFlashAfterCarrierFlashFailure);
+  FRIEND_TEST(ModemFlasherTest, ConfigHasAssocFirmware);
+  FRIEND_TEST(ModemFlasherTest, ModemNeverSeenError);
+
   class FlashState {
    public:
     FlashState() = default;
