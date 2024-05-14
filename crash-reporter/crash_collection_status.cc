@@ -185,7 +185,12 @@ constexpr std::pair<CrashCollectionStatus, std::string_view> kStatusNames[] = {
     {CrashCollectionStatus::kFailedProcessBluetoothCoredump,
      "Failed to process bluetooth coredump"},
     {CrashCollectionStatus::kFailureGettingDeviceDriverName,
-     "Failure gettng device driver name"},
+     "Failure getting device driver name"},
+    {CrashCollectionStatus::kFailureReadingJavaCrash,
+     "Failure reading Java crash"},
+    {CrashCollectionStatus::kJavaCrashEmpty, "Java crash was empty"},
+    {CrashCollectionStatus::kFailureParsingCrashLog,
+     "Failure parsing the crash log"},
 };
 // LINT.ThenChange(crash_collection_status.h:status_list)
 

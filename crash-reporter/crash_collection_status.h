@@ -125,7 +125,10 @@ enum class CrashCollectionStatus {
   kDevCoredumpDoesntExist = 482,
   kFailedProcessBluetoothCoredump = 483,
   kFailureGettingDeviceDriverName = 484,
-  kMaxValue = kFailureGettingDeviceDriverName,
+  kFailureReadingJavaCrash = 485,
+  kJavaCrashEmpty = 486,
+  kFailureParsingCrashLog = 487,
+  kMaxValue = kFailureParsingCrashLog,
 };
 // LINT.ThenChange(crash_collection_status.cc:status_list)
 

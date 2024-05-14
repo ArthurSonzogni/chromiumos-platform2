@@ -22,6 +22,8 @@
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/crash_collector.h"
 
+enum class CrashCollectionStatus;
+
 // Collector for Java crashes in the ARC++ container and ARC VM.
 class ArcJavaCollector : public CrashCollector {
  public:
@@ -37,9 +39,10 @@ class ArcJavaCollector : public CrashCollector {
   // Reads a Java crash log for the given |crash_type| from standard input, or
   // closes the stream if reporting is disabled.
   // |uptime| can be zero if the value is unknown.
-  bool HandleCrash(const std::string& crash_type,
-                   const arc_util::BuildProperty& build_property,
-                   base::TimeDelta uptime);
+  CrashCollectionStatus HandleCrash(
+      const std::string& crash_type,
+      const arc_util::BuildProperty& build_property,
+      base::TimeDelta uptime);
 
   // Returns the severity level and product group of the crash.
   CrashCollector::ComputedCrashSeverity ComputeSeverity(

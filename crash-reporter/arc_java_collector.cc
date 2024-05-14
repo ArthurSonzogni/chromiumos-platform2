@@ -35,7 +35,7 @@ ArcJavaCollector::ArcJavaCollector(
                      metrics_lib,
                      GetNameForCollector(CrashReporterCollector::kArcJava)) {}
 
-bool ArcJavaCollector::HandleCrash(
+CrashCollectionStatus ArcJavaCollector::HandleCrash(
     const std::string& crash_type,
     const arc_util::BuildProperty& build_property,
     base::TimeDelta uptime) {
@@ -46,11 +46,11 @@ bool ArcJavaCollector::HandleCrash(
   std::string contents;
   if (!base::ReadStreamToString(stdin, &contents)) {
     PLOG(ERROR) << "Failed to read crash log";
-    return false;
+    return CrashCollectionStatus::kFailureReadingJavaCrash;
   }
   if (contents.empty()) {
     LOG(ERROR) << "crash log was empty";
-    return false;
+    return CrashCollectionStatus::kJavaCrashEmpty;
   }
 
   CrashLogHeaderMap map;
@@ -58,7 +58,7 @@ bool ArcJavaCollector::HandleCrash(
   if (!arc_util::ParseCrashLog(crash_type, contents, &map, &exception_info,
                                &log)) {
     LOG(ERROR) << "Failed to parse crash log";
-    return false;
+    return CrashCollectionStatus::kFailureParsingCrashLog;
   }
 
   const auto exec = arc_util::GetCrashLogHeader(map, arc_util::kProcessKey);
@@ -69,14 +69,10 @@ bool ArcJavaCollector::HandleCrash(
   CrashCollectionStatus status =
       CreateReportForJavaCrash(crash_type, build_property, map, exception_info,
                                log, uptime, &out_of_capacity);
-  if (!IsSuccessCode(status)) {
-    if (!out_of_capacity) {
-      EnqueueCollectionErrorLog(status, exec);
-    }
-    return false;
+  if (!IsSuccessCode(status) && !out_of_capacity) {
+    EnqueueCollectionErrorLog(status, exec);
   }
-
-  return true;
+  return status;
 }
 
 // The parameter |exec_name| is unused as we are computing the crash severity
