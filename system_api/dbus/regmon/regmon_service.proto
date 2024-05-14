@@ -17,14 +17,17 @@ message PolicyViolation {
 
   // The enterprise policy setting which has been violated.
   enum Policy {
+    // Default value. No policy specified.
+    POLICY_UNSPECIFIED = 0;
+
     // Advanced Protection Program policy
-    ADVANCED_PROTECTION_ALLOWED = 0;
+    ADVANCED_PROTECTION_ALLOWED = 1;
 
     // Autofill Payments policy
-    AUTOFILL_CREDIT_CARD_ENABLED = 1;
+    AUTOFILL_CREDIT_CARD_ENABLED = 2;
 
     // Calendar policy
-    CALENDAR_INTEGRATION_ENABLED = 2;
+    CALENDAR_INTEGRATION_ENABLED = 3;
   }
 
   optional Policy policy = 3;
