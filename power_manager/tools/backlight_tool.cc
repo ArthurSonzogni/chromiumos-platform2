@@ -395,7 +395,8 @@ int main(int argc, char* argv[]) {
   if (!backlight.Init(path, pattern))
     Abort("No backlight in " + path.value() + " matched by " + pattern + ".");
 
-  const int64_t current_level = backlight.GetCurrentBrightnessLevel();
+  const int64_t current_level =
+      FLAGS_get_initial_brightness ? 0 : backlight.GetCurrentBrightnessLevel();
   Converter converter(current_level, backlight.GetMaxBrightnessLevel(),
                       backlight.GetBrightnessScale(), FLAGS_lux, FLAGS_keyboard,
                       FLAGS_force_battery);
