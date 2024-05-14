@@ -18,6 +18,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/test_util.h"
 
 using ::testing::HasSubstr;
@@ -54,8 +55,9 @@ void RunTestWithLogContents(std::string_view log_contents) {
   constexpr int kRecentMissCount = 5;
   constexpr int kRecentMatchCount = 2;
   constexpr int kPendingMissCount = 4;
-  EXPECT_TRUE(collector.Collect(kPid, kRecentMissCount, kRecentMatchCount,
-                                kPendingMissCount));
+  EXPECT_EQ(collector.Collect(kPid, kRecentMissCount, kRecentMatchCount,
+                              kPendingMissCount),
+            CrashCollectionStatus::kSuccess);
 
   base::FilePath meta_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(

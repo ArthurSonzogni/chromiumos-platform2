@@ -28,10 +28,10 @@ MissedCrashCollector::MissedCrashCollector(
 
 MissedCrashCollector::~MissedCrashCollector() = default;
 
-bool MissedCrashCollector::Collect(int pid,
-                                   int recent_miss_count,
-                                   int recent_match_count,
-                                   int pending_miss_count) {
+CrashCollectionStatus MissedCrashCollector::Collect(int pid,
+                                                    int recent_miss_count,
+                                                    int recent_match_count,
+                                                    int pending_miss_count) {
   LOG(INFO) << "Processing missed crash for process " << pid;
 
   std::string logs;
@@ -55,7 +55,7 @@ bool MissedCrashCollector::Collect(int pid,
       constants::kRootUid, &crash_directory, nullptr);
   if (!IsSuccessCode(status)) {
     LOG(WARNING) << "Could not get crash directory: " << status;
-    return true;
+    return status;
   }
 
   StripSensitiveData(&logs);
@@ -79,9 +79,7 @@ bool MissedCrashCollector::Collect(int pid,
   AddCrashMetaUploadData("pending_miss_count",
                          base::NumberToString(pending_miss_count));
 
-  FinishCrash(meta_path, kExecName, log_path.BaseName().value());
-
-  return true;
+  return FinishCrash(meta_path, kExecName, log_path.BaseName().value());
 }
 
 CrashCollector::ComputedCrashSeverity MissedCrashCollector::ComputeSeverity(

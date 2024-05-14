@@ -17,6 +17,8 @@
 
 #include "crash-reporter/crash_collector.h"
 
+enum class CrashCollectionStatus;
+
 // Handles reports from anomaly_detector that we failed to capture a Chrome
 // crash. The class is a bit of an oddity in that it doesn't collect its logs
 // itself; instead, it has the logs passed to it on a file descriptor.
@@ -28,10 +30,10 @@ class MissedCrashCollector : public CrashCollector {
           metrics_lib);
   ~MissedCrashCollector() override;
 
-  bool Collect(int pid,
-               int recent_miss_count,
-               int recent_match_count,
-               int pending_miss_count);
+  CrashCollectionStatus Collect(int pid,
+                                int recent_miss_count,
+                                int recent_match_count,
+                                int pending_miss_count);
 
   // Does not take ownership.
   void set_input_file_for_testing(FILE* input_file) {
