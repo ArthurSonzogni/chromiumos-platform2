@@ -100,6 +100,7 @@
 #include "vm_tools/concierge/dbus_adaptor.h"
 #include "vm_tools/concierge/dbus_proxy_util.h"
 #include "vm_tools/concierge/dlc_helper.h"
+#include "vm_tools/concierge/feature_util.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
 #include "vm_tools/concierge/mm/resize_priority.h"
 #include "vm_tools/concierge/network/borealis_network.h"
@@ -662,23 +663,6 @@ ReclaimVmMemoryResponse ReclaimVmMemoryInternal(pid_t pid, int32_t page_limit) {
   LOG(INFO) << "Successfully reclaimed VM memory. PID=" << pid;
   response.set_success(true);
   return response;
-}
-
-std::optional<int> FindIntValue(
-    const std::map<std::string, std::string>& params, std::string key) {
-  auto params_iter = params.find(key);
-  if (params_iter == params.end()) {
-    LOG(ERROR) << "Couldn't find the parameter: " << key;
-    return std::nullopt;
-  }
-
-  int val;
-  if (!base::StringToInt(params_iter->second, &val)) {
-    LOG(ERROR) << "Failed to parse " << key
-               << " parameter as int: " << params_iter->second;
-    return std::nullopt;
-  }
-  return std::optional<int>(val);
 }
 
 }  // namespace

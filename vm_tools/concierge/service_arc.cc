@@ -26,6 +26,7 @@
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/balloon_policy.h"
 #include "vm_tools/concierge/byte_unit.h"
+#include "vm_tools/concierge/feature_util.h"
 #include "vm_tools/concierge/metrics/duration_recorder.h"
 #include "vm_tools/concierge/network/arc_network.h"
 #include "vm_tools/concierge/service.h"
@@ -86,6 +87,26 @@ const VariationsFeature kArcVmLowMemJemallocArenasFeature{
 
 const VariationsFeature kArcVmAAudioMMAPLowLatencyFeature{
     kArcVmAAudioMMAPLowLatencyFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+
+// If enabled, provides props to ARCVM to override the default PSI thresholds
+// for LMKD.
+constexpr char kOverrideLmkdPsiDefaultsFeatureName[] =
+    "CrOSLateBootOverrideLmkdPsiDefaults";
+
+// The PSI threshold in ms for partial stalls. A lower value will cause ARC to
+// attempt to kill low priority (cached) apps sooner.
+constexpr char kLmkdPartialStallMsParam[] = "PartialStallMs";
+// By default use the same default value as LMKD.
+constexpr int kLmkdPartialStallMsDefault = 70;
+
+// The PSI threshold in ms for complete stalls. A lower value will cause ARC to
+// attempt to kill apps of any priority (including perceptible) sooner.
+constexpr char kLmkdCompleteStallMsParam[] = "CompleteStallMs";
+// By default use the same default value as LMKD.
+constexpr int kLmkdCompleteStallMsDefault = 700;
+
+const VariationsFeature kOverrideLmkdPsiDefaultsFeature{
+    kOverrideLmkdPsiDefaultsFeatureName, FEATURE_DISABLED_BY_DEFAULT};
 
 // Returns |image_path| on production. Returns a canonicalized path of the image
 // file when in dev mode.
@@ -370,6 +391,30 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   } else {
     params.emplace_back(base::StringPrintf("androidboot.lmkd.vsock_timeout=%d",
                                            kLmkdVsockTimeoutMs));
+  }
+
+  const feature::PlatformFeatures::ParamsResult result =
+      feature::PlatformFeatures::Get()->GetParamsAndEnabledBlocking(
+          {&kOverrideLmkdPsiDefaultsFeature});
+
+  const auto result_iter = result.find(kOverrideLmkdPsiDefaultsFeatureName);
+  if (result_iter != result.end() && result_iter->second.enabled) {
+    const auto& entry = result_iter->second;
+
+    int partial_stall_ms = FindIntValue(entry.params, kLmkdPartialStallMsParam)
+                               .value_or(kLmkdPartialStallMsDefault);
+    int complete_stall_ms =
+        FindIntValue(entry.params, kLmkdCompleteStallMsParam)
+            .value_or(kLmkdCompleteStallMsDefault);
+
+    LOG(INFO)
+        << "Overriding lmkd default PSI thresholds. psi_partial_stall_ms: "
+        << partial_stall_ms << " psi_complete_stall_ms: " << complete_stall_ms;
+
+    params.emplace_back(base::StringPrintf(
+        "androidboot.lmkd.psi_partial_stall_ms=%d", partial_stall_ms));
+    params.emplace_back(base::StringPrintf(
+        "androidboot.lmkd.psi_complete_stall_ms=%d", complete_stall_ms));
   }
 
   params.emplace_back("androidboot.audio.aaudio_mmap_enabled=1");
