@@ -365,12 +365,12 @@ void BluetoothController::OnUdevEvent(const system::UdevEvent& event) {
 }
 
 void BluetoothController::RefetchFeatures() {
-  IsLongAutosuspendFeatureEnabled(
+  EnableLongAutosuspendFeature(
       platform_features_->IsEnabledBlocking(kLongAutosuspendFeature));
 }
 
-void BluetoothController::IsLongAutosuspendFeatureEnabled(bool enabled) {
-  long_autosuspend_feature_enabled_ = enabled;
+void BluetoothController::EnableLongAutosuspendFeature(bool enable) {
+  long_autosuspend_feature_enabled_ = enable;
 
   // List all initially tagged devices and update the notification.
   for (const system::TaggedDevice& device : udev_->GetTaggedDevices()) {

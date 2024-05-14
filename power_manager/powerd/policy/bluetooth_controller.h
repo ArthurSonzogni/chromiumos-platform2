@@ -88,8 +88,8 @@ class BluetoothController : public system::UdevSubsystemObserver,
   // Called when we need to refetch features.
   void RefetchFeatures();
 
-  // Apply result of feature query.
-  void IsLongAutosuspendFeatureEnabled(bool enabled);
+  // Enable or disable the long auto suspend feature.
+  void EnableLongAutosuspendFeature(bool enable);
 
   // Handles the `floss_dbus_proxy_` becoming initially available.
   void HandleFlossServiceAvailableOrRestarted(bool available);
