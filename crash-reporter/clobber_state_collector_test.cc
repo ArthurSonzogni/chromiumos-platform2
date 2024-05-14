@@ -54,7 +54,8 @@ class ClobberStateCollectorMock : public ClobberStateCollector {
 
 void Initialize(ClobberStateCollectorMock* collector,
                 base::ScopedTempDir* scoped_tmp_dir,
-                const std::string& contents) {
+                const std::string& contents,
+                base::FilePath& crash_directory) {
   ASSERT_TRUE(scoped_tmp_dir->CreateUniqueTempDir());
   EXPECT_CALL(*collector, SetUpDBus()).WillRepeatedly(Return());
   base::FilePath log_config_path =
@@ -68,26 +69,29 @@ void Initialize(ClobberStateCollectorMock* collector,
 
   collector->Initialize(false);
 
-  collector->set_crash_directory_for_test(scoped_tmp_dir->GetPath());
+  crash_directory = scoped_tmp_dir->GetPath().Append("crash");
+  ASSERT_TRUE(base::CreateDirectory(crash_directory));
+  collector->set_crash_directory_for_test(crash_directory);
   collector->set_log_config_path(log_config_path.value());
 }
 
 TEST(ClobberStateCollectorTest, TestClobberState) {
   ClobberStateCollectorMock collector;
   base::ScopedTempDir tmp_dir;
+  base::FilePath crash_directory;
   base::FilePath meta_path;
   base::FilePath report_path;
   std::string report_contents;
 
-  Initialize(&collector, &tmp_dir, kTmpfilesLogErrorContents);
+  Initialize(&collector, &tmp_dir, kTmpfilesLogErrorContents, crash_directory);
 
-  EXPECT_TRUE(collector.Collect());
+  EXPECT_EQ(collector.Collect(), CrashCollectionStatus::kSuccess);
 
   // Check report collection.
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "clobber_state.*.meta", &meta_path));
+      crash_directory, "clobber_state.*.meta", &meta_path));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "clobber_state.*.log", &report_path));
+      crash_directory, "clobber_state.*.log", &report_path));
 
   // Check meta contents.
   std::string meta_contents;
@@ -102,6 +106,7 @@ TEST(ClobberStateCollectorTest, TestClobberState) {
 TEST(ClobberStateCollectorTest, TestClobberState_WarningOnly) {
   ClobberStateCollectorMock collector;
   base::ScopedTempDir tmp_dir;
+  base::FilePath crash_directory;
   base::FilePath meta_path;
   base::FilePath report_path;
   std::string report_contents;
@@ -113,15 +118,15 @@ TEST(ClobberStateCollectorTest, TestClobberState_WarningOnly) {
       "\"/run/camera\", ignoring.\n"
       "/usr/lib/tmpfiles.d/vm_tools.conf:38: Duplicate line for path "
       "\"/run/perfetto\", ignoring.\nignoring.";
-  Initialize(&collector, &tmp_dir, kTmpfilesContents);
+  Initialize(&collector, &tmp_dir, kTmpfilesContents, crash_directory);
 
-  EXPECT_TRUE(collector.Collect());
+  EXPECT_EQ(collector.Collect(), CrashCollectionStatus::kSuccess);
 
   // Check report collection.
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "clobber_state.*.meta", &meta_path));
+      crash_directory, "clobber_state.*.meta", &meta_path));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "clobber_state.*.log", &report_path));
+      crash_directory, "clobber_state.*.log", &report_path));
 
   // Check meta contents.
   std::string meta_contents;
@@ -158,18 +163,19 @@ TEST(ClobberStateCollectorTest, TestClobberState_KnownIssue) {
   for (const auto& test_case : test_cases) {
     ClobberStateCollectorMock collector;
     base::ScopedTempDir tmp_dir;
+    base::FilePath crash_directory;
     base::FilePath meta_path;
     base::FilePath report_path;
     std::string report_contents;
-    Initialize(&collector, &tmp_dir, test_case.log);
+    Initialize(&collector, &tmp_dir, test_case.log, crash_directory);
 
-    EXPECT_TRUE(collector.Collect());
+    EXPECT_EQ(collector.Collect(), CrashCollectionStatus::kSuccess);
 
     // Check report collection.
     EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-        tmp_dir.GetPath(), "clobber_state.*.meta", &meta_path));
+        crash_directory, "clobber_state.*.meta", &meta_path));
     EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-        tmp_dir.GetPath(), "clobber_state.*.log", &report_path));
+        crash_directory, "clobber_state.*.log", &report_path));
 
     // Check meta contents.
     std::string meta_contents;
@@ -186,22 +192,51 @@ TEST(ClobberStateCollectorTest,
      TestClobberState_GetCreatedCrashDirectoryByEuidFailure) {
   ClobberStateCollectorMock collector;
   base::ScopedTempDir tmp_dir;
+  base::FilePath crash_directory;
   base::FilePath meta_path;
   base::FilePath report_path;
   std::string report_contents;
 
-  Initialize(&collector, &tmp_dir, kTmpfilesLogErrorContents);
+  Initialize(&collector, &tmp_dir, kTmpfilesLogErrorContents, crash_directory);
 
   collector.force_get_created_crash_directory_by_euid_status_for_test(
       CrashCollectionStatus::kGetDefaultUserInfoFailed, false);
 
-  EXPECT_FALSE(collector.Collect());
+  EXPECT_EQ(collector.Collect(),
+            CrashCollectionStatus::kGetDefaultUserInfoFailed);
 
   // Check report collection.
-  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "clobber_state.*.meta", &meta_path));
-  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "clobber_state.*.log", &report_path));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(crash_directory, "*.meta",
+                                                      &meta_path))
+      << meta_path;
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(crash_directory, "*.log",
+                                                      &report_path))
+      << report_path;
+}
+
+TEST(ClobberStateCollectorTest, TestClobberState_GetLogContentsFailure) {
+  ClobberStateCollectorMock collector;
+  base::ScopedTempDir tmp_dir;
+  base::FilePath crash_directory;
+  base::FilePath meta_path;
+  base::FilePath report_path;
+  std::string report_contents;
+
+  Initialize(&collector, &tmp_dir, kTmpfilesLogErrorContents, crash_directory);
+  // Erase the log config entry that GetLogContents() needs.
+  base::FilePath log_config_path = tmp_dir.GetPath().Append(kLogConfigFileName);
+  ASSERT_TRUE(test_util::CreateFile(log_config_path, "foo=bar\n"));
+
+  EXPECT_EQ(collector.Collect(),
+            CrashCollectionStatus::kExecNotConfiguredForLog);
+
+  // Check report collection.
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(crash_directory, "*.meta",
+                                                      &meta_path))
+      << meta_path;
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(crash_directory, "*.log",
+                                                      &report_path))
+      << report_path;
 }
 
 }  // namespace

@@ -17,6 +17,8 @@
 
 inline constexpr const char kNoErrorLogged[] = "No error logged.";
 
+enum class CrashCollectionStatus;
+
 // Collect clobber.log which has the error messages that led to the stateful
 // clobber.
 class ClobberStateCollector : public CrashCollector {
@@ -30,7 +32,7 @@ class ClobberStateCollector : public CrashCollector {
 
   ~ClobberStateCollector() override = default;
 
-  bool Collect();
+  CrashCollectionStatus Collect();
 
   static CollectorInfo GetHandlerInfo(
       bool clobber_state,

@@ -75,14 +75,15 @@ ClobberStateCollector::ClobberStateCollector(
     : CrashCollector(CrashReporterCollector::kClobberState, metrics_lib),
       tmpfiles_log_(kTmpfilesLogPath) {}
 
-bool ClobberStateCollector::Collect() {
+CrashCollectionStatus ClobberStateCollector::Collect() {
   std::string exec_name(kClobberStateName);
   std::string dump_basename = FormatDumpBasename(exec_name, time(nullptr), 0);
 
   base::FilePath crash_directory;
-  if (!IsSuccessCode(GetCreatedCrashDirectoryByEuid(
-          constants::kRootUid, &crash_directory, nullptr))) {
-    return false;
+  CrashCollectionStatus status = GetCreatedCrashDirectoryByEuid(
+      constants::kRootUid, &crash_directory, nullptr);
+  if (!IsSuccessCode(status)) {
+    return status;
   }
 
   // Use the first line or first 1024 bytes of the tmpfiles log as the
@@ -106,13 +107,12 @@ bool ClobberStateCollector::Collect() {
   base::FilePath log_path = GetCrashPath(crash_directory, dump_basename, "log");
   base::FilePath meta_path =
       GetCrashPath(crash_directory, dump_basename, "meta");
-
-  if (IsSuccessCode(GetLogContents(log_config_path_, exec_name, log_path))) {
-    FinishCrash(meta_path, exec_name, log_path.BaseName().value());
-    return true;
+  status = GetLogContents(log_config_path_, exec_name, log_path);
+  if (IsSuccessCode(status)) {
+    return FinishCrash(meta_path, exec_name, log_path.BaseName().value());
   }
 
-  return false;
+  return status;
 }
 
 // static
