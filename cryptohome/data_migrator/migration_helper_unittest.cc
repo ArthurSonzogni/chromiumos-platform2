@@ -672,7 +672,7 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFile) {
   const size_t kFromFileSize = kDefaultChunkSize;
   const size_t kToFileSize = kDefaultChunkSize;
   char full_contents[kFinalFileSize];
-  base::RandBytes(full_contents, kFinalFileSize);
+  base::RandBytes(base::as_writable_byte_span(full_contents));
 
   ASSERT_TRUE(
       platform_.WriteArrayToFile(kFromFilePath, full_contents, kFromFileSize));
@@ -713,7 +713,7 @@ TEST_F(MigrationHelperTest, MigrateInProgressPartialFileDuplicateData) {
   const size_t kFromFileSize = kFinalFileSize;
   const size_t kToFileSize = kDefaultChunkSize;
   char full_contents[kFinalFileSize];
-  base::RandBytes(full_contents, kFinalFileSize);
+  base::RandBytes(base::as_writable_byte_span(full_contents));
 
   ASSERT_TRUE(
       platform_.WriteArrayToFile(kFromFilePath, full_contents, kFromFileSize));
@@ -754,7 +754,7 @@ TEST_F(MigrationHelperTest, ProgressCallback) {
 
   const size_t kFileSize = kDefaultChunkSize;
   char from_contents[kFileSize];
-  base::RandBytes(from_contents, kFileSize);
+  base::RandBytes(base::as_writable_byte_span(from_contents));
   ASSERT_TRUE(platform_.CreateDirectory(kFromSubdir));
   ASSERT_TRUE(platform_.CreateSymbolicLink(kFromLink, kFromFile.BaseName()));
   ASSERT_TRUE(platform_.WriteArrayToFile(kFromFile, from_contents, kFileSize));
@@ -985,7 +985,7 @@ TEST_P(DataMigrationTest, CopyFileData) {
 
   const size_t kFileSize = GetParam();
   std::string from_contents(kFileSize, '\0');
-  base::RandBytes(from_contents.data(), kFileSize);
+  base::RandBytes(base::as_writable_byte_span(from_contents));
   ASSERT_TRUE(
       platform_.WriteArrayToFile(kFromFile, from_contents.data(), kFileSize));
 
