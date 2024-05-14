@@ -23,8 +23,7 @@ namespace libstorage {
 // `StorageContainerFactory` abstracts the creation of encrypted containers.
 class BRILLO_EXPORT StorageContainerFactory {
  public:
-  explicit StorageContainerFactory(Platform* platform,
-                                   MetricsLibraryInterface* metrics);
+  StorageContainerFactory(Platform* platform, MetricsLibraryInterface* metrics);
   StorageContainerFactory(
       Platform* platform,
       MetricsLibraryInterface* metrics,
