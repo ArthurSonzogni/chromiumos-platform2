@@ -1,0 +1,101 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+static_library("libcicerone") {
+  sources = [
+    "container.cc",
+    "container_listener_impl.cc",
+    "crash_listener_impl.cc",
+    "grpc_util.cc",
+    "guest_metrics.cc",
+    "service.cc",
+    "shadercached_helper.cc",
+    "shill_client.cc",
+    "tremplin_listener_impl.cc",
+    "virtual_machine.cc",
+  ]
+  configs += [ "//vm_tools/host:host_target_defaults" ]
+  libs = [ "grpc" ]
+  all_dependent_pkg_deps = [
+    "grpc++",
+    "libmetrics",
+    "libshill-client",
+    "protobuf",
+    "re2",
+    "system_api",
+    "vm_protos",
+  ]
+}
+
+executable("vm_cicerone") {
+  sources = [ "main.cc" ]
+  configs += [ "//vm_tools/host:host_target_defaults" ]
+  deps = [ ":libcicerone" ]
+}
+
+executable("cicerone_client") {
+  sources = [ "client.cc" ]
+  configs += [ "//vm_tools/host:host_target_defaults" ]
+  pkg_deps = [
+    "protobuf",
+    "system_api",
+  ]
+}
+
+if (use.test || use.fuzzer) {
+  static_library("service_testing_helper_lib") {
+    sources = [
+      "dbus_message_testing_helper.cc",
+      "dbus_message_testing_helper.h",
+      "mock_tremplin_stub.h",
+      "service_testing_helper.cc",
+      "service_testing_helper.h",
+    ]
+    configs += [ "//vm_tools/host:host_target_defaults" ]
+    all_dependent_pkg_deps = [ "libchrome-test" ]
+    deps = [ ":libcicerone" ]
+  }
+}
+
+if (use.test) {
+  executable("cicerone_test") {
+    sources = [
+      "container_listener_impl_test.cc",
+      "crash_listener_impl_test.cc",
+      "tremplin_listener_impl_test.cc",
+      "virtual_machine_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      "//vm_tools/host:host_target_defaults",
+    ]
+    deps = [
+      ":libcicerone",
+      ":service_testing_helper_lib",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("cicerone_container_listener_fuzzer") {
+    sources = [ "container_listener_impl_fuzzer.cc" ]
+
+    # //common-mk:test should be on the top.
+    # TODO(crbug.com/887845): Remove this comment after library ordering issue is fixed.
+    configs += [
+      "//common-mk:test",
+      "//common-mk/common_fuzzer:common_fuzzer",
+      "//vm_tools/host:vm_host_tools_fuzzer_pkg_deps",
+    ]
+    pkg_deps = [
+      "grpc++",
+      "libchrome-test",  # For FuzzedDataProvider
+    ]
+    deps = [
+      ":libcicerone",
+      ":service_testing_helper_lib",
+    ]
+  }
+}
