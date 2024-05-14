@@ -22,6 +22,7 @@
 #include "missive/health/health_module.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
+#include "missive/storage/key_delivery.h"
 #include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"

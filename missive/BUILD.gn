@@ -200,6 +200,7 @@ if (use.test) {
       "scheduler/enqueue_job_test.cc",
       "scheduler/scheduler_test.cc",
       "scheduler/upload_job_test.cc",
+      "storage/key_delivery_test.cc",
       "storage/legacy_storage_degradation_test.cc",
       "storage/legacy_storage_test.cc",
       "storage/storage_degradation_test.cc",

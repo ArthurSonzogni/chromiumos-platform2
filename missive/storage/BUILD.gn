@@ -124,6 +124,19 @@ static_library("storage_util") {
   deps = [ ":storage_queue" ]
 }
 
+static_library("key_delivery") {
+  sources = [
+    "key_delivery.cc",
+    "key_delivery.h",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":storage_uploader_interface",
+    "//missive/encryption:encryption_module_interface",
+    "//missive/util:status",
+  ]
+}
+
 static_library("storage") {
   sources = [ "storage.cc" ]
   configs += [ ":target_defaults" ]
@@ -156,6 +169,7 @@ static_library("storage_base") {
   sources = [ "storage_base.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
+    ":key_delivery",
     ":storage_uploader_interface",
     "//missive/encryption:encryption_module_interface",
     "//missive/encryption:verification",

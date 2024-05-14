@@ -6,7 +6,6 @@
 #define MISSIVE_DBUS_DBUS_ADAPTOR_H_
 
 #include <memory>
-#include <string>
 
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread.h>

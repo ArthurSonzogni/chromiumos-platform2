@@ -42,6 +42,7 @@
 #include "missive/proto/health.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
+#include "missive/storage/key_delivery.h"
 #include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
@@ -357,7 +358,6 @@ Storage::Storage(const Storage::Settings& settings)
       health_module_(settings.health_module),
       encryption_module_(settings.encryption_module),
       key_delivery_(KeyDelivery::Create(settings.encryption_module,
-                                        health_module_,
                                         settings.async_start_upload_cb)),
       compression_module_(settings.compression_module),
       key_in_storage_(std::make_unique<KeyInStorage>(

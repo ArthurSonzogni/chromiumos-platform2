@@ -50,6 +50,7 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
+#include "missive/storage/key_delivery.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
@@ -2211,7 +2212,7 @@ TEST_P(LegacyStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
     // success for key delivery.
     EXPECT_CALL(
         analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE))
+        SendEnumToUMA(KeyDelivery::kResultUma, error::OK, error::MAX_VALUE))
         .WillOnce(Return(true))
         .RetiresOnSaturation();
     task_environment_.FastForwardBy(options_.key_check_period());
@@ -2245,10 +2246,11 @@ TEST_P(LegacyStorageTest, KeyDeliveryFailureOnStorage) {
     EXPECT_THAT(write_result.message(), HasSubstr(kKeyDeliveryErrorMessage))
         << write_result;
 
-    // Storage will continue to request the encryption key
+    // Storage will continue to request the encryption key until succeeded.
     EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-                SendEnumToUMA(kKeyDeliveryResultUma, kKeyDeliveryError,
-                              error::MAX_VALUE));
+                SendEnumToUMA(KeyDelivery::kResultUma, kKeyDeliveryError,
+                              error::MAX_VALUE))
+        .WillRepeatedly(Return(true));
 
     // Forward time to trigger key request
     task_environment_.FastForwardBy(options_.key_check_period());
@@ -2273,7 +2275,9 @@ TEST_P(LegacyStorageTest, KeyDeliveryFailureOnStorage) {
     // delivery
     EXPECT_CALL(
         analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE));
+        SendEnumToUMA(KeyDelivery::kResultUma, error::OK, error::MAX_VALUE))
+        .WillOnce(Return(true))
+        .RetiresOnSaturation();
 
     // Forward time to trigger key request
     task_environment_.FastForwardBy(options_.key_check_period());

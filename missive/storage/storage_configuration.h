@@ -27,10 +27,6 @@ using GenerationGuid = std::string;
 using DMtoken = std::string;
 constexpr char kDeviceDMToken[] = "";
 
-// Key delivery UMA name
-static constexpr char kKeyDeliveryResultUma[] =
-    "Platform.Missive.KeyDeliveryResult";
-
 // Forward declaration.
 class QueueOptions;
 
