@@ -252,6 +252,7 @@ int main(int argc, char** argv) {
       // Access the ImageLoaderImpl directly to avoid needless dbus
       // dependencies, which may not be available at early boot.
       imageloader::ImageLoaderImpl loader(std::move(config));
+      loader.Initialize();
 
       return loader.LoadDlc(request, helper_process_proxy.get()).empty() ? 1
                                                                          : 0;
