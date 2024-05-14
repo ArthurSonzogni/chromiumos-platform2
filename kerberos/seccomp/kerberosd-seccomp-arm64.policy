@@ -82,3 +82,4 @@ fstatfs: 1
 statfs: 1
 process_vm_readv: 1
 renameat: 1
+eventfd2: 1
