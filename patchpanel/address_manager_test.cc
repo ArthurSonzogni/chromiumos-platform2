@@ -86,7 +86,7 @@ TEST(AddressManager, StableMacAddresses) {
   for (int i = 0; i < 100; ++i) {
     uint8_t index = 0;
     while (index == 0) {
-      base::RandBytes(&index, 1);
+      base::RandBytes(base::byte_span_from_ref(index));
     }
     EXPECT_EQ(mgr.GenerateMacAddress(index), mgr.GenerateMacAddress(index));
   }
