@@ -92,7 +92,7 @@ bool emit_metrics(const std::string& reason,
 std::string generate_machine_id() {
   uint8_t machine_id[16];
 
-  base::RandBytes(machine_id, sizeof(machine_id));
+  base::RandBytes(machine_id);
   return base::HexEncode(machine_id, sizeof(machine_id));
 }
 
