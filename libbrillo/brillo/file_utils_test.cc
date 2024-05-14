@@ -31,7 +31,7 @@ constexpr int kPermissions755 = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 std::string GetRandomSuffix() {
   const int kBufferSize = 6;
   unsigned char buffer[kBufferSize];
-  base::RandBytes(buffer, std::size(buffer));
+  base::RandBytes(buffer);
   return base::HexEncode(buffer, std::size(buffer));
 }
 

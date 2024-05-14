@@ -145,7 +145,7 @@ bool TouchFileInternal(const base::FilePath& path,
 std::string GetRandomSuffix() {
   const int kBufferSize = 6;
   unsigned char buffer[kBufferSize];
-  base::RandBytes(buffer, std::size(buffer));
+  base::RandBytes(buffer);
   std::string suffix;
   for (int i = 0; i < kBufferSize; ++i) {
     int random_value = buffer[i] % (2 * 26 + 10);

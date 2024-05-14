@@ -710,7 +710,7 @@ TEST_F(FileStreamTest, OpenRead) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::vector<char> buffer(1024 * 1024);
-  base::RandBytes(buffer.data(), buffer.size());
+  base::RandBytes(base::as_writable_byte_span(buffer));
   int file_size = buffer.size();  // Stupid base::WriteFile taking "int" size.
   ASSERT_EQ(file_size, base::WriteFile(path, buffer.data(), file_size));
 
@@ -737,7 +737,7 @@ TEST_F(FileStreamTest, OpenWrite) {
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   base::FilePath path = temp_dir.GetPath().Append(base::FilePath{"test.dat"});
   std::vector<char> buffer(1024 * 1024);
-  base::RandBytes(buffer.data(), buffer.size());
+  base::RandBytes(base::as_writable_byte_span(buffer));
 
   StreamPtr stream =
       FileStream::Open(path, Stream::AccessMode::WRITE,
@@ -987,7 +987,7 @@ TEST_F(FileStreamTest, FromFileDescriptor_WriteNonBlocking) {
 
   // Pipe buffer is generally 64K, so 128K should be more than enough.
   std::vector<char> buffer(128 * 1024);
-  base::RandBytes(buffer.data(), buffer.size());
+  base::RandBytes(base::as_writable_byte_span(buffer));
   size_t written = 0;
   size_t total_size = 0;
 
