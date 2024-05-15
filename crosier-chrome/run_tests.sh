@@ -24,6 +24,10 @@ TEST_SUDO_HELPER_PID=$!
 echo "${TEST_BIN}" -- u:object_r:chrome_browser_exec:s0 > "${TEST_BIN}.specfile"
 setfiles -F "${TEST_BIN}.specfile" "${TEST_BIN}"
 
+# Use deployed dbus config
+mount --bind ./dbus /opt/google/chrome/dbus
+kill -s HUP "$(pgrep dbus)"
+
 # Run tests
 stop ui
 dbus-send --system --type=method_call --dest=org.chromium.PowerManager \
@@ -40,5 +44,8 @@ start ui
 pkill -P "${TEST_SUDO_HELPER_PID}"
 kill "${TEST_SUDO_HELPER_PID}"
 unlink "${TEST_SUDO_HELPER_PATH}"
+
+umount /opt/google/chrome/dbus
+kill -s HUP "$(pgrep dbus)"
 
 exit "${status}"
