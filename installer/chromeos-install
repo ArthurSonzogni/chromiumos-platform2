@@ -729,6 +729,7 @@ install_stateful() {
     local prior_log_dir="${TMPMNT}/unencrypted/prior_logs"
     mkdir -p "${prior_log_dir}"
     local log_path
+    # shellcheck disable=SC2013
     for log_path in $(sed -e '/^#/ d' -e '/^$/ d' "${FLAGS_lab_preserve_logs}"); do
       case "${log_path}" in
         /dev/* | /sys/*)
