@@ -554,6 +554,7 @@ if (use.test) {
       "brillo/tracing_test.cc",
       "brillo/unittest_utils.cc",
       "brillo/url_utils_test.cc",
+      "brillo/userdb_utils_test.cc",
       "brillo/vcsid_set_test.cc",
       "brillo/vcsid_unset_test.cc",
       "testrunner.cc",

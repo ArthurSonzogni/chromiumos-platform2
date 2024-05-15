@@ -12,11 +12,16 @@
 
 #include <vector>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 
 namespace brillo {
 namespace userdb {
+
+constexpr ssize_t kBufLen = 16384;
 
 bool GetUserInfo(const std::string& user, uid_t* uid, gid_t* gid) {
   ssize_t buf_len = sysconf(_SC_GETPW_R_SIZE_MAX);
@@ -68,6 +73,58 @@ bool GetGroupInfo(const std::string& group, gid_t* gid) {
   if (gid)
     *gid = grp->gr_gid;
   return true;
+}
+
+std::vector<uid_t> GetUsers(const base::FilePath& path) {
+  std::vector<uid_t> accts;
+  struct passwd pw;
+  struct passwd* pwres;
+  char buf[kBufLen];
+  int res;
+  base::FilePath acctPath = path;
+
+  if (acctPath.empty()) {
+    acctPath = base::FilePath("/etc/passwd");
+  }
+  base::ScopedFILE acctFile(fopen(acctPath.value().c_str(), "re"));
+
+  while ((res = fgetpwent_r(acctFile.get(), &pw, buf, sizeof(buf), &pwres)) ==
+             0 &&
+         pwres != nullptr) {
+    accts.push_back(pw.pw_uid);
+  }
+
+  return accts;
+}
+
+std::vector<uid_t> GetUsers() {
+  return GetUsers(base::FilePath());
+}
+
+std::vector<uid_t> GetGroups(const base::FilePath& path) {
+  std::vector<gid_t> accts;
+  struct group grp;
+  struct group* grpres;
+  char buf[kBufLen];
+  int res;
+  base::FilePath acctPath = path;
+
+  if (acctPath.empty()) {
+    acctPath = base::FilePath("/etc/group");
+  }
+  base::ScopedFILE acctFile(fopen(acctPath.value().c_str(), "re"));
+
+  while ((res = fgetgrent_r(acctFile.get(), &grp, buf, sizeof(buf), &grpres)) ==
+             0 &&
+         grpres != nullptr) {
+    accts.push_back(grp.gr_gid);
+  }
+
+  return accts;
+}
+
+std::vector<gid_t> GetGroups() {
+  return GetGroups(base::FilePath());
 }
 
 }  // namespace userdb
