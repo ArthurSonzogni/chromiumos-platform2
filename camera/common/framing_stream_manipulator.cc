@@ -185,6 +185,7 @@ std::optional<Size> GetFullFrameResolution(
     std::optional<uint32_t> max_height) {
   base::flat_map<const StreamFormat*, const camera3_stream_t*>
       format_to_dst_stream;
+  uint32_t max_dst_width = 0, max_dst_height = 0;
   for (auto* s : dst_streams) {
     const StreamFormat* matching_format = nullptr;
     for (auto& f : available_formats) {
@@ -195,6 +196,8 @@ std::optional<Size> GetFullFrameResolution(
     }
     CHECK_NE(matching_format, nullptr) << GetDebugString(s);
     format_to_dst_stream[matching_format] = s;
+    max_dst_width = std::max(max_dst_width, s->width);
+    max_dst_height = std::max(max_dst_height, s->height);
   }
 
   auto can_generate_stream = [](const StreamFormat& src_format,
@@ -209,8 +212,12 @@ std::optional<Size> GetFullFrameResolution(
            index_fps(src_format.max_fps) >= index_fps(dst_format.max_fps);
   };
   auto can_generate_all_streams = [&](const StreamFormat& src_format) {
-    if ((max_width.has_value() && src_format.width > max_width.value()) ||
-        (max_height.has_value() && src_format.height > max_height.value())) {
+    // Limit the full frame dimensions to |max_width| and |max_height|, unless a
+    // destination stream is larger than the limit.
+    if ((max_width.has_value() &&
+         src_format.width > std::max(max_width.value(), max_dst_width)) ||
+        (max_height.has_value() &&
+         src_format.height > std::max(max_height.value(), max_dst_height))) {
       return false;
     }
     for (auto& [dst_format, s] : format_to_dst_stream) {
