@@ -16,9 +16,9 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/rand_util.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <crypto/random.h>
 #include <libstorage/platform/platform.h>
 #include <linux/loadpin.h>
 #include <openssl/sha.h>
@@ -270,7 +270,7 @@ void CreateSystemKey(libstorage::Platform* platform,
 
   // Generates 32-byte random key material and backs it up.
   brillo::Blob buf(kKeySize);
-  crypto::RandBytes(buf.data(), buf.size());
+  base::RandBytes(buf);
   if (!platform->WriteFile(backup, buf)) {
     log_content->append("Failed to generate or back up system key material.\n");
     return;

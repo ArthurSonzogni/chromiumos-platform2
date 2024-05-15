@@ -18,12 +18,12 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/constants/imageloader.h>
-#include <crypto/random.h>
 #include <libdlcservice/utils.h>
 
 namespace {
@@ -51,7 +51,7 @@ ClobberLvm::ClobberLvm(ClobberWipe* clobber_wipe,
 std::string ClobberLvm::GenerateRandomVolumeGroupName() {
   const char kCharset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   unsigned char vg_random_value[kVolumeGroupNameSize];
-  crypto::RandBytes(vg_random_value, kVolumeGroupNameSize);
+  base::RandBytes(vg_random_value);
 
   std::string vg_name(kVolumeGroupNameSize, '0');
   for (int i = 0; i < kVolumeGroupNameSize; ++i) {
