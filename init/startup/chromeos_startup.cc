@@ -151,6 +151,12 @@ void ChromeosStartup::ParseFlags(Flags* flags) {
   if (flags->encstateful) {
     flags->sys_key_util = USE_TPM2;
   }
+  // Note: encrypted_reboot_vault is disabled only for Gale
+  // to be able to use openssl 1.1.1.
+  flags->encrypted_reboot_vault = USE_ENCRYPTED_REBOOT_VAULT;
+  flags->lvm_migration = USE_LVM_MIGRATION;
+  flags->lvm_stateful = USE_LVM_STATEFUL_PARTITION;
+
   flags->verbosity = 0;
 }
 
@@ -859,7 +865,7 @@ int ChromeosStartup::Run() {
   // is available. If unlocking the encrypted reboot vault failed (due to
   // power loss/reboot/invalid vault), attempt to recreate the encrypted reboot
   // vault.
-  if (USE_ENCRYPTED_REBOOT_VAULT) {
+  if (flags_.encrypted_reboot_vault) {
     encrypted_reboot_vault::EncryptedRebootVault vault(platform_);
     if (!vault.UnlockVault())
       vault.CreateVault();

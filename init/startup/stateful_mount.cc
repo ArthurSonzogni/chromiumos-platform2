@@ -402,7 +402,7 @@ void StatefulMount::MountStateful() {
     }
 
     bool should_mount_lvm = false;
-    if (USE_LVM_STATEFUL_PARTITION) {
+    if (USE_LVM_STATEFUL_PARTITION && flags_.lvm_stateful) {
       brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
 
       // Attempt to get a valid volume group name.
@@ -410,7 +410,7 @@ void StatefulMount::MountStateful() {
       std::optional<brillo::PhysicalVolume> pv =
           lvm->GetPhysicalVolume(state_dev_);
 
-      if (!pv && USE_LVM_MIGRATION) {
+      if (!pv && flags_.lvm_migration) {
         // Attempt to migrate to thinpool if migration is enabled: if the
         // migration fails, then we expect the stateful partition to be back to
         // its original state.
@@ -594,18 +594,16 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
   if (stateful_update_args.compare("clobber") == 0) {
     // Because we want to preserve the testing tools under the /usr/local for
     // test image, we only delete the cryptohome related LVs here.
-    if (USE_LVM_STATEFUL_PARTITION) {
-      // Remove the cryptohome LVs.
-      if (volume_group_ && volume_group_->IsValid()) {
-        volume_group_->Activate();
-        brillo::LogicalVolumeManager* lvm =
-            platform_->GetLogicalVolumeManager();
-        std::vector<brillo::LogicalVolume> lvs =
-            lvm->ListLogicalVolumes(volume_group_.value(), "cryptohome*");
-        for (auto& lv : lvs) {
-          if (!lv.Remove()) {
-            LOG(WARNING) << "Failed to remove logical volume: " << lv.GetName();
-          }
+    // volume_group_ may be null if it was not found in MountStateful.
+    if (USE_LVM_STATEFUL_PARTITION && volume_group_ &&
+        volume_group_->IsValid()) {
+      volume_group_->Activate();
+      brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
+      std::vector<brillo::LogicalVolume> lvs =
+          lvm->ListLogicalVolumes(volume_group_.value(), "cryptohome*");
+      for (auto& lv : lvs) {
+        if (!lv.Remove()) {
+          LOG(WARNING) << "Failed to remove logical volume: " << lv.GetName();
         }
       }
     }
