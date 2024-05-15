@@ -5,6 +5,8 @@
 #ifndef SHILL_WIFI_MOCK_WIFI_PHY_H_
 #define SHILL_WIFI_MOCK_WIFI_PHY_H_
 
+#include <set>
+
 #include "shill/wifi/wifi_phy.h"
 
 #include <gmock/gmock.h>
@@ -25,6 +27,10 @@ class MockWiFiPhy : public WiFiPhy {
   MOCK_METHOD(bool, SupportAPSTAConcurrency, (), (const, override));
   MOCK_METHOD(bool, SupportP2PMode, (), (const, override));
   MOCK_METHOD(bool, reg_self_managed, (), (const, override));
+  MOCK_METHOD(std::optional<std::multiset<nl80211_iftype>>,
+              RequestNewIface,
+              (nl80211_iftype desired_type, Priority priority),
+              (const override));
 };
 
 }  // namespace shill

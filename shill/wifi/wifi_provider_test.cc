@@ -5,6 +5,7 @@
 #include "shill/wifi/wifi_provider.h"
 
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,6 +24,7 @@
 #include <chromeos/net-base/netlink_packet.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <linux/nl80211.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
@@ -2625,12 +2627,15 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
   HotspotDeviceRefPtr device;
   EXPECT_CALL(*tethering_manager_, OnDeviceCreated)
       .WillOnce(SaveArg<0>(&device));
+  EXPECT_CALL(*phy0, RequestNewIface)
+      .WillOnce(Return(std::multiset<nl80211_iftype>{}));
   base::OnceClosure create_cb =
       base::BindOnce(&WiFiProvider::CreateHotspotDevice, provider_->AsWeakPtr(),
                      net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c),
                      WiFiPhy::Priority(0), base::DoNothing());
   EXPECT_TRUE(provider_->RequestLocalDeviceCreation(
       LocalDevice::IfaceType::kAP, WiFiPhy::Priority(0), std::move(create_cb)));
+
   DispatchPendingEvents();
   EXPECT_NE(device, nullptr);
   EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);
@@ -2670,6 +2675,17 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
   ASSERT_NE(device, nullptr);
   EXPECT_EQ(device->phy_index(), phy_index);
   EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);
+}
+
+TEST_F(WiFiProviderTest, CreateLocalDevice_ConcurrencyRejected) {
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  EXPECT_CALL(*phy0, RequestNewIface)
+      .WillOnce(Return(std::multiset<nl80211_iftype>{NL80211_IFTYPE_STATION}));
+  EXPECT_FALSE(provider_->RequestLocalDeviceCreation(
+      LocalDevice::IfaceType::kAP, WiFiPhy::Priority(0), base::DoNothing()));
+  EXPECT_CALL(*phy0, RequestNewIface).WillOnce(Return(std::nullopt));
+  EXPECT_FALSE(provider_->RequestLocalDeviceCreation(
+      LocalDevice::IfaceType::kAP, WiFiPhy::Priority(0), base::DoNothing()));
 }
 
 TEST_F(WiFiProviderTest, UpdateRegAndPhyInfo_Timeout) {

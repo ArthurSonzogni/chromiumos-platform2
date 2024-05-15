@@ -1423,6 +1423,23 @@ bool WiFiProvider::RequestLocalDeviceCreation(
     LocalDevice::IfaceType iface_type,
     WiFiPhy::Priority priority,
     base::OnceClosure create_device_cb) {
+  if (wifi_phys_.empty()) {
+    LOG(ERROR) << "No WiFiPhy available.";
+    return false;
+  }
+  // TODO(b/257340615) Select capable WiFiPhy according to band and security
+  // requirement.
+  WiFiPhy* phy = wifi_phys_.begin()->second.get();
+  std::optional<nl80211_iftype> type =
+      LocalDevice::IfaceTypeToNl80211Type(iface_type);
+  if (!type) {
+    LOG(ERROR) << "Invalid iface type requested " << iface_type;
+    return false;
+  }
+  auto ifaces_to_delete = phy->RequestNewIface(*type, priority);
+  if (!ifaces_to_delete || ifaces_to_delete->size() > 0) {
+    return false;
+  }
   manager_->dispatcher()->PostTask(FROM_HERE, std::move(create_device_cb));
   return true;
 }

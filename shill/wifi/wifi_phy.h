@@ -158,7 +158,7 @@ class WiFiPhy {
   // indicates the interface can be created without destroying any existing
   // interfaces. An std::nullopt indicates that the interface cannot be started
   // at all.
-  std::optional<std::multiset<nl80211_iftype>> RequestNewIface(
+  mockable std::optional<std::multiset<nl80211_iftype>> RequestNewIface(
       nl80211_iftype desired_type, Priority priority) const;
 
   // This structure keeps information about frequency reported in PHY dump.
