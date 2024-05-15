@@ -32,7 +32,7 @@ class FakeStartupDep : public StartupDep {
 
   int GetBootAlertForArg(const std::string& arg);
 
-  void SetClobberLogFile(const base::FilePath& path);
+  void GetClobberLog(std::string* log);
 
   std::set<std::string> GetClobberArgs();
 
@@ -51,7 +51,7 @@ class FakeStartupDep : public StartupDep {
   libstorage::Platform* platform_;
   std::unordered_map<std::string, std::string> mount_enc_result_map_;
   std::unordered_map<std::string, int> alert_result_map_;
-  base::FilePath clobber_log_;
+  std::string clobber_log_;
   std::set<std::string> clobber_args_;
 };
 

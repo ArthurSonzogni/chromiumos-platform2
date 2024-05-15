@@ -245,7 +245,6 @@ class DevUpdateStatefulTest : public ::testing::Test {
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     stateful_update_file = stateful.Append(".update_available");
-    clobber_log_ = base_dir.Append("clobber_log");
     var_new = stateful.Append("var_new");
     var_target = stateful.Append("var_overlay");
     developer_target = stateful.Append("dev_image");
@@ -265,7 +264,6 @@ class DevUpdateStatefulTest : public ::testing::Test {
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
-  base::FilePath clobber_log_;
   base::FilePath stateful_update_file;
   base::FilePath var_new;
   base::FilePath var_target;
@@ -281,7 +279,6 @@ TEST_F(DevUpdateStatefulTest, NoUpdateAvailable) {
 TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
   ASSERT_TRUE(platform_->CreateDirectory(developer_new));
   ASSERT_TRUE(platform_->CreateDirectory(var_new));
-  startup_dep_->SetClobberLogFile(clobber_log_);
 
   ASSERT_TRUE(platform_->WriteStringToFile(stateful_update_file, "1"));
 
@@ -312,13 +309,11 @@ TEST_F(DevUpdateStatefulTest, NewDevAndVarNoClobber) {
   std::string message =
       "Updating from " + developer_new.value() + " && " + var_new.value() + ".";
   std::string res;
-  ASSERT_TRUE(platform_->ReadFileToString(clobber_log_, &res));
+  startup_dep_->GetClobberLog(&res);
   EXPECT_EQ(res, message);
 }
 
 TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
-  startup_dep_->SetClobberLogFile(clobber_log_);
-
   ASSERT_TRUE(platform_->WriteStringToFile(stateful_update_file, "clobber"));
   base::FilePath labmachine = stateful.Append(".labmachine");
   base::FilePath test_dir = stateful.Append("test");
@@ -349,7 +344,7 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
                         developer_new.value() + " & " + var_new.value() +
                         ".'\n'Keeping old development tools.";
   std::string res;
-  ASSERT_TRUE(platform_->ReadFileToString(clobber_log_, &res));
+  startup_dep_->GetClobberLog(&res);
   EXPECT_EQ(res, message);
 }
 

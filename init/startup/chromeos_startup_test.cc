@@ -391,7 +391,6 @@ class StatefulWipeTest : public ::testing::Test {
             platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_,
             false),
         std::move(tlcl));
-    clobber_test_log_ = base_dir_.Append("clobber_test_log");
     ASSERT_TRUE(platform_->CreateDirectory(stateful_));
   }
 
@@ -403,19 +402,17 @@ class StatefulWipeTest : public ::testing::Test {
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
-  base::FilePath clobber_test_log_;
 };
 
 // Tests path for requested powerwash, but the reset file is now owned by us.
 TEST_F(StatefulWipeTest, PowerwashForced) {
   base::FilePath reset_file = stateful_.Append("factory_install_reset");
-  startup_dep_->SetClobberLogFile(clobber_test_log_);
   ASSERT_TRUE(platform_->CreateSymbolicLink(reset_file,
                                             base::FilePath("/file_not_exist")));
   startup_->CheckForStatefulWipe();
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("power_wash"), 1);
   std::string res;
-  ASSERT_TRUE(platform_->ReadFileToString(clobber_test_log_, &res));
+  startup_dep_->GetClobberLog(&res);
   EXPECT_EQ(res, "Powerwash initiated by Reset file presence, but invalid");
   std::set<std::string> expected = {"keepimg"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -424,14 +421,13 @@ TEST_F(StatefulWipeTest, PowerwashForced) {
 // Tests normal path for user requested powerwash.
 TEST_F(StatefulWipeTest, PowerwashNormal) {
   base::FilePath reset_file = stateful_.Append("factory_install_reset");
-  startup_dep_->SetClobberLogFile(clobber_test_log_);
   ASSERT_TRUE(
       platform_->WriteStringToFile(reset_file, "keepimg slow test powerwash"));
   ASSERT_TRUE(platform_->SetOwnership(reset_file, getuid(), 8888, false));
   startup_->CheckForStatefulWipe();
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("power_wash"), 1);
   std::string res;
-  ASSERT_TRUE(platform_->ReadFileToString(clobber_test_log_, &res));
+  startup_dep_->GetClobberLog(&res);
   EXPECT_EQ(res, "Powerwash initiated by Reset file presence");
   std::set<std::string> expected = {"keepimg", "slow", "test", "powerwash"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -439,13 +435,12 @@ TEST_F(StatefulWipeTest, PowerwashNormal) {
 
 // Test there is no wipe when there is no physical stateful partition.
 TEST_F(StatefulWipeTest, NoStateDev) {
-  startup_dep_->SetClobberLogFile(clobber_test_log_);
   startup_->SetStateDev(base::FilePath());
   startup_->CheckForStatefulWipe();
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("power_wash"), 0);
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("leave_dev"), 0);
   std::string res;
-  ASSERT_FALSE(platform_->ReadFileToString(clobber_test_log_, &res));
+  startup_dep_->GetClobberLog(&res);
   EXPECT_EQ(res, "");
   std::set<std::string> expected = {};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -453,7 +448,6 @@ TEST_F(StatefulWipeTest, NoStateDev) {
 
 // Test transitioning to verified mode, dev_mode_allowed file is owned by us.
 TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
-  startup_dep_->SetClobberLogFile(clobber_test_log_);
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 0));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   base::FilePath dev_mode_allowed = stateful_.Append(".developer_mode");
@@ -466,7 +460,7 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
   startup_->CheckForStatefulWipe();
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("leave_dev"), 1);
   std::string res;
-  ASSERT_TRUE(platform_->ReadFileToString(clobber_test_log_, &res));
+  startup_dep_->GetClobberLog(&res);
   EXPECT_EQ(res, "Leave developer mode, dev_mode file present");
   std::set<std::string> expected = {"fast", "keepimg"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -476,7 +470,6 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDevModeFile) {
 // We only want to fast clobber the non-protected paths to
 // preserve the testing tools.
 TEST_F(StatefulWipeTest, TransitionToVerifiedDebugBuild) {
-  startup_dep_->SetClobberLogFile(clobber_test_log_);
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 0));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 1));
@@ -499,7 +492,7 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDebugBuild) {
   startup_->CheckForStatefulWipe();
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("leave_dev"), 0);
   std::string res;
-  ASSERT_TRUE(platform_->ReadFileToString(clobber_test_log_, &res));
+  startup_dep_->GetClobberLog(&res);
   EXPECT_NE(res.find("Leave developer mode on a debug build"),
             std::string::npos);
   std::set<std::string> expected = {};
@@ -510,7 +503,6 @@ TEST_F(StatefulWipeTest, TransitionToVerifiedDebugBuild) {
 // Clobber should be called with |keepimg|, no need to erase
 // the stateful.
 TEST_F(StatefulWipeTest, TransitionToDevModeNoDebugBuild) {
-  startup_dep_->SetClobberLogFile(clobber_test_log_);
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 1));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   base::FilePath dev_mode_allowed = stateful_.Append(".developer_mode");
@@ -523,7 +515,7 @@ TEST_F(StatefulWipeTest, TransitionToDevModeNoDebugBuild) {
   startup_->CheckForStatefulWipe();
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("enter_dev"), 1);
   std::string res;
-  ASSERT_TRUE(platform_->ReadFileToString(clobber_test_log_, &res));
+  startup_dep_->GetClobberLog(&res);
   EXPECT_EQ(res, "Enter developer mode");
   std::set<std::string> expected = {"keepimg"};
   EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
@@ -533,7 +525,6 @@ TEST_F(StatefulWipeTest, TransitionToDevModeNoDebugBuild) {
 // Only fast clobber the non-protected paths in debug build to preserve
 // the testing tools.
 TEST_F(StatefulWipeTest, TransitionToDevModeDebugBuild) {
-  startup_dep_->SetClobberLogFile(clobber_test_log_);
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("devsw_boot", 1));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyString("mainfw_type", "not_rec"));
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("debug_build", 1));
@@ -556,7 +547,7 @@ TEST_F(StatefulWipeTest, TransitionToDevModeDebugBuild) {
   startup_->CheckForStatefulWipe();
   EXPECT_EQ(startup_dep_->GetBootAlertForArg("leave_dev"), 0);
   std::string res;
-  ASSERT_TRUE(platform_->ReadFileToString(clobber_test_log_, &res));
+  startup_dep_->GetClobberLog(&res);
   EXPECT_NE(res.find("Enter developer mode on a debug build"),
             std::string::npos);
   std::set<std::string> expected = {};
@@ -891,8 +882,6 @@ TEST_F(DoMountTest, TestModeMountHelperMountEncryptFailed) {
 TEST_F(DoMountTest, TestModeMountHelperMountVarSuccess) {
   flags_.sys_key_util = false;
   flags_.encstateful = true;
-  base::FilePath clobber_log_ = base_dir_.Append("clobber_test_log");
-  startup_dep_->SetClobberLogFile(clobber_log_);
 
   startup_dep_->SetMountEncOutputForArg("", "1");
   std::unique_ptr<startup::TestModeMountHelper> mount_helper_ =
@@ -901,7 +890,7 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarSuccess) {
           true);
   EXPECT_TRUE(mount_helper_->DoMountVarAndHomeChronos());
   std::string clobber_log_out;
-  platform_->ReadFileToString(clobber_log_, &clobber_log_out);
+  startup_dep_->GetClobberLog(&clobber_log_out);
   EXPECT_EQ(clobber_log_out, "");
 }
 
@@ -910,8 +899,6 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarFail) {
   // Let's fail second time and check we are staving backups.
   flags_.sys_key_util = false;
   flags_.encstateful = true;
-  base::FilePath clobber_log_ = base_dir_.Append("clobber_test_log");
-  startup_dep_->SetClobberLogFile(clobber_log_);
   base::FilePath mnt_encrypt_fail = base_dir_.Append("mount_encrypted_failed");
   EXPECT_CALL(*platform_, GetOwnership(mnt_encrypt_fail, _, nullptr, false))
       .WillOnce(DoAll(SetArgPointee<1>(getuid()), Return(true)));
@@ -927,7 +914,7 @@ TEST_F(DoMountTest, TestModeMountHelperMountVarFail) {
           true);
   EXPECT_FALSE(mount_helper_->DoMountVarAndHomeChronos());
   std::string clobber_log_out;
-  platform_->ReadFileToString(clobber_log_, &clobber_log_out);
+  startup_dep_->GetClobberLog(&clobber_log_out);
   EXPECT_EQ(clobber_log_out,
             "Failed mounting var and home/chronos; re-created.");
   EXPECT_TRUE(platform_->FileExists(corrupted_enc.Append("encrypted.test1")));

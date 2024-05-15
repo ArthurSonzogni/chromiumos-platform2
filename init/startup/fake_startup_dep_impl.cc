@@ -29,8 +29,8 @@ int FakeStartupDep::GetBootAlertForArg(const std::string& arg) {
   return alert_result_map_[arg];
 }
 
-void FakeStartupDep::SetClobberLogFile(const base::FilePath& path) {
-  clobber_log_ = path;
+void FakeStartupDep::GetClobberLog(std::string* log) {
+  *log = clobber_log_;
 }
 
 std::set<std::string> FakeStartupDep::GetClobberArgs() {
@@ -63,7 +63,7 @@ void FakeStartupDep::RemoveInBackground(
 }
 
 void FakeStartupDep::ClobberLog(const std::string& msg) {
-  platform_->WriteStringToFile(clobber_log_, msg);
+  clobber_log_ = msg;
 }
 
 void FakeStartupDep::Clobber(const std::vector<std::string>& args) {
