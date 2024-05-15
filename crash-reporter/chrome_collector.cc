@@ -247,6 +247,9 @@ bool ChromeCollector::CreateNoStackJSPayload(const base::FilePath& dir,
                << payload_path->value();
     return false;
   }
+  // TODO(b/336585651): Consider removing LOG statement once debugging is
+  // complete.
+  LOG(INFO) << "Wrote no_stack payload " << *payload_path;
   return true;
 }
 
@@ -364,6 +367,9 @@ CrashCollectionStatus ChromeCollector::ParseCrashLog(
           LOG(ERROR) << "Failed to write minidump to " << payload->value();
           return CrashCollectionStatus::kFailedMinidumpWrite;
         }
+        // TODO(b/336585651): Consider removing LOG statement once debugging is
+        // complete.
+        LOG(INFO) << "Wrote payload " << *payload;
       } else if (desc.compare(kDefaultJavaScriptStackName) == 0) {
         // A JavaScript stack trace, from a JavaScript exception
         if (crash_type != kJavaScriptError) {
@@ -385,6 +391,9 @@ CrashCollectionStatus ChromeCollector::ParseCrashLog(
           LOG(ERROR) << "Failed to write js stack to " << payload->value();
           return CrashCollectionStatus::kFailedJavaScriptStackWrite;
         }
+        // TODO(b/336585651): Consider removing LOG statement once debugging is
+        // complete.
+        LOG(INFO) << "Wrote payload " << *payload;
       } else {
         // Some other file.
         FilePath path =
