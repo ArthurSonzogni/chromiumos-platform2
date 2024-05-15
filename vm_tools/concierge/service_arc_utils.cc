@@ -8,7 +8,9 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <dbus/vm_concierge/dbus-constants.h>
 
@@ -40,6 +42,49 @@ base::FilePath GetVmmSwapUsageHistoryPath(const std::string& owner_id) {
   return GetCryptohomePath(owner_id)
       .Append(kArcVmName)
       .AddExtension(kVmmSwapUsageHistoryExtension);
+}
+
+bool GetFileContents(const base::FilePath& file, std::string& contents) {
+  if (!base::ReadFileToString(file, &contents)) {
+    PLOG(ERROR) << "Failed to read " << file;
+    return false;
+  }
+  return true;
+}
+
+bool GetPropertyHelper(const std::string& prop_contents,
+                       const std::string& prop_name,
+                       std::string* prop_value) {
+  const std::string prefix = prop_name + '=';
+  const std::vector<std::string> properties = base::SplitString(
+      prop_contents, "\n", base::WhitespaceHandling::TRIM_WHITESPACE,
+      base::SplitResult::SPLIT_WANT_NONEMPTY);
+
+  // Start search from the end of file because the last value is what
+  // gets assigned
+  const auto it = std::find_if(
+      properties.rbegin(), properties.rend(), [&](const std::string& str) {
+        return base::StartsWith(str, prefix, base::CompareCase::SENSITIVE);
+      });
+  if (it == properties.rend()) {
+    return false;
+  }
+
+  *prop_value = it->substr(prefix.length());
+  return true;
+}
+
+bool GetPropertyFromFile(const base::FilePath& prop_file,
+                         const std::string& prop_name,
+                         std::string* prop_value) {
+  std::string contents;
+  if (!GetFileContents(prop_file, contents))
+    return false;
+
+  if (!GetPropertyHelper(contents, prop_name, prop_value))
+    return false;
+
+  return true;
 }
 
 bool IsValidDemoImagePath(const base::FilePath& path) {

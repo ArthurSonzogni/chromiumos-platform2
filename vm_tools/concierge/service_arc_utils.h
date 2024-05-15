@@ -40,6 +40,24 @@ base::FilePath GetPstoreDest(const std::string& owner_id);
 // Returns path for the ARCVM vmm swap history file under user's cryptohome.
 base::FilePath GetVmmSwapUsageHistoryPath(const std::string& owner_id);
 
+// Reads contents from |file| into string at |contents| Returns true if
+// successful. Returns false if there was an issue.
+bool GetFileContents(const base::FilePath& file, std::string& contents);
+
+// Gets value of property |prop_name| from the string |prop_contents| of a
+// system property file and writes it into |prop_value|. Returns true if
+// property was found and false otherwise.
+bool GetPropertyHelper(const std::string& prop_contents,
+                       const std::string& prop_name,
+                       std::string* prop_value);
+
+// Reads |prop_file| for an Android property with |prop_name|. If found,
+// stores its value in |prop_value| and returns true. Else, returns false
+// without changing |prop_value|.
+bool GetPropertyFromFile(const base::FilePath& prop_file,
+                         const std::string& prop_name,
+                         std::string* prop_value);
+
 // Returns true if the path is a valid demo image path.
 bool IsValidDemoImagePath(const base::FilePath& path);
 
