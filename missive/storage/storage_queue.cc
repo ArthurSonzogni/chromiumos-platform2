@@ -46,7 +46,6 @@
 #include <base/time/time.h>
 #include <base/types/expected.h>
 #include <base/types/expected_macros.h>
-#include <crypto/random.h>
 #include <crypto/sha2.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
@@ -755,7 +754,7 @@ Status StorageQueue::WriteHeaderAndBlock(
       pad_size > 0uL) {
     // Fill in with random bytes.
     char junk_bytes[FRAME_SIZE];
-    crypto::RandBytes(junk_bytes, pad_size);
+    base::RandBytes(base::as_writable_byte_span(junk_bytes));
     write_status = file->Append(std::string_view(&junk_bytes[0], pad_size));
     if (!write_status.has_value()) {
       SendResExCaseToUma(ResourceExhaustedCase::CANNOT_PAD);
