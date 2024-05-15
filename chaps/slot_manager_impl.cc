@@ -34,6 +34,7 @@
 #include "chaps/session.h"
 #include "chaps/slot_policy_default.h"
 #include "chaps/slot_policy_shared_slot.h"
+#include "dbus/chaps/dbus-constants.h"
 #include "pkcs11/cryptoki.h"
 
 using base::FilePath;
@@ -114,6 +115,11 @@ constexpr MechanismInfoPair kDefaultMechanismInfo[] = {
     {CKM_AES_ECB, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
     {CKM_AES_CBC, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
     {CKM_AES_CBC_PAD, {16, 32, CKF_ENCRYPT | CKF_DECRYPT}},
+
+    // Wrap/Unwrap/Derive mechanisms for Barca project support
+    {CKM_RSA_PKCS_OAEP, {512, 2048, CKF_WRAP | CKF_UNWRAP}},
+    {kChapsKeyWrapMechanism, {0, 0, CKF_WRAP | CKF_UNWRAP}},
+    {CKM_SP800_108_COUNTER_KDF, {16, 32, CKF_DERIVE}},
 };
 
 constexpr MechanismInfoPair kTPM2OnlyMechanismInfo[] = {
