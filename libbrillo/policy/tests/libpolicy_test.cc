@@ -387,14 +387,15 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyAllSetTest) {
   // new usb_detachable_allowlist.
   //
   // Test that only the allowlist is considered.
-  std::vector<DevicePolicy::UsbDeviceId> list_device;
-  ASSERT_TRUE(policy.GetUsbDetachableWhitelist(&list_device));
-  ASSERT_EQ(2, list_device.size());
+  std::optional<std::vector<DevicePolicy::UsbDeviceId>> list_device =
+      policy.GetUsbDetachableAllowlist();
+  ASSERT_TRUE(list_device.has_value());
+  ASSERT_EQ(2, list_device->size());
   // In the new usb_detachable_allowlist.
-  EXPECT_EQ(0x413c, list_device[0].vendor_id);
-  EXPECT_EQ(0x2105, list_device[0].product_id);
-  EXPECT_EQ(0x0403, list_device[1].vendor_id);
-  EXPECT_EQ(0x6001, list_device[1].product_id);
+  EXPECT_EQ(0x413c, list_device->at(0).vendor_id);
+  EXPECT_EQ(0x2105, list_device->at(0).product_id);
+  EXPECT_EQ(0x0403, list_device->at(1).vendor_id);
+  EXPECT_EQ(0x6001, list_device->at(1).product_id);
 
   EXPECT_THAT(policy.GetSecondFactorAuthenticationMode(), testing::Optional(2));
 
@@ -452,11 +453,11 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyWhitelistTest) {
   DevicePolicyImpl device_policy;
   device_policy.set_policy_for_testing(proto);
 
-  std::vector<DevicePolicy::UsbDeviceId> list_device;
-  ASSERT_TRUE(device_policy.GetUsbDetachableWhitelist(&list_device));
-  ASSERT_EQ(1, list_device.size());
-  EXPECT_EQ(0x01d1, list_device[0].vendor_id);
-  EXPECT_EQ(0xdead, list_device[0].product_id);
+  std::optional<std::vector<DevicePolicy::UsbDeviceId>> list_device =
+      device_policy.GetUsbDetachableAllowlist();
+  ASSERT_EQ(1, list_device->size());
+  EXPECT_EQ(0x01d1, list_device->at(0).vendor_id);
+  EXPECT_EQ(0xdead, list_device->at(0).product_id);
 }
 
 // Test that a policy file can be verified and parsed correctly. The file
@@ -515,8 +516,8 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetHttpDownloadsEnabled(&bool_value));
   EXPECT_FALSE(policy.GetAuP2PEnabled(&bool_value));
   EXPECT_FALSE(policy.GetAllowKioskAppControlChromeVersion(&bool_value));
-  EXPECT_FALSE(policy.GetUsbDetachableWhitelist(&list_device));
   EXPECT_FALSE(policy.GetSecondFactorAuthenticationMode().has_value());
+  EXPECT_FALSE(policy.GetUsbDetachableAllowlist().has_value());
   EXPECT_FALSE(policy.GetDisallowedTimeIntervals(&intervals));
   EXPECT_FALSE(policy.GetHighestDeviceMinimumVersion(&device_minimum_version));
 }

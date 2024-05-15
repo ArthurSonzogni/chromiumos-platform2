@@ -79,7 +79,14 @@ bool AllowConformingUsbDeviceRule::LoadPolicy() {
     return false;
 
   const policy::DevicePolicy* policy = &policy_provider->GetDevicePolicy();
-  return policy->GetUsbDetachableWhitelist(&usb_allow_list_);
+
+  std::optional<std::vector<DevicePolicy::UsbDeviceId>> usb_allow_list =
+      policy->GetUsbDetachableAllowlist();
+  if (usb_allow_list) {
+    usb_allow_list_ = *usb_allow_list;
+    return true;
+  }
+  return false;
 }
 
 bool AllowConformingUsbDeviceRule::IsDeviceDetachableByPolicy(

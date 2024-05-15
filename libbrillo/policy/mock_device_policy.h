@@ -94,9 +94,9 @@ class MockDevicePolicy : public DevicePolicy {
               GetAllowKioskAppControlChromeVersion,
               (bool*),
               (const, override));
-  MOCK_METHOD(bool,
-              GetUsbDetachableWhitelist,
-              (std::vector<DevicePolicy::UsbDeviceId>*),
+  MOCK_METHOD(std::optional<std::vector<DevicePolicy::UsbDeviceId>>,
+              GetUsbDetachableAllowlist,
+              (),
               (const, override));
   MOCK_METHOD(bool, IsEnterpriseManaged, (), (const, override));
   MOCK_METHOD(std::optional<int>,

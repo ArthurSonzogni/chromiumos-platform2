@@ -587,8 +587,8 @@ bool DevicePolicyImpl::GetAllowKioskAppControlChromeVersion(
   return true;
 }
 
-bool DevicePolicyImpl::GetUsbDetachableWhitelist(
-    std::vector<UsbDeviceId>* usb_whitelist) const {
+std::optional<std::vector<DevicePolicy::UsbDeviceId>>
+DevicePolicyImpl::GetUsbDetachableAllowlist() const {
   const bool has_allowlist =
       device_policy_->has_usb_detachable_allowlist() &&
       device_policy_->usb_detachable_allowlist().id_size() != 0;
@@ -597,9 +597,9 @@ bool DevicePolicyImpl::GetUsbDetachableWhitelist(
       device_policy_->usb_detachable_whitelist().id_size() != 0;
 
   if (!has_allowlist && !has_whitelist)
-    return false;
+    return std::nullopt;
 
-  usb_whitelist->clear();
+  std::vector<UsbDeviceId> usb_allowlist;
   if (has_allowlist) {
     const em::UsbDetachableAllowlistProto& proto =
         device_policy_->usb_detachable_allowlist();
@@ -608,7 +608,7 @@ bool DevicePolicyImpl::GetUsbDetachableWhitelist(
       UsbDeviceId dev_id;
       dev_id.vendor_id = id.has_vendor_id() ? id.vendor_id() : 0;
       dev_id.product_id = id.has_product_id() ? id.product_id() : 0;
-      usb_whitelist->push_back(dev_id);
+      usb_allowlist.push_back(dev_id);
     }
   } else {
     const em::UsbDetachableWhitelistProto& proto =
@@ -618,10 +618,10 @@ bool DevicePolicyImpl::GetUsbDetachableWhitelist(
       UsbDeviceId dev_id;
       dev_id.vendor_id = id.has_vendor_id() ? id.vendor_id() : 0;
       dev_id.product_id = id.has_product_id() ? id.product_id() : 0;
-      usb_whitelist->push_back(dev_id);
+      usb_allowlist.push_back(dev_id);
     }
   }
-  return true;
+  return usb_allowlist;
 }
 
 bool DevicePolicyImpl::GetDeviceUpdateStagingSchedule(

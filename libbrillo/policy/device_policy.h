@@ -182,10 +182,10 @@ class DevicePolicy {
   virtual bool GetAllowKioskAppControlChromeVersion(
       bool* allow_kiosk_app_control_chrome_version) const = 0;
 
-  // Writes the value of the UsbDetachableWhitelist policy in |usb_whitelist|.
-  // Returns true on success.
-  virtual bool GetUsbDetachableWhitelist(
-      std::vector<UsbDeviceId>* usb_whitelist) const = 0;
+  // Returns the value of the UsbDetachableAllowlist (or Whitelist for older
+  // policy) or std::nullopt on failure.
+  virtual std::optional<std::vector<UsbDeviceId>> GetUsbDetachableAllowlist()
+      const = 0;
 
   // Returns true if the policy data indicates that the device is enterprise
   // managed. Note that this potentially could be faked by an exploit, therefore

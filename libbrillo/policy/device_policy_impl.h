@@ -87,8 +87,8 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetAuP2PEnabled(bool* au_p2p_enabled) const override;
   bool GetAllowKioskAppControlChromeVersion(
       bool* allow_kiosk_app_control_chrome_version) const override;
-  bool GetUsbDetachableWhitelist(
-      std::vector<UsbDeviceId>* usb_whitelist) const override;
+  std::optional<std::vector<UsbDeviceId>> GetUsbDetachableAllowlist()
+      const override;
   bool IsEnterpriseManaged() const override;
   std::optional<int> GetSecondFactorAuthenticationMode() const override;
   std::optional<bool> GetRunAutomaticCleanupOnLogin() const override;
