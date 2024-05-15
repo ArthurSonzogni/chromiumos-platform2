@@ -373,4 +373,54 @@ TEST(VmBuilderTest, StringToAsyncExecutor) {
   EXPECT_EQ(StringToAsyncExecutor("unknown_value"), std::nullopt);
 }
 
+TEST(VmBuilderTest, PmemRootfsReadonly) {
+  VmBuilder builder;
+
+  builder.SetRootfs(VmBuilder::Rootfs{
+      .device = "/dev/pmem0",
+      .path = base::FilePath("dummy"),
+      .writable = false,
+  });
+
+  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
+
+  std::vector<std::string> pmems;
+  for (auto& p : result) {
+    if (p.first == "--pmem-device") {
+      pmems.push_back(p.second);
+    }
+  }
+
+  EXPECT_EQ(pmems.size(), 1);
+  EXPECT_EQ(pmems[0], "dummy");
+  EXPECT_THAT(result, testing::Contains(
+                          std::make_pair("--params", "root=/dev/pmem0 ro"))
+                          .Times(1));
+}
+
+TEST(VmBuilderTest, PmemRootfsWritable) {
+  VmBuilder builder;
+
+  builder.SetRootfs(VmBuilder::Rootfs{
+      .device = "/dev/pmem0",
+      .path = base::FilePath("dummy"),
+      .writable = true,
+  });
+
+  base::StringPairs result = std::move(builder).BuildVmArgs(nullptr).value();
+
+  std::vector<std::string> pmems;
+  for (auto& p : result) {
+    if (p.first == "--rw-pmem-device") {
+      pmems.push_back(p.second);
+    }
+  }
+
+  EXPECT_EQ(pmems.size(), 1);
+  EXPECT_EQ(pmems[0], "dummy");
+
+  EXPECT_THAT(result, testing::Contains(
+                          std::make_pair("--params", "root=/dev/pmem0 rw"))
+                          .Times(1));
+}
 }  // namespace vm_tools::concierge
