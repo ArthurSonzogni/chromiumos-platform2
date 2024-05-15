@@ -1007,20 +1007,6 @@ class Metrics {
       .n = NameByTechnology{"ServiceErrors"},
       .max = Metrics::kNetworkServiceErrorMax,
   };
-  static constexpr EnumMetric<FixedName> kMetricVpnIkev2EndReason = {
-      .n = FixedName{"Network.Shill.Vpn.Ikev2.EndReason"},
-      .max = Metrics::kNetworkServiceErrorMax,
-  };
-  // Temporary metrics for comparing the robustness of the two L2TP/IPsec
-  // drivers (b/204261554).
-  static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecSwanctlEndReason = {
-      .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.SwanctlEndReason"},
-      .max = Metrics::kNetworkServiceErrorMax,
-  };
-  static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecStrokeEndReason = {
-      .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.StrokeEndReason"},
-      .max = Metrics::kNetworkServiceErrorMax,
-  };
   static constexpr EnumMetric<FixedName> kMetricPasspointConnectionResult = {
       .n = FixedName{"Network.Shill.WiFi.Passpoint.ConnectionResult"},
       .max = Metrics::kNetworkServiceErrorMax,

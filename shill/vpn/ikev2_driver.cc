@@ -20,7 +20,6 @@
 #include "shill/error.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/service.h"
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/vpn_types.h"
 
@@ -81,12 +80,6 @@ std::unique_ptr<IPsecConnection::Config> MakeIPsecConfig(
   }
 
   return config;
-}
-
-void ReportConnectionEndReason(Metrics* metrics,
-                               Service::ConnectFailure failure) {
-  metrics->SendEnumToUMA(Metrics::kMetricVpnIkev2EndReason,
-                         Service::ConnectFailureToMetricsEnum(failure));
 }
 
 }  // namespace
@@ -163,7 +156,6 @@ std::unique_ptr<VPNConnection> IKEv2Driver::CreateIPsecConnection(
 
 void IKEv2Driver::Disconnect() {
   event_handler_ = nullptr;
-  ReportConnectionEndReason(metrics(), Service::kFailureDisconnect);
   if (!ipsec_connection_) {
     LOG(ERROR) << "Disconnect() called but IPsecConnection is not running";
     return;
@@ -231,11 +223,7 @@ void IKEv2Driver::OnDefaultPhysicalServiceEvent(
 void IKEv2Driver::NotifyServiceOfFailure(VPNEndReason failure) {
   LOG(ERROR) << "Driver failure due to " << VPNEndReasonToString(failure);
   if (event_handler_) {
-    // Only reports metrics when |event_handler_| exists to ensure reporting
-    // only once for each connection.
-    auto service_failure = VPNEndReasonToServiceFailure(failure);
-    ReportConnectionEndReason(metrics(), service_failure);
-    event_handler_->OnDriverFailure(failure, Service::kErrorDetailsNone);
+    event_handler_->OnDriverFailure(failure, "");
     event_handler_ = nullptr;
   }
 }
