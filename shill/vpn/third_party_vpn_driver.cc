@@ -38,6 +38,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/service.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/vpn/vpn_end_reason.h"

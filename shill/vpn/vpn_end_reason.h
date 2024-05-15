@@ -7,8 +7,6 @@
 
 #include <string_view>
 
-#include "shill/service.h"
-
 namespace shill {
 
 // Describes why a VPN connection ended (from connecting or connected to idle).
@@ -46,11 +44,6 @@ enum class VPNEndReason {
   // it). We want to reduce the occurrence of this as much as possible.
   kFailureUnknown,
 };
-
-// Maps EndReasons to Service::ConnectFailures.
-// TODO(b/231910338): Move this into vpn_service.cc after removing the metrics
-// reporting code in l2tp_ipsec_driver.cc and ikev2_driver.cc
-Service::ConnectFailure VPNEndReasonToServiceFailure(VPNEndReason reason);
 
 // Maps EndReasons to strings.
 std::string_view VPNEndReasonToString(VPNEndReason);

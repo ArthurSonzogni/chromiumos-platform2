@@ -80,6 +80,35 @@ bool UpdateWireGuardDriverIPv4Address(net_base::NetworkConfig* static_config,
   return true;
 }
 
+Service::ConnectFailure VPNEndReasonToServiceFailure(VPNEndReason reason) {
+  switch (reason) {
+    case VPNEndReason::kDisconnectRequest:
+      return Service::kFailureDisconnect;
+    case VPNEndReason::kNetworkChange:
+      return Service::kFailureConnect;
+    case VPNEndReason::kConnectFailureAuthPPP:
+      return Service::kFailurePPPAuth;
+    case VPNEndReason::kConnectFailureAuthCert:
+      // This will be shown as "Authentication certificate rejected by network"
+      // in UI.
+      return Service::kFailureIPsecCertAuth;
+    case VPNEndReason::kConnectFailureAuthUserPassword:
+      // This will be shown as "Username/password incorrect or EAP-auth failed"
+      // in UI.
+      return Service::kFailureEAPAuthentication;
+    case VPNEndReason::kConnectFailureDNSLookup:
+      return Service::kFailureDNSLookup;
+    case VPNEndReason::kConnectTimeout:
+      return Service::kFailureConnect;
+    case VPNEndReason::kInvalidConfig:
+      return Service::kFailureConnect;
+    case VPNEndReason::kFailureInternal:
+      return Service::kFailureInternal;
+    case VPNEndReason::kFailureUnknown:
+      return Service::kFailureConnect;
+  }
+}
+
 }  // namespace
 
 VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)

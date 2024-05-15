@@ -19,6 +19,7 @@
 #include "shill/mock_file_io.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/service.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/vpn_end_reason.h"
