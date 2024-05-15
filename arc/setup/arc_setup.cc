@@ -493,7 +493,7 @@ std::string GetOrCreateArcSalt() {
   if (!base::ReadFileToString(arc_salt_file, &arc_salt) ||
       arc_salt.size() != kSaltFileSize) {
     char rand_value[kSaltFileSize];
-    crypto::RandBytes(rand_value, kSaltFileSize);
+    crypto::RandBytes(base::as_writable_byte_span(rand_value));
     arc_salt = std::string(rand_value, kSaltFileSize);
     if (!brillo::WriteToFileAtomic(arc_salt_file, arc_salt.data(),
                                    arc_salt.size(), kArcSaltFilePermissions)) {
