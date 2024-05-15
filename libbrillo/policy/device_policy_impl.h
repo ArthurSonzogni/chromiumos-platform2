@@ -90,7 +90,7 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetUsbDetachableWhitelist(
       std::vector<UsbDeviceId>* usb_whitelist) const override;
   bool IsEnterpriseManaged() const override;
-  bool GetSecondFactorAuthenticationMode(int* mode_out) const override;
+  std::optional<int> GetSecondFactorAuthenticationMode() const override;
   std::optional<bool> GetRunAutomaticCleanupOnLogin() const override;
   bool GetDisallowedTimeIntervals(
       std::vector<WeeklyTimeInterval>* intervals_out) const override;

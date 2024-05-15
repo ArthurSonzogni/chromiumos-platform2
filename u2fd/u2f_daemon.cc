@@ -69,12 +69,12 @@ U2fMode ReadU2fPolicy() {
     LOG(DFATAL) << "Failed to load device policy";
   }
 
-  int mode = 0;
   const policy::DevicePolicy* policy = &policy_provider.GetDevicePolicy();
-  if (!policy->GetSecondFactorAuthenticationMode(&mode))
+  std::optional<int> mode = policy->GetSecondFactorAuthenticationMode();
+  if (!mode.has_value())
     return U2fMode::kUnset;
 
-  return static_cast<U2fMode>(mode);
+  return static_cast<U2fMode>(*mode);
 }
 
 const char* U2fModeToString(U2fMode mode) {

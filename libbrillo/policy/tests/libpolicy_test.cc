@@ -396,9 +396,7 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyAllSetTest) {
   EXPECT_EQ(0x0403, list_device[1].vendor_id);
   EXPECT_EQ(0x6001, list_device[1].product_id);
 
-  int_value = -1;
-  ASSERT_TRUE(policy.GetSecondFactorAuthenticationMode(&int_value));
-  EXPECT_EQ(2, int_value);
+  EXPECT_THAT(policy.GetSecondFactorAuthenticationMode(), testing::Optional(2));
 
   std::vector<DevicePolicy::WeeklyTimeInterval> intervals;
   ASSERT_TRUE(policy.GetDisallowedTimeIntervals(&intervals));
@@ -518,7 +516,7 @@ TEST_P(LibpolicyParametrizedSignatureTypeTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetAuP2PEnabled(&bool_value));
   EXPECT_FALSE(policy.GetAllowKioskAppControlChromeVersion(&bool_value));
   EXPECT_FALSE(policy.GetUsbDetachableWhitelist(&list_device));
-  EXPECT_FALSE(policy.GetSecondFactorAuthenticationMode(&int_value));
+  EXPECT_FALSE(policy.GetSecondFactorAuthenticationMode().has_value());
   EXPECT_FALSE(policy.GetDisallowedTimeIntervals(&intervals));
   EXPECT_FALSE(policy.GetHighestDeviceMinimumVersion(&device_minimum_version));
 }

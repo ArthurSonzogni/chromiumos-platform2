@@ -667,18 +667,17 @@ bool DevicePolicyImpl::IsEnterpriseManaged() const {
   return policy_data_->has_request_token();
 }
 
-bool DevicePolicyImpl::GetSecondFactorAuthenticationMode(int* mode_out) const {
+std::optional<int> DevicePolicyImpl::GetSecondFactorAuthenticationMode() const {
   if (!device_policy_->has_device_second_factor_authentication())
-    return false;
+    return std::nullopt;
 
   const em::DeviceSecondFactorAuthenticationProto& proto =
       device_policy_->device_second_factor_authentication();
 
   if (!proto.has_mode())
-    return false;
+    return std::nullopt;
 
-  *mode_out = proto.mode();
-  return true;
+  return proto.mode();
 }
 
 std::optional<bool> DevicePolicyImpl::GetRunAutomaticCleanupOnLogin() const {

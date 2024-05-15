@@ -99,9 +99,9 @@ class MockDevicePolicy : public DevicePolicy {
               (std::vector<DevicePolicy::UsbDeviceId>*),
               (const, override));
   MOCK_METHOD(bool, IsEnterpriseManaged, (), (const, override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(std::optional<int>,
               GetSecondFactorAuthenticationMode,
-              (int*),
+              (),
               (const, override));
   MOCK_METHOD(std::optional<bool>,
               GetRunAutomaticCleanupOnLogin,

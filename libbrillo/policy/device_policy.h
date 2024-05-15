@@ -193,11 +193,11 @@ class DevicePolicy {
   // management state is required.
   virtual bool IsEnterpriseManaged() const = 0;
 
-  // Writes the value of the DeviceSecondFactorAuthentication policy in
-  // |mode_out|. |mode_out| is one of the values from
+  // Returns value of the DeviceSecondFactorAuthentication policy.
+  // Return value is is one of the values from
   // DeviceSecondFactorAuthenticationProto's U2fMode enum (e.g. DISABLED,
-  // U2F or U2F_EXTENDED). Returns true on success.
-  virtual bool GetSecondFactorAuthenticationMode(int* mode_out) const = 0;
+  // U2F or U2F_EXTENDED). Returns std::nullopt on failure.
+  virtual std::optional<int> GetSecondFactorAuthenticationMode() const = 0;
 
   // Returns the value of the DeviceRunAutomaticCleanupOnLogin policy. On
   // error or if the policy is not set, returns an empty value.
