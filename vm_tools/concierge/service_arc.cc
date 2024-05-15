@@ -330,12 +330,6 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   // Allocate resources for the VM.
   uint32_t vsock_cid = vsock_cid_pool_.Allocate();
-  if (vsock_cid == 0) {
-    LOG(ERROR) << "Unable to allocate vsock context id";
-
-    response.set_failure_reason("Unable to allocate vsock cid");
-    return response;
-  }
 
   std::unique_ptr<ArcNetwork> network = ArcNetwork::Create(bus_, vsock_cid);
   if (!network) {

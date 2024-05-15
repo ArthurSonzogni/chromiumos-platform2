@@ -80,7 +80,6 @@ static_library("libconcierge") {
     "vmm_swap_tbw_policy.cc",
     "vmm_swap_usage_policy.cc",
     "vmplugin_dispatcher_interface.cc",
-    "vsock_cid_pool.cc",
   ]
   configs += [ "//vm_tools/host:host_target_defaults" ]
   libs = [

@@ -18,9 +18,14 @@ class VsockCidPool {
 
   ~VsockCidPool() = default;
 
-  // Allocates and returns a vsock context id.  Returns 0 if it is unable to
-  // allocate a cid because 0 is a reserved cid.
-  uint32_t Allocate();
+  // Allocates and returns a vsock context id.
+  uint32_t Allocate() { return next_cid_++; }
+
+ private:
+  // The next context id to hand out. Cids 0, 1 and U32_MAX are reserved while
+  // cid 2 is always the host system.  Guest cids start at 3. Reserve cids 3-31
+  // for static vms.
+  uint32_t next_cid_{32};
 };
 
 }  // namespace vm_tools::concierge
