@@ -69,7 +69,7 @@ void StartupDep::BootAlert(const std::string& arg) {
   }
 }
 
-[[noreturn]] void StartupDep::Clobber(const std::vector<std::string> args) {
+[[noreturn]] void StartupDep::Clobber(const std::vector<std::string>& args) {
   brillo::ProcessImpl clobber;
   clobber.AddArg("/sbin/clobber-state");
 

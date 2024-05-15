@@ -43,9 +43,7 @@ class FakeStartupDep : public StartupDep {
 
   void ClobberLog(const std::string& msg) override;
 
-  void Clobber(const std::string& boot_alert_msg,
-               const std::vector<std::string>& args,
-               const std::string& clobber_log_msg) override;
+  void Clobber(const std::vector<std::string>& args) override;
 
   void RemoveInBackground(const std::vector<base::FilePath>& paths) override;
 

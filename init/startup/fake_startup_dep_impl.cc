@@ -66,11 +66,7 @@ void FakeStartupDep::ClobberLog(const std::string& msg) {
   platform_->WriteStringToFile(clobber_log_, msg);
 }
 
-void FakeStartupDep::Clobber(const std::string& boot_alert_msg,
-                             const std::vector<std::string>& args,
-                             const std::string& clobber_log_msg) {
-  BootAlert(boot_alert_msg);
-  ClobberLog(clobber_log_msg);
+void FakeStartupDep::Clobber(const std::vector<std::string>& args) {
   for (std::string arg : args) {
     clobber_args_.insert(arg);
   }

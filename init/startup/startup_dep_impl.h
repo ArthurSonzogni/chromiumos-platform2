@@ -53,7 +53,7 @@ class StartupDep {
   virtual void BootAlert(const std::string& arg);
 
   // Runs clobber-state with the given args.
-  [[noreturn]] virtual void Clobber(const std::vector<std::string> args);
+  [[noreturn]] virtual void Clobber(const std::vector<std::string>& args);
 
   // Run clobber-log with the given message.
   virtual void ClobberLog(const std::string& msg);
