@@ -440,7 +440,7 @@ mount_on_loop_dev() {
   if [ "${rw_flag}" != "rw" ]; then
     mountopts="${mountopts},ro,exec"
   else
-    mountopts="${mountopts},rw,noexec"
+    mountopts="${mountopts},rw,noexec,nosymfollow"
   fi
   tracked_mount -o "${mountopts}" "${LOOP_DEV}" "${TMPMNT}"
 }
