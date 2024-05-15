@@ -1945,3 +1945,31 @@ Status message:
 Errors:
 - `Failed to get fingerprint info.`
 - `Fingerprint does not use a RW firmware copy.`
+
+## Privacy Screen Routines
+
+### Privacy Screen
+
+This routine checks whether the privacy screen is working or not.
+
+From crosh:
+```bash
+crosh> diag privacy_screen
+```
+
+From cros-health-tool:
+```bash
+$ cros-health-tool diag privacy_screen
+```
+
+Sample output:
+```bash
+Progress: 100
+Status: Passed
+```
+
+Errors:
+- `Expected privacy screen state ON, found OFF.`
+- `Expected privacy screen state OFF, found ON.`
+- `Browser rejected to set privacy screen state.`
+- `Browser response timeout exceeded`
