@@ -3,7 +3,10 @@
 # found in the LICENSE file.
 import("//common-mk/pkg_config.gni")
 group("all") {
-  deps = [ ":libprivacy" ]
+  deps = [
+    ":install_privacy_headers",
+    ":libprivacy",
+  ]
   if (use.test) {
     deps += [ ":privacy_test_runner" ]
   }
@@ -19,6 +22,11 @@ shared_library("libprivacy") {
   include_dirs = [ "." ]
   public_configs = [ ":target_defaults" ]
   deps = [ ":libprivacy_pc" ]
+}
+
+install_config("install_privacy_headers") {
+  sources = [ "log.h" ]
+  install_path = "/usr/include/privacy"
 }
 
 generate_pkg_config("libprivacy_pc") {
