@@ -5,16 +5,19 @@
 #ifndef PERMISSION_BROKER_ALLOW_CONFORMING_USB_DEVICE_RULE_H_
 #define PERMISSION_BROKER_ALLOW_CONFORMING_USB_DEVICE_RULE_H_
 
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
+
 #include <libudev.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
-#include <optional>
-#include <vector>
-
 #include "permission_broker/rule.h"
 #include "permission_broker/rule_utils.h"
 #include "permission_broker/usb_subsystem_udev_rule.h"
+#include "primary_io_manager/dbus-proxies.h"
 
 namespace permission_broker {
 
@@ -45,7 +48,8 @@ namespace permission_broker {
 ///    allow-variant returned by any rules.
 class AllowConformingUsbDeviceRule : public UsbSubsystemUdevRule {
  public:
-  AllowConformingUsbDeviceRule();
+  explicit AllowConformingUsbDeviceRule(
+      std::unique_ptr<org::chromium::PrimaryIoManagerProxyInterface> handle);
   AllowConformingUsbDeviceRule(const AllowConformingUsbDeviceRule&) = delete;
   AllowConformingUsbDeviceRule& operator=(const AllowConformingUsbDeviceRule&) =
       delete;
@@ -57,6 +61,8 @@ class AllowConformingUsbDeviceRule : public UsbSubsystemUdevRule {
  protected:
   // Devices that have been allowed via device policy.
   std::vector<policy::DevicePolicy::UsbDeviceId> usb_allow_list_;
+
+  org::chromium::PrimaryIoManagerProxyInterface* GetHandle();
 
  private:
   // Device policy is cached after a successful load.
@@ -77,6 +83,11 @@ class AllowConformingUsbDeviceRule : public UsbSubsystemUdevRule {
 
   // If running on a chromebox, ignore external/internal tagging.
   const bool running_on_chromebox_;
+
+  bool CheckIfDeviceIsPrimary(const std::string& device_path);
+
+  std::unique_ptr<org::chromium::PrimaryIoManagerProxyInterface>
+      primary_io_manager_handle_;
 };
 
 }  // namespace permission_broker

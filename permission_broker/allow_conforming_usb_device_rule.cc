@@ -4,19 +4,25 @@
 
 #include "permission_broker/allow_conforming_usb_device_rule.h"
 
+#include <brillo/errors/error.h>
 #include <libudev.h>
 #include <linux/usb/ch9.h>
 
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
+#include "base/check.h"
 #include "base/logging.h"
+#include "base/memory/scoped_refptr.h"
 #include "permission_broker/allow_lists.h"
 #include "permission_broker/rule.h"
 #include "permission_broker/rule_utils.h"
 #include "permission_broker/udev_scopers.h"
 #include "permission_broker/usb_subsystem_udev_rule.h"
+
+#include "primary_io_manager/dbus-proxies.h"
 
 namespace {
 
@@ -333,13 +339,42 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessTaggedDevice(
   return Rule::IGNORE;
 }
 
-AllowConformingUsbDeviceRule::AllowConformingUsbDeviceRule()
+org::chromium::PrimaryIoManagerProxyInterface*
+AllowConformingUsbDeviceRule::GetHandle() {
+  return primary_io_manager_handle_.get();
+}
+
+AllowConformingUsbDeviceRule::AllowConformingUsbDeviceRule(
+    std::unique_ptr<org::chromium::PrimaryIoManagerProxyInterface> handle)
     : UsbSubsystemUdevRule("AllowConformingUsbDeviceRule"),
       policy_loaded_(false),
       running_on_chromebox_(GetFormFactor() == FormFactor::kChromebox ||
-                            GetFormFactor() == FormFactor::kUnknown) {}
+                            GetFormFactor() == FormFactor::kUnknown),
+      primary_io_manager_handle_(std::move(handle)) {}
 
 AllowConformingUsbDeviceRule::~AllowConformingUsbDeviceRule() = default;
+
+bool AllowConformingUsbDeviceRule::CheckIfDeviceIsPrimary(
+    const std::string& device_path) {
+  brillo::ErrorPtr error;
+  bool is_primary;
+
+  CHECK(primary_io_manager_handle_)
+      << "No connection to primary_io_manager available";
+
+  if (!primary_io_manager_handle_->IsPrimaryIoDevice(device_path, &is_primary,
+                                                     &error)) {
+    if (error) {
+      LOG(ERROR) << "Error calling primary_io_manager (code="
+                 << error->GetCode() << ")";
+    } else {
+      LOG(ERROR) << "Error calling primary_io_manager: unkonwn";
+    }
+    return false;
+  }
+
+  return is_primary;
+}
 
 Rule::Result AllowConformingUsbDeviceRule::ProcessUsbDevice(
     udev_device* device) {
@@ -347,6 +382,13 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessUsbDevice(
   if (!device_syspath) {
     VLOG(1) << "Device to be processed is lacking syspath";
     return DENY;
+  }
+
+  if (running_on_chromebox_) {
+    if (CheckIfDeviceIsPrimary(device_syspath)) {
+      LOG(INFO) << "Device is a primary IO keyboard or mouse, denying";
+      return Result::DENY;
+    }
   }
 
   auto cros_usb_location = GetCrosUsbLocationProperty(device);

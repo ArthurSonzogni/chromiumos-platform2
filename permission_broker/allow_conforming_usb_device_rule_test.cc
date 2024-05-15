@@ -5,15 +5,19 @@
 #include "permission_broker/allow_conforming_usb_device_rule.h"
 
 #include <base/logging.h>
+#include <brillo/errors/error.h>
 #include <gtest/gtest.h>
 #include <libudev.h>
 
 #include <cstring>
+#include <memory>
 #include <set>
 #include <string>
 
 #include "base/containers/contains.h"
 #include "base/strings/string_number_conversions.h"
+#include "gmock/gmock.h"
+#include "primary_io_manager/dbus-proxy-mocks.h"
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <dbus/login_manager/dbus-constants.h>
@@ -31,10 +35,14 @@ using std::string;
 
 namespace permission_broker {
 
+using MockHandlePtr = org::chromium::PrimaryIoManagerProxyMock*;
+
 class AllowConformingUsbDeviceRuleMockPolicy
     : public AllowConformingUsbDeviceRule {
  public:
-  AllowConformingUsbDeviceRuleMockPolicy() = default;
+  AllowConformingUsbDeviceRuleMockPolicy()
+      : AllowConformingUsbDeviceRule(
+            std::make_unique<org::chromium::PrimaryIoManagerProxyMock>()) {}
   AllowConformingUsbDeviceRuleMockPolicy(
       const AllowConformingUsbDeviceRuleMockPolicy&) = delete;
   AllowConformingUsbDeviceRuleMockPolicy& operator=(
@@ -45,6 +53,11 @@ class AllowConformingUsbDeviceRuleMockPolicy
   void SetMockedUsbAllowList(
       const std::vector<policy::DevicePolicy::UsbDeviceId>& allowed) {
     usb_allow_list_ = allowed;
+  }
+
+  MockHandlePtr GetMockHandle() {
+    return static_cast<MockHandlePtr>(
+        AllowConformingUsbDeviceRule::GetHandle());
   }
 
  private:
@@ -149,6 +162,17 @@ class AllowConformingUsbDeviceRuleTest : public RuleTest {
     }
   }
 
+  void SetAllDevicesPrimary(bool primary) {
+    MockHandlePtr handle = rule_.GetMockHandle();
+    ON_CALL(*handle, IsPrimaryIoDevice(_, _, _, _))
+        .WillByDefault(testing::Invoke(
+            [primary](const std::string& in_device, bool* out_primary,
+                      brillo::ErrorPtr* error, int timeout_ms) -> bool {
+              *out_primary = primary;
+              return true;
+            }));
+  }
+
   AllowConformingUsbDeviceRuleMockPolicy rule_;
   set<string> external_devices_;
   set<string> internal_devices_;
@@ -164,10 +188,12 @@ class AllowConformingUsbDeviceRuleTest : public RuleTest {
 };
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Legacy_IgnoreNonUsbDevice) {
+  SetAllDevicesPrimary(false);
   ASSERT_EQ(Rule::IGNORE, rule_.ProcessDevice(FindDevice("/dev/tty0").get()));
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Legacy_DenyClaimedUsbDevice) {
+  SetAllDevicesPrimary(false);
   if (claimed_devices_.empty())
     LOG(WARNING) << "Tests incomplete because there are no claimed devices "
                  << "connected.";
@@ -178,6 +204,7 @@ TEST_F(AllowConformingUsbDeviceRuleTest, Legacy_DenyClaimedUsbDevice) {
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Legacy_IgnoreUnclaimedUsbDevice) {
+  SetAllDevicesPrimary(false);
   if (unclaimed_devices_.empty())
     LOG(WARNING) << "Tests incomplete because there are no unclaimed devices "
                  << "connected.";
@@ -189,6 +216,7 @@ TEST_F(AllowConformingUsbDeviceRuleTest, Legacy_IgnoreUnclaimedUsbDevice) {
 
 TEST_F(AllowConformingUsbDeviceRuleTest,
        Legacy_AllowPartiallyClaimedUsbDeviceWithLockdown) {
+  SetAllDevicesPrimary(false);
   if (partially_claimed_devices_.empty())
     LOG(WARNING) << "Tests incomplete because there are no partially claimed "
                  << "devices connected.";
@@ -201,6 +229,7 @@ TEST_F(AllowConformingUsbDeviceRuleTest,
 
 TEST_F(AllowConformingUsbDeviceRuleTest,
        Legacy_AllowDetachableClaimedUsbDevice) {
+  SetAllDevicesPrimary(false);
   if (detachable_devices_.empty())
     LOG(WARNING) << "Tests incomplete because there are no detachable "
                  << "devices connected.";
@@ -214,6 +243,7 @@ TEST_F(AllowConformingUsbDeviceRuleTest,
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Tagged_AllowExternalDevices) {
+  SetAllDevicesPrimary(false);
   if (external_devices_.empty())
     LOG(WARNING) << "Tests incomplete because there are no external "
                  << "devices connected.";
@@ -225,6 +255,7 @@ TEST_F(AllowConformingUsbDeviceRuleTest, Tagged_AllowExternalDevices) {
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Tagged_DenyInternalDevices) {
+  SetAllDevicesPrimary(false);
   if (internal_devices_.empty())
     LOG(WARNING) << "Tests incomplete because there are no internal "
                  << "devices connected.";
@@ -235,6 +266,7 @@ TEST_F(AllowConformingUsbDeviceRuleTest, Tagged_DenyInternalDevices) {
 }
 
 TEST_F(AllowConformingUsbDeviceRuleTest, Tagged_DenyUnknownDevices) {
+  SetAllDevicesPrimary(false);
   if (unknown_devices_.empty())
     LOG(WARNING) << "Tests incomplete because there are no unknoen "
                  << "devices connected.";

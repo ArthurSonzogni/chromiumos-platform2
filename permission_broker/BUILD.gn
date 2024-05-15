@@ -31,6 +31,7 @@ pkg_config("target_defaults_deps") {
     "libcros_config",
     "libnet-base",
     "libpatchpanel-client",
+    "libprimary_io_manager-client",
     "libudev",
     "libusb-1.0",
   ]
@@ -98,6 +99,7 @@ if (use.test) {
     pkg_deps = [
       "libbrillo-test",
       "libchrome-test",
+      "libprimary_io_manager-client-test",
     ]
   }
   executable("permission_broker_test") {

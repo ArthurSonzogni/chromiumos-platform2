@@ -59,7 +59,8 @@ PermissionBroker::PermissionBroker(scoped_refptr<dbus::Bus> bus,
       dbus_object_(
           nullptr, bus, dbus::ObjectPath(kPermissionBrokerServicePath)),
       usb_control_(std::make_unique<UsbDeviceManager>()) {
-  rule_engine_.AddRule(new AllowConformingUsbDeviceRule());
+  rule_engine_.AddRule(new AllowConformingUsbDeviceRule(
+      std::make_unique<org::chromium::PrimaryIoManagerProxy>(bus)));
   rule_engine_.AddRule(new AllowTtyDeviceRule());
   rule_engine_.AddRule(new DenyUninitializedDeviceRule());
   rule_engine_.AddRule(new DenyUsbDeviceClassRule(USB_CLASS_HUB));
