@@ -458,16 +458,8 @@ void StatefulMount::MountStateful() {
       // Try to rebuild the stateful partition by clobber-state. (Not using fast
       // mode out of security consideration: the device might have gotten into
       // this state through power loss during dev mode transition).
-      std::vector<std::string> dump_args = {"-f"};
-      std::string output;
-      status = Dumpe2fs(state_dev_, dump_args, &output);
-      base::FilePath log = root_.Append(kDumpe2fsStatefulLog);
-      if (!status ||
-          !platform_->WriteStringToFile(base::FilePath(log), output)) {
-        PLOG(ERROR) << "Failed to write dumpe2fs output to "
-                    << kDumpe2fsStatefulLog;
-      }
-
+      platform_->ReportFilesystemDetails(state_dev_,
+                                         root_.Append(kDumpe2fsStatefulLog));
       ClobberStateful({"keepimg", "preserve_lvs"},
                       "Self-repair corrupted stateful partition");
     }
