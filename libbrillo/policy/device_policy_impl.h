@@ -89,7 +89,6 @@ class DevicePolicyImpl : public DevicePolicy {
       bool* allow_kiosk_app_control_chrome_version) const override;
   std::optional<std::vector<UsbDeviceId>> GetUsbDetachableAllowlist()
       const override;
-  bool IsEnterpriseManaged() const override;
   std::optional<int> GetSecondFactorAuthenticationMode() const override;
   std::optional<bool> GetRunAutomaticCleanupOnLogin() const override;
   bool GetDisallowedTimeIntervals(

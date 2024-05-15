@@ -257,7 +257,7 @@ bool DevicePolicyImpl::LoadPolicy(bool delete_invalid_files) {
 }
 
 bool DevicePolicyImpl::IsEnterpriseEnrolled() const {
-  DCHECK(install_attributes_reader_);
+  CHECK(install_attributes_reader_);
   if (!install_attributes_reader_->IsLocked())
     return false;
 
@@ -276,7 +276,7 @@ std::optional<int> DevicePolicyImpl::GetPolicyRefreshRate() const {
 std::optional<bool> DevicePolicyImpl::GetMetricsEnabled() const {
   if (!device_policy_->has_metrics_enabled()) {
     // Default for enterprise managed devices is true, cf. https://crbug/456186.
-    if (IsEnterpriseManaged()) {
+    if (IsEnterpriseEnrolled()) {
       return true;
     }
     return std::nullopt;
@@ -531,7 +531,7 @@ bool DevicePolicyImpl::GetAllowedConnectionTypesForUpdate(
 }
 
 bool DevicePolicyImpl::GetOwner(std::string* owner) const {
-  if (IsEnterpriseManaged()) {
+  if (IsEnterpriseEnrolled()) {
     *owner = "";
     return true;
   }
@@ -656,15 +656,6 @@ bool DevicePolicyImpl::GetDeviceUpdateStagingSchedule(
   }
 
   return true;
-}
-
-bool DevicePolicyImpl::IsEnterpriseManaged() const {
-  if (policy_data_->has_management_mode())
-    return policy_data_->management_mode() ==
-           em::PolicyData::ENTERPRISE_MANAGED;
-  // Fall back to checking the request token, see management_mode documentation
-  // in device_management_backend.proto.
-  return policy_data_->has_request_token();
 }
 
 std::optional<int> DevicePolicyImpl::GetSecondFactorAuthenticationMode() const {

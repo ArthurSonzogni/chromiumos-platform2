@@ -210,7 +210,6 @@ TEST_F(MetricsLibraryTest, AreMetricsEnabledTrueIsTrueIfSetViaPolicy) {
 // Shouldn't check device policy if per-user consent is off.
 TEST_F(MetricsLibraryTest, AreMetricsEnabledFalseNoPolicyNoPerUser) {
   EXPECT_CALL(*device_policy_, GetMetricsEnabled()).Times(0);
-  EXPECT_CALL(*device_policy_, IsEnterpriseManaged()).Times(0);
 
   SetPerUserConsent(false);
   EXPECT_FALSE(lib_->AreMetricsEnabled());

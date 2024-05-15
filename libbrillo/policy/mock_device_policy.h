@@ -98,7 +98,6 @@ class MockDevicePolicy : public DevicePolicy {
               GetUsbDetachableAllowlist,
               (),
               (const, override));
-  MOCK_METHOD(bool, IsEnterpriseManaged, (), (const, override));
   MOCK_METHOD(std::optional<int>,
               GetSecondFactorAuthenticationMode,
               (),

@@ -187,12 +187,6 @@ class DevicePolicy {
   virtual std::optional<std::vector<UsbDeviceId>> GetUsbDetachableAllowlist()
       const = 0;
 
-  // Returns true if the policy data indicates that the device is enterprise
-  // managed. Note that this potentially could be faked by an exploit, therefore
-  // InstallAttributesReader must be used when tamper-proof evidence of the
-  // management state is required.
-  virtual bool IsEnterpriseManaged() const = 0;
-
   // Returns value of the DeviceSecondFactorAuthentication policy.
   // Return value is is one of the values from
   // DeviceSecondFactorAuthenticationProto's U2fMode enum (e.g. DISABLED,
