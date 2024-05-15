@@ -147,8 +147,7 @@ class ProcessCacheTestFixture : public ::testing::Test {
     auto pathname_in_current_ns = GetPathInCurrentMountNsOrDie(
         image_info->pid_for_setns, base::FilePath(image_info->pathname));
     base::stat_wrapper_t stat;
-    ASSERT_EQ(0,
-              base::File::Stat(pathname_in_current_ns.value().c_str(), &stat));
+    ASSERT_EQ(0, base::File::Stat(pathname_in_current_ns, &stat));
     image_info->inode_device_id = stat.st_dev;
     image_info->inode = stat.st_ino;
     image_info->mtime.tv_sec = stat.st_mtim.tv_sec;
