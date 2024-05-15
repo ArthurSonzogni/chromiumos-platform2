@@ -78,6 +78,9 @@ const char kImsi[] = "310100000001";
 const char kSimPathPrefix[] = "/foo/sim";
 const RpcIdentifier kSimPath1("/foo/sim/1");
 const RpcIdentifier kSimPath2("/foo/sim/2");
+const char kOperatorCode[] = "10010";
+const char kOperatorName[] = "default_test_operator_name";
+const char kOperatorCountry[] = "us";
 
 }  // namespace
 
@@ -285,9 +288,6 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   void CreateService() {
     // The following constants are never directly accessed by the tests.
     const char kFriendlyServiceName[] = "default_test_service_name";
-    const char kOperatorCode[] = "10010";
-    const char kOperatorName[] = "default_test_operator_name";
-    const char kOperatorCountry[] = "us";
 
     // Simulate all the side-effects of Cellular::CreateService
     auto service =
@@ -1012,6 +1012,49 @@ TEST_F(CellularCapability3gppTest, PropertiesChanged) {
       MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_1XRTT);
   EXPECT_CALL(*device_adaptor_, EmitStringChanged(_, _)).Times(0);
   capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM, modem_properties);
+
+  // check network reject cause codes
+
+  CreateService();
+  mock_mobile_operator_info_->SetMccMnc(kOperatorCode);
+  modem3gpp_properties.Clear();
+  KeyValueStore network_reject_cause_code;
+  network_reject_cause_code.Set<uint32_t>("error",
+                                          MM_NETWORK_ERROR_IMSI_UNKNOWN_IN_HLR);
+  network_reject_cause_code.Set<std::string>("operator-id", kOperatorCode);
+  modem3gpp_properties.Set<KeyValueStore>(
+      MM_MODEM_MODEM3GPP_PROPERTY_NETWORKREJECTION, network_reject_cause_code);
+
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEM3GPP,
+                                   modem3gpp_properties);
+  EXPECT_TRUE(capability_->SuspectInactiveSim(cellular_->iccid()));
+
+  network_reject_cause_code.Clear();
+  network_reject_cause_code.Set<uint32_t>("error", MM_NETWORK_ERROR_ILLEGAL_ME);
+  network_reject_cause_code.Set<std::string>("operator-id", kOperatorCode);
+  modem3gpp_properties.Set<KeyValueStore>(
+      MM_MODEM_MODEM3GPP_PROPERTY_NETWORKREJECTION, network_reject_cause_code);
+
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEM3GPP,
+                                   modem3gpp_properties);
+  EXPECT_TRUE(capability_->SuspectModemDisallowed(cellular_->iccid()));
+
+  network_reject_cause_code.Clear();
+  network_reject_cause_code.Set<uint32_t>("error",
+                                          MM_NETWORK_ERROR_PLMN_NOT_ALLOWED);
+  network_reject_cause_code.Set<std::string>("operator-id", kOperatorCode);
+  modem3gpp_properties.Set<KeyValueStore>(
+      MM_MODEM_MODEM3GPP_PROPERTY_NETWORKREJECTION, network_reject_cause_code);
+
+  capability_->OnPropertiesChanged(MM_DBUS_INTERFACE_MODEM_MODEM3GPP,
+                                   modem3gpp_properties);
+  EXPECT_TRUE(capability_->SuspectSubscription(cellular_->iccid()));
+
+  capability_->On3gppRegistrationChanged(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+                                         "", "");
+  EXPECT_FALSE(capability_->SuspectInactiveSim(cellular_->iccid()));
+  EXPECT_FALSE(capability_->SuspectModemDisallowed(cellular_->iccid()));
+  EXPECT_FALSE(capability_->SuspectSubscription(cellular_->iccid()));
 }
 
 TEST_F(CellularCapability3gppTest, SignalPropertiesChanged) {

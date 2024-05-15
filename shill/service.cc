@@ -1453,6 +1453,13 @@ const char* Service::ConnectFailureToString(ConnectFailure failure) {
       return kErrorDisconnect;
     case kFailureDelayedConnectSetup:
       return kErrorDelayedConnectSetup;
+    case kFailureSuspectInactiveSim:
+      return kErrorSuspectInactiveSim;
+    case kFailureSuspectSubscriptionError:
+      return kErrorSuspectSubscriptionError;
+    case kFailureSuspectModemDisallowed:
+      return kErrorSuspectModemDisallowed;
+
     case kFailureMax:
       NOTREACHED();
   }
@@ -1553,6 +1560,12 @@ Metrics::NetworkServiceError Service::ConnectFailureToMetricsEnum(
       return Metrics::kNetworkServiceErrorDisconnect;
     case Service::kFailureDelayedConnectSetup:
       return Metrics::kNetworkServiceErrorDelayedConnectSetup;
+    case Service::kFailureSuspectInactiveSim:
+      return Metrics::kNetworkServiceErrorSuspectInactiveSim;
+    case Service::kFailureSuspectSubscriptionError:
+      return Metrics::kNetworkServiceErrorSuspectSubscriptionError;
+    case Service::kFailureSuspectModemDisallowed:
+      return Metrics::kNetworkServiceErrorSuspectModemDisallowed;
     case Service::kFailureUnknown:
     case Service::kFailureMax:
       return Metrics::kNetworkServiceErrorUnknown;

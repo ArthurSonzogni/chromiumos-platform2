@@ -52,6 +52,9 @@ class Error {
     kWrongState,
     kOperationNotAllowed,
     kThrottled,
+    kSuspectInactiveSim,
+    kSuspectSubscriptionError,
+    kSuspectModemDisallowed,
     kNumErrors,
   };
 

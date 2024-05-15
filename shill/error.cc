@@ -56,6 +56,9 @@ const Info kInfos[Error::kNumErrors] = {
     {kErrorResultWrongState, "Wrong state"},
     {kErrorResultInternalError, "Internal error"},  // kOperationNotAllowed
     {kErrorResultThrottled, "Throttled"},
+    {kErrorResultSuspectInactiveSim, "Suspect Inactive SIM"},
+    {kErrorResultSuspectSubscriptionIssue, "Suspect subscription issue"},
+    {kErrorResultSuspectModemDisallowed, "Suspect modem disallowed"},
 };
 
 }  // namespace

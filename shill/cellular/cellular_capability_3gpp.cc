@@ -137,6 +137,9 @@ const char kQcomSocMMDevice[] = "qcom-soc";
 const char kVzwIdentifier[] = "c83d6597-dc91-4d48-a3a7-d86b80123751";
 const size_t kVzwMdnLength = 10;
 
+const char kPropertyError[] = "error";
+const char kPropertyOperatorId[] = "operator-id";
+
 std::string AccessTechnologyToString(uint32_t access_technologies) {
   // Order is important. Return the highest radio access technology.
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_5GNR)
@@ -2150,6 +2153,13 @@ void CellularCapability3gpp::OnModem3gppPropertiesChanged(
     OnPcoChanged(
         properties.GetVariant(MM_MODEM_MODEM3GPP_PROPERTY_PCO).Get<PcoList>());
   }
+
+  if (properties.Contains<KeyValueStore>(
+          MM_MODEM_MODEM3GPP_PROPERTY_NETWORKREJECTION)) {
+    KeyValueStore network_rejection = properties.Get<KeyValueStore>(
+        MM_MODEM_MODEM3GPP_PROPERTY_NETWORKREJECTION);
+    OnNetworkRejectionChanged(network_rejection);
+  }
 }
 
 void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
@@ -2406,6 +2416,9 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
   if (IsRegisteredState(state) && cellular()->service()) {
     cellular()->power_opt()->NotifyRegistrationSuccess(
         cellular()->service()->iccid());
+
+    // clear any network rejects for ICCID
+    ClearNetworkRejections(cellular()->service()->iccid());
   }
 
   // While the modem is connected, if the state changed from a registered state
@@ -2542,6 +2555,118 @@ void CellularCapability3gpp::OnFacilityLocksChanged(uint32_t locks) {
     sim_lock_status_.enabled = sim_enabled;
     OnSimLockStatusChanged();
   }
+}
+
+bool CellularCapability3gpp::SuspectInactiveSim(std::string iccid) {
+  if (iccid.empty()) {
+    return false;
+  }
+  if (nw_rejection_map_.find(iccid) == nw_rejection_map_.end()) {
+    return false;
+  }
+  return nw_rejection_map_[iccid].suspect_inactive_sim;
+}
+
+bool CellularCapability3gpp::SuspectSubscription(std::string iccid) {
+  if (iccid.empty()) {
+    return false;
+  }
+  if (nw_rejection_map_.find(iccid) == nw_rejection_map_.end()) {
+    return false;
+  }
+  return nw_rejection_map_[iccid].suspect_subscription;
+}
+
+bool CellularCapability3gpp::SuspectModemDisallowed(std::string iccid) {
+  if (iccid.empty()) {
+    return false;
+  }
+  if (nw_rejection_map_.find(iccid) == nw_rejection_map_.end()) {
+    return false;
+  }
+  return nw_rejection_map_[iccid].suspect_modem_disallowed;
+}
+
+// Process network rejection reported by MM and classify them in user
+// friendly categories
+void CellularCapability3gpp::OnNetworkRejectionChanged(
+    const KeyValueStore& properties) {
+  uint32_t error = 0;
+  std::string operator_id;
+  std::string home_operator_id = cellular()->mobile_operator_info()->mccmnc();
+
+  if (properties.Contains<uint32_t>(kPropertyError)) {
+    error = properties.Get<uint32_t>(kPropertyError);
+  }
+
+  if (properties.Contains<std::string>(kPropertyOperatorId)) {
+    operator_id = properties.Get<std::string>(kPropertyOperatorId);
+  }
+
+  SLOG(this, 3) << __func__ << "error: " << error
+                << " received operator_id: " << operator_id
+                << " home operator_id: " << home_operator_id;
+
+  // If operator id received with reject cause code or home operator id is
+  // empty, reject cause code is not actionable.
+  if (operator_id.empty() || home_operator_id.empty()) {
+    return;
+  }
+
+  // If operator id received with reject cause is not for the home network,
+  // reject cause code is not actionable.
+  if (operator_id != home_operator_id) {
+    return;
+  }
+
+  if (!cellular()->service()) {
+    return;
+  }
+
+  NetworkRejection info;
+  info.error = error;
+  info.operator_id = operator_id;
+  std::string iccid = cellular()->service()->iccid();
+
+  switch (error) {
+    case MM_NETWORK_ERROR_IMSI_UNKNOWN_IN_HLR:
+      nw_rejection_map_[iccid].suspect_inactive_sim = true;
+      break;
+    case MM_NETWORK_ERROR_ILLEGAL_ME:
+      nw_rejection_map_[iccid].suspect_modem_disallowed = true;
+      break;
+    case MM_NETWORK_ERROR_GPRS_NOT_ALLOWED:
+    case MM_NETWORK_ERROR_GPRS_AND_NON_GPRS_NOT_ALLOWED:
+    case MM_NETWORK_ERROR_PLMN_NOT_ALLOWED:
+    case MM_NETWORK_ERROR_LOCATION_AREA_NOT_ALLOWED:
+    case MM_NETWORK_ERROR_ROAMING_NOT_ALLOWED_IN_LOCATION_AREA:
+    case MM_NETWORK_ERROR_GPRS_NOT_ALLOWED_IN_PLMN:
+    case MM_NETWORK_ERROR_NO_CELLS_IN_LOCATION_AREA:
+      nw_rejection_map_[iccid].suspect_subscription = true;
+      break;
+    default:
+      break;
+  }
+  // We process and classify the reject codes when they are reported by
+  // MM instead of going through the list when  connect fails.
+  // Saving it here in the list for future if we can come up with more
+  // advanced analysis which could take more than one reject code in
+  // consideration */
+  nw_rejection_map_[iccid].rejection_list.push_back(info);
+
+  SLOG(this, 3) << "suspect_inactive_sim: "
+                << nw_rejection_map_[iccid].suspect_inactive_sim
+                << " suspect_subscription: "
+                << nw_rejection_map_[iccid].suspect_subscription
+                << " suspect_modem_disallowed: "
+                << nw_rejection_map_[iccid].suspect_modem_disallowed;
+}
+
+void CellularCapability3gpp::ClearNetworkRejections(std::string iccid) {
+  if (nw_rejection_map_.find(iccid) == nw_rejection_map_.end()) {
+    return;
+  }
+  nw_rejection_map_.erase(iccid);
 }
 
 void CellularCapability3gpp::OnPcoChanged(const PcoList& pco_list) {

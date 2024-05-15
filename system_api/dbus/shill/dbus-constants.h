@@ -784,6 +784,9 @@ constexpr char kErrorNotRegistered[] = "not-registered";
 constexpr char kErrorTooManySTAs[] = "too-many-stas";
 constexpr char kErrorDisconnect[] = "disconnect-failure";
 constexpr char kErrorDelayedConnectSetup[] = "delayed-connect-setup-failure";
+constexpr char kErrorSuspectInactiveSim[] = "suspect-inactive-sim";
+constexpr char kErrorSuspectSubscriptionError[] = "suspect-subscription-error";
+constexpr char kErrorSuspectModemDisallowed[] = "suspect-modem-disallowed";
 constexpr char kErrorUnknownFailure[] = "unknown-failure";
 
 // Flimflam error result codes.
@@ -846,6 +849,12 @@ constexpr char kErrorResultWepNotSupported[] =
     "org.chromium.flimflam.Error.WepNotSupported";
 constexpr char kErrorResultWrongState[] =
     "org.chromium.flimflam.Error.WrongState";
+constexpr char kErrorResultSuspectInactiveSim[] =
+    "org.chromium.flimflam.error.SuspectInactiveSim";
+constexpr char kErrorResultSuspectSubscriptionIssue[] =
+    "org.chromium.flimflam.error.SuspectSubscriptionIssue";
+constexpr char kErrorResultSuspectModemDisallowed[] =
+    "org.chromium.flimflam.error.SuspectModemDisallowed";
 
 constexpr char kUnknownString[] = "UNKNOWN";
 

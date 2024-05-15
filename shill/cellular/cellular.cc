@@ -1622,8 +1622,23 @@ void Cellular::Connect(CellularService* service, Error* error) {
   if (state_ != State::kRegistered) {
     LOG(ERROR) << LoggingTag() << ": Connect attempted while state = "
                << GetStateString(state_);
-    Error::PopulateAndLog(FROM_HERE, error, Error::kNotRegistered,
-                          "Connect Failed: Modem not registered.");
+
+    if (capability_->SuspectInactiveSim(service->iccid())) {
+      Error::PopulateAndLog(
+          FROM_HERE, error, Error::kSuspectInactiveSim,
+          "Connect Failed: Modem not registered. Suspect inactive SIM");
+    } else if (capability_->SuspectModemDisallowed(service->iccid())) {
+      Error::PopulateAndLog(
+          FROM_HERE, error, Error::kSuspectModemDisallowed,
+          "Connect Failed: Modem not registered. Suspect Modem disallowed");
+    } else if (capability_->SuspectSubscription(service->iccid())) {
+      Error::PopulateAndLog(
+          FROM_HERE, error, Error::kSuspectSubscriptionError,
+          "Connect Failed: Modem not registered. Suspect subscription issue");
+    } else {
+      Error::PopulateAndLog(FROM_HERE, error, Error::kNotRegistered,
+                            "Connect Failed: Modem not registered.");
+    }
     NotifyCellularConnectionResult(*error, service->iccid(),
                                    service->is_in_user_connect(), apn_type);
     // If using an attach APN, send detailed metrics since |kNotRegistered| is
@@ -3299,6 +3314,17 @@ void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
         manager()->cellular_service_provider()->FindService(
             connect_pending_iccid_);
     bool is_user_triggered = false;
+
+    if (capability_ && (failure == Service::kFailureNotRegistered)) {
+      if (capability_->SuspectInactiveSim(service->iccid())) {
+        failure = Service::kFailureSuspectInactiveSim;
+      } else if (capability_->SuspectSubscription(service->iccid())) {
+        failure = Service::kFailureSuspectSubscriptionError;
+      } else if (capability_->SuspectModemDisallowed(service->iccid())) {
+        failure = Service::kFailureSuspectModemDisallowed;
+      }
+    }
+
     if (service) {
       service->SetFailure(failure);
       is_user_triggered = service->is_in_user_connect();
@@ -3308,6 +3334,15 @@ void Cellular::ConnectToPendingFailed(Service::ConnectFailure failure) {
     switch (failure) {
       case Service::kFailureNotRegistered:
         error.Populate(Error::kNotRegistered);
+        break;
+      case Service::kFailureSuspectInactiveSim:
+        error.Populate(Error::kSuspectInactiveSim);
+        break;
+      case Service::kFailureSuspectSubscriptionError:
+        error.Populate(Error::kSuspectSubscriptionError);
+        break;
+      case Service::kFailureSuspectModemDisallowed:
+        error.Populate(Error::kSuspectModemDisallowed);
         break;
       case Service::kFailureDisconnect:
         error.Populate(Error::kOperationAborted);

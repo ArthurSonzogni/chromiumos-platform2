@@ -23,6 +23,8 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
                          const std::string& info_owner);
   ~MockMobileOperatorInfo() override;
 
+  void SetMccMnc(std::string mccmnc);
+
   MOCK_METHOD(bool, IsHomeOperatorKnown, (), (const, override));
   MOCK_METHOD(bool, IsMobileNetworkOperatorKnown, (), (const, override));
   MOCK_METHOD(bool, IsServingMobileNetworkOperatorKnown, (), (const, override));
@@ -56,7 +58,7 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
               (override));
 
  private:
-  std::string empty_mccmnc_;
+  std::string mccmnc_;
   std::string empty_mcc_alpha2_;
   std::vector<MobileAPN> empty_apn_list_;
   std::vector<MobileOperatorMapper::OnlinePortal> empty_olp_list_;

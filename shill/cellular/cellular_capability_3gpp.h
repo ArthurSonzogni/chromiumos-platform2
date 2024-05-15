@@ -191,6 +191,10 @@ class CellularCapability3gpp {
 
   std::string GetRoamingStateString() const;
 
+  bool SuspectInactiveSim(std::string iccid);
+  bool SuspectSubscription(std::string iccid);
+  bool SuspectModemDisallowed(std::string iccid);
+
   // -------------------------------------------------------------------------
   // Connection management
   // -------------------------------------------------------------------------
@@ -380,6 +384,18 @@ class CellularCapability3gpp {
     ResultCallback result_callback;
   };
 
+  struct NetworkRejection {
+    uint32_t error;
+    std::string operator_id;
+  };
+
+  struct NetworkRejectionInfo {
+    bool suspect_inactive_sim;
+    bool suspect_subscription;
+    bool suspect_modem_disallowed;
+    std::vector<NetworkRejection> rejection_list;
+  };
+
   // SimLockStatus represents the fields in the Cellular.SIMLockStatus
   // DBUS property of the shill device.
   struct SimLockStatus {
@@ -456,6 +472,8 @@ class CellularCapability3gpp {
   void OnFacilityLocksChanged(uint32_t locks);
   void OnPcoChanged(const PcoList& pco_list);
   void OnModemSignalPropertiesChanged(const KeyValueStore& props);
+  void OnNetworkRejectionChanged(const KeyValueStore& properties);
+  void ClearNetworkRejections(std::string iccid);
 
   // SIM property change handlers
   void RequestSimProperties(size_t slot, RpcIdentifier sim_path);
@@ -572,6 +590,8 @@ class CellularCapability3gpp {
   SimLockStatus sim_lock_status_;
   SubscriptionState subscription_state_ = SubscriptionState::kUnknown;
   std::map<ApnList::ApnType, std::unique_ptr<CellularBearer>> active_bearers_;
+  // per ICCID map to store network rejection info
+  std::map<std::string, NetworkRejectionInfo> nw_rejection_map_;
   RpcIdentifiers bearer_paths_;
   bool reset_done_ = false;
   std::optional<std::vector<MobileAPN>> profiles_;

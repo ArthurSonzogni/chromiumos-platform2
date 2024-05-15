@@ -145,6 +145,9 @@ class Service : public base::RefCounted<Service> {
     // the connect itself ran into a synchronous failure setting up the
     // connection (i.e. as if the D-Bus call itself would have failed).
     kFailureDelayedConnectSetup,
+    kFailureSuspectInactiveSim,
+    kFailureSuspectSubscriptionError,
+    kFailureSuspectModemDisallowed,
     kFailureMax
   };
   enum ConnectState {
