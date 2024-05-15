@@ -117,7 +117,8 @@ union RoutineArgument {
   // Arguments to create a network bandwidth routine.
   NetworkBandwidthRoutineArgument network_bandwidth@18;
   // Arguments to create a sensitive sensor routine.
-  [MinVersion=1] SensitiveSensorRoutineArgument sensitive_sensor@19;
+  [MinVersion=1]
+  SensitiveSensorRoutineArgument sensitive_sensor@19;
   // Arguments to create a camera frame analysis routine.
   [MinVersion=2]
   CameraFrameAnalysisRoutineArgument camera_frame_analysis@20;
@@ -627,6 +628,7 @@ union RoutineDetail {
   // Details of a completed network bandwidth routine.
   [MinVersion=1]
   NetworkBandwidthRoutineDetail network_bandwidth@10;
+  // Details of a completed sensitive sensor routine.
   [MinVersion=2]
   SensitiveSensorRoutineDetail sensitive_sensor@11;
   // Details of a completed camera frame analysis routine.
