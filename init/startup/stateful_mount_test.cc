@@ -36,12 +36,21 @@ using testing::StrictMock;
 
 namespace {
 
-const char kImageVarsContent[] =
-    R"({"load_base_vars": {"FORMAT_STATE": "base", "PLATFORM_FORMAT_STATE": )"
-    R"("ext4", "PLATFORM_OPTIONS_STATE": "", "PARTITION_NUM_STATE": 1},)"
-    R"("load_partition_vars": {"FORMAT_STATE": "partition", )"
-    R"("PLATFORM_FORMAT_STATE": "ext4", "PLATFORM_OPTIONS_STATE": "", )"
-    R"("PARTITION_NUM_STATE": 1}})";
+const char kImageVarsContent[] = R"""(
+{
+  "load_base_vars": {
+   "FORMAT_STATE": "base",
+   "PLATFORM_FORMAT_STATE": "ext4",
+   "PLATFORM_OPTIONS_STATE": "",
+   "PARTITION_NUM_STATE": 1
+  },
+  "load_partition_vars": {
+    "FORMAT_STATE": "partition",
+    "PLATFORM_FORMAT_STATE": "ext4",
+    "PLATFORM_OPTIONS_STATE": "",
+    "PARTITION_NUM_STATE": 1
+  }
+})""";
 
 constexpr char kDumpe2fsStr[] =
     "dumpe2fs\n%s(group "
@@ -78,23 +87,21 @@ class GetImageVarsTest : public ::testing::Test {
 };
 
 TEST_F(GetImageVarsTest, BaseVars) {
-  base::Value vars;
-  ASSERT_TRUE(
-      stateful_mount_->GetImageVars(json_file_, "load_base_vars", &vars));
-  LOG(INFO) << "vars is: " << vars;
-  EXPECT_TRUE(vars.is_dict());
-  const std::string* format = vars.GetDict().FindString("FORMAT_STATE");
+  std::optional<base::Value> vars =
+      stateful_mount_->GetImageVars(json_file_, "load_base_vars");
+  ASSERT_TRUE(vars);
+  EXPECT_TRUE(vars->is_dict());
+  const std::string* format = vars->GetDict().FindString("FORMAT_STATE");
   EXPECT_NE(format, nullptr);
   EXPECT_EQ(*format, "base");
 }
 
 TEST_F(GetImageVarsTest, PartitionVars) {
-  base::Value vars;
-  ASSERT_TRUE(
-      stateful_mount_->GetImageVars(json_file_, "load_partition_vars", &vars));
-  LOG(INFO) << "vars is: " << vars;
-  EXPECT_TRUE(vars.is_dict());
-  const std::string* format = vars.GetDict().FindString("FORMAT_STATE");
+  std::optional<base::Value> vars =
+      stateful_mount_->GetImageVars(json_file_, "load_partition_vars");
+  ASSERT_TRUE(vars);
+  EXPECT_TRUE(vars->is_dict());
+  const std::string* format = vars->GetDict().FindString("FORMAT_STATE");
   LOG(INFO) << "FORMAT_STATE is: " << *format;
   EXPECT_NE(format, nullptr);
   EXPECT_EQ(*format, "partition");

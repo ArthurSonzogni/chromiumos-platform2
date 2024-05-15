@@ -68,6 +68,7 @@ constexpr char kDisableStatefulSecurityHardening[] =
 constexpr char kTmpPortage[] = "var/tmp/portage";
 constexpr char kProcMounts[] = "proc/mounts";
 constexpr char kMountOptionsLog[] = "var/log/mount_options.log";
+constexpr char kPartitionsVars[] = "usr/sbin/partition_vars.json";
 const std::vector<const char*> kMountDirs = {"db/pkg", "lib/portage",
                                              "cache/dlc-images"};
 
@@ -152,10 +153,9 @@ void AppendOption(const std::string& fs_features,
 
 // Get the partition number for the given key,
 // e.g. "PARTITION_NUM_STATE". Fails with a `CHECK()` if any error occurs.
-int GetPartitionNumFromImageVars(const base::Value& image_vars,
+int GetPartitionNumFromImageVars(const base::Value::Dict& image_dict,
                                  std::string_view key) {
-  const base::Value::Dict& dict = image_vars.GetDict();
-  const std::string* value = dict.FindString(key);
+  const std::string* value = image_dict.FindString(key);
   CHECK_NE(value, nullptr);
   int num = 0;
   CHECK(base::StringToInt(*value, &num));
@@ -179,32 +179,30 @@ StatefulMount::StatefulMount(const Flags& flags,
       startup_dep_(startup_dep),
       mount_helper_(mount_helper) {}
 
-bool StatefulMount::GetImageVars(base::FilePath json_file,
-                                 std::string key,
-                                 base::Value* vars) {
+std::optional<base::Value> StatefulMount::GetImageVars(base::FilePath json_file,
+                                                       std::string key) {
   std::string json_string;
   if (!platform_->ReadFileToString(json_file, &json_string)) {
     PLOG(ERROR) << "Unable to read json file: " << json_file;
-    return false;
+    return std::nullopt;
   }
-  auto part_vars = base::JSONReader::ReadAndReturnValueWithError(
-      json_string, base::JSON_PARSE_RFC);
-  if (!part_vars.has_value()) {
+  std::optional<base::Value> part_vars = base::JSONReader::Read(
+      json_string, base::JSON_PARSE_RFC, 10 /* max_depth */);
+  if (!part_vars) {
     PLOG(ERROR) << "Failed to parse image variables.";
-    return false;
+    return std::nullopt;
   }
   if (!part_vars->is_dict()) {
     LOG(ERROR) << "Failed to read json file as a dictionary";
-    return false;
+    return std::nullopt;
   }
 
   base::Value::Dict* image_vars = part_vars->GetDict().FindDict(key);
   if (image_vars == nullptr) {
     LOG(ERROR) << "Failed to get image variables from " << json_file;
-    return false;
+    return std::nullopt;
   }
-  *vars = base::Value(std::move(*image_vars));
-  return true;
+  return base::Value(std::move(*image_vars));
 }
 
 bool StatefulMount::IsQuotaEnabled() {
@@ -361,16 +359,16 @@ void StatefulMount::MountStateful() {
     load_vars = "load_base_vars";
   }
 
-  base::Value image_vars;
-  base::FilePath json_file = root_.Append("usr/sbin/partition_vars.json");
-  if (!StatefulMount::GetImageVars(json_file, load_vars, &image_vars)) {
+  base::FilePath json_file = root_.Append(kPartitionsVars);
+  std::optional<base::Value> image_vars = GetImageVars(json_file, load_vars);
+  if (!image_vars) {
     return;
   }
-  if (!image_vars.is_dict()) {
-    PLOG(ERROR) << "Failed to parse dictionary from partition_vars.json";
+  if (!image_vars->is_dict()) {
+    PLOG(ERROR) << "Failed to parse dictionary from " << json_file;
     return;
   }
-  const auto& image_vars_dict = image_vars.GetDict();
+  const base::Value::Dict& image_vars_dict = image_vars->GetDict();
 
   bool status;
   int32_t stateful_mount_flags;
@@ -385,7 +383,7 @@ void StatefulMount::MountStateful() {
     // Find our stateful partition mount point.
     stateful_mount_flags = kCommonMountFlags | MS_NOATIME;
     const int part_num_state =
-        GetPartitionNumFromImageVars(image_vars, "PARTITION_NUM_STATE");
+        GetPartitionNumFromImageVars(image_vars_dict, "PARTITION_NUM_STATE");
     const std::string* fs_form_state =
         image_vars_dict.FindString("FS_FORMAT_STATE");
     state_dev_ = brillo::AppendPartition(root_dev_type_, part_num_state);
@@ -494,7 +492,7 @@ void StatefulMount::MountStateful() {
     // on some boards.
     int32_t oem_flags = MS_RDONLY | kCommonMountFlags;
     const int part_num_oem =
-        GetPartitionNumFromImageVars(image_vars, "PARTITION_NUM_OEM");
+        GetPartitionNumFromImageVars(image_vars_dict, "PARTITION_NUM_OEM");
     const std::string* fs_form_oem =
         image_vars_dict.FindString("FS_FORMAT_OEM");
     const base::FilePath oem_dev =
