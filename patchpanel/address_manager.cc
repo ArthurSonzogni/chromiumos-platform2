@@ -10,7 +10,7 @@
 
 #include <base/containers/contains.h>
 #include <base/logging.h>
-#include <crypto/random.h>
+#include <base/rand_util.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/mac_address.h>
 
@@ -113,7 +113,7 @@ std::optional<net_base::IPv6CIDR> AddressManager::GetRandomizedIPv6Address(
 
   net_base::IPv6Address::DataType addr = {};
   do {
-    crypto::RandBytes(addr.data(), addr.size());
+    base::RandBytes(addr);
     std::vector<uint8_t> mask =
         net_base::IPv6CIDR::GetNetmask(subnet.prefix_length())->ToBytes();
     std::vector<uint8_t> subnet_addr = subnet.address().ToBytes();
@@ -140,7 +140,7 @@ std::optional<net_base::IPv6CIDR> AddressManager::GenerateIPv6Subnet(
   // address.
   net_base::IPv6Address::DataType addr = {};
   do {
-    crypto::RandBytes(addr.data(), addr.size());
+    base::RandBytes(addr);
     std::vector<uint8_t> mask =
         net_base::IPv6CIDR::GetNetmask(net_block.prefix_length())->ToBytes();
     std::vector<uint8_t> net_block_addr = net_block.address().ToBytes();
