@@ -425,7 +425,8 @@ void WebAuthnHandler::HandleUVFlowResultGetAssertion(
   }
 
   DoGetAssertion(std::move(*pending_uv_get_assertion_session_),
-                 PresenceRequirement::kAuthorizationSecret);
+                 PresenceRequirement::kAuthorizationSecret,
+                 CredentialSecretType::kPlatformStored);
   pending_uv_get_assertion_session_.reset();
 }
 
@@ -443,29 +444,37 @@ void WebAuthnHandler::DoMakeCredential(
   bool uv_compatible = !(AllowPresenceMode() &&
                          session.request.verification_type() ==
                              VerificationType::VERIFICATION_USER_PRESENCE);
+  CredentialSecretType secret_type = uv_compatible
+                                         ? CredentialSecretType::kPlatformStored
+                                         : CredentialSecretType::kUserSecret;
 
   brillo::SecureBlob credential_secret(kCredentialSecretSize);
-  if (uv_compatible) {
-    if (RAND_bytes(credential_secret.data(), credential_secret.size()) != 1) {
-      LOG(ERROR)
-          << "MakeCredential: Failed to generate secret for new credential.";
-      response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
-      session.response->Return(response);
-      return;
+  switch (secret_type) {
+    case CredentialSecretType::kPlatformStored: {
+      if (RAND_bytes(credential_secret.data(), credential_secret.size()) != 1) {
+        LOG(ERROR)
+            << "MakeCredential: Failed to generate secret for new credential.";
+        response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
+        session.response->Return(response);
+        return;
+      }
+      break;
     }
-  } else {
-    // We are creating a credential that can only be signed with power button
-    // press, and can be signed by u2f/g2f, so we must use the legacy secret.
-    std::optional<brillo::SecureBlob> legacy_secret =
-        user_state_->GetUserSecret();
-    if (!legacy_secret) {
-      LOG(ERROR) << "MakeCredential: Cannot find user secret when trying to "
-                    "create u2f/g2f credential.";
-      response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
-      session.response->Return(response);
-      return;
+    case CredentialSecretType::kUserSecret: {
+      // We are creating a credential that can only be signed with power button
+      // press, and can be signed by u2f/g2f, so we must use the legacy secret.
+      std::optional<brillo::SecureBlob> legacy_secret =
+          user_state_->GetUserSecret();
+      if (!legacy_secret) {
+        LOG(ERROR) << "MakeCredential: Cannot find user secret when trying to "
+                      "create u2f/g2f credential.";
+        response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
+        session.response->Return(response);
+        return;
+      }
+      credential_secret = std::move(*legacy_secret);
+      break;
     }
-    credential_secret = std::move(*legacy_secret);
   }
 
   MakeCredentialResponse::MakeCredentialStatus generate_status =
@@ -508,8 +517,7 @@ void WebAuthnHandler::DoMakeCredential(
           rp_id_hash, credential_id, credential_public_key.cbor,
           /* user_verified = */ session.request.verification_type() ==
               VerificationType::VERIFICATION_USER_VERIFICATION,
-          /* include_attested_credential_data = */ true,
-          /* is_u2f_authenticator_credential = */ !uv_compatible);
+          /* include_attested_credential_data = */ true, secret_type);
   if (!authenticator_data) {
     LOG(ERROR) << "MakeCredential: MakeAuthenticatorData failed";
     response.set_status(MakeCredentialResponse::INTERNAL_ERROR);
@@ -533,7 +541,7 @@ void WebAuthnHandler::DoMakeCredential(
     std::optional<std::vector<uint8_t>> attestation_statement =
         MakeFidoU2fAttestationStatement(
             rp_id_hash, util::ToVector(session.request.client_data_hash()),
-            credential_public_key.raw, credential_id,
+            credential_public_key.raw, credential_id, credential_secret,
             session.request.attestation_conveyance_preference());
     if (!attestation_statement) {
       LOG(ERROR)
@@ -597,7 +605,7 @@ std::optional<std::vector<uint8_t>> WebAuthnHandler::MakeAuthenticatorData(
     const std::vector<uint8_t>& credential_public_key,
     bool user_verified,
     bool include_attested_credential_data,
-    bool is_u2f_authenticator_credential) {
+    CredentialSecretType secret_type) {
   std::vector<uint8_t> authenticator_data(rp_id_hash);
   uint8_t flags =
       static_cast<uint8_t>(AuthenticatorDataFlag::kTestOfUserPresence);
@@ -612,7 +620,7 @@ std::optional<std::vector<uint8_t>> WebAuthnHandler::MakeAuthenticatorData(
   // The U2F authenticator keeps a user-global signature counter in UserState.
   // For platform authenticator credentials, we derive a counter from a
   // timestamp instead.
-  if (is_u2f_authenticator_credential) {
+  if (secret_type == CredentialSecretType::kUserSecret) {
     std::optional<std::vector<uint8_t>> counter = user_state_->GetCounter();
     if (!counter || !user_state_->IncrementCounter()) {
       // UserState logs an error in this case.
@@ -624,9 +632,9 @@ std::optional<std::vector<uint8_t>> WebAuthnHandler::MakeAuthenticatorData(
   }
 
   if (include_attested_credential_data) {
-    util::AppendToVector(is_u2f_authenticator_credential
-                             ? std::vector<uint8_t>(kAaguid.size(), 0)
-                             : kAaguid,
+    util::AppendToVector(secret_type == CredentialSecretType::kPlatformStored
+                             ? kAaguid
+                             : std::vector<uint8_t>(kAaguid.size(), 0),
                          &authenticator_data);
     uint16_t length = credential_id.size();
     util::AppendToVector(Uint16ToByteVector(length), &authenticator_data);
@@ -650,21 +658,15 @@ WebAuthnHandler::MakeFidoU2fAttestationStatement(
     const std::vector<uint8_t>& challenge,
     const std::vector<uint8_t>& pub_key,
     const std::vector<uint8_t>& key_handle,
+    const brillo::SecureBlob& credential_secret,
     const MakeCredentialRequest::AttestationConveyancePreference
         attestation_conveyance_preference) {
   std::vector<uint8_t> attestation_cert;
   std::vector<uint8_t> signature;
   if (attestation_conveyance_preference == MakeCredentialRequest::G2F &&
       u2f_mode_ == U2fMode::kU2fExtended) {
-    std::optional<brillo::SecureBlob> user_secret =
-        user_state_->GetUserSecret();
-    if (!user_secret.has_value()) {
-      LOG(ERROR) << "No user secret.";
-      return std::nullopt;
-    }
-
     MakeCredentialResponse::MakeCredentialStatus attest_status =
-        u2f_command_processor_->G2fAttest(app_id, *user_secret, challenge,
+        u2f_command_processor_->G2fAttest(app_id, credential_secret, challenge,
                                           pub_key, key_handle,
                                           &attestation_cert, &signature);
 
@@ -810,41 +812,48 @@ void WebAuthnHandler::GetAssertion(
     return;
   }
 
-  DoGetAssertion(std::move(session), PresenceRequirement::kPowerButton);
+  DoGetAssertion(std::move(session), PresenceRequirement::kPowerButton,
+                 CredentialSecretType::kUserSecret);
 }
 
 // If already seeing failure, then no need to get user secret. This means
 // in the fingerprint case, this signal should ideally come from UI instead of
 // biod because only UI knows about retry.
 void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
-                                     PresenceRequirement presence_requirement) {
+                                     PresenceRequirement presence_requirement,
+                                     CredentialSecretType secret_type) {
   GetAssertionResponse response;
 
-  bool is_u2f_authenticator_credential = false;
   brillo::SecureBlob credential_secret;
   std::vector<uint8_t> credential_key_blob;
-  if (!webauthn_storage_->GetSecretAndKeyBlobByCredentialId(
-          session.credential_id, &credential_secret, &credential_key_blob)) {
-    if (!AllowPresenceMode()) {
-      LOG(ERROR) << "GetAssertion: No credential secret for credential id "
-                 << session.credential_id << ", aborting GetAssertion.";
-      response.set_status(GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
-      session.response->Return(response);
-      return;
+  // Set credential_secret depending on the secret_type.
+  switch (secret_type) {
+    case CredentialSecretType::kPlatformStored: {
+      if (!webauthn_storage_->GetSecretAndKeyBlobByCredentialId(
+              session.credential_id, &credential_secret,
+              &credential_key_blob)) {
+        LOG(ERROR) << "GetAssertion: No credential secret for credential id "
+                   << session.credential_id << ", aborting GetAssertion.";
+        response.set_status(GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
+        session.response->Return(response);
+        return;
+      }
+      break;
     }
-
-    // Maybe signing u2fhid credentials. Use legacy secret instead.
-    std::optional<brillo::SecureBlob> legacy_secret =
-        user_state_->GetUserSecret();
-    if (!legacy_secret) {
-      LOG(ERROR) << "GetAssertion: Cannot find user secret when trying to sign "
-                    "u2fhid credentials";
-      response.set_status(GetAssertionResponse::INTERNAL_ERROR);
-      session.response->Return(response);
-      return;
+    case CredentialSecretType::kUserSecret: {
+      std::optional<brillo::SecureBlob> legacy_secret =
+          user_state_->GetUserSecret();
+      if (!legacy_secret) {
+        LOG(ERROR)
+            << "GetAssertion: Cannot find user secret when trying to sign "
+               "u2fhid credentials";
+        response.set_status(GetAssertionResponse::INTERNAL_ERROR);
+        session.response->Return(response);
+        return;
+      }
+      credential_secret = std::move(*legacy_secret);
+      break;
     }
-    credential_secret = std::move(*legacy_secret);
-    is_u2f_authenticator_credential = true;
   }
 
   const std::vector<uint8_t> rp_id_hash = util::Sha256(session.request.rp_id());
@@ -855,8 +864,7 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
           // verified. Otherwise the user was verified through UI.
           /* user_verified = */ presence_requirement !=
               PresenceRequirement::kPowerButton,
-          /* include_attested_credential_data = */ false,
-          is_u2f_authenticator_credential);
+          /* include_attested_credential_data = */ false, secret_type);
   if (!authenticator_data) {
     LOG(ERROR) << "GetAssertion: MakeAuthenticatorData failed";
     response.set_status(GetAssertionResponse::INTERNAL_ERROR);

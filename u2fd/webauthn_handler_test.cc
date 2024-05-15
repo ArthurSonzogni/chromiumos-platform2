@@ -36,6 +36,7 @@ namespace {
 using ::brillo::dbus_utils::MockDBusMethodResponse;
 
 using ::testing::_;
+using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::Matcher;
 using ::testing::MatchesRegex;
@@ -217,11 +218,9 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
     EXPECT_CALL(mock_user_state_, GetUserSecret()).Times(0);
   }
 
-  void ExpectGetUserSecret() { ExpectGetUserSecretForTimes(1); }
-
-  void ExpectGetUserSecretForTimes(int times) {
+  void ExpectGetUserSecret() {
     EXPECT_CALL(mock_user_state_, GetUserSecret())
-        .Times(times)
+        .Times(AtLeast(1))
         .WillRepeatedly(Return(ArrayToSecureBlob(kUserSecret)));
   }
 
@@ -240,11 +239,11 @@ class WebAuthnHandlerTestBase : public ::testing::Test {
       const std::vector<uint8_t>& credential_public_key,
       bool user_verified,
       bool include_attested_credential_data,
-      bool is_u2f_authenticator_credential) {
+      CredentialSecretType secret_type) {
     std::optional<std::vector<uint8_t>> authenticator_data =
         handler_->MakeAuthenticatorData(
             GetRpIdHash(), credential_id, credential_public_key, user_verified,
-            include_attested_credential_data, is_u2f_authenticator_credential);
+            include_attested_credential_data, secret_type);
     DCHECK(authenticator_data);
     return *authenticator_data;
   }
@@ -878,7 +877,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataWithAttestedCredData) {
       MakeAuthenticatorData(cred_id, cred_pubkey, /* user_verified = */
                             false,
                             /* include_attested_credential_data = */ true,
-                            /* is_u2f_authenticator_credential = */ false);
+                            CredentialSecretType::kPlatformStored);
   EXPECT_EQ(authenticator_data.size(),
             kRpIdHashBytes + kAuthenticatorDataFlagBytes +
                 kSignatureCounterBytes + kAaguidBytes +
@@ -907,7 +906,7 @@ TEST_F(WebAuthnHandlerTestBase, MakeAuthenticatorDataNoAttestedCredData) {
       MakeAuthenticatorData(std::vector<uint8_t>(), std::vector<uint8_t>(),
                             /* user_verified = */ false,
                             /* include_attested_credential_data = */ false,
-                            /* is_u2f_authenticator_credential = */ false);
+                            CredentialSecretType::kPlatformStored);
   EXPECT_EQ(
       authenticator_data.size(),
       kRpIdHashBytes + kAuthenticatorDataFlagBytes + kSignatureCounterBytes);
@@ -934,7 +933,7 @@ TEST_F(WebAuthnHandlerTestBase,
       MakeAuthenticatorData(std::vector<uint8_t>(), std::vector<uint8_t>(),
                             /* user_verified = */ false,
                             /* include_attested_credential_data = */ false,
-                            /* is_u2f_authenticator_credential = */ true);
+                            CredentialSecretType::kUserSecret);
 
   EXPECT_EQ(
       base::HexEncode(authenticator_data),
@@ -980,7 +979,7 @@ TEST_F(WebAuthnHandlerTestU2fMode, MakeCredentialPresenceSuccess) {
   // 1. LegacyCredential uses "user secret" instead of per credential secret.
   // 2. We will still check if any exclude credential matches legacy
   // credentials.
-  ExpectGetUserSecretForTimes(2);
+  ExpectGetUserSecret();
   SetUpAuthTimeSecretHash();
   EXPECT_CALL(*mock_processor_,
               U2fGenerate(GetRpIdHash(), GetCorrectUserSecret(),
@@ -1052,12 +1051,11 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialNoPresence) {
   ExpectGetCounter();
   ExpectIncrementCounter();
 
-  EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
-      .Times(2)
-      .WillRepeatedly(Return(false));
+  ON_CALL(*mock_webauthn_storage_,
+          GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
+      .WillByDefault(Return(false));
   // LegacyCredential uses "user secret" instead of per credential secret.
-  ExpectGetUserSecretForTimes(2);
+  ExpectGetUserSecret();
 
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
                                                  GetCorrectUserSecret(), _))
@@ -1091,12 +1089,11 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialSuccess) {
   ExpectGetCounter();
   ExpectIncrementCounter();
 
-  EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
-      .Times(2)
-      .WillRepeatedly(Return(false));
+  ON_CALL(*mock_webauthn_storage_,
+          GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
+      .WillByDefault(Return(false));
   // LegacyCredential uses "user secret" instead of per credential secret.
-  ExpectGetUserSecretForTimes(2);
+  ExpectGetUserSecret();
   EXPECT_CALL(*mock_processor_, U2fSignCheckOnly(GetRpIdHash(), GetCredId(),
                                                  GetCorrectUserSecret(), _))
       .WillOnce(Return(HasCredentialsResponse::SUCCESS));
@@ -1143,12 +1140,11 @@ TEST_F(WebAuthnHandlerTestU2fMode, GetAssertionSignLegacyCredentialAppIdMatch) {
   ExpectGetCounter();
   ExpectIncrementCounter();
 
-  EXPECT_CALL(*mock_webauthn_storage_,
-              GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
-      .Times(2)
-      .WillRepeatedly(Return(false));
+  ON_CALL(*mock_webauthn_storage_,
+          GetSecretAndKeyBlobByCredentialId(GetCredIdString(), _, _))
+      .WillByDefault(Return(false));
   // LegacyCredential uses "user secret" instead of per credential secret.
-  ExpectGetUserSecretForTimes(2);
+  ExpectGetUserSecret();
 
   // Rp id doesn't match.
   EXPECT_CALL(*mock_processor_,
@@ -1361,7 +1357,7 @@ TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialPresenceSuccess) {
   // second time for g2f attestation command,
   // third time for checking if any exclude credential matches legacy
   // credentials.
-  ExpectGetUserSecretForTimes(3);
+  ExpectGetUserSecret();
   SetUpAuthTimeSecretHash();
   EXPECT_CALL(*mock_processor_,
               U2fGenerate(GetRpIdHash(), _, PresenceRequirement::kPowerButton,

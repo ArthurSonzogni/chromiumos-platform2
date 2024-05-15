@@ -69,6 +69,16 @@ enum class PresenceRequirement {
   kAuthorizationSecret,  // Requires the correct authorization secret.
 };
 
+enum class CredentialSecretType {
+  // Platform credentials' credential secrets are randomly generated during
+  // MakeCredential, and persisted into WebAuthnStorage.
+  kPlatformStored,
+  // Legacy credentials' credential secret is the user secret stored in u2fd's
+  // daemon directory. Therefore, each user has 1 unique user secret, shared by
+  // all legacy credentials created by that user.
+  kUserSecret,
+};
+
 // COSE algorithm ID
 // https://www.iana.org/assignments/cose/cose.xhtml#algorithms
 enum class CoseAlgorithmIdentifier : int32_t {
@@ -198,7 +208,8 @@ class WebAuthnHandler {
 
   // Called on user verification success if the request is user-verification.
   void DoGetAssertion(struct GetAssertionSession session,
-                      PresenceRequirement presence_requirement);
+                      PresenceRequirement presence_requirement,
+                      CredentialSecretType secret_type);
 
   // Creates and returns authenticator data. |include_attested_credential_data|
   // should be set to true for MakeCredential, false for GetAssertion.
@@ -208,7 +219,7 @@ class WebAuthnHandler {
       const std::vector<uint8_t>& credential_public_key,
       bool user_verified,
       bool include_attested_credential_data,
-      bool is_u2f_authenticator_credential);
+      CredentialSecretType secret_type);
 
   // Appends a none attestation to |response|. Only used in MakeCredential.
   void AppendNoneAttestation(MakeCredentialResponse* response);
@@ -220,6 +231,7 @@ class WebAuthnHandler {
       const std::vector<uint8_t>& challenge,
       const std::vector<uint8_t>& pub_key,
       const std::vector<uint8_t>& key_handle,
+      const brillo::SecureBlob& credential_secret,
       const MakeCredentialRequest::AttestationConveyancePreference
           attestation_conveyance_preference);
 
