@@ -24,13 +24,13 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/rand_util.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
-#include <crypto/random.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/network_config.h>
@@ -110,7 +110,7 @@ bool ValidatePeersForStorage(const Stringmaps& peers) {
 
 std::string GenerateBase64PrivateKey() {
   uint8_t key[kWgKeyLength];
-  crypto::RandBytes(key, kWgKeyLength);
+  base::RandBytes(key);
 
   // Converts the random bytes into a Curve25519 key, as per
   // https://cr.yp.to/ecdh.html

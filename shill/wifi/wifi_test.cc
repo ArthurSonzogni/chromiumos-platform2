@@ -22,13 +22,13 @@
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
+#include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <crypto/random.h>
 #include <net-base/http_url.h>
 #include <net-base/mac_address.h>
 #include <net-base/mock_netlink_manager.h>
@@ -1607,7 +1607,7 @@ TEST_F(WiFiMainTest, GetStorageIdentifier) {
   // address changes.
   EXPECT_EQ(storage_id, std::string("device_") + perm_address()->ToHexString());
   net_base::MacAddress::DataType bytes;
-  crypto::RandBytes(bytes.data(), bytes.size());
+  base::RandBytes(bytes);
   SetMacAddress(net_base::MacAddress(bytes));
   EXPECT_EQ(storage_id, GetStorageIdentifier());
 }

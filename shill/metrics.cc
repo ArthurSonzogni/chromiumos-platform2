@@ -15,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/rand_util.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
@@ -22,7 +23,6 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
-#include <crypto/random.h>
 #include <crypto/sha2.h>
 #include <metrics/bootstat.h>
 #include <metrics/structured_events.h>
@@ -140,7 +140,7 @@ Metrics::Metrics()
       time_between_rekey_and_connection_failure_timer_(
           new chromeos_metrics::Timer) {
   char salt[kPseudoTagSaltLen];
-  crypto::RandBytes(salt, kPseudoTagSaltLen);
+  base::RandBytes(base::as_writable_byte_span(salt));
   pseudo_tag_salt_ = std::string(salt, kPseudoTagSaltLen);
 }
 

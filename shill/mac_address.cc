@@ -7,7 +7,6 @@
 #include <optional>
 #include <string>
 
-#include <crypto/random.h>
 #include <net-base/mac_address.h>
 
 #include "shill/store/store_interface.h"
