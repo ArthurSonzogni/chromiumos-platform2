@@ -40,7 +40,7 @@ TEST_F(PrimaryIoManagerTest, EmptyManager) {
 }
 
 TEST_F(PrimaryIoManagerTest, AddMouse) {
-  manager_->AddMouse("/dev/usb/3-2");
+  manager_->AddMouse("/dev/usb/3-2", "cool mouse");
 
   ASSERT_EQ(manager_->io_devices_.size(), 1);
 
@@ -51,7 +51,7 @@ TEST_F(PrimaryIoManagerTest, AddMouse) {
 }
 
 TEST_F(PrimaryIoManagerTest, AddKeyboard) {
-  manager_->AddKeyboard("/dev/usb/3-2");
+  manager_->AddKeyboard("/dev/usb/3-2", "cool keyboard");
 
   ASSERT_EQ(manager_->io_devices_.size(), 1);
 
@@ -62,8 +62,8 @@ TEST_F(PrimaryIoManagerTest, AddKeyboard) {
 }
 
 TEST_F(PrimaryIoManagerTest, AddKeyboardAndMouse) {
-  manager_->AddKeyboard("/dev/usb/3-2");
-  manager_->AddMouse("/dev/usb/3-1");
+  manager_->AddKeyboard("/dev/usb/3-2", "cool keyboard");
+  manager_->AddMouse("/dev/usb/3-1", "cool mouse");
 
   ASSERT_EQ(manager_->io_devices_.size(), 2);
 
@@ -77,8 +77,8 @@ TEST_F(PrimaryIoManagerTest, AddKeyboardAndMouse) {
 }
 
 TEST_F(PrimaryIoManagerTest, AddKeyboardAndMouseSameDevice) {
-  manager_->AddKeyboard("/dev/usb/3-1");
-  manager_->AddMouse("/dev/usb/3-1");
+  manager_->AddKeyboard("/dev/usb/3-1", "cool keyboard");
+  manager_->AddMouse("/dev/usb/3-1", "cool mouse");
 
   ASSERT_EQ(manager_->io_devices_.size(), 1);
 
@@ -96,8 +96,8 @@ TEST_F(PrimaryIoManagerTest, AddKeyboardAndMouseSameDevice) {
 TEST_F(PrimaryIoManagerTest, AddAndRemoveDevices) {
   std::string mouse = "/dev/usb/3-1";
   std::string keyboard = "/dev/usb/3-2";
-  manager_->AddKeyboard(keyboard);
-  manager_->AddMouse(mouse);
+  manager_->AddKeyboard(keyboard, "cool keyboard");
+  manager_->AddMouse(mouse, "cool mouse");
   manager_->RemoveDevice(keyboard);
 
   ASSERT_EQ(manager_->io_devices_.size(), 1);
@@ -116,8 +116,8 @@ TEST_F(PrimaryIoManagerTest, AddAndRemoveDevices) {
 TEST_F(PrimaryIoManagerTest, TwoMice_RemovePrimary) {
   std::string primary_mouse = "/dev/usb/3-1";
   std::string secondary_mouse = "/dev/usb/3-2";
-  manager_->AddMouse(primary_mouse);
-  manager_->AddMouse(secondary_mouse);
+  manager_->AddMouse(primary_mouse, "cool mouse");
+  manager_->AddMouse(secondary_mouse, "cooler mouse");
 
   ASSERT_EQ(manager_->io_devices_.size(), 2);
 
@@ -145,8 +145,8 @@ TEST_F(PrimaryIoManagerTest, TwoMice_RemovePrimary) {
 TEST_F(PrimaryIoManagerTest, TwoMice_RemoveSecondary) {
   std::string primary_mouse = "/dev/usb/3-1";
   std::string secondary_mouse = "/dev/usb/3-2";
-  manager_->AddMouse(primary_mouse);
-  manager_->AddMouse(secondary_mouse);
+  manager_->AddMouse(primary_mouse, "cool mouse");
+  manager_->AddMouse(secondary_mouse, "cooler mouse");
 
   ASSERT_EQ(manager_->io_devices_.size(), 2);
 
