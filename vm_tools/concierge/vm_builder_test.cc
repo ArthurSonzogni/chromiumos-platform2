@@ -386,16 +386,13 @@ TEST(VmBuilderTest, PmemRootfsReadonly) {
 
   std::vector<std::string> pmems;
   for (auto& p : result) {
-    if (p.first == "--pmem-device") {
+    if (p.first == "--pmem") {
       pmems.push_back(p.second);
     }
   }
 
   EXPECT_EQ(pmems.size(), 1);
-  EXPECT_EQ(pmems[0], "dummy");
-  EXPECT_THAT(result, testing::Contains(
-                          std::make_pair("--params", "root=/dev/pmem0 ro"))
-                          .Times(1));
+  EXPECT_EQ(pmems[0], "dummy,ro=true,root=true");
 }
 
 TEST(VmBuilderTest, PmemRootfsWritable) {
@@ -411,16 +408,12 @@ TEST(VmBuilderTest, PmemRootfsWritable) {
 
   std::vector<std::string> pmems;
   for (auto& p : result) {
-    if (p.first == "--rw-pmem-device") {
+    if (p.first == "--pmem") {
       pmems.push_back(p.second);
     }
   }
 
   EXPECT_EQ(pmems.size(), 1);
-  EXPECT_EQ(pmems[0], "dummy");
-
-  EXPECT_THAT(result, testing::Contains(
-                          std::make_pair("--params", "root=/dev/pmem0 rw"))
-                          .Times(1));
+  EXPECT_EQ(pmems[0], "dummy,ro=false,root=true");
 }
 }  // namespace vm_tools::concierge

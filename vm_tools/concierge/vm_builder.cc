@@ -533,20 +533,15 @@ base::StringPairs VmBuilder::BuildRunParams() const {
 
   if (rootfs_.has_value()) {
     const auto& rootfs = rootfs_.value();
+    std::string rootfs_arg = rootfs.path.value();
+    rootfs_arg += BooleanParameter(",ro=", !rootfs.writable);
+    rootfs_arg += BooleanParameter(",root=", true);
+
     if (rootfs.device.find("pmem") != std::string::npos) {
       // TODO(davidriley): Re-add rootflags=dax once guest kernel has fix for
       // b/169339326.
-      if (rootfs.writable) {
-        args.emplace_back("--rw-pmem-device", rootfs.path.value());
-        args.emplace_back("--params", "root=/dev/pmem0 rw");
-      } else {
-        args.emplace_back("--pmem-device", rootfs.path.value());
-        args.emplace_back("--params", "root=/dev/pmem0 ro");
-      }
+      args.emplace_back("--pmem", rootfs_arg);
     } else {
-      std::string rootfs_arg = rootfs.path.value();
-      rootfs_arg += BooleanParameter(",ro=", !rootfs.writable);
-      rootfs_arg += BooleanParameter(",root=", true);
       args.emplace_back("--block", rootfs_arg);
     }
   }
