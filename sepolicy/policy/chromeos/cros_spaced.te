@@ -82,6 +82,7 @@ dontaudit cros_spaced {
 dontaudit cros_spaced {
   audio_device
   cros_shm
+  dbc_device
   devpts
   input_device
   sysfs_dm
