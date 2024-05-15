@@ -56,7 +56,8 @@ int main(int argc, char** argv) {
   }
 
   if (FLAGS_flash_mode_check) {
-    return EXIT_SUCCESS;
+    // not supported, return failure
+    return EXIT_FAILURE;
   }
 
   if (!FLAGS_clear_attach_apn.empty()) {

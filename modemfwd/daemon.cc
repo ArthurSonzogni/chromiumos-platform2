@@ -57,12 +57,6 @@ constexpr char kPrefsDir[] = "/var/lib/modemfwd/";
 constexpr char kModemsSeenSinceOobeKey[] = "modems_seen_since_oobe";
 constexpr char kDisableAutoUpdateKey[] = "disable_auto_update";
 
-constexpr char const* kDevicesSupportingFlashModeCheck[] = {
-    "usb:2cb7:0007",  // L850
-    "usb:2cb7:01a2",  // FM101
-    "usb:2cb7:01a0",  // NL668
-};
-
 // Returns the modem firmware variant for the current model of the device by
 // reading the /modem/firmware-variant property of the current model via
 // chromeos-config. Returns an empty string if it fails to read the modem
@@ -106,16 +100,6 @@ base::TimeDelta GetModemWedgeCheckDelay() {
   LOG(INFO) << "Use customized wedge reboot delay: " << wedge_delay;
   return wedge_delay;
 }
-
-bool IsFlashModeCheckEnabledForDeviceId(const std::string& device_id) {
-  for (auto const& device : kDevicesSupportingFlashModeCheck) {
-    if (base::Contains(device_id, device)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 }  // namespace
 
 namespace modemfwd {
@@ -493,8 +477,7 @@ bool Daemon::ResetModem(const std::string& device_id) {
 void Daemon::ForceFlashIfInFlashMode(const std::string& device_id,
                                      ModemHelper* helper) {
   EVLOG(1) << __func__ << "device_id: " << device_id;
-  if (!IsFlashModeCheckEnabledForDeviceId(device_id) ||
-      !helper->FlashModeCheck()) {
+  if (!helper->FlashModeCheck()) {
     return;
   }
 
