@@ -56,6 +56,7 @@ struct GetAssertionSession {
 
 struct MatchedCredentials {
   std::vector<std::string> platform_credentials;
+  std::vector<std::string> global_legacy_credentials;
   std::vector<std::string> legacy_credentials_for_rp_id;
   std::vector<std::string> legacy_credentials_for_app_id;
   bool has_internal_error = false;
@@ -77,6 +78,12 @@ enum class CredentialSecretType {
   // daemon directory. Therefore, each user has 1 unique user secret, shared by
   // all legacy credentials created by that user.
   kUserSecret,
+  // To make the keys available outside user session, under some conditions (for
+  // specific RPs only, or guarded by policy) we create keys just like legacy
+  // credentials with kUserSecret type, but with a well-known value as the user
+  // secret. These credentials are not bound to users and can be used from all
+  // user sessions and guest sessions.
+  kGlobalWellKnownSecret,
 };
 
 // COSE algorithm ID
@@ -100,13 +107,16 @@ class WebAuthnHandler {
   // |u2f_mode| - whether u2f or g2f is enabled.
   // |u2f_command_processor| - processor for executing u2f commands.
   // |allowlisting_util| - utility to append allowlisting data to g2f certs.
-  // |metrics| pointer to metrics library object.
+  // |metrics| - pointer to metrics library object.
+  // |enable_global_key| - whether creation/discovery of global keys (unbound to
+  // user session) are enabled.
   void Initialize(dbus::Bus* bus,
                   UserState* user_state,
                   U2fMode u2f_mode,
                   std::unique_ptr<U2fCommandProcessor> u2f_command_processor,
                   std::unique_ptr<AllowlistingUtil> allowlisting_util,
-                  MetricsLibraryInterface* metrics);
+                  MetricsLibraryInterface* metrics,
+                  bool enable_global_key);
 
   // Called when session state changed. Loads/clears state for primary user.
   void OnSessionStarted(const std::string& account_id);
@@ -283,6 +293,10 @@ class WebAuthnHandler {
   std::unique_ptr<U2fCommandProcessor> u2f_command_processor_;
 
   MetricsLibraryInterface* metrics_;
+
+  // Whether creation/discovery of global keys (unbound to user session) are
+  // enabled.
+  bool enable_global_key_;
 };
 
 }  // namespace u2f

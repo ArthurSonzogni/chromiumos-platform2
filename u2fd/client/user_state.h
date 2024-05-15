@@ -18,6 +18,8 @@
 
 namespace u2f {
 
+static constexpr const int kUserSecretSizeBytes = 32;
+
 // Encapsulates access to user-specific U2F state. This class is not
 // thread-safe.
 class U2F_CLIENT_EXPORT UserState {
@@ -63,9 +65,6 @@ class U2F_CLIENT_EXPORT UserState {
  protected:
   // Constructor for use by mock objects.
   UserState();
-
-  // FuzzedUserState also use this constant
-  static constexpr const int kUserSecretSizeBytes = 32;
 
  private:
   // Handler for the SessionStateChanged signal.

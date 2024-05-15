@@ -110,7 +110,8 @@ class WebAuthnFuzzer : public brillo::Daemon {
 
     handler_->Initialize(mock_bus_.get(), user_state_.get(), u2f_mode,
                          std::move(u2f_command_processor),
-                         std::move(allowlisting_util), &mock_metrics_);
+                         std::move(allowlisting_util), &mock_metrics_,
+                         /*enable_global_key=*/data_provider_.ConsumeBool());
   }
 
   void ScheduleFuzzDbusApi() {

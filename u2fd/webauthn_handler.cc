@@ -24,6 +24,7 @@
 #include <openssl/rand.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
+#include "u2fd/client/user_state.h"
 #include "u2fd/client/util.h"
 #include "u2fd/u2f_command_processor.h"
 
@@ -121,7 +122,8 @@ void WebAuthnHandler::Initialize(
     U2fMode u2f_mode,
     std::unique_ptr<U2fCommandProcessor> u2f_command_processor,
     std::unique_ptr<AllowlistingUtil> allowlisting_util,
-    MetricsLibraryInterface* metrics) {
+    MetricsLibraryInterface* metrics,
+    bool enable_global_key) {
   if (Initialized()) {
     VLOG(1) << "WebAuthn handler already initialized, doing nothing.";
     return;
@@ -134,6 +136,7 @@ void WebAuthnHandler::Initialize(
   user_state_->SetSessionStoppedCallback(base::BindRepeating(
       &WebAuthnHandler::OnSessionStopped, base::Unretained(this)));
   u2f_mode_ = u2f_mode;
+  enable_global_key_ = enable_global_key;
   allowlisting_util_ = std::move(allowlisting_util);
   bus_ = bus;
   auth_dialog_dbus_proxy_ = bus_->GetObjectProxy(
@@ -475,6 +478,10 @@ void WebAuthnHandler::DoMakeCredential(
       credential_secret = std::move(*legacy_secret);
       break;
     }
+    case CredentialSecretType::kGlobalWellKnownSecret: {
+      credential_secret = brillo::SecureBlob(kUserSecretSizeBytes);
+      break;
+    }
   }
 
   MakeCredentialResponse::MakeCredentialStatus generate_status =
@@ -751,6 +758,7 @@ void WebAuthnHandler::GetAssertion(
   std::string* credential_to_use;
   bool is_legacy_credential = false;
   bool use_app_id = false;
+  bool use_global_user_secret = false;
 
   MatchedCredentials matched = FindMatchedCredentials(
       request.allowed_credential_id(), request.rp_id(), request.app_id());
@@ -771,6 +779,10 @@ void WebAuthnHandler::GetAssertion(
     credential_to_use = &matched.legacy_credentials_for_app_id[0];
     is_legacy_credential = true;
     use_app_id = true;
+  } else if (!matched.global_legacy_credentials.empty()) {
+    credential_to_use = &matched.global_legacy_credentials[0];
+    is_legacy_credential = true;
+    use_global_user_secret = true;
   } else {
     LOG(ERROR) << "GetAssertion: Failed to find matched credentials";
     response.set_status(GetAssertionResponse::UNKNOWN_CREDENTIAL_ID);
@@ -813,7 +825,9 @@ void WebAuthnHandler::GetAssertion(
   }
 
   DoGetAssertion(std::move(session), PresenceRequirement::kPowerButton,
-                 CredentialSecretType::kUserSecret);
+                 use_global_user_secret
+                     ? CredentialSecretType::kGlobalWellKnownSecret
+                     : CredentialSecretType::kUserSecret);
 }
 
 // If already seeing failure, then no need to get user secret. This means
@@ -852,6 +866,10 @@ void WebAuthnHandler::DoGetAssertion(struct GetAssertionSession session,
         return;
       }
       credential_secret = std::move(*legacy_secret);
+      break;
+    }
+    case CredentialSecretType::kGlobalWellKnownSecret: {
+      credential_secret = brillo::SecureBlob(kUserSecretSizeBytes);
       break;
     }
   }
@@ -904,6 +922,7 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
     const RepeatedPtrField<std::string>& all_credentials,
     const std::string& rp_id,
     const std::string& app_id) {
+  const brillo::SecureBlob global_user_secret(kUserSecretSizeBytes);
   std::vector<uint8_t> rp_id_hash = util::Sha256(rp_id);
   std::vector<uint8_t> app_id_hash = util::Sha256(app_id);
   MatchedCredentials result;
@@ -929,11 +948,44 @@ MatchedCredentials WebAuthnHandler::FindMatchedCredentials(
     }
   }
 
+  if (enable_global_key_) {
+    // Credentials created by global user secret (an all-zero salt).
+    for (const auto& credential_id : all_credentials) {
+      // We only need to match using rp_id because we were no longer using
+      // app_id for new credentials by the time we start using the global user
+      // secret.
+      HasCredentialsResponse::HasCredentialsStatus ret =
+          u2f_command_processor_->U2fSignCheckOnly(
+              rp_id_hash, util::ToVector(credential_id), global_user_secret,
+              nullptr);
+      DCHECK(HasCredentialsResponse::HasCredentialsStatus_IsValid(ret));
+      switch (ret) {
+        case HasCredentialsResponse::SUCCESS:
+          // rp_id matched, it's a credential registered with u2fhid on WebAuthn
+          // API.
+          result.global_legacy_credentials.emplace_back(credential_id);
+          continue;
+        case HasCredentialsResponse::UNKNOWN_CREDENTIAL_ID:
+          break;
+        case HasCredentialsResponse::UNKNOWN:
+        case HasCredentialsResponse::INVALID_REQUEST:
+        case HasCredentialsResponse::INTERNAL_ERROR:
+          LOG(ERROR) << "U2fSignCheckOnly failed with an internal error.";
+          result.has_internal_error = true;
+          return result;
+        default:
+          LOG(ERROR) << "Invalid HasCredentialsStatus proto value: " << ret
+                     << ".";
+          result.has_internal_error = true;
+          return result;
+      }
+    }
+  }
+
   const std::optional<brillo::SecureBlob> user_secret =
       user_state_->GetUserSecret();
   if (!user_secret) {
-    LOG(ERROR) << "Failed to get user secret.";
-    result.has_internal_error = true;
+    LOG(WARNING) << "Failed to get user secret.";
     return result;
   }
 
@@ -1019,6 +1071,9 @@ HasCredentialsResponse WebAuthnHandler::HasCredentials(
   for (const auto& credential_id : matched.platform_credentials) {
     *response.add_credential_id() = credential_id;
   }
+  for (const auto& credential_id : matched.global_legacy_credentials) {
+    *response.add_credential_id() = credential_id;
+  }
   for (const auto& credential_id : matched.legacy_credentials_for_rp_id) {
     *response.add_credential_id() = credential_id;
   }
@@ -1059,6 +1114,9 @@ HasCredentialsResponse WebAuthnHandler::HasLegacyCredentials(
   }
 
   // Do not include platform credentials.
+  for (const auto& credential_id : matched.global_legacy_credentials) {
+    *response.add_credential_id() = credential_id;
+  }
   for (const auto& credential_id : matched.legacy_credentials_for_rp_id) {
     *response.add_credential_id() = credential_id;
   }

@@ -36,6 +36,7 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
             bool enable_corp_protocol,
             bool g2f_allowlist_data,
             bool force_activate_fips,
+            bool enable_global_key,
             bool legacy_kh_fallback);
   U2fDaemon(const U2fDaemon&) = delete;
   U2fDaemon& operator=(const U2fDaemon&) = delete;
@@ -94,6 +95,7 @@ class U2fDaemon : public brillo::DBusServiceDaemon {
   const bool enable_corp_protocol_;
   const bool g2f_allowlist_data_;
   const bool force_activate_fips_;
+  const bool enable_global_key_;
   const bool legacy_kh_fallback_;
 
   // Cache whether service already started.

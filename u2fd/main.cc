@@ -26,6 +26,7 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(force_disable_corp_protocol, false,
               "disable corp internal APDU protocol");
   DEFINE_bool(force_activate_fips, false, "force activate FIPS mode in GSC");
+  DEFINE_bool(force_enable_global_key, false, "force enable global keys");
 
   brillo::FlagHelper::Init(argc, argv, "u2fd, U2FHID emulation daemon.");
 
@@ -42,9 +43,10 @@ int main(int argc, char* argv[]) {
 
   bool legacy_kh_fallback = FLAGS_legacy_kh_fallback || !FLAGS_user_keys;
 
-  u2f::U2fDaemon daemon(
-      FLAGS_force_u2f, FLAGS_force_g2f, !FLAGS_force_disable_corp_protocol,
-      FLAGS_g2f_allowlist_data, FLAGS_force_activate_fips, legacy_kh_fallback);
+  u2f::U2fDaemon daemon(FLAGS_force_u2f, FLAGS_force_g2f,
+                        !FLAGS_force_disable_corp_protocol,
+                        FLAGS_g2f_allowlist_data, FLAGS_force_activate_fips,
+                        FLAGS_force_enable_global_key, legacy_kh_fallback);
 
   // Start profiling.
   hwsec_foundation::SetUpProfiling();

@@ -140,6 +140,7 @@ U2fDaemon::U2fDaemon(bool force_u2f,
                      bool enable_corp_protocol,
                      bool g2f_allowlist_data,
                      bool force_activate_fips,
+                     bool enable_global_key,
                      bool legacy_kh_fallback)
     : brillo::DBusServiceDaemon(kU2FServiceName),
       force_u2f_(force_u2f),
@@ -147,6 +148,7 @@ U2fDaemon::U2fDaemon(bool force_u2f,
       enable_corp_protocol_(enable_corp_protocol),
       g2f_allowlist_data_(g2f_allowlist_data),
       force_activate_fips_(force_activate_fips),
+      enable_global_key_(enable_global_key),
       legacy_kh_fallback_(legacy_kh_fallback),
       service_started_(false),
       hwsec_factory_(hwsec::ThreadingMode::kCurrentThread) {
@@ -430,9 +432,9 @@ bool U2fDaemon::InitializeWebAuthnHandler(U2fMode u2f_mode,
     return false;
   }
 
-  webauthn_handler_.Initialize(bus_.get(), user_state_.get(), u2f_mode,
-                               std::move(u2f_command_processor),
-                               std::move(allowlisting_util), &metrics_library_);
+  webauthn_handler_.Initialize(
+      bus_.get(), user_state_.get(), u2f_mode, std::move(u2f_command_processor),
+      std::move(allowlisting_util), &metrics_library_, enable_global_key_);
   return true;
 }
 
