@@ -49,8 +49,10 @@ constexpr char kNoEarlyKeyFile[] = ".no_early_system_key";
 constexpr char kSysKeyBackupFile[] = "unencrypted/preserve/system.key";
 constexpr int kKeySize = SHA256_DIGEST_LENGTH;
 
-const std::array<const char*, 5> kSymlinkExceptions = {
-    "var/cache/echo", "var/cache/vpd", "var/lib/timezone", "var/log", "home",
+const std::array<const char*, 3> kSymlinkExceptions = {
+    "var/lib/timezone",
+    "var/log",
+    "home",
 };
 constexpr char kSymlinkExceptionsDir[] =
     "usr/share/cros/startup/symlink_exceptions";
