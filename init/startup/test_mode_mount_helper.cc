@@ -54,9 +54,7 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   // If the call create_system_key is successful, mount_var_and_home_chronos
   // will skip the normal system key generation procedure; otherwise, it will
   // generate and persist a key via its normal workflow.
-  std::optional<bool> system_key = flags_.sys_key_util;
-  bool sys_key = system_key.value_or(false);
-  if (sys_key) {
+  if (flags_.sys_key_util) {
     LOG(INFO) << "Creating System Key";
     std::string output;
     CreateSystemKey(platform_, root_, stateful_, startup_dep_, &output);

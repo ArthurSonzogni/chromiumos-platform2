@@ -231,9 +231,7 @@ void StatefulMount::AppendQuotaFeaturesAndOptions(
       sb_options->push_back(kQuotaOpt);
       sb_features->push_back("-Qusrquota,grpquota");
     }
-    std::optional<bool> prjquota_sup = flags_.prjquota;
-    bool prjquota = prjquota_sup.value_or(false);
-    if (prjquota) {
+    if (flags_.prjquota) {
       if (!IsFeatureEnabled(fs_features, kQuotaProjectOpt)) {
         sb_features->push_back("-Qprjquota");
       }
@@ -296,17 +294,13 @@ std::vector<std::string> StatefulMount::GenerateExt4Features(
     fs_features = state_dumpe2fs.substr(feature_pos, nl_pos);
   }
 
-  std::optional<bool> direncrypt = flags_.direncryption;
-  bool direncryption = direncrypt.value_or(false);
   base::FilePath encryption = root_.Append(kExt4Features).Append("encryption");
-  if (direncryption && platform_->FileExists(encryption)) {
+  if (flags_.direncryption && platform_->FileExists(encryption)) {
     AppendOption(fs_features, &sb_options, "encrypt");
   }
 
-  std::optional<bool> fsverity = flags_.fsverity;
-  bool verity = fsverity.value_or(false);
   base::FilePath verity_file = root_.Append(kExt4Features).Append("verity");
-  if (verity && platform_->FileExists(verity_file)) {
+  if (flags_.fsverity && platform_->FileExists(verity_file)) {
     AppendOption(fs_features, &sb_options, "verity");
   }
 

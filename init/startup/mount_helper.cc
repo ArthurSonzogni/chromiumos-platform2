@@ -212,18 +212,14 @@ bool MountHelper::UmountVarAndHomeChronosUnencrypted() {
 }
 
 bool MountHelper::MountVarAndHomeChronos() {
-  std::optional<bool> encrypted = flags_.encstateful;
-  bool encrypted_state = encrypted.value_or(false);
-  if (encrypted_state) {
+  if (flags_.encstateful) {
     return MountVarAndHomeChronosEncrypted();
   }
   return MountVarAndHomeChronosUnencrypted();
 }
 
 bool MountHelper::DoUmountVarAndHomeChronos() {
-  std::optional<bool> encrypted = flags_.encstateful;
-  bool encrypted_state = encrypted.value_or(false);
-  if (encrypted_state) {
+  if (flags_.encstateful) {
     return UmountVarAndHomeChronosEncrypted();
   }
   return UmountVarAndHomeChronosUnencrypted();
