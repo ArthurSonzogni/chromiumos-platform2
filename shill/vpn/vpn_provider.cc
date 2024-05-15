@@ -25,6 +25,7 @@
 #include "shill/vpn/l2tp_ipsec_driver.h"
 #include "shill/vpn/openvpn_driver.h"
 #include "shill/vpn/third_party_vpn_driver.h"
+#include "shill/vpn/vpn_metrics.h"
 #include "shill/vpn/vpn_service.h"
 #include "shill/vpn/vpn_types.h"
 #include "shill/vpn/wireguard_driver.h"
@@ -351,6 +352,10 @@ std::string VPNProvider::GetSupportedType() {
 #else
   return "";
 #endif  // DISABLE_VPN
+}
+
+void VPNProvider::ReportMetricsOnUserLogin() {
+  VPNGeneralMetrics(manager_->metrics()).ReportServicesNumber(services_.size());
 }
 
 }  // namespace shill

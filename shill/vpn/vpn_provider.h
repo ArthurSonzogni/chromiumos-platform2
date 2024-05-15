@@ -63,6 +63,9 @@ class VPNProvider : public ProviderInterface {
   // Return a comma-separated string of supported VPN types.
   std::string GetSupportedType();
 
+  // Called from Manager on user login.
+  void ReportMetricsOnUserLogin();
+
  private:
   friend class ArcVpnDriverTest;
   friend class L2TPIPsecDriverTest;

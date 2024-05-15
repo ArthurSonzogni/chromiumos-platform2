@@ -353,4 +353,8 @@ base::TimeDelta VPNDriverMetrics::SetConnectionState(
   return diff;
 }
 
+void VPNGeneralMetrics::ReportServicesNumber(int num) {
+  metrics_->SendToUMA(vpn_metrics::kMetricServicesNumber, num);
+}
+
 }  // namespace shill

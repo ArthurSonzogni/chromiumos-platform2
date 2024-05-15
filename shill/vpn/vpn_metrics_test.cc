@@ -457,4 +457,15 @@ TEST_F(VPNMetricsStateMachineTest, Reconnecting) {
 
 }  // namespace
 
+namespace {
+
+TEST(VPNGeneralMetricsTest, ReportServicesNumber) {
+  MockMetrics metrics;
+  VPNGeneralMetrics vpn_metrics(&metrics);
+  EXPECT_CALL(metrics, SendToUMA(vpn_metrics::kMetricServicesNumber, 5));
+  vpn_metrics.ReportServicesNumber(5);
+}
+
+}  // namespace
+
 }  // namespace shill

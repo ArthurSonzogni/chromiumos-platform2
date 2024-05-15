@@ -601,6 +601,7 @@ void Manager::InsertUserProfile(const std::string& name,
   }
   ident.user_hash = user_hash;
   PushProfileInternal(ident, path, error);
+  vpn_provider_->ReportMetricsOnUserLogin();
 }
 
 void Manager::PopProfileInternal() {

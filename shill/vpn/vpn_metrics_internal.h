@@ -238,6 +238,14 @@ constexpr VPNEnumMetric kMetricNameServers = {
     .max = kNameServerConfigMax,
 };
 
+// Number of configured VPN services.
+constexpr Metrics::HistogramMetric<Metrics::FixedName> kMetricServicesNumber = {
+    .n = Metrics::FixedName{"Network.Shill.Vpn.ServicesNumber"},
+    .min = 1,
+    .max = 20,
+    .num_buckets = 8,
+};
+
 }  // namespace vpn_metrics_internal
 }  // namespace shill
 

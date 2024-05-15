@@ -65,8 +65,20 @@ class VPNDriverMetrics {
   base::TimeTicks connection_state_last_changed_at_;
 };
 
-// TODO(b/331743444): Add other classes to report driver-specific metrics and
-// general metrics which are not tied to a driver.
+class VPNGeneralMetrics {
+ public:
+  explicit VPNGeneralMetrics(Metrics* metrics) : metrics_(metrics) {}
+
+  VPNGeneralMetrics(const VPNGeneralMetrics&) = delete;
+  VPNGeneralMetrics& operator=(const VPNGeneralMetrics&) = delete;
+
+  void ReportServicesNumber(int num);
+
+ private:
+  Metrics* metrics_;
+};
+
+// TODO(b/331743444): Add other classes to report driver-specific metrics.
 
 }  // namespace shill
 
