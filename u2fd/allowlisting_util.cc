@@ -268,14 +268,7 @@ std::optional<std::string> AllowlistingUtil::GetDeviceId() {
     return std::nullopt;
   }
 
-  std::string id;
-
-  if (!policy_provider_->GetDevicePolicy().GetDeviceDirectoryApiId(&id)) {
-    LOG(ERROR) << "Failed to read directory API ID";
-    return std::nullopt;
-  }
-
-  return id;
+  return policy_provider_->GetDevicePolicy().GetDeviceDirectoryApiId();
 }
 
 void AllowlistingUtil::SetPolicyProviderForTest(

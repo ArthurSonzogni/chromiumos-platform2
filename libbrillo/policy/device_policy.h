@@ -231,8 +231,7 @@ class DevicePolicy {
   // Writes the value of the Directory API ID to |directory_api_id_out|.
   // Returns true on success, false if the ID is not available (eg if the device
   // is not enrolled).
-  virtual bool GetDeviceDirectoryApiId(
-      std::string* directory_api_id_out) const = 0;
+  virtual std::optional<std::string> GetDeviceDirectoryApiId() const = 0;
 
   // Writes the value of the Customer ID to |customer_id_out|.
   // Returns true on success, false if the ID is not available (eg if the device

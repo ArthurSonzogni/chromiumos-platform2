@@ -161,8 +161,8 @@ class AllowlistingUtilTest : public ::testing::Test {
     EXPECT_CALL(*mock_policy_provider_, Reload()).WillOnce(Return(true));
     EXPECT_CALL(*mock_policy_provider_, GetDevicePolicy())
         .WillOnce(ReturnRef(mock_device_policy_));
-    EXPECT_CALL(mock_device_policy_, GetDeviceDirectoryApiId(_))
-        .WillOnce(DoAll(SetArgPointee<0>(id), Return(true)));
+    EXPECT_CALL(mock_device_policy_, GetDeviceDirectoryApiId())
+        .WillOnce(Return(id));
   }
 
   virtual void AppendFipsStatus(std::vector<uint8_t>* cert) {
@@ -275,8 +275,8 @@ TEST_F(AllowlistingUtilTest, AppendDataDeviceIdMissing) {
   EXPECT_CALL(*mock_policy_provider_, Reload()).WillOnce(Return(true));
   EXPECT_CALL(*mock_policy_provider_, GetDevicePolicy())
       .WillOnce(ReturnRef(mock_device_policy_));
-  EXPECT_CALL(mock_device_policy_, GetDeviceDirectoryApiId(_))
-      .WillOnce(Return(false));
+  EXPECT_CALL(mock_device_policy_, GetDeviceDirectoryApiId())
+      .WillOnce(Return(std::nullopt));
 
   ExpectAppendDataFails(&cert);
 }

@@ -759,13 +759,11 @@ bool DevicePolicyImpl::GetDeviceQuickFixBuildToken(
   return true;
 }
 
-bool DevicePolicyImpl::GetDeviceDirectoryApiId(
-    std::string* directory_api_id_out) const {
+std::optional<std::string> DevicePolicyImpl::GetDeviceDirectoryApiId() const {
   if (!policy_data_->has_directory_api_id())
-    return false;
+    return std::nullopt;
 
-  *directory_api_id_out = policy_data_->directory_api_id();
-  return true;
+  return policy_data_->directory_api_id();
 }
 
 bool DevicePolicyImpl::GetCustomerId(std::string* customer_id_out) const {

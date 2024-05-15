@@ -119,7 +119,10 @@ class MockDevicePolicy : public DevicePolicy {
               GetDeviceQuickFixBuildToken,
               (std::string*),
               (const, override));
-  MOCK_METHOD(bool, GetDeviceDirectoryApiId, (std::string*), (const, override));
+  MOCK_METHOD(std::optional<std::string>,
+              GetDeviceDirectoryApiId,
+              (),
+              (const, override));
   MOCK_METHOD(bool, GetCustomerId, (std::string*), (const, override));
   MOCK_METHOD(bool, VerifyPolicySignature, (), (override));
   MOCK_METHOD(bool, GetChannelDowngradeBehavior, (int*), (const, override));

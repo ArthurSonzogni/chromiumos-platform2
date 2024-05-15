@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <optional>
+#include <string>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -321,18 +322,15 @@ TEST_F(DevicePolicyImplTest, GetDeviceDirectoryApiId_Set) {
 
   device_policy_.set_policy_data_for_testing(policy_data);
 
-  std::string id;
-  EXPECT_TRUE(device_policy_.GetDeviceDirectoryApiId(&id));
-  EXPECT_EQ(kDummyDeviceId, id);
+  EXPECT_THAT(device_policy_.GetDeviceDirectoryApiId(),
+              testing::Optional(std::string(kDummyDeviceId)));
 }
 
 TEST_F(DevicePolicyImplTest, GetDeviceDirectoryApiId_NotSet) {
   em::PolicyData policy_data;
   device_policy_.set_policy_data_for_testing(policy_data);
 
-  std::string id;
-  EXPECT_FALSE(device_policy_.GetDeviceDirectoryApiId(&id));
-  EXPECT_TRUE(id.empty());
+  EXPECT_FALSE(device_policy_.GetDeviceDirectoryApiId().has_value());
 }
 
 // Should only write a value and return true as the ID should be present.
