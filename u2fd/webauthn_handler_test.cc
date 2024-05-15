@@ -1541,5 +1541,63 @@ TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialPresenceSuccess) {
   ASSERT_TRUE(called);
 }
 
+TEST_F(WebAuthnHandlerTestG2fMode, MakeCredentialGlobalKey) {
+  constexpr char kGoogleRpId[] = "google.com";
+  MakeCredentialRequest request;
+  request.set_rp_id(kGoogleRpId);
+  request.set_verification_type(VerificationType::VERIFICATION_USER_PRESENCE);
+  request.set_attestation_conveyance_preference(MakeCredentialRequest::G2F);
+
+  EXPECT_CALL(mock_user_state_, GetUserSecret())
+      .WillRepeatedly(Return(std::nullopt));
+  SetUpAuthTimeSecretHash();
+  EXPECT_CALL(
+      *mock_processor_,
+      U2fGenerate(util::Sha256(std::string(kGoogleRpId)), GetGlobalUserSecret(),
+                  PresenceRequirement::kPowerButton, false,
+                  Pointee(GetAuthTimeSecretHash()), _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(GetCredId()),
+                      SetArgPointee<6>(GetCredPubKey()),
+                      Return(MakeCredentialResponse::SUCCESS)));
+
+  // Since this creates a legacy credential with legacy secret, we won't write
+  // to storage.
+  EXPECT_CALL(*mock_webauthn_storage_, WriteRecord(_)).Times(0);
+
+  // G2f attestation mock.
+  EXPECT_CALL(*mock_processor_, G2fAttest(_, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<5>(GetDummyG2fCert()),
+                      SetArgPointee<6>(GetSignature()),
+                      Return(MakeCredentialResponse::SUCCESS)));
+  EXPECT_CALL(*mock_allowlisting_util_, AppendDataToCert(_))
+      .WillOnce(Return(true));
+
+  auto mock_method_response =
+      std::make_unique<MockDBusMethodResponse<MakeCredentialResponse>>();
+  bool called = false;
+  mock_method_response->set_return_callback(base::BindOnce(
+      [](bool* called_ptr, const MakeCredentialResponse& resp) {
+        EXPECT_EQ(resp.status(), MakeCredentialResponse::SUCCESS);
+        EXPECT_EQ(resp.attestation_format(), "fido-u2f");
+        const std::string expected_attestation_statement =
+            "A2"      // Start a CBOR map of 2 elements
+            "63"      // Start CBOR text of 3 chars
+            "736967"  // "sig"
+            ".+"      // Random signature
+            "63"      // Start CBOR text of 3 chars
+            "783563"  // "x5c"
+            "81"      // Start CBOR array of 1 element
+            ".+";     // Random x509
+        EXPECT_THAT(base::HexEncode(resp.attestation_statement().data(),
+                                    resp.attestation_statement().size()),
+                    MatchesRegex(expected_attestation_statement));
+        *called_ptr = true;
+      },
+      &called));
+
+  handler_->MakeCredential(std::move(mock_method_response), request);
+  ASSERT_TRUE(called);
+}
+
 }  // namespace
 }  // namespace u2f

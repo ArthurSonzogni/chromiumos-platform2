@@ -63,6 +63,8 @@ enum class AuthenticatorDataFlag : uint8_t {
 // Relative DBus object path for fingerprint manager in biod.
 const char kCrosFpBiometricsManagerRelativePath[] = "/CrosFpBiometricsManager";
 
+constexpr char kGoogleRpId[] = "google.com";
+
 std::vector<uint8_t> Uint16ToByteVector(uint16_t value) {
   return std::vector<uint8_t>({static_cast<uint8_t>((value >> 8) & 0xff),
                                static_cast<uint8_t>(value & 0xff)});
@@ -447,9 +449,15 @@ void WebAuthnHandler::DoMakeCredential(
   bool uv_compatible = !(AllowPresenceMode() &&
                          session.request.verification_type() ==
                              VerificationType::VERIFICATION_USER_PRESENCE);
-  CredentialSecretType secret_type = uv_compatible
-                                         ? CredentialSecretType::kPlatformStored
-                                         : CredentialSecretType::kUserSecret;
+  CredentialSecretType secret_type;
+  if (uv_compatible) {
+    secret_type = CredentialSecretType::kPlatformStored;
+  } else if (session.request.rp_id() == kGoogleRpId &&
+             u2f_mode_ == U2fMode::kU2fExtended && enable_global_key_) {
+    secret_type = CredentialSecretType::kGlobalWellKnownSecret;
+  } else {
+    secret_type = CredentialSecretType::kUserSecret;
+  }
 
   brillo::SecureBlob credential_secret(kCredentialSecretSize);
   switch (secret_type) {
