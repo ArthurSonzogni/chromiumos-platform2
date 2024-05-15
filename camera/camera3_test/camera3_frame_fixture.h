@@ -67,15 +67,15 @@ class Camera3FrameFixture : public Camera3StreamFixture {
                  {0xFF, 0xFF, 0xFF, 15.0f / 16},
              },
              {
-                 // OV5695 color bars
+                 // OV5695 color bars pattern
                  {0xFF, 0xFF, 0xFF, 0.0f},     // White
-                 {0xFF, 0xFF, 0x00, 0.1146f},  // Yellow
-                 {0x00, 0xFF, 0xFF, 0.2379f},  // Cyan
-                 {0x00, 0xFF, 0x00, 0.3612f},  // Green
-                 {0xFF, 0x00, 0xFF, 0.4845f},  // Magenta
-                 {0xFF, 0x00, 0x00, 0.6078f},  // Red
-                 {0x00, 0x00, 0xFF, 0.7311f},  // Blue
-                 {0x00, 0x00, 0x00, 0.8544f},  // Black
+                 {0xFF, 0xFF, 0x00, 0.1145f},  // Yellow
+                 {0x00, 0xFF, 0xFF, 0.2368f},  // Cyan
+                 {0x00, 0xFF, 0x00, 0.3611f},  // Green
+                 {0xFF, 0x00, 0xFF, 0.4837f},  // Magenta
+                 {0xFF, 0x00, 0x00, 0.6080f},  // Red
+                 {0x00, 0x00, 0xFF, 0.7307f},  // Blue
+                 {0x00, 0x00, 0x00, 0.8553f},  // Black
              },
              {
                  // IMX258 color bars
