@@ -562,28 +562,38 @@ void DebugdDBusAdaptor::ContainerStopped() {
 void DebugdDBusAdaptor::GenerateFirmwareDump(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     uint32_t type) {
-  const auto fwdump_type = ConvertFirmwareDumpType(type);
-  if (!fwdump_type.has_value()) {
-    response->ReplyWithError(
-        FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
-        "Invalid firmware dump type: " + std::to_string(type));
-    return;
+  if (UseFbPreprocessord()) {
+    const auto fwdump_type = ConvertFirmwareDumpType(type);
+    if (!fwdump_type.has_value()) {
+      response->ReplyWithError(
+          FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
+          "Invalid firmware dump type: " + std::to_string(type));
+      return;
+    }
+    return GenerateFirmwareDumpHelper(std::move(response), fwdump_type.value());
   }
-  return GenerateFirmwareDumpHelper(std::move(response), fwdump_type.value());
+  VLOG(1) << __func__ << ": Firmware dump is not generated because "
+          << "fbpreprocessord is not enabled";
+  response->Return(true);
 }
 
 void DebugdDBusAdaptor::ClearFirmwareDumpBuffer(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     uint32_t type) {
-  const auto fwdump_type = ConvertFirmwareDumpType(type);
-  if (!fwdump_type.has_value()) {
-    response->ReplyWithError(
-        FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
-        "Invalid firmware dump type: " + std::to_string(type));
-    return;
+  if (UseFbPreprocessord()) {
+    const auto fwdump_type = ConvertFirmwareDumpType(type);
+    if (!fwdump_type.has_value()) {
+      response->ReplyWithError(
+          FROM_HERE, brillo::errors::dbus::kDomain, DBUS_ERROR_FAILED,
+          "Invalid firmware dump type: " + std::to_string(type));
+      return;
+    }
+    return ClearFirmwareDumpBufferHelper(std::move(response),
+                                         fwdump_type.value());
   }
-  return ClearFirmwareDumpBufferHelper(std::move(response),
-                                       fwdump_type.value());
+  VLOG(1) << __func__ << ": Firmware dump buffer is not cleared because "
+          << "fbpreprocessord is not enabled";
+  response->Return(true);
 }
 
 std::string DebugdDBusAdaptor::SetWifiPowerSave(bool enable) {
