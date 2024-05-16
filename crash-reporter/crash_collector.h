@@ -149,6 +149,14 @@ class CrashCollector {
     forced_crash_directory_ = forced_directory;
   }
 
+  // For testing, force GetCreatedCrashDirectoryByEuid to return |forced_status|
+  // and set *out_of_capacity (if not nullptr) to |forced_out_of_capacity|.
+  void force_get_created_crash_directory_by_euid_status_for_test(
+      CrashCollectionStatus forced_status, bool forced_out_of_capacity) {
+    forced_get_created_crash_directory_by_euid_status_.emplace(
+        forced_status, forced_out_of_capacity);
+  }
+
   // For testing, set the directory where cached files are stored instead of
   // kCrashReporterStatePath.
   void set_reporter_state_directory_for_test(
@@ -661,6 +669,13 @@ class CrashCollector {
   void LogCrash(const std::string& message, const std::string& reason) const;
 
  private:
+  struct ForcedGetCreatedCrashDirectoryByEuidStatus {
+    ForcedGetCreatedCrashDirectoryByEuidStatus(
+        CrashCollectionStatus status_parameter, bool out_of_capacity_parameter);
+    CrashCollectionStatus status;
+    bool out_of_capacity;
+  };
+
   static bool ParseProcessTicksFromStat(std::string_view stat, uint64_t* ticks);
 
   // Adds variations (experiment IDs) to crash reports. Returns true on success.
@@ -675,6 +690,11 @@ class CrashCollector {
 
   // If set, UseDaemonStore will always return the contained value.
   std::optional<bool> force_daemon_store_;
+
+  // If set, GetCreatedCrashDirectoryByEuid will always return the contained
+  // status and set out_of_capacity to the contained boolean.
+  std::optional<ForcedGetCreatedCrashDirectoryByEuidStatus>
+      forced_get_created_crash_directory_by_euid_status_;
 
   // True when FinishCrash has been called. Once true, no new files should be
   // created.

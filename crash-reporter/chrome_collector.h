@@ -100,6 +100,8 @@ class ChromeCollector : public CrashCollector {
   FRIEND_TEST(ChromeCollectorTest, HandleCrash);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithEmbeddedNuls);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithWeirdFilename);
+  FRIEND_TEST(ChromeCollectorTest,
+              HandleCrash_GetCreatedCrashDirectoryByEuidFailure);
   FRIEND_TEST(ChromeCollectorTest, HandleCrashWithDumpData_ShutdownHang);
   FRIEND_TEST(ChromeCollectorTest,
               HandleCrashWithDumpData_NotShutdownHang_NoShutdownBrowserPidFile);

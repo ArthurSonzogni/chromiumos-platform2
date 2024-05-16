@@ -1186,6 +1186,37 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeSupplementalFiles) {
   EXPECT_THAT(meta_file_contents, HasSubstr("crashpad_signal_number=-1"));
 }
 
+TEST_F(ChromeCollectorTest, HandleCrash_GetCreatedCrashDirectoryByEuidFailure) {
+  const FilePath& dir = scoped_temp_dir_.GetPath();
+  FilePath input_dump_file = dir.Append("test.dmp");
+  ASSERT_TRUE(test_util::CreateFile(input_dump_file, kCrashFormatWithDumpFile));
+  SetUpDriErrorStateToReturn("<empty>");
+  SetUpCallDmesgToReturn("");
+  SetUpLogsNone();
+  collector_.force_get_created_crash_directory_by_euid_status_for_test(
+      CrashCollectionStatus::kOutOfCapacity, true);
+
+  FilePath log_file;
+  {
+    base::ScopedFILE output(
+        base::CreateAndOpenTemporaryStreamInDir(dir, &log_file));
+    ASSERT_TRUE(output.get());
+    base::AutoReset<FILE*> auto_reset_file_ptr(&collector_.output_file_ptr_,
+                                               output.get());
+    EXPECT_EQ(
+        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1),
+        CrashCollectionStatus::kOutOfCapacity);
+  }
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(test_crash_directory_,
+                                                      "*.123.dmp", nullptr));
+
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory_, "*.123-foo_txt.other", nullptr));
+
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(test_crash_directory_,
+                                                      "*.123.meta", nullptr));
+}
+
 TEST_F(ChromeCollectorTest, HandleCrashWithDumpData_ShutdownHang) {
   const FilePath& dir = scoped_temp_dir_.GetPath();
   FilePath aborted_browser_pid_file = dir.Append("aborted_browser_pid");

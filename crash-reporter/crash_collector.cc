@@ -265,6 +265,11 @@ void ExtractEnvironmentVars(const std::string& contents,
   }
 }
 
+CrashCollector::ForcedGetCreatedCrashDirectoryByEuidStatus::
+    ForcedGetCreatedCrashDirectoryByEuidStatus(
+        CrashCollectionStatus status_parameter, bool out_of_capacity_parameter)
+    : status(status_parameter), out_of_capacity(out_of_capacity_parameter) {}
+
 // static
 bool CrashCollector::OpenCrashDirectory(const base::FilePath& dir,
                                         mode_t expected_mode,
@@ -1228,6 +1233,15 @@ CrashCollectionStatus CrashCollector::GetCreatedCrashDirectoryByEuid(
   }
 
   // For testing.
+  if (forced_get_created_crash_directory_by_euid_status_) {
+    if (out_of_capacity) {
+      *out_of_capacity =
+          forced_get_created_crash_directory_by_euid_status_->out_of_capacity;
+    }
+    return forced_get_created_crash_directory_by_euid_status_->status;
+  }
+
+  // Also for testing.
   if (!forced_crash_directory_.empty()) {
     *crash_directory = forced_crash_directory_;
     return CrashCollectionStatus::kSuccess;

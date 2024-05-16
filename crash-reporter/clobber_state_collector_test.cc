@@ -15,6 +15,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/test_util.h"
 
 namespace {
@@ -22,6 +23,12 @@ namespace {
 using ::testing::HasSubstr;
 using ::testing::Not;
 using ::testing::Return;
+
+// Contentes of /run/tmpfiles.log that will produce a clobbber report.
+constexpr const char kTmpfilesLogErrorContents[] =
+    "/usr/lib/tmpfiles.d/vm_tools.conf:35: Duplicate line for path"
+    "\"/run/arc/sdcard\", ignoring.\n"
+    "contents of tmpfiles.log\n";
 
 // Log config file name.
 const char kLogConfigFileName[] = "log_config_file";
@@ -72,11 +79,7 @@ TEST(ClobberStateCollectorTest, TestClobberState) {
   base::FilePath report_path;
   std::string report_contents;
 
-  constexpr const char kTmpfilesContents[] =
-      "/usr/lib/tmpfiles.d/vm_tools.conf:35: Duplicate line for path"
-      "\"/run/arc/sdcard\", ignoring.\n"
-      "contents of tmpfiles.log\n";
-  Initialize(&collector, &tmp_dir, kTmpfilesContents);
+  Initialize(&collector, &tmp_dir, kTmpfilesLogErrorContents);
 
   EXPECT_TRUE(collector.Collect());
 
@@ -177,6 +180,28 @@ TEST(ClobberStateCollectorTest, TestClobberState_KnownIssue) {
     EXPECT_TRUE(base::ReadFileToString(report_path, &report_contents));
     EXPECT_EQ("found clobber.log\n", report_contents);
   }
+}
+
+TEST(ClobberStateCollectorTest,
+     TestClobberState_GetCreatedCrashDirectoryByEuidFailure) {
+  ClobberStateCollectorMock collector;
+  base::ScopedTempDir tmp_dir;
+  base::FilePath meta_path;
+  base::FilePath report_path;
+  std::string report_contents;
+
+  Initialize(&collector, &tmp_dir, kTmpfilesLogErrorContents);
+
+  collector.force_get_created_crash_directory_by_euid_status_for_test(
+      CrashCollectionStatus::kGetDefaultUserInfoFailed, false);
+
+  EXPECT_FALSE(collector.Collect());
+
+  // Check report collection.
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      tmp_dir.GetPath(), "clobber_state.*.meta", &meta_path));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      tmp_dir.GetPath(), "clobber_state.*.log", &report_path));
 }
 
 }  // namespace

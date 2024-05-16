@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "crash-reporter/ec_collector.h"
+
 #include <memory>
 
 #include <base/files/file_util.h>
@@ -14,7 +16,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/metrics_library_mock.h>
 
-#include "crash-reporter/ec_collector.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/test_util.h"
 
 using base::FilePath;
@@ -117,6 +119,17 @@ TEST_F(ECCollectorTest, TestGood) {
 TEST_F(ECCollectorTest, TestInvalid) {
   PreparePanicInfo(true, false, false);
   ASSERT_FALSE(collector_.Collect(/*use_saved_lsb=*/true));
+}
+
+TEST_F(ECCollectorTest, TestGetCreatedCrashDirectoryByEuidFailure) {
+  PreparePanicInfo(true, false);
+  collector_.force_get_created_crash_directory_by_euid_status_for_test(
+      CrashCollectionStatus::kOutOfCapacity, true);
+
+  // This failure returns true but doesn't create the file.
+  EXPECT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      temp_dir_generator_.GetPath(), "*.meta", nullptr));
 }
 
 TEST_F(ECCollectorTest, ComputeSeverity) {
