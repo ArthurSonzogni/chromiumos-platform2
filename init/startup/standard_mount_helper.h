@@ -30,7 +30,6 @@ class StandardMountHelper : public startup::MountHelper {
                                const bool dev_mode);
 
   bool DoMountVarAndHomeChronos() override;
-  startup::MountHelperType GetMountHelperType() const override;
 };
 
 }  // namespace startup

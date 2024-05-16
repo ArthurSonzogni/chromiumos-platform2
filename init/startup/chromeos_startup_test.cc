@@ -644,9 +644,15 @@ TEST_F(ConfigTest, NoDevMode) {
   ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 0));
   ASSERT_TRUE(platform_->WriteStringToFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=stable-channel\n"));
-  std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
-  EXPECT_EQ(helper->GetMountHelperType(),
-            startup::MountHelperType::kStandardMode);
+  EXPECT_EQ(dynamic_cast<startup::FactoryModeMountHelper*>(
+                GenerateMountHelper().get()),
+            nullptr);
+  EXPECT_EQ(
+      dynamic_cast<startup::TestModeMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
+  EXPECT_NE(
+      dynamic_cast<startup::StandardMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
 }
 
 TEST_F(ConfigTest, DevMode) {
@@ -654,8 +660,15 @@ TEST_F(ConfigTest, DevMode) {
   ASSERT_TRUE(platform_->WriteStringToFile(
       lsb_file_, "CHROMEOS_RELEASE_TRACK=stable-channel\n"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
-  EXPECT_EQ(helper->GetMountHelperType(),
-            startup::MountHelperType::kStandardMode);
+  EXPECT_EQ(dynamic_cast<startup::FactoryModeMountHelper*>(
+                GenerateMountHelper().get()),
+            nullptr);
+  EXPECT_EQ(
+      dynamic_cast<startup::TestModeMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
+  EXPECT_NE(
+      dynamic_cast<startup::StandardMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
 }
 
 TEST_F(ConfigTest, DevModeTest) {
@@ -666,7 +679,15 @@ TEST_F(ConfigTest, DevModeTest) {
   std::string test_lsb;
   ASSERT_TRUE(platform_->ReadFileToString(lsb_file_, &test_lsb));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
-  EXPECT_EQ(helper->GetMountHelperType(), startup::MountHelperType::kTestMode);
+  EXPECT_EQ(dynamic_cast<startup::FactoryModeMountHelper*>(
+                GenerateMountHelper().get()),
+            nullptr);
+  EXPECT_NE(
+      dynamic_cast<startup::TestModeMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
+  EXPECT_EQ(
+      dynamic_cast<startup::StandardMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
 }
 
 TEST_F(ConfigTest, DevModeTestFactoryTest) {
@@ -677,8 +698,15 @@ TEST_F(ConfigTest, DevModeTestFactoryTest) {
   base::FilePath factory_en = stateful_.Append("dev_image/factory/enabled");
   ASSERT_TRUE(platform_->WriteStringToFile(factory_en, "Enabled"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
-  EXPECT_EQ(helper->GetMountHelperType(),
-            startup::MountHelperType::kFactoryMode);
+  EXPECT_NE(dynamic_cast<startup::FactoryModeMountHelper*>(
+                GenerateMountHelper().get()),
+            nullptr);
+  EXPECT_EQ(
+      dynamic_cast<startup::TestModeMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
+  EXPECT_EQ(
+      dynamic_cast<startup::StandardMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
 }
 
 TEST_F(ConfigTest, DevModeTestFactoryInstaller) {
@@ -689,8 +717,15 @@ TEST_F(ConfigTest, DevModeTestFactoryInstaller) {
   base::FilePath cmdline = base_dir_.Append(kProcCmdLine);
   ASSERT_TRUE(platform_->WriteStringToFile(cmdline, "cros_factory_install"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
-  EXPECT_EQ(helper->GetMountHelperType(),
-            startup::MountHelperType::kFactoryMode);
+  EXPECT_NE(dynamic_cast<startup::FactoryModeMountHelper*>(
+                GenerateMountHelper().get()),
+            nullptr);
+  EXPECT_EQ(
+      dynamic_cast<startup::TestModeMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
+  EXPECT_EQ(
+      dynamic_cast<startup::StandardMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
 }
 
 TEST_F(ConfigTest, DevModeTestFactoryInstallerUsingFile) {
@@ -703,8 +738,15 @@ TEST_F(ConfigTest, DevModeTestFactoryInstallerUsingFile) {
   base::FilePath installer = base_dir_.Append("root/.factory_installer");
   ASSERT_TRUE(platform_->WriteStringToFile(installer, "factory"));
   std::unique_ptr<startup::MountHelper> helper = GenerateMountHelper();
-  EXPECT_EQ(helper->GetMountHelperType(),
-            startup::MountHelperType::kFactoryMode);
+  EXPECT_NE(dynamic_cast<startup::FactoryModeMountHelper*>(
+                GenerateMountHelper().get()),
+            nullptr);
+  EXPECT_EQ(
+      dynamic_cast<startup::TestModeMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
+  EXPECT_EQ(
+      dynamic_cast<startup::StandardMountHelper*>(GenerateMountHelper().get()),
+      nullptr);
 }
 
 class MountStackTest : public ::testing::Test {

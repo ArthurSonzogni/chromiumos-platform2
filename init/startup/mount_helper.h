@@ -19,13 +19,6 @@
 
 namespace startup {
 
-// An enum to specify what type of MountHelper is being used.
-enum class MountHelperType {
-  kStandardMode,
-  kTestMode,
-  kFactoryMode,
-};
-
 // MountHelper contains the functionality for maintaining the mount stack
 // and the mounting and umounting of /var and /home/chronos.
 // This is the base class for the MountHelper classes. The pure virtual
@@ -71,10 +64,6 @@ class MountHelper {
   // is different for test images and when in factory mode. It also
   // changes depending on the encrypted stateful USE flag.
   virtual bool DoMountVarAndHomeChronos() = 0;
-
-  // Returns a string representation of the MountHelper derived class
-  // used, for test purposes.
-  virtual MountHelperType GetMountHelperType() const = 0;
 
  protected:
   raw_ptr<libstorage::Platform> platform_;

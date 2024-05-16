@@ -33,8 +33,4 @@ bool StandardMountHelper::DoMountVarAndHomeChronos() {
   return MountVarAndHomeChronos();
 }
 
-startup::MountHelperType StandardMountHelper::GetMountHelperType() const {
-  return startup::MountHelperType::kStandardMode;
-}
-
 }  // namespace startup

@@ -107,8 +107,4 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   return true;
 }
 
-startup::MountHelperType TestModeMountHelper::GetMountHelperType() const {
-  return startup::MountHelperType::kTestMode;
-}
-
 }  // namespace startup

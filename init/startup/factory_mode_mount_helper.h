@@ -31,7 +31,6 @@ class FactoryModeMountHelper : public MountHelper {
                                   const bool dev_mode);
 
   bool DoMountVarAndHomeChronos() override;
-  MountHelperType GetMountHelperType() const override;
 };
 
 }  // namespace startup

@@ -69,8 +69,4 @@ bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
   return MountVarAndHomeChronosUnencrypted();
 }
 
-MountHelperType FactoryModeMountHelper::GetMountHelperType() const {
-  return MountHelperType::kFactoryMode;
-}
-
 }  // namespace startup
