@@ -60,6 +60,13 @@ user's application exits or if requested to by `vm_concierge`.
 See [docs/init.md](docs/init.md) for more details on the duties maitred carries
 out as pid 1.
 
+## notificationd
+
+A daemon that catches notifications from Crostini via D-BUS and forwards them to
+the host.
+
+See [notificationd/README.md](notificationd/README.md) for more details.
+
 ## garcon
 
 `garcon` is a daemon that runs inside of a container within a VM. gRPC is used
@@ -95,6 +102,13 @@ server.
 
 This makes it possible to share different sets of paths with different
 VMs by giving each of them access to a different 9p server.
+
+## sommelier
+
+Sommelier is an implementation of a Wayland compositor that delegates
+compositing to a 'host' compositor.
+
+See [sommelier/README.md](sommelier/README.md) for more details.
 
 ## 9s
 
@@ -141,17 +155,45 @@ core dump and converts it to a minidump before sending it out to the host.
 The host daemon passes the report on to `crash-reporter`, which takes care of
 uploading it to Google servers.
 
-## metric_collector
+## cros_im
 
-`metric_collector` is an IO reporting daemon for the default Crostini container.
+`cros_im` implements support for using ChromeOS IMEs over the Wayland protocols.
+
+See [cros_im/README.md](cros_im/README.md) for more details.
+
+## metric_reporter
+
+`metric_reporter` is an IO reporting daemon for the default Crostini container.
 It periodically polls the vmstats of the container (or really, the whole termina
 VM, since the stats are not namespaced) and reports those to UMA by invoking
 `garcon`.
 
-## vmc
+See [metric_reporter/README.md](metric_reporter/README.md) for more details.
 
-Command line tool for user-facing VM operations. See
-[vmc/README.md](vmc/README.md) for more details.
+## shadercached
+
+A daemon responsible for managing VM shader cache.
+
+See [../shadercached/README.md](../shadercached/README.md) for more details.
+
+## vmc (crostini_client)
+
+`vmc` is a command line tool used to interface with `vm_concierge` and other VM
+lifetime management APIs. It binds with libraries like the `crosvm_control`
+crate to expose an interface to end users (mostly developers) to interact with
+VMs.
+
+On non-developer builds, some of its features can be accessed via `crosh`.
+
+See [vmc/README.md](vmc/README.md) for more details.
+
+## Testing
+
+We have a project called `reference_vm` (or `refvm`) which is a Debian-based
+template implementation of a basic VM image that can be used to test ChromeOS VM
+integrations.
+
+See [reference_vm/README.md](reference_vm/README.md) for more details.
 
 ## VM <-> host communication
 
@@ -181,5 +223,5 @@ services provided between the host and the VM/container.
 
 
 [9p]: http://man.cat-v.org/plan_9/5/0intro
-[crosvm]: https://chromium.googlesource.com/chromiumos/platform/crosvm
+[crosvm]: https://crosvm.dev/book/
 [vsock]: https://lwn.net/Articles/695981/
