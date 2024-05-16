@@ -88,37 +88,89 @@ class KernelCollector : public CrashCollector {
   static PstoreRecordType StringToPstoreRecordType(std::string_view record);
   static std::string PstoreRecordTypeToString(PstoreRecordType record_type);
 
+  static constexpr char kDumpDriverEfiName[] = "efi";
+
  protected:
-  // This class represents single EFI crash.
-  class EfiCrash {
+  // This class represents a single pstore crash record. Depending on the
+  // backend used (EFI, ramoops, etc.) a pstore record may be split up across
+  // many files, each of which has an ID as the last number (for example
+  // dmesg-efi-150989600314002 has an id of 150989600314002). Regardless of the
+  // backend used, the pstore filesystem exposes records in a common format
+  // where each file has a header indicating the type of record (panic, oops,
+  // etc.) and the part of the record the file corresponds to. For example, a
+  // header "Panic#2 Part#4" indicates that the file is for the fourth part of
+  // the second panic recorded in the backend. The remaining data in the file is
+  // the record contents for that part.
+  class PstoreCrash {
+   public:
+    explicit PstoreCrash(uint64_t id,
+                         uint32_t max_part,
+                         std::string_view backend,
+                         const KernelCollector* collector)
+        : id_(id),
+          max_part_(max_part),
+          backend_(std::string(backend)),
+          collector_(collector) {}
+
+    PstoreCrash(const PstoreCrash&) = default;
+    PstoreCrash& operator=(const PstoreCrash&) = default;
+
+    virtual ~PstoreCrash();
+
+    // Load crash data into |contents|.
+    // Returns true iff all parts of crashes are copied to |contents|.
+    // In case of failure |contents| might be modified.
+    bool Load(std::string& contents) const;
+    // Get type of crash.
+    PstoreRecordType GetType() const;
+    // Remove pstore file(s) for this crash.
+    void Remove() const;
+
+    // Returns crash id.
+    uint64_t GetId() const { return id_; }
+
+    // Returns id for |part|.
+    virtual constexpr uint64_t GetIdForPart(uint32_t part) const { return id_; }
+
+   protected:
+    // Returns largest part for a record.
+    uint32_t GetMaxPart() const { return max_part_; }
+    void SetMaxPart(uint32_t max_part) { max_part_ = max_part; }
+    const KernelCollector* GetCollector() const { return collector_; }
+
+    // Returns the filepath in pstore for this record's |part|.
+    base::FilePath GetFilePath(uint32_t part) const;
+
+   private:
+    uint64_t id_;
+    uint32_t max_part_;
+    std::string backend_;
+    const KernelCollector* collector_;
+  };
+
+  // This class represents a single EFI crash record. An EFI crash record may be
+  // split across multiple files, each for a different part of the record.
+  class EfiCrash : public PstoreCrash {
    public:
     explicit EfiCrash(uint64_t id, const KernelCollector* collector)
-        : id_(id),
+        : PstoreCrash(id, GetPart(id), kDumpDriverEfiName, collector),
           timestamp_(GetTimestamp(id)),
-          max_part_(GetPart(id)),
-          crash_count_(GetCrashCount(id)),
-          collector_(collector) {}
+          crash_count_(GetCrashCount(id)) {}
 
     EfiCrash(const EfiCrash&) = default;
     EfiCrash& operator=(const EfiCrash&) = default;
 
-    ~EfiCrash() = default;
-
-    bool Load(std::string& contents) const;
-    PstoreRecordType GetType() const;
-    void Remove() const;
-    // Returns efi crash id.
-    uint64_t GetId() const { return id_; }
+    ~EfiCrash() override;
 
     // Updates part from crash id iff it's greater.
     void UpdateMaxPart(uint64_t id) {
       uint32_t part = GetPart(id);
-      if (part > max_part_) {
-        max_part_ = part;
+      if (part > GetMaxPart()) {
+        SetMaxPart(part);
       }
     }
 
-    constexpr uint64_t GetIdForPart(uint32_t part) const {
+    constexpr uint64_t GetIdForPart(uint32_t part) const override {
       return GenerateId(timestamp_, part, crash_count_);
     }
 
@@ -159,12 +211,8 @@ class KernelCollector : public CrashCollector {
     static constexpr size_t kMaxPart = 100;
 
    private:
-    uint64_t id_;
     uint64_t timestamp_;
-    uint32_t max_part_;
     uint32_t crash_count_;
-    const KernelCollector* collector_;
-    base::FilePath GetFilePath(uint32_t part) const;
   };
 
  private:
