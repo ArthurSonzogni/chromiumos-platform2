@@ -12,6 +12,7 @@
       "force_serialize": false,
       "move_only": false,
       "nullable_is_same_type": false,
+      "non_const_ref": false,
       "non_copyable_non_movable": false,
       "public_headers": [
         "base/time/time.h"
