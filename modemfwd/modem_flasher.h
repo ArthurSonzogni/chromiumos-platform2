@@ -16,12 +16,9 @@
 #include <brillo/errors/error.h>
 #include <chromeos/switches/modemfwd_switches.h>
 
-#include "modemfwd/daemon_delegate.h"
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/firmware_file.h"
-#include "modemfwd/journal.h"
 #include "modemfwd/modem.h"
-#include "modemfwd/notification_manager.h"
 
 namespace modemfwd {
 
@@ -32,119 +29,26 @@ struct FlashConfig {
 };
 
 // ModemFlasher contains all of the logic to make decisions about whether
-// or not it should flash new firmware onto the modem.
+// or not it should flash new firmware onto the modem. Users can check if
+// a modem has been blocked, and if they would like to proceed to flashing,
+// fetch a list of firmware files they should flash, and then send those
+// to the helper.
 class ModemFlasher {
  public:
-  ModemFlasher(Delegate* delegate,
-               FirmwareDirectory* firmware_directory,
-               Journal* journal,
-               NotificationManager* notification_mgr,
-               Metrics* metrics);
-  ModemFlasher(const ModemFlasher&) = delete;
-  ModemFlasher& operator=(const ModemFlasher&) = delete;
+  virtual ~ModemFlasher() = default;
 
-  // Returns false and sets |err| if an error occurred.
-  bool TryFlash(Modem* modem,
-                bool modem_seen_since_oobe,
-                brillo::ErrorPtr* err);
-
- private:
-  FRIEND_TEST(ModemFlasherTest, NewModemIsFlashable);
-  FRIEND_TEST(ModemFlasherTest, EmptyConfigFromEmptyFirmwareDirectory);
-  FRIEND_TEST(ModemFlasherTest, NewMainFirmwareAvailable);
-  FRIEND_TEST(ModemFlasherTest, EmptyConfigFromSameMainFirmware);
-  FRIEND_TEST(ModemFlasherTest, NewOemFirmwareAvailable);
-  FRIEND_TEST(ModemFlasherTest, EmptyConfigFromSameOemFirmware);
-  FRIEND_TEST(ModemFlasherTest, NewCarrierFirmwareAvailable);
-  FRIEND_TEST(ModemFlasherTest, EmptyConfigFromSameCarrierFirmware);
-  FRIEND_TEST(ModemFlasherTest, ShouldNotFlashAfterMainFlashFailure);
-  FRIEND_TEST(ModemFlasherTest, ShouldNotFlashAfterCarrierFlashFailure);
-  FRIEND_TEST(ModemFlasherTest, ConfigHasAssocFirmware);
-  FRIEND_TEST(ModemFlasherTest, ModemNeverSeenError);
-
-  class FlashState {
-   public:
-    FlashState() = default;
-    ~FlashState() = default;
-
-    void OnFlashFailed() { tries_--; }
-    bool ShouldFlash() const { return tries_ > 0; }
-
-    void OnFlashedFirmware(const std::string& type,
-                           const base::FilePath& path) {
-      if (type == kFwCarrier) {
-        last_carrier_fw_flashed_ = path;
-        return;
-      }
-      flashed_fw_types_.insert(type);
-    }
-
-    bool ShouldFlashFirmware(const std::string& type,
-                             const base::FilePath& path) {
-      if (type == kFwCarrier)
-        return last_carrier_fw_flashed_ != path;
-      return flashed_fw_types_.count(type) == 0;
-    }
-
-    void OnCarrierSeen(const std::string& carrier_id) {
-      if (carrier_id == last_carrier_id_)
-        return;
-
-      last_carrier_id_ = carrier_id;
-      flashed_fw_types_.clear();
-    }
-
-   private:
-    // Unlike carrier firmware, we should usually successfully flash the main
-    // firmware at most once per boot. In the past vendors have failed to
-    // update the version that the firmware reports itself as so we can mitigate
-    // some of the potential issues by recording which modems we have deemed
-    // don't need updates or were already updated and avoid checking them again.
-    //
-    // We should retry flashing the main firmware if the carrier changes since
-    // we might have different main firmware versions. As such, when we see a
-    // new carrier, clear the flashed types for this modem.
-    std::set<std::string> flashed_fw_types_;
-    std::string last_carrier_id_;
-
-    // For carrier firmware, once we've tried to upgrade versions on a
-    // particular modem without changing carriers, we should not try to upgrade
-    // versions again (but should still flash if the carrier is different) to
-    // avoid the same problem as the above. Keep track of the last carrier
-    // firmware we flashed so we don't flash twice in a row.
-    base::FilePath last_carrier_fw_flashed_;
-
-    // If we fail to flash firmware, we will retry once, but after that we
-    // should stop flashing the modem to prevent us from trying it over and
-    // over.
-    static const int kDefaultTries = 2;
-    int tries_ = kDefaultTries;
-  };
-
-  base::FilePath GetFirmwarePath(const FirmwareFileInfo& info);
-
-  bool ShouldFlash(Modem* modem, brillo::ErrorPtr* err);
-  std::unique_ptr<FlashConfig> BuildFlashConfig(Modem* modem,
-                                                brillo::ErrorPtr* err);
-  bool RunFlash(Modem* modem,
-                const FlashConfig& flash_cfg,
-                bool modem_seen_since_oobe,
-                base::TimeDelta* out_duration,
-                brillo::ErrorPtr* err);
-  void FlashFinished(std::optional<std::string> journal_entry_id,
-                     uint32_t fw_types);
-
-  std::map<std::string, FlashState> modem_info_;
-
-  // Owned by Daemon
-  Delegate* delegate_;
-  FirmwareDirectory* firmware_directory_;
-  Journal* journal_;
-  NotificationManager* notification_mgr_;
-  Metrics* metrics_;
-
-  base::WeakPtrFactory<ModemFlasher> weak_ptr_factory_{this};
+  virtual bool ShouldFlash(Modem* modem, brillo::ErrorPtr* err) = 0;
+  virtual std::unique_ptr<FlashConfig> BuildFlashConfig(
+      Modem* modem, brillo::ErrorPtr* err) = 0;
+  virtual bool RunFlash(Modem* modem,
+                        const FlashConfig& flash_cfg,
+                        bool modem_seen_since_oobe,
+                        base::TimeDelta* out_duration,
+                        brillo::ErrorPtr* err) = 0;
 };
+
+std::unique_ptr<ModemFlasher> CreateModemFlasher(
+    FirmwareDirectory* firmware_directory);
 
 }  // namespace modemfwd
 

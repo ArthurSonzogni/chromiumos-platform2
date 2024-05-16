@@ -9,6 +9,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
@@ -20,6 +21,7 @@
 #include "modemfwd/daemon_delegate.h"
 #include "modemfwd/dbus_adaptors/org.chromium.Modemfwd.h"
 #include "modemfwd/dlc_manager.h"
+#include "modemfwd/flash_task.h"
 #include "modemfwd/heartbeat_task.h"
 #include "modemfwd/journal.h"
 #include "modemfwd/metrics.h"
@@ -148,6 +150,7 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
 
   std::map<std::string, std::unique_ptr<Modem>> modems_;
   std::map<std::string, std::unique_ptr<HeartbeatTask>> heartbeat_tasks_;
+  std::vector<std::unique_ptr<FlashTask>> flash_tasks_;
 
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;

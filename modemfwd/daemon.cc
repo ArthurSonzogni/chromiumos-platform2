@@ -297,9 +297,7 @@ void Daemon::CompleteInitialization() {
     QuitWithExitCode(EX_UNAVAILABLE);
   }
 
-  modem_flasher_ = std::make_unique<modemfwd::ModemFlasher>(
-      this, fw_manifest_directory_.get(), journal_.get(),
-      notification_mgr_.get(), metrics_.get());
+  modem_flasher_ = CreateModemFlasher(fw_manifest_directory_.get());
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,
@@ -430,14 +428,19 @@ void Daemon::DoFlash(const std::string& device_id,
                      const std::string& equipment_id) {
   StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  modem_flasher_->TryFlash(modems_[device_id].get(),
-                           modems_seen_since_oobe_prefs_->Exists(device_id),
-                           &err);
-  StartHeartbeatTask(device_id);
-
-  if (err) {
-    LOG(ERROR) << "Flashing returned error: " << err->GetMessage();
+  auto flash_task =
+      std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
+                                  metrics_.get(), modem_flasher_.get());
+  if (!flash_task->Start(modems_[device_id].get(),
+                         modems_seen_since_oobe_prefs_->Exists(device_id),
+                         &err)) {
+    LOG(ERROR) << "Flashing errored out: "
+               << (err ? err->GetMessage() : "unknown");
+    return;
   }
+
+  flash_tasks_.push_back(std::move(flash_task));
+  StartHeartbeatTask(device_id);
 }
 
 void Daemon::RegisterDBusObjectsAsync(
@@ -456,8 +459,17 @@ bool Daemon::ForceFlash(const std::string& device_id) {
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
   StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  modem_flasher_->TryFlash(
-      stub_modem.get(), modems_seen_since_oobe_prefs_->Exists(device_id), &err);
+  auto flash_task =
+      std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
+                                  metrics_.get(), modem_flasher_.get());
+  if (!flash_task->Start(stub_modem.get(),
+                         modems_seen_since_oobe_prefs_->Exists(device_id),
+                         &err)) {
+    LOG(ERROR) << "Force-flashing errored out: "
+               << (err ? err->GetMessage() : "unknown");
+    return false;
+  }
+  flash_tasks_.push_back(std::move(flash_task));
   StartHeartbeatTask(device_id);
 
   // We don't know the real equipment ID of this modem, and if we're
@@ -465,7 +477,7 @@ bool Daemon::ForceFlash(const std::string& device_id) {
   // coming up, so cleaning up at this point is not a problem. Run the
   // callback now if we got one.
   RunModemReappearanceCallback(stub_modem->GetEquipmentId());
-  return !err;
+  return true;
 }
 
 bool Daemon::ForceFlashForTesting(const std::string& device_id,
@@ -490,8 +502,18 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
 
   StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
-  modem_flasher_->TryFlash(
-      stub_modem.get(), modems_seen_since_oobe_prefs_->Exists(device_id), &err);
+  auto flash_task =
+      std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
+                                  metrics_.get(), modem_flasher_.get());
+  if (!flash_task->Start(stub_modem.get(),
+                         modems_seen_since_oobe_prefs_->Exists(device_id),
+                         &err)) {
+    LOG(ERROR) << "Force-flashing errored out: "
+               << (err ? err->GetMessage() : "unknown");
+    return false;
+  }
+
+  flash_tasks_.push_back(std::move(flash_task));
   StartHeartbeatTask(device_id);
 
   // We don't know the real equipment ID of this modem, and if we're
@@ -499,7 +521,7 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
   // coming up, so cleaning up at this point is not a problem. Run the
   // callback now if we got one.
   RunModemReappearanceCallback(stub_modem->GetEquipmentId());
-  return !err;
+  return true;
 }
 
 bool Daemon::ResetModem(const std::string& device_id) {
