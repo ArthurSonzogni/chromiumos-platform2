@@ -180,14 +180,6 @@ enum DircryptoMigrationStatus {
   DIRCRYPTO_MIGRATION_IN_PROGRESS = 2,
 };
 
-// Type of paths that are allowed for SetProjectId().
-enum SetProjectIdAllowedPathType {
-  // /home/user/<obfuscated_username>/MyFiles/Downloads/
-  PATH_DOWNLOADS = 0,
-  // /home/root/<obfuscated_username>/android-data/
-  PATH_ANDROID_DATA = 1,
-};
-
 // Interface for key delegate service to be used by the cryptohome daemon.
 
 inline constexpr char kCryptohomeKeyDelegateInterface[] =
