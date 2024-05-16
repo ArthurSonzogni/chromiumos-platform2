@@ -57,17 +57,6 @@ class IPConfig {
       const std::optional<DHCPv4Config::Data>& dhcp_data = std::nullopt);
 
  protected:
-  struct Route {
-    Route() {}
-    Route(const std::string& host_in,
-          int prefix_in,
-          const std::string& gateway_in)
-        : host(host_in), prefix(prefix_in), gateway(gateway_in) {}
-    std::string host;
-    int prefix = 0;
-    std::string gateway;
-  };
-
   struct Properties {
     Properties();
     ~Properties();
@@ -94,22 +83,8 @@ class IPConfig {
     // Note that presence of this field indicates that this is a p2p interface,
     // and a gateway won't be needed in creating routes on this interface.
     std::string peer_address;
-    // Set the flag to true when the interface should be set as the default
-    // route. This flag only affects IPv4.
-    bool default_route = true;
-    // A list of IP blocks in CIDR format that should be included on this
-    // network.
-    std::vector<std::string> inclusion_list;
-    // A list of IP blocks in CIDR format that should be excluded from VPN.
-    std::vector<std::string> exclusion_list;
-    // Block IPv6 traffic.  Used if connected to an IPv4-only VPN.
-    bool blackhole_ipv6 = false;
     // MTU to set on the interface.  If unset, defaults to |kUndefinedMTU|.
     int32_t mtu = kUndefinedMTU;
-    // Routes configured by the classless static routes option in DHCP. Traffic
-    // sent to prefixes in this list will be routed through this connection,
-    // even if it is not the default connection.
-    std::vector<Route> dhcp_classless_static_routes;
     // Informational data from DHCP.
     DHCPv4Config::Data dhcp_data;
   };
@@ -120,7 +95,6 @@ class IPConfig {
   friend class IPConfigTest;
 
   friend std::ostream& operator<<(std::ostream& stream, const IPConfig& config);
-  friend bool operator==(const Route& lhs, const Route& rhs);
   friend bool operator==(const Properties& lhs, const Properties& rhs);
   friend std::ostream& operator<<(std::ostream& stream,
                                   const Properties& properties);

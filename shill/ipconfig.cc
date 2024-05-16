@@ -76,8 +76,6 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
     if (network_config.ipv4_broadcast) {
       broadcast_address = network_config.ipv4_broadcast->ToString();
     }
-    default_route = network_config.ipv4_default_route;
-    blackhole_ipv6 = network_config.ipv6_blackhole_route;
   }
   if (family == net_base::IPFamily::kIPv6) {
     if (!network_config.ipv6_addresses.empty()) {
@@ -92,18 +90,6 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
       gateway = net_base::IPv6Address().ToString();
     }
   }
-  inclusion_list = {};
-  for (const auto& item : network_config.included_route_prefixes) {
-    if (item.GetFamily() == family) {
-      inclusion_list.push_back(item.ToString());
-    }
-  }
-  exclusion_list = {};
-  for (const auto& item : network_config.excluded_route_prefixes) {
-    if (item.GetFamily() == family) {
-      exclusion_list.push_back(item.ToString());
-    }
-  }
   if (network_config.mtu) {
     mtu = *network_config.mtu;
   }
@@ -114,20 +100,6 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
     }
   }
   domain_search = network_config.dns_search_domains;
-
-  if (family == net_base::IPFamily::kIPv4) {
-    dhcp_classless_static_routes = {};
-    std::transform(
-        network_config.rfc3442_routes.begin(),
-        network_config.rfc3442_routes.end(),
-        std::back_inserter(dhcp_classless_static_routes),
-        [](const std::pair<net_base::IPv4CIDR, net_base::IPv4Address>&
-               rfc3442_route) {
-          return IPConfig::Route(rfc3442_route.first.address().ToString(),
-                                 rfc3442_route.first.prefix_length(),
-                                 rfc3442_route.second.ToString());
-        });
-  }
 }
 
 void IPConfig::Properties::UpdateFromDHCPData(
@@ -212,11 +184,6 @@ void IPConfig::EmitChanges() {
   adaptor_->EmitStringsChanged(kNameServersProperty, properties_.dns_servers);
 }
 
-bool operator==(const IPConfig::Route& lhs, const IPConfig::Route& rhs) {
-  return lhs.host == rhs.host && lhs.prefix == rhs.prefix &&
-         lhs.gateway == rhs.gateway;
-}
-
 // TODO(b/232177767): Ignore the order for vector properties.
 bool operator==(const IPConfig::Properties& lhs,
                 const IPConfig::Properties& rhs) {
@@ -227,11 +194,7 @@ bool operator==(const IPConfig::Properties& lhs,
          lhs.domain_name == rhs.domain_name &&
          lhs.domain_search == rhs.domain_search && lhs.gateway == rhs.gateway &&
          lhs.method == rhs.method && lhs.peer_address == rhs.peer_address &&
-         lhs.default_route == rhs.default_route &&
-         lhs.inclusion_list == rhs.inclusion_list &&
-         lhs.exclusion_list == rhs.exclusion_list &&
-         lhs.blackhole_ipv6 == rhs.blackhole_ipv6 && lhs.mtu == rhs.mtu &&
-         lhs.dhcp_classless_static_routes == rhs.dhcp_classless_static_routes &&
+         lhs.mtu == rhs.mtu &&
          lhs.dhcp_data.vendor_encapsulated_options ==
              rhs.dhcp_data.vendor_encapsulated_options &&
          lhs.dhcp_data.isns_option_data == rhs.dhcp_data.isns_option_data &&
@@ -251,14 +214,6 @@ std::ostream& operator<<(std::ostream& stream,
   if (!properties.peer_address.empty()) {
     stream << ", peer_address: " << properties.peer_address;
   }
-  if (!properties.inclusion_list.empty()) {
-    stream << ", included routes: ["
-           << base::JoinString(properties.inclusion_list, ",") << "]";
-  }
-  if (!properties.exclusion_list.empty()) {
-    stream << ", excluded routes: ["
-           << base::JoinString(properties.exclusion_list, ",") << "]";
-  }
   if (!properties.dns_servers.empty()) {
     stream << ", DNS: [" << base::JoinString(properties.dns_servers, ",")
            << "]";
@@ -272,12 +227,6 @@ std::ostream& operator<<(std::ostream& stream,
   }
   if (!properties.dhcp_data.web_proxy_auto_discovery.empty()) {
     stream << ", wpad: " << properties.dhcp_data.web_proxy_auto_discovery;
-  }
-  if (properties.default_route) {
-    stream << ", default_route: true";
-  }
-  if (properties.blackhole_ipv6) {
-    stream << ", blackhole_ipv6: true";
   }
   if (properties.mtu != IPConfig::kUndefinedMTU) {
     stream << ", mtu: " << properties.mtu;

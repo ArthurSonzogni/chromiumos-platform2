@@ -60,8 +60,6 @@ class IPConfigTest : public Test {
       }
     }
     EXPECT_EQ(properties.gateway, ipconfig_->properties().gateway);
-    EXPECT_EQ(properties.blackhole_ipv6,
-              ipconfig_->properties().blackhole_ipv6);
     EXPECT_EQ(properties.mtu, ipconfig_->properties().mtu);
   }
 
