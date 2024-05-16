@@ -188,9 +188,6 @@ std::vector<std::string> StatefulMount::GenerateExt4Features() {
   AppendQuotaFeaturesAndOptions(&sb_options, &sb_features);
 
   if (!sb_features.empty() || !sb_options.empty()) {
-    // Ensure to replay the journal first so it doesn't overwrite the flag.
-    startup_dep_->ReplayExt4Journal(state_dev_);
-
     if (!sb_options.empty()) {
       std::string opts = base::JoinString(sb_options, ",");
       sb_features.push_back("-O");

@@ -59,9 +59,6 @@ class StartupDep {
   // Runs crash_reporter with the given args.
   virtual void AddClobberCrashReport(const std::vector<std::string> args);
 
-  // Runs e2fsck for the given device.
-  void ReplayExt4Journal(const base::FilePath& dev);
-
   // Runs clobber-log --repair for the given device with the given message.
   void ClobberLogRepair(const base::FilePath& dev, const std::string& msg);
 

@@ -125,23 +125,6 @@ void StartupDep::AddClobberCrashReport(const std::vector<std::string> args) {
   sync();
 }
 
-void StartupDep::ReplayExt4Journal(const base::FilePath& dev) {
-  std::unique_ptr<brillo::Process> e2fsck = platform_->CreateProcessInstance();
-  e2fsck->AddArg("/sbin/e2fsck");
-  e2fsck->AddArg("-p");
-  e2fsck->AddArg("-E");
-  e2fsck->AddArg("journal_only");
-  e2fsck->AddArg(dev.value());
-  int ret = e2fsck->Run();
-  if (ret == 0) {
-    return;
-  } else if (ret < 0) {
-    PLOG(WARNING) << "Failed to run e2fsck";
-  } else {
-    LOG(WARNING) << "e2fsck returned non zero exit code: " << ret;
-  }
-}
-
 void StartupDep::ClobberLogRepair(const base::FilePath& dev,
                                   const std::string& msg) {
   std::unique_ptr<brillo::Process> log_repair =
