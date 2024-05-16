@@ -5084,11 +5084,11 @@ mno {
     uuid: "58688593-666b-4609-bbdc-8b451d75c2a5"
     country: "gh"
     localized_name {
-      name: "Vodafone"
+      name: "Telecel Ghana"
     }
     mccmnc: "62002"
     mobile_apn {
-      apn: "browse"
+      apn: "internet"
       type: DEFAULT
     }
   }
