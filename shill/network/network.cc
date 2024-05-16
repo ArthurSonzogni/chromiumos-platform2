@@ -969,6 +969,17 @@ void Network::ConnectivityTestCallback(const std::string& device_logging_tag,
   connectivity_test_portal_detector_.reset();
 }
 
+RpcIdentifiers Network::AvailableIPConfigIdentifiers() const {
+  RpcIdentifiers ret;
+  if (ipconfig_) {
+    ret.push_back(ipconfig_->GetRpcIdentifier());
+  }
+  if (ip6config_) {
+    ret.push_back(ip6config_->GetRpcIdentifier());
+  }
+  return ret;
+}
+
 bool Network::IsConnectedViaTether() const {
   if (!dhcp_data_) {
     return false;

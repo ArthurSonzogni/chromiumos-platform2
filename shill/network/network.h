@@ -357,6 +357,12 @@ class Network : public NetworkMonitor::ClientNetwork {
   // test.
   void StartConnectivityTest(PortalDetector::ProbingConfiguration probe_config);
 
+  // Returns the RPC identifiers of the available IPConfig objects (at most two,
+  // one for IPv4 and one for IPv6) owned by the Network object.
+  // TODO(b/340974631): Remove this after we fully retire the IPConfig D-Bus
+  // interface of shill.
+  RpcIdentifiers AvailableIPConfigIdentifiers() const;
+
   // TODO(b/232177767): This group of getters and setters are only exposed for
   // the purpose of refactor. New code outside Device should not use these.
   IPConfig* ipconfig() const { return ipconfig_.get(); }

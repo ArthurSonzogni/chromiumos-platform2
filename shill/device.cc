@@ -566,8 +566,6 @@ RpcIdentifier Device::GetSelectedServiceRpcIdentifier(Error* /*error*/) {
 }
 
 RpcIdentifiers Device::AvailableIPConfigs(Error* /*error*/) {
-  RpcIdentifiers identifiers;
-
   // These available IPConfigs are the ones exposed in the Device DBus object.
   //
   // The usual case will be a Device object associated to a single given Network
@@ -586,15 +584,10 @@ RpcIdentifiers Device::AvailableIPConfigs(Error* /*error*/) {
   // also expose the interface name or index in DBus.
   //
   auto primary_network = GetPrimaryNetwork();
-  if (primary_network) {
-    if (primary_network->ipconfig()) {
-      identifiers.push_back(primary_network->ipconfig()->GetRpcIdentifier());
-    }
-    if (primary_network->ip6config()) {
-      identifiers.push_back(primary_network->ip6config()->GetRpcIdentifier());
-    }
+  if (!primary_network) {
+    return {};
   }
-  return identifiers;
+  return primary_network->AvailableIPConfigIdentifiers();
 }
 
 bool Device::IsUnderlyingDeviceEnabled() const {
