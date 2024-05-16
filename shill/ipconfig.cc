@@ -124,7 +124,6 @@ IPConfig::IPConfig(ControlInterface* control_interface,
   store_.RegisterConstString(kAddressProperty, &properties_.address);
   store_.RegisterConstString(kBroadcastProperty,
                              &properties_.broadcast_address);
-  store_.RegisterConstString(kDomainNameProperty, &properties_.domain_name);
   store_.RegisterConstString(kGatewayProperty, &properties_.gateway);
   store_.RegisterConstString(kMethodProperty, &properties_.method);
   store_.RegisterConstInt32(kMtuProperty, &properties_.mtu);
@@ -191,7 +190,6 @@ bool operator==(const IPConfig::Properties& lhs,
          lhs.address == rhs.address && lhs.subnet_prefix == rhs.subnet_prefix &&
          lhs.broadcast_address == rhs.broadcast_address &&
          lhs.dns_servers == rhs.dns_servers &&
-         lhs.domain_name == rhs.domain_name &&
          lhs.domain_search == rhs.domain_search && lhs.gateway == rhs.gateway &&
          lhs.method == rhs.method && lhs.peer_address == rhs.peer_address &&
          lhs.mtu == rhs.mtu &&
@@ -221,9 +219,6 @@ std::ostream& operator<<(std::ostream& stream,
   if (!properties.domain_search.empty()) {
     stream << ", search domains: ["
            << base::JoinString(properties.domain_search, ",") << "]";
-  }
-  if (!properties.domain_name.empty()) {
-    stream << ", domain name: " << properties.domain_name;
   }
   if (!properties.dhcp_data.web_proxy_auto_discovery.empty()) {
     stream << ", wpad: " << properties.dhcp_data.web_proxy_auto_discovery;

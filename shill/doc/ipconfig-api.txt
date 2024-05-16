@@ -39,10 +39,6 @@ Properties	string Address [readonly]
 
 			The Layer 3 broadcast address specified as per Address.
 
-		string DomainName [readonly]
-
-			The DNS domain name to use in building FQDN queries.
-
 		string Gateway [readonly]
 
 			The Layer 3 address gateway address specified as

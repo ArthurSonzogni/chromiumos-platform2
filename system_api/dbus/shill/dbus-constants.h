@@ -375,7 +375,6 @@ constexpr char kWireGuardPeerPersistentKeepalive[] = "PersistentKeepalive";
 // IPConfig property names.
 // kAddressProperty: Defined below for Device.
 constexpr char kBroadcastProperty[] = "Broadcast";
-constexpr char kDomainNameProperty[] = "DomainName";
 constexpr char kExcludedRoutesProperty[] = "ExcludedRoutes";
 constexpr char kGatewayProperty[] = "Gateway";
 constexpr char kIncludedRoutesProperty[] = "IncludedRoutes";

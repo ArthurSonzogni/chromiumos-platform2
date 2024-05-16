@@ -75,7 +75,6 @@ class IPConfig {
     int32_t subnet_prefix = 0;
     std::string broadcast_address;
     std::vector<std::string> dns_servers;
-    std::string domain_name;
     std::vector<std::string> domain_search;
     std::string gateway;
     std::string method;
