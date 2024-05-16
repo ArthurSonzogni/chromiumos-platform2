@@ -78,16 +78,11 @@ std::optional<base::FilePath> FindDebugfsPath(
   return std::nullopt;
 }
 
-bool WriteToDebugfs(const FirmwareDumpType& fwdump_type,
-                    const FirmwareDumpOperation& fwdump_operation,
+bool WriteToDebugfs(const base::FilePath& dumper_path,
                     std::string_view content) {
-  const auto dumper_path = FindDebugfsPath(fwdump_type, fwdump_operation);
-  if (!dumper_path.has_value()) {
-    return false;
-  }
-  if (!base::WriteFile(dumper_path.value(), content)) {
+  if (!base::WriteFile(dumper_path, content)) {
     LOG(ERROR) << "Failed to trigger firmware dump by writing " << content
-               << " into " << dumper_path->value();
+               << " into " << dumper_path;
     return false;
   }
   return true;
@@ -96,10 +91,19 @@ bool WriteToDebugfs(const FirmwareDumpType& fwdump_type,
 void GenerateFirmwareDumpHelper(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     const FirmwareDumpType& fwdump_type) {
+  // If the file does not exist, the feature is not supported. Report success
+  // so the caller does not log spurious errors.
+  const auto dumper_path =
+      FindDebugfsPath(fwdump_type, FirmwareDumpOperation::GenerateFirmwareDump);
+  if (!dumper_path.has_value()) {
+    // If the file does not exist, the feature is not supported. Report success
+    // so the caller does not log spurious errors.
+    response->Return(true);
+    return;
+  }
   switch (fwdump_type) {
     case FirmwareDumpType::WIFI:
-      if (!WriteToDebugfs(fwdump_type,
-                          FirmwareDumpOperation::GenerateFirmwareDump, "1")) {
+      if (!WriteToDebugfs(dumper_path.value(), "1")) {
         response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                                  DBUS_ERROR_FAILED,
                                  "Failed to write to debugfs");
@@ -121,11 +125,19 @@ void GenerateFirmwareDumpHelper(
 void ClearFirmwareDumpBufferHelper(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<bool>> response,
     const FirmwareDumpType& fwdump_type) {
+  // If the file does not exist, the feature is not supported. Report success
+  // so the caller does not log spurious errors.
+  const auto dumper_path = FindDebugfsPath(
+      fwdump_type, FirmwareDumpOperation::ClearFirmwareDumpBuffer);
+  if (!dumper_path.has_value()) {
+    // If the file does not exist, the feature is not supported. Report success
+    // so the caller does not log spurious errors.
+    response->Return(true);
+    return;
+  }
   switch (fwdump_type) {
     case FirmwareDumpType::WIFI:
-      if (!WriteToDebugfs(fwdump_type,
-                          FirmwareDumpOperation::ClearFirmwareDumpBuffer,
-                          "1")) {
+      if (!WriteToDebugfs(dumper_path.value(), "1")) {
         response->ReplyWithError(FROM_HERE, brillo::errors::dbus::kDomain,
                                  DBUS_ERROR_FAILED,
                                  "Failed to write to debugfs");

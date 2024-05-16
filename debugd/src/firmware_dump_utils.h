@@ -29,8 +29,7 @@ std::optional<base::FilePath> FindDebugfsPath(
 // |dumper_file|. Full path can be found by |FindDebugfsPath| based on these
 // parts.
 // Returns true if the operation is successful.
-bool WriteToDebugfs(const FirmwareDumpType& fwdump_type,
-                    const FirmwareDumpOperation& fwdump_operation,
+bool WriteToDebugfs(const base::FilePath& dumper_path,
                     std::string_view content);
 
 // Trigger firmware dump.
