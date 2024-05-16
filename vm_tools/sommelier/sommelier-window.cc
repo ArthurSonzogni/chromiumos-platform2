@@ -510,12 +510,6 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
   sl_transform_guest_to_host(window->ctx, window->paired_surface,
                              &safe_window_width_in_wl,
                              &safe_window_height_in_wl);
-  // TODO(b/330639760): For some reason, set_aspect_ratio includes the title
-  // bar in the surface ratio. Figure out a way to mitigate this.
-  // Also consider setting aspect ratio every frame in surface_commit.
-  zaura_surface_set_aspect_ratio(window->aura_surface, safe_window_width_in_wl,
-                                 safe_window_height_in_wl + 50);
-
   // TODO(endlesspring): consider ignoring aspect ratio and filling the entire
   // screen if Exo wants the window to be fullscreen. This wills require having
   // pointer scale in x and y, instead of one.
@@ -555,6 +549,13 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
   }
   LOG(VERBOSE) << window << " viewport set to " << window->viewport_width << "x"
                << window->viewport_height;
+
+  // TODO(b/330639760): For some reason, set_aspect_ratio includes the title
+  // bar in the surface ratio. Figure out a way to mitigate this.
+  // Also consider setting aspect ratio every frame in surface_commit.
+  zaura_surface_set_aspect_ratio(
+      window->aura_surface, window->viewport_width,
+      window->viewport_height + (window->compositor_fullscreen ? 0 : 32));
 
   if (window->use_emulated_rects) {
     // Pointer scaling is being done in XWayland as well, assuming the viewport
