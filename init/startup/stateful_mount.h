@@ -53,7 +53,6 @@ class StatefulMount {
   void DevMountPackages();
 
  private:
-  bool IsQuotaEnabled();
   void AppendQuotaFeaturesAndOptions(const std::string& fs_features,
                                      const std::string& state_dumpe2fs,
                                      std::vector<std::string>* sb_options,

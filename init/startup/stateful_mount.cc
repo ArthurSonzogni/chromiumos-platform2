@@ -44,7 +44,6 @@
 
 namespace {
 
-constexpr char kQuota[] = "proc/sys/fs/quota";
 constexpr char kExt4Features[] = "sys/fs/ext4/features";
 constexpr char kReservedBlocksGID[] = "20119";
 constexpr char kQuotaOpt[] = "quota";
@@ -205,11 +204,6 @@ std::optional<base::Value> StatefulMount::GetImageVars(base::FilePath json_file,
   return base::Value(std::move(*image_vars));
 }
 
-bool StatefulMount::IsQuotaEnabled() {
-  base::FilePath quota = root_.Append(kQuota);
-  return platform_->DirectoryExists(quota);
-}
-
 void StatefulMount::AppendQuotaFeaturesAndOptions(
     const std::string& fs_features,
     const std::string& state_dumpe2fs,
@@ -222,28 +216,19 @@ void StatefulMount::AppendQuotaFeaturesAndOptions(
     sb_features->push_back(kReservedBlocksGID);
   }
 
-  if (IsQuotaEnabled()) {
-    // Quota is enabled in the kernel, make sure that quota is enabled in
-    // the filesystem
-    if (!IsFeatureEnabled(fs_features, kQuotaOpt)) {
-      sb_options->push_back(kQuotaOpt);
-      sb_features->push_back("-Qusrquota,grpquota");
-    }
-    if (flags_.prjquota) {
-      if (!IsFeatureEnabled(fs_features, kQuotaProjectOpt)) {
-        sb_features->push_back("-Qprjquota");
-      }
-    } else {
-      if (IsFeatureEnabled(fs_features, kQuotaProjectOpt)) {
-        sb_features->push_back("-Q^prjquota");
-      }
+  // Quota is enabled in the kernel, make sure that quota is enabled in
+  // the filesystem
+  if (!IsFeatureEnabled(fs_features, kQuotaOpt)) {
+    sb_options->push_back(kQuotaOpt);
+    sb_features->push_back("-Qusrquota,grpquota");
+  }
+  if (flags_.prjquota) {
+    if (!IsFeatureEnabled(fs_features, kQuotaProjectOpt)) {
+      sb_features->push_back("-Qprjquota");
     }
   } else {
-    // Quota is not enabled in the kernel, make sure that quota is disabled
-    // in the filesystem.
-    if (IsFeatureEnabled(fs_features, kQuotaOpt)) {
-      sb_options->push_back("^quota");
-      sb_features->push_back("-Q^usrquota,^grpquota,^prjquota");
+    if (IsFeatureEnabled(fs_features, kQuotaProjectOpt)) {
+      sb_features->push_back("-Q^prjquota");
     }
   }
 }

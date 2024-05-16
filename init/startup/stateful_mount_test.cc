@@ -110,8 +110,6 @@ class Ext4FeaturesTest : public ::testing::Test {
   void SetUp() override {
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
-    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
   }
 
   startup::Flags flags_{};
@@ -125,62 +123,64 @@ class Ext4FeaturesTest : public ::testing::Test {
 TEST_F(Ext4FeaturesTest, Encrypt) {
   std::string state_dump =
       base::StringPrintf(kDumpe2fsStr, kReservedBlocksGID, "verity");
-  startup::Flags flags;
-  flags.direncryption = true;
+  flags_.direncryption = true;
   base::FilePath encrypt_file =
       base_dir.Append("sys/fs/ext4/features/encryption");
   ASSERT_TRUE(platform_->WriteStringToFile(encrypt_file, "1"));
 
+  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
-  EXPECT_EQ(features_str, "-O encrypt");
+  EXPECT_EQ(features_str, "-Qusrquota,grpquota -O encrypt,quota");
 }
 
 TEST_F(Ext4FeaturesTest, Verity) {
   std::string state_dump =
       base::StringPrintf(kDumpe2fsStr, kReservedBlocksGID, "encrypt");
-  startup::Flags flags;
-  flags.fsverity = true;
+  flags_.fsverity = true;
   base::FilePath verity_file = base_dir.Append("sys/fs/ext4/features/verity");
   ASSERT_TRUE(platform_->WriteStringToFile(verity_file, "1"));
 
+  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
-  EXPECT_EQ(features_str, "-O verity");
+  EXPECT_EQ(features_str, "-Qusrquota,grpquota -O verity,quota");
 }
 
 TEST_F(Ext4FeaturesTest, ReservedBlocksGID) {
   std::string state_dump =
       base::StringPrintf(kDumpe2fsStr, "", "encrypt verity");
-  startup::Flags flags;
 
+  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
-  EXPECT_EQ(features_str, "-g 20119");
+  EXPECT_EQ(features_str, "-g 20119 -Qusrquota,grpquota -O quota");
 }
 
 TEST_F(Ext4FeaturesTest, EnableQuotaWithPrjQuota) {
   std::string state_dump =
       base::StringPrintf(kDumpe2fsStr, kReservedBlocksGID, "encrypt verity");
-  startup::Flags flags;
-  flags.prjquota = true;
-  base::FilePath quota_file = base_dir.Append("proc/sys/fs/quota");
-  ASSERT_TRUE(platform_->CreateDirectory(quota_file));
+  flags_.prjquota = true;
 
+  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
@@ -191,13 +191,12 @@ TEST_F(Ext4FeaturesTest, EnableQuotaWithPrjQuota) {
 TEST_F(Ext4FeaturesTest, EnableQuotaNoPrjQuota) {
   std::string state_dump = base::StringPrintf(kDumpe2fsStr, kReservedBlocksGID,
                                               "encrypt verity project");
-  startup::Flags flags;
-  flags.prjquota = false;
-  base::FilePath quota_file = base_dir.Append("proc/sys/fs/quota");
-  ASSERT_TRUE(platform_->CreateDirectory(quota_file));
+  flags_.prjquota = false;
 
+  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
@@ -205,31 +204,18 @@ TEST_F(Ext4FeaturesTest, EnableQuotaNoPrjQuota) {
   EXPECT_EQ(features_str, "-Qusrquota,grpquota -Q^prjquota -O quota");
 }
 
-TEST_F(Ext4FeaturesTest, DisableQuota) {
-  std::string state_dump = base::StringPrintf(kDumpe2fsStr, kReservedBlocksGID,
-                                              "encrypt verityquota");
-  startup::Flags flags;
-
-  stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
-      mount_helper_.get());
-  std::vector<std::string> features =
-      stateful_mount_->GenerateExt4Features(state_dump);
-  std::string features_str = base::JoinString(features, " ");
-  EXPECT_EQ(features_str, "-Q^usrquota,^grpquota,^prjquota -O ^quota");
-}
-
 TEST_F(Ext4FeaturesTest, MissingFeatures) {
   std::string state_dump("");
-  startup::Flags flags;
 
+  mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
-      flags, base_dir, base_dir, platform_.get(), startup_dep_.get(),
+      flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
   std::vector<std::string> features =
       stateful_mount_->GenerateExt4Features(state_dump);
   std::string features_str = base::JoinString(features, " ");
-  EXPECT_EQ(features_str, "-g 20119");
+  EXPECT_EQ(features_str, "-g 20119 -Qusrquota,grpquota -O quota");
 }
 
 class DevUpdateStatefulTest : public ::testing::Test {
