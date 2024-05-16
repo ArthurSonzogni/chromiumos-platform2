@@ -285,19 +285,27 @@ cros_is_ifindex_external(const struct sk_buff* skb) {
     bpf_printk(
         "Could not determine if device is external. sk_buff contained a null "
         "net_device.");
-    // log an error but allow an event to be generated.
     return true;
   }
   int64_t ifindex = BPF_CORE_READ(dev, ifindex);
   if (ifindex < 0) {
-    // log an error
     bpf_printk(
         "Could not determine if device is external. ifindex is negative:%d",
         ifindex);
     return false;
   }
-  return bpf_map_lookup_elem(&cros_network_external_interfaces, &ifindex) !=
-         NULL;
+
+  bool is_init_netns = false;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
+  is_init_netns = BPF_CORE_READ(dev, nd_net.net, net_cookie) == 1;
+#else
+  is_init_netns = BPF_CORE_READ(dev, nd_net.net, net_cookie.counter) == 1;
+#endif
+  if (!is_init_netns) {
+    return false;
+  }
+  return (bpf_map_lookup_elem(&cros_network_external_interfaces, &ifindex) !=
+          NULL);
 }
 
 static inline __attribute__((always_inline)) int cros_fill_ipv6_5_tuple(
@@ -321,7 +329,7 @@ static inline __attribute__((always_inline)) int cros_fill_ipv6_5_tuple(
 
     dest_addr = &(five_tuple->remote_addr);
     dest_port = &(five_tuple->remote_port);
-  } else {  // Rx packet
+  } else {  // Rx packet.
     source_addr = &(five_tuple->remote_addr);
     source_port = &(five_tuple->remote_port);
 
@@ -559,6 +567,7 @@ static inline __attribute__((always_inline)) int cros_handle_tx_rx(
   if (!cros_is_ifindex_external(skb)) {
     return -CROS_IF_NOT_EXTERNAL;
   }
+
   struct cros_flow_map_value* flow_map_value;
   struct cros_flow_map_key flow_map_key;
   // Fun fact: BPF verifier will complain if the key contains
@@ -811,8 +820,6 @@ int BPF_PROG(cros_handle_socket_post_create,
              int type,
              int protocol,
              int kern) {
-  bpf_printk("post socket created for family=%d protocol=%d kern=%d", family,
-             protocol, kern);
   if (kern) {
     return 0;
   }
