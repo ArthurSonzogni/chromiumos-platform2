@@ -41,6 +41,9 @@ base::Value::Dict ConvertToValue(
 base::Value::Dict ConvertToValue(
     const ash::cros_healthd::mojom::SensitiveSensorRoutineDetailPtr& detail);
 
+base::Value::Dict ConvertToValueForV1(
+    const ash::cros_healthd::mojom::SensitiveSensorRoutineDetailPtr& detail);
+
 base::Value::Dict ConvertToValue(
     const ash::cros_healthd::mojom::CameraFrameAnalysisRoutineDetailPtr&
         detail);

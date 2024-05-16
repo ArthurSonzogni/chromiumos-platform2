@@ -340,6 +340,141 @@ TEST(RoutineOutputUtilsTest, ConvertSensitiveSensorDetail) {
   EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
+TEST(RoutineOutputUtilsTest, ConvertSensitiveSensorDetailForV1) {
+  auto detail = mojom::SensitiveSensorRoutineDetail::New();
+  // Construct input.
+  {
+    auto default_sensor_report = mojom::SensitiveSensorReport::New();
+    default_sensor_report->sensor_presence_status =
+        mojom::HardwarePresenceStatus::kNotConfigured;
+
+    // Create a passed sensor with types "accel" and "gyro" on location "base".
+    auto base_accel_gyro = mojom::SensitiveSensorInfo::New();
+    base_accel_gyro->id = 0;
+    base_accel_gyro->types = {mojom::SensitiveSensorInfo::Type::kAccel,
+                              mojom::SensitiveSensorInfo::Type::kGyro};
+    base_accel_gyro->channels = {"timestamp", "accel_x",   "accel_y",
+                                 "accel_z",   "anglvel_x", "anglvel_y",
+                                 "anglvel_z"};
+
+    auto base_accel_report = default_sensor_report->Clone();
+    base_accel_report->passed_sensors.push_back(base_accel_gyro->Clone());
+    base_accel_report->sensor_presence_status =
+        mojom::HardwarePresenceStatus::kMatched;
+    detail->base_accelerometer = std::move(base_accel_report);
+
+    auto base_gyro_report = default_sensor_report->Clone();
+    base_gyro_report->passed_sensors.push_back(std::move(base_accel_gyro));
+    base_gyro_report->sensor_presence_status =
+        mojom::HardwarePresenceStatus::kMatched;
+    detail->base_gyroscope = std::move(base_gyro_report);
+
+    // Create a failed sensor with type "magn" on location "lid".
+    auto lid_magn = mojom::SensitiveSensorInfo::New();
+    lid_magn->id = 1;
+    lid_magn->types = {mojom::SensitiveSensorInfo::Type::kMagn};
+    lid_magn->channels = {"timestamp", "magn_x", "magn_y", "magn_z"};
+
+    auto lid_magn_report = default_sensor_report->Clone();
+    lid_magn_report->failed_sensors.push_back(std::move(lid_magn));
+    lid_magn_report->sensor_presence_status =
+        mojom::HardwarePresenceStatus::kNotConfigured;
+    detail->lid_magnetometer = std::move(lid_magn_report);
+
+    // Create a failed sensor with type "gravity" on location "lid".
+    auto lid_gravity = mojom::SensitiveSensorInfo::New();
+    lid_gravity->id = 2;
+    lid_gravity->types = {mojom::SensitiveSensorInfo::Type::kGravity};
+    lid_gravity->channels = {"timestamp", "gravity_x", "gravity_y",
+                             "gravity_z"};
+
+    auto lid_gravity_report = default_sensor_report->Clone();
+    lid_gravity_report->failed_sensors.push_back(std::move(lid_gravity));
+    lid_gravity_report->sensor_presence_status =
+        mojom::HardwarePresenceStatus::kNotMatched;
+    detail->lid_gravity_sensor = std::move(lid_gravity_report);
+
+    // Other sensor types are not present in this test.
+    detail->lid_accelerometer = default_sensor_report->Clone();
+    detail->lid_gyroscope = default_sensor_report->Clone();
+    detail->base_magnetometer = default_sensor_report->Clone();
+    detail->base_gravity_sensor = default_sensor_report->Clone();
+  }
+
+  base::Value::Dict expected_result;
+  // Construct output.
+  {
+    base::Value::Dict expected_default_report;
+    expected_default_report.Set("passed_sensors", base::Value::List());
+    expected_default_report.Set("failed_sensors", base::Value::List());
+    expected_default_report.Set("existence_check_result", "skipped");
+
+    base::Value::Dict expected_base_accel_gyro;
+    expected_base_accel_gyro.Set("id", 0);
+    expected_base_accel_gyro.Set(
+        "types", base::Value::List().Append("Accel").Append("Gyro"));
+    expected_base_accel_gyro.Set("channels", base::Value::List()
+                                                 .Append("timestamp")
+                                                 .Append("accel_x")
+                                                 .Append("accel_y")
+                                                 .Append("accel_z")
+                                                 .Append("anglvel_x")
+                                                 .Append("anglvel_y")
+                                                 .Append("anglvel_z"));
+
+    auto expected_base_accel_report = expected_default_report.Clone();
+    expected_base_accel_report.FindList("passed_sensors")
+        ->Append(expected_base_accel_gyro.Clone());
+    expected_base_accel_report.Set("existence_check_result", "passed");
+    expected_result.Set("base_accelerometer",
+                        std::move(expected_base_accel_report));
+
+    auto expected_base_gyro_report = expected_default_report.Clone();
+    expected_base_gyro_report.FindList("passed_sensors")
+        ->Append(std::move(expected_base_accel_gyro));
+    expected_base_gyro_report.Set("existence_check_result", "passed");
+    expected_result.Set("base_gyroscope", std::move(expected_base_gyro_report));
+
+    base::Value::Dict expected_lid_magn;
+    expected_lid_magn.Set("id", 1);
+    expected_lid_magn.Set("types", base::Value::List().Append("Magn"));
+    expected_lid_magn.Set("channels", base::Value::List()
+                                          .Append("timestamp")
+                                          .Append("magn_x")
+                                          .Append("magn_y")
+                                          .Append("magn_z"));
+    auto expected_lid_magn_report = expected_default_report.Clone();
+    expected_lid_magn_report.FindList("failed_sensors")
+        ->Append(std::move(expected_lid_magn));
+    expected_lid_magn_report.Set("existence_check_result", "skipped");
+    expected_result.Set("lid_magnetometer",
+                        std::move(expected_lid_magn_report));
+
+    base::Value::Dict expected_lid_gravity;
+    expected_lid_gravity.Set("id", 2);
+    expected_lid_gravity.Set("types", base::Value::List().Append("Gravity"));
+    expected_lid_gravity.Set("channels", base::Value::List()
+                                             .Append("timestamp")
+                                             .Append("gravity_x")
+                                             .Append("gravity_y")
+                                             .Append("gravity_z"));
+    auto expected_lid_gravity_report = expected_default_report.Clone();
+    expected_lid_gravity_report.FindList("failed_sensors")
+        ->Append(std::move(expected_lid_gravity));
+    expected_lid_gravity_report.Set("existence_check_result", "unexpected");
+    expected_result.Set("lid_gravity_sensor",
+                        std::move(expected_lid_gravity_report));
+
+    // Other sensor types are not present in this test.
+    expected_result.Set("lid_accelerometer", expected_default_report.Clone());
+    expected_result.Set("lid_gyroscope", expected_default_report.Clone());
+    expected_result.Set("base_magnetometer", expected_default_report.Clone());
+    expected_result.Set("base_gravity_sensor", expected_default_report.Clone());
+  }
+
+  EXPECT_EQ(ConvertToValueForV1(detail), expected_result);
+}
+
 TEST(RoutineOutputUtilsTest, ConvertCameraFrameAnalysisDetail) {
   auto detail = mojom::CameraFrameAnalysisRoutineDetail::New();
   detail->issue = mojom::CameraFrameAnalysisRoutineDetail::Issue::kNone;

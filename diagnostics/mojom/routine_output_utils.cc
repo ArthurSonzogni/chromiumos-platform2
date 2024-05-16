@@ -21,13 +21,27 @@ namespace mojom = ::ash::cros_healthd::mojom;
 std::string EnumToString(mojom::HardwarePresenceStatus state) {
   switch (state) {
     case mojom::HardwarePresenceStatus::kUnmappedEnumField:
-      return "Unmapped enum field";
+      NOTREACHED_NORETURN();
     case mojom::HardwarePresenceStatus::kMatched:
       return "Matched";
     case mojom::HardwarePresenceStatus::kNotMatched:
       return "Not Matched";
     case mojom::HardwarePresenceStatus::kNotConfigured:
       return "Not Configured";
+  }
+}
+
+std::string EnumToStringInSensitiveSensorV1Format(
+    mojom::HardwarePresenceStatus state) {
+  switch (state) {
+    case mojom::HardwarePresenceStatus::kUnmappedEnumField:
+      NOTREACHED_NORETURN();
+    case mojom::HardwarePresenceStatus::kMatched:
+      return "passed";
+    case mojom::HardwarePresenceStatus::kNotMatched:
+      return "unexpected";
+    case mojom::HardwarePresenceStatus::kNotConfigured:
+      return "skipped";
   }
 }
 
@@ -137,8 +151,8 @@ base::Value::Dict ConvertToValue(const mojom::SensitiveSensorInfoPtr& info) {
   return output;
 }
 
-base::Value::Dict ConvertToValue(
-    const mojom::SensitiveSensorReportPtr& report) {
+base::Value::Dict ConvertToValue(const mojom::SensitiveSensorReportPtr& report,
+                                 bool v2_output = true) {
   base::Value::Dict output;
 
   base::Value::List out_passed_sensors;
@@ -153,8 +167,13 @@ base::Value::Dict ConvertToValue(
   }
   output.Set("failed_sensors", std::move(out_failed_sensors));
 
-  output.Set("sensor_presence_status",
-             EnumToString(report->sensor_presence_status));
+  if (v2_output) {
+    output.Set("sensor_presence_status",
+               EnumToString(report->sensor_presence_status));
+  } else {
+    output.Set("existence_check_result", EnumToStringInSensitiveSensorV1Format(
+                                             report->sensor_presence_status));
+  }
   return output;
 }
 
@@ -350,6 +369,30 @@ base::Value::Dict ConvertToValue(
   output.Set("base_gravity_sensor",
              ConvertToValue(detail->base_gravity_sensor));
   output.Set("lid_gravity_sensor", ConvertToValue(detail->lid_gravity_sensor));
+
+  return output;
+}
+
+base::Value::Dict ConvertToValueForV1(
+    const mojom::SensitiveSensorRoutineDetailPtr& detail) {
+  base::Value::Dict output;
+
+  output.Set("base_accelerometer",
+             ConvertToValue(detail->base_accelerometer, /*v2_output=*/false));
+  output.Set("lid_accelerometer",
+             ConvertToValue(detail->lid_accelerometer, /*v2_output=*/false));
+  output.Set("base_gyroscope",
+             ConvertToValue(detail->base_gyroscope, /*v2_output=*/false));
+  output.Set("lid_gyroscope",
+             ConvertToValue(detail->lid_gyroscope, /*v2_output=*/false));
+  output.Set("base_magnetometer",
+             ConvertToValue(detail->base_magnetometer, /*v2_output=*/false));
+  output.Set("lid_magnetometer",
+             ConvertToValue(detail->lid_magnetometer, /*v2_output=*/false));
+  output.Set("base_gravity_sensor",
+             ConvertToValue(detail->base_gravity_sensor, /*v2_output=*/false));
+  output.Set("lid_gravity_sensor",
+             ConvertToValue(detail->lid_gravity_sensor, /*v2_output=*/false));
 
   return output;
 }

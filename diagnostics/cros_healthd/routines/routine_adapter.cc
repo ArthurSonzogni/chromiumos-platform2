@@ -112,8 +112,6 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
     // Not exposed in the v1 interface.
     case mojom::RoutineDetail::Tag::kCameraAvailability:
     case mojom::RoutineDetail::Tag::kNetworkBandwidth:
-    // TODO(b/329377632): Support sensitive sensor routine v1.
-    case mojom::RoutineDetail::Tag::kSensitiveSensor:
     case mojom::RoutineDetail::Tag::kCameraFrameAnalysis:
       NOTREACHED_NORETURN() << "Not exposed in the v1 interface";
     case mojom::RoutineDetail::Tag::kMemory:
@@ -132,6 +130,8 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
       return ConvertToValue(detail->get_bluetooth_scanning());
     case mojom::RoutineDetail::Tag::kBluetoothPairing:
       return ConvertToValue(detail->get_bluetooth_pairing());
+    case mojom::RoutineDetail::Tag::kSensitiveSensor:
+      return ConvertToValueForV1(detail->get_sensitive_sensor());
   }
 }
 

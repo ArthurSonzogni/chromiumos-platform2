@@ -446,9 +446,11 @@ void CrosHealthdDiagnosticsService::RunArcDnsResolutionRoutine(
 
 void CrosHealthdDiagnosticsService::RunSensitiveSensorRoutine(
     RunSensitiveSensorRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeSensitiveSensorRoutine(),
-             mojom::DiagnosticRoutineEnum::kSensitiveSensor,
-             std::move(callback));
+  auto args = mojom::RoutineArgument::NewSensitiveSensor(
+      mojom::SensitiveSensorRoutineArgument::New());
+  RunRoutineWithAdapter(std::move(args),
+                        mojom::DiagnosticRoutineEnum::kSensitiveSensor,
+                        std::move(callback));
 }
 
 void CrosHealthdDiagnosticsService::RunFingerprintRoutine(
