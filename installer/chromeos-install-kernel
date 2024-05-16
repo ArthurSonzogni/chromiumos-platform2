@@ -13,8 +13,11 @@ if [ "${UID:-$(id -u)}" -ne 0 ]; then
 fi
 
 # Load functions and constants.
+# shellcheck source=../../scripts/lib/shflags/shflags
 . /usr/share/misc/shflags || exit 1
+# shellcheck source=../chromeos-common-script/share/chromeos-common.sh
 . /usr/share/misc/chromeos-common.sh || exit 1
+# shellcheck disable=SC1091
 . /usr/sbin/write_gpt.sh || exit 1
 load_base_vars
 
