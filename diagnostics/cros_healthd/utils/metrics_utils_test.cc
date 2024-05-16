@@ -40,8 +40,8 @@ class MetricsUtilsTest : public ::testing::Test {
         .WillOnce(Return(true));
   }
 
-  void ExpectNoSendEnumToUMA(const std::string& name) {
-    EXPECT_CALL(metrics_library_, SendEnumToUMA(name, _, _)).Times(0);
+  void ExpectNoSendEnumToUMA() {
+    EXPECT_CALL(metrics_library_, SendEnumToUMA(_, _, _)).Times(0);
   }
 
   void SendTelemetryResult(const std::set<mojom::ProbeCategoryEnum>& categories,
@@ -85,6 +85,12 @@ TEST_F(MetricsUtilsTest, InvokeOnTerminalStatusOnlyOnce) {
   auto wrapped_callback = InvokeOnTerminalStatus(callback.Get());
   wrapped_callback.Run(mojom::DiagnosticRoutineStatusEnum::kPassed);
   wrapped_callback.Run(mojom::DiagnosticRoutineStatusEnum::kError);
+}
+
+TEST_F(MetricsUtilsTest, SendNoTelemetryResultForUnknownCategory) {
+  ExpectNoSendEnumToUMA();
+  SendTelemetryResult({mojom::ProbeCategoryEnum::kUnknown},
+                      mojom::TelemetryInfo::New());
 }
 
 TEST_F(MetricsUtilsTest, SendBatteryTelemetryResult) {
@@ -368,7 +374,7 @@ TEST_F(MetricsUtilsTest, SendDiagnosticNotRunResult) {
 }
 
 TEST_F(MetricsUtilsTest, SendNoUmaForUnrecognizedEventCategory) {
-  ExpectNoSendEnumToUMA(metrics_name::kEventSubscription);
+  ExpectNoSendEnumToUMA();
   SendEventCategory(mojom::EventCategoryEnum::kUnmappedEnumField);
 }
 

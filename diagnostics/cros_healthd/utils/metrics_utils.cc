@@ -11,6 +11,7 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/struct_ptr.h>
 
@@ -25,11 +26,12 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-std::optional<std::string> GetMetricName(mojom::ProbeCategoryEnum category) {
+std::string GetMetricName(mojom::ProbeCategoryEnum category) {
   switch (category) {
     case mojom::ProbeCategoryEnum::kUnknown:
-      // No metric name for the unknown category.
-      return std::nullopt;
+      // `kUnknown` should have been filtered out in
+      // `SendTelemetryResultToUMA()`.
+      NOTREACHED_NORETURN();
     case mojom::ProbeCategoryEnum::kBattery:
       return metrics_name::kTelemetryResultBattery;
     case mojom::ProbeCategoryEnum::kCpu:
@@ -252,11 +254,6 @@ template <typename S>
 void SendOneTelemetryResultToUMA(MetricsLibraryInterface* metrics,
                                  mojom::ProbeCategoryEnum category,
                                  const mojo::StructPtr<S>& struct_ptr) {
-  std::optional<std::string> metrics_name = GetMetricName(category);
-  if (!metrics_name.has_value()) {
-    return;
-  }
-
   CrosHealthdTelemetryResult enum_sample;
   if (struct_ptr.is_null() || struct_ptr->is_error()) {
     enum_sample = CrosHealthdTelemetryResult::kError;
@@ -264,7 +261,7 @@ void SendOneTelemetryResultToUMA(MetricsLibraryInterface* metrics,
     enum_sample = CrosHealthdTelemetryResult::kSuccess;
   }
 
-  bool result = metrics->SendEnumToUMA(metrics_name.value(), enum_sample);
+  bool result = metrics->SendEnumToUMA(GetMetricName(category), enum_sample);
   if (!result) {
     LOG(ERROR) << "Failed to send telemetry result of " << category
                << " to UMA.";
