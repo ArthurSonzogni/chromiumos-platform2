@@ -33,6 +33,10 @@ extern const char kUnexpectedEmptyVariant[];
 extern const char kTimeoutWaitingForInstalledState[];
 extern const char kTimeoutWaitingForDlcService[];
 extern const char kTimeoutWaitingForDlcInstall[];
+
+extern const char kHeartbeatHealthCheck1stFailure[];
+extern const char kHeartbeatHealthCheck2ndFailure[];
+extern const char kHeartbeatHealthCheck3rdFailure[];
 };  // namespace error
 
 class Error {

@@ -38,6 +38,9 @@ const char kTimeoutWaitingForInstalledState[] = "unexpectedInstallStep";
 const char kTimeoutWaitingForDlcService[] = "timeoutWaitingForDlcService";
 const char kTimeoutWaitingForDlcInstall[] = "timeoutWaitingForDlcInstall";
 
+const char kHeartbeatHealthCheck1stFailure[] = "heartbeatHealthCheck1stFailure";
+const char kHeartbeatHealthCheck2ndFailure[] = "heartbeatHealthCheck2ndFailure";
+const char kHeartbeatHealthCheck3rdFailure[] = "heartbeatHealthCheck3rdFailure";
 }  // namespace error
 
 // static
