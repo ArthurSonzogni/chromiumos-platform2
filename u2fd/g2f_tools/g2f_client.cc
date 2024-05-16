@@ -17,7 +17,6 @@
 #include <base/time/time.h>
 #include <base/timer/elapsed_timer.h>
 #include <brillo/syslog_logging.h>
-#include <crypto/random.h>
 
 #include <trunks/cr50_headers/u2f.h>
 #include "u2fd/g2f_tools/g2f_client.h"

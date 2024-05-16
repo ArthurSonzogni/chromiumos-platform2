@@ -19,7 +19,6 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/threading/platform_thread.h>
-#include <crypto/random.h>
 #include <dbus/bus.h>
 #include <metrics/metrics_library.h>
 
