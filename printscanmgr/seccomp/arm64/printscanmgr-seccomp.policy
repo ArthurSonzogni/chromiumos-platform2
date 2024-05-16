@@ -56,7 +56,7 @@ mkdirat: 1
 getppid: 1
 setpgid: 1
 getrusage: 1
-ioctl: arg1 == TCGETS
+ioctl: 1
 epoll_create1: 1
 getresuid: 1
 getresgid: 1

@@ -59,7 +59,7 @@ getppid: 1
 setpgid: 1
 getrusage: 1
 rmdir: 1
-ioctl: arg1 == TCGETS
+ioctl: 1
 epoll_create1: 1
 gettid: 1
 clock_getres_time64: 1

@@ -67,6 +67,9 @@ void EnterDaemonMinijail() {
                             "/run/avahi-daemon", 0));
   CHECK_EQ(1, minijail_add_fs_restriction_rx(jail.get(), "/run/avahi-daemon"));
 
+  CHECK_EQ(0, minijail_bind(jail.get(), "/run/dns-proxy", "/run/dns-proxy", 0));
+  CHECK_EQ(1, minijail_add_fs_restriction_rx(jail.get(), "/run/dns-proxy"));
+
   // Run as the printscanmgr user and group. Inherit supplementary groups so
   // printscanmgr can run `lpadmin` and `lpstat`.
   CHECK_EQ(0, minijail_change_user(jail.get(), kPrintscanmgrUserName));
