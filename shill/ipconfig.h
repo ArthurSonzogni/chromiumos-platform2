@@ -44,8 +44,6 @@ class IPConfig {
 
   const RpcIdentifier& GetRpcIdentifier() const;
 
-  uint32_t GetLeaseDurationSeconds(Error* /*error*/);
-
   PropertyStore* mutable_store() { return &store_; }
   const PropertyStore& store() const { return store_; }
 
@@ -73,15 +71,10 @@ class IPConfig {
     std::optional<net_base::IPFamily> address_family = std::nullopt;
     std::string address;
     int32_t subnet_prefix = 0;
-    std::string broadcast_address;
     std::vector<std::string> dns_servers;
     std::vector<std::string> domain_search;
     std::string gateway;
     std::string method;
-    // The address of the remote endpoint for pointopoint interfaces.
-    // Note that presence of this field indicates that this is a p2p interface,
-    // and a gateway won't be needed in creating routes on this interface.
-    std::string peer_address;
     // MTU to set on the interface.  If unset, defaults to |kUndefinedMTU|.
     int32_t mtu = kUndefinedMTU;
     // Informational data from DHCP.

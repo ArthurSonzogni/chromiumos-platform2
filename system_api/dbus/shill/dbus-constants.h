@@ -374,21 +374,15 @@ constexpr char kWireGuardPeerPersistentKeepalive[] = "PersistentKeepalive";
 
 // IPConfig property names.
 // kAddressProperty: Defined below for Device.
-constexpr char kBroadcastProperty[] = "Broadcast";
 constexpr char kExcludedRoutesProperty[] = "ExcludedRoutes";
 constexpr char kGatewayProperty[] = "Gateway";
 constexpr char kIncludedRoutesProperty[] = "IncludedRoutes";
-constexpr char kLeaseDurationSecondsProperty[] = "LeaseDurationSeconds";
 constexpr char kMethodProperty[] = "Method";
 constexpr char kMtuProperty[] = "Mtu";
 constexpr char kNameServersProperty[] = "NameServers";
-constexpr char kPeerAddressProperty[] = "PeerAddress";
 constexpr char kPrefixlenProperty[] = "Prefixlen";
 constexpr char kSearchDomainsProperty[] = "SearchDomains";
-constexpr char kVendorEncapsulatedOptionsProperty[] =
-    "VendorEncapsulatedOptions";
 constexpr char kWebProxyAutoDiscoveryUrlProperty[] = "WebProxyAutoDiscoveryUrl";
-constexpr char kiSNSOptionDataProperty[] = "iSNSOptionData";  // For RFC 4174.
 
 // Passpoint credentials property names.
 // EAP properties are defined above for EAP service.

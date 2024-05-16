@@ -39,8 +39,6 @@ class IPConfigTest : public Test {
   void ExpectPropertiesEqual(const IPConfig::Properties& properties) {
     EXPECT_EQ(properties.address, ipconfig_->properties().address);
     EXPECT_EQ(properties.subnet_prefix, ipconfig_->properties().subnet_prefix);
-    EXPECT_EQ(properties.broadcast_address,
-              ipconfig_->properties().broadcast_address);
     EXPECT_EQ(properties.dns_servers.size(),
               ipconfig_->properties().dns_servers.size());
     if (properties.dns_servers.size() ==
