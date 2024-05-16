@@ -52,7 +52,7 @@ bool V4lMcControl::Set(std::vector<__s32>& values_s32) {
               this->desc_.type == V4L2_CTRL_TYPE_BUTTON ||
               this->desc_.type == V4L2_CTRL_TYPE_BITMASK ||
               this->desc_.type == V4L2_CTRL_TYPE_INTEGER_MENU);
-  MCTK_ASSERT(values_s32.size() == this->desc_.elems);
+  MCTK_ASSERT_EQ(values_s32.size(), this->desc_.elems);
   this->values_s32_ = values_s32;
 
   struct v4l2_ext_control ec = {};
@@ -62,7 +62,7 @@ bool V4lMcControl::Set(std::vector<__s32>& values_s32) {
 
   /* Legacy controls are set to a value rather than a pointer */
   if (!this->desc_.nr_of_dims) {
-    MCTK_ASSERT(values_s32.size() == 1);
+    MCTK_ASSERT_EQ(values_s32.size(), 1);
     ec.size = 0;
     ec.value = this->values_s32_[0];
   }
@@ -72,8 +72,8 @@ bool V4lMcControl::Set(std::vector<__s32>& values_s32) {
 
 bool V4lMcControl::Set(std::vector<__s64>& values_s64) {
   MCTK_ASSERT(!this->IsReadOnly());
-  MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_INTEGER64);
-  MCTK_ASSERT(values_s64.size() == this->desc_.elems);
+  MCTK_ASSERT_EQ(this->desc_.type, V4L2_CTRL_TYPE_INTEGER64);
+  MCTK_ASSERT_EQ(values_s64.size(), this->desc_.elems);
   this->values_s64_ = values_s64;
 
   struct v4l2_ext_control ec = {};
@@ -83,7 +83,7 @@ bool V4lMcControl::Set(std::vector<__s64>& values_s64) {
 
   /* Legacy controls are set to a value rather than a pointer */
   if (!this->desc_.nr_of_dims) {
-    MCTK_ASSERT(values_s64.size() == 1);
+    MCTK_ASSERT_EQ(values_s64.size(), 1);
     ec.size = 0;
     ec.value = this->values_s64_[0];
   }
@@ -93,10 +93,10 @@ bool V4lMcControl::Set(std::vector<__s64>& values_s64) {
 
 bool V4lMcControl::Set(std::vector<std::string>& values_string) {
   MCTK_ASSERT(!this->IsReadOnly());
-  MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_STRING);
+  MCTK_ASSERT_EQ(this->desc_.type, V4L2_CTRL_TYPE_STRING);
   MCTK_ASSERT(this->desc_.elem_size >= 1);
 
-  MCTK_ASSERT(values_string.size() == this->desc_.elems);
+  MCTK_ASSERT_EQ(values_string.size(), this->desc_.elems);
 
   /* Check that the new strings aren't overflowing the target.
    * Note that they have to be SHORTER than elem_size, because
@@ -128,8 +128,8 @@ bool V4lMcControl::Set(std::vector<std::string>& values_string) {
 
 bool V4lMcControl::Set(std::vector<__u8>& values_u8) {
   MCTK_ASSERT(!this->IsReadOnly());
-  MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_U8);
-  MCTK_ASSERT(values_u8.size() == this->desc_.elems);
+  MCTK_ASSERT_EQ(this->desc_.type, V4L2_CTRL_TYPE_U8);
+  MCTK_ASSERT_EQ(values_u8.size(), this->desc_.elems);
   this->values_u8_ = values_u8;
 
   struct v4l2_ext_control ec = {};
@@ -142,8 +142,8 @@ bool V4lMcControl::Set(std::vector<__u8>& values_u8) {
 
 bool V4lMcControl::Set(std::vector<__u16>& values_u16) {
   MCTK_ASSERT(!this->IsReadOnly());
-  MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_U16);
-  MCTK_ASSERT(values_u16.size() == this->desc_.elems);
+  MCTK_ASSERT_EQ(this->desc_.type, V4L2_CTRL_TYPE_U16);
+  MCTK_ASSERT_EQ(values_u16.size(), this->desc_.elems);
   this->values_u16_ = values_u16;
 
   struct v4l2_ext_control ec = {};
@@ -156,8 +156,8 @@ bool V4lMcControl::Set(std::vector<__u16>& values_u16) {
 
 bool V4lMcControl::Set(std::vector<__u32>& values_u32) {
   MCTK_ASSERT(!this->IsReadOnly());
-  MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_U32);
-  MCTK_ASSERT(values_u32.size() == this->desc_.elems);
+  MCTK_ASSERT_EQ(this->desc_.type, V4L2_CTRL_TYPE_U32);
+  MCTK_ASSERT_EQ(values_u32.size(), this->desc_.elems);
   this->values_u32_ = values_u32;
 
   struct v4l2_ext_control ec = {};
@@ -171,8 +171,8 @@ bool V4lMcControl::Set(std::vector<__u32>& values_u32) {
 #ifdef V4L2_CTRL_TYPE_AREA
 bool V4lMcControl::Set(std::vector<struct v4l2_area>& values_area) {
   MCTK_ASSERT(!this->IsReadOnly());
-  MCTK_ASSERT(this->desc_.type == V4L2_CTRL_TYPE_AREA);
-  MCTK_ASSERT(values_area.size() == this->desc_.elems);
+  MCTK_ASSERT_EQ(this->desc_.type, V4L2_CTRL_TYPE_AREA);
+  MCTK_ASSERT_EQ(values_area.size(), this->desc_.elems);
   this->values_area_ = values_area;
 
   struct v4l2_ext_control ec = {};

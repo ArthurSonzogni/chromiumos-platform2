@@ -16,7 +16,7 @@
 #include "tools/mctk/debug.h"
 
 std::unique_ptr<YamlScalar> YamlScalar::FromEvent(yaml_event_t& event) {
-  MCTK_ASSERT(event.type == YAML_SCALAR_EVENT);
+  MCTK_ASSERT_EQ(event.type, YAML_SCALAR_EVENT);
 
   auto new_scalar = std::make_unique<YamlScalar>(std::string(
       (const char*)event.data.scalar.value, event.data.scalar.length));

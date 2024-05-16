@@ -27,15 +27,15 @@
 namespace {
 
 bool MergeControl(V4lMcControl& tc, class V4lMcControl& sc) {
-  MCTK_ASSERT(tc.desc_.id == sc.desc_.id);
-  MCTK_ASSERT(tc.desc_.type == sc.desc_.type);
-  MCTK_ASSERT(tc.desc_.flags == sc.desc_.flags);
-  MCTK_ASSERT(tc.desc_.elem_size == sc.desc_.elem_size);
-  MCTK_ASSERT(tc.desc_.nr_of_dims == sc.desc_.nr_of_dims);
-  MCTK_ASSERT(tc.desc_.dims[0] == sc.desc_.dims[0]);
-  MCTK_ASSERT(tc.desc_.dims[1] == sc.desc_.dims[1]);
-  MCTK_ASSERT(tc.desc_.dims[2] == sc.desc_.dims[2]);
-  MCTK_ASSERT(tc.desc_.dims[3] == sc.desc_.dims[3]);
+  MCTK_ASSERT_EQ(tc.desc_.id, sc.desc_.id);
+  MCTK_ASSERT_EQ(tc.desc_.type, sc.desc_.type);
+  MCTK_ASSERT_EQ(tc.desc_.flags, sc.desc_.flags);
+  MCTK_ASSERT_EQ(tc.desc_.elem_size, sc.desc_.elem_size);
+  MCTK_ASSERT_EQ(tc.desc_.nr_of_dims, sc.desc_.nr_of_dims);
+  MCTK_ASSERT_EQ(tc.desc_.dims[0], sc.desc_.dims[0]);
+  MCTK_ASSERT_EQ(tc.desc_.dims[1], sc.desc_.dims[1]);
+  MCTK_ASSERT_EQ(tc.desc_.dims[2], sc.desc_.dims[2]);
+  MCTK_ASSERT_EQ(tc.desc_.dims[3], sc.desc_.dims[3]);
 
   bool ok;
 

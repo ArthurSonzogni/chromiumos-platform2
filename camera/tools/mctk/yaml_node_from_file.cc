@@ -12,7 +12,6 @@
 
 #include "tools/mctk/yaml_tree.h"
 
-#include <assert.h>
 #include <stdio.h>
 #include <yaml.h>
 
@@ -57,7 +56,7 @@ std::unique_ptr<YamlNode> YamlNode::FromFile(FILE& file) {
    * since we've just parsed the root node and all of its children.
    */
   if (yaml_parser_parse(&parser, &event)) {
-    MCTK_ASSERT(event.type == YAML_DOCUMENT_END_EVENT);
+    MCTK_ASSERT_EQ(event.type, YAML_DOCUMENT_END_EVENT);
     yaml_event_delete(&event);
   }
 

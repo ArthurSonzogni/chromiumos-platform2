@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include <source_location>
+#include <string> /* to_string */
 #include <string_view>
 
 /* The function names here are UPPER CASE in order to be consistent with
@@ -34,6 +35,20 @@ void MCTK_PERROR(std::string_view msg,
       exit(EXIT_FAILURE);                     \
     }                                         \
   } while (0)
+
+/* Print both expressions of a failed equality, then halt and catch fire. */
+// clang-format off
+#define MCTK_ASSERT_EQ(exp1, exp2)                                           \
+  do {                                                                       \
+    if (!((exp1) == (exp2))) {                                               \
+      MCTK_ERR("Failed assertion on: MCTK_ASSERT_EQ(" #exp1 ", " #exp2 ")"); \
+      MCTK_ERR("Values             : " +                                     \
+               std::to_string(exp1) + " == " + std::to_string(exp2));        \
+                                                                             \
+      exit(EXIT_FAILURE);                                                    \
+    }                                                                        \
+  } while (0)
+// clang-format on
 
 /* Print error message, then halt and catch fire. */
 [[noreturn]] void MCTK_PANIC(

@@ -42,7 +42,7 @@ bool YamlSequence::ParseOneListElement(yaml_parser_t& parser) {
 /* Caller is responsible for deleting the event passed in */
 std::unique_ptr<YamlSequence> YamlSequence::FromParserEvent(
     yaml_parser_t& parser, yaml_event_t& start_event) {
-  MCTK_ASSERT(start_event.type == YAML_SEQUENCE_START_EVENT);
+  MCTK_ASSERT_EQ(start_event.type, YAML_SEQUENCE_START_EVENT);
 
   auto new_seq = std::make_unique<YamlSequence>();
   if (!new_seq)

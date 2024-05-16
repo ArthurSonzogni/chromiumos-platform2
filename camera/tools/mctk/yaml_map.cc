@@ -26,7 +26,7 @@
 /* Caller is responsible for deleting the event passed in */
 std::unique_ptr<YamlMap> YamlMap::FromParserEvent(yaml_parser_t& parser,
                                                   yaml_event_t& start_event) {
-  MCTK_ASSERT(start_event.type == YAML_MAPPING_START_EVENT);
+  MCTK_ASSERT_EQ(start_event.type, YAML_MAPPING_START_EVENT);
 
   auto new_map = std::make_unique<YamlMap>();
   if (!new_map)

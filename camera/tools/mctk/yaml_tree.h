@@ -17,7 +17,6 @@
 #ifndef CAMERA_TOOLS_MCTK_YAML_TREE_H_
 #define CAMERA_TOOLS_MCTK_YAML_TREE_H_
 
-#include <assert.h>
 #include <linux/types.h>
 #include <linux/videodev2.h>
 #include <stddef.h> /* size_t */

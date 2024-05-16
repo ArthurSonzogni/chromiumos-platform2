@@ -12,6 +12,8 @@
 #include <linux/videodev2.h>
 #include <stddef.h> /* size_t */
 
+#include <string> /* to_string */
+
 #include "tools/mctk/debug.h"
 
 size_t ControlHelperElemSize(__u32 type_u32) {
@@ -102,7 +104,7 @@ size_t ControlHelperElemSize(__u32 type_u32) {
       return sizeof(struct v4l2_ctrl_av1_film_grain);
 #endif /* V4L2_CTRL_TYPE_AV1_FILM_GRAIN */
     default:
-      MCTK_PANIC("Unknown control type");
+      MCTK_PANIC("Unknown control type: " + std::to_string(type_u32));
   }
 }
 

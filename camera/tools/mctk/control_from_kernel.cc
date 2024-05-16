@@ -22,6 +22,7 @@
 #include <sys/ioctl.h>
 
 #include <memory>
+#include <string> /* to_string */
 
 #include "tools/mctk/control_helpers.h"
 #include "tools/mctk/debug.h"
@@ -266,7 +267,8 @@ std::unique_ptr<V4lMcControl> V4lMcControl::CreateFromKernel(
       case V4L2_CTRL_TYPE_CTRL_CLASS:
         /* fall-through */
       default:
-        MCTK_PANIC("Unsupported control type encountered");
+        MCTK_PANIC("Unsupported control type encountered: " +
+                   std::to_string(desc.type));
     }
   }
 

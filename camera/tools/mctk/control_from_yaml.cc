@@ -36,7 +36,9 @@ bool ParsePayloadValue(V4lMcControl& control, YamlNode& node) {
   /* v4l2_ctrl_new() should ensure this - see linux/.../v4l2-ctrls-core.c */
   if (control.desc_.type != V4L2_CTRL_TYPE_STRING &&
       control.desc_.elem_size != ControlHelperElemSize(control.desc_.type)) {
-    MCTK_ERR("Payload element size does not match type.");
+    MCTK_ERR("Payload element size " + std::to_string(control.desc_.elem_size) +
+             " does not match control type " +
+             std::to_string(control.desc_.type));
     return false;
   }
 
@@ -115,7 +117,8 @@ bool ParsePayloadValue(V4lMcControl& control, YamlNode& node) {
     }
 #endif /* V4L2_CTRL_TYPE_AREA */
     default:
-      MCTK_PANIC("Unknown control type found in YAML file");
+      MCTK_PANIC("Unknown control type found in YAML file: " +
+                 std::to_string(control.desc_.type));
   }
 }
 
@@ -161,7 +164,7 @@ std::unique_ptr<V4lMcControl> V4lMcControl::CreateFromYamlNode(
     return nullptr;
 
   /* Consistency checks */
-  MCTK_ASSERT(nodes_values.size() == control->desc_.elems);
+  MCTK_ASSERT_EQ(nodes_values.size(), control->desc_.elems);
   if (!ControlHelperDescLooksOK(control->desc_)) {
     MCTK_ERR("Control description doesn't look right, aborting.");
     return nullptr;
