@@ -82,11 +82,11 @@ main() {
   # Rootfs verification needs to be removed from the rootdev partitions so that
   # we can mount them and push new modules.  We remove it from the usbdev so
   # when we copy that kernel to rootdev it will boot successfully.
-  remove_rootfs_verification "${rootdev}" "${PARTITION_NUM_KERN_A}"
-  remove_rootfs_verification "${rootdev}" "${PARTITION_NUM_KERN_B}"
-  remove_rootfs_verification "${usbdev}"  "${PARTITION_NUM_KERN_A}"
+  remove_rootfs_verification "${rootdev}" "${PARTITION_NUM_KERN_A:?}"
+  remove_rootfs_verification "${rootdev}" "${PARTITION_NUM_KERN_B:?}"
+  remove_rootfs_verification "${usbdev}"  "${PARTITION_NUM_KERN_A:?}"
 
-  for partition in "${PARTITION_NUM_ROOT_A}" "${PARTITION_NUM_ROOT_B}"; do
+  for partition in "${PARTITION_NUM_ROOT_A:?}" "${PARTITION_NUM_ROOT_B:?}"; do
     device="$(make_partition_dev "${rootdev}" "${partition}")"
 
     mount "${device}" "${TMPMNT}"
