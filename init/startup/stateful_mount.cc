@@ -59,7 +59,6 @@ constexpr char kLabMachine[] = ".labmachine";
 constexpr char kVar[] = "var";
 constexpr char kNew[] = "_new";
 constexpr char kOverlay[] = "_overlay";
-constexpr char kDevImage[] = "dev_image";
 
 constexpr char kVarLogAsan[] = "var/log/asan";
 constexpr char kStatefulDevImage[] = "dev_image";
@@ -472,9 +471,6 @@ void StatefulMount::MountStateful() {
       state_dev_ = root_.Append("dev")
                        .Append(volume_group_->GetName())
                        .Append("unencrypted");
-      dev_image_ = root_.Append("dev")
-                       .Append(volume_group_->GetName())
-                       .Append("dev-image");
     }
 
     EnableExt4Features();
@@ -521,10 +517,6 @@ base::FilePath StatefulMount::GetStateDev() {
   return state_dev_;
 }
 
-base::FilePath StatefulMount::GetDevImage() {
-  return dev_image_;
-}
-
 // Updates stateful partition if pending
 // update is available.
 // Returns true if there is no need to update or successful update.
@@ -545,7 +537,7 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
   // the "var_new" unpack location, but move it into the new "var_overlay"
   // target location.
   std::string var(kVar);
-  std::string dev_image(kDevImage);
+  std::string dev_image(kStatefulDevImage);
   base::FilePath var_new = stateful_.Append(var + kNew);
   base::FilePath developer_new = stateful_.Append(dev_image + kNew);
   base::FilePath developer_target = stateful_.Append(dev_image);
@@ -703,7 +695,7 @@ void StatefulMount::DevGatherLogs(const base::FilePath& base_dir) {
   }
 }
 
-void StatefulMount::DevMountPackages(const base::FilePath& device) {
+void StatefulMount::DevMountPackages() {
   // Set up the logging dir that ASAN compiled programs will write to. We want
   // any privileged account to be able to write here so unittests need not worry
   // about setting things up ahead of time. See crbug.com/453579 for details.
@@ -738,19 +730,6 @@ void StatefulMount::DevMountPackages(const base::FilePath& device) {
     if (!platform_->SetPermissions(stateful_dev_image, 0755)) {
       PLOG(ERROR) << "Failed to set permissions for "
                   << stateful_dev_image.value();
-    }
-  }
-
-  // Mount the dev image if there is a separate device available.
-  if (!device.empty()) {
-    if (USE_LVM_STATEFUL_PARTITION && volume_group_ &&
-        volume_group_->IsValid()) {
-      brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
-      auto lg = lvm->GetLogicalVolume(volume_group_.value(), "unencrypted");
-      lg->Activate();
-      platform_->Mount(device, stateful_dev_image, "",
-                       MS_NODEV | MS_NOEXEC | MS_NOSUID | MS_NOATIME,
-                       "discard");
     }
   }
 

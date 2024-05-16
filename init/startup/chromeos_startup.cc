@@ -796,7 +796,6 @@ int ChromeosStartup::Run() {
       flags_, root_, stateful_, platform_, startup_dep_, mount_helper_.get());
   stateful_mount_->MountStateful();
   state_dev_ = stateful_mount_->GetStateDev();
-  dev_image_ = stateful_mount_->GetDevImage();
 
   if (enable_stateful_security_hardening_) {
     // Block symlink traversal and opening of FIFOs on stateful. Note that we
@@ -929,7 +928,7 @@ int ChromeosStartup::Run() {
   RestoreContextsForVar(&utils::Restorecon);
 
   // Mount dev packages.
-  DevMountPackages(dev_image_);
+  DevMountPackages();
   RestorePreservedPaths();
 
   // Remount securityfs as readonly so that further modifications to inode
@@ -1043,11 +1042,11 @@ void ChromeosStartup::DevGatherLogs() {
   }
 }
 
-void ChromeosStartup::DevMountPackages(const base::FilePath& device) {
+void ChromeosStartup::DevMountPackages() {
   if (!dev_mode_) {
     return;
   }
-  stateful_mount_->DevMountPackages(device);
+  stateful_mount_->DevMountPackages();
 }
 
 void ChromeosStartup::RestorePreservedPaths() {

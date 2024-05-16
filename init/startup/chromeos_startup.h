@@ -58,7 +58,7 @@ class ChromeosStartup {
   void DevGatherLogs();
   // Updated stateful partition if an update is pending.
   bool DevUpdateStatefulPartition();
-  void DevMountPackages(const base::FilePath& device);
+  void DevMountPackages();
   // Restores the paths to preserve from protected path.
   void RestorePreservedPaths();
 
@@ -173,7 +173,6 @@ class ChromeosStartup {
   bool dev_mode_;
   base::FilePath state_dev_;
   base::FilePath dev_mode_allowed_file_;
-  base::FilePath dev_image_;
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl_;
 };
 

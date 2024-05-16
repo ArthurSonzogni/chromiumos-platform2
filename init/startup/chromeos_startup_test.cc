@@ -1391,7 +1391,7 @@ TEST_F(DevMountPackagesTest, NoDeviceDisableStatefulSecurity) {
   EXPECT_CALL(*platform_, Mount(base::FilePath(), usrlocal_, _, MS_REMOUNT, _))
       .WillOnce(Return(true));
 
-  stateful_mount_->DevMountPackages(base::FilePath());
+  stateful_mount_->DevMountPackages();
 
   EXPECT_TRUE(platform_->DirectoryExists(asan_dir_));
 
@@ -1422,7 +1422,7 @@ TEST_F(DevMountPackagesTest, WithDeviceNoDisableStatefulSecurity) {
   EXPECT_CALL(*platform_, Mount(portage, var_portage_, _, MS_BIND, _))
       .WillOnce(Return(true));
 
-  stateful_mount_->DevMountPackages(base::FilePath());
+  stateful_mount_->DevMountPackages();
 
   EXPECT_TRUE(platform_->DirectoryExists(asan_dir_));
 

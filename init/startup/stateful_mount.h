@@ -42,7 +42,6 @@ class StatefulMount {
                     base::Value* vars);
 
   base::FilePath GetStateDev();
-  base::FilePath GetDevImage();
 
   void ClobberStateful(const std::vector<std::string>& clobber_args,
                        const std::string& clobber_message);
@@ -52,7 +51,7 @@ class StatefulMount {
 
   bool DevUpdateStatefulPartition(const std::string& args);
   void DevGatherLogs(const base::FilePath& base_dir);
-  void DevMountPackages(const base::FilePath& device);
+  void DevMountPackages();
 
  private:
   bool IsQuotaEnabled();
@@ -74,7 +73,6 @@ class StatefulMount {
 
   base::FilePath root_dev_type_;
   base::FilePath state_dev_;
-  base::FilePath dev_image_;
   std::optional<brillo::VolumeGroup> volume_group_;
 };
 
