@@ -8,13 +8,14 @@
 #include <utility>
 
 #include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "base/functional/callback_forward.h"
 #include "missive/analytics/metrics.h"
 #include "missive/analytics/metrics_test_util.h"
 #include "missive/encryption/encryption_module.h"
@@ -33,6 +34,8 @@ using ::testing::WithArg;
 
 namespace reporting {
 namespace {
+
+const base::TimeDelta kPeriod = base::Seconds(5);
 
 class KeyDeliveryTest : public ::testing::Test {
  protected:
@@ -96,7 +99,7 @@ class MockUploader : public UploaderInterface {
 
 TEST_F(KeyDeliveryTest, DeliveryOnRequest) {
   auto key_delivery = KeyDelivery::Create(
-      encryption_module_,
+      kPeriod, encryption_module_,
       base::BindRepeating(
           &::testing::MockFunction<void(
               UploaderInterface::UploadReason,
@@ -109,7 +112,7 @@ TEST_F(KeyDeliveryTest, DeliveryOnRequest) {
       .WillOnce(WithArg<2>(Invoke(
           [&key_delivery](UploaderInterface::UploaderInterfaceResultCb cb) {
             auto uploader = MockUploader::Create(base::BindRepeating(
-                &KeyDelivery::OnCompletion,
+                &KeyDelivery::OnKeyUpdateResult,
                 base::Unretained(key_delivery.get()), Status::StatusOK()));
             std::move(cb).Run(std::move(uploader));
           })));
@@ -121,13 +124,13 @@ TEST_F(KeyDeliveryTest, DeliveryOnRequest) {
       .RetiresOnSaturation();
 
   test::TestEvent<Status> key_event;
-  key_delivery->Request(/*is_mandatory=*/true, key_event.cb());
+  key_delivery->Request(key_event.cb());
   EXPECT_OK(key_event.result());
 }
 
 TEST_F(KeyDeliveryTest, FailedDeliveryOnRequest) {
   auto key_delivery = KeyDelivery::Create(
-      encryption_module_,
+      kPeriod, encryption_module_,
       base::BindRepeating(
           &::testing::MockFunction<void(
               UploaderInterface::UploadReason,
@@ -140,7 +143,7 @@ TEST_F(KeyDeliveryTest, FailedDeliveryOnRequest) {
       .WillOnce(WithArg<2>(Invoke(
           [&key_delivery](UploaderInterface::UploaderInterfaceResultCb cb) {
             auto uploader = MockUploader::Create(
-                base::BindRepeating(&KeyDelivery::OnCompletion,
+                base::BindRepeating(&KeyDelivery::OnKeyUpdateResult,
                                     base::Unretained(key_delivery.get()),
                                     Status{error::CANCELLED, "For testing"}));
             std::move(cb).Run(std::move(uploader));
@@ -153,15 +156,14 @@ TEST_F(KeyDeliveryTest, FailedDeliveryOnRequest) {
       .RetiresOnSaturation();
 
   test::TestEvent<Status> key_event;
-  key_delivery->Request(/*is_mandatory=*/true, key_event.cb());
+  key_delivery->Request(key_event.cb());
   EXPECT_THAT(key_event.result(),
               Property(&Status::error_code, Eq(error::CANCELLED)));
 }
 
 TEST_F(KeyDeliveryTest, PeriodicDelivery) {
-  const auto kPeriod = base::Seconds(5);
   auto key_delivery = KeyDelivery::Create(
-      encryption_module_,
+      kPeriod, encryption_module_,
       base::BindRepeating(
           &::testing::MockFunction<void(
               UploaderInterface::UploadReason,
@@ -174,7 +176,7 @@ TEST_F(KeyDeliveryTest, PeriodicDelivery) {
       .WillOnce(WithArg<2>(Invoke(
           [&key_delivery](UploaderInterface::UploaderInterfaceResultCb cb) {
             auto uploader = MockUploader::Create(
-                base::BindRepeating(&KeyDelivery::OnCompletion,
+                base::BindRepeating(&KeyDelivery::OnKeyUpdateResult,
                                     base::Unretained(key_delivery.get()),
                                     Status{error::CANCELLED, "For testing"}));
             std::move(cb).Run(std::move(uploader));
@@ -182,11 +184,12 @@ TEST_F(KeyDeliveryTest, PeriodicDelivery) {
       .WillOnce(WithArg<2>(Invoke(
           [&key_delivery](UploaderInterface::UploaderInterfaceResultCb cb) {
             auto uploader = MockUploader::Create(base::BindRepeating(
-                &KeyDelivery::OnCompletion,
+                &KeyDelivery::OnKeyUpdateResult,
                 base::Unretained(key_delivery.get()), Status::StatusOK()));
             std::move(cb).Run(std::move(uploader));
           })));
-  key_delivery->StartPeriodicKeyUpdate(kPeriod);
+  // Start periodic updates, like `Storage` does when key is found.
+  key_delivery->StartPeriodicKeyUpdate();
 
   EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
               SendEnumToUMA(KeyDelivery::kResultUma, error::CANCELLED,
@@ -200,6 +203,93 @@ TEST_F(KeyDeliveryTest, PeriodicDelivery) {
       .RetiresOnSaturation();
 
   task_environment_.FastForwardBy(2 * kPeriod);
+}
+
+TEST_F(KeyDeliveryTest, ImplicitPeriodicDelivery) {
+  auto key_delivery = KeyDelivery::Create(
+      kPeriod, encryption_module_,
+      base::BindRepeating(
+          &::testing::MockFunction<void(
+              UploaderInterface::UploadReason,
+              UploaderInterface::InformAboutCachedUploadsCb,
+              UploaderInterface::UploaderInterfaceResultCb)>::Call,
+          base::Unretained(&async_upload_start_)));
+
+  EXPECT_CALL(async_upload_start_,
+              Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY), _, _))
+      .WillOnce(WithArg<2>(Invoke(
+          [&key_delivery](UploaderInterface::UploaderInterfaceResultCb cb) {
+            auto uploader = MockUploader::Create(base::BindRepeating(
+                &KeyDelivery::OnKeyUpdateResult,
+                base::Unretained(key_delivery.get()), Status::StatusOK()));
+            std::move(cb).Run(std::move(uploader));
+          })))
+      .WillOnce(WithArg<2>(Invoke(
+          [&key_delivery](UploaderInterface::UploaderInterfaceResultCb cb) {
+            auto uploader = MockUploader::Create(
+                base::BindRepeating(&KeyDelivery::OnKeyUpdateResult,
+                                    base::Unretained(key_delivery.get()),
+                                    Status{error::CANCELLED, "For testing"}));
+            std::move(cb).Run(std::move(uploader));
+          })))
+      .WillOnce(WithArg<2>(Invoke(
+          [&key_delivery](UploaderInterface::UploaderInterfaceResultCb cb) {
+            auto uploader = MockUploader::Create(base::BindRepeating(
+                &KeyDelivery::OnKeyUpdateResult,
+                base::Unretained(key_delivery.get()), Status::StatusOK()));
+            std::move(cb).Run(std::move(uploader));
+          })));
+
+  EXPECT_CALL(
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendEnumToUMA(KeyDelivery::kResultUma, error::OK, error::MAX_VALUE))
+      .WillOnce(Return(true))
+      .RetiresOnSaturation();
+
+  // Request key and start periodic updates, like `Storage` does when key is not
+  // found.
+  test::TestEvent<Status> key_event;
+  key_delivery->Request(key_event.cb());
+  EXPECT_OK(key_event.result());
+
+  EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendEnumToUMA(KeyDelivery::kResultUma, error::CANCELLED,
+                            error::MAX_VALUE))
+      .WillOnce(Return(true))
+      .RetiresOnSaturation();
+  EXPECT_CALL(
+      analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendEnumToUMA(KeyDelivery::kResultUma, error::OK, error::MAX_VALUE))
+      .WillOnce(Return(true))
+      .RetiresOnSaturation();
+
+  task_environment_.FastForwardBy(2 * kPeriod);
+}
+
+TEST_F(KeyDeliveryTest, ExpirationWhileRequestsPending) {
+  auto key_delivery = KeyDelivery::Create(
+      kPeriod, encryption_module_,
+      base::BindRepeating(
+          &::testing::MockFunction<void(
+              UploaderInterface::UploadReason,
+              UploaderInterface::InformAboutCachedUploadsCb,
+              UploaderInterface::UploaderInterfaceResultCb)>::Call,
+          base::Unretained(&async_upload_start_)));
+
+  EXPECT_CALL(async_upload_start_,
+              Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY), _, _))
+      .Times(1);
+
+  EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendEnumToUMA)
+      .Times(0);
+
+  // Request key and discard `key_delivery`.
+  test::TestEvent<Status> key_event;
+  key_delivery->Request(key_event.cb());
+  key_delivery.reset();
+  EXPECT_THAT(key_event.result(),
+              Property(&Status::error_code, Eq(error::UNAVAILABLE)));
 }
 }  // namespace
 }  // namespace reporting

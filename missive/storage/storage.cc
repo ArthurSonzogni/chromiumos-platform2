@@ -269,8 +269,7 @@ void Storage::Create(
         // Encryption key has been found and set up. Must be available now.
         CHECK(storage_->encryption_module_->has_encryption_key());
         // Enable periodic updates of the key.
-        storage_->key_delivery_->StartPeriodicKeyUpdate(
-            storage_->options_.key_check_period());
+        storage_->key_delivery_->StartPeriodicKeyUpdate();
       } else {
         LOG(WARNING)
             << "Encryption is enabled, but the key is not available yet, "
@@ -357,7 +356,8 @@ Storage::Storage(const Storage::Settings& settings)
           settings.queues_container->sequenced_task_runner()),
       health_module_(settings.health_module),
       encryption_module_(settings.encryption_module),
-      key_delivery_(KeyDelivery::Create(settings.encryption_module,
+      key_delivery_(KeyDelivery::Create(options_.key_check_period(),
+                                        settings.encryption_module,
                                         settings.async_start_upload_cb)),
       compression_module_(settings.compression_module),
       key_in_storage_(std::make_unique<KeyInStorage>(
@@ -499,9 +499,7 @@ void Storage::WriteToQueue(Record record,
         },
         queue, std::move(record), std::move(recorder),
         std::move(completion_cb));
-    key_delivery_->Request(/*is_mandatory=*/true, std::move(action));
-    // Enable periodic updates of the key.
-    key_delivery_->StartPeriodicKeyUpdate(options_.key_check_period());
+    key_delivery_->Request(std::move(action));
     return;
   }
   // Otherwise we can write into the queue right away.
@@ -674,9 +672,7 @@ void Storage::Flush(Priority priority,
   // the key instead.
   if (encryption_module_->is_enabled() &&
       !encryption_module_->has_encryption_key()) {
-    key_delivery_->Request(/*is_mandatory=*/true, std::move(completion_cb));
-    // Enable periodic updates of the key.
-    key_delivery_->StartPeriodicKeyUpdate(options_.key_check_period());
+    key_delivery_->Request(std::move(completion_cb));
     return;
   }
 
@@ -691,7 +687,7 @@ void Storage::UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key) {
   if (!signature_verification_status.ok()) {
     LOG(WARNING) << "Key failed verification, status="
                  << signature_verification_status;
-    key_delivery_->OnCompletion(signature_verification_status);
+    key_delivery_->OnKeyUpdateResult(signature_verification_status);
     return;
   }
 
@@ -703,11 +699,11 @@ void Storage::UpdateEncryptionKey(SignedEncryptionInfo signed_encryption_key) {
           [](scoped_refptr<Storage> storage, Status status) {
             if (!status.ok()) {
               LOG(WARNING) << "Encryption key update failed, status=" << status;
-              storage->key_delivery_->OnCompletion(status);
+              storage->key_delivery_->OnKeyUpdateResult(status);
               return;
             }
             // Encryption key updated successfully.
-            storage->key_delivery_->OnCompletion(Status::StatusOK());
+            storage->key_delivery_->OnKeyUpdateResult(Status::StatusOK());
           },
           base::WrapRefCounted(this)));
 

@@ -11,8 +11,8 @@
 #include <string_view>
 
 #include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 
-#include "base/functional/callback_forward.h"
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/util/status.h"

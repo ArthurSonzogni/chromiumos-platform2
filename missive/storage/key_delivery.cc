@@ -9,11 +9,13 @@
 #include <vector>
 
 #include <base/functional/callback_forward.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/thread_annotations.h>
+#include <base/time/time.h>
 #include <base/timer/timer.h>
 
 #include "missive/analytics/metrics.h"
@@ -25,13 +27,14 @@ namespace reporting {
 
 // Factory method, returns smart pointer with deletion on sequence.
 std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter> KeyDelivery::Create(
+    base::TimeDelta key_check_period,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb) {
   auto sequence_task_runner = base::ThreadPool::CreateSequencedTaskRunner(
       {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   return std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter>(
-      new KeyDelivery(encryption_module, async_start_upload_cb,
-                      sequence_task_runner),
+      new KeyDelivery(key_check_period, encryption_module,
+                      async_start_upload_cb, sequence_task_runner),
       base::OnTaskRunnerDeleter(sequence_task_runner));
 }
 
@@ -42,33 +45,29 @@ KeyDelivery::~KeyDelivery() {
       Status(error::UNAVAILABLE, "Key not delivered - Storage shuts down"));
 }
 
-void KeyDelivery::Request(bool is_mandatory, RequestCallback callback) {
+void KeyDelivery::Request(RequestCallback callback) {
+  StartPeriodicKeyUpdate();
   sequenced_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&KeyDelivery::EnqueueRequestAndPossiblyStart,
-                     base::Unretained(this), is_mandatory,
-                     base::BindOnce([](Status status) {
-                       // Log the request status in UMA
-                       const auto res = analytics::Metrics::SendEnumToUMA(
-                           /*name=*/KeyDelivery::kResultUma, status.code(),
-                           error::Code::MAX_VALUE);
-                       LOG_IF(ERROR, !res) << "SendEnumToUMA failure, "
-                                           << KeyDelivery::kResultUma << " "
-                                           << static_cast<int>(status.code());
-                       return status;
-                     }).Then(std::move(callback))));
+      FROM_HERE, base::BindOnce(&KeyDelivery::EnqueueRequestAndPossiblyStart,
+                                base::Unretained(this), std::move(callback)));
 }
 
-void KeyDelivery::OnCompletion(Status status) {
+void KeyDelivery::OnKeyUpdateResult(Status status) {
+  // Log the request status in UMA.
+  const auto res = analytics::Metrics::SendEnumToUMA(
+      /*name=*/KeyDelivery::kResultUma, status.code(), error::Code::MAX_VALUE);
+  LOG_IF(ERROR, !res) << "SendEnumToUMA failure, " << KeyDelivery::kResultUma
+                      << " " << static_cast<int>(status.code());
+
   sequenced_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&KeyDelivery::PostResponses,
                                 base::Unretained(this), status));
 }
 
-void KeyDelivery::StartPeriodicKeyUpdate(const base::TimeDelta period) {
+void KeyDelivery::StartPeriodicKeyUpdate() {
   sequenced_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(
-                     [](KeyDelivery* self, base::TimeDelta period) {
+                     [](KeyDelivery* self) {
                        if (self->upload_timer_.IsRunning()) {
                          // We've already started the periodic key update.
                          return;
@@ -77,18 +76,20 @@ void KeyDelivery::StartPeriodicKeyUpdate(const base::TimeDelta period) {
                        // is destructed in the class destructor, and so is the
                        // callback.
                        self->upload_timer_.Start(
-                           FROM_HERE, period,
+                           FROM_HERE, self->key_check_period_,
                            base::BindRepeating(&KeyDelivery::RequestKeyIfNeeded,
                                                base::Unretained(self)));
                      },
-                     base::Unretained(this), period));
+                     base::Unretained(this)));
 }
 
 KeyDelivery::KeyDelivery(
+    base::TimeDelta key_check_period,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
     : sequenced_task_runner_(sequenced_task_runner),
+      key_check_period_(key_check_period),
       async_start_upload_cb_(async_start_upload_cb),
       encryption_module_(encryption_module) {
   CHECK(encryption_module_) << "Encryption module pointer not set";
@@ -101,15 +102,13 @@ void KeyDelivery::RequestKeyIfNeeded() {
       !encryption_module_->need_encryption_key()) {
     return;
   }
-  // Request the key
-  Request(/*is_mandatory=*/false, base::DoNothing());
+  // Request the key, do not expect any callback.
+  Request(base::NullCallback());
 }
 
-void KeyDelivery::EnqueueRequestAndPossiblyStart(bool is_mandatory,
-                                                 RequestCallback callback) {
+void KeyDelivery::EnqueueRequestAndPossiblyStart(RequestCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  CHECK(callback);
-  if (is_mandatory || callbacks_.empty()) {
+  if (callback) {
     callbacks_.push_back(std::move(callback));
   }
 
@@ -133,7 +132,7 @@ void KeyDelivery::PostResponses(Status status) {
 void KeyDelivery::EncryptionKeyReceiverReady(
     StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
   if (!uploader_result.has_value()) {
-    OnCompletion(uploader_result.error());
+    OnKeyUpdateResult(uploader_result.error());
     return;
   }
   uploader_result.value()->Completed(Status::StatusOK());

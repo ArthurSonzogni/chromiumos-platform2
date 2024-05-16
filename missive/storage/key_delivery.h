@@ -12,6 +12,7 @@
 #include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/thread_annotations.h>
+#include <base/time/time.h>
 #include <base/timer/timer.h>
 
 #include "missive/encryption/encryption_module_interface.h"
@@ -30,35 +31,35 @@ class KeyDelivery {
 
   // Factory method, returns smart pointer with deletion on sequence.
   static std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter> Create(
+      base::TimeDelta key_check_period,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb);
 
   ~KeyDelivery();
 
-  // Makes a request to update key, invoking `callback` once responded.
-  // If `is_mandatory` is false and the request is not the first, do
-  // nothing and just drop `callback`.
-  void Request(bool is_mandatory, RequestCallback callback);
-
-  void OnCompletion(Status status);
+  // Makes a request to update key, invoking `callback` once responded (if
+  // specified).
+  void Request(RequestCallback callback);
 
   // Starts periodic updates of the key (every time `period` has passed).
   // Does nothing if the periodic update is already scheduled.
   // Should be called after the initial key is set up.
-  void StartPeriodicKeyUpdate(const base::TimeDelta period);
+  void StartPeriodicKeyUpdate();
+
+  // Called upon key update success/failure.
+  void OnKeyUpdateResult(Status status);
 
  private:
   // Constructor called by factory only.
   explicit KeyDelivery(
+      base::TimeDelta key_check_period,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
   void RequestKeyIfNeeded();
 
-  void EnqueueRequestAndPossiblyStart(
-      bool is_mandatory,  // just like in `Request`
-      RequestCallback callback);
+  void EnqueueRequestAndPossiblyStart(RequestCallback callback);
 
   void PostResponses(Status status);
 
@@ -67,6 +68,9 @@ class KeyDelivery {
 
   const scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);
+
+  // Period of checking possible key update.
+  const base::TimeDelta key_check_period_;
 
   // Upload provider callback.
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;

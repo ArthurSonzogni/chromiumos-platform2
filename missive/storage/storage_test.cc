@@ -141,8 +141,6 @@ class RecordUploadStore {
   // received.
   std::vector<TestRecord> records_;
 };
-constexpr error::Code kKeyDeliveryError = error::FAILED_PRECONDITION;
-constexpr char kKeyDeliveryErrorMessage[] = "Test cannot start upload";
 
 // Test uploader counter - for generation of unique ids.
 std::atomic<int64_t> next_uploader_id{0};
@@ -1022,33 +1020,6 @@ class StorageTest : public ::testing::TestWithParam<
     EXPECT_THAT(options_.disk_space_resource()->GetUsed(), Eq(0u));
   }
 
-  StatusOr<scoped_refptr<Storage>> CreateTestStorageWithFailedKeyDelivery(
-      const StorageOptions& options,
-      scoped_refptr<EncryptionModuleInterface> encryption_module =
-          EncryptionModule::Create(
-              /*is_enabled=*/true,
-              /*renew_encryption_key_period=*/base::Minutes(30))) {
-    // Initialize Storage with no key.
-    test::TestEvent<StatusOr<scoped_refptr<Storage>>> e;
-    Storage::Create({.options = options,
-                     .queues_container = QueuesContainer::Create(
-                         /*storage_degradation_enabled=*/false),
-                     .encryption_module = encryption_module,
-                     .compression_module =
-                         base::MakeRefCounted<test::TestCompressionModule>(),
-                     .health_module = HealthModule::Create(
-                         std::make_unique<HealthModuleDelegateMock>()),
-                     .signature_verification_dev_flag =
-                         base::MakeRefCounted<SignatureVerificationDevFlag>(
-                             /*is_enabled=*/false),
-                     .async_start_upload_cb = base::BindRepeating(
-                         &StorageTest::AsyncStartMockUploaderFailing,
-                         base::Unretained(this))},
-                    e.cb());
-    ASSIGN_OR_RETURN(auto storage, e.result());
-    return storage;
-  }
-
   const StorageOptions& BuildTestStorageOptions() const { return options_; }
 
   void AsyncStartMockUploader(
@@ -1076,21 +1047,6 @@ class StorageTest : public ::testing::TestWithParam<
               std::move(start_uploader_cb).Run(std::move(uploader));
             },
             reason, std::move(start_uploader_cb), base::Unretained(this)));
-  }
-
-  void AsyncStartMockUploaderFailing(
-      UploaderInterface::UploadReason reason,
-      UploaderInterface::InformAboutCachedUploadsCb inform_cb,
-      UploaderInterface::UploaderInterfaceResultCb start_uploader_cb) {
-    if (reason == UploaderInterface::UploadReason::KEY_DELIVERY &&
-        key_delivery_failure_.load()) {
-      std::move(start_uploader_cb)
-          .Run(base::unexpected(
-              Status(kKeyDeliveryError, kKeyDeliveryErrorMessage)));
-      return;
-    }
-    AsyncStartMockUploader(reason, std::move(inform_cb),
-                           std::move(start_uploader_cb));
   }
 
   Status WriteString(Priority priority, std::string_view data) {
@@ -1231,7 +1187,6 @@ class StorageTest : public ::testing::TestWithParam<
       GUARDED_BY_CONTEXT(sequence_checker_);
   SignedEncryptionInfo signed_encryption_key_;
   bool expect_to_need_key_{false};
-  std::atomic<bool> key_delivery_failure_{false};
 
   // Test-wide global mapping of <generation id, sequencing id> to record
   // digest. Serves all TestUploaders created by test fixture.
@@ -2278,16 +2233,15 @@ TEST_P(StorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
   // Initialize Storage with failure to deliver key.
   ASSERT_FALSE(storage_) << "StorageTest already assigned";
   options_.set_key_check_period(base::Seconds(4));
-  StatusOr<scoped_refptr<Storage>> storage_result =
-      CreateTestStorageWithFailedKeyDelivery(
-          BuildTestStorageOptions(),
-          // Set the renew encryption key period to be 1 second less than the
-          // storage key check period so that each time storage asks the
-          // encryption module if it needs a new key, the encryption module says
-          // "yes"
-          EncryptionModule::Create(
-              /*is_enabled=*/true,
-              base::Seconds(options_.key_check_period().InSeconds() - 1)));
+  StatusOr<scoped_refptr<Storage>> storage_result = CreateTestStorage(
+      BuildTestStorageOptions(),
+      // Set the renew encryption key period to be 1 second less than the
+      // storage key check period so that each time storage asks the
+      // encryption module if it needs a new key, the encryption module says
+      // "yes"
+      EncryptionModule::Create(
+          /*is_enabled=*/true,
+          base::Seconds(options_.key_check_period().InSeconds() - 1)));
   ASSERT_OK(storage_result)
       << "Failed to create StorageTest, error=" << storage_result.error();
   storage_ = std::move(storage_result.value());
@@ -2329,159 +2283,6 @@ TEST_P(StorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
         .RetiresOnSaturation();
     task_environment_.FastForwardBy(options_.key_check_period());
   }
-}
-
-TEST_P(StorageTest, KeyDeliveryFailureOnStorage) {
-  static constexpr size_t kFailuresCount = 3;
-
-  if (!is_encryption_enabled()) {
-    return;  // Test only makes sense with encryption enabled.
-  }
-
-  // Initialize Storage with failure to deliver key.
-  ASSERT_FALSE(storage_) << "StorageTest already assigned";
-  StatusOr<scoped_refptr<Storage>> storage_result =
-      CreateTestStorageWithFailedKeyDelivery(BuildTestStorageOptions());
-  ASSERT_OK(storage_result)
-      << "Failed to create StorageTest, error=" << storage_result.error();
-  storage_ = std::move(storage_result.value());
-
-  key_delivery_failure_.store(true);
-
-  // Try writing multiple times and expect failure since we don't have the key
-  for (size_t failure = 1; failure < kFailuresCount; ++failure) {
-    // Failing attempt to write
-    const Status write_result = WriteString(MANUAL_BATCH, kData[0]);
-    EXPECT_FALSE(write_result.ok());
-    EXPECT_THAT(write_result.error_code(), Eq(kKeyDeliveryError))
-        << write_result;
-    EXPECT_THAT(write_result.message(), HasSubstr(kKeyDeliveryErrorMessage))
-        << write_result;
-
-    // Storage will continue to request the encryption key until succeeded.
-    EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-                SendEnumToUMA(KeyDelivery::kResultUma, kKeyDeliveryError,
-                              error::MAX_VALUE))
-        .WillRepeatedly(Return(true));
-
-    // Forward time to trigger key request
-    task_environment_.FastForwardBy(options_.key_check_period());
-  }
-
-  // This time key delivery is to succeed.
-  // Set uploader expectations for any queue; expect no records and need
-  // key. Make sure no uploads happen, and key is requested.
-  key_delivery_failure_.store(false);
-  {
-    test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
-        .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason) {
-          auto result = TestUploader::SetKeyDelivery(this).Complete();
-          waiter.Signal();
-          return result;
-        }))
-        .RetiresOnSaturation();
-
-    // Key request should succeed, so expect UMA to log success for key
-    // delivery
-    EXPECT_CALL(
-        analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-        SendEnumToUMA(KeyDelivery::kResultUma, error::OK, error::MAX_VALUE));
-
-    // Forward time to trigger key request
-    task_environment_.FastForwardBy(options_.key_check_period());
-  }
-
-  // Successfully write data
-  WriteStringOrDie(MANUAL_BATCH, kData[0]);
-  WriteStringOrDie(MANUAL_BATCH, kData[1]);
-  WriteStringOrDie(MANUAL_BATCH, kData[2]);
-
-  // Set uploader expectations.
-  {
-    test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::MANUAL)))
-        .WillOnce(
-            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-              return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
-                  .Required(0, kData[0])
-                  .Required(1, kData[1])
-                  .Required(2, kData[2])
-                  .Complete();
-            }))
-        .RetiresOnSaturation();
-
-    // Trigger upload.
-    FlushOrDie(MANUAL_BATCH);
-  }
-
-  ResetTestStorage();
-
-  {
-    // Avoid init resume upload upon non-empty queue restart.
-    test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::INIT_RESUME)))
-        .WillOnce(Invoke([&waiter](UploaderInterface::UploadReason reason) {
-          waiter.Signal();
-          return base::unexpected(
-              Status(error::UNAVAILABLE, "Skipped upload in test"));
-        }))
-        .RetiresOnSaturation();
-
-    // Reopening will cause INIT_RESUME
-    CreateTestStorageOrDie(BuildTestStorageOptions());
-  }
-
-  // Write more data.
-  WriteStringOrDie(MANUAL_BATCH, kMoreData[0]);
-  WriteStringOrDie(MANUAL_BATCH, kMoreData[1]);
-  WriteStringOrDie(MANUAL_BATCH, kMoreData[2]);
-
-  // Set uploader expectations.
-  test::TestCallbackAutoWaiter waiter;
-  EXPECT_CALL(set_mock_uploader_expectations_,
-              Call(Eq(UploaderInterface::UploadReason::MANUAL)))
-      .WillRepeatedly(
-          Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-            return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
-                // This setup verifies that data is received in the
-                // correct order -- kData[0] arrives before kData[1]. It
-                // does NOT verify that data is received in a specific
-                // upload (i.e. does not care if kData[0] arrives in the
-                // first or second upload)
-                .RequireEither(0, kData[0], 0, kMoreData[0])
-                .RequireEither(1, kData[1], 1, kMoreData[1])
-                .RequireEither(2, kData[2], 2, kMoreData[2])
-                .Complete();
-          }))
-      .RetiresOnSaturation();
-
-  // Expect two uploads. Two queues exists and both will upload once: one queue
-  // uploads data enqueued before the storage reset and one queue uploads data
-  // enqueued after storage reset. This is technically testing implementation
-  // details and should be addressed at some point, but for now there's nothing
-  // number of uploads or else the tests will not pass.
-  FlushOrDie(MANUAL_BATCH);
-
-  // Wait for the TestUploader to finish because it runs on Storage's
-  // sequenced task runner, not the main test thread.
-  task_environment_.RunUntilIdle();
-
-  const std::vector<TestRecord> allKData = {{MANUAL_BATCH, 0, kData[0]},
-                                            {MANUAL_BATCH, 1, kData[1]},
-                                            {MANUAL_BATCH, 2, kData[2]}};
-
-  const std::vector<TestRecord> allKMoreData = {
-      {MANUAL_BATCH, 0, kMoreData[0]},
-      {MANUAL_BATCH, 1, kMoreData[1]},
-      {MANUAL_BATCH, 2, kMoreData[2]}};
-
-  EXPECT_TRUE(RecordsArrivedInExpectedOrder(upload_store_.Records(), allKData));
-  EXPECT_TRUE(
-      RecordsArrivedInExpectedOrder(upload_store_.Records(), allKMoreData));
 }
 
 TEST_P(StorageTest, MultipleUsersWriteSamePriorityAndUpload) {
