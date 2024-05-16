@@ -7,14 +7,14 @@ import("//common-mk/pkg_config.gni")
 group("host") {
   deps = [
     ":maitred_client",
-    ":seneschal",
-    ":seneschal_client",
     ":vmlog_forwarder",
     ":vsh",
     "//vm_tools:vshd",
     "//vm_tools/cicerone:cicerone_client",
     "//vm_tools/cicerone:vm_cicerone",
     "//vm_tools/concierge",
+    "//vm_tools/seneschal",
+    "//vm_tools/seneschal:seneschal_client",
   ]
   if (use.arcvm) {
     deps += [ ":vm_pstore_dump" ]
@@ -149,31 +149,6 @@ if (use.arcvm) {
     configs += [ ":host_target_defaults" ]
     deps = [ ":libvm_pstore_dump" ]
   }
-}
-
-static_library("libseneschal") {
-  sources = [ "../seneschal/service.cc" ]
-  configs += [ ":host_target_defaults" ]
-  all_dependent_pkg_deps = [
-    "libminijail",
-    "protobuf",
-    "system_api",
-  ]
-}
-
-executable("seneschal") {
-  sources = [ "../seneschal/main.cc" ]
-  configs += [ ":host_target_defaults" ]
-  deps = [ ":libseneschal" ]
-}
-
-executable("seneschal_client") {
-  sources = [ "../seneschal/client.cc" ]
-  configs += [ ":host_target_defaults" ]
-  pkg_deps = [
-    "protobuf",
-    "system_api",
-  ]
 }
 
 if (use.test) {

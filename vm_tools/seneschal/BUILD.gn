@@ -1,0 +1,28 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+static_library("libseneschal") {
+  sources = [ "service.cc" ]
+  configs += [ "//vm_tools/host:host_target_defaults" ]
+  all_dependent_pkg_deps = [
+    "libminijail",
+    "protobuf",
+    "system_api",
+  ]
+}
+
+executable("seneschal") {
+  sources = [ "main.cc" ]
+  configs += [ "//vm_tools/host:host_target_defaults" ]
+  deps = [ ":libseneschal" ]
+}
+
+executable("seneschal_client") {
+  sources = [ "client.cc" ]
+  configs += [ "//vm_tools/host:host_target_defaults" ]
+  pkg_deps = [
+    "protobuf",
+    "system_api",
+  ]
+}
