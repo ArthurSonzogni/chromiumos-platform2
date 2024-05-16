@@ -13,7 +13,6 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <net-base/rtnl_listener.h>
 #include <net-base/ip_address.h>
@@ -195,7 +194,6 @@ class NeighborLinkMonitor {
 class NetworkMonitorService {
  public:
   explicit NetworkMonitorService(
-      ShillClient* shill_client,
       const NeighborLinkMonitor::NeighborReachabilityEventHandler&
           neighbor_event_handler);
   ~NetworkMonitorService() = default;
@@ -203,23 +201,17 @@ class NetworkMonitorService {
   NetworkMonitorService(const NetworkMonitorService&) = delete;
   NetworkMonitorService& operator=(const NetworkMonitorService&) = delete;
 
-  void Start();
-
- private:
   void OnShillDevicesChanged(const std::vector<ShillClient::Device>& added,
                              const std::vector<ShillClient::Device>& removed);
   void OnIPConfigsChanged(const ShillClient::Device& device);
 
+ private:
   // ifname => NeighborLinkMonitor.
   std::map<std::string, std::unique_ptr<NeighborLinkMonitor>>
       neighbor_link_monitors_;
   NeighborLinkMonitor::NeighborReachabilityEventHandler neighbor_event_handler_;
-  ShillClient* shill_client_;
   // RTNLHandler is a singleton object. Stores it here for test purpose.
   net_base::RTNLHandler* rtnl_handler_;
-
-  FRIEND_TEST(NetworkMonitorServiceTest, StartRTNLHanlderOnServiceStart);
-  FRIEND_TEST(NetworkMonitorServiceTest, CallGetDevicePropertiesOnNewDevice);
 
   base::WeakPtrFactory<NetworkMonitorService> weak_factory_{this};
 };

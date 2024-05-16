@@ -352,20 +352,10 @@ void NeighborLinkMonitor::OnNeighborMessage(const net_base::RTNLMessage& msg) {
 }
 
 NetworkMonitorService::NetworkMonitorService(
-    ShillClient* shill_client,
     const NeighborLinkMonitor::NeighborReachabilityEventHandler&
         neighbor_event_handler)
     : neighbor_event_handler_(neighbor_event_handler),
-      shill_client_(shill_client),
       rtnl_handler_(net_base::RTNLHandler::GetInstance()) {}
-
-void NetworkMonitorService::Start() {
-  shill_client_->RegisterDevicesChangedHandler(
-      base::BindRepeating(&NetworkMonitorService::OnShillDevicesChanged,
-                          weak_factory_.GetWeakPtr()));
-  shill_client_->RegisterIPConfigsChangedHandler(base::BindRepeating(
-      &NetworkMonitorService::OnIPConfigsChanged, weak_factory_.GetWeakPtr()));
-}
 
 void NetworkMonitorService::OnShillDevicesChanged(
     const std::vector<ShillClient::Device>& added,

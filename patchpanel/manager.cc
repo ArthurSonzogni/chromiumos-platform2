@@ -102,10 +102,9 @@ Manager::Manager(const base::FilePath& cmd_path,
   cros_svc_ = std::make_unique<CrostiniService>(&addr_mgr_, datapath_.get(),
                                                 this, dbus_client_notifier_);
 
-  network_monitor_svc_ = std::make_unique<NetworkMonitorService>(
-      shill_client_.get(),
-      base::BindRepeating(&Manager::OnNeighborReachabilityEvent,
-                          weak_factory_.GetWeakPtr()));
+  network_monitor_svc_ =
+      std::make_unique<NetworkMonitorService>(base::BindRepeating(
+          &Manager::OnNeighborReachabilityEvent, weak_factory_.GetWeakPtr()));
   ipv6_svc_ = std::make_unique<GuestIPv6Service>(nd_proxy_.get(),
                                                  datapath_.get(), system);
   clat_svc_ =
@@ -187,7 +186,6 @@ void Manager::RunDelayedInitialization() {
       &Manager::OnIPv6NetworkChanged, weak_factory_.GetWeakPtr()));
   shill_client_->RegisterDoHProvidersChangedHandler(base::BindRepeating(
       &Manager::OnDoHProvidersChanged, weak_factory_.GetWeakPtr()));
-  network_monitor_svc_->Start();
 
   // Make sure patchpanel get aware of the Devices created before it starts.
   shill_client_->ScanDevices();
@@ -395,6 +393,8 @@ void Manager::OnShillDevicesChanged(
       datapath_->StartSourceIPv6PrefixEnforcement(device);
     }
   }
+
+  network_monitor_svc_->OnShillDevicesChanged(added, removed);
 }
 
 void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
@@ -435,6 +435,8 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
   if (!shill_device.IsConnected()) {
     qos_svc_->OnPhysicalDeviceDisconnected(shill_device);
   }
+
+  network_monitor_svc_->OnIPConfigsChanged(shill_device);
 }
 
 void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {

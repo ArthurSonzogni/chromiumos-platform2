@@ -135,8 +135,6 @@ class FakeNeighborReachabilityEventHandler {
       NeighborReachabilityEventSignal::INVALID_EVENT_TYPE;
 };
 
-}  // namespace
-
 class NeighborLinkMonitorTest : public testing::Test {
  protected:
   void SetUp() override {
@@ -412,59 +410,5 @@ TEST_F(NeighborLinkMonitorTest, NeighborRole) {
   NotifyNUDStateChanged("1.2.3.6", NUD_FAILED);
 }
 
-class NetworkMonitorServiceTest : public testing::Test {
- protected:
-  void SetUp() override {
-    fake_shill_client_ = shill_helper_.FakeClient();
-    monitor_svc_ = std::make_unique<NetworkMonitorService>(
-        fake_shill_client_.get(),
-        base::BindRepeating(&FakeNeighborReachabilityEventHandler::Run,
-                            base::Unretained(&fake_neighbor_event_handler_)));
-    mock_rtnl_handler_ = std::make_unique<net_base::MockRTNLHandler>();
-  }
-
-  FakeShillClientHelper shill_helper_;
-  FakeNeighborReachabilityEventHandler fake_neighbor_event_handler_;
-  std::unique_ptr<FakeShillClient> fake_shill_client_;
-  std::unique_ptr<net_base::MockRTNLHandler> mock_rtnl_handler_;
-  std::unique_ptr<NetworkMonitorService> monitor_svc_;
-};
-
-TEST_F(NetworkMonitorServiceTest, CallGetDevicePropertiesOnNewDevice) {
-  dbus::ObjectPath eth0_path = dbus::ObjectPath("/device/eth0");
-  ShillClient::Device eth_dev;
-  eth_dev.technology = net_base::Technology::kEthernet;
-  eth_dev.ifindex = 1;
-  eth_dev.ifname = "eth0";
-  eth_dev.service_path = "/service/2";
-  fake_shill_client_->SetFakeDeviceProperties(eth0_path, eth_dev);
-
-  dbus::ObjectPath wlan0_path = dbus::ObjectPath("/device/wlan0");
-  ShillClient::Device wlan_dev;
-  wlan_dev.technology = net_base::Technology::kWiFi;
-  wlan_dev.ifindex = 2;
-  wlan_dev.ifname = "wlan0";
-  wlan_dev.service_path = "/service/2";
-  fake_shill_client_->SetFakeDeviceProperties(wlan0_path, wlan_dev);
-
-  monitor_svc_->rtnl_handler_ = mock_rtnl_handler_.get();
-
-  // Device added before service starts.
-  std::vector<dbus::ObjectPath> devices = {eth0_path};
-  fake_shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty,
-                                                  brillo::Any(devices));
-  monitor_svc_->Start();
-
-  // Device added after service starts.
-  devices.push_back(wlan0_path);
-  fake_shill_client_->NotifyManagerPropertyChange(shill::kDevicesProperty,
-                                                  brillo::Any(devices));
-
-  const std::set<dbus::ObjectPath>& calls =
-      fake_shill_client_->get_device_properties_calls();
-  EXPECT_EQ(calls.size(), 2);
-  EXPECT_NE(calls.find(eth0_path), calls.end());
-  EXPECT_NE(calls.find(wlan0_path), calls.end());
-}
-
+}  // namespace
 }  // namespace patchpanel
