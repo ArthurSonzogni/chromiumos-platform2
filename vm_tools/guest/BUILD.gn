@@ -14,7 +14,7 @@ group("guest") {
     ":port_listener",
     ":upgrade_container",
     ":vm_syslog",
-    "//vm_tools:vshd",
+    "//vm_tools/vsh:vshd",
   ]
   if (!use.fuzzer) {
     # Exclude notificationd and the demos from fuzzer builds since they

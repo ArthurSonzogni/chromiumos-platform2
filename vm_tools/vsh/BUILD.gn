@@ -1,0 +1,88 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+static_library("libvsh") {
+  sources = [ "utils.cc" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
+}
+
+executable("vshd") {
+  sources = [
+    "vsh_forwarder.cc",
+    "vshd.cc",
+  ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "vm_protos",
+  ]
+  deps = [ ":libvsh" ]
+}
+
+if (use.kvm_host) {
+  static_library("libvsh-client") {
+    sources = [
+      "scoped_termios.cc",
+      "vsh_client.cc",
+    ]
+    configs += [ "//vm_tools/host:host_target_defaults" ]
+    pkg_deps = [
+      "system_api",
+      "vm_protos",
+    ]
+    deps = [ ":libvsh" ]
+    all_dependent_pkg_deps = [ "vm_protos" ]
+    if (use.fuzzer) {
+      all_dependent_pkg_deps += [ "protobuf" ]
+    } else {
+      all_dependent_pkg_deps += [ "protobuf-lite" ]
+    }
+  }
+
+  executable("vsh") {
+    sources = [ "vsh.cc" ]
+    configs += [ "//vm_tools/host:host_target_defaults" ]
+    pkg_deps = [
+      "system_api",
+      "vm_protos",
+    ]
+    deps = [ ":libvsh-client" ]
+  }
+
+  if (use.test) {
+    executable("vsh_test") {
+      sources = [ "utils_test.cc" ]
+      configs += [
+        "//common-mk:test",
+        "//vm_tools/host:host_target_defaults",
+      ]
+      pkg_deps = [ "vm_protos" ]
+      deps = [
+        ":libvsh",
+        "//common-mk/testrunner:testrunner",
+        "//vm_tools:libvm_tools_common",
+      ]
+    }
+  }
+
+  if (use.fuzzer) {
+    executable("vsh_client_fuzzer") {
+      sources = [ "vsh_client_fuzzer.cc" ]
+      configs += [
+        "//common-mk/common_fuzzer",
+        "//vm_tools/host:host_target_defaults",
+        "//vm_tools/host:vm_host_tools_fuzzer_pkg_deps",
+      ]
+      deps = [ ":libvsh-client" ]
+    }
+  }
+}

@@ -8,13 +8,13 @@ group("host") {
   deps = [
     ":maitred_client",
     ":vmlog_forwarder",
-    ":vsh",
-    "//vm_tools:vshd",
     "//vm_tools/cicerone:cicerone_client",
     "//vm_tools/cicerone:vm_cicerone",
     "//vm_tools/concierge",
     "//vm_tools/seneschal",
     "//vm_tools/seneschal:seneschal_client",
+    "//vm_tools/vsh",
+    "//vm_tools/vsh:vshd",
   ]
   if (use.arcvm) {
     deps += [ ":vm_pstore_dump" ]
@@ -22,9 +22,9 @@ group("host") {
   if (use.test) {
     deps += [
       ":syslog_forwarder_test",
-      ":vsh_test",
       "//vm_tools/cicerone:cicerone_test",
       "//vm_tools/concierge:concierge_test",
+      "//vm_tools/vsh:vsh_test",
     ]
     if (use.arcvm) {
       deps += [ ":vm_pstore_dump_test" ]
@@ -32,8 +32,8 @@ group("host") {
   }
   if (use.fuzzer) {
     deps += [
-      ":vsh_client_fuzzer",
       "//vm_tools/cicerone:cicerone_container_listener_fuzzer",
+      "//vm_tools/vsh:vsh_client_fuzzer",
     ]
   }
 }
@@ -105,35 +105,6 @@ executable("vmlog_forwarder") {
   ]
 }
 
-static_library("libvsh-client") {
-  sources = [
-    "../vsh/scoped_termios.cc",
-    "../vsh/vsh_client.cc",
-  ]
-  configs += [ ":host_target_defaults" ]
-  pkg_deps = [
-    "system_api",
-    "vm_protos",
-  ]
-  deps = [ "//vm_tools:libvsh" ]
-  all_dependent_pkg_deps = [ "vm_protos" ]
-  if (use.fuzzer) {
-    all_dependent_pkg_deps += [ "protobuf" ]
-  } else {
-    all_dependent_pkg_deps += [ "protobuf-lite" ]
-  }
-}
-
-executable("vsh") {
-  sources = [ "../vsh/vsh.cc" ]
-  configs += [ ":host_target_defaults" ]
-  pkg_deps = [
-    "system_api",
-    "vm_protos",
-  ]
-  deps = [ ":libvsh-client" ]
-}
-
 if (use.arcvm) {
   static_library("libvm_pstore_dump") {
     sources = [ "../pstore_dump/persistent_ram_buffer.cc" ]
@@ -167,20 +138,6 @@ if (use.test) {
     ]
   }
 
-  executable("vsh_test") {
-    sources = [ "../vsh/utils_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":host_target_defaults",
-    ]
-    pkg_deps = [ "vm_protos" ]
-    deps = [
-      "//common-mk/testrunner:testrunner",
-      "//vm_tools:libvm_tools_common",
-      "//vm_tools:libvsh",
-    ]
-  }
-
   if (use.arcvm) {
     executable("vm_pstore_dump_test") {
       sources = [ "../pstore_dump/persistent_ram_buffer_test.cc" ]
@@ -203,15 +160,5 @@ if (use.fuzzer) {
       "protobuf",
       "vm_protos",
     ]
-  }
-
-  executable("vsh_client_fuzzer") {
-    sources = [ "../vsh/vsh_client_fuzzer.cc" ]
-    configs += [
-      "//common-mk/common_fuzzer",
-      ":host_target_defaults",
-      ":vm_host_tools_fuzzer_pkg_deps",
-    ]
-    deps = [ ":libvsh-client" ]
   }
 }
