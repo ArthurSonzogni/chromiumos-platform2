@@ -39,9 +39,7 @@ constexpr base::TimeDelta kTimeoutCheckInterval = base::Seconds(2);
 
 }  // namespace
 
-Daemon::Daemon(base::OnceClosure startup_callback)
-    : DBusServiceDaemon(kManagerServiceName, "/ObjectManager"),
-      startup_callback_(std::move(startup_callback)) {}
+Daemon::Daemon() : DBusServiceDaemon(kManagerServiceName, "/ObjectManager") {}
 
 Daemon::~Daemon() {}
 
@@ -53,8 +51,6 @@ int Daemon::OnInit() {
 
   PostponeShutdown(kNormalShutdownTimeout);
 
-  // Signal that we've acquired all resources.
-  std::move(startup_callback_).Run();
   return EX_OK;
 }
 

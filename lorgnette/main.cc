@@ -10,22 +10,16 @@
 #include "lorgnette/daemon.h"
 #include "lorgnette/debug_log.h"
 
-namespace {
-
-void OnStartup(const char* daemon_name) {
-  lorgnette::DebugLogManager logman;
-  if (logman.SetupDebugging()) {
-    LOG(INFO) << "Enabled extra logging for " << daemon_name;
-  }
-}
-
-}  // namespace
-
 int main(int argc, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty |
                   brillo::kLogHeader);
 
-  lorgnette::Daemon daemon(base::BindOnce(&OnStartup, argv[0]));
+  lorgnette::DebugLogManager logman;
+  if (logman.SetupDebugging()) {
+    LOG(INFO) << "Enabled extra logging for " << argv[0];
+  }
+
+  lorgnette::Daemon daemon;
 
   daemon.Run();
 

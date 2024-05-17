@@ -51,12 +51,13 @@ bool DebugLogManager::SetupDebugging() {
     return false;
   }
 
-  setenv("PFUFS_DEBUG", "1", 1);
+  setenv("PFUFS_DEBUG", "40", 1);
   setenv("SANE_DEBUG_AIRSCAN", "16", 1);
   setenv("SANE_DEBUG_EPSONDS", "16", 1);
   setenv("SANE_DEBUG_EPSON2", "16", 1);
   setenv("SANE_DEBUG_FUJITSU", "20", 1);
   setenv("SANE_DEBUG_PIXMA", "4", 1);
+  setenv("SANE_DEBUG_DLL", "4", 1);
 
   return true;
 }

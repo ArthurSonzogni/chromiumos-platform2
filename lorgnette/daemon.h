@@ -28,7 +28,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   static const char kScanGroupName[];
   static const char kScanUserName[];
 
-  explicit Daemon(base::OnceClosure startup_callback);
+  Daemon();
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
   ~Daemon() override;
@@ -54,7 +54,6 @@ class Daemon : public brillo::DBusServiceDaemon {
   void OnDebugChanged();
 
   std::unique_ptr<DBusServiceAdaptor> dbus_service_;
-  base::OnceClosure startup_callback_;
   base::CancelableOnceClosure shutdown_callback_;
 
   std::unique_ptr<LibsaneWrapper> libsane_;
