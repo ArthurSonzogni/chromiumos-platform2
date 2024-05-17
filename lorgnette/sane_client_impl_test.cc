@@ -14,6 +14,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <lorgnette/proto_bindings/lorgnette_service.pb.h>
+#include <sane/sane.h>
 
 #include "lorgnette/constants.h"
 #include "lorgnette/libsane_wrapper.h"
@@ -135,6 +136,41 @@ TEST_F(SaneClientTest, ScannerInfoFromDeviceListMultipleDevices) {
   EXPECT_EQ(info[1].manufacturer(), dev_two_.vendor);
   EXPECT_EQ(info[1].model(), dev_two_.model);
   EXPECT_EQ(info[1].type(), dev_two_.type);
+}
+
+TEST_F(SaneClientTest, SaneClientSetsStatusOnSuccess) {
+  std::unique_ptr<LibsaneWrapper> libsane;
+  std::unique_ptr<SaneClient> client;
+  std::unique_ptr<SaneDevice> device;
+  SANE_Status status;
+  brillo::ErrorPtr error;
+
+  libsane = LibsaneWrapperImpl::Create();
+  client = SaneClientImpl::Create(libsane.get());
+  device = client->ConnectToDevice(&error, &status, "test");
+
+  EXPECT_NE(device, nullptr);
+  EXPECT_EQ(error, nullptr);
+  EXPECT_EQ(status, SANE_STATUS_GOOD);
+}
+
+TEST_F(SaneClientTest, SaneClientSetsStatusOnBusy) {
+  std::unique_ptr<LibsaneWrapper> libsane;
+  std::unique_ptr<SaneClient> client;
+  std::unique_ptr<SaneDevice> device;
+  std::unique_ptr<SaneDevice> duplicate_device;
+  SANE_Status status;
+  brillo::ErrorPtr error;
+
+  libsane = LibsaneWrapperImpl::Create();
+  client = SaneClientImpl::Create(libsane.get());
+  device = client->ConnectToDevice(&error, &status, "test");
+  duplicate_device = client->ConnectToDevice(&error, &status, "test");
+
+  EXPECT_NE(device, nullptr);
+  EXPECT_EQ(duplicate_device, nullptr);
+  EXPECT_NE(error, nullptr);
+  EXPECT_EQ(status, SANE_STATUS_DEVICE_BUSY);
 }
 
 }  // namespace lorgnette

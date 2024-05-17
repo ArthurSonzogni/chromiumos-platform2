@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <chromeos/dbus/service_constants.h>
+#include <sane/sane.h>
 
 #include "lorgnette/constants.h"
 #include "lorgnette/dbus_adaptors/org.chromium.lorgnette.Manager.h"
@@ -26,6 +27,9 @@ std::unique_ptr<SaneDevice> SaneClientFake::ConnectToDeviceInternal(
     devices_.erase(device_name);
     // Put back a fresh copy so the device can be opened again later.
     SetDeviceForName(device_name, ptr->CloneForTesting());
+    if (sane_status) {
+      *sane_status = SANE_STATUS_GOOD;
+    }
     return ptr;
   }
 

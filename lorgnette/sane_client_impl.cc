@@ -105,17 +105,21 @@ std::unique_ptr<SaneDevice> SaneClientImpl::ConnectToDeviceInternal(
       brillo::Error::AddToPrintf(
           error, FROM_HERE, kDbusDomain, kManagerServiceError,
           "Device '%s' is currently in-use", device_name.c_str());
+
+      if (sane_status)
+        *sane_status = SANE_STATUS_DEVICE_BUSY;
       return nullptr;
     }
 
     SANE_Status status = libsane_->sane_open(device_name.c_str(), &handle);
+    if (sane_status)
+      *sane_status = status;
+
     if (status != SANE_STATUS_GOOD) {
       brillo::Error::AddToPrintf(error, FROM_HERE, kDbusDomain,
                                  kManagerServiceError,
                                  "Unable to open device '%s': %s",
                                  device_name.c_str(), sane_strstatus(status));
-      if (sane_status)
-        *sane_status = status;
 
       return nullptr;
     }
