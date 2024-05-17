@@ -1,0 +1,73 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("../sommelier/wayland_protocol.gni")
+
+if (!use.fuzzer) {
+  wayland_protocol_library("notification-protocol") {
+    sources = [ "protocol/notification-shell-unstable-v1.xml" ]
+    configs = [ "//vm_tools/guest:target_defaults" ]
+    out_dir = "include"
+  }
+
+  static_library("libnotificationd") {
+    sources = [
+      "dbus_service.cc",
+      "notification_daemon.cc",
+      "notification_shell_client.cc",
+    ]
+    include_dirs = [ ".." ]
+    defines = [ "WL_HIDE_DEPRECATED" ]
+    public_pkg_deps = [
+      "wayland-client",
+      "wayland-server",
+    ]
+    pkg_deps = [
+      "dbus-1",
+      "libbrillo",
+    ]
+    deps = [ ":notification-protocol" ]
+  }
+
+  executable("notificationd") {
+    sources = [ "notificationd.cc" ]
+    include_dirs = [ ".." ]
+    public_pkg_deps = [
+      "wayland-client",
+      "wayland-server",
+    ]
+    pkg_deps = [
+      "dbus-1",
+      "libbrillo",
+    ]
+    deps = [
+      ":libnotificationd",
+      ":notification-protocol",
+    ]
+  }
+
+  if (use.test) {
+    executable("notificationd_test") {
+      sources = [ "dbus_service_test.cc" ]
+      configs += [
+        "//common-mk:test",
+        "//vm_tools/guest:target_defaults",
+      ]
+      public_pkg_deps = [
+        "wayland-client",
+        "wayland-server",
+      ]
+      pkg_deps = [
+        "dbus-1",
+        "libbrillo",
+        "libchrome-test",
+      ]
+      deps = [
+        ":libnotificationd",
+        ":notification-protocol",
+        "//common-mk/testrunner:testrunner",
+      ]
+    }
+  }
+}

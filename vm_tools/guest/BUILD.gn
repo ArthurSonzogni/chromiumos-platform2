@@ -19,20 +19,20 @@ group("guest") {
     # Exclude notificationd and the demos from fuzzer builds since they
     # pull in wayland, which causes build problems.
     deps += [
-      ":notificationd",
       ":wayland_demo",
       ":x11_demo",
+      "//vm_tools/notificationd",
     ]
   }
   if (use.test) {
     deps += [
-      ":notificationd_test",
       "//vm_tools/garcon:garcon_desktop_file_test",
       "//vm_tools/garcon:garcon_icon_finder_test",
       "//vm_tools/garcon:garcon_icon_index_file_test",
       "//vm_tools/garcon:garcon_mime_types_parser_test",
       "//vm_tools/maitred:maitred_init_test",
       "//vm_tools/maitred:maitred_service_test",
+      "//vm_tools/notificationd:notificationd_test",
       "//vm_tools/syslog:maitred_syslog_test",
     ]
   }
@@ -51,48 +51,6 @@ pkg_config("target_defaults") {
 }
 
 if (!use.fuzzer) {
-  wayland_protocol_library("notification-protocol") {
-    sources = [ "../notificationd/protocol/notification-shell-unstable-v1.xml" ]
-    configs = [ ":target_defaults" ]
-    out_dir = "include"
-  }
-
-  static_library("libnotificationd") {
-    sources = [
-      "../notificationd/dbus_service.cc",
-      "../notificationd/notification_daemon.cc",
-      "../notificationd/notification_shell_client.cc",
-    ]
-    include_dirs = [ ".." ]
-    defines = [ "WL_HIDE_DEPRECATED" ]
-    public_pkg_deps = [
-      "wayland-client",
-      "wayland-server",
-    ]
-    pkg_deps = [
-      "dbus-1",
-      "libbrillo",
-    ]
-    deps = [ ":notification-protocol" ]
-  }
-
-  executable("notificationd") {
-    sources = [ "../notificationd/notificationd.cc" ]
-    include_dirs = [ ".." ]
-    public_pkg_deps = [
-      "wayland-client",
-      "wayland-server",
-    ]
-    pkg_deps = [
-      "dbus-1",
-      "libbrillo",
-    ]
-    deps = [
-      ":libnotificationd",
-      ":notification-protocol",
-    ]
-  }
-
   executable("wayland_demo") {
     sources = [ "../demos/wayland_demo.cc" ]
     libs = [ "wayland-client" ]
@@ -116,28 +74,4 @@ if (!use.fuzzer) {
 copy("upgrade_container") {
   sources = [ "../upgrade_container/upgrade_container" ]
   outputs = [ "$root_out_dir/upgrade_container" ]
-}
-
-if (use.test) {
-  executable("notificationd_test") {
-    sources = [ "../notificationd/dbus_service_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    public_pkg_deps = [
-      "wayland-client",
-      "wayland-server",
-    ]
-    pkg_deps = [
-      "dbus-1",
-      "libbrillo",
-      "libchrome-test",
-    ]
-    deps = [
-      ":libnotificationd",
-      ":notification-protocol",
-      "//common-mk/testrunner:testrunner",
-    ]
-  }
 }
