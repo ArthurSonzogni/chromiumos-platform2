@@ -80,7 +80,7 @@ int main(int argc, char* argv[]) {
       platform.get(), startup_dep.get(), flags, base::FilePath("/"),
       base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease));
   std::unique_ptr<startup::MountHelper> mount_helper =
-      mount_helper_factory.Generate(platform->GetCrosssystem());
+      mount_helper_factory.Generate();
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl =
       std::make_unique<hwsec_foundation::TlclWrapperImpl>();
   std::unique_ptr<startup::ChromeosStartup> startup =

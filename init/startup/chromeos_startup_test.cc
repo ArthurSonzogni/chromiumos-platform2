@@ -610,7 +610,7 @@ class ConfigTest : public ::testing::Test {
     startup::ChromeosStartup::ParseFlags(&flags);
     startup::MountHelperFactory factory(platform_.get(), startup_dep_.get(),
                                         flags, base_dir_, stateful_, lsb_file_);
-    return factory.Generate(crossystem_);
+    return factory.Generate();
   }
 
   crossystem::Crossystem* crossystem_;

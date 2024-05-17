@@ -41,9 +41,8 @@ MountHelperFactory::MountHelperFactory(libstorage::Platform* platform,
 // In the previous bash version of chromeos_startup, these different function
 // implementations came from loading dev_utils.sh, test_utils.sh,
 // factory_utils.sh and factory_utils.sh.
-std::unique_ptr<MountHelper> MountHelperFactory::Generate(
-    crossystem::Crossystem* crossystem) {
-  bool dev_mode = InDevMode(crossystem);
+std::unique_ptr<MountHelper> MountHelperFactory::Generate() {
+  bool dev_mode = InDevMode(platform_->GetCrosssystem());
   bool is_test_image = IsTestImage(platform_, lsb_file_);
   bool is_factory_mode = IsFactoryMode(platform_, root_);
 

@@ -37,8 +37,7 @@ class MountHelperFactory {
   // is in dev mode, running a test image, and in factory mode. These different
   // possible device configurations need different implementations of the
   // functions DoMountVarAndHomeChronos and DoUmountVarAndHomeChronos.
-  virtual std::unique_ptr<MountHelper> Generate(
-      crossystem::Crossystem* crossystem);
+  virtual std::unique_ptr<MountHelper> Generate();
 
  private:
   raw_ptr<libstorage::Platform> platform_;
