@@ -156,11 +156,6 @@ constexpr char kCrosvmGpuCacheDir[] = "gpucache";
 // Path to system boot_id file.
 constexpr char kBootIdFile[] = "/proc/sys/kernel/random/boot_id";
 
-// Extended attribute indicating that user has picked a size for a non-sparse
-// disk image and it should not be resized.
-constexpr char kDiskImagePreallocatedWithUserChosenSizeXattr[] =
-    "user.crostini.user_chosen_size";
-
 // File extension for raw disk types
 constexpr char kRawImageExtension[] = ".img";
 
@@ -3119,21 +3114,6 @@ void Service::ImportDiskImage(
     return;
   }
 
-  if (CheckVmExists(vm_id)) {
-    response.set_status(DISK_STATUS_EXISTS);
-    response.set_failure_reason("VM/disk with such name already exists");
-    response_cb->Return(response);
-    return;
-  }
-
-  if (request.storage_location() != STORAGE_CRYPTOHOME_PLUGINVM) {
-    LOG(ERROR)
-        << "Locations other than STORAGE_CRYPTOHOME_PLUGINVM are not supported";
-    response.set_failure_reason("Unsupported location for image");
-    response_cb->Return(response);
-    return;
-  }
-
   base::FilePath disk_path;
   if (!GetDiskPathFromName(vm_id, request.storage_location(), &disk_path)) {
     response.set_failure_reason("Failed to set up vm image name");
@@ -3141,9 +3121,43 @@ void Service::ImportDiskImage(
     return;
   }
 
-  auto op = PluginVmImportOperation::Create(
-      base::ScopedFD(dup(in_fd.get())), disk_path, request.source_size(), vm_id,
-      bus_, vmplugin_service_proxy_);
+  base::ScopedFD source_file(dup(in_fd.get()));
+  std::unique_ptr<DiskImageOperation> op;
+
+  switch (request.storage_location()) {
+    case STORAGE_CRYPTOHOME_ROOT:
+      // Allow TerminaVm import to replace an existing VM, but only if stopped.
+      if (FindVm(vm_id) != vms_.end()) {
+        response.set_status(DISK_STATUS_EXISTS);
+        response.set_failure_reason("VM is currently running");
+        response_cb->Return(response);
+        return;
+      }
+
+      op = TerminaVmImportOperation::Create(std::move(source_file), disk_path,
+                                            request.source_size(), vm_id);
+      break;
+
+    case STORAGE_CRYPTOHOME_PLUGINVM:
+      // Don't allow PluginVm import to replace an existing VM.
+      if (CheckVmExists(vm_id)) {
+        response.set_status(DISK_STATUS_EXISTS);
+        response.set_failure_reason("VM/disk with such name already exists");
+        response_cb->Return(response);
+        return;
+      }
+
+      op = PluginVmImportOperation::Create(std::move(source_file), disk_path,
+                                           request.source_size(), vm_id, bus_,
+                                           vmplugin_service_proxy_);
+      break;
+
+    default:
+      LOG(ERROR) << "Unsupported location for disk image import";
+      response.set_failure_reason("Unsupported location for disk image import");
+      response_cb->Return(response);
+      return;
+  }
 
   response.set_status(op->status());
   response.set_command_uuid(op->uuid());

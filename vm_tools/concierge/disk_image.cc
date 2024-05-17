@@ -30,6 +30,7 @@
 
 namespace {
 
+constexpr gid_t kCrosvmUGid = 299;
 constexpr gid_t kPluginVmGid = 20128;
 
 }  // namespace
@@ -753,6 +754,276 @@ void PluginVmImportOperation::Finalize() {
     MarkFailed("Unable to register imported VM image", nullptr);
     DeletePathRecursively(dest_image_path_);
     return;
+  }
+
+  set_status(DISK_STATUS_CREATED);
+}
+
+std::unique_ptr<TerminaVmImportOperation> TerminaVmImportOperation::Create(
+    base::ScopedFD fd,
+    const base::FilePath disk_path,
+    uint64_t source_size,
+    const VmId vm_id) {
+  auto op = base::WrapUnique(new TerminaVmImportOperation(
+      std::move(fd), source_size, std::move(disk_path), std::move(vm_id)));
+
+  if (op->PrepareInput() && op->PrepareOutput()) {
+    op->set_status(DISK_STATUS_IN_PROGRESS);
+  }
+
+  return op;
+}
+
+TerminaVmImportOperation::TerminaVmImportOperation(
+    base::ScopedFD in_fd,
+    uint64_t source_size,
+    const base::FilePath disk_path,
+    const VmId vm_id)
+    : DiskImageOperation(std::move(vm_id)),
+      dest_image_path_(std::move(disk_path)),
+      in_fd_(std::move(in_fd)) {
+  set_source_size(source_size);
+}
+
+TerminaVmImportOperation::~TerminaVmImportOperation() {
+  // Ensure that the archive reader and writers are destroyed first, as these
+  // can invoke callbacks that rely on data in this object.
+  in_.reset();
+  out_.reset();
+}
+
+bool TerminaVmImportOperation::PrepareInput() {
+  in_ = ArchiveReader(archive_read_new());
+  if (!in_.get()) {
+    set_failure_reason("libarchive: failed to create reader");
+    return false;
+  }
+
+  int ret = archive_read_support_format_zip(in_.get());
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason("libarchive: failed to initialize zip format");
+    return false;
+  }
+
+  ret = archive_read_support_filter_all(in_.get());
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason("libarchive: failed to initialize filter");
+    return false;
+  }
+
+  ret = archive_read_open_fd(in_.get(), in_fd_.get(), 102400);
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason("failed to open input archive");
+    return false;
+  }
+
+  return true;
+}
+
+bool TerminaVmImportOperation::PrepareOutput() {
+  // We are not using CreateUniqueTempDirUnderPath() because we want
+  // to be able to identify images that are being imported, and that
+  // requires directory name to not be random.
+  base::FilePath disk_path(dest_image_path_.AddExtension(".tmp"));
+  if (base::PathExists(disk_path)) {
+    set_failure_reason("VM with this name is already being imported");
+    return false;
+  }
+
+  // Create a temp directory with a fixed name based on the disk image name to
+  // ensure multiple import operations can't happen simultaneously for the
+  // same VM.
+  base::File::Error dir_error;
+  if (!base::CreateDirectoryAndGetError(disk_path, &dir_error)) {
+    set_failure_reason(std::string("failed to create output directory: ") +
+                       base::File::ErrorToString(dir_error));
+    return false;
+  }
+
+  CHECK(output_dir_.Set(disk_path));
+
+  out_ = ArchiveWriter(archive_write_disk_new());
+  if (!out_) {
+    set_failure_reason("libarchive: failed to create writer");
+    return false;
+  }
+
+  int ret = archive_write_disk_set_options(
+      out_.get(), ARCHIVE_EXTRACT_SECURE_SYMLINKS |
+                      ARCHIVE_EXTRACT_SECURE_NODOTDOT | ARCHIVE_EXTRACT_XATTR);
+  if (ret != ARCHIVE_OK) {
+    set_failure_reason("libarchive: failed to set disk options");
+    return false;
+  }
+
+  return true;
+}
+
+void TerminaVmImportOperation::MarkFailed(const char* msg, struct archive* a) {
+  if (a) {
+    set_status(archive_errno(a) == ENOSPC ? DISK_STATUS_NOT_ENOUGH_SPACE
+                                          : DISK_STATUS_FAILED);
+    set_failure_reason(base::StringPrintf("%s: %s, %s", msg,
+                                          archive_error_string(a),
+                                          strerror(archive_errno(a))));
+  } else {
+    set_status(DISK_STATUS_FAILED);
+    set_failure_reason(msg);
+  }
+
+  LOG(ERROR) << "TerminaVm import failed: " << failure_reason();
+
+  // Release resources.
+  out_.reset();
+  if (output_dir_.IsValid() && !output_dir_.Delete()) {
+    LOG(WARNING) << "Failed to delete output directory on error";
+  }
+
+  in_.reset();
+  in_fd_.reset();
+}
+
+bool TerminaVmImportOperation::ExecuteIo(uint64_t io_limit) {
+  do {
+    if (!copying_data_) {
+      struct archive_entry* entry;
+      int ret = archive_read_next_header(in_.get(), &entry);
+      if (ret == ARCHIVE_EOF) {
+        // Successfully copied entire archive.
+        return true;
+      }
+
+      if (ret < ARCHIVE_OK) {
+        MarkFailed("failed to read header", in_.get());
+        break;
+      }
+
+      const char* c_path = archive_entry_pathname(entry);
+      if (!c_path || c_path[0] == '\0') {
+        MarkFailed("archive entry has empty file name", nullptr);
+        break;
+      }
+
+      base::FilePath path(c_path);
+
+      mode_t mode = archive_entry_filetype(entry);
+
+      // The archive should contain a single file named the same as the
+      // destination file ("dGVybWluYQ==.img" for termina).
+      base::FilePath dest_filename = dest_image_path_.BaseName();
+      if (path != dest_filename || mode != AE_IFREG) {
+        LOG(ERROR) << "Expected TerminaVm image named " << dest_filename
+                   << ", got " << path << " mode " << mode;
+        MarkFailed("archive entry does not match expected file", nullptr);
+        break;
+      }
+
+      base::FilePath dest_path = output_dir_.GetPath().Append(dest_filename);
+      archive_entry_set_pathname(entry, dest_path.value().c_str());
+
+      archive_entry_set_uid(entry, kCrosvmUGid);
+      archive_entry_set_gid(entry, kCrosvmUGid);
+
+      // Apply the xattr that would be set when installing a VM (not preserved
+      // in export).
+      static constexpr char xattr_val[] = "1";
+      archive_entry_xattr_add_entry(
+          entry, kDiskImagePreallocatedWithUserChosenSizeXattr, xattr_val,
+          sizeof(xattr_val));
+
+      archive_entry_set_perm(entry, 0660);
+
+      ret = archive_write_header(out_.get(), entry);
+      if (ret != ARCHIVE_OK) {
+        MarkFailed("failed to write header", out_.get());
+        break;
+      }
+
+      copying_data_ = archive_entry_size(entry) > 0;
+    }
+
+    if (copying_data_) {
+      uint64_t bytes_read = CopyEntry(io_limit);
+      io_limit -= std::min(bytes_read, io_limit);
+      AccumulateProcessedSize(bytes_read);
+    }
+
+    if (!copying_data_) {
+      int ret = archive_write_finish_entry(out_.get());
+      if (ret != ARCHIVE_OK) {
+        MarkFailed("failed to finish entry", out_.get());
+        break;
+      }
+    }
+  } while (status() == DISK_STATUS_IN_PROGRESS && io_limit > 0);
+
+  // More copying is to be done (or there was a failure).
+  return false;
+}
+
+// Note that this is extremely similar to VmExportOperation::CopyEntry()
+// implementation. The difference is the disk writer supports
+// archive_write_data_block() API that handles sparse files, whereas generic
+// writer does not, so we have to use separate implementations.
+uint64_t TerminaVmImportOperation::CopyEntry(uint64_t io_limit) {
+  uint64_t bytes_read_begin = archive_filter_bytes(in_.get(), -1);
+  uint64_t bytes_read = 0;
+
+  do {
+    const void* buff;
+    size_t size;
+    la_int64_t offset;
+    int ret = archive_read_data_block(in_.get(), &buff, &size, &offset);
+    if (ret == ARCHIVE_EOF) {
+      copying_data_ = false;
+      break;
+    }
+
+    if (ret != ARCHIVE_OK) {
+      MarkFailed("failed to read data block", in_.get());
+      break;
+    }
+
+    bytes_read = archive_filter_bytes(in_.get(), -1) - bytes_read_begin;
+
+    ret = archive_write_data_block(out_.get(), buff, size, offset);
+    if (ret != ARCHIVE_OK) {
+      MarkFailed("failed to write data block", out_.get());
+      break;
+    }
+  } while (bytes_read < io_limit);
+
+  return bytes_read;
+}
+
+void TerminaVmImportOperation::Finalize() {
+  archive_read_close(in_.get());
+  // Free the input archive.
+  in_.reset();
+  // Close the file descriptor.
+  in_fd_.reset();
+
+  int ret = archive_write_close(out_.get());
+  if (ret != ARCHIVE_OK) {
+    MarkFailed("libarchive: failed to close writer", out_.get());
+    return;
+  }
+  // Free the output archive structures.
+  out_.reset();
+
+  // Move the disk image file to the top level where it belongs and remove the
+  // temp directory.
+  auto temp_disk_image_path =
+      output_dir_.GetPath().Append(dest_image_path_.BaseName());
+  base::File::Error err;
+  if (!base::ReplaceFile(temp_disk_image_path, dest_image_path_, &err)) {
+    LOG(ERROR) << "Unable to rename imported disk image: " << err;
+    MarkFailed("Unable to rename imported disk image", nullptr);
+    return;
+  }
+
+  if (!output_dir_.Delete()) {
+    LOG(ERROR) << "Failed to delete temporary import directory";
   }
 
   set_status(DISK_STATUS_CREATED);
