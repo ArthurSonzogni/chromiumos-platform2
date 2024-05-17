@@ -20,6 +20,7 @@
 #include <metrics/metrics_library_mock.h>
 
 #include "crash-reporter/arc_util.h"
+#include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/test_util.h"
 
 namespace {
@@ -120,6 +121,21 @@ TEST_F(ArcvmCxxCollectorTest, HandleCrashWithMinidumpFD) {
   std::string minidump_content;
   EXPECT_TRUE(base::ReadFileToString(minidump_path, &minidump_content));
   EXPECT_EQ(minidump_content, kMinidumpSampleContent);
+}
+
+TEST_F(ArcvmCxxCollectorTest,
+       HandleCrashWithMinidumpFD_GetCreatedCrashDirectoryByEuidFailure) {
+  collector_->force_get_created_crash_directory_by_euid_status_for_test(
+      CrashCollectionStatus::kOutOfCapacity, true);
+  EXPECT_FALSE(collector_->HandleCrashWithMinidumpFD(
+      GetBuildProperty(), GetCrashInfo(), kUptimeValue,
+      std::move(minidump_fd_)));
+
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(test_crash_directory_,
+                                                      "*.meta", nullptr));
+
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(test_crash_directory_,
+                                                      "*.dmp", nullptr));
 }
 
 TEST_F(ArcvmCxxCollectorTest, AddArcMetadata) {

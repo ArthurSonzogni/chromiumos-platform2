@@ -68,6 +68,8 @@ class ArcvmCxxCollector : public CrashCollector {
   friend class ArcvmCxxCollectorMock;
   friend class ArcvmCxxCollectorTest;
   FRIEND_TEST(ArcvmCxxCollectorTest, HandleCrashWithMinidumpFD);
+  FRIEND_TEST(ArcvmCxxCollectorTest,
+              HandleCrashWithMinidumpFD_GetCreatedCrashDirectoryByEuidFailure);
   FRIEND_TEST(ArcvmCxxCollectorTest, AddArcMetadata);
 
   // CrashCollector overrides.
