@@ -45,6 +45,7 @@ generate_dbus_proxies("frobinator-proxies") {
     "path/to/frobinator/dbus_bindings/service.name.of.Frobinator.xml",
   ]
   proxy_output_file = "include/frobinator/dbus-proxies.h"
+  dbus_service_config = "dbus_bindings/dbus-service-config.json"
 }
 ```
 
