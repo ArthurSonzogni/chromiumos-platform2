@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::cmp::Ordering;
 use std::time::Duration;
 use std::time::Instant;
 
@@ -35,7 +34,7 @@ const DEFAULT_THRASHING_FILE_THRESHOLD_KB: usize = 10 * 1024;
 const DEFAULT_PGSTEAL_DIRECT_THRESHOLD_KB: usize = 10 * 1024;
 
 /// [MemoryReclaim] describes how much memory to reclaim on memory pressure and its severity.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum MemoryReclaim {
     None,
     Moderate(usize),
@@ -65,20 +64,6 @@ impl From<MemoryReclaim> for (PressureLevelChrome, u64) {
                 PressureLevelChrome::Critical,
                 size.try_into().unwrap_or(u64::MAX),
             ),
-        }
-    }
-}
-
-impl PartialOrd for MemoryReclaim {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (self, other) {
-            (MemoryReclaim::Critical(v1), MemoryReclaim::Critical(v2)) => Some(v1.cmp(v2)),
-            (MemoryReclaim::Critical(_), _) => Some(Ordering::Greater),
-            (_, MemoryReclaim::Critical(_)) => Some(Ordering::Less),
-            (MemoryReclaim::Moderate(v1), MemoryReclaim::Moderate(v2)) => Some(v1.cmp(v2)),
-            (MemoryReclaim::Moderate(_), _) => Some(Ordering::Greater),
-            (_, MemoryReclaim::Moderate(_)) => Some(Ordering::Less),
-            (MemoryReclaim::None, MemoryReclaim::None) => Some(std::cmp::Ordering::Equal),
         }
     }
 }
