@@ -410,9 +410,9 @@ void Manager::OnIPConfigsChanged(const ShillClient::Device& shill_device) {
   // Update local copies of the ShillClient::Device to keep IP configuration
   // properties in sync.
   for (auto& [_, info] : downstream_networks_) {
-    if (info.upstream_device &&
-        info.upstream_device->ifname == shill_device.ifname) {
-      info.upstream_device = shill_device;
+    if (info->upstream_device &&
+        info->upstream_device->ifname == shill_device.ifname) {
+      info->upstream_device = shill_device;
     }
   }
   for (auto& [_, nsinfo] : connected_namespaces_) {
@@ -710,9 +710,11 @@ bool Manager::TagSocket(const patchpanel::TagSocketRequest& request,
                                  annotation_id);
 }
 
-std::pair<DownstreamNetworkResult, DownstreamNetworkInfo>
-Manager::CreateTetheredNetwork(const TetheredNetworkRequest& request,
-                               const base::ScopedFD& client_fd) {
+patchpanel::TetheredNetworkResponse Manager::CreateTetheredNetwork(
+    const patchpanel::TetheredNetworkRequest& request,
+    const base::ScopedFD& client_fd) {
+  patchpanel::TetheredNetworkResponse response;
+
   // b/273741099, b/293964582: patchpanel must support callers using either the
   // shill Device kInterfaceProperty value (Cellular multiplexing disabled) or
   // the kPrimaryMultiplexedInterfaceProperty value (Cellular multiplexing
@@ -735,61 +737,76 @@ Manager::CreateTetheredNetwork(const TetheredNetworkRequest& request,
     upstream_shill_device = StartTetheringUpstreamNetwork(request);
     if (!upstream_shill_device) {
       LOG(ERROR) << "Unknown shill Device " << request.upstream_ifname();
-      return std::make_pair(
-          patchpanel::DownstreamNetworkResult::UPSTREAM_UNKNOWN,
-          DownstreamNetworkInfo{});
+      response.set_response_code(
+          patchpanel::DownstreamNetworkResult::UPSTREAM_UNKNOWN);
+      return response;
     }
   }
-  const auto info =
+
+  std::unique_ptr<DownstreamNetworkInfo> info =
       DownstreamNetworkInfo::Create(request, *upstream_shill_device);
   if (!info) {
     LOG(ERROR) << __func__ << ": Invalid request";
-    return std::make_pair(patchpanel::DownstreamNetworkResult::INVALID_REQUEST,
-                          DownstreamNetworkInfo{});
+    response.set_response_code(
+        patchpanel::DownstreamNetworkResult::INVALID_REQUEST);
+    return response;
   }
 
-  DownstreamNetworkResult result =
-      HandleDownstreamNetworkInfo(client_fd, *info);
-  if (result != patchpanel::DownstreamNetworkResult::SUCCESS) {
-    return std::make_pair(result, DownstreamNetworkInfo{});
+  auto [response_code, downstream_network] =
+      HandleDownstreamNetworkInfo(client_fd, std::move(info));
+  response.set_response_code(response_code);
+  if (downstream_network) {
+    response.set_allocated_downstream_network(downstream_network.release());
   }
-  return std::make_pair(result, *info);
+  return response;
 }
 
-std::pair<DownstreamNetworkResult, DownstreamNetworkInfo>
-Manager::CreateLocalOnlyNetwork(const LocalOnlyNetworkRequest& request,
-                                const base::ScopedFD& client_fd) {
-  std::optional<DownstreamNetworkInfo> info =
+patchpanel::LocalOnlyNetworkResponse Manager::CreateLocalOnlyNetwork(
+    const patchpanel::LocalOnlyNetworkRequest& request,
+    const base::ScopedFD& client_fd) {
+  patchpanel::LocalOnlyNetworkResponse response;
+
+  std::unique_ptr<DownstreamNetworkInfo> info =
       DownstreamNetworkInfo::Create(request);
   if (!info) {
     LOG(ERROR) << __func__ << ": Invalid request";
-    return std::make_pair(patchpanel::DownstreamNetworkResult::INVALID_REQUEST,
-                          DownstreamNetworkInfo{});
+    response.set_response_code(
+        patchpanel::DownstreamNetworkResult::INVALID_REQUEST);
+    return response;
   }
 
-  DownstreamNetworkResult result =
-      HandleDownstreamNetworkInfo(client_fd, *info);
-  if (result != patchpanel::DownstreamNetworkResult::SUCCESS) {
-    return std::make_pair(result, DownstreamNetworkInfo{});
+  auto [response_code, downstream_network] =
+      HandleDownstreamNetworkInfo(client_fd, std::move(info));
+  response.set_response_code(response_code);
+  if (downstream_network) {
+    response.set_allocated_downstream_network(downstream_network.release());
   }
-  return std::make_pair(result, *info);
+  return response;
 }
 
-std::optional<
-    std::pair<DownstreamNetworkInfo, std::vector<DownstreamClientInfo>>>
-Manager::GetDownstreamNetworkInfo(const std::string& downstream_ifname) const {
+patchpanel::GetDownstreamNetworkInfoResponse Manager::GetDownstreamNetworkInfo(
+    const std::string& downstream_ifname) const {
+  patchpanel::GetDownstreamNetworkInfoResponse response;
+
   auto match_by_downstream_ifname = [&downstream_ifname](const auto& kv) {
-    return kv.second.downstream_ifname == downstream_ifname;
+    return kv.second->downstream_ifname == downstream_ifname;
   };
 
   const auto it =
       std::find_if(downstream_networks_.begin(), downstream_networks_.end(),
                    match_by_downstream_ifname);
   if (it == downstream_networks_.end()) {
-    return std::nullopt;
+    response.set_success(false);
+    return response;
   }
 
-  return std::make_pair(it->second, GetDownstreamClientInfo(downstream_ifname));
+  response.set_success(true);
+  FillDownstreamNetworkProto(*(it->second),
+                             response.mutable_downstream_network());
+  for (const auto& info : GetDownstreamClientInfo(downstream_ifname)) {
+    FillNetworkClientInfoProto(info, response.add_clients_info());
+  }
+  return response;
 }
 
 std::vector<DownstreamClientInfo> Manager::GetDownstreamClientInfo(
@@ -1116,8 +1133,8 @@ void Manager::OnLifelineFdClosed(int client_fd) {
   if (downstream_network_it != downstream_networks_.end()) {
     const auto& info = downstream_network_it->second;
     // Stop IPv6 guest service on the downstream interface if IPv6 is enabled.
-    if (info.enable_ipv6 && info.upstream_device) {
-      StopForwarding(*info.upstream_device, info.downstream_ifname,
+    if (info->enable_ipv6 && info->upstream_device) {
+      StopForwarding(*info->upstream_device, info->downstream_ifname,
                      ForwardingService::ForwardingSet{.ipv6 = true});
     }
 
@@ -1126,19 +1143,19 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     // asynchronously. It might cause the new DHCPServerController creation
     // failure if the new one is created before the process terminated. We
     // should polish the termination procedure to prevent this situation.
-    dhcp_server_controllers_.erase(info.downstream_ifname);
+    dhcp_server_controllers_.erase(info->downstream_ifname);
 
-    datapath_->StopDownstreamNetwork(info);
+    datapath_->StopDownstreamNetwork(*info);
 
     // b/294287313: if the upstream network was created in an ad-hoc
     // fashion through StartTetheringUpstreamNetwork and is not managed by
     // ShillClient, the datapath tear down must also be triggered specially.
-    if (info.upstream_device &&
-        !shill_client_->GetDeviceByIfindex(info.upstream_device->ifindex)) {
-      StopTetheringUpstreamNetwork(*info.upstream_device);
+    if (info->upstream_device &&
+        !shill_client_->GetDeviceByIfindex(info->upstream_device->ifindex)) {
+      StopTetheringUpstreamNetwork(*info->upstream_device);
     }
 
-    LOG(INFO) << "Disconnected Downstream Network " << info;
+    LOG(INFO) << "Disconnected Downstream Network " << *info;
     downstream_networks_.erase(downstream_network_it);
     return;
   }
@@ -1251,47 +1268,50 @@ bool Manager::SetDnsRedirectionRule(const SetDnsRedirectionRuleRequest& request,
   return true;
 }
 
-DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
-    const base::ScopedFD& client_fd, const DownstreamNetworkInfo& info) {
+std::pair<DownstreamNetworkResult, std::unique_ptr<DownstreamNetwork>>
+Manager::HandleDownstreamNetworkInfo(
+    const base::ScopedFD& client_fd,
+    std::unique_ptr<DownstreamNetworkInfo> info) {
   base::ScopedFD local_client_fd = AddLifelineFd(client_fd);
   if (!local_client_fd.is_valid()) {
-    LOG(ERROR) << __func__ << " " << info << ": Failed to create lifeline fd";
-    return patchpanel::DownstreamNetworkResult::ERROR;
+    LOG(ERROR) << __func__ << " " << *info << ": Failed to create lifeline fd";
+    return {patchpanel::DownstreamNetworkResult::ERROR, nullptr};
   }
 
-  if (!datapath_->StartDownstreamNetwork(info)) {
-    LOG(ERROR) << __func__ << " " << info
+  if (!datapath_->StartDownstreamNetwork(*info)) {
+    LOG(ERROR) << __func__ << " " << *info
                << ": Failed to configure forwarding to downstream network";
     DeleteLifelineFd(local_client_fd.release());
-    return patchpanel::DownstreamNetworkResult::DATAPATH_ERROR;
+    return {patchpanel::DownstreamNetworkResult::DATAPATH_ERROR, nullptr};
   }
 
   // Start the DHCP server at downstream.
-  if (info.enable_ipv4_dhcp) {
-    if (dhcp_server_controllers_.find(info.downstream_ifname) !=
+  if (info->enable_ipv4_dhcp) {
+    if (dhcp_server_controllers_.find(info->downstream_ifname) !=
         dhcp_server_controllers_.end()) {
-      LOG(ERROR) << __func__ << " " << info
+      LOG(ERROR) << __func__ << " " << *info
                  << ": DHCP server is already running at "
-                 << info.downstream_ifname;
+                 << info->downstream_ifname;
       DeleteLifelineFd(local_client_fd.release());
-      return patchpanel::DownstreamNetworkResult::INTERFACE_USED;
+      return {patchpanel::DownstreamNetworkResult::INTERFACE_USED, nullptr};
     }
-    const auto config = info.ToDHCPServerConfig();
+    const auto config = info->ToDHCPServerConfig();
     if (!config) {
-      LOG(ERROR) << __func__ << " " << info
+      LOG(ERROR) << __func__ << " " << *info
                  << ": Failed to get DHCP server config";
       DeleteLifelineFd(local_client_fd.release());
-      return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
+      return {patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT, nullptr};
     }
     auto dhcp_server_controller = std::make_unique<DHCPServerController>(
-        metrics_, kTetheringDHCPServerUmaEventMetrics, info.downstream_ifname);
+        metrics_, kTetheringDHCPServerUmaEventMetrics, info->downstream_ifname);
     // TODO(b/274722417): Handle the DHCP server exits unexpectedly.
     if (!dhcp_server_controller->Start(*config, base::DoNothing())) {
-      LOG(ERROR) << __func__ << " " << info << ": Failed to start DHCP server";
+      LOG(ERROR) << __func__ << " " << *info << ": Failed to start DHCP server";
       DeleteLifelineFd(local_client_fd.release());
-      return patchpanel::DownstreamNetworkResult::DHCP_SERVER_FAILURE;
+      return {patchpanel::DownstreamNetworkResult::DHCP_SERVER_FAILURE,
+              nullptr};
     }
-    dhcp_server_controllers_[info.downstream_ifname] =
+    dhcp_server_controllers_[info->downstream_ifname] =
         std::move(dhcp_server_controller);
   }
 
@@ -1299,16 +1319,20 @@ DownstreamNetworkResult Manager::HandleDownstreamNetworkInfo(
   // TODO(b/278966909): Prevents neighbor discovery between the downstream
   // network and other virtual guests and interfaces in the same upstream
   // group.
-  if (info.enable_ipv6 && info.upstream_device) {
+  if (info->enable_ipv6 && info->upstream_device) {
     StartForwarding(
-        *info.upstream_device, info.downstream_ifname,
-        ForwardingService::ForwardingSet{.ipv6 = true}, info.mtu,
-        CalculateDownstreamCurHopLimit(system_, info.upstream_device->ifname));
+        *info->upstream_device, info->downstream_ifname,
+        ForwardingService::ForwardingSet{.ipv6 = true}, info->mtu,
+        CalculateDownstreamCurHopLimit(system_, info->upstream_device->ifname));
   }
 
+  std::unique_ptr<DownstreamNetwork> downstream_network =
+      std::make_unique<DownstreamNetwork>();
+  FillDownstreamNetworkProto(*info, downstream_network.get());
   int fdkey = local_client_fd.release();
-  downstream_networks_[fdkey] = info;
-  return patchpanel::DownstreamNetworkResult::SUCCESS;
+  downstream_networks_.emplace(fdkey, std::move(info));
+  return {patchpanel::DownstreamNetworkResult::SUCCESS,
+          std::move(downstream_network)};
 }
 
 void Manager::SendGuestMessage(const GuestMessage& msg) {

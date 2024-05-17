@@ -4,7 +4,9 @@
 
 #include "patchpanel/downstream_network_service.h"
 
+#include <memory>
 #include <optional>
+#include <utility>
 
 #include <base/logging.h>
 #include <base/rand_util.h>
@@ -96,10 +98,11 @@ CreateDownstreamNetworkResult DownstreamNetworkResultToUMAEvent(
   }
 }
 
-std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
+std::unique_ptr<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     const TetheredNetworkRequest& request,
     const ShillClient::Device& shill_device) {
-  auto info = std::make_optional<DownstreamNetworkInfo>();
+  std::unique_ptr<DownstreamNetworkInfo> info =
+      std::make_unique<DownstreamNetworkInfo>();
   // TODO(b/325124473): Assign a network_id.
   info->network_id = kStubbedTetheredNetworkId;
   info->topology = DownstreamNetworkTopology::kTethering;
@@ -111,17 +114,18 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
   }
   // Fill the DHCP parameters if needed.
   if (request.has_ipv4_config()) {
-    if (!CopyIPv4Configuration(request.ipv4_config(), info.operator->())) {
-      return std::nullopt;
+    if (!CopyIPv4Configuration(request.ipv4_config(), info.get())) {
+      return nullptr;
     }
   }
   // TODO(b/239559602): Copy the IPv6 configuration if needed.
   return info;
 }
 
-std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
+std::unique_ptr<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
     const LocalOnlyNetworkRequest& request) {
-  auto info = std::make_optional<DownstreamNetworkInfo>();
+  std::unique_ptr<DownstreamNetworkInfo> info =
+      std::make_unique<DownstreamNetworkInfo>();
   // TODO(b/325124473): Assign a network_id.
   info->network_id = kStubbedLocalOnlyNetworkId;
   info->topology = DownstreamNetworkTopology::kLocalOnly;
@@ -132,8 +136,8 @@ std::optional<DownstreamNetworkInfo> DownstreamNetworkInfo::Create(
   info->downstream_ifname = request.ifname();
   // Fill the DHCP parameters if needed.
   if (request.has_ipv4_config()) {
-    if (!CopyIPv4Configuration(request.ipv4_config(), info.operator->())) {
-      return std::nullopt;
+    if (!CopyIPv4Configuration(request.ipv4_config(), info.get())) {
+      return nullptr;
     }
   }
   return info;

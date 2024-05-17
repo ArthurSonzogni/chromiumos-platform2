@@ -110,38 +110,28 @@ ConnectNamespaceResponse PatchpanelAdaptor::ConnectNamespace(
 LocalOnlyNetworkResponse PatchpanelAdaptor::CreateLocalOnlyNetwork(
     const LocalOnlyNetworkRequest& request, const base::ScopedFD& client_fd) {
   RecordDbusEvent(DbusUmaEvent::kCreateLocalOnlyNetwork);
-
-  const auto [response_code, downstream_network_info] =
+  LocalOnlyNetworkResponse response =
       manager_->CreateLocalOnlyNetwork(request, client_fd);
-  if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
+  if (response.response_code() == DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
   }
-  metrics_->SendEnumToUMA(kCreateLocalOnlyNetworkUmaEventMetrics,
-                          DownstreamNetworkResultToUMAEvent(response_code));
-
-  LocalOnlyNetworkResponse response;
-  response.set_response_code(response_code);
-  FillDownstreamNetworkProto(downstream_network_info,
-                             response.mutable_downstream_network());
+  metrics_->SendEnumToUMA(
+      kCreateLocalOnlyNetworkUmaEventMetrics,
+      DownstreamNetworkResultToUMAEvent(response.response_code()));
   return response;
 }
 
 TetheredNetworkResponse PatchpanelAdaptor::CreateTetheredNetwork(
     const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
   RecordDbusEvent(DbusUmaEvent::kCreateTetheredNetwork);
-
-  const auto [response_code, downstream_network_info] =
+  TetheredNetworkResponse response =
       manager_->CreateTetheredNetwork(request, client_fd);
-  if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
+  if (response.response_code() == DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(DbusUmaEvent::kCreateTetheredNetworkSuccess);
   }
-  metrics_->SendEnumToUMA(kCreateTetheredNetworkUmaEventMetrics,
-                          DownstreamNetworkResultToUMAEvent(response_code));
-
-  TetheredNetworkResponse response;
-  response.set_response_code(response_code);
-  FillDownstreamNetworkProto(downstream_network_info,
-                             response.mutable_downstream_network());
+  metrics_->SendEnumToUMA(
+      kCreateTetheredNetworkUmaEventMetrics,
+      DownstreamNetworkResultToUMAEvent(response.response_code()));
   return response;
 }
 
@@ -203,23 +193,10 @@ GetDevicesResponse PatchpanelAdaptor::GetDevices(
 GetDownstreamNetworkInfoResponse PatchpanelAdaptor::GetDownstreamNetworkInfo(
     const GetDownstreamNetworkInfoRequest& request) const {
   RecordDbusEvent(DbusUmaEvent::kGetDownstreamNetworkInfo);
-
-  const auto& downstream_ifname = request.downstream_ifname();
-  const auto downstream_info =
-      manager_->GetDownstreamNetworkInfo(downstream_ifname);
-  if (!downstream_info) {
-    LOG(ERROR) << __func__ << ": no DownstreamNetwork for interface "
-               << downstream_ifname;
-    return {};
-  }
-
-  RecordDbusEvent(DbusUmaEvent::kGetDownstreamNetworkInfoSuccess);
-  GetDownstreamNetworkInfoResponse response;
-  response.set_success(true);
-  FillDownstreamNetworkProto(downstream_info->first,
-                             response.mutable_downstream_network());
-  for (const auto& info : downstream_info->second) {
-    FillNetworkClientInfoProto(info, response.add_clients_info());
+  GetDownstreamNetworkInfoResponse response =
+      manager_->GetDownstreamNetworkInfo(request.downstream_ifname());
+  if (response.success()) {
+    RecordDbusEvent(DbusUmaEvent::kGetDownstreamNetworkInfoSuccess);
   }
   return response;
 }

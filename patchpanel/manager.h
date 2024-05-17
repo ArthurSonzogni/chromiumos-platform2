@@ -126,21 +126,22 @@ class Manager : public ForwardingService {
                  const base::ScopedFD& sock_fd);
 
   // Creates an L3 network on a network interface and tethered to an upstream
-  // network.
-  std::pair<DownstreamNetworkResult, DownstreamNetworkInfo>
-  CreateTetheredNetwork(const TetheredNetworkRequest& request,
-                        const base::ScopedFD& client_fd);
+  // network. Returns the result of the operation as a TetheredNetworkResponse
+  // protobuf message.
+  patchpanel::TetheredNetworkResponse CreateTetheredNetwork(
+      const patchpanel::TetheredNetworkRequest& request,
+      const base::ScopedFD& client_fd);
 
-  // Creates a local-only L3 network on a network interface.
-  std::pair<DownstreamNetworkResult, DownstreamNetworkInfo>
-  CreateLocalOnlyNetwork(const LocalOnlyNetworkRequest& request,
-                         const base::ScopedFD& client_fd);
+  // Creates a local-only L3 network on a network interface. Returns the result
+  // of the operation as a TetheredNetworkResponse protobuf message.
+  patchpanel::LocalOnlyNetworkResponse CreateLocalOnlyNetwork(
+      const patchpanel::LocalOnlyNetworkRequest& request,
+      const base::ScopedFD& client_fd);
 
   // Provides L3 and DHCP client information about clients connected to a
   // network created with CreateTetheredNetwork or CreateLocalOnlyNetwork.
-  std::optional<
-      std::pair<DownstreamNetworkInfo, std::vector<DownstreamClientInfo>>>
-  GetDownstreamNetworkInfo(const std::string& downstream_ifname) const;
+  patchpanel::GetDownstreamNetworkInfoResponse GetDownstreamNetworkInfo(
+      const std::string& downstream_ifname) const;
 
   // Start/Stop forwarding multicast traffic to ARC when ARC power state
   // changes.
@@ -238,8 +239,9 @@ class Manager : public ForwardingService {
   // Creates a downstream L3 network on the network interface specified by the
   // |info|. If successful, |client_fd| is monitored and triggers the teardown
   // of the network setup when closed.
-  DownstreamNetworkResult HandleDownstreamNetworkInfo(
-      const base::ScopedFD& client_fd, const DownstreamNetworkInfo& info);
+  std::pair<DownstreamNetworkResult, std::unique_ptr<DownstreamNetwork>>
+  HandleDownstreamNetworkInfo(const base::ScopedFD& client_fd,
+                              std::unique_ptr<DownstreamNetworkInfo> info);
 
   std::vector<DownstreamClientInfo> GetDownstreamClientInfo(
       const std::string& downstream_ifname) const;
@@ -327,7 +329,7 @@ class Manager : public ForwardingService {
   // All external network interfaces currently managed by patchpanel through
   // the CreateTetheredNetwork or CreateLocalOnlyNetwork DBus APIs, keyed by the
   // file descriptors committed by the DBus clients.
-  std::map<int, DownstreamNetworkInfo> downstream_networks_;
+  std::map<int, std::unique_ptr<DownstreamNetworkInfo>> downstream_networks_;
 
   // All rules currently created through patchpanel RedirectDns
   // API, keyed by file descriptors committed by clients when calling the

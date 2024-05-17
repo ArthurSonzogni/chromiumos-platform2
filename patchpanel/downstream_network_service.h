@@ -6,6 +6,7 @@
 #define PATCHPANEL_DOWNSTREAM_NETWORK_SERVICE_H_
 
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -69,11 +70,13 @@ struct DownstreamNetworkInfo {
   // TODO(b/239559602) Add IPv6 configuration for LocalOnlyNetwork.
 
   // Creates the DownstreamNetworkInfo instance from TetheredNetworkRequest.
-  static std::optional<DownstreamNetworkInfo> Create(
+  // Returns nullptr in case of failure.
+  static std::unique_ptr<DownstreamNetworkInfo> Create(
       const TetheredNetworkRequest& request,
       const ShillClient::Device& shill_device);
   // Creates the DownstreamNetworkInfo instance from LocalOnlyNetworkRequest.
-  static std::optional<DownstreamNetworkInfo> Create(
+  // Returns nullptr in case of failure.
+  static std::unique_ptr<DownstreamNetworkInfo> Create(
       const LocalOnlyNetworkRequest& request);
 
   // Creates the configuration of the DHCPServerController.

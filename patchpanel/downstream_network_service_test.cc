@@ -77,7 +77,6 @@ TEST(DownstreamNetworkService,
   request.set_mtu(mtu);
 
   const auto info = DownstreamNetworkInfo::Create(request, wwan0_dev);
-  ASSERT_NE(info, std::nullopt);
   EXPECT_EQ(info->topology, DownstreamNetworkTopology::kTethering);
   EXPECT_TRUE(info->upstream_device.has_value());
   EXPECT_EQ(info->upstream_device->ifname, "wwan0");
@@ -99,7 +98,6 @@ TEST(DownstreamNetworkService,
   TetheredNetworkRequest request;
   request.set_upstream_ifname("wwan0");
   const auto info = DownstreamNetworkInfo::Create(request, wwan0_dev);
-  ASSERT_NE(info, std::nullopt);
 
   // When the request doesn't have |ipv4_config|, the info should be randomly
   // assigned the valid host IP and DHCP range.
@@ -144,7 +142,6 @@ TEST(DownstreamNetworkService,
   request.set_allocated_ipv4_config(ipv4_config);
 
   const auto info = DownstreamNetworkInfo::Create(request);
-  ASSERT_NE(info, std::nullopt);
   EXPECT_EQ(info->topology, DownstreamNetworkTopology::kLocalOnly);
   EXPECT_FALSE(info->upstream_device.has_value());
   EXPECT_EQ(info->downstream_ifname, "wlan1");
@@ -164,7 +161,6 @@ TEST(DownstreamNetworkService,
   request.set_ifname("wlan1");
 
   const auto info = DownstreamNetworkInfo::Create(request);
-  ASSERT_NE(info, std::nullopt);
   EXPECT_EQ(info->topology, DownstreamNetworkTopology::kLocalOnly);
   EXPECT_FALSE(info->upstream_device.has_value());
   EXPECT_EQ(info->downstream_ifname, "wlan1");
