@@ -50,7 +50,6 @@ constexpr char kDumpParentPath[] = "/sys/fs";
 constexpr char kDumpPath[] = "/sys/fs/pstore";
 constexpr char kDumpRecordDmesgName[] = "dmesg";
 constexpr char kDumpRecordConsoleName[] = "console";
-constexpr char kDumpDriverRamoopsName[] = "ramoops";
 // The files take the form <record type>-<driver name>-<record id>.
 // e.g. console-ramoops-0 or dmesg-ramoops-0.
 constexpr char kDumpNameFormat[] = "%s-%s-%zu";
@@ -650,6 +649,8 @@ base::FilePath KernelCollector::PstoreCrash::GetFilePath(uint32_t part) const {
       base::StrCat({kDumpRecordDmesgName, "-", backend_,
                     StringPrintf("-%" PRIu64, GetIdForPart(part))}));
 }
+
+KernelCollector::RamoopsCrash::~RamoopsCrash() = default;
 
 KernelCollector::EfiCrash::~EfiCrash() = default;
 

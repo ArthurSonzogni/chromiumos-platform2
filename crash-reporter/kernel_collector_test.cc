@@ -277,6 +277,46 @@ TEST_F(KernelCollectorTest, CollectEfiCrashFile) {
   }
 }
 
+TEST_F(KernelCollectorTest, GetRamoopsCrashType) {
+  ASSERT_FALSE(base::PathExists(ramoops_file(0)));
+  std::string type;
+  // Write header.
+  ASSERT_TRUE(test_util::CreateFile(ramoops_file(0), "Panic#4 Part#1"));
+  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_);
+  EXPECT_EQ(ramoops_crash.GetType(), PstoreRecordType::kPanic);
+}
+
+TEST_F(KernelCollectorTest, LoadRamoopsCrash) {
+  std::string expected_dump;
+  std::string dump;
+  std::string header;
+  std::string contents;
+
+  ASSERT_FALSE(base::PathExists(ramoops_file(0)));
+  header = "Panic#10 Part#1\n";
+  expected_dump = "random blob\nand some more data";
+  contents.append(header);
+  contents.append(expected_dump);
+  ASSERT_TRUE(test_util::CreateFile(ramoops_file(0), contents));
+
+  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_);
+  ASSERT_TRUE(ramoops_crash.Load(dump));
+
+  EXPECT_EQ(expected_dump, dump);
+}
+
+TEST_F(KernelCollectorTest, RemoveRamoopsCrash) {
+  ASSERT_FALSE(base::PathExists(ramoops_file(0)));
+  ASSERT_TRUE(test_util::CreateFile(ramoops_file(0),
+                                    "Panic#10 Part#1\nblob data for panic"));
+
+  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_);
+  ASSERT_TRUE(base::PathExists(ramoops_file(0)));
+
+  ramoops_crash.Remove();
+  EXPECT_FALSE(base::PathExists(ramoops_file(0)));
+}
+
 TEST_F(KernelCollectorTest, ComputeKernelStackSignatureBase) {
   // Make sure the normal build architecture is detected
   EXPECT_NE(kernel_util::kArchUnknown, collector_.arch());

@@ -89,6 +89,7 @@ class KernelCollector : public CrashCollector {
   static std::string PstoreRecordTypeToString(PstoreRecordType record_type);
 
   static constexpr char kDumpDriverEfiName[] = "efi";
+  static constexpr char kDumpDriverRamoopsName[] = "ramoops";
 
  protected:
   // This class represents a single pstore crash record. Depending on the
@@ -148,6 +149,19 @@ class KernelCollector : public CrashCollector {
     uint32_t max_part_;
     std::string backend_;
     const KernelCollector* collector_;
+  };
+
+  // This class represents a single ramoops crash record. A ramoops record
+  // only ever has one part and thus one file in the pstore filesystem.
+  class RamoopsCrash : public PstoreCrash {
+   public:
+    explicit RamoopsCrash(uint64_t id, const KernelCollector* collector)
+        : PstoreCrash(id, 1, kDumpDriverRamoopsName, collector) {}
+
+    RamoopsCrash(const RamoopsCrash&) = default;
+    RamoopsCrash& operator=(const RamoopsCrash&) = default;
+
+    ~RamoopsCrash() override;
   };
 
   // This class represents a single EFI crash record. An EFI crash record may be
@@ -226,6 +240,9 @@ class KernelCollector : public CrashCollector {
   FRIEND_TEST(KernelCollectorTest, GetEfiCrashType);
   FRIEND_TEST(KernelCollectorTest, LoadEfiCrash);
   FRIEND_TEST(KernelCollectorTest, RemoveEfiCrash);
+  FRIEND_TEST(KernelCollectorTest, GetRamoopsCrashType);
+  FRIEND_TEST(KernelCollectorTest, LoadRamoopsCrash);
+  FRIEND_TEST(KernelCollectorTest, RemoveRamoopsCrash);
   FRIEND_TEST(KernelCollectorTest, LastRebootWasNoCError);
 
   virtual bool DumpDirMounted();
