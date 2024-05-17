@@ -170,7 +170,6 @@ class KernelCollector : public CrashCollector {
                                    size_t record);
 
   bool LoadParameters();
-  bool HasMoreRecords();
 
   // Read a record to string, modified from file_utils since that didn't
   // provide a way to restrict the read length.
