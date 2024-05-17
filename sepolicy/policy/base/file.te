@@ -67,15 +67,12 @@ type proc_vmstat, fs_type, proc_type;
 type proc_zoneinfo, fs_type, proc_type;
 type sysfs_fs_ext4_features, sysfs_type, fs_type;
 
-type sysfs_kvm_pvsched, fs_type, sysfs_type;
-
 type pstorefs, fs_type;
 type qtaguid_proc, fs_type;
 type usbfs, fs_type;
 type usermodehelper, fs_type, proc_type;
 type vfat, fs_type;
 
-type sysfs_cpuidle, fs_type, sysfs_type;
 type sysfs_devices_system_cpu, fs_type, sysfs_type;
 type sysfs_loop, fs_type, sysfs_type;
 type sysfs_zram, fs_type, sysfs_type;
