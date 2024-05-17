@@ -8,12 +8,12 @@ import("../sommelier/wayland_protocol.gni")
 
 group("guest") {
   deps = [
-    ":guest_service_failure_notifier",
     ":maitred",
     ":port_listener",
     ":upgrade_container",
     ":vm_syslog",
     "//vm_tools/garcon",
+    "//vm_tools/guest_service_failure_notifier",
     "//vm_tools/vsh:vshd",
   ]
   if (!use.fuzzer) {
@@ -87,16 +87,6 @@ executable("maitred") {
   deps = [
     ":libmaitred",
     "//vm_tools:libvm_tools_common",
-  ]
-}
-
-executable("guest_service_failure_notifier") {
-  sources = [ "../guest_service_failure_notifier/main.cc" ]
-  configs += [ ":target_defaults" ]
-  pkg_deps = [
-    "grpc++",
-    "protobuf",
-    "vm_protos",
   ]
 }
 

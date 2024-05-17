@@ -1,0 +1,13 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+executable("guest_service_failure_notifier") {
+  sources = [ "main.cc" ]
+  configs += [ "//vm_tools/guest:target_defaults" ]
+  pkg_deps = [
+    "grpc++",
+    "protobuf",
+    "vm_protos",
+  ]
+}
