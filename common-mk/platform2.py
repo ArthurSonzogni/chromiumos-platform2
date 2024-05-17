@@ -41,6 +41,7 @@ _IUSE = [
     "android_container_rvc",
     "android_vm_rvc",
     "android_vm_tm",
+    "android_vm_master",
     "apply_landlock_policy",
     "arc_adb_sideloading",
     "arc_erofs",
