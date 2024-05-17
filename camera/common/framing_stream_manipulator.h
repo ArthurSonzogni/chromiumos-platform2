@@ -70,9 +70,10 @@ class FramingStreamManipulator : public StreamManipulator {
       "/run/camera/force_disable_manual_zoom";
 
   struct Options {
-    // Max video stream size that output frames are cropped/scaled from.
-    std::optional<uint32_t> max_video_width;
-    std::optional<uint32_t> max_video_height;
+    // Max video stream size that output frames are cropped/scaled from. Set
+    // 1920x1200 as the default value due to performance consideration.
+    uint32_t max_video_width = 1920;
+    uint32_t max_video_height = 1200;
 
     // The filtering algorithm to scale the cropped region into output frames.
     FilterMode output_filter_mode = FilterMode::kBicubic;

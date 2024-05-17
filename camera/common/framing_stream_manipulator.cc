@@ -1815,13 +1815,9 @@ void FramingStreamManipulator::UpdateOptionsOnThread(
   LoadIfExist(json_values, kDebugKey, &options_.debug);
 
   VLOGF(1) << "AutoFramingStreamManipulator options:" << " max_video_width="
-           << (options_.max_video_width.has_value()
-                   ? base::NumberToString(*options_.max_video_width)
-                   : "(not set)")
+           << base::NumberToString(options_.max_video_width)
            << " max_video_height="
-           << (options_.max_video_height.has_value()
-                   ? base::NumberToString(*options_.max_video_height)
-                   : "(not set)")
+           << base::NumberToString(options_.max_video_height)
            << " output_filter_mode="
            << static_cast<int>(options_.output_filter_mode)
            << " detection_rate=" << options_.detection_rate
