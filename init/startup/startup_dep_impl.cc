@@ -218,14 +218,13 @@ bool IsTestImage(libstorage::Platform* platform,
 // Return if the device is in either in factory test mode or in factory
 // installer mode.
 bool IsFactoryMode(libstorage::Platform* platform,
-                   crossystem::Crossystem* crossystem,
                    const base::FilePath& base_dir) {
   // The path to factory enabled tag. If this path exists in a debug build,
   // we assume factory test mode.
   base::FilePath factory_dir = base_dir.Append(kFactoryDir);
   base::FilePath factory_tag = factory_dir.Append("enabled");
-  std::optional<int> res =
-      crossystem->VbGetSystemPropertyInt(crossystem::Crossystem::kDebugBuild);
+  std::optional<int> res = platform->GetCrosssystem()->VbGetSystemPropertyInt(
+      crossystem::Crossystem::kDebugBuild);
   if (res == 1 && platform->FileExists(factory_tag))
     return true;
 

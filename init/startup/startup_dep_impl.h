@@ -29,7 +29,6 @@ bool IsDebugBuild(crossystem::Crossystem* crossystem);
 // Determines if the device is in either factory test mode or in factory
 // installer mode.
 bool IsFactoryMode(libstorage::Platform* platform,
-                   crossystem::Crossystem* crossystem,
                    const base::FilePath& base_dir);
 
 // StartupDep defines functions that interface with the filesystem and

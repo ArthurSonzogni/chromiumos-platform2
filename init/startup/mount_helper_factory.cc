@@ -45,7 +45,7 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
     crossystem::Crossystem* crossystem) {
   bool dev_mode = InDevMode(crossystem);
   bool is_test_image = IsTestImage(platform_, lsb_file_);
-  bool is_factory_mode = IsFactoryMode(platform_, crossystem, root_);
+  bool is_factory_mode = IsFactoryMode(platform_, root_);
 
   // Use factory mount helper.
   if (dev_mode && is_test_image && is_factory_mode) {
