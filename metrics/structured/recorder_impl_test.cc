@@ -61,8 +61,6 @@ constexpr uint64_t kEventTwoHash = UINT64_C(18051195235939111613);
 
 }  // namespace
 
-// TODO(b/338458899): Investigate why calling DestroyRecorderForTest() in
-// TearDown() causes coverage builds to fail the test.
 class RecorderTest : public testing::Test {
  protected:
   void SetUp() override {
@@ -167,8 +165,7 @@ TEST_F(RecorderTest, WriteEvent) {
   EXPECT_FALSE(event.has_event_sequence_metadata());
 }
 
-// TODO(b:339451736) Enable once fixed.
-TEST_F(RecorderTest, DISABLED_SequenceMetadataAttached) {
+TEST_F(RecorderTest, SequenceMetadataAttached) {
   PopulateResetCounterFile("5");
 
   events::test_project_two::TestEventThree event3;

@@ -19,7 +19,7 @@
 #define READ_WRITE_ALL_FILE_FLAGS \
   (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH)
 
-namespace metrics::structured {
+namespace metrics::structured::platform {
 namespace {
 
 template <class T>
@@ -101,4 +101,4 @@ template class PersistentProto<KeyDataProto>;
 template class PersistentProto<KeyProto>;
 template class PersistentProto<StructuredEventProto>;
 
-}  // namespace metrics::structured
+}  // namespace metrics::structured::platform
