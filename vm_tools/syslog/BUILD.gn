@@ -1,0 +1,93 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if (use.kvm_host) {
+  static_library("libforwarder") {
+    sources = [
+      "collector.cc",
+      "forwarder.cc",
+      "host_collector.cc",
+      "log_pipe.cc",
+      "parser.cc",
+      "rotator.cc",
+      "scrubber.cc",
+    ]
+    configs += [ "//vm_tools/host:host_target_defaults" ]
+    all_dependent_pkg_deps = [
+      "grpc++",
+      "protobuf",
+      "system_api",
+      "vm_protos",
+    ]
+  }
+
+  executable("vmlog_forwarder") {
+    sources = [ "host_server.cc" ]
+    configs += [ "//vm_tools/host:host_target_defaults" ]
+    deps = [
+      ":libforwarder",
+      "//vm_tools:libvm_tools_common",
+    ]
+  }
+
+  if (use.test) {
+    executable("syslog_forwarder_test") {
+      sources = [
+        "forwarder_test.cc",
+        "log_pipe_test.cc",
+        "rotator_test.cc",
+        "scrubber_test.cc",
+      ]
+      configs += [
+        "//common-mk:test",
+        "//vm_tools/host:host_target_defaults",
+      ]
+      deps = [
+        ":libforwarder",
+        "//common-mk/testrunner:testrunner",
+        "//vm_tools:libvm_tools_common",
+      ]
+    }
+  }
+}
+
+if (use.kvm_guest) {
+  static_library("libsyslog") {
+    sources = [
+      "collector.cc",
+      "guest_collector.cc",
+      "parser.cc",
+    ]
+    configs += [ "//vm_tools/guest:target_defaults" ]
+    all_dependent_pkg_deps = [ "libminijail" ]
+    pkg_deps = [
+      "grpc++",
+      "protobuf",
+      "vm_protos",
+    ]
+  }
+
+  executable("vm_syslog") {
+    sources = [ "main.cc" ]
+    configs += [ "//vm_tools/guest:target_defaults" ]
+    deps = [ ":libsyslog" ]
+  }
+
+  if (use.test) {
+    executable("maitred_syslog_test") {
+      sources = [
+        "collector_test.cc",
+        "parser_test.cc",
+      ]
+      configs += [
+        "//common-mk:test",
+        "//vm_tools/guest:target_defaults",
+      ]
+      deps = [
+        ":libsyslog",
+        "//common-mk/testrunner:testrunner",
+      ]
+    }
+  }
+}

@@ -9,10 +9,10 @@ group("guest") {
   deps = [
     ":maitred",
     ":upgrade_container",
-    ":vm_syslog",
     "//vm_tools/garcon",
     "//vm_tools/guest_service_failure_notifier",
     "//vm_tools/port_listener",
+    "//vm_tools/syslog:vm_syslog",
     "//vm_tools/vsh:vshd",
   ]
   if (!use.fuzzer) {
@@ -28,12 +28,12 @@ group("guest") {
     deps += [
       ":maitred_init_test",
       ":maitred_service_test",
-      ":maitred_syslog_test",
       ":notificationd_test",
       "//vm_tools/garcon:garcon_desktop_file_test",
       "//vm_tools/garcon:garcon_icon_finder_test",
       "//vm_tools/garcon:garcon_icon_index_file_test",
       "//vm_tools/garcon:garcon_mime_types_parser_test",
+      "//vm_tools/syslog:maitred_syslog_test",
     ]
   }
   if (use.fuzzer) {
@@ -65,21 +65,6 @@ static_library("libmaitred") {
   ]
 }
 
-static_library("libsyslog") {
-  sources = [
-    "../syslog/collector.cc",
-    "../syslog/guest_collector.cc",
-    "../syslog/parser.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  all_dependent_pkg_deps = [ "libminijail" ]
-  pkg_deps = [
-    "grpc++",
-    "protobuf",
-    "vm_protos",
-  ]
-}
-
 executable("maitred") {
   sources = [ "../maitred/main.cc" ]
   configs += [ ":target_defaults" ]
@@ -87,12 +72,6 @@ executable("maitred") {
     ":libmaitred",
     "//vm_tools:libvm_tools_common",
   ]
-}
-
-executable("vm_syslog") {
-  sources = [ "../syslog/main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [ ":libsyslog" ]
 }
 
 if (!use.fuzzer) {
@@ -187,21 +166,6 @@ if (use.test) {
       ":libmaitred",
       "//common-mk/testrunner:testrunner",
       "//vm_tools:libvm_tools_common",
-    ]
-  }
-
-  executable("maitred_syslog_test") {
-    sources = [
-      "../syslog/collector_test.cc",
-      "../syslog/parser_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libsyslog",
-      "//common-mk/testrunner:testrunner",
     ]
   }
 

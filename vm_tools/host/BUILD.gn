@@ -7,12 +7,12 @@ import("//common-mk/pkg_config.gni")
 group("host") {
   deps = [
     ":maitred_client",
-    ":vmlog_forwarder",
     "//vm_tools/cicerone:cicerone_client",
     "//vm_tools/cicerone:vm_cicerone",
     "//vm_tools/concierge",
     "//vm_tools/seneschal",
     "//vm_tools/seneschal:seneschal_client",
+    "//vm_tools/syslog:vmlog_forwarder",
     "//vm_tools/vsh",
     "//vm_tools/vsh:vshd",
   ]
@@ -21,9 +21,9 @@ group("host") {
   }
   if (use.test) {
     deps += [
-      ":syslog_forwarder_test",
       "//vm_tools/cicerone:cicerone_test",
       "//vm_tools/concierge:concierge_test",
+      "//vm_tools/syslog:syslog_forwarder_test",
       "//vm_tools/vsh:vsh_test",
     ]
     if (use.arcvm) {
@@ -77,34 +77,6 @@ executable("maitred_client") {
   ]
 }
 
-static_library("libforwarder") {
-  sources = [
-    "../syslog/collector.cc",
-    "../syslog/forwarder.cc",
-    "../syslog/host_collector.cc",
-    "../syslog/log_pipe.cc",
-    "../syslog/parser.cc",
-    "../syslog/rotator.cc",
-    "../syslog/scrubber.cc",
-  ]
-  configs += [ ":host_target_defaults" ]
-  all_dependent_pkg_deps = [
-    "grpc++",
-    "protobuf",
-    "system_api",
-    "vm_protos",
-  ]
-}
-
-executable("vmlog_forwarder") {
-  sources = [ "../syslog/host_server.cc" ]
-  configs += [ ":host_target_defaults" ]
-  deps = [
-    ":libforwarder",
-    "//vm_tools:libvm_tools_common",
-  ]
-}
-
 if (use.arcvm) {
   static_library("libvm_pstore_dump") {
     sources = [ "../pstore_dump/persistent_ram_buffer.cc" ]
@@ -120,24 +92,6 @@ if (use.arcvm) {
 }
 
 if (use.test) {
-  executable("syslog_forwarder_test") {
-    sources = [
-      "../syslog/forwarder_test.cc",
-      "../syslog/log_pipe_test.cc",
-      "../syslog/rotator_test.cc",
-      "../syslog/scrubber_test.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":host_target_defaults",
-    ]
-    deps = [
-      ":libforwarder",
-      "//common-mk/testrunner:testrunner",
-      "//vm_tools:libvm_tools_common",
-    ]
-  }
-
   if (use.arcvm) {
     executable("vm_pstore_dump_test") {
       sources = [ "../pstore_dump/persistent_ram_buffer_test.cc" ]
