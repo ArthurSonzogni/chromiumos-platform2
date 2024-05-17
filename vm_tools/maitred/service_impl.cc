@@ -1101,6 +1101,7 @@ grpc::Status ServiceImpl::UpdateStorageBalloon(
     grpc::ServerContext* ctx,
     const vm_tools::UpdateStorageBalloonRequest* request,
     vm_tools::UpdateStorageBalloonResponse* response) {
+  base::AutoLock auto_lock(balloon_update_lock_);
   response->set_result(vm_tools::UpdateStorageBalloonResult::SUCCESS);
   if (!balloon_) {
     balloon_ = brillo::StorageBalloon::GenerateStorageBalloon(
