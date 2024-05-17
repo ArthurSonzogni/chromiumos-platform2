@@ -6,10 +6,10 @@ import("//common-mk/pkg_config.gni")
 
 group("host") {
   deps = [
-    ":maitred_client",
     "//vm_tools/cicerone:cicerone_client",
     "//vm_tools/cicerone:vm_cicerone",
     "//vm_tools/concierge",
+    "//vm_tools/maitred:maitred_client",
     "//vm_tools/seneschal",
     "//vm_tools/seneschal:seneschal_client",
     "//vm_tools/syslog:vmlog_forwarder",
@@ -63,17 +63,6 @@ config("host_target_defaults") {
     "USE_CROSVM_VIRTIO_VIDEO=${use.crosvm_virtio_video}",
     "USE_CROSVM_VULKAN=${use.vulkan}",
     "USE_PMEM_DEVICE_FOR_ROOTFS=${use.amd64}",
-  ]
-}
-
-executable("maitred_client") {
-  sources = [ "../maitred/client.cc" ]
-  configs += [ ":host_target_defaults" ]
-  libs = [ "grpc" ]
-  pkg_deps = [
-    "grpc++",
-    "protobuf",
-    "vm_protos",
   ]
 }
 

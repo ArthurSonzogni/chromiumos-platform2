@@ -7,10 +7,10 @@ import("../sommelier/wayland_protocol.gni")
 
 group("guest") {
   deps = [
-    ":maitred",
     ":upgrade_container",
     "//vm_tools/garcon",
     "//vm_tools/guest_service_failure_notifier",
+    "//vm_tools/maitred",
     "//vm_tools/port_listener",
     "//vm_tools/syslog:vm_syslog",
     "//vm_tools/vsh:vshd",
@@ -26,13 +26,13 @@ group("guest") {
   }
   if (use.test) {
     deps += [
-      ":maitred_init_test",
-      ":maitred_service_test",
       ":notificationd_test",
       "//vm_tools/garcon:garcon_desktop_file_test",
       "//vm_tools/garcon:garcon_icon_finder_test",
       "//vm_tools/garcon:garcon_icon_index_file_test",
       "//vm_tools/garcon:garcon_mime_types_parser_test",
+      "//vm_tools/maitred:maitred_init_test",
+      "//vm_tools/maitred:maitred_service_test",
       "//vm_tools/syslog:maitred_syslog_test",
     ]
   }
@@ -48,30 +48,6 @@ group("guest") {
 
 pkg_config("target_defaults") {
   pkg_deps = [ "libchrome" ]
-}
-
-static_library("libmaitred") {
-  sources = [
-    "../maitred/init.cc",
-    "../maitred/service_impl.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  defines = [ "USE_VM_BOREALIS=${use.vm_borealis}" ]
-  pkg_deps = [
-    "grpc++",
-    "libbrillo",
-    "protobuf",
-    "vm_protos",
-  ]
-}
-
-executable("maitred") {
-  sources = [ "../maitred/main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":libmaitred",
-    "//vm_tools:libvm_tools_common",
-  ]
 }
 
 if (!use.fuzzer) {
@@ -143,32 +119,6 @@ copy("upgrade_container") {
 }
 
 if (use.test) {
-  executable("maitred_init_test") {
-    sources = [ "../maitred/init_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libmaitred",
-      "//common-mk/testrunner:testrunner",
-      "//vm_tools:libvm_tools_common",
-    ]
-  }
-
-  executable("maitred_service_test") {
-    sources = [ "../maitred/service_impl_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libmaitred",
-      "//common-mk/testrunner:testrunner",
-      "//vm_tools:libvm_tools_common",
-    ]
-  }
-
   executable("notificationd_test") {
     sources = [ "../notificationd/dbus_service_test.cc" ]
     configs += [

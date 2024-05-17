@@ -1,0 +1,70 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if (use.kvm_host) {
+  executable("maitred_client") {
+    sources = [ "client.cc" ]
+    configs += [ "//vm_tools/host:host_target_defaults" ]
+    libs = [ "grpc" ]
+    pkg_deps = [
+      "grpc++",
+      "protobuf",
+      "vm_protos",
+    ]
+  }
+}
+
+if (use.kvm_guest) {
+  static_library("libmaitred") {
+    sources = [
+      "init.cc",
+      "service_impl.cc",
+    ]
+    configs += [ "//vm_tools/guest:target_defaults" ]
+    defines = [ "USE_VM_BOREALIS=${use.vm_borealis}" ]
+    pkg_deps = [
+      "grpc++",
+      "libbrillo",
+      "protobuf",
+      "vm_protos",
+    ]
+  }
+
+  executable("maitred") {
+    sources = [ "main.cc" ]
+    configs += [ "//vm_tools/guest:target_defaults" ]
+    deps = [
+      ":libmaitred",
+      "//vm_tools:libvm_tools_common",
+    ]
+  }
+
+  if (use.test) {
+    executable("maitred_init_test") {
+      sources = [ "init_test.cc" ]
+      configs += [
+        "//common-mk:test",
+        "//vm_tools/guest:target_defaults",
+      ]
+      deps = [
+        ":libmaitred",
+        "//common-mk/testrunner:testrunner",
+        "//vm_tools:libvm_tools_common",
+      ]
+    }
+
+    executable("maitred_service_test") {
+      sources = [ "service_impl_test.cc" ]
+      configs += [
+        "//common-mk:test",
+        "//vm_tools/guest:target_defaults",
+      ]
+      deps = [
+        ":libmaitred",
+        "//common-mk/testrunner:testrunner",
+        "//vm_tools:libvm_tools_common",
+      ]
+    }
+  }
+}
