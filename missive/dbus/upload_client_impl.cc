@@ -23,11 +23,13 @@
 #include <dbus/message.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/health/health_module.h"
 #include "missive/proto/health.pb.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/disconnectable_client.h"
+#include "missive/util/errors.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
@@ -208,6 +210,11 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
           .Run(base::unexpected(
               Status(error::UNAVAILABLE,
                      "Chrome is not responding, upload skipped.")));
+
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::CHROME_NOT_RESPONDING,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
 
@@ -228,6 +235,11 @@ class UploadEncryptedRecordDelegate : public DisconnectableClient::Delegate {
     bus_->AssertOnOriginThread();
     if (!response) {
       Respond(Status(error::UNAVAILABLE, "Returned no response"));
+
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::UPLOAD_CLIENT_NO_DBUS_RESPONSE,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     response_ = response;
@@ -288,6 +300,10 @@ void UploadClientImpl::SendEncryptedRecords(
               std::move(response_callback),
               base::unexpected(Status(error::UNAVAILABLE,
                                       "Upload client has been destructed")))));
+  analytics::Metrics::SendEnumToUMA(
+      kUmaUnavailableErrorReason,
+      UnavailableErrorReason::UPLOAD_CLIENT_DESTRUCTED,
+      UnavailableErrorReason::MAX_VALUE);
 }
 
 void UploadClientImpl::OwnerChanged(const std::string& old_owner,

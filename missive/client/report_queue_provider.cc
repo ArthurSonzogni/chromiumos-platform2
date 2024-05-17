@@ -21,10 +21,12 @@
 #include <base/types/expected.h>
 #include <base/types/expected_macros.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_impl.h"
 #include "missive/storage/storage_module_interface.h"
+#include "missive/util/errors.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
@@ -51,6 +53,11 @@ class ReportQueueProvider::CreateReportQueueRequest {
                 std::move(request->release_create_cb())
                     .Run(base::unexpected(Status(
                         error::UNAVAILABLE, "Provider has been shut down")));
+
+                analytics::Metrics::SendEnumToUMA(
+                    kUmaUnavailableErrorReason,
+                    UnavailableErrorReason::REPORT_QUEUE_PROVIDER_DESTRUCTED,
+                    UnavailableErrorReason::MAX_VALUE);
                 return;
               }
               DCHECK_CALLED_ON_VALID_SEQUENCE(provider->sequence_checker_);
@@ -111,6 +118,11 @@ ReportQueueProvider::~ReportQueueProvider() {
     std::move(report_queue_request->release_create_cb())
         .Run(base::unexpected(
             Status(error::UNAVAILABLE, "ReportQueueProvider shut down")));
+
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::REPORT_QUEUE_PROVIDER_DESTRUCTED,
+        UnavailableErrorReason::MAX_VALUE);
     create_request_queue_.pop();
   }
 }
@@ -141,6 +153,11 @@ void ReportQueueProvider::CreateNewQueue(
             if (!provider) {
               std::move(cb).Run(base::unexpected(
                   Status(error::UNAVAILABLE, "Provider has been shut down")));
+
+              analytics::Metrics::SendEnumToUMA(
+                  kUmaUnavailableErrorReason,
+                  UnavailableErrorReason::REPORT_QUEUE_PROVIDER_DESTRUCTED,
+                  UnavailableErrorReason::MAX_VALUE);
               return;
             }
             // Configure report queue config with an appropriate DM token and
@@ -265,6 +282,11 @@ void ReportQueueProvider::OnStorageModuleConfigured(
       std::move(report_queue_request->release_create_cb())
           .Run(base::unexpected(
               Status(error::UNAVAILABLE, "Unable to build a ReportQueue")));
+
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::UNABLE_TO_BUILD_REPORT_QUEUE,
+          UnavailableErrorReason::MAX_VALUE);
       create_request_queue_.pop();
     }
     return;

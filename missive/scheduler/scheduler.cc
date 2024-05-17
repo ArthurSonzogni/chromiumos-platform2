@@ -16,6 +16,8 @@
 #include <base/task/thread_pool.h>
 #include <base/types/expected.h>
 
+#include "missive/analytics/metrics.h"
+#include "missive/util/errors.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/task_runner_context.h"
@@ -67,6 +69,11 @@ void Scheduler::Job::Start(base::OnceCallback<void(Status)> complete_cb) {
         .Run(Status(
             error::UNAVAILABLE,
             "Job can only be started when it is in the NOT_RUNNING state."));
+
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::CANNOT_SCHEDULE_A_JOB_THATS_ALREADY_RUNNING,
+        UnavailableErrorReason::MAX_VALUE);
     return;
   }
 
@@ -85,6 +92,10 @@ Status Scheduler::Job::Cancel(Status status) {
   JobState expected_job_state = JobState::NOT_RUNNING;
   if (!job_state_.compare_exchange_strong(expected_job_state,
                                           JobState::CANCELLED)) {
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::CANNOT_CANCEL_A_JOB_THATS_ALREADY_RUNNING,
+        UnavailableErrorReason::MAX_VALUE);
     return Status(error::UNAVAILABLE,
                   "Job cannot be cancelled after it has started.");
   }

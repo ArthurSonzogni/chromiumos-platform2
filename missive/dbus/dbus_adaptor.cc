@@ -7,7 +7,6 @@
 #include <cstdlib>
 #include <string>
 #include <utility>
-#include <vector>
 
 #include <base/logging.h>
 #include <base/task/bind_post_task.h>
@@ -17,9 +16,10 @@
 #include <dbus/bus.h>
 #include <featured/feature_library.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/missive/missive_service.h"
 #include "missive/proto/interface.pb.h"
-#include "missive/proto/record.pb.h"
+#include "missive/util/errors.h"
 #include "missive/util/status.h"
 
 namespace reporting {
@@ -31,6 +31,11 @@ ResponseType RespondDaemonNotReady() {
   auto* status = response_body.mutable_status();
   status->set_code(error::UNAVAILABLE);
   status->set_error_message("The daemon is still starting.");
+
+  analytics::Metrics::SendEnumToUMA(
+      kUmaUnavailableErrorReason, UnavailableErrorReason::DAEMON_STILL_STARTING,
+      UnavailableErrorReason::MAX_VALUE);
+
   return response_body;
 }
 }  // namespace
@@ -53,6 +58,11 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
           Scoped<Status>(
               std::move(failure_cb),
               Status(error::UNAVAILABLE, "DBusAdaptor has been destructed")))));
+
+  analytics::Metrics::SendEnumToUMA(
+      kUmaUnavailableErrorReason,
+      UnavailableErrorReason::DBUS_ADAPTER_DESTRUCTED,
+      UnavailableErrorReason::MAX_VALUE);
 }
 
 void DBusAdaptor::StartupFinished(base::OnceCallback<void(Status)> failure_cb,

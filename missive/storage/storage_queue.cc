@@ -60,6 +60,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/storage/storage_util.h"
+#include "missive/util/errors.h"
 #include "missive/util/file.h"
 #include "missive/util/refcounted_closure_list.h"
 #include "missive/util/status.h"
@@ -273,6 +274,10 @@ Status StorageQueue::DoInit() {
     LOG(ERROR) << "Failed to create queue at "
                << options_.directory().MaybeAsASCII()
                << ", error=" << base::File::ErrorToString(error);
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::FAILED_TO_CREATE_STORAGE_QUEUE_DIRECTORY,
+        UnavailableErrorReason::MAX_VALUE);
     return Status(
         error::UNAVAILABLE,
         base::StrCat(
@@ -1076,6 +1081,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   void OnStart() override {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
 
@@ -1088,6 +1097,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   void PrepareDataFiles() {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1162,6 +1175,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   void BeginUploading() {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1187,6 +1204,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   void StartUploading() {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1272,6 +1293,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     if (!storage_queue_) {
       std::move(completion_cb_)
           .Run(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       files_.clear();
       current_file_ = files_.end();
       return;
@@ -1293,6 +1318,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   void CallCurrentRecord(std::string_view blob) {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1337,6 +1366,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
                         ScopedReservation scoped_reservation) {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1363,6 +1396,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   void CallGapUpload(uint64_t count) {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1386,6 +1423,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   void NextRecord(bool more_records) {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1413,6 +1454,11 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   // or record hash does not match), returns error.
   StatusOr<std::string_view> EnsureBlob(int64_t sequencing_id) {
     if (!storage_queue_) {
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
+
       return base::unexpected(
           Status(error::UNAVAILABLE, "StorageQueue shut down"));
     }
@@ -1501,6 +1547,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   void CallRecordOrGap(int64_t sequencing_id) {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1536,6 +1586,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   void InstantiateUploader(base::OnceCallback<void()> continuation) {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -1571,6 +1625,10 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       StatusOr<std::unique_ptr<UploaderInterface>> uploader_result) {
     if (!storage_queue_) {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
+          UnavailableErrorReason::MAX_VALUE);
       return;
     }
     DCHECK_CALLED_ON_VALID_SEQUENCE(
@@ -2705,6 +2763,9 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
     uint32_t pos, uint32_t size, size_t max_buffer_size, bool expect_readonly) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!handle_) {
+    analytics::Metrics::SendEnumToUMA(kUmaUnavailableErrorReason,
+                                      UnavailableErrorReason::FILE_NOT_OPEN,
+                                      UnavailableErrorReason::MAX_VALUE);
     return base::unexpected(
         Status(error::UNAVAILABLE, base::StrCat({"File not open ", name()})));
   }
@@ -2794,6 +2855,9 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
 StatusOr<uint32_t> StorageQueue::SingleFile::Append(std::string_view data) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!handle_) {
+    analytics::Metrics::SendEnumToUMA(kUmaUnavailableErrorReason,
+                                      UnavailableErrorReason::FILE_NOT_OPEN,
+                                      UnavailableErrorReason::MAX_VALUE);
     return base::unexpected(
         Status(error::UNAVAILABLE, base::StrCat({"File not open ", name()})));
   }

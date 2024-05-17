@@ -14,6 +14,8 @@
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>
 
+#include "missive/analytics/metrics.h"
+#include "missive/util/errors.h"
 #include "missive/util/status.h"
 
 namespace reporting {
@@ -31,6 +33,11 @@ void DisconnectableClient::MaybeMakeCall(std::unique_ptr<Delegate> delegate) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Bail out, if missive daemon is not available over dBus.
   if (!is_available_) {
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::CLIENT_NOT_CONNECTED_TO_MISSIVE,
+        UnavailableErrorReason::MAX_VALUE);
+
     delegate->Respond(Status(error::UNAVAILABLE, "Service is unavailable"));
     return;
   }
@@ -69,6 +76,11 @@ void DisconnectableClient::SetAvailability(bool is_available) {
       outstanding_delegates_.erase(outstanding_delegates_.begin());
       // Respond through the |delegate|.
       delegate->Respond(Status(error::UNAVAILABLE, "Service is unavailable"));
+
+      analytics::Metrics::SendEnumToUMA(
+          kUmaUnavailableErrorReason,
+          UnavailableErrorReason::CLIENT_NOT_CONNECTED_TO_MISSIVE,
+          UnavailableErrorReason::MAX_VALUE);
     }
   }
 }

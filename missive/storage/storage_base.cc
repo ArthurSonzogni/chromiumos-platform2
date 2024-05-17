@@ -37,6 +37,7 @@
 #include <base/uuid.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/verification.h"
@@ -48,6 +49,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
 #include "missive/storage/storage_uploader_interface.h"
+#include "missive/util/errors.h"
 #include "missive/util/file.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
@@ -461,6 +463,11 @@ KeyInStorage::DownloadKeyFile() {
   // Make sure the assigned directory exists.
   base::File::Error error;
   if (!base::CreateDirectoryAndGetError(directory_, &error)) {
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::STORAGE_DIRECTORY_DOESNT_EXIST,
+        UnavailableErrorReason::MAX_VALUE);
+
     return base::unexpected(Status(
         error::UNAVAILABLE,
         base::StrCat(

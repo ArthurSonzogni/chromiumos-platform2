@@ -29,6 +29,7 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage_module_interface.h"
+#include "missive/util/errors.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
@@ -211,6 +212,11 @@ void SpeculativeReportQueueImpl::Flush(Priority priority,
             if (!self) {
               std::move(callback).Run(
                   Status(error::UNAVAILABLE, "Queue has been destructed"));
+
+              analytics::Metrics::SendEnumToUMA(
+                  kUmaUnavailableErrorReason,
+                  UnavailableErrorReason::REPORT_QUEUE_DESTRUCTED,
+                  UnavailableErrorReason::MAX_VALUE);
               return;
             }
             DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
@@ -300,6 +306,11 @@ void SpeculativeReportQueueImpl::EnqueuePendingRecordProducers() const {
                 if (!self) {
                   std::move(callback).Run(
                       Status(error::UNAVAILABLE, "Queue has been destructed"));
+
+                  analytics::Metrics::SendEnumToUMA(
+                      kUmaUnavailableErrorReason,
+                      UnavailableErrorReason::REPORT_QUEUE_DESTRUCTED,
+                      UnavailableErrorReason::MAX_VALUE);
                   return;
                 }
                 std::move(callback).Run(status);

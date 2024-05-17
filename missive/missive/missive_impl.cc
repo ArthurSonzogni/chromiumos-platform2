@@ -40,6 +40,7 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module.h"
 #include "missive/storage/storage_uploader_interface.h"
+#include "missive/util/errors.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
@@ -331,6 +332,11 @@ void MissiveImpl::AsyncStartUpload(
     std::move(uploader_result_cb)
         .Run(base::unexpected(
             Status(error::UNAVAILABLE, "Missive service has been shut down")));
+
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::MISSIVE_HAS_BEEN_SHUT_DOWN,
+        UnavailableErrorReason::MAX_VALUE);
     return;
   }
   missive->AsyncStartUploadInternal(reason, std::move(inform_cb),

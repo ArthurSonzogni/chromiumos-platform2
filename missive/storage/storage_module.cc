@@ -27,11 +27,13 @@
 #include <base/task/thread_pool.h>
 #include <base/types/expected.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/storage/storage.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
+#include "missive/util/errors.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
@@ -101,6 +103,11 @@ void StorageModule::AddRecord(Priority priority,
                               EnqueueCallback callback) {
   if (!storage_) {
     std::move(callback).Run(kStorageUnavailableStatus);
+
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::STORAGE_OBJECT_DOESNT_EXIST,
+        UnavailableErrorReason::MAX_VALUE);
     return;
   }
   storage_->Write(priority, std::move(record), std::move(callback));
@@ -109,6 +116,11 @@ void StorageModule::AddRecord(Priority priority,
 void StorageModule::Flush(Priority priority, FlushCallback callback) {
   if (!storage_) {
     std::move(callback).Run(kStorageUnavailableStatus);
+
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::STORAGE_OBJECT_DOESNT_EXIST,
+        UnavailableErrorReason::MAX_VALUE);
     return;
   }
   storage_->Flush(priority, std::move(callback));
@@ -119,6 +131,13 @@ void StorageModule::ReportSuccess(SequenceInformation sequence_information,
                                   base::OnceCallback<void(Status)> done_cb) {
   if (!storage_) {
     LOG(ERROR) << kStorageUnavailableStatus.error_message();
+
+    std::move(done_cb).Run(kStorageUnavailableStatus);
+
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::STORAGE_OBJECT_DOESNT_EXIST,
+        UnavailableErrorReason::MAX_VALUE);
     return;
   }
   // See whether the device makes any progress, and if so, update the timestamp.
@@ -132,6 +151,11 @@ void StorageModule::UpdateEncryptionKey(
     SignedEncryptionInfo signed_encryption_key) {
   if (!storage_) {
     LOG(ERROR) << kStorageUnavailableStatus.error_message();
+
+    analytics::Metrics::SendEnumToUMA(
+        kUmaUnavailableErrorReason,
+        UnavailableErrorReason::STORAGE_OBJECT_DOESNT_EXIST,
+        UnavailableErrorReason::MAX_VALUE);
     return;
   }
   storage_->UpdateEncryptionKey(std::move(signed_encryption_key));

@@ -25,6 +25,7 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/disconnectable_client.h"
+#include "missive/util/errors.h"
 #include "missive/util/status.h"
 
 namespace reporting {
@@ -159,6 +160,11 @@ class MissiveClientImpl : public MissiveClient {
                 if (!response) {
                   self->Respond(
                       Status(error::UNAVAILABLE, "Returned no response"));
+
+                  analytics::Metrics::SendEnumToUMA(
+                      kUmaUnavailableErrorReason,
+                      UnavailableErrorReason::MISSIVE_CLIENT_NO_DBUS_RESPONSE,
+                      UnavailableErrorReason::MAX_VALUE);
                   return;
                 }
                 self->response_ = response;
