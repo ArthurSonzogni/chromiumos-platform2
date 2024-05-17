@@ -882,9 +882,7 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
 
   Mock::VerifyAndClearExpectations(&event_handler1);
 
-  device0->GetPrimaryNetwork()->set_ipconfig(nullptr);
   device0->GetPrimaryNetwork()->UnregisterEventHandler(&event_handler0);
-  device1->GetPrimaryNetwork()->set_ip6config(nullptr);
   device1->GetPrimaryNetwork()->UnregisterEventHandler(&event_handler1);
 }
 

@@ -27,8 +27,6 @@ class IPConfig {
  public:
   static constexpr int kUndefinedMTU = 0;
 
-  static constexpr char kTypeDHCP[] = "dhcp";
-
   IPConfig(ControlInterface* control_interface, const std::string& device_name);
   IPConfig(ControlInterface* control_interface,
            const std::string& device_name,
@@ -53,6 +51,11 @@ class IPConfig {
       const net_base::NetworkConfig& config,
       net_base::IPFamily family = net_base::IPFamily::kIPv4,
       const std::optional<DHCPv4Config::Data>& dhcp_data = std::nullopt);
+
+  // Note that `method` is different from `type` on an IPConfig object. `method`
+  // is exposed as a D-Bus property, while `type` only used in the D-Bus path
+  // for this object.
+  const std::string& get_method_for_testing() { return properties_.method; }
 
  protected:
   struct Properties {

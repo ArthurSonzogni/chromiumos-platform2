@@ -360,16 +360,6 @@ class Network : public NetworkMonitor::ClientNetwork {
   // interface of shill.
   RpcIdentifiers AvailableIPConfigIdentifiers() const;
 
-  // TODO(b/232177767): This group of getters and setters are only exposed for
-  // the purpose of refactor. New code outside Device should not use these.
-  IPConfig* ipconfig() const { return ipconfig_.get(); }
-  IPConfig* ip6config() const { return ip6config_.get(); }
-  void set_ipconfig(std::unique_ptr<IPConfig> config) {
-    ipconfig_ = std::move(config);
-  }
-  void set_ip6config(std::unique_ptr<IPConfig> config) {
-    ip6config_ = std::move(config);
-  }
   bool fixed_ip_params() const { return fixed_ip_params_; }
   const std::string& logging_tag() const { return logging_tag_; }
   void set_logging_tag(const std::string& logging_tag) {
@@ -398,6 +388,8 @@ class Network : public NetworkMonitor::ClientNetwork {
   // the network.
   mockable void OnTermsAndConditions(const net_base::HttpUrl& url);
 
+  const IPConfig* get_ipconfig_for_testing() const { return ipconfig_.get(); }
+  const IPConfig* get_ip6config_for_testing() const { return ip6config_.get(); }
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
   void set_dhcp_provider_for_testing(DHCPProvider* provider) {
     dhcp_provider_ = provider;

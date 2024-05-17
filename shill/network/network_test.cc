@@ -652,10 +652,6 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
                                         .accept_ra = true,
                                         .ignore_link_monitoring = true});
-  network_->set_ipconfig(
-      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
-  network_->set_ip6config(
-      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
 
   network_config = std::make_unique<net_base::NetworkConfig>();
   network_config->ipv4_address =
@@ -676,9 +672,6 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
   Mock::VerifyAndClearExpectations(&dhcp_controller_);
-
-  network_->set_ipconfig(nullptr);
-  network_->set_ip6config(nullptr);
 }
 
 TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
@@ -1315,15 +1308,15 @@ class NetworkStartTest : public NetworkTest {
   // expected.
   void VerifyIPConfigs(IPConfigType ipv4_type, IPConfigType ipv6_type) {
     if (ipv4_type == IPConfigType::kNone) {
-      EXPECT_EQ(network_->ipconfig(), nullptr);
+      EXPECT_EQ(network_->get_ipconfig_for_testing(), nullptr);
     } else {
-      ASSERT_NE(network_->ipconfig(), nullptr);
+      ASSERT_NE(network_->get_ipconfig_for_testing(), nullptr);
     }
 
     if (ipv6_type == IPConfigType::kNone) {
-      EXPECT_EQ(network_->ip6config(), nullptr);
+      EXPECT_EQ(network_->get_ip6config_for_testing(), nullptr);
     } else {
-      ASSERT_NE(network_->ip6config(), nullptr);
+      ASSERT_NE(network_->get_ip6config_for_testing(), nullptr);
     }
 
     EXPECT_EQ(
@@ -1359,6 +1352,8 @@ class NetworkStartTest : public NetworkTest {
   const net_base::NetworkConfig* GetNetworkConfigPtrFromType(
       IPConfigType type) {
     switch (type) {
+      case IPConfigType::kNone:
+        return nullptr;
       case IPConfigType::kIPv4DHCP:
         return &ipv4_dhcp_config_;
       case IPConfigType::kIPv4Static:
@@ -1373,8 +1368,6 @@ class NetworkStartTest : public NetworkTest {
         return &slaac_config_;
       case IPConfigType::kIPv6LinkProtocol:
         return &ipv6_link_protocol_config_;
-      default:
-        return nullptr;
     }
   }
 
@@ -2087,25 +2080,33 @@ TEST_F(NetworkStartTest, CurrentIPConfigChangeHandler) {
   // Trigger on nullptr -> ipv4.
   EXPECT_CALL(handler, OnCurrentIPChange());
   TriggerDHCPUpdateCallback();
-  EXPECT_EQ(network_->GetCurrentIPConfig(), network_->ipconfig());
+  ASSERT_NE(network_->GetCurrentIPConfig(), nullptr);
+  EXPECT_EQ(network_->GetCurrentIPConfig()->get_method_for_testing(),
+            kTypeDHCP);
   Mock::VerifyAndClearExpectations(&handler);
 
   // No trigger on ipv4 -> ipv4
   EXPECT_CALL(handler, OnCurrentIPChange()).Times(0);
   TriggerSLAACUpdate();
-  EXPECT_EQ(network_->GetCurrentIPConfig(), network_->ipconfig());
+  ASSERT_NE(network_->GetCurrentIPConfig(), nullptr);
+  EXPECT_EQ(network_->GetCurrentIPConfig()->get_method_for_testing(),
+            kTypeDHCP);
   Mock::VerifyAndClearExpectations(&handler);
 
   // Trigger on ipv4 -> ipv6.
   EXPECT_CALL(handler, OnCurrentIPChange());
   TriggerDHCPFailureCallback();
-  EXPECT_EQ(network_->GetCurrentIPConfig(), network_->ip6config());
+  ASSERT_NE(network_->GetCurrentIPConfig(), nullptr);
+  EXPECT_EQ(network_->GetCurrentIPConfig()->get_method_for_testing(),
+            kTypeIPv6);
   Mock::VerifyAndClearExpectations(&handler);
 
   // Trigger on ipv6 -> ipv4.
   EXPECT_CALL(handler, OnCurrentIPChange());
   ConfigureStaticIPv4Config();
-  EXPECT_EQ(network_->GetCurrentIPConfig(), network_->ipconfig());
+  ASSERT_NE(network_->GetCurrentIPConfig(), nullptr);
+  EXPECT_EQ(network_->GetCurrentIPConfig()->get_method_for_testing(),
+            kTypeIPv4);
   Mock::VerifyAndClearExpectations(&handler);
 
   // Trigger on ipv4 -> nullptr.

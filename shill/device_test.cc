@@ -178,8 +178,6 @@ class DeviceTest : public testing::Test {
 
   void TriggerConnectionUpdate() {
     EXPECT_CALL(*network_, IsConnected()).WillRepeatedly(Return(true));
-    network_->set_ipconfig(
-        std::make_unique<IPConfig>(control_interface(), kDeviceName));
     device_->OnConnectionUpdated(device_->interface_index());
     device_->OnIPConfigsPropertyUpdated(device_->interface_index());
   }
@@ -590,26 +588,6 @@ TEST_F(DeviceTest, ResumeDisconnected) {
   EXPECT_CALL(*network_, RenewDHCPLease()).Times(0);
   EXPECT_CALL(*network_, InvalidateIPv6Config()).Times(0);
   device_->OnAfterResume();
-}
-
-TEST_F(DeviceTest, AvailableIPConfigs) {
-  EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
-  network_->set_ipconfig(
-      std::make_unique<IPConfig>(control_interface(), kDeviceName));
-  EXPECT_EQ(1, device_->AvailableIPConfigs(nullptr).size());
-  network_->set_ip6config(
-      std::make_unique<IPConfig>(control_interface(), kDeviceName));
-
-  // We don't really care that the RPC IDs for all IPConfig mock adaptors
-  // are the same, or their ordering.  We just need to see that there are two
-  // of them when both IPv6 and IPv4 IPConfigs are available.
-  EXPECT_EQ(2, device_->AvailableIPConfigs(nullptr).size());
-
-  network_->set_ipconfig(nullptr);
-  EXPECT_EQ(1, device_->AvailableIPConfigs(nullptr).size());
-
-  network_->set_ip6config(nullptr);
-  EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
 }
 
 TEST_F(DeviceTest, SetMacAddress) {

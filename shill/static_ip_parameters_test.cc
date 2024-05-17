@@ -77,9 +77,6 @@ class StaticIPParametersTest : public Test {
     network_ = Network::CreateForTesting(
         1, ifname, Technology::kEthernet, false, &control_interface_,
         &dispatcher_, &metrics_, &patchpanel_client_);
-    network_->set_ipconfig(
-        std::make_unique<IPConfig>(&control_interface_, ifname));
-    // Explicitly select this IPConfig object.
     network_->set_primary_family_for_testing(net_base::IPFamily::kIPv4);
     network_->set_state_for_testing(Network::State::kConnected);
   }

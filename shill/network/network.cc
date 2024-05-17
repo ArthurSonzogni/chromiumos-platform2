@@ -198,8 +198,8 @@ void Network::Start(const Network::StartOptions& opts) {
         base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()));
     // Keep the legacy behavior that Network has a empty IPConfig if DHCP has
     // started but not succeeded/failed yet.
-    set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
-                                            IPConfig::kTypeDHCP));
+    ipconfig_ = std::make_unique<IPConfig>(control_interface_, interface_name_,
+                                           kTypeDHCP);
     dhcp_started = dhcp_controller_->RequestIP();
   }
 
@@ -328,16 +328,16 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
     dhcp_controller_->ReleaseIP(DHCPController::ReleaseReason::kDisconnect);
     dhcp_controller_ = nullptr;
   }
-  if (ipconfig()) {
-    set_ipconfig(nullptr);
+  if (ipconfig_) {
+    ipconfig_ = nullptr;
     ipconfig_changed = true;
   }
   if (slaac_controller_) {
     slaac_controller_->Stop();
     slaac_controller_ = nullptr;
   }
-  if (ip6config()) {
-    set_ip6config(nullptr);
+  if (ip6config_) {
+    ip6config_ = nullptr;
     ipconfig_changed = true;
   }
   config_.Clear();
@@ -640,27 +640,27 @@ void Network::OnIPv6ConfigUpdated() {
 void Network::UpdateIPConfigDBusObject() {
   auto combined_network_config = config_.Get();
   if (!combined_network_config.ipv4_address) {
-    set_ipconfig(nullptr);
+    ipconfig_ = nullptr;
   } else {
-    if (!ipconfig()) {
-      set_ipconfig(
-          std::make_unique<IPConfig>(control_interface_, interface_name_));
+    if (!ipconfig_) {
+      ipconfig_ =
+          std::make_unique<IPConfig>(control_interface_, interface_name_);
     }
-    ipconfig()->ApplyNetworkConfig(combined_network_config,
-                                   net_base::IPFamily::kIPv4, dhcp_data_);
+    ipconfig_->ApplyNetworkConfig(combined_network_config,
+                                  net_base::IPFamily::kIPv4, dhcp_data_);
   }
   // Keep the historical behavior that ip6config is only created when both IP
   // address and DNS servers are available.
   if (combined_network_config.ipv6_addresses.empty() ||
       combined_network_config.dns_servers.empty()) {
-    set_ip6config(nullptr);
+    ip6config_ = nullptr;
   } else {
-    if (!ip6config()) {
-      set_ip6config(
-          std::make_unique<IPConfig>(control_interface_, interface_name_));
+    if (!ip6config_) {
+      ip6config_ =
+          std::make_unique<IPConfig>(control_interface_, interface_name_);
     }
-    ip6config()->ApplyNetworkConfig(combined_network_config,
-                                    net_base::IPFamily::kIPv6);
+    ip6config_->ApplyNetworkConfig(combined_network_config,
+                                   net_base::IPFamily::kIPv6);
   }
   for (auto& ev : event_handlers_) {
     ev.OnIPConfigsPropertyUpdated(interface_index_);
