@@ -19,8 +19,8 @@ group("guest") {
     # Exclude notificationd and the demos from fuzzer builds since they
     # pull in wayland, which causes build problems.
     deps += [
-      ":wayland_demo",
-      ":x11_demo",
+      "//vm_tools/demos:wayland_demo",
+      "//vm_tools/demos:x11_demo",
       "//vm_tools/notificationd",
     ]
   }
@@ -48,27 +48,6 @@ group("guest") {
 
 pkg_config("target_defaults") {
   pkg_deps = [ "libchrome" ]
-}
-
-if (!use.fuzzer) {
-  executable("wayland_demo") {
-    sources = [ "../demos/wayland_demo.cc" ]
-    libs = [ "wayland-client" ]
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-      "wayland-client",
-    ]
-  }
-
-  executable("x11_demo") {
-    sources = [ "../demos/x11_demo.cc" ]
-    libs = [ "X11" ]
-    pkg_deps = [
-      "libbrillo",
-      "libchrome",
-    ]
-  }
 }
 
 copy("upgrade_container") {
