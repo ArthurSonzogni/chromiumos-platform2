@@ -25,7 +25,7 @@ allow cros_spaced proc_sys_kernel:file read;
 
 allow cros_spaced sysfs:dir { open read };
 allow cros_spaced sysfs:file { getattr open read };
-allow cros_spaced sysfs_dm:dir { open read search };
+allow cros_spaced sysfs_dm:dir { getattr open read search };
 allow cros_spaced sysfs_dm:{ file lnk_file } { getattr open read };
 
 allow cros_spaced cros_home_file_type:dir search;
@@ -85,7 +85,6 @@ dontaudit cros_spaced {
   dbc_device
   devpts
   input_device
-  sysfs_dm
   sysfs_loop
   sysfs_zram
   usb_device
