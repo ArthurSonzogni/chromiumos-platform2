@@ -39,16 +39,28 @@ void KillsServer::SetDecisionLatencyNotification(
 
 const KillsServer::DecisionLatencyNotification&
 KillsServer::GetDecisionLatencyCallback() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
+  // TODO(b/331634345): Fix thread safety of reference return.
   return decision_latency_callback_;
+#pragma clang diagnostic pop
 }
 
 const KillsServer::KillRequestHandler& KillsServer::GetKillRequestHandler() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
+  // TODO(b/331634345): Fix thread safety of reference return.
   return kill_request_handler_;
+#pragma clang diagnostic pop
 }
 
 const KillsServer::NoKillCandidateNotification&
 KillsServer::GetNoKillCandidateCallback() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
+  // TODO(b/331634345): Fix thread safety of reference return.
   return no_kill_candiate_callback_;
+#pragma clang diagnostic pop
 }
 
 void KillsServer::HandlePacket(

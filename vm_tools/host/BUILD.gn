@@ -64,9 +64,6 @@ config("host_target_defaults") {
     "USE_CROSVM_VULKAN=${use.vulkan}",
     "USE_PMEM_DEVICE_FOR_ROOTFS=${use.amd64}",
   ]
-
-  # TODO(b/331634345): Fix thread safety violations so we can turn this back on.
-  cflags = [ "-Wno-error=thread-safety-reference-return" ]
 }
 
 executable("maitred_client") {

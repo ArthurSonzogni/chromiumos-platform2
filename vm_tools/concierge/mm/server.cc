@@ -131,12 +131,20 @@ void Server::RemoveConnection(int connection_id) {
 
 const Server::ClientConnectionNotification&
 Server::GetClientConnectionCallback() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
+  // TODO(b/331634345): Fix thread safety of reference return.
   return client_connection_callback_;
+#pragma clang diagnostic pop
 }
 
 const Server::ClientDisconnectedNotification&
 Server::GetClientDisconnectedCallback() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
+  // TODO(b/331634345): Fix thread safety of reference return.
   return client_disconnected_callback_;
+#pragma clang diagnostic pop
 }
 
 void Server::HandleAccept() {

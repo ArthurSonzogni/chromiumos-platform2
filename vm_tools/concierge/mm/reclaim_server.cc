@@ -65,7 +65,11 @@ void ReclaimServer::SetNewGenerationNotification(
 
 const ReclaimServer::NewGenerationNotification&
 ReclaimServer::GetNewGenerationCallback() {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
+  // TODO(b/331634345): Fix thread safety of reference return.
   return new_generation_callback_;
+#pragma clang diagnostic pop
 }
 
 void ReclaimServer::HandlePacket(
