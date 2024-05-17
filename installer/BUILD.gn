@@ -212,6 +212,7 @@ if (!use.cros_host && use.test) {
       "chromeos_install_config_test.cc",
       "chromeos_legacy_test.cc",
       "chromeos_verity_test.cc",
+      "encrypted_import_test.cc",
       "inst_util_test.cc",
     ]
     if (use.enable_slow_boot_notify) {
