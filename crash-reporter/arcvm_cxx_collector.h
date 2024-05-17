@@ -28,6 +28,8 @@
 #include "crash-reporter/arc_util.h"
 #include "crash-reporter/crash_collector.h"
 
+enum class CrashCollectionStatus;
+
 // Collector for C++ crashes (native_crash) in ARCVM.
 class ArcvmCxxCollector : public CrashCollector {
  public:
@@ -47,9 +49,10 @@ class ArcvmCxxCollector : public CrashCollector {
 
   // Handles a C++ crash in ARCVM.
   // |uptime| can be zero if the value is unknown.
-  bool HandleCrash(const arc_util::BuildProperty& build_property,
-                   const CrashInfo& crash_info,
-                   base::TimeDelta uptime);
+  CrashCollectionStatus HandleCrash(
+      const arc_util::BuildProperty& build_property,
+      const CrashInfo& crash_info,
+      base::TimeDelta uptime);
 
   // Returns the severity level and product group of the crash.
   CrashCollector::ComputedCrashSeverity ComputeSeverity(
@@ -78,10 +81,11 @@ class ArcvmCxxCollector : public CrashCollector {
   // Handles a C++ crash in ARCVM using the given FD for minidump.
   // TODO(kimiyuki): Replace |minidump_fd| with a path and make "/dev/stdin" the
   // default argument.
-  bool HandleCrashWithMinidumpFD(const arc_util::BuildProperty& build_property,
-                                 const CrashInfo& crash_info,
-                                 base::TimeDelta uptime,
-                                 base::ScopedFD minidump_fd);
+  CrashCollectionStatus HandleCrashWithMinidumpFD(
+      const arc_util::BuildProperty& build_property,
+      const CrashInfo& crash_info,
+      base::TimeDelta uptime,
+      base::ScopedFD minidump_fd);
 
   // Adds ARC-related metadata to the crash report.
   void AddArcMetadata(const arc_util::BuildProperty& build_property,

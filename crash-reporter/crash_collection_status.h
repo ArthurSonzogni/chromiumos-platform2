@@ -128,7 +128,8 @@ enum class CrashCollectionStatus {
   kFailureReadingJavaCrash = 485,
   kJavaCrashEmpty = 486,
   kFailureParsingCrashLog = 487,
-  kMaxValue = kFailureParsingCrashLog,
+  kBadMinidumpFd = 488,
+  kMaxValue = kBadMinidumpFd,
 };
 // LINT.ThenChange(crash_collection_status.cc:status_list)
 

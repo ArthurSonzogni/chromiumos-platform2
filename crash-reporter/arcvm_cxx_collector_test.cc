@@ -106,9 +106,10 @@ class ArcvmCxxCollectorTest : public ::testing::Test {
 };
 
 TEST_F(ArcvmCxxCollectorTest, HandleCrashWithMinidumpFD) {
-  ASSERT_TRUE(collector_->HandleCrashWithMinidumpFD(
-      GetBuildProperty(), GetCrashInfo(), kUptimeValue,
-      std::move(minidump_fd_)));
+  ASSERT_EQ(collector_->HandleCrashWithMinidumpFD(GetBuildProperty(),
+                                                  GetCrashInfo(), kUptimeValue,
+                                                  std::move(minidump_fd_)),
+            CrashCollectionStatus::kSuccess);
 
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, std::string(kBasenameWithoutExt) + ".meta",
@@ -127,9 +128,10 @@ TEST_F(ArcvmCxxCollectorTest,
        HandleCrashWithMinidumpFD_GetCreatedCrashDirectoryByEuidFailure) {
   collector_->force_get_created_crash_directory_by_euid_status_for_test(
       CrashCollectionStatus::kOutOfCapacity, true);
-  EXPECT_FALSE(collector_->HandleCrashWithMinidumpFD(
-      GetBuildProperty(), GetCrashInfo(), kUptimeValue,
-      std::move(minidump_fd_)));
+  EXPECT_EQ(collector_->HandleCrashWithMinidumpFD(GetBuildProperty(),
+                                                  GetCrashInfo(), kUptimeValue,
+                                                  std::move(minidump_fd_)),
+            CrashCollectionStatus::kOutOfCapacity);
 
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(test_crash_directory_,
                                                       "*.meta", nullptr));

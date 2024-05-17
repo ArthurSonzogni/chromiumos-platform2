@@ -191,6 +191,7 @@ constexpr std::pair<CrashCollectionStatus, std::string_view> kStatusNames[] = {
     {CrashCollectionStatus::kJavaCrashEmpty, "Java crash was empty"},
     {CrashCollectionStatus::kFailureParsingCrashLog,
      "Failure parsing the crash log"},
+    {CrashCollectionStatus::kBadMinidumpFd, "Bad minidump fd"},
 };
 // LINT.ThenChange(crash_collection_status.h:status_list)
 

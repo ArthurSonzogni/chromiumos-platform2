@@ -36,7 +36,7 @@ ArcvmCxxCollector::ArcvmCxxCollector(
 
 ArcvmCxxCollector::~ArcvmCxxCollector() = default;
 
-bool ArcvmCxxCollector::HandleCrash(
+CrashCollectionStatus ArcvmCxxCollector::HandleCrash(
     const arc_util::BuildProperty& build_property,
     const CrashInfo& crash_info,
     base::TimeDelta uptime) {
@@ -56,7 +56,7 @@ CrashCollector::ComputedCrashSeverity ArcvmCxxCollector::ComputeSeverity(
   };
 }
 
-bool ArcvmCxxCollector::HandleCrashWithMinidumpFD(
+CrashCollectionStatus ArcvmCxxCollector::HandleCrashWithMinidumpFD(
     const arc_util::BuildProperty& build_property,
     const CrashInfo& crash_info,
     base::TimeDelta uptime,
@@ -66,7 +66,7 @@ bool ArcvmCxxCollector::HandleCrashWithMinidumpFD(
   LogCrash(message, "handling");
   if (!minidump_fd.is_valid()) {
     LOG(ERROR) << "Failed to dup(STDIN_FILENO)";
-    return false;
+    return CrashCollectionStatus::kBadMinidumpFd;
   }
 
   bool out_of_capacity = false;
@@ -81,7 +81,7 @@ bool ArcvmCxxCollector::HandleCrashWithMinidumpFD(
     if (!out_of_capacity) {
       EnqueueCollectionErrorLog(status, crash_info.exec_name);
     }
-    return false;
+    return status;
   }
 
   AddArcMetadata(build_property, crash_info, uptime);
@@ -92,15 +92,13 @@ bool ArcvmCxxCollector::HandleCrashWithMinidumpFD(
       crash_dir, basename_without_ext, constants::kMinidumpExtension);
   if (!CopyFdToNewFile(std::move(minidump_fd), minidump_path)) {
     LOG(ERROR) << "Failed to write minidump file";
-    return false;
+    return CrashCollectionStatus::kFailedMinidumpWrite;
   }
 
   const base::FilePath metadata_path =
       GetCrashPath(crash_dir, basename_without_ext, "meta");
-  FinishCrash(metadata_path, crash_info.exec_name,
-              minidump_path.BaseName().value());
-
-  return true;
+  return FinishCrash(metadata_path, crash_info.exec_name,
+                     minidump_path.BaseName().value());
 }
 
 void ArcvmCxxCollector::AddArcMetadata(
