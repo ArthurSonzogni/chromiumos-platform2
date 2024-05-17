@@ -1129,6 +1129,12 @@ def _build_ash_flags(config: Config) -> dict:
         _add_flag("oobe-large-screen-special-scaling")
         _add_flag("enable-virtual-keyboard")
 
+    if (
+        hw_features.screen.panel_properties.panel_type
+        == component_pb2.Component.DisplayPanel.PanelType.OLED
+    ):
+        _add_flag("enable-dim-shelf")
+
     touch = config.hw_design_config.hardware_features.touch
     if touch.HasField("touch_slop_distance"):
         _add_flag("touch-slop-distance", touch.touch_slop_distance.value)

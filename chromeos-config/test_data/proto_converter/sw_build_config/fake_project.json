@@ -1066,6 +1066,7 @@
             "--default-wallpaper-is-oem",
             "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/fake_wallpaper_large.jpg",
             "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/fake_wallpaper_small.jpg",
+            "--enable-dim-shelf",
             "--enable-microphone-mute-switch-device",
             "--extra-web-apps-dir=apps2",
             "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
