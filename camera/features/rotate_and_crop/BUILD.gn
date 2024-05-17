@@ -16,7 +16,6 @@ pkg_config("target_defaults") {
 
 source_set("rotate_and_crop") {
   sources = [
-    "//camera/features/rotate_and_crop/resizable_cpu_buffer.cc",
     "//camera/features/rotate_and_crop/rotate_and_crop_stream_manipulator.cc",
   ]
   public_configs = [ ":target_defaults" ]

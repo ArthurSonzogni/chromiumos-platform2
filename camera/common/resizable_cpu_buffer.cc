@@ -4,7 +4,7 @@
  * found in the LICENSE file.
  */
 
-#include "features/rotate_and_crop/resizable_cpu_buffer.h"
+#include "common/resizable_cpu_buffer.h"
 
 #include <drm_fourcc.h>
 

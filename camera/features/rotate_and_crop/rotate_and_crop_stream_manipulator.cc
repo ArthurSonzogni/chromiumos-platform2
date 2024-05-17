@@ -22,8 +22,8 @@
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 
-#include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/camera_hal3_helpers.h"
+#include "common/resizable_cpu_buffer.h"
 #include "common/stream_manipulator_helper.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_buffer_manager.h"

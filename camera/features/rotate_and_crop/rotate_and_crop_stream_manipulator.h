@@ -14,11 +14,10 @@
 
 #include <base/containers/flat_set.h>
 
-#include "camera/mojo/cros_camera_service.mojom.h"
+#include "common/resizable_cpu_buffer.h"
 #include "common/still_capture_processor.h"
 #include "common/stream_manipulator.h"
 #include "common/stream_manipulator_helper.h"
-#include "features/rotate_and_crop/resizable_cpu_buffer.h"
 #include "gpu/gpu_resources.h"
 
 namespace cros {

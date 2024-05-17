@@ -143,6 +143,7 @@ source_set("base") {
     "//camera/common/metadata_logger.cc",
     "//camera/common/relative_fov.cc",
     "//camera/common/reloadable_config_file.cc",
+    "//camera/common/resizable_cpu_buffer.cc",
     "//camera/common/timezone.cc",
     "//camera/common/udev_watcher.cc",
     "//camera/common/utils/camera_config_impl.cc",

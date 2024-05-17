@@ -4,8 +4,8 @@
  * found in the LICENSE file.
  */
 
-#ifndef CAMERA_FEATURES_ROTATE_AND_CROP_RESIZABLE_CPU_BUFFER_H_
-#define CAMERA_FEATURES_ROTATE_AND_CROP_RESIZABLE_CPU_BUFFER_H_
+#ifndef CAMERA_COMMON_RESIZABLE_CPU_BUFFER_H_
+#define CAMERA_COMMON_RESIZABLE_CPU_BUFFER_H_
 
 #include <cstdint>
 #include <vector>
@@ -40,4 +40,4 @@ class ResizableCpuBuffer {
 
 }  // namespace cros
 
-#endif  // CAMERA_FEATURES_ROTATE_AND_CROP_RESIZABLE_CPU_BUFFER_H_
+#endif  // CAMERA_COMMON_RESIZABLE_CPU_BUFFER_H_
