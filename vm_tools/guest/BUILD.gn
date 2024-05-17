@@ -8,12 +8,12 @@ import("../sommelier/wayland_protocol.gni")
 
 group("guest") {
   deps = [
-    ":garcon",
     ":guest_service_failure_notifier",
     ":maitred",
     ":port_listener",
     ":upgrade_container",
     ":vm_syslog",
+    "//vm_tools/garcon",
     "//vm_tools/vsh:vshd",
   ]
   if (!use.fuzzer) {
@@ -27,22 +27,22 @@ group("guest") {
   }
   if (use.test) {
     deps += [
-      ":garcon_desktop_file_test",
-      ":garcon_icon_finder_test",
-      ":garcon_icon_index_file_test",
-      ":garcon_mime_types_parser_test",
       ":maitred_init_test",
       ":maitred_service_test",
       ":maitred_syslog_test",
       ":notificationd_test",
+      "//vm_tools/garcon:garcon_desktop_file_test",
+      "//vm_tools/garcon:garcon_icon_finder_test",
+      "//vm_tools/garcon:garcon_icon_index_file_test",
+      "//vm_tools/garcon:garcon_mime_types_parser_test",
     ]
   }
   if (use.fuzzer) {
     deps += [
-      ":garcon_desktop_file_fuzzer",
-      ":garcon_icon_index_file_fuzzer",
-      ":garcon_ini_parse_util_fuzzer",
-      ":garcon_mime_types_parser_fuzzer",
+      "//vm_tools/garcon:garcon_desktop_file_fuzzer",
+      "//vm_tools/garcon:garcon_icon_index_file_fuzzer",
+      "//vm_tools/garcon:garcon_ini_parse_util_fuzzer",
+      "//vm_tools/garcon:garcon_mime_types_parser_fuzzer",
     ]
   }
 }
@@ -61,30 +61,6 @@ static_library("libmaitred") {
   pkg_deps = [
     "grpc++",
     "libbrillo",
-    "protobuf",
-    "vm_protos",
-  ]
-}
-
-static_library("libgarcon") {
-  sources = [
-    "../garcon/ansible_playbook_application.cc",
-    "../garcon/arc_sideload.cc",
-    "../garcon/desktop_file.cc",
-    "../garcon/file_chooser_dbus_service.cc",
-    "../garcon/host_notifier.cc",
-    "../garcon/icon_finder.cc",
-    "../garcon/icon_index_file.cc",
-    "../garcon/ini_parse_util.cc",
-    "../garcon/mime_types_parser.cc",
-    "../garcon/package_kit_proxy.cc",
-    "../garcon/screensaver_dbus_service.cc",
-    "../garcon/service_impl.cc",
-    "../garcon/xdg_util.cc",
-  ]
-  configs += [ ":target_defaults" ]
-  pkg_deps = [
-    "grpc++",
     "protobuf",
     "vm_protos",
   ]
@@ -110,15 +86,6 @@ executable("maitred") {
   configs += [ ":target_defaults" ]
   deps = [
     ":libmaitred",
-    "//vm_tools:libvm_tools_common",
-  ]
-}
-
-executable("garcon") {
-  sources = [ "../garcon/main.cc" ]
-  configs += [ ":target_defaults" ]
-  deps = [
-    ":libgarcon",
     "//vm_tools:libvm_tools_common",
   ]
 }
@@ -273,54 +240,6 @@ if (use.test) {
     ]
   }
 
-  executable("garcon_desktop_file_test") {
-    sources = [ "../garcon/desktop_file_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libgarcon",
-      "//common-mk/testrunner:testrunner",
-    ]
-  }
-
-  executable("garcon_icon_index_file_test") {
-    sources = [ "../garcon/icon_index_file_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libgarcon",
-      "//common-mk/testrunner:testrunner",
-    ]
-  }
-
-  executable("garcon_icon_finder_test") {
-    sources = [ "../garcon/icon_finder_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libgarcon",
-      "//common-mk/testrunner:testrunner",
-    ]
-  }
-
-  executable("garcon_mime_types_parser_test") {
-    sources = [ "../garcon/mime_types_parser_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":libgarcon",
-      "//common-mk/testrunner:testrunner",
-    ]
-  }
-
   executable("notificationd_test") {
     sources = [ "../notificationd/dbus_service_test.cc" ]
     configs += [
@@ -341,35 +260,5 @@ if (use.test) {
       ":notification-protocol",
       "//common-mk/testrunner:testrunner",
     ]
-  }
-}
-
-if (use.fuzzer) {
-  executable("garcon_desktop_file_fuzzer") {
-    sources = [ "../garcon/desktop_file_fuzzer.cc" ]
-    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-    pkg_deps = [ "libchrome-test" ]
-    deps = [ "//vm_tools/guest:libgarcon" ]
-  }
-
-  executable("garcon_icon_index_file_fuzzer") {
-    sources = [ "../garcon/icon_index_file_fuzzer.cc" ]
-    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-    pkg_deps = [ "libchrome-test" ]
-    deps = [ "//vm_tools/guest:libgarcon" ]
-  }
-
-  executable("garcon_ini_parse_util_fuzzer") {
-    sources = [ "../garcon/ini_parse_util_fuzzer.cc" ]
-    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-    pkg_deps = [ "libchrome-test" ]
-    deps = [ "//vm_tools/guest:libgarcon" ]
-  }
-
-  executable("garcon_mime_types_parser_fuzzer") {
-    sources = [ "../garcon/mime_types_parser_fuzzer.cc" ]
-    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
-    pkg_deps = [ "libchrome-test" ]
-    deps = [ "//vm_tools/guest:libgarcon" ]
   }
 }

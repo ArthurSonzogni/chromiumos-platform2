@@ -1,0 +1,116 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+static_library("libgarcon") {
+  sources = [
+    "ansible_playbook_application.cc",
+    "arc_sideload.cc",
+    "desktop_file.cc",
+    "file_chooser_dbus_service.cc",
+    "host_notifier.cc",
+    "icon_finder.cc",
+    "icon_index_file.cc",
+    "ini_parse_util.cc",
+    "mime_types_parser.cc",
+    "package_kit_proxy.cc",
+    "screensaver_dbus_service.cc",
+    "service_impl.cc",
+    "xdg_util.cc",
+  ]
+  configs += [ "//vm_tools/guest:target_defaults" ]
+  pkg_deps = [
+    "grpc++",
+    "protobuf",
+    "vm_protos",
+  ]
+}
+
+executable("garcon") {
+  sources = [ "main.cc" ]
+  configs += [ "//vm_tools/guest:target_defaults" ]
+  deps = [
+    ":libgarcon",
+    "//vm_tools:libvm_tools_common",
+  ]
+}
+
+if (use.test) {
+  executable("garcon_desktop_file_test") {
+    sources = [ "desktop_file_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      "//vm_tools/guest:target_defaults",
+    ]
+    deps = [
+      ":libgarcon",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("garcon_icon_index_file_test") {
+    sources = [ "icon_index_file_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      "//vm_tools/guest:target_defaults",
+    ]
+    deps = [
+      ":libgarcon",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("garcon_icon_finder_test") {
+    sources = [ "icon_finder_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      "//vm_tools/guest:target_defaults",
+    ]
+    deps = [
+      ":libgarcon",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+
+  executable("garcon_mime_types_parser_test") {
+    sources = [ "mime_types_parser_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      "//vm_tools/guest:target_defaults",
+    ]
+    deps = [
+      ":libgarcon",
+      "//common-mk/testrunner:testrunner",
+    ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("garcon_desktop_file_fuzzer") {
+    sources = [ "desktop_file_fuzzer.cc" ]
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    pkg_deps = [ "libchrome-test" ]
+    deps = [ ":libgarcon" ]
+  }
+
+  executable("garcon_icon_index_file_fuzzer") {
+    sources = [ "icon_index_file_fuzzer.cc" ]
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    pkg_deps = [ "libchrome-test" ]
+    deps = [ ":libgarcon" ]
+  }
+
+  executable("garcon_ini_parse_util_fuzzer") {
+    sources = [ "ini_parse_util_fuzzer.cc" ]
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    pkg_deps = [ "libchrome-test" ]
+    deps = [ ":libgarcon" ]
+  }
+
+  executable("garcon_mime_types_parser_fuzzer") {
+    sources = [ "mime_types_parser_fuzzer.cc" ]
+    configs += [ "//common-mk/common_fuzzer:common_fuzzer" ]
+    pkg_deps = [ "libchrome-test" ]
+    deps = [ ":libgarcon" ]
+  }
+}
