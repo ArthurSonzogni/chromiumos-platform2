@@ -22,6 +22,7 @@
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/sequence_checker.h>
@@ -41,7 +42,6 @@
 #include <spaced/disk_usage_proxy.h>
 #include <vm_concierge/concierge_service.pb.h>
 
-#include "base/functional/callback_forward.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/dbus_adaptors/org.chromium.VmConcierge.h"
 #include "vm_tools/concierge/disk_image.h"
