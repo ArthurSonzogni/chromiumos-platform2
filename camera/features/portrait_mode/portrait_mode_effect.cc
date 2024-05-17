@@ -6,6 +6,7 @@
 
 #include "features/portrait_mode/portrait_mode_effect.h"
 
+#include <drm_fourcc.h>
 #include <linux/videodev2.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -32,25 +33,34 @@
 #include <libyuv/convert_argb.h>
 #include <system/camera_metadata.h>
 
+#include "common/resizable_cpu_buffer.h"
 #include "cros-camera/camera_buffer_manager.h"
-#include "cros-camera/camera_gpu_algo_header.h"
 #include "cros-camera/common.h"
+#include "cros-camera/future.h"
+#include "cros-camera/portrait_cros_wrapper.h"
 
 namespace cros {
 
+namespace {
+
+constexpr int kPortraitProcessorTimeoutMs = 15000;
+
+}  // namespace
+
 PortraitModeEffect::PortraitModeEffect()
     : buffer_manager_(CameraBufferManager::GetInstance()),
-      gpu_algo_manager_(nullptr),
-      condvar_(&lock_) {}
+      thread_("PortraitModeEffectThread") {
+  CHECK(thread_.Start());
+}
 
-int32_t PortraitModeEffect::Initialize(CameraMojoChannelManagerToken* token) {
-  gpu_algo_manager_ = GPUAlgoManager::GetInstance(token);
-  if (!gpu_algo_manager_) {
-    LOGF(WARNING)
-        << "Cannot connect to GPU algorithm service. Disable portrait mode.";
-    return -EINVAL;
-  }
-  return 0;
+PortraitModeEffect::~PortraitModeEffect() {
+  thread_.Stop();
+}
+
+void PortraitModeEffect::Initialize() {
+  thread_.task_runner()->PostTask(
+      FROM_HERE, base::BindOnce(&PortraitModeEffect::InitializeAsync,
+                                base::Unretained(this)));
 }
 
 int32_t PortraitModeEffect::ProcessRequest(
@@ -58,125 +68,27 @@ int32_t PortraitModeEffect::ProcessRequest(
     uint32_t orientation,
     mojom::PortraitModeSegResult* segmentation_result,
     buffer_handle_t output_buffer) {
-  constexpr base::TimeDelta kPortraitProcessorTimeout = base::Seconds(15);
   if (!input_buffer || !output_buffer) {
     return -EINVAL;
   }
-  ScopedMapping input_mapping(input_buffer);
-  ScopedMapping output_mapping(output_buffer);
-  uint32_t width = input_mapping.width();
-  uint32_t height = input_mapping.height();
-  uint32_t v4l2_format = input_mapping.v4l2_format();
-  DCHECK_EQ(output_mapping.width(), width);
-  DCHECK_EQ(output_mapping.height(), height);
-  DCHECK_EQ(output_mapping.v4l2_format(), v4l2_format);
 
-  const uint32_t kRGBNumOfChannels = 3;
-  size_t rgb_buf_size = width * height * kRGBNumOfChannels;
-  base::UnsafeSharedMemoryRegion input_rgb_shm_region =
-      base::UnsafeSharedMemoryRegion::Create(rgb_buf_size);
-  base::WritableSharedMemoryMapping input_rgb_shm_mapping =
-      input_rgb_shm_region.Map();
-  if (!input_rgb_shm_mapping.IsValid()) {
-    LOGF(ERROR) << "Failed to create shared memory for input RGB buffer";
-    return -ENOMEM;
-  }
-  base::UnsafeSharedMemoryRegion output_rgb_shm_region =
-      base::UnsafeSharedMemoryRegion::Create(rgb_buf_size);
-  base::WritableSharedMemoryMapping output_rgb_shm_mapping =
-      output_rgb_shm_region.Map();
-  if (!output_rgb_shm_mapping.IsValid()) {
-    LOGF(ERROR) << "Failed to create shared memory for output RGB buffer";
-    return -ENOMEM;
-  }
-  uint32_t rgb_buf_stride = width * kRGBNumOfChannels;
   int result = 0;
   base::ScopedClosureRunner result_metadata_runner(
       base::BindOnce(&PortraitModeEffect::UpdateSegmentationResult,
                      base::Unretained(this), segmentation_result, &result));
-  result = ConvertYUVToRGB(input_mapping, input_rgb_shm_mapping.memory(),
-                           rgb_buf_stride);
-  if (result != 0) {
-    LOGF(ERROR) << "Failed to convert from YUV to RGB";
+  auto task_completed = Future<int32_t>::Create(nullptr);
+  thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&PortraitModeEffect::ProcessRequestAsync,
+                     base::Unretained(this), input_buffer, output_buffer,
+                     base::checked_cast<int>(orientation),
+                     GetFutureCallback(task_completed)));
+  if (!task_completed->Wait(kPortraitProcessorTimeoutMs)) {
+    result = -ETIMEDOUT;
     return result;
   }
-
-  LOGF(INFO) << "Starting portrait processing";
-  // Duplicate the file descriptors since shm_open() returns descriptors
-  // associated with FD_CLOEXEC, which causes the descriptors to be closed at
-  // the call of execve(). Duplicated descriptors do not share the
-  // close-on-exec flag.
-  base::ScopedFD dup_input_rgb_buf_fd(
-      HANDLE_EINTR(dup(input_rgb_shm_region.GetPlatformHandle().fd)));
-  base::ScopedFD dup_output_rgb_buf_fd(
-      HANDLE_EINTR(dup(output_rgb_shm_region.GetPlatformHandle().fd)));
-
-  class ScopedHandle {
-   public:
-    explicit ScopedHandle(GPUAlgoManager* algo, int fd)
-        : algo_(algo), handle_(-1) {
-      if (algo_ != nullptr) {
-        handle_ = algo_->RegisterBuffer(fd);
-      }
-    }
-    ~ScopedHandle() {
-      if (IsValid()) {
-        std::vector<int32_t> handles({handle_});
-        algo_->DeregisterBuffers(handles);
-      }
-    }
-    bool IsValid() const { return handle_ >= 0; }
-    int32_t Get() const { return handle_; }
-
-   private:
-    GPUAlgoManager* algo_;
-    int32_t handle_;
-  };
-
-  ScopedHandle input_buffer_handle(gpu_algo_manager_,
-                                   dup_input_rgb_buf_fd.release());
-  ScopedHandle output_buffer_handle(gpu_algo_manager_,
-                                    dup_output_rgb_buf_fd.release());
-  if (!input_buffer_handle.IsValid() || !output_buffer_handle.IsValid()) {
-    LOGF(ERROR) << "Failed to register buffers";
-    result = -EINVAL;
-    return result;
-  }
-  std::vector<uint8_t> req_header(sizeof(CameraGPUAlgoCmdHeader));
-  auto* header = reinterpret_cast<CameraGPUAlgoCmdHeader*>(req_header.data());
-  header->command = CameraGPUAlgoCommand::PORTRAIT_MODE;
-  auto& params = header->params.portrait_mode;
-  params.input_buffer_handle = input_buffer_handle.Get();
-  params.output_buffer_handle = output_buffer_handle.Get();
-  params.width = width;
-  params.height = height;
-  params.orientation = orientation;
-  return_status_ = -ETIMEDOUT;
-  gpu_algo_manager_->Request(req_header,
-                             -1 /* buffers are passed in the header */,
-                             base::BindOnce(&PortraitModeEffect::ReturnCallback,
-                                            base::AsWeakPtr(this)));
-  base::AutoLock auto_lock(lock_);
-  condvar_.TimedWait(kPortraitProcessorTimeout);
-  result = return_status_;
-
-  LOGF(INFO) << "Portrait processing finished, result: " << result;
-  if (result == -EINVAL || result == -ETIMEDOUT) {
-    return result;
-  } else if (result == -ECANCELED) {
-    // Portrait processing finishes with non-zero result when there's no human
-    // face in the image. Returns 0 here with the status set in the vendor tag
-    // by |result_metadata_runner|.
-    LOGF(INFO) << "No human face detected.";
-    return 0;
-  }
-
-  result = ConvertRGBToYUV(output_rgb_shm_mapping.memory(), rgb_buf_stride,
-                           output_mapping);
-  if (result != 0) {
-    LOGF(ERROR) << "Failed to convert from RGB to YUV";
-  }
-  return result;
+  result = task_completed->Get();
+  return (result == -ECANCELED) ? 0 : result;
 }
 
 void PortraitModeEffect::UpdateSegmentationResult(
@@ -186,13 +98,6 @@ void PortraitModeEffect::UpdateSegmentationResult(
       : (*result == -ETIMEDOUT) ? mojom::PortraitModeSegResult::kTimeout
       : (*result == -ECANCELED) ? mojom::PortraitModeSegResult::kNoFaces
                                 : mojom::PortraitModeSegResult::kFailure;
-}
-
-void PortraitModeEffect::ReturnCallback(uint32_t status,
-                                        int32_t buffer_handle) {
-  base::AutoLock auto_lock(lock_);
-  return_status_ = -status;
-  condvar_.Signal();
 }
 
 int PortraitModeEffect::ConvertYUVToRGB(const ScopedMapping& mapping,
@@ -341,6 +246,76 @@ int PortraitModeEffect::ConvertRGBToYUV(void* rgb_buf_addr,
       return -EINVAL;
   }
   return 0;
+}
+
+void PortraitModeEffect::InitializeAsync() {
+  CHECK(thread_.task_runner()->BelongsToCurrentThread());
+  if (!portrait_processor_.Init()) {
+    LOGF(ERROR) << "Failed to initialize portrait processor";
+    return;
+  }
+}
+
+void PortraitModeEffect::ProcessRequestAsync(
+    buffer_handle_t input_buffer,
+    buffer_handle_t output_buffer,
+    int orientation,
+    base::OnceCallback<void(int32_t)> task_completed_callback) {
+  CHECK(thread_.task_runner()->BelongsToCurrentThread());
+  CHECK(input_buffer);
+  CHECK(output_buffer);
+
+  ScopedMapping input_mapping(input_buffer);
+  ScopedMapping output_mapping(output_buffer);
+  uint32_t width = input_mapping.width();
+  uint32_t height = input_mapping.height();
+  uint32_t v4l2_format = input_mapping.v4l2_format();
+  CHECK_EQ(output_mapping.width(), width);
+  CHECK_EQ(output_mapping.height(), height);
+  CHECK_EQ(output_mapping.v4l2_format(), v4l2_format);
+
+  const uint32_t kRGBNumOfChannels = 3;
+
+  ResizableCpuBuffer input_rgb_buffer, output_rgb_buffer;
+  input_rgb_buffer.SetFormat(width, height, DRM_FORMAT_RGB888);
+  output_rgb_buffer.SetFormat(width, height, DRM_FORMAT_RGB888);
+
+  uint32_t rgb_buf_stride = width * kRGBNumOfChannels;
+
+  int result = ConvertYUVToRGB(input_mapping, input_rgb_buffer.plane(0).addr,
+                               rgb_buf_stride);
+  if (result != 0) {
+    LOGF(ERROR) << "Failed to convert from YUV to RGB";
+    std::move(task_completed_callback).Run(result);
+    return;
+  }
+
+  const creative_camera::PortraitCrosWrapper::Request portrait_request{
+      .width = base::checked_cast<int>(width),
+      .height = base::checked_cast<int>(height),
+      .orientation = orientation,
+  };
+
+  LOGF(INFO) << "Starting portrait processing";
+  if (!portrait_processor_.Process(req_id_++, portrait_request,
+                                   input_rgb_buffer.plane(0).addr,
+                                   output_rgb_buffer.plane(0).addr)) {
+    // We process portrait images using Google3 portrait library. Not
+    // processing cases is primarily due to no human face being detected.
+    // We assume the failure here is not containing a clear face. Returns 0
+    // here with the status set in the vendor tag by |result_metadata_runner|
+    LOGF(WARNING) << "Portrait processor failed with no human face detected.";
+    std::move(task_completed_callback).Run(-ECANCELED);
+    return;
+  }
+  LOGF(INFO) << "Portrait processing finished, result: " << result;
+
+  result = ConvertRGBToYUV(output_rgb_buffer.plane(0).addr, rgb_buf_stride,
+                           output_mapping);
+  if (result != 0) {
+    LOGF(ERROR) << "Failed to convert from RGB to YUV";
+  }
+  std::move(task_completed_callback).Run(result);
 }
 
 }  // namespace cros

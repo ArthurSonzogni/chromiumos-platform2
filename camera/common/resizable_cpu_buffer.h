@@ -17,6 +17,12 @@ namespace cros {
 // capacity.
 class ResizableCpuBuffer {
  public:
+  ResizableCpuBuffer() = default;
+  ResizableCpuBuffer(const ResizableCpuBuffer&) = delete;
+  ResizableCpuBuffer& operator=(const ResizableCpuBuffer&) = delete;
+  ResizableCpuBuffer(ResizableCpuBuffer&&) = delete;
+  ResizableCpuBuffer& operator=(ResizableCpuBuffer&&) = delete;
+
   // Address and layout information of an image buffer plane.
   struct Plane {
     uint8_t* addr = nullptr;

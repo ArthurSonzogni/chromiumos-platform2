@@ -29,7 +29,6 @@ namespace cros {
 class PortraitModeStreamManipulator : public StreamManipulator {
  public:
   PortraitModeStreamManipulator(
-      CameraMojoChannelManagerToken* mojo_manager_token,
       std::unique_ptr<StillCaptureProcessor> still_capture_processor);
   ~PortraitModeStreamManipulator() override;
 
@@ -98,7 +97,6 @@ class PortraitModeStreamManipulator : public StreamManipulator {
   CaptureContext* GetCaptureContext(uint32_t frame_number) const;
   void RemoveCaptureContext(uint32_t frame_number);
 
-  CameraMojoChannelManagerToken* mojo_manager_token_;
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
   std::unique_ptr<CameraMetrics> camera_metrics_;
   StreamManipulator::Callbacks callbacks_;

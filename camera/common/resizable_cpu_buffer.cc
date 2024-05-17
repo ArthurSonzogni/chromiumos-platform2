@@ -62,6 +62,15 @@ bool ResizableCpuBuffer::SetFormat(uint32_t width,
       });
       break;
 
+    case DRM_FORMAT_RGB888:
+      buffer_.resize(width * height * 3);
+      planes_.push_back(Plane{
+          .addr = buffer_.data(),
+          .stride = width * 3,
+          .size = width * height * 3,
+      });
+      break;
+
     default:
       LOGF(ERROR) << "Unsupported DRM format: " << drm_format;
       return false;

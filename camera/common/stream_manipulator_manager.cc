@@ -211,7 +211,7 @@ StreamManipulatorManager::StreamManipulatorManager(
       std::make_unique<StillCaptureProcessorImpl>(std::move(jpeg_compressor));
   stream_manipulators_.emplace_back(
       std::make_unique<PortraitModeStreamManipulator>(
-          mojo_manager_token, std::move(still_capture_processor)));
+          std::move(still_capture_processor)));
   LOGF(INFO) << "PortraitModeStreamManipulator enabled";
 #endif
 

@@ -13,6 +13,7 @@
 
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
+#include <base/threading/thread.h>
 #include <base/process/process.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
@@ -21,7 +22,7 @@
 #include "camera/mojo/camera_features.mojom.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_buffer_manager.h"
-#include "features/portrait_mode/gpu_algo_manager.h"
+#include "cros-camera/portrait_cros_wrapper.h"
 
 namespace cros {
 
@@ -42,15 +43,12 @@ constexpr uint32_t kPortraitModeSegmentationResultVendorKey =
 class PortraitModeEffect : public base::SupportsWeakPtr<PortraitModeEffect> {
  public:
   PortraitModeEffect();
+  ~PortraitModeEffect();
   PortraitModeEffect(const PortraitModeEffect&) = delete;
   PortraitModeEffect& operator=(const PortraitModeEffect&) = delete;
 
   // Initializes the portrait mode effect.
-  // Args:
-  //    |token|: the mojo manager token
-  // Returns:
-  //    0 on success; corresponding error code on failure.
-  int32_t Initialize(CameraMojoChannelManagerToken* token);
+  void Initialize();
 
   // Applies the portrait mode effect. Currently it is assumed that the effect
   // have the same output resolution and format as that of input.
@@ -78,17 +76,19 @@ class PortraitModeEffect : public base::SupportsWeakPtr<PortraitModeEffect> {
                       uint32_t rgb_buf_stride,
                       const ScopedMapping& mapping);
 
-  void ReturnCallback(uint32_t status, int32_t buffer_handle);
+  void ProcessRequestAsync(
+      buffer_handle_t input_buffer,
+      buffer_handle_t output_buffer,
+      int orientation,
+      base::OnceCallback<void(int32_t)> task_completed_callback);
+
+  void InitializeAsync();
 
   CameraBufferManager* buffer_manager_;
 
-  GPUAlgoManager* gpu_algo_manager_;
-
-  base::Lock lock_;
-
-  base::ConditionVariable condvar_;
-
-  int32_t return_status_;
+  creative_camera::PortraitCrosWrapper portrait_processor_;
+  uint32_t req_id_ = 0;
+  base::Thread thread_;
 };
 
 }  // namespace cros

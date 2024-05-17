@@ -26,8 +26,7 @@ group("all") {
     ":libcros_camera_pkg_config",
   ]
 
-  if (use.camera_feature_portrait_mode || use.ipu6se || use.ipu6epadln ||
-      use.ipu6epmtl || use.qualcomm_camx) {
+  if (use.ipu6se || use.ipu6epadln || use.ipu6epmtl || use.qualcomm_camx) {
     deps += [
       ":install_cros_camera_gpu_algo_conf",
       ":install_cros_camera_gpu_algo_policy",
@@ -287,16 +286,6 @@ source_set("v4l2_device") {
     "//camera/common/v4l2_device/v4l2_subdevice.cc",
     "//camera/common/v4l2_device/v4l2_video_node.cc",
   ]
-  public_configs = [ ":target_defaults" ]
-
-  # -fPIC needed by the libcros_camera.so shared library.
-  configs += [ "//common-mk:pic" ]
-  public_deps = [ ":base" ]
-}
-
-source_set("camera_gpu_algorithm") {
-  sources = [ "//camera/common/camera_gpu_algorithm.cc" ]
-  libs = [ "portrait_cros" ]
   public_configs = [ ":target_defaults" ]
 
   # -fPIC needed by the libcros_camera.so shared library.
@@ -604,8 +593,7 @@ install_seccomp_policy("install_cros_camera_algo_policy") {
 
 # The sandboxed GPU service is used by Portrait Mode feature, IPU6SE
 # and Qualcomm Camx camera HAL.
-if (use.camera_feature_portrait_mode || use.ipu6se || use.ipu6epadln ||
-    use.ipu6epmtl || use.qualcomm_camx) {
+if (use.ipu6se || use.ipu6epadln || use.ipu6epmtl || use.qualcomm_camx) {
   install_config("install_cros_camera_gpu_algo_conf") {
     sources = [ "init/cros-camera-gpu-algo.conf" ]
     install_path = "upstart"

@@ -35,10 +35,8 @@ bool UpdateResultMetadata(Camera3CaptureDescriptor* result,
 //
 
 PortraitModeStreamManipulator::PortraitModeStreamManipulator(
-    CameraMojoChannelManagerToken* mojo_manager_token,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor)
-    : mojo_manager_token_(mojo_manager_token),
-      still_capture_processor_(std::move(still_capture_processor)),
+    : still_capture_processor_(std::move(still_capture_processor)),
       camera_metrics_(CameraMetrics::New()),
       thread_("PortraitModeThread") {
   CHECK(thread_.Start());
@@ -164,11 +162,7 @@ bool PortraitModeStreamManipulator::InitializeOnThread(
 
   // Initialize Portrait Mode effect.
   portrait_mode_ = std::make_unique<PortraitModeEffect>();
-  if (portrait_mode_->Initialize(mojo_manager_token_) != 0) {
-    LOGF(ERROR) << "Failed to initialize Portrait Mode effect";
-    ++metrics_.errors[PortraitModeError::kInitializationError];
-    return false;
-  }
+  portrait_mode_->Initialize();
 
   return true;
 }
