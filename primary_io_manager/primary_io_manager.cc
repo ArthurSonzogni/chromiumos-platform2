@@ -39,10 +39,10 @@ std::string DeviceStateToString(DeviceType type, DeviceState state) {
 }
 
 std::string IoDeviceToString(std::string syspath, const IoDevice* device) {
-  return std::format("{0:>2} {1:>2} {2:>32} {3}",
+  return std::format("{0:>2} {1:>2} {2:>7} {3:>32} {4}",
                      DeviceStateToString(KEYBOARD, device->keyboard),
-                     DeviceStateToString(MOUSE, device->mouse), device->name,
-                     syspath);
+                     DeviceStateToString(MOUSE, device->mouse),
+                     device->busdevnum, device->name, syspath);
 }
 
 bool PrimaryIoManager::IsPrimaryIoDevice(const std::string& in_device) {
@@ -118,25 +118,37 @@ void PrimaryIoManager::OnDeviceAdded(const ScopedUdevDevicePtr device) {
   }
   std::string name = name_ptr ? name_ptr : "";
 
+  std::string busdevnum;
+  const char* busnum = udev_device_get_sysattr_value(parent, "busnum");
+  const char* devnum = udev_device_get_sysattr_value(parent, "devnum");
+  if (busnum && devnum) {
+    busdevnum = std::format("{0}:{1}", busnum, devnum);
+  }
+
   if (is_keyboard) {
-    AddKeyboard(syspath, name);
+    AddKeyboard(syspath, name, busdevnum);
   }
   if (is_mouse) {
-    AddMouse(syspath, name);
+    AddMouse(syspath, name, busdevnum);
   }
 }
 
-void PrimaryIoManager::AddMouse(std::string syspath, std::string name) {
-  AddDevice(syspath, DeviceType::MOUSE, name);
+void PrimaryIoManager::AddMouse(std::string syspath,
+                                std::string name,
+                                std::string busdevnum) {
+  AddDevice(syspath, DeviceType::MOUSE, name, busdevnum);
 }
 
-void PrimaryIoManager::AddKeyboard(std::string syspath, std::string name) {
-  AddDevice(syspath, DeviceType::KEYBOARD, name);
+void PrimaryIoManager::AddKeyboard(std::string syspath,
+                                   std::string name,
+                                   std::string busdevnum) {
+  AddDevice(syspath, DeviceType::KEYBOARD, name, busdevnum);
 }
 
 void PrimaryIoManager::AddDevice(std::string syspath,
                                  DeviceType type,
-                                 std::string name) {
+                                 std::string name,
+                                 std::string busdevnum) {
   auto device_iter = io_devices_.find(syspath);
   IoDevice* device;
 
@@ -144,6 +156,7 @@ void PrimaryIoManager::AddDevice(std::string syspath,
     std::unique_ptr<IoDevice> new_device = std::make_unique<IoDevice>();
     device = new_device.get();
     device->name = name;
+    device->busdevnum = busdevnum;
     io_devices_.insert({syspath, std::move(new_device)});
   } else {
     device = device_iter->second.get();
@@ -234,6 +247,8 @@ std::vector<std::string> PrimaryIoManager::GetIoDevices() {
   PruneDevices();
 
   std::vector<std::string> devices;
+  devices.push_back(std::format("{0:>5}|{1:>7}|{2:>32}|{3}", "kb/ms", "bus:dev",
+                                "name", "syspath"));
   for (const auto& [path, device] : io_devices_) {
     devices.push_back(IoDeviceToString(path, device.get()));
   }

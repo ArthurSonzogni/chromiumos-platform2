@@ -32,7 +32,7 @@ struct IoDevice {
   DeviceState mouse = NONE;
   DeviceState keyboard = NONE;
   std::string name;
-  // TODO(drmasquatch) add time added, for iteration order?
+  std::string busdevnum;
 };
 
 // PrimaryIoManager is responsible for keeping track of 'primary' keyboards and
@@ -53,9 +53,14 @@ class PrimaryIoManager : public org::chromium::PrimaryIoManagerAdaptor,
   void RegisterAsync(
       brillo::dbus_utils::AsyncEventSequencer::CompletionAction cb);
 
-  void AddDevice(std::string syspath, DeviceType type, std::string name);
-  void AddKeyboard(std::string syspath, std::string name);
-  void AddMouse(std::string syspath, std::string name);
+  void AddDevice(std::string syspath,
+                 DeviceType type,
+                 std::string name,
+                 std::string busdevnum);
+  void AddKeyboard(std::string syspath,
+                   std::string name,
+                   std::string busdevnum);
+  void AddMouse(std::string syspath, std::string name, std::string busdevnum);
   void PickNewPrimary(DeviceType type);
   void RemoveDevice(std::string syspath);
 
