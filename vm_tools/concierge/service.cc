@@ -1208,12 +1208,9 @@ bool Service::Init() {
   disk_usage_proxy_->StartMonitoring();
 
   // Get the D-Bus proxy for communicating with cicerone.
-  cicerone_service_proxy_ = bus_->GetObjectProxy(
-      vm_tools::cicerone::kVmCiceroneServiceName,
-      dbus::ObjectPath(vm_tools::cicerone::kVmCiceroneServicePath));
-  cicerone_service_proxy_->ConnectToSignal(
-      vm_tools::cicerone::kVmCiceroneServiceName,
-      vm_tools::cicerone::kTremplinStartedSignal,
+  cicerone_service_proxy_ =
+      std::make_unique<org::chromium::VmCiceroneProxy>(bus_);
+  cicerone_service_proxy_->RegisterTremplinStartedSignalHandler(
       base::BindRepeating(&Service::OnTremplinStartedSignal,
                           weak_ptr_factory_.GetWeakPtr()),
       base::BindOnce(&Service::OnSignalConnected,
@@ -1703,7 +1700,8 @@ StartVmResponse Service::StartVmInternal(
     network = BorealisNetwork::Create(bus_, vsock_cid);
   } else if (classification == apps::BAGUETTE) {
     // Steal borealis network for Baguette
-    // TODO(b/339679659): Use separate network for Baguette after patchpanel change
+    // TODO(b/339679659): Use separate network for Baguette after patchpanel
+    // change
     LOG(INFO) << "Steal borealis network for Baguette";
     network = BorealisNetwork::Create(bus_, vsock_cid);
   } else {
@@ -3971,9 +3969,6 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
                                         std::string vm_token,
                                         vm_tools::apps::VmType vm_type) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
-                               vm_tools::cicerone::kNotifyVmStartedMethod);
-  dbus::MessageWriter writer(&method_call);
   vm_tools::cicerone::NotifyVmStartedRequest request;
   request.set_owner_id(vm_id.owner_id());
   request.set_vm_name(vm_id.name());
@@ -3982,11 +3977,19 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
   request.set_pid(pid);
   // TODO(b/320329723): Add special handling to cicerone if needed
   request.set_vm_type(vm_type);
-  writer.AppendProtoAsArrayOfBytes(request);
-  if (!CallDBusMethod(bus_, cicerone_service_proxy_, &method_call,
-                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
-    LOG(ERROR) << "Failed notifying cicerone of VM startup";
-  }
+
+  bus_->GetDBusTaskRunner()->PostTask(
+      FROM_HERE, base::BindOnce(
+                     [](org::chromium::VmCiceroneProxy* proxy,
+                        vm_tools::cicerone::NotifyVmStartedRequest request) {
+                       brillo::ErrorPtr error;
+                       EmptyMessage unused;
+                       if (!proxy->NotifyVmStarted(request, &unused, &error)) {
+                         LOG(ERROR)
+                             << "Failed notifying cicerone of VM startup";
+                       }
+                     },
+                     cicerone_service_proxy_.get(), std::move(request)));
 }
 
 void Service::HandleControlSocketReady(const VmId& vm_id) {
@@ -4093,16 +4096,23 @@ void Service::NotifyVmStopping(const VmId& vm_id, int64_t cid) {
   }
 
   // Notify cicerone.
-  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
-                               vm_tools::cicerone::kNotifyVmStoppingMethod);
-  dbus::MessageWriter writer(&method_call);
-  vm_tools::cicerone::NotifyVmStoppingRequest request;
-  request.set_owner_id(vm_id.owner_id());
-  request.set_vm_name(vm_id.name());
-  writer.AppendProtoAsArrayOfBytes(request);
-  if (!CallDBusMethod(bus_, cicerone_service_proxy_, &method_call,
-                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
-    LOG(ERROR) << "Failed notifying cicerone of stopping VM";
+  {
+    vm_tools::cicerone::NotifyVmStoppingRequest request;
+    request.set_owner_id(vm_id.owner_id());
+    request.set_vm_name(vm_id.name());
+
+    bus_->GetDBusTaskRunner()->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            [](org::chromium::VmCiceroneProxy* proxy,
+               vm_tools::cicerone::NotifyVmStoppingRequest request) {
+              brillo::ErrorPtr error;
+              EmptyMessage unused;
+              if (!proxy->NotifyVmStopping(request, &unused, &error)) {
+                LOG(ERROR) << "Failed notifying cicerone of stopping VM";
+              }
+            },
+            cicerone_service_proxy_.get(), std::move(request)));
   }
 
   // Send the D-Bus signal out to notify everyone that we are stopping a VM.
@@ -4127,16 +4137,23 @@ void Service::NotifyVmStopped(const VmId& vm_id,
   }
 
   // Notify cicerone.
-  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
-                               vm_tools::cicerone::kNotifyVmStoppedMethod);
-  dbus::MessageWriter writer(&method_call);
-  vm_tools::cicerone::NotifyVmStoppedRequest request;
-  request.set_owner_id(vm_id.owner_id());
-  request.set_vm_name(vm_id.name());
-  writer.AppendProtoAsArrayOfBytes(request);
-  if (!CallDBusMethod(bus_, cicerone_service_proxy_, &method_call,
-                      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
-    LOG(ERROR) << "Failed notifying cicerone of VM stopped";
+  {
+    vm_tools::cicerone::NotifyVmStoppedRequest request;
+    request.set_owner_id(vm_id.owner_id());
+    request.set_vm_name(vm_id.name());
+
+    bus_->GetDBusTaskRunner()->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            [](org::chromium::VmCiceroneProxy* proxy,
+               vm_tools::cicerone::NotifyVmStoppedRequest request) {
+              brillo::ErrorPtr error;
+              EmptyMessage unused;
+              if (!proxy->NotifyVmStopped(request, &unused, &error)) {
+                LOG(ERROR) << "Failed notifying cicerone of VM stopped";
+              }
+            },
+            cicerone_service_proxy_.get(), std::move(request)));
   }
 
   // Send the D-Bus signal out to notify everyone that we have stopped a VM.
@@ -4151,28 +4168,26 @@ void Service::NotifyVmStopped(const VmId& vm_id,
 std::string Service::GetContainerToken(const VmId& vm_id,
                                        const std::string& container_name) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  dbus::MethodCall method_call(vm_tools::cicerone::kVmCiceroneInterface,
-                               vm_tools::cicerone::kGetContainerTokenMethod);
-  dbus::MessageWriter writer(&method_call);
   vm_tools::cicerone::ContainerTokenRequest request;
-  vm_tools::cicerone::ContainerTokenResponse response;
   request.set_owner_id(vm_id.owner_id());
   request.set_vm_name(vm_id.name());
   request.set_container_name(container_name);
-  writer.AppendProtoAsArrayOfBytes(request);
-  std::unique_ptr<dbus::Response> dbus_response =
-      CallDBusMethod(bus_, cicerone_service_proxy_, &method_call,
-                     dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
-  if (!dbus_response) {
-    LOG(ERROR) << "Failed getting container token from cicerone";
-    return "";
-  }
-  dbus::MessageReader reader(dbus_response.get());
-  if (!reader.PopArrayOfBytesAsProto(&response)) {
-    LOG(ERROR) << "Failed parsing proto response";
-    return "";
-  }
-  return response.container_token();
+
+  return PostTaskAndWaitForResult(
+      bus_->GetDBusTaskRunner(),
+      base::BindOnce(
+          [](org::chromium::VmCiceroneProxy* proxy,
+             vm_tools::cicerone::ContainerTokenRequest request) {
+            brillo::ErrorPtr error;
+            vm_tools::cicerone::ContainerTokenResponse response;
+
+            if (!proxy->GetContainerToken(request, &response, &error)) {
+              LOG(ERROR) << "Failed getting container token from cicerone";
+              return std::string();
+            }
+            return response.container_token();
+          },
+          cicerone_service_proxy_.get(), std::move(request)));
 }
 
 std::string Service::GetHostTimeZone() {
@@ -4215,17 +4230,9 @@ void Service::OnLocaltimeFileChanged(const base::FilePath& path, bool error) {
   }
 }
 
-void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
+void Service::OnTremplinStartedSignal(
+    const vm_tools::cicerone::TremplinStartedSignal& tremplin_started_signal) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK_EQ(signal->GetInterface(), vm_tools::cicerone::kVmCiceroneInterface);
-  DCHECK_EQ(signal->GetMember(), vm_tools::cicerone::kTremplinStartedSignal);
-
-  vm_tools::cicerone::TremplinStartedSignal tremplin_started_signal;
-  dbus::MessageReader reader(signal);
-  if (!reader.PopArrayOfBytesAsProto(&tremplin_started_signal)) {
-    LOG(ERROR) << "Failed to parse TremplinStartedSignal from DBus Signal";
-    return;
-  }
 
   VmId vm_id(tremplin_started_signal.owner_id(),
              tremplin_started_signal.vm_name());
@@ -4617,8 +4624,8 @@ void Service::InstallPflash(
     return;
   }
 
-  // No Pflash is installed that means we can associate the given file with the
-  // VM by copying it to a file derived from the VM's name itself.
+  // No Pflash is installed that means we can associate the given file with
+  // the VM by copying it to a file derived from the VM's name itself.
   base::FilePath pflash_src_path =
       base::FilePath(kProcFileDescriptorsPath)
           .Append(base::NumberToString(pflash_src_fd.get()));

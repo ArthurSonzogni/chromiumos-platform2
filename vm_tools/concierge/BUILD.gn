@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-adaptors.gni")
+import("//common-mk/generate-dbus-proxies.gni")
 import("//common-mk/proto_library.gni")
 
 generate_dbus_adaptors("dbus-adaptors") {
@@ -15,6 +16,12 @@ proto_library("protos") {
   proto_in_dir = "./"
   proto_out_dir = "include/vm_concierge"
   sources = [ "${proto_in_dir}/vmm_swap_policy.proto" ]
+}
+
+generate_dbus_proxies("cicerone-proxies") {
+  sources = [ "../dbus_bindings/org.chromium.VmCicerone.xml" ]
+  dbus_service_config = "../dbus_bindings/cicerone-dbus-service-config.json"
+  proxy_output_file = "include/vm_tools/cicerone/dbus-proxies.h"
 }
 
 static_library("libconcierge") {
@@ -121,6 +128,7 @@ static_library("libconcierge") {
     "-Wthread-safety",
   ]
   deps = [
+    ":cicerone-proxies",
     ":dbus-adaptors",
     ":protos",
   ]

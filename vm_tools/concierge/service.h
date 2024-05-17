@@ -40,8 +40,11 @@
 #include <metrics/metrics_library.h>
 #include <shadercached/proto_bindings/shadercached.pb.h>
 #include <spaced/disk_usage_proxy.h>
+#include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
+#include <vm_protos/proto_bindings/common.pb.h>  // for EmptyMessage
 
+#include "vm_tools/cicerone/dbus-proxies.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/dbus_adaptors/org.chromium.VmConcierge.h"
 #include "vm_tools/concierge/disk_image.h"
@@ -464,7 +467,8 @@ class Service final : public org::chromium::VmConciergeInterface,
   std::string GetContainerToken(const VmId& vm_id,
                                 const std::string& container_name);
 
-  void OnTremplinStartedSignal(dbus::Signal* signal);
+  void OnTremplinStartedSignal(
+      const vm_tools::cicerone::TremplinStartedSignal& tremplin_started_signal);
   void OnVmToolsStateChangedSignal(dbus::Signal* signal);
 
   void OnSignalConnected(const std::string& interface_name,
@@ -597,13 +601,14 @@ class Service final : public org::chromium::VmConciergeInterface,
 
   // Connection to the system bus.
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* cicerone_service_proxy_;          // Owned by |bus_|.
   dbus::ObjectProxy* seneschal_service_proxy_;         // Owned by |bus_|.
   dbus::ObjectProxy* vm_permission_service_proxy_;     // Owned by |bus_|.
   dbus::ObjectProxy* vmplugin_service_proxy_;          // Owned by |bus_|.
   dbus::ObjectProxy* resource_manager_service_proxy_;  // Owned by |bus_|.
   dbus::ObjectProxy* chrome_features_service_proxy_;   // Owned by |bus_|.
   dbus::ObjectProxy* shadercached_proxy_;              // Owned by |bus_|.
+
+  std::unique_ptr<org::chromium::VmCiceroneProxy> cicerone_service_proxy_;
 
   // Handle to concierge's D-Bus API.
   std::unique_ptr<DbusAdaptor> concierge_adaptor_;
