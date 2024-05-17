@@ -320,7 +320,7 @@ class FingerWebSocket(WebSocket):
         for this setup routine.
 
         This routine does the following:
-        1. Capture a pattern1 sample and save it.
+        1. Capture a pattern0 and pattern1 sample and save it.
         2. Query the FPMCU running version and save it.
            Recording the version this frequently is probably not necessary,
            but it will ensure that we catch accidental version mismatches and
@@ -336,6 +336,15 @@ class FingerWebSocket(WebSocket):
         """
 
         finger_dir = self.get_finger_capture_dir_path(req)
+
+        t0 = time.time()
+        cherrypy.log(f"Capturing pattern0 for finger {req['finger']:02d}")
+        img_pattern0, result = self.capture("pattern0")
+        t1 = time.time()
+        cherrypy.log(f"Captured pattern0 in {t1 - t0:.2f}s")
+        if not img_pattern0:
+            return result
+        self.save_to_file(img_pattern0, finger_dir / "pattern0.raw")
 
         t0 = time.time()
         # The pattern1 capture is needed for Elan 80SG to do off-chip
