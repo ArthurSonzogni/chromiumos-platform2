@@ -2,18 +2,17 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-import("//common-mk/ebpf_gen.gni")
 import("//common-mk/pkg_config.gni")
 import("../sommelier/wayland_protocol.gni")
 
 group("guest") {
   deps = [
     ":maitred",
-    ":port_listener",
     ":upgrade_container",
     ":vm_syslog",
     "//vm_tools/garcon",
     "//vm_tools/guest_service_failure_notifier",
+    "//vm_tools/port_listener",
     "//vm_tools/vsh:vshd",
   ]
   if (!use.fuzzer) {
@@ -94,30 +93,6 @@ executable("vm_syslog") {
   sources = [ "../syslog/main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libsyslog" ]
-}
-
-generate_vmlinux("vmlinux_h") {
-  vmlinux_out_dir = "include/vm_tools/port_listener/vmlinux"
-  btf_out_dir = "bpf"
-}
-
-generate_ebpf_skeletons("ebpf_listen_tracker") {
-  sources = [ "../port_listener/listen_tracker.ebpf.c" ]
-  bpf_skeleton_out_dir = "include/vm_tools/port_listener/bpf/generated"
-  btf_inout_dir = "bpf"
-  deps = [ ":vmlinux_h" ]
-}
-
-executable("port_listener") {
-  sources = [ "../port_listener/main.cc" ]
-  configs += [ ":target_defaults" ]
-  pkg_deps = [
-    "grpc++",
-    "libbpf",
-    "protobuf",
-    "vm_protos",
-  ]
-  deps = [ ":ebpf_listen_tracker" ]
 }
 
 if (!use.fuzzer) {

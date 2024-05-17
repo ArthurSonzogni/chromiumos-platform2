@@ -1,0 +1,29 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/ebpf_gen.gni")
+
+generate_vmlinux("vmlinux_h") {
+  vmlinux_out_dir = "include/vm_tools/port_listener/vmlinux"
+  btf_out_dir = "bpf"
+}
+
+generate_ebpf_skeletons("ebpf_listen_tracker") {
+  sources = [ "listen_tracker.ebpf.c" ]
+  bpf_skeleton_out_dir = "include/vm_tools/port_listener/bpf/generated"
+  btf_inout_dir = "bpf"
+  deps = [ ":vmlinux_h" ]
+}
+
+executable("port_listener") {
+  sources = [ "main.cc" ]
+  configs += [ "//vm_tools/guest:target_defaults" ]
+  pkg_deps = [
+    "grpc++",
+    "libbpf",
+    "protobuf",
+    "vm_protos",
+  ]
+  deps = [ ":ebpf_listen_tracker" ]
+}
