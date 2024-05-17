@@ -17,7 +17,7 @@ group("host") {
     "//vm_tools/vsh:vshd",
   ]
   if (use.arcvm) {
-    deps += [ ":vm_pstore_dump" ]
+    deps += [ "//vm_tools/pstore_dump:vm_pstore_dump" ]
   }
   if (use.test) {
     deps += [
@@ -27,7 +27,7 @@ group("host") {
       "//vm_tools/vsh:vsh_test",
     ]
     if (use.arcvm) {
-      deps += [ ":vm_pstore_dump_test" ]
+      deps += [ "//vm_tools/pstore_dump:vm_pstore_dump_test" ]
     }
   }
   if (use.fuzzer) {
@@ -64,36 +64,6 @@ config("host_target_defaults") {
     "USE_CROSVM_VULKAN=${use.vulkan}",
     "USE_PMEM_DEVICE_FOR_ROOTFS=${use.amd64}",
   ]
-}
-
-if (use.arcvm) {
-  static_library("libvm_pstore_dump") {
-    sources = [ "../pstore_dump/persistent_ram_buffer.cc" ]
-    configs += [ ":host_target_defaults" ]
-    deps = [ "//vm_tools:libvm_tools_common" ]
-  }
-
-  executable("vm_pstore_dump") {
-    sources = [ "../pstore_dump/main.cc" ]
-    configs += [ ":host_target_defaults" ]
-    deps = [ ":libvm_pstore_dump" ]
-  }
-}
-
-if (use.test) {
-  if (use.arcvm) {
-    executable("vm_pstore_dump_test") {
-      sources = [ "../pstore_dump/persistent_ram_buffer_test.cc" ]
-      configs += [
-        "//common-mk:test",
-        ":host_target_defaults",
-      ]
-      deps = [
-        ":libvm_pstore_dump",
-        "//common-mk/testrunner:testrunner",
-      ]
-    }
-  }
 }
 
 if (use.fuzzer) {

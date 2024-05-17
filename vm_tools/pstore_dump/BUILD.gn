@@ -1,0 +1,31 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+if (use.arcvm) {
+  static_library("libvm_pstore_dump") {
+    sources = [ "persistent_ram_buffer.cc" ]
+    configs += [ "//vm_tools/host:host_target_defaults" ]
+    deps = [ "//vm_tools:libvm_tools_common" ]
+  }
+
+  executable("vm_pstore_dump") {
+    sources = [ "main.cc" ]
+    configs += [ "//vm_tools/host:host_target_defaults" ]
+    deps = [ ":libvm_pstore_dump" ]
+  }
+
+  if (use.test) {
+    executable("vm_pstore_dump_test") {
+      sources = [ "persistent_ram_buffer_test.cc" ]
+      configs += [
+        "//common-mk:test",
+        "//vm_tools/host:host_target_defaults",
+      ]
+      deps = [
+        ":libvm_pstore_dump",
+        "//common-mk/testrunner:testrunner",
+      ]
+    }
+  }
+}
