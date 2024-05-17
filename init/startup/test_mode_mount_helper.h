@@ -20,11 +20,11 @@ namespace startup {
 
 // This class defines the MountHelper behavior we will use when the device
 // is running a test image.
-class TestModeMountHelper : public startup::MountHelper {
+class TestModeMountHelper : public MountHelper {
  public:
   explicit TestModeMountHelper(libstorage::Platform* platform,
                                StartupDep* startup_dep,
-                               const startup::Flags& flags,
+                               const Flags& flags,
                                const base::FilePath& root,
                                const base::FilePath& stateful,
                                const bool dev_mode);

@@ -20,11 +20,11 @@ namespace startup {
 
 // This class defines the behavior for when the device is not running a test
 // image or in factory mode.
-class StandardMountHelper : public startup::MountHelper {
+class StandardMountHelper : public MountHelper {
  public:
   explicit StandardMountHelper(libstorage::Platform* platform,
                                StartupDep* startup_dep,
-                               const startup::Flags& flags,
+                               const Flags& flags,
                                const base::FilePath& root,
                                const base::FilePath& stateful,
                                const bool dev_mode);

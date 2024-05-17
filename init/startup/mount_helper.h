@@ -68,7 +68,7 @@ class MountHelper {
  protected:
   raw_ptr<libstorage::Platform> platform_;
   raw_ptr<StartupDep> startup_dep_;
-  const startup::Flags flags_;
+  const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;
   const bool dev_mode_;

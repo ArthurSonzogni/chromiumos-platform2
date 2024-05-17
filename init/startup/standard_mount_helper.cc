@@ -22,12 +22,11 @@ namespace startup {
 // not in dev mode.
 StandardMountHelper::StandardMountHelper(libstorage::Platform* platform,
                                          StartupDep* startup_dep,
-                                         const startup::Flags& flags,
+                                         const Flags& flags,
                                          const base::FilePath& root,
                                          const base::FilePath& stateful,
                                          const bool dev_mode)
-    : startup::MountHelper(
-          platform, startup_dep, flags, root, stateful, dev_mode) {}
+    : MountHelper(platform, startup_dep, flags, root, stateful, dev_mode) {}
 
 bool StandardMountHelper::DoMountVarAndHomeChronos() {
   return MountVarAndHomeChronos();
