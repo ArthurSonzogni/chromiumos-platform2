@@ -20,6 +20,14 @@ namespace metrics {
 extern const char kMetricInstallResult[];
 extern const char kMetricUninstallResult[];
 
+extern const char kMetricTotalUsedMBytes[];
+extern const int kMetricTotalUsedMBytesMax;
+extern const int kMetricTotalUsedMBytesMin;
+extern const int kMetricTotalUsedMBytesNumBuckets;
+
+extern const char kMetricsPrefsDir[];
+extern const char kMetricsLastReportTimePref[];
+
 // IMPORTANT: Please read this before making any changes to the file:
 // - Never change existing numerical values on the enums, because the same
 // numbering is used in the UMA website. If you don't need a value, comment out

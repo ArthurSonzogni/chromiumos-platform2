@@ -25,7 +25,11 @@ const char kMetricUninstallResult[] = "Platform.DlcService.UninstallResult";
 
 constexpr char kMetricTotalUsedMBytes[] = "Platform.DlcService.TotalUsedMBytes";
 constexpr int kMetricTotalUsedMBytesMax = 1 * 1024 * 1024;  // 1 TiB.
+constexpr int kMetricTotalUsedMBytesMin = 1;
 constexpr int kMetricTotalUsedMBytesNumBuckets = 50;
+
+extern const char kMetricsPrefsDir[] = "metrics";
+extern const char kMetricsLastReportTimePref[] = "last_report_time";
 }  // namespace metrics
 
 // IMPORTANT: To obsolete a metric enum value, just remove it from the map
@@ -97,11 +101,14 @@ void Metrics::SendUninstallResult(UninstallResult result) {
 
 void Metrics::SendTotalUsedOnDisk(uint64_t used_bytes) {
   // Convert to MiB (round up) with an upper limit.
-  auto used_mb = std::min<uint64_t>(1 + (used_bytes - 1) / (1024 * 1024),
-                                    metrics::kMetricTotalUsedMBytesMax);
+  constexpr int kDivMiB = 1024 * 1024;
+  auto used_mb =
+      std::min<uint64_t>(used_bytes / kDivMiB + (used_bytes % kDivMiB != 0),
+                         metrics::kMetricTotalUsedMBytesMax);
 
   metrics_library_->SendToUMA(metrics::kMetricTotalUsedMBytes, used_mb,
-                              /*min=*/0, metrics::kMetricTotalUsedMBytesMax,
+                              metrics::kMetricTotalUsedMBytesMin,
+                              metrics::kMetricTotalUsedMBytesMax,
                               metrics::kMetricTotalUsedMBytesNumBuckets);
 }
 

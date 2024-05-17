@@ -175,4 +175,35 @@ TEST_F(MetricsTest, SendUninstallResult_Failures) {
   // Check that all values were tested.
   EXPECT_EQ(4, static_cast<int>(UninstallResult::kNumConstants));
 }
+
+TEST_F(MetricsTest, SendTotalUsedOnDisk_ZeroByte) {
+  EXPECT_CALL(*metrics_library_,
+              SendToUMA(metrics::kMetricTotalUsedMBytes, 0,
+                        metrics::kMetricTotalUsedMBytesMin,
+                        metrics::kMetricTotalUsedMBytesMax,
+                        metrics::kMetricTotalUsedMBytesNumBuckets));
+  metrics_->SendTotalUsedOnDisk(0);
+}
+
+TEST_F(MetricsTest, SendTotalUsedOnDisk_RoundUp) {
+  // Send one 4K block and round up to 1 MiB.
+  EXPECT_CALL(*metrics_library_,
+              SendToUMA(metrics::kMetricTotalUsedMBytes, 1,
+                        metrics::kMetricTotalUsedMBytesMin,
+                        metrics::kMetricTotalUsedMBytesMax,
+                        metrics::kMetricTotalUsedMBytesNumBuckets));
+  metrics_->SendTotalUsedOnDisk(4096);
+}
+
+TEST_F(MetricsTest, SendTotalUsedOnDisk_OverLimit) {
+  EXPECT_CALL(*metrics_library_,
+              SendToUMA(metrics::kMetricTotalUsedMBytes,
+                        metrics::kMetricTotalUsedMBytesMax,
+                        metrics::kMetricTotalUsedMBytesMin,
+                        metrics::kMetricTotalUsedMBytesMax,
+                        metrics::kMetricTotalUsedMBytesNumBuckets));
+  metrics_->SendTotalUsedOnDisk((uint64_t)2 * 1024 * 1024 *
+                                metrics::kMetricTotalUsedMBytesMax);
+}
+
 }  // namespace dlcservice

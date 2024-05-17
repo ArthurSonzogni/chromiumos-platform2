@@ -20,6 +20,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/files/file_util.h>
@@ -32,6 +33,7 @@
 
 #include "dlcservice/error.h"
 #include "dlcservice/installer.h"
+#include "dlcservice/prefs.h"
 #include "dlcservice/system_state.h"
 #include "dlcservice/types.h"
 #include "dlcservice/utils.h"
@@ -55,9 +57,7 @@ constexpr size_t kPeriodicInstallCheckSecondsDelay = 10;
 constexpr size_t kToleranceCap = 30;
 
 // The time delay for reporting daily metrics.
-constexpr base::TimeDelta kPeriodicMetricsReportingDelay = base::Hours(24);
-// The time delay for the first metrics reporting after dlcservice starts.
-constexpr base::TimeDelta kFirstMetricsReportingDelay = base::Minutes(5);
+constexpr base::TimeDelta kPeriodicMetricsReportingDelay = base::Minutes(5);
 
 DlcIdList ToDlcIdList(const DlcMap& dlcs,
                       const std::function<bool(const DlcType&)>& filter) {
@@ -124,8 +124,8 @@ void DlcService::Initialize() {
   }
   CleanupUnsupported();
 
-  // Start periodically reporting metrics.
-  SchedulePeriodicMetricsReport(kFirstMetricsReportingDelay);
+  // Start daily metrics reporting.
+  ScheduleReportDailyMetrics();
 }
 
 void DlcService::CleanupUnsupported() {
@@ -752,9 +752,7 @@ std::string DlcService::SanitizeId(DlcId id) {
   return id;
 }
 
-void DlcService::PeriodicMetricsReport() {
-  periodic_metrics_reporting_id_ = MessageLoop::kTaskIdNull;
-
+void DlcService::ReportTotalUsedBytesOnDisk() {
   // Report total used bytes on disk.
   uint64_t total_size = 0;
   for (const auto& id : GetExistingDlcs()) {
@@ -765,12 +763,42 @@ void DlcService::PeriodicMetricsReport() {
     }
   }
   SystemState::Get()->metrics()->SendTotalUsedOnDisk(total_size);
-
-  // Schedule next reporting.
-  SchedulePeriodicMetricsReport(kPeriodicMetricsReportingDelay);
 }
 
-void DlcService::SchedulePeriodicMetricsReport(const base::TimeDelta& delay) {
+void DlcService::CheckAndReportDailyMetrics() {
+  periodic_metrics_reporting_id_ = MessageLoop::kTaskIdNull;
+
+  const auto& now = SystemState::Get()->clock()->Now();
+  auto metrics_pref = Prefs(
+      JoinPaths(SystemState::Get()->prefs_dir(), metrics::kMetricsPrefsDir));
+  std::string last_time_str;
+  int64_t last_time_value;
+  if (metrics_pref.GetKey(metrics::kMetricsLastReportTimePref,
+                          &last_time_str) &&
+      base::StringToInt64(last_time_str, &last_time_value)) {
+    const auto& last_reported_at =
+        base::Time::FromInternalValue(last_time_value);
+    auto time_reported_since = now - last_reported_at;
+    if (time_reported_since.InSeconds() < 0) {
+      LOG(WARNING) << "Unable to determine the time since last report. "
+                      "Reporting regardless.";
+    } else if (time_reported_since.InSeconds() < 24 * 60 * 60) {
+      return;
+    }
+  }
+
+  LOG(INFO) << "Reporting daily metrics.";
+  metrics_pref.SetKey(metrics::kMetricsLastReportTimePref,
+                      base::NumberToString(now.ToInternalValue()));
+
+  // Report metrics.
+  ReportTotalUsedBytesOnDisk();
+
+  // Schedule next reporting.
+  ScheduleReportDailyMetrics();
+}
+
+void DlcService::ScheduleReportDailyMetrics() {
   if (periodic_metrics_reporting_id_ != MessageLoop::kTaskIdNull) {
     LOG(INFO) << "Another periodic metrics reporting already scheduled.";
     return;
@@ -778,9 +806,9 @@ void DlcService::SchedulePeriodicMetricsReport(const base::TimeDelta& delay) {
   periodic_metrics_reporting_id_ =
       brillo::MessageLoop::current()->PostDelayedTask(
           FROM_HERE,
-          base::BindOnce(&DlcService::PeriodicMetricsReport,
+          base::BindOnce(&DlcService::CheckAndReportDailyMetrics,
                          weak_ptr_factory_.GetWeakPtr()),
-          delay);
+          kPeriodicMetricsReportingDelay);
 }
 
 }  // namespace dlcservice

@@ -223,11 +223,14 @@ class DlcService : public DlcServiceInterface,
   FRIEND_TEST(DlcServiceTest, CleanupUnsupportedLvs);
 #endif  // USE_LVM_STATEFUL_PARTITION
 
-  // Report DLC service metrics periodically.
-  void PeriodicMetricsReport();
+  // Report DLC packages storage usage metrics.
+  void ReportTotalUsedBytesOnDisk();
 
-  // Schedules the method |PeriodicMetricsReport()| to be ran at a later time.
-  void SchedulePeriodicMetricsReport(const base::TimeDelta& delay);
+  // Sends metrics daily.
+  void CheckAndReportDailyMetrics();
+
+  // Schedules the method |CheckAndReportDailyMetrics()| to be ran periodically.
+  void ScheduleReportDailyMetrics();
 
   // Holds the DLC that is being installed by installer.
   std::optional<DlcId> installing_dlc_id_;
