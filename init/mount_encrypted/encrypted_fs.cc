@@ -106,8 +106,7 @@ EncryptedFs::EncryptedFs(
     uint64_t fs_size,
     const std::string& dmcrypt_name,
     std::unique_ptr<libstorage::StorageContainer> container,
-    libstorage::Platform* platform,
-    brillo::DeviceMapper* device_mapper)
+    libstorage::Platform* platform)
     : rootdir_(rootdir),
       fs_size_(fs_size),
       dmcrypt_name_(dmcrypt_name),
@@ -115,7 +114,6 @@ EncryptedFs::EncryptedFs(
       dmcrypt_dev_(base::FilePath(kDevMapperPath).Append(dmcrypt_name_)),
       encrypted_mount_(stateful_mount_.Append("encrypted")),
       platform_(platform),
-      device_mapper_(device_mapper),
       container_(std::move(container)),
       bind_mounts_(
           {{encrypted_mount_.Append("var"), rootdir_.Append("var"),
@@ -130,7 +128,6 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
     const base::FilePath& rootdir,
     const base::FilePath& statefulmnt,
     libstorage::Platform* platform,
-    brillo::DeviceMapper* device_mapper,
     libstorage::StorageContainerFactory* storage_container_factory) {
   // Calculate the maximum size of the encrypted stateful partition.
   // truncate()/ftruncate() use int64_t for file size.
@@ -223,7 +220,7 @@ std::unique_ptr<EncryptedFs> EncryptedFs::Generate(
 
   return std::make_unique<EncryptedFs>(rootdir, statefulmnt, fs_bytes_max,
                                        dmcrypt_name, std::move(container),
-                                       platform, device_mapper);
+                                       platform);
 }
 
 bool EncryptedFs::Purge() {

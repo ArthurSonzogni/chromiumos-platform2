@@ -70,10 +70,8 @@ int main(int argc, const char* argv[]) {
 
   libstorage::StorageContainerFactory storage_container_factory(
       &platform, init_metrics::InitMetrics::GetInternal());
-  brillo::DeviceMapper device_mapper;
   auto encrypted_fs = mount_encrypted::EncryptedFs::Generate(
-      rootdir, stateful_partition, &platform, &device_mapper,
-      &storage_container_factory);
+      rootdir, stateful_partition, &platform, &storage_container_factory);
 
   hwsec_foundation::TlclWrapperImpl tlcl;
 

@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <base/files/file_path.h>
-#include <brillo/blkdev_utils/device_mapper.h>
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 #include <libstorage/platform/platform.h>
@@ -54,15 +53,13 @@ class BRILLO_EXPORT EncryptedFs {
               uint64_t fs_size,
               const std::string& dmcrypt_name,
               std::unique_ptr<libstorage::StorageContainer> container,
-              libstorage::Platform* platform,
-              brillo::DeviceMapper* device_mapper);
+              libstorage::Platform* platform);
   ~EncryptedFs() = default;
 
   static std::unique_ptr<EncryptedFs> Generate(
       const base::FilePath& rootdir,
       const base::FilePath& statefulmnt,
       libstorage::Platform* platform,
-      brillo::DeviceMapper* device_mapper,
       libstorage::StorageContainerFactory* storage_container_factory);
 
   // Setup mounts the encrypted mount by:
@@ -117,8 +114,6 @@ class BRILLO_EXPORT EncryptedFs {
   // Use a raw Platform pointer to avoid convoluted EXPECT_CALL semantics
   // for mock Platform objects.
   libstorage::Platform* platform_;
-  // Device Mapper.
-  brillo::DeviceMapper* device_mapper_;
 
   // Encrypted container that will be mounted as the encrypted filesystem.
   std::unique_ptr<libstorage::StorageContainer> container_;
