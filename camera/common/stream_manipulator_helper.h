@@ -86,10 +86,18 @@ class StreamManipulatorHelper {
     // The stream configuration mode described in ProcessMode. In bypass mode
     // all the other configs are ignored.
     ProcessMode process_mode = ProcessMode::kBypass;
+
     // Attempt to configure processing streams of larger resolution than the
     // outputs. Process tasks can get larger input resolution than the output
     // resolution.
     bool prefer_large_source = false;
+
+    // If |prefer_large_source| is true, limits the maximum video source stream
+    // dimensions. They are soft bounds; if the maximum width/height of client
+    // streams is larger, then bounded to it instead.
+    std::optional<uint32_t> max_enlarged_video_source_width;
+    std::optional<uint32_t> max_enlarged_video_source_height;
+
     // Result metadata tags that will be copied and carried to process tasks
     // for visibility and modification.
     std::vector<uint32_t> result_metadata_tags_to_update;

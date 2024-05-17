@@ -910,12 +910,33 @@ StreamManipulatorHelper::FindSourceStream(
   }
 
   base::flat_map<const StreamFormat*, camera3_stream_t*> format_to_dst_stream;
+  uint32_t max_dst_width = 0;
+  uint32_t max_dst_height = 0;
   for (auto* s : dst_streams) {
     format_to_dst_stream[&GetFormat(*s)] = s;
+    max_dst_width = std::max(max_dst_width, s->width);
+    max_dst_height = std::max(max_dst_height, s->height);
   }
+  const std::optional<uint32_t> max_src_width =
+      config_.max_enlarged_video_source_width.has_value()
+          ? std::make_optional(std::max(
+                config_.max_enlarged_video_source_width.value(), max_dst_width))
+          : std::nullopt;
+  const std::optional<uint32_t> max_src_height =
+      config_.max_enlarged_video_source_height.has_value()
+          ? std::make_optional(
+                std::max(config_.max_enlarged_video_source_height.value(),
+                         max_dst_height))
+          : std::nullopt;
 
   auto get_max_scaling_factor =
       [&](const StreamFormat& src_format) -> std::optional<float> {
+    if ((max_src_width.has_value() &&
+         src_format.width > max_src_width.value()) ||
+        (max_src_height.has_value() &&
+         src_format.height > max_src_height.value())) {
+      return std::nullopt;
+    }
     std::optional<float> result;
     for (auto& [dst_format, s] : format_to_dst_stream) {
       const std::optional<float> scaling_factor =

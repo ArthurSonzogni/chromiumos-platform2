@@ -791,14 +791,68 @@ const TestCase g_test_cases[] =
             },
         [10] =
             {
+                .helper_configs = {{.process_mode =
+                                        ProcessMode::kVideoAndStillProcess}},
+                .available_formats = {{1920, 1080,
+                                       HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                                      {1280, 960,
+                                       HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f}},
+                .active_array_size = Size(2592, 1944),
+                .streams = {{.width = 1920,
+                             .height = 1080,
+                             .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                            {.width = 1280,
+                             .height = 960,
+                             .format = HAL_PIXEL_FORMAT_YCBCR_420_888}},
+                .expected_configured_stream_indices = {1},
+                .expected_extra_configured_streams = {},
+            },
+        // Limiting max video source size.
+        [11] =
+            {
                 .helper_configs =
                     {
-                        {.process_mode = ProcessMode::kVideoAndStillProcess},
+                        {.process_mode = ProcessMode::kVideoAndStillProcess,
+                         .prefer_large_source = true,
+                         .max_enlarged_video_source_width = 1600,
+                         .max_enlarged_video_source_height = 1080},
                     },
                 .available_formats =
                     {
                         {1920, 1080, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
-                        {1280, 960, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {1600, 1200, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {640, 360, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                    },
+                .active_array_size = Size(2592, 1944),
+                .streams =
+                    {
+                        {.width = 640,
+                         .height = 360,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                    },
+                .expected_configured_stream_indices = {},
+                .expected_extra_configured_streams =
+                    {
+                        {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888,
+                         kProcessStreamUsageFlags},
+                    },
+            },
+        [12] =
+            {
+                .helper_configs =
+                    {
+                        {.process_mode = ProcessMode::kVideoAndStillProcess,
+                         .prefer_large_source = true,
+                         .max_enlarged_video_source_width = 1600,
+                         .max_enlarged_video_source_height = 1080},
+                    },
+                .available_formats =
+                    {
+                        {1920, 1080, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {1600, 1200, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {640, 360, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
                     },
                 .active_array_size = Size(2592, 1944),
                 .streams =
@@ -806,11 +860,11 @@ const TestCase g_test_cases[] =
                         {.width = 1920,
                          .height = 1080,
                          .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
-                        {.width = 1280,
-                         .height = 960,
+                        {.width = 640,
+                         .height = 360,
                          .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
                     },
-                .expected_configured_stream_indices = {1},
+                .expected_configured_stream_indices = {0},
                 .expected_extra_configured_streams = {},
             },
 };
