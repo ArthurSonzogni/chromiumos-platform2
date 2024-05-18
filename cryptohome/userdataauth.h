@@ -687,6 +687,10 @@ class UserDataAuth {
       InUseAuthSession auth_session,
       base::OnceCallback<void(const user_data_auth::RemoveReply&)> on_done);
 
+  // Checks the auth factor storage and returns true if the given user has
+  // kiosk auth factor. Returns false otherwise.
+  bool IsKioskUser(ObfuscatedUsername obfuscated);
+
   // ================ Fingerprint Auth Related Methods ==================
 
   // Called on Mount thread. This creates a dbus proxy for Biometrics Daemon

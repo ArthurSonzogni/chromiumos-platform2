@@ -4867,9 +4867,9 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   // Obtain a test auth session for kUsername1. Result is nullopt if it's
   // unsuccessful.
   std::optional<std::string> GetTestUnauthedAuthSession(
-      AuthSession::CreateOptions options) {
+      const Username& username, AuthSession::CreateOptions options) {
     user_data_auth::StartAuthSessionRequest req;
-    req.mutable_account_id()->set_account_id(*kUsername1);
+    req.mutable_account_id()->set_account_id(*username);
     req.set_intent(AuthIntentToProto(*options.intent));
     req.set_is_ephemeral_user(*options.is_ephemeral_user);
     std::optional<user_data_auth::StartAuthSessionReply> reply =
@@ -4893,6 +4893,7 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   // successful. This doesn't create the vault.
   bool CreateTestUser() {
     std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+        kUsername1,
         {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
     if (!session_id.has_value()) {
       LOG(ERROR) << "No session ID in CreateTestUser().";
@@ -4991,9 +4992,141 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return true;
   }
 
+  // Create a kiosk test user, return true if successful. This doesn't create
+  // the vault.
+  bool CreateKioskTestUser() {
+    std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+        kKioskUser,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+    if (!session_id.has_value()) {
+      LOG(ERROR) << "No session ID in CreateKioskTestUser().";
+      return false;
+    }
+
+    EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(false));
+    EXPECT_CALL(homedirs_, Create(_)).WillOnce(Return(true));
+
+    // Create the user.
+    user_data_auth::CreatePersistentUserRequest create_request;
+    create_request.set_auth_session_id(session_id.value());
+
+    std::optional<user_data_auth::CreatePersistentUserReply> create_reply =
+        CreatePersistentUserSync(create_request);
+    if (!create_reply.has_value()) {
+      LOG(ERROR) << "Call to CreatePersistentUser() did not complete in "
+                    "CreateKioskTestUser().";
+      return false;
+    }
+    if (create_reply->error_info().primary_action() !=
+        user_data_auth::PrimaryAction::PRIMARY_NO_ERROR) {
+      LOG(ERROR)
+          << "Call to CreatePersistentUser() failed in CreateKioskTestUser(): "
+          << GetProtoDebugString(create_reply.value());
+      return false;
+    }
+    EXPECT_THAT(create_reply->auth_properties().authorized_for(),
+                UnorderedElementsAre(user_data_auth::AUTH_INTENT_DECRYPT,
+                                     user_data_auth::AUTH_INTENT_VERIFY_ONLY));
+
+    // Add the kiosk auth factor.
+    user_data_auth::AddAuthFactorRequest add_factor_request;
+    add_factor_request.set_auth_session_id(session_id.value());
+    add_factor_request.mutable_auth_factor()->set_type(
+        user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_KIOSK);
+    add_factor_request.mutable_auth_factor()->set_label(kKioskLabel);
+    add_factor_request.mutable_auth_factor()->mutable_kiosk_metadata();
+    add_factor_request.mutable_auth_input()->mutable_kiosk_input();
+
+    bool signal_sent = false;
+    user_data_auth::AuthFactorAdded signal_proto;
+    EXPECT_CALL(signalling_, SendAuthFactorAdded(_))
+        .WillOnce(DoAll((SaveArg<0>(&signal_proto)),
+                        [&](auto&&) { signal_sent = true; }));
+
+    std::optional<user_data_auth::AddAuthFactorReply> add_factor_reply =
+        AddAuthFactorSync(add_factor_request);
+    if (!add_factor_reply.has_value()) {
+      LOG(ERROR) << "Call to AddAuthFactor() did not complete in "
+                    "CreateKioskTestUser().";
+      EXPECT_FALSE(signal_sent);
+      ::testing::Mock::VerifyAndClearExpectations(&signalling_);
+      return false;
+    }
+    if (add_factor_reply->error_info().primary_action() !=
+        user_data_auth::PrimaryAction::PRIMARY_NO_ERROR) {
+      LOG(ERROR) << "Call to AddAuthFactor() failed in CreateKioskTestUser(): "
+                 << GetProtoDebugString(add_factor_reply.value());
+      EXPECT_FALSE(signal_sent);
+      ::testing::Mock::VerifyAndClearExpectations(&signalling_);
+      return false;
+    }
+
+    EXPECT_TRUE(signal_sent);
+    EXPECT_THAT(signal_proto.auth_factor().label(), kKioskLabel);
+    EXPECT_THAT(signal_proto.auth_factor().type(),
+                user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_KIOSK);
+
+    // Invalidate the session.
+    user_data_auth::InvalidateAuthSessionRequest invalidate_request;
+    invalidate_request.set_auth_session_id(session_id.value());
+    std::optional<user_data_auth::InvalidateAuthSessionReply> invalidate_reply =
+        InvalidateAuthSessionSync(invalidate_request);
+    if (!invalidate_reply.has_value()) {
+      LOG(ERROR) << "Call to InvalidateAuthSession() did not complete in "
+                    "CreateKioskTestUser().";
+      return false;
+    }
+    if (invalidate_reply->error_info().primary_action() !=
+        user_data_auth::PrimaryAction::PRIMARY_NO_ERROR) {
+      LOG(ERROR)
+          << "Call to InvalidateAuthSession() failed in CreateKioskTestUser(): "
+          << GetProtoDebugString(invalidate_reply.value());
+      return false;
+    }
+
+    if (!::testing::Mock::VerifyAndClearExpectations(&signalling_)) {
+      return false;
+    }
+    return true;
+  }
+
+  // Starts an AuthSession for kiosk user and authenticates it. On
+  // success returns the AuthSession ID, on failure returns nullptr.
+  std::optional<std::string> GetTestAuthedAuthSessionForKiosk() {
+    std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+        kKioskUser,
+        {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+    if (!session_id.has_value()) {
+      LOG(ERROR) << "No session ID in GetTestAuthedAuthSessionForKiosk().";
+      return std::nullopt;
+    }
+
+    user_data_auth::AuthenticateAuthFactorRequest auth_request;
+    auth_request.set_auth_session_id(*session_id);
+    auth_request.add_auth_factor_labels(kKioskLabel);
+    auth_request.mutable_auth_input()->mutable_kiosk_input();
+
+    std::optional<user_data_auth::AuthenticateAuthFactorReply> auth_reply =
+        AuthenticateAuthFactorSync(auth_request);
+    if (!auth_reply.has_value()) {
+      LOG(ERROR) << "Call to AuthenticateAuthFactor() did not complete in "
+                    "GetTestAuthedAuthSessionForKiosk().";
+      return std::nullopt;
+    }
+    if (auth_reply->error_info().primary_action() !=
+        user_data_auth::PrimaryAction::PRIMARY_NO_ERROR) {
+      LOG(ERROR) << "Call to AuthenticateAuthFactor() failed in "
+                    "GetTestAuthedAuthSessionForKiosk(): "
+                 << GetProtoDebugString(auth_reply.value());
+      return std::nullopt;
+    }
+
+    return session_id.value();
+  }
+
   std::optional<std::string> GetTestAuthedAuthSession(AuthIntent intent) {
     std::optional<std::string> session_id = GetTestUnauthedAuthSession(
-        {.is_ephemeral_user = false, .intent = intent});
+        kUsername1, {.is_ephemeral_user = false, .intent = intent});
     if (!session_id.has_value()) {
       LOG(ERROR) << "No session ID in GetTestAuthedAuthSession().";
       return std::nullopt;
@@ -5180,8 +5313,10 @@ class UserDataAuthApiTest : public UserDataAuthTest {
 
   const Username kUsername1{"foo@gmail.com"};
   const Username kUsername2{"bar@gmail.com"};
+  const Username kKioskUser{"kiosk"};
   static constexpr char kPassword1[] = "MyP@ssW0rd!!";
   static constexpr char kPasswordLabel[] = "Password1";
+  static constexpr char kKioskLabel[] = "Kiosk";
   static constexpr char kSmartCardLabel[] = "SmartCard1";
   static constexpr char kTestErrorString[] = "ErrorForTestingOnly";
 
@@ -5269,7 +5404,7 @@ TEST_F(UserDataAuthApiTest, RemoveStillMounted) {
   EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(false));
 
   std::optional<std::string> session_id = GetTestUnauthedAuthSession(
-      {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+      kUsername1, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   ASSERT_TRUE(session_id.has_value());
 
   user_data_auth::RemoveRequest req;
@@ -5391,6 +5526,97 @@ TEST_F(UserDataAuthApiTest, MountFailed) {
                    user_data_auth::PossibleAction::POSSIBLY_REBOOT,
                    user_data_auth::PossibleAction::POSSIBLY_DELETE_VAULT,
                    user_data_auth::PossibleAction::POSSIBLY_POWERWASH})));
+}
+
+TEST_F(UserDataAuthApiTest, MountKioskFailsIfExistingUserSession) {
+  // 1 - Create the user and kiosk account.
+  ASSERT_TRUE(CreateTestUser());
+  ASSERT_TRUE(CreateKioskTestUser());
+
+  // 2 - Setup the regular-user session.
+
+  std::optional<std::string> session_id =
+      GetTestAuthedAuthSession(AuthIntent::kDecrypt);
+  ASSERT_TRUE(session_id.has_value());
+
+  SetupMount(*kUsername1);
+
+  scoped_refptr<MockMount> mount = new MockMount();
+  new_mounts_.push_back(mount.get());
+
+  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_))
+      .WillRepeatedly(Return(true));
+
+  user_data_auth::PreparePersistentVaultRequest prepare_req;
+  prepare_req.set_auth_session_id(session_id.value());
+  std::optional<user_data_auth::PreparePersistentVaultReply> prepare_reply =
+      PreparePersistentVaultSync(prepare_req);
+  ASSERT_TRUE(prepare_reply.has_value());
+  ASSERT_EQ(prepare_reply->error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
+
+  // 3 - Attempt kiosk mount when the user cryptohome is still mounted.
+
+  session_id = GetTestAuthedAuthSessionForKiosk();
+  ASSERT_TRUE(session_id.has_value());
+
+  // User mount is still active; mounting kiosk session should fail.
+  // Check the posisble actions on error.
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  prepare_req.set_auth_session_id(session_id.value());
+  prepare_reply = PreparePersistentVaultSync(prepare_req);
+  ASSERT_TRUE(prepare_reply.has_value());
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleActions(std::set(
+          {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
+           user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
+}
+
+TEST_F(UserDataAuthApiTest, MountFailsIfExistingKioskSession) {
+  // 1 - Create the user and kiosk account.
+  ASSERT_TRUE(CreateTestUser());
+  ASSERT_TRUE(CreateKioskTestUser());
+
+  // 2 - Setup the kiosk session.
+
+  std::optional<std::string> session_id = GetTestAuthedAuthSessionForKiosk();
+  ASSERT_TRUE(session_id.has_value());
+
+  SetupMount(*kKioskUser);
+
+  scoped_refptr<MockMount> mount = new MockMount();
+  new_mounts_.push_back(mount.get());
+
+  EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(disk_cleanup_, FreeDiskSpaceDuringLogin(_))
+      .WillRepeatedly(Return(true));
+
+  user_data_auth::PreparePersistentVaultRequest prepare_req;
+  prepare_req.set_auth_session_id(session_id.value());
+  std::optional<user_data_auth::PreparePersistentVaultReply> prepare_reply =
+      PreparePersistentVaultSync(prepare_req);
+  ASSERT_TRUE(prepare_reply.has_value());
+  ASSERT_EQ(prepare_reply->error_info().primary_action(),
+            user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
+
+  // 3 - Attempt user mount when the kiosk cryptohome is still mounted.
+
+  session_id = GetTestAuthedAuthSession(AuthIntent::kDecrypt);
+  ASSERT_TRUE(session_id.has_value());
+
+  // Kiosk mount is still active; mounting a session should fail.
+  // Check the posisble actions on error.
+  EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
+  prepare_req.set_auth_session_id(session_id.value());
+  prepare_reply = PreparePersistentVaultSync(prepare_req);
+  ASSERT_TRUE(prepare_reply.has_value());
+  EXPECT_THAT(
+      prepare_reply->error_info(),
+      HasPossibleActions(std::set(
+          {user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE,
+           user_data_auth::PossibleAction::POSSIBLY_REBOOT})));
 }
 
 TEST_F(UserDataAuthApiTest, EvictDeviceKeyFailedNoSessionFound) {
@@ -5552,6 +5778,7 @@ TEST_F(UserDataAuthApiTest, RestoreDeviceKeyFailedWithoutPersistentVault) {
 TEST_F(UserDataAuthApiTest, EphemeralUserNotAuthorizedForRestoreDevice) {
   // Prepare an auth session for ephemeral mount.
   std::optional<std::string> session_id = GetTestUnauthedAuthSession(
+      kUsername1,
       {.is_ephemeral_user = true, .intent = AuthIntent::kRestoreKey});
   ASSERT_TRUE(session_id.has_value());
 
@@ -5590,7 +5817,7 @@ TEST_F(UserDataAuthApiTest, GuestMountFailed) {
 TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
   // Prepare an auth session for ephemeral mount.
   std::optional<std::string> session_id = GetTestUnauthedAuthSession(
-      {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
+      kUsername1, {.is_ephemeral_user = true, .intent = AuthIntent::kDecrypt});
   ASSERT_TRUE(session_id.has_value());
 
   // Ensure that the mount fails.
@@ -5646,7 +5873,7 @@ TEST_F(UserDataAuthApiTest, AuthAuthFactorWithoutLabel) {
 
   // Call AuthenticateAuthFactor with an empty label.
   std::optional<std::string> session_id = GetTestUnauthedAuthSession(
-      {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+      kUsername1, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   ASSERT_TRUE(session_id.has_value());
 
   user_data_auth::AuthenticateAuthFactorRequest auth_request;
@@ -5672,7 +5899,7 @@ TEST_F(UserDataAuthApiTest, AuthAuthFactorWithoutLabel) {
 TEST_F(UserDataAuthApiTest, CreatePeristentUserAlreadyExist) {
   // Setup auth session.
   std::optional<std::string> session_id = GetTestUnauthedAuthSession(
-      {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+      kUsername1, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   ASSERT_TRUE(session_id.has_value());
 
   // Call CreatePersistentUser() while the user already exists.
@@ -5777,7 +6004,7 @@ TEST_F(UserDataAuthApiTest, EphemeralMountWithRegularSession) {
   // Prepare an auth session for ephemeral mount, note that we intentionally
   // does not specify it as ephemeral.
   std::optional<std::string> session_id = GetTestUnauthedAuthSession(
-      {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
+      kUsername1, {.is_ephemeral_user = false, .intent = AuthIntent::kDecrypt});
   ASSERT_TRUE(session_id.has_value());
 
   // Make the call to check that it fails due to the session not being

@@ -3186,6 +3186,33 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
         .Wrap(std::move(session_status).err_status());
   }
 
+  // User session and kiosk session cannot co-exist.
+  bool are_active_sessions = false;
+  for (const auto& [username, session] : *sessions_) {
+    if (session.IsActive()) {
+      are_active_sessions = true;
+      // Don't mount user cryptohome if there is a mounted kiosk session.
+      if (IsKioskUser(SanitizeUserName(username))) {
+        return MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthUnexpectedKioskMountInPreparePersistent),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                            PossibleAction::kReboot}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+      }
+    }
+  }
+  // Don't mount if the current request is for a kiosk session, there
+  // are other active mounts.
+  if (are_active_sessions && IsKioskUser(auth_session->obfuscated_username())) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUserDataAuthExitingMountsInPreparePersistent),
+        ErrorActionSet({PossibleAction::kDevCheckUnexpectedState,
+                        PossibleAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+  }
+
   PreMountHook(obfuscated_username);
   if (low_disk_space_handler_) {
     low_disk_space_handler_->disk_cleanup()->FreeDiskSpaceDuringLogin(
@@ -3205,6 +3232,19 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
         .Wrap(std::move(mount_status).err_status());
   }
   return OkStatus<CryptohomeError>();
+}
+
+bool UserDataAuth::IsKioskUser(ObfuscatedUsername obfuscated) {
+  // Load the AuthFactorMap for the obfuscated username.
+  AuthFactorMap& auth_factor_map =
+      auth_factor_manager_->GetAuthFactorMap(obfuscated);
+  // Populate the response from the items in the AuthFactorMap.
+  for (AuthFactorMap::ValueView item : auth_factor_map) {
+    if (item.auth_factor().type() == AuthFactorType::kKiosk) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void UserDataAuth::EvictDeviceKey(

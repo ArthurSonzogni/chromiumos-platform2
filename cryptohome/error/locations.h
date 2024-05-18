@@ -1691,6 +1691,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthWrongFactorTypeInLockFactor = 2514,
   /* ./userdataauth.cc */
   kLocUserDataAuthTouchFailedInLockFactor = 2515,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthExitingMountsInPreparePersistent = 2516,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthUnexpectedKioskMountInPreparePersistent = 2517,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2700
   //// See location_db.py for more info.
