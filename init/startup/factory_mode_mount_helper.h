@@ -30,13 +30,7 @@ class FactoryModeMountHelper : public MountHelper {
                                   const base::FilePath& stateful,
                                   const bool dev_mode);
 
-  // Bind mount the /var and /home/chronos mounts. The implementation
-  // is different for test images and when in factory mode. It also
-  // changes depending on the encrypted stateful USE flag.
   bool DoMountVarAndHomeChronos() override;
-
-  // Returns a string representation of the MountHelper derived class
-  // used, for test purposes.
   MountHelperType GetMountHelperType() const override;
 };
 
