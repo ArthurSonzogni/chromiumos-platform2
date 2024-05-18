@@ -31,6 +31,7 @@
 #include <base/values.h>
 #include <brillo/cryptohome.h>
 #include <brillo/key_value_store.h>
+#include <brillo/process/process.h>
 #include <brillo/userdb_utils.h>
 #include <re2/re2.h>
 #include <zlib.h>
@@ -787,6 +788,10 @@ bool IsIgnoredRustPanicSignature(const std::string& rust_panic_sig) {
     }
   }
   return false;
+}
+
+std::unique_ptr<brillo::Process> BrilloProcessFactory::CreateProcess() {
+  return std::make_unique<brillo::ProcessImpl>();
 }
 
 }  // namespace util

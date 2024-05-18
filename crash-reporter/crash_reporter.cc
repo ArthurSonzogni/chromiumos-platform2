@@ -38,6 +38,7 @@
 #include "crash-reporter/clobber_state_collector.h"
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"
+#include "crash-reporter/crash_collector_names.h"
 #include "crash-reporter/crash_reporter_failure_collector.h"
 #include "crash-reporter/crash_sending_mode.h"
 #include "crash-reporter/ec_collector.h"
@@ -46,6 +47,7 @@
 #include "crash-reporter/gsc_collector.h"
 #include "crash-reporter/kernel_collector.h"
 #include "crash-reporter/kernel_warning_collector.h"
+#include "crash-reporter/metric_utils.h"
 #include "crash-reporter/missed_crash_collector.h"
 #include "crash-reporter/mount_failure_collector.h"
 #include "crash-reporter/paths.h"
@@ -129,7 +131,12 @@ int BootCollect(
   LOG(INFO) << "Running boot collector";
 
   if (always_allow_feedback || util::IsBootFeedbackAllowed(metrics_lib)) {
-    was_unclean_shutdown = unclean_shutdown_collector->Collect();
+    {
+      CrashReporterStatusRecorder recorder = RecordCrashReporterStart(
+          CrashReporterCollector::kUncleanShutdown, CrashSendingMode::kNormal);
+      was_unclean_shutdown = unclean_shutdown_collector->Collect();
+      // TODO(b/177552411): Update UncleanShutdownCollector to return a status.
+    }
 
     // If there is an EC/BERT/Kernel crash and the unclean shutdown collector
     // detects an unclean shutdown, then either:
@@ -155,19 +162,53 @@ int BootCollect(
     bool use_saved_lsb = was_unclean_shutdown;
 
     /* TODO(drinkcat): Distinguish between EC crash and unclean shutdown. */
-    ec_collector->Collect(use_saved_lsb);
+    {
+      CrashReporterStatusRecorder recorder = RecordCrashReporterStart(
+          CrashReporterCollector::kEC, CrashSendingMode::kNormal);
+      ec_collector->Collect(use_saved_lsb);
+      // TODO(b/177552411): Update ECCollector to return a status.
+    }
 
-    gsc_collector->Collect(use_saved_lsb);
+    {
+      CrashReporterStatusRecorder recorder = RecordCrashReporterStart(
+          CrashReporterCollector::kGSC, CrashSendingMode::kNormal);
+      gsc_collector->Collect(use_saved_lsb);
+      // TODO(b/177552411): Update GscCollector to return a status.
+    }
 
     // Invoke to collect firmware bert dump.
-    bert_collector->Collect(use_saved_lsb);
+    {
+      CrashReporterStatusRecorder recorder = RecordCrashReporterStart(
+          CrashReporterCollector::kBERT, CrashSendingMode::kNormal);
+      bert_collector->Collect(use_saved_lsb);
+      // TODO(b/177552411): Update BERTCollector to return a status.
+    }
 
     kernel_collector->Enable();
     if (kernel_collector->is_enabled()) {
-      std::vector<CrashCollectionStatus> efi_statuses =
-          kernel_collector->CollectEfiCrashes(use_saved_lsb);
+      std::vector<CrashCollectionStatus> efi_statuses;
+      {
+        CrashReporterStatusRecorder recorder = RecordCrashReporterStart(
+            CrashReporterCollector::kKernel, CrashSendingMode::kNormal);
+        efi_statuses = kernel_collector->CollectEfiCrashes(use_saved_lsb);
+        // Vector should never be empty, but just in case:
+        if (!efi_statuses.empty()) {
+          recorder.set_status(efi_statuses[0]);
+        }
+      }
+      for (int i = 1; i < efi_statuses.size(); ++i) {
+        // We always want start / status pairs so we can we see if crash
+        // reporter is crashing. So add fake starts if needed.
+        CrashReporterStatusRecorder extra_recorder = RecordCrashReporterStart(
+            CrashReporterCollector::kKernel, CrashSendingMode::kNormal);
+        extra_recorder.set_status(efi_statuses[i]);
+      }
+
+      CrashReporterStatusRecorder ramoops_recorder = RecordCrashReporterStart(
+          CrashReporterCollector::kKernel, CrashSendingMode::kNormal);
       CrashCollectionStatus ramoops_status =
           kernel_collector->CollectRamoopsCrash(use_saved_lsb);
+      ramoops_recorder.set_status(ramoops_status);
       was_kernel_crash =
           KernelCollector::WasKernelCrash(efi_statuses, ramoops_status);
     }
@@ -182,9 +223,13 @@ int BootCollect(
       // an associated kernel crash.
       TouchFile(FilePath(kUncleanShutdownDetected));
     }
-    ephemeral_crash_collector->Collect();
+    CrashReporterStatusRecorder recorder = RecordCrashReporterStart(
+        CrashReporterCollector::kEphemeral, CrashSendingMode::kNormal);
+    recorder.set_status(ephemeral_crash_collector->Collect());
   } else if (ephemeral_crash_collector->SkipConsent()) {
-    ephemeral_crash_collector->Collect();
+    CrashReporterStatusRecorder recorder = RecordCrashReporterStart(
+        CrashReporterCollector::kEphemeral, CrashSendingMode::kNormal);
+    recorder.set_status(ephemeral_crash_collector->Collect());
   }
 
   // The below calls happen independently of metrics consent, as they do not
@@ -272,7 +317,12 @@ void EnterSandbox(bool write_proc, bool log_to_stderr) {
 // program's exit value.
 class CallbackVisitor {
  public:
-  explicit CallbackVisitor(bool consent) : consent_(consent) {}
+  explicit CallbackVisitor(std::shared_ptr<CrashCollector> collector,
+                           bool consent,
+                           CrashSendingMode crash_sending_mode)
+      : collector_(std::move(collector)),
+        consent_(consent),
+        crash_sending_mode_(crash_sending_mode) {}
 
   bool operator()(const base::RepeatingCallback<bool()>& cb) {
     if (cb) {
@@ -281,6 +331,11 @@ class CallbackVisitor {
       brillo::LogToString(true);
 
       if (consent_) {
+        CrashReporterCollector collector_enum =
+            collector_ ? collector_->collector()
+                       : CrashReporterCollector::kUnknownCollector;
+        CrashReporterStatusRecorder recorder =
+            RecordCrashReporterStart(collector_enum, crash_sending_mode_);
         handled_ = cb.Run();
       }
 
@@ -296,7 +351,13 @@ class CallbackVisitor {
       brillo::LogToString(true);
 
       if (consent_) {
-        handled_ = IsSuccessCode(cb.Run());
+        CrashReporterCollector collector_enum =
+            collector_ ? collector_->collector()
+                       : CrashReporterCollector::kUnknownCollector;
+        CrashReporterStatusRecorder recorder =
+            RecordCrashReporterStart(collector_enum, crash_sending_mode_);
+        recorder.set_status(cb.Run());
+        handled_ = IsSuccessCode(recorder.status());
       }
 
       brillo::LogToString(false);
@@ -308,7 +369,9 @@ class CallbackVisitor {
   int GetExitValue() const { return handled_ ? 0 : 1; }
 
  private:
+  const std::shared_ptr<CrashCollector> collector_;
   const bool consent_;
+  const CrashSendingMode crash_sending_mode_;
   // Default to successful exit status if there's no consent.
   bool handled_ = true;
 };
@@ -788,7 +851,8 @@ int main(int argc, char* argv[]) {
                        (collector.collector == ephemeral_crash_collector &&
                         ephemeral_crash_collector->SkipConsent());
 
-        CallbackVisitor vistor(consent);
+        CallbackVisitor vistor(collector.collector, consent,
+                               crash_sending_mode);
         if (std::visit(vistor, info.cb)) {
           return vistor.GetExitValue();
         }

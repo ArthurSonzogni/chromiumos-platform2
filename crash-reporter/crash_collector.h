@@ -232,6 +232,9 @@ class CrashCollector {
   // Value must not contain "\n" characters.
   void AddCrashMetaData(const std::string& key, const std::string& value);
 
+  // Returns the type of collector this is, for metrics.
+  CrashReporterCollector collector() const { return collector_; }
+
  protected:
   friend class CrashCollectorTest;
   FRIEND_TEST(ArcContextTest, GetAndroidVersion);
@@ -690,9 +693,10 @@ class CrashCollector {
   // created.
   bool is_finished_;
 
-  // If crash_loop_mode_ is true, all files are collected in here instead of
-  // being written to disk. The first element of the tuple is the base filename,
-  // the second is a memfd_create file descriptor with the file contents.
+  // If crash_sending_mode_ is kCrashLoopSendingMode, all files are collected in
+  // here instead of being written to disk. The first element of the tuple is
+  // the base filename, the second is a memfd_create file descriptor with the
+  // file contents.
   std::vector<std::tuple<std::string, base::ScopedFD>> in_memory_files_;
 
   // Number of bytes successfully written by all calls to WriteNewFile() and

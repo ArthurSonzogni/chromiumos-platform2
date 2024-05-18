@@ -78,6 +78,7 @@ executable("bluetooth_devcd_parser") {
 
 pkg_config("libcrash_config") {
   pkg_deps = [
+    "libbrillo",
     "libchrome",
     "libcrossystem",
     "libsession_manager-client",
@@ -91,8 +92,10 @@ pkg_config("libcrash_config") {
 
 static_library("libcrash") {
   sources = [
+    "crash_collection_status.cc",
     "crash_collector_names.cc",
     "crossystem.cc",
+    "metric_utils.cc",
     "paths.cc",
     "util.cc",
     "vm_support.cc",
@@ -128,7 +131,6 @@ static_library("libcrash_reporter") {
     "clobber_state_collector.cc",
     "connectivity_util.cc",
     "crash_adaptor.cc",
-    "crash_collection_status.cc",
     "crash_collector.cc",
     "crash_reporter_failure_collector.cc",
     "detailed_hardware_data.cc",
@@ -495,6 +497,7 @@ if (use.test) {
       "kernel_collector_test.h",
       "kernel_util_test.cc",
       "kernel_warning_collector_test.cc",
+      "metric_utils_test.cc",
       "missed_crash_collector_test.cc",
       "mount_failure_collector_test.cc",
       "paths_test.cc",
