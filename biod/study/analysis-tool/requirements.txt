@@ -3,50 +3,28 @@
 # found in the LICENSE file.
 
 # The following requirements were generated using the following steps
-# on May 7, 2024:
+# on May 18, 2024:
 #
 # $ python3 -m venv .venv
 # $ . .venv/bin/activate
-# $ pip3 install pandas numpy matplotlib scipy tqdm ipympl
+# $ pip install pandas numpy matplotlib scipy tqdm ipykernel ipympl
+# $ pip install 'plotly>=5.8.0' kaleido nbformat
+# $ pip install djlint
+# $ pip install jinja2 requests
 # $ pip3 freeze
-# Comment out indirect packages.
+# Remove indirect packages.
 
-# asttokens==2.4.1
-# comm==0.2.2
-# contourpy==1.2.1
-# cycler==0.12.1
-# decorator==5.1.1
-# executing==2.0.1
-# fonttools==4.51.0
+djlint==1.34.1
+ipykernel==6.29.4
 ipympl==0.9.4
-# ipython==8.24.0
-# ipython-genutils==0.2.0
-# ipywidgets==8.1.2
-# jedi==0.19.1
-# jupyterlab_widgets==3.0.10
-# kiwisolver==1.4.5
+ipython==8.24.0
+Jinja2==3.1.4
+kaleido==0.2.1
 matplotlib==3.8.4
-# matplotlib-inline==0.1.7
+nbformat==5.10.4
 numpy==1.26.4
-# packaging==24.0
 pandas==2.2.2
-# parso==0.8.4
-# pexpect==4.9.0
-# pillow==10.3.0
-# prompt-toolkit==3.0.43
-# ptyprocess==0.7.0
-# pure-eval==0.2.2
-# Pygments==2.18.0
-# pyparsing==3.1.2
-# python-dateutil==2.9.0.post0
-# pytz==2024.1
+plotly==5.22.0
 requests==2.31.0
 scipy==1.13.0
-# six==1.16.0
-# stack-data==0.6.3
 tqdm==4.66.4
-# traitlets==5.14.3
-# typing_extensions==4.11.0
-# tzdata==2024.1
-# wcwidth==0.2.13
-# widgetsnbextension==4.0.10
