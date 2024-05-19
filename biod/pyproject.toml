@@ -17,6 +17,7 @@ typeCheckingMode = "strict"
 # Please run ./study/python-venv-setup.sh to create this virtual environment.
 venvPath = "study"
 venv = ".venv"
+verboseOutput = true
 
 [tool.black]
 # Copied from ~/chromiumos/chromite/pyproject.toml, since we can't include that
