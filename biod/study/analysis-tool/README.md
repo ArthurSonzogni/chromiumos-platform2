@@ -14,6 +14,15 @@ statistically determine its FAR and FRR confidence range.
     We still want the combined histograms to be able to compare sample
     performance across all test cases.
 
+## Run The Analysis
+
+```bash
+# From the biod/study directory.
+./python-venv-setup.sh
+. .venv/bin/activate
+./analysis-tool/run.py --learn-groups-dir data/orig-data data/decisions analysis
+```
+
 ## Run Unit Tests
 
 ```bash
