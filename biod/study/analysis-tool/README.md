@@ -13,3 +13,9 @@ statistically determine its FAR and FRR confidence range.
     enrollment, template updating, or verification across different test cases.
     We still want the combined histograms to be able to compare sample
     performance across all test cases.
+
+## Run Unit Tests
+
+```bash
+python -m unittest discover -v -s . -p '*_test.py'
+```
