@@ -19,7 +19,7 @@ any downloaded version.
 
     https://github.com/andybrewer/mvp/blob/v1.8/mvp.css
 
-*   `icon.svg` - https://fonts.google.com/icons
+*   `favicon.svg` - https://fonts.google.com/icons
 
     This asset was configured and downloaded as an SVG using the web interface.
     It uses the `Fingerprint` symbol with `Material Symbols (new)` + `Outlined`
@@ -27,3 +27,9 @@ any downloaded version.
 
     -   [Configured Icon](https://fonts.google.com/icons?selected=Material+Symbols+Outlined:fingerprint:FILL@0;wght@400;GRAD@0;opsz@48&icon.size=48&icon.color=%23000000)
     -   [Icon Share Link (actually less precise)](https://fonts.google.com/icons?selected=Material%20Symbols%20Outlined%3Afingerprint%3AFILL%400%3Bwght%40400%3BGRAD%400%3Bopsz%4048)
+
+*   `chromeos-fingerprint-logo.svg` - I modified the path colors of the
+    favicon.svg in Inkspace to match our internal ChromeOS Fingerprint Logo
+    colors.
+
+    This is used as the logo on the main report page.
