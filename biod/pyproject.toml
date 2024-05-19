@@ -8,7 +8,7 @@
 
 [tool.pyright]
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md
-include = ["study"]
+include = ["study", "study/analysis-tool"]
 reportMissingImports = true
 reportMissingTypeStubs = false
 pythonVersion = "3.8"
