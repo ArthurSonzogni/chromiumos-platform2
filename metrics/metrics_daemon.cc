@@ -285,7 +285,7 @@ void MetricsDaemon::RunUploaderTest() {
   upload_service_.reset(new UploadService(
       new SystemProfileCache(true, config_root_), metrics_lib_, server_));
   upload_service_->Init(upload_interval_, metrics_file_, metrics_dir_,
-                        true /* uploads_enabled */);
+                        early_metrics_dir_, true /* uploads_enabled */);
   upload_service_->UploadEvent();
 }
 
@@ -324,6 +324,7 @@ void MetricsDaemon::Init(bool testing,
                          const string& server,
                          const string& metrics_file,
                          const string& metrics_dir,
+                         const string& early_metrics_dir,
                          const string& config_root,
                          const base::FilePath& backing_dir) {
   testing_ = testing;
@@ -337,6 +338,7 @@ void MetricsDaemon::Init(bool testing,
   server_ = server;
   metrics_file_ = metrics_file;
   metrics_dir_ = metrics_dir;
+  early_metrics_dir_ = early_metrics_dir;
 
   // Get ticks per second (HZ) on this system.
   // Sysconf cannot fail, so no sanity checks are needed.
@@ -525,7 +527,8 @@ int MetricsDaemon::OnInit() {
     upload_service_.reset(
         new UploadService(new SystemProfileCache(), metrics_lib_, server_));
     upload_service_->Init(upload_interval_, metrics_file_, metrics_dir_,
-                          is_official /* uploads_enabled */);
+                          early_metrics_dir_,
+                          /* uploads_enabled */ is_official);
   }
 
   return EX_OK;

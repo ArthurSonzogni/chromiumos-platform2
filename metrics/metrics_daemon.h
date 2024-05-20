@@ -46,6 +46,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
             const std::string& server,
             const std::string& metrics_file,
             const std::string& metrics_dir,
+            const std::string& early_metrics_dir,
             const std::string& config_root,
             const base::FilePath& persistent_dir_path);
 
@@ -456,6 +457,7 @@ class MetricsDaemon : public brillo::DBusDaemon {
   std::string server_;
   std::string metrics_file_;
   std::string metrics_dir_;
+  std::string early_metrics_dir_;
 
   std::unique_ptr<UploadService> upload_service_;
   std::unique_ptr<VmlogWriter> vmlog_writer_;

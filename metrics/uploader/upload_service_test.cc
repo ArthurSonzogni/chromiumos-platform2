@@ -32,6 +32,7 @@ namespace {
 const char kMetricsServer[] = "https://clients4.google.com/uma/v2";
 const char kMetricsFilePath[] = "/run/metrics/uma-events";
 const char kMetricsDirPath[] = "/run/metrics/uma-events.d";
+const char kUMAEarlyEventsDirPath[] = "/run/early-metrics";
 using metrics::MetricSample;
 }  // namespace
 
@@ -45,7 +46,7 @@ class UploadServiceTest : public testing::Test {
     sender_ = new SenderMock;
     upload_service_.sender_.reset(sender_);
     upload_service_.Init(base::Minutes(30), kMetricsFilePath, kMetricsDirPath,
-                         true);
+                         kUMAEarlyEventsDirPath, true);
   }
 
   virtual void SetUp() {
@@ -54,8 +55,11 @@ class UploadServiceTest : public testing::Test {
     upload_service_.Reset();
     metrics_file_ = dir_.GetPath().Append("uma-events").value();
     metrics_dir_ = dir_.GetPath().Append("uma-events.d").value();
+    early_metrics_dir_ = dir_.GetPath().Append("early-metrics").value();
     CHECK(base::CreateDirectory(base::FilePath(metrics_dir_)));
-    upload_service_.SetPathsForTesting(metrics_file_, metrics_dir_);
+    CHECK(base::CreateDirectory(base::FilePath(early_metrics_dir_)));
+    upload_service_.SetPathsForTesting(metrics_file_, metrics_dir_,
+                                       early_metrics_dir_);
     sender_->Reset();
     base::FilePath path = dir_.GetPath().Append("session_id");
     cache_.session_id_.reset(new chromeos_metrics::PersistentInteger(path));
@@ -72,12 +76,13 @@ class UploadServiceTest : public testing::Test {
   MetricsLibraryMock metrics_lib_;
   std::string metrics_file_;
   std::string metrics_dir_;
+  std::string early_metrics_dir_;
 
   std::unique_ptr<base::AtExitManager> exit_manager_;
 };
 
-// Tests that UploadService properly reads from both the single file and per-pid
-// uma-events.d
+// Tests that UploadService properly reads from both the single file, per-pid
+// uma-events.d, and the per-pid early metrics directory.
 TEST_F(UploadServiceTest, ReadMetrics) {
   std::vector<MetricSample> output_samples = {
       MetricSample::HistogramSample("myhist", 3, 1, 10, 5, /*num_samples=*/1),
@@ -100,6 +105,20 @@ TEST_F(UploadServiceTest, ReadMetrics) {
   EXPECT_TRUE(metrics::SerializationUtils::WriteMetricsToFile(
       output_samples2, base::StrCat({metrics_dir_, "/2"})));
 
+  std::vector<MetricSample> output_samples3 = {
+      MetricSample::HistogramSample("myhist3", 3, 1, 10, 5, /*num_samples=*/1),
+  };
+
+  EXPECT_TRUE(metrics::SerializationUtils::WriteMetricsToFile(
+      output_samples3, base::StrCat({early_metrics_dir_, "/1"})));
+
+  std::vector<MetricSample> output_samples4 = {
+      MetricSample::HistogramSample("myhist4", 3, 1, 10, 5, /*num_samples=*/1),
+  };
+
+  EXPECT_TRUE(metrics::SerializationUtils::WriteMetricsToFile(
+      output_samples4, base::StrCat({early_metrics_dir_, "/2"})));
+
   EXPECT_TRUE(upload_service_.ReadMetrics());
 
   upload_service_.GatherHistograms();
@@ -108,26 +127,34 @@ TEST_F(UploadServiceTest, ReadMetrics) {
   ASSERT_NE(log, nullptr);
   metrics::ChromeUserMetricsExtension* proto = log->uma_proto();
   ASSERT_NE(proto, nullptr);
-  EXPECT_EQ(3, proto->histogram_event().size());
+  EXPECT_EQ(5, proto->histogram_event().size());
 
   std::vector<uint64_t> expected_hashes = {
       metrics::MetricsLogBase::Hash("myhist"),
       metrics::MetricsLogBase::Hash("myhist1"),
       metrics::MetricsLogBase::Hash("myhist2"),
+      metrics::MetricsLogBase::Hash("myhist3"),
+      metrics::MetricsLogBase::Hash("myhist4"),
   };
   std::vector<uint64_t> actual_hashes = {
       proto->histogram_event(0).name_hash(),
       proto->histogram_event(1).name_hash(),
       proto->histogram_event(2).name_hash(),
+      proto->histogram_event(3).name_hash(),
+      proto->histogram_event(4).name_hash(),
   };
   EXPECT_THAT(actual_hashes,
               testing::UnorderedElementsAreArray(expected_hashes));
 
+  // Verify the metrics file is empty after being successfully read.
   int64_t size = 0;
   ASSERT_TRUE(base::GetFileSize(base::FilePath(metrics_file_), &size));
   ASSERT_EQ(0, size);
 
+  // Verify the metrics directory and early metrics directories are empty after
+  // being successfully read.
   EXPECT_TRUE(base::IsDirectoryEmpty(base::FilePath(metrics_dir_)));
+  EXPECT_TRUE(base::IsDirectoryEmpty(base::FilePath(early_metrics_dir_)));
 }
 
 // Test that UploadMetrics only reads the maximum amount specified, even if that

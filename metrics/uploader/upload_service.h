@@ -65,6 +65,7 @@ class UploadService : public base::HistogramFlattener {
   void Init(const base::TimeDelta& upload_interval,
             const std::string& metrics_file,
             const std::string& metrics_dir,
+            const std::string& early_metrics_dir,
             bool uploads_enabled);
 
   // Starts a new log. The log needs to be regenerated after each successful
@@ -113,7 +114,8 @@ class UploadService : public base::HistogramFlattener {
 
   // (TEST ONLY): Set specific file paths for the metrics file and directory.
   void SetPathsForTesting(const std::string& metrics_file,
-                          const std::string& metrics_dir);
+                          const std::string& metrics_dir,
+                          const std::string& early_metrics_dir);
 
   // Reads and consumes metrics from the message file, up to a max amount.
   // Returns false if more metrics are remaining in the file.
@@ -151,6 +153,7 @@ class UploadService : public base::HistogramFlattener {
 
   std::string metrics_file_;
   std::string metrics_dir_;
+  std::string early_metrics_dir_;
   bool skip_upload_;
 
   bool testing_;

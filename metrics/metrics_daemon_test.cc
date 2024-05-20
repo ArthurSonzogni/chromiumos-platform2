@@ -57,6 +57,7 @@ const char kFakeCpuinfoMaxFreqPath[] = "fake-cpuinfo-max-freq";
 const char kMetricsServer[] = "https://clients4.google.com/uma/v2";
 const char kMetricsFilePath[] = "uma-events";
 const char kMetricsDirName[] = "uma-events.d";
+const char kEarlyMetricsDirName[] = "early-metrics";
 
 void PerisistentIntegerCreationCallback(const base::FilePath& path) {
   const std::string base_name = path.BaseName().value();
@@ -90,8 +91,13 @@ class MetricsDaemonTest : public testing::Test {
     fake_scaling_max_freq_ = backing_dir_path_.Append(kFakeScalingMaxFreqPath);
     fake_cpuinfo_max_freq_ = backing_dir_path_.Append(kFakeCpuinfoMaxFreqPath);
     fake_metrics_file_ = backing_dir_path_.Append(kMetricsFilePath);
+
     fake_metrics_dir_ = backing_dir_path_.Append(kMetricsDirName);
     ASSERT_TRUE(base::CreateDirectory(fake_metrics_dir_));
+
+    fake_early_metrics_dir_ = backing_dir_path_.Append(kEarlyMetricsDirName);
+    ASSERT_TRUE(base::CreateDirectory(fake_early_metrics_dir_));
+
     fake_mm_stat_file_ = backing_dir_path_.Append(MetricsDaemon::kMMStatName);
 
     kFakeDiskStats0 = base::StringPrintf(
@@ -108,7 +114,8 @@ class MetricsDaemonTest : public testing::Test {
                  fake_vm_stats_.value(), fake_scaling_max_freq_.value(),
                  fake_cpuinfo_max_freq_.value(), base::Minutes(30),
                  kMetricsServer, fake_metrics_file_.value(),
-                 fake_metrics_dir_.value(), "/", backing_dir_path_);
+                 fake_metrics_dir_.value(), fake_early_metrics_dir_.value(),
+                 "/", backing_dir_path_);
 
     // Replace original persistent values with mock ones.
     base::FilePath m1 = backing_dir_path_.Append("1.mock");
@@ -230,6 +237,7 @@ class MetricsDaemonTest : public testing::Test {
   base::FilePath fake_cpuinfo_max_freq_;
   base::FilePath fake_metrics_file_;
   base::FilePath fake_metrics_dir_;
+  base::FilePath fake_early_metrics_dir_;
   base::FilePath fake_mm_stat_file_;
 
   // Mocks. They are strict mock so that all unexpected
