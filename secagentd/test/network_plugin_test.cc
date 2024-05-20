@@ -476,6 +476,7 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEventWithFullProcessInfo) {
                 process_info.image_info.inode);
             process_proto->mutable_image()->set_mode(
                 process_info.image_info.mode);
+            process_proto->set_meta_first_appearance(true);
           })));
   // Expect an attempt to use cache to retrieve parent.
   EXPECT_CALL(*process_cache_,
@@ -505,6 +506,7 @@ TEST_F(NetworkPluginTestFixture, TestSyntheticFlowEventWithFullProcessInfo) {
 
   EXPECT_THAT(actual_process.image().inode(), process_info.image_info.inode);
   EXPECT_THAT(actual_process.image().mode(), process_info.image_info.mode);
+  EXPECT_THAT(actual_process.meta_first_appearance(), true);
 
   EXPECT_THAT(expected_hierarchy[0],
               EqualsProto(actual_sent_event.network_flow().parent_process()));

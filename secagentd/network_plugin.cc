@@ -319,13 +319,6 @@ void NetworkPlugin::FillProcessTree(
   if (hierarchy.size() == 2) {
     proto->set_allocated_parent_process(hierarchy[1].release());
   }
-
-  if (proto->has_process()) {
-    proto->mutable_process()->clear_meta_first_appearance();
-  }
-  if (proto->has_parent_process()) {
-    proto->mutable_parent_process()->clear_meta_first_appearance();
-  }
 }
 
 std::unique_ptr<pb::NetworkSocketListenEvent> NetworkPlugin::MakeListenEvent(
