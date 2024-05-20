@@ -39,7 +39,7 @@ fn main() {
             .unwrap();
     }
     let mut rlz: &str = if args.len() == 3 { args[2] } else { "" };
-    let flag: u16 = if phase == "whitelabel_pvt_flags" {
+    let flag: u16 = if phase == "whitelabel_pvt_flags" || phase == "two_stages_pvt_flags" {
         // Whitelabel flags are set by using 0xffffffff as the rlz and the
         // whitelabel flags. Cr50 images that support partial board id will ignore
         // the board id type if it's 0xffffffff and only set the flags.
