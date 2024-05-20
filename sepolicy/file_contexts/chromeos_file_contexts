@@ -91,6 +91,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/dbus-monitor           u:object_r:cros_dbus_monitor_exec:s0
 /usr/bin/dbus-send              u:object_r:cros_dbus_send_exec:s0
 /usr/bin/dbus-uuidgen           u:object_r:cros_dbus_uuidgen_exec:s0
+/usr/bin/dlc_metadata_util      u:object_r:cros_dlc_metadata_util_exec:s0
 /usr/bin/dugong                 u:object_r:cros_dugong_exec:s0
 /usr/bin/ipf_ufd                u:object_r:cros_ipf_ufd_exec:s0
 /usr/bin/ipfhostd               u:object_r:cros_ipfhostd_exec:s0
@@ -109,6 +110,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/insmod                 u:object_r:cros_modprobe_exec:s0
 /usr/bin/ionice                 u:object_r:cros_ionice_exec:s0
 /usr/bin/ippusb_bridge          u:object_r:cros_ippusb_bridge_exec:s0
+/usr/bin/jq                     u:object_r:cros_jq_exec:s0
 /usr/bin/kmod                   u:object_r:cros_modprobe_exec:s0
 /usr/bin/logger                 u:object_r:cros_logger_exec:s0
 /usr/bin/lorgnette              u:object_r:cros_lorgnette_exec:s0
