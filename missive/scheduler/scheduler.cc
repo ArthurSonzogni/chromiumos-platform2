@@ -17,7 +17,7 @@
 #include <base/types/expected.h>
 
 #include "missive/analytics/metrics.h"
-#include "missive/util/errors.h"
+#include "missive/util/reporting_errors.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 #include "missive/util/task_runner_context.h"

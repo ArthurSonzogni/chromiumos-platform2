@@ -22,7 +22,10 @@
 #include <brillo/files/file_util.h>
 #include <re2/re2.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/util/file.h"
+#include "missive/util/reporting_errors.h"
+#include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 
 namespace reporting {
@@ -115,7 +118,12 @@ void HealthModuleFiles::PopulateHistory(ERPHealthData* data) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (const auto& file : files_) {
     const auto read_result = MaybeReadFile(file.second, /*offset=*/0);
+    // UMA log data loss if we failed to read.
     if (!read_result.has_value()) {
+      analytics::Metrics::SendEnumToUMA(
+          kUmaDataLossErrorReason,
+          DataLossErrorReason::FAILED_TO_READ_HEALTH_DATA,
+          DataLossErrorReason::MAX_VALUE);
       return;
     }
 
@@ -147,7 +155,16 @@ Status HealthModuleFiles::Write(std::string_view data) {
 
   // +1 for newline char.
   storage_used_ += data.size() + 1;
-  return AppendLine(files_.rbegin()->second, data);
+  const Status status = AppendLine(files_.rbegin()->second, data);
+
+  // UMA log data loss if we failed to write.
+  if (!status.ok()) {
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason,
+        DataLossErrorReason::FAILED_TO_WRITE_HEALTH_DATA,
+        DataLossErrorReason::MAX_VALUE);
+  }
+  return status;
 }
 
 Status HealthModuleFiles::FreeStorage(uint32_t storage) {
@@ -198,6 +215,10 @@ StatusOr<uint32_t> HealthModuleFiles::FileSize(
   base::File::Info file_info;
   base::File file(file_path, base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!file.IsValid() || !file.GetInfo(&file_info)) {
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason,
+        DataLossErrorReason::FAILED_TO_READ_HEALTH_DATA,
+        DataLossErrorReason::MAX_VALUE);
     return base::unexpected(Status(
         error::DATA_LOSS, base::StrCat({"Failed to read health data file info ",
                                         file_path.MaybeAsASCII()})));

@@ -19,7 +19,7 @@
 #include "missive/analytics/metrics.h"
 #include "missive/missive/missive_service.h"
 #include "missive/proto/interface.pb.h"
-#include "missive/util/errors.h"
+#include "missive/util/reporting_errors.h"
 #include "missive/util/status.h"
 
 namespace reporting {

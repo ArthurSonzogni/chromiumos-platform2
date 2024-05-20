@@ -15,7 +15,7 @@
 #include <base/task/sequenced_task_runner.h>
 
 #include "missive/analytics/metrics.h"
-#include "missive/util/errors.h"
+#include "missive/util/reporting_errors.h"
 #include "missive/util/status.h"
 
 namespace reporting {

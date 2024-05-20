@@ -25,7 +25,7 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/disconnectable_client.h"
-#include "missive/util/errors.h"
+#include "missive/util/reporting_errors.h"
 #include "missive/util/status.h"
 
 namespace reporting {

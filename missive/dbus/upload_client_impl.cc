@@ -13,15 +13,15 @@
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
-#include <base/memory/weak_ptr.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/memory/weak_ptr.h>
 #include <base/run_loop.h>
 #include <base/task/bind_post_task.h>
 #include <base/types/expected.h>
-#include <dbus/bus.h>
-#include <dbus/object_path.h>
-#include <dbus/message.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/bus.h>
+#include <dbus/message.h>
+#include <dbus/object_path.h>
 
 #include "missive/analytics/metrics.h"
 #include "missive/health/health_module.h"
@@ -29,7 +29,7 @@
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
 #include "missive/util/disconnectable_client.h"
-#include "missive/util/errors.h"
+#include "missive/util/reporting_errors.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 

@@ -19,7 +19,9 @@
 #include <base/task/thread_pool.h>
 #include <base/types/expected.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/encryption/primitives.h"
+#include "missive/util/reporting_errors.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
 
@@ -75,16 +77,20 @@ void Encryptor::Handle::ProduceEncryptedRecord(
 
   // Compute shared secret, store it in |encrypted_record|.
   uint8_t out_shared_secret[kKeySize];
-  uint8_t out_generatet_public_value[kKeySize];
+  uint8_t out_generated_public_value[kKeySize];
   if (!ComputeSharedSecret(
           reinterpret_cast<const uint8_t*>(asymmetric_key.first.data()),
-          out_shared_secret, out_generatet_public_value)) {
+          out_shared_secret, out_generated_public_value)) {
     std::move(cb).Run(base::unexpected(
         Status(error::DATA_LOSS, "Curve25519 shared secret not derived")));
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason,
+        DataLossErrorReason::FAILED_TO_CREATE_ENCRYPTION_KEY,
+        DataLossErrorReason::MAX_VALUE);
     return;
   }
   encrypted_record.mutable_encryption_info()->mutable_encryption_key()->assign(
-      reinterpret_cast<const char*>(out_generatet_public_value), kKeySize);
+      reinterpret_cast<const char*>(out_generated_public_value), kKeySize);
 
   // Produce symmetric key from shared secret using HKDF.
   uint8_t out_symmetric_key[kKeySize];

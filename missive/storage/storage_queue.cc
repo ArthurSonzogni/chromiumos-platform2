@@ -60,9 +60,9 @@
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/storage/storage_util.h"
-#include "missive/util/errors.h"
 #include "missive/util/file.h"
 #include "missive/util/refcounted_closure_list.h"
+#include "missive/util/reporting_errors.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
 #include "missive/util/statusor.h"
@@ -404,6 +404,9 @@ Status StorageQueue::SetOrConfirmGenerationId(const base::FilePath& full_name) {
   const auto generation_extension =
       full_name.RemoveFinalExtension().FinalExtension();
   if (generation_extension.empty()) {
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason, DataLossErrorReason::MISSING_GENERATION_ID,
+        DataLossErrorReason::MAX_VALUE);
     return Status(error::DATA_LOSS,
                   base::StrCat({"Data file generation id not found in path: '",
                                 full_name.MaybeAsASCII()}));
@@ -413,6 +416,10 @@ Status StorageQueue::SetOrConfirmGenerationId(const base::FilePath& full_name) {
   const bool success =
       base::StringToInt64(generation_extension.substr(1), &file_generation_id);
   if (!success || file_generation_id <= 0) {
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason,
+        DataLossErrorReason::FAILED_TO_PARSE_GENERATION_ID,
+        DataLossErrorReason::MAX_VALUE);
     return Status(error::DATA_LOSS,
                   base::StrCat({"Data file generation id corrupt: '",
                                 full_name.MaybeAsASCII()}));
@@ -422,6 +429,9 @@ Status StorageQueue::SetOrConfirmGenerationId(const base::FilePath& full_name) {
   if (generation_id_ > 0) {
     // Generation was already set, data file must match.
     if (file_generation_id != generation_id_) {
+      analytics::Metrics::SendEnumToUMA(
+          kUmaDataLossErrorReason, DataLossErrorReason::INVALID_GENERATION_ID,
+          DataLossErrorReason::MAX_VALUE);
       return Status(error::DATA_LOSS,
                     base::StrCat({"Data file generation id does not match: '",
                                   full_name.MaybeAsASCII(), "', expected=",
@@ -522,6 +532,10 @@ Status StorageQueue::EnumerateDataFiles(
   if (enum_error != base::File::Error::FILE_OK) {
     // This is a transient error, return status for Storage to back off and
     // retry.
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason,
+        DataLossErrorReason::FAILED_TO_ENUMERATE_STORAGE_QUEUE_DIRECTORY,
+        DataLossErrorReason::MAX_VALUE);
     return Status(
         error::DATA_LOSS,
         base::StrCat({"Errors detected during directory enumeration ",
@@ -566,6 +580,10 @@ Status StorageQueue::ScanLastFile() {
   if (!open_status.ok()) {
     LOG(ERROR) << "Error opening file " << last_file->name()
                << ", status=" << open_status;
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason,
+        DataLossErrorReason::FAILED_TO_OPEN_STORAGE_QUEUE_FILE,
+        DataLossErrorReason::MAX_VALUE);
     return Status(error::DATA_LOSS, base::StrCat({"Error opening file: '",
                                                   last_file->name(), "'"}));
   }
@@ -819,6 +837,9 @@ Status StorageQueue::WriteMetadata(std::string_view current_record_digest,
                                 " status=", append_result.error().ToString()}));
   }
   if (append_result.value() != current_record_digest.size()) {
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason, DataLossErrorReason::FAILED_TO_WRITE_METADATA,
+        DataLossErrorReason::MAX_VALUE);
     return Status(error::DATA_LOSS, base::StrCat({"Failure writing metafile=",
                                                   meta_file->name()}));
   }
@@ -854,6 +875,9 @@ Status StorageQueue::ReadMetadata(
       meta_file->Read(/*pos=*/0, sizeof(generation_id_), max_buffer_size);
   if (!read_result.has_value() ||
       read_result.value().size() != sizeof(generation_id_)) {
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason, DataLossErrorReason::FAILED_TO_READ_METADATA,
+        DataLossErrorReason::MAX_VALUE);
     return Status(error::DATA_LOSS,
                   base::StrCat({"Cannot read metafile=", meta_file->name(),
                                 " status=", read_result.error().ToString()}));
@@ -862,6 +886,10 @@ Status StorageQueue::ReadMetadata(
       *reinterpret_cast<const int64_t*>(read_result.value().data());
   if (generation_id <= 0) {
     // Generation is not in [1, max_int64] range - file corrupt or empty.
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason,
+        DataLossErrorReason::METADATA_GENERATION_ID_OUT_OF_RANGE,
+        DataLossErrorReason::MAX_VALUE);
     return Status(error::DATA_LOSS,
                   base::StrCat({"Corrupt or empty metafile=", meta_file->name(),
                                 " - invalid generation ",
@@ -870,6 +898,10 @@ Status StorageQueue::ReadMetadata(
   if (generation_id_ > 0 && generation_id != generation_id_) {
     // Generation has already been set, and meta file does not match it - file
     // corrupt or empty.
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason,
+        DataLossErrorReason::METADATA_GENERATION_ID_MISMATCH,
+        DataLossErrorReason::MAX_VALUE);
     return Status(
         error::DATA_LOSS,
         base::StrCat({"Corrupt or empty metafile=", meta_file->name(),
@@ -882,6 +914,10 @@ Status StorageQueue::ReadMetadata(
                                 crypto::kSHA256Length, max_buffer_size);
   if (!read_result.has_value() ||
       read_result.value().size() != crypto::kSHA256Length) {
+    analytics::Metrics::SendEnumToUMA(
+        kUmaDataLossErrorReason,
+        DataLossErrorReason::METADATA_LAST_RECORD_DIGEST_IS_CORRUPT,
+        DataLossErrorReason::MAX_VALUE);
     return Status(error::DATA_LOSS,
                   base::StrCat({"Cannot read metafile=", meta_file->name(),
                                 " status=", read_result.error().ToString()}));
@@ -948,6 +984,10 @@ Status StorageQueue::RestoreMetadata(
     }
   }
   // No valid metadata found. Cannot recover from that.
+  analytics::Metrics::SendEnumToUMA(
+      kUmaDataLossErrorReason,
+      DataLossErrorReason::FAILED_TO_RESTORE_LAST_RECORD_DIGEST,
+      DataLossErrorReason::MAX_VALUE);
   return Status(error::DATA_LOSS,
                 base::StrCat({"Cannot recover last record digest at ",
                               base::NumberToString(next_sequencing_id_ - 1)}));
@@ -1880,6 +1920,10 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     // Serialize wrapped record into a string.
     std::string buffer;
     if (!wrapped_record.SerializeToString(&buffer)) {
+      analytics::Metrics::SendEnumToUMA(
+          kUmaDataLossErrorReason,
+          DataLossErrorReason::FAILED_TO_SERIALIZE_WRAPPED_RECORD,
+          DataLossErrorReason::MAX_VALUE);
       Schedule(&WriteContext::Response, base::Unretained(this),
                Status(error::DATA_LOSS, "Cannot serialize record"));
       return;
@@ -1892,6 +1936,9 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
             google::protobuf::MessageLite::ParseFlags::kParseWithAliasing>(
             buffer)) {
       analytics::Metrics::SendBoolToUMA(kStorageQueueParsingFailureUma, true);
+      analytics::Metrics::SendEnumToUMA(
+          kUmaDataLossErrorReason, DataLossErrorReason::FAILED_TO_PARSE_RECORD,
+          DataLossErrorReason::MAX_VALUE);
       Schedule(&WriteContext::Response, base::Unretained(this),
                Status(error::DATA_LOSS, "Cannot parse record back"));
       return;
@@ -1996,6 +2043,10 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
     }
     std::string buffer;
     if (!encrypted_record.SerializeToString(&buffer)) {
+      analytics::Metrics::SendEnumToUMA(
+          kUmaDataLossErrorReason,
+          DataLossErrorReason::FAILED_TO_SERIALIZE_ENCRYPTED_RECORD,
+          DataLossErrorReason::MAX_VALUE);
       Schedule(&WriteContext::Response, base::Unretained(this),
                Status(error::DATA_LOSS, "Cannot serialize EncryptedRecord"));
       return;
@@ -2723,6 +2774,9 @@ Status StorageQueue::SingleFile::Open(bool read_only) {
                               base::File::FLAG_APPEND | base::File::FLAG_READ));
   if (!handle_ || !handle_->IsValid()) {
     handle_.reset();
+    analytics::Metrics::SendEnumToUMA(kUmaDataLossErrorReason,
+                                      DataLossErrorReason::FAILED_TO_OPEN_FILE,
+                                      DataLossErrorReason::MAX_VALUE);
     return Status(error::DATA_LOSS,
                   base::StrCat({"Cannot open file=", name(), " for ",
                                 read_only ? "read" : "append"}));
@@ -2731,6 +2785,10 @@ Status StorageQueue::SingleFile::Open(bool read_only) {
   if (!read_only) {
     int64_t file_size = handle_->GetLength();
     if (file_size < 0) {
+      analytics::Metrics::SendEnumToUMA(
+          kUmaDataLossErrorReason,
+          DataLossErrorReason::FAILED_TO_GET_SIZE_OF_FILE,
+          DataLossErrorReason::MAX_VALUE);
       return Status(error::DATA_LOSS,
                     base::StrCat({"Cannot get size of file=", name()}));
     }
@@ -2821,6 +2879,9 @@ StatusOr<std::string_view> StorageQueue::SingleFile::Read(
     const int32_t result =
         handle_->Read(pos, buffer_.at(data_end_), buffer_.size() - data_end_);
     if (result < 0) {
+      analytics::Metrics::SendEnumToUMA(
+          kUmaDataLossErrorReason, DataLossErrorReason::FAILED_TO_READ_FILE,
+          DataLossErrorReason::MAX_VALUE);
       return base::unexpected(Status(
           error::DATA_LOSS,
           base::StrCat({"File read error=",
@@ -2870,6 +2931,9 @@ StatusOr<uint32_t> StorageQueue::SingleFile::Append(std::string_view data) {
   while (data.size() > 0) {
     const int32_t result = handle_->Write(size_, data.data(), data.size());
     if (result < 0) {
+      analytics::Metrics::SendEnumToUMA(
+          kUmaDataLossErrorReason, DataLossErrorReason::FAILED_TO_WRITE_FILE,
+          DataLossErrorReason::MAX_VALUE);
       return base::unexpected(Status(
           error::DATA_LOSS,
           base::StrCat({"File write error=",

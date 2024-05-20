@@ -82,7 +82,7 @@ StatusOr<GenerationGuid> StorageDirectory::ParseGenerationGuidFromFilePath(
   // the extension.
   if (full_name.Extension().empty()) {
     return base::unexpected(Status(
-        error::DATA_LOSS,
+        error::NOT_FOUND,
         base::StrCat({"Could not parse generation GUID from queue directory ",
                       full_name.MaybeAsASCII()})));
   }
@@ -94,7 +94,7 @@ StatusOr<GenerationGuid> StorageDirectory::ParseGenerationGuidFromFilePath(
       base::Uuid::ParseCaseInsensitive(extension_without_leading_period);
   if (!generation_guid.is_valid()) {
     return base::unexpected(Status(
-        error::DATA_LOSS,
+        error::NOT_FOUND,
         base::StrCat({"Could not parse generation GUID from queue directory ",
                       full_name.MaybeAsASCII()})));
   }
