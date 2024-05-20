@@ -194,6 +194,18 @@ constexpr char kLastManualConnectAttemptProperty[] = "LastManualConnectAttempt";
 constexpr char kLastConnectedProperty[] = "LastConnected";
 constexpr char kLastOnlineProperty[] = "LastOnline";
 constexpr char kNetworkIDProperty[] = "NetworkID";
+constexpr char kNetworkConfigProperty[] = "NetworkConfig";
+
+// Property names in the NetworkConfig dict.
+constexpr char kNetworkConfigIPv4AddressProperty[] = "IPv4Address";
+constexpr char kNetworkConfigIPv4GatewayProperty[] = "IPv4Gateway";
+constexpr char kNetworkConfigIPv6AddressesProperty[] = "IPv6Addresses";
+constexpr char kNetworkConfigIPv6GatewayProperty[] = "IPv6Gateway";
+constexpr char kNetworkConfigNameServersProperty[] = "NameServers";
+constexpr char kNetworkConfigSearchDomainsProperty[] = "SearchDomains";
+constexpr char kNetworkConfigMTUProperty[] = "MTU";
+constexpr char kNetworkConfigIncludedRoutesProperty[] = "IncludedRoutes";
+constexpr char kNetworkConfigExcludedRoutesProperty[] = "ExcludedRoutes";
 
 // Cellular Service property names.
 constexpr char kActivationStateProperty[] = "Cellular.ActivationState";

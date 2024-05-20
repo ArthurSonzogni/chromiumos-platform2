@@ -196,6 +196,8 @@ class ServiceStubAdaptor : public ServiceAdaptorInterface {
                             const Stringmap& value) override {}
   void EmitStringmapsChanged(const std::string& name,
                              const Stringmaps& value) override {}
+  void EmitKeyValueStoreChanged(const std::string& name,
+                                const KeyValueStore& value) override {}
 
  private:
   RpcIdentifier rpc_id_{"/service_rpc"};
@@ -236,6 +238,10 @@ class ServiceMockAdaptor : public ServiceStubAdaptor {
   MOCK_METHOD(void,
               EmitStringmapsChanged,
               (const std::string&, const Stringmaps&),
+              (override));
+  MOCK_METHOD(void,
+              EmitKeyValueStoreChanged,
+              (const std::string&, const KeyValueStore&),
               (override));
 };
 

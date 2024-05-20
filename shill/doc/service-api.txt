@@ -842,6 +842,8 @@ Properties	boolean AutoConnect [readwrite]
 
 		object IPConfig [readonly]
 
+			Deprecated. Prefer using NetworkConfig property instead.
+
 			The object path of the associated IP configuration.
 			This value only exists when the service is connected,
 			and is used used to retrieve Layer 3 configuration
@@ -1022,6 +1024,32 @@ Properties	boolean AutoConnect [readwrite]
 			visible WiFi networks, this may contain the SSID.
 
 			See also the WiFi.HexSSID property.
+
+		dict NetworkConfig [readonly]
+
+			The network layer configuration on this service. It will
+			be an empty dict if the service does not have an
+			attached network. Otherwise, it will contain the
+			following fields (all fields are mandatory, but may have
+			an empty value):
+
+				string IPv4Address
+				string IPv4Gateway
+				array{string} IPv6Addresses
+				string IPv6Gateway
+				array{string} NameServers
+				array{string} SearchDomains
+				array{string} ExcludedRoutes
+				array{string} IncludedRoutes
+				int32 MTU
+
+			IPv4Address and IPv6Addresses are the addresses on the
+			current network, in CIDR form (e.g., "192.168.0.2/24").
+
+			ExcludedRoutes and IncludedRoutes are the prefixes (in
+			CIDR form) for the destinations which should not or
+			should be routed via this network. These two properties
+			are only meaningful for a VPN service.
 
 		string ObjectPathSuffix [writeonly]
 

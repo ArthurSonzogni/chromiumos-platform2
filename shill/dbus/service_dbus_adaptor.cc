@@ -109,6 +109,14 @@ void ServiceDBusAdaptor::EmitStringmapsChanged(const std::string& name,
   SendPropertyChangedSignal(name, brillo::Any(value));
 }
 
+void ServiceDBusAdaptor::EmitKeyValueStoreChanged(const std::string& name,
+                                                  const KeyValueStore& value) {
+  SLOG(this, 2) << __func__ << ": " << name;
+  brillo::VariantDictionary dict =
+      KeyValueStore::ConvertToVariantDictionary(value);
+  SendPropertyChangedSignal(name, brillo::Any(dict));
+}
+
 bool ServiceDBusAdaptor::GetProperties(brillo::ErrorPtr* error,
                                        brillo::VariantDictionary* properties) {
   SLOG(this, 2) << __func__;

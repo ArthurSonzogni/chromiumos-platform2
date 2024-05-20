@@ -146,6 +146,8 @@ class ServiceAdaptorInterface {
                                     const Stringmap& value) = 0;
   virtual void EmitStringmapsChanged(const std::string& name,
                                      const Stringmaps& value) = 0;
+  virtual void EmitKeyValueStoreChanged(const std::string& name,
+                                        const KeyValueStore& value) = 0;
 };
 
 class ThirdPartyVpnAdaptorInterface {

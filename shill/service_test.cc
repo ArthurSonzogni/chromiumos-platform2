@@ -52,6 +52,14 @@
 #include "shill/store/property_store_test.h"
 #include "shill/testing.h"
 
+using net_base::IPAddress;
+using net_base::IPCIDR;
+using net_base::IPv4Address;
+using net_base::IPv4CIDR;
+using net_base::IPv6Address;
+using net_base::IPv6CIDR;
+using net_base::NetworkConfig;
+
 using testing::_;
 using testing::AnyNumber;
 using testing::AtLeast;
@@ -3348,6 +3356,154 @@ TEST_F(ServiceTest, CheckPortalStateNames) {
                          Service::CheckPortalState::kFalse));
   EXPECT_EQ("auto", Service::CheckPortalStateToString(
                         Service::CheckPortalState::kAutomatic));
+}
+
+class ServiceNetworkConfigTest : public ServiceTest {
+ protected:
+  static constexpr char kIPv4Addr[] = "1.2.3.4/24";
+  static constexpr char kIPv4Gateway[] = "1.2.3.5";
+  static constexpr char kIPv6Addr1[] = "fd00::1/64";
+  static constexpr char kIPv6Addr2[] = "fd00::2/64";
+  static constexpr char kIPv6Gateway[] = "fd00::3";
+  static constexpr char kDNS1[] = "4.3.2.1";
+  static constexpr char kDNS2[] = "4.3.2.2";
+  static constexpr char kDNS3[] = "fdfd::1";
+  static constexpr char kSearchDomain1[] = "domain1";
+  static constexpr char kSearchDomain2[] = "domain2";
+  static constexpr char kIncludedRoute1[] = "10.10.10.0/24";
+  static constexpr char kIncludedRoute2[] = "fd01::/64";
+  static constexpr char kExcludedRoute1[] = "fd02::/128";
+  static constexpr char kExcludedRoute2[] = "10.20.30.0/24";
+  static constexpr int kMTU = 1400;
+
+  ServiceNetworkConfigTest()
+      : network_(Network::CreateForTesting(1,
+                                           "test_ifname",
+                                           Technology::kEthernet,
+                                           false,
+                                           nullptr,
+                                           nullptr,
+                                           nullptr,
+                                           nullptr)) {}
+
+  void SetNetworkConfigOnNetwork(const NetworkConfig& config) {
+    // In this test we only need to update the merged NetworkConfig on the
+    // network object. It doesn't matter which NetworkConfig we're setting here.
+    network_->set_link_protocol_network_config(
+        std::make_unique<NetworkConfig>(config));
+  }
+
+  brillo::VariantDictionary GetNetworkConfigOnService() {
+    brillo::VariantDictionary props;
+    Error error;
+    service_->store().GetProperties(&props, &error);
+    return props[kNetworkConfigProperty].Get<brillo::VariantDictionary>();
+  }
+
+  std::unique_ptr<Network> network_;
+};
+
+TEST_F(ServiceNetworkConfigTest, NonEmptyValues) {
+  service_->AttachNetwork(network_->AsWeakPtr());
+
+  NetworkConfig config;
+  config.ipv4_address = *IPv4CIDR::CreateFromCIDRString(kIPv4Addr);
+  config.ipv4_gateway = *IPv4Address::CreateFromString(kIPv4Gateway);
+  config.ipv6_addresses = {
+      *IPv6CIDR::CreateFromCIDRString(kIPv6Addr1),
+      *IPv6CIDR::CreateFromCIDRString(kIPv6Addr2),
+  };
+  config.ipv6_gateway = *IPv6Address::CreateFromString(kIPv6Gateway);
+  config.dns_servers = {
+      *IPAddress::CreateFromString(kDNS1),
+      *IPAddress::CreateFromString(kDNS2),
+      *IPAddress::CreateFromString(kDNS3),
+  };
+  config.dns_search_domains = {kSearchDomain1, kSearchDomain2};
+  config.included_route_prefixes = {
+      *IPCIDR::CreateFromCIDRString(kIncludedRoute1),
+      *IPCIDR::CreateFromCIDRString(kIncludedRoute2),
+  };
+  config.excluded_route_prefixes = {
+      *IPCIDR::CreateFromCIDRString(kExcludedRoute1),
+      *IPCIDR::CreateFromCIDRString(kExcludedRoute2),
+  };
+  config.mtu = kMTU;
+
+  SetNetworkConfigOnNetwork(config);
+
+  brillo::VariantDictionary actual = GetNetworkConfigOnService();
+
+  EXPECT_EQ(actual[kNetworkConfigIPv4AddressProperty].Get<std::string>(),
+            kIPv4Addr);
+  EXPECT_EQ(actual[kNetworkConfigIPv4GatewayProperty].Get<std::string>(),
+            kIPv4Gateway);
+  EXPECT_EQ(actual[kNetworkConfigIPv6AddressesProperty]
+                .Get<std::vector<std::string>>(),
+            std::vector<std::string>({kIPv6Addr1, kIPv6Addr2}));
+  EXPECT_EQ(actual[kNetworkConfigIPv6GatewayProperty].Get<std::string>(),
+            kIPv6Gateway);
+  EXPECT_EQ(
+      actual[kNetworkConfigNameServersProperty].Get<std::vector<std::string>>(),
+      std::vector<std::string>({kDNS1, kDNS2, kDNS3}));
+  EXPECT_EQ(actual[kNetworkConfigSearchDomainsProperty]
+                .Get<std::vector<std::string>>(),
+            std::vector<std::string>({kSearchDomain1, kSearchDomain2}));
+  EXPECT_EQ(actual[kNetworkConfigIncludedRoutesProperty],
+            std::vector<std::string>({kIncludedRoute1, kIncludedRoute2}));
+  EXPECT_EQ(actual[kNetworkConfigExcludedRoutesProperty],
+            std::vector<std::string>({kExcludedRoute1, kExcludedRoute2}));
+  EXPECT_EQ(actual[kNetworkConfigMTUProperty], kMTU);
+}
+
+TEST_F(ServiceNetworkConfigTest, DefaultValues) {
+  service_->AttachNetwork(network_->AsWeakPtr());
+
+  brillo::VariantDictionary actual = GetNetworkConfigOnService();
+
+  EXPECT_EQ(actual[kNetworkConfigIPv4AddressProperty].Get<std::string>(), "");
+  EXPECT_EQ(actual[kNetworkConfigIPv4GatewayProperty].Get<std::string>(), "");
+  EXPECT_EQ(actual[kNetworkConfigIPv6AddressesProperty]
+                .Get<std::vector<std::string>>(),
+            std::vector<std::string>());
+  EXPECT_EQ(actual[kNetworkConfigIPv6GatewayProperty].Get<std::string>(), "");
+  EXPECT_EQ(
+      actual[kNetworkConfigNameServersProperty].Get<std::vector<std::string>>(),
+      std::vector<std::string>());
+  EXPECT_EQ(actual[kNetworkConfigSearchDomainsProperty]
+                .Get<std::vector<std::string>>(),
+            std::vector<std::string>());
+  EXPECT_EQ(actual[kNetworkConfigIncludedRoutesProperty],
+            std::vector<std::string>());
+  EXPECT_EQ(actual[kNetworkConfigExcludedRoutesProperty],
+            std::vector<std::string>());
+  EXPECT_EQ(actual[kNetworkConfigMTUProperty], 0);
+}
+
+TEST_F(ServiceNetworkConfigTest, EmptyNetworkConfig) {
+  brillo::VariantDictionary actual = GetNetworkConfigOnService();
+  EXPECT_EQ(0, actual.size());
+}
+
+TEST_F(ServiceNetworkConfigTest, EmitChangeOnNetworkConfigChanges) {
+  service_->AttachNetwork(network_->AsWeakPtr());
+  EXPECT_CALL(*GetAdaptor(),
+              EmitKeyValueStoreChanged(kNetworkConfigProperty, _));
+  service_->network_event_handler()->OnIPConfigsPropertyUpdated(
+      /*interface_index=*/1);
+}
+
+TEST_F(ServiceNetworkConfigTest, EmitChangeOnAttachNetwork) {
+  EXPECT_CALL(*GetAdaptor(),
+              EmitKeyValueStoreChanged(kNetworkConfigProperty, _));
+  service_->AttachNetwork(network_->AsWeakPtr());
+}
+
+TEST_F(ServiceNetworkConfigTest, EmitChangeOnDetachNetwork) {
+  service_->AttachNetwork(network_->AsWeakPtr());
+  EXPECT_CALL(*GetAdaptor(),
+              EmitKeyValueStoreChanged(kNetworkConfigProperty, _));
+  service_->AttachNetwork(nullptr);
 }
 
 }  // namespace shill

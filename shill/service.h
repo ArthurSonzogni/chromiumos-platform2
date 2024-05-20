@@ -256,6 +256,10 @@ class Service : public base::RefCounted<Service> {
     void OnNetworkValidationResult(
         int interface_index, const NetworkMonitor::Result& result) override;
 
+    // Ensures that the Service can emit signal of NetworkConfig property
+    // change properly.
+    void OnIPConfigsPropertyUpdated(int interface_index) override;
+
    protected:
     Service* service_;
   };
@@ -472,6 +476,8 @@ class Service : public base::RefCounted<Service> {
   // Notifies D-Bus listeners of a IPConfig change event if the new IPConfig is
   // not empty.
   void EmitIPConfigPropertyChange();
+  // Notifies D-Bus listeners of a change event of the NetworkConfig property.
+  void EmitNetworkConfigPropertyChange();
 
   // Returns the virtual device associated with this service. Currently this
   // will return a Device pointer only for a connected VPN service.
@@ -1091,6 +1097,9 @@ class Service : public base::RefCounted<Service> {
 
   // Getter for the SavedIPConfig property in D-Bus API.
   KeyValueStore GetSavedIPConfig(Error* /*error*/);
+
+  // Getter for the NetworkConfig property in D-Bus API.
+  KeyValueStore GetNetworkConfigDict(Error* /*error*/);
 
   void InitializeServiceStateTransitionMetrics();
   void UpdateServiceStateTransitionMetrics(Service::ConnectState new_state);

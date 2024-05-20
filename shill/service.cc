@@ -354,6 +354,11 @@ Service::Service(Manager* manager, Technology technology)
       KeyValueStoreAccessor(new CustomAccessor<Service, KeyValueStore>(
           this, &Service::GetSavedIPConfig, nullptr)));
 
+  store_.RegisterDerivedKeyValueStore(
+      kNetworkConfigProperty,
+      KeyValueStoreAccessor(new CustomAccessor<Service, KeyValueStore>(
+          this, &Service::GetNetworkConfigDict, nullptr)));
+
   IgnoreParameterForConfigure(kTypeProperty);
   IgnoreParameterForConfigure(kProfileProperty);
 
@@ -1201,6 +1206,7 @@ void Service::AttachNetwork(base::WeakPtr<Network> network) {
   attached_network_ = network;
   adaptor_->EmitIntChanged(kNetworkIDProperty, network->network_id());
   EmitIPConfigPropertyChange();
+  EmitNetworkConfigPropertyChange();
   attached_network_->RegisterCurrentIPConfigChangeHandler(base::BindRepeating(
       &Service::EmitIPConfigPropertyChange, weak_ptr_factory_.GetWeakPtr()));
   attached_network_->OnStaticIPConfigChanged(static_ip_parameters_.config());
@@ -1218,6 +1224,7 @@ void Service::DetachNetwork() {
   attached_network_->RegisterCurrentIPConfigChangeHandler({});
   attached_network_->OnStaticIPConfigChanged({});
   attached_network_ = nullptr;
+  EmitNetworkConfigPropertyChange();
   EmitIPConfigPropertyChange();
   adaptor_->EmitIntChanged(kNetworkIDProperty, 0);
 }
@@ -1243,6 +1250,64 @@ KeyValueStore Service::GetSavedIPConfig(Error* /*error*/) {
   const auto* saved_network_config = attached_network_->GetSavedIPConfig();
   return StaticIPParameters::NetworkConfigToKeyValues(
       saved_network_config ? *saved_network_config : net_base::NetworkConfig{});
+}
+
+// Helper functions used in `GetNetworkConfigDict()` below. Ideally these can be
+// lambda functions defined only in that function, but cpplint is unhappy with
+// the templated lambda functions and NOLINT does not help (b/303257041).
+namespace {
+
+// Updates the value for |key| in dict |kvs|. If |val| is nullopt, sets the
+// value to an empty string; otherwise set the value to `val->ToString()`.
+template <class T>
+void KeyValueStoreSetStringFromOptional(std::string_view key,
+                                        const std::optional<T>& val,
+                                        KeyValueStore& kvs) {
+  kvs.Set<std::string>(key, val.has_value() ? val->ToString() : "");
+}
+
+// Updates the value for |key| in dict |kvs|. Call `ToString()` on each item in
+// |vec| and sets the value to the resulted vector.
+template <class T>
+void KeyValueStoreSetStringsFromVector(std::string_view key,
+                                       const std::vector<T>& vec,
+                                       KeyValueStore& kvs) {
+  Strings val;
+  for (const auto& item : vec) {
+    val.push_back(item.ToString());
+  }
+  kvs.Set<Strings>(key, val);
+}
+
+}  // namespace
+
+KeyValueStore Service::GetNetworkConfigDict(Error* /*error*/) {
+  if (!attached_network_) {
+    return {};
+  }
+  const net_base::NetworkConfig& config = attached_network_->GetNetworkConfig();
+
+  KeyValueStore kvs;
+
+  KeyValueStoreSetStringFromOptional(kNetworkConfigIPv4AddressProperty,
+                                     config.ipv4_address, kvs);
+  KeyValueStoreSetStringFromOptional(kNetworkConfigIPv4GatewayProperty,
+                                     config.ipv4_gateway, kvs);
+  KeyValueStoreSetStringsFromVector(kNetworkConfigIPv6AddressesProperty,
+                                    config.ipv6_addresses, kvs);
+  KeyValueStoreSetStringFromOptional(kNetworkConfigIPv6GatewayProperty,
+                                     config.ipv6_gateway, kvs);
+  KeyValueStoreSetStringsFromVector(kNetworkConfigNameServersProperty,
+                                    config.dns_servers, kvs);
+  kvs.Set<Strings>(kNetworkConfigSearchDomainsProperty,
+                   config.dns_search_domains);
+  KeyValueStoreSetStringsFromVector(kNetworkConfigIncludedRoutesProperty,
+                                    config.included_route_prefixes, kvs);
+  KeyValueStoreSetStringsFromVector(kNetworkConfigExcludedRoutesProperty,
+                                    config.excluded_route_prefixes, kvs);
+  kvs.Set<int>(kNetworkConfigMTUProperty, config.mtu.value_or(0));
+
+  return kvs;
 }
 
 VirtualDeviceRefPtr Service::GetVirtualDevice() const {
@@ -2747,5 +2812,15 @@ void Service::NetworkEventHandler::OnNetworkValidationResult(
       service_->SetState(Service::kStateNoConnectivity);
       break;
   }
+}
+
+void Service::NetworkEventHandler::OnIPConfigsPropertyUpdated(
+    int interface_index) {
+  service_->EmitNetworkConfigPropertyChange();
+}
+
+void Service::EmitNetworkConfigPropertyChange() {
+  adaptor_->EmitKeyValueStoreChanged(kNetworkConfigProperty,
+                                     GetNetworkConfigDict(nullptr));
 }
 }  // namespace shill
