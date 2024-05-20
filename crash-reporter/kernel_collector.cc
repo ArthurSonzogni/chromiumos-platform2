@@ -716,7 +716,7 @@ std::vector<CrashCollectionStatus> KernelCollector::CollectEfiCrashes(
     bool use_saved_lsb) {
   SetUseSavedLsb(use_saved_lsb);
   // List of efi crashes.
-  std::vector<KernelCollector::EfiCrash> efi_crashes = FindEfiCrashes();
+  const std::vector<KernelCollector::EfiCrash> efi_crashes = FindEfiCrashes();
 
   LOG(INFO) << "Found " << efi_crashes.size()
             << " kernel crashes in efi-pstore.";
