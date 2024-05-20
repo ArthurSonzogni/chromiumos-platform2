@@ -98,6 +98,12 @@ class StreamManipulatorHelper {
     std::optional<uint32_t> max_enlarged_video_source_width;
     std::optional<uint32_t> max_enlarged_video_source_height;
 
+    // For video processing, keep the client YUV streams that are generated from
+    // the processing stream in the stream config. This allows video stream
+    // buffers to be bypassed as-is at runtime, but the HAL needs to support
+    // more stream combinations.
+    bool preserve_client_video_streams = true;
+
     // Result metadata tags that will be copied and carried to process tasks
     // for visibility and modification.
     std::vector<uint32_t> result_metadata_tags_to_update;

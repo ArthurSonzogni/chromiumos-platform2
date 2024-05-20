@@ -545,7 +545,7 @@ const TestCase g_test_cases[] =
                          .height = 360,
                          .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
                     },
-                .expected_configured_stream_indices = {0, 1},
+                .expected_configured_stream_indices = {0, 1, 2},
                 .expected_extra_configured_streams =
                     {
                         {1920, 1080, HAL_PIXEL_FORMAT_YCBCR_420_888,
@@ -578,7 +578,7 @@ const TestCase g_test_cases[] =
                          .height = 720,
                          .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
                     },
-                .expected_configured_stream_indices = {0},
+                .expected_configured_stream_indices = {0, 1},
                 .expected_extra_configured_streams =
                     {
                         {2592, 1944, HAL_PIXEL_FORMAT_YCBCR_420_888,
@@ -683,7 +683,7 @@ const TestCase g_test_cases[] =
                          .height = 480,
                          .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
                     },
-                .expected_configured_stream_indices = {},
+                .expected_configured_stream_indices = {0, 1},
                 .expected_extra_configured_streams =
                     {
                         {1280, 960, HAL_PIXEL_FORMAT_YCBCR_420_888,
@@ -722,7 +722,7 @@ const TestCase g_test_cases[] =
                          .height = 480,
                          .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
                     },
-                .expected_configured_stream_indices = {0},
+                .expected_configured_stream_indices = {0, 1, 2},
                 .expected_extra_configured_streams =
                     {
                         {2592, 1944, HAL_PIXEL_FORMAT_YCBCR_420_888,
@@ -792,7 +792,8 @@ const TestCase g_test_cases[] =
         [10] =
             {
                 .helper_configs = {{.process_mode =
-                                        ProcessMode::kVideoAndStillProcess}},
+                                        ProcessMode::kVideoAndStillProcess,
+                                    .preserve_client_video_streams = false}},
                 .available_formats = {{1920, 1080,
                                        HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
                                       {1280, 960,
@@ -831,7 +832,7 @@ const TestCase g_test_cases[] =
                          .height = 360,
                          .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
                     },
-                .expected_configured_stream_indices = {},
+                .expected_configured_stream_indices = {0},
                 .expected_extra_configured_streams =
                     {
                         {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888,
@@ -845,7 +846,8 @@ const TestCase g_test_cases[] =
                         {.process_mode = ProcessMode::kVideoAndStillProcess,
                          .prefer_large_source = true,
                          .max_enlarged_video_source_width = 1600,
-                         .max_enlarged_video_source_height = 1080},
+                         .max_enlarged_video_source_height = 1080,
+                         .preserve_client_video_streams = false},
                     },
                 .available_formats =
                     {
@@ -867,6 +869,62 @@ const TestCase g_test_cases[] =
                 .expected_configured_stream_indices = {0},
                 .expected_extra_configured_streams = {},
             },
+        // Removing generated video streams.
+        [13] =
+            {
+                .helper_configs =
+                    {
+                        {.process_mode = ProcessMode::kVideoAndStillProcess,
+                         .preserve_client_video_streams = false},
+                    },
+                .available_formats =
+                    {
+                        {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {640, 360, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                    },
+                .active_array_size = Size(2592, 1944),
+                .streams =
+                    {
+                        {.width = 1280,
+                         .height = 720,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                        {.width = 640,
+                         .height = 360,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                    },
+                .expected_configured_stream_indices = {0},
+                .expected_extra_configured_streams = {},
+            },
+        [14] =
+            {
+                .helper_configs =
+                    {
+                        {.process_mode = ProcessMode::kVideoAndStillProcess,
+                         .preserve_client_video_streams = false},
+                    },
+                .available_formats =
+                    {
+                        {1280, 960, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {640, 480, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                    },
+                .active_array_size = Size(2592, 1944),
+                .streams =
+                    {
+                        {.width = 1280,
+                         .height = 720,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                        {.width = 640,
+                         .height = 480,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                    },
+                .expected_configured_stream_indices = {},
+                .expected_extra_configured_streams =
+                    {
+                        {1280, 960, HAL_PIXEL_FORMAT_YCBCR_420_888,
+                         kProcessStreamUsageFlags},
+                    },
+            },
 };
 
 INSTANTIATE_TEST_SUITE_P(,
@@ -881,6 +939,7 @@ const TestCase g_simple_test_case = {
     .helper_configs =
         {
             {.process_mode = ProcessMode::kVideoAndStillProcess,
+             .preserve_client_video_streams = false,
              .result_metadata_tags_to_update = {ANDROID_SENSOR_TIMESTAMP}},
         },
     .available_formats =
@@ -912,6 +971,7 @@ const TestCase g_complex_test_case = {
         {
             {.process_mode = ProcessMode::kVideoAndStillProcess,
              .prefer_large_source = true,
+             .preserve_client_video_streams = false,
              .result_metadata_tags_to_update = {ANDROID_SENSOR_TIMESTAMP}},
         },
     .available_formats =
@@ -954,7 +1014,8 @@ const TestCase g_complex_test_case = {
 const TestCase g_upscaling_test_case = {
     .helper_configs =
         {
-            {.process_mode = ProcessMode::kVideoAndStillProcess},
+            {.process_mode = ProcessMode::kVideoAndStillProcess,
+             .preserve_client_video_streams = false},
         },
     .available_formats =
         {
@@ -1285,7 +1346,7 @@ TEST_F(StreamManipulatorHelperTest, UpscalingProcessedStream) {
   }
 }
 
-TEST_F(StreamManipulatorHelperTest, RuntimeBypass) {
+TEST_F(StreamManipulatorHelperTest, RuntimeBypassWithCopy) {
   SetUpWithTestCase(g_complex_test_case);
   camera3_stream_t* blob_stream = &streams_[0];
   camera3_stream_t* still_output_stream = &streams_[1];
@@ -1317,6 +1378,8 @@ TEST_F(StreamManipulatorHelperTest, RuntimeBypass) {
     ValidateResult(TakeLastReturnedResult(), fn,
                    {{video_output_streams[0], *video_outputs[0],
                      CAMERA3_BUFFER_STATUS_OK}});
+    EXPECT_TRUE(manipulator(0).HasCropScaledBuffer(
+        video_input, *video_outputs[0], kCropFull));
   }
 
   // Bypass BLOB and replace still YUV stream without processing.
@@ -1340,6 +1403,37 @@ TEST_F(StreamManipulatorHelperTest, RuntimeBypass) {
          {blob_stream, *blob, CAMERA3_BUFFER_STATUS_OK}});
     EXPECT_TRUE(manipulator(0).HasCropScaledBuffer(still_input, *still_output,
                                                    kCrop4x3To16x9));
+  }
+}
+
+TEST_F(StreamManipulatorHelperTest, RuntimeBypassWithoutCopy) {
+  TestCase test_case = g_complex_test_case;
+  test_case.helper_configs[0].preserve_client_video_streams = true;
+  test_case.expected_configured_stream_indices = {0, 2, 3};
+  SetUpWithTestCase(test_case);
+  camera3_stream_t* video_streams[] = {&streams_[2], &streams_[3]};
+
+  std::vector<ScopedBufferHandle> video_outputs;
+  for (auto& s : video_streams) {
+    video_outputs.push_back(AllocateBuffer(s));
+  }
+
+  manipulator(0).SetBypassProcess(true);
+
+  {
+    const uint32_t fn = 1;
+    Camera3CaptureDescriptor request =
+        MakeRequest(fn, {{video_streams[0], video_outputs[0].get()}});
+    SendRequest(&request);
+    EXPECT_EQ(request.num_output_buffers(), 1);
+    buffer_handle_t video_input = FindBuffer(request, video_streams[0]).first;
+    EXPECT_EQ(video_input, *video_outputs[0]);
+
+    SendResult(MakeResult(fn, {{video_streams[0], &video_input}},
+                          partial_result_count_));
+    ValidateResult(
+        TakeLastReturnedResult(), fn,
+        {{video_streams[0], *video_outputs[0], CAMERA3_BUFFER_STATUS_OK}});
   }
 }
 

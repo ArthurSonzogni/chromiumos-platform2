@@ -19,7 +19,7 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/containers/fixed_flat_set.h>
+#include <base/containers/flat_set.h>
 #include <base/containers/span.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
@@ -361,7 +361,9 @@ bool StreamManipulatorHelper::PreConfigure(
   }
   if (video_process_input_stream_.has_value()) {
     streams_to_configure.insert(video_process_input_stream_->ptr());
-  } else {
+  }
+  if (config_.preserve_client_video_streams ||
+      !video_process_input_stream_.has_value()) {
     streams_to_configure.insert(video_yuv_streams.begin(),
                                 video_yuv_streams.end());
   }
@@ -441,7 +443,6 @@ void StreamManipulatorHelper::PostConfigure(
 
   std::vector<camera3_stream_t*> streams;
   for (auto& [s, t] : client_stream_to_type_) {
-    // Configure the streams that are not passed down.
     switch (t) {
       case StreamType::kStillYuvToGenerate:
         CHECK(still_process_input_stream_.has_value());
@@ -578,7 +579,8 @@ void StreamManipulatorHelper::HandleRequest(
 
   // Setup video YUV stream for processing or generating other streams.
   if (video_yuv_buffer_to_process.has_value() ||
-      !video_yuv_buffers_to_generate.empty()) {
+      (!video_yuv_buffers_to_generate.empty() &&
+       (!bypass_process || !config_.preserve_client_video_streams))) {
     StreamContext& stream_ctx =
         capture_ctx.requested_streams[video_process_input_stream_->ptr()];
     if (bypass_process && video_yuv_buffer_to_process.has_value()) {
@@ -602,8 +604,20 @@ void StreamManipulatorHelper::HandleRequest(
             std::move(video_yuv_buffer_to_process.value()));
       }
     }
-    stream_ctx.client_yuv_buffers_to_generate =
-        std::move(video_yuv_buffers_to_generate);
+  }
+
+  // Setup the other video YUV streams that are generated or bypassed.
+  if (!video_yuv_buffers_to_generate.empty()) {
+    if (bypass_process && config_.preserve_client_video_streams) {
+      for (auto& b : video_yuv_buffers_to_generate) {
+        capture_ctx.requested_streams[b.stream()] = StreamContext{};
+        request->AppendOutputBuffer(std::move(b));
+      }
+    } else {
+      capture_ctx.requested_streams[video_process_input_stream_->ptr()]
+          .client_yuv_buffers_to_generate =
+          std::move(video_yuv_buffers_to_generate);
+    }
   }
 }
 
