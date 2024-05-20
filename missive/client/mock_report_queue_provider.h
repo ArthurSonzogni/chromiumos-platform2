@@ -72,7 +72,6 @@ class MockReportQueueProvider : public ReportQueueProvider {
       std::unique_ptr<ReportQueueConfiguration> report_queue_config,
       ReportQueueConfiguredCallback completion_cb) override;
 
-  scoped_refptr<StorageModuleInterface> storage_;
   SEQUENCE_CHECKER(test_sequence_checker_);
 };
 

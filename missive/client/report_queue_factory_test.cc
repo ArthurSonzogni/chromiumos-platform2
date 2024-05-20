@@ -10,7 +10,6 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/test/task_environment.h>
-#include <brillo/backoff_entry.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

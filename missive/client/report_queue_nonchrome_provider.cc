@@ -29,15 +29,26 @@
 
 namespace reporting {
 
+namespace {
+
+void CreateMissiveStorageModule(
+    base::OnceCallback<void(StatusOr<scoped_refptr<StorageModuleInterface>>)>
+        cb) {
+  MissiveClient* const missive_client = MissiveClient::Get();
+  if (!missive_client) {
+    std::move(cb).Run(base::unexpected(Status(
+        error::FAILED_PRECONDITION,
+        "Missive Client unavailable, probably has not been initialized")));
+    return;
+  }
+  // Refer to the storage module.
+  MissiveStorageModule::Create(std::move(cb));
+}
+}  // namespace
+
 NonChromeReportQueueProvider::NonChromeReportQueueProvider()
-    : ReportQueueProvider(
-          base::BindRepeating(
-              [](base::OnceCallback<void(
-                     StatusOr<scoped_refptr<StorageModuleInterface>>)>
-                     storage_created_cb) {
-                CreateMissiveStorageModule(std::move(storage_created_cb));
-              }),
-          base::SequencedTaskRunner::GetCurrentDefault()),
+    : ReportQueueProvider(base::BindRepeating(&CreateMissiveStorageModule),
+                          base::SequencedTaskRunner::GetCurrentDefault()),
       actual_provider_(this) {}
 
 void NonChromeReportQueueProvider::ConfigureReportQueue(
@@ -98,21 +109,6 @@ NonChromeReportQueueProvider* NonChromeReportQueueProvider::GetInstance() {
 void NonChromeReportQueueProvider::SetForTesting(
     ReportQueueProvider* provider) {
   actual_provider_ = provider;
-}
-
-// static
-void NonChromeReportQueueProvider::CreateMissiveStorageModule(
-    base::OnceCallback<void(StatusOr<scoped_refptr<StorageModuleInterface>>)>
-        cb) {
-  MissiveClient* const missive_client = MissiveClient::Get();
-  if (!missive_client) {
-    std::move(cb).Run(base::unexpected(Status(
-        error::FAILED_PRECONDITION,
-        "Missive Client unavailable, probably has not been initialized")));
-    return;
-  }
-  // Refer to the storage module.
-  MissiveStorageModule::Create(std::move(cb));
 }
 
 // static

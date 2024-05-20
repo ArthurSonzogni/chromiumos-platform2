@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "missive/client/report_queue_provider.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -24,7 +25,6 @@
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_provider_test_helper.h"
 #include "missive/util/status_macros.h"
-#include "missive/util/statusor.h"
 #include "missive/util/test_support_callbacks.h"
 
 // Temporary replacement for `Priority_Name` that does

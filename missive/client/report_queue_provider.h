@@ -17,20 +17,22 @@
 
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
-#include "missive/storage/storage_module_interface.h"
 #include "missive/util/statusor.h"
 
 namespace reporting {
 
-// ReportQueueProvider acts a single point for instantiating
-// |reporting::ReportQueue|s. By performing initialization atomically it ensures
+class StorageModuleInterface;
+
+// Externally ReportQueueProvider acts a single point for instantiating
+// `reporting::ReportQueue`s. By performing initialization atomically it ensures
 // that all ReportQueues are created with the same global settings.
 //
-// In order to utilize the ReportQueueProvider the EncryptedReportingPipeline
-// feature must be turned on using --enable-features=EncryptedReportingPipeline.
+// In order to utilize `ReportQueueProvider` the EncryptedReportingPipeline
+// feature must be turned (by default). It can be disabled by
+// --disable-features=EncryptedReportingPipeline.
 //
 // ReportQueueProvider is a singleton which can be accessed through
-// |ReportQueueProvider::GetInstance|. This static method must be implemented
+// `ReportQueueProvider::GetInstance`. This static method must be implemented
 // for a specific configuration - Chrome (for ChromeOS and for other OSes),
 // other ChromeOS executables.
 //
@@ -79,12 +81,12 @@ class ReportQueueProvider {
   using CreateReportQueueResponse = StatusOr<std::unique_ptr<ReportQueue>>;
 
   // The response will come back utilizing the ReportQueueProvider's thread. It
-  // is likely that within Chromium you will want to the response to come back
+  // is likely that within Chromium you will want for the response to come back
   // on your own thread. The simplest way to achieve that is to pass a
   // base::BindPostTask rather than a base::OnceCallback. Another way to achieve
-  // the same result is to utilize base::OnceCallback, and capture the response
-  // and forward it to your own thread. We maintain base::OnceCallback here for
-  // use in ChromiumOS.
+  // the same result is to utilize base::OnceCallback, capture the response and
+  // forward it to your own thread. We maintain base::OnceCallback here for use
+  // in ChromiumOS.
   using CreateReportQueueCallback =
       base::OnceCallback<void(CreateReportQueueResponse)>;
 
@@ -189,7 +191,6 @@ class ReportQueueProvider {
   // Weak pointer factory.
   base::WeakPtrFactory<ReportQueueProvider> weak_ptr_factory_{this};
 };
-
 }  // namespace reporting
 
 #endif  // MISSIVE_CLIENT_REPORT_QUEUE_PROVIDER_H_

@@ -6,11 +6,9 @@
 #define MISSIVE_CLIENT_REPORT_QUEUE_FACTORY_H_
 
 #include <memory>
-#include <string_view>
 
 #include <base/functional/callback.h>
 #include <base/task/sequenced_task_runner.h>
-#include <brillo/backoff_entry.h>
 
 #include <missive/client/report_queue.h>
 #include <missive/client/report_queue_configuration.h>
@@ -24,19 +22,17 @@ namespace reporting {
 // fails.
 //
 // To synchronously create `SpeculativeReportQueue`:
-//    ... = ReportQueueFactory::CreateSpeculativeReportQueue(dm_token,
-//    destination[, reserved_space]);
+//    ... = ReportQueueFactory::CreateSpeculativeReportQueue(
+//              dm_token, destination[, reserved_space]);
 //
 // To asynchronously create `ReportQueue` (currently used in tests only):
-//    ReportQueueFactory::Create(event_type, destination, success_callback[,
-//    reserved_space]);
+//    ReportQueueFactory::Create(event_type, destination,
+//                               success_callback[, reserved_space]);
 //
 class ReportQueueFactory {
  public:
   using SuccessCallback =
       base::OnceCallback<void(std::unique_ptr<ReportQueue>)>;
-  using TrySetReportQueueCallback =
-      base::OnceCallback<void(StatusOr<std::unique_ptr<ReportQueue>>)>;
 
   // Instantiates regular ReportQueue (asynchronous operation).
   // `event_type` describes the type of events being reported so the provider
@@ -60,18 +56,7 @@ class ReportQueueFactory {
   CreateSpeculativeReportQueue(EventType event_type,
                                Destination destination,
                                int64_t reserved_space = 0L);
-
- private:
-  static void TrySetReportQueue(
-      SuccessCallback success_cb,
-      StatusOr<std::unique_ptr<ReportQueue>> report_queue_result);
-
-  static TrySetReportQueueCallback CreateTrySetCallback(
-      Destination destination,
-      SuccessCallback success_cb,
-      std::unique_ptr<::brillo::BackoffEntry> backoff_entry);
 };
-
 }  // namespace reporting
 
 #endif  // MISSIVE_CLIENT_REPORT_QUEUE_FACTORY_H_

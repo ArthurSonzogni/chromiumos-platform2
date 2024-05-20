@@ -8,19 +8,32 @@
 
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/logging.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
-#include <brillo/backoff_entry.h>
 
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_provider.h"
-#include "missive/util/backoff_settings.h"
 
 #define LOG_WITH_STATUS(LEVEL, MESSAGE, STATUS) \
   VLOG(LEVEL) << MESSAGE << " status=" << STATUS.error();
 
 namespace reporting {
+
+namespace {
+
+void TrySetReportQueue(
+    ReportQueueFactory::SuccessCallback success_cb,
+    StatusOr<std::unique_ptr<ReportQueue>> report_queue_result) {
+  if (!report_queue_result.has_value()) {
+    LOG_WITH_STATUS(1, "ReportQueue could not be created.",
+                    report_queue_result);
+    return;
+  }
+  std::move(success_cb).Run(std::move(report_queue_result.value()));
+}
+}  // namespace
 
 // static
 void ReportQueueFactory::Create(EventType event_type,
@@ -38,8 +51,9 @@ void ReportQueueFactory::Create(EventType event_type,
   }
 
   // Asynchronously create and try to set ReportQueue.
-  auto try_set_cb = CreateTrySetCallback(destination, std::move(success_cb),
-                                         GetBackoffEntry());
+  auto try_set_cb = base::BindPostTask(
+      base::SequencedTaskRunner::GetCurrentDefault(),
+      base::BindOnce(&TrySetReportQueue, std::move(success_cb)));
   base::ThreadPool::PostTask(
       FROM_HERE,
       base::BindOnce(ReportQueueProvider::CreateQueue,
@@ -76,28 +90,5 @@ ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
   }
 
   return std::move(speculative_queue_result.value());
-}
-
-ReportQueueFactory::TrySetReportQueueCallback
-ReportQueueFactory::CreateTrySetCallback(
-    Destination destination,
-    SuccessCallback success_cb,
-    std::unique_ptr<::brillo::BackoffEntry> backoff_entry) {
-  return base::BindPostTask(
-      base::SequencedTaskRunner::GetCurrentDefault(),
-      base::BindOnce(&ReportQueueFactory::TrySetReportQueue,
-                     std::move(success_cb)));
-}
-
-// static
-void ReportQueueFactory::TrySetReportQueue(
-    SuccessCallback success_cb,
-    StatusOr<std::unique_ptr<ReportQueue>> report_queue_result) {
-  if (!report_queue_result.has_value()) {
-    LOG_WITH_STATUS(1, "ReportQueue could not be created.",
-                    report_queue_result);
-    return;
-  }
-  std::move(success_cb).Run(std::move(report_queue_result.value()));
 }
 }  // namespace reporting

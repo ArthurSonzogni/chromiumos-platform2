@@ -12,8 +12,6 @@
 
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_provider.h"
-#include "missive/storage/storage_module_interface.h"
-#include "missive/util/statusor.h"
 
 namespace reporting {
 
@@ -32,10 +30,6 @@ class NonChromeReportQueueProvider : public ReportQueueProvider {
   void SetForTesting(ReportQueueProvider* provider);
 
  private:
-  static void CreateMissiveStorageModule(
-      base::OnceCallback<void(StatusOr<scoped_refptr<StorageModuleInterface>>)>
-          cb);
-
   ReportQueueProvider* actual_provider_;
 };
 
