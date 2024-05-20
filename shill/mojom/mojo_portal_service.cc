@@ -11,8 +11,9 @@
 
 namespace shill {
 
-MojoPortalService::MojoPortalService()
-    : handler_(std::make_unique<MojoPortalUIInteractionHandler>()) {}
+MojoPortalService::MojoPortalService(
+    std::unique_ptr<MojoPortalUIInteractionHandler> handler)
+    : handler_(std::move(handler)) {}
 MojoPortalService::~MojoPortalService() = default;
 
 void MojoPortalService::ConnectPortalUIInteractionHandler(

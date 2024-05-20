@@ -4,9 +4,11 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
+#include <mojo/core/core.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <net-base/http_url.h>
@@ -44,26 +46,43 @@ class FakePortalClient {
 
 class MojoPortalServiceTest : public testing::Test {
  public:
-  MojoPortalServiceTest() {
+  void SetUp() override {
     mojo::core::Init();
 
     auto handler = std::make_unique<MockMojoPortalUIInteractionHandler>();
     mock_handler_ = handler.get();
-    service_.set_handler_for_test(std::move(handler));
+    service_ = std::make_unique<MojoPortalService>(std::move(handler));
+
+    service_receiver_ = std::make_unique<
+        mojo::Receiver<chromeos::connectivity::mojom::PortalService>>(
+        service_.get());
 
     client_ = std::make_unique<FakePortalClient>(
-        service_receiver_.BindNewPipeAndPassRemote());
+        service_receiver_->BindNewPipeAndPassRemote());
+  }
+
+  void TearDown() override {
+    client_.reset();
+    service_receiver_.reset();
+    service_.reset();
+
+    auto core = mojo::core::Core::Get();
+    std::vector<MojoHandle> leaks;
+    core->GetActiveHandlesForTest(&leaks);
+    EXPECT_TRUE(leaks.empty());
+
+    mojo::core::ShutDown();
   }
 
  protected:
   // It's required by Mojo environment.
   base::test::TaskEnvironment task_environment_;
 
-  MojoPortalService service_;
+  std::unique_ptr<MojoPortalService> service_;
   // In production, we rely on SimpleMojoServiceProvider to keep the receivers
   // of service. Here we manually keep the receiver and connect the service.
-  mojo::Receiver<chromeos::connectivity::mojom::PortalService>
-      service_receiver_{&service_};
+  std::unique_ptr<mojo::Receiver<chromeos::connectivity::mojom::PortalService>>
+      service_receiver_;
   MockMojoPortalUIInteractionHandler* mock_handler_;
   std::unique_ptr<FakePortalClient> client_;
 };

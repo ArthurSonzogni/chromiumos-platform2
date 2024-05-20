@@ -6,7 +6,6 @@
 #define SHILL_MOJOM_MOJO_PORTAL_SERVICE_H_
 
 #include <memory>
-#include <utility>
 
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
@@ -17,14 +16,10 @@ namespace shill {
 
 class MojoPortalService : public chromeos::connectivity::mojom::PortalService {
  public:
-  MojoPortalService();
+  explicit MojoPortalService(
+      std::unique_ptr<MojoPortalUIInteractionHandler> handler =
+          std::make_unique<MojoPortalUIInteractionHandler>());
   ~MojoPortalService() override;
-
-  // Set the MojoPortalUIInteractionHandler for testing.
-  void set_handler_for_test(
-      std::unique_ptr<MojoPortalUIInteractionHandler> handler) {
-    handler_ = std::move(handler);
-  }
 
  private:
   // Implements chromeos::connectivity::mojom::PortalService.
