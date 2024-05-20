@@ -22,6 +22,7 @@ dup: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
+eventfd2: 1
 execve: 1
 exit: 1
 exit_group: 1
