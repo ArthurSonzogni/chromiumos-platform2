@@ -903,7 +903,7 @@ std::string CrashCollector::Sanitize(const std::string& name) {
   return result;
 }
 
-void CrashCollector::StripSensitiveData(std::string* contents) {
+void CrashCollector::StripSensitiveData(std::string* contents) const {
   redaction::RedactionTool redactor(
       nullptr,
       std::make_unique<redaction::LibMetricsMetricsRecorder>(metrics_lib_));

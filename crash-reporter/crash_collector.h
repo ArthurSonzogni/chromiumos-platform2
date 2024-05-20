@@ -412,7 +412,7 @@ class CrashCollector {
 
   // Strip any data that the user might not want sent up to the crash server.
   // |contents| is modified in-place.
-  void StripSensitiveData(std::string* contents);
+  void StripSensitiveData(std::string* contents) const;
 
   // This is going away once the experiment is done.
   // TODO(b/186659673): Validate daemon-store usage and remove this.
