@@ -456,8 +456,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .ascii_casefold = false,
                           .posix_acl = true})
       .EnableBattery(true /* enable */)
-      .EnableDelayRt(true /* enable */)
-      .EnablePvClock(true /* enable */);
+      .EnableDelayRt(true /* enable */);
 
   if (USE_CROSVM_VULKAN) {
     vm_builder.EnableVulkan(true).EnableRenderServer(true);
@@ -472,6 +471,10 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   }
   vm_builder.EnableGpuContextTypeVenus(USE_CROSVM_VULKAN);
   vm_builder.EnableGpuContextTypeDrm(USE_CROSVM_VIRTGPU_NATIVE_CONTEXT);
+
+  if (USE_VIRTIO_PVCLOCK) {
+    vm_builder.EnablePvClock(true);
+  }
 
   std::unique_ptr<CustomParametersForDev> custom_parameters =
       MaybeLoadCustomParametersForDev(apps::ARCVM, use_dev_conf());
