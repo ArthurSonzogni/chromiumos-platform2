@@ -229,23 +229,6 @@ ServiceImpl::ServiceImpl(std::unique_ptr<vm_tools::maitred::Init> init,
       zoneinfo_file_path_(kZoneInfoPath) {}
 
 bool ServiceImpl::Init() {
-  if (!maitred_is_pid1_) {
-    dbus::Bus::Options opts;
-    opts.bus_type = dbus::Bus::SYSTEM;
-    bus_ = new dbus::Bus(std::move(opts));
-    if (!bus_->Connect()) {
-      LOG(ERROR) << "Failed to connect to system bus";
-      return false;
-    }
-
-    logind_service_proxy_ = bus_->GetObjectProxy(
-        kLogindServiceName, dbus::ObjectPath(kLogindServicePath));
-    if (!logind_service_proxy_) {
-      LOG(ERROR) << "Failed to get dbus proxy for " << kLogindServiceName;
-      return false;
-    }
-  }
-
   string error;
   return WriteResolvConf(kDefaultNameservers, {}, &error);
 }
@@ -401,11 +384,29 @@ grpc::Status ServiceImpl::Shutdown(grpc::ServerContext* ctx,
     return grpc::Status::OK;
   }
 
+  dbus::Bus::Options opts;
+  opts.bus_type = dbus::Bus::SYSTEM;
+
+  scoped_refptr<dbus::Bus> bus = new dbus::Bus(std::move(opts));
+  if (!bus->Connect()) {
+    LOG(ERROR) << "Failed to connect to system bus";
+    return grpc::Status(grpc::INTERNAL, "Failed to connect to system bus");
+  }
+
+  dbus::ObjectProxy* logind_service_proxy = bus->GetObjectProxy(
+      kLogindServiceName, dbus::ObjectPath(kLogindServicePath));
+  if (!logind_service_proxy) {
+    LOG(ERROR) << "Failed to get D-Bus proxy for " << kLogindServiceName;
+    return grpc::Status(
+        grpc::INTERNAL,
+        base::StrCat({"Failed to get D-Bus proxy for ", kLogindServiceName}));
+  }
+
   // When running as a service, ask logind to shut down the system.
   dbus::MethodCall method_call(kLogindManagerInterface, "PowerOff");
   dbus::MessageWriter writer(&method_call);
   writer.AppendBool(false);  // interactive = false
-  auto dbus_response = logind_service_proxy_->CallMethodAndBlock(
+  auto dbus_response = logind_service_proxy->CallMethodAndBlock(
       &method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!dbus_response.has_value()) {
     return grpc::Status(

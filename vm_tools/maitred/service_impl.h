@@ -170,9 +170,6 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   std::unique_ptr<brillo::StorageBalloon> balloon_;
   // Lock to serialize balloon update operation.
   base::Lock balloon_update_lock_;
-
-  scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* logind_service_proxy_;
 };
 
 }  // namespace maitred
