@@ -152,6 +152,7 @@ class KernelCollector : public CrashCollector {
   FRIEND_TEST(KernelCollectorTest, ParseEfiCrashId);
   FRIEND_TEST(KernelCollectorTest, GetEfiCrashType);
   FRIEND_TEST(KernelCollectorTest, LoadEfiCrash);
+  FRIEND_TEST(KernelCollectorTest, RemoveEfiCrash);
   FRIEND_TEST(KernelCollectorTest, LastRebootWasNoCError);
 
   virtual bool DumpDirMounted();

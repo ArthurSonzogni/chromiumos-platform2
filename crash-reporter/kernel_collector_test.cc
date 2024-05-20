@@ -171,6 +171,72 @@ TEST_F(KernelCollectorTest, LoadEfiCrash) {
   EXPECT_EQ(expected_dump, dump);
 }
 
+TEST_F(KernelCollectorTest, RemoveEfiCrash) {
+  int efi_part_count = kMaxEfiParts - 1;
+  std::string efi_part[kMaxEfiParts];
+  uint64_t test_efi_crash_id;
+  sscanf(efikcrash_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
+         &test_efi_crash_id);
+
+  for (int i = 1; i <= efi_part_count; i++) {
+    ASSERT_FALSE(base::PathExists(efikcrash_file(i)));
+    efi_part[i] = StringPrintf("Panic#100 Part#%d\n", i);
+    for (int j = 0; j < i; j++) {
+      efi_part[i].append(StringPrintf("random blob %d\n", j));
+    }
+    ASSERT_TRUE(test_util::CreateFile(efikcrash_file(i), efi_part[i].c_str()));
+  }
+  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
+  efi_crash.UpdateMaxPart(efi_crash.GetIdForPart(efi_part_count));
+
+  efi_crash.Remove();
+  for (int i = 1; i <= efi_part_count; i++) {
+    EXPECT_FALSE(base::PathExists(efikcrash_file(i)));
+  }
+}
+
+TEST_F(KernelCollectorTest, CollectEfiCrashFilesMissing) {
+  std::vector<CrashCollectionStatus> results;
+
+  results = collector_.CollectEfiCrashes(/*use_saved_lsb=*/true);
+  EXPECT_THAT(results,
+              testing::ElementsAre(CrashCollectionStatus::kNoCrashFound));
+}
+
+TEST_F(KernelCollectorTest, CollectEfiCrashFile) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
+  int efi_part_count = kMaxEfiParts - 1;
+  std::string efi_part[kMaxEfiParts];
+  uint64_t test_efi_crash_id;
+  sscanf(efikcrash_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
+         &test_efi_crash_id);
+
+  for (int i = 1; i <= efi_part_count; i++) {
+    ASSERT_FALSE(base::PathExists(efikcrash_file(i)));
+    efi_part[i] = StringPrintf("Panic#2 Part#%d\n", i);
+    if (i == 1) {
+      efi_part[i].append(
+          "<4>[  230.807132]  test_efi_function+0x48/0x238\n <remaining log "
+          "chunk>");
+    } else {
+      for (int j = 0; j < i; j++) {
+        efi_part[i].append(StringPrintf("random blob %d\n", j));
+      }
+    }
+    ASSERT_TRUE(test_util::CreateFile(efikcrash_file(i), efi_part[i].c_str()));
+  }
+
+  std::vector<CrashCollectionStatus> results;
+  results = collector_.CollectEfiCrashes(/*use_saved_lsb=*/true);
+  EXPECT_THAT(results, testing::ElementsAre(CrashCollectionStatus::kSuccess));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory(), "kernel.*.meta",
+      "sig=kernel-test_efi_function-"));
+  for (int i = 1; i <= efi_part_count; i++) {
+    EXPECT_FALSE(base::PathExists(efikcrash_file(i)));
+  }
+}
+
 TEST_F(KernelCollectorTest, ComputeKernelStackSignatureBase) {
   // Make sure the normal build architecture is detected
   EXPECT_NE(kernel_util::kArchUnknown, collector_.arch());
