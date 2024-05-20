@@ -181,13 +181,15 @@ class Manager : public ForwardingService {
   void StartForwarding(const ShillClient::Device& shill_device,
                        const std::string& ifname_virtual,
                        const ForwardingService::ForwardingSet& fs =
-                           {.ipv6 = true, .multicast = true},
+                           {.ipv6 = true, .multicast = true, .broadcast = true},
                        std::optional<int> mtu = std::nullopt,
                        std::optional<int> hop_limit = std::nullopt) override;
   void StopForwarding(const ShillClient::Device& shill_device,
                       const std::string& ifname_virtual,
                       const ForwardingService::ForwardingSet& fs = {
-                          .ipv6 = true, .multicast = true}) override;
+                          .ipv6 = true,
+                          .multicast = true,
+                          .broadcast = true}) override;
 
  private:
   friend class ManagerTest;

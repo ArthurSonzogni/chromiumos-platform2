@@ -1393,8 +1393,8 @@ void Manager::StopForwarding(const ShillClient::Device& shill_device,
       LOG(INFO) << "Stopping broadcast forwarding from " << shill_device
                 << " to " << ifname_virtual;
     }
-    mcast_proxy_->SendControlMessage(cm);
   }
+  mcast_proxy_->SendControlMessage(cm);
 }
 
 void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {
