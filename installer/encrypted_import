@@ -34,8 +34,12 @@ copy_with_validation() {
   # Move files into protected temp location for validation.
   local processing
   processing="$(mktemp -d "${to}/import_tmp.XXXXXXXXXX")"
+  # Intentionally expand the processing var here rather than when signalled.
+  # shellcheck disable=SC2064
   trap "rm -rf '${processing}'" EXIT
 
+  # Reading by word is fine since these paths do not contain spaces.
+  # shellcheck disable=SC2013
   for file in $(awk '{ print $2 }' "${validation}"); do
     mkdir -p "${processing}/$(dirname "${file}")"
     cp -- "${from}/${file}" "${processing}/${file}"
@@ -46,6 +50,8 @@ copy_with_validation() {
   cd "${processing}"
   sha256sum --check --strict --quiet "${validation}"
 
+  # Reading by word is fine since these paths do not contain spaces.
+  # shellcheck disable=SC2013
   for file in $(awk '{ print $2 }' "${validation}"); do
     mkdir -p "${to}/$(dirname "${file}")"
     mv -- "${processing}/${file}" "${to}/${file}"
