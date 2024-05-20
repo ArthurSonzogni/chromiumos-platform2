@@ -43,17 +43,17 @@ CrosHealthdMojoService::CrosHealthdMojoService(
 
 CrosHealthdMojoService::~CrosHealthdMojoService() = default;
 
-void CrosHealthdMojoService::AddBluetoothObserver(
+void CrosHealthdMojoService::DEPRECATED_AddBluetoothObserver(
     mojo::PendingRemote<mojom::CrosHealthdBluetoothObserver> observer) {
   LOG(FATAL) << "Deprecated cros healthd lid event API";
 }
 
-void CrosHealthdMojoService::AddLidObserver(
+void CrosHealthdMojoService::DEPRECATED_AddLidObserver(
     mojo::PendingRemote<mojom::CrosHealthdLidObserver> observer) {
   LOG(FATAL) << "Deprecated cros healthd lid event API";
 }
 
-void CrosHealthdMojoService::AddPowerObserver(
+void CrosHealthdMojoService::DEPRECATED_AddPowerObserver(
     mojo::PendingRemote<mojom::CrosHealthdPowerObserver> observer) {
   event_aggregator_->AddObserver(std::move(observer));
 }
@@ -68,17 +68,17 @@ void CrosHealthdMojoService::AddNetworkObserver(
   network_health->AddObserver(std::move(observer));
 }
 
-void CrosHealthdMojoService::AddAudioObserver(
+void CrosHealthdMojoService::DEPRECATED_AddAudioObserver(
     mojo::PendingRemote<mojom::CrosHealthdAudioObserver> observer) {
   event_aggregator_->AddObserver(std::move(observer));
 }
 
-void CrosHealthdMojoService::AddThunderboltObserver(
+void CrosHealthdMojoService::DEPRECATED_AddThunderboltObserver(
     mojo::PendingRemote<mojom::CrosHealthdThunderboltObserver> observer) {
   event_aggregator_->AddObserver(std::move(observer));
 }
 
-void CrosHealthdMojoService::AddUsbObserver(
+void CrosHealthdMojoService::DEPRECATED_AddUsbObserver(
     mojo::PendingRemote<mojom::CrosHealthdUsbObserver> observer) {
   event_aggregator_->AddObserver(std::move(observer));
 }

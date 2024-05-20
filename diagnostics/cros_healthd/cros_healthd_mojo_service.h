@@ -41,28 +41,28 @@ class CrosHealthdMojoService final
   ~CrosHealthdMojoService() override;
 
   // ash::cros_healthd::mojom::CrosHealthdEventService overrides:
-  void AddBluetoothObserver(
+  void DEPRECATED_AddBluetoothObserver(
       mojo::PendingRemote<
           ash::cros_healthd::mojom::CrosHealthdBluetoothObserver> observer)
       override;
-  void AddLidObserver(
+  void DEPRECATED_AddLidObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdLidObserver>
           observer) override;
-  void AddPowerObserver(
+  void DEPRECATED_AddPowerObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
           observer) override;
   void AddNetworkObserver(
       mojo::PendingRemote<
           chromeos::network_health::mojom::NetworkEventsObserver> observer)
       override;
-  void AddAudioObserver(
+  void DEPRECATED_AddAudioObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
           observer) override;
-  void AddThunderboltObserver(
+  void DEPRECATED_AddThunderboltObserver(
       mojo::PendingRemote<
           ash::cros_healthd::mojom::CrosHealthdThunderboltObserver> observer)
       override;
-  void AddUsbObserver(
+  void DEPRECATED_AddUsbObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
           observer) override;
   void AddEventObserver(
