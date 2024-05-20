@@ -44,7 +44,6 @@ group("all") {
       ":embed_file_toc_test",
       ":future_test",
       ":relative_fov_test",
-      ":stream_manipulator_helper_test",
       ":stream_manipulator_manager_test",
 
       # TODO(b/262337896): Change back to use
@@ -305,11 +304,9 @@ source_set("camera_gpu_algorithm") {
 
 source_set("stream_manipulator") {
   sources = [
-    "//camera/common/capture_result_sequencer.cc",
     "//camera/common/framing_stream_manipulator.cc",
     "//camera/common/still_capture_processor_impl.cc",
     "//camera/common/stream_manipulator.cc",
-    "//camera/common/stream_manipulator_helper.cc",
     "//camera/common/stream_manipulator_manager.cc",
     "//camera/common/sw_privacy_switch_stream_manipulator.cc",
   ]
@@ -326,6 +323,7 @@ source_set("stream_manipulator") {
   ]
 
   deps = [
+    ":capture_result_sequencer",
     ":jpeg",
     "//camera/gpu:gpu_resources",
   ]
@@ -350,6 +348,15 @@ source_set("stream_manipulator") {
   if (use.camera_feature_super_res) {
     deps += [ "//camera/features/super_resolution" ]
   }
+}
+
+source_set("capture_result_sequencer") {
+  sources = [ "//camera/common/capture_result_sequencer.cc" ]
+  public_configs = [ ":target_defaults" ]
+  public_deps = [
+    ":base",
+    ":mojo_base",
+  ]
 }
 
 shared_library("libcros_camera") {
@@ -418,12 +425,11 @@ executable("cros_camera_algo") {
 
 # Build configs for unit tests.
 
-pkg_config("target_defaults_test") {
+config("target_defaults_test") {
   configs = [
     "//common-mk:test",
     ":target_defaults",
   ]
-  pkg_deps = [ "libchrome-test" ]
 }
 
 if (use.test) {
@@ -456,13 +462,10 @@ if (use.test) {
   }
 
   executable("capture_result_sequencer_test") {
-    sources = [
-      "//camera/common/camera_hal3_helpers.cc",
-      "//camera/common/capture_result_sequencer.cc",
-      "//camera/common/capture_result_sequencer_test.cc",
-    ]
+    sources = [ "//camera/common/capture_result_sequencer_test.cc" ]
     configs += [ ":target_defaults_test" ]
-    deps = [ ":tracing" ]
+    defines = [ "EGL_NO_X11" ]
+    deps = [ ":capture_result_sequencer" ]
     run_test = true
   }
 
@@ -506,23 +509,6 @@ if (use.test) {
     configs += [ ":target_defaults_test" ]
     run_test = true
     deps = [ ":base" ]
-  }
-
-  executable("stream_manipulator_helper_test") {
-    sources = [
-      "//camera/common/camera_buffer_pool.cc",
-      "//camera/common/camera_hal3_helpers.cc",
-      "//camera/common/capture_result_sequencer.cc",
-      "//camera/common/relative_fov.cc",
-      "//camera/common/stream_manipulator_helper.cc",
-      "//camera/common/stream_manipulator_helper_test.cc",
-    ]
-    configs += [ ":target_defaults_test" ]
-    run_test = true
-    deps = [
-      ":tracing",
-      "//camera/common/test_support",
-    ]
   }
 
   executable("stream_manipulator_manager_test") {

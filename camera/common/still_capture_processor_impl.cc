@@ -648,17 +648,16 @@ void StillCaptureProcessorImpl::CancelPendingRequestOnThread(int frame_number) {
     request_contexts_.erase(iter);
   }
 
-  if (context.client_requested_buffer.has_value()) {
-    VLOGFID(1, frame_number) << "Return failed BLOB buffer to client";
-    context.client_requested_buffer->status = CAMERA3_BUFFER_STATUS_ERROR;
-    Camera3CaptureDescriptor blob_result(camera3_capture_result_t{
-        .frame_number = static_cast<uint32_t>(frame_number),
-        .num_output_buffers = 1,
-        .output_buffers = &*context.client_requested_buffer,
-        .partial_result = 0,
-    });
-    result_callback_.Run(std::move(blob_result));
-  }
+  VLOGFID(1, frame_number) << "Return failed BLOB buffer to client";
+  CHECK(context.client_requested_buffer.has_value());
+  context.client_requested_buffer->status = CAMERA3_BUFFER_STATUS_ERROR;
+  Camera3CaptureDescriptor blob_result(camera3_capture_result_t{
+      .frame_number = static_cast<uint32_t>(frame_number),
+      .num_output_buffers = 1,
+      .output_buffers = &*context.client_requested_buffer,
+      .partial_result = 0,
+  });
+  result_callback_.Run(std::move(blob_result));
 }
 
 bool ParseAppSectionsForTesting(

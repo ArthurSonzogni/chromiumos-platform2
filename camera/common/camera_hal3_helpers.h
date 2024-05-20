@@ -232,12 +232,6 @@ class CROS_CAMERA_EXPORT Camera3StreamBuffer {
   int acquire_fence() const { return raw_buffer_.acquire_fence; }
   int release_fence() const { return raw_buffer_.release_fence; }
 
-  int take_acquire_fence() {
-    int fence = raw_buffer_.acquire_fence;
-    raw_buffer_.acquire_fence = -1;
-    return fence;
-  }
-
   int take_release_fence() {
     int fence = raw_buffer_.release_fence;
     raw_buffer_.release_fence = -1;
@@ -405,12 +399,6 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   // Returns true if the metadata are set successfully; false otherwise.
   bool SetMetadata(const camera_metadata_t* metadata);
 
-  // Releases the metadata to the caller.
-  android::CameraMetadata ReleaseMetadata();
-
-  // Sets the partial result number.
-  void SetPartialResult(uint32_t partial_result);
-
   // Getter and setter for the input buffer.
   const Camera3StreamBuffer* GetInputBuffer() const;
   std::optional<Camera3StreamBuffer> AcquireInputBuffer();
@@ -447,7 +435,6 @@ class CROS_CAMERA_EXPORT Camera3CaptureDescriptor {
   uint32_t frame_number() const { return frame_number_; }
   bool has_metadata() const { return !metadata_.isEmpty(); }
   const android::CameraMetadata& metadata() const { return metadata_; }
-  android::CameraMetadata& mutable_metadata() { return metadata_; }
   bool has_input_buffer() const { return input_buffer_.has_value(); }
   uint32_t num_output_buffers() const { return output_buffers_.size(); }
   uint32_t partial_result() const { return partial_result_; }

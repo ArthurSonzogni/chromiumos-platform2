@@ -97,12 +97,6 @@ struct Size {
   double aspect_ratio() const {
     return static_cast<double>(width) / static_cast<double>(height);
   }
-  Size Scale(float factor) const {
-    return Size(
-        base::checked_cast<uint32_t>(static_cast<float>(width) * factor + 0.5f),
-        base::checked_cast<uint32_t>(static_cast<float>(height) * factor +
-                                     0.5f));
-  }
 };
 
 template <typename T>

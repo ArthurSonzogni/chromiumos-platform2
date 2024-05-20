@@ -98,7 +98,7 @@ void CaptureResultSequencer::Reset() {
     }
   }
   if (num_unsent_buffers != 0 || num_unreceived_buffers != 0) {
-    LOGF(WARNING) << "CaptureResultSequencer reset when there are still "
+    LOGF(WARNING) << "CaptureResultSequencer resetted when there are still "
                   << num_unsent_buffers << " unsent buffers and "
                   << num_unreceived_buffers << " unreceived buffers";
   }
