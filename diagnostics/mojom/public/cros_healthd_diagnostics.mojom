@@ -136,7 +136,7 @@ enum DiagnosticRoutineCommandEnum {
   [Default] kUnknown = 4,
   // Resume a routine that is waiting.
   kContinue = 0,
-  // Cancelled routines must still be removed before the routineis destroyed.
+  // Cancelled routines must still be removed before the routine is destroyed.
   kCancel = 1,
   // Used to get status but not otherwise control a routine.
   kGetStatus = 2,
