@@ -279,6 +279,12 @@ class KernelCollector : public CrashCollector {
   base::expected<bool, CrashCollectionStatus> LastRebootWasWatchdog(
       std::string& signature);
   bool LoadConsoleRamoops(std::string* contents);
+  // Collect the console-ramoops file as a crash report when the last reboot was
+  // because of something besides a kernel panic which would have generated a
+  // crash record in pstore. For example, this could happen if there was a
+  // watchdog bite or a firmware error.
+  CrashCollectionStatus CollectConsoleRamoopsCrash(std::string& bios_dump,
+                                                   std::string& console_dump);
 
   base::FilePath GetDumpRecordPath(const char* type,
                                    const char* driver,

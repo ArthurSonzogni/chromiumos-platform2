@@ -857,7 +857,6 @@ CrashCollectionStatus KernelCollector::CollectRamoopsCrash(bool use_saved_lsb) {
   std::string kernel_dump;
   std::string console_dump;
   std::string signature;
-  std::string watchdog_reboot_reason;
 
   LoadLastBootBiosLog(&bios_dump);
   LoadConsoleRamoops(&console_dump);
@@ -870,7 +869,14 @@ CrashCollectionStatus KernelCollector::CollectRamoopsCrash(bool use_saved_lsb) {
     }
     return HandleCrash(kernel_dump, bios_dump, signature);
   }
-  kernel_dump = std::move(console_dump);
+  return CollectConsoleRamoopsCrash(bios_dump, console_dump);
+}
+
+CrashCollectionStatus KernelCollector::CollectConsoleRamoopsCrash(
+    std::string& bios_dump, std::string& console_dump) {
+  std::string signature;
+  std::string watchdog_reboot_reason;
+
   if (LastRebootWasBiosCrash(bios_dump)) {
     signature = kernel_util::BiosCrashSignature(bios_dump);
   } else if (LastRebootWasNoCError(bios_dump)) {
@@ -880,20 +886,20 @@ CrashCollectionStatus KernelCollector::CollectRamoopsCrash(bool use_saved_lsb) {
                      LastRebootWasWatchdog(watchdog_reboot_reason));
     if (watchdog_result) {
       signature =
-          kernel_util::WatchdogSignature(kernel_dump, watchdog_reboot_reason);
+          kernel_util::WatchdogSignature(console_dump, watchdog_reboot_reason);
     } else {
       return CrashCollectionStatus::kNoCrashFound;
     }
   }
   StripSensitiveData(&bios_dump);
-  StripSensitiveData(&kernel_dump);
+  StripSensitiveData(&console_dump);
   // As long as there's some log contents then maybe we'll be able to figure
   // out why the system rebooted unexpectedly. Otherwise ignore the crash as
   // we're unlikely to be able to diagnose the issue.
-  if (kernel_dump.empty() && bios_dump.empty()) {
+  if (console_dump.empty() && bios_dump.empty()) {
     return CrashCollectionStatus::kRamoopsDumpEmpty;
   }
-  return HandleCrash(kernel_dump, bios_dump, signature);
+  return HandleCrash(console_dump, bios_dump, signature);
 }
 
 bool KernelCollector::WasKernelCrash(
