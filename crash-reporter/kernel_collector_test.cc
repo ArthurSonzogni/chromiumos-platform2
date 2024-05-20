@@ -813,7 +813,7 @@ TEST_F(KernelCollectorTest, WasKernelCrashIfMultipleEfiCollected) {
 TEST_F(KernelCollectorTest, WasKernelCrashIfMultipleEfiFailed) {
   std::vector<CrashCollectionStatus> efi_statuses{
       CrashCollectionStatus::kOutOfCapacity,
-      CrashCollectionStatus::kFailureLoadingEfiCrash};
+      CrashCollectionStatus::kFailureLoadingPstoreCrash};
   CrashCollectionStatus ramoops_status = CrashCollectionStatus::kNoCrashFound;
   EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_status));
 }

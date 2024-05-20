@@ -125,6 +125,8 @@ class KernelCollector : public CrashCollector {
     PstoreRecordType GetType() const;
     // Remove pstore file(s) for this crash.
     void Remove() const;
+    // Collect crash data into |crash| when crash type is a panic.
+    CrashCollectionStatus CollectCrash(std::string& crash) const;
 
     // Returns crash id.
     uint64_t GetId() const { return id_; }

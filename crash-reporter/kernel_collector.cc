@@ -616,6 +616,35 @@ void KernelCollector::PstoreCrash::Remove() const {
   }
 }
 
+CrashCollectionStatus KernelCollector::PstoreCrash::CollectCrash(
+    std::string& crash) const {
+  LOG(INFO) << "Generating kernel crash id: " << GetId();
+  CrashCollectionStatus result = CrashCollectionStatus::kUnknownStatus;
+
+  PstoreRecordType crash_type;
+  crash_type = GetType();
+  if (crash_type != PstoreRecordType::kParseFailed) {
+    if (crash_type == PstoreRecordType::kPanic) {
+      LOG(INFO) << "Reporting kernel crash id: " << GetId()
+                << " type: " << crash_type;
+      if (!Load(crash)) {
+        result = CrashCollectionStatus::kFailureLoadingPstoreCrash;
+      } else {
+        result = CrashCollectionStatus::kSuccess;
+      }
+    } else {
+      LOG(WARNING) << "Ignoring kernel crash id: " << GetId()
+                   << " type: " << crash_type;
+      result = CrashCollectionStatus::kUncollectedPstoreCrashType;
+    }
+  } else {
+    result = CrashCollectionStatus::kFailureGettingPstoreType;
+  }
+  // Remove pstore files corresponding to crash.
+  Remove();
+  return result;
+}
+
 base::FilePath KernelCollector::PstoreCrash::GetFilePath(uint32_t part) const {
   return GetCollector()->dump_path_.Append(
       base::StrCat({kDumpRecordDmesgName, "-", backend_,
@@ -764,44 +793,26 @@ std::vector<CrashCollectionStatus> KernelCollector::CollectEfiCrashes(
   std::vector<CrashCollectionStatus> result;
   // Now read each crash in buffer and cleanup pstore.
   std::vector<EfiCrash>::const_iterator efi_crash;
+
   for (efi_crash = efi_crashes.begin(); efi_crash != efi_crashes.end();
        ++efi_crash) {
-    LOG(INFO) << "Generating kernel efi crash id:" << efi_crash->GetId();
-    CrashCollectionStatus single_result = CrashCollectionStatus::kUnknownStatus;
-
     std::string crash;
-    PstoreRecordType crash_type = efi_crash->GetType();
-    if (crash_type != PstoreRecordType::kParseFailed) {
-      if (crash_type == PstoreRecordType::kPanic) {
-        LOG(INFO) << "Reporting kernel efi crash id:" << efi_crash->GetId()
-                  << " type:" << crash_type;
-        if (!efi_crash->Load(crash)) {
-          single_result = CrashCollectionStatus::kFailureLoadingEfiCrash;
-        } else {
-          StripSensitiveData(&crash);
-          if (crash.empty()) {
-            single_result = CrashCollectionStatus::kEfiCrashEmpty;
-          } else {
-            single_result = HandleCrash(
-                crash, std::string(), "",
-                kernel_util::ComputeKernelStackSignature(crash, arch_));
-            if (!IsSuccessCode(single_result)) {
-              LOG(ERROR) << "Failed to handle kernel efi crash id:"
-                         << efi_crash->GetId();
-            }
-          }
-        }
+    CrashCollectionStatus single_result = efi_crash->CollectCrash(crash);
+    if (single_result == CrashCollectionStatus::kSuccess) {
+      StripSensitiveData(&crash);
+      if (crash.empty()) {
+        single_result = CrashCollectionStatus::kPstoreCrashEmpty;
       } else {
-        LOG(WARNING) << "Ignoring kernel efi crash id:" << efi_crash->GetId()
-                     << " type:" << crash_type;
-        single_result = CrashCollectionStatus::kUncollectedEfiCrashType;
+        single_result =
+            HandleCrash(crash, std::string(), "",
+                        kernel_util::ComputeKernelStackSignature(crash, arch_));
+        if (!IsSuccessCode(single_result)) {
+          LOG(ERROR) << "Failed to handle kernel crash id: "
+                     << efi_crash->GetId();
+        }
       }
-    } else {
-      single_result = CrashCollectionStatus::kFailureGettingEfiType;
     }
     result.push_back(single_result);
-    // Remove efi-pstore files corresponding to crash.
-    efi_crash->Remove();
   }
   return result;
 }
