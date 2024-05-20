@@ -50,6 +50,7 @@
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector.h"
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/crash_sending_mode.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
@@ -229,7 +230,7 @@ TEST_F(CrashCollectorTest,
        DISABLED_ON_QEMU_FOR_MEMFD_CREATE(CrashLoopModeCreatesInMemoryFiles)) {
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
-      CrashCollector::kCrashLoopSendingMode);
+      CrashSendingMode::kCrashLoop);
   collector.Initialize(false);
 
   const char kBuffer[] = "Hello, this is buffer";
@@ -256,7 +257,7 @@ TEST_F(CrashCollectorTest,
            CrashLoopModeCreatesMultipleInMemoryFiles)) {
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
-      CrashCollector::kCrashLoopSendingMode);
+      CrashSendingMode::kCrashLoop);
   collector.Initialize(false);
 
   const char kBuffer1[] = "Hello, this is buffer";
@@ -314,7 +315,7 @@ TEST_F(CrashCollectorTest,
            CrashLoopModeWillNotCreateDuplicateFileNames)) {
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
-      CrashCollector::kCrashLoopSendingMode);
+      CrashSendingMode::kCrashLoop);
   collector.Initialize(false);
 
   const FilePath kPath = test_dir_.Append("buffer.txt");
@@ -437,7 +438,7 @@ TEST_F(CrashCollectorTest,
            CrashLoopModeCreatesInMemoryCompressedFiles)) {
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
-      CrashCollector::kCrashLoopSendingMode);
+      CrashSendingMode::kCrashLoop);
   collector.Initialize(false);
 
   const char kBuffer[] = "Hello, this is buffer";
@@ -483,7 +484,7 @@ TEST_F(CrashCollectorTest,
            CrashLoopModeWillNotCreateDuplicateCompressedFileNames)) {
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
-      CrashCollector::kCrashLoopSendingMode);
+      CrashSendingMode::kCrashLoop);
   collector.Initialize(false);
 
   const FilePath kPath = test_dir_.Append("buffer.txt.gz");
@@ -784,7 +785,7 @@ TEST_F(CrashCollectorTest,
            RemoveNewFileRemovesNormalFilesInCrashLoopMode)) {
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
-      CrashCollector::kCrashLoopSendingMode);
+      CrashSendingMode::kCrashLoop);
   collector.Initialize(false);
 
   const FilePath kPath = test_dir_.Append("buffer.txt");
@@ -802,7 +803,7 @@ TEST_F(CrashCollectorTest,
            RemoveNewFileRemovesCorrectFileInCrashLoopMode)) {
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
-      CrashCollector::kCrashLoopSendingMode);
+      CrashSendingMode::kCrashLoop);
   collector.Initialize(false);
 
   const FilePath kPath1 = test_dir_.Append("buffer1.txt");
@@ -827,7 +828,7 @@ TEST_F(CrashCollectorTest,
            RemoveNewFileRemovesCompressedFilesInCrashLoopMode)) {
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
-      CrashCollector::kCrashLoopSendingMode);
+      CrashSendingMode::kCrashLoop);
   collector.Initialize(false);
 
   const FilePath kPath = test_dir_.Append("buffer.txt.gz");
@@ -845,7 +846,7 @@ TEST_F(CrashCollectorTest,
        RemoveNewFileFailsOnNonExistantFilesInCrashLoopMode) {
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
-      CrashCollector::kCrashLoopSendingMode);
+      CrashSendingMode::kCrashLoop);
   collector.Initialize(false);
 
   const FilePath kPath = test_dir_.Append("doesnt_exist");
@@ -2910,7 +2911,7 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
 
   CrashCollectorMock collector(
       CrashCollector::kUseNormalCrashDirectorySelectionMethod,
-      CrashCollector::kCrashLoopSendingMode);
+      CrashSendingMode::kCrashLoop);
   dbus::Bus::Options bus_options;
   auto mock_bus = base::MakeRefCounted<dbus::MockBus>(bus_options);
   auto mock_object_proxy = base::MakeRefCounted<dbus::MockObjectProxy>(

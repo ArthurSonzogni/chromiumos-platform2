@@ -27,6 +27,7 @@
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/crash_sending_mode.h"
 #include "crash-reporter/util.h"
 #include "crash-reporter/vm_support.h"
 
@@ -72,7 +73,7 @@ UserCollectorBase::UserCollectorBase(
         metrics_lib)
     : CrashCollector(collector,
                      crash_directory_selection_method,
-                     kNormalCrashSendMode,
+                     CrashSendingMode::kNormal,
                      metrics_lib,
                      GetNameForCollector(collector)) {}
 

@@ -28,6 +28,7 @@
 #include <session_manager/dbus-proxy-mocks.h>
 
 #include "crash-reporter/chrome_collector.h"
+#include "crash-reporter/crash_sending_mode.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/test_util.h"
 
@@ -187,12 +188,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   int32_t signal = provider.ConsumeIntegral<int32_t>();
 
-  // kNormalCrashSendMode -- This makes it much simpler to mock out the DBus
-  // calls, and we're not fuzzing the crash loop logic.
+  // CrashSendingMode::kNormal -- This makes it much simpler to mock out the
+  // DBus calls, and we're not fuzzing the crash loop logic.
   ChromeCollectorForFuzzing collector(
-      CrashCollector::kNormalCrashSendMode, std::move(user_name),
-      std::move(user_hash), std::move(dri_error_state),
-      std::move(dmesg_result));
+      CrashSendingMode::kNormal, std::move(user_name), std::move(user_hash),
+      std::move(dri_error_state), std::move(dmesg_result));
   collector.Initialize(false);
   collector.force_daemon_store_for_testing(use_daemon_store);
   collector.HandleCrashThroughMemfd(test_input.TakePlatformFile(), pid, uid,

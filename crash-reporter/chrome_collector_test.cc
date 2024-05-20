@@ -33,6 +33,7 @@
 
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector.h"
+#include "crash-reporter/crash_sending_mode.h"
 #include "crash-reporter/test_util.h"
 
 using base::FilePath;
@@ -225,7 +226,7 @@ class ChromeCollectorMock : public ChromeCollector {
  public:
   ChromeCollectorMock()
       : ChromeCollector(
-            kNormalCrashSendMode,
+            CrashSendingMode::kNormal,
             base::MakeRefCounted<
                 base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>(
                 std::make_unique<MetricsLibraryMock>())) {}

@@ -36,6 +36,7 @@
 
 enum class CrashCollectionStatus;
 enum class CrashReporterCollector;
+enum class CrashSendingMode;
 
 // Walk the directory tree to make sure we avoid symlinks.
 // All parent parts must already exist else we return false.
@@ -63,21 +64,6 @@ class CrashCollector {
     kAlwaysUseDaemonStore,
     // Always use the system crash directory.
     kAlwaysUseSystemCrashDirectory
-  };
-
-  enum CrashSendingMode {
-    // Use the normal crash sending mode: Write crash files out to disk, and
-    // assume crash_sender will be along later to send them out.
-    kNormalCrashSendMode,
-    // Use a special mode suitable when we are in a login-crash-loop. where
-    // Chrome keeps crashing right after login, and we're about to log the user
-    // out because we can't get into a good logged-in state. Write the crash
-    // files into special in-memory locations, since the normal user crash
-    // directory is in the cryptohome which will be locked out momentarily, and
-    // send those in-memory files over to debugd for immediate upload, since
-    // they are in volatile storage and the user may turn off their machine in
-    // frustration shortly.
-    kCrashLoopSendingMode
   };
 
   // These values are persisted to logs. Entries should not be renumbered and

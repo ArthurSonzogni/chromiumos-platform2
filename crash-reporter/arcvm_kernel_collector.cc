@@ -23,6 +23,7 @@
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/crash_sending_mode.h"
 #include "crash-reporter/kernel_util.h"
 #include "crash-reporter/util.h"
 
@@ -48,7 +49,7 @@ ArcvmKernelCollector::ArcvmKernelCollector(
         metrics_lib)
     : CrashCollector(CrashReporterCollector::kArcvmKernel,
                      kAlwaysUseUserCrashDirectory,
-                     kNormalCrashSendMode,
+                     CrashSendingMode::kNormal,
                      metrics_lib) {}
 
 ArcvmKernelCollector::~ArcvmKernelCollector() = default;

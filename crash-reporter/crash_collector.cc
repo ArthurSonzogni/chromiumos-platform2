@@ -62,6 +62,7 @@
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/crash_sending_mode.h"
 #include "crash-reporter/detailed_hardware_data.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/util.h"
@@ -524,7 +525,7 @@ CrashCollector::CrashCollector(
     const std::string& tag)
     : CrashCollector(collector,
                      kUseNormalCrashDirectorySelectionMethod,
-                     kNormalCrashSendMode,
+                     CrashSendingMode::kNormal,
                      metrics_lib,
                      tag) {}
 
@@ -553,7 +554,7 @@ CrashCollector::CrashCollector(
       tag_(tag) {
   AddCrashMetaUploadData(constants::kCollectorKey,
                          GetNameForCollector(collector));
-  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+  if (crash_sending_mode_ == CrashSendingMode::kCrashLoop) {
     AddCrashMetaUploadData(constants::kCrashLoopModeKey, "true");
   }
 }
@@ -616,7 +617,7 @@ base::ScopedFD CrashCollector::GetNewFileHandle(
   std::string filename_string;
   const char* filename_cstr;
   switch (crash_sending_mode_) {
-    case kNormalCrashSendMode:
+    case CrashSendingMode::kNormal:
       filename_string = filename.value();
       filename_cstr = filename_string.c_str();
       // The O_NOFOLLOW is redundant with O_CREAT|O_EXCL, but doesn't hurt.
@@ -628,7 +629,7 @@ base::ScopedFD CrashCollector::GetNewFileHandle(
         PLOG(ERROR) << "Could not open " << filename_cstr;
       }
       break;
-    case kCrashLoopSendingMode:
+    case CrashSendingMode::kCrashLoop:
       filename_string = filename.BaseName().value();
       filename_cstr = filename_string.c_str();
       fd = memfd_create(filename_cstr, MFD_CLOEXEC);
@@ -657,7 +658,7 @@ int CrashCollector::WriteNewFile(const FilePath& filename,
     return -1;
   }
 
-  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+  if (crash_sending_mode_ == CrashSendingMode::kCrashLoop) {
     if (InMemoryFileExists(filename)) {
       LOG(ERROR)
           << "Duplicate file names not allowed in crash loop sending mode: "
@@ -796,7 +797,7 @@ bool CrashCollector::CloseCompressedFileAndUpdateStats(
     compressed_output_stats.st_size = 0;
   }
 
-  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+  if (crash_sending_mode_ == CrashSendingMode::kCrashLoop) {
     if (InMemoryFileExists(filename)) {
       LOG(ERROR)
           << "Duplicate file names not allowed in crash loop sending mode: "
@@ -857,7 +858,7 @@ bool CrashCollector::WriteNewCompressedFile(const FilePath& filename,
 
 bool CrashCollector::RemoveNewFile(const base::FilePath& file_name) {
   switch (crash_sending_mode_) {
-    case kNormalCrashSendMode: {
+    case CrashSendingMode::kNormal: {
       if (!base::PathExists(file_name)) {
         return false;
       }
@@ -867,7 +868,7 @@ bool CrashCollector::RemoveNewFile(const base::FilePath& file_name) {
       }
       return base::DeleteFile(file_name);
     }
-    case kCrashLoopSendingMode: {
+    case CrashSendingMode::kCrashLoop: {
       auto it = base::ranges::find(
           in_memory_files_, file_name.BaseName().value(),
           [](const auto& elem) { return std::get<0>(elem); });
@@ -1199,7 +1200,7 @@ CrashCollectionStatus CrashCollector::GetCreatedCrashDirectoryByEuid(
 
   // In crash loop mode, we don't actually need a crash directory, so don't
   // bother creating one.
-  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+  if (crash_sending_mode_ == CrashSendingMode::kCrashLoop) {
     crash_directory->clear();
     return CrashCollectionStatus::kSuccess;
   }
@@ -1942,7 +1943,7 @@ CrashCollectionStatus CrashCollector::FinishCrash(
   metrics_lib_->data->SendRepeatedEnumToUMA(
       histogram, computed_crash_severity.product_group, weight_);
 
-  if (crash_sending_mode_ == kCrashLoopSendingMode) {
+  if (crash_sending_mode_ == CrashSendingMode::kCrashLoop) {
     SetUpDBus();
 
     // We'd like to call debugd_proxy_->UploadSingleCrash here; that seems like

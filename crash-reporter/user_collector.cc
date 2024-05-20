@@ -35,6 +35,7 @@
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/crash_sending_mode.h"
 #include "crash-reporter/paths.h"
 #include "crash-reporter/user_collector_base.h"
 #include "crash-reporter/util.h"
@@ -396,8 +397,8 @@ bool UserCollector::CopyPipeToCoreFile(int input_fd,
                                        const base::FilePath& core_path) {
   // We need to write to an actual file here for core2md.
   // If we're in memfd mode, fail out.
-  if (crash_sending_mode_ == kCrashLoopSendingMode) {
-    LOG(ERROR) << "Cannot call CopyFdToNewFile in kCrashLoopSendingMode";
+  if (crash_sending_mode_ == CrashSendingMode::kCrashLoop) {
+    LOG(ERROR) << "Cannot call CopyFdToNewFile in CrashSendingMode::kCrashLoop";
     return false;
   }
 

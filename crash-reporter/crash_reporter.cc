@@ -39,6 +39,7 @@
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_reporter_failure_collector.h"
+#include "crash-reporter/crash_sending_mode.h"
 #include "crash-reporter/ec_collector.h"
 #include "crash-reporter/ephemeral_crash_collector.h"
 #include "crash-reporter/generic_failure_collector.h"
@@ -519,13 +520,12 @@ int main(int argc, char* argv[]) {
   // (specifically, we don't want to save the crash in the user's home directory
   // because that will be inaccessible to crash_sender once the user is logged
   // out).
-  CrashCollector::CrashSendingMode crash_sending_mode =
-      CrashCollector::kNormalCrashSendMode;
+  CrashSendingMode crash_sending_mode = CrashSendingMode::kNormal;
   if (FLAGS_crash_loop_before >= 0) {
     base::Time crash_loop_before =
         base::Time::FromTimeT(static_cast<time_t>(FLAGS_crash_loop_before));
     if (base::Time::Now() <= crash_loop_before) {
-      crash_sending_mode = CrashCollector::kCrashLoopSendingMode;
+      crash_sending_mode = CrashSendingMode::kCrashLoop;
       LOG(INFO) << "Using crash loop sending mode";
     }
   }

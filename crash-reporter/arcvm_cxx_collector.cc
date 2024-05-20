@@ -24,6 +24,7 @@
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/crash_sending_mode.h"
 
 ArcvmCxxCollector::ArcvmCxxCollector(
     const scoped_refptr<
@@ -31,7 +32,7 @@ ArcvmCxxCollector::ArcvmCxxCollector(
         metrics_lib)
     : CrashCollector(CrashReporterCollector::kArcvmCxx,
                      kAlwaysUseUserCrashDirectory,
-                     kNormalCrashSendMode,
+                     CrashSendingMode::kNormal,
                      metrics_lib) {}
 
 ArcvmCxxCollector::~ArcvmCxxCollector() = default;

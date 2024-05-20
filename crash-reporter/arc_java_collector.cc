@@ -21,6 +21,7 @@
 #include "crash-reporter/crash_collection_status.h"
 #include "crash-reporter/crash_collector.h"
 #include "crash-reporter/crash_collector_names.h"
+#include "crash-reporter/crash_sending_mode.h"
 
 using base::File;
 using base::FilePath;
@@ -31,7 +32,7 @@ ArcJavaCollector::ArcJavaCollector(
         metrics_lib)
     : CrashCollector(CrashReporterCollector::kArcJava,
                      kAlwaysUseUserCrashDirectory,
-                     kNormalCrashSendMode,
+                     CrashSendingMode::kNormal,
                      metrics_lib,
                      GetNameForCollector(CrashReporterCollector::kArcJava)) {}
 
