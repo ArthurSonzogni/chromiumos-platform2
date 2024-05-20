@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <memory>
 #include <optional>
+#include <string>
 #include <tuple>
 #include <utility>
 
@@ -28,6 +29,7 @@
 #include <base/numerics/safe_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/system/sys_info.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/sequenced_task_runner.h>
 
@@ -145,6 +147,7 @@ void SetBufferError(Camera3StreamBuffer& buffer) {
 
 StreamManipulatorHelper::StreamManipulatorHelper(
     Config config,
+    const std::string& camera_module_name,
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks,
     OnProcessTaskCallback on_process_task,
@@ -163,6 +166,28 @@ StreamManipulatorHelper::StreamManipulatorHelper(
   CHECK_NE(still_capture_processor_, nullptr);
   CHECK_NE(task_runner_, nullptr);
   CHECK_NE(static_info, nullptr);
+
+  // Platform HAL specific quirks.
+  const std::string board = base::SysInfo::GetLsbReleaseBoard();
+  if (camera_module_name == "Intel Camera3HAL Module") {
+    // Some stream combinations are not supported (b/323451172).
+    config_.preserve_client_video_streams = false;
+  } else if (board.find("brya") == 0 &&
+             camera_module_name == "Intel IPU6 Camera HAL Module") {
+    // 5M video IQ is not fine-tuned (b/242829296).
+    config_.max_enlarged_video_source_width = 1920;
+    config_.max_enlarged_video_source_height = 1200;
+  } else if (camera_module_name == "QTI Camera HAL") {
+    // Some stream combinations are not supported (b/322788274).
+    config_.preserve_client_video_streams = false;
+  } else if (board.find("geralt") == 0 &&
+             camera_module_name == "libcamera camera HALv3 module") {
+    // 5M video IQ is not fine-tuned (b/340478189).
+    config_.max_enlarged_video_source_width = 1920;
+    config_.max_enlarged_video_source_height = 1200;
+    // Some stream combinations are not supported (b/333851403).
+    config_.preserve_client_video_streams = false;
+  }
 
   partial_result_count_ = base::checked_cast<uint32_t>(
       GetRoMetadata<int32_t>(static_info, ANDROID_REQUEST_PARTIAL_RESULT_COUNT)

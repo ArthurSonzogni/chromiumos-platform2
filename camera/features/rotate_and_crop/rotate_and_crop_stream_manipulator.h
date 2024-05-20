@@ -10,6 +10,7 @@
 #include <hardware/camera3.h>
 
 #include <memory>
+#include <string>
 
 #include <base/containers/flat_set.h>
 
@@ -53,7 +54,8 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
  public:
   explicit RotateAndCropStreamManipulator(
       GpuResources* gpu_resources,
-      std::unique_ptr<StillCaptureProcessor> still_capture_processor);
+      std::unique_ptr<StillCaptureProcessor> still_capture_processor,
+      std::string camera_module_name);
   ~RotateAndCropStreamManipulator() override;
 
   static bool UpdateVendorTags(VendorTagManager& vendor_tag_manager);
@@ -82,6 +84,7 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
 
   GpuResources* gpu_resources_ = nullptr;
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
+  std::string camera_module_name_;
   std::unique_ptr<StreamManipulatorHelper> helper_;
 
   // Fixed after Initialize().

@@ -15,6 +15,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -119,6 +120,7 @@ class StreamManipulatorHelper {
   // Created in StreamManipulator::Initialize.
   StreamManipulatorHelper(
       Config config,
+      const std::string& camera_module_name,
       const camera_metadata_t* static_info,
       StreamManipulator::Callbacks callbacks,
       OnProcessTaskCallback on_process_task,

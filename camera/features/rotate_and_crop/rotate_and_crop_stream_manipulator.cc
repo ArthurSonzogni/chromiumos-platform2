@@ -91,9 +91,11 @@ bool IsExclusiveBoard() {
 
 RotateAndCropStreamManipulator::RotateAndCropStreamManipulator(
     GpuResources* gpu_resources,
-    std::unique_ptr<StillCaptureProcessor> still_capture_processor)
+    std::unique_ptr<StillCaptureProcessor> still_capture_processor,
+    std::string camera_module_name)
     : gpu_resources_(gpu_resources),
       still_capture_processor_(std::move(still_capture_processor)),
+      camera_module_name_(std::move(camera_module_name)),
       thread_("RotateAndCropThread") {
   CHECK_NE(gpu_resources_, nullptr);
   CHECK(thread_.Start());
@@ -186,7 +188,7 @@ bool RotateAndCropStreamManipulator::Initialize(
                                     : ProcessMode::kVideoAndStillProcess,
           .result_metadata_tags_to_update = {ANDROID_SCALER_ROTATE_AND_CROP},
       },
-      static_info, std::move(callbacks),
+      camera_module_name_, static_info, std::move(callbacks),
       base::BindRepeating(&RotateAndCropStreamManipulator::OnProcessTask,
                           base::Unretained(this)),
       GetCropScaleImageCallback(gpu_resources_->gpu_task_runner(),

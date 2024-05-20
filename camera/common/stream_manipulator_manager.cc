@@ -14,7 +14,6 @@
 #include <base/system/sys_info.h>
 #include <base/thread_annotations.h>
 
-#include "common/camera_buffer_handle.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/common_tracing.h"
 #include "common/framing_stream_manipulator.h"
@@ -26,7 +25,6 @@
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/device_config.h"
 #include "cros-camera/jpeg_compressor.h"
-#include "cros-camera/tracing.h"
 #include "features/feature_profile.h"
 #include "features/rotate_and_crop/rotate_and_crop_stream_manipulator.h"
 #include "features/zsl/zsl_stream_manipulator.h"
@@ -219,9 +217,11 @@ StreamManipulatorManager::StreamManipulatorManager(
 
   stream_manipulators_.emplace_back(
       std::make_unique<RotateAndCropStreamManipulator>(
-          gpu_resources, std::make_unique<StillCaptureProcessorImpl>(
-                             JpegCompressor::GetInstance(
-                                 CameraMojoChannelManager::GetInstance()))));
+          gpu_resources,
+          std::make_unique<StillCaptureProcessorImpl>(
+              JpegCompressor::GetInstance(
+                  CameraMojoChannelManager::GetInstance())),
+          create_options.camera_module_name));
   LOGF(INFO) << "RotateAndCropStreamManipulator enabled";
 
 #if USE_CAMERA_FEATURE_EFFECTS

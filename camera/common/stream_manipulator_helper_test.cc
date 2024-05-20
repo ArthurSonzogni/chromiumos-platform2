@@ -154,8 +154,10 @@ class TestStreamManipulator : public StreamManipulator {
   // StreamManipulator methods.
   bool Initialize(const camera_metadata_t* static_info,
                   Callbacks callbacks) override {
+    constexpr const char* kFakeCameraModuleName = "Fake camera module";
     helper_ = std::make_unique<StreamManipulatorHelper>(
-        std::move(helper_config_), static_info, std::move(callbacks),
+        std::move(helper_config_), kFakeCameraModuleName, static_info,
+        std::move(callbacks),
         base::BindRepeating(&TestStreamManipulator::OnProcessTask,
                             base::Unretained(this)),
         base::BindRepeating(&TestStreamManipulator::CropScaleImage,
