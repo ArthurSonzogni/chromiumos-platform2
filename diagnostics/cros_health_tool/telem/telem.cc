@@ -1073,6 +1073,8 @@ void DisplayInputInfo(const mojom::InputResultPtr& input_result) {
     for (const auto& touchpad_device : *info->touchpad_devices) {
       base::Value::Dict out_touchpad_device;
       SET_DICT(driver_name, touchpad_device, &out_touchpad_device);
+      SET_DICT(vendor_id, touchpad_device, &out_touchpad_device);
+      SET_DICT(product_id, touchpad_device, &out_touchpad_device);
 
       auto out_input_device =
           PopulateInputDeviceFields(touchpad_device->input_device);

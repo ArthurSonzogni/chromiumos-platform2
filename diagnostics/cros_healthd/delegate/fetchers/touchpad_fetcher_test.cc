@@ -5,6 +5,7 @@
 #include "diagnostics/cros_healthd/delegate/fetchers/touchpad_fetcher.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -44,6 +45,9 @@ constexpr char kFakeDriverSymlink[] =
     "sys/dev/char/999:999/device/device/driver";
 constexpr char kFakeDriverTarget[] = "/bus/drivers/fakedriver";
 constexpr char kFakePsmouseDriverTarget[] = "/bus/serio/drivers/psmouse";
+constexpr char kFakeProductId[] = "00c9";
+constexpr char kFakeVendorId[] = "04f3";
+constexpr char kFakeIdPath[] = "sys/class/input/event6/device/id/";
 
 class TouchpadFetcherTest : public BaseFileTest {
  public:
@@ -67,6 +71,17 @@ class TouchpadFetcherTest : public BaseFileTest {
 
   void CreateDriverSymlink(base::FilePath target) {
     SetSymbolicLink(target, base::FilePath({kFakeDriverSymlink}));
+  }
+
+  void CreateTouchpadIdFile(const std::string id_type,
+                            const std::string content) {
+    base::FilePath id_path{base::StrCat({GetBasePath(), kFakeIdPath, id_type})};
+    WriteFileAndCreateParentDirs(id_path, content);
+  }
+
+  void CreateAllTouchpadIdFiles() {
+    CreateTouchpadIdFile("product", kFakeProductId);
+    CreateTouchpadIdFile("vendor", kFakeVendorId);
   }
 
   std::unique_ptr<brillo::MockUdevDevice> dev_;
@@ -261,6 +276,7 @@ TEST_F(TouchpadFetcherTest, NonPsmouseDriverReturnsDevice) {
   const char* fake_sys_path = "/path/to/device";
 
   CreateDriverSymlink(base::FilePath{kFakeDriverTarget});
+  CreateAllTouchpadIdFiles();
 
   EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
@@ -279,7 +295,8 @@ TEST_F(TouchpadFetcherTest, NonPsmouseDriverReturnsDevice) {
       .WillOnce(Return("1"));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
       .WillOnce(Return(""));
-  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
+  EXPECT_CALL(*dev_, GetSysName())
+      .WillRepeatedly(Return(kSysnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
       .WillOnce(Return(kFakeMajorValue));
@@ -298,6 +315,8 @@ TEST_F(TouchpadFetcherTest, NonPsmouseDriverReturnsDevice) {
   EXPECT_EQ(result.value().size(), 1);
   auto touchpad_device = std::move(result.value()[0]);
   EXPECT_EQ(touchpad_device->driver_name, "fakedriver");
+  EXPECT_EQ(touchpad_device->vendor_id, kFakeVendorId);
+  EXPECT_EQ(touchpad_device->product_id, kFakeProductId);
   auto input_device = std::move(touchpad_device->input_device);
   EXPECT_EQ(input_device->name, kDevnamePropertyValue);
   EXPECT_EQ(input_device->physical_location, fake_sys_path);
@@ -308,6 +327,7 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverNoProtocolReturnsDevice) {
   const char* fake_sys_path = "/path/to/device";
 
   CreateDriverSymlink(base::FilePath{kFakePsmouseDriverTarget});
+  CreateAllTouchpadIdFiles();
 
   EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
@@ -326,7 +346,8 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverNoProtocolReturnsDevice) {
       .WillOnce(Return("1"));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
       .WillOnce(Return(""));
-  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
+  EXPECT_CALL(*dev_, GetSysName())
+      .WillRepeatedly(Return(kSysnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
       .WillOnce(Return(kFakeMajorValue));
@@ -348,6 +369,8 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverNoProtocolReturnsDevice) {
   EXPECT_EQ(result.value().size(), 1);
   auto touchpad_device = std::move(result.value()[0]);
   EXPECT_EQ(touchpad_device->driver_name, "psmouse");
+  EXPECT_EQ(touchpad_device->vendor_id, kFakeVendorId);
+  EXPECT_EQ(touchpad_device->product_id, kFakeProductId);
   auto input_device = std::move(touchpad_device->input_device);
   EXPECT_EQ(input_device->name, kDevnamePropertyValue);
   EXPECT_EQ(input_device->physical_location, fake_sys_path);
@@ -359,6 +382,7 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverWithProtocolReturnsDevice) {
   SetFile(base::FilePath{kFakePsmouseProtocolPath}, kFakePsmouseProtocol);
 
   CreateDriverSymlink(base::FilePath{kFakePsmouseDriverTarget});
+  CreateAllTouchpadIdFiles();
 
   EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
 
@@ -377,7 +401,8 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverWithProtocolReturnsDevice) {
       .WillOnce(Return("1"));
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
       .WillOnce(Return(""));
-  EXPECT_CALL(*dev_, GetSysName()).WillOnce(Return(kSysnamePropertyValue));
+  EXPECT_CALL(*dev_, GetSysName())
+      .WillRepeatedly(Return(kSysnamePropertyValue));
 
   EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
       .WillOnce(Return(kFakeMajorValue));
@@ -399,6 +424,110 @@ TEST_F(TouchpadFetcherTest, PsmouseDriverWithProtocolReturnsDevice) {
   EXPECT_EQ(result.value().size(), 1);
   auto touchpad_device = std::move(result.value()[0]);
   EXPECT_EQ(touchpad_device->driver_name, "FakeProtocol psmouse");
+  EXPECT_EQ(touchpad_device->vendor_id, kFakeVendorId);
+  EXPECT_EQ(touchpad_device->product_id, kFakeProductId);
+  auto input_device = std::move(touchpad_device->input_device);
+  EXPECT_EQ(input_device->name, kDevnamePropertyValue);
+  EXPECT_EQ(input_device->physical_location, fake_sys_path);
+  ASSERT_TRUE(input_device->is_enabled);
+}
+
+TEST_F(TouchpadFetcherTest, NonPsmouseDriverNoPidReturnsDevice) {
+  const char* fake_sys_path = "/path/to/device";
+
+  CreateDriverSymlink(base::FilePath{kFakeDriverTarget});
+  CreateTouchpadIdFile("vendor", kFakeVendorId);
+
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
+
+  EXPECT_CALL(*udev_enumerate_, GetListEntry())
+      .WillOnce(Return(std::move(udev_list_entry_)));
+
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
+
+  EXPECT_CALL(*udev_, CreateEnumerate())
+      .WillOnce(Return(std::move(udev_enumerate_)));
+
+  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
+      .WillOnce(Return("1"));
+  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
+      .WillOnce(Return(""));
+  EXPECT_CALL(*dev_, GetSysName())
+      .WillRepeatedly(Return(kSysnamePropertyValue));
+
+  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
+      .WillOnce(Return(kFakeMajorValue));
+  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMinor))
+      .WillOnce(Return(kFakeMinorValue));
+
+  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyDevname))
+      .WillOnce(Return(kDevnamePropertyValue));
+
+  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
+      .WillOnce(Return(std::move(dev_)));
+
+  auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
+
+  EXPECT_TRUE(result.has_value());
+  EXPECT_EQ(result.value().size(), 1);
+  auto touchpad_device = std::move(result.value()[0]);
+  EXPECT_EQ(touchpad_device->driver_name, "fakedriver");
+  EXPECT_EQ(touchpad_device->vendor_id, kFakeVendorId);
+  EXPECT_EQ(touchpad_device->product_id, std::nullopt);
+  auto input_device = std::move(touchpad_device->input_device);
+  EXPECT_EQ(input_device->name, kDevnamePropertyValue);
+  EXPECT_EQ(input_device->physical_location, fake_sys_path);
+  ASSERT_TRUE(input_device->is_enabled);
+}
+
+TEST_F(TouchpadFetcherTest, NonPsmouseDriverNoVidReturnsDevice) {
+  const char* fake_sys_path = "/path/to/device";
+
+  CreateDriverSymlink(base::FilePath{kFakeDriverTarget});
+  CreateTouchpadIdFile("product", kFakeProductId);
+
+  EXPECT_CALL(*udev_list_entry_, GetName()).WillOnce(Return(fake_sys_path));
+
+  EXPECT_CALL(*udev_enumerate_, GetListEntry())
+      .WillOnce(Return(std::move(udev_list_entry_)));
+
+  EXPECT_CALL(*udev_enumerate_, AddMatchSubsystem(StrEq(kSubsystemInput)))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(*udev_enumerate_, ScanDevices()).WillOnce(Return(true));
+
+  EXPECT_CALL(*udev_, CreateEnumerate())
+      .WillOnce(Return(std::move(udev_enumerate_)));
+
+  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdInputTouchpad))
+      .WillOnce(Return("1"));
+  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyIdBus))
+      .WillOnce(Return(""));
+  EXPECT_CALL(*dev_, GetSysName())
+      .WillRepeatedly(Return(kSysnamePropertyValue));
+
+  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMajor))
+      .WillOnce(Return(kFakeMajorValue));
+  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyMinor))
+      .WillOnce(Return(kFakeMinorValue));
+
+  EXPECT_CALL(*dev_, GetPropertyValue(touchpad::kUdevPropertyDevname))
+      .WillOnce(Return(kDevnamePropertyValue));
+
+  EXPECT_CALL(*udev_, CreateDeviceFromSysPath(StrEq(fake_sys_path)))
+      .WillOnce(Return(std::move(dev_)));
+
+  auto result = PopulateTouchpadDevices(std::move(udev_), GetBasePath());
+
+  EXPECT_TRUE(result.has_value());
+  EXPECT_EQ(result.value().size(), 1);
+  auto touchpad_device = std::move(result.value()[0]);
+  EXPECT_EQ(touchpad_device->driver_name, "fakedriver");
+  EXPECT_EQ(touchpad_device->vendor_id, std::nullopt);
+  EXPECT_EQ(touchpad_device->product_id, kFakeProductId);
   auto input_device = std::move(touchpad_device->input_device);
   EXPECT_EQ(input_device->name, kDevnamePropertyValue);
   EXPECT_EQ(input_device->physical_location, fake_sys_path);

@@ -21,17 +21,13 @@
 #include <brillo/udev/udev_enumerate.h>
 #include <brillo/udev/udev_list_entry.h>
 
+#include "diagnostics/base/file_utils.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/constants.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
-
-std::vector<std::string> SplitFilePath(const std::string& filepath) {
-  return base::SplitString(filepath, "/", base::TRIM_WHITESPACE,
-                           base::SPLIT_WANT_NONEMPTY);
-}
 
 std::string CharToNonNullStr(const char* sequence) {
   return sequence ? sequence : std::string();
@@ -49,7 +45,7 @@ mojom::InputDevicePtr CreateInternalTouchpadInputDevice(
   return input_device;
 }
 
-base::expected<std::string, std::string> GetDriverSymlinkTarget(
+base::expected<base::FilePath, std::string> GetDriverSymlinkTarget(
     const brillo::UdevDevice& dev, const std::string& root_path) {
   std::string major =
       CharToNonNullStr(dev.GetPropertyValue(touchpad::kUdevPropertyMajor));
@@ -71,7 +67,7 @@ base::expected<std::string, std::string> GetDriverSymlinkTarget(
   if (target.empty())
     return base::unexpected("Error reading driver symlink target");
 
-  return base::ok(target.value());
+  return base::ok(target);
 }
 
 std::string GetPsmouseDriver(const brillo::UdevDevice& dev,
@@ -80,8 +76,11 @@ std::string GetPsmouseDriver(const brillo::UdevDevice& dev,
   // For the psmouse touchpad type, DEVPATH typically looks like
   // /devices/platform/i8042/serioN/input/input22/event15.
   // Iterate through the file parts to find what N value serioN has.
-  for (auto filepath_part : SplitFilePath(CharToNonNullStr(
-           dev.GetPropertyValue(touchpad::kUdevPropertyDevpath)))) {
+  std::vector<std::string> filepath_parts =
+      base::FilePath{CharToNonNullStr(
+                         dev.GetPropertyValue(touchpad::kUdevPropertyDevpath))}
+          .GetComponents();
+  for (auto filepath_part : filepath_parts) {
     if (filepath_part.starts_with("serio")) {
       serio_port = filepath_part;
       break;
@@ -174,13 +173,13 @@ PopulateTouchpadDevices(std::unique_ptr<brillo::Udev> udev,
     if (!symlink_target_result.has_value())
       return base::unexpected(symlink_target_result.error());
 
-    std::string symlink_target = symlink_target_result.value();
+    base::FilePath symlink_target = symlink_target_result.value();
     std::string driver_name;
 
-    if (symlink_target.find("psmouse") != std::string::npos) {
+    if (symlink_target.value().find("psmouse") != std::string::npos) {
       driver_name = GetPsmouseDriver(*dev, root_path);
     } else {
-      std::vector<std::string> filepath_list = SplitFilePath(symlink_target);
+      std::vector<std::string> filepath_list = symlink_target.GetComponents();
       if (filepath_list.empty())
         return base::unexpected(
             "Touchpad symlink was empty. Could not read driver name");
@@ -193,6 +192,27 @@ PopulateTouchpadDevices(std::unique_ptr<brillo::Udev> udev,
     auto touchpad_device = mojom::TouchpadDevice::New();
     touchpad_device->input_device = std::move(input_device);
     touchpad_device->driver_name = driver_name;
+
+    std::string id_path = base::StrCat(
+        {root_path, "sys/class/input/", dev->GetSysName(), "/device/id/"});
+
+    std::string vid_result;
+    base::FilePath vid_filepath{base::StrCat({id_path, "vendor"})};
+
+    std::string pid_result;
+    base::FilePath pid_filepath{base::StrCat({id_path, "product"})};
+
+    if (!ReadAndTrimString(vid_filepath, &vid_result)) {
+      LOG(WARNING) << "Unable to read vendor id from sysfs";
+    } else {
+      touchpad_device->vendor_id = vid_result;
+    }
+
+    if (!ReadAndTrimString(pid_filepath, &pid_result)) {
+      LOG(WARNING) << "Unable to read product id from sysfs";
+    } else {
+      touchpad_device->product_id = pid_result;
+    }
 
     std::vector<mojom::TouchpadDevicePtr> devices = {};
     devices.push_back(std::move(touchpad_device));
