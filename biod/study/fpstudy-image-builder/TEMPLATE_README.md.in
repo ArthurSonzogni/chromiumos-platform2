@@ -186,6 +186,10 @@ See [CCD Open] and [CCD Cable] for more information.
     devices, it might be `Ctrl` + `Alt` + `➝` (Ctrl-Alt-"forward").
 2.  Login as `root` with password `test0000` (the password may not be necessary)
 
+***⚠️ Most of the commands in this tutorial cannot be run from the ChromeOS UI's
+crosh shell, via Ctrl-Alt-T. You must run them using the method described above,
+otherwise you may see a permission issue.***
+
 ## B. Alternative Root Terminal
 
 After logging in using your test Gmail account, press `Ctrl-Alt-T`. Type
