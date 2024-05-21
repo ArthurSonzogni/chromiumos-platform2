@@ -600,6 +600,8 @@ event --help`.
 | ----- | ---- | ----------- |
 | input_device | [InputDevice](#InputDevice) | The input device of this internal touchpad. |
 | driver_name | string | The name of the kernel driver in use. |
+| vendor_id   | string | The touchpad vendor id. |
+| product_id  | string | The touchpad product id.|
 
 ##### InputDevice
 | Field | Type | Description |
