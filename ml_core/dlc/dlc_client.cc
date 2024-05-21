@@ -18,6 +18,7 @@
 #include <dlcservice/dbus-constants.h>
 #include <dlcservice/dbus-proxies.h>
 
+#include "ml_core/dlc/dlc_ids.h"
 #include "ml_core/dlc/dlc_metrics.h"
 
 namespace {
@@ -95,12 +96,7 @@ class DlcClientImpl : public cros::DlcClient {
     metrics_.RecordInstallAttemptCount(attempt, kMaxInstallAttempts);
 
     brillo::ErrorPtr error;
-    dlcservice::InstallRequest install_request;
-    install_request.set_id(dlc_id_);
-
-    if (!dlcservice_client_->Install(install_request, &error,
-                                     kDlcInstallTimeout)) {
-      LOG(ERROR) << "Error calling dlcservice_client_->Install for " << dlc_id_;
+    auto handle_error = [&]() {
       if (error == nullptr) {
         metrics_.RecordBeginInstallResult(
             cros::DlcBeginInstallResult::kUnknownDlcServiceFailure);
@@ -144,6 +140,41 @@ class DlcClientImpl : public cros::DlcClient {
       InvokeErrorCb(
           base::StrCat({"Error calling dlcservice (code=", error->GetCode(),
                         "): ", error->GetMessage()}));
+    };
+
+    if (dlc_id_ == cros::dlc_client::kMlCoreDlcId) {
+      if (dlc_state_.ByteSizeLong() == 0) {
+        // If |dlc_state_| is not available, get the current DLC state.
+        if (!dlcservice_client_->GetDlcState(dlc_id_, &dlc_state_, &error)) {
+          LOG(ERROR) << "Error calling dlcservice_client_->GetDlcState for "
+                     << dlc_id_;
+          handle_error();
+          return;
+        }
+      }
+
+      if (dlc_state_.state() == dlcservice::DlcState::NOT_INSTALLED ||
+          !dlc_state_.is_verified()) {
+        uninstalling = true;
+        // Uninstall an older version of the DLC if available. This ensures to
+        // remove the existing logical volume for the DLC to accommodate changes
+        // in DLC_PREALLOC_BLOCKS.
+        if (!dlcservice_client_->Uninstall(dlc_id_, &error)) {
+          LOG(ERROR) << "Error calling dlcservice_client_->Uninstall for "
+                     << dlc_id_;
+          handle_error();
+          return;
+        }
+      }
+    }
+
+    dlcservice::InstallRequest install_request;
+    install_request.set_id(dlc_id_);
+
+    if (!dlcservice_client_->Install(install_request, &error,
+                                     kDlcInstallTimeout)) {
+      LOG(ERROR) << "Error calling dlcservice_client_->Install for " << dlc_id_;
+      handle_error();
       return;
     }
 
@@ -154,6 +185,12 @@ class DlcClientImpl : public cros::DlcClient {
   void OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     if (dlc_state.id() != dlc_id_) {
+      return;
+    }
+
+    if (uninstalling &&
+        dlc_state.state() == dlcservice::DlcState::NOT_INSTALLED) {
+      uninstalling = false;
       return;
     }
 
@@ -219,6 +256,8 @@ class DlcClientImpl : public cros::DlcClient {
   }
 
   const std::string dlc_id_;
+  dlcservice::DlcState dlc_state_;
+  bool uninstalling = false;
   cros::DlcMetrics metrics_;
   std::string metrics_base_name_;
   std::unique_ptr<org::chromium::DlcServiceInterfaceProxyInterface>
