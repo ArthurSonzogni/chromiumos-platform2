@@ -37,9 +37,8 @@ FactoryModeMountHelper::FactoryModeMountHelper(libstorage::Platform* platform,
                                                StartupDep* startup_dep,
                                                const Flags& flags,
                                                const base::FilePath& root,
-                                               const base::FilePath& stateful,
-                                               const bool dev_mode)
-    : MountHelper(platform, startup_dep, flags, root, stateful, dev_mode) {}
+                                               const base::FilePath& stateful)
+    : MountHelper(platform, startup_dep, flags, root, stateful) {}
 
 bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
   base::FilePath option_file = stateful_.Append(kOptionsFile);

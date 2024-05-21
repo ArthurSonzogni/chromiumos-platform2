@@ -43,9 +43,8 @@ TestModeMountHelper::TestModeMountHelper(libstorage::Platform* platform,
                                          StartupDep* startup_dep,
                                          const Flags& flags,
                                          const base::FilePath& root,
-                                         const base::FilePath& stateful,
-                                         const bool dev_mode)
-    : MountHelper(platform, startup_dep, flags, root, stateful, dev_mode) {}
+                                         const base::FilePath& stateful)
+    : MountHelper(platform, startup_dep, flags, root, stateful) {}
 
 bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   // If this a TPM 2.0 device that supports encrypted stateful, creates and

@@ -30,8 +30,7 @@ class MountHelper {
               StartupDep* startup_dep,
               const Flags& flags,
               const base::FilePath& root,
-              const base::FilePath& stateful,
-              const bool dev_mode);
+              const base::FilePath& stateful);
   virtual ~MountHelper() = default;
 
   // Add mount to mount stack.
@@ -67,7 +66,6 @@ class MountHelper {
   const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;
-  const bool dev_mode_;
 
  private:
   std::stack<base::FilePath> mount_stack_;

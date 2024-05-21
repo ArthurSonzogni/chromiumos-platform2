@@ -66,7 +66,7 @@ class GetImageVarsTest : public ::testing::Test {
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
+        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir);
     json_file_ = base_dir.Append("vars.json");
     ASSERT_TRUE(platform_->WriteStringToFile(json_file_, kImageVarsContent));
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
@@ -128,7 +128,7 @@ TEST_F(Ext4FeaturesTest, Encrypt) {
   ASSERT_TRUE(platform_->WriteStringToFile(encrypt_file, "1"));
 
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
@@ -146,7 +146,7 @@ TEST_F(Ext4FeaturesTest, Verity) {
   ASSERT_TRUE(platform_->WriteStringToFile(verity_file, "1"));
 
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
@@ -161,7 +161,7 @@ TEST_F(Ext4FeaturesTest, ReservedBlocksGID) {
       base::StringPrintf(kDumpe2fsStr, "", "encrypt verity");
 
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
@@ -177,7 +177,7 @@ TEST_F(Ext4FeaturesTest, EnableQuotaWithPrjQuota) {
   flags_.prjquota = true;
 
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
@@ -193,7 +193,7 @@ TEST_F(Ext4FeaturesTest, EnableQuotaNoPrjQuota) {
   flags_.prjquota = false;
 
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
@@ -207,7 +207,7 @@ TEST_F(Ext4FeaturesTest, MissingFeatures) {
   std::string state_dump("");
 
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
+      platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir);
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
       mount_helper_.get());
@@ -230,7 +230,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
     developer_new = stateful.Append("dev_image_new");
     preserve_dir = stateful.Append("unencrypted/preserve");
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
+        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir, stateful, platform_.get(), startup_dep_.get(),
         mount_helper_.get());
@@ -334,7 +334,7 @@ class DevGatherLogsTest : public ::testing::Test {
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
-        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
+        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir);
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir, stateful, platform_.get(), startup_dep_.get(),
         mount_helper_.get());

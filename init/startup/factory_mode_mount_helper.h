@@ -27,8 +27,7 @@ class FactoryModeMountHelper : public MountHelper {
                                   StartupDep* startup_dep,
                                   const Flags& flags,
                                   const base::FilePath& root,
-                                  const base::FilePath& stateful,
-                                  const bool dev_mode);
+                                  const base::FilePath& stateful);
 
   bool DoMountVarAndHomeChronos() override;
 };

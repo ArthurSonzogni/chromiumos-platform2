@@ -49,17 +49,17 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
 
   // Use factory mount helper.
   if (dev_mode && is_test_image && is_factory_mode) {
-    return std::make_unique<FactoryModeMountHelper>(
-        platform_, startup_dep_, flags_, root_, stateful_, dev_mode);
+    return std::make_unique<FactoryModeMountHelper>(platform_, startup_dep_,
+                                                    flags_, root_, stateful_);
   }
 
   if (dev_mode && is_test_image) {
-    return std::make_unique<TestModeMountHelper>(
-        platform_, startup_dep_, flags_, root_, stateful_, dev_mode);
+    return std::make_unique<TestModeMountHelper>(platform_, startup_dep_,
+                                                 flags_, root_, stateful_);
   }
 
   return std::make_unique<StandardMountHelper>(platform_, startup_dep_, flags_,
-                                               root_, stateful_, dev_mode);
+                                               root_, stateful_);
 }
 
 }  // namespace startup

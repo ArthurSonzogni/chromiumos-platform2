@@ -36,14 +36,12 @@ MountHelper::MountHelper(libstorage::Platform* platform,
                          StartupDep* startup_dep,
                          const Flags& flags,
                          const base::FilePath& root,
-                         const base::FilePath& stateful,
-                         const bool dev_mode)
+                         const base::FilePath& stateful)
     : platform_(platform),
       startup_dep_(startup_dep),
       flags_(flags),
       root_(root),
-      stateful_(stateful),
-      dev_mode_(dev_mode) {}
+      stateful_(stateful) {}
 
 // Adds mounts to undo_mount stack.
 void MountHelper::RememberMount(const base::FilePath& mount) {
