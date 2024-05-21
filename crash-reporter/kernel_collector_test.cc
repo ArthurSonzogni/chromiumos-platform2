@@ -34,6 +34,9 @@ const int kMaxEfiParts = 100;
 
 class KernelCollectorTest : public ::testing::Test {
  protected:
+  static constexpr const char kSuccessfulCollectContents[] =
+      "<4>[  230.564891] something";
+
   void SetUpSuccessfulCollect();
   void SetUpWatchdog0BootstatusInvalidNotInteger(const FilePath& path);
   void SetUpWatchdog0BootstatusUnknownInteger(const FilePath& path);
@@ -247,16 +250,17 @@ TEST_F(KernelCollectorTest, LoadPreservedDump) {
   std::string dump;
   dump.clear();
 
-  ASSERT_TRUE(test_util::CreateFile(
-      kcrash_file(), "CrashRecordWithoutRamoopsHeader\n<6>[    0.078852]"));
+  ASSERT_TRUE(test_util::CreateFile(kcrash_file(),
+                                    "Oops#1 Part#10\n<6>[    0.078852]"));
   ASSERT_TRUE(collector_.LoadParameters());
   ASSERT_TRUE(collector_.LoadPreservedDump(&dump));
-  ASSERT_EQ("CrashRecordWithoutRamoopsHeader\n<6>[    0.078852]", dump);
+  ASSERT_EQ("<6>[    0.078852]", dump);
 
-  ASSERT_TRUE(test_util::CreateFile(kcrash_file(), "====1.1\nsomething"));
+  ASSERT_TRUE(test_util::CreateFile(
+      kcrash_file(), StrCat({"Panic#2 Part#3\n", kSuccessfulCollectContents})));
   ASSERT_TRUE(collector_.LoadParameters());
   ASSERT_TRUE(collector_.LoadPreservedDump(&dump));
-  ASSERT_EQ("something", dump);
+  ASSERT_EQ(kSuccessfulCollectContents, dump);
 
   ASSERT_TRUE(
       test_util::CreateFile(kcrash_file(), "\x01\x02\xfe\xff random blob"));
@@ -425,7 +429,9 @@ TEST_F(KernelCollectorTest, CollectPreservedFileMissing) {
 }
 
 TEST_F(KernelCollectorTest, CollectBadDirectory) {
-  ASSERT_TRUE(test_util::CreateFile(kcrash_file(), "====1.1\nsomething"));
+  ASSERT_TRUE(test_util::CreateFile(
+      kcrash_file(),
+      StrCat({"Panic#4 Part#42\n", kSuccessfulCollectContents})));
   EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
             CrashCollectionStatus::kCreateCrashDirectoryFailed);
   EXPECT_TRUE(FindLog("Unable to create crash directory"))
@@ -435,7 +441,8 @@ TEST_F(KernelCollectorTest, CollectBadDirectory) {
 
 void KernelCollectorTest::SetUpSuccessfulCollect() {
   collector_.set_crash_directory_for_test(test_crash_directory());
-  ASSERT_TRUE(test_util::CreateFile(kcrash_file(), "====1.1\nsomething"));
+  ASSERT_TRUE(test_util::CreateFile(
+      kcrash_file(), StrCat({"Panic#1 Part#1\n", kSuccessfulCollectContents})));
 }
 
 void KernelCollectorTest::SetUpWatchdog0BootstatusInvalidNotInteger(
@@ -520,7 +527,7 @@ TEST_F(KernelCollectorTest, CollectOK) {
   ASSERT_TRUE(base::PathExists(path));
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(path, &contents));
-  ASSERT_EQ("something", contents);
+  ASSERT_EQ(kSuccessfulCollectContents, contents);
   // Check that BIOS log was collected as well.
   path = path.ReplaceExtension("bios_log");
   ASSERT_TRUE(base::PathExists(path));

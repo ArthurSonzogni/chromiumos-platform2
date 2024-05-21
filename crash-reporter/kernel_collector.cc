@@ -122,13 +122,6 @@ bool KernelCollector::ReadRecordToString(std::string* contents,
                                          bool* record_found) {
   // A record is a ramoops dump. It has an associated size of "record_size".
   std::string record;
-  std::string captured;
-
-  // Ramoops appends a header to a crash which contains ==== followed by a
-  // timestamp. Ignore the header.
-  RE2::Options opt;
-  opt.set_dot_nl(true);  // match \n with '.'
-  RE2 record_re("====\\d+\\.\\d+\n(.*)", opt);
 
   FilePath record_path = GetDumpRecordPath(
       kDumpRecordDmesgName, kDumpDriverRamoopsName, current_record);
@@ -152,10 +145,6 @@ bool KernelCollector::ReadRecordToString(std::string* contents,
     contents->append(constants::kCorruptRamoops);
     contents->append(record);
     *record_found = true;
-  } else if (RE2::FullMatch(record, record_re, &captured)) {
-    // Found a ramoops header, so strip the header and append the rest.
-    contents->append(captured);
-    *record_found = true;
   } else if (RE2::PartialMatch(record.substr(0, 1024), *kBasicCheckRe)) {
     // pstore compression has been added since kernel 3.12. In order to
     // decompress dmesg correctly, ramoops driver has to strip the header
@@ -163,7 +152,8 @@ bool KernelCollector::ReadRecordToString(std::string* contents,
     // need to do it here anymore. However, the basic check is needed because
     // sometimes a pstore record is just a chunk of uninitialized memory which
     // is not the result of a kernel crash. See crbug.com/443764
-    contents->append(record);
+    // Strip first line since it contains header e.g. Panic#1 Part#1.
+    contents->append(record, record.find('\n') + 1, std::string::npos);
     *record_found = true;
   } else {
     LOG(WARNING) << "Found invalid record at " << record_path.value();
