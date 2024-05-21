@@ -466,6 +466,8 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
   int safe_window_height =
       window->max_height ? window->max_height : window->min_height;
   if (window->use_emulated_rects) {
+    LOG(VERBOSE) << "using emulated rects " << window->emulated_width << "x"
+                 << window->emulated_height;
     // If screen size emulation is set by XWayland, set the window size to the
     // emulated size and adjust the viewport size as Exo had requested it to be.
     safe_window_width = window->emulated_width;
@@ -487,6 +489,17 @@ void sl_internal_toplevel_configure_size_containerized(struct sl_window* window,
                << safe_window_height;
 
   if (window->use_emulated_rects && window->compositor_fullscreen) {
+    // Some games using emulated rects have xwayland send the wrong viewport
+    // destination, causing the game to render in a small box. This overrides
+    // that via quirk to set the destination to the size of the screen.
+    if (sl_window_should_fix_randr_emu(window)) {
+      window->viewport_override = true;
+      window->viewport_width = host_width;
+      window->viewport_height = host_height;
+      window->viewport_pointer_scale =
+          static_cast<float>(output->logical_width) / window->viewport_width;
+      return;
+    }
     // If we are using emulated rects and the window is fullscreen in
     // compositor, we only have to report the emulated size (done above). Aspect
     // ratio changes are moot (since compositor fullscreen). We don't have to
@@ -594,16 +607,28 @@ void sl_internal_toplevel_configure_size(struct sl_window* window,
                                          int32_t width_in_pixels,
                                          int32_t height_in_pixels,
                                          int& mut_config_idx) {
-  // Workaround using viewport for when Exo sets sizes that are not
-  // within the bounds the client requested.
-  // TODO(b/316990641): Implement resizing via viewports if
-  // window->fullscreen==true but window->compositor_fullscreen==false.
-  // Only do this when --only-client-can-exit-fullscreen is set.
-  if (window->ctx->viewport_resize &&
-      ((window->max_width != 0 && width_in_pixels > window->max_width) ||
-       (window->min_width != 0 && width_in_pixels < window->min_width) ||
-       (window->max_height != 0 && height_in_pixels > window->max_height) ||
-       (window->min_height != 0 && height_in_pixels < window->min_height))) {
+  // For games with issues with incorrect viewport destination when using randr
+  // emulation, this will override the viewport destination with the screen size
+  // when in fullscreen mode.
+  if (window->use_emulated_rects && window->compositor_fullscreen &&
+      sl_window_should_fix_randr_emu(window)) {
+    window->viewport_override = true;
+    window->viewport_width = host_width;
+    window->viewport_height = host_height;
+    window->viewport_pointer_scale =
+        static_cast<float>(window->width) / window->viewport_width;
+    // Workaround using viewport for when Exo sets sizes that are not
+    // within the bounds the client requested.
+    // TODO(b/316990641): Implement resizing via viewports if
+    // window->fullscreen==true but window->compositor_fullscreen==false.
+    // Only do this when --only-client-can-exit-fullscreen is set.
+  } else if (window->ctx->viewport_resize &&
+             ((window->max_width != 0 && width_in_pixels > window->max_width) ||
+              (window->min_width != 0 && width_in_pixels < window->min_width) ||
+              (window->max_height != 0 &&
+               height_in_pixels > window->max_height) ||
+              (window->min_height != 0 &&
+               height_in_pixels < window->min_height))) {
     window->viewport_override = true;
     float width_ratio = static_cast<float>(window->width) / width_in_pixels;
     float height_ratio = static_cast<float>(window->height) / height_in_pixels;
@@ -1327,6 +1352,15 @@ bool sl_window_is_client_positioned(struct sl_window* window) {
   }
 #endif
   return window->ctx->enable_x11_move_windows;
+}
+
+bool sl_window_should_fix_randr_emu(struct sl_window* window) {
+#ifdef QUIRKS_SUPPORT
+  if (window->ctx->quirks.IsEnabled(window, quirks::FEATURE_RANDR_EMU_FIX)) {
+    return true;
+  }
+#endif
+  return false;
 }
 
 void sl_window_get_x_y(struct sl_window* window, uint32_t* x, uint32_t* y) {

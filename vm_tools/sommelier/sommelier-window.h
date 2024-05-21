@@ -323,6 +323,10 @@ std::set<int> sl_window_logged_quirks(struct sl_window* window);
 
 bool sl_window_is_client_positioned(struct sl_window* window);
 
+// Set correct viewport destination from xwayland for incorrectly behaving
+// games.
+bool sl_window_should_fix_randr_emu(struct sl_window* window);
+
 // Get position of the window.
 void sl_window_get_x_y(struct sl_window* window, uint32_t* x, uint32_t* y);
 // Get size of the window, taking account of emulated status.
