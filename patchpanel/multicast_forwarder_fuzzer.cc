@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -121,8 +122,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   TestMulticastForwarder mcast_forwarder(lan_ifname, mcast_addr, ipv6_addr,
                                          kMdnsPort);
   mcast_forwarder.Init();
-  mcast_forwarder.AddGuest(guest_ifname1);
-  mcast_forwarder.AddGuest(guest_ifname2);
+  mcast_forwarder.StartForwarding(
+      guest_ifname1, patchpanel::MulticastForwarder::Direction::kTwoWays);
+  mcast_forwarder.StartForwarding(
+      guest_ifname2, patchpanel::MulticastForwarder::Direction::kTwoWays);
 
   size_t fd_index = provider.ConsumeIntegralInRange<size_t>(
       0, mcast_forwarder.fds.size() - 1);
@@ -137,7 +140,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
         provider.ConsumeBytes<uint8_t>(sizeof(struct sockaddr_in6));
   }
   mcast_forwarder.payload = provider.ConsumeRemainingBytes<uint8_t>();
-  mcast_forwarder.OnFileCanReadWithoutBlocking(fd, mcast_forwarder.sa_family);
+  mcast_forwarder.OnFileCanReadWithoutBlocking(fd, mcast_forwarder.sa_family,
+                                               std::nullopt);
 
   return 0;
 }

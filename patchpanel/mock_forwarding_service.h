@@ -11,6 +11,7 @@
 #include <gmock/gmock.h>
 
 #include "patchpanel/forwarding_service.h"
+#include "patchpanel/multicast_forwarder.h"
 #include "patchpanel/shill_client.h"
 
 namespace patchpanel {
@@ -37,7 +38,8 @@ class MockForwardingService : public ForwardingService {
   MOCK_METHOD(void,
               StartMulticastForwarding,
               (const ShillClient::Device& shill_device,
-               std::string_view ifname_virtual),
+               const std::string& ifname_virtual,
+               MulticastForwarder::Direction dir),
               (override));
   MOCK_METHOD(void,
               StopIPv6NDPForwarding,
@@ -52,7 +54,8 @@ class MockForwardingService : public ForwardingService {
   MOCK_METHOD(void,
               StopMulticastForwarding,
               (const ShillClient::Device& shill_device,
-               std::string_view ifname_virtual),
+               const std::string& ifname_virtual,
+               MulticastForwarder::Direction dir),
               (override));
 };
 

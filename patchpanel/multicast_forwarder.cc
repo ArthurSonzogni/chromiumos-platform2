@@ -13,6 +13,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <utility>
 
 #include <base/check.h>
@@ -85,13 +86,28 @@ void SetSockaddr(struct sockaddr_storage* saddr_storage,
 
 namespace patchpanel {
 
-MulticastForwarder::SocketWithError MulticastForwarder::CreateSocket(
+MulticastForwarder::SocketWithError MulticastForwarder::CreateLanSocket(
     std::unique_ptr<net_base::Socket> socket, sa_family_t sa_family) {
-  socket->SetReadableCallback(
-      base::BindRepeating(&MulticastForwarder::OnFileCanReadWithoutBlocking,
-                          base::Unretained(this), socket->Get(), sa_family));
+  socket->SetReadableCallback(base::BindRepeating(
+      &MulticastForwarder::OnFileCanReadWithoutBlocking, base::Unretained(this),
+      socket->Get(), sa_family, std::nullopt));
 
   return SocketWithError{.socket = std::move(socket)};
+}
+
+MulticastForwarder::IntSocket MulticastForwarder::CreateIntSocket(
+    std::unique_ptr<net_base::Socket> socket,
+    sa_family_t sa_family,
+    const std::string& int_ifname,
+    bool outbound,
+    bool inbound) {
+  socket->SetReadableCallback(base::BindRepeating(
+      &MulticastForwarder::OnFileCanReadWithoutBlocking, base::Unretained(this),
+      socket->Get(), sa_family, int_ifname));
+
+  return {.sock_with_err = SocketWithError{.socket = std::move(socket)},
+          .inbound = inbound,
+          .outbound = outbound};
 }
 
 MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,
@@ -106,7 +122,8 @@ MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,
 void MulticastForwarder::Init() {
   std::unique_ptr<net_base::Socket> lan_socket = Bind(AF_INET, lan_ifname_);
   if (lan_socket) {
-    lan_socket_.emplace(AF_INET, CreateSocket(std::move(lan_socket), AF_INET));
+    lan_socket_.emplace(AF_INET,
+                        CreateLanSocket(std::move(lan_socket), AF_INET));
   } else {
     LOG(WARNING) << "Could not bind socket on " << lan_ifname_ << " for "
                  << mcast_addr_ << ":" << port_;
@@ -115,7 +132,7 @@ void MulticastForwarder::Init() {
   std::unique_ptr<net_base::Socket> lan_socket6 = Bind(AF_INET6, lan_ifname_);
   if (lan_socket6) {
     lan_socket_.emplace(AF_INET6,
-                        CreateSocket(std::move(lan_socket6), AF_INET6));
+                        CreateLanSocket(std::move(lan_socket6), AF_INET6));
   } else {
     LOG(WARNING) << "Could not bind socket on " << lan_ifname_ << " for "
                  << mcast_addr6_ << ":" << port_;
@@ -219,14 +236,28 @@ std::unique_ptr<net_base::Socket> MulticastForwarder::Bind(
   return socket;
 }
 
-bool MulticastForwarder::AddGuest(const std::string& int_ifname) {
-  if (int_sockets_.find(std::make_pair(AF_INET, int_ifname)) !=
-          int_sockets_.end() ||
-      int_sockets_.find(std::make_pair(AF_INET6, int_ifname)) !=
-          int_sockets_.end()) {
-    LOG(WARNING) << "Forwarding is already started between " << lan_ifname_
-                 << " and " << int_ifname;
-    return false;
+bool MulticastForwarder::StartForwarding(const std::string& int_ifname,
+                                         Direction dir) {
+  const auto& it4 = int_sockets_.find(std::make_pair(AF_INET, int_ifname));
+  const auto& it6 = int_sockets_.find(std::make_pair(AF_INET6, int_ifname));
+  bool socket4_created = it4 != int_sockets_.end();
+  bool socket6_created = it6 != int_sockets_.end();
+  bool start_inbound =
+      dir == Direction::kInboundOnly || dir == Direction::kTwoWays;
+  bool start_outbound =
+      dir == Direction::kOutboundOnly || dir == Direction::kTwoWays;
+
+  if (socket4_created) {
+    it4->second.inbound |= start_inbound;
+    it4->second.outbound |= start_outbound;
+  }
+  if (socket6_created) {
+    it6->second.inbound |= start_inbound;
+    it6->second.outbound |= start_outbound;
+  }
+
+  if (socket4_created || socket6_created) {
+    return true;
   }
 
   bool success = false;
@@ -234,11 +265,10 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname) {
   // Set up IPv4 multicast forwarder.
   std::unique_ptr<net_base::Socket> int_socket4 = Bind(AF_INET, int_ifname);
   if (int_socket4) {
-    int_fds_.emplace(std::make_pair(AF_INET, int_socket4->Get()));
-
-    int_sockets_.emplace(std::make_pair(AF_INET, int_ifname),
-                         CreateSocket(std::move(int_socket4), AF_INET));
-
+    int_sockets_.emplace(
+        std::make_pair(AF_INET, int_ifname),
+        CreateIntSocket(std::move(int_socket4), AF_INET, int_ifname,
+                        start_outbound, start_inbound));
     success = true;
     LOG(INFO) << "Started IPv4 forwarding between " << lan_ifname_ << " and "
               << int_ifname << " for " << mcast_addr_ << ":" << port_;
@@ -250,9 +280,10 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname) {
   // Set up IPv6 multicast forwarder.
   std::unique_ptr<net_base::Socket> int_socket6 = Bind(AF_INET6, int_ifname);
   if (int_socket6) {
-    int_fds_.emplace(std::make_pair(AF_INET6, int_socket6->Get()));
-    int_sockets_.emplace(std::make_pair(AF_INET6, int_ifname),
-                         CreateSocket(std::move(int_socket6), AF_INET6));
+    int_sockets_.emplace(
+        std::make_pair(AF_INET6, int_ifname),
+        CreateIntSocket(std::move(int_socket6), AF_INET6, int_ifname,
+                        start_outbound, start_inbound));
 
     success = true;
     LOG(INFO) << "Started IPv6 forwarding between " << lan_ifname_ << " and "
@@ -265,28 +296,42 @@ bool MulticastForwarder::AddGuest(const std::string& int_ifname) {
   return success;
 }
 
-void MulticastForwarder::RemoveGuest(const std::string& int_ifname) {
-  const auto& socket4 = int_sockets_.find(std::make_pair(AF_INET, int_ifname));
-  if (socket4 != int_sockets_.end()) {
-    int_fds_.erase(std::make_pair(AF_INET, socket4->second.socket->Get()));
-    int_sockets_.erase(socket4);
+void MulticastForwarder::StopForwarding(const std::string& int_ifname,
+                                        Direction dir) {
+  const auto& it4 = int_sockets_.find(std::make_pair(AF_INET, int_ifname));
+  const auto& it6 = int_sockets_.find(std::make_pair(AF_INET6, int_ifname));
+  bool socket4_created = it4 != int_sockets_.end();
+  bool socket6_created = it6 != int_sockets_.end();
+  bool stop_inbound =
+      dir == Direction::kInboundOnly || dir == Direction::kTwoWays;
+  bool stop_outbound =
+      dir == Direction::kOutboundOnly || dir == Direction::kTwoWays;
+
+  if (socket4_created) {
+    it4->second.inbound &= !stop_inbound;
+    it4->second.outbound &= !stop_outbound;
   } else {
     LOG(WARNING) << "IPv4 forwarding is not started between " << lan_ifname_
                  << " and " << int_ifname;
   }
-
-  const auto& socket6 = int_sockets_.find(std::make_pair(AF_INET6, int_ifname));
-  if (socket6 != int_sockets_.end()) {
-    int_fds_.erase(std::make_pair(AF_INET6, socket6->second.socket->Get()));
-    int_sockets_.erase(socket6);
+  if (socket6_created) {
+    it6->second.inbound &= !stop_inbound;
+    it6->second.outbound &= !stop_outbound;
   } else {
     LOG(WARNING) << "IPv6 forwarding is not started between " << lan_ifname_
                  << " and " << int_ifname;
   }
+
+  if (socket4_created && !it4->second.inbound && !it4->second.outbound) {
+    int_sockets_.erase(it4);
+  }
+  if (socket6_created && !it6->second.inbound && !it6->second.outbound) {
+    int_sockets_.erase(it6);
+  }
 }
 
-void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd,
-                                                      sa_family_t sa_family) {
+void MulticastForwarder::OnFileCanReadWithoutBlocking(
+    int fd, sa_family_t sa_family, std::optional<const std::string> ifname) {
   CHECK(sa_family == AF_INET || sa_family == AF_INET6);
 
   char data[kBufSize];
@@ -312,6 +357,12 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd,
   if (addrlen != expectlen) {
     LOG(WARNING) << "recvfrom failed: src addr length was " << addrlen
                  << " but expected " << expectlen;
+    return;
+  }
+
+  const auto& int_socket =
+      int_sockets_.find(std::make_pair(sa_family, ifname.value_or("")));
+  if (int_socket != int_sockets_.end() && !int_socket->second.outbound) {
     return;
   }
 
@@ -343,8 +394,7 @@ void MulticastForwarder::OnFileCanReadWithoutBlocking(int fd,
     return;
   }
 
-  const auto& int_fd = int_fds_.find(std::make_pair(sa_family, fd));
-  if (int_fd == int_fds_.end() || lan_socket == lan_socket_.end()) {
+  if (int_socket == int_sockets_.end() || lan_socket == lan_socket_.end()) {
     return;
   }
 
@@ -470,21 +520,25 @@ bool MulticastForwarder::SendToGuests(const void* data,
     if (socket.first.first != dst->sa_family) {
       continue;
     }
-    int fd = socket.second.socket->Get();
+    // If ingress traffic is disabled, continue
+    if (!socket.second.inbound) {
+      continue;
+    }
+    int fd = socket.second.sock_with_err.socket->Get();
     if (fd == ignore_fd) {
       continue;
     }
 
     // Use already created multicast fd.
     if (sendto(fd, data, len, 0, dst, dst_len) < 0) {
-      if (socket.second.last_errno != errno) {
+      if (socket.second.sock_with_err.last_errno != errno) {
         PLOG(WARNING) << "sendto " << socket.first.second << " failed";
-        socket.second.last_errno = errno;
+        socket.second.sock_with_err.last_errno = errno;
       }
       success = false;
       continue;
     }
-    socket.second.last_errno = 0;
+    socket.second.sock_with_err.last_errno = 0;
   }
   return success;
 }

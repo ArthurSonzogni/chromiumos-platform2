@@ -25,7 +25,7 @@ namespace patchpanel {
 // netmask, are constant.
 class BroadcastForwarder {
  public:
-  explicit BroadcastForwarder(const std::string& dev_ifname);
+  explicit BroadcastForwarder(const std::string& lan_ifname);
   BroadcastForwarder(const BroadcastForwarder&) = delete;
   BroadcastForwarder& operator=(const BroadcastForwarder&) = delete;
 
@@ -35,9 +35,9 @@ class BroadcastForwarder {
   void Init();
 
   // Starts or stops forwarding broadcast packets to and from a downstream
-  // guest on network interface |br_ifname|.
-  bool AddGuest(const std::string& br_ifname);
-  void RemoveGuest(const std::string& br_ifname);
+  // guest on network interface |int_ifname|.
+  bool AddGuest(const std::string& int_ifname);
+  void RemoveGuest(const std::string& int_ifname);
 
   // Receives a broadcast packet from the network or from a guest and forwards
   // it.
@@ -68,7 +68,7 @@ class BroadcastForwarder {
   virtual std::unique_ptr<net_base::Socket> BindRaw(const std::string& ifname);
 
   // SendToNetwork sends |data| using a socket bound to |src_port| and
-  // |dev_ifname_| using a temporary socket.
+  // |lan_ifname_| using a temporary socket.
   bool SendToNetwork(uint16_t src_port,
                      const void* data,
                      size_t len,
@@ -99,8 +99,8 @@ class BroadcastForwarder {
   // Listens for RTMGRP_IPV4_IFADDR messages and invokes AddrMsgHandler.
   std::unique_ptr<net_base::RTNLListener> addr_listener_;
   // Name of the physical interface that this forwarder is bound to.
-  const std::string dev_ifname_;
-  // IPv4 socket bound by this forwarder onto |dev_ifname_|.
+  const std::string lan_ifname_;
+  // IPv4 socket bound by this forwarder onto |lan_ifname_|.
   std::unique_ptr<SocketWithIPv4Addr> dev_socket_;
   // Mapping from guest bridge interface name to its sockets.
   std::map<std::string, std::unique_ptr<SocketWithIPv4Addr>> br_sockets_;

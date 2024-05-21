@@ -45,6 +45,18 @@ constexpr ConntrackMonitor::EventType kConntrackEvents[] = {
     ConntrackMonitor::EventType::kNew};
 }  // namespace
 
+MulticastForwardingControlMessage::Direction
+GetMulticastControlMessageDirection(MulticastForwarder::Direction dir) {
+  switch (dir) {
+    case MulticastForwarder::Direction::kInboundOnly:
+      return MulticastForwardingControlMessage::INBOUND_ONLY;
+    case MulticastForwarder::Direction::kOutboundOnly:
+      return MulticastForwardingControlMessage::OUTBOUND_ONLY;
+    case MulticastForwarder::Direction::kTwoWays:
+      return MulticastForwardingControlMessage::TWO_WAYS;
+  }
+}
+
 Manager::Manager(const base::FilePath& cmd_path,
                  System* system,
                  net_base::ProcessManager* process_manager,
@@ -1027,10 +1039,9 @@ void Manager::StartBroadcastForwarding(const ShillClient::Device& shill_device,
   LOG(INFO) << "Starting broadcast forwarding from " << shill_device << " to "
             << ifname_virtual;
   ControlMessage cm;
-  DeviceMessage* msg = cm.mutable_device_message();
-  msg->set_dev_ifname(shill_device.ifname);
-  msg->set_br_ifname(ifname_virtual);
-  msg->set_broadcast(true);
+  BroadcastForwardingControlMessage* msg = cm.mutable_bcast_control();
+  msg->set_lan_ifname(shill_device.ifname);
+  msg->set_int_ifname(ifname_virtual);
   mcast_proxy_->SendControlMessage(cm);
 }
 
@@ -1048,18 +1059,18 @@ void Manager::StopBroadcastForwarding(const ShillClient::Device& shill_device,
   }
 
   ControlMessage cm;
-  DeviceMessage* msg = cm.mutable_device_message();
-  msg->set_dev_ifname(shill_device.ifname);
+  BroadcastForwardingControlMessage* msg = cm.mutable_bcast_control();
+  msg->set_lan_ifname(shill_device.ifname);
   msg->set_teardown(true);
   if (!ifname_virtual.empty()) {
-    msg->set_br_ifname(ifname_virtual);
+    msg->set_int_ifname(ifname_virtual);
   }
-  msg->set_broadcast(true);
   mcast_proxy_->SendControlMessage(cm);
 }
 
 void Manager::StartMulticastForwarding(const ShillClient::Device& shill_device,
-                                       std::string_view ifname_virtual) {
+                                       const std::string& ifname_virtual,
+                                       MulticastForwarder::Direction dir) {
   if (shill_device.ifname.empty() || ifname_virtual.empty()) {
     return;
   }
@@ -1071,15 +1082,16 @@ void Manager::StartMulticastForwarding(const ShillClient::Device& shill_device,
   LOG(INFO) << "Starting multicast forwarding from " << shill_device << " to "
             << ifname_virtual;
   ControlMessage cm;
-  DeviceMessage* msg = cm.mutable_device_message();
-  msg->set_dev_ifname(shill_device.ifname);
-  msg->set_br_ifname(ifname_virtual);
-  msg->set_multicast(true);
+  MulticastForwardingControlMessage* msg = cm.mutable_mcast_control();
+  msg->set_lan_ifname(shill_device.ifname);
+  msg->set_int_ifname(ifname_virtual);
+  msg->set_dir(GetMulticastControlMessageDirection(dir));
   mcast_proxy_->SendControlMessage(cm);
 }
 
 void Manager::StopMulticastForwarding(const ShillClient::Device& shill_device,
-                                      std::string_view ifname_virtual) {
+                                      const std::string& ifname_virtual,
+                                      MulticastForwarder::Direction dir) {
   if (shill_device.ifname.empty())
     return;
 
@@ -1091,13 +1103,13 @@ void Manager::StopMulticastForwarding(const ShillClient::Device& shill_device,
   }
 
   ControlMessage cm;
-  DeviceMessage* msg = cm.mutable_device_message();
-  msg->set_dev_ifname(shill_device.ifname);
+  MulticastForwardingControlMessage* msg = cm.mutable_mcast_control();
+  msg->set_lan_ifname(shill_device.ifname);
   msg->set_teardown(true);
   if (!ifname_virtual.empty()) {
-    msg->set_br_ifname(ifname_virtual);
+    msg->set_int_ifname(ifname_virtual);
   }
-  msg->set_multicast(true);
+  msg->set_dir(GetMulticastControlMessageDirection(dir));
   mcast_proxy_->SendControlMessage(cm);
 }
 

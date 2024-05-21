@@ -51,8 +51,14 @@ int main(int argc, char* argv[]) {
       // Guest bridge doesn't exist yet, try again later.
       continue;
     }
-    added_mdns = added_mdns || mdns_fwd->AddGuest(args[1]);
-    added_ssdp = added_ssdp || ssdp_fwd->AddGuest(args[1]);
+    added_mdns =
+        added_mdns ||
+        mdns_fwd->StartForwarding(
+            args[1], patchpanel::MulticastForwarder::Direction::kTwoWays);
+    added_ssdp =
+        added_ssdp ||
+        ssdp_fwd->StartForwarding(
+            args[1], patchpanel::MulticastForwarder::Direction::kTwoWays);
     if (added_mdns && added_ssdp) {
       break;
     }

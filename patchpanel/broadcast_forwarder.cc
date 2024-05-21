@@ -136,8 +136,8 @@ BroadcastForwarder::CreateSocket(std::unique_ptr<net_base::Socket> socket,
                                               broadaddr, netmask);
 }
 
-BroadcastForwarder::BroadcastForwarder(const std::string& dev_ifname)
-    : dev_ifname_(dev_ifname) {}
+BroadcastForwarder::BroadcastForwarder(const std::string& lan_ifname)
+    : lan_ifname_(lan_ifname) {}
 
 void BroadcastForwarder::Init() {
   addr_listener_ = std::make_unique<net_base::RTNLListener>(
@@ -158,7 +158,7 @@ void BroadcastForwarder::AddrMsgHandler(const net_base::RTNLMessage& msg) {
 
   const std::string ifname =
       msg.GetStringAttribute(IFA_LABEL).substr(0, IFNAMSIZ);
-  if (ifname != dev_ifname_) {
+  if (ifname != lan_ifname_) {
     return;
   }
 
@@ -183,9 +183,9 @@ void BroadcastForwarder::AddrMsgHandler(const net_base::RTNLMessage& msg) {
     }
     dev_socket_->broadaddr = *broadaddr;
 
-    std::unique_ptr<net_base::Socket> dev_socket = BindRaw(dev_ifname_);
+    std::unique_ptr<net_base::Socket> dev_socket = BindRaw(lan_ifname_);
     if (!dev_socket) {
-      LOG(WARNING) << "Could not bind socket on " << dev_ifname_;
+      LOG(WARNING) << "Could not bind socket on " << lan_ifname_;
       return;
     }
     dev_socket_ = CreateSocket(std::move(dev_socket), dev_socket_->addr,
@@ -283,43 +283,43 @@ std::unique_ptr<net_base::Socket> BroadcastForwarder::BindRaw(
   return socket;
 }
 
-bool BroadcastForwarder::AddGuest(const std::string& br_ifname) {
-  if (br_sockets_.find(br_ifname) != br_sockets_.end()) {
-    LOG(WARNING) << "Forwarding is already started between " << dev_ifname_
-                 << " and " << br_ifname;
+bool BroadcastForwarder::AddGuest(const std::string& int_ifname) {
+  if (br_sockets_.find(int_ifname) != br_sockets_.end()) {
+    LOG(WARNING) << "Forwarding is already started between " << lan_ifname_
+                 << " and " << int_ifname;
     return false;
   }
 
-  std::unique_ptr<net_base::Socket> socket = BindRaw(br_ifname);
+  std::unique_ptr<net_base::Socket> socket = BindRaw(int_ifname);
   if (!socket) {
-    LOG(WARNING) << "Could not bind socket on " << br_ifname;
+    LOG(WARNING) << "Could not bind socket on " << int_ifname;
     return false;
   }
 
   struct ifreq ifr;
-  Ioctl(socket->Get(), br_ifname, SIOCGIFADDR, &ifr);
+  Ioctl(socket->Get(), int_ifname, SIOCGIFADDR, &ifr);
   const auto br_addr = GetIfreqAddr(ifr);
-  Ioctl(socket->Get(), br_ifname, SIOCGIFBRDADDR, &ifr);
+  Ioctl(socket->Get(), int_ifname, SIOCGIFBRDADDR, &ifr);
   const auto br_broadaddr = GetIfreqBroadaddr(ifr);
-  Ioctl(socket->Get(), br_ifname, SIOCGIFNETMASK, &ifr);
+  Ioctl(socket->Get(), int_ifname, SIOCGIFNETMASK, &ifr);
   const auto br_netmask = GetIfreqNetmask(ifr);
 
   std::unique_ptr<SocketWithIPv4Addr> br_socket =
       CreateSocket(std::move(socket), br_addr, br_broadaddr, br_netmask);
-  br_sockets_.emplace(br_ifname, std::move(br_socket));
+  br_sockets_.emplace(int_ifname, std::move(br_socket));
 
   // Broadcast forwarder is not started yet.
   if (dev_socket_ == nullptr) {
-    std::unique_ptr<net_base::Socket> dev_socket = BindRaw(dev_ifname_);
+    std::unique_ptr<net_base::Socket> dev_socket = BindRaw(lan_ifname_);
     if (!dev_socket) {
-      LOG(WARNING) << "Could not bind socket on " << dev_ifname_;
+      LOG(WARNING) << "Could not bind socket on " << lan_ifname_;
       br_sockets_.clear();
       return false;
     }
 
-    Ioctl(dev_socket->Get(), dev_ifname_, SIOCGIFADDR, &ifr);
+    Ioctl(dev_socket->Get(), lan_ifname_, SIOCGIFADDR, &ifr);
     const auto dev_addr = GetIfreqAddr(ifr);
-    Ioctl(dev_socket->Get(), dev_ifname_, SIOCGIFBRDADDR, &ifr);
+    Ioctl(dev_socket->Get(), lan_ifname_, SIOCGIFBRDADDR, &ifr);
     const auto dev_broadaddr = GetIfreqBroadaddr(ifr);
 
     dev_socket_ = CreateSocket(std::move(dev_socket), dev_addr, dev_broadaddr,
@@ -328,11 +328,11 @@ bool BroadcastForwarder::AddGuest(const std::string& br_ifname) {
   return true;
 }
 
-void BroadcastForwarder::RemoveGuest(const std::string& br_ifname) {
-  const auto& socket = br_sockets_.find(br_ifname);
+void BroadcastForwarder::RemoveGuest(const std::string& int_ifname) {
+  const auto& socket = br_sockets_.find(int_ifname);
   if (socket == br_sockets_.end()) {
-    LOG(WARNING) << "Forwarding is not started between " << dev_ifname_
-                 << " and " << br_ifname;
+    LOG(WARNING) << "Forwarding is not started between " << lan_ifname_
+                 << " and " << int_ifname;
     return;
   }
   br_sockets_.erase(socket);
@@ -434,9 +434,9 @@ bool BroadcastForwarder::SendToNetwork(uint16_t src_port,
                                        const void* data,
                                        size_t len,
                                        const struct sockaddr_in& dst) {
-  std::unique_ptr<net_base::Socket> temp_socket = Bind(dev_ifname_, src_port);
+  std::unique_ptr<net_base::Socket> temp_socket = Bind(lan_ifname_, src_port);
   if (!temp_socket) {
-    LOG(WARNING) << "Could not bind socket on " << dev_ifname_ << " for port "
+    LOG(WARNING) << "Could not bind socket on " << lan_ifname_ << " for port "
                  << src_port;
     return false;
   }

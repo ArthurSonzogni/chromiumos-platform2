@@ -11,6 +11,7 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <utility>
@@ -36,7 +37,10 @@ constexpr uint16_t kSsdpPort = 1900;
 // MulticastForwarder forwards multicast between 1 physical interface and
 // many guest interfaces.
 class MulticastForwarder {
+  // Indicates direction of multicast forwarding.
  public:
+  enum class Direction { kInboundOnly = 0, kOutboundOnly = 1, kTwoWays = 2 };
+
   MulticastForwarder(const std::string& lan_ifname,
                      const net_base::IPv4Address& mcast_addr,
                      const net_base::IPv6Address& mcast_addr6,
@@ -54,11 +58,13 @@ class MulticastForwarder {
   // |int_ifname| and the external LAN interface |lan_ifname|.  This
   // only forwards traffic on multicast address |mcast_addr_| or
   // |mcast_addr6_| and UDP port |port|.
-  bool AddGuest(const std::string& int_ifname);
+  // |dir| indicates the direction of traffic we want to start forwarding.
+  bool StartForwarding(const std::string& int_ifname, Direction dir);
 
   // Stop forwarding multicast packets between |int_ifname| and
   // |lan_ifname_|.
-  void RemoveGuest(const std::string& int_ifname);
+  // |dir| indicates the direction of traffic we want to stop forwarding.
+  void StopForwarding(const std::string& int_ifname, Direction dir);
 
   // Rewrite mDNS A records pointing to |guest_ip| so that they point to
   // the IPv4 |lan_ip| assigned to physical interface instead, so that Android
@@ -69,7 +75,11 @@ class MulticastForwarder {
                               char* data,
                               size_t len);
 
-  void OnFileCanReadWithoutBlocking(int fd, sa_family_t sa_family);
+  // |int_ifname| is expected to be empty when called on LAN socket.
+  void OnFileCanReadWithoutBlocking(
+      int fd,
+      sa_family_t sa_family,
+      std::optional<const std::string> int_ifname);
 
  protected:
   // SocketWithError is used to keep track of a socket and last errno.
@@ -78,6 +88,15 @@ class MulticastForwarder {
 
     // Keep track of last errno to avoid spammy logs.
     int last_errno = 0;
+  };
+
+  // IntSocket is used to keep track of a internal socket. |inbound| and
+  // |outbound| indicates whether inbound traffic or outbound traffic is
+  // allowed.
+  struct IntSocket {
+    SocketWithError sock_with_err;
+    bool inbound;
+    bool outbound;
   };
 
   // Creates a multicast socket.
@@ -94,8 +113,10 @@ class MulticastForwarder {
                       socklen_t dst_len);
 
   // SendToGuests will forward packet to all Chrome OS guests' (ARC++,
-  // Crostini, etc) internal fd using |port|.
-  // However, if ignore_fd is not 0, it will skip guest with fd = ignore_fd.
+  // Crostini, etc) internal fd using |port| with two exceptions:
+  // 1. if ignore_fd is not 0, it will skip guest with fd = ignore_fd.
+  // 2. if inbound flag is set to false, skip for this guest. Currently this
+  //    only affects ARC.
   virtual bool SendToGuests(const void* data,
                             size_t len,
                             const struct sockaddr* dst,
@@ -109,8 +130,17 @@ class MulticastForwarder {
                           struct sockaddr* src_addr,
                           socklen_t* addrlen);
 
-  SocketWithError CreateSocket(std::unique_ptr<net_base::Socket> socket,
-                               sa_family_t family);
+  // Create a LAN socket.
+  SocketWithError CreateLanSocket(std::unique_ptr<net_base::Socket> socket,
+                                  sa_family_t family);
+
+  // Create an internal socket, |inbound| and |outbound| indicates whether
+  // inbound or outbound forwarding is allowed.
+  IntSocket CreateIntSocket(std::unique_ptr<net_base::Socket> socket,
+                            sa_family_t family,
+                            const std::string& int_ifname,
+                            bool outbound,
+                            bool inbound);
 
  private:
   // Name of the physical interface that this forwarder is bound to.
@@ -123,11 +153,9 @@ class MulticastForwarder {
   net_base::IPv6Address mcast_addr6_;
   // IPv4 and IPv6 sockets bound by this forwarder onto |lan_ifname_|.
   std::map<sa_family_t, SocketWithError> lan_socket_;
-  // Mapping from internal interface names to internal sockets.
-  std::map<std::pair<sa_family_t, std::string>, SocketWithError> int_sockets_;
-  // A set of internal file descriptors (guest facing sockets) to its guest
-  // IP address.
-  std::set<std::pair<sa_family_t, int>> int_fds_;
+  // Mapping from pair of internal interface names and IP family to tuple of
+  // internal sockets and flags for multicast inbound and outbound traffic.
+  std::map<std::pair<sa_family_t, std::string>, IntSocket> int_sockets_;
 };
 
 }  // namespace patchpanel

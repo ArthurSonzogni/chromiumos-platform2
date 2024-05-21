@@ -17,8 +17,9 @@ message SubprocessMessage {
 message ControlMessage {
   oneof message_type {
     GuestMessage guest_message = 1;
-    DeviceMessage device_message = 2;
-    NDProxyControlMessage ndproxy_control = 3;
+    MulticastForwardingControlMessage mcast_control = 2;
+    BroadcastForwardingControlMessage bcast_control = 3;
+    NDProxyControlMessage ndproxy_control = 4;
   }
 }
 
@@ -28,19 +29,45 @@ message FeedbackMessage {
   }
 }
 
+// For both MulticastForwardingControlMessage and
+// BroadcastForwardingControlMessage:
 // Best practice is to use optional fields, but since the client and server
 // are always in sync, these messages use required fields to save on
 // validation.
 
-// If |br_ifname| exists in the message, a creation or deletion event
+// If |int_ifname| exists in the message, a creation or deletion event
 // occurred for the bridge interface.
-// Otherwise, the event is occurred for the physical interface |dev_ifname|.
-message DeviceMessage {
-  required string dev_ifname = 1;
-  optional string br_ifname = 2;
-  optional bool teardown = 3;   // value is ignored
-  optional bool multicast = 4;  // value is ignored
-  optional bool broadcast = 5;  // value is ignored
+// Otherwise, the event is occurred for the physical interface |lan_ifname|.
+message MulticastForwardingControlMessage {
+  enum Direction {
+    INBOUND_ONLY = 0;
+    OUTBOUND_ONLY = 1;
+    TWO_WAYS = 2;
+  }
+  // This field corresponds to the shill Device ifname.
+  required string lan_ifname = 1;
+
+  // This field corresponds to the guest interface.
+  optional string int_ifname = 2;
+
+  // Whether this message is for stopping multicast forwarding.
+  // Value is ignored.
+  optional bool teardown = 3;
+
+  // Direction of multicast forwarding to be started/stopped.
+  required Direction dir = 4;
+}
+
+message BroadcastForwardingControlMessage {
+  // This field corresponds to the shill Device interface.
+  required string lan_ifname = 1;
+
+  // This field corresponds to the guest interface.
+  optional string int_ifname = 2;
+
+  // Whether this message is for stopping broadcast forwarding.
+  // Value is ignored.
+  optional bool teardown = 3;
 }
 
 message GuestMessage {

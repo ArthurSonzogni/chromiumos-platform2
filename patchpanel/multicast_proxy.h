@@ -32,10 +32,14 @@ class MulticastProxy : public brillo::Daemon {
   int OnInit() override;
 
   void OnParentProcessExit();
-  void OnDeviceMessage(const SubprocessMessage& msg);
+  void OnControlMessage(const SubprocessMessage& msg);
 
  private:
   void Reset();
+  void ProcessMulticastForwardingControlMessage(
+      const MulticastForwardingControlMessage& msg);
+  void ProcessBroadcastForwardingControlMessage(
+      const BroadcastForwardingControlMessage& msg);
 
   MessageDispatcher<SubprocessMessage> msg_dispatcher_;
   std::map<std::string, std::unique_ptr<MulticastForwarder>> mdns_fwds_;

@@ -233,35 +233,47 @@ TEST_F(ArcServiceTest, VerifyAddrConfigs) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth1"), "arc_eth1",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth1"), "arc_eth1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth1"), "arc_eth1",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth1"), "arc_eth1"));
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                               MulticastForwarder::Direction::kOutboundOnly));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("wlan1"), "arc_wlan1",
                                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("wlan1"), "arc_wlan1",
+                               MulticastForwarder::Direction::kOutboundOnly));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("wlan1"), "arc_wlan1"));
   EXPECT_CALL(
       *forwarding_service_,
       StartIPv6NDPForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
                              "arc_wwan0", Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartMulticastForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
-                               "arc_wwan0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(
+                  IsShillMultiplexedDevice("wwan0", "mbimmux0.1"), "arc_wwan0",
+                  MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(
                   IsShillMultiplexedDevice("wwan0", "mbimmux0.1"), "arc_wwan0"))
@@ -307,6 +319,10 @@ TEST_F(ArcServiceTest, VerifyAddrOrder) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                               MulticastForwarder::Direction::kOutboundOnly));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->AddDevice(wlan_dev);
@@ -315,8 +331,10 @@ TEST_F(ArcServiceTest, VerifyAddrOrder) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->AddDevice(eth_dev);
@@ -325,7 +343,8 @@ TEST_F(ArcServiceTest, VerifyAddrOrder) {
   EXPECT_CALL(*forwarding_service_,
               StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*forwarding_service_,
-              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                      MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->RemoveDevice(eth_dev);
@@ -334,8 +353,10 @@ TEST_F(ArcServiceTest, VerifyAddrOrder) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->AddDevice(eth_dev);
@@ -472,8 +493,10 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
@@ -528,14 +551,14 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartCellularMultiplexedDevice) {
       *forwarding_service_,
       StartIPv6NDPForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
                              "arc_wwan0", Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartMulticastForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
-                               "arc_wwan0"));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(
                   IsShillMultiplexedDevice("wwan0", "mbimmux0.1"), "arc_wwan0"))
       .Times(0);
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(
+                  IsShillMultiplexedDevice("wwan0", "mbimmux0.1"), "arc_wwan0",
+                  MulticastForwarder::Direction::kTwoWays));
 
   auto wwan_dev =
       MakeShillDevice("wwan0", net_base::Technology::kCellular, "mbimmux0.1");
@@ -629,13 +652,19 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                               MulticastForwarder::Direction::kOutboundOnly));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->AddDevice(eth_dev);
@@ -662,6 +691,10 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                               MulticastForwarder::Direction::kOutboundOnly));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->AddDevice(wlan_dev);
@@ -706,8 +739,10 @@ TEST_F(ArcServiceTest, ContainerImpl_StartAfterDevice) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
@@ -768,8 +803,10 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Start(kTestPID);
@@ -800,7 +837,8 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
   EXPECT_CALL(*forwarding_service_,
               StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*forwarding_service_,
-              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                      MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Stop(kTestPID);
@@ -844,8 +882,10 @@ TEST_F(ArcServiceTest, ContainerImpl_Stop) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
@@ -866,7 +906,8 @@ TEST_F(ArcServiceTest, ContainerImpl_Stop) {
   EXPECT_CALL(*forwarding_service_,
               StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*forwarding_service_,
-              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                      MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
@@ -912,8 +953,10 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
@@ -932,7 +975,8 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
   EXPECT_CALL(*forwarding_service_,
               StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*forwarding_service_,
-              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                      MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
@@ -983,8 +1027,10 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->AddDevice(eth_dev);
@@ -1002,7 +1048,8 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
   EXPECT_CALL(*forwarding_service_,
               StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*forwarding_service_,
-              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                      MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Stop(kTestPID);
@@ -1041,8 +1088,10 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Start(kTestPID);
@@ -1075,6 +1124,10 @@ TEST_F(ArcServiceTest, ContainerImpl_WiFiMulticastForwarding) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                               MulticastForwarder::Direction::kOutboundOnly));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   auto wlan0_dev = MakeShillDevice("wlan0", net_base::Technology::kWiFi);
@@ -1083,15 +1136,19 @@ TEST_F(ArcServiceTest, ContainerImpl_WiFiMulticastForwarding) {
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // Android Multicast lock is taken
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                               MulticastForwarder::Direction::kInboundOnly));
   svc->NotifyAndroidWifiMulticastLockChange(true);
   EXPECT_TRUE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // Android WiFi multicast lock is released.
-  EXPECT_CALL(*forwarding_service_,
-              StopMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                              MulticastForwarder::Direction::kInboundOnly));
   svc->NotifyAndroidWifiMulticastLockChange(false);
   EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
@@ -1119,8 +1176,10 @@ TEST_F(ArcServiceTest, ContainerImpl_WiFiMulticastForwarding) {
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // Android is interactive again.
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                               MulticastForwarder::Direction::kInboundOnly));
   svc->NotifyAndroidInteractiveState(true);
   EXPECT_TRUE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
@@ -1194,8 +1253,10 @@ TEST_F(ArcServiceTest, VmImpl_StartEthernetDevice) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
@@ -1248,14 +1309,14 @@ TEST_F(ArcServiceTest, VmImpl_StartCellularMultiplexedDevice) {
       *forwarding_service_,
       StartIPv6NDPForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
                              "arc_wwan0", Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartMulticastForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
-                               "arc_wwan0"));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(
                   IsShillMultiplexedDevice("wwan0", "mbimmux0.1"), "arc_wwan0"))
       .Times(0);
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(
+                  IsShillMultiplexedDevice("wwan0", "mbimmux0.1"), "arc_wwan0",
+                  MulticastForwarder::Direction::kTwoWays));
 
   svc->AddDevice(wwan_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1304,8 +1365,10 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
@@ -1354,8 +1417,10 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth1"), "arc_eth1",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth1"), "arc_eth1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth1"), "arc_eth1",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth1"), "arc_eth1"));
 
@@ -1447,8 +1512,10 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->AddDevice(eth_dev);
@@ -1472,7 +1539,8 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*forwarding_service_,
               StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*forwarding_service_,
-              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                      MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Stop(kTestCID);
@@ -1509,8 +1577,10 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Start(kTestCID);
@@ -1560,8 +1630,10 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
@@ -1579,7 +1651,8 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   EXPECT_CALL(*forwarding_service_,
               StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*forwarding_service_,
-              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                      MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
@@ -1690,18 +1763,23 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                               MulticastForwarder::Direction::kOutboundOnly));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->AddDevice(eth_dev);
   svc->AddDevice(wlan_dev);
-  EXPECT_EQ(guest_device_events_.size(), 2);
   EXPECT_THAT(
       guest_device_events_,
       UnorderedElementsAre(
@@ -1723,6 +1801,10 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                               MulticastForwarder::Direction::kOutboundOnly));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->AddDevice(wlan_dev);
@@ -1859,8 +1941,10 @@ TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddRemoveDevice) {
   EXPECT_CALL(*forwarding_service_,
               StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
                                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(*forwarding_service_,
-              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(*forwarding_service_,
               StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));

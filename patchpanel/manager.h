@@ -32,6 +32,7 @@
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/lifeline_fd_service.h"
 #include "patchpanel/multicast_counters_service.h"
+#include "patchpanel/multicast_forwarder.h"
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
@@ -174,11 +175,17 @@ class Manager : public ForwardingService {
   void StopBroadcastForwarding(const ShillClient::Device& shill_device,
                                std::string_view ifname_virtual) override;
 
-  void StartMulticastForwarding(const ShillClient::Device& shill_device,
-                                std::string_view ifname_virtual) override;
+  void StartMulticastForwarding(
+      const ShillClient::Device& shill_device,
+      const std::string& ifname_virtual,
+      MulticastForwarder::Direction dir =
+          MulticastForwarder::Direction::kTwoWays) override;
 
-  void StopMulticastForwarding(const ShillClient::Device& shill_device,
-                               std::string_view ifname_virtual) override;
+  void StopMulticastForwarding(
+      const ShillClient::Device& shill_device,
+      const std::string& ifname_virtual,
+      MulticastForwarder::Direction dir =
+          MulticastForwarder::Direction::kTwoWays) override;
 
   DownstreamNetworkService* downstream_network_service() {
     return downstream_network_svc_.get();

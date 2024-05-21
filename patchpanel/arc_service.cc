@@ -776,16 +776,19 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
   forwarding_service_->StartIPv6NDPForwarding(
       shill_device, arc_device_it.first->second.bridge_ifname());
 
-  // Only start forwarding multicast traffic if ARC is in an interactive state.
-  // In addition, on WiFi the Android WiFi multicast lock must also be held.
-  // Multicast forwarding is not supported for WiFi Direct client Networks
-  // started by Android App requests.
-  if (is_arc_interactive_ &&
+  // Only start forwarding multicast inbound traffic if ARC is in an
+  // interactive state. In addition, on WiFi the Android WiFi multicast lock
+  // must also be held. Multicast forwarding is not supported for WiFi Direct
+  // client Networks started by Android App requests.
+  // Outbound multicast traffic is always allowed.
+  bool forward_inbound =
+      is_arc_interactive_ &&
       (shill_device.technology != net_base::Technology::kWiFi ||
-       is_android_wifi_multicast_lock_held_)) {
-    forwarding_service_->StartMulticastForwarding(
-        shill_device, arc_device_it.first->second.bridge_ifname());
-  }
+       is_android_wifi_multicast_lock_held_);
+  auto dir = forward_inbound ? MulticastForwarder::Direction::kTwoWays
+                             : MulticastForwarder::Direction::kOutboundOnly;
+  forwarding_service_->StartMulticastForwarding(
+      shill_device, arc_device_it.first->second.bridge_ifname(), dir);
   if ((shill_device.technology == net_base::Technology::kWiFi) ||
       (shill_device.technology == net_base::Technology::kEthernet)) {
     forwarding_service_->StartBroadcastForwarding(
@@ -816,8 +819,9 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
           std::move(signal_device), NetworkDeviceChangedSignal::DEVICE_REMOVED);
       forwarding_service_->StopIPv6NDPForwarding(shill_device,
                                                  arc_device.bridge_ifname());
-      forwarding_service_->StopMulticastForwarding(shill_device,
-                                                   arc_device.bridge_ifname());
+      forwarding_service_->StopMulticastForwarding(
+          shill_device, arc_device.bridge_ifname(),
+          MulticastForwarder::Direction::kTwoWays);
       forwarding_service_->StopBroadcastForwarding(shill_device,
                                                    arc_device.bridge_ifname());
       StopArcDeviceDatapath(arc_device);
@@ -1030,9 +1034,10 @@ void ArcService::NotifyAndroidWifiMulticastLockChange(bool is_held) {
 
   // Only start/stop multicast forwarding when multicast allowed status changes
   // to avoid start/stop multicast forwarding multiple times, also wifi
-  // multicast lock should only affect multicast traffic on wireless device.
-  // Note that this change only affects multicast forwarding and broadcast
-  // forwarding state is unchanged during the process.
+  // multicast lock should only affect inbound multicast traffic on wireless
+  // device. Note that this change only affects inbound multicast forwarding.
+  // Outbound multicast traffic and broadcast forwarding state is unchanged
+  // during the process.
   for (const auto& [shill_device_ifname, arc_device] : devices_) {
     const auto shill_device_it = shill_devices_.find(shill_device_ifname);
     if (shill_device_it == shill_devices_.end()) {
@@ -1044,12 +1049,15 @@ void ArcService::NotifyAndroidWifiMulticastLockChange(bool is_held) {
     if (shill_device_it->second.technology != net_base::Technology::kWiFi) {
       continue;
     }
+
     if (is_android_wifi_multicast_lock_held_) {
-      forwarding_service_->StartMulticastForwarding(shill_device_it->second,
-                                                    arc_device.bridge_ifname());
+      forwarding_service_->StartMulticastForwarding(
+          shill_device_it->second, arc_device.bridge_ifname(),
+          MulticastForwarder::Direction::kInboundOnly);
     } else {
-      forwarding_service_->StopMulticastForwarding(shill_device_it->second,
-                                                   arc_device.bridge_ifname());
+      forwarding_service_->StopMulticastForwarding(
+          shill_device_it->second, arc_device.bridge_ifname(),
+          MulticastForwarder::Direction::kInboundOnly);
     }
   }
 }
@@ -1064,14 +1072,13 @@ void ArcService::NotifyAndroidInteractiveState(bool is_interactive) {
   }
   is_arc_interactive_ = is_interactive;
 
-  // If ARC power state has changed to interactive, enable multicast forwarding
-  // for all interfaces that are not WiFi interface, and only enable multicast
-  // forwarding for WiFi interfaces when WiFi multicast lock is held. If ARC
-  // power state has changed to non-interactive, disable all multicast
-  // forwarding for interfaces that are not WiFi interface, and only disable
-  // multicast forwarding for WiFi interfaces when they were in enabled state
-  // (multicast lock held). Note that this change only affects multicast
-  // forwarding and broadcast forwarding state is unchanged during the process.
+  // If ARC power state has changed to interactive, starts multicast forwarding
+  // for inbound traffic for all non-WiFi interfaces and for WiFi interfaces
+  // when WiFi multicast lock is held.
+  // If ARC power state has changed to non-interactive, disable inbound
+  // multicast forwarding for all interfaces.
+  // Note that this change only affects multicast forwarding and broadcast
+  // forwarding state is unchanged during the process.
   for (const auto& [shill_device_ifname, arc_device] : devices_) {
     const auto shill_device_it = shill_devices_.find(shill_device_ifname);
     if (shill_device_it == shill_devices_.end()) {
@@ -1084,12 +1091,15 @@ void ArcService::NotifyAndroidInteractiveState(bool is_interactive) {
         !is_android_wifi_multicast_lock_held_) {
       continue;
     }
+
     if (is_arc_interactive_) {
-      forwarding_service_->StartMulticastForwarding(shill_device_it->second,
-                                                    arc_device.bridge_ifname());
+      forwarding_service_->StartMulticastForwarding(
+          shill_device_it->second, arc_device.bridge_ifname(),
+          MulticastForwarder::Direction::kInboundOnly);
     } else {
-      forwarding_service_->StopMulticastForwarding(shill_device_it->second,
-                                                   arc_device.bridge_ifname());
+      forwarding_service_->StopMulticastForwarding(
+          shill_device_it->second, arc_device.bridge_ifname(),
+          MulticastForwarder::Direction::kInboundOnly);
     }
   }
 }

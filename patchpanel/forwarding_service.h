@@ -11,6 +11,7 @@
 #include <net-base/ip_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
+#include "patchpanel/multicast_forwarder.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/shill_client.h"
 
@@ -42,14 +43,22 @@ class ForwardingService {
                                        std::string_view ifname_virtual) = 0;
 
   // Starts multicast forwarding between the upstream |shill_device| and
-  // the downstream interface or guest |ifname_virtual|.
-  virtual void StartMulticastForwarding(const ShillClient::Device& shill_device,
-                                        std::string_view ifname_virtual) = 0;
+  // the downstream interface or guest |ifname_virtual|. |dir| specifies the
+  // direction of forwarding to be started.
+  virtual void StartMulticastForwarding(
+      const ShillClient::Device& shill_device,
+      const std::string& ifname_virtual,
+      MulticastForwarder::Direction dir =
+          MulticastForwarder::Direction::kTwoWays) = 0;
 
   // Stops multicast forwarding between the upstream |shill_device| and
-  // the downstream interface or guest |ifname_virtual|.
-  virtual void StopMulticastForwarding(const ShillClient::Device& shill_device,
-                                       std::string_view ifname_virtual) = 0;
+  // the downstream interface or guest |ifname_virtual|. |dir| specifies the
+  // direction of forwarding to be stopped.
+  virtual void StopMulticastForwarding(
+      const ShillClient::Device& shill_device,
+      const std::string& ifname_virtual,
+      MulticastForwarder::Direction dir =
+          MulticastForwarder::Direction::kTwoWays) = 0;
 };
 
 }  // namespace patchpanel

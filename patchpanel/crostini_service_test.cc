@@ -101,7 +101,8 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -141,7 +142,8 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -180,7 +182,8 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -223,7 +226,8 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -262,7 +266,8 @@ TEST_F(CrostiniServiceTest, StartAfterAbnormalStopParallelsVM) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -308,7 +313,8 @@ TEST_F(CrostiniServiceTest, StartAfterAbnormalStopParallelsVM) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -330,10 +336,12 @@ TEST_F(CrostiniServiceTest, StartAfterAbnormalStopParallelsVM) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+
   auto* device_new = crostini->Start(vm_id, CrostiniService::VMType::kParallels,
                                      /*subnet_index=*/1);
   ASSERT_NE(nullptr, device_new);
@@ -377,7 +385,8 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -417,7 +426,8 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -463,7 +473,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -499,7 +510,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
@@ -531,7 +543,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
@@ -575,11 +588,11 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
-
   crostini->Stop(vm_id1);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id1));
   it = guest_device_events_.find("vmtap0");
@@ -599,7 +612,8 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
@@ -624,11 +638,11 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
-
   crostini->Stop(vm_id2);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id2));
   it = guest_device_events_.find("vmtap1");
@@ -683,7 +697,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -693,7 +708,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
@@ -717,7 +733,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
@@ -726,7 +743,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
@@ -737,7 +755,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
@@ -747,7 +766,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
                              Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1"));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1",
+                               MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StartBroadcastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1"));
@@ -765,7 +785,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
@@ -774,7 +795,8 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
       StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1"));
   EXPECT_CALL(
       *forwarding_service_,
-      StopMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1"));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1",
+                              MulticastForwarder::Direction::kTwoWays));
   EXPECT_CALL(
       *forwarding_service_,
       StopBroadcastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1"));
