@@ -37,30 +37,21 @@ void KillsServer::SetDecisionLatencyNotification(
   decision_latency_callback_ = callback;
 }
 
-const KillsServer::DecisionLatencyNotification&
-KillsServer::GetDecisionLatencyCallback() {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
-  // TODO(b/331634345): Fix thread safety of reference return.
-  return decision_latency_callback_;
-#pragma clang diagnostic pop
+KillsServer::DecisionLatencyNotification
+KillsServer::GetDecisionLatencyCallbackForTesting() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return std::move(decision_latency_callback_);
 }
 
-const KillsServer::KillRequestHandler& KillsServer::GetKillRequestHandler() {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
-  // TODO(b/331634345): Fix thread safety of reference return.
-  return kill_request_handler_;
-#pragma clang diagnostic pop
+KillsServer::KillRequestHandler KillsServer::GetKillRequestHandlerForTesting() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return std::move(kill_request_handler_);
 }
 
-const KillsServer::NoKillCandidateNotification&
-KillsServer::GetNoKillCandidateCallback() {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
-  // TODO(b/331634345): Fix thread safety of reference return.
-  return no_kill_candiate_callback_;
-#pragma clang diagnostic pop
+KillsServer::NoKillCandidateNotification
+KillsServer::GetNoKillCandidateCallbackForTesting() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return std::move(no_kill_candiate_callback_);
 }
 
 void KillsServer::HandlePacket(

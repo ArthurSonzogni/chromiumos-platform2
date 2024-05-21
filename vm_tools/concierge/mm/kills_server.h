@@ -46,14 +46,15 @@ class KillsServer : public Server {
 
   // END: Event Callbacks.
  protected:
-  // Gets the decision latency handler for this server.
-  const DecisionLatencyNotification& GetDecisionLatencyCallback();
+  // Gets the decision latency handler for this server. Can only be called once.
+  DecisionLatencyNotification GetDecisionLatencyCallbackForTesting();
 
-  // Gets the kill request handler for this server.
-  const KillRequestHandler& GetKillRequestHandler();
+  // Gets the kill request handler for this server. Can only be called once.
+  KillRequestHandler GetKillRequestHandlerForTesting();
 
-  // Gets the no kill candidates callback for this server.
-  const NoKillCandidateNotification& GetNoKillCandidateCallback();
+  // Gets the no kill candidates callback for this server. Can only be called
+  // once.
+  NoKillCandidateNotification GetNoKillCandidateCallbackForTesting();
 
  private:
   // Performs implementation specific actions based on the received packet.

@@ -63,13 +63,10 @@ void ReclaimServer::SetNewGenerationNotification(
   new_generation_callback_ = callback;
 }
 
-const ReclaimServer::NewGenerationNotification&
-ReclaimServer::GetNewGenerationCallback() {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
-  // TODO(b/331634345): Fix thread safety of reference return.
-  return new_generation_callback_;
-#pragma clang diagnostic pop
+ReclaimServer::NewGenerationNotification
+ReclaimServer::GetNewGenerationCallbackForTesting() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return std::move(new_generation_callback_);
 }
 
 void ReclaimServer::HandlePacket(

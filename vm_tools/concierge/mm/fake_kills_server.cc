@@ -8,28 +8,28 @@ namespace vm_tools::concierge::mm {
 
 FakeKillsServer::FakeKillsServer() : KillsServer(0) {}
 
-const Server::ClientConnectionNotification&
+Server::ClientConnectionNotification
 FakeKillsServer::ClientConnectionCallback() {
-  return Server::GetClientConnectionCallback();
+  return Server::GetClientConnectionCallbackForTesting();
 }
 
-const Server::ClientDisconnectedNotification&
+Server::ClientDisconnectedNotification
 FakeKillsServer::ClientDisconnectedCallback() {
-  return Server::GetClientDisconnectedCallback();
+  return Server::GetClientDisconnectedCallbackForTesting();
 }
 
-const KillsServer::DecisionLatencyNotification&
+KillsServer::DecisionLatencyNotification
 FakeKillsServer::DecisionLatencyCallback() {
-  return KillsServer::GetDecisionLatencyCallback();
+  return KillsServer::GetDecisionLatencyCallbackForTesting();
 }
 
-const KillsServer::KillRequestHandler& FakeKillsServer::KillRequestHandler() {
-  return KillsServer::GetKillRequestHandler();
+KillsServer::KillRequestHandler FakeKillsServer::KillRequestHandler() {
+  return KillsServer::GetKillRequestHandlerForTesting();
 }
 
-const KillsServer::NoKillCandidateNotification&
+KillsServer::NoKillCandidateNotification
 FakeKillsServer::NoKillCandidateCallback() {
-  return KillsServer::GetNoKillCandidateCallback();
+  return KillsServer::GetNoKillCandidateCallbackForTesting();
 }
 
 }  // namespace vm_tools::concierge::mm

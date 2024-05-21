@@ -17,9 +17,9 @@ class FakeReclaimServer : public ReclaimServer {
 
   std::optional<MglruStats> GetMglruStats(const int cid) override;
 
-  const ClientConnectionNotification& ClientConnectionCallback();
+  ClientConnectionNotification ClientConnectionCallback();
 
-  const NewGenerationNotification& NewGenerationCallback();
+  NewGenerationNotification NewGenerationCallback();
 
   std::unordered_map<int, MglruStats> mglru_stats_{};
   std::vector<int> stats_requests_{};

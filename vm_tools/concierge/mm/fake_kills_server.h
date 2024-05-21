@@ -13,15 +13,15 @@ class FakeKillsServer : public KillsServer {
  public:
   FakeKillsServer();
 
-  const ClientConnectionNotification& ClientConnectionCallback();
+  ClientConnectionNotification ClientConnectionCallback();
 
-  const ClientDisconnectedNotification& ClientDisconnectedCallback();
+  ClientDisconnectedNotification ClientDisconnectedCallback();
 
-  const DecisionLatencyNotification& DecisionLatencyCallback();
+  DecisionLatencyNotification DecisionLatencyCallback();
 
-  const KillRequestHandler& KillRequestHandler();
+  KillRequestHandler KillRequestHandler();
 
-  const NoKillCandidateNotification& NoKillCandidateCallback();
+  NoKillCandidateNotification NoKillCandidateCallback();
 };
 
 }  // namespace vm_tools::concierge::mm

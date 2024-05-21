@@ -129,22 +129,16 @@ void Server::RemoveConnection(int connection_id) {
   connections_.erase(connection_id);
 }
 
-const Server::ClientConnectionNotification&
-Server::GetClientConnectionCallback() {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
-  // TODO(b/331634345): Fix thread safety of reference return.
-  return client_connection_callback_;
-#pragma clang diagnostic pop
+Server::ClientConnectionNotification
+Server::GetClientConnectionCallbackForTesting() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return std::move(client_connection_callback_);
 }
 
-const Server::ClientDisconnectedNotification&
-Server::GetClientDisconnectedCallback() {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wthread-safety-reference-return"
-  // TODO(b/331634345): Fix thread safety of reference return.
-  return client_disconnected_callback_;
-#pragma clang diagnostic pop
+Server::ClientDisconnectedNotification
+Server::GetClientDisconnectedCallbackForTesting() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return std::move(client_disconnected_callback_);
 }
 
 void Server::HandleAccept() {

@@ -20,14 +20,14 @@ std::optional<MglruStats> FakeReclaimServer::GetMglruStats(const int cid) {
   return mglru_stats_[cid];
 }
 
-const Server::ClientConnectionNotification&
+Server::ClientConnectionNotification
 FakeReclaimServer::ClientConnectionCallback() {
-  return Server::GetClientConnectionCallback();
+  return Server::GetClientConnectionCallbackForTesting();
 }
 
-const ReclaimServer::NewGenerationNotification&
+ReclaimServer::NewGenerationNotification
 FakeReclaimServer::NewGenerationCallback() {
-  return ReclaimServer::GetNewGenerationCallback();
+  return ReclaimServer::GetNewGenerationCallbackForTesting();
 }
 
 }  // namespace vm_tools::concierge::mm

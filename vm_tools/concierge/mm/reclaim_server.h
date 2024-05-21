@@ -38,8 +38,8 @@ class ReclaimServer : public Server {
 
   // END: Event Callbacks.
  protected:
-  // Get the new generation callback for this server.
-  const NewGenerationNotification& GetNewGenerationCallback();
+  // Get the new generation callback for this server. Can only be called once.
+  NewGenerationNotification GetNewGenerationCallbackForTesting();
 
  private:
   // Performs implementation specific actions based on the received packet.
