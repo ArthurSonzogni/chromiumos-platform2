@@ -775,9 +775,13 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
   }
 
   current_percent_ = percent;
+  // Note: This value is also available in powerd logs.
+  TRACE_COUNTER(
+      "power", perfetto::CounterTrack("KeyboardBacklight nonlinear", "percent"),
+      percent);
+
   EmitBrightnessChangedSignal(dbus_wrapper_, kKeyboardBrightnessChangedSignal,
                               percent, cause);
-
   for (BacklightControllerObserver& observer : observers_)
     observer.OnBrightnessChange(percent, cause, this);
   return true;

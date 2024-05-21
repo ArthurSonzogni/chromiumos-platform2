@@ -23,11 +23,13 @@
 #include <base/strings/stringprintf.h>
 #include <dbus/message.h>
 
+#include "perfetto/tracing/track.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
@@ -794,12 +796,14 @@ void InternalBacklightController::SetExplicitBrightnessPercent(
   battery_explicit_brightness_percent_ =
       battery_percent <= kEpsilon ? 0.0
                                   : ClampPercentToVisibleRange(battery_percent);
-
   UpdateState(cause, transition);
 }
 
 void InternalBacklightController::UpdateState(
     BacklightBrightnessChange_Cause cause, Transition adjust_transition) {
+  TRACE_EVENT("power", "InternalBacklightController::UpdateState", "transition",
+              adjust_transition, "cause", cause);
+
   // Give up on the ambient light sensor if it's not supplying readings.
   if (use_ambient_light_ && !got_ambient_light_brightness_percent_ &&
       clock_->GetCurrentTime() - init_time_ >= kAmbientLightSensorTimeout) {
@@ -896,6 +900,12 @@ void InternalBacklightController::UpdateState(
       LOG(WARNING) << "Could not set brightness";
     } else {
       current_level_ = new_level;
+      // Note: This value is also available in powerd logs.
+      TRACE_COUNTER(
+          "power",
+          perfetto::CounterTrack("InternalBacklight nonlinear", "percent"),
+          brightness_percent);
+
       EmitBrightnessChangedSignal(dbus_wrapper_, kScreenBrightnessChangedSignal,
                                   brightness_percent, cause);
       for (BacklightControllerObserver& observer : observers_)
