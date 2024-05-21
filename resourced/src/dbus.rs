@@ -897,13 +897,10 @@ pub async fn service_main() -> Result<()> {
         conn.start_receive(
             vm_starting_up_rule,
             Box::new(move |_, _| {
-                match set_vm_boot_mode(context2.clone(), common::VmBootMode::Active) {
-                    Ok(_) => true,
-                    Err(e) => {
-                        error!("Failed to initalize VM boot boosting. {}", e);
-                        false
-                    }
+                if let Err(e) = set_vm_boot_mode(context2.clone(), common::VmBootMode::Active) {
+                    error!("Failed to initalize VM boot boosting. {}", e);
                 }
+                true
             }),
         );
         let vm_complete_boot_rule =
@@ -914,13 +911,10 @@ pub async fn service_main() -> Result<()> {
         conn.start_receive(
             vm_complete_boot_rule,
             Box::new(move |_, _| {
-                match set_vm_boot_mode(cb_context.clone(), common::VmBootMode::Inactive) {
-                    Ok(_) => true,
-                    Err(e) => {
-                        error!("Failed to stop VM boot boosting. {}", e);
-                        false
-                    }
+                if let Err(e) = set_vm_boot_mode(cb_context.clone(), common::VmBootMode::Inactive) {
+                    error!("Failed to stop VM boot boosting. {}", e);
                 }
+                true
             }),
         );
     }
@@ -942,19 +936,18 @@ pub async fn service_main() -> Result<()> {
     conn.start_receive(
         battery_saver_mode_rule,
         Box::new(move |msg, _| match msg.read1() {
-            Ok(bytes) => match on_battery_saver_mode_change(context.clone(), bytes) {
-                Ok(()) => true,
-                Err(e) => {
+            Ok(bytes) => {
+                if let Err(e) = on_battery_saver_mode_change(context.clone(), bytes) {
                     error!("error handling Battery Saver Mode change. {}", e);
-                    false
                 }
-            },
+                true
+            }
             Err(e) => {
                 error!(
                     "error reading D-Bus message {}. {}",
                     BATTERY_SAVER_MODE_EVENT, e
                 );
-                false
+                true
             }
         }),
     );
