@@ -342,8 +342,10 @@ class AuthSession final {
         StatusCallback on_done);
 
     // Prepares an auth factor type for the add purpose.
-    void PrepareAuthFactorForAdd(AuthFactorType auth_factor_type,
-                                 StatusCallback on_done);
+    void PrepareAuthFactorForAdd(
+        const user_data_auth::PrepareInput& prepare_input_proto,
+        AuthFactorType auth_factor_type,
+        StatusCallback on_done);
 
     // Migrates all existing legacy fingerprint templates into
     // sign-in fingerprint auth factors.
@@ -374,10 +376,6 @@ class AuthSession final {
         CryptohomeStatus error,
         std::unique_ptr<KeyBlobs> key_blobs,
         std::unique_ptr<AuthBlockState> auth_block_state);
-
-    // Creates PrepareInput for preparing an auth factor type for adding.
-    CryptohomeStatusOr<PrepareInput> CreatePrepareInputForAdding(
-        AuthFactorType auth_factor_type);
 
     // UpdateUssAndStartFpMigration updates the USS with removed auth factors
     // then starts the migration from legacy fingerprints. It is used as a
@@ -569,6 +567,10 @@ class AuthSession final {
 
   // Creates PrepareInput for preparing an auth factor type for authentication.
   CryptohomeStatusOr<PrepareInput> CreatePrepareInputForAuthentication(
+      const user_data_auth::PrepareInput& prepare_input_proto,
+      AuthFactorType auth_factor_type);
+  // Creates PrepareInput for preparing an auth factor type for adding.
+  CryptohomeStatusOr<PrepareInput> CreatePrepareInputForAdding(
       const user_data_auth::PrepareInput& prepare_input_proto,
       AuthFactorType auth_factor_type);
 

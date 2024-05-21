@@ -79,6 +79,7 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/proto_bindings/auth_factor.pb.h"
 #include "cryptohome/recoverable_key_store/type.h"
+#include "cryptohome/signature_sealing/structures_proto.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_policy_file.h"
 #include "cryptohome/user_secret_stash/decrypted.h"
@@ -2773,8 +2774,8 @@ void AuthSession::AuthForDecrypt::MigrateFromTheBack(
   // the auth factor label, which must be unique for each factor.
   const auto& legacy_record = legacy_records.back();
 
-  auto prepare_input =
-      CreatePrepareInputForAdding(AuthFactorType::kFingerprint);
+  auto prepare_input = session_->CreatePrepareInputForAdding(
+      user_data_auth::PrepareInput(), AuthFactorType::kFingerprint);
   if (!prepare_input.ok()) {
     std::move(on_done).Run(std::move(prepare_input).err_status());
     return;
@@ -2927,8 +2928,8 @@ void AuthSession::PrepareAuthFactor(
           std::move(on_done).Run(std::move(status));
           return;
         }
-        session_decrypt->PrepareAuthFactorForAdd(*auth_factor_type,
-                                                 std::move(on_done));
+        session_decrypt->PrepareAuthFactorForAdd(
+            request.prepare_input(), *auth_factor_type, std::move(on_done));
         break;
       }
     }
@@ -2949,7 +2950,9 @@ void AuthSession::PrepareAuthFactor(
 }
 
 void AuthSession::AuthForDecrypt::PrepareAuthFactorForAdd(
-    AuthFactorType auth_factor_type, StatusCallback on_done) {
+    const user_data_auth::PrepareInput& prepare_input_proto,
+    AuthFactorType auth_factor_type,
+    StatusCallback on_done) {
   AuthFactorDriver& factor_driver =
       session_->auth_factor_driver_manager_->GetDriver(auth_factor_type);
 
@@ -2972,7 +2975,8 @@ void AuthSession::AuthForDecrypt::PrepareAuthFactorForAdd(
       return;
     }
   }
-  auto prepare_input = CreatePrepareInputForAdding(auth_factor_type);
+  auto prepare_input = session_->CreatePrepareInputForAdding(
+      prepare_input_proto, auth_factor_type);
   if (!prepare_input.ok()) {
     std::move(on_done).Run(std::move(prepare_input).err_status());
     return;
@@ -3295,17 +3299,17 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
   return auth_input;
 }
 
-CryptohomeStatusOr<PrepareInput>
-AuthSession::AuthForDecrypt::CreatePrepareInputForAdding(
+CryptohomeStatusOr<PrepareInput> AuthSession::CreatePrepareInputForAdding(
+    const user_data_auth::PrepareInput& prepare_input_proto,
     AuthFactorType auth_factor_type) {
   PrepareInput prepare_input;
-  prepare_input.username = session_->obfuscated_username_;
+  prepare_input.username = obfuscated_username_;
 
   const AuthFactorDriver& factor_driver =
-      session_->auth_factor_driver_manager_->GetDriver(auth_factor_type);
+      auth_factor_driver_manager_->GetDriver(auth_factor_type);
 
   if (factor_driver.NeedsRateLimiter()) {
-    if (!session_->decrypt_token_) {
+    if (!decrypt_token_) {
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocRateLimiterNoUSSInAuthInputForPrepare),
           ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
@@ -3314,8 +3318,7 @@ AuthSession::AuthForDecrypt::CreatePrepareInputForAdding(
     // Currently fingerprint is the only auth factor type using rate limiter, so
     // the interface isn't designed to be generic. We'll make it generic to any
     // auth factor types in the future.
-    DecryptedUss& decrypted_uss =
-        session_->uss_manager_->GetDecrypted(*session_->decrypt_token_);
+    DecryptedUss& decrypted_uss = uss_manager_->GetDecrypted(*decrypt_token_);
     std::optional<uint64_t> rate_limiter_label =
         decrypted_uss.encrypted().fingerprint_rate_limiter_id();
     std::optional<brillo::SecureBlob> reset_secret =
@@ -3329,6 +3332,27 @@ AuthSession::AuthForDecrypt::CreatePrepareInputForAdding(
     prepare_input.rate_limiter_label = rate_limiter_label;
     prepare_input.reset_secret = reset_secret;
     return std::move(prepare_input);
+  }
+
+  switch (prepare_input_proto.input_case()) {
+    case user_data_auth::PrepareInput::kSmartCardInput: {
+      for (const auto& content :
+           prepare_input_proto.smart_card_input().signature_algorithms()) {
+        std::optional<SerializedChallengeSignatureAlgorithm>
+            signature_algorithm =
+                proto::FromProto(ChallengeSignatureAlgorithm(content));
+        if (signature_algorithm.has_value()) {
+          prepare_input.challenge_signature_algorithms.push_back(
+              signature_algorithm.value());
+        } else {
+          LOG(WARNING) << "Signature algorithm does not exist";
+        }
+      }
+      break;
+    }
+    case user_data_auth::PrepareInput::kCryptohomeRecoveryInput:
+    default:
+      break;
   }
 
   return std::move(prepare_input);
@@ -3414,6 +3438,9 @@ AuthSession::CreatePrepareInputForAuthentication(
       }
       recovery_input.auth_block_state = *state;
 
+      break;
+    }
+    case user_data_auth::PrepareInput::kSmartCardInput: {
       break;
     }
     default:

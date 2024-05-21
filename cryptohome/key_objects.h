@@ -41,6 +41,10 @@ struct PrepareInput {
   std::optional<brillo::SecureBlob> reset_secret;
   // The PinWeaver leaf label of the rate-limiter.
   std::optional<uint64_t> rate_limiter_label;
+  // Supported signature algorithms, in the order of preference
+  // (starting from the most preferred).
+  std::vector<SerializedChallengeSignatureAlgorithm>
+      challenge_signature_algorithms;
 };
 
 struct CryptohomeRecoveryPrepareOutput {
