@@ -1714,11 +1714,11 @@ bool Datapath::ModifyConnmarkRestore(IpFamily family,
     args.insert(args.end(), {"-i", iif});
   }
   std::string mark_str;
+  std::string mask_str = mask.ToString();
   if (skip_on_non_empty_mark) {
-    mark_str = base::StrCat({"0x0/", mask.ToString()});
+    mark_str = base::StrCat({"0x0/", mask_str});
     args.insert(args.end(), {"-m", "mark", "--mark", mark_str});
   }
-  std::string mask_str = mask.ToString();
   args.insert(args.end(),
               {"-j", "CONNMARK", "--restore-mark", "--mask", mask_str, "-w"});
   return ModifyIptables(family, Iptables::Table::kMangle, op, chain, args);
@@ -2016,25 +2016,25 @@ bool Datapath::ModifyIPv6Rtentry(ioctl_req_t op, struct in6_rtmsg* route) {
 }
 
 bool Datapath::AddAdbPortForwardRule(std::string_view ifname) {
-  return firewall_->AddIpv4ForwardRule(
-      patchpanel::ModifyPortRuleRequest::TCP, kArcAddr, kAdbServerPort,
-      std::string(ifname), kLocalhostAddr, kAdbProxyTcpListenPort);
+  return firewall_->AddIpv4ForwardRule(patchpanel::ModifyPortRuleRequest::TCP,
+                                       kArcAddr, kAdbServerPort, ifname,
+                                       kLocalhostAddr, kAdbProxyTcpListenPort);
 }
 
 void Datapath::DeleteAdbPortForwardRule(std::string_view ifname) {
-  firewall_->DeleteIpv4ForwardRule(
-      patchpanel::ModifyPortRuleRequest::TCP, kArcAddr, kAdbServerPort,
-      std::string(ifname), kLocalhostAddr, kAdbProxyTcpListenPort);
+  firewall_->DeleteIpv4ForwardRule(patchpanel::ModifyPortRuleRequest::TCP,
+                                   kArcAddr, kAdbServerPort, ifname,
+                                   kLocalhostAddr, kAdbProxyTcpListenPort);
 }
 
 bool Datapath::AddAdbPortAccessRule(std::string_view ifname) {
   return firewall_->AddAcceptRules(patchpanel::ModifyPortRuleRequest::TCP,
-                                   kAdbProxyTcpListenPort, std::string(ifname));
+                                   kAdbProxyTcpListenPort, ifname);
 }
 
 void Datapath::DeleteAdbPortAccessRule(std::string_view ifname) {
   firewall_->DeleteAcceptRules(patchpanel::ModifyPortRuleRequest::TCP,
-                               kAdbProxyTcpListenPort, std::string(ifname));
+                               kAdbProxyTcpListenPort, ifname);
 }
 
 bool Datapath::SetConntrackHelpers(const bool enable_helpers) {

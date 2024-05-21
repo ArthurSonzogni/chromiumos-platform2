@@ -84,11 +84,11 @@ class MockFirewall : public Firewall {
   MOCK_METHOD3(AddAcceptRules,
                bool(patchpanel::ModifyPortRuleRequest::Protocol protocol,
                     uint16_t port,
-                    const std::string& interface));
+                    std::string_view interface));
   MOCK_METHOD3(DeleteAcceptRules,
                bool(Protocol protocol,
                     uint16_t port,
-                    const std::string& interface));
+                    std::string_view interface));
   MOCK_METHOD2(AddLoopbackLockdownRules,
                bool(Protocol protocol, uint16_t port));
   MOCK_METHOD2(DeleteLoopbackLockdownRules,
@@ -97,14 +97,14 @@ class MockFirewall : public Firewall {
                bool(Protocol protocol,
                     const std::optional<net_base::IPv4Address>& input_ip,
                     uint16_t port,
-                    const std::string& interface,
+                    std::string_view interface,
                     const net_base::IPv4Address& dst_ip,
                     uint16_t dst_port));
   MOCK_METHOD6(DeleteIpv4ForwardRule,
                bool(Protocol protocol,
                     const std::optional<net_base::IPv4Address>& input_ip,
                     uint16_t port,
-                    const std::string& interface,
+                    std::string_view interface,
                     const net_base::IPv4Address& dst_ip,
                     uint16_t dst_port));
 };

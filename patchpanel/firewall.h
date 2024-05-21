@@ -15,6 +15,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <brillo/errors/error.h>
 #include <gtest/gtest_prod.h>
 #include <net-base/ipv4_address.h>
@@ -44,24 +45,24 @@ class Firewall {
 
   virtual bool AddAcceptRules(Protocol protocol,
                               uint16_t port,
-                              const std::string& interface);
+                              std::string_view interface);
   virtual bool DeleteAcceptRules(Protocol protocol,
                                  uint16_t port,
-                                 const std::string& interface);
+                                 std::string_view interface);
   virtual bool AddLoopbackLockdownRules(Protocol protocol, uint16_t port);
   virtual bool DeleteLoopbackLockdownRules(Protocol protocol, uint16_t port);
   virtual bool AddIpv4ForwardRule(
       Protocol protocol,
       const std::optional<net_base::IPv4Address>& input_ip,
       uint16_t port,
-      const std::string& interface,
+      std::string_view interface,
       const net_base::IPv4Address& dst_ip,
       uint16_t dst_port);
   virtual bool DeleteIpv4ForwardRule(
       Protocol protocol,
       const std::optional<net_base::IPv4Address>& input_ip,
       uint16_t port,
-      const std::string& interface,
+      std::string_view interface,
       const net_base::IPv4Address& dst_ip,
       uint16_t dst_port);
 
@@ -75,27 +76,27 @@ class Firewall {
   bool AddAcceptRule(IpFamily ip_family,
                      Protocol protocol,
                      uint16_t port,
-                     const std::string& interface);
+                     std::string_view interface);
   bool DeleteAcceptRule(IpFamily ip_family,
                         Protocol protocol,
                         uint16_t port,
-                        const std::string& interface);
+                        std::string_view interface);
   bool ModifyAcceptRule(IpFamily ip_family,
                         Protocol protocol,
                         uint16_t port,
-                        const std::string& interface,
+                        std::string_view interface,
                         Iptables::Command command);
   // Adds or removes MASQUERADE chain rules to/from the nat PREROUTING chain.
   bool ModifyIpv4DNATRule(Protocol protocol,
                           const std::optional<net_base::IPv4Address>& input_ip,
                           uint16_t port,
-                          const std::string& interface,
+                          std::string_view interface,
                           const net_base::IPv4Address& dst_ip,
                           uint16_t dst_port,
                           Iptables::Command command);
   // Adds or removes ACCEPT chain rules to/from the filter FORWARD chain.
   bool ModifyIpv4ForwardChain(Protocol protocol,
-                              const std::string& interface,
+                              std::string_view interface,
                               const net_base::IPv4Address& dst_ip,
                               uint16_t dst_port,
                               Iptables::Command command);
@@ -113,7 +114,7 @@ class Firewall {
                    Iptables::Table table,
                    Iptables::Command command,
                    std::string_view chain,
-                   const std::vector<std::string>& argv);
+                   base::span<const std::string> argv);
 
   MinijailedProcessRunner* process_runner_;
 };

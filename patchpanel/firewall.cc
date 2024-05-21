@@ -12,6 +12,7 @@
 #include <string_view>
 #include <vector>
 
+#include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
@@ -41,7 +42,7 @@ Firewall::Firewall(MinijailedProcessRunner* process_runner)
 
 bool Firewall::AddAcceptRules(Protocol protocol,
                               uint16_t port,
-                              const std::string& interface) {
+                              std::string_view interface) {
   if (port == 0U) {
     LOG(ERROR) << "Port 0 is not a valid port";
     return false;
@@ -63,7 +64,7 @@ bool Firewall::AddAcceptRules(Protocol protocol,
 
 bool Firewall::DeleteAcceptRules(Protocol protocol,
                                  uint16_t port,
-                                 const std::string& interface) {
+                                 std::string_view interface) {
   if (port == 0U) {
     LOG(ERROR) << "Port 0 is not a valid port";
     return false;
@@ -80,7 +81,7 @@ bool Firewall::AddIpv4ForwardRule(
     Protocol protocol,
     const std::optional<net_base::IPv4Address>& input_ip,
     uint16_t port,
-    const std::string& interface,
+    std::string_view interface,
     const net_base::IPv4Address& dst_ip,
     uint16_t dst_port) {
   if (!ModifyIpv4DNATRule(protocol, input_ip, port, interface, dst_ip, dst_port,
@@ -102,7 +103,7 @@ bool Firewall::DeleteIpv4ForwardRule(
     Protocol protocol,
     const std::optional<net_base::IPv4Address>& input_ip,
     uint16_t port,
-    const std::string& interface,
+    std::string_view interface,
     const net_base::IPv4Address& dst_ip,
     uint16_t dst_port) {
   bool success = true;
@@ -121,7 +122,7 @@ bool Firewall::ModifyIpv4DNATRule(
     Protocol protocol,
     const std::optional<net_base::IPv4Address>& input_ip,
     uint16_t port,
-    const std::string& interface,
+    std::string_view interface,
     const net_base::IPv4Address& dst_ip,
     uint16_t dst_port,
     Iptables::Command command) {
@@ -149,7 +150,7 @@ bool Firewall::ModifyIpv4DNATRule(
 
   std::vector<std::string> argv{
       "-i",
-      interface,
+      std::string(interface),
       "-p",  // protocol
       ProtocolName(protocol),
   };
@@ -168,7 +169,7 @@ bool Firewall::ModifyIpv4DNATRule(
 }
 
 bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
-                                      const std::string& interface,
+                                      std::string_view interface,
                                       const net_base::IPv4Address& dst_ip,
                                       uint16_t dst_port,
                                       Iptables::Command command) {
@@ -191,7 +192,7 @@ bool Firewall::ModifyIpv4ForwardChain(Protocol protocol,
 
   std::vector<std::string> argv{
       "-i",
-      interface,
+      std::string(interface),
       "-p",  // protocol
       ProtocolName(protocol),
       "-d",  // destination ip
@@ -242,7 +243,7 @@ bool Firewall::DeleteLoopbackLockdownRules(Protocol protocol, uint16_t port) {
 bool Firewall::AddAcceptRule(IpFamily ip_family,
                              Protocol protocol,
                              uint16_t port,
-                             const std::string& interface) {
+                             std::string_view interface) {
   return ModifyAcceptRule(ip_family, protocol, port, interface,
                           Iptables::Command::kI);
 }
@@ -250,7 +251,7 @@ bool Firewall::AddAcceptRule(IpFamily ip_family,
 bool Firewall::DeleteAcceptRule(IpFamily ip_family,
                                 Protocol protocol,
                                 uint16_t port,
-                                const std::string& interface) {
+                                std::string_view interface) {
   return ModifyAcceptRule(ip_family, protocol, port, interface,
                           Iptables::Command::kD);
 }
@@ -258,7 +259,7 @@ bool Firewall::DeleteAcceptRule(IpFamily ip_family,
 bool Firewall::ModifyAcceptRule(IpFamily ip_family,
                                 Protocol protocol,
                                 uint16_t port,
-                                const std::string& interface,
+                                std::string_view interface,
                                 Iptables::Command command) {
   std::vector<std::string> argv{
       "-p",  // protocol
@@ -267,7 +268,7 @@ bool Firewall::ModifyAcceptRule(IpFamily ip_family,
       std::to_string(port),
   };
   if (!interface.empty()) {
-    argv.insert(argv.end(), {"-i", interface});
+    argv.insert(argv.end(), {"-i", std::string(interface)});
   }
   argv.insert(argv.end(), {"-j", "ACCEPT", "-w"});
 
@@ -318,18 +319,12 @@ bool Firewall::RunIptables(IpFamily ip_family,
                            Iptables::Table table,
                            Iptables::Command command,
                            std::string_view chain,
-                           const std::vector<std::string>& argv) {
+                           base::span<const std::string> argv) {
   if (ip_family == IpFamily::kIPv4)
-    // TODO(b/325359902): Change |argv| to span type and delete conversion.
-    return process_runner_->iptables(
-               table, command, chain,
-               const_cast<std::vector<std::string>&>(argv), false) == 0;
+    return process_runner_->iptables(table, command, chain, argv, false) == 0;
 
   if (ip_family == IpFamily::kIPv6)
-    // TODO(b/325359902): Change |argv| to span type and delete conversion.
-    return process_runner_->ip6tables(
-               table, command, chain,
-               const_cast<std::vector<std::string>&>(argv), false) == 0;
+    return process_runner_->ip6tables(table, command, chain, argv, false) == 0;
 
   return false;
 }
