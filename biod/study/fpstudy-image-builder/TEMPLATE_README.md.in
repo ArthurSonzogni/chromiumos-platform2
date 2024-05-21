@@ -176,14 +176,14 @@ See [CCD Open] and [CCD Cable] for more information.
 1.  Login to the Chromebook using a test Gmail account.
 2.  Navigate to `http://localhost:9000`.
 3.  Start a capture using the onscreen steps.
-4.  Ensure that the capture is deleted prior to starting the offical study.
+4.  Ensure that the capture is deleted prior to starting the official study.
 
 # Appendix
 
 ## A. Open Root Terminal {#open-root-terminal}
 
 1.  Press `Ctrl` + `Alt` + `↻` (Ctrl-Alt-"refresh") to open a terminal. On older
-    devces, it might be `Ctrl` + `Alt` + `➝` (Ctrl-Alt-"forward").
+    devices, it might be `Ctrl` + `Alt` + `➝` (Ctrl-Alt-"forward").
 2.  Login as `root` with password `test0000` (the password may not be necessary)
 
 ## B. Alternative Root Terminal
@@ -216,7 +216,7 @@ additional words.
 ## E. Boot from USB and Install {#boot-from-usb-and-install}
 
 1.  Plug the flash drive into the Chromebook.
-1.  Reboot the Chrombook.
+1.  Reboot the Chromebook.
 
 1.  When prompted with the OS verification screen, quickly press `Ctrl-U`, to
     boot from the USB flash drive.
