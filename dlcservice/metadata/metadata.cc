@@ -291,12 +291,15 @@ DlcIdList Metadata::ListDlcIds(const FilterKey& filter_key,
   if (const auto& idx = GetIndex(*key_str)) {
     return *idx;
   }
+  LOG(WARNING) << "Unable to read the index file for key=" << *key_str
+               << ", looking up in the DLC metadata.";
 
   // Lookup in metadata.
   DlcIdList ids;
   for (const auto& file_id : GetFileIds()) {
     if (!LoadMetadata(file_id)) {
-      LOG(ERROR) << "Failed to Load DLC metadata file=" << file_id;
+      LOG(WARNING) << "Failed to Load DLC metadata file=" << file_id
+                   << ", skip looking up.";
       continue;
     }
 
@@ -327,7 +330,6 @@ std::optional<DlcIdList> Metadata::GetIndex(const std::string& key) {
 
   std::string idx_str;
   if (!base::ReadFileToString(idx_path, &idx_str)) {
-    LOG(ERROR) << "Failed to read the index file.";
     return std::nullopt;
   }
 
