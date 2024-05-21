@@ -24,7 +24,7 @@ extern int mctk_verbosity;
 
 namespace {
 
-uint32_t mctk_patchlevel = 4;
+uint32_t mctk_patchlevel = 5;
 
 void PrintUsage(char* progname) {
   fprintf(stderr, "\n");

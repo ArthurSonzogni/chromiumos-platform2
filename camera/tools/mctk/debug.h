@@ -40,10 +40,12 @@ void MCTK_PERROR(std::string_view msg,
 // clang-format off
 #define MCTK_ASSERT_EQ(exp1, exp2)                                           \
   do {                                                                       \
-    if (!((exp1) == (exp2))) {                                               \
+    decltype((exp1)) __exp1 = (exp1);                                        \
+    decltype((exp2)) __exp2 = (exp2);                                        \
+    if (!((__exp1) == (__exp2))) {                                           \
       MCTK_ERR("Failed assertion on: MCTK_ASSERT_EQ(" #exp1 ", " #exp2 ")"); \
       MCTK_ERR("Values             : " +                                     \
-               std::to_string(exp1) + " == " + std::to_string(exp2));        \
+               std::to_string(__exp1) + " == " + std::to_string(__exp2));    \
                                                                              \
       exit(EXIT_FAILURE);                                                    \
     }                                                                        \
