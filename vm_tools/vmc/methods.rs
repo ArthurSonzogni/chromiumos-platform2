@@ -2628,11 +2628,7 @@ impl Methods {
         hidraw_device: &str,
     ) -> Result<u8, Box<dyn Error>> {
         self.start_vm_infrastructure(user_id_hash)?;
-        let hidraw_file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(hidraw_device)?;
-        let hidraw_fd = OwnedFd::from(hidraw_file);
+        let hidraw_fd = self.permission_broker_open_path(Path::new(hidraw_device))?;
         self.attach_key(vm_name, user_id_hash, hidraw_fd)
     }
 
