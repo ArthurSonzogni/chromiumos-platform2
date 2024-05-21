@@ -55,4 +55,4 @@ void MCTK_PERROR(std::string_view msg,
     std::string_view msg,
     std::source_location = std::source_location::current());
 
-#endif /* CAMERA_TOOLS_MCTK_DEBUG_H_ */
+#endif  // CAMERA_TOOLS_MCTK_DEBUG_H_
