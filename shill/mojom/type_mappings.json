@@ -7,6 +7,7 @@
       "hashable": false,
       "move_only": false,
       "nullable_is_same_type": true,
+      "non_const_ref": false,
       "public_headers": [
         "net-base/http_url.h"
       ],
