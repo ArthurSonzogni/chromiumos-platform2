@@ -26,7 +26,7 @@
 #include "patchpanel/datapath.h"
 #include "patchpanel/dbus_client_notifier.h"
 #include "patchpanel/dhcp_server_controller.h"
-#include "patchpanel/downstream_network_service.h"
+#include "patchpanel/downstream_network_info.h"
 #include "patchpanel/forwarding_service.h"
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/multicast_counters_service.h"

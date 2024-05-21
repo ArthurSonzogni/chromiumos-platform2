@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "patchpanel/downstream_network_service.h"
+#include "patchpanel/downstream_network_info.h"
 
 #include <optional>
 #include <string>
@@ -32,7 +32,7 @@ using testing::StrEq;
 
 namespace patchpanel {
 
-TEST(DownstreamNetworkService,
+TEST(DownstreamNetworkInfo,
      CreateDownstreamNetworkInfoFromTetheredNetworkRequest) {
   ShillClient::Device wwan0_dev;
   wwan0_dev.ifname = "wwan0";
@@ -91,7 +91,7 @@ TEST(DownstreamNetworkService,
   EXPECT_EQ(info->dhcp_options, dhcp_options);
 }
 
-TEST(DownstreamNetworkService,
+TEST(DownstreamNetworkInfo,
      CreateDownstreamNetworkInfoFromTetheredNetworkRequestRandom) {
   ShillClient::Device wwan0_dev;
   wwan0_dev.ifname = "wwan0";
@@ -105,7 +105,7 @@ TEST(DownstreamNetworkService,
   EXPECT_TRUE(info->ipv4_cidr.InSameSubnetWith(info->ipv4_dhcp_end_addr));
 }
 
-TEST(DownstreamNetworkService,
+TEST(DownstreamNetworkInfo,
      CreateDownstreamNetworkInfoFromLocalOnlyNetworkRequest) {
   LocalOnlyNetworkRequest request;
   request.set_ifname("wlan1");
@@ -155,7 +155,7 @@ TEST(DownstreamNetworkService,
   EXPECT_EQ(info->dhcp_options, dhcp_options);
 }
 
-TEST(DownstreamNetworkService,
+TEST(DownstreamNetworkInfo,
      CreateDownstreamNetworkInfoFromLocalOnlyNetworkRandomRequest) {
   LocalOnlyNetworkRequest request;
   request.set_ifname("wlan1");
@@ -172,7 +172,7 @@ TEST(DownstreamNetworkService,
   EXPECT_FALSE(info->enable_ipv6);
 }
 
-TEST(DownstreamNetworkService, DownstreamNetworkInfoToDHCPServerConfig) {
+TEST(DownstreamNetworkInfo, DownstreamNetworkInfoToDHCPServerConfig) {
   DownstreamNetworkInfo info = {};
   info.ipv4_cidr = *IPv4CIDR::CreateFromCIDRString("192.168.3.1/24");
   info.enable_ipv4_dhcp = true;

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "patchpanel/downstream_network_service.h"
+#include "patchpanel/downstream_network_info.h"
 
 #include <memory>
 #include <optional>

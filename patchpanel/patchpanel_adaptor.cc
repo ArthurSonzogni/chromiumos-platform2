@@ -14,7 +14,7 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <net-base/process_manager.h>
 
-#include "patchpanel/downstream_network_service.h"
+#include "patchpanel/downstream_network_info.h"
 #include "patchpanel/manager.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/network/network_applier.h"

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef PATCHPANEL_DOWNSTREAM_NETWORK_SERVICE_H_
-#define PATCHPANEL_DOWNSTREAM_NETWORK_SERVICE_H_
+#ifndef PATCHPANEL_DOWNSTREAM_NETWORK_INFO_H_
+#define PATCHPANEL_DOWNSTREAM_NETWORK_INFO_H_
 
 #include <iostream>
 #include <memory>
@@ -105,4 +105,4 @@ std::ostream& operator<<(std::ostream& stream,
 
 }  // namespace patchpanel
 
-#endif  // PATCHPANEL_DOWNSTREAM_NETWORK_SERVICE_H_
+#endif  // PATCHPANEL_DOWNSTREAM_NETWORK_INFO_H_

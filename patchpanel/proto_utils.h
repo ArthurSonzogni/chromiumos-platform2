@@ -17,6 +17,7 @@
 #include "patchpanel/arc_service.h"
 #include "patchpanel/connmark_updater.h"
 #include "patchpanel/crostini_service.h"
+#include "patchpanel/downstream_network_info.h"
 
 namespace patchpanel {
 

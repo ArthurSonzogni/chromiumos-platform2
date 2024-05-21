@@ -23,7 +23,7 @@
 #include <net-base/mac_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
-#include "patchpanel/downstream_network_service.h"
+#include "patchpanel/downstream_network_info.h"
 #include "patchpanel/firewall.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/minijailed_process_runner.h"

@@ -23,7 +23,7 @@
 #include "patchpanel/address_manager.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
-#include "patchpanel/downstream_network_service.h"
+#include "patchpanel/downstream_network_info.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/net_util.h"
