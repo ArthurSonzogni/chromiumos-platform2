@@ -19,6 +19,8 @@
 
 namespace startup {
 
+class MountVarAndHomeChronosInterface;
+
 // MountHelper contains the functionality for maintaining the mount stack
 // and the mounting and umounting of /var and /home/chronos.
 // This is the base class for the MountHelper classes. The pure virtual
@@ -26,12 +28,21 @@ namespace startup {
 // and StandardMountHelper classes.
 class MountHelper {
  public:
+  // For testing, we can change how we mount encstateful.
+  MountHelper(libstorage::Platform* platform,
+              StartupDep* startup_dep,
+              const Flags& flags,
+              const base::FilePath& root,
+              const base::FilePath& stateful,
+              std::unique_ptr<MountVarAndHomeChronosInterface> impl);
+
   MountHelper(libstorage::Platform* platform,
               StartupDep* startup_dep,
               const Flags& flags,
               const base::FilePath& root,
               const base::FilePath& stateful);
-  virtual ~MountHelper() = default;
+
+  virtual ~MountHelper();
 
   // Add mount to mount stack.
   void RememberMount(const base::FilePath& mount);
@@ -69,6 +80,7 @@ class MountHelper {
 
  private:
   std::stack<base::FilePath> mount_stack_;
+  std::unique_ptr<MountVarAndHomeChronosInterface> impl_;
 };
 
 }  // namespace startup

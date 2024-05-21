@@ -105,6 +105,7 @@ static_library("libcrosstartup") {
     "startup/flags.h",
     "startup/mount_helper.cc",
     "startup/mount_helper_factory.cc",
+    "startup/mount_var_home_impl.cc",
     "startup/security_manager.cc",
     "startup/standard_mount_helper.cc",
     "startup/startup_dep_impl.cc",
