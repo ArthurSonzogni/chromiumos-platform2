@@ -2477,9 +2477,8 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
                            backing_apis_);
   EXPECT_TRUE(auth_session.user_exists());
 
-  // Test.
-  // Setting the expectation that the auth block utility will derive key
-  // blobs.
+  // Setting the expectation that the auth block utility will fail with a
+  // lockout error.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
@@ -2500,15 +2499,14 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
                      CryptoError::CE_CREDENTIAL_LOCKED),
                  nullptr, std::nullopt);
       });
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
+      .WillOnce(ReturnValue(UINT32_MAX));
   // Calling AuthenticateAuthFactor.
   std::vector<std::string> auth_factor_labels{kFakePinLabel};
   user_data_auth::AuthInput auth_input_proto;
-  // The wrong pin needs to be sent multiple times. |wrong_pin| is set to
-  // be different than |kFakePin|.
-  std::string wrong_pin = "232323";
-  auth_input_proto.mutable_pin_input()->set_secret(wrong_pin);
-  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
-      .WillRepeatedly(ReturnValue(UINT32_MAX));
+  // The pin input does not matter since we already set up the auth block
+  // to fail the authentication.
+  auth_input_proto.mutable_pin_input()->set_secret("badpin");
   AuthenticateTestFuture authenticate_future;
   auto auth_factor_type_policy = GetEmptyAuthFactorTypePolicy(
       *DetermineFactorTypeFromAuthInput(auth_input_proto));
@@ -2518,9 +2516,16 @@ TEST_F(AuthSessionTest, AuthFactorStatusUpdateTimerTest) {
   auto& [action, status] = authenticate_future.Get();
   EXPECT_EQ(action.action_type, AuthSession::PostAuthActionType::kNone);
   EXPECT_THAT(status, NotOk());
-  // As currently the user is locked out until they log in via password,
-  // the delay policy does not matter, but once the passwordless policy is
-  // set, this timing should change to reflect that.
+  EXPECT_EQ(status->local_legacy_error(),
+            user_data_auth::CRYPTOHOME_ERROR_CREDENTIAL_LOCKED);
+
+  // Test.
+  // By default a status update is sent every 30 seconds.
+  // Use the GetDelayInSeconds expectation as a verification proxy, that
+  // the update timer indeed triggers because the pin auth factor's
+  // locked-out delay should be queried when a status update is constructed.
+  EXPECT_CALL(hwsec_pw_manager_, GetDelayInSeconds(_))
+      .WillOnce(ReturnValue(UINT32_MAX));
   task_environment_.FastForwardBy(base::Seconds(30));
 }
 

@@ -61,9 +61,6 @@
 
 namespace cryptohome {
 
-using AuthFactorStatusUpdateCallback = base::RepeatingCallback<void(
-    user_data_auth::AuthFactorWithStatus, const std::string&)>;
-
 // Helper function to return an empty auth factor type policy with the given
 // type.
 SerializedUserAuthFactorTypePolicy GetEmptyAuthFactorTypePolicy(
