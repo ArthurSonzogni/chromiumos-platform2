@@ -293,6 +293,39 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashLarge) {
   EXPECT_TRUE(base::PathExists(kcrash_file()));
 }
 
+TEST_F(KernelCollectorTest, CollectRamoopsCrashFile) {
+  std::string kcrash_contents =
+      "<4>[  303.619415]  test_ramoops_func+0x858/0x2338\n <remaining log "
+      "chunk>";
+  collector_.set_crash_directory_for_test(test_crash_directory());
+  ASSERT_TRUE(test_util::CreateFile(
+      kcrash_file(), StrCat({"Panic#2 Part#1\n", kcrash_contents})));
+
+  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
+            CrashCollectionStatus::kSuccess);
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory(), "kernel.*.meta",
+      "sig=kernel-test_ramoops_func-"));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory(), "kernel.*.kcrash", kcrash_contents));
+  EXPECT_FALSE(base::PathExists(kcrash_file()));
+}
+
+TEST_F(KernelCollectorTest, CollectRamoopsCrashCorrupt) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
+  std::string contents = "A bunch of binary \x1\x2\x3\x4 ...";
+
+  ASSERT_TRUE(test_util::CreateFile(corrupt_kcrash_file(), contents));
+  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
+            CrashCollectionStatus::kSuccess);
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory(), "kernel.*.meta", "sig=kernel-CorruptDump"));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory(), "kernel.*.kcrash",
+      StrCat({constants::kCorruptRamoops, contents})));
+  EXPECT_FALSE(base::PathExists(corrupt_kcrash_file()));
+}
+
 TEST_F(KernelCollectorTest, LoadCorruptDump) {
   ASSERT_FALSE(base::PathExists(corrupt_kcrash_file()));
   std::string dump;
