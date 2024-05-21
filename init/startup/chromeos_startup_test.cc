@@ -741,7 +741,7 @@ class MountStackTest : public ::testing::Test {
  protected:
   MountStackTest()
       : base_dir_(base::FilePath("")),
-        platform_(std::make_unique<libstorage::FakePlatform>()),
+        platform_(std::make_unique<libstorage::MockPlatform>()),
         startup_dep_(
             std::make_unique<startup::FakeStartupDep>(platform_.get())),
         mount_helper_(platform_.get(),
@@ -755,35 +755,28 @@ class MountStackTest : public ::testing::Test {
 
   startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
-  std::unique_ptr<libstorage::FakePlatform> platform_;
+  std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   startup::StandardMountHelper mount_helper_;
 };
 
-TEST_F(MountStackTest, RememberMount) {
-  std::stack<base::FilePath> mount_stack = {};
-  std::deque<base::FilePath> end = {base::FilePath("/home"),
-                                    base::FilePath("/root")};
-  std::stack<base::FilePath> end_stack(end);
-  base::FilePath mount("/home");
-  mount_helper_.RememberMount(mount);
-  base::FilePath mnt("/root");
-  mount_helper_.RememberMount(mnt);
-  std::stack<base::FilePath> res_stack = mount_helper_.GetMountStackForTest();
-  EXPECT_EQ(res_stack, end_stack);
-}
-
 TEST_F(MountStackTest, CleanupMountsNoEncrypt) {
-  std::stack<base::FilePath> end_stack = {};
-  std::deque<base::FilePath> mount = {base::FilePath("/home"),
-                                      base::FilePath("/root")};
-  std::stack<base::FilePath> mount_stack(mount);
+  // Remember 2 mounts, make sure CleanupMountsStack() calls unmount
+  // for all and returns what has been unmounted.
+  base::FilePath root = base_dir_.Append("root");
+  mount_helper_.RememberMount(root);
+  base::FilePath home = base_dir_.Append("home");
+  mount_helper_.RememberMount(home);
 
-  mount_helper_.SetMountStackForTest(mount_stack);
+  EXPECT_CALL(*platform_, Unmount(root, false, nullptr)).WillOnce(Return(true));
+  EXPECT_CALL(*platform_, Unmount(home, false, nullptr)).WillOnce(Return(true));
   std::vector<base::FilePath> mounts;
   mount_helper_.CleanupMountsStack(&mounts);
-  std::stack<base::FilePath> res_stack = mount_helper_.GetMountStackForTest();
-  EXPECT_EQ(res_stack, end_stack);
+  EXPECT_EQ(mounts.front(), home);
+  mounts.erase(mounts.begin());
+  EXPECT_EQ(mounts.front(), root);
+  mounts.erase(mounts.begin());
+  EXPECT_TRUE(mounts.empty());
 }
 
 TEST(MountVarAndHomeChronosEncrypted, MountEncrypted) {

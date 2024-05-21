@@ -226,9 +226,4 @@ bool MountHelper::DoUmountVarAndHomeChronos() {
   return UmountVarAndHomeChronosUnencrypted();
 }
 
-void MountHelper::SetMountStackForTest(
-    const std::stack<base::FilePath>& mount_stack) {
-  mount_stack_ = mount_stack;
-}
-
 }  // namespace startup

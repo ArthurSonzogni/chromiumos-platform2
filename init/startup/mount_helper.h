@@ -43,10 +43,6 @@ class MountHelper {
   // Tries to bind mount, clobbers the stateful partition on failure.
   void BindMountOrFail(const base::FilePath& source,
                        const base::FilePath& target);
-  // Sets up a mount stack for testing.
-  void SetMountStackForTest(const std::stack<base::FilePath>& mount_stack);
-  // Gets the mount stack for testing.
-  std::stack<base::FilePath> GetMountStackForTest() { return mount_stack_; }
 
   // Unmount bind mounts for /var and /home/chronos when encrypted.
   bool UmountVarAndHomeChronosEncrypted();
@@ -72,6 +68,8 @@ class MountHelper {
   const base::FilePath root_;
   const base::FilePath stateful_;
   const bool dev_mode_;
+
+ private:
   std::stack<base::FilePath> mount_stack_;
 };
 
