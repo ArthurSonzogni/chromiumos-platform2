@@ -124,4 +124,4 @@ class V4lMcControl {
   std::optional<int> fd_ent_;
 };
 
-#endif /* CAMERA_TOOLS_MCTK_CONTROL_H_ */
+#endif  // CAMERA_TOOLS_MCTK_CONTROL_H_

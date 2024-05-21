@@ -41,4 +41,4 @@ class V4lMcSelection {
   std::optional<struct v4l2_rect> compose_padded_;
 };
 
-#endif /* CAMERA_TOOLS_MCTK_SELECTION_H_ */
+#endif  // CAMERA_TOOLS_MCTK_SELECTION_H_

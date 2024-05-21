@@ -83,4 +83,4 @@ class V4lMcPad {
   std::optional<int> fd_ent_;
 };
 
-#endif /* CAMERA_TOOLS_MCTK_PAD_H_ */
+#endif  // CAMERA_TOOLS_MCTK_PAD_H_

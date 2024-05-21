@@ -36,4 +36,4 @@
 
 std::optional<std::string> MctkFindMcDevByBusInfo(std::string_view bus_info);
 
-#endif /* CAMERA_TOOLS_MCTK_FIND_MCDEV_FILE_H_ */
+#endif  // CAMERA_TOOLS_MCTK_FIND_MCDEV_FILE_H_

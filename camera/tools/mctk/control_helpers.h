@@ -14,4 +14,4 @@
 size_t ControlHelperElemSize(__u32 type_u32);
 bool ControlHelperDescLooksOK(struct v4l2_query_ext_ctrl& desc);
 
-#endif /* CAMERA_TOOLS_MCTK_CONTROL_HELPERS_H_ */
+#endif  // CAMERA_TOOLS_MCTK_CONTROL_HELPERS_H_

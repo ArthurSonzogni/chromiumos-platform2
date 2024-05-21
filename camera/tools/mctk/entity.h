@@ -229,4 +229,4 @@ class V4lMcEntity {
   std::optional<int> fd_;
 };
 
-#endif /* CAMERA_TOOLS_MCTK_ENTITY_H_ */
+#endif  // CAMERA_TOOLS_MCTK_ENTITY_H_

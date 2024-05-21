@@ -60,4 +60,4 @@ class V4lMcLink {
   std::optional<int> fd_mc_;
 };
 
-#endif /* CAMERA_TOOLS_MCTK_LINK_H_ */
+#endif  // CAMERA_TOOLS_MCTK_LINK_H_

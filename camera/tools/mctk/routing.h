@@ -23,4 +23,4 @@
 
 void V4lMcRouteSensors(V4lMcDev& mcdev);
 
-#endif /* CAMERA_TOOLS_MCTK_ROUTING_H_ */
+#endif  // CAMERA_TOOLS_MCTK_ROUTING_H_

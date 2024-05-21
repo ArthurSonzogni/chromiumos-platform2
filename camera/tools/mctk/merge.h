@@ -19,4 +19,4 @@
 
 bool V4lMcMergeMcDev(V4lMcDev& target, V4lMcDev& source, V4lMcRemap* remap);
 
-#endif /* CAMERA_TOOLS_MCTK_MERGE_H_ */
+#endif  // CAMERA_TOOLS_MCTK_MERGE_H_

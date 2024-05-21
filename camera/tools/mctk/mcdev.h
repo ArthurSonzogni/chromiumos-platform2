@@ -64,4 +64,4 @@ class V4lMcDev {
   std::optional<int> fd_;
 };
 
-#endif /* CAMERA_TOOLS_MCTK_MCDEV_H_ */
+#endif  // CAMERA_TOOLS_MCTK_MCDEV_H_

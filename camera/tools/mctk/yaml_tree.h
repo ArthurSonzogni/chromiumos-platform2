@@ -183,4 +183,4 @@ class YamlMap : public YamlNode {
   yaml_mapping_style_t style_;
 };
 
-#endif /* CAMERA_TOOLS_MCTK_YAML_TREE_H_ */
+#endif  // CAMERA_TOOLS_MCTK_YAML_TREE_H_

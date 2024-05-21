@@ -61,4 +61,4 @@ class V4lMcRemap {
   std::vector<V4lMcRemapEntry> remap_list_;
 };
 
-#endif /* CAMERA_TOOLS_MCTK_REMAP_H_ */
+#endif  // CAMERA_TOOLS_MCTK_REMAP_H_
