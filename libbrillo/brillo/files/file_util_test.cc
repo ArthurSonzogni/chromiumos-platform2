@@ -66,7 +66,7 @@ std::ostream& operator<<(std::ostream& os, const brillo::SafeFD::Error err) {
 std::string GetRandomSuffix() {
   const int kBufferSize = 6;
   unsigned char buffer[kBufferSize];
-  base::RandBytes(buffer, std::size(buffer));
+  base::RandBytes(base::as_writable_byte_span(buffer));
   return base::HexEncode(buffer, std::size(buffer));
 }
 
