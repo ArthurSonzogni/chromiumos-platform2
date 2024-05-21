@@ -245,33 +245,52 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureBase) {
   EXPECT_NE(kernel_util::kArchUnknown, collector_.arch());
 }
 
-TEST_F(KernelCollectorTest, LoadPreservedDump) {
-  ASSERT_FALSE(base::PathExists(kcrash_file()));
-  std::string dump;
-  dump.clear();
-
+TEST_F(KernelCollectorTest, CollectRamoopsCrashSkipOops) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
+  std::string contents = "<6>[    0.078852] some oops record";
   ASSERT_TRUE(test_util::CreateFile(kcrash_file(),
-                                    "Oops#1 Part#10\n<6>[    0.078852]"));
-  ASSERT_TRUE(collector_.LoadParameters());
-  ASSERT_TRUE(collector_.LoadPreservedDump(&dump));
-  ASSERT_EQ("<6>[    0.078852]", dump);
+                                    StrCat({"Oops#1 Part#10\n", contents})));
+  // TODO(swboyd): Change expected collection status once oops are skipped.
+  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
+            CrashCollectionStatus::kSuccess);
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory(), "kernel.*.kcrash", contents));
+  EXPECT_FALSE(base::PathExists(kcrash_file()));
+}
 
+TEST_F(KernelCollectorTest, CollectRamoopsCrashSinglePanic) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
   ASSERT_TRUE(test_util::CreateFile(
       kcrash_file(), StrCat({"Panic#2 Part#3\n", kSuccessfulCollectContents})));
-  ASSERT_TRUE(collector_.LoadParameters());
-  ASSERT_TRUE(collector_.LoadPreservedDump(&dump));
-  ASSERT_EQ(kSuccessfulCollectContents, dump);
+  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
+            CrashCollectionStatus::kSuccess);
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory(), "kernel.*.kcrash", kSuccessfulCollectContents));
+  EXPECT_FALSE(base::PathExists(kcrash_file()));
+}
 
+TEST_F(KernelCollectorTest, CollectRamoopsCrashRandomBlob) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
   ASSERT_TRUE(
       test_util::CreateFile(kcrash_file(), "\x01\x02\xfe\xff random blob"));
-  ASSERT_TRUE(collector_.LoadParameters());
-  ASSERT_FALSE(collector_.LoadPreservedDump(&dump));
-  ASSERT_EQ("", dump);
+  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
+            CrashCollectionStatus::kNoCrashFound);
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory(), "kernel.*.kcrash", nullptr));
+  // TODO(swboyd): Change to expect false once corrupted files are still
+  // removed.
+  EXPECT_TRUE(base::PathExists(kcrash_file()));
+}
 
+TEST_F(KernelCollectorTest, CollectRamoopsCrashLarge) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
   std::string large(1024 * 1024 + 1, 'x');  // 1MiB + 1 byte.
-  ASSERT_TRUE(test_util::CreateFile(kcrash_file(), large));
-  ASSERT_TRUE(collector_.LoadParameters());
-  ASSERT_FALSE(collector_.LoadPreservedDump(&dump));
+  ASSERT_TRUE(test_util::CreateFile(kcrash_file(),
+                                    StrCat({"Panic#1 Part#1\n", large})));
+  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
+            CrashCollectionStatus::kNoCrashFound);
+  // TODO(swboyd): Change to expect false once large files are still removed.
+  EXPECT_TRUE(base::PathExists(kcrash_file()));
 }
 
 TEST_F(KernelCollectorTest, LoadCorruptDump) {

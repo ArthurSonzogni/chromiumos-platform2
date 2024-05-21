@@ -145,7 +145,6 @@ class KernelCollector : public CrashCollector {
 
  private:
   friend class KernelCollectorTest;
-  FRIEND_TEST(KernelCollectorTest, LoadPreservedDump);
   FRIEND_TEST(KernelCollectorTest, LoadCorruptDump);
   FRIEND_TEST(KernelCollectorTest, LoadBiosLog);
   FRIEND_TEST(KernelCollectorTest, CollectOK);
