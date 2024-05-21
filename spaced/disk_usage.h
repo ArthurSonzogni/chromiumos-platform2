@@ -5,8 +5,11 @@
 #ifndef SPACED_DISK_USAGE_H_
 #define SPACED_DISK_USAGE_H_
 
+#include <vector>
+
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 
 namespace spaced {
 // Abstract class that defines the interface for both disk usage util and its
@@ -27,6 +30,11 @@ class DiskUsageUtil {
                                              uint32_t gid) = 0;
   virtual int64_t GetQuotaCurrentSpaceForProjectId(const base::FilePath& path,
                                                    uint32_t project_id) = 0;
+  virtual GetQuotaCurrentSpacesForIdsReply GetQuotaCurrentSpacesForIds(
+      const base::FilePath& path,
+      const std::vector<uint32_t>& uids,
+      const std::vector<uint32_t>& gids,
+      const std::vector<uint32_t>& project_ids) = 0;
   virtual bool SetProjectId(const base::ScopedFD& path,
                             uint32_t project_id,
                             int* out_error) = 0;

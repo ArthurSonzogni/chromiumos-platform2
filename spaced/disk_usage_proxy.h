@@ -6,6 +6,7 @@
 #define SPACED_DISK_USAGE_PROXY_H_
 
 #include <memory>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
@@ -50,6 +51,12 @@ class BRILLO_EXPORT DiskUsageProxy : public DiskUsageUtil {
                                      uint32_t gid) override;
   int64_t GetQuotaCurrentSpaceForProjectId(const base::FilePath& path,
                                            uint32_t project_id) override;
+  GetQuotaCurrentSpacesForIdsReply GetQuotaCurrentSpacesForIds(
+      const base::FilePath& path,
+      const std::vector<uint32_t>& uids,
+      const std::vector<uint32_t>& gids,
+      const std::vector<uint32_t>& project_ids) override;
+
   bool SetProjectId(const base::ScopedFD& fd,
                     uint32_t project_id,
                     int* out_error) override;

@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
@@ -129,6 +130,16 @@ int64_t DBusAdaptor::GetQuotaCurrentSpaceForProjectId(const std::string& path,
                                                       uint32_t project_id) {
   return disk_usage_util_->GetQuotaCurrentSpaceForProjectId(
       base::FilePath(path), project_id);
+}
+
+GetQuotaCurrentSpacesForIdsReply DBusAdaptor::GetQuotaCurrentSpacesForIds(
+    const GetQuotaCurrentSpacesForIdsRequest& request) {
+  return disk_usage_util_->GetQuotaCurrentSpacesForIds(
+      base::FilePath(request.path()),
+      std::vector<uint32_t>(request.uids().begin(), request.uids().end()),
+      std::vector<uint32_t>(request.gids().begin(), request.gids().end()),
+      std::vector<uint32_t>(request.project_ids().begin(),
+                            request.project_ids().end()));
 }
 
 SetProjectIdReply DBusAdaptor::SetProjectId(const base::ScopedFD& fd,

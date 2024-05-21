@@ -8,7 +8,9 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
@@ -25,6 +27,7 @@
 #include <base/strings/string_util.h>
 #include <brillo/blkdev_utils/get_backing_block_device.h>
 #include <rootdev/rootdev.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 
 extern "C" {
 #include <linux/fs.h>
@@ -153,6 +156,45 @@ int64_t DiskUsageUtilImpl::GetQuotaCurrentSpaceForId(const base::FilePath& path,
     return -1;
   }
   return dq.dqb_curspace;
+}
+
+GetQuotaCurrentSpacesForIdsReply DiskUsageUtilImpl::GetQuotaCurrentSpacesForIds(
+    const base::FilePath& path,
+    const std::vector<uint32_t>& uids,
+    const std::vector<uint32_t>& gids,
+    const std::vector<uint32_t>& project_ids) {
+  GetQuotaCurrentSpacesForIdsReply reply;
+  const base::FilePath device = GetDevice(path);
+  if (device.empty()) {
+    LOG(ERROR) << "Failed to find logical device for home directory";
+    return reply;
+  }
+  SetQuotaCurrentSpacesForIdsMap(device, uids, USRQUOTA,
+                                 reply.mutable_curspaces_for_uids());
+  SetQuotaCurrentSpacesForIdsMap(device, gids, GRPQUOTA,
+                                 reply.mutable_curspaces_for_gids());
+  SetQuotaCurrentSpacesForIdsMap(device, project_ids, PRJQUOTA,
+                                 reply.mutable_curspaces_for_project_ids());
+  return reply;
+}
+
+void DiskUsageUtilImpl::SetQuotaCurrentSpacesForIdsMap(
+    const base::FilePath& device,
+    const std::vector<uint32_t>& ids,
+    int quota_type,
+    google::protobuf::Map<uint32_t, int64_t>* curspaces_for_ids) {
+  DCHECK(0 <= quota_type && quota_type <= MAXQUOTAS)
+      << "Invalid quota_type: " << quota_type;
+  for (const auto& id : ids) {
+    struct dqblk dq = {};
+    if (QuotaCtl(QCMD(Q_GETQUOTA, quota_type), device, id, &dq) != 0) {
+      PLOG(ERROR) << "quotactl(GETQUOTA) failed: quota_type=" << quota_type
+                  << ", id=" << id << ", device=" << device;
+      (*curspaces_for_ids)[id] = -1;
+    } else {
+      (*curspaces_for_ids)[id] = dq.dqb_curspace;
+    }
+  }
 }
 
 bool DiskUsageUtilImpl::SetProjectId(const base::ScopedFD& fd,

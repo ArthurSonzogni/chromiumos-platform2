@@ -11,12 +11,14 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 #include <base/task/task_runner.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/brillo_export.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 
 #include "spaced/disk_usage.h"
 
@@ -38,6 +40,11 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
                                      uint32_t gid) override;
   int64_t GetQuotaCurrentSpaceForProjectId(const base::FilePath& path,
                                            uint32_t project_id) override;
+  GetQuotaCurrentSpacesForIdsReply GetQuotaCurrentSpacesForIds(
+      const base::FilePath& path,
+      const std::vector<uint32_t>& uids,
+      const std::vector<uint32_t>& gids,
+      const std::vector<uint32_t>& project_ids) override;
   bool SetProjectId(const base::ScopedFD& fd,
                     uint32_t project_id,
                     int* out_error) override;
@@ -68,6 +75,11 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
   int64_t GetQuotaCurrentSpaceForId(const base::FilePath& path,
                                     uint32_t id,
                                     int quota_type);
+  void SetQuotaCurrentSpacesForIdsMap(
+      const base::FilePath& device,
+      const std::vector<uint32_t>& ids,
+      int quota_type,
+      google::protobuf::Map<uint32_t, int64_t>* curspaces_for_ids);
 
   const base::FilePath rootdev_;
   std::optional<brillo::Thinpool> thinpool_;

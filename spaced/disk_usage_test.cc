@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 
 extern "C" {
 #include <linux/fs.h>
@@ -281,6 +282,13 @@ TEST(DiskUsageUtilTest, QuotaNotSupportedWhenPathNotMounted) {
   EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForUid(path, 1), -1);
   EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForGid(path, 2), -1);
   EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForProjectId(path, 3), -1);
+
+  GetQuotaCurrentSpacesForIdsReply reply =
+      disk_usage_mock.GetQuotaCurrentSpacesForIds(path, {1, 2}, {10, 11},
+                                                  {100, 101});
+  EXPECT_TRUE(reply.curspaces_for_uids().empty());
+  EXPECT_TRUE(reply.curspaces_for_gids().empty());
+  EXPECT_TRUE(reply.curspaces_for_project_ids().empty());
 }
 
 TEST(DiskUsageUtilTest, QuotaNotSupportedWhenPathNotMountedWithQuotaOption) {
@@ -306,6 +314,18 @@ TEST(DiskUsageUtilTest, QuotaSupported) {
   EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForGid(path, 11), -1);
   EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForProjectId(path, 100), 30);
   EXPECT_EQ(disk_usage_mock.GetQuotaCurrentSpaceForProjectId(path, 101), -1);
+  GetQuotaCurrentSpacesForIdsReply reply =
+      disk_usage_mock.GetQuotaCurrentSpacesForIds(path, {1, 2}, {10, 11},
+                                                  {100, 101});
+  EXPECT_EQ(reply.curspaces_for_uids().count(0), 0);
+  EXPECT_EQ(reply.curspaces_for_uids().at(1), 10);
+  EXPECT_EQ(reply.curspaces_for_uids().at(2), -1);
+  EXPECT_EQ(reply.curspaces_for_gids().count(1), 0);
+  EXPECT_EQ(reply.curspaces_for_gids().at(10), 20);
+  EXPECT_EQ(reply.curspaces_for_gids().at(11), -1);
+  EXPECT_EQ(reply.curspaces_for_project_ids().count(2), 0);
+  EXPECT_EQ(reply.curspaces_for_project_ids().at(100), 30);
+  EXPECT_EQ(reply.curspaces_for_project_ids().at(101), -1);
 }
 
 TEST(DiskUsageUtilTest, SetProjectId) {

@@ -7,11 +7,13 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <spaced/proto_bindings/spaced.pb.h>
 
 namespace spaced {
 namespace {
@@ -151,6 +153,26 @@ int64_t DiskUsageProxy::GetQuotaCurrentSpaceForProjectId(
     return -1;
   }
   return current_space;
+}
+
+GetQuotaCurrentSpacesForIdsReply DiskUsageProxy::GetQuotaCurrentSpacesForIds(
+    const base::FilePath& path,
+    const std::vector<uint32_t>& uids,
+    const std::vector<uint32_t>& gids,
+    const std::vector<uint32_t>& project_ids) {
+  GetQuotaCurrentSpacesForIdsRequest request;
+  request.set_path(path.value());
+  request.mutable_uids()->Add(uids.begin(), uids.end());
+  request.mutable_gids()->Add(gids.begin(), gids.end());
+  request.mutable_project_ids()->Add(project_ids.begin(), project_ids.end());
+
+  GetQuotaCurrentSpacesForIdsReply reply;
+  brillo::ErrorPtr error;
+  if (!spaced_proxy_->GetQuotaCurrentSpacesForIds(request, &reply, &error)) {
+    LOG(ERROR) << "Failed to call GetQuotaCurrentSpacesForIds, error: "
+               << error->GetMessage();
+  }
+  return reply;
 }
 
 bool DiskUsageProxy::SetProjectId(const base::ScopedFD& fd,

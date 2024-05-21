@@ -76,6 +76,20 @@
       <arg name="reply" type="x" direction="out"/>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="GetQuotaCurrentSpacesForIds">
+      <tp:docstring>
+        Returns the disk spaces currently used by the given IDs.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="spaced::GetQuotaCurrentSpacesForIdsRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="spaced::GetQuotaCurrentSpacesForIdsReply"/>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="SetProjectId">
       <tp:docstring>
         Sets the project ID to the given file.
