@@ -22,11 +22,11 @@ namespace startup {
 // is running a test image.
 class TestModeMountHelper : public MountHelper {
  public:
-  explicit TestModeMountHelper(libstorage::Platform* platform,
-                               StartupDep* startup_dep,
-                               const Flags& flags,
-                               const base::FilePath& root,
-                               const base::FilePath& stateful);
+  TestModeMountHelper(libstorage::Platform* platform,
+                      StartupDep* startup_dep,
+                      const Flags& flags,
+                      const base::FilePath& root,
+                      const base::FilePath& stateful);
 
   bool DoMountVarAndHomeChronos() override;
 };

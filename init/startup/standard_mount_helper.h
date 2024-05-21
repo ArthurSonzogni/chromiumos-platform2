@@ -22,11 +22,11 @@ namespace startup {
 // image or in factory mode.
 class StandardMountHelper : public MountHelper {
  public:
-  explicit StandardMountHelper(libstorage::Platform* platform,
-                               StartupDep* startup_dep,
-                               const Flags& flags,
-                               const base::FilePath& root,
-                               const base::FilePath& stateful);
+  StandardMountHelper(libstorage::Platform* platform,
+                      StartupDep* startup_dep,
+                      const Flags& flags,
+                      const base::FilePath& root,
+                      const base::FilePath& stateful);
 
   bool DoMountVarAndHomeChronos() override;
 };

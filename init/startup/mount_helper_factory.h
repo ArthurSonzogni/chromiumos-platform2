@@ -25,12 +25,12 @@ namespace startup {
 // which derived class to generate/utilize.
 class MountHelperFactory {
  public:
-  explicit MountHelperFactory(libstorage::Platform* platform,
-                              StartupDep* startup_dep,
-                              const Flags& flags,
-                              const base::FilePath& root,
-                              const base::FilePath& stateful,
-                              const base::FilePath& lsb_file);
+  MountHelperFactory(libstorage::Platform* platform,
+                     StartupDep* startup_dep,
+                     const Flags& flags,
+                     const base::FilePath& root,
+                     const base::FilePath& stateful,
+                     const base::FilePath& lsb_file);
   virtual ~MountHelperFactory() = default;
 
   // Generate the mount helper class to use by determining whether a device

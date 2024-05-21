@@ -23,11 +23,11 @@ namespace startup {
 // have different behavior when the device is in factory mode.
 class FactoryModeMountHelper : public MountHelper {
  public:
-  explicit FactoryModeMountHelper(libstorage::Platform* platform,
-                                  StartupDep* startup_dep,
-                                  const Flags& flags,
-                                  const base::FilePath& root,
-                                  const base::FilePath& stateful);
+  FactoryModeMountHelper(libstorage::Platform* platform,
+                         StartupDep* startup_dep,
+                         const Flags& flags,
+                         const base::FilePath& root,
+                         const base::FilePath& stateful);
 
   bool DoMountVarAndHomeChronos() override;
 };
