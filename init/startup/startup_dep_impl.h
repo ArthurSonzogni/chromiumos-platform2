@@ -22,11 +22,6 @@ namespace startup {
 bool IsTestImage(libstorage::Platform* platform,
                  const base::FilePath& lsb_file);
 
-// Determines if the device is in factory test mode.
-bool IsFactoryTestMode(libstorage::Platform* platform,
-                       crossystem::Crossystem* crossystem,
-                       const base::FilePath& base_dir);
-
 // Determine if the device is in dev mode.
 bool InDevMode(crossystem::Crossystem* crossystem);
 bool IsDebugBuild(crossystem::Crossystem* crossystem);
