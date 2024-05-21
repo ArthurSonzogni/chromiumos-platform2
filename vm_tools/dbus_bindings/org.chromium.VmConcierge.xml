@@ -718,7 +718,7 @@
         call has been made and an update about the status of the import
         is available.
       </tp:docstring>
-      <arg name="signal" type="ay" direction="out">
+      <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DiskImageStatusResponse"/>
       </arg>
@@ -729,7 +729,7 @@
         for communication. Useful for detecting when to stop boosting guest OS
         for short-term boot performance.
       </tp:docstring>
-      <arg name="signal" type="ay" direction="out">
+      <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::VmGuestUserlandReadySignal"/>
         <tp:docstring>
@@ -741,7 +741,7 @@
       <tp:docstring>
         Signal to let Parallels dispatcher aware of DNS settings change.
       </tp:docstring>
-      <arg name="signal" type="ay" direction="out">
+      <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::DnsSettings"/>
       </arg>
@@ -753,7 +753,7 @@
         socket. If you want guest userland state use VmGuestUserlandReadySignal
         instead.
       </tp:docstring>
-      <arg name="signal" type="ay" direction="out">
+      <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::VmStartedSignal"/>
       </arg>
@@ -763,7 +763,7 @@
         Indicates a new vm is starting so logging can be captured as early as
         possible.
       </tp:docstring>
-      <arg name="signal" type="ay" direction="out">
+      <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::VmStartingUpSignal"/>
       </arg>
@@ -772,7 +772,7 @@
       <tp:docstring>
         Indicates VM is stopped.
       </tp:docstring>
-      <arg name="signal" type="ay" direction="out">
+      <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::VmStoppedSignal"/>
       </arg>
@@ -781,7 +781,7 @@
       <tp:docstring>
         Indicates VM is stopping.
       </tp:docstring>
-      <arg name="signal" type="ay" direction="out">
+      <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::VmStoppingSignal"/>
       </arg>
@@ -791,7 +791,7 @@
         Indicates a VM is starting memory swap out so the receiver can
         expect the VM will experience a transitional jank.
       </tp:docstring>
-      <arg name="signal" type="ay" direction="out">
+      <arg name="signal" type="ay">
         <annotation name="org.chromium.DBus.Argument.ProtobufClass"
                     value="vm_tools::concierge::VmSwappingSignal"/>
       </arg>
