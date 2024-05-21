@@ -131,6 +131,17 @@ TEST_F(AudioJackEvdevDelegateTest, FireEventMicrophoneRemove) {
   EXPECT_EQ(device_type, mojom::AudioJackEventInfo::DeviceType::kMicrophone);
 }
 
+TEST_F(AudioJackEvdevDelegateTest, FireNoEventForUnexpectedInputEvent) {
+  test::MockLibevdevWrapper dev;
+  input_event ev = {.type = EV_KEY, .code = KEY_VOLUMEUP, .value = 0};
+
+  EXPECT_CALL(mock_observer_, OnAdd(_)).Times(0);
+  EXPECT_CALL(mock_observer_, OnRemove(_)).Times(0);
+
+  delegate_.FireEvent(ev, &dev);
+  receiver_.FlushForTesting();
+}
+
 TEST_F(AudioJackEvdevDelegateTest, InitializationFail) {
   base::test::TestFuture<uint32_t, const std::string&> future;
   receiver_.set_disconnect_with_reason_handler(future.GetCallback());
