@@ -9,9 +9,9 @@
 # And only those logs which are within the last YYY seconds of the latest log
 # that has the keyword XXX are printed.
 
-# Kernel log has the possible formats:
-# 2013-06-14T16:31:40.514513-07:00 WARNING kernel: [    2.682472] MSG MSG ...
-# 2013-06-19T20:38:58.661826+00:00 INFO kernel: [    1.668092] MSG MSG ...
+# Kernel log has the format:
+# 2024-05-21T18:40:07.212131Z ERR kernel: [    9.013055] MSG MSG ...
+# 2024-05-21T18:41:03.266974Z NOTICE kernel: [   65.068459] MSG MSG ...
 
 if [ $# -ne 2 ]; then
   echo "Usage: kernel_log_collector.sh <search key> <time duration>" >&2
@@ -20,7 +20,7 @@ fi
 
 search_key="$1"
 time_duration="$2"
-msg_pattern="^[0-9-]*T[0-9:.+-]* [A-Z]* kernel"
+msg_pattern="^[0-9-]*T[0-9:.]*Z [A-Z]* kernel"
 
 die() {
   echo "kernel_log_collector: $*" >&2
