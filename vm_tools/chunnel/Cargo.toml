@@ -14,7 +14,7 @@ log = "0.4"
 nix = { version = "0.26", features = ["signal"] }
 protobuf = "3.2"
 remain = "0.2"
-system_api = { path = "system_api" }
+system_api = { path = "../../system_api" } # provided by ebuild
 vsock = "0.3"
 
 [build-dependencies]
