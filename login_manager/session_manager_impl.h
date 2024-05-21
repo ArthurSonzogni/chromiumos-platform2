@@ -115,6 +115,9 @@ class SessionManagerImpl
   // Name of impulse emitted when user session starts.
   static const char kStartUserSessionImpulse[];
 
+  // Name of impulse emitted when user session finishes its startup.
+  static const char kStartedUserSessionImpulse[];
+
   // Name of the impulse emitted when the shill profile should be loaded for a
   // user session.
   static const char kLoadShillProfileImpulse[];
@@ -254,6 +257,8 @@ class SessionManagerImpl
                       const std::string& in_account_id,
                       const std::string& in_unique_identifier,
                       bool chrome_owner_key) override;
+  bool EmitStartedUserSession(brillo::ErrorPtr* error,
+                              const std::string& in_account_id) override;
   void StopSession(const std::string& in_unique_identifier) override;
   void StopSessionWithReason(uint32_t reason) override;
   bool StartBrowserDataMigration(brillo::ErrorPtr* error,

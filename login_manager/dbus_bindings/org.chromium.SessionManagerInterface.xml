@@ -188,6 +188,17 @@
     </method>
 
     <!--
+        EmitStartedUserSession:
+        @account_id: Account ID of the user whose session startup is completed.
+
+        Emits "started-user-session" upstart signal (asynchronously) to notify
+        all the critical login tasks are completed.
+    -->
+    <method name="EmitStartedUserSession">
+      <arg type="s" name="account_id" direction="in" />
+    </method>
+
+    <!--
         @deprecated Use StopSessionWithReason instead.
 
         StopSession:

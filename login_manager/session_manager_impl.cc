@@ -109,6 +109,8 @@ constexpr char SessionManagerImpl::kStatefulPreservationRequestFile[] =
 
 constexpr char SessionManagerImpl::kStartUserSessionImpulse[] =
     "start-user-session";
+constexpr char SessionManagerImpl::kStartedUserSessionImpulse[] =
+    "started-user-session";
 
 constexpr char SessionManagerImpl::kLoadShillProfileImpulse[] =
     "load-shill-profile";
@@ -855,6 +857,27 @@ bool SessionManagerImpl::StartSessionEx(brillo::ErrorPtr* error,
 
   // Record that a login has successfully completed on this boot.
   system_->AtomicFileWrite(base::FilePath(kLoggedInFlag), "1");
+  return true;
+}
+
+bool SessionManagerImpl::EmitStartedUserSession(
+    brillo::ErrorPtr* error, const std::string& in_account_id) {
+  std::string actual_account_id;
+  if (!NormalizeAccountId(in_account_id, &actual_account_id, error)) {
+    DCHECK(*error);
+    return false;
+  }
+
+  // Check if this user is starting a session.
+  if (user_sessions_.count(actual_account_id) == 0) {
+    *error = CREATE_ERROR_AND_LOG(dbus_error::kSessionNotExists,
+                                  "Provided user id didn't start a session.");
+    return false;
+  }
+
+  init_controller_->TriggerImpulse(kStartedUserSessionImpulse,
+                                   {"CHROMEOS_USER=" + actual_account_id},
+                                   InitDaemonController::TriggerMode::ASYNC);
   return true;
 }
 

@@ -1401,6 +1401,29 @@ TEST_F(SessionManagerImplTest, StartSession_KeyMitigation) {
   EXPECT_FALSE(error.get());
 }
 
+TEST_F(SessionManagerImplTest, EmitStartedUserSession) {
+  // Succeed for a user who is starting a session.
+  ExpectAndRunStartSession(kSaneEmail);
+  EXPECT_CALL(*init_controller_,
+              TriggerImpulse(SessionManagerImpl::kStartedUserSessionImpulse,
+                             ElementsAre(StartsWith("CHROMEOS_USER=")),
+                             InitDaemonController::TriggerMode::ASYNC))
+      .WillOnce(Return(ByMove(nullptr)));
+  {
+    brillo::ErrorPtr error;
+    EXPECT_TRUE(impl_->EmitStartedUserSession(&error, kSaneEmail));
+    EXPECT_FALSE(error.get());
+  }
+
+  // Fail for a user who hasn't been starting a session yet.
+  constexpr char kEmail2[] = "user2@somewhere";
+  {
+    brillo::ErrorPtr error;
+    EXPECT_FALSE(impl_->EmitStartedUserSession(&error, kEmail2));
+    EXPECT_TRUE(error.get());
+  }
+}
+
 TEST_F(SessionManagerImplTest, SaveLoginPassword) {
   const string kPassword("thepassword");
   base::ScopedFD password_fd = secret_util::WriteSizeAndDataToPipe(
