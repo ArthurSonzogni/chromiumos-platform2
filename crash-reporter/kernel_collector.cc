@@ -56,6 +56,7 @@ constexpr char kDumpNameFormat[] = "%s-%s-%zu";
 // If the kernel had trouble decoding the record then it will be raw
 // (compressed) and end in ".enc.z"
 constexpr char kCorruptDumpNameFormat[] = "%s-%s-%zu.enc.z";
+constexpr char kCorruptDumpExtension[] = ".enc.z";
 
 const FilePath kEventLogPath("/var/log/eventlog.txt");
 constexpr char kEventNameBoot[] = "System boot";
@@ -96,6 +97,8 @@ std::string KernelCollector::PstoreRecordTypeToString(
       return "Shutdown";
     case PstoreRecordType::kUnknown:
       return "Unknown";
+    case PstoreRecordType::kCorrupt:
+      return "Corrupt";
     case PstoreRecordType::kParseFailed:
       return "ParseFailed";
   }
@@ -177,12 +180,12 @@ bool KernelCollector::ReadRecordToString(std::string* contents,
   }
 
   *record_found = false;
-  if (record_path.value().ends_with("enc.z")) {
+  if (record_path.value().ends_with(kCorruptDumpExtension)) {
     // The kernel identified this as a compressed dump but was unable to
     // decompress. We'll still upload this in case someone can figure something
     // useful out of it. We'll prepend a warning, though.
     LOG(WARNING) << "Kernel couldn't decode ramoops at " << record_path.value();
-    contents->append(constants::kCorruptRamoops);
+    contents->append(constants::kCorruptPstore);
     contents->append(record);
     *record_found = true;
   } else if (RE2::PartialMatch(record.substr(0, 1024), *kBasicCheckRe)) {
@@ -577,6 +580,9 @@ PstoreRecordType KernelCollector::PstoreCrash::GetType() const {
   // <crash_type>#<crash_count> Part#<part_number>
   // <crash_type> indicates when stack trace was generated. e.g. Panic#1 Part#1.
   std::string dump;
+  if (IsPartCorrupted(1)) {
+    return PstoreRecordType::kCorrupt;
+  }
   if (base::ReadFileToString(GetFilePath(1), &dump)) {
     size_t pos = dump.find('#');
     if (pos != std::string::npos) {
@@ -598,8 +604,16 @@ bool KernelCollector::PstoreCrash::Load(std::string& contents) const {
                   << " part: " << part;
       return false;
     }
-    // Strip first line since it contains header e.g. Panic#1 Part#1.
-    contents += dump.substr(dump.find('\n') + 1, std::string::npos);
+    if (IsPartCorrupted(part)) {
+      // The kernel identified this as a compressed dump but was unable to
+      // decompress. We'll still upload this in case someone can figure
+      // something useful out of it. We'll prepend a warning, though.
+      LOG(WARNING) << "Kernel couldn't decode ramoops " << GetId();
+      base::StrAppend(&contents, {constants::kCorruptPstore, dump});
+    } else {
+      // Strip first line since it contains header e.g. Panic#1 Part#1.
+      contents += dump.substr(dump.find('\n') + 1, std::string::npos);
+    }
   }
   return true;
 }
@@ -643,14 +657,26 @@ CrashCollectionStatus KernelCollector::PstoreCrash::CollectCrash(
 }
 
 base::FilePath KernelCollector::PstoreCrash::GetFilePath(uint32_t part) const {
-  return GetCollector()->dump_path_.Append(
-      base::StrCat({kDumpRecordDmesgName, "-", backend_,
-                    StringPrintf("-%" PRIu64, GetIdForPart(part))}));
+  return GetCollector()->dump_path_.Append(base::StrCat(
+      {kDumpRecordDmesgName, "-", backend_,
+       StringPrintf("-%" PRIu64 "%s", GetIdForPart(part),
+                    IsPartCorrupted(part) ? kCorruptDumpExtension : "")}));
 }
 
 KernelCollector::RamoopsCrash::~RamoopsCrash() = default;
 
+bool KernelCollector::RamoopsCrash::IsPartCorrupted(uint32_t part) const {
+  return corrupted_;
+}
+
 KernelCollector::EfiCrash::~EfiCrash() = default;
+
+bool KernelCollector::EfiCrash::IsPartCorrupted(uint32_t part) const {
+  // Implementing this would require some way to indicate which parts of the
+  // crash record are corrupted while searching in FindEfiCrashes(). Ignore this
+  // for now until we need to handle this.
+  return false;
+}
 
 std::vector<KernelCollector::EfiCrash> KernelCollector::_FindDriverEfiCrashes(
     const char* efi_driver_name) const {

@@ -44,7 +44,7 @@ void ComputeKernelStackSignatureCommon(kernel_util::ArchKind arch) {
 
   // Corrupt dump.
   std::string kCorruptDump =
-      StrCat({constants::kCorruptRamoops,
+      StrCat({constants::kCorruptPstore,
               "Some other stuff, maybe with binary data \x1\x2\x3\x4"});
   EXPECT_EQ("kernel-CorruptDump",
             kernel_util::ComputeKernelStackSignature(kCorruptDump, arch));

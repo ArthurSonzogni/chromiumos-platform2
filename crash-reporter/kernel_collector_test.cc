@@ -316,8 +316,18 @@ TEST_F(KernelCollectorTest, GetRamoopsCrashType) {
   std::string type;
   // Write header.
   ASSERT_TRUE(test_util::CreateFile(ramoops_file(0), "Panic#4 Part#1"));
-  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_);
+  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_, false);
   EXPECT_EQ(ramoops_crash.GetType(), PstoreRecordType::kPanic);
+}
+
+TEST_F(KernelCollectorTest, GetCorruptRamoopsCrashType) {
+  ASSERT_FALSE(base::PathExists(corrupt_ramoops_file()));
+  std::string type;
+  // Write random data.
+  ASSERT_TRUE(test_util::CreateFile(corrupt_ramoops_file(),
+                                    "\x45\x32\xab\xde\xf0\x0d"));
+  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_, true);
+  EXPECT_EQ(ramoops_crash.GetType(), PstoreRecordType::kCorrupt);
 }
 
 TEST_F(KernelCollectorTest, LoadRamoopsCrash) {
@@ -333,10 +343,26 @@ TEST_F(KernelCollectorTest, LoadRamoopsCrash) {
   contents.append(expected_dump);
   ASSERT_TRUE(test_util::CreateFile(ramoops_file(0), contents));
 
-  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_);
+  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_, false);
   ASSERT_TRUE(ramoops_crash.Load(dump));
 
   EXPECT_EQ(expected_dump, dump);
+}
+
+TEST_F(KernelCollectorTest, LoadCorruptRamoopsCrash) {
+  std::string expected_dump;
+  std::string dump;
+  std::string header;
+  std::string contents;
+
+  ASSERT_FALSE(base::PathExists(corrupt_ramoops_file()));
+  expected_dump = "\x3\x45\x14\x41\x12\x58\xf3\xf7\xd0\xfe";
+  ASSERT_TRUE(test_util::CreateFile(corrupt_ramoops_file(), expected_dump));
+
+  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_, true);
+  ASSERT_TRUE(ramoops_crash.Load(dump));
+
+  EXPECT_EQ(dump, StrCat({constants::kCorruptPstore, expected_dump}));
 }
 
 TEST_F(KernelCollectorTest, RemoveRamoopsCrash) {
@@ -344,11 +370,23 @@ TEST_F(KernelCollectorTest, RemoveRamoopsCrash) {
   ASSERT_TRUE(test_util::CreateFile(ramoops_file(0),
                                     "Panic#10 Part#1\nblob data for panic"));
 
-  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_);
+  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_, false);
   ASSERT_TRUE(base::PathExists(ramoops_file(0)));
 
   ramoops_crash.Remove();
   EXPECT_FALSE(base::PathExists(ramoops_file(0)));
+}
+
+TEST_F(KernelCollectorTest, RemoveCorruptRamoopsCrash) {
+  ASSERT_FALSE(base::PathExists(corrupt_ramoops_file()));
+  ASSERT_TRUE(test_util::CreateFile(
+      corrupt_ramoops_file(), "\x14\x41\x12\x58\xf3\xf7\xd0\xf0\x37\x45\xed"));
+
+  KernelCollector::RamoopsCrash ramoops_crash(0, &collector_, true);
+  ASSERT_TRUE(base::PathExists(corrupt_ramoops_file()));
+
+  ramoops_crash.Remove();
+  EXPECT_FALSE(base::PathExists(corrupt_ramoops_file()));
 }
 
 TEST_F(KernelCollectorTest, ComputeKernelStackSignatureBase) {
@@ -434,7 +472,7 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashCorrupt) {
       test_crash_directory(), "kernel.*.meta", "sig=kernel-CorruptDump"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory(), "kernel.*.kcrash",
-      StrCat({constants::kCorruptRamoops, contents})));
+      StrCat({constants::kCorruptPstore, contents})));
   EXPECT_FALSE(base::PathExists(corrupt_ramoops_file()));
 }
 
@@ -448,9 +486,9 @@ TEST_F(KernelCollectorTest, LoadCorruptDump) {
   ASSERT_TRUE(collector_.LoadParameters());
   ASSERT_TRUE(collector_.LoadPreservedDump(&dump));
 
-  ASSERT_EQ(StrCat({constants::kCorruptRamoops,
-                    "A bunch of binary \x1\x2\x3\x4 ..."}),
-            dump);
+  ASSERT_EQ(
+      StrCat({constants::kCorruptPstore, "A bunch of binary \x1\x2\x3\x4 ..."}),
+      dump);
 
   ASSERT_FALSE(base::PathExists(corrupt_ramoops_file()));
 }

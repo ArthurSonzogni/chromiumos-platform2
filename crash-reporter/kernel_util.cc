@@ -362,7 +362,7 @@ std::string ComputeKernelStackSignature(const std::string& kernel_dump,
   std::string crash_tag;
   std::string human_string;
 
-  if (kernel_dump.starts_with(constants::kCorruptRamoops)) {
+  if (kernel_dump.starts_with(constants::kCorruptPstore)) {
     return "kernel-CorruptDump";
   }
 

@@ -35,6 +35,7 @@ enum class PstoreRecordType {
   kShutdown,
   kUnknown,
   // Below this point are for errors while parsing the pstore record.
+  kCorrupt,
   kParseFailed,
 };
 
@@ -145,6 +146,8 @@ class KernelCollector : public CrashCollector {
 
     // Returns the filepath in pstore for this record's |part|.
     base::FilePath GetFilePath(uint32_t part) const;
+    // Returns true if the part is corrupted.
+    virtual bool IsPartCorrupted(uint32_t part) const = 0;
 
    private:
     uint64_t id_;
@@ -157,13 +160,24 @@ class KernelCollector : public CrashCollector {
   // only ever has one part and thus one file in the pstore filesystem.
   class RamoopsCrash : public PstoreCrash {
    public:
-    explicit RamoopsCrash(uint64_t id, const KernelCollector* collector)
-        : PstoreCrash(id, 1, kDumpDriverRamoopsName, collector) {}
+    explicit RamoopsCrash(uint64_t id,
+                          const KernelCollector* collector,
+                          bool corrupted)
+        : PstoreCrash(id, 1, kDumpDriverRamoopsName, collector),
+          corrupted_(corrupted) {}
 
     RamoopsCrash(const RamoopsCrash&) = default;
     RamoopsCrash& operator=(const RamoopsCrash&) = default;
 
     ~RamoopsCrash() override;
+
+   protected:
+    bool IsPartCorrupted(uint32_t part) const override;
+
+   private:
+    // True if the record is corrupted (i.e. compressed) because decompression
+    // failed.
+    bool corrupted_;
   };
 
   // This class represents a single EFI crash record. An EFI crash record may be
@@ -230,6 +244,9 @@ class KernelCollector : public CrashCollector {
     static constexpr size_t kMaxDumpRecord = 1000;
     static constexpr size_t kMaxPart = 100;
 
+   protected:
+    bool IsPartCorrupted(uint32_t part) const override;
+
    private:
     uint64_t timestamp_;
     uint32_t crash_count_;
@@ -245,8 +262,11 @@ class KernelCollector : public CrashCollector {
   FRIEND_TEST(KernelCollectorTest, LoadEfiCrash);
   FRIEND_TEST(KernelCollectorTest, RemoveEfiCrash);
   FRIEND_TEST(KernelCollectorTest, GetRamoopsCrashType);
+  FRIEND_TEST(KernelCollectorTest, GetCorruptRamoopsCrashType);
   FRIEND_TEST(KernelCollectorTest, LoadRamoopsCrash);
+  FRIEND_TEST(KernelCollectorTest, LoadCorruptRamoopsCrash);
   FRIEND_TEST(KernelCollectorTest, RemoveRamoopsCrash);
+  FRIEND_TEST(KernelCollectorTest, RemoveCorruptRamoopsCrash);
   FRIEND_TEST(KernelCollectorTest, LastRebootWasNoCError);
 
   virtual bool DumpDirMounted();

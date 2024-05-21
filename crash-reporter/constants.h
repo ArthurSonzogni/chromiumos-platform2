@@ -107,9 +107,10 @@ inline constexpr mode_t kSystemCrashFilesMode = 0660;
 inline constexpr char kFeatureLevelKey[] = "feature_level";
 inline constexpr char kScopeLevelKey[] = "scope_level";
 
-// If ramoops is corrupted, we'll prepend this string to the raw data
+// If pstore record is corrupted, we'll prepend this string to the raw data
 // that the kernel gives us.
-inline constexpr char kCorruptRamoops[] = "UNPROCESSED (CORRUPT?) RAMOOPS:\n";
+inline constexpr char kCorruptPstore[] =
+    "UNPROCESSED (CORRUPT?) PSTORE RECORD:\n";
 
 }  // namespace constants
 
