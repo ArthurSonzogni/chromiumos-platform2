@@ -24,6 +24,7 @@
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/downstream_network_info.h"
+#include "patchpanel/downstream_network_service.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/multicast_metrics.h"
 #include "patchpanel/net_util.h"
@@ -89,6 +90,11 @@ Manager::Manager(const base::FilePath& cmd_path,
   qos_svc_ = std::make_unique<QoSService>(datapath_.get(), conntrack_monitor);
 
   lifeline_fd_svc_ = std::make_unique<LifelineFDService>();
+
+  downstream_network_svc_ = std::make_unique<DownstreamNetworkService>(
+      metrics_, system_, datapath_.get(), this, rtnl_client_.get(),
+      lifeline_fd_svc_.get(), shill_client_.get(), ipv6_svc_.get(),
+      counters_svc_.get());
 
   constexpr ArcService::ArcType arc_type = []() constexpr {
     if (USE_ARCVM_NIC_HOTPLUG) {

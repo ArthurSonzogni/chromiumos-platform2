@@ -27,6 +27,7 @@
 #include "patchpanel/dbus_client_notifier.h"
 #include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/downstream_network_info.h"
+#include "patchpanel/downstream_network_service.h"
 #include "patchpanel/forwarding_service.h"
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/lifeline_fd_service.h"
@@ -201,6 +202,18 @@ class Manager : public ForwardingService {
   void StopMulticastForwarding(const ShillClient::Device& shill_device,
                                const std::string& ifname_virtual) override;
 
+  // b/294287313: Temporary solution to support tethering with a multiplexed PDN
+  // brought up specifically for tethering and with no associated shill Device.
+  // This method creates a fake ShillClient::Device and creates the minimal
+  // Datapath setup to support CreateTetheredNetwork() pointing at
+  // |upstream_ifname| as the upstream network.
+  std::optional<ShillClient::Device> StartTetheringUpstreamNetwork(
+      const TetheredNetworkRequest& request);
+  // Tears down the minimal Datapath setup created with
+  // StartTetheringUpstreamNetwork().
+  void StopTetheringUpstreamNetwork(
+      const ShillClient::Device& upstream_network);
+
  private:
   friend class ManagerTest;
 
@@ -258,23 +271,10 @@ class Manager : public ForwardingService {
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);
 
-  // b/294287313: Temporary solution to support tethering with a multiplexed PDN
-  // brought up specifically for tethering and with no associated shill Device.
-  // This method creates a fake ShillClient::Device and creates the minimal
-  // Datapath setup to support CreateTetheredNetwork() pointing at
-  // |upstream_ifname| as the upstream network.
-  std::optional<ShillClient::Device> StartTetheringUpstreamNetwork(
-      const TetheredNetworkRequest& request);
-  // Tears down the minimal Datapath setup created with
-  // StartTetheringUpstreamNetwork().
-  void StopTetheringUpstreamNetwork(
-      // const std::string& upstream_ifname);
-      const ShillClient::Device& upstream_network);
-
-  // patchpanel::System shared for all subsystems.
+  // Owned by PatchpanelDaemon.
   System* system_;
 
-  // UMA metrics client.
+  // UMA metrics client. Owned by PatchpanelDaemon.
   MetricsLibraryInterface* metrics_;
 
   // The client of the Manager.
@@ -316,6 +316,8 @@ class Manager : public ForwardingService {
   std::unique_ptr<QoSService> qos_svc_;
   // LifelineFD management service
   std::unique_ptr<LifelineFDService> lifeline_fd_svc_;
+  // TetheredNetwork and LocalOnlyNetwork management service.
+  std::unique_ptr<DownstreamNetworkService> downstream_network_svc_;
 
   // The DHCP server controllers, keyed by its downstream interface.
   std::map<std::string, std::unique_ptr<DHCPServerController>>
