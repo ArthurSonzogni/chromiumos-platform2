@@ -81,19 +81,6 @@ constexpr std::string_view kArc0TapIfname = kArcTapIfnames[0];
 constexpr std::array<std::string_view, 5> kArcPhysicalTapIfnames{
     kArcTapIfnames[1], kArcTapIfnames[2], kArcTapIfnames[3], kArcTapIfnames[4],
     kArcTapIfnames[5]};
-// Expected forwarding set for Ethernet ArcDevice when ARC is interactive.
-constexpr ForwardingService::ForwardingSet kEthernetForwardingSet =
-    ForwardingService::ForwardingSet{
-        .ipv6 = true, .multicast = true, .broadcast = true};
-// Expected forwarding set for Cellular ArcDevice when ARC is interactive.
-constexpr ForwardingService::ForwardingSet kCellularForwardingSet =
-    ForwardingService::ForwardingSet{
-        .ipv6 = true, .multicast = true, .broadcast = false};
-// Expected forwarding set for WiFi ArcDevice when ARC is interactive and
-// the Android WiFi multicast lock is not held.
-constexpr ForwardingService::ForwardingSet kWiFiForwardingSet =
-    ForwardingService::ForwardingSet{
-        .ipv6 = true, .multicast = false, .broadcast = true};
 
 ShillClient::Device MakeShillDevice(
     const std::string& shill_device_interface_property,
@@ -181,7 +168,9 @@ TEST_F(ArcServiceTest, NotStarted_AddDevice) {
   EXPECT_CALL(*datapath_, AddBridge).Times(0);
   EXPECT_CALL(*datapath_, StartRoutingDevice).Times(0);
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto svc = NewService(ArcService::ArcType::kContainer);
@@ -205,7 +194,9 @@ TEST_F(ArcServiceTest, NotStarted_AddRemoveDevice) {
                                                 IsShillDevice("eth0"), _))
       .Times(0);
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(0);
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto svc = NewService(ArcService::ArcType::kContainer);
@@ -239,26 +230,42 @@ TEST_F(ArcServiceTest, VerifyAddrConfigs) {
               ConnectVethPair(kTestPID, StrEq("arc_netns"), _, _, _, _, _, _))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge).WillRepeatedly(Return(true));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth1"), "arc_eth1", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan0"), "arc_wlan0", kWiFiForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan1"), "arc_wlan1", kWiFiForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(*forwarding_service_,
-              StartForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
-                              "arc_wwan0", kCellularForwardingSet,
-                              Eq(std::nullopt), Eq(std::nullopt)));
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth1"), "arc_eth1",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth1"), "arc_eth1"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth1"), "arc_eth1"));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("wlan1"), "arc_wlan1",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("wlan1"), "arc_wlan1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartIPv6NDPForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
+                             "arc_wwan0", Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
+                               "arc_wwan0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(
+                  IsShillMultiplexedDevice("wwan0", "mbimmux0.1"), "arc_wwan0"))
+      .Times(0);
 
   auto eth0_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto eth1_dev = MakeShillDevice("eth1", net_base::Technology::kEthernet);
@@ -297,30 +304,40 @@ TEST_F(ArcServiceTest, VerifyAddrOrder) {
   auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
 
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan0"), "arc_wlan0", kWiFiForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->AddDevice(wlan_dev);
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   EXPECT_CALL(*forwarding_service_,
-              StopForwarding(IsShillDevice("eth0"), "arc_eth0",
-                             kEthernetForwardingSet));
+              StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->RemoveDevice(eth_dev);
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 }
@@ -332,7 +349,9 @@ TEST_F(ArcServiceTest, StableArcVmMacAddrs) {
   EXPECT_CALL(*datapath_, AddBridge(_, Property(&IPv4CIDR::prefix_length, 30)))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge).WillRepeatedly(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto svc = NewService(ArcService::ArcType::kVMStatic);
   svc->Start(kTestCID);
@@ -354,7 +373,9 @@ TEST_F(ArcServiceTest, ContainerImpl_Start) {
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArc0HostCIDR))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
@@ -373,7 +394,9 @@ TEST_F(ArcServiceTest, ContainerImpl_FailsToCreateInterface) {
   EXPECT_CALL(*datapath_, AddBridge(StrEq("arcbr0"), kArc0HostCIDR)).Times(0);
   EXPECT_CALL(*datapath_, RemoveBridge).Times(0);
   EXPECT_CALL(*datapath_, SetConntrackHelpers);
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
@@ -395,7 +418,9 @@ TEST_F(ArcServiceTest, ContainerImpl_FailsToAddInterfaceToBridge) {
   EXPECT_CALL(*datapath_, RemoveInterface).Times(0);
   EXPECT_CALL(*datapath_, RemoveBridge).Times(0);
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
@@ -416,7 +441,9 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
@@ -442,10 +469,13 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartDevice) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   svc->AddDevice(eth_dev);
@@ -465,7 +495,9 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartCellularMultiplexedDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto svc = NewService(ArcService::ArcType::kContainer);
   svc->Start(kTestPID);
@@ -492,10 +524,18 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStartCellularMultiplexedDevice) {
                               AutoDNATTarget::kArc,
                               IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
                               AnyOfArray(kArcPhysicalGuestIPs)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartIPv6NDPForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
+                             "arc_wwan0", Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
+                               "arc_wwan0"));
   EXPECT_CALL(*forwarding_service_,
-              StartForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
-                              "arc_wwan0", kCellularForwardingSet,
-                              Eq(std::nullopt), Eq(std::nullopt)));
+              StartBroadcastForwarding(
+                  IsShillMultiplexedDevice("wwan0", "mbimmux0.1"), "arc_wwan0"))
+      .Times(0);
 
   auto wwan_dev =
       MakeShillDevice("wwan0", net_base::Technology::kCellular, "mbimmux0.1");
@@ -570,7 +610,9 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto wlan_dev = MakeShillDevice("wlan0", net_base::Technology::kWiFi);
@@ -584,14 +626,18 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
   EXPECT_CALL(*datapath_, AddToBridge).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, ConnectVethPair).WillRepeatedly(Return(true));
 
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan0"), "arc_wlan0", kWiFiForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->AddDevice(eth_dev);
   svc->AddDevice(wlan_dev);
   EXPECT_EQ(guest_device_events_.size(), 2);
@@ -613,10 +659,11 @@ TEST_F(ArcServiceTest, ContainerImpl_DeviceHandler) {
   guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan0"), "arc_wlan0", kWiFiForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->AddDevice(wlan_dev);
   EXPECT_THAT(
       guest_device_events_,
@@ -656,10 +703,13 @@ TEST_F(ArcServiceTest, ContainerImpl_StartAfterDevice) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto svc = NewService(ArcService::ArcType::kContainer);
@@ -715,10 +765,13 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Start(kTestPID);
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
@@ -745,8 +798,11 @@ TEST_F(ArcServiceTest, ContainerImpl_IPConfigurationUpdate) {
   EXPECT_CALL(*datapath_, NetnsDeleteName(StrEq("arc_netns")))
       .WillOnce(Return(true));
   EXPECT_CALL(*forwarding_service_,
-              StopForwarding(IsShillDevice("eth0"), "arc_eth0",
-                             kEthernetForwardingSet));
+              StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Stop(kTestPID);
   device_signal_it = network_device_signals_.find("arc_eth0");
   ASSERT_NE(network_device_signals_.end(), device_signal_it);
@@ -785,10 +841,13 @@ TEST_F(ArcServiceTest, ContainerImpl_Stop) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vetheth0")))
       .WillOnce(Return(true));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -805,8 +864,11 @@ TEST_F(ArcServiceTest, ContainerImpl_Stop) {
   EXPECT_CALL(*datapath_, NetnsDeleteName(StrEq("arc_netns")))
       .WillOnce(Return(true));
   EXPECT_CALL(*forwarding_service_,
-              StopForwarding(IsShillDevice("eth0"), "arc_eth0",
-                             kEthernetForwardingSet));
+              StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
   svc->Stop(kTestPID);
   EXPECT_FALSE(svc->IsStarted());
@@ -825,7 +887,9 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto svc = NewService(ArcService::ArcType::kContainer);
@@ -845,10 +909,13 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arc_eth0"), StrEq("vetheth0")))
       .WillOnce(Return(true));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -863,8 +930,11 @@ TEST_F(ArcServiceTest, ContainerImpl_OnStopDevice) {
                                     AnyOfArray(kArcPhysicalGuestIPs)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0"))).Times(1);
   EXPECT_CALL(*forwarding_service_,
-              StopForwarding(IsShillDevice("eth0"), "arc_eth0",
-                             kEthernetForwardingSet));
+              StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
   svc->RemoveDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -881,7 +951,9 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vetharc0")))
       .WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto svc = NewService(ArcService::ArcType::kContainer);
@@ -908,10 +980,13 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
@@ -925,8 +1000,11 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
   EXPECT_CALL(*datapath_, NetnsDeleteName(StrEq("arc_netns")))
       .WillOnce(Return(true));
   EXPECT_CALL(*forwarding_service_,
-              StopForwarding(IsShillDevice("eth0"), "arc_eth0",
-                             kEthernetForwardingSet));
+              StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Stop(kTestPID);
   EXPECT_FALSE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -960,10 +1038,13 @@ TEST_F(ArcServiceTest, ContainerImpl_Restart) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Start(kTestPID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -974,7 +1055,9 @@ TEST_F(ArcServiceTest, ContainerImpl_WiFiMulticastForwarding) {
   EXPECT_CALL(*datapath_, ConnectVethPair).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers).WillRepeatedly(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto svc = NewService(ArcService::ArcType::kContainer);
 
@@ -989,58 +1072,55 @@ TEST_F(ArcServiceTest, ContainerImpl_WiFiMulticastForwarding) {
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // Add WiFi Device. Lock is not taken yet.
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan0"), "arc_wlan0",
-                      ForwardingService::ForwardingSet{
-                          .ipv6 = true, .multicast = false, .broadcast = true},
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   auto wlan0_dev = MakeShillDevice("wlan0", net_base::Technology::kWiFi);
   svc->AddDevice(wlan0_dev);
   EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // Android Multicast lock is taken
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan0"), "arc_wlan0",
-                      ForwardingService::ForwardingSet{
-                          .ipv6 = false, .multicast = true, .broadcast = false},
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->NotifyAndroidWifiMulticastLockChange(true);
   EXPECT_TRUE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // Android WiFi multicast lock is released.
   EXPECT_CALL(*forwarding_service_,
-              StopForwarding(IsShillDevice("wlan0"), "arc_wlan0",
-                             ForwardingService::ForwardingSet{
-                                 .multicast = true, .broadcast = false}));
+              StopMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->NotifyAndroidWifiMulticastLockChange(false);
   EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // Android is not interactive anymore.
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
-  EXPECT_CALL(*forwarding_service_, StopForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopBroadcastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopMulticastForwarding).Times(0);
   svc->NotifyAndroidInteractiveState(false);
   EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // Android Multicast lock is taken, there is no effect
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
-  EXPECT_CALL(*forwarding_service_, StopForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopBroadcastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopMulticastForwarding).Times(0);
   svc->NotifyAndroidWifiMulticastLockChange(true);
   EXPECT_FALSE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // Android is interactive again.
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan0"), "arc_wlan0",
-                      ForwardingService::ForwardingSet{
-                          .ipv6 = false, .multicast = true, .broadcast = false},
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->NotifyAndroidInteractiveState(true);
   EXPECT_TRUE(svc->IsWiFiMulticastForwardingRunning());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
@@ -1062,7 +1142,9 @@ TEST_F(ArcServiceTest, VmImpl_Start) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto svc = NewService(ArcService::ArcType::kVMStatic);
   svc->Start(kTestCID);
@@ -1084,7 +1166,9 @@ TEST_F(ArcServiceTest, VmImpl_StartEthernetDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto svc = NewService(ArcService::ArcType::kVMStatic);
@@ -1107,10 +1191,13 @@ TEST_F(ArcServiceTest, VmImpl_StartEthernetDevice) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1130,7 +1217,9 @@ TEST_F(ArcServiceTest, VmImpl_StartCellularMultiplexedDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto wwan_dev =
       MakeShillDevice("wwan0", net_base::Technology::kCellular, "mbimmux0.1");
@@ -1155,10 +1244,18 @@ TEST_F(ArcServiceTest, VmImpl_StartCellularMultiplexedDevice) {
                               AutoDNATTarget::kArc,
                               IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
                               AnyOfArray(kArcPhysicalGuestIPs)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartIPv6NDPForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
+                             "arc_wwan0", Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
+                               "arc_wwan0"));
   EXPECT_CALL(*forwarding_service_,
-              StartForwarding(IsShillMultiplexedDevice("wwan0", "mbimmux0.1"),
-                              "arc_wwan0", kCellularForwardingSet,
-                              Eq(std::nullopt), Eq(std::nullopt)));
+              StartBroadcastForwarding(
+                  IsShillMultiplexedDevice("wwan0", "mbimmux0.1"), "arc_wwan0"))
+      .Times(0);
 
   svc->AddDevice(wwan_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1177,7 +1274,9 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth0_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto eth1_dev = MakeShillDevice("eth1", net_base::Technology::kEthernet);
@@ -1202,10 +1301,13 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
   svc->AddDevice(eth0_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1225,10 +1327,11 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("wlan0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan0"), "arc_wlan0", kWiFiForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
 
   svc->AddDevice(wlan_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1248,10 +1351,13 @@ TEST_F(ArcServiceTest, VmImpl_StartMultipleDevices) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth1"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth1"), "arc_eth1", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth1"), "arc_eth1",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth1"), "arc_eth1"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth1"), "arc_eth1"));
 
   svc->AddDevice(eth1_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1271,7 +1377,9 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto svc = NewService(ArcService::ArcType::kVMStatic);
   svc->Start(kTestCID);
@@ -1288,7 +1396,9 @@ TEST_F(ArcServiceTest, VmImpl_Stop) {
     EXPECT_CALL(*datapath_, RemoveInterface(StrEq(tap_ifname)));
   }
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StopForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopBroadcastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StopMulticastForwarding).Times(0);
 
   svc->Stop(kTestCID);
   EXPECT_FALSE(svc->IsStarted());
@@ -1309,7 +1419,9 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto svc = NewService(ArcService::ArcType::kVMStatic);
@@ -1332,10 +1444,13 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
@@ -1355,8 +1470,11 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
                                     AnyOfArray(kArcPhysicalGuestIPs)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0")));
   EXPECT_CALL(*forwarding_service_,
-              StopForwarding(IsShillDevice("eth0"), "arc_eth0",
-                             kEthernetForwardingSet));
+              StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Stop(kTestCID);
   EXPECT_FALSE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1388,10 +1506,13 @@ TEST_F(ArcServiceTest, VmImpl_Restart) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   svc->Start(kTestCID);
   EXPECT_TRUE(svc->IsStarted());
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1411,7 +1532,9 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto svc = NewService(ArcService::ArcType::kVMStatic);
@@ -1434,10 +1557,13 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
   svc->AddDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1451,8 +1577,11 @@ TEST_F(ArcServiceTest, VmImpl_StopDevice) {
                                     AnyOfArray(kArcPhysicalGuestIPs)));
   EXPECT_CALL(*datapath_, RemoveBridge(StrEq("arc_eth0")));
   EXPECT_CALL(*forwarding_service_,
-              StopForwarding(IsShillDevice("eth0"), "arc_eth0",
-                             kEthernetForwardingSet));
+              StopIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StopBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
 
   svc->RemoveDevice(eth_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
@@ -1543,7 +1672,9 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq(kArc0TapIfname)))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   auto eth_dev = MakeShillDevice("eth0", net_base::Technology::kEthernet);
   auto wlan_dev = MakeShillDevice("wlan0", net_base::Technology::kWiFi);
@@ -1556,14 +1687,18 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
   EXPECT_CALL(*datapath_, AddBridge).WillRepeatedly(Return(true));
   EXPECT_CALL(*datapath_, AddToBridge).WillRepeatedly(Return(true));
 
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan0"), "arc_wlan0", kWiFiForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->AddDevice(eth_dev);
   svc->AddDevice(wlan_dev);
   EXPECT_EQ(guest_device_events_.size(), 2);
@@ -1585,10 +1720,11 @@ TEST_F(ArcServiceTest, VmImpl_DeviceHandler) {
   guest_device_events_.clear();
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("wlan0"), "arc_wlan0", kWiFiForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("wlan0"), "arc_wlan0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("wlan0"), "arc_wlan0"));
   svc->AddDevice(wlan_dev);
   EXPECT_THAT(
       guest_device_events_,
@@ -1703,7 +1839,9 @@ TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddRemoveDevice) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   // Expectations for eth0 setup.
   EXPECT_CALL(*datapath_,
@@ -1718,10 +1856,13 @@ TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddRemoveDevice) {
   EXPECT_CALL(*datapath_,
               AddInboundIPv4DNAT(AutoDNATTarget::kArc, IsShillDevice("eth0"),
                                  AnyOfArray(kArcPhysicalGuestIPs)));
-  EXPECT_CALL(
-      *forwarding_service_,
-      StartForwarding(IsShillDevice("eth0"), "arc_eth0", kEthernetForwardingSet,
-                      Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartIPv6NDPForwarding(IsShillDevice("eth0"), "arc_eth0",
+                                     Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(*forwarding_service_,
+              StartMulticastForwarding(IsShillDevice("eth0"), "arc_eth0"));
+  EXPECT_CALL(*forwarding_service_,
+              StartBroadcastForwarding(IsShillDevice("eth0"), "arc_eth0"));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
   auto svc = NewService(ArcService::ArcType::kVMHotplug);
@@ -1756,7 +1897,9 @@ TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddDeviceAddTapFail) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 
@@ -1796,7 +1939,9 @@ TEST_F(ArcServiceTest, VmHpImpl_ArcvmAddDeviceHotPlugTapFail) {
   EXPECT_CALL(*datapath_, AddToBridge(StrEq("arcbr0"), StrEq("vmtap0")))
       .WillOnce(Return(true));
   EXPECT_CALL(*datapath_, SetConntrackHelpers(true)).WillOnce(Return(true));
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
 
   EXPECT_CALL(*datapath_, SetConntrackHelpers(false)).WillOnce(Return(true));
 

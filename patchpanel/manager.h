@@ -179,18 +179,26 @@ class Manager : public ForwardingService {
   static std::optional<int> CalculateDownstreamCurHopLimit(
       System* system, const std::string& upstream_iface);
 
-  void StartForwarding(const ShillClient::Device& shill_device,
-                       const std::string& ifname_virtual,
-                       const ForwardingService::ForwardingSet& fs =
-                           {.ipv6 = true, .multicast = true, .broadcast = true},
-                       std::optional<int> mtu = std::nullopt,
-                       std::optional<int> hop_limit = std::nullopt) override;
-  void StopForwarding(const ShillClient::Device& shill_device,
-                      const std::string& ifname_virtual,
-                      const ForwardingService::ForwardingSet& fs = {
-                          .ipv6 = true,
-                          .multicast = true,
-                          .broadcast = true}) override;
+  void StartIPv6NDPForwarding(
+      const ShillClient::Device& shill_device,
+      const std::string& ifname_virtual,
+      std::optional<int> mtu = std::nullopt,
+      std::optional<int> hop_limit = std::nullopt) override;
+
+  void StopIPv6NDPForwarding(const ShillClient::Device& shill_device,
+                             const std::string& ifname_virtual) override;
+
+  void StartBroadcastForwarding(const ShillClient::Device& shill_device,
+                                const std::string& ifname_virtual) override;
+
+  void StopBroadcastForwarding(const ShillClient::Device& shill_device,
+                               const std::string& ifname_virtual) override;
+
+  void StartMulticastForwarding(const ShillClient::Device& shill_device,
+                                const std::string& ifname_virtual) override;
+
+  void StopMulticastForwarding(const ShillClient::Device& shill_device,
+                               const std::string& ifname_virtual) override;
 
  private:
   friend class ManagerTest;

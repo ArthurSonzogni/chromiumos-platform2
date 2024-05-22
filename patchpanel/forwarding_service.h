@@ -18,38 +18,38 @@ namespace patchpanel {
 
 class ForwardingService {
  public:
-  // Struct to specify which forwarders to start and stop.
-  struct ForwardingSet {
-    bool ipv6;
-    bool multicast;
-    bool broadcast;
+  // Starts IPv6 ND proxy forwarding between the upstream |shill_device| and
+  // the downstream interface or guest |ifname_virtual|.
+  virtual void StartIPv6NDPForwarding(
+      const ShillClient::Device& shill_device,
+      const std::string& ifname_virtual,
+      std::optional<int> mtu = std::nullopt,
+      std::optional<int> hop_limit = std::nullopt) = 0;
 
-    bool operator==(const ForwardingSet& b) const {
-      return ipv6 == b.ipv6 && multicast == b.multicast &&
-             broadcast == b.broadcast;
-    }
-  };
+  // Stops IPv6 ND proxy forwarding between the upstream |shill_device| and
+  // the downstream interface or guest |ifname_virtual|.
+  virtual void StopIPv6NDPForwarding(const ShillClient::Device& shill_device,
+                                     const std::string& ifname_virtual) = 0;
 
-  // Starts IPv6, broadcast and multicast forwarding as specified in |fs|
-  // between the upstream |shill_device| and the dowsntream interface or guest
-  // |ifname_virtual|.
-  virtual void StartForwarding(const ShillClient::Device& shill_device,
-                               const std::string& ifname_virtual,
-                               const ForwardingSet& fs = {.ipv6 = true,
-                                                          .multicast = true,
-                                                          .broadcast = true},
-                               std::optional<int> mtu = std::nullopt,
-                               std::optional<int> hop_limit = std::nullopt) = 0;
+  // Starts broadcast forwarding between the upstream |shill_device| and
+  // the downstream interface or guest |ifname_virtual|.
+  virtual void StartBroadcastForwarding(const ShillClient::Device& shill_device,
+                                        const std::string& ifname_virtual) = 0;
 
-  // Stops IPv6, broadcast and multicast forwarding as specified in |fs|
-  // between the upstream |shill_device| and the dowsntream interface or guest
-  // |ifname_virtual|.
-  virtual void StopForwarding(const ShillClient::Device& shill_device,
-                              const std::string& ifname_virtual,
-                              const ForwardingSet& fs = {
-                                  .ipv6 = true,
-                                  .multicast = true,
-                                  .broadcast = true}) = 0;
+  // Stops broadcast forwarding between the upstream |shill_device| and
+  // the downstream interface or guest |ifname_virtual|.
+  virtual void StopBroadcastForwarding(const ShillClient::Device& shill_device,
+                                       const std::string& ifname_virtual) = 0;
+
+  // Starts multicast forwarding between the upstream |shill_device| and
+  // the downstream interface or guest |ifname_virtual|.
+  virtual void StartMulticastForwarding(const ShillClient::Device& shill_device,
+                                        const std::string& ifname_virtual) = 0;
+
+  // Stops multicast forwarding between the upstream |shill_device| and
+  // the downstream interface or guest |ifname_virtual|.
+  virtual void StopMulticastForwarding(const ShillClient::Device& shill_device,
+                                       const std::string& ifname_virtual) = 0;
 };
 
 }  // namespace patchpanel

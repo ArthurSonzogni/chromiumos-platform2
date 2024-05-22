@@ -773,22 +773,24 @@ void ArcService::AddDevice(const ShillClient::Device& shill_device) {
 
   LOG(INFO) << "Starting ARC Device " << arc_device_it.first->second;
   StartArcDeviceDatapath(arc_device_it.first->second);
+  forwarding_service_->StartIPv6NDPForwarding(
+      shill_device, arc_device_it.first->second.bridge_ifname());
+
   // Only start forwarding multicast traffic if ARC is in an interactive state.
   // In addition, on WiFi the Android WiFi multicast lock must also be held.
   // Multicast forwarding is not supported for WiFi Direct client Networks
   // started by Android App requests.
-  bool forward_multicast =
-      is_arc_interactive_ &&
+  if (is_arc_interactive_ &&
       (shill_device.technology != net_base::Technology::kWiFi ||
-       is_android_wifi_multicast_lock_held_);
-  bool forward_broadcast =
-      (shill_device.technology == net_base::Technology::kWiFi) ||
-      (shill_device.technology == net_base::Technology::kEthernet);
-  forwarding_service_->StartForwarding(
-      shill_device, arc_device_it.first->second.bridge_ifname(),
-      {.ipv6 = true,
-       .multicast = forward_multicast,
-       .broadcast = forward_broadcast});
+       is_android_wifi_multicast_lock_held_)) {
+    forwarding_service_->StartMulticastForwarding(
+        shill_device, arc_device_it.first->second.bridge_ifname());
+  }
+  if ((shill_device.technology == net_base::Technology::kWiFi) ||
+      (shill_device.technology == net_base::Technology::kEthernet)) {
+    forwarding_service_->StartBroadcastForwarding(
+        shill_device, arc_device_it.first->second.bridge_ifname());
+  }
   auto signal_device = std::make_unique<NetworkDevice>();
   arc_device_it.first->second.ConvertToProto(signal_device.get());
   dbus_client_notifier_->OnNetworkDeviceChanged(
@@ -812,8 +814,12 @@ void ArcService::RemoveDevice(const ShillClient::Device& shill_device) {
       arc_device.ConvertToProto(signal_device.get());
       dbus_client_notifier_->OnNetworkDeviceChanged(
           std::move(signal_device), NetworkDeviceChangedSignal::DEVICE_REMOVED);
-      forwarding_service_->StopForwarding(shill_device,
-                                          arc_device.bridge_ifname());
+      forwarding_service_->StopIPv6NDPForwarding(shill_device,
+                                                 arc_device.bridge_ifname());
+      forwarding_service_->StopMulticastForwarding(shill_device,
+                                                   arc_device.bridge_ifname());
+      forwarding_service_->StopBroadcastForwarding(shill_device,
+                                                   arc_device.bridge_ifname());
       StopArcDeviceDatapath(arc_device);
       auto config_it = assigned_configs_.find(shill_device.ifname);
       if (config_it == assigned_configs_.end()) {
@@ -1039,15 +1045,11 @@ void ArcService::NotifyAndroidWifiMulticastLockChange(bool is_held) {
       continue;
     }
     if (is_android_wifi_multicast_lock_held_) {
-      forwarding_service_->StartForwarding(
-          shill_device_it->second, arc_device.bridge_ifname(),
-          ForwardingService::ForwardingSet{
-              .ipv6 = false, .multicast = true, .broadcast = false});
+      forwarding_service_->StartMulticastForwarding(shill_device_it->second,
+                                                    arc_device.bridge_ifname());
     } else {
-      forwarding_service_->StopForwarding(
-          shill_device_it->second, arc_device.bridge_ifname(),
-          ForwardingService::ForwardingSet{
-              .ipv6 = false, .multicast = true, .broadcast = false});
+      forwarding_service_->StopMulticastForwarding(shill_device_it->second,
+                                                   arc_device.bridge_ifname());
     }
   }
 }
@@ -1083,15 +1085,11 @@ void ArcService::NotifyAndroidInteractiveState(bool is_interactive) {
       continue;
     }
     if (is_arc_interactive_) {
-      forwarding_service_->StartForwarding(
-          shill_device_it->second, arc_device.bridge_ifname(),
-          ForwardingService::ForwardingSet{
-              .ipv6 = false, .multicast = true, .broadcast = false});
+      forwarding_service_->StartMulticastForwarding(shill_device_it->second,
+                                                    arc_device.bridge_ifname());
     } else {
-      forwarding_service_->StopForwarding(
-          shill_device_it->second, arc_device.bridge_ifname(),
-          ForwardingService::ForwardingSet{
-              .ipv6 = false, .multicast = true, .broadcast = false});
+      forwarding_service_->StopMulticastForwarding(shill_device_it->second,
+                                                   arc_device.bridge_ifname());
     }
   }
 }

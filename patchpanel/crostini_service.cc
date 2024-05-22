@@ -170,8 +170,12 @@ const CrostiniService::CrostiniDevice* CrostiniService::Start(
                                       TrafficSourceFromVMType(vm_type),
                                       dev->vm_ipv4_address());
   if (default_logical_device_) {
-    forwarding_service_->StartForwarding(*default_logical_device_,
-                                         dev->tap_device_ifname());
+    forwarding_service_->StartIPv6NDPForwarding(*default_logical_device_,
+                                                dev->tap_device_ifname());
+    forwarding_service_->StartMulticastForwarding(*default_logical_device_,
+                                                  dev->tap_device_ifname());
+    forwarding_service_->StartBroadcastForwarding(*default_logical_device_,
+                                                  dev->tap_device_ifname());
   }
   if (adb_sideloading_enabled_) {
     StartAdbPortForwarding(dev->tap_device_ifname());
@@ -206,8 +210,12 @@ void CrostiniService::Stop(uint64_t vm_id) {
       std::move(signal_device), NetworkDeviceChangedSignal::DEVICE_REMOVED);
   const std::string tap_ifname = it->second->tap_device_ifname();
   if (default_logical_device_) {
-    forwarding_service_->StopForwarding(*default_logical_device_,
-                                        it->second->tap_device_ifname());
+    forwarding_service_->StopIPv6NDPForwarding(*default_logical_device_,
+                                               it->second->tap_device_ifname());
+    forwarding_service_->StopMulticastForwarding(
+        *default_logical_device_, it->second->tap_device_ifname());
+    forwarding_service_->StopBroadcastForwarding(
+        *default_logical_device_, it->second->tap_device_ifname());
   }
   datapath_->StopRoutingDevice(tap_ifname, TrafficSourceFromVMType(vm_type));
   if (adb_sideloading_enabled_) {
@@ -374,12 +382,20 @@ void CrostiniService::OnShillDefaultLogicalDeviceChanged(
   // forwarding group of the new logical default network.
   for (const auto& [_, dev] : devices_) {
     if (prev_device) {
-      forwarding_service_->StopForwarding(*prev_device,
-                                          dev->tap_device_ifname());
+      forwarding_service_->StopIPv6NDPForwarding(*prev_device,
+                                                 dev->tap_device_ifname());
+      forwarding_service_->StopMulticastForwarding(*prev_device,
+                                                   dev->tap_device_ifname());
+      forwarding_service_->StopBroadcastForwarding(*prev_device,
+                                                   dev->tap_device_ifname());
     }
     if (new_device) {
-      forwarding_service_->StartForwarding(*new_device,
-                                           dev->tap_device_ifname());
+      forwarding_service_->StartIPv6NDPForwarding(*new_device,
+                                                  dev->tap_device_ifname());
+      forwarding_service_->StartMulticastForwarding(*new_device,
+                                                    dev->tap_device_ifname());
+      forwarding_service_->StartBroadcastForwarding(*new_device,
+                                                    dev->tap_device_ifname());
     }
   }
 

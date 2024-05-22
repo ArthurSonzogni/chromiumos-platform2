@@ -249,12 +249,10 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
       continue;
     }
     if (prev_device) {
-      StopForwarding(*prev_device, nsinfo.host_ifname,
-                     ForwardingService::ForwardingSet{.ipv6 = true});
+      StopIPv6NDPForwarding(*prev_device, nsinfo.host_ifname);
     }
     if (new_device) {
-      StartForwarding(*new_device, nsinfo.host_ifname,
-                      ForwardingService::ForwardingSet{.ipv6 = true});
+      StartIPv6NDPForwarding(*new_device, nsinfo.host_ifname);
 
       // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
       // kernel to send RS. Add a delay for the forwarding to be set up.
@@ -302,12 +300,10 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
       continue;
     }
     if (prev_device) {
-      StopForwarding(*prev_device, nsinfo.host_ifname,
-                     ForwardingService::ForwardingSet{.ipv6 = true});
+      StopIPv6NDPForwarding(*prev_device, nsinfo.host_ifname);
     }
     if (new_device) {
-      StartForwarding(*new_device, nsinfo.host_ifname,
-                      ForwardingService::ForwardingSet{.ipv6 = true});
+      StartIPv6NDPForwarding(*new_device, nsinfo.host_ifname);
 
       // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
       // kernel to send RS. Add a delay for the forwarding to be set up.
@@ -345,10 +341,11 @@ void Manager::OnShillDevicesChanged(
       if (nsinfo.static_ipv6_config.has_value()) {
         continue;
       }
-      StopForwarding(device, nsinfo.host_ifname,
-                     ForwardingService::ForwardingSet{.ipv6 = true});
+      StopIPv6NDPForwarding(device, nsinfo.host_ifname);
     }
-    StopForwarding(device, /*ifname_virtual=*/"");
+    StopIPv6NDPForwarding(device, /*ifname_virtual=*/"");
+    StopMulticastForwarding(device, /*ifname_virtual=*/"");
+    StopBroadcastForwarding(device, /*ifname_virtual=*/"");
     datapath_->StopConnectionPinning(device);
     datapath_->RemoveRedirectDnsRule(device);
     arc_svc_->RemoveDevice(device);
@@ -374,8 +371,7 @@ void Manager::OnShillDevicesChanged(
       if (nsinfo.static_ipv6_config.has_value()) {
         continue;
       }
-      StartForwarding(device, nsinfo.host_ifname,
-                      ForwardingService::ForwardingSet{.ipv6 = true});
+      StartIPv6NDPForwarding(device, nsinfo.host_ifname);
       base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
@@ -1072,8 +1068,7 @@ ConnectNamespaceResponse Manager::ConnectNamespace(
 
   // Start forwarding for IPv6.
   if (!nsinfo.static_ipv6_config.has_value() && current_outbound_device) {
-    StartForwarding(*current_outbound_device, nsinfo.host_ifname,
-                    ForwardingService::ForwardingSet{.ipv6 = true});
+    StartIPv6NDPForwarding(*current_outbound_device, nsinfo.host_ifname);
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
@@ -1138,8 +1133,7 @@ void Manager::OnLifelineFdClosed(int client_fd) {
     const auto& info = downstream_network_it->second;
     // Stop IPv6 guest service on the downstream interface if IPv6 is enabled.
     if (info->enable_ipv6 && info->upstream_device) {
-      StopForwarding(*info->upstream_device, info->downstream_ifname,
-                     ForwardingService::ForwardingSet{.ipv6 = true});
+      StopIPv6NDPForwarding(*info->upstream_device, info->downstream_ifname);
     }
 
     // Stop the DHCP server if exists.
@@ -1168,9 +1162,9 @@ void Manager::OnLifelineFdClosed(int client_fd) {
   auto connected_namespace_it = connected_namespaces_.find(client_fd);
   if (connected_namespace_it != connected_namespaces_.end()) {
     if (connected_namespace_it->second.current_outbound_device) {
-      StopForwarding(*connected_namespace_it->second.current_outbound_device,
-                     connected_namespace_it->second.host_ifname,
-                     ForwardingService::ForwardingSet{.ipv6 = true});
+      StopIPv6NDPForwarding(
+          *connected_namespace_it->second.current_outbound_device,
+          connected_namespace_it->second.host_ifname);
     }
     datapath_->StopRoutingNamespace(connected_namespace_it->second);
     LOG(INFO) << "Disconnected network namespace "
@@ -1324,9 +1318,8 @@ Manager::HandleDownstreamNetworkInfo(
   // network and other virtual guests and interfaces in the same upstream
   // group.
   if (info->enable_ipv6 && info->upstream_device) {
-    StartForwarding(
-        *info->upstream_device, info->downstream_ifname,
-        ForwardingService::ForwardingSet{.ipv6 = true}, info->mtu,
+    StartIPv6NDPForwarding(
+        *info->upstream_device, info->downstream_ifname, info->mtu,
         CalculateDownstreamCurHopLimit(system_, info->upstream_device->ifname));
   }
 
@@ -1346,58 +1339,59 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
   mcast_proxy_->SendControlMessage(cm);
 }
 
-void Manager::StartForwarding(const ShillClient::Device& shill_device,
-                              const std::string& ifname_virtual,
-                              const ForwardingService::ForwardingSet& fs,
-                              std::optional<int> mtu,
-                              std::optional<int> hop_limit) {
-  if (shill_device.ifname.empty() || ifname_virtual.empty())
+void Manager::StartIPv6NDPForwarding(const ShillClient::Device& shill_device,
+                                     const std::string& ifname_virtual,
+                                     std::optional<int> mtu,
+                                     std::optional<int> hop_limit) {
+  if (shill_device.ifname.empty() || ifname_virtual.empty()) {
     return;
-
-  if (fs.ipv6) {
-    ipv6_svc_->StartForwarding(shill_device, ifname_virtual, mtu, hop_limit);
   }
 
-  if ((fs.multicast && IsMulticastInterface(shill_device.ifname)) ||
-      fs.broadcast) {
-    ControlMessage cm;
-    DeviceMessage* msg = cm.mutable_device_message();
-    msg->set_dev_ifname(shill_device.ifname);
-    msg->set_br_ifname(ifname_virtual);
+  ipv6_svc_->StartForwarding(shill_device, ifname_virtual, mtu, hop_limit);
+}
 
-    if (fs.multicast) {
-      msg->set_multicast(true);
-      LOG(INFO) << "Starting multicast forwarding from " << shill_device
-                << " to " << ifname_virtual;
-    }
+void Manager::StopIPv6NDPForwarding(const ShillClient::Device& shill_device,
+                                    const std::string& ifname_virtual) {
+  if (shill_device.ifname.empty()) {
+    return;
+  }
 
-    if (fs.broadcast) {
-      msg->set_broadcast(true);
-      LOG(INFO) << "Starting broadcast forwarding from " << shill_device
-                << " to " << ifname_virtual;
-    }
-
-    mcast_proxy_->SendControlMessage(cm);
+  if (ifname_virtual.empty()) {
+    ipv6_svc_->StopUplink(shill_device);
+  } else {
+    ipv6_svc_->StopForwarding(shill_device, ifname_virtual);
   }
 }
 
-void Manager::StopForwarding(const ShillClient::Device& shill_device,
-                             const std::string& ifname_virtual,
-                             const ForwardingService::ForwardingSet& fs) {
-  if (shill_device.ifname.empty())
-    return;
-
-  if (fs.ipv6) {
-    if (ifname_virtual.empty()) {
-      ipv6_svc_->StopUplink(shill_device);
-    } else {
-      ipv6_svc_->StopForwarding(shill_device, ifname_virtual);
-    }
-  }
-
-  if (!fs.multicast && !fs.broadcast) {
+void Manager::StartBroadcastForwarding(const ShillClient::Device& shill_device,
+                                       const std::string& ifname_virtual) {
+  if (shill_device.ifname.empty() || ifname_virtual.empty()) {
     return;
   }
+
+  LOG(INFO) << "Starting broadcast forwarding from " << shill_device << " to "
+            << ifname_virtual;
+  ControlMessage cm;
+  DeviceMessage* msg = cm.mutable_device_message();
+  msg->set_dev_ifname(shill_device.ifname);
+  msg->set_br_ifname(ifname_virtual);
+  msg->set_broadcast(true);
+  mcast_proxy_->SendControlMessage(cm);
+}
+
+void Manager::StopBroadcastForwarding(const ShillClient::Device& shill_device,
+                                      const std::string& ifname_virtual) {
+  if (shill_device.ifname.empty()) {
+    return;
+  }
+
+  if (ifname_virtual.empty()) {
+    LOG(INFO) << "Stopping broadcast forwarding on " << shill_device;
+  } else {
+    LOG(INFO) << "Stopping broadcast forwarding from " << shill_device << " to "
+              << ifname_virtual;
+  }
+
   ControlMessage cm;
   DeviceMessage* msg = cm.mutable_device_message();
   msg->set_dev_ifname(shill_device.ifname);
@@ -1405,26 +1399,50 @@ void Manager::StopForwarding(const ShillClient::Device& shill_device,
   if (!ifname_virtual.empty()) {
     msg->set_br_ifname(ifname_virtual);
   }
+  msg->set_broadcast(true);
+  mcast_proxy_->SendControlMessage(cm);
+}
 
-  if (fs.multicast) {
-    msg->set_multicast(true);
-    if (ifname_virtual.empty()) {
-      LOG(INFO) << "Stopping multicast forwarding on " << shill_device;
-    } else {
-      LOG(INFO) << "Stopping multicast forwarding from " << shill_device
-                << " to " << ifname_virtual;
-    }
+void Manager::StartMulticastForwarding(const ShillClient::Device& shill_device,
+                                       const std::string& ifname_virtual) {
+  if (shill_device.ifname.empty() || ifname_virtual.empty()) {
+    return;
   }
 
-  if (fs.broadcast) {
-    msg->set_broadcast(true);
-    if (ifname_virtual.empty()) {
-      LOG(INFO) << "Stopping broadcast forwarding on " << shill_device;
-    } else {
-      LOG(INFO) << "Stopping broadcast forwarding from " << shill_device
-                << " to " << ifname_virtual;
-    }
+  if (!IsMulticastInterface(shill_device.ifname)) {
+    return;
   }
+
+  LOG(INFO) << "Starting multicast forwarding from " << shill_device << " to "
+            << ifname_virtual;
+  ControlMessage cm;
+  DeviceMessage* msg = cm.mutable_device_message();
+  msg->set_dev_ifname(shill_device.ifname);
+  msg->set_br_ifname(ifname_virtual);
+  msg->set_multicast(true);
+  mcast_proxy_->SendControlMessage(cm);
+}
+
+void Manager::StopMulticastForwarding(const ShillClient::Device& shill_device,
+                                      const std::string& ifname_virtual) {
+  if (shill_device.ifname.empty())
+    return;
+
+  if (ifname_virtual.empty()) {
+    LOG(INFO) << "Stopping multicast forwarding on " << shill_device;
+  } else {
+    LOG(INFO) << "Stopping multicast forwarding from " << shill_device << " to "
+              << ifname_virtual;
+  }
+
+  ControlMessage cm;
+  DeviceMessage* msg = cm.mutable_device_message();
+  msg->set_dev_ifname(shill_device.ifname);
+  msg->set_teardown(true);
+  if (!ifname_virtual.empty()) {
+    msg->set_br_ifname(ifname_virtual);
+  }
+  msg->set_multicast(true);
   mcast_proxy_->SendControlMessage(cm);
 }
 

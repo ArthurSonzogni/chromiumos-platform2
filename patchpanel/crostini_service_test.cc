@@ -39,11 +39,6 @@ using testing::UnorderedElementsAre;
 namespace patchpanel {
 namespace {
 
-// CrostiniService always calls ForwardingService with the same configuration.
-constexpr ForwardingService::ForwardingSet kForwardingSet =
-    ForwardingService::ForwardingSet{
-        .ipv6 = true, .multicast = true, .broadcast = true};
-
 MATCHER_P(ShillDeviceHasInterfaceName, expected_ifname, "") {
   return arg.ifname == expected_ifname;
 }
@@ -102,8 +97,14 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
 
   // There should be no virtual device before the VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
@@ -135,9 +136,15 @@ TEST_F(CrostiniServiceTest, StartStopCrostiniVM) {
   EXPECT_CALL(*datapath_,
               StopRoutingDevice("vmtap0", TrafficSource::kCrostiniVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                             kForwardingSet));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   crostini->Stop(vm_id);
   it = guest_device_events_.find("vmtap0");
   ASSERT_NE(guest_device_events_.end(), it);
@@ -169,8 +176,14 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
                                  net_base::IPv4Address(100, 115, 93, 2)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
 
   // There should be no virtual device before the VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
@@ -205,9 +218,15 @@ TEST_F(CrostiniServiceTest, StartStopParallelsVM) {
               RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
                                     ShillDeviceHasInterfaceName("wlan0"),
                                     net_base::IPv4Address(100, 115, 93, 2)));
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                             kForwardingSet));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   crostini->Stop(vm_id);
   it = guest_device_events_.find("vmtap0");
   ASSERT_NE(guest_device_events_.end(), it);
@@ -239,8 +258,14 @@ TEST_F(CrostiniServiceTest, StartAfterAbnormalStopParallelsVM) {
                                  net_base::IPv4Address(100, 115, 93, 2)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
 
   // There should be no virtual device before the VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
@@ -278,9 +303,15 @@ TEST_F(CrostiniServiceTest, StartAfterAbnormalStopParallelsVM) {
               RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
                                     ShillDeviceHasInterfaceName("wlan0"),
                                     net_base::IPv4Address(100, 115, 93, 2)));
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                             kForwardingSet));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
 
   EXPECT_CALL(*datapath_, AddTunTap("", _, _, "crosvm", DeviceMode::kTap))
       .WillOnce(Return("vmtap0"));
@@ -295,8 +326,14 @@ TEST_F(CrostiniServiceTest, StartAfterAbnormalStopParallelsVM) {
                                  net_base::IPv4Address(100, 115, 93, 2)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   auto* device_new = crostini->Start(vm_id, CrostiniService::VMType::kParallels,
                                      /*subnet_index=*/1);
   ASSERT_NE(nullptr, device_new);
@@ -336,8 +373,14 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
 
   // There should be no virtual device before the VM starts.
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id));
@@ -369,9 +412,15 @@ TEST_F(CrostiniServiceTest, StartStopBruschettaVM) {
   EXPECT_CALL(*datapath_,
               StopRoutingDevice("vmtap0", TrafficSource::kBruschettaVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                             kForwardingSet));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   crostini->Stop(vm_id);
   it = guest_device_events_.find("vmtap0");
   ASSERT_NE(guest_device_events_.end(), it);
@@ -410,8 +459,14 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   auto* device = crostini->Start(vm_id1, CrostiniService::VMType::kTermina,
                                  /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
@@ -440,8 +495,14 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                                  net_base::IPv4Address(100, 115, 93, 2)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
   device = crostini->Start(vm_id2, CrostiniService::VMType::kParallels,
                            /*subnet_index=*/0);
   ASSERT_NE(nullptr, device);
@@ -466,8 +527,14 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
                                        Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
   device = crostini->Start(vm_id3, CrostiniService::VMType::kTermina,
                            /*subnet_index=*/0);
@@ -503,9 +570,16 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   EXPECT_CALL(*datapath_,
               StopRoutingDevice("vmtap0", TrafficSource::kCrostiniVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                             kForwardingSet));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+
   crostini->Stop(vm_id1);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id1));
   it = guest_device_events_.find("vmtap0");
@@ -520,9 +594,15 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
   EXPECT_CALL(*datapath_,
               StopRoutingDevice("vmtap2", TrafficSource::kCrostiniVM));
   EXPECT_CALL(*datapath_, RemoveInboundIPv4DNAT).Times(0);
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2",
-                             kForwardingSet));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap2"));
   crostini->Stop(vm_id3);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id3));
   it = guest_device_events_.find("vmtap2");
@@ -539,9 +619,16 @@ TEST_F(CrostiniServiceTest, MultipleVMs) {
               RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
                                     ShillDeviceHasInterfaceName("wlan0"),
                                     net_base::IPv4Address(100, 115, 93, 2)));
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
-                             kForwardingSet));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+
   crostini->Stop(vm_id2);
   ASSERT_EQ(nullptr, crostini->GetDevice(vm_id2));
   it = guest_device_events_.find("vmtap1");
@@ -572,7 +659,10 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
                                        Eq(std::nullopt), Eq(std::nullopt),
                                        Eq(std::nullopt)));
   EXPECT_CALL(*datapath_, AddInboundIPv4DNAT).Times(0);
-  EXPECT_CALL(*forwarding_service_, StartForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartIPv6NDPForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartMulticastForwarding).Times(0);
+  EXPECT_CALL(*forwarding_service_, StartBroadcastForwarding).Times(0);
+
   crostini->Start(vm_id1, CrostiniService::VMType::kTermina,
                   /*subnet_index=*/0);
   crostini->Start(vm_id2, CrostiniService::VMType::kParallels,
@@ -589,14 +679,27 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
                          ShillDeviceHasInterfaceName("wlan0"), parallels_addr));
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
+                             Eq(std::nullopt), Eq(std::nullopt)));
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
   crostini->OnShillDefaultLogicalDeviceChanged(&wlan0_dev, nullptr);
   Mock::VerifyAndClearExpectations(datapath_.get());
+  Mock::VerifyAndClearExpectations(forwarding_service_.get());
 
   // The logical default Device changes.
   ShillClient::Device eth0_dev;
@@ -609,20 +712,45 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
       *datapath_,
       AddInboundIPv4DNAT(AutoDNATTarget::kParallels,
                          ShillDeviceHasInterfaceName("eth0"), parallels_addr));
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0",
-                             kForwardingSet));
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1",
-                             kForwardingSet));
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
   EXPECT_CALL(
       *forwarding_service_,
-      StartForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1",
-                      kForwardingSet, Eq(std::nullopt), Eq(std::nullopt)));
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("wlan0"), "vmtap1"));
+
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartIPv6NDPForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1",
+                             Eq(std::nullopt), Eq(std::nullopt)));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StartBroadcastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1"));
   crostini->OnShillDefaultLogicalDeviceChanged(&eth0_dev, &wlan0_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
@@ -632,12 +760,24 @@ TEST_F(CrostiniServiceTest, DefaultLogicalDeviceChange) {
               RemoveInboundIPv4DNAT(AutoDNATTarget::kParallels,
                                     ShillDeviceHasInterfaceName("eth0"),
                                     parallels_addr));
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0",
-                             kForwardingSet));
-  EXPECT_CALL(*forwarding_service_,
-              StopForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1",
-                             kForwardingSet));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap0"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopIPv6NDPForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopMulticastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1"));
+  EXPECT_CALL(
+      *forwarding_service_,
+      StopBroadcastForwarding(ShillDeviceHasInterfaceName("eth0"), "vmtap1"));
   crostini->OnShillDefaultLogicalDeviceChanged(nullptr, &eth0_dev);
   Mock::VerifyAndClearExpectations(datapath_.get());
   Mock::VerifyAndClearExpectations(forwarding_service_.get());
