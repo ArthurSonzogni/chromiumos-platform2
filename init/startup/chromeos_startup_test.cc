@@ -374,8 +374,6 @@ TEST_F(TPMTest, PcrExtended) {
 
 class StatefulWipeTest : public ::testing::Test {
  protected:
-  StatefulWipeTest() {}
-
   void SetUp() override {
     stateful_ = base_dir_.Append("mnt/stateful_partition");
     platform_ = std::make_unique<libstorage::FakePlatform>();
@@ -605,8 +603,6 @@ TEST_F(TpmCleanupTest, TpmCleanupSuccess) {
 
 class ConfigTest : public ::testing::Test {
  protected:
-  ConfigTest() {}
-
   void SetUp() override {
     lsb_file_ = base_dir_.Append(kLsbRelease);
     stateful_ = base_dir_.Append(kStatefulPartition);
@@ -824,8 +820,6 @@ TEST(MountVarAndHomeChronosEncrypted, MountEncryptedFail) {
 
 class DoMountTest : public ::testing::Test {
  protected:
-  DoMountTest() {}
-
   void SetUp() override {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
@@ -1262,8 +1256,6 @@ TEST_F(RemoveVarEmptyTest, NonEmpty) {
 
 class CheckVarLogTest : public ::testing::Test {
  protected:
-  CheckVarLogTest() {}
-
   void SetUp() override {
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
@@ -1342,8 +1334,6 @@ TEST_F(CheckVarLogTest, SymLinkOutsideVarLog) {
 
 class DevMountPackagesTest : public ::testing::Test {
  protected:
-  DevMountPackagesTest() {}
-
   void SetUp() override {
     stateful_ = base_dir_.Append("stateful_test");
     base::CreateDirectory(stateful_);

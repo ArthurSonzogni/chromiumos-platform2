@@ -62,8 +62,6 @@ bool ExceptionsTestFunc(libstorage::Platform* platform,
 
 class SecurityManagerTest : public ::testing::Test {
  protected:
-  SecurityManagerTest() {}
-
   void SetUp() override {
     platform_ = std::make_unique<libstorage::MockPlatform>();
     mock_startup_dep_ = std::make_unique<StrictMock<startup::MockStartupDep>>();
@@ -77,8 +75,6 @@ class SecurityManagerTest : public ::testing::Test {
 
 class SecurityManagerLoadPinTest : public SecurityManagerTest {
  protected:
-  SecurityManagerLoadPinTest() {}
-
   void SetUp() override {
     SecurityManagerTest::SetUp();
 
@@ -266,8 +262,6 @@ TEST_F(SecurityManagerLoadPinTest, FailureToFeedLoadPin) {
 
 class SysKeyTest : public ::testing::Test {
  protected:
-  SysKeyTest() {}
-
   void SetUp() override {
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::MockPlatform>();
@@ -340,8 +334,6 @@ TEST_F(SysKeyTest, NeedSysKeySuccessful) {
 
 class ExceptionsTest : public ::testing::Test {
  protected:
-  ExceptionsTest() {}
-
   void SetUp() override {
     platform_ = std::make_unique<libstorage::FakePlatform>();
     allow_file_ = base_dir.Append("allow_file");

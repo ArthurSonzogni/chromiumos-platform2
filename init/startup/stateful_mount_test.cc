@@ -63,8 +63,6 @@ constexpr char kStatefulPartition[] = "mnt/stateful_partition";
 
 class GetImageVarsTest : public ::testing::Test {
  protected:
-  GetImageVarsTest() {}
-
   void SetUp() override {
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
@@ -109,8 +107,6 @@ TEST_F(GetImageVarsTest, PartitionVars) {
 
 class Ext4FeaturesTest : public ::testing::Test {
  protected:
-  Ext4FeaturesTest() {}
-
   void SetUp() override {
     platform_ = std::make_unique<libstorage::FakePlatform>();
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
@@ -238,8 +234,6 @@ TEST_F(Ext4FeaturesTest, MissingFeatures) {
 
 class DevUpdateStatefulTest : public ::testing::Test {
  protected:
-  DevUpdateStatefulTest() {}
-
   void SetUp() override {
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::FakePlatform>();
@@ -350,8 +344,6 @@ TEST_F(DevUpdateStatefulTest, NoNewDevAndVarWithClobber) {
 
 class DevGatherLogsTest : public ::testing::Test {
  protected:
-  DevGatherLogsTest() {}
-
   void SetUp() override {
     stateful = base_dir.Append(kStatefulPartition);
     platform_ = std::make_unique<libstorage::FakePlatform>();
