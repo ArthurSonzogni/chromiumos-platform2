@@ -2760,6 +2760,33 @@ TEST_F(WiFiMainTest, LowRSSIScanTrigger) {
   StopWiFi();
 }
 
+TEST_F(WiFiMainTest, LowRSSIScanTriggerDisabled) {
+  StartWiFi();
+  MockWiFiServiceRefPtr service =
+      SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  // Use a reference to the endpoint instance in the WiFi device instead of
+  // the copy returned by SetupConnectedService().
+  WiFiEndpointRefPtr endpoint = GetEndpointMap().begin()->second;
+  EXPECT_TRUE(SetBgscanMethod(WPASupplicant::kNetworkBgscanMethodNone));
+
+  // Trigger ScanDoneTask so that the phy state is idle
+  ReportScanDone();
+  test_event_dispatcher_->DispatchPendingEvents();
+
+  KeyValueStore props;
+  props.Set<int32_t>(WPASupplicant::kSignalChangePropertyRSSI, -50);
+  KeyValueStore properties;
+  properties.Set<KeyValueStore>(WPASupplicant::kSignalChangeProperty, props);
+
+  // Low RSSI (0 -> -50) should not trigger scan when bgscan method == none.
+  PropertiesChanged(properties);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  test_event_dispatcher_->DispatchPendingEvents();
+  EXPECT_EQ(endpoint->signal_strength(), -50);
+
+  StopWiFi();
+}
+
 TEST_F(WiFiMainTest, SignalChangedBeaconAverage) {
   StartWiFi();
   MockWiFiServiceRefPtr service =

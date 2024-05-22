@@ -946,10 +946,15 @@ void WiFi::NotifyEndpointChanged(const WiFiEndpointConstRefPtr& endpoint) {
                (last_rssi_drop_scan_.is_null() ||
                 (base::Time::Now() - last_rssi_drop_scan_).InSeconds() >
                     base::Time::kSecondsPerMinute)) {
-      LOG(INFO) << "Significant movement away from AP, RSSI dropped from "
-                << max_connected_dbm_ << " to " << endpoint->signal_strength()
-                << ". Attempting to trigger scan.";
-      Scan(nullptr, __func__, false);
+      if (bgscan_method_ == WPASupplicant::kNetworkBgscanMethodNone) {
+        LOG(INFO)
+            << "Low RSSI scan trigger skipped - bgscan method set to None.";
+      } else {
+        LOG(INFO) << "Significant movement away from AP, RSSI dropped from "
+                  << max_connected_dbm_ << " to " << endpoint->signal_strength()
+                  << ". Attempting to trigger scan.";
+        Scan(nullptr, __func__, false);
+      }
       max_connected_dbm_ = endpoint->signal_strength();
       last_rssi_drop_scan_ = base::Time::Now();
     }
