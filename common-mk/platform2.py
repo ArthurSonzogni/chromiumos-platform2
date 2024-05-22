@@ -77,6 +77,7 @@ _IUSE = [
     "cpp20",
     "cr50_onboard",
     "cros_arm64",
+    "cros_camera_algo",
     "cros_debug",
     "cros_host",
     "cros_i686",
