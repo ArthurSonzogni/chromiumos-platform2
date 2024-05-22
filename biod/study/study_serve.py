@@ -290,7 +290,13 @@ class FingerWebSocket(WebSocket):
             cherrypy.log("Finger wait aborted.")
             return (None, None)
         # Download the image.
-        img = self.ectool("fpframe", "raw")
+        if capture_mode == "vendor":
+            img = self.ectool("fpframe", "raw")
+        else:
+            # The pattern0/1s are intended to be captured using "simple" mode
+            # and will automatically be converted to PNM format.
+            img = self.ectool("fpframe")
+
         if not img:
             msg = f"Failed to download fpframe for {capture_mode} capture"
             cherrypy.log(msg)
@@ -344,7 +350,7 @@ class FingerWebSocket(WebSocket):
         cherrypy.log(f"Captured pattern0 in {t1 - t0:.2f}s")
         if not img_pattern0:
             return result
-        self.save_to_file(img_pattern0, finger_dir / "pattern0.raw")
+        self.save_to_file(img_pattern0, finger_dir / "pattern0.pnm")
 
         t0 = time.time()
         # The pattern1 capture is needed for Elan 80SG to do off-chip
@@ -355,7 +361,7 @@ class FingerWebSocket(WebSocket):
         cherrypy.log(f"Captured pattern1 in {t1 - t0:.2f}s")
         if not img_pattern1:
             return result
-        self.save_to_file(img_pattern1, finger_dir / "pattern1.raw")
+        self.save_to_file(img_pattern1, finger_dir / "pattern1.pnm")
 
         t0 = time.time()
         cherrypy.log(
