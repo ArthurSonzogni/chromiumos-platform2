@@ -255,7 +255,6 @@ class KernelCollector : public CrashCollector {
 
  private:
   friend class KernelCollectorTest;
-  FRIEND_TEST(KernelCollectorTest, LoadCorruptDump);
   FRIEND_TEST(KernelCollectorTest, LoadBiosLog);
   FRIEND_TEST(KernelCollectorTest, CollectOK);
   FRIEND_TEST(KernelCollectorTest, ParseEfiCrashId);
@@ -272,7 +271,6 @@ class KernelCollector : public CrashCollector {
 
   virtual bool DumpDirMounted();
 
-  bool LoadPreservedDump(std::string* contents);
   bool LoadLastBootBiosLog(std::string* contents);
 
   bool LastRebootWasBiosCrash(const std::string& dump);
@@ -291,19 +289,6 @@ class KernelCollector : public CrashCollector {
                                    const char* driver,
                                    size_t record);
 
-  bool LoadParameters();
-
-  // Read a record to string, modified from file_utils since that didn't
-  // provide a way to restrict the read length.
-  // Return value indicates (only) error state:
-  //  * false when we get an error (can't read from dump location).
-  //  * true if no error occured.
-  // Not finding a valid record is not an error state and is signaled by the
-  // record_found output parameter.
-  bool ReadRecordToString(std::string* contents,
-                          size_t current_record,
-                          bool* record_found);
-
   void AddLogFile(const char* log_name,
                   const std::string& log_data,
                   const base::FilePath& log_path);
@@ -314,13 +299,13 @@ class KernelCollector : public CrashCollector {
 
   std::vector<EfiCrash> _FindDriverEfiCrashes(const char* driver_name) const;
   std::vector<EfiCrash> FindEfiCrashes() const;
+  std::vector<RamoopsCrash> FindRamoopsCrashes() const;
 
   bool is_enabled_;
   base::FilePath eventlog_path_;
   base::FilePath dump_path_;
   base::FilePath bios_log_path_;
   base::FilePath watchdogsys_path_;
-  size_t records_;
 
   // The architecture of kernel dump strings we are working with.
   kernel_util::ArchKind arch_;

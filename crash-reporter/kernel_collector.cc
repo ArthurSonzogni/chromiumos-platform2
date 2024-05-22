@@ -60,15 +60,6 @@ constexpr char kCorruptDumpExtension[] = ".enc.z";
 const FilePath kEventLogPath("/var/log/eventlog.txt");
 constexpr char kEventNameBoot[] = "System boot";
 constexpr char kEventNameWatchdog[] = "Hardware watchdog reset";
-// Maximum number of records to examine in the kDumpPath.
-constexpr size_t kMaxDumpRecords = 100;
-// Maximum buffer size of pstore records reads. PSTORE_DEFAULT_KMSG_BYTES as set
-// in the kernel is 10KiB, and record_size for RAM Oops/Panic trigger is
-// defaulted at 4KiB with another 4KiB each for console, ftrace, and pmsg logs.
-// This gives a maximum of ~26 KiB, but in practice logs can be significantly
-// larger (e.g. 66 KiB is easily achieved). Set a limit substantially above
-// this.
-constexpr size_t kMaxRecordSize = 1024 * 1024;
 constexpr pid_t kKernelPid = 0;
 constexpr char kKernelSignatureKey[] = "sig";
 
@@ -137,7 +128,6 @@ KernelCollector::KernelCollector(
       dump_path_(kDumpPath),
       bios_log_path_(kBiosLogPath),
       watchdogsys_path_(paths::Get(paths::kWatchdogSysPath)),
-      records_(0),
       // We expect crash dumps in the format of architecture we are built for.
       arch_(kernel_util::GetCompilerArch()) {}
 
@@ -159,55 +149,6 @@ void KernelCollector::OverrideWatchdogSysPath(const FilePath& file_path) {
   watchdogsys_path_ = file_path;
 }
 
-bool KernelCollector::ReadRecordToString(std::string* contents,
-                                         size_t current_record,
-                                         bool* record_found) {
-  // A record is a ramoops dump. It has an associated size of "record_size".
-  std::string record;
-
-  FilePath record_path = GetDumpRecordPath(
-      kDumpRecordDmesgName, kDumpDriverRamoopsName, current_record);
-  if (!base::ReadFileToStringWithMaxSize(record_path, &record,
-                                         kMaxRecordSize)) {
-    if (record.empty()) {
-      PLOG(ERROR) << "Unable to read " << record_path.value();
-      return false;
-    }
-
-    PLOG(ERROR) << "Record is larger than " << kMaxRecordSize;
-    return false;
-  }
-
-  *record_found = false;
-  if (record_path.value().ends_with(kCorruptDumpExtension)) {
-    // The kernel identified this as a compressed dump but was unable to
-    // decompress. We'll still upload this in case someone can figure something
-    // useful out of it. We'll prepend a warning, though.
-    LOG(WARNING) << "Kernel couldn't decode ramoops at " << record_path.value();
-    contents->append(constants::kCorruptPstore);
-    contents->append(record);
-    *record_found = true;
-  } else if (RE2::PartialMatch(record.substr(0, 1024), *kBasicCheckRe)) {
-    // pstore compression has been added since kernel 3.12. In order to
-    // decompress dmesg correctly, ramoops driver has to strip the header
-    // before handing over the record to the pstore driver, so we don't
-    // need to do it here anymore. However, the basic check is needed because
-    // sometimes a pstore record is just a chunk of uninitialized memory which
-    // is not the result of a kernel crash. See crbug.com/443764
-    // Strip first line since it contains header e.g. Panic#1 Part#1.
-    contents->append(record, record.find('\n') + 1, std::string::npos);
-    *record_found = true;
-  } else {
-    LOG(WARNING) << "Found invalid record at " << record_path.value();
-  }
-
-  // Remove the record from pstore after it's found.
-  if (*record_found)
-    base::DeleteFile(record_path);
-
-  return true;
-}
-
 FilePath KernelCollector::GetDumpRecordPath(const char* type,
                                             const char* driver,
                                             size_t record) {
@@ -226,49 +167,6 @@ FilePath KernelCollector::GetDumpRecordPath(const char* type,
   }
 
   return record_path;
-}
-
-bool KernelCollector::LoadParameters() {
-  // Discover how many ramoops records are being exported by the driver.
-  size_t count;
-
-  for (count = 0; count < kMaxDumpRecords; ++count) {
-    FilePath record_path =
-        GetDumpRecordPath(kDumpRecordDmesgName, kDumpDriverRamoopsName, count);
-
-    if (!base::PathExists(record_path))
-      break;
-  }
-
-  records_ = count;
-  return (records_ > 0);
-}
-
-bool KernelCollector::LoadPreservedDump(std::string* contents) {
-  // Load dumps from the preserved memory and save them in contents.
-  // Since the system is set to restart on oops we won't actually ever have
-  // multiple records (only 0 or 1), but check in case we don't restart on
-  // oops in the future.
-  bool any_records_found = false;
-  bool record_found = false;
-  // clear contents since ReadFileToString actually appends to the string.
-  contents->clear();
-
-  for (size_t i = 0; i < records_; ++i) {
-    if (!ReadRecordToString(contents, i, &record_found)) {
-      break;
-    }
-    if (record_found) {
-      any_records_found = true;
-    }
-  }
-
-  if (!any_records_found) {
-    LOG(ERROR) << "No valid records found in " << dump_path_.value();
-    return false;
-  }
-
-  return true;
 }
 
 bool KernelCollector::LoadLastBootBiosLog(std::string* contents) {
@@ -634,7 +532,8 @@ CrashCollectionStatus KernelCollector::PstoreCrash::CollectCrash(
   PstoreRecordType crash_type;
   crash_type = GetType();
   if (crash_type != PstoreRecordType::kParseFailed) {
-    if (crash_type == PstoreRecordType::kPanic) {
+    if (crash_type == PstoreRecordType::kPanic ||
+        crash_type == PstoreRecordType::kCorrupt) {
       LOG(INFO) << "Reporting kernel crash id: " << GetId()
                 << " type: " << crash_type;
       if (!Load(crash)) {
@@ -675,6 +574,41 @@ bool KernelCollector::EfiCrash::IsPartCorrupted(uint32_t part) const {
   // crash record are corrupted while searching in FindEfiCrashes(). Ignore this
   // for now until we need to handle this.
   return false;
+}
+
+std::vector<KernelCollector::RamoopsCrash> KernelCollector::FindRamoopsCrashes()
+    const {
+  std::vector<RamoopsCrash> ramoops_crashes;
+  const base::FilePath pstore_dir(dump_path_);
+  if (!base::PathExists(pstore_dir)) {
+    return ramoops_crashes;
+  }
+
+  // Scan /sys/fs/pstore/.
+  std::string ramoops_crash_pattern =
+      StringPrintf("%s-%s-*", kDumpRecordDmesgName, kDumpDriverRamoopsName);
+  base::FileEnumerator ramoops_file_iter(
+      pstore_dir, false, base::FileEnumerator::FILES, ramoops_crash_pattern);
+
+  for (auto ramoops_file = ramoops_file_iter.Next(); !ramoops_file.empty();
+       ramoops_file = ramoops_file_iter.Next()) {
+    bool corrupted =
+        ramoops_file.BaseName().value().ends_with(kCorruptDumpExtension);
+    uint64_t crash_id;
+    if (!base::StringToUint64(
+            ramoops_file.RemoveExtension().BaseName().value().substr(
+                ramoops_crash_pattern.length() - 1),
+            &crash_id)) {
+      // This should not ever happen.
+      LOG(ERROR) << "Failed to parse ramoops file name: "
+                 << ramoops_file.BaseName().value();
+      continue;
+    }
+
+    RamoopsCrash ramoops_crash(crash_id, this, corrupted);
+    ramoops_crashes.push_back(ramoops_crash);
+  }
+  return ramoops_crashes;
 }
 
 std::vector<KernelCollector::EfiCrash> KernelCollector::_FindDriverEfiCrashes(
@@ -853,24 +787,58 @@ std::vector<CrashCollectionStatus> KernelCollector::CollectEfiCrashes(
 std::vector<CrashCollectionStatus> KernelCollector::CollectRamoopsCrashes(
     bool use_saved_lsb) {
   SetUseSavedLsb(use_saved_lsb);
+  const std::vector<KernelCollector::RamoopsCrash> ramoops_crashes =
+      FindRamoopsCrashes();
 
   std::string bios_dump;
-  std::string kernel_dump;
   std::string console_dump;
   std::string signature;
 
   LoadLastBootBiosLog(&bios_dump);
   LoadConsoleRamoops(&console_dump);
-  if (LoadParameters() && LoadPreservedDump(&kernel_dump)) {
-    signature = kernel_util::ComputeKernelStackSignature(kernel_dump, arch_);
-    StripSensitiveData(&bios_dump);
-    StripSensitiveData(&kernel_dump);
-    if (kernel_dump.empty()) {
-      return {CrashCollectionStatus::kRamoopsDumpEmpty};
-    }
-    return {HandleCrash(kernel_dump, bios_dump, signature)};
+
+  LOG(INFO) << "Found " << ramoops_crashes.size()
+            << " kernel crashes in ramoops-pstore.";
+  if (ramoops_crashes.empty()) {
+    return {
+        // There wasn't a pstore crash record for a panic or oops. The system
+        // likely rebooted unexpectedly, probably due to a watchdog or some
+        // BIOS error.  Collect the system logs that are preserved across
+        // reboots and generate a crash report.
+        CollectConsoleRamoopsCrash(bios_dump, console_dump)};
   }
-  return {CollectConsoleRamoopsCrash(bios_dump, console_dump)};
+
+  StripSensitiveData(&bios_dump);
+
+  std::vector<CrashCollectionStatus> result;
+  // Now read each crash in buffer and cleanup pstore.
+  // Since the system is set to restart on oops we won't actually ever have
+  // more than 2 records, but check in case we don't restart on oops in the
+  // future.
+  std::vector<RamoopsCrash>::const_iterator ramoops_crash;
+  for (ramoops_crash = ramoops_crashes.begin();
+       ramoops_crash != ramoops_crashes.end(); ++ramoops_crash) {
+    LOG(INFO) << "Generating kernel ramoops crash id:"
+              << ramoops_crash->GetId();
+    CrashCollectionStatus single_result = CrashCollectionStatus::kUnknownStatus;
+    std::string crash;
+    single_result = ramoops_crash->CollectCrash(crash);
+    if (single_result == CrashCollectionStatus::kSuccess) {
+      signature = kernel_util::ComputeKernelStackSignature(crash, arch_);
+      StripSensitiveData(&crash);
+      if (crash.empty()) {
+        single_result = CrashCollectionStatus::kPstoreCrashEmpty;
+      } else {
+        single_result = HandleCrash(crash, bios_dump, signature);
+        if (!IsSuccessCode(single_result)) {
+          LOG(ERROR) << "Failed to handle kernel crash id: "
+                     << ramoops_crash->GetId();
+        }
+      }
+    }
+    result.push_back(single_result);
+  }
+  return result;
 }
 
 CrashCollectionStatus KernelCollector::CollectConsoleRamoopsCrash(
