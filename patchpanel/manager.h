@@ -127,24 +127,6 @@ class Manager : public ForwardingService {
   bool TagSocket(const patchpanel::TagSocketRequest& request,
                  const base::ScopedFD& sock_fd);
 
-  // Creates an L3 network on a network interface and tethered to an upstream
-  // network. Returns the result of the operation as a TetheredNetworkResponse
-  // protobuf message.
-  patchpanel::TetheredNetworkResponse CreateTetheredNetwork(
-      const patchpanel::TetheredNetworkRequest& request,
-      base::ScopedFD client_fd);
-
-  // Creates a local-only L3 network on a network interface. Returns the result
-  // of the operation as a TetheredNetworkResponse protobuf message.
-  patchpanel::LocalOnlyNetworkResponse CreateLocalOnlyNetwork(
-      const patchpanel::LocalOnlyNetworkRequest& request,
-      base::ScopedFD client_fd);
-
-  // Provides L3 and DHCP client information about clients connected to a
-  // network created with CreateTetheredNetwork or CreateLocalOnlyNetwork.
-  patchpanel::GetDownstreamNetworkInfoResponse GetDownstreamNetworkInfo(
-      const std::string& downstream_ifname) const;
-
   // Start/Stop forwarding multicast traffic to ARC when ARC power state
   // changes.
   // When power state changes into interactive, start forwarding IPv4 and IPv6
@@ -177,10 +159,6 @@ class Manager : public ForwardingService {
   bool SetFeatureFlag(patchpanel::SetFeatureFlagRequest::FeatureFlag flag,
                       bool enabled);
 
-  // Returns the CurHopLimit of upstream from sysctl minus 1.
-  static std::optional<int> CalculateDownstreamCurHopLimit(
-      System* system, const std::string& upstream_iface);
-
   void StartIPv6NDPForwarding(
       const ShillClient::Device& shill_device,
       const std::string& ifname_virtual,
@@ -202,17 +180,9 @@ class Manager : public ForwardingService {
   void StopMulticastForwarding(const ShillClient::Device& shill_device,
                                const std::string& ifname_virtual) override;
 
-  // b/294287313: Temporary solution to support tethering with a multiplexed PDN
-  // brought up specifically for tethering and with no associated shill Device.
-  // This method creates a fake ShillClient::Device and creates the minimal
-  // Datapath setup to support CreateTetheredNetwork() pointing at
-  // |upstream_ifname| as the upstream network.
-  std::optional<ShillClient::Device> StartTetheringUpstreamNetwork(
-      const TetheredNetworkRequest& request);
-  // Tears down the minimal Datapath setup created with
-  // StartTetheringUpstreamNetwork().
-  void StopTetheringUpstreamNetwork(
-      const ShillClient::Device& upstream_network);
+  DownstreamNetworkService* downstream_network_service() {
+    return downstream_network_svc_.get();
+  }
 
  private:
   friend class ManagerTest;
@@ -240,9 +210,6 @@ class Manager : public ForwardingService {
       NeighborLinkMonitor::NeighborRole role,
       NeighborReachabilityEventSignal::EventType event_type);
 
-  // Tears down a tethered or local-only DownstreamNetwork setup given its
-  // downstream network interface.
-  void OnDownstreamNetworkAutoclose(const std::string& downstream_ifname);
   // Tears down a ConnectedNamespace setup given its connected namespace id.
   void OnConnectedNamespaceAutoclose(int connected_namespace_id);
   // Tears down a DNS redirection rule request given the lifeline fd value
@@ -254,13 +221,6 @@ class Manager : public ForwardingService {
       CrostiniService::VMType vm_type,
       uint32_t subnet_index = kAnySubnetIndex);
   void StopCrosVm(uint64_t vm_id, CrostiniService::VMType vm_type);
-
-  // Creates a downstream L3 network on the network interface specified by the
-  // |info|. If successful, |client_fd| is monitored and triggers the teardown
-  // of the network setup when closed.
-  std::pair<DownstreamNetworkResult, std::unique_ptr<DownstreamNetwork>>
-  HandleDownstreamNetworkInfo(base::ScopedFD client_fd,
-                              std::unique_ptr<DownstreamNetworkInfo> info);
 
   std::vector<DownstreamClientInfo> GetDownstreamClientInfo(
       const std::string& downstream_ifname) const;
@@ -319,10 +279,6 @@ class Manager : public ForwardingService {
   // TetheredNetwork and LocalOnlyNetwork management service.
   std::unique_ptr<DownstreamNetworkService> downstream_network_svc_;
 
-  // The DHCP server controllers, keyed by its downstream interface.
-  std::map<std::string, std::unique_ptr<DHCPServerController>>
-      dhcp_server_controllers_;
-
   // IPv4 prefix and address manager.
   AddressManager addr_mgr_;
 
@@ -334,12 +290,6 @@ class Manager : public ForwardingService {
   // DNS proxy's IPv4 and IPv6 addresses keyed by its guest interface.
   std::map<std::string, net_base::IPv4Address> dns_proxy_ipv4_addrs_;
   std::map<std::string, net_base::IPv6Address> dns_proxy_ipv6_addrs_;
-
-  // All external network interfaces currently managed by patchpanel through
-  // the CreateTetheredNetwork or CreateLocalOnlyNetwork DBus APIs, keyed by
-  // their downstream interface name.
-  std::map<std::string, std::unique_ptr<DownstreamNetworkInfo>>
-      downstream_networks_;
 
   // All rules currently created through patchpanel RedirectDns
   // API, keyed by the host-side interface name of the ConnectedNamespace of the

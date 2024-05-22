@@ -16,6 +16,7 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/downstream_network_info.h"
+#include "patchpanel/downstream_network_service.h"
 #include "patchpanel/manager.h"
 #include "patchpanel/metrics.h"
 #include "patchpanel/network/network_applier.h"
@@ -123,7 +124,8 @@ LocalOnlyNetworkResponse PatchpanelAdaptor::CreateLocalOnlyNetwork(
     const LocalOnlyNetworkRequest& request, const base::ScopedFD& client_fd) {
   RecordDbusEvent(DbusUmaEvent::kCreateLocalOnlyNetwork);
   LocalOnlyNetworkResponse response =
-      manager_->CreateLocalOnlyNetwork(request, Dup(client_fd));
+      manager_->downstream_network_service()->CreateLocalOnlyNetwork(
+          request, Dup(client_fd));
   if (response.response_code() == DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
   }
@@ -137,7 +139,8 @@ TetheredNetworkResponse PatchpanelAdaptor::CreateTetheredNetwork(
     const TetheredNetworkRequest& request, const base::ScopedFD& client_fd) {
   RecordDbusEvent(DbusUmaEvent::kCreateTetheredNetwork);
   TetheredNetworkResponse response =
-      manager_->CreateTetheredNetwork(request, Dup(client_fd));
+      manager_->downstream_network_service()->CreateTetheredNetwork(
+          request, Dup(client_fd));
   if (response.response_code() == DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(DbusUmaEvent::kCreateTetheredNetworkSuccess);
   }
@@ -206,7 +209,8 @@ GetDownstreamNetworkInfoResponse PatchpanelAdaptor::GetDownstreamNetworkInfo(
     const GetDownstreamNetworkInfoRequest& request) const {
   RecordDbusEvent(DbusUmaEvent::kGetDownstreamNetworkInfo);
   GetDownstreamNetworkInfoResponse response =
-      manager_->GetDownstreamNetworkInfo(request.downstream_ifname());
+      manager_->downstream_network_service()->GetDownstreamNetworkInfo(
+          request.downstream_ifname());
   if (response.success()) {
     RecordDbusEvent(DbusUmaEvent::kGetDownstreamNetworkInfoSuccess);
   }
