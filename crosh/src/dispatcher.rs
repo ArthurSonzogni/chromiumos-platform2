@@ -25,7 +25,6 @@ pub enum Error {
     CommandNotImplemented(String),
     CommandReturnedError,
     DuplicateCommand(Vec<String>),
-    FlagFilter,
 }
 
 impl Display for Error {
@@ -40,7 +39,6 @@ impl Display for Error {
             CommandNotImplemented(command) => write!(f, "command not implemented: {}", command),
             CommandReturnedError => write!(f, "command failed"),
             DuplicateCommand(dups) => write!(f, "duplicate commands: {}", dups.join(", ")),
-            FlagFilter => write!(f, "error filtering flags"),
         }
     }
 }
