@@ -103,7 +103,7 @@ class EarlySetupTest : public ::testing::Test {
         std::move(tlcl));
   }
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
   hwsec_foundation::MockTlclWrapper* tlcl_;
@@ -174,7 +174,7 @@ class DevCheckBlockTest : public ::testing::Test {
 
   crossystem::Crossystem* crossystem_;
   vpd::FakeVpd* vpd_;
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath dev_mode_file;
   std::unique_ptr<libstorage::FakePlatform> platform_;
@@ -232,7 +232,7 @@ class TPMTest : public ::testing::Test {
         std::move(tlcl));
   }
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
@@ -393,7 +393,7 @@ class StatefulWipeTest : public ::testing::Test {
   }
 
   crossystem::Crossystem* crossystem_;
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_;
   std::unique_ptr<libstorage::FakePlatform> platform_;
@@ -573,7 +573,7 @@ class TpmCleanupTest : public ::testing::Test {
     tpm_cleanup_ = base_dir_.Append(kTpmFirmwareUpdateCleanup);
   }
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::MockStartupDep> mock_startup_dep_;
@@ -752,7 +752,7 @@ class MountStackTest : public ::testing::Test {
 
   void SetUp() override {}
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
@@ -786,7 +786,7 @@ TEST_F(MountStackTest, CleanupMountsNoEncrypt) {
 }
 
 TEST(MountVarAndHomeChronosEncrypted, MountEncrypted) {
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
 
   std::unique_ptr<libstorage::FakePlatform> platform_ =
@@ -803,7 +803,7 @@ TEST(MountVarAndHomeChronosEncrypted, MountEncrypted) {
 }
 
 TEST(MountVarAndHomeChronosEncrypted, MountEncryptedFail) {
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
 
   std::unique_ptr<libstorage::FakePlatform> platform_ =
@@ -825,7 +825,7 @@ class DoMountTest : public ::testing::Test {
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
   }
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
@@ -1039,7 +1039,7 @@ class IsVarFullTest : public ::testing::Test {
         std::move(tlcl));
   }
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
@@ -1108,7 +1108,7 @@ class DeviceSettingsTest : public ::testing::Test {
     devicesettings_ = var_lib.Append("devicesettings");
   }
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
@@ -1172,7 +1172,7 @@ class DaemonStoreTest : public ::testing::Test {
         std::move(tlcl));
   }
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
@@ -1235,7 +1235,7 @@ class RemoveVarEmptyTest : public ::testing::Test {
 
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
@@ -1275,7 +1275,7 @@ class CheckVarLogTest : public ::testing::Test {
 
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   hwsec_foundation::MockTlclWrapper* tlcl_;
   std::unique_ptr<startup::ChromeosStartup> startup_;
@@ -1373,7 +1373,7 @@ class DevMountPackagesTest : public ::testing::Test {
             });
   }
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   base::FilePath stateful_;
@@ -1472,7 +1472,7 @@ class RestoreContextsForVarTest : public ::testing::Test {
         std::move(tlcl));
   }
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   hwsec_foundation::MockTlclWrapper* tlcl_;
 
@@ -1521,7 +1521,7 @@ class RestorePreservedPathsTest : public ::testing::Test {
 
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  startup::Flags flags_;
+  startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   base::FilePath stateful_;
   hwsec_foundation::MockTlclWrapper* tlcl_;

@@ -76,7 +76,7 @@ class GetImageVarsTest : public ::testing::Test {
   }
 
   base::FilePath json_file_;
-  startup::Flags flags_;
+  startup::Flags flags_{};
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::FilePath base_dir{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
@@ -114,7 +114,7 @@ class Ext4FeaturesTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir, true);
   }
 
-  startup::Flags flags_;
+  startup::Flags flags_{};
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
   base::FilePath base_dir{"/"};
   std::unique_ptr<libstorage::FakePlatform> platform_;
@@ -254,7 +254,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
   base::FilePath base_dir{"/"};
   base::FilePath stateful;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  startup::Flags flags_;
+  startup::Flags flags_{};
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
@@ -370,7 +370,7 @@ class DevGatherLogsTest : public ::testing::Test {
   base::FilePath home_chronos_;
   std::unique_ptr<libstorage::FakePlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  startup::Flags flags_;
+  startup::Flags flags_{};
   std::unique_ptr<startup::StandardMountHelper> mount_helper_;
   std::unique_ptr<startup::StatefulMount> stateful_mount_;
 };
