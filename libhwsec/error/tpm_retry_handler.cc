@@ -10,8 +10,8 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
-#include "libhwsec/backend/pinweaver_manager/sync_hash_tree_types.h"
 #include "libhwsec/error/tpm_error.h"
+#include "libhwsec/middleware/function_name.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 
@@ -35,36 +35,62 @@ void TPMRetryHandler::DelayAndUpdate() {
 }
 
 template <>
-bool TPMRetryHandler::ReloadObject(hwsec::Backend& backend, const Key& key) {
+bool TPMRetryHandler::ReloadObject(hwsec::Backend& backend,
+                                   Metrics* metrics,
+                                   const Key& key) {
   auto* key_mgr = backend.Get<Backend::KeyManagement>();
   if (key_mgr == nullptr) {
     return false;
   }
-  if (Status status = key_mgr->ReloadIfPossible(key); !status.ok()) {
+
+  Status status = key_mgr->ReloadIfPossible(key);
+  if (metrics) {
+    metrics->SendFuncResultToUMA(
+        SimplifyFuncName(GetFuncName<&KeyManagement::ReloadIfPossible>()),
+        status);
+  }
+  if (!status.ok()) {
     LOG(WARNING) << "Failed to reload key parameter: " << status.status();
     return false;
   }
   return true;
 }
 
-bool TPMRetryHandler::FlushInvalidSessions(hwsec::Backend& backend) {
+bool TPMRetryHandler::FlushInvalidSessions(hwsec::Backend& backend,
+                                           Metrics* metrics) {
   auto* session_mgr = backend.Get<Backend::SessionManagement>();
   if (session_mgr == nullptr) {
     return false;
   }
-  if (Status status = session_mgr->FlushInvalidSessions(); !status.ok()) {
+
+  Status status = session_mgr->FlushInvalidSessions();
+  if (metrics) {
+    metrics->SendFuncResultToUMA(
+        SimplifyFuncName(
+            GetFuncName<&SessionManagement::FlushInvalidSessions>()),
+        status);
+  }
+  if (!status.ok()) {
     LOG(WARNING) << "Failed to flush invalid sessions: " << status.status();
     return false;
   }
   return true;
 }
 
-bool TPMRetryHandler::SyncPinWeaverHashTree(hwsec::Backend& backend) {
+bool TPMRetryHandler::SyncPinWeaverHashTree(hwsec::Backend& backend,
+                                            Metrics* metrics) {
   auto* pinweaver_manager = backend.Get<Backend::PinWeaverManager>();
   if (pinweaver_manager == nullptr) {
     return false;
   }
-  if (Status status = pinweaver_manager->SyncHashTree(); !status.ok()) {
+
+  Status status = pinweaver_manager->SyncHashTree();
+  if (metrics) {
+    metrics->SendFuncResultToUMA(
+        SimplifyFuncName(GetFuncName<&PinWeaverManager::SyncHashTree>()),
+        status);
+  }
+  if (!status.ok()) {
     LOG(WARNING) << "Failed to sync pinweaver hash tree: "
                  << status.err_status();
     return false;

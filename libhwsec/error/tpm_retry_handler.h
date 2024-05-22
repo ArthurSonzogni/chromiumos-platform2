@@ -14,6 +14,7 @@
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/error/tpm_error.h"
+#include "libhwsec/middleware/metrics.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 
@@ -31,7 +32,10 @@ class TPMRetryHandler {
   // Returns true when there is no need to retry anymore (the result is success
   // or there is no way to recover from this error).
   template <std::constructible_from<Status> Result, typename... Args>
-  bool HandleResult(Result& result, Backend& backend, const Args&... args) {
+  bool HandleResult(Result& result,
+                    Backend& backend,
+                    Metrics* metrics,
+                    const Args&... args) {
     using hwsec_foundation::status::MakeStatus;
     if (result.ok()) {
       return true;
@@ -51,15 +55,15 @@ class TPMRetryHandler {
       case TPMRetryAction::kSession:
       case TPMRetryAction::kLater:
         // Flush the invalid sessions.
-        retry |= FlushInvalidSessions(backend);
+        retry |= FlushInvalidSessions(backend, metrics);
 
         if (action == TPMRetryAction::kLater) {
           // fold expression with , operator.
-          ((retry |= ReloadObject(backend, args)), ...);
+          ((retry |= ReloadObject(backend, metrics, args)), ...);
         }
         break;
       case TPMRetryAction::kPinWeaverOutOfSync:
-        retry |= SyncPinWeaverHashTree(backend);
+        retry |= SyncPinWeaverHashTree(backend, metrics);
         break;
       case TPMRetryAction::kCommunication:
         retry = true;
@@ -83,17 +87,17 @@ class TPMRetryHandler {
 
   // Don't do anything by default.
   template <typename Arg>
-  bool ReloadObject(hwsec::Backend& backend, const Arg& key) {
+  bool ReloadObject(hwsec::Backend& backend, Metrics* metrics, const Arg& key) {
     return false;
   }
 
   // If the argument type is Key, use the specialization.
   template <>
-  bool ReloadObject(hwsec::Backend& backend, const Key& key);
+  bool ReloadObject(hwsec::Backend& backend, Metrics* metrics, const Key& key);
 
-  bool FlushInvalidSessions(hwsec::Backend& backend);
+  bool FlushInvalidSessions(hwsec::Backend& backend, Metrics* metrics);
 
-  bool SyncPinWeaverHashTree(hwsec::Backend& backend);
+  bool SyncPinWeaverHashTree(hwsec::Backend& backend, Metrics* metrics);
 
   int remaining_try_count_;
   base::TimeDelta current_delay_;

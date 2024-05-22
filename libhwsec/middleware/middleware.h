@@ -187,7 +187,7 @@ class Middleware {
       TrackFuncResult(GetFuncName<Func>(), middleware->GetMetrics(), result);
 
       if (retry_handler.HandleResult(result, *middleware->GetBackend(),
-                                     args...)) {
+                                     middleware->GetMetrics(), args...)) {
         return result;
       }
     }
@@ -265,6 +265,7 @@ class Middleware {
     TrackFuncResult(GetFuncName<Func>(), middleware->GetMetrics(), result);
 
     if (retry_handler->HandleResult(result, *middleware->GetBackend(),
+                                    middleware->GetMetrics(),
                                     std::get<I>(*args)...)) {
       std::move(callback).Run(std::move(result));
       return;
