@@ -98,17 +98,9 @@ bool BoolParameterValue(std::string_view parameter_name,
 }
 }  // namespace
 
+// Empty string indicates that all priorities are multigenerational by default.
 // static
-const char* MissiveArgs::kLegacyStorageEnabledDefault = []() {
-  static std::string priorities_list;
-  for (const auto& priority : StorageOptions::GetPrioritiesOrder()) {
-    if (!priorities_list.empty()) {
-      base::StrAppend(&priorities_list, {","});
-    }
-    base::StrAppend(&priorities_list, {Priority_Name_Substitute(priority)});
-  }
-  return priorities_list.c_str();
-}();
+const char* MissiveArgs::kLegacyStorageEnabledDefault = "";
 
 MissiveArgs::MissiveArgs(feature::PlatformFeaturesInterface* feature_lib)
     : feature_lib_(feature_lib),
