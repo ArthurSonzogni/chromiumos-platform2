@@ -760,7 +760,6 @@ void P2PDevice::TeardownGroup() {
   group_frequency_ = 0;
   group_passphrase_ = "";
   group_peers_.clear();
-  link_name_ = std::nullopt;
 
   DisconnectFromSupplicantGroupProxy();
   DisconnectFromSupplicantP2PDeviceProxy();
