@@ -114,20 +114,6 @@ message KeyDelegate {
   optional string dbus_object_path = 2;
 }
 
-message AuthorizationRequest {
-  // |key| must supply at least a |key.secret()|.  If no |key.data()| or
-  // |key.data().label()| is supplied, the |key.secret()| will be tested
-  // against all compatible |key.data().type()| keys, where
-  // KEY_TYPE_PASSWORD is the default type.  If
-  // |key.data().label()| is supplied, then the |key.secret()| will only be
-  // tested against the matching VaultKeyset.
-  optional Key key = 1;
-  // Describes delegate service that should be used for operations with the
-  // |key| key.
-  // Should be set only for keys with the |KEY_TYPE_CHALLENGE_RESPONSE| type.
-  optional KeyDelegate key_delegate = 2;
-}
-
 // Flags for GetFirmwareManagementParametersReply and
 // SetFirmwareManagementParametersRequest
 enum FirmwareManagementParametersFlags {
