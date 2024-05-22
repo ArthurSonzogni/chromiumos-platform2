@@ -49,12 +49,16 @@ int main(int argc, char** argv) {
   DEFINE_bool(factory_mode, false,
               "If set, run the daemon with factory config. "
               "Can only be set in dev mode.");
+  DEFINE_bool(enable_pending_landlock, false,
+              "If set, enable landlock on sandboxed processes pending "
+              "landlock protection.");
   brillo::FlagHelper::Init(
       argc, argv, "cros_healthd - Device telemetry and diagnostics daemon.");
 
   SetVerbosityLevel(FLAGS_verbosity);
 
   diagnostics::ServiceConfig service_config;
+  service_config.enable_pending_landlock = FLAGS_enable_pending_landlock;
   if (IsDevMode()) {
     service_config.test_cros_config = FLAGS_test_cros_config;
     service_config.factory_mode = FLAGS_factory_mode;

@@ -67,7 +67,8 @@ class SandboxedProcessTest : public testing::Test {
         .WillRepeatedly([&](const std::string& arg) {
           // These are minijail flags with string argument.
           const std::set<std::string> kMinijailStringArgFlags{
-              "-u", "-g", "-c", "-S", "-b", "-P", "-k"};
+              "-u", "-g", "-c",           "-S",          "-b",
+              "-P", "-k", "--fs-path-rw", "--fs-path-ro"};
           if (!has_minijail_bin_) {
             EXPECT_EQ(arg, kMinijailBinary);
             has_minijail_bin_ = true;
@@ -124,36 +125,44 @@ TEST_F(SandboxedProcessTest, Default) {
 
   SetUpExpectCallForMinijailParsing(process);
 
+  auto expected_minijail_arg_set = std::set<std::vector<std::string>>{
+      {"-P", "/mnt/empty"},
+      {"-v"},
+      {"-Kslave"},
+      {"-r"},
+      {"-l"},
+      {"-e"},
+      {"--uts"},
+      {"-u", kTestUser},
+      {"-g", kTestUser},
+      {"-G"},
+      {"-c", kTestCapabilitiesMaskHex},
+      {"-S", base::FilePath{kSeccompPolicyDirectory}
+                 .Append(kTestSeccompName)
+                 .value()},
+      {"-n"},
+      {"-b", kTestReadOnlyFile},
+      {"-b", kTestWritableFileMountFlag},
+      {"-b", "/"},
+      {"-b", "/dev/log"},
+      {"-d"},
+      {"-k", "tmpfs,/tmp,tmpfs"},
+      {"-k", "tmpfs,/proc,tmpfs"},
+      {"-k", "tmpfs,/run,tmpfs"},
+      {"-k", "tmpfs,/sys,tmpfs"},
+      {"-k", "tmpfs,/var,tmpfs"},
+      {"--fs-default-paths"},
+      {"--fs-path-ro", kTestReadOnlyFile},
+      {"--fs-path-rw", kTestWritableFile},
+  };
+  for (const auto& mount_dev_node : kMountDevNodes) {
+    expected_minijail_arg_set.insert(
+        {"--fs-path-rw", std::string(mount_dev_node)});
+  }
+
   EXPECT_TRUE(process.Start());
   EXPECT_EQ(cmd_, expected_cmd);
-  EXPECT_EQ(minijail_args_set_,
-            (std::set<std::vector<std::string>>{
-                {"-P", "/mnt/empty"},
-                {"-v"},
-                {"-Kslave"},
-                {"-r"},
-                {"-l"},
-                {"-e"},
-                {"--uts"},
-                {"-u", kTestUser},
-                {"-g", kTestUser},
-                {"-G"},
-                {"-c", kTestCapabilitiesMaskHex},
-                {"-S", base::FilePath{kSeccompPolicyDirectory}
-                           .Append(kTestSeccompName)
-                           .value()},
-                {"-n"},
-                {"-b", kTestReadOnlyFile},
-                {"-b", kTestWritableFileMountFlag},
-                {"-b", "/"},
-                {"-b", "/dev/log"},
-                {"-d"},
-                {"-k", "tmpfs,/tmp,tmpfs"},
-                {"-k", "tmpfs,/proc,tmpfs"},
-                {"-k", "tmpfs,/run,tmpfs"},
-                {"-k", "tmpfs,/sys,tmpfs"},
-                {"-k", "tmpfs,/var,tmpfs"},
-            }));
+  EXPECT_EQ(minijail_args_set_, expected_minijail_arg_set);
 }
 
 TEST_F(SandboxedProcessTest, NoNetworkNamespace) {
@@ -263,6 +272,42 @@ TEST_F(SandboxedProcessTest, FailToStartOnMissingRequiredMountPoint) {
       .WillByDefault(Return(false));
 
   EXPECT_FALSE(process.Start());
+}
+
+// Landlock is not applied if .enable_landlock is false.
+TEST_F(SandboxedProcessTest, DisableLandlockFeature) {
+  std::vector<std::string> expected_cmd{"ls", "-al"};
+  MockSandboxedProcess process{/*command=*/expected_cmd,
+                               /*seccomp_filename=*/kTestSeccompName,
+                               /*options=*/
+                               SandboxedProcess::Options{
+                                   .enable_landlock = false,
+                               }};
+
+  SetUpExpectCallForMinijailParsing(process);
+
+  EXPECT_TRUE(process.Start());
+  EXPECT_EQ(cmd_, expected_cmd);
+  EXPECT_THAT(minijail_args_set_,
+              Not(Contains(std::vector<std::string>{"--fs-default-paths"})));
+}
+
+// Landlock is applied if .enable_landlock is true.
+TEST_F(SandboxedProcessTest, EnableLandlockFeature) {
+  std::vector<std::string> expected_cmd{"ls", "-al"};
+  MockSandboxedProcess process{/*command=*/expected_cmd,
+                               /*seccomp_filename=*/kTestSeccompName,
+                               /*options=*/
+                               SandboxedProcess::Options{
+                                   .enable_landlock = true,
+                               }};
+
+  SetUpExpectCallForMinijailParsing(process);
+
+  EXPECT_TRUE(process.Start());
+  EXPECT_EQ(cmd_, expected_cmd);
+  EXPECT_THAT(minijail_args_set_,
+              Contains(std::vector<std::string>{"--fs-default-paths"}));
 }
 
 }  // namespace

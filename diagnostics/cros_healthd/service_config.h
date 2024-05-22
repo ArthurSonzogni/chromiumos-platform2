@@ -13,6 +13,8 @@ struct ServiceConfig {
   bool test_cros_config = false;
   // If set, run the service with factory config.
   bool factory_mode = false;
+  // If set, enable landlock protection on sandboxed processes.
+  bool enable_pending_landlock = false;
 };
 
 }  // namespace diagnostics

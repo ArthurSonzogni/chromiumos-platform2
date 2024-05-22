@@ -262,7 +262,8 @@ Executor::Executor(
     : mojo_task_runner_(mojo_task_runner),
       receiver_{this /* impl */, std::move(receiver)},
       process_reaper_(process_reaper),
-      skip_sandbox_(service_config.factory_mode) {
+      skip_sandbox_(service_config.factory_mode),
+      enable_pending_landlock_(service_config.enable_pending_landlock) {
   receiver_.set_disconnect_handler(std::move(on_disconnect));
 
   // Initialize the D-Bus connection.
@@ -319,6 +320,7 @@ void Executor::GetAllFanSpeed(GetAllFanSpeedCallback callback) {
                               .user = user::kEc,
                               .mount_points = {MountPoint{
                                   .path = base::FilePath{path::kCrosEcDevice}}},
+                              .enable_landlock = enable_pending_landlock_,
                           });
 
   auto* delegate_ptr = delegate.get();
@@ -371,6 +373,7 @@ void Executor::RunIw(IwCommand cmd,
   auto process = CreateProcess(command, seccomp_file::kIw,
                                SandboxedProcess::Options{
                                    .enter_network_namespace = false,
+                                   .enable_landlock = enable_pending_landlock_,
                                });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
@@ -387,6 +390,7 @@ void Executor::RunMemtester(
       CreateProcess(command, seccomp_file::kMemtester,
                     SandboxedProcess::Options{
                         .capabilities_mask = CAP_TO_MASK(CAP_IPC_LOCK),
+                        .enable_landlock = enable_pending_landlock_,
                     });
 
   RunLongRunningProcess(std::move(process), std::move(receiver),
@@ -450,6 +454,7 @@ void Executor::GetLidAngle(GetLidAngleCallback callback) {
                                 .mount_points = {MountPoint{
                                     .path = base::FilePath{path::kCrosEcDevice},
                                 }},
+                                .enable_landlock = enable_pending_landlock_,
                             });
 
   auto* delegate_ptr = delegate.get();
@@ -460,13 +465,16 @@ void Executor::GetLidAngle(GetLidAngleCallback callback) {
 
 void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
                                    GetFingerprintFrameCallback callback) {
-  auto delegate = CreateDelegateProcess(
-      seccomp_file::kFingerprint,
-      SandboxedProcess::Options{.user = user::kFingerprint,
+  auto delegate =
+      CreateDelegateProcess(seccomp_file::kFingerprint,
+                            SandboxedProcess::Options{
+                                .user = user::kFingerprint,
                                 .mount_points = {MountPoint{
                                     .path = base::FilePath{path::kCrosFpDevice},
                                     .writable = true,
-                                }}});
+                                }},
+                                .enable_landlock = enable_pending_landlock_,
+                            });
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetFingerprintFrame(
@@ -477,13 +485,16 @@ void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
 }
 
 void Executor::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
-  auto delegate = CreateDelegateProcess(
-      seccomp_file::kFingerprint,
-      SandboxedProcess::Options{.user = user::kFingerprint,
+  auto delegate =
+      CreateDelegateProcess(seccomp_file::kFingerprint,
+                            SandboxedProcess::Options{
+                                .user = user::kFingerprint,
                                 .mount_points = {MountPoint{
                                     .path = base::FilePath{path::kCrosFpDevice},
                                     .writable = true,
-                                }}});
+                                }},
+                                .enable_landlock = enable_pending_landlock_,
+                            });
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetFingerprintInfo(CreateOnceDelegateCallback(
@@ -501,13 +512,15 @@ void Executor::GetPsr(GetPsrCallback callback) {
   }
 
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kPsr,
-      SandboxedProcess::Options{.user = user::kPsr,
-                                .mount_points = {MountPoint{
-                                    .path = paths::dev::kMei0.ToFull(),
-                                    .writable = true,
-                                    .is_required = true,
-                                }}});
+      seccomp_file::kPsr, SandboxedProcess::Options{
+                              .user = user::kPsr,
+                              .mount_points = {MountPoint{
+                                  .path = paths::dev::kMei0.ToFull(),
+                                  .writable = true,
+                                  .is_required = true,
+                              }},
+                              .enable_landlock = enable_pending_landlock_,
+                          });
 
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetPsr(CreateOnceDelegateCallback(
@@ -548,6 +561,7 @@ void Executor::SetLedColor(mojom::LedName name,
                               .mount_points = {MountPoint{
                                   .path = base::FilePath{path::kCrosEcDevice},
                               }},
+                              .enable_landlock = enable_pending_landlock_,
                           });
 
   auto* delegate_ptr = delegate.get();
@@ -565,6 +579,7 @@ void Executor::ResetLedColor(mojom::LedName name,
                               .user = user::kEc,
                               .mount_points = {MountPoint{
                                   .path = base::FilePath{path::kCrosEcDevice}}},
+                              .enable_landlock = enable_pending_landlock_,
                           });
 
   auto* delegate_ptr = delegate.get();
@@ -581,6 +596,7 @@ void Executor::GetHciDeviceConfig(int32_t hci_interface,
   auto process = CreateProcess(command, seccomp_file::kHciconfig,
                                SandboxedProcess::Options{
                                    .enter_network_namespace = false,
+                                   .enable_landlock = enable_pending_landlock_,
                                });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
@@ -596,6 +612,7 @@ void Executor::MonitorAudioJack(
                                 .mount_points = {MountPoint{
                                     .path = base::FilePath{path::kInputDevice},
                                 }},
+                                .enable_landlock = enable_pending_landlock_,
                             });
 
   delegate->remote()->MonitorAudioJack(std::move(observer));
@@ -618,6 +635,7 @@ void Executor::MonitorTouchpad(
                                 .mount_points = {MountPoint{
                                     .path = base::FilePath{path::kInputDevice},
                                 }},
+                                .enable_landlock = enable_pending_landlock_,
                             });
 
   delegate->remote()->MonitorTouchpad(std::move(observer));
@@ -650,6 +668,7 @@ void Executor::RunStressAppTest(
       CreateProcess(command, seccomp_file::kStressAppTest,
                     SandboxedProcess::Options{
                         .capabilities_mask = CAP_TO_MASK(CAP_IPC_LOCK),
+                        .enable_landlock = enable_pending_landlock_,
                     });
 
   RunLongRunningProcess(std::move(process), std::move(receiver),
@@ -668,6 +687,7 @@ void Executor::FetchBootPerformance(FetchBootPerformanceCallback callback) {
                   MountPoint{.path = base::FilePath{path::kShutdownMetrics}},
                   MountPoint{.path = base::FilePath{path::kBootstatDir}},
               },
+          .enable_landlock = enable_pending_landlock_,
       });
 
   auto* delegate_ptr = delegate.get();
@@ -687,6 +707,7 @@ void Executor::MonitorTouchscreen(
           .user = user::kEvdev,
           .mount_points = {MountPoint{.path =
                                           base::FilePath{path::kInputDevice}}},
+          .enable_landlock = enable_pending_landlock_,
       });
 
   delegate->remote()->MonitorTouchscreen(std::move(observer));
@@ -709,6 +730,7 @@ void Executor::MonitorStylusGarage(
           .user = user::kEvdev,
           .mount_points = {MountPoint{.path =
                                           base::FilePath{path::kInputDevice}}},
+          .enable_landlock = enable_pending_landlock_,
       });
 
   delegate->remote()->MonitorStylusGarage(std::move(observer));
@@ -731,6 +753,7 @@ void Executor::MonitorStylus(
           .user = user::kEvdev,
           .mount_points = {MountPoint{.path =
                                           base::FilePath{path::kInputDevice}}},
+          .enable_landlock = enable_pending_landlock_,
       });
 
   delegate->remote()->MonitorStylus(std::move(observer));
@@ -785,6 +808,7 @@ void Executor::RunFioWithDlcRoot(
                                SandboxedProcess::Options{
                                    .mount_points = mount_points,
                                    .mount_dlc = true,
+                                   .enable_landlock = enable_pending_landlock_,
                                });
   RunLongRunningProcess(std::move(process), std::move(receiver),
                         /*combine_stdout_and_stderr=*/false);
@@ -799,6 +823,7 @@ void Executor::RemoveFioTestFile(RemoveFioTestFileCallback callback) {
               .path = base::FilePath(path::kFioCacheFile).DirName(),
               .writable = true,
           }},
+          .enable_landlock = enable_pending_landlock_,
       });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
@@ -814,6 +839,7 @@ void Executor::MonitorPowerButton(
           .user = user::kEvdev,
           .mount_points = {MountPoint{.path =
                                           base::FilePath{path::kInputDevice}}},
+          .enable_landlock = enable_pending_landlock_,
       });
 
   delegate->remote()->MonitorPowerButton(std::move(observer));
@@ -832,8 +858,11 @@ void Executor::RunPrimeSearch(
     uint64_t max_num,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver,
     RunPrimeSearchCallback callback) {
-  auto delegate = CreateDelegateProcess(seccomp_file::kPrimeSearch,
-                                        SandboxedProcess::Options{});
+  auto delegate =
+      CreateDelegateProcess(seccomp_file::kPrimeSearch,
+                            SandboxedProcess::Options{
+                                .enable_landlock = enable_pending_landlock_,
+                            });
   delegate->remote()->RunPrimeSearch(
       exec_duration, max_num,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
@@ -856,6 +885,7 @@ void Executor::MonitorVolumeButton(
           .user = user::kEvdev,
           .mount_points = {MountPoint{.path =
                                           base::FilePath{path::kInputDevice}}},
+          .enable_landlock = enable_pending_landlock_,
       });
 
   delegate->remote()->MonitorVolumeButton(std::move(observer));
@@ -873,8 +903,11 @@ void Executor::RunFloatingPoint(
     base::TimeDelta exec_duration,
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver,
     RunFloatingPointCallback callback) {
-  auto delegate = CreateDelegateProcess(seccomp_file::kFloatingPoint,
-                                        SandboxedProcess::Options{});
+  auto delegate =
+      CreateDelegateProcess(seccomp_file::kFloatingPoint,
+                            SandboxedProcess::Options{
+                                .enable_landlock = enable_pending_landlock_,
+                            });
   delegate->remote()->RunFloatingPoint(
       exec_duration,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
@@ -903,6 +936,7 @@ void Executor::StartBtmon(
               .writable = true,
           }},
           .enter_network_namespace = false,
+          .enable_landlock = enable_pending_landlock_,
       });
 
   RunLongRunningProcess(std::move(process), std::move(receiver),
@@ -919,6 +953,7 @@ void Executor::ReadBtmonLog(ReadBtmonLogCallback callback) {
                     SandboxedProcess::Options{
                         .mount_points = {MountPoint{
                             .path = base::FilePath{path::kBtmonLogFile}}},
+                        .enable_landlock = enable_pending_landlock_,
                     });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
@@ -934,6 +969,7 @@ void Executor::RemoveBtmonLog(RemoveBtmonLogCallback callback) {
               .path = base::FilePath(path::kBtmonLogFile).DirName(),
               .writable = true,
           }},
+          .enable_landlock = enable_pending_landlock_,
       });
 
   RunAndWaitProcess(std::move(process), std::move(callback),
@@ -991,10 +1027,15 @@ void Executor::GetConnectedExternalDisplayConnectors(
     const std::optional<std::vector<uint32_t>>& last_known_connectors,
     GetConnectedExternalDisplayConnectorsCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kDrm, SandboxedProcess::Options{
-                              .mount_points = {MountPoint{
-                                  .path = base::FilePath{path::kDrmDevice}}},
-                          });
+      seccomp_file::kDrm,
+      SandboxedProcess::Options{
+          .mount_points = {MountPoint{
+              .path = base::FilePath{path::kDrmDevice},
+              // DRM device is opened with RW flag even if not written to.
+              .writable = true,
+          }},
+          .enable_landlock = enable_pending_landlock_,
+      });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetConnectedExternalDisplayConnectors(
       last_known_connectors,
@@ -1007,10 +1048,15 @@ void Executor::GetConnectedExternalDisplayConnectors(
 
 void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kDrm, SandboxedProcess::Options{
-                              .mount_points = {MountPoint{
-                                  .path = base::FilePath{path::kDrmDevice}}},
-                          });
+      seccomp_file::kDrm,
+      SandboxedProcess::Options{
+          .mount_points = {MountPoint{
+              .path = base::FilePath{path::kDrmDevice},
+              // DRM device is opened with RW flag even if not written to.
+              .writable = true,
+          }},
+          .enable_landlock = enable_pending_landlock_,
+      });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetPrivacyScreenInfo(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
@@ -1020,10 +1066,15 @@ void Executor::GetPrivacyScreenInfo(GetPrivacyScreenInfoCallback callback) {
 
 void Executor::FetchDisplayInfo(FetchDisplayInfoCallback callback) {
   auto delegate = CreateDelegateProcess(
-      seccomp_file::kDrm, SandboxedProcess::Options{
-                              .mount_points = {MountPoint{
-                                  .path = base::FilePath{path::kDrmDevice}}},
-                          });
+      seccomp_file::kDrm,
+      SandboxedProcess::Options{
+          .mount_points = {MountPoint{
+              .path = base::FilePath{path::kDrmDevice},
+              // DRM device is opened with RW flag even if not written to.
+              .writable = true,
+          }},
+          .enable_landlock = enable_pending_landlock_,
+      });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->FetchDisplayInfo(CreateOnceDelegateCallback(
       std::move(delegate), std::move(callback),
@@ -1040,6 +1091,7 @@ void Executor::SetFanSpeed(
                               .user = user::kEc,
                               .mount_points = {MountPoint{
                                   .path = base::FilePath{path::kCrosEcDevice}}},
+                              .enable_landlock = enable_pending_landlock_,
                           });
 
   auto* delegate_ptr = delegate.get();
@@ -1056,6 +1108,7 @@ void Executor::SetAllFanAutoControl(SetAllFanAutoControlCallback callback) {
                               .user = user::kEc,
                               .mount_points = {MountPoint{
                                   .path = base::FilePath{path::kCrosEcDevice}}},
+                              .enable_landlock = enable_pending_landlock_,
                           });
 
   auto* delegate_ptr = delegate.get();
@@ -1076,6 +1129,7 @@ void Executor::GetTouchpadDevices(GetTouchpadDevicesCallback callback) {
                MountPoint{.path = base::FilePath{"/sys/dev"}},
                MountPoint{.path = base::FilePath{"/sys/bus"}},
                MountPoint{.path = base::FilePath{"/sys/class"}}},
+          .enable_landlock = enable_pending_landlock_,
       });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->GetTouchpadDevices(CreateOnceDelegateCallback(
@@ -1091,6 +1145,7 @@ void Executor::GetEcThermalSensors(GetEcThermalSensorsCallback callback) {
           .user = user::kEc,
           .mount_points = {MountPoint{.path =
                                           base::FilePath{path::kCrosEcDevice}}},
+          .enable_landlock = enable_pending_landlock_,
       });
 
   auto* delegate_ptr = delegate.get();
@@ -1108,6 +1163,7 @@ void Executor::GetSmartBatteryManufactureDate(
           .user = user::kEc,
           .mount_points = {MountPoint{.path =
                                           base::FilePath{path::kCrosEcDevice}}},
+          .enable_landlock = enable_pending_landlock_,
       });
 
   auto* delegate_ptr = delegate.get();
@@ -1125,6 +1181,7 @@ void Executor::GetSmartBatteryTemperature(
           .user = user::kEc,
           .mount_points = {MountPoint{.path =
                                           base::FilePath{path::kCrosEcDevice}}},
+          .enable_landlock = enable_pending_landlock_,
       });
 
   auto* delegate_ptr = delegate.get();
@@ -1157,7 +1214,9 @@ void Executor::RunUrandom(
     mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver,
     RunUrandomCallback callback) {
   auto delegate = std::make_unique<DelegateProcess>(
-      seccomp_file::kUrandom, SandboxedProcess::Options{});
+      seccomp_file::kUrandom, SandboxedProcess::Options{
+                                  .enable_landlock = enable_pending_landlock_,
+                              });
   delegate->remote()->RunUrandom(
       exec_duration,
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
@@ -1184,6 +1243,7 @@ void Executor::RunNetworkBandwidthTest(
       SandboxedProcess::Options{
           .mount_points = {MountPoint{.path = paths::run::kDnsProxy.ToFull()}},
           .enter_network_namespace = false,
+          .enable_landlock = enable_pending_landlock_,
       });
   delegate->remote()->RunNetworkBandwidthTest(
       type, oem_name, std::move(observer),
@@ -1205,11 +1265,27 @@ void Executor::FetchGraphicsInfo(FetchGraphicsInfoCallback callback) {
       SandboxedProcess::Options{
           .mount_points =
               {
-                  MountPoint{.path = base::FilePath{path::kDrmDevice}},
-                  MountPoint{.path = base::FilePath{path::kArmGraphicsDevice}},
+                  MountPoint{
+                      .path = base::FilePath{path::kDrmDevice},
+                      // DRM device is opened with RW flag even if not written
+                      // to.
+                      .writable = true,
+                  },
+                  MountPoint{
+                      .path = base::FilePath{path::kArmGraphicsDevice},
+                      // EGL opens the device with RW mode even if no write
+                      // operation is performed.
+                      .writable = true,
+                  },
                   MountPoint{.path = base::FilePath{"/sys/dev"}},
                   MountPoint{.path = base::FilePath{"/sys/devices"}},
+                  MountPoint{
+                      // EglManager initialization needs to access
+                      // `/usr/share/glvnd/egl_vendor.d` on some boards.
+                      .path = base::FilePath{"/usr/share"},
+                  },
               },
+          .enable_landlock = enable_pending_landlock_,
       });
   auto* delegate_ptr = delegate.get();
   delegate_ptr->remote()->FetchGraphicsInfo(CreateOnceDelegateCallback(

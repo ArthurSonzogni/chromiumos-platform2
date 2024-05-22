@@ -19,6 +19,12 @@ inline constexpr char kCrosHealthdSandboxUser[] = "cros_healthd";
 inline constexpr char kMinijailBinary[] = "/sbin/minijail0";
 inline constexpr char kSeccompPolicyDirectory[] = "/usr/share/policy/";
 
+// List of dev paths that are mounted by --mount-dev option of minijail.
+inline constexpr std::string_view kMountDevNodes[] = {
+    "/dev/full",  "/dev/null",   "/dev/tty",  "/dev/urandom",
+    "/dev/zero",  "/dev/fd",     "/dev/ptmx", "/dev/stderr",
+    "/dev/stdin", "/dev/stdout", "/dev/shm"};
+
 // Runs a command under minijail.
 //
 // The arguments:
@@ -53,6 +59,7 @@ class SandboxedProcess : public brillo::ProcessImpl {
   //     |false|.
   // * |skip_sandbox|: Skip putting the process into the sandbox. This is only
   //     allowed in dev mode or factory flow. Default to |false|.
+  // * |enable_landlock|: Whether landlock on this process is enabled.
   struct Options {
     std::string user = kCrosHealthdSandboxUser;
     uint64_t capabilities_mask = 0;
@@ -60,6 +67,9 @@ class SandboxedProcess : public brillo::ProcessImpl {
     bool enter_network_namespace = true;
     bool mount_dlc = false;
     bool skip_sandbox = false;
+    // TODO(b/332472364): Remove these argument and enable landlock in all
+    // processes once tests are stable.
+    bool enable_landlock = true;
   };
 
   SandboxedProcess(const std::vector<std::string>& command,
@@ -114,6 +124,8 @@ class SandboxedProcess : public brillo::ProcessImpl {
   std::vector<std::string> command_;
   // The paths to be mounted.
   std::vector<MountPoint> mount_points_;
+  // Whether to enable landlock protection.
+  bool enable_landlock_;
   // Whether to skip the sandbox.
   bool skip_sandbox_ = false;
 };

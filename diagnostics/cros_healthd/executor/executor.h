@@ -247,6 +247,9 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   // Whether to override the sandboxing option when creating the processes.
   bool skip_sandbox_ = false;
 
+  // Whether to enable landlock protection when creating the processes.
+  bool enable_pending_landlock_ = false;
+
   // Must be the last member of the class.
   base::WeakPtrFactory<Executor> weak_factory_{this};
 };

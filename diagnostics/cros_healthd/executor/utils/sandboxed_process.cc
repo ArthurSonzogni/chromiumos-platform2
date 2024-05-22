@@ -79,6 +79,7 @@ SandboxedProcess::SandboxedProcess(const std::vector<std::string>& command,
                                    const Options& options)
     : command_(command),
       mount_points_(options.mount_points),
+      enable_landlock_(options.enable_landlock),
       skip_sandbox_(options.skip_sandbox) {
   // Per our security requirement, it is not allowed to invoke a sandboxed
   // process as root. In addition, minijail would refuse to start the subprocess
@@ -274,6 +275,17 @@ int SandboxedProcess::KillJailedProcess(int signal, base::TimeDelta timeout) {
 
 // Prepares some arguments which need to be handled before use.
 bool SandboxedProcess::PrepareSandboxArguments() {
+  if (enable_landlock_) {
+    sandbox_arguments_.push_back("--fs-default-paths");
+
+    // Apply landlock option to `/dev` subdirectories that are bind-mounted by
+    // --mount-dev option.
+    for (const auto& mount_dev_node : kMountDevNodes) {
+      sandbox_arguments_.push_back("--fs-path-rw");
+      sandbox_arguments_.push_back(std::string(mount_dev_node));
+    }
+  }
+
   for (const MountPoint& mount_point : mount_points_) {
     if (!IsPathExists(mount_point.path)) {
       if (mount_point.is_required) {
@@ -285,6 +297,8 @@ bool SandboxedProcess::PrepareSandboxArguments() {
                  << mount_point.path;
       continue;
     }
+
+    // Bind mount arguments, must be included for process access to the files.
     sandbox_arguments_.push_back("-b");
     if (mount_point.writable) {
       sandbox_arguments_.push_back(mount_point.path.value() + "," +
@@ -292,7 +306,19 @@ bool SandboxedProcess::PrepareSandboxArguments() {
     } else {
       sandbox_arguments_.push_back(mount_point.path.value());
     }
+
+    // Landlock arguments, provide an additional layer of security on top of
+    // bind-mount. This argument will have no effect in kernel version < 5.10.
+    if (enable_landlock_) {
+      if (mount_point.writable) {
+        sandbox_arguments_.push_back("--fs-path-rw");
+      } else {
+        sandbox_arguments_.push_back("--fs-path-ro");
+      }
+      sandbox_arguments_.push_back(mount_point.path.value());
+    }
   }
+
   return true;
 }
 
