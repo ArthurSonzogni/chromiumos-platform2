@@ -33,9 +33,6 @@ const char sti_models[] =
     "HP Compaq 8000 Elite\n"
     "ThinkCentre M93\n"
     "ProDesk 600 G1\n";
-const char external_display_models[] =
-    "HP Engage Go 13.5 inch Mobile System\n"
-    "board_name:valA, product_family:valB\n";
 constexpr std::string_view valid_battery_type = "Battery";
 constexpr std::string_view invalid_battery_type = "Wireless";
 constexpr std::string_view valid_battery_uevent_file =
@@ -64,7 +61,6 @@ class MachineQuirksTest : public TestEnvironment {
     // Set up mock pref device lists
     prefs_.SetString(kSuspendPreventionListPref, sp_models);
     prefs_.SetString(kSuspendToIdleListPref, sti_models);
-    prefs_.SetString(kExternalDisplayOnlyListPref, external_display_models);
 
     // Set up mock prefs default values
     prefs_.SetInt64(kHasMachineQuirksPref, 1);
@@ -131,20 +127,17 @@ TEST_F(MachineQuirksTest, IsSuspendBlockedFalse) {
   EXPECT_EQ(false, machine_quirks_.IsSuspendBlocked());
 }
 
-// Test that IsExternalDisplayOnly is true when the dmi value is a match
+// Test that IsExternalDisplayOnly is true when the device is a desktop
 TEST_F(MachineQuirksTest, IsExternalDisplayOnlyTrue) {
   // Test for the case when there are multiple dmi values
-  CreateDmiFile("board_name", "valA");
-  CreateDmiFile("product_family", "valB");
+  CreateDmiFile("chassis_type", "3");
   EXPECT_EQ(true, machine_quirks_.IsExternalDisplayOnly());
 }
 
-// Test that IsExternalDisplayOnly is false when there is a mismatch
+// Test that IsExternalDisplayOnly is false when the device is a laptop
 TEST_F(MachineQuirksTest, IsExternalDisplayOnlyFalse) {
-  // Test for the case of a partial mismatch
   EXPECT_EQ(false, machine_quirks_.IsExternalDisplayOnly());
-  CreateDmiFile("board_name", "valA");
-  CreateDmiFile("product_family", "foo");
+  CreateDmiFile("chassis_type", "9");
   EXPECT_EQ(false, machine_quirks_.IsExternalDisplayOnly());
 }
 
@@ -278,10 +271,9 @@ TEST_F(MachineQuirksTest, ApplyQuirksToPrefsWhenIsSuspendToIdle) {
   EXPECT_EQ(1, suspend_to_idle_pref);
 }
 
-// Testing that the correct pref is set when there's a external display only
-// match
+// Testing that the correct pref is set on desktops
 TEST_F(MachineQuirksTest, ApplyQuirksToPrefsWhenIsExternalDisplayOnly) {
-  CreateDmiFile("product_name", "HP Engage Go 13.5 inch Mobile System");
+  CreateDmiFile("chassis_type", "3");
   machine_quirks_.ApplyQuirksToPrefs();
 
   int64_t disable_idle_suspend_pref = 2;

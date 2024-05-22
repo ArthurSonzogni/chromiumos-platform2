@@ -12,6 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/pattern.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <re2/re2.h>
@@ -29,6 +30,9 @@ const base::FilePath kDefaultDmiIdDir("/sys/class/dmi/id/");
 // Name of product name file for special suspend workarounds.
 constexpr std::string_view kDefaultProductNameFile = "product_name";
 
+// Name of chassis type file for special suspend workarounds.
+constexpr std::string_view kChassisTypeFile = "chassis_type";
+
 // File containing the product names that require suspend-to-idle.
 const base::FilePath kPowerManagerSuspendToIdleFile("suspend_to_idle_models");
 
@@ -42,6 +46,9 @@ constexpr std::string_view kAcpiGenericBatteryDriver = "battery";
 // https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-power
 constexpr std::string_view kBatteryType = "Battery";
 constexpr std::string_view kDeviceScope = "Device";
+
+enum ChassisTypeDMI { Desktop = 3, MiniTower = 6, MiniPC = 35, StickPC = 36 };
+
 }  // namespace
 
 MachineQuirks::MachineQuirks()
@@ -121,14 +128,43 @@ bool MachineQuirks::IsSuspendToIdle() {
 bool MachineQuirks::IsExternalDisplayOnly() {
   CHECK(prefs_) << "MachineQuirks::Init() wasn't called";
 
+  std::string chassis_type_str;
   std::string external_display_only_ids_pref;
+  int chassis_type;
+
   // Read external_display_only ids pref.
-  if (!prefs_->GetString(kExternalDisplayOnlyListPref,
-                         &external_display_only_ids_pref))
+  if (prefs_->GetString(kExternalDisplayOnlyListPref,
+                        &external_display_only_ids_pref)) {
+    // Check if device is manually set to screen-off
+    if (ContainsDMIMatch(external_display_only_ids_pref)) {
+      LOG(INFO) << "Device is external display only.";
+      return true;
+    }
+  }
+
+  if (!ReadDMIValFromFile(kChassisTypeFile, &chassis_type_str)) {
+    return false;
+  }
+
+  if (!base::StringToInt(chassis_type_str, &chassis_type))
     return false;
 
-  if (ContainsDMIMatch(external_display_only_ids_pref))
-    return true;
+  // Check device is a desktop, or some other form factor that requires an
+  // external monitor.
+  switch (chassis_type) {
+    case ChassisTypeDMI::Desktop:
+      LOG(INFO) << "Device is a desktop.";
+      return true;
+    case ChassisTypeDMI::MiniTower:
+      LOG(INFO) << "Device is a Mini Tower.";
+      return true;
+    case ChassisTypeDMI::MiniPC:
+      LOG(INFO) << "Device is a Mini PC.";
+      return true;
+    case ChassisTypeDMI::StickPC:
+      LOG(INFO) << "Device is a Stick PC.";
+      return true;
+  }
 
   // Normal case, no quirk is required.
   return false;
