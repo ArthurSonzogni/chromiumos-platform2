@@ -6,6 +6,8 @@
 
 #include "cros-camera/camera_buffer_utils.h"
 
+#include <hardware/camera3.h>
+
 #include <fstream>
 #include <iostream>
 
@@ -77,17 +79,28 @@ bool WriteBufferIntoFile(buffer_handle_t buffer, base::FilePath file_to_write) {
     return false;
   }
 
-  // We currently support NV12 format only.
-  CHECK_EQ(mapping.drm_format(), DRM_FORMAT_NV12);
-  for (size_t p = 0; p < mapping.num_planes(); ++p) {
-    auto plane = mapping.plane(p);
-    const uint32_t plane_height =
-        (p == 0) ? mapping.height() : mapping.height() / 2;
-    for (uint32_t row = 0; row < plane_height; ++row) {
-      output_file.write(
-          reinterpret_cast<const char*>(plane.addr + row * plane.stride),
-          mapping.width());
+  if (mapping.drm_format() == DRM_FORMAT_R8) {
+    // JPEG blob.
+    const char* data = reinterpret_cast<const char*>(mapping.plane(0).addr);
+    const camera3_jpeg_blob_t* jpeg_blob =
+        reinterpret_cast<const camera3_jpeg_blob_t*>(
+            data + mapping.plane(0).size - sizeof(camera3_jpeg_blob_t));
+    CHECK_EQ(jpeg_blob->jpeg_blob_id, CAMERA3_JPEG_BLOB_ID);
+    output_file.write(data, jpeg_blob->jpeg_size);
+  } else if (mapping.drm_format() == DRM_FORMAT_NV12) {
+    for (size_t p = 0; p < mapping.num_planes(); ++p) {
+      auto plane = mapping.plane(p);
+      const uint32_t plane_height =
+          (p == 0) ? mapping.height() : mapping.height() / 2;
+      for (uint32_t row = 0; row < plane_height; ++row) {
+        output_file.write(
+            reinterpret_cast<const char*>(plane.addr + row * plane.stride),
+            mapping.width());
+      }
     }
+  } else {
+    LOGF(ERROR) << "Unsupported buffer format: " << mapping.drm_format();
+    return false;
   }
   output_file.close();
 

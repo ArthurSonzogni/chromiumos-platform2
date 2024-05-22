@@ -295,6 +295,7 @@ source_set("v4l2_device") {
 
 source_set("stream_manipulator") {
   sources = [
+    "//camera/common/buffer_dumper_stream_manipulator.cc",
     "//camera/common/capture_result_sequencer.cc",
     "//camera/common/framing_stream_manipulator.cc",
     "//camera/common/still_capture_processor_impl.cc",
