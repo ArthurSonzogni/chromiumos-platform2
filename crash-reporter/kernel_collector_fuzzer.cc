@@ -108,7 +108,7 @@ class KernelCollectorForFuzzing : public KernelCollector {
     OverridePreservedDumpPath(kcrash_dir);
 
     CollectEfiCrashes(/*use_saved_lsb=*/false);
-    CollectRamoopsCrash(/*use_saved_lsb=*/false);
+    CollectRamoopsCrashes(/*use_saved_lsb=*/false);
 
     return 0;
   }

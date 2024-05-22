@@ -399,9 +399,10 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashSkipOops) {
   std::string contents = "<6>[    0.078852] some oops record";
   ASSERT_TRUE(test_util::CreateFile(ramoops_file(0),
                                     StrCat({"Oops#1 Part#10\n", contents})));
+
   // TODO(swboyd): Change expected collection status once oops are skipped.
-  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory(), "kernel.*.kcrash", contents));
   EXPECT_FALSE(base::PathExists(ramoops_file(0)));
@@ -412,8 +413,9 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashSinglePanic) {
   ASSERT_TRUE(test_util::CreateFile(
       ramoops_file(0),
       StrCat({"Panic#2 Part#3\n", kSuccessfulCollectContents})));
-  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory(), "kernel.*.kcrash", kSuccessfulCollectContents));
   EXPECT_FALSE(base::PathExists(ramoops_file(0)));
@@ -423,8 +425,9 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashRandomBlob) {
   collector_.set_crash_directory_for_test(test_crash_directory());
   ASSERT_TRUE(
       test_util::CreateFile(ramoops_file(0), "\x01\x02\xfe\xff random blob"));
-  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kNoCrashFound);
+
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kNoCrashFound));
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory(), "kernel.*.kcrash", nullptr));
   // TODO(swboyd): Change to expect false once corrupted files are still
@@ -437,8 +440,9 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashLarge) {
   std::string large(1024 * 1024 + 1, 'x');  // 1MiB + 1 byte.
   ASSERT_TRUE(test_util::CreateFile(ramoops_file(0),
                                     StrCat({"Panic#1 Part#1\n", large})));
-  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kNoCrashFound);
+
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kNoCrashFound));
   // TODO(swboyd): Change to expect false once large files are still removed.
   EXPECT_TRUE(base::PathExists(ramoops_file(0)));
 }
@@ -451,8 +455,8 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashFile) {
   ASSERT_TRUE(test_util::CreateFile(
       ramoops_file(0), StrCat({"Panic#2 Part#1\n", kcrash_contents})));
 
-  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory(), "kernel.*.meta",
       "sig=kernel-test_ramoops_func-"));
@@ -466,8 +470,9 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashCorrupt) {
   std::string contents = "A bunch of binary \x1\x2\x3\x4 ...";
 
   ASSERT_TRUE(test_util::CreateFile(corrupt_ramoops_file(), contents));
-  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory(), "kernel.*.meta", "sig=kernel-CorruptDump"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
@@ -481,8 +486,8 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashOnlyRecordMatters) {
   // BIOS log is almost always present. Make one.
   ASSERT_TRUE(test_util::CreateFile(
       bios_log_file(), "coreboot-d041fe8 Sat Oct 20 bootblock starting...\n"));
-  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kNoCrashFound);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kNoCrashFound));
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory(), "kernel.*.kcrash", nullptr));
 }
@@ -636,8 +641,8 @@ TEST_F(KernelCollectorTest, EnableOK) {
 }
 
 TEST_F(KernelCollectorTest, CollectPreservedFileMissing) {
-  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kNoCrashFound);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kNoCrashFound));
   EXPECT_FALSE(FindLog("Stored kcrash to "));
 }
 
@@ -645,8 +650,10 @@ TEST_F(KernelCollectorTest, CollectBadDirectory) {
   ASSERT_TRUE(test_util::CreateFile(
       ramoops_file(0),
       StrCat({"Panic#4 Part#42\n", kSuccessfulCollectContents})));
-  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kCreateCrashDirectoryFailed);
+
+  EXPECT_THAT(
+      collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+      testing::ElementsAre(CrashCollectionStatus::kCreateCrashDirectoryFailed));
   EXPECT_TRUE(FindLog("Unable to create crash directory"))
       << "Did not find expected error string in log: {\n"
       << GetLog() << "}";
@@ -721,8 +728,8 @@ TEST_F(KernelCollectorTest, CollectOK) {
       bios_log_file(),
       "BIOS Messages"
       "\n\ncoreboot-dc417eb Tue Nov 2 bootblock starting...\n"));
-  ASSERT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   ASSERT_TRUE(FindLog("(handling)"));
   static const char kNamePrefix[] = "Stored kcrash to ";
   std::string log = brillo::GetLog();
@@ -799,8 +806,8 @@ TEST_F(KernelCollectorTest, LastRebootWasNoCError) {
 
 void KernelCollectorTest::WatchdogOKHelper(const FilePath& path) {
   SetUpSuccessfulWatchdog(path);
-  ASSERT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("kernel-(WATCHDOG)-I can haz"));
 }
@@ -812,8 +819,8 @@ TEST_F(KernelCollectorTest, BiosCrashArmOK) {
       bios_log_file(),
       "PANIC in EL3 at x30 = 0x00003698"
       "\n\ncoreboot-dc417eb Tue Nov 2 bootblock starting...\n"));
-  ASSERT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("bios-(PANIC)-0x00003698"));
 }
@@ -824,8 +831,9 @@ TEST_F(KernelCollectorTest, Watchdog0BootstatusInvalidNotInteger) {
   SetUpWatchdog0BootstatusInvalidNotInteger(console_ramoops_file());
   // Since the `bootstatus` file doesn't contain a valid integer, it can't
   // be parsed.
-  ASSERT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kCorruptWatchdogFile);
+  EXPECT_THAT(
+      collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+      testing::ElementsAre(CrashCollectionStatus::kCorruptWatchdogFile));
   ASSERT_TRUE(FindLog("Invalid bootstatus string"));
 }
 
@@ -835,8 +843,8 @@ TEST_F(KernelCollectorTest, Watchdog0BootstatusInvalidUnknownInteger) {
   SetUpWatchdog0BootstatusUnknownInteger(console_ramoops_file());
   // Collect a crash since the watchdog appears to have caused a reset,
   // we just don't know the reason why (yet).
-  ASSERT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   ASSERT_TRUE(FindLog("unknown boot status value"));
   ASSERT_TRUE(FindLog(signature.c_str()));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
@@ -847,8 +855,8 @@ TEST_F(KernelCollectorTest, Watchdog0BootstatusCardReset) {
   const std::string signature = "kernel-(WATCHDOG)-";
 
   SetUpWatchdog0BootstatusCardReset(console_ramoops_file());
-  ASSERT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog(signature.c_str()));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
@@ -859,8 +867,8 @@ TEST_F(KernelCollectorTest, Watchdog0BootstatusCardResetFanFault) {
   const std::string signature = "kernel-(FANFAULT)-(WATCHDOG)-";
 
   SetUpWatchdog0BootstatusCardResetFanFault(console_ramoops_file());
-  ASSERT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog(signature.c_str()));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
@@ -871,8 +879,8 @@ TEST_F(KernelCollectorTest, Watchdog0BootstatusNoResetFwHwReset) {
   const std::string signature = "kernel-(WATCHDOG)-";
 
   SetUpWatchdog0BootstatusNoResetFwHwReset(console_ramoops_file());
-  ASSERT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kSuccess);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog(signature.c_str()));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
@@ -887,8 +895,8 @@ void KernelCollectorTest::WatchdogOnlyLastBootHelper(const FilePath& path) {
   char next[] = "115 | 2016-03-24 15:24:27 | System boot | 0";
   SetUpSuccessfulWatchdog(path);
   ASSERT_TRUE(test_util::CreateFile(eventlog_file(), next));
-  ASSERT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
-            CrashCollectionStatus::kNoCrashFound);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/true),
+              testing::ElementsAre(CrashCollectionStatus::kNoCrashFound));
 }
 
 TEST_F(KernelCollectorTest, WatchdogOnlyLastBoot) {
@@ -908,44 +916,75 @@ TEST_F(KernelCollectorTest, ComputeSeverity) {
 TEST_F(KernelCollectorTest, WasKernelCrashIfRamoopsCollected) {
   std::vector<CrashCollectionStatus> efi_statuses{
       CrashCollectionStatus::kNoCrashFound};
-  CrashCollectionStatus ramoops_status = CrashCollectionStatus::kSuccess;
-  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_status));
+  std::vector<CrashCollectionStatus> ramoops_statuses{
+      CrashCollectionStatus::kSuccess};
+  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses));
 }
 
 TEST_F(KernelCollectorTest, WasKernelCrashIfRamoopsFailed) {
   std::vector<CrashCollectionStatus> efi_statuses{
       CrashCollectionStatus::kNoCrashFound};
-  CrashCollectionStatus ramoops_status = CrashCollectionStatus::kOutOfCapacity;
-  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_status));
+  std::vector<CrashCollectionStatus> ramoops_statuses{
+      CrashCollectionStatus::kOutOfCapacity};
+  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses));
 }
 
 TEST_F(KernelCollectorTest, WasKernelCrashIfOneEfiCollected) {
   std::vector<CrashCollectionStatus> efi_statuses{
       CrashCollectionStatus::kSuccess};
-  CrashCollectionStatus ramoops_status = CrashCollectionStatus::kNoCrashFound;
-  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_status));
+  std::vector<CrashCollectionStatus> ramoops_statuses{
+      CrashCollectionStatus::kNoCrashFound};
+  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses));
 }
 
 TEST_F(KernelCollectorTest, WasKernelCrashIfMultipleEfiCollected) {
   std::vector<CrashCollectionStatus> efi_statuses{
       CrashCollectionStatus::kSuccess, CrashCollectionStatus::kSuccess};
-  CrashCollectionStatus ramoops_status = CrashCollectionStatus::kNoCrashFound;
-  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_status));
+  std::vector<CrashCollectionStatus> ramoops_statuses{
+      CrashCollectionStatus::kNoCrashFound};
+  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses));
 }
 
 TEST_F(KernelCollectorTest, WasKernelCrashIfMultipleEfiFailed) {
   std::vector<CrashCollectionStatus> efi_statuses{
       CrashCollectionStatus::kOutOfCapacity,
       CrashCollectionStatus::kFailureLoadingPstoreCrash};
-  CrashCollectionStatus ramoops_status = CrashCollectionStatus::kNoCrashFound;
-  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_status));
+  std::vector<CrashCollectionStatus> ramoops_statuses{
+      CrashCollectionStatus::kNoCrashFound};
+  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses));
+}
+
+TEST_F(KernelCollectorTest, WasKernelCrashIfOneRamoopsCollected) {
+  std::vector<CrashCollectionStatus> efi_statuses{
+      CrashCollectionStatus::kNoCrashFound};
+  std::vector<CrashCollectionStatus> ramoops_statuses{
+      CrashCollectionStatus::kSuccess};
+  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses));
+}
+
+TEST_F(KernelCollectorTest, WasKernelCrashIfMultipleRamoopsCollected) {
+  std::vector<CrashCollectionStatus> efi_statuses{
+      CrashCollectionStatus::kNoCrashFound};
+  std::vector<CrashCollectionStatus> ramoops_statuses{
+      CrashCollectionStatus::kSuccess, CrashCollectionStatus::kSuccess};
+  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses));
+}
+
+TEST_F(KernelCollectorTest, WasKernelCrashIfMultipleRamoopsFailed) {
+  std::vector<CrashCollectionStatus> efi_statuses{
+      CrashCollectionStatus::kNoCrashFound};
+  std::vector<CrashCollectionStatus> ramoops_statuses{
+      CrashCollectionStatus::kFailureGettingPstoreType,
+      CrashCollectionStatus::kFailureLoadingPstoreCrash};
+  EXPECT_TRUE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses));
 }
 
 TEST_F(KernelCollectorTest, WasNotKernelCrashIfBothFoundNothing) {
   std::vector<CrashCollectionStatus> efi_statuses{
       CrashCollectionStatus::kNoCrashFound};
-  CrashCollectionStatus ramoops_status = CrashCollectionStatus::kNoCrashFound;
-  EXPECT_FALSE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_status));
+  std::vector<CrashCollectionStatus> ramoops_statuses{
+      CrashCollectionStatus::kNoCrashFound};
+  EXPECT_FALSE(KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses));
 }
 
 class KernelCollectorSavedLsbTest : public KernelCollectorTest,
@@ -979,8 +1018,8 @@ TEST_P(KernelCollectorSavedLsbTest, UsesSavedLsbRamoops) {
   ASSERT_TRUE(test_util::CreateFile(saved_lsb, kSavedLsbContents));
 
   SetUpSuccessfulCollect();
-  ASSERT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/GetParam()),
-            CrashCollectionStatus::kSuccess);
+  EXPECT_THAT(collector_.CollectRamoopsCrashes(/*use_saved_lsb=*/GetParam()),
+              testing::ElementsAre(CrashCollectionStatus::kSuccess));
 
   if (GetParam()) {
     EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(

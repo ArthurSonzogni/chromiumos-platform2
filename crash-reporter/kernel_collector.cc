@@ -850,7 +850,8 @@ std::vector<CrashCollectionStatus> KernelCollector::CollectEfiCrashes(
   return result;
 }
 
-CrashCollectionStatus KernelCollector::CollectRamoopsCrash(bool use_saved_lsb) {
+std::vector<CrashCollectionStatus> KernelCollector::CollectRamoopsCrashes(
+    bool use_saved_lsb) {
   SetUseSavedLsb(use_saved_lsb);
 
   std::string bios_dump;
@@ -865,11 +866,11 @@ CrashCollectionStatus KernelCollector::CollectRamoopsCrash(bool use_saved_lsb) {
     StripSensitiveData(&bios_dump);
     StripSensitiveData(&kernel_dump);
     if (kernel_dump.empty()) {
-      return CrashCollectionStatus::kRamoopsDumpEmpty;
+      return {CrashCollectionStatus::kRamoopsDumpEmpty};
     }
-    return HandleCrash(kernel_dump, bios_dump, signature);
+    return {HandleCrash(kernel_dump, bios_dump, signature)};
   }
-  return CollectConsoleRamoopsCrash(bios_dump, console_dump);
+  return {CollectConsoleRamoopsCrash(bios_dump, console_dump)};
 }
 
 CrashCollectionStatus KernelCollector::CollectConsoleRamoopsCrash(
@@ -904,7 +905,7 @@ CrashCollectionStatus KernelCollector::CollectConsoleRamoopsCrash(
 
 bool KernelCollector::WasKernelCrash(
     const std::vector<CrashCollectionStatus>& efi_crash_statuses,
-    CrashCollectionStatus ramoops_crash_status) {
+    const std::vector<CrashCollectionStatus>& ramoops_crash_statuses) {
   // kSuccess means there was a crash and the Collect function collected it.
   // Failures mean there was a crash and Collect function didn't collect it.
   // Only kNoCrashFound means there wasn't a crash to collect.
@@ -913,7 +914,8 @@ bool KernelCollector::WasKernelCrash(
     return true;
   }
 
-  if (ramoops_crash_status != CrashCollectionStatus::kNoCrashFound) {
+  if (ramoops_crash_statuses.size() != 1 ||
+      ramoops_crash_statuses[0] != CrashCollectionStatus::kNoCrashFound) {
     return true;
   }
   return false;

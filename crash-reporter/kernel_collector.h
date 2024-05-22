@@ -68,14 +68,15 @@ class KernelCollector : public CrashCollector {
   // a vector containing the single element kNoCrashFound.
   std::vector<CrashCollectionStatus> CollectEfiCrashes(bool use_saved_lsb);
 
-  // Collects ramoops crash.
-  CrashCollectionStatus CollectRamoopsCrash(bool use_saved_lsb);
+  // Collects ramoops crashes. Returns 1 status per ramoops crash found *or*
+  // a vector containing the single element kNoCrashFound.
+  std::vector<CrashCollectionStatus> CollectRamoopsCrashes(bool use_saved_lsb);
 
-  // Given the returned results of CollectEfiCrash and CollectRamoopsCrash,
+  // Given the returned results of CollectEfiCrashes and CollectRamoopsCrashes,
   // was there actually a kernel crash available to collect?
   static bool WasKernelCrash(
       const std::vector<CrashCollectionStatus>& efi_crash_statuses,
-      CrashCollectionStatus ramoops_crash_status);
+      const std::vector<CrashCollectionStatus>& ramoops_crash_statuses);
 
   // Set the architecture of the crash dumps we are looking at.
   void set_arch(kernel_util::ArchKind arch) { arch_ = arch; }

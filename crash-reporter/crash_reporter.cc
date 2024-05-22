@@ -165,10 +165,10 @@ int BootCollect(
     if (kernel_collector->is_enabled()) {
       std::vector<CrashCollectionStatus> efi_statuses =
           kernel_collector->CollectEfiCrashes(use_saved_lsb);
-      CrashCollectionStatus ramoops_status =
-          kernel_collector->CollectRamoopsCrash(use_saved_lsb);
+      std::vector<CrashCollectionStatus> ramoops_statuses =
+          kernel_collector->CollectRamoopsCrashes(use_saved_lsb);
       was_kernel_crash =
-          KernelCollector::WasKernelCrash(efi_statuses, ramoops_status);
+          KernelCollector::WasKernelCrash(efi_statuses, ramoops_statuses);
     }
 
     // Touch a file to notify the metrics daemon that a kernel
