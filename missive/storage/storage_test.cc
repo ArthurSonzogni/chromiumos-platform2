@@ -20,7 +20,6 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
-#include <base/location.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -1085,6 +1084,7 @@ class StorageTest : public ::testing::TestWithParam<
   void ConfirmOrDie(Priority priority,
                     int64_t sequencing_id,
                     bool force = false) {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     auto generation_it = last_upload_generation_id_.find(priority);
     ASSERT_NE(generation_it, last_upload_generation_id_.end()) << priority;
     auto [generation_id, generation_guid] = generation_it->second;

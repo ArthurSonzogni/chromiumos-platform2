@@ -4,8 +4,6 @@
 
 #include "missive/storage/storage_uploader_interface.h"
 
-#include <string_view>
-
 namespace reporting {
 
 UploaderInterface::UploaderInterface() = default;

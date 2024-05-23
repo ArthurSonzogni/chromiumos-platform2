@@ -23,7 +23,6 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
-#include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
@@ -63,6 +62,8 @@ QueueUploaderInterface::QueueUploaderInterface(
     : priority_(priority),
       recorder_(std::move(recorder)),
       storage_uploader_interface_(std::move(storage_uploader_interface)) {}
+
+QueueUploaderInterface::~QueueUploaderInterface() = default;
 
 // Factory method.
 void QueueUploaderInterface::AsyncProvideUploader(

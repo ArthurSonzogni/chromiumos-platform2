@@ -28,7 +28,6 @@
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/hash/hash.h>
-#include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/scoped_refptr.h>
@@ -401,6 +400,7 @@ std::optional<std::string> StorageQueue::GetLastRecordDigest() const {
 Status StorageQueue::SetOrConfirmGenerationId(const base::FilePath& full_name) {
   // Data file should have generation id as an extension too.
   // TODO(b/195786943): Encapsulate file naming assumptions in objects.
+  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   const auto generation_extension =
       full_name.RemoveFinalExtension().FinalExtension();
   if (generation_extension.empty()) {
@@ -468,6 +468,7 @@ StatusOr<int64_t> StorageQueue::GetFileSequenceIdFromPath(
 StatusOr<int64_t> StorageQueue::AddDataFile(
     const base::FilePath& full_name,
     const base::FileEnumerator::FileInfo& file_info) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   ASSIGN_OR_RETURN(int64_t file_sequence_id,
                    GetFileSequenceIdFromPath(full_name));
 
@@ -559,7 +560,7 @@ Status StorageQueue::EnumerateDataFiles(
   first_sequencing_id_ =
       first_sequencing_id.has_value() ? first_sequencing_id.value() : 0;
   for (const auto& [_, file] : files_) {
-    used_files_set->emplace(file->name());  // File is in use.
+    used_files_set->emplace(file->path());  // File is in use.
   }
   return Status::StatusOK();
 }
@@ -800,16 +801,17 @@ Status StorageQueue::WriteMetadata(std::string_view current_record_digest,
   }
 
   // Synchronously write the metafile.
-  ASSIGN_OR_RETURN(scoped_refptr<SingleFile> meta_file,
-                   SingleFile::Create(
-                       {.filename = options_.directory()
-                                        .Append(kMetadataFileNamePrefix)
-                                        .AddExtensionASCII(base::NumberToString(
-                                            next_sequencing_id_)),
-                        .size = 0,
-                        .memory_resource = options_.memory_resource(),
-                        .disk_space_resource = options_.disk_space_resource(),
-                        .completion_closure_list = completion_closure_list_}));
+  ASSIGN_OR_RETURN(
+      scoped_refptr<SingleFile> meta_file,
+      SingleFile::Create(
+          {.filename = options_.directory()
+                           .Append(StorageDirectory::kMetadataFileNamePrefix)
+                           .AddExtensionASCII(
+                               base::NumberToString(next_sequencing_id_)),
+           .size = 0,
+           .memory_resource = options_.memory_resource(),
+           .disk_space_resource = options_.disk_space_resource(),
+           .completion_closure_list = completion_closure_list_}));
   RETURN_IF_ERROR_STATUS(meta_file->Open(/*read_only=*/false));
 
   // The space for this following Appends has being reserved with
@@ -939,12 +941,13 @@ Status StorageQueue::ReadMetadata(
 
 Status StorageQueue::RestoreMetadata(
     std::unordered_set<base::FilePath>* used_files_set) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   // Enumerate all meta-files into a map sequencing_id->file_path.
   std::map<int64_t, std::pair<base::FilePath, size_t>> meta_files;
-  base::FileEnumerator dir_enum(options_.directory(),
-                                /*recursive=*/false,
-                                base::FileEnumerator::FILES,
-                                base::StrCat({kMetadataFileNamePrefix, ".*"}));
+  base::FileEnumerator dir_enum(
+      options_.directory(),
+      /*recursive=*/false, base::FileEnumerator::FILES,
+      base::StrCat({StorageDirectory::kMetadataFileNamePrefix, ".*"}));
   for (auto full_name = dir_enum.Next(); !full_name.empty();
        full_name = dir_enum.Next()) {
     const auto file_sequence_id =
@@ -1007,6 +1010,8 @@ void StorageQueue::MaybeSelfDestructInactiveQueue(Status status) {
     // Queue still has data, bail out until the next check.
     return;
   }
+  // Release all the files before deletion.
+  ReleaseAllFileInstances();
   // Asynchronously remove the queue from `QueueContainer`, and then delete all
   // its files.
   disconnect_queue_cb_.Run(
@@ -1065,10 +1070,10 @@ void StorageQueue::DeleteOutdatedMetadata(int64_t sequencing_id_to_keep) const {
   // metafile was destructed, and so we don't need to do that here.
   // If the deletion of a file fails, the file will be naturally handled next
   // time.
-  base::FileEnumerator dir_enum(options_.directory(),
-                                /*recursive=*/false,
-                                base::FileEnumerator::FILES,
-                                base::StrCat({kMetadataFileNamePrefix, ".*"}));
+  base::FileEnumerator dir_enum(
+      options_.directory(),
+      /*recursive=*/false, base::FileEnumerator::FILES,
+      base::StrCat({StorageDirectory::kMetadataFileNamePrefix, ".*"}));
   DeleteFilesWarnIfFailed(
       dir_enum,
       base::BindRepeating(
@@ -1316,8 +1321,6 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // If the status was error, or if any events are still there,
     // retry the upload.
     if (!storage_queue_->options_.upload_retry_delay().is_zero()) {
-      DCHECK_CALLED_ON_VALID_SEQUENCE(
-          storage_queue_->storage_queue_sequence_checker_);
       storage_queue_->check_back_timer_.Start(
           FROM_HERE, storage_queue_->options_.upload_retry_delay(),
           base::BindPostTask(
@@ -1498,7 +1501,6 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
           kUmaUnavailableErrorReason,
           UnavailableErrorReason::STORAGE_QUEUE_SHUTDOWN,
           UnavailableErrorReason::MAX_VALUE);
-
       return base::unexpected(
           Status(error::UNAVAILABLE, "StorageQueue shut down"));
     }
@@ -1845,9 +1847,11 @@ class StorageQueue::WriteContext : public TaskRunnerContext<Status> {
       }
     } else {
       // Copy previous record digest in the queue into the record.
+      auto head_context = (*storage_queue_->write_contexts_queue_.rbegin());
+      DCHECK_CALLED_ON_VALID_SEQUENCE(
+          head_context->storage_queue_->storage_queue_sequence_checker_);
       *wrapped_record.mutable_last_record_digest() =
-          (*storage_queue_->write_contexts_queue_.rbegin())
-              ->current_record_digest_;
+          head_context->current_record_digest_;
     }
 
     // Add context to the end of the queue.

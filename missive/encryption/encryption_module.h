@@ -31,8 +31,8 @@ class EncryptionModule : public EncryptionModuleInterface {
 
  protected:
   // Constructor can only be called by |Create| factory method.
-  explicit EncryptionModule(bool is_enabled,
-                            base::TimeDelta renew_encryption_key_period);
+  EncryptionModule(bool is_enabled,
+                   base::TimeDelta renew_encryption_key_period);
 
   ~EncryptionModule() override;
 

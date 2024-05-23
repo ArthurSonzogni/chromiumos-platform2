@@ -12,7 +12,6 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/location.h>
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
@@ -53,7 +52,7 @@ class StorageDirectoryTest : public ::testing::Test {
     CHECK(base::DirectoryExists(queue_directory));
 
     const auto meta_file_path =
-        queue_directory.Append(StorageQueue::kMetadataFileNamePrefix);
+        queue_directory.Append(StorageDirectory::kMetadataFileNamePrefix);
     auto file = base::File(meta_file_path,
                            base::File::Flags::FLAG_CREATE_ALWAYS |
                                base::File::FLAG_WRITE | base::File::FLAG_READ);
@@ -95,7 +94,7 @@ class StorageDirectoryTest : public ::testing::Test {
 
   // Returns the full path for a multigenerational queue directory.
   base::FilePath GetMultigenerationQueueDirectoryPath() const {
-    return queue_directory().RemoveExtension().AddExtension(
+    return queue_directory().RemoveExtension().AddExtensionASCII(
         CreateGenerationGuid());
   }
 
@@ -118,7 +117,7 @@ TEST_F(StorageDirectoryTest, MultigenerationQueueDirectoriesAreFound) {
     // the extension.
     const GenerationGuid generation_guid = CreateGenerationGuid();
     const auto queue_directory_filepath =
-        queue_options.directory().RemoveExtension().AddExtension(
+        queue_options.directory().RemoveExtension().AddExtensionASCII(
             generation_guid);
 
     // Create multigenerational queue directory

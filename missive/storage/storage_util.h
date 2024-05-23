@@ -20,6 +20,9 @@ namespace reporting {
 // on a `Storage` directory that contains `StorageQueue` directories.
 class StorageDirectory {
  public:
+  // Metadata file name prefix.
+  static constexpr char kMetadataFileNamePrefix[] = "META";
+
   struct Hash {
     size_t operator()(
         const std::tuple<Priority, GenerationGuid>& v) const noexcept {

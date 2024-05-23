@@ -41,15 +41,15 @@ StorageDirectory::Set StorageDirectory::FindQueueDirectories(
       // foo/bar/FastBatch, etc.
       queue_params.emplace(
           std::make_tuple(priority_result.value(), GenerationGuid()));
-      LOG(INFO) << "Found legacy queue directory: " << full_name;
+      LOG(WARNING) << "Found legacy queue directory: " << full_name;
     } else if (auto queue_param =
                    GetPriorityAndGenerationGuid(full_name, options_list);
                queue_param.has_value()) {
       queue_params.emplace(queue_param.value());
     } else {
-      LOG(INFO) << "Could not parse queue parameters from filename "
-                << full_name.MaybeAsASCII()
-                << " error = " << queue_param.error();
+      LOG(WARNING) << "Could not parse queue parameters from filename "
+                   << full_name.MaybeAsASCII()
+                   << " error = " << queue_param.error();
     }
   }
   return queue_params;
@@ -118,8 +118,8 @@ StatusOr<Priority> StorageDirectory::ParsePriorityFromQueueDirectory(
 
 // static
 bool StorageDirectory::IsMetaDataFile(const base::FilePath& filepath) {
-  const auto found = filepath.BaseName().MaybeAsASCII().find(
-      StorageQueue::kMetadataFileNamePrefix);
+  const auto found = filepath.BaseName().value().find(
+      StorageDirectory::kMetadataFileNamePrefix);
   return found != std::string::npos;
 }
 

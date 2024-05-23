@@ -68,9 +68,6 @@ using ErrorInjectionHandlerType =
 // sequencing id to be eliminated.
 class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
  public:
-  // Metadata file name prefix.
-  static constexpr char kMetadataFileNamePrefix[] = "META";
-
   // These values are persisted to logs. Entries should not be renumbered and
   // numeric values should never be reused.
   enum ResourceExhaustedCase : int {
@@ -326,14 +323,21 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
     // The reservation must be done before actual Appends, and must succeed.
     void HandOverReservation(ScopedReservation append_reservation);
 
-    bool is_opened() const { return handle_.get() != nullptr; }
+    bool is_opened() const {
+      DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+      return handle_.get() != nullptr;
+    }
     bool is_readonly() const {
       DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
       CHECK(is_opened());
       return is_readonly_.value();
     }
-    uint64_t size() const { return size_; }
-    std::string name() const { return filename_.MaybeAsASCII(); }
+    uint64_t size() const {
+      DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+      return size_;
+    }
+    base::FilePath path() const { return filename_; }
+    std::string name() const { return path().MaybeAsASCII(); }
 
    protected:
     virtual ~SingleFile();
@@ -565,19 +569,18 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // Immutable options, stored at the time of creation.
   const QueueOptions options_;
 
+  // Identical in function to `generation_id_` but is globally unique across
+  // all devices instead of just on the device itself. Passed in as a parameter
+  // during initialization. The directory where the queue writes files to is
+  // named 'priority.generation_guid_'.
+  const GenerationGuid generation_guid_;
+
   // Current generation id, unique per device and queue.
   // Set up once during initialization by reading from the 'gen_id.NNNN' file
   // matching the last sequencing id, or generated anew as a random number if no
   // such file found (files do not match the id).
   int64_t generation_id_ GUARDED_BY_CONTEXT(storage_queue_sequence_checker_) =
       0;
-
-  // Identical in function to `generation_id_` but is globally unique across
-  // all devices instead of just on the device itself. Passed in as a parameter
-  // during initialization. The directory where the queue writes files to is
-  // named 'priority.generation_guid_'.
-  const GenerationGuid generation_guid_
-      GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
   // Digest of the last written record (loaded at queue initialization, absent
   // if the new generation has just started, and no records where stored yet).
@@ -639,7 +642,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   base::RetainingOneShotTimer check_back_timer_
       GUARDED_BY_CONTEXT(storage_queue_sequence_checker_);
 
-  // inactivity check and destruct timer (started upon initialization and
+  // Inactivity check and destruct timer (started upon initialization and
   // restarted after every write to the queue). If it fires, the queue is not
   // used for long enough time, and if it is empty, its file can be deleted and
   // the queue itself can self-destruct.

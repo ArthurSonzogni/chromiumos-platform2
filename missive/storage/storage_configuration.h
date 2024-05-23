@@ -25,7 +25,8 @@ namespace reporting {
 
 using GenerationGuid = std::string;
 using DMtoken = std::string;
-constexpr char kDeviceDMToken[] = "";
+
+inline constexpr char kDeviceDMToken[] = "";
 
 // Forward declaration.
 class QueueOptions;
@@ -213,8 +214,8 @@ class QueueOptions {
     directory_ = storage_options_.directory().Append(subdirectory);
     return *this;
   }
-  QueueOptions& set_subdirectory_extension(const std::string& extension) {
-    directory_ = directory_.AddExtension(extension);
+  QueueOptions& set_subdirectory_extension(std::string_view extension) {
+    directory_ = directory_.AddExtensionASCII(extension);
     return *this;
   }
   QueueOptions& set_file_prefix(const std::string& file_prefix) {

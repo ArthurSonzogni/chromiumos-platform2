@@ -7,7 +7,6 @@
 #include <utility>
 #include <vector>
 
-#include <base/location.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/bind_post_task.h>

@@ -68,6 +68,7 @@ void KeyDelivery::StartPeriodicKeyUpdate() {
   sequenced_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(
                      [](KeyDelivery* self) {
+                       DCHECK_CALLED_ON_VALID_SEQUENCE(self->sequence_checker_);
                        if (self->upload_timer_.IsRunning()) {
                          // We've already started the periodic key update.
                          return;

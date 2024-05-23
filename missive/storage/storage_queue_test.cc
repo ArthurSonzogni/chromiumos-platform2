@@ -46,6 +46,7 @@
 #include "missive/proto/record.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/storage/storage_configuration.h"
+#include "missive/storage/storage_util.h"
 #include "missive/util/file.h"
 #include "missive/util/status.h"
 #include "missive/util/status_macros.h"
@@ -1141,7 +1142,7 @@ TEST_P(StorageQueueTest,
   EnsureDeletingFiles(
       options.directory(),
       /*recursive=*/false, base::FileEnumerator::FILES,
-      base::StrCat({StorageQueue::kMetadataFileNamePrefix, ".*"}));
+      base::StrCat({StorageDirectory::kMetadataFileNamePrefix, ".*"}));
 
   // Avoid init resume upload upon non-empty queue restart.
   {
@@ -1198,7 +1199,7 @@ TEST_P(StorageQueueTest,
   // Delete the last metadata file.
   {  // scoping this block so that dir_enum is not used later.
     const auto last_metadata_file_pattern =
-        base::StrCat({StorageQueue::kMetadataFileNamePrefix, ".2"});
+        base::StrCat({StorageDirectory::kMetadataFileNamePrefix, ".2"});
     base::FileEnumerator dir_enum(options.directory(),
                                   /*recursive=*/false,
                                   base::FileEnumerator::FILES,
@@ -2377,7 +2378,7 @@ TEST_P(StorageQueueTest, CreateStorageQueueRetry) {
   ASSERT_TRUE(base::CreateTemporaryFileInDir(options_.directory(), &bad_file));
   const QueueOptions queue_options =
       BuildStorageQueueOptionsPeriodic().set_subdirectory(
-          bad_file.BaseName().MaybeAsASCII());
+          bad_file.BaseName().value());
   // Allow the retries with backoff several times, and the last time delete
   // the file.
   auto init_retry_cb = base::BindRepeating(

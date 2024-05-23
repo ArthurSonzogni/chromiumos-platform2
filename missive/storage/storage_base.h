@@ -113,9 +113,6 @@ class QueuesContainer
   bool storage_degradation_enabled() const;
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner() const;
 
- protected:
-  ~QueuesContainer() override;
-
  private:
   friend base::RefCountedDeleteOnSequence<QueuesContainer>;
   friend class base::DeleteHelper<QueuesContainer>;
@@ -158,6 +155,8 @@ class QueuesContainer
       bool storage_degradation_enabled,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner);
 
+  ~QueuesContainer() override;
+
   // Creates a generation guid for this dm token, maps it to the dm token,
   // and returns the generation guid. Returns error if a generation guid exists
   // for this dm token already.
@@ -189,6 +188,7 @@ class QueueUploaderInterface : public UploaderInterface {
       Priority priority,
       HealthModule::Recorder recorder,
       std::unique_ptr<UploaderInterface> storage_uploader_interface);
+  ~QueueUploaderInterface() override;
 
   // Factory method.
   static void AsyncProvideUploader(

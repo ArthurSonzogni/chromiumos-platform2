@@ -29,7 +29,6 @@
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/threading/thread.h>
-#include <base/location.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/sequence_checker.h>
 #include <base/time/time.h>
@@ -234,6 +233,7 @@ void Storage::Create(
                           << " " << executed_without_error;
 
       // Get the information we need to create queues
+      DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
       queue_parameters_ = StorageDirectory::FindQueueDirectories(
           storage_->options_.directory(),
           storage_->options_.ProduceQueuesOptionsList());
@@ -283,6 +283,7 @@ void Storage::Create(
     void InitAllQueues() {
       CheckOnValidSequence();
 
+      DCHECK_CALLED_ON_VALID_SEQUENCE(storage_->sequence_checker_);
       count_ = queue_parameters_.size();
       if (count_ == 0) {
         Response(std::move(storage_));
