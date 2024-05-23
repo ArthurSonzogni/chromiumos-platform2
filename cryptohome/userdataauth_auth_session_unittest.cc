@@ -410,14 +410,6 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
     CreateAuthSessionManager(auth_block_utility_impl_.get());
   }
 
-  AuthorizationRequest CreateAuthorization(const std::string& secret) {
-    AuthorizationRequest req;
-    req.mutable_key()->set_secret(secret);
-    req.mutable_key()->mutable_data()->set_label("test-label");
-    req.mutable_key()->mutable_data()->set_type(KeyData::KEY_TYPE_PASSWORD);
-    return req;
-  }
-
   void ExpectAuth(const Username& username, const brillo::SecureBlob& secret) {
     auto vk = std::make_unique<VaultKeyset>();
     EXPECT_CALL(system_apis_.keyset_management, GetValidKeyset(_, _, _))
