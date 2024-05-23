@@ -212,9 +212,17 @@ std::optional<Size> GetFullFrameResolution(
            index_fps(src_format.max_fps) >= index_fps(dst_format.max_fps);
   };
   auto can_generate_all_streams = [&](const StreamFormat& src_format) {
+    // Limit downscaling ratio to avoid aliasing caused by bicubic filtering.
+    constexpr float kMaxEnlargedRatio = 2.5f;
     // Limit the full frame dimensions to |max_width| and |max_height|, unless a
     // destination stream is larger than the limit.
-    if ((max_width.has_value() &&
+    if (src_format.width >
+            static_cast<uint32_t>(static_cast<float>(max_dst_width) *
+                                  kMaxEnlargedRatio) ||
+        src_format.height >
+            static_cast<uint32_t>(static_cast<float>(max_dst_height) *
+                                  kMaxEnlargedRatio) ||
+        (max_width.has_value() &&
          src_format.width > std::max(max_width.value(), max_dst_width)) ||
         (max_height.has_value() &&
          src_format.height > std::max(max_height.value(), max_dst_height))) {
