@@ -20,6 +20,7 @@
 
 #include "dhcpcd/dbus-proxies.h"
 #include "shill/network/dhcpcd_controller_interface.h"
+#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_listener.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -118,10 +119,6 @@ bool LegacyDHCPCDController::Release() {
 void LegacyDHCPCDController::OnDHCPEvent(EventReason reason,
                                          const KeyValueStore& configuration) {
   handler_->OnDHCPEvent(reason, configuration);
-}
-
-void LegacyDHCPCDController::OnStatusChanged(Status status) {
-  handler_->OnStatusChanged(status);
 }
 
 base::WeakPtr<LegacyDHCPCDController> LegacyDHCPCDController::GetWeakPtr() {
@@ -250,14 +247,17 @@ void LegacyDHCPCDControllerFactory::OnDHCPEvent(
 void LegacyDHCPCDControllerFactory::OnStatusChanged(
     std::string_view service_name,
     uint32_t pid,
-    DHCPCDControllerInterface::Status status) {
+    LegacyDHCPCDListener::Status status) {
   CreateControllerIfPending(service_name, pid);
   LegacyDHCPCDController* controller = GetAliveController(pid);
   if (controller == nullptr) {
     return;
   }
 
-  controller->OnStatusChanged(status);
+  if (status == LegacyDHCPCDListener::Status::kIPv6OnlyPreferred) {
+    controller->OnDHCPEvent(
+        DHCPCDControllerInterface::EventReason::kIPv6OnlyPreferred, {});
+  }
 }
 
 void LegacyDHCPCDControllerFactory::CreateControllerIfPending(

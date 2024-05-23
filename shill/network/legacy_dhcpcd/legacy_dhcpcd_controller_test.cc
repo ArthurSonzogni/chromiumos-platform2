@@ -63,10 +63,6 @@ class MockClient : public DHCPCDControllerInterface::EventHandler {
               OnDHCPEvent,
               (DHCPCDControllerInterface::EventReason, const KeyValueStore&),
               (override));
-  MOCK_METHOD(void,
-              OnStatusChanged,
-              (DHCPCDControllerInterface::Status),
-              (override));
   MOCK_METHOD(void, OnProcessExited, (int, int), (override));
 };
 
@@ -134,9 +130,9 @@ class LegacyDHCPCDControllerFactoryTest : public testing::Test {
 
     // After receiving D-Bus signal, the controller should be returned
     // asynchronously.
-    fake_listener_->status_changed_cb_.Run(
-        expected_dbus_service_name, expected_pid,
-        DHCPCDControllerInterface::Status::kInit);
+    fake_listener_->status_changed_cb_.Run(expected_dbus_service_name,
+                                           expected_pid,
+                                           LegacyDHCPCDListener::Status::kInit);
 
     return controller;
   }
@@ -222,11 +218,11 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, CreateAndDestroyController) {
   // The handler should not receive any event after the controller is destroyed.
   EXPECT_CALL(
       client_,
-      OnStatusChanged(DHCPCDControllerInterface::Status::kIPv6OnlyPreferred))
+      OnDHCPEvent(DHCPCDControllerInterface::EventReason::kIPv6OnlyPreferred,
+                  _))
       .Times(0);
   fake_listener_->status_changed_cb_.Run(
-      kDBusServiceName, kPid,
-      DHCPCDControllerInterface::Status::kIPv6OnlyPreferred);
+      kDBusServiceName, kPid, LegacyDHCPCDListener::Status::kIPv6OnlyPreferred);
 }
 
 TEST_F(LegacyDHCPCDControllerFactoryTest, KillProcessWithPendingRequest) {
@@ -340,10 +336,10 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, EventHandler) {
 
   EXPECT_CALL(
       client_,
-      OnStatusChanged(DHCPCDControllerInterface::Status::kIPv6OnlyPreferred));
+      OnDHCPEvent(DHCPCDControllerInterface::EventReason::kIPv6OnlyPreferred,
+                  _));
   fake_listener_->status_changed_cb_.Run(
-      kDBusServiceName, kPid,
-      DHCPCDControllerInterface::Status::kIPv6OnlyPreferred);
+      kDBusServiceName, kPid, LegacyDHCPCDListener::Status::kIPv6OnlyPreferred);
 
   const KeyValueStore configuration = {};
   EXPECT_CALL(client_,
@@ -412,8 +408,8 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DeleteEphemeralLeaseAndPidFile) {
 
   // After receiving D-Bus signal, the controller should be returned
   // asynchronously.
-  fake_listener_->status_changed_cb_.Run(
-      kDBusServiceName, kPid, DHCPCDControllerInterface::Status::kInit);
+  fake_listener_->status_changed_cb_.Run(kDBusServiceName, kPid,
+                                         LegacyDHCPCDListener::Status::kInit);
   ASSERT_NE(controller, nullptr);
 
   CreateTempFileInRoot(kPidFile);

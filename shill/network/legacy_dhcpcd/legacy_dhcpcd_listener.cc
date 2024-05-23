@@ -53,31 +53,31 @@ std::optional<DHCPCDControllerInterface::EventReason> ConvertToEventReason(
   return iter->second;
 }
 
-std::optional<DHCPCDControllerInterface::Status> ConvertToStatus(
+std::optional<LegacyDHCPCDListener::Status> ConvertToStatus(
     std::string_view status) {
-  static constexpr auto kStatusTable = base::MakeFixedFlatMap<
-      std::string_view, DHCPCDControllerInterface::Status>(
-      {{"Init", DHCPCDControllerInterface::Status::kInit},
-       {"Bound", DHCPCDControllerInterface::Status::kBound},
-       {"Release", DHCPCDControllerInterface::Status::kRelease},
-       {"Discover", DHCPCDControllerInterface::Status::kDiscover},
-       {"Request", DHCPCDControllerInterface::Status::kRequest},
-       {"Renew", DHCPCDControllerInterface::Status::kRenew},
-       {"Rebind", DHCPCDControllerInterface::Status::kRebind},
-       {"ArpSelf", DHCPCDControllerInterface::Status::kArpSelf},
-       {"Inform", DHCPCDControllerInterface::Status::kInform},
-       {"Reboot", DHCPCDControllerInterface::Status::kReboot},
-       {"NakDefer", DHCPCDControllerInterface::Status::kNakDefer},
-       {"IPv6OnlyPreferred",
-        DHCPCDControllerInterface::Status::kIPv6OnlyPreferred},
-       {"IgnoreInvalidOffer",
-        DHCPCDControllerInterface::Status::kIgnoreInvalidOffer},
-       {"IgnoreFailedOffer",
-        DHCPCDControllerInterface::Status::kIgnoreFailedOffer},
-       {"IgnoreAdditionalOffer",
-        DHCPCDControllerInterface::Status::kIgnoreAdditionalOffer},
-       {"IgnoreNonOffer", DHCPCDControllerInterface::Status::kIgnoreNonOffer},
-       {"ArpGateway", DHCPCDControllerInterface::Status::kArpGateway}});
+  static constexpr auto kStatusTable =
+      base::MakeFixedFlatMap<std::string_view, LegacyDHCPCDListener::Status>(
+          {{"Init", LegacyDHCPCDListener::Status::kInit},
+           {"Bound", LegacyDHCPCDListener::Status::kBound},
+           {"Release", LegacyDHCPCDListener::Status::kRelease},
+           {"Discover", LegacyDHCPCDListener::Status::kDiscover},
+           {"Request", LegacyDHCPCDListener::Status::kRequest},
+           {"Renew", LegacyDHCPCDListener::Status::kRenew},
+           {"Rebind", LegacyDHCPCDListener::Status::kRebind},
+           {"ArpSelf", LegacyDHCPCDListener::Status::kArpSelf},
+           {"Inform", LegacyDHCPCDListener::Status::kInform},
+           {"Reboot", LegacyDHCPCDListener::Status::kReboot},
+           {"NakDefer", LegacyDHCPCDListener::Status::kNakDefer},
+           {"IPv6OnlyPreferred",
+            LegacyDHCPCDListener::Status::kIPv6OnlyPreferred},
+           {"IgnoreInvalidOffer",
+            LegacyDHCPCDListener::Status::kIgnoreInvalidOffer},
+           {"IgnoreFailedOffer",
+            LegacyDHCPCDListener::Status::kIgnoreFailedOffer},
+           {"IgnoreAdditionalOffer",
+            LegacyDHCPCDListener::Status::kIgnoreAdditionalOffer},
+           {"IgnoreNonOffer", LegacyDHCPCDListener::Status::kIgnoreNonOffer},
+           {"ArpGateway", LegacyDHCPCDListener::Status::kArpGateway}});
 
   const auto iter = kStatusTable.find(status);
   if (iter == kStatusTable.end()) {
@@ -247,8 +247,7 @@ void LegacyDHCPCDListenerImpl::EventSignal(
 
 void LegacyDHCPCDListenerImpl::StatusChangedSignal(
     const std::string& sender, uint32_t pid, const std::string& status_str) {
-  const std::optional<DHCPCDControllerInterface::Status> status =
-      ConvertToStatus(status_str);
+  const std::optional<Status> status = ConvertToStatus(status_str);
   if (status.has_value()) {
     LOG(WARNING) << "Unknown status: " << status_str;
     return;

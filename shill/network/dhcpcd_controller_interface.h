@@ -28,27 +28,7 @@ class DHCPCDControllerInterface {
     kRebind,
     kReboot,
     kRenew,
-  };
-
-  // The status of the dhcpcd process.
-  enum class Status {
-    kInit,
-    kBound,
-    kRelease,
-    kDiscover,
-    kRequest,
-    kRenew,
-    kRebind,
-    kArpSelf,
-    kInform,
-    kReboot,
-    kNakDefer,
     kIPv6OnlyPreferred,
-    kIgnoreInvalidOffer,
-    kIgnoreFailedOffer,
-    kIgnoreAdditionalOffer,
-    kIgnoreNonOffer,
-    kArpGateway,
   };
 
   // The handler of the events of the DHCPCDControllerInterface class. The
@@ -60,9 +40,6 @@ class DHCPCDControllerInterface {
     // the extra information of the event.
     virtual void OnDHCPEvent(EventReason reason,
                              const KeyValueStore& configuration) = 0;
-
-    // Called when the status of the dhcpcd process is changed.
-    virtual void OnStatusChanged(Status status) = 0;
 
     // Called when the dhcpcd process is exited before the controller is
     // destroyed.

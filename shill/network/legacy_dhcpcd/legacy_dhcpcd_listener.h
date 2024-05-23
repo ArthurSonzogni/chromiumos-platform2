@@ -21,15 +21,34 @@ namespace shill {
 // them through the LegacyDHCPCDControllerFactory.
 class LegacyDHCPCDListener {
  public:
+  // The status of the dhcpcd process.
+  enum class Status {
+    kInit,
+    kBound,
+    kRelease,
+    kDiscover,
+    kRequest,
+    kRenew,
+    kRebind,
+    kArpSelf,
+    kInform,
+    kReboot,
+    kNakDefer,
+    kIPv6OnlyPreferred,
+    kIgnoreInvalidOffer,
+    kIgnoreFailedOffer,
+    kIgnoreAdditionalOffer,
+    kIgnoreNonOffer,
+    kArpGateway,
+  };
+
   using EventSignalCB = base::RepeatingCallback<void(
       std::string_view service_name,
       uint32_t pid,
       DHCPCDControllerInterface::EventReason reason,
       const KeyValueStore& configuration)>;
-  using StatusChangedCB =
-      base::RepeatingCallback<void(std::string_view service_name,
-                                   uint32_t pid,
-                                   DHCPCDControllerInterface::Status status)>;
+  using StatusChangedCB = base::RepeatingCallback<void(
+      std::string_view service_name, uint32_t pid, Status status)>;
 
   virtual ~LegacyDHCPCDListener() = default;
 };

@@ -40,7 +40,6 @@ class LegacyDHCPCDController : public DHCPCDControllerInterface {
   // Called by LegacyDHCPCDControllerFactory. Delegates the signals to
   // |handler_|.
   void OnDHCPEvent(EventReason reason, const KeyValueStore& configuration);
-  void OnStatusChanged(Status status);
 
   // Gets the WeakPtr of this instance.
   base::WeakPtr<LegacyDHCPCDController> GetWeakPtr();
@@ -114,7 +113,7 @@ class LegacyDHCPCDControllerFactory : public DHCPCDControllerFactoryInterface {
                    const KeyValueStore& configuration);
   void OnStatusChanged(std::string_view service_name,
                        uint32_t pid,
-                       DHCPCDControllerInterface::Status status);
+                       LegacyDHCPCDListener::Status status);
 
   // The callback from LegacyDHCPCDController, called when the controller
   // instance is destroyed.
