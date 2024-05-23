@@ -3055,21 +3055,9 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
     return response;
   }
 
-  ArchiveFormat fmt;
-  switch (location) {
-    case STORAGE_CRYPTOHOME_ROOT:
-      fmt = ArchiveFormat::TAR_GZ;
-      break;
-    case STORAGE_CRYPTOHOME_PLUGINVM:
-      fmt = ArchiveFormat::ZIP;
-      break;
-    default:
-      LOG(ERROR) << "Unsupported location for source image";
-      response.set_failure_reason("Unsupported location for image");
-      return response;
-  }
-
   if (!request.force()) {
+    // Ensure the VM is not currently running. This is sufficient to ensure
+    // a consistent on-disk state for non-Parallels VMs.
     if (FindVm(vm_id) != vms_.end()) {
       LOG(ERROR) << "VM " << request.vm_name() << " is currently running";
       response.set_failure_reason("VM is currently running");
@@ -3095,7 +3083,7 @@ ExportDiskImageResponse Service::ExportDiskImageInternal(
   }
 
   auto op = VmExportOperation::Create(vm_id, disk_path, std::move(storage_fd),
-                                      std::move(digest_fd), fmt);
+                                      std::move(digest_fd));
 
   response.set_status(op->status());
   response.set_command_uuid(op->uuid());

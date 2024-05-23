@@ -132,19 +132,13 @@ struct ArchiveWriteDeleter {
 };
 using ArchiveWriter = std::unique_ptr<struct archive, ArchiveWriteDeleter>;
 
-enum class ArchiveFormat {
-  ZIP,
-  TAR_GZ,
-};
-
 class VmExportOperation : public DiskImageOperation {
  public:
   static std::unique_ptr<VmExportOperation> Create(
       const VmId vm_id,
       const base::FilePath disk_path,
       base::ScopedFD out_fd,
-      base::ScopedFD out_digest_fd,
-      ArchiveFormat out_fmt);
+      base::ScopedFD out_digest_fd);
 
   ~VmExportOperation() override;
 
@@ -163,8 +157,7 @@ class VmExportOperation : public DiskImageOperation {
   VmExportOperation(const VmId vm_id,
                     const base::FilePath disk_path,
                     base::ScopedFD out_fd,
-                    base::ScopedFD out_digest_fd,
-                    ArchiveFormat out_fmt);
+                    base::ScopedFD out_digest_fd);
   VmExportOperation(const VmExportOperation&) = delete;
   VmExportOperation& operator=(const VmExportOperation&) = delete;
 
@@ -200,9 +193,6 @@ class VmExportOperation : public DiskImageOperation {
 
   // Output archive backed by the file descriptor.
   ArchiveWriter out_;
-
-  // Output archive format.
-  ArchiveFormat out_fmt_;
 
   // Hasher to generate digest of the produced image.
   std::unique_ptr<crypto::SecureHash> sha256_;
