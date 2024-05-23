@@ -87,6 +87,10 @@ class MockNetwork : public Network {
               (const net_base::HttpUrl&),
               (override));
   MOCK_METHOD(int, network_id, (), (const, override));
+  MOCK_METHOD(void,
+              RequestTrafficCounters,
+              (patchpanel::Client::GetTrafficCountersCallback),
+              (override));
 };
 
 class MockNetworkEventHandler : public Network::EventHandler {
@@ -117,6 +121,10 @@ class MockNetworkEventHandler : public Network::EventHandler {
               (int, const NetworkMonitor::Result& result),
               (override));
   MOCK_METHOD(void, OnNetworkDestroyed, (int, int), (override));
+  MOCK_METHOD(void,
+              OnTrafficCountersUpdate,
+              (int, const std::vector<patchpanel::Client::TrafficCounter>&),
+              (override));
 };
 
 }  // namespace shill

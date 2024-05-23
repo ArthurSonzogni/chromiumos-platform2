@@ -167,6 +167,11 @@ class Network : public NetworkMonitor::ClientNetwork {
     // invalid. Any EventHandler still registered should stop any reference
     // they hold for that Network object.
     virtual void OnNetworkDestroyed(int network_id, int interface_index) {}
+
+    // Called when a patchpanel TrafficCounters request completes.
+    virtual void OnTrafficCountersUpdate(
+        int interface_index,
+        const std::vector<patchpanel::Client::TrafficCounter>& counters) {}
   };
 
   // Options for starting a network.
@@ -457,6 +462,14 @@ class Network : public NetworkMonitor::ClientNetwork {
   void OnNetworkMonitorResult(const NetworkMonitor::Result& result) override;
   void OnValidationStarted(bool is_success) override;
 
+  // Fetches asynchronously from patchpanel the raw traffic counters of the
+  // network interface of this Network. If a request is already in-flight, this
+  // request is coalesced into the existing request and |callback| is queued
+  // until the current request completes. A request for fetching counters can be
+  // sent even if the Network is connecting or disconnected.
+  mockable void RequestTrafficCounters(
+      patchpanel::Client::GetTrafficCountersCallback callback);
+
  protected:
   // Only NetworkManager could construct Network instances.
   friend class NetworkManager;
@@ -572,6 +585,11 @@ class Network : public NetworkMonitor::ClientNetwork {
                                         patchpanel::Client::NeighborRole role);
 
   void StartDHCPPD();
+  void OnGetTrafficCountersResponse(
+      const std::vector<patchpanel::Client::TrafficCounter>& counters);
+  // Returns true if a traffic counter request is currently in-flight for this
+  // Network.
+  bool IsTrafficCounterRequestInFlight();
 
   // The network_id of the next constructed Network instance.
   // TODO(b/273743901): Centralize the the network id allocation at patchpanel.
@@ -668,6 +686,10 @@ class Network : public NetworkMonitor::ClientNetwork {
   // TODO(b/240871320): /etc/resolv.conf is now managed by dnsproxy. The
   // resolver class is to be deprecated.
   Resolver* resolver_;
+
+  // All callbacks currently queued by callers of RequestTrafficCounters.
+  std::vector<patchpanel::Client::GetTrafficCountersCallback>
+      traffic_counter_request_callbacks_;
 
   // All the weak pointers created by this factory will be invalidated when the
   // Network state becomes kIdle. Can be useful when the concept of a connected

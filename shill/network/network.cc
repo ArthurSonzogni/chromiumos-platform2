@@ -1363,6 +1363,37 @@ void Network::OnTermsAndConditions(const net_base::HttpUrl& url) {
   }
 }
 
+bool Network::IsTrafficCounterRequestInFlight() {
+  return !traffic_counter_request_callbacks_.empty();
+}
+
+void Network::RequestTrafficCounters(
+    patchpanel::Client::GetTrafficCountersCallback callback) {
+  bool is_request_in_flight = IsTrafficCounterRequestInFlight();
+  traffic_counter_request_callbacks_.push_back(std::move(callback));
+  if (is_request_in_flight) {
+    return;
+  }
+  if (!patchpanel_client_) {
+    LOG(ERROR) << __func__ << ": " << *this << ": no patchpanel client";
+    return;
+  }
+  patchpanel_client_->GetTrafficCounters(
+      {interface_name_}, base::BindOnce(&Network::OnGetTrafficCountersResponse,
+                                        weak_factory_.GetWeakPtr()));
+}
+
+void Network::OnGetTrafficCountersResponse(
+    const std::vector<patchpanel::Client::TrafficCounter>& counters) {
+  for (auto& ev : event_handlers_) {
+    ev.OnTrafficCountersUpdate(interface_index_, counters);
+  }
+  for (auto& cb : traffic_counter_request_callbacks_) {
+    std::move(cb).Run(counters);
+  }
+  traffic_counter_request_callbacks_.clear();
+}
+
 std::ostream& operator<<(std::ostream& stream, const Network& network) {
   return stream << network.context_.logging_tag();
 }

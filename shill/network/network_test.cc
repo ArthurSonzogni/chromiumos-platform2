@@ -23,6 +23,7 @@
 #include <chromeos/net-base/mock_proc_fs_stub.h>
 #include <chromeos/net-base/network_config.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -134,6 +135,17 @@ net_base::NetworkConfig CreateIPv4NetworkConfig(
   return config;
 }
 
+patchpanel::Client::TrafficCounter CreateCounter(
+    patchpanel::Client::TrafficVector counters,
+    patchpanel::Client::TrafficSource source,
+    const std::string& ifname) {
+  patchpanel::Client::TrafficCounter counter;
+  counter.traffic = counters;
+  counter.source = source;
+  counter.ifname = ifname;
+  return counter;
+}
+
 // Allows us to fake/mock some functions in this test.
 class NetworkInTest : public Network {
  public:
@@ -145,6 +157,7 @@ class NetworkInTest : public Network {
       ControlInterface* control_interface,
       EventDispatcher* dispatcher,
       Metrics* metrics,
+      patchpanel::Client* patchpanel_client,
       std::unique_ptr<NetworkMonitorFactory> network_monitor_factory,
       std::unique_ptr<DHCPControllerFactory> legacy_dhcp_controller_factory,
       std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory)
@@ -155,7 +168,7 @@ class NetworkInTest : public Network {
                 control_interface,
                 dispatcher,
                 metrics,
-                /*patchpanel_client=*/nullptr,
+                patchpanel_client,
                 std::move(legacy_dhcp_controller_factory),
                 std::move(dhcp_controller_factory),
                 /*resolver=*/nullptr,
@@ -197,7 +210,7 @@ class NetworkTest : public ::testing::Test {
     network_ = std::make_unique<NiceMock<NetworkInTest>>(
         kTestIfindex, kTestIfname, kTestTechnology,
         /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
-        std::move(network_monitor_factory),
+        &patchpanel_client_, std::move(network_monitor_factory),
         std::move(legacy_dhcp_controller_factory),
         std::move(dhcp_controller_factory));
     network_->RegisterEventHandler(&event_handler_);
@@ -292,12 +305,18 @@ class NetworkTest : public ::testing::Test {
     SetNetworkMonitor();
   }
 
+  MOCK_METHOD(void,
+              RequestTrafficCountersCallback,
+              (const std::vector<patchpanel::Client::TrafficCounter>&),
+              ());
+
  protected:
   // Order does matter in this group. See the constructor.
   NiceMock<MockControl> control_interface_;
   EventDispatcherForTest dispatcher_;
   MockManager manager_;
   StrictMock<MockMetrics> metrics_;
+  patchpanel::FakeClient patchpanel_client_;
 
   MockNetworkEventHandler event_handler_;
   MockNetworkEventHandler event_handler2_;
@@ -778,6 +797,7 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
   auto wifi_network = std::make_unique<NiceMock<NetworkInTest>>(
       kTestIfindex, kTestIfname, Technology::kWiFi,
       /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
+      &patchpanel_client_,
       /*network_monitor_factory=*/nullptr,
       /*legacy_dhcp_controller_factory=*/nullptr,
       /*dhcp_controller_factory=*/nullptr);
@@ -834,6 +854,7 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
   auto eth_network = std::make_unique<NiceMock<NetworkInTest>>(
       kTestIfindex, kTestIfname, Technology::kEthernet,
       /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
+      &patchpanel_client_,
       /*network_monitor_factory=*/nullptr,
       /*legacy_dhcp_controller_factory=*/nullptr,
       /*dhcp_controller_factory=*/nullptr);
@@ -2419,7 +2440,62 @@ TEST_F(NetworkStartTest, NoReportIPTypeForShortConnection) {
   dispatcher_.task_environment().FastForwardBy(base::Minutes(1));
 }
 
-}  // namespace
+TEST_F(NetworkTest, RequestTrafficCountersWhenConnected) {
+  using TrafficSource = patchpanel::Client::TrafficSource;
+  patchpanel::Client::TrafficVector counters0 = {.rx_bytes = 2842,
+                                                 .tx_bytes = 1243,
+                                                 .rx_packets = 240598,
+                                                 .tx_packets = 43095};
+  patchpanel::Client::TrafficVector counters1 = {.rx_bytes = 4554666,
+                                                 .tx_bytes = 43543,
+                                                 .rx_packets = 5999,
+                                                 .tx_packets = 500000};
+  std::vector<patchpanel::Client::TrafficCounter> counters = {
+      CreateCounter(counters0, TrafficSource::kChrome, kTestIfname),
+      CreateCounter(counters1, TrafficSource::kUser, kTestIfname)};
+  patchpanel_client_.set_stored_traffic_counters(counters);
 
+  network_->set_state_for_testing(Network::State::kConnected);
+
+  EXPECT_CALL(*this, RequestTrafficCountersCallback(counters));
+  EXPECT_CALL(event_handler_, OnTrafficCountersUpdate(kTestIfindex, counters));
+  EXPECT_CALL(event_handler2_, OnTrafficCountersUpdate(kTestIfindex, counters));
+  network_->RequestTrafficCounters(base::BindOnce(
+      &NetworkTest::RequestTrafficCountersCallback, base::Unretained(this)));
+
+  Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(&event_handler_);
+  Mock::VerifyAndClearExpectations(&event_handler2_);
+}
+
+TEST_F(NetworkTest, RequestTrafficCountersWhenIdle) {
+  using TrafficSource = patchpanel::Client::TrafficSource;
+  patchpanel::Client::TrafficVector counters0 = {.rx_bytes = 2842,
+                                                 .tx_bytes = 1243,
+                                                 .rx_packets = 240598,
+                                                 .tx_packets = 43095};
+  patchpanel::Client::TrafficVector counters1 = {.rx_bytes = 4554666,
+                                                 .tx_bytes = 43543,
+                                                 .rx_packets = 5999,
+                                                 .tx_packets = 500000};
+  std::vector<patchpanel::Client::TrafficCounter> counters = {
+      CreateCounter(counters0, TrafficSource::kArc, kTestIfname),
+      CreateCounter(counters1, TrafficSource::kSystem, kTestIfname)};
+  patchpanel_client_.set_stored_traffic_counters(counters);
+
+  network_->set_state_for_testing(Network::State::kIdle);
+
+  EXPECT_CALL(*this, RequestTrafficCountersCallback(counters));
+  EXPECT_CALL(event_handler_, OnTrafficCountersUpdate(kTestIfindex, counters));
+  EXPECT_CALL(event_handler2_, OnTrafficCountersUpdate(kTestIfindex, counters));
+  network_->RequestTrafficCounters(base::BindOnce(
+      &NetworkTest::RequestTrafficCountersCallback, base::Unretained(this)));
+
+  Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(&event_handler_);
+  Mock::VerifyAndClearExpectations(&event_handler2_);
+}
+
+}  // namespace
 }  // namespace
 }  // namespace shill
