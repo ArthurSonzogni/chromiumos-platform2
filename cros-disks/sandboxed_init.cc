@@ -253,11 +253,10 @@ pid_t SandboxedInit::StartLauncher() {
   NOTREACHED();
 }
 
-int SandboxedInit::PollLauncher(base::ScopedFD* const ctrl_fd) {
-  DCHECK(ctrl_fd);
-  DCHECK(ctrl_fd->is_valid());
+int SandboxedInit::PollLauncher(const base::ScopedFD& ctrl_fd) {
+  DCHECK(ctrl_fd.is_valid());
 
-  const int fd = ctrl_fd->get();
+  const int fd = ctrl_fd.get();
   int exit_code;
   const ssize_t read_bytes =
       HANDLE_EINTR(read(fd, &exit_code, sizeof(exit_code)));
@@ -274,22 +273,22 @@ int SandboxedInit::PollLauncher(base::ScopedFD* const ctrl_fd) {
     }
 
     PLOG(ERROR) << "Cannot read from control pipe " << fd;
-    exit_code = error_code;
-  } else if (read_bytes < sizeof(exit_code)) {
+    return error_code;
+  }
+
+  if (read_bytes < sizeof(exit_code)) {
     // Cannot read enough data from pipe.
     DCHECK_GE(read_bytes, 0);
     LOG(ERROR) << "Short read of " << read_bytes << " bytes from control pipe "
                << fd;
-    exit_code = error_code;
-  } else {
-    DCHECK_EQ(read_bytes, sizeof(exit_code));
-    VLOG(2) << "Received exit code " << exit_code << " from control pipe "
-            << fd;
-    DCHECK_GE(exit_code, 0);
-    DCHECK_LE(exit_code, 255);
+    return error_code;
   }
 
-  ctrl_fd->reset();
+  DCHECK_EQ(read_bytes, sizeof(exit_code));
+  VLOG(2) << "Received exit code " << exit_code << " from control pipe " << fd;
+  DCHECK_GE(exit_code, 0);
+  DCHECK_LE(exit_code, 255);
+
   return exit_code;
 }
 
@@ -302,8 +301,10 @@ int SandboxedInit::WaitForLauncher(base::ScopedFD* const ctrl_fd) {
     const int n = HANDLE_EINTR(poll(&pfd, 1, /* timeout = */ -1));
     PLOG_IF(ERROR, n < 0) << "Cannot poll control pipe " << pfd.fd;
 
-    if (const int exit_code = PollLauncher(ctrl_fd); exit_code >= 0)
+    if (const int exit_code = PollLauncher(*ctrl_fd); exit_code >= 0) {
+      ctrl_fd->reset();
       return exit_code;
+    }
   }
 }
 

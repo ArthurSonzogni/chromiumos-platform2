@@ -249,10 +249,11 @@ int SandboxedProcess::WaitImpl() {
 
 int SandboxedProcess::WaitNonBlockingImpl() {
   if (use_pid_namespace_) {
-    const int exit_code =
-        SandboxedInit::PollLauncher(&launcher_pipe_.parent_fd);
-    if (exit_code >= 0)
+    const int exit_code = SandboxedInit::PollLauncher(launcher_pipe_.parent_fd);
+    if (exit_code >= 0) {
       launcher_watch_.reset();
+      launcher_pipe_.parent_fd.reset();
+    }
     return exit_code;
   }
 

@@ -156,15 +156,14 @@ class SandboxedInitTest : public testing::Test {
   int PollLauncher() {
     EXPECT_TRUE(ctrl_.is_valid());
     LOG(INFO) << "Checking if the 'launcher' process is still running...";
-    const int exit_code = SandboxedInit::PollLauncher(&ctrl_);
+    const int exit_code = SandboxedInit::PollLauncher(ctrl_);
+    EXPECT_TRUE(ctrl_.is_valid());
 
     if (exit_code < 0) {
       LOG(INFO) << "The 'launcher' process is still running";
-      EXPECT_TRUE(ctrl_.is_valid());
     } else {
       LOG(INFO) << "The 'launcher' process finished with "
                 << Process::ExitCode(exit_code);
-      EXPECT_FALSE(ctrl_.is_valid());
     }
 
     return exit_code;

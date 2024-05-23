@@ -57,12 +57,11 @@ class SandboxedInit {
   // process anymore.
   [[noreturn]] void Run();
 
-  // Reads and returns the exit code from |*ctrl_fd|. Returns -1 immediately if
-  // no data is available yet. Closes |*ctrl_fd| once the exit code has been
-  // read.
+  // Reads and returns the exit code from |ctrl_fd|. Returns -1 immediately if
+  // no data is available yet.
   //
-  // Precondition: ctrl_fd != nullptr && ctrl_fd->is_valid()
-  static int PollLauncher(base::ScopedFD* ctrl_fd);
+  // Precondition: ctrl_fd.is_valid()
+  static int PollLauncher(const base::ScopedFD& ctrl_fd);
 
   // Reads and returns the exit code from |*ctrl_fd|. Waits for data to be
   // available. Closes |*ctrl_fd| once the exit code has been read.
