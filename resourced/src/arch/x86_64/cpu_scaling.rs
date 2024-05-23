@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::str;
 
 use anyhow::bail;
+use anyhow::Context;
 use anyhow::Result;
 use glob::glob;
 use log::info;
@@ -183,9 +184,11 @@ impl DeviceCpuStatus {
         for curr_cpu in cpus {
             let cpu_min_path =
                 PathBuf::from(str::replace(&curr_cpu.display().to_string(), "max", "min"));
-            let val_min: u64 = read_from_file(&cpu_min_path)?;
+            let val_min: u64 = read_from_file(&cpu_min_path)
+                .with_context(|| format!("couldn't read {}", cpu_min_path.display()))?;
             if (val_max - val_min) > threshold {
-                std::fs::write(curr_cpu, val_max.to_string().as_bytes())?;
+                std::fs::write(&curr_cpu, val_max.to_string().as_bytes())
+                    .with_context(|| format!("couldn't write to {}", curr_cpu.display()))?;
             } else {
                 bail!("Requested frequency too close to min");
             }
@@ -217,9 +220,11 @@ impl DeviceCpuStatus {
         for curr_cpu in cpus {
             let cpu_max_path =
                 PathBuf::from(str::replace(&curr_cpu.display().to_string(), "min", "max"));
-            let val_max: u64 = read_from_file(&cpu_max_path)?;
+            let val_max: u64 = read_from_file(&cpu_max_path)
+                .with_context(|| format!("couldn't read {}", cpu_max_path.display()))?;
             if (val_max - val_min) > threshold {
-                std::fs::write(curr_cpu, val_min.to_string().as_bytes())?;
+                std::fs::write(&curr_cpu, val_min.to_string().as_bytes())
+                    .with_context(|| format!("couldn't write to {}", curr_cpu.display()))?;
             } else {
                 bail!("Requested frequency too close to max");
             }
