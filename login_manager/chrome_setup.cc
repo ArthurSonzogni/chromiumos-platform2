@@ -433,6 +433,10 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("lacros_rootfs_only"))
     builder->AddArg("--lacros-selection=rootfs");
 
+  // Bypass LaCrOS Availability Policy.
+  if (builder->UseFlagIsSet("lacros_ignore_availability"))
+    builder->AddArg("--lacros-availability-ignore");
+
   // In ash, we use mojo service manager as the mojo broker so disable it here.
   builder->AddArg("--disable-mojo-broker");
   builder->AddArg("--ash-use-cros-mojo-service-manager");
