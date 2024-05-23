@@ -47,22 +47,6 @@ const char kEnvIsRecoveryInstall[] = "IS_RECOVERY_INSTALL";
 
 namespace {
 
-// This function returns the appropriate device name for the corresponding
-// |partition| number on a NAND setup. It favors a mountable device name such
-// as "/dev/ubiblockX_0" over the read-write devices such as "/dev/ubiX_0".
-base::FilePath MakeNandPartitionDevForMounting(PartitionNum partition) {
-  if (partition.Value() == 0) {
-    return base::FilePath("/dev/mtd0");
-  }
-  if (partition.IsKernel()) {
-    return base::FilePath("/dev/mtd" + partition.ToString());
-  }
-  if (partition.IsRoot()) {
-    return base::FilePath("/dev/ubiblock" + partition.ToString() + "_0");
-  }
-  return base::FilePath("/dev/ubi" + partition.ToString() + "_0");
-}
-
 // This is an array of device names that are allowed in end in a digit, and
 // which use the 'p' notation to denote partitions.
 constexpr std::array<std::string_view, 3> kNumberedDevices = {
@@ -200,13 +184,6 @@ bool LsbReleaseValue(const base::FilePath& file,
 base::FilePath GetBlockDevFromPartitionDev(
     const base::FilePath& partition_dev_path) {
   const std::string& partition_dev = partition_dev_path.value();
-  if (base::StartsWith(partition_dev, "/dev/mtd",
-                       base::CompareCase::SENSITIVE) ||
-      base::StartsWith(partition_dev, "/dev/ubi",
-                       base::CompareCase::SENSITIVE)) {
-    return base::FilePath("/dev/mtd0");
-  }
-
   size_t i = partition_dev.length();
 
   while (i > 0 && isdigit(partition_dev[i - 1]))
@@ -265,11 +242,6 @@ PartitionNum GetPartitionFromPartitionDev(
 base::FilePath MakePartitionDev(const base::FilePath& block_dev_path,
                                 PartitionNum partition) {
   const std::string& block_dev = block_dev_path.value();
-  if (base::StartsWith(block_dev, "/dev/mtd", base::CompareCase::SENSITIVE) ||
-      base::StartsWith(block_dev, "/dev/ubi", base::CompareCase::SENSITIVE)) {
-    return MakeNandPartitionDevForMounting(partition);
-  }
-
   for (const std::string_view nd : kNumberedDevices) {
     if (base::StartsWith(block_dev, nd))
       return base::FilePath(block_dev + "p" + partition.ToString());
@@ -522,8 +494,6 @@ bool SetKernelArg(const string& key,
 // "/dev/dm" are to be treated as read-only.
 bool IsReadonly(const base::FilePath& device) {
   return base::StartsWith(device.value(), "/dev/dm",
-                          base::CompareCase::SENSITIVE) ||
-         base::StartsWith(device.value(), "/dev/ubi",
                           base::CompareCase::SENSITIVE);
 }
 

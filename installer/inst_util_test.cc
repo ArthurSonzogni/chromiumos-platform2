@@ -76,14 +76,6 @@ TEST(UtilTest, GetBlockDevFromPartitionDev) {
             base::FilePath("/dev/loop0"));
   EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/loop32p12")),
             base::FilePath("/dev/loop32"));
-  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/mtd0")),
-            base::FilePath("/dev/mtd0"));
-  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/ubi1_0")),
-            base::FilePath("/dev/mtd0"));
-  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/mtd2_0")),
-            base::FilePath("/dev/mtd0"));
-  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/ubiblock3_0")),
-            base::FilePath("/dev/mtd0"));
   EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/nvme0n1p12")),
             base::FilePath("/dev/nvme0n1"));
 }
@@ -106,24 +98,6 @@ TEST(UtilTest, GetPartitionDevTest) {
             PartitionNum(0));
   EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/loop1p12")),
             PartitionNum(12));
-  EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/mtd0")),
-            PartitionNum(0));
-  EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/ubi1_0")),
-            PartitionNum(1));
-  EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/mtd2_0")),
-            PartitionNum(2));
-  EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/ubiblock3_0")),
-            PartitionNum(3));
-  EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/mtd4_0")),
-            PartitionNum(4));
-  EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/ubiblock5_0")),
-            PartitionNum(5));
-  EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/mtd6_0")),
-            PartitionNum(6));
-  EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/ubiblock7_0")),
-            PartitionNum(7));
-  EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/ubi8_0")),
-            PartitionNum(8));
   EXPECT_EQ(GetPartitionFromPartitionDev(base::FilePath("/dev/nvme0n1p12")),
             PartitionNum(12));
 }
@@ -142,18 +116,6 @@ TEST(UtilTest, MakePartitionDevTest) {
             base::FilePath("/dev/loop16p321"));
   EXPECT_EQ(MakePartitionDev(base::FilePath(), PartitionNum(0)),
             base::FilePath("0"));
-  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), PartitionNum(0)),
-            base::FilePath("/dev/mtd0"));
-  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), PartitionNum(1)),
-            base::FilePath("/dev/ubi1_0"));
-  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), PartitionNum(2)),
-            base::FilePath("/dev/mtd2"));
-  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), PartitionNum(3)),
-            base::FilePath("/dev/ubiblock3_0"));
-  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), PartitionNum(4)),
-            base::FilePath("/dev/mtd4"));
-  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), PartitionNum(5)),
-            base::FilePath("/dev/ubiblock5_0"));
   EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/nvme0n1"), PartitionNum(12)),
             base::FilePath("/dev/nvme0n1p12"));
 }
@@ -323,9 +285,8 @@ TEST(UtilTest, IsReadonlyTest) {
   EXPECT_EQ(IsReadonly(base::FilePath("/dev/sda3")), false);
   EXPECT_EQ(IsReadonly(base::FilePath("/dev/dm-0")), true);
   EXPECT_EQ(IsReadonly(base::FilePath("/dev/dm-1")), true);
-  EXPECT_EQ(IsReadonly(base::FilePath("/dev/ubi1_0")), true);
+  EXPECT_EQ(IsReadonly(base::FilePath("/dev/ubi1_0")), false);
   EXPECT_EQ(IsReadonly(base::FilePath("/dev/ubo1_0")), false);
-  EXPECT_EQ(IsReadonly(base::FilePath("/dev/ubiblock1_0")), true);
 }
 
 TEST(UtilTest, ReplaceAllTest) {
