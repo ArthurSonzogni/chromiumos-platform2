@@ -343,7 +343,8 @@ int32_t CameraHalAdapter::OpenDevice(
               .set_face_detection_result_callback =
                   std::move(set_face_detection_result_callback),
               .sw_privacy_switch_stream_manipulator_enabled = false,
-              .diagnostics_client = camera_diagnostics_client_},
+              .diagnostics_client = camera_diagnostics_client_,
+              .camera_client_type = camera_client_type},
           &stream_manipulator_runtime_options_, root_gpu_resources_.get(),
           mojo_manager_token_),
       camera_client_type, do_notify_invalid_capture_request);
@@ -696,7 +697,8 @@ const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
   metadata = std::make_unique<android::CameraMetadata>();
   metadata->acquire(clone_camera_metadata(static_metadata));
 
-  if (!StreamManipulator::UpdateStaticMetadata(metadata.get())) {
+  if (!StreamManipulator::UpdateStaticMetadata(metadata.get(),
+                                               camera_client_type)) {
     LOGF(ERROR)
         << "Failed to update the static metadata from StreamManipulators";
   }

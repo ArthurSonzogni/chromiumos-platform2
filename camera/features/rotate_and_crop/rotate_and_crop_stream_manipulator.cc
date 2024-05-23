@@ -22,6 +22,7 @@
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/stream_manipulator_helper.h"
 #include "common/vendor_tag_manager.h"
@@ -75,16 +76,10 @@ libyuv::RotationMode RotateAndCropModeToLibyuvRotation(uint8_t rc_mode) {
   }
 }
 
-bool IsArcTBoard() {
-  return DeviceConfig::GetArcApiLevel() == 33;
-}
-
-bool IsExclusiveBoard() {
-  if (base::SysInfo::GetLsbReleaseBoard().rfind("strongbad", 0) !=
-      std::string::npos)
-    return true;
-  else
-    return false;
+bool NeedRotateAndCropApi(mojom::CameraClientType client_type) {
+  // The camera client is ARC and is T or higher.
+  return client_type == mojom::CameraClientType::ANDROID &&
+         DeviceConfig::GetArcApiLevel() >= 33;
 }
 
 }  // namespace
@@ -92,10 +87,12 @@ bool IsExclusiveBoard() {
 RotateAndCropStreamManipulator::RotateAndCropStreamManipulator(
     GpuResources* gpu_resources,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor,
-    std::string camera_module_name)
+    std::string camera_module_name,
+    mojom::CameraClientType camera_client_type)
     : gpu_resources_(gpu_resources),
       still_capture_processor_(std::move(still_capture_processor)),
       camera_module_name_(std::move(camera_module_name)),
+      camera_client_type_(camera_client_type),
       thread_("RotateAndCropThread") {
   CHECK_NE(gpu_resources_, nullptr);
   CHECK(thread_.Start());
@@ -108,9 +105,6 @@ RotateAndCropStreamManipulator::~RotateAndCropStreamManipulator() {
 // static
 bool RotateAndCropStreamManipulator::UpdateVendorTags(
     VendorTagManager& vendor_tag_manager) {
-  if (!IsArcTBoard() || IsExclusiveBoard()) {
-    return true;
-  }
   if (!vendor_tag_manager.Add(RotateAndCropVendorTag::kHalAvailableModes,
                               RotateAndCropVendorTag::kSectionName,
                               RotateAndCropVendorTag::kHalAvailableModesTagName,
@@ -123,8 +117,8 @@ bool RotateAndCropStreamManipulator::UpdateVendorTags(
 
 // static
 bool RotateAndCropStreamManipulator::UpdateStaticMetadata(
-    android::CameraMetadata* static_info) {
-  if (!IsArcTBoard() || IsExclusiveBoard()) {
+    android::CameraMetadata* static_info, mojom::CameraClientType client_type) {
+  if (!NeedRotateAndCropApi(client_type)) {
     return true;
   }
   camera_metadata_entry_t entry =
@@ -177,11 +171,7 @@ bool RotateAndCropStreamManipulator::UpdateStaticMetadata(
 
 bool RotateAndCropStreamManipulator::Initialize(
     const camera_metadata_t* static_info, Callbacks callbacks) {
-  disabled_ = !IsArcTBoard() || IsExclusiveBoard();
-  if (disabled_) {
-    LOGF(INFO) << "Disabled on non-ARC-T or exclusive board";
-  }
-
+  disabled_ = !NeedRotateAndCropApi(camera_client_type_);
   helper_ = std::make_unique<StreamManipulatorHelper>(
       StreamManipulatorHelper::Config{
           .process_mode = disabled_ ? ProcessMode::kBypass

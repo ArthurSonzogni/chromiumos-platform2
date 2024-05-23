@@ -105,7 +105,8 @@ class CROS_CAMERA_EXPORT StreamManipulator {
   // A one-time initialization hook called by CameraHalAdapter for updating the
   // static camera metadata from stream manipulators for each (camera_id,
   // client_type) pair.
-  static bool UpdateStaticMetadata(android::CameraMetadata* static_info);
+  static bool UpdateStaticMetadata(android::CameraMetadata* static_info,
+                                   mojom::CameraClientType camera_client_type);
 
   virtual ~StreamManipulator() = default;
 

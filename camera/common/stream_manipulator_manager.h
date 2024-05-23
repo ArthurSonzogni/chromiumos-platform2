@@ -18,6 +18,7 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/thread_annotations.h>
 
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/camera_diagnostics_client.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/camera_metadata_inspector.h"
@@ -50,6 +51,9 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
     bool sw_privacy_switch_stream_manipulator_enabled = true;
 
     CameraDiagnosticsClient* diagnostics_client;
+
+    mojom::CameraClientType camera_client_type =
+        mojom::CameraClientType::UNKNOWN;
   };
 
   StreamManipulatorManager(CreateOptions create_options,

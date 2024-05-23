@@ -93,9 +93,10 @@ bool StreamManipulator::UpdateVendorTags(VendorTagManager& vendor_tag_manager) {
 
 // static
 bool StreamManipulator::UpdateStaticMetadata(
-    android::CameraMetadata* static_info) {
+    android::CameraMetadata* static_info, mojom::CameraClientType client_type) {
   if (!ZslStreamManipulator::UpdateStaticMetadata(static_info) ||
-      !RotateAndCropStreamManipulator::UpdateStaticMetadata(static_info) ||
+      !RotateAndCropStreamManipulator::UpdateStaticMetadata(static_info,
+                                                            client_type) ||
       !FramingStreamManipulator::UpdateStaticMetadata(static_info)) {
     return false;
   }

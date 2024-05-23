@@ -14,6 +14,7 @@
 
 #include <base/containers/flat_set.h>
 
+#include "camera/mojo/cros_camera_service.mojom.h"
 #include "common/still_capture_processor.h"
 #include "common/stream_manipulator.h"
 #include "common/stream_manipulator_helper.h"
@@ -55,11 +56,13 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
   explicit RotateAndCropStreamManipulator(
       GpuResources* gpu_resources,
       std::unique_ptr<StillCaptureProcessor> still_capture_processor,
-      std::string camera_module_name);
+      std::string camera_module_name,
+      mojom::CameraClientType camera_client_type);
   ~RotateAndCropStreamManipulator() override;
 
   static bool UpdateVendorTags(VendorTagManager& vendor_tag_manager);
-  static bool UpdateStaticMetadata(android::CameraMetadata* static_info);
+  static bool UpdateStaticMetadata(android::CameraMetadata* static_info,
+                                   mojom::CameraClientType camera_client_type);
 
   // Implementations of StreamManipulator.
   bool Initialize(const camera_metadata_t* static_info,
@@ -85,6 +88,8 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
   GpuResources* gpu_resources_ = nullptr;
   std::unique_ptr<StillCaptureProcessor> still_capture_processor_;
   std::string camera_module_name_;
+  mojom::CameraClientType camera_client_type_ =
+      mojom::CameraClientType::UNKNOWN;
   std::unique_ptr<StreamManipulatorHelper> helper_;
 
   // Fixed after Initialize().
