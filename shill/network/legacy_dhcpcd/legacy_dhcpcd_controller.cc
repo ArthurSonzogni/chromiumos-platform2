@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <brillo/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
@@ -28,6 +29,8 @@ constexpr char kDHCPCDExecutableName[] = "dhcpcd";
 constexpr char kDHCPCDPath[] = "/sbin/dhcpcd";
 constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
+constexpr char kDHCPCDPathFormatLease[] = "var/lib/dhcpcd/%s.lease";
+constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-4.pid";
 
 void LogDBusError(const brillo::ErrorPtr& error,
                   const std::string& method,
@@ -79,15 +82,6 @@ std::vector<std::string> GetDhcpcdFlags(
   }
 
   return flags;
-}
-
-// Stops the dhcpcd process with |pid|.
-void StopDhcpcdProcess(net_base::ProcessManager* process_manager, int pid) {
-  // Pass the termination responsibility to net_base::ProcessManager.
-  // net_base::ProcessManager will try to terminate the process using SIGTERM,
-  // then SIGKill signals.  It will log an error message if it is not able to
-  // terminate the process in a timely manner.
-  process_manager->StopProcessAndBlock(pid);
 }
 
 }  // namespace
@@ -164,11 +158,7 @@ bool LegacyDHCPCDControllerFactory::CreateAsync(
     DHCPCDControllerInterface::EventHandler* handler,
     CreateCB create_cb) {
   std::vector<std::string> args = GetDhcpcdFlags(technology, options);
-  if (options.lease_name.empty() || options.lease_name == interface) {
-    args.push_back(std::string(interface));
-  } else {
-    args.push_back(base::StrCat({interface, "=", options.lease_name}));
-  }
+  args.push_back(std::string(interface));
 
   net_base::ProcessManager::MinijailOptions minijail_options;
   minijail_options.user = kDHCPCDUser;
@@ -185,8 +175,11 @@ bool LegacyDHCPCDControllerFactory::CreateAsync(
     LOG(ERROR) << __func__ << ": Failed to start the dhcpcd process";
     return false;
   }
-  base::ScopedClosureRunner clean_up_closure(
-      base::BindOnce(&StopDhcpcdProcess, process_manager_, pid));
+  base::ScopedClosureRunner clean_up_closure(base::BindOnce(
+      // base::Unretained(this) is safe because the closure won't be passed
+      // outside this instance.
+      &LegacyDHCPCDControllerFactory::CleanUpDhcpcd, base::Unretained(this),
+      std::string(interface), options, pid));
 
   // Inject the exit callback with pid information.
   if (!process_manager_->UpdateExitCallback(
@@ -199,6 +192,23 @@ bool LegacyDHCPCDControllerFactory::CreateAsync(
       pid, PendingRequest{std::string(interface), handler, std::move(create_cb),
                           std::move(clean_up_closure)}));
   return true;
+}
+
+void LegacyDHCPCDControllerFactory::CleanUpDhcpcd(
+    const std::string& interface,
+    DHCPCDControllerInterface::Options options,
+    int pid) {
+  // Pass the termination responsibility to net_base::ProcessManager.
+  // net_base::ProcessManager will try to terminate the process using SIGTERM,
+  // then SIGKill signals.  It will log an error message if it is not able to
+  // terminate the process in a timely manner.
+  process_manager_->StopProcessAndBlock(pid);
+
+  // Clean up the lease file and pid file.
+  brillo::DeleteFile(root_.Append(
+      base::StringPrintf(kDHCPCDPathFormatLease, interface.c_str())));
+  brillo::DeleteFile(root_.Append(
+      base::StringPrintf(kDHCPCDPathFormatPID, interface.c_str())));
 }
 
 void LegacyDHCPCDControllerFactory::OnProcessExited(int pid, int exit_status) {

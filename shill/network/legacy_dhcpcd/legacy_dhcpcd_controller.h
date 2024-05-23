@@ -80,6 +80,8 @@ class LegacyDHCPCDControllerFactory : public DHCPCDControllerFactoryInterface {
                    DHCPCDControllerInterface::EventHandler* handler,
                    CreateCB create_cb) override;
 
+  void set_root_for_testing(const base::FilePath& root) { root_ = root; }
+
  private:
   // Stores the information for creating the controller instance, and the
   // closure that cleans up the dhcpcd process when the struct is destroyed.
@@ -96,6 +98,11 @@ class LegacyDHCPCDControllerFactory : public DHCPCDControllerFactoryInterface {
     base::WeakPtr<LegacyDHCPCDController> controller;
     base::ScopedClosureRunner clean_up_closure;
   };
+
+  // Stops the dhcpcd process with |pid|, and clears the pid and lease files.
+  void CleanUpDhcpcd(const std::string& interface,
+                     DHCPCDControllerInterface::Options options,
+                     int pid);
 
   // The callback from ProcessManager, called when the dhcpcd process is exited.
   void OnProcessExited(int pid, int exit_status);
@@ -123,6 +130,7 @@ class LegacyDHCPCDControllerFactory : public DHCPCDControllerFactoryInterface {
 
   net_base::ProcessManager* process_manager_;
   scoped_refptr<dbus::Bus> bus_;
+  base::FilePath root_{"/"};
 
   // The listener that listens the D-Bus signal from the dhcpcd process.
   std::unique_ptr<LegacyDHCPCDListener> listener_;

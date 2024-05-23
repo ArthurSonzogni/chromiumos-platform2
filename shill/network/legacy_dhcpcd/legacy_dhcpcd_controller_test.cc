@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
 #include <dbus/mock_bus.h>
@@ -71,6 +73,9 @@ class MockClient : public DHCPCDControllerInterface::EventHandler {
 class LegacyDHCPCDControllerFactoryTest : public testing::Test {
  public:
   void SetUp() override {
+    EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
+    root_path_ = temp_dir_.GetPath();
+
     mock_bus_ = new dbus::MockBus(dbus::Bus::Options());
     mock_object_proxy_ =
         new dbus::MockObjectProxy(mock_bus_.get(), "org.chromium.dhcpcd",
@@ -98,6 +103,7 @@ class LegacyDHCPCDControllerFactoryTest : public testing::Test {
         nullptr, mock_bus_, &mock_process_manager_,
         std::move(listener_factory));
     EXPECT_NE(fake_listener_, nullptr);
+    controller_factory_->set_root_for_testing(root_path_);
   }
 
   std::unique_ptr<DHCPCDControllerInterface> CreateControllerSync(
@@ -135,7 +141,19 @@ class LegacyDHCPCDControllerFactoryTest : public testing::Test {
     return controller;
   }
 
+  void CreateTempFileInRoot(std::string_view file) {
+    const base::FilePath path_in_root = root_path_.Append(file);
+    EXPECT_TRUE(base::CreateDirectory(path_in_root.DirName()));
+    EXPECT_EQ(0, base::WriteFile(path_in_root, "", 0));
+  }
+
+  bool FileExistsInRoot(std::string_view file) {
+    return base::PathExists(root_path_.Append(file));
+  }
+
   base::test::TaskEnvironment task_environment_;
+  base::ScopedTempDir temp_dir_;
+  base::FilePath root_path_;
 
   net_base::MockProcessManager mock_process_manager_;
   net_base::MockProcessManager::ExitCallback process_exit_cb_;
@@ -168,9 +186,6 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DhcpcdArguments) {
           {{.apply_dscp = true},
            {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
             "--nodelay", "--apply_dscp", "wlan0"}},
-          {{.lease_name = "fake_lease"},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "--nodelay", "wlan0=fake_lease"}},
       };
   for (const auto& [options, dhcpcd_args] : kExpectedArgs) {
     // When creating a controller, the controller factory should create
@@ -369,6 +384,48 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, Release) {
       CallMethodAndBlock(IsDBusMethodCall("org.chromium.dhcpcd", "Release"), _))
       .WillOnce(Return(base::ok(dbus::Response::CreateEmpty())));
   EXPECT_TRUE(controller->Release());
+}
+
+TEST_F(LegacyDHCPCDControllerFactoryTest, DeleteEphemeralLeaseAndPidFile) {
+  constexpr int kPid = 4;
+  constexpr std::string_view kDBusServiceName = ":1.25";
+  constexpr std::string_view kInterface = "wlan0";
+  constexpr std::string_view kPidFile = "var/run/dhcpcd/dhcpcd-wlan0-4.pid";
+  constexpr std::string_view kLeaseFile = "var/lib/dhcpcd/wlan0.lease";
+  const DHCPCDControllerInterface::Options options = {};
+
+  // When creating a controller, the controller factory should create
+  // the dhcpcd process in minijail.
+  EXPECT_CALL(mock_process_manager_, StartProcessInMinijail)
+      .WillOnce(Return(kPid));
+  EXPECT_CALL(mock_process_manager_, UpdateExitCallback).WillOnce(Return(true));
+
+  std::unique_ptr<DHCPCDControllerInterface> controller;
+  controller_factory_->CreateAsync(
+      kInterface, Technology::kWiFi, options, &client_,
+      base::BindOnce(
+          [](std::unique_ptr<DHCPCDControllerInterface>* out,
+             std::unique_ptr<DHCPCDControllerInterface> in) {
+            *out = std::move(in);
+          },
+          &controller));
+
+  // After receiving D-Bus signal, the controller should be returned
+  // asynchronously.
+  fake_listener_->status_changed_cb_.Run(
+      kDBusServiceName, kPid, DHCPCDControllerInterface::Status::kInit);
+  ASSERT_NE(controller, nullptr);
+
+  CreateTempFileInRoot(kPidFile);
+  CreateTempFileInRoot(kLeaseFile);
+  EXPECT_TRUE(FileExistsInRoot(kPidFile));
+  EXPECT_TRUE(FileExistsInRoot(kLeaseFile));
+
+  // After the controller is destroyed, the pid file and the lease file should
+  // be deleted.
+  controller.reset();
+  EXPECT_FALSE(FileExistsInRoot(kPidFile));
+  EXPECT_FALSE(FileExistsInRoot(kLeaseFile));
 }
 
 }  // namespace
