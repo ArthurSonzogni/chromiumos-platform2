@@ -32,13 +32,17 @@ class LifelineFDService {
   LifelineFDService& operator=(const LifelineFDService&) = delete;
   ~LifelineFDService();
 
-  // Register |client_fd| for read events and trigger |on_lifeline_fd_closed|
-  // when an event happens on |client_fd|. Returns a ScopedClosureRunner that
-  // allows the caller to unregister early |client_fd| and cancel
-  // |on_lifeline_fd_closed|, or return an invalid ScopedClosureRunner if the
-  // registration failed.
+  // Register |lifeline_fd| for read events and trigger |on_lifeline_fd_event|
+  // when an event happens on |lifeline_fd|. Returns a ScopedClosureRunner that
+  // allows the caller to unregister early |lifeline_fd| and cancel
+  // |on_lifeline_fd_event|, or return an invalid ScopedClosureRunner if the
+  // registration failed. It is guaranteed that |lifeline_fd| is not closed
+  // before the caller's |on_lifeline_fd_event| is invoked or before the caller
+  // discards the returned ScopedClosureRunner. This allows the caller to use
+  // the lifeline_fd int value as a stable key in conjunction with the lifeline
+  // FD service.
   base::ScopedClosureRunner AddLifelineFD(
-      base::ScopedFD client_fd, base::OnceClosure on_lifeline_fd_closed);
+      base::ScopedFD lifeline_fd, base::OnceClosure on_lifeline_fd_event);
 
   std::vector<int> get_lifeline_fds_for_testing();
 
@@ -49,7 +53,7 @@ class LifelineFDService {
   struct LifelineFDInfo {
     LifelineFDInfo(
         base::ScopedFD lifeline_fd,
-        base::OnceClosure on_lifeline_fd_closed,
+        base::OnceClosure on_lifeline_fd_event,
         std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher);
 
     // The file descriptor committed by the DBus client and registered by the
@@ -57,7 +61,7 @@ class LifelineFDService {
     base::ScopedFD lifeline_fd;
     // A callback registered by the local service along side |lifeline_fd|. Used
     // to notify the local service when a |lifeline_fd| is invalidated.
-    base::OnceClosure on_lifeline_fd_closed;
+    base::OnceClosure on_lifeline_fd_event;
     // Watcher for being notified when the DBus client remotely invalidates
     // |lifeline_fd|. The watcher must be closed before |lifeline_fd| is closed.
     std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher;
