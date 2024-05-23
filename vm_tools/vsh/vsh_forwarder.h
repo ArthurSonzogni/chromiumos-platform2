@@ -55,12 +55,15 @@ class VshForwarder {
 
   void SendExitMessage();
 
+  // FDs (`stdio_pipes_`, `ptm_fd_` and `sock_fd_`) must be declared before
+  // watchers (`stdout_watcher_`, `stderr_watcher_` and `socket_watcher_`)
+  // because the formers need to outlive the latters.
   std::array<base::ScopedFD, 3> stdio_pipes_;
+  base::ScopedFD ptm_fd_;
+  base::ScopedFD sock_fd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> socket_watcher_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> stdout_watcher_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> stderr_watcher_;
-  base::ScopedFD ptm_fd_;
-  base::ScopedFD sock_fd_;
   bool inherit_env_;
   bool interactive_ = true;
 
