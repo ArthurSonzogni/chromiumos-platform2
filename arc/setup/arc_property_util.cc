@@ -394,15 +394,14 @@ StringPieceType SafelyReadFile(const base::FilePath& path,
 //       manufacturer = Mediatek
 //       model        = MT8186
 //   - Unlaunched MT8186
-//       manufacturer = MediaTek
+//       manufacturer = Mediatek
 //       model        = Kompanio 520 MT8186/Kompanio 528 MT8186T
 //   - New platforms
-//       manufacturer = MediaTek
+//       manufacturer = Mediatek
 //       model        = Kompanio xxx MTyyyy(T)
 static std::tuple<std::string, std::string> FixUpMediaTekInfo(
     std::string_view machine, brillo::CrosConfigInterface* config) {
-  constexpr std::string kMtkManufacturerName = "MediaTek";
-  constexpr std::string kMtkManufacturerNameLegacy = "Mediatek";
+  constexpr std::string kMtkManufacturerName = "Mediatek";
   constexpr int kFridPrefixLength = 7;  // Frid format is Google_XXXX
 
   // Older platforms before MT8186
@@ -410,7 +409,7 @@ static std::tuple<std::string, std::string> FixUpMediaTekInfo(
                                                     "MT8192", "MT8195"};
   for (const auto& model : kMtkLegacyModel) {
     if (machine.find(model) != std::string::npos) {
-      return {kMtkManufacturerNameLegacy, model};
+      return {kMtkManufacturerName, model};
     }
   }
 
@@ -420,17 +419,17 @@ static std::tuple<std::string, std::string> FixUpMediaTekInfo(
 
     // Not able to read frid, assume it is legacy
     if (!config || !config->GetString("/identity", "frid", &frid)) {
-      return {kMtkManufacturerNameLegacy, "MT8186"};
+      return {kMtkManufacturerName, "MT8186"};
     }
 
     // Launched devices use the legacy info
-    std::string device = frid.substr(kFridPrefixLength);
+    auto device = std::string_view(frid).substr(kFridPrefixLength);
     static constexpr auto kLaunchedDevices =
         base::MakeFixedFlatSet<std::string_view>(
             {"Chinchou", "Chinchou360", "Magneton", "Ponyta", "Rusty",
              "Starmie", "Steelix", "Tentacool", "Tentacruel", "Voltorb"});
     if (base::Contains(kLaunchedDevices, device)) {
-      return {kMtkManufacturerNameLegacy, "MT8186"};
+      return {kMtkManufacturerName, "MT8186"};
     }
   }
 
