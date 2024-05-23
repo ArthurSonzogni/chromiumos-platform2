@@ -417,6 +417,7 @@ void StreamManipulatorHelper::PostConfigure(
   }
 
   // Create buffer pools.
+  // TODO(kamesan): Figure out why it gets more than |max_buffers| requests.
   if (still_process_input_stream_.has_value()) {
     const camera3_stream_t* s = still_process_input_stream_->ptr();
     still_process_input_pool_ =
@@ -425,7 +426,7 @@ void StreamManipulatorHelper::PostConfigure(
             .height = s->height,
             .format = base::checked_cast<uint32_t>(s->format),
             .usage = s->usage,
-            .max_num_buffers = s->max_buffers,
+            .max_num_buffers = s->max_buffers + 1,
         });
     still_process_output_pool_ =
         std::make_unique<CameraBufferPool>(CameraBufferPool::Options{
@@ -433,7 +434,7 @@ void StreamManipulatorHelper::PostConfigure(
             .height = still_process_output_size_->height,
             .format = HAL_PIXEL_FORMAT_YCBCR_420_888,
             .usage = kProcessStreamUsageFlags,
-            .max_num_buffers = s->max_buffers,
+            .max_num_buffers = s->max_buffers + 1,
         });
     if (blob_size_.value() != still_process_output_size_.value()) {
       blob_sized_buffer_pool_ =
@@ -442,7 +443,7 @@ void StreamManipulatorHelper::PostConfigure(
               .height = blob_size_->height,
               .format = HAL_PIXEL_FORMAT_YCBCR_420_888,
               .usage = kProcessStreamUsageFlags,
-              .max_num_buffers = s->max_buffers,
+              .max_num_buffers = s->max_buffers + 1,
           });
     }
   }
@@ -454,7 +455,7 @@ void StreamManipulatorHelper::PostConfigure(
             .height = s->height,
             .format = base::checked_cast<uint32_t>(s->format),
             .usage = s->usage,
-            .max_num_buffers = s->max_buffers,
+            .max_num_buffers = s->max_buffers + 1,
         });
     video_process_output_pool_ =
         std::make_unique<CameraBufferPool>(CameraBufferPool::Options{
@@ -462,7 +463,7 @@ void StreamManipulatorHelper::PostConfigure(
             .height = video_process_output_size_->height,
             .format = HAL_PIXEL_FORMAT_YCBCR_420_888,
             .usage = kProcessStreamUsageFlags,
-            .max_num_buffers = s->max_buffers,
+            .max_num_buffers = s->max_buffers + 1,
         });
   }
 
@@ -803,6 +804,7 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
       if (stream_ctx.process_output.has_value()) {
         SetBufferError(stream_ctx.process_output.value());
         result.AppendOutputBuffer(std::move(stream_ctx.process_output.value()));
+        stream_ctx.process_output.reset();
       }
       for (auto& bb : stream_ctx.client_yuv_buffers_to_generate) {
         SetBufferError(bb);

@@ -337,7 +337,7 @@ class CROS_CAMERA_EXPORT Camera3StreamConfiguration {
 
   std::optional<camera3_stream_configuration_t> raw_configuration_;
 
-  const StreamEffectMap* stream_effects_map_;
+  const StreamEffectMap* stream_effects_map_ = nullptr;
 };
 
 // A helper class to make it easy to modify camera3_capture_request_t and

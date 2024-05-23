@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 #include <hardware/camera3.h>
 
+#include "camera/camera_metadata.h"
 #include "camera/common/stream_manipulator.h"
 #include "camera/common/test_support/fake_still_capture_processor.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
@@ -49,6 +50,37 @@ const int kNumFrames = 5;
 base::FilePath dlc_path;
 
 namespace cros::tests {
+
+namespace {
+
+android::CameraMetadata GenerateStaticMetadataFor720p() {
+  const std::vector<int32_t> stream_configs = {
+      HAL_PIXEL_FORMAT_YCBCR_420_888, 1280, 720,
+      ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT};
+  const std::vector<int64_t> min_durations = {
+      HAL_PIXEL_FORMAT_YCBCR_420_888, 1280, 720,
+      static_cast<int64_t>(1e9f / 30.0f)};
+  const std::vector<int32_t> active_array_size = {0, 0, 1280, 720};
+  const int32_t partial_result_count = 1;
+
+  android::CameraMetadata static_info;
+  CHECK_EQ(static_info.update(ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS,
+                              std::move(stream_configs)),
+           0);
+  CHECK_EQ(static_info.update(ANDROID_SCALER_AVAILABLE_MIN_FRAME_DURATIONS,
+                              std::move(min_durations)),
+           0);
+  CHECK_EQ(static_info.update(ANDROID_SENSOR_INFO_ACTIVE_ARRAY_SIZE,
+                              std::move(active_array_size)),
+           0);
+  CHECK_EQ(static_info.update(ANDROID_REQUEST_PARTIAL_RESULT_COUNT,
+                              &partial_result_count, 1),
+           0);
+
+  return static_info;
+}
+
+}  // namespace
 
 std::atomic<bool> effect_set_success = false;
 std::unique_ptr<base::RunLoop> loop;
@@ -92,6 +124,7 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
     effect_set_success = false;
     loop = std::make_unique<base::RunLoop>();
 
+    static_info_ = GenerateStaticMetadataFor720p();
     stream_config_.AppendStream(&yuv_720_stream);
 
     output_buffer_ = CameraBufferManager::AllocateScopedBuffer(
@@ -101,6 +134,7 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
 
   StreamManipulator::RuntimeOptions runtime_options_;
   std::unique_ptr<EffectsStreamManipulator> stream_manipulator_;
+  android::CameraMetadata static_info_;
   Camera3StreamConfiguration stream_config_;
   base::FilePath config_path_;
 
@@ -132,9 +166,11 @@ void EffectsStreamManipulatorTest::WaitForEffectSetAndReset() {
 }
 
 void EffectsStreamManipulatorTest::InitialiseStreamManipulator() {
+  constexpr const char* kFakeCameraModuleName = "Fake camera module";
   stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_,
-      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
+      std::make_unique<FakeStillCaptureProcessor>(), kFakeCameraModuleName,
+      SetEffectCallback);
 
   base::RepeatingCallback<void(Camera3CaptureDescriptor)> result_cb =
       base::BindRepeating(
@@ -148,7 +184,7 @@ void EffectsStreamManipulatorTest::InitialiseStreamManipulator() {
           std::ref(frame_processed_));
 
   stream_manipulator_->Initialize(
-      nullptr,
+      static_info_.getAndLock(),
       StreamManipulator::Callbacks{.result_callback = result_cb,
                                    .notify_callback = base::DoNothing()});
 
@@ -182,7 +218,7 @@ void EffectsStreamManipulatorTest::ProcessFileThroughStreamManipulator(
     ReadFileIntoBuffer(*output_buffer_, infile);
 
     Camera3CaptureDescriptor result(
-        camera3_capture_result_t{.frame_number = i});
+        camera3_capture_result_t{.frame_number = i, .partial_result = 1});
     std::vector<Camera3StreamBuffer> result_buffers;
     result_buffers.push_back(
         Camera3StreamBuffer::MakeResultOutput(camera3_stream_buffer_t{
@@ -193,6 +229,8 @@ void EffectsStreamManipulatorTest::ProcessFileThroughStreamManipulator(
             .release_fence = -1,
         }));
     result.SetOutputBuffers(std::move(result_buffers));
+    ASSERT_TRUE(result.UpdateMetadata<int64_t>(
+        ANDROID_SENSOR_TIMESTAMP, std::array<int64_t, 1>{1'000'000}));
     stream_manipulator_->GetTaskRunner()->PostTask(
         FROM_HERE, base::BindOnce(
                        [](StreamManipulator* stream_manipulator,

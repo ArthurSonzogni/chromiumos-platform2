@@ -157,15 +157,16 @@ class StreamManipulatorHelper {
   const Size& active_array_size() const { return active_array_size_; }
 
   // Getters for configured states.
-  Size still_process_input_size() const {
-    CHECK(still_process_input_stream_.has_value());
-    return Size(still_process_input_stream_->ptr()->width,
-                still_process_input_stream_->ptr()->height);
+  bool stream_config_unsupported() const { return stream_config_unsupported_; }
+  const camera3_stream_t* still_process_input_stream() const {
+    return still_process_input_stream_.has_value()
+               ? still_process_input_stream_->ptr()
+               : nullptr;
   }
-  Size video_process_input_size() const {
-    CHECK(video_process_input_stream_.has_value());
-    return Size(video_process_input_stream_->ptr()->width,
-                video_process_input_stream_->ptr()->height);
+  const camera3_stream_t* video_process_input_stream() const {
+    return video_process_input_stream_.has_value()
+               ? video_process_input_stream_->ptr()
+               : nullptr;
   }
   const Size& still_process_output_size() const {
     CHECK(still_process_output_size_.has_value());

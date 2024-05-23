@@ -234,7 +234,8 @@ StreamManipulatorManager::StreamManipulatorManager(
     stream_manipulators_.emplace_back(EffectsStreamManipulator::Create(
         feature_profile.GetConfigFilePath(
             FeatureProfile::FeatureType::kEffects),
-        runtime_options, std::move(still_capture_processor)));
+        runtime_options, std::move(still_capture_processor),
+        create_options.camera_module_name));
     LOGF(INFO) << "EffectsStreamManipulator enabled";
   } else {
     LOGF(INFO) << "EffectsStreamManipulator not enabled";

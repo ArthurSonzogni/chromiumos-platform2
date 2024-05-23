@@ -10,6 +10,7 @@
 #include "common/stream_manipulator.h"
 
 #include <memory>
+#include <string>
 
 #include <base/files/file_path.h>
 
@@ -23,6 +24,7 @@ class EffectsStreamManipulator : public StreamManipulator {
       base::FilePath config_file_path,
       RuntimeOptions* runtime_options,
       std::unique_ptr<StillCaptureProcessor> still_capture_processor,
+      std::string camera_module_name,
       void (*callback)(bool) = nullptr);
 };
 
