@@ -48,6 +48,9 @@ class TPMConsts:
     TPM_UNIFIED_EC_BASE = TPM2_TRUNKS_ERROR_BASE + 0x900
     TPM_UNIFIED_EC_MAX = TPM2_TRUNKS_ERROR_BASE + 0x97F
 
+    TPM_UNIFIED_PW_BASE = TPM2_TRUNKS_ERROR_BASE + 0x980
+    TPM_UNIFIED_PW_MAX = TPM2_TRUNKS_ERROR_BASE + 0x9FF
+
     TPM_UNIFIED_HASHED_BASE = TPM2_TRUNKS_ERROR_BASE + 0xC00
     TPM_UNIFIED_HASHED_MAX = TPM2_TRUNKS_ERROR_BASE + 0xFFF
 
@@ -512,6 +515,11 @@ class TPMErrorDecoder:
         if TPMConsts.TPM_UNIFIED_EC_BASE <= err <= TPMConsts.TPM_UNIFIED_EC_MAX:
             return True, "Elliptic Curve Error 0x%02x" % (
                 err - TPMConsts.TPM_UNIFIED_EC_BASE
+            )
+
+        if TPMConsts.TPM_UNIFIED_PW_BASE <= err <= TPMConsts.TPM_UNIFIED_PW_MAX:
+            return True, "PinWeaver Error 0x%02x" % (
+                err - TPMConsts.TPM_UNIFIED_PW_BASE
             )
 
         if (
@@ -1213,13 +1221,23 @@ class EnumsXmlDB:
 """
     INT_VALUE_TAG_TEMPLATE = '<int value="%d" label="%s"/>\n'
 
-    def __init__(self, enums_xml_path: str):
+    def __init__(self, chromium_src_path: str):
         """Constructor for EnumsXmlDB.
 
         Args:
-            enums_xml_path: Absolute full path to enums.xml
+            chromium_src_path: Path to Chromium source code.
         """
-        self.enums_xml_path = enums_xml_path
+
+        # Absolute full path to enums.xml
+        self.enums_xml_path = (
+            f"{chromium_src_path}/tools/metrics/histograms/metadata/cryptohome"
+            "/enums.xml"
+        )
+
+        # Absolute full path to pretty_print.py
+        self.pretty_print_path = (
+            f"{chromium_src_path}/tools/metrics/histograms/pretty_print.py"
+        )
         # Standard location values used by Cryptohome.Error.AllLocations
         self.error_locs = []
         # Composite values used by Cryptohome.Error.LeafErrorWithTPM
@@ -1341,10 +1359,8 @@ class EnumsXmlDB:
             f.write("".join(result))
 
         # Pretty print for conformance with the style.
-        enums_xml_dir = pathlib.Path(self.enums_xml_path)
         subprocess.call(
-            ["./pretty_print.py", "--non-interactive", "enums.xml"],
-            cwd=enums_xml_dir.parent,
+            [self.pretty_print_path, "--non-interactive", "enums.xml"],
         )
         return True
 
@@ -1463,7 +1479,7 @@ class DBTool:
         # Notify the user on any violations.
         if len(violations) != 0:
             print("Please remove duplicate usage of error location in code:")
-            for s in violations:
+            for s in violations.items():
                 print(violations[s])
             return False, None
         return True, collated_symbols
@@ -1580,13 +1596,8 @@ class DBTool:
         chromium_src_path = pathlib.Path(chromium_src_path)
         chromium_src_path = chromium_src_path.expanduser().resolve()
 
-        # Find path to enums.xml
-        enums_xml_path = (
-            chromium_src_path / "tools" / "metrics" / "histograms" / "enums.xml"
-        )
-
         # Load enums.xml
-        enums_db = EnumsXmlDB(str(enums_xml_path))
+        enums_db = EnumsXmlDB(str(chromium_src_path))
         enums_db.load_enums_xml()
 
         return enums_db
