@@ -19,6 +19,7 @@ export TMPDIR=/usr/local/tmp
 TEST_SUDO_HELPER_PATH=$(mktemp)
 ./test_sudo_helper.py --socket-path="${TEST_SUDO_HELPER_PATH}" &
 TEST_SUDO_HELPER_PID=$!
+echo "Sudo helper pid: ${TEST_SUDO_HELPER_PID}"
 
 # Create specfile for the test binary
 echo "${TEST_BIN}" -- u:object_r:chrome_browser_exec:s0 > "${TEST_BIN}.specfile"
