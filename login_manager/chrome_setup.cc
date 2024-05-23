@@ -429,6 +429,10 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
   if (builder->UseFlagIsSet("disable_webrtc_hw_decoding"))
     builder->AddFeatureDisableOverride("webrtc-hw-decoding");
 
+  // Enable rootfs only mode for LaCrOS.
+  if (builder->UseFlagIsSet("lacros_rootfs_only"))
+    builder->AddArg("--lacros-selection=rootfs");
+
   // In ash, we use mojo service manager as the mojo broker so disable it here.
   builder->AddArg("--disable-mojo-broker");
   builder->AddArg("--ash-use-cros-mojo-service-manager");
