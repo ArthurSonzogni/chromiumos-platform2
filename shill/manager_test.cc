@@ -3220,28 +3220,38 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   manager()->RegisterDevice(mock_devices_[1]);
   manager()->RegisterDevice(mock_devices_[2]);
 
-  auto setup_expectations =
-      [](std::vector<scoped_refptr<MockDevice>>& mock_devices,
-         Technology technology, bool enable, bool persistent) {
-        for (int i = 0; i < 3; i++) {
-          if (mock_devices[i]->technology() == technology) {
-            if (persistent) {
-              EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, true, _))
-                  .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
-              EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, false, _))
-                  .Times(0);
-            } else {
-              EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, true, _))
-                  .Times(0);
-              EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, false, _))
-                  .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
-            }
+  auto setup_expectations = [this](std::vector<scoped_refptr<MockDevice>>&
+                                       mock_devices,
+                                   Technology technology, bool enable,
+                                   bool persistent) {
+    for (int i = 0; i < 3; i++) {
+      if (mock_devices[i]->technology() == technology) {
+        if (persistent) {
+          if (technology == Technology::kWiFi && enable) {
+            EXPECT_CALL(*wifi_provider_, EnableDevices(_, true, _))
+                .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
           } else {
-            EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, _, _))
-                .Times(0);
+            EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, true, _))
+                .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
           }
+          EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, false, _))
+              .Times(0);
+        } else {
+          if (technology == Technology::kWiFi && enable) {
+            EXPECT_CALL(*wifi_provider_, EnableDevices(_, false, _))
+                .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
+          } else {
+            EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, false, _))
+                .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
+          }
+          EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, true, _))
+              .Times(0);
         }
-      };
+      } else {
+        EXPECT_CALL(*mock_devices[i], SetEnabledChecked(enable, _, _)).Times(0);
+      }
+    }
+  };
   auto clear_expectations =
       [](std::vector<scoped_refptr<MockDevice>>& mock_devices) {
         for (int i = 0; i < 3; i++) {
@@ -4365,7 +4375,8 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
 
   EXPECT_CALL(*mock_devices_[3], SetEnabledChecked(false, false, _));
   EXPECT_CALL(*mock_devices_[4], SetEnabledChecked(false, false, _));
-  EXPECT_CALL(*mock_devices_[5], SetEnabledChecked(false, false, _)).Times(0);
+  EXPECT_CALL(*mock_devices_[5], SetEnabledChecked).Times(0);
+  EXPECT_CALL(*wifi_provider_, EnableDevices(_, _, _));
 
   manager()->RegisterDevice(mock_devices_[3]);
   manager()->RegisterDevice(mock_devices_[4]);
@@ -4373,16 +4384,18 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
   Mock::VerifyAndClearExpectations(mock_devices_[3].get());
   Mock::VerifyAndClearExpectations(mock_devices_[4].get());
   Mock::VerifyAndClearExpectations(mock_devices_[5].get());
+  Mock::VerifyAndClearExpectations(wifi_provider_);
 
   // Calls to enable a non-prohibited technology should succeed.
   DisableTechnologyReplyHandler technology_reply_handler;
   auto enable_technology_callback =
       base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
                           technology_reply_handler.AsWeakPtr());
-  EXPECT_CALL(*mock_devices_[2], SetEnabledChecked(true, true, _))
+  EXPECT_CALL(*mock_devices_[2], SetEnabledChecked(true, true, _)).Times(0);
+  EXPECT_CALL(*mock_devices_[5], SetEnabledChecked(true, true, _)).Times(0);
+  EXPECT_CALL(*wifi_provider_, EnableDevices(_, true, _))
       .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
-  EXPECT_CALL(*mock_devices_[5], SetEnabledChecked(true, true, _))
-      .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
+
   EXPECT_CALL(technology_reply_handler, ReportResult(IsSuccess()));
   manager()->SetEnabledStateForTechnology("wifi", true, true,
                                           enable_technology_callback);

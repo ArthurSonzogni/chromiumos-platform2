@@ -316,6 +316,11 @@ class WiFiProvider : public ProviderInterface {
       base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
       base::OnceCallback<void()> fail_cb);
 
+  // Try to enable some WiFi devices.
+  mockable void EnableDevices(std::vector<WiFiRefPtr> devices,
+                              bool persist,
+                              ResultCallback callback);
+
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);

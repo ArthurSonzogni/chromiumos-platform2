@@ -31,6 +31,7 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/profile.h"
+#include "shill/result_aggregator.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/pkcs11_cert_store.h"
 #include "shill/store/pkcs11_slot_getter.h"
@@ -1271,6 +1272,19 @@ void WiFiProvider::DeregisterDeviceFromPhy(std::string_view link_name,
 void WiFiProvider::WiFiDeviceStateChanged(WiFiConstRefPtr device) {
   if (base::Contains(wifi_phys_, device->phy_index())) {
     wifi_phys_[device->phy_index()]->WiFiDeviceStateChanged(device);
+  }
+}
+
+void WiFiProvider::EnableDevices(std::vector<WiFiRefPtr> devices,
+                                 bool persist,
+                                 ResultCallback callback) {
+  auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
+      std::move(callback), FROM_HERE, "Enable WiFi failed: "));
+  for (auto& device : devices) {
+    CHECK(device);
+    ResultCallback aggregator_callback(
+        base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
+    device->SetEnabledChecked(true, persist, std::move(aggregator_callback));
   }
 }
 

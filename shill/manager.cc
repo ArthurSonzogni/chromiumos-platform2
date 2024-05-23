@@ -1106,6 +1106,20 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
     return;
   }
 
+  // Route WiFi device enablement through WiFiProvider so that WiFi concurrency
+  // can be considered.
+  if (id == Technology::kWiFi && enabled_state) {
+    std::vector<WiFiRefPtr> wifi_devices;
+    for (auto& device : devices_) {
+      if (device->technology() != Technology::kWiFi)
+        continue;
+      auto dev = WiFiRefPtr(static_cast<WiFi*>(device.get()));
+      wifi_devices.push_back(dev);
+    }
+    wifi_provider_->EnableDevices(wifi_devices, persist, std::move(callback));
+    return;
+  }
+
   // "Enable cellular failed" is detected by anomaly_detector. Please change
   // anomaly_detector.cc if the error_prefix to result_aggregator changes.
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
@@ -1188,7 +1202,15 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
                    to_manage->IsUnderlyingDeviceEnabled())) {
     SLOG(2) << "Enabling registered device type: "
             << to_manage->GetTechnologyName();
-    to_manage->SetEnabled(true);
+    // Route WiFi device enablement through WiFiProvider so that WiFi
+    // concurrency can be considered.
+    if (to_manage->technology() == Technology::kWiFi) {
+      auto dev = static_cast<WiFi*>(to_manage.get());
+      wifi_provider_->EnableDevices({WiFiRefPtr(dev)}, false,
+                                    base::DoNothing());
+    } else {
+      to_manage->SetEnabled(true);
+    }
   }
 
   EmitDeviceProperties();
