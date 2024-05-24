@@ -444,18 +444,6 @@ pub enum PressureLevelChrome {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
-pub enum PressureLevelArcvm {
-    // There is enough memory to use.
-    None = 0,
-    // ARCVM is advised to kill cached processes to free memory.
-    Cached = 1,
-    // ARCVM is advised to kill perceptible processes to free memory.
-    Perceptible = 2,
-    // ARCVM is advised to kill foreground processes to free memory.
-    Foreground = 3,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub enum PressureLevelArcContainer {
     // There is enough memory to use.
     None = 0,
@@ -471,8 +459,6 @@ pub enum PressureLevelArcContainer {
 pub struct PressureStatus {
     pub chrome_level: PressureLevelChrome,
     pub chrome_reclaim_target_kb: u64,
-    pub arcvm_level: PressureLevelArcvm,
-    pub arcvm_reclaim_target_kb: u64,
     pub arc_container_level: PressureLevelArcContainer,
     pub arc_container_reclaim_target_kb: u64,
 }
@@ -496,37 +482,6 @@ macro_rules! get_arc_level {
 }
 
 get_arc_level!(get_arc_container_level, PressureLevelArcContainer);
-get_arc_level!(get_arcvm_level, PressureLevelArcvm);
-
-fn get_adjusted_arcvm_levels(
-    arc_margins: &ArcMarginsKb,
-    available: u64,
-    background_memory_kb: u64,
-    game_mode: common::GameMode,
-    vmms_active: bool,
-) -> (PressureLevelArcvm, u64) {
-    // Instead of killing apps with ApplyHostMemoryPressure, rely on balloon
-    // pressure from VM memory management service to trigger lmkd kills if
-    // vmms client is connected.
-    if vmms_active {
-        return (PressureLevelArcvm::None, 0);
-    }
-
-    let (raw_arcvm_level, arcvm_reclaim_target_kb) =
-        get_arcvm_level(arc_margins, available, background_memory_kb);
-
-    let arcvm_level =
-        if game_mode == common::GameMode::Arc && raw_arcvm_level > PressureLevelArcvm::Cached {
-            // Do not kill Android apps that are perceptible or foreground, only
-            // those that are cached. Otherwise, the fullscreen Android app or a
-            // service it needs may be killed.
-            PressureLevelArcvm::Cached
-        } else {
-            raw_arcvm_level
-        };
-
-    (arcvm_level, arcvm_reclaim_target_kb)
-}
 
 // Should only be called when the Chrome pressure level is moderate.
 // If necessary, attempts to reclaim memory from VMMS in concierge at
@@ -787,14 +742,6 @@ pub async fn get_memory_pressure_status(
     let (after_vmms_chrome_level, after_vmms_chrome_reclaim_target_kb) =
         margins.compute_chrome_pressure(available + vmms_reclaim_kb);
 
-    let (arcvm_level, arcvm_reclaim_target_kb) = get_adjusted_arcvm_levels(
-        &margins.arcvm,
-        available,
-        background_memory_kb,
-        game_mode,
-        vmms_client.is_active(),
-    );
-
     let (arc_container_level, arc_container_reclaim_target_kb) =
         get_arc_container_level(&margins.arc_container, available, background_memory_kb);
 
@@ -811,8 +758,6 @@ pub async fn get_memory_pressure_status(
     Ok(PressureStatus {
         chrome_level: final_chrome_level,
         chrome_reclaim_target_kb: final_chrome_reclaim_target_kb,
-        arcvm_level,
-        arcvm_reclaim_target_kb,
         arc_container_level,
         arc_container_reclaim_target_kb,
     })

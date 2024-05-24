@@ -22,15 +22,10 @@ namespace {
 // Resource manager defines several Enums to represent the memory level.
 // For signal MemoryPressureChrome, the items are 0=None, 1=Moderate,
 // 2=Critical.
-// For MemoryPressureArcvm,  they are 0=None, 1=Cached, 2=Perceptible,
-// 3=Foreground.
 // See system_api/dbus/resource_manager/dbus-constants.h.
 
 // Allow to start new jobs when Chrome memory pressure level is None.
 const uint32_t kMaxAcceptableChromeLevelToStart = 0;
-// Allow to continue existing jobs when Arc vm memory pressure level <=
-// Cached.
-const uint32_t kMaxAcceptableArcvmLevelToContinue = 1;
 // This default value is greater than any possible levels.
 const uint32_t kDefaultUnsatisfiedLevel = 100;
 
@@ -60,15 +55,6 @@ MemoryPressureTrainingCondition::MemoryPressureTrainingCondition(dbus::Bus* bus)
           &MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived,
           weak_ptr_factory_.GetMutableWeakPtr(),
           resource_manager::kMemoryPressureChrome),
-      base::BindOnce(&OnSignalConnected));
-
-  resource_dbus_proxy_->ConnectToSignal(
-      resource_manager::kResourceManagerInterface,
-      resource_manager::kMemoryPressureArcvm,
-      base::BindRepeating(
-          &MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived,
-          weak_ptr_factory_.GetMutableWeakPtr(),
-          resource_manager::kMemoryPressureArcvm),
       base::BindOnce(&OnSignalConnected));
 
   DVLOG(1) << "Construct MemoryPressureTrainingCondition";
@@ -137,14 +123,6 @@ void MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived(
         memory_levels_.find(resource_manager::kMemoryPressureChrome);
     satisfactory_to_start_ = iter == memory_levels_.end() ||
                              iter->second <= kMaxAcceptableChromeLevelToStart;
-  }
-
-  {
-    const auto iter =
-        memory_levels_.find(resource_manager::kMemoryPressureArcvm);
-    satisfactory_to_continue_ =
-        iter == memory_levels_.end() ||
-        iter->second <= kMaxAcceptableArcvmLevelToContinue;
   }
 }
 

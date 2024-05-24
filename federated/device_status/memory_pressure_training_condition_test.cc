@@ -21,7 +21,6 @@
 namespace federated {
 namespace {
 
-using ::resource_manager::kMemoryPressureArcvm;
 using ::resource_manager::kMemoryPressureChrome;
 using ::resource_manager::kResourceManagerInterface;
 using ::resource_manager::kResourceManagerServiceName;
@@ -57,11 +56,6 @@ class MemoryPressureTrainingConditionTest : public ::testing::Test {
                 DoConnectToSignal(kResourceManagerInterface,
                                   kMemoryPressureChrome, _, _))
         .WillOnce(SaveArg<2>(&on_signal_callbacks_[kMemoryPressureChrome]));
-
-    EXPECT_CALL(*dbus_object_proxy_,
-                DoConnectToSignal(kResourceManagerInterface,
-                                  kMemoryPressureArcvm, _, _))
-        .WillOnce(SaveArg<2>(&on_signal_callbacks_[kMemoryPressureArcvm]));
 
     memory_pressure_training_condition_ =
         std::make_unique<MemoryPressureTrainingCondition>(mock_dbus_.get());
@@ -114,31 +108,16 @@ TEST_F(MemoryPressureTrainingConditionTest, MemoryPressureSignals) {
                    ->IsTrainingConditionSatisfiedToStart());
   EXPECT_TRUE(memory_pressure_training_condition()
                   ->IsTrainingConditionSatisfiedToContinue());
-
-  // Arc vm memory level doesn't meet to continue.
-  CreateSignalAndInvoke(2, kMemoryPressureArcvm);
-  EXPECT_FALSE(memory_pressure_training_condition()
-                   ->IsTrainingConditionSatisfiedToStart());
-  EXPECT_FALSE(memory_pressure_training_condition()
-                   ->IsTrainingConditionSatisfiedToContinue());
-
-  // Arc vm memory level meets to continue.
-  CreateSignalAndInvoke(1, kMemoryPressureArcvm);
-  EXPECT_FALSE(memory_pressure_training_condition()
-                   ->IsTrainingConditionSatisfiedToStart());
-  EXPECT_TRUE(memory_pressure_training_condition()
-                  ->IsTrainingConditionSatisfiedToContinue());
 }
 
 // Tests that Chrome memory pressure level = None resets the status.
 TEST_F(MemoryPressureTrainingConditionTest, ChromeLevelNoneReset) {
   // Makes both signals unstatisfied.
   CreateSignalAndInvoke(2, kMemoryPressureChrome);
-  CreateSignalAndInvoke(2, kMemoryPressureArcvm);
   EXPECT_FALSE(memory_pressure_training_condition()
                    ->IsTrainingConditionSatisfiedToStart());
-  EXPECT_FALSE(memory_pressure_training_condition()
-                   ->IsTrainingConditionSatisfiedToContinue());
+  EXPECT_TRUE(memory_pressure_training_condition()
+                  ->IsTrainingConditionSatisfiedToContinue());
 
   CreateSignalAndInvoke(0, kMemoryPressureChrome);
   EXPECT_TRUE(memory_pressure_training_condition()

@@ -787,14 +787,6 @@ fn send_pressure_signals(conn: &Arc<SyncConnection>, pressure_status: &memory::P
         pressure_status.chrome_level as u8,
         pressure_status.chrome_reclaim_target_kb,
     );
-    if pressure_status.arcvm_level != memory::PressureLevelArcvm::None {
-        send_pressure_signal(
-            conn,
-            "MemoryPressureArcvm",
-            pressure_status.arcvm_level as u8,
-            pressure_status.arcvm_reclaim_target_kb,
-        );
-    }
     if pressure_status.arc_container_level != memory::PressureLevelArcContainer::None {
         send_pressure_signal(
             conn,

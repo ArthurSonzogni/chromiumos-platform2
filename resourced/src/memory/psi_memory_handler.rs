@@ -32,7 +32,6 @@ use crate::memory::vmstat::Vmstat;
 use crate::memory::ChromeProcessType;
 use crate::memory::ComponentMarginsKb;
 use crate::memory::PressureLevelArcContainer;
-use crate::memory::PressureLevelArcvm;
 use crate::memory::PressureLevelChrome;
 use crate::memory::PressureStatus;
 use crate::memory::DISCARD_STALE_AT_MODERATE_PRESSURE_FEATURE_NAME;
@@ -134,32 +133,23 @@ async fn distribute_memory_reclaim(
         PressureStatus {
             chrome_level,
             chrome_reclaim_target_kb,
-            arcvm_level: PressureLevelArcvm::None,
-            arcvm_reclaim_target_kb: 0,
             arc_container_level: PressureLevelArcContainer::None,
             arc_container_reclaim_target_kb: 0,
         }
     } else {
-        let (chrome_level, arcvm_level, arc_container_level, reclaim_target_kb) = match reclaim {
+        let (chrome_level, arc_container_level, reclaim_target_kb) = match reclaim {
             MemoryReclaim::Critical(target_kb) => (
                 PressureLevelChrome::Critical,
-                if game_mode == common::GameMode::Arc {
-                    PressureLevelArcvm::Cached
-                } else {
-                    PressureLevelArcvm::Perceptible
-                },
                 PressureLevelArcContainer::Perceptible,
                 target_kb.try_into().unwrap_or(u64::MAX),
             ),
             MemoryReclaim::Moderate(target_kb) => (
                 PressureLevelChrome::Moderate,
-                PressureLevelArcvm::Cached,
                 PressureLevelArcContainer::Cached,
                 target_kb.try_into().unwrap_or(u64::MAX),
             ),
             MemoryReclaim::None => (
                 PressureLevelChrome::None,
-                PressureLevelArcvm::None,
                 PressureLevelArcContainer::None,
                 0,
             ),
@@ -171,8 +161,6 @@ async fn distribute_memory_reclaim(
         PressureStatus {
             chrome_level,
             chrome_reclaim_target_kb: reclaim_target_kb,
-            arcvm_level,
-            arcvm_reclaim_target_kb: reclaim_target_kb,
             arc_container_level,
             arc_container_reclaim_target_kb: reclaim_target_kb,
         }
