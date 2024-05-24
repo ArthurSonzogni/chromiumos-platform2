@@ -261,11 +261,7 @@ void SendOneTelemetryResultToUMA(MetricsLibraryInterface* metrics,
     enum_sample = CrosHealthdTelemetryResult::kSuccess;
   }
 
-  bool result = metrics->SendEnumToUMA(GetMetricName(category), enum_sample);
-  if (!result) {
-    LOG(ERROR) << "Failed to send telemetry result of " << category
-               << " to UMA.";
-  }
+  metrics->SendEnumToUMA(GetMetricName(category), enum_sample);
 }
 
 }  // namespace
@@ -308,10 +304,7 @@ void SendTelemetryResultToUMA(
     MetricsLibraryInterface* metrics,
     const std::set<mojom::ProbeCategoryEnum>& requested_categories,
     const mojom::TelemetryInfoPtr& info) {
-  if (info.is_null()) {
-    LOG(WARNING) << "Cannot send a null telemetry result to UMA.";
-    return;
-  }
+  CHECK(info);
 
   for (const auto category : requested_categories) {
     switch (category) {
@@ -409,12 +402,7 @@ void SendDiagnosticResultToUMA(MetricsLibraryInterface* metrics,
     return;
   }
 
-  bool result =
-      metrics->SendEnumToUMA(metrics_name.value(), result_enum.value());
-  if (!result) {
-    LOG(ERROR) << "Failed to send diagnostic result of " << routine << " ("
-               << status << ") to UMA.";
-  }
+  metrics->SendEnumToUMA(metrics_name.value(), result_enum.value());
 }
 
 void SendEventSubscriptionUsageToUMA(MetricsLibraryInterface* metrics,
@@ -426,12 +414,8 @@ void SendEventSubscriptionUsageToUMA(MetricsLibraryInterface* metrics,
     return;
   }
 
-  bool result = metrics->SendEnumToUMA(metrics_name::kEventSubscription,
-                                       category_enum.value());
-  if (!result) {
-    LOG(ERROR) << "Failed to send event subscription of " << category
-               << " to UMA.";
-  }
+  metrics->SendEnumToUMA(metrics_name::kEventSubscription,
+                         category_enum.value());
 }
 
 }  // namespace diagnostics
