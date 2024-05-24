@@ -1472,6 +1472,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
       base::StringPrintf("androidboot.zram_size=%" PRId64, zram_size),
       base::StringPrintf("androidboot.arc_switch_to_keymint=%d",
                          mini_instance_request.arc_switch_to_keymint()),
+      base::StringPrintf("androidboot.enable_arc_attestation=%d",
+                         mini_instance_request.enable_arc_attestation()),
       base::StringPrintf("androidboot.arc.signed_in=%d",
                          mini_instance_request.arc_signed_in()),
       base::StringPrintf("androidboot.arc.s2idle=%d", request.enable_s2idle()),
