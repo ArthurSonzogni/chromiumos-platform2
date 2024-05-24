@@ -460,14 +460,6 @@ FramingStreamManipulator::FramingStreamManipulator(
     config_.SetCallback(base::BindRepeating(
         &FramingStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
   }
-
-#if USE_CAMERA_FEATURE_SUPER_RES
-  const base::FilePath dlc_root_path =
-      runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
-  if (CanCreateUpsampler() && !dlc_root_path.empty()) {
-    CreateUpsampler(dlc_root_path);
-  }
-#endif  // USE_CAMERA_FEATURE_SUPER_RES
 }
 
 FramingStreamManipulator::~FramingStreamManipulator() {
@@ -606,7 +598,10 @@ bool FramingStreamManipulator::IsManualZoomSupported() {
 #if USE_CAMERA_FEATURE_SUPER_RES
 void FramingStreamManipulator::CreateUpsampler(
     const base::FilePath& dlc_root_path) {
+  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   DCHECK(!single_frame_upsampler_);
+  DCHECK(!dlc_root_path.empty());
+  TRACE_AUTO_FRAMING();
   single_frame_upsampler_ = std::make_unique<SingleFrameUpsampler>();
 
   LOGF(INFO) << "Single frame super resolution is enabled.";
@@ -1288,15 +1283,6 @@ bool FramingStreamManipulator::ProcessFullFrameOnThread(
       "frame_number", frame_number,
       perfetto::Flow::ProcessScoped(full_frame_buffer.flow_id()));
 
-#if USE_CAMERA_FEATURE_SUPER_RES
-  const base::FilePath dlc_root_path =
-      runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
-  if (CanCreateUpsampler() && !single_frame_upsampler_ &&
-      !dlc_root_path.empty()) {
-    CreateUpsampler(dlc_root_path);
-  }
-#endif  // USE_CAMERA_FEATURE_SUPER_RES
-
   if (full_frame_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received full frame buffer with error in result "
              << frame_number;
@@ -1364,15 +1350,6 @@ bool FramingStreamManipulator::ProcessStillYuvOnThread(
   DCHECK_NE(ctx, nullptr);
   TRACE_AUTO_FRAMING("frame_number", frame_number,
                      perfetto::Flow::ProcessScoped(still_yuv_buffer.flow_id()));
-
-#if USE_CAMERA_FEATURE_SUPER_RES
-  const base::FilePath dlc_root_path =
-      runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
-  if (CanCreateUpsampler() && !single_frame_upsampler_ &&
-      !dlc_root_path.empty()) {
-    CreateUpsampler(dlc_root_path);
-  }
-#endif  // USE_CAMERA_FEATURE_SUPER_RES
 
   if (still_yuv_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
     VLOGF(1) << "Received still YUV buffer with error in result "
@@ -1978,11 +1955,20 @@ std::optional<base::ScopedFD> FramingStreamManipulator::CropAndScaleOnThread(
   Size dimension(CameraBufferManager::GetWidth(input_yuv),
                  CameraBufferManager::GetHeight(input_yuv));
   is_upsample_request =
-      method != ScaleMethod::kBicubic && single_frame_upsampler_ &&
+      method != ScaleMethod::kBicubic &&
       IsUpsampleRequestValid(CameraBufferManager::GetWidth(output_yuv),
                              CameraBufferManager::GetHeight(output_yuv),
                              crop_region, dimension);
-
+  if (is_upsample_request) {
+    const base::FilePath dlc_root_path =
+        runtime_options_->GetDlcRootPath(dlc_client::kSuperResDlcId);
+    if (CanCreateUpsampler() && !single_frame_upsampler_ &&
+        !dlc_root_path.empty()) {
+      CreateUpsampler(dlc_root_path);
+    }
+    is_upsample_request =
+        is_upsample_request && (single_frame_upsampler_ != nullptr);
+  }
   if (is_upsample_request) {
     auto [crop_width, crop_height] =
         GetEvenInputDimensions(crop_region, dimension);
