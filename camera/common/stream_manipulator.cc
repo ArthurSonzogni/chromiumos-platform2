@@ -6,38 +6,14 @@
 
 #include "common/stream_manipulator.h"
 
-#include <iomanip>
 #include <utility>
 
 #include <base/files/file_util.h>
 
 #include "common/framing_stream_manipulator.h"
-#include "common/still_capture_processor_impl.h"
-#include "common/sw_privacy_switch_stream_manipulator.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
-#include "cros-camera/jpeg_compressor.h"
-#include "features/feature_profile.h"
 #include "features/rotate_and_crop/rotate_and_crop_stream_manipulator.h"
 #include "features/zsl/zsl_stream_manipulator.h"
-#include "gpu/gpu_resources.h"
-
-#if USE_CAMERA_FEATURE_HDRNET
-#include "features/gcam_ae/gcam_ae_stream_manipulator.h"
-#include "features/hdrnet/hdrnet_stream_manipulator.h"
-#endif
-
-#if USE_CAMERA_FEATURE_EFFECTS
-#include "features/effects/effects_stream_manipulator.h"
-#endif
-
-#if USE_CAMERA_FEATURE_FACE_DETECTION || USE_CAMERA_FEATURE_AUTO_FRAMING
-#include "features/face_detection/face_detection_stream_manipulator.h"
-#endif
-
-#if USE_CAMERA_FEATURE_FRAME_ANNOTATOR
-#include "features/frame_annotator/frame_annotator_loader_stream_manipulator.h"
-#endif
-
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
 #include "features/portrait_mode/portrait_mode_stream_manipulator.h"
 #endif

@@ -10,7 +10,6 @@
 #include <map>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -20,6 +19,7 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
 #include <base/timer/elapsed_timer.h>
+#include <ml_core/dlc/dlc_client.h>
 #include <mojo/public/cpp/bindings/pending_associated_remote.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
@@ -34,7 +34,7 @@
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/cros_camera_hal.h"
-#include "ml_core/dlc/dlc_client.h"
+#include "gpu/gpu_resources.h"
 
 namespace cros {
 

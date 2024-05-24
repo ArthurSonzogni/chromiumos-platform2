@@ -7,15 +7,16 @@
 #ifndef CAMERA_HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 #define CAMERA_HAL_ADAPTER_CAMERA_DEVICE_ADAPTER_H_
 
-#include <deque>
+#include <camera/camera_metadata.h>
+#include <cutils/native_handle.h>
+#include <hardware/camera3.h>
+#include <system/camera_metadata.h>
+
 #include <map>
 #include <memory>
-#include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-
-#include <hardware/camera3.h>
 
 #include <base/containers/flat_map.h>
 #include <base/files/scoped_file.h>
@@ -24,20 +25,15 @@
 #include <base/threading/thread.h>
 #include <base/timer/timer.h>
 #include <base/types/expected.h>
-#include <camera/camera_metadata.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
-#include <system/camera_metadata.h>
 
 #include "camera/mojo/camera3.mojom.h"
+#include "common/camera_buffer_handle.h"
 #include "common/camera_hal3_helpers.h"
-#include "common/stream_manipulator.h"
 #include "common/stream_manipulator_manager.h"
 #include "common/utils/common_types.h"
-#include "common/utils/cros_camera_mojo_utils.h"
-#include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metrics.h"
-#include "cutils/native_handle.h"
 
 namespace cros {
 

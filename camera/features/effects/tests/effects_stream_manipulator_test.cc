@@ -5,6 +5,9 @@
 #include <functional>
 #include <utility>
 
+#include <camera/camera_metadata.h>
+#include <hardware/camera3.h>
+
 #include <base/command_line.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -15,9 +18,10 @@
 #include <base/test/test_timeouts.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
-#include <hardware/camera3.h>
+#include <ml_core/dlc/dlc_ids.h>
+#include <ml_core/dlc/dlc_loader.h>
+#include <ml_core/tests/test_utilities.h>
 
-#include "camera/camera_metadata.h"
 #include "camera/common/stream_manipulator.h"
 #include "camera/common/test_support/fake_still_capture_processor.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
@@ -25,9 +29,9 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "features/effects/effects_stream_manipulator.h"
-#include "ml_core/dlc/dlc_ids.h"
-#include "ml_core/dlc/dlc_loader.h"
-#include "ml_core/tests/test_utilities.h"
+#include "gpu/egl/egl_context.h"
+#include "gpu/image_processor.h"
+#include "gpu/shared_image.h"
 
 constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
 constexpr uint32_t kBufferUsage = GRALLOC_USAGE_SW_READ_OFTEN |

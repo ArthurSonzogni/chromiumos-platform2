@@ -9,10 +9,10 @@
 
 #include "common/stream_manipulator.h"
 
+#include <system/camera_metadata.h>
+
 #include <map>
 #include <memory>
-#include <string>
-#include <system/camera_metadata.h>
 #include <utility>
 #include <vector>
 
@@ -28,6 +28,8 @@
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/common_types.h"
+#include "gpu/gpu_resources.h"
+#include "gpu/image_processor.h"
 #if USE_CAMERA_FEATURE_AUTO_FRAMING
 #include "features/auto_framing/auto_framing_client.h"
 #endif  // USE_CAMERA_FEATURE_AUTO_FRAMING

@@ -16,6 +16,7 @@
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/jpeg_compressor.h"
+#include "gpu/gpu_resources.h"
 #include "gpu/shared_image.h"
 
 namespace cros {

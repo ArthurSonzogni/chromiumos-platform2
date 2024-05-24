@@ -7,10 +7,11 @@
 
 #include "common/stream_manipulator.h"
 
+#include <hardware/camera3.h>
+
 #include <map>
 #include <memory>
 #include <optional>
-#include <utility>
 #include <vector>
 
 #include <base/containers/flat_map.h>
@@ -20,8 +21,8 @@
 #include "common/still_capture_processor.h"
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
+#include "cros-camera/camera_thread.h"
 #include "features/portrait_mode/portrait_mode_effect.h"
-#include "hardware/camera3.h"
 
 namespace cros {
 

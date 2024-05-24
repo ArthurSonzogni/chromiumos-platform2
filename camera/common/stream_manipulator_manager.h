@@ -9,7 +9,6 @@
 
 #include <hardware/camera3.h>
 
-#include <bitset>
 #include <memory>
 #include <string>
 #include <vector>
@@ -24,6 +23,7 @@
 #include "common/camera_metadata_inspector.h"
 #include "common/stream_manipulator.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
+#include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/export.h"
 #include "gpu/gpu_resources.h"
 

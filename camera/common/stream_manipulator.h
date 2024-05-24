@@ -9,11 +9,8 @@
 
 #include <hardware/camera3.h>
 
-#include <bitset>
 #include <map>
-#include <memory>
 #include <string>
-#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/functional/callback_helpers.h>
@@ -24,10 +21,7 @@
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/vendor_tag_manager.h"
-#include "cros-camera/camera_mojo_channel_manager_token.h"
-#include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/export.h"
-#include "gpu/gpu_resources.h"
 
 namespace cros {
 
