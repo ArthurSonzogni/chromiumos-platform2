@@ -38,8 +38,6 @@ constexpr char kTrustedDlcVerityDigests[] =
 
 constexpr char kProcessMgmtPoliciesDir[] =
     "usr/share/cros/startup/process_management_policies";
-constexpr char kProcessMgmtPoliciesDirGID[] =
-    "usr/share/cros/startup/gid_process_management_policies";
 constexpr char kSafeSetIDProcessMgmtPolicies[] = "safesetid";
 
 constexpr char kLsmInodePolicies[] =
@@ -65,12 +63,11 @@ namespace startup {
 
 // Project-specific process management policies. Projects may add policies by
 // adding a file under usr/share/cros/startup/process_management_policies/
-// for UID's and under /usr/share/cros/startup/gid_process_management_policies/
-// for GID's, whose contents are one or more lines specifying a parent ID
+// for UID's, whose contents are one or more lines specifying a parent ID
 // and a child UID that the parent can use for the purposes of process
 // management. There should be one line for every mapping that is to be put in
 // the allow list. Lines in the file should use the following format:
-// <UID>:<UID> or <GID>:<GID>
+// <UID>:<UID>.
 //
 // For example, if the 'shill' user needs to use 'dhcp', 'openvpn' and 'ipsec'
 // and 'syslog' for process management, the file would look like:
@@ -149,14 +146,8 @@ bool ConfigureProcessMgmtSecurity(libstorage::Platform* platform,
   const base::FilePath mgmt_policies = policies_dir.Append("whitelist_policy");
   const base::FilePath pmpd = root.Append(kProcessMgmtPoliciesDir);
 
-  // For GID relevant files.
-  const base::FilePath gid_mgmt_policies =
-      policies_dir.Append("gid_allowlist_policy");
-  const base::FilePath pmp_gid = root.Append(kProcessMgmtPoliciesDirGID);
-
   return AccumulatePolicyFiles(platform, root, uid_mgmt_policies, pmpd) &&
-         AccumulatePolicyFiles(platform, root, mgmt_policies, pmpd) &&
-         AccumulatePolicyFiles(platform, root, gid_mgmt_policies, pmp_gid);
+         AccumulatePolicyFiles(platform, root, mgmt_policies, pmpd);
 }
 
 bool SetupLoadPinVerityDigests(libstorage::Platform* platform,
