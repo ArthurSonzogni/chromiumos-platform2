@@ -527,18 +527,43 @@ std::vector<TPM_HANDLE> ResourceManager::ExtractHandlesFromBuffer(
 
 void ResourceManager::FixContextGap(const MessageInfo& command_info) {
   std::vector<SessionHandle> sessions_to_ungap;
+  std::set<TPM_HANDLE> ungap_tpm_handles;
+  std::vector<SessionHandle> sessions_to_reload;
   for (const auto& item : session_handles_) {
     const HandleInfo& info = item.second;
     if (!info.is_loaded) {
       sessions_to_ungap.push_back(item.first);
+      ungap_tpm_handles.insert(item.first.handle);
     }
   }
+
+  // When doing the context un-gap, if the loaded session is using the same
+  // session handle as the session needs to be un-gap, we will need to reload
+  // the loaded session.
+  for (const auto& item : session_handles_) {
+    const HandleInfo& info = item.second;
+    if (info.is_loaded && ungap_tpm_handles.contains(item.first.handle)) {
+      sessions_to_reload.push_back(item.first);
+    }
+  }
+
   // Sort by |time_of_create|.
   std::sort(sessions_to_ungap.begin(), sessions_to_ungap.end(),
             [this](const SessionHandle& a, const SessionHandle& b) {
               return (session_handles_[a].time_of_create <
                       session_handles_[b].time_of_create);
             });
+
+  for (auto handle : sessions_to_reload) {
+    HandleInfo& info = session_handles_[handle];
+    TPM_RC result = SaveContext(command_info, &info);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(WARNING) << "Failed to un-gap reload session (save): "
+                   << GetErrorString(result);
+      continue;
+    }
+  }
+
   for (auto handle : sessions_to_ungap) {
     HandleInfo& info = session_handles_[handle];
     // Loading and re-saving allows the TPM to assign a new context counter.
@@ -553,6 +578,18 @@ void ResourceManager::FixContextGap(const MessageInfo& command_info) {
     result = SaveContext(command_info, &info);
     if (result != TPM_RC_SUCCESS) {
       LOG(WARNING) << "Failed to un-gap session (save): "
+                   << GetErrorString(result);
+      continue;
+    }
+  }
+
+  for (auto handle : sessions_to_reload) {
+    HandleInfo& info = session_handles_[handle];
+    std::string old_context_blob;
+    Serialize_TPMS_CONTEXT(info.context, &old_context_blob);
+    TPM_RC result = LoadContext(command_info, &info);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(WARNING) << "Failed to un-gap reload session (load): "
                    << GetErrorString(result);
       continue;
     }
