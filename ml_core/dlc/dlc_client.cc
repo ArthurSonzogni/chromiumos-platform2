@@ -143,18 +143,15 @@ class DlcClientImpl : public cros::DlcClient {
     };
 
     if (dlc_id_ == cros::dlc_client::kMlCoreDlcId) {
-      if (dlc_state_.ByteSizeLong() == 0) {
-        // If |dlc_state_| is not available, get the current DLC state.
-        if (!dlcservice_client_->GetDlcState(dlc_id_, &dlc_state_, &error)) {
-          LOG(ERROR) << "Error calling dlcservice_client_->GetDlcState for "
-                     << dlc_id_;
-          handle_error();
-          return;
-        }
+      dlcservice::DlcState dlc_state;
+      if (!dlcservice_client_->GetDlcState(dlc_id_, &dlc_state, &error)) {
+        LOG(ERROR) << "Error calling dlcservice_client_->GetDlcState for "
+                   << dlc_id_;
+        handle_error();
+        return;
       }
 
-      if (dlc_state_.state() == dlcservice::DlcState::NOT_INSTALLED ||
-          !dlc_state_.is_verified()) {
+      if (!dlc_state.is_verified()) {
         uninstalling = true;
         // Uninstall an older version of the DLC if available. This ensures to
         // remove the existing logical volume for the DLC to accommodate changes
@@ -256,7 +253,6 @@ class DlcClientImpl : public cros::DlcClient {
   }
 
   const std::string dlc_id_;
-  dlcservice::DlcState dlc_state_;
   bool uninstalling = false;
   cros::DlcMetrics metrics_;
   std::string metrics_base_name_;
