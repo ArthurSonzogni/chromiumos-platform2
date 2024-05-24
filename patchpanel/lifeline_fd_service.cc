@@ -67,14 +67,17 @@ void LifelineFDService::DeleteLifelineFD(bool is_autoclose, int lifeline_fd) {
     return;
   }
 
-  base::OnceClosure callback = std::move(it->second.on_lifeline_fd_event);
+  // Running |on_lifeline_fd_event| may cause DeleteLifelineFD to be called a
+  // second time while the first call is still on the stack. It is therefore
+  // necessary to ensure that the map entry is removed before running
+  // |on_lifeline_fd_event|. In addition, LifelineFDInfo must be preserved and
+  // only released after fully running |on_lifeline_fd_event|.
+  LifelineFDInfo lifeline_fd_info = std::move(it->second);
+  lifeline_fds_.erase(it);
   // Only run |on_lifeline_fd_event| if |lifeline_fd| was remotely invalidated.
   if (is_autoclose) {
-    std::move(callback).Run();
+    std::move(lifeline_fd_info.on_lifeline_fd_event).Run();
   }
-  // Destroy the LifelineFDInfo entry and close |lifeline_fd| after the
-  // |on_lifeline_fd_event| has run.
-  lifeline_fds_.erase(it);
 }
 
 }  // namespace patchpanel
