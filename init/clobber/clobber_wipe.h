@@ -11,10 +11,6 @@
 
 #include "init/clobber/clobber_ui.h"
 
-constexpr char kUbiRootDisk[] = "/dev/mtd0";
-constexpr char kUbiDevicePrefix[] = "/dev/ubi";
-constexpr char kUbiDeviceStatefulFormat[] = "/dev/ubi%d_0";
-
 class ClobberWipe {
  public:
   // The index of each partition within the gpt partition table.
@@ -35,8 +31,12 @@ class ClobberWipe {
 
   void SetFastWipe(bool fast_wipe) { fast_wipe_ = fast_wipe; }
 
-  void SetIsMtdFlash(bool is_mtd_flash) { is_mtd_flash_ = is_mtd_flash; }
-
+  // Wipe `device_path`, showing a progress UI using `ui`.
+  //
+  // If `fast` is true, wipe `device_path` using a less-thorough but much faster
+  // wipe. Not all blocks are guaranteed to be overwritten, so this should be
+  // reserved for situations when there is no concern of data leakage.
+  // A progress indicator will not be displayed if `fast` mode is enabled.
   virtual bool WipeDevice(const base::FilePath& device_path,
                           bool discard = false);
 
@@ -65,24 +65,9 @@ class ClobberWipe {
   virtual int Stat(const base::FilePath& path, struct stat* st);
 
  private:
-  static bool WipeMTDDevice(const base::FilePath& device_path,
-                            const PartitionNumbers& partitions);
-
-  // Wipe `device_path`, showing a progress UI using `ui`.
-  //
-  // If `fast` is true, wipe `device_path` using a less-thorough but much faster
-  // wipe. Not all blocks are guaranteed to be overwritten, so this should be
-  // reserved for situations when there is no concern of data leakage.
-  // A progress indicator will not be displayed if `fast` mode is enabled.
-  static bool WipeBlockDevice(const base::FilePath& device_path,
-                              ClobberUi* ui,
-                              bool fast,
-                              bool discard);
-
   ClobberUi* ui_;
   PartitionNumbers partitions_;
   bool fast_wipe_ = false;
-  bool is_mtd_flash_ = false;
   base::FilePath dev_;
   base::FilePath sys_;
 };

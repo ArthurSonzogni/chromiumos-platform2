@@ -209,19 +209,4 @@ TEST(GetDevicePathComponents, ValidCases) {
                                              &base_device, &partition_number));
   EXPECT_EQ(base_device, "/dev/nvme7n2p");
   EXPECT_EQ(partition_number, 11);
-
-  EXPECT_TRUE(utils::GetDevicePathComponents(
-      base::FilePath("/dev/ubiblock17_0"), &base_device, &partition_number));
-  EXPECT_EQ(base_device, "/dev/ubiblock");
-  EXPECT_EQ(partition_number, 17);
-
-  EXPECT_TRUE(utils::GetDevicePathComponents(base::FilePath("/dev/ubi9_0"),
-                                             &base_device, &partition_number));
-  EXPECT_EQ(base_device, "/dev/ubi");
-  EXPECT_EQ(partition_number, 9);
-
-  EXPECT_TRUE(utils::GetDevicePathComponents(base::FilePath("/dev/mtd0"),
-                                             &base_device, &partition_number));
-  EXPECT_EQ(base_device, "/dev/mtd");
-  EXPECT_EQ(partition_number, 0);
 }

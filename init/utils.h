@@ -38,9 +38,8 @@ int BRILLO_EXPORT GetPartitionNumber(const base::FilePath& drive_name,
                                      const std::string& partition_label);
 
 // Splits a device path, for example /dev/mmcblk0p1, /dev/sda3,
-// /dev/ubiblock9_0 into the base device and partition numbers,
-// which would be respectively /dev/mmcblk0p, 1; /dev/sda, 3; and
-// /dev/ubiblock, 9.
+// into the base device and partition numbers,
+// which would be respectively /dev/mmcblk0p, 1; and /dev/sda, 3;
 // Returns true on success.
 bool BRILLO_EXPORT GetDevicePathComponents(const base::FilePath& device,
                                            std::string* base_device_out,

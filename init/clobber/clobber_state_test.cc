@@ -1169,7 +1169,6 @@ TEST_F(GetDevicesToWipeTest, MMC) {
   EXPECT_EQ(wipe_info.stateful_partition_device.value(), "/dev/mmcblk0p1");
   EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/mmcblk0p5");
   EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/mmcblk0p4");
-  EXPECT_FALSE(wipe_info.is_mtd_flash);
   EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_a);
 }
 
@@ -1183,7 +1182,6 @@ TEST_F(GetDevicesToWipeTest, NVME_a_active) {
   EXPECT_EQ(wipe_info.stateful_partition_device.value(), "/dev/nvme0n1p1");
   EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/nvme0n1p5");
   EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/nvme0n1p4");
-  EXPECT_FALSE(wipe_info.is_mtd_flash);
   EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_a);
 }
 
@@ -1197,7 +1195,6 @@ TEST_F(GetDevicesToWipeTest, NVME_b_active) {
   EXPECT_EQ(wipe_info.stateful_partition_device.value(), "/dev/nvme0n1p1");
   EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/nvme0n1p3");
   EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/nvme0n1p2");
-  EXPECT_FALSE(wipe_info.is_mtd_flash);
   EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_b);
 }
 
@@ -1211,7 +1208,6 @@ TEST_F(GetDevicesToWipeTest, UFS) {
   EXPECT_EQ(wipe_info.stateful_partition_device.value(), "/dev/sda1");
   EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/sda3");
   EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/sda2");
-  EXPECT_FALSE(wipe_info.is_mtd_flash);
   EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_b);
 }
 
@@ -1231,7 +1227,6 @@ TEST_F(GetDevicesToWipeTest, SDA) {
   EXPECT_EQ(wipe_info.stateful_partition_device.value(), "/dev/sda7");
   EXPECT_EQ(wipe_info.inactive_root_device.value(), "/dev/sda4");
   EXPECT_EQ(wipe_info.inactive_kernel_device.value(), "/dev/sda2");
-  EXPECT_FALSE(wipe_info.is_mtd_flash);
   EXPECT_EQ(wipe_info.active_kernel_partition, partitions_.kernel_a);
 }
 

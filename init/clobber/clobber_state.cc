@@ -371,41 +371,15 @@ bool ClobberState::GetDevicesToWipe(
   }
 
   base::FilePath kernel_device;
-  if (root_disk == base::FilePath(kUbiRootDisk)) {
-    /*
-     * WARNING: This code has not been sufficiently tested and almost certainly
-     * does not work. If you are adding support for MTD flash, you would be
-     * well served to review it and add test coverage.
-     */
+  wipe_info.stateful_partition_device =
+      base::FilePath(base_device + std::to_string(partitions.stateful));
 
-    // Special casing for NAND devices.
-    wipe_info.is_mtd_flash = true;
-    wipe_info.stateful_partition_device = base::FilePath(
-        base::StringPrintf(kUbiDeviceStatefulFormat, partitions.stateful));
-
-    // On NAND, kernel is stored on /dev/mtdX.
-    if (active_root_partition == partitions.root_a) {
-      kernel_device =
-          base::FilePath("/dev/mtd" + std::to_string(partitions.kernel_a));
-    } else if (active_root_partition == partitions.root_b) {
-      kernel_device =
-          base::FilePath("/dev/mtd" + std::to_string(partitions.kernel_b));
-    }
-
-    /*
-     * End of untested MTD code.
-     */
-  } else {
-    wipe_info.stateful_partition_device =
-        base::FilePath(base_device + std::to_string(partitions.stateful));
-
-    if (active_root_partition == partitions.root_a) {
-      kernel_device =
-          base::FilePath(base_device + std::to_string(partitions.kernel_a));
-    } else if (active_root_partition == partitions.root_b) {
-      kernel_device =
-          base::FilePath(base_device + std::to_string(partitions.kernel_b));
-    }
+  if (active_root_partition == partitions.root_a) {
+    kernel_device =
+        base::FilePath(base_device + std::to_string(partitions.kernel_a));
+  } else if (active_root_partition == partitions.root_b) {
+    kernel_device =
+        base::FilePath(base_device + std::to_string(partitions.kernel_b));
   }
 
   *wipe_info_out = wipe_info;
@@ -566,24 +540,16 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
 int ClobberState::CreateStatefulFileSystem(
     const std::string& stateful_filesystem_device) {
   brillo::ProcessImpl mkfs;
-  if (wipe_info_.is_mtd_flash) {
-    mkfs.AddArg("/sbin/mkfs.ubifs");
-    mkfs.AddArg("-y");
-    mkfs.AddStringOption("-x", "none");
-    mkfs.AddIntOption("-R", 0);
-    mkfs.AddArg(stateful_filesystem_device);
-  } else {
-    mkfs.AddArg("/sbin/mkfs.ext4");
-    // Check if encryption is supported. If yes, enable the flag during mkfs.
-    if (base::PathExists(base::FilePath(kExt4DircryptoSupportedPath)))
-      mkfs.AddStringOption("-O", "encrypt");
-    mkfs.AddArg(stateful_filesystem_device);
-    // TODO(wad) tune2fs.
-  }
+  mkfs.AddArg("/sbin/mkfs.ext4");
+  // Check if encryption is supported. If yes, enable the flag during mkfs.
+  if (base::PathExists(base::FilePath(kExt4DircryptoSupportedPath)))
+    mkfs.AddStringOption("-O", "encrypt");
+  mkfs.AddArg(stateful_filesystem_device);
+  // TODO(wad) tune2fs.
   mkfs.RedirectOutputToMemory(true);
   LOG(INFO) << "Creating stateful file system";
   int ret = mkfs.Run();
-  init::AppendToLog("mkfs.ubifs", mkfs.GetOutputString(STDOUT_FILENO));
+  init::AppendToLog("mkfs.ext4", mkfs.GetOutputString(STDOUT_FILENO));
   return ret;
 }
 
@@ -752,12 +718,6 @@ int ClobberState::Run() {
     root_disk_ = GetRootDevice(/*strip_partition=*/true);
   }
 
-  // Special casing for NAND devices
-  if (base::StartsWith(root_disk_.value(), kUbiDevicePrefix,
-                       base::CompareCase::SENSITIVE)) {
-    root_disk_ = base::FilePath(kUbiRootDisk);
-  }
-
   base::FilePath root_device;
   const char* root_device_cstr = getenv("ROOT_DEV");
   if (root_device_cstr != nullptr) {
@@ -822,7 +782,6 @@ int ClobberState::Run() {
   // Ready for wiping.
   clobber_wipe_->SetPartitionInfo(partitions_);
   clobber_wipe_->SetFastWipe(args_.fast_wipe);
-  clobber_wipe_->SetIsMtdFlash(wipe_info_.is_mtd_flash);
 
   base::ScopedClosureRunner reset_stateful(base::BindOnce(
       &ClobberState::ResetStatefulPartition, weak_ptr_factory_.GetWeakPtr()));
@@ -873,10 +832,8 @@ int ClobberState::Run() {
     LOG(ERROR) << "Unable to create stateful file system. Error code: " << ret;
 
   // Mount the fresh image for last minute additions.
-  std::string file_system_type = wipe_info_.is_mtd_flash ? "ubifs" : "ext4";
   if (mount(wipe_info_.stateful_filesystem_device.value().c_str(),
-            stateful_.value().c_str(), file_system_type.c_str(), 0,
-            nullptr) != 0) {
+            stateful_.value().c_str(), "ext4", 0, nullptr) != 0) {
     PLOG(ERROR) << "Unable to mount stateful partition at "
                 << stateful_.value();
   }

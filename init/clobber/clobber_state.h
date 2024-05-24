@@ -64,8 +64,6 @@ class ClobberState {
     base::FilePath inactive_root_device;
     base::FilePath inactive_kernel_device;
 
-    // Is the stateful device backed by an MTD flash device.
-    bool is_mtd_flash = false;
     // The partition number for the currently booted kernel partition.
     int active_kernel_partition = -1;
   };

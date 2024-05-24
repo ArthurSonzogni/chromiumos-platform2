@@ -37,27 +37,6 @@
 #include "init/utils.h"
 
 namespace {
-
-// Calculate the maximum number of bad blocks per 1024 blocks for UBI.
-int CalculateUBIMaxBadBlocksPer1024(int partition_number) {
-  // The max bad blocks per 1024 is based on total device size,
-  // not the partition size.
-  int mtd_size = 0;
-  utils::ReadFileToInt(base::FilePath("/sys/class/mtd/mtd0/size"), &mtd_size);
-
-  int erase_size;
-  utils::ReadFileToInt(base::FilePath("/sys/class/mtd/mtd0/erasesize"),
-                       &erase_size);
-
-  int block_count = mtd_size / erase_size;
-
-  int reserved_error_blocks = 0;
-  base::FilePath reserved_for_bad(base::StringPrintf(
-      "/sys/class/ubi/ubi%d/reserved_for_bad", partition_number));
-  utils::ReadFileToInt(reserved_for_bad, &reserved_error_blocks);
-  return reserved_error_blocks * 1024 / block_count;
-}
-
 bool GetBlockCount(const base::FilePath& device_path,
                    int64_t block_size,
                    int64_t* block_count_out) {
@@ -111,134 +90,6 @@ bool GetBlockCount(const base::FilePath& device_path,
 ClobberWipe::ClobberWipe(ClobberUi* ui) : ui_(ui), dev_("/dev"), sys_("/sys") {}
 
 bool ClobberWipe::WipeDevice(const base::FilePath& device_path, bool discard) {
-  if (is_mtd_flash_) {
-    return WipeMTDDevice(device_path, partitions_);
-  } else {
-    return WipeBlockDevice(device_path, ui_, fast_wipe_, discard);
-  }
-}
-
-// static
-bool ClobberWipe::WipeMTDDevice(const base::FilePath& device_path,
-                                const PartitionNumbers& partitions) {
-  /*
-   * WARNING: This code has not been sufficiently tested and almost certainly
-   * does not work. If you are adding support for MTD flash, you would be
-   * well served to review it and add test coverage.
-   */
-
-  if (!base::StartsWith(device_path.value(), kUbiDevicePrefix,
-                        base::CompareCase::SENSITIVE)) {
-    LOG(ERROR) << "Cannot wipe device " << device_path.value();
-    return false;
-  }
-
-  std::string base_device;
-  int partition_number;
-  if (!utils::GetDevicePathComponents(device_path, &base_device,
-                                      &partition_number)) {
-    LOG(ERROR) << "Getting partition number from device failed: "
-               << device_path.value();
-    return false;
-  }
-
-  std::string partition_name;
-  if (partition_number == partitions.stateful) {
-    partition_name = "STATE";
-  } else if (partition_number == partitions.root_a) {
-    partition_name = "ROOT-A";
-  } else if (partition_number == partitions.root_b) {
-    partition_name = "ROOT-B";
-  } else {
-    partition_name = base::StringPrintf("UNKNOWN_%d", partition_number);
-    LOG(ERROR) << "Do not know how to name UBI partition for "
-               << device_path.value();
-  }
-
-  std::string physical_device =
-      base::StringPrintf("/dev/ubi%d", partition_number);
-  struct stat st;
-  stat(physical_device.c_str(), &st);
-  if (!S_ISCHR(st.st_mode)) {
-    // Try to attach the volume to obtain info about it.
-    brillo::ProcessImpl ubiattach;
-    ubiattach.AddArg("/bin/ubiattach");
-    ubiattach.AddIntOption("-m", partition_number);
-    ubiattach.AddIntOption("-d", partition_number);
-    ubiattach.RedirectOutputToMemory(true);
-    ubiattach.Run();
-    init::AppendToLog("ubiattach", ubiattach.GetOutputString(STDOUT_FILENO));
-  }
-
-  int max_bad_blocks_per_1024 =
-      CalculateUBIMaxBadBlocksPer1024(partition_number);
-
-  int volume_size;
-  base::FilePath data_bytes(base::StringPrintf(
-      "/sys/class/ubi/ubi%d_0/data_bytes", partition_number));
-  utils::ReadFileToInt(data_bytes, &volume_size);
-
-  brillo::ProcessImpl ubidetach;
-  ubidetach.AddArg("/bin/ubidetach");
-  ubidetach.AddIntOption("-d", partition_number);
-  ubidetach.RedirectOutputToMemory(true);
-  int detach_ret = ubidetach.Run();
-  init::AppendToLog("ubidetach", ubidetach.GetOutputString(STDOUT_FILENO));
-  if (detach_ret) {
-    LOG(ERROR) << "Detaching MTD volume failed with code " << detach_ret;
-  }
-
-  brillo::ProcessImpl ubiformat;
-  ubiformat.AddArg("/bin/ubiformat");
-  ubiformat.AddArg("-y");
-  ubiformat.AddIntOption("-e", 0);
-  ubiformat.AddArg(base::StringPrintf("/dev/mtd%d", partition_number));
-  ubiformat.RedirectOutputToMemory(true);
-  int format_ret = ubiformat.Run();
-  init::AppendToLog("ubiformat", ubiformat.GetOutputString(STDOUT_FILENO));
-  if (format_ret) {
-    LOG(ERROR) << "Formatting MTD volume failed with code " << format_ret;
-  }
-
-  // We need to attach so that we could set max beb/1024 and create a volume.
-  // After a volume is created, we don't need to specify max beb/1024 anymore.
-  brillo::ProcessImpl ubiattach;
-  ubiattach.AddArg("/bin/ubiattach");
-  ubiattach.AddIntOption("-d", partition_number);
-  ubiattach.AddIntOption("-m", partition_number);
-  ubiattach.AddIntOption("--max-beb-per1024", max_bad_blocks_per_1024);
-  ubiattach.RedirectOutputToMemory(true);
-  int attach_ret = ubiattach.Run();
-  init::AppendToLog("ubiattach", ubiattach.GetOutputString(STDOUT_FILENO));
-  if (attach_ret) {
-    LOG(ERROR) << "Reattaching MTD volume failed with code " << attach_ret;
-  }
-
-  brillo::ProcessImpl ubimkvol;
-  ubimkvol.AddArg("/bin/ubimkvol");
-  ubimkvol.AddIntOption("-s", volume_size);
-  ubimkvol.AddStringOption("-N", partition_name);
-  ubimkvol.AddArg(physical_device);
-  ubimkvol.RedirectOutputToMemory(true);
-  int mkvol_ret = ubimkvol.Run();
-  init::AppendToLog("ubimkvol", ubimkvol.GetOutputString(STDOUT_FILENO));
-  if (mkvol_ret) {
-    LOG(ERROR) << "Making MTD volume failed with code " << mkvol_ret;
-  }
-
-  return detach_ret == 0 && format_ret == 0 && attach_ret == 0 &&
-         mkvol_ret == 0;
-
-  /*
-   * End of untested MTD code.
-   */
-}
-
-// static
-bool ClobberWipe::WipeBlockDevice(const base::FilePath& device_path,
-                                  ClobberUi* ui,
-                                  bool fast,
-                                  bool discard) {
   const int write_block_size = 4 * 1024 * 1024;
   int64_t to_write = 0;
 
@@ -248,7 +99,7 @@ bool ClobberWipe::WipeBlockDevice(const base::FilePath& device_path,
     return false;
   }
 
-  if (fast) {
+  if (fast_wipe_) {
     to_write = write_block_size;
   } else {
     // Wipe the filesystem size if we can determine it. Full partition wipe
@@ -265,7 +116,7 @@ bool ClobberWipe::WipeBlockDevice(const base::FilePath& device_path,
   }
 
   LOG(INFO) << "Wiping block device " << device_path.value()
-            << (fast ? " (fast) " : "");
+            << (fast_wipe_ ? " (fast) " : "");
   LOG(INFO) << "Number of bytes to write: " << to_write;
 
   base::File device(open(device_path.value().c_str(), O_WRONLY | O_SYNC));
@@ -275,12 +126,12 @@ bool ClobberWipe::WipeBlockDevice(const base::FilePath& device_path,
   }
 
   // Don't display progress in fast mode since it runs so quickly.
-  bool display_progress = !fast;
+  bool display_progress = !fast_wipe_;
   base::ScopedClosureRunner stop_wipe_ui;
   if (display_progress) {
-    if (ui->StartWipeUi(to_write)) {
+    if (ui_->StartWipeUi(to_write)) {
       stop_wipe_ui.ReplaceClosure(
-          base::BindOnce([](ClobberUi* ui) { ui->StopWipeUi(); }, ui));
+          base::BindOnce([](ClobberUi* ui) { ui->StopWipeUi(); }, ui_));
     } else {
       display_progress = false;
     }
@@ -313,7 +164,7 @@ bool ClobberWipe::WipeBlockDevice(const base::FilePath& device_path,
     }
     total_written += write_size;
     if (display_progress) {
-      ui->UpdateWipeProgress(total_written);
+      ui_->UpdateWipeProgress(total_written);
     }
   }
 
@@ -343,7 +194,7 @@ bool ClobberWipe::WipeBlockDevice(const base::FilePath& device_path,
     }
     total_written += bytes_written;
     if (display_progress) {
-      ui->UpdateWipeProgress(total_written);
+      ui_->UpdateWipeProgress(total_written);
     }
   }
   LOG(INFO) << "Successfully wrote " << total_written << " bytes to "
@@ -369,9 +220,6 @@ int ClobberWipe::Stat(const base::FilePath& path, struct stat* st) {
 }
 
 bool ClobberWipe::IsRotational(const base::FilePath& device_path) {
-  if (is_mtd_flash_)
-    return false;
-
   if (!dev_.IsParent(device_path)) {
     LOG(ERROR) << "Non-device given as argument to IsRotational: "
                << device_path.value();

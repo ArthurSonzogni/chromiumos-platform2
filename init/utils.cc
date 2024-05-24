@@ -146,14 +146,7 @@ bool GetDevicePathComponents(const base::FilePath& device,
     return false;
   const std::string& path = device.value();
 
-  // MTD devices sometimes have a trailing "_0" after the partition which
-  // we should ignore.
-  std::string mtd_suffix = "_0";
   size_t suffix_index = path.length();
-  if (base::EndsWith(path, mtd_suffix, base::CompareCase::SENSITIVE)) {
-    suffix_index = path.length() - mtd_suffix.length();
-  }
-
   size_t last_non_numeric =
       path.find_last_not_of("0123456789", suffix_index - 1);
 
