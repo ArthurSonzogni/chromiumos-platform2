@@ -544,11 +544,10 @@ base::StringPairs VmBuilder::BuildRunParams() const {
         args.emplace_back("--params", "root=/dev/pmem0 ro");
       }
     } else {
-      if (rootfs.writable) {
-        args.emplace_back("--rwroot", rootfs.path.value());
-      } else {
-        args.emplace_back("--root", rootfs.path.value());
-      }
+      std::string rootfs_arg = rootfs.path.value();
+      rootfs_arg += BooleanParameter(",ro=", !rootfs.writable);
+      rootfs_arg += BooleanParameter(",root=", true);
+      args.emplace_back("--block", rootfs_arg);
     }
   }
 
