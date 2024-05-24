@@ -90,6 +90,25 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
+    <method name="GetQuotaOverallUsage">
+      <tp:docstring>
+        Returns the disk space currently used for all uids, gids and projects.
+      </tp:docstring>
+      <arg name="path" type="s" direction="in"/>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="spaced::GetQuotaCurrentSpacesForIdsReply"/>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="GetQuotaOverallUsagePrettyPrint">
+      <tp:docstring>
+        Returns the disk space currently used for all uids, gids and projects.
+      </tp:docstring>
+      <arg name="path" type="s" direction="in"/>
+      <arg name="reply" type="s" direction="out"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
     <method name="SetProjectId">
       <tp:docstring>
         Sets the project ID to the given file.

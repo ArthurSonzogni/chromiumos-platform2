@@ -203,6 +203,14 @@ class DiskUsageQuotaMock : public DiskUsageUtilImpl {
     project_id_to_current_space_[project_id] = space;
   }
 
+  void set_uids(std::vector<uid_t> uids) { uids_ = uids; }
+
+  void set_gids(std::vector<gid_t> gids) { gids_ = gids; }
+
+  void set_project_ids(std::vector<uint32_t> project_ids) {
+    project_ids_ = project_ids;
+  }
+
   int Ioctl(int fd, uint32_t request, void* ptr) override {
     switch (request) {
       case FS_IOC_FSGETXATTR: {
@@ -264,6 +272,12 @@ class DiskUsageQuotaMock : public DiskUsageUtilImpl {
     return 0;
   }
 
+  std::vector<uid_t> GetUsers() override { return uids_; }
+
+  std::vector<gid_t> GetGroups() override { return gids_; }
+
+  std::vector<uint32_t> GetProjectIds() override { return project_ids_; }
+
  private:
   base::FilePath home_device_;
   std::map<uint32_t, uint64_t> uid_to_current_space_;
@@ -271,6 +285,9 @@ class DiskUsageQuotaMock : public DiskUsageUtilImpl {
   std::map<uint32_t, uint64_t> project_id_to_current_space_;
   std::map<int, int> fd_to_project_id_;
   std::map<int, int> fd_to_ext_flags_;
+  std::vector<uint32_t> uids_;
+  std::vector<uint32_t> gids_;
+  std::vector<uint32_t> project_ids_;
 };
 
 TEST(DiskUsageUtilTest, QuotaNotSupportedWhenPathNotMounted) {
@@ -289,6 +306,19 @@ TEST(DiskUsageUtilTest, QuotaNotSupportedWhenPathNotMounted) {
   EXPECT_TRUE(reply.curspaces_for_uids().empty());
   EXPECT_TRUE(reply.curspaces_for_gids().empty());
   EXPECT_TRUE(reply.curspaces_for_project_ids().empty());
+
+  disk_usage_mock.set_uids({1, 2});
+  disk_usage_mock.set_gids({10, 11});
+  disk_usage_mock.set_project_ids({100, 101});
+
+  GetQuotaCurrentSpacesForIdsReply overall_reply =
+      disk_usage_mock.GetQuotaOverallUsage(path);
+  EXPECT_TRUE(reply.curspaces_for_uids().empty());
+  EXPECT_TRUE(reply.curspaces_for_gids().empty());
+  EXPECT_TRUE(reply.curspaces_for_project_ids().empty());
+
+  std::string str_reply = disk_usage_mock.GetQuotaOverallUsagePrettyPrint(path);
+  EXPECT_EQ(str_reply, "Users:\n\nGroups:\n\nProjects:\n");
 }
 
 TEST(DiskUsageUtilTest, QuotaNotSupportedWhenPathNotMountedWithQuotaOption) {
@@ -326,6 +356,36 @@ TEST(DiskUsageUtilTest, QuotaSupported) {
   EXPECT_EQ(reply.curspaces_for_project_ids().count(2), 0);
   EXPECT_EQ(reply.curspaces_for_project_ids().at(100), 30);
   EXPECT_EQ(reply.curspaces_for_project_ids().at(101), -1);
+
+  disk_usage_mock.set_uids({1, 2});
+  disk_usage_mock.set_gids({10, 11});
+  disk_usage_mock.set_project_ids({100, 101});
+
+  GetQuotaCurrentSpacesForIdsReply overall_reply =
+      disk_usage_mock.GetQuotaOverallUsage(path);
+  EXPECT_EQ(reply.curspaces_for_uids().count(0), 0);
+  EXPECT_EQ(reply.curspaces_for_uids().at(1), 10);
+  EXPECT_EQ(reply.curspaces_for_uids().at(2), -1);
+  EXPECT_EQ(reply.curspaces_for_gids().count(1), 0);
+  EXPECT_EQ(reply.curspaces_for_gids().at(10), 20);
+  EXPECT_EQ(reply.curspaces_for_gids().at(11), -1);
+  EXPECT_EQ(reply.curspaces_for_project_ids().count(2), 0);
+  EXPECT_EQ(reply.curspaces_for_project_ids().at(100), 30);
+  EXPECT_EQ(reply.curspaces_for_project_ids().at(101), -1);
+
+  std::string str_reply = disk_usage_mock.GetQuotaOverallUsagePrettyPrint(path);
+  std::string users =
+      str_reply.substr(str_reply.find("Users"), str_reply.find("Groups"));
+  std::string groups =
+      str_reply.substr(str_reply.find("Groups"), str_reply.find("Projects"));
+  std::string projects = str_reply.substr(str_reply.find("Projects"));
+
+  EXPECT_NE(users.find("1: 10"), std::string::npos);
+  EXPECT_NE(users.find("2: -1"), std::string::npos);
+  EXPECT_NE(groups.find("10: 20"), std::string::npos);
+  EXPECT_NE(groups.find("11: -1"), std::string::npos);
+  EXPECT_NE(projects.find("100: 30"), std::string::npos);
+  EXPECT_NE(projects.find("101: -1"), std::string::npos);
 }
 
 TEST(DiskUsageUtilTest, SetProjectId) {

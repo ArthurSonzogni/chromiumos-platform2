@@ -46,6 +46,9 @@ class DBusAdaptor : public org::chromium::SpacedInterface,
                                            uint32_t project_id) override;
   GetQuotaCurrentSpacesForIdsReply GetQuotaCurrentSpacesForIds(
       const GetQuotaCurrentSpacesForIdsRequest& request) override;
+  GetQuotaCurrentSpacesForIdsReply GetQuotaOverallUsage(
+      const std::string& path) override;
+  std::string GetQuotaOverallUsagePrettyPrint(const std::string& path) override;
   SetProjectIdReply SetProjectId(const base::ScopedFD& fd,
                                  uint32_t project_id) override;
   SetProjectInheritanceFlagReply SetProjectInheritanceFlag(

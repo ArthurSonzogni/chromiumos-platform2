@@ -8,8 +8,10 @@
 #include <sys/quota.h>
 #include <sys/statvfs.h>
 
+#include <map>
 #include <memory>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -45,6 +47,12 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
       const std::vector<uint32_t>& uids,
       const std::vector<uint32_t>& gids,
       const std::vector<uint32_t>& project_ids) override;
+
+  GetQuotaCurrentSpacesForIdsReply GetQuotaOverallUsage(
+      const base::FilePath& path) override;
+  std::string GetQuotaOverallUsagePrettyPrint(
+      const base::FilePath& path) override;
+
   bool SetProjectId(const base::ScopedFD& fd,
                     uint32_t project_id,
                     int* out_error) override;
@@ -71,6 +79,12 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
   // Gets the block device size in bytes for a given device.
   virtual int64_t GetBlockDeviceSize(const base::FilePath& device);
 
+  virtual std::vector<uid_t> GetUsers();
+
+  virtual std::vector<gid_t> GetGroups();
+
+  virtual std::vector<uint32_t> GetProjectIds();
+
  private:
   int64_t GetQuotaCurrentSpaceForId(const base::FilePath& path,
                                     uint32_t id,
@@ -83,6 +97,7 @@ class BRILLO_EXPORT DiskUsageUtilImpl : public DiskUsageUtil {
 
   const base::FilePath rootdev_;
   std::optional<brillo::Thinpool> thinpool_;
+  std::map<uint32_t, std::string> projects_;
 };
 
 }  // namespace spaced

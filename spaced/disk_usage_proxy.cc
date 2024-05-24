@@ -175,6 +175,31 @@ GetQuotaCurrentSpacesForIdsReply DiskUsageProxy::GetQuotaCurrentSpacesForIds(
   return reply;
 }
 
+GetQuotaCurrentSpacesForIdsReply DiskUsageProxy::GetQuotaOverallUsage(
+    const base::FilePath& path) {
+  GetQuotaCurrentSpacesForIdsReply reply;
+  brillo::ErrorPtr error;
+  // Return -1 if call fails.
+  if (!spaced_proxy_->GetQuotaOverallUsage(path.value(), &reply, &error)) {
+    LOG(ERROR) << "Failed to call GetQuotaOverallUsage, error: "
+               << error->GetMessage();
+  }
+  return reply;
+}
+
+std::string DiskUsageProxy::GetQuotaOverallUsagePrettyPrint(
+    const base::FilePath& path) {
+  std::string reply;
+  brillo::ErrorPtr error;
+  // Return -1 if call fails.
+  if (!spaced_proxy_->GetQuotaOverallUsagePrettyPrint(path.value(), &reply,
+                                                      &error)) {
+    LOG(ERROR) << "Failed to call GetQuotaOverallUsagePrettyPrint, error: "
+               << error->GetMessage();
+  }
+  return reply;
+}
+
 bool DiskUsageProxy::SetProjectId(const base::ScopedFD& fd,
                                   uint32_t project_id,
                                   int* out_error) {

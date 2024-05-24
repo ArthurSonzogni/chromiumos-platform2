@@ -142,6 +142,17 @@ GetQuotaCurrentSpacesForIdsReply DBusAdaptor::GetQuotaCurrentSpacesForIds(
                             request.project_ids().end()));
 }
 
+GetQuotaCurrentSpacesForIdsReply DBusAdaptor::GetQuotaOverallUsage(
+    const std::string& path) {
+  return disk_usage_util_->GetQuotaOverallUsage(base::FilePath(path));
+}
+
+std::string DBusAdaptor::GetQuotaOverallUsagePrettyPrint(
+    const std::string& path) {
+  return disk_usage_util_->GetQuotaOverallUsagePrettyPrint(
+      base::FilePath(path));
+}
+
 SetProjectIdReply DBusAdaptor::SetProjectId(const base::ScopedFD& fd,
                                             uint32_t project_id) {
   SetProjectIdReply reply;

@@ -5,6 +5,7 @@
 #include "spaced/disk_usage_impl.h"
 
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -22,10 +23,13 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
+#include <base/values.h>
 #include <brillo/blkdev_utils/get_backing_block_device.h>
+#include <brillo/userdb_utils.h>
 #include <rootdev/rootdev.h>
 #include <spaced/proto_bindings/spaced.pb.h>
 
@@ -34,6 +38,8 @@ extern "C" {
 }
 
 namespace spaced {
+
+constexpr char kProjectIdJson[] = "/etc/spaced/projects.json";
 
 DiskUsageUtilImpl::DiskUsageUtilImpl(const base::FilePath& rootdev,
                                      std::optional<brillo::Thinpool> thinpool)
@@ -195,6 +201,101 @@ void DiskUsageUtilImpl::SetQuotaCurrentSpacesForIdsMap(
       (*curspaces_for_ids)[id] = dq.dqb_curspace;
     }
   }
+}
+
+std::vector<uid_t> DiskUsageUtilImpl::GetUsers() {
+  return brillo::userdb::GetUsers();
+}
+
+std::vector<gid_t> DiskUsageUtilImpl::GetGroups() {
+  return brillo::userdb::GetGroups();
+}
+
+std::vector<uint32_t> DiskUsageUtilImpl::GetProjectIds() {
+  std::vector<uint32_t> project_ids;
+  std::string json_string;
+  if (!base::ReadFileToString(base::FilePath(kProjectIdJson), &json_string)) {
+    PLOG(ERROR) << "Unable to read json file: " << kProjectIdJson;
+    return project_ids;
+  }
+  auto prj =
+      base::JSONReader::Read(json_string, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  if (!prj) {
+    LOG(ERROR) << "Failed to read json file";
+    return project_ids;
+  }
+  if (!prj->is_dict()) {
+    LOG(ERROR) << "Failed to read json file as a dictionary";
+    return project_ids;
+  }
+
+  base::Value::List* projects = prj->GetDict().FindList("projects");
+  if (projects == nullptr) {
+    LOG(ERROR) << "Failed to get project ids";
+    return project_ids;
+  }
+
+  for (const auto& prj : *projects) {
+    if (!prj.is_dict()) {
+      LOG(ERROR) << "Failed to get project information";
+      continue;
+    }
+    const auto& prj_dict = prj.GetDict();
+    const std::string* value = prj_dict.FindString("id");
+    const std::string* name = prj_dict.FindString("name");
+    if (value != nullptr && name != nullptr) {
+      int num = 0;
+      CHECK(base::StringToInt(*value, &num));
+      project_ids.push_back(num);
+      projects_[num] = *name;
+    }
+  }
+  return project_ids;
+}
+
+GetQuotaCurrentSpacesForIdsReply DiskUsageUtilImpl::GetQuotaOverallUsage(
+    const base::FilePath& path) {
+  GetQuotaCurrentSpacesForIdsReply reply;
+
+  std::vector<uid_t> users = GetUsers();
+  std::vector<gid_t> groups = GetGroups();
+  std::vector<uint32_t> projects = GetProjectIds();
+
+  reply = GetQuotaCurrentSpacesForIds(path, users, groups, projects);
+  return reply;
+}
+
+std::string DiskUsageUtilImpl::GetQuotaOverallUsagePrettyPrint(
+    const base::FilePath& path) {
+  GetQuotaCurrentSpacesForIdsReply reply;
+  std::string output;
+
+  reply = GetQuotaOverallUsage(path);
+  output.append("Users:\n");
+  for (auto const& usr : reply.curspaces_for_uids()) {
+    if (usr.second != 0) {
+      std::string s =
+          std::to_string(usr.first) + ": " + std::to_string(usr.second) + "\n";
+      output.append(s);
+    }
+  }
+  output.append("\nGroups:\n");
+  for (auto const& grp : reply.curspaces_for_gids()) {
+    if (grp.second != 0) {
+      std::string s =
+          std::to_string(grp.first) + ": " + std::to_string(grp.second) + "\n";
+      output.append(s);
+    }
+  }
+  output.append("\nProjects:\n");
+  for (auto const& prj : reply.curspaces_for_project_ids()) {
+    if (prj.second != 0) {
+      std::string s =
+          std::to_string(prj.first) + ": " + std::to_string(prj.second) + "\n";
+      output.append(s);
+    }
+  }
+  return output;
 }
 
 bool DiskUsageUtilImpl::SetProjectId(const base::ScopedFD& fd,

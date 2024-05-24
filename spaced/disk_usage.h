@@ -5,6 +5,7 @@
 #ifndef SPACED_DISK_USAGE_H_
 #define SPACED_DISK_USAGE_H_
 
+#include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -35,6 +36,10 @@ class DiskUsageUtil {
       const std::vector<uint32_t>& uids,
       const std::vector<uint32_t>& gids,
       const std::vector<uint32_t>& project_ids) = 0;
+  virtual GetQuotaCurrentSpacesForIdsReply GetQuotaOverallUsage(
+      const base::FilePath& path) = 0;
+  virtual std::string GetQuotaOverallUsagePrettyPrint(
+      const base::FilePath& path) = 0;
   virtual bool SetProjectId(const base::ScopedFD& path,
                             uint32_t project_id,
                             int* out_error) = 0;
