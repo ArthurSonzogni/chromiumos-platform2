@@ -28,6 +28,7 @@ flock: 1
 fstat: 1
 fstatfs: 1
 futex: 1
+getcpu: 1
 getdents64: 1
 getegid: 1
 geteuid: 1
