@@ -2213,15 +2213,6 @@ TEST_F(WiFiServiceTest, ComputeCipher8021x) {
   }
 }
 
-TEST_F(WiFiServiceTest, Unload) {
-  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassNone);
-  auto network = std::make_unique<MockNetwork>(1, "ifname", Technology::kWiFi);
-  EXPECT_CALL(*network, DestroyDHCPLease(service->GetStorageIdentifier()))
-      .Times(1);
-  wifi()->set_network_for_testing(std::move(network));
-  service->Unload();
-}
-
 TEST_F(WiFiServiceTest, PropertyChanges) {
   WiFiServiceRefPtr service = MakeServiceWithMockManager();
   ServiceMockAdaptor* adaptor = GetAdaptor(service.get());

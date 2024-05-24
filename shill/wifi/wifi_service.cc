@@ -743,9 +743,6 @@ bool WiFiService::Unload() {
     expecting_disconnect_ = false;
   }
   Service::Unload();
-  if (wifi_) {
-    wifi_->DestroyServiceLease(*this);
-  }
   hidden_ssid_ = false;
   ResetSuspectedCredentialFailures();
   Error unused_error;

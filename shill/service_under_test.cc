@@ -64,4 +64,8 @@ void ServiceUnderTest::OnConnect(Error* error) {
   connect_calls_++;
 }
 
+void ServiceUnderTest::OnDisconnect(Error* /*error*/, const char* /*reason*/) {
+  disconnect_calls_++;
+}
+
 }  // namespace shill

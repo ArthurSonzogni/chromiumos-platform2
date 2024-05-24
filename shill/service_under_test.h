@@ -48,11 +48,12 @@ class ServiceUnderTest : public Service {
   }
 
   int connect_calls() const { return connect_calls_; }
+  int disconnect_calls() const { return disconnect_calls_; }
 
  protected:
   // Inherited from Service.
   void OnConnect(Error* error) override;
-  void OnDisconnect(Error* /*error*/, const char* /*reason*/) override {}
+  void OnDisconnect(Error* /*error*/, const char* /*reason*/) override;
   bool IsDisconnectable(Error* error) const override;
 
  private:
@@ -63,6 +64,7 @@ class ServiceUnderTest : public Service {
 
   bool disconnectable_ = true;
   int connect_calls_ = 0;
+  int disconnect_calls_ = 0;
 };
 
 }  // namespace shill

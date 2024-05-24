@@ -6310,6 +6310,14 @@ TEST_F(WiFiMainTest, ConnectStopsNetwork) {
   Mock::VerifyAndClearExpectations(network());
 }
 
+TEST_F(WiFiMainTest, DisconnectStopsNetwork) {
+  StartWiFi();
+  SetupConnectedService(RpcIdentifier(""), nullptr, nullptr);
+  EXPECT_CALL(*network(), Stop());
+  ReportCurrentBSSChanged(RpcIdentifier(WPASupplicant::kCurrentBSSNull));
+  Mock::VerifyAndClearExpectations(network());
+}
+
 TEST_F(WiFiMainTest, UpdateSupplicantPropertiesSuccess) {
   Error error;
   StartWiFi();

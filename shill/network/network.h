@@ -270,9 +270,6 @@ class Network : public NetworkMonitor::ClientNetwork {
   // Initiates renewal of existing DHCP lease. Return false if the renewal
   // failed immediately, or we don't have active lease now.
   mockable bool RenewDHCPLease();
-  // Destroy the lease, if any, with this |name|.
-  // Called by the service during Unload() as part of the cleanup sequence.
-  mockable void DestroyDHCPLease(const std::string& name);
   // Calculates the duration till a DHCP lease is due for renewal, and stores
   // this value in |result|. Returns std::nullopt if there is no upcoming DHCP
   // lease renewal, base::TimeDelta wrapped in std::optional otherwise.

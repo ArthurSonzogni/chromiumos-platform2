@@ -542,10 +542,6 @@ bool Network::RenewDHCPLease() {
   return dhcp_controller_->RenewIP();
 }
 
-void Network::DestroyDHCPLease(const std::string& name) {
-  dhcp_provider_->DestroyLease(name);
-}
-
 std::optional<base::TimeDelta> Network::TimeToNextDHCPLeaseRenewal() {
   if (!dhcp_controller_) {
     return std::nullopt;

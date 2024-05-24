@@ -2561,10 +2561,6 @@ const WiFiEndpointConstRefPtr WiFi::GetCurrentEndpoint() const {
   return endpoint_it->second.get();
 }
 
-void WiFi::DestroyServiceLease(const WiFiService& service) {
-  GetPrimaryNetwork()->DestroyDHCPLease(GetServiceLeaseName(service));
-}
-
 void WiFi::StateChanged(const std::string& new_state) {
   const std::string old_state = supplicant_state_;
   supplicant_state_ = new_state;

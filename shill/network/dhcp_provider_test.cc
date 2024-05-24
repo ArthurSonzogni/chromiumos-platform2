@@ -63,20 +63,6 @@ TEST_F(DHCPProviderTest, CreateController) {
   EXPECT_TRUE(provider_->controllers_.empty());
 }
 
-TEST_F(DHCPProviderTest, DestroyLease) {
-  base::ScopedTempDir temp_dir;
-  base::FilePath lease_file;
-  EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
-  provider_->root_ = temp_dir.GetPath();
-  lease_file = provider_->root_.Append(
-      base::StringPrintf(DHCPProvider::kDHCPCDPathFormatLease, kDeviceName));
-  EXPECT_TRUE(base::CreateDirectory(lease_file.DirName()));
-  EXPECT_EQ(0, base::WriteFile(lease_file, "", 0));
-  EXPECT_TRUE(base::PathExists(lease_file));
-  provider_->DestroyLease(kDeviceName);
-  EXPECT_FALSE(base::PathExists(lease_file));
-}
-
 TEST_F(DHCPProviderTest, BindAndUnbind) {
   int kPid = 999;
   EXPECT_EQ(nullptr, provider_->GetController(kPid));

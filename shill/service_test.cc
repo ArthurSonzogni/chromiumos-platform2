@@ -706,10 +706,12 @@ TEST_F(ServiceTest, Unload) {
   EXPECT_TRUE(service_->has_ever_connected_);
 
   service_->explicitly_disconnected_ = true;
+  SetStateField(Service::kStateConnected);
   service_->Unload();
   EXPECT_EQ(std::string(""), service_->guid_);
   EXPECT_FALSE(service_->explicitly_disconnected_);
   EXPECT_FALSE(service_->has_ever_connected_);
+  EXPECT_EQ(1, service_->disconnect_calls());
 }
 
 TEST_F(ServiceTest, SaveAndLoadConnectionTimestamps) {

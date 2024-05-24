@@ -255,9 +255,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Called by a WiFiService when it disassociates itself from this Device.
   virtual void DisassociateFromService(const WiFiServiceRefPtr& service);
 
-  // Called by a WiFiService when it unloads to destroy its lease file.
-  virtual void DestroyServiceLease(const WiFiService& service);
-
   // Remove all networks from WPA supplicant.
   // Passed as a callback to |wake_on_wifi_| where it is used.
   void RemoveSupplicantNetworks();

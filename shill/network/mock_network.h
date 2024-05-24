@@ -62,7 +62,6 @@ class MockNetwork : public Network {
               (const, override));
 
   MOCK_METHOD(bool, RenewDHCPLease, (), (override));
-  MOCK_METHOD(void, DestroyDHCPLease, (const std::string&), (override));
   MOCK_METHOD(std::optional<base::TimeDelta>,
               TimeToNextDHCPLeaseRenewal,
               (),
