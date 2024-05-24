@@ -88,10 +88,6 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
   conf.Set<uint16_t>(DHCPv4Config::kConfigurationKeyMTU, 600);
   conf.Set<std::string>("UnknownKey", "UnknownValue");
 
-  ByteArray isns_data{0x1, 0x2, 0x3, 0x4};
-  conf.Set<std::vector<uint8_t>>(DHCPv4Config::kConfigurationKeyiSNSOptionData,
-                                 isns_data);
-
   net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
   ASSERT_TRUE(
@@ -111,9 +107,6 @@ TEST(DHCPv4ConfigTest, ParseConfiguration) {
   EXPECT_EQ("foo.com", network_config.dns_search_domains[0]);
   EXPECT_EQ("bar.com", network_config.dns_search_domains[1]);
   EXPECT_EQ(600, network_config.mtu);
-  EXPECT_EQ(isns_data.size(), dhcp_data.isns_option_data.size());
-  EXPECT_FALSE(
-      memcmp(&dhcp_data.isns_option_data[0], &isns_data[0], isns_data.size()));
 }
 
 TEST(DHCPv4ConfigTest, ParseConfigurationRespectingMinimumMTU) {

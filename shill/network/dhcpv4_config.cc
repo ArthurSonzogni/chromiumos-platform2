@@ -176,8 +176,6 @@ bool DHCPv4Config::ParseConfiguration(const KeyValueStore& configuration,
       dhcp_data->web_proxy_auto_discovery = value.Get<std::string>();
     } else if (key == kConfigurationKeyLeaseTime) {
       dhcp_data->lease_duration = base::Seconds(value.Get<uint32_t>());
-    } else if (key == kConfigurationKeyiSNSOptionData) {
-      dhcp_data->isns_option_data = value.Get<ByteArray>();
     } else {
       SLOG(2) << "Key ignored.";
     }

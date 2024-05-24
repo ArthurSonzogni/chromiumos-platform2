@@ -22,8 +22,6 @@ class DHCPv4Config {
   struct Data {
     // Vendor encapsulated option string gained from DHCP.
     std::vector<uint8_t> vendor_encapsulated_options;
-    // iSNS option data gained from DHCP.
-    std::vector<uint8_t> isns_option_data;
     // Web Proxy Auto Discovery (WPAD) URL gained from DHCP.
     std::string web_proxy_auto_discovery;
     // Length of time the lease was granted.
@@ -43,7 +41,6 @@ class DHCPv4Config {
   static constexpr char kConfigurationKeyDomainSearch[] = "DomainSearch";
   static constexpr char kConfigurationKeyHostname[] = "Hostname";
   static constexpr char kConfigurationKeyIPAddress[] = "IPAddress";
-  static constexpr char kConfigurationKeyiSNSOptionData[] = "iSNSOptionData";
   static constexpr char kConfigurationKeyLeaseTime[] = "DHCPLeaseTime";
   static constexpr char kConfigurationKeyMTU[] = "InterfaceMTU";
   static constexpr char kConfigurationKeyRouters[] = "Routers";
