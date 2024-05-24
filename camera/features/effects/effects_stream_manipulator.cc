@@ -30,6 +30,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/location.h>
 #include <base/no_destructor.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/synchronization/lock.h>
 #include <base/thread_annotations.h>
@@ -67,8 +68,12 @@ const base::TimeDelta kMaximumMetricsSessionDuration = base::Seconds(3600);
 // may cause OOM; too low can cause frame drops in the graph.
 const int kGraphMaxFramesInflightDefault = 7;
 
+// "effect" key's value needs to be "none" or an combination of "blur",
+// "replace", "relight", "retouch" separated by underscore "_".
+// E.g. "blur_relight".
 constexpr char kEffectKey[] = "effect";
 constexpr char kBlurLevelKey[] = "blur_level";
+constexpr char kRetouchStrength[] = "retouch_strength";
 constexpr char kDelegateKey[] = "delegate";
 constexpr char kRelightingDelegateKey[] = "relighting_delegate";
 constexpr char kGpuApiKey[] = "gpu_api";
@@ -78,6 +83,7 @@ constexpr char kStableDelegateSettingsFileKey[] =
 constexpr char kBlurEnabled[] = "blur_enabled";
 constexpr char kReplaceEnabled[] = "replace_enabled";
 constexpr char kRelightEnabled[] = "relight_enabled";
+constexpr char kRetouchEnabled[] = "retouch_enabled";
 constexpr char kSegmentationModelTypeKey[] = "segmentation_model_type";
 constexpr char kDefaultSegmentationModelTypeKey[] =
     "default_segmentation_model_type";
@@ -99,7 +105,17 @@ bool GetStringFromKey(const base::Value::Dict& obj,
   if (!val || val->empty()) {
     return false;
   }
+  *value = *val;
+  return true;
+}
 
+bool GetDoubleFromKey(const base::Value::Dict& obj,
+                      const std::string& key,
+                      double* value) {
+  std::optional<double> val = obj.FindDouble(key);
+  if (!val.has_value()) {
+    return false;
+  }
   *value = *val;
   return true;
 }
@@ -879,30 +895,37 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     return;
 
   EffectsConfig new_config;
-  std::string effect;
-  if (GetStringFromKey(json_values, kEffectKey, &effect)) {
-    if (effect == std::string("blur")) {
-      new_config.blur_enabled = true;
-    } else if (effect == std::string("replace")) {
-      new_config.replace_enabled = true;
-    } else if (effect == std::string("relight")) {
-      new_config.relight_enabled = true;
-    } else if (effect == std::string("blur_relight")) {
-      new_config.blur_enabled = true;
-      new_config.relight_enabled = true;
-    } else if (effect == std::string("none")) {
-      new_config.blur_enabled = false;
-      new_config.relight_enabled = false;
-      new_config.replace_enabled = false;
+  std::string effect_val;
+  if (GetStringFromKey(json_values, kEffectKey, &effect_val)) {
+    base::flat_map<std::string, bool*> effect_name_to_enabled = {
+        {"blur", &new_config.blur_enabled},
+        {"replace", &new_config.replace_enabled},
+        {"relight", &new_config.relight_enabled},
+        {"retouch", &new_config.face_retouch_enabled},
+    };
+    if (effect_val == "none") {
+      for (auto& [unused, enabled] : effect_name_to_enabled) {
+        *enabled = false;
+      }
     } else {
-      LOGF(WARNING) << "Unknown Effect: " << effect;
-      return;
+      std::vector<std::string> effects = base::SplitString(
+          effect_val, "_", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+      for (const std::string& effect : effects) {
+        auto it = effect_name_to_enabled.find(effect);
+        if (it != effect_name_to_enabled.end()) {
+          *it->second = true;
+        } else {
+          LOGF(WARNING) << "Unknown Effect: " << effect;
+        }
+      }
     }
-    LOGF(INFO) << "Effect Updated: " << effect;
+    LOGF(INFO) << "Effect Updated: " << effect_val;
   }
+
   LoadIfExist(json_values, kBlurEnabled, &new_config.blur_enabled);
   LoadIfExist(json_values, kReplaceEnabled, &new_config.replace_enabled);
   LoadIfExist(json_values, kRelightEnabled, &new_config.relight_enabled);
+  LoadIfExist(json_values, kRetouchEnabled, &new_config.face_retouch_enabled);
 
   std::string blur_level;
   if (GetStringFromKey(json_values, kBlurLevelKey, &blur_level)) {
@@ -921,6 +944,12 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
       return;
     }
     LOGF(INFO) << "Blur Level: " << blur_level;
+  }
+
+  double face_retouch_strength;
+  if (GetDoubleFromKey(json_values, kRetouchStrength, &face_retouch_strength)) {
+    new_config.face_retouch_strength = face_retouch_strength;
+    LOGF(INFO) << "Retouch Strength: " << face_retouch_strength;
   }
 
   std::string delegate;
