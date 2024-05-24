@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -321,6 +322,7 @@ class WiFiProvider : public ProviderInterface {
   FRIEND_TEST(WiFiProviderTest, RegisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, CreateHotspotDevice);
   FRIEND_TEST(WiFiProviderTest, CreateHotspotDeviceForTest);
+  FRIEND_TEST(WiFiProviderTest, PendingDeviceRequestQueueSorted);
 
   // Deregister a WiFi local device from WiFiProvider and it's associated
   // WiFiPhy object. This function is a no-op if the WiFi device is not
@@ -338,6 +340,34 @@ class WiFiProvider : public ProviderInterface {
   using EndpointServiceMap = std::map<const WiFiEndpoint*, WiFiServiceRefPtr>;
   using PasspointCredentialsMap =
       std::map<const std::string, PasspointCredentialsRefPtr>;
+
+  // Represents a request to create a new device with the given type and
+  // priority. |create_device_cb| is a closure that actually creates the
+  // requested device.
+  struct PendingDeviceRequest {
+    nl80211_iftype type;
+    WiFiPhy::Priority priority;
+    base::OnceClosure create_device_cb;
+  };
+
+  // Compare PendingDeviceRequests by priority, with higher priorities coming
+  // before lower priorities.
+  struct ComparePendingDeviceRequests {
+   public:
+    bool operator()(const std::shared_ptr<PendingDeviceRequest> lhs,
+                    const std::shared_ptr<PendingDeviceRequest> rhs) const {
+      return lhs->priority > rhs->priority;
+    }
+  };
+
+  // Set of PendingDeviceRequests sorted by priority, highest to lowest.
+  typedef std::multiset<std::shared_ptr<PendingDeviceRequest>,
+                        ComparePendingDeviceRequests>
+      PendingDeviceRequestQueue;
+
+  void PushPendingDeviceRequest(nl80211_iftype type,
+                                WiFiPhy::Priority priority,
+                                base::OnceClosure create_device_cb);
 
   // Add a service to the service_ vector and register it with the Manager.
   WiFiServiceRefPtr AddService(const std::vector<uint8_t>& ssid,
@@ -429,6 +459,8 @@ class WiFiProvider : public ProviderInterface {
   base::OnceClosure phy_info_ready_cb_;
   // P2P manager to manage P2P related state machine, properties and session.
   std::unique_ptr<P2PManager> p2p_manager_;
+  // Tracks all pending WiFi device creation/enablement requests.
+  PendingDeviceRequestQueue request_queue_;
 
   // The factory method to create a HotspotDevice instance. It's used to inject
   // the mock factory at testing.

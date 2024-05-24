@@ -1547,4 +1547,13 @@ void WiFiProvider::OnGetPhyInfoAuxMessage(
   }
 }
 
+void WiFiProvider::PushPendingDeviceRequest(
+    nl80211_iftype type,
+    WiFiPhy::Priority priority,
+    base::OnceClosure create_device_cb) {
+  request_queue_.insert(std::shared_ptr<WiFiProvider::PendingDeviceRequest>(
+      new WiFiProvider::PendingDeviceRequest(type, priority,
+                                             std::move(create_device_cb))));
+}
+
 }  // namespace shill

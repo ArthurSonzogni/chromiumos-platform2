@@ -719,6 +719,28 @@ class WiFiProviderTest : public testing::Test {
     return provider_->phy_update_timeout_cb_.IsCancelled();
   }
 
+  void PushPendingDeviceRequest(nl80211_iftype type,
+                                WiFiPhy::Priority priority,
+                                base::OnceClosure create_device_cb) {
+    provider_->PushPendingDeviceRequest(type, priority,
+                                        std::move(create_device_cb));
+  }
+
+  void AssertRequestQueueSorted() {
+    auto current_req = provider_->request_queue_.begin();
+    if (current_req == provider_->request_queue_.end()) {
+      return;
+    }
+    auto next_req = ++provider_->request_queue_.begin();
+    while (next_req != provider_->request_queue_.end()) {
+      ASSERT_TRUE((*current_req)->priority >= (*next_req)->priority);
+      LOG(INFO) << "Current: " << (*current_req)->priority
+                << " Next: " << (*next_req)->priority << "\n";
+      current_req++;
+      next_req++;
+    }
+  }
+
   MockControl control_;
   EventDispatcherForTest dispatcher_;
   MockMetrics metrics_;
@@ -2809,6 +2831,24 @@ TEST_F(WiFiProviderTest, PhyDumpComplete) {
   EXPECT_CALL(*phy1, PhyDumpComplete()).Times(1);
   EXPECT_CALL(manager_, RefreshTetheringCapabilities()).Times(1);
   OnGetPhyInfoAuxMessage(kAllPhys, net_base::NetlinkManager::kDone, nullptr);
+}
+
+TEST_F(WiFiProviderTest, PendingDeviceRequestQueueSorted) {
+  PushPendingDeviceRequest(NL80211_IFTYPE_STATION, WiFiPhy::Priority(1),
+                           base::DoNothing());
+  PushPendingDeviceRequest(NL80211_IFTYPE_STATION, WiFiPhy::Priority(5),
+                           base::DoNothing());
+  PushPendingDeviceRequest(NL80211_IFTYPE_STATION, WiFiPhy::Priority(3),
+                           base::DoNothing());
+  PushPendingDeviceRequest(NL80211_IFTYPE_STATION, WiFiPhy::Priority(4),
+                           base::DoNothing());
+  PushPendingDeviceRequest(NL80211_IFTYPE_STATION, WiFiPhy::Priority(2),
+                           base::DoNothing());
+  PushPendingDeviceRequest(NL80211_IFTYPE_STATION, WiFiPhy::Priority(2),
+                           base::DoNothing());
+  PushPendingDeviceRequest(NL80211_IFTYPE_STATION, WiFiPhy::Priority(2),
+                           base::DoNothing());
+  AssertRequestQueueSorted();
 }
 
 }  // namespace shill
