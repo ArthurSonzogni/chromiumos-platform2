@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
 
+#include <optional>
 #include <set>
 #include <sstream>
 #include <string>
@@ -309,69 +310,336 @@ TEST_F(MetricsUtilsTest, SendTelemetryResultWithANullField) {
   SendTelemetryResult({mojom::ProbeCategoryEnum::kBattery}, info);
 }
 
-TEST_F(MetricsUtilsTest, SendDiagnosticPassedResult) {
-  // The choice of routine is arbitrary.
-  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
-                      CrosHealthdDiagnosticResult::kPassed);
-  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
+struct RoutineMetricNameTestCase {
+  mojom::DiagnosticRoutineEnum routine;
+  std::optional<std::string> metrics;
+};
+
+const RoutineMetricNameTestCase routine_metric_name_test_cases[] = {
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kUnknown,
+        .metrics = std::nullopt,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kBatteryCapacity,
+        .metrics = metrics_name::kDiagnosticResultBatteryCapacity,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kBatteryHealth,
+        .metrics = metrics_name::kDiagnosticResultBatteryHealth,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kUrandom,
+        .metrics = metrics_name::kDiagnosticResultUrandom,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kSmartctlCheck,
+        .metrics = metrics_name::kDiagnosticResultSmartctlCheck,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kAcPower,
+        .metrics = metrics_name::kDiagnosticResultAcPower,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kCpuCache,
+        .metrics = metrics_name::kDiagnosticResultCpuCache,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kCpuStress,
+        .metrics = metrics_name::kDiagnosticResultCpuStress,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kFloatingPointAccuracy,
+        .metrics = metrics_name::kDiagnosticResultFloatingPointAccuracy,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::DEPRECATED_kNvmeWearLevel,
+        .metrics = metrics_name::kDiagnosticResultNvmeWearLevel,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kNvmeSelfTest,
+        .metrics = metrics_name::kDiagnosticResultNvmeSelfTest,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kDiskRead,
+        .metrics = metrics_name::kDiagnosticResultDiskRead,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kPrimeSearch,
+        .metrics = metrics_name::kDiagnosticResultPrimeSearch,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kBatteryDischarge,
+        .metrics = metrics_name::kDiagnosticResultBatteryDischarge,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kBatteryCharge,
+        .metrics = metrics_name::kDiagnosticResultBatteryCharge,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kMemory,
+        .metrics = metrics_name::kDiagnosticResultMemory,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kLanConnectivity,
+        .metrics = metrics_name::kDiagnosticResultLanConnectivity,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kSignalStrength,
+        .metrics = metrics_name::kDiagnosticResultSignalStrength,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kGatewayCanBePinged,
+        .metrics = metrics_name::kDiagnosticResultGatewayCanBePinged,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kHasSecureWiFiConnection,
+        .metrics = metrics_name::kDiagnosticResultHasSecureWiFiConnection,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kDnsResolverPresent,
+        .metrics = metrics_name::kDiagnosticResultDnsResolverPresent,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kDnsLatency,
+        .metrics = metrics_name::kDiagnosticResultDnsLatency,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kDnsResolution,
+        .metrics = metrics_name::kDiagnosticResultDnsResolution,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kCaptivePortal,
+        .metrics = metrics_name::kDiagnosticResultCaptivePortal,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kHttpFirewall,
+        .metrics = metrics_name::kDiagnosticResultHttpFirewall,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kHttpsFirewall,
+        .metrics = metrics_name::kDiagnosticResultHttpsFirewall,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kHttpsLatency,
+        .metrics = metrics_name::kDiagnosticResultHttpsLatency,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kVideoConferencing,
+        .metrics = metrics_name::kDiagnosticResultVideoConferencing,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kArcHttp,
+        .metrics = metrics_name::kDiagnosticResultArcHttp,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kArcPing,
+        .metrics = metrics_name::kDiagnosticResultArcPing,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kArcDnsResolution,
+        .metrics = metrics_name::kDiagnosticResultArcDnsResolution,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kSensitiveSensor,
+        .metrics = metrics_name::kDiagnosticResultSensitiveSensor,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kFingerprint,
+        .metrics = metrics_name::kDiagnosticResultFingerprint,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kFingerprintAlive,
+        .metrics = metrics_name::kDiagnosticResultFingerprintAlive,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kPrivacyScreen,
+        .metrics = metrics_name::kDiagnosticResultPrivacyScreen,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kLedLitUp,
+        .metrics = metrics_name::kDiagnosticResultLedLitUp,
+    },
+    {
+        .routine =
+            mojom::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed,
+        .metrics =
+            metrics_name::kDiagnosticResultSmartctlCheckWithPercentageUsed,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kEmmcLifetime,
+        .metrics = metrics_name::kDiagnosticResultEmmcLifetime,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::DEPRECATED_kAudioSetVolume,
+        .metrics = metrics_name::kDiagnosticResultAudioSetVolume,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::DEPRECATED_kAudioSetGain,
+        .metrics = metrics_name::kDiagnosticResultAudioSetGain,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kBluetoothPower,
+        .metrics = metrics_name::kDiagnosticResultBluetoothPower,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kBluetoothDiscovery,
+        .metrics = metrics_name::kDiagnosticResultBluetoothDiscovery,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kBluetoothScanning,
+        .metrics = metrics_name::kDiagnosticResultBluetoothScanning,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kBluetoothPairing,
+        .metrics = metrics_name::kDiagnosticResultBluetoothPairing,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kPowerButton,
+        .metrics = metrics_name::kDiagnosticResultPowerButton,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kAudioDriver,
+        .metrics = metrics_name::kDiagnosticResultAudioDriver,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kUfsLifetime,
+        .metrics = metrics_name::kDiagnosticResultUfsLifetime,
+    },
+    {
+        .routine = mojom::DiagnosticRoutineEnum::kFan,
+        .metrics = metrics_name::kDiagnosticResultFan,
+    },
+};
+
+TEST_F(MetricsUtilsTest, AllRoutineMetricNamesTested) {
+  EXPECT_EQ(std::size(routine_metric_name_test_cases),
+            static_cast<int32_t>(mojom::DiagnosticRoutineEnum::kMaxValue) -
+                static_cast<int32_t>(mojom::DiagnosticRoutineEnum::kMinValue) +
+                1);
+}
+
+class RoutineMetricNameTest
+    : public MetricsUtilsTest,
+      public ::testing::WithParamInterface<RoutineMetricNameTestCase> {};
+
+TEST_P(RoutineMetricNameTest, SendDiagnosticResult) {
+  // The choice of diagnostic result is arbitrary.
+  const RoutineMetricNameTestCase& test_case = GetParam();
+  if (test_case.metrics.has_value()) {
+    ExpectSendEnumToUMA(test_case.metrics.value(),
+                        CrosHealthdDiagnosticResult::kPassed);
+  } else {
+    ExpectNoSendEnumToUMA();
+  }
+  SendDiagnosticResult(test_case.routine,
                        mojom::DiagnosticRoutineStatusEnum::kPassed);
 }
 
-TEST_F(MetricsUtilsTest, SendDiagnosticFailedResult) {
-  // The choice of routine is arbitrary.
-  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
-                      CrosHealthdDiagnosticResult::kFailed);
-  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
-                       mojom::DiagnosticRoutineStatusEnum::kFailed);
+INSTANTIATE_TEST_SUITE_P(
+    AllRoutine,
+    RoutineMetricNameTest,
+    ::testing::ValuesIn<RoutineMetricNameTestCase>(
+        routine_metric_name_test_cases),
+    [](const testing::TestParamInfo<RoutineMetricNameTest::ParamType>& info) {
+      std::stringstream ss;
+      ss << info.param.routine;
+      return ss.str();
+    });
+
+struct DiagnosticResultTestCase {
+  mojom::DiagnosticRoutineStatusEnum diag_result;
+  std::optional<CrosHealthdDiagnosticResult> uma_value;
+};
+
+constexpr DiagnosticResultTestCase diag_result_test_cases[] = {
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kPassed,
+        .uma_value = CrosHealthdDiagnosticResult::kPassed,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kFailed,
+        .uma_value = CrosHealthdDiagnosticResult::kFailed,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kError,
+        .uma_value = CrosHealthdDiagnosticResult::kError,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kCancelled,
+        .uma_value = CrosHealthdDiagnosticResult::kCancelled,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kFailedToStart,
+        .uma_value = CrosHealthdDiagnosticResult::kFailedToStart,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kRemoved,
+        .uma_value = CrosHealthdDiagnosticResult::kRemoved,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kUnsupported,
+        .uma_value = CrosHealthdDiagnosticResult::kUnsupported,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kNotRun,
+        .uma_value = CrosHealthdDiagnosticResult::kNotRun,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kUnknown,
+        .uma_value = std::nullopt,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kReady,
+        .uma_value = std::nullopt,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kRunning,
+        .uma_value = std::nullopt,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kWaiting,
+        .uma_value = std::nullopt,
+    },
+    {
+        .diag_result = mojom::DiagnosticRoutineStatusEnum::kCancelling,
+        .uma_value = std::nullopt,
+    }};
+
+TEST_F(MetricsUtilsTest, AllDiagnosticResultTested) {
+  EXPECT_EQ(
+      std::size(diag_result_test_cases),
+      static_cast<int32_t>(mojom::DiagnosticRoutineStatusEnum::kMaxValue) -
+          static_cast<int32_t>(mojom::DiagnosticRoutineStatusEnum::kMinValue) +
+          1);
 }
 
-TEST_F(MetricsUtilsTest, SendDiagnosticErrorResult) {
+class DiagnosticResultTest
+    : public MetricsUtilsTest,
+      public ::testing::WithParamInterface<DiagnosticResultTestCase> {};
+
+TEST_P(DiagnosticResultTest, SendDiagnosticResult) {
   // The choice of routine is arbitrary.
-  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
-                      CrosHealthdDiagnosticResult::kError);
+  const DiagnosticResultTestCase& test_case = GetParam();
+  if (test_case.uma_value.has_value()) {
+    ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
+                        test_case.uma_value.value());
+  } else {
+    ExpectNoSendEnumToUMA();
+  }
   SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
-                       mojom::DiagnosticRoutineStatusEnum::kError);
+                       test_case.diag_result);
 }
 
-TEST_F(MetricsUtilsTest, SendDiagnosticCancelledResult) {
-  // The choice of routine is arbitrary.
-  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
-                      CrosHealthdDiagnosticResult::kCancelled);
-  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
-                       mojom::DiagnosticRoutineStatusEnum::kCancelled);
-}
-
-TEST_F(MetricsUtilsTest, SendDiagnosticFailedToStartResult) {
-  // The choice of routine is arbitrary.
-  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
-                      CrosHealthdDiagnosticResult::kFailedToStart);
-  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
-                       mojom::DiagnosticRoutineStatusEnum::kFailedToStart);
-}
-
-TEST_F(MetricsUtilsTest, SendDiagnosticRemovedResult) {
-  // The choice of routine is arbitrary.
-  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
-                      CrosHealthdDiagnosticResult::kRemoved);
-  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
-                       mojom::DiagnosticRoutineStatusEnum::kRemoved);
-}
-
-TEST_F(MetricsUtilsTest, SendDiagnosticUnsupportedResult) {
-  // The choice of routine is arbitrary.
-  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
-                      CrosHealthdDiagnosticResult::kUnsupported);
-  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
-                       mojom::DiagnosticRoutineStatusEnum::kUnsupported);
-}
-
-TEST_F(MetricsUtilsTest, SendDiagnosticNotRunResult) {
-  // The choice of routine is arbitrary.
-  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
-                      CrosHealthdDiagnosticResult::kNotRun);
-  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
-                       mojom::DiagnosticRoutineStatusEnum::kNotRun);
-}
+INSTANTIATE_TEST_SUITE_P(
+    AllDiagnosticResult,
+    DiagnosticResultTest,
+    ::testing::ValuesIn<DiagnosticResultTestCase>(diag_result_test_cases),
+    [](const testing::TestParamInfo<DiagnosticResultTest::ParamType>& info) {
+      std::stringstream ss;
+      ss << info.param.diag_result;
+      return ss.str();
+    });
 
 TEST_F(MetricsUtilsTest, SendNoUmaForUnrecognizedEventCategory) {
   ExpectNoSendEnumToUMA();
