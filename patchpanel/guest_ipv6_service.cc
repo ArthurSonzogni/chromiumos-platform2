@@ -90,6 +90,8 @@ GuestIPv6Service::GuestIPv6Service(SubprocessController* nd_proxy,
                                    System* system)
     : nd_proxy_(nd_proxy), datapath_(datapath), system_(system) {}
 
+GuestIPv6Service::~GuestIPv6Service() = default;
+
 void GuestIPv6Service::Start() {
   nd_proxy_->RegisterFeedbackMessageHandler(base::BindRepeating(
       &GuestIPv6Service::OnNDProxyMessage, weak_factory_.GetWeakPtr()));

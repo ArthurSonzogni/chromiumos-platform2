@@ -38,7 +38,7 @@ class GuestIPv6Service {
                    System* system);
   GuestIPv6Service(const GuestIPv6Service&) = delete;
   GuestIPv6Service& operator=(const GuestIPv6Service&) = delete;
-  virtual ~GuestIPv6Service() = default;
+  virtual ~GuestIPv6Service();
 
   void Start();
 
@@ -60,7 +60,7 @@ class GuestIPv6Service {
   void StopForwarding(const ShillClient::Device& upstream_shill_device,
                       const std::string& ifname_downlink);
 
-  void StopUplink(const ShillClient::Device& upstream_shill_device);
+  virtual void StopUplink(const ShillClient::Device& upstream_shill_device);
 
   // Start and stop packet filter mode for ARC interfaces which should be
   // applied when ARC is in doze mode. When in packet filter mode, NS and NA are
@@ -69,9 +69,11 @@ class GuestIPv6Service {
   void StartARCPacketFilter(const std::vector<std::string_view>& arc_ifnames);
   void StopARCPacketFilter();
 
-  void OnUplinkIPv6Changed(const ShillClient::Device& upstream_shill_device);
+  virtual void OnUplinkIPv6Changed(
+      const ShillClient::Device& upstream_shill_device);
 
-  void UpdateUplinkIPv6DNS(const ShillClient::Device& upstream_shill_device);
+  virtual void UpdateUplinkIPv6DNS(
+      const ShillClient::Device& upstream_shill_device);
 
   // For local hotspot there is no uplink. We need to first start the RA
   // server on the tethering link with the provided prefix info.

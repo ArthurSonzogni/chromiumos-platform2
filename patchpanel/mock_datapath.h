@@ -206,6 +206,35 @@ class MockDatapath : public Datapath {
               RemoveIPv6HostRoute,
               (const net_base::IPv6CIDR& ipv6_cidr),
               (override));
+  MOCK_METHOD(void,
+              StartConnectionPinning,
+              (const ShillClient::Device&),
+              (override));
+  MOCK_METHOD(void,
+              StopConnectionPinning,
+              (const ShillClient::Device&),
+              (override));
+  MOCK_METHOD(void,
+              StartSourceIPv6PrefixEnforcement,
+              (const ShillClient::Device&),
+              (override));
+  MOCK_METHOD(void,
+              StopSourceIPv6PrefixEnforcement,
+              (const ShillClient::Device&),
+              (override));
+  MOCK_METHOD(void,
+              UpdateSourceEnforcementIPv6Prefix,
+              (const ShillClient::Device&,
+               const std::optional<net_base::IPv6CIDR>&),
+              (override));
+  MOCK_METHOD(bool,
+              StartDownstreamNetwork,
+              (const DownstreamNetworkInfo&),
+              (override));
+  MOCK_METHOD(void,
+              StopDownstreamNetwork,
+              (const DownstreamNetworkInfo&),
+              (override));
 };
 
 }  // namespace patchpanel

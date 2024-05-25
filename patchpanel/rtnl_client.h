@@ -20,21 +20,24 @@ class RTNLClient {
  public:
   static std::unique_ptr<RTNLClient> Create();
 
-  ~RTNLClient();
+  virtual ~RTNLClient();
 
   // Queries the MAC address of IPv4 or IPv6 neighbors. Returns the mapping from
   // the IP address to the MAC address.
   // If |ifindex| is not nullopt, then only returns the neighbors for this
   // network interface. The value of the |ifindex| could be retrieved by
   // System::IfNametoindex().
-  std::map<net_base::IPv4Address, net_base::MacAddress> GetIPv4NeighborMacTable(
+  virtual std::map<net_base::IPv4Address, net_base::MacAddress>
+  GetIPv4NeighborMacTable(
       const std::optional<int>& ifindex = std::nullopt) const;
-  std::map<net_base::IPv6Address, net_base::MacAddress> GetIPv6NeighborMacTable(
+  virtual std::map<net_base::IPv6Address, net_base::MacAddress>
+  GetIPv6NeighborMacTable(
       const std::optional<int>& ifindex = std::nullopt) const;
 
- private:
+ protected:
   explicit RTNLClient(base::ScopedFD rtnl_fd);
 
+ private:
   base::ScopedFD rtnl_fd_;
 };
 

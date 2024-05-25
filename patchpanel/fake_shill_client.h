@@ -114,6 +114,23 @@ class FakeShillClient : public ShillClient {
     return nullptr;
   }
 
+  const std::vector<Device> GetDevices() const override {
+    std::vector<Device> shill_devices;
+    for (const auto& [_, device] : fake_device_properties_) {
+      shill_devices.push_back(device);
+    }
+    return shill_devices;
+  }
+
+  const ShillClient::Device* GetDeviceByIfindex(int ifindex) const override {
+    for (const auto& [_, device] : fake_device_properties_) {
+      if (device.ifindex == ifindex) {
+        return &device;
+      }
+    }
+    return nullptr;
+  }
+
   const std::set<dbus::ObjectPath>& get_device_properties_calls() {
     return get_device_properties_calls_;
   }

@@ -149,7 +149,7 @@ class ShillClient {
   using DoHProvidersChangeHandler =
       base::RepeatingCallback<void(const DoHProviders& doh_providers)>;
 
-  explicit ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system);
+  ShillClient(const scoped_refptr<dbus::Bus>& bus, System* system);
   ShillClient(const ShillClient&) = delete;
   ShillClient& operator=(const ShillClient&) = delete;
 
@@ -201,7 +201,7 @@ class ShillClient {
   // does not block.
   virtual const Device* default_physical_device() const;
   // Returns interface names of all known shill physical Devices.
-  const std::vector<Device> GetDevices() const;
+  virtual const std::vector<Device> GetDevices() const;
 
  protected:
   void OnManagerPropertyChangeRegistration(const std::string& interface,

@@ -171,6 +171,8 @@ CountersService::CountersService(Datapath* datapath, ConntrackMonitor* monitor)
   connmark_updater_ = std::make_unique<ConnmarkUpdater>(monitor);
 }
 
+CountersService::~CountersService() = default;
+
 std::map<CounterKey, Counter> CountersService::GetCounters(
     const std::set<std::string>& devices) {
   std::map<CounterKey, Counter> counters;

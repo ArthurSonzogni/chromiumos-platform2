@@ -13,6 +13,7 @@
 
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

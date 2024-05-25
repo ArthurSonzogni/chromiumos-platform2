@@ -30,7 +30,7 @@ class LifelineFDService {
   LifelineFDService();
   LifelineFDService(const LifelineFDService&) = delete;
   LifelineFDService& operator=(const LifelineFDService&) = delete;
-  ~LifelineFDService();
+  virtual ~LifelineFDService();
 
   // Register |lifeline_fd| for read events and trigger |on_lifeline_fd_event|
   // when an event happens on |lifeline_fd|. Returns a ScopedClosureRunner that
@@ -41,7 +41,7 @@ class LifelineFDService {
   // discards the returned ScopedClosureRunner. This allows the caller to use
   // the lifeline_fd int value as a stable key in conjunction with the lifeline
   // FD service.
-  base::ScopedClosureRunner AddLifelineFD(
+  virtual base::ScopedClosureRunner AddLifelineFD(
       base::ScopedFD lifeline_fd, base::OnceClosure on_lifeline_fd_event);
 
   std::vector<int> get_lifeline_fds_for_testing();

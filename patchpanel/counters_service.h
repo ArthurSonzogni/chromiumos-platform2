@@ -16,6 +16,7 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/connmark_updater.h"
+#include "patchpanel/conntrack_monitor.h"
 #include "patchpanel/datapath.h"
 #include "patchpanel/iptables.h"
 #include "patchpanel/routing_service.h"
@@ -73,13 +74,13 @@ class CountersService {
   };
 
   explicit CountersService(Datapath* datapath, ConntrackMonitor* monitor);
-  ~CountersService() = default;
+  virtual ~CountersService();
 
   // Adds accounting rules and jump rules for a new physical device if this is
   // the first time this device is seen.
-  void OnPhysicalDeviceAdded(const std::string& ifname);
+  virtual void OnPhysicalDeviceAdded(const std::string& ifname);
   // Removes jump rules for a physical device.
-  void OnPhysicalDeviceRemoved(const std::string& ifname);
+  virtual void OnPhysicalDeviceRemoved(const std::string& ifname);
   // Adds accounting rules and jump rules for a new VPN device.
   void OnVpnDeviceAdded(const std::string& ifname);
   // Removes jump rules for a VPN device.
