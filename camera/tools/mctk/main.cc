@@ -24,8 +24,6 @@ extern int mctk_verbosity;
 
 namespace {
 
-uint32_t mctk_patchlevel = 5;
-
 void PrintUsage(char* progname) {
   fprintf(stderr, "\n");
 
@@ -48,7 +46,6 @@ void PrintUsage(char* progname) {
       "Options, executed in the order they are passed in:\n"
       "\n"
       "  -h, --help                        Print this help message.\n"
-      "      --patchlevel                  Print an internal change counter.\n"
       "\n"
       "  -v, --verbose                     Increase verbosity.\n"
       "\n"
@@ -96,7 +93,7 @@ int main(int argc, char** argv) {
   int opt;
 
   static struct option long_options[] = {
-      {"help", 0, 0, 'h'},         {"patchlevel", 0, 0, 10006},
+      {"help", 0, 0, 'h'},
 
       {"verbose", 0, 0, 'v'},
 
@@ -121,10 +118,6 @@ int main(int argc, char** argv) {
       default:
       case 'h':
         PrintUsage(argv[0]);
-        break;
-
-      case 10006: /* --patchlevel */
-        fprintf(stderr, "mctk patchlevel: %u\n", mctk_patchlevel);
         break;
 
       case 'v':
