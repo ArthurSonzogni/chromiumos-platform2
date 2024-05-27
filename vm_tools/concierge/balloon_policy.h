@@ -122,7 +122,7 @@ class BalloonPolicyInterface {
  private:
   // Do not log a ballon trace if the balloon remains within a window of this
   // width from the previous log.
-  static constexpr int64_t kBalloonTraceSizeWindowWidth = MiB(100);
+  int64_t balloon_trace_size_window_width_;
 
   // The size of the balloon when the last balloon trace was logged.
   int64_t last_balloon_trace_size_ = 0;

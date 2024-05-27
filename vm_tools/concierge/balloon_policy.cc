@@ -18,6 +18,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/system/sys_info.h>
 #include <brillo/process/process.h>
 
 #include "vm_tools/concierge/byte_unit.h"
@@ -34,14 +35,17 @@ constexpr int64_t MAX_OOM_MIN_FREE = KiB(322'560);
 constexpr int64_t PAGE_BYTES = 4096;
 }  // namespace
 
-BalloonPolicyInterface::BalloonPolicyInterface() {
+BalloonPolicyInterface::BalloonPolicyInterface()
+    // 1/37 of RAM means a 4GB dut gets ~100MB of window.
+    : balloon_trace_size_window_width_(base::SysInfo::AmountOfPhysicalMemory() /
+                                       37) {
   LOG(INFO) << "BalloonTrace throttled with size window: "
-            << kBalloonTraceSizeWindowWidth / MiB(1) << " MIB";
+            << balloon_trace_size_window_width_ / MiB(1) << " MIB";
 }
 
 bool BalloonPolicyInterface::ShouldLogBalloonTrace(int64_t new_balloon_size) {
   if (std::abs(last_balloon_trace_size_ - new_balloon_size) <
-      (kBalloonTraceSizeWindowWidth / 2)) {
+      (balloon_trace_size_window_width_ / 2)) {
     return false;
   }
 
@@ -57,10 +61,9 @@ BalanceAvailableBalloonPolicy::BalanceAvailableBalloonPolicy(
       guest_available_bias_(guest_available_bias),
       critical_guest_available_(MiB(400)) {
   LOG(INFO) << "BalloonInit: { "
-            << "\"type\": \"BalanceAvailableBalloonPolicy\","
-            << "\"vm\": \"" << vm << "\","
-            << "\"critical_margin\": " << critical_host_available << ","
-            << "\"bias\": " << guest_available_bias << " }";
+            << "\"type\": \"BalanceAvailableBalloonPolicy\"," << "\"vm\": \""
+            << vm << "\"," << "\"critical_margin\": " << critical_host_available
+            << "," << "\"bias\": " << guest_available_bias << " }";
   LOG(INFO) << "BalloonTrace Format [vm_name, game_mode, balloon_size_MIB, "
             << "balloon_delta_MIB, host_available_MIB, guest_cached_MIB, "
             << "guest_free_MIB]";
@@ -167,8 +170,7 @@ LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(
       guest_zoneinfo_(guest_zoneinfo),
       params_(params),
       metrics_(metrics) {
-  LOG(INFO) << "BalloonInit: { "
-            << "\"type\": \"LimitCacheBalloonPolicy\","
+  LOG(INFO) << "BalloonInit: { " << "\"type\": \"LimitCacheBalloonPolicy\","
             << "\"vm\": \"" << vm << "\","
             << "\"moderate_margin\": " << margins.moderate << ","
             << "\"critical_margin\": " << margins.critical << ","
@@ -182,8 +184,7 @@ LimitCacheBalloonPolicy::LimitCacheBalloonPolicy(
             << "\"critical_target_cache\": " << params.critical_target_cache
             << ","
             << "\"moderate_target_cache\": " << params.moderate_target_cache
-            << ","
-            << "\"responsive_max_deflate_bytes\": "
+            << "," << "\"responsive_max_deflate_bytes\": "
             << params.responsive_max_deflate_bytes << " }";
   LOG(INFO) << "BalloonTrace Format [vm_name, game_mode, balloon_size_MIB, "
             << "balloon_delta_MIB, host_free_above_lwm_MIB, "
