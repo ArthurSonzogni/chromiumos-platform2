@@ -611,15 +611,26 @@ bool FirmwareUpdater::TransferSection(const uint8_t* data_ptr,
   while (data_len > 0) {
     // prepare the header to prepend to the block.
     size_t payload_size = std::min<size_t>(data_len, targ_.maximum_pdu_size);
+    uint8_t digest[SHA256_DIGEST_LENGTH];
     UpdateFrameHeader ufh;
+    std::optional<UpdateCommandResponseStatus> reply;
+
+    SHA256(data_ptr, payload_size, reinterpret_cast<unsigned char*>(&digest));
+
     ufh.block_size = htobe32(payload_size + sizeof(UpdateFrameHeader));
     ufh.block_base = htobe32(section_addr);
-    ufh.block_digest = 0;
+    ufh.block_digest = htobe32(*reinterpret_cast<uint32_t*>(digest));
     LOG(INFO) << "Update frame header: " << std::hex << "0x" << ufh.block_size
               << " " << "0x" << ufh.block_base << " " << "0x"
               << ufh.block_digest << std::dec;
-    if (!TransferBlock(&ufh, data_ptr, payload_size, use_block_skip)) {
+    if (!TransferBlock(&ufh, data_ptr, payload_size, use_block_skip, reply)) {
       LOG(ERROR) << "Failed to transfer block, " << data_len << " to go";
+
+      if (reply && *reply == UpdateCommandResponseStatus::kDataError) {
+        // bad checksum, maybe we can retry?
+        continue;
+      }
+
       ret = false;
       break;
     }
@@ -641,10 +652,14 @@ bool FirmwareUpdater::CheckEmptyBlock(const uint8_t* transfer_data_ptr,
   return true;
 }
 
-bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
-                                    const uint8_t* transfer_data_ptr,
-                                    size_t payload_size,
-                                    bool use_block_skip) {
+bool FirmwareUpdater::TransferBlock(
+    UpdateFrameHeader* ufh,
+    const uint8_t* transfer_data_ptr,
+    size_t payload_size,
+    bool use_block_skip,
+    std::optional<UpdateCommandResponseStatus>& reply) {
+  reply.reset();
+
   // The section space must be erased before the update is attempted.
   // Thus we can skip blocks entirely composed of 0xff. However, this doesn't
   // apply for touchpad update.
@@ -668,15 +683,16 @@ bool FirmwareUpdater::TransferBlock(UpdateFrameHeader* ufh,
     transfer_size += chunk_size;
   }
 
+  uint32_t status_code = 0;
   // Now get the reply.
-  uint32_t reply;
-  if (endpoint_->Receive(&reply, sizeof(reply), true, kTransferTimeoutMs) ==
-      -1) {
+  if (endpoint_->Receive(&status_code, sizeof(status_code), true,
+                         kTransferTimeoutMs) == -1) {
     return false;
   }
-  reply = *(reinterpret_cast<uint8_t*>(&reply));
+  status_code = *(reinterpret_cast<uint8_t*>(&status_code));
   if (reply) {
-    LOG(ERROR) << "Error: status " << static_cast<int>(reply);
+    LOG(ERROR) << "Error: status " << static_cast<int>(status_code);
+    reply = static_cast<UpdateCommandResponseStatus>(status_code);
     return false;
   }
   return true;

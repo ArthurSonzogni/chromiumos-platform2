@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -391,7 +392,8 @@ class FirmwareUpdater : public FirmwareUpdaterInterface {
   bool TransferBlock(UpdateFrameHeader* ufh,
                      const uint8_t* transfer_data_ptr,
                      size_t payload_size,
-                     bool use_block_skip);
+                     bool use_block_skip,
+                     std::optional<UpdateCommandResponseStatus>& reply);
 
   UsbConnectStatus TryConnectUsbImpl(bool check_id);
 

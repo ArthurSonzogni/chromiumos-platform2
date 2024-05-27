@@ -546,7 +546,8 @@ TEST_F(FirmwareUpdaterTest, TransferImage) {
         .WillOnce(WriteBuf(&good_rpdu_));
 
     // Send first section with 2 blocks. (0x40 bytes, 0x40 bytes)
-    ufh_data = BuildHeaderData(sizeof(UpdateFrameHeader) + 0x80, 0, 0x11000);
+    ufh_data =
+        BuildHeaderData(sizeof(UpdateFrameHeader) + 0x80, 0x2e3a7238, 0x11000);
     EXPECT_CALL(*endpoint_, SendHelper(ufh_data, _, _));
     EXPECT_CALL(*endpoint_, SendHelper(_, image_ptr + 0x11000, 0x40));
     EXPECT_CALL(*endpoint_, SendHelper(_, image_ptr + 0x11040, 0x40));
@@ -554,7 +555,8 @@ TEST_F(FirmwareUpdaterTest, TransferImage) {
         .WillOnce(WriteBuf(&good_reply));
 
     // Send second section with 1 block. (0x20 bytes)
-    ufh_data = BuildHeaderData(sizeof(UpdateFrameHeader) + 0x20, 0, 0x11080);
+    ufh_data =
+        BuildHeaderData(sizeof(UpdateFrameHeader) + 0x20, 0xad7a6866, 0x11080);
     EXPECT_CALL(*endpoint_, SendHelper(ufh_data, _, _));
     EXPECT_CALL(*endpoint_, SendHelper(_, image_ptr + 0x11080, 0x20));
     EXPECT_CALL(*endpoint_, Receive(_, sizeof(good_reply), true, _))
