@@ -4,9 +4,7 @@
 
 module chromeos.connectivity.mojom;
 
-struct URL {
-  string url;
-};
+import "url/mojom/url.mojom";
 
 // The events for the portal notification UI component.
 [Extensible]
@@ -25,7 +23,7 @@ interface PortalUIInteractionHandler {
   OnNotificationEvent(int32 network_id, NotificationEvent event);
 
   // Called when the sign-in page is shown.
-  OnSigninPageShown(int32 network_id, URL target_url);
+  OnSigninPageShown(int32 network_id, url.mojom.Url target_url);
 
   // Called when the sign-in page is loaded.
   // The value of |chrome_net_error| is defined at Chromium's net::Error.
