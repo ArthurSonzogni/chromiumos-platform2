@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 
+#include <camera/camera_metadata.h>
 #include <system/camera_metadata.h>
 
 #include <base/task/single_thread_task_runner.h>
@@ -41,11 +42,12 @@ class HdrNetProcessorDeviceAdapter {
       scoped_refptr<base::SingleThreadTaskRunner> task_runner);
 
   // Returns the overridden HDRnet options if the options need update based on
-  // |result|. Otherwise, returns std::nullopt. This also updates |data| that
-  // can be used to specify which override key to use in GetOverriddenOptions().
+  // |result_metadata|. Otherwise, returns std::nullopt. This also updates
+  // |data| that can be used to specify which override key to use in
+  // GetOverriddenOptions().
   static std::optional<base::Value::Dict> MaybeOverrideOptions(
       const base::Value::Dict& json_values,
-      const Camera3CaptureDescriptor& result,
+      const android::CameraMetadata& result_metadata,
       OptionsOverrideData& data);
 
   // Returns default or overridden HDRnet options based on the internal state
@@ -53,6 +55,10 @@ class HdrNetProcessorDeviceAdapter {
   // returned options. If so, its value should be ignored.
   static base::Value::Dict GetOverriddenOptions(
       const base::Value::Dict& json_values, const OptionsOverrideData& data);
+
+  // Returns the result metadata tags that MaybeOverrideOptions() and
+  // ProcessResultMetadata() will inspect.
+  static std::vector<uint32_t> GetResultMetadataTagsOfInterest();
 
   virtual ~HdrNetProcessorDeviceAdapter() = default;
   virtual bool Initialize(GpuResources* gpu_resources,
@@ -66,8 +72,10 @@ class HdrNetProcessorDeviceAdapter {
                                       MetadataLogger* metadata_logger);
 
   // Called on every frame with the per-frame capture result metadata.
-  virtual void ProcessResultMetadata(Camera3CaptureDescriptor* result,
-                                     MetadataLogger* metadata_logger);
+  virtual void ProcessResultMetadata(
+      uint32_t frame_number,
+      const android::CameraMetadata& result_metadata,
+      MetadataLogger* metadata_logger);
 
   // Runs the device-specific HDRnet processing pipeline.
   virtual bool Run(int frame_number,

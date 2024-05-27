@@ -137,8 +137,7 @@ void HdrNetProcessorTestFixture::LoadHdrnetConfig(
 
   ParseHdrnetJsonOptions(json_values, options_);
 
-  VLOGF(1) << "HDRnet config:"
-           << " hdrnet_enable=" << options_.hdrnet_enable
+  VLOGF(1) << "HDRnet config:" << " hdrnet_enable=" << options_.hdrnet_enable
            << " dump_buffer=" << options_.dump_buffer
            << " hdr_ratio=" << options_.hdr_ratio
            << " max_gain_blend_threshold=" << options_.max_gain_blend_threshold
@@ -153,7 +152,8 @@ void HdrNetProcessorTestFixture::ProcessResultMetadata(
       0, gpu_resources_.PostGpuTaskSync(
              FROM_HERE, base::BindOnce(&HdrNetProcessor::ProcessResultMetadata,
                                        base::Unretained(processor_.get()),
-                                       base::Unretained(result))));
+                                       result->frame_number(),
+                                       std::ref(result->metadata()))));
 }
 
 base::ScopedFD HdrNetProcessorTestFixture::Run(int frame_number,

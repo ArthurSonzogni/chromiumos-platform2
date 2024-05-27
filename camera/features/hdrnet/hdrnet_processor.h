@@ -7,6 +7,9 @@
 #ifndef CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_H_
 #define CAMERA_FEATURES_HDRNET_HDRNET_PROCESSOR_H_
 
+#include <camera/camera_metadata.h>
+#include <system/camera_metadata.h>
+
 #include <memory>
 #include <optional>
 #include <vector>
@@ -14,15 +17,13 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/task/single_thread_task_runner.h>
-#include <system/camera_metadata.h>
 
 #include "common/camera_hal3_helpers.h"
+#include "common/metadata_logger.h"
 #include "cros-camera/common_types.h"
 #include "features/hdrnet/hdrnet_config.h"
 #include "features/hdrnet/hdrnet_metrics.h"
-#include "features/hdrnet/hdrnet_processor_device_adapter.h"
 #include "gpu/gpu_resources.h"
-#include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 
 namespace cros {
@@ -59,7 +60,9 @@ class HdrNetProcessor {
   virtual bool WriteRequestParameters(Camera3CaptureDescriptor* request) = 0;
 
   // Per-frame callback to pass the capture result metadata to HdrNetProcessor.
-  virtual void ProcessResultMetadata(Camera3CaptureDescriptor* result) = 0;
+  virtual void ProcessResultMetadata(
+      uint32_t frame_number,
+      const android::CameraMetadata& result_metadata) = 0;
 
   // Runs the HDRnet pipeline for frame |frame_number| with configuration
   // specified in |options|. |input_yuv| is the input YUV buffer

@@ -96,11 +96,12 @@ bool HdrNetProcessorImpl::WriteRequestParameters(
 }
 
 void HdrNetProcessorImpl::ProcessResultMetadata(
-    Camera3CaptureDescriptor* result) {
+    uint32_t frame_number, const android::CameraMetadata& result_metadata) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HDRNET();
 
-  processor_device_adapter_->ProcessResultMetadata(result, metadata_logger_);
+  processor_device_adapter_->ProcessResultMetadata(
+      frame_number, result_metadata, metadata_logger_);
 }
 
 base::ScopedFD HdrNetProcessorImpl::Run(

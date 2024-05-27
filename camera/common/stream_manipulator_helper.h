@@ -32,6 +32,7 @@
 #include "common/capture_result_sequencer.h"
 #include "common/still_capture_processor.h"
 #include "common/stream_manipulator.h"
+#include "cros-camera/export.h"
 
 namespace cros {
 
@@ -78,7 +79,7 @@ enum class ProcessMode {
 //
 // This class is thread-safe. Every function or callback is posted to the given
 // task runner.
-class StreamManipulatorHelper {
+class CROS_CAMERA_EXPORT StreamManipulatorHelper {
  public:
   // Configures StreamManipulatorHelper behavior.
   struct Config {
@@ -400,6 +401,7 @@ class ProcessTask {
   }
   android::CameraMetadata& result_metadata() { return *result_metadata_; }
   FeatureMetadata& feature_metadata() { return *feature_metadata_; }
+  uint64_t flow_id() const { return input_->flow_id(); }
 
  private:
   friend class StreamManipulatorHelper;

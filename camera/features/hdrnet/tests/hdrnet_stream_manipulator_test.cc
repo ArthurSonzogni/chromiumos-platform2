@@ -6,7 +6,8 @@
 
 #include "features/hdrnet/hdrnet_stream_manipulator.h"
 
-#include <algorithm>
+#include <camera/camera_metadata.h>
+
 #include <utility>
 
 #include <base/at_exit.h>
@@ -142,7 +143,8 @@ class MockHdrNetProcessor : public HdrNetProcessor {
               (override));
   MOCK_METHOD(void,
               ProcessResultMetadata,
-              (Camera3CaptureDescriptor * result),
+              (uint32_t frame_number,
+               const android::CameraMetadata& result_metadata),
               (override));
   MOCK_METHOD(base::ScopedFD,
               Run,
@@ -165,6 +167,9 @@ std::unique_ptr<HdrNetProcessor> CreateMockHdrNetProcessorInstance(
       static_info, task_runner);
 }
 
+// TODO(b/336491128): The stream configs are now different after migrating to
+// StreamManipulatorHelper, so these tests are failing. Make sure there are
+// equivalent tests in StreamManipulatorHelperTest and remove this test suite.
 class HdrNetStreamManipulatorTest : public Test {
  protected:
   HdrNetStreamManipulatorTest()
@@ -186,12 +191,14 @@ class HdrNetStreamManipulatorTest : public Test {
                      kBlobStreamUsage) {}
 
   void SetUp() override {
+    constexpr const char* kFakeCameraModuleName = "Fake camera module";
     CHECK(gpu_resources_.Initialize());
     runtime_options_.SetSWPrivacySwitchState(
         mojom::CameraPrivacySwitchState::OFF);
     HdrNetConfig::Options test_options = {.hdrnet_enable = true};
     stream_manipulator_ = std::make_unique<HdrNetStreamManipulator>(
         &runtime_options_, &gpu_resources_, base::FilePath(),
+        kFakeCameraModuleName,
         std::make_unique<tests::FakeStillCaptureProcessor>(),
         base::BindRepeating(CreateMockHdrNetProcessorInstance), &test_options);
     stream_manipulator_->Initialize(

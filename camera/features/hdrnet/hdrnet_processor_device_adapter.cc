@@ -4,6 +4,8 @@
  * found in the LICENSE file.
  */
 
+#include <camera/camera_metadata.h>
+
 #include "features/hdrnet/hdrnet_processor_device_adapter.h"
 
 #if USE_IPU6 || USE_IPU6EP || USE_IPU6EPMTL || USE_IPU6EPADLN
@@ -31,7 +33,7 @@ HdrNetProcessorDeviceAdapter::CreateInstance(
 std::optional<base::Value::Dict>
 HdrNetProcessorDeviceAdapter::MaybeOverrideOptions(
     const base::Value::Dict& json_values,
-    const Camera3CaptureDescriptor& result,
+    const android::CameraMetadata& result_metadata,
     HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
   return std::nullopt;
 }
@@ -41,6 +43,12 @@ base::Value::Dict HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
     const base::Value::Dict& json_values,
     const HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
   return json_values.Clone();
+}
+
+// static
+std::vector<uint32_t>
+HdrNetProcessorDeviceAdapter::GetResultMetadataTagsOfInterest() {
+  return {};
 }
 
 #endif
@@ -60,7 +68,9 @@ bool HdrNetProcessorDeviceAdapter::WriteRequestParameters(
 }
 
 void HdrNetProcessorDeviceAdapter::ProcessResultMetadata(
-    Camera3CaptureDescriptor* result, MetadataLogger* metadata_logger) {}
+    uint32_t frame_number,
+    const android::CameraMetadata& result_metadata,
+    MetadataLogger* metadata_logger) {}
 
 bool HdrNetProcessorDeviceAdapter::Run(int frame_number,
                                        const HdrNetConfig::Options& options,

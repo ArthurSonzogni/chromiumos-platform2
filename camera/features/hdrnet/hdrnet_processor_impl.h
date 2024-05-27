@@ -44,7 +44,9 @@ class HdrNetProcessorImpl : public HdrNetProcessor {
   void TearDown() override;
   void SetOptions(const Options& options) override;
   bool WriteRequestParameters(Camera3CaptureDescriptor* request) override;
-  void ProcessResultMetadata(Camera3CaptureDescriptor* result) override;
+  void ProcessResultMetadata(
+      uint32_t frame_number,
+      const android::CameraMetadata& result_metadata) override;
   base::ScopedFD Run(int frame_number,
                      const HdrNetConfig::Options& options,
                      const SharedImage& input_yuv,

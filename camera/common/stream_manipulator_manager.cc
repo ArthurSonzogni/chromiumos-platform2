@@ -112,6 +112,7 @@ void MaybeEnableHdrNetStreamManipulator(
             runtime_options, gpu_resources,
             feature_profile.GetConfigFilePath(
                 FeatureProfile::FeatureType::kHdrnet),
+            create_options.camera_module_name,
             std::make_unique<StillCaptureProcessorImpl>(
                 std::move(jpeg_compressor))));
     LOGF(INFO) << "HdrNetStreamManipulator enabled";

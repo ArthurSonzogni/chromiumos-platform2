@@ -9,6 +9,8 @@
 
 #include "features/hdrnet/hdrnet_processor_device_adapter.h"
 
+#include <camera/camera_metadata.h>
+
 #include <memory>
 #include <vector>
 
@@ -35,7 +37,8 @@ class HdrNetProcessorDeviceAdapterIpu6 : public HdrNetProcessorDeviceAdapter {
   void TearDown() override;
   bool WriteRequestParameters(Camera3CaptureDescriptor* request,
                               MetadataLogger* metadata_logger) override;
-  void ProcessResultMetadata(Camera3CaptureDescriptor* result,
+  void ProcessResultMetadata(uint32_t frame_number,
+                             const android::CameraMetadata& result_metadata,
                              MetadataLogger* metadata_logger) override;
   bool Run(int frame_number,
            const HdrNetConfig::Options& options,

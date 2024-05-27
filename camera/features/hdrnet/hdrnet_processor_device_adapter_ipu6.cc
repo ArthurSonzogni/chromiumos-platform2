@@ -6,6 +6,8 @@
 
 #include "features/hdrnet/hdrnet_processor_device_adapter_ipu6.h"
 
+#include <camera/camera_metadata.h>
+
 #include <optional>
 #include <string>
 #include <utility>
@@ -16,12 +18,12 @@
 #include <base/timer/elapsed_timer.h>
 
 #include "common/embed_file_toc.h"
-#include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
 #include "features/gcam_ae/ae_info.h"
 #include "features/hdrnet/embedded_hdrnet_processor_shaders_ipu6_toc.h"
 #include "features/hdrnet/hdrnet_metrics.h"
+#include "features/hdrnet/hdrnet_processor_device_adapter.h"
 #include "features/hdrnet/ipu6_gamma.h"
 #include "features/hdrnet/tracing.h"
 #include "features/third_party/intel/intel_vendor_metadata_tags.h"
@@ -51,14 +53,14 @@ constexpr char kIpu6SensorModeBinningKey[] = "ipu6::sensor_mode_binning";
 std::optional<base::Value::Dict>
 HdrNetProcessorDeviceAdapter::MaybeOverrideOptions(
     const base::Value::Dict& json_values,
-    const Camera3CaptureDescriptor& result,
+    const android::CameraMetadata& result_metadata,
     HdrNetProcessorDeviceAdapter::OptionsOverrideData& data) {
-  base::span<const int32_t> sensor_mode =
-      result.GetMetadata<int32_t>(INTEL_VENDOR_CAMERA_SENSOR_MODE);
-  if (sensor_mode.empty() || sensor_mode[0] == data.sensor_mode) {
+  const camera_metadata_ro_entry_t sensor_mode =
+      result_metadata.find(INTEL_VENDOR_CAMERA_SENSOR_MODE);
+  if (sensor_mode.count == 0 || sensor_mode.data.i32[0] == data.sensor_mode) {
     return std::nullopt;
   }
-  data.sensor_mode = sensor_mode[0];
+  data.sensor_mode = sensor_mode.data.i32[0];
   return GetOverriddenOptions(json_values, data);
 }
 
@@ -85,6 +87,15 @@ base::Value::Dict HdrNetProcessorDeviceAdapter::GetOverriddenOptions(
   base::Value::Dict overridden_json_values = json_values.Clone();
   overridden_json_values.Merge(binning_override->Clone());
   return overridden_json_values;
+}
+
+// static
+std::vector<uint32_t>
+HdrNetProcessorDeviceAdapter::GetResultMetadataTagsOfInterest() {
+  return std::vector<uint32_t>{
+      INTEL_VENDOR_CAMERA_SENSOR_MODE,
+      INTEL_VENDOR_CAMERA_TONE_MAP_CURVE,
+  };
 }
 
 HdrNetProcessorDeviceAdapterIpu6::HdrNetProcessorDeviceAdapterIpu6(
@@ -198,19 +209,20 @@ bool HdrNetProcessorDeviceAdapterIpu6::WriteRequestParameters(
 }
 
 void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
-    Camera3CaptureDescriptor* result, MetadataLogger* metadata_logger) {
+    uint32_t frame_number,
+    const android::CameraMetadata& result_metadata,
+    MetadataLogger* metadata_logger) {
   DCHECK(task_runner_->BelongsToCurrentThread());
   TRACE_HDRNET_DEBUG();
 
-  // TODO(jcliang): Theoretically metadata can come after the buffer as well.
-  // Currently the pipeline would break if the metadata come after the buffers.
   if (!initialized_) {
     LOGF(ERROR) << "HDRnet processor hadn't been initialized";
     return;
   }
 
-  base::span<const float> tonemap_curve =
-      result->GetMetadata<float>(INTEL_VENDOR_CAMERA_TONE_MAP_CURVE);
+  const camera_metadata_ro_entry_t entry =
+      result_metadata.find(INTEL_VENDOR_CAMERA_TONE_MAP_CURVE);
+  base::span<const float> tonemap_curve(entry.data.f, entry.count);
   if (!tonemap_curve.empty()) {
     VLOGF(1) << "Update GTM curve";
     CHECK_EQ(tonemap_curve.size(), num_curve_points_ * 2);
@@ -218,8 +230,7 @@ void HdrNetProcessorDeviceAdapterIpu6::ProcessResultMetadata(
     inverse_gtm_lut_ = CreateGainLutTexture(tonemap_curve, true);
 
     if (metadata_logger) {
-      metadata_logger->Log(result->frame_number(), kTagToneMapCurve,
-                           tonemap_curve);
+      metadata_logger->Log(frame_number, kTagToneMapCurve, tonemap_curve);
     }
   }
 }
