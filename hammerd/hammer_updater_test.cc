@@ -752,7 +752,7 @@ TEST_F(HammerUpdaterPostRWTest, ROUpdate_Failed) {
   }
 
   task_->update_ro = true;
-  EXPECT_EQ(hammer_updater_->UpdateRO(), HammerUpdater::RunStatus::kNeedReset);
+  EXPECT_EQ(hammer_updater_->UpdateRO(), HammerUpdater::RunStatus::kNeedJump);
 }
 
 // RO update is not possible.

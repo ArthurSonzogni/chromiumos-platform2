@@ -465,8 +465,12 @@ HammerUpdater::RunStatus HammerUpdater::UpdateRO() {
                            : ROUpdateResult::kTransferFailed),
       static_cast<int>(ROUpdateResult::kCount));
   LOG(INFO) << "RO update " << (ret ? "passed." : "failed.");
-  // In the case that the update failed, a reset will either brick the device,
-  // or get it back into a normal state.
+  // In the case that the update failed, RO may be corrupted.
+  // Return kNeedJump (this should be a NOP in the caller side)
+  // and try again.
+  if (!ret) {
+    return HammerUpdater::RunStatus::kNeedJump;
+  }
   return HammerUpdater::RunStatus::kNeedReset;
 }
 
