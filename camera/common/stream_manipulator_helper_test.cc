@@ -17,6 +17,7 @@
 #include <system/graphics-base.h>
 
 #include <base/command_line.h>
+#include <base/containers/flat_map.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/notreached.h>
@@ -261,6 +262,7 @@ class StreamManipulatorHelperTest : public testing::Test {
     for (size_t i = manipulators_.size(); i > 0; --i) {
       manipulators_[i - 1].reset();
     }
+    base::RunLoop().RunUntilIdle();
   }
 
   void SetUpWithTestCase(const TestCase& test_case) {
@@ -309,6 +311,16 @@ class StreamManipulatorHelperTest : public testing::Test {
     for (auto* s : stream_config.GetStreams()) {
       EXPECT_EQ(s->max_buffers, max_buffers_)
           << "max_buffers not configured for stream " << GetDebugString(s);
+    }
+  }
+
+  void AllocateRequestBuffers() {
+    for (auto& s : streams_) {
+      for (uint32_t i = 0; i < max_buffers_; ++i) {
+        request_buffers_[&s].emplace_back(
+            CameraBufferManager::AllocateScopedBuffer(s.width, s.height,
+                                                      s.format, s.usage));
+      }
     }
   }
 
@@ -390,6 +402,8 @@ class StreamManipulatorHelperTest : public testing::Test {
   std::vector<camera3_stream_t> streams_;
   std::vector<camera3_stream_t*> configured_streams_;
   std::vector<camera3_stream_t*> extra_configured_streams_;
+  base::flat_map<const camera3_stream_t*, std::vector<ScopedBufferHandle>>
+      request_buffers_;
 
  private:
   void ResultCallback(Camera3CaptureDescriptor result) {
@@ -1051,11 +1065,6 @@ const TestCase g_upscaling_test_case = {
         },
 };
 
-ScopedBufferHandle AllocateBuffer(const camera3_stream_t* stream) {
-  return CameraBufferManager::AllocateScopedBuffer(
-      stream->width, stream->height, stream->format, stream->usage);
-}
-
 void ValidateResult(
     const Camera3CaptureDescriptor& result,
     uint32_t expected_frame_number,
@@ -1080,8 +1089,9 @@ TEST_F(StreamManipulatorHelperTest, SimpleProcessing) {
   camera3_stream_t* video_stream = configured_streams_[1];
   camera3_stream_t* still_stream = extra_configured_streams_[0];
 
-  ScopedBufferHandle blob = AllocateBuffer(blob_stream);
-  ScopedBufferHandle video_output = AllocateBuffer(video_stream);
+  AllocateRequestBuffers();
+  const ScopedBufferHandle& blob = request_buffers_[blob_stream][0];
+  const ScopedBufferHandle& video_output = request_buffers_[video_stream][0];
 
   // Process video.
   {
@@ -1178,19 +1188,21 @@ TEST_F(StreamManipulatorHelperTest, ProcessOnLargerSourceStream) {
   camera3_stream_t* still_input_stream = extra_configured_streams_[0];
   camera3_stream_t* video_input_stream = extra_configured_streams_[1];
 
-  ScopedBufferHandle blob = AllocateBuffer(blob_stream);
-  ScopedBufferHandle still_output = AllocateBuffer(still_output_stream);
-  std::vector<ScopedBufferHandle> video_outputs;
-  for (auto& s : video_output_streams) {
-    video_outputs.push_back(AllocateBuffer(s));
-  }
+  AllocateRequestBuffers();
+  const ScopedBufferHandle& blob = request_buffers_[blob_stream][0];
+  const ScopedBufferHandle& still_output =
+      request_buffers_[still_output_stream][0];
+  const ScopedBufferHandle& video0_output =
+      request_buffers_[video_output_streams[0]][0];
+  const ScopedBufferHandle& video1_output =
+      request_buffers_[video_output_streams[1]][0];
 
   // Process video
   {
     const uint32_t fn = 1;
     Camera3CaptureDescriptor request =
-        MakeRequest(fn, {{video_output_streams[0], video_outputs[0].get()},
-                         {video_output_streams[1], video_outputs[1].get()}});
+        MakeRequest(fn, {{video_output_streams[0], video0_output.get()},
+                         {video_output_streams[1], video1_output.get()}});
     SendRequest(&request);
     EXPECT_EQ(request.num_output_buffers(), 1);
     buffer_handle_t video_input = FindBuffer(request, video_input_stream).first;
@@ -1202,16 +1214,15 @@ TEST_F(StreamManipulatorHelperTest, ProcessOnLargerSourceStream) {
     const ProcessTask& task =
         manipulator(0).GetProcessTask(fn, video_input_stream);
     EXPECT_EQ(task.input_buffer(), video_input);
-    EXPECT_EQ(task.output_buffer(), *video_outputs[0]);
+    EXPECT_EQ(task.output_buffer(), *video0_output);
 
     manipulator(0).FinishProcessTask(fn, video_input_stream);
     ValidateResult(
         TakeLastReturnedResult(), fn,
-        {{video_output_streams[0], *video_outputs[0], CAMERA3_BUFFER_STATUS_OK},
-         {video_output_streams[1], *video_outputs[1],
-          CAMERA3_BUFFER_STATUS_OK}});
+        {{video_output_streams[0], *video0_output, CAMERA3_BUFFER_STATUS_OK},
+         {video_output_streams[1], *video1_output, CAMERA3_BUFFER_STATUS_OK}});
     EXPECT_TRUE(manipulator(0).HasCropScaledBuffer(
-        *video_outputs[0], *video_outputs[1], kCrop4x3To16x9));
+        *video0_output, *video1_output, kCrop4x3To16x9));
   }
 
   // Process still capture.
@@ -1278,18 +1289,19 @@ TEST_F(StreamManipulatorHelperTest, UpscalingProcessedStream) {
   camera3_stream_t* still_input_stream = extra_configured_streams_[0];
   camera3_stream_t* video_input_stream = extra_configured_streams_[1];
 
-  ScopedBufferHandle blob = AllocateBuffer(blob_stream);
-  std::vector<ScopedBufferHandle> video_outputs;
-  for (auto& s : video_output_streams) {
-    video_outputs.push_back(AllocateBuffer(s));
-  }
+  AllocateRequestBuffers();
+  const ScopedBufferHandle& blob = request_buffers_[blob_stream][0];
+  const ScopedBufferHandle& video0_output =
+      request_buffers_[video_output_streams[0]][0];
+  const ScopedBufferHandle& video1_output =
+      request_buffers_[video_output_streams[1]][0];
 
   // Process video
   {
     const uint32_t fn = 1;
     Camera3CaptureDescriptor request =
-        MakeRequest(fn, {{video_output_streams[0], video_outputs[0].get()},
-                         {video_output_streams[1], video_outputs[1].get()}});
+        MakeRequest(fn, {{video_output_streams[0], video0_output.get()},
+                         {video_output_streams[1], video1_output.get()}});
     SendRequest(&request);
     EXPECT_EQ(request.num_output_buffers(), 1);
     buffer_handle_t video_input = FindBuffer(request, video_input_stream).first;
@@ -1302,7 +1314,7 @@ TEST_F(StreamManipulatorHelperTest, UpscalingProcessedStream) {
         manipulator(0).GetProcessTask(fn, video_input_stream);
     EXPECT_EQ(task.input_buffer(), video_input);
     buffer_handle_t task_output = task.output_buffer();
-    EXPECT_NE(task_output, *video_outputs[0]);
+    EXPECT_NE(task_output, *video0_output);
     EXPECT_EQ(CameraBufferManager::GetWidth(task_output),
               video_input_stream->width);
     EXPECT_EQ(CameraBufferManager::GetHeight(task_output),
@@ -1311,13 +1323,12 @@ TEST_F(StreamManipulatorHelperTest, UpscalingProcessedStream) {
     manipulator(0).FinishProcessTask(fn, video_input_stream);
     ValidateResult(
         TakeLastReturnedResult(), fn,
-        {{video_output_streams[0], *video_outputs[0], CAMERA3_BUFFER_STATUS_OK},
-         {video_output_streams[1], *video_outputs[1],
-          CAMERA3_BUFFER_STATUS_OK}});
-    EXPECT_TRUE(manipulator(0).HasCropScaledBuffer(
-        task_output, *video_outputs[0], kCrop4x3To16x9));
-    EXPECT_TRUE(manipulator(0).HasCropScaledBuffer(
-        task_output, *video_outputs[1], kCropFull));
+        {{video_output_streams[0], *video0_output, CAMERA3_BUFFER_STATUS_OK},
+         {video_output_streams[1], *video1_output, CAMERA3_BUFFER_STATUS_OK}});
+    EXPECT_TRUE(manipulator(0).HasCropScaledBuffer(task_output, *video0_output,
+                                                   kCrop4x3To16x9));
+    EXPECT_TRUE(manipulator(0).HasCropScaledBuffer(task_output, *video1_output,
+                                                   kCropFull));
   }
 
   // Process still capture.
@@ -1357,12 +1368,12 @@ TEST_F(StreamManipulatorHelperTest, RuntimeBypassWithCopy) {
   camera3_stream_t* still_input_stream = extra_configured_streams_[0];
   camera3_stream_t* video_input_stream = extra_configured_streams_[1];
 
-  ScopedBufferHandle blob = AllocateBuffer(blob_stream);
-  ScopedBufferHandle still_output = AllocateBuffer(still_output_stream);
-  std::vector<ScopedBufferHandle> video_outputs;
-  for (auto& s : video_output_streams) {
-    video_outputs.push_back(AllocateBuffer(s));
-  }
+  AllocateRequestBuffers();
+  const ScopedBufferHandle& blob = request_buffers_[blob_stream][0];
+  const ScopedBufferHandle& still_output =
+      request_buffers_[still_output_stream][0];
+  const ScopedBufferHandle& video_output =
+      request_buffers_[video_output_streams[0]][0];
 
   manipulator(0).SetBypassProcess(true);
 
@@ -1370,7 +1381,7 @@ TEST_F(StreamManipulatorHelperTest, RuntimeBypassWithCopy) {
   {
     const uint32_t fn = 1;
     Camera3CaptureDescriptor request =
-        MakeRequest(fn, {{video_output_streams[0], video_outputs[0].get()}});
+        MakeRequest(fn, {{video_output_streams[0], video_output.get()}});
     SendRequest(&request);
     EXPECT_EQ(request.num_output_buffers(), 1);
     buffer_handle_t video_input = FindBuffer(request, video_input_stream).first;
@@ -1378,11 +1389,11 @@ TEST_F(StreamManipulatorHelperTest, RuntimeBypassWithCopy) {
 
     SendResult(MakeResult(fn, {{video_input_stream, &video_input}},
                           partial_result_count_));
-    ValidateResult(TakeLastReturnedResult(), fn,
-                   {{video_output_streams[0], *video_outputs[0],
-                     CAMERA3_BUFFER_STATUS_OK}});
-    EXPECT_TRUE(manipulator(0).HasCropScaledBuffer(
-        video_input, *video_outputs[0], kCropFull));
+    ValidateResult(
+        TakeLastReturnedResult(), fn,
+        {{video_output_streams[0], *video_output, CAMERA3_BUFFER_STATUS_OK}});
+    EXPECT_TRUE(manipulator(0).HasCropScaledBuffer(video_input, *video_output,
+                                                   kCropFull));
   }
 
   // Bypass BLOB and replace still YUV stream without processing.
@@ -1416,27 +1427,26 @@ TEST_F(StreamManipulatorHelperTest, RuntimeBypassWithoutCopy) {
   SetUpWithTestCase(test_case);
   camera3_stream_t* video_streams[] = {&streams_[2], &streams_[3]};
 
-  std::vector<ScopedBufferHandle> video_outputs;
-  for (auto& s : video_streams) {
-    video_outputs.push_back(AllocateBuffer(s));
-  }
+  AllocateRequestBuffers();
+  const ScopedBufferHandle& video_output =
+      request_buffers_[video_streams[0]][0];
 
   manipulator(0).SetBypassProcess(true);
 
   {
     const uint32_t fn = 1;
     Camera3CaptureDescriptor request =
-        MakeRequest(fn, {{video_streams[0], video_outputs[0].get()}});
+        MakeRequest(fn, {{video_streams[0], video_output.get()}});
     SendRequest(&request);
     EXPECT_EQ(request.num_output_buffers(), 1);
     buffer_handle_t video_input = FindBuffer(request, video_streams[0]).first;
-    EXPECT_EQ(video_input, *video_outputs[0]);
+    EXPECT_EQ(video_input, *video_output);
 
     SendResult(MakeResult(fn, {{video_streams[0], &video_input}},
                           partial_result_count_));
     ValidateResult(
         TakeLastReturnedResult(), fn,
-        {{video_streams[0], *video_outputs[0], CAMERA3_BUFFER_STATUS_OK}});
+        {{video_streams[0], *video_output, CAMERA3_BUFFER_STATUS_OK}});
   }
 }
 
@@ -1459,17 +1469,18 @@ TEST_F(StreamManipulatorHelperTest, CaptureContextLifetime) {
   ASSERT_GE(partial_result_count_, 2);
   ASSERT_GE(max_buffers_, 10);
 
+  AllocateRequestBuffers();
+  const std::vector<ScopedBufferHandle>& blobs = request_buffers_[blob_stream];
+  const std::vector<ScopedBufferHandle>& video_outputs =
+      request_buffers_[video_stream];
+
   int ctx_count = 0;
   manipulator(0).SetPrivateContextBuilder(
       [&](uint32_t) { return std::make_unique<InstanceCounter>(ctx_count); });
 
-  std::vector<ScopedBufferHandle> blobs;
-  std::vector<ScopedBufferHandle> video_outputs;
   std::vector<buffer_handle_t> still_inputs;
   std::vector<buffer_handle_t> video_inputs;
   for (uint32_t fn = 1; fn <= 10; ++fn) {
-    blobs.push_back(AllocateBuffer(blob_stream));
-    video_outputs.push_back(AllocateBuffer(video_stream));
     Camera3CaptureDescriptor request =
         MakeRequest(fn, {{blob_stream, blobs.back().get()},
                          {video_stream, video_outputs.back().get()}});
@@ -1557,8 +1568,9 @@ TEST_F(StreamManipulatorHelperTest, ProcessFail) {
   camera3_stream_t* video_stream = configured_streams_[1];
   camera3_stream_t* still_stream = extra_configured_streams_[0];
 
-  ScopedBufferHandle blob = AllocateBuffer(blob_stream);
-  ScopedBufferHandle video_output = AllocateBuffer(video_stream);
+  AllocateRequestBuffers();
+  const ScopedBufferHandle& blob = request_buffers_[blob_stream][0];
+  const ScopedBufferHandle& video_output = request_buffers_[video_stream][0];
 
   // Video processing fails.
   {
@@ -1603,25 +1615,25 @@ TEST_F(StreamManipulatorHelperTest, PropagateBufferErrors) {
   camera3_stream_t* still_input_stream = extra_configured_streams_[0];
   camera3_stream_t* video_input_stream = extra_configured_streams_[1];
 
-  ScopedBufferHandle blob = AllocateBuffer(blob_stream);
-  ScopedBufferHandle still_output = AllocateBuffer(still_output_stream);
-  std::vector<ScopedBufferHandle> video_outputs;
-  for (auto& s : video_output_streams) {
-    video_outputs.push_back(AllocateBuffer(s));
-  }
+  AllocateRequestBuffers();
+  const ScopedBufferHandle& blob = request_buffers_[blob_stream][0];
+  const ScopedBufferHandle& still_output =
+      request_buffers_[still_output_stream][0];
+  const ScopedBufferHandle& video_output =
+      request_buffers_[video_output_streams[0]][0];
 
   // Buffer error on video processing stream.
   {
     const uint32_t fn = 1;
     Camera3CaptureDescriptor request =
-        MakeRequest(fn, {{video_output_streams[0], video_outputs[0].get()}});
+        MakeRequest(fn, {{video_output_streams[0], video_output.get()}});
     SendRequest(&request);
     buffer_handle_t video_input = FindBuffer(request, video_input_stream).first;
 
     SendResult(MakeResult(fn, {{video_input_stream, &video_input}},
                           partial_result_count_, CAMERA3_BUFFER_STATUS_ERROR));
     ValidateResult(TakeLastReturnedResult(), fn,
-                   {{video_output_streams[0], *video_outputs[0],
+                   {{video_output_streams[0], *video_output,
                      CAMERA3_BUFFER_STATUS_ERROR}});
   }
 
