@@ -19,10 +19,6 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(g2f_allowlist_data, false,
               "append allowlisting data to G2F register responses");
   DEFINE_bool(verbose, false, "verbose logging");
-  DEFINE_bool(user_keys, false, "Whether to use user-specific keys");
-  DEFINE_bool(legacy_kh_fallback, false,
-              "Whether to allow auth with legacy keys when user-specific keys "
-              "are enabled");
   DEFINE_bool(force_disable_corp_protocol, false,
               "disable corp internal APDU protocol");
   DEFINE_bool(force_activate_fips, false, "force activate FIPS mode in GSC");
@@ -41,12 +37,10 @@ int main(int argc, char* argv[]) {
   hwsec_foundation::SetTpmMetricsClientID(
       hwsec_foundation::TpmMetricsClientID::kU2f);
 
-  bool legacy_kh_fallback = FLAGS_legacy_kh_fallback || !FLAGS_user_keys;
-
   u2f::U2fDaemon daemon(FLAGS_force_u2f, FLAGS_force_g2f,
                         !FLAGS_force_disable_corp_protocol,
                         FLAGS_g2f_allowlist_data, FLAGS_force_activate_fips,
-                        FLAGS_force_enable_global_key, legacy_kh_fallback);
+                        FLAGS_force_enable_global_key);
 
   // Start profiling.
   hwsec_foundation::SetUpProfiling();

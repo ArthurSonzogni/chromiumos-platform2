@@ -140,8 +140,7 @@ U2fDaemon::U2fDaemon(bool force_u2f,
                      bool enable_corp_protocol,
                      bool g2f_allowlist_data,
                      bool force_activate_fips,
-                     bool enable_global_key,
-                     bool legacy_kh_fallback)
+                     bool enable_global_key)
     : brillo::DBusServiceDaemon(kU2FServiceName),
       force_u2f_(force_u2f),
       force_g2f_(force_g2f),
@@ -149,7 +148,6 @@ U2fDaemon::U2fDaemon(bool force_u2f,
       g2f_allowlist_data_(g2f_allowlist_data),
       force_activate_fips_(force_activate_fips),
       enable_global_key_(enable_global_key),
-      legacy_kh_fallback_(legacy_kh_fallback),
       service_started_(false),
       hwsec_factory_(hwsec::ThreadingMode::kCurrentThread) {
   auto u2f_vendor_frontend = hwsec_factory_.GetU2fVendorFrontend();
@@ -168,8 +166,8 @@ int U2fDaemon::OnInit() {
     return EX_IOERR;
   }
 
-  user_state_ = std::make_unique<UserState>(
-      sm_proxy_.get(), legacy_kh_fallback_ ? kLegacyKhCounterMin : 0);
+  user_state_ =
+      std::make_unique<UserState>(sm_proxy_.get(), kLegacyKhCounterMin);
 
   sm_proxy_->RegisterPropertyChangeCompleteSignalHandler(
       base::BindRepeating(&U2fDaemon::TryStartService, base::Unretained(this)),
