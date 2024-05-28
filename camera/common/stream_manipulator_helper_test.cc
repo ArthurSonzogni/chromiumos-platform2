@@ -309,6 +309,10 @@ class StreamManipulatorHelperTest : public testing::Test {
     EXPECT_THAT(stream_config.GetStreams(),
                 UnorderedElementsAreArray(stream_ptrs));
     for (auto* s : stream_config.GetStreams()) {
+      if (s->format != HAL_PIXEL_FORMAT_BLOB) {
+        EXPECT_TRUE(s->usage | kProcessStreamUsageFlags)
+            << "usage not configured for stream " << GetDebugString(s);
+      }
       EXPECT_EQ(s->max_buffers, max_buffers_)
           << "max_buffers not configured for stream " << GetDebugString(s);
     }

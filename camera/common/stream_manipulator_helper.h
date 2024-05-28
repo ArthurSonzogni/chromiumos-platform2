@@ -35,9 +35,7 @@
 
 namespace cros {
 
-constexpr uint32_t kProcessStreamUsageFlags = GRALLOC_USAGE_HW_CAMERA_WRITE |
-                                              GRALLOC_USAGE_HW_TEXTURE |
-                                              GRALLOC_USAGE_HW_COMPOSER;
+constexpr uint32_t kProcessStreamUsageFlags = GRALLOC_USAGE_HW_CAMERA_WRITE;
 
 class ProcessTask;
 
@@ -155,7 +153,14 @@ class StreamManipulatorHelper {
   // Called in StreamManipulator::Flush.
   void Flush();
 
+  // Gets the private context passed to HandleRequest().
+  template <typename T>
+  T* GetPrivateContextAs(uint32_t frame_number) {
+    return static_cast<T*>(GetPrivateContext(frame_number));
+  }
+
   // Getters for static metadata.
+  const uint32_t partial_result_count() const { return partial_result_count_; }
   const Size& active_array_size() const { return active_array_size_; }
 
   // Getters for configured states.
@@ -182,20 +187,34 @@ class StreamManipulatorHelper {
  private:
   class OwnedOrExternalStream {
    public:
-    explicit OwnedOrExternalStream(camera3_stream_t owned) : owned_(owned) {}
+    explicit OwnedOrExternalStream(std::unique_ptr<camera3_stream_t> owned)
+        : owned_(std::move(owned)) {}
     explicit OwnedOrExternalStream(camera3_stream_t* external)
         : external_(external) {
       CHECK_NE(external_, nullptr);
     }
+    OwnedOrExternalStream(const OwnedOrExternalStream&) = delete;
+    OwnedOrExternalStream& operator=(const OwnedOrExternalStream&) = delete;
+    OwnedOrExternalStream(OwnedOrExternalStream&& other) {
+      *this = std::move(other);
+    }
+    OwnedOrExternalStream& operator=(OwnedOrExternalStream&& other) {
+      owned_ = std::move(other.owned_);
+      external_ = other.external_;
+      other.external_ = nullptr;
+      return *this;
+    }
+    ~OwnedOrExternalStream() = default;
 
-    bool owned() const { return owned_.has_value(); }
-    camera3_stream_t* ptr() { return owned() ? &owned_.value() : external_; }
+    bool owned() const { return owned_ != nullptr; }
+    camera3_stream_t* ptr() { return owned() ? owned_.get() : external_; }
     const camera3_stream_t* ptr() const {
-      return owned() ? &owned_.value() : external_;
+      return owned() ? owned_.get() : external_;
     }
 
    private:
-    std::optional<camera3_stream_t> owned_;
+    // Use unique_ptr for pointer stability.
+    std::unique_ptr<camera3_stream_t> owned_;
     camera3_stream_t* external_ = nullptr;
   };
 
@@ -261,6 +280,7 @@ class StreamManipulatorHelper {
   // the context if it's Done().
   std::pair<CaptureContext&, base::ScopedClosureRunner /*ctx_remover*/>
   GetCaptureContext(uint32_t frame_number);
+  PrivateContext* GetPrivateContext(uint32_t frame_number);
   void ReturnCaptureResult(Camera3CaptureDescriptor result,
                            CaptureContext& capture_ctx);
   void CropScaleImages(Camera3StreamBuffer& src_buffer,
@@ -297,6 +317,11 @@ class StreamManipulatorHelper {
   std::optional<camera3_stream_t> fake_video_process_output_stream_;
   std::optional<StreamFormat> fake_still_process_output_format_;
   std::optional<StreamFormat> fake_video_process_output_format_;
+
+  // Previously configured states that are kept alive until new configuration is
+  // done.
+  std::optional<OwnedOrExternalStream> obsolete_still_process_input_stream_;
+  std::optional<OwnedOrExternalStream> obsolete_video_process_input_stream_;
 
   // Per-frame states.
   // Use unique_ptr for pointer stability since process tasks reference it.

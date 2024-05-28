@@ -83,6 +83,7 @@ class RotateAndCropStreamManipulator : public StreamManipulator {
   struct CaptureContext : public StreamManipulatorHelper::PrivateContext {
     uint8_t client_rc_mode = 0;
     uint8_t hal_rc_mode = 0;
+    bool result_metadata_updated = false;
   };
 
   GpuResources* gpu_resources_ = nullptr;

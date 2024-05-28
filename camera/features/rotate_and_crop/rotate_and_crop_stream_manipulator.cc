@@ -176,7 +176,6 @@ bool RotateAndCropStreamManipulator::Initialize(
       StreamManipulatorHelper::Config{
           .process_mode = disabled_ ? ProcessMode::kBypass
                                     : ProcessMode::kVideoAndStillProcess,
-          .result_metadata_tags_to_update = {ANDROID_SCALER_ROTATE_AND_CROP},
       },
       camera_module_name_, static_info, std::move(callbacks),
       base::BindRepeating(&RotateAndCropStreamManipulator::OnProcessTask,
@@ -289,6 +288,19 @@ bool RotateAndCropStreamManipulator::ProcessCaptureRequest(
 
 bool RotateAndCropStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
+  if (!disabled_) {
+    auto* ctx =
+        helper_->GetPrivateContextAs<CaptureContext>(result.frame_number());
+    CHECK_NE(ctx, nullptr);
+    if (!ctx->result_metadata_updated &&
+        (result.HasMetadata(ANDROID_SCALER_ROTATE_AND_CROP) ||
+         result.partial_result() == helper_->partial_result_count())) {
+      CHECK(result.UpdateMetadata<uint8_t>(
+          ANDROID_SCALER_ROTATE_AND_CROP,
+          std::array<uint8_t, 1>{ctx->client_rc_mode}));
+      ctx->result_metadata_updated = true;
+    }
+  }
   helper_->HandleResult(std::move(result));
   return true;
 }
@@ -315,10 +327,6 @@ void RotateAndCropStreamManipulator::OnProcessTask(ScopedProcessTask task) {
   auto& ctx = *task->GetPrivateContextAs<CaptureContext>();
   CHECK_EQ(ctx.hal_rc_mode, ANDROID_SCALER_ROTATE_AND_CROP_NONE);
   CHECK_NE(ctx.client_rc_mode, ANDROID_SCALER_ROTATE_AND_CROP_NONE);
-
-  CHECK_EQ(task->result_metadata().update(ANDROID_SCALER_ROTATE_AND_CROP,
-                                          &ctx.client_rc_mode, 1),
-           0);
 
   constexpr int kSyncWaitTimeoutMs = 300;
   base::ScopedFD input_release_fence = task->TakeInputReleaseFence();

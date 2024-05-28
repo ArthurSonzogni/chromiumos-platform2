@@ -65,7 +65,7 @@ using StreamEffectMap =
 // |stream|.
 inline std::string GetDebugString(const camera3_stream_t* stream) {
   return base::StringPrintf(
-      "stream=%p, type=%d, size=%ux%u, format=%d, usage=%u, max_buffers=%u, "
+      "stream=%p, type=%d, size=%ux%u, format=%d, usage=0x%x, max_buffers=%u, "
       "rotation=%d, crop_rotate_scale_degrees=%d",
       stream, stream->stream_type, stream->width, stream->height,
       stream->format, stream->usage, stream->max_buffers, stream->rotation,

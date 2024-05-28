@@ -245,11 +245,16 @@ bool StreamManipulatorHelper::PreConfigure(
   std::vector<camera3_stream_t*> video_yuv_streams;
   std::vector<camera3_stream_t*> ignored_streams;
   for (auto* s : stream_config->GetStreams()) {
-    if ((stream_config->stream_effects_map() != nullptr &&
-         stream_config->stream_effects_map()->contains(s)) ||
-        s->stream_type != CAMERA3_STREAM_OUTPUT ||
-        (s->usage & GRALLOC_USAGE_HW_CAMERA_READ)) {
-      // Ignore feature-specific and input/bidirectional streams.
+    if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
+      LOGF(WARNING)
+          << "Reprocessing unsupported; bypassing this stream manipulator";
+      Reset();
+      stream_config_unsupported_ = true;
+      return false;
+    }
+    if (stream_config->stream_effects_map() != nullptr &&
+        stream_config->stream_effects_map()->contains(s)) {
+      // Ignore feature-specific streams.
       ignored_streams.push_back(s);
     } else if (s->format == HAL_PIXEL_FORMAT_BLOB) {
       CHECK_EQ(blob_stream, nullptr) << "Multiple BLOB streams configured";
@@ -293,7 +298,7 @@ bool StreamManipulatorHelper::PreConfigure(
       stream_config_unsupported_ = true;
       return false;
     }
-    still_process_input_stream_ = info->stream;
+    still_process_input_stream_ = std::move(info->stream);
     still_process_output_size_.emplace(
         still_yuv_stream != nullptr
             ? Size(still_yuv_stream->width, still_yuv_stream->height)
@@ -331,7 +336,7 @@ bool StreamManipulatorHelper::PreConfigure(
       stream_config_unsupported_ = true;
       return false;
     }
-    video_process_input_stream_ = info->stream;
+    video_process_input_stream_ = std::move(info->stream);
     // If preferring large source size, let the process tasks output to a
     // smaller size.
     video_process_output_size_.emplace(
@@ -450,7 +455,7 @@ void StreamManipulatorHelper::PostConfigure(
             .width = still_process_output_size_->width,
             .height = still_process_output_size_->height,
             .format = HAL_PIXEL_FORMAT_YCBCR_420_888,
-            .usage = kProcessStreamUsageFlags,
+            .usage = kProcessStreamUsageFlags | kStillCaptureUsageFlag,
             .max_num_buffers = s->max_buffers + 1,
         });
     if (blob_size_.value() != still_process_output_size_.value()) {
@@ -489,12 +494,12 @@ void StreamManipulatorHelper::PostConfigure(
     switch (t) {
       case StreamType::kStillYuvToGenerate:
         CHECK(still_process_input_stream_.has_value());
-        s->usage |= still_process_input_stream_->ptr()->usage;
+        s->usage |= kProcessStreamUsageFlags;
         s->max_buffers = still_process_input_stream_->ptr()->max_buffers;
         break;
       case StreamType::kVideoYuvToGenerate:
         CHECK(video_process_input_stream_.has_value());
-        s->usage |= video_process_input_stream_->ptr()->usage;
+        s->usage |= kProcessStreamUsageFlags;
         s->max_buffers = video_process_input_stream_->ptr()->max_buffers;
         break;
       default:
@@ -1007,11 +1012,11 @@ StreamManipulatorHelper::FindSourceStream(
     CHECK(s->physical_camera_id == nullptr || s->physical_camera_id[0] == '\0');
     CHECK_EQ(crop_rotate_scale_degrees, s->crop_rotate_scale_degrees);
     src_max_buffers = std::max(src_max_buffers, s->max_buffers);
-    // Preserve video encoder usage flag for camera HAL to distinguish the use
-    // cases.
-    if (IsOutputFormatYuv(s->format) &&
-        (s->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER)) {
-      src_usage |= GRALLOC_USAGE_HW_VIDEO_ENCODER;
+    // Preserve hardware composer and video encoder usage flag for camera HAL to
+    // distinguish the use cases.
+    if (IsOutputFormatYuv(s->format)) {
+      src_usage |= s->usage &
+                   (GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_HW_VIDEO_ENCODER);
     }
   }
 
@@ -1088,19 +1093,20 @@ StreamManipulatorHelper::FindSourceStream(
   auto src_stream =
       format_to_dst_stream.contains(&src_format)
           ? OwnedOrExternalStream(format_to_dst_stream[&src_format])
-          : OwnedOrExternalStream(camera3_stream_t{
-                .stream_type = CAMERA3_STREAM_OUTPUT,
-                .width = src_format.width,
-                .height = src_format.height,
-                .format = base::checked_cast<int>(src_format.format),
-                .usage = for_still_capture ? kStillCaptureUsageFlag : 0,
-                .max_buffers = src_max_buffers,
-                .physical_camera_id = kEmptyPhysicalCameraId,
-                .crop_rotate_scale_degrees = crop_rotate_scale_degrees,
-            });
+          : OwnedOrExternalStream(
+                std::make_unique<camera3_stream_t>(camera3_stream_t{
+                    .stream_type = CAMERA3_STREAM_OUTPUT,
+                    .width = src_format.width,
+                    .height = src_format.height,
+                    .format = base::checked_cast<int>(src_format.format),
+                    .usage = for_still_capture ? kStillCaptureUsageFlag : 0,
+                    .max_buffers = src_max_buffers,
+                    .physical_camera_id = kEmptyPhysicalCameraId,
+                    .crop_rotate_scale_degrees = crop_rotate_scale_degrees,
+                }));
   src_stream.ptr()->usage |= src_usage;
   return SourceStreamInfo{
-      .stream = src_stream,
+      .stream = std::move(src_stream),
       .max_scaling_factor = max_scaling_factor.value(),
   };
 }
@@ -1120,6 +1126,29 @@ StreamManipulatorHelper::GetCaptureContext(uint32_t frame_number) {
       },
       std::ref(capture_contexts_), std::move(it)));
   return std::make_pair(std::ref(ctx), std::move(ctx_remover));
+}
+
+StreamManipulatorHelper::PrivateContext*
+StreamManipulatorHelper::GetPrivateContext(uint32_t frame_number) {
+  if (!task_runner_->RunsTasksInCurrentSequence()) {
+    PrivateContext* ret = nullptr;
+    base::WaitableEvent done;
+    task_runner_->PostTask(
+        FROM_HERE, base::BindOnce(&StreamManipulatorHelper::GetPrivateContext,
+                                  base::Unretained(this), frame_number)
+                       .Then(base::BindOnce(
+                           [](base::WaitableEvent* done, PrivateContext** ret,
+                              PrivateContext* result) {
+                             *ret = result;
+                             done->Signal();
+                           },
+                           base::Unretained(&done), base::Unretained(&ret))));
+    done.Wait();
+    return ret;
+  }
+
+  auto [ctx, ctx_remover] = GetCaptureContext(frame_number);
+  return ctx.private_context.get();
 }
 
 void StreamManipulatorHelper::ReturnCaptureResult(
@@ -1235,7 +1264,9 @@ void StreamManipulatorHelper::Reset() {
   capture_contexts_.clear();
 
   client_stream_to_type_.clear();
+  still_process_input_stream_.swap(obsolete_still_process_input_stream_);
   still_process_input_stream_.reset();
+  video_process_input_stream_.swap(obsolete_video_process_input_stream_);
   video_process_input_stream_.reset();
   blob_size_.reset();
   still_process_output_size_.reset();
