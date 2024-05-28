@@ -165,17 +165,17 @@ void BalloonBroker::ReclaimUntilBlocked(int vm_cid,
       reclaim_until_blocked_params_.emplace(vm_cid, priority);
     }
   } else {
-    // ReclaimUntilBlocked can spam BalloonTrace logs, so disable logging when
+    // ReclaimUntilBlocked can spam balloon size logs, so disable logging when
     // reclaiming at a low priority and then re-enable them when the reclaim
     // operation is complete.
     if (priority == ResizePriority::kMglruReclaim) {
-      SetShouldLogBalloonTrace(vm_cid, false);
+      SetShouldLogBalloonSizeChange(vm_cid, false);
 
       // Unretained(this) is safe because the callback is owned by this
       // instance.
-      reclaim_until_blocked_cbs_.emplace_back(
-          base::BindOnce(&BalloonBroker::SetShouldLogBalloonTraceAsCallback,
-                         base::Unretained(this), vm_cid, true));
+      reclaim_until_blocked_cbs_.emplace_back(base::BindOnce(
+          &BalloonBroker::SetShouldLogBalloonSizeChangeAsCallback,
+          base::Unretained(this), vm_cid, true));
     }
 
     reclaim_until_blocked_params_.emplace(vm_cid, priority);
@@ -357,7 +357,7 @@ size_t BalloonBroker::HandleKillRequest(Client client,
   // If the balloon was not adjusted as much as requested, the process should be
   // killed by the client.
   if (std::abs(balloon_delta_actual) < proc_size) {
-    LOG(INFO) << "KillTrace:[" << client.cid << "," << priority << ","
+    LOG(INFO) << "VMMMS:[" << client.cid << ",kill," << priority << ","
               << (proc_size / MiB(1)) << "MB]";
   }
 
@@ -527,7 +527,7 @@ void BalloonBroker::SetMostRecentKillRequest(Client client,
   }
 }
 
-void BalloonBroker::SetShouldLogBalloonTrace(int cid, bool do_log) {
+void BalloonBroker::SetShouldLogBalloonSizeChange(int cid, bool do_log) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (!contexts_.contains(cid) || !contexts_[cid].balloon) {
@@ -536,15 +536,15 @@ void BalloonBroker::SetShouldLogBalloonTrace(int cid, bool do_log) {
     return;
   }
 
-  contexts_[cid].balloon->SetShouldLogBalloonTrace(do_log);
+  contexts_[cid].balloon->SetShouldLogBalloonSizeChange(do_log);
 }
 
-void BalloonBroker::SetShouldLogBalloonTraceAsCallback(int cid,
-                                                       bool do_log,
-                                                       bool,
-                                                       const char*) {
+void BalloonBroker::SetShouldLogBalloonSizeChangeAsCallback(int cid,
+                                                            bool do_log,
+                                                            bool,
+                                                            const char*) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  return SetShouldLogBalloonTrace(cid, do_log);
+  return SetShouldLogBalloonSizeChange(cid, do_log);
 }
 
 void BalloonBroker::ReportResizePriorityMetric(std::string metric_name,

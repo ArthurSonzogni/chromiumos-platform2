@@ -190,11 +190,11 @@ class BalloonBroker {
   void ReclaimUntilBlockedStep();
 
   // Enables balloon traces for the specific CID.
-  void SetShouldLogBalloonTrace(int cid, bool do_log);
-  void SetShouldLogBalloonTraceAsCallback(int cid,
-                                          bool do_log,
-                                          bool,
-                                          const char*);
+  void SetShouldLogBalloonSizeChange(int cid, bool do_log);
+  void SetShouldLogBalloonSizeChangeAsCallback(int cid,
+                                               bool do_log,
+                                               bool,
+                                               const char*);
 
   // Used to report a metric that is bucketed by ResizePriority.
   void ReportResizePriorityMetric(std::string metric_name,

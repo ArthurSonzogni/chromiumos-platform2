@@ -134,14 +134,14 @@ ResizePriority BalloonBlocker::LowestUnblockedPriority(
   return static_cast<ResizePriority>(highest_opposite_request - 1);
 }
 
-void BalloonBlocker::SetShouldLogBalloonTrace(bool do_log) {
+void BalloonBlocker::SetShouldLogBalloonSizeChange(bool do_log) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (do_log) {
-    LOG(INFO) << "Enabling BalloonTrace logs for CID: " << GetCid();
+    LOG(INFO) << "Enabling balloon size change logs for CID: " << GetCid();
   } else {
-    LOG(INFO) << "Disabling BalloonTrace logs for CID: " << GetCid();
+    LOG(INFO) << "Disabling balloon size change logs for CID: " << GetCid();
   }
-  should_log_balloon_trace_ = do_log;
+  should_log_balloon_size_change_ = do_log;
 }
 
 void BalloonBlocker::ClearBlockersUpToInclusive(ResizePriority priority) {
@@ -230,8 +230,8 @@ void BalloonBlocker::OnResizeResult(ResizePriority priority,
                                     Balloon::ResizeResult result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  if (should_log_balloon_trace_) {
-    LOG(INFO) << "BalloonTrace:[" << vm_cid_ << "," << priority << ","
+  if (should_log_balloon_size_change_) {
+    LOG(INFO) << "VMMMS:[" << vm_cid_ << ",balloon," << priority << ","
               << (result.new_target / MiB(1)) << " MB ("
               << (result.actual_delta_bytes / MiB(1)) << " MB)]";
   }
