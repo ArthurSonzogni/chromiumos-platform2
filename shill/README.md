@@ -1,23 +1,10 @@
 # Shill
-*Updated Jan 2022*
+*Updated May 2024*
 
 ## Packages
 
-The shill directory contains 2 primary packages:
-
-*   `shill`
-*   `shill-net`
-
-Shill depends on shill-net which is built as a separate package. Building or
-deploying `shill` will not also build or deploy `shill-net` (and vice versa).
-
-e.g. when making changes to code in `shill/net` it is important to use
-`cros_workon --board=${BOARD} start shill-net` and to build and deploy
-`shill-net` (in addition to any dependent binaries, e.g. `shill` or
-`patchpanel`).
-
-
-There are also additional support / utility packages:
+The primary package of the shill directory is `shill`. There are also additional
+support / utility packages:
 
 *   `shill-client`
 *   `shill-dbus-client`
