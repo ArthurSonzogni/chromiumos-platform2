@@ -244,7 +244,8 @@ bool DoAdvancedScan(ManagerProxy* manager,
   do {
     base::FilePath output_path =
         ExpandPattern(output_pattern, page, scanner_name, extension);
-    std::cout << "Saving page " << page << " to " << output_path << std::endl;
+    std::cout << "Looking to scan page " << page << " to " << output_path
+              << std::endl;
 
     lorgnette::StartPreparedScanRequest scan_request;
     *scan_request.mutable_scanner() = open_response.config().scanner();
