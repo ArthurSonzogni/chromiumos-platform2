@@ -237,8 +237,13 @@ mojom::BusDevicePtr FetchUsbDevice(
   if (usb_info.is_null())
     return nullptr;
   auto device = mojom::BusDevice::New();
-  device->vendor_name = GetUsbVendorName(udevice);
-  device->product_name = GetUsbProductName(udevice);
+  if (udevice) {
+    device->vendor_name = GetUsbVendorName(udevice);
+    device->product_name = GetUsbProductName(udevice);
+  } else {
+    device->vendor_name = GetUsbVendorName(path);
+    device->product_name = GetUsbProductName(path);
+  }
   device->device_class = GetUsbDeviceClass(path, usb_info);
 
   device->bus_info = mojom::BusInfo::NewUsbBusInfo(std::move(usb_info));

@@ -25,9 +25,13 @@ namespace diagnostics {
 // Returns vendor name of a usb device. It uses udev to query the `usb.ids` file
 // and fallback to sysfs if doesn't find.
 std::string GetUsbVendorName(const std::unique_ptr<brillo::UdevDevice>& device);
-// Returns product name of a usb device. Similar to the above method.
+// Returns vendor name of a usb device.
+std::string GetUsbVendorName(const base::FilePath& sys_path);
+// Returns product name of a usb device. Similar to `GetUsbVendorName()`.
 std::string GetUsbProductName(
     const std::unique_ptr<brillo::UdevDevice>& device);
+// Returns product name of a usb device.
+std::string GetUsbProductName(const base::FilePath& sys_path);
 // Returns vid and pid of a usb device.
 std::pair<uint16_t, uint16_t> GetUsbVidPid(
     const std::unique_ptr<brillo::UdevDevice>& device);

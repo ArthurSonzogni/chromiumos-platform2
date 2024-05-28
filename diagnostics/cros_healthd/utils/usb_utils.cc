@@ -58,8 +58,12 @@ std::string GetUsbVendorName(
   const char* prop = device->GetPropertyValue(kPropertieVendorFromDB);
   if (prop)
     return prop;
+  return GetUsbVendorName(GetSysPath(device));
+}
+
+std::string GetUsbVendorName(const base::FilePath& sys_path) {
   std::string vendor;
-  ReadAndTrimString(GetSysPath(device), kFileUsbManufacturerName, &vendor);
+  ReadAndTrimString(sys_path, kFileUsbManufacturerName, &vendor);
   return vendor;
 }
 
@@ -68,8 +72,12 @@ std::string GetUsbProductName(
   const char* prop = device->GetPropertyValue(kPropertieModelFromDB);
   if (prop)
     return prop;
+  return GetUsbProductName(GetSysPath(device));
+}
+
+std::string GetUsbProductName(const base::FilePath& sys_path) {
   std::string product;
-  ReadAndTrimString(GetSysPath(device), kFileUsbProductName, &product);
+  ReadAndTrimString(sys_path, kFileUsbProductName, &product);
   return product;
 }
 

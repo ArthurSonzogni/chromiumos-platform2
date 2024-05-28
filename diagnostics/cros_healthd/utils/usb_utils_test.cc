@@ -126,6 +126,14 @@ TEST_F(UsbUtilsTest, TestFetchProductFallback) {
   EXPECT_EQ(GetUsbProductName(dev_), kFakeUsbFallbackProductName);
 }
 
+TEST_F(UsbUtilsTest, TestFetchVendorFromSysfs) {
+  EXPECT_EQ(GetUsbVendorName(fake_dev_path_), kFakeUsbFallbackVendorName);
+}
+
+TEST_F(UsbUtilsTest, TestFetchProductFromSysfs) {
+  EXPECT_EQ(GetUsbProductName(fake_dev_path_), kFakeUsbFallbackProductName);
+}
+
 TEST_F(UsbUtilsTest, TestFetchVidPid) {
   EXPECT_CALL(mock_dev(), GetPropertyValue(kPropertieProduct))
       .WillOnce(Return(kFakeUsbPropertieProduct));

@@ -76,6 +76,11 @@ class BusFetcherTest : public BaseFileTest {
         });
   }
 
+  void MockNullUdevDevice() {
+    EXPECT_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
+        .WillRepeatedly([](const char* syspath) { return nullptr; });
+  }
+
   void MockFwupdProxy(
       const std::vector<brillo::VariantDictionary>& fwupd_response) {
     EXPECT_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
@@ -301,6 +306,18 @@ TEST_F(BusFetcherTest, TestFetchUsbBasic) {
   EXPECT_EQ(usb_info->interfaces[0]->subclass_id, 0x1b);
   EXPECT_EQ(usb_info->interfaces[0]->protocol_id, 0x2c);
   EXPECT_EQ(usb_info->interfaces[0]->driver, "my_driver");
+}
+
+TEST_F(BusFetcherTest, TestFetchUsbWithUdevDeviceCreationFailure) {
+  const auto dev = SetDefaultUsbDevice(0);
+  SetFile(dev.Append(kFileUsbManufacturerName), "FakeVendor");
+  SetFile(dev.Append(kFileUsbProductName), "FakeDevice");
+  MockNullUdevDevice();
+
+  auto res = FetchBusDevicesSync();
+  ASSERT_EQ(res.size(), 1);
+  EXPECT_EQ(res[0]->vendor_name, "FakeVendor");
+  EXPECT_EQ(res[0]->product_name, "FakeDevice");
 }
 
 TEST_F(BusFetcherTest, TestFetchUsbNullalbeFields) {
