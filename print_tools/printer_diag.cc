@@ -9,9 +9,10 @@
 #include <iostream>
 #include <optional>
 
+#include <string.h>
+#include <curl/curl.h>
+
 #include <brillo/flag_helper.h>
-#include <brillo/http/http_request.h>
-#include <brillo/http/http_transport.h>
 #include <chromeos/libipp/attribute.h>
 #include <chromeos/libipp/builder.h>
 #include <chromeos/libipp/frame.h>
@@ -29,57 +30,117 @@ constexpr char app_info[] =
     "response. If no output files are specified, the obtained response "
     "is printed to stdout as formatted JSON";
 
-// Prints information about HTTP error to stderr.
-void PrintHttpError(const std::string& msg, const brillo::ErrorPtr* err_ptr) {
-  std::cerr << "Error occured at HTTP level: " << msg << "\n";
-  if (err_ptr != nullptr && err_ptr->get() != nullptr) {
-    std::cerr << "Reported errors stack:\n";
-    for (const brillo::Error* error = err_ptr->get(); error != nullptr;
-         error = error->GetInnerError()) {
-      std::cerr << error->GetDomain() << ":";
-      std::cerr << error->GetCode() << ":";
-      std::cerr << error->GetLocation().file_name() << ",";
-      std::cerr << error->GetLocation().function_name() << ",";
-      std::cerr << error->GetLocation().line_number() << ":";
-      std::cerr << error->GetMessage() << "\n";
-    }
+struct read_cb_data {
+  const std::vector<uint8_t>* input_data;
+  size_t read_position;
+};
+
+// Read callback for libcurl; reads from a vector in memory.
+size_t read_callback(char* buffer, size_t size, size_t nitems, void* userdata) {
+  size_t read_size = size * nitems;
+  read_cb_data* read_userdata = static_cast<read_cb_data*>(userdata);
+  const std::vector<uint8_t>* input_data = read_userdata->input_data;
+  size_t input_start_pos = read_userdata->read_position;
+  size_t bytes_available = input_data->size() - input_start_pos;
+  if (bytes_available < read_size) {
+    read_size = bytes_available;
   }
-  std::cerr << std::flush;
+  if (read_size > 0) {
+    memcpy(buffer, input_data->data() + input_start_pos, read_size);
+    read_userdata->read_position += read_size;
+  }
+  return read_size;
+}
+
+// Write callback for libcurl; writes to a vector in memory.
+size_t write_callback(char* buffer,
+                      size_t size,
+                      size_t nitems,
+                      void* userdata) {
+  size_t write_size = size * nitems;
+  if (!write_size) {
+    return 0;
+  }
+
+  std::vector<uint8_t>* output_data =
+      static_cast<std::vector<uint8_t>*>(userdata);
+  const uint8_t* data_to_copy = (const uint8_t*)buffer;
+  output_data->insert(output_data->end(), data_to_copy,
+                      data_to_copy + write_size);
+  return write_size;
 }
 
 // Sends IPP frame (in |data| parameter) to given URL. In case of error, it
 // prints out error message to stderr and returns nullopt. Otherwise, it returns
 // the body from the response.
 std::optional<std::vector<uint8_t>> SendIppFrameAndGetResponse(
-    std::string url, const std::vector<uint8_t>& data) {
-  using Transport = brillo::http::Transport;
-  using Request = brillo::http::Request;
-  using Response = brillo::http::Response;
-  // Prepare HTTP request.
-  std::shared_ptr<Transport> transport = Transport::CreateDefault();
-  transport->UseCustomCertificate(Transport::Certificate::kNss);
-  Request request(url, "POST", transport);
-  request.SetContentType("application/ipp");
-  brillo::ErrorPtr error;
-  if (!data.empty()) {
-    if (!request.AddRequestBody(data.data(), data.size(), &error)) {
-      PrintHttpError("cannot set request body", &error);
-      return std::nullopt;
+    std::string url, const std::vector<uint8_t>& input_data) {
+  CURL* curl;
+  CURLcode curl_result;
+  std::vector<uint8_t> output_data;
+  std::optional<std::vector<uint8_t>> return_value = std::nullopt;
+  read_cb_data read_userdata = {&input_data, 0};
+
+  curl_result = curl_global_init(CURL_GLOBAL_DEFAULT);
+  if (curl_result != CURLE_OK) {
+    std::cerr << "Error: failed to initialize curl\n";
+    return std::nullopt;
+  }
+
+  curl = curl_easy_init();
+  if (!curl) {
+    std::cerr << "Error: failed to initialize curl\n";
+    curl_global_cleanup();
+    return std::nullopt;
+  }
+
+  curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(curl, CURLOPT_POST, 1L);
+
+  // Add Content-Type header to request.
+  curl_slist* header_list =
+      curl_slist_append(nullptr, "Content-Type: application/ipp");
+  curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_list);
+
+  // Printers usually have self-signed certificates that won't be accepted by
+  // any certificate database on the system. Since printer_diag is only a
+  // debugging tool for gathering information about a printer, we don't need
+  // or want to be strict about it. This unique need is why this function uses
+  // libcurl directly instead of going through brillo's HTTP library.
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+  curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
+  // Follow redirects.
+  curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+
+  // Set our callbacks to read from and write to std::vector<uint8_t>
+  curl_easy_setopt(curl, CURLOPT_READFUNCTION, read_callback);
+  curl_easy_setopt(curl, CURLOPT_READDATA, static_cast<void*>(&read_userdata));
+  curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+  curl_easy_setopt(curl, CURLOPT_WRITEDATA, static_cast<void*>(&output_data));
+
+  // Actually do the request.
+  curl_result = curl_easy_perform(curl);
+  if (curl_result != CURLE_OK) {
+    std::cerr << "HTTP error: " << curl_easy_strerror(curl_result) << "\n";
+  } else {
+    auto response_code = 999;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+
+    // Per RFC 8010 section 3.4.3, any HTTP status code other than 200 means
+    // the response does not contain an IPP message body.
+    if (response_code != 200) {
+      std::cerr << "HTTP error: HTTP response code " << response_code << "\n";
+    } else {
+      return_value = std::move(output_data);
     }
   }
-  // Send the request and interpret obtained response.
-  std::unique_ptr<Response> response = request.GetResponseAndBlock(&error);
-  if (response == nullptr) {
-    PrintHttpError("exchange failed", &error);
-    return std::nullopt;
-  }
-  if (!response->IsSuccessful()) {
-    const std::string msg = "unexpected response code: " +
-                            std::to_string(response->GetStatusCode());
-    PrintHttpError(msg, &error);
-    return std::nullopt;
-  }
-  return (response->ExtractData());
+
+  curl_slist_free_all(header_list);
+  curl_easy_cleanup(curl);
+  curl_global_cleanup();
+
+  return return_value;
 }
 
 // Write the content of given buffer to given filename ("location"). When
