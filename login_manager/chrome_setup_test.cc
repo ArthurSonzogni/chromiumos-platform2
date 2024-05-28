@@ -51,6 +51,7 @@ class ChromeSetupTest : public ::testing::Test {
   const std::string kOldDisplay = "old";
   const std::string kShelfFlag = "--enable-dim-shelf";
   const std::string kFeatureFlag = "--enable-features";
+  const std::string kDisabledFeatureFlag = "--disable-features";
   const base::RepeatingCallback<bool(const base::FilePath&)>
       kPathInSetCallback = base::BindRepeating(&ChromeSetupTest::PathInSet,
                                                base::Unretained(this));
@@ -400,11 +401,17 @@ TEST_F(ChromeSetupTest, TestGkiEnabled) {
   std::set<std::string> disallowed_params;
   InitWithUseFlag("arcvm_gki", &temp_dir, &builder_);
   login_manager::AddArcFlags(&builder_, &disallowed_params, nullptr);
+
   auto argv = builder_.arguments();
   std::vector<std::string> result =
       base::SplitString(GetFlag(argv, kFeatureFlag), ",", base::KEEP_WHITESPACE,
                         base::SPLIT_WANT_ALL);
   EXPECT_THAT(result, testing::Contains("ArcVmGki"));
+
+  result = base::SplitString(GetFlag(argv, kDisabledFeatureFlag), ",",
+                             base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+  EXPECT_THAT(result,
+              testing::Contains("CrOSLateBootVmMemoryManagementService"));
 }
 
 TEST_F(ChromeSetupTest, TestGkiDisabled) {

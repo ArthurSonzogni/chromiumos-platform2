@@ -955,8 +955,11 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
 
   if (builder->UseFlagIsSet("arc_erofs"))
     builder->AddArg("--arc-erofs");
-  if (builder->UseFlagIsSet("arcvm_gki"))
+  if (builder->UseFlagIsSet("arcvm_gki")) {
     builder->AddFeatureEnableOverride("ArcVmGki");
+    // Disable VMMMS as it's not supported on GKI (b/333650576 for context).
+    builder->AddFeatureDisableOverride("CrOSLateBootVmMemoryManagementService");
+  }
 
   std::string arc_scale;
   if (cros_config &&
