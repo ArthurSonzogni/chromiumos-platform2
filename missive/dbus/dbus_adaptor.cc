@@ -58,11 +58,6 @@ DBusAdaptor::DBusAdaptor(scoped_refptr<dbus::Bus> bus,
           Scoped<Status>(
               std::move(failure_cb),
               Status(error::UNAVAILABLE, "DBusAdaptor has been destructed")))));
-
-  analytics::Metrics::SendEnumToUMA(
-      kUmaUnavailableErrorReason,
-      UnavailableErrorReason::DBUS_ADAPTER_DESTRUCTED,
-      UnavailableErrorReason::MAX_VALUE);
 }
 
 void DBusAdaptor::StartupFinished(base::OnceCallback<void(Status)> failure_cb,

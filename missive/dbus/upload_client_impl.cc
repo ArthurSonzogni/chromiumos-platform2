@@ -300,10 +300,6 @@ void UploadClientImpl::SendEncryptedRecords(
               std::move(response_callback),
               base::unexpected(Status(error::UNAVAILABLE,
                                       "Upload client has been destructed")))));
-  analytics::Metrics::SendEnumToUMA(
-      kUmaUnavailableErrorReason,
-      UnavailableErrorReason::UPLOAD_CLIENT_DESTRUCTED,
-      UnavailableErrorReason::MAX_VALUE);
 }
 
 void UploadClientImpl::OwnerChanged(const std::string& old_owner,
