@@ -150,11 +150,6 @@ static_library("libcros_installer") {
   } else {
     sources += [ "metrics_stub.cc" ]
   }
-  if (use.reven_partition_migration) {
-    sources += [ "reven_partition_migration.cc" ]
-  } else {
-    sources += [ "reven_partition_migration_stub.cc" ]
-  }
 
   configs += [ ":target_defaults" ]
   all_dependent_configs = [ ":libcros_installer_config" ]
@@ -230,9 +225,6 @@ if (!use.cros_host && use.test) {
     if (use.postinst_metrics) {
       sources += [ "chromeos_postinst_test.cc" ]
       configs += [ ":metrics" ]
-    }
-    if (use.reven_partition_migration) {
-      sources += [ "reven_partition_migration_test.cc" ]
     }
     deps = [
       ":libcros_installer",

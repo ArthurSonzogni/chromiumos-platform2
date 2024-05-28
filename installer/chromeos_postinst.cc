@@ -29,7 +29,6 @@
 #include "installer/chromeos_setimage.h"
 #include "installer/inst_util.h"
 #include "installer/metrics.h"
-#include "installer/reven_partition_migration.h"
 #include "installer/slow_boot_notify.h"
 
 using std::string;
@@ -641,15 +640,6 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
         if (!RollbackPartitionTable(cgpt_manager, install_config)) {
           LOG(ERROR) << "RollbackPartitionTable failed.";
         }
-        return false;
-      }
-
-      // Run a partition migration to increase the size of kernel
-      // partitions on the reven board. This is a no-op if the
-      // `reven_partition_migration` USE flag is not enabled.
-      if (!RunRevenPartitionMigration(
-              cgpt_manager, *MetricsInterface::GetMetricsInstance())) {
-        LOG(ERROR) << "Fatal partition migration error.";
         return false;
       }
 
