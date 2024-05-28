@@ -17,11 +17,12 @@ pub fn register(dispatcher: &mut Dispatcher) {
     dispatcher.register_command(
         Command::new(
             "u2f_flags",
-            "<u2f | g2f>[, user_keys, verbose]",
+            "<u2f | g2f>[, enable_global_key, verbose]",
             r#"Set flags to override the second-factor authentication daemon configuration.
   u2f: Always enable the standard U2F mode even if not set in device policy.
   g2f: Always enable the U2F mode plus some additional extensions.
-  user_keys: Enable user-specific keys.
+  enable_global_key: Make the power button security key "global" - can be used outside a
+                     logged-in session for the google.com relying party.
   verbose: Increase the daemon logging verbosity in /var/log/messages."#,
         )
         .set_command_callback(Some(execute_u2f_flags)),
