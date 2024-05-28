@@ -318,8 +318,8 @@ interface CrosHealthdDiagnosticsService {
   //
   // The request:
   // * |max_testing_mem_kib| - An optional uint32 to specify at most how much of
-  //                           the memory should be test. If the value is null,
-  //                           memory test will run with as much memory as
+  //                           the memory should be tested. If the value is
+  //                           null, memory test will run with as much memory as
   //                           possible.
   //
   // The response:
