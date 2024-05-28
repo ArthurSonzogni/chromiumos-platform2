@@ -178,7 +178,7 @@ TEST_F(ComponentInfoTest, AllHwFields) {
 
 TEST_F(ComponentInfoTest, TestMaxComponentSize) {
   // Longer than |kHardwareComponentMaxSize|.
-  const std::string long_string("x", 512);
+  const std::string long_string(512, 'x');
   PopulateHwCacheFile(flex_hwis::kFlexBiosVersionKey, long_string);
 
   auto component_info = detailed_hardware_data::FlexComponentInfo();
