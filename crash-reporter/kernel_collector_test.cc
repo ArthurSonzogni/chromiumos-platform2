@@ -29,6 +29,7 @@ using brillo::GetLog;
 namespace {
 
 const int kMaxEfiParts = 100;
+const int kMaxRamoopsIds = 2;
 
 }  // namespace
 
@@ -51,10 +52,10 @@ class KernelCollectorTest : public ::testing::Test {
   const FilePath& console_ramoops_file() const { return test_console_ramoops_; }
   const FilePath& eventlog_file() const { return test_eventlog_; }
   const FilePath& bios_log_file() const { return test_bios_log_; }
-  const FilePath& kcrash_file() const { return test_kcrash_; }
-  const FilePath& corrupt_kcrash_file() const { return test_corrupt_kcrash_; }
-  const FilePath& efikcrash_file(int part) const {
-    return test_efikcrash_[part];
+  const FilePath& ramoops_file(int id) const { return test_ramoops_[id]; }
+  const FilePath& corrupt_ramoops_file() const { return test_corrupt_ramoops_; }
+  const FilePath& efipstore_file(int part) const {
+    return test_efipstore_[part];
   }
   const FilePath& test_crash_directory() const { return test_crash_directory_; }
   const FilePath& bootstatus_file() const { return test_bootstatus_; }
@@ -68,24 +69,28 @@ class KernelCollectorTest : public ::testing::Test {
 
     collector_.Initialize(false);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
-    test_kcrash_ = scoped_temp_dir_.GetPath().Append("kcrash");
-    ASSERT_TRUE(base::CreateDirectory(test_kcrash_));
-    collector_.OverridePreservedDumpPath(test_kcrash_);
+    base::FilePath test_pstore =
+        scoped_temp_dir_.GetPath().Append("test_pstore");
+    ASSERT_TRUE(base::CreateDirectory(test_pstore));
+    collector_.OverridePreservedDumpPath(test_pstore);
 
-    test_console_ramoops_ = test_kcrash_.Append("console-ramoops-0");
+    test_console_ramoops_ = test_pstore.Append("console-ramoops-0");
     ASSERT_FALSE(base::PathExists(test_console_ramoops_));
     for (int i = 0; i < kMaxEfiParts; i++) {
-      test_efikcrash_[i] = test_kcrash_.Append(
+      test_efipstore_[i] = test_pstore.Append(
           StringPrintf("dmesg-efi-%" PRIu64,
                        (9876543210 * KernelCollector::EfiCrash::kMaxPart + i) *
                                KernelCollector::EfiCrash::kMaxDumpRecord +
                            1));
-      ASSERT_FALSE(base::PathExists(test_efikcrash_[i]));
+      ASSERT_FALSE(base::PathExists(test_efipstore_[i]));
     }
-    test_corrupt_kcrash_ = test_kcrash_.Append("dmesg-ramoops-0.enc.z");
-    ASSERT_FALSE(base::PathExists(test_corrupt_kcrash_));
-    test_kcrash_ = test_kcrash_.Append("dmesg-ramoops-0");
-    ASSERT_FALSE(base::PathExists(test_kcrash_));
+    test_corrupt_ramoops_ = test_pstore.Append("dmesg-ramoops-0.enc.z");
+    ASSERT_FALSE(base::PathExists(test_corrupt_ramoops_));
+    for (int i = 0; i < kMaxRamoopsIds; ++i) {
+      test_ramoops_[i] =
+          test_pstore.Append(StringPrintf("dmesg-ramoops-%d", i));
+      ASSERT_FALSE(base::PathExists(test_ramoops_[i]));
+    }
 
     test_crash_directory_ =
         scoped_temp_dir_.GetPath().Append("crash_directory");
@@ -113,9 +118,9 @@ class KernelCollectorTest : public ::testing::Test {
   FilePath test_console_ramoops_;
   FilePath test_eventlog_;
   FilePath test_bios_log_;
-  FilePath test_kcrash_;
-  FilePath test_corrupt_kcrash_;
-  FilePath test_efikcrash_[kMaxEfiParts];
+  FilePath test_ramoops_[kMaxRamoopsIds];
+  FilePath test_corrupt_ramoops_;
+  FilePath test_efipstore_[kMaxEfiParts];
   FilePath test_crash_directory_;
   FilePath test_bootstatus_;
   base::ScopedTempDir scoped_temp_dir_;
@@ -132,13 +137,13 @@ TEST_F(KernelCollectorTest, ParseEfiCrashId) {
 }
 
 TEST_F(KernelCollectorTest, GetEfiCrashType) {
-  ASSERT_FALSE(base::PathExists(efikcrash_file(1)));
+  ASSERT_FALSE(base::PathExists(efipstore_file(1)));
   std::string type;
   uint64_t test_efi_crash_id;
-  sscanf(efikcrash_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
+  sscanf(efipstore_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
          &test_efi_crash_id);
   // Write header.
-  ASSERT_TRUE(test_util::CreateFile(efikcrash_file(1), "Panic#1 Part#20"));
+  ASSERT_TRUE(test_util::CreateFile(efipstore_file(1), "Panic#1 Part#20"));
   KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
   ASSERT_TRUE(efi_crash.GetType(&type));
   EXPECT_EQ("Panic", type);
@@ -150,16 +155,16 @@ TEST_F(KernelCollectorTest, LoadEfiCrash) {
   std::string expected_dump;
   std::string dump;
   uint64_t test_efi_crash_id;
-  sscanf(efikcrash_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
+  sscanf(efipstore_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
          &test_efi_crash_id);
 
   for (int i = 1; i <= efi_part_count; i++) {
-    ASSERT_FALSE(base::PathExists(efikcrash_file(i)));
+    ASSERT_FALSE(base::PathExists(efipstore_file(i)));
     efi_part[i] = StringPrintf("Panic#100 Part#%d\n", i);
     for (int j = 0; j < i; j++) {
       efi_part[i].append(StringPrintf("random blob %d\n", j));
     }
-    ASSERT_TRUE(test_util::CreateFile(efikcrash_file(i), efi_part[i].c_str()));
+    ASSERT_TRUE(test_util::CreateFile(efipstore_file(i), efi_part[i].c_str()));
   }
   KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
   efi_crash.UpdateMaxPart(efi_crash.GetIdForPart(efi_part_count));
@@ -178,23 +183,23 @@ TEST_F(KernelCollectorTest, RemoveEfiCrash) {
   int efi_part_count = kMaxEfiParts - 1;
   std::string efi_part[kMaxEfiParts];
   uint64_t test_efi_crash_id;
-  sscanf(efikcrash_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
+  sscanf(efipstore_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
          &test_efi_crash_id);
 
   for (int i = 1; i <= efi_part_count; i++) {
-    ASSERT_FALSE(base::PathExists(efikcrash_file(i)));
+    ASSERT_FALSE(base::PathExists(efipstore_file(i)));
     efi_part[i] = StringPrintf("Panic#100 Part#%d\n", i);
     for (int j = 0; j < i; j++) {
       efi_part[i].append(StringPrintf("random blob %d\n", j));
     }
-    ASSERT_TRUE(test_util::CreateFile(efikcrash_file(i), efi_part[i].c_str()));
+    ASSERT_TRUE(test_util::CreateFile(efipstore_file(i), efi_part[i].c_str()));
   }
   KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
   efi_crash.UpdateMaxPart(efi_crash.GetIdForPart(efi_part_count));
 
   efi_crash.Remove();
   for (int i = 1; i <= efi_part_count; i++) {
-    EXPECT_FALSE(base::PathExists(efikcrash_file(i)));
+    EXPECT_FALSE(base::PathExists(efipstore_file(i)));
   }
 }
 
@@ -211,11 +216,11 @@ TEST_F(KernelCollectorTest, CollectEfiCrashFile) {
   int efi_part_count = kMaxEfiParts - 1;
   std::string efi_part[kMaxEfiParts];
   uint64_t test_efi_crash_id;
-  sscanf(efikcrash_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
+  sscanf(efipstore_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
          &test_efi_crash_id);
 
   for (int i = 1; i <= efi_part_count; i++) {
-    ASSERT_FALSE(base::PathExists(efikcrash_file(i)));
+    ASSERT_FALSE(base::PathExists(efipstore_file(i)));
     efi_part[i] = StringPrintf("Panic#2 Part#%d\n", i);
     if (i == 1) {
       efi_part[i].append(
@@ -226,7 +231,7 @@ TEST_F(KernelCollectorTest, CollectEfiCrashFile) {
         efi_part[i].append(StringPrintf("random blob %d\n", j));
       }
     }
-    ASSERT_TRUE(test_util::CreateFile(efikcrash_file(i), efi_part[i].c_str()));
+    ASSERT_TRUE(test_util::CreateFile(efipstore_file(i), efi_part[i].c_str()));
   }
 
   std::vector<CrashCollectionStatus> results;
@@ -236,7 +241,7 @@ TEST_F(KernelCollectorTest, CollectEfiCrashFile) {
       test_crash_directory(), "kernel.*.meta",
       "sig=kernel-test_efi_function-"));
   for (int i = 1; i <= efi_part_count; i++) {
-    EXPECT_FALSE(base::PathExists(efikcrash_file(i)));
+    EXPECT_FALSE(base::PathExists(efipstore_file(i)));
   }
 }
 
@@ -248,49 +253,50 @@ TEST_F(KernelCollectorTest, ComputeKernelStackSignatureBase) {
 TEST_F(KernelCollectorTest, CollectRamoopsCrashSkipOops) {
   collector_.set_crash_directory_for_test(test_crash_directory());
   std::string contents = "<6>[    0.078852] some oops record";
-  ASSERT_TRUE(test_util::CreateFile(kcrash_file(),
+  ASSERT_TRUE(test_util::CreateFile(ramoops_file(0),
                                     StrCat({"Oops#1 Part#10\n", contents})));
   // TODO(swboyd): Change expected collection status once oops are skipped.
   EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
             CrashCollectionStatus::kSuccess);
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory(), "kernel.*.kcrash", contents));
-  EXPECT_FALSE(base::PathExists(kcrash_file()));
+  EXPECT_FALSE(base::PathExists(ramoops_file(0)));
 }
 
 TEST_F(KernelCollectorTest, CollectRamoopsCrashSinglePanic) {
   collector_.set_crash_directory_for_test(test_crash_directory());
   ASSERT_TRUE(test_util::CreateFile(
-      kcrash_file(), StrCat({"Panic#2 Part#3\n", kSuccessfulCollectContents})));
+      ramoops_file(0),
+      StrCat({"Panic#2 Part#3\n", kSuccessfulCollectContents})));
   EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
             CrashCollectionStatus::kSuccess);
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory(), "kernel.*.kcrash", kSuccessfulCollectContents));
-  EXPECT_FALSE(base::PathExists(kcrash_file()));
+  EXPECT_FALSE(base::PathExists(ramoops_file(0)));
 }
 
 TEST_F(KernelCollectorTest, CollectRamoopsCrashRandomBlob) {
   collector_.set_crash_directory_for_test(test_crash_directory());
   ASSERT_TRUE(
-      test_util::CreateFile(kcrash_file(), "\x01\x02\xfe\xff random blob"));
+      test_util::CreateFile(ramoops_file(0), "\x01\x02\xfe\xff random blob"));
   EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
             CrashCollectionStatus::kNoCrashFound);
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory(), "kernel.*.kcrash", nullptr));
   // TODO(swboyd): Change to expect false once corrupted files are still
   // removed.
-  EXPECT_TRUE(base::PathExists(kcrash_file()));
+  EXPECT_TRUE(base::PathExists(ramoops_file(0)));
 }
 
 TEST_F(KernelCollectorTest, CollectRamoopsCrashLarge) {
   collector_.set_crash_directory_for_test(test_crash_directory());
   std::string large(1024 * 1024 + 1, 'x');  // 1MiB + 1 byte.
-  ASSERT_TRUE(test_util::CreateFile(kcrash_file(),
+  ASSERT_TRUE(test_util::CreateFile(ramoops_file(0),
                                     StrCat({"Panic#1 Part#1\n", large})));
   EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
             CrashCollectionStatus::kNoCrashFound);
   // TODO(swboyd): Change to expect false once large files are still removed.
-  EXPECT_TRUE(base::PathExists(kcrash_file()));
+  EXPECT_TRUE(base::PathExists(ramoops_file(0)));
 }
 
 TEST_F(KernelCollectorTest, CollectRamoopsCrashFile) {
@@ -299,7 +305,7 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashFile) {
       "chunk>";
   collector_.set_crash_directory_for_test(test_crash_directory());
   ASSERT_TRUE(test_util::CreateFile(
-      kcrash_file(), StrCat({"Panic#2 Part#1\n", kcrash_contents})));
+      ramoops_file(0), StrCat({"Panic#2 Part#1\n", kcrash_contents})));
 
   EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
             CrashCollectionStatus::kSuccess);
@@ -308,14 +314,14 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashFile) {
       "sig=kernel-test_ramoops_func-"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory(), "kernel.*.kcrash", kcrash_contents));
-  EXPECT_FALSE(base::PathExists(kcrash_file()));
+  EXPECT_FALSE(base::PathExists(ramoops_file(0)));
 }
 
 TEST_F(KernelCollectorTest, CollectRamoopsCrashCorrupt) {
   collector_.set_crash_directory_for_test(test_crash_directory());
   std::string contents = "A bunch of binary \x1\x2\x3\x4 ...";
 
-  ASSERT_TRUE(test_util::CreateFile(corrupt_kcrash_file(), contents));
+  ASSERT_TRUE(test_util::CreateFile(corrupt_ramoops_file(), contents));
   EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
             CrashCollectionStatus::kSuccess);
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
@@ -323,15 +329,15 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashCorrupt) {
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory(), "kernel.*.kcrash",
       StrCat({constants::kCorruptRamoops, contents})));
-  EXPECT_FALSE(base::PathExists(corrupt_kcrash_file()));
+  EXPECT_FALSE(base::PathExists(corrupt_ramoops_file()));
 }
 
 TEST_F(KernelCollectorTest, LoadCorruptDump) {
-  ASSERT_FALSE(base::PathExists(corrupt_kcrash_file()));
+  ASSERT_FALSE(base::PathExists(corrupt_ramoops_file()));
   std::string dump;
   dump.clear();
 
-  ASSERT_TRUE(test_util::CreateFile(corrupt_kcrash_file(),
+  ASSERT_TRUE(test_util::CreateFile(corrupt_ramoops_file(),
                                     "A bunch of binary \x1\x2\x3\x4 ..."));
   ASSERT_TRUE(collector_.LoadParameters());
   ASSERT_TRUE(collector_.LoadPreservedDump(&dump));
@@ -340,7 +346,7 @@ TEST_F(KernelCollectorTest, LoadCorruptDump) {
                     "A bunch of binary \x1\x2\x3\x4 ..."}),
             dump);
 
-  ASSERT_FALSE(base::PathExists(corrupt_kcrash_file()));
+  ASSERT_FALSE(base::PathExists(corrupt_ramoops_file()));
 }
 
 TEST_F(KernelCollectorTest, LoadBiosLog) {
@@ -467,7 +473,7 @@ TEST_F(KernelCollectorTest, EnableMissingKernel) {
 }
 
 TEST_F(KernelCollectorTest, EnableOK) {
-  ASSERT_TRUE(test_util::CreateFile(kcrash_file(), ""));
+  ASSERT_TRUE(test_util::CreateFile(ramoops_file(0), ""));
   EXPECT_CALL(collector_, DumpDirMounted()).WillOnce(::testing::Return(true));
   ASSERT_TRUE(collector_.Enable());
   ASSERT_TRUE(collector_.is_enabled());
@@ -482,7 +488,7 @@ TEST_F(KernelCollectorTest, CollectPreservedFileMissing) {
 
 TEST_F(KernelCollectorTest, CollectBadDirectory) {
   ASSERT_TRUE(test_util::CreateFile(
-      kcrash_file(),
+      ramoops_file(0),
       StrCat({"Panic#4 Part#42\n", kSuccessfulCollectContents})));
   EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
             CrashCollectionStatus::kCreateCrashDirectoryFailed);
@@ -494,7 +500,8 @@ TEST_F(KernelCollectorTest, CollectBadDirectory) {
 void KernelCollectorTest::SetUpSuccessfulCollect() {
   collector_.set_crash_directory_for_test(test_crash_directory());
   ASSERT_TRUE(test_util::CreateFile(
-      kcrash_file(), StrCat({"Panic#1 Part#1\n", kSuccessfulCollectContents})));
+      ramoops_file(0),
+      StrCat({"Panic#1 Part#1\n", kSuccessfulCollectContents})));
 }
 
 void KernelCollectorTest::SetUpWatchdog0BootstatusInvalidNotInteger(
