@@ -882,6 +882,16 @@ TEST(AnomalyDetectorTest, CellularFailureEntitlementCheck) {
              &parser);
 }
 
+TEST(AnomalyDetectorTest, CellularInvalidApnAnomaly) {
+  ParserRun invalid_apn_anomaly = {
+      .expected_substr = "InvalidApnAnomaly",
+      .expected_flags = {
+          {"--modem_failure", base::StringPrintf("--weight=%d", 1)}}};
+  ShillParser parser(/*testonly_send_all=*/true);
+  ParserTest("TEST_CELLULAR_INVALID_APN_ANOMALY", {invalid_apn_anomaly},
+             &parser);
+}
+
 TEST(AnomalyDetectorTest, TetheringFailure) {
   ParserRun tethering_failure = {
       .expected_substr = "TetheringFailure",

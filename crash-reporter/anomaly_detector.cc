@@ -776,6 +776,8 @@ constexpr LazyRE2 entitlement_check_failure = {R"(Entitlement check failed:)"};
 // logged by shill/tethering_manager.cc after an unexpected tethering stop
 constexpr LazyRE2 tethering_failure = {
     R"(Tethering stopped unexpectly due to reason:)"};
+// logged by shill/cellular.cc after APN becomes valid or when try list is empty
+constexpr LazyRE2 invalid_apn_anomaly = {R"(Invalid APN anomaly detected:)"};
 
 MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
   std::string error_code;
@@ -803,6 +805,9 @@ MaybeCrashReport ShillParser::ParseLogEntry(const std::string& line) {
     error_code = "TetheringFailure";
     flag = "--tethering_failure";
     weight = 2;
+  } else if (RE2::PartialMatch(line, *invalid_apn_anomaly)) {
+    error_code = "InvalidApnAnomaly";
+    // No weight. Send all.
   }
   if (error_code.empty()) {
     return std::nullopt;
