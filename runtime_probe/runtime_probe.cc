@@ -80,8 +80,8 @@ int RunAsHelper() {
 
 int RunAsDaemon() {
   LOG(INFO) << "Starting Runtime Probe. Running in daemon mode";
-  runtime_probe::ContextRuntimeImpl context;
   runtime_probe::Daemon daemon;
+  runtime_probe::ContextRuntimeImpl context;
   return daemon.Run();
 }
 
@@ -92,7 +92,6 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
 
   // Required by dbus in libchrome.
   base::AtExitManager at_exit_manager;
-  runtime_probe::ContextRuntimeImpl context;
 
   // Required by mojo
   base::SingleThreadTaskExecutor task_executor{base::MessagePumpType::IO};
@@ -100,6 +99,8 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
   mojo::core::ScopedIPCSupport ipc_support(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+
+  runtime_probe::ContextRuntimeImpl context;
 
   std::unique_ptr<runtime_probe::ProbeConfigLoader> config_loader;
   if (config_file_path.empty()) {

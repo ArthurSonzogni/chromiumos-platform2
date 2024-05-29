@@ -33,7 +33,6 @@ int main(int argc, char* argv[]) {
 
   // Required by dbus in libchrome.
   base::AtExitManager at_exit_manager;
-  runtime_probe::ContextFactoryImpl context;
 
   // Required by mojo
   base::SingleThreadTaskExecutor task_executor{base::MessagePumpType::IO};
@@ -41,6 +40,8 @@ int main(int argc, char* argv[]) {
   mojo::core::ScopedIPCSupport ipc_support(
       base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
+
+  runtime_probe::ContextFactoryImpl context;
 
   const auto* command_line = base::CommandLine::ForCurrentProcess();
   const auto args = command_line->GetArgs();
