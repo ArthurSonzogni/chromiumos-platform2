@@ -349,9 +349,8 @@ void WiFiService::SetSecurityProperties() {
   if (Is8021x()) {
     // Passphrases are not mandatory for 802.1X.
     need_passphrase_ = false;
-  } else {
-    UpdateKeyManagement();
   }
+  UpdateKeyManagement();
 }
 
 void WiFiService::UpdateKeyManagement() {
@@ -376,6 +375,10 @@ void WiFiService::UpdateKeyManagement() {
   } else if (security_class() == kSecurityClassNone ||
              security_class() == kSecurityClassWep) {
     SetEAPKeyManagement(WPASupplicant::kKeyManagementNone);
+  } else if (security_class() == kSecurityClass8021x &&
+             GetEAPKeyManagement().empty()) {
+    SetEAPKeyManagement(std::string(WPASupplicant::kKeyManagementWPAEAP) + " " +
+                        std::string(WPASupplicant::kKeyManagementWPAEAPSHA256));
   } else {
     LOG(ERROR) << "Unsupported security class " << security_class_;
   }
@@ -1025,11 +1028,13 @@ void WiFiService::OnConnect(Error* error) {
   metrics()->SendToUMA(Metrics::kMetricWifiAvailableBSSes, endpoints_.size());
 
   if (Is8021x()) {
-    // If EAP key management is not set, set to a default.
-    if (GetEAPKeyManagement().empty())
+    if (GetEAPKeyManagement().empty()) {
+      // TODO(b:335021933) Remove if this log is not reported.
+      LOG(ERROR) << "KeyMgmt not set - using default";
       SetEAPKeyManagement(
           std::string(WPASupplicant::kKeyManagementWPAEAP) + " " +
           std::string(WPASupplicant::kKeyManagementWPAEAPSHA256));
+    }
     ClearEAPCertification();
   }
 
