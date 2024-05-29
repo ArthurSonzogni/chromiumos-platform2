@@ -117,8 +117,6 @@ const int kMemuseIntervals[] = {
 
 constexpr char kDailyUseTimeName[] = "Platform.DailyUseTime";
 constexpr char kUnaggregatedUseTimeName[] = "Platform.UnaggregatedUsageTime";
-constexpr char kUnaggregatedUseTimeOverflowName[] =
-    "Platform.UnaggregatedUsageTimeTooBig";
 constexpr char kCumulativeUseTimeName[] = "Platform.CumulativeUseTime";
 constexpr char kCumulativeCpuTimeName[] = "Platform.CumulativeCpuTime";
 constexpr char kKernelCrashIntervalName[] = "Platform.KernelCrashInterval";
@@ -1504,10 +1502,6 @@ void MetricsDaemon::UpdateStats(TimeTicks now_ticks, Time now_wall_time) {
                << "now_ticks: " << now_ticks
                << " elapsed_seconds: " << elapsed_seconds
                << " last_update_stats_time_: " << last_update_stats_time_;
-    SendSample(kUnaggregatedUseTimeOverflowName, elapsed_seconds,
-               kMaxAcceptableUnaggregatedUsageTime,  // value of first bucket
-               INT_MAX / 2,                          // value of last bucket
-               50);                                  // number of buckets
   } else {
     // Allow some slack time above the expected max of 5 minutes.
     const int max_time =

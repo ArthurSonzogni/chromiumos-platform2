@@ -559,9 +559,6 @@ TEST_F(MetricsDaemonTest, UpdateUsageStatsTooBig) {
   EXPECT_CALL(metrics_lib_,
               SendToUMA("Platform.UnaggregatedUsageTime", _, _, _, _))
       .Times(0);
-  EXPECT_CALL(metrics_lib_,
-              SendToUMA("Platform.UnaggregatedUsageTimeTooBig",
-                        Le(elapsed_seconds), 7200, INT_MAX / 2, 50));
 
   // Allow these calls since we're using strict mocks
   EXPECT_CALL(*daily_active_use_mock_, GetAndClear()).Times(AnyNumber());
