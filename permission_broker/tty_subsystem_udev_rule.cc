@@ -15,6 +15,8 @@
 #include <string>
 #include <vector>
 
+#include <base/logging.h>
+
 using std::string;
 
 namespace permission_broker {
@@ -23,6 +25,7 @@ namespace permission_broker {
 std::string TtySubsystemUdevRule::GetDevNodeGroupName(udev_device* device) {
   const char* const devnode = udev_device_get_devnode(device);
   if (devnode == nullptr) {
+    LOG(ERROR) << "udev_device_get_devnode(device) is NULL";
     return "";
   }
 
@@ -30,12 +33,14 @@ std::string TtySubsystemUdevRule::GetDevNodeGroupName(udev_device* device) {
   struct stat st;
   int ret = stat(devnode, &st);
   if (ret < 0) {
+    PLOG(ERROR) << "cannot stat " << devnode;
     return "";
   }
 
   // Get buffer size for getgrgid_r().
   int64_t getgr_res = sysconf(_SC_GETGR_R_SIZE_MAX);
   if (getgr_res < 0) {
+    PLOG(ERROR) << "cannot get gr size with sysconf";
     return "";
   }
 
@@ -46,6 +51,7 @@ std::string TtySubsystemUdevRule::GetDevNodeGroupName(udev_device* device) {
   std::vector<char> getgr_buf(getgr_size);
   ret = getgrgid_r(st.st_gid, &gr, getgr_buf.data(), getgr_buf.size(), &pgr);
   if (ret != 0 || pgr == nullptr) {
+    PLOG(ERROR) << "cannot get group name for gid " << st.st_gid;
     return "";
   }
 
