@@ -690,7 +690,7 @@ bool FirmwareUpdater::TransferBlock(
     return false;
   }
   status_code = *(reinterpret_cast<uint8_t*>(&status_code));
-  if (reply) {
+  if (status_code) {
     LOG(ERROR) << "Error: status " << static_cast<int>(status_code);
     reply = static_cast<UpdateCommandResponseStatus>(status_code);
     return false;
