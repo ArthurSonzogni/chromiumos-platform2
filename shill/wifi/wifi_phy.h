@@ -90,6 +90,9 @@ class WiFiPhy {
   // Add a WiFi device instance to wifi_devices_.
   void AddWiFiDevice(WiFiConstRefPtr device);
 
+  // Indicates that a WiFi device's state has changed.
+  void WiFiDeviceStateChanged(WiFiConstRefPtr device);
+
   // Remove a WiFi local device instance from wifi_local_devices_.
   void DeleteWiFiLocalDevice(LocalDeviceConstRefPtr device);
 

@@ -14,6 +14,7 @@
 
 #include "shill/logging.h"
 
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/wifi.h"
 #include "shill/wifi/wifi_phy.h"
@@ -38,6 +39,15 @@ void WiFiPhy::DeleteWiFiDevice(std::string_view link_name) {
     return device->link_name() == link_name;
   };
   std::erase_if(wifi_devices_, link_name_matches);
+}
+
+void WiFiPhy::WiFiDeviceStateChanged(WiFiConstRefPtr device) {
+  if (!base::Contains(wifi_devices_, device)) {
+    LOG(INFO) << "Phy " << phy_index_
+              << " received state change for unregistered device: "
+              << device->link_name();
+    return;
+  }
 }
 
 void WiFiPhy::AddWiFiLocalDevice(LocalDeviceConstRefPtr device) {

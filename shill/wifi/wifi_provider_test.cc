@@ -2601,7 +2601,6 @@ TEST_F(WiFiProviderTest, RequestHotspotDeviceCreationWithoutWiFiDevice) {
 
 TEST_F(WiFiProviderTest, CreateHotspotDevice) {
   EXPECT_CALL(manager_, device_info()).Times(1);
-
   WiFiRefPtr wifi_device = new MockWiFi(
       &manager_, /*link_name=*/"wlan0", kMacAddress,
       /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());

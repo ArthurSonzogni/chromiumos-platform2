@@ -309,6 +309,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     return true;
   }
 
+  mockable std::string supplicant_state() const { return supplicant_state_; }
+
  private:
   std::string DeviceStorageSuffix() const override;
 
@@ -357,6 +359,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;   // kNumFastScanAttempts, kFastScanInterval
   friend class WiFiMainTest;    // wifi_state_
+  friend class WiFiPhyTest;     // supplicant_state_
+
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
   FRIEND_TEST(WiFiMainTest, BackgroundScan);  // wifi_state_
   FRIEND_TEST(WiFiMainTest, BSSIDChangeInvokesNotifyBSSIDChange);
