@@ -10,12 +10,6 @@
 
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
-#include <openssl/bio.h>
-#include <openssl/bn.h>
-#include <openssl/ec.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
-#include <openssl/x509.h>
 
 namespace arc::keymint::context {
 
@@ -31,6 +25,7 @@ const brillo::SecureBlob kBlob(145, 42);
 
 // Constant for Affine Size.
 constexpr int kP256AffinePointSize = 32;
+constexpr int kP256EcdsaPrivateKeyLength = 32;
 // Self-Signed Cert.
 constexpr char kSelfSignedCert[] =
     R"(-----BEGIN CERTIFICATE-----
@@ -56,11 +51,38 @@ constexpr char kBlankCert[] =
 // First line corresponds to X-coord and second line to Y-coord.
 // This is generated from the command below
 // |openssl -in cert.pem -pubkey|
-constexpr char kExpectedEcdsaKey[] = R"(-----BEGIN PUBLIC KEY-----
+constexpr char kExpectedEcdsaKeyFromCert[] = R"(-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEt7gKXZh9y+UgCvjeDoXytO9hErER
 MsegvHHMNitjeR9+NRm/H0weE1LdR4m2JIiPoN6LTOQiIytmVfmtt39WSg==
 -----END PUBLIC KEY-----
 )";
+
+constexpr char kFake32Bytes[] = "Fake 32 byte data to be used!!!!";
+
+constexpr char kExpectedEcdsaPublicKeyFromFakeData[] =
+    R"(-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFoh8zDzqCjmY7OoZmEG/w64twt8u
+UhOKdKEPzyW4gf38hu2e3l3eLESimrFVRALSNQwpFsgu8YWI/ikX1Ii/gw==
+-----END PUBLIC KEY-----
+)";
+
+constexpr char kExpectedEcdsaPrivateKeyFromFakeData[] =
+    R"(-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgRmFrZSAzMiBieXRl
+IGRhdGEgdG8gYmUgdXNlZCEhISGhRANCAAQWiHzMPOoKOZjs6hmYQb/Dri3C3y5S
+E4p0oQ/PJbiB/fyG7Z7eXd4sRKKasVVEAtI1DCkWyC7xhYj+KRfUiL+D
+-----END PRIVATE KEY-----
+)";
+
+std::array<uint8_t, 32> GetRandomBytes() {
+  std::array<uint8_t, 32> bytes;
+  // This is used in code paths that cannot fail, so CHECK. If it turns
+  // out that we can actually run out of entropy during these code paths,
+  // we'll need to refactor the interfaces to allow errors to propagate.
+  CHECK_EQ(RAND_bytes(bytes.data(), bytes.size()), 1)
+      << "Unable to get random bytes";
+  return bytes;
+}
 
 std::string generateECPublicKeyFromCoordinates(absl::Span<uint8_t> x_bytes,
                                                absl::Span<uint8_t> y_bytes) {
@@ -149,7 +171,7 @@ TEST(OpenSslUtils, DecryptWithDifferentAuthDataError) {
   EXPECT_FALSE(decrypted.has_value());
 }
 
-TEST(OpenSslUtils, GetEcdsaKeyFromCertSuccess) {
+TEST(OpenSslUtils, GetEcdsaKeyFromCertBlobSuccess) {
   // Prepare.
   brillo::Blob certData = brillo::BlobFromString(kSelfSignedCert);
 
@@ -164,10 +186,10 @@ TEST(OpenSslUtils, GetEcdsaKeyFromCertSuccess) {
 
   // Test.
   EXPECT_EQ(error, KM_ERROR_OK);
-  EXPECT_EQ(public_key, kExpectedEcdsaKey);
+  EXPECT_EQ(public_key, kExpectedEcdsaKeyFromCert);
 }
 
-TEST(OpenSslUtils, GetEcdsaKeyFromCertFailure) {
+TEST(OpenSslUtils, GetEcdsaKeyFromCertBlobFailure) {
   // Prepare.
   brillo::Blob certData = brillo::BlobFromString(kBlankCert);
   std::vector<uint8_t> x_vect(kP256AffinePointSize);
@@ -181,5 +203,52 @@ TEST(OpenSslUtils, GetEcdsaKeyFromCertFailure) {
 
   // Test.
   ASSERT_FALSE(error == KM_ERROR_OK);
+}
+
+TEST(OpenSslUtils, GenerateEcdsaKeyFromSeedSuccess) {
+  // Prepare.
+  std::vector<uint8_t> x_vect(kP256AffinePointSize);
+  std::vector<uint8_t> y_vect(kP256AffinePointSize);
+  std::vector<uint8_t> seed_vector = brillo::BlobFromString(kFake32Bytes);
+  std::vector<uint8_t> private_key_vector(kP256EcdsaPrivateKeyLength);
+  absl::Span<uint8_t> x_coord(x_vect);
+  absl::Span<uint8_t> y_coord(y_vect);
+  absl::Span<uint8_t> seed(seed_vector);
+  absl::Span<uint8_t> private_key(private_key_vector);
+  std::string private_key_pem;
+
+  // Execute.
+  auto error = GenerateEcdsa256KeyFromSeed(
+      true /*test_mode*/, seed, private_key, private_key_pem, x_coord, y_coord);
+  auto public_key = generateECPublicKeyFromCoordinates(x_coord, y_coord);
+
+  // Test.
+  EXPECT_EQ(error, KM_ERROR_OK);
+  EXPECT_EQ(public_key, kExpectedEcdsaPublicKeyFromFakeData);
+  EXPECT_EQ(private_key_pem, kExpectedEcdsaPrivateKeyFromFakeData);
+}
+
+TEST(OpenSslUtils, GenerateEcdsaKeyFromSeedFailure) {
+  // Prepare.
+  std::vector<uint8_t> x_vect(kP256AffinePointSize);
+  std::vector<uint8_t> y_vect(kP256AffinePointSize);
+  auto seed_array = GetRandomBytes();
+  std::vector<uint8_t> seed_vector(seed_array.begin(), seed_array.end());
+  std::vector<uint8_t> private_key_vector(kP256EcdsaPrivateKeyLength);
+  absl::Span<uint8_t> x_coord(x_vect);
+  absl::Span<uint8_t> y_coord(y_vect);
+  absl::Span<uint8_t> seed(seed_vector);
+  absl::Span<uint8_t> private_key(private_key_vector);
+  std::string private_key_pem;
+
+  // Execute.
+  auto error = GenerateEcdsa256KeyFromSeed(
+      true /*test_mode*/, seed, private_key, private_key_pem, x_coord, y_coord);
+  auto public_key = generateECPublicKeyFromCoordinates(x_coord, y_coord);
+
+  // Test.
+  EXPECT_EQ(error, KM_ERROR_OK);
+  EXPECT_NE(public_key, kExpectedEcdsaPublicKeyFromFakeData);
+  EXPECT_NE(private_key_pem, kExpectedEcdsaPrivateKeyFromFakeData);
 }
 }  // namespace arc::keymint::context
