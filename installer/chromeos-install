@@ -312,23 +312,6 @@ loop_offset_setup() {
   LOOPS="${LOOP_DEV}${LOOPS:+ }${LOOPS:-}"
 }
 
-# Delete the current loop device.
-loop_offset_cleanup() {
-  # dash does not support ${//} expansions.
-  local new_loops
-  for loop in ${LOOPS}; do
-    if [ "${loop}" != "${LOOP_DEV}" ]; then
-      new_loops="${new_loops:-}${new_loops+ }${loop}"
-    fi
-  done
-  LOOPS=${new_loops:-}
-
-  # losetup -a doesn't always show every active device, so we'll always try to
-  # delete what we think is the active one without checking first. Report
-  # success no matter what.
-  losetup -d "${LOOP_DEV}" || /bin/true
-}
-
 # Mount the existing loop device at the mountpoint in $TMPMNT.
 # Args: optional 'rw'. If present, mount read-write, otherwise read-only.
 mount_on_loop_dev() {
@@ -352,11 +335,9 @@ cleanup_on_failure() {
   set +e
 
   if [ "${FLAGS_storage_diags}" -eq "${FLAGS_TRUE}" ]; then
-    if [ -b "${DST-}" ]; then
-      # Generate the diagnostics log that can be used by a caller.
-      echo "Running a hw diagnostics test -- this might take a couple minutes."
-      badblocks -e 100 -sv "${DST}" 2>&1 | tee "${HARDWARE_DIAGNOSTICS_PATH}"
-    fi
+    # Generate the diagnostics log that can be used by a caller.
+    echo "Running a hw diagnostics test -- this might take a couple minutes."
+    badblocks -e 100 -sv "${DST}" 2>&1 | tee "${HARDWARE_DIAGNOSTICS_PATH}"
 
     if [ -f /usr/share/misc/storage-info-common.sh ]; then
       # shellcheck source=../storage_info/share/storage-info-common.sh
@@ -463,15 +444,11 @@ mkfs() {
 wipe_stateful() {
   echo "Clearing the stateful partition..."
   local vg_name
+  local stateful_size
   # state options are stored in $@.
   set --
 
-  if [ -b "${DST}" ]; then
-    DEV=$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE}")
-  else
-    loop_offset_setup "${DST}" "${START_STATEFUL}" "${DST_BLKSIZE}"
-  DEV="${LOOP_DEV}"
-  fi
+  DEV=$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE}")
 
   # Zero out the first block of the stateful partition to ensure that
   # mkfs/pvcreate don't get confused by existing state.
@@ -508,22 +485,18 @@ wipe_stateful() {
     lv_size="$(get_logical_volume_size "${DEV}")"
     lvcreate --thin -V "${lv_size}M" -n "unencrypted" "${vg_name}/thinpool"
 
-    NUM_STATEFUL_SECTORS=$(( lv_size * 1024 * 1024 / DST_BLKSIZE ))
+    stateful_size=$(( lv_size * 1024 * 1024 / DST_BLKSIZE ))
     DEV="/dev/${vg_name}/unencrypted"
+  else
+    stateful_size="$(partsize "${DST}" "${PARTITION_NUM_STATE}")"
   fi
 
-  # NUM_STATEFUL_SECTORS intentionally not quoted to avoid adding empty arg
-  # if unset.
-  # shellcheck disable=SC2248
-  mkfs ${NUM_STATEFUL_SECTORS} "${DEV}" "H-STATE"
+  mkfs "${stateful_size}" "${DEV}" "H-STATE"
 
-  # Need to synchronize before releasing loop device, otherwise calling
-  # loop_offset_cleanup may return "device busy" error.
+  # Need to synchronize before releasing device.
   sync
   if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
     deactivate_volume_group "${vg_name}"
-  elif [ ! -b "${DST}" ]; then
-    loop_offset_cleanup
   fi
 
   # When the stateful partition is wiped the TPM ownership must be reset.
@@ -578,7 +551,7 @@ install_stateful() {
     vgchange -ay "${vg_name}"
     LOOP_DEV="/dev/${vg_name}/unencrypted"
   else
-    loop_offset_setup "${DST}" "${START_STATEFUL}" "${DST_BLKSIZE}"
+    LOOP_DEV="$(make_partition_dev "${DST}" "${PARTITION_NUM_STATE}")"
   fi
   mount_on_loop_dev rw
 
@@ -683,13 +656,9 @@ install_stateful() {
   done
 
   umount_from_loop_dev
-  # Need to synchronize before releasing loop device, otherwise calling
-  # loop_offset_cleanup may return "device busy" error.
   sync
   if [ "${FLAGS_lvm_stateful}" -eq "${FLAGS_TRUE}" ]; then
     deactivate_volume_group "${vg_name}"
-  else
-    loop_offset_cleanup
   fi
 }
 
@@ -877,36 +846,24 @@ do_post_install() {
   if [ -n "${FLAGS_target_bios}" ]; then
     set -- "$@" --bios "${FLAGS_target_bios}"
   fi
-  local dst_rootfs_dev=""
+  local dst_rootfs
 
+  dst_rootfs="$(make_partition_dev "${DST}" "${PARTITION_NUM_ROOT_A}")"
   # Now run the postinstall script on one new rootfs. Note that even though
   # we're passing the new destination partition number as an arg, the postinst
   # script had better not try to access it, for the reasons we just gave.
   # We can't run this if the target arch isn't the same as the host arch
   if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
     reload_partitions
-    dst_rootfs_dev="$(make_partition_dev "${DST}" "${PARTITION_NUM_ROOT_A}")"
     if [ -n "${FLAGS_payload_image}" ]; then
-      loop_offset_setup "${DST}" "${START_ROOTFS_A}" "${DST_BLKSIZE}"
+      LOOP_DEV="${dst_rootfs}"
       mount_on_loop_dev
-      IS_INSTALL="1" "${TMPMNT}/postinst" "${dst_rootfs_dev}" "$@"
+      IS_INSTALL="1" "${TMPMNT}/postinst" "${dst_rootfs}" "$@"
       umount_from_loop_dev
-      loop_offset_cleanup
     else
-      IS_INSTALL="1" "/postinst" "${dst_rootfs_dev}" "$@"
+      IS_INSTALL="1" "/postinst" "${dst_rootfs}" "$@"
     fi
   fi
-}
-
-legacy_offset_size_export() {
-  # Exports all the variables that install_gpt did previously.
-  # This should disappear eventually, but it's here to make existing
-  # code work for now.
-
-  START_STATEFUL="$(partoffset "$1" "${PARTITION_NUM_STATE}")"
-  START_ROOTFS_A="$(partoffset "$1" "${PARTITION_NUM_ROOT_A}")"
-
-  NUM_STATEFUL_SECTORS="$(partsize "$1" "${PARTITION_NUM_STATE}")"
 }
 
 ufs_init() {
@@ -1008,10 +965,7 @@ main() {
   # Write the GPT using the board specific script.
   if [ "${FLAGS_skip_gpt_creation}" -eq "${FLAGS_FALSE}" ]; then
     write_base_table "${DST}" "$(get_pmbr_code)"
-    legacy_offset_size_export "${DST}"
     reload_partitions
-  else
-    legacy_offset_size_export "${DST}"
   fi
 
   if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" ]; then
