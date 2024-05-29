@@ -532,11 +532,13 @@ void AttestationService::GetFeaturesTask(
     const GetFeaturesRequest& request,
     const std::shared_ptr<GetFeaturesReply>& result) {
   result->set_is_available(false);
-  ASSIGN_OR_RETURN(std::vector<attestation::KeyType> supported_types,
-                   hwsec_->GetSupportedKeyTypes(), _.LogError().ReturnVoid());
-  for (const KeyType key_type : supported_types) {
-    result->set_is_available(true);
-    *(result->mutable_supported_key_types()->Add()) = key_type;
+  if (does_support_attestation_) {
+    ASSIGN_OR_RETURN(std::vector<attestation::KeyType> supported_types,
+                     hwsec_->GetSupportedKeyTypes(), _.LogError().ReturnVoid());
+    for (const KeyType key_type : supported_types) {
+      result->set_is_available(true);
+      *(result->mutable_supported_key_types()->Add()) = key_type;
+    }
   }
   result->set_status(STATUS_SUCCESS);
 }

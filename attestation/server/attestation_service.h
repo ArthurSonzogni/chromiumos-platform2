@@ -210,6 +210,10 @@ class AttestationService : public AttestationInterface {
     does_support_vtpm_ek_ = does_support;
   }
 
+  void set_does_support_attestation(bool does_support) {
+    does_support_attestation_ = does_support;
+  }
+
   void set_pca_agent_proxy(org::chromium::PcaAgentProxyInterface* proxy) {
     pca_agent_proxy_ = proxy;
   }
@@ -778,6 +782,10 @@ class AttestationService : public AttestationInterface {
   // only GSC devices are supported while we use `USE_TPM2` in productiono for
   // simplicity.
   bool does_support_vtpm_ek_ = USE_TPM2;
+
+  // If `false` always consider attestation unsupported.
+  bool does_support_attestation_ = !USE_TPM_DYNAMIC;
+
   GoogleKeys google_keys_;
   // Maps NVRAMQuoteType indices to indices into the static NVRAM data we
   // use for NVRAM quotes.

@@ -242,6 +242,7 @@ class AttestationServiceBaseTest : public testing::Test {
     service_->set_nvram_quoter(&mock_nvram_quoter_);
     service_->set_hwid("fake_hwid");
     service_->set_pca_agent_proxy(&fake_pca_agent_proxy_);
+    service_->set_does_support_attestation(true);
     mock_policy_provider_ = new StrictMock<policy::MockPolicyProvider>();
     service_->set_policy_provider(mock_policy_provider_);
     // Setup a fake wrapped EK certificate by default.
@@ -507,6 +508,21 @@ class AttestationServiceBaseTest : public testing::Test {
   base::RunLoop run_loop_;
 };
 
+TEST_F(AttestationServiceBaseTest, GetFeatures_No_Support) {
+  service_->set_does_support_attestation(false);
+  auto callback = [](const base::RepeatingClosure& quit_closure,
+                     const GetFeaturesReply& reply) {
+    EXPECT_EQ(reply.status(), STATUS_SUCCESS);
+    EXPECT_THAT(reply.supported_key_types(), testing::IsEmpty());
+    EXPECT_THAT(reply.is_available(), false);
+    quit_closure.Run();
+  };
+
+  GetFeaturesRequest request;
+  service_->GetFeatures(request, base::BindOnce(callback, QuitClosure()));
+  Run();
+}
+
 TEST_F(AttestationServiceBaseTest, GetFeatures) {
   EXPECT_CALL(mock_hwsec_, GetSupportedKeyTypes())
       .WillOnce(ReturnValue(std::vector<KeyType>{KEY_TYPE_RSA, KEY_TYPE_ECC}));
@@ -515,6 +531,7 @@ TEST_F(AttestationServiceBaseTest, GetFeatures) {
     EXPECT_EQ(reply.status(), STATUS_SUCCESS);
     EXPECT_THAT(reply.supported_key_types(),
                 ElementsAre(KEY_TYPE_RSA, KEY_TYPE_ECC));
+    EXPECT_THAT(reply.is_available(), true);
     quit_closure.Run();
   };
 
