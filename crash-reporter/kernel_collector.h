@@ -80,7 +80,7 @@ class KernelCollector : public CrashCollector {
           crash_count_(GetCrashCount(id)),
           collector_(collector) {}
 
-    bool Load(std::string* contents) const;
+    bool Load(std::string& contents) const;
     bool GetType(std::string* crash_type) const;
     void Remove() const;
     // Returns efi crash id.

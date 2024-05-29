@@ -168,7 +168,7 @@ TEST_F(KernelCollectorTest, LoadEfiCrash) {
   }
   KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
   efi_crash.UpdateMaxPart(efi_crash.GetIdForPart(efi_part_count));
-  ASSERT_TRUE(efi_crash.Load(&dump));
+  ASSERT_TRUE(efi_crash.Load(dump));
 
   // Stitch parts in reverse order.
   for (int i = efi_part_count; i > 0; i--) {
