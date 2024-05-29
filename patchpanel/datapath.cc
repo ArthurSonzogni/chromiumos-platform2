@@ -1713,12 +1713,14 @@ bool Datapath::ModifyConnmarkRestore(IpFamily family,
   if (!iif.empty()) {
     args.insert(args.end(), {"-i", iif});
   }
+  std::string mark_str;
   if (skip_on_non_empty_mark) {
-    std::string mark = base::StrCat({"0x0/", mask.ToString()});
-    args.insert(args.end(), {"-m", "mark", "--mark", mark});
+    mark_str = base::StrCat({"0x0/", mask.ToString()});
+    args.insert(args.end(), {"-m", "mark", "--mark", mark_str});
   }
-  args.insert(args.end(), {"-j", "CONNMARK", "--restore-mark", "--mask",
-                           mask.ToString(), "-w"});
+  std::string mask_str = mask.ToString();
+  args.insert(args.end(),
+              {"-j", "CONNMARK", "--restore-mark", "--mask", mask_str, "-w"});
   return ModifyIptables(family, Iptables::Table::kMangle, op, chain, args);
 }
 
