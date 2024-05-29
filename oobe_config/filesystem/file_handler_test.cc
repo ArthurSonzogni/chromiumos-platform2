@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "oobe_config/filesystem/file_handler.h"
+#include "base/functional/bind.h"
 #include "oobe_config/filesystem/file_handler_for_testing.h"
 
 #include <memory>
@@ -73,8 +74,18 @@ class FileHandlerTest : public ::testing::Test {
       "enterprise-rollback-metrics-data";
   static constexpr char kTestPreserveData[] =
       "mnt/stateful_partition/unencrypted/preserve/test";
-  static constexpr char kExpectedFlexOobeConfigFilePath[] =
+  static constexpr char kExpectedUnencryptedFlexOobeConfigDirPath[] =
+      "mnt/stateful_partition/unencrypted/flex_config";
+  static constexpr char kExpectedUnencryptedFlexOobeConfigFilePath[] =
       "mnt/stateful_partition/unencrypted/flex_config/config.json";
+  static constexpr char kExpectedEncryptedFlexOobeConfigDirPath[] =
+      "var/lib/oobe_config_restore/flex_config";
+  static constexpr char kExpectedEncryptedFlexOobeConfigFilePath[] =
+      "var/lib/oobe_config_restore/flex_config/config.json";
+
+  static constexpr int kExpectedEncryptedFlexOobeConfigFilePermissions =
+      base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER |
+      base::FILE_PERMISSION_READ_BY_GROUP;
 
   void VerifyHasFunction(const std::string& path,
                          base::RepeatingCallback<bool()> has_path) {
@@ -590,22 +601,78 @@ TEST_F(FileHandlerTest, LockAndTruncateFile) {
   ASSERT_TRUE(base::DeleteFile(path));
 }
 
-TEST_F(FileHandlerTest, HasFlexOobeConfigFile) {
-  VerifyHasFunction(FileHandlerTest::kExpectedFlexOobeConfigFilePath,
-                    base::BindRepeating(&FileHandler::HasFlexOobeConfigFile,
-                                        base::Unretained(&file_handler_)));
+TEST_F(FileHandlerTest, HasUnencryptedFlexOobeConfigFile) {
+  VerifyHasFunction(
+      FileHandlerTest::kExpectedUnencryptedFlexOobeConfigFilePath,
+      base::BindRepeating(&FileHandler::HasUnencryptedFlexOobeConfigFile,
+                          base::Unretained(&file_handler_)));
 }
 
-TEST_F(FileHandlerTest, ReadFlexOobeConfig) {
-  VerifyReadFunction(FileHandlerTest::kExpectedFlexOobeConfigFilePath,
-                     base::BindRepeating(&FileHandler::ReadFlexOobeConfig,
-                                         base::Unretained(&file_handler_)));
+TEST_F(FileHandlerTest, HasEncryptedFlexOobeConfigFile) {
+  VerifyHasFunction(
+      FileHandlerTest::kExpectedEncryptedFlexOobeConfigFilePath,
+      base::BindRepeating(&FileHandler::HasEncryptedFlexOobeConfigFile,
+                          base::Unretained(&file_handler_)));
 }
 
-TEST_F(FileHandlerTest, RemoveFlexOobeConfig) {
-  VerifyRemoveFunction(FileHandlerTest::kExpectedFlexOobeConfigFilePath,
-                       base::BindRepeating(&FileHandler::RemoveFlexOobeConfig,
-                                           base::Unretained(&file_handler_)));
+TEST_F(FileHandlerTest, ReadFlexOobeConfigFromUnencryptedStateful) {
+  VerifyReadFunction(
+      FileHandlerTest::kExpectedUnencryptedFlexOobeConfigFilePath,
+      base::BindRepeating(
+          &FileHandler::ReadFlexOobeConfigFromUnencryptedStateful,
+          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, ReadFlexOobeConfigFromEncryptedStateful) {
+  VerifyReadFunction(
+      FileHandlerTest::kExpectedEncryptedFlexOobeConfigFilePath,
+      base::BindRepeating(&FileHandler::ReadFlexOobeConfigFromEncryptedStateful,
+                          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, RemoveUnencryptedFlexOobeConfig) {
+  VerifyRemoveFunction(
+      FileHandlerTest::kExpectedUnencryptedFlexOobeConfigFilePath,
+      base::BindRepeating(&FileHandler::RemoveUnencryptedFlexOobeConfig,
+                          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, RemoveEncryptedFlexOobeConfig) {
+  VerifyRemoveFunction(
+      FileHandlerTest::kExpectedEncryptedFlexOobeConfigFilePath,
+      base::BindRepeating(&FileHandler::RemoveEncryptedFlexOobeConfig,
+                          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, WriteFlexOobeConfigToEncryptedStatefulAtomically) {
+  VerifyWriteFunction(
+      kExpectedEncryptedFlexOobeConfigFilePath,
+      base::BindRepeating(
+          &FileHandler::WriteFlexOobeConfigToEncryptedStatefulAtomically,
+          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, CreateFlexOobeConfigEcnryptedStatefulDir) {
+  VerifyCreateFunction(
+      kExpectedEncryptedFlexOobeConfigDirPath,
+      base::BindRepeating(
+          &FileHandler::CreateFlexOobeConfigEncryptedStatefulDir,
+          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, ChangeEncryptedFlexOobeConfigPermissions) {
+  ASSERT_TRUE(base::CreateDirectory(
+      RootedPath(kExpectedEncryptedFlexOobeConfigDirPath)));
+  ASSERT_TRUE(base::WriteFile(
+      RootedPath(kExpectedEncryptedFlexOobeConfigFilePath), kFileData));
+
+  ASSERT_TRUE(file_handler_.ChangeEncryptedFlexOobeConfigPermissions());
+
+  int mode;
+  base::GetPosixFilePermissions(
+      RootedPath(kExpectedEncryptedFlexOobeConfigFilePath), &mode);
+  LOG(ERROR) << "FILE PERMISSIONS: " << mode;
+  EXPECT_EQ(mode, kExpectedEncryptedFlexOobeConfigFilePermissions);
 }
 
 }  // namespace oobe_config

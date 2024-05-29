@@ -10,6 +10,7 @@
 #include <brillo/syslog_logging.h>
 #include <dbus/oobe_config/dbus-constants.h>
 
+#include "oobe_config/flex_oobe_config.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/oobe_config_restore_service.h"
 
@@ -71,5 +72,11 @@ int RunDaemon() {
 
 int main(int argc, char* argv[]) {
   oobe_config::InitLog();
+  oobe_config::FlexOobeConfig flex_oobe_config;
+  if (!flex_oobe_config.MoveFlexOobeConfigToEncryptedStateful()) {
+    // TODO(b/343978266): Consider emitting a metric here for failures.
+    LOG(ERROR) << "Failed to move Flex OOBE config to the encrypted stateful "
+                  "partition";
+  }
   return oobe_config::RunDaemon();
 }

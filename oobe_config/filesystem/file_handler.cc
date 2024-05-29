@@ -250,16 +250,47 @@ void FileHandler::UnlockFile(base::File& file) const {
   return;
 }
 
-bool FileHandler::HasFlexOobeConfigFile() const {
-  return base::PathExists(GetFullPath(kFlexOobeConfigFilePath));
+bool FileHandler::HasUnencryptedFlexOobeConfigFile() const {
+  return base::PathExists(GetFullPath(kFlexOobeConfigUnencryptedFilePath));
 }
 
-bool FileHandler::ReadFlexOobeConfig(std::string* config) {
-  return base::ReadFileToString(GetFullPath(kFlexOobeConfigFilePath), config);
+bool FileHandler::HasEncryptedFlexOobeConfigFile() const {
+  return base::PathExists(GetFullPath(kFlexOobeConfigEncryptedFilePath));
 }
 
-bool FileHandler::RemoveFlexOobeConfig() {
-  return brillo::DeleteFile(GetFullPath(kFlexOobeConfigFilePath));
+bool FileHandler::ReadFlexOobeConfigFromUnencryptedStateful(
+    std::string* config) {
+  return base::ReadFileToString(GetFullPath(kFlexOobeConfigUnencryptedFilePath),
+                                config);
+}
+
+bool FileHandler::ReadFlexOobeConfigFromEncryptedStateful(std::string* config) {
+  return base::ReadFileToString(GetFullPath(kFlexOobeConfigEncryptedFilePath),
+                                config);
+}
+
+bool FileHandler::RemoveEncryptedFlexOobeConfig() {
+  return brillo::DeleteFile(GetFullPath(kFlexOobeConfigEncryptedFilePath));
+}
+
+bool FileHandler::RemoveUnencryptedFlexOobeConfig() {
+  return brillo::DeleteFile(GetFullPath(kFlexOobeConfigUnencryptedFilePath));
+}
+
+bool FileHandler::WriteFlexOobeConfigToEncryptedStatefulAtomically(
+    const std::string& config) {
+  return base::ImportantFileWriter::WriteFileAtomically(
+      GetFullPath(kFlexOobeConfigEncryptedFilePath), config);
+}
+
+bool FileHandler::CreateFlexOobeConfigEncryptedStatefulDir() {
+  return base::CreateDirectory(GetFullPath(kFlexOobeConfigEncryptedDirPath));
+}
+
+bool FileHandler::ChangeEncryptedFlexOobeConfigPermissions() {
+  return base::SetPosixFilePermissions(
+      GetFullPath(kFlexOobeConfigEncryptedFilePath),
+      kFlexOobeConfigEncryptedFilePermissions);
 }
 
 base::FilePath FileHandler::GetFullPath(

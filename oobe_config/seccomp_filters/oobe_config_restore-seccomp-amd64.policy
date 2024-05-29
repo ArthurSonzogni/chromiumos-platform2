@@ -82,3 +82,10 @@ write: 1
 # Used to delete Flex config. Only hardcoded, prespecified paths
 # are deleted.
 unlinkat: 1
+unlink: 1
+readlink: 1
+mkdir: 1
+sendfile: 1
+rename: 1
+chmod: 1
+fdatasync: 1

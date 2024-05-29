@@ -32,7 +32,7 @@ class FlexOobeConfigTest : public ::testing::Test {
 
 #if USE_REVEN_OOBE_CONFIG
 
-const char kFlexConfig[] = "{ \"flexToken\": \"test_flex_token\" }";
+const char kFlexConfig[] = "{ \"enrollmentToken\": \"test_enrollment_token\" }";
 
 TEST_F(FlexOobeConfigTest, NoFlexOobeConfig) {
   std::string config;
@@ -41,8 +41,8 @@ TEST_F(FlexOobeConfigTest, NoFlexOobeConfig) {
 }
 
 TEST_F(FlexOobeConfigTest, FlexOobeConfigPresent) {
-  file_handler_->CreateFlexConfigDirectory();
-  file_handler_->WriteFlexOobeConfigData(kFlexConfig);
+  file_handler_->CreateEncryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToEncryptedStateful(kFlexConfig);
   std::string config;
 
   ASSERT_TRUE(flex_oobe_config_->GetOobeConfigJson(&config));
@@ -57,8 +57,8 @@ TEST_F(FlexOobeConfigTest, DeleteFlexOobeConfigNotFound) {
 }
 
 TEST_F(FlexOobeConfigTest, DeleteFlexOobeConfigDeleteFailure) {
-  file_handler_->CreateFlexConfigDirectory();
-  file_handler_->WriteFlexOobeConfigData(kFlexConfig);
+  file_handler_->CreateEncryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToEncryptedStateful(kFlexConfig);
   file_handler_->SimulateRemoveFlexOobeConfigFailure();
   brillo::ErrorPtr error;
 
@@ -67,13 +67,81 @@ TEST_F(FlexOobeConfigTest, DeleteFlexOobeConfigDeleteFailure) {
 }
 
 TEST_F(FlexOobeConfigTest, DeleteFlexOobeConfigSuccess) {
-  file_handler_->CreateFlexConfigDirectory();
-  file_handler_->WriteFlexOobeConfigData(kFlexConfig);
+  file_handler_->CreateEncryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToEncryptedStateful(kFlexConfig);
   brillo::ErrorPtr error;
 
   ASSERT_TRUE(flex_oobe_config_->DeleteFlexOobeConfig(&error));
+
   ASSERT_EQ(error, nullptr);
-  ASSERT_FALSE(file_handler_->HasFlexOobeConfigFile());
+  ASSERT_FALSE(file_handler_->HasEncryptedFlexOobeConfigFile());
+}
+
+TEST_F(FlexOobeConfigTest, DeleteFlexOobeConfigAlsoDeletesUnencryptedStateful) {
+  file_handler_->CreateUnencryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToUnencryptedStateful(kFlexConfig);
+  file_handler_->CreateEncryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToEncryptedStateful(kFlexConfig);
+  brillo::ErrorPtr error;
+
+  ASSERT_TRUE(flex_oobe_config_->DeleteFlexOobeConfig(&error));
+
+  ASSERT_EQ(error, nullptr);
+  ASSERT_FALSE(file_handler_->HasUnencryptedFlexOobeConfigFile());
+  ASSERT_FALSE(file_handler_->HasEncryptedFlexOobeConfigFile());
+}
+
+TEST_F(FlexOobeConfigTest, MoveFlexOobeConfigToEncryptedStatefulSuccess) {
+  file_handler_->CreateUnencryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToUnencryptedStateful(kFlexConfig);
+  file_handler_->CreateRestorePath();
+
+  ASSERT_TRUE(flex_oobe_config_->MoveFlexOobeConfigToEncryptedStateful());
+
+  ASSERT_FALSE(file_handler_->HasUnencryptedFlexOobeConfigFile());
+  ASSERT_TRUE(file_handler_->HasEncryptedFlexOobeConfigFile());
+  std::string config;
+  ASSERT_TRUE(flex_oobe_config_->GetOobeConfigJson(&config));
+  ASSERT_EQ(config, kFlexConfig);
+  int mode;
+  ASSERT_TRUE(file_handler_->GetEncryptedFlexOobeConfigFilePermissions(&mode));
+  ASSERT_EQ(mode, 0640);
+}
+
+TEST_F(FlexOobeConfigTest,
+       MoveFlexOobeConfigToEncryptedStatefulNoUnencryptedConfigIsNoOp) {
+  file_handler_->CreateEncryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToEncryptedStateful(kFlexConfig);
+
+  ASSERT_TRUE(flex_oobe_config_->MoveFlexOobeConfigToEncryptedStateful());
+
+  ASSERT_FALSE(file_handler_->HasUnencryptedFlexOobeConfigFile());
+  ASSERT_TRUE(file_handler_->HasEncryptedFlexOobeConfigFile());
+}
+
+TEST_F(FlexOobeConfigTest,
+       MoveFlexOobeConfigToEncryptedStatefulEncryptedDirAlreadyExists) {
+  file_handler_->CreateUnencryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToUnencryptedStateful(kFlexConfig);
+  file_handler_->CreateEncryptedFlexConfigDirectory();
+
+  ASSERT_TRUE(flex_oobe_config_->MoveFlexOobeConfigToEncryptedStateful());
+
+  ASSERT_FALSE(file_handler_->HasUnencryptedFlexOobeConfigFile());
+  ASSERT_TRUE(file_handler_->HasEncryptedFlexOobeConfigFile());
+}
+
+TEST_F(FlexOobeConfigTest,
+       MoveFlexOobeConfigToEncryptedStatefulBothFilesPresent) {
+  file_handler_->CreateUnencryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToUnencryptedStateful(kFlexConfig);
+  file_handler_->CreateEncryptedFlexConfigDirectory();
+  file_handler_->WriteFlexOobeConfigDataToEncryptedStateful(kFlexConfig);
+
+  ASSERT_TRUE(flex_oobe_config_->MoveFlexOobeConfigToEncryptedStateful());
+
+  ASSERT_FALSE(file_handler_->HasUnencryptedFlexOobeConfigFile());
+  ASSERT_TRUE(file_handler_->HasEncryptedFlexOobeConfigFile());
 }
 
 #endif  // USE_REVEN_OOBE_CONFIG

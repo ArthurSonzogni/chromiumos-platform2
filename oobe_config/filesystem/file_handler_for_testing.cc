@@ -146,24 +146,40 @@ FileHandlerForTesting::StartLockMetricsFileProcess(
   return lock_process;
 }
 
-bool FileHandlerForTesting::CreateFlexConfigDirectory() const {
-  return base::CreateDirectory(GetFullPath(kFlexOobeConfigDirPath));
+bool FileHandlerForTesting::CreateUnencryptedFlexConfigDirectory() const {
+  return base::CreateDirectory(GetFullPath(kFlexOobeConfigUnencryptedDirPath));
 }
 
-bool FileHandlerForTesting::WriteFlexOobeConfigData(
+bool FileHandlerForTesting::CreateEncryptedFlexConfigDirectory() const {
+  return base::CreateDirectory(GetFullPath(kFlexOobeConfigEncryptedDirPath));
+}
+
+bool FileHandlerForTesting::WriteFlexOobeConfigDataToUnencryptedStateful(
     const std::string& config) const {
-  return base::WriteFile(GetFullPath(kFlexOobeConfigFilePath), config);
+  return base::WriteFile(GetFullPath(kFlexOobeConfigUnencryptedFilePath),
+                         config);
+}
+
+bool FileHandlerForTesting::WriteFlexOobeConfigDataToEncryptedStateful(
+    const std::string& config) const {
+  return base::WriteFile(GetFullPath(kFlexOobeConfigEncryptedFilePath), config);
 }
 
 void FileHandlerForTesting::SimulateRemoveFlexOobeConfigFailure() {
   simulate_remove_flex_oobe_config_failure_ = true;
 }
 
-bool FileHandlerForTesting::RemoveFlexOobeConfig() {
+bool FileHandlerForTesting::RemoveEncryptedFlexOobeConfig() {
   if (simulate_remove_flex_oobe_config_failure_) {
     return false;
   }
-  return FileHandler::RemoveFlexOobeConfig();
+  return FileHandler::RemoveEncryptedFlexOobeConfig();
+}
+
+bool FileHandlerForTesting::GetEncryptedFlexOobeConfigFilePermissions(
+    int* mode) {
+  return base::GetPosixFilePermissions(
+      GetFullPath(kFlexOobeConfigEncryptedFilePath), mode);
 }
 
 base::FilePath FileHandlerForTesting::GetFullPath(

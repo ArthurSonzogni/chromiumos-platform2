@@ -83,12 +83,22 @@ class FileHandlerForTesting : public FileHandler {
   std::unique_ptr<brillo::Process> StartLockMetricsFileProcess(
       const base::FilePath& build_directory) const;
 
-  // Creates the flex_config directory for testing at `kFlexConfigPath`.
-  bool CreateFlexConfigDirectory() const;
+  // Creates the flex_config directory for testing at
+  // `kFlexOobeConfigUnencryptedDirPath`.
+  bool CreateUnencryptedFlexConfigDirectory() const;
+
+  // Creates the flex_config directory for testing at
+  // `kFlexOobeConfigEncryptedDirPath`.
+  bool CreateEncryptedFlexConfigDirectory() const;
 
   // Creates config.json with contents specified by `config`, at the location
-  // specified by `kFlexConfigFilePath`.
-  bool WriteFlexOobeConfigData(const std::string& config) const;
+  // specified by `kFlexOobeConfigUnencryptedFilePath`.
+  bool WriteFlexOobeConfigDataToUnencryptedStateful(
+      const std::string& config) const;
+  // Creates config.json with contents specified by `config`, at the location
+  // specified by `kFlexOobeConfigEncryptedFilePath`.
+  bool WriteFlexOobeConfigDataToEncryptedStateful(
+      const std::string& config) const;
 
   base::FilePath GetFullPath(
       const std::string& path_without_root) const override;
@@ -99,12 +109,13 @@ class FileHandlerForTesting : public FileHandler {
 
   // Override for testing, behaves normally unless
   // `SimulateRemoveFlexOobeConfigFailure` has been called.
-  bool RemoveFlexOobeConfig() override;
+  bool RemoveEncryptedFlexOobeConfig() override;
+
+  // Retrieves file permissions for file at `kFlexOobeConfigEncryptedFilePath`.
+  bool GetEncryptedFlexOobeConfigFilePermissions(int* mode);
 
  private:
   static inline constexpr char kRamoops0FileName[] = "pmsg-ramoops-0";
-  static inline constexpr char kFlexOobeConfigDirPath[] =
-      "mnt/stateful_partition/unencrypted/flex_config";
 
   base::ScopedTempDir fake_root_dir_;
   bool simulate_remove_flex_oobe_config_failure_ = false;

@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <string>
+#include "base/files/file_util.h"
 
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
@@ -134,12 +135,32 @@ class FileHandler {
   // Unlocks the file provided.
   void UnlockFile(base::File& file) const;
 
-  // Checks if the config containing the Flex Auto-Enrollment token exists.
-  bool HasFlexOobeConfigFile() const;
-  // Reads the config.json from the directory at `kFlexOobeConfigFilePath`.
-  bool ReadFlexOobeConfig(std::string* config);
-  // Deletes the config.json file at `kFlexOobeConfigFilePath`.
-  virtual bool RemoveFlexOobeConfig();
+  // Checks if the config containing the Flex Auto-Enrollment token exists
+  // at `kFlexOobeConfigUnencryptedFilePath` (residing in the unencrypted
+  // stateful partition). The file should only be present here on first boot
+  // before it is moved to `kFlexOobeConfigEncryptedFilePath`.
+  bool HasUnencryptedFlexOobeConfigFile() const;
+  // Checks if the config.json file is present at
+  // `kFlexOobeConfigEncryptedFilePath`.
+  bool HasEncryptedFlexOobeConfigFile() const;
+  // Reads the config.json present at `kFlexOobeConfigUnencryptedFilePath`.
+  bool ReadFlexOobeConfigFromUnencryptedStateful(std::string* config);
+  // Reads the config.json present at `kFlexOobeConfigEncryptedFilePath`.
+  bool ReadFlexOobeConfigFromEncryptedStateful(std::string* config);
+  // Deletes the config.json file at `kFlexOobeConfigUnencryptedFilePath`.
+  bool RemoveUnencryptedFlexOobeConfig();
+  // Deletes the config.json file at `kFlexOobeConfigEncryptedFilePath`.
+  // Virtual to be able to override for testing.
+  virtual bool RemoveEncryptedFlexOobeConfig();
+  // Writes `config` to `kFlexOobeConfigEncryptedFilePath` atomically, to reduce
+  // the risk of crashes mid-write corrupting the file.
+  bool WriteFlexOobeConfigToEncryptedStatefulAtomically(
+      const std::string& config);
+  // Creates the `kFlexOobeConfigEncryptedDirPath` directory.
+  bool CreateFlexOobeConfigEncryptedStatefulDir();
+  // Modifies the permissions for the file at
+  // `kFlexOobeConfigEncryptedFilePath`.
+  bool ChangeEncryptedFlexOobeConfigPermissions();
 
  protected:
   static constexpr char kPreservePath[] =
@@ -169,9 +190,17 @@ class FileHandler {
   static constexpr char kRollbackMetricsDataFileName[] =
       "enterprise-rollback-metrics-data";
 
-  // TODO(b/316944501): Switch flex_config dir name to flex_oobe_config.
-  static constexpr char kFlexOobeConfigFilePath[] =
+  static constexpr char kFlexOobeConfigUnencryptedDirPath[] =
+      "mnt/stateful_partition/unencrypted/flex_config";
+  static constexpr char kFlexOobeConfigUnencryptedFilePath[] =
       "mnt/stateful_partition/unencrypted/flex_config/config.json";
+  static constexpr char kFlexOobeConfigEncryptedDirPath[] =
+      "var/lib/oobe_config_restore/flex_config";
+  static constexpr char kFlexOobeConfigEncryptedFilePath[] =
+      "var/lib/oobe_config_restore/flex_config/config.json";
+  static constexpr int kFlexOobeConfigEncryptedFilePermissions =
+      base::FILE_PERMISSION_READ_BY_USER | base::FILE_PERMISSION_WRITE_BY_USER |
+      base::FILE_PERMISSION_READ_BY_GROUP;
 
   virtual base::FilePath GetFullPath(
       const std::string& path_without_root) const;

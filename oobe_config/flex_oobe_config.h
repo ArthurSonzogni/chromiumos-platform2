@@ -35,6 +35,10 @@ class FlexOobeConfig : public LoadOobeConfigInterface {
   // false when deletion fails, saving any errors in `error`.
   bool DeleteFlexOobeConfig(brillo::ErrorPtr* error);
 
+  // Moves the flex config file from unencrypted stateful partition (where it
+  // is initially written) to encrypted stateful partition on startup.
+  bool MoveFlexOobeConfigToEncryptedStateful();
+
  private:
   std::unique_ptr<FileHandler> file_handler_;
 };
