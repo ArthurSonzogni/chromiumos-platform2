@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/wifi/wifi_phy.h"
+
 #include <algorithm>
 #include <numeric>
 #include <string_view>
@@ -13,11 +15,9 @@
 #include <chromeos/net-base/netlink_attribute.h>
 
 #include "shill/logging.h"
-
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/wifi.h"
-#include "shill/wifi/wifi_phy.h"
 
 namespace shill {
 

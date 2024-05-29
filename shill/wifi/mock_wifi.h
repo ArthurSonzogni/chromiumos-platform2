@@ -16,6 +16,7 @@
 #include "shill/store/key_value_store.h"
 #include "shill/wifi/wake_on_wifi.h"
 #include "shill/wifi/wifi.h"
+#include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_service.h"
 
 namespace shill {
@@ -74,6 +75,10 @@ class MockWiFi : public WiFi {
                Error* error),
               (override));
   MOCK_METHOD(std::string, supplicant_state, (), (const, override));
+  MOCK_METHOD(void,
+              SetEnabledChecked,
+              (bool, bool, ResultCallback),
+              (override));
 };
 
 }  // namespace shill

@@ -4,6 +4,8 @@
 
 #include "shill/wifi/wifi_provider.h"
 
+#include <linux/nl80211.h>
+
 #include <memory>
 #include <set>
 #include <string>
@@ -24,7 +26,6 @@
 #include <chromeos/net-base/netlink_packet.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <linux/nl80211.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
@@ -52,10 +53,12 @@
 
 using ::testing::_;
 using ::testing::AnyNumber;
+using ::testing::Eq;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
+using ::testing::Property;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
@@ -725,6 +728,8 @@ class WiFiProviderTest : public testing::Test {
     provider_->PushPendingDeviceRequest(type, priority,
                                         std::move(create_device_cb));
   }
+
+  void ProcessDeviceRequests() { provider_->ProcessDeviceRequests(); }
 
   void AssertRequestQueueSorted() {
     auto current_req = provider_->request_queue_.begin();
@@ -2849,6 +2854,167 @@ TEST_F(WiFiProviderTest, PendingDeviceRequestQueueSorted) {
   PushPendingDeviceRequest(NL80211_IFTYPE_STATION, WiFiPhy::Priority(2),
                            base::DoNothing());
   AssertRequestQueueSorted();
+}
+
+TEST_F(WiFiProviderTest, EnableDevices) {
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  EXPECT_CALL(manager_, device_info()).Times(1);
+  MockWiFi* wifi_device = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  ON_CALL(*wifi_device, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  phy0->AddWiFiDevice(wifi_device);
+  EXPECT_CALL(*phy0, RequestNewIface)
+      .WillRepeatedly(Return(std::multiset<nl80211_iftype>{}));
+  EXPECT_CALL(*wifi_device, SetEnabledChecked).Times(1);
+  provider_->EnableDevices({wifi_device}, true, base::DoNothing());
+}
+
+TEST_F(WiFiProviderTest, EnableDevices_BlockedByConcurrency) {
+  StrictMock<base::MockOnceCallback<void(const Error&)>> cb;
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  EXPECT_CALL(manager_, device_info()).Times(1);
+  MockWiFi* wifi_device = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  ON_CALL(*wifi_device, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  phy0->AddWiFiDevice(wifi_device);
+  EXPECT_CALL(*phy0, RequestNewIface).WillRepeatedly(Return(std::nullopt));
+  EXPECT_CALL(*wifi_device, SetEnabledChecked).Times(0);
+  EXPECT_CALL(cb, Run(Property(&Error::type, Eq(Error::kOperationFailed))));
+  provider_->EnableDevices({wifi_device}, true, cb.Get());
+}
+
+TEST_F(WiFiProviderTest, EnableDevices_MultipleDevices) {
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  EXPECT_CALL(manager_, device_info()).Times(2);
+  MockWiFi* wifi_device0 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  wifi_device0->SetPriority(WiFiPhy::Priority(5));
+  MockWiFi* wifi_device1 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan1", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  wifi_device1->SetPriority(WiFiPhy::Priority(3));
+  ON_CALL(*wifi_device0, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  ON_CALL(*wifi_device1, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  phy0->AddWiFiDevice(wifi_device0);
+  phy0->AddWiFiDevice(wifi_device1);
+
+  EXPECT_CALL(*phy0, RequestNewIface)
+      .WillRepeatedly(Return(std::multiset<nl80211_iftype>{}));
+  // Only the first device is enabled on the initial call.
+  EXPECT_CALL(*wifi_device0, SetEnabledChecked).Times(1);
+  EXPECT_CALL(*wifi_device1, SetEnabledChecked).Times(0);
+  provider_->EnableDevices({wifi_device0, wifi_device1}, true,
+                           base::DoNothing());
+  // Second device is enabled after a subsequent ProcessDeviceRequests call.
+  EXPECT_CALL(*wifi_device1, SetEnabledChecked).Times(1);
+  ProcessDeviceRequests();
+}
+
+TEST_F(WiFiProviderTest, EnableDevices_FirstDeviceFails) {
+  StrictMock<base::MockOnceCallback<void(const Error&)>> cb;
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  EXPECT_CALL(manager_, device_info()).Times(2);
+  MockWiFi* wifi_device0 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  wifi_device0->SetPriority(WiFiPhy::Priority(5));
+  MockWiFi* wifi_device1 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan1", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  wifi_device1->SetPriority(WiFiPhy::Priority(3));
+  ON_CALL(*wifi_device0, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  ON_CALL(*wifi_device1, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  phy0->AddWiFiDevice(wifi_device0);
+  phy0->AddWiFiDevice(wifi_device1);
+
+  EXPECT_CALL(*phy0, RequestNewIface)
+      .WillOnce(Return(std::nullopt))
+      .WillOnce(Return(std::multiset<nl80211_iftype>{}))
+      .WillRepeatedly(Return(std::multiset<nl80211_iftype>{}));
+  EXPECT_CALL(*wifi_device0, SetEnabledChecked).Times(0);
+  EXPECT_CALL(*wifi_device1, SetEnabledChecked);
+  EXPECT_CALL(cb, Run(Property(&Error::type, Eq(Error::kOperationFailed))));
+  provider_->EnableDevices({wifi_device0, wifi_device1}, true, cb.Get());
+}
+
+TEST_F(WiFiProviderTest, EnableDevices_SecondDeviceFails) {
+  StrictMock<base::MockOnceCallback<void(const Error&)>> cb;
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  EXPECT_CALL(manager_, device_info()).Times(2);
+  MockWiFi* wifi_device0 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  wifi_device0->SetPriority(WiFiPhy::Priority(5));
+  MockWiFi* wifi_device1 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan1", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  wifi_device1->SetPriority(WiFiPhy::Priority(3));
+
+  ON_CALL(*wifi_device0, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  ON_CALL(*wifi_device1, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  phy0->AddWiFiDevice(wifi_device0);
+  phy0->AddWiFiDevice(wifi_device1);
+
+  EXPECT_CALL(*phy0, RequestNewIface)
+      .WillOnce(Return(std::multiset<nl80211_iftype>{}))
+      .WillOnce(Return(std::nullopt))
+      .WillRepeatedly(Return(std::multiset<nl80211_iftype>{}));
+  EXPECT_CALL(*wifi_device0, SetEnabledChecked);
+  EXPECT_CALL(*wifi_device1, SetEnabledChecked).Times(0);
+  EXPECT_CALL(cb, Run(Property(&Error::type, Eq(Error::kOperationFailed))));
+  provider_->EnableDevices({wifi_device0, wifi_device1}, true, cb.Get());
+}
+
+TEST_F(WiFiProviderTest, EnableDevices_AcceptThenFail) {
+  StrictMock<base::MockOnceCallback<void(const Error&)>> cb;
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  EXPECT_CALL(manager_, device_info()).Times(1);
+  MockWiFi* wifi_device = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  wifi_device->SetPriority(WiFiPhy::Priority(5));
+  ON_CALL(*wifi_device, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  phy0->AddWiFiDevice(wifi_device);
+
+  EXPECT_CALL(*phy0, RequestNewIface)
+      .WillOnce(Return(std::multiset<nl80211_iftype>{}))
+      .WillRepeatedly(Return(std::nullopt));
+  EXPECT_CALL(*wifi_device, SetEnabledChecked).Times(0);
+  EXPECT_CALL(cb, Run).Times(0);
+  provider_->EnableDevices({wifi_device}, true, cb.Get());
+}
+
+TEST_F(WiFiProviderTest, EnableDevices_StateMisalignment) {
+  // When device's supplicant state indicates that it is enabled but Shill
+  // thinks it's disabled, it should call |SetEnabledChecked| without checking
+  // concurrency.
+  StrictMock<base::MockOnceCallback<void(const Error&)>> cb;
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  EXPECT_CALL(manager_, device_info()).Times(1);
+  MockWiFi* wifi_device = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/3, /*phy_index=*/0, new MockWakeOnWiFi());
+  wifi_device->SetPriority(WiFiPhy::Priority(5));
+  ON_CALL(*wifi_device, supplicant_state)
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInactive));
+  phy0->AddWiFiDevice(wifi_device);
+
+  EXPECT_CALL(*phy0, RequestNewIface).Times(0);
+  EXPECT_CALL(*wifi_device, SetEnabledChecked).Times(1);
+  EXPECT_CALL(cb, Run).Times(1);
+  provider_->EnableDevices({wifi_device}, true, cb.Get());
 }
 
 }  // namespace shill

@@ -36,6 +36,7 @@
 #include "shill/store/pkcs11_cert_store.h"
 #include "shill/store/pkcs11_slot_getter.h"
 #include "shill/store/store_interface.h"
+#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/technology.h"
 #include "shill/wifi/hotspot_device.h"
 #include "shill/wifi/ieee80211.h"
@@ -1179,6 +1180,9 @@ void WiFiProvider::OnNewWiphy(const Nl80211Message& nl80211_message) {
   }
   // Forward the message to the WiFiPhy object.
   wifi_phys_[phy_index]->OnNewWiphy(nl80211_message);
+  // See if we've got any pending requests that can now be satisfied based on
+  // this new phy information.
+  ProcessDeviceRequests();
 }
 
 void WiFiProvider::HandleNetlinkBroadcast(
@@ -1273,6 +1277,16 @@ void WiFiProvider::WiFiDeviceStateChanged(WiFiConstRefPtr device) {
   if (base::Contains(wifi_phys_, device->phy_index())) {
     wifi_phys_[device->phy_index()]->WiFiDeviceStateChanged(device);
   }
+  ProcessDeviceRequests();
+}
+
+void WiFiProvider::EnableDevice(WiFiRefPtr device,
+                                bool persist,
+                                ResultCallback callback) {
+  if (device == nullptr) {
+    return;
+  }
+  device->SetEnabledChecked(true, persist, std::move(callback));
 }
 
 void WiFiProvider::EnableDevices(std::vector<WiFiRefPtr> devices,
@@ -1280,12 +1294,60 @@ void WiFiProvider::EnableDevices(std::vector<WiFiRefPtr> devices,
                                  ResultCallback callback) {
   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
       std::move(callback), FROM_HERE, "Enable WiFi failed: "));
+  // Track whether we actually queued up any requests. If we didn't, we'll need
+  // to invoke the aggregator callback directly, per ResultAggregator
+  // documentation.
+  bool request_queued = false;
   for (auto& device : devices) {
     CHECK(device);
+    if (device->enabled()) {
+      // Don't bother queuing up a request for devices which are already
+      // enabled.
+      continue;
+    }
     ResultCallback aggregator_callback(
         base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
-    device->SetEnabledChecked(true, persist, std::move(aggregator_callback));
+    if (device->supplicant_state() !=
+        WPASupplicant::kInterfaceStateInterfaceDisabled) {
+      // The device is already considered "enabled" by Supplicant, but not by
+      // Shill, so directly trigger enablement in Shill to correct this
+      // misalignment. Bypass concurrency considerations since the device is
+      // already considered to own the relevant device resoureces.
+      EnableDevice(device, persist, std::move(aggregator_callback));
+      continue;
+    }
+    // If we don't have a WiFiPhy for this device yet, just send the request
+    // without considering concurrency. It'll only be processed once we actually
+    // have the WiFiPhy.
+    if (wifi_phys_.contains(device->phy_index())) {
+      WiFiPhy* phy = wifi_phys_[device->phy_index()].get();
+      // TODO(b/345553305): Consider concurrency with all requested devices
+      // together, rather than one at a time.
+      auto ifaces_to_delete =
+          phy->RequestNewIface(NL80211_IFTYPE_STATION, device->priority());
+      if (!ifaces_to_delete || ifaces_to_delete->size() > 0) {
+        LOG(INFO) << "Failed to enable device " << device->link_name()
+                  << " due to concurrency conflict";
+        std::move(aggregator_callback).Run(Error(Error::kOperationFailed));
+        continue;
+      }
+    }
+    // Create a PendingDeviceRequest for each device we want to enable.
+    base::OnceCallback<void()> cb =
+        base::BindOnce(&WiFiProvider::EnableDevice,
+                       weak_ptr_factory_while_started_.GetWeakPtr(), device,
+                       persist, std::move(aggregator_callback));
+    PushPendingDeviceRequest(NL80211_IFTYPE_STATION, device->priority(),
+                             std::move(cb));
+    request_queued = true;
   }
+  if (!request_queued) {
+    ResultCallback aggregator_callback(
+        base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
+    std::move(aggregator_callback).Run(Error(Error::kSuccess));
+    return;
+  }
+  ProcessDeviceRequests();
 }
 
 Metrics* WiFiProvider::metrics() const {
@@ -1331,6 +1393,7 @@ void WiFiProvider::RegisterLocalDevice(LocalDeviceRefPtr device) {
   wifi_phys_[phy_index]->AddWiFiLocalDevice(device);
 
   local_devices_[link_name] = device;
+  ProcessDeviceRequests();
 }
 
 void WiFiProvider::DeregisterLocalDevice(LocalDeviceConstRefPtr device) {
@@ -1346,6 +1409,7 @@ void WiFiProvider::DeregisterLocalDevice(LocalDeviceConstRefPtr device) {
     wifi_phys_[phy_index]->DeleteWiFiLocalDevice(device);
   }
   local_devices_.erase(link_name);
+  ProcessDeviceRequests();
 }
 
 bool WiFiProvider::CreateHotspotDeviceForTest(
@@ -1568,6 +1632,28 @@ void WiFiProvider::PushPendingDeviceRequest(
   request_queue_.insert(std::shared_ptr<WiFiProvider::PendingDeviceRequest>(
       new WiFiProvider::PendingDeviceRequest(type, priority,
                                              std::move(create_device_cb))));
+}
+
+void WiFiProvider::ProcessDeviceRequests() {
+  if (wifi_phys_.empty()) {
+    return;
+  }
+  // TODO(b/257340615) Select capable WiFiPhy according to band and security
+  // requirement.
+  WiFiPhy* phy = wifi_phys_.begin()->second.get();
+  auto request = request_queue_.begin();
+  while (request != request_queue_.end()) {
+    auto ifaces_to_delete =
+        phy->RequestNewIface((*request)->type, (*request)->priority);
+    if (ifaces_to_delete && ifaces_to_delete->size() == 0) {
+      if ((*request)->create_device_cb) {
+        std::move((*request)->create_device_cb).Run();
+      }
+      request_queue_.erase(request);
+      return;
+    }
+    request++;
+  }
 }
 
 }  // namespace shill

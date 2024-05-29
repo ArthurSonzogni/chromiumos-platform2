@@ -328,6 +328,7 @@ class WiFiProvider : public ProviderInterface {
   FRIEND_TEST(WiFiProviderTest, CreateHotspotDevice);
   FRIEND_TEST(WiFiProviderTest, CreateHotspotDeviceForTest);
   FRIEND_TEST(WiFiProviderTest, PendingDeviceRequestQueueSorted);
+  FRIEND_TEST(WiFiProviderTest, EnableDevices);
 
   // Deregister a WiFi local device from WiFiProvider and it's associated
   // WiFiPhy object. This function is a no-op if the WiFi device is not
@@ -444,6 +445,13 @@ class WiFiProvider : public ProviderInterface {
 
   // Sort the internal list of services.
   void SortServices();
+
+  // Check the queue of pending device requests and action a maximum of one of
+  // the requests.
+  void ProcessDeviceRequests();
+
+  // Enable a WiFi device.
+  void EnableDevice(WiFiRefPtr device, bool persist, ResultCallback callback);
 
   Manager* manager_;
   net_base::NetlinkManager* netlink_manager_;
