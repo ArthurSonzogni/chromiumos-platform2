@@ -152,6 +152,7 @@ class MockWiFiProvider : public WiFiProvider {
   MOCK_METHOD(void, ResetRegDomain, (), (override));
   MOCK_METHOD(void, RegionChanged, (const std::string&), (override));
   MOCK_METHOD(bool, has_passpoint_credentials, (), (const));
+  MOCK_METHOD(void, WiFiDeviceStateChanged, (WiFiConstRefPtr device));
 };
 
 }  // namespace shill

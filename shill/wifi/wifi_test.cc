@@ -1051,6 +1051,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->CurrentBSSChanged(new_bss);
   }
   void ReportStateChanged(const std::string& new_state) {
+    EXPECT_CALL(wifi_provider_, WiFiDeviceStateChanged).Times(1);
     wifi_->StateChanged(new_state);
   }
   void ReportDisconnectReasonChanged(int32_t reason) {

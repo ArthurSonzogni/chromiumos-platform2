@@ -2634,6 +2634,7 @@ void WiFi::StateChanged(const std::string& new_state) {
   LOG(INFO) << "WiFi " << link_name() << " " << __func__ << " " << old_state
             << " -> " << new_state;
 
+  provider_->WiFiDeviceStateChanged(this);
   if (old_state == WPASupplicant::kInterfaceStateDisconnected &&
       new_state != WPASupplicant::kInterfaceStateDisconnected) {
     // The state has been changed from disconnect to something else, clearing
