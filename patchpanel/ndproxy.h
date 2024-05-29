@@ -101,6 +101,10 @@ class NDProxy {
   // proxied ones, specified by |if_id|.
   void StartNeighborMonitor(int if_id);
   void StopNeighborMonitor(int if_id);
+  // Start and stop ARC sleep mode on |if_id|. NS and NA proxying are skipped
+  // for the interface in this mode.
+  void StartARCSleepModeFilter(int if_id);
+  void StopARCSleepModeFilter(int if_id);
 
  protected:
   // RFC 4389: Read the input ICMPv6 packet in |in_packet| and determine whether
@@ -199,6 +203,13 @@ class NDProxy {
   // events are fired. Any downlinks that are part of a forwarding group are
   // always monitored and do not need to be added to this.
   std::set<int> neighbor_monitor_links_;
+
+  // Set of links to which NS and NA forwarding are paused temporarily.
+  std::set<int> sleep_mode_filter_links_;
+
+  // The amount of packets of which forwarding are skipped. Reset when
+  // StartARCSleepModeFilter is called again. This is just for logging purposes.
+  int sleep_mode_filtered_packet_count_ = 0;
 
   // Map from downlink interface id to the link local address on it
   std::map<int, net_base::IPv6Address> downlink_link_local_;

@@ -62,6 +62,13 @@ class GuestIPv6Service {
 
   void StopUplink(const ShillClient::Device& upstream_shill_device);
 
+  // Start and stop packet filter mode for ARC interfaces which should be
+  // applied when ARC is in doze mode. When in packet filter mode, NS and NA are
+  // not forwarded to ARC interfaces, and NS responding to known ARC global
+  // addresses are offloaded to host kernel instead.
+  void StartARCPacketFilter(const std::vector<std::string_view>& arc_ifnames);
+  void StopARCPacketFilter();
+
   void OnUplinkIPv6Changed(const ShillClient::Device& upstream_shill_device);
 
   void UpdateUplinkIPv6DNS(const ShillClient::Device& upstream_shill_device);
@@ -146,6 +153,11 @@ class GuestIPv6Service {
   // The current forwarding records, keyed by the upstream interface name.
   std::map<std::string /*upstream_ifname*/, ForwardEntry> forward_record_;
   std::map<std::string, ForwardMethod> forward_method_override_;
+
+  // The ifnames for ARC-facing downlinks to which the unrelated NS and NA
+  // should be filtered to avoid waking up ARC from sleep. Empty when filter is
+  // not enabled.
+  std::set<std::string> arc_filter_ifnames_;
 
   // We cache the if_ids of netdevices when start forwarding to ensure that the
   // same ones are used when stop forwarding. Note that it is possible that the

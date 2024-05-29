@@ -292,6 +292,63 @@ TEST_F(GuestIPv6ServiceTest, AdditionalDatapathSetup) {
   target.StopUplink(up1_dev);
 }
 
+TEST_F(GuestIPv6ServiceTest, ARCSleepMode) {
+  // Preparation
+  auto up1_dev = MakeFakeShillDevice("up1", 1);
+  GuestIPv6ServiceUnderTest target(datapath_.get(), system_.get());
+  ON_CALL(*system_, IfNametoindex("up1")).WillByDefault(Return(1));
+  ON_CALL(*system_, IfNametoindex("down1")).WillByDefault(Return(101));
+  ON_CALL(*system_, IfIndextoname(101)).WillByDefault(Return("down1"));
+  EXPECT_CALL(*datapath_, MaskInterfaceFlags("up1", IFF_ALLMULTI, 0))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*datapath_, MaskInterfaceFlags("down1", IFF_ALLMULTI, 0))
+      .WillOnce(Return(true));
+
+  EXPECT_CALL(
+      target,
+      SendNDProxyControl(
+          NDProxyControlMessage::START_NS_NA_RS_RA_MODIFYING_ROUTER_ADDRESS, 1,
+          101));
+  target.StartForwarding(up1_dev, "down1");
+
+  target.FakeNDProxyNeighborDetectionSignal(
+      101, *net_base::IPv6Address::CreateFromString("2001:db8:0:200::abcd"));
+
+  // Start ARC sleep mode
+  EXPECT_CALL(target, SendNDProxyControl(
+                          NDProxyControlMessage::START_NS_NA_FILTER, 101, 0));
+  EXPECT_CALL(*datapath_, AddIPv6NeighborProxy(
+                              "up1", *net_base::IPv6Address::CreateFromString(
+                                         "2001:db8:0:200::abcd")))
+      .WillOnce(Return(true));
+  target.StartARCPacketFilter({"down1"});
+
+  // Stop ARC sleep mode
+  EXPECT_CALL(target, SendNDProxyControl(
+                          NDProxyControlMessage::STOP_NS_NA_FILTER, 101, 0));
+  EXPECT_CALL(*datapath_, RemoveIPv6NeighborProxy(
+                              "up1", *net_base::IPv6Address::CreateFromString(
+                                         "2001:db8:0:200::abcd")));
+  target.StopARCPacketFilter();
+
+  // Start ARC sleep mode again, verify that StopForwarding() should remove
+  // added neighbor proxy entries.
+  EXPECT_CALL(target, SendNDProxyControl(
+                          NDProxyControlMessage::START_NS_NA_FILTER, 101, 0));
+  EXPECT_CALL(*datapath_, AddIPv6NeighborProxy(
+                              "up1", *net_base::IPv6Address::CreateFromString(
+                                         "2001:db8:0:200::abcd")))
+      .WillOnce(Return(true));
+  target.StartARCPacketFilter({"down1"});
+
+  EXPECT_CALL(target,
+              SendNDProxyControl(NDProxyControlMessage::STOP_PROXY, 1, 101));
+  EXPECT_CALL(*datapath_, RemoveIPv6NeighborProxy(
+                              "up1", *net_base::IPv6Address::CreateFromString(
+                                         "2001:db8:0:200::abcd")));
+  target.StopForwarding(up1_dev, "down1");
+}
+
 TEST_F(GuestIPv6ServiceTest, RAServer) {
   auto up1_dev = MakeFakeShillDevice("up1", 1);
   const std::optional<int> mtu = 1450;

@@ -384,6 +384,16 @@ void NDProxy::ReadAndProcessOnePacket(int fd) {
       continue;
     }
 
+    if (sleep_mode_filter_links_.contains(target_if) &&
+        (icmp6->icmp6_type == ND_NEIGHBOR_SOLICIT ||
+         icmp6->icmp6_type == ND_NEIGHBOR_ADVERT)) {
+      if (++sleep_mode_filtered_packet_count_ % 100 == 0) {
+        LOG(INFO) << "ARC sleep mode: " << sleep_mode_filtered_packet_count_
+                  << " packets filterted in current session.";
+      }
+      continue;
+    }
+
     // b/246444885: Overwrite source IP address with host address and set
     // prefix offlink, to prevent internal traffic causing ICMP messaged being
     // sent to upstream caused by internal traffic.
@@ -756,6 +766,17 @@ void NDProxy::StopNeighborMonitor(int if_id) {
   neighbor_monitor_links_.erase(if_id);
 }
 
+void NDProxy::StartARCSleepModeFilter(int if_id) {
+  if (sleep_mode_filter_links_.empty()) {
+    sleep_mode_filtered_packet_count_ = 0;
+  }
+  sleep_mode_filter_links_.insert(if_id);
+}
+
+void NDProxy::StopARCSleepModeFilter(int if_id) {
+  sleep_mode_filter_links_.erase(if_id);
+}
+
 bool NDProxy::IsGuestInterface(int ifindex) {
   return if_map_rs_.find(ifindex) != if_map_rs_.end();
 }
@@ -864,6 +885,14 @@ void NDProxyDaemon::OnControlMessage(const SubprocessMessage& root_msg) {
     }
     case NDProxyControlMessage::STOP_NEIGHBOR_MONITOR: {
       proxy_.StopNeighborMonitor(msg.if_id_primary());
+      break;
+    }
+    case NDProxyControlMessage::START_NS_NA_FILTER: {
+      proxy_.StartARCSleepModeFilter(msg.if_id_primary());
+      break;
+    }
+    case NDProxyControlMessage::STOP_NS_NA_FILTER: {
+      proxy_.StopARCSleepModeFilter(msg.if_id_primary());
       break;
     }
     case NDProxyControlMessage::UNKNOWN:

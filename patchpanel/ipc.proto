@@ -103,7 +103,9 @@ message GuestMessage {
 // |if_id_secondary| are exchangeable and contain the ids of the forwarding
 // interface pair. For START_NEIGHBOR_MONITOR and STOP_NEIGHBOR_MONITOR,
 // |if_id_primary| contains the downstream interface that neighbor IP is
-// monitored and |if_id_secondary| is left empty.
+// monitored and |if_id_secondary| is left empty. For START_NS_NA_FILTER and
+// STOP_NS_NA_FILTER, |if_id_primary| contains the downstream interface to ARC
+// that NS and NA forwarding should be paused / resumed.
 message NDProxyControlMessage {
   enum NDProxyRequestType {
     UNKNOWN = 0;
@@ -113,6 +115,8 @@ message NDProxyControlMessage {
     STOP_PROXY = 4;
     START_NEIGHBOR_MONITOR = 5;
     STOP_NEIGHBOR_MONITOR = 6;
+    START_NS_NA_FILTER = 7;
+    STOP_NS_NA_FILTER = 8;
   }
   required NDProxyRequestType type = 1;
   required int32 if_id_primary = 2;

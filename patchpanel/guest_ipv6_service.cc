@@ -259,6 +259,10 @@ void GuestIPv6Service::StopForwarding(
   for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
     datapath_->RemoveIPv6HostRoute(
         *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip, 128));
+    // Remove offloaded downlink ip neigh proxy entry for ARC sleep mode
+    if (arc_filter_ifnames_.contains(ifname_downlink)) {
+      datapath_->RemoveIPv6NeighborProxy(ifname_uplink, neighbor_ip);
+    }
   }
   downstream_neighbors_[ifname_downlink].clear();
 
@@ -314,6 +318,10 @@ void GuestIPv6Service::StopUplink(
     for (const auto& neighbor_ip : downstream_neighbors_[ifname_downlink]) {
       datapath_->RemoveIPv6HostRoute(
           *net_base::IPv6CIDR::CreateFromAddressAndPrefix(neighbor_ip, 128));
+      // Remove offloaded downlink ip neigh proxy entry for ARC sleep mode
+      if (arc_filter_ifnames_.contains(ifname_downlink)) {
+        datapath_->RemoveIPv6NeighborProxy(ifname_uplink, neighbor_ip);
+      }
     }
     downstream_neighbors_[ifname_downlink].clear();
   }
@@ -500,6 +508,63 @@ void GuestIPv6Service::UpdateUplinkIPv6DNS(
     }
   }
   uplink_dns_[ifname] = sorted_dns;
+}
+
+void GuestIPv6Service::StartARCPacketFilter(
+    const std::vector<std::string_view>& arc_ifnames) {
+  if (!arc_filter_ifnames_.empty()) {
+    LOG(WARNING) << __func__ << ": already started.";
+    return;
+  }
+  for (auto item : arc_ifnames) {
+    std::string arc_ifname(item);
+    auto uplink_ifname = DownlinkToUplink(arc_ifname);
+    if (!uplink_ifname) {
+      LOG(WARNING) << __func__ << ": " << arc_ifname
+                   << " is not an ifname currently being forwarded, skipping.";
+      continue;
+    }
+
+    LOG(INFO) << __func__ << ": " << arc_ifname;
+    arc_filter_ifnames_.insert(arc_ifname);
+
+    // Adds a `neighbor proxy` entry to uplink for every downlink global address
+    // that we already know. These need to be removed at `StopARCPacketFilter`,
+    // `StopForwarding`, or `StopUplink`. Note that we are not handling new
+    // downlinks added at `StartForwarding` as we expect adding a new physical
+    // interface will wake up ARC. We are also not adding new proxy entries in
+    // `RegisterDownstreamNeighborIP` because we don't expect ARC to configure
+    // new address during sleep mode.
+    if (downstream_neighbors_.contains(arc_ifname)) {
+      for (const auto& downlink_ip : downstream_neighbors_.at(arc_ifname)) {
+        if (!datapath_->AddIPv6NeighborProxy(*uplink_ifname, downlink_ip)) {
+          LOG(WARNING) << __func__ << ": AddIPv6NeighborProxy on "
+                       << *uplink_ifname << " to " << downlink_ip << "failed.";
+        }
+      }
+    }
+    int32_t if_id = if_cache_.at(arc_ifname);
+    SendNDProxyControl(NDProxyControlMessage::START_NS_NA_FILTER, if_id, 0);
+  }
+}
+
+void GuestIPv6Service::StopARCPacketFilter() {
+  for (auto arc_ifname : arc_filter_ifnames_) {
+    auto uplink_ifname = DownlinkToUplink(arc_ifname);
+    if (!uplink_ifname) {
+      continue;
+    }
+
+    LOG(INFO) << __func__ << ": " << arc_ifname;
+    if (downstream_neighbors_.contains(arc_ifname)) {
+      for (const auto& downlink_ip : downstream_neighbors_.at(arc_ifname)) {
+        datapath_->RemoveIPv6NeighborProxy(*uplink_ifname, downlink_ip);
+      }
+    }
+    int32_t if_id = if_cache_.at(arc_ifname);
+    SendNDProxyControl(NDProxyControlMessage::STOP_NS_NA_FILTER, if_id, 0);
+  }
+  arc_filter_ifnames_.clear();
 }
 
 void GuestIPv6Service::StartLocalHotspot(
