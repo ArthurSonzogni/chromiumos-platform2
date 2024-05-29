@@ -625,15 +625,18 @@ if (use.test) {
 
 # Fuzzer target.
 if (use.fuzzer) {
+  pkg_config("fuzzer_config") {
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
+    ]
+  }
   executable("update_engine_delta_performer_fuzzer") {
     sources = [ "payload_consumer/delta_performer_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
+      ":fuzzer_config",
       ":target_defaults",
-    ]
-    pkg_deps = [
-      "libbrillo-test",
-      "libchrome-test",
     ]
     deps = [
       ":libupdate_engine",
@@ -644,11 +647,8 @@ if (use.fuzzer) {
     sources = [ "cros/omaha_request_action_fuzzer.cc" ]
     configs += [
       "//common-mk/common_fuzzer",
+      ":fuzzer_config",
       ":target_defaults",
-    ]
-    pkg_deps = [
-      "libbrillo-test",
-      "libchrome-test",
     ]
     deps = [
       ":libupdate_engine",
