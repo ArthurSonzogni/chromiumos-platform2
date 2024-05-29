@@ -126,6 +126,40 @@ class KernelCollectorTest : public ::testing::Test {
   base::ScopedTempDir scoped_temp_dir_;
 };
 
+TEST_F(KernelCollectorTest, StringToPstoreRecordType) {
+  EXPECT_EQ(KernelCollector::StringToPstoreRecordType("Oops"),
+            PstoreRecordType::kOops);
+  EXPECT_EQ(KernelCollector::StringToPstoreRecordType("Emergency"),
+            PstoreRecordType::kEmergency);
+  EXPECT_EQ(KernelCollector::StringToPstoreRecordType("Shutdown"),
+            PstoreRecordType::kShutdown);
+  EXPECT_EQ(KernelCollector::StringToPstoreRecordType("Unknown"),
+            PstoreRecordType::kUnknown);
+  EXPECT_EQ(KernelCollector::StringToPstoreRecordType("Bad Header"),
+            PstoreRecordType::kParseFailed);
+}
+
+TEST_F(KernelCollectorTest, PstoreRecordTypeToString) {
+  EXPECT_EQ(KernelCollector::PstoreRecordTypeToString(PstoreRecordType::kOops),
+            "Oops");
+  EXPECT_EQ(
+      KernelCollector::PstoreRecordTypeToString(PstoreRecordType::kEmergency),
+      "Emergency");
+  EXPECT_EQ(
+      KernelCollector::PstoreRecordTypeToString(PstoreRecordType::kShutdown),
+      "Shutdown");
+  EXPECT_EQ(
+      KernelCollector::PstoreRecordTypeToString(PstoreRecordType::kUnknown),
+      "Unknown");
+  EXPECT_EQ(
+      KernelCollector::PstoreRecordTypeToString(PstoreRecordType::kParseFailed),
+      "ParseFailed");
+  EXPECT_EQ(
+      KernelCollector::PstoreRecordTypeToString(static_cast<PstoreRecordType>(
+          static_cast<int>(PstoreRecordType::kParseFailed) + 1)),
+      "Unknown enum");
+}
+
 TEST_F(KernelCollectorTest, ParseEfiCrashId) {
   uint64_t test_efi_crash_id = 150989600314002;
   EXPECT_EQ(1509896003,
@@ -138,15 +172,13 @@ TEST_F(KernelCollectorTest, ParseEfiCrashId) {
 
 TEST_F(KernelCollectorTest, GetEfiCrashType) {
   ASSERT_FALSE(base::PathExists(efipstore_file(1)));
-  std::string type;
   uint64_t test_efi_crash_id;
   sscanf(efipstore_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
          &test_efi_crash_id);
   // Write header.
   ASSERT_TRUE(test_util::CreateFile(efipstore_file(1), "Panic#1 Part#20"));
   KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
-  ASSERT_TRUE(efi_crash.GetType(&type));
-  EXPECT_EQ("Panic", type);
+  EXPECT_EQ(efi_crash.GetType(), PstoreRecordType::kPanic);
 }
 
 TEST_F(KernelCollectorTest, LoadEfiCrash) {

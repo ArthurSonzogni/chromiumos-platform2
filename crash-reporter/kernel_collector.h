@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -24,6 +25,20 @@
 #include "crash-reporter/kernel_util.h"
 
 enum class CrashCollectionStatus;
+
+// These correspond to strings returned from kmsg_dump_reason_str() in the
+// kernel.
+enum class PstoreRecordType {
+  kPanic,
+  kOops,
+  kEmergency,
+  kShutdown,
+  kUnknown,
+  // Below this point are for errors while parsing the pstore record.
+  kParseFailed,
+};
+
+std::ostream& operator<<(std::ostream& out, PstoreRecordType record_type);
 
 // Kernel crash collector.
 class KernelCollector : public CrashCollector {
@@ -69,6 +84,10 @@ class KernelCollector : public CrashCollector {
   CrashCollector::ComputedCrashSeverity ComputeSeverity(
       const std::string& exec_name) override;
 
+  // Helper functions for parsing pstore record headers.
+  static PstoreRecordType StringToPstoreRecordType(std::string_view record);
+  static std::string PstoreRecordTypeToString(PstoreRecordType record_type);
+
  protected:
   // This class represents single EFI crash.
   class EfiCrash {
@@ -81,7 +100,7 @@ class KernelCollector : public CrashCollector {
           collector_(collector) {}
 
     bool Load(std::string& contents) const;
-    bool GetType(std::string* crash_type) const;
+    PstoreRecordType GetType() const;
     void Remove() const;
     // Returns efi crash id.
     uint64_t GetId() const { return id_; }

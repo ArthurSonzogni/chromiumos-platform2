@@ -85,6 +85,48 @@ static LazyRE2 kBasicCheckRe = {"\n(<\\d+>)?\\[\\s*(\\d+\\.\\d+)\\]"};
 
 }  // namespace
 
+std::string KernelCollector::PstoreRecordTypeToString(
+    PstoreRecordType record_type) {
+  switch (record_type) {
+    case PstoreRecordType::kPanic:
+      return "Panic";
+    case PstoreRecordType::kOops:
+      return "Oops";
+    case PstoreRecordType::kEmergency:
+      return "Emergency";
+    case PstoreRecordType::kShutdown:
+      return "Shutdown";
+    case PstoreRecordType::kUnknown:
+      return "Unknown";
+    case PstoreRecordType::kParseFailed:
+      return "ParseFailed";
+  }
+  LOG(ERROR) << "Unknown enum value for pstore record type: "
+             << static_cast<int>(record_type);
+  return "Unknown enum";
+}
+
+// This matches the strings returned from kmsg_dump_reason_str() in the
+// kernel.
+PstoreRecordType KernelCollector::StringToPstoreRecordType(
+    std::string_view record) {
+  if (record == "Panic")
+    return PstoreRecordType::kPanic;
+  if (record == "Oops")
+    return PstoreRecordType::kOops;
+  if (record == "Emergency")
+    return PstoreRecordType::kEmergency;
+  if (record == "Shutdown")
+    return PstoreRecordType::kShutdown;
+  if (record == "Unknown")
+    return PstoreRecordType::kUnknown;
+  return PstoreRecordType::kParseFailed;
+}
+
+std::ostream& operator<<(std::ostream& out, PstoreRecordType record_type) {
+  return out << KernelCollector::PstoreRecordTypeToString(record_type);
+}
+
 KernelCollector::KernelCollector(
     const scoped_refptr<
         base::RefCountedData<std::unique_ptr<MetricsLibraryInterface>>>&
@@ -543,16 +585,15 @@ base::FilePath KernelCollector::EfiCrash::GetFilePath(uint32_t part) const {
 // kernel warning or kernel panic. First line contains header of format:
 // <crash_type>#<crash_count> Part#<part_number>
 // <crash_type> indicates when stack trace was generated. e.g. Panic#1 Part#1.
-bool KernelCollector::EfiCrash::GetType(std::string* crash_type) const {
+PstoreRecordType KernelCollector::EfiCrash::GetType() const {
   std::string dump;
   if (base::ReadFileToString(GetFilePath(1), &dump)) {
     size_t pos = dump.find('#');
     if (pos != std::string::npos) {
-      crash_type->append(dump, 0, pos);
-      return true;
+      return KernelCollector::StringToPstoreRecordType(dump.substr(0, pos));
     }
   }
-  return false;
+  return PstoreRecordType::kParseFailed;
 }
 
 // Loads efi crash to given string.
@@ -731,9 +772,10 @@ std::vector<CrashCollectionStatus> KernelCollector::CollectEfiCrashes(
     LOG(INFO) << "Generating kernel efi crash id:" << efi_crash->GetId();
     CrashCollectionStatus single_result = CrashCollectionStatus::kUnknownStatus;
 
-    std::string crash_type, crash;
-    if (efi_crash->GetType(&crash_type)) {
-      if (crash_type == "Panic") {
+    std::string crash;
+    PstoreRecordType crash_type = efi_crash->GetType();
+    if (crash_type != PstoreRecordType::kParseFailed) {
+      if (crash_type == PstoreRecordType::kPanic) {
         LOG(INFO) << "Reporting kernel efi crash id:" << efi_crash->GetId()
                   << " type:" << crash_type;
         if (!efi_crash->Load(crash)) {
