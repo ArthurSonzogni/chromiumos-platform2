@@ -28,7 +28,9 @@
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/events/mock_event_observer.h"
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
+#include "diagnostics/cros_healthd/system/ground_truth.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
+#include "diagnostics/cros_healthd/system/usb_device_info.h"
 #include "diagnostics/cros_healthd/utils/mojo_test_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -44,6 +46,7 @@ using ::testing::_;
 using ::testing::ByMove;
 using ::testing::DoAll;
 using ::testing::Return;
+using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::WithArg;
 
@@ -71,6 +74,15 @@ constexpr uint16_t kFakeUsbPid = 0x430c;
 constexpr const char kUdevExternalDisplayAction[] = "change";
 constexpr const char kUdevExternalDisplaySubSystem[] = "drm";
 constexpr const char kUdevExternalDisplayDeviceType[] = "drm_minor";
+
+constexpr const char kUdevMmcSubSystem[] = "mmc";
+constexpr const char kUdevMmcDeviceType[] = "mmc_device";
+constexpr const char kUdevBlockSubSystem[] = "block";
+constexpr const char kUdevDiskDeviceType[] = "disk";
+constexpr const char kSdCardReaderVendorId[] = "05e3";
+constexpr const char kSdCardReaderProductId[] = "0761";
+constexpr const char kSdCardReaderId[] = "05e3:0761";
+constexpr const char kFakeSdCardPath[] = "sys/fake/dev/sd_card";
 
 class MockCrosHealthdThunderboltObserver
     : public mojom::CrosHealthdThunderboltObserver {
@@ -315,6 +327,78 @@ class ExternalDisplayEventsImplTest : public testing::Test {
     display->display_name = name;
     display->input_type = mojom::DisplayInputType::kAnalog;
     return display;
+  }
+
+  UdevEventsImpl* udev_events_impl() { return udev_events_impl_.get(); }
+
+ private:
+  base::test::TaskEnvironment task_environment_;
+  MockContext mock_context_;
+  std::unique_ptr<StrictMock<MockEventObserver>> event_observer_;
+  std::unique_ptr<UdevEventsImpl> udev_events_impl_;
+};
+
+class SdCardEventTest : public BaseFileTest {
+ public:
+  SdCardEventTest(const SdCardEventTest&) = delete;
+  SdCardEventTest& operator=(const SdCardEventTest&) = delete;
+
+ protected:
+  SdCardEventTest() = default;
+
+  void SetUp() override {
+    udev_events_impl_ = std::make_unique<UdevEventsImpl>(&mock_context_);
+    mock_context_.ground_truth()->SetUsbDeviceInfoEntryForTesting(
+        std::map<std::string, DeviceType>{{kSdCardReaderId, DeviceType::kSD}});
+  }
+
+  MockEventObserver* mock_event_observer() { return event_observer_.get(); }
+
+  void InitializeObserver() {
+    mojo::PendingRemote<mojom::EventObserver> sd_card_observer;
+    mojo::PendingReceiver<mojom::EventObserver> observer_receiver(
+        sd_card_observer.InitWithNewPipeAndPassReceiver());
+    event_observer_ = std::make_unique<StrictMock<MockEventObserver>>(
+        std::move(observer_receiver));
+    udev_events_impl_->AddSdCardObserver(std::move(sd_card_observer));
+  }
+
+  void TriggerMmcEvent(const char* action) {
+    auto monitor = mock_context_.mock_udev_monitor();
+    auto device = std::make_unique<brillo::MockUdevDevice>();
+    EXPECT_CALL(*device, GetAction()).WillOnce(Return(action));
+    EXPECT_CALL(*device, GetSubsystem()).WillOnce(Return(kUdevMmcSubSystem));
+    EXPECT_CALL(*device, GetDeviceType()).WillOnce(Return(kUdevMmcDeviceType));
+    EXPECT_CALL(*monitor, ReceiveDevice())
+        .WillOnce(Return(ByMove(std::move(device))));
+
+    udev_events_impl_->OnUdevEvent();
+  }
+
+  void TriggerBlockEvent(const char* action,
+                         const char* device_path,
+                         const char* vendor_id,
+                         const char* product_id) {
+    auto monitor = mock_context_.mock_udev_monitor();
+    auto device = std::make_unique<brillo::MockUdevDevice>();
+    EXPECT_CALL(*device, GetAction()).WillOnce(Return(action));
+    EXPECT_CALL(*device, GetSubsystem()).WillOnce(Return(kUdevBlockSubSystem));
+    EXPECT_CALL(*device, GetDeviceType()).WillOnce(Return(kUdevDiskDeviceType));
+    EXPECT_CALL(*device, GetDevicePath()).WillOnce(Return(device_path));
+    EXPECT_CALL(*device, GetPropertyValue(StrEq(kPropertyDeviceType)))
+        .WillRepeatedly(Return(kPropertyDeviceTypeUSBDevice));
+    if (vendor_id != nullptr) {
+      EXPECT_CALL(*device, GetSysAttributeValue(StrEq(kAttributeIdVendor)))
+          .WillOnce(Return(vendor_id));
+    }
+    if (product_id != nullptr) {
+      EXPECT_CALL(*device, GetSysAttributeValue(StrEq(kAttributeIdProduct)))
+          .WillOnce(Return(product_id));
+    }
+
+    EXPECT_CALL(*monitor, ReceiveDevice())
+        .WillOnce(Return(ByMove(std::move(device))));
+    udev_events_impl_->OnUdevEvent();
   }
 
   UdevEventsImpl* udev_events_impl() { return udev_events_impl_.get(); }
@@ -613,6 +697,162 @@ TEST_F(ExternalDisplayEventsImplTest, TestExternalDisplayMultipleObservers) {
               mojom::ExternalDisplayEventInfo::State::kAdd);
     EXPECT_EQ(recv_info_2->get_external_display_event_info()->display_info,
               GenerateExternalDisplayInfo("display1"));
+  }
+}
+
+// Test that an add event in the MMC subsystem will trigger SD Card event.
+TEST_F(SdCardEventTest, TestMmcAddEvent) {
+  InitializeObserver();
+  base::test::TestFuture<void> future;
+  mojom::EventInfoPtr info = mojom::EventInfo::NewSdCardEventInfo(
+      mojom::SdCardEventInfo::New(mojom::SdCardEventInfo::State::kAdd));
+
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
+      .WillOnce(DoAll(SaveMojomArg<0>(&info),
+                      base::test::RunOnceClosure(future.GetCallback())));
+
+  TriggerMmcEvent(kUdevActionAdd);
+
+  EXPECT_TRUE(future.Wait());
+  EXPECT_EQ(info->get_sd_card_event_info()->state,
+            ash::cros_healthd::mojom::SdCardEventInfo_State::kAdd);
+}
+
+// Test that a remove event in the MMC subsystem will trigger SD Card event.
+TEST_F(SdCardEventTest, TestMmcRemoveEvent) {
+  InitializeObserver();
+  base::test::TestFuture<void> future;
+  mojom::EventInfoPtr info = mojom::EventInfo::NewSdCardEventInfo(
+      mojom::SdCardEventInfo::New(mojom::SdCardEventInfo::State::kRemove));
+
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
+      .WillOnce(DoAll(SaveMojomArg<0>(&info),
+                      base::test::RunOnceClosure(future.GetCallback())));
+
+  TriggerMmcEvent(kUdevActionRemove);
+
+  EXPECT_TRUE(future.Wait());
+  EXPECT_EQ(info->get_sd_card_event_info()->state,
+            ash::cros_healthd::mojom::SdCardEventInfo_State::kRemove);
+}
+
+// Test that a add event in the block subsystem with the correct device ID will
+// trigger SD Card event.
+TEST_F(SdCardEventTest, TestBlockAddEvent) {
+  InitializeObserver();
+  base::test::TestFuture<void> future;
+  mojom::EventInfoPtr info = mojom::EventInfo::NewSdCardEventInfo(
+      mojom::SdCardEventInfo::New(mojom::SdCardEventInfo::State::kAdd));
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
+      .WillOnce(DoAll(SaveMojomArg<0>(&info),
+                      base::test::RunOnceClosure(future.GetCallback())));
+
+  TriggerBlockEvent(kUdevActionAdd, kFakeSdCardPath, kSdCardReaderVendorId,
+                    kSdCardReaderProductId);
+
+  EXPECT_TRUE(future.Wait());
+  EXPECT_EQ(info->get_sd_card_event_info()->state,
+            ash::cros_healthd::mojom::SdCardEventInfo_State::kAdd);
+}
+
+// Test that a remove event in the block subsystem with the correct device ID
+// will trigger SD Card event.
+TEST_F(SdCardEventTest, TestBlockRemoveEvent) {
+  InitializeObserver();
+  base::test::TestFuture<void> future;
+  mojom::EventInfoPtr info = mojom::EventInfo::NewSdCardEventInfo(
+      mojom::SdCardEventInfo::New(mojom::SdCardEventInfo::State::kRemove));
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
+      .WillOnce(DoAll(SaveMojomArg<0>(&info),
+                      base::test::RunOnceClosure(future.GetCallback())));
+
+  TriggerBlockEvent(kUdevActionRemove, kFakeSdCardPath, kSdCardReaderVendorId,
+                    kSdCardReaderProductId);
+
+  EXPECT_TRUE(future.Wait());
+  EXPECT_EQ(info->get_sd_card_event_info()->state,
+            ash::cros_healthd::mojom::SdCardEventInfo_State::kRemove);
+}
+
+// Test that a add event in the block subsystem with an incorrect device ID will
+// not trigger SD Card event.
+TEST_F(SdCardEventTest, TestBlockNotSdCardNoEvent) {
+  InitializeObserver();
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_)).Times(0);
+  TriggerBlockEvent(kUdevActionAdd, kFakeUsbSysPath, "0000", "1111");
+}
+
+// Test that an invalid device path will cause no event.
+TEST_F(SdCardEventTest, TestInvalidDevicePathNoEvent) {
+  InitializeObserver();
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_)).Times(0);
+  TriggerBlockEvent(kUdevActionAdd, nullptr, nullptr, nullptr);
+}
+
+// Test that the device path is cached on add, and the VID and PID of device
+// will not be queried again on subsequent remove.
+TEST_F(SdCardEventTest, TestDevicePathCached) {
+  InitializeObserver();
+  base::test::TestFuture<void> future_add;
+  mojom::EventInfoPtr info = mojom::EventInfo::NewSdCardEventInfo(
+      mojom::SdCardEventInfo::New(mojom::SdCardEventInfo::State::kAdd));
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
+      .WillOnce(DoAll(SaveMojomArg<0>(&info),
+                      base::test::RunOnceClosure(future_add.GetCallback())));
+
+  TriggerBlockEvent(kUdevActionAdd, kFakeSdCardPath, kSdCardReaderVendorId,
+                    kSdCardReaderProductId);
+
+  EXPECT_TRUE(future_add.Wait());
+  EXPECT_EQ(info->get_sd_card_event_info()->state,
+            ash::cros_healthd::mojom::SdCardEventInfo_State::kAdd);
+
+  base::test::TestFuture<void> future_remove;
+  info = mojom::EventInfo::NewSdCardEventInfo(
+      mojom::SdCardEventInfo::New(mojom::SdCardEventInfo::State::kRemove));
+  EXPECT_CALL(*mock_event_observer(), OnEvent(_))
+      .WillOnce(DoAll(SaveMojomArg<0>(&info),
+                      base::test::RunOnceClosure(future_remove.GetCallback())));
+
+  // Trigger block event without setting up VID and PID. They should not be
+  // required since the device path is cached and used to identify SD Card
+  // reader.
+  TriggerBlockEvent(kUdevActionRemove, kFakeSdCardPath, nullptr, nullptr);
+
+  EXPECT_TRUE(future_remove.Wait());
+  EXPECT_EQ(info->get_sd_card_event_info()->state,
+            ash::cros_healthd::mojom::SdCardEventInfo_State::kRemove);
+}
+
+// Test that the device path of SD Card reader is cached, while a non-SD Card
+// Reader device is not.
+TEST_F(SdCardEventTest, TestNonSdCardDevicePathNotCached) {
+  InitializeObserver();
+  // Mock a non-SD Card Reader event
+  {
+    EXPECT_CALL(*mock_event_observer(), OnEvent(_)).Times(0);
+    TriggerBlockEvent(kUdevActionAdd, kFakeUsbSysPath, "0000", "1111");
+  }
+
+  // Mock a SD Card Reader add event
+  {
+    base::test::TestFuture<void> future_add;
+    mojom::EventInfoPtr info = mojom::EventInfo::NewSdCardEventInfo(
+        mojom::SdCardEventInfo::New(mojom::SdCardEventInfo::State::kAdd));
+    EXPECT_CALL(*mock_event_observer(), OnEvent(_))
+        .WillOnce(DoAll(SaveMojomArg<0>(&info),
+                        base::test::RunOnceClosure(future_add.GetCallback())));
+
+    TriggerBlockEvent(kUdevActionAdd, kFakeSdCardPath, kSdCardReaderVendorId,
+                      kSdCardReaderProductId);
+    EXPECT_TRUE(future_add.Wait());
+    EXPECT_EQ(info->get_sd_card_event_info()->state,
+              ash::cros_healthd::mojom::SdCardEventInfo_State::kAdd);
+  }
+  // Remove the non-SD Card Reader device and expect no remove event.
+  {
+    EXPECT_CALL(*mock_event_observer(), OnEvent(_)).Times(0);
+    TriggerBlockEvent(kUdevActionRemove, kFakeUsbSysPath, "0000", "1111");
   }
 }
 

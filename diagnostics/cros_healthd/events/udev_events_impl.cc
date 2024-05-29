@@ -34,11 +34,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-constexpr char kPropertyDeviceType[] = "DEVTYPE";
-constexpr char kPropertyDeviceTypeUSBDevice[] = "usb_device";
-constexpr char kAttributeIdProduct[] = "idProduct";
-constexpr char kAttributeIdVendor[] = "idVendor";
-
 std::string GetString(const char* str) {
   if (str) {
     return std::string(str);
@@ -211,8 +206,14 @@ void UdevEventsImpl::OnUdevEvent() {
     }
   } else if (subsystem == "block" && device_type == "disk") {
     std::string vendor_id, product_id;
-    if (GetVendorAndProductId(device.get(), vendor_id, product_id) &&
-        context_->ground_truth()->IsSdCardDevice(vendor_id, product_id)) {
+    std::string device_path = GetString(device->GetDevicePath());
+    if (device_path.empty()) {
+      return;
+    }
+    if (sd_card_reader_device_path_.contains(device_path) ||
+        (GetVendorAndProductId(device.get(), vendor_id, product_id) &&
+         context_->ground_truth()->IsSdCardDevice(vendor_id, product_id))) {
+      sd_card_reader_device_path_.insert(device_path);
       if (action == "add") {
         OnSdCardAdd();
       } else if (action == "remove") {

@@ -36,6 +36,9 @@ class USBDeviceInfo {
   DeviceType GetDeviceMediaType(const std::string& vendor_id,
                                 const std::string& product_id) const;
 
+  // Sets the internal map, should only be used in testing.
+  void SetEntriesForTesting(std::map<std::string, DeviceType> entries);
+
  private:
   // Retrieves the list of USB device info from a file at |path|.
   // Returns true on success.

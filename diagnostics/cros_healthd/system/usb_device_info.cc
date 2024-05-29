@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/system/usb_device_info.h"
 
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -22,6 +23,11 @@ USBDeviceInfo::USBDeviceInfo() {
 }
 
 USBDeviceInfo::~USBDeviceInfo() = default;
+
+void USBDeviceInfo::SetEntriesForTesting(
+    std::map<std::string, DeviceType> entries) {
+  entries_ = std::move(entries);
+}
 
 DeviceType USBDeviceInfo::GetDeviceMediaType(
     const std::string& vendor_id, const std::string& product_id) const {

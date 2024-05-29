@@ -21,6 +21,11 @@
 namespace diagnostics {
 class Context;
 
+constexpr char kPropertyDeviceType[] = "DEVTYPE";
+constexpr char kPropertyDeviceTypeUSBDevice[] = "usb_device";
+constexpr char kAttributeIdProduct[] = "idProduct";
+constexpr char kAttributeIdVendor[] = "idVendor";
+
 class UdevEventsImpl final : public UdevEvents {
  public:
   explicit UdevEventsImpl(Context* context);
@@ -91,6 +96,12 @@ class UdevEventsImpl final : public UdevEvents {
   // Maps the connector_id to its display info.
   std::map<uint32_t, ash::cros_healthd::mojom::ExternalDisplayInfoPtr>
       connector_id_to_display_info_;
+  // Stores the sysfs device path for known SD Card readers. On SD Card removal,
+  // the SD Card reader device will be removed, and therefore there may be race
+  // condition where the VID and PID of the removed device is already lost.
+  // Store device paths corresponding to SD Card reader to detect SD Card
+  // removal.
+  std::set<std::string> sd_card_reader_device_path_;
   // Each observer in |thunderbolt_observers_| will be notified of any
   // thunderbolt event in the
   // ash::cros_healthd::mojom::CrosHealthdThunderboltObserver interface.

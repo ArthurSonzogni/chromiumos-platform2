@@ -23,6 +23,7 @@
 #include "diagnostics/cros_healthd/system/cros_config_constants.h"
 #include "diagnostics/cros_healthd/system/floss_controller.h"
 #include "diagnostics/cros_healthd/system/ground_truth_constants.h"
+#include "diagnostics/cros_healthd/system/usb_device_info.h"
 #include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/dbus_bindings/bluetooth_manager/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
@@ -396,6 +397,11 @@ bool GroundTruth::HasCrosEC() const {
 
 CrosConfig* GroundTruth::cros_config() const {
   return context_->cros_config();
+}
+
+void GroundTruth::SetUsbDeviceInfoEntryForTesting(
+    std::map<std::string, DeviceType> entries) {
+  usb_device_info_.SetEntriesForTesting(entries);
 }
 
 bool GroundTruth::IsSdCardDevice(const std::string& vendor_id,

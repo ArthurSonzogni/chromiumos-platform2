@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_GROUND_TRUTH_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_GROUND_TRUTH_H_
 
+#include <map>
 #include <string>
 
 #include "diagnostics/cros_healthd/system/usb_device_info.h"
@@ -86,6 +87,11 @@ class GroundTruth final {
 
   // Check if the device has CrOS EC.
   bool HasCrosEC() const;
+
+  // Sets the map within the USB Device Info object, dictating the USB device
+  // type with given {VID:PID}.
+  void SetUsbDeviceInfoEntryForTesting(
+      std::map<std::string, DeviceType> entries);
 
   // Returns whether the given USB device is a SD Card Reader device.
   bool IsSdCardDevice(const std::string& vendor_id,
