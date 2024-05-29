@@ -182,12 +182,24 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
   // TODO(b/193370101) Remove borealis specific code once crostini uses
   // permission service.
-  if (USE_BOREALIS_HOST && classification_ == apps::VmType::BOREALIS) {
+  if ((USE_BOREALIS_HOST && classification_ == apps::VmType::BOREALIS) ||
+      classification_ == apps::VmType::BRUSCHETTA) {
     // Register the VM with permission service and obtain permission
     // token.
+    vm_permission::VmType type;
+    switch (classification_) {
+      case apps::VmType::BOREALIS:
+        type = vm_permission::VmType::BOREALIS;
+        break;
+      case apps::VmType::BRUSCHETTA:
+        type = vm_permission::VmType::BRUSCHETTA;
+        break;
+      default:
+        LOG(ERROR) << "Invalid classification: " << classification_;
+        return false;
+    }
     if (!vm_permission::RegisterVm(bus_, vm_permission_service_proxy_, id_,
-                                   vm_permission::VmType::BOREALIS,
-                                   &permission_token_)) {
+                                   type, &permission_token_)) {
       LOG(ERROR) << "Failed to register with permission service";
       // TODO(lqu): Add "return false;" after chrome uprevs.
     }
@@ -297,7 +309,10 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
           "num_output_streams=10,num_input_streams=5");
     }
   } else {
-    if (features_.audio_capture) {
+    if (features_.audio_capture ||
+        (classification_ == apps::VmType::BRUSCHETTA &&
+         vm_permission::IsMicrophoneEnabled(bus_, vm_permission_service_proxy_,
+                                            permission_token_))) {
       vm_builder.AppendAudioDevice(
           "capture=true,backend=cras,socket_type=unified");
     } else {

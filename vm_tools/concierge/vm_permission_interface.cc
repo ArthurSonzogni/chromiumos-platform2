@@ -110,6 +110,8 @@ bool RegisterVm(scoped_refptr<dbus::Bus> bus,
     case VmType::BOREALIS:
       request.set_type(vm_permission_service::RegisterVmRequest::BOREALIS);
       break;
+    case VmType::BRUSCHETTA:
+      request.set_type(vm_permission_service::RegisterVmRequest::BRUSCHETTA);
   }
 
   if (!writer.AppendProtoAsArrayOfBytes(request)) {
