@@ -395,14 +395,9 @@ Rule::Result AllowConformingUsbDeviceRule::ProcessUsbDevice(
 
   constexpr bool legacy_usb_passthrough = USE_LEGACY_USB_PASSTHROUGH;
 
-  // There are more UI/UX implications that must be considered for
-  // chromeboxes, disable for now.
-  LOG_IF(INFO, running_on_chromebox_)
-      << "Running on chromebox form-factor, falling back to legacy logic";
   // If permissive USB is enabled, but we have no tag information, fall back
   // to legacy behavior.
-  if (!running_on_chromebox_ && !legacy_usb_passthrough &&
-      cros_usb_location.has_value()) {
+  if (legacy_usb_passthrough && cros_usb_location.has_value()) {
     Result result = ProcessTaggedDevice(device, cros_usb_location.value());
     // If the tagged flow was truly not able to make a decision for a device,
     // allow the legacy flow to have an opinion.
