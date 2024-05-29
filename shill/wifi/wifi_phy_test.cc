@@ -563,7 +563,7 @@ class WiFiPhyTest : public ::testing::Test {
   }
 
   void DeleteWiFiDevice(WiFiConstRefPtr device) {
-    wifi_phy_.DeleteWiFiDevice(device);
+    wifi_phy_.DeleteWiFiDevice(device->link_name());
   }
 
   bool HasWiFiDevice(WiFiConstRefPtr device) {

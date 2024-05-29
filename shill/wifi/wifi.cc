@@ -349,7 +349,7 @@ void WiFi::Stop(EnabledStateChangedCallback callback) {
   StopRequestingStationInfo();
 
   // TODO(b/248054832): Move this deregistration into WiFiProvider.
-  provider_->DeregisterDeviceFromPhy(this, phy_index_);
+  provider_->DeregisterDeviceFromPhy(link_name(), phy_index_);
 
   weak_ptr_factory_while_started_.InvalidateWeakPtrs();
 
@@ -3676,7 +3676,7 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
     // value, deregister this device from its current phy, and continue parsing
     // the message.
     // TODO(b/248292473): Check for this warning in feedback reports.
-    provider_->DeregisterDeviceFromPhy(this, phy_index_);
+    provider_->DeregisterDeviceFromPhy(link_name(), phy_index_);
     phy_index_ = phy_index;
   }
 

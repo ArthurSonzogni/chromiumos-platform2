@@ -6,6 +6,7 @@
 #define SHILL_WIFI_MOCK_WIFI_PROVIDER_H_
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <gmock/gmock.h>
@@ -106,7 +107,7 @@ class MockWiFiProvider : public WiFiProvider {
               (override));
   MOCK_METHOD(void,
               DeregisterDeviceFromPhy,
-              (WiFiConstRefPtr, uint32_t),
+              (std::string_view, uint32_t),
               (override));
   MOCK_METHOD(bool,
               RequestHotspotDeviceCreation,

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <string_view>
 #include <utility>
 
 #include <base/containers/contains.h>
@@ -32,8 +33,11 @@ void WiFiPhy::AddWiFiDevice(WiFiConstRefPtr device) {
   wifi_devices_.insert(device);
 }
 
-void WiFiPhy::DeleteWiFiDevice(WiFiConstRefPtr device) {
-  wifi_devices_.erase(device);
+void WiFiPhy::DeleteWiFiDevice(std::string_view link_name) {
+  auto link_name_matches = [link_name](auto const& device) {
+    return device->link_name() == link_name;
+  };
+  std::erase_if(wifi_devices_, link_name_matches);
 }
 
 void WiFiPhy::AddWiFiLocalDevice(LocalDeviceConstRefPtr device) {

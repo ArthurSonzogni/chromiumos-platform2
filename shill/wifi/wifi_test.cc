@@ -673,7 +673,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
       EXPECT_CALL(*supplicant_bss_proxy_, Die());
     }
     EXPECT_CALL(*wifi_provider(),
-                DeregisterDeviceFromPhy(wifi(), GetPhyIndex()));
+                DeregisterDeviceFromPhy(wifi()->link_name(), GetPhyIndex()));
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)
@@ -5384,8 +5384,9 @@ TEST_F(WiFiMainTest, OnNewWiphy_IndexChanged) {
   // should also change.
   new_wiphy_message.attributes()->SetU32AttributeValue(
       NL80211_ATTR_WIPHY, kNewWiphyNlMsg_ChangedPhyIndex);
-  EXPECT_CALL(*wifi_provider(),
-              DeregisterDeviceFromPhy(wifi(), kNewWiphyNlMsg_PhyIndex));
+  EXPECT_CALL(
+      *wifi_provider(),
+      DeregisterDeviceFromPhy(wifi()->link_name(), kNewWiphyNlMsg_PhyIndex));
   EXPECT_CALL(*wifi_provider(),
               RegisterDeviceToPhy(wifi(), kNewWiphyNlMsg_ChangedPhyIndex));
   EXPECT_CALL(*wifi_provider(), OnNewWiphy(_));

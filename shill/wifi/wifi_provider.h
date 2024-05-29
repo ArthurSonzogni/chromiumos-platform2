@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/functional/callback_forward.h>
@@ -228,7 +229,7 @@ class WiFiProvider : public ProviderInterface {
   // Deregister a WiFi device from it's associated WiFiPhy object. This function
   // is a no-op if the WiFi device is not currently registered to the WiFiPhy
   // at phy_index.
-  mockable void DeregisterDeviceFromPhy(WiFiConstRefPtr device,
+  mockable void DeregisterDeviceFromPhy(std::string_view link_name,
                                         uint32_t phy_index);
 
   // Helper that indicates to WiFiPhy at |phy_index| that PHY dump has ended.

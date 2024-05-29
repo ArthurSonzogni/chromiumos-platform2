@@ -686,7 +686,7 @@ class WiFiProviderTest : public testing::Test {
   }
 
   void DeregisterDeviceFromPhy(WiFiConstRefPtr device, uint32_t phy_index) {
-    provider_->DeregisterDeviceFromPhy(device, phy_index);
+    provider_->DeregisterDeviceFromPhy(device->link_name(), phy_index);
   }
 
   const WiFiPhy* GetPhyAtIndex(uint32_t phy_index) {

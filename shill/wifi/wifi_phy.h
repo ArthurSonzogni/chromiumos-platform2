@@ -7,6 +7,7 @@
 
 #include <map>
 #include <set>
+#include <string_view>
 #include <vector>
 
 #include "shill/mockable.h"
@@ -84,7 +85,7 @@ class WiFiPhy {
   }
 
   // Remove a WiFi device instance from wifi_devices_.
-  void DeleteWiFiDevice(WiFiConstRefPtr device);
+  void DeleteWiFiDevice(std::string_view link_name);
 
   // Add a WiFi device instance to wifi_devices_.
   void AddWiFiDevice(WiFiConstRefPtr device);

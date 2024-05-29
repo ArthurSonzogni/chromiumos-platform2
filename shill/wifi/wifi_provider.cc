@@ -8,6 +8,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -1257,13 +1258,13 @@ void WiFiProvider::RegisterDeviceToPhy(WiFiConstRefPtr device,
   wifi_phys_[phy_index]->AddWiFiDevice(device);
 }
 
-void WiFiProvider::DeregisterDeviceFromPhy(WiFiConstRefPtr device,
+void WiFiProvider::DeregisterDeviceFromPhy(std::string_view link_name,
                                            uint32_t phy_index) {
-  CHECK(device);
-  SLOG(2) << "Deregistering WiFi device " << device->link_name()
+  SLOG(2) << "Deregistering WiFi device " << link_name
           << " from phy_index: " << phy_index;
-  if (base::Contains(wifi_phys_, phy_index)) {
-    wifi_phys_[phy_index]->DeleteWiFiDevice(device);
+  if (base::Contains(wifi_phys_, phy_index) &&
+      wifi_phys_[phy_index] != nullptr) {
+    wifi_phys_[phy_index]->DeleteWiFiDevice(link_name);
   }
 }
 
