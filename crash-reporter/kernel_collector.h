@@ -92,12 +92,17 @@ class KernelCollector : public CrashCollector {
   // This class represents single EFI crash.
   class EfiCrash {
    public:
-    explicit EfiCrash(uint64_t id, const KernelCollector& collector)
+    explicit EfiCrash(uint64_t id, const KernelCollector* collector)
         : id_(id),
           timestamp_(GetTimestamp(id)),
           max_part_(GetPart(id)),
           crash_count_(GetCrashCount(id)),
           collector_(collector) {}
+
+    EfiCrash(const EfiCrash&) = default;
+    EfiCrash& operator=(const EfiCrash&) = default;
+
+    ~EfiCrash() = default;
 
     bool Load(std::string& contents) const;
     PstoreRecordType GetType() const;
@@ -158,7 +163,7 @@ class KernelCollector : public CrashCollector {
     uint64_t timestamp_;
     uint32_t max_part_;
     uint32_t crash_count_;
-    const KernelCollector& collector_;
+    const KernelCollector* collector_;
     base::FilePath GetFilePath(uint32_t part) const;
   };
 

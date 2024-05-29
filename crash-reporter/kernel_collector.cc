@@ -575,7 +575,7 @@ CrashCollector::ComputedCrashSeverity KernelCollector::ComputeSeverity(
 
 // Returns file path for corresponding efi crash part.
 base::FilePath KernelCollector::EfiCrash::GetFilePath(uint32_t part) const {
-  return collector_.dump_path_.Append(
+  return collector_->dump_path_.Append(
       StringPrintf("%s-%s-%" PRIu64, kDumpRecordDmesgName, kDumpDriverEfiName,
                    GetIdForPart(part)));
 }
@@ -665,7 +665,7 @@ std::vector<KernelCollector::EfiCrash> KernelCollector::FindEfiCrashes() const {
 
     } else {
       // New crash detected.
-      EfiCrash efi_crash(keyed_crash_id, *this);
+      EfiCrash efi_crash(keyed_crash_id, this);
       efi_crash.UpdateMaxPart(crash_id);
       efi_crashes.push_back(efi_crash);
     }

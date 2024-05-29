@@ -177,7 +177,7 @@ TEST_F(KernelCollectorTest, GetEfiCrashType) {
          &test_efi_crash_id);
   // Write header.
   ASSERT_TRUE(test_util::CreateFile(efipstore_file(1), "Panic#1 Part#20"));
-  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
+  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, &collector_);
   EXPECT_EQ(efi_crash.GetType(), PstoreRecordType::kPanic);
 }
 
@@ -198,7 +198,7 @@ TEST_F(KernelCollectorTest, LoadEfiCrash) {
     }
     ASSERT_TRUE(test_util::CreateFile(efipstore_file(i), efi_part[i].c_str()));
   }
-  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
+  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, &collector_);
   efi_crash.UpdateMaxPart(efi_crash.GetIdForPart(efi_part_count));
   ASSERT_TRUE(efi_crash.Load(dump));
 
@@ -226,7 +226,7 @@ TEST_F(KernelCollectorTest, RemoveEfiCrash) {
     }
     ASSERT_TRUE(test_util::CreateFile(efipstore_file(i), efi_part[i].c_str()));
   }
-  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, collector_);
+  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, &collector_);
   efi_crash.UpdateMaxPart(efi_crash.GetIdForPart(efi_part_count));
 
   efi_crash.Remove();
