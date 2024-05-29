@@ -1,12 +1,14 @@
 # Heartd (Health Ensure and Accident Resolve Treatment)
 
-`heartd` is a service layer watchdog. It provides interface for other apps or
-services to send heartbeat to us. When there is missing heartbeat, it takes
-corresponding actions to restore the device.
+`heartd` stands for "Health Ensure and Accident Resolve Treatment". It provides
+the following functionalities:
+- An interface for other apps or services to send heartbeat to us. When there is
+  missing heartbeat, it takes corresponding actions to restore the device.
+- Actively collect data or passively receive data from other services. We may
+  use this to analyze the device health and take necessary action if needed.
 
-We expect that clients only need to rely on `heartd`. For system-wise problem
-(e.g. kernel hang, etc), it's resolved by others. (e.g. CPU lock up detector,
-daisydog, etc)
+System-wise problem (e.g. kernel hang) is not handled by `heartd`, it's resolved
+by others like CPU lock up detector, daisydog, etc.
 
 [TOC]
 
@@ -23,7 +25,10 @@ The following is an example to show how to run it in command line.
         /org/chromium/Heartd org.chromium.Heartd
 ```
 
-## How to register the service
+If you are able to control the upstart job, you can simply run it up by `start
+heartd`.
+
+## How to register the heartbeat service
 
 Using the service is simple.
 
