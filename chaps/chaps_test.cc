@@ -2239,7 +2239,7 @@ TEST_F(TestGenKey, WrapKeyOK) {
       {CK_SP800_108_BYTE_ARRAY, label, sizeof(label)},
       {CK_SP800_108_BYTE_ARRAY, context, sizeof(context)},
   };
-  CK_SP800_108_KDF_PARAMS kdf_params = {CKK_SHA256_HMAC, std::size(data_params),
+  CK_SP800_108_KDF_PARAMS kdf_params = {CKM_SHA256_HMAC, std::size(data_params),
                                         data_params, 0, nullptr};
 
   CK_MECHANISM mechanism = {CKM_SP800_108_COUNTER_KDF, &kdf_params,

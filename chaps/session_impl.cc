@@ -140,7 +140,7 @@ CK_RV DeriveKeySP800108Software(const Object& base_key,
 
   string base_key_str = base_key.GetAttributeString(CKA_VALUE);
   switch (kdf_params.prf_type()) {
-    case CKK_SHA256_HMAC: {
+    case CKM_SHA256_HMAC: {
       LOG_CK_RV_AND_RETURN_IF(
           !DeriveKeyHmacSha256CounterMode(key_length, base_key_str, label,
                                           context, key_material),
@@ -148,7 +148,7 @@ CK_RV DeriveKeySP800108Software(const Object& base_key,
       break;
     }
     default: {
-      LOG(ERROR) << "We only support DeriveKey with CKK_SHA256_HMAC";
+      LOG(ERROR) << "We only support DeriveKey with CKM_SHA256_HMAC";
       return CKR_FUNCTION_NOT_SUPPORTED;
     }
   }

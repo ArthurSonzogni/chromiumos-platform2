@@ -1991,7 +1991,7 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108) {
       {CK_SP800_108_BYTE_ARRAY, label, sizeof(label)},
       {CK_SP800_108_BYTE_ARRAY, context, sizeof(context)},
   };
-  CK_SP800_108_KDF_PARAMS kdf_params = {CKK_SHA256_HMAC, std::size(data_params),
+  CK_SP800_108_KDF_PARAMS kdf_params = {CKM_SHA256_HMAC, std::size(data_params),
                                         data_params, 0, nullptr};
   Sp800108KdfParams kdf_params_proto = Sp800108KdfParamsToProto(&kdf_params);
   CK_OBJECT_CLASS key_class = CKO_SECRET_KEY;
@@ -2062,7 +2062,7 @@ TEST_F(TestSessionWithRealObject, DeriveKeySp800108InvalidKdfParams) {
       {CK_SP800_108_ITERATION_VARIABLE, &counter_format,
        sizeof(counter_format)},
       {CK_SP800_108_DKM_LENGTH, &dkm_format, sizeof(dkm_format)}};
-  CK_SP800_108_KDF_PARAMS kdf_params = {CKK_SHA256_HMAC, std::size(data_params),
+  CK_SP800_108_KDF_PARAMS kdf_params = {CKM_SHA256_HMAC, std::size(data_params),
                                         data_params, 0, nullptr};
   Sp800108KdfParams kdf_params_proto = Sp800108KdfParamsToProto(&kdf_params);
   EXPECT_EQ(CKR_MECHANISM_PARAM_INVALID,
