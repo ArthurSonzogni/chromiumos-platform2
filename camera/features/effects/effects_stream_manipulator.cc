@@ -21,6 +21,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/containers/flat_set.h>
 #include <base/files/file_path.h>
@@ -97,6 +98,8 @@ const base::TimeDelta kEffectsRunningMarkerLifetime = base::Seconds(10);
 // TODO(b:242631540) Find permanent location for this file
 const base::FilePath kOverrideEffectsConfigFile(
     "/run/camera/effects/effects_config_override.json");
+const base::FilePath kEnableRetouchWithRelight(
+    "/run/camera/enable_retouch_with_relight");
 
 bool GetStringFromKey(const base::Value::Dict& obj,
                       const std::string& key,
@@ -210,6 +213,9 @@ EffectsConfig ConvertMojoConfig(
   }
   if (effects_config->light_intensity) {
     config.light_intensity = *effects_config->light_intensity;
+  }
+  if (base::PathExists(kEnableRetouchWithRelight)) {
+    config.face_retouch_enabled = config.relight_enabled;
   }
   return config;
 }
