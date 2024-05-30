@@ -4,6 +4,8 @@
 
 #include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
 
+#include <unistd.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -120,7 +122,8 @@ WriteProtectDisableCompleteStateHandler::TryGetNextStateCaseAtBoot() {
 
 void WriteProtectDisableCompleteStateHandler::RequestGscReboot() {
   json_store_->SetValue(kGscRebooted, true);
-  json_store_->Sync();
+  // Sync filesystems before doing GSC reboot.
+  sync();
   gsc_utils_->Reboot();
 }
 

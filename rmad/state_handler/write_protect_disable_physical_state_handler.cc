@@ -4,6 +4,8 @@
 
 #include "rmad/state_handler/write_protect_disable_physical_state_handler.h"
 
+#include <unistd.h>
+
 #include <memory>
 #include <utility>
 
@@ -207,7 +209,8 @@ void WriteProtectDisablePhysicalStateHandler::
 
 void WriteProtectDisablePhysicalStateHandler::RebootEc() {
   DLOG(INFO) << "Rebooting EC after physically removing WP";
-  json_store_->Sync();
+  // Sync filesystems before doing EC reboot.
+  sync();
   daemon_callback_->GetExecuteRebootEcCallback().Run(
       base::BindOnce(&WriteProtectDisablePhysicalStateHandler::RebootEcCallback,
                      base::Unretained(this)));

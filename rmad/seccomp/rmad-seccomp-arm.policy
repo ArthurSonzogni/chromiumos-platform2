@@ -116,3 +116,4 @@ rt_sigreturn: 1
 gettimeofday: 1
 fsync: 1
 sendfile64: 1
+sync: 1

@@ -5,6 +5,7 @@
 #include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
 
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <cstdio>
 #include <memory>
@@ -118,9 +119,6 @@ WriteProtectDisableRsuStateHandler::GetNextStateCase(const RmadState& state) {
         RMAD_ERROR_WRITE_PROTECT_DISABLE_RSU_CODE_INVALID);
   }
 
-  // Sync state file before doing EC reboot.
-  json_store_->Sync();
-
   // Request RMA mode powerwash if it is not disabled.
   if (IsPowerwashDisabled(working_dir_path_)) {
     timer_.Start(FROM_HERE, kRebootDelay,
@@ -180,6 +178,8 @@ void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEcCallback(
 
 void WriteProtectDisableRsuStateHandler::RebootEc() {
   DLOG(INFO) << "Rebooting EC after RSU";
+  // Sync filesystems before doing EC reboot.
+  sync();
   daemon_callback_->GetExecuteRebootEcCallback().Run(
       base::BindOnce(&WriteProtectDisableRsuStateHandler::RebootEcCallback,
                      base::Unretained(this)));

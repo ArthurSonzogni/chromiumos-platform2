@@ -108,3 +108,4 @@ gettimeofday: 1
 clock_gettime: 1
 fsync: 1
 sendfile: 1
+sync: 1

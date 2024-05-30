@@ -144,11 +144,6 @@ bool JsonStore::ClearAndDeleteFile() {
   return Clear() && base::DeleteFile(file_path_);
 }
 
-bool JsonStore::Sync() const {
-  return brillo::SyncFileOrDirectory(file_path_, /*is_directory=*/false,
-                                     /*data_sync=*/false);
-}
-
 bool JsonStore::InitFromFile(bool read_only) {
   initialized_ = false;
   std::unique_ptr<JsonStore::ReadResult> read_result = ReadFromFile();

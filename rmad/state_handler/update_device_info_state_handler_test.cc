@@ -328,7 +328,6 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     input->SetValue("is_feature_enabled", is_feature_enabled);
     input->SetValue("is_feature_mutable", is_feature_mutable);
     input->SetValue("feature_level", feature_level);
-    input->Sync();
   }
 
   bool ReadFakeFeaturesOutput(bool* is_chassis_branded,

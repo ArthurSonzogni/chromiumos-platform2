@@ -87,3 +87,4 @@ gettimeofday: 1
 chown: 1
 fsync: 1
 futex: 1
+sync: 1

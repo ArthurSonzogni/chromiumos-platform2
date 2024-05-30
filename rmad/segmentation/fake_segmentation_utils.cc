@@ -58,7 +58,7 @@ bool FakeSegmentationUtils::SetFeatureFlags(bool is_chassis_branded,
   output_dict->Clear();
   output_dict->SetValue(kIsChassisBrandedKey, is_chassis_branded);
   output_dict->SetValue(kHwComplianceVersionKey, hw_compliance_version);
-  return output_dict->Sync();
+  return true;
 }
 
 }  // namespace rmad
