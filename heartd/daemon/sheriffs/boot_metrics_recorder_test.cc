@@ -146,6 +146,14 @@ TEST_F(BootMetricsRecorderTest, WrongBootIDTokenLength) {
   EXPECT_EQ(boot_records[0].id, kFakeShutdownDirName);
 }
 
+TEST_F(BootMetricsRecorderTest, NoShiftWork) {
+  Init();
+  boot_metrics_recorder_->GetToWork();
+
+  EXPECT_FALSE(boot_metrics_recorder_->HasShiftWork());
+  EXPECT_FALSE(boot_metrics_recorder_->IsWorking());
+}
+
 }  // namespace
 
 }  // namespace heartd

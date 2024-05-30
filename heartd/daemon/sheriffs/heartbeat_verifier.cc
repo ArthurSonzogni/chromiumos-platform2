@@ -27,6 +27,4 @@ void HeartbeatVerifier::ShiftWork() {
   }
 }
 
-void HeartbeatVerifier::CleanUp() {}
-
 }  // namespace heartd

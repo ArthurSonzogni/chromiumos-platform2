@@ -43,13 +43,13 @@ class Sheriff {
   virtual bool IsWorking() { return timer_.IsRunning(); }
 
   // This is called by Sheriff::GetToWork to adjust the schedule.
-  virtual void AdjustSchedule() = 0;
+  virtual void AdjustSchedule() {}
 
   // Sheriff's shift work.
-  virtual void ShiftWork() = 0;
+  virtual void ShiftWork() {}
 
   // This is called by TopSheriff to clean up.
-  virtual void CleanUp() = 0;
+  virtual void CleanUp() {}
 
  protected:
   // The timer to run the ShiftWork().

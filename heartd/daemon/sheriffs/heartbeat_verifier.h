@@ -21,7 +21,6 @@ class HeartbeatVerifier final : public Sheriff {
   bool HasShiftWork() override;
   void AdjustSchedule() override;
   void ShiftWork() override;
-  void CleanUp() override;
 
  private:
   // Unowned pointer. Should outlive this instance.

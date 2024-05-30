@@ -26,8 +26,6 @@ class BootMetricsRecorder final : public Sheriff {
   // heartd::Sheriff override:
   void OneShotWork() override;
   bool HasShiftWork() override;
-  void AdjustSchedule() override;
-  void ShiftWork() override;
   void CleanUp() override;
 
  private:
