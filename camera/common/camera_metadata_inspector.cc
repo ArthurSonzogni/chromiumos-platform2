@@ -266,7 +266,10 @@ bool CameraMetadataInspector::ShouldIgnoreKey(const std::string& key) {
 
 CameraMetadataInspector::DataMap CameraMetadataInspector::MapFromMetadata(
     const camera_metadata_t* metadata) {
-  CameraMetadataInspector::DataMap map;
+  if (metadata == nullptr) {
+    return DataMap{};
+  }
+  DataMap map;
   size_t n = get_camera_metadata_entry_count(metadata);
   for (size_t i = 0; i < n; i++) {
     camera_metadata_ro_entry_t entry;
