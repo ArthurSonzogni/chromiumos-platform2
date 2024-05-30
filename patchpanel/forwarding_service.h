@@ -22,34 +22,34 @@ class ForwardingService {
   // the downstream interface or guest |ifname_virtual|.
   virtual void StartIPv6NDPForwarding(
       const ShillClient::Device& shill_device,
-      const std::string& ifname_virtual,
+      std::string_view ifname_virtual,
       std::optional<int> mtu = std::nullopt,
       std::optional<int> hop_limit = std::nullopt) = 0;
 
   // Stops IPv6 ND proxy forwarding between the upstream |shill_device| and
   // the downstream interface or guest |ifname_virtual|.
   virtual void StopIPv6NDPForwarding(const ShillClient::Device& shill_device,
-                                     const std::string& ifname_virtual) = 0;
+                                     std::string_view ifname_virtual) = 0;
 
   // Starts broadcast forwarding between the upstream |shill_device| and
   // the downstream interface or guest |ifname_virtual|.
   virtual void StartBroadcastForwarding(const ShillClient::Device& shill_device,
-                                        const std::string& ifname_virtual) = 0;
+                                        std::string_view ifname_virtual) = 0;
 
   // Stops broadcast forwarding between the upstream |shill_device| and
   // the downstream interface or guest |ifname_virtual|.
   virtual void StopBroadcastForwarding(const ShillClient::Device& shill_device,
-                                       const std::string& ifname_virtual) = 0;
+                                       std::string_view ifname_virtual) = 0;
 
   // Starts multicast forwarding between the upstream |shill_device| and
   // the downstream interface or guest |ifname_virtual|.
   virtual void StartMulticastForwarding(const ShillClient::Device& shill_device,
-                                        const std::string& ifname_virtual) = 0;
+                                        std::string_view ifname_virtual) = 0;
 
   // Stops multicast forwarding between the upstream |shill_device| and
   // the downstream interface or guest |ifname_virtual|.
   virtual void StopMulticastForwarding(const ShillClient::Device& shill_device,
-                                       const std::string& ifname_virtual) = 0;
+                                       std::string_view ifname_virtual) = 0;
 };
 
 }  // namespace patchpanel

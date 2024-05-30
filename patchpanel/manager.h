@@ -161,24 +161,24 @@ class Manager : public ForwardingService {
 
   void StartIPv6NDPForwarding(
       const ShillClient::Device& shill_device,
-      const std::string& ifname_virtual,
+      std::string_view ifname_virtual,
       std::optional<int> mtu = std::nullopt,
       std::optional<int> hop_limit = std::nullopt) override;
 
   void StopIPv6NDPForwarding(const ShillClient::Device& shill_device,
-                             const std::string& ifname_virtual) override;
+                             std::string_view ifname_virtual) override;
 
   void StartBroadcastForwarding(const ShillClient::Device& shill_device,
-                                const std::string& ifname_virtual) override;
+                                std::string_view ifname_virtual) override;
 
   void StopBroadcastForwarding(const ShillClient::Device& shill_device,
-                               const std::string& ifname_virtual) override;
+                               std::string_view ifname_virtual) override;
 
   void StartMulticastForwarding(const ShillClient::Device& shill_device,
-                                const std::string& ifname_virtual) override;
+                                std::string_view ifname_virtual) override;
 
   void StopMulticastForwarding(const ShillClient::Device& shill_device,
-                               const std::string& ifname_virtual) override;
+                               std::string_view ifname_virtual) override;
 
   DownstreamNetworkService* downstream_network_service() {
     return downstream_network_svc_.get();
@@ -223,10 +223,10 @@ class Manager : public ForwardingService {
   void StopCrosVm(uint64_t vm_id, CrostiniService::VMType vm_type);
 
   std::vector<DownstreamClientInfo> GetDownstreamClientInfo(
-      const std::string& downstream_ifname) const;
+      std::string_view downstream_ifname) const;
 
   // Disable and re-enable IPv6 inside a namespace.
-  void RestartIPv6(const std::string& netns_name);
+  void RestartIPv6(std::string_view netns_name);
 
   // Dispatch |msg| to child processes.
   void SendGuestMessage(const GuestMessage& msg);

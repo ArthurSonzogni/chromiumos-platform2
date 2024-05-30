@@ -25,34 +25,34 @@ class MockForwardingService : public ForwardingService {
   MOCK_METHOD(void,
               StartIPv6NDPForwarding,
               (const ShillClient::Device& shill_device,
-               const std::string& ifname_virtual,
+               std::string_view ifname_virtual,
                std::optional<int> mtu,
                std::optional<int> hop_limit),
               (override));
   MOCK_METHOD(void,
               StartBroadcastForwarding,
               (const ShillClient::Device& shill_device,
-               const std::string& ifname_virtual),
+               std::string_view ifname_virtual),
               (override));
   MOCK_METHOD(void,
               StartMulticastForwarding,
               (const ShillClient::Device& shill_device,
-               const std::string& ifname_virtual),
+               std::string_view ifname_virtual),
               (override));
   MOCK_METHOD(void,
               StopIPv6NDPForwarding,
               (const ShillClient::Device& shill_device,
-               const std::string& ifname_virtual),
+               std::string_view ifname_virtual),
               (override));
   MOCK_METHOD(void,
               StopBroadcastForwarding,
               (const ShillClient::Device& shill_device,
-               const std::string& ifname_virtual),
+               std::string_view ifname_virtual),
               (override));
   MOCK_METHOD(void,
               StopMulticastForwarding,
               (const ShillClient::Device& shill_device,
-               const std::string& ifname_virtual),
+               std::string_view ifname_virtual),
               (override));
 };
 

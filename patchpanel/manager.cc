@@ -329,7 +329,7 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
   }
 }
 
-void Manager::RestartIPv6(const std::string& netns_name) {
+void Manager::RestartIPv6(std::string_view netns_name) {
   auto ns = ScopedNS::EnterNetworkNS(netns_name);
   if (!ns) {
     LOG(ERROR) << "Invalid namespace name " << netns_name;
@@ -990,18 +990,21 @@ void Manager::SendGuestMessage(const GuestMessage& msg) {
 }
 
 void Manager::StartIPv6NDPForwarding(const ShillClient::Device& shill_device,
-                                     const std::string& ifname_virtual,
+                                     std::string_view ifname_virtual,
                                      std::optional<int> mtu,
                                      std::optional<int> hop_limit) {
   if (shill_device.ifname.empty() || ifname_virtual.empty()) {
     return;
   }
 
-  ipv6_svc_->StartForwarding(shill_device, ifname_virtual, mtu, hop_limit);
+  // TODO(b/325359902): Change GuestIPv6Service interface to take
+  // std::string_view and delete conversion here.
+  ipv6_svc_->StartForwarding(shill_device, std::string(ifname_virtual), mtu,
+                             hop_limit);
 }
 
 void Manager::StopIPv6NDPForwarding(const ShillClient::Device& shill_device,
-                                    const std::string& ifname_virtual) {
+                                    std::string_view ifname_virtual) {
   if (shill_device.ifname.empty()) {
     return;
   }
@@ -1009,12 +1012,14 @@ void Manager::StopIPv6NDPForwarding(const ShillClient::Device& shill_device,
   if (ifname_virtual.empty()) {
     ipv6_svc_->StopUplink(shill_device);
   } else {
-    ipv6_svc_->StopForwarding(shill_device, ifname_virtual);
+    // TODO(b/325359902): Change GuestIPv6Service interface to take
+    // std::string_view and delete conversion here.
+    ipv6_svc_->StopForwarding(shill_device, std::string(ifname_virtual));
   }
 }
 
 void Manager::StartBroadcastForwarding(const ShillClient::Device& shill_device,
-                                       const std::string& ifname_virtual) {
+                                       std::string_view ifname_virtual) {
   if (shill_device.ifname.empty() || ifname_virtual.empty()) {
     return;
   }
@@ -1030,7 +1035,7 @@ void Manager::StartBroadcastForwarding(const ShillClient::Device& shill_device,
 }
 
 void Manager::StopBroadcastForwarding(const ShillClient::Device& shill_device,
-                                      const std::string& ifname_virtual) {
+                                      std::string_view ifname_virtual) {
   if (shill_device.ifname.empty()) {
     return;
   }
@@ -1054,7 +1059,7 @@ void Manager::StopBroadcastForwarding(const ShillClient::Device& shill_device,
 }
 
 void Manager::StartMulticastForwarding(const ShillClient::Device& shill_device,
-                                       const std::string& ifname_virtual) {
+                                       std::string_view ifname_virtual) {
   if (shill_device.ifname.empty() || ifname_virtual.empty()) {
     return;
   }
@@ -1074,7 +1079,7 @@ void Manager::StartMulticastForwarding(const ShillClient::Device& shill_device,
 }
 
 void Manager::StopMulticastForwarding(const ShillClient::Device& shill_device,
-                                      const std::string& ifname_virtual) {
+                                      std::string_view ifname_virtual) {
   if (shill_device.ifname.empty())
     return;
 
