@@ -103,9 +103,10 @@ TEST_F(MemoryPressureTrainingConditionTest, InitializedTrue) {
 // Tests that memory pressure level signals are properly handled.
 TEST_F(MemoryPressureTrainingConditionTest, MemoryPressureSignals) {
   // Chrome memory level doesn't meet to start.
-  CreateSignalAndInvoke(2, kMemoryPressureChrome);
+  CreateSignalAndInvoke(1, kMemoryPressureChrome);
   EXPECT_FALSE(memory_pressure_training_condition()
                    ->IsTrainingConditionSatisfiedToStart());
+  // Chrome memory level does meet to continue.
   EXPECT_TRUE(memory_pressure_training_condition()
                   ->IsTrainingConditionSatisfiedToContinue());
 }
@@ -116,8 +117,8 @@ TEST_F(MemoryPressureTrainingConditionTest, ChromeLevelNoneReset) {
   CreateSignalAndInvoke(2, kMemoryPressureChrome);
   EXPECT_FALSE(memory_pressure_training_condition()
                    ->IsTrainingConditionSatisfiedToStart());
-  EXPECT_TRUE(memory_pressure_training_condition()
-                  ->IsTrainingConditionSatisfiedToContinue());
+  EXPECT_FALSE(memory_pressure_training_condition()
+                   ->IsTrainingConditionSatisfiedToContinue());
 
   CreateSignalAndInvoke(0, kMemoryPressureChrome);
   EXPECT_TRUE(memory_pressure_training_condition()

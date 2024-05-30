@@ -24,8 +24,10 @@ namespace {
 // 2=Critical.
 // See system_api/dbus/resource_manager/dbus-constants.h.
 
-// Allow to start new jobs when Chrome memory pressure level is None.
+// Allow to start new jobs when Chrome memory pressure level <= None.
 const uint32_t kMaxAcceptableChromeLevelToStart = 0;
+// Allow jobs to continue when Chrome memory pressure level <= Moderate.
+const uint32_t kMaxAcceptableChromeLevelToContinue = 1;
 // This default value is greater than any possible levels.
 const uint32_t kDefaultUnsatisfiedLevel = 100;
 
@@ -123,6 +125,9 @@ void MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived(
         memory_levels_.find(resource_manager::kMemoryPressureChrome);
     satisfactory_to_start_ = iter == memory_levels_.end() ||
                              iter->second <= kMaxAcceptableChromeLevelToStart;
+    satisfactory_to_continue_ =
+        iter == memory_levels_.end() ||
+        iter->second <= kMaxAcceptableChromeLevelToContinue;
   }
 }
 
