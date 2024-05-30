@@ -37,7 +37,7 @@ class PrefsTest : public testing::Test {
   base::ScopedTempDir temp_dir_;
 };
 
-TEST_F(PrefsTest, SetAndGetkey) {
+TEST_F(PrefsTest, SetAndGetKey) {
   EXPECT_TRUE(prefs_->SetKey(key1, value1));
   EXPECT_TRUE(prefs_->Exists(key1));
   EXPECT_TRUE(prefs_->KeyValueMatches(key1, value1));
@@ -70,7 +70,7 @@ TEST_F(PrefsTest, RepeatedSet) {
   EXPECT_TRUE(base::PathExists(temp_dir_.GetPath().Append(key1)));
 }
 
-TEST_F(PrefsTest, Createkey) {
+TEST_F(PrefsTest, CreateKey) {
   EXPECT_TRUE(prefs_->Create(key1));
   EXPECT_TRUE(prefs_->Exists(key1));
   string actual_value;
@@ -86,7 +86,7 @@ TEST_F(PrefsTest, CreateSubPrefs) {
             prefs_->GetPrefRootPath().Append(sub_prefs_name));
 }
 
-TEST_F(PrefsTest, SubPrefsSetGetCreateExistkey) {
+TEST_F(PrefsTest, SubPrefsSetGetCreateExistKey) {
   const auto sub_prefs_path = temp_dir_.GetPath().Append(sub_prefs_name);
   auto sub_prefs = Prefs::CreatePrefs(*prefs_, sub_prefs_name);
 
