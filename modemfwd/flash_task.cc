@@ -79,8 +79,11 @@ FlashTask::FlashTask(Delegate* delegate,
       metrics_(metrics),
       modem_flasher_(modem_flasher) {}
 
-bool FlashTask::Start(Modem* modem, brillo::ErrorPtr* err) {
-  if (!modem_flasher_->ShouldFlash(modem, err)) {
+bool FlashTask::Start(Modem* modem,
+                      const FlashTask::Options& options,
+                      brillo::ErrorPtr* err) {
+  if (!options.should_always_flash &&
+      !modem_flasher_->ShouldFlash(modem, err)) {
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
     return false;
   }

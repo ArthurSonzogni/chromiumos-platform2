@@ -433,7 +433,8 @@ void Daemon::DoFlash(const std::string& device_id,
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
-  if (!flash_task->Start(modems_[device_id].get(), &err)) {
+  if (!flash_task->Start(modems_[device_id].get(), FlashTask::Options{},
+                         &err)) {
     LOG(ERROR) << "Flashing errored out: "
                << (err ? err->GetMessage() : "unknown");
     return;
@@ -462,7 +463,9 @@ bool Daemon::ForceFlash(const std::string& device_id) {
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
-  if (!flash_task->Start(stub_modem.get(), &err)) {
+  if (!flash_task->Start(stub_modem.get(),
+                         FlashTask::Options{.should_always_flash = true},
+                         &err)) {
     LOG(ERROR) << "Force-flashing errored out: "
                << (err ? err->GetMessage() : "unknown");
     return false;
@@ -503,7 +506,9 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
-  if (!flash_task->Start(stub_modem.get(), &err)) {
+  if (!flash_task->Start(stub_modem.get(),
+                         FlashTask::Options{.should_always_flash = true},
+                         &err)) {
     LOG(ERROR) << "Force-flashing errored out: "
                << (err ? err->GetMessage() : "unknown");
     return false;
