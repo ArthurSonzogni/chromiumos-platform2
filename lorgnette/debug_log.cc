@@ -58,6 +58,8 @@ bool DebugLogManager::SetupDebugging() {
   setenv("SANE_DEBUG_FUJITSU", "20", 1);
   setenv("SANE_DEBUG_PIXMA", "4", 1);
   setenv("SANE_DEBUG_DLL", "4", 1);
+  setenv("SANE_DEBUG_SANEI_USB", "16", 1);
+  setenv("SANE_DEBUG_SANEI_TCP", "16", 1);
 
   return true;
 }
