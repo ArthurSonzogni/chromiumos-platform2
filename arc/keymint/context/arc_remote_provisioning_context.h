@@ -60,7 +60,13 @@ class ArcRemoteProvisioningContext
   ArcRemoteProvisioningContext& operator=(const ArcRemoteProvisioningContext&) =
       delete;
 
-  std::optional<cppbor::Array> GenerateBcc(bool test_mode) const;
+  // On failure, returns std::nullopt.
+  // On success, returns a pair {private_key, CBOR Array}.
+  // |private_key| has a value only in test mode. In production mode,
+  // it is an empty vector.
+  // CBOR Array carries the Cose Key, and a signed payload.
+  std::optional<std::pair<std::vector<uint8_t>, cppbor::Array>> GenerateBcc(
+      bool test_mode) const;
 };
 }  // namespace arc::keymint::context
 

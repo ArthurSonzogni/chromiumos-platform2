@@ -148,7 +148,7 @@ TEST_F(ArcRemoteProvisioningContextTest,
   EXPECT_EQ(signature.moveValue().size(), kP256SignatureLength);
 }
 
-TEST_F(ArcRemoteProvisioningContextTest, GenerateBcc) {
+TEST_F(ArcRemoteProvisioningContextTest, GenerateBccProductionMode) {
   // Prepare.
   SetupManagerForTesting();
   ExpectProvisionSuccess();
@@ -157,12 +157,29 @@ TEST_F(ArcRemoteProvisioningContextTest, GenerateBcc) {
   ExpectSignSuccess(byte_signature);
 
   // Execute.
-  auto bcc = remote_provisioning_context_->GenerateBcc(false);
+  auto result = remote_provisioning_context_->GenerateBcc(false);
+  ASSERT_TRUE(result.has_value());
+  auto bcc = std::move(result->second);
 
   // Test.
-  ASSERT_TRUE(bcc);
-  auto coseKey = std::move(bcc->get(0));
-  auto coseSign1 = std::move(bcc->get(1));
+  ASSERT_TRUE(bcc.isCompound());
+  auto coseKey = std::move(bcc.get(0));
+  auto coseSign1 = std::move(bcc.get(1));
+  const cppbor::Array* cose_sign = coseSign1->asArray();
+  std::vector<uint8_t> additional_authenticated_data;
+  ASSERT_TRUE(cppcose::verifyAndParseCoseSign1(cose_sign, coseKey->encode(),
+                                               additional_authenticated_data));
+}
+
+TEST_F(ArcRemoteProvisioningContextTest, GenerateBccTestMode) {
+  // Execute.
+  auto result = remote_provisioning_context_->GenerateBcc(true);
+  ASSERT_TRUE(result.has_value());
+  auto bcc = std::move(result->second);
+  // Test.
+  ASSERT_TRUE(bcc.isCompound());
+  auto coseKey = std::move(bcc.get(0));
+  auto coseSign1 = std::move(bcc.get(1));
   const cppbor::Array* cose_sign = coseSign1->asArray();
   std::vector<uint8_t> additional_authenticated_data;
   ASSERT_TRUE(cppcose::verifyAndParseCoseSign1(cose_sign, coseKey->encode(),

@@ -22,6 +22,7 @@ namespace arc::keymint::context {
 
 constexpr uint32_t kP256AffinePointSize = 32;
 constexpr uint32_t kP256SignatureLength = 64;
+constexpr uint32_t kP256EcdsaPrivateKeyLength = 32;
 const std::vector<uint8_t> kBccPayloadKeyUsage{0x20};
 
 /*
@@ -97,16 +98,19 @@ cppcose::ErrMsgOr<cppbor::Array> constructCoseSign1FromDK(
       .add(signature.moveValue());
 }
 
-namespace {}  // namespace
+namespace {
 
-ArcRemoteProvisioningContext::ArcRemoteProvisioningContext(
-    keymaster_security_level_t security_level)
-    : PureSoftRemoteProvisioningContext(security_level) {}
+std::vector<uint8_t> GetRandomVector() {
+  std::vector<uint8_t> seed_vector(32, 0);
+  // This is used in code paths that cannot fail, so CHECK. If it turns
+  // out that we can actually run out of entropy during these code paths,
+  // we'll need to refactor the interfaces to allow errors to propagate.
+  CHECK_EQ(RAND_bytes(seed_vector.data(), seed_vector.size()), 1)
+      << "Unable to get random bytes";
+  return seed_vector;
+}
 
-ArcRemoteProvisioningContext::~ArcRemoteProvisioningContext() = default;
-
-std::optional<cppbor::Array> ArcRemoteProvisioningContext::GenerateBcc(
-    bool test_mode) const {
+std::optional<std::vector<uint8_t>> provisionAndFetchDkCert() {
   // Provision certificate.
   arc_attestation::AndroidStatus provision_status =
       arc_attestation::ProvisionDkCert(true /*blocking*/);
@@ -128,17 +132,37 @@ std::optional<cppbor::Array> ArcRemoteProvisioningContext::GenerateBcc(
     LOG(ERROR) << "DK Cert Chain from libarc-attestation is empty";
     return std::nullopt;
   }
-  std::vector<uint8_t> uds_pub = cert_chain.front();
+  // First element of cert chain carries UDS Pub.
+  return cert_chain.front();
+}
 
-  // Extract Affine coordinates from libarc-attestation certificate.
+// Generates Boot Certificate Chain for Test mode.
+// |private_key_vector| is passed as a parameter, which is filled with the
+// actual private key from this function.
+cppcose::ErrMsgOr<cppbor::Array> GenerateBccForTestMode(
+    bool test_mode, std::vector<uint8_t>& private_key_vector) {
+  if (!test_mode) {
+    auto error_message = "Not Allowed to generate Test BCC in Production Mode";
+    LOG(ERROR) << error_message;
+    return error_message;
+  }
+
   std::vector<uint8_t> x_vect(kP256AffinePointSize);
   std::vector<uint8_t> y_vect(kP256AffinePointSize);
   absl::Span<uint8_t> x_coord(x_vect);
   absl::Span<uint8_t> y_coord(y_vect);
-  auto error = GetEcdsa256KeyFromCertBlob(uds_pub, x_coord, y_coord);
+  absl::Span<uint8_t> private_key(private_key_vector);
+
+  // Get ECDSA key from Seed in Test Mode.
+  std::vector<uint8_t> seed_vector = GetRandomVector();
+  absl::Span<uint8_t> seed(seed_vector);
+  std::string private_key_pem;
+  auto error = GenerateEcdsa256KeyFromSeed(test_mode, seed, private_key,
+                                           private_key_pem, x_coord, y_coord);
   if (error != KM_ERROR_OK) {
-    LOG(ERROR) << "Failed to extract Affine coordinates from ChromeOS cert";
-    return std::nullopt;
+    auto error_message = "Failed to get ECDSA key from seed in test mode";
+    LOG(ERROR) << error_message;
+    return error_message;
   }
 
   auto coseKey =
@@ -165,16 +189,114 @@ std::optional<cppbor::Array> ArcRemoteProvisioningContext::GenerateBcc(
           .canonicalize()
           .encode();
   std::vector<uint8_t> additional_authenticated_data;
+
+  cppcose::ErrMsgOr<cppbor::Array> coseSign1("");
+  coseSign1 = cppcose::constructECDSACoseSign1(private_key_vector,
+                                               cppbor::Map(), sign1Payload,
+                                               additional_authenticated_data);
+  if (!coseSign1) {
+    auto error_message = coseSign1.moveMessage();
+    LOG(ERROR) << "Bcc Generation failed in test mode: " << error_message;
+    return error_message;
+  }
+  auto cbor_array =
+      cppbor::Array().add(std::move(coseKey)).add(coseSign1.moveValue());
+  return cbor_array;
+}
+
+// This function generates Boot Chain Certificate for Production mode.
+// Final signature is signed by libarc-attestation.
+cppcose::ErrMsgOr<cppbor::Array> GenerateBccForProductionMode() {
+  std::vector<uint8_t> x_vect(kP256AffinePointSize);
+  std::vector<uint8_t> y_vect(kP256AffinePointSize);
+  absl::Span<uint8_t> x_coord(x_vect);
+  absl::Span<uint8_t> y_coord(y_vect);
+
+  std::optional<std::vector<uint8_t>> uds_pub = provisionAndFetchDkCert();
+  if (!uds_pub.has_value()) {
+    auto error_message =
+        "Failed to get a valid device cert from libarc-attestation";
+    return error_message;
+  }
+
+  // Extract Affine coordinates from libarc-attestation certificate.
+  // Get ECDSA Key from Device Cert in Production Mode.
+  auto error = GetEcdsa256KeyFromCertBlob(uds_pub.value(), x_coord, y_coord);
+  if (error != KM_ERROR_OK) {
+    auto error_message =
+        "Failed to extract Affine coordinates from ChromeOS cert";
+    LOG(ERROR) << error_message;
+    return error_message;
+  }
+
+  // Construct Cose Key.
+  auto coseKey =
+      cppbor::Map()
+          .add(cppcose::CoseKey::KEY_TYPE, cppcose::EC2)
+          .add(cppcose::CoseKey::ALGORITHM, cppcose::ES256)
+          .add(cppcose::CoseKey::CURVE, cppcose::P256)
+          .add(cppcose::CoseKey::KEY_OPS, cppbor::Array().add(cppcose::VERIFY))
+          .add(cppcose::CoseKey::PUBKEY_X, x_vect)
+          .add(cppcose::CoseKey::PUBKEY_Y, y_vect)
+          .canonicalize();
+
+  // This map is based on the Protected Data AIDL, which is further based on
+  // the Open Profile for DICE.
+  // |sign1Payload| represents BccPayload data structure from
+  // |ProtectedData.aidl|. Fields - Issuer and Subject are redundant for a
+  // degenerate Bcc chain like here.
+  auto sign1Payload =
+      cppbor::Map()
+          .add(BccPayloadLabel::ISSUER, "Issuer")
+          .add(BccPayloadLabel::SUBJECT, "Subject")
+          .add(BccPayloadLabel::SUBJECT_PUBLIC_KEY, coseKey.encode())
+          .add(BccPayloadLabel::KEY_USAGE, kBccPayloadKeyUsage)
+          .canonicalize()
+          .encode();
+  std::vector<uint8_t> additional_authenticated_data;
+
   // |coseSign1| represents the Bcc entry.
   auto coseSign1 = constructCoseSign1FromDK(cppbor::Map(), sign1Payload,
                                             additional_authenticated_data);
   if (!coseSign1) {
-    LOG(ERROR) << "Bcc Generation failed: " << coseSign1.moveMessage();
+    auto error_message = coseSign1.moveMessage();
+    LOG(ERROR) << "Bcc Generation failed in Production Mode: " << error_message;
+    return error_message;
+  }
+  auto cbor_array =
+      cppbor::Array().add(std::move(coseKey)).add(coseSign1.moveValue());
+  return cbor_array;
+}
+
+}  // namespace
+
+ArcRemoteProvisioningContext::ArcRemoteProvisioningContext(
+    keymaster_security_level_t security_level)
+    : PureSoftRemoteProvisioningContext(security_level) {}
+
+ArcRemoteProvisioningContext::~ArcRemoteProvisioningContext() = default;
+
+std::optional<std::pair<std::vector<uint8_t>, cppbor::Array>>
+ArcRemoteProvisioningContext::GenerateBcc(bool test_mode) const {
+  std::vector<uint8_t> private_key_vector(kP256EcdsaPrivateKeyLength);
+
+  cppcose::ErrMsgOr<cppbor::Array> cbor_array("");
+  if (test_mode) {
+    // Test Mode.
+    cbor_array = GenerateBccForTestMode(test_mode, private_key_vector);
+  } else {
+    // Production Mode.
+    cbor_array = GenerateBccForProductionMode();
+  }
+
+  if (!cbor_array) {
+    auto error_message = cbor_array.moveMessage();
+    LOG(ERROR) << "Bcc Generation failed: " << error_message;
     return std::nullopt;
   }
 
   // Boot Certificate Chain.
-  return cppbor::Array().add(std::move(coseKey)).add(coseSign1.moveValue());
+  return std::make_pair(std::move(private_key_vector), cbor_array.moveValue());
 }
 
 }  // namespace arc::keymint::context
