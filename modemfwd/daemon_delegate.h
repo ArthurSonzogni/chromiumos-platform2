@@ -11,9 +11,14 @@
 
 namespace modemfwd {
 
+class Modem;
+class Task;
+
 class Delegate {
  public:
   virtual ~Delegate() = default;
+
+  virtual void FinishTask(Task* task) = 0;
 
   virtual bool ForceFlashForTesting(const std::string& device_id,
                                     const std::string& carrier_uuid,
@@ -22,8 +27,15 @@ class Delegate {
 
   virtual bool ResetModem(const std::string& device_id) = 0;
 
+  virtual void RegisterOnStartFlashingCallback(const std::string& equipment_id,
+                                               base::OnceClosure callback) = 0;
   virtual void RegisterOnModemReappearanceCallback(
       const std::string& equipment_id, base::OnceClosure callback) = 0;
+
+  virtual void RegisterOnModemStateChangedCallback(
+      Modem* modem, base::RepeatingCallback<void(Modem*)> callback) = 0;
+  virtual void RegisterOnModemPowerStateChangedCallback(
+      Modem* modem, base::RepeatingCallback<void(Modem*)> callback) = 0;
 };
 
 }  // namespace modemfwd

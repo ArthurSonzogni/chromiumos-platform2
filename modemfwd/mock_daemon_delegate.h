@@ -18,6 +18,7 @@ class MockDelegate : public Delegate {
   MockDelegate() = default;
   ~MockDelegate() override = default;
 
+  MOCK_METHOD(void, FinishTask, (Task*), (override));
   MOCK_METHOD(
       bool,
       ForceFlashForTesting,
@@ -25,8 +26,20 @@ class MockDelegate : public Delegate {
       (override));
   MOCK_METHOD(bool, ResetModem, (const std::string&), (override));
   MOCK_METHOD(void,
+              RegisterOnStartFlashingCallback,
+              (const std::string&, base::OnceClosure),
+              (override));
+  MOCK_METHOD(void,
               RegisterOnModemReappearanceCallback,
               (const std::string&, base::OnceClosure),
+              (override));
+  MOCK_METHOD(void,
+              RegisterOnModemStateChangedCallback,
+              (Modem*, base::RepeatingCallback<void(Modem*)>),
+              (override));
+  MOCK_METHOD(void,
+              RegisterOnModemPowerStateChangedCallback,
+              (Modem*, base::RepeatingCallback<void(Modem*)>),
               (override));
 };
 

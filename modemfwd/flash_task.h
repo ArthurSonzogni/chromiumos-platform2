@@ -12,6 +12,7 @@
 #include <brillo/errors/error.h>
 
 #include "modemfwd/daemon_delegate.h"
+#include "modemfwd/daemon_task.h"
 #include "modemfwd/journal.h"
 #include "modemfwd/metrics.h"
 #include "modemfwd/modem_flasher.h"
@@ -19,7 +20,7 @@
 
 namespace modemfwd {
 
-class FlashTask {
+class FlashTask : public Task {
  public:
   struct Options {
     bool should_always_flash = false;
@@ -39,6 +40,9 @@ class FlashTask {
  private:
   void FlashFinished(std::optional<std::string> journal_entry_id,
                      uint32_t fw_types);
+
+  // for bookkeeping/naming only
+  static int num_flash_tasks_;
 
   // Owned by Daemon
   Delegate* delegate_;

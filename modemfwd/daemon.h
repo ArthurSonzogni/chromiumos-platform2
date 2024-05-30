@@ -69,13 +69,20 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   ~Daemon() override = default;
 
   // Delegate overrides.
+  void FinishTask(Task* task) override;
   bool ForceFlashForTesting(const std::string& device_id,
                             const std::string& carrier_uuid,
                             const std::string& variant,
                             bool use_modems_fw_info) override;
   bool ResetModem(const std::string& device_id) override;
+  void RegisterOnStartFlashingCallback(const std::string& equipment_id,
+                                       base::OnceClosure callback) override;
   void RegisterOnModemReappearanceCallback(const std::string& equipment_id,
                                            base::OnceClosure callback) override;
+  void RegisterOnModemStateChangedCallback(
+      Modem* modem, base::RepeatingCallback<void(Modem*)> callback) override;
+  void RegisterOnModemPowerStateChangedCallback(
+      Modem* modem, base::RepeatingCallback<void(Modem*)> callback) override;
 
  protected:
   // brillo::Daemon overrides.
@@ -130,10 +137,6 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
                           ModemHelper* modem_helper);
   void ForceFlashIfNeverAppeared(const std::string& device_id);
 
-  void SetupHeartbeatTask(const std::string& device_id);
-  void StartHeartbeatTask(const std::string& device_id);
-  void StopHeartbeatTask(const std::string& device_id);
-
   base::FilePath journal_file_path_;
   base::FilePath helper_dir_path_;
   base::FilePath fw_manifest_dir_path_;
@@ -148,17 +151,25 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   std::unique_ptr<Prefs> prefs_;
   std::unique_ptr<Prefs> modems_seen_since_oobe_prefs_;
 
+  // Tasks by name.
+  std::map<std::string, std::unique_ptr<Task>> tasks_;
+
   std::map<std::string, std::unique_ptr<Modem>> modems_;
-  std::map<std::string, std::unique_ptr<HeartbeatTask>> heartbeat_tasks_;
-  std::vector<std::unique_ptr<FlashTask>> flash_tasks_;
 
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
   std::unique_ptr<NotificationManager> notification_mgr_;
   std::unique_ptr<SuspendChecker> suspend_checker_;
 
+  std::map<std::string, std::vector<base::OnceClosure>>
+      start_flashing_callbacks_;
   std::map<std::string, base::OnceClosure> modem_reappear_callbacks_;
   std::set<std::string> device_ids_seen_;
+
+  std::map<Modem*, std::vector<base::RepeatingCallback<void(Modem*)>>>
+      state_change_callbacks_;
+  std::map<Modem*, std::vector<base::RepeatingCallback<void(Modem*)>>>
+      power_state_change_callbacks_;
 
   std::unique_ptr<DBusAdaptor> dbus_adaptor_;
 

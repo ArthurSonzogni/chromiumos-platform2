@@ -20,11 +20,56 @@ HeartbeatTask::HeartbeatTask(Delegate* delegate,
                              Modem* modem,
                              Metrics* metrics,
                              HeartbeatConfig config)
-    : delegate_(delegate), modem_(modem), metrics_(metrics), config_(config) {}
+    : Task(delegate, "heartbeat_" + modem->GetDeviceId(), "heartbeat"),
+      modem_(modem),
+      metrics_(metrics),
+      config_(config) {}
+
+// static
+std::unique_ptr<HeartbeatTask> HeartbeatTask::Create(
+    Delegate* delegate,
+    Modem* modem,
+    ModemHelperDirectory* helper_directory,
+    Metrics* metrics) {
+  if (!modem->SupportsHealthCheck())
+    return nullptr;
+
+  auto helper = helper_directory->GetHelperForDeviceId(modem->GetDeviceId());
+  if (!helper)
+    return nullptr;
+
+  auto heartbeat_config = helper->GetHeartbeatConfig();
+  if (!heartbeat_config.has_value())
+    return nullptr;
+
+  return std::unique_ptr<HeartbeatTask>(
+      new HeartbeatTask(delegate, modem, metrics, *heartbeat_config));
+}
 
 void HeartbeatTask::Start() {
-  if (modem_->GetPowerState() == Modem::PowerState::LOW)
+  delegate()->RegisterOnStartFlashingCallback(
+      modem_->GetEquipmentId(),
+      BindOnce(&HeartbeatTask::Stop, weak_ptr_factory_.GetWeakPtr()));
+  delegate()->RegisterOnModemStateChangedCallback(
+      modem_, base::BindRepeating(&HeartbeatTask::OnModemStateChanged,
+                                  weak_ptr_factory_.GetWeakPtr()));
+  delegate()->RegisterOnModemPowerStateChangedCallback(
+      modem_, base::BindRepeating(&HeartbeatTask::OnModemStateChanged,
+                                  weak_ptr_factory_.GetWeakPtr()));
+  // TODO(b/341753271): restart the task when there is a request to exit power
+  // LOW state, even if it does not complete. In that case, there is no power
+  // state change on the modem object. Current power state would still be LOW
+  Configure();
+}
+
+void HeartbeatTask::Stop() {
+  timer_.Stop();
+}
+
+void HeartbeatTask::Configure() {
+  if (modem_->GetPowerState() == Modem::PowerState::LOW) {
     return;
+  }
 
   base::TimeDelta interval;
   auto modem_state = modem_->GetState();
@@ -44,9 +89,9 @@ void HeartbeatTask::Start() {
                                    weak_ptr_factory_.GetWeakPtr()));
 }
 
-void HeartbeatTask::Stop() {
+void HeartbeatTask::CancelOutstandingWork() {
   timer_.Stop();
-  ELOG(INFO) << __func__ << ": heartbeat task has stopped.";
+  weak_ptr_factory_.InvalidateWeakPtrs();
 }
 
 void HeartbeatTask::DoHealthCheck() {
@@ -89,19 +134,24 @@ void HeartbeatTask::DoHealthCheck() {
   LOG(ERROR) << "Modem [" << modem_->GetDeviceId()
              << "] is unresponsive. Trying to recover.";
 
-  if (delegate_->ResetModem(modem_->GetDeviceId())) {
-    // Modem came back after reset.
+  if (delegate()->ResetModem(modem_->GetDeviceId())) {
+    // Modem reset successfully. The daemon will create another heartbeat
+    // task when it finishes coming back up.
     LOG(INFO) << "Reboot succeeded";
-    consecutive_heartbeat_failures_ = 0;
     metrics_->SendModemRecoveryState(
         metrics::ModemRecoveryState::kRecoveryStateSuccess);
-    return;
+  } else {
+    // Modem did not respond to a reset either.
+    LOG(WARNING) << "Reset failed";
+    metrics_->SendModemRecoveryState(
+        metrics::ModemRecoveryState::kRecoveryStateFailure);
   }
+  Finish();
+}
 
-  // Modem did not respond to a reset either.
-  LOG(INFO) << "Reset failed";
-  metrics_->SendModemRecoveryState(
-      metrics::ModemRecoveryState::kRecoveryStateFailure);
+void HeartbeatTask::OnModemStateChanged(Modem* modem) {
+  Stop();
+  Configure();
 }
 
 }  // namespace modemfwd

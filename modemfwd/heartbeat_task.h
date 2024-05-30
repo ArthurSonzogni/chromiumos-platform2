@@ -10,6 +10,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
 
+#include "modemfwd/daemon_task.h"
 #include "modemfwd/metrics.h"
 #include "modemfwd/modem.h"
 #include "modemfwd/modem_helper.h"
@@ -18,22 +19,33 @@ namespace modemfwd {
 
 class Delegate;
 
-class HeartbeatTask {
+class HeartbeatTask : public Task {
  public:
+  static std::unique_ptr<HeartbeatTask> Create(
+      Delegate* delegate,
+      Modem* modem,
+      ModemHelperDirectory* helper_directory,
+      Metrics* metrics);
+  ~HeartbeatTask() override = default;
+
+  void Start();
+
+ protected:
+  // Task overrides
+  void CancelOutstandingWork() override;
+
+ private:
   HeartbeatTask(Delegate* delegate,
                 Modem* modem,
                 Metrics* metrics,
                 HeartbeatConfig config);
 
-  virtual ~HeartbeatTask() = default;
-
-  void Start();
   void Stop();
-
- private:
+  void Configure();
   void DoHealthCheck();
 
-  Delegate* delegate_;
+  void OnModemStateChanged(Modem* modem);
+
   Modem* modem_;
   Metrics* metrics_;
   HeartbeatConfig config_;

@@ -336,6 +336,11 @@ void Daemon::CompleteInitialization() {
       GetModemWedgeCheckDelay());
 }
 
+void Daemon::RegisterOnStartFlashingCallback(const std::string& equipment_id,
+                                             base::OnceClosure callback) {
+  start_flashing_callbacks_[equipment_id].push_back(std::move(callback));
+}
+
 void Daemon::RegisterOnModemReappearanceCallback(
     const std::string& equipment_id, base::OnceClosure callback) {
   modem_reappear_callbacks_[equipment_id] = std::move(callback);
@@ -348,6 +353,16 @@ void Daemon::RunModemReappearanceCallback(const std::string& equipment_id) {
   }
 }
 
+void Daemon::RegisterOnModemStateChangedCallback(
+    Modem* modem, base::RepeatingCallback<void(Modem*)> callback) {
+  state_change_callbacks_[modem].push_back(std::move(callback));
+}
+
+void Daemon::RegisterOnModemPowerStateChangedCallback(
+    Modem* modem, base::RepeatingCallback<void(Modem*)> callback) {
+  power_state_change_callbacks_[modem].push_back(std::move(callback));
+}
+
 void Daemon::OnModemStateChange(const std::string device_id,
                                 Modem::State new_state) {
   if (modems_.count(device_id) == 0) {
@@ -358,13 +373,12 @@ void Daemon::OnModemStateChange(const std::string device_id,
   // Do not update heartbeat config when:
   // 1. update to new modem state is not successful (no state change);
   // 2. current power state is LOW, keep heartbeat stopped.
-  if (!modems_[device_id]->UpdateState(new_state) ||
-      modems_[device_id]->GetPowerState() == Modem::PowerState::LOW) {
+  if (!modems_[device_id]->UpdateState(new_state)) {
     return;
   }
-  StopHeartbeatTask(device_id);
-  // Apply new heartbeat check rate based on the new modem state
-  StartHeartbeatTask(device_id);
+  for (const auto& cb : state_change_callbacks_[modems_[device_id].get()]) {
+    cb.Run(modems_[device_id].get());
+  }
 }
 
 void Daemon::OnModemPowerStateChange(const std::string device_id,
@@ -377,15 +391,10 @@ void Daemon::OnModemPowerStateChange(const std::string device_id,
   if (!modems_[device_id]->UpdatePowerState(new_power_state)) {
     return;
   }
-
-  if (new_power_state == Modem::PowerState::LOW) {
-    StopHeartbeatTask(device_id);
-  } else {
-    StartHeartbeatTask(device_id);
+  for (const auto& cb :
+       power_state_change_callbacks_[modems_[device_id].get()]) {
+    cb.Run(modems_[device_id].get());
   }
-  // TODO(b/341753271): restart the task when there is a request to exit power
-  // LOW state. In this case, there is no power state change yet. Current power
-  // state is still LOW
 }
 
 void Daemon::OnModemDeviceSeen(std::string device_id,
@@ -415,9 +424,23 @@ void Daemon::OnModemCarrierIdReady(
   std::string device_id = modem->GetDeviceId();
   std::string equipment_id = modem->GetEquipmentId();
 
-  // Store the modem object in case our flash gets delayed.
+  auto is_stale_modem = [&device_id, &equipment_id](const auto& item) {
+    Modem* modem = item.first;
+    return modem->GetDeviceId() == device_id ||
+           modem->GetEquipmentId() == equipment_id;
+  };
+  std::erase_if(state_change_callbacks_, is_stale_modem);
+  std::erase_if(power_state_change_callbacks_, is_stale_modem);
+
+  auto heartbeat_task = HeartbeatTask::Create(
+      this, modem.get(), helper_directory_.get(), metrics_.get());
+  if (heartbeat_task) {
+    heartbeat_task->Start();
+    tasks_[heartbeat_task->name()] = std::move(heartbeat_task);
+  }
+
+  // Store the modem object now in case our flash gets delayed.
   modems_[device_id] = std::move(modem);
-  SetupHeartbeatTask(device_id);
 
   ELOG(INFO) << "Modem with equipment ID \"" << equipment_id << "\""
              << " and device ID [" << device_id << "] ready to flash";
@@ -436,20 +459,24 @@ void Daemon::OnModemCarrierIdReady(
 
 void Daemon::DoFlash(const std::string& device_id,
                      const std::string& equipment_id) {
-  StopHeartbeatTask(device_id);
+  if (start_flashing_callbacks_.count(equipment_id) > 0) {
+    for (auto& cb : start_flashing_callbacks_[equipment_id]) {
+      std::move(cb).Run();
+    }
+    start_flashing_callbacks_.erase(equipment_id);
+  }
+
   brillo::ErrorPtr err;
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
-  if (!flash_task->Start(modems_[device_id].get(), FlashTask::Options{},
-                         &err)) {
+  FlashTask* weak_task = flash_task.get();
+  tasks_[flash_task->name()] = std::move(flash_task);
+
+  if (!weak_task->Start(modems_[device_id].get(), FlashTask::Options{}, &err)) {
     LOG(ERROR) << "Flashing errored out: "
                << (err ? err->GetMessage() : "unknown");
-    return;
   }
-
-  flash_tasks_.push_back(std::move(flash_task));
-  StartHeartbeatTask(device_id);
 }
 
 void Daemon::RegisterDBusObjectsAsync(
@@ -460,32 +487,7 @@ void Daemon::RegisterDBusObjectsAsync(
 }
 
 bool Daemon::ForceFlash(const std::string& device_id) {
-  auto stub_modem = CreateStubModem(device_id, helper_directory_.get(), false);
-  if (!stub_modem)
-    return false;
-
-  ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
-  StopHeartbeatTask(device_id);
-  brillo::ErrorPtr err;
-  auto flash_task =
-      std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
-                                  metrics_.get(), modem_flasher_.get());
-  if (!flash_task->Start(stub_modem.get(),
-                         FlashTask::Options{.should_always_flash = true},
-                         &err)) {
-    LOG(ERROR) << "Force-flashing errored out: "
-               << (err ? err->GetMessage() : "unknown");
-    return false;
-  }
-  flash_tasks_.push_back(std::move(flash_task));
-  StartHeartbeatTask(device_id);
-
-  // We don't know the real equipment ID of this modem, and if we're
-  // force-flashing then we probably already have a problem with the modem
-  // coming up, so cleaning up at this point is not a problem. Run the
-  // callback now if we got one.
-  RunModemReappearanceCallback(stub_modem->GetEquipmentId());
-  return true;
+  return ForceFlashForTesting(device_id, "", "", false);
 }
 
 bool Daemon::ForceFlashForTesting(const std::string& device_id,
@@ -502,29 +504,32 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
   if (!stub_modem)
     return false;
 
-  ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "], "
-             << "variant [" << variant << "], carrier_uuid [" << carrier_uuid
-             << "], use_modems_fw_info [" << use_modems_fw_info << "]";
+  ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]"
+             << (variant.empty() ? "" : ", variant [" + variant + "]")
+             << (carrier_uuid.empty() ? ""
+                                      : ", carrier_uuid [" + carrier_uuid + "]")
+             << (use_modems_fw_info ? " using real modem firmware info" : "");
 
   fw_manifest_directory_->OverrideVariantForTesting(variant);
 
-  StopHeartbeatTask(device_id);
   brillo::ErrorPtr err;
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
-  if (!flash_task->Start(
-          stub_modem.get(),
-          FlashTask::Options{.should_always_flash = true,
-                             .carrier_override_uuid = carrier_uuid},
-          &err)) {
+  FlashTask* flash_task_ptr = flash_task.get();
+  tasks_[flash_task->name()] = std::move(flash_task);
+
+  FlashTask::Options opts;
+  opts.should_always_flash = true;
+  if (!carrier_uuid.empty()) {
+    opts.carrier_override_uuid = carrier_uuid;
+  }
+
+  if (!flash_task_ptr->Start(stub_modem.get(), opts, &err)) {
     LOG(ERROR) << "Force-flashing errored out: "
                << (err ? err->GetMessage() : "unknown");
     return false;
   }
-
-  flash_tasks_.push_back(std::move(flash_task));
-  StartHeartbeatTask(device_id);
 
   // We don't know the real equipment ID of this modem, and if we're
   // force-flashing then we probably already have a problem with the modem
@@ -614,43 +619,19 @@ void Daemon::ForceFlashIfNeverAppeared(const std::string& device_id) {
   ForceFlash(device_id);
 }
 
-void Daemon::SetupHeartbeatTask(const std::string& device_id) {
-  heartbeat_tasks_.erase(device_id);
-
-  if (!modems_[device_id]->SupportsHealthCheck())
+void Daemon::FinishTask(Task* task) {
+  auto it = tasks_.find(task->name());
+  if (it == tasks_.end()) {
+    ELOG(WARNING) << "Task " << task->name() << " signaled it was finished "
+                  << "but no such task was found in the task list";
     return;
-
-  // This modem has a port we can run health checks on. See if we need to
-  // set it up.
-  auto helper = helper_directory_->GetHelperForDeviceId(device_id);
-  if (!helper)
-    return;
-
-  auto heartbeat_config = helper->GetHeartbeatConfig();
-  if (!heartbeat_config.has_value())
-    return;
-
-  // We support heartbeat checks on this modem. Create a task to do these
-  // on a recurring basis.
-  auto heartbeat_task = std::make_unique<HeartbeatTask>(
-      this, modems_[device_id].get(), metrics_.get(), *heartbeat_config);
-  heartbeat_tasks_[device_id] = std::move(heartbeat_task);
-}
-
-void Daemon::StartHeartbeatTask(const std::string& device_id) {
-  auto it = heartbeat_tasks_.find(device_id);
-  if (it == heartbeat_tasks_.end())
-    return;
-
-  it->second->Start();
-}
-
-void Daemon::StopHeartbeatTask(const std::string& device_id) {
-  auto it = heartbeat_tasks_.find(device_id);
-  if (it == heartbeat_tasks_.end())
-    return;
-
-  it->second->Stop();
+  }
+  // Clean up the task by removing it from the task list and destroying
+  // it async. (We do this to avoid potential issues if a task includes some
+  // code after the Finish call.)
+  base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
+      FROM_HERE, std::move(it->second));
+  tasks_.erase(it);
 }
 
 }  // namespace modemfwd

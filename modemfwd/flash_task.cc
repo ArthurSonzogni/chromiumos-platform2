@@ -68,12 +68,15 @@ uint32_t GetFirmwareTypesForMetrics(std::vector<FirmwareConfig> flash_cfg) {
 
 }  // namespace
 
+// static
+int FlashTask::num_flash_tasks_ = 0;
+
 FlashTask::FlashTask(Delegate* delegate,
                      Journal* journal,
                      NotificationManager* notification_mgr,
                      Metrics* metrics,
                      ModemFlasher* modem_flasher)
-    : delegate_(delegate),
+    : Task(delegate, "flash-" + std::to_string(++num_flash_tasks_), "flash"),
       journal_(journal),
       notification_mgr_(notification_mgr),
       metrics_(metrics),
@@ -85,6 +88,7 @@ bool FlashTask::Start(Modem* modem,
   if (!options.should_always_flash &&
       !modem_flasher_->ShouldFlash(modem, err)) {
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
+    Finish();
     return false;
   }
 
@@ -98,6 +102,7 @@ bool FlashTask::Start(Modem* modem,
       modem, options.carrier_override_uuid, err);
   if (!flash_cfg) {
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
+    Finish();
     return false;
   }
 
@@ -106,6 +111,7 @@ bool FlashTask::Start(Modem* modem,
     // This message is used by tests to track the end of flashing.
     LOG(INFO) << "The modem already has the correct firmware installed";
     notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false, 0);
+    Finish();
     return true;
   }
 
@@ -132,12 +138,13 @@ bool FlashTask::Start(Modem* modem,
     }
     notification_mgr_->NotifyUpdateFirmwareCompletedFlashFailure(
         err->get(), types_for_metrics);
+    Finish();
     return false;
   }
 
   // Report flashing time in successful cases
   metrics_->SendFwFlashTime(flash_duration);
-  delegate_->RegisterOnModemReappearanceCallback(
+  delegate()->RegisterOnModemReappearanceCallback(
       modem->GetEquipmentId(),
       base::BindOnce(&FlashTask::FlashFinished, weak_ptr_factory_.GetWeakPtr(),
                      entry_id, types_for_metrics));
@@ -150,6 +157,7 @@ void FlashTask::FlashFinished(std::optional<std::string> journal_entry_id,
     journal_->MarkEndOfFlashingFirmware(*journal_entry_id);
   }
   notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(true, fw_types);
+  Finish();
 }
 
 }  // namespace modemfwd
