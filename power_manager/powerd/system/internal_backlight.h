@@ -88,10 +88,8 @@ class InternalBacklight : public BacklightInterface {
   // Device directory.
   base::FilePath device_path_;
 
-  // Paths to the brightness, and max_brightness files under
-  // /sys/class/backlight.
+  // Path to the brightness file under /sys/class/backlight.
   base::FilePath brightness_path_;
-  base::FilePath max_brightness_path_;
 
   // Path to a bl_power file in sysfs that can be used to turn the backlight on
   // or off. Empty if the file isn't present. See http://crbug.com/396218 for

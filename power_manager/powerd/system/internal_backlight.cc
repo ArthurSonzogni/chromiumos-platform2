@@ -70,7 +70,6 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
 
     device_path_ = device_path;
     brightness_path_ = brightness_path;
-    max_brightness_path_ = max_brightness_path;
     max_brightness_level_ = max_level;
 
     const base::FilePath power_path = device_path.Append(kBlPowerFilename);
