@@ -1862,24 +1862,34 @@ void sl_handle_client_message(struct sl_context* ctx,
                     "action", net_wm_state_to_string(action), "window->name",
                     window->name);
         if (action == NET_WM_STATE_ADD) {
-          window->fullscreen = 1;
-          LOG(VERBOSE) << window << " fullscreen=1";
-          if (window->xdg_toplevel && !window->iconified) {
-            xdg_toplevel_set_fullscreen(window->xdg_toplevel, nullptr);
-          } else {
-            window->pending_fullscreen_change = true;
+          // Ignore additional calls to change to fullscreen
+          // if X11 state is already fullscreen. Prevents issues when changing
+          // focus back to game and Exo/X11 state differ.
+          if (!window->fullscreen) {
+            window->fullscreen = 1;
+            LOG(VERBOSE) << window << " fullscreen=1";
+            if (window->xdg_toplevel && !window->iconified) {
+              xdg_toplevel_set_fullscreen(window->xdg_toplevel, nullptr);
+            } else {
+              window->pending_fullscreen_change = true;
+            }
           }
         } else if (action == NET_WM_STATE_REMOVE) {
-          // Preemptively ask Exo to remove fullscreen then check during surface
-          // commit (ie. after all states aggregated).
-          window->maybe_promote_to_fullscreen = true;
+          // Ignore additional calls to change to windowed
+          // if X11 state is already windowed. Prevents issues when changing
+          // focus back to game and Exo/X11 state differ.
+          if (window->fullscreen) {
+            // Preemptively ask Exo to remove fullscreen then check during
+            // surface commit (ie. after all states aggregated).
+            window->maybe_promote_to_fullscreen = true;
 
-          window->fullscreen = 0;
-          LOG(VERBOSE) << window << " fullscreen=0";
-          if (window->xdg_toplevel && !window->iconified) {
-            xdg_toplevel_unset_fullscreen(window->xdg_toplevel);
-          } else {
-            window->pending_fullscreen_change = true;
+            window->fullscreen = 0;
+            LOG(VERBOSE) << window << " fullscreen=0";
+            if (window->xdg_toplevel && !window->iconified) {
+              xdg_toplevel_unset_fullscreen(window->xdg_toplevel);
+            } else {
+              window->pending_fullscreen_change = true;
+            }
           }
         }
       }
