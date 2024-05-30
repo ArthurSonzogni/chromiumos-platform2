@@ -297,7 +297,8 @@ void Daemon::CompleteInitialization() {
     QuitWithExitCode(EX_UNAVAILABLE);
   }
 
-  modem_flasher_ = CreateModemFlasher(fw_manifest_directory_.get());
+  modem_flasher_ = CreateModemFlasher(fw_manifest_directory_.get(),
+                                      modems_seen_since_oobe_prefs_.get());
 
   modem_tracker_ = std::make_unique<modemfwd::ModemTracker>(
       bus_,
@@ -431,9 +432,7 @@ void Daemon::DoFlash(const std::string& device_id,
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
-  if (!flash_task->Start(modems_[device_id].get(),
-                         modems_seen_since_oobe_prefs_->Exists(device_id),
-                         &err)) {
+  if (!flash_task->Start(modems_[device_id].get(), &err)) {
     LOG(ERROR) << "Flashing errored out: "
                << (err ? err->GetMessage() : "unknown");
     return;
@@ -462,9 +461,7 @@ bool Daemon::ForceFlash(const std::string& device_id) {
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
-  if (!flash_task->Start(stub_modem.get(),
-                         modems_seen_since_oobe_prefs_->Exists(device_id),
-                         &err)) {
+  if (!flash_task->Start(stub_modem.get(), &err)) {
     LOG(ERROR) << "Force-flashing errored out: "
                << (err ? err->GetMessage() : "unknown");
     return false;
@@ -505,9 +502,7 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
-  if (!flash_task->Start(stub_modem.get(),
-                         modems_seen_since_oobe_prefs_->Exists(device_id),
-                         &err)) {
+  if (!flash_task->Start(stub_modem.get(), &err)) {
     LOG(ERROR) << "Force-flashing errored out: "
                << (err ? err->GetMessage() : "unknown");
     return false;

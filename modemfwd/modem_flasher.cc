@@ -99,8 +99,10 @@ class FlashState {
 
 class ModemFlasherImpl : public ModemFlasher {
  public:
-  explicit ModemFlasherImpl(FirmwareDirectory* firmware_directory)
-      : firmware_directory_(firmware_directory) {}
+  ModemFlasherImpl(FirmwareDirectory* firmware_directory,
+                   Prefs* modems_seen_since_oobe_prefs)
+      : firmware_directory_(firmware_directory),
+        modems_seen_since_oobe_prefs_(modems_seen_since_oobe_prefs) {}
   ModemFlasherImpl(const ModemFlasherImpl&) = delete;
   ModemFlasherImpl& operator=(const ModemFlasherImpl&) = delete;
   ~ModemFlasherImpl() override = default;
@@ -231,7 +233,6 @@ class ModemFlasherImpl : public ModemFlasher {
 
   bool RunFlash(Modem* modem,
                 const FlashConfig& flash_cfg,
-                bool modem_seen_since_oobe,
                 base::TimeDelta* out_duration,
                 brillo::ErrorPtr* err) override {
     FlashState* flash_state = &modem_info_[modem->GetEquipmentId()];
@@ -244,7 +245,7 @@ class ModemFlasherImpl : public ModemFlasher {
     if (!success) {
       flash_state->OnFlashFailed();
       Error::AddTo(err, FROM_HERE,
-                   (modem_seen_since_oobe
+                   (modems_seen_since_oobe_prefs_->Exists(modem->GetDeviceId())
                         ? kErrorResultFailureReturnedByHelper
                         : kErrorResultFailureReturnedByHelperModemNeverSeen),
                    "Helper failed to flash firmware files");
@@ -272,13 +273,16 @@ class ModemFlasherImpl : public ModemFlasher {
 
   // Owned by Daemon
   FirmwareDirectory* firmware_directory_;
+  Prefs* modems_seen_since_oobe_prefs_;
 
   base::WeakPtrFactory<ModemFlasher> weak_ptr_factory_{this};
 };
 
 std::unique_ptr<ModemFlasher> CreateModemFlasher(
-    FirmwareDirectory* firmware_directory) {
-  return std::make_unique<ModemFlasherImpl>(firmware_directory);
+    FirmwareDirectory* firmware_directory,
+    Prefs* modems_seen_since_oobe_prefs) {
+  return std::make_unique<ModemFlasherImpl>(firmware_directory,
+                                            modems_seen_since_oobe_prefs);
 }
 
 }  // namespace modemfwd

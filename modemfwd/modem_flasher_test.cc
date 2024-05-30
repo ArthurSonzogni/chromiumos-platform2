@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 #include <chromeos/switches/modemfwd_switches.h>
 #include <dbus/modemfwd/dbus-constants.h>
 #include <gmock/gmock.h>
@@ -27,6 +28,7 @@ namespace modemfwd {
 namespace {
 
 constexpr char kDeviceId1[] = "device:id:1";
+constexpr char kDeviceId2[] = "device:id:2";
 constexpr char kEquipmentId1[] = "equipment_id_1";
 
 constexpr char kMainFirmware1Path[] = "main_fw_1.fls";
@@ -76,7 +78,12 @@ class ModemFlasherTest : public ::testing::Test {
   ModemFlasherTest() {
     firmware_directory_ =
         std::make_unique<FirmwareDirectoryStub>(base::FilePath());
-    modem_flasher_ = CreateModemFlasher(firmware_directory_.get());
+
+    CHECK(prefs_dir_.CreateUniqueTempDir());
+    modems_seen_since_oobe_prefs_ = Prefs::CreatePrefs(prefs_dir_.GetPath());
+
+    modem_flasher_ = CreateModemFlasher(firmware_directory_.get(),
+                                        modems_seen_since_oobe_prefs_.get());
   }
 
  protected:
@@ -141,6 +148,7 @@ class ModemFlasherTest : public ::testing::Test {
         .WillByDefault(Return(kOemFirmware1Version));
     ON_CALL(*modem, GetCarrierFirmwareId()).WillByDefault(Return(""));
     ON_CALL(*modem, GetCarrierFirmwareVersion()).WillByDefault(Return(""));
+    modems_seen_since_oobe_prefs_->Create(kDeviceId1);
     return modem;
   }
 
@@ -153,6 +161,9 @@ class ModemFlasherTest : public ::testing::Test {
 
   brillo::ErrorPtr err;
   std::unique_ptr<ModemFlasher> modem_flasher_;
+
+  base::ScopedTempDir prefs_dir_;
+  std::unique_ptr<Prefs> modems_seen_since_oobe_prefs_;
 
  private:
   std::unique_ptr<FirmwareDirectoryStub> firmware_directory_;
@@ -342,12 +353,10 @@ TEST_F(ModemFlasherTest, ShouldNotFlashAfterMainFlashFailure) {
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillRepeatedly(Return(false));
   // The first flash failure should not block the modem.
-  ASSERT_FALSE(
-      modem_flasher_->RunFlash(modem.get(), *cfg, true, nullptr, &err));
+  ASSERT_FALSE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_TRUE(modem_flasher_->ShouldFlash(modem.get(), &err));
   // The second one will.
-  ASSERT_FALSE(
-      modem_flasher_->RunFlash(modem.get(), *cfg, true, nullptr, &err));
+  ASSERT_FALSE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_FALSE(modem_flasher_->ShouldFlash(modem.get(), &err));
 }
 
@@ -361,12 +370,10 @@ TEST_F(ModemFlasherTest, ShouldNotFlashAfterCarrierFlashFailure) {
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillRepeatedly(Return(false));
   // The first flash failure should not block the modem.
-  ASSERT_FALSE(
-      modem_flasher_->RunFlash(modem.get(), *cfg, true, nullptr, &err));
+  ASSERT_FALSE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_TRUE(modem_flasher_->ShouldFlash(modem.get(), &err));
   // The second one will.
-  ASSERT_FALSE(
-      modem_flasher_->RunFlash(modem.get(), *cfg, true, nullptr, &err));
+  ASSERT_FALSE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_FALSE(modem_flasher_->ShouldFlash(modem.get(), &err));
 }
 
@@ -378,7 +385,7 @@ TEST_F(ModemFlasherTest, CacheLastFlashedMainFirmware) {
   auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillOnce(Return(true));
-  ASSERT_TRUE(modem_flasher_->RunFlash(modem.get(), *cfg, true, nullptr, &err));
+  ASSERT_TRUE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_EQ(err.get(), nullptr);
 
   // We've had issues in the past where the firmware version is updated
@@ -400,7 +407,7 @@ TEST_F(ModemFlasherTest, CacheLastFlashedOemFirmware) {
   auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillOnce(Return(true));
-  ASSERT_TRUE(modem_flasher_->RunFlash(modem.get(), *cfg, true, nullptr, &err));
+  ASSERT_TRUE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_EQ(err.get(), nullptr);
 
   cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
@@ -419,7 +426,7 @@ TEST_F(ModemFlasherTest, CacheLastFlashedCarrierFirmware) {
   auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillOnce(Return(true));
-  ASSERT_TRUE(modem_flasher_->RunFlash(modem.get(), *cfg, true, nullptr, &err));
+  ASSERT_TRUE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_EQ(err.get(), nullptr);
 
   cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
@@ -598,13 +605,12 @@ TEST_F(ModemFlasherTest, ModemNeverSeenError) {
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillRepeatedly(Return(false));
 
-  ASSERT_FALSE(
-      modem_flasher_->RunFlash(modem.get(), *cfg, true, nullptr, &err));
+  ASSERT_FALSE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_NE(err.get(), nullptr);
   ASSERT_EQ(err.get()->GetCode(), kErrorResultFailureReturnedByHelper);
 
-  ASSERT_FALSE(
-      modem_flasher_->RunFlash(modem.get(), *cfg, false, nullptr, &err));
+  EXPECT_CALL(*modem, GetDeviceId()).WillRepeatedly(Return(kDeviceId2));
+  ASSERT_FALSE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_NE(err.get(), nullptr);
   ASSERT_EQ(err.get()->GetCode(),
             kErrorResultFailureReturnedByHelperModemNeverSeen);

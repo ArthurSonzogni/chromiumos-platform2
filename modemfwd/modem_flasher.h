@@ -19,6 +19,7 @@
 #include "modemfwd/firmware_directory.h"
 #include "modemfwd/firmware_file.h"
 #include "modemfwd/modem.h"
+#include "modemfwd/prefs.h"
 
 namespace modemfwd {
 
@@ -42,13 +43,12 @@ class ModemFlasher {
       Modem* modem, brillo::ErrorPtr* err) = 0;
   virtual bool RunFlash(Modem* modem,
                         const FlashConfig& flash_cfg,
-                        bool modem_seen_since_oobe,
                         base::TimeDelta* out_duration,
                         brillo::ErrorPtr* err) = 0;
 };
 
 std::unique_ptr<ModemFlasher> CreateModemFlasher(
-    FirmwareDirectory* firmware_directory);
+    FirmwareDirectory* firmware_directory, Prefs* modems_seen_since_oobe_prefs);
 
 }  // namespace modemfwd
 

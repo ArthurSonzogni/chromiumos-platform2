@@ -29,7 +29,7 @@ class FlashTask {
   virtual ~FlashTask() = default;
 
   // Returns false and sets |err| if an error occurred.
-  bool Start(Modem* modem, bool modem_seen_since_oobe, brillo::ErrorPtr* err);
+  bool Start(Modem* modem, brillo::ErrorPtr* err);
 
  private:
   void FlashFinished(std::optional<std::string> journal_entry_id,

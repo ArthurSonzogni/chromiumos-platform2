@@ -116,7 +116,7 @@ TEST_F(FlashTaskTest, ModemIsBlocked) {
       .WillOnce(Return(false));
 
   brillo::ErrorPtr err;
-  EXPECT_FALSE(task->Start(modem.get(), true, &err));
+  EXPECT_FALSE(task->Start(modem.get(), &err));
 }
 
 TEST_F(FlashTaskTest, NothingToFlash) {
@@ -127,10 +127,10 @@ TEST_F(FlashTaskTest, NothingToFlash) {
       .WillOnce(Return(true));
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
       .WillOnce(Return(GetConfig(kCarrier1, {})));
-  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _, _)).Times(0);
+  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
 
   brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), true, &err));
+  EXPECT_TRUE(task->Start(modem.get(), &err));
 }
 
 TEST_F(FlashTaskTest, BuildConfigReturnedError) {
@@ -141,10 +141,10 @@ TEST_F(FlashTaskTest, BuildConfigReturnedError) {
       .WillOnce(Return(true));
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
       .WillOnce(Return(std::unique_ptr<FlashConfig>()));
-  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _, _)).Times(0);
+  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
 
   brillo::ErrorPtr err;
-  EXPECT_FALSE(task->Start(modem.get(), true, &err));
+  EXPECT_FALSE(task->Start(modem.get(), &err));
 }
 
 TEST_F(FlashTaskTest, FlashFailure) {
@@ -157,11 +157,11 @@ TEST_F(FlashTaskTest, FlashFailure) {
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
-  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _, _))
+  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
       .WillOnce(Return(false));
 
   brillo::ErrorPtr err;
-  EXPECT_FALSE(task->Start(modem.get(), true, &err));
+  EXPECT_FALSE(task->Start(modem.get(), &err));
 }
 
 TEST_F(FlashTaskTest, FlashSuccess) {
@@ -174,12 +174,12 @@ TEST_F(FlashTaskTest, FlashSuccess) {
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
-  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _, _))
+  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*metrics_, SendFwFlashTime(_)).Times(1);
 
   brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), true, &err));
+  EXPECT_TRUE(task->Start(modem.get(), &err));
   EXPECT_EQ(err.get(), nullptr);
 }
 
@@ -193,7 +193,7 @@ TEST_F(FlashTaskTest, WritesToJournal) {
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
-  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _, _))
+  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
       .WillOnce(Return(true));
 
   EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(_, kDeviceId1, _))
@@ -206,7 +206,7 @@ TEST_F(FlashTaskTest, WritesToJournal) {
                       base::OnceClosure reg_cb) { cb = std::move(reg_cb); });
 
   brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), true, &err));
+  EXPECT_TRUE(task->Start(modem.get(), &err));
   EXPECT_EQ(err.get(), nullptr);
 
   // Ensure the journal entry is closed by the registered callback.
@@ -225,13 +225,13 @@ TEST_F(FlashTaskTest, WritesCarrierToJournal) {
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
       .WillOnce(Return(GetConfig(
           kCarrier2, {{kFwCarrier, new_firmware, kCarrier2Firmware1Version}})));
-  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _, _))
+  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
       .WillOnce(Return(true));
 
   EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(_, kDeviceId1, kCarrier2))
       .WillOnce(Return(kJournalEntryId));
   brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), true, &err));
+  EXPECT_TRUE(task->Start(modem.get(), &err));
   EXPECT_EQ(err.get(), nullptr);
 }
 
@@ -245,7 +245,7 @@ TEST_F(FlashTaskTest, WritesToJournalOnFailure) {
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
-  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _, _))
+  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
       .WillOnce(Return(false));
 
   EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(_, kDeviceId1, _))
@@ -255,7 +255,7 @@ TEST_F(FlashTaskTest, WritesToJournalOnFailure) {
   EXPECT_CALL(*delegate_, RegisterOnModemReappearanceCallback(_, _)).Times(0);
 
   brillo::ErrorPtr err;
-  EXPECT_FALSE(task->Start(modem.get(), true, &err));
+  EXPECT_FALSE(task->Start(modem.get(), &err));
 }
 
 TEST_F(FlashTaskTest, InhibitDuringFlash) {
@@ -268,13 +268,13 @@ TEST_F(FlashTaskTest, InhibitDuringFlash) {
   EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
-  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _, _))
+  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(*modem, SetInhibited(true)).Times(1);
   EXPECT_CALL(*modem, SetInhibited(false)).Times(1);
 
   brillo::ErrorPtr err;
-  EXPECT_TRUE(task->Start(modem.get(), true, &err));
+  EXPECT_TRUE(task->Start(modem.get(), &err));
   EXPECT_EQ(err.get(), nullptr);
 }
 

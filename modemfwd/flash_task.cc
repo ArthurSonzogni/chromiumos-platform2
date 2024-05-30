@@ -79,9 +79,7 @@ FlashTask::FlashTask(Delegate* delegate,
       metrics_(metrics),
       modem_flasher_(modem_flasher) {}
 
-bool FlashTask::Start(Modem* modem,
-                      bool modem_seen_since_oobe,
-                      brillo::ErrorPtr* err) {
+bool FlashTask::Start(Modem* modem, brillo::ErrorPtr* err) {
   if (!modem_flasher_->ShouldFlash(modem, err)) {
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
     return false;
@@ -125,8 +123,7 @@ bool FlashTask::Start(Modem* modem,
       GetFirmwareTypesForMetrics(flash_cfg->fw_configs);
 
   base::TimeDelta flash_duration;
-  if (!modem_flasher_->RunFlash(modem, *flash_cfg, modem_seen_since_oobe,
-                                &flash_duration, err)) {
+  if (!modem_flasher_->RunFlash(modem, *flash_cfg, &flash_duration, err)) {
     if (entry_id.has_value()) {
       journal_->MarkEndOfFlashingFirmware(*entry_id);
     }

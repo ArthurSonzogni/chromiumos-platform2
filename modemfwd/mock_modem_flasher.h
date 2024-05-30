@@ -23,11 +23,10 @@ class MockModemFlasher : public ModemFlasher {
               BuildFlashConfig,
               (Modem*, brillo::ErrorPtr*),
               (override));
-  MOCK_METHOD(
-      bool,
-      RunFlash,
-      (Modem*, const FlashConfig&, bool, base::TimeDelta*, brillo::ErrorPtr*),
-      (override));
+  MOCK_METHOD(bool,
+              RunFlash,
+              (Modem*, const FlashConfig&, base::TimeDelta*, brillo::ErrorPtr*),
+              (override));
 };
 
 }  // namespace modemfwd
