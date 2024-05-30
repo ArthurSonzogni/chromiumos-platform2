@@ -469,6 +469,12 @@ HammerUpdater::RunStatus HammerUpdater::UpdateRO() {
   // Return kNeedJump (this should be a NOP in the caller side)
   // and try again.
   if (!ret) {
+    const auto kRecoverTime = base::Seconds(6);
+
+    // wait for hammer's internal state to reset
+    // this need at least 5 seconds
+    base::PlatformThread::Sleep(kRecoverTime);
+
     return HammerUpdater::RunStatus::kNeedJump;
   }
   return HammerUpdater::RunStatus::kNeedReset;
