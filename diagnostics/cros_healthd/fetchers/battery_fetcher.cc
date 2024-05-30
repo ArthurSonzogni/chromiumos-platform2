@@ -45,6 +45,7 @@ constexpr auto kModelToPort =
         {"starmie", 1},
         {"chinchou", 1},
         {"chinchou360", 1},
+        {"kyogre", 1},
     });
 
 // Converts a Smart Battery manufacture date from the ((year - 1980) * 512 +
