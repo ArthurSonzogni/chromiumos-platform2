@@ -569,13 +569,14 @@ void StreamManipulatorHelper::HandleRequest(
     const camera3_stream_t* s = request->GetInputBuffer()->stream();
     CHECK(client_stream_to_type_.contains(s));
     CHECK_EQ(client_stream_to_type_.at(s), StreamType::kIgnored);
-    capture_ctx.requested_streams[s] = StreamContext{};
+    capture_ctx.requested_streams[s] = StreamContext{.from_client = true};
   }
   for (auto& b : request->AcquireOutputBuffers()) {
     CHECK(client_stream_to_type_.contains(b.stream()));
     switch (client_stream_to_type_.at(b.stream())) {
       case StreamType::kIgnored:
-        capture_ctx.requested_streams[b.stream()] = StreamContext{};
+        capture_ctx.requested_streams[b.stream()] =
+            StreamContext{.from_client = true};
         request->AppendOutputBuffer(std::move(b));
         break;
       case StreamType::kBlob:
@@ -585,7 +586,7 @@ void StreamManipulatorHelper::HandleRequest(
                                                         *request);
         }
         capture_ctx.requested_streams[b.stream()] =
-            StreamContext{.for_process = !bypass_process};
+            StreamContext{.from_client = true, .for_process = !bypass_process};
         request->AppendOutputBuffer(std::move(b));
         break;
       case StreamType::kStillYuvToProcess: {
@@ -618,6 +619,7 @@ void StreamManipulatorHelper::HandleRequest(
       still_yuv_buffer_to_generate.has_value()) {
     StreamContext& stream_ctx =
         capture_ctx.requested_streams[still_process_input_stream_->ptr()];
+    stream_ctx.from_client = still_yuv_buffer_to_process.has_value();
     if (bypass_process && still_yuv_buffer_to_process.has_value()) {
       request->AppendOutputBuffer(
           std::move(still_yuv_buffer_to_process.value()));
@@ -651,6 +653,7 @@ void StreamManipulatorHelper::HandleRequest(
        (!bypass_process || !config_.preserve_client_video_streams))) {
     StreamContext& stream_ctx =
         capture_ctx.requested_streams[video_process_input_stream_->ptr()];
+    stream_ctx.from_client = video_yuv_buffer_to_process.has_value();
     if (bypass_process && video_yuv_buffer_to_process.has_value()) {
       request->AppendOutputBuffer(
           std::move(video_yuv_buffer_to_process.value()));
@@ -678,7 +681,8 @@ void StreamManipulatorHelper::HandleRequest(
   if (!video_yuv_buffers_to_generate.empty()) {
     if (bypass_process && config_.preserve_client_video_streams) {
       for (auto& b : video_yuv_buffers_to_generate) {
-        capture_ctx.requested_streams[b.stream()] = StreamContext{};
+        capture_ctx.requested_streams[b.stream()] =
+            StreamContext{.from_client = true};
         request->AppendOutputBuffer(std::move(b));
       }
     } else {
@@ -733,14 +737,19 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
 
   auto [capture_ctx, capture_ctx_remover] =
       GetCaptureContext(result.frame_number());
+  if (capture_ctx == nullptr) {
+    // Drop this result since capture context is gone, e.g. due to notified
+    // request or buffer errors.
+    return;
+  }
 
   // Hold feature metadata until it's updated by process tasks.
   if (result.feature_metadata().faces.has_value()) {
-    capture_ctx.feature_metadata.faces.swap(result.feature_metadata().faces);
+    capture_ctx->feature_metadata.faces.swap(result.feature_metadata().faces);
     result.feature_metadata().faces.reset();
   }
   if (result.feature_metadata().hdr_ratio.has_value()) {
-    capture_ctx.feature_metadata.hdr_ratio.swap(
+    capture_ctx->feature_metadata.hdr_ratio.swap(
         result.feature_metadata().hdr_ratio);
     result.feature_metadata().hdr_ratio.reset();
   }
@@ -748,7 +757,7 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
   // Move result metadata to be updated into capture context.
   bool result_metadata_ready = true;
   for (uint32_t tag : config_.result_metadata_tags_to_update) {
-    if (capture_ctx.result_metadata.exists(tag)) {
+    if (capture_ctx->result_metadata.exists(tag)) {
       if (result.HasMetadata(tag)) {
         LOGF(WARNING) << "Duplicated metadata tag "
                       << base::StringPrintf("0x%x", tag) << " in result "
@@ -756,22 +765,22 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
         CHECK(result.DeleteMetadata(tag));
       }
     } else if (!MoveMetadataTag(tag, result.mutable_metadata(),
-                                capture_ctx.result_metadata)) {
+                                capture_ctx->result_metadata)) {
       result_metadata_ready = false;
     }
   }
   if (result.partial_result() == partial_result_count_) {
-    CHECK(!capture_ctx.last_result_metadata_received);
-    capture_ctx.last_result_metadata_received = true;
+    CHECK(!capture_ctx->last_result_metadata_received);
+    capture_ctx->last_result_metadata_received = true;
     if (!config_.result_metadata_tags_to_update.empty()) {
       // Keep the last metadata packet to hold the updated metadata by
       // processing tasks.
       if (result.has_metadata()) {
         android::CameraMetadata m = result.ReleaseMetadata();
-        if (!capture_ctx.result_metadata.isEmpty()) {
-          CHECK_EQ(m.append(capture_ctx.result_metadata), 0);
+        if (!capture_ctx->result_metadata.isEmpty()) {
+          CHECK_EQ(m.append(capture_ctx->result_metadata), 0);
         }
-        capture_ctx.result_metadata.acquire(m);
+        capture_ctx->result_metadata.acquire(m);
       }
       result.SetPartialResult(0);
     }
@@ -779,36 +788,36 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
 
   if (result.has_input_buffer()) {
     const camera3_stream_t* s = result.GetInputBuffer()->stream();
-    CHECK(capture_ctx.requested_streams.contains(s));
-    CHECK_EQ(capture_ctx.requested_streams[s].state, StreamState::kRequesting);
-    capture_ctx.requested_streams[s].state = StreamState::kDone;
+    CHECK(capture_ctx->requested_streams.contains(s));
+    CHECK_EQ(capture_ctx->requested_streams[s].state, StreamState::kRequesting);
+    capture_ctx->requested_streams[s].state = StreamState::kDone;
   }
   for (auto& b : result.AcquireOutputBuffers()) {
-    auto it = capture_ctx.requested_streams.find(b.stream());
-    CHECK(it != capture_ctx.requested_streams.end());
+    auto it = capture_ctx->requested_streams.find(b.stream());
+    CHECK(it != capture_ctx->requested_streams.end());
     StreamContext& stream_ctx = it->second;
-    CHECK_EQ(stream_ctx.state, StreamState::kRequesting);
+    CHECK(stream_ctx.state == StreamState::kRequesting ||
+          (stream_ctx.state == StreamState::kError &&
+           b.status() == CAMERA3_BUFFER_STATUS_ERROR));
     std::optional<Camera3StreamBuffer> error_buffer;
     if (stream_ctx.for_process) {
       if (b.stream()->format == HAL_PIXEL_FORMAT_BLOB) {
         // BLOB for processing.
-        if (capture_ctx.still_capture_cancelled) {
+        if (capture_ctx->still_capture_cancelled) {
           stream_ctx.state = StreamState::kDone;
           SetBufferError(b);
           result.AppendOutputBuffer(std::move(b));
         } else if (b.status() != CAMERA3_BUFFER_STATUS_OK) {
           stream_ctx.state = StreamState::kDone;
-          capture_ctx.still_capture_cancelled = true;
+          capture_ctx->still_capture_cancelled = true;
           still_capture_processor_->CancelPendingRequest(result.frame_number());
           result.AppendOutputBuffer(std::move(b));
-          if (capture_ctx.client_buffer_for_blob.has_value()) {
+          if (capture_ctx->client_buffer_for_blob.has_value()) {
             result.AppendOutputBuffer(
-                std::move(capture_ctx.client_buffer_for_blob.value()));
-            capture_ctx.client_buffer_for_blob.reset();
+                std::move(capture_ctx->client_buffer_for_blob.value()));
+            capture_ctx->client_buffer_for_blob.reset();
           }
-          if (capture_ctx.pool_buffer_for_blob.has_value()) {
-            capture_ctx.pool_buffer_for_blob.reset();
-          }
+          capture_ctx->pool_buffer_for_blob.reset();
         } else {
           stream_ctx.state = StreamState::kProcessing;
           still_capture_processor_->QueuePendingAppsSegments(
@@ -821,8 +830,8 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
         // Still YUV for processing.
         if (b.status() != CAMERA3_BUFFER_STATUS_OK) {
           stream_ctx.state = StreamState::kDone;
-          if (!capture_ctx.still_capture_cancelled) {
-            capture_ctx.still_capture_cancelled = true;
+          if (!capture_ctx->still_capture_cancelled) {
+            capture_ctx->still_capture_cancelled = true;
             still_capture_processor_->CancelPendingRequest(
                 result.frame_number());
           }
@@ -866,16 +875,18 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
     }
     if (error_buffer.has_value()) {
       CHECK_NE(error_buffer->status(), CAMERA3_BUFFER_STATUS_OK);
-      if (stream_ctx.pool_process_input.has_value()) {
-        stream_ctx.pool_process_input.reset();
-      } else {
-        result.AppendOutputBuffer(std::move(error_buffer.value()));
+      if (stream_ctx.from_client) {
+        if (stream_ctx.for_process) {
+          CHECK(stream_ctx.process_output.has_value());
+          SetBufferError(stream_ctx.process_output.value());
+          result.AppendOutputBuffer(
+              std::move(stream_ctx.process_output.value()));
+          stream_ctx.process_output.reset();
+        } else {
+          result.AppendOutputBuffer(std::move(error_buffer.value()));
+        }
       }
-      if (stream_ctx.process_output.has_value()) {
-        SetBufferError(stream_ctx.process_output.value());
-        result.AppendOutputBuffer(std::move(stream_ctx.process_output.value()));
-        stream_ctx.process_output.reset();
-      }
+      stream_ctx.pool_process_input.reset();
       for (auto& bb : stream_ctx.client_yuv_buffers_to_generate) {
         SetBufferError(bb);
         result.AppendOutputBuffer(std::move(bb));
@@ -885,8 +896,9 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
   }
 
   // Send process tasks.
-  if (result_metadata_ready || capture_ctx.last_result_metadata_received) {
-    for (auto& [s, stream_ctx] : capture_ctx.requested_streams) {
+  if (result_metadata_ready || capture_ctx->last_result_metadata_received ||
+      capture_ctx->result_metadata_error) {
+    for (auto& [s, stream_ctx] : capture_ctx->requested_streams) {
       if (stream_ctx.state != StreamState::kPending) {
         continue;
       }
@@ -928,15 +940,16 @@ void StreamManipulatorHelper::HandleResult(Camera3CaptureDescriptor result) {
       on_process_task_.Run(ScopedProcessTask(
           new ProcessTask(
               result.frame_number(), &stream_ctx.process_input.value(),
-              &stream_ctx.process_output.value(), &capture_ctx.result_metadata,
-              &capture_ctx.feature_metadata, capture_ctx.private_context.get(),
+              &stream_ctx.process_output.value(), &capture_ctx->result_metadata,
+              &capture_ctx->feature_metadata,
+              capture_ctx->private_context.get(),
               base::BindOnce(&StreamManipulatorHelper::OnProcessTaskDone,
                              base::Unretained(this))),
           base::OnTaskRunnerDeleter(task_runner_)));
     }
   }
 
-  ReturnCaptureResult(std::move(result), capture_ctx);
+  ReturnCaptureResult(std::move(result), *capture_ctx);
 }
 
 void StreamManipulatorHelper::Notify(camera3_notify_msg_t msg) {
@@ -947,26 +960,41 @@ void StreamManipulatorHelper::Notify(camera3_notify_msg_t msg) {
     return;
   }
 
-  if (msg.type == CAMERA3_MSG_ERROR) {
-    const camera3_error_msg_t& err = msg.message.error;
-    switch (err.error_code) {
-      case CAMERA3_MSG_ERROR_DEVICE:
-        break;
-      case CAMERA3_MSG_ERROR_REQUEST:
-        // By spec the buffers will be returned with error status, so nothing to
-        // do here.
-        break;
-      case CAMERA3_MSG_ERROR_BUFFER:
-        // TODO(kamesan): Handle this case.
-        LOGF(ERROR) << "Received buffer error message on frame "
-                    << err.frame_number << " ("
-                    << GetDebugString(err.error_stream) << ")";
-        break;
-      default:
-        break;
-    }
+  if (msg.type != CAMERA3_MSG_ERROR) {
+    result_sequencer_->Notify(msg);
+    return;
   }
-  result_sequencer_->Notify(msg);
+
+  const camera3_error_msg_t& err = msg.message.error;
+  switch (err.error_code) {
+    case CAMERA3_MSG_ERROR_DEVICE:
+      if (VLOG_IS_ON(1) && config_.enable_debug_logs) {
+        VLOGF(1) << "Device error";
+      }
+      result_sequencer_->Notify(msg);
+      break;
+    case CAMERA3_MSG_ERROR_REQUEST:
+      if (VLOG_IS_ON(1) && config_.enable_debug_logs) {
+        VLOGF(1) << "Request error: " << err.frame_number;
+      }
+      HandleRequestError(err.frame_number);
+      break;
+    case CAMERA3_MSG_ERROR_RESULT:
+      if (VLOG_IS_ON(1) && config_.enable_debug_logs) {
+        VLOGF(1) << "Result error: " << err.frame_number;
+      }
+      HandleResultError(err.frame_number);
+      break;
+    case CAMERA3_MSG_ERROR_BUFFER:
+      if (VLOG_IS_ON(1) && config_.enable_debug_logs) {
+        VLOGF(1) << "Buffer error: " << err.frame_number << " "
+                 << GetDebugString(err.error_stream);
+      }
+      HandleBufferError(err.frame_number, err.error_stream);
+      break;
+    default:
+      LOGF(FATAL) << "Unknown notified error code: " << err.error_code;
+  }
 }
 
 void StreamManipulatorHelper::Flush() {
@@ -1111,13 +1139,16 @@ StreamManipulatorHelper::FindSourceStream(
   };
 }
 
-std::pair<StreamManipulatorHelper::CaptureContext&, base::ScopedClosureRunner>
+std::pair<StreamManipulatorHelper::CaptureContext*, base::ScopedClosureRunner>
 StreamManipulatorHelper::GetCaptureContext(uint32_t frame_number) {
   CHECK(task_runner_->RunsTasksInCurrentSequence());
 
   auto it = capture_contexts_.find(frame_number);
-  CHECK(it != capture_contexts_.end());
-  CaptureContext& ctx = *it->second;
+  if (it == capture_contexts_.end()) {
+    return std::make_pair(nullptr,
+                          base::ScopedClosureRunner(base::DoNothing()));
+  }
+  CaptureContext* ctx = it->second.get();
   base::ScopedClosureRunner ctx_remover(base::BindOnce(
       [](decltype(capture_contexts_)& contexts, decltype(it) it) {
         if (it->second->Done()) {
@@ -1125,7 +1156,7 @@ StreamManipulatorHelper::GetCaptureContext(uint32_t frame_number) {
         }
       },
       std::ref(capture_contexts_), std::move(it)));
-  return std::make_pair(std::ref(ctx), std::move(ctx_remover));
+  return std::make_pair(ctx, std::move(ctx_remover));
 }
 
 StreamManipulatorHelper::PrivateContext*
@@ -1148,7 +1179,7 @@ StreamManipulatorHelper::GetPrivateContext(uint32_t frame_number) {
   }
 
   auto [ctx, ctx_remover] = GetCaptureContext(frame_number);
-  return ctx.private_context.get();
+  return ctx != nullptr ? ctx->private_context.get() : nullptr;
 }
 
 void StreamManipulatorHelper::ReturnCaptureResult(
@@ -1159,7 +1190,8 @@ void StreamManipulatorHelper::ReturnCaptureResult(
   const bool process_tasks_finished = [&]() {
     for (auto& [s, stream_ctx] : capture_ctx.requested_streams) {
       if (IsOutputFormatYuv(s->format) && stream_ctx.for_process &&
-          stream_ctx.state != StreamState::kDone) {
+          (stream_ctx.state != StreamState::kDone &&
+           stream_ctx.state != StreamState::kError)) {
         return false;
       }
     }
@@ -1201,6 +1233,93 @@ void StreamManipulatorHelper::ReturnCaptureResult(
   if (!result.is_empty()) {
     result_sequencer_->AddResult(std::move(result));
   }
+}
+
+void StreamManipulatorHelper::HandleRequestError(uint32_t frame_number) {
+  CHECK(task_runner_->RunsTasksInCurrentSequence());
+
+  auto [capture_ctx, capture_ctx_remover] = GetCaptureContext(frame_number);
+  CHECK_NE(capture_ctx, nullptr);
+  for (auto& [s, stream_ctx] : capture_ctx->requested_streams) {
+    CHECK_EQ(stream_ctx.state, StreamState::kRequesting);
+    stream_ctx.state = StreamState::kError;
+    stream_ctx.pool_process_input.reset();
+    if (stream_ctx.for_process && s->format == HAL_PIXEL_FORMAT_BLOB) {
+      capture_ctx->still_capture_cancelled = true;
+      still_capture_processor_->CancelPendingRequest(frame_number);
+    }
+  }
+  result_sequencer_->Notify(camera3_notify_msg_t{
+      .type = CAMERA3_MSG_ERROR,
+      .message = {.error = {.frame_number = frame_number,
+                            .error_code = CAMERA3_MSG_ERROR_REQUEST}}});
+
+  // Since there will be no processing, return pending result metadata if any.
+  ReturnCaptureResult(Camera3CaptureDescriptor(camera3_capture_request_t{
+                          .frame_number = frame_number}),
+                      *capture_ctx);
+}
+
+void StreamManipulatorHelper::HandleResultError(uint32_t frame_number) {
+  CHECK(task_runner_->RunsTasksInCurrentSequence());
+
+  auto [capture_ctx, capture_ctx_remover] = GetCaptureContext(frame_number);
+  CHECK_NE(capture_ctx, nullptr);
+  CHECK(!capture_ctx->result_metadata_error);
+  capture_ctx->result_metadata_error = true;
+  result_sequencer_->Notify(camera3_notify_msg_t{
+      .type = CAMERA3_MSG_ERROR,
+      .message = {.error = {.frame_number = frame_number,
+                            .error_code = CAMERA3_MSG_ERROR_RESULT}}});
+}
+
+void StreamManipulatorHelper::HandleBufferError(uint32_t frame_number,
+                                                camera3_stream_t* stream) {
+  CHECK(task_runner_->RunsTasksInCurrentSequence());
+
+  auto [capture_ctx, capture_ctx_remover] = GetCaptureContext(frame_number);
+  CHECK_NE(capture_ctx, nullptr);
+  CHECK(capture_ctx->requested_streams.contains(stream));
+  StreamContext& stream_ctx = capture_ctx->requested_streams[stream];
+  CHECK_EQ(stream_ctx.state, StreamState::kRequesting);
+  stream_ctx.state = StreamState::kError;
+  stream_ctx.pool_process_input.reset();
+
+  // Send buffer errors on this stream if it's from client, and on the generated
+  // streams.
+  std::vector<camera3_stream_t*> error_streams;
+  if (stream_ctx.from_client) {
+    error_streams.push_back(stream);
+  }
+  for (auto& b : stream_ctx.client_yuv_buffers_to_generate) {
+    error_streams.push_back(const_cast<camera3_stream_t*>(b.stream()));
+  }
+  for (auto* s : error_streams) {
+    result_sequencer_->Notify(camera3_notify_msg_t{
+        .type = CAMERA3_MSG_ERROR,
+        .message = {.error = {.frame_number = frame_number,
+                              .error_stream = s,
+                              .error_code = CAMERA3_MSG_ERROR_BUFFER}}});
+  }
+
+  // Cancel still capture. Return the BLOB or still YUV buffer if queued, and
+  // pending result metadata if any.
+  Camera3CaptureDescriptor result(
+      camera3_capture_result_t{.frame_number = frame_number});
+  if (stream_ctx.for_process &&
+      (stream->format == HAL_PIXEL_FORMAT_BLOB ||
+       (stream->usage & kStillCaptureUsageFlag)) &&
+      !capture_ctx->still_capture_cancelled) {
+    capture_ctx->still_capture_cancelled = true;
+    still_capture_processor_->CancelPendingRequest(frame_number);
+    if (capture_ctx->client_buffer_for_blob.has_value()) {
+      result.AppendOutputBuffer(
+          std::move(capture_ctx->client_buffer_for_blob.value()));
+      capture_ctx->client_buffer_for_blob.reset();
+    }
+    capture_ctx->pool_buffer_for_blob.reset();
+  }
+  ReturnCaptureResult(std::move(result), *capture_ctx);
 }
 
 void StreamManipulatorHelper::CropScaleImages(
@@ -1252,6 +1371,7 @@ void StreamManipulatorHelper::Reset() {
           ++num_processing;
           break;
         case StreamState::kDone:
+        case StreamState::kError:
           break;
       }
     }
@@ -1290,8 +1410,9 @@ void StreamManipulatorHelper::OnProcessTaskDone(ProcessTask& task) {
 
   auto [capture_ctx, capture_ctx_remover] =
       GetCaptureContext(task.frame_number());
+  CHECK_NE(capture_ctx, nullptr);
   StreamContext& stream_ctx =
-      capture_ctx.requested_streams[task.input_stream()];
+      capture_ctx->requested_streams[task.input_stream()];
   CHECK_EQ(stream_ctx.state, StreamState::kProcessing);
   stream_ctx.state = StreamState::kDone;
 
@@ -1306,46 +1427,46 @@ void StreamManipulatorHelper::OnProcessTaskDone(ProcessTask& task) {
 
   // Handle still capture.
   if ((task.input_stream()->usage & kStillCaptureUsageFlag) &&
-      !capture_ctx.still_capture_cancelled) {
+      !capture_ctx->still_capture_cancelled) {
     if (stream_ctx.process_output->status() != CAMERA3_BUFFER_STATUS_OK) {
-      capture_ctx.still_capture_cancelled = true;
+      capture_ctx->still_capture_cancelled = true;
       still_capture_processor_->CancelPendingRequest(task.frame_number());
     } else if (blob_size_ == still_process_output_size_) {
       // Pass the processed still YUV to still capture processor. The buffer is
       // moved into capture context and released until the still capture is
       // done.
       if (stream_ctx.pool_process_output.has_value()) {
-        capture_ctx.pool_buffer_for_blob.swap(stream_ctx.pool_process_output);
+        capture_ctx->pool_buffer_for_blob.swap(stream_ctx.pool_process_output);
         still_capture_processor_->QueuePendingYuvImage(
-            task.frame_number(), *capture_ctx.pool_buffer_for_blob->handle(),
+            task.frame_number(), *capture_ctx->pool_buffer_for_blob->handle(),
             base::ScopedFD(stream_ctx.process_output->take_release_fence()));
         stream_ctx.process_output.reset();
       } else {
-        capture_ctx.client_buffer_for_blob.swap(stream_ctx.process_output);
+        capture_ctx->client_buffer_for_blob.swap(stream_ctx.process_output);
         still_capture_processor_->QueuePendingYuvImage(
-            task.frame_number(), *capture_ctx.client_buffer_for_blob->buffer(),
+            task.frame_number(), *capture_ctx->client_buffer_for_blob->buffer(),
             base::ScopedFD(
-                capture_ctx.client_buffer_for_blob->take_release_fence()));
+                capture_ctx->client_buffer_for_blob->take_release_fence()));
       }
     } else {
       // Scale the processed still YUV before sending to still capture
       // processor.
-      capture_ctx.pool_buffer_for_blob =
+      capture_ctx->pool_buffer_for_blob =
           blob_sized_buffer_pool_->RequestBuffer();
-      CHECK(capture_ctx.pool_buffer_for_blob.has_value());
+      CHECK(capture_ctx->pool_buffer_for_blob.has_value());
       std::optional<base::ScopedFD> fence = crop_scale_image_.Run(
           *stream_ctx.process_output->buffer(),
           base::ScopedFD(stream_ctx.process_output->take_release_fence()),
-          *capture_ctx.pool_buffer_for_blob->handle(), base::ScopedFD(),
+          *capture_ctx->pool_buffer_for_blob->handle(), base::ScopedFD(),
           GetFormat(*stream_ctx.process_output->stream())
               .fov.GetCropWindowInto(
                   RelativeFov(blob_size_.value(), active_array_size_)));
       if (fence.has_value()) {
         still_capture_processor_->QueuePendingYuvImage(
-            task.frame_number(), *capture_ctx.pool_buffer_for_blob->handle(),
+            task.frame_number(), *capture_ctx->pool_buffer_for_blob->handle(),
             std::move(fence.value()));
       } else {
-        capture_ctx.still_capture_cancelled = true;
+        capture_ctx->still_capture_cancelled = true;
         still_capture_processor_->CancelPendingRequest(task.frame_number());
       }
     }
@@ -1375,7 +1496,7 @@ void StreamManipulatorHelper::OnProcessTaskDone(ProcessTask& task) {
   }
   stream_ctx.client_yuv_buffers_to_generate.clear();
 
-  ReturnCaptureResult(std::move(result), capture_ctx);
+  ReturnCaptureResult(std::move(result), *capture_ctx);
 }
 
 void StreamManipulatorHelper::OnStillCaptureResult(
@@ -1385,44 +1506,56 @@ void StreamManipulatorHelper::OnStillCaptureResult(
 
   auto [capture_ctx, capture_ctx_remover] =
       GetCaptureContext(result.frame_number());
+  CHECK_NE(capture_ctx, nullptr);
   StreamContext& stream_ctx =
-      capture_ctx.requested_streams[result.GetOutputBuffers()[0].stream()];
+      capture_ctx->requested_streams[result.GetOutputBuffers()[0].stream()];
   CHECK_EQ(stream_ctx.state, StreamState::kProcessing);
   stream_ctx.state = StreamState::kDone;
 
-  capture_ctx.pool_buffer_for_blob.reset();
-  if (capture_ctx.client_buffer_for_blob.has_value()) {
+  capture_ctx->pool_buffer_for_blob.reset();
+  if (capture_ctx->client_buffer_for_blob.has_value()) {
     result.AppendOutputBuffer(
-        std::move(capture_ctx.client_buffer_for_blob.value()));
-    capture_ctx.client_buffer_for_blob.reset();
+        std::move(capture_ctx->client_buffer_for_blob.value()));
+    capture_ctx->client_buffer_for_blob.reset();
   }
 
-  ReturnCaptureResult(std::move(result), capture_ctx);
+  ReturnCaptureResult(std::move(result), *capture_ctx);
 }
 
 bool StreamManipulatorHelper::CaptureContext::Done() const {
   // Check all the buffer pool handles were explicitly released, and all the
   // client buffers were returned.
   for (auto& [s, ctx] : requested_streams) {
-    if (ctx.state == StreamState::kDone) {
-      CHECK(!ctx.pool_process_input.has_value());
-      CHECK(!ctx.pool_process_output.has_value());
-      CHECK(!ctx.process_input.has_value());
-      CHECK(!ctx.process_output.has_value());
-      CHECK(ctx.client_yuv_buffers_to_generate.empty());
-    } else {
-      return false;
+    switch (ctx.state) {
+      case StreamState::kRequesting:
+      case StreamState::kProcessing:
+      case StreamState::kPending:
+        return false;
+      case StreamState::kDone:
+        CHECK(!ctx.pool_process_input.has_value());
+        CHECK(!ctx.pool_process_output.has_value());
+        CHECK(!ctx.process_input.has_value());
+        CHECK(!ctx.process_output.has_value());
+        CHECK(ctx.client_yuv_buffers_to_generate.empty());
+        break;
+      case StreamState::kError:
+        // If error notified, the client buffer may not be returned.
+        CHECK(!ctx.pool_process_input.has_value());
+        CHECK(!ctx.pool_process_output.has_value());
+        break;
     }
   }
   CHECK(!pool_buffer_for_blob.has_value());
   CHECK(!client_buffer_for_blob.has_value());
 
   // Check result metadata was sent.
-  if (last_result_metadata_received) {
-    CHECK(last_result_metadata_sent);
-    CHECK(result_metadata.isEmpty());
-  } else {
-    return false;
+  if (!result_metadata_error) {
+    if (last_result_metadata_received) {
+      CHECK(last_result_metadata_sent);
+      CHECK(result_metadata.isEmpty());
+    } else {
+      return false;
+    }
   }
 
   return true;

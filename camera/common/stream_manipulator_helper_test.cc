@@ -395,6 +395,10 @@ class StreamManipulatorHelperTest : public testing::Test {
     return result;
   }
 
+  std::vector<camera3_notify_msg_t> TakeNotifiedMessages() {
+    return std::move(notified_messages_);
+  }
+
   TestStreamManipulator& manipulator(size_t index) const {
     CHECK_LT(index, manipulators_.size());
     return *manipulators_[index];
@@ -1710,6 +1714,201 @@ TEST_F(StreamManipulatorHelperTest, PropagateBufferErrors) {
         TakeLastReturnedResult(), fn,
         {{still_output_stream, *still_output, CAMERA3_BUFFER_STATUS_OK},
          {blob_stream, *blob, CAMERA3_BUFFER_STATUS_ERROR}});
+  }
+}
+
+void ValidateMessages(
+    base::span<const camera3_notify_msg_t> messages,
+    const std::vector<std::tuple<int /*error_code*/,
+                                 uint32_t /*frame_number*/,
+                                 const camera3_stream_t* /*error_stream*/>>&
+        expected_messages) {
+  std::vector<std::tuple<int, uint32_t, const camera3_stream_t*>> result;
+  for (auto& m : messages) {
+    ASSERT_EQ(m.type, CAMERA3_MSG_ERROR);
+    const camera3_error_msg_t& err = m.message.error;
+    result.push_back(
+        std::make_tuple(err.error_code, err.frame_number, err.error_stream));
+  }
+  EXPECT_THAT(result, UnorderedElementsAreArray(expected_messages));
+}
+
+TEST_F(StreamManipulatorHelperTest, NotifyRequestError) {
+  SetUpWithTestCase(g_complex_test_case);
+  camera3_stream_t* blob_stream = &streams_[0];
+  camera3_stream_t* video_output_streams[] = {&streams_[2], &streams_[3]};
+  camera3_stream_t* still_input_stream = extra_configured_streams_[0];
+  camera3_stream_t* video_input_stream = extra_configured_streams_[1];
+
+  AllocateRequestBuffers();
+  const ScopedBufferHandle& blob = request_buffers_[blob_stream][0];
+  const ScopedBufferHandle& video0_output =
+      request_buffers_[video_output_streams[0]][0];
+  const ScopedBufferHandle& video1_output =
+      request_buffers_[video_output_streams[1]][0];
+
+  // Request error with video streams.
+  {
+    const uint32_t fn = 1;
+    Camera3CaptureDescriptor request =
+        MakeRequest(fn, {{video_output_streams[0], video0_output.get()},
+                         {video_output_streams[1], video1_output.get()}});
+    SendRequest(&request);
+    buffer_handle_t video_input = FindBuffer(request, video_input_stream).first;
+
+    Notify(camera3_notify_msg_t{
+        .type = CAMERA3_MSG_ERROR,
+        .message = {.error = {.frame_number = fn,
+                              .error_code = CAMERA3_MSG_ERROR_REQUEST}}});
+    ValidateMessages(TakeNotifiedMessages(),
+                     {{CAMERA3_MSG_ERROR_REQUEST, fn, nullptr}});
+
+    // Check buffers with error status can still be sent.
+    SendResult(MakeResult(fn, {{video_input_stream, &video_input}},
+                          partial_result_count_, CAMERA3_BUFFER_STATUS_ERROR));
+  }
+
+  // Request error with still capture.
+  {
+    const uint32_t fn = 2;
+    Camera3CaptureDescriptor request =
+        MakeRequest(fn, {{blob_stream, blob.get()}});
+    SendRequest(&request);
+    buffer_handle_t still_input = FindBuffer(request, still_input_stream).first;
+
+    Notify(camera3_notify_msg_t{
+        .type = CAMERA3_MSG_ERROR,
+        .message = {.error = {.frame_number = fn,
+                              .error_code = CAMERA3_MSG_ERROR_REQUEST}}});
+    ValidateMessages(TakeNotifiedMessages(),
+                     {{CAMERA3_MSG_ERROR_REQUEST, fn, nullptr}});
+
+    SendResult(MakeResult(
+        fn, {{blob_stream, blob.get()}, {still_input_stream, &still_input}},
+        partial_result_count_, CAMERA3_BUFFER_STATUS_ERROR));
+  }
+}
+
+TEST_F(StreamManipulatorHelperTest, NotifyResultError) {
+  SetUpWithTestCase(g_simple_test_case);
+  camera3_stream_t* video_stream = configured_streams_[1];
+
+  AllocateRequestBuffers();
+  const ScopedBufferHandle& video_output = request_buffers_[video_stream][0];
+
+  {
+    const uint32_t fn = 1;
+    Camera3CaptureDescriptor request =
+        MakeRequest(fn, {{video_stream, video_output.get()}});
+    SendRequest(&request);
+    buffer_handle_t video_input = FindBuffer(request, video_stream).first;
+
+    Notify(camera3_notify_msg_t{
+        .type = CAMERA3_MSG_ERROR,
+        .message = {.error = {.frame_number = fn,
+                              .error_code = CAMERA3_MSG_ERROR_RESULT}}});
+    ValidateMessages(TakeNotifiedMessages(),
+                     {{CAMERA3_MSG_ERROR_RESULT, fn, nullptr}});
+
+    // Check process task is still sent without the required metadata.
+    SendResult(MakeResult(fn, {{video_stream, &video_input}}, 0));
+    manipulator(0).FinishProcessTask(fn, video_stream);
+    ValidateResult(TakeLastReturnedResult(), fn,
+                   {{video_stream, *video_output, CAMERA3_BUFFER_STATUS_OK}});
+  }
+}
+
+TEST_F(StreamManipulatorHelperTest, NotifyBufferError) {
+  SetUpWithTestCase(g_complex_test_case);
+  camera3_stream_t* blob_stream = &streams_[0];
+  camera3_stream_t* still_output_stream = &streams_[1];
+  camera3_stream_t* video_output_streams[] = {&streams_[2], &streams_[3]};
+  camera3_stream_t* still_input_stream = extra_configured_streams_[0];
+  camera3_stream_t* video_input_stream = extra_configured_streams_[1];
+
+  AllocateRequestBuffers();
+  const ScopedBufferHandle& blob = request_buffers_[blob_stream][0];
+  const ScopedBufferHandle& still_output =
+      request_buffers_[still_output_stream][0];
+  const ScopedBufferHandle& video0_output =
+      request_buffers_[video_output_streams[0]][0];
+  const ScopedBufferHandle& video1_output =
+      request_buffers_[video_output_streams[1]][0];
+
+  // Notify buffer error on video processing stream.
+  {
+    const uint32_t fn = 1;
+    Camera3CaptureDescriptor request =
+        MakeRequest(fn, {{video_output_streams[0], video0_output.get()},
+                         {video_output_streams[1], video1_output.get()}});
+    SendRequest(&request);
+    buffer_handle_t video_input = FindBuffer(request, video_input_stream).first;
+
+    Notify(camera3_notify_msg_t{
+        .type = CAMERA3_MSG_ERROR,
+        .message = {.error = {.frame_number = fn,
+                              .error_stream = video_input_stream,
+                              .error_code = CAMERA3_MSG_ERROR_BUFFER}}});
+    ValidateMessages(TakeNotifiedMessages(),
+                     {{CAMERA3_MSG_ERROR_BUFFER, fn, video_output_streams[0]},
+                      {CAMERA3_MSG_ERROR_BUFFER, fn, video_output_streams[1]}});
+
+    // Check buffers with error status can still be sent.
+    SendResult(MakeResult(fn, {{video_input_stream, &video_input}},
+                          partial_result_count_, CAMERA3_BUFFER_STATUS_ERROR));
+  }
+
+  // Notify buffer error on still processing stream.
+  {
+    const uint32_t fn = 2;
+    Camera3CaptureDescriptor request = MakeRequest(
+        fn,
+        {{blob_stream, blob.get()}, {still_output_stream, still_output.get()}});
+    SendRequest(&request);
+    buffer_handle_t still_input = FindBuffer(request, still_input_stream).first;
+
+    Notify(camera3_notify_msg_t{
+        .type = CAMERA3_MSG_ERROR,
+        .message = {.error = {.frame_number = fn,
+                              .error_stream = still_input_stream,
+                              .error_code = CAMERA3_MSG_ERROR_BUFFER}}});
+    ValidateMessages(TakeNotifiedMessages(),
+                     {{CAMERA3_MSG_ERROR_BUFFER, fn, still_output_stream}});
+
+    SendResult(
+        MakeResult(fn, {{blob_stream, blob.get()}}, partial_result_count_));
+    ValidateResult(TakeLastReturnedResult(), fn,
+                   {{blob_stream, *blob, CAMERA3_BUFFER_STATUS_ERROR}});
+
+    SendResult(MakeResult(fn, {{still_input_stream, &still_input}}, 0,
+                          CAMERA3_BUFFER_STATUS_ERROR));
+  }
+
+  // Notify buffer error on BLOB stream.
+  {
+    const uint32_t fn = 3;
+    Camera3CaptureDescriptor request = MakeRequest(
+        fn,
+        {{blob_stream, blob.get()}, {still_output_stream, still_output.get()}});
+    SendRequest(&request);
+    buffer_handle_t still_input = FindBuffer(request, still_input_stream).first;
+
+    Notify(camera3_notify_msg_t{
+        .type = CAMERA3_MSG_ERROR,
+        .message = {.error = {.frame_number = fn,
+                              .error_stream = blob_stream,
+                              .error_code = CAMERA3_MSG_ERROR_BUFFER}}});
+    ValidateMessages(TakeNotifiedMessages(),
+                     {{CAMERA3_MSG_ERROR_BUFFER, fn, blob_stream}});
+
+    SendResult(MakeResult(fn, {{still_input_stream, &still_input}},
+                          partial_result_count_));
+    manipulator(0).FinishProcessTask(fn, still_input_stream);
+    ValidateResult(
+        TakeLastReturnedResult(), fn,
+        {{still_output_stream, *still_output, CAMERA3_BUFFER_STATUS_OK}});
+
+    SendResult(MakeResult(fn, {{blob_stream, blob.get()}}, 0));
   }
 }
 

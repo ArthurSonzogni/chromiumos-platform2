@@ -239,10 +239,13 @@ class StreamManipulatorHelper {
     kProcessing,
     // The buffer is received, done processing, and released.
     kDone,
+    // Request or buffer error is notified.
+    kError,
   };
 
   // Per-stream context in one capture.
   struct StreamContext {
+    bool from_client = false;
     bool for_process = false;
     StreamState state = StreamState::kRequesting;
     std::optional<CameraBufferPool::Buffer> pool_process_input;
@@ -258,6 +261,7 @@ class StreamManipulatorHelper {
     bool still_capture_cancelled = false;
     bool last_result_metadata_received = false;
     bool last_result_metadata_sent = false;
+    bool result_metadata_error = false;
     std::optional<Camera3StreamBuffer> client_buffer_for_blob;
     std::optional<CameraBufferPool::Buffer> pool_buffer_for_blob;
     android::CameraMetadata result_metadata;
@@ -278,11 +282,14 @@ class StreamManipulatorHelper {
       bool for_still_capture) const;
   // Returns capture context on the frame, and a scoped callback that removes
   // the context if it's Done().
-  std::pair<CaptureContext&, base::ScopedClosureRunner /*ctx_remover*/>
+  std::pair<CaptureContext*, base::ScopedClosureRunner /*ctx_remover*/>
   GetCaptureContext(uint32_t frame_number);
   PrivateContext* GetPrivateContext(uint32_t frame_number);
   void ReturnCaptureResult(Camera3CaptureDescriptor result,
                            CaptureContext& capture_ctx);
+  void HandleRequestError(uint32_t frame_number);
+  void HandleResultError(uint32_t frame_number);
+  void HandleBufferError(uint32_t frame_number, camera3_stream_t* stream);
   void CropScaleImages(Camera3StreamBuffer& src_buffer,
                        base::span<Camera3StreamBuffer> dst_buffers);
   void Reset();
