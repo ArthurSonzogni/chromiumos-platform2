@@ -147,7 +147,7 @@ bool DlcLvm::MakeReadyForUpdateInternal() const {
 bool DlcLvm::VerifyInternal(const base::FilePath& image_path,
                             std::vector<uint8_t>* image_sha256) {
   if (!UseLogicalVolume()) {
-    LOG(INFO) << "Skipping verification of logical voluems for DLC="
+    LOG(INFO) << "Skipping verification of logical volumes for DLC="
               << sanitized_id_;
     return DlcBase::VerifyInternal(image_path, image_sha256);
   }
