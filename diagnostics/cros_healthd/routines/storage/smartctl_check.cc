@@ -174,9 +174,7 @@ void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
                                 &available_spare_threshold, &percentage_used,
                                 &critical_warning)) {
     LOG(ERROR) << "Unable to parse smartctl output: " << result;
-    // TODO(b/260956052): Make the routine only available to NVMe, and return
-    // kError in the parsing error.
-    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kFailed,
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
                                     /*percent=*/100,
                                     kSmartctlCheckRoutineFailedToParse);
     return;

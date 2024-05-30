@@ -356,7 +356,7 @@ TEST_F(SmartctlCheckRoutineTest, AllChecksFailed) {
                percentage_used_threshold, critical_warning);
 }
 
-// Tests that the SmartctlCheck routine fails if debugd proxy returns
+// Tests that the SmartctlCheck routine returns error if debugd proxy returns
 // invalid data.
 TEST_F(SmartctlCheckRoutineTest, InvalidDebugdData) {
   CreateSmartctlCheckRoutine(std::nullopt);
@@ -365,7 +365,7 @@ TEST_F(SmartctlCheckRoutineTest, InvalidDebugdData) {
           [&](OnceStringCallback callback) { std::move(callback).Run(""); }));
 
   VerifyNonInteractiveUpdate(RunRoutineAndWaitForExit()->routine_update_union,
-                             mojom::DiagnosticRoutineStatusEnum::kFailed,
+                             mojom::DiagnosticRoutineStatusEnum::kError,
                              kSmartctlCheckRoutineFailedToParse);
 }
 
