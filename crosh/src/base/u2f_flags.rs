@@ -41,11 +41,15 @@ fn execute_u2f_flags(_cmd: &Command, args: &Arguments) -> Result<(), dispatcher:
 
     let connection = Debugd::new().map_err(|_| dispatcher::Error::CommandReturnedError)?;
 
-    connection
+    let error_msg = connection
         .set_u2f_flags(tokens[0].as_str())
         .map_err(|err| {
             eprintln!("ERROR: Got unexpected result: {}", err);
             dispatcher::Error::CommandReturnedError
         })?;
+    if !error_msg.is_empty() {
+        eprintln!("ERROR: Got unexpected result: {}", error_msg);
+        return Err(dispatcher::Error::CommandReturnedError);
+    }
     Ok(())
 }
