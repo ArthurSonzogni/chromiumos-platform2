@@ -8,7 +8,6 @@
 import os
 from pathlib import Path
 import tempfile
-from typing import Dict, Tuple
 import unittest
 
 import numpy as np
@@ -56,14 +55,14 @@ def test_report(dir: Path):
         )
         rng = np.random.default_rng()
 
-        fa_titles: Dict[str, str] = {
+        fa_titles: dict[str, str] = {
             # False Accepts
             "FA_by_User": "False Accepts by Enroll User ID and Verify User ID",
             "FA_by_Finger": "False Accepts by Enroll Finger ID and Verify Finger ID",
             "FA_by_Sample": "False Accepts by Verify Sample ID",
             "FA_by_Group": "False Accepts by Enroll Group and Verify Group",
         }
-        fr_titles: Dict[str, str] = {
+        fr_titles: dict[str, str] = {
             # False Rejects
             "FR_by_User": "False Rejects by User ID",
             "FR_by_Finger": "False Rejects by Finger ID",

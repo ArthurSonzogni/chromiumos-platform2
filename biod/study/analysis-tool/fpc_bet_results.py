@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from enum import Enum
 import pathlib
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Iterable, Optional, Union
 
 from cached_data_file import CachedCSVFile
 from experiment import Experiment
@@ -63,11 +63,11 @@ class FPCBETResults:
         FRR_Decision = "FRR_decisions.csv"
 
         @classmethod
-        def all(cls) -> List[FPCBETResults.TableType]:
+        def all(cls) -> list[FPCBETResults.TableType]:
             return list(level for level in cls)
 
         @classmethod
-        def all_values(cls) -> List[str]:
+        def all_values(cls) -> list[str]:
             return list(level.value for level in cls)
 
     class Column(Enum):
@@ -92,11 +92,11 @@ class FPCBETResults:
         Target_500K = "FPC_BIO_SECURITY_LEVEL_HIGH"
 
         @classmethod
-        def all(cls) -> List[FPCBETResults.SecLevel]:
+        def all(cls) -> list[FPCBETResults.SecLevel]:
             return list(level for level in cls)
 
         @classmethod
-        def all_values(cls) -> List[str]:
+        def all_values(cls) -> list[str]:
             return list(level.value for level in cls)
 
         def column_count(self) -> str:
@@ -116,7 +116,7 @@ class FPCBETResults:
         return self._dir / test_case.path() / table_type.value
 
     @staticmethod
-    def _find_blank_lines(file_name: pathlib.Path) -> List[int]:
+    def _find_blank_lines(file_name: pathlib.Path) -> list[int]:
         with open(file_name, "r") as f:
             return list(i for i, l in enumerate(f.readlines()) if l.isspace())
 
@@ -201,7 +201,7 @@ class FPCBETResults:
         self,
         test_case: TestCase,
         table_type: TableType,
-        sec_levels: List[SecLevel] = SecLevel.all(),
+        sec_levels: list[SecLevel] = SecLevel.all(),
     ) -> Optional[pd.DataFrame]:
         """Read `TableType.FAR` and `TableType.FRR` (F[AR]R_stats_4level.txt) file.
 
@@ -288,8 +288,8 @@ class FPCBETResults:
             return None
 
     def read_files(
-        self, case_table_pairs: Iterable[Tuple[TestCase, TableType]]
-    ) -> List[Optional[pd.DataFrame]]:
+        self, case_table_pairs: Iterable[tuple[TestCase, TableType]]
+    ) -> list[Optional[pd.DataFrame]]:
         """Read all test-case/table-type pairs as fast as possible.
 
         This may be parallelized in the future.

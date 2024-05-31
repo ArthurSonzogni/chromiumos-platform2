@@ -5,11 +5,13 @@
 
 """A tool to generate simulated fingerprint study results."""
 
+from __future__ import annotations
+
 import argparse
 import pathlib
 import sys
 import time
-from typing import List, Optional
+from typing import Optional
 
 from experiment import Experiment
 import numpy as np
@@ -20,7 +22,7 @@ def GenerateFARResults(
     num_users: int = 72,
     num_fingers: int = 6,
     num_verify_samples: int = 80,
-    user_groups: Optional[List[str]] = ["A", "B", "C", "D", "E", "F"],
+    user_groups: Optional[list[str]] = ["A", "B", "C", "D", "E", "F"],
     prob: float = 1 / 100000.0,
     verbose: bool = False,
 ) -> pd.DataFrame:
@@ -30,13 +32,14 @@ def GenerateFARResults(
     fingers = np.arange(num_fingers)
     samples = np.arange(num_verify_samples)
 
-    # This includes match attempts between the same enroll and verification
-    # fingers. We need this for initial dataframe sizing, before we prune the
-    # invalid matches.
+    # This includes match attempts between the same finger for enrollment and
+    # verification. We need this for initial dataframe sizing, before we prune
+    # the invalid matches.
     num_rows_naive = (num_users * num_fingers * num_verify_samples) * (
         num_users * num_fingers
     )
 
+    # This is the correct number of total FAR matches.
     num_rows = (num_users * num_fingers * num_verify_samples) * (
         (num_users * num_fingers) - 1
     )
@@ -54,6 +57,8 @@ def GenerateFARResults(
         )
     ).T.reshape(-1, 5)
 
+    # The resultant cross_mat contains a row entry for all combinations of
+    # user x finger x sample x user x finger (5 columns).
     assert cross_mat.shape == (num_rows_naive, 5)
 
     df = pd.DataFrame(
@@ -99,6 +104,7 @@ def GenerateFARResults(
         inplace=True,
     )
 
+    # Check that we now have the correct number of FAR entries.
     assert df.shape[0] == num_rows
 
     if verbose:
@@ -150,7 +156,7 @@ def GenerateFARResults(
 # collection directory group discovery.
 
 
-def main(argv: Optional[List[str]] = None) -> Optional[int]:
+def main(argv: Optional[list[str]] = None) -> Optional[int]:
     parser = argparse.ArgumentParser(
         description="Generate simulated fpstudy data."
     )

@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import annotations
+
 import fcntl
 import glob
 import hashlib
@@ -10,7 +12,7 @@ import mmap
 import pathlib
 import pickle
 import subprocess
-from typing import Any, List, Optional, Union
+from typing import Any, Optional, Union
 
 import pandas as pd
 
@@ -47,7 +49,7 @@ class CachedDataFile:
         """Build the glob pattern to find cache files for all file versions."""
         return str(self._cache_file_path("*"))
 
-    def _find_cache_files(self) -> List[pathlib.Path]:
+    def _find_cache_files(self) -> list[pathlib.Path]:
         """Return a list of all cache files for the data file."""
         cache_files = glob.glob(self._cache_file_pattern())
         return [pathlib.Path(p) for p in cache_files]
@@ -84,7 +86,7 @@ class CachedDataFile:
         self,
         file: pathlib.Path,
         rm_cmd: Optional[str] = None,
-        rm_cmd_opts: Optional[List[str]] = None,
+        rm_cmd_opts: Optional[list[str]] = None,
     ):
         """Delete a cache file.
 
@@ -121,7 +123,7 @@ class CachedDataFile:
     def prune(
         self,
         rm_cmd: Optional[str] = None,
-        rm_cmd_opts: Optional[List[str]] = None,
+        rm_cmd_opts: Optional[list[str]] = None,
     ):
         """Remove obsolete cache files."""
         ver = self.version()
@@ -134,7 +136,7 @@ class CachedDataFile:
     def remove(
         self,
         rm_cmd: Optional[str] = None,
-        rm_cmd_opts: Optional[List[str]] = None,
+        rm_cmd_opts: Optional[list[str]] = None,
     ):
         """Remove all cache files."""
         for cache_file in self._find_cache_files():

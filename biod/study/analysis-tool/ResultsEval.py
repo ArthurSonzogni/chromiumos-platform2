@@ -26,9 +26,11 @@
 #! %load_ext autoreload
 #! %autoreload 1
 
+from __future__ import annotations
+
 import os
 import pathlib
-from typing import Any, Dict, List, Optional, Union
+from typing import Optional
 
 import bootstrap
 from experiment import Experiment
@@ -76,7 +78,7 @@ pd.options.plotting.backend = "plotly"
 
 
 def print_far_value(
-    val: float, k_comparisons: List[int] = [20, 50, 100, 500]
+    val: float, k_comparisons: list[int] = [20, 50, 100, 500]
 ) -> str:
     """Print the science notation"""
     str = f"{val:.4e}"
@@ -104,7 +106,7 @@ USE_SIMULATED_PROB = 1 / 155000.0
 # USE_SIMULATED_PROB = 1/200000.0
 
 exp: Optional[Experiment] = None
-test_cases: List[TestCase] = list()
+test_cases: list[TestCase] = list()
 
 if USE_SIMULATED_DATA:
 
@@ -266,7 +268,7 @@ display(fa_table)
 
 def fa_count_figure(
     exp: Experiment,
-    cols: List[Experiment.TableCol],
+    cols: list[Experiment.TableCol],
     title: str,
     xaxis_title: str,
 ) -> go.Figure:
@@ -326,7 +328,7 @@ def fa_count_figure(
 
 def fr_count_figure(
     exp: Experiment,
-    cols: List[Experiment.TableCol],
+    cols: list[Experiment.TableCol],
     title: str,
     xaxis_title: str,
 ) -> go.Figure:
@@ -776,10 +778,10 @@ FRR_THRESHOLD = 10 / 100.0
 
 #### FAR ####
 
-far_boot_results: Dict[TestCase, bootstrap.BootstrapResults] = dict()
-frr_boot_results: Dict[TestCase, bootstrap.BootstrapResults] = dict()
-far_figures: Dict[TestCase, go.Figure] = dict()
-frr_figures: Dict[TestCase, go.Figure] = dict()
+far_boot_results: dict[TestCase, bootstrap.BootstrapResults] = dict()
+frr_boot_results: dict[TestCase, bootstrap.BootstrapResults] = dict()
+far_figures: dict[TestCase, go.Figure] = dict()
+frr_figures: dict[TestCase, go.Figure] = dict()
 for tc in test_cases:
     print(f"Running Test Case {tc}.")
     exp = exps[tc]

@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Tuple
 
 
 class TestCase(Enum):
@@ -20,11 +19,11 @@ class TestCase(Enum):
     # One = ("One's description", ...)
 
     @classmethod
-    def all(cls) -> List[TestCase]:
+    def all(cls) -> list[TestCase]:
         return [level for level in cls]
 
     @classmethod
-    def all_values(cls, s=slice(None)) -> List[str]:
+    def all_values(cls, s=slice(None)) -> list[str]:
         return [level.value[s] for level in cls]
 
     def __str__(self) -> str:
@@ -37,7 +36,7 @@ class TestCase(Enum):
         assert type(self.value[0]) == str
         return self.value[0]
 
-    def extra(self) -> Tuple:
+    def extra(self) -> tuple:
         """Get extra value tuple info."""
         assert type(self.value) == tuple
         assert len(self.value) >= 1

@@ -5,10 +5,12 @@
 
 """Utilities needed for Fingerprint Study Analysis."""
 
+from __future__ import annotations
+
 from collections import Counter
 from enum import Enum
 import timeit
-from typing import Any, Iterable, List, Literal, Optional, Set, Tuple, Union
+from typing import Any, Iterable, Literal, Optional, Union
 
 from IPython.display import display
 from IPython.display import Markdown
@@ -27,7 +29,7 @@ class DataFrameSetAccess:
     tables, this order of magnitude difference is unacceptable.
     """
 
-    def __init__(self, table: pd.DataFrame, cols: Optional[List[str]] = None):
+    def __init__(self, table: pd.DataFrame, cols: Optional[list[str]] = None):
         if not cols:
             cols = list(table.columns)
         self.cols = cols
@@ -59,14 +61,14 @@ class DataFrameCountTrieAccess:
     tens of nanoseconds slower.
     """
 
-    def __init__(self, table: pd.DataFrame, cols: Optional[List[str]] = None):
+    def __init__(self, table: pd.DataFrame, cols: Optional[list[str]] = None):
         """This is an expensive caching operation."""
 
         if not cols:
             cols = list(table.columns)
         self.cols = cols
 
-        self.counts_dict = Counter[Tuple]()
+        self.counts_dict = Counter[tuple]()
 
         for row in np.array(table[cols]):
             for i in range(len(cols) + 1):
@@ -162,7 +164,7 @@ def plot_pd_hist_discrete(
     plt.show()
 
 
-def discrete_hist(data) -> Tuple[npt.NDArray, npt.NDArray]:
+def discrete_hist(data) -> tuple[npt.NDArray, npt.NDArray]:
     """Return a tuple of unique items and their counts.
 
     Returns:
@@ -293,7 +295,7 @@ def elapsed_time_str(sec: float) -> str:
 
 def benchmark(
     stmt: str, setup: str = "pass", globals: dict = {**locals(), **globals()}
-) -> Tuple[int, float, float]:
+) -> tuple[int, float, float]:
     """Measure the runtime of `stmt`.
 
     This method invokes timeit.Timer.autorange and print results.

@@ -93,7 +93,7 @@ CAPTURE_FILE_EXTS = [
 ]
 
 
-def find_files(path: str, ext: str) -> list:
+def find_files(path: str, ext: str) -> list[str]:
     """Find all files that have the specified file extension.
 
     Args:
@@ -119,7 +119,7 @@ def find_files(path: str, ext: str) -> list:
     return files
 
 
-def decrypt(private_key: str, private_key_pass: str, files: list):
+def decrypt(private_key: str, private_key_pass: str, files: list[str]):
     """Decrypt the given file."""
 
     # Enable basic stdout logging for gnupg.
@@ -377,7 +377,7 @@ def cmd_rm(args: argparse.Namespace) -> int:
         os.remove(file)
 
 
-def main(argv: list) -> int:
+def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     subparsers = parser.add_subparsers(
         dest="subcommand", required=True, title="subcommands"

@@ -3,6 +3,8 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+from __future__ import annotations
+
 from enum import Enum
 import pathlib
 from typing import Optional
@@ -37,6 +39,8 @@ class Experiment:
         Reject = "REJECT"
 
     class TableCol(Enum):
+        """All known table column names used across different table types."""
+
         Enroll_User = "EnrollUser"
         Enroll_Finger = "EnrollFinger"
         Enroll_Group = "EnrollGroup"
@@ -49,11 +53,11 @@ class Experiment:
         Group = "Group"
 
         @classmethod
-        def all(cls) -> list:
+        def all(cls) -> list[Enum]:
             return list(level for level in cls)
 
         @classmethod
-        def all_values(cls) -> list:
+        def all_values(cls) -> list[str]:
             return list(level.value for level in cls)
 
     FALSE_TABLE_COLS = [
@@ -85,7 +89,7 @@ class Experiment:
         verify_finger_id: Optional[int] = None,
         verify_sample_index: Optional[int] = None,
     ) -> pd.DataFrame:
-        query_parts = []
+        query_parts: list[str] = []
 
         for arg, col in [
             (enroll_user_id, Experiment.TableCol.Enroll_User),
@@ -110,7 +114,11 @@ class Experiment:
         verify_finger_id: Optional[int] = None,
         verify_sample_index: Optional[int] = None,
     ) -> pd.DataFrame:
-        query_cols = []
+        """A faster version of `_false_table_query`.
+
+        See the unit test benchmarks.
+        """
+        query_cols: list[str] = []
         query_vals = ()
 
         for arg, col in [

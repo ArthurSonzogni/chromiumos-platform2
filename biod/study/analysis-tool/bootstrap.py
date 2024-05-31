@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import time
-from typing import Any, Callable, ClassVar, Iterable, List, Optional, Tuple
+from typing import Any, Callable, ClassVar, Iterable, Optional
 
 from experiment import Experiment
 import fpsutils
@@ -37,10 +37,10 @@ import numpy.typing as npt
 
 
 class BootstrapResults:
-    def __init__(self, bootstrap_samples: List[int]) -> None:
+    def __init__(self, bootstrap_samples: list[int]) -> None:
         self._samples = bootstrap_samples
 
-    def samples(self) -> List[int]:
+    def samples(self) -> list[int]:
         return self._samples
 
     def num_samples(self) -> int:
@@ -48,7 +48,7 @@ class BootstrapResults:
 
     def confidence_interval(
         self, confidence_percent: int = 95
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Calculate confidence interval as documented in ISO 2006.
 
         This simply uses percentiles.
@@ -145,7 +145,7 @@ class Bootstrap:
         self,
         num_samples: int,
         progress: Callable[[Iterable[Any], int], Iterable[Any]],
-    ) -> List[int]:
+    ) -> list[int]:
         boot_counts = list()
 
         if self._verbose:
@@ -168,7 +168,7 @@ class Bootstrap:
         num_samples: int,
         num_proc: Optional[int],
         progress: Callable[[Iterable[Any], int], Iterable[Any]],
-    ) -> List[int]:
+    ) -> list[int]:
         # All processes must have their own unique seed for their pseudo random
         # number generator, otherwise they will all generate the same random values.
         #

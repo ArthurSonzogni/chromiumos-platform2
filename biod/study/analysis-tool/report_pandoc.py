@@ -13,10 +13,8 @@ from typing import (
     Any,
     Callable,
     cast,
-    Dict,
     Final,
     Iterable,
-    List,
     Literal,
     Optional,
     TypeVar,
@@ -48,7 +46,7 @@ class Element:
     _id: str
     _path: Optional[Path]
     _parent: Optional[Element]
-    _children: Dict[str, Element]
+    _children: dict[str, Element]
 
     def __init__(
         self,
@@ -73,14 +71,14 @@ class Element:
         self._id = id
         self._parent = parent
         # Starting in Python 3.7, dicts maintain insert order.
-        self._children = dict[str, Element]()
+        self._children: dict[str, Element] = dict()
         # self._path = path
 
     def name(self) -> str:
         """Get the name of the current `Element`."""
         return self._id
 
-    def names(self) -> List[str]:
+    def names(self) -> list[str]:
         """Compose an ordered list of names from root parent to self."""
         if not self._parent:
             return [self.name()]
@@ -161,7 +159,7 @@ class Data(Element):
 
     def __init__(self, name: str, parent: Optional[Element] = None) -> None:
         super().__init__(name, parent)
-        self._data: Dict[str, Any] = dict()
+        self._data: dict[str, Any] = dict()
 
     def set(self, key: str, value: Any) -> None:
         self._data[key] = value
@@ -377,10 +375,10 @@ class Report2:
     def overall_section(self) -> Section:
         return self._overall
 
-    def _generate_render_context(self) -> Dict[str, object]:
+    def _generate_render_context(self) -> dict[str, object]:
         date_str = datetime.now().strftime("%B %d, %Y %H:%M:%S")
 
-        d: Dict[str, object] = {
+        d: dict[str, object] = {
             "date": date_str,
             "test_cases": self._test_cases,
             "overall": self._overall,
