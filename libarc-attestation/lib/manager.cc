@@ -8,6 +8,7 @@
 
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread.h>
+#include <base/time/time.h>
 #include <libarc-attestation/lib/manager.h>
 #include <libarc-attestation/lib/provisioner.h>
 #include <libarc-attestation/lib/version_attester.h>
@@ -15,6 +16,11 @@
 namespace arc_attestation {
 
 namespace {
+
+// 1 minute, unit in ms.
+constexpr double kBackgroundProvisionRetryStartingPeriod = 1 * 60 * 1000;
+// Delay increases by 1.7x by every failure.
+constexpr double kBackgroundProvisionRetryMultiplier = 1.7;
 
 void RunInTaskRunnerBlocking(scoped_refptr<base::SingleThreadTaskRunner> runner,
                              base::OnceClosure task) {
@@ -28,7 +34,7 @@ void RunInTaskRunnerBlocking(scoped_refptr<base::SingleThreadTaskRunner> runner,
 
 }  // namespace
 
-ArcAttestationManager::ArcAttestationManager() {}
+ArcAttestationManager::ArcAttestationManager() : backoff_retry_(nullptr) {}
 
 void ArcAttestationManager::Setup() {
   // Start the library thread.
@@ -41,6 +47,13 @@ void ArcAttestationManager::Setup() {
   // Setup the provisioner.
   provisioner_ = std::make_unique<Provisioner>(library_task_runner_);
   version_attester_ = std::make_unique<VersionAttester>(provisioner_.get());
+
+  backoff_retry_ = std::make_unique<ExponentialBackoff>(
+      kBackgroundProvisionRetryStartingPeriod,
+      kBackgroundProvisionRetryMultiplier,
+      base::BindRepeating(&ArcAttestationManager::BackgroundProvision,
+                          base::Unretained(this)),
+      library_task_runner_);
 }
 
 AndroidStatus ArcAttestationManager::ProvisionDkCert(bool blocking) {
@@ -49,9 +62,13 @@ AndroidStatus ArcAttestationManager::ProvisionDkCert(bool blocking) {
     return AndroidStatus::ok();
   if (!blocking) {
     // If we're not provisioned yet then we should not proceed to provisioning
-    // here because this call should be no blocking.
-    // TODO(b/275067764): We should trigger the retry mechanism in the
-    // background.
+    // here because this call should be non blocking.
+    library_task_runner_->PostTask(FROM_HERE,
+                                   base::BindOnce(
+                                       [](ArcAttestationManager* manager) {
+                                         manager->backoff_retry_->TriggerTry();
+                                       },
+                                       this));
     return AndroidStatus::from_keymint_code(
         AndroidStatus::KeymintSpecificErrorCode::
             SECURE_HW_COMMUNICATION_FAILED);
@@ -65,6 +82,18 @@ AndroidStatus ArcAttestationManager::ProvisionDkCert(bool blocking) {
           },
           this, &result));
   return result;
+}
+
+bool ArcAttestationManager::BackgroundProvision() {
+  if (provisioner_->is_provisioned()) {
+    return true;
+  }
+  provisioner_->ProvisionCert();
+
+  if (!provisioner_->is_provisioned()) {
+    return false;
+  }
+  return true;
 }
 
 AndroidStatus ArcAttestationManager::GetDkCertChain(

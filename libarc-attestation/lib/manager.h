@@ -11,6 +11,7 @@
 
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>
+#include <libarc-attestation/lib/exponential_backoff.h>
 #include <libarc-attestation/lib/interface.h>
 #include <libarc-attestation/lib/manager_base.h>
 #include <libarc-attestation/lib/provisioner.h>
@@ -50,6 +51,11 @@ class ArcAttestationManager : public ArcAttestationManagerBase {
   std::unique_ptr<Provisioner> provisioner_;
   // Version Attester deals with quoting the OS version.
   std::unique_ptr<VersionAttester> version_attester_;
+
+  // Runs the background provisioning, returns true when provisioned.
+  bool BackgroundProvision();
+
+  std::unique_ptr<ExponentialBackoff> backoff_retry_;
 };
 
 }  // namespace arc_attestation

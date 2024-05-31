@@ -65,6 +65,7 @@ action("print_proto_library_local") {
 
 source_set("libarc-attestation-source") {
   sources = [
+    "lib/exponential_backoff.cc",
     "lib/interface.cc",
     "lib/manager.cc",
     "lib/manager_base.cc",

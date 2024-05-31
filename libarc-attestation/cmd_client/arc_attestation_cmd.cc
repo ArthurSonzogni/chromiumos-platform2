@@ -7,6 +7,7 @@
 #include <base/base64.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/threading/platform_thread.h>
 #include <brillo/secure_blob.h>
 #include <brillo/syslog_logging.h>
 #include <libarc_attestation/proto_bindings/arc_attestation_blob.pb.h>
@@ -16,6 +17,8 @@
 #include "libarc-attestation/lib/interface.h"
 
 namespace {
+
+constexpr char kNonBlockingTimeoutSwitch[] = "non_blocking_timeout";
 
 constexpr char kUsage[] = R"(
 Usage: arc-attestation-cmd <command> [<options/arguments>]
@@ -39,6 +42,9 @@ Options:
   --binary
       Output protobuf in serialized binary format (machine readable form).
 
+  --non_blocking_timeout=<time in seconds>
+      If specified, the provision process will be non-blocking, but this
+      process will wait for the specified time before checking the result.
 )";
 
 constexpr char kCommandProvision[] = "provision";
@@ -107,8 +113,13 @@ int main(int argc, char** argv) {
 
   std::string command = command_line->GetArgs()[0];
   if (command == kCommandProvision) {
+    bool non_blocking = command_line->HasSwitch(kNonBlockingTimeoutSwitch);
+    std::string non_blocking_switch =
+        command_line->GetSwitchValueASCII(kNonBlockingTimeoutSwitch);
+    int non_blocking_timeout = std::stoi(non_blocking_switch);
+
     arc_attestation::AndroidStatus status =
-        arc_attestation::ProvisionDkCert(true);
+        arc_attestation::ProvisionDkCert(!non_blocking);
 
     // Convert to protobuf.
     arc_attestation::ProvisionCmdResult result;
@@ -116,6 +127,26 @@ int main(int argc, char** argv) {
 
     // Output the result.
     PrintResultProtobuf(command_line->HasSwitch("binary"), result);
+    if (!non_blocking) {
+      return (status.is_ok()) ? 0 : 1;
+    }
+
+    // For non-blocking operation, we'll need to wait and try again.
+    if (non_blocking_timeout < 0) {
+      LOG(ERROR) << "Illegal value entered for timeout";
+      return 1;
+    }
+    base::PlatformThread::Sleep(base::Seconds(non_blocking_timeout));
+
+    // Retry after timeout.
+    status = arc_attestation::ProvisionDkCert(!non_blocking);
+
+    // Convert to protobuf.
+    *result.mutable_status() = AndroidStatusToProtobuf(status);
+
+    // Output the result.
+    PrintResultProtobuf(command_line->HasSwitch("binary"), result);
+
     return (status.is_ok()) ? 0 : 1;
   } else if (command == kCommandGetCertChain) {
     arc_attestation::AndroidStatus status =
