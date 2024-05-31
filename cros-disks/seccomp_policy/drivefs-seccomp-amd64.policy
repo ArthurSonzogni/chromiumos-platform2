@@ -70,6 +70,7 @@ link: 1
 lseek: 1
 lstat: 1
 madvise: 1
+membarrier: 1
 memfd_create: 1
 mkdir: 1
 mkdirat: 1

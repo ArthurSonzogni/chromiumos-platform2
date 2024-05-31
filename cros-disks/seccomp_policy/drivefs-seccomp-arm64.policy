@@ -63,6 +63,7 @@ lgetxattr: 1
 linkat: 1
 lseek: 1
 madvise: 1
+membarrier: 1
 memfd_create: 1
 mkdirat: 1
 mlock: 1

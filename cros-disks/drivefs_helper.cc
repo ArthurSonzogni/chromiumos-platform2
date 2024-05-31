@@ -277,6 +277,17 @@ MountError DrivefsHelper::ConfigureSandbox(const std::string& source,
     LOG(ERROR) << "Cannot bind " << quote(kDbusSocketPath);
     return MountError::kInternalError;
   }
+  // Create a new tmpfs filesystem for /sys and mount the
+  // `/sys/devices/system/cpu/possible` path.
+  if (!sandbox->Mount("tmpfs", "/sys", "tmpfs", "")) {
+    LOG(ERROR) << "Cannot mount /sys";
+    return MountError::kInternalError;
+  }
+  const char kCpuPossiblePath[] = "/sys/devices/system/cpu/possible";
+  if (!sandbox->BindMount(kCpuPossiblePath, kCpuPossiblePath, false, false)) {
+    LOG(ERROR) << "Cannot bind " << quote(kCpuPossiblePath);
+    return MountError::kInternalError;
+  }
   if (!my_files.empty()) {
     if (!sandbox->BindMount(my_files.value(), my_files.value(), true, true)) {
       LOG(ERROR) << "Cannot bind " << quote(my_files);
