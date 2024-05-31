@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import pathlib
 import sys
+from typing import Optional
 
 import bootstrap
 from experiment import Experiment
@@ -200,10 +201,14 @@ def fr_count_figure(
     return fig
 
 
-def run(opts: argparse.Namespace) -> int:
-    learn_groups_dir: pathlib.Path = opts.learn_groups_dir
-    testcase_decisions_dir: pathlib.Path = opts.testcase_decisions_dir
+def cmd_report(opts: argparse.Namespace) -> int:
+    """Conduct a full analysis of all test cases and generate a final report."""
+    user_groups_csv: Optional[pathlib.Path] = opts.user_groups_csv
+    testcases_decisions_dir: pathlib.Path = opts.testcases_decisions_dir
     analysis_dir: pathlib.Path = opts.analysis_dir
+
+    if not user_groups_csv:
+        user_groups_csv = testcases_decisions_dir / "User_groups.csv"
 
     analysis_dir.mkdir(exist_ok=True)
     source_dir = pathlib.Path(__file__).parent
@@ -213,7 +218,7 @@ def run(opts: argparse.Namespace) -> int:
 
     print("# Read in data")
 
-    bet = FPCBETResults(testcase_decisions_dir)
+    bet = FPCBETResults(testcases_decisions_dir)
 
     # FIXME: Only enable one test case for speed of testing.
     # test_cases = [FPCBETResults.TestCase.TUDisabled]
@@ -248,9 +253,8 @@ def run(opts: argparse.Namespace) -> int:
         for i, (far, frr) in enumerate(zip(far_decisions, frr_decisions))
     }
 
-    # Learn group information from the subdirectory structure of the raw collection directory.
     for tc in exps:
-        exps[tc].add_groups_from_collection_dir(learn_groups_dir)
+        exps[tc].add_groups_from_csv(user_groups_csv)
 
     ################# Generate Report Test cases #################
 
@@ -872,39 +876,84 @@ def run(opts: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser()
+def cmd_groups_discover(opts: argparse.Namespace) -> int:
+    """Discover the user-group mapping from a raw collection dir structure.
 
-    parser.add_argument(
-        "--learn-groups-dir",
-        # default="",
-        required=True,
-        type=pathlib.Path,
-        help="Path to raw collection directory where we can learn the participant groups from",
+    Write this table out to a CSV file, which typically is called
+    User_groups.csv.
+    """
+    src_collection_dir: pathlib.Path = opts.src_collection_dir
+    user_groups_csv: pathlib.Path = opts.user_groups_csv
+
+    exp = Experiment(0, 0, 0)
+    exp.add_groups_from_collection_dir(src_collection_dir)
+    exp.user_groups_table_to_csv(user_groups_csv)
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    subparsers = parser.add_subparsers(
+        dest="subcommand", required=True, title="subcommands"
     )
-    parser.add_argument(
-        "testcase_decisions_dir",
-        metavar="testcase-decisions-dir",
+
+    # Parser for "report" subcommand.
+    parser_report = subparsers.add_parser("report", help=cmd_report.__doc__)
+    parser_report.set_defaults(func=cmd_report)
+    parser_report.add_argument(
+        "--user-groups-csv",
         type=pathlib.Path,
-        help="Directory that holds the matcher decisions for each test case",
+        help="Path to the user-group mapping CSV file. "
+        "(default: <testcases_decisions_dir>/User_groups.csv).",
     )
-    parser.add_argument(
+    parser_report.add_argument(
+        "testcases_decisions_dir",
+        type=pathlib.Path,
+        help="Directory of directories that holds the matcher decisions for each test case",
+    )
+    parser_report.add_argument(
         "analysis_dir",
-        metavar="analysis-dir",
         default="analysis",
         type=pathlib.Path,
         help="Directory to output the analysis report",
     )
-    opts = parser.parse_args(argv)
 
-    if not opts.learn_groups_dir.is_dir():
-        parser.error("learn-groups-dir must be a directory")
-    if not opts.testcase_decisions_dir.is_dir():
-        parser.error("testcase-decisions-dir must be a directory")
-    if opts.analysis_dir.is_file():
-        parser.error("testcase-decisions-dir must be a directory")
+    # Parser for "groups-discover" subcommand.
+    parser_groups_discover = subparsers.add_parser(
+        "groups-discover", help=cmd_groups_discover.__doc__
+    )
+    parser_groups_discover.set_defaults(func=cmd_groups_discover)
+    parser_groups_discover.add_argument(
+        "src_collection_dir",
+        type=pathlib.Path,
+        help="Path to raw collection directory where we will learn the "
+        "participant groups from",
+    )
+    parser_groups_discover.add_argument(
+        "user_groups_csv",
+        type=pathlib.Path,
+        default="User_groups.csv",
+        help="The path to the User_groups.csv we will write to",
+    )
 
-    return run(opts)
+    args = parser.parse_args(argv)
+
+    if args.subcommand == "report":
+        if args.user_groups_csv and not args.user_groups_csv.is_file():
+            parser.error("user-groups-csv must be a CSV file")
+        if not args.testcases_decisions_dir.is_dir():
+            parser.error("testcases_decisions_dir must be a directory")
+        if args.analysis_dir.exists() and not args.analysis_dir.is_dir():
+            parser.error("analysis_dir must be a directory")
+    elif args.subcommand == "groups-discover":
+        if not args.src_collection_dir.is_dir():
+            parser.error("src_collection_dir must be a directory")
+        if args.user_groups_csv.exists():
+            parser.error(
+                f"user_groups_csv {args.user_groups_csv} already exists"
+            )
+
+    return args.func(args)
 
 
 if __name__ == "__main__":
