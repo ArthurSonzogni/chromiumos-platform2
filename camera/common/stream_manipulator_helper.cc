@@ -1036,23 +1036,32 @@ StreamManipulatorHelper::FindSourceStream(
   uint32_t src_usage = kProcessStreamUsageFlags;
   uint32_t src_max_buffers = dst_streams[0]->max_buffers;
   int crop_rotate_scale_degrees = dst_streams[0]->crop_rotate_scale_degrees;
+  bool need_hw_composer_flag = false;
   for (auto* s : dst_streams) {
     CHECK(s->physical_camera_id == nullptr || s->physical_camera_id[0] == '\0');
     CHECK_EQ(crop_rotate_scale_degrees, s->crop_rotate_scale_degrees);
     src_max_buffers = std::max(src_max_buffers, s->max_buffers);
-    // Preserve hardware composer and video encoder usage flag for camera HAL to
-    // distinguish the use cases.
     if (IsOutputFormatYuv(s->format)) {
-      src_usage |= s->usage &
-                   (GRALLOC_USAGE_HW_COMPOSER | GRALLOC_USAGE_HW_VIDEO_ENCODER);
+      // Some HALs assume HW video encoder flag is consistent on all YUV streams
+      // (b/333679213).
+      src_usage |= s->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER;
+      // If destination streams have HW composer flag and will be replaced by
+      // the source stream, make sure the source stream (either created or
+      // chosen from the destination streams) also has HW composer flag.
+      // - Some HALs assume there's YUV stream with HW video encoder or HW
+      //   composer flag (b/337800237).
+      // - CTS android.hardware.cts.CameraTest#testPreviewFpsRange fails when
+      //   multiple streams have HW composer flag (b/343095847).
+      if (!config_.preserve_client_video_streams &&
+          (s->usage & GRALLOC_USAGE_HW_COMPOSER)) {
+        need_hw_composer_flag = true;
+      }
     }
   }
 
-  base::flat_map<const StreamFormat*, camera3_stream_t*> format_to_dst_stream;
   uint32_t max_dst_width = 0;
   uint32_t max_dst_height = 0;
   for (auto* s : dst_streams) {
-    format_to_dst_stream[&GetFormat(*s)] = s;
     max_dst_width = std::max(max_dst_width, s->width);
     max_dst_height = std::max(max_dst_height, s->height);
   }
@@ -1077,9 +1086,9 @@ StreamManipulatorHelper::FindSourceStream(
       return std::nullopt;
     }
     std::optional<float> result;
-    for (auto& [dst_format, s] : format_to_dst_stream) {
+    for (const camera3_stream_t* s : dst_streams) {
       const std::optional<float> scaling_factor =
-          GetScalingFactor(src_format, *dst_format, for_still_capture);
+          GetScalingFactor(src_format, GetFormat(*s), for_still_capture);
       if (!scaling_factor.has_value()) {
         return std::nullopt;
       }
@@ -1088,6 +1097,16 @@ StreamManipulatorHelper::FindSourceStream(
                          : scaling_factor.value());
     }
     return result;
+  };
+  auto get_matching_dst_stream =
+      [&](const StreamFormat& f) -> camera3_stream_t* {
+    for (camera3_stream_t* s : dst_streams) {
+      if (&GetFormat(*s) == &f &&
+          (!need_hw_composer_flag || (s->usage & GRALLOC_USAGE_HW_COMPOSER))) {
+        return s;
+      }
+    }
+    return nullptr;
   };
   auto index_format = [&](const StreamFormat& f) {
     // Prefer generating destination streams without upscaling, and prefer
@@ -1100,7 +1119,8 @@ StreamManipulatorHelper::FindSourceStream(
                    ? 1.0f / max_scaling_factor.value()
                    : std::min(1.0f, 1.0f / max_scaling_factor.value()))
             : 0.0f,
-        format_to_dst_stream.count(&f), -f.width, -f.height, f.max_fps);
+        get_matching_dst_stream(f) != nullptr ? 1 : 0, -f.width, -f.height,
+        f.max_fps);
   };
   auto it = std::max_element(
       available_formats_.begin(), available_formats_.end(),
@@ -1118,16 +1138,19 @@ StreamManipulatorHelper::FindSourceStream(
                   << " stream to generate other streams";
   }
   constexpr const char* kEmptyPhysicalCameraId = "";
+  camera3_stream_t* matching_dst_stream = get_matching_dst_stream(src_format);
   auto src_stream =
-      format_to_dst_stream.contains(&src_format)
-          ? OwnedOrExternalStream(format_to_dst_stream[&src_format])
+      matching_dst_stream != nullptr
+          ? OwnedOrExternalStream(matching_dst_stream)
           : OwnedOrExternalStream(
                 std::make_unique<camera3_stream_t>(camera3_stream_t{
                     .stream_type = CAMERA3_STREAM_OUTPUT,
                     .width = src_format.width,
                     .height = src_format.height,
                     .format = base::checked_cast<int>(src_format.format),
-                    .usage = for_still_capture ? kStillCaptureUsageFlag : 0,
+                    .usage = (need_hw_composer_flag ? GRALLOC_USAGE_HW_COMPOSER
+                                                    : 0) |
+                             (for_still_capture ? kStillCaptureUsageFlag : 0),
                     .max_buffers = src_max_buffers,
                     .physical_camera_id = kEmptyPhysicalCameraId,
                     .crop_rotate_scale_degrees = crop_rotate_scale_degrees,

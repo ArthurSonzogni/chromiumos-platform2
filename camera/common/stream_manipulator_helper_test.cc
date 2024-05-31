@@ -38,7 +38,9 @@
 namespace cros {
 namespace {
 
+using ::testing::Address;
 using ::testing::Contains;
+using ::testing::Not;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAreArray;
 
@@ -295,10 +297,12 @@ class StreamManipulatorHelperTest : public testing::Test {
       configured_streams_.push_back(stream_ptrs[i]);
     }
     for (auto& [w, h, f, u] : test_case.expected_extra_configured_streams) {
-      extra_configured_streams_.push_back(
-          FindStream(stream_config.GetStreams(), w, h, f, u));
-      EXPECT_NE(extra_configured_streams_.back(), nullptr)
+      camera3_stream_t* stream =
+          FindStream(stream_config.GetStreams(), w, h, f, u);
+      EXPECT_NE(stream, nullptr)
           << "extra stream of size " << Size(w, h).ToString() << " not found";
+      EXPECT_THAT(streams_, Not(Contains(Address(stream))));
+      extra_configured_streams_.push_back(stream);
     }
 
     for (auto* s : stream_config.GetStreams()) {
@@ -947,6 +951,63 @@ const TestCase g_test_cases[] =
                     {
                         {1280, 960, HAL_PIXEL_FORMAT_YCBCR_420_888,
                          kProcessStreamUsageFlags},
+                    },
+            },
+        // Carry HW composer flag to processing stream.
+        [15] =
+            {
+                .helper_configs =
+                    {
+                        {.process_mode = ProcessMode::kVideoAndStillProcess,
+                         .preserve_client_video_streams = false},
+                    },
+                .available_formats =
+                    {
+                        {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {640, 360, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                    },
+                .active_array_size = Size(2592, 1944),
+                .streams =
+                    {
+                        {.width = 1280,
+                         .height = 720,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                        {.width = 1280,
+                         .height = 720,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888,
+                         .usage = GRALLOC_USAGE_HW_COMPOSER},
+                    },
+                .expected_configured_stream_indices = {1},
+                .expected_extra_configured_streams = {},
+            },
+        [16] =
+            {
+                .helper_configs =
+                    {
+                        {.process_mode = ProcessMode::kVideoAndStillProcess,
+                         .preserve_client_video_streams = false},
+                    },
+                .available_formats =
+                    {
+                        {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {640, 360, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                    },
+                .active_array_size = Size(2592, 1944),
+                .streams =
+                    {
+                        {.width = 1280,
+                         .height = 720,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                        {.width = 640,
+                         .height = 360,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888,
+                         .usage = GRALLOC_USAGE_HW_COMPOSER},
+                    },
+                .expected_configured_stream_indices = {},
+                .expected_extra_configured_streams =
+                    {
+                        {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888,
+                         kProcessStreamUsageFlags | GRALLOC_USAGE_HW_COMPOSER},
                     },
             },
 };
