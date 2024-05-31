@@ -193,7 +193,7 @@ std::optional<uint64_t> DlcLvm::GetUsedBytesOnDisk() const {
         SystemState::Get()->lvmd_wrapper()->GetLogicalVolumeSize(lv_name);
     if (!size) {
       LOG(ERROR) << "Failed to get logical volume size for DLC=" << id_
-                   << " slot=" << BootSlot::ToString(slot);
+                 << " slot=" << BootSlot::ToString(slot);
       return std::nullopt;
     }
     total_size += *size * 1024 * 1024;
@@ -202,6 +202,11 @@ std::optional<uint64_t> DlcLvm::GetUsedBytesOnDisk() const {
 }
 
 bool DlcLvm::UseLogicalVolume() const {
+  if (IsUserTied() || !manifest_->use_logical_volume() ||
+      !SystemState::Get()->IsLvmStackEnabled()) {
+    return false;
+  }
+
   // Special handle for LVM migrating devices.
   // If any file based images exist..
   for (const auto& slot : {BootSlot::Slot::A, BootSlot::Slot::B}) {
@@ -219,9 +224,7 @@ bool DlcLvm::UseLogicalVolume() const {
     // .. sticking with file based images.
     return false;
   }
-
-  return !IsUserTied() && manifest_->use_logical_volume() &&
-         SystemState::Get()->IsLvmStackEnabled();
+  return true;
 }
 
 }  // namespace dlcservice
