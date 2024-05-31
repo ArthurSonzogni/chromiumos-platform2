@@ -581,6 +581,7 @@ bool Platform::CloseFile(FILE* fp) {
   return base::CloseFile(fp);
 }
 
+// NOLINTNEXTLINE(runtime/int)
 int Platform::Ioctl(FILE* fd, unsigned long request, void* query) {
   return ioctl(fileno(fd), request, query);
 }

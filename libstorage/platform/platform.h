@@ -440,6 +440,7 @@ class BRILLO_EXPORT Platform {
 
   // System call for device input/output operations.
   // fd must have already been opened with OpenFile.
+  // NOLINTNEXTLINE(runtime/int)
   virtual int Ioctl(FILE* fd, unsigned long request, void* query);
 
   // Initializes a base::File.  The caller is responsible for verifying that

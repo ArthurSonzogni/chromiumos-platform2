@@ -198,6 +198,7 @@ class BRILLO_EXPORT MockPlatform : public Platform {
               CloseFile,
               (FILE*),
               (override));  // NOLINT(readability/function)
+  // NOLINTNEXTLINE(runtime/int)
   MOCK_METHOD(int, Ioctl, (FILE*, unsigned long, void*), (override));
   MOCK_METHOD(bool, GetFileSize, (const base::FilePath&, int64_t*), (override));
   MOCK_METHOD(bool,
