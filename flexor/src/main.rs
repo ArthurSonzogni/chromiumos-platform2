@@ -196,18 +196,17 @@ fn perform_installation(config: &InstallConfig) -> Result<()> {
             // If this fails, we can't do anything about it, so ignore the error.
             let _ = try_save_logs(config);
         } else {
-            info!("Successfully copied a flex config.");
+            info!("Successfully copied a flex config to stateful partition.");
         }
         return Ok(());
     }
 
-    info!("Didn't find a flex config to copy, still proceeding");
+    info!("Didn't find a flex config to copy to stateful partition, still proceeding");
     Ok(())
 }
 
 /// Installs ChromeOS Flex and retries the actual installation steps at most three times.
 fn run(config: &InstallConfig) -> Result<()> {
-    info!("Start Flex-ing");
     copy_installation_files_to_rootfs(config)?;
 
     // Try installing on the device three times at most.
@@ -215,7 +214,7 @@ fn run(config: &InstallConfig) -> Result<()> {
         match perform_installation(config) {
             Ok(_) => {
                 // On success we reboot and end execution.
-                info!("Rebooting into ChromeOS Flex, keep fingers crossed");
+                info!("Install successful, rebooting into ChromeOS Flex");
                 reboot(nix::sys::reboot::RebootMode::RB_AUTOBOOT)
                     .context("Unable to reboot after successful installation")?;
                 return Ok(());
@@ -285,7 +284,6 @@ fn main() -> ExitCode {
         eprintln!("Failed to initialize logger: {err}");
     }
 
-    info!("Hello from Flexor!");
     info!("Installing ChromeOS Flex, please wait and don't turn off the device");
 
     let config = match InstallConfig::new() {

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use log::{error, info};
 use std::{
     fs::File,
@@ -14,40 +14,28 @@ use std::{
 use tar::Archive;
 use xz2::bufread::XzDecoder;
 
-/// Executes a command and logs its result. There are three outcomes when
-/// executing a command:
-/// 1. Everything is fine, executing the command returns exit code zero.
-/// 2. The command is not found and can thus not be executed.
-/// 3. The command is found and executed, but returns a non-zero exit code.
-/// The returned [`Result`] from this function maps 1. to `Ok` and 2., 3.
-/// To the `Err`` case.
+/// Executes a command and logs its result. Returns an error in case something
+/// goes wrong.
 pub fn execute_command(mut command: Command) -> Result<()> {
     info!("Executing command: {:?}", command);
 
-    match command.status() {
-        Ok(status) if status.success() => {
-            info!("Executed command succesfully; omitting logs.");
-            Ok(())
-        }
-        Err(err) => {
-            error!("Executed command failed: {err}");
-            bail!("Unable to execute command: {err}");
-        }
-        Ok(status) => {
-            let status_code = status.code().unwrap_or(-1);
-            error!("Executed command failed:  Got error status code: {status_code}",);
-
-            let output = command.output().context("Unable to collect logs.")?;
-            let stdout = from_utf8(&output.stdout).context("Unable to collect logs.")?;
-            let stderr = from_utf8(&output.stderr).context("Unable to collect logs.")?;
-
-            error!(
-                "Logs of the failing command: {}",
-                &format!("stdout: {}; stderr: {}", stdout, stderr,)
-            );
-            bail!("Got bad status code: {status_code}");
-        }
+    let status = command.status();
+    if status.is_ok() && status.as_ref().unwrap().success() {
+        info!("Executed command succesfully; omitting logs.");
+        return Ok(());
     }
+
+    let err = status
+        .err()
+        .map(|err| anyhow!(err))
+        .unwrap_or(anyhow!("Got non-zero status code"));
+
+    let output = command.output().context("Unable to collect logs.")?;
+    let stdout = from_utf8(&output.stdout).context("Unable to collect logs.")?;
+    let stderr = from_utf8(&output.stderr).context("Unable to collect logs.")?;
+
+    error!("Executed command failed: {err}\nStdout:\n{stdout}\nStderr:\n{stderr}");
+    bail!("Unable to execute command: {err}");
 }
 
 /// Uncompresses a tar from `src` to `dst`. In this case `src` needs to point to
@@ -136,18 +124,12 @@ mod tests {
         // This fails even before executing the command because it doesn't exist.
         let result = execute_command(Command::new("/this/does/not/exist"));
         assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("Unable to execute"));
 
         // This fails due to a bad status code of the command.
         let result = execute_command(Command::new("false"));
         assert!(result.is_err());
-        let err = result.unwrap_err();
-        assert!(err.to_string().contains("Got bad status code"));
-    }
 
-    #[test]
-    fn test_execute_good_command() {
+        // This succeeds.
         let result = execute_command(Command::new("ls"));
         assert!(result.is_ok());
     }

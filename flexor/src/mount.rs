@@ -37,7 +37,7 @@ impl Mount {
         let data: Option<&Path> = None;
 
         info!(
-            "Mounting {} to {}; fs type is: {fs_type}",
+            "Mounting {} to {}",
             disk_path.display(),
             tempdir.path().display()
         );

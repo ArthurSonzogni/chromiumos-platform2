@@ -12,7 +12,6 @@ use std::{
 
 use anyhow::{bail, Context, Result};
 use gpt_disk_types::{guid, LbaRangeInclusive};
-use log::info;
 use rand::random;
 use uguid::Guid;
 use vboot_reference_sys::vboot_host;
@@ -129,16 +128,6 @@ where
 
     let type_guid_c = type_guid.map_or(empty_guid(), to_cgpt_guid);
     let label_ptr = label.map_or(null(), |label_str| label_str.as_ptr());
-
-    info!(
-        "Creating CgptAddParams:
-        -i {index}
-        -b {begin:#?}
-        -l {label:#?}
-        -s {size:#?}
-        -t {type_guid:#?}
-        {disk_path:#?}"
-    );
 
     CgptAddParamsWrapper {
         params: vboot_host::CgptAddParams {
