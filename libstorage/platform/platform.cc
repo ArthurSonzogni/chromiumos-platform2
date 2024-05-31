@@ -419,7 +419,7 @@ bool Platform::GetOwnership(const FilePath& path,
 
   if (ret != 0) {
     PLOG(ERROR) << (follow_links ? "" : "l") << "stat() of \"" << path.value()
-                << "\" failed.";
+                << "\" failed";
     return false;
   }
   if (user_id)
@@ -442,7 +442,7 @@ bool Platform::SetOwnership(const FilePath& path,
     ret = lchown(path.value().c_str(), user_id, group_id);
   if (ret) {
     PLOG(ERROR) << (follow_links ? "" : "l") << "chown() of \"" << path.value()
-                << "\" to (" << user_id << "," << group_id << ") failed.";
+                << "\" to (" << user_id << "," << group_id << ") failed";
     return false;
   }
   return true;
@@ -453,7 +453,7 @@ bool Platform::GetPermissions(const FilePath& path, mode_t* mode) const {
 
   struct stat path_status;
   if (stat(path.value().c_str(), &path_status) != 0) {
-    PLOG(ERROR) << "stat() of \"" << path.value() << "\" failed.";
+    PLOG(ERROR) << "stat() of \"" << path.value() << "\" failed";
     return false;
   }
   *mode = path_status.st_mode;
@@ -465,7 +465,7 @@ bool Platform::SetPermissions(const FilePath& path, mode_t mode) {
 
   if (chmod(path.value().c_str(), mode)) {
     PLOG(ERROR) << "chmod() of \"" << path.value() << "\" to (" << std::oct
-                << mode << ") failed.";
+                << mode << ") failed";
     return false;
   }
   return true;
@@ -1555,7 +1555,7 @@ bool Platform::SetupProcessKeyring() {
   // it breaks eCryptfs. Set up a process keyring and link the user keyring to
   // it to fix this.
   if (keyctl_link(KEY_SPEC_USER_KEYRING, KEY_SPEC_PROCESS_KEYRING)) {
-    PLOG(ERROR) << "Failed to link the user keyring to the process keyring.";
+    PLOG(ERROR) << "Failed to link the user keyring to the process keyring";
     return false;
   }
   // When we have a process keyring, it hides the session keyring and it breaks
@@ -1563,7 +1563,7 @@ bool Platform::SetupProcessKeyring() {
   // Link the session keyring to the process keyring so that request_key() can
   // find keys under the session keyring too.
   if (keyctl_link(KEY_SPEC_SESSION_KEYRING, KEY_SPEC_PROCESS_KEYRING)) {
-    PLOG(ERROR) << "Failed to link the session keyring to the process keyring.";
+    PLOG(ERROR) << "Failed to link the session keyring to the process keyring";
     return false;
   }
   return true;

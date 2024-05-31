@@ -233,7 +233,7 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
     if (!platform_->Tune2Fs(backing, tune2fs_opts_)) {
       if (created) {
         PLOG(ERROR) << backing
-                    << ": Failed to tune on a newly created filesystem.";
+                    << ": Failed to tune on a newly created filesystem";
         return false;
       }
 
@@ -244,7 +244,7 @@ bool Ext4Container::Setup(const FileSystemKey& encryption_key) {
       }
 
       PLOG(WARNING) << backing
-                    << ": Failed to tune ext4 filesystem - continue anyway.";
+                    << ": Failed to tune ext4 filesystem - continue anyway";
     }
   }
 
