@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
+#include <base/numerics/safe_conversions.h>
 #include <base/synchronization/waitable_event.h>
 
 #include "cros-camera/camera_buffer_manager.h"
@@ -800,10 +801,20 @@ std::optional<base::ScopedFD> CropScaleOnGpuImageProcessor(
     return std::nullopt;
   }
 
+  // When not scaling, use nearest sampling to keep same pixel values.
+  const uint32_t cropped_width = base::checked_cast<uint32_t>(
+      static_cast<float>(input_image.y_texture().width()) * crop.width + 0.5f);
+  const uint32_t cropped_height = base::checked_cast<uint32_t>(
+      static_cast<float>(input_image.y_texture().height()) * crop.height +
+      0.5f);
+  const FilterMode filter_mode =
+      cropped_width == output_image.y_texture().width() &&
+              cropped_height == output_image.y_texture().height()
+          ? FilterMode::kNearest
+          : FilterMode::kBilinear;
   if (!image_processor->CropYuv(
           input_image.y_texture(), input_image.uv_texture(), crop,
-          output_image.y_texture(), output_image.uv_texture(),
-          FilterMode::kBicubic)) {
+          output_image.y_texture(), output_image.uv_texture(), filter_mode)) {
     LOGF(ERROR) << "Failed to crop and scale buffers";
     return std::nullopt;
   }
