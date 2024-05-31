@@ -3,15 +3,13 @@
 // found in the LICENSE file.
 
 use std::{
-    fs,
-    io::Write,
     os::unix::fs::{chown, PermissionsExt},
     path::{Path, PathBuf},
     process::ExitCode,
 };
 
 use anyhow::{bail, Context, Result};
-use libchromeos::{panic_handler, syslog};
+use libchromeos::panic_handler;
 use log::{error, info};
 use nix::sys::{reboot::reboot, stat::Mode};
 
@@ -19,11 +17,11 @@ mod cgpt;
 mod chromeos_install;
 mod disk;
 mod gpt;
+mod logger;
 mod lsblk;
 mod mount;
 mod util;
 
-const FLEXOR_TAG: &str = "flexor";
 const FLEX_IMAGE_FILENAME: &str = "flex_image.tar.xz";
 const FLEX_CONFIG_SRC_FILENAME: &str = "flex_config.json";
 const FLEX_CONFIG_TARGET_FILEPATH: &str = "unencrypted/flex_config/config.json";
@@ -196,7 +194,7 @@ fn perform_installation(config: &InstallConfig) -> Result<()> {
         if let Err(err) = copy_flex_config_to_stateful(config) {
             error!("Unable to copy Flex config due to: {err}");
             // If this fails, we can't do anything about it, so ignore the error.
-            let _ = try_safe_logs(config);
+            let _ = try_save_logs(config);
         } else {
             info!("Successfully copied a flex config.");
         }
@@ -238,7 +236,7 @@ fn run(config: &InstallConfig) -> Result<()> {
 /// 2. Otherwise we hope to already have the Flex layout including the FLEX_DEPLOY partition
 ///    in that case we write the logs to that partition (may need to create a filesystem on that
 ///    partition though).
-fn try_safe_logs(config: &InstallConfig) -> Result<()> {
+fn try_save_logs(config: &InstallConfig) -> Result<()> {
     // Case 1: The install partition still exists, so we write the logs to it.
     if matches!(config.install_partition.try_exists(), Ok(true)) {
         let install_mount =
@@ -280,24 +278,15 @@ fn try_safe_logs(config: &InstallConfig) -> Result<()> {
     Ok(())
 }
 
-// Tries to log to the Kernel messages with the highest priority log level (0).
-fn try_log_to_kmsg(msg: &str) {
-    let kmsg = format!("<0>{msg}");
-    let Ok(mut kmsg_fd) = fs::OpenOptions::new().append(true).open("/dev/kmsg") else {
-        return;
-    };
-    let _ = kmsg_fd.write_all(kmsg.as_bytes());
-}
-
 fn main() -> ExitCode {
     // Setup the panic handler and logging.
     panic_handler::install_memfd_handler();
-    if let Err(err) = syslog::init(FLEXOR_TAG.to_owned(), /*log_to_stderr=*/ true) {
+    if let Err(err) = logger::init() {
         eprintln!("Failed to initialize logger: {err}");
     }
 
     info!("Hello from Flexor!");
-    try_log_to_kmsg("Installing ChromeOS Flex, please wait and don't turn off the device");
+    info!("Installing ChromeOS Flex, please wait and don't turn off the device");
 
     let config = match InstallConfig::new() {
         Ok(config) => config,
@@ -311,13 +300,13 @@ fn main() -> ExitCode {
         error!("Unable to perform installation due to error: {err}");
 
         // If we weren't successful, try to save the logs.
-        if let Err(err) = try_safe_logs(&config) {
+        if let Err(err) = try_save_logs(&config) {
             error!("Unable to save logs due to: {err}")
         }
         // TODO(b/314965086): Add an error screen displaying the log.
         ExitCode::FAILURE
     } else {
-        try_log_to_kmsg("Successfully installed, rebooting");
+        info!("Successfully installed, rebooting");
         ExitCode::SUCCESS
     }
 }
