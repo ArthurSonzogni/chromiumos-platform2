@@ -99,7 +99,6 @@ LEGACYLIST = {
     "system-proxy",
     "timberslide",
     "touch_firmware_calibration",
-    "typecd",
     "ureadahead-diff",
     "usb_bouncer",
     "verity",
