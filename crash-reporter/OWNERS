@@ -6,4 +6,6 @@ eugenex@google.com
 # Backup reviewer.
 vapier@chromium.org #{LAST_RESORT_SUGGESTION}
 
-# COMPONENT: OS>Systems>CrashReporting
+# Some of the collectors are owned by people with deeper knowledge of that
+# subsystem.
+per-file kernel*=swboyd@chromium.org, dianders@chromium.org, iby@chromium.org
