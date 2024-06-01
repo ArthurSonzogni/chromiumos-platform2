@@ -550,9 +550,12 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
     } else {
       LOG(WARNING) << "Failed to get value of '" << kBoardProp << "'.";
     }
+    // TODO(b/331748554): The GKI doesn't have the pvclock driver.
+    vm_builder.EnablePvClock(false /* disable */);
   } else {
     kernel_path = base::FilePath(kKernelPath);
     vm_builder.AppendCustomParam("--android-fstab", kFstabPath);
+    vm_builder.EnablePvClock(true /* enable */);
   }
 
   if (USE_PCI_HOTPLUG_SLOTS) {

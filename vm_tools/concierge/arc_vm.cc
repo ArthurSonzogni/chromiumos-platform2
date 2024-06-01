@@ -456,8 +456,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .ascii_casefold = false,
                           .posix_acl = true})
       .EnableBattery(true /* enable */)
-      .EnableDelayRt(true /* enable */)
-      .EnablePvClock(true /* enable */);
+      .EnableDelayRt(true /* enable */);
 
   if (USE_CROSVM_VULKAN) {
     vm_builder.EnableVulkan(true).EnableRenderServer(true);
