@@ -1,7 +1,9 @@
-# If you change this, you also need to update the ebuild file
-# (src/third_party/chromiumos-overlay/chromeos-base/ \
-#  crash-reporter/crash-reporter-9999.ebuild) to point the fuzzer installers to
-# the OWNERS file with the actual email addresses.
-include /metrics/OWNERS
+iby@chromium.org
+hirthanan@google.com
+andrewbregger@google.com
+eugenex@google.com
+
+# Backup reviewer.
+vapier@chromium.org #{LAST_RESORT_SUGGESTION}
 
 # COMPONENT: OS>Systems>CrashReporting
