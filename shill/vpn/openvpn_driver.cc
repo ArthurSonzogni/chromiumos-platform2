@@ -24,6 +24,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ip_address.h>
 #include <net-base/ip_address_utils.h>
@@ -195,11 +196,11 @@ void OpenVPNDriver::Cleanup() {
   }
   management_server_->Stop();
   if (!tls_auth_file_.empty()) {
-    base::DeleteFile(tls_auth_file_);
+    brillo::DeleteFile(tls_auth_file_);
     tls_auth_file_.clear();
   }
   if (!openvpn_config_file_.empty()) {
-    base::DeleteFile(openvpn_config_file_);
+    brillo::DeleteFile(openvpn_config_file_);
     openvpn_config_file_.clear();
   }
   rpc_task_.reset();

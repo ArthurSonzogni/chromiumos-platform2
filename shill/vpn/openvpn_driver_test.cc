@@ -17,6 +17,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -136,7 +137,7 @@ class OpenVPNDriverTest
     driver_->pid_ = 0;
     SetEventHandler(nullptr);
     if (!lsb_release_file_.empty()) {
-      EXPECT_TRUE(base::DeleteFile(lsb_release_file_));
+      EXPECT_TRUE(brillo::DeleteFile(lsb_release_file_));
       lsb_release_file_.clear();
     }
   }

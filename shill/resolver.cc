@@ -11,6 +11,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
+#include <brillo/files/file_util.h>
 #include <net-base/ip_address.h>
 
 #include "shill/dns_util.h"
@@ -122,7 +123,7 @@ bool Resolver::ClearDNS() {
   name_servers_.clear();
   domain_search_list_.clear();
   dns_proxy_addrs_.clear();
-  return base::DeleteFile(path_);
+  return brillo::DeleteFile(path_);
 }
 
 }  // namespace shill

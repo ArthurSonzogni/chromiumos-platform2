@@ -18,6 +18,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
@@ -1136,7 +1137,7 @@ TEST_F(ManagerTest, RemoveProfile) {
   // Profile path should no longer exist.
   EXPECT_FALSE(base::PathExists(profile_path));
 
-  // Another remove succeeds, due to a foible in base::DeleteFile --
+  // Another remove succeeds, due to a foible in brillo::DeleteFile --
   // it is not an error to delete a file that does not exist.
   {
     Error error;
@@ -1218,7 +1219,7 @@ TEST_F(ManagerTest, CreateDuplicateProfileWithMissingKeyfile) {
 
   // Ensure that even if the backing filestore is removed, we still can't
   // create a profile twice.
-  ASSERT_TRUE(base::DeleteFile(profile_path));
+  ASSERT_TRUE(brillo::DeleteFile(profile_path));
   EXPECT_EQ(Error::kAlreadyExists, TestCreateProfile(&manager, kProfile0));
 }
 

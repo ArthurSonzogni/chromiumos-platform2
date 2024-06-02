@@ -28,6 +28,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <net-base/ip_address.h>
 #include <net-base/ipv4_address.h>
@@ -744,7 +745,7 @@ void IPsecConnection::StartCharon() {
     // This could happen if something unexpected happened in the previous run,
     // e.g., shill crashed.
     LOG(WARNING) << "vici socket exists before starting charon";
-    if (!base::DeleteFile(vici_socket_path_)) {
+    if (!brillo::DeleteFile(vici_socket_path_)) {
       const std::string reason = "Failed to delete vici socket file";
       PLOG(ERROR) << reason;
       NotifyFailure(VPNEndReason::kFailureInternal, reason);
@@ -1259,9 +1260,9 @@ void IPsecConnection::StopCharon() {
   }
 
   // Removes the vici socket file, since the charon process will not do that by
-  // itself. Note that base::DeleteFile() will return true if the file does not
-  // exist.
-  if (!base::DeleteFile(vici_socket_path_)) {
+  // itself. Note that brillo::DeleteFile() will return true if the file does
+  // not exist.
+  if (!brillo::DeleteFile(vici_socket_path_)) {
     PLOG(ERROR) << "Failed to delete the vici socket file";
   }
 

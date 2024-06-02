@@ -29,6 +29,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/bind.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -1234,7 +1235,7 @@ TEST_F(DeviceInfoTechnologyTest, Unknown) {
   EXPECT_EQ(Technology::kNoDeviceSymlink, GetDeviceTechnology());
 
   // Should be unknown without a uevent file.
-  EXPECT_TRUE(base::DeleteFile(GetInfoPath("uevent")));
+  EXPECT_TRUE(brillo::DeleteFile(GetInfoPath("uevent")));
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }
 
@@ -1351,7 +1352,7 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem1) {
   EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
-  EXPECT_TRUE(base::DeleteFile(driver_symlink));
+  EXPECT_TRUE(brillo::DeleteFile(driver_symlink));
   EXPECT_TRUE(base::CreateSymbolicLink(base::FilePath("/drivers/cdc_ncm"),
                                        driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
@@ -1372,7 +1373,7 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem2) {
   EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
-  EXPECT_TRUE(base::DeleteFile(driver_symlink));
+  EXPECT_TRUE(brillo::DeleteFile(driver_symlink));
   EXPECT_TRUE(base::CreateSymbolicLink(base::FilePath("/drivers/cdc_ncm"),
                                        driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
@@ -1393,7 +1394,7 @@ TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem3) {
   EXPECT_TRUE(base::CreateDirectory(device_root.Append("01/yyy/tty")));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 
-  EXPECT_TRUE(base::DeleteFile(driver_symlink));
+  EXPECT_TRUE(brillo::DeleteFile(driver_symlink));
   EXPECT_TRUE(base::CreateSymbolicLink(base::FilePath("/drivers/cdc_ncm"),
                                        driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());

@@ -18,6 +18,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 #include <inttypes.h>
 
@@ -89,7 +90,7 @@ TEST_F(KeyFileStoreTest, OpenClose) {
 
   ASSERT_TRUE(store_->Open());
   // Replace file with directory, to force Flush() to fail.
-  ASSERT_TRUE(base::DeleteFile(test_file_));
+  ASSERT_TRUE(brillo::DeleteFile(test_file_));
   ASSERT_TRUE(base::CreateDirectory(test_file_));
   ASSERT_FALSE(store_->Close());
   EXPECT_FALSE(store_->key_file_);

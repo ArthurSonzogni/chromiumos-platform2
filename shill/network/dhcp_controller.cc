@@ -17,6 +17,7 @@
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/timer.h>
 #include <net-base/network_config.h>
@@ -363,10 +364,10 @@ void DHCPController::CleanupClientState() {
 
   // Delete lease file if it is ephemeral.
   if (IsEphemeralLease()) {
-    base::DeleteFile(root().Append(base::StringPrintf(
+    brillo::DeleteFile(root().Append(base::StringPrintf(
         DHCPProvider::kDHCPCDPathFormatLease, device_name().c_str())));
   }
-  base::DeleteFile(root().Append(
+  brillo::DeleteFile(root().Append(
       base::StringPrintf(kDHCPCDPathFormatPID, device_name().c_str())));
   is_gateway_arp_active_ = false;
 }

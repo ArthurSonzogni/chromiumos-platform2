@@ -18,6 +18,7 @@
 #include <base/process/process_iterator.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
@@ -127,7 +128,7 @@ void DHCPProvider::DestroyLease(const std::string& name) {
 
   const auto lease =
       root_.Append(base::StringPrintf(kDHCPCDPathFormatLease, name.c_str()));
-  if (!base::DeleteFile(lease)) {
+  if (!brillo::DeleteFile(lease)) {
     PLOG(WARNING) << "Failed to remove lease file: " << lease;
   }
 }

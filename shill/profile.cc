@@ -17,6 +17,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
@@ -148,7 +149,7 @@ bool Profile::RemoveStorage(Error* error) {
   CHECK(!storage_.get());
   CHECK(!persistent_profile_path_.empty());
 
-  if (!base::DeleteFile(persistent_profile_path_)) {
+  if (!brillo::DeleteFile(persistent_profile_path_)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
         base::StringPrintf("Could not remove path %s",
