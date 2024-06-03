@@ -56,21 +56,25 @@ class Experiment:
         def all_values(cls) -> list:
             return list(level.value for level in cls)
 
-    FALSE_TABLE_COLS = {
+    FALSE_TABLE_COLS = [
         TableCol.Enroll_User.value,
         TableCol.Enroll_Finger.value,
         TableCol.Verify_User.value,
         TableCol.Verify_Finger.value,
         TableCol.Verify_Sample.value,
-    }
-    DECISION_TABLE_COLS = {
+    ]
+    DECISION_TABLE_COLS = [
         TableCol.Enroll_User.value,
         TableCol.Enroll_Finger.value,
         TableCol.Verify_User.value,
         TableCol.Verify_Finger.value,
         TableCol.Verify_Sample.value,
         TableCol.Decision.value,
-    }
+    ]
+    DECISION_TABLE_GROUP_COLS = [
+        TableCol.Enroll_Group.value,
+        TableCol.Verify_Group.value,
+    ]
 
     @staticmethod
     def _false_table_query(
@@ -175,7 +179,7 @@ class Experiment:
     def _read_far_decision_file(csv_file_path: pathlib.Path) -> pd.DataFrame:
         far_decisions = pd.read_csv(csv_file_path)
         # Ensure that the required columns exist.
-        assert Experiment.DECISION_TABLE_COLS <= set(far_decisions.columns)
+        assert set(Experiment.DECISION_TABLE_COLS) <= set(far_decisions.columns)
         return far_decisions
 
     def __init__(
