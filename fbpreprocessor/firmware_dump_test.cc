@@ -80,5 +80,15 @@ TEST_F(FirmwareDumpTest, VerifyWiFiFirmwareDBusTypeConversion) {
             DebugDump::WIFI);
 }
 
+TEST_F(FirmwareDumpTest, VerifyBluetoothFirmwareType) {
+  FirmwareDump dump(base::FilePath("test.dmp"), FirmwareDump::Type::kBluetooth);
+  EXPECT_EQ(dump.type(), FirmwareDump::Type::kBluetooth);
+}
+
+TEST_F(FirmwareDumpTest, VerifyBluetoothFirmwareDBusTypeConversion) {
+  EXPECT_EQ(FirmwareDump::ConvertToDBusType(FirmwareDump::Type::kBluetooth),
+            DebugDump::BLUETOOTH);
+}
+
 }  // namespace
 }  // namespace fbpreprocessor

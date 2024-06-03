@@ -57,7 +57,7 @@ bool PseudonymizationManager::StartPseudonymization(
     return false;
   }
 
-  if (!RateLimitingAllowsNewPseudonymization()) {
+  if (!RateLimitingAllowsNewPseudonymization(fw_dump.type())) {
     LOG(INFO) << "Too many recent pseudonymizations, rejecting the current "
                  "request.";
     VLOG(kLocalOnlyDebugVerbosity)
@@ -86,7 +86,7 @@ bool PseudonymizationManager::StartPseudonymization(
     // of the stack (every few seconds at most). The feedback report creation
     // tool will also limit how many firmware dumps are added, so potentially
     // creating 1 extra firmware dump is tolerable.
-    recently_processed_.insert(now);
+    recently_processed_.insert(FirmwareDumpTimestamp(fw_dump.type(), now));
     recently_processed_lock_.Release();
   } else {
     LOG(ERROR) << "Failed to post pseudonymization task.";
@@ -155,24 +155,30 @@ void PseudonymizationManager::OnPseudonymizationComplete(
   }
 }
 
-bool PseudonymizationManager::RateLimitingAllowsNewPseudonymization() {
+bool PseudonymizationManager::RateLimitingAllowsNewPseudonymization(
+    FirmwareDump::Type type) {
   base::Time now = base::Time::Now();
+  int dump_count = 0;
+
   // Erase all the pseudonymizations that happened more than
   // |kMaxProcessedInterval| ago.
   recently_processed_lock_.Acquire();
   for (auto it = recently_processed_.begin();
        it != recently_processed_.end();) {
-    if ((now - *it) > kMaxProcessedInterval) {
+    if ((now - it->timestamp) > kMaxProcessedInterval) {
       it = recently_processed_.erase(it);
     } else {
+      if (it->type == type) {
+        dump_count++;
+      }
       ++it;
     }
   }
+  recently_processed_lock_.Release();
+
   // If fewer than |kMaxProcessedDumps| pseudonymizations are left it means
   // we're not hitting the rate limit.
-  bool allowed = recently_processed_.size() < kMaxProcessedDumps;
-  recently_processed_lock_.Release();
-  return allowed;
+  return dump_count < kMaxProcessedDumps;
 }
 
 void PseudonymizationManager::ResetRateLimiter() {

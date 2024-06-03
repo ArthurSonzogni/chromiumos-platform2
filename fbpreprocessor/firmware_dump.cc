@@ -41,6 +41,8 @@ DebugDump::Type FirmwareDump::ConvertToDBusType(Type type) {
   switch (type) {
     case Type::kWiFi:
       return DebugDump::WIFI;
+    case Type::kBluetooth:
+      return DebugDump::BLUETOOTH;
   }
 }
 

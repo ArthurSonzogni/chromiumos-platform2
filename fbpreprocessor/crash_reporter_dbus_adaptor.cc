@@ -59,6 +59,12 @@ void CrashReporterDBusAdaptor::OnFirmwareDumpCreated(
       LOG(INFO) << __func__ << ": New WiFi dump file detected.";
       VLOG(kLocalOnlyDebugVerbosity) << "Detected new file " << fw_dump << ".";
       manager_->input_manager()->OnNewFirmwareDump(fw_dump);
+    } else if (dump.has_bluetooth_dump()) {
+      base::FilePath path(dump.bluetooth_dump().dmpfile());
+      FirmwareDump fw_dump(path, FirmwareDump::Type::kBluetooth);
+      LOG(INFO) << __func__ << ": New Bluetooth dump file detected.";
+      VLOG(kLocalOnlyDebugVerbosity) << "Detected new file " << fw_dump << ".";
+      manager_->input_manager()->OnNewFirmwareDump(fw_dump);
     }
   }
 }

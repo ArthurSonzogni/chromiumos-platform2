@@ -66,15 +66,16 @@ constexpr std::array<std::string_view, kUserAllowlistSize> kUserAllowlist{
 
 // Settings of the UserFeedbackWithLowLevelDebugDataAllowed policy that allow
 // the addition of firmware dumps to feedback reports.
-constexpr int kPolicyOptionsSize = 2;
-constexpr std::array<std::string_view, kPolicyOptionsSize> kPolicyOptions{
-    "all", "wifi"};
+constexpr char kFwdumpPolicyAll[] = "all";
+constexpr char kFwdumpPolicyWiFi[] = "wifi";
+constexpr char kFwdumpPolicyBluetooth[] = "bluetooth";
 
 // Add a delay when the user logs in before the policy is ready to be retrieved.
 constexpr base::TimeDelta kDelayForFirstUserInit = base::Seconds(2);
 
 bool IsFirmwareDumpPolicyAllowed(
-    const enterprise_management::CloudPolicySettings& user_policy) {
+    const enterprise_management::CloudPolicySettings& user_policy,
+    fbpreprocessor::FirmwareDump::Type type) {
   // The UserFeedbackWithLowLevelDebugDataAllowed policy is stored
   // in the CloudPolicySubProto1 protobuf embedded inside the
   // CloudPolicySetting protobuf.
@@ -94,9 +95,26 @@ bool IsFirmwareDumpPolicyAllowed(
   }
 
   for (int i = 0; i < policy.value().entries_size(); i++) {
-    if (base::Contains(kPolicyOptions, policy.value().entries(i))) {
-      LOG(INFO) << "Firmware dumps allowed for subsystem "
-                << policy.value().entries(i);
+    // If the policy is set to "all" we consider connectivity fwdump policy as
+    // enabled for all domains.
+    if (policy.value().entries(i) == kFwdumpPolicyAll) {
+      LOG(INFO) << "Firmware dumps allowed for all.";
+      return true;
+    }
+
+    // If the policy is set to "wifi" we consider connectivity fwdump policy as
+    // enabled for wifi domain.
+    if ((type == fbpreprocessor::FirmwareDump::Type::kWiFi) &&
+        (policy.value().entries(i) == kFwdumpPolicyWiFi)) {
+      LOG(INFO) << "Firmware dumps allowed for wifi.";
+      return true;
+    }
+
+    // If the policy is set to "bluetooth" we consider connectivity fwdump
+    // policy as enabled for bluetooth domain.
+    if ((type == fbpreprocessor::FirmwareDump::Type::kBluetooth) &&
+        (policy.value().entries(i) == kFwdumpPolicyBluetooth)) {
+      LOG(INFO) << "Firmware dumps allowed for bluetooth.";
       return true;
     }
   }
@@ -122,7 +140,8 @@ SessionStateManager::SessionStateManager(Manager* manager, dbus::Bus* bus)
       debugd_proxy_(std::make_unique<org::chromium::debugdProxy>(bus)),
       base_dir_(kDaemonStorageRoot),
       active_sessions_num_(kNumberActiveSessionsUnknown),
-      fw_dumps_allowed_by_policy_(false),
+      wifi_fw_dumps_allowed_by_policy_(false),
+      bluetooth_fw_dumps_allowed_by_policy_(false),
       fw_dumps_policy_loaded_(false),
       finch_loaded_(false),
       manager_(manager) {
@@ -213,7 +232,8 @@ void SessionStateManager::OnClearFirmwareDumpBufferResponse(bool is_login,
                   "but the firmware/driver execution failed.";
     // When buffer clearing fails, disable the feature from policy to avoid
     // potential policy violation from cross-session debug buffer.
-    fw_dumps_allowed_by_policy_ = false;
+    wifi_fw_dumps_allowed_by_policy_ = false;
+    bluetooth_fw_dumps_allowed_by_policy_ = false;
     return;
   }
   LOG(INFO) << "Request for clearing firmware dump buffer was successful.";
@@ -232,7 +252,8 @@ void SessionStateManager::OnClearFirmwareDumpBufferError(brillo::Error* error) {
              << "): " << error->GetMessage();
   // When buffer clearing fails, disable the feature from policy to avoid
   // potential policy violation from cross-session debug buffer.
-  fw_dumps_allowed_by_policy_ = false;
+  wifi_fw_dumps_allowed_by_policy_ = false;
+  bluetooth_fw_dumps_allowed_by_policy_ = false;
 }
 
 void SessionStateManager::AddObserver(
@@ -269,6 +290,7 @@ void SessionStateManager::EmitFeatureAllowedMetric() {
     return;
   }
 
+  // Check the allowed status for WiFi firmware dumps.
   Metrics::CollectionAllowedStatus status =
       Metrics::CollectionAllowedStatus::kAllowed;
 
@@ -278,12 +300,28 @@ void SessionStateManager::EmitFeatureAllowedMetric() {
     status = Metrics::CollectionAllowedStatus::kDisallowedByFinch;
   else if (!PrimaryUserInAllowlist())
     status = Metrics::CollectionAllowedStatus::kDisallowedForUserDomain;
-  else if (!fw_dumps_allowed_by_policy_)
+  else if (!wifi_fw_dumps_allowed_by_policy_)
     status = Metrics::CollectionAllowedStatus::kDisallowedByPolicy;
   else if (active_sessions_num_ != 1)
     status = Metrics::CollectionAllowedStatus::kDisallowedForMultipleSessions;
 
   manager_->metrics().SendAllowedStatus(FirmwareDump::Type::kWiFi, status);
+
+  // Check the allowed status for Bluetooth firmware dumps.
+  status = Metrics::CollectionAllowedStatus::kAllowed;
+
+  // The order of precedence of the reasons why the feature is disallowed must
+  // remain constant over time. Do not modify.
+  if (!manager_->platform_features()->FirmwareDumpsAllowedByFinch())
+    status = Metrics::CollectionAllowedStatus::kDisallowedByFinch;
+  else if (!PrimaryUserInAllowlist())
+    status = Metrics::CollectionAllowedStatus::kDisallowedForUserDomain;
+  else if (!bluetooth_fw_dumps_allowed_by_policy_)
+    status = Metrics::CollectionAllowedStatus::kDisallowedByPolicy;
+  else if (active_sessions_num_ != 1)
+    status = Metrics::CollectionAllowedStatus::kDisallowedForMultipleSessions;
+
+  manager_->metrics().SendAllowedStatus(FirmwareDump::Type::kBluetooth, status);
 }
 
 bool SessionStateManager::PrimaryUserInAllowlist() const {
@@ -297,7 +335,8 @@ bool SessionStateManager::PrimaryUserInAllowlist() const {
 bool SessionStateManager::RetrieveAndParsePolicy(
     org::chromium::SessionManagerInterfaceProxyInterface* proxy,
     const login_manager::PolicyDescriptor& descriptor) {
-  fw_dumps_allowed_by_policy_ = false;
+  wifi_fw_dumps_allowed_by_policy_ = false;
+  bluetooth_fw_dumps_allowed_by_policy_ = false;
 
   brillo::ErrorPtr error;
   std::vector<uint8_t> out_blob;
@@ -329,7 +368,10 @@ bool SessionStateManager::RetrieveAndParsePolicy(
     return false;
   }
 
-  fw_dumps_allowed_by_policy_ = IsFirmwareDumpPolicyAllowed(user_policy);
+  wifi_fw_dumps_allowed_by_policy_ =
+      IsFirmwareDumpPolicyAllowed(user_policy, FirmwareDump::Type::kWiFi);
+  bluetooth_fw_dumps_allowed_by_policy_ =
+      IsFirmwareDumpPolicyAllowed(user_policy, FirmwareDump::Type::kBluetooth);
 
   return true;
 }
@@ -357,8 +399,11 @@ void SessionStateManager::OnPolicyUpdated() {
 
   fw_dumps_policy_loaded_ = true;
   EmitFeatureAllowedMetric();
-  LOG(INFO) << "Adding firmware dumps to feedback reports "
-            << (fw_dumps_allowed_by_policy_ ? "" : "NOT ")
+  LOG(INFO) << "Adding WiFi firmware dumps to feedback reports "
+            << (wifi_fw_dumps_allowed_by_policy_ ? "" : "NOT ")
+            << "allowed by policy.";
+  LOG(INFO) << "Adding Bluetooth firmware dumps to feedback reports "
+            << (bluetooth_fw_dumps_allowed_by_policy_ ? "" : "NOT ")
             << "allowed by policy.";
 }
 
@@ -368,8 +413,11 @@ bool SessionStateManager::FirmwareDumpsAllowedByPolicy(
     return false;
   }
 
-  if (type == FirmwareDump::Type::kWiFi) {
-    return fw_dumps_allowed_by_policy_;
+  switch (type) {
+    case FirmwareDump::Type::kWiFi:
+      return wifi_fw_dumps_allowed_by_policy_;
+    case FirmwareDump::Type::kBluetooth:
+      return bluetooth_fw_dumps_allowed_by_policy_;
   }
 
   return false;
@@ -433,7 +481,8 @@ void SessionStateManager::ResetPrimaryUser() {
   active_sessions_num_ = kNumberActiveSessionsUnknown;
   finch_loaded_ = false;
   fw_dumps_policy_loaded_ = false;
-  fw_dumps_allowed_by_policy_ = false;
+  wifi_fw_dumps_allowed_by_policy_ = false;
+  bluetooth_fw_dumps_allowed_by_policy_ = false;
 }
 
 bool SessionStateManager::RefreshPrimaryUser() {

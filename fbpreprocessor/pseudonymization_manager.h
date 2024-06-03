@@ -49,6 +49,17 @@ class PseudonymizationManager : public SessionStateManagerInterface::Observer {
     kNoOpFailedToMove = 3,
   };
 
+  struct FirmwareDumpTimestamp {
+    // We need to overload the "<" operator to be able to create a set of this
+    // struct since std::set is an ordered container.
+    bool operator<(const FirmwareDumpTimestamp& dump) const {
+      return timestamp < dump.timestamp;
+    }
+
+    FirmwareDump::Type type;
+    base::Time timestamp;
+  };
+
   static Metrics::PseudonymizationResult ConvertToMetrics(Result result);
 
   void DoNoOpPseudonymization(const FirmwareDump& input,
@@ -61,7 +72,7 @@ class PseudonymizationManager : public SessionStateManagerInterface::Observer {
   // Returns true if we haven't handled "too many" pseudonymizations recently
   // and we can start a new one without exceeding the rate limits.
   // Returns false otherwise.
-  bool RateLimitingAllowsNewPseudonymization();
+  bool RateLimitingAllowsNewPseudonymization(FirmwareDump::Type type);
 
   // Reset the state of the logic that verifies that we don't start "too many"
   // pseudonymizations. Typically called on login/logout to clear the state left
@@ -81,7 +92,7 @@ class PseudonymizationManager : public SessionStateManagerInterface::Observer {
   // started. Every time we receive a request to start a pseudonymization, we
   // look up how many operations happened recently and check that we're not
   // exceeding the rate limits.
-  std::set<base::Time> recently_processed_;
+  std::set<FirmwareDumpTimestamp> recently_processed_;
 
   // Lock that protects accesses to |recently_processed_|.
   base::Lock recently_processed_lock_;

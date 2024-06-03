@@ -16,6 +16,7 @@ class FirmwareDump {
  public:
   enum class Type {
     kWiFi,
+    kBluetooth,
   };
 
   // The |path| argument is the absolute path to the directory where the

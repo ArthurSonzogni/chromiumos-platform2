@@ -87,10 +87,19 @@ TEST_F(InputManagerTest, OnUserLoggedInDeletesExistingFirmwareDumps) {
   EXPECT_FALSE(base::PathExists(fw_dump.DumpFile()));
 }
 
-TEST_F(InputManagerTest, OnNewFirmwareDumpSucceeds) {
+TEST_F(InputManagerTest, OnNewWiFiFirmwareDumpSucceeds) {
   SimulateUserLogin();
   FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
                        FirmwareDump::Type::kWiFi);
+  base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+
+  EXPECT_TRUE(input_manager()->OnNewFirmwareDump(fw_dump));
+}
+
+TEST_F(InputManagerTest, OnNewBluetoothFirmwareDumpSucceeds) {
+  SimulateUserLogin();
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kBluetooth);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
 
   EXPECT_TRUE(input_manager()->OnNewFirmwareDump(fw_dump));

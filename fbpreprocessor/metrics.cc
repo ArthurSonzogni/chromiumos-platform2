@@ -25,7 +25,8 @@ namespace {
 enum class UMAFirmwareType {
   kUnknown = DebugDump::TYPE_UNSPECIFIED,
   kWiFi = DebugDump::WIFI,
-  kMaxValue = kWiFi,
+  kBluetooth = DebugDump::BLUETOOTH,
+  kMaxValue = kBluetooth,
 };
 
 constexpr std::string_view kPrefix{"Platform.FbPreprocessor."};
@@ -33,6 +34,7 @@ constexpr std::string_view kPrefix{"Platform.FbPreprocessor."};
 constexpr auto kDumpTypeName =
     base::MakeFixedFlatMap<FirmwareDump::Type, std::string_view>({
         {FirmwareDump::Type::kWiFi, "WiFi"},
+        {FirmwareDump::Type::kBluetooth, "Bluetooth"},
     });
 
 std::string_view ToString(FirmwareDump::Type type) {
@@ -46,7 +48,10 @@ UMAFirmwareType ConvertToUMAType(fbpreprocessor::FirmwareDump::Type type) {
   switch (type) {
     case FirmwareDump::Type::kWiFi:
       return UMAFirmwareType::kWiFi;
+    case FirmwareDump::Type::kBluetooth:
+      return UMAFirmwareType::kBluetooth;
   }
+  return UMAFirmwareType::kUnknown;
 }
 }  // namespace
 

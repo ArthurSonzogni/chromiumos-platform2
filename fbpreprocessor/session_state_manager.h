@@ -174,7 +174,8 @@ class SessionStateManager : public SessionStateManagerInterface,
   // When the user logs in, we retrieve the policy and use this field to track
   // if the UserFeedbackWithLowLevelDebugDataAllowed policy allows us to
   // process firmware dumps.
-  bool fw_dumps_allowed_by_policy_;
+  bool wifi_fw_dumps_allowed_by_policy_;
+  bool bluetooth_fw_dumps_allowed_by_policy_;
 
   // When the user logs in, it takes a little time to fetch the policy. This
   // boolean is flipped to true once we've retrieved all the necessary policy

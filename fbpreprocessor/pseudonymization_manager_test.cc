@@ -133,7 +133,7 @@ TEST_F(PseudonymizationManagerTest, StartPseudonymizationNoOp) {
   EXPECT_EQ(processed_content, kTestFirmwareContent);
 }
 
-TEST_F(PseudonymizationManagerTest, RateLimitAccepts5Requests) {
+TEST_F(PseudonymizationManagerTest, RateLimitAccepts5WiFiRequests) {
   SimulateUserLogin();
   // Start 5 pseudonymizations, one per minute. They should all be accepted
   // since we accept up to 5 pseudonymizations in 30 minutes.
@@ -148,7 +148,22 @@ TEST_F(PseudonymizationManagerTest, RateLimitAccepts5Requests) {
   }
 }
 
-TEST_F(PseudonymizationManagerTest, RateLimitAcceptsOnly5Requests) {
+TEST_F(PseudonymizationManagerTest, RateLimitAccepts5BluetoothRequests) {
+  SimulateUserLogin();
+  // Start 5 pseudonymizations, one per minute. They should all be accepted
+  // since we accept up to 5 pseudonymizations in 30 minutes.
+  for (int i = 0; i < 5; ++i) {
+    FirmwareDump fw_dump(
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kBluetooth);
+    base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+    EXPECT_TRUE(pseudonymization_manager()->StartPseudonymization(fw_dump))
+        << "for file " << fw_dump.DumpFile();
+    manager()->FastForwardBy(base::Minutes(1));
+  }
+}
+
+TEST_F(PseudonymizationManagerTest, RateLimitAcceptsOnly5WiFiRequests) {
   SimulateUserLogin();
   // Start 5 pseudonymizations, one per minute. They should all be accepted
   // since we accept up to 5 pseudonymizations in 30 minutes.
@@ -169,7 +184,55 @@ TEST_F(PseudonymizationManagerTest, RateLimitAcceptsOnly5Requests) {
   EXPECT_FALSE(pseudonymization_manager()->StartPseudonymization(fw_dump));
 }
 
-TEST_F(PseudonymizationManagerTest, RateLimitAcceptsAfter30Minutes) {
+TEST_F(PseudonymizationManagerTest, RateLimitAcceptsOnly5BluetoothRequests) {
+  SimulateUserLogin();
+  // Start 5 pseudonymizations, one per minute. They should all be accepted
+  // since we accept up to 5 pseudonymizations in 30 minutes.
+  for (int i = 0; i < 5; ++i) {
+    FirmwareDump fw_dump(
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kBluetooth);
+    base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+    pseudonymization_manager()->StartPseudonymization(fw_dump);
+    manager()->FastForwardBy(base::Minutes(1));
+  }
+
+  // We're now at 5 pseudonymizations in the last 5 minutes, which is more than
+  // the maximume rate (5 per 30 minutes). Pseudonymizations should be rejected.
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kBluetooth);
+  base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+  EXPECT_FALSE(pseudonymization_manager()->StartPseudonymization(fw_dump));
+}
+
+TEST_F(PseudonymizationManagerTest, RateLimitAccepts5RequestsForEachDomain) {
+  SimulateUserLogin();
+  // Start 5 pseudonymizations for WiFi dumps, one per minute. They should all
+  // be accepted since we accept up to 5 pseudonymizations in 30 minutes.
+  for (int i = 0; i < 5; ++i) {
+    FirmwareDump fw_dump(
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kWiFi);
+    base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+    EXPECT_TRUE(pseudonymization_manager()->StartPseudonymization(fw_dump))
+        << "for file " << fw_dump.DumpFile();
+    manager()->FastForwardBy(base::Minutes(1));
+  }
+
+  // Start 5 pseudonymizations for Bluetooth dumps, one per minute. They should
+  // all be accepted since we accept up to 5 pseudonymizations for each domain.
+  for (int i = 0; i < 5; ++i) {
+    FirmwareDump fw_dump(
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kBluetooth);
+    base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+    EXPECT_TRUE(pseudonymization_manager()->StartPseudonymization(fw_dump))
+        << "for file " << fw_dump.DumpFile();
+    manager()->FastForwardBy(base::Minutes(1));
+  }
+}
+
+TEST_F(PseudonymizationManagerTest, RateLimitAcceptsWiFiAfter30Minutes) {
   SimulateUserLogin();
   // Start 5 pseudonymizations, one per minute. They should all be accepted
   // since we accept up to 5 pseudonymizations in 30 minutes.
@@ -198,7 +261,36 @@ TEST_F(PseudonymizationManagerTest, RateLimitAcceptsAfter30Minutes) {
   }
 }
 
-TEST_F(PseudonymizationManagerTest, RateLimitClearedOnLogout) {
+TEST_F(PseudonymizationManagerTest, RateLimitAcceptsBluetoothAfter30Minutes) {
+  SimulateUserLogin();
+  // Start 5 pseudonymizations, one per minute. They should all be accepted
+  // since we accept up to 5 pseudonymizations in 30 minutes.
+  for (int i = 0; i < 5; ++i) {
+    FirmwareDump fw_dump(
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kBluetooth);
+    base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+    pseudonymization_manager()->StartPseudonymization(fw_dump);
+    manager()->FastForwardBy(base::Minutes(1));
+  }
+
+  // After 40 minutes without a pseudonymization, we no longer hit the rate
+  // limit and pseudonymization requests should be accepted again.
+  manager()->FastForwardBy(base::Minutes(40));
+
+  // Start 5 pseudonymizations, one per minute. They should all be accepted.
+  for (int i = 0; i < 5; ++i) {
+    FirmwareDump fw_dump(
+        GetInputFirmwareDumpName("retest_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kBluetooth);
+    base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+    EXPECT_TRUE(pseudonymization_manager()->StartPseudonymization(fw_dump))
+        << "for file " << fw_dump.DumpFile();
+    manager()->FastForwardBy(base::Minutes(1));
+  }
+}
+
+TEST_F(PseudonymizationManagerTest, RateLimitClearedWiFiOnLogout) {
   SimulateUserLogin();
   // Start 5 pseudonymizations, one per minute.
   for (int i = 0; i < 5; ++i) {
@@ -219,6 +311,31 @@ TEST_F(PseudonymizationManagerTest, RateLimitClearedOnLogout) {
   // expect pseudonymization requests to be accepted again.
   FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
                        FirmwareDump::Type::kWiFi);
+  base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+  EXPECT_TRUE(pseudonymization_manager()->StartPseudonymization(fw_dump));
+}
+
+TEST_F(PseudonymizationManagerTest, RateLimitClearedBluetoothOnLogout) {
+  SimulateUserLogin();
+  // Start 5 pseudonymizations, one per minute.
+  for (int i = 0; i < 5; ++i) {
+    FirmwareDump fw_dump(
+        GetInputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kBluetooth);
+    base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+    pseudonymization_manager()->StartPseudonymization(fw_dump);
+    manager()->FastForwardBy(base::Minutes(1));
+  }
+
+  // We're now at 5 pseudonymizations in the last 5 minutes, which is more than
+  // the maximume rate (5 per 30 minutes). Pseudonymizations should be rejected.
+  SimulateUserLogout();
+  SimulateUserLogin();
+
+  // The user logged out and logged back in. The rate limiter has been reset,
+  // expect pseudonymization requests to be accepted again.
+  FirmwareDump fw_dump(GetInputFirmwareDumpName("test.dmp"),
+                       FirmwareDump::Type::kBluetooth);
   base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
   EXPECT_TRUE(pseudonymization_manager()->StartPseudonymization(fw_dump));
 }
