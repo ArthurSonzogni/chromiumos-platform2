@@ -7,8 +7,9 @@
 // TODO(jkardatzke): Check V4L2 capabilities once we support V4L2 protected
 // video.
 
-#if defined(USE_VAAPI)
 #include <unistd.h>
+
+#if defined(USE_VAAPI)
 #include <va/va.h>
 #endif  // defined(USE_VAAPI)
 
@@ -184,7 +185,18 @@ static bool is_vaapi_prot_vp9_cencv3_ctr_device(int fd) {
 
 #endif  // defined(USE_VAAPI)
 
-/* Determines "hw_video_prot_cencv1_h264_cbc" label. That is, the VAAPI device
+#if defined(USE_V4L2_CODEC)
+/* Helper function which returns true if we are running on an MTK platform and
+ * it has the dma heap for protected content. MTK can handle protected content
+ * for a codec if it has the tee0 driver and it supports that codec for
+ * HW decode.
+ */
+static bool is_mtk_protected_content() {
+  return (access("/dev/dma_heap/restricted_mtk_cm", F_OK) == 0);
+}
+#endif  // defined(USE_V4L2_CODEC)
+
+/* Determines "hw_video_prot_cencv1_h264_cbc" label. That is, the video device
  * supports decoding of HW protected H.264 video with CENCv1 CBC encryption.
  */
 bool detect_video_prot_cencv1_h264_cbc(void) {
@@ -196,7 +208,7 @@ bool detect_video_prot_cencv1_h264_cbc(void) {
   return false;
 }
 
-/* Determines "hw_video_prot_cencv1_h264_ctr" label. That is, the VAAPI device
+/* Determines "hw_video_prot_cencv1_h264_ctr" label. That is, the video device
  * supports decoding of HW protected H.264 video with CENCv1 CTR encryption.
  */
 bool detect_video_prot_cencv1_h264_ctr(void) {
@@ -209,10 +221,15 @@ bool detect_video_prot_cencv1_h264_ctr(void) {
   }
 #endif  // defined(USE_VAAPI)
 
+#if defined(USE_V4L2_CODEC)
+  if (is_mtk_protected_content() && detect_video_acc_h264())
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
   return false;
 }
 
-/* Determines "hw_video_prot_cencv3_av1_cbc" label. That is, the VAAPI device
+/* Determines "hw_video_prot_cencv3_av1_cbc" label. That is, the video device
  * supports decoding of HW protected AV1 video with CENCv3 CBC encryption.
  */
 bool detect_video_prot_cencv3_av1_cbc(void) {
@@ -225,10 +242,15 @@ bool detect_video_prot_cencv3_av1_cbc(void) {
   }
 #endif  // defined(USE_VAAPI)
 
+#if defined(USE_V4L2_CODEC)
+  if (is_mtk_protected_content() && detect_video_acc_av1())
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
   return false;
 }
 
-/* Determines "hw_video_prot_cencv3_av1_ctr" label. That is, the VAAPI device
+/* Determines "hw_video_prot_cencv3_av1_ctr" label. That is, the video device
  * supports decoding of HW protected AV1 video with CENCv3 CTR encryption.
  */
 bool detect_video_prot_cencv3_av1_ctr(void) {
@@ -241,10 +263,15 @@ bool detect_video_prot_cencv3_av1_ctr(void) {
   }
 #endif  // defined(USE_VAAPI)
 
+#if defined(USE_V4L2_CODEC)
+  if (is_mtk_protected_content() && detect_video_acc_av1())
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
   return false;
 }
 
-/* Determines "hw_video_prot_cencv3_h264_cbc" label. That is, the VAAPI device
+/* Determines "hw_video_prot_cencv3_h264_cbc" label. That is, the video device
  * supports decoding of HW protected H.264 video with CENCv3 CBC encryption.
  */
 bool detect_video_prot_cencv3_h264_cbc(void) {
@@ -257,10 +284,15 @@ bool detect_video_prot_cencv3_h264_cbc(void) {
   }
 #endif  // defined(USE_VAAPI)
 
+#if defined(USE_V4L2_CODEC)
+  if (is_mtk_protected_content() && detect_video_acc_h264())
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
   return false;
 }
 
-/* Determines "hw_video_prot_cencv3_h264_ctr" label. That is, the VAAPI device
+/* Determines "hw_video_prot_cencv3_h264_ctr" label. That is, the video device
  * supports decoding of HW protected H.264 video with CENCv3 CTR encryption.
  */
 bool detect_video_prot_cencv3_h264_ctr(void) {
@@ -273,10 +305,15 @@ bool detect_video_prot_cencv3_h264_ctr(void) {
   }
 #endif  // defined(USE_VAAPI)
 
+#if defined(USE_V4L2_CODEC)
+  if (is_mtk_protected_content() && detect_video_acc_h264())
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
   return false;
 }
 
-/* Determines "hw_video_prot_cencv3_hevc_cbc" label. That is, the VAAPI device
+/* Determines "hw_video_prot_cencv3_hevc_cbc" label. That is, the video device
  * supports decoding of HW protected HEVC video with CENCv3 CBC encryption.
  */
 bool detect_video_prot_cencv3_hevc_cbc(void) {
@@ -289,10 +326,15 @@ bool detect_video_prot_cencv3_hevc_cbc(void) {
   }
 #endif  // defined(USE_VAAPI)
 
+#if defined(USE_V4L2_CODEC)
+  if (is_mtk_protected_content() && detect_video_acc_hevc())
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
   return false;
 }
 
-/* Determines "hw_video_prot_cencv3_hevc_ctr" label. That is, the VAAPI device
+/* Determines "hw_video_prot_cencv3_hevc_ctr" label. That is, the video device
  * supports decoding of HW protected HEVC video with CENCv3 CTR encryption.
  */
 bool detect_video_prot_cencv3_hevc_ctr(void) {
@@ -305,10 +347,15 @@ bool detect_video_prot_cencv3_hevc_ctr(void) {
   }
 #endif  // defined(USE_VAAPI)
 
+#if defined(USE_V4L2_CODEC)
+  if (is_mtk_protected_content() && detect_video_acc_hevc())
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
   return false;
 }
 
-/* Determines "hw_video_prot_cencv3_vp9_cbc" label. That is, the VAAPI device
+/* Determines "hw_video_prot_cencv3_vp9_cbc" label. That is, the video device
  * supports decoding of HW protected VP9 video with CENCv3 CBC encryption.
  */
 bool detect_video_prot_cencv3_vp9_cbc(void) {
@@ -321,10 +368,15 @@ bool detect_video_prot_cencv3_vp9_cbc(void) {
   }
 #endif  // defined(USE_VAAPI)
 
+#if defined(USE_V4L2_CODEC)
+  if (is_mtk_protected_content() && detect_video_acc_vp9())
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
   return false;
 }
 
-/* Determines "hw_video_prot_cencv3_vp9_ctr" label. That is, the VAAPI device
+/* Determines "hw_video_prot_cencv3_vp9_ctr" label. That is, the video device
  * supports decoding of HW protected VP9 video with CENCv3 CTR encryption.
  */
 bool detect_video_prot_cencv3_vp9_ctr(void) {
@@ -336,6 +388,11 @@ bool detect_video_prot_cencv3_vp9_ctr(void) {
     return true;
   }
 #endif  // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_mtk_protected_content() && detect_video_acc_vp9())
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
 
   return false;
 }
