@@ -267,6 +267,7 @@ class IPsecConnection : public VPNConnection {
   // Set when the IPsec layer is connected.
   std::optional<net_base::IPv4Address> local_virtual_ipv4_;
   std::optional<net_base::IPv6Address> local_virtual_ipv6_;
+  std::vector<net_base::IPCIDR> remote_traffic_selectors_;
   std::vector<net_base::IPAddress> dns_servers_;
 
   // Cipher algorithms used by this connection. Set when IPsec is connected.

@@ -109,6 +109,10 @@ class IPsecConnectionUnderTest : public IPsecConnection {
     return dns_servers_;
   }
 
+  const std::vector<net_base::IPCIDR>& remote_traffic_selectors() const {
+    return remote_traffic_selectors_;
+  }
+
   MOCK_METHOD(void, ScheduleConnectTask, (ConnectStep), (override));
 };
 
@@ -246,7 +250,7 @@ constexpr char kSwanctlListSAsIKEv2Output[] =
     in  c13d6df5 (-|0x00000001),  21701 bytes,    66 packets,     0s ago
     out c78f93a7 (-|0x00000001),  11293 bytes,    95 packets,     0s ago
     local  10.10.10.2/32
-    remote 0.0.0.0/0)";
+    remote 0.0.0.0/0 fd00::/64)";
 
 // Creates the UNIX socket at |path|, and listens on it if |start_listen| is
 // true. Returns the fd of this socket.
@@ -682,6 +686,13 @@ TEST_F(IPsecConnectionTest, SwanctlListSAsIKEv2) {
             net_base::IPv4Address::CreateFromString("10.10.10.2"));
   EXPECT_EQ(ipsec_connection_->local_virtual_ipv6(),
             net_base::IPv6Address::CreateFromString("fec0::2"));
+
+  // Checks the parsed remote_ts.
+  EXPECT_EQ(ipsec_connection_->remote_traffic_selectors(),
+            std::vector<net_base::IPCIDR>({
+                *net_base::IPCIDR::CreateFromCIDRString("0.0.0.0/0"),
+                *net_base::IPCIDR::CreateFromCIDRString("fd00::/64"),
+            }));
 
   // Checks the parsed cipher suites.
   EXPECT_EQ(ipsec_connection_->ike_encryption_algo(),

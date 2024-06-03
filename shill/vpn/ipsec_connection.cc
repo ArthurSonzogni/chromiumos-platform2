@@ -316,6 +316,57 @@ bool TestUnixSocketConnectable(const base::FilePath& path) {
   return true;
 }
 
+// Parses and returns the remote traffic selectors (remote_ts) from the output
+// of `swanctl --list-sas`. The parsed information will be used for routing
+// setup (only traffic sending to destinations in the remote_ts should be routed
+// by VPN).
+std::vector<net_base::IPCIDR> ParseRemoteTrafficSelectors(
+    const std::vector<std::string_view>& swanctl_output) {
+  // remote_ts information is on the last line, but there might be some empty
+  // lines in the output. Skip them at first.
+  std::string_view remote_ts_line;
+  for (auto it = swanctl_output.rbegin(); it != swanctl_output.rend(); it++) {
+    if (it->empty()) {
+      continue;
+    }
+    remote_ts_line = *it;
+    break;
+  }
+  if (remote_ts_line.empty()) {
+    LOG(ERROR) << __func__ << ": swanctl output is empty";
+    return {};
+  }
+
+  // The line will look like `     remote 0.0.0.0/0 ::/0`. The first token must
+  // be "remote", and the following tokens are the CIDR strings. There are no
+  // other tokens.
+  auto tokens = base::SplitStringPiece(
+      remote_ts_line, " ", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (tokens.size() == 0) {
+    LOG(ERROR) << __func__ << ": the last line is empty";
+    return {};
+  }
+
+  if (tokens[0] != "remote") {
+    LOG(ERROR) << __func__ << ": expect first token \"remote\", got \""
+               << tokens[0] << "\"";
+    return {};
+  }
+
+  std::vector<net_base::IPCIDR> ret;
+  base::span<std::string_view> tokens_span = tokens;
+  for (std::string_view t : tokens_span.subspan(1)) {
+    if (auto cidr = net_base::IPCIDR::CreateFromCIDRString(t)) {
+      ret.push_back(*cidr);
+    } else {
+      // Continue on failure to parse in the include route in a best-effort way.
+      LOG(ERROR) << __func__ << ": invalid CIDR string " << t;
+    }
+  }
+
+  return ret;
+}
+
 }  // namespace
 
 constexpr char IPsecConnection::kOpensslConfFilename[] =
@@ -928,6 +979,13 @@ void IPsecConnection::OnSwanctlListSAsDone(const std::string& stdout_str) {
                     "Failed to get local virtual IP");
       return;
     }
+
+    remote_traffic_selectors_ = ParseRemoteTrafficSelectors(lines);
+    if (remote_traffic_selectors_.empty()) {
+      // remote_ts must not be empty, otherwise there is no valid route.
+      NotifyFailure(VPNEndReason::kFailureInternal, "Failed to get remote_ts");
+      return;
+    }
   }
   ParseIKECipherSuite(lines);
   ParseESPCipherSuite(lines);
@@ -1247,6 +1305,9 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
             *local_virtual_ipv6_, net_base::IPv6CIDR::kMaxPrefixLength));
     network_config->ipv6_blackhole_route = false;
   }
+  // Default routes are always included in remote_ts, if they exists.
+  network_config->ipv4_default_route = false;
+  network_config->included_route_prefixes = remote_traffic_selectors_;
   network_config->dns_servers = dns_servers_;
   network_config->mtu = net_base::NetworkConfig::kMinIPv6MTU;
 
