@@ -82,3 +82,4 @@ gettimeofday: 1
 sendmmsg: 1
 sysinfo: 1
 clock_nanosleep: 1
+recvfrom: 1
