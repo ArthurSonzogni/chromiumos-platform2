@@ -897,7 +897,7 @@ int ChromeosStartup::Run() {
       platform_->CreateProcessInstance();
   crash_reporter->AddArg("/sbin/crash_reporter");
   crash_reporter->AddArg("--ephemeral_collect");
-  if (crash_reporter->Run() != 0) {
+  if (!crash_reporter->Start()) {
     LOG(WARNING) << "Unable to collect early logs and crashes.";
   }
 
