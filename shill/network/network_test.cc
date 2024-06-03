@@ -824,6 +824,40 @@ TEST_F(NetworkTest, UpdateNetworkValidationModeNoop) {
       NetworkMonitor::ValidationMode::kDisabled);
 }
 
+TEST_F(NetworkTest, DelegatePortalUIEventToNetworkMonitor) {
+  constexpr auto kNotificationEvent =
+      chromeos::connectivity::mojom::NotificationEvent::kClicked;
+  const net_base::HttpUrl kUrl = *net_base::HttpUrl::CreateFromString(
+      "http://www.gstatic.com/generate_204");
+  constexpr int kNetError = -100;
+
+  // The methods do nothing when the NetworkMonitor hasn't been initiated.
+  network_->OnNotificationEvent(kNotificationEvent);
+  network_->OnSigninPageShown(kUrl);
+  network_->OnSigninPageLoaded(kNetError);
+  network_->OnSigninPageClosed();
+
+  SetNetworkMonitor();
+
+  // The methods should delegate the events to NetworkMonitor after it's
+  // initiated.
+  EXPECT_CALL(*network_monitor_, OnNotificationEvent(kNotificationEvent));
+  network_->OnNotificationEvent(kNotificationEvent);
+  testing::Mock::VerifyAndClearExpectations(network_monitor_);
+
+  EXPECT_CALL(*network_monitor_, OnSigninPageShown(kUrl));
+  network_->OnSigninPageShown(kUrl);
+  testing::Mock::VerifyAndClearExpectations(network_monitor_);
+
+  EXPECT_CALL(*network_monitor_, OnSigninPageLoaded(kNetError));
+  network_->OnSigninPageLoaded(kNetError);
+  testing::Mock::VerifyAndClearExpectations(network_monitor_);
+
+  EXPECT_CALL(*network_monitor_, OnSigninPageClosed());
+  network_->OnSigninPageClosed();
+  testing::Mock::VerifyAndClearExpectations(network_monitor_);
+}
+
 TEST_F(NetworkTest, UpdateNetworkValidationToFullValidation) {
   SetNetworkStateForPortalDetection();
   ON_CALL(*network_monitor_, GetValidationMode)

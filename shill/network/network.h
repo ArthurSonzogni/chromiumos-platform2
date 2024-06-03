@@ -30,6 +30,7 @@
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/mojom/portal.mojom-shared.h"
 #include "shill/network/compound_network_config.h"
 #include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
@@ -349,6 +350,13 @@ class Network : public NetworkMonitor::ClientNetwork {
       const {
     return network_validation_result_;
   }
+
+  // Delegate handlers for the portal UI events received in MojoPortalService.
+  mockable void OnNotificationEvent(
+      chromeos::connectivity::mojom::NotificationEvent event);
+  mockable void OnSigninPageShown(const net_base::HttpUrl& url);
+  mockable void OnSigninPageLoaded(int32_t chrome_net_error);
+  mockable void OnSigninPageClosed();
 
   // Start a separate PortalDetector instance for the purpose of connectivity
   // test.

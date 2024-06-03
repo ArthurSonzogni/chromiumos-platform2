@@ -84,6 +84,15 @@ class MockNetwork : public Network {
               (NetworkMonitor::ValidationReason),
               (override));
   MOCK_METHOD(void, StopPortalDetection, (bool), (override));
+
+  MOCK_METHOD(void,
+              OnNotificationEvent,
+              (chromeos::connectivity::mojom::NotificationEvent),
+              (override));
+  MOCK_METHOD(void, OnSigninPageShown, (const net_base::HttpUrl&), (override));
+  MOCK_METHOD(void, OnSigninPageLoaded, (int32_t), (override));
+  MOCK_METHOD(void, OnSigninPageClosed, (), (override));
+
   MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
   MOCK_METHOD(void,
               OnTermsAndConditions,

@@ -881,6 +881,31 @@ void Network::StopPortalDetection(bool is_failure) {
   }
 }
 
+void Network::OnNotificationEvent(
+    chromeos::connectivity::mojom::NotificationEvent event) {
+  if (network_monitor_) {
+    network_monitor_->OnNotificationEvent(event);
+  }
+}
+
+void Network::OnSigninPageShown(const net_base::HttpUrl& url) {
+  if (network_monitor_) {
+    network_monitor_->OnSigninPageShown(url);
+  }
+}
+
+void Network::OnSigninPageLoaded(int32_t chrome_net_error) {
+  if (network_monitor_) {
+    network_monitor_->OnSigninPageLoaded(chrome_net_error);
+  }
+}
+
+void Network::OnSigninPageClosed() {
+  if (network_monitor_) {
+    network_monitor_->OnSigninPageClosed();
+  }
+}
+
 std::optional<net_base::IPFamily> Network::GetNetworkValidationIPFamily()
     const {
   auto network_config = GetNetworkConfig();
