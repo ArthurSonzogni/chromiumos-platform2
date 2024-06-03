@@ -368,6 +368,8 @@ pub struct SchedqosConfig {
     pub thread_utility: Option<SchedqosThreadConfig>,
     /// The thread config for BACKGROUND state.
     pub thread_background: Option<SchedqosThreadConfig>,
+    /// The thread config for URGENT_BURSTY_SERVER state.
+    pub thread_urgent_bursty_server: Option<SchedqosThreadConfig>,
 }
 
 impl SchedqosConfig {
@@ -385,6 +387,10 @@ impl SchedqosConfig {
             (&self.thread_eco, schedqos::ThreadState::Eco),
             (&self.thread_utility, schedqos::ThreadState::Utility),
             (&self.thread_background, schedqos::ThreadState::Background),
+            (
+                &self.thread_urgent_bursty_server,
+                schedqos::ThreadState::UrgentBurstyServer,
+            ),
         ];
 
         for (config, config_type) in configs {
@@ -418,6 +424,10 @@ impl SchedqosConfig {
             ("thread-eco", &mut config.thread_eco),
             ("thread-utility", &mut config.thread_utility),
             ("thread-background", &mut config.thread_background),
+            (
+                "thread-urgent-bursty-server",
+                &mut config.thread_urgent_bursty_server,
+            ),
         ];
         for (dir_name, config) in configs {
             let config_path = path.join(dir_name);
@@ -851,6 +861,9 @@ mod tests {
         fake.mkdir(&thread_utility_path);
         let thread_background_path = default_config_path.join("thread-background");
         fake.mkdir(&thread_background_path);
+        let thread_urgent_bursty_server_path =
+            default_config_path.join("thread-urgent-bursty-server");
+        fake.mkdir(&thread_urgent_bursty_server_path);
 
         let partialconfig_path = Path::new(SCHEDQOS_CONFIG_DIR).join("partial");
         fake.write(&partialconfig_path.join("normal-cpu-share"), b"900");
@@ -909,6 +922,13 @@ mod tests {
                     cpuset_cgroup: None,
                     latency_sensitive: None,
                 }),
+                thread_urgent_bursty_server: Some(SchedqosThreadConfig {
+                    rt_priority: None,
+                    nice: None,
+                    uclamp_min: None,
+                    cpuset_cgroup: None,
+                    latency_sensitive: None,
+                }),
             }
         );
 
@@ -930,6 +950,7 @@ mod tests {
                 thread_eco: None,
                 thread_utility: None,
                 thread_background: None,
+                thread_urgent_bursty_server: None,
             }
         );
 
@@ -982,6 +1003,13 @@ mod tests {
                 cpuset_cgroup: CpusetCgroup::Efficient,
                 latency_sensitive: false,
             },
+            schedqos::ThreadStateConfig {
+                rt_priority: None,
+                nice: 5,
+                uclamp_min: 10,
+                cpuset_cgroup: CpusetCgroup::Efficient,
+                latency_sensitive: false,
+            },
         ];
         SchedqosConfig {
             normal_cpu_share: None,
@@ -1023,6 +1051,13 @@ mod tests {
             }),
             thread_background: Some(SchedqosThreadConfig {
                 rt_priority: Some(Some(3)),
+                nice: None,
+                uclamp_min: None,
+                cpuset_cgroup: None,
+                latency_sensitive: None,
+            }),
+            thread_urgent_bursty_server: Some(SchedqosThreadConfig {
+                rt_priority: Some(Some(4)),
                 nice: None,
                 uclamp_min: None,
                 cpuset_cgroup: None,
@@ -1072,6 +1107,13 @@ mod tests {
                 schedqos::ThreadStateConfig {
                     rt_priority: Some(3),
                     nice: 4,
+                    uclamp_min: 10,
+                    cpuset_cgroup: CpusetCgroup::Efficient,
+                    latency_sensitive: false,
+                },
+                schedqos::ThreadStateConfig {
+                    rt_priority: Some(4),
+                    nice: 5,
                     uclamp_min: 10,
                     cpuset_cgroup: CpusetCgroup::Efficient,
                     latency_sensitive: false,
