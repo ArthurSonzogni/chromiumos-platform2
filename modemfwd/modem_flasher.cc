@@ -123,12 +123,15 @@ class ModemFlasherImpl : public ModemFlasher {
   }
 
   std::unique_ptr<FlashConfig> BuildFlashConfig(
-      Modem* modem, brillo::ErrorPtr* err) override {
+      Modem* modem,
+      std::optional<std::string> carrier_override_uuid,
+      brillo::ErrorPtr* err) override {
     FlashState* flash_state = &modem_info_[modem->GetEquipmentId()];
     std::string device_id = modem->GetDeviceId();
 
     std::unique_ptr<FlashConfig> res = std::make_unique<FlashConfig>();
-    res->carrier_id = modem->GetCarrierId();
+    res->carrier_id = carrier_override_uuid.has_value() ? *carrier_override_uuid
+                                                        : modem->GetCarrierId();
 
     flash_state->OnCarrierSeen(res->carrier_id);
     FirmwareDirectory::Files files = firmware_directory_->FindFirmware(

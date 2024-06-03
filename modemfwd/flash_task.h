@@ -23,6 +23,7 @@ class FlashTask {
  public:
   struct Options {
     bool should_always_flash = false;
+    std::optional<std::string> carrier_override_uuid = std::nullopt;
   };
 
   FlashTask(Delegate* delegate,

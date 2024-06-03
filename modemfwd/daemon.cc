@@ -452,8 +452,7 @@ void Daemon::RegisterDBusObjectsAsync(
 }
 
 bool Daemon::ForceFlash(const std::string& device_id) {
-  auto stub_modem =
-      CreateStubModem(device_id, "", helper_directory_.get(), false);
+  auto stub_modem = CreateStubModem(device_id, helper_directory_.get(), false);
   if (!stub_modem)
     return false;
 
@@ -490,8 +489,8 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
   if (suspend_checker_->IsSuspendAnnounced())
     return false;
 
-  auto stub_modem = CreateStubModem(
-      device_id, carrier_uuid, helper_directory_.get(), use_modems_fw_info);
+  auto stub_modem =
+      CreateStubModem(device_id, helper_directory_.get(), use_modems_fw_info);
   if (!stub_modem)
     return false;
 
@@ -506,9 +505,11 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
   auto flash_task =
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
-  if (!flash_task->Start(stub_modem.get(),
-                         FlashTask::Options{.should_always_flash = true},
-                         &err)) {
+  if (!flash_task->Start(
+          stub_modem.get(),
+          FlashTask::Options{.should_always_flash = true,
+                             .carrier_override_uuid = carrier_uuid},
+          &err)) {
     LOG(ERROR) << "Force-flashing errored out: "
                << (err ? err->GetMessage() : "unknown");
     return false;

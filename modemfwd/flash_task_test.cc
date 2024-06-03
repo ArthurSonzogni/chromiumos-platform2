@@ -125,7 +125,7 @@ TEST_F(FlashTaskTest, NothingToFlash) {
 
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
+  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(kCarrier1, {})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
 
@@ -139,7 +139,7 @@ TEST_F(FlashTaskTest, BuildConfigReturnedError) {
 
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
+  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(std::unique_ptr<FlashConfig>()));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _)).Times(0);
 
@@ -154,7 +154,7 @@ TEST_F(FlashTaskTest, FlashFailure) {
 
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
+  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
@@ -171,7 +171,7 @@ TEST_F(FlashTaskTest, FlashSuccess) {
 
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
+  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
@@ -190,7 +190,7 @@ TEST_F(FlashTaskTest, WritesToJournal) {
 
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
+  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
@@ -222,7 +222,7 @@ TEST_F(FlashTaskTest, WritesCarrierToJournal) {
 
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
+  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(
           kCarrier2, {{kFwCarrier, new_firmware, kCarrier2Firmware1Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
@@ -242,7 +242,7 @@ TEST_F(FlashTaskTest, WritesToJournalOnFailure) {
 
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
+  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
@@ -265,7 +265,7 @@ TEST_F(FlashTaskTest, InhibitDuringFlash) {
 
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
       .WillOnce(Return(true));
-  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
+  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
@@ -285,7 +285,7 @@ TEST_F(FlashTaskTest, IgnoreBlock) {
 
   EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _))
+  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
       .WillOnce(Return(GetConfig(
           kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
   EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))

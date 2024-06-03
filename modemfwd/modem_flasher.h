@@ -40,7 +40,9 @@ class ModemFlasher {
 
   virtual bool ShouldFlash(Modem* modem, brillo::ErrorPtr* err) = 0;
   virtual std::unique_ptr<FlashConfig> BuildFlashConfig(
-      Modem* modem, brillo::ErrorPtr* err) = 0;
+      Modem* modem,
+      std::optional<std::string> carrier_override_uuid,
+      brillo::ErrorPtr* err) = 0;
   virtual bool RunFlash(Modem* modem,
                         const FlashConfig& flash_cfg,
                         base::TimeDelta* out_duration,

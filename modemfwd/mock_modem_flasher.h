@@ -6,6 +6,8 @@
 #define MODEMFWD_MOCK_MODEM_FLASHER_H_
 
 #include <memory>
+#include <optional>
+#include <string>
 
 #include <gmock/gmock.h>
 
@@ -21,7 +23,7 @@ class MockModemFlasher : public ModemFlasher {
   MOCK_METHOD(bool, ShouldFlash, (Modem*, brillo::ErrorPtr*), (override));
   MOCK_METHOD(std::unique_ptr<FlashConfig>,
               BuildFlashConfig,
-              (Modem*, brillo::ErrorPtr*),
+              (Modem*, std::optional<std::string>, brillo::ErrorPtr*),
               (override));
   MOCK_METHOD(bool,
               RunFlash,

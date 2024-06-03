@@ -445,11 +445,9 @@ std::unique_ptr<Modem> CreateModem(
 class StubModem : public Modem {
  public:
   StubModem(const std::string& device_id,
-            const std::string& carrier_uuid,
             ModemHelper* helper,
             FirmwareInfo installed_firmware)
-      : carrier_id_(carrier_uuid),
-        device_id_(device_id),
+      : device_id_(device_id),
         equipment_id_(base::UnguessableToken().Create().ToString()),
         helper_(helper),
         installed_firmware_(installed_firmware) {}
@@ -463,7 +461,7 @@ class StubModem : public Modem {
 
   std::string GetEquipmentId() const override { return equipment_id_; }
 
-  std::string GetCarrierId() const override { return carrier_id_; }
+  std::string GetCarrierId() const override { return ""; }
 
   std::string GetMainFirmwareVersion() const override {
     return installed_firmware_.main_version;
@@ -551,7 +549,6 @@ class StubModem : public Modem {
 };
 
 std::unique_ptr<Modem> CreateStubModem(const std::string& device_id,
-                                       const std::string& carrier_uuid,
                                        ModemHelperDirectory* helper_directory,
                                        bool use_real_fw_info) {
   // Use the device ID to grab a helper.
@@ -566,7 +563,7 @@ std::unique_ptr<Modem> CreateStubModem(const std::string& device_id,
     LOG(ERROR) << "Could not fetch installed firmware information";
     return nullptr;
   }
-  return std::make_unique<StubModem>(device_id, carrier_uuid, helper,
+  return std::make_unique<StubModem>(device_id, helper,
                                      std::move(installed_firmware));
 }
 

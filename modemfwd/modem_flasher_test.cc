@@ -177,7 +177,7 @@ TEST_F(ModemFlasherTest, NewModemIsFlashable) {
 
 TEST_F(ModemFlasherTest, EmptyConfigFromEmptyFirmwareDirectory) {
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
 
   ASSERT_TRUE(cfg->fw_configs.empty());
   ASSERT_TRUE(cfg->files.empty());
@@ -191,7 +191,7 @@ TEST_F(ModemFlasherTest, NewMainFirmwareAvailable) {
       {kFwMain, new_firmware, kMainFirmware2Version}};
 
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
 
   ASSERT_EQ(cfg->fw_configs, main_cfg);
   ASSERT_EQ(cfg->files[kFwMain]->path_on_filesystem(), new_firmware);
@@ -203,7 +203,7 @@ TEST_F(ModemFlasherTest, EmptyConfigFromSameMainFirmware) {
   AddMainFirmwareFile(kDeviceId1, firmware, kMainFirmware1Version);
 
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_TRUE(cfg->fw_configs.empty());
   ASSERT_TRUE(cfg->files.empty());
   ASSERT_EQ(err.get(), nullptr);
@@ -216,7 +216,7 @@ TEST_F(ModemFlasherTest, NewOemFirmwareAvailable) {
       {kFwOem, new_firmware, kOemFirmware2Version}};
 
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_EQ(cfg->fw_configs, oem_cfg);
   ASSERT_EQ(cfg->files[kFwOem]->path_on_filesystem(), new_firmware);
   ASSERT_EQ(err.get(), nullptr);
@@ -227,7 +227,7 @@ TEST_F(ModemFlasherTest, EmptyConfigFromSameOemFirmware) {
   AddOemFirmwareFile(kDeviceId1, firmware, kOemFirmware1Version);
 
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_TRUE(cfg->fw_configs.empty());
   ASSERT_TRUE(cfg->files.empty());
   ASSERT_EQ(err.get(), nullptr);
@@ -243,7 +243,7 @@ TEST_F(ModemFlasherTest, NewCarrierFirmwareAvailable) {
   auto modem = GetDefaultModem();
   SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
 
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_EQ(cfg->fw_configs, carrier_cfg);
   ASSERT_EQ(cfg->files[kFwCarrier]->path_on_filesystem(), new_firmware);
   ASSERT_EQ(err.get(), nullptr);
@@ -257,7 +257,7 @@ TEST_F(ModemFlasherTest, EmptyConfigFromSameCarrierFirmware) {
   auto modem = GetDefaultModem();
   SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
 
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_TRUE(cfg->fw_configs.empty());
   ASSERT_TRUE(cfg->files.empty());
   ASSERT_EQ(err.get(), nullptr);
@@ -277,7 +277,7 @@ TEST_F(ModemFlasherTest, SwitchCarrier) {
   SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
   std::vector<FirmwareConfig> carrier2_cfg = {
       {kFwCarrier, carrier2_firmware, kCarrier2Firmware1Version}};
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_EQ(cfg->fw_configs, carrier2_cfg);
   ASSERT_EQ(cfg->files[kFwCarrier]->path_on_filesystem(), carrier2_firmware);
   ASSERT_EQ(err.get(), nullptr);
@@ -286,7 +286,7 @@ TEST_F(ModemFlasherTest, SwitchCarrier) {
   SetCarrierFirmwareInfo(modem.get(), kCarrier2, kCarrier2Firmware1Version);
   std::vector<FirmwareConfig> carrier1_cfg = {
       {kFwCarrier, carrier1_firmware, kCarrier1Firmware1Version}};
-  cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_EQ(cfg->fw_configs, carrier1_cfg);
   ASSERT_EQ(cfg->files[kFwCarrier]->path_on_filesystem(), carrier1_firmware);
   ASSERT_EQ(err.get(), nullptr);
@@ -309,7 +309,7 @@ TEST_F(ModemFlasherTest, SwitchCarrierWithMainFirmware) {
 
   EXPECT_CALL(*modem, GetCarrierId()).WillRepeatedly(Return(kCarrier2));
   SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
 
   ASSERT_EQ(std::ranges::count(
                 cfg->fw_configs,
@@ -328,7 +328,7 @@ TEST_F(ModemFlasherTest, SwitchCarrierWithMainFirmware) {
   EXPECT_CALL(*modem, GetMainFirmwareVersion())
       .WillRepeatedly(Return(kMainFirmware2Version));
   SetCarrierFirmwareInfo(modem.get(), kCarrier2, kCarrier2Firmware1Version);
-  cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
 
   ASSERT_EQ(std::ranges::count(
                 cfg->fw_configs,
@@ -348,7 +348,7 @@ TEST_F(ModemFlasherTest, ShouldNotFlashAfterMainFlashFailure) {
   const base::FilePath new_firmware(kMainFirmware2Path);
   AddMainFirmwareFile(kDeviceId1, new_firmware, kMainFirmware2Version);
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_NE(cfg, nullptr);
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillRepeatedly(Return(false));
@@ -365,7 +365,7 @@ TEST_F(ModemFlasherTest, ShouldNotFlashAfterCarrierFlashFailure) {
   AddCarrierFirmwareFile(kDeviceId1, kCarrier1, new_firmware,
                          kCarrier1Firmware2Version);
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_NE(cfg, nullptr);
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillRepeatedly(Return(false));
@@ -382,7 +382,7 @@ TEST_F(ModemFlasherTest, CacheLastFlashedMainFirmware) {
   AddMainFirmwareFile(kDeviceId1, new_firmware, kMainFirmware2Version);
 
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillOnce(Return(true));
   ASSERT_TRUE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
@@ -393,7 +393,7 @@ TEST_F(ModemFlasherTest, CacheLastFlashedMainFirmware) {
   // the main firmware twice because that should never be correct behavior
   // in one session. Otherwise, we might try to flash the main firmware
   // over and over.
-  cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_TRUE(cfg->fw_configs.empty());
   ASSERT_TRUE(cfg->files.empty());
   ASSERT_EQ(err.get(), nullptr);
@@ -404,13 +404,13 @@ TEST_F(ModemFlasherTest, CacheLastFlashedOemFirmware) {
   AddOemFirmwareFile(kDeviceId1, new_firmware, kOemFirmware2Version);
 
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillOnce(Return(true));
   ASSERT_TRUE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_EQ(err.get(), nullptr);
 
-  cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_TRUE(cfg->fw_configs.empty());
   ASSERT_TRUE(cfg->files.empty());
   ASSERT_EQ(err.get(), nullptr);
@@ -423,13 +423,13 @@ TEST_F(ModemFlasherTest, CacheLastFlashedCarrierFirmware) {
 
   auto modem = GetDefaultModem();
   SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillOnce(Return(true));
   ASSERT_TRUE(modem_flasher_->RunFlash(modem.get(), *cfg, nullptr, &err));
   ASSERT_EQ(err.get(), nullptr);
 
-  cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_TRUE(cfg->fw_configs.empty());
   ASSERT_TRUE(cfg->files.empty());
   ASSERT_EQ(err.get(), nullptr);
@@ -447,7 +447,7 @@ TEST_F(ModemFlasherTest, UpgradeGenericCarrierFirmware) {
   SetCarrierFirmwareInfo(modem.get(), FirmwareDirectory::kGenericCarrierId,
                          kGenericCarrierFirmware1Version);
 
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_EQ(cfg->carrier_id, FirmwareDirectory::kGenericCarrierId);
   ASSERT_EQ(cfg->fw_configs, carrier_cfg);
   ASSERT_EQ(cfg->files[kFwCarrier]->path_on_filesystem(), new_firmware);
@@ -466,7 +466,7 @@ TEST_F(ModemFlasherTest, EmptyConfigFromSameGenericCarrierFirmware) {
 
   // Even if the reported carrier is not strictly the same, we should still know
   // not to try and reflash the generic carrier firmware.
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_TRUE(cfg->fw_configs.empty());
   ASSERT_TRUE(cfg->files.empty());
   ASSERT_EQ(err.get(), nullptr);
@@ -486,7 +486,7 @@ TEST_F(ModemFlasherTest, SwitchCarrierWithGeneric) {
   SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
   std::vector<FirmwareConfig> generic_cfg = {
       {kFwCarrier, generic_firmware, kGenericCarrierFirmware1Version}};
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_EQ(cfg->fw_configs, generic_cfg);
   ASSERT_EQ(cfg->files[kFwCarrier]->path_on_filesystem(), generic_firmware);
   ASSERT_EQ(err.get(), nullptr);
@@ -496,7 +496,7 @@ TEST_F(ModemFlasherTest, SwitchCarrierWithGeneric) {
                          kGenericCarrierFirmware1Version);
   std::vector<FirmwareConfig> carrier1_cfg = {
       {kFwCarrier, carrier1_firmware, kCarrier1Firmware1Version}};
-  cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_EQ(cfg->fw_configs, carrier1_cfg);
   ASSERT_EQ(cfg->files[kFwCarrier]->path_on_filesystem(), carrier1_firmware);
   ASSERT_EQ(err.get(), nullptr);
@@ -515,7 +515,7 @@ TEST_F(ModemFlasherTest, SkipCarrierWithTwoUuidSameFirmware) {
   // kCarrier1.
   SetCarrierFirmwareInfo(modem.get(), kCarrier1Mvno, kCarrier1Firmware2Version);
 
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_TRUE(cfg->fw_configs.empty());
   ASSERT_TRUE(cfg->files.empty());
   ASSERT_EQ(err.get(), nullptr);
@@ -533,7 +533,7 @@ TEST_F(ModemFlasherTest, NoCarrier) {
   EXPECT_CALL(*modem, GetCarrierId()).WillRepeatedly(Return(""));
   SetCarrierFirmwareInfo(modem.get(), kCarrier2, kCarrier2Firmware1Version);
 
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   // We shouldn't try to pick up any carrier firmware at all, even the generic
   // one, when we have no carrier.
   ASSERT_EQ(cfg->carrier_id, "");
@@ -553,7 +553,7 @@ TEST_F(ModemFlasherTest, ConfigHasAssocFirmware) {
                        kDevFirmwareVersion);
 
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
 
   ASSERT_EQ(std::ranges::count(
                 cfg->fw_configs,
@@ -585,11 +585,11 @@ TEST_F(ModemFlasherTest, UpgradeAssocFirmwareOnly) {
   auto modem = GetDefaultModem();
   ON_CALL(*modem, GetAssocFirmwareVersion(kApFirmwareTag))
       .WillByDefault(Return(kApFirmware1Version));
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
 
   std::vector<FirmwareConfig> ap_cfg = {
       {kApFirmwareTag, ap_fw_path, kApFirmware2Version}};
-  cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_EQ(cfg->fw_configs, ap_cfg);
   ASSERT_EQ(cfg->files[kApFirmwareTag]->path_on_filesystem(), ap_fw_path);
   ASSERT_EQ(err.get(), nullptr);
@@ -600,7 +600,7 @@ TEST_F(ModemFlasherTest, ModemNeverSeenError) {
   AddMainFirmwareFile(kDeviceId1, new_firmware, kMainFirmware2Version);
 
   auto modem = GetDefaultModem();
-  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), &err);
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), std::nullopt, &err);
   ASSERT_NE(cfg, nullptr);
 
   EXPECT_CALL(*modem, FlashFirmwares(_)).WillRepeatedly(Return(false));
@@ -614,6 +614,44 @@ TEST_F(ModemFlasherTest, ModemNeverSeenError) {
   ASSERT_NE(err.get(), nullptr);
   ASSERT_EQ(err.get()->GetCode(),
             kErrorResultFailureReturnedByHelperModemNeverSeen);
+}
+
+TEST_F(ModemFlasherTest, OverrideCarrier) {
+  const base::FilePath carrier1_firmware(kCarrier1Firmware2Path);
+  AddCarrierFirmwareFile(kDeviceId1, kCarrier1, carrier1_firmware,
+                         kCarrier1Firmware2Version);
+  const base::FilePath carrier2_firmware(kCarrier2Firmware1Path);
+  AddCarrierFirmwareFile(kDeviceId1, kCarrier2, carrier2_firmware,
+                         kCarrier2Firmware1Version);
+
+  auto modem = GetDefaultModem();
+
+  SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
+  std::vector<FirmwareConfig> carrier2_cfg = {
+      {kFwCarrier, carrier2_firmware, kCarrier2Firmware1Version}};
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), kCarrier2, &err);
+  ASSERT_EQ(cfg->fw_configs, carrier2_cfg);
+  ASSERT_EQ(cfg->files[kFwCarrier]->path_on_filesystem(), carrier2_firmware);
+  ASSERT_EQ(err.get(), nullptr);
+}
+
+TEST_F(ModemFlasherTest, OverrideCarrierGenericFallback) {
+  const base::FilePath carrier1_firmware(kCarrier1Firmware2Path);
+  AddCarrierFirmwareFile(kDeviceId1, kCarrier1, carrier1_firmware,
+                         kCarrier1Firmware2Version);
+  const base::FilePath generic_firmware(kGenericCarrierFirmware1Path);
+  AddCarrierFirmwareFile(kDeviceId1, FirmwareDirectory::kGenericCarrierId,
+                         generic_firmware, kGenericCarrierFirmware1Version);
+
+  auto modem = GetDefaultModem();
+
+  SetCarrierFirmwareInfo(modem.get(), kCarrier1, kCarrier1Firmware1Version);
+  std::vector<FirmwareConfig> generic_cfg = {
+      {kFwCarrier, generic_firmware, kGenericCarrierFirmware1Version}};
+  auto cfg = modem_flasher_->BuildFlashConfig(modem.get(), kCarrier2, &err);
+  ASSERT_EQ(cfg->fw_configs, generic_cfg);
+  ASSERT_EQ(cfg->files[kFwCarrier]->path_on_filesystem(), generic_firmware);
+  ASSERT_EQ(err.get(), nullptr);
 }
 
 }  // namespace modemfwd

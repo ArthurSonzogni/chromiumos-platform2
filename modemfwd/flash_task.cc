@@ -94,8 +94,8 @@ bool FlashTask::Start(Modem* modem,
     ELOG(INFO) << "Clear attach APN failed for current carrier.";
   }
 
-  std::unique_ptr<FlashConfig> flash_cfg =
-      modem_flasher_->BuildFlashConfig(modem, err);
+  std::unique_ptr<FlashConfig> flash_cfg = modem_flasher_->BuildFlashConfig(
+      modem, options.carrier_override_uuid, err);
   if (!flash_cfg) {
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());
     return false;
