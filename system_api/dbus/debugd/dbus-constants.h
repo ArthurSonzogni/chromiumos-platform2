@@ -167,6 +167,7 @@ enum FeedbackLogType {
 // categories of binary data that can be added to feedback reports.
 enum FeedbackBinaryLogType {
   WIFI_FIRMWARE_DUMP = 0,
+  BLUETOOTH_FIRMWARE_DUMP = 1,
 };
 
 // PrintscanDebugCategories flags. These values must align with those in
