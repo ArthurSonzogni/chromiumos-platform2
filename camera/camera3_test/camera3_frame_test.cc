@@ -776,7 +776,7 @@ TEST_P(Camera3MultiStreamFrameTest, GetFrame) {
       << "Failed to get max resolution for implementation defined format";
   preview_resolution = CapResolution(preview_resolution, limit_resolution);
   cam_device_.AddOutputStream(
-      HAL_PIXEL_FORMAT_YCbCr_420_888, preview_resolution.Width(),
+      HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, preview_resolution.Width(),
       preview_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
 
   // Second preview stream
