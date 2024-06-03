@@ -142,6 +142,7 @@ _IUSE = [
     "input_devices_zinitix",
     "intel_oemcrypto",
     "internal",
+    "ipcz",
     "ipu6",
     "ipu6ep",
     "ipu6epmtl",
