@@ -27,6 +27,8 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
 }  // namespace Logging
 
+bool operator==(const DHCPv4Config::Data&, const DHCPv4Config::Data&) = default;
+
 // static
 bool DHCPv4Config::ParseClasslessStaticRoutes(
     const std::string& classless_routes,

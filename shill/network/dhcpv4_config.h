@@ -26,6 +26,8 @@ class DHCPv4Config {
     std::string web_proxy_auto_discovery;
     // Length of time the lease was granted.
     base::TimeDelta lease_duration;
+
+    friend bool operator==(const Data&, const Data&);
   };
 
   // Constants used as keys in the configuration got from dhcpcd. Used only
