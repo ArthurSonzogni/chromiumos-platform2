@@ -2443,6 +2443,7 @@ In the tables below,
 | thread-eco | [thread-eco](#thread_eco) |  | False |  | False | Thread config for schedqos of each QoS state. |
 | thread-urgent | [thread-urgent](#thread_urgent) |  | False |  | False | Thread config for schedqos of each QoS state. |
 | thread-urgent-bursty | [thread-urgent-bursty](#thread_urgent_bursty) |  | False |  | False | Thread config for schedqos of each QoS state. |
+| thread-urgent-bursty-server | [thread-urgent-bursty-server](#thread_urgent_bursty_server) |  | False |  | False | Thread config for schedqos of each QoS state. |
 | thread-utility | [thread-utility](#thread_utility) |  | False |  | False | Thread config for schedqos of each QoS state. |
 
 ### thread-background
@@ -2482,6 +2483,15 @@ In the tables below,
 | uclamp-min | integer |  | False |  | False | Percentage of uclamp.min. Minimum value: 0x0. Maximum value: 0x64. |
 
 ### thread-urgent-bursty
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| cpuset-cgroup | string |  | False |  | False | The cpuset cgroup to use. |
+| latency-sensitive | boolean |  | False |  | False | Whether the thread is latency sensitive or not. The value (1 for true, 0 for false) is set to /proc/pid/task/tid/latency_sensitive. |
+| nice | integer |  | False |  | False | The nice value for scheduler. Minimum value: -0x14. Maximum value: 0x13. |
+| rt-priority | integer |  | False |  | False | The priority on RT mode. Negative value means RT is disabled. |
+| uclamp-min | integer |  | False |  | False | Percentage of uclamp.min. Minimum value: 0x0. Maximum value: 0x64. |
+
+### thread-urgent-bursty-server
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | cpuset-cgroup | string |  | False |  | False | The cpuset cgroup to use. |

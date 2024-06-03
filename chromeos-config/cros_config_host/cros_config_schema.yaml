@@ -472,6 +472,7 @@ typeDefs:
       thread-eco: *schedqos_thread_config
       thread-utility: *schedqos_thread_config
       thread-background: *schedqos_thread_config
+      thread-urgent-bursty-server: *schedqos_thread_config
 type: object
 properties:
   chromeos:

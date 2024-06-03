@@ -952,6 +952,10 @@ def _build_schedqos(config: Config) -> dict:
             result["thread-background"] = _build_thread_config(
                 config_set.thread_background
             )
+        if config_set.HasField("thread_urgent_bursty_server"):
+            result["thread-urgent-bursty-server"] = _build_thread_config(
+                config_set.thread_urgent_bursty_server
+            )
         return result
 
     result = {}
