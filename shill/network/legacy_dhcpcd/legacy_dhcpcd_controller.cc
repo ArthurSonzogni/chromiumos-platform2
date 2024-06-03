@@ -14,6 +14,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
+#include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/process/process_iterator.h>
 #include <net-base/process_manager.h>
@@ -92,15 +93,22 @@ std::vector<std::string> GetDhcpcdFlags(
 LegacyDHCPCDController::LegacyDHCPCDController(
     std::string_view interface,
     DHCPCDControllerInterface::EventHandler* handler,
-    std::unique_ptr<org::chromium::dhcpcdProxy> dhcpcd_proxy,
     base::ScopedClosureRunner destroy_cb)
     : DHCPCDControllerInterface(interface, handler),
-      dhcpcd_proxy_(std::move(dhcpcd_proxy)),
       destroy_cb_(std::move(destroy_cb)) {}
 
 LegacyDHCPCDController::~LegacyDHCPCDController() = default;
 
+bool LegacyDHCPCDController::IsReady() const {
+  return dhcpcd_proxy_ != nullptr;
+}
+
 bool LegacyDHCPCDController::Rebind() {
+  if (!dhcpcd_proxy_) {
+    LOG(ERROR) << __func__ << ": dhcpcd proxy is not ready";
+    return false;
+  }
+
   brillo::ErrorPtr error;
   if (!dhcpcd_proxy_->Rebind(interface_, &error)) {
     LogDBusError(error, __func__, interface_);
@@ -110,6 +118,11 @@ bool LegacyDHCPCDController::Rebind() {
 }
 
 bool LegacyDHCPCDController::Release() {
+  if (!dhcpcd_proxy_) {
+    LOG(ERROR) << __func__ << ": dhcpcd proxy is not ready";
+    return false;
+  }
+
   brillo::ErrorPtr error;
   if (!dhcpcd_proxy_->Release(interface_, &error)) {
     LogDBusError(error, __func__, interface_);
@@ -150,12 +163,12 @@ LegacyDHCPCDControllerFactory::LegacyDHCPCDControllerFactory(
 
 LegacyDHCPCDControllerFactory::~LegacyDHCPCDControllerFactory() = default;
 
-bool LegacyDHCPCDControllerFactory::CreateAsync(
+std::unique_ptr<DHCPCDControllerInterface>
+LegacyDHCPCDControllerFactory::Create(
     std::string_view interface,
     Technology technology,
     const DHCPCDControllerInterface::Options& options,
-    DHCPCDControllerInterface::EventHandler* handler,
-    CreateCB create_cb) {
+    DHCPCDControllerInterface::EventHandler* handler) {
   std::vector<std::string> args = GetDhcpcdFlags(technology, options);
   args.push_back(std::string(interface));
 
@@ -172,7 +185,7 @@ bool LegacyDHCPCDControllerFactory::CreateAsync(
       base::DoNothing());
   if (pid < 0) {
     LOG(ERROR) << __func__ << ": Failed to start the dhcpcd process";
-    return false;
+    return nullptr;
   }
   base::ScopedClosureRunner clean_up_closure(base::BindOnce(
       // base::Unretained(this) is safe because the closure won't be passed
@@ -184,13 +197,19 @@ bool LegacyDHCPCDControllerFactory::CreateAsync(
   if (!process_manager_->UpdateExitCallback(
           pid, base::BindOnce(&LegacyDHCPCDControllerFactory::OnProcessExited,
                               weak_ptr_factory_.GetWeakPtr(), pid))) {
-    return false;
+    return nullptr;
   }
 
-  pending_requests_.insert(std::make_pair(
-      pid, PendingRequest{std::string(interface), handler, std::move(create_cb),
-                          std::move(clean_up_closure)}));
-  return true;
+  // Register the controller and return it.
+  auto controller = std::make_unique<LegacyDHCPCDController>(
+      interface, handler,
+      base::ScopedClosureRunner(
+          base::BindOnce(&LegacyDHCPCDControllerFactory::OnControllerDestroyed,
+                         weak_ptr_factory_.GetWeakPtr(), pid)));
+  alive_controllers_.insert(std::make_pair(
+      pid,
+      AliveController{controller->GetWeakPtr(), std::move(clean_up_closure)}));
+  return controller;
 }
 
 void LegacyDHCPCDControllerFactory::CleanUpDhcpcd(
@@ -214,15 +233,6 @@ void LegacyDHCPCDControllerFactory::OnProcessExited(int pid, int exit_status) {
   LOG(INFO) << __func__ << ": The dhcpcd process with pid " << pid
             << " is exited with status: " << exit_status;
 
-  // If the dhcpcd process is exited without sending any signal, return the null
-  // controller.
-  const auto pending_iter = pending_requests_.find(pid);
-  if (pending_iter != pending_requests_.end()) {
-    std::move(pending_iter->second.create_cb).Run(nullptr);
-    pending_requests_.erase(pending_iter);
-    return;
-  }
-
   LegacyDHCPCDController* controller = GetAliveController(pid);
   if (controller == nullptr) {
     return;
@@ -237,11 +247,11 @@ void LegacyDHCPCDControllerFactory::OnDHCPEvent(
     uint32_t pid,
     DHCPCDControllerInterface::EventReason reason,
     const KeyValueStore& configuration) {
-  CreateControllerIfPending(service_name, pid);
   LegacyDHCPCDController* controller = GetAliveController(pid);
   if (controller == nullptr) {
     return;
   }
+  SetProxyToControllerIfPending(controller, service_name, pid);
 
   controller->OnDHCPEvent(reason, configuration);
 }
@@ -250,11 +260,11 @@ void LegacyDHCPCDControllerFactory::OnStatusChanged(
     std::string_view service_name,
     uint32_t pid,
     LegacyDHCPCDListener::Status status) {
-  CreateControllerIfPending(service_name, pid);
   LegacyDHCPCDController* controller = GetAliveController(pid);
   if (controller == nullptr) {
     return;
   }
+  SetProxyToControllerIfPending(controller, service_name, pid);
 
   if (status == LegacyDHCPCDListener::Status::kIPv6OnlyPreferred) {
     controller->OnDHCPEvent(
@@ -262,29 +272,17 @@ void LegacyDHCPCDControllerFactory::OnStatusChanged(
   }
 }
 
-void LegacyDHCPCDControllerFactory::CreateControllerIfPending(
-    std::string_view service_name, int pid) {
-  auto iter = pending_requests_.find(pid);
-  if (iter == pending_requests_.end()) {
+void LegacyDHCPCDControllerFactory::SetProxyToControllerIfPending(
+    LegacyDHCPCDController* controller,
+    std::string_view service_name,
+    int pid) {
+  if (controller->IsReady()) {
     return;
   }
 
-  LOG(INFO) << __func__ << ": Create the controller for pid: " << pid;
-  auto dhcpcd_proxy = std::make_unique<org::chromium::dhcpcdProxy>(
-      bus_, std::string(service_name));
-  auto controller = std::make_unique<LegacyDHCPCDController>(
-      iter->second.interface, iter->second.handler, std::move(dhcpcd_proxy),
-      base::ScopedClosureRunner(
-          base::BindOnce(&LegacyDHCPCDControllerFactory::OnControllerDestroyed,
-                         weak_ptr_factory_.GetWeakPtr(), pid)));
-
-  // Register the controller and return it by create_cb.
-  alive_controllers_.insert(std::make_pair(
-      pid, AliveController{controller->GetWeakPtr(),
-                           std::move(iter->second.clean_up_closure)}));
-  CreateCB create_cb = std::move(iter->second.create_cb);
-  pending_requests_.erase(iter);
-  std::move(create_cb).Run(std::move(controller));
+  LOG(INFO) << __func__ << ": Set the proxy to the controller for pid: " << pid;
+  controller->set_dhcpcd_proxy(std::make_unique<org::chromium::dhcpcdProxy>(
+      bus_, std::string(service_name)));
 }
 
 LegacyDHCPCDController* LegacyDHCPCDControllerFactory::GetAliveController(

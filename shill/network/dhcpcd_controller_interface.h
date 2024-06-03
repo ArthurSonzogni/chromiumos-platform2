@@ -68,6 +68,9 @@ class DHCPCDControllerInterface {
   DHCPCDControllerInterface(std::string_view interface, EventHandler* handler);
   virtual ~DHCPCDControllerInterface();
 
+  // Returns true if the instance is ready to call other methods.
+  virtual bool IsReady() const = 0;
+
   // Asks the dhcpcd process to rebind the interface.
   virtual bool Rebind() = 0;
 
@@ -88,26 +91,19 @@ class DHCPCDControllerInterface {
 // The interface of the DHCPCDControllerInterface's factory.
 class DHCPCDControllerFactoryInterface {
  public:
-  // The callback signature of the CreateAsync() method.
-  using CreateCB =
-      base::OnceCallback<void(std::unique_ptr<DHCPCDControllerInterface>)>;
-
   DHCPCDControllerFactoryInterface() = default;
   virtual ~DHCPCDControllerFactoryInterface() = default;
 
-  // Creates a DHCPCDControllerInterface asynchronously. Returns false if any
-  // error occurs synchronously. Otherwise, the created controller instance is
-  // returned by |create_cb|. If any error occurs asynchronously, |create_cb|
-  // will be called with nullptr. The pending |create_cb| will be dropped when
-  // the factory instance is destroyed.
+  // Creates a DHCPCDControllerInterface. Returns false if any error occurs.
   //
-  // Note: the dhcpcd process might be ready asynchronously. Therefore this
-  // method returns the controller instance asynchronously.
-  virtual bool CreateAsync(std::string_view interface,
-                           Technology technology,
-                           const DHCPCDControllerInterface::Options& options,
-                           DHCPCDControllerInterface::EventHandler* handler,
-                           CreateCB create_cb) = 0;
+  // Note: the dhcpcd process might be ready asynchronously. Please use
+  // DHCPCDControllerInterface::IsReady() to check if the instance is ready or
+  // not.
+  virtual std::unique_ptr<DHCPCDControllerInterface> Create(
+      std::string_view interface,
+      Technology technology,
+      const DHCPCDControllerInterface::Options& options,
+      DHCPCDControllerInterface::EventHandler* handler) = 0;
 };
 
 }  // namespace shill

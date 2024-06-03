@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
@@ -26,16 +27,21 @@ namespace shill {
 // It communiates with the dhcpcd process through the dhcpcd D-Bus API.
 class LegacyDHCPCDController : public DHCPCDControllerInterface {
  public:
-  LegacyDHCPCDController(
-      std::string_view interface,
-      DHCPCDControllerInterface::EventHandler* handler,
-      std::unique_ptr<org::chromium::dhcpcdProxy> dhcpcd_proxy,
-      base::ScopedClosureRunner destroy_cb);
+  LegacyDHCPCDController(std::string_view interface,
+                         DHCPCDControllerInterface::EventHandler* handler,
+                         base::ScopedClosureRunner destroy_cb);
   ~LegacyDHCPCDController() override;
 
   // Implements DHCPCDControllerInterface.
+  bool IsReady() const override;
   bool Rebind() override;
   bool Release() override;
+
+  // Sets the |dhcp_proxy_|, called by LegacyDHCPCDControllerFactory.
+  void set_dhcpcd_proxy(
+      std::unique_ptr<org::chromium::dhcpcdProxy> dhcpcd_proxy) {
+    dhcpcd_proxy_ = std::move(dhcpcd_proxy);
+  }
 
   // Called by LegacyDHCPCDControllerFactory. Delegates the signals to
   // |handler_|.
@@ -45,7 +51,7 @@ class LegacyDHCPCDController : public DHCPCDControllerInterface {
   base::WeakPtr<LegacyDHCPCDController> GetWeakPtr();
 
  private:
-  // The dhcpcd D-Bus proxy
+  // The dhcpcd D-Bus proxy.
   std::unique_ptr<org::chromium::dhcpcdProxy> dhcpcd_proxy_;
 
   // The callback that will be executed when the instance is destroyed.
@@ -71,26 +77,18 @@ class LegacyDHCPCDControllerFactory : public DHCPCDControllerFactoryInterface {
   ~LegacyDHCPCDControllerFactory() override;
 
   // Implements DHCPCDControllerFactoryInterface.
-  // Starts the dhcpcd process, and creates the LegacyDHCPCDController instance
-  // when the listener receives the first signal from the dhcpcd process.
-  bool CreateAsync(std::string_view interface,
-                   Technology technology,
-                   const DHCPCDControllerInterface::Options& options,
-                   DHCPCDControllerInterface::EventHandler* handler,
-                   CreateCB create_cb) override;
+  // Starts the dhcpcd process and returns the LegacyDHCPCDController instance.
+  // Set the dhcpcd proxy to the controller when the listener receives the first
+  // signal from the dhcpcd process.
+  std::unique_ptr<DHCPCDControllerInterface> Create(
+      std::string_view interface,
+      Technology technology,
+      const DHCPCDControllerInterface::Options& options,
+      DHCPCDControllerInterface::EventHandler* handler) override;
 
   void set_root_for_testing(const base::FilePath& root) { root_ = root; }
 
  private:
-  // Stores the information for creating the controller instance, and the
-  // closure that cleans up the dhcpcd process when the struct is destroyed.
-  struct PendingRequest {
-    std::string interface;
-    DHCPCDControllerInterface::EventHandler* handler;
-    CreateCB create_cb;
-    base::ScopedClosureRunner clean_up_closure;
-  };
-
   // Stores the alive controller and the closure that cleans up the dhcpcd
   // process when the struct is destroyed.
   struct AliveController {
@@ -119,9 +117,11 @@ class LegacyDHCPCDControllerFactory : public DHCPCDControllerFactoryInterface {
   // instance is destroyed.
   void OnControllerDestroyed(int pid);
 
-  // Creates the controller if there is a pending request and the controller is
-  // yet to be created.
-  void CreateControllerIfPending(std::string_view service_name, int pid);
+  // Sets the DHCPCD proxy to the controller if the controller hasn't set the
+  // proxy.
+  void SetProxyToControllerIfPending(LegacyDHCPCDController* controller,
+                                     std::string_view service_name,
+                                     int pid);
 
   // Gets the alive controller by pid. Returns nullptr if the controller is not
   // found.
@@ -133,10 +133,6 @@ class LegacyDHCPCDControllerFactory : public DHCPCDControllerFactoryInterface {
 
   // The listener that listens the D-Bus signal from the dhcpcd process.
   std::unique_ptr<LegacyDHCPCDListener> listener_;
-
-  // The pending requests of CreateAsync() method. If |pending_request_|
-  // contains a pid, then there is a running dhcpcd process with the pid.
-  std::map<int /*pid*/, PendingRequest> pending_requests_;
 
   // The alive controllers. If |alive_controllers_| contains a pid, then there
   // is a running dhcpcd process with the pid.

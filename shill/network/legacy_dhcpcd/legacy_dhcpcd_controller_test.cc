@@ -103,7 +103,9 @@ class LegacyDHCPCDControllerFactoryTest : public testing::Test {
   }
 
   std::unique_ptr<DHCPCDControllerInterface> CreateControllerSync(
-      int expected_pid, std::string_view expected_dbus_service_name) {
+      int expected_pid,
+      std::string_view expected_dbus_service_name,
+      std::string_view interface = "wlan0") {
     const DHCPCDControllerInterface::Options options = {};
 
     // When creating a controller, the controller factory should create
@@ -118,21 +120,17 @@ class LegacyDHCPCDControllerFactoryTest : public testing::Test {
               return true;
             });
 
-    std::unique_ptr<DHCPCDControllerInterface> controller;
-    controller_factory_->CreateAsync(
-        "wlan0", Technology::kWiFi, options, &client_,
-        base::BindOnce(
-            [](std::unique_ptr<DHCPCDControllerInterface>* out,
-               std::unique_ptr<DHCPCDControllerInterface> in) {
-              *out = std::move(in);
-            },
-            &controller));
+    std::unique_ptr<DHCPCDControllerInterface> controller =
+        controller_factory_->Create(interface, Technology::kWiFi, options,
+                                    &client_);
+    EXPECT_NE(controller, nullptr);
+    EXPECT_FALSE(controller->IsReady());
 
-    // After receiving D-Bus signal, the controller should be returned
-    // asynchronously.
+    // After receiving D-Bus signal, the controller should be ready.
     fake_listener_->status_changed_cb_.Run(expected_dbus_service_name,
                                            expected_pid,
                                            LegacyDHCPCDListener::Status::kInit);
+    EXPECT_TRUE(controller->IsReady());
 
     return controller;
   }
@@ -199,8 +197,7 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DhcpcdArguments) {
               return true;
             });
 
-    controller_factory_->CreateAsync("wlan0", Technology::kWiFi, options,
-                                     &client_, base::DoNothing());
+    controller_factory_->Create("wlan0", Technology::kWiFi, options, &client_);
   }
 }
 
@@ -210,7 +207,6 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, CreateAndDestroyController) {
 
   std::unique_ptr<DHCPCDControllerInterface> controller =
       CreateControllerSync(kPid, kDBusServiceName);
-  EXPECT_NE(controller, nullptr);
 
   // The dhcpcd process should be terminated when the controller is destroyed.
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid));
@@ -228,71 +224,14 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, CreateAndDestroyController) {
 
 TEST_F(LegacyDHCPCDControllerFactoryTest, KillProcessWithPendingRequest) {
   constexpr int kPid = 4;
+  constexpr std::string_view kDBusServiceName = ":1.25";
 
-  // When creating a controller, the controller factory should create
-  // the dhcpcd process in minijail.
-  EXPECT_CALL(mock_process_manager_, StartProcessInMinijail)
-      .WillOnce(Return(kPid));
-  EXPECT_CALL(mock_process_manager_, UpdateExitCallback(kPid, _))
-      .WillOnce(
-          [this](pid_t pid,
-                 net_base::MockProcessManager::ExitCallback new_callback) {
-            process_exit_cb_ = std::move(new_callback);
-            return true;
-          });
+  std::unique_ptr<DHCPCDControllerInterface> controller =
+      CreateControllerSync(kPid, kDBusServiceName);
 
-  bool create_cb_called = false;
-  controller_factory_->CreateAsync(
-      "wlan0", Technology::kWiFi, {}, &client_,
-      base::BindOnce(
-          [](bool* create_cb_called,
-             std::unique_ptr<DHCPCDControllerInterface> in) {
-            *create_cb_called = true;
-          },
-          &create_cb_called));
-
-  // The create callback should not be called if the dhcpcd process doesn't send
-  // any signal.
-  EXPECT_FALSE(create_cb_called);
   // The dhcpcd process should be killed when the factory is destroyed.
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid));
   controller_factory_.reset();
-}
-
-TEST_F(LegacyDHCPCDControllerFactoryTest, ProcessExitedBeforeSignal) {
-  constexpr int kPid = 4;
-  constexpr int kExitStatus = 6;
-
-  // When creating a controller, the controller factory should create
-  // the dhcpcd process in minijail.
-  EXPECT_CALL(mock_process_manager_, StartProcessInMinijail)
-      .WillOnce(Return(kPid));
-  EXPECT_CALL(mock_process_manager_, UpdateExitCallback(kPid, _))
-      .WillOnce(
-          [this](pid_t pid,
-                 net_base::MockProcessManager::ExitCallback new_callback) {
-            process_exit_cb_ = std::move(new_callback);
-            return true;
-          });
-
-  bool create_cb_called = false;
-  std::unique_ptr<DHCPCDControllerInterface> controller;
-  controller_factory_->CreateAsync(
-      "wlan0", Technology::kWiFi, {}, &client_,
-      base::BindOnce(
-          [](bool* create_cb_called,
-             std::unique_ptr<DHCPCDControllerInterface>* out,
-             std::unique_ptr<DHCPCDControllerInterface> in) {
-            *create_cb_called = true;
-            *out = std::move(in);
-          },
-          &create_cb_called, &controller));
-
-  // If the dhcpcd process is exited without sending signal, then the callback
-  // of CreateAsync() method should return nullptr.
-  std::move(process_exit_cb_).Run(kExitStatus);
-  EXPECT_TRUE(create_cb_called);
-  EXPECT_EQ(controller, nullptr);
 }
 
 TEST_F(LegacyDHCPCDControllerFactoryTest, CreateMultipleControllers) {
@@ -303,10 +242,8 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, CreateMultipleControllers) {
 
   std::unique_ptr<DHCPCDControllerInterface> controller1 =
       CreateControllerSync(kPid1, kDBusServiceName1);
-  EXPECT_NE(controller1, nullptr);
   std::unique_ptr<DHCPCDControllerInterface> controller2 =
       CreateControllerSync(kPid2, kDBusServiceName2);
-  EXPECT_NE(controller1, nullptr);
 
   // The dhcpcd process should be terminated when the controller is destroyed.
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid1));
@@ -383,6 +320,26 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, Release) {
   EXPECT_TRUE(controller->Release());
 }
 
+TEST_F(LegacyDHCPCDControllerFactoryTest, CallMethodsWhenNotReady) {
+  constexpr int kPid = 4;
+  const DHCPCDControllerInterface::Options options = {};
+
+  EXPECT_CALL(mock_process_manager_, StartProcessInMinijail)
+      .WillOnce(Return(kPid));
+  EXPECT_CALL(mock_process_manager_, UpdateExitCallback(kPid, _))
+      .WillOnce(Return(true));
+
+  std::unique_ptr<DHCPCDControllerInterface> controller =
+      controller_factory_->Create("wlan0", Technology::kWiFi, options,
+                                  &client_);
+  EXPECT_NE(controller, nullptr);
+  EXPECT_FALSE(controller->IsReady());
+
+  // When the controller is not ready, other methods should fail.
+  EXPECT_FALSE(controller->Rebind());
+  EXPECT_FALSE(controller->Release());
+}
+
 TEST_F(LegacyDHCPCDControllerFactoryTest, DeleteEphemeralLeaseAndPidFile) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
@@ -391,27 +348,8 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DeleteEphemeralLeaseAndPidFile) {
   constexpr std::string_view kLeaseFile = "var/lib/dhcpcd7/wlan0.lease";
   const DHCPCDControllerInterface::Options options = {};
 
-  // When creating a controller, the controller factory should create
-  // the dhcpcd process in minijail.
-  EXPECT_CALL(mock_process_manager_, StartProcessInMinijail)
-      .WillOnce(Return(kPid));
-  EXPECT_CALL(mock_process_manager_, UpdateExitCallback).WillOnce(Return(true));
-
-  std::unique_ptr<DHCPCDControllerInterface> controller;
-  controller_factory_->CreateAsync(
-      kInterface, Technology::kWiFi, options, &client_,
-      base::BindOnce(
-          [](std::unique_ptr<DHCPCDControllerInterface>* out,
-             std::unique_ptr<DHCPCDControllerInterface> in) {
-            *out = std::move(in);
-          },
-          &controller));
-
-  // After receiving D-Bus signal, the controller should be returned
-  // asynchronously.
-  fake_listener_->status_changed_cb_.Run(kDBusServiceName, kPid,
-                                         LegacyDHCPCDListener::Status::kInit);
-  ASSERT_NE(controller, nullptr);
+  std::unique_ptr<DHCPCDControllerInterface> controller =
+      CreateControllerSync(kPid, kDBusServiceName, kInterface);
 
   CreateTempFileInRoot(kPidFile);
   CreateTempFileInRoot(kLeaseFile);
