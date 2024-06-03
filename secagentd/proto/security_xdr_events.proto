@@ -50,14 +50,15 @@ message TcbAttributes {
 
 // The attributes of a file image.
 message FileImage {
-  optional string pathname = 1;
-  optional uint64 mnt_ns = 2;
-  optional uint64 inode_device_id = 3;
-  optional uint64 inode = 4;
-  optional string sha256 = 5;
-  optional uint64 canonical_uid = 6;
-  optional uint64 canonical_gid = 7;
-  optional uint32 mode = 8;
+  optional string pathname =
+      1;  // The pathname as seen from the context of the mount namespace.
+  optional uint64 mnt_ns = 2;           // The inode of the mount namespace.
+  optional uint64 inode_device_id = 3;  // The device ID both major and minor.
+  optional uint64 inode = 4;            // The inode of the file.
+  optional string sha256 = 5;           // The SHA256 of the file.
+  optional uint64 canonical_uid = 6;    // Owning UID.
+  optional uint64 canonical_gid = 7;    // Owning GID.
+  optional uint32 mode = 8;             // Mode.
 }
 
 // The attributes of a process.
@@ -302,4 +303,87 @@ message Authentication {
   }
   repeated AuthenticationType auth_factor = 1 [packed = true];
   optional uint64 num_failed_attempts = 2;
+}
+
+// File Events.
+enum SensitiveFileType {
+  // The file resides on the read only rootfs.
+  ROOT_FS = 0;
+  // The file resides in the MyFiles subdirectory on the decrypted user file
+  // system.
+  USER_FILE = 1;
+  // The file is located on the Google Drive filesystem.
+  USER_GOOGLE_DRIVE_FILE = 2;
+  // The file is a web cookie.
+  USER_WEB_COOKIE = 3;
+  // The file is an encrypted user credential, also known as the user secret
+  // stash (USS).
+  USER_ENCRYPTED_CREDENTIAL = 4;
+  // This file is associated with a user password, it contains some data
+  // considered not sensitive but also contains the sealed HVKKM which is used
+  // in the process of decrypting the user data blob.
+  USER_AUTH_FACTORS_FILE = 5;
+  // Cache file for the current logged in user policy.
+  USER_POLICY = 6;
+  // Public key used to verify the signature of a user policy.
+  USER_POLICY_PUBLIC_KEY = 7;
+  // Cache file for device policy.
+  DEVICE_POLICY = 8;
+  // The public key used to verify the signature of a device policy.
+  DEVICE_POLICY_PUBLIC_KEY = 9;
+  // Unencrypted public TPM RSA Key used in conjunction with password material
+  // to generate the sealed hardware vault keyset key material(HVKKM) using the
+  // TPM. This process is performed once per lifetime of a password and this
+  // HVKKM is stored to disk. On login the sealed HVKKM is used in conjunection
+  // with an ephemeral low entropy password key material to generate the
+  // ephemeral vault keyset key (VKK). The VKK decrypts the sealed user secret
+  // stash (USS) which is used to decrypt the encrypted user data blob on user
+  // login.
+  SYSTEM_TPM_PUBLIC_KEY = 10;
+  // The file is located on device identified as USB mass storage.
+  USB_MASS_STORAGE = 11;
+}
+
+message FileProvenance {
+  // ${COPYBARA_DATAPOL_ST_REFERER_URL}
+  optional string referer_url = 1;  // The URL that refers to the source url.
+  optional string source_url = 2;  // The URL that the file was downloaded from.
+}
+
+// File Read Event.
+message FileReadEvent {
+  optional SensitiveFileType sensitive_file_type = 1;
+  optional FileProvenance file_provenance = 2;
+  optional FileImage image = 3;
+}
+
+// File Modify Event , either a write, modify attribute or both.
+message FileModifyEvent {
+  enum ModifyType {
+    MODIFY_ATTRIBUTE = 1;
+    WRITE_AND_MODIFY_ATTRIBUTE = 2;
+  }
+  optional SensitiveFileType sensitive_file_type = 1;
+  optional FileProvenance file_provenance = 2;
+  // present only when
+  // modify_type=MODIFY_ATTRIBUTE or WRITE_AND_MODIFY_ATTRIBUTE.
+  // When present only mode, uid, gid are present.
+  optional FileImage attributes_before = 3;
+  optional FileImage image_after = 4;
+  optional ModifyType modify_type = 5;
+}
+
+// Singular File event.
+message FileEventAtomicVariant {
+  optional CommonEventVariantDataFields common = 1;
+  oneof variant_type {
+    FileReadEvent sensitive_read = 2;
+    FileModifyEvent sensitive_modify = 3;
+  }
+}
+
+// File Event Wrapper.
+message XdrFileEvent {
+  optional CommonEventDataFields common = 1;
+  repeated FileEventAtomicVariant batched_events = 2;
 }
