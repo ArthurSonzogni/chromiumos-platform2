@@ -10,6 +10,7 @@ import pathlib
 from typing import Optional
 
 from collection import Collection
+import fpsutils
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -183,13 +184,6 @@ class Experiment:
 
         return tbl
 
-    @staticmethod
-    def _read_far_decision_file(csv_file_path: pathlib.Path) -> pd.DataFrame:
-        far_decisions = pd.read_csv(csv_file_path)
-        # Ensure that the required columns exist.
-        assert set(Experiment.DECISION_TABLE_COLS) <= set(far_decisions.columns)
-        return far_decisions
-
     def __init__(
         self,
         #  num_enrollment: int,
@@ -269,8 +263,34 @@ class Experiment:
     def far_decisions(self) -> pd.DataFrame:
         return self._tbl_far_decisions
 
+    def far_decisions_to_csv(
+        self, csv_file_path: pathlib.Path, exclude_groups: bool = True
+    ) -> None:
+        """Write out the FAR decisions to a CSV file.
+
+        By default, any added groups will be stripped from the output decisions.
+        When `exclude_groups` is False, any groups added will be saved within
+        the the output decisions CSV.
+        """
+        _write_decision_file(
+            self.far_decisions(), csv_file_path, exclude_groups
+        )
+
     def frr_decisions(self) -> pd.DataFrame:
         return self._tbl_frr_decisions
+
+    def frr_decisions_to_csv(
+        self, csv_file_path: pathlib.Path, exclude_groups: bool = True
+    ) -> None:
+        """Write out the FRR decisions to a CSV file.
+
+        By default, any added groups will be stripped from the output decisions.
+        When `exclude_groups` is False, any groups added will be saved within
+        the the output decisions CSV.
+        """
+        _write_decision_file(
+            self.frr_decisions(), csv_file_path, exclude_groups
+        )
 
     def unique_list(self, column: TableCol) -> npt.NDArray:
         """Return a unique and sorted list of items for the given column.
@@ -413,11 +433,21 @@ class Experiment:
             verify_sample_index=verify_sample_index,
         )
 
+    def add_far_decisions(self, table: pd.DataFrame):
+        """Add an FAR decision table to experiment."""
+        self._tbl_far_decisions = table
+
     def add_far_decisions_from_csv(self, csv_file_path: pathlib.Path):
         """Read FAR decision file and add to experiment."""
-        self._tbl_far_decisions = Experiment._read_far_decision_file(
-            csv_file_path
-        )
+        self.add_far_decisions(_read_decision_file(csv_file_path))
+
+    def add_frr_decisions(self, table: pd.DataFrame):
+        """Add an FRR decision table to experiment."""
+        self._tbl_frr_decisions = table
+
+    def add_frr_decisions_from_csv(self, csv_file_path: pathlib.Path):
+        """Read FRR decision file and add to experiment."""
+        self.add_frr_decisions(_read_decision_file(csv_file_path))
 
     def add_groups(self, user_groups: pd.DataFrame):
         """Add the appropriate group columns to all saved tables."""
@@ -454,3 +484,31 @@ class Experiment:
                 ],
             )
         )
+
+
+def _read_decision_file(csv_file_path: pathlib.Path) -> pd.DataFrame:
+    """Read a CSV decisions file into a DataFrame with supported columns."""
+    table: pd.DataFrame = pd.read_csv(csv_file_path)
+    # Ensure that the required columns exist.
+    if not fpsutils.has_columns(table, Experiment.DECISION_TABLE_COLS):
+        raise ValueError(
+            f"CSV file {csv_file_path} doesn't contain columns"
+            f" {Experiment.DECISION_TABLE_COLS}."
+        )
+    return table
+
+
+def _write_decision_file(
+    table: pd.DataFrame,
+    csv_file_path: pathlib.Path,
+    exclude_groups: bool = True,
+) -> None:
+    """Write a decisions table out as a CSV file.
+
+    Group are removed from the written out table, if `exclude_groups` is True.
+    """
+    if exclude_groups:
+        table = table[Experiment.DECISION_TABLE_COLS]
+    # Setting index to False avoids the "index" / primary-key of the
+    # dataframe from being written out.
+    table.to_csv(csv_file_path, index=False)
