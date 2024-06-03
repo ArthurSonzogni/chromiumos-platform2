@@ -54,7 +54,7 @@ class OutputManagerTest : public testing::Test {
 
   // Call OutputManager::GetDebugDumps() and extract the list of filenames of
   // firmware dumps of type |type| that have been reported.
-  void GetDBusDebugDumpsList(DebugDump::Type type,
+  void GetDBusDebugDumpsList(std::set<DebugDump::Type>& type,
                              std::set<std::string>* found) {
     auto response = std::make_unique<
         brillo::dbus_utils::MockDBusMethodResponse<DebugDumps>>();
@@ -63,8 +63,14 @@ class OutputManagerTest : public testing::Test {
         [&found, &type](const DebugDumps& debug_dumps) {
           for (int i = 0; i < debug_dumps.dump_size(); i++) {
             auto dump = debug_dumps.dump(i);
-            if (dump.type() == type && dump.has_wifi_dump()) {
+
+            if (type.contains(DebugDump::WIFI) &&
+                dump.type() == DebugDump::WIFI && dump.has_wifi_dump()) {
               found->insert(dump.wifi_dump().dmpfile());
+            } else if (type.contains(DebugDump::BLUETOOTH) &&
+                       dump.type() == DebugDump::BLUETOOTH &&
+                       dump.has_bluetooth_dump()) {
+              found->insert(dump.bluetooth_dump().dmpfile());
             }
           }
         }));
@@ -115,7 +121,8 @@ TEST_F(OutputManagerTest, OnUserLoggedInDeletesExistingDumps) {
 TEST_F(OutputManagerTest, EmptyWiFiFirmwareListOnLogin) {
   SimulateUserLogin();
   std::set<std::string> found;
-  GetDBusDebugDumpsList(DebugDump::WIFI, &found);
+  std::set<DebugDump::Type> type = {DebugDump::WIFI};
+  GetDBusDebugDumpsList(type, &found);
   EXPECT_EQ(found, std::set<std::string>());
 }
 
@@ -129,13 +136,14 @@ TEST_F(OutputManagerTest, FilesOnDiskNotAutomaticallyAdded) {
   // OutputManager, expect that OutputManager does not report any firmware
   // dumps.
   std::set<std::string> found;
-  GetDBusDebugDumpsList(DebugDump::WIFI, &found);
+  std::set<DebugDump::Type> type = {DebugDump::WIFI};
+  GetDBusDebugDumpsList(type, &found);
   EXPECT_EQ(found, std::set<std::string>());
 }
 
-// Test that when we add firmware dumps to OutputManager,
+// Test that when we add WiFi firmware dumps to OutputManager,
 // OutputManager::GetDebugDumps() returns the correct list in the protobuf.
-TEST_F(OutputManagerTest, AddFirmwareDumpSucceeds) {
+TEST_F(OutputManagerTest, AddWiFiFirmwareDumpSucceeds) {
   SimulateUserLogin();
 
   std::set<std::string> expected_dumps;
@@ -150,7 +158,8 @@ TEST_F(OutputManagerTest, AddFirmwareDumpSucceeds) {
     // OutputManager has been notified that a new firmware dump has been
     // created. GetDebugDumps() now also lists the new dump.
     std::set<std::string> found;
-    GetDBusDebugDumpsList(DebugDump::WIFI, &found);
+    std::set<DebugDump::Type> type = {DebugDump::WIFI};
+    GetDBusDebugDumpsList(type, &found);
     EXPECT_EQ(found, expected_dumps) << "Could not find " << fw_dump;
 
     // Only the first firmware dump is registered if they all have the same
@@ -158,6 +167,67 @@ TEST_F(OutputManagerTest, AddFirmwareDumpSucceeds) {
     // real world conditions. Work around that by advancing the clock by 1s.
     manager()->FastForwardBy(base::Seconds(1));
   }
+}
+
+// Test that when we add Bluetooth firmware dumps to OutputManager,
+// OutputManager::GetDebugDumps() returns the correct list in the protobuf.
+TEST_F(OutputManagerTest, AddBluetoothFirmwareDumpSucceeds) {
+  SimulateUserLogin();
+
+  std::set<std::string> expected_dumps;
+  for (int i = 0; i < 3; i++) {
+    FirmwareDump fw_dump(
+        GetOutputFirmwareDumpName("test_" + std::to_string(i) + ".dmp"),
+        FirmwareDump::Type::kBluetooth);
+    base::WriteFile(fw_dump.DumpFile(), kTestFirmwareContent);
+    AddFirmwareDumpToOutputManager(fw_dump);
+    expected_dumps.insert(fw_dump.DumpFile().value());
+
+    // OutputManager has been notified that a new firmware dump has been
+    // created. GetDebugDumps() now also lists the new dump.
+    std::set<std::string> found;
+    std::set<DebugDump::Type> type = {DebugDump::BLUETOOTH};
+    GetDBusDebugDumpsList(type, &found);
+    EXPECT_EQ(found, expected_dumps) << "Could not find " << fw_dump;
+
+    // Only the first firmware dump is registered if they all have the same
+    // addition time, at least with the fake time keeping. It does not happen in
+    // real world conditions. Work around that by advancing the clock by 1s.
+    manager()->FastForwardBy(base::Seconds(1));
+  }
+}
+
+// Test that when we add both WiFi and Bluetooth firmware dumps to
+// OutputManager, OutputManager::GetDebugDumps() returns the correct list in
+// the protobuf.
+TEST_F(OutputManagerTest, AddCombinedFirmwareDumpSucceeds) {
+  SimulateUserLogin();
+
+  std::set<std::string> expected_dumps;
+
+  FirmwareDump fw_dump_0(GetOutputFirmwareDumpName("test_0.dmp"),
+                         FirmwareDump::Type::kWiFi);
+  base::WriteFile(fw_dump_0.DumpFile(), kTestFirmwareContent);
+  AddFirmwareDumpToOutputManager(fw_dump_0);
+  expected_dumps.insert(fw_dump_0.DumpFile().value());
+
+  // Only the first firmware dump is registered if they all have the same
+  // addition time, at least with the fake time keeping. It does not happen in
+  // real world conditions. Work around that by advancing the clock by 1s.
+  manager()->FastForwardBy(base::Seconds(1));
+
+  FirmwareDump fw_dump_1(GetOutputFirmwareDumpName("test_1.dmp"),
+                         FirmwareDump::Type::kBluetooth);
+  base::WriteFile(fw_dump_1.DumpFile(), kTestFirmwareContent);
+  AddFirmwareDumpToOutputManager(fw_dump_1);
+  expected_dumps.insert(fw_dump_1.DumpFile().value());
+
+  // OutputManager has been notified that a new firmware dump has been
+  // created. GetDebugDumps() now also lists the new dump.
+  std::set<std::string> found;
+  std::set<DebugDump::Type> type = {DebugDump::WIFI, DebugDump::BLUETOOTH};
+  GetDBusDebugDumpsList(type, &found);
+  EXPECT_EQ(found, expected_dumps);
 }
 
 // Test that the number of firmware dumps available is sent to UMA periodically.
@@ -258,7 +328,8 @@ TEST_F(OutputManagerTest, FirmwareDumpsExpire) {
   // - OutputManager::GetDebugDumps() returns an empty list of firmware dumps.
   EXPECT_FALSE(base::PathExists(fw_dump.DumpFile()));
   std::set<std::string> found;
-  GetDBusDebugDumpsList(DebugDump::WIFI, &found);
+  std::set<DebugDump::Type> type = {DebugDump::WIFI};
+  GetDBusDebugDumpsList(type, &found);
   EXPECT_EQ(found, std::set<std::string>());
 }
 
@@ -279,7 +350,8 @@ TEST_F(OutputManagerTest, DisallowingFeatureWithFinchDeletesFirmwareDumps) {
   // - OutputManager::GetDebugDumps() returns an empty list of firmware dumps.
   EXPECT_FALSE(base::PathExists(fw_dump.DumpFile()));
   std::set<std::string> found;
-  GetDBusDebugDumpsList(DebugDump::WIFI, &found);
+  std::set<DebugDump::Type> type = {DebugDump::WIFI};
+  GetDBusDebugDumpsList(type, &found);
   EXPECT_EQ(found, std::set<std::string>());
 }
 
@@ -297,7 +369,8 @@ TEST_F(OutputManagerTest, DisallowingFeatureReturnsEmptyFirmwareList) {
   // The Manager will now report that the feature is disallowed. Expect that
   // OutputManager::GetDebugDumps() returns an empty list of firmware dumps.
   std::set<std::string> found;
-  GetDBusDebugDumpsList(DebugDump::WIFI, &found);
+  std::set<DebugDump::Type> type = {DebugDump::WIFI};
+  GetDBusDebugDumpsList(type, &found);
   EXPECT_EQ(found, std::set<std::string>());
 }
 
@@ -315,7 +388,8 @@ TEST_F(OutputManagerTest, UserLogoutReturnsEmptyFirmwareList) {
   // that OutputManager::GetDebugDumps() returns an empty list of firmware
   // dumps.
   std::set<std::string> found;
-  GetDBusDebugDumpsList(DebugDump::WIFI, &found);
+  std::set<DebugDump::Type> type = {DebugDump::WIFI};
+  GetDBusDebugDumpsList(type, &found);
   EXPECT_EQ(found, std::set<std::string>());
 }
 

@@ -149,11 +149,23 @@ void OutputManager::GetAllAvailableDebugDumps(
     auto dump = file.fw_dump();
     auto debug_dump = out_DebugDumps.add_dump();
     debug_dump->set_type(FirmwareDump::ConvertToDBusType(dump.type()));
-    auto wifi_dump = debug_dump->mutable_wifi_dump();
-    wifi_dump->set_dmpfile(dump.DumpFile().value());
-    wifi_dump->set_state(WiFiDump::RAW);
-    wifi_dump->set_vendor(WiFiDump::IWLWIFI);
-    wifi_dump->set_compression(WiFiDump::GZIP);
+    switch (dump.type()) {
+      case FirmwareDump::Type::kWiFi: {
+        auto wifi_dump = debug_dump->mutable_wifi_dump();
+        wifi_dump->set_dmpfile(dump.DumpFile().value());
+        wifi_dump->set_state(WiFiDump::RAW);
+        wifi_dump->set_vendor(WiFiDump::IWLWIFI);
+        wifi_dump->set_compression(WiFiDump::GZIP);
+        break;
+      }
+      case FirmwareDump::Type::kBluetooth: {
+        auto bluetooth_dump = debug_dump->mutable_bluetooth_dump();
+        bluetooth_dump->set_dmpfile(dump.DumpFile().value());
+        bluetooth_dump->set_state(BluetoothDump::RAW);
+        bluetooth_dump->set_compression(BluetoothDump::GZIP);
+        break;
+      }
+    }
   }
   files_lock_.Release();
   response->Return(out_DebugDumps);
@@ -196,11 +208,25 @@ void OutputManager::OnExpiredFile() {
 
 void OutputManager::EmitMetrics() {
   if (manager_->FirmwareDumpsAllowed(FirmwareDump::Type::kWiFi)) {
+    int num_wifi_dumps = 0;
+    int num_bluetooth_dumps = 0;
+
     files_lock_.Acquire();
-    int num_wifi_dumps = static_cast<int>(files_.size());
+    for (auto file : files_) {
+      switch (file.fw_dump().type()) {
+        case FirmwareDump::Type::kWiFi:
+          num_wifi_dumps++;
+          break;
+        case FirmwareDump::Type::kBluetooth:
+          num_bluetooth_dumps++;
+          break;
+      }
+    }
     files_lock_.Release();
     manager_->metrics().SendNumberOfAvailableDumps(FirmwareDump::Type::kWiFi,
                                                    num_wifi_dumps);
+    manager_->metrics().SendNumberOfAvailableDumps(
+        FirmwareDump::Type::kBluetooth, num_bluetooth_dumps);
   }
 }
 
