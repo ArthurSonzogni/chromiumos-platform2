@@ -31,6 +31,19 @@
 namespace {
 
 constexpr char kWiFiTarballName[] = "wifi_fw_dumps.tar.zst";
+constexpr char kBluetoothTarballName[] = "bluetooth_fw_dumps.tar.zst";
+
+std::optional<base::FilePath> GetTarballName(
+    debugd::FeedbackBinaryLogType type) {
+  switch (type) {
+    case debugd::FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP:
+      return base::FilePath(kWiFiTarballName);
+    case debugd::FeedbackBinaryLogType::BLUETOOTH_FIRMWARE_DUMP:
+      return base::FilePath(kBluetoothTarballName);
+    default:
+      return std::nullopt;
+  }
+}
 
 bool ValidateDirectoryNames(const std::set<base::FilePath>& files,
                             const base::FilePath& daemon_store_path) {
@@ -209,7 +222,8 @@ void BinaryLogTool::SetCryptohomeProxyForTesting(
 void BinaryLogTool::GetBinaryLogs(
     const std::string& username,
     const std::map<FeedbackBinaryLogType, base::ScopedFD>& outfds) {
-  if (!outfds.contains(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP)) {
+  if (!outfds.contains(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP) &&
+      !outfds.contains(FeedbackBinaryLogType::BLUETOOTH_FIRMWARE_DUMP)) {
     LOG(ERROR) << "Unsupported binary log type";
     return;
   }
@@ -218,21 +232,6 @@ void BinaryLogTool::GetBinaryLogs(
   brillo::ErrorPtr error;
   if (!fbpreprocessor_proxy_->GetDebugDumps(&dumps, &error) || error.get()) {
     LOG(ERROR) << "Failed to retrieve debug dumps: " << error->GetMessage();
-    return;
-  }
-
-  std::set<base::FilePath> files;
-
-  for (auto dump : dumps.dump()) {
-    if (dump.has_wifi_dump()) {
-      base::FilePath file(dump.wifi_dump().dmpfile());
-      if (base::PathExists(file)) {
-        files.insert(file);
-      }
-    }
-  }
-
-  if (files.empty()) {
     return;
   }
 
@@ -245,17 +244,48 @@ void BinaryLogTool::GetBinaryLogs(
     return;
   }
 
-  if (!ValidateDirectoryNames(files, daemon_store_path.value())) {
-    LOG(ERROR) << "Failed to validate binary log files";
-    return;
-  }
+  for (auto const& [type, outfd] : outfds) {
+    std::set<base::FilePath> files;
 
-  int out_fd = outfds.at(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP).get();
-  base::FilePath tarball_name(kWiFiTarballName);
-  if (!CompressAndSendFilesToFD(tarball_name, files, daemon_store_path.value(),
-                                use_minijail_, out_fd)) {
-    LOG(ERROR) << "Failed to send binary logs";
-    return;
+    for (auto dump : dumps.dump()) {
+      base::FilePath file;
+
+      if (dump.has_wifi_dump() &&
+          type == FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP) {
+        file = base::FilePath(dump.wifi_dump().dmpfile());
+      }
+      if (dump.has_bluetooth_dump() &&
+          type == FeedbackBinaryLogType::BLUETOOTH_FIRMWARE_DUMP) {
+        file = base::FilePath(dump.bluetooth_dump().dmpfile());
+      }
+
+      if (base::PathExists(file)) {
+        files.insert(file);
+      }
+    }
+
+    if (files.empty()) {
+      continue;
+    }
+
+    if (!ValidateDirectoryNames(files, daemon_store_path.value())) {
+      LOG(ERROR) << "Failed to validate binary log files";
+      continue;
+    }
+
+    std::optional<base::FilePath> tarball_name = GetTarballName(type);
+    if (!tarball_name) {
+      LOG(ERROR) << "Failed to get valid compressed file name for type "
+                 << type;
+      continue;
+    }
+
+    if (!CompressAndSendFilesToFD(tarball_name.value(), files,
+                                  daemon_store_path.value(), use_minijail_,
+                                  outfd.get())) {
+      LOG(ERROR) << "Failed to send binary logs " << tarball_name.value();
+      continue;
+    }
   }
 }
 

@@ -288,6 +288,11 @@ void DebugdDBusAdaptor::GetFeedbackBinaryLogs(
       outfds_mapped[FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP] = base::ScopedFD(
           dup(outfds.at(FeedbackBinaryLogType::WIFI_FIRMWARE_DUMP).get()));
     }
+    if (outfds.contains(FeedbackBinaryLogType::BLUETOOTH_FIRMWARE_DUMP)) {
+      outfds_mapped[FeedbackBinaryLogType::BLUETOOTH_FIRMWARE_DUMP] =
+          base::ScopedFD(dup(
+              outfds.at(FeedbackBinaryLogType::BLUETOOTH_FIRMWARE_DUMP).get()));
+    }
 
     binary_log_tool_->GetBinaryLogs(username, outfds_mapped);
   }
