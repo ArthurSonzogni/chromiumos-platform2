@@ -64,9 +64,6 @@ const int kClientNetworkID = 10;
 const int kLocalOnlyNetworkId = 733;
 const WiFiPhy::Priority kPriority = WiFiPhy::Priority(0);
 
-static constexpr base::TimeDelta kStartTimeout = base::Seconds(10);
-static constexpr base::TimeDelta kStopTimeout = base::Seconds(5);
-
 class MockPatchpanelClient : public patchpanel::FakeClient {
  public:
   MockPatchpanelClient() = default;
@@ -190,10 +187,6 @@ class P2PDeviceTest : public testing::Test {
     return dbus::ObjectPath(
         std::string("/interface/") + std::string(kInterfaceName) +
         std::string("/Peers/deadbeef01") + std::to_string(peer_id));
-  }
-
-  void FastForwardBy(base::TimeDelta time) {
-    dispatcher_.task_environment().FastForwardBy(time);
   }
 
   void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
@@ -745,8 +738,6 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
   EXPECT_TRUE(go_device_->Start());
   EXPECT_EQ(go_device_->service_, nullptr);
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kReady);
 
   // Initiate group creation with a new service.
@@ -757,8 +748,6 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_NE(go_device_->service_, nullptr);
   EXPECT_EQ(go_device_->service_->state(),
             LocalService::LocalServiceState::kStateStarting);
-  EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStarting);
 
   // Emulate GroupStarted signal from wpa_supplicant.
@@ -777,8 +766,6 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_EQ(go_device_->group_bssid_, kP2PBSSID);
   EXPECT_EQ(go_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(go_device_->group_passphrase_, kP2PPassphrase);
-  EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
 
   // Emulate OnGroupNetworkStarted callback from patchpanel.
@@ -796,8 +783,6 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_CALL(*supplicant_p2pdevice_proxy_, Disconnect());
   EXPECT_TRUE(go_device_->RemoveGroup());
   EXPECT_EQ(go_device_->service_, nullptr);
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_FALSE(go_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
 
   // Emulate GroupFinished signal from wpa_supplicant
@@ -806,8 +791,6 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
   EXPECT_EQ(go_device_->supplicant_interface_proxy_, nullptr);
   EXPECT_EQ(go_device_->supplicant_p2pdevice_proxy_, nullptr);
   EXPECT_EQ(go_device_->supplicant_group_proxy_, nullptr);
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kReady);
   DispatchPendingEvents();
 
@@ -821,8 +804,6 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
   EXPECT_TRUE(client_device_->Start());
   EXPECT_EQ(client_device_->service_, nullptr);
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kReady);
 
   // Initiate connection with a new service.
@@ -835,8 +816,6 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_EQ(client_device_->service_->state(),
             LocalService::LocalServiceState::kStateStarting);
   EXPECT_EQ(client_device_->supplicant_persistent_group_path_, kGroupPath);
-  EXPECT_FALSE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientAssociating);
 
@@ -856,8 +835,6 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_EQ(client_device_->group_bssid_, kP2PBSSID);
   EXPECT_EQ(client_device_->group_frequency_, kP2PFrequency);
   EXPECT_EQ(client_device_->group_passphrase_, kP2PPassphrase);
-  EXPECT_FALSE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientConfiguring);
   // Emulate IP address received event.
@@ -877,8 +854,6 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_CALL(*supplicant_p2pdevice_proxy_, Disconnect());
   EXPECT_TRUE(client_device_->Disconnect());
   EXPECT_EQ(client_device_->service_, nullptr);
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_FALSE(client_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientDisconnecting);
 
@@ -891,8 +866,6 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
   EXPECT_EQ(client_device_->supplicant_group_proxy_, nullptr);
   EXPECT_TRUE(
       client_device_->supplicant_persistent_group_path_.value().empty());
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
   EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kReady);
   DispatchPendingEvents();
 
@@ -1231,7 +1204,7 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOStarting) {
 
   // Emulate GroupFinished signal from wpa_supplicant (unknown failure).
   // Uexpected signal, we are going to ignore finished signal for group
-  // which was never started. Let the start timer to expire.
+  // which was never started.
   EXPECT_CALL(cb, Run(_, _)).Times(0);
   go_device_->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(go_device_->supplicant_interface_proxy_, nullptr);
@@ -1239,11 +1212,6 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileGOStarting) {
   EXPECT_EQ(go_device_->supplicant_group_proxy_, nullptr);
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStarting);
   DispatchPendingEvents();
-
-  // Emulate start timer expired.
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkFailure, _)).Times(1);
-  FastForwardBy(kStartTimeout);
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
 
   // Stop device
   go_device_->Stop();
@@ -1370,7 +1338,7 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileClientAssociating) {
 
   // Emulate GroupFinished signal from wpa_supplicant (unknown failure).
   // Uexpected signal, we are going to ignore finished signal for group
-  // which was never started. Let the start timer to expire.
+  // which was never started.
   EXPECT_CALL(cb, Run(_, _)).Times(0);
   client_device_->GroupFinished(DefaultGroupFinishedProperties());
   EXPECT_EQ(client_device_->supplicant_interface_proxy_, nullptr);
@@ -1379,12 +1347,6 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileClientAssociating) {
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientAssociating);
   DispatchPendingEvents();
-
-  // Emulate start timer expired.
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkFailure, _)).Times(1);
-  FastForwardBy(kStartTimeout);
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientDisconnecting);
 
   // Stop device
   client_device_->Stop();
@@ -1515,325 +1477,6 @@ TEST_F(P2PDeviceTest, GroupFinished_WhileNotExpected) {
   // Stop device
   go_device_->Stop();
   CHECK_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-}
-
-TEST_F(P2PDeviceTest, StartingTimerExpired_WhileGOStarting) {
-  // Start device
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-  EXPECT_TRUE(go_device_->Start());
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kReady);
-
-  // Initiate group creation with a new service.
-  auto service0 = std::make_unique<MockP2PService>(
-      go_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
-  EXPECT_TRUE(go_device_->CreateGroup(std::move(service0)));
-  EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStarting);
-
-  // Emulate group creation timeout
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkFailure, _)).Times(1);
-  FastForwardBy(kStartTimeout);
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_FALSE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
-
-  // Stop device
-  go_device_->Stop();
-  CHECK_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-}
-
-TEST_F(P2PDeviceTest, StartingTimerExpired_WhileGOConfiguring) {
-  // Start device
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-  EXPECT_TRUE(go_device_->Start());
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kReady);
-
-  // Initiate group creation with a new service.
-  auto service0 = std::make_unique<MockP2PService>(
-      go_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
-  EXPECT_TRUE(go_device_->CreateGroup(std::move(service0)));
-  EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStarting);
-
-  // Emulate GroupStarted signal from wpa_supplicant.
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
-  go_device_->GroupStarted(DefaultGroupStartedProperties());
-  EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
-
-  // Emulate group creation timeout
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkFailure, _)).Times(1);
-  FastForwardBy(kStartTimeout);
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_FALSE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
-
-  // Stop device
-  go_device_->Stop();
-  CHECK_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-}
-
-TEST_F(P2PDeviceTest, StartingTimerExpired_WhileGOActive) {
-  // Start device
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-  EXPECT_TRUE(go_device_->Start());
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kReady);
-
-  // Initiate group creation with a new service.
-  auto service0 = std::make_unique<MockP2PService>(
-      go_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
-  EXPECT_TRUE(go_device_->CreateGroup(std::move(service0)));
-  EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStarting);
-
-  // Emulate GroupStarted signal from wpa_supplicant.
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
-  go_device_->GroupStarted(DefaultGroupStartedProperties());
-  EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
-  // Emulate OnGroupNetworkStarted callback from patchpanel.
-  go_device_->OnGroupNetworkStarted(MakeFd(),
-                                    {.network_id = kLocalOnlyNetworkId});
-
-  // Ignore group creation timeout while in active state
-  FastForwardBy(kStartTimeout);
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOActive);
-
-  // Remove group.
-  EXPECT_TRUE(go_device_->RemoveGroup());
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_FALSE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
-
-  // Stop device
-  go_device_->Stop();
-  CHECK_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-}
-
-TEST_F(P2PDeviceTest, StoppingTimerExpired_WhileGOStopping) {
-  // Start device
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-  EXPECT_TRUE(go_device_->Start());
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kReady);
-
-  // Initiate group creation with a new service.
-  auto service0 = std::make_unique<MockP2PService>(
-      go_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
-  EXPECT_TRUE(go_device_->CreateGroup(std::move(service0)));
-  EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStarting);
-
-  // Emulate GroupStarted signal from wpa_supplicant.
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
-  go_device_->GroupStarted(DefaultGroupStartedProperties());
-  EXPECT_FALSE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOConfiguring);
-  // Emulate OnGroupNetworkStarted callback from patchpanel.
-  go_device_->OnGroupNetworkStarted(MakeFd(),
-                                    {.network_id = kLocalOnlyNetworkId});
-
-  // Remove group.
-  EXPECT_TRUE(go_device_->RemoveGroup());
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_FALSE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
-
-  // Emulate group finish timeout
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
-  FastForwardBy(kStopTimeout);
-  EXPECT_TRUE(go_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(go_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
-
-  // Stop device
-  go_device_->Stop();
-  CHECK_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-}
-
-TEST_F(P2PDeviceTest, StartingTimerExpired_WhileClientAssociating) {
-  // Start device
-  EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-  EXPECT_TRUE(client_device_->Start());
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kReady);
-
-  // Initiate connection with a new service.
-  auto service0 = std::make_unique<MockP2PService>(
-      client_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
-  EXPECT_TRUE(client_device_->Connect(std::move(service0)));
-  EXPECT_FALSE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientAssociating);
-
-  // Emulate group connection timeout
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkFailure, _)).Times(1);
-  FastForwardBy(kStartTimeout);
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_FALSE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientDisconnecting);
-
-  // Stop device
-  client_device_->Stop();
-  CHECK_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-}
-
-TEST_F(P2PDeviceTest, StartingTimerExpired_WhileClientConfiguring) {
-  // Start device
-  EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-  EXPECT_TRUE(client_device_->Start());
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kReady);
-
-  // Initiate connection with a new service.
-  auto service0 = std::make_unique<MockP2PService>(
-      client_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
-  EXPECT_TRUE(client_device_->Connect(std::move(service0)));
-  EXPECT_FALSE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientAssociating);
-
-  // Emulate GroupStarted signal from wpa_supplicant.
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
-  client_device_->GroupStarted(DefaultGroupStartedProperties());
-  EXPECT_FALSE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientConfiguring);
-
-  // Emulate group connection timeout
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkFailure, _)).Times(1);
-  FastForwardBy(kStartTimeout);
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_FALSE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientDisconnecting);
-
-  // Stop device
-  client_device_->Stop();
-  CHECK_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-}
-
-TEST_F(P2PDeviceTest, StartingTimerExpired_WhileClientConnected) {
-  // Start device
-  EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-  EXPECT_TRUE(client_device_->Start());
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kReady);
-
-  // Initiate connection with a new service.
-  auto service0 = std::make_unique<MockP2PService>(
-      client_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
-  EXPECT_TRUE(client_device_->Connect(std::move(service0)));
-  EXPECT_FALSE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientAssociating);
-
-  // Emulate GroupStarted signal from wpa_supplicant.
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
-  client_device_->GroupStarted(DefaultGroupStartedProperties());
-  EXPECT_FALSE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientConfiguring);
-  // Emulate IP address received event.
-  client_device_->OnConnectionUpdated(kInterfaceIdx);
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientConnected);
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-
-  FastForwardBy(kStartTimeout);
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientConnected);
-  DispatchPendingEvents();
-
-  // Disconnect.
-  EXPECT_TRUE(client_device_->Disconnect());
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_FALSE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientDisconnecting);
-
-  // Stop device
-  client_device_->Stop();
-  CHECK_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-}
-
-TEST_F(P2PDeviceTest, StoppingTimerExpired_WhileClientDisconnecting) {
-  // Start device
-  EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
-  EXPECT_TRUE(client_device_->Start());
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kReady);
-
-  // Initiate connection with a new service.
-  auto service0 = std::make_unique<MockP2PService>(
-      client_device_, kP2PSSID, kP2PPassphrase, kP2PFrequency);
-  EXPECT_TRUE(client_device_->Connect(std::move(service0)));
-  EXPECT_FALSE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientAssociating);
-
-  // Emulate GroupStarted signal from wpa_supplicant.
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkUp, _)).Times(1);
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kNetworkUp, _)).Times(1);
-  client_device_->GroupStarted(DefaultGroupStartedProperties());
-  EXPECT_FALSE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientConfiguring);
-  // Emulate IP address received event.
-  client_device_->OnConnectionUpdated(kInterfaceIdx);
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientConnected);
-
-  // Disconnect.
-  EXPECT_TRUE(client_device_->Disconnect());
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_FALSE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientDisconnecting);
-
-  // Emulate group connection timeout
-  EXPECT_CALL(cb, Run(LocalDevice::DeviceEvent::kLinkDown, _)).Times(1);
-  FastForwardBy(kStopTimeout);
-  EXPECT_TRUE(client_device_->start_timer_callback_.IsCancelled());
-  EXPECT_TRUE(client_device_->stop_timer_callback_.IsCancelled());
-  EXPECT_EQ(client_device_->state_,
-            P2PDevice::P2PDeviceState::kClientDisconnecting);
-
-  // Stop device
-  client_device_->Stop();
-  CHECK_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 }
 
 TEST_F(P2PDeviceTest, GO_StartGroupNetworkImmediateFail) {

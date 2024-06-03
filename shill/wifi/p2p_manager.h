@@ -119,6 +119,13 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   FRIEND_TEST(P2PManagerTest, GroupFormationFailure_IgnoreDuplicates);
   FRIEND_TEST(P2PManagerTest, GroupFormationFailure_IgnoreMissingDevice);
 
+  // Stop p2p device and return error if group cannot be fully configured within
+  // |kP2PStartTimeout| time.
+  static constexpr base::TimeDelta kP2PStartTimeout = base::Seconds(10);
+  // Return error if p2p group cannot be fully stopped within |kP2PStopTimeout|
+  // time.
+  static constexpr base::TimeDelta kP2PStopTimeout = base::Seconds(5);
+
   // This checks whether the platform supports P2P operations.
   bool IsP2PSupported();
 
@@ -184,6 +191,8 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   void PostResult(std::string result_code,
                   std::optional<int32_t> shill_id,
                   P2PResultCallback callback);
+  void CancelActionTimerAndPostResult(std::string result_code,
+                                      std::optional<int32_t> shill_id);
 
   // Delete a P2P device, stopping all active operations and deleting it's
   // references.
@@ -205,6 +214,11 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
 
   // Disconnect from wpa_supplicant device proxy of the primary interface.
   void DisconnectFromSupplicantPrimaryP2PDeviceProxy();
+
+  // Method to handle p2p group/client start/stop action timeout.
+  void CancelActionTimer();
+  void SetActionTimer(bool is_start, LocalDevice::IfaceType iface_type);
+  void ActionTimerExpired(bool is_start, LocalDevice::IfaceType iface_type);
 
   // Reference to the main Shill Manager instance. P2PManager is created and
   // owned by WiFiProvider, which can be accessed indirectly through manager_.
@@ -243,6 +257,13 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   // event delegate objects (active P2PDevices).
   std::map<RpcIdentifier, SupplicantP2PDeviceEventDelegateInterface*>
       supplicant_primary_p2pdevice_event_delegates_;
+
+  // Executes when the p2p group or client start/stop action timer expires.
+  // Calls ActionTimerExpired.
+  base::CancelableOnceClosure action_timer_callback_;
+
+  // The weak pointer to P2PManager object
+  base::WeakPtrFactory<P2PManager> weak_ptr_factory_{this};
 };
 
 }  // namespace shill

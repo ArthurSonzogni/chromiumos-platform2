@@ -123,13 +123,56 @@ void P2PManager::Stop() {
   }
 }
 
+void P2PManager::ActionTimerExpired(bool is_start,
+                                    LocalDevice::IfaceType iface_type) {
+  if (iface_type != LocalDevice::IfaceType::kP2PGO &&
+      iface_type != LocalDevice::IfaceType::kP2PClient) {
+    LOG(ERROR) << __func__ << ": invalid interface type " << iface_type;
+    return;
+  }
+  if (!result_callback_) {
+    LOG(ERROR) << __func__ << ": no available callback";
+    return;
+  }
+
+  bool is_go = iface_type == LocalDevice::IfaceType::kP2PGO;
+  if (is_start) {
+    PostResult(
+        is_go ? kCreateP2PGroupResultTimeout : kConnectToP2PGroupResultTimeout,
+        std::nullopt, std::move(result_callback_));
+  } else {
+    PostResult(is_go ? kDestroyP2PGroupResultTimeout
+                     : kDisconnectFromP2PGroupResultTimeout,
+               std::nullopt, std::move(result_callback_));
+  }
+}
+
+void P2PManager::CancelActionTimer() {
+  if (!action_timer_callback_.IsCancelled()) {
+    action_timer_callback_.Cancel();
+    LOG(INFO) << __func__ << ": action timer cancelled";
+  }
+}
+
+void P2PManager::SetActionTimer(bool is_start,
+                                LocalDevice::IfaceType iface_type) {
+  auto timeout = is_start ? kP2PStartTimeout : kP2PStopTimeout;
+  CancelActionTimer();
+  action_timer_callback_.Reset(base::BindOnce(&P2PManager::ActionTimerExpired,
+                                              weak_ptr_factory_.GetWeakPtr(),
+                                              is_start, iface_type));
+  manager_->dispatcher()->PostDelayedTask(
+      FROM_HERE, action_timer_callback_.callback(), timeout);
+  LOG(INFO) << __func__ << ": action timer started, timeout: " << timeout;
+}
+
 void P2PManager::CreateP2PGroup(P2PResultCallback callback,
                                 const KeyValueStore& args) {
   LOG(INFO) << __func__;
   CHECK(callback) << "Callback is empty";
 
   if (supplicant_primary_p2pdevice_pending_event_delegate_ ||
-      result_callback_) {
+      result_callback_ || !action_timer_callback_.IsCancelled()) {
     LOG(WARNING) << "Failed to create P2P group, operation is already "
                     "in progress";
     PostResult(kCreateP2PGroupResultOperationInProgress, std::nullopt,
@@ -192,7 +235,10 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
     PostResult(kCreateP2PGroupResultConcurrencyNotSupported, std::nullopt,
                std::move(result_callback_));
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
+    return;
   }
+  // Arm the start timer if it does not fail immediately
+  SetActionTimer(true, LocalDevice::IfaceType::kP2PGO);
 }
 
 void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
@@ -201,7 +247,7 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
   CHECK(callback) << "Callback is empty";
 
   if (supplicant_primary_p2pdevice_pending_event_delegate_ ||
-      result_callback_) {
+      result_callback_ || !action_timer_callback_.IsCancelled()) {
     LOG(WARNING) << "Failed to connect to P2P group, operation is already "
                     "in progress";
     PostResult(kConnectToP2PGroupResultOperationInProgress, std::nullopt,
@@ -272,14 +318,17 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
     PostResult(kConnectToP2PGroupResultConcurrencyNotSupported, std::nullopt,
                std::move(result_callback_));
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
+    return;
   }
+  // Arm the start timer if it does not fail immediately
+  SetActionTimer(true, LocalDevice::IfaceType::kP2PGO);
 }
 
 void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int32_t shill_id) {
   LOG(INFO) << __func__;
   CHECK(callback) << "Callback is empty";
 
-  if (result_callback_) {
+  if (result_callback_ || !action_timer_callback_.IsCancelled()) {
     PostResult(kDestroyP2PGroupResultOperationInProgress, std::nullopt,
                std::move(callback));
     return;
@@ -292,6 +341,7 @@ void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int32_t shill_id) {
                std::move(result_callback_));
     return;
   }
+  SetActionTimer(false, LocalDevice::IfaceType::kP2PClient);
   p2p_group_owners_[shill_id]->RemoveGroup();
 }
 
@@ -300,7 +350,7 @@ void P2PManager::DisconnectFromP2PGroup(P2PResultCallback callback,
   LOG(INFO) << __func__;
   CHECK(callback) << "Callback is empty";
 
-  if (result_callback_) {
+  if (result_callback_ || !action_timer_callback_.IsCancelled()) {
     PostResult(kDisconnectFromP2PGroupResultOperationInProgress, std::nullopt,
                std::move(callback));
     return;
@@ -313,6 +363,7 @@ void P2PManager::DisconnectFromP2PGroup(P2PResultCallback callback,
                std::move(result_callback_));
     return;
   }
+  SetActionTimer(false, LocalDevice::IfaceType::kP2PClient);
   p2p_clients_[shill_id]->Disconnect();
 }
 
@@ -370,6 +421,12 @@ void P2PManager::PostResult(std::string result_code,
   }
   manager_->dispatcher()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), response_dict));
+}
+
+void P2PManager::CancelActionTimerAndPostResult(
+    std::string result_code, std::optional<int32_t> shill_id) {
+  CancelActionTimer();
+  PostResult(result_code, shill_id, std::move(result_callback_));
 }
 
 void P2PManager::DeleteP2PDevice(P2PDeviceRefPtr p2p_dev) {
@@ -525,6 +582,7 @@ void P2PManager::OnP2PDeviceEvent(LocalDevice::DeviceEvent event,
     LOG(ERROR) << "Received P2P event from device "
                << device->link_name().value_or("(no link name)")
                << " with invalid type " << device->iface_type();
+    return;
   }
   bool is_go = device->iface_type() == LocalDevice::IfaceType::kP2PGO;
 
@@ -548,26 +606,18 @@ void P2PManager::OnP2PDeviceEvent(LocalDevice::DeviceEvent event,
 
   switch (event) {
     case LocalDevice::DeviceEvent::kLinkDown: {
-      P2PDevice::P2PDeviceState dev_state = p2p_dev->state();
       DeleteP2PDevice(p2p_dev);
-      if (!result_callback_) {
-        // kLinkDown should only occur in response to an explicit request,
-        // so we should always have an active callback.
-        LOG(ERROR) << "No available callback for event: " << event;
+      if (!result_callback_ || action_timer_callback_.IsCancelled()) {
+        // kLinkDown should only occur in response to an explicit stop request,
+        // so we should always have an active callback and timer
+        LOG(ERROR) << "No available callback or action timer for event: "
+                   << event;
         return;
       }
-      // TODO(b/323064949): Move all timeout handling logic into P2PManager.
-      // When this is implemented, then we'll no longer need to handle timeout
-      // events here.
-      if (dev_state != P2PDevice::P2PDeviceState::kReady) {
-        PostResult(is_go ? kDestroyP2PGroupResultTimeout
-                         : kDisconnectFromP2PGroupResultTimeout,
-                   std::nullopt, std::move(result_callback_));
-        return;
-      }
-      PostResult(is_go ? kDestroyP2PGroupResultSuccess
-                       : kDisconnectFromP2PGroupResultSuccess,
-                 std::nullopt, std::move(result_callback_));
+      CancelActionTimerAndPostResult(is_go
+                                         ? kDestroyP2PGroupResultSuccess
+                                         : kDisconnectFromP2PGroupResultSuccess,
+                                     std::nullopt);
       return;
     }
     case LocalDevice::DeviceEvent::kLinkFailure:
@@ -576,9 +626,10 @@ void P2PManager::OnP2PDeviceEvent(LocalDevice::DeviceEvent event,
       if (!result_callback_) {
         return;
       }
-      PostResult(is_go ? kCreateP2PGroupResultOperationFailed
-                       : kConnectToP2PGroupResultOperationFailed,
-                 std::nullopt, std::move(result_callback_));
+      CancelActionTimerAndPostResult(
+          is_go ? kCreateP2PGroupResultOperationFailed
+                : kConnectToP2PGroupResultOperationFailed,
+          std::nullopt);
       return;
     case LocalDevice::DeviceEvent::kInterfaceEnabled:
       OnP2PDeviceEnabled(p2p_dev);
@@ -640,17 +691,19 @@ void P2PManager::OnDeviceCreated(LocalDevice::IfaceType iface_type,
 
   if (!device) {
     LOG(ERROR) << "Failed to create a WiFi P2P interface.";
-    PostResult(is_go ? kCreateP2PGroupResultOperationFailed
-                     : kConnectToP2PGroupResultOperationFailed,
-               std::nullopt, std::move(result_callback_));
+    CancelActionTimerAndPostResult(
+        is_go ? kCreateP2PGroupResultOperationFailed
+              : kConnectToP2PGroupResultOperationFailed,
+        std::nullopt);
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
   if (!device->SetEnabled(true)) {
     LOG(ERROR) << "Failed to enable a WiFi P2P interface.";
-    PostResult(is_go ? kCreateP2PGroupResultOperationFailed
-                     : kConnectToP2PGroupResultOperationFailed,
-               std::nullopt, std::move(result_callback_));
+    CancelActionTimerAndPostResult(
+        is_go ? kCreateP2PGroupResultOperationFailed
+              : kConnectToP2PGroupResultOperationFailed,
+        std::nullopt);
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
@@ -661,8 +714,8 @@ void P2PManager::OnDeviceCreated(LocalDevice::IfaceType iface_type,
     p2p_group_owners_[device->shill_id()] = device;
     if (!device->CreateGroup(std::move(service))) {
       LOG(ERROR) << "Failed to initiate group creation";
-      PostResult(kCreateP2PGroupResultOperationFailed, std::nullopt,
-                 std::move(result_callback_));
+      CancelActionTimerAndPostResult(kCreateP2PGroupResultOperationFailed,
+                                     std::nullopt);
       DeleteP2PDevice(device);
       return;
     }
@@ -670,8 +723,8 @@ void P2PManager::OnDeviceCreated(LocalDevice::IfaceType iface_type,
     p2p_clients_[device->shill_id()] = device;
     if (!device->Connect(std::move(service))) {
       LOG(ERROR) << "Failed to initiate connection";
-      PostResult(kConnectToP2PGroupResultOperationFailed, std::nullopt,
-                 std::move(result_callback_));
+      CancelActionTimerAndPostResult(kConnectToP2PGroupResultOperationFailed,
+                                     std::nullopt);
       DeleteP2PDevice(device);
       return;
     }
@@ -690,11 +743,13 @@ void P2PManager::OnDeviceCreationFailed(LocalDevice::IfaceType iface_type) {
     LOG(ERROR) << "Received DeviceCreationFailed event for invalid type "
                << iface_type;
   }
+
   bool is_go = iface_type == LocalDevice::IfaceType::kP2PGO;
   LOG(ERROR) << "Failed create P2PDevice.";
-  PostResult(is_go ? kCreateP2PGroupResultOperationFailed
-                   : kConnectToP2PGroupResultOperationFailed,
-             std::nullopt, std::move(result_callback_));
+  CancelActionTimerAndPostResult(is_go
+                                     ? kCreateP2PGroupResultOperationFailed
+                                     : kConnectToP2PGroupResultOperationFailed,
+                                 std::nullopt);
   DisconnectFromSupplicantPrimaryP2PDeviceProxy();
 }
 
@@ -710,7 +765,7 @@ void P2PManager::P2PNetworkStarted(P2PDeviceRefPtr device) {
       device->iface_type() == LocalDevice::IfaceType::kP2PGO
           ? kCreateP2PGroupResultSuccess
           : kConnectToP2PGroupResultSuccess;
-  PostResult(result_code, device->shill_id(), std::move(result_callback_));
+  CancelActionTimerAndPostResult(result_code, device->shill_id());
   return;
 }
 

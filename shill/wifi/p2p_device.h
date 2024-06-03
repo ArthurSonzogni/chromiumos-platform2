@@ -297,12 +297,6 @@ class P2PDevice : public LocalDevice,
   void OnConnectionUpdated(int interface_index) override;
   void OnNetworkStopped(int interface_index, bool is_failure) override;
 
-  // These methods handle p2p group start/stop timers.
-  // TODO(b/323064949): Move all timeout handling logic into P2PManager.
-  void StartingTimerExpired();
-  void StoppingTimerExpired();
-  void ResetTimersOnStateChange(P2PDeviceState new_state);
-
   // Methods to fetch L3 information from patchpanel.
   void UpdateGroupNetworkInfo(
       const patchpanel::Client::DownstreamNetwork& downstream_network);
@@ -355,14 +349,6 @@ class P2PDevice : public LocalDevice,
   // Map of associated P2P peers.
   std::map<dbus::ObjectPath, std::unique_ptr<P2PPeer>> group_peers_;
 
-  // Executes when the p2p group start timer expires. Calls
-  // StartingTimerExpired.
-  base::CancelableOnceClosure start_timer_callback_;
-
-  // Executes when the p2p group stop timer expires. Calls
-  // StoppingTimerExpired.
-  base::CancelableOnceClosure stop_timer_callback_;
-
   // File descriptor representing the group network setup managed by
   // patchpanel. Closing this file descriptor tears down the group network.
   // This member is only valid when |this| is in the GO role.
@@ -381,9 +367,6 @@ class P2PDevice : public LocalDevice,
   // network_id of current device, only available for GO after the network layer
   // has been setup.
   std::optional<int> go_network_id_;
-
-  // The weak pointer to P2PDevice object
-  base::WeakPtrFactory<P2PDevice> weak_ptr_factory_{this};
 };
 
 }  // namespace shill
