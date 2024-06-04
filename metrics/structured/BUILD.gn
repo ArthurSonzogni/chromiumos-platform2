@@ -29,7 +29,7 @@ proto_library("storage") {
 proto_library("libsm_proto") {
   proto_in_dir = "lib/proto"
   proto_out_dir = "include/metrics/structured/lib/proto"
-  sources = [ "${proto_in_dir}/key.proto" ]
+  sources = [ "${proto_in_dir}/metrics_key.proto" ]
   use_pic = true
 }
 

@@ -11,7 +11,7 @@
 
 #include <base/files/file_path.h>
 
-#include "metrics/structured/lib/proto/key.pb.h"
+#include "metrics/structured/lib/proto/metrics_key.pb.h"
 #include "metrics/structured/persistent_proto.h"
 #include "metrics/structured/proto/storage.pb.h"
 

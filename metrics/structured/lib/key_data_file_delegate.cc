@@ -18,7 +18,7 @@
 #include "metrics/structured/lib/histogram_util.h"
 #include "metrics/structured/lib/key_util.h"
 #include "metrics/structured/lib/persistent_proto.h"
-#include "metrics/structured/lib/proto/key.pb.h"
+#include "metrics/structured/lib/proto/metrics_key.pb.h"
 
 namespace metrics::structured {
 

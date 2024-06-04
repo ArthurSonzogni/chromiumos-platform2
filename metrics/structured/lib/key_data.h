@@ -18,7 +18,7 @@
 #include <base/time/time.h>
 
 #include "metrics/structured/lib/persistent_proto.h"
-#include "metrics/structured/lib/proto/key.pb.h"
+#include "metrics/structured/lib/proto/metrics_key.pb.h"
 
 namespace metrics::structured {
 

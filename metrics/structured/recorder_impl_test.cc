@@ -18,17 +18,17 @@
 #include <base/memory/raw_ptr.h>
 #include <base/run_loop.h>
 #include <base/strings/strcat.h>
-#include <base/task/sequenced_task_runner.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool/thread_pool_instance.h>
-#include <base/time/time.h>
 #include <base/test/task_environment.h>
+#include <base/time/time.h>
 #include <base/values.h>
 #include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 #include <metrics/fake_metrics_library.h>
 
-#include "metrics/structured/lib/proto/key.pb.h"
+#include "metrics/structured/lib/proto/metrics_key.pb.h"
 #include "metrics/structured/proto/storage.pb.h"
 #include "metrics/structured/recorder.h"
 #include "metrics/structured/recorder_singleton.h"

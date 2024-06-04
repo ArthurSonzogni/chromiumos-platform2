@@ -24,7 +24,7 @@
 #include <gtest/gtest.h>
 
 #include "metrics/structured/lib/histogram_util.h"
-#include "metrics/structured/lib/proto/key.pb.h"
+#include "metrics/structured/lib/proto/metrics_key.pb.h"
 
 namespace metrics::structured {
 

@@ -16,7 +16,12 @@ option optimize_for = LITE_RUNTIME;
 // copied to platform2.
 //
 // chromium path: components/metrics/structured/lib/proto/key.proto
-// platform2 path: metrics/structured/proto/storage.proto
+// platform2 path: metrics/structured/lib/proto/metrics_key.proto
+//
+// TODO(b/336210343): There is another key.proto file at
+// system_api/dbus/cryptohome/key.proto, and it will cause a conflict in running
+// fuzzers if there are proto files having the same name. Using a different
+// filename intentionally now until we find a better solution.
 
 // All information about the key for a single project.
 message KeyProto {
