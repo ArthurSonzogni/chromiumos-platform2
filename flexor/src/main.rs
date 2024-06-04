@@ -8,7 +8,7 @@ use std::{
     process::ExitCode,
 };
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use libchromeos::panic_handler;
 use log::{error, info};
 use nix::sys::{reboot::reboot, stat::Mode};
@@ -210,6 +210,7 @@ fn run(config: &InstallConfig) -> Result<()> {
     copy_installation_files_to_rootfs(config)?;
 
     // Try installing on the device three times at most.
+    let mut return_err = anyhow!("");
     for _ in 0..3 {
         match perform_installation(config) {
             Ok(_) => {
@@ -221,11 +222,12 @@ fn run(config: &InstallConfig) -> Result<()> {
             }
             Err(err) => {
                 error!("Flexor couldn't complete due to error: {err}");
+                return_err = err;
             }
         }
     }
 
-    Ok(())
+    Err(return_err)
 }
 
 /// Tries to save logs to the disk depending on what state the installation fails in.
