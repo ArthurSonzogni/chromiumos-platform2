@@ -51,6 +51,12 @@ pub enum DRMTraceSnapshotType {
     Modetest = 1,
 }
 
+// These enum values must match those in org.chromium.debugd.xml.
+pub enum FirmwareDumpType {
+    All = 0,
+    Wifi = 1,
+}
+
 impl Debugd {
     pub fn new() -> Result<Debugd, dbus::Error> {
         match Connection::new_system() {
@@ -168,5 +174,14 @@ impl Debugd {
         self.connection
             .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
             .packet_capture_stop(handle)
+    }
+
+    pub fn generate_firmware_dump(
+        &self,
+        fwdump_type: FirmwareDumpType,
+    ) -> Result<bool, dbus::Error> {
+        self.connection
+            .with_proxy(BUS_NAME, SERVICE_PATH, DEFAULT_DBUS_TIMEOUT)
+            .generate_firmware_dump(fwdump_type as u32)
     }
 }

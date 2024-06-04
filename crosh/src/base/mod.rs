@@ -15,6 +15,7 @@ mod evtest;
 mod exit;
 mod force_fips;
 mod free;
+mod generate_firmware_dump;
 mod help_advanced;
 mod insert_coin;
 mod meminfo;
@@ -49,6 +50,7 @@ pub fn register(dispatcher: &mut Dispatcher) {
     exit::register(dispatcher);
     force_fips::register(dispatcher);
     free::register(dispatcher);
+    generate_firmware_dump::register(dispatcher);
     help_advanced::register(dispatcher);
     insert_coin::register(dispatcher);
     meminfo::register(dispatcher);
