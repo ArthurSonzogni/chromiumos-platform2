@@ -231,7 +231,8 @@ bool RotateAndCropStreamManipulator::OnConfiguredStreams(
 
 bool RotateAndCropStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
-  if (!disabled_ && !default_request_settings->isEmpty()) {
+  if (!disabled_ && !helper_->stream_config_unsupported() &&
+      !default_request_settings->isEmpty()) {
     const uint8_t rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_AUTO;
     if (default_request_settings->update(ANDROID_SCALER_ROTATE_AND_CROP,
                                          &rc_mode, 1) != 0) {
@@ -245,7 +246,7 @@ bool RotateAndCropStreamManipulator::ConstructDefaultRequestSettings(
 
 bool RotateAndCropStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
-  if (disabled_) {
+  if (disabled_ || helper_->stream_config_unsupported()) {
     helper_->HandleRequest(request, true, nullptr);
     return true;
   }
@@ -288,10 +289,8 @@ bool RotateAndCropStreamManipulator::ProcessCaptureRequest(
 
 bool RotateAndCropStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  if (!disabled_) {
-    auto* ctx =
-        helper_->GetPrivateContextAs<CaptureContext>(result.frame_number());
-    CHECK_NE(ctx, nullptr);
+  if (auto* ctx =
+          helper_->GetPrivateContextAs<CaptureContext>(result.frame_number())) {
     if (!ctx->result_metadata_updated &&
         (result.HasMetadata(ANDROID_SCALER_ROTATE_AND_CROP) ||
          result.partial_result() == helper_->partial_result_count())) {
