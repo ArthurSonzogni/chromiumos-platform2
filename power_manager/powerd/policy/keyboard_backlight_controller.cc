@@ -69,8 +69,12 @@ BacklightBrightnessChange_Cause ToBacklightBrightnessChangeCause(
   switch (cause) {
     case SetBacklightBrightnessRequest_Cause_USER_REQUEST:
       return BacklightBrightnessChange_Cause_USER_REQUEST;
+    case SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP:
+      return BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP;
     case SetBacklightBrightnessRequest_Cause_MODEL:
       return BacklightBrightnessChange_Cause_MODEL;
+    case SetBacklightBrightnessRequest_Cause_RESTORED_FROM_USER_PREFERENCE:
+      return BacklightBrightnessChange_Cause_RESTORED_FROM_USER_PREFERENCE;
     default:
       return BacklightBrightnessChange_Cause_OTHER;
   }
@@ -643,7 +647,9 @@ void KeyboardBacklightController::HandleSetBrightnessRequest(
   // If the underlying cause of the request was user triggered, account
   // for it in our metrics.
   bool user_triggered =
-      (cause == SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+      (cause == SetBacklightBrightnessRequest_Cause_USER_REQUEST ||
+       cause ==
+           SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
   if (user_triggered) {
     num_user_adjustments_++;
   }

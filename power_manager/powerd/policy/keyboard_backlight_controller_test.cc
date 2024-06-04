@@ -991,6 +991,72 @@ TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightness) {
       BacklightBrightnessChange_Cause_USER_REQUEST);
 }
 
+TEST_F(KeyboardBacklightControllerTest, SetKeyboardBrightnessCauses) {
+  initial_backlight_level_ = 0;
+  user_steps_pref_ = "0.0\n10.0\n40.0\n60.0\n100.0";
+  Init();
+  ASSERT_EQ(backlight_.current_level(), 0);
+
+  dbus_wrapper_.ClearSentSignals();
+  const double kBrightnessPercent = 55.0;
+
+  CallSetKeyboardBrightness(/*percent=*/kBrightnessPercent,
+                            SetBacklightBrightnessRequest_Transition_FAST,
+                            SetBacklightBrightnessRequest_Cause_MODEL);
+  EXPECT_EQ(backlight_.current_level(), kBrightnessPercent);
+
+  // The first signal emitted should be for the ambient light sensor change.
+  ASSERT_TRUE(dbus_wrapper_.GetSentSignal(
+      /*index=*/0,
+      /*expected_signal_name=*/kKeyboardAmbientLightSensorEnabledChangedSignal,
+      /*protobuf_out=*/nullptr, /*signal_out=*/nullptr));
+  // The second signal emitted should be for the brightness change, with the
+  // appropriate cause.
+  test::CheckBrightnessChangedSignal(
+      &dbus_wrapper_, /*index=*/1, kKeyboardBrightnessChangedSignal,
+      kBrightnessPercent, BacklightBrightnessChange_Cause_MODEL);
+
+  const double kBrightnessPercentUser = 22.0;
+  dbus_wrapper_.ClearSentSignals();
+  CallSetKeyboardBrightness(/*percent=*/kBrightnessPercentUser,
+                            SetBacklightBrightnessRequest_Transition_FAST,
+                            SetBacklightBrightnessRequest_Cause_USER_REQUEST);
+  EXPECT_EQ(backlight_.current_level(), kBrightnessPercentUser);
+
+  // A signal should've been emitted with the appropriate cause.
+  test::CheckBrightnessChangedSignal(
+      &dbus_wrapper_, /*index=*/0, kKeyboardBrightnessChangedSignal,
+      kBrightnessPercentUser, BacklightBrightnessChange_Cause_USER_REQUEST);
+
+  // Set the brightness with USER_REQUEST_FROM_SETTINGS_APP cause.
+  const double kBrightnessPercentRequestFromSettings = 24.0;
+  dbus_wrapper_.ClearSentSignals();
+  CallSetKeyboardBrightness(
+      /*percent=*/kBrightnessPercentRequestFromSettings,
+      SetBacklightBrightnessRequest_Transition_FAST,
+      SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+
+  // A signal should've been emitted with the appropriate cause.
+  test::CheckBrightnessChangedSignal(
+      &dbus_wrapper_, /*index=*/0, kKeyboardBrightnessChangedSignal,
+      kBrightnessPercentRequestFromSettings,
+      BacklightBrightnessChange_Cause_USER_REQUEST_FROM_SETTINGS_APP);
+
+  // Set the brightness with RESTORED_FROM_USER_PREFERENCE cause.
+  const double kBrightnessPercentUserPreference = 44.0;
+  dbus_wrapper_.ClearSentSignals();
+  CallSetKeyboardBrightness(
+      /*percent=*/kBrightnessPercentUserPreference,
+      SetBacklightBrightnessRequest_Transition_FAST,
+      SetBacklightBrightnessRequest_Cause_RESTORED_FROM_USER_PREFERENCE);
+
+  // A signal should've been emitted with the appropriate cause.
+  test::CheckBrightnessChangedSignal(
+      &dbus_wrapper_, /*index=*/0, kKeyboardBrightnessChangedSignal,
+      kBrightnessPercentUserPreference,
+      BacklightBrightnessChange_Cause_RESTORED_FROM_USER_PREFERENCE);
+}
+
 TEST_F(KeyboardBacklightControllerTest,
        SetKeyboardBrightnessLowBrightnessValues) {
   initial_backlight_level_ = 0;
