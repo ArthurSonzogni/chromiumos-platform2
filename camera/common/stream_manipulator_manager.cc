@@ -216,15 +216,17 @@ StreamManipulatorManager::StreamManipulatorManager(
   LOGF(INFO) << "PortraitModeStreamManipulator enabled";
 #endif
 
-  stream_manipulators_.emplace_back(
-      std::make_unique<RotateAndCropStreamManipulator>(
-          gpu_resources,
-          std::make_unique<StillCaptureProcessorImpl>(
-              JpegCompressor::GetInstance(
-                  CameraMojoChannelManager::GetInstance())),
-          create_options.camera_module_name,
-          create_options.camera_client_type));
-  LOGF(INFO) << "RotateAndCropStreamManipulator enabled";
+  if (gpu_resources != nullptr) {
+    stream_manipulators_.emplace_back(
+        std::make_unique<RotateAndCropStreamManipulator>(
+            gpu_resources,
+            std::make_unique<StillCaptureProcessorImpl>(
+                JpegCompressor::GetInstance(
+                    CameraMojoChannelManager::GetInstance())),
+            create_options.camera_module_name,
+            create_options.camera_client_type));
+    LOGF(INFO) << "RotateAndCropStreamManipulator enabled";
+  }
 
 #if USE_CAMERA_FEATURE_EFFECTS
   LOGF(INFO) << "Service built with effects support";
