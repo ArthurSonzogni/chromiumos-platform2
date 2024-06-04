@@ -5,7 +5,10 @@
 #include "shill/dbus/client/client.h"
 
 #include <set>
+#include <string>
+#include <string_view>
 
+#include <base/containers/fixed_flat_map.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/variant_dictionary.h>
@@ -24,63 +27,70 @@ using org::chromium::flimflam::ServiceProxyInterface;
 namespace shill {
 namespace {
 
-Client::Device::Type ParseDeviceType(const std::string& type_str) {
-  static const std::map<std::string, Client::Device::Type> str2enum{
-      {shill::kTypeCellular, Client::Device::Type::kCellular},
-      {shill::kTypeEthernet, Client::Device::Type::kEthernet},
-      {shill::kTypeEthernetEap, Client::Device::Type::kEthernetEap},
-      {shill::kTypeGuestInterface, Client::Device::Type::kGuestInterface},
-      {shill::kTypeLoopback, Client::Device::Type::kLoopback},
-      {shill::kTypePPP, Client::Device::Type::kPPP},
-      {shill::kTypeTunnel, Client::Device::Type::kTunnel},
-      {shill::kTypeWifi, Client::Device::Type::kWifi},
-      {shill::kTypeVPN, Client::Device::Type::kVPN},
-  };
+Client::Device::Type ParseDeviceType(std::string_view type_str) {
+  static constexpr auto str2enum =
+      base::MakeFixedFlatMap<std::string_view, Client::Device::Type>({
+          {shill::kTypeCellular, Client::Device::Type::kCellular},
+          {shill::kTypeEthernet, Client::Device::Type::kEthernet},
+          {shill::kTypeEthernetEap, Client::Device::Type::kEthernetEap},
+          {shill::kTypeGuestInterface, Client::Device::Type::kGuestInterface},
+          {shill::kTypeLoopback, Client::Device::Type::kLoopback},
+          {shill::kTypePPP, Client::Device::Type::kPPP},
+          {shill::kTypeTunnel, Client::Device::Type::kTunnel},
+          {shill::kTypeWifi, Client::Device::Type::kWifi},
+          {shill::kTypeVPN, Client::Device::Type::kVPN},
+      });
 
   const auto it = str2enum.find(type_str);
   return it != str2enum.end() ? it->second : Client::Device::Type::kUnknown;
 }
 
-Client::Device::ConnectionState ParseConnectionState(const std::string& s) {
-  static const std::map<std::string, Client::Device::ConnectionState> m{
-      {shill::kStateIdle, Client::Device::ConnectionState::kIdle},
-      {shill::kStateAssociation, Client::Device::ConnectionState::kAssociation},
-      {shill::kStateConfiguration,
-       Client::Device::ConnectionState::kConfiguration},
-      {shill::kStateReady, Client::Device::ConnectionState::kReady},
-      {shill::kStateNoConnectivity,
-       Client::Device::ConnectionState::kNoConnectivity},
-      {shill::kStateRedirectFound,
-       Client::Device::ConnectionState::kRedirectFound},
-      {shill::kStatePortalSuspected,
-       Client::Device::ConnectionState::kPortalSuspected},
-      {shill::kStateOnline, Client::Device::ConnectionState::kOnline},
-      {shill::kStateFailure, Client::Device::ConnectionState::kFailure},
-      {shill::kStateDisconnecting,
-       Client::Device::ConnectionState::kDisconnecting},
-  };
+Client::Device::ConnectionState ParseConnectionState(std::string_view s) {
+  static constexpr auto m =
+      base::MakeFixedFlatMap<std::string_view, Client::Device::ConnectionState>(
+          {
+              {shill::kStateIdle, Client::Device::ConnectionState::kIdle},
+              {shill::kStateAssociation,
+               Client::Device::ConnectionState::kAssociation},
+              {shill::kStateConfiguration,
+               Client::Device::ConnectionState::kConfiguration},
+              {shill::kStateReady, Client::Device::ConnectionState::kReady},
+              {shill::kStateNoConnectivity,
+               Client::Device::ConnectionState::kNoConnectivity},
+              {shill::kStateRedirectFound,
+               Client::Device::ConnectionState::kRedirectFound},
+              {shill::kStatePortalSuspected,
+               Client::Device::ConnectionState::kPortalSuspected},
+              {shill::kStateOnline, Client::Device::ConnectionState::kOnline},
+              {shill::kStateFailure, Client::Device::ConnectionState::kFailure},
+              {shill::kStateDisconnecting,
+               Client::Device::ConnectionState::kDisconnecting},
+          });
   const auto it = m.find(s);
   return it != m.end() ? it->second : Client::Device::ConnectionState::kUnknown;
 }
 
-const char* ToString(Client::Device::ConnectionState state) {
-  static const std::map<Client::Device::ConnectionState, const char*> m{
-      {Client::Device::ConnectionState::kIdle, shill::kStateIdle},
-      {Client::Device::ConnectionState::kAssociation, shill::kStateAssociation},
-      {Client::Device::ConnectionState::kConfiguration,
-       shill::kStateConfiguration},
-      {Client::Device::ConnectionState::kReady, shill::kStateReady},
-      {Client::Device::ConnectionState::kNoConnectivity,
-       shill::kStateNoConnectivity},
-      {Client::Device::ConnectionState::kRedirectFound,
-       shill::kStateRedirectFound},
-      {Client::Device::ConnectionState::kPortalSuspected,
-       shill::kStatePortalSuspected},
-      {Client::Device::ConnectionState::kOnline, shill::kStateOnline},
-      {Client::Device::ConnectionState::kFailure, shill::kStateFailure},
-      {Client::Device::ConnectionState::kDisconnecting,
-       shill::kStateDisconnecting},
-  };
+std::string_view ToString(Client::Device::ConnectionState state) {
+  static constexpr auto m =
+      base::MakeFixedFlatMap<Client::Device::ConnectionState, std::string_view>(
+          {
+              {Client::Device::ConnectionState::kIdle, shill::kStateIdle},
+              {Client::Device::ConnectionState::kAssociation,
+               shill::kStateAssociation},
+              {Client::Device::ConnectionState::kConfiguration,
+               shill::kStateConfiguration},
+              {Client::Device::ConnectionState::kReady, shill::kStateReady},
+              {Client::Device::ConnectionState::kNoConnectivity,
+               shill::kStateNoConnectivity},
+              {Client::Device::ConnectionState::kRedirectFound,
+               shill::kStateRedirectFound},
+              {Client::Device::ConnectionState::kPortalSuspected,
+               shill::kStatePortalSuspected},
+              {Client::Device::ConnectionState::kOnline, shill::kStateOnline},
+              {Client::Device::ConnectionState::kFailure, shill::kStateFailure},
+              {Client::Device::ConnectionState::kDisconnecting,
+               shill::kStateDisconnecting},
+          });
   const auto it = m.find(state);
   return it != m.end() ? it->second : "unknown";
 }
