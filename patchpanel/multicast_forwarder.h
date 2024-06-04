@@ -9,11 +9,13 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include <base/files/scoped_file.h>
@@ -41,7 +43,7 @@ class MulticastForwarder {
  public:
   enum class Direction { kInboundOnly = 0, kOutboundOnly = 1, kTwoWays = 2 };
 
-  MulticastForwarder(const std::string& lan_ifname,
+  MulticastForwarder(std::string_view lan_ifname,
                      const net_base::IPv4Address& mcast_addr,
                      const net_base::IPv6Address& mcast_addr6,
                      uint16_t port);
@@ -59,12 +61,12 @@ class MulticastForwarder {
   // only forwards traffic on multicast address |mcast_addr_| or
   // |mcast_addr6_| and UDP port |port|.
   // |dir| indicates the direction of traffic we want to start forwarding.
-  bool StartForwarding(const std::string& int_ifname, Direction dir);
+  bool StartForwarding(std::string_view int_ifname, Direction dir);
 
   // Stop forwarding multicast packets between |int_ifname| and
   // |lan_ifname_|.
   // |dir| indicates the direction of traffic we want to stop forwarding.
-  void StopForwarding(const std::string& int_ifname, Direction dir);
+  void StopForwarding(std::string_view int_ifname, Direction dir);
 
   // Rewrite mDNS A records pointing to |guest_ip| so that they point to
   // the IPv4 |lan_ip| assigned to physical interface instead, so that Android
@@ -76,10 +78,9 @@ class MulticastForwarder {
                               size_t len);
 
   // |int_ifname| is expected to be empty when called on LAN socket.
-  void OnFileCanReadWithoutBlocking(
-      int fd,
-      sa_family_t sa_family,
-      std::optional<const std::string> int_ifname);
+  void OnFileCanReadWithoutBlocking(int fd,
+                                    sa_family_t sa_family,
+                                    std::optional<std::string_view> int_ifname);
 
  protected:
   // SocketWithError is used to keep track of a socket and last errno.
@@ -101,7 +102,7 @@ class MulticastForwarder {
 
   // Creates a multicast socket.
   virtual std::unique_ptr<net_base::Socket> Bind(sa_family_t sa_family,
-                                                 const std::string& ifname);
+                                                 std::string_view ifname);
 
   // SendTo sends |data| using a socket bound to |src_port| and |lan_ifname_|.
   // If |src_port| is equal to |port_|, we will use |lan_socket_|. Otherwise,
@@ -138,7 +139,7 @@ class MulticastForwarder {
   // inbound or outbound forwarding is allowed.
   IntSocket CreateIntSocket(std::unique_ptr<net_base::Socket> socket,
                             sa_family_t family,
-                            const std::string& int_ifname,
+                            std::string_view int_ifname,
                             bool outbound,
                             bool inbound);
 
@@ -155,7 +156,8 @@ class MulticastForwarder {
   std::map<sa_family_t, SocketWithError> lan_socket_;
   // Mapping from pair of internal interface names and IP family to tuple of
   // internal sockets and flags for multicast inbound and outbound traffic.
-  std::map<std::pair<sa_family_t, std::string>, IntSocket> int_sockets_;
+  std::map<std::pair<sa_family_t, std::string>, IntSocket, std::less<>>
+      int_sockets_;
 };
 
 }  // namespace patchpanel

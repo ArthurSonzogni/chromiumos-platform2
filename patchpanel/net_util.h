@@ -9,6 +9,7 @@
 #include <linux/if_packet.h>
 #include <linux/in6.h>
 #include <linux/vm_sockets.h>
+#include <net/if.h>
 #include <net/route.h>
 #include <netinet/icmp6.h>
 #include <netinet/in.h>
@@ -80,6 +81,9 @@ BRILLO_EXPORT uint16_t Icmpv6Checksum(const uint8_t* icmp6_packet, size_t len);
 // Returns true if multicast forwarding should be enabled for this interface.
 BRILLO_EXPORT bool IsMulticastInterface(const std::string& ifname);
 
+// Populates interface request |ifr| with given |ifname|.
+BRILLO_EXPORT void FillInterfaceRequest(std::string_view ifname,
+                                        struct ifreq* ifr);
 }  // namespace patchpanel
 
 #endif  // PATCHPANEL_NET_UTIL_H_

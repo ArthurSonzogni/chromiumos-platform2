@@ -14,7 +14,6 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
-#include <algorithm>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -192,15 +191,6 @@ std::string PreroutingSubChainName(std::string_view int_ifname) {
 
 std::string EgressSubChainName(std::string_view ext_ifname) {
   return base::StrCat({"egress_", ext_ifname});
-}
-
-struct ifreq GetInterfaceRequest(std::string_view ifname) {
-  struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  // Since string_view is not null-terminated, leave 1 byte for null terminator.
-  memcpy(ifr.ifr_name, ifname.data(),
-         std::min(ifname.size(), sizeof(ifr.ifr_name)));
-  return ifr;
 }
 
 // Helper enum for controlling what type of FORWARD firewall rules are
@@ -398,7 +388,8 @@ void Datapath::RemoveBridge(std::string_view ifname) {
 
 bool Datapath::AddToBridge(std::string_view br_ifname,
                            std::string_view ifname) {
-  struct ifreq ifr = GetInterfaceRequest(br_ifname);
+  struct ifreq ifr;
+  FillInterfaceRequest(br_ifname, &ifr);
   ifr.ifr_ifindex = system_->IfNametoindex(ifname);
 
   base::ScopedFD control_fd(socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0));
@@ -423,7 +414,8 @@ std::string Datapath::AddTunTap(
     return "";
   }
 
-  struct ifreq ifr = GetInterfaceRequest(name.empty() ? kDefaultIfname : name);
+  struct ifreq ifr;
+  FillInterfaceRequest(name.empty() ? kDefaultIfname : name, &ifr);
   switch (dev_mode) {
     case DeviceMode::kTun:
       ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
@@ -1318,7 +1310,8 @@ bool Datapath::MaskInterfaceFlags(std::string_view ifname,
     PLOG(ERROR) << "Failed to create control socket";
     return false;
   }
-  struct ifreq ifr = GetInterfaceRequest(ifname);
+  struct ifreq ifr;
+  FillInterfaceRequest(ifname, &ifr);
   if (system_->Ioctl(sock.get(), SIOCGIFFLAGS, &ifr) < 0) {
     PLOG(WARNING) << "ioctl() failed to get interface flag on " << ifname;
     return false;

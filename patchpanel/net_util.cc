@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <iostream>
 #include <utility>
 #include <vector>
@@ -320,6 +321,13 @@ bool IsMulticastInterface(const std::string& ifname) {
 
   close(fd);
   return (ifr.ifr_flags & IFF_MULTICAST);
+}
+
+void FillInterfaceRequest(std::string_view ifname, struct ifreq* ifr) {
+  memset(ifr, 0, sizeof(struct ifreq));
+  // Since string_view is not null-terminated, leave 1 byte for null terminator.
+  memcpy(ifr->ifr_name, ifname.data(),
+         std::min(ifname.size(), sizeof(ifr->ifr_name) - 1));
 }
 
 }  // namespace patchpanel

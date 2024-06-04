@@ -13,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/scoped_file.h>
@@ -44,7 +45,7 @@ class TestMulticastForwarder : public MulticastForwarder {
   ~TestMulticastForwarder() override = default;
 
   std::unique_ptr<net_base::Socket> Bind(sa_family_t sa_family,
-                                         const std::string& ifname) override {
+                                         std::string_view ifname) override {
     std::unique_ptr<net_base::Socket> socket =
         net_base::Socket::Create(sa_family, SOCK_DGRAM);
     fds.push_back(socket->Get());

@@ -33,15 +33,14 @@ const int kBufSize = 1536;
 
 // Returns the IPv4 address assigned to the interface on which the given socket
 // is bound. Or returns INADDR_ANY if the interface has no IPv4 address.
-struct in_addr GetInterfaceIp(int fd, const std::string& ifname) {
+struct in_addr GetInterfaceIp(int fd, std::string_view ifname) {
   if (ifname.empty()) {
     LOG(WARNING) << "Empty interface name";
     return {0};
   }
 
   struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
+  patchpanel::FillInterfaceRequest(ifname, &ifr);
   if (ioctl(fd, SIOCGIFADDR, &ifr) < 0) {
     // Ignore EADDRNOTAVAIL: IPv4 was not provisioned.
     if (errno != EADDRNOTAVAIL) {
@@ -98,7 +97,7 @@ MulticastForwarder::SocketWithError MulticastForwarder::CreateLanSocket(
 MulticastForwarder::IntSocket MulticastForwarder::CreateIntSocket(
     std::unique_ptr<net_base::Socket> socket,
     sa_family_t sa_family,
-    const std::string& int_ifname,
+    std::string_view int_ifname,
     bool outbound,
     bool inbound) {
   socket->SetReadableCallback(base::BindRepeating(
@@ -110,7 +109,7 @@ MulticastForwarder::IntSocket MulticastForwarder::CreateIntSocket(
           .outbound = outbound};
 }
 
-MulticastForwarder::MulticastForwarder(const std::string& lan_ifname,
+MulticastForwarder::MulticastForwarder(std::string_view lan_ifname,
                                        const net_base::IPv4Address& mcast_addr,
                                        const net_base::IPv6Address& mcast_addr6,
                                        uint16_t port)
@@ -140,7 +139,7 @@ void MulticastForwarder::Init() {
 }
 
 std::unique_ptr<net_base::Socket> MulticastForwarder::Bind(
-    sa_family_t sa_family, const std::string& ifname) {
+    sa_family_t sa_family, std::string_view ifname) {
   const std::string mcast_addr =
       (sa_family == AF_INET) ? mcast_addr_.ToString() : mcast_addr6_.ToString();
 
@@ -157,8 +156,7 @@ std::unique_ptr<net_base::Socket> MulticastForwarder::Bind(
   // we use SO_BINDTODEVICE to force TX from this interface, and
   // specify the interface address in IP_ADD_MEMBERSHIP to control RX.
   struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
+  FillInterfaceRequest(ifname, &ifr);
   if (!socket->SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
                           net_base::byte_utils::AsBytes(ifr))) {
     PLOG(ERROR) << "setsockopt(SO_BINDTODEVICE) failed on " << ifname << " for "
@@ -236,7 +234,7 @@ std::unique_ptr<net_base::Socket> MulticastForwarder::Bind(
   return socket;
 }
 
-bool MulticastForwarder::StartForwarding(const std::string& int_ifname,
+bool MulticastForwarder::StartForwarding(std::string_view int_ifname,
                                          Direction dir) {
   const auto& it4 = int_sockets_.find(std::make_pair(AF_INET, int_ifname));
   const auto& it6 = int_sockets_.find(std::make_pair(AF_INET6, int_ifname));
@@ -296,7 +294,7 @@ bool MulticastForwarder::StartForwarding(const std::string& int_ifname,
   return success;
 }
 
-void MulticastForwarder::StopForwarding(const std::string& int_ifname,
+void MulticastForwarder::StopForwarding(std::string_view int_ifname,
                                         Direction dir) {
   const auto& it4 = int_sockets_.find(std::make_pair(AF_INET, int_ifname));
   const auto& it6 = int_sockets_.find(std::make_pair(AF_INET6, int_ifname));
@@ -331,7 +329,7 @@ void MulticastForwarder::StopForwarding(const std::string& int_ifname,
 }
 
 void MulticastForwarder::OnFileCanReadWithoutBlocking(
-    int fd, sa_family_t sa_family, std::optional<const std::string> ifname) {
+    int fd, sa_family_t sa_family, std::optional<std::string_view> ifname) {
   CHECK(sa_family == AF_INET || sa_family == AF_INET6);
 
   char data[kBufSize];

@@ -85,7 +85,7 @@ bool SetBcastSockFilter(int fd, const net_base::IPv4Address& bcast_addr) {
 }
 
 void Ioctl(int fd,
-           const std::string& ifname,
+           std::string_view ifname,
            unsigned int cmd,
            struct ifreq* ifr) {
   if (ifname.empty()) {
@@ -93,8 +93,7 @@ void Ioctl(int fd,
     return;
   }
 
-  memset(ifr, 0, sizeof(struct ifreq));
-  strncpy(ifr->ifr_name, ifname.c_str(), IFNAMSIZ);
+  patchpanel::FillInterfaceRequest(ifname, ifr);
   if (ioctl(fd, cmd, ifr) < 0) {
     // Ignore EADDRNOTAVAIL: IPv4 was not provisioned.
     if (errno != EADDRNOTAVAIL) {
@@ -136,7 +135,7 @@ BroadcastForwarder::CreateSocket(std::unique_ptr<net_base::Socket> socket,
                                               broadaddr, netmask);
 }
 
-BroadcastForwarder::BroadcastForwarder(const std::string& lan_ifname)
+BroadcastForwarder::BroadcastForwarder(std::string_view lan_ifname)
     : lan_ifname_(lan_ifname) {}
 
 void BroadcastForwarder::Init() {
@@ -194,7 +193,7 @@ void BroadcastForwarder::AddrMsgHandler(const net_base::RTNLMessage& msg) {
 }
 
 std::unique_ptr<net_base::Socket> BroadcastForwarder::Bind(
-    const std::string& ifname, uint16_t port) {
+    std::string_view ifname, uint16_t port) {
   std::unique_ptr<net_base::Socket> socket =
       net_base::Socket::Create(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
   if (!socket) {
@@ -204,8 +203,7 @@ std::unique_ptr<net_base::Socket> BroadcastForwarder::Bind(
   }
 
   struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
+  FillInterfaceRequest(ifname, &ifr);
   if (!socket->SetSockOpt(SOL_SOCKET, SO_BINDTODEVICE,
                           net_base::byte_utils::AsBytes(ifr))) {
     PLOG(ERROR) << "setsockopt(SOL_SOCKET) failed for broadcast forwarder on "
@@ -245,7 +243,7 @@ std::unique_ptr<net_base::Socket> BroadcastForwarder::Bind(
 }
 
 std::unique_ptr<net_base::Socket> BroadcastForwarder::BindRaw(
-    const std::string& ifname) {
+    std::string_view ifname) {
   std::unique_ptr<net_base::Socket> socket = net_base::Socket::Create(
       AF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IP));
   if (!socket) {
@@ -254,8 +252,7 @@ std::unique_ptr<net_base::Socket> BroadcastForwarder::BindRaw(
   }
 
   struct ifreq ifr;
-  memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, ifname.c_str(), IFNAMSIZ);
+  FillInterfaceRequest(ifname, &ifr);
   if (ioctl(socket->Get(), SIOCGIFINDEX, &ifr) < 0) {
     PLOG(ERROR) << "SIOCGIFINDEX failed for " << ifname;
     return nullptr;
@@ -283,7 +280,7 @@ std::unique_ptr<net_base::Socket> BroadcastForwarder::BindRaw(
   return socket;
 }
 
-bool BroadcastForwarder::AddGuest(const std::string& int_ifname) {
+bool BroadcastForwarder::AddGuest(std::string_view int_ifname) {
   if (br_sockets_.find(int_ifname) != br_sockets_.end()) {
     LOG(WARNING) << "Forwarding is already started between " << lan_ifname_
                  << " and " << int_ifname;
@@ -328,7 +325,7 @@ bool BroadcastForwarder::AddGuest(const std::string& int_ifname) {
   return true;
 }
 
-void BroadcastForwarder::RemoveGuest(const std::string& int_ifname) {
+void BroadcastForwarder::RemoveGuest(std::string_view int_ifname) {
   const auto& socket = br_sockets_.find(int_ifname);
   if (socket == br_sockets_.end()) {
     LOG(WARNING) << "Forwarding is not started between " << lan_ifname_

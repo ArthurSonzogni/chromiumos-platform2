@@ -8,9 +8,11 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 
 #include <net-base/ipv4_address.h>
 #include <net-base/rtnl_message.h>
@@ -25,7 +27,7 @@ namespace patchpanel {
 // netmask, are constant.
 class BroadcastForwarder {
  public:
-  explicit BroadcastForwarder(const std::string& lan_ifname);
+  explicit BroadcastForwarder(std::string_view lan_ifname);
   BroadcastForwarder(const BroadcastForwarder&) = delete;
   BroadcastForwarder& operator=(const BroadcastForwarder&) = delete;
 
@@ -36,8 +38,8 @@ class BroadcastForwarder {
 
   // Starts or stops forwarding broadcast packets to and from a downstream
   // guest on network interface |int_ifname|.
-  bool AddGuest(const std::string& int_ifname);
-  void RemoveGuest(const std::string& int_ifname);
+  bool AddGuest(std::string_view int_ifname);
+  void RemoveGuest(std::string_view int_ifname);
 
   // Receives a broadcast packet from the network or from a guest and forwards
   // it.
@@ -58,14 +60,14 @@ class BroadcastForwarder {
   };
 
   // Creates a broadcast socket which is used for sending broadcasts.
-  virtual std::unique_ptr<net_base::Socket> Bind(const std::string& ifname,
+  virtual std::unique_ptr<net_base::Socket> Bind(std::string_view ifname,
                                                  uint16_t port);
 
   // Creates a broadcast socket that listens to all IP packets.
   // It filters the packets to only broadcast packets that is sent by
   // applications.
   // This is used to listen on broadcasts.
-  virtual std::unique_ptr<net_base::Socket> BindRaw(const std::string& ifname);
+  virtual std::unique_ptr<net_base::Socket> BindRaw(std::string_view ifname);
 
   // SendToNetwork sends |data| using a socket bound to |src_port| and
   // |lan_ifname_| using a temporary socket.
@@ -103,7 +105,8 @@ class BroadcastForwarder {
   // IPv4 socket bound by this forwarder onto |lan_ifname_|.
   std::unique_ptr<SocketWithIPv4Addr> dev_socket_;
   // Mapping from guest bridge interface name to its sockets.
-  std::map<std::string, std::unique_ptr<SocketWithIPv4Addr>> br_sockets_;
+  std::map<std::string, std::unique_ptr<SocketWithIPv4Addr>, std::less<>>
+      br_sockets_;
 
   base::WeakPtrFactory<BroadcastForwarder> weak_factory_{this};
 };

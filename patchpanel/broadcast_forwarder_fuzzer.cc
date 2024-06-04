@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/files/scoped_file.h>
@@ -33,7 +34,7 @@ class TestBroadcastForwarder : public BroadcastForwarder {
   TestBroadcastForwarder& operator=(const TestBroadcastForwarder&) = delete;
   ~TestBroadcastForwarder() override = default;
 
-  std::unique_ptr<net_base::Socket> Bind(const std::string& ifname,
+  std::unique_ptr<net_base::Socket> Bind(std::string_view ifname,
                                          uint16_t port) override {
     std::unique_ptr<net_base::Socket> socket =
         net_base::Socket::Create(AF_INET, SOCK_DGRAM);
@@ -41,8 +42,7 @@ class TestBroadcastForwarder : public BroadcastForwarder {
     return socket;
   }
 
-  std::unique_ptr<net_base::Socket> BindRaw(
-      const std::string& ifname) override {
+  std::unique_ptr<net_base::Socket> BindRaw(std::string_view ifname) override {
     return Bind(ifname, 0);
   }
 
