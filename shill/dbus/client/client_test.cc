@@ -117,8 +117,9 @@ class FakeClient : public Client {
   std::unique_ptr<DeviceProxyInterface> NewDeviceProxy(
       const dbus::ObjectPath& device_path) override {
     const auto it = device_mocks_.find(device_path.value());
-    if (it == device_mocks_.end())
+    if (it == device_mocks_.end()) {
       return nullptr;
+    }
 
     std::unique_ptr<DeviceProxyMock> mock;
     mock.reset(it->second);

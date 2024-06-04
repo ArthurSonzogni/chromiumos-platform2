@@ -56,7 +56,8 @@ Client::Device::ConnectionState ParseConnectionState(const std::string& s) {
        Client::Device::ConnectionState::kPortalSuspected},
       {shill::kStateOnline, Client::Device::ConnectionState::kOnline},
       {shill::kStateFailure, Client::Device::ConnectionState::kFailure},
-      {shill::kStateDisconnecting, Client::Device::ConnectionState::kDisconnecting},
+      {shill::kStateDisconnecting,
+       Client::Device::ConnectionState::kDisconnecting},
   };
   const auto it = m.find(s);
   return it != m.end() ? it->second : Client::Device::ConnectionState::kUnknown;
@@ -77,7 +78,8 @@ const char* ToString(Client::Device::ConnectionState state) {
        shill::kStatePortalSuspected},
       {Client::Device::ConnectionState::kOnline, shill::kStateOnline},
       {Client::Device::ConnectionState::kFailure, shill::kStateFailure},
-      {Client::Device::ConnectionState::kDisconnecting, shill::kStateDisconnecting},
+      {Client::Device::ConnectionState::kDisconnecting,
+       shill::kStateDisconnecting},
   };
   const auto it = m.find(state);
   return it != m.end() ? it->second : "unknown";
@@ -210,8 +212,9 @@ void Client::RegisterDefaultDeviceChangedHandler(
   // Provide the current default device to the new handler.
   Device* device = nullptr;
   const auto it = devices_.find(default_device_path_);
-  if (it != devices_.end())
+  if (it != devices_.end()) {
     device = it->second->device();
+  }
 
   handler.Run(device);
 
@@ -251,21 +254,23 @@ void Client::OnOwnerChange(const std::string& old_owner,
   devices_.clear();
 
   bool reset = !new_owner.empty();
-  if (reset)
+  if (reset) {
     VLOG(2) << "Shill reset";
-  else
+  } else {
     VLOG(2) << "Shill lost";
+  }
 
-  if (!process_handler_.is_null())
+  if (!process_handler_.is_null()) {
     process_handler_.Run(reset);
+  }
 }
 
 void Client::OnManagerPropertyChangeRegistration(const std::string& interface,
                                                  const std::string& signal_name,
                                                  bool success) {
   if (!success) {
-    LOG(ERROR) << "Unable to register for Manager change events "
-               << " for " << signal_name << " on " << interface;
+    LOG(ERROR) << "Unable to register for Manager change events " << " for "
+               << signal_name << " on " << interface;
     return;
   }
   brillo::VariantDictionary properties;
@@ -301,8 +306,9 @@ void Client::OnManagerPropertyChange(const std::string& property_name,
 void Client::HandleDefaultServiceChanged(const brillo::Any& property_value) {
   dbus::ObjectPath cur_path,
       service_path = property_value.TryGet<dbus::ObjectPath>();
-  if (default_service_proxy_)
+  if (default_service_proxy_) {
     cur_path = default_service_proxy_->GetObjectPath();
+  }
 
   if (service_path != cur_path) {
     LOG(INFO) << "Default service changed from [" << cur_path.value()
@@ -328,8 +334,9 @@ void Client::HandleDefaultServiceChanged(const brillo::Any& property_value) {
 
 void Client::AddDevice(const dbus::ObjectPath& device_path) {
   const std::string& path = device_path.value();
-  if (devices_.find(path) != devices_.end())
+  if (devices_.find(path) != devices_.end()) {
     return;
+  }
 
   VLOG(2) << "Device [" << path << "] added";
   SetupDeviceProxy(device_path);
@@ -363,12 +370,13 @@ void Client::OnDefaultServicePropertyChangeRegistration(
     bool success) {
   if (!success) {
     std::string path;
-    if (default_service_proxy_)
+    if (default_service_proxy_) {
       path = default_service_proxy_->GetObjectPath().value();
+    }
 
     LOG(ERROR) << "Unable to register for Service [" << path
-               << "] change events "
-               << " for " << signal_name << " on " << interface;
+               << "] change events " << " for " << signal_name << " on "
+               << interface;
     return;
   }
 
@@ -442,8 +450,8 @@ void Client::OnDevicePropertyChangeRegistration(const std::string& device_path,
                                                 bool success) {
   if (!success) {
     LOG(ERROR) << "Unable to register for Device [" << device_path
-               << "] change events "
-               << " for " << signal_name << " on " << interface;
+               << "] change events " << " for " << signal_name << " on "
+               << interface;
     return;
   }
 
@@ -462,8 +470,9 @@ void Client::OnDevicePropertyChangeRegistration(const std::string& device_path,
   auto* device = it->second->device();
   device->type = ParseDeviceType(
       brillo::GetVariantValueOrDefault<std::string>(properties, kTypeProperty));
-  if (device->type == Device::Type::kUnknown)
+  if (device->type == Device::Type::kUnknown) {
     LOG(ERROR) << "Device [" << device_path << "] type is unknown";
+  }
 
   device->ifname = brillo::GetVariantValueOrDefault<std::string>(
       properties, kInterfaceProperty);
@@ -512,8 +521,9 @@ void Client::OnDevicePropertyChange(bool device_added,
     }
   } else if (property_name == kSelectedServiceProperty) {
     device = HandleSelectedServiceChanged(device_path, property_value);
-    if (!device)
+    if (!device) {
       return;
+    }
   } else if (property_name == kHomeProviderProperty) {
     auto it = devices_.find(device_path);
     if (it == devices_.end()) {
@@ -541,14 +551,16 @@ void Client::OnDevicePropertyChange(bool device_added,
   // allows us to provide a Device struct populated with all the properties
   // available at the time.
   if (device_added) {
-    for (auto& handler : device_added_handlers_)
+    for (auto& handler : device_added_handlers_) {
       handler.Run(device);
+    }
   }
 
   // If this is the default device then notify the handlers.
   if (device_path == default_device_path_) {
-    for (auto& handler : default_device_handlers_)
+    for (auto& handler : default_device_handlers_) {
       handler.Run(device);
+    }
   }
 
   // Notify the handlers interested in all device changes.
@@ -576,9 +588,10 @@ Client::Device* Client::HandleSelectedServiceChanged(
   SetupSelectedServiceProxy(service_path, dbus::ObjectPath(device_path));
   brillo::VariantDictionary properties;
   if (auto* proxy = it->second->service_proxy()) {
-    if (!proxy->GetProperties(&properties, nullptr))
+    if (!proxy->GetProperties(&properties, nullptr)) {
       LOG(ERROR) << "Unable to get properties for device service ["
                  << service_path.value() << "]";
+    }
   } else {
     LOG(DFATAL) << "Device [" << device_path
                 << "] has no selected service proxy";
@@ -587,9 +600,10 @@ Client::Device* Client::HandleSelectedServiceChanged(
   device->state =
       ParseConnectionState(brillo::GetVariantValueOrDefault<std::string>(
           properties, kStateProperty));
-  if (device->state == Device::ConnectionState::kUnknown)
+  if (device->state == Device::ConnectionState::kUnknown) {
     LOG(ERROR) << "Device [" << device_path << "] connection state for ["
                << service_path.value() << "] is unknown";
+  }
 
   return device;
 }
@@ -599,11 +613,13 @@ Client::IPConfig Client::ParseIPConfigsProperty(
     const std::vector<dbus::ObjectPath>& ipconfig_paths) const {
   std::unique_ptr<IPConfigProxy> proxy;
   auto reset_proxy = [&](const dbus::ObjectPath& path) {
-    if (proxy)
+    if (proxy) {
       proxy->ReleaseObjectProxy(base::DoNothing());
+    }
 
-    if (path.IsValid())
+    if (path.IsValid()) {
       proxy.reset(new IPConfigProxy(bus_, path));
+    }
   };
 
   IPConfig ipconfig;
@@ -700,8 +716,8 @@ void Client::OnServicePropertyChangeRegistration(const std::string& device_path,
                                                  bool success) {
   if (!success) {
     LOG(ERROR) << "Unable to register for Device [" << device_path
-               << "] connected service change events "
-               << " for " << signal_name << " on " << interface;
+               << "] connected service change events " << " for " << signal_name
+               << " on " << interface;
     return;
   }
 
@@ -736,8 +752,9 @@ void Client::OnServicePropertyChangeRegistration(const std::string& device_path,
 void Client::OnServicePropertyChange(const std::string& device_path,
                                      const std::string& property_name,
                                      const brillo::Any& property_value) {
-  if (property_name != kStateProperty)
+  if (property_name != kStateProperty) {
     return;
+  }
 
   const auto it = devices_.find(device_path);
   if (it == devices_.end()) {
@@ -747,8 +764,9 @@ void Client::OnServicePropertyChange(const std::string& device_path,
 
   auto* device = it->second->device();
   const auto state = ParseConnectionState(property_value.TryGet<std::string>());
-  if (device->state == state)
+  if (device->state == state) {
     return;
+  }
 
   if (IsConnectedState(device->state) || IsConnectedState(state)) {
     LOG(INFO) << "Device [" << device_path
@@ -757,12 +775,15 @@ void Client::OnServicePropertyChange(const std::string& device_path,
   }
   device->state = state;
 
-  for (auto& handler : device_handlers_)
+  for (auto& handler : device_handlers_) {
     handler.Run(device);
+  }
 
-  if (device_path == default_device_path_)
-    for (auto& handler : default_device_handlers_)
+  if (device_path == default_device_path_) {
+    for (auto& handler : default_device_handlers_) {
       handler.Run(device);
+    }
+  }
 }
 
 std::vector<std::unique_ptr<Client::Device>> Client::GetDevices() const {
@@ -804,8 +825,9 @@ std::unique_ptr<brillo::VariantDictionary> Client::GetDefaultServiceProperties(
   brillo::VariantDictionary properties;
 
   auto property_accessor = DefaultServicePropertyAccessor(timeout);
-  if (!property_accessor)
+  if (!property_accessor) {
     return nullptr;
+  }
 
   if (!property_accessor->Get(&properties, &error)) {
     LOG(ERROR) << "Failed to obtain default service properties: "
@@ -844,8 +866,9 @@ std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
                    << "] on service [" << s.value() << "]";
         return nullptr;
       }
-      if (type == kTypeVPN)
+      if (type == kTypeVPN) {
         continue;
+      }
     }
 
     conn_state =
@@ -853,8 +876,9 @@ std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
             properties, kStateProperty));
     device_path = brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
         properties, kDeviceProperty);
-    if (device_path.IsValid())
+    if (device_path.IsValid()) {
       break;
+    }
 
     LOG(WARNING) << "Failed to obtain device for service [" << s.value() << "]";
     continue;

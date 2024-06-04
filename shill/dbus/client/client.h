@@ -162,8 +162,9 @@ class BRILLO_EXPORT Client {
              T* property,
              brillo::ErrorPtr* error) const {
       brillo::VariantDictionary properties;
-      if (!Get(&properties, error))
+      if (!Get(&properties, error)) {
         return false;
+      }
 
       *property = brillo::GetVariantValueOrDefault<T>(properties, name);
       return true;
@@ -191,9 +192,11 @@ class BRILLO_EXPORT Client {
 
     void OnPropertyChange(const std::string& name, const brillo::Any& value) {
       const auto it = handlers_.find(name);
-      if (it != handlers_.end())
-        for (const auto& h : it->second)
+      if (it != handlers_.end()) {
+        for (const auto& h : it->second) {
           h.Run(value);
+        }
+      }
     }
 
     Proxy* proxy_;
@@ -432,9 +435,10 @@ class BRILLO_EXPORT Client {
     void release_object_proxy() {
       bus_->RemoveObjectProxy(kFlimflamServiceName, proxy_->GetObjectPath(),
                               base::DoNothing());
-      if (svc_proxy_)
+      if (svc_proxy_) {
         bus_->RemoveObjectProxy(kFlimflamServiceName,
                                 svc_proxy_->GetObjectPath(), base::DoNothing());
+      }
     }
     void set_service_proxy(
         std::unique_ptr<org::chromium::flimflam::ServiceProxyInterface> proxy) {
