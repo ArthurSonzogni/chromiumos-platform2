@@ -570,6 +570,11 @@ The [Modern Standby (S0ix)] is one state of [ACPI]. Also called
 are triggered when specific conditions within the SoC have been achieved.
 Show the status of the low power mode requirements at the time of reading.
 
+## substate_requirements
+
+Display the required power state for various IP blocks to enter a given power
+state, and whether or not that was achieved.
+
 ## substate_residencies
 
 Each of [Intel S0ix Sub-states] residencies timer count.

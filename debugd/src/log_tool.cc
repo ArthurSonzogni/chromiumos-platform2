@@ -384,6 +384,8 @@ const std::array kCommandLogs {
   Log{kFile, "substate_live_status_registers", "/sys/kernel/debug/pmc_core/"
     "substate_live_status_registers",
      SandboxedProcess::kDefaultUser, kDebugfsGroup},
+  Log{kFile, "substate_requirements", "/sys/kernel/debug/pmc_core/"
+    "substate_requirements", SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kFile, "substate_residencies", "/sys/kernel/debug/pmc_core/"
     "substate_residencies", SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kFile, "substate_status_registers", "/sys/kernel/debug/pmc_core/"
