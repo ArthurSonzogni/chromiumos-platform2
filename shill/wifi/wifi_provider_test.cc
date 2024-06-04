@@ -2591,12 +2591,14 @@ TEST_F(WiFiProviderTest, GetUniqueLocalDeviceName) {
   EXPECT_EQ(link_name0, link_name);
 }
 
-TEST_F(WiFiProviderTest, RequestHotspotDeviceCreationWithoutWiFiDevice) {
+TEST_F(WiFiProviderTest, CreateHotspotWithoutWiFiDevice) {
   // Failed to create hotspot device when there is no WiFi device.
-  EXPECT_FALSE(provider_->RequestHotspotDeviceCreation(
+  EXPECT_CALL(manager_, FilterByTechnology(Technology::kWiFi))
+      .WillRepeatedly(Return(std::vector<DeviceRefPtr>{}));
+  EXPECT_CALL(*tethering_manager_, OnDeviceCreationFailed);
+  provider_->CreateHotspotDevice(
       net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c),
-      WiFiBand::kLowBand, WiFiSecurity::kWpa2, WiFiPhy::Priority(0),
-      base::DoNothing()));
+      WiFiPhy::Priority(0), base::DoNothing());
 }
 
 TEST_F(WiFiProviderTest, CreateHotspotDevice) {
@@ -2623,10 +2625,12 @@ TEST_F(WiFiProviderTest, CreateHotspotDevice) {
   HotspotDeviceRefPtr device;
   EXPECT_CALL(*tethering_manager_, OnDeviceCreated)
       .WillOnce(SaveArg<0>(&device));
-  EXPECT_TRUE(provider_->RequestHotspotDeviceCreation(
-      net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c),
-      WiFiBand::kLowBand, WiFiSecurity::kWpa2, WiFiPhy::Priority(0),
-      base::DoNothing()));
+  base::OnceClosure create_cb =
+      base::BindOnce(&WiFiProvider::CreateHotspotDevice, provider_->AsWeakPtr(),
+                     net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c),
+                     WiFiPhy::Priority(0), base::DoNothing());
+  EXPECT_TRUE(provider_->RequestLocalDeviceCreation(
+      LocalDevice::IfaceType::kAP, WiFiPhy::Priority(0), std::move(create_cb)));
   DispatchPendingEvents();
   EXPECT_NE(device, nullptr);
   EXPECT_EQ(provider_->local_devices_[*(device->link_name())], device);
@@ -2659,7 +2663,7 @@ TEST_F(WiFiProviderTest, CreateHotspotDeviceForTest) {
   HotspotDeviceRefPtr device;
   EXPECT_CALL(*tethering_manager_, OnDeviceCreated)
       .WillOnce(SaveArg<0>(&device));
-  EXPECT_TRUE(provider_->RequestHotspotDeviceCreationForTest(
+  EXPECT_TRUE(provider_->CreateHotspotDeviceForTest(
       net_base::MacAddress(0xb6, 0x13, 0xc9, 0xd7, 0x32, 0x0c), link_name,
       phy_index, base::DoNothing()));
   DispatchPendingEvents();

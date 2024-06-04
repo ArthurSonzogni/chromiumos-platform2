@@ -248,40 +248,22 @@ class WiFiProvider : public ProviderInterface {
     return !credentials_by_id_.empty();
   }
 
-  // Create a WiFi hotspot device with MAC address |mac_address|. |callback| is
-  // called when interface event happens. The required WiFi band |band| and
-  // security |security| are used in the WiFiPhy search to find the first
-  // WiFiPhy which meets all the criteria.
-  mockable bool RequestHotspotDeviceCreation(
-      net_base::MacAddress mac_address,
-      WiFiBand band,
-      WiFiSecurity security,
-      WiFiPhy::Priority priority,
-      LocalDevice::EventCallback callback);
   // Create a WiFi hotspot device on the device |device_name_for_test| with the
   // phy index |device_phy_index_for_test|. |callback| is called when interface
   // event happens.
-  // Note that this method is only used for testing.
-  bool RequestHotspotDeviceCreationForTest(
-      net_base::MacAddress mac_address,
-      const std::string& device_name_for_test,
-      uint32_t device_phy_index_for_test,
-      LocalDevice::EventCallback callback);
+  // Note that this method is only used for testing, and bypasses concurrency
+  // checks entirely.
+  bool CreateHotspotDeviceForTest(const net_base::MacAddress mac_address,
+                                  const std::string& device_name_for_test,
+                                  uint32_t device_phy_index_for_test,
+                                  LocalDevice::EventCallback callback);
 
-  // Request the creation of a P2P device. The device will be sent to
-  // P2PManager::OnDeviceCreated when it is ready, or
-  // P2PManager::OnDeviceCreationFailed will be called if creating the device
-  // fails. This may happen immiately or after some time, so P2PManager must
-  // only call this function when it is ready to receive a device via
-  // P2PManager::OnDeviceCreated. Returns true if the device creation will be
-  // attempted, false otherwise.
-  mockable bool RequestP2PDeviceCreation(
-      LocalDevice::IfaceType iface_type,
-      LocalDevice::EventCallback callback,
-      int32_t shill_id,
-      WiFiPhy::Priority priority,
-      base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
-      base::OnceCallback<void()> fail_cb);
+  // Request the creation of a new LocalDevice. |create_device_cb| is a function
+  // that is called to actually create the device, and is called if the device
+  // is accepted by the concurrency checks.
+  mockable bool RequestLocalDeviceCreation(LocalDevice::IfaceType iface_type,
+                                           WiFiPhy::Priority priority,
+                                           base::OnceClosure create_device_cb);
 
   // Delete the WiFi LocalDevice |device|.
   mockable void DeleteLocalDevice(LocalDeviceRefPtr device);
@@ -306,6 +288,32 @@ class WiFiProvider : public ProviderInterface {
 
   // Indicates that a device's wpa_supplicant state has changed.
   mockable void WiFiDeviceStateChanged(WiFiConstRefPtr device);
+
+  // Returns a WeakPtr of the WiFIProvider.
+  base::WeakPtr<WiFiProvider> AsWeakPtr() {
+    return weak_ptr_factory_while_started_.GetWeakPtr();
+  }
+
+  // DO NOT CALL DIRECTLY. Only include this as the |create_device_cb| arg of
+  // RequestLocalDeviceCreation.
+  // Create a WiFi hotspot device with MAC address |mac_address|. |callback| is
+  // called when interface event happens.
+  mockable void CreateHotspotDevice(net_base::MacAddress mac_address,
+                                    WiFiPhy::Priority priority,
+                                    LocalDevice::EventCallback callback);
+
+  // DO NOT CALL DIRECTLY. Only include this as the |create_device_cb| arg of
+  // RequestLocalDeviceCreation.
+  // Create a P2P device with the associated parameters. |success_cb| will be
+  // called if the device creation is successful, and |fail_cb| will be called
+  // if the device creation fails.
+  mockable void CreateP2PDevice(
+      LocalDevice::IfaceType iface_type,
+      LocalDevice::EventCallback callback,
+      int32_t shill_id,
+      WiFiPhy::Priority priority,
+      base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
+      base::OnceCallback<void()> fail_cb);
 
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
@@ -401,23 +409,6 @@ class WiFiProvider : public ProviderInterface {
 
   // Sort the internal list of services.
   void SortServices();
-
-  mockable void CreateHotspotDevice(net_base::MacAddress mac_address,
-                                    const std::string& primary_link_name,
-                                    const std::string& link_name,
-                                    uint32_t phy_index,
-                                    WiFiPhy::Priority priority,
-                                    LocalDevice::EventCallback callback);
-
-  // Construct a new P2PDevice of type |iface_type|, which must be kP2PGO or
-  // kP2PClient.
-  mockable void CreateP2PDevice(
-      LocalDevice::IfaceType iface_type,
-      LocalDevice::EventCallback callback,
-      int32_t shill_id,
-      WiFiPhy::Priority priority,
-      base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
-      base::OnceCallback<void()> fail_cb);
 
   Manager* manager_;
   net_base::NetlinkManager* netlink_manager_;

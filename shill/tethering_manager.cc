@@ -768,17 +768,19 @@ void TetheringManager::StartTetheringSession(WiFiPhy::Priority priority) {
            : stable_mac_addr_.address().value();
   bool request_accepted;
   if (downstream_device_for_test_ && downstream_phy_index_for_test_) {
-    request_accepted =
-        manager_->wifi_provider()->RequestHotspotDeviceCreationForTest(
-            mac_address, *downstream_device_for_test_,
-            *downstream_phy_index_for_test_,
-            base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
-                                base::Unretained(this)));
-  } else {
-    request_accepted = manager_->wifi_provider()->RequestHotspotDeviceCreation(
-        mac_address, band_, security_, priority,
+    request_accepted = manager_->wifi_provider()->CreateHotspotDeviceForTest(
+        mac_address, *downstream_device_for_test_,
+        *downstream_phy_index_for_test_,
         base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
                             base::Unretained(this)));
+  } else {
+    base::OnceClosure create_device_cb = base::BindOnce(
+        &WiFiProvider::CreateHotspotDevice,
+        manager_->wifi_provider()->AsWeakPtr(), mac_address, priority,
+        base::BindRepeating(&TetheringManager::OnDownstreamDeviceEvent,
+                            base::Unretained(this)));
+    request_accepted = manager_->wifi_provider()->RequestLocalDeviceCreation(
+        LocalDevice::IfaceType::kAP, priority, std::move(create_device_cb));
   }
 
   if (!request_accepted) {

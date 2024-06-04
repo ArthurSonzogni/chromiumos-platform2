@@ -157,7 +157,7 @@ class TetheringManager : public Network::EventHandler {
   // Indicates that a HotspotDevice has been created by WiFiProvider.
   mockable void OnDeviceCreated(HotspotDeviceRefPtr hotspot_dev);
   // Indicates that HotspotDevice creation has failed.
-  void OnDeviceCreationFailed();
+  mockable void OnDeviceCreationFailed();
 
  private:
   friend class TetheringManagerTest;

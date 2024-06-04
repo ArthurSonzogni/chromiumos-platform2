@@ -28,6 +28,7 @@
 using testing::_;
 using testing::ByMove;
 using testing::DoAll;
+using testing::InvokeArgument;
 using testing::NiceMock;
 using testing::Return;
 using testing::SaveArg;
@@ -127,7 +128,7 @@ class P2PManagerTest : public testing::Test {
     base::MockOnceCallback<void(KeyValueStore)> cb;
     SetDefaultDeviceLinkName(p2p_device);
 
-    EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
+    EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
         .WillOnce(
             [p2p_device](Unused, Unused, Unused, Unused,
                          base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
@@ -135,6 +136,11 @@ class P2PManagerTest : public testing::Test {
               std::move(success_cb).Run(p2p_device);
               return true;
             });
+    EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+        .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+          std::move(create_device_cb).Run();
+          return true;
+        });
     EXPECT_CALL(*p2p_device, CreateGroup(_)).WillOnce(Return(true));
     EXPECT_TRUE(IsActionTimerCancelled());
     p2p_manager_->CreateP2PGroup(cb.Get(), properties);
@@ -161,7 +167,8 @@ class P2PManagerTest : public testing::Test {
     KeyValueStore response_dict;
     base::MockOnceCallback<void(KeyValueStore)> cb;
     SetDefaultDeviceLinkName(p2p_device);
-    EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
+
+    EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
         .WillOnce(
             [p2p_device](Unused, Unused, Unused, Unused,
                          base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
@@ -169,6 +176,11 @@ class P2PManagerTest : public testing::Test {
               std::move(success_cb).Run(p2p_device);
               return true;
             });
+    EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+        .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+          std::move(create_device_cb).Run();
+          return true;
+        });
     EXPECT_CALL(*p2p_device, Connect(_)).WillOnce(Return(true));
     EXPECT_TRUE(IsActionTimerCancelled());
     p2p_manager_->ConnectToP2PGroup(cb.Get(), properties);
@@ -973,7 +985,7 @@ TEST_F(P2PManagerTest, CreateDeviceRejected_CreateGroup) {
   KeyValueStore properties;
   properties.Set<int32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
   base::MockOnceCallback<void(KeyValueStore)> cb;
-  EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation)
       .WillOnce(Return(false));
   EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
   p2p_manager_->CreateP2PGroup(cb.Get(), properties);
@@ -991,7 +1003,7 @@ TEST_F(P2PManagerTest, CreateDeviceRejected_Connect) {
   properties.Set<std::string>(kP2PDevicePassphrase, "test0000");
   properties.Set<int32_t>(kP2PDeviceFrequency, 1234);
   base::MockOnceCallback<void(KeyValueStore)> cb;
-  EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation)
       .WillOnce(Return(false));
   EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
   p2p_manager_->ConnectToP2PGroup(cb.Get(), properties);
@@ -1006,11 +1018,20 @@ TEST_F(P2PManagerTest, DeviceCreationFailed_CreateGroup) {
   KeyValueStore properties;
   properties.Set<int32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
   base::MockOnceCallback<void(KeyValueStore)> cb;
-  EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
-      .WillOnce(Return(true));
+
+  EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
+      .WillOnce([](Unused, Unused, Unused, Unused, Unused,
+                   base::OnceCallback<void()> fail_cb) {
+        std::move(fail_cb).Run();
+        return true;
+      });
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
   EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
   p2p_manager_->CreateP2PGroup(cb.Get(), properties);
-  OnDeviceCreationFailed(LocalDevice::IfaceType::kP2PGO);
   DispatchPendingEvents();
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
@@ -1025,8 +1046,18 @@ TEST_F(P2PManagerTest, DeviceCreationFailed_Connect) {
   properties.Set<int32_t>(kP2PDeviceFrequency, 1234);
   properties.Set<int32_t>(kP2PDevicePriority, WiFiPhy::Priority(1));
   base::MockOnceCallback<void(KeyValueStore)> cb;
-  EXPECT_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
-      .WillOnce(Return(true));
+
+  EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
+      .WillOnce([](Unused, Unused, Unused, Unused, Unused,
+                   base::OnceCallback<void()> fail_cb) {
+        std::move(fail_cb).Run();
+        return true;
+      });
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
   EXPECT_CALL(cb, Run(_)).WillOnce(SaveArg<0>(&response_dict));
   p2p_manager_->ConnectToP2PGroup(cb.Get(), properties);
   OnDeviceCreationFailed(LocalDevice::IfaceType::kP2PGO);
@@ -1046,14 +1077,20 @@ TEST_F(P2PManagerTest, StartTimeout_GOStarting) {
   properties.Set<int32_t>(kP2PDevicePriority, 1);
   SetDefaultDeviceLinkName(p2p_device);
 
-  ON_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
-      .WillByDefault(
+  EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
+      .WillOnce(
           [p2p_device](Unused, Unused, Unused, Unused,
                        base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
                        Unused) {
             std::move(success_cb).Run(p2p_device);
             return true;
           });
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
+
   ON_CALL(*p2p_device, CreateGroup(_)).WillByDefault(Return(true));
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 
@@ -1074,14 +1111,19 @@ TEST_F(P2PManagerTest, StartTimeout_GOConfiguring) {
   properties.Set<int32_t>(kP2PDevicePriority, 1);
   SetDefaultDeviceLinkName(p2p_device);
 
-  ON_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
-      .WillByDefault(
+  EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
+      .WillOnce(
           [p2p_device](Unused, Unused, Unused, Unused,
                        base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
                        Unused) {
             std::move(success_cb).Run(p2p_device);
             return true;
           });
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
   ON_CALL(*p2p_device, CreateGroup(_)).WillByDefault(Return(true));
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 
@@ -1103,14 +1145,19 @@ TEST_F(P2PManagerTest, StartTimeout_GOActive) {
   properties.Set<int32_t>(kP2PDevicePriority, 1);
   SetDefaultDeviceLinkName(p2p_device);
 
-  ON_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
-      .WillByDefault(
+  EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
+      .WillOnce(
           [p2p_device](Unused, Unused, Unused, Unused,
                        base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
                        Unused) {
             std::move(success_cb).Run(p2p_device);
             return true;
           });
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
   ON_CALL(*p2p_device, CreateGroup(_)).WillByDefault(Return(true));
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 
@@ -1137,14 +1184,19 @@ TEST_F(P2PManagerTest, StartTimeout_ClientAssociating) {
   properties.Set<int32_t>(kP2PDevicePriority, 1);
   SetDefaultDeviceLinkName(p2p_device);
 
-  ON_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
-      .WillByDefault(
+  EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
+      .WillOnce(
           [p2p_device](Unused, Unused, Unused, Unused,
                        base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
                        Unused) {
             std::move(success_cb).Run(p2p_device);
             return true;
           });
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
   ON_CALL(*p2p_device, Connect(_)).WillByDefault(Return(true));
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 
@@ -1168,14 +1220,19 @@ TEST_F(P2PManagerTest, StartTimeout_ClientConfiguring) {
   properties.Set<int32_t>(kP2PDevicePriority, 1);
   SetDefaultDeviceLinkName(p2p_device);
 
-  ON_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
-      .WillByDefault(
+  EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
+      .WillOnce(
           [p2p_device](Unused, Unused, Unused, Unused,
                        base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
                        Unused) {
             std::move(success_cb).Run(p2p_device);
             return true;
           });
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
   ON_CALL(*p2p_device, Connect(_)).WillByDefault(Return(true));
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 
@@ -1200,14 +1257,19 @@ TEST_F(P2PManagerTest, StartTimeout_ClientConnected) {
   properties.Set<int32_t>(kP2PDevicePriority, 1);
   SetDefaultDeviceLinkName(p2p_device);
 
-  ON_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
-      .WillByDefault(
+  EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
+      .WillOnce(
           [p2p_device](Unused, Unused, Unused, Unused,
                        base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
                        Unused) {
             std::move(success_cb).Run(p2p_device);
             return true;
           });
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
   ON_CALL(*p2p_device, Connect(_)).WillByDefault(Return(true));
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 
@@ -1231,14 +1293,19 @@ TEST_F(P2PManagerTest, StopTimeout_GOStopping) {
   properties.Set<int32_t>(kP2PDevicePriority, 1);
   SetDefaultDeviceLinkName(p2p_device);
 
-  ON_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
-      .WillByDefault(
+  EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
+      .WillOnce(
           [p2p_device](Unused, Unused, Unused, Unused,
                        base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
                        Unused) {
             std::move(success_cb).Run(p2p_device);
             return true;
           });
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
   ON_CALL(*p2p_device, CreateGroup(_)).WillByDefault(Return(true));
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 
@@ -1270,14 +1337,19 @@ TEST_F(P2PManagerTest, StopTimeout_ClientDisconnecting) {
   properties.Set<int32_t>(kP2PDevicePriority, 1);
   SetDefaultDeviceLinkName(p2p_device);
 
-  ON_CALL(*wifi_provider_, RequestP2PDeviceCreation(_, _, _, _, _, _))
-      .WillByDefault(
+  EXPECT_CALL(*wifi_provider_, CreateP2PDevice)
+      .WillOnce(
           [p2p_device](Unused, Unused, Unused, Unused,
                        base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
                        Unused) {
             std::move(success_cb).Run(p2p_device);
             return true;
           });
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
   ON_CALL(*p2p_device, Connect(_)).WillByDefault(Return(true));
   ON_CALL(cb, Run(_)).WillByDefault(SaveArg<0>(&response_dict));
 

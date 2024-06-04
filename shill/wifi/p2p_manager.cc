@@ -220,17 +220,24 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
     return;
   }
 
+  base::OnceCallback<void(P2PDeviceRefPtr)> success_cb =
+      base::BindOnce(&P2PManager::OnDeviceCreated, base::Unretained(this),
+                     LocalDevice::IfaceType::kP2PGO, ssid, passphrase, freq);
+  base::OnceCallback<void()> fail_cb =
+      base::BindOnce(&P2PManager::OnDeviceCreationFailed,
+                     base::Unretained(this), LocalDevice::IfaceType::kP2PGO);
+  LocalDevice::EventCallback event_cb = base::BindRepeating(
+      &P2PManager::OnP2PDeviceEvent, base::Unretained(this));
+
+  base::OnceClosure create_device_cb = base::BindOnce(
+      &WiFiProvider::CreateP2PDevice, manager_->wifi_provider()->AsWeakPtr(),
+      LocalDevice::IfaceType::kP2PGO, event_cb, next_unique_id_, priority,
+      std::move(success_cb), std::move(fail_cb));
+
   // Arm the start timer before sending the device creation request.
   SetActionTimer(true, LocalDevice::IfaceType::kP2PGO);
-  bool request_accepted = manager_->wifi_provider()->RequestP2PDeviceCreation(
-      LocalDevice::IfaceType::kP2PGO,
-      base::BindRepeating(&P2PManager::OnP2PDeviceEvent,
-                          base::Unretained(this)),
-      next_unique_id_, priority,
-      base::BindOnce(&P2PManager::OnDeviceCreated, base::Unretained(this),
-                     LocalDevice::IfaceType::kP2PGO, ssid, passphrase, freq),
-      base::BindOnce(&P2PManager::OnDeviceCreationFailed,
-                     base::Unretained(this), LocalDevice::IfaceType::kP2PGO));
+  bool request_accepted = manager_->wifi_provider()->RequestLocalDeviceCreation(
+      LocalDevice::IfaceType::kP2PGO, priority, std::move(create_device_cb));
   next_unique_id_++;
   if (!request_accepted) {
     LOG(INFO)
@@ -302,19 +309,25 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
     return;
   }
 
+  base::OnceCallback<void(P2PDeviceRefPtr)> success_cb = base::BindOnce(
+      &P2PManager::OnDeviceCreated, base::Unretained(this),
+      LocalDevice::IfaceType::kP2PClient, ssid, passphrase, freq);
+  base::OnceCallback<void()> fail_cb = base::BindOnce(
+      &P2PManager::OnDeviceCreationFailed, base::Unretained(this),
+      LocalDevice::IfaceType::kP2PClient);
+  LocalDevice::EventCallback event_cb = base::BindRepeating(
+      &P2PManager::OnP2PDeviceEvent, base::Unretained(this));
+
+  base::OnceClosure create_device_cb = base::BindOnce(
+      &WiFiProvider::CreateP2PDevice, manager_->wifi_provider()->AsWeakPtr(),
+      LocalDevice::IfaceType::kP2PClient, event_cb, next_unique_id_, priority,
+      std::move(success_cb), std::move(fail_cb));
+
   // Arm the start timer before sending the device creation request.
   SetActionTimer(true, LocalDevice::IfaceType::kP2PClient);
-  bool request_accepted = manager_->wifi_provider()->RequestP2PDeviceCreation(
-      LocalDevice::IfaceType::kP2PClient,
-      base::BindRepeating(&P2PManager::OnP2PDeviceEvent,
-                          base::Unretained(this)),
-      next_unique_id_, priority,
-      base::BindOnce(&P2PManager::OnDeviceCreated, base::Unretained(this),
-                     LocalDevice::IfaceType::kP2PClient, ssid, passphrase,
-                     freq),
-      base::BindOnce(&P2PManager::OnDeviceCreationFailed,
-                     base::Unretained(this),
-                     LocalDevice::IfaceType::kP2PClient));
+  bool request_accepted = manager_->wifi_provider()->RequestLocalDeviceCreation(
+      LocalDevice::IfaceType::kP2PClient, priority,
+      std::move(create_device_cb));
   next_unique_id_++;
   if (!request_accepted) {
     LOG(INFO)

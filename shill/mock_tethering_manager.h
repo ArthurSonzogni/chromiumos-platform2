@@ -25,6 +25,7 @@ class MockTetheringManager : public TetheringManager {
   ~MockTetheringManager() override = default;
 
   MOCK_METHOD(void, OnDeviceCreated, (HotspotDeviceRefPtr), (override));
+  MOCK_METHOD(void, OnDeviceCreationFailed, (), (override));
 };
 
 }  // namespace shill

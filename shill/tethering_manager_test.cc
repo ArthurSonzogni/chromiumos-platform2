@@ -69,6 +69,7 @@ using testing::Not;
 using testing::Return;
 using testing::StrictMock;
 using testing::Test;
+using testing::Unused;
 using testing::WithArg;
 
 namespace shill {
@@ -219,7 +220,7 @@ class TetheringManagerTest : public testing::Test {
     cellular_profile_ = new NiceMock<MockProfile>(&manager_);
     cellular_service_provider_->set_profile_for_testing(cellular_profile_);
     ON_CALL(manager_, modem_info()).WillByDefault(Return(&modem_info_));
-    ON_CALL(*wifi_provider_, RequestHotspotDeviceCreation)
+    ON_CALL(*wifi_provider_, RequestLocalDeviceCreation)
         .WillByDefault(DoAll(
             InvokeWithoutArgs(this, &TetheringManagerTest::OnDeviceCreated),
             Return(true)));
@@ -1335,7 +1336,7 @@ TEST_F(TetheringManagerTest, StartTetheringSessionAbort) {
 
 TEST_F(TetheringManagerTest, FailToCreateLocalInterface) {
   TetheringPrerequisite(tethering_manager_);
-  EXPECT_CALL(*wifi_provider_, RequestHotspotDeviceCreation)
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation)
       .WillOnce(DoAll(InvokeWithoutArgs(
                           this, &TetheringManagerTest::OnDeviceCreationFailed),
                       Return(true)));
@@ -1350,7 +1351,7 @@ TEST_F(TetheringManagerTest, FailToCreateLocalInterface) {
 
 TEST_F(TetheringManagerTest, InterfaceCreationRejected) {
   TetheringPrerequisite(tethering_manager_);
-  EXPECT_CALL(*wifi_provider_, RequestHotspotDeviceCreation)
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation)
       .WillOnce(Return(false));
   EXPECT_CALL(*hotspot_device_.get(), ConfigureService(_)).Times(0);
   SetEnabledVerifyResult(
@@ -1362,7 +1363,7 @@ TEST_F(TetheringManagerTest, InterfaceCreationRejected) {
 
 TEST_F(TetheringManagerTest, FailToConfigureService) {
   TetheringPrerequisite(tethering_manager_);
-  EXPECT_CALL(*wifi_provider_, RequestHotspotDeviceCreation)
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation)
       .WillOnce(
           DoAll(InvokeWithoutArgs(this, &TetheringManagerTest::OnDeviceCreated),
                 Return(true)));
@@ -1767,12 +1768,13 @@ TEST_F(TetheringManagerTest, MARWithSSIDChange) {
   ASSERT_NE(ini_ssid, kTestAPHexSSID);
   EXPECT_NE(ini_mac, mac);
 
+  EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(mac, _, _));
   // Test 1st argument for RequestHotspotDeviceCreation (MAC as a hex-string).
-  EXPECT_CALL(*wifi_provider_,
-              RequestHotspotDeviceCreation(Eq(mac), _, _, _, _))
-      .WillOnce(
-          DoAll(InvokeWithoutArgs(this, &TetheringManagerTest::OnDeviceCreated),
-                Return(true)));
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
   Enable(tethering_manager_, kPriorityForTest);
 }
 
@@ -1786,12 +1788,16 @@ TEST_F(TetheringManagerTest, MARWithTetheringRestart) {
   known_macs.insert(tethering_manager_->stable_mac_addr_.address().value());
 
   auto tether_onoff = [&]() {
-    EXPECT_CALL(*wifi_provider_, RequestHotspotDeviceCreation(
-                                     Not(IsContained(known_macs)), _, _, _, _))
+    EXPECT_CALL(*wifi_provider_,
+                CreateHotspotDevice(Not(IsContained(known_macs)), _, _))
         .WillOnce(DoAll(
             WithArg<0>(Invoke([&](auto mac) { known_macs.insert(mac); })),
-            InvokeWithoutArgs(this, &TetheringManagerTest::OnDeviceCreated),
-            Return(true)));
+            InvokeWithoutArgs(this, &TetheringManagerTest::OnDeviceCreated)));
+    EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+        .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+          std::move(create_device_cb).Run();
+          return true;
+        });
     SetEnabledVerifyResult(tethering_manager_, true,
                            TetheringManager::SetEnabledResult::kSuccess);
     EXPECT_EQ(TetheringState(tethering_manager_),
@@ -1828,11 +1834,15 @@ TEST_F(TetheringManagerTest, CheckMACStored) {
   EXPECT_EQ(ini_mac, tethering_manager_->stable_mac_addr_.address());
 
   // And test that it is actually used.
-  EXPECT_CALL(*wifi_provider_,
-              RequestHotspotDeviceCreation(Eq(ini_mac), _, _, _, _))
+  EXPECT_CALL(*wifi_provider_, CreateHotspotDevice(Eq(ini_mac), _, _))
       .WillOnce(
-          DoAll(InvokeWithoutArgs(this, &TetheringManagerTest::OnDeviceCreated),
-                Return(true)));
+          InvokeWithoutArgs(this, &TetheringManagerTest::OnDeviceCreated));
+  EXPECT_CALL(*wifi_provider_, RequestLocalDeviceCreation(_, _, _))
+      .WillOnce([](Unused, Unused, base::OnceClosure create_device_cb) {
+        std::move(create_device_cb).Run();
+        return true;
+      });
+
   Enable(tethering_manager_, kPriorityForTest);
 }
 

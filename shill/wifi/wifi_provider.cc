@@ -1334,56 +1334,44 @@ void WiFiProvider::DeregisterLocalDevice(LocalDeviceConstRefPtr device) {
   local_devices_.erase(link_name);
 }
 
-bool WiFiProvider::RequestHotspotDeviceCreation(
-    net_base::MacAddress mac_address,
-    WiFiBand band,
-    WiFiSecurity security,
-    WiFiPhy::Priority priority,
-    LocalDevice::EventCallback callback) {
-  if (wifi_phys_.empty()) {
-    LOG(ERROR) << "No WiFiPhy available.";
-    return false;
-  }
-  const std::string primary_link_name = GetPrimaryLinkName();
-  if (primary_link_name.empty()) {
-    LOG(ERROR) << "Failed to get primary link name.";
-    return false;
-  }
-  const std::string link_name = GetUniqueLocalDeviceName(kHotspotIfacePrefix);
-  // TODO(b/257340615) Select capable WiFiPhy according to band and security
-  // requirement.
-  const uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
-  manager_->dispatcher()->PostTask(
-      FROM_HERE, base::BindOnce(&WiFiProvider::CreateHotspotDevice,
-                                weak_ptr_factory_while_started_.GetWeakPtr(),
-                                mac_address, primary_link_name, link_name,
-                                phy_index, priority, callback));
-
-  return true;
-}
-
-bool WiFiProvider::RequestHotspotDeviceCreationForTest(
+bool WiFiProvider::CreateHotspotDeviceForTest(
     const net_base::MacAddress mac_address,
     const std::string& device_name_for_test,
     uint32_t device_phy_index_for_test,
     LocalDevice::EventCallback callback) {
   const std::string link_name = device_name_for_test;
-  manager_->dispatcher()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&WiFiProvider::CreateHotspotDevice,
-                     weak_ptr_factory_while_started_.GetWeakPtr(), mac_address,
-                     device_name_for_test, link_name, device_phy_index_for_test,
-                     WiFiPhy::Priority(WiFiPhy::Priority::kMinimumPriority),
-                     callback));
-  return true;
+  HotspotDeviceRefPtr dev = hotspot_device_factory_.Run(
+      manager_, device_name_for_test, link_name, mac_address,
+      device_phy_index_for_test,
+      WiFiPhy::Priority(WiFiPhy::Priority::kMinimumPriority), callback);
+  if (dev->SetEnabled(true)) {
+    RegisterLocalDevice(dev);
+    manager_->tethering_manager()->OnDeviceCreated(dev);
+    return true;
+  } else {
+    manager_->tethering_manager()->OnDeviceCreationFailed();
+    return false;
+  }
 }
 
 void WiFiProvider::CreateHotspotDevice(net_base::MacAddress mac_address,
-                                       const std::string& primary_link_name,
-                                       const std::string& link_name,
-                                       uint32_t phy_index,
                                        WiFiPhy::Priority priority,
                                        LocalDevice::EventCallback callback) {
+  const std::string primary_link_name = GetPrimaryLinkName();
+  if (primary_link_name.empty()) {
+    LOG(ERROR) << "Failed to get primary link name.";
+    manager_->tethering_manager()->OnDeviceCreationFailed();
+    return;
+  }
+  if (wifi_phys_.empty()) {
+    LOG(ERROR) << "No WiFiPhy available.";
+    return;
+  }
+  const std::string link_name = GetUniqueLocalDeviceName(kHotspotIfacePrefix);
+  // TODO(b/257340615) Select capable WiFiPhy according to band and security
+  // requirement.
+  const uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
+
   HotspotDeviceRefPtr dev =
       hotspot_device_factory_.Run(manager_, primary_link_name, link_name,
                                   mac_address, phy_index, priority, callback);
@@ -1394,21 +1382,6 @@ void WiFiProvider::CreateHotspotDevice(net_base::MacAddress mac_address,
   } else {
     manager_->tethering_manager()->OnDeviceCreationFailed();
   }
-}
-
-bool WiFiProvider::RequestP2PDeviceCreation(
-    LocalDevice::IfaceType iface_type,
-    LocalDevice::EventCallback callback,
-    int32_t shill_id,
-    WiFiPhy::Priority priority,
-    base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
-    base::OnceCallback<void()> fail_cb) {
-  manager_->dispatcher()->PostTask(
-      FROM_HERE, base::BindOnce(&WiFiProvider::CreateP2PDevice,
-                                weak_ptr_factory_while_started_.GetWeakPtr(),
-                                iface_type, callback, shill_id, priority,
-                                std::move(success_cb), std::move(fail_cb)));
-  return true;
 }
 
 void WiFiProvider::CreateP2PDevice(
@@ -1444,6 +1417,14 @@ void WiFiProvider::CreateP2PDevice(
   P2PDeviceRefPtr dev = new P2PDevice(manager_, iface_type, primary_link_name,
                                       phy_index, shill_id, priority, callback);
   std::move(success_cb).Run(dev);
+}
+
+bool WiFiProvider::RequestLocalDeviceCreation(
+    LocalDevice::IfaceType iface_type,
+    WiFiPhy::Priority priority,
+    base::OnceClosure create_device_cb) {
+  manager_->dispatcher()->PostTask(FROM_HERE, std::move(create_device_cb));
+  return true;
 }
 
 void WiFiProvider::DeleteLocalDevice(LocalDeviceRefPtr device) {

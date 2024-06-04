@@ -109,31 +109,11 @@ class MockWiFiProvider : public WiFiProvider {
               DeregisterDeviceFromPhy,
               (std::string_view, uint32_t),
               (override));
-  MOCK_METHOD(bool,
-              RequestHotspotDeviceCreation,
-              (net_base::MacAddress,
-               WiFiBand,
-               WiFiSecurity,
-               WiFiPhy::Priority,
-               LocalDevice::EventCallback),
-              (override));
   MOCK_METHOD(void,
               CreateHotspotDevice,
               (net_base::MacAddress,
-               const std::string&,
-               const std::string&,
-               uint32_t phy_index,
                WiFiPhy::Priority priority,
                LocalDevice::EventCallback callback),
-              (override));
-  MOCK_METHOD(bool,
-              RequestP2PDeviceCreation,
-              (LocalDevice::IfaceType,
-               LocalDevice::EventCallback,
-               int32_t shill_id,
-               WiFiPhy::Priority priority,
-               base::OnceCallback<void(P2PDeviceRefPtr)> success_cb,
-               base::OnceCallback<void()> fail_cb),
               (override));
   MOCK_METHOD(void,
               CreateP2PDevice,
@@ -143,6 +123,12 @@ class MockWiFiProvider : public WiFiProvider {
                WiFiPhy::Priority priority,
                base::OnceCallback<void(P2PDeviceRefPtr)>,
                base::OnceCallback<void()>),
+              (override));
+  MOCK_METHOD(bool,
+              RequestLocalDeviceCreation,
+              (LocalDevice::IfaceType iface_type,
+               WiFiPhy::Priority priority,
+               base::OnceClosure create_device_cb),
               (override));
   MOCK_METHOD(void, RegisterLocalDevice, (LocalDeviceRefPtr), (override));
   MOCK_METHOD(void, DeleteLocalDevice, (LocalDeviceRefPtr), (override));
