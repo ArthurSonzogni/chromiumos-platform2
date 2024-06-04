@@ -202,9 +202,9 @@ std::optional<std::string> EfiVarImpl::GetNextVariableName() {
   return std::nullopt;
 }
 
-bool EfiVarImpl::GetVariable(const std::string& name,
-                             Bytes& data,
-                             size_t* data_size) {
+std::optional<EfiVarError> EfiVarImpl::GetVariable(const std::string& name,
+                                                   Bytes& data,
+                                                   size_t* data_size) {
   EfiLogWrapper log_wrapper(__func__);
 
   // efi_get_variable will malloc some space and store it in `data`,
@@ -221,13 +221,13 @@ bool EfiVarImpl::GetVariable(const std::string& name,
     LOG(ERROR) << "Error getting '" << name << "'";
     // Okay to return without freeing data if ret < 0 (at least in the
     // current (v37) efivar implementation ...).
-    return false;
+    return log_wrapper.GetFirstErrno();
   }
 
   // Pass data out, ensuring it gets freed when it's no longer needed.
   data.reset(data_ptr);
 
-  return true;
+  return std::nullopt;
 }
 
 std::optional<EfiVarError> EfiVarImpl::SetVariable(const std::string& name,

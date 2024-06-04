@@ -33,9 +33,9 @@ class EfiVarInterface {
 
   virtual std::optional<std::string> GetNextVariableName() = 0;
 
-  virtual bool GetVariable(const std::string& name,
-                           Bytes& data,
-                           size_t* data_size) = 0;
+  virtual std::optional<EfiVarError> GetVariable(const std::string& name,
+                                                 Bytes& data,
+                                                 size_t* data_size) = 0;
 
   virtual std::optional<EfiVarError> SetVariable(
       const std::string& name,
@@ -68,9 +68,9 @@ class EfiVarImpl : public EfiVarInterface {
 
   std::optional<std::string> GetNextVariableName() override;
 
-  bool GetVariable(const std::string& name,
-                   Bytes& data,
-                   size_t* data_size) override;
+  std::optional<EfiVarError> GetVariable(const std::string& name,
+                                         Bytes& data,
+                                         size_t* data_size) override;
 
   std::optional<EfiVarError> SetVariable(const std::string& name,
                                          uint32_t attributes,

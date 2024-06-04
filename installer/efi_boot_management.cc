@@ -236,10 +236,12 @@ class BootOrder {
 
   // Read and store the data, an array of 16-bit uints.
   // If we can't read it, we'll need to write a new one.
-  void Load(EfiVarInterface& efivar) {
+  std::optional<EfiVarError> Load(EfiVarInterface& efivar) {
     EfiVarInterface::Bytes data;
     size_t data_size;
-    if (efivar.GetVariable(kBootOrder, data, &data_size)) {
+    std::optional<EfiVarError> result =
+        efivar.GetVariable(kBootOrder, data, &data_size);
+    if (result == std::nullopt) {
       boot_order_.assign(reinterpret_cast<uint16_t*>(data.get()),
                          reinterpret_cast<uint16_t*>(data.get()) +
                              (data_size / sizeof(uint16_t)));
@@ -254,6 +256,7 @@ class BootOrder {
 
       LOG(INFO) << "Creating new BootOrder.";
     }
+    return result;
   }
 
   // Write the data back to the EFI variable, but only if
@@ -376,7 +379,7 @@ class EfiBootManager {
   std::optional<EfiBootEntryContents> LoadEntry(const EfiBootNumber& number) {
     EfiVarInterface::Bytes data;
     size_t data_size;
-    if (!efivar_->GetVariable(number.Name(), data, &data_size)) {
+    if (efivar_->GetVariable(number.Name(), data, &data_size) != std::nullopt) {
       // GetVariable logs errors for us.
       return std::nullopt;
     }
@@ -552,6 +555,15 @@ class EfiBootManager {
   //    - Add it to the boot order.
   bool UpdateEfiBootEntriesImpl(const InstallConfig& install_config,
                                 int efi_size) {
+    std::optional<EfiVarError> order_result = boot_order_.Load(*efivar_);
+    // If unable to read the bootorder due to an EIO the EFI
+    // runtime services is buggy. Ignore this known error and allow the
+    // installation to continue b/344035893.
+    if (order_result == EIO) {
+      LOG(WARNING) << "EFI is buggy continue without EFI management.";
+      return true;
+    }
+
     if (!LoadBootEntries()) {
       LOG(ERROR) << kCantEnsureBoot << "need to know what boot entries exist.";
       return false;
@@ -560,8 +572,6 @@ class EfiBootManager {
     // Send metric based on the loaded boot entries, only if we loaded all of
     // them. If any failed to load we don't know if our count is valid.
     SendManagedEntryCountMetric();
-
-    boot_order_.Load(*efivar_);
 
     // Figure out what a "correct" boot entry would look like.
     const std::optional<EfiBootEntryContents> desired_contents =

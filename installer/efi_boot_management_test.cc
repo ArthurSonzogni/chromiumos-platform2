@@ -102,13 +102,13 @@ class EfiVarFake : public EfiVarInterface {
     return result;
   }
 
-  bool GetVariable(const std::string& name,
-                   Bytes& output_data,
-                   size_t* data_size) override {
+  std::optional<EfiVarError> GetVariable(const std::string& name,
+                                         Bytes& output_data,
+                                         size_t* data_size) override {
     auto pair = data_.find(name);
 
     if (pair == data_.end()) {
-      return false;
+      return {EROFS};
     }
 
     auto value = pair->second;
@@ -118,7 +118,7 @@ class EfiVarFake : public EfiVarInterface {
     std::copy(value.begin(), value.end(), data_ptr);
     output_data.reset(data_ptr);
 
-    return true;
+    return std::nullopt;
   }
 
   std::optional<EfiVarError> SetVariable(const std::string& name,
