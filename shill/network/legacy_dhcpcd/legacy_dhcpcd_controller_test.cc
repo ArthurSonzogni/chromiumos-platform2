@@ -168,26 +168,27 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DhcpcdArguments) {
       std::pair<DHCPCDControllerInterface::Options, std::vector<std::string>>>
       kExpectedArgs = {
           {{},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "--nodelay", "wlan0"}},
+           {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
+            "captive_portal_uri", "--nodelay", "wlan0"}},
           {{.hostname = "my_hostname"},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "--nodelay", "-h", "my_hostname", "wlan0"}},
+           {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
+            "captive_portal_uri", "--nodelay", "-h", "my_hostname", "wlan0"}},
           {{.use_arp_gateway = true},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "--nodelay", "-R", "--unicast", "wlan0"}},
+           {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
+            "captive_portal_uri", "--nodelay", "-R", "--unicast", "wlan0"}},
           {{.use_rfc_8925 = true},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "--nodelay", "-o", "ipv6_only_preferred", "wlan0"}},
+           {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
+            "captive_portal_uri", "--nodelay", "-o", "ipv6_only_preferred",
+            "wlan0"}},
           {{.apply_dscp = true},
-           {"-B", "-i", "chromeos", "-q", "-4", "-o", "captive_portal_uri",
-            "--nodelay", "--apply_dscp", "wlan0"}},
+           {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
+            "captive_portal_uri", "--nodelay", "--apply_dscp", "wlan0"}},
       };
   for (const auto& [options, dhcpcd_args] : kExpectedArgs) {
     // When creating a controller, the controller factory should create
     // the dhcpcd process in minijail.
     EXPECT_CALL(mock_process_manager_,
-                StartProcessInMinijail(_, base::FilePath("/sbin/dhcpcd"),
+                StartProcessInMinijail(_, base::FilePath("/sbin/dhcpcd7"),
                                        dhcpcd_args, _, _, _))
         .WillOnce(Return(kPid));
     EXPECT_CALL(mock_process_manager_, UpdateExitCallback(kPid, _))
@@ -386,8 +387,8 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DeleteEphemeralLeaseAndPidFile) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
   constexpr std::string_view kInterface = "wlan0";
-  constexpr std::string_view kPidFile = "var/run/dhcpcd/dhcpcd-wlan0-4.pid";
-  constexpr std::string_view kLeaseFile = "var/lib/dhcpcd/wlan0.lease";
+  constexpr std::string_view kPidFile = "var/run/dhcpcd7/dhcpcd-wlan0-4.pid";
+  constexpr std::string_view kLeaseFile = "var/lib/dhcpcd7/wlan0.lease";
   const DHCPCDControllerInterface::Options options = {};
 
   // When creating a controller, the controller factory should create

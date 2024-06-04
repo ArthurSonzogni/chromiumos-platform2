@@ -185,7 +185,7 @@ std::vector<std::string> BuildExpectedDHCPCDArgs(bool has_hostname,
                                                  bool has_lease_suffix,
                                                  bool enable_dscp) {
   std::vector<std::string> ret = {
-      "-B", "-i", "chromeos",           "-q",
+      "-B", "-f", "/etc/dhcpcd7.conf",  "-i",       "chromeos", "-q",
       "-4", "-o", "captive_portal_uri", "--nodelay"};
   if (has_hostname) {
     ret.insert(ret.end(), {"-h", kHostName});
@@ -738,11 +738,11 @@ class DHCPControllerDHCPCDStoppedTest : public DHCPControllerTest {
   void PrepareFiles() {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     controller_->set_root_for_testing(temp_dir_.GetPath());
-    base::FilePath varrun = temp_dir_.GetPath().Append("var/run/dhcpcd");
+    base::FilePath varrun = temp_dir_.GetPath().Append("var/run/dhcpcd7");
     ASSERT_TRUE(base::CreateDirectory(varrun));
     pid_file_ =
         varrun.Append(base::StringPrintf("dhcpcd-%s-4.pid", kDeviceName));
-    base::FilePath varlib = temp_dir_.GetPath().Append("var/lib/dhcpcd");
+    base::FilePath varlib = temp_dir_.GetPath().Append("var/lib/dhcpcd7");
     ASSERT_TRUE(base::CreateDirectory(varlib));
     lease_file_ = varlib.Append(base::StringPrintf("%s.lease", kDeviceName));
     ASSERT_EQ(0, base::WriteFile(pid_file_, "", 0));

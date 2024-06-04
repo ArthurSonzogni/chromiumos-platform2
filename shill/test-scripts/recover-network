@@ -46,7 +46,7 @@ def install_ip_and_route(ifname, ip, gateway):
 def run_dhcpcd(ifname):
     print("Running dhcpcd")
     with subprocess.Popen(
-        ["dhcpcd", "-B", "-4", ifname],
+        ["dhcpcd7", "-B", "-4", ifname],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         encoding="utf-8",

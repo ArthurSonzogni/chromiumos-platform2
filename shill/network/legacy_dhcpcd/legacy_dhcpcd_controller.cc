@@ -26,12 +26,13 @@
 namespace shill {
 namespace {
 
-constexpr char kDHCPCDExecutableName[] = "dhcpcd";
-constexpr char kDHCPCDPath[] = "/sbin/dhcpcd";
+constexpr char kDHCPCDExecutableName[] = "dhcpcd7";
+constexpr char kDHCPCDPath[] = "/sbin/dhcpcd7";
+constexpr char kDHCPCDConfigPath[] = "/etc/dhcpcd7.conf";
 constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
-constexpr char kDHCPCDPathFormatLease[] = "var/lib/dhcpcd/%s.lease";
-constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-4.pid";
+constexpr char kDHCPCDPathFormatLease[] = "var/lib/dhcpcd7/%s.lease";
+constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd7/dhcpcd-%s-4.pid";
 
 void LogDBusError(const brillo::ErrorPtr& error,
                   const std::string& method,
@@ -49,6 +50,7 @@ std::vector<std::string> GetDhcpcdFlags(
     Technology technology, const DHCPCDControllerInterface::Options& options) {
   std::vector<std::string> flags = {
       "-B",                               // Run in foreground.
+      "-f",        kDHCPCDConfigPath,     // Specify config file path.
       "-i",        "chromeos",            // Static value for Vendor class info.
       "-q",                               // Only warnings+errors to stderr.
       "-4",                               // IPv4 only.

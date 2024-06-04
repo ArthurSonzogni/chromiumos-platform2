@@ -34,6 +34,7 @@ $IncludeConfig /etc/rsyslog.d/*.conf
 # Keep network stuff in /var/log/net.log
 if (($programname == 'charon') or \
     ($programname == 'dhcpcd') or \
+    ($programname == 'dhcpcd7') or \
     ($programname == 'dnsmasq') or \
     ($programname == 'dnsproxyd') or \
     ($programname == 'hermes') or \

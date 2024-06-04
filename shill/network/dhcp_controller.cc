@@ -48,10 +48,11 @@ static std::string ObjectID(const DHCPController* d) {
 namespace {
 
 constexpr base::TimeDelta kAcquisitionTimeout = base::Seconds(30);
-constexpr char kDHCPCDPath[] = "/sbin/dhcpcd";
+constexpr char kDHCPCDPath[] = "/sbin/dhcpcd7";
+constexpr char kDHCPCDConfigPath[] = "/etc/dhcpcd7.conf";
 constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
-constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-4.pid";
+constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd7/dhcpcd-%s-4.pid";
 
 }  // namespace
 
@@ -387,6 +388,7 @@ bool DHCPController::ShouldKeepLeaseOnDisconnect() const {
 std::vector<std::string> DHCPController::GetFlags() {
   std::vector<std::string> flags = {
       "-B",                               // Run in foreground.
+      "-f",        kDHCPCDConfigPath,     // Specify config file path.
       "-i",        "chromeos",            // Static value for Vendor class info.
       "-q",                               // Only warnings+errors to stderr.
       "-4",                               // IPv4 only.

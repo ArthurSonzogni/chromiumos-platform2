@@ -7,6 +7,7 @@ domain_auto_trans(cros_init, cros_init_shill_shell_script, cros_init_shill)
 filetrans_pattern(cros_init_shill, cros_var_cache, cros_var_cache_shill, dir, "shill")
 filetrans_pattern(cros_init_shill, cros_var_lib, cros_var_lib_shill, dir, "shill")
 filetrans_pattern(cros_init_shill, cros_var_lib, cros_var_lib_shill, dir, "dhcpcd")
+filetrans_pattern(cros_init_shill, cros_var_lib, cros_var_lib_shill, dir, "dhcpcd7")
 filetrans_pattern(cros_init_shill, cros_run, cros_run_shill, dir)
 
 uma_writer(cros_init_shill)

@@ -39,7 +39,7 @@ class DHCPProvider {
  public:
   using Options = DHCPController::Options;
 
-  static constexpr char kDHCPCDPathFormatLease[] = "var/lib/dhcpcd/%s.lease";
+  static constexpr char kDHCPCDPathFormatLease[] = "var/lib/dhcpcd7/%s.lease";
 
   virtual ~DHCPProvider();
 

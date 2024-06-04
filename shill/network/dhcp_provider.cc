@@ -38,7 +38,7 @@ base::LazyInstance<DHCPProvider>::DestructorAtExit g_dhcp_provider =
     LAZY_INSTANCE_INITIALIZER;
 static constexpr base::TimeDelta kUnbindDelay = base::Seconds(2);
 
-const char kDHCPCDExecutableName[] = "dhcpcd";
+const char kDHCPCDExecutableName[] = "dhcpcd7";
 
 }  // namespace
 

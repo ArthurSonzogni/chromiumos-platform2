@@ -30,6 +30,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /sbin/crash_reporter            u:object_r:cros_crash_reporter_exec:s0
 /sbin/crash_sender              u:object_r:cros_crash_sender_exec:s0
 /sbin/dhcpcd                    u:object_r:cros_dhcpcd_exec:s0
+/sbin/dhcpcd7                   u:object_r:cros_dhcpcd_exec:s0
 /sbin/featured                  u:object_r:cros_featured_exec:s0
 /sbin/frecon                    u:object_r:frecon_exec:s0
 /sbin/hwclock                   u:object_r:cros_hwclock_exec:s0
@@ -324,6 +325,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/dlcservice(/.*)?       u:object_r:cros_var_lib_dlcservice:s0
 /var/lib/dbus(/.*)?             u:object_r:cros_var_lib_dbus:s0
 /var/lib/dhcpcd(/.*)?           u:object_r:cros_var_lib_shill:s0
+/var/lib/dhcpcd7(/.*)?           u:object_r:cros_var_lib_shill:s0
 /var/lib/featured(/.*)?         u:object_r:cros_var_lib_featured:s0
 /var/lib/fingers(/.*)?          u:object_r:cros_var_lib_fpstudy:s0
 /var/lib/fpstudygnupg(/.*)?     u:object_r:cros_var_lib_fpstudy:s0
@@ -487,6 +489,7 @@ has_arc(`
 /run/debugd                     u:object_r:cros_run_debugd:s0
 /run/debugd/perf_tool           u:object_r:cros_run_debugd_perf_tool:s0
 /run/dhcpcd                     u:object_r:cros_run_dhcpcd:s0
+/run/dhcpcd7                    u:object_r:cros_run_dhcpcd:s0
 /run/dns-proxy                  u:object_r:cros_run_dns_proxy:s0
 /run/fbpreprocessord            u:object_r:cros_run_fbpreprocessord:s0
 /run/featured/active            u:object_r:cros_run_featured_active:s0
