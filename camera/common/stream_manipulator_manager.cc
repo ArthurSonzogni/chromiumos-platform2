@@ -51,6 +51,10 @@
 #include "features/frame_annotator/frame_annotator_loader_stream_manipulator.h"
 #endif
 
+#if USE_CAMERA_FEATURE_KIOSK_VISION
+#include "features/kiosk_vision/kiosk_vision_stream_manipulator.h"
+#endif
+
 #if USE_CAMERA_FEATURE_PORTRAIT_MODE
 #include "features/portrait_mode/portrait_mode_stream_manipulator.h"
 #endif
@@ -126,6 +130,21 @@ void MaybeEnableHdrNetStreamManipulator(
   }
 #endif
 }
+
+#if USE_CAMERA_FEATURE_KIOSK_VISION
+void MaybeEnableKioskVisionStreamManipulator(
+    StreamManipulator::RuntimeOptions* runtime_options,
+    std::vector<std::unique_ptr<StreamManipulator>>* out_stream_manipulators) {
+  if (!runtime_options->IsKioskVisionEnabled()) {
+    LOGF(INFO) << "KioskVisionStreamManipulator disabled";
+    return;
+  }
+
+  out_stream_manipulators->emplace_back(
+      std::make_unique<KioskVisionStreamManipulator>(runtime_options));
+  LOGF(INFO) << "KioskVisionStreamManipulator enabled";
+}
+#endif
 
 void MaybeEnableFramingStreamManipulator(
     const FeatureProfile& feature_profile,
@@ -267,6 +286,13 @@ StreamManipulatorManager::StreamManipulatorManager(
   MaybeEnableHdrNetStreamManipulator(feature_profile, runtime_options,
                                      create_options, gpu_resources,
                                      &stream_manipulators_);
+
+#if USE_CAMERA_FEATURE_KIOSK_VISION
+  MaybeEnableKioskVisionStreamManipulator(runtime_options,
+                                          &stream_manipulators_);
+#else
+  LOGF(INFO) << "Service built without kiosk vision support";
+#endif
 
   // TODO(jcliang): See if we want to move ZSL to feature profile.
   stream_manipulators_.emplace_back(std::make_unique<ZslStreamManipulator>());

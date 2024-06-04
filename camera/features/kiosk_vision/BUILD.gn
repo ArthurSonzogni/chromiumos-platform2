@@ -12,6 +12,7 @@ pkg_config("target_defaults") {
 source_set("kiosk_vision") {
   sources = [
     "//camera/features/kiosk_vision/kiosk_vision_library.cc",
+    "//camera/features/kiosk_vision/kiosk_vision_stream_manipulator.cc",
     "//camera/features/kiosk_vision/kiosk_vision_wrapper.cc",
   ]
   public_configs = [ ":target_defaults" ]

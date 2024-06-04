@@ -61,6 +61,7 @@ _IUSE = [
     "camera_feature_face_detection",
     "camera_feature_frame_annotator",
     "camera_feature_hdrnet",
+    "camera_feature_kiosk_vision",
     "camera_feature_portrait_mode",
     "camera_feature_super_res",
     "cdm_factory_daemon",

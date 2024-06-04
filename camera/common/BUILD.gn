@@ -57,6 +57,10 @@ group("all") {
       ":feature_profile_test",
       ":zsl_helper_test",
     ]
+
+    if (use.camera_feature_kiosk_vision) {
+      deps += [ ":cros_kiosk_vision_sm_tests" ]
+    }
   }
 
   if (use.fuzzer) {
@@ -339,6 +343,9 @@ source_set("stream_manipulator") {
       "//camera/features/hdrnet",
     ]
   }
+  if (use.camera_feature_kiosk_vision) {
+    deps += [ "//camera/features/kiosk_vision" ]
+  }
   if (use.camera_feature_portrait_mode) {
     deps += [ "//camera/features/portrait_mode" ]
   }
@@ -546,6 +553,26 @@ if (use.test) {
       "libdrm",
     ]
     deps = [ "//camera/common:base" ]
+  }
+
+  if (use.camera_feature_kiosk_vision) {
+    executable("cros_kiosk_vision_sm_tests") {
+      sources = [
+        "//camera/features/kiosk_vision/kiosk_vision_stream_manipulator.cc",
+        "//camera/features/kiosk_vision/tests/kiosk_vision_stream_manipulator_test.cc",
+      ]
+      configs += [
+        "//common-mk:test",
+        "//camera/features/kiosk_vision:target_defaults",
+      ]
+      run_test = true
+      deps = [
+        "//camera/common:base",
+        "//camera/common:libcros_camera",
+        "//camera/common:libcros_camera_mojom",
+        "//common-mk/testrunner:testrunner",
+      ]
+    }
   }
 
   executable("feature_profile_test") {

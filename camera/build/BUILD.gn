@@ -44,6 +44,7 @@ config("cros_camera_common") {
     "USE_CAMERA_FEATURE_FACE_DETECTION=${use.camera_feature_face_detection}",
     "USE_CAMERA_FEATURE_FRAME_ANNOTATOR=${use.camera_feature_frame_annotator}",
     "USE_CAMERA_FEATURE_HDRNET=${use.camera_feature_hdrnet}",
+    "USE_CAMERA_FEATURE_KIOSK_VISION=${use.camera_feature_kiosk_vision}",
     "USE_CAMERA_FEATURE_PORTRAIT_MODE=${use.camera_feature_portrait_mode}",
     "USE_CAMERA_FEATURE_SUPER_RES=${use.camera_feature_super_res}",
     "USE_IPU6=${use.ipu6}",

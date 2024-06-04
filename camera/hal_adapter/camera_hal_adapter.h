@@ -121,6 +121,10 @@ class CameraHalAdapter {
 
   mojom::EffectsConfigPtr GetCameraEffect();
 
+  void SetKioskVisionConfig(
+      const base::FilePath& dlc_path,
+      mojo::PendingRemote<mojom::KioskVisionObserver> observer);
+
   void SetCameraDiagnosticsClient(CameraDiagnosticsClient* client);
 
  protected:
