@@ -87,6 +87,10 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   IfaceType iface_type() const { return iface_type_; }
   WiFiPhy::Priority priority() const { return priority_; }
 
+  // Return the nl80211 reqpresentation of |type|, or std::nullopt if type is
+  // not a supported device type.
+  static std::optional<nl80211_iftype> IfaceTypeToNl80211Type(IfaceType type);
+
  protected:
   FRIEND_TEST(LocalDeviceTest, PostDeviceEvent);
   FRIEND_TEST(LocalDeviceTest, SetEnabled);

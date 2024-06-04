@@ -145,4 +145,18 @@ std::ostream& operator<<(std::ostream& stream, LocalDevice::DeviceEvent event) {
   return stream;
 }
 
+std::optional<nl80211_iftype> LocalDevice::IfaceTypeToNl80211Type(
+    IfaceType type) {
+  switch (type) {
+    case IfaceType::kAP:
+      return NL80211_IFTYPE_AP;
+    case IfaceType::kP2PGO:
+      return NL80211_IFTYPE_P2P_GO;
+    case IfaceType::kP2PClient:
+      return NL80211_IFTYPE_P2P_CLIENT;
+    default:
+      return std::nullopt;
+  }
+}
+
 }  // namespace shill
