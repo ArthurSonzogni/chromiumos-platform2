@@ -108,6 +108,7 @@ void MemoryPressureTrainingCondition::OnMemoryPressureSignalReceived(
   // signals.
   if (signal_name == resource_manager::kMemoryPressureChrome &&
       pressure_level == 0) {
+    DVLOG(1) << "Clear memory levels";
     memory_levels_.clear();
     satisfactory_to_start_ = true;
     satisfactory_to_continue_ = true;
