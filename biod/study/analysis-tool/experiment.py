@@ -80,6 +80,11 @@ class Experiment:
         TableCol.Enroll_Group.value,
         TableCol.Verify_Group.value,
     ]
+    USER_GROUP_TABLE_COLS = [
+        TableCol.User.value,
+        TableCol.Group.value,
+    ]
+    """Column names used in a user_group mapping table."""
 
     @staticmethod
     def _false_table_query(
@@ -139,51 +144,6 @@ class Experiment:
 
         return false_table
 
-    @staticmethod
-    def _add_groups_to_table(
-        tbl: pd.DataFrame, user_groups: pd.DataFrame
-    ) -> pd.DataFrame:
-        """Adds the appropriate group columns for any user columns in `tbl`.
-
-        This joins the `Group` columns from `users_groups` with any user columns
-        in `tbl`.
-
-        The `user_groups` table is expected to have a `User` and `Group` column.
-        """
-
-        # Add Group column.
-        if Experiment.TableCol.User.value in tbl.columns:
-            tbl = tbl.join(
-                user_groups.set_index(Experiment.TableCol.Verify_User.value),
-                on=Experiment.TableCol.Verify_User.value,
-            )
-
-        # Add Verify_Group column.
-        if Experiment.TableCol.Verify_User.value in tbl.columns:
-            tbl = tbl.join(
-                user_groups.rename(
-                    columns={
-                        Experiment.TableCol.User.value: Experiment.TableCol.Verify_User.value,
-                        Experiment.TableCol.Group.value: Experiment.TableCol.Verify_Group.value,
-                    }
-                ).set_index(Experiment.TableCol.Verify_User.value),
-                on=Experiment.TableCol.Verify_User.value,
-            )
-
-        # Add Enroll_Group column.
-        if Experiment.TableCol.Enroll_User.value in tbl.columns:
-            tbl = tbl.join(
-                user_groups.rename(
-                    columns={
-                        Experiment.TableCol.User.value: Experiment.TableCol.Enroll_User.value,
-                        Experiment.TableCol.Group.value: Experiment.TableCol.Enroll_Group.value,
-                    }
-                ).set_index(Experiment.TableCol.Enroll_User.value),
-                on=Experiment.TableCol.Enroll_User.value,
-            )
-
-        return tbl
-
     def __init__(
         self,
         #  num_enrollment: int,
@@ -204,6 +164,7 @@ class Experiment:
         self._tbl_frr_decisions = frr_decisions
         self._tbl_fa_list = fa_list
         self._tbl_fr_list = None
+        self._tbl_user_groups = None
 
     def Describe(self):
         print("Users:", self.num_users)
@@ -243,6 +204,78 @@ class Experiment:
             self._tbl_fr_list = fr_list
 
         return self._tbl_fr_list
+
+    def user_groups_table(self) -> Optional[pd.DataFrame]:
+        """Return the user group mapping table.
+
+        This function will search for user-group mapping information in the
+        following order:
+        1. Preexisting user groups added through the add_groups function
+        2. Group mappings in FRR decisions table
+        3. Group mappings in FAR decisions table
+
+        If no group information is found in any of these, None is returned.
+
+        Considering we do not know whether all user/groups are represented in
+        the enrollment or verification set, we scan both. However, we do not
+        scan both FAR and FRR decision tables.
+        """
+
+        def exists_with_groups(table: Optional[pd.DataFrame]) -> bool:
+            """Return True if `table` exists and contains group cols."""
+            if table is None:
+                return False
+            return fpsutils.has_columns(table, self.DECISION_TABLE_GROUP_COLS)
+
+        if self._tbl_user_groups is None:
+            if exists_with_groups(self._tbl_frr_decisions):
+                tbl = self._tbl_frr_decisions
+            elif exists_with_groups(self._tbl_far_decisions):
+                tbl = self._tbl_far_decisions
+            else:
+                return None
+
+            assert tbl is not None, "exists_with_groups allowed None table"
+
+            enroll_groups = tbl[
+                [
+                    Experiment.TableCol.Enroll_User.value,
+                    Experiment.TableCol.Enroll_Group.value,
+                ]
+            ].copy(deep=True)
+            verify_groups = tbl[
+                [
+                    Experiment.TableCol.Verify_User.value,
+                    Experiment.TableCol.Verify_Group.value,
+                ]
+            ].copy(deep=True)
+
+            # Rename columns.
+            enroll_groups.columns = [
+                Experiment.TableCol.User.value,
+                Experiment.TableCol.Group.value,
+            ]
+            verify_groups.columns = [
+                Experiment.TableCol.User.value,
+                Experiment.TableCol.Group.value,
+            ]
+
+            user_groups = pd.concat([enroll_groups, verify_groups])
+            user_groups.drop_duplicates(inplace=True)
+            user_groups.sort_values(
+                Experiment.TableCol.User.value, inplace=True
+            )
+            user_groups.reset_index(inplace=True, drop=True)
+            self._tbl_user_groups = user_groups
+
+        return self._tbl_user_groups
+
+    def user_groups_table_to_csv(self, csv_file_path: pathlib.Path) -> None:
+        """Write out the user group mapping table to a CSV file."""
+        user_groups = self.user_groups_table()
+        if user_groups is None:
+            raise ValueError("No user group information found")
+        user_groups.to_csv(csv_file_path, index=False)
 
     def fa_trials_count(self) -> int:
         """Return the total number of false accept cross matches."""
@@ -452,20 +485,41 @@ class Experiment:
     def add_groups(self, user_groups: pd.DataFrame):
         """Add the appropriate group columns to all saved tables."""
 
+        self._tbl_user_groups = user_groups
+
         if not self._tbl_far_decisions is None:
-            self._tbl_far_decisions = Experiment._add_groups_to_table(
+            self._tbl_far_decisions = _add_groups_to_table(
                 self._tbl_far_decisions, user_groups
             )
 
         if not self._tbl_frr_decisions is None:
-            self._tbl_frr_decisions = Experiment._add_groups_to_table(
+            self._tbl_frr_decisions = _add_groups_to_table(
                 self._tbl_frr_decisions, user_groups
             )
 
         if not self._tbl_fa_list is None:
-            self._tbl_fa_list = Experiment._add_groups_to_table(
+            self._tbl_fa_list = _add_groups_to_table(
                 self._tbl_fa_list, user_groups
             )
+
+    def add_groups_from_csv(
+        self,
+        csv_file_path: pathlib.Path = pathlib.Path("User_groups.csv"),
+    ):
+        """Add group information from a user group mapping CSV file."""
+
+        user_groups: pd.DataFrame = pd.read_csv(csv_file_path)
+        # Ensure that the required columns exist.
+        if not fpsutils.has_columns(
+            user_groups,
+            Experiment.USER_GROUP_TABLE_COLS,
+        ):
+            raise ValueError(
+                f"CSV file {csv_file_path} doesn't contain columns"
+                f" {Experiment.USER_GROUP_TABLE_COLS}."
+            )
+
+        self.add_groups(user_groups)
 
     def add_groups_from_collection_dir(self, collection_dir: pathlib.Path):
         """Add the appropriate group columns to all saved tables.
@@ -484,6 +538,51 @@ class Experiment:
                 ],
             )
         )
+
+
+def _add_groups_to_table(
+    tbl: pd.DataFrame, user_groups: pd.DataFrame
+) -> pd.DataFrame:
+    """Adds the appropriate group columns for any user columns in `tbl`.
+
+    This joins the `Group` columns from `users_groups` with any user columns
+    in `tbl`.
+
+    The `user_groups` table is expected to have a `User` and `Group` column.
+    """
+
+    # Add Group column, if it already contains a User column.
+    if Experiment.TableCol.User.value in tbl.columns:
+        tbl = tbl.join(
+            user_groups.set_index(Experiment.TableCol.Verify_User.value),
+            on=Experiment.TableCol.Verify_User.value,
+        )
+
+    # Add Verify_Group column, if it already contains a Verify_User column.
+    if Experiment.TableCol.Verify_User.value in tbl.columns:
+        tbl = tbl.join(
+            user_groups.rename(
+                columns={
+                    Experiment.TableCol.User.value: Experiment.TableCol.Verify_User.value,
+                    Experiment.TableCol.Group.value: Experiment.TableCol.Verify_Group.value,
+                }
+            ).set_index(Experiment.TableCol.Verify_User.value),
+            on=Experiment.TableCol.Verify_User.value,
+        )
+
+    # Add Enroll_Group column, if it already contains an Enroll_User column.
+    if Experiment.TableCol.Enroll_User.value in tbl.columns:
+        tbl = tbl.join(
+            user_groups.rename(
+                columns={
+                    Experiment.TableCol.User.value: Experiment.TableCol.Enroll_User.value,
+                    Experiment.TableCol.Group.value: Experiment.TableCol.Enroll_Group.value,
+                }
+            ).set_index(Experiment.TableCol.Enroll_User.value),
+            on=Experiment.TableCol.Enroll_User.value,
+        )
+
+    return tbl
 
 
 def _read_decision_file(csv_file_path: pathlib.Path) -> pd.DataFrame:

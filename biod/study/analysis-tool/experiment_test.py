@@ -10,7 +10,7 @@ import tempfile
 import textwrap
 import unittest
 
-from experiment import Experiment
+from experiment import *
 import fpsutils
 import pandas as pd
 import simulate_fpstudy
@@ -128,6 +128,20 @@ class Test_Experiment_CSV(unittest.TestCase):
         }
     )
 
+    CSV_USER_GROUP = textwrap.dedent(
+        """\
+        User,Group
+        10001,A
+        10002,B
+        """
+    )
+    CSV_USER_GROUP_DATAFRAME = pd.DataFrame(
+        {
+            Experiment.TableCol.User.value: [10001, 10002],
+            Experiment.TableCol.Group.value: ["A", "B"],
+        }
+    )
+
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         self.temp_csv = pathlib.Path(self.temp_dir.name) / "test.csv"
@@ -173,6 +187,98 @@ class Test_Experiment_CSV(unittest.TestCase):
         self.temp_csv.unlink(missing_ok=True)
         exp.frr_decisions_to_csv(self.temp_csv)
         self.assertEqual(self.temp_csv.read_text(), self.CSV_FRR)
+
+    def test_read_user_group(self):
+        exp = Experiment(num_verification=0, num_fingers=0, num_users=0)
+
+        self.temp_csv.write_text(self.CSV_USER_GROUP)
+        exp.add_groups_from_csv(self.temp_csv)
+        df = exp.user_groups_table()
+        self.assertTrue(df.equals(self.CSV_USER_GROUP_DATAFRAME))
+
+    def test_write_user_group(self):
+        exp = Experiment(num_verification=0, num_fingers=0, num_users=0)
+
+        exp.add_groups(self.CSV_USER_GROUP_DATAFRAME)
+        self.temp_csv.unlink(missing_ok=True)
+        exp.user_groups_table_to_csv(self.temp_csv)
+        self.assertEqual(self.temp_csv.read_text(), self.CSV_USER_GROUP)
+
+
+class Test_Experiment_User_Groups(unittest.TestCase):
+    """Test the User Group capabilities of `Experiment`."""
+
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_csv = pathlib.Path(self.temp_dir.name) / "test.csv"
+
+    def tearDown(self) -> None:
+        self.temp_dir.cleanup()
+        return super().tearDown()
+
+    FRR_DATAFRAME_GROUPS = pd.DataFrame(
+        {
+            Experiment.TableCol.Enroll_User.value: [10001, 10002],
+            Experiment.TableCol.Enroll_Finger.value: [1, 2],
+            Experiment.TableCol.Verify_User.value: [10001, 10002],
+            Experiment.TableCol.Verify_Finger.value: [1, 2],
+            Experiment.TableCol.Verify_Sample.value: [25, 25],
+            Experiment.TableCol.Decision.value: [
+                Experiment.Decision.Accept.value,
+                Experiment.Decision.Accept.value,
+            ],
+            # With Enroll and Verify groups.
+            Experiment.TableCol.Enroll_Group.value: ["A", "B"],
+            Experiment.TableCol.Verify_Group.value: ["A", "B"],
+        }
+    )
+
+    FAR_DATAFRAME_GROUPS = pd.DataFrame(
+        {
+            Experiment.TableCol.Enroll_User.value: [10001, 10001],
+            Experiment.TableCol.Enroll_Finger.value: [1, 1],
+            Experiment.TableCol.Verify_User.value: [10002, 10002],
+            Experiment.TableCol.Verify_Finger.value: [3, 3],
+            Experiment.TableCol.Verify_Sample.value: [12, 13],
+            Experiment.TableCol.Decision.value: [
+                Experiment.Decision.Reject.value,
+                Experiment.Decision.Reject.value,
+            ],
+            # With Enroll and Verify groups.
+            Experiment.TableCol.Enroll_Group.value: ["A", "A"],
+            Experiment.TableCol.Verify_Group.value: ["B", "B"],
+        }
+    )
+    """This example requires the groups to be scanned from both enroll and verify."""
+
+    USER_GROUPS_TABLE = pd.DataFrame(
+        {
+            Experiment.TableCol.User.value: [10001, 10002],
+            Experiment.TableCol.Group.value: ["A", "B"],
+        }
+    )
+
+    def test_infer_groups_from_frr(self):
+        """Test whether the user_groups can be scanned from the FRR table."""
+        exp = Experiment(num_verification=0, num_fingers=0, num_users=0)
+
+        exp.add_frr_decisions(self.FRR_DATAFRAME_GROUPS)
+        user_groups = exp.user_groups_table()
+        self.assertIsNotNone(user_groups)
+        self.assertTrue(user_groups.equals(self.USER_GROUPS_TABLE))
+
+    def test_infer_groups_from_far(self):
+        """Test whether the user_groups can be scanned from the FAR table.
+
+        Additionally, this checks whether groups are detected from both enroll
+        and verify columns.
+        """
+        exp = Experiment(num_verification=0, num_fingers=0, num_users=0)
+
+        exp.add_far_decisions(self.FAR_DATAFRAME_GROUPS)
+        user_groups = exp.user_groups_table()
+        self.assertIsNotNone(user_groups)
+        self.assertTrue(user_groups.equals(self.USER_GROUPS_TABLE))
 
 
 if __name__ == "__main__":
