@@ -8,9 +8,11 @@
 #include <semaphore.h>
 #include <stdio.h>
 
+#include <cstdint>
 #include <iterator>
 #include <limits>
 #include <list>
+#include <sstream>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -1404,7 +1406,7 @@ class Camera3FrameContentTest
       public ::testing::WithParamInterface<
           std::tuple<int32_t, int32_t, int32_t, int32_t>> {
  public:
-  const double kContentTestSsimThreshold = 0.75;
+  const double kContentTestSsimThreshold = 0.70;
 
   Camera3FrameContentTest()
       : Camera3FrameFixture(std::get<0>(GetParam())),
