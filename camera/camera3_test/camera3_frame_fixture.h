@@ -111,6 +111,102 @@ class Camera3FrameFixture : public Camera3StreamFixture {
                      {0xFF, 0xFF, 0x00, 6.0f / 8},  // Yellow
                      {0xFF, 0xFF, 0xFF, 7.0f},      // White
                  },
+             },
+             {
+                 // Gc05a2
+                 {0xFF, 0xFF, 0xFF, 0.0f / 25600},      // White
+                 {0xFF, 0xFF, 0x00, 200.0f / 25600},    // Yellow
+                 {0x00, 0xFF, 0xFF, 852.0f / 25600},    // Cyan
+                 {0x00, 0xFF, 0x00, 1504.0f / 25600},   // Green
+                 {0xFF, 0x00, 0xFF, 2156.0f / 25600},   // Magenta
+                 {0xFF, 0x00, 0x00, 2808.0f / 25600},   // Red
+                 {0x00, 0x00, 0xFF, 3460.0f / 25600},   // Blue
+                 {0x00, 0x00, 0x00, 4112.0f / 25600},   // Black
+                 {0xFF, 0xFF, 0xFF, 4764.0f / 25600},   // White
+                 {0xFF, 0xFF, 0x00, 5416.0f / 25600},   // Yellow
+                 {0x00, 0xFF, 0xFF, 6068.0f / 25600},   // Cyan
+                 {0x00, 0xFF, 0x00, 6720.0f / 25600},   // Green
+                 {0xFF, 0x00, 0xFF, 7372.0f / 25600},   // Magenta
+                 {0xFF, 0x00, 0x00, 8024.0f / 25600},   // Red
+                 {0x00, 0x00, 0xFF, 8676.0f / 25600},   // Blue
+                 {0x00, 0x00, 0x00, 9328.0f / 25600},   // Black
+                 {0xFF, 0xFF, 0xFF, 9980.0f / 25600},   // White
+                 {0xFF, 0xFF, 0x00, 10632.0f / 25600},  // Yellow
+                 {0x00, 0xFF, 0xFF, 11284.0f / 25600},  // Cyan
+                 {0x00, 0xFF, 0x00, 11936.0f / 25600},  // Green
+                 {0xFF, 0x00, 0xFF, 12588.0f / 25600},  // Magenta
+                 {0xFF, 0x00, 0x00, 13240.0f / 25600},  // Red
+                 {0x00, 0x00, 0xFF, 13892.0f / 25600},  // Blue
+                 {0x00, 0x00, 0x00, 14544.0f / 25600},  // Black
+                 {0xFF, 0xFF, 0xFF, 15196.0f / 25600},  // White
+                 {0xFF, 0xFF, 0x00, 15848.0f / 25600},  // Yellow
+                 {0x00, 0xFF, 0xFF, 16500.0f / 25600},  // Cyan
+                 {0x00, 0xFF, 0x00, 17152.0f / 25600},  // Green
+                 {0xFF, 0x00, 0xFF, 17804.0f / 25600},  // Magenta
+                 {0xFF, 0x00, 0x00, 18456.0f / 25600},  // Red
+                 {0x00, 0x00, 0xFF, 19108.0f / 25600},  // Blue
+                 {0x00, 0x00, 0x00, 19760.0f / 25600},  // Black
+                 {0xFF, 0xFF, 0xFF, 20412.0f / 25600},  // White
+                 {0xFF, 0xFF, 0x00, 21064.0f / 25600},  // Yellow
+                 {0x00, 0xFF, 0xFF, 21716.0f / 25600},  // Cyan
+                 {0x00, 0xFF, 0x00, 22368.0f / 25600},  // Green
+                 {0xFF, 0x00, 0xFF, 23020.0f / 25600},  // Magenta
+                 {0xFF, 0x00, 0x00, 23672.0f / 25600},  // Red
+                 {0x00, 0x00, 0xFF, 24324.0f / 25600},  // Blue
+                 {0x00, 0x00, 0x00, 24976.0f / 25600},  // Black
+             },
+             {
+                 // Gc08a3
+                 {0xFF, 0xFF, 0x00, 0.0f / 2223},     // Yellow
+                 {0x00, 0xFF, 0xFF, 37.0f / 2223},    // Cyan
+                 {0x00, 0xFF, 0x00, 82.0f / 2223},    // Green
+                 {0xFF, 0x00, 0xFF, 127.0f / 2223},   // Magenta
+                 {0xFF, 0x00, 0x00, 172.0f / 2223},   // Red
+                 {0x00, 0x00, 0xFF, 217.0f / 2223},   // Blue
+                 {0x00, 0x00, 0x00, 262.0f / 2223},   // Black
+                 {0xFF, 0xFF, 0xFF, 307.0f / 2223},   // White
+                 {0xFF, 0xFF, 0x00, 352.0f / 2223},   // Yellow
+                 {0x00, 0xFF, 0xFF, 397.0f / 2223},   // Cyan
+                 {0x00, 0xFF, 0x00, 442.0f / 2223},   // Green
+                 {0xFF, 0x00, 0xFF, 487.0f / 2223},   // Magenta
+                 {0xFF, 0x00, 0x00, 532.0f / 2223},   // Red
+                 {0x00, 0x00, 0xFF, 577.0f / 2223},   // Blue
+                 {0x00, 0x00, 0x00, 622.0f / 2223},   // Black
+                 {0xFF, 0xFF, 0xFF, 667.0f / 2223},   // White
+                 {0xFF, 0xFF, 0x00, 712.0f / 2223},   // Yellow
+                 {0x00, 0xFF, 0xFF, 757.0f / 2223},   // Cyan
+                 {0x00, 0xFF, 0x00, 802.0f / 2223},   // Green
+                 {0xFF, 0x00, 0xFF, 847.0f / 2223},   // Magenta
+                 {0xFF, 0x00, 0x00, 892.0f / 2223},   // Red
+                 {0x00, 0x00, 0xFF, 937.0f / 2223},   // Blue
+                 {0x00, 0x00, 0x00, 982.0f / 2223},   // Black
+                 {0xFF, 0xFF, 0xFF, 1027.0f / 2223},  // White
+                 {0xFF, 0xFF, 0x00, 1072.0f / 2223},  // Yellow
+                 {0x00, 0xFF, 0xFF, 1117.0f / 2223},  // Cyan
+                 {0x00, 0xFF, 0x00, 1162.0f / 2223},  // Green
+                 {0xFF, 0x00, 0xFF, 1207.0f / 2223},  // Magenta
+                 {0xFF, 0x00, 0x00, 1252.0f / 2223},  // Red
+                 {0x00, 0x00, 0xFF, 1297.0f / 2223},  // Blue
+                 {0x00, 0x00, 0x00, 1342.0f / 2223},  // Black
+                 {0xFF, 0xFF, 0xFF, 1387.0f / 2223},  // White
+                 {0xFF, 0xFF, 0x00, 1432.0f / 2223},  // Yellow
+                 {0x00, 0xFF, 0xFF, 1477.0f / 2223},  // Cyan
+                 {0x00, 0xFF, 0x00, 1522.0f / 2223},  // Green
+                 {0xFF, 0x00, 0xFF, 1567.0f / 2223},  // Magenta
+                 {0xFF, 0x00, 0x00, 1612.0f / 2223},  // Red
+                 {0x00, 0x00, 0xFF, 1657.0f / 2223},  // Blue
+                 {0x00, 0x00, 0x00, 1702.0f / 2223},  // Black
+                 {0xFF, 0xFF, 0xFF, 1747.0f / 2223},  // White
+                 {0xFF, 0xFF, 0x00, 1792.0f / 2223},  // Yellow
+                 {0x00, 0xFF, 0xFF, 1837.0f / 2223},  // Cyan
+                 {0x00, 0xFF, 0x00, 1882.0f / 2223},  // Green
+                 {0xFF, 0x00, 0xFF, 1927.0f / 2223},  // Magenta
+                 {0xFF, 0x00, 0x00, 1972.0f / 2223},  // Red
+                 {0x00, 0x00, 0xFF, 2017.0f / 2223},  // Blue
+                 {0x00, 0x00, 0x00, 2062.0f / 2223},  // Black
+                 {0xFF, 0xFF, 0xFF, 2107.0f / 2223},  // White
+                 {0xFF, 0xFF, 0x00, 2152.0f / 2223},  // Yellow
+                 {0x00, 0xFF, 0xFF, 2189.0f / 2223},  // Cyan
              }}),
         supported_color_bars_test_pattern_modes_(
             {ANDROID_SENSOR_TEST_PATTERN_MODE_COLOR_BARS_FADE_TO_GRAY,
