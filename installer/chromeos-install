@@ -140,24 +140,6 @@ fast_dd() {
       "count=${count_common}"
 }
 
-# Get the specified env var for the specified partition.
-#  $1 the field name such as "PARTITION_SIZE", "RESERVED_EBS"
-#  $2 the partition such as "1", or "ROOT_A"
-_get_field() {
-  local field part
-  field="$1"
-  part="$2"
-  eval echo \""\${${field}_${part}}"\"
-}
-
-get_partition_size() {
-  _get_field PARTITION_SIZE "$@"
-}
-
-get_reserved_ebs() {
-  _get_field RESERVED_EBS "$@"
-}
-
 # Update a specific partition in the destination device.
 write_partition() {
   local user_part="$1"
