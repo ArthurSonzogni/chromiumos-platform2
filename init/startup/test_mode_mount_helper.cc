@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/startup/test_mode_mount_helper.h"
+
 #include <sys/stat.h>
 
 #include <memory>
@@ -23,7 +25,6 @@
 #include "init/startup/mount_helper.h"
 #include "init/startup/security_manager.h"
 #include "init/startup/startup_dep_impl.h"
-#include "init/startup/test_mode_mount_helper.h"
 
 namespace {
 

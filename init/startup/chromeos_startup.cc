@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/startup/chromeos_startup.h"
+
 #include <fcntl.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -35,7 +37,6 @@
 
 #include "init/encrypted_reboot_vault/encrypted_reboot_vault.h"
 #include "init/file_attrs_cleaner.h"
-#include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
 #include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/startup/stateful_mount.h"
+
 #include <limits.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -23,7 +25,6 @@
 #include <libstorage/platform/fake_platform.h>
 #include <libstorage/platform/mock_platform.h>
 
-#include "init/startup/chromeos_startup.h"
 #include "init/startup/fake_startup_dep_impl.h"
 #include "init/startup/standard_mount_helper.h"
 #include "init/startup/startup_dep_impl.h"

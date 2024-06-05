@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/startup/factory_mode_mount_helper.h"
+
 #include <sys/mount.h>
 
 #include <memory>
@@ -15,7 +17,6 @@
 #include <base/values.h>
 #include <libstorage/platform/platform.h>
 
-#include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/startup_dep_impl.h"

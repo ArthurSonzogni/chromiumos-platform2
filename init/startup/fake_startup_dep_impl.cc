@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/startup/fake_startup_dep_impl.h"
+
 #include <stdlib.h>
 #include <sys/types.h>
 
@@ -12,8 +14,6 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <libstorage/platform/platform.h>
-
-#include "init/startup/fake_startup_dep_impl.h"
 
 namespace startup {
 

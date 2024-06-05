@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/startup/security_manager.h"
+
 #include <fcntl.h>
 #include <stdlib.h>
 #include <sys/sysmacros.h>
@@ -26,7 +28,6 @@
 #include <linux/loadpin.h>
 
 #include "init/startup/fake_startup_dep_impl.h"
-#include "init/startup/security_manager.h"
 #include "init/startup/startup_dep_impl.h"
 
 using testing::_;

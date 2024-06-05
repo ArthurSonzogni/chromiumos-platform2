@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/startup/uefi_startup.h"
+
 #include <fcntl.h>
 #include <sys/mount.h>
 
@@ -16,7 +18,6 @@
 #include <libstorage/platform/mock_platform.h>
 
 #include "init/startup/constants.h"
-#include "init/startup/uefi_startup.h"
 #include "init/startup/uefi_startup_impl.h"
 
 using testing::_;

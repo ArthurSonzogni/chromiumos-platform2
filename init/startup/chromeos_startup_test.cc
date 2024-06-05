@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/startup/chromeos_startup.h"
+
 #include <stdlib.h>
 #include <sys/sysmacros.h>
 #include <sys/types.h>
@@ -25,7 +27,6 @@
 #include <libhwsec-foundation/tlcl_wrapper/mock_tlcl_wrapper.h>
 #include <vpd/fake_vpd.h>
 
-#include "init/startup/chromeos_startup.h"
 #include "init/startup/constants.h"
 #include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/fake_startup_dep_impl.h"

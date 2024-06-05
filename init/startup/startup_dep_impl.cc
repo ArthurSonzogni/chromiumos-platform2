@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/startup/startup_dep_impl.h"
+
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
@@ -26,7 +28,6 @@
 #include <libcrossystem/crossystem.h>
 #include <libstorage/platform/platform.h>
 
-#include "init/startup/startup_dep_impl.h"
 #include "init/utils.h"
 
 namespace {

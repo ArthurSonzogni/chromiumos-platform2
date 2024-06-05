@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "init/startup/standard_mount_helper.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -13,7 +15,6 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
-#include "init/startup/standard_mount_helper.h"
 #include "init/startup/startup_dep_impl.h"
 
 namespace startup {
