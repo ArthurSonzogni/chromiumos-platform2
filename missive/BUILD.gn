@@ -8,15 +8,13 @@ import("//common-mk/proto_library.gni")
 group("all") {
   deps = [
     ":libmissiveclient_pc",
+    ":missive_testing_tool",
     ":missiveclientlib",
     ":missiveclienttestlib",
     ":missived",
   ]
   if (use.test) {
-    deps += [
-      ":missive_testing_tool",
-      ":missived_testrunner",
-    ]
+    deps += [ ":missived_testrunner" ]
   }
 }
 
@@ -168,6 +166,18 @@ static_library("missiveclienttestlib") {
   ]
 }
 
+executable("missive_testing_tool") {
+  sources = [ "testing_tool.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    ":missiveclientlib",
+    "//missive/analytics:libanalytics",
+  ]
+
+  # Installed to /usr/local/bin since it's on test/dev images only.
+  install_path = "/usr/local/bin"
+}
+
 if (use.test) {
   pkg_config("target_test") {
     pkg_deps = [
@@ -257,15 +267,6 @@ if (use.test) {
       "//missive/util:status",
       "//missive/util:test_callbacks_support",
       "//missive/util:time",
-    ]
-  }
-
-  executable("missive_testing_tool") {
-    sources = [ "testing_tool.cc" ]
-    configs += [ ":target_defaults" ]
-    deps = [
-      ":missiveclientlib",
-      "//missive/analytics:libanalytics",
     ]
   }
 }
