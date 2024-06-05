@@ -51,26 +51,24 @@ def GenerateFARResults(
         np.meshgrid(
             users,
             fingers,
-            samples,
             users,
-            fingers,  # This will not generate the final user assignments.
+            fingers,
+            samples,  # This will not generate the final user assignments.
         )
     ).T.reshape(-1, 5)
 
     # The resultant cross_mat contains a row entry for all combinations of
-    # user x finger x sample x user x finger (5 columns).
+    # user x finger x user x finger x sample (5 columns).
     assert cross_mat.shape == (num_rows_naive, 5)
 
     df = pd.DataFrame(
         columns=[
+            Experiment.TableCol.Enroll_User.value,
+            Experiment.TableCol.Enroll_Finger.value,
             Experiment.TableCol.Verify_User.value,
             Experiment.TableCol.Verify_Finger.value,
             Experiment.TableCol.Verify_Sample.value,
-            Experiment.TableCol.Enroll_User.value,
-            Experiment.TableCol.Enroll_Finger.value,
             Experiment.TableCol.Decision.value,
-            # Experiment.TableCol.Verify_Group.value,
-            # Experiment.TableCol.Enroll_Group.value,
         ]
     )
 
@@ -84,11 +82,11 @@ def GenerateFARResults(
         print("Loading Matrix Into Data Frame")
     df[
         [
+            Experiment.TableCol.Enroll_User.value,
+            Experiment.TableCol.Enroll_Finger.value,
             Experiment.TableCol.Verify_User.value,
             Experiment.TableCol.Verify_Finger.value,
             Experiment.TableCol.Verify_Sample.value,
-            Experiment.TableCol.Enroll_User.value,
-            Experiment.TableCol.Enroll_Finger.value,
         ]
     ] = cross_mat
 
