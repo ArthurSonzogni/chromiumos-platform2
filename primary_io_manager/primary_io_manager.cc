@@ -54,7 +54,8 @@ bool PrimaryIoManager::IsPrimaryIoDevice(const std::string& in_device) {
            device_iter->second->mouse == PRIMARY;
   }
 
-  return true;
+  LOG(INFO) << "Unknown device: " << in_device;
+  return false;
 }
 
 void PrimaryIoManager::PruneDevices() {
@@ -73,6 +74,20 @@ void PrimaryIoManager::OnDeviceAdded(const ScopedUdevDevicePtr device) {
   bool is_mouse = false;
   bool is_keyboard = false;
 
+  udev_device* parent = udev_device_get_parent_with_subsystem_devtype(
+      device.get(), "usb", "usb_device");
+  if (!parent) {
+    LOG(WARNING) << "Mouse or keyboard in input subsystem does not have a USB "
+                    "parent";
+    return;
+  }
+
+  const char* syspath = udev_device_get_syspath(parent);
+  if (!syspath) {
+    LOG(WARNING) << "no syspath for parent device, unable to continue";
+    return;
+  }
+
   const char* prop =
       udev_device_get_property_value(device.get(), "ID_INPUT_MOUSE");
   if (prop && !strcmp(prop, "1")) {
@@ -88,20 +103,6 @@ void PrimaryIoManager::OnDeviceAdded(const ScopedUdevDevicePtr device) {
   }
 
   if (!is_keyboard && !is_mouse) {
-    return;
-  }
-
-  udev_device* parent = udev_device_get_parent_with_subsystem_devtype(
-      device.get(), "usb", "usb_device");
-  if (!parent) {
-    LOG(WARNING) << "Mouse or keyboard in input subsystem does not have a USB "
-                    "parent";
-    return;
-  }
-
-  const char* syspath = udev_device_get_syspath(parent);
-  if (!syspath) {
-    LOG(WARNING) << "no syspath for parent device, unable to continue";
     return;
   }
 
@@ -247,7 +248,7 @@ std::vector<std::string> PrimaryIoManager::GetIoDevices() {
   PruneDevices();
 
   std::vector<std::string> devices;
-  devices.push_back(std::format("{0:>5}|{1:>7}|{2:>32}|{3}", "kb/ms", "bus:dev",
+  devices.push_back(std::format("{0:>5}|{1:>7}|{2:<32}|{3}", "kb/ms", "bus:dev",
                                 "name", "syspath"));
   for (const auto& [path, device] : io_devices_) {
     devices.push_back(IoDeviceToString(path, device.get()));

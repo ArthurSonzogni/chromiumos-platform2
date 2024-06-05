@@ -357,7 +357,7 @@ AllowConformingUsbDeviceRule::~AllowConformingUsbDeviceRule() = default;
 bool AllowConformingUsbDeviceRule::CheckIfDeviceIsPrimary(
     const std::string& device_path) {
   brillo::ErrorPtr error;
-  bool is_primary;
+  bool is_primary = false;
 
   CHECK(primary_io_manager_handle_)
       << "No connection to primary_io_manager available";
