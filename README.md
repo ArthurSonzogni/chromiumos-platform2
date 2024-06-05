@@ -112,6 +112,7 @@ copies.
 | [libipp](./libipp/) | Library for building and parsing IPP (Internet Printing Protocol) frames |
 | [libmems](./libmems/) | Utility library to configure, manage and retrieve events from IIO sensors |
 | [libpasswordprovider](./libpasswordprovider/) | Password Provider library for securely managing credentials with system services |
+| [libpmt](./libpmt/) | Library for processing [Intel PMT](https://github.com/intel/Intel-PMT) data |
 | [libsar](./libsar/) | Utility library to read the config file of IIO Sar sensors |
 | [libsegmentation](./libsegmentation/) | Library to check which software features are allowed |
 | [libstorage](./libstorage/) | Library presenting files, block devices and filesystems |

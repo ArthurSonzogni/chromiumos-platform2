@@ -1,0 +1,89 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/deps.gni")
+import("//common-mk/pkg_config.gni")
+import("//common-mk/proto_library.gni")
+
+group("all") {
+  deps = [
+    ":install_libpmt_headers",
+    ":libpmt",
+    ":libpmt_pc",
+    ":pmt_data_proto",
+  ]
+  if (use.test) {
+    deps += [ ":libpmt_tests" ]
+  }
+}
+
+pkg_config("target_defaults_pkg_deps") {
+  pkg_deps = [
+    "libbrillo",
+    "libxml-2.0",
+    "protobuf",
+  ]
+}
+
+proto_library("pmt_data_proto") {
+  proto_in_dir = "proto"
+  proto_out_dir = "include/libpmt/bits"
+  sources = [ "${proto_in_dir}/pmt_data.proto" ]
+
+  # Use -fPIC so this code can be linked into a shared library.
+  use_pic = true
+  standalone = true
+  install_package = true
+}
+
+shared_library("libpmt") {
+  sources = [
+    "pmt_collector.cc",
+    "pmt_impl.cc",
+  ]
+  configs += [ ":target_defaults_pkg_deps" ]
+  install_path = "lib"
+  deps = [ ":pmt_data_proto" ]
+}
+
+install_config("install_libpmt_headers") {
+  sources = [
+    "bits",
+    "pmt.h",
+    "pmt_collector.h",
+  ]
+  install_path = "/usr/include/libpmt"
+  recursive = true
+}
+
+generate_pkg_config("libpmt_pc") {
+  name = "libpmt"
+  output_name = "libpmt"
+  description = "Library to sample and decode Intel PMT data"
+  version = "0.1"
+
+  libs = [ "-lpmt" ]
+  install = true
+}
+
+if (use.test) {
+  copy("install_libpmt_testdata") {
+    sources = [ "testdata" ]
+    outputs = [ "$root_out_dir/testdata" ]
+  }
+
+  executable("libpmt_tests") {
+    sources = [ "pmt_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults_pkg_deps",
+    ]
+    run_test = true
+    deps = [
+      ":install_libpmt_testdata",
+      ":libpmt",
+      "//common-mk/testrunner",
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+		<TELI:AggregatorInterface
+			xmlns="http://schemas.intel.com/telemetry/base/1/"
+			xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			xmlns:TELI="http://schemas.intel.com/telemetry/interface/aggregatorinterface"
+			xmlns:xi="http://www.w3.org/2001/XInclude"
+			xsi:schemaLocation="http://schemas.intel.com/telemetry/interface/aggregatorinterface telemetry.xsd" >
+
+			<xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="mtl_aggregator.xml"/>
+
+			<TransFormations xmlns="http://schemas.intel.com/telemetry/base/common">
+				<TransFormation name="xtal_time" transformID="xtal_time">
+					<output_dataclass>float</output_dataclass>
+					<TransFormParameters>
+						<parameterName>parameter_0</parameterName>
+					</TransFormParameters>
+					<transform>$parameter_0 / 38.4 * 1e6 </transform>
+				</TransFormation>
+				<TransFormation name="pkgc_wake_cause" transformID="pkgc_wake_cause">
+					<output_dataclass>float</output_dataclass>
+					<TransFormParameters>
+						<parameterName>parameter_0</parameterName>
+					</TransFormParameters>
+					<transform>$parameter_0 / PACKAGE_CSTATE_WAKE_REFCNT * 100 </transform>
+				</TransFormation>
+				<TransFormation name="S8.7.0" transformID="S8.7.0">
+			<output_dataclass>integer</output_dataclass>
+			<TransFormParameters>
+				<parameterName>parameter_0</parameterName>
+			</TransFormParameters>
+			<transform>( ( ( 1 - ( ( $parameter_0 >> 7 ) &amp; 0x1 ) ) * ( $parameter_0 &amp; 0xff ) ) - ( ( ( $parameter_0 >> 7 ) &amp; 0x1 ) * ( ( ( $parameter_0 &amp; 0x7f ) ^  0x7f ) + 1 ) ) )</transform>
+		</TransFormation>
+		</TransFormations>
+		<TELI:name>MTL</TELI:name>
+		<TELI:description>MTL M/P PMT Normal telemetry in Punit samples definition and transformation rules</TELI:description>
+		<TELI:uniqueid>0x130670B2</TELI:uniqueid>
+		<TELI:NDA>Public</TELI:NDA>
+		<TELI:samplePeriod>10</TELI:samplePeriod>
+		<TELI:revisionDate>2023-11-28</TELI:revisionDate>
+		<TELI:AggregatorSamples>
+		<TELI:T_AggregatorSample sampleName="PCH_TEMP" sampleGroup="SOC_TEMPERATURES" datatypeIDREF="ttemperature" sampleID="80">
+		<TELI:description>Current PCH temperature</TELI:description>
+		<TELI:SampleType>Snapshot</TELI:SampleType>
+		<TransFormInputs xmlns="http://schemas.intel.com/telemetry/base/common">
+			<TransFormInput varName="parameter_0">
+				<sampleGroupIDREF>Container_19</sampleGroupIDREF>
+				<sampleIDREF>PCH_TEMP</sampleIDREF>
+			</TransFormInput>
+		</TransFormInputs>
+		<TELI:transformREF>S8.7.0</TELI:transformREF>
+		</TELI:T_AggregatorSample>
+		<TELI:T_AggregatorSample sampleName="VPU_D0_ACTIVE_RESIDENCY" sampleGroup="VPU_D0_ACTIVE_RESIDENCY" datatypeIDREF="txtal_time" sampleID="1">
+		<TELI:description>Cycle count of amount of times VPU is in D0 active state</TELI:description>
+		<TELI:SampleType>Counter</TELI:SampleType>
+		<TransFormInputs xmlns="http://schemas.intel.com/telemetry/base/common">
+			<TransFormInput varName="parameter_0">
+				<sampleGroupIDREF>Container_0</sampleGroupIDREF>
+				<sampleIDREF>VPU_D0_ACTIVE_RESIDENCY</sampleIDREF>
+			</TransFormInput>
+		</TransFormInputs>
+		<TELI:transformREF>xtal_time</TELI:transformREF>
+	</TELI:T_AggregatorSample>
+    </TELI:AggregatorSamples>
+</TELI:AggregatorInterface>
