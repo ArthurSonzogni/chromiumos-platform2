@@ -2,14 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{bail, Context, Result};
 use log::{error, info};
 use std::{
     fs::File,
     io::BufReader,
     path::{Path, PathBuf},
     process::Command,
-    str::from_utf8,
 };
 use tar::Archive;
 use xz2::bufread::XzDecoder;
@@ -19,23 +18,25 @@ use xz2::bufread::XzDecoder;
 pub fn execute_command(mut command: Command) -> Result<()> {
     info!("Executing command: {:?}", command);
 
-    let status = command.status();
-    if status.is_ok() && status.as_ref().unwrap().success() {
-        info!("Executed command succesfully; omitting logs.");
-        return Ok(());
+    match command.output() {
+        Ok(output) => {
+            if output.status.success() {
+                return Ok(());
+            }
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let code = output.status.code().unwrap_or(1);
+            error!(
+                "Command {command:?} failed with code {code}\nStdout:\n{stdout}\nStderr:\n{stderr}"
+            );
+            bail!("Unable to execute command: Got non-zero status code");
+        }
+        Err(err) => {
+            error!("Unable to execute command: {err}");
+            bail!(err);
+        }
     }
-
-    let err = status
-        .err()
-        .map(|err| anyhow!(err))
-        .unwrap_or(anyhow!("Got non-zero status code"));
-
-    let output = command.output().context("Unable to collect logs.")?;
-    let stdout = from_utf8(&output.stdout).context("Unable to collect logs.")?;
-    let stderr = from_utf8(&output.stderr).context("Unable to collect logs.")?;
-
-    error!("Executed command failed: {err}\nStdout:\n{stdout}\nStderr:\n{stderr}");
-    bail!("Unable to execute command: {err}");
 }
 
 /// Uncompresses a tar from `src` to `dst`. In this case `src` needs to point to
