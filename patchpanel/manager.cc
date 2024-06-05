@@ -1159,9 +1159,11 @@ void Manager::NotifyARCVPNSocketConnectionEvent(
 bool Manager::SetFeatureFlag(
     patchpanel::SetFeatureFlagRequest::FeatureFlag flag, bool enabled) {
   bool old_flag = false;
+  std::string_view feature_name = "Unknown";
   switch (flag) {
     case patchpanel::SetFeatureFlagRequest::FeatureFlag::
         SetFeatureFlagRequest_FeatureFlag_WIFI_QOS:
+      feature_name = "WiFi QoS";
       old_flag = qos_svc_->is_enabled();
       if (enabled) {
         qos_svc_->Enable();
@@ -1171,6 +1173,7 @@ bool Manager::SetFeatureFlag(
       break;
     case patchpanel::SetFeatureFlagRequest::FeatureFlag::
         SetFeatureFlagRequest_FeatureFlag_CLAT:
+      feature_name = "CLAT";
       old_flag = clat_svc_->is_enabled();
       if (enabled) {
         clat_svc_->Enable();
@@ -1182,6 +1185,9 @@ bool Manager::SetFeatureFlag(
       LOG(ERROR) << __func__ << "Unknown feature flag: " << flag;
       break;
   }
+
+  LOG(INFO) << __func__ << ": set " << feature_name << " to " << enabled
+            << " from " << old_flag;
   return old_flag;
 }
 
