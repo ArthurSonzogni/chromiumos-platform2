@@ -116,6 +116,10 @@ class Bootstrap:
         Save the absolute least amount of data in `self` as possible, since
         this data must be copied to each worker process in certain runtime
         configurations.
+
+        Do not save a copy of `exp` itself, since tables may be modified upon
+        accessing them. This can cause unnecessary overhead for each worker
+        thread that could have simply be done once in this init function.
         """
         return
 
