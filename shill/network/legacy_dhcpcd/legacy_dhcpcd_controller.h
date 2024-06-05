@@ -7,6 +7,7 @@
 
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -134,6 +135,8 @@ class LegacyDHCPCDControllerFactory : public DHCPCDControllerFactoryInterface {
   // The listener that listens the D-Bus signal from the dhcpcd process.
   std::unique_ptr<LegacyDHCPCDListener> listener_;
 
+  // The pids of the dhcpcd processes that needs to stop manually.
+  std::set<int> pids_need_to_stop_;
   // The alive controllers. If |alive_controllers_| contains a pid, then there
   // is a running dhcpcd process with the pid.
   std::map<int /*pid*/, AliveController> alive_controllers_;

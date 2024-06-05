@@ -254,15 +254,31 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, CreateMultipleControllers) {
 TEST_F(LegacyDHCPCDControllerFactoryTest, ProcessExited) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
+  constexpr std::string_view kInterface = "wlan1";
+  constexpr std::string_view kPidFile = "var/run/dhcpcd7/dhcpcd-wlan1-4.pid";
+  constexpr std::string_view kLeaseFile = "var/lib/dhcpcd7/wlan1.lease";
   constexpr int kExitStatus = 3;
 
   std::unique_ptr<DHCPCDControllerInterface> controller =
-      CreateControllerSync(kPid, kDBusServiceName);
+      CreateControllerSync(kPid, kDBusServiceName, kInterface);
+
+  CreateTempFileInRoot(kPidFile);
+  CreateTempFileInRoot(kLeaseFile);
+  EXPECT_TRUE(FileExistsInRoot(kPidFile));
+  EXPECT_TRUE(FileExistsInRoot(kLeaseFile));
 
   // When ProcessManager triggers the process exit callback, the factory should
   // notify the client by EventHandler::OnProcessExited().
   EXPECT_CALL(client_, OnProcessExited(kPid, kExitStatus));
+  // The process is already exited, we should not stop it again.
+  EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid)).Times(0);
+
   std::move(process_exit_cb_).Run(kExitStatus);
+
+  // After the process is exited, the pid file and the lease file should be
+  // deleted.
+  EXPECT_FALSE(FileExistsInRoot(kPidFile));
+  EXPECT_FALSE(FileExistsInRoot(kLeaseFile));
 }
 
 TEST_F(LegacyDHCPCDControllerFactoryTest, EventHandler) {

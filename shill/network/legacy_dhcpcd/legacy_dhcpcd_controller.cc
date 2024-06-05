@@ -161,7 +161,11 @@ LegacyDHCPCDControllerFactory::LegacyDHCPCDControllerFactory(
                           base::Unretained(this)));
 }
 
-LegacyDHCPCDControllerFactory::~LegacyDHCPCDControllerFactory() = default;
+LegacyDHCPCDControllerFactory::~LegacyDHCPCDControllerFactory() {
+  // Clear all the alive dhcpcd processes.
+  alive_controllers_.clear();
+  CHECK(pids_need_to_stop_.empty());
+}
 
 std::unique_ptr<DHCPCDControllerInterface>
 LegacyDHCPCDControllerFactory::Create(
@@ -187,6 +191,7 @@ LegacyDHCPCDControllerFactory::Create(
     LOG(ERROR) << __func__ << ": Failed to start the dhcpcd process";
     return nullptr;
   }
+  pids_need_to_stop_.insert(pid);
   base::ScopedClosureRunner clean_up_closure(base::BindOnce(
       // base::Unretained(this) is safe because the closure won't be passed
       // outside this instance.
@@ -216,11 +221,15 @@ void LegacyDHCPCDControllerFactory::CleanUpDhcpcd(
     const std::string& interface,
     DHCPCDControllerInterface::Options options,
     int pid) {
-  // Pass the termination responsibility to net_base::ProcessManager.
-  // net_base::ProcessManager will try to terminate the process using SIGTERM,
-  // then SIGKill signals.  It will log an error message if it is not able to
-  // terminate the process in a timely manner.
-  process_manager_->StopProcessAndBlock(pid);
+  const auto iter = pids_need_to_stop_.find(pid);
+  if (iter != pids_need_to_stop_.end()) {
+    // Pass the termination responsibility to net_base::ProcessManager.
+    // net_base::ProcessManager will try to terminate the process using SIGTERM,
+    // then SIGKill signals.  It will log an error message if it is not able to
+    // terminate the process in a timely manner.
+    process_manager_->StopProcessAndBlock(pid);
+    pids_need_to_stop_.erase(iter);
+  }
 
   // Clean up the lease file and pid file.
   brillo::DeleteFile(root_.Append(
@@ -232,6 +241,7 @@ void LegacyDHCPCDControllerFactory::CleanUpDhcpcd(
 void LegacyDHCPCDControllerFactory::OnProcessExited(int pid, int exit_status) {
   LOG(INFO) << __func__ << ": The dhcpcd process with pid " << pid
             << " is exited with status: " << exit_status;
+  pids_need_to_stop_.erase(pid);
 
   LegacyDHCPCDController* controller = GetAliveController(pid);
   if (controller == nullptr) {
