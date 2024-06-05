@@ -1537,6 +1537,21 @@ TEST_F(ServiceTest, SetProxyConfig) {
               service_->GetNetworkValidationMode());
     Mock::VerifyAndClearExpectations(network.get());
   }
+  {
+    // If network validation is disabled for a certain technology, no matter
+    // what the proxy config setting is, it should be disabled for this service.
+    EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled)
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*network, UpdateNetworkValidationMode(
+                              NetworkMonitor::ValidationMode::kDisabled));
+    Error error;
+    service_->SetProxyConfig("{\"mode\":\"auto_detect\"}", &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_TRUE(service_->HasProxyConfig());
+    EXPECT_EQ(NetworkMonitor::ValidationMode::kDisabled,
+              service_->GetNetworkValidationMode());
+    Mock::VerifyAndClearExpectations(network.get());
+  }
 }
 
 TEST_F(ServiceTest, NetworkValidationMode) {

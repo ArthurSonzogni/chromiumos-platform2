@@ -2142,6 +2142,12 @@ NetworkMonitor::ValidationMode Service::GetNetworkValidationMode() {
     case CheckPortalState::kHTTPOnly:
       return NetworkMonitor::ValidationMode::kHTTPOnly;
     case CheckPortalState::kAutomatic:
+      // ValidateMode specified by the technology should have higher priority
+      // than the inferred value from other fields.
+      if (!manager_->IsPortalDetectionEnabled(technology())) {
+        return NetworkMonitor::ValidationMode::kDisabled;
+      }
+
       // b/279520395: Network validation should not run by default on Services
       // created through policies which most of the time represent on-prem
       // networks:
@@ -2168,13 +2174,7 @@ NetworkMonitor::ValidationMode Service::GetNetworkValidationMode() {
         return NetworkMonitor::ValidationMode::kHTTPOnly;
       }
 
-      // Otherwise, check if network validation is enabled for the network
-      // technology of this Service.
-      if (manager_->IsPortalDetectionEnabled(technology())) {
-        return NetworkMonitor::ValidationMode::kFullValidation;
-      } else {
-        return NetworkMonitor::ValidationMode::kDisabled;
-      }
+      return NetworkMonitor::ValidationMode::kFullValidation;
   }
 }
 
