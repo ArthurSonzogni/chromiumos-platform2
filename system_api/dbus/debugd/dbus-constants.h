@@ -201,6 +201,7 @@ constexpr char kAllowlistData[] = "allowlist_data";
 constexpr char kDisableCorpProtocol[] = "disable_corp_protocol";
 constexpr char kActivateFips[] = "activate_fips";
 constexpr char kEnableGlobalKey[] = "enable_global_key";
+constexpr char kUserKeys[] = "user_keys";
 }  // namespace u2f_flags
 
 }  // namespace debugd

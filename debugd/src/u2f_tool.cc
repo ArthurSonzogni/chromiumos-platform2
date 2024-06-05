@@ -34,6 +34,7 @@ constexpr const char* kKnownFlags[] = {
     u2f_flags::kDisableCorpProtocol,
     u2f_flags::kActivateFips,
     u2f_flags::kEnableGlobalKey,
+    u2f_flags::kUserKeys,
 };
 
 int ControlU2fd(bool start) {
