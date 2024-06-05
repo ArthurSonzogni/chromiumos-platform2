@@ -860,8 +860,20 @@ Stringmap CellularService::ValidateCustomApn(const Stringmap& value,
         new_apn_info[kApnTypesProperty] = str;
       if (GetNonEmptyField(value, kApnIdProperty, &str))
         new_apn_info[kApnIdProperty] = str;
-      if (GetNonEmptyField(value, kApnSourceProperty, &str))
+      if (GetNonEmptyField(value, kApnSourceProperty, &str)) {
         new_apn_info[kApnSourceProperty] = str;
+        if (str != kApnSourceAdmin && str != kApnSourceUi) {
+          LOG(WARNING) << __func__ << ": kApnSourceProperty was not Admin or Ui"
+                       << ", setting it to Ui.";
+          DCHECK(false);
+          new_apn_info[kApnSourceProperty] = kApnSourceUi;
+        }
+      } else {
+        LOG(WARNING) << __func__ << ": kApnSourceProperty was not provided, "
+                     << "setting it to Ui.";
+        DCHECK(false);
+        new_apn_info[kApnSourceProperty] = kApnSourceUi;
+      }
       if (GetNonEmptyField(value, kApnIpTypeProperty, &str))
         new_apn_info[kApnIpTypeProperty] = str;
     } else {
