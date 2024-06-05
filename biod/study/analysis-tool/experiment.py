@@ -205,6 +205,18 @@ class Experiment:
 
         return self._tbl_fr_list
 
+    def has_far_decisions(self) -> bool:
+        """Return True if an FAR decision table has been set."""
+        return self._tbl_far_decisions is not None
+
+    def has_frr_decisions(self) -> bool:
+        """Return True if an FRR decision table has been set."""
+        return self._tbl_frr_decisions is not None
+
+    def has_user_groups(self) -> bool:
+        """Return True if user group mapping table is available."""
+        return self.user_groups_table() is not None
+
     def user_groups_table(self) -> Optional[pd.DataFrame]:
         """Return the user group mapping table.
 
@@ -487,12 +499,12 @@ class Experiment:
 
         self._tbl_user_groups = user_groups
 
-        if not self._tbl_far_decisions is None:
+        if self.has_far_decisions():
             self._tbl_far_decisions = _add_groups_to_table(
                 self._tbl_far_decisions, user_groups
             )
 
-        if not self._tbl_frr_decisions is None:
+        if self.has_frr_decisions():
             self._tbl_frr_decisions = _add_groups_to_table(
                 self._tbl_frr_decisions, user_groups
             )

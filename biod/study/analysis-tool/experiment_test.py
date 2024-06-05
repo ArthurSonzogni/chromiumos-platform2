@@ -16,6 +16,45 @@ import pandas as pd
 import simulate_fpstudy
 
 
+class Test_has_user_groups(unittest.TestCase):
+    """Test the `has_user_groups` method."""
+
+    BARE_DECISIONS_TABLE = pd.DataFrame(
+        columns=Experiment.DECISION_TABLE_COLS,
+    )
+    BARE_DECISIONS_TABLE_WITH_GROUPS = pd.DataFrame(
+        columns=Experiment.DECISION_TABLE_COLS
+        + Experiment.DECISION_TABLE_GROUP_COLS,
+    )
+
+    def setUp(self) -> None:
+        """Run before each test."""
+        self.exp = Experiment(
+            num_users=72,
+            num_fingers=3,
+            num_verification=40,
+        )
+
+    def test_without_any_tables(self):
+        self.assertFalse(self.exp.has_user_groups())
+
+    def test_with_far_no_user_groups(self):
+        self.exp.add_far_decisions(self.BARE_DECISIONS_TABLE.copy())
+        self.assertFalse(self.exp.has_user_groups())
+
+    def test_with_far_and_user_groups(self):
+        self.exp.add_far_decisions(self.BARE_DECISIONS_TABLE_WITH_GROUPS.copy())
+        self.assertTrue(self.exp.has_user_groups())
+
+    def test_with_frr_no_user_groups(self):
+        self.exp.add_frr_decisions(self.BARE_DECISIONS_TABLE.copy())
+        self.assertFalse(self.exp.has_user_groups())
+
+    def test_with_frr_and_user_groups(self):
+        self.exp.add_frr_decisions(self.BARE_DECISIONS_TABLE_WITH_GROUPS.copy())
+        self.assertTrue(self.exp.has_user_groups())
+
+
 class Test_fa_query(unittest.TestCase):
     def setUp(self):
         # VerifyUser VerifyFinger VerifySample EnrollUser EnrollFinger Decision
@@ -155,6 +194,8 @@ class Test_Experiment_CSV(unittest.TestCase):
 
         self.temp_csv.write_text(self.CSV_FAR)
         exp.add_far_decisions_from_csv(self.temp_csv)
+        self.assertTrue(exp.has_far_decisions())
+        self.assertFalse(exp.has_frr_decisions())
         df = exp.far_decisions()
         self.assertTrue(df.equals(self.CSV_FAR_DATAFRAME))
 
@@ -163,6 +204,8 @@ class Test_Experiment_CSV(unittest.TestCase):
 
         self.temp_csv.write_text(self.CSV_FRR)
         exp.add_frr_decisions_from_csv(self.temp_csv)
+        self.assertFalse(exp.has_far_decisions())
+        self.assertTrue(exp.has_frr_decisions())
         df = exp.frr_decisions()
         self.assertTrue(df.equals(self.CSV_FRR_DATAFRAME))
 
@@ -193,6 +236,7 @@ class Test_Experiment_CSV(unittest.TestCase):
 
         self.temp_csv.write_text(self.CSV_USER_GROUP)
         exp.add_groups_from_csv(self.temp_csv)
+        self.assertTrue(exp.has_user_groups())
         df = exp.user_groups_table()
         self.assertTrue(df.equals(self.CSV_USER_GROUP_DATAFRAME))
 
@@ -200,6 +244,7 @@ class Test_Experiment_CSV(unittest.TestCase):
         exp = Experiment(num_verification=0, num_fingers=0, num_users=0)
 
         exp.add_groups(self.CSV_USER_GROUP_DATAFRAME)
+        self.assertTrue(exp.has_user_groups())
         self.temp_csv.unlink(missing_ok=True)
         exp.user_groups_table_to_csv(self.temp_csv)
         self.assertEqual(self.temp_csv.read_text(), self.CSV_USER_GROUP)
@@ -263,6 +308,7 @@ class Test_Experiment_User_Groups(unittest.TestCase):
         exp = Experiment(num_verification=0, num_fingers=0, num_users=0)
 
         exp.add_frr_decisions(self.FRR_DATAFRAME_GROUPS)
+        self.assertTrue(exp.has_user_groups())
         user_groups = exp.user_groups_table()
         self.assertIsNotNone(user_groups)
         self.assertTrue(user_groups.equals(self.USER_GROUPS_TABLE))
@@ -276,6 +322,7 @@ class Test_Experiment_User_Groups(unittest.TestCase):
         exp = Experiment(num_verification=0, num_fingers=0, num_users=0)
 
         exp.add_far_decisions(self.FAR_DATAFRAME_GROUPS)
+        self.assertTrue(exp.has_user_groups())
         user_groups = exp.user_groups_table()
         self.assertIsNotNone(user_groups)
         self.assertTrue(user_groups.equals(self.USER_GROUPS_TABLE))
