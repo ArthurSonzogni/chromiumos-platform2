@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/containers/flat_set.h>
 
@@ -93,6 +94,9 @@ class UserSessionMap final {
 
     // Reports if a verifier already exists with the given label.
     bool HasVerifier(const std::string& label);
+
+    // Returns all the credential verifiers.
+    std::vector<const CredentialVerifier*> GetCredentialVerifiers() const;
 
     // Add a new credential verifier using the verifier's label.
     void AddVerifier(std::unique_ptr<CredentialVerifier> verifier);

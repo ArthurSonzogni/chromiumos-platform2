@@ -24,7 +24,7 @@ using ::testing::Not;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
-// Helper utility for making a stub verifier with a given label. Returns a
+// Helper utilities for making a stub verifier with a given label. Returns a
 // "unique_ptr, ptr" pair so that tests that need to hand over ownership but
 // hold on to a pointer can easily do so. Usually used as:
 //
@@ -34,6 +34,17 @@ MakeTestVerifier(std::string label) {
   auto owned_ptr = std::make_unique<MockCredentialVerifier>(
       AuthFactorType::kPassword, std::move(label),
       AuthFactorMetadata{.metadata = PasswordMetadata()});
+  auto* unowned_ptr = owned_ptr.get();
+  return {std::move(owned_ptr), unowned_ptr};
+}
+
+// Similar to MakeTestVerifier above, but makes a fingerprint verifier instead
+// of a labelled password verifier. Useful for testing type-based verifiers.
+std::pair<std::unique_ptr<CredentialVerifier>, CredentialVerifier*>
+MakeTestFingerprintVerifier() {
+  auto owned_ptr = std::make_unique<MockCredentialVerifier>(
+      AuthFactorType::kFingerprint, "",
+      AuthFactorMetadata{.metadata = FingerprintMetadata()});
   auto* unowned_ptr = owned_ptr.get();
   return {std::move(owned_ptr), unowned_ptr};
 }
@@ -168,6 +179,7 @@ TEST_F(UserSessionMapTest, AddVerifiersBeforeSession) {
   auto [verifier1, ptr1] = MakeTestVerifier(kLabel1);
   auto [verifier2, ptr2] = MakeTestVerifier(kLabel2);
   auto [verifier3, ptr3] = MakeTestVerifier(kLabel1);  // For second user.
+  auto [verifier4, ptr4] = MakeTestFingerprintVerifier();
 
   // Create forwarders and give them verifiers.
   auto forwarder1 = std::make_unique<UserSessionMap::VerifierForwarder>(
@@ -177,10 +189,16 @@ TEST_F(UserSessionMapTest, AddVerifiersBeforeSession) {
   forwarder1->AddVerifier(std::move(verifier1));
   forwarder1->AddVerifier(std::move(verifier2));
   forwarder2->AddVerifier(std::move(verifier3));
+  forwarder1->AddVerifier(std::move(verifier4));
 
   // Confirm that the user sessions don't exist.
   ASSERT_THAT(session_map_.Find(kUsername1), IsNull());
   ASSERT_THAT(session_map_.Find(kUsername2), IsNull());
+
+  // Confirm that the forwarders return the verifiers they're holding.
+  EXPECT_THAT(forwarder1->GetCredentialVerifiers(),
+              UnorderedElementsAre(ptr1, ptr2, ptr4));
+  EXPECT_THAT(forwarder2->GetCredentialVerifiers(), UnorderedElementsAre(ptr3));
 
   // Create the users, they should get the verifiers from the forwarders.
   EXPECT_THAT(session_map_.Add(kUsername1, std::make_unique<MockUserSession>()),
@@ -190,16 +208,21 @@ TEST_F(UserSessionMapTest, AddVerifiersBeforeSession) {
   auto* user1 = session_map_.Find(kUsername1);
   ASSERT_THAT(user1, Not(IsNull()));
   EXPECT_THAT(user1->GetCredentialVerifiers(),
-              UnorderedElementsAre(ptr1, ptr2));
+              UnorderedElementsAre(ptr1, ptr2, ptr4));
   auto* user2 = session_map_.Find(kUsername2);
   ASSERT_THAT(user2, Not(IsNull()));
   EXPECT_THAT(user2->GetCredentialVerifiers(), UnorderedElementsAre(ptr3));
+
+  // Confirm that the forwarders return the verifiers they're no longer holding.
+  EXPECT_THAT(forwarder1->GetCredentialVerifiers(),
+              UnorderedElementsAre(ptr1, ptr2, ptr4));
+  EXPECT_THAT(forwarder2->GetCredentialVerifiers(), UnorderedElementsAre(ptr3));
 
   // Deleting the forwarders should do nothing.
   forwarder1 = nullptr;
   forwarder2 = nullptr;
   EXPECT_THAT(user1->GetCredentialVerifiers(),
-              UnorderedElementsAre(ptr1, ptr2));
+              UnorderedElementsAre(ptr1, ptr2, ptr4));
   EXPECT_THAT(user2->GetCredentialVerifiers(), UnorderedElementsAre(ptr3));
 }
 
@@ -212,6 +235,7 @@ TEST_F(UserSessionMapTest, AddVerifiersAfterSession) {
   auto [verifier1, ptr1] = MakeTestVerifier(kLabel1);
   auto [verifier2, ptr2] = MakeTestVerifier(kLabel2);
   auto [verifier3, ptr3] = MakeTestVerifier(kLabel1);  // For second user.
+  auto [verifier4, ptr4] = MakeTestFingerprintVerifier();
 
   // Create the users.
   EXPECT_THAT(session_map_.Add(kUsername1, std::make_unique<MockUserSession>()),
@@ -231,17 +255,23 @@ TEST_F(UserSessionMapTest, AddVerifiersAfterSession) {
   forwarder1->AddVerifier(std::move(verifier1));
   forwarder1->AddVerifier(std::move(verifier2));
   forwarder2->AddVerifier(std::move(verifier3));
+  forwarder1->AddVerifier(std::move(verifier4));
 
   // The sessions should have the verifiers.
   EXPECT_THAT(user1->GetCredentialVerifiers(),
-              UnorderedElementsAre(ptr1, ptr2));
+              UnorderedElementsAre(ptr1, ptr2, ptr4));
   EXPECT_THAT(user2->GetCredentialVerifiers(), UnorderedElementsAre(ptr3));
+
+  // And the forwarders should also be able to return them.
+  EXPECT_THAT(forwarder1->GetCredentialVerifiers(),
+              UnorderedElementsAre(ptr1, ptr2, ptr4));
+  EXPECT_THAT(forwarder2->GetCredentialVerifiers(), UnorderedElementsAre(ptr3));
 
   // Deleting the forwarders should do nothing.
   forwarder1 = nullptr;
   forwarder2 = nullptr;
   EXPECT_THAT(user1->GetCredentialVerifiers(),
-              UnorderedElementsAre(ptr1, ptr2));
+              UnorderedElementsAre(ptr1, ptr2, ptr4));
   EXPECT_THAT(user2->GetCredentialVerifiers(), UnorderedElementsAre(ptr3));
 }
 

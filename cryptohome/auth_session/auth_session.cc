@@ -474,19 +474,29 @@ AuthFactorMap& AuthSession::GetAuthFactorMap() {
 
 void AuthSession::RecordAuthSessionStart(
     const AuthFactorMap& auth_factor_map) const {
-  std::vector<std::string> factors;
-  factors.reserve(auth_factor_map.size());
+  std::vector<std::string> factor_labels;
+  factor_labels.reserve(auth_factor_map.size());
   for (AuthFactorMap::ValueView item : auth_factor_map) {
-    factors.push_back(base::StringPrintf(
+    factor_labels.push_back(base::StringPrintf(
         "%s(type %d %s)", item.auth_factor().label().c_str(),
         static_cast<int>(item.auth_factor().type()),
         AuthFactorStorageTypeToDebugString(item.storage_type())));
+  }
+  std::vector<const CredentialVerifier*> verifiers =
+      verifier_forwarder_.GetCredentialVerifiers();
+  std::vector<std::string> verifier_labels;
+  verifier_labels.reserve(verifiers.size());
+  for (const CredentialVerifier* verifier : verifiers) {
+    verifier_labels.push_back(
+        base::StringPrintf("%s(type %d)", verifier->auth_factor_label().c_str(),
+                           static_cast<int>(verifier->auth_factor_type())));
   }
   LOG(INFO) << "AuthSession: started with is_ephemeral_user="
             << is_ephemeral_user_
             << " intent=" << IntentToDebugString(auth_intent_)
             << " user_exists=" << user_exists_
-            << " factors=" << base::JoinString(factors, ",") << ".";
+            << " factors=" << base::JoinString(factor_labels, ",")
+            << " verifiers=" << base::JoinString(verifier_labels, ",") << ".";
 }
 
 void AuthSession::SetAuthorizedForIntents(

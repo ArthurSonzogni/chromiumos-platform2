@@ -57,6 +57,27 @@ bool UserSessionMap::VerifierForwarder::HasVerifier(const std::string& label) {
       forwarding_destination_);
 }
 
+std::vector<const CredentialVerifier*>
+UserSessionMap::VerifierForwarder::GetCredentialVerifiers() const {
+  return std::visit(
+      base::Overloaded{
+          [](UserSession* session) {
+            return session->GetCredentialVerifiers();
+          },
+          [](const VerifierStorage& storage) {
+            std::vector<const CredentialVerifier*> verifiers;
+            verifiers.reserve(storage.by_label.size() + storage.by_type.size());
+            for (const auto& [unused, verifier] : storage.by_label) {
+              verifiers.push_back(verifier.get());
+            }
+            for (const auto& [unused, verifier] : storage.by_type) {
+              verifiers.push_back(verifier.get());
+            }
+            return verifiers;
+          }},
+      forwarding_destination_);
+}
+
 void UserSessionMap::VerifierForwarder::AddVerifier(
     std::unique_ptr<CredentialVerifier> verifier) {
   std::string label = verifier->auth_factor_label();
