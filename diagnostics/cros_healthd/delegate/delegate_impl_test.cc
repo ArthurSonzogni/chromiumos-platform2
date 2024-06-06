@@ -113,6 +113,27 @@ class FakeI2cReadCommand : public ec::I2cReadCommand {
   uint32_t fake_data_ = 0;
 };
 
+class FakeMotionSenseCommandLidAngle : public ec::MotionSenseCommandLidAngle {
+ public:
+  FakeMotionSenseCommandLidAngle() = default;
+
+  // ec::EcCommand overrides.
+  bool Run(int fd) override { return fake_run_result_; }
+  uint32_t Result() const override { return fake_result_; }
+
+  // ec::MotionSenseCommandLidAngle overrides.
+  uint16_t LidAngle() const override { return fake_lid_angle_; }
+
+  void SetRunResult(bool run_result) { fake_run_result_ = run_result; }
+  void SetResult(uint32_t result) { fake_result_ = result; }
+  void SetLidAngle(uint32_t lid_angle) { fake_lid_angle_ = lid_angle; }
+
+ private:
+  bool fake_run_result_ = false;
+  uint32_t fake_result_ = 0;
+  uint16_t fake_lid_angle_ = 0;
+};
+
 class DelegateImplTest : public BaseFileTest {
  public:
   DelegateImplTest(const DelegateImplTest&) = delete;
@@ -145,6 +166,12 @@ class DelegateImplTest : public BaseFileTest {
   std::optional<uint32_t> GetSmartBatteryTemperatureSync(uint8_t i2c_port) {
     base::test::TestFuture<std::optional<uint32_t>> future;
     delegate_.GetSmartBatteryTemperature(i2c_port, future.GetCallback());
+    return future.Get();
+  }
+
+  std::optional<uint16_t> GetLidAngleSync() {
+    base::test::TestFuture<std::optional<uint16_t>> future;
+    delegate_.GetLidAngle(future.GetCallback());
     return future.Get();
   }
 
@@ -344,6 +371,41 @@ TEST_F(DelegateImplTest, GetSmartBatteryTemperatureFailed) {
 
   auto output = GetSmartBatteryTemperatureSync(i2c_port);
   EXPECT_EQ(output, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, GetLidAngleSuccess) {
+  auto cmd = std::make_unique<FakeMotionSenseCommandLidAngle>();
+  cmd->SetRunResult(true);
+  cmd->SetLidAngle(180);
+
+  EXPECT_CALL(mock_ec_command_factory_, MotionSenseCommandLidAngle())
+      .WillOnce(Return(std::move(cmd)));
+
+  auto output = GetLidAngleSync();
+  EXPECT_EQ(output, 180);
+}
+
+TEST_F(DelegateImplTest, GetLidAngleFailed) {
+  auto cmd = std::make_unique<FakeMotionSenseCommandLidAngle>();
+  cmd->SetRunResult(false);
+
+  EXPECT_CALL(mock_ec_command_factory_, MotionSenseCommandLidAngle())
+      .WillOnce(Return(std::move(cmd)));
+
+  auto output = GetLidAngleSync();
+  EXPECT_EQ(output, std::nullopt);
+}
+
+TEST_F(DelegateImplTest, GetLidAngleUnreliableResult) {
+  auto cmd = std::make_unique<FakeMotionSenseCommandLidAngle>();
+  cmd->SetRunResult(false);
+  cmd->SetResult(1);
+
+  EXPECT_CALL(mock_ec_command_factory_, MotionSenseCommandLidAngle())
+      .WillOnce(Return(std::move(cmd)));
+
+  auto output = GetLidAngleSync();
+  EXPECT_EQ(output, LID_ANGLE_UNRELIABLE);
 }
 
 }  // namespace

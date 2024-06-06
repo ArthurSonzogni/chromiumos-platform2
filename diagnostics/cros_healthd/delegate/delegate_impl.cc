@@ -410,17 +410,21 @@ void DelegateImpl::MonitorStylus(
 
 void DelegateImpl::GetLidAngle(GetLidAngleCallback callback) {
   auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDONLY));
-  ec::MotionSenseCommandLidAngle cmd;
-  if (!cmd.Run(cros_fd.get())) {
+  auto cmd = ec_command_factory_->MotionSenseCommandLidAngle();
+  if (!cmd) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  if (!cmd->Run(cros_fd.get())) {
     // TODO(b/274524224): Remove the below invalid EC result handling.
-    if (cmd.Result() == 1 || cmd.Result() == 3) {
+    if (cmd->Result() == 1 || cmd->Result() == 3) {
       std::move(callback).Run(LID_ANGLE_UNRELIABLE);
       return;
     }
     std::move(callback).Run(std::nullopt);
     return;
   }
-  std::move(callback).Run(cmd.LidAngle());
+  std::move(callback).Run(cmd->LidAngle());
 }
 
 void DelegateImpl::GetPsr(GetPsrCallback callback) {
