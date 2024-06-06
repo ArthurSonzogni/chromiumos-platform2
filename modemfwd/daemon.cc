@@ -414,7 +414,8 @@ void Daemon::OnModemCarrierIdReady(
   ELOG(INFO) << "Modem with equipment ID \"" << equipment_id << "\""
              << " and device ID [" << device_id << "] ready to flash";
 
-  if (prefs_->KeyValueMatches(kDisableAutoUpdateKey, "1")) {
+  if (prefs_->Exists(kDisableAutoUpdateKey) &&
+      prefs_->KeyValueMatches(kDisableAutoUpdateKey, "1")) {
     LOG(INFO) << "Update disabled by pref";
     notification_mgr_->NotifyUpdateFirmwareCompletedSuccess(false, 0);
     return;
