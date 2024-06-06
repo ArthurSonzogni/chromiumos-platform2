@@ -12,11 +12,11 @@
 #include <utility>
 #include <vector>
 
-#include <base/logging.h>
-#include <base/files/file_util.h>
 #include <base/files/file_enumerator.h>
+#include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include "base/strings/string_split.h"
+#include <base/strings/string_split.h>
 
 namespace fd_logger {
 namespace {
@@ -32,12 +32,17 @@ constexpr size_t kHistogramBucketsToList = 32;
 void LogOpenFilesInProcess(const base::FilePath& proc_path) {
   // Collect all the open file descriptors in the process.
   std::vector<base::FilePath> entries;
-  base::FileEnumerator dir(proc_path.Append("fd"), /*recursive=*/false,
-                           base::FileEnumerator::FILES, "*");
+  base::FileEnumerator dir(
+      proc_path.Append("fd"), /*recursive=*/false,
+      base::FileEnumerator::FILES | base::FileEnumerator::SHOW_SYM_LINKS, "*");
   for (base::FilePath name = dir.Next(); !name.empty(); name = dir.Next()) {
     base::FilePath link_target;
     if (!base::ReadSymbolicLink(name, &link_target)) {
-      PLOG(ERROR) << "Unable to read symbolic link: " << name;
+      // Ignore if process or FS path is no longer valid or if FD is closing
+      // (dangling symlink).
+      if (logging::GetLastSystemErrorCode() != ENOENT) {
+        PLOG(ERROR) << "Unable to read symbolic link: " << name;
+      }
       continue;
     }
     entries.push_back(link_target);
@@ -49,7 +54,10 @@ void LogOpenFilesInProcess(const base::FilePath& proc_path) {
   // Read the executable binary name.
   base::FilePath exe;
   if (!base::ReadSymbolicLink(proc_path.Append("exe"), &exe)) {
-    PLOG(ERROR) << "Unable to read exe link: " << proc_path;
+    // Do not log an error if process disappeared already.
+    if (logging::GetLastSystemErrorCode() != ENOENT) {
+      PLOG(ERROR) << "Unable to read exe link: " << proc_path;
+    }
     return;
   }
 
