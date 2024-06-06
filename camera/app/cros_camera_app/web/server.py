@@ -59,10 +59,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             os.sendfile(self.wfile.fileno(), f.fileno(), 0, size)
 
 
-def serve_forever():
-    # TODO(shik): Make host and port configurable
-    host = "0.0.0.0"
-    port = 8000
+def serve_forever(host: str, port: int):
     logging.info("Start at http://%s:%d", host, port)
     # TODO(shik): Support auto-opening the web page.
     with http.server.ThreadingHTTPServer((host, port), Handler) as httpd:

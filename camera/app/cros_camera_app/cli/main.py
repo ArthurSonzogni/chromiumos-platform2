@@ -372,8 +372,19 @@ def cmd_fake_hal_info():
     help="Start web camera server",
     description="Start a simple web camera page server",
 )
-def cmd_web():
-    server.serve_forever()
+@cli.option(
+    "--host",
+    help="the host to listen",
+    default="0.0.0.0",
+)
+@cli.option(
+    "--port",
+    help="the port to listen",
+    type=int,
+    default=8000,
+)
+def cmd_web(host: str, port: int):
+    server.serve_forever(host, port)
 
 
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
