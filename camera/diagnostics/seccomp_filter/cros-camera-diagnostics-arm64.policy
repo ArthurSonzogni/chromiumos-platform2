@@ -54,6 +54,8 @@ rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
 sched_getaffinity: 1
+sched_getattr: 1
+sched_setattr: 1
 sched_yield: 1
 sendmsg: 1
 sendto: 1
