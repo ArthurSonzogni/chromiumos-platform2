@@ -1139,7 +1139,7 @@ void Network::OnTermsAndConditions(const net_base::HttpUrl& url) {
 }
 
 std::ostream& operator<<(std::ostream& stream, const Network& network) {
-  return stream << network.logging_tag();
+  return stream << network.interface_name() << " " << network.logging_tag();
 }
 
 }  // namespace shill

@@ -370,7 +370,7 @@ class Network : public NetworkMonitor::ClientNetwork {
 
   bool fixed_ip_params() const { return fixed_ip_params_; }
   const std::string& logging_tag() const { return logging_tag_; }
-  void set_logging_tag(const std::string& logging_tag) {
+  void set_logging_tag(std::string_view logging_tag) {
     logging_tag_ = logging_tag;
   }
 

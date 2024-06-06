@@ -521,7 +521,6 @@ void Device::ResetServiceAttachedNetwork() {
   if (selected_service_) {
     auto primary_network = GetPrimaryNetwork();
     CHECK(primary_network);
-    primary_network->set_logging_tag(LoggingTag());
     selected_service_->AttachNetwork(primary_network->AsWeakPtr());
   }
 }
