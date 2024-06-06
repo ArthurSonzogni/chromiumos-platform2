@@ -410,7 +410,7 @@ void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int32_t shill_id) {
     return;
   }
   SetActionTimer(false, LocalDevice::IfaceType::kP2PClient);
-  p2p_group_owners_[shill_id]->RemoveGroup();
+  p2p_group_owners_[shill_id]->RemoveGroup(false);
 }
 
 void P2PManager::DisconnectFromP2PGroup(P2PResultCallback callback,
@@ -432,7 +432,7 @@ void P2PManager::DisconnectFromP2PGroup(P2PResultCallback callback,
     return;
   }
   SetActionTimer(false, LocalDevice::IfaceType::kP2PClient);
-  p2p_clients_[shill_id]->Disconnect();
+  p2p_clients_[shill_id]->Disconnect(false);
 }
 
 void P2PManager::HelpRegisterDerivedBool(PropertyStore* store,
@@ -502,12 +502,12 @@ void P2PManager::DeleteP2PDevice(P2PDeviceRefPtr p2p_dev) {
   if (!p2p_dev)
     return;
 
-  manager_->wifi_provider()->DeleteLocalDevice(p2p_dev);
   if (p2p_dev->iface_type() == LocalDevice::IfaceType::kP2PGO) {
     p2p_group_owners_.erase(p2p_dev->shill_id());
   } else {
     p2p_clients_.erase(p2p_dev->shill_id());
   }
+  manager_->wifi_provider()->DeleteLocalDevice(p2p_dev);
 
   DisconnectFromSupplicantPrimaryP2PDeviceProxy();
 }
@@ -677,8 +677,9 @@ void P2PManager::OnP2PDeviceEvent(LocalDevice::DeviceEvent event,
     case LocalDevice::DeviceEvent::kLinkDown: {
       DeleteP2PDevice(p2p_dev);
       if (!result_callback_ || action_timer_callback_.IsCancelled()) {
-        // kLinkDown should only occur in response to an explicit stop request,
-        // so we should always have an active callback and timer
+        // If we aren't processing a Shill initiated request, kLinkDown should
+        // only occur in response to an explicit stop request, so we should
+        // always have an active callback and timer.
         LOG(ERROR) << "No available callback or action timer for event: "
                    << event;
         return;
@@ -687,6 +688,10 @@ void P2PManager::OnP2PDeviceEvent(LocalDevice::DeviceEvent event,
                                          ? kDestroyP2PGroupResultSuccess
                                          : kDisconnectFromP2PGroupResultSuccess,
                                      std::nullopt);
+      return;
+    }
+    case LocalDevice::DeviceEvent::kLinkDownOnResourceBusy: {
+      DeleteP2PDevice(p2p_dev);
       return;
     }
     case LocalDevice::DeviceEvent::kLinkFailure:
@@ -837,6 +842,17 @@ void P2PManager::P2PNetworkStarted(P2PDeviceRefPtr device) {
           : kConnectToP2PGroupResultSuccess;
   CancelActionTimerAndPostResult(result_code, device->shill_id());
   return;
+}
+
+void P2PManager::DeviceTeardownOnResourceBusy(uint32_t shill_id) {
+  if (p2p_group_owners_.contains(shill_id)) {
+    p2p_group_owners_[shill_id]->RemoveGroup(true);
+    return;
+  }
+  if (p2p_clients_.contains(shill_id)) {
+    p2p_clients_[shill_id]->Disconnect(true);
+    return;
+  }
 }
 
 }  // namespace shill

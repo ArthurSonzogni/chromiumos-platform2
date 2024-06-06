@@ -54,7 +54,11 @@ class P2PDevice : public LocalDevice,
                          // up L3 connectivity
     kClientConnected,    // P2P client has joined a group and L3 link has been
                          // established
-    kClientDisconnecting,  // P2P client is disconnecting from a group
+    kClientDisconnecting,  // P2P client is disconnecting from a group due to an
+                           // API request
+    kClientDisconnectingOnResourceBusy,  // P2P client is disconnecting from a
+                                         // group due to a request triggered by
+                                         // Shill due to resource constraints.
 
     // P2P GO states.
     kGOStarting,     // P2P GO is creating a group
@@ -62,6 +66,9 @@ class P2PDevice : public LocalDevice,
                      // network
     kGOActive,       // P2P GO has created a group and can accept connections
     kGOStopping,     // P2P GO is destroying a group
+    kGOStoppingOnResourceBusy,  // P2P GO is destroying a group due to a request
+                                // triggered by Shill due to resource
+                                // constraints.
   };
 
   // Constructor function
@@ -108,11 +115,11 @@ class P2PDevice : public LocalDevice,
   mockable bool Connect(std::unique_ptr<P2PService> service);
 
   // Removes the current P2P group. Functionality is stubbed.
-  mockable bool RemoveGroup();
+  mockable bool RemoveGroup(bool resource_busy);
 
   // Disconnect a P2P connection with a device |peer_address|.
   // Functionality is stubbed.
-  mockable bool Disconnect();
+  mockable bool Disconnect(bool resource_busy);
 
   // Get log name prefix.
   const std::string& log_name() const { return log_name_; }

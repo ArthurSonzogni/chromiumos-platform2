@@ -91,6 +91,9 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   // Indicates that P2PDevice creation has failed.
   void OnDeviceCreationFailed(LocalDevice::IfaceType iface_type);
 
+  // Tear down the device at |shill_id|.
+  void DeviceTeardownOnResourceBusy(uint32_t shill_id);
+
  private:
   friend class P2PManagerTest;
   FRIEND_TEST(P2PManagerTest, SetP2PAllowed);
@@ -122,6 +125,7 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   FRIEND_TEST(P2PManagerTest, StartTimeout_GOConfiguring);
   FRIEND_TEST(P2PManagerTest, StartTimeout_ClientAssociating);
   FRIEND_TEST(P2PManagerTest, StartTimeout_ClientConfiguring);
+  FRIEND_TEST(P2PManagerTest, DestroyGroupOnResourceBusy);
 
   // Stop p2p device and return error if GO cannot be fully configured within
   // |kP2PGOStartTimeout| time.

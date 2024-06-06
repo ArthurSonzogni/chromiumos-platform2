@@ -547,7 +547,8 @@ const char* TetheringManager::TetheringStateName(const TetheringState& state) {
     case TetheringState::kTetheringRestarting:
       return kTetheringStateRestarting;
     default:
-      NOTREACHED_IN_MIGRATION() << "Unhandled tethering state " << static_cast<int>(state);
+      NOTREACHED_IN_MIGRATION()
+          << "Unhandled tethering state " << static_cast<int>(state);
       return "Invalid";
   }
 }
@@ -1034,6 +1035,7 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
   switch (event) {
     case LocalDevice::DeviceEvent::kInterfaceDisabled:
     case LocalDevice::DeviceEvent::kLinkDown:
+    case LocalDevice::DeviceEvent::kLinkDownOnResourceBusy:
       if (state_ == TetheringState::kTetheringStarting) {
         PostSetEnabledResult(SetEnabledResult::kDownstreamWiFiFailure);
       }
@@ -1456,7 +1458,8 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
     case StopReason::kResourceBusy:
       return kTetheringIdleReasonResourceBusy;
     default:
-      NOTREACHED_IN_MIGRATION() << "Unhandled stop reason " << static_cast<int>(reason);
+      NOTREACHED_IN_MIGRATION()
+          << "Unhandled stop reason " << static_cast<int>(reason);
       return "Invalid";
   }
 }

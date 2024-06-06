@@ -436,7 +436,7 @@ TEST_F(P2PManagerTest, ConnectAndDisconnectClient) {
             expected_shill_id);
   EXPECT_EQ(info_result[0].Get<String>(kP2PClientInfoStateProperty),
             kP2PClientInfoStateConnected);
-  EXPECT_CALL(*p2p_device, Disconnect()).WillOnce(Return(true));
+  EXPECT_CALL(*p2p_device, Disconnect).WillOnce(Return(true));
   p2p_manager_->DisconnectFromP2PGroup(cb.Get(), expected_shill_id);
   EXPECT_FALSE(IsActionTimerCancelled());
 
@@ -484,7 +484,7 @@ TEST_F(P2PManagerTest, CreateAndDestroyGroup) {
   EXPECT_EQ(info_result[0].Get<String>(kP2PGroupInfoStateProperty),
             kP2PGroupInfoStateActive);
 
-  EXPECT_CALL(*p2p_device, RemoveGroup()).WillOnce(Return(true));
+  EXPECT_CALL(*p2p_device, RemoveGroup).WillOnce(Return(true));
   p2p_manager_->DestroyP2PGroup(cb.Get(), expected_shill_id);
   EXPECT_FALSE(IsActionTimerCancelled());
 
@@ -1345,7 +1345,7 @@ TEST_F(P2PManagerTest, StopTimeout_GOStopping) {
             kCreateP2PGroupResultSuccess);
   int32_t expected_shill_id = response_dict.Get<int32_t>(kP2PDeviceShillID);
 
-  ON_CALL(*p2p_device, RemoveGroup()).WillByDefault(Return(true));
+  ON_CALL(*p2p_device, RemoveGroup).WillByDefault(Return(true));
   p2p_manager_->DestroyP2PGroup(cb.Get(), expected_shill_id);
   FastForward(false, true);
   EXPECT_TRUE(IsActionTimerCancelled());
@@ -1389,12 +1389,56 @@ TEST_F(P2PManagerTest, StopTimeout_ClientDisconnecting) {
             kConnectToP2PGroupResultSuccess);
   int32_t expected_shill_id = response_dict.Get<int32_t>(kP2PDeviceShillID);
 
-  ON_CALL(*p2p_device, Disconnect()).WillByDefault(Return(true));
+  ON_CALL(*p2p_device, Disconnect).WillByDefault(Return(true));
   p2p_manager_->DisconnectFromP2PGroup(cb.Get(), expected_shill_id);
   FastForward(false, false);
   EXPECT_TRUE(IsActionTimerCancelled());
   ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
             kDisconnectFromP2PGroupResultTimeout);
+}
+
+TEST_F(P2PManagerTest, DestroyGroupOnResourceBusy) {
+  MockP2PDevice* p2p_device = new NiceMock<MockP2PDevice>(
+      &manager_, LocalDevice::IfaceType::kP2PGO, "wlan0", 0, 0,
+      WiFiPhy::Priority(0), event_cb_.Get());
+  base::MockOnceCallback<void(KeyValueStore)> cb;
+  int32_t expected_shill_id = p2p_manager_->next_unique_id_;
+
+  KeyValueStore info_pattern;
+  info_pattern.Set<int32_t>(kP2PGroupInfoShillIDProperty, expected_shill_id);
+  info_pattern.Set<String>(kP2PGroupInfoStateProperty,
+                           kP2PGroupInfoStateActive);
+  KeyValueStores info_result;
+
+  info_result = GetGroupInfos(p2p_manager_);
+  ASSERT_EQ(info_result.size(), 0);
+
+  KeyValueStore response_dict = CreateP2PGroup(p2p_device);
+  ASSERT_EQ(response_dict.Get<std::string>(kP2PResultCode),
+            kCreateP2PGroupResultSuccess);
+  ASSERT_EQ(response_dict.Get<int32_t>(kP2PDeviceShillID), expected_shill_id);
+  ASSERT_EQ(p2p_manager_->p2p_group_owners_[expected_shill_id], p2p_device);
+
+  EXPECT_CALL(*p2p_device, GetGroupInfo()).WillOnce(Return(info_pattern));
+  info_result = GetGroupInfos(p2p_manager_);
+  ASSERT_EQ(info_result.size(), 1);
+  EXPECT_EQ(info_result[0].Get<int32_t>(kP2PGroupInfoShillIDProperty),
+            expected_shill_id);
+  EXPECT_EQ(info_result[0].Get<String>(kP2PGroupInfoStateProperty),
+            kP2PGroupInfoStateActive);
+
+  EXPECT_CALL(*p2p_device, RemoveGroup).WillOnce(Return(true));
+  p2p_manager_->DeviceTeardownOnResourceBusy(expected_shill_id);
+
+  EXPECT_CALL(*p2p_device, state())
+      .WillRepeatedly(Return(P2PDevice::P2PDeviceState::kReady));
+  p2p_manager_->OnP2PDeviceEvent(LocalDevice::DeviceEvent::kLinkDown,
+                                 p2p_device);
+  DispatchPendingEvents();
+  ASSERT_EQ(p2p_manager_->p2p_group_owners_.count(expected_shill_id), 0);
+
+  info_result = GetGroupInfos(p2p_manager_);
+  ASSERT_EQ(info_result.size(), 0);
 }
 
 }  // namespace shill

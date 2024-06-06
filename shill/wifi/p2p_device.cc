@@ -45,6 +45,7 @@ const char* GroupInfoState(P2PDevice::P2PDeviceState state) {
     case P2PDevice::P2PDeviceState::kGOActive:
       return kP2PGroupInfoStateActive;
     case P2PDevice::P2PDeviceState::kGOStopping:
+    case P2PDevice::P2PDeviceState::kGOStoppingOnResourceBusy:
       return kP2PGroupInfoStateStopping;
     case P2PDevice::P2PDeviceState::kUninitialized:
     case P2PDevice::P2PDeviceState::kReady:
@@ -52,9 +53,11 @@ const char* GroupInfoState(P2PDevice::P2PDeviceState state) {
     case P2PDevice::P2PDeviceState::kClientConfiguring:
     case P2PDevice::P2PDeviceState::kClientConnected:
     case P2PDevice::P2PDeviceState::kClientDisconnecting:
+    case P2PDevice::P2PDeviceState::kClientDisconnectingOnResourceBusy:
       return kP2PGroupInfoStateIdle;
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled P2P state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled P2P state " << static_cast<int>(state);
   return kP2PGroupInfoStateIdle;
 }
 
@@ -67,6 +70,7 @@ const char* ClientInfoState(P2PDevice::P2PDeviceState state) {
     case P2PDevice::P2PDeviceState::kClientConnected:
       return kP2PClientInfoStateConnected;
     case P2PDevice::P2PDeviceState::kClientDisconnecting:
+    case P2PDevice::P2PDeviceState::kClientDisconnectingOnResourceBusy:
       return kP2PClientInfoStateDisconnecting;
     case P2PDevice::P2PDeviceState::kUninitialized:
     case P2PDevice::P2PDeviceState::kReady:
@@ -74,9 +78,11 @@ const char* ClientInfoState(P2PDevice::P2PDeviceState state) {
     case P2PDevice::P2PDeviceState::kGOConfiguring:
     case P2PDevice::P2PDeviceState::kGOActive:
     case P2PDevice::P2PDeviceState::kGOStopping:
+    case P2PDevice::P2PDeviceState::kGOStoppingOnResourceBusy:
       return kP2PClientInfoStateIdle;
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled P2P state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled P2P state " << static_cast<int>(state);
   return kP2PClientInfoStateIdle;
 }
 }  // namespace
@@ -138,6 +144,7 @@ const char* P2PDevice::P2PDeviceStateName(P2PDeviceState state) {
     case P2PDeviceState::kClientConnected:
       return kP2PDeviceStateClientConnected;
     case P2PDeviceState::kClientDisconnecting:
+    case P2PDeviceState::kClientDisconnectingOnResourceBusy:
       return kP2PDeviceStateClientDisconnecting;
     case P2PDeviceState::kGOStarting:
       return kP2PDeviceStateGOStarting;
@@ -146,9 +153,11 @@ const char* P2PDevice::P2PDeviceStateName(P2PDeviceState state) {
     case P2PDeviceState::kGOActive:
       return kP2PDeviceStateGOActive;
     case P2PDeviceState::kGOStopping:
+    case P2PDeviceState::kGOStoppingOnResourceBusy:
       return kP2PDeviceStateGOStopping;
   }
-  NOTREACHED_IN_MIGRATION() << "Unhandled P2P state " << static_cast<int>(state);
+  NOTREACHED_IN_MIGRATION()
+      << "Unhandled P2P state " << static_cast<int>(state);
   return "Invalid";
 }
 
@@ -270,11 +279,11 @@ bool P2PDevice::Start() {
 bool P2PDevice::Stop() {
   bool ret = true;
   if (InClientState()) {
-    if (!Disconnect()) {
+    if (!Disconnect(false)) {
       ret = false;
     }
   } else if (InGOState()) {
-    if (!RemoveGroup()) {
+    if (!RemoveGroup(false)) {
       ret = false;
     }
   }
@@ -333,13 +342,14 @@ bool P2PDevice::Connect(std::unique_ptr<P2PService> service) {
   return true;
 }
 
-bool P2PDevice::RemoveGroup() {
+bool P2PDevice::RemoveGroup(bool resource_busy) {
   if (!InGOState()) {
     LOG(WARNING) << log_name() << ": Tried to remove a group while in state "
                  << P2PDeviceStateName(state_);
     return false;
   }
-  SetState(P2PDeviceState::kGOStopping);
+  SetState(resource_busy ? P2PDeviceState::kGOStoppingOnResourceBusy
+                         : P2PDeviceState::kGOStopping);
   go_ipv4_address_ = std::nullopt;
   go_network_id_ = std::nullopt;
   group_network_fd_.reset();
@@ -349,13 +359,14 @@ bool P2PDevice::RemoveGroup() {
   return true;
 }
 
-bool P2PDevice::Disconnect() {
+bool P2PDevice::Disconnect(bool resource_busy) {
   if (!InClientState()) {
     LOG(WARNING) << log_name() << ": Tried to disconnect while in state "
                  << P2PDeviceStateName(state_);
     return false;
   }
-  SetState(P2PDeviceState::kClientDisconnecting);
+  SetState(resource_busy ? P2PDeviceState::kClientDisconnectingOnResourceBusy
+                         : P2PDeviceState::kClientDisconnecting);
   if (client_network_) {
     client_network_->Stop();
     client_network_->UnregisterEventHandler(this);
@@ -810,10 +821,12 @@ void P2PDevice::GroupStarted(const KeyValueStore& properties) {
     case P2PDeviceState::kClientConfiguring:
     case P2PDeviceState::kClientConnected:
     case P2PDeviceState::kClientDisconnecting:
+    case P2PDeviceState::kClientDisconnectingOnResourceBusy:
     // P2P GO states.
     case P2PDeviceState::kGOConfiguring:
     case P2PDeviceState::kGOActive:
     case P2PDeviceState::kGOStopping:
+    case P2PDeviceState::kGOStoppingOnResourceBusy:
       LOG(WARNING) << log_name() << ": Ignored " << __func__
                    << " while in state " << P2PDeviceStateName(state_);
       break;
@@ -830,6 +843,13 @@ void P2PDevice::GroupFinished(const KeyValueStore& properties) {
       TeardownGroup(properties);
       SetState(P2PDeviceState::kReady);
       PostDeviceEvent(DeviceEvent::kLinkDown);
+      break;
+    // Expected P2P client/GO state for Shill-initiated GroupFinished event
+    case P2PDeviceState::kClientDisconnectingOnResourceBusy:
+    case P2PDeviceState::kGOStoppingOnResourceBusy:
+      TeardownGroup(properties);
+      SetState(P2PDeviceState::kReady);
+      PostDeviceEvent(DeviceEvent::kLinkDownOnResourceBusy);
       break;
     // P2P client link failure states for GroupFinished event
     case P2PDeviceState::kClientConfiguring:
@@ -891,10 +911,12 @@ void P2PDevice::GroupFormationFailure(const std::string& reason) {
     case P2PDeviceState::kClientConfiguring:
     case P2PDeviceState::kClientConnected:
     case P2PDeviceState::kClientDisconnecting:
+    case P2PDeviceState::kClientDisconnectingOnResourceBusy:
     // P2P GO states.
     case P2PDeviceState::kGOConfiguring:
     case P2PDeviceState::kGOActive:
     case P2PDeviceState::kGOStopping:
+    case P2PDeviceState::kGOStoppingOnResourceBusy:
       LOG(WARNING) << log_name() << ": Ignored " << __func__
                    << " while in state " << P2PDeviceStateName(state_);
       break;

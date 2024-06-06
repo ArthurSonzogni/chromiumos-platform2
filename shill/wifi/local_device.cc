@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/wifi/local_device.h"
+
 #include <optional>
 #include <utility>
 
@@ -11,7 +13,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/wifi/local_device.h"
 
 namespace shill {
 
@@ -120,6 +121,9 @@ std::ostream& operator<<(std::ostream& stream, LocalDevice::DeviceEvent event) {
       return stream;
     case LocalDevice::DeviceEvent::kLinkDown:
       stream << "LinkDown";
+      return stream;
+    case LocalDevice::DeviceEvent::kLinkDownOnResourceBusy:
+      stream << "LinkDownOnResourceBusy";
       return stream;
     case LocalDevice::DeviceEvent::kLinkFailure:
       stream << "LinkFailure";

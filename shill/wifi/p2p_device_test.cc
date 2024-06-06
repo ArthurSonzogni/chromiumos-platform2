@@ -410,7 +410,7 @@ TEST_F(P2PDeviceTest, GroupInfo) {
     EXPECT_TRUE(base::Contains(client, kP2PGroupInfoClientMACAddressProperty));
 
   // kGOStopping
-  EXPECT_TRUE(go_device_->RemoveGroup());
+  EXPECT_TRUE(go_device_->RemoveGroup(false));
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
 
   group_info = go_device_->GetGroupInfo();
@@ -607,7 +607,7 @@ TEST_F(P2PDeviceTest, ClientInfo) {
   EXPECT_EQ(GOInfo.count(kP2PClientInfoGroupOwnerIPv6AddressProperty), 0);
 
   // Disconnect group.
-  EXPECT_TRUE(client_device_->Disconnect());
+  EXPECT_TRUE(client_device_->Disconnect(false));
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientDisconnecting);
 
@@ -781,7 +781,7 @@ TEST_F(P2PDeviceTest, CreateAndRemove) {
 
   // Remove group.
   EXPECT_CALL(*supplicant_p2pdevice_proxy_, Disconnect());
-  EXPECT_TRUE(go_device_->RemoveGroup());
+  EXPECT_TRUE(go_device_->RemoveGroup(false));
   EXPECT_EQ(go_device_->service_, nullptr);
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
 
@@ -852,7 +852,7 @@ TEST_F(P2PDeviceTest, ConnectAndDisconnect) {
 
   // Disconnect.
   EXPECT_CALL(*supplicant_p2pdevice_proxy_, Disconnect());
-  EXPECT_TRUE(client_device_->Disconnect());
+  EXPECT_TRUE(client_device_->Disconnect(false));
   EXPECT_EQ(client_device_->service_, nullptr);
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientDisconnecting);
@@ -885,7 +885,7 @@ TEST_F(P2PDeviceTest, BadState_Client) {
   EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 
   // Disconnect while not connected
-  EXPECT_FALSE(client_device_->Disconnect());
+  EXPECT_FALSE(client_device_->Disconnect(false));
   EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 
   // Start client_device_
@@ -934,7 +934,7 @@ TEST_F(P2PDeviceTest, BadState_Client) {
 
   // Disconnect.
   EXPECT_CALL(*supplicant_p2pdevice_proxy_, Disconnect());
-  EXPECT_TRUE(client_device_->Disconnect());
+  EXPECT_TRUE(client_device_->Disconnect(false));
   EXPECT_EQ(client_device_->service_, nullptr);
   EXPECT_EQ(client_device_->state_,
             P2PDevice::P2PDeviceState::kClientDisconnecting);
@@ -963,7 +963,7 @@ TEST_F(P2PDeviceTest, BadState_Client) {
   EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 
   // Disconnect while not connected
-  EXPECT_FALSE(client_device_->Disconnect());
+  EXPECT_FALSE(client_device_->Disconnect(false));
   EXPECT_EQ(client_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 }
 
@@ -976,7 +976,7 @@ TEST_F(P2PDeviceTest, BadState_GO) {
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 
   // Remove group while not created
-  EXPECT_FALSE(go_device_->RemoveGroup());
+  EXPECT_FALSE(go_device_->RemoveGroup(false));
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 
   // Start device
@@ -1018,7 +1018,7 @@ TEST_F(P2PDeviceTest, BadState_GO) {
 
   // Remove group.
   EXPECT_CALL(*supplicant_p2pdevice_proxy_, Disconnect());
-  EXPECT_TRUE(go_device_->RemoveGroup());
+  EXPECT_TRUE(go_device_->RemoveGroup(false));
   EXPECT_EQ(go_device_->service_, nullptr);
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kGOStopping);
 
@@ -1041,7 +1041,7 @@ TEST_F(P2PDeviceTest, BadState_GO) {
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 
   // Remove group while not created
-  EXPECT_FALSE(go_device_->RemoveGroup());
+  EXPECT_FALSE(go_device_->RemoveGroup(false));
   EXPECT_EQ(go_device_->state_, P2PDevice::P2PDeviceState::kUninitialized);
 }
 

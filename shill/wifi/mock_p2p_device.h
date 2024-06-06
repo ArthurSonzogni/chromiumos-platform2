@@ -5,12 +5,12 @@
 #ifndef SHILL_WIFI_MOCK_P2P_DEVICE_H_
 #define SHILL_WIFI_MOCK_P2P_DEVICE_H_
 
-#include "shill/wifi/p2p_device.h"
-
 #include <memory>
 #include <string>
 
 #include <gmock/gmock.h>
+
+#include "shill/wifi/p2p_device.h"
 
 namespace shill {
 
@@ -41,8 +41,8 @@ class MockP2PDevice : public P2PDevice {
   MOCK_METHOD(KeyValueStore, GetClientInfo, (), (const));
   MOCK_METHOD(bool, CreateGroup, (std::unique_ptr<P2PService>), ());
   MOCK_METHOD(bool, Connect, (std::unique_ptr<P2PService>), ());
-  MOCK_METHOD(bool, RemoveGroup, (), ());
-  MOCK_METHOD(bool, Disconnect, (), ());
+  MOCK_METHOD(bool, RemoveGroup, (bool), (override));
+  MOCK_METHOD(bool, Disconnect, (bool), (override));
   MOCK_METHOD(P2PDevice::P2PDeviceState, state, (), (const));
   MOCK_METHOD(void, GroupStarted, (const KeyValueStore&), (override));
   MOCK_METHOD(void, GroupFinished, (const KeyValueStore&), (override));

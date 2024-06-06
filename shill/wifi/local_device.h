@@ -40,8 +40,11 @@ class LocalDevice : public base::RefCounted<LocalDevice> {
   enum class DeviceEvent {
     kInterfaceDisabled,  // Interface is disabled in kernel.
     kInterfaceEnabled,   // Interface is enabled and ready to use.
-    kLinkUp,       // A link layer (L2 connection) is added and brought up.
-    kLinkDown,     // A link layer (L2 connection) is brought down and removed.
+    kLinkUp,    // A link layer (L2 connection) is added and brought up.
+    kLinkDown,  // A link layer (L2 connection) is brought down and removed.
+    kLinkDownOnResourceBusy,  // A link layer (L2 connection) is brought down
+                              // and removed by Shill because the device
+                              // resources are busy with other tasks.
     kLinkFailure,  // Failed to bring up a link layer (L2 connection).
     kNetworkUp,    // A network layer (L3 connection) is added and brought up.
     kNetworkDown,  // A network layer (L3 connection) is brought down and
