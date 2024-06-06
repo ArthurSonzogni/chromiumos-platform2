@@ -5,6 +5,7 @@
 #ifndef SHILL_WIFI_MOCK_P2P_MANAGER_H_
 #define SHILL_WIFI_MOCK_P2P_MANAGER_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -28,6 +29,7 @@ class MockP2PManager : public P2PManager {
               SupplicantPrimaryP2PDeviceProxy,
               (),
               (const));
+  MOCK_METHOD(void, DeviceTeardownOnResourceBusy, (uint32_t), (override));
 };
 
 }  // namespace shill

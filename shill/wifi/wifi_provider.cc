@@ -1656,4 +1656,100 @@ void WiFiProvider::ProcessDeviceRequests() {
   }
 }
 
+LocalDeviceConstRefPtr WiFiProvider::GetLowestPriorityLocalDeviceOfType(
+    std::set<LocalDeviceConstRefPtr> devices, LocalDevice::IfaceType type) {
+  LocalDeviceConstRefPtr candidate_dev;
+  for (auto dev : devices) {
+    if (dev->iface_type() == type &&
+        (!candidate_dev || candidate_dev->priority() > dev->priority())) {
+      candidate_dev = dev;
+    }
+  }
+  return candidate_dev;
+}
+
+WiFiConstRefPtr WiFiProvider::GetLowestPriorityEnabledWiFiDevice(
+    std::set<WiFiConstRefPtr> devices) {
+  WiFiConstRefPtr candidate_dev;
+  for (auto dev : devices) {
+    if (dev->supplicant_state() !=
+            WPASupplicant::kInterfaceStateInterfaceDisabled &&
+        (!candidate_dev || candidate_dev->priority() > dev->priority())) {
+      candidate_dev = dev;
+    }
+  }
+  return candidate_dev;
+}
+
+bool WiFiProvider::BringDownDevicesByType(std::multiset<nl80211_iftype> types) {
+  if (wifi_phys_.empty()) {
+    return false;
+  }
+  WiFiPhy* phy = wifi_phys_.begin()->second.get();
+  // Snapshot local and WiFi devices so that we can ensure a given device is
+  // only selected once.
+  auto local_devices = phy->LocalDevices();
+  auto wifi_devices = phy->GetWiFiDevices();
+  for (auto type : types) {
+    switch (type) {
+      case NL80211_IFTYPE_P2P_GO:
+      case NL80211_IFTYPE_P2P_CLIENT: {
+        LocalDeviceConstRefPtr dev = GetLowestPriorityLocalDeviceOfType(
+            local_devices, type == NL80211_IFTYPE_P2P_GO
+                               ? LocalDevice::IfaceType::kP2PGO
+                               : LocalDevice::IfaceType::kP2PClient);
+        if (!dev) {
+          return false;
+        }
+        local_devices.erase(dev);
+        p2p_manager_->DeviceTeardownOnResourceBusy(
+            static_cast<const P2PDevice*>(dev.get())->shill_id());
+        break;
+      }
+      case NL80211_IFTYPE_AP: {
+        LocalDeviceConstRefPtr dev = GetLowestPriorityLocalDeviceOfType(
+            local_devices, LocalDevice::IfaceType::kAP);
+        if (!dev) {
+          return false;
+        }
+        local_devices.erase(dev);
+        manager_->tethering_manager()->StopOnResourceBusy();
+        break;
+      }
+      case NL80211_IFTYPE_STATION: {
+        WiFiConstRefPtr dev = GetLowestPriorityEnabledWiFiDevice(wifi_devices);
+        if (!dev) {
+          return false;
+        }
+        wifi_devices.erase(dev);
+        // Get a mutable reference to dev.
+        DeviceRefPtr mutable_dev;
+        for (auto wifi_device :
+             manager_->FilterByTechnology(Technology::kWiFi)) {
+          if (wifi_device->interface_index() == dev->interface_index()) {
+            mutable_dev = wifi_device;
+          }
+        }
+        if (!mutable_dev) {
+          return false;
+        }
+        mutable_dev->SetEnabled(false);
+        base::OnceClosure cb =
+            base::BindOnce(&WiFiProvider::EnableDevice,
+                           weak_ptr_factory_while_started_.GetWeakPtr(),
+                           WiFiRefPtr(static_cast<WiFi*>(mutable_dev.get())),
+                           false, base::DoNothing());
+        // Queue up a request to re-enable the device so it will be enabled as
+        // soon as the resources are available.
+        PushPendingDeviceRequest(NL80211_IFTYPE_STATION, dev->priority(),
+                                 std::move(cb));
+        break;
+      }
+      default:
+        NOTREACHED();
+    }
+  }
+  return true;
+}
+
 }  // namespace shill

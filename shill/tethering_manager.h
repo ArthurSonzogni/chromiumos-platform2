@@ -160,7 +160,7 @@ class TetheringManager : public Network::EventHandler {
   mockable void OnDeviceCreationFailed();
 
   // Stop and free tethering resources without triggering any result callbacks.
-  void StopOnResourceBusy();
+  mockable void StopOnResourceBusy();
 
  private:
   friend class TetheringManagerTest;

@@ -92,7 +92,7 @@ class P2PManager : public SupplicantP2PDeviceEventDelegateInterface {
   void OnDeviceCreationFailed(LocalDevice::IfaceType iface_type);
 
   // Tear down the device at |shill_id|.
-  void DeviceTeardownOnResourceBusy(uint32_t shill_id);
+  mockable void DeviceTeardownOnResourceBusy(uint32_t shill_id);
 
  private:
   friend class P2PManagerTest;

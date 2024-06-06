@@ -40,6 +40,7 @@
 #include "shill/wifi/local_device.h"
 #include "shill/wifi/mock_hotspot_device.h"
 #include "shill/wifi/mock_local_device.h"
+#include "shill/wifi/mock_p2p_manager.h"
 #include "shill/wifi/mock_passpoint_credentials.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
@@ -395,7 +396,8 @@ class WiFiProviderTest : public testing::Test {
         tethering_manager_(new NiceMock<MockTetheringManager>(&manager_)),
         provider_(manager_.wifi_provider()),
         default_profile_(new NiceMock<MockProfile>(&manager_, "default")),
-        user_profile_(new NiceMock<MockProfile>(&manager_, "user")) {}
+        user_profile_(new NiceMock<MockProfile>(&manager_, "user")),
+        p2p_manager_(new NiceMock<MockP2PManager>(&manager_)) {}
 
   ~WiFiProviderTest() override = default;
 
@@ -436,6 +438,7 @@ class WiFiProviderTest : public testing::Test {
     Nl80211Message::SetMessageType(kNl80211FamilyId);
     provider_->netlink_manager_ = &netlink_manager_;
     manager_.tethering_manager_.reset(tethering_manager_);
+    provider_->p2p_manager_.reset(p2p_manager_);
   }
 
   // Used by mock invocations of RegisterService() to maintain the side-effect
@@ -709,6 +712,29 @@ class WiFiProviderTest : public testing::Test {
     return dev;
   }
 
+  scoped_refptr<MockLocalDevice> CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType type,
+      const std::string& link_name,
+      WiFiPhy::Priority priority) {
+    scoped_refptr<MockLocalDevice> dev = new NiceMock<MockLocalDevice>(
+        &manager_, type, link_name, 0, priority, cb.Get());
+    return dev;
+  }
+
+  LocalDeviceConstRefPtr GetLowestPriorityLocalDeviceOfType(
+      std::set<LocalDeviceConstRefPtr> devices, LocalDevice::IfaceType type) {
+    return WiFiProvider::GetLowestPriorityLocalDeviceOfType(devices, type);
+  }
+
+  WiFiConstRefPtr GetLowestPriorityEnabledWiFiDevice(
+      std::set<WiFiConstRefPtr> devices) {
+    return WiFiProvider::GetLowestPriorityEnabledWiFiDevice(devices);
+  }
+
+  bool BringDownDevicesByType(std::multiset<nl80211_iftype> types) {
+    return provider_->BringDownDevicesByType(types);
+  }
+
   void OnGetPhyInfoAuxMessage(
       uint32_t phy_index,
       net_base::NetlinkManager::AuxiliaryMessageType type,
@@ -758,6 +784,7 @@ class WiFiProviderTest : public testing::Test {
   FakeStore default_profile_storage_;
   FakeStore user_profile_storage_;
   int storage_entry_index_ = 0;  // shared across profiles
+  MockP2PManager* p2p_manager_;
 };
 
 MATCHER_P(RefPtrMatch, ref, "") {
@@ -3015,6 +3042,117 @@ TEST_F(WiFiProviderTest, EnableDevices_StateMisalignment) {
   EXPECT_CALL(*wifi_device, SetEnabledChecked).Times(1);
   EXPECT_CALL(cb, Run).Times(1);
   provider_->EnableDevices({wifi_device}, true, cb.Get());
+}
+
+TEST_F(WiFiProviderTest, GetLowestPriorityLocalDeviceOfType) {
+  scoped_refptr<MockLocalDevice> device0 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kAP, "dev0", WiFiPhy::Priority(2));
+  scoped_refptr<MockLocalDevice> device1 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kAP, "dev1", WiFiPhy::Priority(1));
+  scoped_refptr<MockLocalDevice> device2 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kAP, "dev2", WiFiPhy::Priority(4));
+  std::set<LocalDeviceConstRefPtr> devs = {device0, device1, device2};
+
+  EXPECT_EQ(
+      GetLowestPriorityLocalDeviceOfType(devs, LocalDevice::IfaceType::kAP),
+      device1);
+  EXPECT_EQ(
+      GetLowestPriorityLocalDeviceOfType(devs, LocalDevice::IfaceType::kP2PGO),
+      nullptr);
+
+  scoped_refptr<MockLocalDevice> device3 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PGO, "dev3", WiFiPhy::Priority(3));
+  devs.insert(device3);
+  EXPECT_EQ(
+      GetLowestPriorityLocalDeviceOfType(devs, LocalDevice::IfaceType::kP2PGO),
+      device3);
+}
+
+TEST_F(WiFiProviderTest, GetLowestPriorityEnabledWiFiDevice) {
+  EXPECT_CALL(manager_, device_info()).Times(3);
+  MockWiFi* device0 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan0", kMacAddress,
+      /*interface_index=*/0, /*phy_index=*/0, new MockWakeOnWiFi());
+  ON_CALL(*device0, supplicant_state())
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  device0->SetPriority(WiFiPhy::Priority(2));
+  MockWiFi* device1 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan1", kMacAddress,
+      /*interface_index=*/1, /*phy_index=*/0, new MockWakeOnWiFi());
+  device1->SetPriority(WiFiPhy::Priority(1));
+  ON_CALL(*device1, supplicant_state())
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  MockWiFi* device2 = new MockWiFi(
+      &manager_, /*link_name=*/"wlan2", kMacAddress,
+      /*interface_index=*/2, /*phy_index=*/0, new MockWakeOnWiFi());
+  device2->SetPriority(WiFiPhy::Priority(4));
+  ON_CALL(*device2, supplicant_state())
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateInterfaceDisabled));
+  std::set<WiFiConstRefPtr> devs = {device0, device1, device2};
+  EXPECT_EQ(GetLowestPriorityEnabledWiFiDevice(devs), nullptr);
+  ON_CALL(*device0, supplicant_state())
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateAssociated));
+  EXPECT_EQ(GetLowestPriorityEnabledWiFiDevice(devs), device0);
+  ON_CALL(*device1, supplicant_state())
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateAssociated));
+  EXPECT_EQ(GetLowestPriorityEnabledWiFiDevice(devs), device1);
+}
+
+TEST_F(WiFiProviderTest, BringDownDevicesByType) {
+  MockWiFiPhy* phy0 = AddMockPhy(0);
+  scoped_refptr<MockLocalDevice> ap0 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kAP, "ao0", WiFiPhy::Priority(0));
+  phy0->AddWiFiLocalDevice(ap0);
+  scoped_refptr<MockLocalDevice> ap1 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kAP, "ap1", WiFiPhy::Priority(1));
+  phy0->AddWiFiLocalDevice(ap1);
+  scoped_refptr<MockLocalDevice> go0 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PGO, "go0", WiFiPhy::Priority(0));
+  phy0->AddWiFiLocalDevice(go0);
+  scoped_refptr<MockLocalDevice> go1 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PGO, "go1", WiFiPhy::Priority(1));
+  phy0->AddWiFiLocalDevice(go1);
+  scoped_refptr<MockLocalDevice> client0 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PClient, "client0", WiFiPhy::Priority(0));
+  phy0->AddWiFiLocalDevice(client0);
+  scoped_refptr<MockLocalDevice> client1 = CreateLocalDeviceWithPriority(
+      LocalDevice::IfaceType::kP2PClient, "client1", WiFiPhy::Priority(1));
+  phy0->AddWiFiLocalDevice(client1);
+
+  EXPECT_CALL(manager_, device_info()).Times(2);
+  MockWiFi* wifi0 = new MockWiFi(&manager_, /*link_name=*/"wlan0", kMacAddress,
+                                 /*interface_index=*/0, /*phy_index=*/0,
+                                 new MockWakeOnWiFi());
+  wifi0->SetPriority(WiFiPhy::Priority(0));
+  ON_CALL(*wifi0, supplicant_state())
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateAssociated));
+  phy0->AddWiFiDevice(wifi0);
+  MockWiFi* wifi1 = new MockWiFi(&manager_, /*link_name=*/"wlan1", kMacAddress,
+                                 /*interface_index=*/1, /*phy_index=*/0,
+                                 new MockWakeOnWiFi());
+  wifi1->SetPriority(WiFiPhy::Priority(1));
+  ON_CALL(*wifi1, supplicant_state())
+      .WillByDefault(Return(WPASupplicant::kInterfaceStateAssociated));
+  phy0->AddWiFiDevice(wifi1);
+  std::vector<DeviceRefPtr> wifi_devs = {wifi0, wifi1};
+
+  EXPECT_CALL(manager_, FilterByTechnology(Technology::kWiFi))
+      .WillRepeatedly(Return(wifi_devs));
+
+  EXPECT_CALL(*tethering_manager_, StopOnResourceBusy).Times(1);
+  BringDownDevicesByType({NL80211_IFTYPE_AP});
+
+  EXPECT_CALL(*tethering_manager_, StopOnResourceBusy).Times(2);
+  BringDownDevicesByType({NL80211_IFTYPE_AP, NL80211_IFTYPE_AP});
+
+  EXPECT_CALL(*p2p_manager_, DeviceTeardownOnResourceBusy).Times(1);
+  BringDownDevicesByType({NL80211_IFTYPE_P2P_CLIENT});
+
+  EXPECT_CALL(*p2p_manager_, DeviceTeardownOnResourceBusy).Times(2);
+  BringDownDevicesByType({NL80211_IFTYPE_P2P_GO, NL80211_IFTYPE_P2P_CLIENT});
+
+  EXPECT_CALL(*wifi0, SetEnabled(false)).Times(1);
+  BringDownDevicesByType({NL80211_IFTYPE_STATION});
 }
 
 }  // namespace shill

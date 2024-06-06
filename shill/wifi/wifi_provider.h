@@ -453,6 +453,19 @@ class WiFiProvider : public ProviderInterface {
   // Enable a WiFi device.
   void EnableDevice(WiFiRefPtr device, bool persist, ResultCallback callback);
 
+  static LocalDeviceConstRefPtr GetLowestPriorityLocalDeviceOfType(
+      std::set<LocalDeviceConstRefPtr> devices, LocalDevice::IfaceType type);
+
+  static WiFiConstRefPtr GetLowestPriorityEnabledWiFiDevice(
+      std::set<WiFiConstRefPtr> devices);
+
+  // Trigger deletion of the lowest priority interface of each type in |types|.
+  // If a type appears multiple times in |types|, then additional devices of
+  // that type will be brought down in order of priority.
+  // Uses device-type specific teardown logic to bring down each device. E.g.
+  // WiFi devices are queued to be re-enabled when possible.
+  bool BringDownDevicesByType(std::multiset<nl80211_iftype> types);
+
   Manager* manager_;
   net_base::NetlinkManager* netlink_manager_;
 

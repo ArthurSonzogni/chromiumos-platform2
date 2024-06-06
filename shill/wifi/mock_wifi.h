@@ -79,6 +79,7 @@ class MockWiFi : public WiFi {
               SetEnabledChecked,
               (bool, bool, ResultCallback),
               (override));
+  MOCK_METHOD(void, SetEnabled, (bool), (override));
 };
 
 }  // namespace shill
