@@ -541,15 +541,15 @@ class Experiment:
         """
 
         collection = Collection(collection_dir)
-        self.add_groups(
-            pd.DataFrame(
-                collection.discover_user_groups(),
-                columns=[
-                    Experiment.TableCol.User.value,
-                    Experiment.TableCol.Group.value,
-                ],
-            )
+        user_groups = pd.DataFrame(
+            collection.discover_user_groups(),
+            columns=[
+                Experiment.TableCol.User.value,
+                Experiment.TableCol.Group.value,
+            ],
         )
+        user_groups.sort_values(Experiment.TableCol.User.value, inplace=True)
+        self.add_groups(user_groups)
 
 
 def _add_groups_to_table(
