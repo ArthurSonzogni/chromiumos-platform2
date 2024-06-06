@@ -166,6 +166,7 @@ chromeos::machine_learning::mojom::FinalResultPtr FinalResultFromProto(
       }
       part_in_result->alignment =
           base::Milliseconds(hypothesis_part.alignment_ms());
+      part_in_result->leading_space = hypothesis_part.leading_space();
       final_result->hypothesis_part->push_back(std::move(part_in_result));
     }
   }

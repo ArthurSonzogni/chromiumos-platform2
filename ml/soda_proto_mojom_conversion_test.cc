@@ -114,11 +114,13 @@ TEST(SodaProtoMojomConversionTest, FinalResultsWithHypPartTest) {
   hyp_part->add_text("first,");
   hyp_part->add_text("first");
   hyp_part->set_alignment_ms(0);
+  hyp_part->set_leading_space(false);
 
   hyp_part = rec->add_hypothesis_part();
   hyp_part->add_text("hypo.");
   hyp_part->add_text("hypo");
   hyp_part->set_alignment_ms(50);
+  hyp_part->set_leading_space(true);
 
   auto expected_rec_mojom =
       chromeos::machine_learning::mojom::FinalResult::New();
@@ -129,11 +131,13 @@ TEST(SodaProtoMojomConversionTest, FinalResultsWithHypPartTest) {
   part->text.push_back("first,");
   part->text.push_back("first");
   part->alignment = base::Milliseconds(0);
+  part->leading_space = false;
   expected_rec_mojom->hypothesis_part->push_back(std::move(part));
   part = chromeos::machine_learning::mojom::HypothesisPartInResult::New();
   part->text.push_back("hypo.");
   part->text.push_back("hypo");
   part->alignment = base::Milliseconds(50);
+  part->leading_space = true;
   expected_rec_mojom->hypothesis_part->push_back(std::move(part));
 
   auto actual_rec_mojom = internal::FinalResultFromProto(response);
