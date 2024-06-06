@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 import pathlib
 import sys
-from typing import Optional
+from typing import Literal, Optional
 
 import bootstrap
 from experiment import Experiment
@@ -27,6 +27,16 @@ from test_case import TestCase
 from tqdm.autonotebook import tqdm  # Auto detect notebook or console.
 
 
+# 1000 samples is 95%
+# 5000 samples is 99%
+# BOOTSTRAP_SAMPLES = 1000
+# BOOTSTRAP_SAMPLES = 5000  # 5000 samples in 2 seconds (128 cores)
+BOOTSTRAP_SAMPLES = 100000  # 100000 samples in 16 seconds (128 cores)
+CONFIDENCE_PERCENT = 95
+FAR_THRESHOLD = 1 / 100000.0
+FRR_THRESHOLD = 10 / 100.0
+
+
 def print_far_value(
     val: float,
     k_comparisons: list[int] = [20, 50, 100, 500],
@@ -37,6 +47,65 @@ def print_far_value(
         str += f" = {val * 100 * c*1000:.3f}% of 1/{c}k"
     # TODO: Make nice output like "1 in 234k".
     return str
+
+
+class BootstrapFARFRRStats:
+    class _Value(float):
+        def fmt_far(
+            self,
+            fmt: Literal["k", "s"] = "k",
+            decimal_places: int = 3,
+        ) -> str:
+            return fpsutils.fmt_far(self, fmt, decimal_places)
+
+        def fmt_frr(self, decimal_places: int = 3) -> str:
+            return fpsutils.fmt_frr(self, decimal_places)
+
+    confidence_percent: float
+    mean: _Value
+    std: _Value
+    ci_lower: _Value
+    ci_upper: _Value
+
+    def __init__(
+        self,
+        boot_results: bootstrap.BootstrapResults,
+        num_trails: int,
+        confidence_percent: float = 95,
+    ):
+        self.confidence_percent = confidence_percent
+        self.mean = self._Value(np.mean(boot_results.samples()) / num_trails)
+        self.std = self._Value(np.std(boot_results.samples()) / num_trails)
+        boot_ci_lower, boot_ci_upper = boot_results.confidence_interval(
+            self.confidence_percent
+        )
+        self.ci_lower = self._Value(boot_ci_lower / num_trails)
+        self.ci_upper = self._Value(boot_ci_upper / num_trails)
+
+    def describe(
+        self,
+        test_type: Literal["FAR", "FRR"],
+        far_fmt: Literal["k", "s"] = "k",
+        decimal_places: int = 3,
+    ) -> str:
+        if test_type not in {"FAR", "FRR"}:
+            raise ValueError(f"Invalid test type: {test_type}")
+
+        if test_type == "FAR":
+            str_mean = self.mean.fmt_far(far_fmt, decimal_places)
+            str_std = self.std.fmt_far(far_fmt, decimal_places)
+            str_ci_lower = self.ci_lower.fmt_far(far_fmt, decimal_places)
+            str_ci_upper = self.ci_upper.fmt_far(far_fmt, decimal_places)
+        else:
+            str_mean = self.mean.fmt_frr(decimal_places)
+            str_std = self.std.fmt_frr(decimal_places)
+            str_ci_lower = self.ci_lower.fmt_frr(decimal_places)
+            str_ci_upper = self.ci_upper.fmt_frr(decimal_places)
+
+        desc = f"{test_type} {str_mean} ± {str_std} "
+        desc += f"({str_ci_lower}, {str_ci_upper}) at "
+        desc += f"{self.confidence_percent}% confidence."
+        return desc
 
 
 # Ultimately, we want to do a histogram over the entire FAR/FRR Decision
@@ -199,6 +268,174 @@ def fr_count_figure(
         )
     )
     return fig
+
+
+def bootstrap_figure(
+    exp: Experiment,
+    boot_results: bootstrap.BootstrapResults,
+    test_type: Literal["FAR", "FRR"],
+) -> go.Figure:
+    """Generate an FAR or FRR bootstrap results histogram."""
+
+    if test_type not in {"FAR", "FRR"}:
+        raise ValueError("test_type must be FAR or FRR")
+
+    is_far = test_type == "FAR"
+    accepts_or_rejects = "Accepts" if is_far else "Rejects"
+
+    # Showing raw values works because we take a lot of bootstrap samples,
+    # which fills in a lot of gaps in a "unique" value (bin_size=1) histogram.
+    bins, counts = fpsutils.discrete_hist(boot_results.samples())
+    trials = exp.fa_trials_count() if is_far else exp.fr_trials_count()
+    df = pd.DataFrame(
+        {
+            # X-Axes
+            f"False {accepts_or_rejects} in Bootstrap Sample": bins,
+            test_type: np.array(bins, dtype=float) / trials,
+            # Y-Axes
+            "Number of Bootstrap Samples Observed": counts,
+        }
+    )
+    fig: go.Figure = px.bar(
+        df,
+        x=test_type,
+        y="Number of Bootstrap Samples Observed",
+        hover_data=[f"False {accepts_or_rejects} in Bootstrap Sample"],
+        title=f"Frequency of {test_type} in Bootstrap Samples",
+    )
+    if is_far:
+        fig.update_layout(hovermode="x unified")
+    else:
+        fig.update_layout(
+            hovermode="x unified",
+            xaxis=dict(tickformat="%"),
+            bargap=0.0,
+            bargroupgap=0.0,
+        )
+
+    boot_stats = BootstrapFARFRRStats(boot_results, trials, CONFIDENCE_PERCENT)
+
+    fig.add_vline(
+        x=boot_stats.ci_lower,
+        annotation_text=f"lower {boot_stats.confidence_percent}%",
+        annotation_position="top right",
+        line_width=1,
+        line_dash="dash",
+        line_color="yellow",
+    )
+    fig.add_vline(
+        x=boot_stats.ci_upper,
+        annotation_text=f"upper {boot_stats.confidence_percent}%",
+        annotation_position="top left",
+        line_width=1,
+        line_dash="dash",
+        line_color="yellow",
+    )
+    fig.add_vline(
+        x=boot_stats.mean,
+        annotation_text="mean",
+        annotation_position="top left",
+        line_width=1,
+        line_dash="dash",
+        line_color="yellow",
+    )
+
+    if is_far:
+        # Enable this to compare against 1/50k FAR.
+        # Enabling this has the undesirable side effect of shifting
+        # focus of the histogram plots to include 1/50k, which might
+        # be very far from the mean.
+        # fig.add_vline(
+        #     x=1 / 50000.0,
+        #     annotation_text="1/50",
+        #     line_width=2,
+        #     line_dash="dash",
+        #     line_color="red",
+        # )
+        fig.add_vline(
+            x=1 / 100000.0,
+            annotation_text="1/100k",
+            line_width=1,
+            line_dash="dash",
+            line_color="red",
+        )
+        fig.add_vline(
+            x=1 / 200000.0,
+            annotation_text="1/200k",
+            line_width=1,
+            line_dash="dash",
+            line_color="red",
+        )
+    else:
+        # Enable this to compare against 2% FRR.
+        # fig.add_vline(
+        #     x=2 / 100,
+        #     annotation_text="2%",
+        #     line_width=2,
+        #     line_dash="dash",
+        #     line_color="red",
+        # )
+        fig.add_vline(
+            x=10 / 100,
+            annotation_text="10%",
+            line_width=2,
+            line_dash="dash",
+            line_color="red",
+        )
+
+    return fig
+
+
+def cmd_analyze(opts: argparse.Namespace) -> int:
+    """Analyze the FAR and FRR of one test case.
+
+    This directory is expected to contain FAR_decisions.csv and
+    FRR_decisions.csv files.
+    """
+    decisions_dir: pathlib.Path = opts.decisions_dir
+
+    far_decisions_file = decisions_dir / "FAR_decisions.csv"
+    frr_decisions_file = decisions_dir / "FRR_decisions.csv"
+
+    exp = Experiment(0, 0, 0)
+    exp.add_far_decisions_from_csv(far_decisions_file)
+    exp.add_frr_decisions_from_csv(frr_decisions_file)
+
+    far_boot = bootstrap.BootstrapFullFARHierarchy(exp, verbose=True)
+    far_boot_results = far_boot.run(
+        num_samples=BOOTSTRAP_SAMPLES,
+        num_proc=0,
+        progress=lambda it, total: tqdm(it, total=total),
+    )
+    frr_boot = bootstrap.BootstrapFullFRRHierarchy(exp, verbose=True)
+    frr_boot_results = frr_boot.run(
+        num_samples=BOOTSTRAP_SAMPLES,
+        num_proc=0,
+        progress=lambda it, total: tqdm(it, total=total),
+    )
+
+    far_stats = BootstrapFARFRRStats(
+        far_boot_results,
+        exp.fa_trials_count(),
+        CONFIDENCE_PERCENT,
+    )
+    frr_stats = BootstrapFARFRRStats(
+        frr_boot_results,
+        exp.fr_trials_count(),
+        CONFIDENCE_PERCENT,
+    )
+
+    print("-----------------------------------------")
+    print(far_stats.describe("FAR", "k"))
+    print(frr_stats.describe("FRR"))
+
+    far_fig = bootstrap_figure(exp, far_boot_results, "FAR")
+    frr_fig = bootstrap_figure(exp, frr_boot_results, "FRR")
+
+    far_fig.show()
+    frr_fig.show()
+
+    return 0
 
 
 def cmd_report(opts: argparse.Namespace) -> int:
@@ -641,15 +878,6 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     print("# Run bootstrap samples")
 
-    # 1000 samples is 95%
-    # 5000 samples is 99%
-    # BOOTSTRAP_SAMPLES = 1000
-    # BOOTSTRAP_SAMPLES = 5000  # 5000 samples in 2 seconds (128 cores)
-    BOOTSTRAP_SAMPLES = 100000  # 100000 samples in 16 seconds (128 cores)
-    CONFIDENCE_PERCENT = 95
-    FAR_THRESHOLD = 1 / 100000.0
-    FRR_THRESHOLD = 10 / 100.0
-
     far_boot_results: dict[TestCase, bootstrap.BootstrapResults] = dict()
     frr_boot_results: dict[TestCase, bootstrap.BootstrapResults] = dict()
     far_figures: dict[TestCase, go.Figure] = dict()
@@ -671,99 +899,29 @@ def cmd_report(opts: argparse.Namespace) -> int:
             progress=lambda it, total: tqdm(it, total=total),
         )
         far_boot_results[tc] = boot_results
-        # Showing raw values works because we take som many bootstrap samples,
-        # which fills in a lot of gaps in a "unique" value (bin_size=1) histogram.
-        bins, counts = fpsutils.discrete_hist(boot_results.samples())
-        df = pd.DataFrame(
-            {
-                # X-Axes
-                "False Accepts in Bootstrap Sample": bins,
-                "FAR": np.array(bins, dtype=float) / exp.fa_trials_count(),
-                # Y-Axes
-                "Number of Bootstrap Samples Observed": counts,
-            }
-        )
-        fig = px.bar(
-            df,
-            x="FAR",
-            y="Number of Bootstrap Samples Observed",
-            hover_data=["False Accepts in Bootstrap Sample"],
-            title="Frequency of FAR in Bootstrap Samples",
-        )
-        fig.update_layout(hovermode="x unified")
-
-        ci_lower, ci_upper = boot_results.confidence_interval()
-        frr_ci_lower = ci_lower / exp.fa_trials_count()
-        frr_ci_upper = ci_upper / exp.fa_trials_count()
-        frr_mean = np.mean(boot_results.samples()) / exp.fa_trials_count()
-        frr_std = np.std(boot_results.samples()) / exp.fa_trials_count()
-        fig.add_vline(
-            x=frr_ci_lower,
-            annotation_text=f"lower {CONFIDENCE_PERCENT}%",
-            annotation_position="top right",
-            line_width=1,
-            line_dash="dash",
-            line_color="yellow",
-        )
-        fig.add_vline(
-            x=frr_ci_upper,
-            annotation_text=f"upper {CONFIDENCE_PERCENT}%",
-            annotation_position="top left",
-            line_width=1,
-            line_dash="dash",
-            line_color="yellow",
-        )
-        fig.add_vline(
-            x=frr_mean,
-            annotation_text="mean",
-            annotation_position="top left",
-            line_width=1,
-            line_dash="dash",
-            line_color="yellow",
-        )
-
-        # Enable this to compare against 1/50k.
-        # Enabling this has the undesirable side effect of shifting
-        # focus of the histogram plots to include 1/50k, which might
-        # be very far from the mean.
-        # fig.add_vline(
-        #     x=1 / 50000.0,
-        #     annotation_text="1/50",
-        #     line_width=2,
-        #     line_dash="dash",
-        #     line_color="red",
-        # )
-        fig.add_vline(
-            x=1 / 100000.0,
-            annotation_text="1/100k",
-            line_width=1,
-            line_dash="dash",
-            line_color="red",
-        )
-        fig.add_vline(
-            x=1 / 200000.0,
-            annotation_text="1/200k",
-            line_width=1,
-            line_dash="dash",
-            line_color="red",
-        )
+        fig = bootstrap_figure(exp, boot_results, "FAR")
         far_figures[tc] = fig
-
         section.add_figure(
             "FAR_Bootstrap",
             "The hierarchical FAR bootstrap sampling histogram.",
             fig,
         )
 
-        info.set("FAR_Confidence", CONFIDENCE_PERCENT)
+        far_stats = BootstrapFARFRRStats(
+            boot_results,
+            exp.fa_trials_count(),
+            CONFIDENCE_PERCENT,
+        )
+
+        info.set("FAR_Confidence", far_stats.confidence_percent)
         info.set("FAR_Trials", exp.fa_trials_count())
         info.set("FAR_False_Accepts", exp.fa_count())
-        info.set("FAR_CI_Lower", frr_ci_lower)
-        info.set("FAR_CI_Upper", frr_ci_upper)
-        info.set("FAR_Mean", frr_mean)
-        info.set("FAR_Std", frr_std)
+        info.set("FAR_CI_Lower", far_stats.ci_lower)
+        info.set("FAR_CI_Upper", far_stats.ci_upper)
+        info.set("FAR_Mean", far_stats.mean)
+        info.set("FAR_Std", far_stats.std)
         info.set("FAR_Threshold", f"1/{1 / (FAR_THRESHOLD*1000)}k")
-        info.set("FAR_Pass", frr_ci_upper < FAR_THRESHOLD)
+        info.set("FAR_Pass", far_stats.ci_upper < FAR_THRESHOLD)
 
         #### FRR ####
 
@@ -776,71 +934,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
             progress=lambda it, total: tqdm(it, total=total),
         )
         frr_boot_results[tc] = boot_results
-
-        # Showing raw values works because we take som many bootstrap samples,
-        # which fills in a lot of gaps in a "unique" value (bin_size=1) histogram.
-        bins, counts = fpsutils.discrete_hist(boot_results.samples())
-        df = pd.DataFrame(
-            {
-                # X-Axes
-                "False Accepts in Bootstrap Sample": bins,
-                "FRR": np.array(bins, dtype=float) / exp.fr_trials_count(),
-                # Y-Axes
-                "Number of Bootstrap Samples Observed": counts,
-            }
-        )
-        fig = px.bar(
-            df,
-            x="FRR",
-            y="Number of Bootstrap Samples Observed",
-            hover_data=["False Accepts in Bootstrap Sample"],
-            title="Frequency of FRR in Bootstrap Samples",
-        )
-        fig.update_layout(
-            hovermode="x unified",
-            xaxis=dict(tickformat="%"),
-            bargap=0.0,
-            bargroupgap=0.0,
-        )
-
-        ci_lower, ci_upper = boot_results.confidence_interval()
-        frr_ci_lower = ci_lower / exp.fr_trials_count()
-        frr_ci_upper = ci_upper / exp.fr_trials_count()
-        frr_mean = np.mean(boot_results.samples()) / exp.fr_trials_count()
-        frr_std = np.std(boot_results.samples()) / exp.fr_trials_count()
-        fig.add_vline(
-            x=frr_ci_lower,
-            annotation_text=f"lower {CONFIDENCE_PERCENT}%",
-            annotation_position="top right",
-            line_width=1,
-            line_dash="dash",
-            line_color="yellow",
-        )
-        fig.add_vline(
-            x=frr_ci_upper,
-            annotation_text=f"upper {CONFIDENCE_PERCENT}%",
-            annotation_position="top left",
-            line_width=1,
-            line_dash="dash",
-            line_color="yellow",
-        )
-        fig.add_vline(
-            x=frr_mean,
-            annotation_text="mean",
-            annotation_position="top left",
-            line_width=1,
-            line_dash="dash",
-            line_color="yellow",
-        )
-
-        fig.add_vline(
-            x=10 / 100,
-            annotation_text="10%",
-            line_width=2,
-            line_dash="dash",
-            line_color="red",
-        )
-
+        fig = bootstrap_figure(exp, boot_results, "FRR")
         frr_figures[tc] = fig
 
         section.add_figure(
@@ -849,15 +943,21 @@ def cmd_report(opts: argparse.Namespace) -> int:
             fig,
         )
 
-        info.set("FRR_Confidence", CONFIDENCE_PERCENT)
+        frr_stats = BootstrapFARFRRStats(
+            boot_results,
+            exp.fr_trials_count(),
+            CONFIDENCE_PERCENT,
+        )
+
+        info.set("FRR_Confidence", frr_stats.confidence_percent)
         info.set("FRR_Trials", exp.fr_trials_count())
         info.set("FRR_False_Accepts", exp.fr_count())
-        info.set("FRR_CI_Lower", frr_ci_lower)
-        info.set("FRR_CI_Upper", frr_ci_upper)
-        info.set("FRR_Mean", frr_mean)
-        info.set("FRR_Std", frr_std)
+        info.set("FRR_CI_Lower", frr_stats.ci_lower)
+        info.set("FRR_CI_Upper", frr_stats.ci_upper)
+        info.set("FRR_Mean", frr_stats.mean)
+        info.set("FRR_Std", frr_stats.std)
         info.set("FRR_Threshold", f"{FRR_THRESHOLD * 100}%")
-        info.set("FRR_Pass", frr_ci_upper < FRR_THRESHOLD)
+        info.set("FRR_Pass", frr_stats.ci_upper < FRR_THRESHOLD)
 
     #### Generate Report ####
 
@@ -895,6 +995,18 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     subparsers = parser.add_subparsers(
         dest="subcommand", required=True, title="subcommands"
+    )
+
+    # Parser for "analyze" subcommand.
+    parser_analyze = subparsers.add_parser(
+        "analyze",
+        help=cmd_analyze.__doc__,
+    )
+    parser_analyze.set_defaults(func=cmd_analyze)
+    parser_analyze.add_argument(
+        "decisions_dir",
+        type=pathlib.Path,
+        help="Directory that holds the matcher decisions for one test case",
     )
 
     # Parser for "report" subcommand.
@@ -938,7 +1050,10 @@ def main(argv: list[str]) -> int:
 
     args = parser.parse_args(argv)
 
-    if args.subcommand == "report":
+    if args.subcommand == "analyze":
+        if not args.decisions_dir.is_dir():
+            parser.error("decisions_dir must be a directory")
+    elif args.subcommand == "report":
         if args.user_groups_csv and not args.user_groups_csv.is_file():
             parser.error("user-groups-csv must be a CSV file")
         if not args.testcases_decisions_dir.is_dir():

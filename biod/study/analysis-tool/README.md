@@ -28,3 +28,19 @@ statistically determine its FAR and FRR confidence range.
 ```bash
 python -m unittest discover -v -s . -p '*_test.py'
 ```
+
+## Examples
+
+```bash
+# From the biod/study directory.
+./python-venv-setup.sh
+. .venv/bin/activate
+
+# You can use defaults, but limiting finger, samples, and users will make the
+# analysis run faster. If you provide an non group multiple for users count,
+# you can simply disable groups by adding --groups=0.
+./analysis-tool/simulate_fpstudy.py simulation --fingers 4 --samples 40 --frr_prob_percent 6
+# The next command will launch two plots in your browser, so you need to
+# run this in an interactive session.
+./analysis-tool/run.py analyze simulation
+```
