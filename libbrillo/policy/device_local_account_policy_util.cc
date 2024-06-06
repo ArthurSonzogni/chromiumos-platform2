@@ -25,8 +25,6 @@ const auto kDomainPrefixMap =
         {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_PUBLIC_SESSION,
          "public-accounts"},
         {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_APP, "kiosk-apps"},
-        {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_ANDROID_APP,
-         "arc-kiosk-apps"},
         {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_SAML_PUBLIC_SESSION,
          "saml-public-accounts"},
         {em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_WEB_KIOSK_APP,

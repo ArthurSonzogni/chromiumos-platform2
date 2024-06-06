@@ -183,8 +183,8 @@ enum class SessionStopReason {
   // ARC requests device encryption update.
   ARC_MIGRATION_REQUESTED = 7,
 
-  // ARC provision failed in kiosk mode.
-  ARC_KIOSK_PROVISION_FAILED = 8,
+  // ARC provision failed in kiosk mode. Deprecated
+  // ARC_KIOSK_PROVISION_FAILED = 8,
 
   // Request to optimize memory usage.
   BACKGROUND_OPTIMIZATION_REQUESTED = 9,

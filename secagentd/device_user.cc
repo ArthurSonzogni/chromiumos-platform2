@@ -459,8 +459,7 @@ bool DeviceUser::GetIsUnaffiliated() {
   // If there is no device user or it is one of the managed local accounts then
   // it is considered affiliated.
   const std::unordered_set<std::string> reporting_values = {
-      device_user::kEmpty, device_user::kManagedGuest, device_user::kKioskApp,
-      device_user::kKioskAndroidApp};
+      device_user::kEmpty, device_user::kManagedGuest, device_user::kKioskApp};
   // If the user is unaffiliated their name will be a UUID. If they are
   // affiliated it will be their email which contains the @ symbol.
   return (!reporting_values.contains(device_user_) &&

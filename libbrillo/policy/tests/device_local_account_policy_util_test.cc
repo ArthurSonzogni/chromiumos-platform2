@@ -89,14 +89,6 @@ TEST(EphemeralUtilTest, GenerateDeviceLocalAccountUserId_KIOSK_APP) {
   EXPECT_EQ("6b696f736b5f617070@kiosk-apps.device-local.localhost", user);
 }
 
-TEST(EphemeralUtilTest, GenerateDeviceLocalAccountUserId_KIOSK_ANDROID_APP) {
-  const char account_id[] = "kiosk_app";
-  std::string user = GenerateDeviceLocalAccountUserId(
-      account_id,
-      em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_ANDROID_APP);
-  EXPECT_EQ("6b696f736b5f617070@arc-kiosk-apps.device-local.localhost", user);
-}
-
 TEST(EphemeralUtilTest, GenerateDeviceLocalAccountUserId_SAML_PUBLIC_SESSION) {
   const char account_id[] = "kiosk_app";
   std::string user = GenerateDeviceLocalAccountUserId(
@@ -134,16 +126,6 @@ TEST(GetDeviceLocalAccountTypeTest, GetDeviceLocalAccountType_KIOSK_APP) {
   auto account_type = GetDeviceLocalAccountType(&account_id);
   ASSERT_TRUE(account_type.has_value());
   EXPECT_EQ(em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_WEB_KIOSK_APP,
-            account_type.value());
-}
-
-TEST(GetDeviceLocalAccountTypeTest,
-     GetDeviceLocalAccountType_KIOSK_ANDROID_APP) {
-  std::string account_id =
-      "6b696f736b5f617070@arc-kiosk-apps.device-local.localhost";
-  auto account_type = GetDeviceLocalAccountType(&account_id);
-  ASSERT_TRUE(account_type.has_value());
-  EXPECT_EQ(em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_KIOSK_ANDROID_APP,
             account_type.value());
 }
 

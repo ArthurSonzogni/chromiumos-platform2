@@ -39,7 +39,6 @@ static constexpr char kGuest[] = "GuestUser";
 static constexpr char kManagedGuest[] = "ManagedGuest";
 static constexpr char kKioskApp[] = "KioskApp";
 static constexpr char kWebKioskApp[] = "KioskApp";
-static constexpr char kKioskAndroidApp[] = "KioskAndroidApp";
 static constexpr char kSAML[] = "SAML-PublicSession";
 }  // namespace device_user
 
@@ -196,9 +195,6 @@ class DeviceUser : public DeviceUserInterface {
        {enterprise_management::DeviceLocalAccountInfoProto::
             ACCOUNT_TYPE_KIOSK_APP,
         device_user::kKioskApp},
-       {enterprise_management::DeviceLocalAccountInfoProto::
-            ACCOUNT_TYPE_KIOSK_ANDROID_APP,
-        device_user::kKioskAndroidApp},
        {enterprise_management::DeviceLocalAccountInfoProto::
             ACCOUNT_TYPE_SAML_PUBLIC_SESSION,
         device_user::kSAML},

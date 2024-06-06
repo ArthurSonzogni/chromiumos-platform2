@@ -100,7 +100,6 @@ message CommonEventVariantDataFields {
   // "GuestUser" (logged in as guest user)
   // "ManagedGuest" (logged in as managed guest set by organization)
   // "KioskApp" (Any kiosk app being used)
-  // "KioskAndroidApp" (Same as above but Android app)
   // "SAML-PublicSession" (https://support.google.com/a/answer/6262987?hl=en)
 }
 

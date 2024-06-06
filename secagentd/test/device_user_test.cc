@@ -847,8 +847,6 @@ TEST_F(DeviceUserTestFixture, TestLocalAccount) {
        device_user::kManagedGuest},
       {"6b696f736b5f617070@web-kiosk-apps.device-local.localhost",
        device_user::kKioskApp},
-      {"6b696f736b5f617070@arc-kiosk-apps.device-local.localhost",
-       device_user::kKioskAndroidApp},
       {"6b696f736b5f617070@saml-public-accounts.device-local.localhost",
        device_user::kSAML},
       {"6b696f736b5f617070@web-kiosk-apps.device-local.localhost",
