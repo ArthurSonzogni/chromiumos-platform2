@@ -23,7 +23,7 @@ ResolvConf::ResolvConf() = default;
 ResolvConf::~ResolvConf() = default;
 
 bool ResolvConf::SetDNSFromLists(
-    const std::vector<std::string>& name_servers,
+    const std::vector<net_base::IPAddress>& name_servers,
     const std::vector<std::string>& domain_search_list) {
   name_servers_.clear();
   domain_search_list_.clear();
@@ -31,9 +31,10 @@ bool ResolvConf::SetDNSFromLists(
   std::set<std::string> domain_search_set;
   // Avoid duplicated entry, but keep the order.
   for (const auto& name_server : name_servers) {
-    if (!base::Contains(name_server_set, name_server)) {
-      name_servers_.push_back(name_server);
-      name_server_set.insert(name_server);
+    std::string name_server_str = name_server.ToString();
+    if (!base::Contains(name_server_set, name_server_str)) {
+      name_servers_.push_back(name_server_str);
+      name_server_set.insert(name_server_str);
     }
   }
   for (const auto& domain_search : domain_search_list) {

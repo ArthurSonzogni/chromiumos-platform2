@@ -582,10 +582,10 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
       return;
 
     case Type::kSystem:
-      if (!device_ || device_->ipconfig == device->ipconfig)
+      if (!device_ || device_->network_config == device->network_config)
         return;
 
-      device_->ipconfig = device->ipconfig;
+      device_->network_config = device->network_config;
       UpdateNameServers();
       return;
 
@@ -680,46 +680,32 @@ void Proxy::UpdateNameServers() {
     return;
   }
 
-  auto ipconfig = device_->ipconfig;
+  // Use pointer to avoid unnecessary copies.
+  auto* network_config = &device_->network_config;
   // Special case for VPN without nameserver. Fallback to default physical
   // network's nameserver(s).
   if (device_->type == shill::Client::Device::Type::kVPN &&
-      device_->ipconfig.ipv4_dns_addresses.empty() &&
-      device_->ipconfig.ipv6_dns_addresses.empty()) {
+      device_->network_config.dns_servers.empty()) {
     auto dd = shill_->DefaultDevice(/*exclude_vpn=*/true);
     if (!dd) {
       LOG(ERROR) << *this << " no default non-VPN device found";
       return;
     }
-    ipconfig = dd->ipconfig;
+    network_config = &dd->network_config;
   }
 
   std::vector<net_base::IPv4Address> ipv4_nameservers;
   std::vector<net_base::IPv6Address> ipv6_nameservers;
 
-  auto maybe_add_to_ipv6_nameservers = [&](const std::string& addr) {
-    const auto ipv6_addr = net_base::IPv6Address::CreateFromString(addr);
-    if (ipv6_addr && !ipv6_addr->IsZero()) {
-      ipv6_nameservers.push_back(*ipv6_addr);
+  for (const auto& addr : network_config->dns_servers) {
+    switch (addr.GetFamily()) {
+      case net_base::IPFamily::kIPv4:
+        ipv4_nameservers.push_back(*addr.ToIPv4Address());
+        break;
+      case net_base::IPFamily::kIPv6:
+        ipv6_nameservers.push_back(*addr.ToIPv6Address());
+        break;
     }
-  };
-
-  // Validate name servers.
-  for (const auto& addr : ipconfig.ipv4_dns_addresses) {
-    const auto ipv4_addr = net_base::IPv4Address::CreateFromString(addr);
-    // Shill sometimes adds 0.0.0.0 for some reason - so strip any if so.
-    if (ipv4_addr && !ipv4_addr->IsZero()) {
-      ipv4_nameservers.push_back(*ipv4_addr);
-      continue;
-    }
-
-    // When IPv6 nameservers are set from the UI, it will be stored inside
-    // IPConfig's IPv4 DNS addresses.
-    maybe_add_to_ipv6_nameservers(addr);
-  }
-
-  for (const auto& addr : ipconfig.ipv6_dns_addresses) {
-    maybe_add_to_ipv6_nameservers(addr);
   }
 
   if (ipv4_nameservers.empty() && ipv6_nameservers.empty()) {

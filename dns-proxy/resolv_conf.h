@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/no_destructor.h>
+#include <net-base/ip_address.h>
 
 namespace dns_proxy {
 
@@ -28,7 +29,7 @@ class ResolvConf {
   // Install domain name service parameters, given a list of
   // DNS servers in |name_servers|, and a list of DNS search suffixes in
   // |domain_search_list|.
-  bool SetDNSFromLists(const std::vector<std::string>& name_servers,
+  bool SetDNSFromLists(const std::vector<net_base::IPAddress>& name_servers,
                        const std::vector<std::string>& domain_search_list);
 
   // Tells the resolver that DNS should go through the proxy address(es)

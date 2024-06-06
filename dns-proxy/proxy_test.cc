@@ -20,6 +20,7 @@
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <net-base/ip_address.h>
 #include <net-base/byte_utils.h>
 #include <net-base/rtnl_message.h>
 #include <shill/dbus/client/fake_client.h>
@@ -44,7 +45,26 @@ int make_fd() {
   fn = "/tmp/" + fn;
   return open(fn.c_str(), O_CREAT, 0600);
 }
+
+// A helper function to convert a list of IP addresses from type std::string to
+// net_base::IPAddress. If |list2| is provided, its elements will be appended to
+// the results. This function assumes that all input strings are valid IP
+// addresses, otherwise it will crash directly.
+std::vector<net_base::IPAddress> StringsToIPAddressesChecked(
+    const std::vector<std::string>& list1,
+    const std::vector<std::string>& list2 = {}) {
+  std::vector<net_base::IPAddress> ret;
+  for (const auto& str : list1) {
+    ret.push_back(*net_base::IPAddress::CreateFromString(str));
+  }
+  for (const auto& str : list2) {
+    ret.push_back(*net_base::IPAddress::CreateFromString(str));
+  }
+  return ret;
+}
+
 }  // namespace
+
 using org::chromium::flimflam::ManagerProxyInterface;
 using org::chromium::flimflam::ManagerProxyMock;
 using testing::_;
@@ -230,8 +250,8 @@ class ProxyTest : public ::testing::Test {
     dev->type = type;
     dev->state = state;
     dev->ifname = ifname;
-    dev->ipconfig.ipv4_dns_addresses = ipv4_nameservers;
-    dev->ipconfig.ipv6_dns_addresses = ipv6_nameservers;
+    dev->network_config.dns_servers =
+        StringsToIPAddressesChecked(ipv6_nameservers, ipv4_nameservers);
     return dev;
   }
 
@@ -250,8 +270,8 @@ class ProxyTest : public ::testing::Test {
   void SetNameServers(const std::vector<std::string>& ipv4_nameservers,
                       const std::vector<std::string>& ipv6_nameservers) {
     EXPECT_TRUE(proxy_->device_);
-    proxy_->device_->ipconfig.ipv4_dns_addresses = ipv4_nameservers;
-    proxy_->device_->ipconfig.ipv6_dns_addresses = ipv6_nameservers;
+    proxy_->device_->network_config.dns_servers =
+        StringsToIPAddressesChecked(ipv6_nameservers, ipv4_nameservers);
     proxy_->UpdateNameServers();
   }
 
@@ -567,9 +587,8 @@ TEST_F(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent) {
   proxy_->OnDeviceChanged(eth.get());
 
   // Update WiFi device nameservers.
-  wifi->ipconfig.ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
-  wifi->ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888",
-                                       "2001:4860:4860::8844"};
+  wifi->network_config.dns_servers = StringsToIPAddressesChecked(
+      {"2001:4860:4860::8888", "2001:4860:4860::8844", "8.8.8.8", "8.8.4.4"});
   EXPECT_CALL(*resolver_,
               SetNameServers(ElementsAre(StrEq("8.8.8.8"), StrEq("8.8.4.4"),
                                          StrEq("2001:4860:4860::8888"),
@@ -590,10 +609,9 @@ TEST_F(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
                                          StrEq("2001:4860:4860::8888"))));
   proxy_->OnDefaultDeviceChanged(dev.get());
 
-  // Now trigger an ipconfig change.
-  dev->ipconfig.ipv4_dns_addresses = {"8.8.8.8", "8.8.4.4"};
-  dev->ipconfig.ipv6_dns_addresses = {"2001:4860:4860::8888",
-                                      "2001:4860:4860::8844"};
+  // Now trigger an NetworkConfig change.
+  dev->network_config.dns_servers = StringsToIPAddressesChecked(
+      {"2001:4860:4860::8888", "2001:4860:4860::8844", "8.8.8.8", "8.8.4.4"});
   EXPECT_CALL(*resolver_,
               SetNameServers(ElementsAre(StrEq("8.8.8.8"), StrEq("8.8.4.4"),
                                          StrEq("2001:4860:4860::8888"),
@@ -612,7 +630,7 @@ TEST_F(ProxyTest, DeviceChangeEventIgnored) {
   EXPECT_CALL(*resolver_, SetNameServers(_)).Times(1);
   proxy_->OnDefaultDeviceChanged(dev.get());
 
-  // No change to ipconfig, no call to SetNameServers
+  // No change to NetworkConfig, no call to SetNameServers
   EXPECT_CALL(*resolver_, SetNameServers(_)).Times(0);
   proxy_->OnDeviceChanged(dev.get());
 
@@ -820,7 +838,6 @@ TEST_F(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
   SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
 
-  shill::Client::IPConfig ipconfig;
   SetNameServers({"1.1.1.1", "10.10.10.10"}, /*ipv6_nameservers=*/{});
 
   EXPECT_CALL(
@@ -850,7 +867,6 @@ TEST_F(ProxyTest, MultipleDoHProvidersForSecureWithFallbackMode) {
   SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem},
              ShillDevice(shill::Client::Device::ConnectionState::kOnline));
 
-  shill::Client::IPConfig ipconfig;
   SetNameServers({"1.1.1.1", "10.10.10.10"}, /*ipv6_nameservers=*/{});
 
   EXPECT_CALL(
@@ -1344,30 +1360,16 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
 
 TEST_F(ProxyTest, UpdateNameServers) {
   SetUpProxy(Proxy::Options{.type = Proxy::Type::kSystem}, ShillDevice());
-  proxy_->device_->ipconfig.ipv4_dns_addresses = {
-      // Valid IPv4 name servers.
-      "8.8.8.8", "192.168.1.1",
-      // Valid IPv6 name servers inside IPv4 config.
-      // Expected to be propagated to DNS proxy's
-      // IPv6 name servers.
-      "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16d", "::1",
-      // Ignored invalid name servers.
-      "256.256.256.256", "0.0.0.0", "::", "a", ""};
-  proxy_->device_->ipconfig.ipv6_dns_addresses = {
-      // Ignored valid IPv4 name servers.
-      "8.8.4.4", "192.168.1.2",
-      // Valid IPv6 name servers.
-      "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e", "::2",
-      // Ignored invalid name servers.
-      "256.256.256.257", "0.0.0.0", "::", "b", ""};
+  proxy_->device_->network_config.dns_servers = StringsToIPAddressesChecked(
+      {// IPv4 name servers.
+       "8.8.8.8", "192.168.1.1",
+       // IPv6 name servers.
+       "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e", "::2"});
   proxy_->UpdateNameServers();
 
   const std::vector<net_base::IPv4Address> expected_ipv4_dns_addresses = {
       net_base::IPv4Address(8, 8, 8, 8), net_base::IPv4Address(192, 168, 1, 1)};
   const std::vector<net_base::IPv6Address> expected_ipv6_dns_addresses = {
-      *net_base::IPv6Address::CreateFromString(
-          "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16d"),
-      *net_base::IPv6Address::CreateFromString("::1"),
       *net_base::IPv6Address::CreateFromString(
           "eeb0:117e:92ee:ad3d:ce0d:a646:95ea:a16e"),
       *net_base::IPv6Address::CreateFromString("::2")};

@@ -508,41 +508,23 @@ void Controller::OnDefaultDeviceChanged(
     return;
   }
 
-  auto ipconfig = device->ipconfig;
+  // Use pointer to avoid unnecessary copies.
+  auto* network_config = &device->network_config;
+
   // Special case for VPN without nameserver. Fallback to default physical
   // network's nameserver(s).
   if (device->type == shill::Client::Device::Type::kVPN &&
-      device->ipconfig.ipv4_dns_addresses.empty() &&
-      device->ipconfig.ipv6_dns_addresses.empty()) {
+      device->network_config.dns_servers.empty()) {
     auto dd = shill_->DefaultDevice(/*exclude_vpn=*/true);
     if (!dd) {
       LOG(ERROR) << "No default non-VPN device found";
       return;
     }
-    ipconfig = dd->ipconfig;
+    network_config = &dd->network_config;
   }
 
-  // When DNS information is available from both IPv6 source (RDNSS) and IPv4
-  // source (DHCPv4), the ideal behavior is happy eyeballs (RFC 8305). When
-  // happy eyeballs is not implemented, the priority of DNS servers are not
-  // strictly defined by standard. Prefer IPv6 here as most of the RFCs just
-  // "assume" IPv6 is preferred.
-  std::vector<std::string> nameservers;
-  for (const auto& ns : ipconfig.ipv6_dns_addresses) {
-    nameservers.push_back(ns);
-  }
-  for (const auto& ns : ipconfig.ipv4_dns_addresses) {
-    nameservers.push_back(ns);
-  }
-  std::vector<std::string> search_domains;
-  for (const auto& sd : ipconfig.ipv6_search_domains) {
-    search_domains.push_back(sd);
-  }
-  for (const auto& sd : ipconfig.ipv4_search_domains) {
-    search_domains.push_back(sd);
-  }
-
-  resolv_conf_->SetDNSFromLists(nameservers, search_domains);
+  resolv_conf_->SetDNSFromLists(network_config->dns_servers,
+                                network_config->dns_search_domains);
 }
 
 }  // namespace dns_proxy
