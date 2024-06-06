@@ -27,7 +27,7 @@ pub mod codec;
 pub mod backend;
 #[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod decoder;
-#[cfg(any(feature = "v4l2"))]
+#[cfg(any(feature = "v4l2-experimental"))]
 pub mod device;
 #[cfg(any(feature = "vaapi", feature = "v4l2"))]
 pub mod encoder;
