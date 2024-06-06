@@ -207,7 +207,7 @@ DownstreamNetworkService::HandleDownstreamNetworkInfo(
 }
 
 void DownstreamNetworkService::OnDownstreamNetworkAutoclose(
-    const std::string& downstream_ifname) {
+    std::string_view downstream_ifname) {
   auto downstream_network_it = downstream_networks_.find(downstream_ifname);
   if (downstream_network_it == downstream_networks_.end()) {
     return;

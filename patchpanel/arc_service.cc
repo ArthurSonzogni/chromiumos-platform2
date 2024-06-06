@@ -18,6 +18,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/system/sys_info.h>
 #include <brillo/key_value_store.h>
@@ -91,14 +92,14 @@ bool KernelVersion(int* major, int* minor) {
 
 // Makes Android root the owner of /sys/class/ + |path|. |pid| is the ARC
 // container pid.
-bool SetSysfsOwnerToAndroidRoot(pid_t pid, const std::string& path) {
+bool SetSysfsOwnerToAndroidRoot(pid_t pid, std::string_view path) {
   auto ns = ScopedNS::EnterMountNS(pid);
   if (!ns) {
     LOG(ERROR) << "Cannot enter mnt namespace for pid " << pid;
     return false;
   }
 
-  const std::string sysfs_path = "/sys/class/" + path;
+  const std::string sysfs_path = base::StrCat({"/sys/class/", path});
   if (chown(sysfs_path.c_str(), kAndroidRootUid, kAndroidRootUid) == -1) {
     PLOG(ERROR) << "Failed to change ownership of " + sysfs_path;
     return false;
@@ -266,19 +267,19 @@ ArcService::StaticGuestIfManager::StaticGuestIfManager(
 }
 
 std::optional<std::string> ArcService::StaticGuestIfManager::AddInterface(
-    const std::string& host_ifname) {
+    std::string_view host_ifname) {
   LOG(ERROR) << "Interface cannot be added to a static VM.";
   return std::nullopt;
 }
 
 bool ArcService::StaticGuestIfManager::RemoveInterface(
-    const std::string& host_ifname) {
+    std::string_view host_ifname) {
   LOG(ERROR) << "Interface cannot be removed from a static VM.";
   return false;
 }
 
 std::optional<std::string> ArcService::StaticGuestIfManager::GetGuestIfName(
-    const std::string& host_ifname) const {
+    std::string_view host_ifname) const {
   auto itr = guest_if_names_.find(host_ifname);
   if (itr == guest_if_names_.end()) {
     return std::nullopt;
@@ -298,7 +299,7 @@ std::vector<std::string> ArcService::StaticGuestIfManager::GetStaticTapDevices()
 
 ArcService::HotplugGuestIfManager::HotplugGuestIfManager(
     std::unique_ptr<VmConciergeClient> vm_concierge_client,
-    const std::string& arc0_tap_ifname,
+    std::string_view arc0_tap_ifname,
     uint32_t cid)
     : arc0_tap_ifname_(arc0_tap_ifname), cid_(cid) {
   client_ = std::move(vm_concierge_client);
@@ -308,7 +309,7 @@ ArcService::HotplugGuestIfManager::HotplugGuestIfManager(
 }
 
 void ArcService::HotplugGuestIfManager::HotplugCallback(
-    std::string tap_ifname, std::optional<uint32_t> bus_num) {
+    std::string_view tap_ifname, std::optional<uint32_t> bus_num) {
   if (!bus_num.has_value()) {
     LOG(ERROR) << "Hotplug host tap " << tap_ifname
                << " to guest failed: concierge error.";
@@ -322,40 +323,45 @@ void ArcService::HotplugGuestIfManager::HotplugCallback(
   }
   const uint8_t bus_num_uint8 = uint8_t(*bus_num);
   const auto emplace_result =
-      guest_buses_.try_emplace(std::move(tap_ifname), bus_num_uint8);
+      guest_buses_.try_emplace(std::string(tap_ifname), bus_num_uint8);
   if (emplace_result.second) {
     LOG(INFO) << "Hotplug host tap " << tap_ifname
               << " to guest succeeded, guest bus: " << bus_num_uint8;
   } else {
     LOG(ERROR) << "Hotplug host tap " << tap_ifname
                << " failed: device was already reported inserted at bus "
-               << guest_buses_.at(tap_ifname) << ", but replaced by "
+               << emplace_result.first->second << ", but replaced by "
                << bus_num_uint8;
     emplace_result.first->second = bus_num_uint8;
   }
 }
 
 void ArcService::HotplugGuestIfManager::RemoveCallback(
-    const std::string& tap_ifname, bool success) {
+    std::string_view tap_ifname, bool success) {
   if (!success) {
     LOG(ERROR) << "Remove host tap" << tap_ifname
                << " failed: concierge error.";
     return;
   }
-  if (guest_buses_.erase(tap_ifname) == 0) {
+  auto it = guest_buses_.find(tap_ifname);
+  if (it == guest_buses_.end()) {
     LOG(WARNING) << tap_ifname << " is already removed";
+  } else {
+    guest_buses_.erase(it);
   }
 }
 
 std::optional<std::string> ArcService::HotplugGuestIfManager::AddInterface(
-    const std::string& tap_ifname) {
+    std::string_view tap_ifname) {
   if (guest_if_idx_.find(tap_ifname) != guest_if_idx_.end()) {
     LOG(ERROR) << "Hotplug host tap " << tap_ifname
                << " failed: tap is already attached to the guest.";
     return std::nullopt;
   }
+  // TODO(b/293981114): Change VmConciergeClient to taking string_view directly
+  // and remove string conversion.
   if (!client_->AttachTapDevice(
-          cid_, tap_ifname,
+          cid_, std::string(tap_ifname),
           base::BindOnce(&HotplugGuestIfManager::HotplugCallback,
                          base::Unretained(this), tap_ifname))) {
     LOG(ERROR) << "Hotplug host tap " << tap_ifname
@@ -376,7 +382,7 @@ std::optional<std::string> ArcService::HotplugGuestIfManager::AddInterface(
 }
 
 bool ArcService::HotplugGuestIfManager::RemoveInterface(
-    const std::string& tap_ifname) {
+    std::string_view tap_ifname) {
   auto idx_itr = guest_if_idx_.find(tap_ifname);
   if (idx_itr == guest_if_idx_.end()) {
     LOG(ERROR) << "Remove network interface failed: " << tap_ifname
@@ -402,7 +408,7 @@ bool ArcService::HotplugGuestIfManager::RemoveInterface(
 }
 
 std::optional<std::string> ArcService::HotplugGuestIfManager::GetGuestIfName(
-    const std::string& tap_ifname) const {
+    std::string_view tap_ifname) const {
   auto itr = guest_if_idx_.find(tap_ifname);
   if (itr == guest_if_idx_.end()) {
     return std::nullopt;
@@ -939,7 +945,8 @@ void ArcService::StartArcDeviceDatapath(
     }
     // Allow netd to write to /sys/class/net/arc0/mtu (b/175571457).
     if (!SetSysfsOwnerToAndroidRoot(
-            pid, "net/" + arc_device.guest_device_ifname() + "/mtu")) {
+            pid,
+            base::StrCat({"net/", arc_device.guest_device_ifname(), "/mtu"}))) {
       RecordEvent(metrics_, ArcServiceUmaEvent::kSetVethMtuError);
     }
   }

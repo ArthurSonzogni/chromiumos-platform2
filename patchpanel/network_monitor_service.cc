@@ -78,7 +78,7 @@ bool NeedProbeForState(uint16_t current_state) {
 
 NeighborLinkMonitor::NeighborLinkMonitor(
     int ifindex,
-    const std::string& ifname,
+    std::string_view ifname,
     net_base::RTNLHandler* rtnl_handler,
     NeighborReachabilityEventHandler* neighbor_event_handler)
     : ifindex_(ifindex),

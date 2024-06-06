@@ -158,8 +158,8 @@ class CrostiniService {
   // patchpanel's adb-proxy. |ifname| is the Crostini's TAP interface that
   // will be forwarded. These methods call permission broker DBUS APIs to port
   // forward and accept traffic.
-  void StartAdbPortForwarding(const std::string& ifname);
-  void StopAdbPortForwarding(const std::string& ifname);
+  void StartAdbPortForwarding(std::string_view ifname);
+  void StopAdbPortForwarding(std::string_view ifname);
 
   // Starts and stop automatic DNAT forwarding of inbound traffic into a
   // Crostini virtual device. |crostini_device| must not be null.

@@ -211,11 +211,11 @@ void CrostiniService::Stop(uint64_t vm_id) {
   const std::string tap_ifname = it->second->tap_device_ifname();
   if (default_logical_device_) {
     forwarding_service_->StopIPv6NDPForwarding(*default_logical_device_,
-                                               it->second->tap_device_ifname());
-    forwarding_service_->StopMulticastForwarding(
-        *default_logical_device_, it->second->tap_device_ifname());
-    forwarding_service_->StopBroadcastForwarding(
-        *default_logical_device_, it->second->tap_device_ifname());
+                                               tap_ifname);
+    forwarding_service_->StopMulticastForwarding(*default_logical_device_,
+                                                 tap_ifname);
+    forwarding_service_->StopBroadcastForwarding(*default_logical_device_,
+                                                 tap_ifname);
   }
   datapath_->StopRoutingDevice(tap_ifname, TrafficSourceFromVMType(vm_type));
   if (adb_sideloading_enabled_) {
@@ -225,7 +225,7 @@ void CrostiniService::Stop(uint64_t vm_id) {
     StopAutoDNAT(it->second.get());
   }
   datapath_->RemoveInterface(tap_ifname);
-  devices_.erase(vm_id);
+  devices_.erase(it);
 
   LOG(INFO) << __func__ << " " << vm_info << ": VM network service stopped on "
             << tap_ifname;
@@ -308,7 +308,7 @@ std::unique_ptr<CrostiniService::CrostiniDevice> CrostiniService::AddTAP(
                                           std::move(lxd_subnet));
 }
 
-void CrostiniService::StartAdbPortForwarding(const std::string& ifname) {
+void CrostiniService::StartAdbPortForwarding(std::string_view ifname) {
   if (!datapath_->AddAdbPortForwardRule(ifname)) {
     LOG(ERROR) << __func__ << ": Error adding ADB port forwarding rule for "
                << ifname;
@@ -329,7 +329,7 @@ void CrostiniService::StartAdbPortForwarding(const std::string& ifname) {
   }
 }
 
-void CrostiniService::StopAdbPortForwarding(const std::string& ifname) {
+void CrostiniService::StopAdbPortForwarding(std::string_view ifname) {
   datapath_->DeleteAdbPortForwardRule(ifname);
   datapath_->DeleteAdbPortAccessRule(ifname);
   datapath_->SetRouteLocalnet(ifname, false);

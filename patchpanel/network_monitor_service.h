@@ -94,7 +94,7 @@ class NeighborLinkMonitor {
       NeighborReachabilityEventSignal::EventType event_type)>;
 
   NeighborLinkMonitor(int ifindex,
-                      const std::string& ifname,
+                      std::string_view ifname,
                       net_base::RTNLHandler* rtnl_handler,
                       NeighborReachabilityEventHandler* neighbor_event_handler);
   ~NeighborLinkMonitor() = default;

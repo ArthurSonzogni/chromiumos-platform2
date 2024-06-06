@@ -70,8 +70,7 @@ class ClatService {
 
   // Creates a config file /run/tayga/tayga.conf. An old config file will be
   // overwritten by a new one.
-  bool CreateConfigFile(const std::string& ifname,
-                        const net_base::IPv6Address& clat_ipv6_addr);
+  bool CreateConfigFile(const net_base::IPv6Address& clat_ipv6_addr);
   bool StartTayga();
   void StopTayga();
 

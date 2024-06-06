@@ -205,7 +205,7 @@ void ClatService::StartClat(const ShillClient::Device& shill_device) {
   }
   clat_ipv6_addr_ = clat_ipv6_cidr->address();
 
-  if (!CreateConfigFile(kTunnelDeviceIfName, clat_ipv6_addr_.value())) {
+  if (!CreateConfigFile(clat_ipv6_addr_.value())) {
     LOG(ERROR) << "Failed to create " << kTaygaConfigFilePath;
     StopClat();
     return;
@@ -323,7 +323,7 @@ bool ClatService::IsClatRunningDevice(const ShillClient::Device& shill_device) {
 }
 
 bool ClatService::CreateConfigFile(
-    const std::string& ifname, const net_base::IPv6Address& clat_ipv6_addr) {
+    const net_base::IPv6Address& clat_ipv6_addr) {
   const std::string contents = base::ReplaceStringPlaceholders(
       kTaygaConfigTemplate,
       {

@@ -5,6 +5,7 @@
 #ifndef PATCHPANEL_DOWNSTREAM_NETWORK_SERVICE_H_
 #define PATCHPANEL_DOWNSTREAM_NETWORK_SERVICE_H_
 
+#include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -82,7 +83,7 @@ class DownstreamNetworkService {
   std::pair<DownstreamNetworkResult, std::unique_ptr<DownstreamNetwork>>
   HandleDownstreamNetworkInfo(base::ScopedFD client_fd,
                               std::unique_ptr<DownstreamNetworkInfo> info);
-  void OnDownstreamNetworkAutoclose(const std::string& downstream_ifname);
+  void OnDownstreamNetworkAutoclose(std::string_view downstream_ifname);
   std::vector<DownstreamClientInfo> GetDownstreamClientInfo(
       std::string_view downstream_ifname) const;
   void Stop();
@@ -116,7 +117,7 @@ class DownstreamNetworkService {
   // All external network interfaces currently managed by patchpanel through
   // the CreateTetheredNetwork or CreateLocalOnlyNetwork DBus APIs, keyed by
   // their downstream interface name.
-  std::map<std::string, std::unique_ptr<DownstreamNetworkInfo>>
+  std::map<std::string, std::unique_ptr<DownstreamNetworkInfo>, std::less<>>
       downstream_networks_;
   // The DHCP server controllers, keyed by its downstream interface.
   std::map<std::string, std::unique_ptr<DHCPServerController>>
