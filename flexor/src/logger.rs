@@ -11,6 +11,7 @@ use log::{Level, LevelFilter, Log};
 const FLEXOR_TAG: &str = "flexor";
 const DEFAULT_DEVICE: &str = "/dev/kmsg";
 const MAX_LEVEL: LevelFilter = LevelFilter::Info;
+const MAX_LOG_RECORD_SIZE: usize = 1024;
 
 // A logger that logs to the kernel message buffer.
 struct KernelLogger {
@@ -45,17 +46,24 @@ impl Log for KernelLogger {
             Level::Trace => 7,
         };
 
-        let mut buf = Vec::new();
-        _ = writeln!(
-            &mut buf,
-            "<{level}>{FLEXOR_TAG}[{}]: {}",
-            unsafe { nix::libc::getpid() },
-            record.args()
-        );
+        let message = record.args().to_string();
+        let prefix = format!("<{level}>{FLEXOR_TAG}[{}]: ", unsafe {
+            nix::libc::getpid()
+        });
+
+        // The kernel log buffer can only append messages with a max size of
+        // 1024. For that reason we might log the message in chunks.
+        let msg_chunks: Vec<&str> = if message.len() < MAX_LOG_RECORD_SIZE - prefix.len() {
+            vec![&message]
+        } else {
+            message.lines().collect()
+        };
 
         if let Ok(mut kmsg) = self.file.lock() {
-            _ = kmsg.write(&buf);
-            _ = kmsg.flush();
+            for msg in msg_chunks {
+                _ = kmsg.write(format!("{prefix}{msg}").as_bytes());
+                _ = kmsg.flush();
+            }
         }
     }
 
