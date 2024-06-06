@@ -113,6 +113,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               I2cReadCommand,
               (uint8_t port, uint8_t addr8, uint8_t offset, uint8_t read_len),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::MotionSenseCommandLidAngle>,
+              MotionSenseCommandLidAngle,
+              (),
+              (override));
 };
 
 }  // namespace ec

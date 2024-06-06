@@ -130,4 +130,9 @@ std::unique_ptr<ec::I2cReadCommand> EcCommandFactory::I2cReadCommand(
   return ec::I2cReadCommand::Create(port, addr8, offset, read_len);
 }
 
+std::unique_ptr<ec::MotionSenseCommandLidAngle>
+EcCommandFactory::MotionSenseCommandLidAngle() {
+  return std::make_unique<ec::MotionSenseCommandLidAngle>();
+}
+
 }  // namespace ec

@@ -16,7 +16,7 @@ class BRILLO_EXPORT MotionSenseCommandLidAngle : public MotionSenseCommand {
   MotionSenseCommandLidAngle();
   ~MotionSenseCommandLidAngle() override = default;
 
-  uint16_t LidAngle() const;
+  virtual uint16_t LidAngle() const;
 };
 
 static_assert(!std::is_copy_constructible<MotionSenseCommandLidAngle>::value,
