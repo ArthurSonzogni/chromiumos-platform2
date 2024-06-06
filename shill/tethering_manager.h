@@ -159,6 +159,9 @@ class TetheringManager : public Network::EventHandler {
   // Indicates that HotspotDevice creation has failed.
   mockable void OnDeviceCreationFailed();
 
+  // Stop and free tethering resources without triggering any result callbacks.
+  void StopOnResourceBusy();
+
  private:
   friend class TetheringManagerTest;
   FRIEND_TEST(TetheringManagerTest, TetheringConfigLoadAndUnload);

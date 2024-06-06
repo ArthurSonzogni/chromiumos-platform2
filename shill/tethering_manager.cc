@@ -1214,6 +1214,10 @@ void TetheringManager::Disable(SetEnabledResultCallback callback) {
   StopTetheringSession(StopReason::kClientStop);
 }
 
+void TetheringManager::StopOnResourceBusy() {
+  StopTetheringSession(StopReason::kResourceBusy);
+}
+
 // static
 const std::string TetheringManager::SetEnabledResultName(
     SetEnabledResult result) {

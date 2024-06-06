@@ -296,6 +296,8 @@ class TetheringManagerTest : public testing::Test {
     tethering_manager_->Disable(result_cb_.Get());
   }
 
+  void StopOnResourceBusy() { tethering_manager_->StopOnResourceBusy(); }
+
   void VerifyResult(TetheringManager::SetEnabledResult expected_result) {
     EXPECT_CALL(result_cb_, Run(expected_result));
     DispatchPendingEvents();
@@ -1402,6 +1404,17 @@ TEST_F(TetheringManagerTest, UserStopTetheringSession) {
   SetEnabledVerifyResult(tethering_manager_, false,
                          TetheringManager::SetEnabledResult::kSuccess);
   CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonClientStop);
+}
+
+TEST_F(TetheringManagerTest, StopTetheringSessionOnResourceBusy) {
+  TetheringPrerequisite(tethering_manager_);
+  SetEnabledVerifyResult(tethering_manager_, true,
+                         TetheringManager::SetEnabledResult::kSuccess);
+  StopOnResourceBusy();
+  CheckTetheringStopping(tethering_manager_, kTetheringIdleReasonResourceBusy);
+  // Send upstream tear down event
+  OnUpstreamNetworkReleased(tethering_manager_, true);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonResourceBusy);
 }
 
 TEST_F(TetheringManagerTest, TetheringStopWhenUserLogout) {
