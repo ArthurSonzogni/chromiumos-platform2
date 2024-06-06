@@ -332,6 +332,8 @@ def fmt_far(
         raise TypeError("type must be 'k' or 's'.")
 
     if fmt == "k":
+        if far_value == 0.0:
+            return "0"
         return f"1/{{:.{decimal_places}f}}k".format(1 / (far_value * 1000))
     else:
         return f"{{:.{decimal_places}e}}".format(far_value)

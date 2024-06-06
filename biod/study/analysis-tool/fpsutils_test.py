@@ -202,15 +202,18 @@ class Test_Simple_Functions(unittest.TestCase):
         # Don't forget that truncation will round the last digit!
         self.assertEqual(fpsutils.fmt_far(far, "k", 3), "1/123.457k")
         self.assertEqual(fpsutils.fmt_far(far, "k", 5), "1/123.45679k")
+        self.assertEqual(fpsutils.fmt_far(0.0, "k"), "0")
 
         far = (123456 / 100000) * (1 / 100000)
         self.assertEqual(fpsutils.fmt_far(far, "s", 3), "1.235e-05")
         self.assertEqual(fpsutils.fmt_far(far, "s", 5), "1.23456e-05")
+        self.assertEqual(fpsutils.fmt_far(0.0, "s", 3), "0.000e+00")
 
     def test_fmt_frr(self):
         frr = 1.234567 / 100
         self.assertEqual(fpsutils.fmt_frr(frr, 3), "1.235%")
         self.assertEqual(fpsutils.fmt_frr(frr, 5), "1.23457%")
+        self.assertEqual(fpsutils.fmt_frr(0.0, 3), "0.000%")
 
     def test_benchmark(self):
         SLEEP_TIME = 1.245
