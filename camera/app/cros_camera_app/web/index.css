@@ -1,0 +1,28 @@
+/*
+ * Copyright 2024 The ChromiumOS Authors
+ * Use of this source code is governed by a BSD-style license that can be
+ * found in the LICENSE file.
+ */
+
+:root {
+  /* Use dark theme to reduce the power impact of screen brightness. */
+  color-scheme: only dark;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+video {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  max-height: 100vh;
+}

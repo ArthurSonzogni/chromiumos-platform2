@@ -4,6 +4,7 @@
 
 """The setuptools setup file."""
 
+# pylint: disable=import-modules-only
 from setuptools import find_packages
 from setuptools import setup
 
@@ -16,7 +17,7 @@ setup(
     author_email="shik@chromium.org",
     license="BSD-Google",
     packages=find_packages(),
-    package_data={"cros_camera_app": ["extension.js"]},
+    package_data={"": ["*.html", "*.css", "*.js"]},
     include_package_data=True,
     install_requires=["ws4py"],
     entry_points={

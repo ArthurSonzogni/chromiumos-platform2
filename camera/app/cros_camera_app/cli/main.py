@@ -21,6 +21,7 @@ from cros_camera_app import app
 from cros_camera_app import device
 from cros_camera_app import fake_hal
 from cros_camera_app.cli import util
+from cros_camera_app.web import server
 
 
 cli = util.CLIRunner(
@@ -363,6 +364,16 @@ def cmd_fake_hal_disconnect(camera_id: Optional[List[int]]):
 )
 def cmd_fake_hal_info():
     fake_hal.dump_config_info(sys.stdout)
+
+
+@cli.command(
+    "web",
+    parent=cmd_main,
+    help="Start web camera server",
+    description="Start a simple web camera page server",
+)
+def cmd_web():
+    server.serve_forever()
 
 
 def main(argv: Optional[List[str]] = None) -> Optional[int]:
