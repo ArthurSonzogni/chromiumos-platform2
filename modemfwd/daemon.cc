@@ -350,8 +350,8 @@ void Daemon::RunModemReappearanceCallback(const std::string& equipment_id) {
 
 void Daemon::OnModemStateChange(const std::string device_id,
                                 Modem::State new_state) {
-  ELOG(INFO) << __func__ << ": update modem with device id: " << device_id
-             << " to new modem state: " << new_state;
+  EVLOG(1) << __func__ << ": update modem with device id: " << device_id
+           << " to new modem state: " << new_state;
   // Do not update heartbeat config when:
   // 1. update to new modem state is not successful (no state change);
   // 2. current power state is LOW, keep heartbeat stopped.
@@ -366,8 +366,8 @@ void Daemon::OnModemStateChange(const std::string device_id,
 
 void Daemon::OnModemPowerStateChange(const std::string device_id,
                                      Modem::PowerState new_power_state) {
-  ELOG(INFO) << __func__ << ": update modem with device id: " << device_id
-             << " to new power state: " << new_power_state;
+  EVLOG(1) << __func__ << ": update modem with device id: " << device_id
+           << " to new power state: " << new_power_state;
   if (!modems_[device_id].get()->UpdatePowerState(new_power_state))
     return;
   if (new_power_state == Modem::PowerState::LOW) {

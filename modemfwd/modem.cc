@@ -306,14 +306,14 @@ class ModemImpl : public Modem {
   PowerState GetPowerState() const override { return power_state_; }
 
   bool UpdateState(State new_state) override {
-    ELOG(INFO) << __func__ << ": new modem state: " << new_state;
+    EVLOG(1) << __func__ << ": new modem state: " << new_state;
     if (new_state > State::CONNECTED || new_state < State::FAILED) {
       LOG(ERROR) << "Invalid modem state: " << new_state;
       return false;
     }
 
     if (state_ == new_state) {
-      ELOG(WARNING) << " state(" << state_ << ") did not change.";
+      ELOG(WARNING) << "State (" << state_ << ") did not change.";
       return false;
     } else {
       state_ = new_state;
@@ -322,7 +322,7 @@ class ModemImpl : public Modem {
   }
 
   bool UpdatePowerState(PowerState new_power_state) override {
-    ELOG(INFO) << __func__ << ": new power state: " << new_power_state;
+    EVLOG(1) << __func__ << ": new power state: " << new_power_state;
     if (new_power_state > PowerState::ON ||
         new_power_state < PowerState::UNKNOWN) {
       LOG(ERROR) << "Invalid power state: " << new_power_state;
@@ -330,7 +330,7 @@ class ModemImpl : public Modem {
     }
 
     if (power_state_ == new_power_state) {
-      ELOG(WARNING) << "Power state(" << power_state_ << ") did not change.";
+      ELOG(WARNING) << "Power state (" << power_state_ << ") did not change.";
       return false;
     } else {
       power_state_ = new_power_state;
@@ -503,38 +503,9 @@ class StubModem : public Modem {
   State GetState() const override { return state_; }
   PowerState GetPowerState() const override { return power_state_; }
 
-  bool UpdateState(State new_state) override {
-    ELOG(INFO) << __func__ << ": new modem state: " << new_state;
-    if (new_state > State::CONNECTED || new_state < State::FAILED) {
-      LOG(ERROR) << "Invalid modem state: " << new_state;
-      return false;
-    }
+  bool UpdateState(State new_state) override { return true; }
 
-    if (state_ == new_state) {
-      ELOG(WARNING) << " State(" << state_ << ") did not change.";
-      return false;
-    } else {
-      state_ = new_state;
-    }
-    return true;
-  }
-
-  bool UpdatePowerState(PowerState new_power_state) override {
-    ELOG(INFO) << __func__ << ": new power state: " << new_power_state;
-    if (new_power_state > PowerState::ON ||
-        new_power_state < PowerState::UNKNOWN) {
-      LOG(ERROR) << "Invalid power state: " << new_power_state;
-      return false;
-    }
-
-    if (power_state_ == new_power_state) {
-      ELOG(WARNING) << "Power state(" << power_state_ << ") did not change.";
-      return false;
-    } else {
-      power_state_ = new_power_state;
-    }
-    return true;
-  }
+  bool UpdatePowerState(PowerState new_power_state) override { return true; }
 
  private:
   int heartbeat_failures_;
