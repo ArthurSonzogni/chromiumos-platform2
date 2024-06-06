@@ -960,7 +960,8 @@ void StreamManipulatorHelper::Notify(camera3_notify_msg_t msg) {
     return;
   }
 
-  if (msg.type != CAMERA3_MSG_ERROR) {
+  if (config_.process_mode == ProcessMode::kBypass ||
+      stream_config_unsupported_ || msg.type != CAMERA3_MSG_ERROR) {
     result_sequencer_->Notify(msg);
     return;
   }
