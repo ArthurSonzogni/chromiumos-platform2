@@ -209,19 +209,6 @@ def run(opts: argparse.Namespace) -> int:
     source_dir = pathlib.Path(__file__).parent
     rpt = Report2(analysis_dir, source_dir / "templates")
 
-    # # Find Data
-    # # We expect a symbolic link named `data` to point to the directory that
-    # # contains the FPC BET reports and raw collection.
-    # print('# Discover Root Data Directory')
-    # data_root = pathlib.Path(os.readlink('data'))
-    # if not data_root.is_dir():
-    #     raise Exception('Data root doesn\'t exist')
-    # print(f'Using root {data_root}')
-
-    # # BET_REPORT_DIR = str(data_root.joinpath('report2'))
-    # BET_REPORT_DIR = data_root.joinpath('report-100k')
-    # COLLECTION_DIR = data_root.joinpath('orig-data')
-
     ################# Import Data From BET Results #################
 
     print("# Read in data")
@@ -656,7 +643,6 @@ def run(opts: argparse.Namespace) -> int:
     # BOOTSTRAP_SAMPLES = 5000  # 5000 samples in 2 seconds (128 cores)
     BOOTSTRAP_SAMPLES = 100000  # 100000 samples in 16 seconds (128 cores)
     CONFIDENCE_PERCENT = 95
-    PARALLEL_BOOTSTRAP = True
     FAR_THRESHOLD = 1 / 100000.0
     FRR_THRESHOLD = 10 / 100.0
 
@@ -732,8 +718,17 @@ def run(opts: argparse.Namespace) -> int:
             line_color="yellow",
         )
 
-        # fig.add_vline(x=1/50000.0, annotation_text='1/50',
-        #               line_width=2, line_dash='dash', line_color='red')
+        # Enable this to compare against 1/50k.
+        # Enabling this has the undesirable side effect of shifting
+        # focus of the histogram plots to include 1/50k, which might
+        # be very far from the mean.
+        # fig.add_vline(
+        #     x=1 / 50000.0,
+        #     annotation_text="1/50",
+        #     line_width=2,
+        #     line_dash="dash",
+        #     line_color="red",
+        # )
         fig.add_vline(
             x=1 / 100000.0,
             annotation_text="1/100k",
@@ -859,11 +854,6 @@ def run(opts: argparse.Namespace) -> int:
         info.set("FRR_Std", frr_std)
         info.set("FRR_Threshold", f"{FRR_THRESHOLD * 100}%")
         info.set("FRR_Pass", frr_ci_upper < FRR_THRESHOLD)
-
-    # far_figures[DISPLAY_TC].show()
-    # frr_figures[DISPLAY_TC].show()
-    # %%
-    # rpt_tc[DISPLAY_TC].display(display)
 
     #### Generate Report ####
 
