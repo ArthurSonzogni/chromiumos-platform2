@@ -177,13 +177,13 @@ class Manager : public ForwardingService {
 
   void StartMulticastForwarding(
       const ShillClient::Device& shill_device,
-      const std::string& ifname_virtual,
+      std::string_view ifname_virtual,
       MulticastForwarder::Direction dir =
           MulticastForwarder::Direction::kTwoWays) override;
 
   void StopMulticastForwarding(
       const ShillClient::Device& shill_device,
-      const std::string& ifname_virtual,
+      std::string_view ifname_virtual,
       MulticastForwarder::Direction dir =
           MulticastForwarder::Direction::kTwoWays) override;
 

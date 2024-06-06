@@ -47,7 +47,7 @@ class ForwardingService {
   // direction of forwarding to be started.
   virtual void StartMulticastForwarding(
       const ShillClient::Device& shill_device,
-      const std::string& ifname_virtual,
+      std::string_view ifname_virtual,
       MulticastForwarder::Direction dir =
           MulticastForwarder::Direction::kTwoWays) = 0;
 
@@ -56,7 +56,7 @@ class ForwardingService {
   // direction of forwarding to be stopped.
   virtual void StopMulticastForwarding(
       const ShillClient::Device& shill_device,
-      const std::string& ifname_virtual,
+      std::string_view ifname_virtual,
       MulticastForwarder::Direction dir =
           MulticastForwarder::Direction::kTwoWays) = 0;
 };

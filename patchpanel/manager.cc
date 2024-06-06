@@ -1072,7 +1072,7 @@ void Manager::StopBroadcastForwarding(const ShillClient::Device& shill_device,
 }
 
 void Manager::StartMulticastForwarding(const ShillClient::Device& shill_device,
-                                       const std::string& ifname_virtual,
+                                       std::string_view ifname_virtual,
                                        MulticastForwarder::Direction dir) {
   if (shill_device.ifname.empty() || ifname_virtual.empty()) {
     return;
@@ -1093,7 +1093,7 @@ void Manager::StartMulticastForwarding(const ShillClient::Device& shill_device,
 }
 
 void Manager::StopMulticastForwarding(const ShillClient::Device& shill_device,
-                                      const std::string& ifname_virtual,
+                                      std::string_view ifname_virtual,
                                       MulticastForwarder::Direction dir) {
   if (shill_device.ifname.empty())
     return;

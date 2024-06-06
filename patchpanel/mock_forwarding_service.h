@@ -38,7 +38,7 @@ class MockForwardingService : public ForwardingService {
   MOCK_METHOD(void,
               StartMulticastForwarding,
               (const ShillClient::Device& shill_device,
-               const std::string& ifname_virtual,
+               std::string_view ifname_virtual,
                MulticastForwarder::Direction dir),
               (override));
   MOCK_METHOD(void,
@@ -54,7 +54,7 @@ class MockForwardingService : public ForwardingService {
   MOCK_METHOD(void,
               StopMulticastForwarding,
               (const ShillClient::Device& shill_device,
-               const std::string& ifname_virtual,
+               std::string_view ifname_virtual,
                MulticastForwarder::Direction dir),
               (override));
 };
