@@ -304,6 +304,7 @@ def cmd_decrypt(args: argparse.Namespace) -> int:
             "key password."
         )
         return 1
+    return 0
 
 
 def cmd_convert(args: argparse.Namespace) -> int:
