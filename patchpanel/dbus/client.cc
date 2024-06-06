@@ -1969,6 +1969,9 @@ Client::TrafficVector Client::TrafficVector::operator-() const {
   return r;
 }
 
+bool Client::TrafficCounter::operator==(
+    const Client::TrafficCounter& rhs) const = default;
+
 BRILLO_EXPORT std::ostream& operator<<(
     std::ostream& stream, const Client::NeighborReachabilityEvent& event) {
   return stream << "{ifindex: " << event.ifindex
@@ -1990,6 +1993,46 @@ BRILLO_EXPORT std::ostream& operator<<(
     case Client::NetworkTechnology::kWiFi:
       return stream << "WiFi";
   }
+}
+
+BRILLO_EXPORT std::ostream& operator<<(
+    std::ostream& stream, const Client::TrafficSource& traffic_source) {
+  switch (traffic_source) {
+    case patchpanel::Client::TrafficSource::kUnknown:
+      return stream << "Unknown";
+    case patchpanel::Client::TrafficSource::kChrome:
+      return stream << "Chrome";
+    case patchpanel::Client::TrafficSource::kUser:
+      return stream << "User";
+    case patchpanel::Client::TrafficSource::kUpdateEngine:
+      return stream << "UE";
+    case patchpanel::Client::TrafficSource::kSystem:
+      return stream << "System";
+    case patchpanel::Client::TrafficSource::kVpn:
+      return stream << "VPN";
+    case patchpanel::Client::TrafficSource::kArc:
+      return stream << "ARC";
+    case patchpanel::Client::TrafficSource::kBorealisVM:
+      return stream << "Borealis";
+    case patchpanel::Client::TrafficSource::kBruschettaVM:
+      return stream << "Bruschetta";
+    case patchpanel::Client::TrafficSource::kCrostiniVM:
+      return stream << "Crostini";
+    case patchpanel::Client::TrafficSource::kParallelsVM:
+      return stream << "Parallels";
+    case patchpanel::Client::TrafficSource::kTethering:
+      return stream << "Tethering";
+    case patchpanel::Client::TrafficSource::kWiFiDirect:
+      return stream << "WiFi Direct";
+    case patchpanel::Client::TrafficSource::kWiFiLOHS:
+      return stream << "WiFi LOHS";
+  }
+}
+
+BRILLO_EXPORT std::ostream& operator<<(
+    std::ostream& stream, const Client::TrafficVector& traffic_vector) {
+  return stream << "[rx=" << traffic_vector.rx_bytes
+                << ", tx=" << traffic_vector.tx_bytes << "]";
 }
 
 }  // namespace patchpanel

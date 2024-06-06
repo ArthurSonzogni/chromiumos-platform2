@@ -103,6 +103,8 @@ class BRILLO_EXPORT Client {
     std::string ifname;
     IPFamily ip_family;
     TrafficVector traffic;
+
+    bool operator==(const TrafficCounter& rhs) const;
   };
 
   // See NetworkDevice.GuestType in patchpanel_service.proto.
@@ -559,6 +561,12 @@ BRILLO_EXPORT std::ostream& operator<<(
 
 BRILLO_EXPORT std::ostream& operator<<(
     std::ostream& stream, const Client::NetworkTechnology& technology);
+
+BRILLO_EXPORT std::ostream& operator<<(
+    std::ostream& stream, const Client::TrafficSource& traffic_source);
+
+BRILLO_EXPORT std::ostream& operator<<(
+    std::ostream& stream, const Client::TrafficVector& traffic_vector);
 
 // Forward declaring the protobuf-defined class patchpanel::NetworkConfig to
 // avoid including protobuf binding in a public header.
