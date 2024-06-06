@@ -88,6 +88,11 @@ class WiFiPhy {
     return wifi_devices_;
   }
 
+  // Return the local devices.
+  const std::set<LocalDeviceConstRefPtr>& LocalDevices() const {
+    return wifi_local_devices_;
+  }
+
   // Remove a WiFi device instance from wifi_devices_.
   void DeleteWiFiDevice(std::string_view link_name);
 
