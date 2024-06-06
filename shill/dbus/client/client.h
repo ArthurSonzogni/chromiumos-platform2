@@ -18,8 +18,9 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/brillo_export.h>
-#include <shill/dbus-proxies.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/ip_address.h>
+#include <shill/dbus-proxies.h>
 
 namespace shill {
 
@@ -32,10 +33,33 @@ constexpr base::TimeDelta kDefaultDBusTimeout =
 // TODO(garrick): Integrate into applicable platform2 packages.
 class BRILLO_EXPORT Client {
  public:
-  // IPConfig for a device. If the device does not have a valid ipv4/ipv6
-  // config, the corresponding fields will be empty or 0.
-  // TODO(jiejiang): add the following fields into this struct:
-  // - MTU (one only per network)
+  // This struct contains a subset of the net_base::NetworkConfig struct. Only
+  // contains the fields which the users of this shill client may care about.
+  struct NetworkConfig {
+    NetworkConfig();
+    ~NetworkConfig();
+
+    NetworkConfig(const NetworkConfig& other);
+    NetworkConfig& operator=(const NetworkConfig& other);
+
+    bool operator==(const NetworkConfig& rhs) const;
+
+    // IPv4 configurations.
+    std::optional<net_base::IPv4CIDR> ipv4_address;
+    std::optional<net_base::IPv4Address> ipv4_gateway;
+
+    // IPv6 configurations.
+    std::vector<net_base::IPv6CIDR> ipv6_addresses;
+    std::optional<net_base::IPv6Address> ipv6_gateway;
+
+    // DNS configurations.
+    std::vector<net_base::IPAddress> dns_servers;
+    std::vector<std::string> dns_search_domains;
+  };
+
+  // (Deprecated, use the NetworkConfig struct instead). IPConfig for a device.
+  // If the device does not have a valid ipv4/ipv6 config, the corresponding
+  // fields will be empty or 0.
   struct IPConfig {
     bool operator==(const IPConfig& that) const {
       return this->ipv4_prefix_length == that.ipv4_prefix_length &&
@@ -105,6 +129,7 @@ class BRILLO_EXPORT Client {
     bool operator==(const Device& that) const {
       return this->type == that.type && this->ifname == that.ifname &&
              this->ipconfig == that.ipconfig &&
+             this->network_config == that.network_config &&
              this->cellular_country_code == that.cellular_country_code;
     }
 
@@ -114,6 +139,7 @@ class BRILLO_EXPORT Client {
     std::string cellular_primary_ifname;  // empty if cell device has no primary
                                           // interface property.
     IPConfig ipconfig;
+    NetworkConfig network_config;
     std::string cellular_country_code;
   };
 

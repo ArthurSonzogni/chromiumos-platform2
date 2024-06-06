@@ -12,8 +12,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/variant_dictionary.h>
+#include <chromeos/net-base/ip_address.h>
 #include <dbus/shill/dbus-constants.h>
-#include <net-base/ip_address.h>
 
 using org::chromium::flimflam::DeviceProxy;
 using org::chromium::flimflam::DeviceProxyInterface;
@@ -121,7 +121,109 @@ std::string GetCellularProviderCountryCode(
   return operator_info[shill::kOperatorCountryKey];
 }
 
+// Similar to brillo::GetVariantValueOrDefault() which returns the default value
+// of T on failure, with an additional ERROR log.
+template <typename T>
+T GetVariant(const brillo::VariantDictionary& props, std::string_view key) {
+  const auto it = props.find(key);
+  if (it == props.end()) {
+    LOG(ERROR) << key << " is not found in props";
+    return T();
+  }
+  if (!it->second.IsTypeCompatible<T>()) {
+    LOG(ERROR) << key << " has unexpected type";
+    return T();
+  }
+  return it->second.Get<T>();
+}
+
+// Parses the value of NetworkConfig property in a best-effort way. If there is
+// a failure, log it and continue the parsing.
+Client::NetworkConfig ParseNetworkConfigProperty(
+    const brillo::VariantDictionary& props) {
+  Client::NetworkConfig ret;
+  if (props.empty()) {
+    return ret;
+  }
+
+  // IPv4 address.
+  if (const auto val =
+          GetVariant<std::string>(props, kNetworkConfigIPv4AddressProperty);
+      !val.empty()) {
+    ret.ipv4_address = net_base::IPv4CIDR::CreateFromCIDRString(val);
+    if (!ret.ipv4_address) {
+      LOG(ERROR) << "Failed to parse " << kNetworkConfigIPv4AddressProperty
+                 << " value " << val;
+    }
+  }
+
+  // IPv4 gateway.
+  if (const auto val =
+          GetVariant<std::string>(props, kNetworkConfigIPv4GatewayProperty);
+      !val.empty()) {
+    ret.ipv4_gateway = net_base::IPv4Address::CreateFromString(val);
+    if (!ret.ipv4_gateway) {
+      LOG(ERROR) << "Failed to parse " << kNetworkConfigIPv4GatewayProperty
+                 << " value " << val;
+    }
+  }
+
+  // IPv6 addresses.
+  for (const auto& val : GetVariant<std::vector<std::string>>(
+           props, kNetworkConfigIPv6AddressesProperty)) {
+    auto ipv6_cidr = net_base::IPv6CIDR::CreateFromCIDRString(val);
+    if (!ipv6_cidr) {
+      LOG(ERROR) << "Failed to parse " << kNetworkConfigIPv6AddressesProperty
+                 << " value " << val;
+      continue;
+    }
+    ret.ipv6_addresses.push_back(*ipv6_cidr);
+  }
+
+  // IPv6 gateway.
+  if (const auto val =
+          GetVariant<std::string>(props, kNetworkConfigIPv6GatewayProperty);
+      !val.empty()) {
+    ret.ipv6_gateway = net_base::IPv6Address::CreateFromString(val);
+    if (!ret.ipv6_gateway) {
+      LOG(ERROR) << "Failed to parse " << kNetworkConfigIPv6GatewayProperty
+                 << " value " << val;
+    }
+  }
+
+  // DNS servers.
+  for (const auto& val : GetVariant<std::vector<std::string>>(
+           props, kNetworkConfigNameServersProperty)) {
+    auto ip_addr = net_base::IPAddress::CreateFromString(val);
+    if (!ip_addr) {
+      LOG(ERROR) << "Failed to parse " << kNetworkConfigNameServersProperty
+                 << " value " << val;
+      continue;
+    }
+    if (ip_addr->IsZero()) {
+      // Empty DNS servers are not meaningful for the clients. Skip them here.
+      continue;
+    }
+    ret.dns_servers.push_back(*ip_addr);
+  }
+
+  // Search domains.
+  ret.dns_search_domains = GetVariant<std::vector<std::string>>(
+      props, kNetworkConfigSearchDomainsProperty);
+
+  return ret;
+}
+
 }  // namespace
+
+Client::NetworkConfig::NetworkConfig() = default;
+Client::NetworkConfig::~NetworkConfig() = default;
+Client::NetworkConfig::NetworkConfig(const Client::NetworkConfig& other) =
+    default;
+Client::NetworkConfig& Client::NetworkConfig::operator=(
+    const NetworkConfig& other) = default;
+bool Client::NetworkConfig::operator==(const NetworkConfig& rhs) const =
+    default;
 
 Client::Client(scoped_refptr<dbus::Bus> bus) : bus_(bus) {
   bus_->GetObjectProxy(kFlimflamServiceName, dbus::ObjectPath{"/"})
@@ -615,6 +717,10 @@ Client::Device* Client::HandleSelectedServiceChanged(
                << service_path.value() << "] is unknown";
   }
 
+  device->network_config =
+      ParseNetworkConfigProperty(GetVariant<brillo::VariantDictionary>(
+          properties, kNetworkConfigProperty));
+
   return device;
 }
 
@@ -759,10 +865,51 @@ void Client::OnServicePropertyChangeRegistration(const std::string& device_path,
                               properties, kStateProperty));
 }
 
+namespace {
+
+// Updates connection state of |device| with |property_value|. Returns whether
+// the value is changed.
+bool ProcessStateChange(const std::string& device_path,
+                        const brillo::Any& property_value,
+                        Client::Device* device) {
+  const auto state = ParseConnectionState(property_value.TryGet<std::string>());
+  if (device->state == state) {
+    return false;
+  }
+
+  if (IsConnectedState(device->state) || IsConnectedState(state)) {
+    LOG(INFO) << "Device [" << device_path
+              << "] connection state changed from [" << ToString(device->state)
+              << "] to [" << ToString(state) << "]";
+  }
+  device->state = state;
+  return true;
+}
+
+// Updates NetworkConfig of |device| with |property_value|. Returns whether
+// the value is changed.
+bool ProcessNetworkConfigChange(const std::string& device_path,
+                                const brillo::Any& property_value,
+                                Client::Device* device) {
+  if (!property_value.IsTypeCompatible<brillo::VariantDictionary>()) {
+    LOG(ERROR) << "Device [" << device_path
+               << "] does not have a valid NetworkConfig value";
+    return false;
+  }
+
+  const auto old_value = device->network_config;
+  device->network_config = ParseNetworkConfigProperty(
+      property_value.Get<brillo::VariantDictionary>());
+  return device->network_config != old_value;
+}
+
+}  // namespace
+
 void Client::OnServicePropertyChange(const std::string& device_path,
                                      const std::string& property_name,
                                      const brillo::Any& property_value) {
-  if (property_name != kStateProperty) {
+  if (property_name != kStateProperty &&
+      property_name != kNetworkConfigProperty) {
     return;
   }
 
@@ -773,17 +920,19 @@ void Client::OnServicePropertyChange(const std::string& device_path,
   }
 
   auto* device = it->second->device();
-  const auto state = ParseConnectionState(property_value.TryGet<std::string>());
-  if (device->state == state) {
-    return;
+  bool has_change = false;
+  if (property_name == kStateProperty) {
+    has_change = ProcessStateChange(device_path, property_value, device);
+  } else if (property_name == kNetworkConfigProperty) {
+    has_change =
+        ProcessNetworkConfigChange(device_path, property_value, device);
+  } else {
+    NOTREACHED();
   }
 
-  if (IsConnectedState(device->state) || IsConnectedState(state)) {
-    LOG(INFO) << "Device [" << device_path
-              << "] connection state changed from [" << ToString(device->state)
-              << "] to [" << ToString(state) << "]";
+  if (!has_change) {
+    return;
   }
-  device->state = state;
 
   for (auto& handler : device_handlers_) {
     handler.Run(device);
@@ -805,6 +954,7 @@ std::vector<std::unique_ptr<Client::Device>> Client::GetDevices() const {
     device->ifname = dev->device()->ifname;
     device->state = dev->device()->state;
     device->ipconfig = dev->device()->ipconfig;
+    device->network_config = dev->device()->network_config;
     device->cellular_country_code = dev->device()->cellular_country_code;
     device->cellular_primary_ifname = dev->device()->cellular_primary_ifname;
     devices.emplace_back(std::move(device));
@@ -861,6 +1011,7 @@ std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
 
   dbus::ObjectPath device_path;
   shill::Client::Device::ConnectionState conn_state;
+  NetworkConfig network_config;
   for (const auto& s : services) {
     properties.clear();
     if (!NewServiceProxy(s)->GetProperties(&properties, &error)) {
@@ -884,6 +1035,9 @@ std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
     conn_state =
         ParseConnectionState(brillo::GetVariantValueOrDefault<std::string>(
             properties, kStateProperty));
+    network_config =
+        ParseNetworkConfigProperty(GetVariant<brillo::VariantDictionary>(
+            properties, kNetworkConfigProperty));
     device_path = brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
         properties, kDeviceProperty);
     if (device_path.IsValid()) {
@@ -915,6 +1069,7 @@ std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
       device_path.value(),
       brillo::GetVariantValueOrDefault<std::vector<dbus::ObjectPath>>(
           properties, kIPConfigsProperty));
+  device->network_config = network_config;
   if (device->type == Client::Device::Type::kCellular) {
     device->cellular_country_code = GetCellularProviderCountryCode(properties);
     device->cellular_primary_ifname =

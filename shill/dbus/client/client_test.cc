@@ -69,7 +69,7 @@ class FakeClient : public Client {
 
   void NotifyServicePropertyChange(const std::string& device_path,
                                    const std::string& property_name,
-                                   const std::string& property_value) {
+                                   const brillo::Any& property_value) {
     OnServicePropertyChange(device_path, property_name, property_value);
   }
 
@@ -562,6 +562,109 @@ TEST_F(ClientTest, DeviceHandlersCalledOnIPConfigChange) {
   EXPECT_EQ(default_device_.ifname, "eth0");
 }
 
+TEST_F(ClientTest, ParseNetworkConfig) {
+  const dbus::ObjectPath device_path("/device/eth0");
+  client_->PreMakeDevice(device_path);
+  client_->NotifyManagerPropertyChange(
+      kDevicesProperty, std::vector<dbus::ObjectPath>({device_path}));
+
+  brillo::VariantDictionary props;
+  props[kNetworkConfigIPv4AddressProperty] = std::string("1.2.3.4/24");
+  props[kNetworkConfigIPv4GatewayProperty] = std::string("1.2.3.5");
+  props[kNetworkConfigIPv6AddressesProperty] =
+      std::vector<std::string>{"fd00::1/64", "fd00::2/64"};
+  props[kNetworkConfigIPv6GatewayProperty] = std::string("fd00::3");
+  props[kNetworkConfigNameServersProperty] = std::vector<std::string>{
+      "8.8.8.8", "fd00::4",
+      "0.0.0.0",  // Empty address should be ignored.
+  };
+  props[kNetworkConfigSearchDomainsProperty] =
+      std::vector<std::string>{"domain1", "domain2"};
+
+  client_->NotifyServicePropertyChange(device_path.value(),
+                                       shill::kNetworkConfigProperty, props);
+
+  const auto devices = client_->GetDevices();
+  ASSERT_EQ(devices.size(), 1);
+  const Client::Device* d = devices[0].get();
+
+  EXPECT_EQ(d->network_config.ipv4_address,
+            net_base::IPv4CIDR::CreateFromCIDRString("1.2.3.4/24"));
+  EXPECT_EQ(d->network_config.ipv4_gateway,
+            net_base::IPv4Address::CreateFromString("1.2.3.5"));
+  EXPECT_EQ(d->network_config.ipv6_addresses,
+            std::vector<net_base::IPv6CIDR>(
+                {*net_base::IPv6CIDR::CreateFromCIDRString("fd00::1/64"),
+                 *net_base::IPv6CIDR::CreateFromCIDRString("fd00::2/64")}));
+  EXPECT_EQ(d->network_config.ipv6_gateway,
+            net_base::IPv6Address::CreateFromString("fd00::3"));
+  EXPECT_EQ(d->network_config.dns_servers,
+            std::vector<net_base::IPAddress>(
+                {*net_base::IPAddress::CreateFromString("8.8.8.8"),
+                 *net_base::IPAddress::CreateFromString("fd00::4")}));
+  EXPECT_EQ(d->network_config.dns_search_domains,
+            std::vector<std::string>({"domain1", "domain2"}));
+}
+
+TEST_F(ClientTest, DeviceHandlersCalledOnNetworkConfigChange) {
+  // Set up 2 devices here to ensure the changes are captured correctly.
+  const dbus::ObjectPath eth0_path("/device/eth0"), wlan0_path("/device/wlan0"),
+      eth0_service_path("service/0"), wlan0_service_path("/service/1");
+  auto* eth0_device = client_->PreMakeDevice(eth0_path);
+  auto* wlan0_device = client_->PreMakeDevice(wlan0_path);
+  dbus::ObjectProxy::OnConnectedCallback eth0_callback, wlan0_callback;
+  EXPECT_CALL(*eth0_device, DoRegisterPropertyChangedSignalHandler(_, _))
+      .WillOnce(MovePointee<1>(&eth0_callback));
+  EXPECT_CALL(*wlan0_device, DoRegisterPropertyChangedSignalHandler(_, _))
+      .WillOnce(MovePointee<1>(&wlan0_callback));
+
+  client_->NotifyManagerPropertyChange(
+      kDevicesProperty, std::vector<dbus::ObjectPath>({eth0_path, wlan0_path}));
+
+  brillo::VariantDictionary eth0_props, wlan0_props;
+  eth0_props[kTypeProperty] = std::string(kTypeEthernet);
+  eth0_props[kInterfaceProperty] = std::string("eth0");
+  eth0_props[kSelectedServiceProperty] = eth0_service_path;
+  EXPECT_CALL(*eth0_device, GetProperties(_, _, _))
+      .WillOnce(DoAll(testing::SetArgPointee<0>(eth0_props), Return(true)));
+  wlan0_props[kTypeProperty] = std::string(kTypeWifi);
+  wlan0_props[kInterfaceProperty] = std::string("wlan0");
+  wlan0_props[kSelectedServiceProperty] = wlan0_service_path;
+  EXPECT_CALL(*wlan0_device, GetProperties(_, _, _))
+      .WillOnce(DoAll(testing::SetArgPointee<0>(wlan0_props), Return(true)));
+
+  std::move(eth0_callback)
+      .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
+  std::move(wlan0_callback)
+      .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
+
+  // Prepare two different NetworkConfig values.
+  brillo::VariantDictionary props1 = {
+      {kNetworkConfigIPv4AddressProperty, std::string("1.2.3.4/24")}};
+  brillo::VariantDictionary props2 = {
+      {kNetworkConfigIPv4AddressProperty, std::string("1.2.3.5/24")}};
+
+  // Value is changed for eth0.
+  client_->NotifyServicePropertyChange(eth0_path.value(),
+                                       kNetworkConfigProperty, props1);
+  EXPECT_EQ(last_device_changed_, "eth0");
+
+  // Value is changed for wlan0.
+  client_->NotifyServicePropertyChange(wlan0_path.value(),
+                                       kNetworkConfigProperty, props1);
+  EXPECT_EQ(last_device_changed_, "wlan0");
+
+  // Value is NOT changed for eth0.
+  client_->NotifyServicePropertyChange(eth0_path.value(),
+                                       kNetworkConfigProperty, props1);
+  EXPECT_EQ(last_device_changed_, "wlan0");
+
+  // Value is changed for eth0.
+  client_->NotifyServicePropertyChange(eth0_path.value(),
+                                       kNetworkConfigProperty, props2);
+  EXPECT_EQ(last_device_changed_, "eth0");
+}
+
 TEST_F(ClientTest, DeviceSelectedServiceConnectStateObtained) {
   const dbus::ObjectPath device_path("/device/eth0"),
       service_path("/service/1");
@@ -660,7 +763,7 @@ TEST_F(ClientTest, DeviceHandlersCalledOnSelectedServiceStateChange) {
   last_device_changed_.clear();
   // First check the non-default device.
   client_->NotifyServicePropertyChange("/device/wlan0", kStateProperty,
-                                       kStateFailure);
+                                       std::string(kStateFailure));
   EXPECT_EQ(last_device_changed_, "wlan0");
   EXPECT_EQ(last_device_cxn_state_, Client::Device::ConnectionState::kFailure);
 
@@ -668,7 +771,7 @@ TEST_F(ClientTest, DeviceHandlersCalledOnSelectedServiceStateChange) {
   // called next, so clear that state first as well.
   default_device_ = {};
   client_->NotifyServicePropertyChange("/device/eth0", kStateProperty,
-                                       kStateReady);
+                                       std::string(kStateReady));
   EXPECT_EQ(last_device_changed_, "eth0");
   EXPECT_EQ(last_device_cxn_state_, Client::Device::ConnectionState::kReady);
   EXPECT_EQ(default_device_.state, Client::Device::ConnectionState::kReady);
