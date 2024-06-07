@@ -975,10 +975,13 @@ void MobileOperatorMapper::HandleOperatorNameUpdate() {
         it++;
       }
     }
-
+    // When the modem reports the mccmnc as the operator name, prioritize the
+    // modb name if we have one.
+    bool prioritize_db_name =
+        prioritizes_db_operator_name_ || (user_operator_name_ == user_mccmnc_);
     operator_name_list_.insert(
-        (prioritizes_db_operator_name_ ? operator_name_list_.end()
-                                       : operator_name_list_.begin()),
+        (prioritize_db_name ? operator_name_list_.end()
+                            : operator_name_list_.begin()),
         localized_names.begin(), localized_names.end());
   }
 
