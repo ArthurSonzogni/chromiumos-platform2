@@ -13718,6 +13718,7 @@ mno {
       localized_name {
         name: "Kajeet"
       }
+      mccmnc: "310240"
       mccmnc: "310260"
       mccmnc: "311882"
       prioritizes_name: true
