@@ -88,6 +88,13 @@ std::vector<std::string> GetDhcpcdFlags(
   return flags;
 }
 
+// Returns true if the lease file is ephermeral, which means the lease file
+// should be deleted during cleanup.
+bool IsEphemeralLease(const DHCPCDControllerInterface::Options& options,
+                      std::string_view interface) {
+  return options.lease_name.empty() || options.lease_name == interface;
+}
+
 }  // namespace
 
 LegacyDHCPCDController::LegacyDHCPCDController(
@@ -174,7 +181,11 @@ LegacyDHCPCDControllerFactory::Create(
     const DHCPCDControllerInterface::Options& options,
     DHCPCDControllerInterface::EventHandler* handler) {
   std::vector<std::string> args = GetDhcpcdFlags(technology, options);
-  args.push_back(std::string(interface));
+  if (IsEphemeralLease(options, interface)) {
+    args.push_back(std::string(interface));
+  } else {
+    args.push_back(base::StrCat({interface, "=", options.lease_name}));
+  }
 
   net_base::ProcessManager::MinijailOptions minijail_options;
   minijail_options.user = kDHCPCDUser;
@@ -232,8 +243,10 @@ void LegacyDHCPCDControllerFactory::CleanUpDhcpcd(
   }
 
   // Clean up the lease file and pid file.
-  brillo::DeleteFile(root_.Append(
-      base::StringPrintf(kDHCPCDPathFormatLease, interface.c_str())));
+  if (IsEphemeralLease(options, interface)) {
+    brillo::DeleteFile(root_.Append(
+        base::StringPrintf(kDHCPCDPathFormatLease, interface.c_str())));
+  }
   brillo::DeleteFile(root_.Append(
       base::StringPrintf(kDHCPCDPathFormatPID, interface.c_str())));
 }

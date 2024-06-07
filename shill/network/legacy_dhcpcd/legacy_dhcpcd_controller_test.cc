@@ -181,6 +181,9 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DhcpcdArguments) {
           {{.apply_dscp = true},
            {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
             "captive_portal_uri", "--nodelay", "--apply_dscp", "wlan0"}},
+          {{.lease_name = "fake_lease"},
+           {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
+            "captive_portal_uri", "--nodelay", "wlan0=fake_lease"}},
       };
   for (const auto& [options, dhcpcd_args] : kExpectedArgs) {
     // When creating a controller, the controller factory should create
@@ -377,6 +380,30 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DeleteEphemeralLeaseAndPidFile) {
   controller.reset();
   EXPECT_FALSE(FileExistsInRoot(kPidFile));
   EXPECT_FALSE(FileExistsInRoot(kLeaseFile));
+}
+
+TEST_F(LegacyDHCPCDControllerFactoryTest, PermanentLeaseFile) {
+  constexpr int kPid = 4;
+  constexpr std::string_view kDBusServiceName = ":1.25";
+  constexpr std::string_view kInterface = "wlan0";
+  constexpr std::string_view kPidFile = "var/run/dhcpcd7/dhcpcd-wlan0-4.pid";
+  constexpr std::string_view kLeaseFile = "var/lib/dhcpcd7/permanent.lease";
+  const DHCPCDControllerInterface::Options options = {.lease_name =
+                                                          "permanent"};
+
+  std::unique_ptr<DHCPCDControllerInterface> controller =
+      CreateControllerSync(kPid, kDBusServiceName, kInterface);
+
+  CreateTempFileInRoot(kPidFile);
+  CreateTempFileInRoot(kLeaseFile);
+  EXPECT_TRUE(FileExistsInRoot(kPidFile));
+  EXPECT_TRUE(FileExistsInRoot(kLeaseFile));
+
+  // After the controller is destroyed, the pid file should be deleted, but the
+  // permanent lease file should not be deleted.
+  controller.reset();
+  EXPECT_FALSE(FileExistsInRoot(kPidFile));
+  EXPECT_TRUE(FileExistsInRoot(kLeaseFile));
 }
 
 }  // namespace

@@ -59,6 +59,10 @@ class DHCPCDControllerInterface {
     // 48 (the Network Control category) for better QoS. Currently, this option
     // is limited to the WiFi networks.
     bool apply_dscp = false;
+    // The DHCP lease file will contain the suffix supplied in |lease_name| if
+    // non-empty, otherwise the interface name will be used. This is for
+    // differentiating the lease of one interface from another.
+    std::string lease_name;
     // Hostname to be used in DHCP request. If it is not empty, it is placed in
     // the DHCP request to allow the server to map the request to a specific
     // user-named origin.
