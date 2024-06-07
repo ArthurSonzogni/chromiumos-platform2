@@ -90,7 +90,8 @@ message StartArcMiniInstanceRequest {
   optional bool arc_generate_pai = 11 [default = false];
 
   // Enables use of new notifications ui.
-  optional bool enable_notifications_refresh = 13 [default = false];
+  optional bool enable_notifications_refresh = 13
+      [default = false, deprecated = true];
 
   // Option to enable TTS caching
   optional bool enable_tts_caching = 14 [default = false];

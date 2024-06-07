@@ -527,11 +527,6 @@ class SessionManagerImplTest : public ::testing::Test,
       return *this;
     }
 
-    StartArcInstanceExpectationsBuilder& SetEnableNotificationRefresh(bool v) {
-      enable_notification_refresh_ = v;
-      return *this;
-    }
-
     StartArcInstanceExpectationsBuilder& SetEnableConsumerAutoUpdateToggle(
         int v) {
       enable_consumer_auto_update_toggle_ = v;
@@ -602,8 +597,6 @@ class SessionManagerImplTest : public ::testing::Test,
               std::to_string(disable_download_provider_),
           "ENABLE_CONSUMER_AUTO_UPDATE_TOGGLE=" +
               std::to_string(enable_consumer_auto_update_toggle_),
-          "ENABLE_NOTIFICATIONS_REFRESH=" +
-              std::to_string(enable_notification_refresh_),
           "ENABLE_PRIVACY_HUB_FOR_CHROME=" +
               std::to_string(enable_privacy_hub_for_chrome_),
           "ENABLE_TTS_CACHING=" + std::to_string(enable_tts_caching_),
@@ -674,7 +667,6 @@ class SessionManagerImplTest : public ::testing::Test,
     bool disable_media_store_maintenance_ = false;
     bool disable_download_provider_ = false;
     bool enable_consumer_auto_update_toggle_ = false;
-    bool enable_notification_refresh_ = false;
     bool enable_privacy_hub_for_chrome_ = false;
     bool enable_tts_caching_ = false;
     bool use_dev_caches_ = false;
@@ -2551,25 +2543,6 @@ TEST_F(SessionManagerImplTest, DisableDownloadProvider) {
               TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
                              StartArcInstanceExpectationsBuilder()
                                  .SetDisableDownloadProvider(true)
-                                 .Build(),
-                             InitDaemonController::TriggerMode::ASYNC))
-      .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));
-
-  brillo::ErrorPtr error;
-  EXPECT_TRUE(impl_->StartArcMiniContainer(&error, SerializeAsBlob(request)));
-}
-
-TEST_F(SessionManagerImplTest, EnableNotificationRefresh) {
-  ExpectAndRunStartSession(kSaneEmail);
-
-  arc::StartArcMiniInstanceRequest request;
-  request.set_enable_notifications_refresh(true);
-
-  // First, start ARC for login screen.
-  EXPECT_CALL(*init_controller_,
-              TriggerImpulse(SessionManagerImpl::kStartArcInstanceImpulse,
-                             StartArcInstanceExpectationsBuilder()
-                                 .SetEnableNotificationRefresh(true)
                                  .Build(),
                              InitDaemonController::TriggerMode::ASYNC))
       .WillOnce(Return(ByMove(dbus::Response::CreateEmpty())));

@@ -1394,11 +1394,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
     arc_generate_pai = false;
   LOG(INFO) << "arc_generate_pai is " << arc_generate_pai;
 
-  const int enable_notifications_refresh =
-      config_.GetIntOrDie("ENABLE_NOTIFICATIONS_REFRESH");
-  LOG(INFO) << "enable_notifications_refresh is "
-            << enable_notifications_refresh;
-
   const int enable_tts_caching = config_.GetIntOrDie("ENABLE_TTS_CACHING");
   LOG(INFO) << "enable_tts_caching is " << enable_tts_caching;
 
@@ -1478,7 +1473,6 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       "%s" /* PAI Generation */
       "androidboot.boottime_offset=%" PRId64
       " " /* in nanoseconds */
-      "androidboot.enable_notifications_refresh=%d "
       "androidboot.arc.tts.caching=%d "
       "androidboot.enable_consumer_auto_update_toggle=%d "
       "%s" /* Use dev caches */
@@ -1494,8 +1488,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
       GetDisableDownloadProvider(disable_download_provider).c_str(),
       GetGeneratePaiParam(arc_generate_pai).c_str(),
       ts.tv_sec * base::Time::kNanosecondsPerSecond + ts.tv_nsec,
-      enable_notifications_refresh, enable_tts_caching,
-      enable_consumer_auto_update_toggle,
+      enable_tts_caching, enable_consumer_auto_update_toggle,
       GetUseDevCaches(use_dev_caches).c_str(), enable_privacy_hub_for_chrome,
       arc_signed_in, GetHostUreadaheadModeParam(host_ureadahead_mode).c_str());
 
