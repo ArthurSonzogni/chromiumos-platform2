@@ -303,7 +303,6 @@ class KernelCollector : public CrashCollector {
 
   CrashCollectionStatus HandleCrash(const std::string& kernel_dump,
                                     const std::string& bios_dump,
-                                    const std::string& hypervisor_dump,
                                     const std::string& signature);
 
   std::vector<EfiCrash> _FindDriverEfiCrashes(const char* driver_name) const;

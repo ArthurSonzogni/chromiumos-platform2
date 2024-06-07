@@ -453,17 +453,4 @@ std::string WatchdogSignature(const std::string& console_ramoops,
       std::string(line.substr(0, end)).c_str(), util::HashString(line));
 }
 
-bool ExtractHypervisorLog(std::string& console_ramoops,
-                          std::string& hypervisor_log) {
-  RE2 hypervisor_log_re("(?s)(\\n-*\\[ hypervisor log \\]-*\\n)(.*)$");
-  re2::StringPiece header;
-  if (RE2::PartialMatch(console_ramoops, hypervisor_log_re, &header,
-                        &hypervisor_log)) {
-    console_ramoops.resize(console_ramoops.size() - hypervisor_log.size() -
-                           header.size());
-    return true;
-  }
-  return false;
-}
-
 }  // namespace kernel_util

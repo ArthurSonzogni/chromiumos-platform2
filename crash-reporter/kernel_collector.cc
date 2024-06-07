@@ -37,7 +37,6 @@ namespace {
 
 // Name for extra BIOS dump attached to report. Also used as metadata key.
 constexpr char kBiosDumpName[] = "bios_log";
-constexpr char kHypervisorDumpName[] = "hypervisor_log";
 const FilePath kBiosLogPath("/sys/firmware/log");
 // Names of the four BIOS stages in which the BIOS log can start.
 const char* const kBiosStageNames[] = {
@@ -758,7 +757,6 @@ void KernelCollector::AddLogFile(const char* log_name,
 CrashCollectionStatus KernelCollector::HandleCrash(
     const std::string& kernel_dump,
     const std::string& bios_dump,
-    const std::string& hypervisor_dump,
     const std::string& signature) {
   FilePath root_crash_directory;
 
@@ -777,8 +775,6 @@ CrashCollectionStatus KernelCollector::HandleCrash(
       StringPrintf("%s.kcrash", dump_basename.c_str()));
   FilePath bios_dump_path = root_crash_directory.Append(
       StringPrintf("%s.%s", dump_basename.c_str(), kBiosDumpName));
-  FilePath hypervisor_dump_path = root_crash_directory.Append(
-      StringPrintf("%s.%s", dump_basename.c_str(), kHypervisorDumpName));
   FilePath log_path = root_crash_directory.Append(
       StringPrintf("%s.log", dump_basename.c_str()));
 
@@ -792,7 +788,6 @@ CrashCollectionStatus KernelCollector::HandleCrash(
     return CrashCollectionStatus::kFailedKernelDumpWrite;
   }
   AddLogFile(kBiosDumpName, bios_dump, bios_dump_path);
-  AddLogFile(kHypervisorDumpName, hypervisor_dump, hypervisor_dump_path);
 
   AddCrashMetaData(kKernelSignatureKey, signature);
 
@@ -842,7 +837,7 @@ std::vector<CrashCollectionStatus> KernelCollector::CollectEfiCrashes(
         single_result = CrashCollectionStatus::kPstoreCrashEmpty;
       } else {
         single_result =
-            HandleCrash(crash, std::string(), "",
+            HandleCrash(crash, std::string(),
                         kernel_util::ComputeKernelStackSignature(crash, arch_));
         if (!IsSuccessCode(single_result)) {
           LOG(ERROR) << "Failed to handle kernel crash id: "
@@ -861,22 +856,19 @@ CrashCollectionStatus KernelCollector::CollectRamoopsCrash(bool use_saved_lsb) {
   std::string bios_dump;
   std::string kernel_dump;
   std::string console_dump;
-  std::string hypervisor_dump;
   std::string signature;
   std::string watchdog_reboot_reason;
 
   LoadLastBootBiosLog(&bios_dump);
   LoadConsoleRamoops(&console_dump);
-  kernel_util::ExtractHypervisorLog(console_dump, hypervisor_dump);
   if (LoadParameters() && LoadPreservedDump(&kernel_dump)) {
     signature = kernel_util::ComputeKernelStackSignature(kernel_dump, arch_);
     StripSensitiveData(&bios_dump);
-    StripSensitiveData(&hypervisor_dump);
     StripSensitiveData(&kernel_dump);
     if (kernel_dump.empty()) {
       return CrashCollectionStatus::kRamoopsDumpEmpty;
     }
-    return HandleCrash(kernel_dump, bios_dump, hypervisor_dump, signature);
+    return HandleCrash(kernel_dump, bios_dump, signature);
   }
   kernel_dump = std::move(console_dump);
   if (LastRebootWasBiosCrash(bios_dump)) {
@@ -894,15 +886,14 @@ CrashCollectionStatus KernelCollector::CollectRamoopsCrash(bool use_saved_lsb) {
     }
   }
   StripSensitiveData(&bios_dump);
-  StripSensitiveData(&hypervisor_dump);
   StripSensitiveData(&kernel_dump);
   // As long as there's some log contents then maybe we'll be able to figure
   // out why the system rebooted unexpectedly. Otherwise ignore the crash as
   // we're unlikely to be able to diagnose the issue.
-  if (kernel_dump.empty() && bios_dump.empty() && hypervisor_dump.empty()) {
+  if (kernel_dump.empty() && bios_dump.empty()) {
     return CrashCollectionStatus::kRamoopsDumpEmpty;
   }
-  return HandleCrash(kernel_dump, bios_dump, hypervisor_dump, signature);
+  return HandleCrash(kernel_dump, bios_dump, signature);
 }
 
 bool KernelCollector::WasKernelCrash(
