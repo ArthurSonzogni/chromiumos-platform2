@@ -540,7 +540,11 @@ void HandleAuthenticationResult(
   bool auth_succeeded = status.ok();
   ReplyWithError(std::move(on_done), std::move(reply), std::move(status));
 
-  // Reset LE credentials if authentication succeeded.
+  // Reset LE credentials if authentication succeeded. Note that this requires a
+  // decrypted USS so verify-only intent auth might not be able to reset LE
+  // successfully here. Verify-only intent auth sets the PostAuthAction as
+  // kRepeat to repeat the authentication but forcing full decrypt, such that
+  // the repeated auth will be able to reset LE credentials.
   if (auth_succeeded) {
     auth_session->ResetLECredentials();
   }
@@ -555,23 +559,17 @@ void HandleAuthenticationResult(
             << "PostAuthActionType::kRepeat with null repeat_request field.";
         return;
       }
+      // HandleAuthenticationResult will be used as the callback to ensure the
+      // repeated auth is handled identically to an ordinary auth request. The
+      // implementation logic should ensure that repeated auth would not set
+      // post-auth action to kRepeat again, otherwise there might be infinite
+      // recursion.
       AuthSession* auth_session_ptr = auth_session.Get();
       auth_session_ptr->AuthenticateAuthFactor(
           post_auth_action.repeat_request.value(), user_policy,
-          // Currently there are no scenarios where a repeated auth will specify
-          // a non-null action. Keep the logic simple here instead of recursing.
-          base::BindOnce(
-              [](InUseAuthSession unused_auth_session,
-                 const AuthSession::PostAuthAction& unused_action,
-                 CryptohomeStatus status) {
-                if (!status.ok()) {
-                  LOG(ERROR) << "Repeated full auth failed while light auth "
-                                "succeeded: "
-                             << std::move(status);
-                  // TODO(b/287305183): Send UMA here.
-                }
-              },
-              std::move(auth_session).BindForCallback()));
+          base::BindOnce(&HandleAuthenticationResult,
+                         std::move(auth_session).BindForCallback(), user_policy,
+                         base::DoNothing()));
       return;
     }
     case AuthSession::PostAuthActionType::kReprepare: {
