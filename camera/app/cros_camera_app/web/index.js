@@ -40,10 +40,26 @@ class FpsCounter {
   }
 }
 
+class ResolutionStat {
+  constructor() {
+    this.el = document.getElementById("resolution-stat");
+  }
+
+  /**
+   * @param {MediaStream} stream
+   */
+  update(stream) {
+    const track = stream.getVideoTracks()[0];
+    const { width = 0, height = 0 } = track.getSettings();
+    this.el.textContent = `Resolution: ${width}x${height}`;
+  }
+}
+
 class CameraApp {
   constructor() {
     this.video = document.querySelector("video");
     this.fpsCounter = new FpsCounter(this.video, 100);
+    this.resoltuionStat = new ResolutionStat();
   }
 
   async start() {
@@ -55,6 +71,7 @@ class CameraApp {
     });
     this.video.srcObject = stream;
     this.fpsCounter.start();
+    this.resoltuionStat.update(stream);
   }
 }
 
