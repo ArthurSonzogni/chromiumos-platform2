@@ -1436,16 +1436,10 @@ std::vector<std::string> ArcVm::GetKernelParams(
       // processes, for example.
       "androidboot.hardware=bertha",
       "androidboot.container=1",
-      base::StringPrintf("androidboot.host_is_in_vm=%d", is_host_on_vm),
       base::StringPrintf("androidboot.dev_mode=%d", is_dev_mode),
-      base::StringPrintf("androidboot.disable_runas=%d", !is_dev_mode),
       "androidboot.chromeos_channel=" + channel,
       base::StringPrintf("androidboot.seneschal_server_port=%d",
                          seneschal_server_port),
-      base::StringPrintf("androidboot.arc_custom_tabs=%d",
-                         mini_instance_request.arc_custom_tabs_experiment()),
-      base::StringPrintf("androidboot.arc_file_picker=%d",
-                         mini_instance_request.arc_file_picker_experiment()),
       base::StringPrintf("androidboot.lcd_density=%d",
                          mini_instance_request.lcd_density()),
       "androidboot.arc.primary_display_rotation=" +
@@ -1460,28 +1454,53 @@ std::vector<std::string> ArcVm::GetKernelParams(
               mini_instance_request.enable_consumer_auto_update_toggle()),
       "androidboot.enable_privacy_hub_for_chrome=" +
           std::to_string(mini_instance_request.enable_privacy_hub_for_chrome()),
-      base::StringPrintf("androidboot.keyboard_shortcut_helper_integration=%d",
-                         request.enable_keyboard_shortcut_helper_integration()),
       base::StringPrintf("androidboot.arcvm_virtio_blk_data=%d",
                          request.enable_virtio_blk_data()),
       base::StringPrintf("androidboot.arcvm.data_block_io_scheduler=%d",
                          request.enable_data_block_io_scheduler()),
-      base::StringPrintf("androidboot.zram_size=%" PRId64, zram_size),
       base::StringPrintf("androidboot.arc_switch_to_keymint=%d",
                          mini_instance_request.arc_switch_to_keymint()),
       base::StringPrintf("androidboot.enable_arc_attestation=%d",
                          mini_instance_request.enable_arc_attestation()),
       base::StringPrintf("androidboot.arc.signed_in=%d",
                          mini_instance_request.arc_signed_in()),
-      base::StringPrintf("androidboot.arc.s2idle=%d", request.enable_s2idle()),
-      // Make the default mem sleep state standby instead of freeze, so that the
-      // guest clock is paused while suspended.
-      "mem_sleep_default=shallow",
       // Avoid the RCU synchronization from blocking. See b/285791678#comment74
       // for the context.
       "rcupdate.rcu_expedited=1",
       "rcutree.kthread_prio=1",
   };
+
+  if (is_host_on_vm) {
+    params.push_back("androidboot.host_is_in_vm=1");
+  }
+
+  if (!is_dev_mode) {
+    params.push_back("androidboot.disable_runas=1");
+  }
+
+  if (mini_instance_request.arc_custom_tabs_experiment()) {
+    params.push_back("androidboot.arc_custom_tabs=1");
+  }
+
+  if (mini_instance_request.arc_file_picker_experiment()) {
+    params.push_back("androidboot.arc_file_picker=1");
+  }
+
+  if (request.enable_keyboard_shortcut_helper_integration()) {
+    params.push_back("androidboot.keyboard_shortcut_helper_integration=1");
+  }
+
+  if (zram_size) {
+    params.push_back(
+        base::StringPrintf("androidboot.zram_size=%" PRId64, zram_size));
+  }
+
+  if (request.enable_s2idle()) {
+    params.push_back("androidboot.arc.s2idle=1");
+    // Make the default mem sleep state standby instead of freeze, so that the
+    // guest clock is paused while suspended.
+    params.push_back("mem_sleep_default=shallow");
+  }
 
   auto mglru_reclaim_interval = request.mglru_reclaim_interval();
   if (mglru_reclaim_interval > 0) {

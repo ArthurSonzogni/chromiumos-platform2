@@ -65,6 +65,14 @@ static constexpr char kMetricsArcvmAvgPagesInFileName[] =
     "Memory.VmmSwap.ARCVM.AvgPagesInFile";
 static constexpr char kMetricsArcvmPageAverageDurationInFileName[] =
     "Memory.VmmSwap.ARCVM.PageAverageDurationInFile";
+
+bool is_parameter_set(const std::vector<std::string>& params,
+                      std::string target) {
+  return std::ranges::find_if(params, [&target](const std::string& param) {
+           return param.rfind(target, 0) == 0;
+         }) != params.end();
+}
+
 }  // namespace
 
 TEST(ArcVmParamsTest, NonDevModeKernelParams) {
@@ -86,7 +94,7 @@ TEST(ArcVmParamsTest, DevModeKernelParams) {
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
   EXPECT_TRUE(base::Contains(params, "androidboot.dev_mode=1"));
-  EXPECT_TRUE(base::Contains(params, "androidboot.disable_runas=0"));
+  EXPECT_FALSE(is_parameter_set(params, "androidboot.disable_runas"));
 }
 
 TEST(ArcVmParamsTest, SeneschalServerPortParam) {
@@ -143,7 +151,7 @@ TEST(ArcVmParamsTest, ArcFilePickerParamFalse) {
   mini_instance_request->set_arc_file_picker_experiment(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc_file_picker=0"));
+  EXPECT_FALSE(is_parameter_set(params, "androidboot.arc_file_picker"));
 }
 
 TEST(ArcVmParamsTest, CustomTabsParamTrue) {
@@ -169,7 +177,7 @@ TEST(ArcVmParamsTest, CustomTabsParamFalse) {
   mini_instance_request->set_arc_custom_tabs_experiment(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.arc_custom_tabs=0"));
+  EXPECT_FALSE(is_parameter_set(params, "androidboot.arc_custom_tabs"));
 }
 
 TEST(ArcVmParamsTest, CustomTabsParamStableChannel) {
@@ -203,8 +211,8 @@ TEST(ArcVmParamsTest, KeyboardShortcutHelperParamFalse) {
   request.set_enable_keyboard_shortcut_helper_integration(false);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(
-      params, "androidboot.keyboard_shortcut_helper_integration=0"));
+  EXPECT_FALSE(is_parameter_set(
+      params, "androidboot.keyboard_shortcut_helper_integration"));
 }
 
 TEST(ArcVmParamsTest, EnableTtsCachingParamTrue) {
@@ -394,7 +402,7 @@ TEST(ArcVmParamsTest, GuestZramMiB0) {
   request.set_guest_zram_mib(0);
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.zram_size=0"));
+  EXPECT_FALSE(is_parameter_set(params, "androidboot.zram_size"));
 }
 
 TEST(ArcVmParamsTest, GuestZramMiB) {
@@ -742,7 +750,7 @@ TEST(ArcVmParamsTest, HostOnVmFalse) {
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(base::Contains(params, "androidboot.host_is_in_vm=0"));
+  EXPECT_FALSE(is_parameter_set(params, "androidboot.host_is_in_vm"));
 }
 
 TEST(ArcVmParamsTest, UreadaheadModeReadahead) {
