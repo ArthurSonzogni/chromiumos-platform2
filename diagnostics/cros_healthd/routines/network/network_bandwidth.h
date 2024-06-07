@@ -23,9 +23,10 @@
 namespace diagnostics {
 class Context;
 
-// The maximum runtime for each test is 14 seconds in libndt7. Use a longer
-// timeout here for the web socket connect time and maximum runtime.
-constexpr base::TimeDelta kRunningNdtTimeout = base::Seconds(20);
+// In libndt7, the timeout for accessing available servers is 7 seconds and the
+// maximum runtime per test is 14 seconds. Use a longer timeout here to handle
+// additional web socket connection time and retry time.
+constexpr base::TimeDelta kRunningNdtTimeout = base::Seconds(30);
 
 // The network bandwidth routine checks network bandwidth by sequentially
 // executing a download test and an upload test.
