@@ -79,12 +79,6 @@ constexpr char kArcVmLowMemJemallocArenasFeatureName[] =
 constexpr char kArcVmAAudioMMAPLowLatencyFeatureName[] =
     "CrOSLateBootArcVmAAudioMMAPLowLatency";
 
-// The timeout in ms for LMKD to read from it's vsock connection to concierge.
-// 100ms is long enough to allow concierge to respond even under extreme system
-// load, but short enough that LMKD can still kill processes before the linux
-// OOM killer wakes up.
-constexpr uint32_t kLmkdVsockTimeoutMs = 100;
-
 // The number of milliseconds ARCVM clients will wait before aborting a kill
 // decision.
 constexpr base::TimeDelta kVmMemoryManagementArcKillDecisionTimeout =
@@ -380,25 +374,17 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
 
   // If the VmMemoryManagementService is active and initialized, then ARC should
   // connect to it instead of the normal lmkd vsock port.
-  features.use_vm_memory_management_client =
-      vm_memory_management_service_ != nullptr;
-  if (features.use_vm_memory_management_client) {
-    params.emplace_back(base::StringPrintf(
-        "androidboot.lmkd.use_vm_memory_management_client=%s", "true"));
-    params.emplace_back(base::StringPrintf(
-        "androidboot.lmkd.vm_memory_management_kill_"
-        "decision_timeout_ms=%" PRId64,
-        kVmMemoryManagementArcKillDecisionTimeout.InMilliseconds()));
-    params.emplace_back(base::StringPrintf(
-        "androidboot.lmkd.vm_memory_management_reclaim_port=%d",
-        kVmMemoryManagementReclaimServerPort));
-    params.emplace_back(base::StringPrintf(
-        "androidboot.lmkd.vm_memory_management_kills_port=%d",
-        kVmMemoryManagementKillsServerPort));
-  } else {
-    params.emplace_back(base::StringPrintf("androidboot.lmkd.vsock_timeout=%d",
-                                           kLmkdVsockTimeoutMs));
-  }
+  features.use_vm_memory_management_client = true;
+  params.emplace_back(base::StringPrintf(
+      "androidboot.lmkd.vm_memory_management_kill_"
+      "decision_timeout_ms=%" PRId64,
+      kVmMemoryManagementArcKillDecisionTimeout.InMilliseconds()));
+  params.emplace_back(base::StringPrintf(
+      "androidboot.lmkd.vm_memory_management_reclaim_port=%d",
+      kVmMemoryManagementReclaimServerPort));
+  params.emplace_back(
+      base::StringPrintf("androidboot.lmkd.vm_memory_management_kills_port=%d",
+                         kVmMemoryManagementKillsServerPort));
 
   const feature::PlatformFeatures::ParamsResult result =
       feature::PlatformFeatures::Get()->GetParamsAndEnabledBlocking(
