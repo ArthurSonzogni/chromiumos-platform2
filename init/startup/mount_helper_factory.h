@@ -12,6 +12,7 @@
 #include <base/values.h>
 #include <libcrossystem/crossystem.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
@@ -37,7 +38,9 @@ class MountHelperFactory {
   // is in dev mode, running a test image, and in factory mode. These different
   // possible device configurations need different implementations of the
   // functions DoMountVarAndHomeChronos and DoUmountVarAndHomeChronos.
-  virtual std::unique_ptr<MountHelper> Generate();
+  virtual std::unique_ptr<MountHelper> Generate(
+      std::unique_ptr<libstorage::StorageContainerFactory>
+          storage_container_factory);
 
  private:
   raw_ptr<libstorage::Platform> platform_;

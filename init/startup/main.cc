@@ -80,6 +80,11 @@ int main(int argc, char* argv[]) {
   init_metrics::ScopedInitMetricsSingleton scoped_metrics(
       kChromeosStartupMetricsPath);
 
+  std::unique_ptr<libstorage::StorageContainerFactory>
+      storage_container_factory =
+          std::make_unique<libstorage::StorageContainerFactory>(
+              platform.get(), init_metrics::InitMetrics::GetInternal());
+
   std::unique_ptr<startup::StartupDep> startup_dep =
       std::make_unique<startup::StartupDep>(platform.get());
 
@@ -87,7 +92,7 @@ int main(int argc, char* argv[]) {
       platform.get(), startup_dep.get(), flags, base::FilePath("/"),
       base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease));
   std::unique_ptr<startup::MountHelper> mount_helper =
-      mount_helper_factory.Generate();
+      mount_helper_factory.Generate(std::move(storage_container_factory));
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl =
       std::make_unique<hwsec_foundation::TlclWrapperImpl>();
   std::unique_ptr<startup::ChromeosStartup> startup =

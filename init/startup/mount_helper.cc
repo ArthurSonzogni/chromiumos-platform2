@@ -32,26 +32,32 @@ MountHelper::MountHelper(libstorage::Platform* platform,
                          const Flags& flags,
                          const base::FilePath& root,
                          const base::FilePath& stateful,
-                         std::unique_ptr<MountVarAndHomeChronosInterface> impl)
+                         std::unique_ptr<MountVarAndHomeChronosInterface> impl,
+                         std::unique_ptr<libstorage::StorageContainerFactory>
+                             storage_container_factory)
     : platform_(platform),
       startup_dep_(startup_dep),
       flags_(flags),
       root_(root),
       stateful_(stateful),
-      impl_(std::move(impl)) {}
+      impl_(std::move(impl)),
+      storage_container_factory_(std::move(storage_container_factory)) {}
 
 MountHelper::MountHelper(libstorage::Platform* platform,
                          StartupDep* startup_dep,
                          const Flags& flags,
                          const base::FilePath& root,
-                         const base::FilePath& stateful)
+                         const base::FilePath& stateful,
+                         std::unique_ptr<libstorage::StorageContainerFactory>
+                             storage_container_factory)
     : MountHelper(platform,
                   startup_dep,
                   flags,
                   root,
                   stateful,
                   std::make_unique<MountVarAndHomeChronosImpl>(
-                      platform, startup_dep, root, stateful)) {}
+                      platform, startup_dep, root, stateful),
+                  std::move(storage_container_factory)) {}
 
 MountHelper::~MountHelper() = default;
 

@@ -19,6 +19,7 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
+#include "init/startup/mount_var_home_interface.h"
 #include "init/startup/startup_dep_impl.h"
 
 namespace {
@@ -34,12 +35,20 @@ namespace startup {
 
 // Constructor for FactoryModeMountHelper when the device is
 // in factory mode.
-FactoryModeMountHelper::FactoryModeMountHelper(libstorage::Platform* platform,
-                                               StartupDep* startup_dep,
-                                               const Flags& flags,
-                                               const base::FilePath& root,
-                                               const base::FilePath& stateful)
-    : MountHelper(platform, startup_dep, flags, root, stateful) {}
+FactoryModeMountHelper::FactoryModeMountHelper(
+    libstorage::Platform* platform,
+    StartupDep* startup_dep,
+    const Flags& flags,
+    const base::FilePath& root,
+    const base::FilePath& stateful,
+    std::unique_ptr<libstorage::StorageContainerFactory>
+        storage_container_factory)
+    : MountHelper(platform,
+                  startup_dep,
+                  flags,
+                  root,
+                  stateful,
+                  std::move(storage_container_factory)) {}
 
 bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
   base::FilePath option_file = stateful_.Append(kOptionsFile);

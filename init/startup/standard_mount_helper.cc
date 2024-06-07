@@ -15,18 +15,27 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
+#include "init/startup/mount_var_home_interface.h"
 #include "init/startup/startup_dep_impl.h"
 
 namespace startup {
 
 // Constructor for StandardMountHelper when the device is
 // not in dev mode.
-StandardMountHelper::StandardMountHelper(libstorage::Platform* platform,
-                                         StartupDep* startup_dep,
-                                         const Flags& flags,
-                                         const base::FilePath& root,
-                                         const base::FilePath& stateful)
-    : MountHelper(platform, startup_dep, flags, root, stateful) {}
+StandardMountHelper::StandardMountHelper(
+    libstorage::Platform* platform,
+    StartupDep* startup_dep,
+    const Flags& flags,
+    const base::FilePath& root,
+    const base::FilePath& stateful,
+    std::unique_ptr<libstorage::StorageContainerFactory>
+        storage_container_factory)
+    : MountHelper(platform,
+                  startup_dep,
+                  flags,
+                  root,
+                  stateful,
+                  std::move(storage_container_factory)) {}
 
 bool StandardMountHelper::DoMountVarAndHomeChronos() {
   return MountVarAndHomeChronos();

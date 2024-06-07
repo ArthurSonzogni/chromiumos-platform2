@@ -14,6 +14,7 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
+#include "init/startup/mount_var_home_interface.h"
 #include "init/startup/startup_dep_impl.h"
 
 namespace startup {
@@ -26,7 +27,9 @@ class StandardMountHelper : public MountHelper {
                       StartupDep* startup_dep,
                       const Flags& flags,
                       const base::FilePath& root,
-                      const base::FilePath& stateful);
+                      const base::FilePath& stateful,
+                      std::unique_ptr<libstorage::StorageContainerFactory>
+                          storage_container_factory);
 
   bool DoMountVarAndHomeChronos() override;
 };

@@ -12,6 +12,7 @@
 #include <base/values.h>
 #include <libcrossystem/crossystem.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 
 #include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"
@@ -42,24 +43,29 @@ MountHelperFactory::MountHelperFactory(libstorage::Platform* platform,
 // In the previous bash version of chromeos_startup, these different function
 // implementations came from loading dev_utils.sh, test_utils.sh,
 // factory_utils.sh and factory_utils.sh.
-std::unique_ptr<MountHelper> MountHelperFactory::Generate() {
+std::unique_ptr<MountHelper> MountHelperFactory::Generate(
+    std::unique_ptr<libstorage::StorageContainerFactory>
+        storage_container_factory) {
   bool dev_mode = InDevMode(platform_->GetCrosssystem());
   bool is_test_image = IsTestImage(platform_, lsb_file_);
   bool is_factory_mode = IsFactoryMode(platform_, root_);
 
   // Use factory mount helper.
   if (dev_mode && is_test_image && is_factory_mode) {
-    return std::make_unique<FactoryModeMountHelper>(platform_, startup_dep_,
-                                                    flags_, root_, stateful_);
+    return std::make_unique<FactoryModeMountHelper>(
+        platform_, startup_dep_, flags_, root_, stateful_,
+        std::move(storage_container_factory));
   }
 
   if (dev_mode && is_test_image) {
-    return std::make_unique<TestModeMountHelper>(platform_, startup_dep_,
-                                                 flags_, root_, stateful_);
+    return std::make_unique<TestModeMountHelper>(
+        platform_, startup_dep_, flags_, root_, stateful_,
+        std::move(storage_container_factory));
   }
 
-  return std::make_unique<StandardMountHelper>(platform_, startup_dep_, flags_,
-                                               root_, stateful_);
+  return std::make_unique<StandardMountHelper>(
+      platform_, startup_dep_, flags_, root_, stateful_,
+      std::move(storage_container_factory));
 }
 
 }  // namespace startup

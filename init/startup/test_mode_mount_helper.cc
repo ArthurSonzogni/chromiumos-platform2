@@ -23,6 +23,7 @@
 
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
+#include "init/startup/mount_var_home_interface.h"
 #include "init/startup/security_manager.h"
 #include "init/startup/startup_dep_impl.h"
 
@@ -40,12 +41,20 @@ namespace startup {
 
 // Constructor for TestModeMountHelper when the device is
 // not in dev mode.
-TestModeMountHelper::TestModeMountHelper(libstorage::Platform* platform,
-                                         StartupDep* startup_dep,
-                                         const Flags& flags,
-                                         const base::FilePath& root,
-                                         const base::FilePath& stateful)
-    : MountHelper(platform, startup_dep, flags, root, stateful) {}
+TestModeMountHelper::TestModeMountHelper(
+    libstorage::Platform* platform,
+    StartupDep* startup_dep,
+    const Flags& flags,
+    const base::FilePath& root,
+    const base::FilePath& stateful,
+    std::unique_ptr<libstorage::StorageContainerFactory>
+        storage_container_factory)
+    : MountHelper(platform,
+                  startup_dep,
+                  flags,
+                  root,
+                  stateful,
+                  std::move(storage_container_factory)) {}
 
 bool TestModeMountHelper::DoMountVarAndHomeChronos() {
   // If this a TPM 2.0 device that supports encrypted stateful, creates and

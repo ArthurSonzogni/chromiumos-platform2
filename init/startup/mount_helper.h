@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/values.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/storage_container_factory.h>
 
 #include "init/startup/flags.h"
 #include "init/startup/startup_dep_impl.h"
@@ -34,13 +35,17 @@ class MountHelper {
               const Flags& flags,
               const base::FilePath& root,
               const base::FilePath& stateful,
-              std::unique_ptr<MountVarAndHomeChronosInterface> impl);
+              std::unique_ptr<MountVarAndHomeChronosInterface> impl,
+              std::unique_ptr<libstorage::StorageContainerFactory>
+                  storage_container_factory);
 
   MountHelper(libstorage::Platform* platform,
               StartupDep* startup_dep,
               const Flags& flags,
               const base::FilePath& root,
-              const base::FilePath& stateful);
+              const base::FilePath& stateful,
+              std::unique_ptr<libstorage::StorageContainerFactory>
+                  storage_container_factory);
 
   virtual ~MountHelper();
 
@@ -66,6 +71,12 @@ class MountHelper {
   // UmountVarAndHomeChronos function.
   bool DoUmountVarAndHomeChronos();
 
+  // Return the storage container factory, used to create filestsytem
+  // stack.
+  libstorage::StorageContainerFactory* GetStorageContainerFactory() {
+    return storage_container_factory_.get();
+  }
+
   // Bind mount the /var and /home/chronos mounts. The implementation
   // is different for test images and when in factory mode. It also
   // changes depending on the encrypted stateful USE flag.
@@ -81,6 +92,8 @@ class MountHelper {
  private:
   std::stack<base::FilePath> mount_stack_;
   std::unique_ptr<MountVarAndHomeChronosInterface> impl_;
+  std::unique_ptr<libstorage::StorageContainerFactory>
+      storage_container_factory_;
 };
 
 }  // namespace startup
