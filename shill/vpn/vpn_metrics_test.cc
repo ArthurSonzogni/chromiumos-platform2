@@ -76,8 +76,8 @@ TEST_F(VPNDriverMetricsTest, ReportRoutingFull) {
       .Times(AnyNumber());
 
   NetworkConfig config;
-  config.ipv4_default_route = true;
-  config.included_route_prefixes = {*IPCIDR::CreateFromCIDRString("::/0")};
+  config.included_route_prefixes = {*IPCIDR::CreateFromCIDRString("0.0.0.0/0"),
+                                    *IPCIDR::CreateFromCIDRString("::/0")};
 
   // Routing type.
   EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPv4RoutingType, _,
@@ -123,8 +123,8 @@ TEST_F(VPNDriverMetricsTest, ReportRoutingSplit) {
   // IPv4 has default route with excluded routes. IPv6 has both include and
   // excluded routes.
   NetworkConfig config;
-  config.ipv4_default_route = true;
-  config.included_route_prefixes = {*IPCIDR::CreateFromCIDRString("fd00::/64"),
+  config.included_route_prefixes = {*IPCIDR::CreateFromCIDRString("0.0.0.0/0"),
+                                    *IPCIDR::CreateFromCIDRString("fd00::/64"),
                                     *IPCIDR::CreateFromCIDRString("fd01::/96")};
   config.excluded_route_prefixes = {
       *IPCIDR::CreateFromCIDRString("10.0.0.0/16"),
@@ -163,29 +163,71 @@ TEST_F(VPNDriverMetricsTest, ReportRoutingSplit) {
   driver_metrics_.ReportNetworkConfig(config);
 }
 
-TEST_F(VPNDriverMetricsTest, ReportRoutingByPassAndBlocked) {
+TEST_F(VPNDriverMetricsTest, ReportRoutingFullAndBlocked) {
   // Don't care about other metrics in this test.
   EXPECT_CALL(metrics_, SendEnumToUMA(_, Matcher<VPNType>(_), _))
       .Times(AnyNumber());
   EXPECT_CALL(metrics_, SendToUMA(_, Matcher<VPNType>(_), _))
       .Times(AnyNumber());
 
-  // IPv4 has default route with excluded routes. IPv6 has both include and
-  // excluded routes.
   NetworkConfig config;
-  config.ipv4_default_route = false;
   config.ipv6_blackhole_route = true;
+
+  // Routing type.
+  EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPv4RoutingType, _,
+                                      vpn_metrics::kRoutingTypeFull));
+  EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPv6RoutingType, _,
+                                      vpn_metrics::kRoutingTypeBlocked));
+  // Prefix number.
+  EXPECT_CALL(metrics_,
+              SendToUMA(vpn_metrics::kMetricIPv4IncludedRoutesNumber, _, 1));
+  EXPECT_CALL(metrics_,
+              SendToUMA(vpn_metrics::kMetricIPv6IncludedRoutesNumber, _, 0));
+  EXPECT_CALL(metrics_,
+              SendToUMA(vpn_metrics::kMetricIPv4ExcludedRoutesNumber, _, 0));
+  EXPECT_CALL(metrics_,
+              SendToUMA(vpn_metrics::kMetricIPv6ExcludedRoutesNumber, _, 0));
+
+  // Largest prefix.
+  EXPECT_CALL(
+      metrics_,
+      SendToUMA(vpn_metrics::kMetricIPv4IncludedRoutesLargestPrefix, _, 0));
+  EXPECT_CALL(
+      metrics_,
+      SendToUMA(vpn_metrics::kMetricIPv6IncludedRoutesLargestPrefix, _, _))
+      .Times(0);
+  EXPECT_CALL(
+      metrics_,
+      SendToUMA(vpn_metrics::kMetricIPv4ExcludedRoutesLargestPrefix, _, _))
+      .Times(0);
+  EXPECT_CALL(
+      metrics_,
+      SendToUMA(vpn_metrics::kMetricIPv6ExcludedRoutesLargestPrefix, _, _))
+      .Times(0);
+
+  driver_metrics_.ReportNetworkConfig(config);
+}
+
+TEST_F(VPNDriverMetricsTest, ReportRoutingBypassAndFull) {
+  // Don't care about other metrics in this test.
+  EXPECT_CALL(metrics_, SendEnumToUMA(_, Matcher<VPNType>(_), _))
+      .Times(AnyNumber());
+  EXPECT_CALL(metrics_, SendToUMA(_, Matcher<VPNType>(_), _))
+      .Times(AnyNumber());
+
+  NetworkConfig config;
+  config.included_route_prefixes = {*IPCIDR::CreateFromCIDRString("::/0")};
 
   // Routing type.
   EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPv4RoutingType, _,
                                       vpn_metrics::kRoutingTypeBypass));
   EXPECT_CALL(metrics_, SendEnumToUMA(vpn_metrics::kMetricIPv6RoutingType, _,
-                                      vpn_metrics::kRoutingTypeBlocked));
+                                      vpn_metrics::kRoutingTypeFull));
   // Prefix number.
   EXPECT_CALL(metrics_,
               SendToUMA(vpn_metrics::kMetricIPv4IncludedRoutesNumber, _, 0));
   EXPECT_CALL(metrics_,
-              SendToUMA(vpn_metrics::kMetricIPv6IncludedRoutesNumber, _, 0));
+              SendToUMA(vpn_metrics::kMetricIPv6IncludedRoutesNumber, _, 1));
   EXPECT_CALL(metrics_,
               SendToUMA(vpn_metrics::kMetricIPv4ExcludedRoutesNumber, _, 0));
   EXPECT_CALL(metrics_,
@@ -198,8 +240,7 @@ TEST_F(VPNDriverMetricsTest, ReportRoutingByPassAndBlocked) {
       .Times(0);
   EXPECT_CALL(
       metrics_,
-      SendToUMA(vpn_metrics::kMetricIPv6IncludedRoutesLargestPrefix, _, _))
-      .Times(0);
+      SendToUMA(vpn_metrics::kMetricIPv6IncludedRoutesLargestPrefix, _, 0));
   EXPECT_CALL(
       metrics_,
       SendToUMA(vpn_metrics::kMetricIPv4ExcludedRoutesLargestPrefix, _, _))

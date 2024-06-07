@@ -143,7 +143,6 @@ class StaticIPParametersTest : public Test {
               ipconfig_props.included_route_prefixes[0].ToString());
     EXPECT_EQ(VersionedAddress(kIncludedRoute1, version),
               ipconfig_props.included_route_prefixes[1].ToString());
-    EXPECT_FALSE(ipconfig_props.ipv4_default_route);
   }
   void ExpectPopulatedIPConfig() { ExpectPopulatedIPConfigWithVersion(0); }
   void ExpectPropertiesWithVersion(const std::string& property_prefix,
@@ -195,7 +194,6 @@ class StaticIPParametersTest : public Test {
     network_config->included_route_prefixes = {
         *net_base::IPCIDR::CreateFromCIDRString(kIncludedRoute0),
         *net_base::IPCIDR::CreateFromCIDRString(kIncludedRoute1)};
-    network_config->ipv4_default_route = false;
     network_->set_link_protocol_network_config(std::move(network_config));
   }
   void SetStaticProperties() { SetStaticPropertiesWithVersion(0); }
@@ -275,18 +273,6 @@ TEST_F(StaticIPParametersTest, ApplyEmptyParameters) {
   PopulateNetworkConfig();
   AttachNetwork();
   ExpectPopulatedIPConfig();
-}
-
-TEST_F(StaticIPParametersTest, DefaultRoute) {
-  network_->set_dhcp_network_config_for_testing(net_base::NetworkConfig{});
-  SetStaticPropertiesWithoutRoute(service_->mutable_store());
-  AttachNetwork();
-  EXPECT_TRUE(network_->GetNetworkConfig().ipv4_default_route);
-  SetStaticProperties();
-  dispatcher_.task_environment().RunUntilIdle();
-  EXPECT_FALSE(network_->GetNetworkConfig().ipv4_default_route);
-  SetEmptyStaticProperties();
-  EXPECT_TRUE(network_->GetNetworkConfig().ipv4_default_route);
 }
 
 TEST_F(StaticIPParametersTest, ControlInterface) {

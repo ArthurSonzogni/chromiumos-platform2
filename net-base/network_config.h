@@ -52,10 +52,7 @@ struct BRILLO_EXPORT NetworkConfig {
 
   // Routing configurations. If a destination is included, it will be routed
   // through the gateway of corresponding IP family (or on-link if gateway is
-  // null). |ipv4_default_route| is a historical field used by VPNs. Since this
-  // information is redundant with included routes, we plan to remove this
-  // later.
-  bool ipv4_default_route = true;
+  // null).
   // If true a IPv6 default blackhole route is added to aggressively block IPv6
   // traffic. Used if connected to an IPv4-only VPN.
   bool ipv6_blackhole_route = false;

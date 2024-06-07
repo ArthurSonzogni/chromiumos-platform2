@@ -522,7 +522,10 @@ std::optional<net_base::NetworkConfig> OpenVPNDriver::ParseNetworkConfig(
       network_config->included_route_prefixes.push_back(
           net_base::IPCIDR(network_config->ipv4_address->GetPrefixCIDR()));
     }
-    network_config->ipv4_default_route = ipv4_redirect_gateway;
+    if (ipv4_redirect_gateway) {
+      network_config->included_route_prefixes.push_back(
+          net_base::IPCIDR(net_base::IPFamily::kIPv4));
+    }
     network_config->ipv6_blackhole_route = ipv4_redirect_gateway && !has_ipv6;
   }
   if (has_ipv6) {

@@ -560,7 +560,6 @@ void WireGuardDriver::OnConfigurationDone(int exit_code) {
 
 bool WireGuardDriver::PopulateIPProperties() {
   network_config_ = std::make_optional<net_base::NetworkConfig>();
-  network_config_->ipv4_default_route = false;
   const auto ip_address_list =
       args()->Lookup<std::vector<std::string>>(kWireGuardIPAddress, {});
 

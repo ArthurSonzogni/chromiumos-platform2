@@ -1306,7 +1306,6 @@ void IPsecConnection::OnXFRMInterfaceReady(const std::string& ifname,
     network_config->ipv6_blackhole_route = false;
   }
   // Default routes are always included in remote_ts, if they exists.
-  network_config->ipv4_default_route = false;
   network_config->included_route_prefixes = remote_traffic_selectors_;
   network_config->dns_servers = dns_servers_;
   network_config->mtu = net_base::NetworkConfig::kMinIPv6MTU;

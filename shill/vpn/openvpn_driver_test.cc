@@ -46,6 +46,7 @@
 #include "shill/vpn/vpn_types.h"
 
 using testing::_;
+using testing::Contains;
 using testing::DoAll;
 using testing::Eq;
 using testing::Field;
@@ -621,32 +622,33 @@ TEST_F(OpenVPNDriverTest, ParseNetworkConfig) {
             network_config->included_route_prefixes[1]);
   EXPECT_EQ(*net_base::IPCIDR::CreateFromStringAndPrefix(kNetwork2, kPrefix2),
             network_config->included_route_prefixes[2]);
-  EXPECT_FALSE(network_config->ipv4_default_route);
 
   config["redirect_gateway"] = "def1";
   network_config = driver_->ParseNetworkConfig(config, false);
   ASSERT_TRUE(network_config.has_value());
   EXPECT_TRUE(network_config->ipv4_address.has_value());
   EXPECT_TRUE(network_config->ipv6_addresses.empty());
-  EXPECT_TRUE(network_config->ipv4_default_route);
   EXPECT_TRUE(network_config->ipv6_blackhole_route);
+  EXPECT_THAT(network_config->included_route_prefixes,
+              Contains(net_base::IPCIDR(net_base::IPFamily::kIPv4)));
 
   // Don't set a default route if the user asked to ignore it.
   network_config = driver_->ParseNetworkConfig(config, true);
   ASSERT_TRUE(network_config.has_value());
   EXPECT_TRUE(network_config->ipv4_address.has_value());
   EXPECT_TRUE(network_config->ipv6_addresses.empty());
-  EXPECT_FALSE(network_config->ipv4_default_route);
+  EXPECT_LT(0, network_config->included_route_prefixes.size());
+  EXPECT_THAT(network_config->included_route_prefixes,
+              Contains(net_base::IPCIDR(net_base::IPFamily::kIPv4)).Times(0));
 
   // Set IPv6 properties, both v4 and v6 properties should have values.
   config["ifconfig_ipv6_local"] = "fd00::1";
   config["ifconfig_ipv6_netbits"] = "64";
   config["route_ipv6_network_1"] = "fd02::/96";
   config["route_ipv6_gateway_1"] = "fd02::1";
-  network_config = driver_->ParseNetworkConfig(config, false);
+  network_config = driver_->ParseNetworkConfig(config, true);
   ASSERT_TRUE(network_config.has_value());
   EXPECT_TRUE(network_config->ipv4_address.has_value());
-  EXPECT_TRUE(network_config->ipv4_default_route);
   EXPECT_FALSE(network_config->ipv6_blackhole_route);
   ASSERT_EQ(1, network_config->ipv6_addresses.size());
   EXPECT_EQ(*net_base::IPv6CIDR::CreateFromCIDRString("fd00::1/64"),

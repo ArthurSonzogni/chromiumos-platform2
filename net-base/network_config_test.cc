@@ -36,7 +36,6 @@ TEST(NetworkConfigTest, MergeAddress) {
   EXPECT_EQ(merged_config.ipv4_address, ipv4_config.ipv4_address);
   EXPECT_EQ(merged_config.ipv4_gateway, ipv4_config.ipv4_gateway);
   EXPECT_EQ(merged_config.ipv4_broadcast, ipv4_config.ipv4_broadcast);
-  EXPECT_EQ(merged_config.ipv4_default_route, ipv4_config.ipv4_default_route);
   EXPECT_EQ(merged_config.ipv6_blackhole_route,
             ipv4_config.ipv6_blackhole_route);
   EXPECT_EQ(merged_config.rfc3442_routes, ipv4_config.rfc3442_routes);

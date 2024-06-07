@@ -141,7 +141,6 @@ net_base::NetworkConfig DeserializeNetworkConfig(
         net_base::IPv6Address::CreateFromBytes(in.ipv6_gateway());
   }
 
-  out.ipv4_default_route = in.ipv4_default_route();
   out.ipv6_blackhole_route = in.ipv6_blackhole_route();
 
   for (const auto& prefix : in.excluded_route_prefixes()) {

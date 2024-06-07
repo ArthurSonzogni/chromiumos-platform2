@@ -155,6 +155,9 @@ TEST_F(PPPDaemonTest, ParseIPConfiguration) {
   EXPECT_EQ(*net_base::IPAddress::CreateFromString("2.2.2.2"),
             network_config.dns_servers[1]);
   EXPECT_EQ(1492, network_config.mtu);
+  EXPECT_EQ(1, network_config.included_route_prefixes.size());
+  EXPECT_THAT(network_config.included_route_prefixes,
+              testing::Contains(net_base::IPCIDR(net_base::IPFamily::kIPv4)));
 }
 
 }  // namespace shill

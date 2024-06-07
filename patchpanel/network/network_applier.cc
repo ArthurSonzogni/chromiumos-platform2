@@ -467,8 +467,8 @@ void NetworkApplier::ApplyNetworkConfig(
     }
   }
   if (area & Area::kIPv4Route) {
-    bool default_route =
-        (area & Area::kIPv4DefaultRoute) && network_config.ipv4_default_route;
+    bool default_route = (area & Area::kIPv4DefaultRoute) &&
+                         network_config.included_route_prefixes.empty();
 
     // Check if an IPv4 gateway is on-link, and add a /32 on-link route to the
     // gateway if not. Note that IPv6 uses link local address for gateway so
@@ -503,7 +503,9 @@ void NetworkApplier::ApplyNetworkConfig(
                                        network_config.ipv6_addresses);
   }
   if (area & Area::kIPv6Route) {
-    bool default_route = (area & Area::kIPv6DefaultRoute);
+    bool default_route = (area & Area::kIPv6DefaultRoute) &&
+                         network_config.included_route_prefixes.empty() &&
+                         !network_config.ipv6_blackhole_route;
 
     std::optional<net_base::IPAddress> gateway = std::nullopt;
     if (network_config.ipv6_gateway) {

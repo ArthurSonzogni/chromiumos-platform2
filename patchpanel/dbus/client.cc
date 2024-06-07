@@ -1813,7 +1813,6 @@ void SerializeNetworkConfig(const net_base::NetworkConfig& in,
     out->set_ipv6_gateway(in.ipv6_gateway->ToByteString());
   }
 
-  out->set_ipv4_default_route(in.ipv4_default_route);
   out->set_ipv6_blackhole_route(in.ipv6_blackhole_route);
 
   for (const auto& prefix : in.excluded_route_prefixes) {

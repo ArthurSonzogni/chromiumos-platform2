@@ -180,7 +180,9 @@ net_base::NetworkConfig PPPDaemon::ParseNetworkConfig(
       SLOG(2) << "Key ignored.";
     }
   }
-
+  // L2TP/IPsec VPN is always IPv4-only and full tunnel. Add IPv4 default route.
+  config.included_route_prefixes.push_back(
+      net_base::IPCIDR(net_base::IPFamily::kIPv4));
   return config;
 }
 

@@ -99,9 +99,14 @@ void ReportRoutingSetup(Metrics* metrics,
     return ret;
   };
 
-  // Default IPv4 route needs special handling.
+  // Empty included_route_prefixes implies default routes for both family,
+  // unless ipv6_blackhole_route is present. Note that VPN is supposed to always
+  // set included_route_prefixes explicitly so logs a warning here.
   Prefixes included_prefixes = network_config.included_route_prefixes;
-  if (is_ipv4 && network_config.ipv4_default_route) {
+  if (included_prefixes.empty() &&
+      (is_ipv4 || !network_config.ipv6_blackhole_route)) {
+    LOG(WARNING) << __func__ << ": Empty included_route, treated as having "
+                 << (is_ipv4 ? "IPv4" : "IPv6") << " default route.";
     included_prefixes.push_back(net_base::IPCIDR(family));
   }
 

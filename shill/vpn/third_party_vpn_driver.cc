@@ -408,7 +408,6 @@ void ThirdPartyVpnDriver::SetParameters(
     LOG(ERROR) << __func__ << ": " << error_message;
     return;
   }
-  network_config_->ipv4_default_route = false;
   network_config_->ipv6_blackhole_route = true;
   if (!network_config_set_) {
     network_config_set_ = true;

@@ -172,7 +172,6 @@ TEST_F(NetworkConfigMergeTest, IPv4VPNWithStatic) {
   vpn_config.dns_servers = {
       *net_base::IPAddress::CreateFromString("10.200.0.2"),
       *net_base::IPAddress::CreateFromString("10.200.0.3")};
-  vpn_config.ipv4_default_route = false;
   vpn_config.ipv6_blackhole_route = true;
   vpn_config.excluded_route_prefixes = {
       *net_base::IPCIDR::CreateFromCIDRString("172.16.2.0/24")};
@@ -205,7 +204,6 @@ TEST_F(NetworkConfigMergeTest, IPv4VPNWithStatic) {
             cnc.Get().included_route_prefixes);
   EXPECT_EQ(static_config.dns_servers, cnc.Get().dns_servers);
   EXPECT_EQ(static_config.dns_search_domains, cnc.Get().dns_search_domains);
-  EXPECT_FALSE(cnc.Get().ipv4_default_route);
   EXPECT_TRUE(cnc.Get().ipv6_blackhole_route);
 }
 

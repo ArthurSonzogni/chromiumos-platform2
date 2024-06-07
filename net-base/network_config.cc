@@ -33,7 +33,6 @@ NetworkConfig NetworkConfig::Merge(const NetworkConfig* ipv4_config,
     ret.ipv4_address = ipv4_config->ipv4_address;
     ret.ipv4_gateway = ipv4_config->ipv4_gateway;
     ret.ipv4_broadcast = ipv4_config->ipv4_broadcast;
-    ret.ipv4_default_route = ipv4_config->ipv4_default_route;
     ret.ipv6_blackhole_route = ipv4_config->ipv6_blackhole_route;
     ret.rfc3442_routes.insert(ret.rfc3442_routes.end(),
                               ipv4_config->rfc3442_routes.begin(),
@@ -131,9 +130,6 @@ std::ostream& operator<<(std::ostream& stream, const NetworkConfig& config) {
   stream << "]";
   if (config.ipv6_gateway) {
     stream << ", IPv6 gateway: " << *config.ipv6_gateway;
-  }
-  if (!config.ipv4_default_route) {
-    stream << ", no IPv4 default route";
   }
   if (config.ipv6_blackhole_route) {
     stream << ", blackhole IPv6";

@@ -98,7 +98,6 @@ TEST_F(ArcVpnDriverTest, GetNetworkConfig) {
   const auto network_config = driver_->GetNetworkConfig();
   ASSERT_NE(network_config, nullptr);
   EXPECT_TRUE(network_config->ipv6_blackhole_route);
-  EXPECT_FALSE(network_config->ipv4_default_route);
 }
 
 }  // namespace shill

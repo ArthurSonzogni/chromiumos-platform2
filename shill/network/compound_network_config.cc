@@ -133,15 +133,8 @@ bool CompoundNetworkConfig::Recalculate() {
   combined_network_config_->ipv6_gateway =
       preferred_ipv6_addr_src->ipv6_gateway;
 
-  // |ipv4_default_route| and |ipv6_blackhole_route| are only used for VPN.
-  // Check |static_network_config_.ipv4_default_route| for the split-routing-VPN
-  // through static-config use case. Other than this case it will always have
-  // the default value (true).
-  combined_network_config_->ipv4_default_route =
-      static_network_config_.ipv4_default_route;
+  // |ipv6_blackhole_route| is only used for VPN.
   if (link_protocol_network_config_) {
-    combined_network_config_->ipv4_default_route &=
-        link_protocol_network_config_->ipv4_default_route;
     combined_network_config_->ipv6_blackhole_route =
         link_protocol_network_config_->ipv6_blackhole_route;
   }

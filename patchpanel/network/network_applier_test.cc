@@ -277,7 +277,8 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
                              config, priority,
                              NetworkApplier::Technology::kEthernet);
 
-  config.ipv4_default_route = false;
+  config.included_route_prefixes = {
+      *net_base::IPCIDR::CreateFromCIDRString("10.0.1.0/24")};
   EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
                                   /*gateway=*/Ne(std::nullopt),
                                   /*fix_gateway_reachability=*/false,
@@ -290,7 +291,7 @@ TEST_F(NetworkApplierTest, ApplyNetworkConfigRouteParameters) {
                              config, priority,
                              NetworkApplier::Technology::kEthernet);
 
-  config.ipv4_default_route = true;
+  config.included_route_prefixes = {};
   config.ipv6_blackhole_route = true;
   EXPECT_CALL(applier, ApplyRoute(kInterfaceIndex, net_base::IPFamily::kIPv4,
                                   /*gateway=*/Ne(std::nullopt),

@@ -482,7 +482,6 @@ TEST_F(ClientTest, SerializeNetworkConfigEmpty) {
   EXPECT_FALSE(output.has_ipv4_gateway());
   EXPECT_EQ(output.ipv6_addresses_size(), 0);
   EXPECT_FALSE(output.has_ipv6_gateway());
-  EXPECT_TRUE(output.ipv4_default_route());
   EXPECT_FALSE(output.ipv6_blackhole_route());
   EXPECT_EQ(output.excluded_route_prefixes_size(), 0);
   EXPECT_EQ(output.included_route_prefixes_size(), 0);
@@ -505,7 +504,6 @@ TEST_F(ClientTest, SerializeNetworkConfig) {
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:200::2000/56"));
   input.ipv6_gateway = *net_base::IPv6Address::CreateFromString("2001:200::2");
 
-  input.ipv4_default_route = false;
   input.ipv6_blackhole_route = true;
   input.excluded_route_prefixes.push_back(
       *net_base::IPCIDR::CreateFromCIDRString("2002::/128"));
@@ -548,7 +546,6 @@ TEST_F(ClientTest, SerializeNetworkConfig) {
   EXPECT_EQ(output.ipv6_gateway(), std::string({0x20, 0x01, 0x2, 0, 0, 0, 0, 0,
                                                 0, 0, 0, 0, 0, 0, 0, 0x2}));
 
-  EXPECT_FALSE(output.ipv4_default_route());
   EXPECT_TRUE(output.ipv6_blackhole_route());
   EXPECT_EQ(output.excluded_route_prefixes_size(), 2);
   EXPECT_EQ(

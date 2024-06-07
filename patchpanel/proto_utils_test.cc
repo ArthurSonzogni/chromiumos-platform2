@@ -179,7 +179,6 @@ TEST_F(ProtoUtilsTest, FillNetworkClientInfoProto) {
 
 TEST_F(ProtoUtilsTest, DeserializeNetworkConfigEmpty) {
   patchpanel::NetworkConfig input;
-  input.set_ipv4_default_route(true);
 
   const auto output = DeserializeNetworkConfig(input);
   net_base::NetworkConfig expected_output;
@@ -203,7 +202,6 @@ TEST_F(ProtoUtilsTest, DeserializeNetworkConfig) {
   ipv6_address->set_prefix_len(56);
   input.set_ipv6_gateway(
       {0x20, 0x01, 0x2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x2});
-  input.set_ipv4_default_route(false);
   input.set_ipv6_blackhole_route(true);
   auto* prefix = input.add_excluded_route_prefixes();
   prefix->set_addr({0x20, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
@@ -243,7 +241,6 @@ TEST_F(ProtoUtilsTest, DeserializeNetworkConfig) {
       *net_base::IPv6CIDR::CreateFromCIDRString("2001:200::2000/56"));
   expected_output.ipv6_gateway =
       *net_base::IPv6Address::CreateFromString("2001:200::2");
-  expected_output.ipv4_default_route = false;
   expected_output.ipv6_blackhole_route = true;
   expected_output.excluded_route_prefixes.push_back(
       *net_base::IPCIDR::CreateFromCIDRString("2002::/128"));

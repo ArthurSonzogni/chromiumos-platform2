@@ -77,11 +77,10 @@ std::unique_ptr<net_base::NetworkConfig> ArcVpnDriver::GetNetworkConfig()
   // Currently L3 settings for ARC VPN are set from Chrome as
   // StaticIPProperty before connecting, so this will be mostly empty.
   auto network_config = std::make_unique<net_base::NetworkConfig>();
-  // ARC always sets IncludedRoutes through StaticIPConfig.
-  network_config->ipv4_default_route = false;
   // IPv6 is not currently supported.  If the VPN is enabled, block all
   // IPv6 traffic so there is no "leak" past the VPN.
   network_config->ipv6_blackhole_route = true;
+  // ARC always sets IncludedRoutes through StaticIPConfig.
   return network_config;
 }
 

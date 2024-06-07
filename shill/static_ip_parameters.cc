@@ -100,14 +100,6 @@ net_base::NetworkConfig KeyValuesToNetworkConfig(const KeyValueStore& kvs) {
   }
   ret.dns_search_domains = kvs.GetOptionalValue<Strings>(kSearchDomainsProperty)
                                .value_or(std::vector<std::string>{});
-
-  // TODO(b/269401899): Currently this is only used by VPN. Check that if the
-  // Network class can make this decision by itself after finishing the
-  // refactor.
-  if (!ret.included_route_prefixes.empty()) {
-    ret.ipv4_default_route = false;
-  }
-
   return ret;
 }
 
