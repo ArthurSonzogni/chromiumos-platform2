@@ -636,11 +636,13 @@ TEST_F(ManagerTest, DeviceDeregistration) {
 
   EXPECT_CALL(*mock_devices_[0], SetEnabledUnchecked(false, _));
   EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[0])));
+  EXPECT_CALL(*wifi_provider_, DeregisterDeviceFromPhy).Times(0);
   manager()->DeregisterDevice(mock_devices_[0]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[0], Technology::kEthernet));
 
   EXPECT_CALL(*mock_devices_[1], SetEnabledUnchecked(false, _));
   EXPECT_CALL(*profile, UpdateDevice(DeviceRefPtr(mock_devices_[1])));
+  EXPECT_CALL(*wifi_provider_, DeregisterDeviceFromPhy);
   manager()->DeregisterDevice(mock_devices_[1]);
   EXPECT_FALSE(IsDeviceRegistered(mock_devices_[1], Technology::kWiFi));
 }

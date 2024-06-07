@@ -1197,6 +1197,11 @@ void Manager::DeregisterDevice(const DeviceRefPtr& to_forget) {
       to_forget->SetEnabledUnchecked(false, base::DoNothing());
       to_forget->OnDeregistered();
       device_geolocation_info_.erase(to_forget);
+      if (to_forget->technology() == Technology::kWiFi) {
+        WiFi* wifi = static_cast<WiFi*>(to_forget.get());
+        wifi_provider_->DeregisterDeviceFromPhy(wifi->link_name(),
+                                                wifi->phy_index());
+      }
       devices_.erase(it);
       EmitDeviceProperties();
       return;

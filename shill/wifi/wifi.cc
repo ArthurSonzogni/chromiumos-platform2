@@ -349,9 +349,6 @@ void WiFi::Stop(EnabledStateChangedCallback callback) {
   StopReconnectTimer();
   StopRequestingStationInfo();
 
-  // TODO(b/248054832): Move this deregistration into WiFiProvider.
-  provider_->DeregisterDeviceFromPhy(link_name(), phy_index_);
-
   weak_ptr_factory_while_started_.InvalidateWeakPtrs();
 
   SLOG(this, 2) << "WiFi " << link_name() << " supplicant_interface_proxy_ "
