@@ -782,34 +782,28 @@ TEST_F(MountStackTest, CleanupMountsNoEncrypt) {
   EXPECT_TRUE(mounts.empty());
 }
 
-TEST(MountVarAndHomeChronosEncrypted, MountEncrypted) {
+class MountVarAndHomeChronosEncryptedTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    platform_ = std::make_unique<libstorage::MockPlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
+    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+        platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_);
+  }
+
   startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
+  std::unique_ptr<libstorage::MockPlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
+};
 
-  std::unique_ptr<libstorage::FakePlatform> platform_ =
-      std::make_unique<libstorage::FakePlatform>();
-  std::unique_ptr<startup::FakeStartupDep> startup_dep_ =
-      std::make_unique<startup::FakeStartupDep>(platform_.get());
+TEST_F(MountVarAndHomeChronosEncryptedTest, MountEncrypted) {
   startup_dep_->SetMountEncOutputForArg("", "1");
-  std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
-      std::make_unique<startup::StandardMountHelper>(
-          platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_);
-
   EXPECT_TRUE(mount_helper_->MountVarAndHomeChronosEncrypted());
 }
 
-TEST(MountVarAndHomeChronosEncrypted, MountEncryptedFail) {
-  startup::Flags flags_{};
-  base::FilePath base_dir_{"/"};
-
-  std::unique_ptr<libstorage::FakePlatform> platform_ =
-      std::make_unique<libstorage::FakePlatform>();
-  std::unique_ptr<startup::FakeStartupDep> startup_dep_ =
-      std::make_unique<startup::FakeStartupDep>(platform_.get());
-  std::unique_ptr<startup::StandardMountHelper> mount_helper_ =
-      std::make_unique<startup::StandardMountHelper>(
-          platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_);
-
+TEST_F(MountVarAndHomeChronosEncryptedTest, MountEncryptedFail) {
   EXPECT_FALSE(mount_helper_->MountVarAndHomeChronosEncrypted());
 }
 
