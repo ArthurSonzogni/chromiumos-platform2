@@ -749,36 +749,32 @@ TEST_F(ConfigTest, DevModeTestFactoryInstallerUsingFile) {
 
 class MountStackTest : public ::testing::Test {
  protected:
-  MountStackTest()
-      : base_dir_(base::FilePath("")),
-        platform_(std::make_unique<libstorage::MockPlatform>()),
-        startup_dep_(
-            std::make_unique<startup::FakeStartupDep>(platform_.get())),
-        mount_helper_(
-            platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_) {
+  void SetUp() override {
+    platform_ = std::make_unique<libstorage::MockPlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
+    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+        platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_);
   }
-
-  void SetUp() override {}
 
   startup::Flags flags_{};
   base::FilePath base_dir_{"/"};
   std::unique_ptr<libstorage::MockPlatform> platform_;
   std::unique_ptr<startup::FakeStartupDep> startup_dep_;
-  startup::StandardMountHelper mount_helper_;
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
 };
 
 TEST_F(MountStackTest, CleanupMountsNoEncrypt) {
   // Remember 2 mounts, make sure CleanupMountsStack() calls unmount
   // for all and returns what has been unmounted.
   base::FilePath root = base_dir_.Append("root");
-  mount_helper_.RememberMount(root);
+  mount_helper_->RememberMount(root);
   base::FilePath home = base_dir_.Append("home");
-  mount_helper_.RememberMount(home);
+  mount_helper_->RememberMount(home);
 
   EXPECT_CALL(*platform_, Unmount(root, false, nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*platform_, Unmount(home, false, nullptr)).WillOnce(Return(true));
   std::vector<base::FilePath> mounts;
-  mount_helper_.CleanupMountsStack(&mounts);
+  mount_helper_->CleanupMountsStack(&mounts);
   EXPECT_EQ(mounts.front(), home);
   mounts.erase(mounts.begin());
   EXPECT_EQ(mounts.front(), root);
