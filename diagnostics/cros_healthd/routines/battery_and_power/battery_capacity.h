@@ -16,6 +16,7 @@ class Context;
 
 // Output messages for the battery capacity routine when in various states.
 extern const char kBatteryCapacityRoutineParametersInvalidMessage[];
+extern const char kBatteryCapacityRoutineMissingBatteryDesignCapacityMessage[];
 extern const char kBatteryCapacityRoutineSucceededMessage[];
 extern const char kBatteryCapacityRoutineFailedMessage[];
 

@@ -109,5 +109,18 @@ TEST_F(BatteryCapacityRoutineTest, InvalidParameters) {
                              kBatteryCapacityRoutineParametersInvalidMessage);
 }
 
+// Test that the battery routine handles missing battery design capacity.
+TEST_F(BatteryCapacityRoutineTest, NoBatteryChargeFullDesign) {
+  CreateRoutine();
+  power_manager::PowerSupplyProperties power_supply_proto;
+  power_supply_proto.clear_battery_charge_full_design();
+  fake_powerd_adapter()->SetPowerSupplyProperties(power_supply_proto);
+  RunRoutineAndWaitForExit();
+  VerifyNonInteractiveUpdate(
+      update()->routine_update_union,
+      mojom::DiagnosticRoutineStatusEnum::kError,
+      kBatteryCapacityRoutineMissingBatteryDesignCapacityMessage);
+}
+
 }  // namespace
 }  // namespace diagnostics

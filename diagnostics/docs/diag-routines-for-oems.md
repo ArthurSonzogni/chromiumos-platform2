@@ -157,6 +157,7 @@ Status message: Battery design capacity within given limits.
 
 Errors:
 - `Invalid BatteryCapacityRoutineParameters.`
+- `Unable to read battery design capacity.`
 - `Battery design capacity within given limits.`
 - `Battery design capacity not within given limits.`
 

@@ -49,6 +49,13 @@ SimpleRoutine::RoutineResult GetBatteryCapacityResult(Context* const context,
   }
 
   auto power_supply_proto = response.value();
+  if (!power_supply_proto.has_battery_charge_full_design()) {
+    return {
+        .status = mojom::DiagnosticRoutineStatusEnum::kError,
+        .status_message =
+            kBatteryCapacityRoutineMissingBatteryDesignCapacityMessage,
+    };
+  }
   double charge_full_design_ah =
       power_supply_proto.battery_charge_full_design();
 
@@ -80,6 +87,8 @@ void RunBatteryCapacityRoutine(Context* const context,
 
 const char kBatteryCapacityRoutineParametersInvalidMessage[] =
     "Invalid BatteryCapacityRoutineParameters.";
+const char kBatteryCapacityRoutineMissingBatteryDesignCapacityMessage[] =
+    "Unable to read battery design capacity.";
 const char kBatteryCapacityRoutineSucceededMessage[] =
     "Battery design capacity within given limits.";
 const char kBatteryCapacityRoutineFailedMessage[] =
