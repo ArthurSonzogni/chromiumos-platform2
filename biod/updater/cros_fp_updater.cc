@@ -47,9 +47,9 @@ bool UpdateImage(const biod::CrosFpDeviceUpdate& ec_dev,
                  const biod::CrosFpFirmware& fw,
                  enum ec_image image) {
   if (boot_ctrl.TriggerBootUpdateSplash()) {
-    DLOG(INFO) << "Successfully launched update splash screen.";
+    LOG(INFO) << "Successfully launched update splash screen.";
   } else {
-    DLOG(ERROR) << "Failed to launch boot update splash screen, continuing.";
+    LOG(ERROR) << "Failed to launch boot update splash screen, continuing.";
   }
   if (!ec_dev.Flash(fw, image)) {
     LOG(ERROR) << "Failed to flash "
