@@ -37,6 +37,7 @@
 
 #include "init/encrypted_reboot_vault/encrypted_reboot_vault.h"
 #include "init/file_attrs_cleaner.h"
+#include "init/metrics/metrics.h"
 #include "init/startup/constants.h"
 #include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"
@@ -305,7 +306,8 @@ ChromeosStartup::ChromeosStartup(
     libstorage::Platform* platform,
     StartupDep* startup_dep,
     std::unique_ptr<MountHelper> mount_helper,
-    std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl)
+    std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl,
+    init_metrics::InitMetrics* metrics)
     : platform_(platform),
       vpd_(std::move(vpd)),
       flags_(flags),
@@ -314,7 +316,8 @@ ChromeosStartup::ChromeosStartup(
       stateful_(stateful),
       startup_dep_(startup_dep),
       mount_helper_(std::move(mount_helper)),
-      tlcl_(std::move(tlcl)) {
+      tlcl_(std::move(tlcl)),
+      metrics_(metrics) {
   stateful_mount_ = std::make_unique<StatefulMount>(
       flags_, root_, stateful_, platform_, startup_dep_, mount_helper_.get());
 }

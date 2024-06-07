@@ -18,6 +18,7 @@
 #include <libstorage/platform/platform.h>
 #include <vpd/vpd.h>
 
+#include "init/metrics/metrics.h"
 #include "init/startup/chromeos_startup.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
@@ -33,6 +34,8 @@ constexpr char kLogFile[] = "/dev/kmsg";
 constexpr char kLsbRelease[] = "/etc/lsb-release";
 constexpr char kPrintkDevkmsg[] = "/proc/sys/kernel/printk_devkmsg";
 constexpr char kStatefulPartition[] = "/mnt/stateful_partition";
+constexpr char kChromeosStartupMetricsPath[] =
+    "/run/chromeos_startup/metrics.chromeos_startup";
 
 }  // namespace
 
@@ -73,6 +76,10 @@ int main(int argc, char* argv[]) {
   // A decreasing number is more verbose and numbers below zero are OK.
   logging::SetMinLogLevel(logging::LOGGING_WARNING - flags.verbosity);
 
+  // Create metric object to store UMA stats.
+  init_metrics::ScopedInitMetricsSingleton scoped_metrics(
+      kChromeosStartupMetricsPath);
+
   std::unique_ptr<startup::StartupDep> startup_dep =
       std::make_unique<startup::StartupDep>(platform.get());
 
@@ -88,7 +95,7 @@ int main(int argc, char* argv[]) {
           std::make_unique<vpd::Vpd>(), flags, base::FilePath("/"),
           base::FilePath(kStatefulPartition), base::FilePath(kLsbRelease),
           platform.get(), startup_dep.get(), std::move(mount_helper),
-          std::move(tlcl));
+          std::move(tlcl), init_metrics::InitMetrics::Get());
 
   return startup->Run();
 }

@@ -17,6 +17,7 @@
 #include <metrics/bootstat.h>
 #include <vpd/vpd.h>
 
+#include "init/metrics/metrics.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/startup_dep_impl.h"
@@ -45,7 +46,8 @@ class ChromeosStartup {
                   libstorage::Platform* platform,
                   StartupDep* startup_dep,
                   std::unique_ptr<MountHelper> mount_helper,
-                  std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl);
+                  std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl,
+                  init_metrics::InitMetrics* metrics);
 
   virtual ~ChromeosStartup() = default;
 
@@ -174,6 +176,7 @@ class ChromeosStartup {
   base::FilePath state_dev_;
   base::FilePath dev_mode_allowed_file_;
   std::unique_ptr<hwsec_foundation::TlclWrapper> tlcl_;
+  init_metrics::InitMetrics* metrics_;
 };
 
 }  // namespace startup

@@ -98,7 +98,7 @@ class EarlySetupTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
   }
 
   startup::Flags flags_{};
@@ -163,7 +163,7 @@ class DevCheckBlockTest : public ::testing::Test {
         base_dir_, base_dir_, platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
     ASSERT_TRUE(crossystem_->VbSetSystemPropertyInt("cros_debug", 1));
     platform_->CreateDirectory(dev_mode_file.DirName());
     startup_->SetDevMode(true);
@@ -225,7 +225,7 @@ class TPMTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
   }
 
   startup::Flags flags_{};
@@ -383,7 +383,7 @@ class StatefulWipeTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
     ASSERT_TRUE(platform_->CreateDirectory(stateful_));
   }
 
@@ -498,7 +498,7 @@ class StatefulWipeTestDevMode : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, stateful_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
     ASSERT_TRUE(platform_->CreateDirectory(stateful_));
   }
 
@@ -576,7 +576,7 @@ class TpmCleanupTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
     flag_file_ = base_dir_.Append(kTpmFirmwareUpdateRequestFlagFile);
     tpm_cleanup_ = base_dir_.Append(kTpmFirmwareUpdateCleanup);
   }
@@ -1013,7 +1013,7 @@ class IsVarFullTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
   }
 
   startup::Flags flags_{};
@@ -1078,7 +1078,7 @@ class DeviceSettingsTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
     base::FilePath var_lib = base_dir_.Append("var/lib");
     whitelist_ = var_lib.Append("whitelist");
     devicesettings_ = var_lib.Append("devicesettings");
@@ -1144,7 +1144,7 @@ class DaemonStoreTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
   }
 
   startup::Flags flags_{};
@@ -1204,7 +1204,7 @@ class RemoveVarEmptyTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
   }
 
   std::unique_ptr<libstorage::FakePlatform> platform_;
@@ -1241,7 +1241,7 @@ class CheckVarLogTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
     var_log_ = base_dir_.Append("var/log");
     platform_->CreateDirectory(var_log_);
   }
@@ -1440,7 +1440,7 @@ class RestoreContextsForVarTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
   }
 
   startup::Flags flags_{};
@@ -1485,7 +1485,7 @@ class RestorePreservedPathsTest : public ::testing::Test {
         platform_.get(), startup_dep_.get(),
         std::make_unique<startup::StandardMountHelper>(
             platform_.get(), startup_dep_.get(), flags_, base_dir_, base_dir_),
-        std::move(tlcl));
+        std::move(tlcl), nullptr);
     startup_->SetDevMode(true);
   }
 
