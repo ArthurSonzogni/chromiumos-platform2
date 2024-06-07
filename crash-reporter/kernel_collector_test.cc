@@ -476,6 +476,17 @@ TEST_F(KernelCollectorTest, CollectRamoopsCrashCorrupt) {
   EXPECT_FALSE(base::PathExists(corrupt_ramoops_file()));
 }
 
+TEST_F(KernelCollectorTest, CollectRamoopsCrashOnlyRecordMatters) {
+  collector_.set_crash_directory_for_test(test_crash_directory());
+  // BIOS log is almost always present. Make one.
+  ASSERT_TRUE(test_util::CreateFile(
+      bios_log_file(), "coreboot-d041fe8 Sat Oct 20 bootblock starting...\n"));
+  EXPECT_EQ(collector_.CollectRamoopsCrash(/*use_saved_lsb=*/true),
+            CrashCollectionStatus::kNoCrashFound);
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      test_crash_directory(), "kernel.*.kcrash", nullptr));
+}
+
 TEST_F(KernelCollectorTest, LoadCorruptDump) {
   ASSERT_FALSE(base::PathExists(corrupt_ramoops_file()));
   std::string dump;

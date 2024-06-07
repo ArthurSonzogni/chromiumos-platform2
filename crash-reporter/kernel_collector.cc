@@ -870,26 +870,35 @@ CrashCollectionStatus KernelCollector::CollectRamoopsCrash(bool use_saved_lsb) {
   kernel_util::ExtractHypervisorLog(console_dump, hypervisor_dump);
   if (LoadParameters() && LoadPreservedDump(&kernel_dump)) {
     signature = kernel_util::ComputeKernelStackSignature(kernel_dump, arch_);
+    StripSensitiveData(&bios_dump);
+    StripSensitiveData(&hypervisor_dump);
+    StripSensitiveData(&kernel_dump);
+    if (kernel_dump.empty()) {
+      return CrashCollectionStatus::kRamoopsDumpEmpty;
+    }
+    return HandleCrash(kernel_dump, bios_dump, hypervisor_dump, signature);
+  }
+  kernel_dump = std::move(console_dump);
+  if (LastRebootWasBiosCrash(bios_dump)) {
+    signature = kernel_util::BiosCrashSignature(bios_dump);
+  } else if (LastRebootWasNoCError(bios_dump)) {
+    signature = kernel_util::ComputeNoCErrorSignature(bios_dump);
   } else {
-    kernel_dump = std::move(console_dump);
-    if (LastRebootWasBiosCrash(bios_dump)) {
-      signature = kernel_util::BiosCrashSignature(bios_dump);
-    } else if (LastRebootWasNoCError(bios_dump)) {
-      signature = kernel_util::ComputeNoCErrorSignature(bios_dump);
+    ASSIGN_OR_RETURN(bool watchdog_result,
+                     LastRebootWasWatchdog(watchdog_reboot_reason));
+    if (watchdog_result) {
+      signature =
+          kernel_util::WatchdogSignature(kernel_dump, watchdog_reboot_reason);
     } else {
-      ASSIGN_OR_RETURN(bool watchdog_result,
-                       LastRebootWasWatchdog(watchdog_reboot_reason));
-      if (watchdog_result) {
-        signature =
-            kernel_util::WatchdogSignature(kernel_dump, watchdog_reboot_reason);
-      } else {
-        return CrashCollectionStatus::kNoCrashFound;
-      }
+      return CrashCollectionStatus::kNoCrashFound;
     }
   }
   StripSensitiveData(&bios_dump);
   StripSensitiveData(&hypervisor_dump);
   StripSensitiveData(&kernel_dump);
+  // As long as there's some log contents then maybe we'll be able to figure
+  // out why the system rebooted unexpectedly. Otherwise ignore the crash as
+  // we're unlikely to be able to diagnose the issue.
   if (kernel_dump.empty() && bios_dump.empty() && hypervisor_dump.empty()) {
     return CrashCollectionStatus::kRamoopsDumpEmpty;
   }
