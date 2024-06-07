@@ -207,30 +207,6 @@ TEST(ArcVmParamsTest, KeyboardShortcutHelperParamFalse) {
       params, "androidboot.keyboard_shortcut_helper_integration=0"));
 }
 
-TEST(ArcVmParamsTest, EnableNotificationsRefreshParamTrue) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  auto* mini_instance_request = request.mutable_mini_instance_request();
-  mini_instance_request->set_enable_notifications_refresh(true);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.enable_notifications_refresh=1"));
-}
-
-TEST(ArcVmParamsTest, EnableNotificationsRefreshParamFalse) {
-  crossystem::Crossystem cros_system(
-      std::make_unique<crossystem::fake::CrossystemFake>());
-  StartArcVmRequest request;
-  auto* mini_instance_request = request.mutable_mini_instance_request();
-  mini_instance_request->set_enable_notifications_refresh(false);
-  std::vector<std::string> params =
-      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
-  EXPECT_TRUE(
-      base::Contains(params, "androidboot.enable_notifications_refresh=0"));
-}
-
 TEST(ArcVmParamsTest, EnableTtsCachingParamTrue) {
   crossystem::Crossystem cros_system(
       std::make_unique<crossystem::fake::CrossystemFake>());

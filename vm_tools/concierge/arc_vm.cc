@@ -1446,8 +1446,6 @@ std::vector<std::string> ArcVm::GetKernelParams(
                          mini_instance_request.arc_custom_tabs_experiment()),
       base::StringPrintf("androidboot.arc_file_picker=%d",
                          mini_instance_request.arc_file_picker_experiment()),
-      base::StringPrintf("androidboot.enable_notifications_refresh=%d",
-                         mini_instance_request.enable_notifications_refresh()),
       base::StringPrintf("androidboot.lcd_density=%d",
                          mini_instance_request.lcd_density()),
       "androidboot.arc.primary_display_rotation=" +
