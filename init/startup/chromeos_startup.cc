@@ -314,7 +314,10 @@ ChromeosStartup::ChromeosStartup(
       stateful_(stateful),
       startup_dep_(startup_dep),
       mount_helper_(std::move(mount_helper)),
-      tlcl_(std::move(tlcl)) {}
+      tlcl_(std::move(tlcl)) {
+  stateful_mount_ = std::make_unique<StatefulMount>(
+      flags_, root_, stateful_, platform_, startup_dep_, mount_helper_.get());
+}
 
 void ChromeosStartup::EarlySetup() {
   const base::FilePath sysfs = root_.Append(kSysfs);
@@ -806,8 +809,6 @@ int ChromeosStartup::Run() {
 
   EarlySetup();
 
-  stateful_mount_ = std::make_unique<StatefulMount>(
-      flags_, root_, stateful_, platform_, startup_dep_, mount_helper_.get());
   stateful_mount_->MountStateful();
   state_dev_ = stateful_mount_->GetStateDev();
 
@@ -1030,11 +1031,6 @@ void ChromeosStartup::SetDevModeAllowedFile(
 // Set state_dev_ for tests.
 void ChromeosStartup::SetStateDev(const base::FilePath& state_dev) {
   state_dev_ = state_dev;
-}
-
-void ChromeosStartup::SetStatefulMount(
-    std::unique_ptr<StatefulMount> stateful_mount) {
-  stateful_mount_ = std::move(stateful_mount);
 }
 
 bool ChromeosStartup::DevIsDebugBuild() const {

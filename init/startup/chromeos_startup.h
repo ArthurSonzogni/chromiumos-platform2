@@ -124,9 +124,9 @@ class ChromeosStartup {
   FRIEND_TEST(StatefulWipeTest, PowerwashNormal);
   FRIEND_TEST(StatefulWipeTest, NoStateDev);
   FRIEND_TEST(StatefulWipeTest, TransitionToVerifiedDevModeFile);
-  FRIEND_TEST(StatefulWipeTest, TransitionToVerifiedDebugBuild);
   FRIEND_TEST(StatefulWipeTest, TransitionToDevModeNoDebugBuild);
-  FRIEND_TEST(StatefulWipeTest, TransitionToDevModeDebugBuild);
+  FRIEND_TEST(StatefulWipeTestDevMode, TransitionToVerifiedDebugBuild);
+  FRIEND_TEST(StatefulWipeTestDevMode, TransitionToDevModeDebugBuild);
 
   friend class TpmCleanupTest;
   FRIEND_TEST(TpmCleanupTest, TpmCleanupNoFlagFile);
