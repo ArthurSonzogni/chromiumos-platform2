@@ -26,6 +26,7 @@
 #include <base/notreached.h>
 #include <base/rand_util.h>
 #include <base/strings/strcat.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
@@ -63,6 +64,12 @@ constexpr char kWireGuardKeyPairSource[] = "WireGuard.KeyPairSource";
 // Timeout value for spawning the userspace wireguard process and configuring
 // the interface via wireguard-tools.
 constexpr base::TimeDelta kConnectTimeout = base::Seconds(10);
+
+// The time duration between WireGuard is connected and the first time this
+// class runs `wg show` to read the link status.
+constexpr base::TimeDelta kReadLinkStatusInitialDelay = base::Seconds(10);
+// The time duration between two runs of `wg show` to read the link status.
+constexpr base::TimeDelta kReadLinkStatusInterval = base::Minutes(1);
 
 // Key length of Curve25519.
 constexpr size_t kWgKeyLength = 32;
@@ -208,6 +215,12 @@ const VPNDriver::Property WireGuardDriver::kProperties[] = {
     // Property for the list that contains one IPv4 address and multiple IPv6
     // addresses which will be used as the client-side overlay addresses.
     {kWireGuardIPAddress, Property::kArray},
+
+    // The unix timestamp of the last time we successfully run `wg show` to get
+    // the link status. This is a runtime read-only property which is only
+    // readable via D-Bus interface, and will never written into storage.
+    {kWireGuardLastReadLinkStatusTime,
+     Property::kEphemeral | Property::kReadOnly},
 };
 
 WireGuardDriver::WireGuardDriver(Manager* manager,
@@ -541,6 +554,8 @@ void WireGuardDriver::OnConfigurationDone(int exit_code) {
   ReportConnectionMetrics();
 
   event_handler_->OnDriverConnected(kDefaultInterfaceName, interface_index_);
+
+  ScheduleNextReadLinkStatus(kReadLinkStatusInitialDelay);
 }
 
 bool WireGuardDriver::PopulateIPProperties() {
@@ -611,6 +626,90 @@ bool WireGuardDriver::PopulateIPProperties() {
   return true;
 }
 
+void WireGuardDriver::ScheduleNextReadLinkStatus(base::TimeDelta delay) {
+  // Cancel all ongoing tasks, just in case.
+  weak_factory_for_read_link_status_.InvalidateWeakPtrs();
+
+  dispatcher()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&WireGuardDriver::ReadLinkStatus,
+                     weak_factory_for_read_link_status_.GetWeakPtr()),
+      delay);
+}
+
+void WireGuardDriver::ReadLinkStatus() {
+  // Run `wg show wg0 dump`. Use `dump` since its output is easy to parse.
+  std::vector<std::string> args = {"show", kDefaultInterfaceName, "dump"};
+  constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
+  auto minijail_options = VPNUtil::BuildMinijailOptions(kCapMask);
+  pid_t pid = process_manager()->StartProcessInMinijailWithStdout(
+      FROM_HERE, base::FilePath(kWireGuardToolsPath), args,
+      /*environment=*/{}, minijail_options,
+      base::BindOnce(&WireGuardDriver::OnReadLinkStatusDone,
+                     weak_factory_for_read_link_status_.GetWeakPtr()));
+
+  if (pid == -1) {
+    LOG(ERROR) << "Failed to run `wg show`";
+    ScheduleNextReadLinkStatus(kReadLinkStatusInterval);
+  }
+}
+
+void WireGuardDriver::OnReadLinkStatusDone(int exit_status,
+                                           const std::string& output) {
+  // Schedule the next execution no matter the result.
+  ScheduleNextReadLinkStatus(kReadLinkStatusInterval);
+
+  if (exit_status != 0) {
+    LOG(ERROR) << "`wg show` exited with " << exit_status;
+    return;
+  }
+
+  // Quoted from `man wg`: "the first contains in order separated by tab:
+  // private-key, public-key, listen-port, fwmark. Subsequent lines are printed
+  // for each peer and contain in order separated by tab: public-key,
+  // preshared-key, endpoint, allowed-ips, latest-handshake, transfer-rx,
+  // transfer-tx, persistent-keepalive."
+  //
+  // We will skip the first line and only parse the peer lines.
+  auto lines = base::SplitStringPiece(output, "\n", base::TRIM_WHITESPACE,
+                                      base::SPLIT_WANT_NONEMPTY);
+  base::span<std::string_view> lines_span = lines;
+  for (std::string_view line : lines_span.subspan(1)) {
+    auto tokens = base::SplitStringPiece(line, "\t", base::TRIM_WHITESPACE,
+                                         base::SPLIT_WANT_NONEMPTY);
+    if (tokens.size() != 8) {
+      LOG(ERROR) << "`wg show` line has unexpected number of tokens: "
+                 << tokens.size();
+      return;
+    }
+
+    std::string_view public_key = tokens[0];
+    std::string_view latest_handshake = tokens[4];
+    std::string_view rx_bytes = tokens[5];
+    std::string_view tx_bytes = tokens[6];
+
+    Stringmap* matched_peer = nullptr;
+    for (auto& peer : peers_) {
+      if (peer[kWireGuardPeerPublicKey] == public_key) {
+        matched_peer = &peer;
+      }
+    }
+    if (!matched_peer) {
+      LOG(ERROR) << "`wg show` contains peer we don't know";
+      return;
+    }
+    (*matched_peer)[kWireGuardPeerLatestHandshake] = latest_handshake;
+    (*matched_peer)[kWireGuardPeerRxBytes] = rx_bytes;
+    (*matched_peer)[kWireGuardPeerTxBytes] = tx_bytes;
+  }
+
+  // Update the timestamp in the Provider dict.
+  auto now =
+      static_cast<uint64_t>(base::Time::Now().InSecondsFSinceUnixEpoch());
+  args()->Set<std::string>(kWireGuardLastReadLinkStatusTime,
+                           base::NumberToString(now));
+}
+
 void WireGuardDriver::FailService(VPNEndReason failure,
                                   std::string_view error_details) {
   LOG(ERROR) << "Driver error: " << error_details;
@@ -633,6 +732,15 @@ void WireGuardDriver::Cleanup() {
   interface_index_ = -1;
   network_config_ = std::nullopt;
   config_fd_.reset();
+
+  // Clear the stored connection status.
+  weak_factory_for_read_link_status_.InvalidateWeakPtrs();
+  args()->Remove(kWireGuardLastReadLinkStatusTime);
+  for (auto& peer : peers_) {
+    peer.erase(kWireGuardPeerLatestHandshake);
+    peer.erase(kWireGuardPeerRxBytes);
+    peer.erase(kWireGuardPeerTxBytes);
+  }
 }
 
 bool WireGuardDriver::UpdatePeers(const Stringmaps& new_peers, Error* error) {

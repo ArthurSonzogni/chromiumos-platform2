@@ -377,12 +377,17 @@ constexpr char kWireGuardIPAddress[] = "WireGuard.IPAddress";
 constexpr char kWireGuardPrivateKey[] = "WireGuard.PrivateKey";
 constexpr char kWireGuardPublicKey[] = "WireGuard.PublicKey";
 constexpr char kWireGuardPeers[] = "WireGuard.Peers";
+constexpr char kWireGuardLastReadLinkStatusTime[] =
+    "WireGuard.LastReadLinkStatusTime";
 // Property names of a peer in "WireGuard.Peers"
 constexpr char kWireGuardPeerPublicKey[] = "PublicKey";
 constexpr char kWireGuardPeerPresharedKey[] = "PresharedKey";
 constexpr char kWireGuardPeerEndpoint[] = "Endpoint";
 constexpr char kWireGuardPeerAllowedIPs[] = "AllowedIPs";
 constexpr char kWireGuardPeerPersistentKeepalive[] = "PersistentKeepalive";
+constexpr char kWireGuardPeerLatestHandshake[] = "LatestHandshake";
+constexpr char kWireGuardPeerRxBytes[] = "RxBytes";
+constexpr char kWireGuardPeerTxBytes[] = "TxBytes";
 
 // IPConfig property names.
 // kAddressProperty: Defined below for Device.

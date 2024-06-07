@@ -97,6 +97,13 @@ Endpoint=10.0.1.3:12345
 AllowedIPs=fd00:0:0:0:1::/128,fd00:0:0:2::/64
 )";
 
+// `wg show` use tabs in its output, so the tabs in this raw string are
+// by intention.
+constexpr char kWgShowDumpOutput[] = R"(ignore-first-line
+public-key-1	preshared-key	endpoint	allowed-ips	1234	1	2	0
+public-key-2	preshared-key	endpoint	allowed-ips	1235	3	4	0
+)";
+
 static constexpr char kIPv4Address[] = "10.12.14.2";
 static constexpr char kIPv6Address1[] = "fd00:0:0:0:1::";
 static constexpr char kIPv6Address2[] = "fd00:0:0:2::";
@@ -225,6 +232,26 @@ class WireGuardDriverTest : public testing::Test {
     EXPECT_TRUE(base::PathExists(config_file_path_));
   }
 
+  // Set expectation to call `wg show wg0 dump`.
+  void ExpectExecuteWgShow() {
+    constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
+    EXPECT_CALL(
+        process_manager_,
+        StartProcessInMinijailWithStdout(
+            _, base::FilePath("/usr/bin/wg"),
+            std::vector<std::string>({"show", kIfName, "dump"}), _,
+            AllOf(
+                net_base::MinijailOptionsMatchUserGroup("vpn", "vpn"),
+                net_base::MinijailOptionsMatchCapMask(kExpectedCapMask),
+                net_base::MinijailOptionsMatchInheritSupplementaryGroup(true)),
+            _))
+        .WillOnce(WithArg<5>(
+            [this](net_base::ProcessManager::ExitWithStdoutCallback callback) {
+              wg_show_callback_ = std::move(callback);
+              return 0;
+            }));
+  }
+
   void ExpectCallMetrics(Metrics::VpnWireGuardKeyPairSource key_pair_source,
                          int peers_num,
                          Metrics::VpnWireGuardAllowedIPsType allowed_ips_type) {
@@ -255,6 +282,7 @@ class WireGuardDriverTest : public testing::Test {
   DeviceInfo::LinkReadyCallback link_ready_callback_;
   base::OnceClosure create_kernel_link_failed_callback_;
   base::FilePath config_file_path_;
+  net_base::ProcessManager::ExitWithStdoutCallback wg_show_callback_;
 };
 
 TEST_F(WireGuardDriverTest, VPNType) {
@@ -299,6 +327,55 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
   // Disconnect.
   EXPECT_CALL(*device_info(), DeleteInterface(kIfIndex));
   driver_->Disconnect();
+}
+
+TEST_F(WireGuardDriverTest, ReadLinkStatus) {
+  InitializePropertyStore();
+  InvokeConnectAsyncKernel();
+  InvokeLinkReady();
+  std::move(wireguard_tools_exit_callback_).Run(0);
+
+  ExpectExecuteWgShow();
+  dispatcher_.task_environment().FastForwardBy(base::Seconds(10));
+
+  ASSERT_TRUE(wg_show_callback_);
+  std::move(wg_show_callback_).Run(0, kWgShowDumpOutput);
+
+  auto peers = driver_test_peer_->peers();
+  // Assume the ordering of the peers is expected here.
+  ASSERT_GE(peers.size(), 2);
+  EXPECT_EQ(peers[0][kWireGuardPeerPublicKey], "public-key-1");
+  EXPECT_EQ(peers[0][kWireGuardPeerLatestHandshake], "1234");
+  EXPECT_EQ(peers[0][kWireGuardPeerRxBytes], "1");
+  EXPECT_EQ(peers[0][kWireGuardPeerTxBytes], "2");
+  EXPECT_EQ(peers[1][kWireGuardPeerPublicKey], "public-key-2");
+  EXPECT_EQ(peers[1][kWireGuardPeerLatestHandshake], "1235");
+  EXPECT_EQ(peers[1][kWireGuardPeerRxBytes], "3");
+  EXPECT_EQ(peers[1][kWireGuardPeerTxBytes], "4");
+
+  // Check that LastReadLinkStatusTime is set in Provider dict.
+  KeyValueStore provider;
+  Error err;
+  ASSERT_TRUE(property_store_->GetKeyValueStoreProperty(kProviderProperty,
+                                                        &provider, &err));
+  EXPECT_TRUE(provider.Contains<std::string>(kWireGuardLastReadLinkStatusTime));
+
+  // Check that `wg show` will be executed again after the given time interval
+  // passed.
+  ExpectExecuteWgShow();
+  dispatcher_.task_environment().FastForwardBy(base::Minutes(1));
+
+  // Disconnect the driver, check that the status fields have been cleared.
+  driver_->Disconnect();
+  ASSERT_TRUE(property_store_->GetKeyValueStoreProperty(kProviderProperty,
+                                                        &provider, &err));
+  EXPECT_FALSE(
+      provider.Contains<std::string>(kWireGuardLastReadLinkStatusTime));
+  for (const auto& peer : driver_test_peer_->peers()) {
+    EXPECT_FALSE(base::Contains(peer, kWireGuardPeerLatestHandshake));
+    EXPECT_FALSE(base::Contains(peer, kWireGuardPeerRxBytes));
+    EXPECT_FALSE(base::Contains(peer, kWireGuardPeerTxBytes));
+  }
 }
 
 TEST_F(WireGuardDriverTest, WireGuardToolsFailed) {

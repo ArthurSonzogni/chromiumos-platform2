@@ -85,6 +85,13 @@ class WireGuardDriver : public VPNDriver {
   // according to the properties in the profile.
   bool PopulateIPProperties();
 
+  // Functions to execute `wg show` to read the connection status, and update
+  // the "Provider" property to include the information about latest handshake
+  // time, and tx and rx bytes.
+  void ScheduleNextReadLinkStatus(base::TimeDelta delay);
+  void ReadLinkStatus();
+  void OnReadLinkStatusDone(int exit_status, const std::string& output);
+
   // Calls Cleanup(), and if there is a service associated through
   // ConnectAsync(), notifies it of the failure.
   void FailService(VPNEndReason failure, std::string_view error_details);
@@ -117,6 +124,11 @@ class WireGuardDriver : public VPNDriver {
   Metrics::VpnWireGuardKeyPairSource key_pair_source_;
 
   std::unique_ptr<VPNUtil> vpn_util_;
+
+  // Tasks for running `wg show` are bound to this weak factory, so that they
+  // can be cancelled easily.
+  base::WeakPtrFactory<WireGuardDriver> weak_factory_for_read_link_status_{
+      this};
 
   base::WeakPtrFactory<WireGuardDriver> weak_factory_{this};
 };

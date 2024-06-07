@@ -2110,6 +2110,17 @@ Properties	boolean AutoConnect [readwrite]
 			configured for this WireGuard interface. At most 1 IPv4 address + 1
 			IPv6 address is supported now.
 
+		string WireGuard.LastReadLinkStatusTime [readonly]
+
+			(VPN services of type WireGuard only) The unix timestamp
+			in second of the last time when the link status (the
+			read-only properties in "WireGuard.Peers") was read.
+			This property is read-only in the "Provider" property of
+			this service, and only exists when the Service is
+			connected and the link status has been read previously.
+			(Due to the implementation restriction, this is a string
+			property now).
+
 		array{dict} WireGuard.Peers [writeonly]
 
 			(VPN services of type WireGuard only) The list of peers
@@ -2143,6 +2154,19 @@ Properties	boolean AutoConnect [readwrite]
 				peer for the purpose of keeping a stateful firewall or
 				NAT mapping valid persistently. Set it to an empty
 				string, "0", or "off" will disable this feature.
+
+			The following fields contain the information of the link
+			status retrieved at "WireGuard.LastReadLinkStatusTime".
+			These fields only exist in the dict in "Provider"
+			property when the Service is connected and are read-only
+			there.
+
+			string LatestHandshake [readonly]
+				The unix timestamp (in second) of the latest handshake.
+			string RxBytes [readonly]
+				The received bytes on this peer connection.
+			string TxBytes [readonly]
+				The transmitted bytes on this peer connection.
 
 		string WireGuard.PrivateKey [writeonly, optional]
 
