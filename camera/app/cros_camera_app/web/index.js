@@ -81,6 +81,70 @@ class ResolutionStat {
   }
 }
 
+/**
+ * @typedef {Object} TurboStatData
+ * @property {number=} PkgWatt
+ * @property {number=} CorWatt
+ * @property {number=} GFXWatt
+ */
+
+class TurboStat {
+  constructor() {
+    /** @type {HTMLDivElement} */
+    this.pkgWattEl = document.getElementById("pkg-watt");
+
+    /** @type {HTMLDivElement} */
+    this.corWattEl = document.getElementById("cor-watt");
+
+    /** @type {HTMLDivElement} */
+    this.gfxWattEl = document.getElementById("gfx-watt");
+
+    /** @type {EventSource|null} */
+    this.source = null;
+  }
+
+  start() {
+    this.source = new EventSource("/turbostat");
+    this.source.addEventListener("message", this.onMessage);
+
+    // TODO(shik): Move this check to server-side rendering to avoid flickering.
+    this.source.addEventListener("unsupported", this.onUnsupported);
+  }
+
+  stop() {
+    // TODO(shik): Expose this on UI.
+    if (this.source !== null) {
+      this.source.close();
+      this.source = null;
+    }
+  }
+
+  onUnsupported = () => {
+    document.body.classList.toggle("no-turbostat", true);
+  };
+
+  /**
+   * @param {MessageEvent<string>} event
+   */
+  onMessage = (event) => {
+    /**
+     * @param {HTMLDivElement} el
+     * @param {string} prefix
+     * @param {number|undefined} value
+     */
+    const update = (el, prefix, value) => {
+      const valueStr = value === undefined ? "?" : value.toFixed(2);
+      el.textContent = prefix + valueStr;
+    };
+
+    /** @type {TurboStatData} */
+    const data = JSON.parse(event.data);
+    update(this.pkgWattEl, "PkgWatt: ", data.PkgWatt);
+    update(this.corWattEl, "CorWatt: ", data.CorWatt);
+    update(this.gfxWattEl, "GFXWatt: ", data.GFXWatt);
+  };
+}
+
 class CameraDeviceSelect {
   /**
    * @param {(deviceId: string) => Awaitble<void>} onChange
@@ -242,6 +306,9 @@ class CameraApp {
 }
 
 async function init() {
+  const turboStat = new TurboStat();
+  turboStat.start();
+
   const app = new CameraApp();
   await app.init();
   await app.start();
