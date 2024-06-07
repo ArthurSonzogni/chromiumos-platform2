@@ -35,6 +35,9 @@ socket: 1
 sysinfo: 1
 uname: 1
 write: 1
+readlinkat: 1
+faccessat: 1
+pread64: 1
 
 # For emitting perfetto trace events.
 clone: arg0 & CLONE_THREAD
