@@ -42,3 +42,7 @@ video {
 #side-panel {
   padding: 8px;
 }
+
+button#play-pause {
+  width: 48px;
+}
