@@ -304,9 +304,6 @@ class WiFiProvider : public ProviderInterface {
   // so it is expected that the caller checks this condition before calling.
   mockable void RegisterLocalDevice(LocalDeviceRefPtr device);
 
-  // Indicates that a device's wpa_supplicant state has changed.
-  mockable void WiFiDeviceStateChanged(WiFiConstRefPtr device);
-
  protected:
   FRIEND_TEST(WiFiProviderTest, DeregisterWiFiLocalDevice);
   FRIEND_TEST(WiFiProviderTest, GetUniqueLocalDeviceName);

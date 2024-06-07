@@ -73,7 +73,6 @@ class MockWiFi : public WiFi {
                const KeyValueStore& kv,
                Error* error),
               (override));
-  MOCK_METHOD(std::string, supplicant_state, (), (const, override));
 };
 
 }  // namespace shill

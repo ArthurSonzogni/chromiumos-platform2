@@ -18,14 +18,12 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/supplicant/wpa_supplicant.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
 
 using testing::_;
 using ::testing::NiceMock;
-using ::testing::Return;
 using ::testing::Test;
 
 namespace shill {
@@ -570,10 +568,6 @@ class WiFiPhyTest : public ::testing::Test {
 
   bool HasWiFiDevice(WiFiConstRefPtr device) {
     return base::Contains(wifi_phy_.wifi_devices_, device);
-  }
-
-  void ChangeDeviceState(WiFiConstRefPtr device) {
-    wifi_phy_.WiFiDeviceStateChanged(device);
   }
 
   void PhyDumpComplete() { wifi_phy_.PhyDumpComplete(); }

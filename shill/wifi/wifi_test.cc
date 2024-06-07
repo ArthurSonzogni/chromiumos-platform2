@@ -672,6 +672,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     if (supplicant_bss_proxy_) {
       EXPECT_CALL(*supplicant_bss_proxy_, Die());
     }
+    EXPECT_CALL(*wifi_provider(),
+                DeregisterDeviceFromPhy(wifi()->link_name(), GetPhyIndex()));
     // must Stop WiFi instance, to clear its list of services.
     // otherwise, the WiFi instance will not be deleted. (because
     // services reference a WiFi instance, creating a cycle.)
@@ -1051,7 +1053,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->CurrentBSSChanged(new_bss);
   }
   void ReportStateChanged(const std::string& new_state) {
-    EXPECT_CALL(wifi_provider_, WiFiDeviceStateChanged).Times(1);
     wifi_->StateChanged(new_state);
   }
   void ReportDisconnectReasonChanged(int32_t reason) {

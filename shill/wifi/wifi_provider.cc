@@ -1268,12 +1268,6 @@ void WiFiProvider::DeregisterDeviceFromPhy(std::string_view link_name,
   }
 }
 
-void WiFiProvider::WiFiDeviceStateChanged(WiFiConstRefPtr device) {
-  if (base::Contains(wifi_phys_, device->phy_index())) {
-    wifi_phys_[device->phy_index()]->WiFiDeviceStateChanged(device);
-  }
-}
-
 Metrics* WiFiProvider::metrics() const {
   return manager_->metrics();
 }
