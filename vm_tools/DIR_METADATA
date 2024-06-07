@@ -6,7 +6,7 @@
 # For the schema of this file, see Metadata message:
 #   https://source.chromium.org/chromium/infra/infra/+/HEAD:go/src/infra/tools/dirmd/proto/dir_metadata.proto
 
-team_email: "crostini-syd@google.com"
+team_email: "guestos-ui@google.com"
 
 buganizer {
   # https://b.corp.google.com/issues?q=status:open%20componentid:1122570
