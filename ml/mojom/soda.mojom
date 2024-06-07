@@ -252,10 +252,10 @@ union SpeechRecognizerEvent {
 // Next ordinal: 3
 [Stable]
 interface SodaClient {
-  // After SODA successfully starts / warms up / stops, in case the client
-  // cares:
+  // After SODA successfully starts / warms up, in case the client cares.
   OnStart@0();
 
+  // After SODA successfully stops, in case the client cares.
   OnStop@1();
 
   // This is how the client receives actual recognized text as well as other
