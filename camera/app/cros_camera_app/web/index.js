@@ -2,6 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+/**
+ * @param {MediaStream} stream
+ */
+function stopAllTracks(stream) {
+  for (const track of stream.getTracks()) {
+    track.stop();
+  }
+}
+
 class FpsCounter {
   /**
    * @param {HTMLVideoElement} video
@@ -72,13 +81,68 @@ class ResolutionStat {
   }
 }
 
+class CameraDeviceSelect {
+  /**
+   * @param {(deviceId: string) => Awaitble<void>} onChange
+   */
+  constructor(onChange) {
+    /** @type {typeof onChange} */
+    this.onChange = onChange;
+
+    /** @type {HTMLSelectElement} */
+    this.el = document.getElementById("camera-device");
+
+    this.el.addEventListener("change", this.handleChange);
+  }
+
+  async updateOptions() {
+    let devs = await navigator.mediaDevices.enumerateDevices();
+    if (devs.some((d) => d.kind === "videoinput" && d.deviceId === "")) {
+      // The deviceId and label could be empty string before granting the
+      // permission for privacy reasons. Call getUserMedia() to prompt the
+      // permission dialog proactively.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+      });
+      stopAllTracks(stream);
+
+      devs = await navigator.mediaDevices.enumerateDevices();
+    }
+
+    const options = [];
+    for (const d of devs) {
+      if (d.kind !== "videoinput") {
+        continue;
+      }
+      const option = document.createElement("option");
+      option.textContent = d.label;
+      option.value = d.deviceId;
+      options.push(option);
+    }
+    this.el.replaceChildren(...options);
+
+    // TODO(shik): Prefer the previously selected value.
+    if (this.el.value !== null) {
+      await this.handleChange();
+    }
+  }
+
+  handleChange = async () => {
+    this.el.disabled = true;
+    await this.onChange(this.el.value);
+    this.el.disabled = false;
+  };
+}
+
 class PlayPauseButton {
   /**
-   * @param {CameraApp} app
+   * @param {(clickedPlay: boolean) => Awaitable<void>} onClick A callback for
+   *     the button click event with a boolean parameter to indicate whether
+   *     this click is for "Play" or "Pause".
    */
-  constructor(app) {
-    /** @type {CameraApp} */
-    this.app = app;
+  constructor(onClick) {
+    /** @type {typeof onClick} */
+    this.onClick = onClick;
 
     /** @type {boolean} */
     this.isPlaying = false;
@@ -86,7 +150,7 @@ class PlayPauseButton {
     /** @type {HTMLButtonElement} */
     this.el = document.getElementById("play-pause");
 
-    this.el.addEventListener("click", this.onClick);
+    this.el.addEventListener("click", this.handleClick);
   }
 
   /**
@@ -97,36 +161,40 @@ class PlayPauseButton {
     this.el.textContent = value ? "Pause" : "Play";
   }
 
-  onClick = async () => {
+  handleClick = async () => {
     this.el.disabled = true;
-    if (this.isPlaying) {
-      this.app.stop();
-    } else {
-      await this.app.start();
-    }
+    const clickedPlay = !this.isPlaying;
+    await this.onClick(clickedPlay);
     this.el.disabled = false;
   };
 }
 
 class CameraApp {
   constructor() {
+    this.deviceId = null;
     this.video = document.querySelector("video");
     this.fpsCounter = new FpsCounter(this.video, 100);
     this.resolutionStat = new ResolutionStat();
-    this.playPauseButton = new PlayPauseButton(this);
+    this.playPauseButton = new PlayPauseButton(this.onPlayPauseClick);
+    this.cameraDeviceSelect = new CameraDeviceSelect(this.onDeviceChange);
+  }
+
+  async init() {
+    await this.cameraDeviceSelect.updateOptions();
   }
 
   async start() {
+    this.playPauseButton.setPlaying(true);
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         width: { ideal: 1280 },
         frameRate: { ideal: 30 },
+        ...(this.deviceId === null ? {} : { deviceId: this.deviceId }),
       },
     });
     this.video.srcObject = stream;
     this.fpsCounter.start();
     this.resolutionStat.update(stream);
-    this.playPauseButton.setPlaying(true);
   }
 
   stop() {
@@ -136,18 +204,46 @@ class CameraApp {
       return;
     }
 
-    this.playPauseButton.setPlaying(false);
     this.resolutionStat.reset();
     this.fpsCounter.stop();
-    for (const track of stream.getTracks()) {
-      track.stop();
-    }
+    stopAllTracks(stream);
     this.video.srcObject = null;
+    this.playPauseButton.setPlaying(false);
   }
+
+  /**
+   * @return {boolean}
+   */
+  isPlaying() {
+    return this.video.srcObject !== null;
+  }
+
+  /**
+   * @param {boolean} clickedPlay
+   */
+  onPlayPauseClick = async (clickedPlay) => {
+    if (clickedPlay) {
+      await this.start();
+    } else {
+      this.stop();
+    }
+  };
+
+  /**
+   * @param {string} deviceId
+   */
+  onDeviceChange = async (deviceId) => {
+    this.deviceId = deviceId;
+    if (this.isPlaying()) {
+      this.stop();
+      await this.start();
+    }
+  };
 }
 
 async function init() {
   const app = new CameraApp();
+  await app.init();
   await app.start();
 }
 

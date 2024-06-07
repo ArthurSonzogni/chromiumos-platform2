@@ -41,8 +41,15 @@ video {
 
 #side-panel {
   padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 button#play-pause {
   width: 48px;
+}
+
+select#camera-device {
+  min-width: 50%;
 }
