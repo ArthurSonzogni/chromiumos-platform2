@@ -541,7 +541,9 @@ StartVmResponse Service::StartArcVmInternal(StartArcVmRequest request,
   } else {
     kernel_path = base::FilePath(kKernelPath);
     vm_builder.AppendCustomParam("--android-fstab", kFstabPath);
-    vm_builder.EnablePvClock(true /* enable */);
+    if (USE_VIRTIO_PVCLOCK) {
+      vm_builder.EnablePvClock(true /* enable */);
+    }
   }
 
   if (USE_PCI_HOTPLUG_SLOTS) {
