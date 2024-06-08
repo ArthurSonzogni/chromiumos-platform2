@@ -64,7 +64,7 @@ class StatefulMount {
   raw_ptr<MountHelper> mount_helper_;
   bootstat::BootStat bootstat_;
 
-  base::FilePath root_dev_type_;
+  base::FilePath root_device_;
   base::FilePath state_dev_;
   std::optional<brillo::VolumeGroup> volume_group_;
 };
