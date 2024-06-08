@@ -46,6 +46,10 @@ class StatefulMount {
 
   bool AttemptStatefulMigration();
   void MountStateful();
+  // For testing purposes, allow injecting partition variables,
+  // instead of gathering them from the local .json file.
+  void MountStateful(const base::FilePath& root_dev,
+                     const base::Value& image_vars);
 
   bool DevUpdateStatefulPartition(const std::string& args);
   void DevGatherLogs(const base::FilePath& base_dir);
@@ -54,7 +58,6 @@ class StatefulMount {
  private:
   void AppendQuotaFeaturesAndOptions(std::vector<std::string>* sb_options,
                                      std::vector<std::string>* sb_features);
-  void EnableExt4Features();
   const Flags flags_;
   const base::FilePath root_;
   const base::FilePath stateful_;
@@ -67,6 +70,8 @@ class StatefulMount {
   base::FilePath root_device_;
   base::FilePath state_dev_;
   std::optional<brillo::VolumeGroup> volume_group_;
+  std::unique_ptr<libstorage::StorageContainerFactory>
+      storage_container_factory_;
 };
 
 }  // namespace startup

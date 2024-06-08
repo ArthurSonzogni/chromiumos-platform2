@@ -15,19 +15,6 @@ dmesg() {
   cat "tests/test_dmesg_${id}"
 }
 
-get_stateful_df_data() {
-  echo "/dev/mmcblk0p1    25645372 9758112  14561488      41% /mnt/stateful_partition"
-}
-
-stat() {
-  # Assume only call to retrieve minor number of encstateful.
-  echo "1"
-}
-
-dumpe2fs() {
-  cat "tests/test_dumpe2fs_${id}"
-}
-
 # Mock output command.
 metrics_client() {
   echo "metrics_client: $*"
@@ -47,7 +34,6 @@ run_test() {
   fi
 }
 
-run_test gather_fs_error 1
 run_test gather_battery_errors 2
 
 rm -rf "${DISK_TEMP}"

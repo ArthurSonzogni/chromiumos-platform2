@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
@@ -31,6 +32,7 @@
 
 using testing::_;
 using testing::ByMove;
+using testing::DoAll;
 using testing::Return;
 using testing::StrictMock;
 
@@ -183,8 +185,6 @@ TEST_F(Ext4FeaturesTest, EnableQuotaWithPrjQuota) {
 }
 
 TEST_F(Ext4FeaturesTest, EnableQuotaNoPrjQuota) {
-  flags_.prjquota = false;
-
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
       platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
       std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
@@ -388,4 +388,142 @@ TEST_F(DevGatherLogsTest, PreserveLogs) {
   EXPECT_TRUE(platform_->FileExists(prior_log1));
   EXPECT_TRUE(platform_->FileExists(standalone));
   EXPECT_FALSE(platform_->FileExists(lab_preserve_logs_));
+}
+#if USE_LVM_STATEFUL_PARTITION
+class RunMountStatefulLVM : public ::testing::Test {
+ protected:
+  RunMountStatefulLVM() {}
+
+  void SetUp() override {
+    platform_ = std::make_unique<libstorage::MockPlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
+    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+        std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
+        std::make_unique<libstorage::StorageContainerFactory>(platform_.get(),
+                                                              nullptr));
+    flags_.lvm_stateful = true;
+    stateful_mount_ = std::make_unique<startup::StatefulMount>(
+        flags_, base_dir, stateful_dir, platform_.get(), startup_dep_.get(),
+        mount_helper_.get());
+
+    // Setup a default partition information.
+    std::string vars_content = R"""(
+{
+   "PARTITION_NUM_STATE": "1",
+   "FS_FORMAT_STATE": "ext4"
+})""";
+
+    partition_info_ = base::JSONReader::ReadAndReturnValueWithError(
+        vars_content, base::JSON_PARSE_RFC);
+    ASSERT_TRUE(partition_info_.has_value());
+    ASSERT_TRUE(partition_info_->is_dict());
+  }
+
+  startup::Flags flags_;
+  std::unique_ptr<startup::StatefulMount> stateful_mount_;
+  base::FilePath base_dir{"/"};
+  base::FilePath stateful_dir{"/state"};
+  std::unique_ptr<libstorage::MockPlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
+  base::JSONReader::Result partition_info_;
+};
+
+TEST_F(RunMountStatefulLVM, NoStatefulPartition) {
+  // No stateful partition, full clobber.
+  base::FilePath rootdev{"/dev/mmc0blk1"};
+  EXPECT_CALL(*platform_, Fsck(_, _, _)).Times(0);
+  EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
+  stateful_mount_->MountStateful(rootdev, *partition_info_);
+
+  std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
+  EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
+}
+
+TEST_F(RunMountStatefulLVM, StatefulPartitionEmpty) {
+  base::FilePath rootdev{"/dev/mmc0blk1"};
+  base::FilePath statefuldev{"/dev/mmc0blk1p1"};
+  ASSERT_TRUE(platform_->WriteStringToFile(statefuldev, ""));
+  base::stat_wrapper_t st;
+  st.st_mode = S_IFBLK;
+  EXPECT_CALL(*platform_, Stat(statefuldev, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(st), Return(true)));
+  EXPECT_CALL(*platform_, Fsck(statefuldev, _, _)).WillOnce(Return(false));
+  EXPECT_CALL(*platform_, Tune2Fs(statefuldev, _)).WillOnce(Return(false));
+  EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
+
+  stateful_mount_->MountStateful(rootdev, *partition_info_);
+
+  std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
+  EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
+}
+#endif  // USE_LVM_STATEFUL_PARTITION
+
+class RunMountStateful : public ::testing::Test {
+ protected:
+  RunMountStateful() {}
+
+  void SetUp() override {
+    platform_ = std::make_unique<libstorage::MockPlatform>();
+    startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
+    mount_helper_ = std::make_unique<startup::StandardMountHelper>(
+        platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+        std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
+        std::make_unique<libstorage::StorageContainerFactory>(platform_.get(),
+                                                              nullptr));
+    stateful_mount_ = std::make_unique<startup::StatefulMount>(
+        flags_, base_dir, stateful_dir, platform_.get(), startup_dep_.get(),
+        mount_helper_.get());
+
+    // Setup a default partition information.
+    std::string vars_content = R"""(
+{
+   "PARTITION_NUM_STATE": "1",
+   "FS_FORMAT_STATE": "ext4"
+})""";
+
+    partition_info_ = base::JSONReader::ReadAndReturnValueWithError(
+        vars_content, base::JSON_PARSE_RFC);
+    ASSERT_TRUE(partition_info_.has_value());
+    ASSERT_TRUE(partition_info_->is_dict());
+  }
+
+  startup::Flags flags_;
+  std::unique_ptr<startup::StatefulMount> stateful_mount_;
+  base::FilePath base_dir{"/"};
+  base::FilePath stateful_dir{"/state"};
+  std::unique_ptr<libstorage::MockPlatform> platform_;
+  std::unique_ptr<startup::FakeStartupDep> startup_dep_;
+  std::unique_ptr<startup::StandardMountHelper> mount_helper_;
+  base::JSONReader::Result partition_info_;
+};
+
+TEST_F(RunMountStateful, NoStatefulPartition) {
+  // No stateful partition, full clobber.
+  base::FilePath rootdev{"/dev/mmc0blk1"};
+  EXPECT_CALL(*platform_, Fsck(_, _, _)).Times(0);
+  EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
+  stateful_mount_->MountStateful(rootdev, *partition_info_);
+
+  std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
+  EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
+}
+
+TEST_F(RunMountStateful, StatefulPartitionEmpty) {
+  base::FilePath rootdev{"/dev/mmc0blk1"};
+  base::FilePath statefuldev{"/dev/mmc0blk1p1"};
+  ASSERT_TRUE(platform_->WriteStringToFile(statefuldev, ""));
+  base::stat_wrapper_t st;
+  st.st_mode = S_IFBLK;
+  EXPECT_CALL(*platform_, Stat(statefuldev, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(st), Return(true)));
+  EXPECT_CALL(*platform_, Fsck(statefuldev, _, _)).WillOnce(Return(false));
+  EXPECT_CALL(*platform_, Tune2Fs(statefuldev, _)).WillOnce(Return(false));
+  EXPECT_CALL(*platform_, Mount(_, _, _, _, _)).Times(0);
+
+  stateful_mount_->MountStateful(rootdev, *partition_info_);
+
+  std::set<std::string> expected = {"fast", "keepimg", "preserve_lvs"};
+  EXPECT_EQ(startup_dep_->GetClobberArgs(), expected);
 }

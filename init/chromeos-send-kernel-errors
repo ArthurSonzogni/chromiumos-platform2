@@ -43,38 +43,11 @@ gather_wifi_error() {
   metrics_client -e Platform.WiFiDeviceCount "${count}" 10
 }
 
-gather_fs_error() {
-  # Gather filesystem errors.
-  local dev_stateful fs_error_count
-
-  # shellcheck disable=SC2034
-  dev_stateful="$(
-    get_stateful_df_data | awk '{print $1}' | sed -e 's#^/dev/##')"
-
-  if [ -z "${dev_stateful}" ]; then
-    return
-  fi
-
-  metrics_client -e "Platform.FileSystem.Stateful_RecoveryNeeded" \
-    "$(dmesg_matches "EXT4-fs (${dev_stateful}): recovery complete")" 2
-
-  metrics_client -e "Platform.FileSystem.Stateful_FsckNeeded" \
-    "$(dmesg_matches \
-      "EXT4-fs (${dev_stateful}): warning: mounting fs with errors")" 2
-
-  fs_error_count="$(dumpe2fs -h "/dev/${dev_stateful}" 2>/dev/null | \
-                    sed -En '/FS Error count/s/.* +([0-9]+)$/\1/p')"
-  : "${fs_error_count:=0}"
-  metrics_client "Platform.FileSystem.Stateful_ErrorCount" \
-    "${fs_error_count}" 0 100000 20
-}
-
 gather_errors() {
   gather_battery_errors
   # The wifi devices may take some time to appear.
   sleep 10
   gather_wifi_error
-  gather_fs_error
 }
 
 main() {

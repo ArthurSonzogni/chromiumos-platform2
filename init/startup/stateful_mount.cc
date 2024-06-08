@@ -32,6 +32,8 @@
 #include <brillo/process/process.h>
 #include <brillo/secure_blob.h>
 #include <libstorage/platform/platform.h>
+#include <libstorage/storage_container/filesystem_key.h>
+#include <libstorage/storage_container/storage_container.h>
 #include <metrics/bootstat.h>
 #include <rootdev/rootdev.h>
 
@@ -169,28 +171,6 @@ void StatefulMount::AppendQuotaFeaturesAndOptions(
   }
 }
 
-void StatefulMount::EnableExt4Features() {
-  std::vector<std::string> sb_features = GenerateExt4Features();
-
-  if (!sb_features.empty()) {
-    brillo::ProcessImpl tune2fs;
-    tune2fs.AddArg("/sbin/tune2fs");
-    for (const std::string& arg : sb_features) {
-      tune2fs.AddArg(arg);
-    }
-    tune2fs.AddArg(state_dev_.value());
-    tune2fs.RedirectOutputToMemory(true);
-    int status = tune2fs.Run();
-    if (status == 0) {
-      return;
-    } else if (status < 0) {
-      PLOG(ERROR) << "Failed to run tune2fs";
-    } else {
-      LOG(WARNING) << "tune2fs returned non zero exit code: " << status;
-    }
-  }
-}
-
 std::vector<std::string> StatefulMount::GenerateExt4Features() {
   std::vector<std::string> sb_features;
   std::vector<std::string> sb_options;
@@ -221,6 +201,7 @@ std::vector<std::string> StatefulMount::GenerateExt4Features() {
   return sb_features;
 }
 
+// Only called in MountStateful(), trigger a clobber.
 void StatefulMount::ClobberStateful(
     const std::vector<std::string>& clobber_args,
     const std::string& clobber_message) {
@@ -247,9 +228,9 @@ bool StatefulMount::AttemptStatefulMigration() {
 }
 
 void StatefulMount::MountStateful() {
-  base::FilePath root_dev;
   // Prepare to mount stateful partition.
   root_device_ = utils::GetRootDevice(true);
+
   int removable = 0;
   if (root_device_.empty()) {
     PLOG(INFO) << "rootdev could not find root device.";
@@ -267,32 +248,38 @@ void StatefulMount::MountStateful() {
   base::FilePath json_file = root_.Append(kPartitionsVars);
   std::optional<base::Value> image_vars = GetImageVars(json_file, load_vars);
   if (!image_vars) {
+    PLOG(ERROR) << "Failed to read dictionary from " << json_file;
     return;
   }
   if (!image_vars->is_dict()) {
     PLOG(ERROR) << "Failed to parse dictionary from " << json_file;
     return;
   }
-  const base::Value::Dict& image_vars_dict = image_vars->GetDict();
+  return MountStateful(root_device_, *image_vars);
+}
 
+void StatefulMount::MountStateful(const base::FilePath& root_dev,
+                                  const base::Value& image_vars) {
+  const auto& image_vars_dict = image_vars.GetDict();
   bool status;
   int32_t stateful_mount_flags;
   std::string stateful_mount_opts;
+  libstorage::StorageContainerConfig config;
 
   // Check if we are booted on physical media. rootdev will fail if we are in
   // an initramfs or tmpfs rootfs (ex, factory installer images. Note recovery
   // image also uses initramfs but it never reaches here). When using
   // initrd+tftpboot (some old netboot factory installer), ROOTDEV_TYPE will be
   // /dev/ram.
-  if (!root_device_.empty() && root_device_ != base::FilePath("/dev/ram")) {
+  if (!root_dev.empty() && root_dev != base::FilePath("/dev/ram")) {
     // Find our stateful partition mount point.
     stateful_mount_flags = kCommonMountFlags | MS_NOATIME;
     const int part_num_state =
         GetPartitionNumFromImageVars(image_vars_dict, "PARTITION_NUM_STATE");
     const std::string* fs_form_state =
         image_vars_dict.FindString("FS_FORMAT_STATE");
-    state_dev_ = brillo::AppendPartition(root_device_, part_num_state);
-    if (fs_form_state->compare("ext4") == 0) {
+    state_dev_ = brillo::AppendPartition(root_dev, part_num_state);
+    if (fs_form_state != nullptr && fs_form_state->compare("ext4") == 0) {
       int dirty_expire_centisecs = GetDirtyExpireCentisecs(platform_, root_);
       int commit_interval = dirty_expire_centisecs / 100;
       if (commit_interval != 0) {
@@ -305,6 +292,7 @@ void StatefulMount::MountStateful() {
     }
 
     bool should_mount_lvm = false;
+    std::optional<brillo::Thinpool> thinpool;
     if (USE_LVM_STATEFUL_PARTITION && flags_.lvm_stateful) {
       brillo::LogicalVolumeManager* lvm = platform_->GetLogicalVolumeManager();
 
@@ -331,12 +319,13 @@ void StatefulMount::MountStateful() {
         if (volume_group_ && volume_group_->IsValid()) {
           // First attempt to activate the thinpool. If the activation of the
           // thinpool fails, run thin_check to check all mappings.
-          std::optional<brillo::Thinpool> thinpool =
-              lvm->GetThinpool(*volume_group_, "thinpool");
+          thinpool = lvm->GetThinpool(*volume_group_, "thinpool");
 
           if (!thinpool) {
             LOG(ERROR) << "Thinpool does not exist";
             ClobberStateful({"fast", "keepimg"}, "Invalid thinpool");
+            // Not reached, except during unit tests.
+            return;
           }
 
           if (!thinpool->Activate()) {
@@ -344,19 +333,9 @@ void StatefulMount::MountStateful() {
             if (!thinpool->Activate(/*check=*/true)) {
               LOG(ERROR) << "Failed to repair and activate thinpool";
               ClobberStateful({"fast", "keepimg"}, "Corrupt thinpool");
+              // Not reached, except during unit tests.
+              return;
             }
-          }
-
-          // Attempt to now activate the unencrypted stateful logical volume.
-          std::optional<brillo::LogicalVolume> unencrypted_lv =
-              lvm->GetLogicalVolume(*volume_group_, "unencrypted");
-
-          if (!unencrypted_lv || !unencrypted_lv->Activate()) {
-            LOG(ERROR) << "Failed to activate unencrypted stateful logical "
-                       << "volume.";
-
-            ClobberStateful({"fast", "keepimg", "preserve_lvs"},
-                            "Invalid unencrypted logical volume");
           }
           should_mount_lvm = true;
         }
@@ -368,9 +347,40 @@ void StatefulMount::MountStateful() {
       state_dev_ = root_.Append("dev")
                        .Append(volume_group_->GetName())
                        .Append("unencrypted");
-    }
 
-    EnableExt4Features();
+      config.unencrypted_config = {
+          .backing_device_config = {
+              .type =
+                  libstorage::BackingDeviceType::kLogicalVolumeBackingDevice,
+              .name = "unencrypted",
+              .logical_volume = {
+                  .vg = std::make_shared<brillo::VolumeGroup>(*volume_group_),
+                  .thinpool = std::make_shared<brillo::Thinpool>(*thinpool)}}};
+
+    } else {
+      config.unencrypted_config = {
+          .backing_device_config = {
+              .type = libstorage::BackingDeviceType::kPartition,
+              .name = state_dev_.value()}};
+    }
+    config.filesystem_config = {
+        .tune2fs_opts = GenerateExt4Features(),
+        .backend_type = libstorage::StorageContainerType::kUnencrypted,
+        .recovery = libstorage::RecoveryType::kDoNothing};
+
+    std::unique_ptr<libstorage::StorageContainer> container =
+        mount_helper_->GetStorageContainerFactory()->Generate(
+            config, libstorage::StorageContainerType::kExt4,
+            libstorage::FileSystemKeyReference());
+
+    if (!container || !container->Setup(libstorage::FileSystemKey())) {
+      LOG(ERROR) << "Failed to setup unencrypted stateful";
+
+      ClobberStateful({"fast", "keepimg", "preserve_lvs"},
+                      "Self-repair corrupted stateful partition");
+      // Not reached, except during unit tests.
+      return;
+    }
 
     // Mount stateful partition from state_dev.
     if (!platform_->Mount(state_dev_, stateful_, *fs_form_state,
@@ -382,6 +392,8 @@ void StatefulMount::MountStateful() {
                                          root_.Append(kDumpe2fsStatefulLog));
       ClobberStateful({"keepimg", "preserve_lvs"},
                       "Self-repair corrupted stateful partition");
+      // Not reached, except during unit tests.
+      return;
     }
 
     // Mount the OEM partition.
@@ -393,13 +405,13 @@ void StatefulMount::MountStateful() {
     const std::string* fs_form_oem =
         image_vars_dict.FindString("FS_FORMAT_OEM");
     const base::FilePath oem_dev =
-        brillo::AppendPartition(root_device_, part_num_oem);
+        brillo::AppendPartition(root_dev, part_num_oem);
     status = platform_->Mount(oem_dev, base::FilePath("/usr/share/oem"),
                               *fs_form_oem, oem_flags, "");
     if (!status) {
       PLOG(WARNING) << "mount of /usr/share/oem failed with code " << status;
     }
-  }
+  }  // !rootdev.empty() ...
 }
 
 base::FilePath StatefulMount::GetStateDev() {
