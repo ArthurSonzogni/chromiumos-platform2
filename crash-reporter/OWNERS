@@ -11,3 +11,4 @@ vapier@chromium.org #{LAST_RESORT_SUGGESTION}
 per-file kernel*=swboyd@chromium.org, dianders@chromium.org, iby@chromium.org
 per-file security_anomaly_collector*=enlightened@chromium.org, iby@chromium.org
 per-file selinux_violation_collector*=enlightened@chromium.org, iby@chromium.org
+per-file arc*=jhorwich@chromium.org, iby@chromium.org
