@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_headers",
     ":libnet-base",
     ":libnet-base_pc",
   ]
@@ -78,6 +79,81 @@ generate_pkg_config("libnet-base_pc") {
   requires = [ "libchrome" ]
   libs = [ "-lnet-base" ]
   install = true
+}
+
+# Install headers to /usr/include/chromeos/.
+# Args:
+#   sources: A list of headers to be installed.
+#   subdir: The subfolder name under platform2/. Headers will be installed to
+#     /usr/include/chromeos/${subdir}/.
+template("install_chromeos_headers") {
+  assert(defined(invoker.sources),
+         "Need sources in $target_name listing the header files to install.")
+  assert(
+      defined(invoker.subdir),
+      "Need subdir in $target_name specifying the folder name under platform2/.")
+
+  preprocessing_target_name = "pre_" + target_name
+
+  action_foreach(preprocessing_target_name) {
+    forward_variables_from(invoker,
+                           [
+                             "sources",
+                             "subdir",
+                           ])
+    outputs =
+        [ "${target_gen_dir}/include/chromeos/${subdir}/{{source_file_part}}" ]
+
+    script = "/bin/sh"
+    args = [
+      "-c",
+      "sed '/.pb.h/! s:${subdir}/:chromeos/${subdir}/:g' " +
+          rebase_path("{{source}}") +
+          "> ${target_gen_dir}/include/chromeos/${subdir}/{{source_file_part}}",
+    ]
+  }
+
+  install_config(target_name) {
+    forward_variables_from(invoker, [ "subdir" ])
+    sources = get_target_outputs(":${preprocessing_target_name}")
+    install_path = "/usr/include/chromeos/${subdir}"
+    deps = [ ":${preprocessing_target_name}" ]
+  }
+}
+
+install_chromeos_headers("install_headers") {
+  sources = [
+    "ares_interface.h",
+    "attribute_list.h",
+    "byte_utils.h",
+    "control_netlink_attribute.h",
+    "dns_client.h",
+    "generic_netlink_message.h",
+    "http_url.h",
+    "ip_address.h",
+    "ip_address_utils.h",
+    "ipv4_address.h",
+    "ipv6_address.h",
+    "mac_address.h",
+    "netlink_attribute.h",
+    "netlink_manager.h",
+    "netlink_message.h",
+    "netlink_packet.h",
+    "netlink_sock_diag.h",
+    "netlink_socket.h",
+    "network_config.h",
+    "network_priority.h",
+    "proc_fs_stub.h",
+    "process_manager.h",
+    "rtnl_handler.h",
+    "rtnl_listener.h",
+    "rtnl_message.h",
+    "socket.h",
+    "socket_forwarder.h",
+    "technology.h",
+  ]
+
+  subdir = "net-base"
 }
 
 if (use.fuzzer) {
