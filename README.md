@@ -151,6 +151,7 @@ copies.
 | [pciguard](./pciguard/) | Daemon to secure external PCI devices (thunderbolt etc) |
 | [perfetto_simple_producer](./perfetto_simple_producer/) | A simple producer of perfetto: An example demonstrating how to produce Perfetto performance trace data |
 | [permission_broker](./permission_broker/) ||
+| [pmt_tool](./pmt_tool/) | Command-line utility for sampling and decoding of Intel PMT data |
 | [policy_proto](./policy_proto/) | Build file to compile policy proto file |
 | [policy_utils](./policy_utils/) | Tools and related library to set or override device policies |
 | [power_manager](./power_manager/) | Userspace power management daemon and associated tools |
