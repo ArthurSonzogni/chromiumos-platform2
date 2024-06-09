@@ -104,11 +104,7 @@ class Test_simulate_fpstudy_main(unittest.TestCase):
         """Tests whether Experiment can import the results."""
         args = [str(self.temp_dir_path), "--fingers=2", "--samples=2"] + self.v
         sim.main(args)
-        exp = Experiment(
-            num_verification=2,
-            num_users=72,
-            num_fingers=2,
-        )
+        exp = Experiment()
         exp.add_far_decisions_from_csv(self.temp_dir_path / "FAR_decisions.csv")
         exp.add_frr_decisions_from_csv(self.temp_dir_path / "FRR_decisions.csv")
         exp.add_groups_from_csv(self.temp_dir_path / "user_groups.csv")

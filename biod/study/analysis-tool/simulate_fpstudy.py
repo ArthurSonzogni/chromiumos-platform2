@@ -151,13 +151,7 @@ def GenerateFARResults(
         if verbose:
             print("Adding Group Associations")
         user_groups_tbl = GenerateUserGroup(num_users, user_groups)
-        e = Experiment(
-            num_verification=num_verify_samples,
-            num_fingers=num_fingers,
-            num_users=num_users,
-            far_decisions=df,
-            fa_list=None,
-        )
+        e = Experiment(far_decisions=df, fa_list=None)
         e.add_groups(user_groups_tbl)
         df = e.far_decisions()
 
@@ -252,13 +246,7 @@ def GenerateFRRResults(
         if verbose:
             print("Adding Group Associations")
         user_groups_tbl = GenerateUserGroup(num_users, user_groups)
-        e = Experiment(
-            num_verification=num_verify_samples,
-            num_fingers=num_fingers,
-            num_users=num_users,
-            far_decisions=df,
-            fa_list=None,
-        )
+        e = Experiment(far_decisions=df, fa_list=None)
         e.add_groups(user_groups_tbl)
         df = e.frr_decisions()
 
@@ -278,11 +266,10 @@ class SimulateEvalResults:
         num_fingers: int = 6,
         num_verify_samples: int = 80,
     ) -> None:
-        self._exp = Experiment(
-            num_verification=num_verify_samples,
-            num_users=num_users,
-            num_fingers=num_fingers,
-        )
+        self._num_users = num_users
+        self._num_fingers = num_fingers
+        self._num_verify_samples = num_verify_samples
+        self._exp = Experiment()
 
     def GenerateUserGroup(
         self,
@@ -291,7 +278,7 @@ class SimulateEvalResults:
     ):
         if verbose:
             print("Adding Group Associations")
-        self._exp.add_groups(GenerateUserGroup(self._exp.num_users, groups))
+        self._exp.add_groups(GenerateUserGroup(self._num_users, groups))
 
     def GenerateFARResults(
         self,
@@ -300,9 +287,9 @@ class SimulateEvalResults:
     ):
         self._exp.add_far_decisions(
             GenerateFARResults(
-                self._exp.num_users,
-                self._exp.num_fingers,
-                self._exp.num_verification,
+                self._num_users,
+                self._num_fingers,
+                self._num_verify_samples,
                 user_groups=None,
                 prob=prob,
                 verbose=verbose,
@@ -316,9 +303,9 @@ class SimulateEvalResults:
     ):
         self._exp.add_frr_decisions(
             GenerateFRRResults(
-                self._exp.num_users,
-                self._exp.num_fingers,
-                self._exp.num_verification,
+                self._num_users,
+                self._num_fingers,
+                self._num_verify_samples,
                 user_groups=None,
                 prob=prob,
                 verbose=verbose,

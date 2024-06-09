@@ -397,7 +397,7 @@ def cmd_analyze(opts: argparse.Namespace) -> int:
     far_decisions_file = decisions_dir / "FAR_decisions.csv"
     frr_decisions_file = decisions_dir / "FRR_decisions.csv"
 
-    exp = Experiment(0, 0, 0)
+    exp = Experiment()
     exp.add_far_decisions_from_csv(far_decisions_file)
     exp.add_frr_decisions_from_csv(frr_decisions_file)
 
@@ -480,13 +480,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
     )
 
     exps = {
-        test_cases[i]: Experiment(
-            num_verification=80,
-            num_fingers=6,
-            num_users=72,
-            far_decisions=far,
-            frr_decisions=frr,
-        )
+        test_cases[i]: Experiment(far_decisions=far, frr_decisions=frr)
         for i, (far, frr) in enumerate(zip(far_decisions, frr_decisions))
     }
 
@@ -985,7 +979,7 @@ def cmd_groups_discover(opts: argparse.Namespace) -> int:
     src_collection_dir: pathlib.Path = opts.src_collection_dir
     user_groups_csv: pathlib.Path = opts.user_groups_csv
 
-    exp = Experiment(0, 0, 0)
+    exp = Experiment()
     exp.add_groups_from_collection_dir(src_collection_dir)
     exp.user_groups_table_to_csv(user_groups_csv)
     return 0

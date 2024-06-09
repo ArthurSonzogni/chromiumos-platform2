@@ -26,12 +26,7 @@ class Test_Bootstrap(unittest.TestCase):
             user_groups=None,
             verbose=True,
         )
-        self.exp = Experiment(
-            num_users=72,
-            num_fingers=3,
-            num_verification=40,
-            far_decisions=self.far_decisions,
-        )
+        self.exp = Experiment(far_decisions=self.far_decisions)
 
     def test_benchmark(self):
         """Test how long it takes to run the sampling using different modes."""

@@ -123,12 +123,7 @@ if USE_SIMULATED_DATA:
         prob=USE_SIMULATED_PROB,
         verbose=True,
     )
-    exp = Experiment(
-        num_verification=60,
-        num_fingers=6,
-        num_users=72,
-        far_decisions=sim_far_decisions,
-    )
+    exp = Experiment(far_decisions=sim_far_decisions)
     test_cases = [SimulatedTestCase.SimulatedDataset]
 
     exps = {
@@ -178,25 +173,17 @@ else:
     )
 
     exps = {
-        test_cases[i]: Experiment(
-            num_verification=80,
-            num_fingers=6,
-            num_users=72,
-            far_decisions=far,
-            frr_decisions=frr,
-        )
+        test_cases[i]: Experiment(far_decisions=far, frr_decisions=frr)
         for i, (far, frr) in enumerate(zip(far_decisions, frr_decisions))
     }
 
     for tc in exps:
         exps[tc].add_groups_from_collection_dir(COLLECTION_DIR)
 
-    # exp = Experiment(num_verification=60,
-    #                  num_fingers=6,
-    #                  num_users=72,
-    #                  far_decisions=far_decisions[0],
-    #                  frr_decisions=frr_decisions[0],
-    #                  )
+    # exp = Experiment(
+    #     far_decisions=far_decisions[0],
+    #     frr_decisions=frr_decisions[0],
+    # )
 
     # exp.add_groups_from_collection_dir(COLLECTION_DIR)
     # exp._tbl_far_decisions = exp._tbl_far_decisions[exp._tbl_far_decisions['VerifyGroup'] == 'A']

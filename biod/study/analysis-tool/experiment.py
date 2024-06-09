@@ -146,20 +146,12 @@ class Experiment:
 
     def __init__(
         self,
-        #  num_enrollment: int,
-        num_verification: int,
-        num_fingers: int,
-        num_users: int,
         far_decisions: Optional[pd.DataFrame] = None,
         frr_decisions: Optional[pd.DataFrame] = None,
         fa_list: Optional[pd.DataFrame] = None,
     ):
         """Initialize a new experiment."""
 
-        # self.num_enrollment = num_enrollment
-        self.num_verification = num_verification
-        self.num_fingers = num_fingers
-        self.num_users = num_users
         self._tbl_far_decisions = far_decisions
         self._tbl_frr_decisions = frr_decisions
         self._tbl_fa_list = fa_list
@@ -167,9 +159,6 @@ class Experiment:
         self._tbl_user_groups = None
 
     def Describe(self):
-        print("Users:", self.num_users)
-        print("Fingers:", self.num_fingers)
-        print("Verification Samples:", self.num_verification)
         print(self.far_decisions().describe())
         print(self.fa_table().describe())
 
