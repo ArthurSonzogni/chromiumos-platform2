@@ -622,6 +622,14 @@ bool WireGuardDriver::PopulateIPProperties() {
       network_config_->included_route_prefixes.push_back(*prefix);
     }
   }
+
+  // WireGuard would add 80 bytes to a packet in the worse case, so assume the
+  // MTU on the physical network is 1500, set the MTU to 1500-80=1420 here.
+  // See https://lists.zx2c4.com/pipermail/wireguard/2017-December/002201.html.
+  // This can be overwritten by StaticIPConfig is a customized MTU is configured
+  // there.
+  network_config_->mtu = 1420;
+
   return true;
 }
 

@@ -663,6 +663,7 @@ TEST_F(WireGuardDriverTest, GetIPProperties) {
   EXPECT_EQ(network_config->ipv4_address,
             net_base::IPv4CIDR::CreateFromStringAndPrefix(kIPv4Address, 32));
   EXPECT_TRUE(network_config->ipv6_addresses.empty());
+  EXPECT_EQ(network_config->mtu, 1420);
   driver_->Disconnect();
 
   // The case that the user configures only one IPv6 address.
