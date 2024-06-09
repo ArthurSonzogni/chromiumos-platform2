@@ -29,6 +29,52 @@ statistically determine its FAR and FRR confidence range.
 python -m unittest discover -v -s . -p '*_test.py'
 ```
 
+## Experiment Directory Files
+
+1.  `FAR_decisions.csv` / `FRR_decisions.csv`:
+
+    The FAR_decisions.csv and FRR_decisions.csv use the same CSV format, but
+    should contain all matcher imposter (false-accept) and true user
+    (false-reject) attempts, respectively.
+
+    Example **FAR_decisions.csv**:
+
+    ```csv
+    EnrollUser,EnrollFinger,VerifyUser,VerifyFinger,VerifySample,Decision
+    10001,0,10002,0,0,REJECT
+    10001,0,10002,0,1,REJECT
+    10001,0,10002,0,2,ACCEPT
+    ...
+    ```
+
+    Example **FRR_decisions.csv**
+
+    ```csv
+    EnrollUser,EnrollFinger,VerifyUser,VerifyFinger,VerifySample,Decision
+    10001,0,10001,0,0,ACCEPT
+    10001,0,10001,0,1,ACCEPT
+    10001,0,10001,0,2,REJECT
+    ...
+    ```
+
+1.  `user_groups.csv`:
+
+    The user_groups.csv file is optional, but should contain the user to group
+    mapping, if provided.
+
+    Example:
+
+    ```csv
+    User,Group
+    10001,A
+    10002,B
+    10003,C
+    10004,D
+    10005,E
+    10006,F
+    ...
+    ```
+
 ## Examples
 
 ```bash
