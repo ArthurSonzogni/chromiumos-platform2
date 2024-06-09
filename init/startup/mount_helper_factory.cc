@@ -17,6 +17,8 @@
 #include "init/startup/factory_mode_mount_helper.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
+#include "init/startup/mount_var_home_encrypted_impl.h"
+#include "init/startup/mount_var_home_unencrypted_impl.h"
 #include "init/startup/standard_mount_helper.h"
 #include "init/startup/startup_dep_impl.h"
 #include "init/startup/test_mode_mount_helper.h"
@@ -54,17 +56,36 @@ std::unique_ptr<MountHelper> MountHelperFactory::Generate(
   if (dev_mode && is_test_image && is_factory_mode) {
     return std::make_unique<FactoryModeMountHelper>(
         platform_, startup_dep_, flags_, root_, stateful_,
+        std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
+            platform_, startup_dep_, root_, stateful_),
         std::move(storage_container_factory));
   }
 
   if (dev_mode && is_test_image) {
-    return std::make_unique<TestModeMountHelper>(
-        platform_, startup_dep_, flags_, root_, stateful_,
-        std::move(storage_container_factory));
+    if (USE_ENCRYPTED_STATEFUL && flags_.encstateful)
+      return std::make_unique<TestModeMountHelper>(
+          platform_, startup_dep_, flags_, root_, stateful_,
+          std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
+              platform_, startup_dep_, root_, stateful_),
+          std::move(storage_container_factory));
+    else
+      return std::make_unique<TestModeMountHelper>(
+          platform_, startup_dep_, flags_, root_, stateful_,
+          std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
+              platform_, startup_dep_, root_, stateful_),
+          std::move(storage_container_factory));
   }
 
+  if (USE_ENCRYPTED_STATEFUL && flags_.encstateful)
+    return std::make_unique<StandardMountHelper>(
+        platform_, startup_dep_, flags_, root_, stateful_,
+        std::make_unique<MountVarAndHomeChronosEncryptedImpl>(
+            platform_, startup_dep_, root_, stateful_),
+        std::move(storage_container_factory));
   return std::make_unique<StandardMountHelper>(
       platform_, startup_dep_, flags_, root_, stateful_,
+      std::make_unique<MountVarAndHomeChronosUnencryptedImpl>(
+          platform_, startup_dep_, root_, stateful_),
       std::move(storage_container_factory));
 }
 

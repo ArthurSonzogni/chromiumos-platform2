@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "init/startup/mount_var_home_impl.h"
+#include "init/startup/mount_var_home_encrypted_impl.h"
 
 #include <sys/mount.h>
 
@@ -25,15 +25,13 @@
 
 namespace {
 
-constexpr char kVar[] = "var";
-constexpr char kHomeChronos[] = "home/chronos";
 constexpr char kMountEncryptedLog[] = "run/mount_encrypted/mount-encrypted.log";
 
 }  // namespace
 
 namespace startup {
 
-MountVarAndHomeChronosImpl::MountVarAndHomeChronosImpl(
+MountVarAndHomeChronosEncryptedImpl::MountVarAndHomeChronosEncryptedImpl(
     libstorage::Platform* platform,
     StartupDep* startup_dep,
     const base::FilePath& root,
@@ -53,7 +51,7 @@ MountVarAndHomeChronosImpl::MountVarAndHomeChronosImpl(
 // partition, having /home/chronos already doesn't matter. It will be created by
 // mount-encrypted if it is missing. These mounts inherit nodev,noexec,nosuid
 // from the encrypted filesystem /mnt/stateful_partition/encrypted.
-bool MountVarAndHomeChronosImpl::MountEncrypted() {
+bool MountVarAndHomeChronosEncryptedImpl::Mount() {
   base::FilePath mount_enc_log = root_.Append(kMountEncryptedLog);
   std::string output;
   int status =
@@ -68,7 +66,7 @@ bool MountVarAndHomeChronosImpl::MountEncrypted() {
 // Give mount-encrypted umount 10 times to retry, otherwise
 // it will fail with "device is busy" because lazy umount does not finish
 // clearing all reference points yet. Check crbug.com/p/21345.
-bool MountVarAndHomeChronosImpl::UmountEncrypted() {
+bool MountVarAndHomeChronosEncryptedImpl::Umount() {
   // Check if the encrypted stateful partition is mounted.
   base::FilePath mount_enc = stateful_.Append("encrypted");
   struct stat encrypted, parent;
@@ -97,41 +95,6 @@ bool MountVarAndHomeChronosImpl::UmountEncrypted() {
     base::PlatformThread::Sleep(base::Milliseconds(100));
   }
   return ret == 0;
-}
-
-// Bind mount /var and /home/chronos. All function arguments are ignored.
-bool MountVarAndHomeChronosImpl::MountUnencrypted() {
-  base::FilePath var = stateful_.Append(kVar);
-  if (!platform_->CreateDirectory(var)) {
-    return false;
-  }
-
-  if (!platform_->SetPermissions(var, 0755)) {
-    PLOG(WARNING) << "chmod failed for " << var.value();
-    return false;
-  }
-
-  if (!platform_->Mount(var, root_.Append(kVar), "", MS_BIND, "")) {
-    return false;
-  }
-  if (!platform_->Mount(stateful_.Append(kHomeChronos),
-                        root_.Append(kHomeChronos), "", MS_BIND, "")) {
-    platform_->Unmount(root_.Append(kVar), false, nullptr);
-    return false;
-  }
-  return true;
-}
-
-// Unmount bind mounts for /var and /home/chronos.
-bool MountVarAndHomeChronosImpl::UmountUnencrypted() {
-  bool ret = false;
-  if (platform_->Unmount(root_.Append(kVar), false, nullptr)) {
-    ret = true;
-  }
-  if (platform_->Unmount(root_.Append(kHomeChronos), false, nullptr)) {
-    ret = true;
-  }
-  return ret;
 }
 
 }  // namespace startup

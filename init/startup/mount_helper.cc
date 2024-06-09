@@ -21,7 +21,6 @@
 #include <libstorage/platform/platform.h>
 
 #include "init/startup/flags.h"
-#include "init/startup/mount_var_home_impl.h"
 #include "init/startup/mount_var_home_interface.h"
 #include "init/startup/startup_dep_impl.h"
 
@@ -42,22 +41,6 @@ MountHelper::MountHelper(libstorage::Platform* platform,
       stateful_(stateful),
       impl_(std::move(impl)),
       storage_container_factory_(std::move(storage_container_factory)) {}
-
-MountHelper::MountHelper(libstorage::Platform* platform,
-                         StartupDep* startup_dep,
-                         const Flags& flags,
-                         const base::FilePath& root,
-                         const base::FilePath& stateful,
-                         std::unique_ptr<libstorage::StorageContainerFactory>
-                             storage_container_factory)
-    : MountHelper(platform,
-                  startup_dep,
-                  flags,
-                  root,
-                  stateful,
-                  std::make_unique<MountVarAndHomeChronosImpl>(
-                      platform, startup_dep, root, stateful),
-                  std::move(storage_container_factory)) {}
 
 MountHelper::~MountHelper() = default;
 
@@ -137,34 +120,12 @@ void MountHelper::BindMountOrFail(const base::FilePath& source,
   CleanupMounts(msg);
 }
 
-bool MountHelper::MountVarAndHomeChronosEncrypted() {
-  return impl_->MountEncrypted();
-}
-
-bool MountHelper::UmountVarAndHomeChronosEncrypted() {
-  return impl_->UmountEncrypted();
-}
-
-bool MountHelper::MountVarAndHomeChronosUnencrypted() {
-  return impl_->MountUnencrypted();
-}
-
-bool MountHelper::UmountVarAndHomeChronosUnencrypted() {
-  return impl_->UmountUnencrypted();
-}
-
 bool MountHelper::MountVarAndHomeChronos() {
-  if (flags_.encstateful) {
-    return MountVarAndHomeChronosEncrypted();
-  }
-  return MountVarAndHomeChronosUnencrypted();
+  return impl_->Mount();
 }
 
 bool MountHelper::DoUmountVarAndHomeChronos() {
-  if (flags_.encstateful) {
-    return UmountVarAndHomeChronosEncrypted();
-  }
-  return UmountVarAndHomeChronosUnencrypted();
+  return impl_->Umount();
 }
 
 }  // namespace startup

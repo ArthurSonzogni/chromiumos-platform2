@@ -39,14 +39,6 @@ class MountHelper {
               std::unique_ptr<libstorage::StorageContainerFactory>
                   storage_container_factory);
 
-  MountHelper(libstorage::Platform* platform,
-              StartupDep* startup_dep,
-              const Flags& flags,
-              const base::FilePath& root,
-              const base::FilePath& stateful,
-              std::unique_ptr<libstorage::StorageContainerFactory>
-                  storage_container_factory);
-
   virtual ~MountHelper();
 
   // Add mount to mount stack.
@@ -58,17 +50,9 @@ class MountHelper {
   // Tries to bind mount, clobbers the stateful partition on failure.
   void BindMountOrFail(const base::FilePath& source,
                        const base::FilePath& target);
-
-  // Unmount bind mounts for /var and /home/chronos when encrypted.
-  bool UmountVarAndHomeChronosEncrypted();
-  // Unmount bind mounts for /var and /home/chronos when unencrypted.
-  bool UmountVarAndHomeChronosUnencrypted();
-  bool MountVarAndHomeChronosEncrypted();
-  bool MountVarAndHomeChronosUnencrypted();
+  // Mount or unmount home chronos.
+  // DoMountVarAndHomeChronos is defined in children of this class.
   bool MountVarAndHomeChronos();
-
-  // Checks for encstateful flag, then calls the appropriate
-  // UmountVarAndHomeChronos function.
   bool DoUmountVarAndHomeChronos();
 
   // Return the storage container factory, used to create filestsytem

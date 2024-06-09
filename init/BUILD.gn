@@ -105,7 +105,7 @@ static_library("libcrosstartup") {
     "startup/flags.h",
     "startup/mount_helper.cc",
     "startup/mount_helper_factory.cc",
-    "startup/mount_var_home_impl.cc",
+    "startup/mount_var_home_unencrypted_impl.cc",
     "startup/security_manager.cc",
     "startup/standard_mount_helper.cc",
     "startup/startup_dep_impl.cc",
@@ -113,6 +113,9 @@ static_library("libcrosstartup") {
     "startup/test_mode_mount_helper.cc",
     "startup/uefi_startup.cc",
   ]
+  if (use.encrypted_stateful) {
+    sources += [ "startup/mount_var_home_encrypted_impl.cc" ]
+  }
   configs += [ ":target_defaults" ]
   defines = []
   deps = [

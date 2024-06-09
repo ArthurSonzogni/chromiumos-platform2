@@ -15,12 +15,10 @@ class MountVarAndHomeChronosInterface {
  public:
   virtual ~MountVarAndHomeChronosInterface() = default;
 
-  // Unmount bind mounts for /var and /home/chronos when encrypted.
-  virtual bool UmountEncrypted() = 0;
-  // Unmount bind mounts for /var and /home/chronos when unencrypted.
-  virtual bool UmountUnencrypted() = 0;
-  virtual bool MountEncrypted() = 0;
-  virtual bool MountUnencrypted() = 0;
+  // Unmount bind mounts for /var and /home/chronos.
+  virtual bool Umount() = 0;
+  // Mount bind mounts for /var and /home/chronos.
+  virtual bool Mount() = 0;
 };
 
 }  // namespace startup

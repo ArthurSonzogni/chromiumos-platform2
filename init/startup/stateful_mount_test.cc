@@ -63,6 +63,7 @@ class GetImageVarsTest : public ::testing::Test {
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
         platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+        std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::unique_ptr<libstorage::StorageContainerFactory>());
     json_file_ = base_dir.Append("vars.json");
     ASSERT_TRUE(platform_->WriteStringToFile(json_file_, kImageVarsContent));
@@ -124,6 +125,7 @@ TEST_F(Ext4FeaturesTest, Encrypt) {
 
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
       platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+      std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
@@ -141,6 +143,7 @@ TEST_F(Ext4FeaturesTest, Verity) {
 
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
       platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+      std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
@@ -154,6 +157,7 @@ TEST_F(Ext4FeaturesTest, Verity) {
 TEST_F(Ext4FeaturesTest, ReservedBlocksGID) {
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
       platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+      std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
@@ -168,6 +172,7 @@ TEST_F(Ext4FeaturesTest, EnableQuotaWithPrjQuota) {
 
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
       platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+      std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
@@ -182,6 +187,7 @@ TEST_F(Ext4FeaturesTest, EnableQuotaNoPrjQuota) {
 
   mount_helper_ = std::make_unique<startup::StandardMountHelper>(
       platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+      std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
       std::unique_ptr<libstorage::StorageContainerFactory>());
   stateful_mount_ = std::make_unique<startup::StatefulMount>(
       flags_, base_dir, base_dir, platform_.get(), startup_dep_.get(),
@@ -205,6 +211,7 @@ class DevUpdateStatefulTest : public ::testing::Test {
     preserve_dir = stateful.Append("unencrypted/preserve");
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
         platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+        std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::unique_ptr<libstorage::StorageContainerFactory>());
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir, stateful, platform_.get(), startup_dep_.get(),
@@ -310,6 +317,7 @@ class DevGatherLogsTest : public ::testing::Test {
     startup_dep_ = std::make_unique<startup::FakeStartupDep>(platform_.get());
     mount_helper_ = std::make_unique<startup::StandardMountHelper>(
         platform_.get(), startup_dep_.get(), flags_, base_dir, base_dir,
+        std::unique_ptr<startup::MountVarAndHomeChronosInterface>(),
         std::unique_ptr<libstorage::StorageContainerFactory>());
     stateful_mount_ = std::make_unique<startup::StatefulMount>(
         flags_, base_dir, stateful, platform_.get(), startup_dep_.get(),

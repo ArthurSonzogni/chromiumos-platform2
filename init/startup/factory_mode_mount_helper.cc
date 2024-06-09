@@ -41,6 +41,7 @@ FactoryModeMountHelper::FactoryModeMountHelper(
     const Flags& flags,
     const base::FilePath& root,
     const base::FilePath& stateful,
+    std::unique_ptr<MountVarAndHomeChronosInterface> impl,
     std::unique_ptr<libstorage::StorageContainerFactory>
         storage_container_factory)
     : MountHelper(platform,
@@ -48,14 +49,13 @@ FactoryModeMountHelper::FactoryModeMountHelper(
                   flags,
                   root,
                   stateful,
+                  std::move(impl),
                   std::move(storage_container_factory)) {}
 
 bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
   base::FilePath option_file = stateful_.Append(kOptionsFile);
-  std::string option = "";
-  if (platform_->FileExists(option_file)) {
-    platform_->ReadFileToString(option_file, &option);
-  }
+  std::string option;
+  platform_->ReadFileToString(option_file, &option);
   if (option == "tmpfs") {
     // Mount tmpfs to /var/. When booting from USB disk, writing to /var/
     // slows down system performance dramatically. Since there is no need to
@@ -75,7 +75,7 @@ bool FactoryModeMountHelper::DoMountVarAndHomeChronos() {
     return true;
   }
   // Mount /var and /home/chronos in the unencrypted mode.
-  return MountVarAndHomeChronosUnencrypted();
+  return MountVarAndHomeChronos();
 }
 
 }  // namespace startup
