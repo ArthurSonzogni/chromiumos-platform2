@@ -516,7 +516,7 @@ class Experiment:
 
     def add_groups_from_csv(
         self,
-        csv_file_path: pathlib.Path = pathlib.Path("User_groups.csv"),
+        csv_file_path: pathlib.Path = pathlib.Path("user_groups.csv"),
     ):
         """Add group information from a user group mapping CSV file."""
 

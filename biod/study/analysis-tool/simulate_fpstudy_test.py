@@ -90,7 +90,7 @@ class Test_simulate_fpstudy_main(unittest.TestCase):
         sim.main(args)
         self.assertTrue((self.temp_dir_path / "FAR_decisions.csv").is_file())
         self.assertTrue((self.temp_dir_path / "FRR_decisions.csv").is_file())
-        self.assertTrue((self.temp_dir_path / "User_groups.csv").is_file())
+        self.assertTrue((self.temp_dir_path / "user_groups.csv").is_file())
 
     def test_without_groups(self):
         """Run the utility with groups disabled."""
@@ -98,7 +98,7 @@ class Test_simulate_fpstudy_main(unittest.TestCase):
         sim.main(args)
         self.assertTrue((self.temp_dir_path / "FAR_decisions.csv").is_file())
         self.assertTrue((self.temp_dir_path / "FRR_decisions.csv").is_file())
-        self.assertFalse((self.temp_dir_path / "User_groups.csv").is_file())
+        self.assertFalse((self.temp_dir_path / "user_groups.csv").is_file())
 
     def test_experiment_can_import(self):
         """Tests whether Experiment can import the results."""
@@ -111,7 +111,7 @@ class Test_simulate_fpstudy_main(unittest.TestCase):
         )
         exp.add_far_decisions_from_csv(self.temp_dir_path / "FAR_decisions.csv")
         exp.add_frr_decisions_from_csv(self.temp_dir_path / "FRR_decisions.csv")
-        exp.add_groups_from_csv(self.temp_dir_path / "User_groups.csv")
+        exp.add_groups_from_csv(self.temp_dir_path / "user_groups.csv")
         exp.far_decisions()
         exp.frr_decisions()
         exp.user_groups_table()

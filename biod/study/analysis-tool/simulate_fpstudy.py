@@ -412,7 +412,7 @@ def main(argv: Optional[list[str]] = None) -> Optional[int]:
 
     csv_far_path = output_dir / "FAR_decisions.csv"
     csv_frr_path = output_dir / "FRR_decisions.csv"
-    csv_groups_path = output_dir / "User_groups.csv"
+    csv_groups_path = output_dir / "user_groups.csv"
     if csv_far_path.is_dir():
         parser.error(f'The FAR CSV file "{csv_far_path}" is a directory.')
     if csv_frr_path.is_dir():

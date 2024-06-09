@@ -445,7 +445,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
     analysis_dir: pathlib.Path = opts.analysis_dir
 
     if not user_groups_csv:
-        user_groups_csv = testcases_decisions_dir / "User_groups.csv"
+        user_groups_csv = testcases_decisions_dir / "user_groups.csv"
 
     analysis_dir.mkdir(exist_ok=True)
     source_dir = pathlib.Path(__file__).parent
@@ -980,7 +980,7 @@ def cmd_groups_discover(opts: argparse.Namespace) -> int:
     """Discover the user-group mapping from a raw collection dir structure.
 
     Write this table out to a CSV file, which typically is called
-    User_groups.csv.
+    user_groups.csv.
     """
     src_collection_dir: pathlib.Path = opts.src_collection_dir
     user_groups_csv: pathlib.Path = opts.user_groups_csv
@@ -1016,7 +1016,7 @@ def main(argv: list[str]) -> int:
         "--user-groups-csv",
         type=pathlib.Path,
         help="Path to the user-group mapping CSV file. "
-        "(default: <testcases_decisions_dir>/User_groups.csv).",
+        "(default: <testcases_decisions_dir>/user_groups.csv).",
     )
     parser_report.add_argument(
         "testcases_decisions_dir",
@@ -1044,8 +1044,8 @@ def main(argv: list[str]) -> int:
     parser_groups_discover.add_argument(
         "user_groups_csv",
         type=pathlib.Path,
-        default="User_groups.csv",
-        help="The path to the User_groups.csv we will write to",
+        default="user_groups.csv",
+        help="The path to the user_groups.csv we will write to",
     )
 
     args = parser.parse_args(argv)
