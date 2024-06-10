@@ -897,6 +897,10 @@ std::unique_ptr<dbus::Response> Service::SharePath(
       src = base::FilePath("/media/fuse").Append(smbfs_mount_name);
       dst = dst.Append("SMB").Append(smbfs_dst_prefix);
       break;
+    case SharePathRequest::FUSEBOX:
+      src = base::FilePath("/media/fuse/fusebox");
+      dst = dst.Append("Fusebox");
+      break;
     default:
       LOG(ERROR) << "Unknown storage location: " << request.storage_location();
       response.set_failure_reason("Unknown storage location");

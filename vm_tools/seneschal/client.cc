@@ -39,6 +39,7 @@ constexpr char kStoragePlayFiles[] = "playfiles";
 constexpr char kStoragePlayFilesGuestOs[] = "playfilesguestos";
 constexpr char kStorageLinuxFiles[] = "linuxfiles";
 constexpr char kStorageGuestOsFiles[] = "guestosfiles";
+constexpr char kStorageFusebox[] = "fusebox";
 
 int StartServer(dbus::ObjectProxy* proxy, uint64_t port, uint64_t accept_cid) {
   if (port == 0) {
@@ -223,10 +224,12 @@ int SharePath(dbus::ObjectProxy* proxy,
       return EXIT_FAILURE;
     }
     location = vm_tools::seneschal::SharePathRequest::GUEST_OS_FILES;
+  } else if (storage_location == kStorageFusebox) {
+    location = vm_tools::seneschal::SharePathRequest::FUSEBOX;
   } else {
     LOG(ERROR) << "--storage_location is required "
                   "(myfiles|mydrive|teamdrives|computers|removable|"
-                  "playfiles|linuxfiles|guestosfiles)";
+                  "playfiles|linuxfiles|guestosfiles|fusebox)";
     return EXIT_FAILURE;
   }
 
@@ -414,7 +417,7 @@ int main(int argc, char** argv) {
   DEFINE_string(storage_location, kStorageMyFiles,
                 "The storage location of path to share "
                 "(myfiles|mydrive|teamdrives|computers|removable|"
-                "playfiles|linuxfiles|guestosfiles)");
+                "playfiles|linuxfiles|guestosfiles|fusebox)");
   DEFINE_uint64(handle, 0, "The handle for the server");
   DEFINE_uint64(port, 0, "Port number on which the server should listen");
   DEFINE_uint64(
