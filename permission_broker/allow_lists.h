@@ -52,6 +52,8 @@ const DevicePolicy::UsbDeviceId kSerialAllowedIds[] = {
     {0x1d50, 0x614e},  // OpenMoko, Inc. Klipper
     {0x1209, 0x2100},  // TinyFPGA BX Bootloader new pid.codes VID:PID
     {0x1209, 0x5bf0},  // Arty FPGA board
+    {0x0403, 0x6001},  // SOTEC Bumpbars FT232R USB UART
+    {0x04d8, 0x000a},  // SOTEC Bumpbars Microchip USB Serial
 };
 
 const DevicePolicy::UsbDeviceId kHIDAllowedIds[] = {
