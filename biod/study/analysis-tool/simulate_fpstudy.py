@@ -151,7 +151,7 @@ def GenerateFARResults(
         if verbose:
             print("Adding Group Associations")
         user_groups_tbl = GenerateUserGroup(num_users, user_groups)
-        e = Experiment(far_decisions=df, fa_list=None)
+        e = Experiment(far_decisions=df)
         e.add_groups(user_groups_tbl)
         df = e.far_decisions()
 
@@ -246,7 +246,7 @@ def GenerateFRRResults(
         if verbose:
             print("Adding Group Associations")
         user_groups_tbl = GenerateUserGroup(num_users, user_groups)
-        e = Experiment(far_decisions=df, fa_list=None)
+        e = Experiment(far_decisions=df)
         e.add_groups(user_groups_tbl)
         df = e.frr_decisions()
 

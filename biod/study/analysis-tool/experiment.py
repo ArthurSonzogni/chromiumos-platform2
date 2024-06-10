@@ -148,13 +148,12 @@ class Experiment:
         self,
         far_decisions: Optional[pd.DataFrame] = None,
         frr_decisions: Optional[pd.DataFrame] = None,
-        fa_list: Optional[pd.DataFrame] = None,
     ):
         """Initialize a new experiment."""
 
         self._tbl_far_decisions = far_decisions
         self._tbl_frr_decisions = frr_decisions
-        self._tbl_fa_list = fa_list
+        self._tbl_fa_list = None
         self._tbl_fr_list = None
         self._tbl_user_groups = None
 
