@@ -53,6 +53,8 @@ class NetworkManager : Network::EventHandler {
   EventDispatcher* const dispatcher_;
   Metrics* const metrics_;
 
+  std::unique_ptr<DHCPClientProxyFactory> dhcp_client_proxy_factory_;
+
   // Tracks all the alive Network instances.
   std::map<int /* network_id */, Network*> alive_networks_;
 

@@ -32,10 +32,9 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpv4_config.h"
-#include "shill/network/legacy_dhcp_controller.h"
-#include "shill/network/mock_dhcp_provider.h"
-#include "shill/network/mock_legacy_dhcp_controller.h"
+#include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_monitor.h"
 #include "shill/network/mock_slaac_controller.h"
@@ -63,6 +62,10 @@ using ::testing::WithArg;
 constexpr int kTestIfindex = 123;
 constexpr char kTestIfname[] = "eth_test";
 constexpr auto kTestTechnology = Technology::kWiFi;
+constexpr char kHostname[] = "hostname";
+const DHCPController::Options kDHCPOptions = {
+    .hostname = kHostname,
+};
 
 // IPv4 properties from DHCP.
 constexpr char kIPv4DHCPAddress[] = "192.168.1.2";
@@ -137,7 +140,8 @@ class NetworkInTest : public Network {
                 ControlInterface* control_interface,
                 EventDispatcher* dispatcher,
                 Metrics* metrics,
-                std::unique_ptr<NetworkMonitorFactory> network_monitor_factory)
+                std::unique_ptr<NetworkMonitorFactory> network_monitor_factory,
+                std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory)
       : Network(interface_index,
                 interface_name,
                 technology,
@@ -145,8 +149,9 @@ class NetworkInTest : public Network {
                 control_interface,
                 dispatcher,
                 metrics,
-                nullptr,
-                nullptr,
+                /*patchpanel_client=*/nullptr,
+                std::move(dhcp_controller_factory),
+                /*resolver=*/nullptr,
                 std::move(network_monitor_factory)) {
     ON_CALL(*this, ApplyNetworkConfig)
         .WillByDefault([](NetworkConfigArea area,
@@ -175,17 +180,19 @@ class NetworkTest : public ::testing::Test {
       return std::make_unique<MockNetworkMonitor>();
     });
 
+    auto dhcp_controller_factory =
+        std::make_unique<MockDHCPControllerFactory>();
+    dhcp_controller_factory_ = dhcp_controller_factory.get();
+
     network_ = std::make_unique<NiceMock<NetworkInTest>>(
         kTestIfindex, kTestIfname, kTestTechnology,
         /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
-        std::move(network_monitor_factory));
-    network_->set_dhcp_provider_for_testing(&dhcp_provider_);
+        std::move(network_monitor_factory), std::move(dhcp_controller_factory));
     network_->RegisterEventHandler(&event_handler_);
     network_->RegisterEventHandler(&event_handler2_);
     proc_fs_ = dynamic_cast<net_base::MockProcFsStub*>(
         network_->set_proc_fs_for_testing(
             std::make_unique<NiceMock<net_base::MockProcFsStub>>(kTestIfname)));
-    EXPECT_CALL(dhcp_provider_, CreateController).Times(0);
     ON_CALL(*network_, CreateSLAACController()).WillByDefault([this]() {
       auto ret = std::make_unique<NiceMock<MockSLAACController>>();
       slaac_controller_ = ret.get();
@@ -194,20 +201,27 @@ class NetworkTest : public ::testing::Test {
   }
   ~NetworkTest() override { network_ = nullptr; }
 
-  // Expects calling CreateController() on DHCPProvider, and the following
-  // RequestIP() call will return |request_ip_result|. The pointer to the
-  // returned LegacyDHCPController will be stored in |dhcp_controller_|.
-  void ExpectCreateDHCPController(bool request_ip_result) {
-    EXPECT_CALL(dhcp_provider_, CreateController)
-        .WillOnce(InvokeWithoutArgs([request_ip_result, this]() {
-          auto controller =
-              std::make_unique<NiceMock<MockLegacyDHCPController>>(
-                  &control_interface_, kTestIfname);
-          EXPECT_CALL(*controller, RequestIP())
+  // Expects calling Create() on DHCPControllerFactory, and the following
+  // RenewIP() call will return |request_ip_result|. The pointer to the returned
+  // DHCPController will be stored in |dhcp_controller_|.
+  void ExpectCreateDHCPController(
+      bool request_ip_result,
+      const DHCPController::Options& options = kDHCPOptions) {
+    EXPECT_CALL(*dhcp_controller_factory_,
+                Create(kTestIfname, kTestTechnology, options, _, _))
+        .WillOnce([request_ip_result, this](
+                      std::string_view device_name, Technology technology,
+                      const DHCPController::Options& options,
+                      DHCPController::UpdateCallback update_callback,
+                      DHCPController::DropCallback drop_callback) {
+          auto dhcp_controller = std::make_unique<MockDHCPController>(
+              nullptr, nullptr, nullptr, nullptr, device_name, technology,
+              options, std::move(update_callback), std::move(drop_callback));
+          dhcp_controller_ = dhcp_controller.get();
+          EXPECT_CALL(*dhcp_controller_, RenewIP)
               .WillOnce(Return(request_ip_result));
-          dhcp_controller_ = controller.get();
-          return controller;
-        }));
+          return dhcp_controller;
+        });
   }
 
   void ExpectNetworkMonitorStartAndReturn(bool is_success) {
@@ -250,14 +264,14 @@ class NetworkTest : public ::testing::Test {
   MockManager manager_;
   StrictMock<MockMetrics> metrics_;
 
-  MockDHCPProvider dhcp_provider_;
   MockNetworkEventHandler event_handler_;
   MockNetworkEventHandler event_handler2_;
 
   std::unique_ptr<NiceMock<NetworkInTest>> network_;
 
   // Variables owned by |network_|. Not guaranteed valid even if it's not null.
-  MockLegacyDHCPController* dhcp_controller_ = nullptr;
+  MockDHCPControllerFactory* dhcp_controller_factory_ = nullptr;
+  MockDHCPController* dhcp_controller_ = nullptr;
   MockSLAACController* slaac_controller_ = nullptr;
   net_base::MockProcFsStub* proc_fs_ = nullptr;
   MockNetworkMonitorFactory* network_monitor_factory_ = nullptr;
@@ -364,7 +378,7 @@ TEST_F(NetworkTest, OnNetworkStoppedCalledOnStopAfterStart) {
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   ExpectCreateDHCPController(true);
-  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
+  network_->Start(Network::StartOptions{.dhcp = kDHCPOptions});
 
   EXPECT_CALL(event_handler_, OnNetworkStopped(kTestIfindex, false)).Times(1);
   EXPECT_CALL(event_handler2_, OnNetworkStopped(kTestIfindex, false)).Times(1);
@@ -390,15 +404,15 @@ TEST_F(NetworkTest, OnNetworkStoppedNoCalledOnStart) {
   EXPECT_CALL(event_handler_, OnNetworkStopped).Times(0);
   EXPECT_CALL(event_handler2_, OnNetworkStopped).Times(0);
   ExpectCreateDHCPController(true);
-  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
+  network_->Start(Network::StartOptions{.dhcp = kDHCPOptions});
 
   ExpectCreateDHCPController(true);
-  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
+  network_->Start(Network::StartOptions{.dhcp = kDHCPOptions});
 }
 
 TEST_F(NetworkTest, OnNetworkStoppedCalledOnDHCPFailure) {
   ExpectCreateDHCPController(true);
-  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
+  network_->Start(Network::StartOptions{.dhcp = kDHCPOptions});
 
   EXPECT_CALL(event_handler_, OnNetworkStopped(kTestIfindex, true)).Times(1);
   EXPECT_CALL(event_handler2_, OnNetworkStopped(kTestIfindex, true)).Times(1);
@@ -414,7 +428,7 @@ TEST_F(NetworkTest, EnableARPFilteringOnStart) {
   EXPECT_CALL(*proc_fs_,
               SetIPFlag(net_base::IPFamily::kIPv4, "arp_ignore", "1"))
       .WillOnce(Return(true));
-  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
+  network_->Start(Network::StartOptions{.dhcp = kDHCPOptions});
 }
 
 TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
@@ -433,46 +447,42 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
 }
 
 // Verifies that the DHCP options in Network::Start() is properly used when
-// creating the LegacyDHCPController.
+// creating the DHCPController.
 TEST_F(NetworkTest, DHCPOptions) {
-  constexpr char kHostname[] = "hostname";
   constexpr char kLeaseName[] = "lease-name";
-
-  ON_CALL(dhcp_provider_, CreateController)
-      .WillByDefault(InvokeWithoutArgs([this]() {
-        return std::make_unique<NiceMock<MockLegacyDHCPController>>(
-            &control_interface_, kTestIfname);
-      }));
-
-  DHCPProvider::Options opts = {
+  const DHCPController::Options options = {
       .use_arp_gateway = true,
       .lease_name = kLeaseName,
       .hostname = kHostname,
   };
-  EXPECT_CALL(dhcp_provider_,
-              CreateController(
-                  _,
-                  AllOf(Field(&DHCPProvider::Options::use_arp_gateway, true),
-                        Field(&DHCPProvider::Options::lease_name, kLeaseName),
-                        Field(&DHCPProvider::Options::hostname, kHostname)),
-                  _));
-  network_->Start({.dhcp = opts});
+
+  ExpectCreateDHCPController(true, options);
+  network_->Start({.dhcp = options});
+}
+
+TEST_F(NetworkTest, ResetUseARPGatewayWhenStaticIP) {
+  const DHCPController::Options options = {
+      .use_arp_gateway = true,
+      .hostname = kHostname,
+  };
+  const DHCPController::Options options_without_arp = {
+      .use_arp_gateway = false,
+      .hostname = kHostname,
+  };
 
   // When there is static IP, |use_arp_gateway| will be forced to false.
-  network_->Stop();
-  EXPECT_CALL(dhcp_provider_,
-              CreateController(
-                  _, Field(&DHCPProvider::Options::use_arp_gateway, false), _));
+  ExpectCreateDHCPController(true, options_without_arp);
+
   net_base::NetworkConfig static_config;
   static_config.ipv4_address =
       net_base::IPv4CIDR::CreateFromCIDRString("192.168.1.1/24");
   network_->OnStaticIPConfigChanged(static_config);
-  network_->Start({.dhcp = opts});
+  network_->Start({.dhcp = options});
 }
 
 TEST_F(NetworkTest, DHCPRenew) {
   ExpectCreateDHCPController(true);
-  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{}});
+  network_->Start(Network::StartOptions{.dhcp = kDHCPOptions});
   EXPECT_CALL(*dhcp_controller_, RenewIP()).WillOnce(Return(true));
   EXPECT_TRUE(network_->RenewDHCPLease());
 }
@@ -569,8 +579,8 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   // again.
   ExpectCreateDHCPController(true);
   network_->Stop();
-  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
-                                        .accept_ra = true});
+  network_->Start(
+      Network::StartOptions{.dhcp = kDHCPOptions, .accept_ra = true});
   network_->set_state_for_testing(Network::State::kConfiguring);
   EXPECT_FALSE(network_->ipv4_gateway_found());
   EXPECT_FALSE(network_->ipv6_gateway_found());
@@ -626,8 +636,8 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
                                           Status::kReachable))
       .Times(1);
   network_->Stop();
-  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
-                                        .accept_ra = true});
+  network_->Start(
+      Network::StartOptions{.dhcp = kDHCPOptions, .accept_ra = true});
 
   network_config = std::make_unique<net_base::NetworkConfig>();
   network_config->ipv6_addresses = {
@@ -650,9 +660,8 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent).Times(0);
   EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent).Times(0);
   network_->Stop();
-  network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
-                                        .accept_ra = true,
-                                        .ignore_link_monitoring = true});
+  network_->Start(Network::StartOptions{
+      .dhcp = kDHCPOptions, .accept_ra = true, .ignore_link_monitoring = true});
 
   network_config = std::make_unique<net_base::NetworkConfig>();
   network_config->ipv4_address =
@@ -690,7 +699,7 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
   auto wifi_network = std::make_unique<NiceMock<NetworkInTest>>(
       kTestIfindex, kTestIfname, Technology::kWiFi,
       /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
-      nullptr);
+      /*network_monitor_factory=*/nullptr, /*dhcp_controller_factory=*/nullptr);
   wifi_network->set_ignore_link_monitoring_for_testing(true);
 
   EXPECT_CALL(
@@ -744,7 +753,7 @@ TEST_F(NetworkTest, NeighborReachabilityEventsMetrics) {
   auto eth_network = std::make_unique<NiceMock<NetworkInTest>>(
       kTestIfindex, kTestIfname, Technology::kEthernet,
       /*fixed_ip_params=*/false, &control_interface_, &dispatcher_, &metrics_,
-      nullptr);
+      /*network_monitor_factory=*/nullptr, /*dhcp_controller_factory=*/nullptr);
   eth_network->set_ignore_link_monitoring_for_testing(true);
 
   EXPECT_CALL(metrics_,
@@ -1219,8 +1228,8 @@ class NetworkStartTest : public NetworkTest {
           std::make_unique<net_base::NetworkConfig>(std::move(network_config)));
     }
     Network::StartOptions start_opts{
-        .dhcp = test_opts.dhcp ? std::make_optional(DHCPProvider::Options{})
-                               : std::nullopt,
+        .dhcp =
+            test_opts.dhcp ? std::make_optional(kDHCPOptions) : std::nullopt,
         .accept_ra = test_opts.accept_ra,
         .validation_mode = test_opts.enable_network_validation
                                ? NetworkMonitor::ValidationMode::kFullValidation
@@ -1238,6 +1247,7 @@ class NetworkStartTest : public NetworkTest {
         });
     network_->Start(start_opts);
     dispatcher_.task_environment().RunUntilIdle();
+    Mock::VerifyAndClearExpectations(dhcp_controller_);
   }
 
   void ConfigureStaticIPv4Config() {
@@ -1560,7 +1570,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
               OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
   // Release DHCP should be called since we have static IP now.
   EXPECT_CALL(*dhcp_controller_,
-              ReleaseIP(LegacyDHCPController::ReleaseReason::kStaticIP));
+              ReleaseIP(DHCPController::ReleaseReason::kStaticIP));
   EXPECT_CALL(*network_monitor_, Start);
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);

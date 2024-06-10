@@ -36,6 +36,7 @@
 #include "shill/logging.h"
 #include "shill/metrics.h"
 #include "shill/network/compound_network_config.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/slaac_controller.h"
@@ -89,7 +90,8 @@ std::unique_ptr<Network> Network::CreateForTesting(
     patchpanel::Client* patchpanel_client) {
   return base::WrapUnique(new Network(
       interface_index, std::string(interface_name), technology, fixed_ip_params,
-      control_interface, dispatcher, metrics, patchpanel_client));
+      control_interface, dispatcher, metrics, patchpanel_client,
+      /*dhcp_controller_factory=*/nullptr));
 }
 
 Network::Network(int interface_index,
@@ -100,6 +102,7 @@ Network::Network(int interface_index,
                  EventDispatcher* dispatcher,
                  Metrics* metrics,
                  patchpanel::Client* patchpanel_client,
+                 std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory,
                  Resolver* resolver,
                  std::unique_ptr<NetworkMonitorFactory> network_monitor_factory)
     : network_id_(next_network_id_++),
@@ -109,12 +112,12 @@ Network::Network(int interface_index,
       logging_tag_(interface_name),
       fixed_ip_params_(fixed_ip_params),
       proc_fs_(std::make_unique<net_base::ProcFsStub>(interface_name_)),
+      dhcp_controller_factory_(std::move(dhcp_controller_factory)),
       config_(logging_tag_),
       network_monitor_factory_(std::move(network_monitor_factory)),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
-      dhcp_provider_(DHCPProvider::GetInstance()),
       rtnl_handler_(net_base::RTNLHandler::GetInstance()),
       patchpanel_client_(patchpanel_client),
       resolver_(resolver) {}
@@ -187,20 +190,23 @@ void Network::Start(const Network::StartOptions& opts) {
   // of Network has been started.
   bool dhcp_started = false;
   if (opts.dhcp) {
-    auto dhcp_opts = *opts.dhcp;
+    DHCPController::Options dhcp_opts = *opts.dhcp;
     if (config_.GetStatic().ipv4_address) {
       dhcp_opts.use_arp_gateway = false;
     }
-    dhcp_controller_ = dhcp_provider_->CreateController(interface_name_,
-                                                        dhcp_opts, technology_);
-    dhcp_controller_->RegisterCallbacks(
-        base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
-        base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()));
+
     // Keep the legacy behavior that Network has a empty IPConfig if DHCP has
     // started but not succeeded/failed yet.
     ipconfig_ = std::make_unique<IPConfig>(control_interface_, interface_name_,
                                            kTypeDHCP);
-    dhcp_started = dhcp_controller_->RequestIP();
+    dhcp_controller_ = dhcp_controller_factory_->Create(
+        interface_name_, technology_, dhcp_opts,
+        base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
+        base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()));
+    dhcp_started = dhcp_controller_->RenewIP();
+    if (!dhcp_started) {
+      LOG(ERROR) << "Failed to request DHCP IP";
+    }
   }
 
   if ((config_.GetLinkProtocol() && config_.GetLinkProtocol()->ipv4_address) ||
@@ -325,8 +331,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
       state_ != State::kIdle && trigger_callback;
   bool ipconfig_changed = false;
   if (dhcp_controller_) {
-    dhcp_controller_->ReleaseIP(
-        LegacyDHCPController::ReleaseReason::kDisconnect);
+    dhcp_controller_->ReleaseIP(DHCPController::ReleaseReason::kDisconnect);
     dhcp_controller_ = nullptr;
   }
   if (ipconfig_) {
@@ -392,7 +397,7 @@ void Network::OnIPv4ConfigUpdated() {
     // available from a DHCP server and not overridden by static parameters, but
     // at the same time we avoid taking up a dynamic IP address the DHCP server
     // could assign to someone else who might actually use it.
-    dhcp_controller_->ReleaseIP(LegacyDHCPController::ReleaseReason::kStaticIP);
+    dhcp_controller_->ReleaseIP(DHCPController::ReleaseReason::kStaticIP);
   }
   if (config_.Get().ipv4_address) {
     SetupConnection(net_base::IPFamily::kIPv4, /*is_slaac=*/false);

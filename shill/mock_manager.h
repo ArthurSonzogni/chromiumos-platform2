@@ -14,6 +14,7 @@
 
 #include "shill/manager.h"
 #include "shill/mock_device_info.h"
+#include "shill/network/dhcp_controller.h"
 
 namespace shill {
 
@@ -125,7 +126,7 @@ class MockManager : public Manager {
               (const, override));
   MOCK_METHOD(void, RefreshTetheringCapabilities, (), ());
   MOCK_METHOD(void, TetheringStatusChanged, (), ());
-  MOCK_METHOD(DHCPProvider::Options,
+  MOCK_METHOD(DHCPController::Options,
               CreateDefaultDHCPOption,
               (),
               (const, override));

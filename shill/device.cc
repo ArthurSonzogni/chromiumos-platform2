@@ -42,8 +42,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/network/dhcp_provider.h"
-#include "shill/network/legacy_dhcp_controller.h"
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"
 #include "shill/refptr_types.h"

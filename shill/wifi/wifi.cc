@@ -51,7 +51,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/network/legacy_dhcp_controller.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/scope_logger.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_accessor.h"
@@ -2695,9 +2695,9 @@ void WiFi::StateChanged(const std::string& new_state) {
     } else if (has_already_completed_) {
       LOG(INFO) << link_name() << " L3 configuration already started.";
     } else {
-      auto dhcp_opts = manager()->CreateDefaultDHCPOption();
+      DHCPController::Options dhcp_opts = manager()->CreateDefaultDHCPOption();
       dhcp_opts.lease_name = GetServiceLeaseName(*affected_service);
-      Network::StartOptions opts = {
+      const Network::StartOptions opts = {
           .dhcp = dhcp_opts,
           .accept_ra = true,
           .ignore_link_monitoring = affected_service->link_monitor_disabled(),

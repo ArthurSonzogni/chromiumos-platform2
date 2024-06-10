@@ -41,13 +41,13 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
-#include "shill/network/mock_dhcp_provider.h"
-#include "shill/network/mock_legacy_dhcp_controller.h"
+#include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/supplicant_manager.h"
+#include "shill/technology.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 
@@ -110,8 +110,12 @@ class EthernetTest : public testing::Test {
   void SetUp() override {
     ethernet_->rtnl_handler_ = &rtnl_handler_;
 
-    ethernet_->GetPrimaryNetwork()->set_dhcp_provider_for_testing(
-        &dhcp_provider_);
+    auto dhcp_controller_factory =
+        std::make_unique<MockDHCPControllerFactory>();
+    dhcp_controller_factory_ = dhcp_controller_factory.get();
+    ethernet_->GetPrimaryNetwork()->set_dhcp_controller_factory_for_testing(
+        std::move(dhcp_controller_factory));
+
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
 
     ethernet_->eap_listener_.reset(eap_listener_);  // Transfers ownership.
@@ -144,7 +148,6 @@ class EthernetTest : public testing::Test {
   void TearDown() override {
     ethernet_eap_provider_.set_service(nullptr);
     ethernet_->eap_listener_.reset();
-    ethernet_->GetPrimaryNetwork()->set_dhcp_provider_for_testing(nullptr);
     Mock::VerifyAndClearExpectations(&manager_);
   }
 
@@ -269,13 +272,13 @@ class EthernetTest : public testing::Test {
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
   scoped_refptr<TestEthernet> ethernet_;
-  MockDHCPProvider dhcp_provider_;
 
   MockEthernetEapProvider ethernet_eap_provider_;
 
   // Owned by Ethernet instance, but tracked here for expectations.
   MockEapListener* eap_listener_;
   net_base::MockSocketFactory* socket_factory_;
+  MockDHCPControllerFactory* dhcp_controller_factory_;
 
   scoped_refptr<MockService> mock_eap_service_;
   std::unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
@@ -367,7 +370,7 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
   StartEthernet();
   SetLinkUp(false);
   EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateController(_, _, _)).Times(0);
+  EXPECT_CALL(*dhcp_controller_factory_, Create).Times(0);
   EXPECT_CALL(*mock_service_, SetState(_)).Times(0);
   ethernet_->ConnectTo(mock_service_.get());
   EXPECT_EQ(nullptr, GetSelectedService());
@@ -375,15 +378,16 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
 }
 
 TEST_F(EthernetTest, ConnectToSuccess) {
-  auto dhcp_controller =
-      new MockLegacyDHCPController(&control_interface_, ifname_);
   StartEthernet();
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
-  EXPECT_CALL(dhcp_provider_, CreateController(_, _, _))
-      .WillOnce(Return(
-          ByMove(std::unique_ptr<LegacyDHCPController>(dhcp_controller))));
-  EXPECT_CALL(*dhcp_controller, RequestIP()).WillOnce(Return(true));
+  EXPECT_CALL(*dhcp_controller_factory_, Create).WillOnce([this]() {
+    auto dhcp_controller = std::make_unique<MockDHCPController>(
+        nullptr, nullptr, nullptr, nullptr, ifname_, Technology::kEthernet,
+        DHCPController::Options{}, base::DoNothing(), base::DoNothing());
+    EXPECT_CALL(*dhcp_controller, RenewIP()).WillOnce(Return(true));
+    return dhcp_controller;
+  });
   EXPECT_CALL(*mock_service_, SetState(Service::kStateConfiguring));
   ethernet_->ConnectTo(mock_service_.get());
   dispatcher_.task_environment().RunUntilIdle();

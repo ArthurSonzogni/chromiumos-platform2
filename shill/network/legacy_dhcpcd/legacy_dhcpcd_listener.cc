@@ -21,8 +21,6 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/network/dhcp_client_proxy.h"
-#include "shill/network/dhcp_provider.h"
-#include "shill/network/legacy_dhcp_controller.h"
 
 namespace shill {
 namespace {

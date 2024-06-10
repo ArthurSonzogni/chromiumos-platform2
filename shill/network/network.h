@@ -31,9 +31,8 @@
 #include "shill/metrics.h"
 #include "shill/mockable.h"
 #include "shill/network/compound_network_config.h"
-#include "shill/network/dhcp_provider.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpv4_config.h"
-#include "shill/network/legacy_dhcp_controller.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/portal_detector.h"
 #include "shill/network/slaac_controller.h"
@@ -172,7 +171,7 @@ class Network : public NetworkMonitor::ClientNetwork {
   // Options for starting a network.
   struct StartOptions {
     // Start DHCP client on this interface if |dhcp| is not empty.
-    std::optional<DHCPProvider::Options> dhcp;
+    std::optional<DHCPController::Options> dhcp;
     // Accept router advertisements for IPv6.
     bool accept_ra = false;
     // The link local address for the device that would be an override of the
@@ -391,8 +390,9 @@ class Network : public NetworkMonitor::ClientNetwork {
   const IPConfig* get_ipconfig_for_testing() const { return ipconfig_.get(); }
   const IPConfig* get_ip6config_for_testing() const { return ip6config_.get(); }
   void set_fixed_ip_params_for_testing(bool val) { fixed_ip_params_ = val; }
-  void set_dhcp_provider_for_testing(DHCPProvider* provider) {
-    dhcp_provider_ = provider;
+  void set_dhcp_controller_factory_for_testing(
+      std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory) {
+    dhcp_controller_factory_ = std::move(dhcp_controller_factory);
   }
   void set_state_for_testing(State state) { state_ = state; }
   void set_primary_family_for_testing(
@@ -448,6 +448,7 @@ class Network : public NetworkMonitor::ClientNetwork {
           EventDispatcher* dispatcher,
           Metrics* metrics,
           patchpanel::Client* patchpanel_client,
+          std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory,
           Resolver* resolver = Resolver::GetInstance(),
           std::unique_ptr<NetworkMonitorFactory> network_monitor_factory =
               std::make_unique<NetworkMonitorFactory>());
@@ -491,8 +492,8 @@ class Network : public NetworkMonitor::ClientNetwork {
   // Functions for IPv4.
   // Triggers a reconfiguration on connection for an IPv4 config change.
   void OnIPv4ConfigUpdated();
-  // Callback registered with LegacyDHCPController. Also see the comment for
-  // LegacyDHCPController::UpdateCallback.
+  // Callback registered with DHCPController. Also see the comment for
+  // DHCPController::UpdateCallback.
   void OnIPConfigUpdatedFromDHCP(const net_base::NetworkConfig& network_config,
                                  const DHCPv4Config::Data& dhcp_data,
                                  bool new_lease_acquired);
@@ -564,8 +565,9 @@ class Network : public NetworkMonitor::ClientNetwork {
 
   std::unique_ptr<net_base::ProcFsStub> proc_fs_;
 
+  std::unique_ptr<DHCPControllerFactory> dhcp_controller_factory_;
   // The instance exists when the state is not at kIdle.
-  std::unique_ptr<LegacyDHCPController> dhcp_controller_;
+  std::unique_ptr<DHCPController> dhcp_controller_;
   // The instance exists when the state is not at kIdle.
   std::unique_ptr<SLAACController> slaac_controller_;
 
@@ -616,7 +618,6 @@ class Network : public NetworkMonitor::ClientNetwork {
   Metrics* metrics_;
 
   // Cache singleton pointers for performance and test purposes.
-  DHCPProvider* dhcp_provider_;
   net_base::RTNLHandler* rtnl_handler_;
   patchpanel::Client* patchpanel_client_;
   // TODO(b/240871320): /etc/resolv.conf is now managed by dnsproxy. The

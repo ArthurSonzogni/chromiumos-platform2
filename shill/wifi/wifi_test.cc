@@ -52,6 +52,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
 #include "shill/mock_time.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/store/key_value_store.h"
@@ -658,7 +659,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     static_cast<Device*>(wifi_.get())->rtnl_handler_ = &rtnl_handler_;
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
     EXPECT_CALL(manager_, CreateDefaultDHCPOption())
-        .WillRepeatedly(Return(DHCPProvider::Options{
+        .WillRepeatedly(Return(DHCPController::Options{
             .use_arp_gateway = true,
             .hostname = dhcp_hostname_,
         }));
@@ -1740,9 +1741,9 @@ TEST_F(WiFiMainTest, StartNetworkUseArpGateway) {
   InitiateConnect(service);
   ReportCurrentBSSChanged(bss_path);
 
-  const auto dhcp_matcher =
-      Optional(AllOf(Field(&DHCPProvider::Options::use_arp_gateway, true),
-                     Field(&DHCPProvider::Options::hostname, dhcp_hostname_)));
+  const auto dhcp_matcher = Optional(
+      AllOf(Field(&DHCPController::Options::use_arp_gateway, true),
+            Field(&DHCPController::Options::hostname, dhcp_hostname_)));
   EXPECT_CALL(*network(),
               Start(AllOf(Field(&Network::StartOptions::dhcp, dhcp_matcher),
                           Field(&Network::StartOptions::accept_ra, true))));

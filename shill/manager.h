@@ -33,6 +33,7 @@
 #include "shill/hook_table.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/network/network_manager.h"
 #include "shill/network/portal_detector.h"
 #include "shill/power_manager.h"
@@ -395,7 +396,7 @@ class Manager {
       const;
 
   // Creates a default DHCP Options object using the DHCP Manager properties.
-  mockable DHCPProvider::Options CreateDefaultDHCPOption() const;
+  mockable DHCPController::Options CreateDefaultDHCPOption() const;
 
   virtual void UpdateEnabledTechnologies();
   virtual void UpdateUninitializedTechnologies();

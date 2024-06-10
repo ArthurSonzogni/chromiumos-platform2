@@ -47,6 +47,7 @@
 #include "shill/dbus/supplicant_process_proxy.h"
 #include "shill/dbus/third_party_vpn_dbus_adaptor.h"
 #include "shill/dbus/upstart_proxy.h"
+#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_proxy.h"
 
 #include "shill/manager.h"
 
@@ -208,6 +209,11 @@ DBusControl::CreateSupplicantGroupProxy(
 std::unique_ptr<SupplicantPeerProxyInterface>
 DBusControl::CreateSupplicantPeerProxy(const RpcIdentifier& object_path) {
   return std::make_unique<SupplicantPeerProxy>(proxy_bus_, object_path);
+}
+
+std::unique_ptr<DHCPClientProxyFactory>
+DBusControl::CreateDHCPClientProxyFactory() {
+  return std::make_unique<LegacyDHCPCDProxyFactory>(dispatcher_, proxy_bus_);
 }
 
 std::unique_ptr<DHCPCDListenerInterface> DBusControl::CreateDHCPCDListener(

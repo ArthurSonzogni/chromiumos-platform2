@@ -6,8 +6,6 @@
 #define SHILL_DAEMON_TASK_H_
 
 #include <memory>
-#include <string>
-#include <vector>
 
 #include <base/functional/callback.h>
 #include <chromeos/net-base/netlink_manager.h>
@@ -22,7 +20,6 @@ namespace shill {
 
 class Config;
 class ControlInterface;
-class DHCPProvider;
 class Error;
 class Manager;
 class RoutingPolicyService;
@@ -75,7 +72,6 @@ class DaemonTask {
   std::unique_ptr<ControlInterface> control_;
   std::unique_ptr<Metrics> metrics_;
   net_base::RTNLHandler* rtnl_handler_;
-  DHCPProvider* dhcp_provider_;
   net_base::NetlinkManager* netlink_manager_;
   net_base::ProcessManager* process_manager_;
   std::unique_ptr<Manager> manager_;

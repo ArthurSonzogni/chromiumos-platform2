@@ -21,7 +21,9 @@ MockNetwork::MockNetwork(int interface_index,
               /*control_interface=*/nullptr,
               /*dispatcher=*/nullptr,
               /*metrics=*/nullptr,
-              /*network_applier=*/nullptr) {}
+              /*patchpanel_client=*/nullptr,
+              /*dhcp_controller_factory=*/nullptr,
+              /*resolver=*/nullptr) {}
 
 MockNetwork::~MockNetwork() = default;
 

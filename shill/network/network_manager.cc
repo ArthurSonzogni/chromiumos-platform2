@@ -12,6 +12,8 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 
+#include "shill/control_interface.h"
+
 namespace shill {
 
 NetworkManager::NetworkManager(ControlInterface* control_interface,
@@ -19,7 +21,9 @@ NetworkManager::NetworkManager(ControlInterface* control_interface,
                                Metrics* metrics)
     : control_interface_(control_interface),
       dispatcher_(dispatcher),
-      metrics_(metrics) {}
+      metrics_(metrics),
+      dhcp_client_proxy_factory_(
+          control_interface_->CreateDHCPClientProxyFactory()) {}
 NetworkManager::~NetworkManager() = default;
 
 std::unique_ptr<Network> NetworkManager::CreateNetwork(
@@ -30,7 +34,10 @@ std::unique_ptr<Network> NetworkManager::CreateNetwork(
     patchpanel::Client* patchpanel_client) {
   auto network = base::WrapUnique(new Network(
       interface_index, std::string(interface_name), technology, fixed_ip_params,
-      control_interface_, dispatcher_, metrics_, patchpanel_client));
+      control_interface_, dispatcher_, metrics_, patchpanel_client,
+      std::make_unique<DHCPControllerFactory>(
+          dispatcher_, metrics_, Time::GetInstance(),
+          dhcp_client_proxy_factory_.get())));
   network->SetCapportEnabled(capport_enabled_);
   network->RegisterEventHandler(this);
   alive_networks_.insert(std::make_pair(network->network_id(), network.get()));

@@ -24,7 +24,6 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mojom/mock_shill_mojo_service_manager.h"
-#include "shill/network/mock_dhcp_provider.h"
 #include "shill/shill_test_config.h"
 #include "shill/supplicant/supplicant_manager.h"
 #include "shill/test_event_dispatcher.h"
@@ -77,7 +76,6 @@ class DaemonTaskTest : public Test {
   void SetUp() override {
     // Tests initialization done by the daemon's constructor
     daemon_.rtnl_handler_ = &rtnl_handler_;
-    daemon_.dhcp_provider_ = &dhcp_provider_;
     daemon_.process_manager_ = &process_manager_;
     daemon_.metrics_.reset(metrics_);        // Passes ownership
     daemon_.manager_.reset(manager_);        // Passes ownership
@@ -105,7 +103,6 @@ class DaemonTaskTest : public Test {
   TestConfig config_;
   DaemonTaskForTest daemon_;
   net_base::MockRTNLHandler rtnl_handler_;
-  MockDHCPProvider dhcp_provider_;
   net_base::MockProcessManager process_manager_;
   EventDispatcherForTest* dispatcher_;
   MockControl* control_;
@@ -130,7 +127,6 @@ TEST_F(DaemonTaskTest, StartStop) {
     EXPECT_CALL(rtnl_handler_, Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR |
                                      RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_IFADDR |
                                      RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
-    EXPECT_CALL(dhcp_provider_, Init(_, _, _));
     EXPECT_CALL(process_manager_, Init());
     EXPECT_CALL(netlink_manager_, Init());
     EXPECT_CALL(netlink_manager_,

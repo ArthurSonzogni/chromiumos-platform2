@@ -64,6 +64,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/network/network_manager.h"
 #include "shill/network/network_monitor.h"
 #include "shill/ppp_daemon.h"
@@ -4469,7 +4470,7 @@ bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
     ipv6_configured = true;
   }
 
-  std::optional<DHCPProvider::Options> dhcp_opts;
+  std::optional<DHCPController::Options> dhcp_opts;
   if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kStatic) {
     SLOG(2) << LoggingTag()
             << ": Assign static IPv4 configuration from bearer.";

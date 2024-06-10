@@ -26,6 +26,7 @@ class DBusPropertiesProxy;
 class DebugdProxyInterface;
 class Device;
 class DeviceAdaptorInterface;
+class DHCPClientProxyFactory;
 class DHCPCDListenerInterface;
 class DHCPProvider;
 class DHCPProxyInterface;
@@ -130,6 +131,9 @@ class ControlInterface {
   virtual std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() = 0;
 
   virtual std::unique_ptr<DebugdProxyInterface> CreateDebugdProxy() = 0;
+
+  virtual std::unique_ptr<DHCPClientProxyFactory>
+  CreateDHCPClientProxyFactory() = 0;
 
   virtual std::unique_ptr<DHCPCDListenerInterface> CreateDHCPCDListener(
       DHCPProvider* provider) = 0;

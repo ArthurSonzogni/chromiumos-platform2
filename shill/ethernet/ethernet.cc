@@ -42,6 +42,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
 #include "shill/store/property_accessor.h"
@@ -255,7 +256,7 @@ void Ethernet::ConnectTo(EthernetService* service) {
     return;
   }
   SelectService(service);
-  auto dhcp_opts = manager()->CreateDefaultDHCPOption();
+  DHCPController::Options dhcp_opts = manager()->CreateDefaultDHCPOption();
   dhcp_opts.use_arp_gateway = false;
   Network::StartOptions opts = {
       .dhcp = dhcp_opts,

@@ -125,9 +125,6 @@ class TestDevice : public Device {
 class DeviceTest : public testing::Test {
  public:
   DeviceTest() : manager_(control_interface(), dispatcher(), metrics()) {
-    DHCPProvider::GetInstance()->control_interface_ = control_interface();
-    DHCPProvider::GetInstance()->dispatcher_ = dispatcher();
-
     auto client = std::make_unique<patchpanel::FakeClient>();
     patchpanel_client_ = client.get();
     manager_.patchpanel_client_ = std::move(client);

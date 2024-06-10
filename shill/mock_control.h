@@ -27,6 +27,7 @@
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/debugd_proxy_interface.h"
+#include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/dhcp_proxy_interface.h"
 #include "shill/network/dhcpcd_listener_interface.h"
 #include "shill/power_manager_proxy_interface.h"
@@ -54,8 +55,8 @@ class MockControl : public ControlInterface {
   ~MockControl() override;
 
   void RegisterManagerObject(
-      Manager* manager,
-      base::OnceClosure registration_done_callback) override{};
+      Manager* manager, base::OnceClosure registration_done_callback) override {
+  }
 
   // Each of these can be called once.  Ownership of the appropriate
   // interface pointer is given up upon call.
@@ -110,6 +111,11 @@ class MockControl : public ControlInterface {
   MOCK_METHOD(std::unique_ptr<SupplicantPeerProxyInterface>,
               CreateSupplicantPeerProxy,
               (const RpcIdentifier&),
+              (override));
+
+  MOCK_METHOD(std::unique_ptr<DHCPClientProxyFactory>,
+              CreateDHCPClientProxyFactory,
+              (),
               (override));
   std::unique_ptr<DHCPCDListenerInterface> CreateDHCPCDListener(
       DHCPProvider*) override {

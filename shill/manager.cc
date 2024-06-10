@@ -64,6 +64,7 @@
 #include "shill/hook_table.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/network/dhcp_controller.h"
 #include "shill/network/network.h"
 #include "shill/network/network_manager.h"
 #include "shill/network/throttler.h"
@@ -1117,8 +1118,8 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
   }
 }
 
-DHCPProvider::Options Manager::CreateDefaultDHCPOption() const {
-  return DHCPProvider::Options{
+DHCPController::Options Manager::CreateDefaultDHCPOption() const {
+  return DHCPController::Options{
       .use_arp_gateway = props_.arp_gateway,
       .use_rfc_8925 = props_.enable_rfc_8925,
       .apply_dscp = props_.enable_dhcp_qos,

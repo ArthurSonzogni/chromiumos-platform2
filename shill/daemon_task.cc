@@ -23,7 +23,6 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mojom/shill_mojo_service_manager.h"
-#include "shill/network/dhcp_provider.h"
 #include "shill/shill_config.h"
 #include "shill/wifi/nl80211_message.h"
 
@@ -40,7 +39,6 @@ static auto kModuleLogScope = ScopeLogger::kDaemon;
 DaemonTask::DaemonTask(Config* config)
     : config_(config),
       rtnl_handler_(nullptr),
-      dhcp_provider_(nullptr),
       netlink_manager_(nullptr),
       process_manager_(nullptr) {}
 
@@ -65,7 +63,6 @@ void DaemonTask::Init() {
   control_ = std::make_unique<DBusControl>(dispatcher_.get());
   metrics_ = std::make_unique<Metrics>();
   rtnl_handler_ = net_base::RTNLHandler::GetInstance();
-  dhcp_provider_ = DHCPProvider::GetInstance();
   process_manager_ = net_base::ProcessManager::GetInstance();
   netlink_manager_ = net_base::NetlinkManager::GetInstance();
   manager_ = std::make_unique<Manager>(
@@ -116,7 +113,6 @@ void DaemonTask::Start() {
   rtnl_handler_->Start(RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
                        RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
                        RTMGRP_ND_USEROPT);
-  dhcp_provider_->Init(control_.get(), dispatcher_.get(), metrics_.get());
   process_manager_->Init();
   // Note that net_base::NetlinkManager initialization is not necessarily
   // WiFi-specific. It just happens that we currently only use
@@ -140,7 +136,6 @@ void DaemonTask::Stop() {
   mojo_service_manager_ = nullptr;
   manager_->Stop();
   manager_ = nullptr;  // Release manager resources, including DBus adaptor.
-  dhcp_provider_->Stop();
   process_manager_->Stop();
   metrics_ = nullptr;
   // Must retain |control_|, as the D-Bus library may

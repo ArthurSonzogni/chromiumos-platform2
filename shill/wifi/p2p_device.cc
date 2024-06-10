@@ -23,7 +23,6 @@
 
 #include "shill/control_interface.h"
 #include "shill/manager.h"
-#include "shill/network/legacy_dhcp_controller.h"
 #include "shill/network/network.h"
 #include "shill/network/network_manager.h"
 #include "shill/network/network_monitor.h"
@@ -905,9 +904,8 @@ void P2PDevice::AcquireClientIP() {
     client_network_->RegisterEventHandler(this);
   }
 
-  auto dhcp_opts = manager()->CreateDefaultDHCPOption();
-  Network::StartOptions opts = {
-      .dhcp = dhcp_opts,
+  const Network::StartOptions opts = {
+      .dhcp = manager()->CreateDefaultDHCPOption(),
       .accept_ra = true,
       .ignore_link_monitoring = true,
       // TODO(b/314693271) omit probing_configuration when validation mode is
