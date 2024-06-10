@@ -30,10 +30,10 @@ For help using the MVP CSS/HTML checkout the following resources:
     </style>
 
     <meta charset="utf-8">
-    <meta name="description" content="Fingerprint performance analysis for the FPC1025.">
+    <meta name="description" content="{{overall.find('info').get('description')}}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>FPC1025</title>
+    <title>{{overall.find("info").get("name")}}</title>
 
     <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
     <script src="assets/plotly.min.js"></script>
@@ -67,7 +67,7 @@ For help using the MVP CSS/HTML checkout the following resources:
             </ul>
         </nav>
 
-        <h1>Fingerprint Performance Analysis for FPC1025</h1>
+        <h1>{{overall.find("info").get("title")}}</h1>
         <p>
             Chrome OS Fingerprint Team
             (<a href="mailto:chromeos-fingerprint@google.com">

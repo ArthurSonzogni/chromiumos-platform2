@@ -298,8 +298,13 @@ class Section(Element):
 
 class Report2:
     def __init__(
-        self, out_dir_path: Path, template_dir_path: Path = Path("templates")
+        self,
+        out_dir_path: Path,
+        template_dir_path: Path = Path("templates"),
+        name: str = "Unnamed Evaluation",
     ):
+        self._name = name
+
         self._path_out_dir = out_dir_path
         self._path_out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -338,12 +343,18 @@ class Report2:
             )
 
         self._root = Section(
-            # 'Report',
             str(out_dir_path),
-            "Performance analysis for the FPC1025.",
+            "",
         )
         self._test_cases = self._root.add_subsection("TestCases")
         self._overall = self._root.add_subsection("Overall")
+        info = self._overall.add_data("info")
+        info.set("name", self._name)
+        info.set("title", f"Fingerprint Performance Analysis for {self._name}")
+        info.set(
+            "description",
+            f"Fingerprint performance analysis for the {self._name}.",
+        )
 
     def write_plotlyjs(self, out_dir: Path) -> None:
         # https://plotly.com/python-api-reference/generated/plotly.io.to_html.html

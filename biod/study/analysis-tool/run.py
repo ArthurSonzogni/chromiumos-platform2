@@ -442,6 +442,7 @@ def cmd_analyze(opts: argparse.Namespace) -> int:
 def cmd_report(opts: argparse.Namespace) -> int:
     """Conduct a full analysis of all test cases and generate a final report."""
     user_groups_csv: Optional[pathlib.Path] = opts.user_groups_csv
+    name: str = opts.name
     testcases_decisions_dir: pathlib.Path = opts.testcases_decisions_dir
     analysis_dir: pathlib.Path = opts.analysis_dir
 
@@ -450,7 +451,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     analysis_dir.mkdir(exist_ok=True)
     source_dir = pathlib.Path(__file__).parent
-    rpt = Report2(analysis_dir, source_dir / "templates")
+    rpt = Report2(analysis_dir, source_dir / "templates", name)
 
     ################# Import Data From BET Results #################
 
@@ -1013,6 +1014,12 @@ def main(argv: list[str]) -> int:
         type=pathlib.Path,
         help="Path to the user-group mapping CSV file. "
         "(default: <testcases_decisions_dir>/user_groups.csv).",
+    )
+    parser_report.add_argument(
+        "--name",
+        default="Unnamed Evaluation",
+        help="The name of the evaluation target, like 'FPC1025'. "
+        "(default: Unnamed Evaluation).",
     )
     parser_report.add_argument(
         "testcases_decisions_dir",
