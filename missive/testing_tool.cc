@@ -60,6 +60,8 @@ class DBusSender {
     ASSIGN_OR_ONCE_CALLBACK_AND_RETURN(Destination destination, cb,
                                        DecodeDestination(destination_string));
     Record record;
+    record.set_timestamp_us(base::Time::Now().InMillisecondsSinceUnixEpoch() *
+                            base::Time::kMicrosecondsPerMillisecond);
     record.set_destination(destination);
     record.mutable_data()->assign(event_string);
     (new RunAndRetryIfNeeded(
