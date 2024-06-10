@@ -309,5 +309,86 @@ class Test_Experiment_User_Groups(unittest.TestCase):
         self.assertTrue(user_groups.equals(self.USER_GROUPS_TABLE))
 
 
+class Test_Experiment_check(unittest.TestCase):
+    """Test the consistence `check` function of `Experiment`."""
+
+    FAR_DATAFRAME = pd.DataFrame(
+        {
+            Experiment.TableCol.Enroll_User.value: [10001, 10001],
+            Experiment.TableCol.Enroll_Finger.value: [1, 1],
+            Experiment.TableCol.Verify_User.value: [10002, 10002],
+            Experiment.TableCol.Verify_Finger.value: [3, 3],
+            Experiment.TableCol.Verify_Sample.value: [12, 13],
+            Experiment.TableCol.Decision.value: [
+                Experiment.Decision.Reject.value,
+                Experiment.Decision.Reject.value,
+            ],
+            Experiment.TableCol.Enroll_Group.value: ["A", "A"],
+            Experiment.TableCol.Verify_Group.value: ["B", "B"],
+        }
+    )
+
+    FRR_DATAFRAME = pd.DataFrame(
+        {
+            Experiment.TableCol.Enroll_User.value: [10001, 10002],
+            Experiment.TableCol.Enroll_Finger.value: [1, 2],
+            Experiment.TableCol.Verify_User.value: [10001, 10002],
+            Experiment.TableCol.Verify_Finger.value: [1, 2],
+            Experiment.TableCol.Verify_Sample.value: [25, 25],
+            Experiment.TableCol.Decision.value: [
+                Experiment.Decision.Accept.value,
+                Experiment.Decision.Accept.value,
+            ],
+            Experiment.TableCol.Enroll_Group.value: ["A", "B"],
+            Experiment.TableCol.Verify_Group.value: ["A", "B"],
+        }
+    )
+
+    def test_correct_with_groups(self):
+        """Test the check method when both FAR and FRR tables are correct."""
+        exp = Experiment(
+            far_decisions=self.FAR_DATAFRAME,
+            frr_decisions=self.FRR_DATAFRAME,
+        )
+        exp.check()
+
+    def test_correct_without_groups(self):
+        """Test the check method when both FAR and FRR tables are correct."""
+        exp = Experiment(
+            far_decisions=self.FAR_DATAFRAME.drop(
+                columns=Experiment.DECISION_TABLE_GROUP_COLS
+            ),
+            frr_decisions=self.FRR_DATAFRAME.drop(
+                columns=Experiment.DECISION_TABLE_GROUP_COLS
+            ),
+        )
+        exp.check()
+
+    def test_partial_groups(self):
+        """Test that only one group column existing is detected."""
+        exp = Experiment(
+            far_decisions=self.FAR_DATAFRAME.drop(
+                columns=[Experiment.TableCol.Enroll_Group.value]
+            )
+        )
+        with self.assertRaises(TypeError):
+            exp.check()
+
+    def test_far_table_contains_frr(self):
+        """Test that FRR attempts are detected in FAR table."""
+        exp = Experiment(
+            far_decisions=pd.concat([self.FAR_DATAFRAME, self.FRR_DATAFRAME])
+        )
+        with self.assertRaises(ValueError):
+            exp.check()
+
+    def test_frr_table_contains_far(self):
+        """Test that FAR attempts are detected in FRR table."""
+        exp = Experiment(
+            frr_decisions=pd.concat([self.FRR_DATAFRAME, self.FAR_DATAFRAME])
+        )
+        with self.assertRaises(ValueError):
+            exp.check()
+
 if __name__ == "__main__":
     unittest.main()

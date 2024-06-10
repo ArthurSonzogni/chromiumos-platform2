@@ -400,6 +400,7 @@ def cmd_analyze(opts: argparse.Namespace) -> int:
     exp = Experiment()
     exp.add_far_decisions_from_csv(far_decisions_file)
     exp.add_frr_decisions_from_csv(frr_decisions_file)
+    exp.check()
 
     far_boot = bootstrap.BootstrapFullFARHierarchy(exp, verbose=True)
     far_boot_results = far_boot.run(
@@ -486,6 +487,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     for tc in exps:
         exps[tc].add_groups_from_csv(user_groups_csv)
+        exps[tc].check()
 
     ################# Generate Report Test cases #################
 

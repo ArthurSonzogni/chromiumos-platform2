@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from enum import Enum
 import pathlib
-from typing import Optional
+from typing import Literal, Optional
 
 from collection import Collection
 import fpsutils
@@ -539,6 +539,94 @@ class Experiment:
         )
         user_groups.sort_values(Experiment.TableCol.User.value, inplace=True)
         self.add_groups(user_groups)
+
+    def check(self) -> None:
+        """Check for consistency between tables and study parameters.
+
+        - A decisions table should either not have any group information or
+          both Enroll and Verify group columns must exist.
+        - It is okay for one decisions table to contain groups and the other
+          missing groups. This is considered a correct in-between state that
+          will be adjusted the next time the table without groups is accessed.
+        - The FAR table should not include "genuine" FRR matches.
+        - The FRR table should not include "imposter" FAR matches.
+
+        Raises an exception if an inconsistency is found.
+        """
+
+        def check_decisions(tbl: pd.DataFrame, name: Literal["FAR", "FRR"]):
+            """Check basic decisions table properties, like columns."""
+            if not fpsutils.has_columns(tbl, Experiment.DECISION_TABLE_COLS):
+                raise TypeError(
+                    f"{name} decision table is missing some required columns."
+                )
+
+            # If one of the Enroll/Verify group columns is present, then the
+            # other must be present.
+            grps = set(tbl.columns) & set(Experiment.DECISION_TABLE_GROUP_COLS)
+            if len(grps) == 1:
+                raise TypeError(
+                    f"{name} decision table is missing one group column."
+                )
+
+        if self.has_far_decisions():
+            assert self._tbl_far_decisions is not None
+            far = self._tbl_far_decisions
+
+            check_decisions(far, "FAR")
+
+            # FAR table should not contain any match attempts against the
+            # finger's own template, where Enroll User+Finger equals
+            # Verify User+Finger.
+
+            bad_fa_attempts = far.loc[
+                (
+                    far[Experiment.TableCol.Enroll_User.value]
+                    == far[Experiment.TableCol.Verify_User.value]
+                )
+                & (
+                    far[Experiment.TableCol.Enroll_Finger.value]
+                    == far[Experiment.TableCol.Verify_Finger.value]
+                )
+            ]
+            if len(bad_fa_attempts) > 0:
+                print(
+                    f"Found {len(bad_fa_attempts)} FRR match attempts in FAR "
+                    "decisions table."
+                )
+                print("Example:")
+                # Pass array to iloc to ensure it prints out as table row,
+                # instead of vertical single item series.
+                print(bad_fa_attempts.iloc[[0]])
+                raise ValueError("FAR table contains genuine match attempts.")
+
+        if self.has_frr_decisions():
+            assert self._tbl_frr_decisions is not None
+            frr = self._tbl_frr_decisions
+
+            check_decisions(frr, "FRR")
+
+            # FRR table should not contain any imposter matches, where the
+            # Verify User+Finger doesn't equal Enroll USer+Finger.
+
+            bad_fr_attempts = frr.loc[
+                (
+                    frr[Experiment.TableCol.Enroll_User.value]
+                    != frr[Experiment.TableCol.Verify_User.value]
+                )
+                & (
+                    frr[Experiment.TableCol.Enroll_Finger.value]
+                    != frr[Experiment.TableCol.Verify_Finger.value]
+                )
+            ]
+            if len(bad_fr_attempts) > 0:
+                print(
+                    f"Found {len(bad_fr_attempts)} FAR match attempts in FRR "
+                    "decisions table."
+                )
+                print("Example:")
+                print(bad_fr_attempts.iloc[[0]])
+                raise ValueError("FRR table contains imposter match attempts.")
 
 
 def _add_groups_to_table(
