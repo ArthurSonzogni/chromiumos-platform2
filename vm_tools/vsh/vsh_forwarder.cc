@@ -489,18 +489,43 @@ void VshForwarder::PrepareExec(
   }
 }
 
+void VshForwarder::SendAllData(int fd, StdioStream stream_type) {
+  char buf[kMaxDataSize];
+  HostMessage host_message;
+  DataMessage* data_message = host_message.mutable_data_message();
+
+  while (true) {
+    ssize_t count = HANDLE_EINTR(read(fd, buf, sizeof(buf)));
+    if (count <= 0) {
+      if (count < 0) {
+        PLOG(ERROR) << "Failed to read from stdio";
+      }
+      break;
+    }
+
+    data_message->set_stream(stream_type);
+    data_message->set_data(buf, count);
+
+    if (!SendMessage(sock_fd_.get(), host_message)) {
+      LOG(ERROR) << "Failed to forward stdio to host";
+      break;
+    }
+  }
+}
+
 // Handler for SIGCHLD received in the forwarder process, indicating that
 // the target process has exited and the forwarder should shut down.
 bool VshForwarder::HandleSigchld(const struct signalfd_siginfo& siginfo) {
   exit_code_ = siginfo.ssi_status;
-  exit_pending_ = true;
 
-  // There's no output to flush, so it's safe to quit.
-  if (!stdout_watcher_ && !stderr_watcher_) {
-    SendExitMessage();
-    return true;
+  if (interactive_) {
+    SendAllData(ptm_fd_.get(), STDOUT_STREAM);
+  } else {
+    SendAllData(stdio_pipes_[STDERR_FILENO].get(), STDERR_STREAM);
+    SendAllData(stdio_pipes_[STDOUT_FILENO].get(), STDOUT_STREAM);
   }
 
+  SendExitMessage();
   return true;
 }
 
@@ -508,10 +533,6 @@ bool VshForwarder::HandleSigchld(const struct signalfd_siginfo& siginfo) {
 void VshForwarder::HandleVsockReadable() {
   GuestMessage guest_message;
   if (!RecvMessage(sock_fd_.get(), &guest_message)) {
-    if (exit_pending_) {
-      Shutdown();
-      return;
-    }
     PLOG(ERROR) << "Failed to receive message from client";
     Shutdown();
     return;
@@ -633,9 +654,6 @@ void VshForwarder::HandleTargetReadable(int fd, StdioStream stream_type) {
     // treat that as an error. We'll shut down normally with the SIGCHLD that
     // will be processed later.
     if (errno == EAGAIN || errno == EIO) {
-      if (exit_pending_) {
-        SendExitMessage();
-      }
       return;
     }
     PLOG(ERROR) << "Failed to read from stdio";
@@ -646,14 +664,6 @@ void VshForwarder::HandleTargetReadable(int fd, StdioStream stream_type) {
       stdout_watcher_ = nullptr;
     } else {
       stderr_watcher_ = nullptr;
-    }
-
-    // Only exit if we got SIGCHLD and all output is flushed to the host.
-    if (exit_pending_) {
-      if (!stdout_watcher_ && !stderr_watcher_) {
-        SendExitMessage();
-        return;
-      }
     }
   }
 

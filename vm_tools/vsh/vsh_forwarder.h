@@ -55,6 +55,8 @@ class VshForwarder {
 
   void SendExitMessage();
 
+  void SendAllData(int fd, StdioStream stream_type);
+
   // FDs (`stdio_pipes_`, `ptm_fd_` and `sock_fd_`) must be declared before
   // watchers (`stdout_watcher_`, `stderr_watcher_` and `socket_watcher_`)
   // because the formers need to outlive the latters.
@@ -70,7 +72,6 @@ class VshForwarder {
   brillo::AsynchronousSignalHandler signal_handler_;
 
   pid_t target_pid_;
-  bool exit_pending_ = false;
   int exit_code_;
   const std::string default_user_;
   const bool allow_to_switch_user_;
