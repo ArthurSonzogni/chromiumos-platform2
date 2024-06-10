@@ -32,10 +32,10 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpv4_config.h"
-#include "shill/network/mock_dhcp_controller.h"
+#include "shill/network/legacy_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
+#include "shill/network/mock_legacy_dhcp_controller.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/mock_network_monitor.h"
 #include "shill/network/mock_slaac_controller.h"
@@ -196,12 +196,13 @@ class NetworkTest : public ::testing::Test {
 
   // Expects calling CreateController() on DHCPProvider, and the following
   // RequestIP() call will return |request_ip_result|. The pointer to the
-  // returned DHCPController will be stored in |dhcp_controller_|.
+  // returned LegacyDHCPController will be stored in |dhcp_controller_|.
   void ExpectCreateDHCPController(bool request_ip_result) {
     EXPECT_CALL(dhcp_provider_, CreateController)
         .WillOnce(InvokeWithoutArgs([request_ip_result, this]() {
-          auto controller = std::make_unique<NiceMock<MockDHCPController>>(
-              &control_interface_, kTestIfname);
+          auto controller =
+              std::make_unique<NiceMock<MockLegacyDHCPController>>(
+                  &control_interface_, kTestIfname);
           EXPECT_CALL(*controller, RequestIP())
               .WillOnce(Return(request_ip_result));
           dhcp_controller_ = controller.get();
@@ -256,7 +257,7 @@ class NetworkTest : public ::testing::Test {
   std::unique_ptr<NiceMock<NetworkInTest>> network_;
 
   // Variables owned by |network_|. Not guaranteed valid even if it's not null.
-  MockDHCPController* dhcp_controller_ = nullptr;
+  MockLegacyDHCPController* dhcp_controller_ = nullptr;
   MockSLAACController* slaac_controller_ = nullptr;
   net_base::MockProcFsStub* proc_fs_ = nullptr;
   MockNetworkMonitorFactory* network_monitor_factory_ = nullptr;
@@ -432,14 +433,14 @@ TEST_F(NetworkTest, EnableIPv6FlagsLinkProtocol) {
 }
 
 // Verifies that the DHCP options in Network::Start() is properly used when
-// creating the DHCPController.
+// creating the LegacyDHCPController.
 TEST_F(NetworkTest, DHCPOptions) {
   constexpr char kHostname[] = "hostname";
   constexpr char kLeaseName[] = "lease-name";
 
   ON_CALL(dhcp_provider_, CreateController)
       .WillByDefault(InvokeWithoutArgs([this]() {
-        return std::make_unique<NiceMock<MockDHCPController>>(
+        return std::make_unique<NiceMock<MockLegacyDHCPController>>(
             &control_interface_, kTestIfname);
       }));
 
@@ -1593,7 +1594,7 @@ TEST_F(NetworkStartTest, IPv4OnlyDHCPWithStaticIP) {
               OnIPv4ConfiguredWithDHCPLease(network_->interface_index()));
   // Release DHCP should be called since we have static IP now.
   EXPECT_CALL(*dhcp_controller_,
-              ReleaseIP(DHCPController::ReleaseReason::kStaticIP));
+              ReleaseIP(LegacyDHCPController::ReleaseReason::kStaticIP));
   EXPECT_CALL(*network_monitor_, Start);
   TriggerDHCPUpdateCallback();
   EXPECT_EQ(network_->state(), Network::State::kConnected);

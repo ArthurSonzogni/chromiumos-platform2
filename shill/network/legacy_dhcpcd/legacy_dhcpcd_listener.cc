@@ -20,9 +20,9 @@
 #include <dbus/util.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
 #include "shill/network/dhcpcd_controller_interface.h"
+#include "shill/network/legacy_dhcp_controller.h"
 
 namespace shill {
 namespace {

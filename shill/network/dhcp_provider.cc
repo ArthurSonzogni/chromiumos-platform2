@@ -23,8 +23,8 @@
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcpcd_listener_interface.h"
+#include "shill/network/legacy_dhcp_controller.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -75,24 +75,24 @@ void DHCPProvider::Stop() {
   controllers_.clear();
 }
 
-std::unique_ptr<DHCPController> DHCPProvider::CreateController(
+std::unique_ptr<LegacyDHCPController> DHCPProvider::CreateController(
     const std::string& device_name,
     const Options& opts,
     Technology technology) {
   SLOG(2) << __func__ << " device: " << device_name;
-  return std::make_unique<DHCPController>(control_interface_, dispatcher_, this,
-                                          device_name, opts, technology,
-                                          metrics_);
+  return std::make_unique<LegacyDHCPController>(control_interface_, dispatcher_,
+                                                this, device_name, opts,
+                                                technology, metrics_);
 }
 
-DHCPController* DHCPProvider::GetController(int pid) {
+LegacyDHCPController* DHCPProvider::GetController(int pid) {
   SLOG(2) << __func__ << " pid: " << pid;
   const auto it = controllers_.find(pid);
   if (it == controllers_.end()) {
     return nullptr;
   }
   if (!it->second) {
-    LOG(DFATAL) << "DHCPController bound to pid=" << pid
+    LOG(DFATAL) << "LegacyDHCPController bound to pid=" << pid
                 << " has been destructed";
     UnbindPID(pid);
     return nullptr;
@@ -100,7 +100,8 @@ DHCPController* DHCPProvider::GetController(int pid) {
   return it->second.get();
 }
 
-void DHCPProvider::BindPID(int pid, base::WeakPtr<DHCPController> controller) {
+void DHCPProvider::BindPID(int pid,
+                           base::WeakPtr<LegacyDHCPController> controller) {
   SLOG(2) << __func__ << " pid: " << pid;
   controllers_[pid] = std::move(controller);
 }

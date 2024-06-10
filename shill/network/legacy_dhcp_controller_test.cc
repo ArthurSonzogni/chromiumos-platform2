@@ -1,8 +1,8 @@
-// Copyright 2018 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/dhcp_controller.h"
+#include "shill/network/legacy_dhcp_controller.h"
 
 #include <map>
 #include <memory>
@@ -62,22 +62,22 @@ MATCHER_P(IsWeakPtrTo, address, "") {
 }
 }  // namespace
 
-class DHCPControllerTest : public ::testing::Test {
+class LegacyDHCPControllerTest : public ::testing::Test {
  public:
-  DHCPControllerTest()
+  LegacyDHCPControllerTest()
       : proxy_(new MockDHCPProxy()),
-        controller_(new DHCPController(&control_interface_,
-                                       &dispatcher_,
-                                       &provider_,
-                                       kDeviceName,
-                                       DHCPController::Options{
-                                           .use_arp_gateway = kArpGateway,
-                                           .use_rfc_8925 = kEnableRFC8925,
-                                           .lease_name = kLeaseFileSuffix,
-                                           .hostname = kHostName,
-                                       },
-                                       Technology::kUnknown,
-                                       &metrics_)) {
+        controller_(new LegacyDHCPController(&control_interface_,
+                                             &dispatcher_,
+                                             &provider_,
+                                             kDeviceName,
+                                             LegacyDHCPController::Options{
+                                                 .use_arp_gateway = kArpGateway,
+                                                 .use_rfc_8925 = kEnableRFC8925,
+                                                 .lease_name = kLeaseFileSuffix,
+                                                 .hostname = kHostName,
+                                             },
+                                             Technology::kUnknown,
+                                             &metrics_)) {
     controller_->time_ = &time_;
     controller_->process_manager_ = &process_manager_;
   }
@@ -128,11 +128,11 @@ class DHCPControllerTest : public ::testing::Test {
 
   // Resets |controller_| to an instance initiated with the given parameters,
   // which can be used in the tests for verifying parameters to invoke minijail.
-  void CreateMockMinijailConfig(DHCPController::Options options,
+  void CreateMockMinijailConfig(LegacyDHCPController::Options options,
                                 Technology technology = Technology::kUnknown) {
-    controller_.reset(new DHCPController(&control_interface_, &dispatcher_,
-                                         &provider_, kDeviceName, options,
-                                         technology, &metrics_));
+    controller_.reset(
+        new LegacyDHCPController(&control_interface_, &dispatcher_, &provider_,
+                                 kDeviceName, options, technology, &metrics_));
     controller_->process_manager_ = &process_manager_;
   }
 
@@ -144,12 +144,12 @@ class DHCPControllerTest : public ::testing::Test {
   std::unique_ptr<MockDHCPProxy> proxy_;
   net_base::MockProcessManager process_manager_;
   MockTime time_;
-  std::unique_ptr<DHCPController> controller_;
+  std::unique_ptr<LegacyDHCPController> controller_;
   MockDHCPProvider provider_;
   MockMetrics metrics_;
 };
 
-TEST_F(DHCPControllerTest, InitProxy) {
+TEST_F(LegacyDHCPControllerTest, InitProxy) {
   static const char kService[] = ":1.200";
   EXPECT_NE(nullptr, proxy_);
   EXPECT_EQ(nullptr, controller_->proxy_);
@@ -162,7 +162,7 @@ TEST_F(DHCPControllerTest, InitProxy) {
   controller_->InitProxy(kService);
 }
 
-TEST_F(DHCPControllerTest, StartFail) {
+TEST_F(LegacyDHCPControllerTest, StartFail) {
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(-1));
   EXPECT_FALSE(controller_->Start());
@@ -170,8 +170,8 @@ TEST_F(DHCPControllerTest, StartFail) {
 }
 
 // Creates a Options object containing the default values in the tests.
-DHCPController::Options BuildDefaultOptions() {
-  return DHCPController::Options{
+LegacyDHCPController::Options BuildDefaultOptions() {
+  return LegacyDHCPController::Options{
       .use_arp_gateway = kArpGateway,
       .use_rfc_8925 = kEnableRFC8925,
       .apply_dscp = kEnableDSCP,
@@ -202,7 +202,7 @@ std::vector<std::string> BuildExpectedDHCPCDArgs(bool has_hostname,
   return ret;
 }
 
-TEST_F(DHCPControllerTest, StartWithoutLeaseSuffix) {
+TEST_F(LegacyDHCPControllerTest, StartWithoutLeaseSuffix) {
   auto opts = BuildDefaultOptions();
   opts.lease_name = kDeviceName;
   CreateMockMinijailConfig(opts);
@@ -216,7 +216,7 @@ TEST_F(DHCPControllerTest, StartWithoutLeaseSuffix) {
   EXPECT_FALSE(StartInstance());
 }
 
-TEST_F(DHCPControllerTest, StartWithHostname) {
+TEST_F(LegacyDHCPControllerTest, StartWithHostname) {
   CreateMockMinijailConfig(BuildDefaultOptions());
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(
@@ -228,7 +228,7 @@ TEST_F(DHCPControllerTest, StartWithHostname) {
   EXPECT_FALSE(StartInstance());
 }
 
-TEST_F(DHCPControllerTest, StartWithEmptyHostname) {
+TEST_F(LegacyDHCPControllerTest, StartWithEmptyHostname) {
   auto opts = BuildDefaultOptions();
   opts.hostname = "";
   CreateMockMinijailConfig(opts);
@@ -242,7 +242,7 @@ TEST_F(DHCPControllerTest, StartWithEmptyHostname) {
   EXPECT_FALSE(StartInstance());
 }
 
-TEST_F(DHCPControllerTest, StartWithoutArpGateway) {
+TEST_F(LegacyDHCPControllerTest, StartWithoutArpGateway) {
   auto opts = BuildDefaultOptions();
   opts.use_arp_gateway = false;
   CreateMockMinijailConfig(opts);
@@ -256,7 +256,7 @@ TEST_F(DHCPControllerTest, StartWithoutArpGateway) {
   EXPECT_FALSE(StartInstance());
 }
 
-TEST_F(DHCPControllerTest, StartWithDSCPOnWiFi) {
+TEST_F(LegacyDHCPControllerTest, StartWithDSCPOnWiFi) {
   auto opts = BuildDefaultOptions();
   opts.apply_dscp = true;
   CreateMockMinijailConfig(opts, Technology::kWiFi);
@@ -270,7 +270,7 @@ TEST_F(DHCPControllerTest, StartWithDSCPOnWiFi) {
   EXPECT_FALSE(StartInstance());
 }
 
-TEST_F(DHCPControllerTest, StartWithDSCPOnEthernet) {
+TEST_F(LegacyDHCPControllerTest, StartWithDSCPOnEthernet) {
   auto opts = BuildDefaultOptions();
   opts.apply_dscp = true;
   CreateMockMinijailConfig(opts, Technology::kEthernet);
@@ -284,7 +284,7 @@ TEST_F(DHCPControllerTest, StartWithDSCPOnEthernet) {
   EXPECT_FALSE(StartInstance());
 }
 
-TEST_F(DHCPControllerTest, TimeToLeaseExpiry_Success) {
+TEST_F(LegacyDHCPControllerTest, TimeToLeaseExpiry_Success) {
   net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
   dhcp_data.lease_duration = base::Seconds(kLeaseDuration);
@@ -298,7 +298,7 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry_Success) {
   }
 }
 
-TEST_F(DHCPControllerTest, TimeToLeaseExpiry_NoDHCPLease) {
+TEST_F(LegacyDHCPControllerTest, TimeToLeaseExpiry_NoDHCPLease) {
   SetDHCPVerboseLog();
   ScopedMockLog log;
   // |current_lease_expiration_time_| has not been set, so expect an error.
@@ -307,7 +307,7 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry_NoDHCPLease) {
   ResetDHCPVerboseLog();
 }
 
-TEST_F(DHCPControllerTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
+TEST_F(LegacyDHCPControllerTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
   SetDHCPVerboseLog();
   net_base::NetworkConfig network_config;
   DHCPv4Config::Data dhcp_data;
@@ -324,7 +324,7 @@ TEST_F(DHCPControllerTest, TimeToLeaseExpiry_CurrentLeaseExpired) {
   ResetDHCPVerboseLog();
 }
 
-TEST_F(DHCPControllerTest, ExpiryMetrics) {
+TEST_F(LegacyDHCPControllerTest, ExpiryMetrics) {
   // Get a lease with duration of 1 second, the expiry callback should be
   // triggered right after 1 second.
   net_base::NetworkConfig network_config;
@@ -342,14 +342,14 @@ TEST_F(DHCPControllerTest, ExpiryMetrics) {
 
 namespace {
 
-class DHCPControllerCallbackTest : public DHCPControllerTest {
+class LegacyDHCPControllerCallbackTest : public LegacyDHCPControllerTest {
  public:
   void SetUp() override {
-    DHCPControllerTest::SetUp();
+    LegacyDHCPControllerTest::SetUp();
     controller_->RegisterCallbacks(
-        base::BindRepeating(&DHCPControllerCallbackTest::UpdateCallback,
+        base::BindRepeating(&LegacyDHCPControllerCallbackTest::UpdateCallback,
                             base::Unretained(this)),
-        base::BindRepeating(&DHCPControllerCallbackTest::DropCallback,
+        base::BindRepeating(&LegacyDHCPControllerCallbackTest::DropCallback,
                             base::Unretained(this)));
   }
 
@@ -379,12 +379,12 @@ class DHCPControllerCallbackTest : public DHCPControllerTest {
 
 }  // namespace
 
-TEST_F(DHCPControllerCallbackTest, ProcessEventSignalSuccess) {
-  std::map<std::string, DHCPController::ClientEventReason> cases = {
-      {"Bound", DHCPController::ClientEventReason::kBound},
-      {"Rebind", DHCPController::ClientEventReason::kRebind},
-      {"Reboot", DHCPController::ClientEventReason::kReboot},
-      {"Renew", DHCPController::ClientEventReason::kRenew}};
+TEST_F(LegacyDHCPControllerCallbackTest, ProcessEventSignalSuccess) {
+  std::map<std::string, LegacyDHCPController::ClientEventReason> cases = {
+      {"Bound", LegacyDHCPController::ClientEventReason::kBound},
+      {"Rebind", LegacyDHCPController::ClientEventReason::kRebind},
+      {"Reboot", LegacyDHCPController::ClientEventReason::kReboot},
+      {"Renew", LegacyDHCPController::ClientEventReason::kRenew}};
   for (const auto& [name, reason] : cases) {
     int address_octet = 0;
     for (const auto lease_time_given : {false, true}) {
@@ -410,14 +410,14 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalSuccess) {
   }
 }
 
-TEST_F(DHCPControllerCallbackTest, ProcessEventSignalFail) {
+TEST_F(LegacyDHCPControllerCallbackTest, ProcessEventSignalFail) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
   controller_->lease_acquisition_timeout_callback_.Reset(base::DoNothing());
   controller_->lease_expiration_callback_.Reset(base::DoNothing());
-  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kFail,
-                                  conf);
+  controller_->ProcessEventSignal(
+      LegacyDHCPController::ClientEventReason::kFail, conf);
   ExpectFailureCallback();
   Mock::VerifyAndClearExpectations(this);
   EXPECT_FALSE(updated_network_config_.ipv4_address.has_value());
@@ -425,17 +425,17 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalFail) {
   EXPECT_TRUE(controller_->lease_expiration_callback_.IsCancelled());
 }
 
-TEST_F(DHCPControllerCallbackTest, ProcessEventSignalUnknown) {
+TEST_F(LegacyDHCPControllerCallbackTest, ProcessEventSignalUnknown) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   EXPECT_CALL(*this, UpdateCallback(_, _, _)).Times(0);
   EXPECT_CALL(*this, DropCallback(_)).Times(0);
-  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kUnknown,
-                                  conf);
+  controller_->ProcessEventSignal(
+      LegacyDHCPController::ClientEventReason::kUnknown, conf);
   Mock::VerifyAndClearExpectations(this);
 }
 
-TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArp) {
+TEST_F(LegacyDHCPControllerCallbackTest, ProcessEventSignalGatewayArp) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
@@ -443,7 +443,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArp) {
       .WillOnce(Return(0));
   StartInstance();
   controller_->ProcessEventSignal(
-      DHCPController::ClientEventReason::kGatewayArp, conf);
+      LegacyDHCPController::ClientEventReason::kGatewayArp, conf);
   ExpectUpdateCallback(false);
   Mock::VerifyAndClearExpectations(this);
   EXPECT_EQ(*net_base::IPv4CIDR::CreateFromCIDRString("4.3.2.1/24"),
@@ -452,15 +452,15 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArp) {
   EXPECT_FALSE(ShouldFailOnAcquisitionTimeout());
 
   // An official reply from a DHCP server should reset our GatewayArp state.
-  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kRenew,
-                                  conf);
+  controller_->ProcessEventSignal(
+      LegacyDHCPController::ClientEventReason::kRenew, conf);
   ExpectUpdateCallback(true);
   Mock::VerifyAndClearExpectations(this);
   // Will fail on acquisition timeout since Gateway ARP is not active.
   EXPECT_TRUE(ShouldFailOnAcquisitionTimeout());
 }
 
-TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArpNak) {
+TEST_F(LegacyDHCPControllerCallbackTest, ProcessEventSignalGatewayArpNak) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
@@ -468,52 +468,53 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArpNak) {
       .WillOnce(Return(0));
   StartInstance();
   controller_->ProcessEventSignal(
-      DHCPController::ClientEventReason::kGatewayArp, conf);
+      LegacyDHCPController::ClientEventReason::kGatewayArp, conf);
   EXPECT_FALSE(ShouldFailOnAcquisitionTimeout());
 
   // Sending a NAK should clear is_gateway_arp_active_.
-  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kNak,
+  controller_->ProcessEventSignal(LegacyDHCPController::ClientEventReason::kNak,
                                   conf);
   // Will fail on acquisition timeout since Gateway ARP is not active.
   EXPECT_TRUE(ShouldFailOnAcquisitionTimeout());
   Mock::VerifyAndClearExpectations(this);
 }
 
-TEST_F(DHCPControllerCallbackTest, ProcessStatusChangedSignalUnknown) {
+TEST_F(LegacyDHCPControllerCallbackTest, ProcessStatusChangedSignalUnknown) {
   EXPECT_CALL(*this, UpdateCallback(_, _, _)).Times(0);
   EXPECT_CALL(*this, DropCallback(_)).Times(0);
   controller_->ProcessStatusChangedSignal(
-      DHCPController::ClientStatus::kUnknown);
+      LegacyDHCPController::ClientStatus::kUnknown);
   dispatcher_.task_environment().RunUntilIdle();
 }
 
-TEST_F(DHCPControllerCallbackTest,
+TEST_F(LegacyDHCPControllerCallbackTest,
        ProcessStatusChangedSignalIPv6OnlyPreferred) {
   EXPECT_CALL(*this, UpdateCallback(_, _, _)).Times(0);
   EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/true));
   controller_->ProcessStatusChangedSignal(
-      DHCPController::ClientStatus::kIPv6Preferred);
+      LegacyDHCPController::ClientStatus::kIPv6Preferred);
   dispatcher_.task_environment().RunUntilIdle();
 }
 
-TEST_F(DHCPControllerCallbackTest, StoppedDuringFailureCallback) {
+TEST_F(LegacyDHCPControllerCallbackTest, StoppedDuringFailureCallback) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
   // Stop the DHCP config while it is calling the failure callback.  We
   // need to ensure that no callbacks are left running inadvertently as
   // a result.
-  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kFail,
-                                  conf);
+  controller_->ProcessEventSignal(
+      LegacyDHCPController::ClientEventReason::kFail, conf);
   EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/false))
-      .WillOnce(InvokeWithoutArgs(this, &DHCPControllerTest::StopInstance));
+      .WillOnce(
+          InvokeWithoutArgs(this, &LegacyDHCPControllerTest::StopInstance));
   dispatcher_.task_environment().RunUntilIdle();
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
   EXPECT_TRUE(controller_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(controller_->lease_expiration_callback_.IsCancelled());
 }
 
-TEST_F(DHCPControllerCallbackTest, StoppedDuringSuccessCallback) {
+TEST_F(LegacyDHCPControllerCallbackTest, StoppedDuringSuccessCallback) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   conf.Set<uint8_t>(DHCPv4Config::kConfigurationKeySubnetCIDR, 24);
@@ -524,17 +525,18 @@ TEST_F(DHCPControllerCallbackTest, StoppedDuringSuccessCallback) {
   // the lease after accepting other network parameters from the DHCP
   // IPConfig properties.  We need to ensure that no callbacks are left
   // running inadvertently as a result.
-  controller_->ProcessEventSignal(DHCPController::ClientEventReason::kBound,
-                                  conf);
+  controller_->ProcessEventSignal(
+      LegacyDHCPController::ClientEventReason::kBound, conf);
   EXPECT_CALL(*this, UpdateCallback(_, _, true))
-      .WillOnce(InvokeWithoutArgs(this, &DHCPControllerTest::StopInstance));
+      .WillOnce(
+          InvokeWithoutArgs(this, &LegacyDHCPControllerTest::StopInstance));
   dispatcher_.task_environment().RunUntilIdle();
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
   EXPECT_TRUE(controller_->lease_acquisition_timeout_callback_.IsCancelled());
   EXPECT_TRUE(controller_->lease_expiration_callback_.IsCancelled());
 }
 
-TEST_F(DHCPControllerCallbackTest, ProcessAcquisitionTimeout) {
+TEST_F(LegacyDHCPControllerCallbackTest, ProcessAcquisitionTimeout) {
   // Do not fail on acquisition timeout (i.e. ARP gateway is active).
   SetShouldFailOnAcquisitionTimeout(false);
   EXPECT_CALL(*this, DropCallback(_)).Times(0);
@@ -551,17 +553,17 @@ TEST_F(DHCPControllerCallbackTest, ProcessAcquisitionTimeout) {
   Mock::VerifyAndClearExpectations(controller_.get());
 }
 
-TEST_F(DHCPControllerTest, ReleaseIP) {
+TEST_F(LegacyDHCPControllerTest, ReleaseIP) {
   controller_->pid_ = 1 << 18;  // Ensure unknown positive PID.
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
   SetShouldKeepLeaseOnDisconnect(false);
   controller_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(
-      controller_->ReleaseIP(DHCPController::ReleaseReason::kDisconnect));
+      controller_->ReleaseIP(LegacyDHCPController::ReleaseReason::kDisconnect));
   controller_->pid_ = 0;
 }
 
-TEST_F(DHCPControllerTest, KeepLeaseOnDisconnect) {
+TEST_F(LegacyDHCPControllerTest, KeepLeaseOnDisconnect) {
   controller_->pid_ = 1 << 18;  // Ensure unknown positive PID.
 
   // Keep lease on disconnect (i.e. ARP gateway is enabled).
@@ -569,11 +571,11 @@ TEST_F(DHCPControllerTest, KeepLeaseOnDisconnect) {
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
   controller_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(
-      controller_->ReleaseIP(DHCPController::ReleaseReason::kDisconnect));
+      controller_->ReleaseIP(LegacyDHCPController::ReleaseReason::kDisconnect));
   controller_->pid_ = 0;
 }
 
-TEST_F(DHCPControllerTest, ReleaseLeaseOnDisconnect) {
+TEST_F(LegacyDHCPControllerTest, ReleaseLeaseOnDisconnect) {
   controller_->pid_ = 1 << 18;  // Ensure unknown positive PID.
 
   // Release lease on disconnect.
@@ -581,33 +583,35 @@ TEST_F(DHCPControllerTest, ReleaseLeaseOnDisconnect) {
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
   controller_->proxy_ = std::move(proxy_);
   EXPECT_TRUE(
-      controller_->ReleaseIP(DHCPController::ReleaseReason::kDisconnect));
+      controller_->ReleaseIP(LegacyDHCPController::ReleaseReason::kDisconnect));
   controller_->pid_ = 0;
 }
 
-TEST_F(DHCPControllerTest, ReleaseIPStaticIPWithLease) {
+TEST_F(LegacyDHCPControllerTest, ReleaseIPStaticIPWithLease) {
   controller_->pid_ = 1 << 18;  // Ensure unknown positive PID.
   controller_->is_lease_active_ = true;
   EXPECT_CALL(*proxy_, Release(kDeviceName));
   controller_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(controller_->ReleaseIP(DHCPController::ReleaseReason::kStaticIP));
+  EXPECT_TRUE(
+      controller_->ReleaseIP(LegacyDHCPController::ReleaseReason::kStaticIP));
   EXPECT_EQ(nullptr, controller_->proxy_);
   controller_->pid_ = 0;
 }
 
-TEST_F(DHCPControllerTest, ReleaseIPStaticIPWithoutLease) {
+TEST_F(LegacyDHCPControllerTest, ReleaseIPStaticIPWithoutLease) {
   controller_->pid_ = 1 << 18;  // Ensure unknown positive PID.
   controller_->is_lease_active_ = false;
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
   MockDHCPProxy* proxy_pointer = proxy_.get();
   controller_->proxy_ = std::move(proxy_);
-  EXPECT_TRUE(controller_->ReleaseIP(DHCPController::ReleaseReason::kStaticIP));
+  EXPECT_TRUE(
+      controller_->ReleaseIP(LegacyDHCPController::ReleaseReason::kStaticIP));
   // Expect that proxy has not been released.
   EXPECT_EQ(proxy_pointer, controller_->proxy_.get());
   controller_->pid_ = 0;
 }
 
-TEST_F(DHCPControllerTest, RenewIP) {
+TEST_F(LegacyDHCPControllerTest, RenewIP) {
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
       .WillOnce(Return(-1));
   controller_->pid_ = 0;
@@ -628,7 +632,7 @@ TEST_F(DHCPControllerTest, RenewIP) {
   controller_->pid_ = 0;
 }
 
-TEST_F(DHCPControllerTest, RequestIP) {
+TEST_F(LegacyDHCPControllerTest, RequestIP) {
   EXPECT_TRUE(controller_->lease_acquisition_timeout_callback_.IsCancelled());
   controller_->pid_ = 567;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
@@ -638,7 +642,7 @@ TEST_F(DHCPControllerTest, RequestIP) {
   controller_->pid_ = 0;
 }
 
-TEST_F(DHCPControllerCallbackTest, RequestIPTimeout) {
+TEST_F(LegacyDHCPControllerCallbackTest, RequestIPTimeout) {
   SetShouldFailOnAcquisitionTimeout(true);
   ExpectFailureCallback();
   controller_->lease_acquisition_timeout_ = base::TimeDelta();
@@ -652,7 +656,7 @@ TEST_F(DHCPControllerCallbackTest, RequestIPTimeout) {
   controller_->pid_ = 0;
 }
 
-TEST_F(DHCPControllerTest, Restart) {
+TEST_F(LegacyDHCPControllerTest, Restart) {
   const int kPID1 = 1 << 17;  // Ensure unknown positive PID.
   const int kPID2 = 987;
   controller_->pid_ = kPID1;
@@ -667,7 +671,7 @@ TEST_F(DHCPControllerTest, Restart) {
   controller_->pid_ = 0;
 }
 
-TEST_F(DHCPControllerTest, RestartNoClient) {
+TEST_F(LegacyDHCPControllerTest, RestartNoClient) {
   const int kPID = 777;
   EXPECT_CALL(process_manager_, StopProcessAndBlock(_)).Times(0);
   EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
@@ -678,7 +682,7 @@ TEST_F(DHCPControllerTest, RestartNoClient) {
   controller_->pid_ = 0;
 }
 
-TEST_F(DHCPControllerCallbackTest, StartTimeout) {
+TEST_F(LegacyDHCPControllerCallbackTest, StartTimeout) {
   SetShouldFailOnAcquisitionTimeout(true);
   ExpectFailureCallback();
   controller_->lease_acquisition_timeout_ = base::TimeDelta();
@@ -691,7 +695,7 @@ TEST_F(DHCPControllerCallbackTest, StartTimeout) {
   Mock::VerifyAndClearExpectations(controller_.get());
 }
 
-TEST_F(DHCPControllerTest, Stop) {
+TEST_F(LegacyDHCPControllerTest, Stop) {
   const int kPID = 1 << 17;  // Ensure unknown positive PID.
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
@@ -708,7 +712,7 @@ TEST_F(DHCPControllerTest, Stop) {
   EXPECT_FALSE(controller_->pid_);
 }
 
-TEST_F(DHCPControllerTest, StopDuringRequestIP) {
+TEST_F(LegacyDHCPControllerTest, StopDuringRequestIP) {
   controller_->pid_ = 567;
   EXPECT_CALL(*proxy_, Rebind(kDeviceName)).Times(1);
   controller_->proxy_ = std::move(proxy_);
@@ -721,7 +725,7 @@ TEST_F(DHCPControllerTest, StopDuringRequestIP) {
 
 namespace {
 // Verifies the existence of pid file and lease file after dhcpcd exited.
-class DHCPControllerDHCPCDStoppedTest : public DHCPControllerTest {
+class LegacyDHCPControllerDHCPCDStoppedTest : public LegacyDHCPControllerTest {
  protected:
   void StartAndSaveExitCallback() {
     EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
@@ -768,7 +772,7 @@ class DHCPControllerDHCPCDStoppedTest : public DHCPControllerTest {
   net_base::ProcessManager::ExitCallback exit_callback_;
 };
 
-TEST_F(DHCPControllerDHCPCDStoppedTest, StopEphemral) {
+TEST_F(LegacyDHCPControllerDHCPCDStoppedTest, StopEphemral) {
   auto opts = BuildDefaultOptions();
   opts.lease_name = kDeviceName;
   CreateMockMinijailConfig(opts);
@@ -777,7 +781,7 @@ TEST_F(DHCPControllerDHCPCDStoppedTest, StopEphemral) {
   StopAndExpect(false);
 }
 
-TEST_F(DHCPControllerDHCPCDStoppedTest, StopPersistent) {
+TEST_F(LegacyDHCPControllerDHCPCDStoppedTest, StopPersistent) {
   CreateMockMinijailConfig(BuildDefaultOptions());
   StartAndSaveExitCallback();
   PrepareFiles();

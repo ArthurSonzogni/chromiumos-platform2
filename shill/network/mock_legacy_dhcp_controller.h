@@ -1,28 +1,28 @@
-// Copyright 2018 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_MOCK_DHCP_CONTROLLER_H_
-#define SHILL_NETWORK_MOCK_DHCP_CONTROLLER_H_
+#ifndef SHILL_NETWORK_MOCK_LEGACY_DHCP_CONTROLLER_H_
+#define SHILL_NETWORK_MOCK_LEGACY_DHCP_CONTROLLER_H_
 
 #include <optional>
 #include <string>
 
 #include <gmock/gmock.h>
 
-#include "shill/network/dhcp_controller.h"
+#include "shill/network/legacy_dhcp_controller.h"
 #include "shill/technology.h"
 
 namespace shill {
 
-class MockDHCPController : public DHCPController {
+class MockLegacyDHCPController : public LegacyDHCPController {
  public:
-  MockDHCPController(ControlInterface* control_interface,
-                     const std::string& device_name);
-  MockDHCPController(const MockDHCPController&) = delete;
-  MockDHCPController& operator=(const MockDHCPController&) = delete;
+  MockLegacyDHCPController(ControlInterface* control_interface,
+                           const std::string& device_name);
+  MockLegacyDHCPController(const MockLegacyDHCPController&) = delete;
+  MockLegacyDHCPController& operator=(const MockLegacyDHCPController&) = delete;
 
-  ~MockDHCPController() override;
+  ~MockLegacyDHCPController() override;
 
   void RegisterCallbacks(UpdateCallback update_callback,
                          DropCallback drop_callback) override;
@@ -43,4 +43,4 @@ class MockDHCPController : public DHCPController {
 
 }  // namespace shill
 
-#endif  // SHILL_NETWORK_MOCK_DHCP_CONTROLLER_H_
+#endif  // SHILL_NETWORK_MOCK_LEGACY_DHCP_CONTROLLER_H_

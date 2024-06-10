@@ -41,8 +41,8 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
-#include "shill/network/mock_dhcp_controller.h"
 #include "shill/network/mock_dhcp_provider.h"
+#include "shill/network/mock_legacy_dhcp_controller.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
 #include "shill/supplicant/mock_supplicant_interface_proxy.h"
@@ -375,13 +375,14 @@ TEST_F(EthernetTest, ConnectToLinkDown) {
 }
 
 TEST_F(EthernetTest, ConnectToSuccess) {
-  auto dhcp_controller = new MockDHCPController(&control_interface_, ifname_);
+  auto dhcp_controller =
+      new MockLegacyDHCPController(&control_interface_, ifname_);
   StartEthernet();
   SetLinkUp(true);
   EXPECT_EQ(nullptr, GetSelectedService());
   EXPECT_CALL(dhcp_provider_, CreateController(_, _, _))
-      .WillOnce(
-          Return(ByMove(std::unique_ptr<DHCPController>(dhcp_controller))));
+      .WillOnce(Return(
+          ByMove(std::unique_ptr<LegacyDHCPController>(dhcp_controller))));
   EXPECT_CALL(*dhcp_controller, RequestIP()).WillOnce(Return(true));
   EXPECT_CALL(*mock_service_, SetState(Service::kStateConfiguring));
   ethernet_->ConnectTo(mock_service_.get());

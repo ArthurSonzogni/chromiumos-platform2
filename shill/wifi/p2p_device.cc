@@ -23,7 +23,7 @@
 
 #include "shill/control_interface.h"
 #include "shill/manager.h"
-#include "shill/network/dhcp_controller.h"
+#include "shill/network/legacy_dhcp_controller.h"
 #include "shill/network/network.h"
 #include "shill/network/network_manager.h"
 #include "shill/network/network_monitor.h"

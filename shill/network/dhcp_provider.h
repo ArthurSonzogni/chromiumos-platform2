@@ -16,7 +16,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/metrics.h"
-#include "shill/network/dhcp_controller.h"
+#include "shill/network/legacy_dhcp_controller.h"
 #include "shill/refptr_types.h"
 #include "shill/technology.h"
 
@@ -37,7 +37,7 @@ class EventDispatcher;
 //                                               dhcp_props)->Request();
 class DHCPProvider {
  public:
-  using Options = DHCPController::Options;
+  using Options = LegacyDHCPController::Options;
 
   static constexpr char kDHCPCDPathFormatLease[] = "var/lib/dhcpcd7/%s.lease";
 
@@ -56,10 +56,10 @@ class DHCPProvider {
   // Called on shutdown to release |listener_|.
   void Stop();
 
-  // Creates a new DHCPController for |device_name|. The DHCP configuration for
-  // the device can then be initiated through DHCPController::Request and
-  // DHCPController::Renew.
-  virtual std::unique_ptr<DHCPController> CreateController(
+  // Creates a new LegacyDHCPController for |device_name|. The DHCP
+  // configuration for the device can then be initiated through
+  // LegacyDHCPController::Request and LegacyDHCPController::Renew.
+  virtual std::unique_ptr<LegacyDHCPController> CreateController(
       const std::string& device_name,
       const Options& opts,
       Technology technology);
@@ -67,14 +67,14 @@ class DHCPProvider {
   // Returns the DHCP configuration associated with DHCP client |pid|. Returns
   // nullptr if |pid| is not bound to a configuration. Caller should not hold
   // this pointer.
-  DHCPController* GetController(int pid);
+  LegacyDHCPController* GetController(int pid);
 
-  // Binds a |pid| to a DHCP |controller|. When a DHCPController spawns a new
-  // DHCP client, it binds itself to that client's |pid|.
-  virtual void BindPID(int pid, base::WeakPtr<DHCPController> controller);
+  // Binds a |pid| to a DHCP |controller|. When a LegacyDHCPController spawns a
+  // new DHCP client, it binds itself to that client's |pid|.
+  virtual void BindPID(int pid, base::WeakPtr<LegacyDHCPController> controller);
 
-  // Unbinds a |pid|. This method is used by a DHCPController to signal the
-  // provider that the DHCP client has been terminated.
+  // Unbinds a |pid|. This method is used by a LegacyDHCPController to signal
+  // the provider that the DHCP client has been terminated.
   virtual void UnbindPID(int pid);
 
   // Destroy lease file associated with this |name|.
@@ -97,16 +97,16 @@ class DHCPProvider {
   FRIEND_TEST(DHCPProviderTest, CreateController);
   FRIEND_TEST(DHCPProviderTest, DestroyLease);
 
-  using PIDControllerMap = std::map<int, base::WeakPtr<DHCPController>>;
+  using PIDControllerMap = std::map<int, base::WeakPtr<LegacyDHCPController>>;
 
   // Retire |pid| from the set of recently retired PIDs.
   void RetireUnboundPID(int pid);
 
   // A single listener is used to catch signals from all DHCP clients and
-  // dispatch them to the appropriate DHCPController instance.
+  // dispatch them to the appropriate LegacyDHCPController instance.
   std::unique_ptr<DHCPCDListenerInterface> listener_;
 
-  // A map that binds PIDs to DHCPController instances.
+  // A map that binds PIDs to LegacyDHCPController instances.
   PIDControllerMap controllers_;
 
   base::FilePath root_;

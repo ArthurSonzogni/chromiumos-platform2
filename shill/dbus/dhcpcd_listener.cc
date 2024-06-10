@@ -17,8 +17,8 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
+#include "shill/network/legacy_dhcp_controller.h"
 
 namespace shill {
 
@@ -142,22 +142,22 @@ void DHCPCDListener::EventSignal(
   LOG(INFO) << "Event reason: " << reason << " on "
             << controller->device_name();
 
-  DHCPController::ClientEventReason parsed_reason =
-      DHCPController::ClientEventReason::kUnknown;
+  LegacyDHCPController::ClientEventReason parsed_reason =
+      LegacyDHCPController::ClientEventReason::kUnknown;
   if (reason == kReasonBound) {
-    parsed_reason = DHCPController::ClientEventReason::kBound;
+    parsed_reason = LegacyDHCPController::ClientEventReason::kBound;
   } else if (reason == kReasonFail) {
-    parsed_reason = DHCPController::ClientEventReason::kFail;
+    parsed_reason = LegacyDHCPController::ClientEventReason::kFail;
   } else if (reason == kReasonGatewayArp) {
-    parsed_reason = DHCPController::ClientEventReason::kGatewayArp;
+    parsed_reason = LegacyDHCPController::ClientEventReason::kGatewayArp;
   } else if (reason == kReasonNak) {
-    parsed_reason = DHCPController::ClientEventReason::kNak;
+    parsed_reason = LegacyDHCPController::ClientEventReason::kNak;
   } else if (reason == kReasonRebind) {
-    parsed_reason = DHCPController::ClientEventReason::kRebind;
+    parsed_reason = LegacyDHCPController::ClientEventReason::kRebind;
   } else if (reason == kReasonReboot) {
-    parsed_reason = DHCPController::ClientEventReason::kReboot;
+    parsed_reason = LegacyDHCPController::ClientEventReason::kReboot;
   } else if (reason == kReasonRenew) {
-    parsed_reason = DHCPController::ClientEventReason::kRenew;
+    parsed_reason = LegacyDHCPController::ClientEventReason::kRenew;
   }
 
   controller->InitProxy(sender);
@@ -182,10 +182,10 @@ void DHCPCDListener::StatusChangedSignal(const std::string& sender,
   LOG(INFO) << "Status changed: " << status << " on "
             << controller->device_name();
 
-  DHCPController::ClientStatus parsed_status =
-      DHCPController::ClientStatus::kUnknown;
+  LegacyDHCPController::ClientStatus parsed_status =
+      LegacyDHCPController::ClientStatus::kUnknown;
   if (status == kStatusIPv6OnlyPreferred) {
-    parsed_status = DHCPController::ClientStatus::kIPv6Preferred;
+    parsed_status = LegacyDHCPController::ClientStatus::kIPv6Preferred;
   }
 
   controller->InitProxy(sender);

@@ -325,7 +325,8 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
       state_ != State::kIdle && trigger_callback;
   bool ipconfig_changed = false;
   if (dhcp_controller_) {
-    dhcp_controller_->ReleaseIP(DHCPController::ReleaseReason::kDisconnect);
+    dhcp_controller_->ReleaseIP(
+        LegacyDHCPController::ReleaseReason::kDisconnect);
     dhcp_controller_ = nullptr;
   }
   if (ipconfig_) {
@@ -391,7 +392,7 @@ void Network::OnIPv4ConfigUpdated() {
     // available from a DHCP server and not overridden by static parameters, but
     // at the same time we avoid taking up a dynamic IP address the DHCP server
     // could assign to someone else who might actually use it.
-    dhcp_controller_->ReleaseIP(DHCPController::ReleaseReason::kStaticIP);
+    dhcp_controller_->ReleaseIP(LegacyDHCPController::ReleaseReason::kStaticIP);
   }
   if (config_.Get().ipv4_address) {
     SetupConnection(net_base::IPFamily::kIPv4, /*is_slaac=*/false);
@@ -538,7 +539,7 @@ bool Network::RenewDHCPLease() {
     return false;
   }
   SLOG(2) << *this << ": renewing DHCP lease";
-  // If RenewIP() fails, DHCPController will output a ERROR log.
+  // If RenewIP() fails, LegacyDHCPController will output a ERROR log.
   return dhcp_controller_->RenewIP();
 }
 

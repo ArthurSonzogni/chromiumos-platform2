@@ -1,9 +1,9 @@
-// Copyright 2018 The ChromiumOS Authors
+// Copyright 2024 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_NETWORK_DHCP_CONTROLLER_H_
-#define SHILL_NETWORK_DHCP_CONTROLLER_H_
+#ifndef SHILL_NETWORK_LEGACY_DHCP_CONTROLLER_H_
+#define SHILL_NETWORK_LEGACY_DHCP_CONTROLLER_H_
 
 #include <memory>
 #include <optional>
@@ -35,15 +35,15 @@ class EventDispatcher;
 
 // This class provides a DHCP client instance for the device |device_name|.
 //
-// The DHCPController instance asks the DHCP client to create a lease file
+// The LegacyDHCPController instance asks the DHCP client to create a lease file
 // containing the name |lease_file_suffix|.  If this suffix is the same as
 // |device_name|, the lease is considered to be ephemeral, and the lease
-// file is removed whenever this DHCPController instance is no longer needed.
-// Otherwise, the lease file persists and will be re-used in future attempts.
-// If |hostname| is not empty, it will be used in the DHCP request as DHCP
-// option 12. This asks the DHCP server to register this hostname on our
+// file is removed whenever this LegacyDHCPController instance is no longer
+// needed. Otherwise, the lease file persists and will be re-used in future
+// attempts. If |hostname| is not empty, it will be used in the DHCP request as
+// DHCP option 12. This asks the DHCP server to register this hostname on our
 // behalf, for purposes of administration or creating a dynamic DNS entry.
-class DHCPController {
+class LegacyDHCPController {
  public:
   // Called when the IPConfig got from DHCP is updated. |network_config|
   // contains the parameters we get from DHCP and will be used for network
@@ -96,17 +96,17 @@ class DHCPController {
     std::string hostname;
   };
 
-  DHCPController(ControlInterface* control_interface,
-                 EventDispatcher* dispatcher,
-                 DHCPProvider* provider,
-                 const std::string& device_name,
-                 const Options& opts,
-                 Technology technology,
-                 Metrics* metrics);
-  DHCPController(const DHCPController&) = delete;
-  DHCPController& operator=(const DHCPController&) = delete;
+  LegacyDHCPController(ControlInterface* control_interface,
+                       EventDispatcher* dispatcher,
+                       DHCPProvider* provider,
+                       const std::string& device_name,
+                       const Options& opts,
+                       Technology technology,
+                       Metrics* metrics);
+  LegacyDHCPController(const LegacyDHCPController&) = delete;
+  LegacyDHCPController& operator=(const LegacyDHCPController&) = delete;
 
-  virtual ~DHCPController();
+  virtual ~LegacyDHCPController();
 
   // Registers callbacks for DHCP events.
   mockable void RegisterCallbacks(UpdateCallback update_callback,
@@ -141,10 +141,11 @@ class DHCPController {
   // Returns the duration from Start() until the first time that this class gets
   // the DHCP lease information from dhcpcd, and then resets the value (i.e.,
   // consumes the value). The next call to this function will return
-  // std::nullopt, unless the DHCPController is Start()-ed again. Note that the
-  // timer will only be started in Start(), which means the duration include the
-  // time for starting the dhcpcd process, and the renewal process triggered by
-  // sending a D-Bus signal to an existing dhcpcd process won't be counted.
+  // std::nullopt, unless the LegacyDHCPController is Start()-ed again. Note
+  // that the timer will only be started in Start(), which means the duration
+  // include the time for starting the dhcpcd process, and the renewal process
+  // triggered by sending a D-Bus signal to an existing dhcpcd process won't be
+  // counted.
   std::optional<base::TimeDelta> GetAndResetLastProvisionDuration();
 
   std::string device_name() const { return device_name_; }
@@ -193,27 +194,27 @@ class DHCPController {
   base::FilePath root() const { return root_; }
 
  private:
-  friend class DHCPControllerTest;
-  FRIEND_TEST(DHCPControllerCallbackTest, ProcessEventSignalFail);
-  FRIEND_TEST(DHCPControllerCallbackTest, ProcessAcquisitionTimeout);
-  FRIEND_TEST(DHCPControllerCallbackTest, RequestIPTimeout);
-  FRIEND_TEST(DHCPControllerCallbackTest, StartTimeout);
-  FRIEND_TEST(DHCPControllerCallbackTest, StoppedDuringFailureCallback);
-  FRIEND_TEST(DHCPControllerCallbackTest, StoppedDuringSuccessCallback);
-  FRIEND_TEST(DHCPControllerTest, InitProxy);
-  FRIEND_TEST(DHCPControllerTest, KeepLeaseOnDisconnect);
-  FRIEND_TEST(DHCPControllerTest, ReleaseIP);
-  FRIEND_TEST(DHCPControllerTest, ReleaseIPStaticIPWithLease);
-  FRIEND_TEST(DHCPControllerTest, ReleaseIPStaticIPWithoutLease);
-  FRIEND_TEST(DHCPControllerTest, ReleaseLeaseOnDisconnect);
-  FRIEND_TEST(DHCPControllerTest, RenewIP);
-  FRIEND_TEST(DHCPControllerTest, RequestIP);
-  FRIEND_TEST(DHCPControllerTest, Restart);
-  FRIEND_TEST(DHCPControllerTest, RestartNoClient);
-  FRIEND_TEST(DHCPControllerTest, StartFail);
-  FRIEND_TEST(DHCPControllerTest, StartWithoutLeaseSuffix);
-  FRIEND_TEST(DHCPControllerTest, Stop);
-  FRIEND_TEST(DHCPControllerTest, StopDuringRequestIP);
+  friend class LegacyDHCPControllerTest;
+  FRIEND_TEST(LegacyDHCPControllerCallbackTest, ProcessEventSignalFail);
+  FRIEND_TEST(LegacyDHCPControllerCallbackTest, ProcessAcquisitionTimeout);
+  FRIEND_TEST(LegacyDHCPControllerCallbackTest, RequestIPTimeout);
+  FRIEND_TEST(LegacyDHCPControllerCallbackTest, StartTimeout);
+  FRIEND_TEST(LegacyDHCPControllerCallbackTest, StoppedDuringFailureCallback);
+  FRIEND_TEST(LegacyDHCPControllerCallbackTest, StoppedDuringSuccessCallback);
+  FRIEND_TEST(LegacyDHCPControllerTest, InitProxy);
+  FRIEND_TEST(LegacyDHCPControllerTest, KeepLeaseOnDisconnect);
+  FRIEND_TEST(LegacyDHCPControllerTest, ReleaseIP);
+  FRIEND_TEST(LegacyDHCPControllerTest, ReleaseIPStaticIPWithLease);
+  FRIEND_TEST(LegacyDHCPControllerTest, ReleaseIPStaticIPWithoutLease);
+  FRIEND_TEST(LegacyDHCPControllerTest, ReleaseLeaseOnDisconnect);
+  FRIEND_TEST(LegacyDHCPControllerTest, RenewIP);
+  FRIEND_TEST(LegacyDHCPControllerTest, RequestIP);
+  FRIEND_TEST(LegacyDHCPControllerTest, Restart);
+  FRIEND_TEST(LegacyDHCPControllerTest, RestartNoClient);
+  FRIEND_TEST(LegacyDHCPControllerTest, StartFail);
+  FRIEND_TEST(LegacyDHCPControllerTest, StartWithoutLeaseSuffix);
+  FRIEND_TEST(LegacyDHCPControllerTest, Stop);
+  FRIEND_TEST(LegacyDHCPControllerTest, StopDuringRequestIP);
   FRIEND_TEST(DHCPProviderTest, CreateController);
   FRIEND_TEST(DHCPProviderTest, BindAndUnbind);
 
@@ -311,7 +312,7 @@ class DHCPController {
   // Root file path, used for testing.
   base::FilePath root_;
 
-  base::WeakPtrFactory<DHCPController> weak_ptr_factory_;
+  base::WeakPtrFactory<LegacyDHCPController> weak_ptr_factory_;
   EventDispatcher* dispatcher_;
   net_base::ProcessManager* process_manager_;
   Metrics* metrics_;
@@ -320,4 +321,4 @@ class DHCPController {
 
 }  // namespace shill
 
-#endif  // SHILL_NETWORK_DHCP_CONTROLLER_H_
+#endif  // SHILL_NETWORK_LEGACY_DHCP_CONTROLLER_H_

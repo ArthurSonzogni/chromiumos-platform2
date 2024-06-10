@@ -11,8 +11,8 @@
 #include <gmock/gmock.h>
 
 #include "shill/metrics.h"
-#include "shill/network/dhcp_controller.h"
 #include "shill/network/dhcp_provider.h"
+#include "shill/network/legacy_dhcp_controller.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -32,11 +32,14 @@ class MockDHCPProvider : public DHCPProvider {
               Init,
               (ControlInterface*, EventDispatcher*, Metrics*),
               (override));
-  MOCK_METHOD(std::unique_ptr<DHCPController>,
+  MOCK_METHOD(std::unique_ptr<LegacyDHCPController>,
               CreateController,
               (const std::string&, const DHCPProvider::Options&, Technology),
               (override));
-  MOCK_METHOD(void, BindPID, (int, base::WeakPtr<DHCPController>), (override));
+  MOCK_METHOD(void,
+              BindPID,
+              (int, base::WeakPtr<LegacyDHCPController>),
+              (override));
   MOCK_METHOD(void, UnbindPID, (int), (override));
 };
 

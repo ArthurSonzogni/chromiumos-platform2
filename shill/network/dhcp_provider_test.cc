@@ -10,7 +10,7 @@
 
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/network/dhcp_controller.h"
+#include "shill/network/legacy_dhcp_controller.h"
 
 using testing::_;
 using testing::StrictMock;

@@ -28,7 +28,7 @@
 #include "shill/geolocation_info.h"
 #include "shill/metrics.h"
 #include "shill/network/connection_diagnostics.h"
-#include "shill/network/dhcp_controller.h"
+#include "shill/network/legacy_dhcp_controller.h"
 #include "shill/network/network.h"
 #include "shill/network/portal_detector.h"
 #include "shill/refptr_types.h"
