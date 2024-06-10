@@ -70,11 +70,9 @@ class PortalDetector {
   };
   // Set of fallback URLs used for retrying the HTTPS probe when portal
   // detection is not conclusive.
-  static constexpr std::array<std::string_view, 3> kDefaultFallbackHttpsUrls = {
-      "https://www.gstatic.com/generate_204",
+  static constexpr std::array<std::string_view, 2> kDefaultFallbackHttpsUrls = {
       "https://accounts.google.com/generate_204",
-      "https://www.googleapis.com/generate_204",
-  };
+      "https://clients3.google.com/generate_204"};
   // Default comma separated list of technologies for which portal detection is
   // enabled.
   static constexpr char kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
