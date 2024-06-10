@@ -321,19 +321,22 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
     status_info.set_time_available_in(delay->is_max()
                                           ? std::numeric_limits<uint64_t>::max()
                                           : delay->InMilliseconds());
+  } else {
+    // Error in getting factor lockout delay, treat it as immediately available.
+    status_info.set_time_available_in(0);
   }
   auto expiration_delay =
       factor_driver.GetTimeUntilExpiration(username, auth_factor);
   if (expiration_delay.ok()) {
     status_info.set_time_expiring_in(expiration_delay->InMilliseconds());
   } else {
-    // Error getting the expiration time. Treat it as won't expire.
+    // Error in getting the expiration time. Treat it as won't expire.
     status_info.set_time_expiring_in(std::numeric_limits<uint64_t>::max());
   }
   return auth_factor_with_status;
 }
 
-// Builder function for AuthFactorWithStatus for epehermal users. This function
+// Builder function for AuthFactorWithStatus for ephemeral users. This function
 // takes into account type and calls various library functions needed to convert
 // AuthFactor to a proto.
 std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
@@ -360,6 +363,13 @@ std::optional<user_data_auth::AuthFactorWithStatus> GetAuthFactorWithStatus(
     auth_factor_with_status.add_available_for_intents(
         AuthIntentToProto(auth_intent));
   }
+
+  // Ephemeral user's credential won't lock out (always available) and won't
+  // expire either.
+  user_data_auth::StatusInfo& status_info =
+      *auth_factor_with_status.mutable_status_info();
+  status_info.set_time_available_in(0);
+  status_info.set_time_expiring_in(std::numeric_limits<uint64_t>::max());
   return auth_factor_with_status;
 }
 

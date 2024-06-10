@@ -541,12 +541,12 @@ message StartAuthSessionRequest {
 
 message StatusInfo {
   // This field will be used for factor lockout time. Once an auth factor is
-  // locked out, this field will show the time the factor is locked out for in
-  // milliseconds. If the auth factor is not locked, this field will be set to
-  // zero. If the auth factor is locked out permanently (i.e. until it is
-  // unlocked via a separate credential) this will be set to the maximum uint64
-  // value. |time_available_in| would be indicated in terms of a wall clock
-  // timer, and it will not be affected by sleep.
+  // locked out, this field will show the time the factor is locked out for.
+  // If the auth factor is not locked, this field will be set to zero.
+  // If the auth factor is locked out permanently (i.e. until it is unlocked
+  // via a separate credential) this will be set to the maximum uint64 value.
+  // |time_available_in| would be indicated in terms of a wall clock timer,
+  // and it will not be affected by sleep. Time unit is millisecond.
   uint64 time_available_in = 1;
   // This field will be used for remaining time until the factor is expired.
   // Once an auth factor is expired it needs to be unlocked via a separate
@@ -555,7 +555,7 @@ message StatusInfo {
   // If the auth factor won't expire, this will be set to the maximum uint64
   // value, and will not decrement through time.
   // This field would be indicated in terms of a wall clock time, and keeps
-  // counting through sleep.
+  // counting through sleep. Time unit is millisecond.
   uint64 time_expiring_in = 2;
 }
 
