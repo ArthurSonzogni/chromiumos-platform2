@@ -20,8 +20,8 @@
 #include <dbus/util.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/dhcp_provider.h"
-#include "shill/network/dhcpcd_controller_interface.h"
 #include "shill/network/legacy_dhcp_controller.h"
 
 namespace shill {
@@ -32,19 +32,18 @@ constexpr char kDBusInterfaceName[] = "org.chromium.dhcpcd";
 constexpr char kSignalEvent[] = "Event";
 constexpr char kSignalStatusChanged[] = "StatusChanged";
 
-std::optional<DHCPCDControllerInterface::EventReason> ConvertToEventReason(
+std::optional<DHCPClientProxy::EventReason> ConvertToEventReason(
     std::string_view reason) {
   // Constants used as event type got from dhcpcd.
   static constexpr auto kEventReasonTable =
-      base::MakeFixedFlatMap<std::string_view,
-                             DHCPCDControllerInterface::EventReason>(
-          {{"BOUND", DHCPCDControllerInterface::EventReason::kBound},
-           {"FAIL", DHCPCDControllerInterface::EventReason::kFail},
-           {"GATEWAY-ARP", DHCPCDControllerInterface::EventReason::kGatewayArp},
-           {"NAK", DHCPCDControllerInterface::EventReason::kNak},
-           {"REBIND", DHCPCDControllerInterface::EventReason::kRebind},
-           {"REBOOT", DHCPCDControllerInterface::EventReason::kReboot},
-           {"RENEW", DHCPCDControllerInterface::EventReason::kRenew}});
+      base::MakeFixedFlatMap<std::string_view, DHCPClientProxy::EventReason>(
+          {{"BOUND", DHCPClientProxy::EventReason::kBound},
+           {"FAIL", DHCPClientProxy::EventReason::kFail},
+           {"GATEWAY-ARP", DHCPClientProxy::EventReason::kGatewayArp},
+           {"NAK", DHCPClientProxy::EventReason::kNak},
+           {"REBIND", DHCPClientProxy::EventReason::kRebind},
+           {"REBOOT", DHCPClientProxy::EventReason::kReboot},
+           {"RENEW", DHCPClientProxy::EventReason::kRenew}});
 
   const auto iter = kEventReasonTable.find(reason);
   if (iter == kEventReasonTable.end()) {
@@ -233,7 +232,7 @@ void LegacyDHCPCDListenerImpl::EventSignal(
     uint32_t pid,
     const std::string& reason_str,
     const brillo::VariantDictionary& configuration) {
-  const std::optional<DHCPCDControllerInterface::EventReason> reason =
+  const std::optional<DHCPClientProxy::EventReason> reason =
       ConvertToEventReason(reason_str);
   if (reason.has_value()) {
     LOG(WARNING) << "Unknown reason: " << reason_str;

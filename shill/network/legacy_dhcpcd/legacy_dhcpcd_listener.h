@@ -12,13 +12,13 @@
 #include <dbus/bus.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/network/dhcpcd_controller_interface.h"
+#include "shill/network/dhcp_client_proxy.h"
 #include "shill/store/key_value_store.h"
 
 namespace shill {
 
 // The DHCPCD listener listens to signals from all DHCP clients and dispatches
-// them through the LegacyDHCPCDControllerFactory.
+// them through the LegacyDHCPCDProxyFactory.
 class LegacyDHCPCDListener {
  public:
   // The status of the dhcpcd process.
@@ -42,11 +42,11 @@ class LegacyDHCPCDListener {
     kArpGateway,
   };
 
-  using EventSignalCB = base::RepeatingCallback<void(
-      std::string_view service_name,
-      uint32_t pid,
-      DHCPCDControllerInterface::EventReason reason,
-      const KeyValueStore& configuration)>;
+  using EventSignalCB =
+      base::RepeatingCallback<void(std::string_view service_name,
+                                   uint32_t pid,
+                                   DHCPClientProxy::EventReason reason,
+                                   const KeyValueStore& configuration)>;
   using StatusChangedCB = base::RepeatingCallback<void(
       std::string_view service_name, uint32_t pid, Status status)>;
 

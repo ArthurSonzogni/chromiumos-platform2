@@ -16,9 +16,9 @@
 #include <gmock/gmock.h>
 #include <net-base/mock_process_manager.h>
 
-#include "shill/network/dhcpcd_controller_interface.h"
-#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_controller.h"
+#include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/legacy_dhcpcd/legacy_dhcpcd_listener.h"
+#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_proxy.h"
 
 namespace shill {
 namespace {
@@ -56,17 +56,17 @@ class FakeLegacyDHCPCDListenerFactory : public LegacyDHCPCDListenerFactory {
               (override));
 };
 
-// The mock client of the LegacyDHCPCDController.
-class MockClient : public DHCPCDControllerInterface::EventHandler {
+// The mock client of the LegacyDHCPCDProxy.
+class MockClient : public DHCPClientProxy::EventHandler {
  public:
   MOCK_METHOD(void,
               OnDHCPEvent,
-              (DHCPCDControllerInterface::EventReason, const KeyValueStore&),
+              (DHCPClientProxy::EventReason, const KeyValueStore&),
               (override));
   MOCK_METHOD(void, OnProcessExited, (int, int), (override));
 };
 
-class LegacyDHCPCDControllerFactoryTest : public testing::Test {
+class LegacyDHCPCDProxyFactoryTest : public testing::Test {
  public:
   void SetUp() override {
     EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -95,21 +95,21 @@ class LegacyDHCPCDControllerFactoryTest : public testing::Test {
               return listener;
             });
 
-    controller_factory_ = std::make_unique<LegacyDHCPCDControllerFactory>(
+    proxy_factory_ = std::make_unique<LegacyDHCPCDProxyFactory>(
         nullptr, mock_bus_, &mock_process_manager_,
         std::move(listener_factory));
     EXPECT_NE(fake_listener_, nullptr);
-    controller_factory_->set_root_for_testing(root_path_);
+    proxy_factory_->set_root_for_testing(root_path_);
   }
 
-  std::unique_ptr<DHCPCDControllerInterface> CreateControllerSync(
+  std::unique_ptr<DHCPClientProxy> CreateProxySync(
       int expected_pid,
       std::string_view expected_dbus_service_name,
       std::string_view interface = "wlan0") {
-    const DHCPCDControllerInterface::Options options = {};
+    const DHCPClientProxy::Options options = {};
 
-    // When creating a controller, the controller factory should create
-    // the dhcpcd process in minijail.
+    // When creating a proxy, the proxy factory should create the dhcpcd process
+    // in minijail.
     EXPECT_CALL(mock_process_manager_, StartProcessInMinijail)
         .WillOnce(Return(expected_pid));
     EXPECT_CALL(mock_process_manager_, UpdateExitCallback(expected_pid, _))
@@ -120,19 +120,18 @@ class LegacyDHCPCDControllerFactoryTest : public testing::Test {
               return true;
             });
 
-    std::unique_ptr<DHCPCDControllerInterface> controller =
-        controller_factory_->Create(interface, Technology::kWiFi, options,
-                                    &client_);
-    EXPECT_NE(controller, nullptr);
-    EXPECT_FALSE(controller->IsReady());
+    std::unique_ptr<DHCPClientProxy> proxy =
+        proxy_factory_->Create(interface, Technology::kWiFi, options, &client_);
+    EXPECT_NE(proxy, nullptr);
+    EXPECT_FALSE(proxy->IsReady());
 
-    // After receiving D-Bus signal, the controller should be ready.
+    // After receiving D-Bus signal, the proxy should be ready.
     fake_listener_->status_changed_cb_.Run(expected_dbus_service_name,
                                            expected_pid,
                                            LegacyDHCPCDListener::Status::kInit);
-    EXPECT_TRUE(controller->IsReady());
+    EXPECT_TRUE(proxy->IsReady());
 
-    return controller;
+    return proxy;
   }
 
   void CreateTempFileInRoot(std::string_view file) {
@@ -154,16 +153,16 @@ class LegacyDHCPCDControllerFactoryTest : public testing::Test {
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_object_proxy_;
   FakeLegacyDHCPCDListener* fake_listener_ = nullptr;
-  std::unique_ptr<LegacyDHCPCDControllerFactory> controller_factory_;
+  std::unique_ptr<LegacyDHCPCDProxyFactory> proxy_factory_;
 
   MockClient client_;
 };
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, DhcpcdArguments) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, DhcpcdArguments) {
   constexpr int kPid = 4;
 
   const std::vector<
-      std::pair<DHCPCDControllerInterface::Options, std::vector<std::string>>>
+      std::pair<DHCPClientProxy::Options, std::vector<std::string>>>
       kExpectedArgs = {
           {{},
            {"-B", "-f", "/etc/dhcpcd7.conf", "-i", "chromeos", "-q", "-4", "-o",
@@ -186,7 +185,7 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DhcpcdArguments) {
             "captive_portal_uri", "--nodelay", "wlan0=fake_lease"}},
       };
   for (const auto& [options, dhcpcd_args] : kExpectedArgs) {
-    // When creating a controller, the controller factory should create
+    // When creating a proxy, the proxy factory should create
     // the dhcpcd process in minijail.
     EXPECT_CALL(mock_process_manager_,
                 StartProcessInMinijail(_, base::FilePath("/sbin/dhcpcd7"),
@@ -200,61 +199,59 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DhcpcdArguments) {
               return true;
             });
 
-    controller_factory_->Create("wlan0", Technology::kWiFi, options, &client_);
+    proxy_factory_->Create("wlan0", Technology::kWiFi, options, &client_);
   }
 }
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, CreateAndDestroyController) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, CreateAndDestroyController) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
 
-  std::unique_ptr<DHCPCDControllerInterface> controller =
-      CreateControllerSync(kPid, kDBusServiceName);
+  std::unique_ptr<DHCPClientProxy> controller =
+      CreateProxySync(kPid, kDBusServiceName);
 
   // The dhcpcd process should be terminated when the controller is destroyed.
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid));
   controller.reset();
 
   // The handler should not receive any event after the controller is destroyed.
-  EXPECT_CALL(
-      client_,
-      OnDHCPEvent(DHCPCDControllerInterface::EventReason::kIPv6OnlyPreferred,
-                  _))
+  EXPECT_CALL(client_,
+              OnDHCPEvent(DHCPClientProxy::EventReason::kIPv6OnlyPreferred, _))
       .Times(0);
   fake_listener_->status_changed_cb_.Run(
       kDBusServiceName, kPid, LegacyDHCPCDListener::Status::kIPv6OnlyPreferred);
 }
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, KillProcessWithPendingRequest) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, KillProcessWithPendingRequest) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
 
-  std::unique_ptr<DHCPCDControllerInterface> controller =
-      CreateControllerSync(kPid, kDBusServiceName);
+  std::unique_ptr<DHCPClientProxy> controller =
+      CreateProxySync(kPid, kDBusServiceName);
 
   // The dhcpcd process should be killed when the factory is destroyed.
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid));
-  controller_factory_.reset();
+  proxy_factory_.reset();
 }
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, CreateMultipleControllers) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, CreateMultipleControllers) {
   constexpr int kPid1 = 4;
   constexpr int kPid2 = 6;
   constexpr std::string_view kDBusServiceName1 = ":1.25";
   constexpr std::string_view kDBusServiceName2 = ":1.27";
 
-  std::unique_ptr<DHCPCDControllerInterface> controller1 =
-      CreateControllerSync(kPid1, kDBusServiceName1);
-  std::unique_ptr<DHCPCDControllerInterface> controller2 =
-      CreateControllerSync(kPid2, kDBusServiceName2);
+  std::unique_ptr<DHCPClientProxy> controller1 =
+      CreateProxySync(kPid1, kDBusServiceName1);
+  std::unique_ptr<DHCPClientProxy> controller2 =
+      CreateProxySync(kPid2, kDBusServiceName2);
 
   // The dhcpcd process should be terminated when the controller is destroyed.
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid1));
   EXPECT_CALL(mock_process_manager_, StopProcessAndBlock(kPid2));
-  controller_factory_.reset();
+  proxy_factory_.reset();
 }
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, ProcessExited) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, ProcessExited) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
   constexpr std::string_view kInterface = "wlan1";
@@ -262,8 +259,8 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, ProcessExited) {
   constexpr std::string_view kLeaseFile = "var/lib/dhcpcd7/wlan1.lease";
   constexpr int kExitStatus = 3;
 
-  std::unique_ptr<DHCPCDControllerInterface> controller =
-      CreateControllerSync(kPid, kDBusServiceName, kInterface);
+  std::unique_ptr<DHCPClientProxy> controller =
+      CreateProxySync(kPid, kDBusServiceName, kInterface);
 
   CreateTempFileInRoot(kPidFile);
   CreateTempFileInRoot(kLeaseFile);
@@ -284,26 +281,23 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, ProcessExited) {
   EXPECT_FALSE(FileExistsInRoot(kLeaseFile));
 }
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, EventHandler) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, EventHandler) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
 
-  std::unique_ptr<DHCPCDControllerInterface> controller =
-      CreateControllerSync(kPid, kDBusServiceName);
+  std::unique_ptr<DHCPClientProxy> controller =
+      CreateProxySync(kPid, kDBusServiceName);
 
-  EXPECT_CALL(
-      client_,
-      OnDHCPEvent(DHCPCDControllerInterface::EventReason::kIPv6OnlyPreferred,
-                  _));
+  EXPECT_CALL(client_,
+              OnDHCPEvent(DHCPClientProxy::EventReason::kIPv6OnlyPreferred, _));
   fake_listener_->status_changed_cb_.Run(
       kDBusServiceName, kPid, LegacyDHCPCDListener::Status::kIPv6OnlyPreferred);
 
   const KeyValueStore configuration = {};
-  EXPECT_CALL(client_,
-              OnDHCPEvent(DHCPCDControllerInterface::EventReason::kRebind, _));
-  fake_listener_->event_signal_cb_.Run(
-      kDBusServiceName, kPid, DHCPCDControllerInterface::EventReason::kRebind,
-      configuration);
+  EXPECT_CALL(client_, OnDHCPEvent(DHCPClientProxy::EventReason::kRebind, _));
+  fake_listener_->event_signal_cb_.Run(kDBusServiceName, kPid,
+                                       DHCPClientProxy::EventReason::kRebind,
+                                       configuration);
 }
 
 MATCHER_P2(IsDBusMethodCall, interface_name, method_name, "") {
@@ -311,12 +305,12 @@ MATCHER_P2(IsDBusMethodCall, interface_name, method_name, "") {
          arg->GetMember() == method_name;
 }
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, Rebind) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, Rebind) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
 
-  std::unique_ptr<DHCPCDControllerInterface> controller =
-      CreateControllerSync(kPid, kDBusServiceName);
+  std::unique_ptr<DHCPClientProxy> controller =
+      CreateProxySync(kPid, kDBusServiceName);
 
   EXPECT_CALL(
       *mock_object_proxy_.get(),
@@ -325,12 +319,12 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, Rebind) {
   EXPECT_TRUE(controller->Rebind());
 }
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, Release) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, Release) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
 
-  std::unique_ptr<DHCPCDControllerInterface> controller =
-      CreateControllerSync(kPid, kDBusServiceName);
+  std::unique_ptr<DHCPClientProxy> controller =
+      CreateProxySync(kPid, kDBusServiceName);
 
   EXPECT_CALL(
       *mock_object_proxy_.get(),
@@ -339,18 +333,17 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, Release) {
   EXPECT_TRUE(controller->Release());
 }
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, CallMethodsWhenNotReady) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, CallMethodsWhenNotReady) {
   constexpr int kPid = 4;
-  const DHCPCDControllerInterface::Options options = {};
+  const DHCPClientProxy::Options options = {};
 
   EXPECT_CALL(mock_process_manager_, StartProcessInMinijail)
       .WillOnce(Return(kPid));
   EXPECT_CALL(mock_process_manager_, UpdateExitCallback(kPid, _))
       .WillOnce(Return(true));
 
-  std::unique_ptr<DHCPCDControllerInterface> controller =
-      controller_factory_->Create("wlan0", Technology::kWiFi, options,
-                                  &client_);
+  std::unique_ptr<DHCPClientProxy> controller =
+      proxy_factory_->Create("wlan0", Technology::kWiFi, options, &client_);
   EXPECT_NE(controller, nullptr);
   EXPECT_FALSE(controller->IsReady());
 
@@ -359,16 +352,16 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, CallMethodsWhenNotReady) {
   EXPECT_FALSE(controller->Release());
 }
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, DeleteEphemeralLeaseAndPidFile) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, DeleteEphemeralLeaseAndPidFile) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
   constexpr std::string_view kInterface = "wlan0";
   constexpr std::string_view kPidFile = "var/run/dhcpcd7/dhcpcd-wlan0-4.pid";
   constexpr std::string_view kLeaseFile = "var/lib/dhcpcd7/wlan0.lease";
-  const DHCPCDControllerInterface::Options options = {};
+  const DHCPClientProxy::Options options = {};
 
-  std::unique_ptr<DHCPCDControllerInterface> controller =
-      CreateControllerSync(kPid, kDBusServiceName, kInterface);
+  std::unique_ptr<DHCPClientProxy> controller =
+      CreateProxySync(kPid, kDBusServiceName, kInterface);
 
   CreateTempFileInRoot(kPidFile);
   CreateTempFileInRoot(kLeaseFile);
@@ -382,17 +375,16 @@ TEST_F(LegacyDHCPCDControllerFactoryTest, DeleteEphemeralLeaseAndPidFile) {
   EXPECT_FALSE(FileExistsInRoot(kLeaseFile));
 }
 
-TEST_F(LegacyDHCPCDControllerFactoryTest, PermanentLeaseFile) {
+TEST_F(LegacyDHCPCDProxyFactoryTest, PermanentLeaseFile) {
   constexpr int kPid = 4;
   constexpr std::string_view kDBusServiceName = ":1.25";
   constexpr std::string_view kInterface = "wlan0";
   constexpr std::string_view kPidFile = "var/run/dhcpcd7/dhcpcd-wlan0-4.pid";
   constexpr std::string_view kLeaseFile = "var/lib/dhcpcd7/permanent.lease";
-  const DHCPCDControllerInterface::Options options = {.lease_name =
-                                                          "permanent"};
+  const DHCPClientProxy::Options options = {.lease_name = "permanent"};
 
-  std::unique_ptr<DHCPCDControllerInterface> controller =
-      CreateControllerSync(kPid, kDBusServiceName, kInterface);
+  std::unique_ptr<DHCPClientProxy> controller =
+      CreateProxySync(kPid, kDBusServiceName, kInterface);
 
   CreateTempFileInRoot(kPidFile);
   CreateTempFileInRoot(kLeaseFile);

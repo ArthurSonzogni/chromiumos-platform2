@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_controller.h"
+#include "shill/network/legacy_dhcpcd/legacy_dhcpcd_proxy.h"
 
 #include <memory>
 #include <string>
@@ -20,7 +20,7 @@
 #include <net-base/process_manager.h>
 
 #include "dhcpcd/dbus-proxies.h"
-#include "shill/network/dhcpcd_controller_interface.h"
+#include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/legacy_dhcpcd/legacy_dhcpcd_listener.h"
 #include "shill/technology.h"
 
@@ -48,7 +48,7 @@ void LogDBusError(const brillo::ErrorPtr& error,
 }
 
 std::vector<std::string> GetDhcpcdFlags(
-    Technology technology, const DHCPCDControllerInterface::Options& options) {
+    Technology technology, const DHCPClientProxy::Options& options) {
   std::vector<std::string> flags = {
       "-B",                               // Run in foreground.
       "-f",        kDHCPCDConfigPath,     // Specify config file path.
@@ -90,27 +90,25 @@ std::vector<std::string> GetDhcpcdFlags(
 
 // Returns true if the lease file is ephermeral, which means the lease file
 // should be deleted during cleanup.
-bool IsEphemeralLease(const DHCPCDControllerInterface::Options& options,
+bool IsEphemeralLease(const DHCPClientProxy::Options& options,
                       std::string_view interface) {
   return options.lease_name.empty() || options.lease_name == interface;
 }
 
 }  // namespace
 
-LegacyDHCPCDController::LegacyDHCPCDController(
-    std::string_view interface,
-    DHCPCDControllerInterface::EventHandler* handler,
-    base::ScopedClosureRunner destroy_cb)
-    : DHCPCDControllerInterface(interface, handler),
-      destroy_cb_(std::move(destroy_cb)) {}
+LegacyDHCPCDProxy::LegacyDHCPCDProxy(std::string_view interface,
+                                     DHCPClientProxy::EventHandler* handler,
+                                     base::ScopedClosureRunner destroy_cb)
+    : DHCPClientProxy(interface, handler), destroy_cb_(std::move(destroy_cb)) {}
 
-LegacyDHCPCDController::~LegacyDHCPCDController() = default;
+LegacyDHCPCDProxy::~LegacyDHCPCDProxy() = default;
 
-bool LegacyDHCPCDController::IsReady() const {
+bool LegacyDHCPCDProxy::IsReady() const {
   return dhcpcd_proxy_ != nullptr;
 }
 
-bool LegacyDHCPCDController::Rebind() {
+bool LegacyDHCPCDProxy::Rebind() {
   if (!dhcpcd_proxy_) {
     LOG(ERROR) << __func__ << ": dhcpcd proxy is not ready";
     return false;
@@ -124,7 +122,7 @@ bool LegacyDHCPCDController::Rebind() {
   return true;
 }
 
-bool LegacyDHCPCDController::Release() {
+bool LegacyDHCPCDProxy::Release() {
   if (!dhcpcd_proxy_) {
     LOG(ERROR) << __func__ << ": dhcpcd proxy is not ready";
     return false;
@@ -138,16 +136,16 @@ bool LegacyDHCPCDController::Release() {
   return true;
 }
 
-void LegacyDHCPCDController::OnDHCPEvent(EventReason reason,
-                                         const KeyValueStore& configuration) {
+void LegacyDHCPCDProxy::OnDHCPEvent(EventReason reason,
+                                    const KeyValueStore& configuration) {
   handler_->OnDHCPEvent(reason, configuration);
 }
 
-base::WeakPtr<LegacyDHCPCDController> LegacyDHCPCDController::GetWeakPtr() {
+base::WeakPtr<LegacyDHCPCDProxy> LegacyDHCPCDProxy::GetWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
 }
 
-LegacyDHCPCDControllerFactory::LegacyDHCPCDControllerFactory(
+LegacyDHCPCDProxyFactory::LegacyDHCPCDProxyFactory(
     EventDispatcher* dispatcher,
     scoped_refptr<dbus::Bus> bus,
     net_base::ProcessManager* process_manager,
@@ -162,24 +160,23 @@ LegacyDHCPCDControllerFactory::LegacyDHCPCDControllerFactory(
   listener_ = listener_factory->Create(
       bus_, dispatcher,
       // base::Unretained(this) is safe because |listener_| is owned by |*this|.
-      base::BindRepeating(&LegacyDHCPCDControllerFactory::OnDHCPEvent,
+      base::BindRepeating(&LegacyDHCPCDProxyFactory::OnDHCPEvent,
                           base::Unretained(this)),
-      base::BindRepeating(&LegacyDHCPCDControllerFactory::OnStatusChanged,
+      base::BindRepeating(&LegacyDHCPCDProxyFactory::OnStatusChanged,
                           base::Unretained(this)));
 }
 
-LegacyDHCPCDControllerFactory::~LegacyDHCPCDControllerFactory() {
+LegacyDHCPCDProxyFactory::~LegacyDHCPCDProxyFactory() {
   // Clear all the alive dhcpcd processes.
-  alive_controllers_.clear();
+  alive_proxies_.clear();
   CHECK(pids_need_to_stop_.empty());
 }
 
-std::unique_ptr<DHCPCDControllerInterface>
-LegacyDHCPCDControllerFactory::Create(
+std::unique_ptr<DHCPClientProxy> LegacyDHCPCDProxyFactory::Create(
     std::string_view interface,
     Technology technology,
-    const DHCPCDControllerInterface::Options& options,
-    DHCPCDControllerInterface::EventHandler* handler) {
+    const DHCPClientProxy::Options& options,
+    DHCPClientProxy::EventHandler* handler) {
   std::vector<std::string> args = GetDhcpcdFlags(technology, options);
   if (IsEphemeralLease(options, interface)) {
     args.push_back(std::string(interface));
@@ -206,32 +203,30 @@ LegacyDHCPCDControllerFactory::Create(
   base::ScopedClosureRunner clean_up_closure(base::BindOnce(
       // base::Unretained(this) is safe because the closure won't be passed
       // outside this instance.
-      &LegacyDHCPCDControllerFactory::CleanUpDhcpcd, base::Unretained(this),
+      &LegacyDHCPCDProxyFactory::CleanUpDhcpcd, base::Unretained(this),
       std::string(interface), options, pid));
 
   // Inject the exit callback with pid information.
   if (!process_manager_->UpdateExitCallback(
-          pid, base::BindOnce(&LegacyDHCPCDControllerFactory::OnProcessExited,
+          pid, base::BindOnce(&LegacyDHCPCDProxyFactory::OnProcessExited,
                               weak_ptr_factory_.GetWeakPtr(), pid))) {
     return nullptr;
   }
 
-  // Register the controller and return it.
-  auto controller = std::make_unique<LegacyDHCPCDController>(
+  // Register the proxy and return it.
+  auto proxy = std::make_unique<LegacyDHCPCDProxy>(
       interface, handler,
       base::ScopedClosureRunner(
-          base::BindOnce(&LegacyDHCPCDControllerFactory::OnControllerDestroyed,
+          base::BindOnce(&LegacyDHCPCDProxyFactory::OnProxyDestroyed,
                          weak_ptr_factory_.GetWeakPtr(), pid)));
-  alive_controllers_.insert(std::make_pair(
-      pid,
-      AliveController{controller->GetWeakPtr(), std::move(clean_up_closure)}));
-  return controller;
+  alive_proxies_.insert(std::make_pair(
+      pid, AliveProxy{proxy->GetWeakPtr(), std::move(clean_up_closure)}));
+  return proxy;
 }
 
-void LegacyDHCPCDControllerFactory::CleanUpDhcpcd(
-    const std::string& interface,
-    DHCPCDControllerInterface::Options options,
-    int pid) {
+void LegacyDHCPCDProxyFactory::CleanUpDhcpcd(const std::string& interface,
+                                             DHCPClientProxy::Options options,
+                                             int pid) {
   const auto iter = pids_need_to_stop_.find(pid);
   if (iter != pids_need_to_stop_.end()) {
     // Pass the termination responsibility to net_base::ProcessManager.
@@ -251,83 +246,79 @@ void LegacyDHCPCDControllerFactory::CleanUpDhcpcd(
       base::StringPrintf(kDHCPCDPathFormatPID, interface.c_str())));
 }
 
-void LegacyDHCPCDControllerFactory::OnProcessExited(int pid, int exit_status) {
+void LegacyDHCPCDProxyFactory::OnProcessExited(int pid, int exit_status) {
   LOG(INFO) << __func__ << ": The dhcpcd process with pid " << pid
             << " is exited with status: " << exit_status;
   pids_need_to_stop_.erase(pid);
 
-  LegacyDHCPCDController* controller = GetAliveController(pid);
-  if (controller == nullptr) {
+  LegacyDHCPCDProxy* proxy = GetAliveProxy(pid);
+  if (proxy == nullptr) {
     return;
   }
-  alive_controllers_.erase(pid);
+  alive_proxies_.erase(pid);
 
-  controller->OnProcessExited(pid, exit_status);
+  proxy->OnProcessExited(pid, exit_status);
 }
 
-void LegacyDHCPCDControllerFactory::OnDHCPEvent(
-    std::string_view service_name,
-    uint32_t pid,
-    DHCPCDControllerInterface::EventReason reason,
-    const KeyValueStore& configuration) {
-  LegacyDHCPCDController* controller = GetAliveController(pid);
-  if (controller == nullptr) {
+void LegacyDHCPCDProxyFactory::OnDHCPEvent(std::string_view service_name,
+                                           uint32_t pid,
+                                           DHCPClientProxy::EventReason reason,
+                                           const KeyValueStore& configuration) {
+  LegacyDHCPCDProxy* proxy = GetAliveProxy(pid);
+  if (proxy == nullptr) {
     return;
   }
-  SetProxyToControllerIfPending(controller, service_name, pid);
+  SetDBusProxyIfPending(proxy, service_name, pid);
 
-  controller->OnDHCPEvent(reason, configuration);
+  proxy->OnDHCPEvent(reason, configuration);
 }
 
-void LegacyDHCPCDControllerFactory::OnStatusChanged(
+void LegacyDHCPCDProxyFactory::OnStatusChanged(
     std::string_view service_name,
     uint32_t pid,
     LegacyDHCPCDListener::Status status) {
-  LegacyDHCPCDController* controller = GetAliveController(pid);
-  if (controller == nullptr) {
+  LegacyDHCPCDProxy* proxy = GetAliveProxy(pid);
+  if (proxy == nullptr) {
     return;
   }
-  SetProxyToControllerIfPending(controller, service_name, pid);
+  SetDBusProxyIfPending(proxy, service_name, pid);
 
   if (status == LegacyDHCPCDListener::Status::kIPv6OnlyPreferred) {
-    controller->OnDHCPEvent(
-        DHCPCDControllerInterface::EventReason::kIPv6OnlyPreferred, {});
+    proxy->OnDHCPEvent(DHCPClientProxy::EventReason::kIPv6OnlyPreferred, {});
   }
 }
 
-void LegacyDHCPCDControllerFactory::SetProxyToControllerIfPending(
-    LegacyDHCPCDController* controller,
-    std::string_view service_name,
-    int pid) {
-  if (controller->IsReady()) {
+void LegacyDHCPCDProxyFactory::SetDBusProxyIfPending(
+    LegacyDHCPCDProxy* proxy, std::string_view service_name, int pid) {
+  if (proxy->IsReady()) {
     return;
   }
 
-  LOG(INFO) << __func__ << ": Set the proxy to the controller for pid: " << pid;
-  controller->set_dhcpcd_proxy(std::make_unique<org::chromium::dhcpcdProxy>(
+  LOG(INFO) << __func__
+            << ": Set the D-Bus proxy to LegacyDHCPCDProxy for pid: " << pid;
+  proxy->set_dhcpcd_proxy(std::make_unique<org::chromium::dhcpcdProxy>(
       bus_, std::string(service_name)));
 }
 
-LegacyDHCPCDController* LegacyDHCPCDControllerFactory::GetAliveController(
-    int pid) const {
-  auto iter = alive_controllers_.find(pid);
-  if (iter == alive_controllers_.end()) {
+LegacyDHCPCDProxy* LegacyDHCPCDProxyFactory::GetAliveProxy(int pid) const {
+  auto iter = alive_proxies_.find(pid);
+  if (iter == alive_proxies_.end()) {
     LOG(WARNING) << "Received signal from the untracked dhcpcd with pid: "
                  << pid;
     return nullptr;
   }
 
-  base::WeakPtr<LegacyDHCPCDController> controller = iter->second.controller;
-  if (!controller) {
-    LOG(INFO) << "The controller with pid: " << pid << " is invalidated";
+  base::WeakPtr<LegacyDHCPCDProxy> proxy = iter->second.proxy;
+  if (!proxy) {
+    LOG(INFO) << "The proxy with pid: " << pid << " is invalidated";
     return nullptr;
   }
 
-  return controller.get();
+  return proxy.get();
 }
 
-void LegacyDHCPCDControllerFactory::OnControllerDestroyed(int pid) {
-  alive_controllers_.erase(pid);
+void LegacyDHCPCDProxyFactory::OnProxyDestroyed(int pid) {
+  alive_proxies_.erase(pid);
 }
 
 }  // namespace shill
