@@ -396,9 +396,9 @@ void AuthSessionManager::ExpireAuthSessions() {
   // timer to be triggered slightly early and we don't want this callback to
   // turn into a busy-wait where it runs over and over as a no-op.
   auto iter = auth_session_expiring_soon_map_.begin();
-  bool first_entry = true;
+  int expired_sessions = 0;
   while (iter != auth_session_expiring_soon_map_.end() &&
-         (first_entry || iter->first <= now)) {
+         (expired_sessions == 0 || iter->first <= now)) {
     auto token_iter = token_to_user_.find(iter->second);
     if (token_iter == token_to_user_.end()) {
       LOG(FATAL) << "token_iter: AuthSessionManager expired a session it is "
@@ -424,11 +424,14 @@ void AuthSessionManager::ExpireAuthSessions() {
       user_auth_sessions_.erase(user_iter);
     }
     ++iter;
-    first_entry = false;
+    ++expired_sessions;
   }
   // Erase all of the entries from the map that were just removed.
   iter = auth_session_expiring_soon_map_.erase(
       auth_session_expiring_soon_map_.begin(), iter);
+  if (expired_sessions > 0) {
+    LOG(INFO) << "AuthSession: " << expired_sessions << " AuthSession expired.";
+  }
   // Reset the expiration timer to run again based on what's left in the map.
   ResetExpirationTimer();
 }

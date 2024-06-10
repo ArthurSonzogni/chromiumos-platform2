@@ -2646,6 +2646,7 @@ void UserDataAuth::ExtendAuthSession(
                                kLocUserDataAuthExtendFailedInExtendAuthSession))
                            .Wrap(std::move(result));
             }
+            LOG(INFO) << "AuthSession: Extended by " << timer_extension;
             reply.set_seconds_left(auth_session.GetRemainingTime().InSeconds());
             ReplyWithError(std::move(on_done), reply, std::move(result));
           }));
