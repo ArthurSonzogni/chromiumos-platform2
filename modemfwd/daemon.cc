@@ -350,13 +350,16 @@ void Daemon::RunModemReappearanceCallback(const std::string& equipment_id) {
 
 void Daemon::OnModemStateChange(const std::string device_id,
                                 Modem::State new_state) {
+  if (modems_.count(device_id) == 0) {
+    return;
+  }
   EVLOG(1) << __func__ << ": update modem with device id: " << device_id
            << " to new modem state: " << new_state;
   // Do not update heartbeat config when:
   // 1. update to new modem state is not successful (no state change);
   // 2. current power state is LOW, keep heartbeat stopped.
-  if (!modems_[device_id].get()->UpdateState(new_state) ||
-      modems_[device_id].get()->GetPowerState() == Modem::PowerState::LOW) {
+  if (!modems_[device_id]->UpdateState(new_state) ||
+      modems_[device_id]->GetPowerState() == Modem::PowerState::LOW) {
     return;
   }
   StopHeartbeatTask(device_id);
@@ -366,10 +369,15 @@ void Daemon::OnModemStateChange(const std::string device_id,
 
 void Daemon::OnModemPowerStateChange(const std::string device_id,
                                      Modem::PowerState new_power_state) {
+  if (modems_.count(device_id) == 0) {
+    return;
+  }
   EVLOG(1) << __func__ << ": update modem with device id: " << device_id
            << " to new power state: " << new_power_state;
-  if (!modems_[device_id].get()->UpdatePowerState(new_power_state))
+  if (!modems_[device_id]->UpdatePowerState(new_power_state)) {
     return;
+  }
+
   if (new_power_state == Modem::PowerState::LOW) {
     StopHeartbeatTask(device_id);
   } else {
