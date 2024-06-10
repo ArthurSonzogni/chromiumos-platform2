@@ -1070,12 +1070,6 @@ Properties	object ActiveProfile [readonly]
 			list items are "l2tpipsec", "openvpn", "thirdpartyvpn", "arcvpn", and
 			"wireguard".
 
-		boolean TetheringAllowed [readwrite]
-
-			Whether tethering feature is allowed. When false, SetTetheringEnabled
-			will return failure. The value is controlled by a feature flag in Chrome.
-			Should only be modified by Chrome feature flag or tests.
-
 		boolean ExperimentalTetheringFunctionality [readwrite]
 
 			Whether the tethering feature is allowed on untested carriers,

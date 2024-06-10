@@ -150,8 +150,6 @@ class TetheringManager : public Network::EventHandler {
   KeyValueStore GetStatus();
 
   // DBus property getters
-  // This property is temporary and will be removed when the feature is mature.
-  bool allowed() { return allowed_; }
   KeyValueStore GetCapabilities(Error* error);
   // Refresh the list of tethering capabilities
   void RefreshCapabilities();

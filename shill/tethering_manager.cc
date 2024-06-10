@@ -400,12 +400,6 @@ KeyValueStore TetheringManager::GetConfig(Error* error) {
 
 bool TetheringManager::SetAndPersistConfig(const KeyValueStore& config,
                                            Error* error) {
-  if (!allowed_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kPermissionDenied,
-                          "Tethering is not allowed");
-    return false;
-  }
-
   const auto profile = manager_->ActiveProfile();
   // TODO(b/172224298): prefer using Profile::IsDefault.
   if (profile->GetUser().empty()) {
@@ -1195,12 +1189,6 @@ void TetheringManager::Enable(uint32_t priority,
   CHECK(!result_callback_);
   result_callback_ = std::move(callback);
 
-  if (!allowed_) {
-    LOG(ERROR) << __func__ << ": not allowed";
-    PostSetEnabledResult(SetEnabledResult::kNotAllowed);
-    return;
-  }
-
   const auto profile = manager_->ActiveProfile();
   // TODO(b/172224298): prefer using Profile::IsDefault.
   if (profile->GetUser().empty()) {
@@ -1261,14 +1249,6 @@ const std::string TetheringManager::SetEnabledResultName(
 
 void TetheringManager::CheckReadiness(
     Cellular::EntitlementCheckResultCallback callback) {
-  if (!allowed_) {
-    LOG(ERROR) << __func__ << ": not allowed";
-    manager_->dispatcher()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(callback), EntitlementStatus::kNotAllowed));
-    return;
-  }
-
   // TODO(b/235762746) Add a selection mode for choosing the current default
   // network as the upstream network.
 

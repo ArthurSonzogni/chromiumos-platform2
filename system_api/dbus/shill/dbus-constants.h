@@ -128,6 +128,7 @@ constexpr char kServiceCompleteListProperty[] = "ServiceCompleteList";
 constexpr char kServiceWatchListProperty[] = "ServiceWatchList";
 constexpr char kServicesProperty[] = "Services";  // Also used for Profile.
 constexpr char kSupportedVPNTypesProperty[] = "SupportedVPNTypes";
+// Obsolete, will be removed once all the callsites have been removed.
 constexpr char kTetheringAllowedProperty[] = "TetheringAllowed";
 constexpr char kTetheringCapabilitiesProperty[] = "TetheringCapabilities";
 constexpr char kTetheringConfigProperty[] = "TetheringConfig";

@@ -268,14 +268,6 @@ class TetheringManagerTest : public testing::Test {
     return error.type();
   }
 
-  void SetAllowed(TetheringManager* tethering_manager, bool allowed) {
-    Error error;
-    PropertyStore store;
-    tethering_manager->InitPropertyStore(&store);
-    store.SetBoolProperty(kTetheringAllowedProperty, allowed, &error);
-    EXPECT_TRUE(error.IsSuccess());
-  }
-
   KeyValueStore GetCapabilities(TetheringManager* tethering_manager) {
     Error error;
     KeyValueStore caps = tethering_manager->GetCapabilities(&error);
@@ -404,8 +396,6 @@ class TetheringManagerTest : public testing::Test {
   void DispatchPendingEvents() { dispatcher_.DispatchPendingEvents(); }
 
   void TetheringPrerequisite(TetheringManager* tethering_manager) {
-    SetAllowed(tethering_manager, true);
-
     ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kDefaultProfile));
     EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kDefaultProfile));
     ASSERT_TRUE(base::CreateDirectory(temp_dir_.GetPath().Append("user")));
@@ -571,7 +561,6 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   ON_CALL(*phy, SupportAPSTAConcurrency()).WillByDefault(Return(true));
   EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering(_))
       .WillOnce(Return(true));
-  SetAllowed(tethering_manager_, true);
   tethering_manager_->RefreshCapabilities();
   KeyValueStore caps = GetCapabilities(tethering_manager_);
 
@@ -600,7 +589,6 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutWiFi) {
       .WillByDefault(Return(devices));
   EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering(_))
       .WillOnce(Return(true));
-  SetAllowed(tethering_manager_, true);
 
   tethering_manager_->RefreshCapabilities();
   KeyValueStore caps = GetCapabilities(tethering_manager_);
@@ -629,7 +617,6 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutCellular) {
   ON_CALL(*phy, SupportAPSTAConcurrency()).WillByDefault(Return(true));
   EXPECT_CALL(*cellular_service_provider_, HardwareSupportsTethering(_))
       .WillOnce(Return(false));
-  SetAllowed(tethering_manager_, true);
 
   tethering_manager_->RefreshCapabilities();
   KeyValueStore caps = GetCapabilities(tethering_manager_);
@@ -654,8 +641,6 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilitiesWithoutCellular) {
 }
 
 TEST_F(TetheringManagerTest, TetheringConfig) {
-  SetAllowed(tethering_manager_, true);
-
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kDefaultProfile));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kDefaultProfile));
 
@@ -715,7 +700,6 @@ TEST_F(TetheringManagerTest, TetheringConfig) {
 }
 
 TEST_F(TetheringManagerTest, DefaultConfigCheck) {
-  SetAllowed(tethering_manager_, true);
   // SetEnabled proceed to starting state and persist the default config.
   ASSERT_TRUE(base::CreateDirectory(temp_dir_.GetPath().Append("user")));
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kUserProfile));
@@ -847,32 +831,7 @@ TEST_F(TetheringManagerTest, TetheringConfigSaveAndLoad) {
   EXPECT_EQ(GetConfigUpstream(config1), GetConfigUpstream(config2));
 }
 
-TEST_F(TetheringManagerTest, TetheringIsNotAllowed) {
-  // Fake Tethering configuration.
-  KeyValueStore config = GenerateFakeConfig(kTestAPHexSSID, kTestPassword);
-
-  // Push a user profile
-  ASSERT_TRUE(base::CreateDirectory(temp_dir_.GetPath().Append("user")));
-  ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kUserProfile));
-  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
-
-  // Tethering is not allowed. SetAndPersistConfig and SetEnabled should fail
-  // with error code kNotAllowed.
-  SetAllowed(tethering_manager_, false);
-  EXPECT_FALSE(SetAndPersistConfig(tethering_manager_, config));
-  SetEnabledVerifyResult(tethering_manager_, true,
-                         TetheringManager::SetEnabledResult::kNotAllowed);
-
-  // Tethering is allowed. SetAndPersistConfig and SetEnabled should success
-  SetAllowed(tethering_manager_, true);
-  EXPECT_TRUE(SetAndPersistConfig(tethering_manager_, config));
-  Enable(tethering_manager_, kPriorityForTest);
-  EXPECT_EQ(TetheringState(tethering_manager_),
-            TetheringManager::TetheringState::kTetheringStarting);
-}
-
 TEST_F(TetheringManagerTest, TetheringInDefaultProfile) {
-  SetAllowed(tethering_manager_, true);
   // SetEnabled fails for the default profile.
   ASSERT_EQ(Error::kSuccess, TestCreateProfile(&manager_, kDefaultProfile));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kDefaultProfile));
@@ -880,23 +839,11 @@ TEST_F(TetheringManagerTest, TetheringInDefaultProfile) {
                          TetheringManager::SetEnabledResult::kNotAllowed);
 }
 
-TEST_F(TetheringManagerTest, CheckReadinessNotAllowed) {
-  base::MockOnceCallback<void(TetheringManager::EntitlementStatus)> cb;
-  KeyValueStore config = GenerateFakeConfig(kTestAPHexSSID, kTestPassword);
-
-  // Not allowed.
-  tethering_manager_->CheckReadiness(cb.Get());
-  EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kNotAllowed));
-  DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&cb);
-}
-
 TEST_F(TetheringManagerTest, CheckReadinessCellularUpstream) {
   base::MockOnceCallback<void(TetheringManager::EntitlementStatus)> cb;
   KeyValueStore config =
       GenerateFakeConfig("757365725F73736964", "user_password");
   SetConfigUpstream(config, TechnologyName(Technology::kCellular));
-  SetAllowed(tethering_manager_, true);
   EXPECT_TRUE(FromProperties(tethering_manager_, config));
 
   // No cellular Device.
@@ -975,7 +922,6 @@ TEST_F(TetheringManagerTest, CheckReadinessEthernetUpstream) {
   KeyValueStore config =
       GenerateFakeConfig("757365725F73736964", "user_password");
   SetConfigUpstream(config, TechnologyName(Technology::kEthernet));
-  SetAllowed(tethering_manager_, true);
   EXPECT_TRUE(FromProperties(tethering_manager_, config));
 
   // No ethernet Device.
