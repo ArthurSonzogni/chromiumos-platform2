@@ -15,7 +15,6 @@
 #include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/power_supply.h"
-#include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/wakeup_timer.h"
 
 namespace power_manager::policy {
@@ -32,16 +31,12 @@ ShutdownFromSuspend::ShutdownFromSuspend(
 
 ShutdownFromSuspend::~ShutdownFromSuspend() = default;
 
-void ShutdownFromSuspend::Init(
-    PrefsInterface* prefs,
-    system::PowerSupplyInterface* power_supply,
-    system::SuspendConfiguratorInterface* suspend_configurator) {
+void ShutdownFromSuspend::Init(PrefsInterface* prefs,
+                               system::PowerSupplyInterface* power_supply) {
   DCHECK(prefs);
   DCHECK(power_supply);
-  DCHECK(suspend_configurator);
 
   power_supply_ = power_supply;
-  suspend_configurator_ = suspend_configurator;
 
   // Shutdown after X can only work if dark resume is enabled.
   bool dark_resume_disable =

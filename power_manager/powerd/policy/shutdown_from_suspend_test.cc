@@ -10,7 +10,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/system/mock_power_supply.h"
-#include "power_manager/powerd/system/suspend_configurator_stub.h"
 #include "power_manager/powerd/system/wakeup_timer.h"
 #include "power_manager/powerd/testing/test_environment.h"
 
@@ -37,7 +36,7 @@ class ShutdownFromSuspendTest : public TestEnvironment {
     prefs_.SetInt64(kShutdownFromSuspendSecPref, shutdown_after.InSeconds());
     prefs_.SetInt64(kDisableDarkResumePref, enable_dark_resume ? 0 : 1);
 
-    shutdown_from_suspend_.Init(&prefs_, &power_supply_, &configurator_stub_);
+    shutdown_from_suspend_.Init(&prefs_, &power_supply_);
   }
 
   void SetLinePower(bool line_power) {
@@ -56,7 +55,6 @@ class ShutdownFromSuspendTest : public TestEnvironment {
   ShutdownFromSuspend shutdown_from_suspend_;
   FakePrefs prefs_;
   system::MockPowerSupply power_supply_;
-  system::SuspendConfiguratorStub configurator_stub_;
   TestMainLoopRunner runner_;
 };
 

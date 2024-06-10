@@ -6,7 +6,6 @@
 #define POWER_MANAGER_POWERD_POLICY_SHUTDOWN_FROM_SUSPEND_H_
 
 #include "power_manager/powerd/policy/shutdown_from_suspend_interface.h"
-#include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/powerd/system/wakeup_timer.h"
 
 #include <memory>
@@ -33,9 +32,7 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
   ShutdownFromSuspend& operator=(const ShutdownFromSuspend&) = delete;
   ~ShutdownFromSuspend() override;
 
-  void Init(PrefsInterface* prefs,
-            system::PowerSupplyInterface* power_supply,
-            system::SuspendConfiguratorInterface* suspend_configurator);
+  void Init(PrefsInterface* prefs, system::PowerSupplyInterface* power_supply);
 
   bool enabled_for_testing() const { return global_enabled_; }
 
@@ -77,8 +74,6 @@ class ShutdownFromSuspend : public ShutdownFromSuspendInterface {
   std::unique_ptr<power_manager::system::WakeupTimer> shutdown_alarm_timer_;
 
   system::PowerSupplyInterface* power_supply_ = nullptr;  // weak
-  system::SuspendConfiguratorInterface* suspend_configurator_ =
-      nullptr;  // weak
 
   double low_battery_shutdown_percent_ = 0.0;
 };

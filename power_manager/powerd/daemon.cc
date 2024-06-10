@@ -541,8 +541,7 @@ void Daemon::Init() {
   dark_resume_ = delegate_->CreateDarkResume(prefs_.get(),
                                              wakeup_source_identifier_.get());
 
-  shutdown_from_suspend_->Init(prefs_.get(), power_supply_.get(),
-                               suspend_configurator_.get());
+  shutdown_from_suspend_->Init(prefs_.get(), power_supply_.get());
 
   suspender_->Init(this, dbus_wrapper_.get(), dark_resume_.get(),
                    display_watcher_.get(), wakeup_source_identifier_.get(),
