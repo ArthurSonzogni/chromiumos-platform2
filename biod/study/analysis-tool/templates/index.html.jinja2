@@ -84,7 +84,6 @@ For help using the MVP CSS/HTML checkout the following resources:
         <section id="summary">
             <header>
                 <h1>Summary</h1>
-                <!-- <p>The overview of numeric analysis.</p> -->
             </header>
             <figure>
                 <table>
@@ -179,14 +178,12 @@ For help using the MVP CSS/HTML checkout the following resources:
             {%- endif %}
                 <header>
                     <h2>{{header_name}}</h2>
-                    <!-- <p>Section Subheading</p> -->
                 </header>
                 {%- for tc in test_cases.children() %}
                 {%- set fig = tc.find(find_str) %}
                 <aside style="width:{{width}}">
                     <figure>
                         {{ fig.html() }}
-                        {# <img alt="Stock photo" src="https://via.placeholder.com/600x500?text=Plot"> #}
                         <figcaption><i>{{ tc.name() }}</i></figcaption>
                     </figure>
                 </aside>
@@ -203,7 +200,6 @@ For help using the MVP CSS/HTML checkout the following resources:
             {%- endif %}
                 <header>
                     <h2>{{header_name}}</h2>
-                    <!-- <p>Section Subheading</p> -->
                 </header>
                 {%- with fig = overall.find(find_str) %}
                 <aside style="width:{{width}}">
