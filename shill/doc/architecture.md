@@ -27,8 +27,6 @@ classes).
     RoutingTable::GetInstance(). See also [routing](routing.md).
 *   [NetlinkManager class](../net/netlink_manager.h) Available globally using
     NetlinkManager::GetInstance().
-*   [DHCPProvider class](../network/dhcp_provider.h) Available globally using
-    DHCPProvider::GetInstance().
 
 
 ## Manager

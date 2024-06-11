@@ -28,8 +28,6 @@
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/debugd_proxy_interface.h"
 #include "shill/network/dhcp_client_proxy.h"
-#include "shill/network/dhcp_proxy_interface.h"
-#include "shill/network/dhcpcd_listener_interface.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/supplicant/mock_supplicant_process_proxy.h"
 #include "shill/supplicant/supplicant_bss_proxy_interface.h"
@@ -116,14 +114,6 @@ class MockControl : public ControlInterface {
   MOCK_METHOD(std::unique_ptr<DHCPClientProxyFactory>,
               CreateDHCPClientProxyFactory,
               (),
-              (override));
-  std::unique_ptr<DHCPCDListenerInterface> CreateDHCPCDListener(
-      DHCPProvider*) override {
-    return nullptr;
-  }
-  MOCK_METHOD(std::unique_ptr<DHCPProxyInterface>,
-              CreateDHCPProxy,
-              (const std::string&),
               (override));
 
   std::unique_ptr<UpstartProxyInterface> CreateUpstartProxy() override {

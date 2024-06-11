@@ -5,7 +5,6 @@
 #ifndef SHILL_CONTROL_INTERFACE_H_
 #define SHILL_CONTROL_INTERFACE_H_
 
-#include <algorithm>
 #include <memory>
 #include <string>
 
@@ -27,9 +26,6 @@ class DebugdProxyInterface;
 class Device;
 class DeviceAdaptorInterface;
 class DHCPClientProxyFactory;
-class DHCPCDListenerInterface;
-class DHCPProvider;
-class DHCPProxyInterface;
 class IPConfig;
 class IPConfigAdaptorInterface;
 class Manager;
@@ -134,12 +130,6 @@ class ControlInterface {
 
   virtual std::unique_ptr<DHCPClientProxyFactory>
   CreateDHCPClientProxyFactory() = 0;
-
-  virtual std::unique_ptr<DHCPCDListenerInterface> CreateDHCPCDListener(
-      DHCPProvider* provider) = 0;
-
-  virtual std::unique_ptr<DHCPProxyInterface> CreateDHCPProxy(
-      const std::string& service) = 0;
 
   virtual std::unique_ptr<DBusPropertiesProxy> CreateDBusPropertiesProxy(
       const RpcIdentifier& path, const std::string& service) = 0;

@@ -23,8 +23,6 @@
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/debugd_proxy.h"
 #include "shill/dbus/device_dbus_adaptor.h"
-#include "shill/dbus/dhcpcd_listener.h"
-#include "shill/dbus/dhcpcd_proxy.h"
 #include "shill/dbus/ipconfig_dbus_adaptor.h"
 #include "shill/dbus/manager_dbus_adaptor.h"
 #include "shill/dbus/mm1_modem_location_proxy.h"
@@ -214,16 +212,6 @@ DBusControl::CreateSupplicantPeerProxy(const RpcIdentifier& object_path) {
 std::unique_ptr<DHCPClientProxyFactory>
 DBusControl::CreateDHCPClientProxyFactory() {
   return std::make_unique<LegacyDHCPCDProxyFactory>(dispatcher_, proxy_bus_);
-}
-
-std::unique_ptr<DHCPCDListenerInterface> DBusControl::CreateDHCPCDListener(
-    DHCPProvider* provider) {
-  return std::make_unique<DHCPCDListener>(proxy_bus_, dispatcher_, provider);
-}
-
-std::unique_ptr<DHCPProxyInterface> DBusControl::CreateDHCPProxy(
-    const std::string& service) {
-  return std::make_unique<DHCPCDProxy>(proxy_bus_, service);
 }
 
 std::unique_ptr<UpstartProxyInterface> DBusControl::CreateUpstartProxy() {
