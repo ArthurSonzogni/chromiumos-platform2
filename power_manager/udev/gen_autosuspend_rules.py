@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 # Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -138,6 +136,10 @@ USB_IDS += [
     "2cb7:01a2",
     # Fibocom (FM101-GL) (adb)
     "2cb7:01a4",
+    # Rolling Wireless (RW101)
+    "33f8:01a2",
+    # Rolling Wireless (RW135)
+    "33f8:0115",
 ]
 
 # Mass Storage
@@ -339,9 +341,9 @@ PCI_IDS += [
 # Phison
 PCI_IDS += [
     # E13 NVMe Controller (redrix)
-    '1987:5013',
+    "1987:5013",
     # E18 PCIe4 NVMe Controller (vell)
-    '1987:5018',
+    "1987:5018",
 ]
 
 # Do not edit below this line. #################################################
