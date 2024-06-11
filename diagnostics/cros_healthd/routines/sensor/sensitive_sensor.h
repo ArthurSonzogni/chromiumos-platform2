@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSITIVE_SENSOR_V2_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSITIVE_SENSOR_V2_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSITIVE_SENSOR_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSITIVE_SENSOR_H_
 
 #include <map>
 #include <memory>
@@ -26,14 +26,14 @@ class SensorDetail;
 
 // The sensitive sensor routine checks that the device's sensors are working
 // correctly by acquiring dynamic sensor sample data without user interaction.
-class SensitiveSensorRoutineV2 final
+class SensitiveSensorRoutine final
     : public NoninteractiveRoutineControl,
       public cros::mojom::SensorDeviceSamplesObserver {
  public:
-  explicit SensitiveSensorRoutineV2(Context* context);
-  SensitiveSensorRoutineV2(const SensitiveSensorRoutineV2&) = delete;
-  SensitiveSensorRoutineV2& operator=(const SensitiveSensorRoutineV2&) = delete;
-  ~SensitiveSensorRoutineV2() override;
+  explicit SensitiveSensorRoutine(Context* context);
+  SensitiveSensorRoutine(const SensitiveSensorRoutine&) = delete;
+  SensitiveSensorRoutine& operator=(const SensitiveSensorRoutine&) = delete;
+  ~SensitiveSensorRoutine() override;
 
   // BaseRoutineControl overrides:
   void OnStart() override;
@@ -133,9 +133,9 @@ class SensitiveSensorRoutineV2 final
       observer_receiver_set_;
 
   // Must be the last class member.
-  base::WeakPtrFactory<SensitiveSensorRoutineV2> weak_ptr_factory_{this};
+  base::WeakPtrFactory<SensitiveSensorRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSITIVE_SENSOR_V2_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_SENSOR_SENSITIVE_SENSOR_H_

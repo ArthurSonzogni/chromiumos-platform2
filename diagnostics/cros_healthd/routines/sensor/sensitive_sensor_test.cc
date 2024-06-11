@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor_v2.h"
+#include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h"
 
 #include <memory>
 #include <string>
@@ -30,18 +30,18 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-class SensitiveSensorRoutineV2Test : public ::testing::Test {
+class SensitiveSensorRoutineTest : public ::testing::Test {
  public:
-  SensitiveSensorRoutineV2Test(const SensitiveSensorRoutineV2Test&) = delete;
-  SensitiveSensorRoutineV2Test& operator=(const SensitiveSensorRoutineV2Test&) =
+  SensitiveSensorRoutineTest(const SensitiveSensorRoutineTest&) = delete;
+  SensitiveSensorRoutineTest& operator=(const SensitiveSensorRoutineTest&) =
       delete;
 
  protected:
-  SensitiveSensorRoutineV2Test() = default;
+  SensitiveSensorRoutineTest() = default;
 
   void SetUp() override {
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();
-    routine_ = std::make_unique<SensitiveSensorRoutineV2>(&mock_context_);
+    routine_ = std::make_unique<SensitiveSensorRoutine>(&mock_context_);
   }
 
   mojom::SensitiveSensorRoutineDetailPtr ConstructDefaultOutput() {
@@ -128,7 +128,7 @@ class SensitiveSensorRoutineV2Test : public ::testing::Test {
 };
 
 // Test that the sensitive sensor routine can be run successfully.
-TEST_F(SensitiveSensorRoutineV2Test, RoutineSuccess) {
+TEST_F(SensitiveSensorRoutineTest, RoutineSuccess) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
   base::test::TestFuture<void> future;
   auto& remote = SetupSensorDeviceAndGetObserverRemote(
@@ -165,7 +165,7 @@ TEST_F(SensitiveSensorRoutineV2Test, RoutineSuccess) {
 
 // Test that the sensitive sensor routine can be run successfully with multiple
 // sensor devices.
-TEST_F(SensitiveSensorRoutineV2Test, RoutineSuccessWithMultipleSensors) {
+TEST_F(SensitiveSensorRoutineTest, RoutineSuccessWithMultipleSensors) {
   // Set up multiple sensors.
   fake_sensor_service().SetIdsTypes({
       {0, {cros::mojom::DeviceType::ACCEL}},
@@ -253,7 +253,7 @@ TEST_F(SensitiveSensorRoutineV2Test, RoutineSuccessWithMultipleSensors) {
 
 // Test that the sensitive sensor routine can be run successfully without
 // sensor.
-TEST_F(SensitiveSensorRoutineV2Test, RoutineSuccessWithoutSensor) {
+TEST_F(SensitiveSensorRoutineTest, RoutineSuccessWithoutSensor) {
   fake_sensor_service().SetIdsTypes({});
 
   mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
@@ -271,7 +271,7 @@ TEST_F(SensitiveSensorRoutineV2Test, RoutineSuccessWithoutSensor) {
 
 // Test that the sensitive sensor routine reports failure when the existence
 // check is failed.
-TEST_F(SensitiveSensorRoutineV2Test, RoutineExistenceCheckFailure) {
+TEST_F(SensitiveSensorRoutineTest, RoutineExistenceCheckFailure) {
   fake_sensor_service().SetIdsTypes({});
   // Setup wrong configuration.
   mock_context_.fake_system_config()->SetSensor(SensorType::kBaseAccelerometer,
@@ -294,7 +294,7 @@ TEST_F(SensitiveSensorRoutineV2Test, RoutineExistenceCheckFailure) {
 
 // Test that the sensitive sensor routine raises exception when sensor device
 // failed to set frequency.
-TEST_F(SensitiveSensorRoutineV2Test, RoutineSetFrequencyError) {
+TEST_F(SensitiveSensorRoutineTest, RoutineSetFrequencyError) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
   auto device = MakeSensorDevice();
   device->set_return_frequency(-1);
@@ -305,7 +305,7 @@ TEST_F(SensitiveSensorRoutineV2Test, RoutineSetFrequencyError) {
 
 // Test that the sensitive sensor routine raises exception when sensor device
 // doesn't have required channels.
-TEST_F(SensitiveSensorRoutineV2Test, RoutineGetRequiredChannelsError) {
+TEST_F(SensitiveSensorRoutineTest, RoutineGetRequiredChannelsError) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
   SetupSensorDeviceAndGetObserverRemote(
       /*device_id=*/0,
@@ -316,7 +316,7 @@ TEST_F(SensitiveSensorRoutineV2Test, RoutineGetRequiredChannelsError) {
 
 // Test that the sensitive sensor routine raises exception when sensor device
 // failed to set all channels enabled.
-TEST_F(SensitiveSensorRoutineV2Test, RoutineSetChannelsEnabledError) {
+TEST_F(SensitiveSensorRoutineTest, RoutineSetChannelsEnabledError) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
   auto device = MakeSensorDevice(
       {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"});
@@ -328,7 +328,7 @@ TEST_F(SensitiveSensorRoutineV2Test, RoutineSetChannelsEnabledError) {
 
 // Test that the sensitive sensor routine raises exception when sensor device
 // return error.
-TEST_F(SensitiveSensorRoutineV2Test, RoutineReadSampleError) {
+TEST_F(SensitiveSensorRoutineTest, RoutineReadSampleError) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
   base::test::TestFuture<void> future;
   auto& remote = SetupSensorDeviceAndGetObserverRemote(
@@ -353,7 +353,7 @@ TEST_F(SensitiveSensorRoutineV2Test, RoutineReadSampleError) {
 
 // Test that the sensitive sensor routine reports failure if sensor device
 // cannot read changed sample before timeout.
-TEST_F(SensitiveSensorRoutineV2Test, RoutineNoChangedSampleFailure) {
+TEST_F(SensitiveSensorRoutineTest, RoutineNoChangedSampleFailure) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
   base::test::TestFuture<void> future;
   auto& remote = SetupSensorDeviceAndGetObserverRemote(
@@ -388,7 +388,7 @@ TEST_F(SensitiveSensorRoutineV2Test, RoutineNoChangedSampleFailure) {
 
 // Test that the sensitive sensor routine raises exception if sensor device
 // cannot read any samples before timeout.
-TEST_F(SensitiveSensorRoutineV2Test, RoutineNoSamplesError) {
+TEST_F(SensitiveSensorRoutineTest, RoutineNoSamplesError) {
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
   SetupSensorDeviceAndGetObserverRemote(
       /*device_id=*/0, MakeSensorDevice({cros::mojom::kTimestampChannel,
