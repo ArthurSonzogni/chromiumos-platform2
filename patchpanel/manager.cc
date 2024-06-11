@@ -381,7 +381,10 @@ void Manager::OnShillDevicesChanged(
     counters_svc_->OnPhysicalDeviceRemoved(device.ifname);
     multicast_counters_svc_->OnPhysicalDeviceRemoved(device);
     qos_svc_->OnPhysicalDeviceRemoved(device);
-    datapath_->StopSourceIPv6PrefixEnforcement(device);
+
+    if (device.technology == net_base::Technology::kCellular) {
+      datapath_->StopSourceIPv6PrefixEnforcement(device);
+    }
   }
 
   for (const auto& device : added) {
@@ -411,7 +414,9 @@ void Manager::OnShillDevicesChanged(
     }
 
     arc_svc_->AddDevice(device);
-    datapath_->StartSourceIPv6PrefixEnforcement(device);
+    if (device.technology == net_base::Technology::kCellular) {
+      datapath_->StartSourceIPv6PrefixEnforcement(device);
+    }
   }
 
   network_monitor_svc_->OnShillDevicesChanged(added, removed);
@@ -458,7 +463,9 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
   ipv6_svc_->OnUplinkIPv6Changed(shill_device);
 
   if (!shill_device.ipconfig.ipv6_cidr) {
-    datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
+    if (shill_device.technology == net_base::Technology::kCellular) {
+      datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, std::nullopt);
+    }
     return;
   }
 
@@ -475,10 +482,12 @@ void Manager::OnIPv6NetworkChanged(const ShillClient::Device& shill_device) {
     RestartIPv6(nsinfo.netns_name);
   }
 
-  // TODO(b/279871350): Support prefix shorter than /64.
-  const auto prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
-      shill_device.ipconfig.ipv6_cidr->address());
-  datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, prefix);
+  if (shill_device.technology == net_base::Technology::kCellular) {
+    // TODO(b/279871350): Support prefix shorter than /64.
+    const auto prefix = GuestIPv6Service::IPAddressTo64BitPrefix(
+        shill_device.ipconfig.ipv6_cidr->address());
+    datapath_->UpdateSourceEnforcementIPv6Prefix(shill_device, prefix);
+  }
 }
 
 void Manager::OnDoHProvidersChanged(
