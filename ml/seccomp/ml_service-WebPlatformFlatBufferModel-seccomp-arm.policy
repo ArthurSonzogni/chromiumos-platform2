@@ -28,6 +28,7 @@ fstatfs64: 1
 fstatfs: 1
 futex: 1
 futex_time64: 1
+getcpu: 1
 getpid: 1
 getrandom: arg2 in ~GRND_RANDOM
 gettid: 1
