@@ -10,10 +10,8 @@
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <base/values.h>
 #include <iioservice/mojo/sensor.mojom.h>
 
-#include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
@@ -43,23 +41,6 @@ std::vector<cros::mojom::DeviceType> FilterSupportedTypes(
   std::copy_if(types.begin(), types.end(), std::back_inserter(supported_types),
                is_supported_type);
   return supported_types;
-}
-
-// Convert sensor device type enum to string.
-std::string ConverDeviceTypeToString(cros::mojom::DeviceType type) {
-  switch (type) {
-    case cros::mojom::DeviceType::ACCEL:
-      return kSensitiveSensorRoutineTypeAccel;
-    case cros::mojom::DeviceType::ANGLVEL:
-      return kSensitiveSensorRoutineTypeGyro;
-    case cros::mojom::DeviceType::GRAVITY:
-      return kSensitiveSensorRoutineTypeGravity;
-    case cros::mojom::DeviceType::MAGN:
-      return kSensitiveSensorRoutineTypeMagn;
-    default:
-      // The other sensor types are not supported in this routine.
-      NOTREACHED_NORETURN();
-  }
 }
 
 // Convert sensor device type enum to channel prefix.
@@ -183,21 +164,6 @@ bool SensorDetail::IsErrorOccurred() const {
   }
 
   return false;
-}
-
-base::Value::Dict SensorDetail::ToDict() const {
-  base::Value::Dict sensor_output;
-  sensor_output.Set("id", sensor_id_);
-  base::Value::List out_types;
-  for (const auto& type : types_)
-    out_types.Append(ConverDeviceTypeToString(type));
-  sensor_output.Set("types", std::move(out_types));
-  base::Value::List out_channels;
-  if (channels_.has_value())
-    for (const auto& channel_name : channels_.value())
-      out_channels.Append(channel_name);
-  sensor_output.Set("channels", std::move(out_channels));
-  return sensor_output;
 }
 
 mojom::SensitiveSensorInfoPtr SensorDetail::ToMojo() const {

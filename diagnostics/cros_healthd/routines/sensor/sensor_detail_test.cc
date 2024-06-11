@@ -4,11 +4,9 @@
 
 #include "diagnostics/cros_healthd/routines/sensor/sensor_detail.h"
 
-#include <utility>
 #include <vector>
 
 #include <base/check.h>
-#include <base/values.h>
 #include <gtest/gtest.h>
 #include <iioservice/mojo/sensor.mojom.h>
 
@@ -110,29 +108,6 @@ TEST(SensorDetailTest, IsErrorOccurredNoLastReadingSample) {
   sensor->UpdateChannelSample(2, 6373);
   sensor->UpdateChannelSample(3, 2389718579704);
   EXPECT_TRUE(sensor->IsErrorOccurred());
-}
-
-TEST(SensorDetailTest, ToDict) {
-  auto sensor =
-      SensorDetail::Create(kTestSensorId, {cros::mojom::DeviceType::ACCEL});
-  ASSERT_TRUE(sensor);
-  auto indices = sensor->CheckRequiredChannelsAndGetIndices(
-      {cros::mojom::kTimestampChannel, "accel_x", "accel_y", "accel_z"});
-  ASSERT_TRUE(indices.has_value());
-
-  base::Value::Dict expected_value;
-  expected_value.Set("id", kTestSensorId);
-  base::Value::List out_types;
-  out_types.Append("Accel");
-  expected_value.Set("types", std::move(out_types));
-  base::Value::List out_channels;
-  out_channels.Append(cros::mojom::kTimestampChannel);
-  out_channels.Append("accel_x");
-  out_channels.Append("accel_y");
-  out_channels.Append("accel_z");
-  expected_value.Set("channels", std::move(out_channels));
-
-  EXPECT_EQ(sensor->ToDict(), expected_value);
 }
 
 TEST(SensorDetailTest, ToMojo) {

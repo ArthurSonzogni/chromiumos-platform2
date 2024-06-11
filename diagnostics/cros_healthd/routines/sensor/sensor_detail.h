@@ -12,7 +12,6 @@
 #include <string>
 #include <vector>
 
-#include <base/values.h>
 #include <iioservice/mojo/sensor.mojom-forward.h>
 
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
@@ -47,9 +46,6 @@ class SensorDetail {
 
   // Check if there is any error when interacting with Iioservice.
   bool IsErrorOccurred() const;
-
-  // Return the detail for v1 routine output dict.
-  base::Value::Dict ToDict() const;
 
   // Return the detail pointer for v2 routine output.
   ash::cros_healthd::mojom::SensitiveSensorInfoPtr ToMojo() const;
