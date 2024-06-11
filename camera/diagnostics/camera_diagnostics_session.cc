@@ -109,7 +109,7 @@ CameraDiagnosticsSession::CameraDiagnosticsSession(
     CameraDiagnosticsMojoManager* mojo_manager,
     const base::FilePath& blur_detector_dlc_path,
     scoped_refptr<Future<void>> notify_finish)
-    : thread_("CameraDiagSession"),
+    : thread_("CamDiagSession"),
       camera_service_controller_(mojo_manager),
       notify_finish_(notify_finish) {
   CHECK(thread_.Start());

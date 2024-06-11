@@ -39,7 +39,7 @@ inline bool IsValidDuration(
 
 CameraDiagnosticsProcessor::CameraDiagnosticsProcessor(
     CameraDiagnosticsMojoManager* mojo_manager)
-    : thread_("CameraDiagnostics"), mojo_manager_(mojo_manager) {
+    : thread_("CamDiagProcessor"), mojo_manager_(mojo_manager) {
   CHECK(thread_.Start());
 #if USE_DLC
   // Install blur detector library at startup, since it might take some time to
@@ -134,13 +134,22 @@ void CameraDiagnosticsProcessor::RunFrameAnalysisOnThread(
   CHECK_GE(config->duration_ms, kSessionTimeoutOffsetMs);
   future->Wait(config->duration_ms - kSessionTimeoutOffsetMs);
 
-  base::AutoLock lock(session_lock_);
+  std::unique_ptr<CameraDiagnosticsSession> old_session;
+  {
+    base::AutoLock lock(session_lock_);
+    // Free |current_session_| fast, destroying a session can take time. Some
+    // |QueueFrame()| calls can get stuck and would end up in a deadlock, since
+    // both session cleanup and |QueueFrame()| depend on IPC thread.
+    old_session = std::move(current_session_);
+  }
+  // |current_session_| has been invalidated, don't access it anymore.
   camera_diag::mojom::FrameAnalysisResultPtr result =
-      current_session_->StopAndGetResult();
+      old_session->StopAndGetResult();
+
   // Clean up before running the callback, since remotes need to unbind on IPC
-  // thread. Once we return the callback, IPC thread might exit without waiting
-  // for the reset.
-  current_session_.reset();
+  // thread. Once we return the callback, IPC thread might exit without
+  // waiting for the reset.
+  old_session.reset();
 
   std::move(callback).Run(std::move(result));
 }
