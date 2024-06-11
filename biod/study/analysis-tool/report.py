@@ -296,7 +296,7 @@ class Section(Element):
             c.display(display_fn, level + 1)
 
 
-class Report2:
+class Report:
     def __init__(
         self,
         out_dir_path: Path,

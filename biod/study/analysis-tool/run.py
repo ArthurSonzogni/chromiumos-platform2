@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
-from report import Report2
+from report import Report
 import scipy.stats as st
 from test_case import TestCase
 from tqdm.autonotebook import tqdm  # Auto detect notebook or console.
@@ -451,7 +451,7 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     analysis_dir.mkdir(exist_ok=True)
     source_dir = pathlib.Path(__file__).parent
-    rpt = Report2(analysis_dir, source_dir / "templates", name)
+    rpt = Report(analysis_dir, source_dir / "templates", name)
 
     ################# Import Data From BET Results #################
 

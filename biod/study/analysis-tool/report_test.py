@@ -16,7 +16,7 @@ import numpy as np
 import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
-from report import Report2
+from report import Report
 
 
 class Test_Report(unittest.TestCase):
@@ -33,7 +33,7 @@ class Test_Report(unittest.TestCase):
     def test_blank_template(self):
         """Test rendering and writing an empty report."""
 
-        rpt = Report2(self.temp_dir_path)
+        rpt = Report(self.temp_dir_path)
         rpt.generate()
 
         print("Temp Dir Contents:")
@@ -49,7 +49,7 @@ def test_report(dir: Path):
         "TestCase3-Disabled",
     ]
 
-    rpt = Report2(dir)
+    rpt = Report(dir)
     for tc_name in test_cases:
         tc = rpt.test_case_add(
             tc_name,

@@ -50,7 +50,7 @@ import plotly.figure_factory as ff
 import plotly.graph_objs as go
 import plotly.tools as tls
 from report import Figure
-from report import Report2
+from report import Report
 import scipy.stats as st
 from scipy.stats import norm
 import simulate_fpstudy
@@ -94,7 +94,7 @@ def print_far_value(
 # - report-100k/  (dir containing the decision metadata)
 # - orig-data/    (dir contain the collected samples)
 # - analysis/     (dir created by this tool)
-rpt = Report2(pathlib.Path("data/analysis"))
+rpt = Report(pathlib.Path("data/analysis"))
 
 # %% Load Data
 
