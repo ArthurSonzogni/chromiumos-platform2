@@ -86,35 +86,12 @@ constexpr char kTestHarnessSharedDirTag[] = "testharness";
 constexpr char kApkCacheSharedDir[] = "/run/arcvm/apkcache";
 constexpr char kApkCacheSharedDirTag[] = "apkcache";
 
-constexpr char kJemallocConfigFile[] = "/run/arcvm/jemalloc/je_malloc.conf";
-constexpr char kJemallocSharedDirTag[] = "jemalloc";
+constexpr char kJemallocConfigFile[] = "/run/arcvm/ro/jemalloc/je_malloc.conf";
 constexpr char kJemallocHighMemDeviceConfig[] =
     "narenas:12,tcache:true,lg_tcache_max:16";
 
 constexpr char kReadonlySharedDir[] = "/run/arcvm/ro";
 constexpr char kReadonlySharedDirTag[] = "ro";
-
-#if defined(__x86_64__) || defined(__aarch64__)
-constexpr char kLibSharedDir[] = "/lib64";
-constexpr char kUsrLibSharedDir[] = "/usr/lib64";
-constexpr char kUsrLocalLibSharedDir[] = "/usr/local/lib64";
-#else
-constexpr char kLibSharedDir[] = "/lib";
-constexpr char kUsrLibSharedDir[] = "/usr/lib";
-constexpr char kUsrLocalLibSharedDir[] = "/usr/local/lib";
-#endif
-constexpr char kLibSharedDirTag[] = "lib";
-constexpr char kUsrLibSharedDirTag[] = "usr_lib";
-constexpr char kUsrLocalLibSharedDirTag[] = "usr_local_lib";
-
-constexpr char kSbinSharedDir[] = "/sbin";
-constexpr char kSbinSharedDirTag[] = "sbin";
-
-constexpr char kUsrBinSharedDir[] = "/usr/bin";
-constexpr char kUsrBinSharedDirTag[] = "usr_bin";
-
-constexpr char kUsrLocalBinSharedDir[] = "/usr/local/bin";
-constexpr char kUsrLocalBinSharedDirTag[] = "usr_local_bin";
 
 // By default, treat 6GB+ devices as high-memory devices.
 // The threshold is in MB and slightly less than 6000
@@ -386,9 +363,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
           "num_output_devices=4,"
           "output_device_config=[[],[],[],[stream_type=pro_audio]],"
           "input_device_config=[[],[],[stream_type=pro_audio]]")
-      // Each shared directory is a new PCI device, before adding a new shared
-      // directory configuration, please consult if you really do need to add a
-      // new PCI device. TODO(b/237618542): Unify these.
       .AppendSharedDir(GetOemEtcSharedDataParam(geteuid(), getegid()))
       .AppendSharedDir(
           SharedDataParam{.data_dir = base::FilePath(kTestHarnessSharedDir),
@@ -406,50 +380,9 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                           .enable_caches = SharedDataParam::Cache::kAlways,
                           .ascii_casefold = false,
                           .posix_acl = true})
-      .AppendSharedDir(CreateFontsSharedDataParam())
       .AppendSharedDir(
           SharedDataParam{.data_dir = base::FilePath(kReadonlySharedDir),
                           .tag = kReadonlySharedDirTag,
-                          .uid_map = kAndroidUidMap,
-                          .gid_map = kAndroidGidMap,
-                          .enable_caches = SharedDataParam::Cache::kAlways,
-                          .ascii_casefold = false,
-                          .posix_acl = true})
-      .AppendSharedDir(
-          SharedDataParam{.data_dir = base::FilePath(kLibSharedDir),
-                          .tag = kLibSharedDirTag,
-                          .uid_map = kAndroidUidMap,
-                          .gid_map = kAndroidGidMap,
-                          .enable_caches = SharedDataParam::Cache::kAlways,
-                          .ascii_casefold = false,
-                          .posix_acl = true})
-      .AppendSharedDir(
-          SharedDataParam{.data_dir = base::FilePath(kUsrLibSharedDir),
-                          .tag = kUsrLibSharedDirTag,
-                          .uid_map = kAndroidUidMap,
-                          .gid_map = kAndroidGidMap,
-                          .enable_caches = SharedDataParam::Cache::kAlways,
-                          .ascii_casefold = false,
-                          .posix_acl = true})
-      .AppendSharedDir(
-          SharedDataParam{.data_dir = base::FilePath(kSbinSharedDir),
-                          .tag = kSbinSharedDirTag,
-                          .uid_map = kAndroidUidMap,
-                          .gid_map = kAndroidGidMap,
-                          .enable_caches = SharedDataParam::Cache::kAlways,
-                          .ascii_casefold = false,
-                          .posix_acl = true})
-      .AppendSharedDir(
-          SharedDataParam{.data_dir = base::FilePath(kUsrBinSharedDir),
-                          .tag = kUsrBinSharedDirTag,
-                          .uid_map = kAndroidUidMap,
-                          .gid_map = kAndroidGidMap,
-                          .enable_caches = SharedDataParam::Cache::kAlways,
-                          .ascii_casefold = false,
-                          .posix_acl = true})
-      .AppendSharedDir(
-          SharedDataParam{.data_dir = jemalloc_config_file.DirName(),
-                          .tag = kJemallocSharedDirTag,
                           .uid_map = kAndroidUidMap,
                           .gid_map = kAndroidGidMap,
                           .enable_caches = SharedDataParam::Cache::kAlways,
@@ -474,39 +407,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
 
   std::unique_ptr<CustomParametersForDev> custom_parameters =
       MaybeLoadCustomParametersForDev(apps::ARCVM, use_dev_conf());
-
-  // Add /usr/local/bin as a shared directory which is located in a dev
-  // partition.
-  std::string channel_string;
-  const bool is_test_image = base::SysInfo::GetLsbReleaseValue(
-                                 "CHROMEOS_RELEASE_TRACK", &channel_string) &&
-                             base::StartsWith(channel_string, "test");
-  if (is_test_image) {
-    const base::FilePath usr_local_bin_dir(kUsrLocalBinSharedDir);
-    if (base::PathExists(usr_local_bin_dir)) {
-      vm_builder
-          .AppendSharedDir(
-              SharedDataParam{.data_dir = usr_local_bin_dir,
-                              .tag = kUsrLocalBinSharedDirTag,
-                              .uid_map = kAndroidUidMap,
-                              .gid_map = kAndroidGidMap,
-                              .enable_caches = SharedDataParam::Cache::kAlways,
-                              .ascii_casefold = false,
-                              .posix_acl = true})
-          .AppendSharedDir(
-              SharedDataParam{.data_dir = base::FilePath(kUsrLocalLibSharedDir),
-                              .tag = kUsrLocalLibSharedDirTag,
-                              .uid_map = kAndroidUidMap,
-                              .gid_map = kAndroidGidMap,
-                              .enable_caches = SharedDataParam::Cache::kAlways,
-                              .ascii_casefold = false,
-                              .posix_acl = true});
-    } else {
-      // Powerwashing etc can delete the directory from test image device.
-      // We shouldn't abort ARCVM boot even under such an environment.
-      LOG(WARNING) << kUsrLocalBinSharedDir << " is missing on test image.";
-    }
-  }
 
   if (custom_parameters &&
       custom_parameters->ObtainSpecialParameter(kKeyToSkipSwapPolicy)

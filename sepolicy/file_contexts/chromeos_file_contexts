@@ -467,7 +467,7 @@ has_arc(`
 ')
 /run/arcvm/apkcache(/.*)?                      u:object_r:apkcache_file:s0
 /run/arcvm/host_generated(/.*)?                u:object_r:oem_fs:s0
-/run/arcvm/jemalloc(/.*)?                      u:object_r:cros_arc_jemalloc_config_file:s0
+/run/arcvm/ro/jemalloc(/.*)?                   u:object_r:cros_arc_jemalloc_config_file:s0
 /run/avahi-daemon                              u:object_r:cros_run_avahi_daemon:s0
 /run/bluetooth                                 u:object_r:cros_run_bluetooth:s0
 /run/bluetooth/audio(/.*)?                     u:object_r:cros_bluetooth_audio_socket:s0
