@@ -107,6 +107,7 @@ std::optional<double> RunNdtTest(
   settings.user_agent = ConstructUserAgent(oem_name);
   settings.verbosity = libndt7::verbosity_info;
   settings.nettest_flags = Convert(type);
+  settings.timeout = 10 /* seconds */;
   auto client = std::make_unique<NdtClient>(settings, std::move(observer));
   return RunNdtTestWithClient(type, std::move(client));
 }
