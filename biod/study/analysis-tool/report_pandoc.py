@@ -250,9 +250,6 @@ class Section(Element):
         self._title = title
         self._description = description
 
-    def name(self) -> str:
-        return self._id
-
     def title(self) -> Optional[str]:
         return self._title
 
