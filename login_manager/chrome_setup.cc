@@ -947,6 +947,8 @@ void AddArcFlags(ChromiumCommandBuilder* builder,
     builder->AddFeatureEnableOverride("ArcVmDataMigration");
   if (builder->UseFlagIsSet("arcvm_virtio_blk_data"))
     builder->AddFeatureEnableOverride("ArcEnableVirtioBlkForData");
+  if (builder->UseFlagIsSet("arcvm_block_io_scheduler"))
+    builder->AddFeatureEnableOverride("ArcBlockIoScheduler");
   if (builder->UseFlagIsSet("lvm_application_containers"))
     builder->AddFeatureEnableOverride("ArcLvmApplicationContainers");
   // Devices of tablet form factor will have special app behaviour.
