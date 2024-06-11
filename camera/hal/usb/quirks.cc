@@ -68,6 +68,10 @@ const QuirksMap& GetQuirksMap() {
       {{"5959", "60bf"}, kQuirkPreferLargePreviewResolution},
       // Kingcome KPNB752 (b/326004301)
       {{"2b7e", "b752"}, kQuirkUserSpaceTimestamp},
+      // Chicony CKAO51521005590LH (b/343586796)
+      {{"04f2", "b82f"}, kQuirkPreferLargePreviewResolution},
+      // LuxVisions BBA503N3 (b/343586796)
+      {{"30c9", "00f1"}, kQuirkPreferLargePreviewResolution},
   });
   return *kQuirksMap;
 }
