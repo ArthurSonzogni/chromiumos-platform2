@@ -83,7 +83,6 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeArcHttpRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeArcPingRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeArcDnsResolutionRoutine() override;
-  std::unique_ptr<DiagnosticRoutine> MakeSensitiveSensorRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeFingerprintRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeFingerprintAliveRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakePrivacyScreenRoutine(

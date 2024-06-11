@@ -39,7 +39,6 @@
 #include "diagnostics/cros_healthd/routines/network/signal_strength.h"
 #include "diagnostics/cros_healthd/routines/network/video_conferencing.h"
 #include "diagnostics/cros_healthd/routines/privacy_screen/privacy_screen.h"
-#include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h"
 #include "diagnostics/cros_healthd/routines/storage/emmc_lifetime.h"
 #include "diagnostics/cros_healthd/routines/storage/nvme_self_test.h"
 #include "diagnostics/cros_healthd/routines/storage/smartctl_check.h"
@@ -201,12 +200,6 @@ CrosHealthdRoutineFactoryImpl::MakeArcPingRoutine() {
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeArcDnsResolutionRoutine() {
   return CreateArcDnsResolutionRoutine(context_->mojo_service());
-}
-
-std::unique_ptr<DiagnosticRoutine>
-CrosHealthdRoutineFactoryImpl::MakeSensitiveSensorRoutine() {
-  return std::make_unique<SensitiveSensorRoutine>(context_->mojo_service(),
-                                                  context_->system_config());
 }
 
 std::unique_ptr<DiagnosticRoutine>

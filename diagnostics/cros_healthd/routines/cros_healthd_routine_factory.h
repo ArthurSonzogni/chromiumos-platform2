@@ -129,10 +129,6 @@ class CrosHealthdRoutineFactory {
   // diagnostics/cros_healthd/routines/android_network/arc_dns_resolution.h for
   // details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeArcDnsResolutionRoutine() = 0;
-  // Constructs a new instance of the sensor routine. See
-  // diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h for details on
-  // the routine itself.
-  virtual std::unique_ptr<DiagnosticRoutine> MakeSensitiveSensorRoutine() = 0;
   // Constructs a new instance of the fingerprint routine. See
   // diagnostics/cros_healthd/routines/fingerprint/fingerprint.h for details on
   // the routine itself.

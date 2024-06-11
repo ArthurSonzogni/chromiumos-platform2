@@ -4,7 +4,6 @@
 
 source_set("sensor") {
   sources = [
-    "sensitive_sensor.cc",
     "sensitive_sensor_v2.cc",
     "sensor_detail.cc",
     "sensor_existence_checker.cc",
@@ -27,7 +26,6 @@ source_set("sensor") {
 if (use.test) {
   source_set("sensor_test") {
     sources = [
-      "sensitive_sensor_test.cc",
       "sensitive_sensor_v2_test.cc",
       "sensor_detail_test.cc",
       "sensor_existence_checker_test.cc",
