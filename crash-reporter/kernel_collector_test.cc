@@ -38,6 +38,10 @@ class KernelCollectorTest : public ::testing::Test {
   static constexpr const char kSuccessfulCollectContents[] =
       "<4>[  230.564891] something";
 
+  void TestGetEfiCrashType(const char* driver_name);
+  void TestLoadEfiCrash(const char* driver_name);
+  void TestRemoveEfiCrash(const char* driver_name);
+  void TestCollectEfiCrashFile(const char* driver_name);
   void SetUpSuccessfulCollect();
   void SetUpWatchdog0BootstatusInvalidNotInteger(const FilePath& path);
   void SetUpWatchdog0BootstatusUnknownInteger(const FilePath& path);
@@ -54,8 +58,14 @@ class KernelCollectorTest : public ::testing::Test {
   const FilePath& bios_log_file() const { return test_bios_log_; }
   const FilePath& ramoops_file(int id) const { return test_ramoops_[id]; }
   const FilePath& corrupt_ramoops_file() const { return test_corrupt_ramoops_; }
-  const FilePath& efipstore_file(int part) const {
-    return test_efipstore_[part];
+  const uint64_t efi_crash_id(int part) const {
+    return (9876543210 * KernelCollector::EfiCrash::kMaxPart + part) *
+               KernelCollector::EfiCrash::kMaxDumpRecord +
+           1;
+  }
+  const FilePath efipstore_file(int part, const char* driver_name) const {
+    return test_pstore_.Append(
+        StringPrintf("dmesg-%s-%" PRIu64, driver_name, efi_crash_id(part)));
   }
   const FilePath& test_crash_directory() const { return test_crash_directory_; }
   const FilePath& bootstatus_file() const { return test_bootstatus_; }
@@ -65,30 +75,18 @@ class KernelCollectorTest : public ::testing::Test {
 
  private:
   void SetUp() override {
-    EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
-
-    collector_.Initialize(false);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
-    base::FilePath test_pstore =
-        scoped_temp_dir_.GetPath().Append("test_pstore");
-    ASSERT_TRUE(base::CreateDirectory(test_pstore));
-    collector_.OverridePreservedDumpPath(test_pstore);
+    test_pstore_ = scoped_temp_dir_.GetPath().Append("test_pstore");
+    ASSERT_TRUE(base::CreateDirectory(test_pstore_));
 
-    test_console_ramoops_ = test_pstore.Append("console-ramoops-0");
+    test_console_ramoops_ = test_pstore_.Append("console-ramoops-0");
     ASSERT_FALSE(base::PathExists(test_console_ramoops_));
-    for (int i = 0; i < kMaxEfiParts; i++) {
-      test_efipstore_[i] = test_pstore.Append(
-          StringPrintf("dmesg-efi-%" PRIu64,
-                       (9876543210 * KernelCollector::EfiCrash::kMaxPart + i) *
-                               KernelCollector::EfiCrash::kMaxDumpRecord +
-                           1));
-      ASSERT_FALSE(base::PathExists(test_efipstore_[i]));
-    }
-    test_corrupt_ramoops_ = test_pstore.Append("dmesg-ramoops-0.enc.z");
+
+    test_corrupt_ramoops_ = test_pstore_.Append("dmesg-ramoops-0.enc.z");
     ASSERT_FALSE(base::PathExists(test_corrupt_ramoops_));
     for (int i = 0; i < kMaxRamoopsIds; ++i) {
       test_ramoops_[i] =
-          test_pstore.Append(StringPrintf("dmesg-ramoops-%d", i));
+          test_pstore_.Append(StringPrintf("dmesg-ramoops-%d", i));
       ASSERT_FALSE(base::PathExists(test_ramoops_[i]));
     }
 
@@ -98,9 +96,7 @@ class KernelCollectorTest : public ::testing::Test {
 
     test_eventlog_ = scoped_temp_dir_.GetPath().Append("eventlog.txt");
     ASSERT_FALSE(base::PathExists(test_eventlog_));
-    collector_.OverrideEventLogPath(test_eventlog_);
 
-    collector_.OverrideWatchdogSysPath(scoped_temp_dir_.GetPath());
     // The watchdog sysfs directory structure is:
     // watchdogsys_path_ + "watchdogN/bootstatus"
     // Testing uses "watchdog0".
@@ -111,8 +107,16 @@ class KernelCollectorTest : public ::testing::Test {
 
     test_bios_log_ = scoped_temp_dir_.GetPath().Append("bios_log");
     ASSERT_FALSE(base::PathExists(test_bios_log_));
-    collector_.OverrideBiosLogPath(test_bios_log_);
+
     brillo::ClearLog();
+
+    // set up collector
+    EXPECT_CALL(collector_, SetUpDBus()).WillRepeatedly(testing::Return());
+    collector_.Initialize(false);
+    collector_.OverridePreservedDumpPath(test_pstore_);
+    collector_.OverrideEventLogPath(test_eventlog_);
+    collector_.OverrideWatchdogSysPath(scoped_temp_dir_.GetPath());
+    collector_.OverrideBiosLogPath(test_bios_log_);
   }
 
   FilePath test_console_ramoops_;
@@ -120,7 +124,7 @@ class KernelCollectorTest : public ::testing::Test {
   FilePath test_bios_log_;
   FilePath test_ramoops_[kMaxRamoopsIds];
   FilePath test_corrupt_ramoops_;
-  FilePath test_efipstore_[kMaxEfiParts];
+  FilePath test_pstore_;
   FilePath test_crash_directory_;
   FilePath test_bootstatus_;
   base::ScopedTempDir scoped_temp_dir_;
@@ -170,35 +174,43 @@ TEST_F(KernelCollectorTest, ParseEfiCrashId) {
             KernelCollector::EfiCrash::GenerateId(1509896003, 14, 2));
 }
 
-TEST_F(KernelCollectorTest, GetEfiCrashType) {
-  ASSERT_FALSE(base::PathExists(efipstore_file(1)));
-  uint64_t test_efi_crash_id;
-  sscanf(efipstore_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
-         &test_efi_crash_id);
+void KernelCollectorTest::TestGetEfiCrashType(const char* driver_name) {
+  ASSERT_FALSE(base::PathExists(efipstore_file(1, driver_name)));
+  uint64_t test_efi_crash_id = efi_crash_id(1);
   // Write header.
-  ASSERT_TRUE(test_util::CreateFile(efipstore_file(1), "Panic#1 Part#20"));
-  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, &collector_);
+  ASSERT_TRUE(
+      test_util::CreateFile(efipstore_file(1, driver_name), "Panic#1 Part#20"));
+  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, driver_name,
+                                      &collector_);
   EXPECT_EQ(efi_crash.GetType(), PstoreRecordType::kPanic);
 }
 
-TEST_F(KernelCollectorTest, LoadEfiCrash) {
+TEST_F(KernelCollectorTest, GetEfiCrashType) {
+  TestGetEfiCrashType("efi");
+}
+
+TEST_F(KernelCollectorTest, GetEfiPstoreCrashType) {
+  TestGetEfiCrashType("efi_pstore");
+}
+
+void KernelCollectorTest::TestLoadEfiCrash(const char* driver_name) {
   int efi_part_count = kMaxEfiParts - 1;
   std::string efi_part[kMaxEfiParts];
   std::string expected_dump;
   std::string dump;
-  uint64_t test_efi_crash_id;
-  sscanf(efipstore_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
-         &test_efi_crash_id);
+  uint64_t test_efi_crash_id = efi_crash_id(1);
 
   for (int i = 1; i <= efi_part_count; i++) {
-    ASSERT_FALSE(base::PathExists(efipstore_file(i)));
+    ASSERT_FALSE(base::PathExists(efipstore_file(i, driver_name)));
     efi_part[i] = StringPrintf("Panic#100 Part#%d\n", i);
     for (int j = 0; j < i; j++) {
       efi_part[i].append(StringPrintf("random blob %d\n", j));
     }
-    ASSERT_TRUE(test_util::CreateFile(efipstore_file(i), efi_part[i].c_str()));
+    ASSERT_TRUE(test_util::CreateFile(efipstore_file(i, driver_name),
+                                      efi_part[i].c_str()));
   }
-  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, &collector_);
+  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, driver_name,
+                                      &collector_);
   efi_crash.UpdateMaxPart(efi_crash.GetIdForPart(efi_part_count));
   ASSERT_TRUE(efi_crash.Load(dump));
 
@@ -211,28 +223,44 @@ TEST_F(KernelCollectorTest, LoadEfiCrash) {
   EXPECT_EQ(expected_dump, dump);
 }
 
-TEST_F(KernelCollectorTest, RemoveEfiCrash) {
+TEST_F(KernelCollectorTest, LoadEfiCrash) {
+  TestLoadEfiCrash("efi");
+}
+
+TEST_F(KernelCollectorTest, LoadEfiPstoreCrash) {
+  TestLoadEfiCrash("efi_pstore");
+}
+
+void KernelCollectorTest::TestRemoveEfiCrash(const char* driver_name) {
   int efi_part_count = kMaxEfiParts - 1;
   std::string efi_part[kMaxEfiParts];
-  uint64_t test_efi_crash_id;
-  sscanf(efipstore_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
-         &test_efi_crash_id);
+  uint64_t test_efi_crash_id = efi_crash_id(1);
 
   for (int i = 1; i <= efi_part_count; i++) {
-    ASSERT_FALSE(base::PathExists(efipstore_file(i)));
+    ASSERT_FALSE(base::PathExists(efipstore_file(i, driver_name)));
     efi_part[i] = StringPrintf("Panic#100 Part#%d\n", i);
     for (int j = 0; j < i; j++) {
       efi_part[i].append(StringPrintf("random blob %d\n", j));
     }
-    ASSERT_TRUE(test_util::CreateFile(efipstore_file(i), efi_part[i].c_str()));
+    ASSERT_TRUE(test_util::CreateFile(efipstore_file(i, driver_name),
+                                      efi_part[i].c_str()));
   }
-  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, &collector_);
+  KernelCollector::EfiCrash efi_crash(test_efi_crash_id, driver_name,
+                                      &collector_);
   efi_crash.UpdateMaxPart(efi_crash.GetIdForPart(efi_part_count));
 
   efi_crash.Remove();
   for (int i = 1; i <= efi_part_count; i++) {
-    EXPECT_FALSE(base::PathExists(efipstore_file(i)));
+    EXPECT_FALSE(base::PathExists(efipstore_file(i, driver_name)));
   }
+}
+
+TEST_F(KernelCollectorTest, RemoveEfiCrash) {
+  TestRemoveEfiCrash("efi");
+}
+
+TEST_F(KernelCollectorTest, RemoveEfiPstoreCrash) {
+  TestRemoveEfiCrash("efi_pstore");
 }
 
 TEST_F(KernelCollectorTest, CollectEfiCrashFilesMissing) {
@@ -243,16 +271,13 @@ TEST_F(KernelCollectorTest, CollectEfiCrashFilesMissing) {
               testing::ElementsAre(CrashCollectionStatus::kNoCrashFound));
 }
 
-TEST_F(KernelCollectorTest, CollectEfiCrashFile) {
+void KernelCollectorTest::TestCollectEfiCrashFile(const char* driver_name) {
   collector_.set_crash_directory_for_test(test_crash_directory());
   int efi_part_count = kMaxEfiParts - 1;
   std::string efi_part[kMaxEfiParts];
-  uint64_t test_efi_crash_id;
-  sscanf(efipstore_file(1).BaseName().value().c_str(), "%*10s%" PRIu64,
-         &test_efi_crash_id);
 
   for (int i = 1; i <= efi_part_count; i++) {
-    ASSERT_FALSE(base::PathExists(efipstore_file(i)));
+    ASSERT_FALSE(base::PathExists(efipstore_file(i, driver_name)));
     efi_part[i] = StringPrintf("Panic#2 Part#%d\n", i);
     if (i == 1) {
       efi_part[i].append(
@@ -263,7 +288,8 @@ TEST_F(KernelCollectorTest, CollectEfiCrashFile) {
         efi_part[i].append(StringPrintf("random blob %d\n", j));
       }
     }
-    ASSERT_TRUE(test_util::CreateFile(efipstore_file(i), efi_part[i].c_str()));
+    ASSERT_TRUE(test_util::CreateFile(efipstore_file(i, driver_name),
+                                      efi_part[i].c_str()));
   }
 
   std::vector<CrashCollectionStatus> results;
@@ -273,8 +299,16 @@ TEST_F(KernelCollectorTest, CollectEfiCrashFile) {
       test_crash_directory(), "kernel.*.meta",
       "sig=kernel-test_efi_function-"));
   for (int i = 1; i <= efi_part_count; i++) {
-    EXPECT_FALSE(base::PathExists(efipstore_file(i)));
+    EXPECT_FALSE(base::PathExists(efipstore_file(i, driver_name)));
   }
+}
+
+TEST_F(KernelCollectorTest, CollectEfiCrashFile) {
+  TestCollectEfiCrashFile("efi");
+}
+
+TEST_F(KernelCollectorTest, CollectEfiPstoreCrashFile) {
+  TestCollectEfiCrashFile("efi_pstore");
 }
 
 TEST_F(KernelCollectorTest, GetRamoopsCrashType) {

@@ -654,8 +654,8 @@ KernelCollector::RamoopsCrash::~RamoopsCrash() = default;
 
 KernelCollector::EfiCrash::~EfiCrash() = default;
 
-// Find number of efi crashes at /sys/fs/pstore and returns vector of EfiCrash.
-std::vector<KernelCollector::EfiCrash> KernelCollector::FindEfiCrashes() const {
+std::vector<KernelCollector::EfiCrash> KernelCollector::_FindDriverEfiCrashes(
+    const char* efi_driver_name) const {
   std::vector<EfiCrash> efi_crashes;
   const base::FilePath pstore_dir(dump_path_);
   if (!base::PathExists(pstore_dir)) {
@@ -664,7 +664,7 @@ std::vector<KernelCollector::EfiCrash> KernelCollector::FindEfiCrashes() const {
 
   // Scan /sys/fs/pstore/.
   std::string efi_crash_pattern =
-      StringPrintf("%s-%s-*", kDumpRecordDmesgName, kDumpDriverEfiName);
+      StringPrintf("%s-%s-*", kDumpRecordDmesgName, efi_driver_name);
   base::FileEnumerator efi_file_iter(
       pstore_dir, false, base::FileEnumerator::FILES, efi_crash_pattern);
 
@@ -692,11 +692,24 @@ std::vector<KernelCollector::EfiCrash> KernelCollector::FindEfiCrashes() const {
 
     } else {
       // New crash detected.
-      EfiCrash efi_crash(keyed_crash_id, this);
+      EfiCrash efi_crash(keyed_crash_id, std::string(efi_driver_name), this);
       efi_crash.UpdateMaxPart(crash_id);
       efi_crashes.push_back(efi_crash);
     }
   }
+  return efi_crashes;
+}
+
+// Find number of efi crashes at /sys/fs/pstore and returns vector of EfiCrash.
+std::vector<KernelCollector::EfiCrash> KernelCollector::FindEfiCrashes() const {
+  std::vector<EfiCrash> efi_crashes, driver_efi_crashes;
+
+  for (size_t i = 0; i < numKDumpDriverEfiNames; i++) {
+    driver_efi_crashes = _FindDriverEfiCrashes(kDumpDriverEfiNames[i]);
+    efi_crashes.insert(efi_crashes.end(), driver_efi_crashes.begin(),
+                       driver_efi_crashes.end());
+  }
+
   return efi_crashes;
 }
 

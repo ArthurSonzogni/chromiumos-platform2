@@ -88,7 +88,9 @@ class KernelCollector : public CrashCollector {
   static PstoreRecordType StringToPstoreRecordType(std::string_view record);
   static std::string PstoreRecordTypeToString(PstoreRecordType record_type);
 
-  static constexpr char kDumpDriverEfiName[] = "efi";
+  static constexpr char const* kDumpDriverEfiNames[] = {"efi", "efi_pstore"};
+  static constexpr size_t numKDumpDriverEfiNames =
+      sizeof(kDumpDriverEfiNames) / sizeof(*kDumpDriverEfiNames);
   static constexpr char kDumpDriverRamoopsName[] = "ramoops";
 
  protected:
@@ -168,8 +170,10 @@ class KernelCollector : public CrashCollector {
   // split across multiple files, each for a different part of the record.
   class EfiCrash : public PstoreCrash {
    public:
-    explicit EfiCrash(uint64_t id, const KernelCollector* collector)
-        : PstoreCrash(id, GetPart(id), kDumpDriverEfiName, collector),
+    explicit EfiCrash(uint64_t id,
+                      std::string efi_driver_name,
+                      const KernelCollector* collector)
+        : PstoreCrash(id, GetPart(id), efi_driver_name, collector),
           timestamp_(GetTimestamp(id)),
           crash_count_(GetCrashCount(id)) {}
 
@@ -282,6 +286,7 @@ class KernelCollector : public CrashCollector {
                                     const std::string& hypervisor_dump,
                                     const std::string& signature);
 
+  std::vector<EfiCrash> _FindDriverEfiCrashes(const char* driver_name) const;
   std::vector<EfiCrash> FindEfiCrashes() const;
 
   bool is_enabled_;
