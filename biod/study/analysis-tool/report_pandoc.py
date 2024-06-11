@@ -33,12 +33,9 @@ ElementType = TypeVar("ElementType", bound="Element")
 class Element:
     """A `Element` is the organizational unit that helps compose a `Report`.
 
-    Nested `Element`s help organize the dynamic elements of a report.
-
-    It contains sub `Element`s and the root `Element` shall have
-    `None` as the `parent`.
-
-    This class is intended to be
+    `Element` is the base class for all dynamic elements of a report.
+    A Report is a tree of `Element`s such that the root `Element`'s `parent`
+    is `None`.
     """
 
     ID_SEPARATOR: Final[str] = "/"
@@ -56,7 +53,7 @@ class Element:
     ) -> None:
         """
         Args:
-            `id` is an component of a heirtical identifier/file-path that
+            `id` is a component of a hierarchical identifier/file-path that
             will be used to compose file names and paths in conjunction with
             labels. Only the concatenation of all full depth nodes needs to be
             unique.
