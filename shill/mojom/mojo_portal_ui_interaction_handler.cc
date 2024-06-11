@@ -10,12 +10,6 @@
 
 namespace shill {
 
-MojoPortalUIInteractionHandler::MojoPortalUIInteractionHandler(
-    NetworkManager* network_manager)
-    : network_manager_(network_manager) {}
-
-MojoPortalUIInteractionHandler::~MojoPortalUIInteractionHandler() = default;
-
 void MojoPortalUIInteractionHandler::AddReceiver(
     mojo::PendingReceiver<
         chromeos::connectivity::mojom::PortalUIInteractionHandler> receiver) {
@@ -23,34 +17,14 @@ void MojoPortalUIInteractionHandler::AddReceiver(
 }
 
 void MojoPortalUIInteractionHandler::OnNotificationEvent(
-    int32_t network_id, NotificationEvent event) {
-  Network* network = network_manager_->GetNetwork(network_id);
-  if (network) {
-    network->OnNotificationEvent(event);
-  }
-}
+    int32_t network_id, NotificationEvent event) {}
 
 void MojoPortalUIInteractionHandler::OnSigninPageShown(
-    int32_t network_id, const net_base::HttpUrl& url) {
-  Network* network = network_manager_->GetNetwork(network_id);
-  if (network) {
-    network->OnSigninPageShown(url);
-  }
-}
+    int32_t network_id, const net_base::HttpUrl& url) {}
 
 void MojoPortalUIInteractionHandler::OnSigninPageLoaded(
-    int32_t network_id, int32_t chrome_net_error) {
-  Network* network = network_manager_->GetNetwork(network_id);
-  if (network) {
-    network->OnSigninPageLoaded(chrome_net_error);
-  }
-}
+    int32_t network_id, int32_t chrome_net_error) {}
 
-void MojoPortalUIInteractionHandler::OnSigninPageClosed(int32_t network_id) {
-  Network* network = network_manager_->GetNetwork(network_id);
-  if (network) {
-    network->OnSigninPageClosed();
-  }
-}
+void MojoPortalUIInteractionHandler::OnSigninPageClosed(int32_t network_id) {}
 
 }  // namespace shill

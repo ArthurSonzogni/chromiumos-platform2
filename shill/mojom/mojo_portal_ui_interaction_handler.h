@@ -9,7 +9,6 @@
 #include <net-base/http_url.h>
 
 #include "shill/mojom/portal.mojom.h"
-#include "shill/network/network_manager.h"
 
 namespace shill {
 
@@ -19,9 +18,6 @@ using chromeos::connectivity::mojom::NotificationEvent;
 class MojoPortalUIInteractionHandler
     : public chromeos::connectivity::mojom::PortalUIInteractionHandler {
  public:
-  explicit MojoPortalUIInteractionHandler(NetworkManager* network_manager);
-  ~MojoPortalUIInteractionHandler() override;
-
   // Adds the receiver of the Mojo interface.
   void AddReceiver(
       mojo::PendingReceiver<
@@ -38,11 +34,6 @@ class MojoPortalUIInteractionHandler
   void OnSigninPageClosed(int32_t network_id) override;
 
  private:
-  // It's owned by Manager and the lifetime is the same as Manager. Because the
-  // lifetime of ShillMojoServiceManager, the owner of this class, is covered by
-  // Manager's lifetime, the NetworkManager outlives this class.
-  NetworkManager* network_manager_;
-
   mojo::ReceiverSet<chromeos::connectivity::mojom::PortalUIInteractionHandler>
       receivers_;
 };

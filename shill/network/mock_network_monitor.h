@@ -8,11 +8,9 @@
 #include <memory>
 
 #include <gmock/gmock.h>
-#include <net-base/http_url.h>
 #include <net-base/ip_address.h>
 
 #include "shill/metrics.h"
-#include "shill/mojom/portal.mojom-shared.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/validation_log.h"
 #include "shill/technology.h"
@@ -32,14 +30,6 @@ class MockNetworkMonitor : public NetworkMonitor {
   MOCK_METHOD(void, Start, (ValidationReason), (override));
   MOCK_METHOD(bool, Stop, (), (override));
   MOCK_METHOD(bool, IsRunning, (), (const, override));
-
-  MOCK_METHOD(void,
-              OnNotificationEvent,
-              (chromeos::connectivity::mojom::NotificationEvent),
-              (override));
-  MOCK_METHOD(void, OnSigninPageShown, (const net_base::HttpUrl&), (override));
-  MOCK_METHOD(void, OnSigninPageLoaded, (int32_t), (override));
-  MOCK_METHOD(void, OnSigninPageClosed, (), (override));
 };
 
 class MockNetworkMonitorFactory : public NetworkMonitorFactory {
