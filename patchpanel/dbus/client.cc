@@ -922,8 +922,6 @@ class ClientImpl : public Client {
       const TrafficAnnotation& annotation,
       std::shared_ptr<brillo::http::Transport> transport) override;
 
-  bool OnSocketAnnotation(const TrafficAnnotationId& id, int fd);
-
  private:
   // Runs the |task| on the DBus thread synchronously.
   // The generated proxy uses brillo::dbus_utils::CallMethod*(), which asserts
@@ -1761,18 +1759,17 @@ bool ClientImpl::TagSocket(base::ScopedFD fd,
   return true;
 }
 
-void ClientImpl::PrepareTagSocket(
-    const TrafficAnnotation& annotation,
-    std::shared_ptr<brillo::http::Transport> transport) {
-  // Bind OnSocketAnnotation as a RepeatingCallback with the annotation id as a
-  // bound parameter. |this| is bound with Unretained as it is not supported to
-  // bind a weak ref to a callback with a return value. It is considered as safe
-  // since we expect Patchpanel Client to outlive brillo::Transport.
-  transport->SetSockOptCallback(base::BindRepeating(
-      &ClientImpl::OnSocketAnnotation, base::Unretained(this), annotation.id));
-}
+bool OnSocketAnnotation(base::WeakPtr<ClientImpl> client,
+                        const Client::TrafficAnnotationId& id,
+                        int fd) {
+  // The callback might be still registered in the transport while the client
+  // has been destroyed. Ensure the client is still valid before doing anything
+  // else (see b/345769752).
+  if (!client) {
+    LOG(ERROR) << __func__ << ": client is not valid anymore";
+    return false;
+  }
 
-bool ClientImpl::OnSocketAnnotation(const TrafficAnnotationId& id, int fd) {
   // The socket fd has to be duplicated to prevent the DBus proxy base::ScopedFD
   // to close the fd owned by curl.
   int tag_fd = dup(fd);
@@ -1781,11 +1778,20 @@ bool ClientImpl::OnSocketAnnotation(const TrafficAnnotationId& id, int fd) {
     return false;
   }
 
-  TrafficAnnotation annotation(id);
+  Client::TrafficAnnotation annotation(id);
   // TODO(b/331620358) use a synchronous call to a dedicated TagSocket service
   // to guarantee the socket is tagged when the call returns.
-  return TagSocket(base::ScopedFD(tag_fd), std::nullopt, std::nullopt,
-                   std::move(annotation), base::DoNothing());
+  return client->TagSocket(base::ScopedFD(tag_fd), std::nullopt, std::nullopt,
+                           std::move(annotation), base::DoNothing());
+}
+
+void ClientImpl::PrepareTagSocket(
+    const TrafficAnnotation& annotation,
+    std::shared_ptr<brillo::http::Transport> transport) {
+  // Bind OnSocketAnnotation as a RepeatingCallback with the annotation id as a
+  // bound parameter.
+  transport->SetSockOptCallback(base::BindRepeating(
+      &OnSocketAnnotation, weak_factory_.GetWeakPtr(), annotation.id));
 }
 
 }  // namespace
