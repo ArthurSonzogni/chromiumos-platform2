@@ -16,7 +16,7 @@ import numpy as np
 import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
-from report_pandoc import Report2
+from report import Report2
 
 
 class Test_Report(unittest.TestCase):

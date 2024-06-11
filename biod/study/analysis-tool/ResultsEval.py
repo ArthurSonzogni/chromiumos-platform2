@@ -49,8 +49,8 @@ import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objs as go
 import plotly.tools as tls
-from report_pandoc import Figure
-from report_pandoc import Report2
+from report import Figure
+from report import Report2
 import scipy.stats as st
 from scipy.stats import norm
 import simulate_fpstudy
@@ -62,7 +62,7 @@ pd.options.plotting.backend = "plotly"
 # import tqdm
 # import tqdm.notebook as tqdm
 
-#! %aimport bootstrap, fpsutils, report_pandoc, simulate_fpstudy, experiment, fpc_bet_results
+#! %aimport bootstrap, fpsutils, report, simulate_fpstudy, experiment, fpc_bet_results
 
 # https://ipython.readthedocs.io/en/stable/interactive/magics.html#magic-matplotlib
 # To open matplotlib in interactive mode

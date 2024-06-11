@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objs as go
-from report_pandoc import Report2
+from report import Report2
 import scipy.stats as st
 from test_case import TestCase
 from tqdm.autonotebook import tqdm  # Auto detect notebook or console.
