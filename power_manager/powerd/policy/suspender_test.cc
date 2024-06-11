@@ -24,7 +24,6 @@
 #include "power_manager/powerd/system/dark_resume_stub.h"
 #include "power_manager/powerd/system/dbus_wrapper_stub.h"
 #include "power_manager/powerd/system/display/display_watcher_stub.h"
-#include "power_manager/powerd/system/suspend_configurator_stub.h"
 #include "power_manager/powerd/system/wakeup_source_identifier_stub.h"
 #include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
@@ -231,7 +230,7 @@ class SuspenderTest : public TestEnvironment {
     suspender_.Init(&delegate_, &dbus_wrapper_, &dark_resume_,
                     &display_watcher_, &wakeup_source_identifier_,
                     &shutdown_from_suspend_, &adaptive_charging_controller_,
-                    &prefs_, &configurator_stub_);
+                    &prefs_);
   }
 
   // Returns the ID from a SuspendImminent signal at |position|.
@@ -295,7 +294,6 @@ class SuspenderTest : public TestEnvironment {
   policy::ShutdownFromSuspendStub shutdown_from_suspend_;
   MetricsSenderStub metrics_sender_;
   MockAdaptiveChargingController adaptive_charging_controller_;
-  system::SuspendConfiguratorStub configurator_stub_;
   Suspender suspender_;
   Suspender::TestApi test_api_;
 

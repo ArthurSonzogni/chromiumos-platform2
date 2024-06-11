@@ -70,8 +70,7 @@ void Suspender::Init(
     system::WakeupSourceIdentifierInterface* wakeup_source_identifier,
     policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
     AdaptiveChargingControllerInterface* adaptive_charging_controller,
-    PrefsInterface* prefs,
-    system::SuspendConfiguratorInterface* suspend_configurator) {
+    PrefsInterface* prefs) {
   delegate_ = delegate;
   dbus_wrapper_ = dbus_wrapper;
   dark_resume_ = dark_resume;
@@ -79,7 +78,6 @@ void Suspender::Init(
   shutdown_from_suspend_ = shutdown_from_suspend;
   adaptive_charging_controller_ = adaptive_charging_controller;
   prefs_ = prefs;
-  suspend_configurator_ = suspend_configurator;
 
   const int initial_id = delegate_->GetInitialSuspendId();
   suspend_request_id_ = initial_id - 1;

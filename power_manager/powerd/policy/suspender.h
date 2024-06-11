@@ -25,7 +25,6 @@
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/powerd/system/display/display_watcher_observer.h"
-#include "power_manager/powerd/system/suspend_configurator.h"
 #include "power_manager/proto_bindings/suspend.pb.h"
 
 namespace power_manager {
@@ -233,8 +232,7 @@ class Suspender : public SuspendDelayObserver,
             system::WakeupSourceIdentifierInterface* wakeup_source_identifier,
             policy::ShutdownFromSuspendInterface* shutdown_from_suspend,
             AdaptiveChargingControllerInterface* adaptive_charging_controller,
-            PrefsInterface* prefs,
-            system::SuspendConfiguratorInterface* suspend_configurator);
+            PrefsInterface* prefs);
 
   // Starts the suspend process. Note that suspending happens
   // asynchronously. The system will automatically resume after |duration| if it
@@ -403,8 +401,6 @@ class Suspender : public SuspendDelayObserver,
       nullptr;  // weak
 
   PrefsInterface* prefs_ = nullptr;  // weak
-  system::SuspendConfiguratorInterface* suspend_configurator_ =
-      nullptr;  // weak
   std::unique_ptr<Clock> clock_;
   std::unique_ptr<SuspendDelayController> suspend_delay_controller_;
   std::unique_ptr<SuspendDelayController> dark_suspend_delay_controller_;
