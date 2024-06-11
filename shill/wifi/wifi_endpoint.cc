@@ -251,17 +251,6 @@ void WiFiEndpoint::UpdateSignalStrength(int16_t strength) {
   device_->NotifyEndpointChanged(this);
 }
 
-void WiFiEndpoint::UpdateRPCPath(const RpcIdentifier& rpc_id) {
-  if (rpc_id_ == rpc_id) {
-    return;
-  }
-
-  SLOG(2) << __func__ << ": rpc id " << rpc_id_.value() << " -> "
-          << rpc_id.value();
-  rpc_id_ = rpc_id;
-  Start();
-}
-
 std::map<std::string, std::string> WiFiEndpoint::GetVendorInformation() const {
   std::map<std::string, std::string> vendor_information;
   if (!vendor_information_.wps_manufacturer.empty()) {

@@ -5605,42 +5605,6 @@ TEST_F(WiFiMainTest, PendingScanEvents) {
   EXPECT_EQ(2, endpoints_by_rpcid.size());
 }
 
-TEST_F(WiFiMainTest, PendingScanEventsModifyPath) {
-  StartWiFi();
-  BSSAdded(
-      RpcIdentifier("bss0"),
-      CreateBSSProperties(
-          "ssid0", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00), 0,
-          0, kNetworkModeInfrastructure, 0));
-  WiFiEndpointRefPtr ap0 = MakeEndpoint(
-      "ssid0", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00));
-
-  EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap0)));
-  test_event_dispatcher_->DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(wifi_provider());
-
-  BSSRemoved(RpcIdentifier("bss0"));
-  int16_t signal_strength = 10;
-  BSSAdded(
-      RpcIdentifier("bss1"),
-      CreateBSSProperties(
-          "ssid0", net_base::MacAddress(0x00, 0x00, 0x00, 0x00, 0x00, 0x00),
-          signal_strength, 0, kNetworkModeInfrastructure, 0));
-
-  // The bssid 00:00:00:00:00:02 was removed then added back with a new path,
-  // so we don't expect its endpoint to get removed, rather we expect a change
-  // in its path/properties.
-  WiFiServiceRefPtr null_service;
-  EXPECT_CALL(*wifi_provider(), OnEndpointRemoved(EndpointMatch(ap0))).Times(0);
-  test_event_dispatcher_->DispatchPendingEvents();
-  WiFiEndpointRefPtr endpoint = GetEndpointMap().at(RpcIdentifier("bss1"));
-  EXPECT_EQ(signal_strength, endpoint->signal_strength());
-  Mock::VerifyAndClearExpectations(wifi_provider());
-
-  const WiFi::EndpointMap& endpoints_by_rpcid = GetEndpointMap();
-  EXPECT_EQ(1, endpoints_by_rpcid.size());
-}
-
 TEST_F(WiFiMainTest, OnNewWiphy_ExcludesIndex) {
   ScopedMockLog log;
   // Change the NL80211_ATTR_WIPHY U32 attribute to the NL80211_ATTR_WIPHY_FREQ

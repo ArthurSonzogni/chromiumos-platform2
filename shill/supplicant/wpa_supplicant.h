@@ -76,8 +76,6 @@ class WPASupplicant {
   static constexpr char kInterfacePropertyName[] = "Ifname";
   static constexpr char kInterfacePropertyRoamTime[] = "RoamTime";
   static constexpr char kInterfacePropertyRoamComplete[] = "RoamComplete";
-  static constexpr char kInterfacePropertyScanInProgress6GHz[] =
-      "ScanInProgress6GHz";
   static constexpr char kInterfacePropertySessionLength[] = "SessionLength";
   static constexpr char kInterfacePropertyState[] = "State";
   static constexpr char kInterfacePropertySubject[] = "subject";

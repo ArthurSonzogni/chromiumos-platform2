@@ -1815,54 +1815,16 @@ bool WiFi::RemoveNetworkForService(const WiFiService* service, Error* error) {
 
 void WiFi::PendingScanResultsHandler() {
   CHECK(pending_scan_results_);
-  // When a 6GHz scan is in progress, delay processing scan results by returning
-  // early.
-  if (scan_in_progress_6ghz_) {
-    LOG(INFO) << "Delay processing scan results until 6GHz scan completes";
-    return;
-  }
   SLOG(this, 2) << __func__ << " with " << pending_scan_results_->results.size()
                 << " results and is_complete set to "
                 << pending_scan_results_->is_complete;
-
-  // If shill was connected to a BSS that was removed and added back, it will
-  // intermittently disconnect. To prevent this disconnection, identify such
-  // BSSes and treat this as a path/property change instead.
-  std::map<const net_base::MacAddress, ScanResult> remove_results_by_bssid;
-  std::set<RpcIdentifier> modified_paths;
   for (const auto& result : pending_scan_results_->results) {
-    if (result.is_removal) {
-      if (base::Contains(endpoint_by_rpcid_, result.path)) {
-        WiFiEndpointRefPtr endpoint = endpoint_by_rpcid_[result.path];
-        remove_results_by_bssid[endpoint->bssid()] = result;
-      }
-    } else {
-      net_base::MacAddress bssid =
-          net_base::MacAddress::CreateFromBytes(
-              result.properties.Get<std::vector<uint8_t>>(
-                  WPASupplicant::kBSSPropertyBSSID))
-              .value();
-      if (base::Contains(remove_results_by_bssid, bssid)) {
-        ScanResult remove_result = remove_results_by_bssid[bssid];
-        BSSModified(remove_result.path, result.path, result.properties);
-        modified_paths.insert(remove_result.path);
-        modified_paths.insert(result.path);
-        remove_results_by_bssid.erase(bssid);
-      }
-    }
-  }
-
-  for (const auto& result : pending_scan_results_->results) {
-    if (base::Contains(modified_paths, result.path)) {
-      continue;
-    }
     if (result.is_removal) {
       BSSRemovedTask(result.path);
     } else {
       BSSAddedTask(result.path, result.properties);
     }
   }
-
   if (pending_scan_results_->is_complete) {
     ScanDoneTask();
   }
@@ -2105,27 +2067,6 @@ void WiFi::HandleCountryChange(const std::string& country_code) {
   }
 }
 
-void WiFi::BSSModified(const RpcIdentifier& remove_path,
-                       const RpcIdentifier& add_path,
-                       const KeyValueStore& add_properties) {
-  EndpointMap::iterator i = endpoint_by_rpcid_.find(remove_path);
-  if (i == endpoint_by_rpcid_.end()) {
-    SLOG(this, 1) << "WiFi " << link_name() << " could not find BSS "
-                  << remove_path.value() << " to modify its path.";
-    return;
-  }
-  WiFiEndpointRefPtr endpoint = i->second;
-  CHECK(endpoint);
-
-  endpoint->UpdateRPCPath(add_path);
-  endpoint_by_rpcid_[add_path] = endpoint;
-  endpoint_by_rpcid_.erase(remove_path);
-  // Explicitly call PropertiesChanged since the add_properties were
-  // communicated as part of a BSSAdded() event, so will not automatically
-  // trigger WiFiEndpoint::PropertiesChanged.
-  endpoint->PropertiesChanged(add_properties);
-}
-
 void WiFi::BSSAddedTask(const RpcIdentifier& path,
                         const KeyValueStore& properties) {
   // Note: we assume that BSSIDs are unique across endpoints. This
@@ -2276,16 +2217,6 @@ void WiFi::EAPEventTask(const std::string& status,
 void WiFi::PropertiesChangedTask(const KeyValueStore& properties) {
   // TODO(quiche): Handle changes in other properties (e.g. signal
   // strength).
-
-  if (properties.Contains<bool>(
-          WPASupplicant::kInterfacePropertyScanInProgress6GHz)) {
-    scan_in_progress_6ghz_ = properties.Get<bool>(
-        WPASupplicant::kInterfacePropertyScanInProgress6GHz);
-    // Process scan results once the 6GHz scan has completed.
-    if (!scan_in_progress_6ghz_ && pending_scan_results_) {
-      PendingScanResultsHandler();
-    }
-  }
 
   // Note that order matters here. In particular, we want to process
   // changes in the current BSS before changes in state. This is so
