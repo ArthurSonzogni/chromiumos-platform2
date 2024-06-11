@@ -313,9 +313,13 @@ void RoutineAdapter::PopulateStatusUpdate(bool include_output,
     case mojom::RoutineStateUnion::Tag::kFinished: {
       const auto& finished_ptr = cached_state_->state_union->get_finished();
       auto update = mojom::NonInteractiveRoutineUpdate::New();
-      update->status = finished_ptr->has_passed
-                           ? mojom::DiagnosticRoutineStatusEnum::kPassed
-                           : mojom::DiagnosticRoutineStatusEnum::kFailed;
+      if (finished_ptr->has_passed) {
+        update->status = mojom::DiagnosticRoutineStatusEnum::kPassed;
+        update->status_message = "Routine passed.";
+      } else {
+        update->status = mojom::DiagnosticRoutineStatusEnum::kFailed;
+        update->status_message = "Routine failed.";
+      }
 
       if (include_output) {
         response.output =

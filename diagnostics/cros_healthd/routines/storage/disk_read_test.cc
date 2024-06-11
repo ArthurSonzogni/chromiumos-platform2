@@ -251,7 +251,8 @@ TEST_F(DiskReadRoutineAdapterTest, RoutineSuccess) {
   CheckRoutineUpdate(50, mojom::DiagnosticRoutineStatusEnum::kRunning);
 
   FlushAdapterForReadJob();
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed);
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
+                     "Routine passed.");
 }
 
 // Test that the disk read routine handles the error of retrieving free space.
