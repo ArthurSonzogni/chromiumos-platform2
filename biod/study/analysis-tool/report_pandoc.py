@@ -456,7 +456,7 @@ class Report2:
             path_asset_out.mkdir(parents=True, exist_ok=True)
             self.write_plotlyjs(path_asset_out)
             self.download_asset(
-                "https://raw.githubusercontent.com/andybrewer/mvp/v1.8/mvp.css",
+                "https://raw.githubusercontent.com/andybrewer/mvp/v1.15/mvp.css",
                 path_asset_out / "mvp.css",
             )
             shutil.copytree(
