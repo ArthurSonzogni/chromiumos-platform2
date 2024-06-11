@@ -26,8 +26,9 @@ constexpr int kSupportedHalFormats[] = {
 std::vector<uint32_t> GetSupportedFourCCs(bool prefer_mjpeg) {
   // The preference of supported fourccs in the list is from high to low.
   std::vector<uint32_t> formats = {
-      V4L2_PIX_FMT_YUYV, V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_YUV420,
-      V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_Y16, V4L2_PIX_FMT_Z16, V4L2_PIX_FMT_INVZ,
+      V4L2_PIX_FMT_YUYV, V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_NV12,
+      V4L2_PIX_FMT_YUV420, V4L2_PIX_FMT_RGB24, V4L2_PIX_FMT_Y16,
+      V4L2_PIX_FMT_Z16, V4L2_PIX_FMT_INVZ,
       // JPEG works as MJPEG on some gspca webcams from field reports, see
       // https://code.google.com/p/webrtc/issues/detail?id=529, put it as the
       // least preferred format.

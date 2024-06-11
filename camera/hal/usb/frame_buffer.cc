@@ -137,6 +137,16 @@ void SharedFrameBuffer::SetData() {
       data_[UPLANE] = data_[YPLANE] + stride_[YPLANE] * height_;
       data_[VPLANE] = data_[UPLANE] + stride_[UPLANE] * height_ / 2;
       break;
+    case V4L2_PIX_FMT_NV12:   // NV12
+    case V4L2_PIX_FMT_NV12M:  // NM12, multiple planes NV12
+      if (num_planes_ != 2) {
+        LOGF(ERROR) << "Number of planes != 2 in NV12/NM12 mode";
+        return;
+      }
+      data_.resize(num_planes_, 0);
+      data_[YPLANE] = shm_mapping_.GetMemoryAs<uint8_t>();
+      data_[UPLANE] = data_[YPLANE] + stride_[YPLANE] * height_;
+      break;
     default:
       data_.resize(num_planes_, 0);
       data_[0] = shm_mapping_.GetMemoryAs<uint8_t>();
@@ -157,6 +167,13 @@ void SharedFrameBuffer::SetStride() {
       stride_.resize(num_planes_, 0);
       stride_[YPLANE] = width_;
       stride_[UPLANE] = stride_[VPLANE] = width_ / 2;
+      break;
+    case V4L2_PIX_FMT_NV12:   // NV12
+    case V4L2_PIX_FMT_NV12M:  // NM12, multiple planes NV12
+      num_planes_ = 2;
+      stride_.resize(num_planes_, 0);
+      stride_[YPLANE] = width_;
+      stride_[UPLANE] = width_;
       break;
     default:
       LOGF(ERROR) << "Pixel format " << FormatToString(fourcc_)
@@ -179,6 +196,9 @@ V4L2FrameBuffer::V4L2FrameBuffer(base::ScopedFD fd,
   switch (fourcc_) {
     case V4L2_PIX_FMT_YUV420:
       num_planes_ = 3;
+      break;
+    case V4L2_PIX_FMT_NV12:
+      num_planes_ = 2;
       break;
     default:
       num_planes_ = 1;
@@ -230,6 +250,11 @@ int V4L2FrameBuffer::Map() {
       stride_[2] = (width_ + 1) / 2;
       data_[1] = data_[0] + stride_[0] * height_;
       data_[2] = data_[1] + stride_[1] * (height_ + 1) / 2;
+      break;
+    case V4L2_PIX_FMT_NV12:
+      stride_[0] = width_;
+      stride_[1] = width_;
+      data_[1] = data_[0] + stride_[0] * height_;
       break;
     default:
       LOGF(WARNING) << "The strides for pixel format "
