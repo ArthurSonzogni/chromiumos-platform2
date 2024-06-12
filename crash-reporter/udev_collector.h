@@ -24,6 +24,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/types/expected.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
 
@@ -92,8 +93,9 @@ class UdevCollector : public CrashCollector {
   bool IsConnectivityWiFiFwdump(int instance_number);
 
   // This function checks if the connectivity fwdump is allowed for the current
-  // user session.
-  bool ConnectivityFwdumpAllowedForUserSession();
+  // user session and a specific domain type e.g. "wifi", "bluetooth" or "all".
+  bool ConnectivityFwdumpAllowedForUserSession(
+      fbpreprocessor::DebugDump::Type type);
 
   // For connectivity fwdumps, we want to store in fbpreprocessord's
   // daemon-store directory and thus need to generate a customized storage path
@@ -145,7 +147,10 @@ class UdevCollector : public CrashCollector {
 
   // This function emits DebugDumpCreated signal when connectivity
   // firmware dump is created.
-  void EmitConnectivityDebugDumpCreatedSignal(const base::FilePath& file_name);
+  void EmitConnectivityDebugDumpCreatedSignal(
+      const base::FilePath& file_name,
+      const base::FilePath& coredump_path,
+      int instance_number);
 
   // A temporary member variable to keep firmware dump in feedback report
   // feature disabled and only gets enabled if fbpreprocessord use flag is

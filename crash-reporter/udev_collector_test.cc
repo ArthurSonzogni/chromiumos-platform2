@@ -63,8 +63,10 @@ const char kLogConfigFileContents[] =
 const char kCrashLogFilePattern[] = "*.log.gz";
 const char kDevCoredumpFilePattern[] = "*.devcore.gz";
 const char kBluetoothCoredumpFilePattern[] = "bt_firmware.*";
+const char kCompressedBluetoothCoredumpFilePattern[] =
+    "devcoredump_bt_driver.*.devcore.gz";
 const char kWiFiCoredumpFilePattern[] = "devcoredump_iwlwifi.*.devcore.gz";
-const char kWiFiCoredumpDirectoryPattern[] =
+const char kConnectivityCoredumpDirectoryPattern[] =
     "run/daemon-store/fbpreprocessord/user_hash/raw_dumps";
 
 // Dummy content for device coredump data file.
@@ -224,7 +226,7 @@ class UdevCollectorTest : public ::testing::Test {
                                 descriptor_string.end());
   }
 
-  void OnDebugDumpCreated(dbus::Signal* signal) {
+  void OnWiFiDebugDumpCreated(dbus::Signal* signal) {
     dbus::MessageReader signal_reader(signal);
     fbpreprocessor::DebugDumps dumps;
 
@@ -241,17 +243,42 @@ class UdevCollectorTest : public ::testing::Test {
       EXPECT_TRUE(
           RE2::FullMatch(path.BaseName().value(), kWiFiCoredumpFilePattern));
       EXPECT_EQ(path.DirName(), temp_dir_generator_.GetPath().Append(
-                                    kWiFiCoredumpDirectoryPattern));
+                                    kConnectivityCoredumpDirectoryPattern));
       EXPECT_EQ(dump.wifi_dump().state(), fbpreprocessor::WiFiDump::RAW);
       EXPECT_EQ(dump.wifi_dump().vendor(), fbpreprocessor::WiFiDump::IWLWIFI);
       EXPECT_EQ(dump.wifi_dump().compression(), fbpreprocessor::WiFiDump::GZIP);
     }
   }
 
+  void OnBluetoothDebugDumpCreated(dbus::Signal* signal) {
+    dbus::MessageReader signal_reader(signal);
+    fbpreprocessor::DebugDumps dumps;
+
+    EXPECT_EQ(signal->GetInterface(), kCrashReporterInterface);
+    EXPECT_EQ(signal->GetMember(), kDebugDumpCreatedSignalName);
+
+    EXPECT_TRUE(signal_reader.PopArrayOfBytesAsProto(&dumps));
+
+    for (auto dump : dumps.dump()) {
+      EXPECT_TRUE(dump.has_bluetooth_dump());
+      base::FilePath path(dump.bluetooth_dump().dmpfile());
+
+      EXPECT_TRUE(RE2::FullMatch(path.BaseName().value(),
+                                 kCompressedBluetoothCoredumpFilePattern));
+      EXPECT_EQ(path.DirName(), temp_dir_generator_.GetPath().Append(
+                                    kConnectivityCoredumpDirectoryPattern));
+      EXPECT_EQ(dump.bluetooth_dump().state(),
+                fbpreprocessor::BluetoothDump::RAW);
+      EXPECT_EQ(dump.bluetooth_dump().compression(),
+                fbpreprocessor::BluetoothDump::GZIP);
+    }
+  }
+
   void SetDebugDumpCreatedSignalExpectation(
       UdevCollectorMock* collector,
       scoped_refptr<dbus::MockExportedObject> exported_object,
-      dbus::ObjectPath obj_path) {
+      dbus::ObjectPath obj_path,
+      fbpreprocessor::DebugDump::Type type) {
     EXPECT_CALL(*exported_object, ExportMethodAndBlock(_, _, _))
         .WillRepeatedly(testing::Return(true));
 
@@ -264,8 +291,20 @@ class UdevCollectorTest : public ::testing::Test {
     EXPECT_CALL(*exported_object, Unregister())
         .WillRepeatedly(testing::Return());
 
-    EXPECT_CALL(*exported_object, SendSignal(testing::A<dbus::Signal*>()))
-        .WillOnce(Invoke(this, &UdevCollectorTest::OnDebugDumpCreated));
+    switch (type) {
+      case fbpreprocessor::DebugDump::WIFI:
+        EXPECT_CALL(*exported_object, SendSignal(testing::A<dbus::Signal*>()))
+            .WillOnce(Invoke(this, &UdevCollectorTest::OnWiFiDebugDumpCreated));
+        break;
+      case fbpreprocessor::DebugDump::BLUETOOTH:
+        EXPECT_CALL(*exported_object, SendSignal(testing::A<dbus::Signal*>()))
+            .WillOnce(
+                Invoke(this, &UdevCollectorTest::OnBluetoothDebugDumpCreated));
+        break;
+      default:
+        break;
+    }
+
     collector->SetBus(mock_bus_);
   }
 
@@ -381,7 +420,8 @@ TEST_F(UdevCollectorTest,
   auto exported_object =
       base::MakeRefCounted<dbus::MockExportedObject>(mock_bus_.get(), obj_path);
 
-  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path);
+  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path,
+                                       fbpreprocessor::DebugDump::WIFI);
 
   EXPECT_CALL(*mock, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -419,7 +459,8 @@ TEST_F(UdevCollectorTest,
   second_collector.SetSessionManagerProxy(mock2);
   CreateFbpreprocessordDirectoryForTest(&second_collector);
   SetDebugDumpCreatedSignalExpectation(&second_collector, exported_object,
-                                       obj_path);
+                                       obj_path,
+                                       fbpreprocessor::DebugDump::WIFI);
 
   EXPECT_CALL(*mock2, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -459,7 +500,8 @@ TEST_F(UdevCollectorTest,
   auto exported_object =
       base::MakeRefCounted<dbus::MockExportedObject>(mock_bus_.get(), obj_path);
 
-  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path);
+  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path,
+                                       fbpreprocessor::DebugDump::WIFI);
 
   EXPECT_CALL(*mock, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -488,6 +530,82 @@ TEST_F(UdevCollectorTest,
   EXPECT_EQ(1, GetNumFiles(user_hash_path, kWiFiCoredumpFilePattern));
 }
 
+// Ensure that connectivity bluetooth fwdump is generated for user in allowlist.
+TEST_F(UdevCollectorTest,
+       RunAsRoot_TestConnectivityBluetoothDevCoredumpUserInAllowList) {
+  std::string device_name = "devcd0";
+  GenerateDevCoredump(device_name, kConnectivityBTDriverName);
+
+  FilePath data_path =
+      FilePath(base::StringPrintf("%s/%s/data",
+                                  temp_dir_generator_.GetPath()
+                                      .Append(kDevCoredumpDirectory)
+                                      .value()
+                                      .c_str(),
+                                  device_name.c_str()));
+
+  std::vector<std::string> data = {
+      "Bluetooth devcoredump",
+      "State: 2",
+      "Driver: TestDrv",
+      "Vendor: TestVen",
+      "Controller Name: TestCon",
+      "--- Start dump ---",
+      "TestData",
+  };
+  std::string data_str = brillo::string_utils::Join("\n", data);
+  ASSERT_EQ(base::WriteFile(data_path, data_str.c_str(), data_str.length()),
+            data_str.length());
+
+  ASSERT_TRUE(test_util::CreateFile(paths::Get(kBluetoothDumpFlagPath), "0"));
+
+  auto* mock = new org::chromium::SessionManagerInterfaceProxyMock;
+  collector_.SetSessionManagerProxy(mock);
+  CreateFbpreprocessordDirectoryForTest(&collector_);
+  auto obj_path = dbus::ObjectPath(crash_reporter::kCrashReporterServicePath);
+  auto exported_object =
+      base::MakeRefCounted<dbus::MockExportedObject>(mock_bus_.get(), obj_path);
+
+  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path,
+                                       fbpreprocessor::DebugDump::BLUETOOTH);
+
+  EXPECT_CALL(*mock, RetrievePrimarySession)
+      .WillOnce(WithArgs<0, 1>(
+          Invoke([](std::string* username, std::string* sanitized) {
+            *username = kDeviceUserInAllowlist;
+            *sanitized = "user_hash";
+            return true;
+          })));
+
+  EXPECT_CALL(
+      *mock,
+      RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                           login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+                           kDeviceUserInAllowlist),
+                       _, _, _))
+      .WillRepeatedly(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER, kAffiliationID,
+            "bluetooth");
+        return true;
+      })));
+
+  EXPECT_EQ(HandleCrash("ACTION=add:KERNEL_NUMBER=0:SUBSYSTEM=devcoredump"),
+            CrashCollectionStatus::kSuccess);
+
+  // Verify that the bluetooth coredump files are stored in the crash directory
+  // to be able to upload to the crash server.
+  EXPECT_EQ(3, GetNumFiles(temp_dir_generator_.GetPath(),
+                           kBluetoothCoredumpFilePattern));
+
+  // Verify that the compressed bluetooth coredump file is also saved in the
+  // fbpreprocessord daemon-store directory to be able to attach with a feedback
+  // report.
+  FilePath user_hash_path = paths::Get(kFbpreprocessordBaseDirectory);
+  EXPECT_EQ(
+      1, GetNumFiles(user_hash_path, kCompressedBluetoothCoredumpFilePattern));
+}
+
 // For connectivity firmware dump we do not want .meta and .log file. This
 // test ensures that .meta and .log files are not generated.
 TEST_F(UdevCollectorTest, RunAsRoot_TestEnsureOnlyDevcoredumpFileIsGenerated) {
@@ -500,7 +618,8 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestEnsureOnlyDevcoredumpFileIsGenerated) {
   auto exported_object =
       base::MakeRefCounted<dbus::MockExportedObject>(mock_bus_.get(), obj_path);
 
-  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path);
+  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path,
+                                       fbpreprocessor::DebugDump::WIFI);
 
   EXPECT_CALL(*mock, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(
@@ -542,7 +661,8 @@ TEST_F(UdevCollectorTest, RunAsRoot_TestConnectivityWiFiDevCoredumpPolicySet) {
   auto obj_path = dbus::ObjectPath(crash_reporter::kCrashReporterServicePath);
   auto exported_object =
       base::MakeRefCounted<dbus::MockExportedObject>(mock_bus_.get(), obj_path);
-  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path);
+  SetDebugDumpCreatedSignalExpectation(&collector_, exported_object, obj_path,
+                                       fbpreprocessor::DebugDump::WIFI);
 
   EXPECT_CALL(*mock, RetrievePrimarySession)
       .WillOnce(WithArgs<0, 1>(

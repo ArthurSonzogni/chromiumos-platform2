@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/files/file_path.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <session_manager/dbus-proxies.h>
 
 namespace connectivity_util {
@@ -25,10 +26,12 @@ std::optional<Session> GetPrimaryUserSession(
 
 // IsConnectivityFwdumpAllowed() checks if connectivity fw dump is enabled
 // by checking if the user is a googler or in allowlist and if policy to
-// collect connectivity fw dump is set.
+// collect connectivity fw dump is set for a specific domain type e.g. "wifi",
+// "bluetooth" or "all".
 bool IsConnectivityFwdumpAllowed(
     org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
-    const std::string& username);
+    const std::string& username,
+    fbpreprocessor::DebugDump::Type type);
 
 // GetDaemonStoreFbPreprocessordDirectory function returns complete
 // fbpreprocessord daemon-store path for logged in user.

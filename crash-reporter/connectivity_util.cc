@@ -22,6 +22,7 @@
 #include <bindings/device_management_backend.pb.h>
 #include <brillo/userdb_utils.h>
 #include <fbpreprocessor-client/fbpreprocessor/dbus-constants.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 #include <policy/device_policy.h>
 
@@ -39,6 +40,10 @@ constexpr std::array<std::string_view, 1> kUserAllowlist{
 constexpr int kDomainAllowlistSize = 2;
 constexpr std::array<std::string_view, kDomainAllowlistSize> kDomainAllowlist{
     "@google.com", "@managedchrome.com"};
+
+constexpr char kConnectivityFwdumpPolicyAll[] = "all";
+constexpr char kConnectivityFwdumpPolicyWiFi[] = "wifi";
+constexpr char kConnectivityFwdumpPolicyBluetooth[] = "bluetooth";
 
 // Checks if the user is a googler or a google test account and
 // returns true if that is the case.
@@ -112,7 +117,8 @@ bool ConnectivityFwdumpCollectionForUserAllowed(const std::string& username) {
 
 // Checks if connectivity fw dump collection policy is set.
 bool IsFwdumpPolicySet(
-    const enterprise_management::CloudPolicySettings& user_policy) {
+    const enterprise_management::CloudPolicySettings& user_policy,
+    fbpreprocessor::DebugDump::Type type) {
   // UserFeedbackWithLowLevelDebugDataAllowed policy is stored
   // in CloudPolicySubProto1 protobuf embedded inside
   // CloudPolicySetting protobuf.
@@ -144,11 +150,27 @@ bool IsFwdumpPolicySet(
   // it is "all", connectivity fwdumps for all the connectivity domains
   // can be enabled.
   for (int i = 0; i < policy_string_list.entries_size(); i++) {
-    // If the policy is set to "wifi" or "all" we consider connectivity
-    // fwdump policy as enabled for wifi domain.
-    if ((policy_string_list.entries(i) == "wifi") ||
-        (policy_string_list.entries(i) == "all")) {
-      LOG(INFO) << "UserFeedbackWithLowLevelDebugDataAllowed is set.";
+    // If the policy is set to "all" we consider connectivity fwdump policy as
+    // enabled for all domains.
+    if (policy_string_list.entries(i) == kConnectivityFwdumpPolicyAll) {
+      LOG(INFO) << "UserFeedbackWithLowLevelDebugDataAllowed is set for all.";
+      return true;
+    }
+
+    // If the policy is set to "wifi" we consider connectivity fwdump policy as
+    // enabled for wifi domain.
+    if ((type == fbpreprocessor::DebugDump::WIFI) &&
+        (policy_string_list.entries(i) == kConnectivityFwdumpPolicyWiFi)) {
+      LOG(INFO) << "UserFeedbackWithLowLevelDebugDataAllowed is set for wifi.";
+      return true;
+    }
+
+    // If the policy is set to "bluetooth" we consider connectivity fwdump
+    // policy as enabled for bluetooth domain.
+    if ((type == fbpreprocessor::DebugDump::BLUETOOTH) &&
+        (policy_string_list.entries(i) == kConnectivityFwdumpPolicyBluetooth)) {
+      LOG(INFO)
+          << "UserFeedbackWithLowLevelDebugDataAllowed is set for bluetooth.";
       return true;
     }
   }
@@ -192,7 +214,8 @@ std::optional<Session> GetPrimaryUserSession(
 
 bool IsConnectivityFwdumpAllowed(
     org::chromium::SessionManagerInterfaceProxyInterface* session_manager_proxy,
-    const std::string& username) {
+    const std::string& username,
+    fbpreprocessor::DebugDump::Type type) {
   if (!session_manager_proxy) {
     LOG(ERROR) << "No session_manager_proxy for dbus call.";
     return false;
@@ -210,7 +233,7 @@ bool IsConnectivityFwdumpAllowed(
     return false;
   }
 
-  return IsFwdumpPolicySet(*user_policy);
+  return IsFwdumpPolicySet(*user_policy, type);
 }
 
 std::optional<base::FilePath> GetDaemonStoreFbPreprocessordDirectory(

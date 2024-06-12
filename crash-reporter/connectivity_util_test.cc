@@ -17,6 +17,7 @@
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#include <fbpreprocessor/proto_bindings/fbpreprocessor.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
@@ -120,8 +121,9 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedGooglerUser) {
         return true;
       })));
 
-  EXPECT_TRUE(
-      IsConnectivityFwdumpAllowed(session_manager_.get(), kDeviceGoogleUser));
+  EXPECT_TRUE(IsConnectivityFwdumpAllowed(session_manager_.get(),
+                                          kDeviceGoogleUser,
+                                          fbpreprocessor::DebugDump::WIFI));
 }
 
 // Test connectivity fwdump is allowed if user is in allowlist.
@@ -141,7 +143,8 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedForAllowedUser) {
       })));
 
   EXPECT_TRUE(IsConnectivityFwdumpAllowed(session_manager_.get(),
-                                          kDeviceUserInAllowList));
+                                          kDeviceUserInAllowList,
+                                          fbpreprocessor::DebugDump::WIFI));
 }
 
 // Test connectivity fwdump is allowed if user is in managedchrome domain.
@@ -161,7 +164,8 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedForAllowedDomain) {
       })));
 
   EXPECT_TRUE(IsConnectivityFwdumpAllowed(session_manager_.get(),
-                                          kUserInAllowedDomain));
+                                          kUserInAllowedDomain,
+                                          fbpreprocessor::DebugDump::WIFI));
 }
 
 // Test to ensure that no session manager proxy is correctly handled
@@ -176,7 +180,8 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedNoSessionManager) {
                            kDeviceUserInAllowList),
                        _, _, _))
       .Times(0);
-  EXPECT_FALSE(IsConnectivityFwdumpAllowed(nullptr, kDeviceGoogleUser));
+  EXPECT_FALSE(IsConnectivityFwdumpAllowed(nullptr, kDeviceGoogleUser,
+                                           fbpreprocessor::DebugDump::WIFI));
 }
 
 // Test to ensure that connectivity fwdump is not allowed for
@@ -197,16 +202,20 @@ TEST_F(ConnectivityUtilTest, IsConnectivityFwdumpAllowedUserNotAllowed) {
       })));
 
   EXPECT_FALSE(IsConnectivityFwdumpAllowed(session_manager_.get(),
-                                           kDeviceUserNotAllowed));
+                                           kDeviceUserNotAllowed,
+                                           fbpreprocessor::DebugDump::WIFI));
 
   EXPECT_FALSE(IsConnectivityFwdumpAllowed(session_manager_.get(),
-                                           kDeviceUserNotAllowed1));
+                                           kDeviceUserNotAllowed1,
+                                           fbpreprocessor::DebugDump::WIFI));
 
   EXPECT_FALSE(IsConnectivityFwdumpAllowed(session_manager_.get(),
-                                           kDeviceUserNotAllowed2));
+                                           kDeviceUserNotAllowed2,
+                                           fbpreprocessor::DebugDump::WIFI));
 
   EXPECT_FALSE(IsConnectivityFwdumpAllowed(session_manager_.get(),
-                                           kDeviceUserNotAllowed3));
+                                           kDeviceUserNotAllowed3,
+                                           fbpreprocessor::DebugDump::WIFI));
 }
 
 // UserFeedbackWithLowLevelDebugDataAllowed policy set for all
@@ -227,7 +236,29 @@ TEST_F(ConnectivityUtilTest,
       })));
 
   EXPECT_TRUE(IsConnectivityFwdumpAllowed(session_manager_.get(),
-                                          kDeviceUserInAllowList));
+                                          kDeviceUserInAllowList,
+                                          fbpreprocessor::DebugDump::WIFI));
+}
+
+// UserFeedbackWithLowLevelDebugDataAllowed policy set for all bluetooth.
+TEST_F(ConnectivityUtilTest,
+       IsConnectivityFwdumpAllowedConnectivityPolicySetForBluetooth) {
+  EXPECT_CALL(
+      *session_manager_.get(),
+      RetrievePolicyEx(CreateExpectedDescriptorBlob(
+                           login_manager::PolicyAccountType::ACCOUNT_TYPE_USER,
+                           kDeviceUserInAllowList),
+                       _, _, _))
+      .WillOnce(WithArg<1>(Invoke([this](std::vector<uint8_t>* out_blob) {
+        *out_blob = CreatePolicyFetchResponseBlob(
+            login_manager::PolicyAccountType::ACCOUNT_TYPE_USER, kAffiliationID,
+            "bluetooth");
+        return true;
+      })));
+
+  EXPECT_TRUE(IsConnectivityFwdumpAllowed(
+      session_manager_.get(), kDeviceUserInAllowList,
+      fbpreprocessor::DebugDump::BLUETOOTH));
 }
 
 // UserFeedbackWithLowLevelDebugDataAllowed policy empty.
@@ -247,7 +278,8 @@ TEST_F(ConnectivityUtilTest,
       })));
 
   EXPECT_FALSE(IsConnectivityFwdumpAllowed(session_manager_.get(),
-                                           kDeviceUserInAllowList));
+                                           kDeviceUserInAllowList,
+                                           fbpreprocessor::DebugDump::WIFI));
 }
 
 // Connectivity policy not set but user allowed(googler or in allowlist).
@@ -267,8 +299,9 @@ TEST_F(ConnectivityUtilTest,
         return true;
       })));
 
-  EXPECT_FALSE(
-      IsConnectivityFwdumpAllowed(session_manager_.get(), kDeviceGoogleUser));
+  EXPECT_FALSE(IsConnectivityFwdumpAllowed(session_manager_.get(),
+                                           kDeviceGoogleUser,
+                                           fbpreprocessor::DebugDump::WIFI));
 }
 
 // Test to ensure the expected crash directory is created.
@@ -326,7 +359,8 @@ TEST_F(ConnectivityUtilTest,
       })));
 
   EXPECT_FALSE(IsConnectivityFwdumpAllowed(session_manager_.get(),
-                                           kDeviceUserInAllowList));
+                                           kDeviceUserInAllowList,
+                                           fbpreprocessor::DebugDump::WIFI));
 }
 
 // Test RetrievePrimarySession dbus call failure which leads to

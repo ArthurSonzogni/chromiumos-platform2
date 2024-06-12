@@ -160,7 +160,8 @@ bool UdevCollector::CheckConnectivityFwdumpAllowedFinchFlagStatus() {
   return val == "1";
 }
 
-bool UdevCollector::ConnectivityFwdumpAllowedForUserSession() {
+bool UdevCollector::ConnectivityFwdumpAllowedForUserSession(
+    fbpreprocessor::DebugDump::Type type) {
   if (!CheckConnectivityFwdumpAllowedFinchFlagStatus() ||
       !connectivity_fwdump_feature_enabled_) {
     return false;
@@ -172,7 +173,7 @@ bool UdevCollector::ConnectivityFwdumpAllowedForUserSession() {
   }
 
   return connectivity_util::IsConnectivityFwdumpAllowed(
-      session_manager_proxy_.get(), user_session_->username);
+      session_manager_proxy_.get(), user_session_->username, type);
 }
 
 CrashCollectionStatus UdevCollector::HandleCrash(
@@ -205,7 +206,8 @@ CrashCollectionStatus UdevCollector::HandleCrash(
       connectivity_util::GetPrimaryUserSession(session_manager_proxy_.get());
 
   if (IsConnectivityWiFiFwdump(instance_number) &&
-      ConnectivityFwdumpAllowedForUserSession()) {
+      ConnectivityFwdumpAllowedForUserSession(
+          fbpreprocessor::DebugDump::WIFI)) {
     LOG(INFO) << "Process Connectivity intel wifi fwdumps.";
   } else if (bluetooth_util::IsCoredumpEnabled() &&
              bluetooth_util::IsBluetoothCoredump(coredump_path)) {
@@ -351,7 +353,8 @@ CrashCollectionStatus UdevCollector::ProcessDevCoredump(
   }
 
   if (IsConnectivityWiFiFwdump(instance_number) &&
-      ConnectivityFwdumpAllowedForUserSession()) {
+      ConnectivityFwdumpAllowedForUserSession(
+          fbpreprocessor::DebugDump::WIFI)) {
     CrashCollectionStatus result =
         ProcessConnectivityCoredump(coredump_path, instance_number);
     ClearDevCoredump(coredump_path);
@@ -360,6 +363,13 @@ CrashCollectionStatus UdevCollector::ProcessDevCoredump(
 
   if (bluetooth_util::IsCoredumpEnabled() &&
       bluetooth_util::IsBluetoothCoredump(coredump_path)) {
+    if (ConnectivityFwdumpAllowedForUserSession(
+            fbpreprocessor::DebugDump::BLUETOOTH)) {
+      ProcessConnectivityCoredump(coredump_path, instance_number);
+      // Bluetooth firmware dumps are included in both feedback reports and
+      // crash reports. So, continue processing further and attach with the
+      // crash report. More info: go/cros-bt-fw-dump-fbreport
+    }
     CrashCollectionStatus result = AppendBluetoothCoredump(
         crash_directory, coredump_path, instance_number);
     ClearDevCoredump(coredump_path);
@@ -405,7 +415,9 @@ CrashCollectionStatus UdevCollector::AppendBluetoothCoredump(
 }
 
 void UdevCollector::EmitConnectivityDebugDumpCreatedSignal(
-    const base::FilePath& file_name) {
+    const base::FilePath& file_name,
+    const FilePath& coredump_path,
+    int instance_number) {
   SetUpDBus();
   auto crash_interface = std::make_unique<CrashAdaptor>(bus_);
 
@@ -421,13 +433,23 @@ void UdevCollector::EmitConnectivityDebugDumpCreatedSignal(
   }
   base::FilePath firmware_path = daemon_store_dir->Append(file_name);
 
-  // TODO(b/313483598): Support other DebugDump types e.g. BT, cellular.
-  dump->set_type(fbpreprocessor::DebugDump::WIFI);
-  auto wifi_dump = dump->mutable_wifi_dump();
-  wifi_dump->set_dmpfile(firmware_path.value());
-  wifi_dump->set_state(fbpreprocessor::WiFiDump::RAW);
-  wifi_dump->set_vendor(fbpreprocessor::WiFiDump::IWLWIFI);
-  wifi_dump->set_compression(fbpreprocessor::WiFiDump::GZIP);
+  if (IsConnectivityWiFiFwdump(instance_number)) {
+    dump->set_type(fbpreprocessor::DebugDump::WIFI);
+    auto wifi_dump = dump->mutable_wifi_dump();
+    wifi_dump->set_dmpfile(firmware_path.value());
+    wifi_dump->set_state(fbpreprocessor::WiFiDump::RAW);
+    wifi_dump->set_vendor(fbpreprocessor::WiFiDump::IWLWIFI);
+    wifi_dump->set_compression(fbpreprocessor::WiFiDump::GZIP);
+  } else if (bluetooth_util::IsBluetoothCoredump(coredump_path)) {
+    dump->set_type(fbpreprocessor::DebugDump::BLUETOOTH);
+    auto bluetooth_dump = dump->mutable_bluetooth_dump();
+    bluetooth_dump->set_dmpfile(firmware_path.value());
+    bluetooth_dump->set_state(fbpreprocessor::BluetoothDump::RAW);
+    bluetooth_dump->set_compression(fbpreprocessor::BluetoothDump::GZIP);
+  } else {
+    LOG(ERROR) << "Unsupported connectivity debug dump.";
+    return;
+  }
 
   LOG(INFO) << "Going to emit connectivity DebugDumpCreated signal.";
   crash_interface.get()->SendDebugDumpCreatedSignal(fw_dumps);
@@ -485,7 +507,8 @@ CrashCollectionStatus UdevCollector::AppendDevCoredump(
 
     // Get the filename and drop the parent directory path.
     base::FilePath filename = core_path.BaseName();
-    EmitConnectivityDebugDumpCreatedSignal(filename);
+    EmitConnectivityDebugDumpCreatedSignal(filename, coredump_path,
+                                           instance_number);
     return CrashCollectionStatus::kSuccessForConnectivityFwdump;
   }
 
