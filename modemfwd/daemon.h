@@ -69,6 +69,7 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   ~Daemon() override = default;
 
   // Delegate overrides.
+  void TaskUpdated(Task* task) override;
   void FinishTask(Task* task) override;
   bool ForceFlashForTesting(const std::string& device_id,
                             const std::string& carrier_uuid,
@@ -136,6 +137,8 @@ class Daemon : public brillo::DBusServiceDaemon, public Delegate {
   void ForceFlashIfWedged(const std::string& device_id,
                           ModemHelper* modem_helper);
   void ForceFlashIfNeverAppeared(const std::string& device_id);
+
+  void AddTask(std::unique_ptr<Task> task);
 
   base::FilePath journal_file_path_;
   base::FilePath helper_dir_path_;

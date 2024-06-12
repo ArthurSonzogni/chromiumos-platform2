@@ -435,8 +435,9 @@ void Daemon::OnModemCarrierIdReady(
   auto heartbeat_task = HeartbeatTask::Create(
       this, modem.get(), helper_directory_.get(), metrics_.get());
   if (heartbeat_task) {
-    heartbeat_task->Start();
-    tasks_[heartbeat_task->name()] = std::move(heartbeat_task);
+    HeartbeatTask* weak_task = heartbeat_task.get();
+    AddTask(std::move(heartbeat_task));
+    weak_task->Start();
   }
 
   // Store the modem object now in case our flash gets delayed.
@@ -471,8 +472,8 @@ void Daemon::DoFlash(const std::string& device_id,
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
   FlashTask* weak_task = flash_task.get();
-  tasks_[flash_task->name()] = std::move(flash_task);
 
+  AddTask(std::move(flash_task));
   if (!weak_task->Start(modems_[device_id].get(), FlashTask::Options{}, &err)) {
     LOG(ERROR) << "Flashing errored out: "
                << (err ? err->GetMessage() : "unknown");
@@ -517,7 +518,7 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
       std::make_unique<FlashTask>(this, journal_.get(), notification_mgr_.get(),
                                   metrics_.get(), modem_flasher_.get());
   FlashTask* flash_task_ptr = flash_task.get();
-  tasks_[flash_task->name()] = std::move(flash_task);
+  AddTask(std::move(flash_task));
 
   FlashTask::Options opts;
   opts.should_always_flash = true;
@@ -619,6 +620,31 @@ void Daemon::ForceFlashIfNeverAppeared(const std::string& device_id) {
   ForceFlash(device_id);
 }
 
+void Daemon::TaskUpdated(Task* /* task */) {
+  std::vector<brillo::VariantDictionary> all_tasks;
+  for (const auto& [name, task] : tasks_) {
+    brillo::VariantDictionary task_props;
+    task_props["name"] = name;
+    task_props["type"] = task->type();
+    task_props["started_at"] =
+        task->started_at().InMillisecondsSinceUnixEpoch();
+    for (const auto& [key, value] : task->props()) {
+      // Use emplace instead of operator[] so we don't overwrite any of the keys
+      // above.
+      task_props.emplace(key, value);
+    }
+    all_tasks.push_back(task_props);
+  }
+  dbus_adaptor_->SetInProgressTasks(all_tasks);
+}
+
+void Daemon::AddTask(std::unique_ptr<Task> task) {
+  Task* weak_task = task.get();
+  const std::string& name = task->name();
+  tasks_[name] = std::move(task);
+  TaskUpdated(weak_task);
+}
+
 void Daemon::FinishTask(Task* task) {
   auto it = tasks_.find(task->name());
   if (it == tasks_.end()) {
@@ -632,6 +658,7 @@ void Daemon::FinishTask(Task* task) {
   base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
       FROM_HERE, std::move(it->second));
   tasks_.erase(it);
+  TaskUpdated(nullptr);
 }
 
 }  // namespace modemfwd

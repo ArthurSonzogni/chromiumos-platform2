@@ -18,6 +18,7 @@ class MockDelegate : public Delegate {
   MockDelegate() = default;
   ~MockDelegate() override = default;
 
+  MOCK_METHOD(void, TaskUpdated, (Task*), (override));
   MOCK_METHOD(void, FinishTask, (Task*), (override));
   MOCK_METHOD(
       bool,

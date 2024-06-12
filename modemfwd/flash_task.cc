@@ -85,6 +85,11 @@ FlashTask::FlashTask(Delegate* delegate,
 bool FlashTask::Start(Modem* modem,
                       const FlashTask::Options& options,
                       brillo::ErrorPtr* err) {
+  SetProp("force-flash", options.should_always_flash);
+  if (options.carrier_override_uuid.has_value()) {
+    SetProp("carrier-override", *options.carrier_override_uuid);
+  }
+
   if (!options.should_always_flash &&
       !modem_flasher_->ShouldFlash(modem, err)) {
     notification_mgr_->NotifyUpdateFirmwareCompletedFailure(err->get());

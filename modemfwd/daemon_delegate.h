@@ -18,6 +18,7 @@ class Delegate {
  public:
   virtual ~Delegate() = default;
 
+  virtual void TaskUpdated(Task* task) = 0;
   virtual void FinishTask(Task* task) = 0;
 
   virtual bool ForceFlashForTesting(const std::string& device_id,

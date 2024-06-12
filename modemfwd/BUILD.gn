@@ -64,6 +64,7 @@ generate_dbus_adaptors("modemfwd_adaptors") {
 
 static_library("libmodemfw") {
   sources = [
+    "daemon_task.cc",
     "dlc_manager.cc",
     "error.cc",
     "file_decompressor.cc",
@@ -127,6 +128,7 @@ install_config("install_minijail_config") {
 if (use.test) {
   executable("modemfw_test") {
     sources = [
+      "daemon_task_test.cc",
       "dlc_manager_test.cc",
       "error_test.cc",
       "file_decompressor_test.cc",

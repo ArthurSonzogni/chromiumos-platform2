@@ -38,5 +38,6 @@
       <arg type="b" name="success" />
       <arg type="s" name="error" />
     </signal>
+    <property name="InProgressTasks" type="aa{sv}" access="read"/>
   </interface>
 </node>
