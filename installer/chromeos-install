@@ -81,23 +81,18 @@ fast_dd() {
   # Note: <count> and <seek> are in units of SRC_BLKSIZE, while <skip> is in
   # units of DST_BLKSIZE.
   local user_count="$1"
-  local user_seek="$2"
-  local user_skip="$3"
-  local chunk_num="$4"
-  local total_chunks="$5"
-  shift 5
+  local chunk_num="$2"
+  local total_chunks="$3"
+  shift 3
 
   if ! "${BUSYBOX_DD_FOUND}"; then
     # Provide some simple progress updates to the user.
     # This was made available from coreutils version 8.24.
     set -- "$@" status=progress
   fi
-  # Find the largest block size that all the parameters are a factor of.
+  # Find the largest block size of power of 2 that fits.
   local block_size=$((2 * 1024 * 1024))
-  while [ $(((user_count * SRC_BLKSIZE) % block_size)) -ne 0 ] || \
-         [ $(((user_skip * SRC_BLKSIZE) % block_size)) -ne 0 ] || \
-         [ $(((user_seek * DST_BLKSIZE) % block_size)) -ne 0 ]; do
-
+  while [ $(((user_count * SRC_BLKSIZE) % block_size)) -ne 0 ]; do
     : $((block_size /= 2))
   done
 
@@ -109,8 +104,8 @@ fast_dd() {
         [ $((user_count * SRC_BLKSIZE)) -gt $((128 * 1024 * 1024)) ]; then
       echo
       echo "WARNING: DOING A SLOW MISALIGNED dd OPERATION. PLEASE FIX"
-      echo "count=${user_count} seek=${user_seek} skip=${user_skip}"
-      echo "SRC_BLKSIZE=${SRC_BLKSIZE} DST_BLKSIZE=${DST_BLKSIZE}"
+      echo "count=${user_count} SRC_BLKSIZE=${SRC_BLKSIZE} "
+      echo "DST_BLKSIZE=${DST_BLKSIZE}"
       echo
     fi
   fi
@@ -118,8 +113,8 @@ fast_dd() {
   # Convert the block counts in their respective sizes into the common block
   # size, and blast off.
   local count_common=$((user_count * SRC_BLKSIZE / block_size))
-  local seek_common=$((user_seek * DST_BLKSIZE / block_size))
-  local skip_common=$((user_skip * SRC_BLKSIZE / block_size))
+  local seek_common=0
+  local skip_common=0
 
   if [ "${total_chunks}" -ne 1 ]; then
     # Divide the count by the number of chunks, rounding up.  This is the
@@ -142,29 +137,16 @@ fast_dd() {
 
 # Update a specific partition in the destination device.
 write_partition() {
-  local user_part="$1"
-  local user_count="$2"
-  local user_seek="$3"
-  local user_skip="$4"
-  local src="$5"
-  local dst="$6"
-  local chunk_num="$7"
-  local total_chunks="$8"
-  local cache_input="$9"
-  local src_part_size dst_part_size
+  local user_count="$1"
+  local src="$2"
+  local dst="$3"
+  local chunk_num="$4"
+  local total_chunks="$5"
+  local cache_input="$6"
 
   if [ "${user_count}" -eq 0 ]; then
     echo "Skipping partition as it does not exist"
     return 0
-  fi
-
-  src_part_size="$((user_count * SRC_BLKSIZE))"
-  dst_part_size="$(partsize "${dst}" "${user_part}")"
-  dst_part_size="$((dst_part_size * DST_BLKSIZE))"
-  if [ "${src_part_size}" -gt "${dst_part_size}" ]; then
-    # Limit the copy size to prevent overflow.
-    die "Error: Source size (${src_part_size}) is larger than destination " \
-        "(${dst_part_size})."
   fi
 
   # The "dd" command can be used to advise Linux to drop caches and we use
@@ -188,9 +170,8 @@ write_partition() {
 
   # dd_cache_arg intentionally not quoted to avoid adding empty arg if unset.
   # shellcheck disable=SC2248
-  fast_dd "${user_count}" "${user_seek}" "${user_skip}" \
-    "${chunk_num}" "${total_chunks}" if="${src}" of="${dst}" conv=notrunc \
-    ${dd_cache_arg}
+  fast_dd "${user_count}" "${chunk_num}" "${total_chunks}" \
+    if="${src}" of="${dst}" conv=notrunc ${dd_cache_arg}
 
   # Incantation to advise the kernel to drop cache on the whole dst.
   #
@@ -206,6 +187,11 @@ get_root_device() {
 
 # Check for optional payload image
 check_payload_image() {
+  local partition_num_root_a
+  local partition_num_state
+  local root_block
+  local state_block
+
   if [ "${FLAGS_skip_rootfs}" -eq "${FLAGS_TRUE}" ]; then
     # Usually this is used for partition setup.
     SRC=""
@@ -219,9 +205,21 @@ check_payload_image() {
       die "Error: No payload image found at ${FLAGS_payload_image}"
     fi
 
-    # Needed to copy PMBR code off image
-    SRC="${FLAGS_payload_image}"
+    # Set a loop device for the payload image and one for each of its
+    # partitions.
+    SRC="$("${LOSETUP_PATH}" -f "${FLAGS_payload_image}" --show --partscan)"
+    LOOPS="${SRC}${LOOPS:+ }${LOOPS:-}"
     ROOT="$(mktemp -d)"
+
+    partition_num_root_a=$(cgpt find -n -l ROOT-A "${SRC}")
+    partition_num_state=$(cgpt find -n -l STATE "${SRC}")
+
+    root_block="$(make_partition_dev "${SRC}" "${partition_num_root_a}")"
+    state_block="$(make_partition_dev "${SRC}" "${partition_num_state}")"
+
+    # Mount the source image root and stateful partition.
+    tracked_mount -o ro "${root_block}" "${ROOT}"
+    tracked_mount -o ro "${state_block}" "${ROOT}/mnt/stateful_partition"
   fi
 }
 
@@ -261,29 +259,6 @@ tracked_umount() {
   MOUNTS=${new_mounts:-}
 
   umount "$1"
-}
-
-# Create a loop device on the given file at a specified (sector) offset.
-# Remember the loop device using the global variable LOOP_DEV.
-# Invoke as: command
-# Args: FILE OFFSET BLKSIZE
-loop_offset_setup() {
-  local filename="$1"
-  local offset="$2"
-  local blocksize="$3"
-
-  set --
-  if [ "${blocksize}" -ne 512 ]; then
-    set -- "$@" -b "${blocksize}"
-  fi
-
-  LOOP_DEV=$("${LOSETUP_PATH}" -f "$@" --show -o $((offset * blocksize)) \
-    "${filename}")
-  if [ -z "${LOOP_DEV}" ]; then
-    die "No free loop device. Free up a loop device or reboot. Exiting."
-  fi
-
-  LOOPS="${LOOP_DEV}${LOOPS:+ }${LOOPS:-}"
 }
 
 # Mount the existing loop device at the mountpoint in $TMPMNT.
@@ -689,12 +664,12 @@ copy_partition() {
   local total_chunks="$5"
   local cache_input="$6"
   local part_size
-  local src_offset
-  local dst_offset
+  local src_block
+  local dst_block
 
   part_size="$(partsize "${src}" "${part_num}")"
-  src_offset="$(partoffset "${src}" "${part_num}")"
-  dst_offset="$(partoffset "${dst}" "${part_num}")"
+  src_block="$(make_partition_dev "${src}" "${part_num}")"
+  dst_block="$(make_partition_dev "${dst}" "${part_num}")"
 
   local chunk_status=""
   if [ "${total_chunks}" -ne 1 ]; then
@@ -714,18 +689,16 @@ copy_partition() {
   "${PARTITION_NUM_ROOT_A:?}"|"${PARTITION_NUM_ROOT_B:?}")
     # Always copy from ROOT_A for rootfs partitions.
     part_size=$(partsize "${src}" "${PARTITION_NUM_ROOT_A}")
-    src_offset=$(partoffset "${src}" "${PARTITION_NUM_ROOT_A}")
-    write_partition "${part_num}" "${part_size}" "${dst_offset}" \
-      "${src_offset}" "${src}" "${dst}" "${chunk_num}" "${total_chunks}" \
-      "${cache_input}"
+    src_block="$(make_partition_dev "${src}" "${PARTITION_NUM_ROOT_A}")"
+    write_partition "${part_size}" "${src_block}" "${dst_block}" \
+      "${chunk_num}" "${total_chunks}" "${cache_input}"
     ;;
   "${PARTITION_NUM_KERN_A:?}"|"${PARTITION_NUM_KERN_B:?}")
     # Use kernel B from the source into both kernel A and B in the destination.
     part_size="$(partsize "${src}" "${PARTITION_NUM_KERN_B}")"
-    src_offset="$(partoffset "${src}" "${PARTITION_NUM_KERN_B}")"
-    write_partition "${part_num}" "${part_size}" "${dst_offset}" \
-      "${src_offset}" "${src}" "${dst}" "${chunk_num}" "${total_chunks}" \
-      "${cache_input}"
+    src_block="$(make_partition_dev "${src}" "${PARTITION_NUM_KERN_B}")"
+    write_partition "${part_size}" "${src_block}" "${dst_block}" \
+      "${chunk_num}" "${total_chunks}" "${cache_input}"
     ;;
   # If the disk layout doesn't have minios, these are set to an empty value.
   "${PARTITION_NUM_MINIOS_A:-}"|"${PARTITION_NUM_MINIOS_B:-}")
@@ -742,11 +715,10 @@ copy_partition() {
     else
       src_part_num="${PARTITION_NUM_MINIOS_B}"
     fi
-    part_size=$(partsize "${src}" "${src_part_num}")
-    src_offset=$(partoffset "${src}" "${src_part_num}")
-    write_partition "${part_num}" "${part_size}" "${dst_offset}" \
-      "${src_offset}" "${src}" "${dst}" "${chunk_num}" "${total_chunks}" \
-      "${cache_input}"
+    part_size="$(partsize "${src}" "${src_part_num}")"
+    src_block="$(make_partition_dev "${src}" "${src_part_num}")"
+    write_partition "${part_size}" "${src_block}" "${dst_block}" \
+      "${chunk_num}" "${total_chunks}" "${cache_input}"
     ;;
   *)
     local src_part_size
@@ -760,9 +732,8 @@ copy_partition() {
       # min fs block size. This matches the build_image logic.
       return
     fi
-    write_partition "${part_num}" "${part_size}" "${dst_offset}" \
-      "${src_offset}" "${src}" "${dst}" "${chunk_num}" "${total_chunks}" \
-      "${cache_input}"
+    write_partition "${part_size}" "${src_block}" "${dst_block}" \
+      "${chunk_num}" "${total_chunks}" "${cache_input}"
     ;;
   esac
 }
@@ -879,23 +850,6 @@ main() {
   # Clean media browser mounts if they've popped up.
   prepare_disk
   locate_gpt
-
-  # Special handling for payload_image. This is passed in for recovery images
-  # and USB installs. This is done first so we can read the gpt partition
-  # file below.
-  if [ -n "${FLAGS_payload_image}" ]; then
-    PARTITION_NUM_ROOT_A=$(cgpt find -n -l ROOT-A "${FLAGS_payload_image}")
-    PARTITION_NUM_STATE=$(cgpt find -n -l STATE "${FLAGS_payload_image}")
-
-    SRC="${FLAGS_payload_image}"
-    # Mount files that are required to be referenced (when not already mounted).
-    loop_offset_setup "${SRC}" \
-      "$(partoffset "${SRC}" "${PARTITION_NUM_ROOT_A}")" 512
-    tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"
-    loop_offset_setup "${SRC}" \
-      "$(partoffset "${SRC}" "${PARTITION_NUM_STATE}")" 512
-    tracked_mount -o ro "${LOOP_DEV}" "${ROOT}"/mnt/stateful_partition
-  fi
 
   # Reload the GPT helper functions and the image settings from target root.
   # shellcheck disable=SC1091
