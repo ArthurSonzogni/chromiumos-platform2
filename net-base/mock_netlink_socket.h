@@ -15,7 +15,7 @@
 
 namespace net_base {
 
-class MockNetlinkSocket : public NetlinkSocket {
+class BRILLO_EXPORT MockNetlinkSocket : public NetlinkSocket {
  public:
   MockNetlinkSocket();
   MockNetlinkSocket(const MockNetlinkSocket&) = delete;

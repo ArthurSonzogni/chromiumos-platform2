@@ -17,7 +17,7 @@
 
 namespace net_base {
 
-class MockProcessManager : public ProcessManager {
+class BRILLO_EXPORT MockProcessManager : public ProcessManager {
  public:
   MockProcessManager();
   MockProcessManager(const MockProcessManager&) = delete;

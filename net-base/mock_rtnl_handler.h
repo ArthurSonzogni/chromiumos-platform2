@@ -15,7 +15,7 @@
 
 namespace net_base {
 
-class MockRTNLHandler : public RTNLHandler {
+class BRILLO_EXPORT MockRTNLHandler : public RTNLHandler {
  public:
   MockRTNLHandler();
   MockRTNLHandler(const MockRTNLHandler&) = delete;

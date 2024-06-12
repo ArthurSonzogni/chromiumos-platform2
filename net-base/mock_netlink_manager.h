@@ -16,7 +16,7 @@
 
 namespace net_base {
 
-class MockNetlinkManager : public NetlinkManager {
+class BRILLO_EXPORT MockNetlinkManager : public NetlinkManager {
  public:
   MockNetlinkManager();
   MockNetlinkManager(const MockNetlinkManager&) = delete;
