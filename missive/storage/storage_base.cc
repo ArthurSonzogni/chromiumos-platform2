@@ -378,8 +378,8 @@ void QueuesContainer::DisableQueue(base::WeakPtr<QueuesContainer> container,
                                      const auto& [_, guid] = key_value;
                                      return guid == generation_guid;
                                    });
-  CHECK_EQ(count, 1u) << Priority_Name_Substitute(priority) << "/"
-                      << generation_guid;
+  LOG_IF(ERROR, count != 1u) << Priority_Name_Substitute(priority) << "/"
+                             << generation_guid << " erase count=" << count;
   // The specified queue has been removed from DM_Token map, resume the
   // queue-owned action.
   std::move(done_cb).Run();
@@ -462,18 +462,27 @@ Status KeyInStorage::UploadKeyFile(
 StatusOr<std::pair<std::string, EncryptionModuleInterface::PublicKeyId>>
 KeyInStorage::DownloadKeyFile() {
   // Make sure the assigned directory exists.
-  base::File::Error error;
-  if (!base::CreateDirectoryAndGetError(directory_, &error)) {
+  if (base::File::Error error;
+      !base::CreateDirectoryAndGetError(directory_, &error)) {
     analytics::Metrics::SendEnumToUMA(
         kUmaUnavailableErrorReason,
         UnavailableErrorReason::STORAGE_DIRECTORY_DOESNT_EXIST,
         UnavailableErrorReason::MAX_VALUE);
+    if (base::File::Error error;
+        !base::CreateDirectoryAndGetError(directory_, &error)) {
+      std::string error_string;
+      if (error > base::File::FILE_OK || error <= base::File::FILE_ERROR_MAX) {
+        error_string = "unknown error";
+      } else {
+        error_string =
+            base::StrCat({"error=", base::File::ErrorToString(error)});
+      }
 
-    return base::unexpected(Status(
-        error::UNAVAILABLE,
-        base::StrCat(
-            {"Storage directory '", directory_.MaybeAsASCII(),
-             "' does not exist, error=", base::File::ErrorToString(error)})));
+      return base::unexpected(
+          Status(error::UNAVAILABLE,
+                 base::StrCat({"Storage directory '", directory_.MaybeAsASCII(),
+                               "' does not exist, ", error_string})));
+    }
   }
 
   // Enumerate possible key files, collect the ones that have valid name,

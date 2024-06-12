@@ -268,20 +268,24 @@ void StorageQueue::Init(
 Status StorageQueue::DoInit() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(storage_queue_sequence_checker_);
   // Make sure the assigned directory exists.
-  base::File::Error error;
-  if (!base::CreateDirectoryAndGetError(options_.directory(), &error)) {
+  if (base::File::Error error;
+      !base::CreateDirectoryAndGetError(options_.directory(), &error)) {
+    std::string error_string;
+    if (error > base::File::FILE_OK || error <= base::File::FILE_ERROR_MAX) {
+      error_string = "unknown error";
+    } else {
+      error_string = base::StrCat({"error=", base::File::ErrorToString(error)});
+    }
     LOG(ERROR) << "Failed to create queue at "
-               << options_.directory().MaybeAsASCII()
-               << ", error=" << base::File::ErrorToString(error);
+               << options_.directory().MaybeAsASCII() << ", " << error_string;
     analytics::Metrics::SendEnumToUMA(
         kUmaUnavailableErrorReason,
         UnavailableErrorReason::FAILED_TO_CREATE_STORAGE_QUEUE_DIRECTORY,
         UnavailableErrorReason::MAX_VALUE);
-    return Status(
-        error::UNAVAILABLE,
-        base::StrCat(
-            {"Storage queue directory '", options_.directory().MaybeAsASCII(),
-             "' does not exist, error=", base::File::ErrorToString(error)}));
+    return Status(error::UNAVAILABLE,
+                  base::StrCat({"Storage queue directory '",
+                                options_.directory().MaybeAsASCII(),
+                                "' does not exist, ", error_string}));
   }
   CHECK_LE(generation_id_, 0);  // Not set yet - valid range [1, max_int64]
   std::unordered_set<base::FilePath> used_files_set;

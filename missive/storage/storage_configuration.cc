@@ -48,11 +48,6 @@ constexpr base::TimeDelta kManualUploadPeriod = base::TimeDelta::Max();
 constexpr char kManualLacrosQueueSubdir[] = "ManualLacros";
 constexpr char kManualLacrosQueuePrefix[] = "P_ManualLacros";
 
-// Order of priorities
-constexpr std::array<Priority, 7> kPriorityOrder = {
-    MANUAL_BATCH_LACROS, MANUAL_BATCH, BACKGROUND_BATCH, SLOW_BATCH,
-    FAST_BATCH,          IMMEDIATE,    SECURITY};
-
 // Failed upload retry delay: if an upload fails and there are no more incoming
 // events, collected events will not get uploaded for an indefinite time (see
 // b/192666219).
@@ -150,7 +145,7 @@ StorageOptions::QueuesOptionsList StorageOptions::ProduceQueuesOptionsList()
     const {
   QueuesOptionsList queue_options_list;
   // Create queue option for each priority and add to the list.
-  for (const auto priority : kPriorityOrder) {
+  for (const auto priority : GetPrioritiesOrder()) {
     queue_options_list.emplace_back(priority, ProduceQueueOptions(priority));
   }
   return queue_options_list;
@@ -158,6 +153,10 @@ StorageOptions::QueuesOptionsList StorageOptions::ProduceQueuesOptionsList()
 
 // static
 base::span<const Priority> StorageOptions::GetPrioritiesOrder() {
+  // Order of priorities
+  static constexpr std::array<Priority, 7> kPriorityOrder = {
+      MANUAL_BATCH_LACROS, MANUAL_BATCH, BACKGROUND_BATCH, SLOW_BATCH,
+      FAST_BATCH,          IMMEDIATE,    SECURITY};
   return base::make_span(kPriorityOrder);
 }
 
