@@ -61,6 +61,8 @@ class RoutineV2Client : public ash::cros_healthd::mojom::RoutineObserver {
   // Handle inquiries.
   void HandleCheckLedLitUpStateInquiry(
       const ash::cros_healthd::mojom::CheckLedLitUpStateInquiryPtr& inquiry);
+  void HandleUnplugAcAdapterInquiry(
+      const ash::cros_healthd::mojom::UnplugAcAdapterInquiryPtr& inquiry);
 
   // The remote for CrosHealthdRoutinesService.
   mojo::Remote<ash::cros_healthd::mojom::CrosHealthdRoutinesService>

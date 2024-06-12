@@ -175,6 +175,11 @@ void RoutineV2Client::OnWaitingState(
                 inquiry->get_check_led_lit_up_state());
             return;
           }
+          case mojom::RoutineInquiry::Tag::kUnplugAcAdapterInquiry: {
+            HandleUnplugAcAdapterInquiry(
+                inquiry->get_unplug_ac_adapter_inquiry());
+            return;
+          }
         }
       }
     }
@@ -229,6 +234,9 @@ void RoutineV2Client::OnFinishedState(
       case mojom::RoutineDetail::Tag::kCameraFrameAnalysis:
         PrintOutput(ConvertToValue(detail->get_camera_frame_analysis()));
         break;
+      case mojom::RoutineDetail::Tag::kBatteryDischarge:
+        PrintOutput(ConvertToValue(detail->get_battery_discharge()));
+        break;
     }
   }
   run_loop_.Quit();
@@ -261,6 +269,19 @@ void RoutineV2Client::HandleCheckLedLitUpStateInquiry(
               answer.value()
                   ? mojom::CheckLedLitUpStateReply::State::kCorrectColor
                   : mojom::CheckLedLitUpStateReply::State::kNotLitUp)));
+}
+
+void RoutineV2Client::HandleUnplugAcAdapterInquiry(
+    const mojom::UnplugAcAdapterInquiryPtr& inquiry) {
+  // Print a newline so we don't overwrite the progress percent.
+  std::cout << '\n';
+  std::cout << "Unplug the AC adapter.\n"
+               "Press ENTER to continue."
+            << std::endl;
+  std::string input;
+  std::getline(std::cin, input);
+  routine_control_->ReplyInquiry(mojom::RoutineInquiryReply::NewUnplugAcAdapter(
+      mojom::UnplugAcAdapterReply::New()));
 }
 
 }  // namespace diagnostics

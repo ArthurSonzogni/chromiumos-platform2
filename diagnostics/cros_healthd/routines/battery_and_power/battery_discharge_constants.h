@@ -24,6 +24,8 @@ inline constexpr char kBatteryDischargeRoutineCancelledMessage[] =
     "Battery discharge routine cancelled.";
 inline constexpr char kBatteryDischargeRoutineRunningMessage[] =
     "Battery discharge routine running.";
+inline constexpr char kBatteryDischargeRoutineNoBatteryPercentMessage[] =
+    "Failed to read battery percent.";
 
 }  // namespace diagnostics
 

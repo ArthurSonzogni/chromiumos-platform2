@@ -48,6 +48,9 @@ base::Value::Dict ConvertToValue(
     const ash::cros_healthd::mojom::CameraFrameAnalysisRoutineDetailPtr&
         detail);
 
+base::Value::Dict ConvertToValue(
+    const ash::cros_healthd::mojom::BatteryDischargeRoutineDetailPtr& detail);
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_MOJOM_ROUTINE_OUTPUT_UTILS_H_

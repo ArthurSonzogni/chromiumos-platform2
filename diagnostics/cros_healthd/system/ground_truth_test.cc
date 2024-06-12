@@ -505,5 +505,29 @@ TEST_F(GroundTruthTest, BluetoothRoutineGetFlossEnabledError) {
             MakeUnexpected("Got error when checking floss enabled state"));
 }
 
+TEST_F(GroundTruthTest, PrepareRoutineBatteryDischarge) {
+  // Expect routine to be supported if no psu is configured.
+  {
+    SetFakeCrosConfig(cros_config_property::kPsuType, std::nullopt);
+    EXPECT_EQ(ground_truth()->PrepareRoutineBatteryDischarge(),
+              MakeSupported());
+  }
+
+  // Expect routine to be supported if psu is configured to anything that is not
+  // "AC_only".
+  {
+    SetFakeCrosConfig(cros_config_property::kPsuType, "battery");
+    EXPECT_EQ(ground_truth()->PrepareRoutineBatteryDischarge(),
+              MakeSupported());
+  }
+
+  // Expect routine to not be supported if psu is configured to "AC_only".
+  {
+    SetFakeCrosConfig(cros_config_property::kPsuType, "AC_only");
+    EXPECT_EQ(ground_truth()->PrepareRoutineBatteryDischarge(),
+              MakeUnsupported("Not supported on a device without battery"));
+  }
+}
+
 }  // namespace
 }  // namespace diagnostics

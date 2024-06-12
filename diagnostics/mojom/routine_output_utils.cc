@@ -411,4 +411,13 @@ base::Value::Dict ConvertToValue(
   return output;
 }
 
+base::Value::Dict ConvertToValue(
+    const mojom::BatteryDischargeRoutineDetailPtr& detail) {
+  base::Value::Dict output;
+
+  output.Set("discharge_percent", detail->discharge_percent);
+
+  return output;
+}
+
 }  // namespace diagnostics

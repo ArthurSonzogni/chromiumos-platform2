@@ -389,6 +389,15 @@ void GroundTruth::PrepareRoutineBluetoothFloss(
       base::BindOnce(&HandleFlossEnabledResponse).Then(std::move(callback)));
   manager->GetFlossEnabledAsync(std::move(on_success), std::move(on_error));
 }
+
+mojom::SupportStatusPtr GroundTruth::PrepareRoutineBatteryDischarge() const {
+  auto psu_type = cros_config()->Get(cros_config_property::kPsuType);
+  // Assume that device has a battery unless otherwise configured.
+  if (psu_type && psu_type == "AC_only") {
+    return MakeUnsupported("Not supported on a device without battery");
+  }
+  return MakeSupported();
+}
 // LINT.ThenChange(//diagnostics/docs/routine_supportability.md)
 
 bool GroundTruth::HasCrosEC() const {

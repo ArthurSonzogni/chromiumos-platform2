@@ -776,6 +776,9 @@ INSTANTIATE_TEST_SUITE_P(
         {.uma_value =
              metrics_enum::CrosHealthdRoutineCategory::kCameraFrameAnalysis,
          .category = mojom::RoutineArgument::Tag::kCameraFrameAnalysis},
+        {.uma_value =
+             metrics_enum::CrosHealthdRoutineCategory::kBatteryDischarge,
+         .category = mojom::RoutineArgument::Tag::kBatteryDischarge},
     }));
 
 }  // namespace

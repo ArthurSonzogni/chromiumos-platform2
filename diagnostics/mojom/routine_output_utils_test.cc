@@ -488,5 +488,14 @@ TEST(RoutineOutputUtilsTest, ConvertCameraFrameAnalysisDetail) {
   EXPECT_EQ(ConvertToValue(detail), expected_result);
 }
 
+TEST(RoutineOutputUtilsTest, ConvertBatteryDischargeDetail) {
+  auto detail = mojom::BatteryDischargeRoutineDetail::New();
+  detail->discharge_percent = 10.0;
+
+  base::Value::Dict expected_result;
+  expected_result.Set("discharge_percent", 10.0);
+  EXPECT_EQ(ConvertToValue(detail), expected_result);
+}
+
 }  // namespace
 }  // namespace diagnostics

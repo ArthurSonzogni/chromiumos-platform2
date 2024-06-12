@@ -15,6 +15,7 @@
 
 #include "diagnostics/cros_healthd/routines/audio/audio_driver.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/battery_and_power/battery_discharge_v2.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_discovery.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_pairing.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_power.h"
@@ -112,6 +113,11 @@ CreateRoutineResult CreateRoutineHelperSync(
     Context* context, mojom::CameraFrameAnalysisRoutineArgumentPtr /*arg*/) {
   return MakeRoutineIfSupported<CameraFrameAnalysisRoutine>(
       context->ground_truth()->PrepareRoutineCameraFrameAnalysis(), context);
+}
+
+CreateRoutineResult CreateRoutineHelperSync(
+    Context* context, mojom::BatteryDischargeRoutineArgumentPtr arg) {
+  return BatteryDischargeRoutineV2::Create(context, arg);
 }
 
 void CreateRoutineHelper(Context* context,
@@ -295,6 +301,12 @@ void RoutineService::CheckAndCreateRoutine(
     case mojom::RoutineArgument::Tag::kCameraFrameAnalysis: {
       CreateRoutineHelper(context_,
                           std::move(routine_arg->get_camera_frame_analysis()),
+                          std::move(callback));
+      return;
+    }
+    case mojom::RoutineArgument::Tag::kBatteryDischarge: {
+      CreateRoutineHelper(context_,
+                          std::move(routine_arg->get_battery_discharge()),
                           std::move(callback));
       return;
     }

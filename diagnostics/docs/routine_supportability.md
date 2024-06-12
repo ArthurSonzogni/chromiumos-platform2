@@ -232,6 +232,15 @@ You can run the following commands on your DUT:
 To configure `count` in Boxster, you can use `create_camera` function defined in
 [hw_topology.star] to set it up.
 
+
+### Battery Discharge
+
+Supported only for device with battery.
+
+You can run the following commands on your DUT:
+1. `cros-health-tool diag battery_discharge_v2 --check_supported` Use this to
+   see if healthd reports the correct support status.
+
 [team-contact]: mailto:cros-tdm-tpe-eng@google.com
 [cros_healthd_routines.mojom]: /diagnostics/mojom/public/cros_healthd_routines.mojom
 [hw_topology.star]: https://chromium.googlesource.com/chromiumos/config/+/refs/heads/main/util/hw_topology.star

@@ -113,6 +113,7 @@ base::Value::Dict ConvertRoutineDetailToOutputDict(
     case mojom::RoutineDetail::Tag::kCameraAvailability:
     case mojom::RoutineDetail::Tag::kNetworkBandwidth:
     case mojom::RoutineDetail::Tag::kCameraFrameAnalysis:
+    case mojom::RoutineDetail::Tag::kBatteryDischarge:
       NOTREACHED_NORETURN() << "Not exposed in the v1 interface";
     case mojom::RoutineDetail::Tag::kMemory:
       return ConvertToValueInV1Format(detail->get_memory());

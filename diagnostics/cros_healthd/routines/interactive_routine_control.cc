@@ -28,6 +28,8 @@ bool ReplyMatchesInquiry(const mojom::RoutineStatePtr& state,
   switch (reply->which()) {
     case mojom::RoutineInquiryReply::Tag::kCheckLedLitUpState:
       return inquiry->is_check_led_lit_up_state();
+    case mojom::RoutineInquiryReply::Tag::kUnplugAcAdapter:
+      return inquiry->is_unplug_ac_adapter_inquiry();
     case mojom::RoutineInquiryReply::Tag::kUnrecognizedReply:
       return false;
   }

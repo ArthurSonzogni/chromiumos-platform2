@@ -12,6 +12,7 @@ source_set("battery_and_power") {
     "battery_capacity.cc",
     "battery_charge.cc",
     "battery_discharge.cc",
+    "battery_discharge_v2.cc",
     "battery_health.cc",
   ]
   configs += [ ":battery_and_power_pkg_config" ]
@@ -30,6 +31,7 @@ if (use.test) {
       "battery_capacity_test.cc",
       "battery_charge_test.cc",
       "battery_discharge_test.cc",
+      "battery_discharge_v2_test.cc",
       "battery_health_test.cc",
     ]
     configs += [ ":battery_and_power_pkg_config" ]

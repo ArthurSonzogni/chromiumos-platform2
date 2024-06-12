@@ -843,6 +843,22 @@ int FanV1Main(int argc, char** argv) {
   COMMON_LEGACY_ROUTINE(FanRoutine)
 }
 
+int BatteryDischargeV2Main(int argc, char** argv) {
+  DEFINE_uint32(length_seconds, 10,
+                "Number of seconds to run the routine for.");
+  DEFINE_uint32(maximum_discharge_percent_allowed, 100,
+                "Upper bound for the battery discharge routine.");
+  COMMON_V2_ROUTINE_FLAGS("battery discharge v2 routine");
+
+  auto argument = mojom::BatteryDischargeRoutineArgument::New();
+
+  argument->exec_duration = base::Seconds(FLAGS_length_seconds);
+  argument->maximum_discharge_percent_allowed =
+      FLAGS_maximum_discharge_percent_allowed;
+
+  COMMON_V2_ROUTINE_MAIN(BatteryDischarge);
+}
+
 const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     // V2 routines.
     {"audio_driver", AudioDriverMain},
@@ -909,6 +925,7 @@ const std::map<std::string, int (*)(int, char**)> routine_to_fp_mapping{
     {"audio_driver_v1", AudioDriverV1Main},
     {"ufs_lifetime_v1", UfsLifetimeV1Main},
     {"fan_v1", FanV1Main},
+    {"battery_discharge_v2", BatteryDischargeV2Main},
 };
 
 void PrintHelp() {

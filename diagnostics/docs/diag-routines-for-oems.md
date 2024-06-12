@@ -260,6 +260,11 @@ From cros-health-tool:
 $ cros-health-tool diag battery_discharge --length_seconds=600 --maximum_discharge_percent_allowed=10
 ```
 
+To run using the V2 API from cros-health-tool:
+```bash
+$ cros-health-tool diag battery_discharge_v2 --length_seconds=600 --maximum_discharge_percent_allowed=10
+```
+
 Sample output, if the battery were to discharge 1.123456789012345% during the routine:
 ```bash
 Progress: 0

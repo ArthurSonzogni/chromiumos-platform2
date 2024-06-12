@@ -295,6 +295,8 @@ ConvertRoutineCategoryToUMAEnum(mojom::RoutineArgument::Tag routine_category) {
       return metrics_enum::CrosHealthdRoutineCategory::kSensitiveSensor;
     case mojom::RoutineArgument::Tag::kCameraFrameAnalysis:
       return metrics_enum::CrosHealthdRoutineCategory::kCameraFrameAnalysis;
+    case mojom::RoutineArgument::Tag::kBatteryDischarge:
+      return metrics_enum::CrosHealthdRoutineCategory::kBatteryDischarge;
   }
 }
 
