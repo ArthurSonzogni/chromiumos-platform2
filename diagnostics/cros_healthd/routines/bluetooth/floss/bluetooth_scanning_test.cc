@@ -91,6 +91,13 @@ class BluetoothScanningRoutineTest : public ::testing::Test {
     EXPECT_CALL(mock_adapter_proxy_, GetObjectPath)
         .WillRepeatedly(ReturnRef(kDefaultAdapterPath));
 
+    EXPECT_CALL(mock_adapter_proxy_, GetRemoteRSSIAsync(_, _, _, _))
+        .WillRepeatedly(
+            base::test::RunOnceCallbackRepeatedly<1>(/*invalid_rssi=*/127));
+    EXPECT_CALL(mock_adapter_proxy_, GetRemoteUuidsAsync(_, _, _, _))
+        .WillRepeatedly(base::test::RunOnceCallbackRepeatedly<1>(
+            std::vector<std::vector<uint8_t>>{}));
+
     auto arg = mojom::BluetoothScanningRoutineArgument::New();
     arg->exec_duration = kScanningRoutineDefaultRuntime;
     base::test::TestFuture<BluetoothScanningRoutine::CreateResult> future;
@@ -332,6 +339,49 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessWhenPoweredOff) {
 
   const auto& detail = state->detail->get_bluetooth_scanning();
   EXPECT_EQ(detail, ConstructScanningDetail());
+}
+
+// Test that the Bluetooth scanning routine can handle the empty name in
+// device added events.
+TEST_F(BluetoothScanningRoutineTest, HandleEmptyName) {
+  // Set up fake data.
+  AddScannedDeviceData(/*address=*/"70:88:6B:92:34:70", /*name=*/"GID6B",
+                       /*rssi_history=*/{-54, -56, -52},
+                       /*uuids=*/{kTestUuidBytes});
+  SetupRoutineSuccessCall(/*initial_powered=*/false);
+
+  // Report empty name in device added event.
+  EXPECT_CALL(mock_adapter_proxy_, StartDiscoveryAsync(_, _, _))
+      .WillOnce(WithArg<0>(
+          [=, this](base::OnceCallback<void(bool is_success)> on_success) {
+            std::move(on_success).Run(/*is_success=*/true);
+            for (const auto& peripheral : fake_peripherals_) {
+              fake_floss_event_hub()->SendDeviceAdded(brillo::VariantDictionary{
+                  {"address", peripheral.address}, {"name", ""}});
+              // Send out the RSSIs.
+              for (int i = 0; i < peripheral.rssi_history.size(); ++i) {
+                fake_floss_event_hub()->SendDevicePropertiesChanged(
+                    peripheral.device_dict,
+                    {static_cast<uint32_t>(BtPropertyType::kRemoteRssi)});
+              }
+            }
+          }));
+
+  task_environment_.FastForwardBy(kScanningRoutineDefaultRuntime);
+  mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
+  EXPECT_EQ(result->percentage, 100);
+  EXPECT_TRUE(result->state_union->is_finished());
+
+  const auto& state = result->state_union->get_finished();
+  EXPECT_TRUE(state->has_passed);
+  EXPECT_TRUE(state->detail->is_bluetooth_scanning());
+
+  const auto& detail = state->detail->get_bluetooth_scanning();
+  auto expected_detail = ConstructScanningDetail();
+  std::sort(detail->peripherals.begin(), detail->peripherals.end());
+  std::sort(expected_detail->peripherals.begin(),
+            expected_detail->peripherals.end());
+  EXPECT_EQ(detail, expected_detail);
 }
 
 // Test that the Bluetooth scanning routine can handle the error when the

@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/cancelable_callback.h>
 #include <base/functional/callback.h>
 #include <base/hash/hash.h>
 #include <base/strings/string_number_conversions.h>
@@ -247,36 +248,51 @@ void BluetoothScanningRoutine::StoreScannedPeripheral(
     SetResultAndStop(base::unexpected("Failed to parse device info."));
     return;
   }
-  if (!scanned_peripherals_.contains(devie_info->address)) {
-    scanned_peripherals_[devie_info->address].name = devie_info->name;
-    GetPeripheralUuids(device);
+
+  const std::string& address = devie_info->address;
+  const std::string& name = devie_info->name;
+  auto& info = scanned_peripherals_[address];
+  if (!name.empty() && info.name != name) {
+    polling_info_callbacks_.erase(address);
+    info.name = name;
   }
 
-  // TODO(b/300239430): Remove polling after RSSI changed event is supported.
-  if (!polling_rssi_callbacks_.contains(devie_info->address)) {
-    // Start polling for the new found peripheral.
-    polling_rssi_callbacks_[devie_info->address] =
-        base::BindRepeating(&BluetoothScanningRoutine::GetPeripheralRssi,
-                            weak_ptr_factory_.GetWeakPtr(), device);
-    polling_rssi_callbacks_[devie_info->address].Run();
+  if (!polling_info_callbacks_.contains(address)) {
+    // Start polling device info for the new found peripheral.
+    polling_info_callbacks_[address].Reset(
+        base::BindRepeating(&BluetoothScanningRoutine::GetPeripheralInfo,
+                            weak_ptr_factory_.GetWeakPtr(), address, name));
+    polling_info_callbacks_[address].callback().Run();
   }
 }
 
-void BluetoothScanningRoutine::GetPeripheralRssi(
-    const brillo::VariantDictionary& device) {
+void BluetoothScanningRoutine::GetPeripheralInfo(const std::string& address,
+                                                 const std::string& name) {
   auto adapter = GetDefaultAdapter();
   if (!adapter) {
     SetResultAndStop(base::unexpected("Failed to get default adapter."));
     return;
   }
 
-  auto devie_info = floss_utils::ParseDeviceInfo(device);
-  CHECK(devie_info.has_value());
+  brillo::VariantDictionary device{{"address", address}, {"name", name}};
+  // RSSI.
   auto [on_success, on_error] = SplitDbusCallback(
       base::BindOnce(&BluetoothScanningRoutine::HandleRssiResponse,
-                     weak_ptr_factory_.GetWeakPtr(), devie_info->address));
+                     weak_ptr_factory_.GetWeakPtr(), address));
   adapter->GetRemoteRSSIAsync(device, std::move(on_success),
                               std::move(on_error));
+  // UUIDs.
+  if (scanned_peripherals_[address].uuids.empty()) {
+    auto uuids_cb = SplitDbusCallback(
+        base::BindOnce(&BluetoothScanningRoutine::HandleUuidsResponse,
+                       weak_ptr_factory_.GetWeakPtr(), address));
+    adapter->GetRemoteUuidsAsync(device, std::move(uuids_cb.first),
+                                 std::move(uuids_cb.second));
+  }
+
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE, polling_info_callbacks_[address].callback(),
+      kScanningRoutinePollingPeriod);
 }
 
 void BluetoothScanningRoutine::HandleRssiResponse(const std::string& address,
@@ -287,34 +303,11 @@ void BluetoothScanningRoutine::HandleRssiResponse(const std::string& address,
     return;
   }
 
-  if (polling_rssi_callbacks_.contains(address)) {
-    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
-        FROM_HERE, polling_rssi_callbacks_[address],
-        kScanningRoutineRssiPollingPeriod);
-  }
-
   // Ignore the invalid RSSI.
   if (rssi == kInvalidRssi) {
     return;
   }
   scanned_peripherals_[address].rssi_history.push_back(rssi);
-}
-
-void BluetoothScanningRoutine::GetPeripheralUuids(
-    const brillo::VariantDictionary& device) {
-  auto adapter = GetDefaultAdapter();
-  if (!adapter) {
-    SetResultAndStop(base::unexpected("Failed to get default adapter."));
-    return;
-  }
-
-  auto devie_info = floss_utils::ParseDeviceInfo(device);
-  CHECK(devie_info.has_value());
-  auto uuids_cb = SplitDbusCallback(
-      base::BindOnce(&BluetoothScanningRoutine::HandleUuidsResponse,
-                     weak_ptr_factory_.GetWeakPtr(), devie_info->address));
-  adapter->GetRemoteUuidsAsync(device, std::move(uuids_cb.first),
-                               std::move(uuids_cb.second));
 }
 
 void BluetoothScanningRoutine::HandleUuidsResponse(
@@ -326,6 +319,7 @@ void BluetoothScanningRoutine::HandleUuidsResponse(
     return;
   }
 
+  std::vector<base::Uuid> out_uuids;
   for (const auto& uuid : uuids) {
     auto out_uuid = floss_utils::ParseUuidBytes(uuid);
     if (!out_uuid.is_valid()) {
@@ -333,8 +327,9 @@ void BluetoothScanningRoutine::HandleUuidsResponse(
           base::unexpected("Failed to parse UUID from device UUIDs."));
       return;
     }
-    scanned_peripherals_[address].uuids.push_back(out_uuid);
+    out_uuids.push_back(out_uuid);
   }
+  scanned_peripherals_[address].uuids = std::move(out_uuids);
 }
 
 void BluetoothScanningRoutine::UpdatePercentage() {
@@ -363,8 +358,8 @@ void BluetoothScanningRoutine::OnScanningFinished() {
     SetResultAndStop(base::unexpected(kBluetoothRoutineUnexpectedFlow));
     return;
   }
-  // Remove RSSI polling callbacks.
-  polling_rssi_callbacks_.clear();
+  // Cancel info polling callbacks.
+  polling_info_callbacks_.clear();
   // Successfully stop scanning.
   RunNextStep();
 }
@@ -393,7 +388,7 @@ void BluetoothScanningRoutine::SetResultAndStop(
     if (IsNearbyPeripheral(info.rssi_history)) {
       peripheral_info->name = info.name;
       peripheral_info->peripheral_id =
-          base::NumberToString(base::FastHash((address)));
+          base::NumberToString(base::FastHash(address));
       peripheral_info->uuids = info.uuids;
     }
     routine_output->peripherals.push_back(std::move(peripheral_info));

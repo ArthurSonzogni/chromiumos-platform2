@@ -28,8 +28,8 @@ class Context;
 namespace floss {
 enum class BtPropertyType : uint32_t;
 
-// Frequency to poll the peripheral's RSSI info.
-constexpr base::TimeDelta kScanningRoutineRssiPollingPeriod =
+// Frequency to poll the peripheral's info.
+constexpr base::TimeDelta kScanningRoutinePollingPeriod =
     base::Milliseconds(250);
 
 // This routine is supported when ChromeOS is using Floss instead of Bluez.
@@ -87,16 +87,13 @@ class BluetoothScanningRoutine final : public NoninteractiveRoutineControl,
   // Check and store scanned peripheral.
   void StoreScannedPeripheral(const brillo::VariantDictionary& device);
 
-  // Get the scanned peripheral's RSSI.
-  void GetPeripheralRssi(const brillo::VariantDictionary& device);
+  // Get the scanned peripheral's info.
+  void GetPeripheralInfo(const std::string& address, const std::string& name);
 
   // Handle the response of the peripheral RSSI.
   void HandleRssiResponse(const std::string& address,
                           brillo::Error* error,
                           int16_t rssi);
-
-  // Get the scanned peripheral's UUIDs.
-  void GetPeripheralUuids(const brillo::VariantDictionary& device);
 
   // Handle the response of the peripheral UUIDs.
   void HandleUuidsResponse(const std::string& address,
@@ -134,15 +131,17 @@ class BluetoothScanningRoutine final : public NoninteractiveRoutineControl,
   // Detail of routine output.
   struct ScannedPeripheral {
     std::vector<int16_t> rssi_history;
-    std::optional<std::string> name;
+    std::string name;
     std::vector<base::Uuid> uuids;
   };
 
   // Scanned peripherals. The key is the peripheral's address.
   std::map<std::string, ScannedPeripheral> scanned_peripherals_;
-  // RSSI polling callbacks for scanned peripherals. The key is the peripheral's
-  // address.
-  std::map<std::string, base::RepeatingClosure> polling_rssi_callbacks_;
+
+  // Polling callbacks for collecting info from scanned peripherals. The key is
+  // the peripheral's address.
+  std::map<std::string, base::CancelableRepeatingClosure>
+      polling_info_callbacks_;
 
   // Cancelable task to update the routine percentage.
   base::CancelableOnceClosure percentage_update_task_;
