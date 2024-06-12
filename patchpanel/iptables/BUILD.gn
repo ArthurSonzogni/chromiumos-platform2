@@ -1,0 +1,56 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+group("install_iptables_start_scripts") {
+  deps = [
+    ":ip6tables",
+    ":iptables",
+  ]
+}
+
+template("install_iptables_script") {
+  assert(defined(invoker.param),
+         "Need param for the family parameter passed to the render script")
+  assert(defined(invoker.out), "Need out for the output filename")
+
+  render_target_name = "_render_" + target_name
+
+  action(render_target_name) {
+    forward_variables_from(invoker, [ "out" ])
+
+    sources = [
+      "iptables.start.jinja2",
+      "iptables_const.json",
+    ]
+    inputs = [ "render_iptables.py" ]
+    outputs = [ "${target_gen_dir}/iptables-scripts/${out}" ]
+
+    script = "render_iptables.py"
+    args = [
+      invoker.param,
+      "-t",
+      rebase_path("iptables.start.jinja2"),
+      "-i",
+      rebase_path("iptables_const.json"),
+      "-o",
+      "${target_gen_dir}/iptables-scripts/${out}",
+    ]
+  }
+
+  install_config(target_name) {
+    sources = get_target_outputs(":${render_target_name}")
+    install_path = "/etc/patchpanel/"
+    deps = [ ":${render_target_name}" ]
+  }
+}
+
+install_iptables_script("iptables") {
+  param = "-4"
+  out = "iptables.start"
+}
+
+install_iptables_script("ip6tables") {
+  param = "-6"
+  out = "ip6tables.start"
+}

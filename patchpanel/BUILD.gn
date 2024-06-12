@@ -17,6 +17,7 @@ group("all") {
     ":libpatchpanel-util",
     ":patchpaneld",
     "//patchpanel/bpf:patchpanel_ebpf",
+    "//patchpanel/iptables:install_iptables_start_scripts",
   ]
 
   if (use.fuzzer) {
