@@ -160,33 +160,19 @@ bool UdevCollector::CheckConnectivityFwdumpAllowedFinchFlagStatus() {
   return val == "1";
 }
 
-std::optional<connectivity_util::Session>
-UdevCollector::ConnectivityFwdumpAllowedForUserSession(
-    std::map<std::string, std::string>& udev_event_map,
-    int instance_number,
-    const base::FilePath& coredump_path) {
-  std::optional<connectivity_util::Session> user_session;
-  if ((udev_event_map[kUdevSubsystem] == kUdevSubsystemDevCoredump) &&
-      IsConnectivityWiFiFwdump(instance_number) &&
-      CheckConnectivityFwdumpAllowedFinchFlagStatus() &&
-      connectivity_fwdump_feature_enabled_) {
-    SetUpDBus();
-    user_session =
-        connectivity_util::GetPrimaryUserSession(session_manager_proxy_.get());
-    if (!user_session.has_value()) {
-      LOG(INFO) << "No Primary Session found, exiting.";
-      ClearDevCoredump(coredump_path);
-      return std::nullopt;
-    }
-    if (!connectivity_util::IsConnectivityFwdumpAllowed(
-            session_manager_proxy_.get(), user_session->username)) {
-      // Clear devcoredump memory before returning.
-      ClearDevCoredump(coredump_path);
-      return std::nullopt;
-    }
-    return user_session;
+bool UdevCollector::ConnectivityFwdumpAllowedForUserSession() {
+  if (!CheckConnectivityFwdumpAllowedFinchFlagStatus() ||
+      !connectivity_fwdump_feature_enabled_) {
+    return false;
   }
-  return std::nullopt;
+
+  if (!user_session_.has_value()) {
+    LOG(INFO) << "No Primary Session found, exiting.";
+    return false;
+  }
+
+  return connectivity_util::IsConnectivityFwdumpAllowed(
+      session_manager_proxy_.get(), user_session_->username);
 }
 
 CrashCollectionStatus UdevCollector::HandleCrash(
@@ -214,11 +200,12 @@ CrashCollectionStatus UdevCollector::HandleCrash(
       base::StringPrintf("%s/devcd%s/data", dev_coredump_directory_.c_str(),
                          udev_event_map[kUdevKernelNumber].c_str()));
 
-  bool is_connectivity_fwdump = false;
-  user_session_ = ConnectivityFwdumpAllowedForUserSession(
-      udev_event_map, instance_number, coredump_path);
-  if (user_session_.has_value()) {
-    is_connectivity_fwdump = true;
+  SetUpDBus();
+  user_session_ =
+      connectivity_util::GetPrimaryUserSession(session_manager_proxy_.get());
+
+  if (IsConnectivityWiFiFwdump(instance_number) &&
+      ConnectivityFwdumpAllowedForUserSession()) {
     LOG(INFO) << "Process Connectivity intel wifi fwdumps.";
   } else if (bluetooth_util::IsCoredumpEnabled() &&
              bluetooth_util::IsBluetoothCoredump(coredump_path)) {
@@ -237,45 +224,22 @@ CrashCollectionStatus UdevCollector::HandleCrash(
   }
 
   base::FilePath crash_directory;
-  if (is_connectivity_fwdump) {
-    // Connectivity firmware dumps are stored in different directory than
-    // normal crashes, because unlike normal crashes, connectivity firmware
-    // dumps are uploaded to feedback reports rather than crash reporter server.
-    // GetConnectivityFwdumpStoragePath opens fbpreprocessord cryptohome
-    // directory and returns a symlinked handle.
-    base::expected<base::FilePath, CrashCollectionStatus>
-        maybe_crash_directory = GetConnectivityFwdumpStoragePath();
-    if (!maybe_crash_directory.has_value()) {
-      LOG(ERROR)
-          << "Could not get storage directory for connectivity fw dumps.";
-      return maybe_crash_directory.error();
-    }
-    crash_directory = *maybe_crash_directory;
-  } else {
-    // Make sure the crash directory exists, or create it if it doesn't.
-    CrashCollectionStatus status =
-        GetCreatedCrashDirectoryByEuid(0, &crash_directory, nullptr);
-    if (!IsSuccessCode(status)) {
-      LOG(ERROR) << "Could not get crash directory: " << status;
-      return status;
-    }
+  // Make sure the crash directory exists, or create it if it doesn't.
+  CrashCollectionStatus status =
+      GetCreatedCrashDirectoryByEuid(0, &crash_directory, nullptr);
+  if (!IsSuccessCode(status)) {
+    LOG(ERROR) << "Could not get crash directory: " << status;
+    return status;
   }
 
-  CrashCollectionStatus status;
   if (udev_event_map[kUdevSubsystem] == kUdevSubsystemDevCoredump) {
-    status = ProcessDevCoredump(crash_directory, instance_number,
-                                is_connectivity_fwdump);
+    status = ProcessDevCoredump(crash_directory, instance_number);
   } else {
     status = ProcessUdevCrashLogs(crash_directory, udev_event_map[kUdevAction],
                                   udev_event_map[kUdevKernel],
                                   udev_event_map[kUdevSubsystem]);
   }
 
-  if (status == CrashCollectionStatus::kSuccess && is_connectivity_fwdump) {
-    // Since the crash reports will not be updated by crash_sender, use a
-    // different result code so that the counts can be compared more easily.
-    status = CrashCollectionStatus::kSuccessForConnectivityFwdump;
-  }
   return status;
 }
 
@@ -324,6 +288,25 @@ UdevCollector::GetConnectivityFwdumpStoragePath() {
   return maybe_dir;
 }
 
+CrashCollectionStatus UdevCollector::ProcessConnectivityCoredump(
+    const FilePath& coredump_path, int instance_number) {
+  // Connectivity firmware dumps are stored in different directory than
+  // normal crashes, because unlike normal crashes, connectivity firmware
+  // dumps are uploaded to feedback reports rather than crash reporter server.
+  // GetConnectivityFwdumpStoragePath() opens fbpreprocessord cryptohome
+  // directory and returns a symlinked handle.
+  base::expected<base::FilePath, CrashCollectionStatus> maybe_crash_directory =
+      GetConnectivityFwdumpStoragePath();
+  if (!maybe_crash_directory.has_value()) {
+    LOG(ERROR) << "Could not get storage directory for connectivity fw dumps.";
+    return maybe_crash_directory.error();
+  }
+
+  base::FilePath crash_directory = *maybe_crash_directory;
+  return AppendDevCoredump(crash_directory, coredump_path, instance_number,
+                           /*is_connectivity_fwdump=*/true);
+}
+
 CrashCollectionStatus UdevCollector::ProcessUdevCrashLogs(
     const FilePath& crash_directory,
     const std::string& action,
@@ -358,15 +341,21 @@ CrashCollectionStatus UdevCollector::ProcessUdevCrashLogs(
 }
 
 CrashCollectionStatus UdevCollector::ProcessDevCoredump(
-    const FilePath& crash_directory,
-    int instance_number,
-    bool is_connectivity_fwdump) {
+    const FilePath& crash_directory, int instance_number) {
   FilePath coredump_path = FilePath(base::StringPrintf(
       "%s/devcd%d/data", dev_coredump_directory_.c_str(), instance_number));
   if (!base::PathExists(coredump_path)) {
     LOG(ERROR) << "Device coredump file " << coredump_path.value()
                << " does not exist.";
     return CrashCollectionStatus::kDevCoredumpDoesntExist;
+  }
+
+  if (IsConnectivityWiFiFwdump(instance_number) &&
+      ConnectivityFwdumpAllowedForUserSession()) {
+    CrashCollectionStatus result =
+        ProcessConnectivityCoredump(coredump_path, instance_number);
+    ClearDevCoredump(coredump_path);
+    return result;
   }
 
   if (bluetooth_util::IsCoredumpEnabled() &&
@@ -378,8 +367,9 @@ CrashCollectionStatus UdevCollector::ProcessDevCoredump(
   }
 
   // Add coredump file to the crash directory.
-  CrashCollectionStatus result = AppendDevCoredump(
-      crash_directory, coredump_path, instance_number, is_connectivity_fwdump);
+  CrashCollectionStatus result =
+      AppendDevCoredump(crash_directory, coredump_path, instance_number,
+                        /*is_connectivity_fwdump=*/false);
   // Clear the coredump data to allow generation of future device coredumps
   // without having to wait for the 5-minutes timeout.
   ClearDevCoredump(coredump_path);

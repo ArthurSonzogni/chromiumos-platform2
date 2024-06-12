@@ -91,15 +91,9 @@ class UdevCollector : public CrashCollector {
   // connectivity domain.
   bool IsConnectivityWiFiFwdump(int instance_number);
 
-  // This function checks if connectivity fwdump is allowed and returns a
-  // user session on which connectivity fwdump. If not allowed, the function
-  // returns std::nullopt. This return value is later used to collect
-  // connectivity fwdumps.
-  std::optional<connectivity_util::Session>
-  ConnectivityFwdumpAllowedForUserSession(
-      std::map<std::string, std::string>& udev_event_map,
-      int instance_number,
-      const base::FilePath& coredump_path);
+  // This function checks if the connectivity fwdump is allowed for the current
+  // user session.
+  bool ConnectivityFwdumpAllowedForUserSession();
 
   // For connectivity fwdumps, we want to store in fbpreprocessord's
   // daemon-store directory and thus need to generate a customized storage path
@@ -109,6 +103,11 @@ class UdevCollector : public CrashCollector {
   base::expected<base::FilePath, CrashCollectionStatus>
   GetConnectivityFwdumpStoragePath();
 
+  // Process connectivity device coredump, send coredump file to fbpreprocessor.
+  // |instance_number| is the kernel number of the virtual device for the device
+  // coredump instance.
+  CrashCollectionStatus ProcessConnectivityCoredump(
+      const base::FilePath& coredump_path, int instance_number);
   // Process udev crash logs, collecting log files according to the config
   // file (crash_reporter_logs.conf).
   CrashCollectionStatus ProcessUdevCrashLogs(
@@ -120,9 +119,7 @@ class UdevCollector : public CrashCollector {
   // |instance_number| is the kernel number of the virtual device for the device
   // coredump instance.
   CrashCollectionStatus ProcessDevCoredump(
-      const base::FilePath& crash_directory,
-      int instance_number,
-      bool is_connectivity_fwdump);
+      const base::FilePath& crash_directory, int instance_number);
   // Copy bluetooth device coredump file to crash directory, and perform
   // necessary coredump file management.
   CrashCollectionStatus AppendBluetoothCoredump(
