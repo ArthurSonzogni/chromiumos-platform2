@@ -68,7 +68,9 @@ madvise: 1
 memfd_create: 1
 mkdir: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
-mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+# Intel NPU TFLite delegate needs RWX page for JIT code generation.
+# TODO(b/346689140): Try to disable JIT and check the performance impact.
+mprotect: 1
 mremap: 1
 munlock: 1
 munmap: 1
