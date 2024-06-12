@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -832,6 +833,11 @@ int32_t CameraDeviceAdapter::Close() {
     TRACE_HAL_ADAPTER_EVENT("HAL::Close");
     ret = camera_device_->common.close(&camera_device_->common);
     DCHECK_EQ(ret, 0);
+  }
+  if (ret != 0) {
+    LOGF(ERROR) << "Failed to close camera device with error code: " << ret;
+  } else {
+    LOGF(INFO) << "Camera device closed successfully.";
   }
 
   // We can return the pending buffers with error from this point.
