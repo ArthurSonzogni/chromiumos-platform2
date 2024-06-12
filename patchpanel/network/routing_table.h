@@ -15,10 +15,10 @@
 #include <base/lazy_instance.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
-#include <net-base/ip_address.h>
-#include <net-base/rtnl_handler.h>
-#include <net-base/rtnl_listener.h>
-#include <net-base/rtnl_message.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/rtnl_handler.h>
+#include <chromeos/net-base/rtnl_listener.h>
+#include <chromeos/net-base/rtnl_message.h>
 
 #include "patchpanel/network/routing_table_entry.h"
 

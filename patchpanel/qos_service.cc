@@ -13,8 +13,8 @@
 #include <base/containers/flat_set.h>
 #include <base/strings/string_split.h>
 #include <base/types/cxx23_to_underlying.h>
-#include <net-base/dns_client.h>
-#include <net-base/technology.h>
+#include <chromeos/net-base/dns_client.h>
+#include <chromeos/net-base/technology.h>
 
 #include "patchpanel/connmark_updater.h"
 #include "patchpanel/datapath.h"

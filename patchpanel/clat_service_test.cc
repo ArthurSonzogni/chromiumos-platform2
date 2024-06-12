@@ -9,14 +9,14 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/net-base/ip_address_utils.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/process_manager.h>
+#include <chromeos/net-base/technology.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address_utils.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mock_process_manager.h>
-#include <net-base/process_manager.h>
-#include <net-base/technology.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/fake_system.h"

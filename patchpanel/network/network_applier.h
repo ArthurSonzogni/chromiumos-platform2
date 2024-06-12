@@ -11,11 +11,11 @@
 #include <vector>
 
 #include <base/no_destructor.h>
-#include <net-base/ip_address.h>
-#include <net-base/network_config.h>
-#include <net-base/network_priority.h>
-#include <net-base/proc_fs_stub.h>
-#include <net-base/rtnl_handler.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/network_priority.h>
+#include <chromeos/net-base/proc_fs_stub.h>
+#include <chromeos/net-base/rtnl_handler.h>
 
 #include "patchpanel/network/address_service.h"
 #include "patchpanel/network/routing_policy_service.h"

@@ -15,11 +15,11 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/technology.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/mac_address.h>
-#include <net-base/technology.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"

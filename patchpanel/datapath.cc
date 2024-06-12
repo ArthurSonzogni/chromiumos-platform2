@@ -30,7 +30,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/arc_service.h"

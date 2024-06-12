@@ -33,10 +33,10 @@
 #include <base/stl_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
-#include <net-base/byte_utils.h>
-#include <net-base/ip_address.h>
-#include <net-base/rtnl_handler.h>
-#include <net-base/rtnl_listener.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/rtnl_handler.h>
+#include <chromeos/net-base/rtnl_listener.h>
 
 namespace patchpanel {
 

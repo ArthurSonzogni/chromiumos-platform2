@@ -14,8 +14,8 @@
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <chromeos/net-base/mock_process_manager.h>
 #include <gtest/gtest.h>
-#include <net-base/mock_process_manager.h>
 
 #include "patchpanel/fake_system.h"
 

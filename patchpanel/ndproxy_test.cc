@@ -15,9 +15,9 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
 
 #include "patchpanel/net_util.h"
 

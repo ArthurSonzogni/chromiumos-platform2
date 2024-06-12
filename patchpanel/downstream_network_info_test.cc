@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/net-base/ipv4_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ipv4_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dhcp_server_controller.h"

@@ -17,11 +17,11 @@
 #include <vector>
 
 #include <base/functional/callback_helpers.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mac_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/downstream_network_info.h"

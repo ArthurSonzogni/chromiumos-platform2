@@ -13,11 +13,11 @@
 #include <base/containers/span.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/dns_client.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/technology.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/dns_client.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/technology.h>
 
 #include "patchpanel/connmark_updater.h"
 #include "patchpanel/mock_connmark_updater.h"

@@ -5,9 +5,9 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ip_address.h>
 #include <gtest/gtest.h>
-#include <net-base/byte_utils.h>
-#include <net-base/ip_address.h>
 
 #include "patchpanel/bpf/unit_test_utils.h"
 

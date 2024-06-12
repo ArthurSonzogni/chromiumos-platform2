@@ -16,9 +16,9 @@
 
 #include <base/containers/flat_map.h>
 #include <base/no_destructor.h>
-#include <net-base/rtnl_handler.h>
-#include <net-base/rtnl_listener.h>
-#include <net-base/rtnl_message.h>
+#include <chromeos/net-base/rtnl_handler.h>
+#include <chromeos/net-base/rtnl_listener.h>
+#include <chromeos/net-base/rtnl_message.h>
 
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b);
 

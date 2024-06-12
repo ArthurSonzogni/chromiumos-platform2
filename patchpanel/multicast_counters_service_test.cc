@@ -9,9 +9,9 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <chromeos/net-base/technology.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/technology.h>
 
 #include "patchpanel/iptables.h"
 #include "patchpanel/mock_datapath.h"

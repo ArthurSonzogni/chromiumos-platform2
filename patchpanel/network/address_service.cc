@@ -10,7 +10,7 @@
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 
 #include "patchpanel/network/routing_table.h"
 

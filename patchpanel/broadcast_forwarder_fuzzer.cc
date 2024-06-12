@@ -17,8 +17,8 @@
 
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <chromeos/net-base/rtnl_message.h>
 #include <fuzzer/FuzzedDataProvider.h>
-#include <net-base/rtnl_message.h>
 
 namespace patchpanel {
 

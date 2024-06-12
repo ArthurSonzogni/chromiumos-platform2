@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 #include <brillo/brillo_export.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 namespace patchpanel {
 

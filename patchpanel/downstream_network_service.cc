@@ -16,9 +16,9 @@
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "patchpanel/counters_service.h"
 #include "patchpanel/datapath.h"

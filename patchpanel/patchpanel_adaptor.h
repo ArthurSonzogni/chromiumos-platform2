@@ -9,8 +9,8 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <net-base/ip_address.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/process_manager.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/dbus_adaptors/org.chromium.patchpanel.h"

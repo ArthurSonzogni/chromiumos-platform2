@@ -15,12 +15,12 @@
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/task/sequenced_task_runner.h>
-#include <net-base/byte_utils.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/rtnl_handler.h>
-#include <net-base/rtnl_listener.h>
-#include <net-base/technology.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/rtnl_handler.h>
+#include <chromeos/net-base/rtnl_listener.h>
+#include <chromeos/net-base/technology.h>
 
 namespace patchpanel {
 

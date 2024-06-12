@@ -14,7 +14,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"

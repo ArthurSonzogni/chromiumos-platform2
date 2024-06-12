@@ -15,7 +15,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"

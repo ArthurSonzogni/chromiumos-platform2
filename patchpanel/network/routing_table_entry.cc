@@ -7,7 +7,7 @@
 #include <string>
 
 #include <base/strings/stringprintf.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 
 namespace patchpanel {
 

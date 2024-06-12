@@ -19,8 +19,8 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <net-base/byte_utils.h>
-#include <net-base/socket.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/socket.h>
 
 #include "patchpanel/dns/dns_protocol.h"
 #include "patchpanel/dns/dns_response.h"

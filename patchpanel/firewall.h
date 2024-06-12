@@ -17,8 +17,8 @@
 
 #include <base/containers/span.h>
 #include <brillo/errors/error.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <gtest/gtest_prod.h>
-#include <net-base/ipv4_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/iptables.h"

@@ -10,9 +10,9 @@
 
 #include <base/containers/flat_set.h>
 #include <base/test/task_environment.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ipv4_address.h>
 
 #include "metrics/metrics_library_mock.h"
 #include "patchpanel/metrics.h"

@@ -11,10 +11,10 @@
 #include <utility>
 #include <vector>
 
+#include <chromeos/net-base/ipv4_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
-#include <net-base/ipv4_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"

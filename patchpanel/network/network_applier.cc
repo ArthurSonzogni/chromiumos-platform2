@@ -11,10 +11,10 @@
 
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/network_priority.h>
-#include <net-base/proc_fs_stub.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_priority.h>
+#include <chromeos/net-base/proc_fs_stub.h>
 
 #include "patchpanel/network/address_service.h"
 #include "patchpanel/network/routing_policy_service.h"

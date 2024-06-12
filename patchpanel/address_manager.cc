@@ -11,8 +11,8 @@
 #include <base/containers/contains.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "patchpanel/net_util.h"
 

@@ -22,10 +22,10 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/process_manager.h>
-#include <net-base/technology.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/process_manager.h>
+#include <chromeos/net-base/technology.h>
 
 #include "patchpanel/address_manager.h"
 #include "patchpanel/datapath.h"

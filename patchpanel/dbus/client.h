@@ -23,11 +23,11 @@
 #include <dbus/bus.h>
 #include <dbus/object_proxy.h>
 #pragma GCC diagnostic pop
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/network_config.h>
-#include <net-base/network_priority.h>
-#include <net-base/technology.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/network_priority.h>
+#include <chromeos/net-base/technology.h>
 
 namespace org::chromium {
 class PatchPanelProxyInterface;

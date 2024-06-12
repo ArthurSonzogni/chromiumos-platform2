@@ -23,13 +23,13 @@
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/key_value_store.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/socket.h>
+#include <chromeos/net-base/socket_forwarder.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
-#include <net-base/byte_utils.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/socket.h>
-#include <net-base/socket_forwarder.h>
 #include <vboot/crossystem.h>
 
 #include "patchpanel/ipc.h"

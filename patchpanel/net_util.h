@@ -27,7 +27,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/sys_byteorder.h>
 #include <brillo/brillo_export.h>
-#include <net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv4_address.h>
 
 namespace patchpanel {
 

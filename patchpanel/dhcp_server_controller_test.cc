@@ -16,10 +16,10 @@
 #include <base/run_loop.h>
 #include <base/test/mock_log.h>
 #include <base/test/task_environment.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/mock_process_manager.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/mock_process_manager.h>
 
 #include "patchpanel/metrics.h"
 

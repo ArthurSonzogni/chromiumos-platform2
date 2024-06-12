@@ -11,7 +11,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/daemons/daemon.h>
-#include <net-base/ipv6_address.h>
+#include <chromeos/net-base/ipv6_address.h>
 
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/ndproxy.h"

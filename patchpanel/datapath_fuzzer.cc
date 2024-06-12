@@ -14,10 +14,10 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/technology.h>
 #include <fuzzer/FuzzedDataProvider.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/mac_address.h>
-#include <net-base/technology.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/fake_process_runner.h"

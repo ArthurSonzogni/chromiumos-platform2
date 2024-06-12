@@ -11,7 +11,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_split.h>
-#include <net-base/technology.h>
+#include <chromeos/net-base/technology.h>
 #include <re2/re2.h>
 
 #include "patchpanel/datapath.h"

@@ -12,9 +12,9 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <chromeos/net-base/socket.h>
+#include <chromeos/net-base/socket_forwarder.h>
 #include <dbus/bus.h>
-#include <net-base/socket.h>
-#include <net-base/socket_forwarder.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"

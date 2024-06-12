@@ -9,12 +9,12 @@
 #include <utility>
 #include <vector>
 
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/mock_proc_fs_stub.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
+#include <chromeos/net-base/network_priority.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
-#include <net-base/mock_proc_fs_stub.h>
-#include <net-base/mock_rtnl_handler.h>
-#include <net-base/network_priority.h>
 
 #include "patchpanel/network/mock_address_service.h"
 #include "patchpanel/network/mock_network_applier.h"

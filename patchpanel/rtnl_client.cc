@@ -12,7 +12,7 @@
 
 #include <base/containers/span.h>
 #include <base/logging.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 namespace patchpanel {
 namespace {

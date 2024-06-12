@@ -27,8 +27,8 @@
 #include <base/time/time.h>
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/technology.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/technology.h>
 
 #include "patchpanel/shill_client.h"
 

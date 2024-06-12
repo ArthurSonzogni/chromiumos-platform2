@@ -8,7 +8,7 @@
 #include <optional>
 #include <string>
 
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/multicast_forwarder.h"

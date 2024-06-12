@@ -16,12 +16,12 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
+#include <chromeos/net-base/rtnl_message.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/byte_utils.h>
-#include <net-base/ip_address.h>
-#include <net-base/mock_rtnl_handler.h>
-#include <net-base/rtnl_message.h>
 
 using testing::_;
 using testing::Field;

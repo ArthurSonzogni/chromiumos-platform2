@@ -22,8 +22,8 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/task/single_thread_task_runner.h>
-#include <net-base/ip_address.h>
-#include <net-base/socket.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/socket.h>
 #include <netinet/in.h>
 #include <re2/re2.h>
 

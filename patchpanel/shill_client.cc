@@ -16,10 +16,10 @@
 #include <base/strings/string_util.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/technology.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
-#include <net-base/ip_address.h>
-#include <net-base/technology.h>
 #include <shill/dbus-proxies.h>
 
 namespace patchpanel {

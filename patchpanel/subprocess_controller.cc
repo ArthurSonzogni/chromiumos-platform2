@@ -16,7 +16,7 @@
 #include <base/process/launch.h>
 #include <base/task/single_thread_task_runner.h>
 #include <brillo/syslog_logging.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/system.h"

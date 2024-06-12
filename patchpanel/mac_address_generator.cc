@@ -5,7 +5,7 @@
 #include "patchpanel/mac_address_generator.h"
 
 #include <base/rand_util.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 namespace patchpanel {
 

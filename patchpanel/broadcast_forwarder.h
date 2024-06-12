@@ -14,10 +14,10 @@
 #include <string>
 #include <string_view>
 
-#include <net-base/ipv4_address.h>
-#include <net-base/rtnl_listener.h>
-#include <net-base/rtnl_message.h>
-#include <net-base/socket.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/rtnl_listener.h>
+#include <chromeos/net-base/rtnl_message.h>
+#include <chromeos/net-base/socket.h>
 
 namespace patchpanel {
 

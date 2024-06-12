@@ -9,8 +9,8 @@
 #include <sys/socket.h>
 
 #include <base/memory/ptr_util.h>
-#include <net-base/ip_address.h>
-#include <net-base/mock_rtnl_handler.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
 
 using testing::_;
 using testing::Field;

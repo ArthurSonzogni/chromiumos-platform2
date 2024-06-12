@@ -8,8 +8,8 @@
 #include <optional>
 #include <string>
 
-#include <net-base/ipv6_address.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "patchpanel/datapath.h"
 #include "patchpanel/shill_client.h"

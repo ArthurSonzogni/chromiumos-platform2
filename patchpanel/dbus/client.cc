@@ -20,9 +20,9 @@
 #include <brillo/errors/error.h>
 #include <brillo/http/http_transport.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/technology.h>
 #include <dbus/message.h>
 #include <dbus/object_path.h>
-#include <net-base/technology.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <patchpanel/proto_bindings/traffic_annotation.pb.h>
 

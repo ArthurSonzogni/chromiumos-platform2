@@ -16,7 +16,7 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"

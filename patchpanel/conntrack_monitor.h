@@ -17,10 +17,10 @@
 #include <base/lazy_instance.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/mock_socket.h>
+#include <chromeos/net-base/socket.h>
 #include <libnetfilter_conntrack/libnetfilter_conntrack.h>
-#include <net-base/ip_address.h>
-#include <net-base/mock_socket.h>
-#include <net-base/socket.h>
 
 namespace patchpanel {
 // This singleton class manages a conntrack monitor that can observe changes of

@@ -13,9 +13,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
 #include <gtest/gtest.h>
-#include <net-base/byte_utils.h>
-#include <net-base/mock_rtnl_handler.h>
 
 #include "patchpanel/fake_shill_client.h"
 

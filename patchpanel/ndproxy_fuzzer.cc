@@ -5,8 +5,8 @@
 #include "patchpanel/ndproxy.h"
 
 #include <base/logging.h>
+#include <chromeos/net-base/mac_address.h>
 #include <fuzzer/FuzzedDataProvider.h>
-#include <net-base/mac_address.h>
 
 namespace patchpanel {
 

@@ -18,8 +18,8 @@
 #include <base/containers/flat_set.h>
 #include <base/logging.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/technology.h>
 #include <metrics/metrics_library.h>
-#include <net-base/technology.h>
 
 #include "patchpanel/metrics.h"
 #include "patchpanel/multicast_counters_service.h"

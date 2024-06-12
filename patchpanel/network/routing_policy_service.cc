@@ -15,8 +15,8 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/userdb_utils.h>
-#include <net-base/byte_utils.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ip_address.h>
 
 bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b) {
   return (a.start == b.start) && (a.end == b.end);

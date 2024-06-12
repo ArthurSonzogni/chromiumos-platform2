@@ -11,8 +11,8 @@
 
 #include <base/posix/eintr_wrapper.h>
 #include <chromeos/dbus/patchpanel/dbus-constants.h>
+#include <chromeos/net-base/process_manager.h>
 #include <metrics/metrics_library.h>
-#include <net-base/process_manager.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/downstream_network_info.h"

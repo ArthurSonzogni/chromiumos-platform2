@@ -13,8 +13,8 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/subnet.h"

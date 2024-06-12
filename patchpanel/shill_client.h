@@ -17,11 +17,11 @@
 #include <base/containers/flat_set.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/any.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/technology.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/technology.h>
 
 #include "patchpanel/system.h"
 

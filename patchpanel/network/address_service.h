@@ -11,8 +11,8 @@
 #include <vector>
 
 #include <base/no_destructor.h>
-#include <net-base/ip_address.h>
-#include <net-base/rtnl_handler.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/rtnl_handler.h>
 
 namespace patchpanel {
 

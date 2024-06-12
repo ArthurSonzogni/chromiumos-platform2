@@ -9,8 +9,8 @@
 
 #include <base/files/file_path.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <chromeos/net-base/process_manager.h>
 #include <metrics/metrics_library.h>
-#include <net-base/process_manager.h>
 
 #include "patchpanel/patchpanel_adaptor.h"
 #include "patchpanel/system.h"

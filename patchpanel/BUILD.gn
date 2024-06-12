@@ -389,7 +389,7 @@ if (use.test) {
     deps = [
       ":libpatchpanel",
       "//common-mk/testrunner",
-      "//net-base:net_base_test_support",
     ]
+    pkg_deps = [ "libnet-base-test" ]
   }
 }

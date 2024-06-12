@@ -15,8 +15,8 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/test/task_environment.h>
+#include <chromeos/net-base/mock_socket.h>
 #include <gtest/gtest.h>
-#include <net-base/mock_socket.h>
 
 using testing::_;
 using testing::Return;

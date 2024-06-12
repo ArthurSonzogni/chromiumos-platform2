@@ -21,7 +21,7 @@
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
 #pragma GCC diagnostic pop
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/address_manager.h"

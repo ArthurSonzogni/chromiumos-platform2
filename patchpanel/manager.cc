@@ -15,9 +15,9 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
-#include <net-base/mac_address.h>
-#include <net-base/process_manager.h>
-#include <net-base/technology.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/process_manager.h>
+#include <chromeos/net-base/technology.h>
 #include <patchpanel/proto_bindings/traffic_annotation.pb.h>
 
 #include "patchpanel/address_manager.h"

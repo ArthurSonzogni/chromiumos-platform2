@@ -20,10 +20,10 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_util.h>
+#include <chromeos/net-base/mac_address.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/fake_system.h"

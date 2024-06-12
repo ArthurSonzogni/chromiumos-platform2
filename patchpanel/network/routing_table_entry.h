@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 
 namespace patchpanel {
 

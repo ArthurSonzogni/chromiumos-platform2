@@ -4,11 +4,11 @@
 
 #include "patchpanel/proto_utils.h"
 
-#include <net-base/byte_utils.h>
-#include <net-base/http_url.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/network_config.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "patchpanel/arc_service.h"
 #include "patchpanel/crostini_service.h"

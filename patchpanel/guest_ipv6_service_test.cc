@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/net-base/technology.h>
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/technology.h>
 
 #include "patchpanel/fake_system.h"
 #include "patchpanel/guest_ipv6_service.h"

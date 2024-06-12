@@ -13,7 +13,7 @@
 #include <vector>
 
 #include <base/containers/flat_set.h>
-#include <net-base/dns_client.h>
+#include <chromeos/net-base/dns_client.h>
 
 #include "patchpanel/connmark_updater.h"
 #include "patchpanel/conntrack_monitor.h"

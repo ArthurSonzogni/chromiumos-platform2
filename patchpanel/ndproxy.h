@@ -20,10 +20,10 @@
 
 #include <base/files/scoped_file.h>
 #include <brillo/daemons/daemon.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/socket.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/ipv6_address.h>
-#include <net-base/mac_address.h>
-#include <net-base/socket.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"

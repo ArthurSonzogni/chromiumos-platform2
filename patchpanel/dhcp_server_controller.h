@@ -15,10 +15,10 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/process_manager.h>
 #include <gtest/gtest_prod.h>
 #include <metrics/metrics_library.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/process_manager.h>
 
 namespace patchpanel {
 

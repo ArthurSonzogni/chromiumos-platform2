@@ -15,7 +15,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/brillo_export.h>
-#include <net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv4_address.h>
 
 namespace patchpanel {
 
