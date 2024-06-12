@@ -9,6 +9,7 @@ pkg_config("target_defaults") {
     "libbrillo",
     "libpower_manager-client",
     "mojo_service_manager",
+    "protobuf",
     "sqlite3",
   ]
 }

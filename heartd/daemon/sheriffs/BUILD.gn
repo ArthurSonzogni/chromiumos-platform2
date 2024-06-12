@@ -8,6 +8,7 @@ pkg_config("target_defaults") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
+    "libpmt",
   ]
 }
 
@@ -15,6 +16,7 @@ source_set("sheriffs") {
   sources = [
     "boot_metrics_recorder.cc",
     "heartbeat_verifier.cc",
+    "intel_pmt_collector.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ "//heartd/mojom:libheartd_mojo_bindings" ]
@@ -25,6 +27,7 @@ if (use.test) {
     sources = [
       "boot_metrics_recorder_test.cc",
       "heartbeat_verifier_test.cc",
+      "intel_pmt_collector_test.cc",
     ]
     configs += [
       "//common-mk:test",

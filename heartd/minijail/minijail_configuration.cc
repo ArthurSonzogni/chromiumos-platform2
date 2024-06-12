@@ -4,11 +4,12 @@
 
 #include "heartd/minijail/minijail_configuration.h"
 
+#include <libminijail.h>
+#include <scoped_minijail.h>
+
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <libminijail.h>
-#include <scoped_minijail.h>
 
 namespace heartd {
 
@@ -52,6 +53,13 @@ void EnterHeartdMinijail() {
   // Boot id information.
   if (base::PathExists(base::FilePath("/var/log/boot_id.log"))) {
     minijail_bind(j.get(), "/var/log/boot_id.log", "/var/log/boot_id.log", 0);
+  }
+
+  // Create a new tmpfs filesystem for /sys and mount necessary files.
+  minijail_mount_with_data(j.get(), "tmpfs", "/sys", "tmpfs", 0, "");
+  minijail_bind(j.get(), "/sys/devices", "/sys/devices", 0);
+  if (base::PathExists(base::FilePath("/sys/class/intel_pmt"))) {
+    minijail_bind(j.get(), "/sys/class/intel_pmt", "/sys/class/intel_pmt", 0);
   }
 
   CHECK_EQ(0, minijail_change_user(j.get(), kHeartdUser));

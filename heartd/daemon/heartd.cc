@@ -4,8 +4,9 @@
 
 #include "heartd/daemon/heartd.h"
 
-#include <memory>
 #include <sysexits.h>
+
+#include <memory>
 
 #include <base/files/file_path.h>
 #include <base/task/single_thread_task_runner.h>
@@ -14,6 +15,7 @@
 
 #include "heartd/daemon/dbus_connector_impl.h"
 #include "heartd/daemon/sheriffs/boot_metrics_recorder.h"
+#include "heartd/daemon/sheriffs/intel_pmt_collector.h"
 #include "heartd/daemon/sheriffs/sheriff.h"
 
 namespace heartd {
@@ -48,6 +50,8 @@ int HeartdDaemon::OnEventLoopStarted() {
       base::BindOnce(&Daemon::Quit, base::Unretained(this)));
   top_sheriff_->AddSheriff(std::unique_ptr<Sheriff>(
       new BootMetricsRecorder(base::FilePath("/"), database_.get())));
+  top_sheriff_->AddSheriff(
+      std::unique_ptr<Sheriff>(new IntelPMTCollector(base::FilePath("/"))));
   top_sheriff_->GetToWork();
 
   mojo_service_ = std::make_unique<HeartdMojoService>(
