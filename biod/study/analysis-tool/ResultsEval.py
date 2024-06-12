@@ -54,7 +54,7 @@ from report import Report
 import scipy.stats as st
 from scipy.stats import norm
 import simulate_fpstudy
-from test_case import TestCase
+from test_case import TestCaseEnum
 from tqdm.autonotebook import tqdm  # Auto detect notebook or console.
 
 
@@ -106,11 +106,11 @@ USE_SIMULATED_PROB = 1 / 155000.0
 # USE_SIMULATED_PROB = 1/200000.0
 
 exp: Optional[Experiment] = None
-test_cases: list[TestCase] = list()
+test_cases: list[TestCaseEnum] = list()
 
 if USE_SIMULATED_DATA:
 
-    class SimulatedTestCase(TestCase):
+    class SimulatedTestCase(TestCaseEnum):
         SimulatedDataset = ("Simulated dataset.",)
 
     # Load simulated data
@@ -765,10 +765,10 @@ FRR_THRESHOLD = 10 / 100.0
 
 #### FAR ####
 
-far_boot_results: dict[TestCase, bootstrap.BootstrapResults] = dict()
-frr_boot_results: dict[TestCase, bootstrap.BootstrapResults] = dict()
-far_figures: dict[TestCase, go.Figure] = dict()
-frr_figures: dict[TestCase, go.Figure] = dict()
+far_boot_results: dict[TestCaseEnum, bootstrap.BootstrapResults] = dict()
+frr_boot_results: dict[TestCaseEnum, bootstrap.BootstrapResults] = dict()
+far_figures: dict[TestCaseEnum, go.Figure] = dict()
+frr_figures: dict[TestCaseEnum, go.Figure] = dict()
 for tc in test_cases:
     print(f"Running Test Case {tc}.")
     exp = exps[tc]

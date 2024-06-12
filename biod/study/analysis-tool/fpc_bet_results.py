@@ -14,14 +14,14 @@ from typing import Iterable, Optional, Union
 from cached_data_file import CachedCSVFile
 from experiment import Experiment
 import pandas as pd
-from test_case import TestCase
+from test_case_enum import TestCaseEnum
 
 
 class FPCBETResults:
     # TODO: Add parsing of the BET yaml config file to get information
     # about number of enrollment samples and whatnot.
 
-    class TestCase(TestCase):
+    class TestCase(TestCaseEnum):
         """Identify which experiment test case."""
 
         # TODO: Add note about using different sets of captures during each
@@ -109,7 +109,7 @@ class FPCBETResults:
         self._dir = pathlib.Path(report_directory)
 
     def _file_name(
-        self, test_case: TestCase, table_type: TableType
+        self, test_case: TestCaseEnum, table_type: TableType
     ) -> pathlib.Path:
         """Return the file path for the given `test_case` and `table_type`."""
         assert isinstance(test_case, FPCBETResults.TestCase)
@@ -120,7 +120,9 @@ class FPCBETResults:
         with open(file_name, "r") as f:
             return list(i for i, l in enumerate(f.readlines()) if l.isspace())
 
-    def read_fa_list_file(self, test_case: TestCase) -> pd.DataFrame:
+    def read_fa_list_file(
+        self, test_case: FPCBETResults.TestCase
+    ) -> pd.DataFrame:
         """Read the `TableType.FA_List` (FalseAccepts.txt) file.
 
         The table will include the following columns:
@@ -161,7 +163,7 @@ class FPCBETResults:
         return tbl
 
     def read_decision_file(
-        self, test_case: TestCase, table_type: TableType
+        self, test_case: TestCaseEnum, table_type: TableType
     ) -> pd.DataFrame:
         """Read the `TableType.FAR_Decision` or `TableType.FRR_Decision` file.
 
@@ -199,7 +201,7 @@ class FPCBETResults:
 
     def read_far_frr_file(
         self,
-        test_case: TestCase,
+        test_case: TestCaseEnum,
         table_type: TableType,
         sec_levels: list[SecLevel] = SecLevel.all(),
     ) -> Optional[pd.DataFrame]:
@@ -263,7 +265,7 @@ class FPCBETResults:
         return tbl
 
     def read_file(
-        self, test_case: TestCase, table_type: TableType
+        self, test_case: TestCaseEnum, table_type: TableType
     ) -> Optional[pd.DataFrame]:
         """Read specified BET generated table for the specified `test_case`.
 
@@ -288,7 +290,7 @@ class FPCBETResults:
             return None
 
     def read_files(
-        self, case_table_pairs: Iterable[tuple[TestCase, TableType]]
+        self, case_table_pairs: Iterable[tuple[TestCaseEnum, TableType]]
     ) -> list[Optional[pd.DataFrame]]:
         """Read all test-case/table-type pairs as fast as possible.
 

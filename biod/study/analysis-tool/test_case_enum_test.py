@@ -3,23 +3,27 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-"""Test and benchmark the test_case module."""
+"""Tests for the test_case_enum module."""
 
 import unittest
 
-import test_case
+import test_case_enum
 
 
-class Test_test_case(unittest.TestCase):
-    class TestTestCase(test_case.TestCase):
+class Test_TestCaseEnum(unittest.TestCase):
+    """Test the TestCaseEnum class."""
+
+    class TestTestCaseEnum(test_case_enum.TestCaseEnum):
+        """A sample TestCaseEnum class to test against."""
+
         One = ("One's Description", "path/to/one")
         Two = ("Two's Description", "path/to/two", "meta info")
         Three = ("Three's Description",)
 
     def setUp(self) -> None:
-        self.tc_one = self.TestTestCase.One
-        self.tc_two = self.TestTestCase.Two
-        self.tc_three = self.TestTestCase.Three
+        self.tc_one = self.TestTestCaseEnum.One
+        self.tc_two = self.TestTestCaseEnum.Two
+        self.tc_three = self.TestTestCaseEnum.Three
         return super().setUp()
 
     def test_description(self):
@@ -34,17 +38,17 @@ class Test_test_case(unittest.TestCase):
 
     def test_all(self):
         self.assertEqual(
-            self.TestTestCase.all(),
+            self.TestTestCaseEnum.all(),
             [
-                self.TestTestCase.One,
-                self.TestTestCase.Two,
-                self.TestTestCase.Three,
+                self.TestTestCaseEnum.One,
+                self.TestTestCaseEnum.Two,
+                self.TestTestCaseEnum.Three,
             ],
         )
 
     def test_all_values(self):
         self.assertEqual(
-            self.TestTestCase.all_values(),
+            self.TestTestCaseEnum.all_values(),
             [
                 ("One's Description", "path/to/one"),
                 ("Two's Description", "path/to/two", "meta info"),
@@ -52,7 +56,7 @@ class Test_test_case(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            self.TestTestCase.all_values(slice(1, None)),
+            self.TestTestCaseEnum.all_values(slice(1, None)),
             [("path/to/one",), ("path/to/two", "meta info"), ()],
         )
 

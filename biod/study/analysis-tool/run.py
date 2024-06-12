@@ -23,7 +23,7 @@ import plotly.express as px
 import plotly.graph_objs as go
 from report import Report
 import scipy.stats as st
-from test_case import TestCase
+from test_case_enum import TestCaseEnum
 from tqdm.autonotebook import tqdm  # Auto detect notebook or console.
 
 
@@ -875,10 +875,10 @@ def cmd_report(opts: argparse.Namespace) -> int:
 
     print("# Run bootstrap samples")
 
-    far_boot_results: dict[TestCase, bootstrap.BootstrapResults] = dict()
-    frr_boot_results: dict[TestCase, bootstrap.BootstrapResults] = dict()
-    far_figures: dict[TestCase, go.Figure] = dict()
-    frr_figures: dict[TestCase, go.Figure] = dict()
+    far_boot_results: dict[TestCaseEnum, bootstrap.BootstrapResults] = dict()
+    frr_boot_results: dict[TestCaseEnum, bootstrap.BootstrapResults] = dict()
+    far_figures: dict[TestCaseEnum, go.Figure] = dict()
+    frr_figures: dict[TestCaseEnum, go.Figure] = dict()
     for tc in test_cases:
         print(f"Running Test Case {tc}.")
         exp = exps[tc]

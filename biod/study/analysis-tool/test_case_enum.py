@@ -10,8 +10,7 @@ from __future__ import annotations
 from enum import Enum
 
 
-class TestCase(Enum):
-    ...
+class TestCaseEnum(Enum):
     # The `value` should be a tuple with first value being the description.
     # Any additional info can be placed in extra tuple positions.
     #
@@ -19,7 +18,7 @@ class TestCase(Enum):
     # One = ("One's description", ...)
 
     @classmethod
-    def all(cls) -> list[TestCase]:
+    def all(cls) -> list[TestCaseEnum]:
         return [level for level in cls]
 
     @classmethod
@@ -27,6 +26,8 @@ class TestCase(Enum):
         return [level.value[s] for level in cls]
 
     def __str__(self) -> str:
+        # Without this method, the str(self) would contain the full type
+        # prefix, like SubClassTestCaseEnum.One.
         return self.name
 
     def description(self) -> str:
