@@ -836,6 +836,7 @@ do_post_install() {
   # script had better not try to access it, for the reasons we just gave.
   # We can't run this if the target arch isn't the same as the host arch
   if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
+    sync
     if [ -n "${FLAGS_payload_image}" ]; then
       LOOP_DEV="${dst_rootfs}"
       mount_on_loop_dev
