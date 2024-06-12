@@ -8,12 +8,12 @@
 # rseq should be first due to frequency and purpose to decrease nptl latency
 rseq: 1
 
-# clone: bio_crypto_init forks a child process
 access: 1
 faccessat: 1
 faccessat2: 1
 clock_gettime: 1
 clock_nanosleep: 1
+# clone: bio_crypto_init forks a child process
 clone: 1
 close: 1
 creat: 1
@@ -53,6 +53,7 @@ stat: 1
 statfs: 1
 symlink: 1
 unlink: 1
+unlinkat: 1
 wait4: 1
 write: 1
 fstatfs: 1
