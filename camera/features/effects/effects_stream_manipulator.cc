@@ -769,11 +769,11 @@ void EffectsStreamManipulatorImpl::OnProcessTask(ScopedProcessTask task) {
                                process_ctx.rgba_image.texture().handle(),
                                process_ctx.rgba_image.texture().width(),
                                process_ctx.rgba_image.texture().height())) {
-    LOGF(ERROR) << "Failed to send frame to pipeline";
+    // Error logs and metrics are added in
+    // |effects_pipeline_tracker_.TrackDroppedFrame()|.
     it->second->Fail();
     tasks_.erase(it);
     effects_pipeline_tracker_.TrackDroppedFrame();
-    metrics_.RecordError(CameraEffectError::kPipelineFailed);
     return;
   }
 }
