@@ -1,0 +1,59 @@
+# Copyright 2024 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/ebpf_gen.gni")
+import("//common-mk/pkg_config.gni")
+
+group("all") {
+  deps = [
+    ":bpf-fdsnoop",
+    ":bpf-memsnoop",
+  ]
+}
+
+pkg_config("target_defaults") {
+  # NOSORT
+  pkg_deps = [ "libbpf" ]
+}
+
+generate_vmlinux("vmlinux_h") {
+  vmlinux_out_dir = "include/snoops/vmlinux"
+  btf_out_dir = "bpf"
+}
+
+generate_ebpf_skeletons("bpf_memsnoop") {
+  sources = [ "memsnoop.bpf.c" ]
+  bpf_skeleton_out_dir = "include/snoops/bpf_skeletons"
+  btf_inout_dir = "bpf"
+  deps = [ ":vmlinux_h" ]
+}
+
+generate_ebpf_skeletons("bpf_fdsnoop") {
+  sources = [ "fdsnoop.bpf.c" ]
+  bpf_skeleton_out_dir = "include/snoops/bpf_skeletons"
+  btf_inout_dir = "bpf"
+  deps = [ ":vmlinux_h" ]
+}
+
+executable("bpf-memsnoop") {
+  sources = [
+    "libsnoop.cc",
+    "memsnoop.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  libs = [ "blazesym_c" ]
+  deps = [ ":bpf_memsnoop" ]
+  install_path = "bin"
+}
+
+executable("bpf-fdsnoop") {
+  sources = [
+    "fdsnoop.cc",
+    "libsnoop.cc",
+  ]
+  configs += [ ":target_defaults" ]
+  libs = [ "blazesym_c" ]
+  deps = [ ":bpf_fdsnoop" ]
+  install_path = "bin"
+}
