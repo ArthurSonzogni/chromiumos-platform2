@@ -1,0 +1,60 @@
+2024-06-11T15:36:29.045015Z ERR shill[714]: ERROR shill: [p2p_manager.cc(53)] No WiFiPhy available
+2024-06-11T15:36:29.046596Z NOTICE kernel: [   14.159104] Lockdown: ectool: raw io port access is restricted; see man kernel_lockdown.7
+2024-06-11T15:36:29.055575Z NOTICE kernel: [   14.168041] Lockdown: ectool: raw io port access is restricted; see man kernel_lockdown.7
+2024-06-11T15:36:29.058184Z INFO swap_management[3220]: /sbin/mkswap: Setting up swapspace version 1, size = 15.5 GiB (16654757888 bytes)#012no label, UUID=e9c06aa5-3e3e-464a-aaf7-447765502e58#012
+2024-06-11T15:36:29.082983Z NOTICE kernel: [   14.195318] Lockdown: cbmem: /dev/mem,kmem,port is restricted; see man kernel_lockdown.7
+2024-06-11T15:36:29.084589Z INFO kernel: [   14.196591] Adding 16264412k swap on /dev/zram0.  Priority:-2 extents:1 across:16264412k SS
+2024-06-11T15:36:29.090586Z NOTICE kernel: [   14.203158] Lockdown: flashrom: raw io port access is restricted; see man kernel_lockdown.7
+2024-06-11T15:36:29.133506Z INFO crash_reporter[3378]: OOBE path doesn't exist. Integration tests running? false Mock consent? false
+2024-06-11T15:36:29.133531Z INFO crash_reporter[3378]: Running boot collector
+2024-06-11T15:36:29.133660Z INFO crash_reporter[3378]: developer build - not testing - always dumping
+2024-06-11T15:36:29.133718Z INFO crash_reporter[3378]: Unsupported GSC present on board. Unable to query GSC crashes.
+2024-06-11T15:36:29.133732Z INFO crash_reporter[3378]: Failed to get the GSC flog output.
+2024-06-11T15:36:29.133784Z INFO crash_reporter[3378]: Enabling kernel crash handling
+2024-06-11T15:36:29.133852Z INFO crash_reporter[3378]: Found 0 kernel crashes in efi-pstore.
+2024-06-11T15:36:29.133877Z INFO crash_reporter[3378]: /sys/firmware/log does not exist, skipping BIOS crash check. (This is normal for older boards.)
+2024-06-11T15:36:29.133906Z WARNING crash_reporter[3378]: No console-ramoops file found after watchdog reset
+2024-06-11T15:36:29.134145Z INFO crash_reporter[3378]: Examining /run/crash_reporter/crash for crashes
+2024-06-11T15:36:29.134567Z INFO crash_reporter[3378]: Accessing crash dir '/var/spool/crash' via symlinked handle '/proc/self/fd/10'
+2024-06-11T15:36:29.134659Z INFO crash_reporter[3378]: Copying early crash to: /proc/self/fd/10/coreutils.20240611.153616.73059.200.meta
+2024-06-11T15:36:29.135155Z INFO crash_reporter[3378]: Accessing crash dir '/var/spool/crash' via symlinked handle '/proc/self/fd/11'
+2024-06-11T15:36:29.135200Z INFO crash_reporter[3378]: Copying early crash to: /proc/self/fd/11/coreutils.20240611.153616.73059.200.dmp
+2024-06-11T15:36:29.135703Z INFO crash_reporter[3378]: Accessing crash dir '/var/spool/crash' via symlinked handle '/proc/self/fd/12'
+2024-06-11T15:36:29.135748Z INFO crash_reporter[3378]: Copying early crash to: /proc/self/fd/12/coreutils.20240611.153616.73059.200.core
+2024-06-11T15:36:29.137376Z INFO crash_reporter[3378]: Accessing crash dir '/var/spool/crash' via symlinked handle '/proc/self/fd/13'
+2024-06-11T15:36:29.137529Z INFO crash_reporter[3378]: Copying early crash to: /proc/self/fd/13/coreutils.20240611.153616.73059.200.proclog
+2024-06-11T15:36:29.137839Z INFO crash_reporter[3378]: Examining /mnt/stateful_partition/reboot_vault/crash for crashes
+2024-06-11T15:36:29.001096Z NOTICE early-failure-cleanup[3394]: Cleaning up files: /var/spool/crash/coreutils.20240611.153616.73059.200.core /var/spool/crash/coreutils.20240611.153616.73059.200.dmp /var/spool/crash/coreutils.20240611.153616.73059.200.meta /var/spool/crash/coreutils.20240611.153616.73059.200.proclog
+2024-06-11T15:36:29.011637Z ERR shill[714]: ERROR shill: [p2p_manager.cc(53)] No WiFiPhy available
+2024-06-11T15:36:29.012399Z ERR shill[714]: ERROR shill: [p2p_manager.cc(53)] No WiFiPhy available
+2024-06-11T15:36:29.015016Z ERR shill[714]: ERROR shill: [p2p_manager.cc(53)] No WiFiPhy available
+2024-06-11T15:36:29.035104Z INFO minijail0[3397]: libminijail[3397]: applying Landlock to process /usr/bin/metrics_daemon
+2024-06-11T15:36:29.065154Z WARNING memd[3403]: memd started
+2024-06-11T15:36:29.067132Z WARNING metrics_daemon[3397]: WARNING metrics_daemon: [vmlog_writer.cc(471)] Failed to open scaling_cur_freq for logical core 0: No such file or directory (2)
+2024-06-11T15:36:29.067160Z WARNING metrics_daemon[3397]: WARNING metrics_daemon: [vmlog_writer.cc(471)] Failed to open scaling_cur_freq for logical core 1: No such file or directory (2)
+2024-06-11T15:36:29.067174Z WARNING metrics_daemon[3397]: WARNING metrics_daemon: [vmlog_writer.cc(471)] Failed to open scaling_cur_freq for logical core 2: No such file or directory (2)
+2024-06-11T15:36:29.067189Z WARNING metrics_daemon[3397]: WARNING metrics_daemon: [vmlog_writer.cc(471)] Failed to open scaling_cur_freq for logical core 3: No such file or directory (2)
+2024-06-11T15:36:29.067293Z WARNING metrics_daemon[3397]: WARNING metrics_daemon: [vmlog_writer.cc(471)] Failed to open scaling_cur_freq for logical core 4: No such file or directory (2)
+2024-06-11T15:36:29.067323Z WARNING metrics_daemon[3397]: WARNING metrics_daemon: [vmlog_writer.cc(471)] Failed to open scaling_cur_freq for logical core 5: No such file or directory (2)
+2024-06-11T15:36:29.067399Z WARNING metrics_daemon[3397]: WARNING metrics_daemon: [vmlog_writer.cc(471)] Failed to open scaling_cur_freq for logical core 6: No such file or directory (2)
+2024-06-11T15:36:29.067419Z WARNING metrics_daemon[3397]: WARNING metrics_daemon: [vmlog_writer.cc(471)] Failed to open scaling_cur_freq for logical core 7: No such file or directory (2)
+2024-06-11T15:36:29.067522Z ERR metrics_daemon[3397]: ERROR metrics_daemon: [vmlog_writer.cc(258)] RAPL info disabled (b/168594119).: No such file or directory (2)
+2024-06-11T15:36:29.224175Z INFO cryptohomed[991]: Recoverable key store backend certificate list updated to version 10016.
+2024-06-11T15:36:33.912443Z INFO cros_camera_service[3449]: LoadCameraHal(): Try to load camera hal /usr/lib64/camera_hal/usb.so
+2024-06-11T15:36:33.938937Z INFO cros_camera_service[3449]: LoadCameraHal(): Try to load camera hal /usr/lib64/camera_hal/fake.so
+2024-06-11T15:36:33.945510Z INFO cros_camera_service[3449]: LoadCameraHal(): Running camera HAL adapter on 2
+2024-06-11T15:36:33.947261Z WARNING cros_camera_service[3449]: IsSupported(): GPU computing disabled on unsupported device "reven"
+2024-06-11T15:36:33.978475Z INFO cros_camera_service[3449]: OnOptionsUpdated(): Cannot find feature profile as dict for device model "reven"
+2024-06-11T15:36:33.978551Z INFO cros_camera_service[3449]: Start(): Effects are not enabled, skipping DLC.
+2024-06-11T15:36:33.978976Z ERR cros_camera_service[3449]: operator()(): Failed to read CHROMEOS_ARC_ANDROID_SDK_VERSION
+2024-06-11T15:36:33.980323Z INFO cros_camera_service[3449]: SetSWPrivacySwitchState(): SW privacy switch state changed from OFF to UNKNOWN
+2024-06-11T15:36:33.980680Z WARNING cros_camera_service[3449]: GetRequiredValue(): missing required key at $.cameras: list expected
+2024-06-11T15:36:33.980725Z INFO cros_camera_service[3449]: StartOnThread(): Camera module "V4L2 UVC Camera HAL v3" has 0 built-in camera(s)
+2024-06-11T15:36:33.980887Z INFO cros_camera_service[3449]: StartOnThread(): Camera module "Fake Camera HAL" has 0 built-in camera(s)
+2024-06-11T15:36:33.981030Z INFO cros_camera_service[3449]: StartOnThread(): SuperHAL started with 2 modules, 0 built-in cameras and 0 unexposed physical cameras
+2024-06-11T15:36:33.981319Z INFO cros_camera_service[3449]: main(): Started camera HAL v3 adapter
+2024-06-11T15:36:33.981932Z INFO mojo_service_manager[631]: Receive connection from: u:r:cros_camera_service:s0
+2024-06-11T15:36:34.003196Z INFO cros_camera_service[3449]: OnOptionsUpdated(): Cannot find feature profile as dict for device model "reven"
+2024-06-11T15:36:34.004938Z INFO cros_camera_service[3449]: BindOnThread(): Bridge ready
+2024-06-11T15:36:34.446017Z CRIT root[3458]: No new logout-started signal received after  10 seconds.
+2024-06-11T15:36:40.023066Z INFO sshd[3512]: Accepted publickey for root from 10.0.2.2 port 33496 ssh2: RSA SHA256:Fp1qWjFLyK1cTpiI5rdk7iEJwoK9lcnYAgbQtGC3jzU

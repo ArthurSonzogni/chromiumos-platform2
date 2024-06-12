@@ -495,6 +495,7 @@ if (use.test) {
       "gsc_collector_test.cc",
       "kernel_collector_test.cc",
       "kernel_collector_test.h",
+      "kernel_log_collector_test.cc",
       "kernel_util_test.cc",
       "kernel_warning_collector_test.cc",
       "metric_utils_test.cc",

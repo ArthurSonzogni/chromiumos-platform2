@@ -1,0 +1,7 @@
+2024-03-13T08:59:09.234047-07:00 INFO kernel: [  394.233296] binder: release 4567:4567 transaction 123456 in, still active
+2024-03-13T08:59:09.234075-07:00 INFO kernel: [  394.233307] binder: send failed reply for transaction 123456 to 1234:5678
+2024-03-13T08:59:09.295526-07:00 ERR arc-kmsg-logger[1111]: libprocessgroup: Error encountered killing process cgroup uid 1000 pid 45: No such file or directory
+2024-03-13T08:59:09.714333-07:00 WARNING mosys[2222]: libminijail[2222]: not locking any securebits
+2024-03-13T08:59:09.714494-07:00 WARNING mosys[2222]: libminijail[2222]: SECURE_NOROOT not set, not dropping bounding set
+2024-03-13T08:59:10.063212-07:00 WARNING mosys[3333]: libminijail[3333]: not locking any securebits
+2024-03-13T08:59:10.063424-07:00 WARNING mosys[3333]: libminijail[3333]: SECURE_NOROOT not set, not dropping bounding set
