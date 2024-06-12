@@ -112,8 +112,8 @@ static_library("libconcierge") {
     "USE_PCI_HOTPLUG_SLOTS=${use.amd64}",
 
     # TODO(b/295256641): Re-enable pvclock support for aarch64.
-    # Currently pvclock is only enabled on x86_64 architecture.
-    "USE_VIRTIO_PVCLOCK=${use.amd64}",
+    # TODO(b/342168920): Re-enable pvclock support for x86_64.
+    "USE_VIRTIO_PVCLOCK=0",
   ]
 
   cflags_cc = [
