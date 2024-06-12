@@ -7,6 +7,7 @@
 
 use std::{collections::HashMap, io};
 
+use chrono::{Local, LocalResult, TimeZone, Utc};
 use dbus::{
     arg::{ArgType, RefArg, Variant},
     blocking::Connection,
@@ -243,6 +244,7 @@ const PROPERTY_WIREGUARD_IP_ADDRESS: &str = "WireGuard.IPAddress";
 const PROPERTY_WIREGUARD_PRIVATE_KEY: &str = "WireGuard.PrivateKey";
 const PROPERTY_WIREGUARD_PUBLIC_KEY: &str = "WireGuard.PublicKey";
 const PROPERTY_WIREGUARD_PEERS: &str = "WireGuard.Peers";
+const PROPERTY_WIREGUARD_LAST_READ_LINK_STATUS_TIME: &str = "WireGuard.LastReadLinkStatusTime";
 const PROPERTY_STATIC_IP_CONFIG: &str = "StaticIPConfig";
 const PROPERTY_SAVE_CREDENTIALS: &str = "SaveCredentials";
 
@@ -252,6 +254,9 @@ const PROPERTY_PEER_PRESHARED_KEY: &str = "PresharedKey";
 const PROPERTY_PEER_ENDPOINT: &str = "Endpoint";
 const PROPERTY_PEER_ALLOWED_IPS: &str = "AllowedIPs";
 const PROPERTY_PEER_PERSISTENT_KEEPALIVE: &str = "PersistentKeepalive";
+const PROPERTY_PEER_LATEST_HANDSHAKE: &str = "LatestHandshake";
+const PROPERTY_PEER_RX_BYTES: &str = "RxBytes";
+const PROPERTY_PEER_TX_BYTES: &str = "TxBytes";
 
 // Property names in "StaticIPConfig"
 const PROPERTY_NAME_SERVERS: &str = "NameServers";
@@ -272,6 +277,7 @@ struct WireGuardService {
     mtu: Option<i32>,
     name_servers: Option<Vec<String>>,
     peers: Vec<WireGuardPeer>,
+    link_status_read_time: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -281,6 +287,9 @@ struct WireGuardPeer {
     allowed_ips: String,
     persistent_keepalive: String,
     preshared_key: Option<String>,
+    latest_handshake: Option<String>,
+    rx_bytes: Option<String>,
+    tx_bytes: Option<String>,
 }
 
 impl WireGuardService {
@@ -331,9 +340,15 @@ impl WireGuardService {
                         allowed_ips: p.get_string(PROPERTY_PEER_ALLOWED_IPS)?,
                         persistent_keepalive: p.get_string(PROPERTY_PEER_PERSISTENT_KEEPALIVE)?,
                         preshared_key: None,
+                        latest_handshake: p.get_string(PROPERTY_PEER_LATEST_HANDSHAKE).ok(),
+                        rx_bytes: p.get_string(PROPERTY_PEER_RX_BYTES).ok(),
+                        tx_bytes: p.get_string(PROPERTY_PEER_TX_BYTES).ok(),
                     })
                 })
                 .collect::<Result<Vec<WireGuardPeer>, Error>>()?,
+            link_status_read_time: provider_properties
+                .get_string(PROPERTY_WIREGUARD_LAST_READ_LINK_STATUS_TIME)
+                .ok(),
         };
 
         Ok(ret)
@@ -466,6 +481,9 @@ impl WireGuardService {
                             allowed_ips: "".to_string(),
                             persistent_keepalive: "".to_string(),
                             preshared_key: None,
+                            latest_handshake: None,
+                            rx_bytes: None,
+                            tx_bytes: None,
                         });
                         current_peer = self.peers.last_mut();
                     }
@@ -525,12 +543,31 @@ impl WireGuardService {
             println!("  mtu: {}", mtu);
         }
         println!();
+
+        let link_status_read_time = parse_unix_timestamp_string(&self.link_status_read_time);
         for p in &self.peers {
             println!("  peer: {}", p.public_key);
             println!("    preshared key: (hidden or not set)");
             println!("    endpoint: {}", p.endpoint);
             println!("    allowed ips: {}", p.allowed_ips);
             println!("    persistent keepalive: {}", p.persistent_keepalive);
+
+            if let Some(read_time) = link_status_read_time.as_deref() {
+                println!(
+                    "    latest handshake: {}",
+                    parse_unix_timestamp_string(&p.latest_handshake)
+                        .unwrap_or("unknown".to_string())
+                );
+                println!(
+                    "    rx bytes: {}",
+                    p.rx_bytes.as_deref().unwrap_or("unknown")
+                );
+                println!(
+                    "    tx bytes: {}",
+                    p.tx_bytes.as_deref().unwrap_or("unknown")
+                );
+                println!("    (wg status refreshed at {})", read_time);
+            }
             println!();
         }
     }
@@ -769,6 +806,40 @@ mod option_util {
     }
 }
 
+// Parses a UNIX timestamp string into a human-readable date time string. If the input string is
+// "0", returns `None``. If the input string cannot be parsed as a UNIX timestamp, returns `None`
+// and logs an error.
+fn parse_unix_timestamp_string(unix_timestamp_str: &Option<String>) -> Option<String> {
+    let timestamp_str = unix_timestamp_str.as_deref().unwrap_or("0");
+    let log_err = || {
+        error!(
+            "{}",
+            format!("failed to parse timestamp '{}'", timestamp_str)
+        )
+    };
+
+    let timestamp = timestamp_str.parse::<i64>().unwrap_or_else(|_| {
+        log_err();
+        0
+    });
+
+    if timestamp == 0 {
+        return None;
+    }
+    match Utc.timestamp_opt(timestamp, 0) {
+        LocalResult::Single(result) => Some(
+            result
+                .with_timezone(&Local::now().timezone())
+                .format("%Y-%m-%d %H:%M:%S")
+                .to_string(),
+        ),
+        _ => {
+            log_err();
+            None
+        }
+    }
+}
+
 fn make_dbus_connection() -> Result<Connection, Error> {
     Connection::new_system()
         .map_err(|err| Error::Internal(format!("Failed to get D-Bus connection: {}", err)))
@@ -887,6 +958,7 @@ fn wireguard_new(service_name: &str) -> Result<(), Error> {
         name_servers: None,
         mtu: None,
         peers: Vec::new(),
+        link_status_read_time: None,
     };
     manager_proxy
         .configure_service(service.encode_into_prop_map())
@@ -987,6 +1059,9 @@ mod tests {
                 allowed_ips: "0.0.0.0/0".to_string(),
                 persistent_keepalive: "".to_string(),
                 preshared_key: None,
+                latest_handshake: None,
+                rx_bytes: None,
+                tx_bytes: None,
             };
             let peer_b = WireGuardPeer {
                 public_key: public_key_b.clone(),
@@ -994,6 +1069,9 @@ mod tests {
                 allowed_ips: "10.8.0.0/16,192.168.100.0/24".to_string(),
                 persistent_keepalive: "3".to_string(),
                 preshared_key: None,
+                latest_handshake: None,
+                rx_bytes: None,
+                tx_bytes: None,
             };
             let service = WireGuardService {
                 path: None,
@@ -1004,6 +1082,7 @@ mod tests {
                 name_servers: Some(vec!["4.3.2.1".to_string()]),
                 mtu: Some(1234),
                 peers: vec![peer_a.clone(), peer_b.clone()],
+                link_status_read_time: None,
             };
             TestVars {
                 public_key_a,
@@ -1314,6 +1393,9 @@ mod tests {
             allowed_ips: "".to_string(),
             persistent_keepalive: "".to_string(),
             preshared_key: None,
+            latest_handshake: None,
+            rx_bytes: None,
+            tx_bytes: None,
         });
 
         let mut actual = vars.service.clone();
@@ -1361,6 +1443,9 @@ mod tests {
             allowed_ips: allowed_ips_a.to_string(),
             persistent_keepalive: persistent_keepalive_a.to_string(),
             preshared_key: Some(preshared_key_a.to_string()),
+            latest_handshake: None,
+            rx_bytes: None,
+            tx_bytes: None,
         };
         let new_peer = WireGuardPeer {
             public_key: vars.public_key_new.clone(),
@@ -1368,6 +1453,9 @@ mod tests {
             allowed_ips: allowed_ips_new.to_string(),
             persistent_keepalive: persistent_keepalive_new.to_string(),
             preshared_key: Some(preshared_key_new.to_string()),
+            latest_handshake: None,
+            rx_bytes: None,
+            tx_bytes: None,
         };
 
         let mut expected = vars.service.clone();
