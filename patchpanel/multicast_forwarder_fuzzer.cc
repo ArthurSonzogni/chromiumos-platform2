@@ -17,8 +17,8 @@
 #include <vector>
 
 #include <base/files/scoped_file.h>
-#include <base/test/task_environment.h>
 #include <base/logging.h>
+#include <base/test/task_environment.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/socket.h>

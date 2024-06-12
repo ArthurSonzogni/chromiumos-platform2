@@ -4,10 +4,10 @@
 
 #include "patchpanel/dns/dns_response.h"
 
+#include <openssl/sha.h>
 #include <algorithm>
 #include <limits>
 #include <numeric>
-#include <openssl/sha.h>
 #include <optional>
 #include <string_view>
 #include <utility>

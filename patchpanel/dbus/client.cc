@@ -13,8 +13,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
-#include <base/synchronization/waitable_event.h>
 #include <base/strings/string_util.h>
+#include <base/synchronization/waitable_event.h>
 #include <base/task/bind_post_task.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>

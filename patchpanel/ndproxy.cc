@@ -35,8 +35,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <net-base/byte_utils.h>
-#include <net-base/socket.h>
 #include <net-base/mac_address.h>
+#include <net-base/socket.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/minijailed_process_runner.h"

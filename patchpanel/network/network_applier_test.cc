@@ -9,8 +9,8 @@
 #include <utility>
 #include <vector>
 
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include <net-base/ip_address.h>
 #include <net-base/mock_proc_fs_stub.h>
 #include <net-base/mock_rtnl_handler.h>

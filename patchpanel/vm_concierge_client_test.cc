@@ -14,10 +14,10 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/run_loop.h>
-#include <base/task/single_thread_task_runner.h>
-#include <base/types/expected.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
+#include <base/types/expected.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>

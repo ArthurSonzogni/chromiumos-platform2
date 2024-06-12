@@ -26,11 +26,11 @@
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
-#include <vboot/crossystem.h>
-#include <net-base/ipv4_address.h>
 #include <net-base/byte_utils.h>
+#include <net-base/ipv4_address.h>
 #include <net-base/socket.h>
 #include <net-base/socket_forwarder.h>
+#include <vboot/crossystem.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"

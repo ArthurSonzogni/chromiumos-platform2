@@ -45,7 +45,7 @@ class FakeConntrackMonitor : public ConntrackMonitor {
   FakeConntrackMonitor() = default;
   ~FakeConntrackMonitor() = default;
 
-  void Start(base::span<const EventType> events) override{};
+  void Start(base::span<const EventType> events) override {}
 
   std::unique_ptr<Listener> AddListener(
       base::span<const EventType> events,

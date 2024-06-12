@@ -11,8 +11,8 @@
 
 #include <base/functional/callback_forward.h>
 #include <base/logging.h>
-#include <dbus/message.h>
 #include <dbus/bus.h>
+#include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
 #include <dbus/vm_concierge/dbus-constants.h>

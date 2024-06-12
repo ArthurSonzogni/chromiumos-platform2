@@ -10,10 +10,10 @@
 #include <map>
 #include <optional>
 
+#include <gmock/gmock.h>
 #include <net-base/ipv4_address.h>
 #include <net-base/ipv6_address.h>
 #include <net-base/mac_address.h>
-#include <gmock/gmock.h>
 
 namespace patchpanel {
 

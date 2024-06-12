@@ -53,7 +53,7 @@ class ProcessRunnerForTesting : public MinijailedProcessRunner {
   }
 
  private:
-  void UseIptablesSeccompFilter(minijail* jail) override{};
+  void UseIptablesSeccompFilter(minijail* jail) override {}
 };
 
 class MinijailProcessRunnerTest : public ::testing::Test {

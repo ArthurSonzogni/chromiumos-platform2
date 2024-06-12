@@ -20,8 +20,8 @@
 #include <gtest/gtest.h>
 #include <net-base/byte_utils.h>
 #include <net-base/ip_address.h>
-#include <net-base/rtnl_message.h>
 #include <net-base/mock_rtnl_handler.h>
+#include <net-base/rtnl_message.h>
 
 using testing::_;
 using testing::Field;

@@ -9,11 +9,11 @@
 #include <memory>
 #include <vector>
 
-#include <base/memory/weak_ptr.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
+#include <base/memory/weak_ptr.h>
 
 namespace patchpanel {
 

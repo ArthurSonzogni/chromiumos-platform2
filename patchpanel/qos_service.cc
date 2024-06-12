@@ -9,8 +9,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/containers/flat_set.h>
 #include <base/containers/flat_map.h>
+#include <base/containers/flat_set.h>
 #include <base/strings/string_split.h>
 #include <base/types/cxx23_to_underlying.h>
 #include <net-base/dns_client.h>

@@ -7,8 +7,8 @@
 
 #include <string>
 
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <gmock/gmock.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/conntrack_monitor.h"
 #include "patchpanel/counters_service.h"

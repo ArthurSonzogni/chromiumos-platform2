@@ -5,18 +5,18 @@
 #ifndef PATCHPANEL_NETWORK_MONITOR_SERVICE_H_
 #define PATCHPANEL_NETWORK_MONITOR_SERVICE_H_
 
+#include <linux/neighbour.h>
 #include <map>
 #include <memory>
-#include <linux/neighbour.h>
 #include <string>
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
 #include <base/timer/timer.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
-#include <net-base/rtnl_listener.h>
 #include <net-base/ip_address.h>
+#include <net-base/rtnl_listener.h>
 #include <net-base/rtnl_message.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/shill_client.h"
 

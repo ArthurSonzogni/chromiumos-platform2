@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include <base/test/task_environment.h>
 #include <base/run_loop.h>
+#include <base/test/task_environment.h>
 #include <brillo/http/mock_transport.h>
 #include <dbus/mock_bus.h>
 #include <gmock/gmock.h>

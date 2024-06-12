@@ -23,8 +23,8 @@
 #include <dbus/object_path.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <net-base/mac_address.h>
+#include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "patchpanel/fake_system.h"
 #include "patchpanel/firewall.h"

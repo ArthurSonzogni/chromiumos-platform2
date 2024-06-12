@@ -13,10 +13,10 @@
 #include <base/containers/contains.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/strings/string_split.h>
 #include <net-base/process_manager.h>
 
 #include "patchpanel/metrics.h"

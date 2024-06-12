@@ -8,8 +8,8 @@
 #include "patchpanel/minijailed_process_runner.h"
 
 #include <memory>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include <gmock/gmock.h>
 

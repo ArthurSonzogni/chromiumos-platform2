@@ -15,8 +15,8 @@
 #include <string_view>
 
 #include <net-base/ipv4_address.h>
-#include <net-base/rtnl_message.h>
 #include <net-base/rtnl_listener.h>
+#include <net-base/rtnl_message.h>
 #include <net-base/socket.h>
 
 namespace patchpanel {
