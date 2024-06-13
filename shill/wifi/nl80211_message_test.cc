@@ -10,12 +10,12 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <chromeos/net-base/attribute_list.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/netlink_message.h>
+#include <chromeos/net-base/netlink_packet.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/attribute_list.h>
-#include <net-base/byte_utils.h>
-#include <net-base/netlink_message.h>
-#include <net-base/netlink_packet.h>
 
 #include "shill/wifi/nl80211_attribute.h"
 

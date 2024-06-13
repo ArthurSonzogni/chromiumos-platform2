@@ -13,10 +13,10 @@
 
 #include <base/files/scoped_file.h>
 #include <base/test/mock_callback.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/mac_address.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
-#include <net-base/byte_utils.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/mac_address.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"

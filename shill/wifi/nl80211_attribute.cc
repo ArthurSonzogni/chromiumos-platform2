@@ -8,8 +8,8 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <net-base/byte_utils.h>
-#include <net-base/netlink_attribute.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/netlink_attribute.h>
 
 #include "shill/wifi/ieee80211.h"
 

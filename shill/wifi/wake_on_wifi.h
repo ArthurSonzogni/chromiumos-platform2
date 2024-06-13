@@ -17,14 +17,14 @@
 #include <vector>
 
 #include <base/cancelable_callback.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/timers/alarm_timer.h>
-#include <net-base/attribute_list.h>
-#include <net-base/netlink_manager.h>
-#include <net-base/netlink_message.h>
+#include <chromeos/net-base/attribute_list.h>
+#include <chromeos/net-base/netlink_manager.h>
+#include <chromeos/net-base/netlink_message.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/callbacks.h"
 #include "shill/event_history.h"

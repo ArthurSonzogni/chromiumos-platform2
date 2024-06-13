@@ -9,12 +9,12 @@
 #include <vector>
 
 #include <base/test/mock_callback.h>
+#include <chromeos/net-base/attribute_list.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/netlink_attribute.h>
+#include <chromeos/net-base/netlink_packet.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/attribute_list.h>
-#include <net-base/mac_address.h>
-#include <net-base/netlink_attribute.h>
-#include <net-base/netlink_packet.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"

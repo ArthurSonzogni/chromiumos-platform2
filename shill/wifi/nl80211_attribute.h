@@ -9,8 +9,8 @@
 #include <string>
 
 #include <base/containers/span.h>
-#include <net-base/attribute_list.h>
-#include <net-base/netlink_attribute.h>
+#include <chromeos/net-base/attribute_list.h>
+#include <chromeos/net-base/netlink_attribute.h>
 
 #include "shill/wifi/nl80211_message.h"
 

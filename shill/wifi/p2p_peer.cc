@@ -5,7 +5,7 @@
 #include "shill/wifi/p2p_peer.h"
 
 #include <chromeos/dbus/shill/dbus-constants.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "shill/supplicant/wpa_supplicant.h"
 #include "shill/wifi/p2p_device.h"

@@ -9,10 +9,10 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/netlink_packet.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
-#include <net-base/netlink_packet.h>
 
 #include "shill/metrics.h"
 #include "shill/mock_control.h"

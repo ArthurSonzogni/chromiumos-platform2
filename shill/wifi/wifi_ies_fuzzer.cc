@@ -4,11 +4,11 @@
 
 #include <vector>
 
-#include "base/at_exit.h"
+#include <base/at_exit.h>
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "shill/metrics.h"
 #include "shill/mock_control.h"

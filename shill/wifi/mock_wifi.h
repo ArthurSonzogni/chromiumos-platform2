@@ -9,8 +9,8 @@
 #include <string>
 
 #include <base/memory/ref_counted.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
-#include <net-base/mac_address.h>
 
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"

@@ -91,13 +91,13 @@
 #include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/attribute_list.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/netlink_manager.h>
+#include <chromeos/net-base/netlink_message.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/attribute_list.h>
-#include <net-base/ip_address.h>
-#include <net-base/mac_address.h>
-#include <net-base/netlink_manager.h>
-#include <net-base/netlink_message.h>
 
 #include "shill/device.h"
 #include "shill/metrics.h"

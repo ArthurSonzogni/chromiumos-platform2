@@ -17,12 +17,12 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/mock_callback.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/mock_netlink_manager.h>
+#include <chromeos/net-base/netlink_message.h>
+#include <chromeos/net-base/netlink_packet.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
-#include <net-base/mock_netlink_manager.h>
-#include <net-base/netlink_message.h>
-#include <net-base/netlink_packet.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"

@@ -14,9 +14,9 @@
 #include <vector>
 
 #include <base/time/clock.h>
-#include <base/time/time.h>
 #include <base/time/default_clock.h>
-#include <net-base/mac_address.h>
+#include <base/time/time.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "shill/mac_address.h"
 #include "shill/metrics.h"

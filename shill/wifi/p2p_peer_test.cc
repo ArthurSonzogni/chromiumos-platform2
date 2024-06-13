@@ -9,9 +9,9 @@
 #include <utility>
 
 #include <base/test/mock_callback.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"

@@ -21,20 +21,20 @@
 #include <base/containers/fixed_flat_set.h>
 #include <base/files/file_util.h>
 #include <base/memory/ref_counted.h>
-#include <base/time/time.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/mock_netlink_manager.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
+#include <chromeos/net-base/netlink_message.h>
+#include <chromeos/net-base/netlink_packet.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/http_url.h>
-#include <net-base/mac_address.h>
-#include <net-base/mock_netlink_manager.h>
-#include <net-base/mock_rtnl_handler.h>
-#include <net-base/netlink_packet.h>
-#include <net-base/netlink_message.h>
 
 #include "shill/data_types.h"
 #include "shill/dbus/dbus_control.h"

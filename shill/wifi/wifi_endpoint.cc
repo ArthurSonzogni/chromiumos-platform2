@@ -4,8 +4,9 @@
 
 #include "shill/wifi/wifi_endpoint.h"
 
-#include <algorithm>
 #include <linux/if_ether.h>
+
+#include <algorithm>
 
 #include <base/containers/contains.h>
 #include <base/logging.h>
@@ -14,7 +15,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "shill/control_interface.h"
 #include "shill/logging.h"

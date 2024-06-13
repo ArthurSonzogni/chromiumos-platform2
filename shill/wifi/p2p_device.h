@@ -13,9 +13,9 @@
 
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/mac_address.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/mac_address.h>
 
 #include "shill/network/network.h"
 #include "shill/store/key_value_store.h"

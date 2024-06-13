@@ -11,8 +11,8 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gtest/gtest_prod.h>
-#include <net-base/mac_address.h>
 
 #include "shill/mockable.h"
 #include "shill/store/key_value_store.h"

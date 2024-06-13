@@ -11,10 +11,10 @@
 
 #include <base/containers/span.h>
 #include <base/no_destructor.h>
-#include <net-base/generic_netlink_message.h>
-#include <net-base/netlink_manager.h>
-#include <net-base/netlink_message.h>
-#include <net-base/netlink_packet.h>
+#include <chromeos/net-base/generic_netlink_message.h>
+#include <chromeos/net-base/netlink_manager.h>
+#include <chromeos/net-base/netlink_message.h>
+#include <chromeos/net-base/netlink_packet.h>
 
 namespace shill {
 

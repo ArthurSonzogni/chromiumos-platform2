@@ -13,8 +13,8 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/mac_address.h>
 
 #include "shill/metrics.h"
 #include "shill/refptr_types.h"

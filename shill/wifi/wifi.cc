@@ -33,12 +33,12 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/attribute_list.h>
-#include <net-base/http_url.h>
-#include <net-base/mac_address.h>
-#include <net-base/netlink_manager.h>
-#include <net-base/netlink_message.h>
-#include <net-base/rtnl_handler.h>
+#include <chromeos/net-base/attribute_list.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/netlink_manager.h>
+#include <chromeos/net-base/netlink_message.h>
+#include <chromeos/net-base/rtnl_handler.h>
 
 #if !defined(DISABLE_FLOSS)
 #include "shill/bluetooth/bluetooth_manager_interface.h"

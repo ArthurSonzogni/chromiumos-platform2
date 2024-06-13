@@ -12,14 +12,14 @@
 
 #include <base/containers/span.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/rtnl_handler.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/byte_utils.h>
-#include <net-base/mac_address.h>
-#include <net-base/network_config.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/rtnl_handler.h>
 
 #include "shill/control_interface.h"
 #include "shill/manager.h"

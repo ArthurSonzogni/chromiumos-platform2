@@ -15,9 +15,9 @@
 #include <base/memory/weak_ptr.h>
 #include <base/observer_list.h>
 #include <base/observer_list_types.h>
-#include <net-base/mac_address.h>
-#include <net-base/netlink_manager.h>
-#include <net-base/netlink_message.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/netlink_manager.h>
+#include <chromeos/net-base/netlink_message.h>
 
 #include "shill/data_types.h"
 #include "shill/metrics.h"

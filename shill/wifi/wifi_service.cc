@@ -13,8 +13,8 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/logging.h>
 #include <base/containers/contains.h>
+#include <base/logging.h>
 #include <base/notreached.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
@@ -23,7 +23,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/certificate_file.h"

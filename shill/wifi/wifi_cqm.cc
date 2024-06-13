@@ -10,7 +10,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <net-base/attribute_list.h>
+#include <chromeos/net-base/attribute_list.h>
 
 #include "shill/logging.h"
 #include "shill/metrics.h"

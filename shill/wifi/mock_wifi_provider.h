@@ -9,8 +9,8 @@
 #include <string_view>
 #include <vector>
 
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
-#include <net-base/mac_address.h>
 
 #include "shill/manager.h"
 #include "shill/wifi/hotspot_device.h"

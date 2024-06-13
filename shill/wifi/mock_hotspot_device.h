@@ -11,8 +11,8 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
-#include <net-base/mac_address.h>
 
 namespace shill {
 

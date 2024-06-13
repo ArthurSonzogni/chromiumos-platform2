@@ -8,8 +8,8 @@
 #include <vector>
 
 #include <base/logging.h>
+#include <chromeos/net-base/attribute_list.h>
 #include <gmock/gmock.h>
-#include <net-base/attribute_list.h>
 
 #include "shill/wifi/nl80211_message.h"
 

@@ -4,9 +4,9 @@
 
 #include "shill/wifi/nl80211_attribute.h"
 
+#include <chromeos/net-base/byte_utils.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/byte_utils.h>
 
 using testing::Test;
 

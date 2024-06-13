@@ -20,12 +20,12 @@
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/attribute_list.h>
+#include <chromeos/net-base/mock_netlink_manager.h>
+#include <chromeos/net-base/netlink_message.h>
+#include <chromeos/net-base/netlink_packet.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/attribute_list.h>
-#include <net-base/mock_netlink_manager.h>
-#include <net-base/netlink_message.h>
-#include <net-base/netlink_packet.h>
 
 #include "shill/error.h"
 #include "shill/mock_control.h"

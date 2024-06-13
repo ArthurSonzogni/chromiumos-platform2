@@ -24,10 +24,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/attribute_list.h>
-#include <net-base/byte_utils.h>
-#include <net-base/netlink_manager.h>
-#include <net-base/netlink_message.h>
+#include <chromeos/net-base/attribute_list.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/netlink_manager.h>
+#include <chromeos/net-base/netlink_message.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"

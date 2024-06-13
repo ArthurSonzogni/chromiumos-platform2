@@ -16,10 +16,10 @@
 #include <base/containers/contains.h>
 #include <base/strings/string_split.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/mock_netlink_manager.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
-#include <net-base/mock_netlink_manager.h>
 
 #include "shill/mac_address.h"
 #include "shill/metrics.h"

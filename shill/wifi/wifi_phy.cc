@@ -9,8 +9,8 @@
 
 #include <base/containers/contains.h>
 #include <base/rand_util.h>
-#include <net-base/attribute_list.h>
-#include <net-base/netlink_attribute.h>
+#include <chromeos/net-base/attribute_list.h>
+#include <chromeos/net-base/netlink_attribute.h>
 
 #include "shill/logging.h"
 

@@ -8,7 +8,7 @@
 // those messages.
 
 // This file tests the public interface to net_base::NetlinkManager.
-#include <net-base/netlink_manager.h>
+#include <chromeos/net-base/netlink_manager.h>
 
 #include <errno.h>
 
@@ -20,13 +20,13 @@
 #include <base/logging.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/generic_netlink_message.h>
+#include <chromeos/net-base/mock_netlink_socket.h>
+#include <chromeos/net-base/netlink_message.h>
+#include <chromeos/net-base/netlink_packet.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/byte_utils.h>
-#include <net-base/generic_netlink_message.h>
-#include <net-base/mock_netlink_socket.h>
-#include <net-base/netlink_message.h>
-#include <net-base/netlink_packet.h>
 
 #include "shill/wifi/nl80211_message.h"
 

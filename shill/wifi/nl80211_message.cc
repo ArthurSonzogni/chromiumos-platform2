@@ -31,9 +31,9 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <net-base/netlink_manager.h>
-#include <net-base/netlink_message.h>
-#include <net-base/netlink_packet.h>
+#include <chromeos/net-base/netlink_manager.h>
+#include <chromeos/net-base/netlink_message.h>
+#include <chromeos/net-base/netlink_packet.h>
 
 #include "shill/wifi/ieee80211.h"
 #include "shill/wifi/nl80211_attribute.h"
