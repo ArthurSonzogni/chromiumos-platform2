@@ -404,14 +404,20 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
             }
             let thread_config = &self.config.thread_configs[thread.state as usize];
             if thread_config.rt_priority.is_some() {
-                // Ignore the error. There is rare cases that the thread die after the
-                // timestamp check above.
-                if let Err(e) = self.sched_attr_context.set_thread_sched_attr(
+                match self.sched_attr_context.set_thread_sched_attr(
                     *thread_id,
                     thread_config,
                     process_config.allow_rt,
                 ) {
-                    result = Err(Error::SchedAttr(e));
+                    Ok(_) => {}
+                    Err(e) if e.raw_os_error() == Some(libc::ESRCH) => {
+                        // Ignore the error. There is rare cases that the thread die after the
+                        // timestamp check above.
+                        return false;
+                    }
+                    Err(e) => {
+                        result = Err(Error::SchedAttr(e));
+                    }
                 }
             }
 
@@ -421,14 +427,20 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
                 } else {
                     CpusetCgroup::Efficient
                 };
-                // Ignore the error. There is rare cases that the thread die after the
-                // timestamp check above.
-                if let Err(e) = self
+                match self
                     .config
                     .cgroup_context
                     .set_cpuset_cgroup(*thread_id, cpuset_cgroup)
                 {
-                    result = Err(Error::Cgroup(cpuset_cgroup.name(), e));
+                    Ok(_) => {}
+                    Err(e) if e.raw_os_error() == Some(libc::ESRCH) => {
+                        // Ignore the error. There is rare cases that the thread die after the
+                        // timestamp check above.
+                        return false;
+                    }
+                    Err(e) => {
+                        result = Err(Error::Cgroup(cpuset_cgroup.name(), e));
+                    }
                 }
             }
             true
