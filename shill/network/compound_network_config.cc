@@ -194,6 +194,11 @@ bool CompoundNetworkConfig::Recalculate() {
           properties->dns_servers.begin(), properties->dns_servers.end());
     }
   }
+  // Remove empty DNS addresses since they are not meaningful. StaticIPConfig
+  // generated from UI may contain them.
+  std::erase_if(
+      combined_network_config_->dns_servers,
+      [](const net_base::IPAddress& ip) -> bool { return ip.IsZero(); });
   if (!static_network_config_.dns_search_domains.empty()) {
     combined_network_config_->dns_search_domains =
         static_network_config_.dns_search_domains;

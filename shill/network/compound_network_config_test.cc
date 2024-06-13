@@ -67,6 +67,13 @@ TEST_F(NetworkConfigMergeTest, DHCPOnly) {
 }
 
 TEST_F(NetworkConfigMergeTest, DHCPWithStatic) {
+  const auto kNameServer1 =
+      *net_base::IPAddress::CreateFromString("192.168.1.88");
+  const auto kNameServer2 =
+      *net_base::IPAddress::CreateFromString("192.168.1.87");
+  const auto kNameServerEmpty =
+      *net_base::IPAddress::CreateFromString("0.0.0.0");
+
   CompoundNetworkConfig cnc("test_if");
   EXPECT_TRUE(
       cnc.SetFromDHCP(std::make_unique<net_base::NetworkConfig>(dhcp_config_)));
@@ -81,8 +88,12 @@ TEST_F(NetworkConfigMergeTest, DHCPWithStatic) {
   static_config.ipv4_gateway =
       net_base::IPv4Address::CreateFromString("192.168.1.2");
   static_config.dns_servers = {
-      *net_base::IPAddress::CreateFromString("192.168.1.88"),
-      *net_base::IPAddress::CreateFromString("192.168.1.87")};
+      kNameServer1,
+      kNameServer2,
+      // Empty servers should be trimmed.
+      kNameServerEmpty,
+      kNameServerEmpty,
+  };
   static_config.dns_search_domains = {"static1.domain", "static2.domain"};
   static_config.excluded_route_prefixes = {
       *net_base::IPCIDR::CreateFromCIDRString("172.16.2.0/24")};
@@ -97,7 +108,8 @@ TEST_F(NetworkConfigMergeTest, DHCPWithStatic) {
             cnc.Get().excluded_route_prefixes);
   EXPECT_EQ(static_config.included_route_prefixes,
             cnc.Get().included_route_prefixes);
-  EXPECT_EQ(static_config.dns_servers, cnc.Get().dns_servers);
+  EXPECT_EQ(std::vector<net_base::IPAddress>({kNameServer1, kNameServer2}),
+            cnc.Get().dns_servers);
   EXPECT_EQ(static_config.dns_search_domains, cnc.Get().dns_search_domains);
   EXPECT_EQ(static_config.mtu, cnc.Get().mtu);
 
