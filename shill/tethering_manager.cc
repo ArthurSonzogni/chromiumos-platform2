@@ -168,7 +168,6 @@ GetUplinkIPv6Configuration(const Network& network) {
 
 TetheringManager::TetheringManager(Manager* manager)
     : manager_(manager),
-      allowed_(false),
       experimental_tethering_functionality_(false),
       state_(TetheringState::kTetheringIdle),
       upstream_network_(nullptr),
@@ -212,9 +211,6 @@ void TetheringManager::ResetConfiguration() {
 }
 
 void TetheringManager::InitPropertyStore(PropertyStore* store) {
-  HelpRegisterDerivedBool(store, kTetheringAllowedProperty,
-                          &TetheringManager::GetAllowed,
-                          &TetheringManager::SetAllowed);
   HelpRegisterDerivedBool(
       store, kExperimentalTetheringFunctionality,
       &TetheringManager::GetExperimentalTetheringFunctionality,
@@ -1467,15 +1463,6 @@ void TetheringManager::HelpRegisterDerivedBool(
   store->RegisterDerivedBool(
       name,
       BoolAccessor(new CustomAccessor<TetheringManager, bool>(this, get, set)));
-}
-
-bool TetheringManager::SetAllowed(const bool& value, Error* error) {
-  if (allowed_ == value)
-    return false;
-
-  LOG(INFO) << __func__ << " Allowed set to " << std::boolalpha << value;
-  allowed_ = value;
-  return true;
 }
 
 bool TetheringManager::SetExperimentalTetheringFunctionality(const bool& value,
