@@ -11,8 +11,8 @@
 
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
-#include <net-base/process_manager.h>
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/metrics.h"
 #include "shill/vpn/vpn_driver.h"

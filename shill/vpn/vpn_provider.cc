@@ -13,7 +13,7 @@
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/error.h"
 #include "shill/logging.h"

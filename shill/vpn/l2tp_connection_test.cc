@@ -12,14 +12,14 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/strings/strcat.h>
 #include <base/run_loop.h>
+#include <base/strings/strcat.h>
+#include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/network_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libpasswordprovider/fake_password_provider.h>
 #include <libpasswordprovider/password.h>
-#include <net-base/mock_process_manager.h>
-#include <net-base/network_config.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"

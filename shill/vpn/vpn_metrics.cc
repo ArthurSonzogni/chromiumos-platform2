@@ -11,7 +11,7 @@
 #include <base/notreached.h>
 #include <base/time/time.h>
 #include <base/types/cxx23_to_underlying.h>
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/metrics.h"
 #include "shill/vpn/vpn_metrics_internal.h"

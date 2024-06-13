@@ -11,9 +11,9 @@
 #include <vector>
 
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/mock_process_manager.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mock_process_manager.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"

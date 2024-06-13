@@ -32,10 +32,10 @@
 #include <base/time/time.h>
 #include <base/version.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/logging.h"
 #include "shill/manager.h"

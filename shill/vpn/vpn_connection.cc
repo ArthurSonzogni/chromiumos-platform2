@@ -14,7 +14,7 @@
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
 
 namespace shill {
 

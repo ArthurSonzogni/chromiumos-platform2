@@ -7,9 +7,9 @@
 
 #include <memory>
 
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 #include <gtest/gtest_prod.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
 
 #include "shill/error.h"
 #include "shill/vpn/vpn_driver.h"

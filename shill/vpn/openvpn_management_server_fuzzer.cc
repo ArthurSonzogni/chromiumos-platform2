@@ -10,8 +10,8 @@
 #include <base/check.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <chromeos/net-base/socket.h>
 #include <fuzzer/FuzzedDataProvider.h>
-#include <net-base/socket.h>
 
 #include "shill/vpn/openvpn_driver.h"
 #include "shill/vpn/openvpn_management_server.h"

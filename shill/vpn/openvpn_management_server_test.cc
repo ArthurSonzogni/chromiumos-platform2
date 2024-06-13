@@ -13,9 +13,9 @@
 #include <base/containers/span.h>
 #include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/mock_socket.h>
 #include <gtest/gtest.h>
-#include <net-base/mock_process_manager.h>
-#include <net-base/mock_socket.h>
 
 #include "shill/manager.h"
 #include "shill/mock_control.h"

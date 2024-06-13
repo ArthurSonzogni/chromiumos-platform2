@@ -10,8 +10,8 @@
 #include <vector>
 
 #include <base/containers/span.h>
+#include <chromeos/net-base/socket.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/socket.h>
 
 #include "shill/mockable.h"
 

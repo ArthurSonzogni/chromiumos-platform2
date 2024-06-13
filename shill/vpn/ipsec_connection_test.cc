@@ -19,13 +19,13 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_util.h>
 #include <base/test/test_future.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/network_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mock_process_manager.h>
-#include <net-base/network_config.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_device_info.h"

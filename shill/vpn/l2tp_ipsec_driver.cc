@@ -14,11 +14,11 @@
 #include <netdb.h>      // for getaddrinfo
 
 #include <base/functional/bind.h>
-#include <brillo/type_list.h>
 #include <base/logging.h>
+#include <brillo/type_list.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/error.h"
 #include "shill/manager.h"

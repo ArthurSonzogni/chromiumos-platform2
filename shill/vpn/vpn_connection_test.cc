@@ -8,10 +8,10 @@
 #include <string>
 #include <utility>
 
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/network_config.h>
 
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/vpn_connection_under_test.h"

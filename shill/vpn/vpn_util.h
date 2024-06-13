@@ -15,7 +15,7 @@
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/version.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 namespace shill {
 

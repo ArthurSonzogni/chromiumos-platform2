@@ -30,10 +30,10 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 #include <re2/re2.h>
 
 #include "shill/metrics.h"

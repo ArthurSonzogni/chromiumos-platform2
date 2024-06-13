@@ -8,9 +8,9 @@
 
 #include <base/functional/bind.h>
 #include <base/memory/ptr_util.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
 
 #include "shill/callbacks.h"
 #include "shill/mock_adaptors.h"

@@ -11,17 +11,17 @@
 #include <vector>
 
 #include <base/containers/flat_set.h>
+#include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
-#include <base/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mock_process_manager.h>
-#include <net-base/process_manager.h>
 
 #include "shill/metrics.h"
 #include "shill/mock_control.h"

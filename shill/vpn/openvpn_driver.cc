@@ -26,12 +26,12 @@
 #include <base/strings/string_util.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/ip_address.h>
-#include <net-base/ip_address_utils.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ip_address_utils.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device_info.h"

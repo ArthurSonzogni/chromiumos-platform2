@@ -9,8 +9,8 @@
 #include <string>
 #include <string_view>
 
+#include <chromeos/net-base/network_config.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/network_config.h>
 
 #include "shill/callbacks.h"
 #include "shill/default_service_observer.h"

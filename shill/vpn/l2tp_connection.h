@@ -12,9 +12,9 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 #include <libpasswordprovider/password_provider.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
 
 #include "shill/control_interface.h"
 #include "shill/device_info.h"

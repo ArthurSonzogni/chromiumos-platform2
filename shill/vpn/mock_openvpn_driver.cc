@@ -4,7 +4,7 @@
 
 #include "shill/vpn/mock_openvpn_driver.h"
 
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 namespace shill {
 

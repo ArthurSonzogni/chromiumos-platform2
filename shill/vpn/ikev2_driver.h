@@ -9,8 +9,8 @@
 #include <string>
 
 #include <base/memory/weak_ptr.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/manager.h"
 #include "shill/mockable.h"

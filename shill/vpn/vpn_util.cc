@@ -17,7 +17,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 namespace shill {
 

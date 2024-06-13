@@ -14,8 +14,8 @@
 #include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"

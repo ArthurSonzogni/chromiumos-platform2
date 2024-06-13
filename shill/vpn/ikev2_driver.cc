@@ -14,8 +14,8 @@
 #include <base/time/time.h>
 #include <base/version.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/error.h"
 #include "shill/manager.h"

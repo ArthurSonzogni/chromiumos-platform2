@@ -20,9 +20,9 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 #include <libpasswordprovider/password_provider.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
 
 #include "shill/ppp_daemon.h"
 #include "shill/vpn/vpn_end_reason.h"

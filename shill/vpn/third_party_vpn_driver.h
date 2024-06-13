@@ -14,10 +14,10 @@
 #include <base/containers/span.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 #include <gtest/gtest_prod.h>
-#include <net-base/ip_address.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
 
 #include "shill/service.h"
 #include "shill/vpn/vpn_driver.h"

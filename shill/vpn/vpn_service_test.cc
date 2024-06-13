@@ -11,10 +11,10 @@
 
 #include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/network_config.h>
 
 #include "shill/error.h"
 #include "shill/mock_adaptors.h"

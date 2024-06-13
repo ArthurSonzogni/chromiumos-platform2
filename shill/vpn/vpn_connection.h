@@ -11,7 +11,7 @@
 #include <utility>
 
 #include <base/functional/callback.h>
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mockable.h"

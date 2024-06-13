@@ -6,7 +6,7 @@
 #define SHILL_VPN_VPN_METRICS_INTERNAL_H_
 
 #include <base/time/time.h>
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/metrics.h"
 

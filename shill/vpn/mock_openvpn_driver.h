@@ -7,8 +7,8 @@
 
 #include <string_view>
 
+#include <chromeos/net-base/process_manager.h>
 #include <gmock/gmock.h>
-#include <net-base/process_manager.h>
 
 #include "shill/vpn/openvpn_driver.h"
 

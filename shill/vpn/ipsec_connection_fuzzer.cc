@@ -6,7 +6,7 @@
 #include <cstdint>
 
 #include <base/logging.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/vpn/ipsec_connection.h"

@@ -9,9 +9,9 @@
 #include <string>
 #include <string_view>
 
+#include <chromeos/net-base/network_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/vpn/vpn_connection.h"

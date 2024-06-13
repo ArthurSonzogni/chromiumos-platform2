@@ -16,8 +16,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/network_config.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/logging.h"
