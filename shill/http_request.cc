@@ -19,8 +19,8 @@
 #include <base/time/time.h>
 #include <base/types/expected.h>
 #include <brillo/http/http_utils.h>
-#include <net-base/dns_client.h>
-#include <net-base/http_url.h>
+#include <chromeos/net-base/dns_client.h>
+#include <chromeos/net-base/http_url.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"

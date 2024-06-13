@@ -15,8 +15,8 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/process_manager.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/process_manager.h>
 
 #include "shill/rpc_task.h"
 

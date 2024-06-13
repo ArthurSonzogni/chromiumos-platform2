@@ -20,8 +20,8 @@ CopyingInputStreamAdaptor* protobuf_lite_file_input_stream(
     const std::string& file_path) {
   int fd = HANDLE_EINTR(open(file_path.c_str(), O_RDONLY | O_CLOEXEC));
   if (fd == -1) {
-    PLOG(ERROR) << __func__ << ": "
-                << "Could not load protobuf file [" << file_path << "] ";
+    PLOG(ERROR) << __func__ << ": Could not load protobuf file [" << file_path
+                << "] ";
     return nullptr;
   }
 

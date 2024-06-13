@@ -11,7 +11,7 @@
 #include <string>
 #include <utility>
 
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/manager.h"
 #include "shill/network/network_monitor.h"

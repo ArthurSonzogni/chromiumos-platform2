@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 namespace shill {
 

@@ -10,8 +10,8 @@
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_manager.h"

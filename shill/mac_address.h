@@ -5,8 +5,9 @@
 #define SHILL_MAC_ADDRESS_H_
 
 #include <string>
+
 #include <base/time/time.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 namespace shill {
 

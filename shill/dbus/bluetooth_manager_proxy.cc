@@ -23,7 +23,7 @@ namespace {
 constexpr char kBTManagerServiceName[] = "org.chromium.bluetooth.Manager";
 
 constexpr base::TimeDelta kDBusInitializationDelay = base::Seconds(1);
-}
+}  // namespace
 
 namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kBluetooth;

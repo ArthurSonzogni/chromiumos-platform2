@@ -21,11 +21,11 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/test/mock_callback.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/mac_address.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/http_url.h>
-#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mock_cellular.h"

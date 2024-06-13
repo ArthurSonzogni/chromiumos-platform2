@@ -7,7 +7,7 @@
 #include <optional>
 #include <string>
 
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "shill/store/store_interface.h"
 

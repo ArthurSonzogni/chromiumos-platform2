@@ -33,8 +33,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/mac_address.h>
-#include <net-base/rtnl_handler.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/rtnl_handler.h>
 
 #include "shill/control_interface.h"
 #include "shill/error.h"

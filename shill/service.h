@@ -19,10 +19,10 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>
-#include <net-base/ip_address.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"

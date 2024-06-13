@@ -9,9 +9,9 @@
 #include <vector>
 
 #include <base/memory/ref_counted.h>
+#include <chromeos/net-base/mac_address.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
-#include <net-base/mac_address.h>
 
 #include "shill/device.h"
 #include "shill/geolocation_info.h"

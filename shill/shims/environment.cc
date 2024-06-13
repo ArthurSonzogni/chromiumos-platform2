@@ -4,8 +4,9 @@
 
 #include "shill/shims/environment.h"
 
-#include <cstdlib>
 #include <unistd.h>
+
+#include <cstdlib>
 
 namespace shill {
 

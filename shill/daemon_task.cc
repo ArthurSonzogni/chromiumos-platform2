@@ -13,9 +13,9 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/message_loops/message_loop.h>
-#include <net-base/netlink_manager.h>
-#include <net-base/netlink_message.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/netlink_manager.h>
+#include <chromeos/net-base/netlink_message.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_control.h"

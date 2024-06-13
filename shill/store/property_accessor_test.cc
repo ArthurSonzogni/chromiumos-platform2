@@ -9,8 +9,8 @@
 #include <string>
 
 #include <base/containers/contains.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/error.h"
 

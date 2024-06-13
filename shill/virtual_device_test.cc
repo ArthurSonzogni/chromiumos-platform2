@@ -9,8 +9,8 @@
 
 #include <base/task/single_thread_task_executor.h>
 #include <base/test/test_future.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
 #include <gtest/gtest.h>
-#include <net-base/mock_rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"

@@ -46,10 +46,10 @@
 #include <base/time/time.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/constants/vm_tools.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/netlink_manager.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/byte_utils.h>
-#include <net-base/mac_address.h>
-#include <net-base/netlink_manager.h>
 #include <re2/re2.h>
 
 #include "shill/cellular/modem_info.h"

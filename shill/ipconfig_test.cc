@@ -7,11 +7,11 @@
 #include <vector>
 
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/network_config.h>
 
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"

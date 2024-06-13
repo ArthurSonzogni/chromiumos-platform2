@@ -23,11 +23,11 @@
 #include <brillo/http/mock_transport.h>
 #include <brillo/mime_utils.h>
 #include <brillo/streams/mock_stream.h>
+#include <chromeos/net-base/dns_client.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
 #include <curl/curl.h>
 #include <gtest/gtest.h>
-#include <net-base/dns_client.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
 
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"

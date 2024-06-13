@@ -16,11 +16,11 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/rtnl_handler.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/ip_address.h>
-#include <net-base/mac_address.h>
-#include <net-base/rtnl_handler.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"

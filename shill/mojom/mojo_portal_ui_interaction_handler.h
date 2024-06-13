@@ -5,8 +5,8 @@
 #ifndef SHILL_MOJOM_MOJO_PORTAL_UI_INTERACTION_HANDLER_H_
 #define SHILL_MOJOM_MOJO_PORTAL_UI_INTERACTION_HANDLER_H_
 
+#include <chromeos/net-base/http_url.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
-#include <net-base/http_url.h>
 
 #include "shill/mojom/portal.mojom.h"
 

@@ -12,7 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <brillo/files/file_util.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 
 #include "shill/dns_util.h"
 #include "shill/logging.h"

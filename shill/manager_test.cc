@@ -20,12 +20,12 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/network_priority.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/timer_mock.h>
-#include <net-base/mac_address.h>
-#include <net-base/network_priority.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/default_service_observer.h"

@@ -19,12 +19,12 @@
 #include <base/test/test_future.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/mac_address.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
-#include <net-base/http_url.h>
-#include <net-base/mac_address.h>
 
 #include "shill/dbus/dbus_control.h"
 #include "shill/error.h"

@@ -6,9 +6,9 @@
 #include <cstdio>
 
 #include <base/rand_util.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
 
 #include "shill/store/fake_store.h"
 

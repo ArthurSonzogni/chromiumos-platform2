@@ -17,12 +17,12 @@
 #include <base/functional/callback.h>
 #include <base/test/test_future.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/http_url.h>
-#include <net-base/mac_address.h>
-#include <net-base/mock_rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/http_request.h"

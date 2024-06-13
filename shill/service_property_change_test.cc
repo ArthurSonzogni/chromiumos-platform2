@@ -7,8 +7,8 @@
 #include <string>
 
 #include <chromeos/dbus/service_constants.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/error.h"
 #include "shill/mock_adaptors.h"

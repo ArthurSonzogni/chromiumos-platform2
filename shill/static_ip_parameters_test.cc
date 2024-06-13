@@ -9,12 +9,12 @@
 #include <base/check.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/network_config.h>
+#include <gtest/gtest.h>
 
 #include "shill/ipconfig.h"
 #include "shill/mock_control.h"

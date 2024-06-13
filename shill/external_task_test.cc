@@ -13,9 +13,9 @@
 #include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_util.h>
+#include <chromeos/net-base/mock_process_manager.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mock_process_manager.h>
 
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"

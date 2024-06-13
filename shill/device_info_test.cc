@@ -30,18 +30,18 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/test/bind.h>
 #include <brillo/files/file_util.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/mock_netlink_manager.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
+#include <chromeos/net-base/mock_socket.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/rtnl_message.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/byte_utils.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mac_address.h>
-#include <net-base/mock_netlink_manager.h>
-#include <net-base/mock_rtnl_handler.h>
-#include <net-base/mock_socket.h>
-#include <net-base/network_config.h>
-#include <net-base/rtnl_message.h>
 
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/manager.h"

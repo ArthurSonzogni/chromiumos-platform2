@@ -7,11 +7,11 @@
 #include <vector>
 
 #include <base/test/task_environment.h>
+#include <chromeos/net-base/http_url.h>
 #include <gtest/gtest.h>
 #include <mojo/core/core.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/receiver.h>
-#include <net-base/http_url.h>
 
 #include "shill/mojom/mock_mojo_portal_ui_interaction_handler.h"
 #include "shill/mojom/mojo_portal_service.h"

@@ -13,11 +13,11 @@
 #include <base/functional/bind.h>
 #include <base/memory/ref_counted.h>
 #include <base/run_loop.h>
+#include <chromeos/net-base/mock_netlink_manager.h>
+#include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mock_netlink_manager.h>
-#include <net-base/mock_process_manager.h>
-#include <net-base/mock_rtnl_handler.h>
 
 #include "shill/daemon_task.h"
 #include "shill/mock_control.h"

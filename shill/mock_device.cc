@@ -7,8 +7,8 @@
 #include <string>
 
 #include <base/memory/ref_counted.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
-#include <net-base/mac_address.h>
 
 namespace shill {
 

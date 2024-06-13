@@ -15,7 +15,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
-#include <net-base/mock_socket.h>
+#include <chromeos/net-base/mock_socket.h>
 
 #include "shill/error.h"
 #include "shill/mock_ares.h"

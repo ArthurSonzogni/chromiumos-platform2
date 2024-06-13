@@ -5,8 +5,8 @@
 #ifndef SHILL_MOJOM_MOCK_MOJO_PORTAL_UI_INTERACTION_HANDLER_H_
 #define SHILL_MOJOM_MOCK_MOJO_PORTAL_UI_INTERACTION_HANDLER_H_
 
+#include <chromeos/net-base/http_url.h>
 #include <gmock/gmock.h>
-#include <net-base/http_url.h>
 
 #include "shill/mojom/mojo_portal_ui_interaction_handler.h"
 

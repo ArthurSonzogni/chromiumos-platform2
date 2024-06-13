@@ -36,10 +36,10 @@
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/network_priority.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
-#include <net-base/network_priority.h>
 
 #include "shill/adaptor_interfaces.h"
 #if !defined(DISABLE_FLOSS)

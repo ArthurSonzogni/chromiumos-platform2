@@ -10,9 +10,9 @@
 #include <vector>
 
 #include <base/functional/callback.h>
-#include <net-base/netlink_manager.h>
-#include <net-base/process_manager.h>
-#include <net-base/rtnl_handler.h>
+#include <chromeos/net-base/netlink_manager.h>
+#include <chromeos/net-base/process_manager.h>
+#include <chromeos/net-base/rtnl_handler.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"

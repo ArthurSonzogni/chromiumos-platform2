@@ -7,8 +7,8 @@
 #include <utility>
 
 #include <base/memory/weak_ptr.h>
-#include <base/test/test_future.h>
 #include <base/test/task_environment.h>
+#include <base/test/test_future.h>
 #include <gtest/gtest.h>
 
 #include "shill/dbus/fake_properties_proxy.h"

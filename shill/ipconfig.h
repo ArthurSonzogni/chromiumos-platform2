@@ -11,9 +11,9 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <gtest/gtest_prod.h>
-#include <net-base/ip_address.h>
-#include <net-base/network_config.h>
 
 #include "shill/network/dhcpv4_config.h"
 #include "shill/store/property_store.h"

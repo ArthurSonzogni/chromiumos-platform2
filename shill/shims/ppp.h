@@ -8,8 +8,8 @@
 #include <memory>
 #include <string>
 
-#include <base/memory/ref_counted.h>
 #include <base/lazy_instance.h>
+#include <base/memory/ref_counted.h>
 
 namespace dbus {
 class Bus;

@@ -11,9 +11,9 @@
 
 #include <base/files/file_path.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
 
 #include "shill/manager.h"
 #include "shill/mock_device.h"

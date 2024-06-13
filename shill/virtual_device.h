@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/device.h"
 #include "shill/error.h"

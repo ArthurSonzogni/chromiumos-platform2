@@ -17,14 +17,14 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/netlink_manager.h>
+#include <chromeos/net-base/rtnl_handler.h>
+#include <chromeos/net-base/rtnl_listener.h>
+#include <chromeos/net-base/rtnl_message.h>
+#include <chromeos/net-base/socket.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/mac_address.h>
-#include <net-base/netlink_manager.h>
-#include <net-base/rtnl_handler.h>
-#include <net-base/rtnl_listener.h>
-#include <net-base/rtnl_message.h>
-#include <net-base/socket.h>
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"

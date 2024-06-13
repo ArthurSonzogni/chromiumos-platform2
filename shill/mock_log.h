@@ -51,11 +51,11 @@
 // For some examples, see mock_log_test.cc.
 
 #include <string>
+
+#include <base/logging.h>
 #include <gmock/gmock.h>
 
 #include "shill/logging.h"
-
-#include <base/logging.h>
 
 namespace shill {
 

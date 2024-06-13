@@ -20,9 +20,9 @@
 #include <base/types/expected.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_transport.h>
-#include <net-base/dns_client.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/dns_client.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
 
 namespace shill {
 

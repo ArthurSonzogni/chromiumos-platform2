@@ -14,9 +14,9 @@
 #include <vector>
 
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <chromeos/net-base/mac_address.h>
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
-#include <net-base/mac_address.h>
 
 #include "shill/error.h"
 #include "shill/mockable.h"

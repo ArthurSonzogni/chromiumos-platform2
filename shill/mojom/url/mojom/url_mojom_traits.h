@@ -7,8 +7,8 @@
 
 #include <string>
 
+#include <chromeos/net-base/http_url.h>
 #include <mojo/public/cpp/bindings/struct_traits.h>
-#include <net-base/http_url.h>
 
 #include "url/mojom/url.mojom.h"
 

@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_store.h"

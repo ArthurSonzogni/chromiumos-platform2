@@ -15,7 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/error.h"

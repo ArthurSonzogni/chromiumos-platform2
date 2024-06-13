@@ -16,7 +16,7 @@
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/error.h"
 

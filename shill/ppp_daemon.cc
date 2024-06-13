@@ -13,8 +13,8 @@
 #include <utility>
 #include <vector>
 
-#include <net-base/ipv4_address.h>
-#include <net-base/network_config.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
 
 extern "C" {
 // A struct member in pppd.h has the name 'class'.
@@ -30,8 +30,8 @@ extern "C" {
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_number_conversions.h>
-#include <net-base/ip_address.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/control_interface.h"
 #include "shill/error.h"

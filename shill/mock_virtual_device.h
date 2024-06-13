@@ -8,8 +8,8 @@
 #include <memory>
 #include <string>
 
+#include <chromeos/net-base/network_config.h>
 #include <gmock/gmock.h>
-#include <net-base/network_config.h>
 
 #include "shill/virtual_device.h"
 

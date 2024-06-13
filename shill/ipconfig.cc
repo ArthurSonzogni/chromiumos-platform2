@@ -16,10 +16,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/network_config.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"

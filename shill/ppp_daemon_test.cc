@@ -12,11 +12,11 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/network_config.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/mock_process_manager.h>
-#include <net-base/network_config.h>
 
 #include "shill/error.h"
 #include "shill/external_task.h"

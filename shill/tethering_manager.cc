@@ -19,10 +19,10 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/device.h"
