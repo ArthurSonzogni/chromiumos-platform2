@@ -277,15 +277,7 @@ loop_offset_setup() {
     set -- "$@" -b "${blocksize}"
   fi
 
-  local losetup_path="losetup"
-  # For environments that use busybox, we expect a newer version of `losetup``
-  # to be present in `/bin/losetup`.
-  # TODO(b/186151064): Change default from busybox losetup used in minios.
-  if "${BUSYBOX_LOSETUP_FOUND}"; then
-    losetup_path="/bin/losetup"
-  fi
-
-  LOOP_DEV=$("${losetup_path}" -f "$@" --show -o $((offset * blocksize)) \
+  LOOP_DEV=$("${LOSETUP_PATH}" -f "$@" --show -o $((offset * blocksize)) \
     "${filename}")
   if [ -z "${LOOP_DEV}" ]; then
     die "No free loop device. Free up a loop device or reboot. Exiting."
@@ -366,7 +358,7 @@ cleanup() {
 
   local loop_dev
   for loop_dev in ${LOOPS:-}; do
-    losetup -d "${loop_dev}" || /bin/true
+    "${LOSETUP_PATH}" -d "${loop_dev}" || /bin/true
   done
   LOOPS=""
 
@@ -870,9 +862,10 @@ main() {
   if dd --version 2>&1 | grep -q "BusyBox"; then
     BUSYBOX_DD_FOUND=true
   fi
-  BUSYBOX_LOSETUP_FOUND=false
   if losetup --version 2>&1 | grep -q "BusyBox"; then
-    BUSYBOX_LOSETUP_FOUND=true
+    LOSETUP_PATH="/bin/losetup"
+  else
+    LOSETUP_PATH="losetup"
   fi
 
   check_payload_image
