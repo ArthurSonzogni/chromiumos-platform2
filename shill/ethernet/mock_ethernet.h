@@ -7,8 +7,8 @@
 
 #include <string>
 
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
-#include <net-base/mac_address.h>
 
 #include "shill/ethernet/ethernet.h"
 #include "shill/refptr_types.h"

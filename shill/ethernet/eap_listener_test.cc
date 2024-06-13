@@ -17,8 +17,8 @@
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
 #include <base/test/task_environment.h>
+#include <chromeos/net-base/mock_socket.h>
 #include <gtest/gtest.h>
-#include <net-base/mock_socket.h>
 
 #include "shill/ethernet/eap_protocol.h"
 #include "shill/mock_log.h"

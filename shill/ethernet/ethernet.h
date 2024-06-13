@@ -15,10 +15,10 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/socket.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/ip_address.h>
-#include <net-base/mac_address.h>
-#include <net-base/socket.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device.h"

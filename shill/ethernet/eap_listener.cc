@@ -15,7 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <net-base/byte_utils.h>
+#include <chromeos/net-base/byte_utils.h>
 
 #include "shill/ethernet/eap_protocol.h"
 #include "shill/logging.h"

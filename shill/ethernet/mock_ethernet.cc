@@ -4,7 +4,7 @@
 
 #include "shill/ethernet/mock_ethernet.h"
 
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 namespace shill {
 

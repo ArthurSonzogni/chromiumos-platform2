@@ -9,7 +9,7 @@
 #include <string>
 
 #include <base/functional/callback.h>
-#include <net-base/socket.h>
+#include <chromeos/net-base/socket.h>
 
 namespace shill {
 

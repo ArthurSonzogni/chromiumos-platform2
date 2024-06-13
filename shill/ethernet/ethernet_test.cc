@@ -17,17 +17,17 @@
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/test/test_future.h>
-#include <base/task/single_thread_task_executor.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/task/single_thread_task_executor.h>
+#include <base/test/test_future.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
+#include <chromeos/net-base/mock_socket.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
-#include <net-base/mac_address.h>
-#include <net-base/mock_rtnl_handler.h>
-#include <net-base/mock_socket.h>
 
 #include "shill/ethernet/mock_eap_listener.h"
 #include "shill/ethernet/mock_ethernet_eap_provider.h"

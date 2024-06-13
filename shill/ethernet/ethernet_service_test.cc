@@ -5,9 +5,9 @@
 #include "shill/ethernet/ethernet_service.h"
 
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
 
 #include "shill/ethernet/mock_ethernet.h"
 #include "shill/mock_adaptors.h"

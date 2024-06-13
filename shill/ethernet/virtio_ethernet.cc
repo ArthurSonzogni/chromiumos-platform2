@@ -10,7 +10,7 @@
 #include <utility>
 
 #include <base/logging.h>
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "shill/control_interface.h"
 #include "shill/logging.h"

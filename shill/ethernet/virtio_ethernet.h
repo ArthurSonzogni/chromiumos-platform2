@@ -8,7 +8,7 @@
 #include <optional>
 #include <string>
 
-#include <net-base/mac_address.h>
+#include <chromeos/net-base/mac_address.h>
 
 #include "shill/ethernet/ethernet.h"
 

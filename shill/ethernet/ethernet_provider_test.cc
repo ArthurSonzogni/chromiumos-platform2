@@ -6,9 +6,9 @@
 
 #include <base/functional/bind.h>
 #include <base/memory/ref_counted.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
 
 #include "shill/ethernet/mock_ethernet.h"
 #include "shill/mock_control.h"
