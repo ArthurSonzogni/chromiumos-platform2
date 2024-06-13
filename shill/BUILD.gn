@@ -688,6 +688,7 @@ if (use.test) {
       "libbrillo-test",
       "libchrome-test",
       "libminijail",
+      "libnet-base-test",
     ]
   }
 
@@ -913,7 +914,6 @@ if (use.test) {
       ":mobile_operator_db-db",
       ":mobile_operator_db-test-db",
       "//metrics:metrics_test_support",
-      "//net-base:net_base_test_support",
     ]
 
     if (use.vpn) {
