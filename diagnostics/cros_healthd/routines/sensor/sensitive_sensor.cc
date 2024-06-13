@@ -155,7 +155,7 @@ void SensitiveSensorRoutine::InitSensorDevices() {
       /*on_error=*/base::BindOnce(
           &SensitiveSensorRoutine::SetResultAndStop,
           weak_ptr_factory_.GetWeakPtr(),
-          base::unexpected("Failed to initialize sensor devices")));
+          base::unexpected("Routine failed to initialize sensor devices.")));
   for (const auto& [sensor_id, _] : pending_sensors_) {
     context_->mojo_service()->GetSensorDevice(sensor_id)->SetFrequency(
         kSampleReadingFrequency,
