@@ -44,6 +44,15 @@ class PreparedAuthFactorToken {
   // The output of the prepare operation.
   const PrepareOutput& prepare_output() const { return output_; }
 
+  // Is this token ready to be used for next AuthSession operation. These
+  // operations maybe authentication, addition or removal. This should not be
+  // used to see if the the token is ready for prepare.
+  virtual bool IsTokenFullyPrepared() = 0;
+
+  // Is this output ready to be returned to the client with the information it
+  // has. Every output is expected to have different requirements.
+  virtual bool IsReadyForClient() = 0;
+
   // Terminate the factor. Returns a status reporting any errors with the
   // termination process, but note that the factor is considered terminated
   // after the call regardless of the result. Subsequent calls to terminate will

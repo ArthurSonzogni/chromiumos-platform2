@@ -64,6 +64,10 @@ class FingerprintAuthBlockService {
     // starts, so we wait until that point to attach it.
     void AttachToService(FingerprintAuthBlockService* service);
 
+    // These operations are trivial. Initializing |this| token is good enough.
+    bool IsTokenFullyPrepared() override { return true; }
+    bool IsReadyForClient() override { return true; }
+
    private:
     CryptohomeStatus TerminateAuthFactor() override;
 

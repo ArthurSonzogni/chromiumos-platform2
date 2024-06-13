@@ -47,6 +47,10 @@ class CryptohomeRecoveryAuthBlockService {
    public:
     explicit Token(CryptohomeRecoveryPrepareOutput output);
 
+    // These operations are trivial. Initializing |this| token is good enough.
+    bool IsTokenFullyPrepared() override { return true; }
+    bool IsReadyForClient() override { return true; }
+
    private:
     CryptohomeStatus TerminateAuthFactor() override;
 

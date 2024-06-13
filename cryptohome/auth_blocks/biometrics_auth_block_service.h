@@ -125,6 +125,10 @@ class BiometricsAuthBlockService {
 
     TokenType type() const { return token_type_; }
 
+    // These operations are trivial. Initializing |this| token is good enough.
+    bool IsTokenFullyPrepared() override { return true; }
+    bool IsReadyForClient() override { return true; }
+
    private:
     CryptohomeStatus TerminateAuthFactor() override;
 

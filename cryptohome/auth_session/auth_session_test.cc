@@ -270,6 +270,12 @@ class TestToken : public PreparedAuthFactorToken {
  public:
   using PreparedAuthFactorToken::PreparedAuthFactorToken;
 
+  // This operation is trivial. Initializing |this| token is good enough.
+  bool IsTokenFullyPrepared() override { return true; }
+
+  // This operation is trivial. Initializing |this| token is good enough.
+  bool IsReadyForClient() override { return true; }
+
  private:
   CryptohomeStatus TerminateAuthFactor() override {
     return OkStatus<CryptohomeError>();
