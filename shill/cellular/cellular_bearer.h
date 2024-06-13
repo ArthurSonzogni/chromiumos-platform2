@@ -11,8 +11,8 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/network_config.h>
 #include <gtest/gtest_prod.h>
-#include <net-base/network_config.h>
 
 #include "shill/cellular/apn_list.h"
 

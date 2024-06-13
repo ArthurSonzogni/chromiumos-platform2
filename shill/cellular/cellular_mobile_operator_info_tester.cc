@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <iostream>
 
-#include <base/logging.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <brillo/flag_helper.h>
 
 #include "shill/cellular/apn_list.h"

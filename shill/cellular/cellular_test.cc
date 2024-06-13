@@ -21,11 +21,11 @@
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/mock_rtnl_handler.h>
+#include <chromeos/net-base/network_config.h>
 #include <gtest/gtest.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/mock_process_manager.h>
-#include <net-base/mock_rtnl_handler.h>
-#include <net-base/network_config.h>
 
 extern "C" {
 // A struct member in pppd.h has the name 'class'.
@@ -54,7 +54,6 @@ extern "C" {
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/fake_properties_proxy.h"
-#include "shill/dbus-constants.h"
 #include "shill/device_id.h"
 #include "shill/error.h"
 #include "shill/manager.h"

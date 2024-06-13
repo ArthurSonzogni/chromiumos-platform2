@@ -7,8 +7,8 @@
 #include <string>
 
 #include <base/containers/fixed_flat_map.h>
-#include <ModemManager/ModemManager.h>
 #include <libmbim-glib/libmbim-glib.h>
+#include <ModemManager/ModemManager.h>
 
 // TODO(armansito): Once we refactor the code to handle the ModemManager D-Bus
 // bindings in a dedicated class, this code should move there.

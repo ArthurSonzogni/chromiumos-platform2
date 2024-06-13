@@ -6,9 +6,9 @@
 
 #include <base/containers/contains.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/mac_address.h>
 #include <dbus/shill/dbus-constants.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/cellular_service_provider.h"

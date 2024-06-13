@@ -12,11 +12,11 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
-#include <ModemManager/ModemManager.h>
-#include <net-base/mac_address.h>
+#include <base/strings/stringprintf.h>
+#include <chromeos/net-base/mac_address.h>
 #include <chromeos-config/libcros_config/cros_config.h>
+#include <ModemManager/ModemManager.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/control_interface.h"

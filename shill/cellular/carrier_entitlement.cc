@@ -14,8 +14,8 @@
 #include <base/functional/callback_helpers.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
-#include <brillo/http/http_utils.h>
 #include <brillo/http/http_request.h>
+#include <brillo/http/http_utils.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/event_dispatcher.h"

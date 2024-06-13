@@ -12,9 +12,9 @@
 
 #include <base/test/mock_callback.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_capability_3gpp.h"

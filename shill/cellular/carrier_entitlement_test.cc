@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 #include <vector>
+
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/mock_callback.h>
@@ -15,16 +16,16 @@
 #include <brillo/http/mock_connection.h>
 #include <brillo/http/mock_transport.h>
 #include <brillo/streams/mock_stream.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mac_address.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <curl/curl.h>
 #include <gmock/gmock-cardinalities.h>
 #include <gmock/gmock-more-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mac_address.h>
 
 #include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/cellular/mock_cellular.h"

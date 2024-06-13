@@ -16,9 +16,9 @@
 
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_capability_3gpp.h"

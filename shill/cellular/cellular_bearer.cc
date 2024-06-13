@@ -12,11 +12,11 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <ModemManager/ModemManager.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/network_config.h>
 
 #include "shill/control_interface.h"
 #include "shill/dbus/dbus_properties_proxy.h"

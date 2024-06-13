@@ -16,14 +16,14 @@
 
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/netlink_sock_diag.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
+#include <chromeos/net-base/rtnl_listener.h>
+#include <chromeos/net-base/rtnl_message.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/mac_address.h>
-#include <net-base/network_config.h>
-#include <net-base/netlink_sock_diag.h>
-#include <net-base/process_manager.h>
-#include <net-base/rtnl_listener.h>
-#include <net-base/rtnl_message.h>
 
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/carrier_entitlement.h"

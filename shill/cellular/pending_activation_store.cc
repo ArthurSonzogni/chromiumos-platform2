@@ -143,8 +143,7 @@ bool PendingActivationStore::SetActivationState(IdentifierType type,
   }
   if (!storage_->SetInt(IdentifierTypeToGroupId(type), identifier,
                         static_cast<int>(state))) {
-    SLOG(2) << "Failed to store the given identifier and state "
-            << "values.";
+    SLOG(2) << "Failed to store the given identifier and state values.";
     return false;
   }
   return storage_->Flush();

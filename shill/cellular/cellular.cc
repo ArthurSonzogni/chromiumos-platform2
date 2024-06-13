@@ -19,7 +19,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
-#include "base/containers/fixed_flat_map.h"
+#include <base/containers/fixed_flat_map.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -32,11 +32,11 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mac_address.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
-#include <net-base/rtnl_handler.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mac_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
+#include <chromeos/net-base/rtnl_handler.h>
 #include <ModemManager/ModemManager.h>
 #include <re2/re2.h>
 

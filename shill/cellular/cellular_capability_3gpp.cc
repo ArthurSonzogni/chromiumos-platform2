@@ -19,11 +19,11 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 #include <ModemManager/ModemManager.h>
 
-#include "base/time/time.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular.h"

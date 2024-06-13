@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <ModemManager/ModemManager.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/network_config.h>
 
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/dbus/fake_properties_proxy.h"

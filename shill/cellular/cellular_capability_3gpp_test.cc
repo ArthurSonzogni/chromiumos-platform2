@@ -18,8 +18,8 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
+#include <chromeos/net-base/mac_address.h>
 #include <ModemManager/ModemManager.h>
-#include <net-base/mac_address.h>
 
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_bearer.h"

@@ -16,8 +16,8 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/ip_address.h>
 
 #include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/data_types.h"
