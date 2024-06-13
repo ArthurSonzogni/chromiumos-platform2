@@ -219,6 +219,9 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
                std::move(callback));
     return;
   }
+
+  // Arm the start timer before sending the device creation request.
+  SetActionTimer(true, LocalDevice::IfaceType::kP2PGO);
   bool request_accepted = manager_->wifi_provider()->RequestP2PDeviceCreation(
       LocalDevice::IfaceType::kP2PGO,
       base::BindRepeating(&P2PManager::OnP2PDeviceEvent,
@@ -232,13 +235,11 @@ void P2PManager::CreateP2PGroup(P2PResultCallback callback,
   if (!request_accepted) {
     LOG(INFO)
         << "Failed to create a WiFi P2P interface due to concurrency conflict.";
-    PostResult(kCreateP2PGroupResultConcurrencyNotSupported, std::nullopt,
-               std::move(result_callback_));
+    CancelActionTimerAndPostResult(kCreateP2PGroupResultConcurrencyNotSupported,
+                                   std::nullopt);
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
-  // Arm the start timer if it does not fail immediately
-  SetActionTimer(true, LocalDevice::IfaceType::kP2PGO);
 }
 
 void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
@@ -300,6 +301,9 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
                std::move(callback));
     return;
   }
+
+  // Arm the start timer before sending the device creation request.
+  SetActionTimer(true, LocalDevice::IfaceType::kP2PClient);
   bool request_accepted = manager_->wifi_provider()->RequestP2PDeviceCreation(
       LocalDevice::IfaceType::kP2PClient,
       base::BindRepeating(&P2PManager::OnP2PDeviceEvent,
@@ -315,13 +319,11 @@ void P2PManager::ConnectToP2PGroup(P2PResultCallback callback,
   if (!request_accepted) {
     LOG(INFO)
         << "Failed to create a WiFi P2P interface due to concurrency conflict.";
-    PostResult(kConnectToP2PGroupResultConcurrencyNotSupported, std::nullopt,
-               std::move(result_callback_));
+    CancelActionTimerAndPostResult(
+        kConnectToP2PGroupResultConcurrencyNotSupported, std::nullopt);
     DisconnectFromSupplicantPrimaryP2PDeviceProxy();
     return;
   }
-  // Arm the start timer if it does not fail immediately
-  SetActionTimer(true, LocalDevice::IfaceType::kP2PGO);
 }
 
 void P2PManager::DestroyP2PGroup(P2PResultCallback callback, int32_t shill_id) {
