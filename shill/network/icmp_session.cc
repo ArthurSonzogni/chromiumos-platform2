@@ -20,8 +20,8 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/time/time.h>
-#include <net-base/byte_utils.h>
-#include <net-base/socket.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/socket.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"

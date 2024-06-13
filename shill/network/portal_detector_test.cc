@@ -18,11 +18,11 @@
 #include <brillo/http/http_request.h>
 #include <brillo/http/mock_connection.h>
 #include <brillo/http/mock_transport.h>
+#include <chromeos/net-base/http_url.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/http_url.h>
 
 #include "shill/http_request.h"
 #include "shill/mock_event_dispatcher.h"

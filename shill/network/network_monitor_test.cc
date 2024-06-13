@@ -11,13 +11,13 @@
 #include <base/functional/bind.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_metrics.h"

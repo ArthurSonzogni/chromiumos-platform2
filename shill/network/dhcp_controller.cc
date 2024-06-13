@@ -11,8 +11,8 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <chromeos/net-base/network_config.h>
 #include <metrics/timer.h>
-#include <net-base/network_config.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"

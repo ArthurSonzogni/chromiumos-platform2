@@ -4,7 +4,7 @@
 
 #include "shill/network/mock_capport_proxy.h"
 
-#include <net-base/http_url.h>
+#include <chromeos/net-base/http_url.h>
 
 namespace shill {
 

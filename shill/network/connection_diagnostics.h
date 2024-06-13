@@ -17,8 +17,8 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <base/types/expected.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"

@@ -16,10 +16,10 @@
 #include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/mock_socket.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/byte_utils.h>
-#include <net-base/mock_socket.h>
 
 #include "shill/event_dispatcher.h"
 

@@ -9,7 +9,7 @@
 #include <vector>
 
 #include <base/time/time.h>
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/store/key_value_store.h"
 

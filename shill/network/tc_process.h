@@ -12,7 +12,7 @@
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 namespace shill {
 

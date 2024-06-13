@@ -13,13 +13,13 @@
 #include <optional>
 
 #include <base/logging.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/proc_fs_stub.h>
+#include <chromeos/net-base/rtnl_message.h>
 #include <metrics/timer.h>
-#include <net-base/byte_utils.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/proc_fs_stub.h>
-#include <net-base/rtnl_message.h>
 
 namespace shill {
 

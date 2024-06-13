@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
 
 namespace shill {
 

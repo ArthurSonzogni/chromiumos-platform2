@@ -15,9 +15,9 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/network_config.h>
-#include <net-base/ip_address.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/network/capport_proxy.h"

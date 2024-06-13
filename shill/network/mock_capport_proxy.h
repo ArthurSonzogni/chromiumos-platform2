@@ -10,8 +10,8 @@
 #include <memory>
 
 #include <base/containers/span.h>
+#include <chromeos/net-base/ip_address.h>
 #include <gmock/gmock.h>
-#include <net-base/ip_address.h>
 
 #include "shill/metrics.h"
 

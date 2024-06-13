@@ -12,11 +12,11 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/process_manager.h>
+#include <chromeos/net-base/socket.h>
 #include <gmock/gmock.h>
-#include <net-base/mock_process_manager.h>
-#include <net-base/byte_utils.h>
-#include <net-base/process_manager.h>
-#include <net-base/socket.h>
 
 using testing::_;
 using testing::AllOf;

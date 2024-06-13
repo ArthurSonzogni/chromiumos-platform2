@@ -8,8 +8,8 @@
 #include <memory>
 #include <string_view>
 
+#include <chromeos/net-base/network_config.h>
 #include <gmock/gmock.h>
-#include <net-base/network_config.h>
 
 #include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/dhcp_controller.h"

@@ -11,13 +11,13 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/proc_fs_stub.h>
+#include <chromeos/net-base/rtnl_handler.h>
+#include <chromeos/net-base/rtnl_listener.h>
+#include <chromeos/net-base/rtnl_message.h>
 #include <metrics/timer.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/network_config.h>
-#include <net-base/proc_fs_stub.h>
-#include <net-base/rtnl_handler.h>
-#include <net-base/rtnl_listener.h>
-#include <net-base/rtnl_message.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mockable.h"

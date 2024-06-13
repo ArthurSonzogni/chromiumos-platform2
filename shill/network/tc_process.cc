@@ -12,7 +12,7 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "shill/logging.h"
 

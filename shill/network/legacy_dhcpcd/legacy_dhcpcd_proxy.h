@@ -15,7 +15,7 @@
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
-#include <net-base/process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "dhcpcd/dbus-proxies.h"
 #include "shill/network/dhcp_client_proxy.h"

@@ -19,9 +19,9 @@
 #include <base/time/time.h>
 #include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 #include <metrics/timer.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"

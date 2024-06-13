@@ -16,15 +16,15 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/mock_proc_fs_stub.h>
+#include <chromeos/net-base/network_config.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/mock_proc_fs_stub.h>
-#include <net-base/network_config.h>
 
 #include "shill/http_request.h"
 #include "shill/ipconfig.h"

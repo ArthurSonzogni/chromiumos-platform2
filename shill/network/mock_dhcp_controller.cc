@@ -7,7 +7,7 @@
 #include <string_view>
 #include <utility>
 
-#include <net-base/network_config.h>
+#include <chromeos/net-base/network_config.h>
 
 #include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/dhcp_controller.h"

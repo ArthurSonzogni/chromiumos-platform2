@@ -11,13 +11,13 @@
 
 #include <base/containers/span.h>
 #include <base/functional/bind.h>
+#include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/values.h>
-#include <base/json/json_reader.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
 
 namespace shill {
 namespace {

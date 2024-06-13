@@ -12,9 +12,9 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 #include <metrics/timer.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"

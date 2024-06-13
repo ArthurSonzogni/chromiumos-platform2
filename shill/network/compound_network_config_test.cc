@@ -8,10 +8,10 @@
 #include <utility>
 #include <vector>
 
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <gtest/gtest.h>
-#include <net-base/http_url.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/network_config.h>
 
 namespace shill {
 

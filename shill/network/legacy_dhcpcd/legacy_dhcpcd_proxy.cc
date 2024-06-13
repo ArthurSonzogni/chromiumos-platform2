@@ -10,14 +10,14 @@
 #include <utility>
 #include <vector>
 
-#include <brillo/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/process/process_iterator.h>
-#include <net-base/process_manager.h>
+#include <brillo/files/file_util.h>
+#include <chromeos/net-base/process_manager.h>
 
 #include "dhcpcd/dbus-proxies.h"
 #include "shill/network/dhcp_client_proxy.h"

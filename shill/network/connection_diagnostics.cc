@@ -13,7 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <net-base/http_url.h>
+#include <chromeos/net-base/http_url.h>
 
 #include "shill/dns_client.h"
 #include "shill/error.h"

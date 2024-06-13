@@ -15,9 +15,9 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
 
 #include "shill/logging.h"
 

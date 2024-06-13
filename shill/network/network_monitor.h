@@ -12,12 +12,12 @@
 
 #include <base/containers/span.h>
 #include <base/functional/callback.h>
-#include <base/time/time.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time/time.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/http_url.h>
-#include <net-base/network_config.h>
-#include <net-base/ip_address.h>
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"

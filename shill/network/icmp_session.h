@@ -18,8 +18,8 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
-#include <net-base/ip_address.h>
-#include <net-base/socket.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/socket.h>
 
 #include "shill/event_dispatcher.h"
 

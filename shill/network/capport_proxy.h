@@ -14,11 +14,11 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
-#include <chromeos/patchpanel/dbus/client.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/patchpanel/dbus/client.h>
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"

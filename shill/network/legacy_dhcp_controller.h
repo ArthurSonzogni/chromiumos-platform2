@@ -14,10 +14,10 @@
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/process_manager.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>
-#include <net-base/network_config.h>
-#include <net-base/process_manager.h>
 
 #include "shill/metrics.h"
 #include "shill/mockable.h"

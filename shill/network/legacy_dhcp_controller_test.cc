@@ -4,10 +4,11 @@
 
 #include "shill/network/legacy_dhcp_controller.h"
 
+#include <sys/time.h>
+
 #include <map>
 #include <memory>
 #include <string>
-#include <sys/time.h>
 #include <utility>
 
 #include <base/files/file_util.h>
@@ -16,8 +17,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/mock_process_manager.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/mock_process_manager.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/mock_control.h"

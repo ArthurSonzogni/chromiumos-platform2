@@ -18,14 +18,14 @@
 #include <base/functional/callback_helpers.h>
 #include <base/observer_list.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/network_priority.h>
+#include <chromeos/net-base/proc_fs_stub.h>
+#include <chromeos/net-base/rtnl_handler.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/network_config.h>
-#include <net-base/network_priority.h>
-#include <net-base/proc_fs_stub.h>
-#include <net-base/rtnl_handler.h>
 
 #include "shill/ipconfig.h"
 #include "shill/metrics.h"

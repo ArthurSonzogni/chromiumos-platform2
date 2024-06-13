@@ -12,10 +12,10 @@
 
 #include <base/functional/callback.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/network_priority.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gmock/gmock.h>
-#include <net-base/http_url.h>
-#include <net-base/network_priority.h>
 
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"

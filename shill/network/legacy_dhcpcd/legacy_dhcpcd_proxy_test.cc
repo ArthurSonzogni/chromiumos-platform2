@@ -10,11 +10,11 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
+#include <chromeos/net-base/mock_process_manager.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <net-base/mock_process_manager.h>
+#include <gtest/gtest.h>
 
 #include "shill/network/dhcp_client_proxy.h"
 #include "shill/network/legacy_dhcpcd/legacy_dhcpcd_listener.h"

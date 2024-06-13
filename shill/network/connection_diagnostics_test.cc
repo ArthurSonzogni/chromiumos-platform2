@@ -10,9 +10,9 @@
 #include <vector>
 
 #include <base/time/time.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
 #include <gtest/gtest.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
 
 #include "shill/manager.h"
 #include "shill/mock_dns_client.h"

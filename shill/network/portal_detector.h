@@ -19,10 +19,10 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
 
 #include "shill/http_request.h"
 #include "shill/metrics.h"

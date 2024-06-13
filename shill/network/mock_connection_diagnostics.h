@@ -9,9 +9,9 @@
 #include <string_view>
 #include <vector>
 
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/net-base/ip_address.h>
 #include <gmock/gmock.h>
-#include <net-base/http_url.h>
-#include <net-base/ip_address.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"

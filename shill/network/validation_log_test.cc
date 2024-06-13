@@ -8,9 +8,9 @@
 #include <vector>
 
 #include <base/test/task_environment.h>
+#include <chromeos/net-base/http_url.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/http_url.h>
 
 #include "shill/metrics.h"
 #include "shill/mock_metrics.h"

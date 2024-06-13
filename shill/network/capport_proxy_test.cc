@@ -14,14 +14,14 @@
 #include <base/functional/callback_helpers.h>
 #include <base/location.h>
 #include <base/time/time.h>
-#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport_fake.h>
 #include <brillo/http/mock_transport.h>
-#include <gtest/gtest.h>
+#include <chromeos/net-base/http_url.h>
+#include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
-#include <net-base/http_url.h>
+#include <gtest/gtest.h>
 
 #include "shill/metrics.h"
 #include "shill/mock_metrics.h"

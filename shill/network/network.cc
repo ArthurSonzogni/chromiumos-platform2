@@ -22,13 +22,13 @@
 #include <base/strings/stringprintf.h>
 #include <brillo/http/http_request.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/network_config.h>
+#include <chromeos/net-base/network_priority.h>
+#include <chromeos/net-base/proc_fs_stub.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/network_config.h>
-#include <net-base/network_priority.h>
-#include <net-base/proc_fs_stub.h>
 
 #include "base/memory/ptr_util.h"
 #include "shill/event_dispatcher.h"
