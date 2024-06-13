@@ -66,10 +66,10 @@ def get_parser() -> argparse.ArgumentParser:
         "-e",
         "--ether-ifname",
         type=str,
-        default="eth0",
         help=(
-            "Name of the ethernet device to hide. The default value is "
-            "'eth0'."
+            "Manually specify the name of the ethernet device to hide. If not "
+            "specified, ehide will automatically detect the connected Ethernet "
+            "interface."
         ),
     )
     parser.add_argument(

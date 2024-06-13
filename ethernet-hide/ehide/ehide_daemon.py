@@ -23,6 +23,7 @@ from typing import List, NoReturn, Optional
 import psutil
 
 from . import daemon
+from . import dbus_utils
 
 
 class Approach(enum.Enum):
@@ -535,7 +536,6 @@ class EhideDaemon(daemon.Daemon):
 
     Attributes:
         approach: The approach to hiding Ethernet. Can be FORWARDING or SHELL.
-        ether_ifname: The name of the Ethernet interface.
         static_ipv4_cidr: The static IPv4 CIDR used to set the Ethernet
             interface. If it is None then the IPv4 address will be set
             dynamically using DHCP.
@@ -543,6 +543,8 @@ class EhideDaemon(daemon.Daemon):
             file, pid file, and the configuration file.
         netns_name: The network namespace name used to hide the Ethernet
             interface.
+        ether_ifname: Only exists in the daemon process (not the process that
+            stops the daemon). The name of the Ethernet interface to hide.
         ether_mac: Only exists in the daemon process (not the process that stops
             the daemon). The MAC address of the Ethernet interface.
         has_ipv4_initially: Only exists in the daemon process (not the process
@@ -563,7 +565,7 @@ class EhideDaemon(daemon.Daemon):
     def __init__(
         self,
         approach: Approach,
-        ether_ifname: str,
+        ether_ifname: Optional[str],
         static_ipv4_cidr: Optional[str],
         dhclient_dir: str,
         netns_name: str,
@@ -582,8 +584,10 @@ class EhideDaemon(daemon.Daemon):
         Args:
             approach: The approach to hiding Ethernet interface. Can be
                 FORWARDING or SHELL.
-            ether_ifname: The ethernet interface name.
-            static_ipv4_cidr: Optional static IPv4 CIDR used to set the Ethernet
+            ether_ifname: Manually specified ethernet interface name. If it is
+                None then the Ethernet interface name will be determined
+                automatically using the shill API.
+            static_ipv4_cidr: Static IPv4 CIDR used to set the Ethernet
                 interface. If it is None then the IPv4 address will be
                 dynamically configured using DHCP.
             dhclient_dir: The directory path of dhclient files.
@@ -600,12 +604,19 @@ class EhideDaemon(daemon.Daemon):
         )
 
         self.approach = approach
-        self.ether_ifname = ether_ifname
         self.static_ipv4_cidr: Optional[str] = static_ipv4_cidr
         self.dhclient_dir = dhclient_dir
         self.netns_name = netns_name
 
         if self.get_state() == daemon.State.OFF:
+            if ether_ifname is None:
+                ether_ifname = dbus_utils.get_connected_ethernet_interface()
+                if ether_ifname is None:
+                    logging.error("No Ethernet interface found.")
+                    sys.exit(1)
+            self.ether_ifname: str = ether_ifname
+            logging.info("Ethernet interface to hide: %s.", self.ether_ifname)
+
             self.ether_mac = get_mac_address_in_netns(self.ether_ifname)
             if self.ether_mac:
                 logging.info(
