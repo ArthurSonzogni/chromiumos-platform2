@@ -102,7 +102,7 @@ MulticastForwarder::IntSocket MulticastForwarder::CreateIntSocket(
     bool inbound) {
   socket->SetReadableCallback(base::BindRepeating(
       &MulticastForwarder::OnFileCanReadWithoutBlocking, base::Unretained(this),
-      socket->Get(), sa_family, int_ifname));
+      socket->Get(), sa_family, std::string(int_ifname)));
 
   return {.sock_with_err = SocketWithError{.socket = std::move(socket)},
           .inbound = inbound,
@@ -329,7 +329,7 @@ void MulticastForwarder::StopForwarding(std::string_view int_ifname,
 }
 
 void MulticastForwarder::OnFileCanReadWithoutBlocking(
-    int fd, sa_family_t sa_family, std::optional<std::string_view> ifname) {
+    int fd, sa_family_t sa_family, std::optional<std::string> ifname) {
   CHECK(sa_family == AF_INET || sa_family == AF_INET6);
 
   char data[kBufSize];

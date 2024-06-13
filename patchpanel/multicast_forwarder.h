@@ -80,7 +80,7 @@ class MulticastForwarder {
   // |int_ifname| is expected to be empty when called on LAN socket.
   void OnFileCanReadWithoutBlocking(int fd,
                                     sa_family_t sa_family,
-                                    std::optional<std::string_view> int_ifname);
+                                    std::optional<std::string> int_ifname);
 
  protected:
   // SocketWithError is used to keep track of a socket and last errno.
