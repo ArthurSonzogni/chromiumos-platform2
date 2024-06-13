@@ -12,7 +12,7 @@ use crate::common::read_from_file;
 
 const SCHED_BASE_SLICE_PATH: &str = "/sys/kernel/debug/sched/base_slice_ns";
 
-const BASE_SLICE_MIN: Duration = Duration::from_millis(6);
+const BASE_SLICE_MIN: Duration = Duration::from_millis(3);
 
 pub fn init_cpu_config() -> Result<()> {
     // EEVDF scheduler was added upstream in 6.6 to replace CFS. The scheudler
