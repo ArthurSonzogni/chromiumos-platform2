@@ -17,8 +17,8 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/socket.h>
 #include <chromeos/patchpanel/dns/dns_response.h>
-#include <net-base/socket.h>
 
 #include "dns-proxy/ares_client.h"
 #include "dns-proxy/doh_curl_client.h"

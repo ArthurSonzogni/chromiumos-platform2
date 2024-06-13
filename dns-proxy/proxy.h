@@ -14,18 +14,18 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
-#include <base/files/scoped_file.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/rtnl_listener.h>
+#include <chromeos/net-base/rtnl_message.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/ip_address.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/ipv6_address.h>
-#include <net-base/rtnl_listener.h>
-#include <net-base/rtnl_message.h>
 #include <shill/dbus/client/client.h>
 
 #include "dns-proxy/ipc.pb.h"

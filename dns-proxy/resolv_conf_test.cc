@@ -10,8 +10,8 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <chromeos/net-base/ip_address.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
 
 using testing::Test;
 

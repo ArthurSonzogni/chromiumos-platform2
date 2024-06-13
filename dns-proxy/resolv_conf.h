@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/no_destructor.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 
 namespace dns_proxy {
 

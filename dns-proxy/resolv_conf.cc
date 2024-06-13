@@ -12,7 +12,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 
 #include "dns-proxy/dns_util.h"
 

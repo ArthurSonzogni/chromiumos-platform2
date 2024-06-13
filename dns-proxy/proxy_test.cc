@@ -14,18 +14,18 @@
 #include <vector>
 
 #include <base/functional/callback.h>
+#include <chromeos/net-base/byte_utils.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/rtnl_message.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <chromeos/patchpanel/mock_message_dispatcher.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
-#include <net-base/byte_utils.h>
-#include <net-base/rtnl_message.h>
-#include <shill/dbus/client/fake_client.h>
 #include <shill/dbus-constants.h>
 #include <shill/dbus-proxy-mocks.h>
+#include <shill/dbus/client/fake_client.h>
 
 #include "dns-proxy/ipc.pb.h"
 

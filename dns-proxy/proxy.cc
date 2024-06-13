@@ -20,8 +20,8 @@
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/rtnl_handler.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
-#include <net-base/rtnl_handler.h>
 #include <shill/dbus-constants.h>
 
 #include "dns-proxy/ipc.pb.h"

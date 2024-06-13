@@ -12,9 +12,9 @@
 #include <base/functional/callback.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/mock_socket.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/mock_socket.h>
 
 #include "dns-proxy/ares_client.h"
 #include "dns-proxy/doh_curl_client.h"

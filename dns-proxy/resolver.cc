@@ -20,12 +20,12 @@
 #include <base/rand_util.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/socket.h>
 #include <chromeos/patchpanel/dns/dns_protocol.h>
 #include <chromeos/patchpanel/dns/dns_query.h>
 #include <chromeos/patchpanel/dns/io_buffer.h>
 #include <chromeos/patchpanel/net_util.h>
-#include <net-base/ip_address.h>
-#include <net-base/socket.h>
 
 // Using directive is necessary to have the overloaded function for socket data
 // structure available.

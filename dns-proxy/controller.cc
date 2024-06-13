@@ -21,8 +21,8 @@
 #include <base/process/launch.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
-#include <chromeos/scoped_minijail.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
+#include <chromeos/scoped_minijail.h>
 #include <shill/dbus-constants.h>
 
 #include "dns-proxy/ipc.pb.h"
