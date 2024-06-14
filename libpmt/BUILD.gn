@@ -23,6 +23,7 @@ pkg_config("target_defaults_pkg_deps") {
     "libbrillo",
     "libxml-2.0",
     "protobuf",
+    "re2",
   ]
 }
 
@@ -40,7 +41,10 @@ proto_library("pmt_data_proto") {
 shared_library("libpmt") {
   sources = [
     "pmt_collector.cc",
+    "pmt_decoder.cc",
     "pmt_impl.cc",
+    "pmt_metadata.cc",
+    "xml_helper.cc",
   ]
   configs += [ ":target_defaults_pkg_deps" ]
   install_path = "lib"
@@ -52,6 +56,7 @@ install_config("install_libpmt_headers") {
     "bits",
     "pmt.h",
     "pmt_collector.h",
+    "pmt_decoder.h",
   ]
   install_path = "/usr/include/libpmt"
   recursive = true

@@ -11,5 +11,6 @@
 // logging::InitLogging() in the application utilizing this library.
 
 #include <libpmt/pmt_collector.h>
+#include <libpmt/pmt_decoder.h>
 
 #endif  // LIBPMT_PMT_H_
