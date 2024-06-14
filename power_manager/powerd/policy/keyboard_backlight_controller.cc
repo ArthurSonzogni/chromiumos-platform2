@@ -634,8 +634,20 @@ void KeyboardBacklightController::HandleSetBrightnessRequest(
     double percent,
     Transition transition,
     SetBacklightBrightnessRequest_Cause cause) {
-  SetKeyboardAmbientLightSensorEnabled(
-      false, AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST);
+  AmbientLightSensorChange_Cause als_change_cause;
+  switch (cause) {
+    case SetBacklightBrightnessRequest_Cause_USER_REQUEST:
+      als_change_cause = AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST;
+      break;
+    case SetBacklightBrightnessRequest_Cause_USER_REQUEST_FROM_SETTINGS_APP:
+      als_change_cause =
+          AmbientLightSensorChange_Cause_BRIGHTNESS_USER_REQUEST_SETTINGS_APP;
+      break;
+    default:
+      als_change_cause = AmbientLightSensorChange_Cause_BRIGHTNESS_OTHER;
+      break;
+  }
+  SetKeyboardAmbientLightSensorEnabled(false, als_change_cause);
   // Ensure |percent| is a valid value, and in [0, 100.0].
   percent = util::ClampPercent(percent);
 
