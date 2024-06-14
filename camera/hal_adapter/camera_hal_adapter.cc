@@ -413,7 +413,11 @@ mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(
             << " replace: " << config->replace_enabled
             << " blur_level: " << config->blur_level
             << " effects_enabled: " << effects_enabled_
-            << " dlc_available: " << dlc_available;
+            << " dlc_available: " << dlc_available
+            << " relighting_inference_backend: "
+            << config->relighting_inference_backend
+            << " segmentation_inference_backend: "
+            << config->segmentation_inference_backend;
 
   if (!effects_enabled_) {
     return mojom::SetEffectResult::kFeatureDisabled;

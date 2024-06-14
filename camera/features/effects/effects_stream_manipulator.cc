@@ -100,6 +100,8 @@ const base::FilePath kOverrideEffectsConfigFile(
     "/run/camera/effects/effects_config_override.json");
 const base::FilePath kEnableRetouchWithRelight(
     "/run/camera/enable_retouch_with_relight");
+constexpr char kTfliteStableDelegateSettingsFile[] =
+    "/etc/tflite/settings.json";
 
 bool GetStringFromKey(const base::Value::Dict& obj,
                       const std::string& key,
@@ -179,6 +181,19 @@ class RenderedImageObserver : public ProcessedFrameObserver {
       frame_processed_callback_;
 };
 
+Delegate GetDelegateFromInferenceBackend(
+    cros::mojom::InferenceBackend backend) {
+  switch (backend) {
+    case cros::mojom::InferenceBackend::kGpu:
+      return Delegate::kGpu;
+    case cros::mojom::InferenceBackend::kNpu:
+      return Delegate::kStable;
+    default:
+      LOGF(WARNING) << "Got unexpected inference backend " << backend;
+      return Delegate::kGpu;
+  }
+}
+
 EffectsConfig ConvertMojoConfig(
     cros::mojom::EffectsConfigPtr effects_config,
     SegmentationModelType default_segmentation_model_type) {
@@ -190,11 +205,32 @@ EffectsConfig ConvertMojoConfig(
       .blur_enabled = effects_config->blur_enabled,
       .replace_enabled = effects_config->replace_enabled,
       .blur_level = static_cast<cros::BlurLevel>(effects_config->blur_level),
+      .segmentation_delegate = GetDelegateFromInferenceBackend(
+          effects_config->segmentation_inference_backend),
+      .relighting_delegate = GetDelegateFromInferenceBackend(
+          effects_config->relighting_inference_backend),
       .graph_max_frames_in_flight = effects_config->graph_max_frames_in_flight,
       .wait_on_render = true,
       .segmentation_model_type = static_cast<cros::SegmentationModelType>(
           effects_config->segmentation_model),
   };
+  if (config.segmentation_delegate == Delegate::kStable ||
+      config.relighting_delegate == Delegate::kStable) {
+    if (base::PathIsReadable(
+            base::FilePath(kTfliteStableDelegateSettingsFile))) {
+      static_assert(sizeof(kTfliteStableDelegateSettingsFile) <=
+                    sizeof(config.stable_delegate_settings_file));
+      base::strlcpy(config.stable_delegate_settings_file,
+                    kTfliteStableDelegateSettingsFile,
+                    sizeof(config.stable_delegate_settings_file));
+    } else {
+      LOGF(WARNING) << kTfliteStableDelegateSettingsFile
+                    << " is not readable, use GPU delegate instead";
+      config.segmentation_delegate = Delegate::kGpu;
+      config.relighting_delegate = Delegate::kGpu;
+    }
+  }
+
   // Resolve segmentation model from Auto or HD (default) to the system default.
   // TODO(b/297450516): Fix mojo segmentation to be 'auto' by default.
   // This is to avoid resetting the pipeline when the model changes from Auto to
@@ -1033,22 +1069,20 @@ void EffectsStreamManipulatorImpl::OnOptionsUpdated(
   if (new_config.segmentation_delegate == Delegate::kStable ||
       new_config.relighting_delegate == Delegate::kStable) {
     std::string stable_delegate_settings_file;
-    if (GetStringFromKey(json_values, kStableDelegateSettingsFileKey,
-                         &stable_delegate_settings_file)) {
-      if (stable_delegate_settings_file.size() >=
-          sizeof(new_config.stable_delegate_settings_file)) {
-        LOGF(WARNING) << "Stable Delegate Settings File Path too long.";
-        return;
-      }
-      stable_delegate_settings_file.copy(
-          new_config.stable_delegate_settings_file,
-          stable_delegate_settings_file.size());
-      new_config
-          .stable_delegate_settings_file[stable_delegate_settings_file.size()] =
-          '\0';
-      LOGF(INFO) << "Stable Delegate Settings File: "
-                 << stable_delegate_settings_file;
+    if (!GetStringFromKey(json_values, kStableDelegateSettingsFileKey,
+                          &stable_delegate_settings_file)) {
+      stable_delegate_settings_file = kTfliteStableDelegateSettingsFile;
     }
+    if (stable_delegate_settings_file.size() >=
+        sizeof(new_config.stable_delegate_settings_file)) {
+      LOGF(WARNING) << "Stable Delegate Settings File Path too long.";
+      return;
+    }
+    base::strlcpy(new_config.stable_delegate_settings_file,
+                  stable_delegate_settings_file.c_str(),
+                  sizeof(new_config.stable_delegate_settings_file));
+    LOGF(INFO) << "Stable Delegate Settings File: "
+               << stable_delegate_settings_file;
   }
 
   std::string segmentation_model_type;
