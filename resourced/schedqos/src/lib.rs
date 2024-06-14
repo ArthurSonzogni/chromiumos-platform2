@@ -503,7 +503,13 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
 
         self.sched_attr_context
             .set_thread_sched_attr(thread_id, thread_config, process_config.allow_rt)
-            .map_err(Error::SchedAttr)?;
+            .map_err(|e| {
+                if e.raw_os_error() == Some(libc::ESRCH) {
+                    Error::ThreadNotFound
+                } else {
+                    Error::SchedAttr(e)
+                }
+            })?;
 
         let cpuset_cgroup = if process_config.allow_all_cores {
             thread_config.cpuset_cgroup
@@ -513,7 +519,13 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
         self.config
             .cgroup_context
             .set_cpuset_cgroup(thread_id, cpuset_cgroup)
-            .map_err(|e| Error::Cgroup(cpuset_cgroup.name(), e))?;
+            .map_err(|e| {
+                if e.raw_os_error() == Some(libc::ESRCH) {
+                    Error::ThreadNotFound
+                } else {
+                    Error::Cgroup(cpuset_cgroup.name(), e)
+                }
+            })?;
 
         // Apply latency sensitive. Latency_sensitive will prefer idle cores.
         // This is a patch not yet in upstream(http://crrev/c/2981472)
@@ -527,7 +539,13 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
             } else {
                 b"0"
             };
-            std::fs::write(&latency_sensitive_file, value).map_err(Error::LatencySensitive)?;
+            std::fs::write(&latency_sensitive_file, value).map_err(|e| {
+                if e.kind() == io::ErrorKind::NotFound {
+                    Error::ThreadNotFound
+                } else {
+                    Error::LatencySensitive(e)
+                }
+            })?;
         }
 
         Ok(())
