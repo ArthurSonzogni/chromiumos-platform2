@@ -12,7 +12,9 @@ use_init_fd(cros_cryptohomed)
 allow domain cros_cryptohomed:key                                     search;
 
 allow cros_cryptohomed cros_coreutils_exec:file                       x_file_perms;
-allow cros_cryptohomed cros_cryptohome_namespace_mounter:process      signal;
+allow cros_cryptohomed cros_cryptohome_namespace_mounter:process {
+  signal
+  sigkill };
 
 # Access rules for user cryptohome directories/files .shadow/, chronos/, root/, user/
 # TODO(betuls): Reevaluate after OOP flags are removed from the cryptohome code.
