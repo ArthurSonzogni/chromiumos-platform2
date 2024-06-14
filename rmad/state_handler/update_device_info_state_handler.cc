@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -16,6 +18,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <google/protobuf/repeated_field.h>
+#include <google/protobuf/text_format.h>
 #include <libsegmentation/feature_management.h>
 
 #include "rmad/constants.h"
@@ -23,6 +26,7 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/segmentation/fake_segmentation_utils.h"
 #include "rmad/segmentation/segmentation_utils_impl.h"
+#include "rmad/sku_filter.pb.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
 #include "rmad/utils/json_store.h"
@@ -31,6 +35,8 @@
 #include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
+
+constexpr char kSkuFilterProtoFilePath[] = "sku_filter.textproto";
 
 template <typename T>
 bool IsRepeatedFieldSame(const T& list1, const T& list2) {
@@ -85,7 +91,8 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
-      working_dir_path_(kDefaultWorkingDirPath) {
+      working_dir_path_(kDefaultWorkingDirPath),
+      config_dir_path_(kDefaultConfigDirPath) {
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
@@ -102,6 +109,7 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
+    const base::FilePath& config_dir_path,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils,
@@ -110,6 +118,7 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     std::unique_ptr<SegmentationUtils> segmentation_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
+      config_dir_path_(config_dir_path),
       cbi_utils_(std::move(cbi_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
       write_protect_utils_(std::move(write_protect_utils)),
@@ -320,6 +329,9 @@ void UpdateDeviceInfoStateHandler::GenerateSkuListsFromDesignConfigList(
   sku_description_list->clear();
   // Cache all the descriptions of all SKUs.
   std::vector<std::vector<std::string>> sku_property_descriptions;
+  // SKU description overrides.
+  auto description_override = GetSkuDescriptionOverrides();
+
   // |design_config_list| should be sorted by SKU ID.
   for (const DesignConfig& design_config : design_config_list) {
     // Skip empty and duplicate SKU IDs. Duplicate SKU IDs should only happen on
@@ -332,30 +344,42 @@ void UpdateDeviceInfoStateHandler::GenerateSkuListsFromDesignConfigList(
          sku_id_list->back() == design_config.sku_id.value())) {
       continue;
     }
-    sku_id_list->push_back(design_config.sku_id.value());
-    sku_property_descriptions.push_back(design_config.hardware_properties);
+    uint32_t sku_id = design_config.sku_id.value();
+    if (!description_override.has_value()) {
+      // No SKU filter. Show all SKUs and determine the hardware property
+      // descriptions later.
+      sku_id_list->push_back(sku_id);
+      sku_property_descriptions.push_back(design_config.hardware_properties);
+    } else if (auto it = description_override.value().find(sku_id);
+               it != description_override.value().end()) {
+      // Has SKU filter. Show the SKUs in the allowlist and override their
+      // descriptions.
+      sku_id_list->push_back(sku_id);
+      sku_description_list->push_back(it->second);
+    }
   }
 
-  // Don't need to set SKU descriptions if there is only 0 or 1 SKU.
-  if (sku_id_list->size() <= 1) {
-    return;
+  // Determine SKU descriptions if there is no description overrides, and there
+  // are more than 1 SKUs.
+  if (!description_override.has_value() && sku_id_list->size() > 1) {
+    // Determine which columns to show in the description.
+    const int num_properties = sku_property_descriptions[0].size();
+    std::vector<bool> select_property(num_properties);
+    for (int i = 0; i < num_properties; ++i) {
+      // Only show the property if there are different values across SKUs.
+      select_property[i] =
+          HasDifferentElementsInColumn(sku_property_descriptions, i);
+    }
+    // Generate SKU descriptions.
+    for (const std::vector<std::string>& descriptions :
+         sku_property_descriptions) {
+      sku_description_list->push_back(
+          base::JoinString(FilterArray(descriptions, select_property), ", "));
+    }
   }
 
-  // Determine which columns to show in the description.
-  const int num_properties = sku_property_descriptions[0].size();
-  std::vector<bool> select_property(num_properties);
-  for (int i = 0; i < num_properties; ++i) {
-    // Only show the property if there are different values across SKUs.
-    select_property[i] =
-        HasDifferentElementsInColumn(sku_property_descriptions, i);
-  }
-  // Generate SKU descriptions.
-  for (const std::vector<std::string>& descriptions :
-       sku_property_descriptions) {
-    sku_description_list->push_back(
-        base::JoinString(FilterArray(descriptions, select_property), ", "));
-  }
-  CHECK_EQ(sku_id_list->size(), sku_description_list->size());
+  CHECK(sku_id_list->size() <= 1 ||
+        sku_id_list->size() == sku_description_list->size());
 }
 
 void UpdateDeviceInfoStateHandler::
@@ -590,6 +614,58 @@ base::FilePath UpdateDeviceInfoStateHandler::GetTestDirPath() const {
 base::FilePath UpdateDeviceInfoStateHandler::GetFakeFeaturesInputFilePath()
     const {
   return GetTestDirPath().AppendASCII(kFakeFeaturesInputFilePath);
+}
+
+std::optional<SkuFilter> UpdateDeviceInfoStateHandler::GetSkuFilter() const {
+  std::string model_name;
+  if (!cros_config_utils_->GetModelName(&model_name)) {
+    LOG(ERROR) << "Failed to get model name";
+    return std::nullopt;
+  }
+
+  const base::FilePath textproto_file_path =
+      config_dir_path_.Append(model_name).Append(kSkuFilterProtoFilePath);
+  if (!base::PathExists(textproto_file_path)) {
+    // This is expected for projects that don't use SKU filter.
+    return std::nullopt;
+  }
+
+  std::string textproto;
+  if (!base::ReadFileToString(textproto_file_path, &textproto)) {
+    LOG(ERROR) << "Failed to read " << textproto_file_path.value();
+    return std::nullopt;
+  }
+
+  SkuFilter sku_filter;
+  if (!google::protobuf::TextFormat::ParseFromString(textproto, &sku_filter)) {
+    LOG(ERROR) << "Failed to parse SKU filter list";
+    return std::nullopt;
+  }
+
+  return sku_filter;
+}
+
+std::optional<std::unordered_map<uint32_t, std::string>>
+UpdateDeviceInfoStateHandler::GetSkuDescriptionOverrides() const {
+  std::optional<SkuFilter> sku_filter = GetSkuFilter();
+  if (!sku_filter.has_value()) {
+    return std::nullopt;
+  }
+
+  std::unordered_map<uint32_t, std::string> sku_description_map;
+  for (const SkuWithDescription& entry : sku_filter.value().sku_list()) {
+    uint32_t sku = entry.sku();
+    if (sku_description_map.find(sku) == sku_description_map.end()) {
+      if (entry.has_description()) {
+        sku_description_map[sku] = entry.description();
+      } else {
+        sku_description_map[sku] = "";
+      }
+    } else {
+      LOG(WARNING) << "Duplicate SKU " << sku << " found in the filter";
+    }
+  }
+  return sku_description_map;
 }
 
 }  // namespace rmad

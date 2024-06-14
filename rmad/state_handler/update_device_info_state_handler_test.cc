@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <base/memory/scoped_refptr.h>
+#include <base/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "rmad/constants.h"
@@ -41,6 +42,7 @@ namespace {
 
 constexpr char kSerialNumber[] = "TestSerialNumber";
 constexpr char kRegion[] = "TestRegion";
+constexpr char kModel[] = "Model";
 constexpr uint32_t kSkuId1 = 1234567890;
 constexpr uint32_t kSkuId2 = 1234567891;
 constexpr char kCustomLabelTag[] = "TestCustomLabelTag";
@@ -108,6 +110,7 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
     bool flush_out_vpd_success = true;
     bool has_cbi = true;
     bool use_legacy_custom_label = false;
+    std::optional<std::string> sku_filter_textproto = std::nullopt;
   };
 
   scoped_refptr<UpdateDeviceInfoStateHandler> CreateStateHandler(
@@ -206,6 +209,8 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
                       .has_cbi = args.has_cbi,
                       .use_legacy_custom_label = args.use_legacy_custom_label}),
                   Return(true)));
+    ON_CALL(*cros_config_utils, GetModelName(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(kModel), Return(true)));
 
     if (args.has_sku) {
       ON_CALL(*cros_config_utils, GetSkuId(_))
@@ -232,6 +237,15 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
           .WillByDefault(Return(false));
     }
 
+    if (args.sku_filter_textproto.has_value()) {
+      base::FilePath sku_filter_textproto_dir = GetTempDirPath().Append(kModel);
+      base::FilePath sku_filter_textproto_path =
+          sku_filter_textproto_dir.Append("sku_filter.textproto");
+      EXPECT_TRUE(base::CreateDirectory(sku_filter_textproto_dir));
+      EXPECT_TRUE(base::WriteFile(sku_filter_textproto_path,
+                                  args.sku_filter_textproto.value()));
+    }
+
     // Fake |SegmentationUtils|.
     WriteFakeFeaturesInput(args.is_feature_enabled, args.is_feature_mutable,
                            args.feature_level);
@@ -239,10 +253,10 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
         std::make_unique<FakeSegmentationUtils>(GetTempDirPath());
 
     return base::MakeRefCounted<UpdateDeviceInfoStateHandler>(
-        json_store_, daemon_callback_, GetTempDirPath(), std::move(cbi_utils),
-        std::move(cros_config_utils), std::move(write_protect_utils),
-        std::move(regions_utils), std::move(vpd_utils),
-        std::move(segmentation_utils));
+        json_store_, daemon_callback_, GetTempDirPath(), GetTempDirPath(),
+        std::move(cbi_utils), std::move(cros_config_utils),
+        std::move(write_protect_utils), std::move(regions_utils),
+        std::move(vpd_utils), std::move(segmentation_utils));
   }
 
   struct StateArgs {
@@ -602,6 +616,82 @@ TEST_F(UpdateDeviceInfoStateHandlerTest,
   auto state = handler->GetState();
   EXPECT_EQ(state.update_device_info().original_feature_level(),
             UpdateDeviceInfoState::RMAD_FEATURE_LEVEL_1);
+}
+
+// Sku filter and description override.
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_SkuFilterSingleSku_Success) {
+  constexpr char textproto[] = R"(
+sku_list {
+  sku: 1234567891
+  description: "abc"
+}
+  )";
+  const std::vector<uint32_t> expected_sku_list = {1234567891};
+  const std::vector<std::string> expected_sku_description_list = {"abc"};
+
+  auto handler = CreateStateHandler({.sku_filter_textproto = textproto});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  EXPECT_TRUE(std::equal(state.update_device_info().sku_list().begin(),
+                         state.update_device_info().sku_list().end(),
+                         expected_sku_list.begin(), expected_sku_list.end()));
+  EXPECT_TRUE(
+      std::equal(state.update_device_info().sku_description_list().begin(),
+                 state.update_device_info().sku_description_list().end(),
+                 expected_sku_description_list.begin(),
+                 expected_sku_description_list.end()));
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_SkuFilterEmptyDescription_Success) {
+  constexpr char textproto[] = R"(
+sku_list {
+  sku: 1234567890
+}
+sku_list {
+  sku: 1234567891
+}
+  )";
+  const std::vector<uint32_t> expected_sku_list = {1234567890, 1234567891};
+  const std::vector<std::string> expected_sku_description_list = {"", ""};
+
+  auto handler = CreateStateHandler({.sku_filter_textproto = textproto});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  EXPECT_TRUE(std::equal(state.update_device_info().sku_list().begin(),
+                         state.update_device_info().sku_list().end(),
+                         expected_sku_list.begin(), expected_sku_list.end()));
+  EXPECT_TRUE(
+      std::equal(state.update_device_info().sku_description_list().begin(),
+                 state.update_device_info().sku_description_list().end(),
+                 expected_sku_description_list.begin(),
+                 expected_sku_description_list.end()));
+}
+
+TEST_F(UpdateDeviceInfoStateHandlerTest,
+       InitializeState_IncorrectSkuFilter_Success) {
+  constexpr char textproto[] = "!@#$%";
+
+  auto handler = CreateStateHandler({.sku_filter_textproto = textproto});
+  json_store_->SetValue(kMlbRepair, false);
+
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  auto state = handler->GetState();
+  EXPECT_TRUE(std::equal(state.update_device_info().sku_list().begin(),
+                         state.update_device_info().sku_list().end(),
+                         kSkuList.begin(), kSkuList.end()));
+  EXPECT_TRUE(
+      std::equal(state.update_device_info().sku_description_list().begin(),
+                 state.update_device_info().sku_description_list().end(),
+                 kSkuDescriptionList.begin(), kSkuDescriptionList.end()));
 }
 
 // Successful |GetNextStateCase|.

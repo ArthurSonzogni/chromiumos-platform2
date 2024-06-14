@@ -8,12 +8,15 @@
 #include "rmad/state_handler/base_state_handler.h"
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <base/files/file_path.h>
 
 #include "rmad/segmentation/segmentation_utils.h"
+#include "rmad/sku_filter.pb.h"
 #include "rmad/utils/cbi_utils.h"
 #include "rmad/utils/cros_config_utils.h"
 #include "rmad/utils/regions_utils.h"
@@ -27,13 +30,14 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
   explicit UpdateDeviceInfoStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |working_dir_path|, |cbi_utils_|, |cros_config_utils_|,
-  // |write_protect_utils_|, |regions_utils_|, |vpd_utils_| and
-  // |segmentation_utils_| for testing.
+  // Used to inject mock |working_dir_path|, |config_dir_path|, |cbi_utils_|,
+  // |cros_config_utils_|, |write_protect_utils_|, |regions_utils_|,
+  // |vpd_utils_| and |segmentation_utils_| for testing.
   explicit UpdateDeviceInfoStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
+      const base::FilePath& config_dir_path,
       std::unique_ptr<CbiUtils> cbi_utils,
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils,
@@ -63,10 +67,14 @@ class UpdateDeviceInfoStateHandler : public BaseStateHandler {
   std::unique_ptr<SegmentationUtils> CreateFakeSegmentationUtils() const;
   base::FilePath GetTestDirPath() const;
   base::FilePath GetFakeFeaturesInputFilePath() const;
+  std::optional<SkuFilter> GetSkuFilter() const;
+  std::optional<std::unordered_map<uint32_t, std::string>>
+  GetSkuDescriptionOverrides() const;
 
   RmadConfig rmad_config_;
 
   base::FilePath working_dir_path_;
+  base::FilePath config_dir_path_;
   std::unique_ptr<CbiUtils> cbi_utils_;
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;

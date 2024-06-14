@@ -1,0 +1,16 @@
+// Copyright 2024 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+syntax = "proto3";
+
+package rmad;
+
+message SkuWithDescription {
+  uint32 sku = 1;
+  optional string description = 2;
+}
+
+message SkuFilter {
+  repeated SkuWithDescription sku_list = 1;
+}
