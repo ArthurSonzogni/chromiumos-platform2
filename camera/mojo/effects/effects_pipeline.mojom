@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 // Next min version: 5
-
 module cros.mojom;
 
 import "camera/mojo/file_path.mojom";
@@ -66,22 +65,28 @@ struct EffectsConfig {
   uint16 graph_max_frames_in_flight = 2;
 
   // Whether background background blur should be enabled.
-  [MinVersion=1] bool blur_enabled;
+  [MinVersion=1]
+  bool blur_enabled;
 
   // Whether background replacement should be enabled.
-  [MinVersion=1] bool replace_enabled;
+  [MinVersion=1]
+  bool replace_enabled;
 
   // Whether portrait relighting should be enabled.
-  [MinVersion=1] bool relight_enabled;
+  [MinVersion=1]
+  bool relight_enabled;
 
   // The type of segmentation model to use. Lower resolution models will reduce
   // the workload on the GPU.
-  [MinVersion=2] SegmentationModel segmentation_model;
+  [MinVersion=2]
+  SegmentationModel segmentation_model;
 
   // The file path to use for the background image.
   // Must be readable from within camera stack.
-  [MinVersion=3] mojo_base.mojom.RelativeFilePath? background_filepath;
+  [MinVersion=3]
+  mojo_base.mojom.RelativeFilePath? background_filepath;
 
   // Light intensity for relighting.
-  [MinVersion=4] float? light_intensity;
+  [MinVersion=4]
+  float? light_intensity;
 };

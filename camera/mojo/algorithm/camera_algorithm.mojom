@@ -69,7 +69,6 @@ interface CameraAlgorithmOps {
 };
 
 // This is mojo interface that wraps camera_algorithm_callback_ops_t functions
-
 interface CameraAlgorithmCallbackOps {
   // This method returns a buffer that the camera algorithm library has
   // completed the corresponding request.

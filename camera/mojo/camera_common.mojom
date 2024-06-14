@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 // Next min version: 4
-
 module cros.mojom;
 
 import "camera/mojo/camera3.mojom";
@@ -27,8 +26,12 @@ struct CameraInfo {
   int32 orientation;
   uint32 device_version;
   CameraMetadata static_camera_characteristics;
-  [MinVersion=1] CameraResourceCost? resource_cost;
-  [MinVersion=1] array<string>? conflicting_devices;
+
+  [MinVersion=1]
+  CameraResourceCost? resource_cost;
+
+  [MinVersion=1]
+  array<string>? conflicting_devices;
 };
 
 enum CameraDeviceStatus {

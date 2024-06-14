@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 // Next min version: 1
-
 module cros.camera_diag.mojom;
 
 enum AnalyzerStatus {
@@ -79,7 +78,7 @@ struct FrameAnalysisConfig {
   const uint32 kMaxDurationMs = 60000;
 
   ClientType client_type;
-  uint32 duration_ms; // In range [kMinDurationMs, kMaxDurationMs]
+  uint32 duration_ms;  // In range [kMinDurationMs, kMaxDurationMs]
 };
 
 struct CameraFrameBuffer {

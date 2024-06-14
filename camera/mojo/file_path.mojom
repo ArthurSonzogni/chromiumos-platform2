@@ -3,11 +3,11 @@
 // found in the LICENSE file.
 
 // Note:
-//   1. This file is copied from,
-//      https://cs.chromium.org/chromium/src/mojo/public/mojom/base/file_path.mojom
-//   2. On chromium, we must use the version under mojo folder so we do not need
-//      to and must not sync this file to chromium.
-
+// This file is copied from
+// https://cs.chromium.org/chromium/src/mojo/public/mojom/base/file_path.mojom
+//
+// On chromium, we must use the version under mojo folder so we do not need
+// to and must not sync this file to chromium.
 module mojo_base.mojom;
 
 [Stable]

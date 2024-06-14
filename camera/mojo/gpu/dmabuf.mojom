@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 // Next min version: 2
-
 module cros.mojom;
 
 // Keep in sync with
@@ -33,6 +32,10 @@ struct DmaBufVideoFrame {
   uint32 coded_width;
   uint32 coded_height;
   array<DmaBufPlane> planes;
-  [MinVersion=1] bool has_modifier;
-  [MinVersion=1] uint64 modifier;
+
+  [MinVersion=1]
+  bool has_modifier;
+
+  [MinVersion=1]
+  uint64 modifier;
 };

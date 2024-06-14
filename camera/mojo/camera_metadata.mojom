@@ -13,7 +13,7 @@ enum EntryType {
   TYPE_INT64 = 3,
   TYPE_DOUBLE = 4,
   TYPE_RATIONAL = 5,
-  NUM_TYPES
+  NUM_TYPES,
 };
 
 // CameraMetadataEntry is a translation of the camera_metadata_entry_t in

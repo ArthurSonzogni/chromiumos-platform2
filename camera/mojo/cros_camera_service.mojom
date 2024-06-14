@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 // Next min version: 15
-
 module cros.mojom;
 
 import "camera/mojo/camera_common.mojom";
@@ -16,7 +15,7 @@ import "camera/mojo/unguessable_token.mojom";
 // It should be kept in sync with the ChromeOSCameraClientType enum in
 // tools/metrics/histograms/enums.xml in chromium.
 [Extensible]
-enum CameraClientType{
+enum CameraClientType {
   UNKNOWN = 0,
   TESTING = 1,
   CHROME = 2,
@@ -27,7 +26,7 @@ enum CameraClientType{
 };
 
 // CameraPrivacySwitchState indicates the state of the camera privacy switch.
-enum CameraPrivacySwitchState{
+enum CameraPrivacySwitchState {
   // For devices which can only read the privacy switch status while the camera
   // is streaming, it is possible that the state of privacy switch is currently
   // unknown.
@@ -43,7 +42,7 @@ enum CameraPrivacySwitchState{
 };
 
 // CameraAutoZoomState indicates the state of the camera autozoom feature.
-enum CameraAutoFramingState{
+enum CameraAutoFramingState {
   // Auto framing is disabled.
   OFF = 0,
 
@@ -60,7 +59,7 @@ enum SetEffectResult {
   [Default] kOk = 0,
   kError = 1,
   kFeatureDisabled = 2,
-  kDlcUnavailable = 3
+  kDlcUnavailable = 3,
 };
 
 // The CrOS camera HAL v3 Mojo dispatcher.  The dispatcher acts as a proxy and
@@ -76,10 +75,11 @@ interface CameraHalDispatcher {
   // A CameraHalClient calls RegisterClient to register itself with the
   // dispatcher. CameraHalDispatcher would authenticate the client with the
   // given |type| and |auth_token|.
-  [MinVersion=4] RegisterClientWithToken@5(
-      pending_remote<CameraHalClient> client,
-      CameraClientType type,
-      mojo_base.mojom.UnguessableToken auth_token) => (int32 result);
+  [MinVersion=4]
+  RegisterClientWithToken@5(pending_remote<CameraHalClient> client,
+                            CameraClientType type,
+                            mojo_base.mojom.UnguessableToken auth_token)
+      => (int32 result);
 };
 
 // The CrOS camera HAL v3 Mojo client.
@@ -105,20 +105,20 @@ interface CrosCameraServiceObserver {
   // Fired when a CameraHalClient opens or closes a camera device. When a
   // CameraHalClient loses mojo connection to CameraHalServer, CameraHalServer
   // would also use this to notify that cameras are closed (not being used).
-  CameraDeviceActivityChange@0(int32 camera_id,
-                               bool opened,
-                               CameraClientType type);
+  CameraDeviceActivityChange@0(
+      int32 camera_id, bool opened, CameraClientType type);
 
   // Fired when the camera privacy switch status is changed. If the device has
   // such switch, this observer will get the notification.
-  CameraPrivacySwitchStateChange@1(CameraPrivacySwitchState state,
-                                   int32 camera_id);
+  CameraPrivacySwitchStateChange@1(
+      CameraPrivacySwitchState state, int32 camera_id);
 
   // Fired when the camera software privacy switch status is changed.
   CameraSWPrivacySwitchStateChange@2(CameraPrivacySwitchState state);
 
   // Fired when the camera effect is changed.
-  [MinVersion=14] CameraEffectChange@3(EffectsConfig config);
+  [MinVersion=14]
+  CameraEffectChange@3(EffectsConfig config);
 };
 
 // A client can request the CrosCameraService service from Mojo Service Manager
@@ -129,7 +129,7 @@ interface CrosCameraService {
   // A caller calls GetCameraModule to create a new Mojo channel to the camera
   // HAL v3 adapter.
   GetCameraModule@0(CameraClientType type)
-                    => (pending_remote<CameraModule> camera_module_receiver);
+      => (pending_remote<CameraModule> camera_module_receiver);
 
   // Enable or disable tracing.
   SetTracingEnabled@1(bool enabled);
