@@ -26,11 +26,16 @@ use tokio::task::JoinHandle;
 
 use crate::config::ConfigProvider;
 use crate::cpu_utils::Cpuset;
+use crate::proc::is_alive;
 use crate::proc::load_ruid;
 
 pub type SchedQosContext = schedqos::RestorableSchedQosContext;
 
 const STATE_FILE_PATH: &str = "/run/resourced/schedqos_states";
+
+pub const UMA_NAME_QOS_SET_PROCESS_STATE_ERROR: &str = "Scheduling.SchedQoS.SetProcessStateError";
+pub const UMA_NAME_QOS_SET_THREAD_STATE_ERROR: &str = "Scheduling.SchedQoS.SetThreadStateError";
+pub const MAX_QOS_ERROR_TYPE: i32 = 12;
 
 /// Error of parsing /proc/pid/status
 #[derive(Debug)]
@@ -58,6 +63,30 @@ impl Error {
             },
             Self::Pidfd(_) => MethodErr::failed("failed to create pidfd"),
             Self::Proc(_) => MethodErr::failed("failed to read /proc/pid/status"),
+        }
+    }
+
+    /// The error type numbers are reported to UMA. Do not reuse the number in the future when you
+    /// add a new error type and do not renumber existing entries. Also You need to update
+    /// [MAX_QOS_ERROR_TYPE] when you add a new error type.
+    pub fn to_uma_enum_sample(&self) -> i32 {
+        match self {
+            Self::ProcessForbidden => 0,
+            Self::ProcessNotFound => 1,
+            Self::InvalidState => 2,
+            Self::Pidfd(_) => 3,
+            Self::Proc(_) => 4,
+            Self::SchedQoS(e) => match e {
+                schedqos::Error::ProcessNotFound => 1,
+                schedqos::Error::ProcessNotRegistered => 5,
+                schedqos::Error::ThreadNotFound => 6,
+                schedqos::Error::Config(_, _) => 7,
+                schedqos::Error::Cgroup(_, _) => 8,
+                schedqos::Error::SchedAttr(_) => 9,
+                schedqos::Error::LatencySensitive(_) => 10,
+                schedqos::Error::Proc(_) => 11,
+                schedqos::Error::Storage(_) => 12,
+            },
         }
     }
 }
@@ -165,17 +194,21 @@ pub fn create_schedqos_context(
 
 /// Validate the ruid of process_id is the same as the sender euid.
 ///
+/// This also checks the process is alive.
+///
 /// Use ruid of the target process to compare because euid can be changed by the process itself
 /// without any capabilities. Sender should be aware of its euid when sending the QoS request.
 /// This can support the case a parent process forks a third-party process which change its euid and
 /// the parent process sends the QoS request for the third-party process..
 fn validate_pid(process_id: u32, sender_euid: u32) -> Result<()> {
     let target_process_ruid = load_ruid(process_id)?;
-    if target_process_ruid == sender_euid {
-        Ok(())
-    } else {
-        Err(Error::ProcessForbidden)
+    if target_process_ruid != sender_euid {
+        return Err(Error::ProcessForbidden);
     }
+    if !is_alive(process_id)? {
+        return Err(Error::ProcessNotFound);
+    }
+    Ok(())
 }
 
 pub async fn set_thread_state(
@@ -187,9 +220,12 @@ pub async fn set_thread_state(
 ) -> Result<()> {
     let state = ThreadState::try_from(state).map_err(|_| Error::InvalidState)?;
 
-    validate_pid(process_id, sender_euid)?;
-
     let mut ctx = sched_ctx.lock().await;
+
+    // With checking the process validity within the context lock (i.e. the process exists at this
+    // point), [schedqos::Error::ProcessNotRegistered] from the following set_thread_state() means
+    // that the user missed to set process state before setting thread state which is not allowed.
+    validate_pid(process_id, sender_euid)?;
 
     ctx.set_thread_state(process_id.into(), thread_id.into(), state)?;
 

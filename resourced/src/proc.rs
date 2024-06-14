@@ -8,12 +8,35 @@ use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
 
+use log::error;
+use procfs::process::ProcState;
+use procfs::process::Stat;
+
 /// Error of parsing /proc/pid/status
 #[derive(Debug)]
 pub enum Error {
     NotFound(u32),
     FileCorrupt,
     Io(io::Error),
+}
+
+impl From<(procfs::ProcError, u32)> for Error {
+    fn from(v: (procfs::ProcError, u32)) -> Self {
+        let (e, pid) = v;
+        match e {
+            procfs::ProcError::PermissionDenied(_) => {
+                Error::Io(io::Error::from_raw_os_error(libc::EPERM))
+            }
+            procfs::ProcError::NotFound(_) => Error::NotFound(pid),
+            procfs::ProcError::Incomplete(_) => Error::FileCorrupt,
+            procfs::ProcError::Io(e, _) => Error::Io(e),
+            procfs::ProcError::Other(_) => Error::FileCorrupt,
+            procfs::ProcError::InternalError(e) => {
+                error!("unexpected internal error from procfs: {:?}", e);
+                Error::FileCorrupt
+            }
+        }
+    }
 }
 
 impl std::error::Error for Error {
@@ -55,8 +78,28 @@ pub fn load_euid(pid: u32) -> Result<u32> {
     load_uid(&mut file, UidIndex::Effective)
 }
 
+/// Check if the process is alive from /proc/pid/status.
+///
+/// If the State was either of "Z (zombie)", or "X (dead)", this returns `false`.
+pub fn is_alive(pid: u32) -> Result<bool> {
+    let file = open_stat_file(pid)?;
+    let stat = Stat::from_reader(file).map_err(|e| (e, pid))?;
+    let state = stat.state().map_err(|e| (e, pid))?;
+    Ok(state != ProcState::Zombie && state != ProcState::Dead)
+}
+
 fn open_status_file(pid: u32) -> Result<File> {
     File::open(format!("/proc/{}/status", pid)).map_err(|e| {
+        if e.kind() == io::ErrorKind::NotFound {
+            Error::NotFound(pid)
+        } else {
+            Error::Io(e)
+        }
+    })
+}
+
+fn open_stat_file(pid: u32) -> Result<File> {
+    File::open(format!("/proc/{}/stat", pid)).map_err(|e| {
         if e.kind() == io::ErrorKind::NotFound {
             Error::NotFound(pid)
         } else {

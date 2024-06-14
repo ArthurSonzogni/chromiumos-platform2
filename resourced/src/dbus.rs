@@ -56,6 +56,9 @@ use crate::qos;
 use crate::qos::set_process_state;
 use crate::qos::set_thread_state;
 use crate::qos::SchedQosContext;
+use crate::qos::MAX_QOS_ERROR_TYPE;
+use crate::qos::UMA_NAME_QOS_SET_PROCESS_STATE_ERROR;
+use crate::qos::UMA_NAME_QOS_SET_THREAD_STATE_ERROR;
 use crate::vm_memory_management_client::VmMemoryManagementClient;
 
 const SERVICE_NAME: &str = "org.chromium.ResourceManager";
@@ -436,6 +439,13 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
                             error!("change_process_state failed: {:#}, pid={}", e, process_id);
+                            if let Err(e) = metrics::send_enum_to_uma(
+                                UMA_NAME_QOS_SET_PROCESS_STATE_ERROR,
+                                e.to_uma_enum_sample(),
+                                MAX_QOS_ERROR_TYPE + 1,
+                            ) {
+                                error!("Failed to send set process state error to UMA: {}", e);
+                            }
                             sender_context.reply(Err(e.to_dbus_error()))
                         }
                     }
@@ -478,6 +488,13 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                         Ok(_) => sender_context.reply(Ok(())),
                         Err(e) => {
                             error!("change_thread_state failed: {:#}, pid={}", e, process_id);
+                            if let Err(e) = metrics::send_enum_to_uma(
+                                UMA_NAME_QOS_SET_THREAD_STATE_ERROR,
+                                e.to_uma_enum_sample(),
+                                MAX_QOS_ERROR_TYPE + 1,
+                            ) {
+                                error!("Failed to send set thread state error to UMA: {}", e);
+                            }
                             sender_context.reply(Err(e.to_dbus_error()))
                         }
                     }
