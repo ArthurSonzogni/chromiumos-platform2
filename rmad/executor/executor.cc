@@ -68,7 +68,7 @@ const std::vector<std::string> kStatefulFileSystems = {"vfat", "ext4", "ext3",
 // Powerwash related constants.
 constexpr char kPowerwashRequestFilePath[] =
     "/mnt/stateful_partition/factory_install_reset";
-constexpr char kRmaPowerwashArgs[] = "fast safe keepimg rma";
+constexpr char kRmaPowerwashArgs[] = "fast safe keepimg rma factory";
 
 std::string FormatTime(const base::Time& time) {
   base::Time::Exploded e;
