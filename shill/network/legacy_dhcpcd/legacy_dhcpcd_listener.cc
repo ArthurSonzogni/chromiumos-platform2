@@ -103,8 +103,7 @@ class LegacyDHCPCDListenerImpl : public LegacyDHCPCDListener {
                                               void* user_data);
 
   // Handles incoming messages.
-  DBusHandlerResult HandleMessage(DBusConnection* connection,
-                                  DBusMessage* raw_message);
+  DBusHandlerResult HandleMessage(DBusMessage* raw_message);
 
   // Signal handlers.
   void EventSignal(const std::string& sender,
@@ -171,11 +170,11 @@ DBusHandlerResult LegacyDHCPCDListenerImpl::HandleMessageThunk(
     DBusConnection* connection, DBusMessage* raw_message, void* user_data) {
   LegacyDHCPCDListenerImpl* self =
       static_cast<LegacyDHCPCDListenerImpl*>(user_data);
-  return self->HandleMessage(connection, raw_message);
+  return self->HandleMessage(raw_message);
 }
 
 DBusHandlerResult LegacyDHCPCDListenerImpl::HandleMessage(
-    DBusConnection* connection, DBusMessage* raw_message) {
+    DBusMessage* raw_message) {
   bus_->AssertOnDBusThread();
 
   // Only interested in signal message.
@@ -234,7 +233,7 @@ void LegacyDHCPCDListenerImpl::EventSignal(
     const brillo::VariantDictionary& configuration) {
   const std::optional<DHCPClientProxy::EventReason> reason =
       ConvertToEventReason(reason_str);
-  if (reason.has_value()) {
+  if (!reason.has_value()) {
     LOG(WARNING) << "Unknown reason: " << reason_str;
     return;
   }
@@ -247,7 +246,7 @@ void LegacyDHCPCDListenerImpl::EventSignal(
 void LegacyDHCPCDListenerImpl::StatusChangedSignal(
     const std::string& sender, uint32_t pid, const std::string& status_str) {
   const std::optional<Status> status = ConvertToStatus(status_str);
-  if (status.has_value()) {
+  if (!status.has_value()) {
     LOG(WARNING) << "Unknown status: " << status_str;
     return;
   }
