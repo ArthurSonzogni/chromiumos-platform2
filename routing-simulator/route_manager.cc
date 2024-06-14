@@ -12,7 +12,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_split.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 
 #include "routing-simulator/packet.h"
 #include "routing-simulator/process_executor.h"

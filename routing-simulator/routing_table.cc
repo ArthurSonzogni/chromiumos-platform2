@@ -7,7 +7,7 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 
 #include "routing-simulator/route.h"
 

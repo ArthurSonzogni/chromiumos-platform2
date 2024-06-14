@@ -9,8 +9,8 @@
 #include <string>
 #include <string_view>
 
-#include <net-base/ip_address.h>
-#include <net-base/ip_address_utils.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ip_address_utils.h>
 
 namespace routing_simulator {
 

@@ -10,9 +10,9 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
+#include <chromeos/net-base/ip_address.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
 
 #include "routing-simulator/mock_process_executor.h"
 #include "routing-simulator/routing_decision_result.h"

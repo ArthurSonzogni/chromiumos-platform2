@@ -12,8 +12,8 @@
 #include <base/containers/span.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
-#include <net-base/ip_address.h>
-#include <net-base/ip_address_utils.h>
+#include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/ip_address_utils.h>
 
 namespace routing_simulator {
 namespace {

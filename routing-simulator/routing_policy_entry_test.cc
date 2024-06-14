@@ -4,8 +4,8 @@
 
 #include "routing-simulator/routing_policy_entry.h"
 
+#include <chromeos/net-base/ip_address.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
 
 #include "routing-simulator/packet.h"
 

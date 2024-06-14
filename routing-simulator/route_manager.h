@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 
 #include "routing-simulator/packet.h"
 #include "routing-simulator/process_executor.h"

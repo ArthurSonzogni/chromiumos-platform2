@@ -4,8 +4,8 @@
 
 #include "routing-simulator/route.h"
 
+#include <chromeos/net-base/ip_address.h>
 #include <gtest/gtest.h>
-#include <net-base/ip_address.h>
 
 namespace routing_simulator {
 namespace {

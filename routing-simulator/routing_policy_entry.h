@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <net-base/ip_address.h>
+#include <chromeos/net-base/ip_address.h>
 
 #include "routing-simulator/packet.h"
 
