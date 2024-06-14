@@ -15,8 +15,6 @@
 namespace biod {
 namespace updater {
 
-inline constexpr char kFirmwareDir[] = "/opt/google/biod/fw";
-
 std::string UpdaterVersion();
 
 // Checks for external firmware disable mechanism.

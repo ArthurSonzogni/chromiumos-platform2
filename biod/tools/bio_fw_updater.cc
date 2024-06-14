@@ -23,6 +23,7 @@
 #include "biod/biod_version.h"
 #include "biod/cros_fp_device.h"
 #include "biod/updater/cros_fp_updater.h"
+#include "biod/updater/firmware_selector.h"
 #include "biod/updater/update_reason.h"
 #include "biod/updater/update_status.h"
 #include "biod/updater/update_utils.h"
@@ -34,6 +35,7 @@ using FindFirmwareFileStatus = biod::updater::FindFirmwareFileStatus;
 
 namespace {
 
+constexpr char kBioFwUpdaterDir[] = "/var/lib/bio_fw_updater";
 constexpr char kHelpText[] =
     "bio_fw_updater ensures the fingerprint mcu has the latest firmware\n";
 
@@ -122,10 +124,12 @@ int main(int argc, char* argv[]) {
     return EXIT_SUCCESS;
   }
 
+  biod::FirmwareSelector selector((base::FilePath(kBioFwUpdaterDir)));
+
   // Find a firmware file that matches the firmware file pattern
   base::FilePath file;
-  auto status = biod::updater::FindFirmwareFile(
-      base::FilePath(biod::updater::kFirmwareDir), &cros_config, &file);
+  auto status = biod::updater::FindFirmwareFile(selector.GetFirmwarePath(),
+                                                &cros_config, &file);
 
   if (status == FindFirmwareFileStatus::kBoardUnavailable) {
     LOG(ERROR) << "Fingerprint board name unavailable.";

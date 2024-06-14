@@ -85,6 +85,7 @@ static_library("libbiod") {
     "session_state_manager.cc",
     "uinput_device.cc",
     "updater/cros_fp_updater.cc",
+    "updater/firmware_selector.cc",
     "updater/update_utils.cc",
     "utils.cc",
   ]
@@ -191,6 +192,7 @@ if (use.test) {
       "session_state_manager_test.cc",
       "session_test.cc",
       "updater/cros_fp_updater_test.cc",
+      "updater/firmware_selector_test.cc",
       "updater/update_utils_test.cc",
       "utils_test.cc",
     ]
