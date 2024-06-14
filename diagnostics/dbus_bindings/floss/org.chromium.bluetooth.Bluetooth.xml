@@ -79,7 +79,7 @@
     <method name="CreateBond">
       <arg name="device" direction="in" type="a{sv}"/>
       <arg name="transport" direction="in" type="u"/>
-      <arg name="is_success" direction="out" type="b"/>
+      <arg name="bt_status" direction="out" type="u"/>
     </method>
     <method name="RemoveBond">
       <arg name="device" direction="in" type="a{sv}"/>

@@ -435,9 +435,10 @@ void BluetoothPairingRoutine::StoreDeviceAddressType(brillo::Error* error,
 }
 
 void BluetoothPairingRoutine::HandleBondDeviceResponse(brillo::Error* error,
-                                                       bool is_success) {
+                                                       uint32_t bt_status) {
   CHECK(step_ == TestStep::kBondTargetDevice);
-  if (error || !is_success) {
+  // |bt_status| is 0 for Success.
+  if (error || bt_status != 0) {
     routine_output_->pairing_peripheral->pair_error =
         mojom::BluetoothPairingPeripheralInfo_PairError::kBondFailed;
     SetResultAndStop(base::ok(false));

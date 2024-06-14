@@ -82,7 +82,7 @@ class BluetoothPairingRoutine final : public NoninteractiveRoutineControl,
   void StoreDeviceAddressType(brillo::Error* error, uint32_t address_type);
 
   // Handle the response of bonding the target peripheral.
-  void HandleBondDeviceResponse(brillo::Error* error, bool is_success);
+  void HandleBondDeviceResponse(brillo::Error* error, uint32_t bt_status);
 
   // Observe the device connected event to check if the basebend connection is
   // established successfully.

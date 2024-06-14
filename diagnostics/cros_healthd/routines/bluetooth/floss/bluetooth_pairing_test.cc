@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/routines/bluetooth/floss/bluetooth_pairing.h"
 
+#include <cstdint>
 #include <cstdlib>
 #include <string>
 #include <utility>
@@ -132,8 +133,8 @@ class BluetoothPairingRoutineTest : public ::testing::Test {
     EXPECT_CALL(mock_adapter_proxy_,
                 CreateBondAsync(kTestTargetDevice, _, _, _, _))
         .WillRepeatedly(WithArg<2>(
-            [this](base::OnceCallback<void(bool is_success)> on_success) {
-              std::move(on_success).Run(/*is_success=*/true);
+            [this](base::OnceCallback<void(uint32_t bt_status)> on_success) {
+              std::move(on_success).Run(/*bt_status=*/0);
               fake_floss_event_hub()->SendDeviceConnectedChanged(
                   kTestTargetDevice, /*connected=*/true);
               // |bt_status| is 0 for Success and |bond_state| is 1 for Bonding.
@@ -469,8 +470,8 @@ TEST_F(BluetoothPairingRoutineTest, UnexpectedConnectionState) {
   EXPECT_CALL(mock_adapter_proxy_,
               CreateBondAsync(kTestTargetDevice, _, _, _, _))
       .WillOnce(WithArg<2>(
-          [this](base::OnceCallback<void(bool is_success)> on_success) {
-            std::move(on_success).Run(/*is_success=*/true);
+          [this](base::OnceCallback<void(uint32_t bt_status)> on_success) {
+            std::move(on_success).Run(/*bt_status=*/0);
             fake_floss_event_hub()->SendDeviceConnectedChanged(
                 kTestTargetDevice, /*connected=*/true);
           }));
@@ -543,8 +544,8 @@ TEST_F(BluetoothPairingRoutineTest, BadBluetoothStatusWhenCreatingBond) {
   EXPECT_CALL(mock_adapter_proxy_,
               CreateBondAsync(kTestTargetDevice, _, _, _, _))
       .WillOnce(WithArg<2>(
-          [this](base::OnceCallback<void(bool is_success)> on_success) {
-            std::move(on_success).Run(/*is_success=*/true);
+          [this](base::OnceCallback<void(uint32_t bt_status)> on_success) {
+            std::move(on_success).Run(/*bt_status=*/0);
             // Send the unexpected |bt_status|. |bond_state| is 1 for NotBonded.
             fake_floss_event_hub()->SendDeviceBondChanged(
                 /*bt_status=*/1, kTestTargetDeviceAddress, /*bond_state=*/0);
@@ -575,8 +576,8 @@ TEST_F(BluetoothPairingRoutineTest, SspRequestError) {
   EXPECT_CALL(mock_adapter_proxy_,
               CreateBondAsync(kTestTargetDevice, _, _, _, _))
       .WillOnce(WithArg<2>(
-          [this](base::OnceCallback<void(bool is_success)> on_success) {
-            std::move(on_success).Run(/*is_success=*/true);
+          [this](base::OnceCallback<void(uint32_t bt_status)> on_success) {
+            std::move(on_success).Run(/*bt_status=*/0);
             fake_floss_event_hub()->SendDeviceSspRequest(kTestTargetDevice);
           }));
   auto error = brillo::Error::Create(FROM_HERE, "", "", "");
