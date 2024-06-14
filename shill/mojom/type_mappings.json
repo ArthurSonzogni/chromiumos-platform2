@@ -10,7 +10,7 @@
       "nullable_is_same_type": true,
       "non_const_ref": false,
       "public_headers": [
-        "net-base/http_url.h"
+        "chromeos/net-base/http_url.h"
       ],
       "traits_headers": [
         "shill/mojom/url/mojom/url_mojom_traits.h"

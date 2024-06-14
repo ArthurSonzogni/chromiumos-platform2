@@ -10,9 +10,9 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <chromeos/net-base/mac_address.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "net-base/mac_address.h"
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/refptr_types.h"
