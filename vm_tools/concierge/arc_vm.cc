@@ -220,6 +220,7 @@ ArcVm::ArcVm(Config config)
           .seneschal_server_proxy = std::move(config.seneschal_server_proxy),
           .cros_vm_socket = kCrosvmSocket,
           .runtime_dir = std::move(config.runtime_dir),
+          .guest_memory_size = config.guest_memory_size,
       }),
       data_disk_path_(config.data_disk_path),
       features_(config.features),
@@ -231,7 +232,6 @@ ArcVm::ArcVm(Config config)
       vmm_swap_usage_policy_(config.vmm_swap_usage_path),
       vm_swapping_notify_callback_(
           std::move(config.vm_swapping_notify_callback)),
-      guest_memory_size_(config.guest_memory_size),
       virtio_blk_metrics_(std::move(config.virtio_blk_metrics)),
       weak_ptr_factory_(this) {
   if (config.is_vmm_swap_enabled) {
@@ -710,8 +710,9 @@ void ArcVm::HandleSwapVmEnableRequest(SwapVmCallback callback) {
   if (!is_vmm_swap_enabled_ && !skip_swap_policy_) {
     pending_swap_vm_callback_ = std::move(callback);
     vmm_swap_low_disk_policy_->CanEnable(
-        guest_memory_size_, base::BindOnce(&ArcVm::OnVmmSwapLowDiskPolicyResult,
-                                           base::Unretained(this)));
+        *guest_memory_size_,
+        base::BindOnce(&ArcVm::OnVmmSwapLowDiskPolicyResult,
+                       base::Unretained(this)));
   } else {
     ApplyVmmSwapPolicyResult(std::move(callback),
                              VmmSwapPolicyResult::kApprove);

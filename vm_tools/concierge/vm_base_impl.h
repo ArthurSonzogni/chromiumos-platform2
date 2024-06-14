@@ -37,6 +37,7 @@ class VmBaseImpl {
     std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy;
     std::string cros_vm_socket{};
     base::FilePath runtime_dir;
+    std::optional<int64_t> guest_memory_size;
   };
   explicit VmBaseImpl(Config config);
 
@@ -210,6 +211,9 @@ class VmBaseImpl {
 
   const std::string& GetVmSocketPath() const;
 
+  // Gets the guest's memory size in bytes, if it is known to concierge.
+  const std::optional<int64_t> GetGuestMemorySize() const;
+
  protected:
   // Adjusts the amount of CPU the VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
@@ -249,6 +253,9 @@ class VmBaseImpl {
 
   // Balloon policy with its state.
   std::unique_ptr<BalloonPolicyInterface> balloon_policy_;
+
+  // The size of VM memory in bytes, if known to concierge (i.e. not plugin_vm).
+  const std::optional<int64_t> guest_memory_size_;
 
  private:
   // Handle the device going to suspend.

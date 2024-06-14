@@ -22,6 +22,7 @@ namespace vm_tools::concierge {
 
 VmBaseImpl::VmBaseImpl(Config config)
     : vsock_cid_(config.vsock_cid),
+      guest_memory_size_(config.guest_memory_size),
       seneschal_server_proxy_(std::move(config.seneschal_server_proxy)),
       network_handle_(std::move(config.network)),
       control_socket_path_(
@@ -143,6 +144,10 @@ bool VmBaseImpl::StartProcess(base::StringPairs args) {
 
 const std::string& VmBaseImpl::GetVmSocketPath() const {
   return control_socket_path_;
+}
+
+const std::optional<int64_t> VmBaseImpl::GetGuestMemorySize() const {
+  return guest_memory_size_;
 }
 
 bool VmBaseImpl::Stop() const {

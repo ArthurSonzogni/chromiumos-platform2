@@ -128,6 +128,7 @@ TerminaVm::TerminaVm(Config config)
           .seneschal_server_proxy = std::move(config.seneschal_server_proxy),
           .cros_vm_socket = config.cros_vm_socket,
           .runtime_dir = std::move(config.runtime_dir),
+          .guest_memory_size = MiB(GetVmMemoryMiB()),
       }),
       features_(config.features),
       stateful_device_(config.stateful_device),
@@ -234,7 +235,7 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
   vm_builder.AppendTapFd(std::move(tap_fd))
       .SetVsockCid(vsock_cid_)
       .SetSocketPath(GetVmSocketPath())
-      .SetMemory(std::to_string(GetVmMemoryMiB()))
+      .SetMemory(std::to_string(*GetGuestMemorySize() / MiB(1)))
       .AppendSerialDevice(GetCrosVmSerial("serial", "earlycon"))
       .AppendSerialDevice(GetCrosVmSerial("virtio-console", "console"))
       .AppendSerialDevice(GetCrosVmSerial("debugcon", ""))
