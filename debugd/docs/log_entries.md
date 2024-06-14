@@ -289,6 +289,14 @@ implementation.
 Logs collected from extension acting as system extensions (managing login and
 sessions).
 
+## file-nr
+
+The number of files opened on the system. Useful when trying to check if it's
+the system-wide limit or the per-process limit when failing to open new file
+descriptors.
+
+https://docs.kernel.org/admin-guide/sysctl/fs.html#file-max-file-nr
+
 ## folder_size_dump
 
 The folder_size_dump helper dumps the actual disk usage (in bytes) of various
