@@ -131,6 +131,20 @@ class FakeShillClient : public ShillClient {
     return nullptr;
   }
 
+  // Since GetDeviceProperties() is overridden in FakeShillClient, we need to
+  // let |fake_device_properties_| use the values in |network_config_cache_|.
+  void OnDeviceNetworkConfigChange(int ifindex) override {
+    for (auto& [_, device] : fake_device_properties_) {
+      if (device.ifindex == ifindex) {
+        const auto it = network_config_cache().find(ifindex);
+        device.ipconfig =
+            (it == network_config_cache().end() ? IPConfig{} : it->second);
+        break;
+      }
+    }
+    ShillClient::OnDeviceNetworkConfigChange(ifindex);
+  }
+
   const std::set<dbus::ObjectPath>& get_device_properties_calls() {
     return get_device_properties_calls_;
   }

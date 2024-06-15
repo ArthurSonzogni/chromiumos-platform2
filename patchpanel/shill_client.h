@@ -222,7 +222,7 @@ class ShillClient {
       const dbus::ObjectPath& device_path,
       const std::string& primary_multiplexed_interface);
   void OnDeviceIPConfigChange(const dbus::ObjectPath& device_path);
-  void OnDeviceNetworkConfigChange(int ifindex);
+  virtual void OnDeviceNetworkConfigChange(int ifindex);
   void NotifyIPConfigChangeHandlers(const Device& device);
   void NotifyIPv6NetworkChangeHandlers(
       const Device& device, const std::optional<net_base::IPv6CIDR>& old_cidr);
@@ -248,6 +248,11 @@ class ShillClient {
   virtual std::optional<Device> GetDeviceFromServicePath(
       const dbus::ObjectPath& service_path);
 
+  // Getter for FakeShillClient.
+  const std::map<int, IPConfig>& network_config_cache() const {
+    return network_config_cache_;
+  }
+
  private:
   // Updates the list of currently known shill Devices, adding or removing
   // Device tracking entries accordingly. Listeners that have registered a
@@ -269,12 +274,6 @@ class ShillClient {
   // Updates |doh_providers_| variable to track the DoH providers from shill.
   // Also invokes the handlers if the list changes.
   void UpdateDoHProviders(const brillo::Any& property_value);
-
-  // Parses the |ipconfig_properties| as the IPConfigs property of the shill
-  // Device identified by |device_path|, which should be a list of object paths
-  // of IPConfigs.
-  IPConfig ParseIPConfigsProperty(const dbus::ObjectPath& device_path,
-                                  const brillo::Any& ipconfig_paths);
 
   // Tracks the system default physical network chosen by shill.
   std::optional<Device> default_physical_device_;

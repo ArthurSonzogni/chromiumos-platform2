@@ -462,117 +462,6 @@ void ShillClient::UpdateDevices(const brillo::Any& property_value) {
   }
 }
 
-ShillClient::IPConfig ShillClient::ParseIPConfigsProperty(
-    const dbus::ObjectPath& device, const brillo::Any& ipconfig_paths) {
-  IPConfig ipconfig;
-  for (const auto& path :
-       ipconfig_paths.TryGet<std::vector<dbus::ObjectPath>>()) {
-    std::unique_ptr<org::chromium::flimflam::IPConfigProxy> ipconfig_proxy(
-        new org::chromium::flimflam::IPConfigProxy(bus_, path));
-    brillo::VariantDictionary ipconfig_props;
-
-    if (!ipconfig_proxy->GetProperties(&ipconfig_props, nullptr)) {
-      // It is possible that an IPConfig object is removed after we know its
-      // path, especially when the interface is going down.
-      LOG(WARNING) << "[" << device.value()
-                   << "]: Unable to get properties for " << path.value();
-      continue;
-    }
-
-    // Gets the value of address, prefix_length, gateway, and dns_servers.
-    auto it = ipconfig_props.find(shill::kAddressProperty);
-    if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device.value()
-                   << "]: IPConfig properties is missing Address";
-      continue;
-    }
-    const std::string& address_str = it->second.TryGet<std::string>();
-    if (address_str.empty()) {
-      // On IPv6 only networks, dhcp is expected to fail, nevertheless shill
-      // will still expose a mostly empty IPConfig object. On dual stack
-      // networks, the IPv6 configuration may be available before dhcp has
-      // finished. Avoid logging spurious WARNING messages in these two cases.
-      continue;
-    }
-
-    it = ipconfig_props.find(shill::kPrefixlenProperty);
-    if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device.value()
-                   << "]: IPConfig properties is missing Prefixlen";
-      continue;
-    }
-    int prefix_length = it->second.TryGet<int>();
-    if (prefix_length == 0) {
-      LOG(WARNING)
-          << "[" << device.value() << "]: "
-          << " IPConfig Prefixlen property is 0, may be an invalid setup";
-    }
-
-    const auto cidr =
-        net_base::IPCIDR::CreateFromStringAndPrefix(address_str, prefix_length);
-    if (!cidr) {
-      LOG(WARNING) << "[" << device.value()
-                   << "]: IPConfig Address and Prefixlen property was invalid: "
-                   << address_str << "/" << prefix_length;
-      continue;
-    }
-    const bool is_ipv4 = (cidr->GetFamily() == net_base::IPFamily::kIPv4);
-    const std::string method = is_ipv4 ? "IPv4" : "IPv6";
-    if ((is_ipv4 && ipconfig.ipv4_cidr) || (!is_ipv4 && ipconfig.ipv6_cidr)) {
-      LOG(WARNING) << "[" << device.value() << "]: Duplicated IPconfig for "
-                   << method;
-      continue;
-    }
-
-    it = ipconfig_props.find(shill::kGatewayProperty);
-    if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device.value() << "]: " << method
-                   << " IPConfig properties is missing Gateway";
-      continue;
-    }
-    const std::string& gateway = it->second.TryGet<std::string>();
-    if (gateway.empty()) {
-      LOG(WARNING) << "[" << device.value() << "]: " << method
-                   << " IPConfig Gateway property was empty.";
-      continue;
-    }
-
-    it = ipconfig_props.find(shill::kNameServersProperty);
-    if (it == ipconfig_props.end()) {
-      LOG(WARNING) << "[" << device.value() << "]: " << method
-                   << " IPConfig properties is missing NameServers";
-      // Shill will emit this property with empty value if it has no dns for
-      // this device, so missing this property indicates an error.
-      continue;
-    }
-    const std::vector<std::string>& dns_addresses =
-        it->second.TryGet<std::vector<std::string>>();
-
-    // Fills the IPConfig struct according to the type.
-    if (is_ipv4) {
-      ipconfig.ipv4_cidr = cidr->ToIPv4CIDR();
-      ipconfig.ipv4_gateway = net_base::IPv4Address::CreateFromString(gateway);
-      if (!ipconfig.ipv4_gateway) {
-        LOG(WARNING) << "[" << device.value() << "]: " << method
-                     << " IPConfig Gateway property was not valid IPv4Address: "
-                     << gateway;
-      }
-      ipconfig.ipv4_dns_addresses = dns_addresses;
-    } else {  // AF_INET6
-      ipconfig.ipv6_cidr = cidr->ToIPv6CIDR();
-      ipconfig.ipv6_gateway = net_base::IPv6Address::CreateFromString(gateway);
-      if (!ipconfig.ipv6_gateway) {
-        LOG(WARNING) << "[" << device.value() << "]: " << method
-                     << " IPConfig Gateway property was not valid IPv6Address: "
-                     << gateway;
-      }
-      ipconfig.ipv6_dns_addresses = dns_addresses;
-    }
-  }
-
-  return ipconfig;
-}
-
 std::optional<ShillClient::Device> ShillClient::GetDeviceProperties(
     const dbus::ObjectPath& device_path) {
   auto output = std::make_optional<ShillClient::Device>();
@@ -668,13 +557,12 @@ std::optional<ShillClient::Device> ShillClient::GetDeviceProperties(
     }
   }
 
-  const auto& ipconfigs_it = props.find(shill::kIPConfigsProperty);
-  if (ipconfigs_it == props.end()) {
-    LOG(ERROR) << "shill Device properties is missing IPConfigs for "
-               << device_path.value();
-    return std::nullopt;
+  if (const auto it = network_config_cache_.find(output->ifindex);
+      it != network_config_cache_.end()) {
+    output->ipconfig = it->second;
+  } else {
+    output->ipconfig = {};
   }
-  output->ipconfig = ParseIPConfigsProperty(device_path, ipconfigs_it->second);
 
   // Optional property: a Device does not necessarily have a selected Service at
   // all time.
@@ -731,9 +619,7 @@ void ShillClient::OnDevicePropertyChangeRegistration(
 void ShillClient::OnDevicePropertyChange(const dbus::ObjectPath& device_path,
                                          const std::string& property_name,
                                          const brillo::Any& property_value) {
-  if (property_name == shill::kIPConfigsProperty) {
-    OnDeviceIPConfigChange(device_path);
-  } else if (property_name == shill::kPrimaryMultiplexedInterfaceProperty) {
+  if (property_name == shill::kPrimaryMultiplexedInterfaceProperty) {
     OnDevicePrimaryMultiplexedInterfaceChange(
         device_path, property_value.TryGet<std::string>());
   }
@@ -792,14 +678,20 @@ void ShillClient::OnDevicePrimaryMultiplexedInterfaceChange(
   }
 }
 
-void ShillClient::OnDeviceIPConfigChange(const dbus::ObjectPath& device_path) {
-  const auto& device_it = devices_.find(device_path);
+void ShillClient::OnDeviceNetworkConfigChange(int ifindex) {
+  auto device_it = devices_.begin();
+  for (; device_it != devices_.end(); device_it++) {
+    if (device_it->second.ifindex == ifindex) {
+      break;
+    }
+  }
   if (device_it == devices_.end()) {
     // If the Device is not found in |devices_| it is not active. Ignore IP
     // configuration changes until the device becomes active.
     return;
   }
 
+  const dbus::ObjectPath& device_path = device_it->first;
   IPConfig old_ip_config = device_it->second.ipconfig;
 
   // Refresh all properties at once.
@@ -836,10 +728,6 @@ void ShillClient::OnDeviceIPConfigChange(const dbus::ObjectPath& device_path) {
             << "]: IPConfig changed: " << new_ip_config;
   NotifyIPConfigChangeHandlers(device_it->second);
   NotifyIPv6NetworkChangeHandlers(device_it->second, old_ip_config.ipv6_cidr);
-}
-
-void ShillClient::OnDeviceNetworkConfigChange(int ifindex) {
-  // TODO(b/340974631): Implement this function.
 }
 
 void ShillClient::NotifyIPConfigChangeHandlers(const Device& device) {
