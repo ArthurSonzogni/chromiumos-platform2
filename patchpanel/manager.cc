@@ -15,6 +15,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_runner.h>
+#include <base/types/cxx23_to_underlying.h>
 #include <chromeos/net-base/mac_address.h>
 #include <chromeos/net-base/process_manager.h>
 #include <chromeos/net-base/technology.h>
@@ -1117,6 +1118,22 @@ void Manager::StopMulticastForwarding(const ShillClient::Device& shill_device,
   }
   msg->set_dir(GetMulticastControlMessageDirection(dir));
   mcast_proxy_->SendControlMessage(cm);
+}
+
+void Manager::ConfigureNetwork(int ifindex,
+                               const std::string& ifname,
+                               NetworkApplier::Area area,
+                               const net_base::NetworkConfig& network_config,
+                               net_base::NetworkPriority priority,
+                               NetworkApplier::Technology technology) {
+  LOG(INFO) << __func__ << " on " << ifname << "(" << ifindex
+            << "): " << network_config << ", priority " << priority
+            << ", area 0x" << std::hex << base::to_underlying(area);
+
+  NetworkApplier::GetInstance()->ApplyNetworkConfig(
+      ifindex, ifname, area, network_config, priority, technology);
+
+  // TODO(b/293997937): Move dynamic iptables rule setup here.
 }
 
 void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {

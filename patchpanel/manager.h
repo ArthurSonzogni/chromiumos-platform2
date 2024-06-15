@@ -34,6 +34,7 @@
 #include "patchpanel/multicast_counters_service.h"
 #include "patchpanel/multicast_forwarder.h"
 #include "patchpanel/multicast_metrics.h"
+#include "patchpanel/network/network_applier.h"
 #include "patchpanel/network_monitor_service.h"
 #include "patchpanel/routing_service.h"
 #include "patchpanel/rtnl_client.h"
@@ -186,6 +187,13 @@ class Manager : public ForwardingService {
       std::string_view ifname_virtual,
       MulticastForwarder::Direction dir =
           MulticastForwarder::Direction::kTwoWays) override;
+
+  void ConfigureNetwork(int ifindex,
+                        const std::string& ifname,
+                        NetworkApplier::Area area,
+                        const net_base::NetworkConfig& network_config,
+                        net_base::NetworkPriority priority,
+                        NetworkApplier::Technology technology);
 
   DownstreamNetworkService* downstream_network_service() {
     return downstream_network_svc_.get();

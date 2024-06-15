@@ -184,15 +184,9 @@ ConfigureNetworkResponse PatchpanelAdaptor::ConfigureNetwork(
       technology = NetworkApplier::Technology::kEthernet;
   }
 
-  LOG(INFO) << __func__ << " on " << ifname << "(" << ifindex
-            << "): " << network_config << ", priority " << priority
-            << ", area 0x" << std::hex << request.area();
-
-  NetworkApplier::GetInstance()->ApplyNetworkConfig(
-      ifindex, ifname, static_cast<NetworkApplier::Area>(request.area()),
-      network_config, priority, technology);
-
-  // TODO(b/293997937): Move dynamic iptables rule setup here.
+  manager_->ConfigureNetwork(ifindex, ifname,
+                             static_cast<NetworkApplier::Area>(request.area()),
+                             network_config, priority, technology);
 
   ConfigureNetworkResponse response;
   response.set_success(true);
