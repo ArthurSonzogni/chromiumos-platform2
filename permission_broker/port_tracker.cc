@@ -22,8 +22,8 @@
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/patchpanel/dbus/client.h>
-#include <net-base/ipv4_address.h>
 
 namespace permission_broker {
 
