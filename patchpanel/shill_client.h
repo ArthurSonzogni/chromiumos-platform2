@@ -19,6 +19,7 @@
 #include <brillo/any.h>
 #include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/net-base/ipv6_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <chromeos/net-base/technology.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
@@ -44,10 +45,7 @@ class ShillClient {
  public:
   // IPConfig for a shill Device. If the shill Device does not have a valid
   // ipv4/ipv6 config, the corresponding fields will be empty or std::nullopt.
-  // TODO(jiejiang): add the following fields into this struct:
-  // - IPv4 search domains
-  // - IPv6 search domains
-  // - MTU (one only per network)
+  // TODO(b/340974631): Replace this struct with net_base::NetworkConfig.
   struct IPConfig {
     std::optional<net_base::IPv4CIDR> ipv4_cidr;
     std::optional<net_base::IPv4Address> ipv4_gateway;
@@ -75,9 +73,6 @@ class ShillClient {
 
   // Represents the properties of an object of org.chromium.flimflam.Device.
   // Only contains the properties we care about.
-  // TODO(jiejiang): add the following fields into this struct:
-  // - the connection state of the Service, if possible by translating back to
-  //   the enum shill::Service::ConnectState
   struct Device {
     // Interface name of the shill Device, corresponding to the
     // kInterfaceProperty value. b/273741099: The kInterfaceProperty value must
@@ -179,6 +174,10 @@ class ShillClient {
 
   void ScanDevices();
 
+  void UpdateNetworkConfigCache(int ifindex,
+                                const net_base::NetworkConfig& network_config);
+  void ClearNetworkConfigCache(int ifindex);
+
   // Finds the shill physical or VPN Device whose "Interface" property matches
   // |shill_device_interface_property|. This function is meant for associating a
   // shill Device to an interface name argument passed directly to patchpanel
@@ -203,6 +202,8 @@ class ShillClient {
   // Returns interface names of all known shill physical Devices.
   virtual const std::vector<Device> GetDevices() const;
 
+  base::WeakPtr<ShillClient> AsWeakPtr() { return weak_factory_.GetWeakPtr(); }
+
  protected:
   void OnManagerPropertyChangeRegistration(const std::string& interface,
                                            const std::string& signal_name,
@@ -221,6 +222,7 @@ class ShillClient {
       const dbus::ObjectPath& device_path,
       const std::string& primary_multiplexed_interface);
   void OnDeviceIPConfigChange(const dbus::ObjectPath& device_path);
+  void OnDeviceNetworkConfigChange(int ifindex);
   void NotifyIPConfigChangeHandlers(const Device& device);
   void NotifyIPv6NetworkChangeHandlers(
       const Device& device, const std::optional<net_base::IPv6CIDR>& old_cidr);
@@ -300,6 +302,16 @@ class ShillClient {
   //   - b/273741099: After the disconnection of the primary Network of a
   //   Cellular Device, the name of primary multiplexed interface is unknown.
   std::map<std::string, std::pair<std::string, int>> datapath_interface_cache_;
+  // A map from interface index to ShillClient::IPconfig. This map is updated
+  // from the ConfigureNetwork D-Bus calls via UpdateNetworkConfigCache() and
+  // ClearNetworkConfigCache. This map tracks the NetworkConfigs on the network
+  // interfaces which patchpanel cares about (plus the  the secondary
+  // multiplexed APN connection, we call ConfigureNetwork but shill_client does
+  // not track it). The NetworkConfig in the Device objects exposed by
+  // ShillClient will be updated and retrieved from this cache instead of some
+  // other D-Bus calls to shill.
+  // TODO(b/340974631): Replace with net_base::NetworkConfig.
+  std::map<int, IPConfig> network_config_cache_;
 
   // Tracks the DoH providers from the DNSProxyDOHProviders property on shill's
   // Manager.

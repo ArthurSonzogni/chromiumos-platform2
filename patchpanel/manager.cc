@@ -1134,6 +1134,20 @@ void Manager::ConfigureNetwork(int ifindex,
       ifindex, ifname, area, network_config, priority, technology);
 
   // TODO(b/293997937): Move dynamic iptables rule setup here.
+
+  // Shill is waiting for the result of this D-Bus call to finish the network
+  // setup. Use PostTask() here so that these two tasks can be done in parallel.
+  base::OnceClosure cb;
+  if (area == NetworkApplier::Area::kClear) {
+    cb = base::BindOnce(&ShillClient::ClearNetworkConfigCache,
+                        shill_client_->AsWeakPtr(), ifindex);
+  } else {
+    cb = base::BindOnce(&ShillClient::UpdateNetworkConfigCache,
+                        shill_client_->AsWeakPtr(), ifindex, network_config);
+  }
+
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(FROM_HERE,
+                                                              std::move(cb));
 }
 
 void Manager::NotifyAndroidWifiMulticastLockChange(bool is_held) {

@@ -17,6 +17,7 @@
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/net-base/ip_address.h>
+#include <chromeos/net-base/network_config.h>
 #include <chromeos/net-base/technology.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
@@ -65,6 +66,30 @@ bool IsActiveDevice(const ShillClient::Device& device) {
   // interface.
   return device.primary_multiplexed_interface.has_value();
 }
+
+ShillClient::IPConfig NetworkConfigToIPConfig(
+    const net_base::NetworkConfig& network_config) {
+  ShillClient::IPConfig ret;
+  ret.ipv4_cidr = network_config.ipv4_address;
+  ret.ipv4_gateway = network_config.ipv4_gateway;
+  if (network_config.ipv6_addresses.size() > 0) {
+    // The first one is the primary address.
+    ret.ipv6_cidr = network_config.ipv6_addresses[0];
+  }
+  ret.ipv6_gateway = network_config.ipv6_gateway;
+  for (const auto& dns : network_config.dns_servers) {
+    switch (dns.GetFamily()) {
+      case net_base::IPFamily::kIPv4:
+        ret.ipv4_dns_addresses.push_back(dns.ToString());
+        break;
+      case net_base::IPFamily::kIPv6:
+        ret.ipv6_dns_addresses.push_back(dns.ToString());
+        break;
+    }
+  }
+  return ret;
+}
+
 }  // namespace
 
 bool ShillClient::Device::IsConnected() const {
@@ -140,6 +165,34 @@ void ShillClient::ScanDevices() {
     return;
   }
   UpdateDevices(it->second);
+}
+
+void ShillClient::UpdateNetworkConfigCache(
+    int ifindex, const net_base::NetworkConfig& network_config) {
+  IPConfig new_ipconfig = NetworkConfigToIPConfig(network_config);
+
+  const auto it = network_config_cache_.find(ifindex);
+
+  bool has_changed = false;
+  if (it == network_config_cache_.end()) {
+    network_config_cache_.insert({ifindex, new_ipconfig});
+    has_changed = true;
+  } else {
+    has_changed = it->second != new_ipconfig;
+    if (has_changed) {
+      it->second = new_ipconfig;
+    }
+  }
+
+  if (has_changed) {
+    OnDeviceNetworkConfigChange(ifindex);
+  }
+}
+
+void ShillClient::ClearNetworkConfigCache(int ifindex) {
+  if (network_config_cache_.erase(ifindex) == 1) {
+    OnDeviceNetworkConfigChange(ifindex);
+  }
 }
 
 void ShillClient::UpdateDefaultDevices() {
@@ -783,6 +836,10 @@ void ShillClient::OnDeviceIPConfigChange(const dbus::ObjectPath& device_path) {
             << "]: IPConfig changed: " << new_ip_config;
   NotifyIPConfigChangeHandlers(device_it->second);
   NotifyIPv6NetworkChangeHandlers(device_it->second, old_ip_config.ipv6_cidr);
+}
+
+void ShillClient::OnDeviceNetworkConfigChange(int ifindex) {
+  // TODO(b/340974631): Implement this function.
 }
 
 void ShillClient::NotifyIPConfigChangeHandlers(const Device& device) {
