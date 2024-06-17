@@ -233,6 +233,14 @@ static bool is_v4l2_4k_device_dec_vp9(int fd) {
                            V4L2_PIX_FMT_VP9_FRAME, 8);
 }
 
+// Determines if is_v4l2_4k_device() for VP9 10bit decoding.
+static bool is_v4l2_4k_device_dec_vp9_2(int fd) {
+  return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                           V4L2_PIX_FMT_VP9, 10) ||
+         is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                           V4L2_PIX_FMT_VP9_FRAME, 10);
+}
+
 // Determines if is_v4l2_4k_device() for VP9 encoding.
 static bool is_v4l2_4k_device_enc_vp9(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
@@ -247,12 +255,28 @@ static bool is_v4l2_4k_device_dec_hevc(int fd) {
                            V4L2_PIX_FMT_HEVC_SLICE, 8);
 }
 
+// Determines if is_v4l2_4k_device() for HEVC 10bit decoding.
+static bool is_v4l2_4k_device_dec_hevc_10bpp(int fd) {
+  return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                           V4L2_PIX_FMT_HEVC, 10) ||
+         is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                           V4L2_PIX_FMT_HEVC_SLICE, 10);
+}
+
 // Determines if is_v4l2_4k_device() for AV1 decoding.
 static bool is_v4l2_4k_device_dec_av1(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
                            V4L2_PIX_FMT_AV1, 8) ||
          is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
                            V4L2_PIX_FMT_AV1_FRAME, 8);
+}
+
+// Determines if is_v4l2_4k_device() for AV1 10bit decoding.
+static bool is_v4l2_4k_device_dec_av1_10bpp(int fd) {
+  return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                           V4L2_PIX_FMT_AV1, 10) ||
+         is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
+                           V4L2_PIX_FMT_AV1_FRAME, 10);
 }
 
 #endif  // defined(USE_V4L2_CODEC)
@@ -314,6 +338,18 @@ bool detect_4k_device_vp9(void) {
   return false;
 }
 
+/* Determines "4k_video_vp9_2". Return true if the V4L2 device supports 4k
+ * resolution VP9 10bpp decoding.
+ */
+bool detect_4k_device_vp9_2(void) {
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_vp9_2))
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
+
+  return false;
+}
+
 /* Determines "4k_video_av1". Return true, if either the VAAPI device
  * supports 4k resolution AV1 decoding, has decoding entry point,
  * and input YUV420 formats.
@@ -333,14 +369,20 @@ bool detect_4k_device_av1(void) {
 }
 
 /* Determines "4k_video_av1_10bpp". Return true, if either the VAAPI device
- * supports 4k resolution AV1 10BPP decoding, has decoding entry point,
- * and input YUV420 formats.
- */
+ * supports 4k resolution AV1 10BPP decoding, has decoding entry point, and
+ * input YUV420 formats. Or the V4L2 video device supports 4K resolution AV1
+ * 10bpp decoding.
+   */
 bool detect_4k_device_av1_10bpp(void) {
 #if defined(USE_VAAPI)
   return does_any_device_support_resolution(
       kDRMDevicePattern, query_support_for_dec_av1_10bpp, width_4k, height_4k);
 #endif  // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_av1_10bpp))
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
 
   return false;
 }
@@ -363,15 +405,21 @@ bool detect_4k_device_hevc(void) {
   return false;
 }
 
-/* Determines "4k_video_hevc_10bpp". Return true, if the VAAPI device supports
- * 4k resolution HEVC main10 10BPP decoding, has decoding entry point, and
- * outputs YUV420 format.
+/* Determines "4k_video_hevc_10bpp". Return true, if either the VAAPI device
+ * supports 4k resolution HEVC main10 10BPP decoding, has decoding entry point,
+ * and outputs YUV420 format. Or the V4L2 video device supports 4K resolution
+ * HEVC 10bpp decoding.
  */
 bool detect_4k_device_hevc_10bpp(void) {
 #if defined(USE_VAAPI)
   return does_any_device_support_resolution(
       kDRMDevicePattern, query_support_for_dec_hevc_10bpp, width_4k, height_4k);
 #endif  // defined(USE_VAAPI)
+
+#if defined(USE_V4L2_CODEC)
+  if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_dec_hevc_10bpp))
+    return true;
+#endif  // defined(USE_V4L2_CODEC)
 
   return false;
 }

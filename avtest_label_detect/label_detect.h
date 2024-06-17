@@ -94,6 +94,7 @@ extern bool detect_jpeg_acc_enc(void);
 bool detect_4k_device_h264(void);
 bool detect_4k_device_vp8(void);
 bool detect_4k_device_vp9(void);
+bool detect_4k_device_vp9_2(void);
 bool detect_4k_device_av1(void);
 bool detect_4k_device_av1_10bpp(void);
 bool detect_4k_device_hevc(void);

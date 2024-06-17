@@ -38,6 +38,7 @@ struct detector detectors[] = {
     {"hw_video_acc_h264_4k", detect_4k_device_h264},
     {"hw_video_acc_vp8_4k", detect_4k_device_vp8},
     {"hw_video_acc_vp9_4k", detect_4k_device_vp9},
+    {"hw_video_acc_vp9_2_4k", detect_4k_device_vp9_2},
     {"hw_video_acc_av1_4k", detect_4k_device_av1},
     {"hw_video_acc_av1_4k_10bpp", detect_4k_device_av1_10bpp},
     {"hw_video_acc_hevc_4k", detect_4k_device_hevc},
