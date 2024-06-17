@@ -103,7 +103,7 @@ impl From<schedqos::Error> for Error {
 impl From<crate::proc::Error> for Error {
     fn from(e: crate::proc::Error) -> Self {
         match e {
-            crate::proc::Error::NotFound(_) => Self::ProcessNotFound,
+            crate::proc::Error::NotFound => Self::ProcessNotFound,
             _ => Self::Proc(e),
         }
     }

@@ -15,19 +15,18 @@ use procfs::process::Stat;
 /// Error of parsing /proc/pid/status
 #[derive(Debug)]
 pub enum Error {
-    NotFound(u32),
+    NotFound,
     FileCorrupt,
     Io(io::Error),
 }
 
-impl From<(procfs::ProcError, u32)> for Error {
-    fn from(v: (procfs::ProcError, u32)) -> Self {
-        let (e, pid) = v;
+impl From<procfs::ProcError> for Error {
+    fn from(e: procfs::ProcError) -> Self {
         match e {
             procfs::ProcError::PermissionDenied(_) => {
                 Error::Io(io::Error::from_raw_os_error(libc::EPERM))
             }
-            procfs::ProcError::NotFound(_) => Error::NotFound(pid),
+            procfs::ProcError::NotFound(_) => Error::NotFound,
             procfs::ProcError::Incomplete(_) => Error::FileCorrupt,
             procfs::ProcError::Io(e, _) => Error::Io(e),
             procfs::ProcError::Other(_) => Error::FileCorrupt,
@@ -42,7 +41,7 @@ impl From<(procfs::ProcError, u32)> for Error {
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::NotFound(_) => None,
+            Self::NotFound => None,
             Self::FileCorrupt => None,
             Self::Io(e) => Some(e),
         }
@@ -52,7 +51,7 @@ impl std::error::Error for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NotFound(pid) => f.write_fmt(format_args!("/proc/{pid}/status is not found")),
+            Self::NotFound => f.write_fmt(format_args!("/proc/pid/status is not found")),
             Self::FileCorrupt => f.write_str("/proc/pid/status invalid format"),
             Self::Io(e) => f.write_fmt(format_args!("procfs: {e}")),
         }
@@ -83,15 +82,15 @@ pub fn load_euid(pid: u32) -> Result<u32> {
 /// If the State was either of "Z (zombie)", or "X (dead)", this returns `false`.
 pub fn is_alive(pid: u32) -> Result<bool> {
     let file = open_stat_file(pid)?;
-    let stat = Stat::from_reader(file).map_err(|e| (e, pid))?;
-    let state = stat.state().map_err(|e| (e, pid))?;
+    let stat = Stat::from_reader(file)?;
+    let state = stat.state()?;
     Ok(state != ProcState::Zombie && state != ProcState::Dead)
 }
 
 fn open_status_file(pid: u32) -> Result<File> {
     File::open(format!("/proc/{}/status", pid)).map_err(|e| {
         if e.kind() == io::ErrorKind::NotFound {
-            Error::NotFound(pid)
+            Error::NotFound
         } else {
             Error::Io(e)
         }
@@ -101,7 +100,7 @@ fn open_status_file(pid: u32) -> Result<File> {
 fn open_stat_file(pid: u32) -> Result<File> {
     File::open(format!("/proc/{}/stat", pid)).map_err(|e| {
         if e.kind() == io::ErrorKind::NotFound {
-            Error::NotFound(pid)
+            Error::NotFound
         } else {
             Error::Io(e)
         }
@@ -136,19 +135,13 @@ mod tests {
     #[test]
     fn test_load_ruid() {
         assert!(load_ruid(std::process::id()).is_ok());
-        assert!(matches!(
-            load_ruid(u32::MAX),
-            Err(Error::NotFound(u32::MAX))
-        ));
+        assert!(matches!(load_ruid(u32::MAX), Err(Error::NotFound)));
     }
 
     #[test]
     fn test_load_euid() {
         assert!(load_euid(std::process::id()).is_ok());
-        assert!(matches!(
-            load_euid(u32::MAX),
-            Err(Error::NotFound(u32::MAX))
-        ));
+        assert!(matches!(load_euid(u32::MAX), Err(Error::NotFound)));
     }
 
     #[test]
