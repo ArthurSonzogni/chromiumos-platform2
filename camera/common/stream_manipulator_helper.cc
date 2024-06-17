@@ -1263,7 +1263,9 @@ void StreamManipulatorHelper::HandleRequestError(uint32_t frame_number) {
   CHECK(task_runner_->RunsTasksInCurrentSequence());
 
   auto [capture_ctx, capture_ctx_remover] = GetCaptureContext(frame_number);
-  CHECK_NE(capture_ctx, nullptr);
+  if (capture_ctx == nullptr) {
+    return;
+  }
   for (auto& [s, stream_ctx] : capture_ctx->requested_streams) {
     CHECK_EQ(stream_ctx.state, StreamState::kRequesting);
     stream_ctx.state = StreamState::kError;
@@ -1288,7 +1290,9 @@ void StreamManipulatorHelper::HandleResultError(uint32_t frame_number) {
   CHECK(task_runner_->RunsTasksInCurrentSequence());
 
   auto [capture_ctx, capture_ctx_remover] = GetCaptureContext(frame_number);
-  CHECK_NE(capture_ctx, nullptr);
+  if (capture_ctx == nullptr) {
+    return;
+  }
   CHECK(!capture_ctx->result_metadata_error);
   capture_ctx->result_metadata_error = true;
   result_sequencer_->Notify(camera3_notify_msg_t{
@@ -1302,8 +1306,10 @@ void StreamManipulatorHelper::HandleBufferError(uint32_t frame_number,
   CHECK(task_runner_->RunsTasksInCurrentSequence());
 
   auto [capture_ctx, capture_ctx_remover] = GetCaptureContext(frame_number);
-  CHECK_NE(capture_ctx, nullptr);
-  CHECK(capture_ctx->requested_streams.contains(stream));
+  if (capture_ctx == nullptr ||
+      !capture_ctx->requested_streams.contains(stream)) {
+    return;
+  }
   StreamContext& stream_ctx = capture_ctx->requested_streams[stream];
   CHECK_EQ(stream_ctx.state, StreamState::kRequesting);
   stream_ctx.state = StreamState::kError;
