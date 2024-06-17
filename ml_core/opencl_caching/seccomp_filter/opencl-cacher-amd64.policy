@@ -7,6 +7,7 @@ rseq: 1
 access: 1
 brk: 1
 clock_nanosleep: 1
+# clone is used to spawn threads.
 clone: 1
 close: 1
 connect: 1
@@ -33,6 +34,7 @@ getsockname: 1
 getsockopt: 1
 gettid: 1
 getuid: 1
+# For reading terminal settings.
 ioctl: 1
 lseek: 1
 madvise: 1
@@ -46,6 +48,7 @@ openat: 1
 pipe2: 1
 poll: 1
 prlimit64: 1
+# prctl is used to create threads.
 prctl: arg0 == PR_SET_NAME
 read: 1
 readlink: 1
@@ -70,8 +73,10 @@ setpriority: 1
 shutdown: 1
 sigaltstack: 1
 signalfd4: 1
+# Allow AF_UNIX for syslog.
 socket: arg0 == AF_UNIX
 sysinfo: 1
 uname: 1
 unlink: 1
+unlinkat: 1
 write: 1
