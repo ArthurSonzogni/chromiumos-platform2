@@ -176,17 +176,19 @@ static bool query_support_for_dec_hevc_10bpp(int fd,
 static const char kVideoDevicePattern[] = "/dev/video*";
 
 /* Determined if a V4L2 device associated with given |fd| supports |pix_fmt|
- * for |buf_type|, and its maximum resolution is larger than 3840x2160.
+ * for |buf_type| and bits per pixel (|bpp|), and its maximum resolution is
+ * larger than 3840x2160.
  */
 static bool is_v4l2_4k_device(int fd,
                               enum v4l2_buf_type buf_type,
-                              uint32_t pix_fmt) {
+                              uint32_t pix_fmt,
+                              uint32_t bpp) {
   int32_t resolution_width;
   int32_t resolution_height;
   if (!is_hw_video_acc_device(fd)) {
     return false;
   }
-  if (is_v4l2_support_format(fd, buf_type, pix_fmt, 8)) {
+  if (is_v4l2_support_format(fd, buf_type, pix_fmt, bpp)) {
     if (get_v4l2_max_resolution(fd, pix_fmt, &resolution_width,
                                 &resolution_height)) {
       return resolution_width >= width_4k && resolution_height >= height_4k;
@@ -198,59 +200,59 @@ static bool is_v4l2_4k_device(int fd,
 // Determines if is_v4l2_4k_device() for H264 decoding.
 static bool is_v4l2_4k_device_dec_h264(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_H264) ||
+                           V4L2_PIX_FMT_H264, 8) ||
          is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_H264_SLICE);
+                           V4L2_PIX_FMT_H264_SLICE, 8);
 }
 
 // Determines if is_v4l2_4k_device() for H264 encoding.
 static bool is_v4l2_4k_device_enc_h264(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-                           V4L2_PIX_FMT_H264);
+                           V4L2_PIX_FMT_H264, 8);
 }
 
 // Determines if is_v4l2_4k_device() for VP8 decoding.
 static bool is_v4l2_4k_device_dec_vp8(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_VP8) ||
+                           V4L2_PIX_FMT_VP8, 8) ||
          is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_VP8_FRAME);
+                           V4L2_PIX_FMT_VP8_FRAME, 8);
 }
 
 // Determines if is_v4l2_4k_device() for VP8 encoding.
 static bool is_v4l2_4k_device_enc_vp8(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-                           V4L2_PIX_FMT_VP8);
+                           V4L2_PIX_FMT_VP8, 8);
 }
 
 // Determines if is_v4l2_4k_device() for VP9 decoding.
 static bool is_v4l2_4k_device_dec_vp9(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_VP9) ||
+                           V4L2_PIX_FMT_VP9, 8) ||
          is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_VP9_FRAME);
+                           V4L2_PIX_FMT_VP9_FRAME, 8);
 }
 
 // Determines if is_v4l2_4k_device() for VP9 encoding.
 static bool is_v4l2_4k_device_enc_vp9(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE,
-                           V4L2_PIX_FMT_VP9);
+                           V4L2_PIX_FMT_VP9, 8);
 }
 
 // Determines if is_v4l2_4k_device() for HEVC decoding.
 static bool is_v4l2_4k_device_dec_hevc(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_HEVC) ||
+                           V4L2_PIX_FMT_HEVC, 8) ||
          is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_HEVC_SLICE);
+                           V4L2_PIX_FMT_HEVC_SLICE, 8);
 }
 
 // Determines if is_v4l2_4k_device() for AV1 decoding.
 static bool is_v4l2_4k_device_dec_av1(int fd) {
   return is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_AV1) ||
+                           V4L2_PIX_FMT_AV1, 8) ||
          is_v4l2_4k_device(fd, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE,
-                           V4L2_PIX_FMT_AV1_FRAME);
+                           V4L2_PIX_FMT_AV1_FRAME, 8);
 }
 
 #endif  // defined(USE_V4L2_CODEC)
