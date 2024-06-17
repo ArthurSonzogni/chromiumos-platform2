@@ -388,12 +388,10 @@ GetWatchdogRebootReasonFromPath(const base::FilePath& watchdog_path,
       return base::unexpected(
           CrashCollectionStatus::kFailureReadingWatchdogFile);
     }
-    if (read_result < length) {
-      LOG(ERROR) << "Partial read of " << watchdog_path << " (expected "
-                 << length << ", got " << read_result << ")";
-      return base::unexpected(
-          CrashCollectionStatus::kFailureReadingWatchdogFile);
-    }
+    // The crash report may come from pseudo file system which may report
+    // the max size of data buffer instead of size of actual data so adjust
+    // size of the string according to size of data actually read for the file
+    bootstatus_string.resize(read_result);
   }
 
   unsigned bootstatus = 0;
