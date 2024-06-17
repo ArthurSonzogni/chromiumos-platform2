@@ -33,6 +33,7 @@ getresgid32: 1
 getresuid32: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid32: 1
 # For reading terminal settings.
 ioctl: arg1 == TCGETS
