@@ -844,9 +844,17 @@ bool SessionManagerImpl::EmitStartedUserSession(
     return false;
   }
 
+  // Avoid re-emitting the signal for the same session.
+  if (emitted_started_user_session_.find(actual_account_id) !=
+      emitted_started_user_session_.end()) {
+    return true;
+  }
+
   init_controller_->TriggerImpulse(kStartedUserSessionImpulse,
                                    {"CHROMEOS_USER=" + actual_account_id},
                                    InitDaemonController::TriggerMode::ASYNC);
+  emitted_started_user_session_.insert(actual_account_id);
+
   return true;
 }
 

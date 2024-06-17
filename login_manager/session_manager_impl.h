@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -527,6 +528,10 @@ class SessionManagerImpl
 
   // Map of the currently signed-in users to their state.
   UserSessionMap user_sessions_;
+
+  // Set to remember the account ids for which started_user_session signal has
+  // already been emitted.
+  std::set<std::string> emitted_started_user_session_;
 
   // Primary user is the first non-incognito user.
   std::string primary_user_account_id_;
