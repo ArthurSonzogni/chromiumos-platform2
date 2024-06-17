@@ -131,6 +131,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Return the the mount type as a string.
   MountType GetMountType() const;
 
+  // Set user data directories (MyFiles and Downloads) to be writable or
+  // read-only.
+  bool EnableWriteUserDataStorage(bool enabled);
+
  private:
   // Gets the directory to mount the user's ephemeral cryptohome at.
   //

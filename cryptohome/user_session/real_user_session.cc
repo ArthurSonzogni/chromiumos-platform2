@@ -238,4 +238,8 @@ bool RealUserSession::ResetApplicationContainer(
   return mount_->ResetApplicationContainer(application);
 }
 
+bool RealUserSession::EnableWriteUserDataStorage(bool enabled) {
+  return mount_->EnableWriteUserDataStorage(enabled);
+}
+
 }  // namespace cryptohome

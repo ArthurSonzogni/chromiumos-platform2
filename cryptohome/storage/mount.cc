@@ -59,6 +59,8 @@ constexpr bool __attribute__((unused)) MountUserSessionOOP() {
   return USE_MOUNT_OOP;
 }
 
+constexpr mode_t kWriteAllowed = S_IRWXU | S_IRGRP | S_IXGRP;
+constexpr mode_t kReadOnly = S_IRUSR | S_IRGRP;
 }  // namespace
 
 namespace cryptohome {
@@ -441,6 +443,22 @@ void Mount::MaybeCancelMigrateEncryptionAndWait() {
     dircrypto_migration_stopped_condition_.Wait();
     LOG(INFO) << "Dircrypto migration stopped.";
   }
+}
+
+bool Mount::EnableWriteUserDataStorage(bool enabled) {
+  ObfuscatedUsername obfuscated_username = SanitizeUserName(username_);
+  const base::FilePath my_files = GetUserMountDirectory(obfuscated_username)
+                                      .Append(kUserHomeSuffix)
+                                      .Append(kMyFilesDir);
+  const base::FilePath downloads = my_files.Append(kDownloadsDir);
+  if (!platform_->DirectoryExists(my_files) ||
+      !platform_->DirectoryExists(downloads)) {
+    PLOG(ERROR) << "MyFiles or Downloads do not exist";
+    return false;
+  }
+  mode_t access_mode = enabled ? kWriteAllowed : kReadOnly;
+  return platform_->SetPermissions(my_files, access_mode) &&
+         platform_->SetPermissions(downloads, access_mode);
 }
 
 }  // namespace cryptohome

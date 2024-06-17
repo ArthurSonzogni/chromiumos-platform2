@@ -2327,6 +2327,51 @@ TEST_F(UserDataAuthTest, LowDiskSpaceHandlerStopped) {
   EXPECT_CALL(low_disk_space_handler_, Stop());
 }
 
+TEST_F(UserDataAuthTest, SetUserDataStorageWriteEnabled) {
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  user_data_auth::SetUserDataStorageWriteEnabledRequest request;
+  request.mutable_account_id()->set_account_id(kUsername1);
+
+  SetupMount(kUsername1);
+
+  EXPECT_CALL(*session_, IsActive()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*session_, EnableWriteUserDataStorage(false))
+      .WillOnce(Return(true));
+  request.set_enabled(false);
+  {
+    user_data_auth::SetUserDataStorageWriteEnabledReply reply =
+        userdataauth_->SetUserDataStorageWriteEnabled(request);
+    EXPECT_THAT(reply.has_error_info(), IsFalse());
+  }
+
+  EXPECT_CALL(*session_, EnableWriteUserDataStorage(true))
+      .WillOnce(Return(true));
+  request.set_enabled(true);
+  {
+    user_data_auth::SetUserDataStorageWriteEnabledReply reply =
+        userdataauth_->SetUserDataStorageWriteEnabled(request);
+    EXPECT_THAT(reply.has_error_info(), IsFalse());
+  }
+}
+
+TEST_F(UserDataAuthTest, SetUserDataStorageWriteEnabledNoSession) {
+  constexpr char kUsername1[] = "foo@gmail.com";
+
+  user_data_auth::SetUserDataStorageWriteEnabledRequest request;
+  request.mutable_account_id()->set_account_id(kUsername1);
+
+  request.set_enabled(false);
+  {
+    user_data_auth::SetUserDataStorageWriteEnabledReply reply =
+        userdataauth_->SetUserDataStorageWriteEnabled(request);
+    EXPECT_TRUE(reply.has_error_info());
+    EXPECT_THAT(
+        reply.error_info(),
+        HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
+  }
+}
+
 // A test fixture with some utility functions for testing mount and keys related
 // functionalities.
 class UserDataAuthExTest : public UserDataAuthTest {

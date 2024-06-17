@@ -66,6 +66,7 @@ class MockUserSession : public UserSession {
               ResetApplicationContainer,
               (const std::string&),
               (override));
+  MOCK_METHOD(bool, EnableWriteUserDataStorage, (bool), (override));
   MOCK_METHOD(MountType, GetMountType, (), (const, override));
 };
 

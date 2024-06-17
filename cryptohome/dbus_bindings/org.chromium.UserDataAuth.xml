@@ -542,6 +542,20 @@ do.
       </arg>
     </method>
 
+    <!-- Sets user data storage directory to be read-write or read-only. -->
+    <method name="SetUserDataStorageWriteEnabled">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::SetUserDataStorageWriteEnabledRequest"/>
+      </arg>
+      <arg name="reply" type="ay" direction="out">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::SetUserDataStorageWriteEnabledReply"/>
+      </arg>
+    </method>
+
     <!-- Emitted to update the remaining time on an authfactor lockout time -->
     <signal name="AuthFactorStatusUpdate">
       <annotation name="org.chromium.DBus.Method.Kind"

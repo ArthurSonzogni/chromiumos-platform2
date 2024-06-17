@@ -1325,6 +1325,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorFpTryCreateRateLimiterInsertFailed = 749,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockRemoveCredentialFailed = 750,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthNoIDInSetUserDataStorageWriteEnabled = 751,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthUserInactiveInSetUserDataStorageWriteEnabled = 752,
+  /* ./userdataauth.cc */
+  kLocUserDataAuthUserFailedToSetUserDataStorageWriteEnabled = 753,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.

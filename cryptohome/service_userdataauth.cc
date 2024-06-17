@@ -1165,4 +1165,27 @@ void UserDataAuthAdaptor::DoMigrateLegacyFingerprints(
           std::move(response)));
 }
 
+void UserDataAuthAdaptor::SetUserDataStorageWriteEnabled(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::SetUserDataStorageWriteEnabledReply>> response,
+    const user_data_auth::SetUserDataStorageWriteEnabledRequest& in_request) {
+  service_->PostTaskToMountThread(
+      FROM_HERE,
+      base::BindOnce(&UserDataAuthAdaptor::DoSetUserDataStorageWriteEnabled,
+                     weak_factory_.GetWeakPtr(),
+                     ThreadSafeDBusMethodResponse<
+                         user_data_auth::SetUserDataStorageWriteEnabledReply>::
+                         MakeThreadSafe(std::move(response)),
+                     in_request));
+}
+
+void UserDataAuthAdaptor::DoSetUserDataStorageWriteEnabled(
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+        user_data_auth::SetUserDataStorageWriteEnabledReply>> response,
+    const user_data_auth::SetUserDataStorageWriteEnabledRequest& in_request) {
+  user_data_auth::SetUserDataStorageWriteEnabledReply reply =
+      service_->SetUserDataStorageWriteEnabled(in_request);
+  response->Return(reply);
+}
+
 }  // namespace cryptohome

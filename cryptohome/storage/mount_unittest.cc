@@ -602,6 +602,38 @@ TEST_F(PersistentSystemTest, RestoreKeyFailedWithoutVault) {
               IsError(MOUNT_ERROR_KEY_RESTORE_FAILED));
 }
 
+TEST_F(PersistentSystemTest, EnableWriteUserDataStorage) {
+  SetHomedir(kUser);
+
+  const ObfuscatedUsername obfuscated_username =
+      brillo::cryptohome::home::SanitizeUserName(kUser);
+  const base::FilePath my_files = GetUserMountDirectory(obfuscated_username)
+                                      .Append(kUserHomeSuffix)
+                                      .Append(kMyFilesDir);
+  const base::FilePath downloads = my_files.Append(kDownloadsDir);
+  ASSERT_TRUE(platform_.CreateDirectory(my_files));
+  ASSERT_TRUE(platform_.CreateDirectory(downloads));
+
+  mode_t my_files_mode;
+  mode_t downloads_mode;
+  platform_.GetPermissions(my_files, &my_files_mode);
+  platform_.GetPermissions(downloads, &downloads_mode);
+  EXPECT_TRUE(my_files_mode & base::FILE_PERMISSION_WRITE_BY_USER);
+  EXPECT_TRUE(downloads_mode & base::FILE_PERMISSION_WRITE_BY_USER);
+
+  EXPECT_TRUE(mount_->EnableWriteUserDataStorage(false));
+  platform_.GetPermissions(my_files, &my_files_mode);
+  platform_.GetPermissions(downloads, &downloads_mode);
+  EXPECT_FALSE(my_files_mode & base::FILE_PERMISSION_WRITE_BY_USER);
+  EXPECT_FALSE(downloads_mode & base::FILE_PERMISSION_WRITE_BY_USER);
+
+  EXPECT_TRUE(mount_->EnableWriteUserDataStorage(true));
+  platform_.GetPermissions(my_files, &my_files_mode);
+  platform_.GetPermissions(downloads, &downloads_mode);
+  EXPECT_TRUE(my_files_mode & base::FILE_PERMISSION_WRITE_BY_USER);
+  EXPECT_TRUE(downloads_mode & base::FILE_PERMISSION_WRITE_BY_USER);
+}
+
 }  // namespace
 
 class EphemeralSystemTest : public ::testing::Test {

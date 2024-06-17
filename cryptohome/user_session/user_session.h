@@ -100,6 +100,9 @@ class UserSession {
   // Resets the application container for a given session.
   virtual bool ResetApplicationContainer(const std::string& application) = 0;
 
+  // Sets the user data directories to be writable or read-only.
+  virtual bool EnableWriteUserDataStorage(bool enabled) = 0;
+
   // =============== Credential storage functions ===============
   // These functions are used to read and write credential state stored in the
   // user session. They are implemented directly as non-virtual functions

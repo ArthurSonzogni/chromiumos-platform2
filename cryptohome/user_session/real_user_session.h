@@ -83,6 +83,8 @@ class RealUserSession : public UserSession {
 
   bool ResetApplicationContainer(const std::string& application) override;
 
+  bool EnableWriteUserDataStorage(bool enabled) override;
+
   MountType GetMountType() const override { return mount_->GetMountType(); };
 
  private:

@@ -2002,6 +2002,53 @@ UserDataAuth::ResetApplicationContainer(
   return reply;
 }
 
+user_data_auth::SetUserDataStorageWriteEnabledReply
+UserDataAuth::SetUserDataStorageWriteEnabled(
+    const user_data_auth::SetUserDataStorageWriteEnabledRequest& request) {
+  AssertOnMountThread();
+  user_data_auth::SetUserDataStorageWriteEnabledReply reply;
+  Username account_id = GetAccountId(request.account_id());
+
+  if (account_id->empty()) {
+    // Request must have identifier
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthNoIDInSetUserDataStorageWriteEnabled),
+            ErrorActionSet({PossibleAction::kDevCheckUnexpectedState}),
+            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT),
+        &reply);
+    return reply;
+  }
+
+  UserSession* session = sessions_->Find(account_id);
+  if (!session || !session->IsActive()) {
+    // Can't reset container of inactive user.
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthUserInactiveInSetUserDataStorageWriteEnabled),
+            ErrorActionSet({PossibleAction::kReboot}),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY),
+        &reply);
+    return reply;
+  }
+
+  if (!session->EnableWriteUserDataStorage(request.enabled())) {
+    PopulateReplyWithError(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocUserDataAuthUserFailedToSetUserDataStorageWriteEnabled),
+            ErrorActionSet({PossibleAction::kReboot}),
+            user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY),
+        &reply);
+    return reply;
+  }
+
+  PopulateReplyWithError(OkStatus<CryptohomeError>(), &reply);
+  return reply;
+}
+
 void UserDataAuth::StartMigrateToDircrypto(
     user_data_auth::StartMigrateToDircryptoRequest request,
     OnDoneCallback<user_data_auth::StartMigrateToDircryptoReply> on_done,

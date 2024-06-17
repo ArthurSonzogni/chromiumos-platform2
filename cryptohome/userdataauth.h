@@ -238,6 +238,12 @@ class UserDataAuth {
   user_data_auth::ResetApplicationContainerReply ResetApplicationContainer(
       const user_data_auth::ResetApplicationContainerRequest& request);
 
+  // Sets the user data directories (MyFiles, etc) to be writable (as default)
+  // or read-only.
+  user_data_auth::SetUserDataStorageWriteEnabledReply
+  SetUserDataStorageWriteEnabled(
+      const user_data_auth::SetUserDataStorageWriteEnabledRequest& request);
+
   // Return true if we support low entropy credential.
   bool IsLowEntropyCredentialSupported();
 

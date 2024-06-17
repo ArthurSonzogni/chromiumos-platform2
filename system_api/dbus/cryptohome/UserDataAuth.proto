@@ -776,6 +776,20 @@ message GetArcDiskFeaturesReply {
   bool quota_supported = 1;
 }
 
+// Input parameters for SetUserDataStorageWriteEnabled().
+message SetUserDataStorageWriteEnabledRequest {
+  // The owner of the home directory that we are going to set access rights to.
+  cryptohome.AccountIdentifier account_id = 1;
+  // Whether write access to MyFiles should be enabled or not.
+  bool enabled = 2;
+}
+
+// Output parameters for SetUserDataStorageWriteEnabled().
+message SetUserDataStorageWriteEnabledReply {
+  CryptohomeErrorCode error = 1;
+  CryptohomeErrorInfo error_info = 2;
+}
+
 // ------------------------- PKCS#11 Interface -------------------------
 
 // Represents the information about a token in PKCS#11, used by

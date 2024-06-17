@@ -383,6 +383,16 @@ class UserDataAuthAdaptor
           user_data_auth::GetArcDiskFeaturesReply>> response,
       const user_data_auth::GetArcDiskFeaturesRequest& in_request) override;
 
+  void SetUserDataStorageWriteEnabled(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::SetUserDataStorageWriteEnabledReply>> response,
+      const user_data_auth::SetUserDataStorageWriteEnabledRequest& in_request)
+      override;
+  void DoSetUserDataStorageWriteEnabled(
+      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
+          user_data_auth::SetUserDataStorageWriteEnabledReply>> response,
+      const user_data_auth::SetUserDataStorageWriteEnabledRequest& in_request);
+
  private:
   // Implements the signalling interface for this service. All of the send
   // operations are implemented by forwarding to the relevant adaptor function.
