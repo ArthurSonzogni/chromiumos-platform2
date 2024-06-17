@@ -73,3 +73,5 @@ send: 1
 getdents64: 1
 _llseek: 1
 sync: 1
+ftruncate: 1
+ftruncate64: 1
