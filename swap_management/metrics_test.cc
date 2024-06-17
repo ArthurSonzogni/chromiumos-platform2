@@ -29,10 +29,11 @@ class MetricsTest : public ::testing::Test {
   MockUtils mock_util_;
 };
 
-TEST_F(MetricsTest, PSIMemoryParser) {
+TEST_F(MetricsTest, PSIParser) {
   // Wrong period.
-  EXPECT_THAT(mock_metrics_->PSIMemoryParser(20),
-              absl::InvalidArgumentError("Invalid PSI memory period 20"));
+  EXPECT_THAT(
+      mock_metrics_->PSIParser(base::FilePath("/proc/pressure/memory"), 20),
+      absl::InvalidArgumentError("Invalid PSI period 20"));
 
   // Success.
   std::string psi =
@@ -43,18 +44,24 @@ TEST_F(MetricsTest, PSIMemoryParser) {
               ReadFileToString(base::FilePath("/proc/pressure/memory"), _))
       .WillOnce(DoAll(SetArgPointee<1>(psi), Return(absl::OkStatus())));
   std::vector<uint32_t> res = {75, 46};
-  EXPECT_THAT(mock_metrics_->PSIMemoryParser(10), std::move(res));
+  EXPECT_THAT(
+      mock_metrics_->PSIParser(base::FilePath("/proc/pressure/memory"), 10),
+      std::move(res));
 
   EXPECT_CALL(mock_util_,
               ReadFileToString(base::FilePath("/proc/pressure/memory"), _))
       .WillOnce(DoAll(SetArgPointee<1>(psi), Return(absl::OkStatus())));
   res = {30, 19};
-  EXPECT_THAT(mock_metrics_->PSIMemoryParser(60), std::move(res));
+  EXPECT_THAT(
+      mock_metrics_->PSIParser(base::FilePath("/proc/pressure/memory"), 60),
+      std::move(res));
 
   EXPECT_CALL(mock_util_,
               ReadFileToString(base::FilePath("/proc/pressure/memory"), _))
       .WillOnce(DoAll(SetArgPointee<1>(psi), Return(absl::OkStatus())));
   res = {7, 4};
-  EXPECT_THAT(mock_metrics_->PSIMemoryParser(300), std::move(res));
+  EXPECT_THAT(
+      mock_metrics_->PSIParser(base::FilePath("/proc/pressure/memory"), 300),
+      std::move(res));
 }
 }  // namespace swap_management

@@ -13,6 +13,7 @@
 #include <vector>
 
 #include <absl/status/status.h>
+#include <base/files/file_path.h>
 #include <base/timer/timer.h>
 
 namespace swap_management {
@@ -37,7 +38,8 @@ class Metrics {
   // Parse /proc/pressure/memory and return {psi_some_in_period,
   // psi_full_in_period} pair in decimal if success. |period| can only be 10, 60
   // or 300.
-  absl::StatusOr<std::vector<uint32_t>> PSIMemoryParser(uint32_t period);
+  absl::StatusOr<std::vector<uint32_t>> PSIParser(base::FilePath path,
+                                                  uint32_t period);
 
  private:
   Metrics() = default;

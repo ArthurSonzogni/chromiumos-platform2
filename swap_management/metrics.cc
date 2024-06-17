@@ -166,22 +166,49 @@ void Metrics::PeriodicReportZramMetrics() {
   metrics_.SendToUMA("ChromeOS.Zram.NotifyFree", (*zram_io_stat).notify_free, 1,
                      1000, 50);
 
+  // Values as logged in the histogram for (Memory|CPU|IO) pressure.
+  constexpr uint32_t kPressureMin = 1;  // As 0 is for underflow.
+  constexpr uint32_t kPressureExclusiveMax = 10000;
+  constexpr uint32_t kPressureHistogramBuckets = 100;
+
   absl::StatusOr<std::vector<uint32_t>> psi_memory_metrics =
-      PSIMemoryParser(kDefaultPeriodSec);
+      PSIParser(base::FilePath("/proc/pressure/memory"), kDefaultPeriodSec);
   LOG_IF(ERROR, !psi_memory_metrics.ok())
       << "Failed to read PSI memory metrics: " << psi_memory_metrics.status();
+  if (psi_memory_metrics.ok()) {
+    metrics_.SendToUMA("ChromeOS.CWP.PSIMemPressure.Some",
+                       (*psi_memory_metrics)[0], kPressureMin,
+                       kPressureExclusiveMax, kPressureHistogramBuckets);
+    metrics_.SendToUMA("ChromeOS.CWP.PSIMemPressure.Full",
+                       (*psi_memory_metrics)[1], kPressureMin,
+                       kPressureExclusiveMax, kPressureHistogramBuckets);
+  }
 
-  // Values as logged in the histogram for memory pressure.
-  constexpr uint32_t kMemPressureMin = 1;  // As 0 is for underflow.
-  constexpr uint32_t kMemPressureExclusiveMax = 10000;
-  constexpr uint32_t kMemPressureHistogramBuckets = 100;
+  absl::StatusOr<std::vector<uint32_t>> psi_cpu_metrics =
+      PSIParser(base::FilePath("/proc/pressure/cpu"), kDefaultPeriodSec);
+  LOG_IF(ERROR, !psi_cpu_metrics.ok())
+      << "Failed to read PSI cpu metrics: " << psi_cpu_metrics.status();
+  if (psi_cpu_metrics.ok()) {
+    metrics_.SendToUMA("ChromeOS.CWP.PSICpuPressure.Some",
+                       (*psi_cpu_metrics)[0], kPressureMin,
+                       kPressureExclusiveMax, kPressureHistogramBuckets);
+    metrics_.SendToUMA("ChromeOS.CWP.PSICpuPressure.Full",
+                       (*psi_cpu_metrics)[1], kPressureMin,
+                       kPressureExclusiveMax, kPressureHistogramBuckets);
+  }
 
-  metrics_.SendToUMA("ChromeOS.CWP.PSIMemPressure.Some",
-                     (*psi_memory_metrics)[0], kMemPressureMin,
-                     kMemPressureExclusiveMax, kMemPressureHistogramBuckets);
-  metrics_.SendToUMA("ChromeOS.CWP.PSIMemPressure.Full",
-                     (*psi_memory_metrics)[1], kMemPressureMin,
-                     kMemPressureExclusiveMax, kMemPressureHistogramBuckets);
+  absl::StatusOr<std::vector<uint32_t>> psi_io_metrics =
+      PSIParser(base::FilePath("/proc/pressure/io"), kDefaultPeriodSec);
+  LOG_IF(ERROR, !psi_io_metrics.ok())
+      << "Failed to read PSI io metrics: " << psi_io_metrics.status();
+  if (psi_io_metrics.ok()) {
+    metrics_.SendToUMA("ChromeOS.CWP.PSIIoPressure.Some", (*psi_io_metrics)[0],
+                       kPressureMin, kPressureExclusiveMax,
+                       kPressureHistogramBuckets);
+    metrics_.SendToUMA("ChromeOS.CWP.PSIIoPressure.Full", (*psi_io_metrics)[1],
+                       kPressureMin, kPressureExclusiveMax,
+                       kPressureHistogramBuckets);
+  }
 
   // We use exactly 15 buckets for zram, each of size 1GB except for the last
   // which is unbounded. This means we have buckets: [0, 1), [1, 2), ..., [14,
@@ -213,15 +240,14 @@ void Metrics::Stop() {
   metrics_timer_.Stop();
 }
 
-absl::StatusOr<std::vector<uint32_t>> Metrics::PSIMemoryParser(
-    uint32_t period) {
+absl::StatusOr<std::vector<uint32_t>> Metrics::PSIParser(base::FilePath path,
+                                                         uint32_t period) {
   if (period != 10 && period != 60 && period != 300)
-    return absl::InvalidArgumentError("Invalid PSI memory period " +
+    return absl::InvalidArgumentError("Invalid PSI period " +
                                       std::to_string(period));
 
   std::string content;
-  absl::Status status = Utils::Get()->ReadFileToString(
-      base::FilePath("/proc/pressure/memory"), &content);
+  absl::Status status = Utils::Get()->ReadFileToString(path, &content);
   if (!status.ok())
     return status;
 
@@ -254,7 +280,7 @@ absl::StatusOr<std::vector<uint32_t>> Metrics::PSIMemoryParser(
 
   // Sanity check if res contains two entries.
   if (res.size() != 2)
-    return absl::InternalError("Failed to parse PSI memory metrics.");
+    return absl::InternalError("Failed to parse PSI metrics.");
 
   return res;
 }
