@@ -1371,13 +1371,18 @@ Output: {
 }
 
 Status: Passed
-Status message: Sensitive sensor routine passed.
+Status message: Routine passed.
 ```
 
 Errors:
-- `Sensitive sensor routine failed unexpectedly.`
-- `Sensitive sensor routine failed to pass all sensors.`
-- `Sensitive sensor routine failed to pass configuration check.`
+- `Unexpected flow in routine.`
+- `Routine failed to initialize sensor devices.`
+- `Routine failed to set frequency.`
+- `Routine failed to get required channels.`
+- `Routine failed to set channels enabled.`
+- `Observer error occurred while reading sample.`
+- `Mojo connection lost.`
+- `Routine failed to read sample from sensor device.`
 
 ## LED Routines
 
