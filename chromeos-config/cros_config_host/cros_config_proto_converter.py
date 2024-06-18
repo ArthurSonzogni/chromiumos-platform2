@@ -3823,7 +3823,7 @@ def _write_cbfs_wifi_file(
             if f.read() != file_content:
                 raise Exception(
                     f"Firmware {coreboot_target} has conflicting "
-                    "file content under filename {filename}."
+                    f"file content under filename {filename}."
                 )
     else:
         with open(output_path, "wb") as f:
@@ -4423,23 +4423,27 @@ def dsm_encode(dsm_config):
         mask = 0x2
         if dsm_config.disable_active_sdr_channels >= 0:
             supported_functions |= mask
-        mask = mask << 1
+        mask <<= 1
         if dsm_config.support_indonesia_5g_band >= 0:
             supported_functions |= mask
-        mask = mask << 1
+        mask <<= 1
         if dsm_config.support_ultra_high_band >= 0:
             supported_functions |= mask
-        mask = mask << 1
+        mask <<= 1
         if dsm_config.regulatory_configurations >= 0:
             supported_functions |= mask
-        mask = mask << 1
+        mask <<= 1
         if dsm_config.uart_configurations >= 0:
             supported_functions |= mask
-        mask = mask << 1
+        mask <<= 1
         if dsm_config.enablement_11ax >= 0:
             supported_functions |= mask
-        mask = mask << 1
+        mask <<= 1
         if dsm_config.unii_4 >= 0:
+            supported_functions |= mask
+        # Function 12
+        mask <<= 5
+        if dsm_config.HasField("enablement_11be_countries"):
             supported_functions |= mask
         return supported_functions
 
@@ -4447,6 +4451,15 @@ def dsm_encode(dsm_config):
         if value < 0:
             return hex_32bit(0)
         return value.to_bytes(4, "little")
+
+    def dsm_enablement_11be_value(dsm_config):
+        enablement = 0
+        if dsm_config.HasField("enablement_11be_countries"):
+            if dsm_config.enablement_11be_countries.china:
+                enablement += 1
+            if dsm_config.enablement_11be_countries.south_korea:
+                enablement += 2
+        return dsm_value(enablement)
 
     supported_functions = enable_supported_functions(dsm_config)
     if supported_functions == 0:
@@ -4460,6 +4473,7 @@ def dsm_encode(dsm_config):
         + dsm_value(dsm_config.uart_configurations)
         + dsm_value(dsm_config.enablement_11ax)
         + dsm_value(dsm_config.unii_4)
+        + dsm_enablement_11be_value(dsm_config)
     )
 
 
