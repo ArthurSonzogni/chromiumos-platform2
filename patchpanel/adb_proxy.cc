@@ -142,7 +142,7 @@ std::unique_ptr<net_base::Socket> AdbProxy::Connect() const {
         return nullptr;
       }
       if (dst->Connect((const struct sockaddr*)&addr_un, sizeof(addr_un))) {
-        PLOG(INFO) << "Established adbd connection to " << addr_un;
+        LOG(INFO) << "Established adbd connection to " << addr_un;
         return dst;
       }
       PLOG(WARNING) << "Failed to connect UNIX domain socket to adbd: "
@@ -165,7 +165,7 @@ std::unique_ptr<net_base::Socket> AdbProxy::Connect() const {
         return nullptr;
       }
       if (dst->Connect((const struct sockaddr*)&addr_vm, sizeof(addr_vm))) {
-        PLOG(INFO) << "Established adbd connection to " << addr_vm;
+        LOG(INFO) << "Established adbd connection to " << addr_vm;
         return dst;
       }
       PLOG(WARNING) << "Failed to connect VSOCK socket to adbd at " << addr_vm
@@ -189,7 +189,7 @@ std::unique_ptr<net_base::Socket> AdbProxy::Connect() const {
     return nullptr;
   }
   if (dst->Connect((const struct sockaddr*)&addr_in, sizeof(addr_in))) {
-    PLOG(INFO) << "Established adbd connection to " << addr_in;
+    LOG(INFO) << "Established adbd connection to " << addr_in;
     return dst;
   }
   PLOG(ERROR) << "Failed to connect TCP socket to adbd at " << addr_in;
