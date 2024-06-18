@@ -82,12 +82,12 @@ class OutOfProcessMountHelper : public MountHelperInterface {
   bool TearDownExistingMount();
 
   // Whether to make the legacy home directory (/home/chronos/user) available.
-  bool legacy_home_;
+  const bool legacy_home_;
 
   // Whether to bind mount Downloads/
-  bool bind_mount_downloads_;
+  const bool bind_mount_downloads_;
 
-  libstorage::Platform* platform_;  // Un-owned.
+  libstorage::Platform* const platform_;  // Un-owned.
 
   // Username the mount belongs to, if a mount has been performed.
   // Empty otherwise.

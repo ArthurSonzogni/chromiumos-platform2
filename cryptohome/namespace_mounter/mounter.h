@@ -256,13 +256,12 @@ class Mounter {
   bool IsFirstMountComplete(
       const ObfuscatedUsername& obfuscated_username) const;
 
-  bool legacy_mount_ = true;
-  bool bind_mount_downloads_ = true;
+  const bool legacy_mount_;
+  const bool bind_mount_downloads_;
+  libstorage::Platform* const platform_;  // Un-owned.
 
   // Stack of mounts (in the mount(2) sense) that have been made.
   MountStack stack_;
-
-  libstorage::Platform* platform_;  // Un-owned.
 
   FRIEND_TEST(MounterTest, MountOrdering);
 };
