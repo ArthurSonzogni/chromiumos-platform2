@@ -226,6 +226,15 @@ void BluetoothPairingRoutine::RunNextStep() {
                                  std::move(on_success), std::move(on_error));
       }
       break;
+    case TestStep::kCollectDeviceInfoAfterPaired:
+      // Wait 1 second for device info to be updated. The device info may be
+      // updated after the device is paired.
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+          FROM_HERE,
+          base::BindOnce(&BluetoothPairingRoutine::GetDeviceProperties,
+                         weak_ptr_factory_.GetWeakPtr()),
+          base::Seconds(1));
+      break;
     case TestStep::kResetDeviceTag:
       if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
         auto [on_success, on_error] = SplitDbusCallback(
@@ -354,7 +363,8 @@ void BluetoothPairingRoutine::HandleUpdateAliasResponse(brillo::Error* error) {
 }
 
 void BluetoothPairingRoutine::GetDeviceProperties() {
-  CHECK(step_ == TestStep::kCollectDeviceInfo);
+  CHECK(step_ == TestStep::kCollectDeviceInfo ||
+        step_ == TestStep::kCollectDeviceInfoAfterPaired);
   CHECK(floss_utils::ParseDeviceInfo(target_device_).has_value());
 
   if (auto adapter = GetDefaultAdapterOrStop(); adapter != nullptr) {
@@ -389,11 +399,14 @@ void BluetoothPairingRoutine::GetDeviceProperties() {
 
 void BluetoothPairingRoutine::StoreDeviceUuids(
     brillo::Error* error, const std::vector<std::vector<uint8_t>>& uuids) {
-  CHECK(step_ == TestStep::kCollectDeviceInfo);
+  CHECK(step_ == TestStep::kCollectDeviceInfo ||
+        step_ == TestStep::kCollectDeviceInfoAfterPaired);
   if (error) {
     SetResultAndStop(base::unexpected("Failed to get device UUIDs."));
     return;
   }
+
+  std::vector<base::Uuid> out_uuids;
   for (const auto& uuid : uuids) {
     auto out_uuid = floss_utils::ParseUuidBytes(uuid);
     if (!out_uuid.is_valid()) {
@@ -401,13 +414,15 @@ void BluetoothPairingRoutine::StoreDeviceUuids(
           base::unexpected("Failed to parse UUID from device UUIDs."));
       return;
     }
-    routine_output_->pairing_peripheral->uuids.push_back(out_uuid);
+    out_uuids.push_back(out_uuid);
   }
+  routine_output_->pairing_peripheral->uuids = std::move(out_uuids);
 }
 
 void BluetoothPairingRoutine::StoreDeviceClass(brillo::Error* error,
                                                uint32_t bluetooth_class) {
-  CHECK(step_ == TestStep::kCollectDeviceInfo);
+  CHECK(step_ == TestStep::kCollectDeviceInfo ||
+        step_ == TestStep::kCollectDeviceInfoAfterPaired);
   if (error) {
     SetResultAndStop(base::unexpected("Failed to get device class."));
     return;
@@ -417,7 +432,8 @@ void BluetoothPairingRoutine::StoreDeviceClass(brillo::Error* error,
 
 void BluetoothPairingRoutine::StoreDeviceAddressType(brillo::Error* error,
                                                      uint32_t address_type) {
-  CHECK(step_ == TestStep::kCollectDeviceInfo);
+  CHECK(step_ == TestStep::kCollectDeviceInfo ||
+        step_ == TestStep::kCollectDeviceInfoAfterPaired);
   auto devie_info = floss_utils::ParseDeviceInfo(target_device_);
   CHECK(devie_info.has_value());
   if (error) {
