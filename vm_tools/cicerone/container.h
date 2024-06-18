@@ -13,7 +13,7 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
-#include <net-base/ipv4_address.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 
 namespace vm_tools::cicerone {

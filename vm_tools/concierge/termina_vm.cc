@@ -35,8 +35,8 @@
 #include <base/time/time.h>
 #include <google/protobuf/repeated_field.h>
 #include <chromeos/constants/vm_tools.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <grpcpp/grpcpp.h>
-#include <net-base/ipv4_address.h>
 #include <sys/epoll.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>

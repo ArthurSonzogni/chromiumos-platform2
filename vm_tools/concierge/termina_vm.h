@@ -21,9 +21,9 @@
 #include <base/time/time.h>
 #include <brillo/process/process.h>
 #include <brillo/grpc/async_grpc_client.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/patchpanel/dbus/client.h>
 #include <spaced/proto_bindings/spaced.pb.h>
-#include <net-base/ipv4_address.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 

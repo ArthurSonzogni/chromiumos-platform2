@@ -26,13 +26,13 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/threading/thread.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/util/message_differencer.h>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
-#include <net-base/ipv4_address.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 #include "vm_tools/concierge/network/guest_os_network.h"

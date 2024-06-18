@@ -13,11 +13,11 @@
 #include <string>
 #include <vector>
 
+#include <chromeos/net-base/ipv4_address.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
-#include <net-base/ipv4_address.h>
 
 #include "vm_tools/cicerone/container.h"
 
