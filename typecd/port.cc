@@ -158,6 +158,26 @@ void Port::PartnerChanged() {
   partner_->UpdatePDInfoFromSysfs();
 }
 
+void Port::CableChanged() {
+  if (!cable_) {
+    LOG(WARNING) << "Trying to update a non-existent cable on port "
+                 << port_num_;
+    return;
+  }
+
+  cable_->UpdatePDInfoFromSysfs();
+}
+
+void Port::CablePlugChanged(const base::FilePath& path) {
+  if (!cable_) {
+    LOG(WARNING) << "Trying to update a non-existent cable plug on port "
+                 << port_num_;
+    return;
+  }
+
+  cable_->UpdateNumAltModes(path);
+}
+
 void Port::PortChanged() {
   ParseDataRole();
   ParsePowerRole();

@@ -42,6 +42,8 @@ class FuzzerTypecObserver : public typecd::UdevMonitor::TypecObserver {
   void OnPdDeviceAddedOrRemoved(const base::FilePath& path,
                                 bool added) override{};
   void OnPartnerChanged(int port_num) override{};
+  void OnCableChanged(int port_num) override{};
+  void OnCablePlugChanged(const base::FilePath& path, int port_num) override{};
   void OnPortChanged(int port_num) override{};
 };
 

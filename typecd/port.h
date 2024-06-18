@@ -106,6 +106,10 @@ class Port {
 
   void PartnerChanged();
 
+  void CableChanged();
+
+  void CablePlugChanged(const base::FilePath& path);
+
   void PortChanged();
 
   void SetCurrentMode(TypeCMode mode) { current_mode_ = mode; }

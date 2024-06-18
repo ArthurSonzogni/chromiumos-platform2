@@ -212,6 +212,31 @@ void PortManager::OnPartnerChanged(int port_num) {
   RunModeEntry(port_num);
 }
 
+void PortManager::OnCableChanged(int port_num) {
+  auto it = ports_.find(port_num);
+  if (it == ports_.end()) {
+    LOG(WARNING) << "Cable change detected for non-existent port " << port_num;
+    return;
+  }
+
+  auto port = it->second.get();
+  port->CableChanged();
+  RunModeEntry(port_num);
+}
+
+void PortManager::OnCablePlugChanged(const base::FilePath& path, int port_num) {
+  auto it = ports_.find(port_num);
+  if (it == ports_.end()) {
+    LOG(WARNING) << "Cable plug change detected for non-existent port "
+                 << port_num;
+    return;
+  }
+
+  auto port = it->second.get();
+  port->CablePlugChanged(path);
+  RunModeEntry(port_num);
+}
+
 void PortManager::OnPortChanged(int port_num) {
   auto it = ports_.find(port_num);
   if (it == ports_.end()) {

@@ -80,6 +80,11 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
   };
 
   void OnPartnerChanged(int port_num) override { num_partner_change_events_++; }
+
+  void OnCableChanged(int port_num) override { num_cable_change_events_++; }
+  void OnCablePlugChanged(const base::FilePath& path, int port_num) override {
+    num_cable_plug_change_events_++;
+  }
   void OnPortChanged(int port_num) override {
     port_change_tracker_[port_num] = true;
   }
@@ -89,6 +94,8 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
   int GetNumCables() { return num_cables_; }
   int GetNumCableAltModes() { return num_cable_altmodes_; }
   int GetNumPartnerChangeEvents() { return num_partner_change_events_; }
+  int GetNumCableChangeEvents() { return num_cable_change_events_; }
+  int GetNumCablePlugChangeEvents() { return num_cable_plug_change_events_; }
   int GetNumPdDevices() { return num_pd_devices_; }
 
   // Helper to return whether a port change event was received for |port_num|.
@@ -110,6 +117,8 @@ class TestTypecObserver : public UdevMonitor::TypecObserver {
   int num_cables_;
   int num_cable_altmodes_;
   int num_partner_change_events_;
+  int num_cable_change_events_;
+  int num_cable_plug_change_events_;
   int num_pd_devices_;
   // Map to check whether a change was detected for a particular port:
   // Key = port number, Value = boolean value indicating whether a change event
@@ -456,6 +465,59 @@ TEST_F(UdevMonitorTest, PdDevice) {
   EXPECT_THAT(0, typec_observer_->GetNumPdDevices());
   monitor_->HandleUdevEvent();
   EXPECT_THAT(0, typec_observer_->GetNumPdDevices());
+}
+
+// Check that the appropriate callback is run on cable change events.
+TEST_F(UdevMonitorTest, CableChanged) {
+  // Fake the calls for cable change.
+  auto device_cable_change = std::make_unique<brillo::MockUdevDevice>();
+  EXPECT_CALL(*device_cable_change, GetSysPath())
+      .WillOnce(Return(kFakePort0CableSysPath));
+  EXPECT_CALL(*device_cable_change, GetAction()).WillOnce(Return("change"));
+
+  // Create the Mock Udev objects and function invocation expectations.
+  InitMockUdevMonitor();
+  EXPECT_CALL(*mock_udev_monitor_, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(device_cable_change))));
+
+  auto udev = std::make_unique<brillo::MockUdev>();
+  EXPECT_CALL(*udev, CreateMonitorFromNetlink(StrEq(kUdevMonitorName)))
+      .WillOnce(Return(ByMove(std::move(mock_udev_monitor_))));
+  monitor_->SetUdev(std::move(udev));
+
+  EXPECT_THAT(0, typec_observer_->GetNumCableChangeEvents());
+
+  // Check for cable update callback function execution.
+  ASSERT_TRUE(monitor_->BeginMonitoring());
+  monitor_->HandleUdevEvent();
+  EXPECT_THAT(1, typec_observer_->GetNumCableChangeEvents());
+}
+
+// Check that the appropriate callback is run on cable plug change events.
+TEST_F(UdevMonitorTest, CablePlugChanged) {
+  // Fake the calls for cable plug change.
+  auto device_cable_plug_change = std::make_unique<brillo::MockUdevDevice>();
+  EXPECT_CALL(*device_cable_plug_change, GetSysPath())
+      .WillOnce(Return(kFakePort0CablePlugSysPath));
+  EXPECT_CALL(*device_cable_plug_change, GetAction())
+      .WillOnce(Return("change"));
+
+  // Create the Mock Udev objects and function invocation expectations.
+  InitMockUdevMonitor();
+  EXPECT_CALL(*mock_udev_monitor_, ReceiveDevice())
+      .WillOnce(Return(ByMove(std::move(device_cable_plug_change))));
+
+  auto udev = std::make_unique<brillo::MockUdev>();
+  EXPECT_CALL(*udev, CreateMonitorFromNetlink(StrEq(kUdevMonitorName)))
+      .WillOnce(Return(ByMove(std::move(mock_udev_monitor_))));
+  monitor_->SetUdev(std::move(udev));
+
+  EXPECT_THAT(0, typec_observer_->GetNumCablePlugChangeEvents());
+
+  // Check for cable plug update callback function execution.
+  ASSERT_TRUE(monitor_->BeginMonitoring());
+  monitor_->HandleUdevEvent();
+  EXPECT_THAT(1, typec_observer_->GetNumCablePlugChangeEvents());
 }
 
 }  // namespace typecd

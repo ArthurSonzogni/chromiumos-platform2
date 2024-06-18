@@ -35,24 +35,7 @@ void Cable::RegisterCablePlug(const base::FilePath& syspath) {
   if (GetNumAltModes() != -1)
     return;
 
-  auto num_altmodes_path = syspath.Append("number_of_alternate_modes");
-
-  std::string val_str;
-  if (!base::ReadFileToString(num_altmodes_path, &val_str)) {
-    LOG(WARNING) << "Number of alternate modes not available for syspath "
-                 << syspath;
-    return;
-  }
-
-  base::TrimWhitespaceASCII(val_str, base::TRIM_TRAILING, &val_str);
-
-  int num_altmodes;
-  if (!base::StringToInt(val_str, &num_altmodes)) {
-    LOG(ERROR) << "Couldn't parse num_altmodes from string: " << val_str;
-    return;
-  }
-
-  SetNumAltModes(num_altmodes);
+  UpdateNumAltModes(syspath);
 }
 
 bool Cable::AddAltMode(const base::FilePath& mode_syspath) {
@@ -98,6 +81,32 @@ void Cable::RemoveAltMode(const base::FilePath& mode_syspath) {
   alt_modes_.erase(it);
 
   LOG(INFO) << "Removed SOP' alt mode for port " << port << " index " << index;
+}
+
+void Cable::UpdatePDInfoFromSysfs() {
+  UpdatePDIdentityVDOs();
+  UpdatePDRevision();
+}
+
+void Cable::UpdateNumAltModes(const base::FilePath& syspath) {
+  auto num_altmodes_path = syspath.Append("number_of_alternate_modes");
+
+  std::string val_str;
+  if (!base::ReadFileToString(num_altmodes_path, &val_str)) {
+    LOG(WARNING) << "Number of alternate modes not available for syspath "
+                 << syspath;
+    return;
+  }
+
+  base::TrimWhitespaceASCII(val_str, base::TRIM_TRAILING, &val_str);
+
+  int num_altmodes;
+  if (!base::StringToInt(val_str, &num_altmodes)) {
+    LOG(ERROR) << "Couldn't parse num_altmodes from string: " << val_str;
+    return;
+  }
+
+  SetNumAltModes(num_altmodes);
 }
 
 bool Cable::IsAltModePresent(int index) {

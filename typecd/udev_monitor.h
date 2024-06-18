@@ -115,6 +115,18 @@ class UdevMonitor {
     // The |port_num| argument refers to the port's index number.
     virtual void OnPartnerChanged(int port_num) = 0;
 
+    // Callback that is executed when a cable "change" event is received.
+    //
+    // The |port_num| argument refers to the port's index number.
+    virtual void OnCableChanged(int port_num) = 0;
+
+    // Callback that is executed when a cable plug "change" event is received.
+    //
+    // The |path| argument refers to the sysfs device path of the cable plug
+    // (SOP'). The |port_num| argument refers to the port's index number.
+    virtual void OnCablePlugChanged(const base::FilePath& path,
+                                    int port_num) = 0;
+
     // Callback that is executed when a port "change" event is received.
     //
     // The |port_num| argument refers to the port's index number.
@@ -132,6 +144,8 @@ class UdevMonitor {
   FRIEND_TEST(UdevMonitorTest, InvalidPortSyspath);
   FRIEND_TEST(UdevMonitorTest, CableAndAltModeAddition);
   FRIEND_TEST(UdevMonitorTest, PartnerChanged);
+  FRIEND_TEST(UdevMonitorTest, CableChanged);
+  FRIEND_TEST(UdevMonitorTest, CablePlugChanged);
   FRIEND_TEST(UdevMonitorTest, PortChanged);
   FRIEND_TEST(UdevMonitorTest, PdDevice);
 

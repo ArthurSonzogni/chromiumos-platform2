@@ -43,6 +43,13 @@ class Cable : public Peripheral {
   bool AddAltMode(const base::FilePath& mode_syspath);
   void RemoveAltMode(const base::FilePath& mode_syspath);
 
+  // Update USB PD cable information (Identity and Revision).
+  void UpdatePDInfoFromSysfs();
+
+  // Update the |num_alt_modes_| with the SOP' number of alternate modes read
+  // from sysfs.
+  void UpdateNumAltModes(const base::FilePath& syspath);
+
   // Return the total number of SOP' alternate modes supported by the cable. If
   // this value hasn't been populated yet, the default value is -1, signifying
   // that discovery is not yet complete.

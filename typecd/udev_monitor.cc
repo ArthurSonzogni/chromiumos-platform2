@@ -149,6 +149,10 @@ void UdevMonitor::HandleDeviceChange(const base::FilePath& path) {
   for (auto& observer : typec_observer_list_) {
     if (RE2::FullMatch(name.value(), kPartnerRegex, &port_num))
       observer.OnPartnerChanged(port_num);
+    else if (RE2::FullMatch(name.value(), kCableRegex, &port_num))
+      observer.OnCableChanged(port_num);
+    else if (RE2::FullMatch(name.value(), kSOPPrimePlugRegex, &port_num))
+      observer.OnCablePlugChanged(path, port_num);
     else if (RE2::FullMatch(name.value(), kPortRegex, &port_num))
       observer.OnPortChanged(port_num);
   }
