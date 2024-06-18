@@ -28,7 +28,6 @@ namespace switches {
 // Keeps std* open for debugging.
 static const char* kNoCloseOnDaemonize = "noclose";
 static const char* kNoLegacyMount = "nolegacymount";
-static const char* kNoDownloadsBindMount = "no_downloads_bind_mount";
 static const char* kDirEncryption = "direncryption";
 static const char* kFscryptV2 = "fscrypt_v2";
 static const char* kApplicationContainers = "application_containers";
@@ -73,7 +72,6 @@ int main(int argc, char** argv) {
   base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   bool nolegacymount = cl->HasSwitch(switches::kNoLegacyMount);
-  bool nodownloadsbind = cl->HasSwitch(switches::kNoDownloadsBindMount);
   bool direncryption = cl->HasSwitch(switches::kDirEncryption);
   bool fscryptv2 = cl->HasSwitch(switches::kFscryptV2) &&
                    !cl->HasSwitch(switches::kNegateFscryptV2ForTest);
@@ -122,8 +120,6 @@ int main(int argc, char** argv) {
   // Set options on whether we are going to use legacy mount. See comments on
   // Mount::MountLegacyHome() for more information.
   user_data_auth_daemon.GetUserDataAuth()->set_legacy_mount(!nolegacymount);
-  user_data_auth_daemon.GetUserDataAuth()->set_bind_mount_downloads(
-      !nodownloadsbind);
 
   // Set options on whether we are going to use ext4 directory encryption or
   // eCryptfs.

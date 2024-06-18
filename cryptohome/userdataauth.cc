@@ -1800,7 +1800,7 @@ UserSession* UserDataAuth::GetOrCreateUserSession(const Username& username) {
     BlockPkEstablishment();
     // We don't have a mount associated with |username|, let's create one.
     std::unique_ptr<UserSession> owned_session = user_session_factory_->New(
-        username, legacy_mount_, bind_mount_downloads_);
+        username, legacy_mount_, /*bind_mount_downloads*/ false);
     session = owned_session.get();
     if (!sessions_->Add(username, std::move(owned_session))) {
       NOTREACHED() << "Failed to add created user session";
