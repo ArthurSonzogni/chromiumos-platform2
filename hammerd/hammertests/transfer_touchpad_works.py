@@ -7,6 +7,7 @@
 
 from __future__ import print_function
 
+import subprocess
 import sys
 import time
 
@@ -14,12 +15,20 @@ import common
 import hammerd_api  # pylint: disable=import-error
 
 
-WRONG_ADDRR_KEY_RO = "0x0000ac00"
-WRONG_ADDRR_RO_FRID = "0x000000c4"
-WRONG_ADDRR_RW_FWID = "0x0000c0c4"
-WRONG_ADDRR_SIG_RW = "0x0001fc00"
-WRONG_ADDRR_RW_RBVER = "0x0000c0e8"
-RIGHT_ADDRR_RW_OFFSET = "0x0000c000"
+def get_section_offset(image, section):
+    output = subprocess.check_output(["dump_fmap", "-p", image, section])
+    # output has three fields: name, offset, size. separated by whitespace.
+    # e.g.
+    #   EC_RO 0 45056
+    return output.split()[1]
+
+
+WRONG_ADDRR_KEY_RO = get_section_offset(common.IMAGE, "KEY_RO")
+WRONG_ADDRR_RO_FRID = get_section_offset(common.IMAGE, "RO_FRID")
+WRONG_ADDRR_RW_FWID = get_section_offset(common.IMAGE, "RW_FWID")
+WRONG_ADDRR_SIG_RW = get_section_offset(common.IMAGE, "SIG_RW")
+WRONG_ADDRR_RW_RBVER = get_section_offset(common.IMAGE, "RW_RBVER")
+RIGHT_ADDRR_RW_OFFSET = get_section_offset(common.IMAGE, "EC_RW")
 
 WRONG_ADDR_LIST = [
     WRONG_ADDRR_RW_FWID,
@@ -74,7 +83,7 @@ def flash_invalid_image(updater):
     for address in WRONG_ADDR_LIST:
         common.connect_usb(updater)
         unlock_rw(updater)
-        wr = updater.TransferTouchpadFirmware(int(address, 0), 1)
+        wr = updater.TransferTouchpadFirmware(int(address, 0), 4)
         assert wr == 1, "Cannot write to flash: Is DUT image unlocked?"
         assert updater.SendFirstPdu() is True, "Error sending first PDU"
         updater.SendDone()
