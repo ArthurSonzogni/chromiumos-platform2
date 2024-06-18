@@ -66,6 +66,37 @@ enum class CrosHealthdEventCategory {
   kMaxValue = kCrash,
 };
 
+// These values are logged to UMA. Entries should not be renumbered and
+// numeric values should never be reused. Please keep in sync with
+// "CrosHealthdRoutineCategory" in tools/metrics/histograms/enums.xml in the
+// Chromium repo.
+enum class CrosHealthdRoutineCategory {
+  kUnknown = 0,
+  kPrimeSearch = 1,
+  kFloatingPoint = 2,
+  kMemory = 3,
+  kAudioDriver = 4,
+  kCpuStress = 5,
+  kUfsLifetime = 6,
+  kDiskRead = 7,
+  kCpuCache = 8,
+  kVolumeButton = 9,
+  kLedLitUp = 10,
+  kBluetoothPower = 11,
+  kBluetoothDiscovery = 12,
+  kFan = 13,
+  kBluetoothScanning = 14,
+  kBluetoothPairing = 15,
+  kCameraAvailability = 16,
+  kUrandom = 17,
+  kNetworkBandwidth = 18,
+  kSensitiveSensor = 19,
+  kCameraFrameAnalysis = 20,
+  // A special enumerator that must share the highest enumerator value. This
+  // value is required when calling `SendEnumToUMA`.
+  kMaxValue = kCameraFrameAnalysis,
+};
+
 }  // namespace metrics_enum
 
 // These values are used in UMA. Please sync the change to
@@ -215,6 +246,8 @@ inline constexpr char kDiagnosticResultFan[] =
 
 inline constexpr char kEventSubscription[] =
     "ChromeOS.Healthd.EventSubscription";
+
+inline constexpr char kRoutineCreation[] = "ChromeOS.Healthd.RoutineCreation";
 
 }  // namespace metrics_name
 }  // namespace diagnostics

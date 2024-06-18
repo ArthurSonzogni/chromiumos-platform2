@@ -250,6 +250,54 @@ ConvertEventCategoryToUMAEnum(mojom::EventCategoryEnum event_category) {
   }
 }
 
+std::optional<metrics_enum::CrosHealthdRoutineCategory>
+ConvertRoutineCategoryToUMAEnum(mojom::RoutineArgument::Tag routine_category) {
+  switch (routine_category) {
+    case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
+      return std::nullopt;
+    case mojom::RoutineArgument::Tag::kPrimeSearch:
+      return metrics_enum::CrosHealthdRoutineCategory::kPrimeSearch;
+    case mojom::RoutineArgument::Tag::kFloatingPoint:
+      return metrics_enum::CrosHealthdRoutineCategory::kFloatingPoint;
+    case mojom::RoutineArgument::Tag::kMemory:
+      return metrics_enum::CrosHealthdRoutineCategory::kMemory;
+    case mojom::RoutineArgument::Tag::kAudioDriver:
+      return metrics_enum::CrosHealthdRoutineCategory::kAudioDriver;
+    case mojom::RoutineArgument::Tag::kCpuStress:
+      return metrics_enum::CrosHealthdRoutineCategory::kCpuStress;
+    case mojom::RoutineArgument::Tag::kUfsLifetime:
+      return metrics_enum::CrosHealthdRoutineCategory::kUfsLifetime;
+    case mojom::RoutineArgument::Tag::kDiskRead:
+      return metrics_enum::CrosHealthdRoutineCategory::kDiskRead;
+    case mojom::RoutineArgument::Tag::kCpuCache:
+      return metrics_enum::CrosHealthdRoutineCategory::kCpuCache;
+    case mojom::RoutineArgument::Tag::kVolumeButton:
+      return metrics_enum::CrosHealthdRoutineCategory::kVolumeButton;
+    case mojom::RoutineArgument::Tag::kLedLitUp:
+      return metrics_enum::CrosHealthdRoutineCategory::kLedLitUp;
+    case mojom::RoutineArgument::Tag::kBluetoothPower:
+      return metrics_enum::CrosHealthdRoutineCategory::kBluetoothPower;
+    case mojom::RoutineArgument::Tag::kBluetoothDiscovery:
+      return metrics_enum::CrosHealthdRoutineCategory::kBluetoothDiscovery;
+    case mojom::RoutineArgument::Tag::kFan:
+      return metrics_enum::CrosHealthdRoutineCategory::kFan;
+    case mojom::RoutineArgument::Tag::kBluetoothScanning:
+      return metrics_enum::CrosHealthdRoutineCategory::kBluetoothScanning;
+    case mojom::RoutineArgument::Tag::kBluetoothPairing:
+      return metrics_enum::CrosHealthdRoutineCategory::kBluetoothPairing;
+    case mojom::RoutineArgument::Tag::kCameraAvailability:
+      return metrics_enum::CrosHealthdRoutineCategory::kCameraAvailability;
+    case mojom::RoutineArgument::Tag::kUrandom:
+      return metrics_enum::CrosHealthdRoutineCategory::kUrandom;
+    case mojom::RoutineArgument::Tag::kNetworkBandwidth:
+      return metrics_enum::CrosHealthdRoutineCategory::kNetworkBandwidth;
+    case mojom::RoutineArgument::Tag::kSensitiveSensor:
+      return metrics_enum::CrosHealthdRoutineCategory::kSensitiveSensor;
+    case mojom::RoutineArgument::Tag::kCameraFrameAnalysis:
+      return metrics_enum::CrosHealthdRoutineCategory::kCameraFrameAnalysis;
+  }
+}
+
 template <typename S>
 void SendOneTelemetryResultToUMA(MetricsLibraryInterface* metrics,
                                  mojom::ProbeCategoryEnum category,
@@ -416,6 +464,19 @@ void SendEventSubscriptionUsageToUMA(MetricsLibraryInterface* metrics,
 
   metrics->SendEnumToUMA(metrics_name::kEventSubscription,
                          category_enum.value());
+}
+
+void SendRoutineCreationUsageToUMA(
+    MetricsLibraryInterface* metrics,
+    ash::cros_healthd::mojom::RoutineArgument::Tag category) {
+  std::optional<metrics_enum::CrosHealthdRoutineCategory> category_enum =
+      ConvertRoutineCategoryToUMAEnum(category);
+  if (!category_enum.has_value()) {
+    // No need to record unrecognized category.
+    return;
+  }
+
+  metrics->SendEnumToUMA(metrics_name::kRoutineCreation, category_enum.value());
 }
 
 }  // namespace diagnostics

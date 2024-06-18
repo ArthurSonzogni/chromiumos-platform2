@@ -59,6 +59,10 @@ class MetricsUtilsTest : public ::testing::Test {
     SendEventSubscriptionUsageToUMA(&metrics_library_, category);
   }
 
+  void SendRoutineCategory(mojom::RoutineArgument::Tag category) {
+    SendRoutineCreationUsageToUMA(&metrics_library_, category);
+  }
+
   testing::StrictMock<MetricsLibraryMock> metrics_library_;
 };
 
@@ -704,6 +708,75 @@ INSTANTIATE_TEST_SUITE_P(
       ss << info.param.category;
       return ss.str();
     });
+
+struct RoutineCategoryTestCase {
+  metrics_enum::CrosHealthdRoutineCategory uma_value;
+  mojom::RoutineArgument::Tag category;
+};
+
+class RoutineCategoryTest
+    : public MetricsUtilsTest,
+      public ::testing::WithParamInterface<RoutineCategoryTestCase> {};
+
+// Verify that the UMA enum value matches the routine category.
+TEST_P(RoutineCategoryTest, SendRoutineCategory) {
+  const RoutineCategoryTestCase& test_case = GetParam();
+  ExpectSendEnumToUMA(metrics_name::kRoutineCreation, test_case.uma_value);
+  SendRoutineCategory(test_case.category);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllRoutineCategory,
+    RoutineCategoryTest,
+    ::testing::ValuesIn<RoutineCategoryTestCase>({
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kPrimeSearch,
+         .category = mojom::RoutineArgument::Tag::kPrimeSearch},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kFloatingPoint,
+         .category = mojom::RoutineArgument::Tag::kFloatingPoint},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kMemory,
+         .category = mojom::RoutineArgument::Tag::kMemory},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kAudioDriver,
+         .category = mojom::RoutineArgument::Tag::kAudioDriver},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kCpuStress,
+         .category = mojom::RoutineArgument::Tag::kCpuStress},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kUfsLifetime,
+         .category = mojom::RoutineArgument::Tag::kUfsLifetime},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kDiskRead,
+         .category = mojom::RoutineArgument::Tag::kDiskRead},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kCpuCache,
+         .category = mojom::RoutineArgument::Tag::kCpuCache},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kVolumeButton,
+         .category = mojom::RoutineArgument::Tag::kVolumeButton},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kLedLitUp,
+         .category = mojom::RoutineArgument::Tag::kLedLitUp},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kBluetoothPower,
+         .category = mojom::RoutineArgument::Tag::kBluetoothPower},
+        {.uma_value =
+             metrics_enum::CrosHealthdRoutineCategory::kBluetoothDiscovery,
+         .category = mojom::RoutineArgument::Tag::kBluetoothDiscovery},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kFan,
+         .category = mojom::RoutineArgument::Tag::kFan},
+        {.uma_value =
+             metrics_enum::CrosHealthdRoutineCategory::kBluetoothScanning,
+         .category = mojom::RoutineArgument::Tag::kBluetoothScanning},
+        {.uma_value =
+             metrics_enum::CrosHealthdRoutineCategory::kBluetoothPairing,
+         .category = mojom::RoutineArgument::Tag::kBluetoothPairing},
+        {.uma_value =
+             metrics_enum::CrosHealthdRoutineCategory::kCameraAvailability,
+         .category = mojom::RoutineArgument::Tag::kCameraAvailability},
+        {.uma_value = metrics_enum::CrosHealthdRoutineCategory::kUrandom,
+         .category = mojom::RoutineArgument::Tag::kUrandom},
+        {.uma_value =
+             metrics_enum::CrosHealthdRoutineCategory::kNetworkBandwidth,
+         .category = mojom::RoutineArgument::Tag::kNetworkBandwidth},
+        {.uma_value =
+             metrics_enum::CrosHealthdRoutineCategory::kSensitiveSensor,
+         .category = mojom::RoutineArgument::Tag::kSensitiveSensor},
+        {.uma_value =
+             metrics_enum::CrosHealthdRoutineCategory::kCameraFrameAnalysis,
+         .category = mojom::RoutineArgument::Tag::kCameraFrameAnalysis},
+    }));
 
 }  // namespace
 }  // namespace diagnostics

@@ -11,6 +11,7 @@ source_set("routines") {
     "libchrome",
     "libmojo",
   ]
+  pkg_deps = [ "libmetrics" ]
   public_deps = [ "//diagnostics/mojom/public:libcros_healthd_mojo_bindings" ]
   deps = [
     ":utils",
@@ -29,6 +30,7 @@ source_set("routines") {
     "//diagnostics/cros_healthd/routines/sensor",
     "//diagnostics/cros_healthd/routines/storage",
     "//diagnostics/cros_healthd/system",
+    "//diagnostics/cros_healthd/utils",
   ]
 }
 

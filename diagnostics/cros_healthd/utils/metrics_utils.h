@@ -12,6 +12,7 @@
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom-forward.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom-forward.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 class MetricsLibraryInterface;
 
@@ -54,6 +55,11 @@ void SendDiagnosticResultToUMA(
 void SendEventSubscriptionUsageToUMA(
     MetricsLibraryInterface* metrics,
     ash::cros_healthd::mojom::EventCategoryEnum category);
+
+// Sends the routine creation usage to UMA.
+void SendRoutineCreationUsageToUMA(
+    MetricsLibraryInterface* metrics,
+    ash::cros_healthd::mojom::RoutineArgument::Tag category);
 
 }  // namespace diagnostics
 

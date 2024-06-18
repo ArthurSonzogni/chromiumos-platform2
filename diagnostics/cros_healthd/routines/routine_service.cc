@@ -9,6 +9,7 @@
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
@@ -35,6 +36,7 @@
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/cros_healthd/system/ground_truth.h"
+#include "diagnostics/cros_healthd/utils/metrics_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -163,6 +165,11 @@ void CreateRoutineHelper(Context* context,
                          ArgumentPtr arg,
                          CreateRoutineCallback callback) {
   std::move(callback).Run(CreateRoutineHelperSync(context, std::move(arg)));
+}
+
+void SendRoutineCategoryToUMA(mojom::RoutineArgument::Tag routine_category) {
+  MetricsLibrary metrics;
+  SendRoutineCreationUsageToUMA(&metrics, routine_category);
 }
 
 }  // namespace
@@ -360,6 +367,7 @@ void RoutineService::CreateRoutine(
     mojom::RoutineArgumentPtr routine_arg,
     mojo::PendingReceiver<mojom::RoutineControl> routine_receiver,
     mojo::PendingRemote<mojom::RoutineObserver> routine_observer) {
+  SendRoutineCategoryToUMA(routine_arg->which());
   CheckAndCreateRoutine(
       std::move(routine_arg),
       base::BindOnce(
