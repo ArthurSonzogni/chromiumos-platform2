@@ -17,63 +17,6 @@ class MetricsLibraryInterface;
 
 namespace diagnostics {
 
-// These values are logged to UMA. Entries should not be renumbered and
-// numeric values should never be reused. Please keep in sync with
-// "CrosHealthdTelemetryResult" in tools/metrics/histograms/enums.xml in the
-// Chromium repo.
-enum class CrosHealthdTelemetryResult {
-  kSuccess = 0,
-  kError = 1,
-  // A special enumerator that must share the highest enumerator value. This
-  // value is required when calling |SendEnumToUMA|.
-  kMaxValue = kError,
-};
-
-// These values are logged to UMA. Entries should not be renumbered and
-// numeric values should never be reused. Please keep in sync with
-// "CrosHealthdDiagnosticResult" in tools/metrics/histograms/enums.xml in the
-// Chromium repo.
-enum class CrosHealthdDiagnosticResult {
-  kPassed = 0,
-  kFailed = 1,
-  kError = 2,
-  kCancelled = 3,
-  kFailedToStart = 4,
-  kRemoved = 5,
-  kUnsupported = 6,
-  kNotRun = 7,
-  // A special enumerator that must share the highest enumerator value. This
-  // value is required when calling |SendEnumToUMA|.
-  kMaxValue = kNotRun,
-};
-
-// These values are logged to UMA. Entries should not be renumbered and
-// numeric values should never be reused. Please keep in sync with
-// "CrosHealthdEventCategory" in tools/metrics/histograms/enums.xml in the
-// Chromium repo.
-enum class CrosHealthdEventCategory {
-  kUnknown = 0,
-  kUsb = 1,
-  kThunderbolt = 2,
-  kLid = 3,
-  kBluetooth = 4,
-  kPower = 5,
-  kAudio = 6,
-  kAudioJack = 7,
-  kSdCard = 8,
-  kNetwork = 9,
-  kKeyboardDiagnostic = 10,
-  kTouchpad = 11,
-  kExternalDisplay = 12,
-  kTouchscreen = 13,
-  kStylusGarage = 14,
-  kStylus = 15,
-  kCrash = 16,
-  // A special enumerator that must share the highest enumerator value. This
-  // value is required when calling |SendEnumToUMA|.
-  kMaxValue = kCrash,
-};
-
 // Wrap |on_terminal_status_cb| in a repeating callback that invokes
 // |on_terminal_status_cb| with the first terminal routine status it receives.
 //

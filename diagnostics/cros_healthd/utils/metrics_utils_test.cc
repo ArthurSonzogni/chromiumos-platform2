@@ -96,7 +96,7 @@ TEST_F(MetricsUtilsTest, SendNoTelemetryResultForUnknownCategory) {
 
 TEST_F(MetricsUtilsTest, SendBatteryTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBattery,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->battery_result = mojom::BatteryResult::NewBatteryInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kBattery}, info);
@@ -104,7 +104,7 @@ TEST_F(MetricsUtilsTest, SendBatteryTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendCpuTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultCpu,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->cpu_result = mojom::CpuResult::NewCpuInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kCpu}, info);
@@ -112,7 +112,7 @@ TEST_F(MetricsUtilsTest, SendCpuTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendBlockDeviceTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBlockDevice,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->block_device_result =
       mojom::NonRemovableBlockDeviceResult::NewBlockDeviceInfo({});
@@ -122,7 +122,7 @@ TEST_F(MetricsUtilsTest, SendBlockDeviceTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendTimezoneTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultTimezone,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->timezone_result = mojom::TimezoneResult::NewTimezoneInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kTimezone}, info);
@@ -130,7 +130,7 @@ TEST_F(MetricsUtilsTest, SendTimezoneTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendMemoryTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultMemory,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->memory_result = mojom::MemoryResult::NewMemoryInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kMemory}, info);
@@ -138,7 +138,7 @@ TEST_F(MetricsUtilsTest, SendMemoryTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendBacklightTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBacklight,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->backlight_result = mojom::BacklightResult::NewBacklightInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kBacklight}, info);
@@ -146,7 +146,7 @@ TEST_F(MetricsUtilsTest, SendBacklightTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendFanTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultFan,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->fan_result = mojom::FanResult::NewFanInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kFan}, info);
@@ -154,7 +154,7 @@ TEST_F(MetricsUtilsTest, SendFanTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendStatefulPartitionTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultStatefulPartition,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->stateful_partition_result =
       mojom::StatefulPartitionResult::NewPartitionInfo({});
@@ -163,7 +163,7 @@ TEST_F(MetricsUtilsTest, SendStatefulPartitionTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendBluetoothTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBluetooth,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->bluetooth_result = mojom::BluetoothResult::NewBluetoothAdapterInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kBluetooth}, info);
@@ -171,7 +171,7 @@ TEST_F(MetricsUtilsTest, SendBluetoothTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendSystemTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultSystem,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->system_result = mojom::SystemResult::NewSystemInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kSystem}, info);
@@ -179,7 +179,7 @@ TEST_F(MetricsUtilsTest, SendSystemTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendNetworkTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultNetwork,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->network_result = mojom::NetworkResult::NewNetworkHealth({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kNetwork}, info);
@@ -187,7 +187,7 @@ TEST_F(MetricsUtilsTest, SendNetworkTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendAudioTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultAudio,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->audio_result = mojom::AudioResult::NewAudioInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kAudio}, info);
@@ -195,7 +195,7 @@ TEST_F(MetricsUtilsTest, SendAudioTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendBootPerformanceTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBootPerformance,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->boot_performance_result =
       mojom::BootPerformanceResult::NewBootPerformanceInfo({});
@@ -204,7 +204,7 @@ TEST_F(MetricsUtilsTest, SendBootPerformanceTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendBusTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBus,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->bus_result = mojom::BusResult::NewBusDevices({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kBus}, info);
@@ -212,7 +212,7 @@ TEST_F(MetricsUtilsTest, SendBusTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendTpmTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultTpm,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->tpm_result = mojom::TpmResult::NewTpmInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kTpm}, info);
@@ -220,7 +220,7 @@ TEST_F(MetricsUtilsTest, SendTpmTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendNetworkInterfaceTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultNetworkInterface,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->network_interface_result =
       mojom::NetworkInterfaceResult::NewNetworkInterfaceInfo({});
@@ -229,7 +229,7 @@ TEST_F(MetricsUtilsTest, SendNetworkInterfaceTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendGraphicsTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultGraphics,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->graphics_result = mojom::GraphicsResult::NewGraphicsInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kGraphics}, info);
@@ -237,7 +237,7 @@ TEST_F(MetricsUtilsTest, SendGraphicsTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendDisplayTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultDisplay,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->display_result = mojom::DisplayResult::NewDisplayInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kDisplay}, info);
@@ -245,7 +245,7 @@ TEST_F(MetricsUtilsTest, SendDisplayTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendInputTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultInput,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->input_result = mojom::InputResult::NewInputInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kInput}, info);
@@ -253,7 +253,7 @@ TEST_F(MetricsUtilsTest, SendInputTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendAudioHardwareTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultAudioHardware,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->audio_hardware_result =
       mojom::AudioHardwareResult::NewAudioHardwareInfo({});
@@ -262,7 +262,7 @@ TEST_F(MetricsUtilsTest, SendAudioHardwareTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendSensorTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultSensor,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->sensor_result = mojom::SensorResult::NewSensorInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kSensor}, info);
@@ -270,7 +270,7 @@ TEST_F(MetricsUtilsTest, SendSensorTelemetryResult) {
 
 TEST_F(MetricsUtilsTest, SendThermalTelemetryResult) {
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultThermal,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->thermal_result = mojom::ThermalResult::NewThermalInfo({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kThermal}, info);
@@ -279,9 +279,9 @@ TEST_F(MetricsUtilsTest, SendThermalTelemetryResult) {
 TEST_F(MetricsUtilsTest, SendMultipleTelemetryResult) {
   // The choice of categories is arbitrary.
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBattery,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultCpu,
-                      CrosHealthdTelemetryResult::kSuccess);
+                      metrics_enum::CrosHealthdTelemetryResult::kSuccess);
   auto info = mojom::TelemetryInfo::New();
   info->battery_result = mojom::BatteryResult::NewBatteryInfo({});
   info->cpu_result = mojom::CpuResult::NewCpuInfo({});
@@ -296,7 +296,7 @@ TEST_F(MetricsUtilsTest, SendMultipleTelemetryResult) {
 TEST_F(MetricsUtilsTest, SendTelemetryErrorResult) {
   // The choice of category is arbitrary.
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBattery,
-                      CrosHealthdTelemetryResult::kError);
+                      metrics_enum::CrosHealthdTelemetryResult::kError);
   auto info = mojom::TelemetryInfo::New();
   info->battery_result = mojom::BatteryResult::NewError({});
   SendTelemetryResult({mojom::ProbeCategoryEnum::kBattery}, info);
@@ -305,7 +305,7 @@ TEST_F(MetricsUtilsTest, SendTelemetryErrorResult) {
 TEST_F(MetricsUtilsTest, SendTelemetryResultWithANullField) {
   // The choice of category is arbitrary.
   ExpectSendEnumToUMA(metrics_name::kTelemetryResultBattery,
-                      CrosHealthdTelemetryResult::kError);
+                      metrics_enum::CrosHealthdTelemetryResult::kError);
   auto info = mojom::TelemetryInfo::New();
   SendTelemetryResult({mojom::ProbeCategoryEnum::kBattery}, info);
 }
@@ -528,7 +528,7 @@ TEST_P(RoutineMetricNameTest, SendDiagnosticResult) {
   const RoutineMetricNameTestCase& test_case = GetParam();
   if (test_case.metrics.has_value()) {
     ExpectSendEnumToUMA(test_case.metrics.value(),
-                        CrosHealthdDiagnosticResult::kPassed);
+                        metrics_enum::CrosHealthdDiagnosticResult::kPassed);
   } else {
     ExpectNoSendEnumToUMA();
   }
@@ -549,41 +549,41 @@ INSTANTIATE_TEST_SUITE_P(
 
 struct DiagnosticResultTestCase {
   mojom::DiagnosticRoutineStatusEnum diag_result;
-  std::optional<CrosHealthdDiagnosticResult> uma_value;
+  std::optional<metrics_enum::CrosHealthdDiagnosticResult> uma_value;
 };
 
 constexpr DiagnosticResultTestCase diag_result_test_cases[] = {
     {
         .diag_result = mojom::DiagnosticRoutineStatusEnum::kPassed,
-        .uma_value = CrosHealthdDiagnosticResult::kPassed,
+        .uma_value = metrics_enum::CrosHealthdDiagnosticResult::kPassed,
     },
     {
         .diag_result = mojom::DiagnosticRoutineStatusEnum::kFailed,
-        .uma_value = CrosHealthdDiagnosticResult::kFailed,
+        .uma_value = metrics_enum::CrosHealthdDiagnosticResult::kFailed,
     },
     {
         .diag_result = mojom::DiagnosticRoutineStatusEnum::kError,
-        .uma_value = CrosHealthdDiagnosticResult::kError,
+        .uma_value = metrics_enum::CrosHealthdDiagnosticResult::kError,
     },
     {
         .diag_result = mojom::DiagnosticRoutineStatusEnum::kCancelled,
-        .uma_value = CrosHealthdDiagnosticResult::kCancelled,
+        .uma_value = metrics_enum::CrosHealthdDiagnosticResult::kCancelled,
     },
     {
         .diag_result = mojom::DiagnosticRoutineStatusEnum::kFailedToStart,
-        .uma_value = CrosHealthdDiagnosticResult::kFailedToStart,
+        .uma_value = metrics_enum::CrosHealthdDiagnosticResult::kFailedToStart,
     },
     {
         .diag_result = mojom::DiagnosticRoutineStatusEnum::kRemoved,
-        .uma_value = CrosHealthdDiagnosticResult::kRemoved,
+        .uma_value = metrics_enum::CrosHealthdDiagnosticResult::kRemoved,
     },
     {
         .diag_result = mojom::DiagnosticRoutineStatusEnum::kUnsupported,
-        .uma_value = CrosHealthdDiagnosticResult::kUnsupported,
+        .uma_value = metrics_enum::CrosHealthdDiagnosticResult::kUnsupported,
     },
     {
         .diag_result = mojom::DiagnosticRoutineStatusEnum::kNotRun,
-        .uma_value = CrosHealthdDiagnosticResult::kNotRun,
+        .uma_value = metrics_enum::CrosHealthdDiagnosticResult::kNotRun,
     },
     {
         .diag_result = mojom::DiagnosticRoutineStatusEnum::kUnknown,
@@ -647,7 +647,7 @@ TEST_F(MetricsUtilsTest, SendNoUmaForUnrecognizedEventCategory) {
 }
 
 struct EventCategoryTestCase {
-  CrosHealthdEventCategory uma_value;
+  metrics_enum::CrosHealthdEventCategory uma_value;
   mojom::EventCategoryEnum category;
 };
 
@@ -666,37 +666,38 @@ INSTANTIATE_TEST_SUITE_P(
     AllEventCategory,
     EventCategoryTest,
     ::testing::ValuesIn<EventCategoryTestCase>(
-        {{.uma_value = CrosHealthdEventCategory::kUsb,
+        {{.uma_value = metrics_enum::CrosHealthdEventCategory::kUsb,
           .category = mojom::EventCategoryEnum::kUsb},
-         {.uma_value = CrosHealthdEventCategory::kThunderbolt,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kThunderbolt,
           .category = mojom::EventCategoryEnum::kThunderbolt},
-         {.uma_value = CrosHealthdEventCategory::kLid,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kLid,
           .category = mojom::EventCategoryEnum::kLid},
-         {.uma_value = CrosHealthdEventCategory::kBluetooth,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kBluetooth,
           .category = mojom::EventCategoryEnum::kBluetooth},
-         {.uma_value = CrosHealthdEventCategory::kPower,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kPower,
           .category = mojom::EventCategoryEnum::kPower},
-         {.uma_value = CrosHealthdEventCategory::kAudio,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kAudio,
           .category = mojom::EventCategoryEnum::kAudio},
-         {.uma_value = CrosHealthdEventCategory::kAudioJack,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kAudioJack,
           .category = mojom::EventCategoryEnum::kAudioJack},
-         {.uma_value = CrosHealthdEventCategory::kSdCard,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kSdCard,
           .category = mojom::EventCategoryEnum::kSdCard},
-         {.uma_value = CrosHealthdEventCategory::kNetwork,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kNetwork,
           .category = mojom::EventCategoryEnum::kNetwork},
-         {.uma_value = CrosHealthdEventCategory::kKeyboardDiagnostic,
+         {.uma_value =
+              metrics_enum::CrosHealthdEventCategory::kKeyboardDiagnostic,
           .category = mojom::EventCategoryEnum::kKeyboardDiagnostic},
-         {.uma_value = CrosHealthdEventCategory::kTouchpad,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kTouchpad,
           .category = mojom::EventCategoryEnum::kTouchpad},
-         {.uma_value = CrosHealthdEventCategory::kExternalDisplay,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kExternalDisplay,
           .category = mojom::EventCategoryEnum::kExternalDisplay},
-         {.uma_value = CrosHealthdEventCategory::kTouchscreen,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kTouchscreen,
           .category = mojom::EventCategoryEnum::kTouchscreen},
-         {.uma_value = CrosHealthdEventCategory::kStylusGarage,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kStylusGarage,
           .category = mojom::EventCategoryEnum::kStylusGarage},
-         {.uma_value = CrosHealthdEventCategory::kStylus,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kStylus,
           .category = mojom::EventCategoryEnum::kStylus},
-         {.uma_value = CrosHealthdEventCategory::kCrash,
+         {.uma_value = metrics_enum::CrosHealthdEventCategory::kCrash,
           .category = mojom::EventCategoryEnum::kCrash}}),
     [](const testing::TestParamInfo<EventCategoryTest::ParamType>& info) {
       std::stringstream ss;

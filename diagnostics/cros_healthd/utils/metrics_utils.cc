@@ -181,25 +181,25 @@ std::optional<std::string> GetMetricName(mojom::DiagnosticRoutineEnum routine) {
   }
 }
 
-std::optional<CrosHealthdDiagnosticResult> ConvertDiagnosticStatusToUMAEnum(
-    mojom::DiagnosticRoutineStatusEnum status) {
+std::optional<metrics_enum::CrosHealthdDiagnosticResult>
+ConvertDiagnosticStatusToUMAEnum(mojom::DiagnosticRoutineStatusEnum status) {
   switch (status) {
     case mojom::DiagnosticRoutineStatusEnum::kPassed:
-      return CrosHealthdDiagnosticResult::kPassed;
+      return metrics_enum::CrosHealthdDiagnosticResult::kPassed;
     case mojom::DiagnosticRoutineStatusEnum::kFailed:
-      return CrosHealthdDiagnosticResult::kFailed;
+      return metrics_enum::CrosHealthdDiagnosticResult::kFailed;
     case mojom::DiagnosticRoutineStatusEnum::kError:
-      return CrosHealthdDiagnosticResult::kError;
+      return metrics_enum::CrosHealthdDiagnosticResult::kError;
     case mojom::DiagnosticRoutineStatusEnum::kCancelled:
-      return CrosHealthdDiagnosticResult::kCancelled;
+      return metrics_enum::CrosHealthdDiagnosticResult::kCancelled;
     case mojom::DiagnosticRoutineStatusEnum::kFailedToStart:
-      return CrosHealthdDiagnosticResult::kFailedToStart;
+      return metrics_enum::CrosHealthdDiagnosticResult::kFailedToStart;
     case mojom::DiagnosticRoutineStatusEnum::kRemoved:
-      return CrosHealthdDiagnosticResult::kRemoved;
+      return metrics_enum::CrosHealthdDiagnosticResult::kRemoved;
     case mojom::DiagnosticRoutineStatusEnum::kUnsupported:
-      return CrosHealthdDiagnosticResult::kUnsupported;
+      return metrics_enum::CrosHealthdDiagnosticResult::kUnsupported;
     case mojom::DiagnosticRoutineStatusEnum::kNotRun:
-      return CrosHealthdDiagnosticResult::kNotRun;
+      return metrics_enum::CrosHealthdDiagnosticResult::kNotRun;
     // Non-terminal status.
     case mojom::DiagnosticRoutineStatusEnum::kUnknown:
     case mojom::DiagnosticRoutineStatusEnum::kReady:
@@ -210,43 +210,43 @@ std::optional<CrosHealthdDiagnosticResult> ConvertDiagnosticStatusToUMAEnum(
   }
 }
 
-std::optional<CrosHealthdEventCategory> ConvertEventCategoryToUMAEnum(
-    mojom::EventCategoryEnum event_category) {
+std::optional<metrics_enum::CrosHealthdEventCategory>
+ConvertEventCategoryToUMAEnum(mojom::EventCategoryEnum event_category) {
   switch (event_category) {
     case mojom::EventCategoryEnum::kUnmappedEnumField:
       return std::nullopt;
     case mojom::EventCategoryEnum::kUsb:
-      return CrosHealthdEventCategory::kUsb;
+      return metrics_enum::CrosHealthdEventCategory::kUsb;
     case mojom::EventCategoryEnum::kThunderbolt:
-      return CrosHealthdEventCategory::kThunderbolt;
+      return metrics_enum::CrosHealthdEventCategory::kThunderbolt;
     case mojom::EventCategoryEnum::kLid:
-      return CrosHealthdEventCategory::kLid;
+      return metrics_enum::CrosHealthdEventCategory::kLid;
     case mojom::EventCategoryEnum::kBluetooth:
-      return CrosHealthdEventCategory::kBluetooth;
+      return metrics_enum::CrosHealthdEventCategory::kBluetooth;
     case mojom::EventCategoryEnum::kPower:
-      return CrosHealthdEventCategory::kPower;
+      return metrics_enum::CrosHealthdEventCategory::kPower;
     case mojom::EventCategoryEnum::kAudio:
-      return CrosHealthdEventCategory::kAudio;
+      return metrics_enum::CrosHealthdEventCategory::kAudio;
     case mojom::EventCategoryEnum::kAudioJack:
-      return CrosHealthdEventCategory::kAudioJack;
+      return metrics_enum::CrosHealthdEventCategory::kAudioJack;
     case mojom::EventCategoryEnum::kSdCard:
-      return CrosHealthdEventCategory::kSdCard;
+      return metrics_enum::CrosHealthdEventCategory::kSdCard;
     case mojom::EventCategoryEnum::kNetwork:
-      return CrosHealthdEventCategory::kNetwork;
+      return metrics_enum::CrosHealthdEventCategory::kNetwork;
     case mojom::EventCategoryEnum::kKeyboardDiagnostic:
-      return CrosHealthdEventCategory::kKeyboardDiagnostic;
+      return metrics_enum::CrosHealthdEventCategory::kKeyboardDiagnostic;
     case mojom::EventCategoryEnum::kTouchpad:
-      return CrosHealthdEventCategory::kTouchpad;
+      return metrics_enum::CrosHealthdEventCategory::kTouchpad;
     case mojom::EventCategoryEnum::kExternalDisplay:
-      return CrosHealthdEventCategory::kExternalDisplay;
+      return metrics_enum::CrosHealthdEventCategory::kExternalDisplay;
     case mojom::EventCategoryEnum::kTouchscreen:
-      return CrosHealthdEventCategory::kTouchscreen;
+      return metrics_enum::CrosHealthdEventCategory::kTouchscreen;
     case mojom::EventCategoryEnum::kStylusGarage:
-      return CrosHealthdEventCategory::kStylusGarage;
+      return metrics_enum::CrosHealthdEventCategory::kStylusGarage;
     case mojom::EventCategoryEnum::kStylus:
-      return CrosHealthdEventCategory::kStylus;
+      return metrics_enum::CrosHealthdEventCategory::kStylus;
     case mojom::EventCategoryEnum::kCrash:
-      return CrosHealthdEventCategory::kCrash;
+      return metrics_enum::CrosHealthdEventCategory::kCrash;
   }
 }
 
@@ -254,11 +254,11 @@ template <typename S>
 void SendOneTelemetryResultToUMA(MetricsLibraryInterface* metrics,
                                  mojom::ProbeCategoryEnum category,
                                  const mojo::StructPtr<S>& struct_ptr) {
-  CrosHealthdTelemetryResult enum_sample;
+  metrics_enum::CrosHealthdTelemetryResult enum_sample;
   if (struct_ptr.is_null() || struct_ptr->is_error()) {
-    enum_sample = CrosHealthdTelemetryResult::kError;
+    enum_sample = metrics_enum::CrosHealthdTelemetryResult::kError;
   } else {
-    enum_sample = CrosHealthdTelemetryResult::kSuccess;
+    enum_sample = metrics_enum::CrosHealthdTelemetryResult::kSuccess;
   }
 
   metrics->SendEnumToUMA(GetMetricName(category), enum_sample);
@@ -394,7 +394,7 @@ void SendDiagnosticResultToUMA(MetricsLibraryInterface* metrics,
     return;
   }
 
-  std::optional<CrosHealthdDiagnosticResult> result_enum =
+  std::optional<metrics_enum::CrosHealthdDiagnosticResult> result_enum =
       ConvertDiagnosticStatusToUMAEnum(status);
   if (!result_enum.has_value()) {
     LOG(ERROR) << "Unable to send non-terminal status " << status << " of "
@@ -407,7 +407,7 @@ void SendDiagnosticResultToUMA(MetricsLibraryInterface* metrics,
 
 void SendEventSubscriptionUsageToUMA(MetricsLibraryInterface* metrics,
                                      mojom::EventCategoryEnum category) {
-  std::optional<CrosHealthdEventCategory> category_enum =
+  std::optional<metrics_enum::CrosHealthdEventCategory> category_enum =
       ConvertEventCategoryToUMAEnum(category);
   if (!category_enum.has_value()) {
     // No need to record unrecognized category.
