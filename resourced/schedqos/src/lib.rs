@@ -364,10 +364,24 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
             other => other?,
         };
 
-        self.config
+        let error_result = if let Err(e) = self
+            .config
             .cgroup_context
             .set_cpu_cgroup(process_id, process_config.cpu_cgroup)
-            .map_err(|e| Error::Cgroup(process_config.cpu_cgroup.name(), e))?;
+        {
+            if e.raw_os_error() == Some(libc::ESRCH) {
+                return Err(Error::ProcessNotFound);
+            }
+            // Assigning a process to a cpu cgroup can fails with EINVAL due to timing issues.
+            // See cpu_cgroup_can_attach() in the Linux kernel. For example, If a thread in the
+            // process has not yet run, it will fail with EINVAL on kernel older than Linux 6.
+            // Registering the process to the process_map should not be blocked by the timing error,
+            // otherwise, subsequent set_thread_state() will fail with
+            // `Error::ProcessNotRegistered`.
+            Some(Error::Cgroup(process_config.cpu_cgroup.name(), e))
+        } else {
+            None
+        };
 
         let Some(mut process) =
             self.process_map
@@ -385,7 +399,11 @@ impl<PM: ProcessMap> SchedQosContext<PM> {
         // Cache the last error while updating thread settings. This will be returned as
         // this method's error if process setting update succeeds. Errors while updating
         // thread settings do not stop other setting updates.
-        let mut result = Ok(None);
+        let mut result = if let Some(e) = error_result {
+            Err(e)
+        } else {
+            Ok(None)
+        };
         // Only apply process state thread restrictions to managed threads. Although we
         // could theoretically try to apply the restrictions to unmanaged threads as well,
         // defining coherent state transitions and properly restoring state later would be

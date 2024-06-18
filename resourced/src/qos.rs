@@ -35,7 +35,7 @@ const STATE_FILE_PATH: &str = "/run/resourced/schedqos_states";
 
 pub const UMA_NAME_QOS_SET_PROCESS_STATE_ERROR: &str = "Scheduling.SchedQoS.SetProcessStateError";
 pub const UMA_NAME_QOS_SET_THREAD_STATE_ERROR: &str = "Scheduling.SchedQoS.SetThreadStateError";
-pub const MAX_QOS_ERROR_TYPE: i32 = 12;
+pub const MAX_QOS_ERROR_TYPE: i32 = 13;
 
 /// Error of parsing /proc/pid/status
 #[derive(Debug)]
@@ -81,6 +81,9 @@ impl Error {
                 schedqos::Error::ProcessNotRegistered => 5,
                 schedqos::Error::ThreadNotFound => 6,
                 schedqos::Error::Config(_, _) => 7,
+                // This is a known issue that cgroup assignment can fail with EINVAL due to timing
+                // issues.
+                schedqos::Error::Cgroup(_, e) if e.raw_os_error() == Some(libc::EINVAL) => 13,
                 schedqos::Error::Cgroup(_, _) => 8,
                 schedqos::Error::SchedAttr(_) => 9,
                 schedqos::Error::LatencySensitive(_) => 10,
