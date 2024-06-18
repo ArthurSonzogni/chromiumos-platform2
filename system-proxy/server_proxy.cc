@@ -24,8 +24,8 @@
 #include <base/threading/thread.h>
 #include <brillo/data_encoding.h>
 #include <brillo/http/http_transport.h>
-#include <net-base/socket.h>
-#include <net-base/socket_forwarder.h>
+#include <chromeos/net-base/socket.h>
+#include <chromeos/net-base/socket_forwarder.h>
 
 #include "bindings/worker_common.pb.h"
 #include "system-proxy/protobuf_util.h"

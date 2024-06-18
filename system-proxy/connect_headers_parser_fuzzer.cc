@@ -16,9 +16,9 @@
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/message_loops/base_message_loop.h>
+#include <chromeos/net-base/socket.h>
+#include <chromeos/net-base/socket_forwarder.h>
 #include <curl/curl.h>
-#include <net-base/socket.h>
-#include <net-base/socket_forwarder.h>
 
 #include "system-proxy/curl_scopers.h"
 #include "system-proxy/proxy_connect_job.h"

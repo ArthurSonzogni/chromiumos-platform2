@@ -21,8 +21,8 @@
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
-#include <net-base/socket.h>
-#include <net-base/socket_forwarder.h>
+#include <chromeos/net-base/socket.h>
+#include <chromeos/net-base/socket_forwarder.h>
 
 #include "system-proxy/curl_scopers.h"
 #include "system-proxy/http_util.h"

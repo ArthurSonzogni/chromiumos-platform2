@@ -13,8 +13,8 @@
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/simple_thread.h>
-#include <net-base/ipv4_address.h>
-#include <net-base/socket.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/socket.h>
 
 namespace system_proxy {
 

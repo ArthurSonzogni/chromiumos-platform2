@@ -20,13 +20,13 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/message_loops/base_message_loop.h>
-#include <dbus/object_path.h>
+#include <chromeos/dbus/service_constants.h>
+#include <dbus/kerberos/dbus-constants.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
-#include <chromeos/dbus/service_constants.h>
-#include <dbus/kerberos/dbus-constants.h>
+#include <dbus/object_path.h>
 #include <dbus/system_proxy/dbus-constants.h>
 
 #include "bindings/worker_common.pb.h"

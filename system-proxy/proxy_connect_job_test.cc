@@ -20,11 +20,11 @@
 #include <base/task/single_thread_task_executor.h>
 #include <base/test/test_mock_time_task_runner.h>
 #include <brillo/message_loops/base_message_loop.h>
+#include <chromeos/net-base/socket.h>
+#include <chromeos/net-base/socket_forwarder.h>
 #include <curl/curl.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net-base/socket.h>
-#include <net-base/socket_forwarder.h>
 
 #include "system-proxy/test_http_server.h"
 

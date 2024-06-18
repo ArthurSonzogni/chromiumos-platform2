@@ -19,10 +19,10 @@
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <dbus/kerberos/dbus-constants.h>
-#include <dbus/object_path.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
+#include <dbus/object_path.h>
 #include <kerberos/proto_bindings/kerberos_service.pb.h>
 
 using testing::_;

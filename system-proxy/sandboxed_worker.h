@@ -15,8 +15,8 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <base/memory/weak_ptr.h>
+#include <chromeos/net-base/ipv4_address.h>
 #include <chromeos/scoped_minijail.h>
-#include <net-base/ipv4_address.h>
 
 #include "bindings/worker_common.pb.h"
 

@@ -6,8 +6,8 @@
 #include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
-#include <base/task/single_thread_task_executor.h>
 #include <base/run_loop.h>
+#include <base/task/single_thread_task_executor.h>
 
 #include "system-proxy/server_proxy.h"
 

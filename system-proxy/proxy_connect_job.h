@@ -15,8 +15,8 @@
 #include <base/cancelable_callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/functional/callback_forward.h>
+#include <chromeos/net-base/socket.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/socket.h>
 
 #include "system-proxy/curl_scopers.h"
 

@@ -7,10 +7,10 @@
 #include <memory>
 
 #include <base/files/scoped_file.h>
+#include <chromeos/net-base/socket.h>
+#include <chromeos/net-base/socket_forwarder.h>
 #include <curl/curl.h>
 #include <curl/easy.h>
-#include <net-base/socket.h>
-#include <net-base/socket_forwarder.h>
 
 namespace system_proxy {
 

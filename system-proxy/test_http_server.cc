@@ -14,7 +14,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <net-base/socket.h>
+#include <chromeos/net-base/socket.h>
 
 namespace {
 constexpr int kMaxConn = 10;

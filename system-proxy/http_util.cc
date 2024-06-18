@@ -9,10 +9,10 @@
 
 #include <curl/curl.h>
 
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 namespace {
 // The elements in this array are used to identify the end of a HTTP header

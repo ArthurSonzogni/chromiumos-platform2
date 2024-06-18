@@ -14,9 +14,9 @@
 #include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/asynchronous_signal_handler.h>
+#include <chromeos/net-base/ipv4_address.h>
+#include <chromeos/net-base/socket.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
-#include <net-base/ipv4_address.h>
-#include <net-base/socket.h>
 
 #include "system-proxy/curl_scopers.h"
 
