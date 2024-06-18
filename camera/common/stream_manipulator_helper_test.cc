@@ -236,6 +236,7 @@ struct TestCase {
   uint32_t partial_result_count = 1;
   std::vector<camera3_stream_t> streams;
   uint32_t max_buffers = 1;
+  bool expected_config_success = true;
   std::vector<size_t> expected_configured_stream_indices;
   std::vector<std::tuple<uint32_t /*width*/,
                          uint32_t /*height*/,
@@ -286,7 +287,10 @@ class StreamManipulatorHelperTest : public testing::Test {
             .operation_mode = CAMERA3_STREAM_CONFIGURATION_NORMAL_MODE,
         },
         /*stream_effects_map=*/nullptr);
-    PreConfigure(&stream_config);
+    EXPECT_EQ(PreConfigure(&stream_config), test_case.expected_config_success);
+    if (!test_case.expected_config_success) {
+      return;
+    }
 
     EXPECT_EQ(stream_config.num_streams(),
               test_case.expected_configured_stream_indices.size() +
@@ -364,10 +368,12 @@ class StreamManipulatorHelperTest : public testing::Test {
     }
   }
 
-  void PreConfigure(Camera3StreamConfiguration* stream_config) {
+  bool PreConfigure(Camera3StreamConfiguration* stream_config) {
+    bool ok = true;
     for (auto& m : manipulators_) {
-      ASSERT_TRUE(m->ConfigureStreams(stream_config));
+      ok = m->ConfigureStreams(stream_config) && ok;
     }
+    return ok;
   }
 
   void PostConfigure(Camera3StreamConfiguration* stream_config) {
@@ -1009,6 +1015,33 @@ const TestCase g_test_cases[] =
                         {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888,
                          kProcessStreamUsageFlags | GRALLOC_USAGE_HW_COMPOSER},
                     },
+            },
+        // Config to skip processing on multiple aspect ratios.
+        [17] =
+            {
+                .helper_configs =
+                    {
+                        {.process_mode = ProcessMode::kVideoAndStillProcess,
+                         .skip_on_multiple_aspect_ratios = true},
+                    },
+                .available_formats =
+                    {
+                        {1280, 960, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {1280, 720, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {640, 480, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                    },
+                .active_array_size = Size(2592, 1944),
+                .streams =
+                    {
+                        {.width = 1280,
+                         .height = 720,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                        {.width = 640,
+                         .height = 480,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888,
+                         .usage = GRALLOC_USAGE_HW_COMPOSER},
+                    },
+                .expected_config_success = false,
             },
 };
 

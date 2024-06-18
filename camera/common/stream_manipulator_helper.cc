@@ -177,6 +177,12 @@ StreamManipulatorHelper::StreamManipulatorHelper(
     // 5M video IQ is not fine-tuned (b/242829296).
     config_.max_enlarged_video_source_width = 1920;
     config_.max_enlarged_video_source_height = 1200;
+  } else if (camera_module_name == "MediaTek Camera Module") {
+    // Filter out stream combinations with multiple aspect ratios since the HAL
+    // doesn't support them after adding processing streams, and crop-scaling is
+    // not performant enough if setting |preserve_client_video_streams| to
+    // false (b/343098598).
+    config_.skip_on_multiple_aspect_ratios = true;
   } else if (camera_module_name == "QTI Camera HAL") {
     // Some stream combinations are not supported (b/322788274).
     config_.preserve_client_video_streams = false;
@@ -1033,6 +1039,19 @@ StreamManipulatorHelper::FindSourceStream(
     bool for_still_capture) const {
   CHECK(task_runner_->RunsTasksInCurrentSequence());
   CHECK(!dst_streams.empty());
+
+  if (config_.skip_on_multiple_aspect_ratios) {
+    constexpr float kPrecisionFactor = 100;
+    base::flat_set<float> aspect_ratios;
+    for (const camera3_stream_t* s : dst_streams) {
+      aspect_ratios.insert(
+          std::round(kPrecisionFactor * static_cast<float>(s->width) /
+                     static_cast<float>(s->height)));
+    }
+    if (aspect_ratios.size() > 1) {
+      return std::nullopt;
+    }
+  }
 
   uint32_t src_usage = kProcessStreamUsageFlags;
   uint32_t src_max_buffers = dst_streams[0]->max_buffers;

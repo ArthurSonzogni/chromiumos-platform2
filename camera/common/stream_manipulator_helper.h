@@ -104,6 +104,10 @@ class CROS_CAMERA_EXPORT StreamManipulatorHelper {
     // more stream combinations.
     bool preserve_client_video_streams = true;
 
+    // Skip configuration and processing if the client streams contain multiple
+    // aspect ratios.
+    bool skip_on_multiple_aspect_ratios = false;
+
     // Result metadata tags that will be copied and carried to process tasks
     // for visibility and modification.
     std::vector<uint32_t> result_metadata_tags_to_update;
