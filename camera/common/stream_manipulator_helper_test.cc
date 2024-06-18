@@ -1043,6 +1043,61 @@ const TestCase g_test_cases[] =
                     },
                 .expected_config_success = false,
             },
+        // Limiting min video source size.
+        [18] =
+            {
+                .helper_configs =
+                    {
+                        {.process_mode = ProcessMode::kVideoAndStillProcess,
+                         .min_video_source_width = 640},
+                    },
+                .available_formats =
+                    {
+                        {1280, 960, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {640, 480, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {320, 240, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                    },
+                .active_array_size = Size(2592, 1944),
+                .streams =
+                    {
+                        {.width = 320,
+                         .height = 240,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                    },
+                .expected_configured_stream_indices = {0},
+                .expected_extra_configured_streams =
+                    {
+                        {640, 480, HAL_PIXEL_FORMAT_YCBCR_420_888,
+                         kProcessStreamUsageFlags},
+                    },
+            },
+        [19] =
+            {
+                .helper_configs =
+                    {
+                        {.process_mode = ProcessMode::kVideoAndStillProcess,
+                         .min_video_source_height = 480},
+                    },
+                .available_formats =
+                    {
+                        {1280, 960, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {640, 480, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                        {320, 240, HAL_PIXEL_FORMAT_YCBCR_420_888, 30.0f},
+                    },
+                .active_array_size = Size(2592, 1944),
+                .streams =
+                    {
+                        {.width = 320,
+                         .height = 240,
+                         .format = HAL_PIXEL_FORMAT_YCBCR_420_888},
+                    },
+                .expected_configured_stream_indices = {0},
+                .expected_extra_configured_streams =
+                    {
+                        {640, 480, HAL_PIXEL_FORMAT_YCBCR_420_888,
+                         kProcessStreamUsageFlags},
+                    },
+            },
 };
 
 INSTANTIATE_TEST_SUITE_P(,

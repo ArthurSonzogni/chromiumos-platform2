@@ -98,6 +98,10 @@ class CROS_CAMERA_EXPORT StreamManipulatorHelper {
     std::optional<uint32_t> max_enlarged_video_source_width;
     std::optional<uint32_t> max_enlarged_video_source_height;
 
+    // Limits the minimum video source stream dimensions.
+    std::optional<uint32_t> min_video_source_width;
+    std::optional<uint32_t> min_video_source_height;
+
     // For video processing, keep the client YUV streams that are generated from
     // the processing stream in the stream config. This allows video stream
     // buffers to be bypassed as-is at runtime, but the HAL needs to support

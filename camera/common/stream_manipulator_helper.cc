@@ -170,8 +170,11 @@ StreamManipulatorHelper::StreamManipulatorHelper(
   // Platform HAL specific quirks.
   const std::string board = base::SysInfo::GetLsbReleaseBoard();
   if (camera_module_name == "Intel Camera3HAL Module") {
-    // Some stream combinations are not supported (b/323451172).
+    // Some stream combinations are not supported (b/323451172, b/346201346).
     config_.preserve_client_video_streams = false;
+    if (board.find("nautilus") == 0) {
+      config_.min_video_source_width = 640;
+    }
   } else if (board.find("brya") == 0 &&
              camera_module_name == "Intel IPU6 Camera HAL Module") {
     // 5M video IQ is not fine-tuned (b/242829296).
@@ -1102,7 +1105,11 @@ StreamManipulatorHelper::FindSourceStream(
     if ((max_src_width.has_value() &&
          src_format.width > max_src_width.value()) ||
         (max_src_height.has_value() &&
-         src_format.height > max_src_height.value())) {
+         src_format.height > max_src_height.value()) ||
+        (config_.min_video_source_width.has_value() &&
+         src_format.width < config_.min_video_source_width.value()) ||
+        (config_.min_video_source_height.has_value() &&
+         src_format.height < config_.min_video_source_height.value())) {
       return std::nullopt;
     }
     std::optional<float> result;
