@@ -128,6 +128,8 @@ USB_IDS += [
 USB_IDS += [
     # Huawei (ME936) (kip)
     "12d1:15bb",
+    # Quectel (EM060)
+    "2c7c:0128",
     # Fibocom (L850-GL) (coral, nautilus, sarien)
     "2cb7:0007",
     # Fibocom (NL668, NL652)
