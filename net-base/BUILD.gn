@@ -227,25 +227,6 @@ if (use.fuzzer) {
 }
 
 if (use.test) {
-  source_set("net_base_test_support") {
-    sources = [
-      "mock_netlink_manager.cc",
-      "mock_netlink_socket.cc",
-      "mock_proc_fs_stub.cc",
-      "mock_process_manager.cc",
-      "mock_rtnl_handler.cc",
-      "mock_socket.cc",
-    ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    pkg_deps = [
-      "libnet-base",
-      "re2",
-    ]
-  }
-
   executable("libnet-base-testrunner") {
     run_test = true
     sources = [
