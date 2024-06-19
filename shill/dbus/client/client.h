@@ -57,40 +57,6 @@ class BRILLO_EXPORT Client {
     std::vector<std::string> dns_search_domains;
   };
 
-  // (Deprecated, use the NetworkConfig struct instead). IPConfig for a device.
-  // If the device does not have a valid ipv4/ipv6 config, the corresponding
-  // fields will be empty or 0.
-  struct IPConfig {
-    bool operator==(const IPConfig& that) const {
-      return this->ipv4_prefix_length == that.ipv4_prefix_length &&
-             this->ipv4_address == that.ipv4_address &&
-             this->ipv4_gateway == that.ipv4_gateway &&
-             this->ipv4_dns_addresses == that.ipv4_dns_addresses &&
-             this->ipv4_search_domains == that.ipv4_search_domains &&
-             this->ipv6_prefix_length == that.ipv6_prefix_length &&
-             this->ipv6_address == that.ipv6_address &&
-             this->ipv6_gateway == that.ipv6_gateway &&
-             this->ipv6_dns_addresses == that.ipv6_dns_addresses &&
-             this->ipv6_search_domains == that.ipv6_search_domains;
-    }
-
-    int ipv4_prefix_length{0};
-    std::string ipv4_address;
-    std::string ipv4_gateway;
-    std::vector<std::string> ipv4_dns_addresses;
-    std::vector<std::string> ipv4_search_domains;
-
-    int ipv6_prefix_length{0};
-    // Note due to the limitation of shill, we will only get one IPv6 address
-    // from it. This address should be the privacy address for device with type
-    // of ethernet or wifi.
-    // TODO(garrick): Support multiple IPv6 configurations.
-    std::string ipv6_address;
-    std::string ipv6_gateway;
-    std::vector<std::string> ipv6_dns_addresses;
-    std::vector<std::string> ipv6_search_domains;
-  };
-
   // Represents a subset of properties from org.chromium.flimflam.Device.
   // TODO(jiejiang): add the following fields into this struct:
   // - the DBus path of the Service associated to this Device if any
@@ -128,7 +94,6 @@ class BRILLO_EXPORT Client {
 
     bool operator==(const Device& that) const {
       return this->type == that.type && this->ifname == that.ifname &&
-             this->ipconfig == that.ipconfig &&
              this->network_config == that.network_config &&
              this->cellular_country_code == that.cellular_country_code;
     }
@@ -138,7 +103,6 @@ class BRILLO_EXPORT Client {
     std::string ifname;
     std::string cellular_primary_ifname;  // empty if cell device has no primary
                                           // interface property.
-    IPConfig ipconfig;
     NetworkConfig network_config;
     std::string cellular_country_code;
   };
@@ -286,7 +250,7 @@ class BRILLO_EXPORT Client {
 
   // |handler| will be invoked whenever there is a change to tracked properties
   // which currently include:
-  // * The device's IPConfigs,
+  // * The device's network config,
   // * The state of the device's connected service.
   // Multiple handlers may be registered.
   virtual void RegisterDeviceChangedHandler(
@@ -484,12 +448,6 @@ class BRILLO_EXPORT Client {
   };
 
   void AddDevice(const dbus::ObjectPath& path);
-
-  // Reads the list of IPConfigs for a device and composes them into an IPConfig
-  // data structure.
-  IPConfig ParseIPConfigsProperty(
-      const std::string& device_path,
-      const std::vector<dbus::ObjectPath>& ipconfig_paths) const;
 
   scoped_refptr<dbus::Bus> bus_;
 

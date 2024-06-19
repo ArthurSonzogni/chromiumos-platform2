@@ -510,58 +510,6 @@ TEST_F(ClientTest, DeviceRemovedHandlerCalled) {
   EXPECT_TRUE(devices_.empty());
 }
 
-TEST_F(ClientTest, DeviceHandlersCalledOnIPConfigChange) {
-  // Set up 2 devices here to ensure the changes are captured correctly.
-  const dbus::ObjectPath eth0_path("/device/eth0"), wlan0_path("/device/wlan0"),
-      eth0_service_path("service/0"), wlan0_service_path("/service/1");
-  auto* eth0_device = client_->PreMakeDevice(eth0_path);
-  auto* wlan0_device = client_->PreMakeDevice(wlan0_path);
-  dbus::ObjectProxy::OnConnectedCallback eth0_callback, wlan0_callback;
-  EXPECT_CALL(*eth0_device, DoRegisterPropertyChangedSignalHandler(_, _))
-      .WillOnce(MovePointee<1>(&eth0_callback));
-  EXPECT_CALL(*wlan0_device, DoRegisterPropertyChangedSignalHandler(_, _))
-      .WillOnce(MovePointee<1>(&wlan0_callback));
-
-  client_->NotifyManagerPropertyChange(
-      kDevicesProperty, std::vector<dbus::ObjectPath>({eth0_path, wlan0_path}));
-
-  brillo::VariantDictionary eth0_props, wlan0_props;
-  eth0_props[kTypeProperty] = std::string(kTypeEthernet);
-  eth0_props[kInterfaceProperty] = std::string("eth0");
-  eth0_props[kSelectedServiceProperty] = eth0_service_path;
-  EXPECT_CALL(*eth0_device, GetProperties(_, _, _))
-      .WillOnce(DoAll(testing::SetArgPointee<0>(eth0_props), Return(true)));
-  wlan0_props[kTypeProperty] = std::string(kTypeWifi);
-  wlan0_props[kInterfaceProperty] = std::string("wlan0");
-  wlan0_props[kSelectedServiceProperty] = wlan0_service_path;
-  EXPECT_CALL(*wlan0_device, GetProperties(_, _, _))
-      .WillOnce(DoAll(testing::SetArgPointee<0>(wlan0_props), Return(true)));
-
-  std::move(eth0_callback)
-      .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
-  std::move(wlan0_callback)
-      .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
-
-  // Set up initial state.
-  client_->NotifyDefaultServicePropertyChange(kDeviceProperty, eth0_path);
-  client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, true);
-
-  // This test doesn't worry about parsing IPConfigs, only that the right
-  // handler is called, so it doesn't matter what we send through here.
-  last_device_changed_.clear();
-  // First check the non-default device.
-  client_->NotifyDevicePropertyChange("/device/wlan0", kIPConfigsProperty,
-                                      brillo::Any());
-  EXPECT_EQ(last_device_changed_, "wlan0");
-  // Now the default. We're also going to verify the default device handler is
-  // called next, so clear that state first as well.
-  default_device_ = {};
-  client_->NotifyDevicePropertyChange("/device/eth0", kIPConfigsProperty,
-                                      brillo::Any());
-  EXPECT_EQ(last_device_changed_, "eth0");
-  EXPECT_EQ(default_device_.ifname, "eth0");
-}
-
 TEST_F(ClientTest, ParseNetworkConfig) {
   const dbus::ObjectPath device_path("/device/eth0");
   client_->PreMakeDevice(device_path);

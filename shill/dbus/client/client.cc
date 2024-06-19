@@ -17,8 +17,6 @@
 
 using org::chromium::flimflam::DeviceProxy;
 using org::chromium::flimflam::DeviceProxyInterface;
-using org::chromium::flimflam::IPConfigProxy;
-using org::chromium::flimflam::IPConfigProxyInterface;
 using org::chromium::flimflam::ManagerProxy;
 using org::chromium::flimflam::ManagerProxyInterface;
 using org::chromium::flimflam::ServiceProxy;
@@ -599,18 +597,13 @@ void Client::OnDevicePropertyChangeRegistration(const std::string& device_path,
         brillo::GetVariantValueOrDefault<std::string>(
             properties, kPrimaryMultiplexedInterfaceProperty);
   }
-  // Obtain and monitor properties on this device's selected service and treat
-  // them as if they are instrinsically characteristic of the device itself.
-  const auto service_path = brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
-      properties, kSelectedServiceProperty);
-  HandleSelectedServiceChanged(device_path, service_path);
 
   // Set |device_added| to true here so it invokes the corresponding handler, if
   // applicable - this will occur only once (per device).
-  OnDevicePropertyChange(
-      true /*device_added*/, device_path, kIPConfigsProperty,
-      brillo::GetVariantValueOrDefault<std::vector<dbus::ObjectPath>>(
-          properties, kIPConfigsProperty));
+  const auto service_path = brillo::GetVariantValueOrDefault<dbus::ObjectPath>(
+      properties, kSelectedServiceProperty);
+  OnDevicePropertyChange(true /*device_added*/, device_path,
+                         kSelectedServiceProperty, service_path);
 }
 
 void Client::OnDevicePropertyChange(bool device_added,
@@ -618,20 +611,7 @@ void Client::OnDevicePropertyChange(bool device_added,
                                     const std::string& property_name,
                                     const brillo::Any& property_value) {
   Device* device = nullptr;
-  if (property_name == kIPConfigsProperty) {
-    auto it = devices_.find(device_path);
-    if (it == devices_.end()) {
-      LOG(ERROR) << "Device [" << device_path << "] not found";
-      return;
-    }
-    device = it->second->device();
-    auto paths = property_value.TryGet<std::vector<dbus::ObjectPath>>();
-    if (paths.empty() && IsConnectedState(device->state)) {
-      LOG(WARNING) << "Device [" << device_path << "] has no IPConfigs";
-    } else {
-      device->ipconfig = ParseIPConfigsProperty(device_path, paths);
-    }
-  } else if (property_name == kSelectedServiceProperty) {
+  if (property_name == kSelectedServiceProperty) {
     device = HandleSelectedServiceChanged(device_path, property_value);
     if (!device) {
       return;
@@ -722,108 +702,6 @@ Client::Device* Client::HandleSelectedServiceChanged(
           properties, kNetworkConfigProperty));
 
   return device;
-}
-
-Client::IPConfig Client::ParseIPConfigsProperty(
-    const std::string& device_path,
-    const std::vector<dbus::ObjectPath>& ipconfig_paths) const {
-  std::unique_ptr<IPConfigProxy> proxy;
-  auto reset_proxy = [&](const dbus::ObjectPath& path) {
-    if (proxy) {
-      proxy->ReleaseObjectProxy(base::DoNothing());
-    }
-
-    if (path.IsValid()) {
-      proxy.reset(new IPConfigProxy(bus_, path));
-    }
-  };
-
-  IPConfig ipconfig;
-  for (const auto& path : ipconfig_paths) {
-    reset_proxy(path);
-    brillo::VariantDictionary properties;
-    if (!proxy->GetProperties(&properties, nullptr)) {
-      // It is possible that an IPConfig object is removed after we know its
-      // path, especially when the interface is going down.
-      LOG(WARNING) << "Unable to get properties for IPConfig [" << path.value()
-                   << "] on device [" << device_path << "]";
-      continue;
-    }
-
-    const std::string addr = brillo::GetVariantValueOrDefault<std::string>(
-        properties, kAddressProperty);
-    if (addr.empty()) {
-      // On IPv6 only network, dhcp is expected to fail, nevertheless shill
-      // will still expose a mostly empty IPConfig object, On dual stack
-      // networks, the IPv6 configuration may be available before dhcp has
-      // finished. Avoid logging spurious WARNING messages in these two cases.
-      continue;
-    }
-
-    const int len =
-        brillo::GetVariantValueOrDefault<int>(properties, kPrefixlenProperty);
-    const auto ip_cidr = net_base::IPCIDR::CreateFromStringAndPrefix(addr, len);
-    if (!ip_cidr) {
-      LOG(WARNING) << "Invalid address [" << addr << "] in IPConfig ["
-                   << path.value() << "] on device [" << device_path
-                   << "] with prefix length " << len;
-      continue;
-    }
-    if (len == 0) {
-      LOG(WARNING) << "Property [" << kPrefixlenProperty << "] in IPConfig ["
-                   << path.value() << "] on device [" << device_path
-                   << "] has a value of 0. May indicate an invalid setup.";
-    }
-
-    // While multiple IPv6 addresses are valid, we expect shill to provide at
-    // most one for now.
-    // TODO(garrick): Support multiple IPv6 configurations.
-    if ((ip_cidr->GetFamily() == net_base::IPFamily::kIPv4 &&
-         !ipconfig.ipv4_address.empty()) ||
-        (ip_cidr->GetFamily() == net_base::IPFamily::kIPv6 &&
-         !ipconfig.ipv6_address.empty())) {
-      LOG(WARNING) << "Duplicate [" << ip_cidr->GetFamily()
-                   << "] IPConfig found on device [" << device_path << "]";
-      continue;
-    }
-
-    const std::string gw = brillo::GetVariantValueOrDefault<std::string>(
-        properties, kGatewayProperty);
-    if (gw.empty()) {
-      LOG(WARNING) << "Empty property [" << kGatewayProperty
-                   << "] in IPConfig [" << path.value() << "] on device ["
-                   << device_path << "]";
-      continue;
-    }
-
-    // Note that empty name server list may indicates the network does not have
-    // Internet connectivity.
-    auto ns = brillo::GetVariantValueOrDefault<std::vector<std::string>>(
-        properties, kNameServersProperty);
-    auto search_domains =
-        brillo::GetVariantValueOrDefault<std::vector<std::string>>(
-            properties, kSearchDomainsProperty);
-
-    switch (ip_cidr->GetFamily()) {
-      case net_base::IPFamily::kIPv4:
-        ipconfig.ipv4_prefix_length = len;
-        ipconfig.ipv4_address = addr;
-        ipconfig.ipv4_gateway = gw;
-        ipconfig.ipv4_dns_addresses = ns;
-        ipconfig.ipv4_search_domains = search_domains;
-        break;
-      case net_base::IPFamily::kIPv6:
-        ipconfig.ipv6_prefix_length = len;
-        ipconfig.ipv6_address = addr;
-        ipconfig.ipv6_gateway = gw;
-        ipconfig.ipv6_dns_addresses = ns;
-        ipconfig.ipv6_search_domains = search_domains;
-        break;
-    }
-  }
-  reset_proxy(dbus::ObjectPath());
-
-  return ipconfig;
 }
 
 void Client::OnServicePropertyChangeRegistration(const std::string& device_path,
@@ -953,7 +831,6 @@ std::vector<std::unique_ptr<Client::Device>> Client::GetDevices() const {
     device->type = dev->device()->type;
     device->ifname = dev->device()->ifname;
     device->state = dev->device()->state;
-    device->ipconfig = dev->device()->ipconfig;
     device->network_config = dev->device()->network_config;
     device->cellular_country_code = dev->device()->cellular_country_code;
     device->cellular_primary_ifname = dev->device()->cellular_primary_ifname;
@@ -1065,10 +942,6 @@ std::unique_ptr<Client::Device> Client::DefaultDevice(bool exclude_vpn) {
   device->ifname = brillo::GetVariantValueOrDefault<std::string>(
       properties, kInterfaceProperty);
   device->state = conn_state;
-  device->ipconfig = ParseIPConfigsProperty(
-      device_path.value(),
-      brillo::GetVariantValueOrDefault<std::vector<dbus::ObjectPath>>(
-          properties, kIPConfigsProperty));
   device->network_config = network_config;
   if (device->type == Client::Device::Type::kCellular) {
     device->cellular_country_code = GetCellularProviderCountryCode(properties);
