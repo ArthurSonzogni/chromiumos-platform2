@@ -4,8 +4,9 @@
 
 #include "rmad/state_handler/finalize_state_handler.h"
 
-#include <algorithm>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -16,6 +17,7 @@
 #include <base/task/thread_pool.h>
 
 #include "rmad/constants.h"
+#include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/gsc_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
@@ -25,6 +27,7 @@ constexpr char kEmptyBoardIdType[] = "ffffffff";
 constexpr char kTestBoardIdType[] = "5a5a4352";             // ZZCR.
 constexpr char kPvtBoardIdFlags[] = "00007f80";             // pvt.
 constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";  // customlabel_pvt.
+constexpr char kDefaultBioWashPath[] = "/usr/bin/bio_wash";
 
 }  // namespace
 
@@ -34,7 +37,9 @@ FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback),
-      working_dir_path_(kDefaultWorkingDirPath) {
+      working_dir_path_(kDefaultWorkingDirPath),
+      bio_wash_path_(kDefaultBioWashPath) {
+  cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   gsc_utils_ = std::make_unique<GscUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
@@ -43,10 +48,14 @@ FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
+    const base::FilePath& bio_wash_path,
+    std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<GscUtils> gsc_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
+      bio_wash_path_(bio_wash_path),
+      cmd_utils_(std::move(cmd_utils)),
       gsc_utils_(std::move(gsc_utils)),
       write_protect_utils_(std::move(write_protect_utils)) {}
 
@@ -174,6 +183,23 @@ void FinalizeStateHandler::FinalizeTask() {
   }
 
   status_.set_progress(0.9);
+
+  // Reset fingerprint sensor.
+  if (base::PathExists(base::FilePath(bio_wash_path_))) {
+    // The bio_wash binary uses cros_config to check if the model has a
+    // fingerprint sensor. If not, it doesn't do anything. Hence we can run it
+    // directly without checking the presence of fingerprint sensor.
+    if (std::string output;
+        !cmd_utils_->GetOutputAndError({bio_wash_path_.value()}, &output)) {
+      LOG(ERROR) << "Failed to reset FPS";
+      LOG(ERROR) << output;
+      status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
+      status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_RESET_FPS);
+      return;
+    }
+  }
+
+  status_.set_progress(0.95);
 
   // Make sure GSC board ID type and board ID flags are set.
   if (std::string board_id_type; !gsc_utils_->GetBoardIdType(&board_id_type) ||

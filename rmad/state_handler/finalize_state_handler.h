@@ -8,7 +8,6 @@
 #include "rmad/state_handler/base_state_handler.h"
 
 #include <memory>
-#include <utility>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -16,6 +15,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/timer/timer.h>
 
+#include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
@@ -28,12 +28,14 @@ class FinalizeStateHandler : public BaseStateHandler {
 
   explicit FinalizeStateHandler(scoped_refptr<JsonStore> json_store,
                                 scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject |working_dir_path_|,  |gsc_utils_|, and
-  // |write_protect_utils_| for testing.
+  // Used to inject |working_dir_path_|,  |bio_wash_path_|, |cmd_utils_|,
+  // |gsc_utils_|, and |write_protect_utils_| for testing.
   explicit FinalizeStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
+      const base::FilePath& bio_wash_path,
+      std::unique_ptr<CmdUtils> cmd_utils,
       std::unique_ptr<GscUtils> gsc_utils,
       std::unique_ptr<WriteProtectUtils> write_protect_utils);
 
@@ -57,8 +59,10 @@ class FinalizeStateHandler : public BaseStateHandler {
   void FinalizeTask();
 
   base::FilePath working_dir_path_;
+  base::FilePath bio_wash_path_;
   FinalizeStatus status_;
 
+  std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<GscUtils> gsc_utils_;
   std::unique_ptr<WriteProtectUtils> write_protect_utils_;
   base::RepeatingTimer status_timer_;
