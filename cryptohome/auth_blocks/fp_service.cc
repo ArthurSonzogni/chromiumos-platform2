@@ -179,23 +179,33 @@ void FingerprintAuthBlockService::Capture(FingerprintScanStatus status) {
     return;
   }
   scan_result_ = status;
-  user_data_auth::AuthScanResult outgoing_signal;
+  user_data_auth::AuthScanResult auth_scan_result;
   switch (status) {
     case FingerprintScanStatus::SUCCESS:
-      outgoing_signal.set_fingerprint_result(
+      auth_scan_result.set_fingerprint_result(
           user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
       break;
     case FingerprintScanStatus::FAILED_RETRY_ALLOWED:
-      outgoing_signal.set_fingerprint_result(
+      auth_scan_result.set_fingerprint_result(
           user_data_auth::FINGERPRINT_SCAN_RESULT_RETRY);
       break;
     case FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED:
-      outgoing_signal.set_fingerprint_result(
+      auth_scan_result.set_fingerprint_result(
           user_data_auth::FINGERPRINT_SCAN_RESULT_LOCKOUT);
       break;
   }
+  user_data_auth::AuthScanDone auth_scan_done;
+  user_data_auth::PrepareAuthFactorForAuthProgress auth_progress;
+  user_data_auth::PrepareAuthFactorProgress progress;
+  *auth_scan_done.mutable_scan_result() = auth_scan_result;
+  auth_progress.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_LEGACY_FINGERPRINT);
+  *auth_progress.mutable_biometrics_progress() = auth_scan_done;
+  progress.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  *progress.mutable_auth_progress() = auth_progress;
   if (signalling_) {
-    signalling_->SendAuthScanResult(outgoing_signal);
+    signalling_->SendAuthScanResult(auth_scan_result);
+    signalling_->SendPrepareAuthFactorProgress(progress);
   }
 }
 
