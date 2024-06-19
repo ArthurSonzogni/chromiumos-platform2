@@ -36,13 +36,25 @@ constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-4.pid";
 std::vector<std::string> GetDhcpcdFlags(
     Technology technology, const DHCPClientProxy::Options& options) {
   std::vector<std::string> flags = {
-      "-B",                               // Run in foreground.
-      "-f",        kDHCPCDConfigPath,     // Specify config file path.
-      "-i",        "chromeos",            // Static value for Vendor class info.
-      "-q",                               // Only warnings+errors to stderr.
-      "-4",                               // IPv4 only.
-      "-o",        "captive_portal_uri",  // Request the captive portal URI.
-      "--nodelay",                        // No initial randomised delay.
+      // Run in foreground.
+      "-B",
+      // Specify config file path.
+      "-f",
+      kDHCPCDConfigPath,
+      // Static value for Vendor class info.
+      "-i",
+      "chromeos",
+      // Only warnings+errors to stderr.
+      "-q",
+      // IPv4 only.
+      "-4",
+      // Request the captive portal URI.
+      "-o",
+      "captive_portal_uri",
+      // No initial randomised delay.
+      "--nodelay",
+      // Do not configure the system.
+      "--noconfigure",
   };
 
   // Request hostname from server.
