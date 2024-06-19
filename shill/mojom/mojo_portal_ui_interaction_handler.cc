@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "shill/mojom/portal.mojom.h"
+#include "shill/network/portal_notification_event.h"
 
 namespace shill {
 
@@ -17,7 +18,7 @@ void MojoPortalUIInteractionHandler::AddReceiver(
 }
 
 void MojoPortalUIInteractionHandler::OnNotificationEvent(
-    int32_t network_id, NotificationEvent event) {}
+    int32_t network_id, PortalNotificationEvent event) {}
 
 void MojoPortalUIInteractionHandler::OnSigninPageShown(
     int32_t network_id, const net_base::HttpUrl& url) {}

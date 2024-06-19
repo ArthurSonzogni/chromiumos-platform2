@@ -9,6 +9,7 @@
 #include <gmock/gmock.h>
 
 #include "shill/mojom/mojo_portal_ui_interaction_handler.h"
+#include "shill/network/portal_notification_event.h"
 
 namespace shill {
 
@@ -20,7 +21,7 @@ class MockMojoPortalUIInteractionHandler
 
   MOCK_METHOD(void,
               OnNotificationEvent,
-              (int32_t, NotificationEvent),
+              (int32_t, PortalNotificationEvent),
               (override));
   MOCK_METHOD(void,
               OnSigninPageShown,

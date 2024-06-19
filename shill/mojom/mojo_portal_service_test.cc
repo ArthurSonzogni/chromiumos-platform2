@@ -91,7 +91,7 @@ TEST_F(MojoPortalServiceTest, ConnectPortalUIInteractionHandler) {
   mojo::Remote<MojomPortalUIInteractionHandler> remote_handler =
       client_->GetPortalUIInteractionHandler();
 
-  const NotificationEvent kEvent = NotificationEvent::kClicked;
+  const PortalNotificationEvent kEvent = PortalNotificationEvent::kClicked;
   EXPECT_CALL(*mock_handler_, OnNotificationEvent(kNetworkId, kEvent)).Times(1);
   remote_handler->OnNotificationEvent(kNetworkId, kEvent);
   remote_handler.FlushForTesting();
@@ -122,7 +122,7 @@ TEST_F(MojoPortalServiceTest, ConnectMultiplePortalUIInteractionHandler) {
   mojo::Remote<MojomPortalUIInteractionHandler> remote_handler2 =
       client_->GetPortalUIInteractionHandler();
 
-  const NotificationEvent kEvent = NotificationEvent::kClicked;
+  const PortalNotificationEvent kEvent = PortalNotificationEvent::kClicked;
   EXPECT_CALL(*mock_handler_, OnNotificationEvent(kNetworkId, kEvent)).Times(1);
   remote_handler1->OnNotificationEvent(kNetworkId, kEvent);
   remote_handler1.FlushForTesting();

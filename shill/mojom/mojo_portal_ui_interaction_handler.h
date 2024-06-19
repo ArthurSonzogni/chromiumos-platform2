@@ -9,11 +9,9 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "shill/mojom/portal.mojom.h"
+#include "shill/network/portal_notification_event.h"
 
 namespace shill {
-
-// Use type alias to simplify the Mojo enum.
-using chromeos::connectivity::mojom::NotificationEvent;
 
 class MojoPortalUIInteractionHandler
     : public chromeos::connectivity::mojom::PortalUIInteractionHandler {
@@ -26,7 +24,7 @@ class MojoPortalUIInteractionHandler
  protected:
   // Implements chromeos::connectivity::mojom::PortalUIInteractionHandler.
   void OnNotificationEvent(int32_t network_id,
-                           NotificationEvent event) override;
+                           PortalNotificationEvent event) override;
   void OnSigninPageShown(int32_t network_id,
                          const net_base::HttpUrl& url) override;
   void OnSigninPageLoaded(int32_t network_id,
