@@ -8,6 +8,7 @@
 #define CAMERA_HAL_ADAPTER_CAMERA_HAL_SERVER_IMPL_H_
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -97,6 +98,10 @@ class CameraHalServerImpl {
     void AddCrosCameraServiceObserver(
         mojo::PendingRemote<mojom::CrosCameraServiceObserver> observer)
         override;
+
+    void StartKioskVisionDetection(
+        const std::string& dlc_path,
+        mojo::PendingRemote<mojom::KioskVisionObserver> observer) override;
 
     void NotifyCameraActivityChange(int32_t camera_id,
                                     bool opened,
