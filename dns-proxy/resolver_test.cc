@@ -835,4 +835,33 @@ TEST_F(ResolverTest, SocketFd_Resize) {
     EXPECT_EQ(sock_fd->try_resize(), kMaxDNSBufSize);
   }
 }
+
+TEST_F(ResolverTest, IsNXDOMAIN_NXDOMAIN) {
+  const char kDnsResponse[] = {'\x00', '\x01', '\x81', '\x83', '\x00', '\x01',
+                               '\x00', '\x00', '\x00', '\x00', '\x00', '\x00',
+                               '\x06', 'g',    'o',    'o',    'g',    'l',
+                               'e',    '\x03', 'c',    'o',    'm',    '\x00',
+                               '\x00', '\x01', '\x00', '\x01'};
+  EXPECT_TRUE(resolver_->IsNXDOMAIN(
+      reinterpret_cast<const unsigned char*>(kDnsResponse),
+      sizeof(kDnsResponse)));
+}
+
+TEST_F(ResolverTest, IsNXDOMAIN_NotNXDOMAIN) {
+  const char kDnsResponse[] = {'\x00', '\x01', '\x81', '\x81', '\x00', '\x01',
+                               '\x00', '\x00', '\x00', '\x00', '\x00', '\x00',
+                               '\x06', 'g',    'o',    'o',    'g',    'l',
+                               'e',    '\x03', 'c',    'o',    'm',    '\x00',
+                               '\x00', '\x01', '\x00', '\x01'};
+  EXPECT_FALSE(resolver_->IsNXDOMAIN(
+      reinterpret_cast<const unsigned char*>(kDnsResponse),
+      sizeof(kDnsResponse)));
+}
+
+TEST_F(ResolverTest, IsNXDOMAIN_BadResponse) {
+  const char kDnsResponse[] = {'\x00', '\x01', '\x02', '\x03', '\x04', '\x05'};
+  EXPECT_FALSE(resolver_->IsNXDOMAIN(
+      reinterpret_cast<const unsigned char*>(kDnsResponse),
+      sizeof(kDnsResponse)));
+}
 }  // namespace dns_proxy

@@ -313,6 +313,19 @@ void Resolver::OnTCPConnection() {
                                             weak_factory_.GetWeakPtr())));
 }
 
+bool Resolver::IsNXDOMAIN(const unsigned char* msg, size_t len) {
+  scoped_refptr<patchpanel::WrappedIOBuffer> buf =
+      base::MakeRefCounted<patchpanel::WrappedIOBuffer>(
+          reinterpret_cast<const char*>(msg));
+  auto resp = patchpanel::DnsResponse(buf, len);
+
+  if (!resp.InitParseWithoutQuery(len) || !resp.IsValid()) {
+    LOG(ERROR) << *this << " Failed to parse DNS response";
+    return false;
+  }
+  return resp.rcode() == patchpanel::dns_protocol::kRcodeNXDOMAIN;
+}
+
 void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
                                 base::WeakPtr<ProbeState> probe_state,
                                 int status,
@@ -346,9 +359,12 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
   }
 
   sock_fd->num_active_queries--;
-  // Don't process failing result that is not the last result.
-  if (status != ARES_SUCCESS && sock_fd->num_active_queries > 0)
+  // Don't process failing result (including NXDOMAINs) that is not the last
+  // result.
+  if (sock_fd->num_active_queries > 0 &&
+      (status != ARES_SUCCESS || IsNXDOMAIN(msg, len))) {
     return;
+  }
 
   sock_fd->timer.StopResolve(status == ARES_SUCCESS);
   if (metrics_)
@@ -399,9 +415,16 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
   }
 
   sock_fd->num_active_queries--;
-  // Don't process failing result that is not the last result.
-  if (res.http_code != kHTTPOk && sock_fd->num_active_queries > 0)
+  // Don't process failing result (including NXDOMAINs) that is not the last
+  // result. Check for NXDOMAIN only if the response is valid.
+  bool is_nxdomain = false;
+  if (res.http_code == kHTTPOk) {
+    is_nxdomain = IsNXDOMAIN(msg, len);
+  }
+  if ((res.http_code != kHTTPOk || is_nxdomain) &&
+      sock_fd->num_active_queries > 0) {
     return;
+  }
 
   sock_fd->timer.StopResolve(res.curl_code == CURLE_OK);
   if (metrics_)
@@ -417,6 +440,14 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
       sock_fds_.erase(sock_fd->id);
       return;
     }
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(), sock_fd,
+                       true /* fallback */));
+    return;
+  }
+  // Retry with plain-text DNS on NXDOMAINs.
+  if (is_nxdomain && !always_on_doh_) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(), sock_fd,

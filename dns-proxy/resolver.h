@@ -230,6 +230,10 @@ class Resolver {
   // Create a SERVFAIL response from a DNS query |msg| of length |len|.
   patchpanel::DnsResponse ConstructServFailResponse(const char* msg, int len);
 
+  // Returns whether or not a DNS response has NXDOMAIN rcode. Return false if
+  // the DNS response is invalid.
+  bool IsNXDOMAIN(const unsigned char* msg, size_t len);
+
   // Provided for testing only. Enable or disable probing.
   void SetProbingEnabled(bool enable_probe);
 
