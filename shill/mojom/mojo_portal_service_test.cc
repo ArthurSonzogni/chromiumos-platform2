@@ -13,9 +13,11 @@
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
-#include "shill/mojom/mock_mojo_portal_ui_interaction_handler.h"
+#include "shill/mock_control.h"
 #include "shill/mojom/mojo_portal_service.h"
 #include "shill/mojom/portal.mojom.h"
+#include "shill/network/mock_network.h"
+#include "shill/network/mock_network_manager.h"
 
 namespace shill {
 namespace {
@@ -25,6 +27,8 @@ constexpr int kNetworkId = 3;
 using MojomPortalService = chromeos::connectivity::mojom::PortalService;
 using MojomPortalUIInteractionHandler =
     chromeos::connectivity::mojom::PortalUIInteractionHandler;
+
+using testing::Return;
 
 class FakePortalClient {
  public:
@@ -49,9 +53,9 @@ class MojoPortalServiceTest : public testing::Test {
   void SetUp() override {
     mojo::core::Init();
 
-    auto handler = std::make_unique<MockMojoPortalUIInteractionHandler>();
-    mock_handler_ = handler.get();
-    service_ = std::make_unique<MojoPortalService>(std::move(handler));
+    ON_CALL(mock_network_manager_, GetNetwork(kNetworkId))
+        .WillByDefault(Return(&mock_network_));
+    service_ = std::make_unique<MojoPortalService>(&mock_network_manager_);
 
     service_receiver_ = std::make_unique<
         mojo::Receiver<chromeos::connectivity::mojom::PortalService>>(
@@ -78,12 +82,17 @@ class MojoPortalServiceTest : public testing::Test {
   // It's required by Mojo environment.
   base::test::TaskEnvironment task_environment_;
 
+  MockControl mock_control_;
+  MockNetworkManager mock_network_manager_{&mock_control_};
+  MockNetwork mock_network_{/*interface_index=*/3,
+                            /*interface_name=*/"wlan0",
+                            /*technology=*/Technology::kWiFi};
+
   std::unique_ptr<MojoPortalService> service_;
   // In production, we rely on SimpleMojoServiceProvider to keep the receivers
   // of service. Here we manually keep the receiver and connect the service.
   std::unique_ptr<mojo::Receiver<chromeos::connectivity::mojom::PortalService>>
       service_receiver_;
-  MockMojoPortalUIInteractionHandler* mock_handler_;
   std::unique_ptr<FakePortalClient> client_;
 };
 
@@ -92,28 +101,28 @@ TEST_F(MojoPortalServiceTest, ConnectPortalUIInteractionHandler) {
       client_->GetPortalUIInteractionHandler();
 
   const PortalNotificationEvent kEvent = PortalNotificationEvent::kClicked;
-  EXPECT_CALL(*mock_handler_, OnNotificationEvent(kNetworkId, kEvent)).Times(1);
+  EXPECT_CALL(mock_network_, OnNotificationEvent(kEvent)).Times(1);
   remote_handler->OnNotificationEvent(kNetworkId, kEvent);
   remote_handler.FlushForTesting();
-  testing::Mock::VerifyAndClearExpectations(mock_handler_);
+  testing::Mock::VerifyAndClearExpectations(&mock_network_);
 
   const net_base::HttpUrl kUrl =
       *net_base::HttpUrl::CreateFromString("https://example.org");
-  EXPECT_CALL(*mock_handler_, OnSigninPageShown(kNetworkId, kUrl)).Times(1);
+  EXPECT_CALL(mock_network_, OnSigninPageShown(kUrl)).Times(1);
   remote_handler->OnSigninPageShown(kNetworkId, kUrl);
   remote_handler.FlushForTesting();
-  testing::Mock::VerifyAndClearExpectations(mock_handler_);
+  testing::Mock::VerifyAndClearExpectations(&mock_network_);
 
   const int kError = 3;
-  EXPECT_CALL(*mock_handler_, OnSigninPageLoaded(kNetworkId, kError)).Times(1);
+  EXPECT_CALL(mock_network_, OnSigninPageLoaded(kError)).Times(1);
   remote_handler->OnSigninPageLoaded(kNetworkId, kError);
   remote_handler.FlushForTesting();
-  testing::Mock::VerifyAndClearExpectations(mock_handler_);
+  testing::Mock::VerifyAndClearExpectations(&mock_network_);
 
-  EXPECT_CALL(*mock_handler_, OnSigninPageClosed(kNetworkId)).Times(1);
+  EXPECT_CALL(mock_network_, OnSigninPageClosed()).Times(1);
   remote_handler->OnSigninPageClosed(kNetworkId);
   remote_handler.FlushForTesting();
-  testing::Mock::VerifyAndClearExpectations(mock_handler_);
+  testing::Mock::VerifyAndClearExpectations(&mock_network_);
 }
 
 TEST_F(MojoPortalServiceTest, ConnectMultiplePortalUIInteractionHandler) {
@@ -123,16 +132,16 @@ TEST_F(MojoPortalServiceTest, ConnectMultiplePortalUIInteractionHandler) {
       client_->GetPortalUIInteractionHandler();
 
   const PortalNotificationEvent kEvent = PortalNotificationEvent::kClicked;
-  EXPECT_CALL(*mock_handler_, OnNotificationEvent(kNetworkId, kEvent)).Times(1);
+  EXPECT_CALL(mock_network_, OnNotificationEvent(kEvent)).Times(1);
   remote_handler1->OnNotificationEvent(kNetworkId, kEvent);
   remote_handler1.FlushForTesting();
-  testing::Mock::VerifyAndClearExpectations(mock_handler_);
+  testing::Mock::VerifyAndClearExpectations(&mock_network_);
 
   const int kError = 3;
-  EXPECT_CALL(*mock_handler_, OnSigninPageLoaded(kNetworkId, kError)).Times(1);
+  EXPECT_CALL(mock_network_, OnSigninPageLoaded(kError)).Times(1);
   remote_handler2->OnSigninPageLoaded(kNetworkId, kError);
   remote_handler2.FlushForTesting();
-  testing::Mock::VerifyAndClearExpectations(mock_handler_);
+  testing::Mock::VerifyAndClearExpectations(&mock_network_);
 }
 
 }  // namespace

@@ -19,7 +19,7 @@
 
 #include "shill/network/network.h"
 #include "shill/network/network_monitor.h"
-#include "shill/network/portal_detector.h"
+#include "shill/network/portal_notification_event.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -84,6 +84,12 @@ class MockNetwork : public Network {
               (NetworkMonitor::ValidationReason),
               (override));
   MOCK_METHOD(void, StopPortalDetection, (bool), (override));
+
+  MOCK_METHOD(void, OnNotificationEvent, (PortalNotificationEvent), (override));
+  MOCK_METHOD(void, OnSigninPageShown, (const net_base::HttpUrl&), (override));
+  MOCK_METHOD(void, OnSigninPageLoaded, (int32_t), (override));
+  MOCK_METHOD(void, OnSigninPageClosed, (), (override));
+
   MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
   MOCK_METHOD(void,
               OnTermsAndConditions,

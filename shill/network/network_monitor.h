@@ -24,6 +24,7 @@
 #include "shill/network/capport_proxy.h"
 #include "shill/network/connection_diagnostics.h"
 #include "shill/network/portal_detector.h"
+#include "shill/network/portal_notification_event.h"
 #include "shill/network/trial_scheduler.h"
 #include "shill/technology.h"
 
@@ -215,6 +216,13 @@ class NetworkMonitor {
 
   // Sets the terms and conditions URL.
   mockable void SetTermsAndConditions(const net_base::HttpUrl& url);
+
+  // The events for the portal notification UI component.
+  // TODO(b/340406014): implement these methods.
+  mockable void OnNotificationEvent(PortalNotificationEvent event) {}
+  mockable void OnSigninPageShown(const net_base::HttpUrl& url) {}
+  mockable void OnSigninPageLoaded(int32_t chrome_net_error) {}
+  mockable void OnSigninPageClosed() {}
 
   // Injects the PortalDetector for testing.
   void set_portal_detector_for_testing(

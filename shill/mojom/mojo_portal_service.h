@@ -16,9 +16,8 @@ namespace shill {
 
 class MojoPortalService : public chromeos::connectivity::mojom::PortalService {
  public:
-  explicit MojoPortalService(
-      std::unique_ptr<MojoPortalUIInteractionHandler> handler =
-          std::make_unique<MojoPortalUIInteractionHandler>());
+  explicit MojoPortalService(NetworkManager* network_manager);
+
   ~MojoPortalService() override;
 
  private:

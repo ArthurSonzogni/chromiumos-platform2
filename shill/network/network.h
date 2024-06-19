@@ -35,6 +35,7 @@
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/network_monitor.h"
 #include "shill/network/portal_detector.h"
+#include "shill/network/portal_notification_event.h"
 #include "shill/network/slaac_controller.h"
 #include "shill/resolver.h"
 #include "shill/technology.h"
@@ -348,6 +349,12 @@ class Network : public NetworkMonitor::ClientNetwork {
       const {
     return network_validation_result_;
   }
+
+  // Delegate handlers for the portal UI events received in MojoPortalService.
+  mockable void OnNotificationEvent(PortalNotificationEvent event);
+  mockable void OnSigninPageShown(const net_base::HttpUrl& url);
+  mockable void OnSigninPageLoaded(int32_t chrome_net_error);
+  mockable void OnSigninPageClosed();
 
   // Start a separate PortalDetector instance for the purpose of connectivity
   // test.

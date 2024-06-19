@@ -39,7 +39,7 @@ class NetworkManager : Network::EventHandler {
   // Network is found.
   // Note: there is no guarantee about the lifetime of the returned Network. The
   // caller should not save the pointer and use it later.
-  Network* GetNetwork(int network_id) const;
+  virtual Network* GetNetwork(int network_id) const;
 
   // Enables or disables the CAPPORT functionality to all the Network instances,
   // including the instances created later.

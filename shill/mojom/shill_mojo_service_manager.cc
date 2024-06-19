@@ -76,7 +76,10 @@ class ShillMojoServiceManagerImpl : public ShillMojoServiceManager {
 };
 
 ShillMojoServiceManagerImpl::ShillMojoServiceManagerImpl(Manager* manager)
-    : ipc_thread_("Mojo IPC"), manager_(manager), passpoint_service_(manager) {
+    : ipc_thread_("Mojo IPC"),
+      manager_(manager),
+      passpoint_service_(manager),
+      portal_service_(manager->network_manager()) {
   // TODO(b/266150324): investigate if we really need a separate IO thread.
   ipc_thread_.StartWithOptions(
       base::Thread::Options(base::MessagePumpType::IO, 0));
