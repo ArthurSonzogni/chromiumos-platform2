@@ -30,6 +30,7 @@ class MockWriteProtectUtils : public WriteProtectUtils {
               (const, override));
   MOCK_METHOD(bool, DisableSoftwareWriteProtection, (), (override));
   MOCK_METHOD(bool, EnableSoftwareWriteProtection, (), (override));
+  MOCK_METHOD(bool, ReadyForFactoryMode, (), (override));
 };
 
 }  // namespace rmad

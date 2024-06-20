@@ -23,10 +23,12 @@ WriteProtectUtilsImpl::WriteProtectUtilsImpl()
 WriteProtectUtilsImpl::WriteProtectUtilsImpl(
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<EcUtils> ec_utils,
-    std::unique_ptr<FutilityUtils> futility_utils)
+    std::unique_ptr<FutilityUtils> futility_utils,
+    std::unique_ptr<GscUtils> gsc_utils)
     : crossystem_utils_(std::move(crossystem_utils)),
       ec_utils_(std::move(ec_utils)),
-      futility_utils_(std::move(futility_utils)) {}
+      futility_utils_(std::move(futility_utils)),
+      gsc_utils_(std::move(gsc_utils)) {}
 
 std::optional<bool> WriteProtectUtilsImpl::GetHardwareWriteProtectionStatus()
     const {
@@ -76,6 +78,11 @@ bool WriteProtectUtilsImpl::EnableSoftwareWriteProtection() {
 
   // Enable AP write protection.
   return futility_utils_->EnableApSoftwareWriteProtection();
+}
+
+bool WriteProtectUtilsImpl::ReadyForFactoryMode() {
+  return (!GetHardwareWriteProtectionStatus().value_or(true) ||
+          gsc_utils_->GetChassisOpenStatus().value_or(false));
 }
 
 }  // namespace rmad

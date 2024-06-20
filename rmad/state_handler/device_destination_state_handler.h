@@ -24,7 +24,7 @@ class DeviceDestinationStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<DeviceManagementClient> device_management_client,
-      std::unique_ptr<WriteProtectUtils> crossystem_utils);
+      std::unique_ptr<WriteProtectUtils> write_protect_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kDeviceDestination);
   SET_REPEATABLE;

@@ -25,7 +25,7 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject |working_dir_path|, |device_management_client_|,
-  // |runtime_probe_client_|, and |crossystem_utils_| for testing.
+  // |runtime_probe_client_|, and |write_protect_utils_| for testing.
   explicit ComponentsRepairStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,

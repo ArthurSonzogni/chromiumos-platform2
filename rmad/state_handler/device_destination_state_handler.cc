@@ -116,11 +116,10 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
       // Case 3.
       json_store_->SetValue(kCcdBlocked, false);
 
-      // If HWWP is already disabled, assume the user will select the physical
-      // method and go directly to WpDisablePhysical state.
-      if (auto hwwp_enabled =
-              write_protect_utils_->GetHardwareWriteProtectionStatus();
-          hwwp_enabled.has_value() && !hwwp_enabled.value()) {
+      // If HWWP is already disabled or CHASSIS_OPEN signal is true, assume the
+      // user will select the physical method and go directly to
+      // WpDisablePhysical state.
+      if (write_protect_utils_->ReadyForFactoryMode()) {
         return NextStateCaseWrapper(RmadState::StateCase::kWpDisablePhysical);
       }
       // Otherwise, let the user choose between physical method or RSU.

@@ -21,6 +21,8 @@ class WriteProtectUtils {
   virtual bool DisableSoftwareWriteProtection() = 0;
   // Enable both AP and EC write protection.
   virtual bool EnableSoftwareWriteProtection() = 0;
+  // Check if the device is ready to enter factory mode.
+  virtual bool ReadyForFactoryMode() = 0;
 };
 
 }  // namespace rmad

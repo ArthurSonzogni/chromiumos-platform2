@@ -13,6 +13,7 @@
 #include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_ec_utils.h"
 #include "rmad/utils/mock_futility_utils.h"
+#include "rmad/utils/mock_gsc_utils.h"
 
 using testing::_;
 using testing::DoAll;
@@ -35,6 +36,7 @@ class WriteProtectUtilsTest : public testing::Test {
     bool apwp_enabled = true;
     bool ecwp_success = true;
     bool ecwp_enabled = true;
+    bool chassis_open = false;
   };
   std::unique_ptr<WriteProtectUtilsImpl> CreateWriteProtectUtils(
       const UtilsArgs& args) {
@@ -76,9 +78,14 @@ class WriteProtectUtilsTest : public testing::Test {
     ON_CALL(*mock_futility_utils, EnableApSoftwareWriteProtection())
         .WillByDefault(Return(args.apwp_success));
 
+    // Mock |GscUtils|.
+    auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
+    ON_CALL(*mock_gsc_utils, GetChassisOpenStatus())
+        .WillByDefault(Return(args.chassis_open));
+
     return std::make_unique<WriteProtectUtilsImpl>(
         std::move(mock_crossystem_utils), std::move(mock_ec_utils),
-        std::move(mock_futility_utils));
+        std::move(mock_futility_utils), std::move(mock_gsc_utils));
   }
 };
 
@@ -160,6 +167,21 @@ TEST_F(WriteProtectUtilsTest, EnableWp_Failed_Ap) {
 TEST_F(WriteProtectUtilsTest, EnableWp_Failed_Ec) {
   auto utils = CreateWriteProtectUtils({.ecwp_success = false});
   ASSERT_FALSE(utils->EnableSoftwareWriteProtection());
+}
+
+TEST_F(WriteProtectUtilsTest, ReadyForFactoryMode_HwwpDisabled_True) {
+  auto utils = CreateWriteProtectUtils({.hwwp_enabled = false});
+  ASSERT_TRUE(utils->ReadyForFactoryMode());
+}
+
+TEST_F(WriteProtectUtilsTest, ReadyForFactoryMode_ChassisOpend_True) {
+  auto utils = CreateWriteProtectUtils({.chassis_open = true});
+  ASSERT_TRUE(utils->ReadyForFactoryMode());
+}
+
+TEST_F(WriteProtectUtilsTest, ReadyForFactoryMode_ChassisOpend_False) {
+  auto utils = CreateWriteProtectUtils({});
+  ASSERT_FALSE(utils->ReadyForFactoryMode());
 }
 
 }  // namespace rmad

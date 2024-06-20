@@ -5,6 +5,7 @@
 #ifndef RMAD_UTILS_WRITE_PROTECT_UTILS_IMPL_H_
 #define RMAD_UTILS_WRITE_PROTECT_UTILS_IMPL_H_
 
+#include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/write_protect_utils.h"
 
 #include <memory>
@@ -21,7 +22,8 @@ class WriteProtectUtilsImpl : public WriteProtectUtils {
   explicit WriteProtectUtilsImpl(
       std::unique_ptr<CrosSystemUtils> crossystem_utils,
       std::unique_ptr<EcUtils> ec_utils,
-      std::unique_ptr<FutilityUtils> futility_utils);
+      std::unique_ptr<FutilityUtils> futility_utils,
+      std::unique_ptr<GscUtils> gsc_utils);
   ~WriteProtectUtilsImpl() override = default;
 
   std::optional<bool> GetHardwareWriteProtectionStatus() const override;
@@ -29,11 +31,13 @@ class WriteProtectUtilsImpl : public WriteProtectUtils {
   std::optional<bool> GetEcWriteProtectionStatus() const override;
   bool DisableSoftwareWriteProtection() override;
   bool EnableSoftwareWriteProtection() override;
+  bool ReadyForFactoryMode() override;
 
  private:
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<EcUtils> ec_utils_;
   std::unique_ptr<FutilityUtils> futility_utils_;
+  std::unique_ptr<GscUtils> gsc_utils_;
 };
 
 }  // namespace rmad

@@ -43,6 +43,7 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
     bool ccd_blocked = false;
     bool hwwp_enabled = true;
     bool racc_bypassed = false;
+    bool chassis_open = false;
   };
 
   scoped_refptr<ComponentsRepairStateHandler> CreateStateHandler(
@@ -65,8 +66,8 @@ class ComponentsRepairStateHandlerTest : public StateHandlerTest {
     // Mock |WriteProtectUtils|.
     auto mock_write_protect_utils =
         std::make_unique<NiceMock<MockWriteProtectUtils>>();
-    ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus())
-        .WillByDefault(Return(args.hwwp_enabled));
+    ON_CALL(*mock_write_protect_utils, ReadyForFactoryMode())
+        .WillByDefault(Return(!args.hwwp_enabled || args.chassis_open));
 
     return base::MakeRefCounted<ComponentsRepairStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
@@ -261,6 +262,46 @@ TEST_F(ComponentsRepairStateHandlerTest,
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableMethod);
+
+  bool mlb_repair;
+  EXPECT_TRUE(json_store_->GetValue(kMlbRepair, &mlb_repair));
+  EXPECT_TRUE(mlb_repair);
+
+  std::vector<std::string> replaced_components;
+  EXPECT_TRUE(
+      json_store_->GetValue(kReplacedComponentNames, &replaced_components));
+  EXPECT_EQ(0, replaced_components.size());
+
+  bool same_owner;
+  EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
+  EXPECT_FALSE(same_owner);
+
+  bool wp_disable_required;
+  EXPECT_TRUE(json_store_->GetValue(kWpDisableRequired, &wp_disable_required));
+  EXPECT_TRUE(wp_disable_required);
+
+  bool ccd_blocked;
+  EXPECT_TRUE(json_store_->GetValue(kCcdBlocked, &ccd_blocked));
+  EXPECT_FALSE(ccd_blocked);
+
+  bool wipe_device;
+  EXPECT_TRUE(json_store_->GetValue(kWipeDevice, &wipe_device));
+  EXPECT_TRUE(wipe_device);
+}
+
+TEST_F(ComponentsRepairStateHandlerTest,
+       GetNextStateCase_Success_MlbRework_Case2_ChassisOpened) {
+  auto handler = CreateStateHandler(
+      {.probed_components = {{RMAD_COMPONENT_BATTERY, "battery_abcd"}},
+       .chassis_open = true});
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  RmadState state;
+  state.mutable_components_repair()->set_mainboard_rework(true);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
 
   bool mlb_repair;
   EXPECT_TRUE(json_store_->GetValue(kMlbRepair, &mlb_repair));
