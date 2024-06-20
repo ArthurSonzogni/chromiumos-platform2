@@ -1129,9 +1129,11 @@ void CellularCapability3gpp::GetProperties() {
       dbus_properties_proxy_->GetAll(MM_DBUS_INTERFACE_MODEM_MODEM3GPP);
   OnModem3gppPropertiesChanged(properties_3gpp);
 
-  auto properties_signal =
-      dbus_properties_proxy_->GetAll(MM_DBUS_INTERFACE_MODEM_SIGNAL);
-  OnModemSignalPropertiesChanged(properties_signal);
+  if (registration_state_ != MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN) {
+    auto properties_signal =
+        dbus_properties_proxy_->GetAll(MM_DBUS_INTERFACE_MODEM_SIGNAL);
+    OnModemSignalPropertiesChanged(properties_signal);
+  }
 }
 
 void CellularCapability3gpp::UpdateServiceOLP() {
