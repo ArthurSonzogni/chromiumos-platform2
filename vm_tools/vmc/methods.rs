@@ -554,7 +554,6 @@ fn open_user_path(
         Path::new(CRYPTOHOME_USER)
             .join(user_id_hash)
             .join(MY_FILES_DIR),
-        PathBuf::from("/home/chronos/user/Downloads"),
         PathBuf::from("/home/chronos/user/MyFiles"),
     ];
 
