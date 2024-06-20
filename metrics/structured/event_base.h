@@ -64,8 +64,6 @@ class BRILLO_EXPORT EventBase {
     std::string string_value;
     double double_value;
     std::vector<int64_t> int_array_value;
-
-    bool operator==(const Metric& other) const;
   };
 
   // Finalizes the event and sends it for recording. After this call, the event
@@ -82,8 +80,6 @@ class BRILLO_EXPORT EventBase {
   IdType id_type() const { return id_type_; }
 
   StructuredEventProto_EventType event_type() const { return event_type_; }
-
-  bool operator==(const EventBase& other) const;
 
  protected:
   EventBase(uint64_t event_name_hash,

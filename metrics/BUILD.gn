@@ -27,13 +27,11 @@ group("all") {
     deps += [
       ":cumulative_metrics_test",
       ":debugd_reader_test",
-      ":metrics_client_util_test",
       ":metrics_library_test",
       ":mmc_error_parser_test",
       ":persistent_integer_test",
       ":timer_test",
       ":upload_service_test",
-      "//metrics/structured:metrics_client_structured_metrics_test",
       "//metrics/structured:structured_metrics_test",
     ]
   }
@@ -51,11 +49,6 @@ group("all") {
 install_config("install_minijail_conf") {
   sources = [ "minijail/metrics_daemon.conf" ]
   install_path = "minijail_conf"
-}
-
-static_library("metric_client_util") {
-  sources = [ "metrics_client_util.cc" ]
-  configs += [ ":target_defaults" ]
 }
 
 shared_library("libmetrics") {
@@ -132,12 +125,7 @@ static_library("libmetrics_daemon") {
 executable("metrics_client") {
   sources = [ "metrics_client.cc" ]
   configs += [ ":target_defaults" ]
-  deps = [
-    ":libmetrics",
-    ":metric_client_util",
-    "//metrics/structured:libmetricsclientstructuredmetrics",
-    "//metrics/structured:libstructuredmetrics",
-  ]
+  deps = [ ":libmetrics" ]
 }
 
 static_library("libupload_service") {
@@ -221,17 +209,6 @@ if (use.test) {
     configs += [
       "//common-mk:test",
       ":target_defaults",
-    ]
-  }
-  executable("metrics_client_util_test") {
-    sources = [ "metrics_client_util_test.cc" ]
-    configs += [
-      "//common-mk:test",
-      ":target_defaults",
-    ]
-    deps = [
-      ":metric_client_util",
-      "//common-mk/testrunner:testrunner",
     ]
   }
   executable("metrics_library_test") {

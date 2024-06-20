@@ -2,17 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <getopt.h>
-#include <unistd.h>
-
 #include <cstdio>
 #include <cstdlib>
 
-#include "metrics/metrics_client_util.h"
 #include "metrics/metrics_library.h"
-#include "metrics/structured/metrics_client_structured_events.h"
-#include "metrics/structured/recorder.h"
-#include "metrics/structured/recorder_singleton.h"
 
 namespace {
 
@@ -30,13 +23,46 @@ enum Mode {
   kModeReplayFile,
 };
 
+void ShowUsage() {
+  fprintf(
+      stderr,
+      "Usage:  metrics_client [-W <file>] [-n <num_samples>] [-t] name sample "
+      "min max nbuckets\n"
+      "        metrics_client [-W <file>] [-n <num_samples>] -e   name sample "
+      "max\n"
+      "        metrics_client [-W <file>] [-n <num_samples>] -s   name sample\n"
+      "        metrics_client [-W <file>] [-n <num_samples>] -v   event\n"
+      "        metrics_client [-W <file>] [-n <num_samples>] -u action\n"
+      "        metrics_client [-W <file>] -R <file>\n"
+      "        metrics_client [-cCDg]\n"
+      "\n"
+      "  default: send an integer-valued histogram sample\n"
+      "           |min| > 0, |min| <= sample < |max|\n"
+      "  -C: Create consent file such that -c will return 0.\n"
+      "  -D: Delete consent file such that -c will return 1.\n"
+      "  -R <file>: Replay events from a file and truncate it.\n"
+      "  -W <file>: Write events to a file; append to it if it exists.\n"
+      "  -c: return exit status 0 if user consents to stats, 1 otherwise,\n"
+      "      in guest mode always return 1\n"
+      "  -e: send linear/enumeration histogram data\n"
+      "  -g: return exit status 0 if machine in guest mode, 1 otherwise\n"
+      "  -n <num_samples>: Sends |num_samples| identical samples\n"
+      // The -i flag prints the client ID, if it exists and is valid.
+      // It is not advertised here because it is deprecated and for internal
+      // use only (at least by the log tool in debugd).
+      "  -s: send a sparse histogram sample\n"
+      "  -t: convert sample from double seconds to int milliseconds\n"
+      "  -u: send a user action\n"
+      "  -v: send a Platform.CrOSEvent enum histogram sample\n");
+  exit(1);
+}
+
 int ParseInt(const char* arg) {
   char* endptr;
   int value = strtol(arg, &endptr, 0);
   if (*endptr != '\0') {
     fprintf(stderr, "metrics client: bad integer \"%s\"\n", arg);
-    metrics_client::ShowUsage(stderr);
-    exit(1);
+    ShowUsage();
   }
   return value;
 }
@@ -46,8 +72,7 @@ double ParseDouble(const char* arg) {
   double value = strtod(arg, &endptr);
   if (*endptr != '\0') {
     fprintf(stderr, "metrics client: bad double \"%s\"\n", arg);
-    metrics_client::ShowUsage(stderr);
-    exit(1);
+    ShowUsage();
   }
   return value;
 }
@@ -143,13 +168,6 @@ int ReplayFile(const char* input_file, const char* output_file) {
   return metrics_lib.Replay(input_file) ? 0 : 1;
 }
 
-int SendStructuredMetricWrapper(int argc, char* argv[], int current_arg) {
-  int result =
-      metrics_client::SendStructuredMetric(argc, argv, current_arg, stderr);
-  metrics::structured::RecorderSingleton::GetInstance()->GetRecorder()->Flush();
-  return result;
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -159,21 +177,9 @@ int main(int argc, char** argv) {
   const char* input_file = nullptr;
   const char* num_samples_cstr = nullptr;
 
-  constexpr int kStructuredVal = 0x5740;
-  struct option longoptions[2];
-  longoptions[0].name = "structured";
-  longoptions[0].has_arg = false;
-  longoptions[0].flag = nullptr;
-  longoptions[0].val = kStructuredVal;
-  longoptions[1].name = nullptr;
-  longoptions[1].has_arg = false;
-  longoptions[1].flag = nullptr;
-  longoptions[1].val = 0;
-
   // Parse arguments
   int flag;
-  while ((flag = getopt_long(argc, argv, "CDR:W:cegin:stuv", longoptions,
-                             nullptr)) != -1) {
+  while ((flag = getopt(argc, argv, "CDR:W:cegin:stuv")) != -1) {
     switch (flag) {
       case 'C':
         mode = kModeCreateConsent;
@@ -217,11 +223,9 @@ int main(int argc, char** argv) {
       case 'v':
         mode = kModeSendCrosEvent;
         break;
-      case kStructuredVal:
-        return SendStructuredMetricWrapper(argc, argv, optind);
       default:
-        metrics_client::ShowUsage(stderr);
-        return 1;
+        ShowUsage();
+        break;
     }
   }
   int arg_index = optind;
@@ -232,8 +236,7 @@ int main(int argc, char** argv) {
     if (num_samples <= 0) {
       fprintf(stderr, "metrics client: bad num_samples \"%s\"\n",
               num_samples_cstr);
-      metrics_client::ShowUsage(stderr);
-      return 1;
+      ShowUsage();
     }
   }
 
@@ -250,8 +253,7 @@ int main(int argc, char** argv) {
     expected_args = 1;
 
   if ((arg_index + expected_args) != argc) {
-    metrics_client::ShowUsage(stderr);
-    return 1;
+    ShowUsage();
   }
 
   switch (mode) {
@@ -259,8 +261,7 @@ int main(int argc, char** argv) {
     case kModeSendEnumSample:
     case kModeSendSparseSample:
       if ((mode != kModeSendSample) && secs_to_msecs) {
-        metrics_client::ShowUsage(stderr);
-        return 1;
+        ShowUsage();
       }
       return SendStats(argv, arg_index, mode, secs_to_msecs, output_file,
                        num_samples);
@@ -281,7 +282,7 @@ int main(int argc, char** argv) {
     case kModeReplayFile:
       return ReplayFile(input_file, output_file);
     default:
-      metrics_client::ShowUsage(stderr);
-      return 1;
+      ShowUsage();
+      return 0;
   }
 }

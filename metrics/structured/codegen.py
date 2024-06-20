@@ -71,7 +71,6 @@ class ProjectInfo:
     """Codegen-related info about a project."""
 
     def __init__(self, project):
-        self.raw_name = project.name
         self.name = Util.sanitize_name(project.name)
         self.namespace = Util.camel_to_snake(self.name)
         self.name_hash = Util.hash_name(self.name)
@@ -105,7 +104,6 @@ class EventInfo:
     """Codegen-related info about an event."""
 
     def __init__(self, event, project_info):
-        self.raw_name = event.name
         self.name = Util.sanitize_name(event.name)
         self.name_hash = Util.event_name_hash(project_info.name, self.name)
 
@@ -114,42 +112,35 @@ class MetricInfo:
     """Codegen-related info about a metric."""
 
     def __init__(self, metric):
-        self.raw_name = metric.name
         self.name = Util.sanitize_name(metric.name)
         self.hash = Util.hash_name(metric.name)
-        self.type_name = metric.type
 
         if metric.type == "hmac-string":
             self.setter_type = "std::string&"
             self.setter = "AddHmacMetric"
             self.getter_type = "std::string"
             self.getter = "GetHmacMetricForTest"
-            self.arg_parser = "ParseStringStructuredMetricsArg"
         elif metric.type == "int":
             self.setter_type = "int64_t"
             self.setter = "AddIntMetric"
             self.getter_type = "int64_t"
             self.getter = "GetIntMetricForTest"
-            self.arg_parser = "ParseIntStructuredMetricsArg"
         elif metric.type == "raw-string":
             self.setter_type = "std::string&"
             self.setter = "AddRawStringMetric"
             self.getter_type = "std::string"
             self.getter = "GetRawStringMetricForTest"
-            self.arg_parser = "ParseStringStructuredMetricsArg"
         elif metric.type == "double":
             self.setter_type = "double"
             self.setter = "AddDoubleMetric"
             self.getter_type = "double"
             self.getter = "GetDoubleMetricForTest"
-            self.arg_parser = "ParseDoubleStructuredMetricsArg"
         elif metric.type == "int-array":
             self.setter_type = "std::vector<int64_t>&"
             self.max_size = metric.max_size
             self.setter = "AddIntArrayMetric"
             self.getter_type = "std::vector<int64_t>"
             self.getter = "GetIntArrayMetricForTest"
-            self.arg_parser = "ParseIntArrayStructuredMetricsArg"
         else:
             raise ValueError("Invalid metric type.")
 
@@ -165,7 +156,6 @@ class Template:
         file_template,
         project_template,
         event_template,
-        pre_metric_template,
         metric_template,
         array_template,
         is_header,
@@ -176,7 +166,6 @@ class Template:
         self.file_template = file_template
         self.project_template = project_template
         self.event_template = event_template
-        self.pre_metric_template = pre_metric_template
         self.metric_template = metric_template
         self.array_template = array_template
         self.is_header = is_header
@@ -237,22 +226,11 @@ class Template:
                 if metric.is_array()
             )
 
-        pre_metric_code = "".join(
-            self._stamp_pre_metric(file_info, event_info, metric)
-            for metric in event.metrics
-        )
-
         return self.event_template.format(
             file=file_info,
             project=project_info,
             event=event_info,
-            pre_metric_code=pre_metric_code,
             metric_code=metric_code,
-        )
-
-    def _stamp_pre_metric(self, file_info, event_info, metric):
-        return self.pre_metric_template.format(
-            file=file_info, event=event_info, metric=MetricInfo(metric)
         )
 
     def _stamp_metric(self, file_info, event_info, metric):

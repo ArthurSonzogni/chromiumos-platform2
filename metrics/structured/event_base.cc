@@ -15,28 +15,6 @@
 namespace metrics {
 namespace structured {
 
-bool EventBase::Metric::operator==(const EventBase::Metric& other) const {
-  if (name_hash != other.name_hash) {
-    return false;
-  }
-  if (type != other.type) {
-    return false;
-  }
-
-  switch (type) {
-    case EventBase::MetricType::kHmac:
-      return hmac_value == other.hmac_value;
-    case EventBase::MetricType::kInt:
-      return int_value == other.int_value;
-    case EventBase::MetricType::kRawString:
-      return string_value == other.string_value;
-    case EventBase::MetricType::kDouble:
-      return double_value == other.double_value;
-    case EventBase::MetricType::kIntArray:
-      return int_array_value == other.int_array_value;
-  }
-}
-
 EventBase::EventBase(uint64_t event_name_hash,
                      uint64_t project_name_hash,
                      IdType id_type,
@@ -144,8 +122,6 @@ std::vector<int64_t> EventBase::GetIntArrayMetricForTest(
   NOTREACHED() << "Failed to get metric value. Invalid name hash " << name_hash;
   return {};
 }
-
-bool EventBase::operator==(const EventBase& other) const = default;
 
 }  // namespace structured
 }  // namespace metrics
