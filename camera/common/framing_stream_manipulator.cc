@@ -1645,6 +1645,12 @@ void FramingStreamManipulator::ResetOnThread() {
   auto_framing_client_.TearDown();
 #endif  // USE_CAMERA_FEATURE_AUTO_FRAMING
 
+#if USE_CAMERA_FEATURE_SUPER_RES
+  if (single_frame_upsampler_) {
+    single_frame_upsampler_.reset();
+  }
+#endif  // USE_CAMERA_FEATURE_SUPER_RES
+
   still_capture_processor_->Reset();
 
   state_ = State::kDisabled;
