@@ -202,10 +202,12 @@ void FinalizeStateHandler::FinalizeTask() {
   status_.set_progress(0.95);
 
   // Make sure GSC board ID type and board ID flags are set.
-  if (std::string board_id_type; !gsc_utils_->GetBoardIdType(&board_id_type) ||
-                                 board_id_type == kEmptyBoardIdType ||
-                                 board_id_type == kTestBoardIdType) {
-    LOG(ERROR) << "GSC board ID type is invalid: " << board_id_type;
+  if (auto board_id_type = gsc_utils_->GetBoardIdType();
+      !board_id_type.has_value() ||
+      board_id_type.value() == kEmptyBoardIdType ||
+      board_id_type.value() == kTestBoardIdType) {
+    LOG(ERROR) << "GSC board ID type is invalid: "
+               << board_id_type.value_or("");
     if (base::PathExists(working_dir_path_.AppendASCII(kTestDirPath))) {
       DLOG(INFO) << "GSC board ID check bypassed";
     } else {
@@ -214,11 +216,12 @@ void FinalizeStateHandler::FinalizeTask() {
       return;
     }
   }
-  if (std::string board_id_flags;
-      !gsc_utils_->GetBoardIdFlags(&board_id_flags) ||
-      (board_id_flags != kPvtBoardIdFlags &&
-       board_id_flags != kCustomLabelPvtBoardIdFlags)) {
-    LOG(ERROR) << "GSC board ID flags is invalid: " << board_id_flags;
+  if (auto board_id_flags = gsc_utils_->GetBoardIdFlags();
+      !board_id_flags.has_value() ||
+      (board_id_flags.value() != kPvtBoardIdFlags &&
+       board_id_flags.value() != kCustomLabelPvtBoardIdFlags)) {
+    LOG(ERROR) << "GSC board ID flags is invalid: "
+               << board_id_flags.value_or("");
     if (base::PathExists(working_dir_path_.AppendASCII(kTestDirPath))) {
       DLOG(INFO) << "GSC board ID flags check bypassed";
     } else {

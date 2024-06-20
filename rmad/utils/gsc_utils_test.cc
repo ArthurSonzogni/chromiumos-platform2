@@ -286,9 +286,9 @@ TEST_F(GscUtilsTest, GetBoardIdType_Success) {
       .WillOnce(DoAll(SetArgPointee<1>(kGetBoardIdResponse), Return(true)));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  std::string board_id_type;
-  EXPECT_TRUE(gsc_utils->GetBoardIdType(&board_id_type));
-  EXPECT_EQ(board_id_type, kExpectedBoardIdType);
+  auto board_id_type = gsc_utils->GetBoardIdType();
+  EXPECT_TRUE(board_id_type.has_value());
+  EXPECT_EQ(board_id_type.value(), kExpectedBoardIdType);
 }
 
 TEST_F(GscUtilsTest, GetBoardIdType_Fail) {
@@ -296,8 +296,8 @@ TEST_F(GscUtilsTest, GetBoardIdType_Fail) {
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  std::string board_id_type;
-  EXPECT_FALSE(gsc_utils->GetBoardIdType(&board_id_type));
+  auto board_id_type = gsc_utils->GetBoardIdType();
+  EXPECT_FALSE(board_id_type.has_value());
 }
 
 TEST_F(GscUtilsTest, GetBoardIdFlags_Success) {
@@ -306,9 +306,9 @@ TEST_F(GscUtilsTest, GetBoardIdFlags_Success) {
       .WillOnce(DoAll(SetArgPointee<1>(kGetBoardIdResponse), Return(true)));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  std::string board_id_flags;
-  EXPECT_TRUE(gsc_utils->GetBoardIdFlags(&board_id_flags));
-  EXPECT_EQ(board_id_flags, kExpectedBoardIdFlags);
+  auto board_id_flags = gsc_utils->GetBoardIdFlags();
+  EXPECT_TRUE(board_id_flags.has_value());
+  EXPECT_EQ(board_id_flags.value(), kExpectedBoardIdFlags);
 }
 
 TEST_F(GscUtilsTest, GetBoardIdFlags_Fail) {
@@ -316,8 +316,8 @@ TEST_F(GscUtilsTest, GetBoardIdFlags_Fail) {
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  std::string board_id_flags;
-  EXPECT_FALSE(gsc_utils->GetBoardIdFlags(&board_id_flags));
+  auto board_id_flags = gsc_utils->GetBoardIdFlags();
+  EXPECT_FALSE(board_id_flags.has_value());
 }
 
 TEST_F(GscUtilsTest, SetBoardId_Success) {
@@ -351,12 +351,11 @@ TEST_F(GscUtilsTest, GetFactoryConfig_Success) {
           DoAll(SetArgPointee<1>(kGetFactoryConfigResponse), Return(true)));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  bool is_chassis_branded;
-  int hw_compliance_version;
-  EXPECT_TRUE(
-      gsc_utils->GetFactoryConfig(&is_chassis_branded, &hw_compliance_version));
-  EXPECT_EQ(is_chassis_branded, kExpectedIsChassisBranded);
-  EXPECT_EQ(hw_compliance_version, kExpectedHwComplianceVersion);
+  auto factory_config = gsc_utils->GetFactoryConfig();
+  EXPECT_TRUE(factory_config.has_value());
+  EXPECT_EQ(factory_config->is_chassis_branded, kExpectedIsChassisBranded);
+  EXPECT_EQ(factory_config->hw_compliance_version,
+            kExpectedHwComplianceVersion);
 }
 
 TEST_F(GscUtilsTest, GetFactoryConfig_CommandFailed) {
@@ -364,10 +363,8 @@ TEST_F(GscUtilsTest, GetFactoryConfig_CommandFailed) {
   EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  bool is_chassis_branded;
-  int hw_compliance_version;
-  EXPECT_FALSE(
-      gsc_utils->GetFactoryConfig(&is_chassis_branded, &hw_compliance_version));
+  auto factory_config = gsc_utils->GetFactoryConfig();
+  EXPECT_FALSE(factory_config.has_value());
 }
 
 TEST_F(GscUtilsTest, GetFactoryConfig_ParseFailed) {
@@ -377,10 +374,8 @@ TEST_F(GscUtilsTest, GetFactoryConfig_ParseFailed) {
                       Return(true)));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  bool is_chassis_branded;
-  int hw_compliance_version;
-  EXPECT_FALSE(
-      gsc_utils->GetFactoryConfig(&is_chassis_branded, &hw_compliance_version));
+  auto factory_config = gsc_utils->GetFactoryConfig();
+  EXPECT_FALSE(factory_config.has_value());
 }
 
 TEST_F(GscUtilsTest, SetFactoryConfig_Success) {
@@ -406,9 +401,9 @@ TEST_F(GscUtilsTest, GetChassisOpenStatus_Success_True) {
                       Return(true)));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  bool status;
-  EXPECT_TRUE(gsc_utils->GetChassisOpenStatus(&status));
-  EXPECT_EQ(status, true);
+  auto status = gsc_utils->GetChassisOpenStatus();
+  EXPECT_TRUE(status.has_value());
+  EXPECT_TRUE(status.value());
 }
 
 TEST_F(GscUtilsTest, GetChassisOpenStatus_Success_False) {
@@ -418,9 +413,9 @@ TEST_F(GscUtilsTest, GetChassisOpenStatus_Success_False) {
                       Return(true)));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  bool status;
-  EXPECT_TRUE(gsc_utils->GetChassisOpenStatus(&status));
-  EXPECT_EQ(status, false);
+  auto status = gsc_utils->GetChassisOpenStatus();
+  EXPECT_TRUE(status.has_value());
+  EXPECT_FALSE(status.value());
 }
 
 TEST_F(GscUtilsTest, GetChassisOpenStatus_Failed) {
@@ -430,8 +425,8 @@ TEST_F(GscUtilsTest, GetChassisOpenStatus_Failed) {
                       Return(false)));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  bool status;
-  EXPECT_FALSE(gsc_utils->GetChassisOpenStatus(&status));
+  auto status = gsc_utils->GetChassisOpenStatus();
+  EXPECT_FALSE(status.has_value());
 }
 
 TEST_F(GscUtilsTest, GetChassisOpenStatus_Failed_Invalid) {
@@ -441,8 +436,8 @@ TEST_F(GscUtilsTest, GetChassisOpenStatus_Failed_Invalid) {
                       Return(true)));
   auto gsc_utils = std::make_unique<GscUtilsImpl>(std::move(mock_cmd_utils));
 
-  bool status;
-  EXPECT_FALSE(gsc_utils->GetChassisOpenStatus(&status));
+  auto status = gsc_utils->GetChassisOpenStatus();
+  EXPECT_FALSE(status.has_value());
 }
 
 TEST_F(GscUtilsTest, GetAddressingMode_Success) {

@@ -141,8 +141,8 @@ bool WriteProtectDisablePhysicalStateHandler::IsHwwpDisabled() const {
 }
 
 bool WriteProtectDisablePhysicalStateHandler::IsChassisOpened() const {
-  bool chassis_open;
-  return (gsc_utils_->GetChassisOpenStatus(&chassis_open) && chassis_open);
+  auto chassis_open = gsc_utils_->GetChassisOpenStatus();
+  return (chassis_open.has_value() && chassis_open.value());
 }
 
 bool WriteProtectDisablePhysicalStateHandler::CanSkipEnablingFactoryMode()

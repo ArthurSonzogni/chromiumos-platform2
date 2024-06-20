@@ -17,6 +17,7 @@
 #include <libsegmentation/feature_management_fake.h>
 
 #include "rmad/system/mock_tpm_manager_client.h"
+#include "rmad/utils/gsc_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_gsc_utils.h"
 
@@ -87,24 +88,24 @@ class SegmentationUtilsTest : public testing::Test {
 
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     if (options.board_id_type.has_value()) {
-      ON_CALL(*mock_gsc_utils, GetBoardIdType(_))
-          .WillByDefault(DoAll(SetArgPointee<0>(options.board_id_type.value()),
-                               Return(true)));
+      ON_CALL(*mock_gsc_utils, GetBoardIdType())
+          .WillByDefault(Return(options.board_id_type.value()));
     } else {
-      ON_CALL(*mock_gsc_utils, GetBoardIdType(_)).WillByDefault(Return(false));
+      ON_CALL(*mock_gsc_utils, GetBoardIdType())
+          .WillByDefault(Return(std::nullopt));
     }
     ON_CALL(*mock_gsc_utils, IsInitialFactoryModeEnabled())
         .WillByDefault(Return(options.is_initial_factory_mode));
     if (options.factory_config.has_value()) {
       const auto [is_chassis_branded, hw_compliance_version] =
           options.factory_config.value();
-      ON_CALL(*mock_gsc_utils, GetFactoryConfig(_, _))
-          .WillByDefault(DoAll(SetArgPointee<0>(is_chassis_branded),
-                               SetArgPointee<1>(hw_compliance_version),
-                               Return(true)));
+      ON_CALL(*mock_gsc_utils, GetFactoryConfig())
+          .WillByDefault(Return(
+              FactoryConfig{.is_chassis_branded = is_chassis_branded,
+                            .hw_compliance_version = hw_compliance_version}));
     } else {
-      ON_CALL(*mock_gsc_utils, GetFactoryConfig(_, _))
-          .WillByDefault(Return(false));
+      ON_CALL(*mock_gsc_utils, GetFactoryConfig())
+          .WillByDefault(Return(std::nullopt));
     }
     ON_CALL(*mock_gsc_utils, SetFactoryConfig(_, _))
         .WillByDefault(Return(options.set_factory_config_succeeded));

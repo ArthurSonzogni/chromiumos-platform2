@@ -26,15 +26,14 @@ class GscUtilsImpl : public GscUtils {
   bool DisableFactoryMode() const override;
   bool IsFactoryModeEnabled() const override;
   bool IsInitialFactoryModeEnabled() const override;
-  bool GetBoardIdType(std::string* board_id_type) const override;
-  bool GetBoardIdFlags(std::string* board_id_flags) const override;
+  std::optional<std::string> GetBoardIdType() const override;
+  std::optional<std::string> GetBoardIdFlags() const override;
   bool SetBoardId(bool is_custom_label) const override;
   bool Reboot() const override;
-  bool GetFactoryConfig(bool* is_chassis_branded,
-                        int* hw_compliance_version) const override;
+  std::optional<FactoryConfig> GetFactoryConfig() const override;
   bool SetFactoryConfig(bool is_chassis_branded,
                         int hw_compliance_version) const override;
-  bool GetChassisOpenStatus(bool* status) override;
+  std::optional<bool> GetChassisOpenStatus() override;
   SpiAddressingMode GetAddressingMode() override;
   bool SetAddressingMode(SpiAddressingMode mode) override;
   SpiAddressingMode GetAddressingModeByFlashSize(uint64_t flash_size) override;

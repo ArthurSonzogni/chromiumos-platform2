@@ -81,8 +81,8 @@ class WriteProtectDisablePhysicalStateHandlerTest : public StateHandlerTest {
     {
       InSequence seq;
       for (bool opened : args.chassis_open_list) {
-        EXPECT_CALL(*mock_gsc_utils, GetChassisOpenStatus(_))
-            .WillOnce(DoAll(SetArgPointee<0, bool>(opened), Return(true)));
+        EXPECT_CALL(*mock_gsc_utils, GetChassisOpenStatus())
+            .WillOnce(Return(opened));
       }
     }
     ON_CALL(*mock_gsc_utils, IsFactoryModeEnabled())

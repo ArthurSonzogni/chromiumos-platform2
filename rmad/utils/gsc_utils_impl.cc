@@ -98,17 +98,17 @@ std::string EncodeFactoryConfig(bool is_chassis_branded,
   return Uint64ToHexString(factory_config);
 }
 
-bool DecodeFactoryConfig(const std::string& factory_config_hexstr,
-                         bool* is_chassis_branded,
-                         int* hw_compliance_version) {
+std::optional<FactoryConfig> DecodeFactoryConfig(
+    const std::string& factory_config_hexstr) {
   uint64_t factory_config;
   if (!base::HexStringToUInt64(factory_config_hexstr, &factory_config)) {
     LOG(ERROR) << "Failed to decode hex string " << factory_config_hexstr;
-    return false;
+    return std::nullopt;
   }
-  *is_chassis_branded = ((factory_config >> 4) & 0x1);
-  *hw_compliance_version = (factory_config & 0xF);
-  return true;
+
+  return FactoryConfig{
+      .is_chassis_branded = static_cast<bool>(((factory_config >> 4) & 0x1)),
+      .hw_compliance_version = static_cast<int>((factory_config & 0xF))};
 }
 
 }  // namespace
@@ -181,38 +181,39 @@ bool GscUtilsImpl::IsInitialFactoryModeEnabled() const {
   return output.find(kInitialFactoryModeMatchStr) != std::string::npos;
 }
 
-bool GscUtilsImpl::GetBoardIdType(std::string* board_id_type) const {
-  std::string output;
+std::optional<std::string> GscUtilsImpl::GetBoardIdType() const {
+  std::string output, result;
+
   if (!cmd_utils_->GetOutput(kGetBoardIdArgv, &output)) {
     LOG(ERROR) << "Failed to get GSC board ID";
     LOG(ERROR) << output;
-    return false;
+    return std::nullopt;
   }
   re2::StringPiece string_piece(output);
   re2::RE2 regexp(kBoardIdTypeRegexp);
-  if (!RE2::PartialMatch(string_piece, regexp, board_id_type)) {
+  if (!RE2::PartialMatch(string_piece, regexp, &result)) {
     LOG(ERROR) << "Failed to parse GSC board ID type";
     LOG(ERROR) << output;
-    return false;
+    return std::nullopt;
   }
-  return true;
+  return result;
 }
 
-bool GscUtilsImpl::GetBoardIdFlags(std::string* board_id_flags) const {
-  std::string output;
+std::optional<std::string> GscUtilsImpl::GetBoardIdFlags() const {
+  std::string output, result;
   if (!cmd_utils_->GetOutput(kGetBoardIdArgv, &output)) {
     LOG(ERROR) << "Failed to get GSC board ID flags";
     LOG(ERROR) << output;
-    return false;
+    return std::nullopt;
   }
   re2::StringPiece string_piece(output);
   re2::RE2 regexp(kBoardIdFlagsRegexp);
-  if (!RE2::PartialMatch(string_piece, regexp, board_id_flags)) {
+  if (!RE2::PartialMatch(string_piece, regexp, &result)) {
     LOG(ERROR) << "Failed to parse GSC board ID flags";
     LOG(ERROR) << output;
-    return false;
+    return std::nullopt;
   }
-  return true;
+  return result;
 }
 
 bool GscUtilsImpl::SetBoardId(bool is_custom_label) const {
@@ -236,13 +237,12 @@ bool GscUtilsImpl::Reboot() const {
   return cmd_utils_->GetOutput(kRebootArgv, &unused_output);
 }
 
-bool GscUtilsImpl::GetFactoryConfig(bool* is_chassis_branded,
-                                    int* hw_compliance_version) const {
+std::optional<FactoryConfig> GscUtilsImpl::GetFactoryConfig() const {
   std::string output;
   if (!cmd_utils_->GetOutput(kGetFactoryConfigArgv, &output)) {
     LOG(ERROR) << "Failed to get factory config";
     LOG(ERROR) << output;
-    return false;
+    return std::nullopt;
   }
   re2::StringPiece string_piece(output);
   re2::RE2 regexp(kFactoryConfigRegexp);
@@ -250,15 +250,16 @@ bool GscUtilsImpl::GetFactoryConfig(bool* is_chassis_branded,
   if (!RE2::PartialMatch(string_piece, regexp, &factory_config_hexstr)) {
     LOG(ERROR) << "Failed to parse factory config";
     LOG(ERROR) << output;
-    return false;
+    return std::nullopt;
   }
-  if (!DecodeFactoryConfig(factory_config_hexstr, is_chassis_branded,
-                           hw_compliance_version)) {
+
+  auto result = DecodeFactoryConfig(factory_config_hexstr);
+  if (!result.has_value()) {
     LOG(ERROR) << "Failed to parse factory config hex string: "
                << factory_config_hexstr;
-    return false;
+    return std::nullopt;
   }
-  return true;
+  return result;
 }
 
 bool GscUtilsImpl::SetFactoryConfig(bool is_chassis_branded,
@@ -276,12 +277,12 @@ bool GscUtilsImpl::SetFactoryConfig(bool is_chassis_branded,
   return true;
 }
 
-bool GscUtilsImpl::GetChassisOpenStatus(bool* status) {
+std::optional<bool> GscUtilsImpl::GetChassisOpenStatus() {
   std::string output;
   if (!cmd_utils_->GetOutput(kGetChassisOpenArgv, &output)) {
     LOG(ERROR) << "Failed to get CHASSIS_OPEN status";
     LOG(ERROR) << output;
-    return false;
+    return std::nullopt;
   }
 
   re2::StringPiece string_piece(output);
@@ -290,12 +291,10 @@ bool GscUtilsImpl::GetChassisOpenStatus(bool* status) {
   if (!RE2::PartialMatch(string_piece, regexp, &bool_string)) {
     LOG(ERROR) << "Failed to parse CHASSIS_OPEN status";
     LOG(ERROR) << output;
-    return false;
+    return std::nullopt;
   }
 
-  *status = (bool_string == "true");
-
-  return true;
+  return (bool_string == "true");
 }
 
 SpiAddressingMode GscUtilsImpl::GetAddressingMode() {

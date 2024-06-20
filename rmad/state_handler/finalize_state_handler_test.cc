@@ -79,12 +79,10 @@ class FinalizeStateHandlerTest : public StateHandlerTest {
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     ON_CALL(*mock_gsc_utils, DisableFactoryMode())
         .WillByDefault(Return(args.disable_factory_mode_success));
-    ON_CALL(*mock_gsc_utils, GetBoardIdType(_))
-        .WillByDefault(
-            DoAll(SetArgPointee<0>(args.board_id_type), Return(true)));
-    ON_CALL(*mock_gsc_utils, GetBoardIdFlags(_))
-        .WillByDefault(
-            DoAll(SetArgPointee<0>(args.board_id_flags), Return(true)));
+    ON_CALL(*mock_gsc_utils, GetBoardIdType())
+        .WillByDefault(Return(args.board_id_type));
+    ON_CALL(*mock_gsc_utils, GetBoardIdFlags())
+        .WillByDefault(Return(args.board_id_flags));
 
     if (args.has_bio_wash) {
       brillo::TouchFile(GetBioWashPath());

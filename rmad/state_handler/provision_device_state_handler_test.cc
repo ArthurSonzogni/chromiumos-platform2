@@ -196,15 +196,15 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     // Mock |GscUtils|.
     auto mock_gsc_utils = std::make_unique<NiceMock<MockGscUtils>>();
     if (args.read_board_id_success) {
-      ON_CALL(*mock_gsc_utils, GetBoardIdType(_))
-          .WillByDefault(
-              DoAll(SetArgPointee<0>(args.board_id_type), Return(true)));
-      ON_CALL(*mock_gsc_utils, GetBoardIdFlags(_))
-          .WillByDefault(
-              DoAll(SetArgPointee<0>(args.board_id_flags), Return(true)));
+      ON_CALL(*mock_gsc_utils, GetBoardIdType())
+          .WillByDefault(Return(args.board_id_type));
+      ON_CALL(*mock_gsc_utils, GetBoardIdFlags())
+          .WillByDefault(Return(args.board_id_flags));
     } else {
-      ON_CALL(*mock_gsc_utils, GetBoardIdType(_)).WillByDefault(Return(false));
-      ON_CALL(*mock_gsc_utils, GetBoardIdFlags(_)).WillByDefault(Return(false));
+      ON_CALL(*mock_gsc_utils, GetBoardIdType())
+          .WillByDefault(Return(std::nullopt));
+      ON_CALL(*mock_gsc_utils, GetBoardIdFlags())
+          .WillByDefault(Return(std::nullopt));
     }
     ON_CALL(*mock_gsc_utils, SetBoardId(_))
         .WillByDefault(Invoke([args](bool is_custom_label) {

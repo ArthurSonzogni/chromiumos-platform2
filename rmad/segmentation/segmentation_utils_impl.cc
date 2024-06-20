@@ -122,8 +122,14 @@ int SegmentationUtilsImpl::GetFeatureLevel() const {
 
 bool SegmentationUtilsImpl::GetFeatureFlags(bool* is_chassis_branded,
                                             int* hw_compliance_version) const {
-  return gsc_utils_->GetFactoryConfig(is_chassis_branded,
-                                      hw_compliance_version);
+  auto factory_config = gsc_utils_->GetFactoryConfig();
+  if (!factory_config.has_value()) {
+    return false;
+  }
+
+  *is_chassis_branded = factory_config->is_chassis_branded;
+  *hw_compliance_version = factory_config->hw_compliance_version;
+  return true;
 }
 
 bool SegmentationUtilsImpl::SetFeatureFlags(bool is_chassis_branded,
@@ -133,12 +139,12 @@ bool SegmentationUtilsImpl::SetFeatureFlags(bool is_chassis_branded,
 }
 
 bool SegmentationUtilsImpl::IsBoardIdTypeEmpty() const {
-  std::string board_id_type;
-  if (!gsc_utils_->GetBoardIdType(&board_id_type)) {
+  auto board_id_type = gsc_utils_->GetBoardIdType();
+  if (!board_id_type.has_value()) {
     LOG(ERROR) << "Failed to get board ID type";
     return false;
   }
-  return board_id_type == kEmptyBoardIdType;
+  return board_id_type.value() == kEmptyBoardIdType;
 }
 
 bool SegmentationUtilsImpl::IsInitialFactoryMode() const {

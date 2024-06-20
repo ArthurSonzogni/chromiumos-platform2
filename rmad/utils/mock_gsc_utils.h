@@ -26,19 +26,25 @@ class MockGscUtils : public GscUtils {
   MOCK_METHOD(bool, DisableFactoryMode, (), (const, override));
   MOCK_METHOD(bool, IsFactoryModeEnabled, (), (const, override));
   MOCK_METHOD(bool, IsInitialFactoryModeEnabled, (), (const, override));
-  MOCK_METHOD(bool, GetBoardIdType, (std::string*), (const, override));
-  MOCK_METHOD(bool, GetBoardIdFlags, (std::string*), (const, override));
+  MOCK_METHOD(std::optional<std::string>,
+              GetBoardIdType,
+              (),
+              (const, override));
+  MOCK_METHOD(std::optional<std::string>,
+              GetBoardIdFlags,
+              (),
+              (const, override));
   MOCK_METHOD(bool, SetBoardId, (bool), (const, override));
   MOCK_METHOD(bool, Reboot, (), (const, override));
-  MOCK_METHOD(bool,
+  MOCK_METHOD(std::optional<FactoryConfig>,
               GetFactoryConfig,
-              (bool* is_chassis_branded, int* hw_compliance_version),
+              (),
               (const, override));
   MOCK_METHOD(bool,
               SetFactoryConfig,
               (bool is_chassis_branded, int hw_compliance_version),
               (const, override));
-  MOCK_METHOD(bool, GetChassisOpenStatus, (bool* status), (override));
+  MOCK_METHOD(std::optional<bool>, GetChassisOpenStatus, (), (override));
   MOCK_METHOD(SpiAddressingMode, GetAddressingMode, (), (override));
   MOCK_METHOD(bool, SetAddressingMode, (SpiAddressingMode mode), (override));
   MOCK_METHOD(SpiAddressingMode,

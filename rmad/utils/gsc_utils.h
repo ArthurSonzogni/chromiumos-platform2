@@ -17,6 +17,11 @@ enum class SpiAddressingMode {
   kNotProvisioned = 3,
 };
 
+struct FactoryConfig {
+  bool is_chassis_branded;
+  int hw_compliance_version;
+};
+
 class GscUtils {
  public:
   GscUtils() = default;
@@ -46,10 +51,10 @@ class GscUtils {
   virtual bool IsInitialFactoryModeEnabled() const = 0;
 
   // Get GSC board ID type.
-  virtual bool GetBoardIdType(std::string* board_id_type) const = 0;
+  virtual std::optional<std::string> GetBoardIdType() const = 0;
 
   // Get GSC board ID flags.
-  virtual bool GetBoardIdFlags(std::string* board_id_flags) const = 0;
+  virtual std::optional<std::string> GetBoardIdFlags() const = 0;
 
   // Set GSC board ID.
   virtual bool SetBoardId(bool is_custom_label) const = 0;
@@ -58,15 +63,14 @@ class GscUtils {
   virtual bool Reboot() const = 0;
 
   // Get factory config.
-  virtual bool GetFactoryConfig(bool* is_chassis_branded,
-                                int* hw_compliance_version) const = 0;
+  virtual std::optional<FactoryConfig> GetFactoryConfig() const = 0;
 
   // Set factory config.
   virtual bool SetFactoryConfig(bool is_chassis_branded,
                                 int hw_compliance_version) const = 0;
 
   // Get CHASSIS_OPEN status.
-  virtual bool GetChassisOpenStatus(bool* status) = 0;
+  virtual std::optional<bool> GetChassisOpenStatus() = 0;
 
   // Get addressing mode of Ti50 device.
   virtual SpiAddressingMode GetAddressingMode() = 0;

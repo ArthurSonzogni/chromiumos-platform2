@@ -522,16 +522,17 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
                kProgressResetGbbFlags);
 
   // Set GSC board ID if it is not set yet.
-  std::string board_id_type, board_id_flags;
-  if (!gsc_utils_->GetBoardIdType(&board_id_type)) {
+  auto board_id_type = gsc_utils_->GetBoardIdType();
+  if (!board_id_type.has_value()) {
     UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                  kProgressFailedBlocking,
                  ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
     return;
   }
-  if (board_id_type == kEmptyBoardIdType) {
+  auto board_id_flags = gsc_utils_->GetBoardIdFlags();
+  if (board_id_type.value() == kEmptyBoardIdType) {
     bool is_two_stage = false;
-    if (gsc_utils_->GetBoardIdFlags(&board_id_flags) &&
+    if (board_id_flags.has_value() &&
         board_id_flags == kTwoStagePvtBoardIdFlags) {
       // For two-stage cases (LOEM projects and spare MLB for RMA), the board ID
       // type are left empty and be set in LOEM or during RMA.
@@ -550,7 +551,7 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
                    ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
       return;
     }
-  } else if (board_id_type == kTestBoardIdType) {
+  } else if (board_id_type.value() == kTestBoardIdType) {
     // TODO(chenghan): Test board ID is not allowed in RMA. Record a metrics for
     //                 it.
     LOG(ERROR) << "GSC board ID type cannot be ZZCR in RMA";
