@@ -41,11 +41,12 @@ static_assert(
 // active, traffic from these users will blackholed. Currently the "user
 // traffic" as defined by these usernames does not include e.g. Android apps or
 // system processes like the update engine.
-constexpr std::array<std::string_view, 9> kUserTrafficUsernames = {
+constexpr std::array<std::string_view, 10> kUserTrafficUsernames = {
     "chronos",         // Traffic originating from chrome and nacl applications
     "debugd",          // crosh terminal
     "cups",            // built-in printing using the cups daemon
     "lpadmin",         // printer configuration utility used by cups
+    "printscanmgr",    // Chrome OS printing and scanning daemon
     "kerberosd",       // Chrome OS Kerberos daemon
     "kerberosd-exec",  // Kerberos third party untrusted code
     // While tlsdate is not user traffic, time sync should be attempted over

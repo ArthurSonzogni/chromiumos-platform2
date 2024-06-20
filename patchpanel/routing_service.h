@@ -270,6 +270,8 @@ constexpr char kUidDebugd[] = "debugd";
 constexpr char kUidCups[] = "cups";
 // Printer and print queues configuration utility used for cups
 constexpr char kUidLpadmin[] = "lpadmin";
+// Chrome OS printing and scanning daemon
+constexpr char kUidPrintscanmgr[] = "printscanmgr";
 // Chrome OS Kerberos daemon
 constexpr char kUidKerberosd[] = "kerberosd";
 // Kerberos third party untrusted code
@@ -290,11 +292,12 @@ constexpr char kUidFuseSmbfs[] = "fuse-smbfs";
 // cstring must be defined and cannot be null), 3) the cgroup classid of the
 // source (or 0 if none is defined), and 4) if the traffic originated from that
 // source should be routed through VPN connections by default or not.
-constexpr std::array<LocalSourceSpecs, 10> kLocalSourceTypes{{
+constexpr std::array<LocalSourceSpecs, 11> kLocalSourceTypes{{
     {TrafficSource::kChrome, kUidChronos, 0, true},
     {TrafficSource::kUser, kUidDebugd, 0, true},
     {TrafficSource::kUser, kUidCups, 0, true},
     {TrafficSource::kUser, kUidLpadmin, 0, true},
+    {TrafficSource::kUser, kUidPrintscanmgr, 0, true},
     {TrafficSource::kSystem, kUidKerberosd, 0, true},
     {TrafficSource::kSystem, kUidKerberosdExec, 0, true},
     {TrafficSource::kSystem, kUidTlsdate, 0, true},
