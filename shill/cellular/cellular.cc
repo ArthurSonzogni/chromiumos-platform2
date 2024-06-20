@@ -93,6 +93,11 @@ constexpr base::TimeDelta kPendingConnectCancel = base::Minutes(1);
 constexpr char kEntitlementCheckAnomalyDetectorPrefix[] =
     "Entitlement check failed: ";
 
+// Prefix used by invalid APN tracker to report successful connection to
+// invalid APN or empty try list.
+constexpr char kInvalidApnAnomalyDetectorPrefix[] =
+    "Invalid APN anomaly detected: ";
+
 // Longer tethering start timeout value, used when the upstream network setup
 // requires the connection of a new PDN.
 static constexpr base::TimeDelta kLongTetheringStartTimeout = base::Seconds(45);
@@ -568,6 +573,7 @@ void Cellular::StopStep(EnabledStateChangedCallback callback,
                    << ": Failed stopping modem: " << error_result;
       }
       std::move(callback).Run(error_result);
+      invalid_data_apn_list_.clear();
 
       stop_step_.reset();
       return;
@@ -1446,6 +1452,90 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   if (IsSubscriptionError(cellular_error)) {
     subscription_error_seen_[iccid] = true;
   }
+}
+
+void Cellular::UpdateInvalidApnTracker(ApnList::ApnType apn_type,
+                                       const shill::Stringmap& apn,
+                                       Error::Type error) {
+  for (auto& apn_info : invalid_data_apn_list_) {
+    if (CompareApns(apn_info.apn, apn) && apn_info.apn_type == apn_type) {
+      if (error == Error::Type::kSuccess) {
+        if (apn_info.previous_invalid) {
+          LOG(ERROR) << kInvalidApnAnomalyDetectorPrefix
+                     << "Connected to APN marked as invalid after "
+                     << (base::Time::Now() - apn_info.last_attempt).InSeconds()
+                     << " seconds. Number of previous failures: "
+                     << apn_info.attempt_counter << ". APN info: "
+                     << GetPrintableApnStringmap(apn_info.apn);
+          // If successful, mark the APN valid for future connection attempts.
+          apn_info.previous_invalid = false;
+          apn_info.attempt_counter = 0;
+        }
+      } else if (error == Error::Type::kInvalidApn ||
+                 apn_info.previous_invalid) {
+        // Update timestamp and counter on any retriable error but only if
+        // connection has failed on previous attempt.
+        apn_info.previous_invalid = true;
+        apn_info.last_attempt = base::Time::Now();
+        apn_info.attempt_counter++;
+      }
+      return;
+    }
+  }
+
+  // Add new entry to the list only if the APN is really invalid.
+  if (error == Error::kInvalidApn) {
+    ConnectionAttemptInfo apn_info = {.apn = apn,
+                                      .apn_type = apn_type,
+                                      .attempt_counter = 1,
+                                      .last_attempt = base::Time::Now(),
+                                      .previous_invalid = true};
+    invalid_data_apn_list_.push_back(apn_info);
+  }
+}
+
+void Cellular::CountInvalidApnInTryList(std::deque<Stringmap>& try_list,
+                                        ApnList::ApnType apn_type) const {
+  if (try_list.empty()) {
+    return;
+  }
+
+  uint32_t invalid_apn_count = 0;
+  for (const auto& apn_info : invalid_data_apn_list_) {
+    if (!apn_info.previous_invalid || apn_info.apn_type != apn_type ||
+        apn_info.attempt_counter < Cellular::kInvalidApnAttempts) {
+      continue;
+    }
+    if (base::Time::Now() - apn_info.last_attempt >
+        Cellular::kInvalidApnCooldown) {
+      LOG(INFO) << LoggingTag() << ": " << __func__ << ": Invalid "
+                << (apn_type == ApnList::ApnType::kDun ? "Dun" : "Default")
+                << " APN was not removed from try list as cooldown time has "
+                << "elapsed: " << GetPrintableApnStringmap(apn_info.apn);
+      continue;
+    }
+
+    for (auto apn : try_list) {
+      if (CompareApns(apn_info.apn, apn)) {
+        invalid_apn_count++;
+      }
+    }
+  }
+  if (try_list.size() == invalid_apn_count) {
+    LOG(ERROR) << kInvalidApnAnomalyDetectorPrefix << "All APNs ("
+               << invalid_apn_count << ") were removed from the try list "
+               << (apn_type == ApnList::ApnType::kDefault ? "Default" : "Dun");
+  }
+}
+
+void Cellular::SetInvalidApnForTesting(ApnList::ApnType apn_type,
+                                       const shill::Stringmap& apn) {
+  ConnectionAttemptInfo apn_info = {.apn = apn,
+                                    .apn_type = apn_type,
+                                    .attempt_counter = kInvalidApnAttempts,
+                                    .last_attempt = base::Time::Now(),
+                                    .previous_invalid = true};
+  invalid_data_apn_list_.push_back(apn_info);
 }
 
 std::vector<Metrics::DetailedCellularConnectionResult::APNType>
@@ -3540,11 +3630,15 @@ std::deque<Stringmap> Cellular::BuildAttachApnTryList() const {
 }
 
 std::deque<Stringmap> Cellular::BuildDefaultApnTryList() const {
-  return BuildApnTryList(ApnList::ApnType::kDefault);
+  auto try_list = BuildApnTryList(ApnList::ApnType::kDefault);
+  CountInvalidApnInTryList(try_list, ApnList::ApnType::kDefault);
+  return try_list;
 }
 
 std::deque<Stringmap> Cellular::BuildTetheringApnTryList() const {
-  return BuildApnTryList(ApnList::ApnType::kDun);
+  auto try_list = BuildApnTryList(ApnList::ApnType::kDun);
+  CountInvalidApnInTryList(try_list, ApnList::ApnType::kDun);
+  return try_list;
 }
 
 bool Cellular::IsRequiredByCarrierApn(const Stringmap& apn) const {

@@ -975,6 +975,12 @@ void CellularCapability3gpp::ConnectionAttemptOnConnectReply(
   CHECK(attempt->simple_connect);
   attempt->simple_connect = false;
 
+  // Update list of invalid APNs
+  if (!error.IsFailure() || RetriableConnectError(error)) {
+    cellular()->UpdateInvalidApnTracker(apn_type, attempt->apn_try_list.front(),
+                                        error.type());
+  }
+
   CellularServiceRefPtr service = cellular()->service();
   if (!service) {
     // The service could have been deleted before our Connect() request

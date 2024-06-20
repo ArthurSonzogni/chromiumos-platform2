@@ -244,6 +244,11 @@ class Cellular : public Device,
       int portal_result,
       int portal_detection_count);
 
+  // Track state of invalid APNs to avoid reusing them
+  void UpdateInvalidApnTracker(ApnList::ApnType apn_type,
+                               const shill::Stringmap& apn_info,
+                               Error::Type error);
+
   // Is the underlying device in the process of activating?
   bool IsActivating() const;
 
@@ -516,6 +521,11 @@ class Cellular : public Device,
     default_pdn_apn_type_ = apn_type;
   }
 
+  static const int kInvalidApnAttempts = 2;
+  static constexpr base::TimeDelta kInvalidApnCooldown = base::Minutes(15);
+  void SetInvalidApnForTesting(ApnList::ApnType apn_type,
+                               const shill::Stringmap& apn);
+
   enum class LinkState { kUnknown, kDown, kUp };
   void SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
                                std::unique_ptr<Network> network,
@@ -703,6 +713,10 @@ class Cellular : public Device,
 
   // Creates or updates services for secondary SIMs.
   void UpdateSecondaryServices();
+
+  // Count invalid APN configurations in the try list
+  void CountInvalidApnInTryList(std::deque<Stringmap>& try_list,
+                                ApnList::ApnType apn_type) const;
 
   // HelpRegisterDerived*: Expose a property over RPC, with the name |name|.
   //
@@ -983,6 +997,16 @@ class Cellular : public Device,
   std::unique_ptr<CarrierEntitlement> carrier_entitlement_;
 
   net_base::ProcessManager* process_manager_;
+
+  // Used to store invalid APN configurations
+  struct ConnectionAttemptInfo {
+    Stringmap apn;
+    ApnList::ApnType apn_type;
+    int attempt_counter;
+    base::Time last_attempt;
+    bool previous_invalid;
+  };
+  std::deque<ConnectionAttemptInfo> invalid_data_apn_list_;
 
   // The active CellularService instance for this Device. This will always be
   // set to a valid service instance.
