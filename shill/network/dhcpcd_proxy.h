@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
@@ -24,7 +25,8 @@ namespace shill {
 // The proxy for the latest dhcpcd.
 class DHCPCDProxy : public DHCPClientProxy {
  public:
-  DHCPCDProxy(std::string_view interface,
+  DHCPCDProxy(net_base::ProcessManager* process_manager,
+              std::string_view interface,
               DHCPClientProxy::EventHandler* handler,
               base::ScopedClosureRunner destroy_cb);
   ~DHCPCDProxy() override;
@@ -38,6 +40,11 @@ class DHCPCDProxy : public DHCPClientProxy {
   base::WeakPtr<DHCPCDProxy> GetWeakPtr();
 
  private:
+  // Runs the dhcpcd process with the arguments.
+  bool RunDHCPCDWithArgs(const std::vector<std::string>& args);
+
+  net_base::ProcessManager* process_manager_;
+
   // The callback that will be executed when the instance is destroyed.
   base::ScopedClosureRunner destroy_cb_;
 

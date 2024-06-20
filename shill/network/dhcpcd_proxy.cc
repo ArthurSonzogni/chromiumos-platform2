@@ -93,12 +93,34 @@ bool IsEphemeralLease(const DHCPClientProxy::Options& options,
   return options.lease_name.empty() || options.lease_name == interface;
 }
 
+// Runs the dhcpcd process in the minijail.
+pid_t RunDHCPCDInMinijail(net_base::ProcessManager* process_manager,
+                          const std::vector<std::string>& args,
+                          bool need_cap) {
+  net_base::ProcessManager::MinijailOptions minijail_options;
+  minijail_options.user = kDHCPCDUser;
+  minijail_options.group = kDHCPCDGroup;
+  if (need_cap) {
+    minijail_options.capmask =
+        CAP_TO_MASK(CAP_NET_BIND_SERVICE) | CAP_TO_MASK(CAP_NET_BROADCAST) |
+        CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
+  }
+  minijail_options.inherit_supplementary_groups = false;
+
+  return process_manager->StartProcessInMinijail(
+      FROM_HERE, base::FilePath(kDHCPCDPath), args, {}, minijail_options,
+      base::DoNothing());
+}
+
 }  // namespace
 
-DHCPCDProxy::DHCPCDProxy(std::string_view interface,
+DHCPCDProxy::DHCPCDProxy(net_base::ProcessManager* process_manager,
+                         std::string_view interface,
                          DHCPClientProxy::EventHandler* handler,
                          base::ScopedClosureRunner destroy_cb)
-    : DHCPClientProxy(interface, handler), destroy_cb_(std::move(destroy_cb)) {}
+    : DHCPClientProxy(interface, handler),
+      process_manager_(process_manager),
+      destroy_cb_(std::move(destroy_cb)) {}
 
 DHCPCDProxy::~DHCPCDProxy() = default;
 
@@ -107,13 +129,25 @@ bool DHCPCDProxy::IsReady() const {
 }
 
 bool DHCPCDProxy::Rebind() {
-  // TODO(b/347847601): Implement the method.
-  return false;
+  return RunDHCPCDWithArgs(
+      std::vector<std::string>{"-4", "--noconfigure", "--rebind", interface_});
 }
 
 bool DHCPCDProxy::Release() {
-  // TODO(b/347847601): Implement the method.
-  return false;
+  return RunDHCPCDWithArgs(
+      std::vector<std::string>{"-4", "--noconfigure", "--release", interface_});
+}
+
+bool DHCPCDProxy::RunDHCPCDWithArgs(const std::vector<std::string>& args) {
+  const pid_t pid =
+      RunDHCPCDInMinijail(process_manager_, args, /*need_cap=*/false);
+  if (pid == net_base::ProcessManager::kInvalidPID) {
+    LOG(ERROR) << __func__ << ": Failed to run dhcpcd with args:"
+               << base::JoinString(args, " ");
+    return false;
+  }
+
+  return true;
 }
 
 base::WeakPtr<DHCPCDProxy> DHCPCDProxy::GetWeakPtr() {
@@ -148,18 +182,9 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
     args.push_back(base::StrCat({interface, "=", options.lease_name}));
   }
 
-  net_base::ProcessManager::MinijailOptions minijail_options;
-  minijail_options.user = kDHCPCDUser;
-  minijail_options.group = kDHCPCDGroup;
-  minijail_options.capmask =
-      CAP_TO_MASK(CAP_NET_BIND_SERVICE) | CAP_TO_MASK(CAP_NET_BROADCAST) |
-      CAP_TO_MASK(CAP_NET_ADMIN) | CAP_TO_MASK(CAP_NET_RAW);
-  minijail_options.inherit_supplementary_groups = false;
-
-  const pid_t pid = process_manager_->StartProcessInMinijail(
-      FROM_HERE, base::FilePath(kDHCPCDPath), args, {}, minijail_options,
-      base::DoNothing());
-  if (pid < 0) {
+  const pid_t pid =
+      RunDHCPCDInMinijail(process_manager_, args, /*need_cap=*/true);
+  if (pid == net_base::ProcessManager::kInvalidPID) {
     LOG(ERROR) << __func__ << ": Failed to start the dhcpcd process";
     return nullptr;
   }
@@ -179,7 +204,7 @@ std::unique_ptr<DHCPClientProxy> DHCPCDProxyFactory::Create(
 
   // Register the proxy and return it.
   auto proxy =
-      std::make_unique<DHCPCDProxy>(interface, handler,
+      std::make_unique<DHCPCDProxy>(process_manager_, interface, handler,
                                     base::ScopedClosureRunner(base::BindOnce(
                                         &DHCPCDProxyFactory::OnProxyDestroyed,
                                         weak_ptr_factory_.GetWeakPtr(), pid)));

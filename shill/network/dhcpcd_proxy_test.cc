@@ -13,6 +13,7 @@
 #include <base/functional/callback_helpers.h>
 #include <base/test/task_environment.h>
 #include <chromeos/net-base/mock_process_manager.h>
+#include <chromeos/net-base/process_manager.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
@@ -24,6 +25,7 @@ namespace shill {
 namespace {
 
 using testing::_;
+using testing::Field;
 using testing::Return;
 
 // The mock client of the DHCPCDProxy.
@@ -241,6 +243,60 @@ TEST_F(DHCPCDProxyFactoryTest, PermanentLeaseFile) {
   proxy.reset();
   EXPECT_FALSE(FileExistsInRoot(kPidFile));
   EXPECT_TRUE(FileExistsInRoot(kLeaseFile));
+}
+
+TEST_F(DHCPCDProxyFactoryTest, Rebind) {
+  constexpr int kPid = 4;
+  constexpr std::string_view kInterface = "wlan0";
+  const std::vector<std::string> kArgs = {"-4", "--noconfigure", "--rebind",
+                                          "wlan0"};
+  constexpr int kRebindPid = 5;
+
+  std::unique_ptr<DHCPClientProxy> proxy = CreateProxySync(kPid, kInterface);
+
+  EXPECT_CALL(
+      mock_process_manager_,
+      StartProcessInMinijail(
+          _, base::FilePath("/sbin/dhcpcd"), kArgs, _,
+          Field(&net_base::ProcessManager::MinijailOptions::capmask, 0), _))
+      .WillOnce(Return(kRebindPid));
+  EXPECT_TRUE(proxy->Rebind());
+  testing::Mock::VerifyAndClearExpectations(&mock_process_manager_);
+
+  EXPECT_CALL(
+      mock_process_manager_,
+      StartProcessInMinijail(
+          _, base::FilePath("/sbin/dhcpcd"), kArgs, _,
+          Field(&net_base::ProcessManager::MinijailOptions::capmask, 0), _))
+      .WillOnce(Return(net_base::ProcessManager::kInvalidPID));
+  EXPECT_FALSE(proxy->Rebind());
+}
+
+TEST_F(DHCPCDProxyFactoryTest, Release) {
+  constexpr int kPid = 4;
+  constexpr std::string_view kInterface = "wlan0";
+  const std::vector<std::string> kArgs = {"-4", "--noconfigure", "--release",
+                                          "wlan0"};
+  constexpr int kReleasePid = 5;
+
+  std::unique_ptr<DHCPClientProxy> proxy = CreateProxySync(kPid, kInterface);
+
+  EXPECT_CALL(
+      mock_process_manager_,
+      StartProcessInMinijail(
+          _, base::FilePath("/sbin/dhcpcd"), kArgs, _,
+          Field(&net_base::ProcessManager::MinijailOptions::capmask, 0), _))
+      .WillOnce(Return(kReleasePid));
+  EXPECT_TRUE(proxy->Release());
+  testing::Mock::VerifyAndClearExpectations(&mock_process_manager_);
+
+  EXPECT_CALL(
+      mock_process_manager_,
+      StartProcessInMinijail(
+          _, base::FilePath("/sbin/dhcpcd"), kArgs, _,
+          Field(&net_base::ProcessManager::MinijailOptions::capmask, 0), _))
+      .WillOnce(Return(net_base::ProcessManager::kInvalidPID));
+  EXPECT_FALSE(proxy->Release());
 }
 
 }  // namespace
