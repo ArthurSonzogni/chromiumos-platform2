@@ -243,6 +243,8 @@ class ModemImpl : public Modem {
   ~ModemImpl() override = default;
 
   // modemfwd::Modem overrides.
+  bool IsPresent() const override { return true; }
+
   std::string GetDeviceId() const override { return device_id_; }
 
   std::string GetEquipmentId() const override { return equipment_id_; }
@@ -457,6 +459,8 @@ class StubModem : public Modem {
   ~StubModem() override = default;
 
   // modemfwd::Modem overrides.
+  bool IsPresent() const override { return false; }
+
   std::string GetDeviceId() const override { return device_id_; }
 
   std::string GetEquipmentId() const override { return equipment_id_; }

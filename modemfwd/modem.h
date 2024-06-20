@@ -42,6 +42,9 @@ class Modem {
   // Must be in sync with ModemManager's MMModemPowerState enum.
   enum class PowerState { UNKNOWN = 0, OFF = 1, LOW = 2, ON = 3 };
 
+  // True if this modem exists on the bus.
+  virtual bool IsPresent() const = 0;
+
   // Get this modem's device ID.
   virtual std::string GetDeviceId() const = 0;
 

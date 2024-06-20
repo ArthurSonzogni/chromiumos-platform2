@@ -149,10 +149,16 @@ bool FlashTask::Start(Modem* modem,
 
   // Report flashing time in successful cases
   metrics_->SendFwFlashTime(flash_duration);
-  delegate()->RegisterOnModemReappearanceCallback(
-      modem->GetEquipmentId(),
-      base::BindOnce(&FlashTask::FlashFinished, weak_ptr_factory_.GetWeakPtr(),
-                     entry_id, types_for_metrics));
+  if (modem->IsPresent()) {
+    delegate()->RegisterOnModemReappearanceCallback(
+        modem->GetEquipmentId(), base::BindOnce(&FlashTask::FlashFinished,
+                                                weak_ptr_factory_.GetWeakPtr(),
+                                                entry_id, types_for_metrics));
+  } else {
+    // Just run this inline as we can't be sure the modem will ever come back
+    // on the bus and don't want to leave journal entries lying around.
+    FlashFinished(entry_id, types_for_metrics);
+  }
   return true;
 }
 

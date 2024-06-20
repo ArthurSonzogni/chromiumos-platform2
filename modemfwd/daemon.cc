@@ -532,11 +532,6 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
     return false;
   }
 
-  // We don't know the real equipment ID of this modem, and if we're
-  // force-flashing then we probably already have a problem with the modem
-  // coming up, so cleaning up at this point is not a problem. Run the
-  // callback now if we got one.
-  RunModemReappearanceCallback(stub_modem->GetEquipmentId());
   return true;
 }
 

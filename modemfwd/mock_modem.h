@@ -20,6 +20,7 @@ class MockModem : public Modem {
   MockModem() = default;
   ~MockModem() override = default;
 
+  MOCK_METHOD(bool, IsPresent, (), (const, override));
   MOCK_METHOD(std::string, GetDeviceId, (), (const, override));
   MOCK_METHOD(std::string, GetEquipmentId, (), (const, override));
   MOCK_METHOD(std::string, GetCarrierId, (), (const, override));

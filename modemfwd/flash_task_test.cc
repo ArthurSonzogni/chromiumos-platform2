@@ -69,6 +69,7 @@ class FlashTaskTest : public ::testing::Test {
  protected:
   std::unique_ptr<MockModem> GetDefaultModem() {
     auto modem = std::make_unique<MockModem>();
+    ON_CALL(*modem, IsPresent()).WillByDefault(Return(true));
     ON_CALL(*modem, GetDeviceId()).WillByDefault(Return(kDeviceId1));
     ON_CALL(*modem, GetEquipmentId()).WillByDefault(Return(kEquipmentId1));
     ON_CALL(*modem, GetCarrierId()).WillByDefault(Return(kCarrier1));
@@ -294,6 +295,33 @@ TEST_F(FlashTaskTest, IgnoreBlock) {
   brillo::ErrorPtr err;
   EXPECT_TRUE(task->Start(
       modem.get(), FlashTask::Options{.should_always_flash = true}, &err));
+  EXPECT_EQ(err.get(), nullptr);
+}
+
+TEST_F(FlashTaskTest, SyncCleanupForStubModem) {
+  auto task = CreateFlashTask();
+  auto modem = GetDefaultModem();
+  base::FilePath new_firmware(kMainFirmware2Path);
+
+  // Pretend this is a stub modem.
+  EXPECT_CALL(*modem, IsPresent()).WillRepeatedly(Return(false));
+
+  EXPECT_CALL(*modem_flasher_, ShouldFlash(modem.get(), _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*modem_flasher_, BuildFlashConfig(modem.get(), _, _))
+      .WillOnce(Return(GetConfig(
+          kCarrier1, {{kFwMain, new_firmware, kMainFirmware2Version}})));
+  EXPECT_CALL(*modem_flasher_, RunFlash(modem.get(), _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*metrics_, SendFwFlashTime(_)).Times(1);
+  EXPECT_CALL(*journal_, MarkStartOfFlashingFirmware(_, kDeviceId1, _))
+      .WillOnce(Return(kJournalEntryId));
+
+  // We should expect this to run synchronously.
+  EXPECT_CALL(*journal_, MarkEndOfFlashingFirmware(kJournalEntryId)).Times(1);
+
+  brillo::ErrorPtr err;
+  EXPECT_TRUE(task->Start(modem.get(), FlashTask::Options{}, &err));
   EXPECT_EQ(err.get(), nullptr);
 }
 
