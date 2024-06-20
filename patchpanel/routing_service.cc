@@ -138,6 +138,8 @@ bool RoutingService::AssignInterfaceToNetwork(int network_id,
     return false;
   }
 
+  // TODO(b/345417108): synchronize the interface/network_id maps with the
+  // RoutingService instance in use in the SocketService daemon.
   LOG(INFO) << __func__ << ": " << network_id << " <-> " << ifname;
   network_ids_to_interfaces_[network_id] = ifname;
   interfaces_to_network_ids_.emplace(ifname, network_id);
